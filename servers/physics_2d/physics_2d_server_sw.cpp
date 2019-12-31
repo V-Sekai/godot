@@ -403,7 +403,7 @@ void Physics2DServerSW::area_clear_shapes(RID p_area) {
 	ERR_FAIL_COND(!area);
 
 	MutexLock lock(pending_shape_update_list_lock);
-	while (area->get_shape_count()) {
+	while (area->get_shape_count())
 		area->remove_shape(0);
 	}
 }
