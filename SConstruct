@@ -329,11 +329,17 @@ env_base.Prepend(CPPPATH=["#"])
 env_base.platform_exporters = platform_exporters
 env_base.platform_apis = platform_apis
 
+# ensure that anything depending on eigen will only be linked with permissively licensed code.
+env_base.Append(CPPDEFINES=['EIGEN_MPL2_ONLY'])
+
 # Build type defines - more platform-specific ones can be in detect.py.
 if env_base["target"] == "release_debug" or env_base["target"] == "debug":
     # DEBUG_ENABLED enables debugging *features* and debug-only code, which is intended
     # to give *users* extra debugging information for their game development.
     env_base.Append(CPPDEFINES=["DEBUG_ENABLED"])
+
+if (env_base["use_precise_math_checks"]):
+    env_base.Append(CPPDEFINES=['PRECISE_MATH_CHECKS'])
 
 if env_base["target"] == "debug":
     # DEV_ENABLED enables *engine developer* code which should only be compiled for those

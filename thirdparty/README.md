@@ -69,6 +69,20 @@ comments. Apply the patches in the `patches/` folder when syncing on newer upstr
 commits.
 
 
+## eigen
+
+- Upstream: https://gitlab.com/libeigen/eigen/
+- Version: 3.3.7
+- License: Multiple* (BSD-3-Clause, GPLv3, LGPL 2.1, Minpack, MPL 2.0)
+
+Files extracted from upstream source:
+
+- All files in `Eigen/` except `CMakeLists.txt`
+- All `COPYING.*` files.
+
+\* Note that while eigen contains code under many licenses, godot WILL SET BUT DOESN'T CURRENTLY SET, FIXEME the `-DEIGEN_MPL2_ONLY` flag described in `COPYING.README`, which ensures that no code licensed under a more restrictive license than MPL 2.0 is included in godot binaries.
+
+
 ## enet
 
 - Upstream: http://enet.bespin.org
@@ -478,6 +492,16 @@ Files extracted from upstream source:
 A sljit patch from upstream was backported to fix macOS < 11.0 compilation
 in 10.40, it can be found in the `patches` folder.
 
+## pffft
+
+- Upstream: https://bitbucket.org/jpommier/pffft
+- Version: hg (29e4f76, 2016)
+- License: FFTPACK5 (BSD-like) 
+
+Files extracted from upstream source:
+
+- all files
+
 
 ## pvrtccompressor
 
@@ -502,6 +526,20 @@ Files extracted from upstream source:
 
 - `Recast/` folder without `CMakeLists.txt`
 - License.txt
+
+
+## resonanceaudio
+
+- Upstream: https://github.com/resonance-audio/resonance-audio
+- Version: git (1213ab78f00645fd2807285ccd4bed1375a50bfb, 2020)
+- License: Apache 2.0
+
+Files extracted from upstream source:
+
+- `resonance_audio/` and `platforms/common` folders without `*.test.cpp` and `*test.h`
+- `third_party/SADIE_hrtf_database` folder without `generate_hrtf_assets.py`, `WAV/*` and `hrtf_assets.iad`
+- LICENSE
+- AUTHORS
 
 
 ## rvo2
