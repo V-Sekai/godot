@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-Import('env')
-Import('env_modules')
+Import("env")
+Import("env_modules")
 
 env_resonance = env_modules.Clone()
 
@@ -14,88 +14,96 @@ thirdparty_eigen_dir = "#thirdparty/eigen/"
 thirdparty_libogg_dir = "#thirdparty/libogg/"
 thirdparty_libvorbis_dir = "#thirdparty/libvorbis/"
 thirdparty_sources = [
-  "resonanceaudio/resonance_audio/ambisonics/ambisonic_binaural_decoder.cc"
-, "resonanceaudio/resonance_audio/ambisonics/ambisonic_lookup_table.cc"
-, "resonanceaudio/resonance_audio/ambisonics/associated_legendre_polynomials_generator.cc"
-, "resonanceaudio/resonance_audio/ambisonics/foa_rotator.cc"
-, "resonanceaudio/resonance_audio/ambisonics/hoa_rotator.cc"
-, "resonanceaudio/resonance_audio/ambisonics/stereo_from_soundfield_converter.cc"
-, "resonanceaudio/resonance_audio/api/binaural_surround_renderer.cc"
-, "resonanceaudio/resonance_audio/api/resonance_audio_api.cc"
-, "resonanceaudio/resonance_audio/base/audio_buffer.cc"
-, "resonanceaudio/resonance_audio/base/channel_view.cc"
-, "resonanceaudio/resonance_audio/base/misc_math.cc"
-, "resonanceaudio/resonance_audio/base/simd_utils.cc"
-, "resonanceaudio/resonance_audio/base/spherical_angle.cc"
-, "resonanceaudio/resonance_audio/config/source_config.cc"
-, "resonanceaudio/resonance_audio/dsp/biquad_filter.cc"
-, "resonanceaudio/resonance_audio/dsp/channel_converter.cc"
-, "resonanceaudio/resonance_audio/dsp/circular_buffer.cc"
-, "resonanceaudio/resonance_audio/dsp/delay_filter.cc"
-, "resonanceaudio/resonance_audio/dsp/distance_attenuation.cc"
-, "resonanceaudio/resonance_audio/dsp/fft_manager.cc"
-, "resonanceaudio/resonance_audio/dsp/filter_coefficient_generators.cc"
-, "resonanceaudio/resonance_audio/dsp/fir_filter.cc"
-, "resonanceaudio/resonance_audio/dsp/gain.cc"
-, "resonanceaudio/resonance_audio/dsp/gain_mixer.cc"
-, "resonanceaudio/resonance_audio/dsp/gain_processor.cc"
-, "resonanceaudio/resonance_audio/dsp/mixer.cc"
-, "resonanceaudio/resonance_audio/dsp/mono_pole_filter.cc"
-, "resonanceaudio/resonance_audio/dsp/multi_channel_iir.cc"
-, "resonanceaudio/resonance_audio/dsp/near_field_processor.cc"
-, "resonanceaudio/resonance_audio/dsp/occlusion_calculator.cc"
-, "resonanceaudio/resonance_audio/dsp/partitioned_fft_filter.cc"
-, "resonanceaudio/resonance_audio/dsp/reflections_processor.cc"
-, "resonanceaudio/resonance_audio/dsp/resampler.cc"
-, "resonanceaudio/resonance_audio/dsp/reverb_onset_compensator.cc"
-, "resonanceaudio/resonance_audio/dsp/reverb_onset_update_processor.cc"
-, "resonanceaudio/resonance_audio/dsp/sh_hrir_creator.cc"
-, "resonanceaudio/resonance_audio/dsp/shoe_box_room.cc"
-, "resonanceaudio/resonance_audio/dsp/spectral_reverb.cc"
-, "resonanceaudio/resonance_audio/dsp/stereo_panner.cc"
-, "resonanceaudio/resonance_audio/dsp/utils.cc"
-, "resonanceaudio/resonance_audio/graph/ambisonic_binaural_decoder_node.cc"
-, "resonanceaudio/resonance_audio/graph/ambisonic_mixing_encoder_node.cc"
-, "resonanceaudio/resonance_audio/graph/binaural_surround_renderer_impl.cc"
-, "resonanceaudio/resonance_audio/graph/buffered_source_node.cc"
-, "resonanceaudio/resonance_audio/graph/foa_rotator_node.cc"
-, "resonanceaudio/resonance_audio/graph/gain_mixer_node.cc"
-, "resonanceaudio/resonance_audio/graph/gain_node.cc"
-, "resonanceaudio/resonance_audio/graph/graph_manager.cc"
-, "resonanceaudio/resonance_audio/graph/hoa_rotator_node.cc"
-, "resonanceaudio/resonance_audio/graph/mixer_node.cc"
-, "resonanceaudio/resonance_audio/graph/mono_from_soundfield_node.cc"
-, "resonanceaudio/resonance_audio/graph/near_field_effect_node.cc"
-, "resonanceaudio/resonance_audio/graph/occlusion_node.cc"
-, "resonanceaudio/resonance_audio/graph/reflections_node.cc"
-, "resonanceaudio/resonance_audio/graph/resonance_audio_api_impl.cc"
-, "resonanceaudio/resonance_audio/graph/reverb_node.cc"
-, "resonanceaudio/resonance_audio/graph/source_parameters_manager.cc"
-, "resonanceaudio/resonance_audio/graph/stereo_mixing_panner_node.cc"
-, "resonanceaudio/resonance_audio/node/processing_node.cc"
-, "resonanceaudio/resonance_audio/node/sink_node.cc"
-, "resonanceaudio/resonance_audio/node/source_node.cc"
-, "resonanceaudio/resonance_audio/utils/buffer_crossfader.cc"
-, "resonanceaudio/resonance_audio/utils/buffer_partitioner.cc"
-, "resonanceaudio/resonance_audio/utils/buffer_unpartitioner.cc"
-, "resonanceaudio/resonance_audio/utils/lockless_task_queue.cc"
-, "resonanceaudio/resonance_audio/utils/ogg_vorbis_recorder.cc"
-, "resonanceaudio/resonance_audio/utils/planar_interleaved_conversion.cc"
-, "resonanceaudio/resonance_audio/utils/sample_type_conversion.cc"
-, "resonanceaudio/resonance_audio/utils/sum_and_difference_processor.cc"
-, "resonanceaudio/resonance_audio/utils/task_thread_pool.cc"
-, "resonanceaudio/resonance_audio/utils/vorbis_stream_encoder.cc"
-, "resonanceaudio/resonance_audio/utils/wav.cc"
-, "resonanceaudio/resonance_audio/utils/wav_reader.cc"
-, "resonanceaudio/third_party/SADIE_hrtf_database/generated/hrtf_assets.cc"
-, "pffft/fftpack.c"
-, "pffft/pffft.c"
+    "resonanceaudio/resonance_audio/ambisonics/ambisonic_binaural_decoder.cc",
+    "resonanceaudio/resonance_audio/ambisonics/ambisonic_lookup_table.cc",
+    "resonanceaudio/resonance_audio/ambisonics/associated_legendre_polynomials_generator.cc",
+    "resonanceaudio/resonance_audio/ambisonics/foa_rotator.cc",
+    "resonanceaudio/resonance_audio/ambisonics/hoa_rotator.cc",
+    "resonanceaudio/resonance_audio/ambisonics/stereo_from_soundfield_converter.cc",
+    "resonanceaudio/resonance_audio/api/binaural_surround_renderer.cc",
+    "resonanceaudio/resonance_audio/api/resonance_audio_api.cc",
+    "resonanceaudio/resonance_audio/base/audio_buffer.cc",
+    "resonanceaudio/resonance_audio/base/channel_view.cc",
+    "resonanceaudio/resonance_audio/base/misc_math.cc",
+    "resonanceaudio/resonance_audio/base/simd_utils.cc",
+    "resonanceaudio/resonance_audio/base/spherical_angle.cc",
+    "resonanceaudio/resonance_audio/config/source_config.cc",
+    "resonanceaudio/resonance_audio/dsp/biquad_filter.cc",
+    "resonanceaudio/resonance_audio/dsp/channel_converter.cc",
+    "resonanceaudio/resonance_audio/dsp/circular_buffer.cc",
+    "resonanceaudio/resonance_audio/dsp/delay_filter.cc",
+    "resonanceaudio/resonance_audio/dsp/distance_attenuation.cc",
+    "resonanceaudio/resonance_audio/dsp/fft_manager.cc",
+    "resonanceaudio/resonance_audio/dsp/filter_coefficient_generators.cc",
+    "resonanceaudio/resonance_audio/dsp/fir_filter.cc",
+    "resonanceaudio/resonance_audio/dsp/gain.cc",
+    "resonanceaudio/resonance_audio/dsp/gain_mixer.cc",
+    "resonanceaudio/resonance_audio/dsp/gain_processor.cc",
+    "resonanceaudio/resonance_audio/dsp/mixer.cc",
+    "resonanceaudio/resonance_audio/dsp/mono_pole_filter.cc",
+    "resonanceaudio/resonance_audio/dsp/multi_channel_iir.cc",
+    "resonanceaudio/resonance_audio/dsp/near_field_processor.cc",
+    "resonanceaudio/resonance_audio/dsp/occlusion_calculator.cc",
+    "resonanceaudio/resonance_audio/dsp/partitioned_fft_filter.cc",
+    "resonanceaudio/resonance_audio/dsp/reflections_processor.cc",
+    "resonanceaudio/resonance_audio/dsp/resampler.cc",
+    "resonanceaudio/resonance_audio/dsp/reverb_onset_compensator.cc",
+    "resonanceaudio/resonance_audio/dsp/reverb_onset_update_processor.cc",
+    "resonanceaudio/resonance_audio/dsp/sh_hrir_creator.cc",
+    "resonanceaudio/resonance_audio/dsp/shoe_box_room.cc",
+    "resonanceaudio/resonance_audio/dsp/spectral_reverb.cc",
+    "resonanceaudio/resonance_audio/dsp/stereo_panner.cc",
+    "resonanceaudio/resonance_audio/dsp/utils.cc",
+    "resonanceaudio/resonance_audio/graph/ambisonic_binaural_decoder_node.cc",
+    "resonanceaudio/resonance_audio/graph/ambisonic_mixing_encoder_node.cc",
+    "resonanceaudio/resonance_audio/graph/binaural_surround_renderer_impl.cc",
+    "resonanceaudio/resonance_audio/graph/buffered_source_node.cc",
+    "resonanceaudio/resonance_audio/graph/foa_rotator_node.cc",
+    "resonanceaudio/resonance_audio/graph/gain_mixer_node.cc",
+    "resonanceaudio/resonance_audio/graph/gain_node.cc",
+    "resonanceaudio/resonance_audio/graph/graph_manager.cc",
+    "resonanceaudio/resonance_audio/graph/hoa_rotator_node.cc",
+    "resonanceaudio/resonance_audio/graph/mixer_node.cc",
+    "resonanceaudio/resonance_audio/graph/mono_from_soundfield_node.cc",
+    "resonanceaudio/resonance_audio/graph/near_field_effect_node.cc",
+    "resonanceaudio/resonance_audio/graph/occlusion_node.cc",
+    "resonanceaudio/resonance_audio/graph/reflections_node.cc",
+    "resonanceaudio/resonance_audio/graph/resonance_audio_api_impl.cc",
+    "resonanceaudio/resonance_audio/graph/reverb_node.cc",
+    "resonanceaudio/resonance_audio/graph/source_parameters_manager.cc",
+    "resonanceaudio/resonance_audio/graph/stereo_mixing_panner_node.cc",
+    "resonanceaudio/resonance_audio/node/processing_node.cc",
+    "resonanceaudio/resonance_audio/node/sink_node.cc",
+    "resonanceaudio/resonance_audio/node/source_node.cc",
+    "resonanceaudio/resonance_audio/utils/buffer_crossfader.cc",
+    "resonanceaudio/resonance_audio/utils/buffer_partitioner.cc",
+    "resonanceaudio/resonance_audio/utils/buffer_unpartitioner.cc",
+    "resonanceaudio/resonance_audio/utils/lockless_task_queue.cc",
+    "resonanceaudio/resonance_audio/utils/ogg_vorbis_recorder.cc",
+    "resonanceaudio/resonance_audio/utils/planar_interleaved_conversion.cc",
+    "resonanceaudio/resonance_audio/utils/sample_type_conversion.cc",
+    "resonanceaudio/resonance_audio/utils/sum_and_difference_processor.cc",
+    "resonanceaudio/resonance_audio/utils/task_thread_pool.cc",
+    "resonanceaudio/resonance_audio/utils/vorbis_stream_encoder.cc",
+    "resonanceaudio/resonance_audio/utils/wav.cc",
+    "resonanceaudio/resonance_audio/utils/wav_reader.cc",
+    "resonanceaudio/third_party/SADIE_hrtf_database/generated/hrtf_assets.cc",
+    "pffft/fftpack.c",
+    "pffft/pffft.c",
 ]
 
 thirdparty_sources = [thirdparty_dir + src for src in thirdparty_sources]
 
-env_resonance.Prepend(CPPPATH=[thirdparty_resonanceaudio_dir, thirdparty_resonanceaudio_root_dir,
-		thirdparty_eigen_dir, thirdparty_pffft_dir, thirdparty_libogg_dir, thirdparty_libvorbis_dir])
+env_resonance.Prepend(
+    CPPPATH=[
+        thirdparty_resonanceaudio_dir,
+        thirdparty_resonanceaudio_root_dir,
+        thirdparty_eigen_dir,
+        thirdparty_pffft_dir,
+        thirdparty_libogg_dir,
+        thirdparty_libvorbis_dir,
+    ]
+)
 env_resonance.disable_warnings()
 env_thirdparty = env_resonance.Clone()
 
