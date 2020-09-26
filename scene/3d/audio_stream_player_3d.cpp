@@ -223,7 +223,7 @@ void AudioStreamPlayer3D::_mix_audio() {
 				current.filter.set_resonance(1);
 				current.filter.set_stages(1);
 				current.filter.set_gain(current.filter_gain);
-								
+
 				if (interpolate_filter) {
 
 					current.filter_process[k * 2 + 0] = prev_outputs[i].filter_process[k * 2 + 0];
