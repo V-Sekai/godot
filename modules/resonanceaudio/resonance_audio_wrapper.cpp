@@ -48,7 +48,7 @@ AudioSourceId ResonanceAudioWrapper::register_audio_source() {
 	new_source.id = resonance_api->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
 	resonance_api->SetSourceDistanceModel(
 			new_source.id,
-			vraudio::DistanceRolloffModel::kLogarithmic,
+			vraudio::DistanceRolloffModel::kNone,
 			/* min_distance= */ 0,
 			/* max_distance= */ 0);
 
