@@ -672,14 +672,10 @@ Vector3 Camera::get_doppler_tracked_velocity() const {
 }
 
 void Camera::_process_audio() {
-	if (Engine::get_singleton()->is_editor_hint()) {
-		// TODO figure out a way to make audio work in the editor?
-		return;
-	}
 	AudioFrame *target = AudioServer::get_singleton()->thread_get_channel_mix_buffer(/* bus_index= */ 0, /* channel_idx= */ 0);
 	size_t num_frames = AudioServer::get_singleton()->thread_get_mix_buffer_size();
 	if (!ResonanceAudioWrapper::get_singleton()->pull_listener_buffer(num_frames, target)) {
-		WARN_PRINT_ONCE("Audio didn't render correctly :(");
+		WARN_PRINT_ONCE("Spatial audio didn't play correctly.");
 	}
 }
 
