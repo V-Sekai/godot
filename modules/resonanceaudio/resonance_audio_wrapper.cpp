@@ -45,10 +45,10 @@ ResonanceAudioWrapper *ResonanceAudioWrapper::get_singleton() {
 
 AudioSourceId ResonanceAudioWrapper::register_audio_source() {
 	AudioSourceId new_source;
-	new_source.id = resonance_api->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralMediumQuality);
+	new_source.id = resonance_api->CreateSoundObjectSource(vraudio::RenderingMode::kBinauralHighQuality);
 	resonance_api->SetSourceDistanceModel(
 			new_source.id,
-			vraudio::DistanceRolloffModel::kNone,
+			vraudio::DistanceRolloffModel::kLogarithmic,
 			/* min_distance= */ 0,
 			/* max_distance= */ 0);
 
