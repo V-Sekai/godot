@@ -2121,6 +2121,10 @@ const ShaderLanguage::BuiltinFuncDef ShaderLanguage::builtin_func_defs[] = {
 	{ "fwidth", TYPE_VEC3, { TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, true },
 	{ "fwidth", TYPE_VEC4, { TYPE_VEC4, TYPE_VOID }, TAG_GLOBAL, true },
 
+	// access to Godot shading information
+	{ "AMBIENT_PROCESS", TYPE_VOID, { TYPE_VEC3, TYPE_VEC3, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_VEC2, TYPE_VEC4, TYPE_VEC4, TYPE_VEC3, TYPE_VEC3, TYPE_VEC3, TYPE_VOID }, TAG_GLOBAL, true },
+	{ "APPLY_DECALS", TYPE_BOOL, { TYPE_VEC3, TYPE_VEC3, TYPE_VEC3, TYPE_VEC3, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_VOID }, TAG_GLOBAL, true },
+
 	//sub-functions
 
 	//array
@@ -2133,6 +2137,8 @@ const ShaderLanguage::BuiltinFuncDef ShaderLanguage::builtin_func_defs[] = {
 const ShaderLanguage::BuiltinFuncOutArgs ShaderLanguage::builtin_func_out_args[] = {
 	//constructors
 	{ "modf", 1 },
+	{ "AMBIENT_PROCESS", 8 },
+	{ "APPLY_DECALS", 1 },
 	{ NULL, 0 }
 };
 
@@ -2158,7 +2164,7 @@ bool ShaderLanguage::_validate_function_call(BlockNode *p_block, OperatorNode *p
 	bool unsupported_builtin = false;
 	int builtin_idx = 0;
 
-	if (argcount <= 4) {
+	if (argcount <= BuiltinFuncDef::MAX_ARGS - 1) {
 		// test builtins
 		int idx = 0;
 
@@ -2193,7 +2199,7 @@ bool ShaderLanguage::_validate_function_call(BlockNode *p_block, OperatorNode *p
 					}
 				}
 
-				if (!fail && argcount < 4 && builtin_func_defs[idx].args[argcount] != TYPE_VOID)
+				if (!fail && argcount < BuiltinFuncDef::MAX_ARGS - 1 && builtin_func_defs[idx].args[argcount] != TYPE_VOID)
 					fail = true; //make sure the number of arguments matches
 
 				if (!fail) {
@@ -2205,7 +2211,7 @@ bool ShaderLanguage::_validate_function_call(BlockNode *p_block, OperatorNode *p
 						if (String(name) == builtin_func_out_args[outarg_idx].name) {
 							int arg_idx = builtin_func_out_args[outarg_idx].argument;
 
-							if (arg_idx < argcount) {
+							while (arg_idx < argcount) {
 
 								if (p_func->arguments[arg_idx + 1]->type != Node::TYPE_VARIABLE) {
 									_set_error("Argument " + itos(arg_idx + 1) + " of function '" + String(name) + "' is not a variable");
@@ -2235,6 +2241,7 @@ bool ShaderLanguage::_validate_function_call(BlockNode *p_block, OperatorNode *p
 									_set_error("Argument " + itos(arg_idx + 1) + " of function '" + String(name) + "' can only take a local variable");
 									return false;
 								}
+								arg_idx++;
 							}
 						}
 
@@ -6383,7 +6390,7 @@ Error ShaderLanguage::complete(const String &p_code, const Map<StringName, Funct
 					calltip += "(";
 
 					bool found_arg = false;
-					for (int i = 0; i < 4; i++) {
+					for (int i = 0; i < BuiltinFuncDef::MAX_ARGS; i++) {
 
 						if (builtin_func_defs[idx].args[i] == TYPE_VOID)
 							break;

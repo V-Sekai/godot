@@ -787,7 +787,7 @@ private:
 	bool _validate_operator(OperatorNode *p_op, DataType *r_ret_type = NULL);
 
 	struct BuiltinFuncDef {
-		enum { MAX_ARGS = 5 };
+		enum { MAX_ARGS = 12 };
 		const char *name;
 		DataType rettype;
 		const DataType args[MAX_ARGS];

@@ -1115,14 +1115,26 @@ ShaderCompilerGLES3::ShaderCompilerGLES3() {
 	actions[VS::SHADER_SPATIAL].renames["ALPHA_SCISSOR"] = "alpha_scissor";
 	actions[VS::SHADER_SPATIAL].renames["OUTPUT_IS_SRGB"] = "SHADER_IS_SRGB";
 
+	actions[VS::SHADER_SPATIAL].renames["HAS_MAIN_LIGHT"] = "has_main_light";
+	actions[VS::SHADER_SPATIAL].renames["AMBIENT_LIGHT"] = "ambient_light";
+	actions[VS::SHADER_SPATIAL].renames["DIFFUSE_LIGHT"] = "diffuse_light";
+	actions[VS::SHADER_SPATIAL].renames["SPECULAR_LIGHT"] = "specular_light";
+	// Functions
+	actions[VS::SHADER_SPATIAL].renames["AMBIENT_PROCESS"] = "AMBIENT_PROCESS";
+	actions[VS::SHADER_SPATIAL].renames["APPLY_DECALS"] = "APPLY_DECALS";
+
 	//for light
 	actions[VS::SHADER_SPATIAL].renames["VIEW"] = "view";
 	actions[VS::SHADER_SPATIAL].renames["LIGHT_COLOR"] = "light_color";
 	actions[VS::SHADER_SPATIAL].renames["LIGHT"] = "light";
 	actions[VS::SHADER_SPATIAL].renames["ATTENUATION"] = "attenuation";
-	actions[VS::SHADER_SPATIAL].renames["DIFFUSE_LIGHT"] = "diffuse_light";
-	actions[VS::SHADER_SPATIAL].renames["SPECULAR_LIGHT"] = "specular_light";
+	actions[VS::SHADER_SPATIAL].renames["PROJECTOR_COLOR"] = "projector_color";
+	actions[VS::SHADER_SPATIAL].renames["SHADOW_COLOR"] = "shadow_color";
+	actions[VS::SHADER_SPATIAL].renames["SHADOW_ATTENUATION"] = "shadow_attenuation";
+	actions[VS::SHADER_SPATIAL].renames["IS_MAIN_LIGHT"] = "is_main_light";
 
+	actions[VS::SHADER_SPATIAL].usage_defines["HAS_MAIN_LIGHT"] = "#define MAIN_LIGHT_USED\n";
+	actions[VS::SHADER_SPATIAL].usage_defines["IS_MAIN_LIGHT"] = "@HAS_MAIN_LIGHT";
 	actions[VS::SHADER_SPATIAL].usage_defines["TANGENT"] = "#define ENABLE_TANGENT_INTERP\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["BINORMAL"] = "@TANGENT";
 	actions[VS::SHADER_SPATIAL].usage_defines["RIM"] = "#define LIGHT_USE_RIM\n";
@@ -1147,6 +1159,7 @@ ShaderCompilerGLES3::ShaderCompilerGLES3() {
 	actions[VS::SHADER_SPATIAL].usage_defines["SCREEN_TEXTURE"] = "#define SCREEN_TEXTURE_USED\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["SCREEN_UV"] = "#define SCREEN_UV_USED\n";
 
+	actions[VS::SHADER_SPATIAL].usage_defines["AMBIENT_LIGHT"] = "#define AMBIENT_LIGHT_USED\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["DIFFUSE_LIGHT"] = "#define USE_LIGHT_SHADER_CODE\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["SPECULAR_LIGHT"] = "#define USE_LIGHT_SHADER_CODE\n";
 
