@@ -311,6 +311,20 @@ const ShaderLanguage::KeyWord ShaderLanguage::keyword_list[] = {
 	{ TK_HINT_ANISO_TEXTURE, "hint_aniso" },
 	{ TK_HINT_ALBEDO_TEXTURE, "hint_albedo" },
 	{ TK_HINT_BLACK_ALBEDO_TEXTURE, "hint_black_albedo" },
+	{ TK_FILTER_NEAREST, "filter_nearest" },
+	{ TK_FILTER_LINEAR, "filter_linear" },
+	{ TK_FILTER_NEAREST_MIPMAP, "filter_nearest_mipmap" },
+	{ TK_FILTER_LINEAR_MIPMAP, "filter_linear_mipmap" },
+	{ TK_FILTER_NEAREST_MIPMAP_ANISO, "filter_nearest_mipmap_aniso" },
+	{ TK_FILTER_LINEAR_MIPMAP_ANISO, "filter_linear_mipmap_aniso" },
+	{ TK_REPEAT_ENABLE, "repeat_enable" },
+	{ TK_REPEAT_DISABLE, "repeat_disable" },
+	{ TK_HINT_ROUGHNESS_NORMAL_TEXTURE, "hint_roughness_normal" },
+	{ TK_HINT_ROUGHNESS_R, "hint_roughness_r" },
+	{ TK_HINT_ROUGHNESS_G, "hint_roughness_g" },
+	{ TK_HINT_ROUGHNESS_B, "hint_roughness_b" },
+	{ TK_HINT_ROUGHNESS_A, "hint_roughness_a" },
+	{ TK_HINT_ROUGHNESS_GRAY, "hint_roughness_gray" },
 	{ TK_HINT_COLOR, "hint_color" },
 	{ TK_HINT_RANGE, "hint_range" },
 	{ TK_SHADER_TYPE, "shader_type" },
@@ -5364,11 +5378,40 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 					//todo parse default value
 
 					tk = _get_token();
+					bool found_hint = false;
 
 					if (tk.type == TK_COLON) {
+						// no-op hints.
+						while (true) {
+							tk = _get_token();
+							if (tk.type == TK_FILTER_NEAREST ||
+								tk.type == TK_FILTER_LINEAR ||
+								tk.type == TK_FILTER_NEAREST_MIPMAP ||
+								tk.type == TK_FILTER_LINEAR_MIPMAP ||
+								tk.type == TK_FILTER_NEAREST_MIPMAP_ANISO ||
+								tk.type == TK_FILTER_LINEAR_MIPMAP_ANISO ||
+								tk.type == TK_REPEAT_ENABLE ||
+								tk.type == TK_REPEAT_DISABLE ||
+								tk.type == TK_HINT_ROUGHNESS_NORMAL_TEXTURE ||
+								tk.type == TK_HINT_ROUGHNESS_R ||
+								tk.type == TK_HINT_ROUGHNESS_G ||
+								tk.type == TK_HINT_ROUGHNESS_B ||
+								tk.type == TK_HINT_ROUGHNESS_A ||
+								tk.type == TK_HINT_ROUGHNESS_GRAY)
+							{
+								tk = _get_token();
+								if (tk.type != TK_COMMA) {
+									break;
+								}
+							} else {
+								found_hint = true;
+								break;
+							}
+						}
+					}
+					if (found_hint) {
 						//hint
 
-						tk = _get_token();
 						if (tk.type == TK_HINT_WHITE_TEXTURE) {
 							uniform2.hint = ShaderNode::Uniform::HINT_WHITE;
 						} else if (tk.type == TK_HINT_BLACK_TEXTURE) {
