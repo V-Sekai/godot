@@ -1035,7 +1035,7 @@ LIGHT_SHADER_CODE
 
 #if defined(DIFFUSE_LAMBERT_WRAP)
 		// energy conserving lambert wrap shader
-		diffuse_brdf_NL = max(0.0, (NdotL + roughness) / ((1.0 + roughness) * (1.0 + roughness)));
+		diffuse_brdf_NL = max(0.0, (NdotL + roughness) / ((1.0 + roughness) * (1.0 + roughness))) * (1.0 / M_PI);
 
 #elif defined(DIFFUSE_OREN_NAYAR)
 
@@ -1055,7 +1055,7 @@ LIGHT_SHADER_CODE
 
 #elif defined(DIFFUSE_TOON)
 
-		diffuse_brdf_NL = smoothstep(-roughness, max(roughness, 0.01), NdotL);
+		diffuse_brdf_NL = smoothstep(-roughness, max(roughness, 0.01), NdotL) * (1.0 / M_PI);
 
 #elif defined(DIFFUSE_BURLEY)
 
