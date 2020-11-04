@@ -2481,6 +2481,7 @@ void RasterizerStorageGLES3::shader_get_param_list(RID p_shader, List<PropertyIn
 		ShaderLanguage::ShaderNode::Uniform &u = shader->uniforms[E->get()];
 		pi.name = E->get();
 		switch (u.type) {
+			case ShaderLanguage::TYPE_STRUCT: pi.type = Variant::ARRAY; break;
 			case ShaderLanguage::TYPE_VOID: pi.type = Variant::NIL; break;
 			case ShaderLanguage::TYPE_BOOL: pi.type = Variant::BOOL; break;
 			case ShaderLanguage::TYPE_BVEC2:
