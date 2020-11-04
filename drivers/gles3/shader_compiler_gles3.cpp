@@ -480,22 +480,98 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 				r_gen_code.fragment_global += interp_mode + "in " + vcode;
 			}
 
-			for (int i = 0; i < pnode->vconstants.size(); i++) {
+			for (int i = 0; i < pnode->vglobals.size(); i++) {
 				String gcode;
-				gcode += "const ";
-				if (pnode->vconstants[i].type == SL::TYPE_STRUCT) {
-					gcode += _mkid(pnode->vconstants[i].type_str);
-				} else {
-					gcode += _prestr(pnode->vconstants[i].precision);
-					gcode += _typestr(pnode->vconstants[i].type);
+				if (pnode->vglobals[i].is_constant) {
+					gcode += "const ";
 				}
-				gcode += " " + _mkid(String(pnode->vconstants[i].name));
-				gcode += "=";
-				gcode += _dump_node_code(pnode->vconstants[i].initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				if (pnode->vglobals[i].type == SL::TYPE_STRUCT) {
+					gcode += _mkid(pnode->vglobals[i].type_str);
+				} else {
+					gcode += _prestr(pnode->vglobals[i].precision);
+					gcode += _typestr(pnode->vglobals[i].type);
+				}
+				gcode += " " + _mkid(String(pnode->vglobals[i].name));
+				if (pnode->vglobals[i].array_size > 0) {
+					gcode += "[";
+					gcode += itos(pnode->vglobals[i].array_size);
+					gcode += "]";
+				}
+				int sz = pnode->vglobals[i].initializer.size();
+				if (sz > 0) {
+					gcode += "=";
+					if (pnode->vglobals[i].array_size > 0) {
+						if (pnode->vglobals[i].type == SL::TYPE_STRUCT) {
+							gcode += _mkid(pnode->vglobals[i].type_str);
+						} else {
+							gcode += _typestr(pnode->vglobals[i].type);
+						}
+						if (pnode->vglobals[i].array_size > 0) {
+							gcode += "[";
+							gcode += itos(pnode->vglobals[i].array_size);
+							gcode += "]";
+						}
+						gcode += "(";
+						for (int j = 0; j < sz; j++) {
+							gcode += _dump_node_code(pnode->vglobals[i].initializer[j], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+							if (j != sz - 1) {
+								gcode += ", ";
+							}
+						}
+						gcode += ")";
+					} else {
+						gcode += _dump_node_code(pnode->vglobals[i].initializer[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					}
+				}
 				gcode += ";\n";
 				r_gen_code.vertex_global += gcode;
 				r_gen_code.fragment_global += gcode;
 			}
+			/*
+			for (Map<StringName, SL::ShaderNode::Constant>::Element *E = pnode->globals.front(); E; E = E->next()) {
+				String vcode;
+				if (E->get().type == SL::TYPE_STRUCT) {
+					vcode += _mkid(E->get().type_str);
+				} else {
+					vcode += _prestr(E->get().precision);
+					vcode += _typestr(E->get().type);
+				}
+				vcode += " " + _mkid(E->key());
+				if (E->get().array_size > 0) {
+					vcode += "[";
+					vcode += itos(E->get().array_size);
+					vcode += "]";
+				}
+				int sz = E->get().initializer.size();
+				if (sz > 0) {
+					vcode += "=";
+					if (E->get().array_size > 0) {
+						if (E->get().type == SL::TYPE_STRUCT) {
+							vcode += _mkid(E->get().type_str);
+						} else {
+							vcode += _typestr(E->get().type);
+						}
+						if (E->get().array_size > 0) {
+							vcode += "[";
+							vcode += itos(E->get().array_size);
+							vcode += "]";
+						}
+						vcode += "(";
+						for (int j = 0; j < sz; j++) {
+							vcode += _dump_node_code(E->get().initializer[j], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+							if (j != sz - 1) {
+								vcode += ", ";
+							}
+						}
+						vcode += ")";
+					} else {
+						vcode += _dump_node_code(E->get().initializer[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					}
+				}
+				vcode += ";\n";
+				r_gen_code.vertex_global += vcode;
+				r_gen_code.fragment_global += vcode;
+			}*/
 
 			Map<StringName, String> function_code;
 

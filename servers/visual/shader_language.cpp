@@ -983,18 +983,23 @@ bool ShaderLanguage::_find_identifier(const BlockNode *p_block, const Map<String
 		return true;
 	}
 
-	if (shader->constants.has(p_identifier)) {
+
+	if (shader->globals.has(p_identifier)) {
 		if (r_data_type) {
-			*r_data_type = shader->constants[p_identifier].type;
+			*r_data_type = shader->globals[p_identifier].type;
 		}
 		if (r_type) {
-			*r_type = IDENTIFIER_CONSTANT;
+			*r_type = shader->globals[p_identifier].is_constant ? IDENTIFIER_CONSTANT : IDENTIFIER_LOCAL_VAR;
 		}
 		if (r_struct_name) {
-			*r_struct_name = shader->constants[p_identifier].type_str;
+			*r_struct_name = shader->globals[p_identifier].type_str;
+		}
+		if (r_array_size) {
+			*r_array_size = shader->globals[p_identifier].array_size;
 		}
 		return true;
 	}
+
 
 	for (int i = 0; i < shader->functions.size(); i++) {
 
@@ -2838,10 +2843,14 @@ bool ShaderLanguage::_validate_assign(Node *p_node, const Map<StringName, BuiltI
 			return false;
 		}
 
-		if (shader->constants.has(var->name) || var->is_const) {
-			if (r_message)
-				*r_message = RTR("Constants cannot be modified.");
-			return false;
+
+		if (shader->globals.has(var->name)) {
+			if (shader->globals[var->name].is_constant || var->is_const) {
+				if (r_message)
+					*r_message = RTR("Constants cannot be modified.");
+				return false;
+			}
+			return true;
 		}
 
 		if (!(p_builtin_types.has(var->name) && p_builtin_types[var->name].constant)) {
@@ -3126,7 +3135,7 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 												error = true;
 											} else {
 												StringName varname = vn->name;
-												if (shader->constants.has(varname)) {
+												if (shader->globals.has(varname) && shader->globals[varname].is_constant) {
 													error = true;
 												} else if (shader->uniforms.has(varname)) {
 													error = true;
@@ -5581,13 +5590,9 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 				} else {
 					type = get_token_datatype(tk.type);
 				}
-				TkPos prev_pos = _get_tkpos();
-				tk = _get_token();
-				if (tk.type == TK_BRACKET_OPEN) {
-					_set_error("Cannot use arrays as return types");
-					return ERR_PARSE_ERROR;
-				}
-				_set_tkpos(prev_pos);
+				//TkPos prev_pos = _get_tkpos();
+				//tk = _get_token();
+				//_set_tkpos(prev_pos);
 
 				_get_completable_identifier(NULL, COMPLETION_MAIN_FUNCTION, name);
 
@@ -5612,52 +5617,136 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 						_set_error("Expected '(' after function identifier");
 						return ERR_PARSE_ERROR;
 					}
-
 					//variable
 
 					while (true) {
-						ShaderNode::Constant constant;
-						constant.name = name;
-						constant.type = is_struct ? TYPE_STRUCT : type;
-						constant.type_str = struct_name;
-						constant.precision = precision;
-						constant.initializer = NULL;
+						int array_size = 0;
 
-						if (tk.type == TK_OP_ASSIGN) {
-
-							if (!is_constant) {
-								_set_error("Expected 'const' keyword before constant definition");
-								return ERR_PARSE_ERROR;
-							}
-
-							//variable created with assignment! must parse an expression
-							Node *expr = _parse_and_reduce_expression(NULL, Map<StringName, BuiltInInfo>());
-							if (!expr)
-								return ERR_PARSE_ERROR;
-							if (expr->type == Node::TYPE_OPERATOR && ((OperatorNode *)expr)->op == OP_CALL) {
-								_set_error("Expected constant expression after '='");
-								return ERR_PARSE_ERROR;
-							}
-
-							constant.initializer = static_cast<ConstantNode *>(expr);
-
-							if (is_struct) {
-								if (expr->get_datatype_name() != struct_name) {
-									_set_error("Invalid assignment of '" + (expr->get_datatype() == TYPE_STRUCT ? expr->get_datatype_name() : get_datatype_name(expr->get_datatype())) + "' to '" + struct_name + "'");
-									return ERR_PARSE_ERROR;
-								}
-							} else if (type != expr->get_datatype()) {
-								_set_error("Invalid assignment of '" + get_datatype_name(expr->get_datatype()) + "' to '" + get_datatype_name(type) + "'");
+						if (tk.type == TK_BRACKET_OPEN) {
+							if (VisualServer::get_singleton()->is_low_end()) {
+								_set_error("Cannot use arrays as globals on low-end");
 								return ERR_PARSE_ERROR;
 							}
 							tk = _get_token();
-						} else {
+							if (tk.type == TK_INT_CONSTANT && tk.constant > 0) {
+								array_size = (int)tk.constant;
+
+								tk = _get_token();
+								if (tk.type == TK_BRACKET_CLOSE) {
+									tk = _get_token();
+								} else {
+									_set_error("Expected ']'");
+									return ERR_PARSE_ERROR;
+								}
+							} else {
+								_set_error("Expected single integer constant > 0");
+								return ERR_PARSE_ERROR;
+							}
+						}
+
+						ShaderNode::GlobalVariable global;
+						global.name = name;
+						global.type = is_struct ? TYPE_STRUCT : type;
+						global.type_str = struct_name;
+						global.precision = precision;
+						global.array_size = array_size;
+						global.is_constant = is_constant;
+
+						if (tk.type == TK_OP_ASSIGN) {
+
+							if (!is_constant && VisualServer::get_singleton()->is_low_end()) {
+								_set_error("Expected 'const' keyword before constant definition on low-end");
+								return ERR_PARSE_ERROR;
+							}
+							if (array_size != 0) {
+								tk = _get_token();
+								if (is_struct && struct_name != tk.text) {
+									_set_error("Expected array initializer of '" + String(struct_name) + "'. Found '" + tk.text + "'");
+									return ERR_PARSE_ERROR;
+								} else if (!is_struct && get_token_datatype(tk.type) != global.type) {
+									_set_error("Expected array initializer of '" + String(get_datatype_name(type)) + "'. Found '" + tk.text + "'");
+									return ERR_PARSE_ERROR;
+								}
+								int array_size2 = 0;
+
+								tk = _get_token();
+								if (tk.type == TK_BRACKET_OPEN) {
+									tk = _get_token();
+									if (tk.type == TK_INT_CONSTANT && tk.constant > 0) {
+										array_size2 = (int)tk.constant;
+
+										tk = _get_token();
+										if (tk.type == TK_BRACKET_CLOSE) {
+											tk = _get_token();
+										} else {
+											_set_error("Expected ']'");
+											return ERR_PARSE_ERROR;
+										}
+									} else if (tk.type == TK_BRACKET_CLOSE){
+										array_size2 = array_size;
+										tk = _get_token();
+									} else {
+										_set_error("Expected single integer constant > 0");
+										return ERR_PARSE_ERROR;
+									}
+								} else {
+									_set_error("Expected '['");
+									return ERR_PARSE_ERROR;
+								}
+								if (array_size2 != array_size) {
+									_set_error(vformat("Expected array size %s. Found array size %s.", array_size, array_size2));
+									return ERR_PARSE_ERROR;
+								}
+								if (tk.type != TK_PARENTHESIS_OPEN) {
+									_set_error("Expected '('");
+									return ERR_PARSE_ERROR;
+								}
+							}
+							int array_idx = 0;
+							do {
+								array_idx++;
+								//variable created with assignment! must parse an expression
+								Node *expr = _parse_and_reduce_expression(NULL, Map<StringName, BuiltInInfo>());
+								if (!expr)
+									return ERR_PARSE_ERROR;
+								if (expr->type == Node::TYPE_OPERATOR && ((OperatorNode *)expr)->op == OP_CALL) {
+									_set_error("Expected constant expression after '='");
+									return ERR_PARSE_ERROR;
+								}
+
+								global.initializer.push_back(static_cast<ConstantNode *>(expr));
+
+								if (is_struct) {
+									if (expr->get_datatype_name() != struct_name) {
+										_set_error("Invalid assignment of '" + (expr->get_datatype() == TYPE_STRUCT ? expr->get_datatype_name() : get_datatype_name(expr->get_datatype())) + "' to '" + struct_name + "'");
+										return ERR_PARSE_ERROR;
+									}
+								} else if (type != expr->get_datatype()) {
+									_set_error("Invalid assignment of '" + get_datatype_name(expr->get_datatype()) + "' to '" + get_datatype_name(type) + "'");
+									return ERR_PARSE_ERROR;
+								}
+								tk = _get_token();
+							} while (array_size != 0 && array_idx < array_size && tk.type == TK_COMMA);
+							if (array_size != 0) {
+								if (tk.type != TK_PARENTHESIS_CLOSE) {
+									_set_error("Expected ')' at end of array initializer.");
+									return ERR_PARSE_ERROR;
+								}
+								tk = _get_token();
+								if (array_idx != array_size) {
+									_set_error(vformat("Expected %s array initializers. Found %s.", array_size, array_idx));
+									return ERR_PARSE_ERROR;
+								}
+							}
+						} else if (array_size != 0 && tk.type == TK_PARENTHESIS_OPEN) {
+							_set_error("Cannot use arrays as return types");
+							return ERR_PARSE_ERROR;
+						} else if (is_constant) {
 							_set_error("Expected initialization of constant");
 							return ERR_PARSE_ERROR;
 						}
-
-						shader->constants[name] = constant;
-						shader->vconstants.push_back(constant);
+						shader->globals[name] = global;
+						shader->vglobals.push_back(global);
 
 						if (tk.type == TK_COMMA) {
 							tk = _get_token();

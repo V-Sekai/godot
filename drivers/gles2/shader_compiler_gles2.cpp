@@ -397,18 +397,20 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			// constants
 
-			for (int i = 0; i < snode->vconstants.size(); i++) {
+			for (int i = 0; i < snode->vglobals.size(); i++) {
 				String gcode;
 				gcode += "const ";
-				if (snode->vconstants[i].type == SL::TYPE_STRUCT) {
-					gcode += _mkid(snode->vconstants[i].type_str);
+				if (snode->vglobals[i].type == SL::TYPE_STRUCT) {
+					gcode += _mkid(snode->vglobals[i].type_str);
 				} else {
-					gcode += _prestr(snode->vconstants[i].precision);
-					gcode += _typestr(snode->vconstants[i].type);
+					gcode += _prestr(snode->vglobals[i].precision);
+					gcode += _typestr(snode->vglobals[i].type);
 				}
-				gcode += " " + _mkid(String(snode->vconstants[i].name));
-				gcode += "=";
-				gcode += _dump_node_code(snode->vconstants[i].initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				gcode += " " + _mkid(String(snode->vglobals[i].name));
+				if (snode->vglobals[i].initializer.size() > 0) {
+					gcode += "=";
+					gcode += _dump_node_code(snode->vglobals[i].initializer[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				}
 				gcode += ";\n";
 				vertex_global += gcode;
 				fragment_global += gcode;
