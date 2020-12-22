@@ -136,7 +136,6 @@ void OS_Unix::initialize_core() {
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_RESOURCES);
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_USERDATA);
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_FILESYSTEM);
-	//FileAccessBufferedFA<FileAccessUnix>::make_default();
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_RESOURCES);
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_USERDATA);
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_FILESYSTEM);
@@ -156,7 +155,7 @@ void OS_Unix::finalize_core() {
 
 void OS_Unix::alert(const String &p_alert, const String &p_title) {
 
-	fprintf(stderr, "ERROR: %s\n", p_alert.utf8().get_data());
+	fprintf(stderr, "ALERT: %s: %s\n", p_title.utf8().get_data(), p_alert.utf8().get_data());
 }
 
 String OS_Unix::get_stdin_string(bool p_block) {

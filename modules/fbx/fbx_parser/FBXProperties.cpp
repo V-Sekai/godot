@@ -124,7 +124,7 @@ PropertyPtr ReadTypedProperty(const ElementPtr element) {
 				ParseTokenAsFloat(tok[4]),
 				ParseTokenAsFloat(tok[5]),
 				ParseTokenAsFloat(tok[6])));
-	} else if (!strcmp(cs, "double") || !strcmp(cs, "Number") || !strcmp(cs, "Float") || !strcmp(cs, "FieldOfView") || !strcmp(cs, "UnitScaleFactor")) {
+	} else if (!strcmp(cs, "double") || !strcmp(cs, "Number") || !strcmp(cs, "Float") || !strcmp(cs, "float") || !strcmp(cs, "FieldOfView") || !strcmp(cs, "UnitScaleFactor")) {
 		return new TypedProperty<float>(ParseTokenAsFloat(tok[4]));
 	}
 

@@ -29,6 +29,8 @@
 /*************************************************************************/
 
 #include "rasterizer_canvas_gles3.h"
+
+#include "drivers/gles_common/rasterizer_asserts.h"
 #include "servers/visual/visual_server_raster.h"
 
 static const GLenum gl_primitive[] = {
@@ -511,10 +513,10 @@ void RasterizerCanvasGLES3::render_batches(Item::Command *const *p_commands, Ite
 
 		switch (batch.type) {
 			case RasterizerStorageCommon::BT_RECT: {
-				_batch_render_rects(batch, p_material);
+				_batch_render_generic(batch, p_material);
 			} break;
 			case RasterizerStorageCommon::BT_POLY: {
-				_batch_render_polys(batch, p_material);
+				_batch_render_generic(batch, p_material);
 			} break;
 			case RasterizerStorageCommon::BT_LINE: {
 				_batch_render_lines(batch, p_material, false);
@@ -595,6 +597,11 @@ void RasterizerCanvasGLES3::render_batches(Item::Command *const *p_commands, Ite
 
 							if (pline->triangles.size()) {
 
+#ifdef RASTERIZER_EXTRA_CHECKS
+								if (pline->triangle_colors.ptr() && (pline->triangle_colors.size() != 1)) {
+									RAST_DEV_DEBUG_ASSERT(pline->triangle_colors.size() == pline->triangles.size());
+								}
+#endif
 								_draw_generic(GL_TRIANGLE_STRIP, pline->triangles.size(), pline->triangles.ptr(), NULL, pline->triangle_colors.ptr(), pline->triangle_colors.size() == 1);
 #ifdef GLES_OVER_GL
 								glEnable(GL_LINE_SMOOTH);
@@ -774,16 +781,30 @@ void RasterizerCanvasGLES3::render_batches(Item::Command *const *p_commands, Ite
 								Size2 texpixel_size(1.0 / texture->width, 1.0 / texture->height);
 								state.canvas_shader.set_uniform(CanvasShaderGLES3::COLOR_TEXPIXEL_SIZE, texpixel_size);
 							}
+
+							// we need a temporary because this must be nulled out
+							// if only a single color specified
+							const Color *colors = primitive->colors.ptr();
 							if (primitive->colors.size() == 1 && primitive->points.size() > 1) {
 
 								Color col = primitive->colors[0];
 								glVertexAttrib4f(VS::ARRAY_COLOR, col.r, col.g, col.b, col.a);
+								colors = nullptr;
 
 							} else if (primitive->colors.empty()) {
 								glVertexAttrib4f(VS::ARRAY_COLOR, 1, 1, 1, 1);
 							}
+#ifdef RASTERIZER_EXTRA_CHECKS
+							else {
+								RAST_DEV_DEBUG_ASSERT(primitive->colors.size() == primitive->points.size());
+							}
 
-							_draw_gui_primitive(primitive->points.size(), primitive->points.ptr(), primitive->colors.ptr(), primitive->uvs.ptr());
+							if (primitive->uvs.ptr()) {
+								RAST_DEV_DEBUG_ASSERT(primitive->uvs.size() == primitive->points.size());
+							}
+#endif
+
+							_draw_gui_primitive(primitive->points.size(), primitive->points.ptr(), colors, primitive->uvs.ptr());
 
 						} break;
 						case Item::Command::TYPE_POLYGON: {
@@ -1181,10 +1202,6 @@ void RasterizerCanvasGLES3::render_joined_item(const BItemJoined &p_bij, RenderI
 		}
 	}
 #endif
-
-	// this must be reset for each joined item,
-	// it only exists to prevent capturing the screen more than once per item
-	state.canvas_texscreen_used = false;
 
 	// all the joined items will share the same state with the first item
 	Item *p_ci = bdata.item_refs[p_bij.first_item_ref].item;
@@ -1770,31 +1787,41 @@ bool RasterizerCanvasGLES3::try_join_item(Item *p_ci, RenderItemState &r_ris, bo
 	bdata.joined_item_batch_flags = 0;
 	if (r_ris.shader_cache) {
 
-		unsigned int and_flags = r_ris.shader_cache->canvas_item.batch_flags & (RasterizerStorageCommon::PREVENT_COLOR_BAKING | RasterizerStorageCommon::PREVENT_VERTEX_BAKING);
+		unsigned int and_flags = r_ris.shader_cache->canvas_item.batch_flags & (RasterizerStorageCommon::PREVENT_COLOR_BAKING | RasterizerStorageCommon::PREVENT_VERTEX_BAKING | RasterizerStorageCommon::PREVENT_ITEM_JOINING);
 		if (and_flags) {
 
-			bool use_larger_fvfs = true;
+			// special case for preventing item joining altogether
+			if (and_flags & RasterizerStorageCommon::PREVENT_ITEM_JOINING) {
+				join = false;
+				//r_batch_break = true; // don't think we need a batch break
 
-			if (and_flags == RasterizerStorageCommon::PREVENT_COLOR_BAKING) {
-				// in some circumstances, if the modulate is identity, we still allow baking because reading modulate / color
-				// will still be okay to do in the shader with no ill effects
-				if (r_ris.final_modulate == Color(1, 1, 1, 1)) {
-					use_larger_fvfs = false;
-				}
-			}
-
-			// new .. always use large FVF
-			if (use_larger_fvfs) {
-				if (and_flags == RasterizerStorageCommon::PREVENT_COLOR_BAKING) {
-					bdata.joined_item_batch_flags |= RasterizerStorageCommon::USE_MODULATE_FVF;
-				} else {
-					// we need to save on the joined item that it should use large fvf.
-					// This info will then be used in filling and rendering
-					bdata.joined_item_batch_flags |= RasterizerStorageCommon::USE_LARGE_FVF;
-				}
-
+				// save the flags so that they don't need to be recalculated in the 2nd pass
 				bdata.joined_item_batch_flags |= r_ris.shader_cache->canvas_item.batch_flags;
-			}
+			} else {
+
+				bool use_larger_fvfs = true;
+
+				if (and_flags == RasterizerStorageCommon::PREVENT_COLOR_BAKING) {
+					// in some circumstances, if the modulate is identity, we still allow baking because reading modulate / color
+					// will still be okay to do in the shader with no ill effects
+					if (r_ris.final_modulate == Color(1, 1, 1, 1)) {
+						use_larger_fvfs = false;
+					}
+				}
+
+				// new .. always use large FVF
+				if (use_larger_fvfs) {
+					if (and_flags == RasterizerStorageCommon::PREVENT_COLOR_BAKING) {
+						bdata.joined_item_batch_flags |= RasterizerStorageCommon::USE_MODULATE_FVF;
+					} else {
+						// we need to save on the joined item that it should use large fvf.
+						// This info will then be used in filling and rendering
+						bdata.joined_item_batch_flags |= RasterizerStorageCommon::USE_LARGE_FVF;
+					}
+
+					bdata.joined_item_batch_flags |= r_ris.shader_cache->canvas_item.batch_flags;
+				}
+			} // if not prevent item joining
 		}
 	}
 
@@ -1924,7 +1951,7 @@ void RasterizerCanvasGLES3::canvas_render_items_implementation(Item *p_item_list
 	ris.prev_distance_field = false;
 
 	glBindBuffer(GL_UNIFORM_BUFFER, state.canvas_item_ubo);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(CanvasItemUBO), &state.canvas_item_ubo_data, GL_DYNAMIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(CanvasItemUBO), &state.canvas_item_ubo_data, _buffer_upload_usage_flag);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	state.current_tex = RID();
@@ -1969,26 +1996,34 @@ void RasterizerCanvasGLES3::_batch_upload_buffers() {
 
 	glBindBuffer(GL_ARRAY_BUFFER, bdata.gl_vertex_buffer);
 
+	// usage flag is a project setting
+	GLenum buffer_usage_flag = GL_DYNAMIC_DRAW;
+	if (bdata.buffer_mode_batch_upload_flag_stream) {
+		buffer_usage_flag = GL_STREAM_DRAW;
+	}
+
 	// orphan the old (for now)
-	//glBufferData(GL_ARRAY_BUFFER, 0, 0, GL_DYNAMIC_DRAW);
+	if (bdata.buffer_mode_batch_upload_send_null) {
+		glBufferData(GL_ARRAY_BUFFER, 0, 0, buffer_usage_flag); // GL_DYNAMIC_DRAW);
+	}
 
 	switch (bdata.fvf) {
 		case RasterizerStorageCommon::FVF_UNBATCHED: // should not happen
 			break;
 		case RasterizerStorageCommon::FVF_REGULAR: // no change
-			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertex) * bdata.vertices.size(), bdata.vertices.get_data(), GL_DYNAMIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertex) * bdata.vertices.size(), bdata.vertices.get_data(), buffer_usage_flag);
 			break;
 		case RasterizerStorageCommon::FVF_COLOR:
-			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexColored) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), GL_DYNAMIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexColored) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), buffer_usage_flag);
 			break;
 		case RasterizerStorageCommon::FVF_LIGHT_ANGLE:
-			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexLightAngled) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), GL_DYNAMIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexLightAngled) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), buffer_usage_flag);
 			break;
 		case RasterizerStorageCommon::FVF_MODULATED:
-			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexModulated) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), GL_DYNAMIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexModulated) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), buffer_usage_flag);
 			break;
 		case RasterizerStorageCommon::FVF_LARGE:
-			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexLarge) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), GL_DYNAMIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertexLarge) * bdata.unit_vertices.size(), bdata.unit_vertices.get_unit(0), buffer_usage_flag);
 			break;
 	}
 
@@ -2028,43 +2063,8 @@ void RasterizerCanvasGLES3::_batch_render_lines(const Batch &p_batch, Rasterizer
 #endif
 }
 
-void RasterizerCanvasGLES3::_batch_render_polys(const Batch &p_batch, RasterizerStorageGLES3::Material *p_material) {
-	ERR_FAIL_COND(p_batch.num_commands <= 0);
-
-	_set_texture_rect_mode(false);
-	state.canvas_shader.set_uniform(CanvasShaderGLES3::CLIP_RECT_UV, false);
-
-	glBindVertexArray(batch_gl_data.batch_vertex_array[1]);
-
-	// batch tex
-	const BatchTex &tex = bdata.batch_textures[p_batch.batch_texture_id];
-
-	_bind_canvas_texture(tex.RID_texture, tex.RID_normal);
-
-	// may not need this disable
-	//	glDisableVertexAttribArray(VS::ARRAY_COLOR);
-	//	glVertexAttrib4fv(VS::ARRAY_COLOR, p_batch.color.get_data());
-
-	// we need to convert explicitly from pod Vec2 to Vector2 ...
-	// could use a cast but this might be unsafe in future
-	Vector2 tps;
-	tex.tex_pixel_size.to(tps);
-	state.canvas_shader.set_uniform(CanvasShaderGLES3::COLOR_TEXPIXEL_SIZE, tps);
-
-	int64_t offset = p_batch.first_vert;
-
-	int num_elements = p_batch.num_commands;
-	glDrawArrays(GL_TRIANGLES, offset, num_elements);
-
-	storage->info.render._2d_draw_call_count++;
-
-	glBindVertexArray(0);
-}
-
-void RasterizerCanvasGLES3::_batch_render_rects(const Batch &p_batch, RasterizerStorageGLES3::Material *p_material) {
-	ERR_FAIL_COND(p_batch.num_commands <= 0);
-
-	const bool &colored_verts = bdata.use_colored_vertices;
+void RasterizerCanvasGLES3::_batch_render_prepare() {
+	//const bool &colored_verts = bdata.use_colored_vertices;
 	const bool &use_light_angles = bdata.use_light_angles;
 	const bool &use_modulate = bdata.use_modulate;
 	const bool &use_large_verts = bdata.use_large_verts;
@@ -2094,11 +2094,41 @@ void RasterizerCanvasGLES3::_batch_render_rects(const Batch &p_batch, Rasterizer
 			glBindVertexArray(batch_gl_data.batch_vertex_array[4]);
 			break;
 	}
+}
 
-	//	if (state.canvas_shader.bind()) {
-	//		_set_uniforms();
-	//		state.canvas_shader.use_material((void *)p_material);
-	//	}
+void RasterizerCanvasGLES3::_batch_render_generic(const Batch &p_batch, RasterizerStorageGLES3::Material *p_material) {
+	ERR_FAIL_COND(p_batch.num_commands <= 0);
+
+	const bool &use_light_angles = bdata.use_light_angles;
+	const bool &use_modulate = bdata.use_modulate;
+	const bool &use_large_verts = bdata.use_large_verts;
+	const bool &colored_verts = bdata.use_colored_vertices | use_light_angles | use_modulate | use_large_verts;
+
+	_set_texture_rect_mode(false, false, use_light_angles, use_modulate, use_large_verts);
+
+	//	state.canvas_shader.set_uniform(CanvasShaderGLES3::CLIP_RECT_UV, p_rect->flags & CANVAS_RECT_CLIP_UV);
+	state.canvas_shader.set_uniform(CanvasShaderGLES3::CLIP_RECT_UV, false);
+
+	switch (bdata.fvf) {
+		case RasterizerStorageCommon::FVF_UNBATCHED: // should not happen
+			return;
+			break;
+		case RasterizerStorageCommon::FVF_REGULAR: // no change
+			glBindVertexArray(batch_gl_data.batch_vertex_array[0]);
+			break;
+		case RasterizerStorageCommon::FVF_COLOR:
+			glBindVertexArray(batch_gl_data.batch_vertex_array[1]);
+			break;
+		case RasterizerStorageCommon::FVF_LIGHT_ANGLE:
+			glBindVertexArray(batch_gl_data.batch_vertex_array[2]);
+			break;
+		case RasterizerStorageCommon::FVF_MODULATED:
+			glBindVertexArray(batch_gl_data.batch_vertex_array[3]);
+			break;
+		case RasterizerStorageCommon::FVF_LARGE:
+			glBindVertexArray(batch_gl_data.batch_vertex_array[4]);
+			break;
+	}
 
 	// batch tex
 	const BatchTex &tex = bdata.batch_textures[p_batch.batch_texture_id];
@@ -2135,10 +2165,23 @@ void RasterizerCanvasGLES3::_batch_render_rects(const Batch &p_batch, Rasterizer
 	tex.tex_pixel_size.to(tps);
 	state.canvas_shader.set_uniform(CanvasShaderGLES3::COLOR_TEXPIXEL_SIZE, tps);
 
-	int64_t offset = p_batch.first_vert * 3; // 6 inds per quad at 2 bytes each
+	switch (p_batch.type) {
+		default: {
+			// prevent compiler warning
+		} break;
+		case RasterizerStorageCommon::BT_RECT: {
+			int64_t offset = p_batch.first_vert * 3; // 6 inds per quad at 2 bytes each
 
-	int num_elements = p_batch.num_commands * 6;
-	glDrawElements(GL_TRIANGLES, num_elements, GL_UNSIGNED_SHORT, (void *)offset);
+			int num_elements = p_batch.num_commands * 6;
+			glDrawElements(GL_TRIANGLES, num_elements, GL_UNSIGNED_SHORT, (void *)offset);
+		} break;
+		case RasterizerStorageCommon::BT_POLY: {
+			int64_t offset = p_batch.first_vert;
+
+			int num_elements = p_batch.num_commands;
+			glDrawArrays(GL_TRIANGLES, offset, num_elements);
+		} break;
+	}
 
 	storage->info.render._2d_draw_call_count++;
 

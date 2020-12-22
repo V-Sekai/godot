@@ -115,7 +115,7 @@ Files extracted from upstream source:
 ## glad
 
 - Upstream: https://github.com/Dav1dde/glad
-- Version: 0.1.33 (2019)
+- Version: 0.1.34 (2020)
 - License: MIT
 
 The files we package are automatically generated.
@@ -314,7 +314,7 @@ Collection of single-file libraries used in Godot components.
   * License: Apache 2.0
 - `open-simplex-noise.{c,h}`
   * Upstream: https://github.com/smcameron/open-simplex-noise-in-c
-  * Version: git (0d555e7f40527d0870906fe9469a3b1bb4020b7f, 2015) + custom changes
+  * Version: git (826f1dd1724e6fb3ff45f58e48c0fbae864c3403, 2020) + custom changes
   * License: Unlicense
 - `pcg.{cpp,h}`
   * Upstream: http://www.pcg-random.org
@@ -363,7 +363,7 @@ Collection of single-file libraries used in Godot components.
 ## nanosvg
 
 - Upstream: https://github.com/memononen/nanosvg
-- Version: git (25241c5a8f8451d41ab1b02ab2d865b01600d949, 2019)
+- Version: git (3e403ec72a9145cbbcc6c63d94a4caf079aafec2, 2020)
 - License: zlib
 
 Files extracted from the upstream source:
@@ -488,7 +488,7 @@ File extracted from upstream release tarball:
 ## xatlas
 
 - Upstream: https://github.com/jpcy/xatlas
-- Version: git (470576d3516f7e6d8b4554e7c941194a935969fd, 2020)
+- Version: git (5571fc7ef0d06832947c0a935ccdcf083f7a9264, 2020)
 - License: MIT
 
 Files extracted from upstream source:

@@ -52,6 +52,11 @@
 #include "scene/gui/texture_rect.h"
 #include "scene/gui/tool_button.h"
 
+// Used to test for GLES3 support.
+#ifndef SERVER_ENABLED
+#include "drivers/gles3/rasterizer_gles3.h"
+#endif
+
 static inline String get_project_key_from_path(const String &dir) {
 	return dir.replace("/", "::");
 }
@@ -878,7 +883,14 @@ public:
 		rasterizer_container->add_child(rshb);
 		rasterizer_button_group.instance();
 
-		bool is_gles3 = OS::get_singleton()->get_current_video_driver() == OS::VIDEO_DRIVER_GLES3;
+		// Enable GLES3 by default as it's the default value for the project setting.
+#ifndef SERVER_ENABLED
+		bool gles3_viable = RasterizerGLES3::is_viable() == OK;
+#else
+		// Whatever, project manager isn't even used in headless builds.
+		bool gles3_viable = false;
+#endif
+
 		Container *rvb = memnew(VBoxContainer);
 		rvb->set_h_size_flags(SIZE_EXPAND_FILL);
 		rshb->add_child(rvb);
@@ -886,8 +898,16 @@ public:
 		rs_button->set_button_group(rasterizer_button_group);
 		rs_button->set_text(TTR("OpenGL ES 3.0"));
 		rs_button->set_meta("driver_name", "GLES3");
-		rs_button->set_pressed(is_gles3);
 		rvb->add_child(rs_button);
+		if (gles3_viable) {
+			rs_button->set_pressed(true);
+		} else {
+			// If GLES3 can't be used, don't let users shoot themselves in the foot.
+			rs_button->set_disabled(true);
+			l = memnew(Label);
+			l->set_text(TTR("Not supported by your GPU drivers."));
+			rvb->add_child(l);
+		}
 		l = memnew(Label);
 		l->set_text(TTR("Higher visual quality\nAll features available\nIncompatible with older hardware\nNot recommended for web games"));
 		rvb->add_child(l);
@@ -901,7 +921,7 @@ public:
 		rs_button->set_button_group(rasterizer_button_group);
 		rs_button->set_text(TTR("OpenGL ES 2.0"));
 		rs_button->set_meta("driver_name", "GLES2");
-		rs_button->set_pressed(!is_gles3);
+		rs_button->set_pressed(!gles3_viable);
 		rvb->add_child(rs_button);
 		l = memnew(Label);
 		l->set_text(TTR("Lower visual quality\nSome features not available\nWorks on most hardware\nRecommended for web games"));
@@ -2121,7 +2141,7 @@ void ProjectManager::_run_project_confirm() {
 		if (selected_main == "") {
 			run_error_diag->set_text(TTR("Can't run project: no main scene defined.\nPlease edit the project and set the main scene in the Project Settings under the \"Application\" category."));
 			run_error_diag->popup_centered();
-			return;
+			continue;
 		}
 
 		const String &selected = selected_list[i].project_key;
@@ -2130,7 +2150,7 @@ void ProjectManager::_run_project_confirm() {
 		if (!DirAccess::exists(path + "/.import")) {
 			run_error_diag->set_text(TTR("Can't run project: Assets need to be imported.\nPlease edit the project to trigger the initial import."));
 			run_error_diag->popup_centered();
-			return;
+			continue;
 		}
 
 		print_line("Running project: " + path + " (" + selected + ")");
@@ -2415,25 +2435,48 @@ ProjectManager::ProjectManager() {
 
 		switch (display_scale) {
 			case 0: {
-				// Try applying a suitable display scale automatically
+				// Try applying a suitable display scale automatically.
 #ifdef OSX_ENABLED
 				editor_set_scale(OS::get_singleton()->get_screen_max_scale());
 #else
 				const int screen = OS::get_singleton()->get_current_screen();
-				editor_set_scale(OS::get_singleton()->get_screen_dpi(screen) >= 192 && OS::get_singleton()->get_screen_size(screen).x > 2000 ? 2.0 : 1.0);
+				float scale;
+				if (OS::get_singleton()->get_screen_dpi(screen) >= 192 && OS::get_singleton()->get_screen_size(screen).y >= 1400) {
+					// hiDPI display.
+					scale = 2.0;
+				} else if (OS::get_singleton()->get_screen_size(screen).y <= 800) {
+					// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
+					// Icons won't look great, but this is better than having editor elements overflow from its window.
+					scale = 0.75;
+				} else {
+					scale = 1.0;
+				}
+
+				editor_set_scale(scale);
 #endif
 			} break;
 
-			case 1: editor_set_scale(0.75); break;
-			case 2: editor_set_scale(1.0); break;
-			case 3: editor_set_scale(1.25); break;
-			case 4: editor_set_scale(1.5); break;
-			case 5: editor_set_scale(1.75); break;
-			case 6: editor_set_scale(2.0); break;
-
-			default: {
+			case 1:
+				editor_set_scale(0.75);
+				break;
+			case 2:
+				editor_set_scale(1.0);
+				break;
+			case 3:
+				editor_set_scale(1.25);
+				break;
+			case 4:
+				editor_set_scale(1.5);
+				break;
+			case 5:
+				editor_set_scale(1.75);
+				break;
+			case 6:
+				editor_set_scale(2.0);
+				break;
+			default:
 				editor_set_scale(custom_display_scale);
-			} break;
+				break;
 		}
 
 		// Define a minimum window size to prevent UI elements from overlapping or being cut off

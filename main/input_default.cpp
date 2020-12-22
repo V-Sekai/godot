@@ -776,17 +776,6 @@ void InputDefault::joy_axis(int p_device, int p_axis, const JoyAxis &p_value) {
 		return;
 	}
 
-	if (p_value.value > joy.last_axis[p_axis]) {
-
-		if (p_value.value < joy.last_axis[p_axis] + joy.filter) {
-
-			return;
-		}
-	} else if (p_value.value > joy.last_axis[p_axis] - joy.filter) {
-
-		return;
-	}
-
 	//when changing direction quickly, insert fake event to release pending inputmap actions
 	float last = joy.last_axis[p_axis];
 	if (p_value.min == 0 && (last < 0.25 || last > 0.75) && (last - 0.5) * (p_value.value - 0.5) < 0) {
@@ -1137,7 +1126,7 @@ void InputDefault::parse_mapping(String p_mapping) {
 		ERR_CONTINUE_MSG(output.length() < 1 || input.length() < 2,
 				String(entry[idx] + "\nInvalid device mapping entry: " + entry[idx]));
 
-		if (output == "platform")
+		if (output == "platform" || output == "hint")
 			continue;
 
 		JoyAxisRange output_range = FULL_AXIS;

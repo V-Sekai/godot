@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  file_access_jandroid.h                                               */
+/*  gd_mono_wasm_m2n.cpp                                                 */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,57 +28,52 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef FILE_ACCESS_JANDROID_H
-#define FILE_ACCESS_JANDROID_H
+#include "gd_mono_wasm_m2n.h"
 
-#include "core/os/file_access.h"
-#include "java_godot_lib_jni.h"
-class FileAccessJAndroid : public FileAccess {
+#ifdef JAVASCRIPT_ENABLED
 
-	static jobject io;
-	static jclass cls;
+#include "core/oa_hash_map.h"
 
-	static jmethodID _file_open;
-	static jmethodID _file_get_size;
-	static jmethodID _file_seek;
-	static jmethodID _file_tell;
-	static jmethodID _file_eof;
-	static jmethodID _file_read;
-	static jmethodID _file_close;
+typedef mono_bool (*GodotMonoM2nIcallTrampolineDispatch)(const char *cookie, void *target_func, Mono_InterpMethodArguments *margs);
 
-	int id;
-	static FileAccess *create_jandroid();
+// This extern function is implemented in our patched version of Mono
+MONO_API void godot_mono_register_m2n_icall_trampoline_dispatch_hook(GodotMonoM2nIcallTrampolineDispatch hook);
 
-public:
-	virtual Error _open(const String &p_path, int p_mode_flags); ///< open a file
-	virtual void close(); ///< close a file
-	virtual bool is_open() const; ///< true when file is open
+namespace GDMonoWasmM2n {
 
-	virtual void seek(size_t p_position); ///< seek to a given position
-	virtual void seek_end(int64_t p_position = 0); ///< seek from the end of file
-	virtual size_t get_position() const; ///< get position in the file
-	virtual size_t get_len() const; ///< get size of the file
-
-	virtual bool eof_reached() const; ///< reading passed EOF
-
-	virtual uint8_t get_8() const; ///< get a byte
-	virtual int get_buffer(uint8_t *p_dst, int p_length) const;
-
-	virtual Error get_error() const; ///< get last error
-
-	virtual void flush();
-	virtual void store_8(uint8_t p_dest); ///< store a byte
-
-	virtual bool file_exists(const String &p_path); ///< return true if a file exists
-
-	static void setup(jobject p_io);
-
-	virtual uint64_t _get_modified_time(const String &p_file) { return 0; }
-	virtual uint32_t _get_unix_permissions(const String &p_file) { return 0; }
-	virtual Error _set_unix_permissions(const String &p_file, uint32_t p_permissions) { return FAILED; }
-
-	FileAccessJAndroid();
-	~FileAccessJAndroid();
+struct HashMapCookieComparator {
+	static bool compare(const char *p_lhs, const char *p_rhs) {
+		return strcmp(p_lhs, p_rhs) == 0;
+	}
 };
 
-#endif // FILE_ACCESS_JANDROID_H
+// The default hasher supports 'const char *' C Strings, but we need a custom comparator
+OAHashMap<const char *, TrampolineFunc, HashMapHasherDefault, HashMapCookieComparator> trampolines;
+
+void set_trampoline(const char *cookies, GDMonoWasmM2n::TrampolineFunc trampoline_func) {
+	trampolines.set(cookies, trampoline_func);
+}
+
+mono_bool trampoline_dispatch_hook(const char *cookie, void *target_func, Mono_InterpMethodArguments *margs) {
+	TrampolineFunc trampoline_func;
+
+	if (!trampolines.lookup(cookie, trampoline_func)) {
+		return false;
+	}
+
+	(*trampoline_func)(target_func, margs);
+	return true;
+}
+
+bool initialized = false;
+
+void lazy_initialize() {
+	// Doesn't need to be thread safe
+	if (!initialized) {
+		initialized = true;
+		godot_mono_register_m2n_icall_trampoline_dispatch_hook(&trampoline_dispatch_hook);
+	}
+}
+} // namespace GDMonoWasmM2n
+
+#endif

@@ -52,6 +52,7 @@ private:
 	int current;
 	int previous;
 	bool tabs_visible;
+	bool all_tabs_in_front;
 	bool buttons_visible_cache;
 	bool menu_hovered;
 	int highlight_arrow;
@@ -69,6 +70,7 @@ private:
 	void _repaint();
 	void _on_mouse_exited();
 	void _update_current_tab();
+	void _draw_tab(Ref<StyleBox> &p_tab_style, Color &p_font_color, int p_index, float p_x);
 
 protected:
 	void _child_renamed_callback();
@@ -90,6 +92,9 @@ public:
 
 	void set_tabs_visible(bool p_visible);
 	bool are_tabs_visible() const;
+
+	void set_all_tabs_in_front(bool p_is_front);
+	bool is_all_tabs_in_front() const;
 
 	void set_tab_title(int p_tab, const String &p_title);
 	String get_tab_title(int p_tab) const;

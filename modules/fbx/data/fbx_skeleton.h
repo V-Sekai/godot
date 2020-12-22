@@ -42,7 +42,7 @@ struct FBXNode;
 struct ImportState;
 struct FBXBone;
 
-struct FBXSkeleton : Reference, ModelAbstraction {
+struct FBXSkeleton : Reference {
 	Ref<FBXNode> fbx_node = Ref<FBXNode>();
 	Vector<Ref<FBXBone> > skeleton_bones = Vector<Ref<FBXBone> >();
 	Skeleton *skeleton = nullptr;

@@ -28,11 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#pragma once
+#ifndef RASTERIZER_CANVAS_BATCHER_H
+#define RASTERIZER_CANVAS_BATCHER_H
 
 #include "core/os/os.h"
 #include "core/project_settings.h"
 #include "rasterizer_array.h"
+#include "rasterizer_asserts.h"
 #include "rasterizer_storage_common.h"
 #include "servers/visual/rasterizer.h"
 
@@ -99,6 +101,12 @@ public:
 			g = p_c.g;
 			b = p_c.b;
 			a = p_c.a;
+		}
+		void set(float rr, float gg, float bb, float aa) {
+			r = rr;
+			g = gg;
+			b = bb;
+			a = aa;
 		}
 		bool operator==(const BatchColor &p_c) const {
 			return (r == p_c.r) && (g == p_c.g) && (b == p_c.b) && (a == p_c.a);
@@ -279,6 +287,9 @@ public:
 			settings_uv_contract = false;
 			settings_uv_contract_amount = 0.0f;
 
+			buffer_mode_batch_upload_send_null = true;
+			buffer_mode_batch_upload_flag_stream = false;
+
 			stats_items_sorted = 0;
 			stats_light_items_joined = 0;
 		}
@@ -398,6 +409,10 @@ public:
 		bool settings_use_software_skinning;
 		int settings_light_max_join_items;
 		int settings_ninepatch_mode;
+
+		// buffer orphaning modes
+		bool buffer_mode_batch_upload_send_null;
+		bool buffer_mode_batch_upload_flag_stream;
 
 		// uv contraction
 		bool settings_uv_contract;
@@ -572,7 +587,7 @@ private:
 	// translating vertex formats prior to rendering
 	void _translate_batches_to_vertex_colored_FVF();
 	template <class BATCH_VERTEX_TYPE, bool INCLUDE_LIGHT_ANGLES, bool INCLUDE_MODULATE, bool INCLUDE_LARGE>
-	void _translate_batches_to_larger_FVF();
+	void _translate_batches_to_larger_FVF(uint32_t p_sequence_batch_type_flags);
 
 protected:
 	// accessory funcs
@@ -616,9 +631,7 @@ public:
 
 			// this should always succeed after growing
 			batch = bdata.batches.request();
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-			CRASH_COND(!batch);
-#endif
+			RAST_DEBUG_ASSERT(batch);
 		}
 
 		if (p_blank)
@@ -779,6 +792,8 @@ PREAMBLE(void)::_prefill_default_batch(FillState &r_fill_state, int p_command_nu
 		if (!r_fill_state.transform_extra_command_number_p1) {
 			// another default command, just add to the existing batch
 			r_fill_state.curr_batch->num_commands++;
+
+			RAST_DEV_DEBUG_ASSERT(r_fill_state.curr_batch->num_commands <= p_command_num);
 		} else {
 #if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
 			if (r_fill_state.transform_extra_command_number_p1 != p_command_num) {
@@ -893,13 +908,22 @@ PREAMBLE(int)::_batch_find_or_create_tex(const RID &p_texture, const RID &p_norm
 	typename T_STORAGE::Texture *texture = _get_canvas_texture(p_texture);
 
 	if (texture) {
-		new_batch_tex.tex_pixel_size.x = 1.0 / texture->width;
-		new_batch_tex.tex_pixel_size.y = 1.0 / texture->height;
+		// special case, there can be textures with no width or height
+		int w = texture->width;
+		int h = texture->height;
+
+		if (!w || !h) {
+			w = 1;
+			h = 1;
+		}
+
+		new_batch_tex.tex_pixel_size.x = 1.0 / w;
+		new_batch_tex.tex_pixel_size.y = 1.0 / h;
 		new_batch_tex.flags = texture->flags;
 	} else {
 		// maybe doesn't need doing...
-		new_batch_tex.tex_pixel_size.x = 1.0;
-		new_batch_tex.tex_pixel_size.y = 1.0;
+		new_batch_tex.tex_pixel_size.x = 1.0f;
+		new_batch_tex.tex_pixel_size.y = 1.0f;
 		new_batch_tex.flags = 0;
 	}
 
@@ -1027,6 +1051,10 @@ PREAMBLE(void)::batch_initialize() {
 	bdata.settings_scissor_threshold = CLAMP(bdata.settings_scissor_threshold, 0.0f, 1.0f);
 	bdata.settings_light_max_join_items = CLAMP(bdata.settings_light_max_join_items, 0, 65535);
 	bdata.settings_item_reordering_lookahead = CLAMP(bdata.settings_item_reordering_lookahead, 0, 65535);
+
+	// allow user to override the api usage techniques using project settings
+	bdata.buffer_mode_batch_upload_send_null = GLOBAL_GET("rendering/options/api_usage_batching/send_null");
+	bdata.buffer_mode_batch_upload_flag_stream = GLOBAL_GET("rendering/options/api_usage_batching/flag_stream");
 
 	// for debug purposes, output a string with the batching options
 	String batching_options_string = "OpenGL ES Batching: ";
@@ -1331,12 +1359,29 @@ bool C_PREAMBLE::_prefill_ninepatch(RasterizerCanvas::Item::CommandNinePatch *p_
 
 	if (!tex) {
 		// FIXME: Handle textureless ninepatch gracefully
-		WARN_PRINT("NinePatch without texture not supported yet in GLES2 backend, skipping.");
+		WARN_PRINT("NinePatch without texture not supported yet, skipping.");
 		return false;
 	}
 	if (tex->width == 0 || tex->height == 0) {
 		WARN_PRINT("Cannot set empty texture to NinePatch.");
 		return false;
+	}
+
+	// cope with ninepatch of zero area. These cannot be created by the user interface or gdscript, but can
+	// be created programmatically from c++, e.g. by the Godot UI for sliders. We will just not draw these.
+	if ((p_np->rect.size.x * p_np->rect.size.y) <= 0.0f) {
+		return false;
+	}
+
+	// conditions for creating a new batch
+	if (r_fill_state.curr_batch->type != RasterizerStorageCommon::BT_RECT) {
+
+		// don't allow joining to a different sequence type
+		if (r_fill_state.sequence_batch_type_flags & (~RasterizerStorageCommon::BTF_RECT)) {
+			// don't allow joining to a different sequence type
+			r_command_start = command_num;
+			return true;
+		}
 	}
 
 	// first check there are enough verts for this to complete successfully
@@ -1406,6 +1451,17 @@ bool C_PREAMBLE::_prefill_ninepatch(RasterizerCanvas::Item::CommandNinePatch *p_
 	v[1] = v[0] + tex_margin_top;
 	v[3] = v[0] + source.size.y;
 	v[2] = v[3] - tex_margin_bottom;
+
+	// Some protection for the use of ninepatches with rect size smaller than margin size.
+	// Note these cannot be produced by the UI, only programmatically, and the results
+	// are somewhat undefined, because the margins overlap.
+	// Ninepatch get_minimum_size()	forces minimum size to be the sum of the margins.
+	// So this should occur very rarely if ever. Consider commenting these 4 lines out for higher speed
+	// in ninepatches.
+	x[1] = MIN(x[1], x[3]);
+	x[2] = MIN(x[2], x[3]);
+	y[1] = MIN(y[1], y[3]);
+	y[2] = MIN(y[2], y[3]);
 
 	// temporarily override to prevent single rect fallback
 	bool single_rect_fallback = bdata.settings_use_single_rect_fallback;
@@ -1477,13 +1533,40 @@ bool C_PREAMBLE::_prefill_polygon(RasterizerCanvas::Item::CommandPolygon *p_poly
 	}
 
 	BatchColor *vertex_colors = bdata.vertex_colors.request(num_inds);
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-	CRASH_COND(!vertex_colors);
-#endif
+	RAST_DEBUG_ASSERT(vertex_colors);
+
+	// are we using large FVF?
+	////////////////////////////////////
+	const bool use_large_verts = bdata.use_large_verts;
+	const bool use_modulate = bdata.use_modulate;
+
+	BatchColor *vertex_modulates = nullptr;
+	if (use_modulate) {
+		vertex_modulates = bdata.vertex_modulates.request(num_inds);
+		RAST_DEBUG_ASSERT(vertex_modulates);
+		// precalc the vertex modulate (will be shared by all verts)
+		// we store the modulate as an attribute in the fvf rather than a uniform
+		vertex_modulates[0].set(r_fill_state.final_modulate);
+	}
+
+	BatchTransform *pBT = nullptr;
+	if (use_large_verts) {
+		pBT = bdata.vertex_transforms.request(num_inds);
+		RAST_DEBUG_ASSERT(pBT);
+		// precalc the batch transform (will be shared by all verts)
+		// we store the transform as an attribute in the fvf rather than a uniform
+		const Transform2D &tr = r_fill_state.transform_combined;
+
+		pBT[0].translate.set(tr.elements[2]);
+		// could do swizzling in shader?
+		pBT[0].basis[0].set(tr.elements[0][0], tr.elements[1][0]);
+		pBT[0].basis[1].set(tr.elements[0][1], tr.elements[1][1]);
+	}
+	////////////////////////////////////
 
 	// the modulate is always baked
 	Color modulate;
-	if (multiply_final_modulate)
+	if (!use_large_verts && !use_modulate && multiply_final_modulate)
 		modulate = r_fill_state.final_modulate;
 	else
 		modulate = Color(1, 1, 1, 1);
@@ -1497,6 +1580,11 @@ bool C_PREAMBLE::_prefill_polygon(RasterizerCanvas::Item::CommandPolygon *p_poly
 	}
 
 	// N.B. polygons don't have color thus don't need a batch change with color
+	// This code is left as reference in case of problems.
+	//	if (!r_fill_state.curr_batch->color.equals(modulate)) {
+	//		change_batch = true;
+	//		bdata.total_color_changes++;
+	//	}
 
 	if (change_batch) {
 		// put the tex pixel size  in a local (less verbose and can be a register)
@@ -1555,9 +1643,7 @@ bool C_PREAMBLE::_prefill_polygon(RasterizerCanvas::Item::CommandPolygon *p_poly
 		for (int n = 0; n < num_inds; n++) {
 			int ind = p_poly->indices[n];
 
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-			CRASH_COND(ind >= p_poly->points.size());
-#endif
+			RAST_DEV_DEBUG_ASSERT(ind < p_poly->points.size());
 
 			// this could be moved outside the loop
 			if (r_fill_state.transform_mode != TM_NONE) {
@@ -1572,11 +1658,37 @@ bool C_PREAMBLE::_prefill_polygon(RasterizerCanvas::Item::CommandPolygon *p_poly
 			if (ind < p_poly->uvs.size()) {
 				const Point2 &uv = p_poly->uvs[ind];
 				bvs[n].uv.set(uv.x, uv.y);
+			} else {
+				bvs[n].uv.set(0.0f, 0.0f);
 			}
 
 			vertex_colors[n] = precalced_colors[ind];
+
+			if (use_modulate) {
+				vertex_modulates[n] = vertex_modulates[0];
+			}
+
+			if (use_large_verts) {
+				// reuse precalced transform (same for each vertex within polygon)
+				pBT[n] = pBT[0];
+			}
 		}
 	} // if not software skinning
+	else {
+		// software skinning extra passes
+		if (use_modulate) {
+			for (int n = 0; n < num_inds; n++) {
+				vertex_modulates[n] = vertex_modulates[0];
+			}
+		}
+		// not sure if this will produce garbage if software skinning is changing vertex pos
+		// in the shader, but is included for completeness
+		if (use_large_verts) {
+			for (int n = 0; n < num_inds; n++) {
+				pBT[n] = pBT[0];
+			}
+		}
+	}
 
 	// increment total vert count
 	bdata.total_verts += num_inds;
@@ -1614,13 +1726,16 @@ PREAMBLE(bool)::_software_skin_poly(RasterizerCanvas::Item::CommandPolygon *p_po
 
 	if (num_verts && (p_poly->bones.size() == num_verts * 4) && (p_poly->weights.size() == p_poly->bones.size())) {
 
+		const Transform2D &item_transform = p_item->xform;
+		Transform2D item_transform_inv = item_transform.affine_inverse();
+
 		for (int n = 0; n < num_verts; n++) {
 			const Vector2 &src_pos = p_poly->points[n];
 			Vector2 &dst_pos = pTemps[n];
 
 			// there can be an offset on the polygon at rigging time, this has to be accounted for
 			// note it may be possible that this could be concatenated with the bone transforms to save extra transforms - not sure yet
-			Vector2 src_pos_back_transformed = p_item->xform.xform(src_pos);
+			Vector2 src_pos_back_transformed = item_transform.xform(src_pos);
 
 			float total_weight = 0.0f;
 
@@ -1632,9 +1747,7 @@ PREAMBLE(bool)::_software_skin_poly(RasterizerCanvas::Item::CommandPolygon *p_po
 
 				total_weight += weight;
 
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-				CRASH_COND(bone_id >= bone_count);
-#endif
+				RAST_DEBUG_ASSERT(bone_id < bone_count);
 				const Transform2D &bone_tr = bone_transforms[bone_id];
 
 				Vector2 pos = bone_tr.xform(src_pos_back_transformed);
@@ -1650,7 +1763,7 @@ PREAMBLE(bool)::_software_skin_poly(RasterizerCanvas::Item::CommandPolygon *p_po
 				dst_pos /= total_weight;
 
 				// retransform back from the poly offset space
-				dst_pos = p_item->xform.xform_inv(dst_pos);
+				dst_pos = item_transform_inv.xform(dst_pos);
 			}
 		}
 
@@ -1671,15 +1784,15 @@ PREAMBLE(bool)::_software_skin_poly(RasterizerCanvas::Item::CommandPolygon *p_po
 	for (int n = 0; n < num_inds; n++) {
 		int ind = p_poly->indices[n];
 
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-		CRASH_COND(ind >= num_verts);
-#endif
+		RAST_DEV_DEBUG_ASSERT(ind < num_verts);
 		const Point2 &pos = pTemps[ind];
 		bvs[n].pos.set(pos.x, pos.y);
 
 		if (ind < p_poly->uvs.size()) {
 			const Point2 &uv = p_poly->uvs[ind];
 			bvs[n].uv.set(uv.x, uv.y);
+		} else {
+			bvs[n].uv.set(0.0f, 0.0f);
 		}
 
 		vertex_colors[n] = p_precalced_colors[ind];
@@ -1922,9 +2035,7 @@ bool C_PREAMBLE::_prefill_rect(RasterizerCanvas::Item::CommandRect *rect, FillSt
 	if (use_modulate) {
 		// store the final modulate separately from the rect modulate
 		BatchColor *pBC = bdata.vertex_modulates.request(4);
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-		CRASH_COND(pBC == nullptr);
-#endif
+		RAST_DEBUG_ASSERT(pBC);
 		pBC[0].set(r_fill_state.final_modulate);
 		pBC[1] = pBC[0];
 		pBC[2] = pBC[0];
@@ -1934,9 +2045,7 @@ bool C_PREAMBLE::_prefill_rect(RasterizerCanvas::Item::CommandRect *rect, FillSt
 	if (use_large_verts) {
 		// store the transform separately
 		BatchTransform *pBT = bdata.vertex_transforms.request(4);
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-		CRASH_COND(pBT == nullptr);
-#endif
+		RAST_DEBUG_ASSERT(pBT);
 
 		const Transform2D &tr = r_fill_state.transform_combined;
 
@@ -1955,9 +2064,7 @@ bool C_PREAMBLE::_prefill_rect(RasterizerCanvas::Item::CommandRect *rect, FillSt
 		// or sync them up during translation. We are syncing in translation.
 		// N.B. There may be batches that don't require light_angles between batches that do.
 		float *angles = bdata.light_angles.request(4);
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-		CRASH_COND(angles == nullptr);
-#endif
+		RAST_DEBUG_ASSERT(angles);
 
 		float angle = 0.0f;
 		const float TWO_PI = Math_PI * 2;
@@ -2160,28 +2267,38 @@ PREAMBLE(bool)::prefill_joined_item(FillState &r_fill_state, int &r_command_star
 
 			case RasterizerCanvas::Item::Command::TYPE_POLYGON: {
 
-				// not using software skinning?
-				if (!bdata.settings_use_software_skinning && get_this()->state.using_skeleton) {
+				RasterizerCanvas::Item::CommandPolygon *polygon = static_cast<RasterizerCanvas::Item::CommandPolygon *>(command);
+#ifdef GLES_OVER_GL
+				// anti aliasing not accelerated .. it is problematic because it requires a 2nd line drawn around the outside of each
+				// poly, which would require either a second list of indices or a second list of vertices for this step
+				if (polygon->antialiased) {
 					// not accelerated
 					_prefill_default_batch(r_fill_state, command_num, *p_item);
 				} else {
-					RasterizerCanvas::Item::CommandPolygon *polygon = static_cast<RasterizerCanvas::Item::CommandPolygon *>(command);
-
-					// unoptimized - could this be done once per batch / batch texture?
-					bool send_light_angles = polygon->normal_map != RID();
-
-					bool buffer_full = false;
-
-					if (send_light_angles) {
-						// NYI
+#endif
+					// not using software skinning?
+					if (!bdata.settings_use_software_skinning && get_this()->state.using_skeleton) {
+						// not accelerated
 						_prefill_default_batch(r_fill_state, command_num, *p_item);
-						//buffer_full = prefill_polygon<true>(polygon, r_fill_state, r_command_start, command_num, command_count, p_item, multiply_final_modulate);
-					} else
-						buffer_full = _prefill_polygon<false>(polygon, r_fill_state, r_command_start, command_num, command_count, p_item, multiply_final_modulate);
+					} else {
+						// unoptimized - could this be done once per batch / batch texture?
+						bool send_light_angles = polygon->normal_map != RID();
 
-					if (buffer_full)
-						return true;
-				} // using software skinning path
+						bool buffer_full = false;
+
+						if (send_light_angles) {
+							// NYI
+							_prefill_default_batch(r_fill_state, command_num, *p_item);
+							//buffer_full = prefill_polygon<true>(polygon, r_fill_state, r_command_start, command_num, command_count, p_item, multiply_final_modulate);
+						} else
+							buffer_full = _prefill_polygon<false>(polygon, r_fill_state, r_command_start, command_num, command_count, p_item, multiply_final_modulate);
+
+						if (buffer_full)
+							return true;
+					} // if not using hardware skinning path
+#ifdef GLES_OVER_GL
+				} // if not anti-aliased poly
+#endif
 
 			} break;
 		}
@@ -2254,19 +2371,19 @@ PREAMBLE(void)::flush_render_batches(RasterizerCanvas::Item *p_first_item, Raste
 		case RasterizerStorageCommon::FVF_COLOR: {
 			// special case, where vertex colors are used (polys)
 			if (!bdata.vertex_colors.size())
-				_translate_batches_to_larger_FVF<BatchVertexColored, false, false, false>();
+				_translate_batches_to_larger_FVF<BatchVertexColored, false, false, false>(p_sequence_batch_type_flags);
 			else
 				// normal, reduce number of batches by baking batch colors
 				_translate_batches_to_vertex_colored_FVF();
 		} break;
 		case RasterizerStorageCommon::FVF_LIGHT_ANGLE:
-			_translate_batches_to_larger_FVF<BatchVertexLightAngled, true, false, false>();
+			_translate_batches_to_larger_FVF<BatchVertexLightAngled, true, false, false>(p_sequence_batch_type_flags);
 			break;
 		case RasterizerStorageCommon::FVF_MODULATED:
-			_translate_batches_to_larger_FVF<BatchVertexModulated, true, true, false>();
+			_translate_batches_to_larger_FVF<BatchVertexModulated, true, true, false>(p_sequence_batch_type_flags);
 			break;
 		case RasterizerStorageCommon::FVF_LARGE:
-			_translate_batches_to_larger_FVF<BatchVertexLarge, true, true, true>();
+			_translate_batches_to_larger_FVF<BatchVertexLarge, true, true, true>(p_sequence_batch_type_flags);
 			break;
 	}
 
@@ -2285,6 +2402,11 @@ PREAMBLE(void)::flush_render_batches(RasterizerCanvas::Item *p_first_item, Raste
 
 	// if we overrode the fvf for lines, set it back to the joined item fvf
 	bdata.fvf = backup_fvf;
+
+	// overwrite source buffers with garbage if error checking
+#ifdef RASTERIZER_EXTRA_CHECKS
+	_debug_write_garbage();
+#endif
 }
 
 PREAMBLE(void)::render_joined_item_commands(const BItemJoined &p_bij, RasterizerCanvas::Item *p_current_clip, bool &r_reclip, typename T_STORAGE::Material *p_material, bool p_lit) {
@@ -2460,7 +2582,7 @@ PREAMBLE(void)::join_sorted_items() {
 			// but it is stupidly complex to calculate later, which would probably be slower.
 			r->final_modulate = _render_item_state.final_modulate;
 		} else {
-			CRASH_COND(_render_item_state.joined_item == 0);
+			RAST_DEBUG_ASSERT(_render_item_state.joined_item != 0);
 			_render_item_state.joined_item->num_item_refs += 1;
 			_render_item_state.joined_item->bounding_rect = _render_item_state.joined_item->bounding_rect.merge(ci->global_rect_cache);
 
@@ -2658,7 +2780,7 @@ PREAMBLE(void)::_translate_batches_to_vertex_colored_FVF() {
 	bdata.unit_vertices.prepare(sizeof(BatchVertexColored));
 
 	const BatchColor *source_vertex_colors = &bdata.vertex_colors[0];
-	CRASH_COND(bdata.vertex_colors.size() != bdata.vertices.size());
+	RAST_DEBUG_ASSERT(bdata.vertex_colors.size() == bdata.vertices.size());
 
 	int num_verts = bdata.vertices.size();
 
@@ -2681,7 +2803,15 @@ PREAMBLE(void)::_translate_batches_to_vertex_colored_FVF() {
 // In addition this can optionally add light angles to the FVF, necessary for normal mapping.
 T_PREAMBLE
 template <class BATCH_VERTEX_TYPE, bool INCLUDE_LIGHT_ANGLES, bool INCLUDE_MODULATE, bool INCLUDE_LARGE>
-void C_PREAMBLE::_translate_batches_to_larger_FVF() {
+void C_PREAMBLE::_translate_batches_to_larger_FVF(uint32_t p_sequence_batch_type_flags) {
+
+	bool include_poly_color = false;
+
+	// we ONLY want to include the color verts in translation when using polys,
+	// as rects do not write vertex colors, only colors per batch.
+	if (p_sequence_batch_type_flags & RasterizerStorageCommon::BTF_POLY) {
+		include_poly_color = INCLUDE_LIGHT_ANGLES | INCLUDE_MODULATE | INCLUDE_LARGE;
+	}
 
 	// zeros the size and sets up how big each unit is
 	bdata.unit_vertices.prepare(sizeof(BATCH_VERTEX_TYPE));
@@ -2691,15 +2821,14 @@ void C_PREAMBLE::_translate_batches_to_larger_FVF() {
 	// the sizes should be equal, and allocations should never fail. Hence the use of debug
 	// asserts to check program flow, these should not occur at runtime unless the allocation
 	// code has been altered.
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-	CRASH_COND(bdata.unit_vertices.max_size() != bdata.vertices.max_size());
-	CRASH_COND(bdata.batches_temp.max_size() != bdata.batches.max_size());
-#endif
+	RAST_DEBUG_ASSERT(bdata.unit_vertices.max_size() == bdata.vertices.max_size());
+	RAST_DEBUG_ASSERT(bdata.batches_temp.max_size() == bdata.batches.max_size());
 
 	Color curr_col(-1.0f, -1.0f, -1.0f, -1.0f);
 
 	Batch *dest_batch = nullptr;
 
+	const BatchColor *source_vertex_colors = &bdata.vertex_colors[0];
 	const float *source_light_angles = &bdata.light_angles[0];
 	const BatchColor *source_vertex_modulates = &bdata.vertex_modulates[0];
 	const BatchTransform *source_vertex_transforms = &bdata.vertex_transforms[0];
@@ -2729,16 +2858,16 @@ void C_PREAMBLE::_translate_batches_to_larger_FVF() {
 						int end_vert = first_vert + (4 * source_batch.num_commands);
 
 						for (int v = first_vert; v < end_vert; v++) {
+							RAST_DEV_DEBUG_ASSERT(bdata.vertices.size());
 							const BatchVertex &bv = bdata.vertices[v];
 							BATCH_VERTEX_TYPE *cv = (BATCH_VERTEX_TYPE *)bdata.unit_vertices.request();
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-							CRASH_COND(!cv);
-#endif
+							RAST_DEBUG_ASSERT(cv);
 							cv->pos = bv.pos;
 							cv->uv = bv.uv;
 							cv->col = source_batch.color;
 
 							if (INCLUDE_LIGHT_ANGLES) {
+								RAST_DEV_DEBUG_ASSERT(bdata.light_angles.size());
 								// this is required to allow compilation with non light angle vertex.
 								// it should be compiled out.
 								BatchVertexLightAngled *lv = (BatchVertexLightAngled *)cv;
@@ -2749,11 +2878,13 @@ void C_PREAMBLE::_translate_batches_to_larger_FVF() {
 							} // if including light angles
 
 							if (INCLUDE_MODULATE) {
+								RAST_DEV_DEBUG_ASSERT(bdata.vertex_modulates.size());
 								BatchVertexModulated *mv = (BatchVertexModulated *)cv;
 								mv->modulate = *source_vertex_modulates++;
 							} // including modulate
 
 							if (INCLUDE_LARGE) {
+								RAST_DEV_DEBUG_ASSERT(bdata.vertex_transforms.size());
 								BatchVertexLarge *lv = (BatchVertexLarge *)cv;
 								lv->transform = *source_vertex_transforms++;
 							} // if including large
@@ -2775,9 +2906,7 @@ void C_PREAMBLE::_translate_batches_to_larger_FVF() {
 
 		if (needs_new_batch) {
 			dest_batch = bdata.batches_temp.request();
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-			CRASH_COND(!dest_batch);
-#endif
+			RAST_DEBUG_ASSERT(dest_batch);
 
 			*dest_batch = source_batch;
 
@@ -2789,16 +2918,23 @@ void C_PREAMBLE::_translate_batches_to_larger_FVF() {
 				int end_vert = first_vert + (4 * source_batch.num_commands);
 
 				for (int v = first_vert; v < end_vert; v++) {
+					RAST_DEV_DEBUG_ASSERT(bdata.vertices.size());
 					const BatchVertex &bv = bdata.vertices[v];
 					BATCH_VERTEX_TYPE *cv = (BATCH_VERTEX_TYPE *)bdata.unit_vertices.request();
-#if defined(TOOLS_ENABLED) && defined(DEBUG_ENABLED)
-					CRASH_COND(!cv);
-#endif
+					RAST_DEBUG_ASSERT(cv);
 					cv->pos = bv.pos;
 					cv->uv = bv.uv;
-					cv->col = source_batch.color;
+
+					// polys are special, they can have per vertex colors
+					if (!include_poly_color) {
+						cv->col = source_batch.color;
+					} else {
+						RAST_DEV_DEBUG_ASSERT(bdata.vertex_colors.size());
+						cv->col = *source_vertex_colors++;
+					}
 
 					if (INCLUDE_LIGHT_ANGLES) {
+						RAST_DEV_DEBUG_ASSERT(bdata.light_angles.size());
 						// this is required to allow compilation with non light angle vertex.
 						// it should be compiled out.
 						BatchVertexLightAngled *lv = (BatchVertexLightAngled *)cv;
@@ -2809,11 +2945,13 @@ void C_PREAMBLE::_translate_batches_to_larger_FVF() {
 					} // if using light angles
 
 					if (INCLUDE_MODULATE) {
+						RAST_DEV_DEBUG_ASSERT(bdata.vertex_modulates.size());
 						BatchVertexModulated *mv = (BatchVertexModulated *)cv;
 						mv->modulate = *source_vertex_modulates++;
 					} // including modulate
 
 					if (INCLUDE_LARGE) {
+						RAST_DEV_DEBUG_ASSERT(bdata.vertex_transforms.size());
 						BatchVertexLarge *lv = (BatchVertexLarge *)cv;
 						lv->transform = *source_vertex_transforms++;
 					} // if including large
@@ -2875,7 +3013,7 @@ PREAMBLE(bool)::_detect_item_batch_break(RenderItemState &r_ris, RasterizerCanva
 		for (int command_num = 0; command_num < command_count; command_num++) {
 
 			RasterizerCanvas::Item::Command *command = commands[command_num];
-			CRASH_COND(!command);
+			RAST_DEBUG_ASSERT(command);
 
 			switch (command->type) {
 
@@ -2897,17 +3035,18 @@ PREAMBLE(bool)::_detect_item_batch_break(RenderItemState &r_ris, RasterizerCanva
 					}
 				} break;
 				case RasterizerCanvas::Item::Command::TYPE_POLYGON: {
-					//return true;
 					// only allow polygons to join if they aren't skeleton
 					RasterizerCanvas::Item::CommandPolygon *poly = static_cast<RasterizerCanvas::Item::CommandPolygon *>(command);
 
-					//					return true;
+#ifdef GLES_OVER_GL
+					// anti aliasing not accelerated
+					if (poly->antialiased)
+						return true;
+#endif
 
 					// light angles not yet implemented, treat as default
 					if (poly->normal_map != RID())
 						return true;
-
-					// we could possibly join polygons that are software skinned? NYI
 
 					if (!get_this()->bdata.settings_use_software_skinning && poly->bones.size())
 						return true;
@@ -2939,9 +3078,16 @@ PREAMBLE(bool)::_detect_item_batch_break(RenderItemState &r_ris, RasterizerCanva
 
 	} // else
 
+	// special case, back buffer copy, so don't join
+	if (p_ci->copy_back_buffer) {
+		return true;
+	}
+
 	return false;
 }
 
 #undef PREAMBLE
 #undef T_PREAMBLE
 #undef C_PREAMBLE
+
+#endif // RASTERIZER_CANVAS_BATCHER_H

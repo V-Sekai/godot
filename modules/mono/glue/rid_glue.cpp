@@ -53,9 +53,9 @@ uint32_t godot_icall_RID_get_id(RID *p_ptr) {
 }
 
 void godot_register_rid_icalls() {
-	mono_add_internal_call("Godot.RID::godot_icall_RID_Ctor", (void *)godot_icall_RID_Ctor);
-	mono_add_internal_call("Godot.RID::godot_icall_RID_Dtor", (void *)godot_icall_RID_Dtor);
-	mono_add_internal_call("Godot.RID::godot_icall_RID_get_id", (void *)godot_icall_RID_get_id);
+	GDMonoUtils::add_internal_call("Godot.RID::godot_icall_RID_Ctor", godot_icall_RID_Ctor);
+	GDMonoUtils::add_internal_call("Godot.RID::godot_icall_RID_Dtor", godot_icall_RID_Dtor);
+	GDMonoUtils::add_internal_call("Godot.RID::godot_icall_RID_get_id", godot_icall_RID_get_id);
 }
 
 #endif // MONO_GLUE_ENABLED

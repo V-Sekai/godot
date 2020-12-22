@@ -30,24 +30,24 @@
 
 #include "os_android.h"
 
-#include "core/io/file_access_buffered_fa.h"
 #include "core/project_settings.h"
 #include "drivers/gles2/rasterizer_gles2.h"
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
-#include "file_access_android.h"
 #include "main/main.h"
 #include "servers/visual/visual_server_raster.h"
 #include "servers/visual/visual_server_wrap_mt.h"
 
 #include "dir_access_jandroid.h"
-#include "file_access_jandroid.h"
+#include "file_access_android.h"
 #include "net_socket_android.h"
 
 #include <android/input.h>
+#include <core/os/keyboard.h>
 #include <dlfcn.h>
 
+#include "android_keys_utils.h"
 #include "java_godot_io_wrapper.h"
 #include "java_godot_wrapper.h"
 
@@ -92,16 +92,10 @@ void OS_Android::initialize_core() {
 	if (use_apk_expansion)
 		FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_RESOURCES);
 	else {
-#ifdef USE_JAVA_FILE_ACCESS
-		FileAccess::make_default<FileAccessBufferedFA<FileAccessJAndroid> >(FileAccess::ACCESS_RESOURCES);
-#else
-		//FileAccess::make_default<FileAccessBufferedFA<FileAccessAndroid> >(FileAccess::ACCESS_RESOURCES);
 		FileAccess::make_default<FileAccessAndroid>(FileAccess::ACCESS_RESOURCES);
-#endif
 	}
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_USERDATA);
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_FILESYSTEM);
-	//FileAccessBufferedFA<FileAccessUnix>::make_default();
 	if (use_apk_expansion)
 		DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_RESOURCES);
 	else
@@ -364,9 +358,59 @@ void OS_Android::process_joy_event(OS_Android::JoypadEvent p_event) {
 	}
 }
 
+void OS_Android::_set_key_modifier_state(Ref<InputEventWithModifiers> ev) const {
+	ev->set_shift(shift_mem);
+	ev->set_alt(alt_mem);
+	ev->set_metakey(meta_mem);
+	ev->set_control(control_mem);
+}
+
 void OS_Android::process_event(Ref<InputEvent> p_event) {
 
 	input->parse_input_event(p_event);
+}
+
+void OS_Android::process_key_event(int p_scancode, int p_unicode_char, bool p_pressed) {
+
+	Ref<InputEventKey> ev;
+	ev.instance();
+	int val = p_unicode_char;
+	unsigned int scancode = android_get_keysym(p_scancode);
+
+	switch (scancode) {
+		case KEY_SHIFT: {
+			shift_mem = p_pressed;
+		} break;
+		case KEY_ALT: {
+			alt_mem = p_pressed;
+		} break;
+		case KEY_CONTROL: {
+			control_mem = p_pressed;
+		} break;
+		case KEY_META: {
+			meta_mem = p_pressed;
+		} break;
+	}
+
+	ev->set_scancode(scancode);
+	ev->set_unicode(val);
+	ev->set_pressed(p_pressed);
+
+	_set_key_modifier_state(ev);
+
+	if (val == '\n') {
+		ev->set_scancode(KEY_ENTER);
+	} else if (val == 61448) {
+		ev->set_scancode(KEY_BACKSPACE);
+		ev->set_unicode(KEY_BACKSPACE);
+	} else if (val == 61453) {
+		ev->set_scancode(KEY_ENTER);
+		ev->set_unicode(KEY_ENTER);
+	} else if (p_scancode == 4) {
+		main_loop_request_go_back();
+	}
+
+	input->parse_input_event(ev);
 }
 
 void OS_Android::process_touch(int p_event, int p_pointer, const Vector<TouchPos> &p_points) {
@@ -488,6 +532,7 @@ void OS_Android::process_hover(int p_type, Point2 p_pos) {
 		case AMOTION_EVENT_ACTION_HOVER_EXIT: { // hover exit
 			Ref<InputEventMouseMotion> ev;
 			ev.instance();
+			_set_key_modifier_state(ev);
 			ev->set_position(p_pos);
 			ev->set_global_position(p_pos);
 			ev->set_relative(p_pos - hover_prev_pos);
@@ -504,6 +549,7 @@ void OS_Android::process_mouse_event(int event_action, int event_android_buttons
 		case AMOTION_EVENT_ACTION_BUTTON_RELEASE: {
 			Ref<InputEventMouseButton> ev;
 			ev.instance();
+			_set_key_modifier_state(ev);
 			ev->set_position(event_pos);
 			ev->set_global_position(event_pos);
 			ev->set_pressed(event_action == AMOTION_EVENT_ACTION_BUTTON_PRESS);
@@ -519,6 +565,7 @@ void OS_Android::process_mouse_event(int event_action, int event_android_buttons
 		case AMOTION_EVENT_ACTION_MOVE: {
 			Ref<InputEventMouseMotion> ev;
 			ev.instance();
+			_set_key_modifier_state(ev);
 			ev->set_position(event_pos);
 			ev->set_global_position(event_pos);
 			ev->set_relative(event_pos - hover_prev_pos);
@@ -529,6 +576,7 @@ void OS_Android::process_mouse_event(int event_action, int event_android_buttons
 		case AMOTION_EVENT_ACTION_SCROLL: {
 			Ref<InputEventMouseButton> ev;
 			ev.instance();
+			_set_key_modifier_state(ev);
 			ev->set_position(event_pos);
 			ev->set_global_position(event_pos);
 			ev->set_pressed(true);
@@ -564,6 +612,7 @@ void OS_Android::process_double_tap(int event_android_button_mask, Point2 p_pos)
 	int event_button_mask = _android_button_mask_to_godot_button_mask(event_android_button_mask);
 	Ref<InputEventMouseButton> ev;
 	ev.instance();
+	_set_key_modifier_state(ev);
 	ev->set_position(p_pos);
 	ev->set_global_position(p_pos);
 	ev->set_pressed(event_button_mask != 0);
@@ -576,6 +625,7 @@ void OS_Android::process_double_tap(int event_android_button_mask, Point2 p_pos)
 void OS_Android::process_scroll(Point2 p_pos) {
 	Ref<InputEventPanGesture> ev;
 	ev.instance();
+	_set_key_modifier_state(ev);
 	ev->set_position(p_pos);
 	ev->set_delta(p_pos - scroll_prev_pos);
 	input->parse_input_event(ev);
@@ -786,6 +836,11 @@ String OS_Android::get_user_data_dir() const {
 void OS_Android::set_screen_orientation(ScreenOrientation p_orientation) {
 
 	godot_io_java->set_screen_orientation(p_orientation);
+}
+
+OS::ScreenOrientation OS_Android::get_screen_orientation() const {
+	const int orientation = godot_io_java->get_screen_orientation();
+	return OS::ScreenOrientation(orientation);
 }
 
 String OS_Android::get_unique_id() const {

@@ -713,15 +713,18 @@ void EditorNode::_fs_changed() {
 					preset_name);
 		} else {
 			Ref<EditorExportPlatform> platform = preset->get_platform();
-			if (platform.is_null()) {
+			const String export_path = export_defer.path.empty() ? preset->get_export_path() : export_defer.path;
+			if (export_path.empty()) {
+				export_error = vformat("Export preset '%s' doesn't have a default export path, and none was specified.", preset_name);
+			} else if (platform.is_null()) {
 				export_error = vformat("Export preset '%s' doesn't have a matching platform.", preset_name);
 			} else {
 				Error err = OK;
 				if (export_defer.pack_only) { // Only export .pck or .zip data pack.
-					if (export_defer.path.ends_with(".zip")) {
-						err = platform->export_zip(preset, export_defer.debug, export_defer.path);
-					} else if (export_defer.path.ends_with(".pck")) {
-						err = platform->export_pack(preset, export_defer.debug, export_defer.path);
+					if (export_path.ends_with(".zip")) {
+						err = platform->export_zip(preset, export_defer.debug, export_path);
+					} else if (export_path.ends_with(".pck")) {
+						err = platform->export_pack(preset, export_defer.debug, export_path);
 					}
 				} else { // Normal project export.
 					String config_error;
@@ -730,7 +733,7 @@ void EditorNode::_fs_changed() {
 						ERR_PRINT(vformat("Cannot export project with preset '%s' due to configuration errors:\n%s", preset_name, config_error));
 						err = missing_templates ? ERR_FILE_NOT_FOUND : ERR_UNCONFIGURED;
 					} else {
-						err = platform->export_project(preset, export_defer.debug, export_defer.path);
+						err = platform->export_project(preset, export_defer.debug, export_path);
 					}
 				}
 				switch (err) {
@@ -740,7 +743,7 @@ void EditorNode::_fs_changed() {
 						export_error = vformat("Project export failed for preset '%s', the export template appears to be missing.", preset_name);
 						break;
 					case ERR_FILE_BAD_PATH:
-						export_error = vformat("Project export failed for preset '%s', the target path '%s' appears to be invalid.", preset_name, export_defer.path);
+						export_error = vformat("Project export failed for preset '%s', the target path '%s' appears to be invalid.", preset_name, export_path);
 						break;
 					default:
 						export_error = vformat("Project export failed with error code %d for preset '%s'.", (int)err, preset_name);
@@ -1679,7 +1682,7 @@ void EditorNode::_dialog_action(String p_file) {
 			if (err == ERR_FILE_CANT_OPEN || err == ERR_FILE_NOT_FOUND) {
 				config.instance(); // new config
 			} else if (err != OK) {
-				show_warning(TTR("Error trying to save layout!"));
+				show_warning(TTR("An error occurred while trying to save the editor layout.\nMake sure the editor's user data path is writable."));
 				return;
 			}
 
@@ -1691,7 +1694,7 @@ void EditorNode::_dialog_action(String p_file) {
 			_update_layouts_menu();
 
 			if (p_file == "Default") {
-				show_warning(TTR("Default editor layout overridden."));
+				show_warning(TTR("Default editor layout overridden.\nTo restore the Default layout to its base settings, use the Delete Layout option and delete the Default layout."));
 			}
 
 		} break;
@@ -1722,7 +1725,7 @@ void EditorNode::_dialog_action(String p_file) {
 			_update_layouts_menu();
 
 			if (p_file == "Default") {
-				show_warning(TTR("Restored default layout to base settings."));
+				show_warning(TTR("Restored the Default layout to its base settings."));
 			}
 
 		} break;
@@ -5762,46 +5765,51 @@ EditorNode::EditorNode() {
 
 	{
 		int display_scale = EditorSettings::get_singleton()->get("interface/editor/display_scale");
-		float custom_display_scale = EditorSettings::get_singleton()->get("interface/editor/custom_display_scale");
 
 		switch (display_scale) {
 			case 0: {
-				// Try applying a suitable display scale automatically
+				// Try applying a suitable display scale automatically.
 #ifdef OSX_ENABLED
 				editor_set_scale(OS::get_singleton()->get_screen_max_scale());
 #else
 				const int screen = OS::get_singleton()->get_current_screen();
-				editor_set_scale(OS::get_singleton()->get_screen_dpi(screen) >= 192 && OS::get_singleton()->get_screen_size(screen).x > 2000 ? 2.0 : 1.0);
+				float scale;
+				if (OS::get_singleton()->get_screen_dpi(screen) >= 192 && OS::get_singleton()->get_screen_size(screen).y >= 1400) {
+					// hiDPI display.
+					scale = 2.0;
+				} else if (OS::get_singleton()->get_screen_size(screen).y <= 800) {
+					// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
+					// Icons won't look great, but this is better than having editor elements overflow from its window.
+					scale = 0.75;
+				} else {
+					scale = 1.0;
+				}
+
+				editor_set_scale(scale);
 #endif
 			} break;
 
-			case 1: {
+			case 1:
 				editor_set_scale(0.75);
-			} break;
-
-			case 2: {
+				break;
+			case 2:
 				editor_set_scale(1.0);
-			} break;
-
-			case 3: {
+				break;
+			case 3:
 				editor_set_scale(1.25);
-			} break;
-
-			case 4: {
+				break;
+			case 4:
 				editor_set_scale(1.5);
-			} break;
-
-			case 5: {
+				break;
+			case 5:
 				editor_set_scale(1.75);
-			} break;
-
-			case 6: {
+				break;
+			case 6:
 				editor_set_scale(2.0);
-			} break;
-
-			default: {
-				editor_set_scale(custom_display_scale);
-			} break;
+				break;
+			default:
+				editor_set_scale(EditorSettings::get_singleton()->get("interface/editor/custom_display_scale"));
+				break;
 		}
 	}
 
@@ -6973,14 +6981,16 @@ EditorNode::EditorNode() {
 	ED_SHORTCUT("editor/editor_2d", TTR("Open 2D Editor"), KEY_MASK_ALT | KEY_1);
 	ED_SHORTCUT("editor/editor_3d", TTR("Open 3D Editor"), KEY_MASK_ALT | KEY_2);
 	ED_SHORTCUT("editor/editor_script", TTR("Open Script Editor"), KEY_MASK_ALT | KEY_3);
+	ED_SHORTCUT("editor/editor_assetlib", TTR("Open Asset Library"), KEY_MASK_ALT | KEY_4);
 	ED_SHORTCUT("editor/editor_help", TTR("Search Help"), KEY_MASK_ALT | KEY_SPACE);
 #else
-	ED_SHORTCUT("editor/editor_2d", TTR("Open 2D Editor"), KEY_F1);
-	ED_SHORTCUT("editor/editor_3d", TTR("Open 3D Editor"), KEY_F2);
-	ED_SHORTCUT("editor/editor_script", TTR("Open Script Editor"), KEY_F3); //hack needed for script editor F3 search to work :) Assign like this or don't use F3
-	ED_SHORTCUT("editor/editor_help", TTR("Search Help"), KEY_MASK_SHIFT | KEY_F1);
+	// Use the Ctrl modifier so F2 can be used to rename nodes in the scene tree dock.
+	ED_SHORTCUT("editor/editor_2d", TTR("Open 2D Editor"), KEY_MASK_CTRL | KEY_F1);
+	ED_SHORTCUT("editor/editor_3d", TTR("Open 3D Editor"), KEY_MASK_CTRL | KEY_F2);
+	ED_SHORTCUT("editor/editor_script", TTR("Open Script Editor"), KEY_MASK_CTRL | KEY_F3);
+	ED_SHORTCUT("editor/editor_assetlib", TTR("Open Asset Library"), KEY_MASK_CTRL | KEY_F4);
+	ED_SHORTCUT("editor/editor_help", TTR("Search Help"), KEY_F1);
 #endif
-	ED_SHORTCUT("editor/editor_assetlib", TTR("Open Asset Library"));
 	ED_SHORTCUT("editor/editor_next", TTR("Open the next Editor"));
 	ED_SHORTCUT("editor/editor_prev", TTR("Open the previous Editor"));
 

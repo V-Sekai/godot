@@ -36,17 +36,14 @@
 #include "platform/javascript/logo.gen.h"
 #include "platform/javascript/run_icon.gen.h"
 
-#define EXPORT_TEMPLATE_WEBASSEMBLY_RELEASE "webassembly_release.zip"
-#define EXPORT_TEMPLATE_WEBASSEMBLY_DEBUG "webassembly_debug.zip"
-
 class EditorHTTPServer : public Reference {
 
 private:
 	Ref<TCP_Server> server;
 	Ref<StreamPeerTCP> connection;
-	uint64_t time;
+	uint64_t time = 0;
 	uint8_t req_buf[4096];
-	int req_pos;
+	int req_pos = 0;
 
 	void _clear_client() {
 		connection = Ref<StreamPeerTCP>();
@@ -85,33 +82,44 @@ public:
 		// Wrong protocol
 		ERR_FAIL_COND_MSG(req[0] != "GET" || req[2] != "HTTP/1.1", "Invalid method or HTTP version.");
 
-		String filepath = EditorSettings::get_singleton()->get_cache_dir().plus_file("tmp_js_export");
+		const String cache_path = EditorSettings::get_singleton()->get_cache_dir();
 		const String basereq = "/tmp_js_export";
-		String ctype = "";
+		String filepath;
+		String ctype;
 		if (req[1] == basereq + ".html") {
-			filepath += ".html";
+			filepath = cache_path.plus_file(req[1].get_file());
 			ctype = "text/html";
 		} else if (req[1] == basereq + ".js") {
-			filepath += ".js";
+			filepath = cache_path.plus_file(req[1].get_file());
+			ctype = "application/javascript";
+		} else if (req[1] == basereq + ".audio.worklet.js") {
+			filepath = cache_path.plus_file(req[1].get_file());
 			ctype = "application/javascript";
 		} else if (req[1] == basereq + ".worker.js") {
-			filepath += ".worker.js";
+			filepath = cache_path.plus_file(req[1].get_file());
 			ctype = "application/javascript";
 		} else if (req[1] == basereq + ".pck") {
-			filepath += ".pck";
+			filepath = cache_path.plus_file(req[1].get_file());
 			ctype = "application/octet-stream";
 		} else if (req[1] == basereq + ".png" || req[1] == "/favicon.png") {
 			// Also allow serving the generated favicon for a smoother loading experience.
 			if (req[1] == "/favicon.png") {
 				filepath = EditorSettings::get_singleton()->get_cache_dir().plus_file("favicon.png");
 			} else {
-				filepath += ".png";
+				filepath = basereq + ".png";
 			}
 			ctype = "image/png";
-		} else if (req[1] == basereq + ".wasm") {
-			filepath += ".wasm";
+		} else if (req[1] == basereq + ".side.wasm") {
+			filepath = cache_path.plus_file(req[1].get_file());
 			ctype = "application/wasm";
-		} else {
+		} else if (req[1] == basereq + ".wasm") {
+			filepath = cache_path.plus_file(req[1].get_file());
+			ctype = "application/wasm";
+		} else if (req[1].ends_with(".wasm")) {
+			filepath = cache_path.plus_file(req[1].get_file()); // TODO dangerous?
+			ctype = "application/wasm";
+		}
+		if (filepath.empty() || !FileAccess::exists(filepath)) {
 			String s = "HTTP/1.1 404 Not Found\r\n";
 			s += "Connection: Close\r\n";
 			s += "\r\n";
@@ -199,15 +207,40 @@ class EditorExportPlatformJavaScript : public EditorExportPlatform {
 	Ref<ImageTexture> logo;
 	Ref<ImageTexture> run_icon;
 	Ref<ImageTexture> stop_icon;
-	int menu_options;
+	int menu_options = 0;
 
-	void _fix_html(Vector<uint8_t> &p_html, const Ref<EditorExportPreset> &p_preset, const String &p_name, bool p_debug);
-
-private:
 	Ref<EditorHTTPServer> server;
-	bool server_quit;
-	Mutex *server_lock;
-	Thread *server_thread;
+	bool server_quit = false;
+	Mutex *server_lock = NULL;
+	Thread *server_thread = NULL;
+
+	enum ExportMode {
+		EXPORT_MODE_NORMAL = 0,
+		EXPORT_MODE_THREADS = 1,
+		EXPORT_MODE_GDNATIVE = 2,
+	};
+
+	String _get_template_name(ExportMode p_mode, bool p_debug) const {
+		String name = "webassembly";
+		switch (p_mode) {
+			case EXPORT_MODE_THREADS:
+				name += "_threads";
+				break;
+			case EXPORT_MODE_GDNATIVE:
+				name += "_gdnative";
+				break;
+			default:
+				break;
+		}
+		if (p_debug) {
+			name += "_debug.zip";
+		} else {
+			name += "_release.zip";
+		}
+		return name;
+	}
+
+	void _fix_html(Vector<uint8_t> &p_html, const Ref<EditorExportPreset> &p_preset, const String &p_name, bool p_debug, const Vector<SharedObject> p_shared_objects);
 
 	static void _server_thread_poll(void *data);
 
@@ -245,11 +278,15 @@ public:
 	~EditorExportPlatformJavaScript();
 };
 
-void EditorExportPlatformJavaScript::_fix_html(Vector<uint8_t> &p_html, const Ref<EditorExportPreset> &p_preset, const String &p_name, bool p_debug) {
+void EditorExportPlatformJavaScript::_fix_html(Vector<uint8_t> &p_html, const Ref<EditorExportPreset> &p_preset, const String &p_name, bool p_debug, const Vector<SharedObject> p_shared_objects) {
 
 	String str_template = String::utf8(reinterpret_cast<const char *>(p_html.ptr()), p_html.size());
 	String str_export;
 	Vector<String> lines = str_template.split("\n");
+	String libs;
+	for (int i = 0; i < p_shared_objects.size(); i++) {
+		libs += "\"" + p_shared_objects[i].path.get_file() + "\",";
+	}
 
 	for (int i = 0; i < lines.size(); i++) {
 
@@ -258,6 +295,7 @@ void EditorExportPlatformJavaScript::_fix_html(Vector<uint8_t> &p_html, const Re
 		current_line = current_line.replace("$GODOT_PROJECT_NAME", ProjectSettings::get_singleton()->get_setting("application/config/name"));
 		current_line = current_line.replace("$GODOT_HEAD_INCLUDE", p_preset->get("html/head_include"));
 		current_line = current_line.replace("$GODOT_FULL_WINDOW", p_preset->get("html/full_window_size") ? "true" : "false");
+		current_line = current_line.replace("$GODOT_GDNATIVE_LIBS", libs);
 		current_line = current_line.replace("$GODOT_DEBUG_ENABLED", p_debug ? "true" : "false");
 		str_export += current_line + "\n";
 	}
@@ -286,17 +324,24 @@ void EditorExportPlatformJavaScript::get_preset_features(const Ref<EditorExportP
 			}
 		}
 	}
+	ExportMode mode = (ExportMode)(int)p_preset->get("variant/export_type");
+	if (mode == EXPORT_MODE_THREADS) {
+		r_features->push_back("threads");
+	} else if (mode == EXPORT_MODE_GDNATIVE) {
+		r_features->push_back("wasm32");
+	}
 }
 
 void EditorExportPlatformJavaScript::get_export_options(List<ExportOption> *r_options) {
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 
+	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "variant/export_type", PROPERTY_HINT_ENUM, "Regular,Threads,GDNative"), 0)); // Export type.
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_desktop"), true)); // S3TC
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_mobile"), false)); // ETC or ETC2, depending on renderer
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "html/custom_html_shell", PROPERTY_HINT_FILE, "*.html"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "html/head_include", PROPERTY_HINT_MULTILINE_TEXT), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "html/full_window_size"), true));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 }
 
 String EditorExportPlatformJavaScript::get_name() const {
@@ -318,11 +363,11 @@ bool EditorExportPlatformJavaScript::can_export(const Ref<EditorExportPreset> &p
 
 	String err;
 	bool valid = false;
+	ExportMode mode = (ExportMode)(int)p_preset->get("variant/export_type");
 
 	// Look for export templates (first official, and if defined custom templates).
-
-	bool dvalid = exists_export_template(EXPORT_TEMPLATE_WEBASSEMBLY_DEBUG, &err);
-	bool rvalid = exists_export_template(EXPORT_TEMPLATE_WEBASSEMBLY_RELEASE, &err);
+	bool dvalid = exists_export_template(_get_template_name(mode, true), &err);
+	bool rvalid = exists_export_template(_get_template_name(mode, false), &err);
 
 	if (p_preset->get("custom_template/debug") != "") {
 		dvalid = FileAccess::exists(p_preset->get("custom_template/debug"));
@@ -376,10 +421,8 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 
 	if (template_path == String()) {
 
-		if (p_debug)
-			template_path = find_export_template(EXPORT_TEMPLATE_WEBASSEMBLY_DEBUG);
-		else
-			template_path = find_export_template(EXPORT_TEMPLATE_WEBASSEMBLY_RELEASE);
+		ExportMode mode = (ExportMode)(int)p_preset->get("variant/export_type");
+		template_path = find_export_template(_get_template_name(mode, p_debug));
 	}
 
 	if (!DirAccess::exists(p_path.get_base_dir())) {
@@ -391,12 +434,24 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 		return ERR_FILE_NOT_FOUND;
 	}
 
+	Vector<SharedObject> shared_objects;
 	String pck_path = p_path.get_basename() + ".pck";
-	Error error = save_pack(p_preset, pck_path);
+	Error error = save_pack(p_preset, pck_path, &shared_objects);
 	if (error != OK) {
 		EditorNode::get_singleton()->show_warning(TTR("Could not write file:") + "\n" + pck_path);
 		return error;
 	}
+	DirAccess *da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+	for (int i = 0; i < shared_objects.size(); i++) {
+		String dst = p_path.get_base_dir().plus_file(shared_objects[i].path.get_file());
+		error = da->copy(shared_objects[i].path, dst);
+		if (error != OK) {
+			EditorNode::get_singleton()->show_warning(TTR("Could not write file:") + "\n" + shared_objects[i].path.get_file());
+			memdelete(da);
+			return error;
+		}
+	}
+	memdelete(da);
 
 	FileAccess *src_f = NULL;
 	zlib_filefunc_def io = zipio_create_io_from_file(&src_f);
@@ -437,7 +492,7 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 			if (!custom_html.empty()) {
 				continue;
 			}
-			_fix_html(data, p_preset, p_path.get_file().get_basename(), p_debug);
+			_fix_html(data, p_preset, p_path.get_file().get_basename(), p_debug, shared_objects);
 			file = p_path.get_file();
 
 		} else if (file == "godot.js") {
@@ -446,6 +501,14 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 		} else if (file == "godot.worker.js") {
 
 			file = p_path.get_file().get_basename() + ".worker.js";
+
+		} else if (file == "godot.side.wasm") {
+
+			file = p_path.get_file().get_basename() + ".side.wasm";
+
+		} else if (file == "godot.audio.worklet.js") {
+
+			file = p_path.get_file().get_basename() + ".audio.worklet.js";
 
 		} else if (file == "godot.wasm") {
 
@@ -476,7 +539,7 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 		buf.resize(f->get_len());
 		f->get_buffer(buf.ptrw(), buf.size());
 		memdelete(f);
-		_fix_html(buf, p_preset, p_path.get_file().get_basename(), p_debug);
+		_fix_html(buf, p_preset, p_path.get_file().get_basename(), p_debug, shared_objects);
 
 		f = FileAccess::open(p_path, FileAccess::WRITE);
 		if (!f) {
@@ -581,8 +644,10 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 		DirAccess::remove_file_or_error(basepath + ".html");
 		DirAccess::remove_file_or_error(basepath + ".js");
 		DirAccess::remove_file_or_error(basepath + ".worker.js");
+		DirAccess::remove_file_or_error(basepath + ".audio.worklet.js");
 		DirAccess::remove_file_or_error(basepath + ".pck");
 		DirAccess::remove_file_or_error(basepath + ".png");
+		DirAccess::remove_file_or_error(basepath + ".side.wasm");
 		DirAccess::remove_file_or_error(basepath + ".wasm");
 		DirAccess::remove_file_or_error(EditorSettings::get_singleton()->get_cache_dir().plus_file("favicon.png"));
 		return err;
@@ -630,7 +695,6 @@ void EditorExportPlatformJavaScript::_server_thread_poll(void *data) {
 EditorExportPlatformJavaScript::EditorExportPlatformJavaScript() {
 
 	server.instance();
-	server_quit = false;
 	server_lock = Mutex::create();
 	server_thread = Thread::create(_server_thread_poll, this);
 
@@ -647,8 +711,6 @@ EditorExportPlatformJavaScript::EditorExportPlatformJavaScript() {
 		stop_icon = theme->get_icon("Stop", "EditorIcons");
 	else
 		stop_icon.instance();
-
-	menu_options = 0;
 }
 
 EditorExportPlatformJavaScript::~EditorExportPlatformJavaScript() {

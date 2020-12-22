@@ -644,6 +644,10 @@ public:
 		return type;
 	}
 
+	bool IsEmbedded() const {
+		return contentLength > 0;
+	}
+
 	const std::string &FileName() const {
 		return fileName;
 	}
@@ -1192,6 +1196,10 @@ public:
 		return globals.get();
 	}
 
+	const PropertyTable *GetMetadataProperties() const {
+		return metadata_properties;
+	}
+
 	const PropertyTemplateMap &Templates() const {
 		return templates;
 	}
@@ -1285,6 +1293,7 @@ private:
 	std::vector<uint64_t> materials;
 	std::vector<uint64_t> skins;
 	mutable std::vector<const AnimationStack *> animationStacksResolved;
+	PropertyTable *metadata_properties = nullptr;
 	std::shared_ptr<FileGlobalSettings> globals = nullptr;
 };
 

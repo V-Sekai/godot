@@ -1491,7 +1491,7 @@ bool CanvasItemEditor::_gui_input_rotate(const Ref<InputEvent> &p_event) {
 	// Start rotation
 	if (drag_type == DRAG_NONE) {
 		if (b.is_valid() && b->get_button_index() == BUTTON_LEFT && b->is_pressed()) {
-			if ((b->get_control() && !b->get_alt() && tool == TOOL_SELECT) || tool == TOOL_ROTATE) {
+			if ((b->get_command() && !b->get_alt() && tool == TOOL_SELECT) || tool == TOOL_ROTATE) {
 				List<CanvasItem *> selection = _get_edited_canvas_items();
 
 				// Remove not movable nodes
@@ -2268,12 +2268,12 @@ bool CanvasItemEditor::_gui_input_move(const Ref<InputEvent> &p_event) {
 				(!Input::get_singleton()->is_key_pressed(KEY_DOWN)) &&
 				(!Input::get_singleton()->is_key_pressed(KEY_LEFT)) &&
 				(!Input::get_singleton()->is_key_pressed(KEY_RIGHT))) {
-			if (drag_selection.size() != 1) {
+			if (drag_selection.size() > 1) {
 				_commit_canvas_item_state(
 						drag_selection,
 						vformat(TTR("Move %d CanvasItems"), drag_selection.size()),
 						true);
-			} else {
+			} else if (drag_selection.size() == 1) {
 				_commit_canvas_item_state(
 						drag_selection,
 						vformat(TTR("Move CanvasItem \"%s\" to (%d, %d)"),

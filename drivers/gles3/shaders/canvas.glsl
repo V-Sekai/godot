@@ -66,7 +66,7 @@ out mediump vec4 color_interp;
 
 #ifdef USE_ATTRIB_MODULATE
 // modulate doesn't need interpolating but we need to send it to the fragment shader
-out mediump vec4 modulate_interp;
+flat out mediump vec4 modulate_interp;
 #endif
 
 #ifdef MODULATE_USED
@@ -332,7 +332,7 @@ in highp vec2 uv_interp;
 in mediump vec4 color_interp;
 
 #ifdef USE_ATTRIB_MODULATE
-in mediump vec4 modulate_interp;
+flat in mediump vec4 modulate_interp;
 #endif
 
 #if defined(SCREEN_TEXTURE_USED)
@@ -549,7 +549,7 @@ void main() {
 
 	if (use_default_normal) {
 		normal.xy = textureLod(normal_texture, uv, 0.0).xy * 2.0 - 1.0;
-		normal.z = sqrt(1.0 - dot(normal.xy, normal.xy));
+		normal.z = sqrt(max(0.0, 1.0 - dot(normal.xy, normal.xy)));
 		normal_used = true;
 	} else {
 		normal = vec3(0.0, 0.0, 1.0);
@@ -582,13 +582,12 @@ FRAGMENT_SHADER_CODE
 	color = vec4(vec3(enc32), 1.0);
 #endif
 
+#ifdef USE_ATTRIB_MODULATE
+	color *= modulate_interp;
+#else
 #if !defined(MODULATE_USED)
 	color *= final_modulate;
 #endif
-
-#ifdef USE_ATTRIB_MODULATE
-	// todo .. this won't be used at the same time as MODULATE_USED
-	color *= modulate_interp;
 #endif
 
 #ifdef USE_LIGHTING
