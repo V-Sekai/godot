@@ -1150,7 +1150,7 @@ void SceneTree::_update_root_rect() {
 	float video_mode_aspect = video_mode.aspect();
 
 	if (use_font_oversampling && stretch_aspect == STRETCH_ASPECT_IGNORE) {
-		WARN_PRINT("Font oversampling only works with the resize modes 'Keep Width', 'Keep Height', and 'Expand'.");
+		WARN_PRINT("Font oversampling only works with the stretch modes \"Keep Width\", \"Keep Height\" and \"Expand\", not \"Ignore\". To remove this warning, disable Rendering > Quality > Dynamic Fonts > Use Oversampling in the Project Settings.");
 	}
 
 	if (stretch_aspect == STRETCH_ASPECT_IGNORE || Math::is_equal_approx(viewport_aspect, video_mode_aspect)) {
@@ -1233,7 +1233,7 @@ void SceneTree::_update_root_rect() {
 			root->update_canvas_items(); //force them to update just in case
 
 			if (use_font_oversampling) {
-				WARN_PRINT("Font oversampling does not work in 'Viewport' stretch mode, only '2D'.");
+				WARN_PRINT("Font oversampling does not work in \"Viewport\" stretch mode, only \"2D\". To remove this warning, disable Rendering > Quality > Dynamic Fonts > Use Oversampling in the Project Settings.");
 			}
 
 		} break;
@@ -2071,15 +2071,21 @@ SceneTree::SceneTree() {
 	root->set_as_audio_listener_2d(true);
 	current_scene = NULL;
 
-	int ref_atlas_size = GLOBAL_DEF("rendering/quality/reflections/atlas_size", 2048);
+	int ref_atlas_size = GLOBAL_DEF_RST("rendering/quality/reflections/atlas_size", 2048);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/reflections/atlas_size", PropertyInfo(Variant::INT, "rendering/quality/reflections/atlas_size", PROPERTY_HINT_RANGE, "0,8192,or_greater")); //next_power_of_2 will return a 0 as min value
-	int ref_atlas_subdiv = GLOBAL_DEF("rendering/quality/reflections/atlas_subdiv", 8);
+	int ref_atlas_subdiv = GLOBAL_DEF_RST("rendering/quality/reflections/atlas_subdiv", 8);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/reflections/atlas_subdiv", PropertyInfo(Variant::INT, "rendering/quality/reflections/atlas_subdiv", PROPERTY_HINT_RANGE, "0,32,or_greater")); //next_power_of_2 will return a 0 as min value
 	int msaa_mode = GLOBAL_DEF("rendering/quality/filters/msaa", 0);
 	ProjectSettings::get_singleton()->set_custom_property_info("rendering/quality/filters/msaa", PropertyInfo(Variant::INT, "rendering/quality/filters/msaa", PROPERTY_HINT_ENUM, "Disabled,2x,4x,8x,16x,AndroidVR 2x,AndroidVR 4x"));
 	root->set_msaa(Viewport::MSAA(msaa_mode));
 
-	GLOBAL_DEF("rendering/quality/depth/hdr", true);
+	const bool use_fxaa = GLOBAL_DEF("rendering/quality/filters/use_fxaa", false);
+	root->set_use_fxaa(use_fxaa);
+
+	const bool use_debanding = GLOBAL_DEF("rendering/quality/filters/use_debanding", false);
+	root->set_use_debanding(use_debanding);
+
+	GLOBAL_DEF_RST("rendering/quality/depth/hdr", true);
 	GLOBAL_DEF("rendering/quality/depth/hdr.mobile", false);
 
 	bool hdr = GLOBAL_GET("rendering/quality/depth/hdr");

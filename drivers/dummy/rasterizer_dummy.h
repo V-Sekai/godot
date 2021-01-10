@@ -264,7 +264,7 @@ public:
 
 	void shader_add_custom_define(RID p_shader, const String &p_define) {}
 	void shader_get_custom_defines(RID p_shader, Vector<String> *p_defines) const {}
-	void shader_clear_custom_defines(RID p_shader) {}
+	void shader_remove_custom_define(RID p_shader, const String &p_define) {}
 
 	/* COMMON MATERIAL API */
 
@@ -491,6 +491,7 @@ public:
 	void light_set_cull_mask(RID p_light, uint32_t p_mask) {}
 	void light_set_reverse_cull_face_mode(RID p_light, bool p_enabled) {}
 	void light_set_use_gi(RID p_light, bool p_enabled) {}
+	void light_set_bake_mode(RID p_light, VS::LightBakeMode p_bake_mode) {}
 
 	void light_omni_set_shadow_mode(RID p_light, VS::LightOmniShadowMode p_mode) {}
 	void light_omni_set_shadow_detail(RID p_light, VS::LightOmniShadowDetail p_detail) {}
@@ -511,6 +512,7 @@ public:
 	float light_get_param(RID p_light, VS::LightParam p_param) { return 0.0; }
 	Color light_get_color(RID p_light) { return Color(); }
 	bool light_get_use_gi(RID p_light) { return false; }
+	VS::LightBakeMode light_get_bake_mode(RID p_light) { return VS::LightBakeMode::LIGHT_BAKE_DISABLED; }
 	uint64_t light_get_version(RID p_light) const { return 0; }
 
 	/* PROBE API */
@@ -706,6 +708,8 @@ public:
 	bool render_target_was_used(RID p_render_target) { return false; }
 	void render_target_clear_used(RID p_render_target) {}
 	void render_target_set_msaa(RID p_render_target, VS::ViewportMSAA p_msaa) {}
+	void render_target_set_use_fxaa(RID p_render_target, bool p_fxaa) {}
+	void render_target_set_use_debanding(RID p_render_target, bool p_debanding) {}
 
 	/* CANVAS SHADOW */
 
@@ -719,6 +723,8 @@ public:
 	VS::InstanceType get_base_type(RID p_rid) const {
 		if (mesh_owner.owns(p_rid)) {
 			return VS::INSTANCE_MESH;
+		} else if (lightmap_capture_data_owner.owns(p_rid)) {
+			return VS::INSTANCE_LIGHTMAP_CAPTURE;
 		}
 
 		return VS::INSTANCE_NONE;
@@ -826,6 +832,8 @@ public:
 	}
 
 	virtual bool is_low_end() const { return true; }
+
+	virtual const char *gl_check_for_error(bool p_print_error = true) { return nullptr; }
 
 	RasterizerDummy() {}
 	~RasterizerDummy() {}

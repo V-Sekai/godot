@@ -3,7 +3,10 @@ import re
 import glob
 import subprocess
 from collections import OrderedDict
-from compat import iteritems, isbasestring, decode_utf8, qualname
+from compat import iteritems, isbasestring, open_utf8, decode_utf8, qualname
+
+from SCons import Node
+from SCons.Script import Glob
 
 
 def add_source_files(self, sources, files, warn_duplicates=True):
@@ -86,7 +89,7 @@ def update_version(module_version_string=""):
             gitfolder = module_folder[8:]
 
     if os.path.isfile(os.path.join(gitfolder, "HEAD")):
-        head = open(os.path.join(gitfolder, "HEAD"), "r", encoding="utf8").readline().strip()
+        head = open_utf8(os.path.join(gitfolder, "HEAD"), "r").readline().strip()
         if head.startswith("ref: "):
             head = os.path.join(gitfolder, head[5:])
             if os.path.isfile(head):
@@ -564,6 +567,35 @@ def generate_cpp_hint_file(filename):
             print("Could not write cpp.hint file.")
 
 
+def glob_recursive(pattern, node="."):
+    results = []
+    for f in Glob(str(node) + "/*", source=True):
+        if type(f) is Node.FS.Dir:
+            results += glob_recursive(pattern, f)
+    results += Glob(str(node) + "/" + pattern, source=True)
+    return results
+
+
+def add_to_vs_project(env, sources):
+    for x in sources:
+        if type(x) == type(""):
+            fname = env.File(x).path
+        else:
+            fname = env.File(x)[0].path
+        pieces = fname.split(".")
+        if len(pieces) > 0:
+            basename = pieces[0]
+            basename = basename.replace("\\\\", "/")
+            if os.path.isfile(basename + ".h"):
+                env.vs_incs += [basename + ".h"]
+            elif os.path.isfile(basename + ".hpp"):
+                env.vs_incs += [basename + ".hpp"]
+            if os.path.isfile(basename + ".c"):
+                env.vs_srcs += [basename + ".c"]
+            elif os.path.isfile(basename + ".cpp"):
+                env.vs_srcs += [basename + ".cpp"]
+
+
 def generate_vs_project(env, num_jobs):
     batch_file = find_visual_c_batch_file(env)
     if batch_file:
@@ -572,37 +604,44 @@ def generate_vs_project(env, num_jobs):
             common_build_prefix = [
                 'cmd /V /C set "plat=$(PlatformTarget)"',
                 '(if "$(PlatformTarget)"=="x64" (set "plat=x86_amd64"))',
-                'set "tools=yes"',
+                'set "tools=%s"' % env["tools"],
                 '(if "$(Configuration)"=="release" (set "tools=no"))',
                 'call "' + batch_file + '" !plat!',
             ]
 
-            result = " ^& ".join(common_build_prefix + [commands])
+            # windows allows us to have spaces in paths, so we need
+            # to double quote off the directory. However, the path ends
+            # in a backslash, so we need to remove this, lest it escape the
+            # last double quote off, confusing MSBuild
+            common_build_postfix = [
+                "--directory=\"$(ProjectDir.TrimEnd('\\'))\"",
+                "platform=windows",
+                "target=$(Configuration)",
+                "progress=no",
+                "tools=!tools!",
+                "-j%s" % num_jobs,
+            ]
+
+            if env["custom_modules"]:
+                common_build_postfix.append("custom_modules=%s" % env["custom_modules"])
+
+            result = " ^& ".join(common_build_prefix + [" ".join([commands] + common_build_postfix)])
             return result
 
-        env.AddToVSProject(env.core_sources)
-        env.AddToVSProject(env.main_sources)
-        env.AddToVSProject(env.modules_sources)
-        env.AddToVSProject(env.scene_sources)
-        env.AddToVSProject(env.servers_sources)
-        env.AddToVSProject(env.editor_sources)
+        add_to_vs_project(env, env.core_sources)
+        add_to_vs_project(env, env.drivers_sources)
+        add_to_vs_project(env, env.main_sources)
+        add_to_vs_project(env, env.modules_sources)
+        add_to_vs_project(env, env.scene_sources)
+        add_to_vs_project(env, env.servers_sources)
+        add_to_vs_project(env, env.editor_sources)
 
-        # windows allows us to have spaces in paths, so we need
-        # to double quote off the directory. However, the path ends
-        # in a backslash, so we need to remove this, lest it escape the
-        # last double quote off, confusing MSBuild
-        env["MSVSBUILDCOM"] = build_commandline(
-            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" platform=windows progress=no target=$(Configuration) tools=!tools! -j"
-            + str(num_jobs)
-        )
-        env["MSVSREBUILDCOM"] = build_commandline(
-            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" platform=windows progress=no target=$(Configuration) tools=!tools! vsproj=yes -j"
-            + str(num_jobs)
-        )
-        env["MSVSCLEANCOM"] = build_commandline(
-            "scons --directory=\"$(ProjectDir.TrimEnd('\\'))\" --clean platform=windows progress=no target=$(Configuration) tools=!tools! -j"
-            + str(num_jobs)
-        )
+        for header in glob_recursive("**/*.h"):
+            env.vs_incs.append(str(header))
+
+        env["MSVSBUILDCOM"] = build_commandline("scons")
+        env["MSVSREBUILDCOM"] = build_commandline("scons vsproj=yes")
+        env["MSVSCLEANCOM"] = build_commandline("scons --clean")
 
         # This version information (Win32, x64, Debug, Release, Release_Debug seems to be
         # required for Visual Studio to understand that it needs to generate an NMAKE
@@ -661,6 +700,24 @@ def CommandNoCache(env, target, sources, command, **args):
     result = env.Command(target, sources, command, **args)
     env.NoCache(result)
     return result
+
+
+def get_darwin_sdk_version(platform):
+    sdk_name = ""
+    if platform == "osx":
+        sdk_name = "macosx"
+    elif platform == "iphone":
+        sdk_name = "iphoneos"
+    elif platform == "iphonesimulator":
+        sdk_name = "iphonesimulator"
+    else:
+        raise Exception("Invalid platform argument passed to get_darwin_sdk_version")
+
+    try:
+        return float(decode_utf8(subprocess.check_output(["xcrun", "--sdk", sdk_name, "--show-sdk-version"]).strip()))
+    except (subprocess.CalledProcessError, OSError):
+        print("Failed to find SDK version while running xcrun --sdk {} --show-sdk-version.".format(sdk_name))
+        return 0.0
 
 
 def detect_darwin_sdk_path(platform, env):
@@ -828,7 +885,7 @@ def show_progress(env):
     try:
         with open(node_count_data["fname"]) as f:
             node_count_data["max"] = int(f.readline())
-    except:
+    except Exception:
         pass
 
     cache_directory = os.environ.get("SCONS_CACHE")

@@ -90,6 +90,7 @@ public:
 	virtual RES get_edited_resource() const = 0;
 	virtual Vector<String> get_functions() = 0;
 	virtual void set_edited_resource(const RES &p_res) = 0;
+	virtual void enable_editor() = 0;
 	virtual void reload_text() = 0;
 	virtual String get_name() = 0;
 	virtual Ref<Texture> get_icon() = 0;
@@ -159,8 +160,7 @@ class ScriptEditor : public PanelContainer {
 		DEBUG_STEP,
 		DEBUG_BREAK,
 		DEBUG_CONTINUE,
-		DEBUG_SHOW,
-		DEBUG_SHOW_KEEP_OPEN,
+		DEBUG_KEEP_DEBUGGER_OPEN,
 		DEBUG_WITH_EXTERNAL_EDITOR,
 		SEARCH_IN_FILES,
 		SEARCH_HELP,
@@ -269,6 +269,7 @@ class ScriptEditor : public PanelContainer {
 
 	void _tab_changed(int p_which);
 	void _menu_option(int p_option);
+	void _update_debug_options();
 	void _theme_option(int p_option);
 	void _show_save_theme_as_dialog();
 

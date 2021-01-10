@@ -99,7 +99,7 @@ void Sprite::_get_rects(Rect2 &r_src_rect, Rect2 &r_dst_rect, bool &r_filter_cli
 	Point2 dest_offset = offset;
 	if (centered)
 		dest_offset -= frame_size / 2;
-	if (Engine::get_singleton()->get_use_pixel_snap()) {
+	if (Engine::get_singleton()->get_snap_2d_transforms()) {
 		dest_offset = dest_offset.floor();
 	}
 
@@ -378,6 +378,9 @@ Rect2 Sprite::get_rect() const {
 	Point2 ofs = offset;
 	if (centered)
 		ofs -= Size2(s) / 2;
+	if (Engine::get_singleton()->get_snap_2d_transforms()) {
+		ofs = ofs.floor();
+	}
 
 	if (s == Size2(0, 0))
 		s = Size2(1, 1);
@@ -465,8 +468,8 @@ void Sprite::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_h"), "set_flip_h", "is_flipped_h");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "flip_v"), "set_flip_v", "is_flipped_v");
 	ADD_GROUP("Animation", "");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "vframes", PROPERTY_HINT_RANGE, "1,16384,1"), "set_vframes", "get_vframes");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "hframes", PROPERTY_HINT_RANGE, "1,16384,1"), "set_hframes", "get_hframes");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "vframes", PROPERTY_HINT_RANGE, "1,16384,1"), "set_vframes", "get_vframes");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "frame"), "set_frame", "get_frame");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "frame_coords", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_frame_coords", "get_frame_coords");
 

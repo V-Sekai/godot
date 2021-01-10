@@ -169,6 +169,11 @@ ViewportTexture::~ViewportTexture() {
 
 /////////////////////////////////////
 
+// Aliases used to provide custom styles to tooltips in the default
+// theme and editor theme.
+// TooltipPanel is also used for custom tooltips, while TooltipLabel
+// is only relevant for default tooltips.
+
 class TooltipPanel : public PanelContainer {
 
 	GDCLASS(TooltipPanel, PanelContainer);
@@ -185,6 +190,8 @@ public:
 	TooltipLabel(){};
 };
 
+/////////////////////////////////////
+
 Viewport::GUI::GUI() {
 
 	dragging = false;
@@ -194,7 +201,7 @@ Viewport::GUI::GUI() {
 	key_focus = NULL;
 	mouse_over = NULL;
 
-	tooltip = NULL;
+	tooltip_control = NULL;
 	tooltip_popup = NULL;
 	tooltip_label = NULL;
 	subwindow_visibility_dirty = false;
@@ -1528,7 +1535,7 @@ void Viewport::_gui_sort_roots() {
 
 void Viewport::_gui_cancel_tooltip() {
 
-	gui.tooltip = NULL;
+	gui.tooltip_control = NULL;
 	gui.tooltip_timer = -1;
 	if (gui.tooltip_popup) {
 		gui.tooltip_popup->queue_delete();
@@ -1537,7 +1544,7 @@ void Viewport::_gui_cancel_tooltip() {
 	}
 }
 
-String Viewport::_gui_get_tooltip(Control *p_control, const Vector2 &p_pos, Control **r_which) {
+String Viewport::_gui_get_tooltip(Control *p_control, const Vector2 &p_pos, Control **r_tooltip_owner) {
 
 	Vector2 pos = p_pos;
 	String tooltip;
@@ -1546,18 +1553,24 @@ String Viewport::_gui_get_tooltip(Control *p_control, const Vector2 &p_pos, Cont
 
 		tooltip = p_control->get_tooltip(pos);
 
-		if (r_which) {
-			*r_which = p_control;
+		if (r_tooltip_owner) {
+			*r_tooltip_owner = p_control;
 		}
 
-		if (tooltip != String())
+		// If we found a tooltip, we stop here.
+		if (!tooltip.empty()) {
 			break;
-		pos = p_control->get_transform().xform(pos);
+		}
+
+		// Otherwise, we check parent controls unless some conditions prevent it.
 
 		if (p_control->data.mouse_filter == Control::MOUSE_FILTER_STOP)
 			break;
 		if (p_control->is_set_as_toplevel())
 			break;
+
+		// Transform cursor pos for parent control.
+		pos = p_control->get_transform().xform(pos);
 
 		p_control = p_control->get_parent_control();
 	}
@@ -1567,33 +1580,39 @@ String Viewport::_gui_get_tooltip(Control *p_control, const Vector2 &p_pos, Cont
 
 void Viewport::_gui_show_tooltip() {
 
-	if (!gui.tooltip) {
+	if (!gui.tooltip_control) {
 		return;
 	}
 
-	Control *which = NULL;
-	String tooltip = _gui_get_tooltip(gui.tooltip, gui.tooltip->get_global_transform().xform_inv(gui.tooltip_pos), &which);
-	tooltip = tooltip.strip_edges();
-	if (tooltip.length() == 0)
-		return; // bye
+	// Get the Control under cursor and the relevant tooltip text, if any.
+	Control *tooltip_owner = NULL;
+	String tooltip_text = _gui_get_tooltip(
+			gui.tooltip_control,
+			gui.tooltip_control->get_global_transform().xform_inv(gui.tooltip_pos),
+			&tooltip_owner);
+	tooltip_text.strip_edges();
+	if (tooltip_text.empty()) {
+		return; // Nothing to show.
+	}
 
+	// Remove previous popup if we change something.
 	if (gui.tooltip_popup) {
 		memdelete(gui.tooltip_popup);
 		gui.tooltip_popup = NULL;
 		gui.tooltip_label = NULL;
 	}
 
-	if (!which) {
+	if (!tooltip_owner) {
 		return;
 	}
 
-	Control *rp = which;
+	// Controls can implement `make_custom_tooltip` to provide their own tooltip.
+	// This should be a Control node which will be added as child to the tooltip owner.
+	gui.tooltip_popup = tooltip_owner->make_custom_tooltip(tooltip_text);
 
-	gui.tooltip_popup = which->make_custom_tooltip(tooltip);
-
+	// If no custom tooltip is given, use a default implementation.
 	if (!gui.tooltip_popup) {
 		gui.tooltip_popup = memnew(TooltipPanel);
-
 		gui.tooltip_label = memnew(TooltipLabel);
 		gui.tooltip_popup->add_child(gui.tooltip_label);
 
@@ -1603,14 +1622,14 @@ void Viewport::_gui_show_tooltip() {
 		gui.tooltip_label->set_anchor_and_margin(MARGIN_TOP, Control::ANCHOR_BEGIN, ttp->get_margin(MARGIN_TOP));
 		gui.tooltip_label->set_anchor_and_margin(MARGIN_RIGHT, Control::ANCHOR_END, -ttp->get_margin(MARGIN_RIGHT));
 		gui.tooltip_label->set_anchor_and_margin(MARGIN_BOTTOM, Control::ANCHOR_END, -ttp->get_margin(MARGIN_BOTTOM));
-		gui.tooltip_label->set_text(tooltip);
+		gui.tooltip_label->set_text(tooltip_text);
 	}
 
-	rp->add_child(gui.tooltip_popup);
+	tooltip_owner->add_child(gui.tooltip_popup);
 	gui.tooltip_popup->force_parent_owned();
 	gui.tooltip_popup->set_as_toplevel(true);
-	if (gui.tooltip) // Avoids crash when rapidly switching controls.
-		gui.tooltip_popup->set_scale(gui.tooltip->get_global_transform().get_scale());
+	if (gui.tooltip_control) // Avoids crash when rapidly switching controls.
+		gui.tooltip_popup->set_scale(gui.tooltip_control->get_global_transform().get_scale());
 
 	Point2 tooltip_offset = ProjectSettings::get_singleton()->get("display/mouse_cursor/tooltip_position_offset");
 	Rect2 r(gui.tooltip_pos + tooltip_offset, gui.tooltip_popup->get_minimum_size());
@@ -1860,6 +1879,8 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 
 		gui.key_event_accepted = false;
 
+		Control *over = NULL;
+
 		Point2 mpos = mb->get_position();
 		if (mb->is_pressed()) {
 
@@ -2000,8 +2021,6 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 			}
 
 			_gui_cancel_tooltip();
-			//gui.tooltip_popup->hide();
-
 		} else {
 
 			if (gui.drag_data.get_type() != Variant::NIL && mb->get_button_index() == BUTTON_LEFT) {
@@ -2053,6 +2072,31 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 				_propagate_viewport_notification(this,NOTIFICATION_DRAG_END);
 				gui.drag_data=Variant(); //always clear
 			}*/
+
+			// In case the mouse was released after for example dragging a scrollbar,
+			// check whether the current control is different from the stored one. If
+			// it is different, rather than wait for it to be updated the next time the
+			// mouse is moved, notify the control so that it can e.g. drop the highlight.
+			// This code is duplicated from the mm.is_valid()-case further below.
+			if (gui.mouse_focus) {
+				over = gui.mouse_focus;
+			} else {
+				over = _gui_find_control(mpos);
+			}
+
+			if (gui.mouse_focus_mask == 0 && over != gui.mouse_over) {
+				if (gui.mouse_over) {
+					_gui_call_notification(gui.mouse_over, Control::NOTIFICATION_MOUSE_EXIT);
+				}
+
+				_gui_cancel_tooltip();
+
+				if (over) {
+					_gui_call_notification(over, Control::NOTIFICATION_MOUSE_ENTER);
+				}
+			}
+
+			gui.mouse_over = over;
 
 			set_input_as_handled();
 		}
@@ -2118,10 +2162,11 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 			}
 		}
 
+		// These sections of code are reused in the mb.is_valid() case further up
+		// for the purpose of notifying controls about potential changes in focus
+		// when the mousebutton is released.
 		if (gui.mouse_focus) {
 			over = gui.mouse_focus;
-			//recompute focus_inv_xform again here
-
 		} else {
 
 			over = _gui_find_control(mpos);
@@ -2214,8 +2259,8 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 			bool is_tooltip_shown = false;
 
 			if (gui.tooltip_popup) {
-				if (can_tooltip && gui.tooltip) {
-					String tooltip = _gui_get_tooltip(over, gui.tooltip->get_global_transform().xform_inv(mpos));
+				if (can_tooltip && gui.tooltip_control) {
+					String tooltip = _gui_get_tooltip(over, gui.tooltip_control->get_global_transform().xform_inv(mpos));
 
 					if (tooltip.length() == 0)
 						_gui_cancel_tooltip();
@@ -2232,13 +2277,11 @@ void Viewport::_gui_input_event(Ref<InputEvent> p_event) {
 
 			if (can_tooltip && !is_tooltip_shown) {
 
-				gui.tooltip = over;
-				gui.tooltip_pos = mpos; //(parent_xform * get_transform()).affine_inverse().xform(pos);
+				gui.tooltip_control = over;
+				gui.tooltip_pos = mpos;
 				gui.tooltip_timer = gui.tooltip_delay;
 			}
 		}
-
-		//pos = gui.focus_inv_xform.xform(pos);
 
 		mm->set_position(pos);
 
@@ -2605,21 +2648,11 @@ void Viewport::_gui_hid_control(Control *p_control) {
 		_drop_mouse_focus();
 	}
 
-	/* ???
-	if (data.window==p_control) {
-		window->drag_data=Variant();
-		if (window->drag_preview) {
-			memdelete( window->drag_preview);
-			window->drag_preview=NULL;
-		}
-	}
-	*/
-
 	if (gui.key_focus == p_control)
 		_gui_remove_focus();
 	if (gui.mouse_over == p_control)
 		gui.mouse_over = NULL;
-	if (gui.tooltip == p_control)
+	if (gui.tooltip_control == p_control)
 		_gui_cancel_tooltip();
 }
 
@@ -2636,8 +2669,8 @@ void Viewport::_gui_remove_control(Control *p_control) {
 		gui.key_focus = NULL;
 	if (gui.mouse_over == p_control)
 		gui.mouse_over = NULL;
-	if (gui.tooltip == p_control)
-		gui.tooltip = NULL;
+	if (gui.tooltip_control == p_control)
+		gui.tooltip_control = NULL;
 	if (gui.tooltip_popup == p_control) {
 		_gui_cancel_tooltip();
 	}
@@ -2986,10 +3019,14 @@ String Viewport::get_configuration_warning() const {
 		return TTR("This viewport is not set as render target. If you intend for it to display its contents directly to the screen, make it a child of a Control so it can obtain a size. Otherwise, make it a RenderTarget and assign its internal texture to some node for display.");
 	}*/
 
+	String warning = Node::get_configuration_warning();
+
 	if (size.x == 0 || size.y == 0) {
-		return TTR("Viewport size must be greater than 0 to render anything.");
+		if (warning != String())
+			warning += "\n\n";
+		warning += TTR("Viewport size must be greater than 0 to render anything.");
 	}
-	return String();
+	return warning;
 }
 
 void Viewport::gui_reset_canvas_sort_index() {
@@ -3012,6 +3049,34 @@ void Viewport::set_msaa(MSAA p_msaa) {
 Viewport::MSAA Viewport::get_msaa() const {
 
 	return msaa;
+}
+
+void Viewport::set_use_fxaa(bool p_fxaa) {
+
+	if (p_fxaa == use_fxaa) {
+		return;
+	}
+	use_fxaa = p_fxaa;
+	VS::get_singleton()->viewport_set_use_fxaa(viewport, use_fxaa);
+}
+
+bool Viewport::get_use_fxaa() const {
+
+	return use_fxaa;
+}
+
+void Viewport::set_use_debanding(bool p_debanding) {
+
+	if (p_debanding == use_debanding) {
+		return;
+	}
+	use_debanding = p_debanding;
+	VS::get_singleton()->viewport_set_use_debanding(viewport, use_debanding);
+}
+
+bool Viewport::get_use_debanding() const {
+
+	return use_debanding;
 }
 
 void Viewport::set_hdr(bool p_hdr) {
@@ -3149,6 +3214,12 @@ void Viewport::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_msaa", "msaa"), &Viewport::set_msaa);
 	ClassDB::bind_method(D_METHOD("get_msaa"), &Viewport::get_msaa);
 
+	ClassDB::bind_method(D_METHOD("set_use_fxaa", "enable"), &Viewport::set_use_fxaa);
+	ClassDB::bind_method(D_METHOD("get_use_fxaa"), &Viewport::get_use_fxaa);
+
+	ClassDB::bind_method(D_METHOD("set_use_debanding", "enable"), &Viewport::set_use_debanding);
+	ClassDB::bind_method(D_METHOD("get_use_debanding"), &Viewport::get_use_debanding);
+
 	ClassDB::bind_method(D_METHOD("set_hdr", "enable"), &Viewport::set_hdr);
 	ClassDB::bind_method(D_METHOD("get_hdr"), &Viewport::get_hdr);
 
@@ -3237,6 +3308,8 @@ void Viewport::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "handle_input_locally"), "set_handle_input_locally", "is_handling_input_locally");
 	ADD_GROUP("Rendering", "");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "msaa", PROPERTY_HINT_ENUM, "Disabled,2x,4x,8x,16x,AndroidVR 2x,AndroidVR 4x"), "set_msaa", "get_msaa");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "fxaa"), "set_use_fxaa", "get_use_fxaa");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "debanding"), "set_use_debanding", "get_use_debanding");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "hdr"), "set_hdr", "get_hdr");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "disable_3d"), "set_disable_3d", "is_3d_disabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "keep_3d_linear"), "set_keep_3d_linear", "get_keep_3d_linear");
@@ -3380,14 +3453,13 @@ Viewport::Viewport() {
 	disable_3d = false;
 	keep_3d_linear = false;
 
-	//window tooltip
+	// Window tooltip.
 	gui.tooltip_timer = -1;
 
-	//gui.tooltip_timer->force_parent_owned();
 	gui.tooltip_delay = GLOBAL_DEF("gui/timers/tooltip_delay_sec", 0.5);
 	ProjectSettings::get_singleton()->set_custom_property_info("gui/timers/tooltip_delay_sec", PropertyInfo(Variant::REAL, "gui/timers/tooltip_delay_sec", PROPERTY_HINT_RANGE, "0,5,0.01,or_greater")); // No negative numbers
 
-	gui.tooltip = NULL;
+	gui.tooltip_control = NULL;
 	gui.tooltip_label = NULL;
 	gui.drag_preview = NULL;
 	gui.drag_attempted = false;
@@ -3397,6 +3469,8 @@ Viewport::Viewport() {
 	gui.last_mouse_focus = NULL;
 
 	msaa = MSAA_DISABLED;
+	use_fxaa = false;
+	use_debanding = false;
 	hdr = true;
 
 	usage = USAGE_3D;

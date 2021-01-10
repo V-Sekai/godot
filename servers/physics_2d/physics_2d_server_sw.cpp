@@ -898,6 +898,7 @@ void Physics2DServerSW::body_apply_torque_impulse(RID p_body, real_t p_torque) {
 	_update_shapes();
 
 	body->apply_torque_impulse(p_torque);
+	body->wakeup();
 }
 
 void Physics2DServerSW::body_apply_impulse(RID p_body, const Vector2 &p_pos, const Vector2 &p_impulse) {
@@ -1331,8 +1332,6 @@ void Physics2DServerSW::step(real_t p_step) {
 
 	_update_shapes();
 
-	doing_sync = false;
-
 	last_step = p_step;
 	Physics2DDirectBodyStateSW::singleton->step = p_step;
 	island_count = 0;
@@ -1454,7 +1453,11 @@ Physics2DServerSW::Physics2DServerSW() {
 	island_count = 0;
 	active_objects = 0;
 	collision_pairs = 0;
+#ifdef NO_THREADS
+	using_threads = false;
+#else
 	using_threads = int(ProjectSettings::get_singleton()->get("physics/2d/thread_model")) == 2;
+#endif
 	flushing_queries = false;
 };
 

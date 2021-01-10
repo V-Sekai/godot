@@ -53,7 +53,8 @@ struct GDScriptDataType {
 	} kind;
 	Variant::Type builtin_type;
 	StringName native_type;
-	Ref<Script> script_type;
+	Script *script_type;
+	Ref<Script> script_type_ref;
 
 	bool is_type(const Variant &p_variant, bool p_allow_implicit_conversion = false) const {
 		if (!has_type) return true; // Can't type check
@@ -149,7 +150,8 @@ struct GDScriptDataType {
 	GDScriptDataType() :
 			has_type(false),
 			kind(UNINITIALIZED),
-			builtin_type(Variant::NIL) {}
+			builtin_type(Variant::NIL),
+			script_type(NULL) {}
 };
 
 class GDScriptFunction {
@@ -265,7 +267,7 @@ private:
 
 	List<StackDebug> stack_debug;
 
-	_FORCE_INLINE_ Variant *_get_variant(int p_address, GDScriptInstance *p_instance, GDScript *p_script, Variant &self, Variant *p_stack, String &r_error) const;
+	_FORCE_INLINE_ Variant *_get_variant(int p_address, GDScriptInstance *p_instance, GDScript *p_script, Variant &self, Variant &static_ref, Variant *p_stack, String &r_error) const;
 	_FORCE_INLINE_ String _get_call_error(const Variant::CallError &p_err, const String &p_where, const Variant **argptrs) const;
 
 	friend class GDScriptLanguage;

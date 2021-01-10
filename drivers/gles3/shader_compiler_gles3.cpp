@@ -87,6 +87,7 @@ static int _get_datatype_size(SL::DataType p_type) {
 		case SL::TYPE_USAMPLER3D: return 16;
 		case SL::TYPE_SAMPLERCUBE: return 16;
 		case SL::TYPE_SAMPLEREXT: return 16;
+		case SL::TYPE_STRUCT: return 0;
 	}
 
 	ERR_FAIL_V(0);
@@ -127,6 +128,7 @@ static int _get_datatype_alignment(SL::DataType p_type) {
 		case SL::TYPE_USAMPLER3D: return 16;
 		case SL::TYPE_SAMPLERCUBE: return 16;
 		case SL::TYPE_SAMPLEREXT: return 16;
+		case SL::TYPE_STRUCT: return 0;
 	}
 
 	ERR_FAIL_V(0);
@@ -301,12 +303,20 @@ void ShaderCompilerGLES3::_dump_function_deps(SL::ShaderNode *p_node, const Stri
 		r_to_add += "\n";
 
 		String header;
-		header = _typestr(fnode->return_type) + " " + _mkid(fnode->name) + "(";
+		if (fnode->return_type == SL::TYPE_STRUCT) {
+			header = _mkid(fnode->return_struct_name) + " " + _mkid(fnode->name) + "(";
+		} else {
+			header = _typestr(fnode->return_type) + " " + _mkid(fnode->name) + "(";
+		}
 		for (int i = 0; i < fnode->arguments.size(); i++) {
 
 			if (i > 0)
 				header += ", ";
-			header += _qualstr(fnode->arguments[i].qualifier) + _prestr(fnode->arguments[i].precision) + _typestr(fnode->arguments[i].type) + " " + _mkid(fnode->arguments[i].name);
+			if (fnode->arguments[i].type == SL::TYPE_STRUCT) {
+				header += _qualstr(fnode->arguments[i].qualifier) + _mkid(fnode->arguments[i].type_str) + " " + _mkid(fnode->arguments[i].name);
+			} else {
+				header += _qualstr(fnode->arguments[i].qualifier) + _prestr(fnode->arguments[i].precision) + _typestr(fnode->arguments[i].type) + " " + _mkid(fnode->arguments[i].name);
+			}
 		}
 
 		header += ")\n";
@@ -343,6 +353,36 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 					Pair<int *, int> &p = p_actions.render_mode_values[pnode->render_modes[i]];
 					*p.first = p.second;
 				}
+			}
+
+			// structs
+
+			for (int i = 0; i < pnode->vstructs.size(); i++) {
+
+				SL::StructNode *st = pnode->vstructs[i].shader_struct;
+				String struct_code;
+
+				struct_code += "struct ";
+				struct_code += _mkid(pnode->vstructs[i].name);
+				struct_code += " ";
+				struct_code += "{\n";
+				for (int j = 0; j < st->members.size(); j++) {
+					SL::MemberNode *m = st->members[j];
+					if (m->datatype == SL::TYPE_STRUCT) {
+						struct_code += _mkid(m->struct_name);
+					} else {
+						struct_code += _prestr(m->precision);
+						struct_code += _typestr(m->datatype);
+					}
+					struct_code += " ";
+					struct_code += m->name;
+					struct_code += ";\n";
+				}
+				struct_code += "}";
+				struct_code += ";\n";
+
+				r_gen_code.vertex_global += struct_code;
+				r_gen_code.fragment_global += struct_code;
 			}
 
 			int max_texture_uniforms = 0;
@@ -440,18 +480,98 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 				r_gen_code.fragment_global += interp_mode + "in " + vcode;
 			}
 
-			for (int i = 0; i < pnode->vconstants.size(); i++) {
+			for (int i = 0; i < pnode->vglobals.size(); i++) {
 				String gcode;
-				gcode += "const ";
-				gcode += _prestr(pnode->vconstants[i].precision);
-				gcode += _typestr(pnode->vconstants[i].type);
-				gcode += " " + _mkid(String(pnode->vconstants[i].name));
-				gcode += "=";
-				gcode += _dump_node_code(pnode->vconstants[i].initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				if (pnode->vglobals[i].is_constant) {
+					gcode += "const ";
+				}
+				if (pnode->vglobals[i].type == SL::TYPE_STRUCT) {
+					gcode += _mkid(pnode->vglobals[i].type_str);
+				} else {
+					gcode += _prestr(pnode->vglobals[i].precision);
+					gcode += _typestr(pnode->vglobals[i].type);
+				}
+				gcode += " " + _mkid(String(pnode->vglobals[i].name));
+				if (pnode->vglobals[i].array_size > 0) {
+					gcode += "[";
+					gcode += itos(pnode->vglobals[i].array_size);
+					gcode += "]";
+				}
+				int sz = pnode->vglobals[i].initializer.size();
+				if (sz > 0) {
+					gcode += "=";
+					if (pnode->vglobals[i].array_size > 0) {
+						if (pnode->vglobals[i].type == SL::TYPE_STRUCT) {
+							gcode += _mkid(pnode->vglobals[i].type_str);
+						} else {
+							gcode += _typestr(pnode->vglobals[i].type);
+						}
+						if (pnode->vglobals[i].array_size > 0) {
+							gcode += "[";
+							gcode += itos(pnode->vglobals[i].array_size);
+							gcode += "]";
+						}
+						gcode += "(";
+						for (int j = 0; j < sz; j++) {
+							gcode += _dump_node_code(pnode->vglobals[i].initializer[j], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+							if (j != sz - 1) {
+								gcode += ", ";
+							}
+						}
+						gcode += ")";
+					} else {
+						gcode += _dump_node_code(pnode->vglobals[i].initializer[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					}
+				}
 				gcode += ";\n";
 				r_gen_code.vertex_global += gcode;
 				r_gen_code.fragment_global += gcode;
 			}
+			/*
+			for (Map<StringName, SL::ShaderNode::Constant>::Element *E = pnode->globals.front(); E; E = E->next()) {
+				String vcode;
+				if (E->get().type == SL::TYPE_STRUCT) {
+					vcode += _mkid(E->get().type_str);
+				} else {
+					vcode += _prestr(E->get().precision);
+					vcode += _typestr(E->get().type);
+				}
+				vcode += " " + _mkid(E->key());
+				if (E->get().array_size > 0) {
+					vcode += "[";
+					vcode += itos(E->get().array_size);
+					vcode += "]";
+				}
+				int sz = E->get().initializer.size();
+				if (sz > 0) {
+					vcode += "=";
+					if (E->get().array_size > 0) {
+						if (E->get().type == SL::TYPE_STRUCT) {
+							vcode += _mkid(E->get().type_str);
+						} else {
+							vcode += _typestr(E->get().type);
+						}
+						if (E->get().array_size > 0) {
+							vcode += "[";
+							vcode += itos(E->get().array_size);
+							vcode += "]";
+						}
+						vcode += "(";
+						for (int j = 0; j < sz; j++) {
+							vcode += _dump_node_code(E->get().initializer[j], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+							if (j != sz - 1) {
+								vcode += ", ";
+							}
+						}
+						vcode += ")";
+					} else {
+						vcode += _dump_node_code(E->get().initializer[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					}
+				}
+				vcode += ";\n";
+				r_gen_code.vertex_global += vcode;
+				r_gen_code.fragment_global += vcode;
+			}*/
 
 			Map<StringName, String> function_code;
 
@@ -494,6 +614,9 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			//code+=dump_node_code(pnode->body,p_level);
 		} break;
+		case SL::Node::TYPE_STRUCT: {
+
+		} break;
 		case SL::Node::TYPE_FUNCTION: {
 
 		} break;
@@ -527,8 +650,12 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 			if (vdnode->is_const) {
 				declaration += "const ";
 			}
-			declaration += _prestr(vdnode->precision);
-			declaration += _typestr(vdnode->datatype);
+			if (vdnode->datatype == SL::TYPE_STRUCT) {
+				declaration += _mkid(vdnode->struct_name);
+			} else {
+				declaration += _prestr(vdnode->precision);
+				declaration += _typestr(vdnode->datatype);
+			}
 			for (int i = 0; i < vdnode->declarations.size(); i++) {
 				if (i > 0) {
 					declaration += ",";
@@ -588,8 +715,12 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 			if (adnode->is_const) {
 				declaration += "const ";
 			}
-			declaration += _prestr(adnode->precision);
-			declaration += _typestr(adnode->datatype);
+			if (adnode->datatype == SL::TYPE_STRUCT) {
+				declaration += _mkid(adnode->struct_name);
+			} else {
+				declaration += _prestr(adnode->precision);
+				declaration += _typestr(adnode->datatype);
+			}
 			for (int i = 0; i < adnode->declarations.size(); i++) {
 				if (i > 0) {
 					declaration += ",";
@@ -603,7 +734,11 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 				int sz = adnode->declarations[i].initializer.size();
 				if (sz > 0) {
 					declaration += "=";
-					declaration += _typestr(adnode->datatype);
+					if (adnode->datatype == SL::TYPE_STRUCT) {
+						declaration += _mkid(adnode->struct_name);
+					} else {
+						declaration += _typestr(adnode->datatype);
+					}
 					declaration += "[";
 					declaration += itos(sz);
 					declaration += "]";
@@ -702,13 +837,16 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 					code = _dump_node_code(onode->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning) + _opstr(onode->op);
 					break;
 				case SL::OP_CALL:
+				case SL::OP_STRUCT:
 				case SL::OP_CONSTRUCT: {
 
 					ERR_FAIL_COND_V(onode->arguments[0]->type != SL::Node::TYPE_VARIABLE, String());
 
 					SL::VariableNode *vnode = (SL::VariableNode *)onode->arguments[0];
 
-					if (onode->op == SL::OP_CONSTRUCT) {
+					if (onode->op == SL::OP_STRUCT) {
+						code += _mkid(vnode->name);
+					} else if (onode->op == SL::OP_CONSTRUCT) {
 						code += String(vnode->name);
 					} else {
 
@@ -977,14 +1115,26 @@ ShaderCompilerGLES3::ShaderCompilerGLES3() {
 	actions[VS::SHADER_SPATIAL].renames["ALPHA_SCISSOR"] = "alpha_scissor";
 	actions[VS::SHADER_SPATIAL].renames["OUTPUT_IS_SRGB"] = "SHADER_IS_SRGB";
 
+	actions[VS::SHADER_SPATIAL].renames["HAS_MAIN_LIGHT"] = "has_main_light";
+	actions[VS::SHADER_SPATIAL].renames["AMBIENT_LIGHT"] = "ambient_light";
+	actions[VS::SHADER_SPATIAL].renames["DIFFUSE_LIGHT"] = "diffuse_light";
+	actions[VS::SHADER_SPATIAL].renames["SPECULAR_LIGHT"] = "specular_light";
+	// Functions
+	actions[VS::SHADER_SPATIAL].renames["AMBIENT_PROCESS"] = "AMBIENT_PROCESS";
+	actions[VS::SHADER_SPATIAL].renames["APPLY_DECALS"] = "APPLY_DECALS";
+
 	//for light
 	actions[VS::SHADER_SPATIAL].renames["VIEW"] = "view";
 	actions[VS::SHADER_SPATIAL].renames["LIGHT_COLOR"] = "light_color";
 	actions[VS::SHADER_SPATIAL].renames["LIGHT"] = "light";
 	actions[VS::SHADER_SPATIAL].renames["ATTENUATION"] = "attenuation";
-	actions[VS::SHADER_SPATIAL].renames["DIFFUSE_LIGHT"] = "diffuse_light";
-	actions[VS::SHADER_SPATIAL].renames["SPECULAR_LIGHT"] = "specular_light";
+	actions[VS::SHADER_SPATIAL].renames["PROJECTOR_COLOR"] = "projector_color";
+	actions[VS::SHADER_SPATIAL].renames["SHADOW_COLOR"] = "shadow_color";
+	actions[VS::SHADER_SPATIAL].renames["SHADOW_ATTENUATION"] = "shadow_attenuation";
+	actions[VS::SHADER_SPATIAL].renames["IS_MAIN_LIGHT"] = "is_main_light";
 
+	actions[VS::SHADER_SPATIAL].usage_defines["HAS_MAIN_LIGHT"] = "#define MAIN_LIGHT_USED\n";
+	actions[VS::SHADER_SPATIAL].usage_defines["IS_MAIN_LIGHT"] = "@HAS_MAIN_LIGHT";
 	actions[VS::SHADER_SPATIAL].usage_defines["TANGENT"] = "#define ENABLE_TANGENT_INTERP\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["BINORMAL"] = "@TANGENT";
 	actions[VS::SHADER_SPATIAL].usage_defines["RIM"] = "#define LIGHT_USE_RIM\n";
@@ -1009,6 +1159,7 @@ ShaderCompilerGLES3::ShaderCompilerGLES3() {
 	actions[VS::SHADER_SPATIAL].usage_defines["SCREEN_TEXTURE"] = "#define SCREEN_TEXTURE_USED\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["SCREEN_UV"] = "#define SCREEN_UV_USED\n";
 
+	actions[VS::SHADER_SPATIAL].usage_defines["AMBIENT_LIGHT"] = "#define AMBIENT_LIGHT_USED\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["DIFFUSE_LIGHT"] = "#define USE_LIGHT_SHADER_CODE\n";
 	actions[VS::SHADER_SPATIAL].usage_defines["SPECULAR_LIGHT"] = "#define USE_LIGHT_SHADER_CODE\n";
 

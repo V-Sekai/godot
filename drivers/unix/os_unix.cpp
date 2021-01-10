@@ -48,7 +48,7 @@
 #include <mach/mach_time.h>
 #endif
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #endif
@@ -136,7 +136,6 @@ void OS_Unix::initialize_core() {
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_RESOURCES);
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_USERDATA);
 	FileAccess::make_default<FileAccessUnix>(FileAccess::ACCESS_FILESYSTEM);
-	//FileAccessBufferedFA<FileAccessUnix>::make_default();
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_RESOURCES);
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_USERDATA);
 	DirAccess::make_default<DirAccessUnix>(DirAccess::ACCESS_FILESYSTEM);
@@ -156,7 +155,7 @@ void OS_Unix::finalize_core() {
 
 void OS_Unix::alert(const String &p_alert, const String &p_title) {
 
-	fprintf(stderr, "ERROR: %s\n", p_alert.utf8().get_data());
+	fprintf(stderr, "ALERT: %s: %s\n", p_title.utf8().get_data(), p_alert.utf8().get_data());
 }
 
 String OS_Unix::get_stdin_string(bool p_block) {
@@ -194,52 +193,54 @@ uint64_t OS_Unix::get_system_time_msecs() const {
 }
 
 OS::Date OS_Unix::get_date(bool utc) const {
-
 	time_t t = time(NULL);
-	struct tm *lt;
-	if (utc)
-		lt = gmtime(&t);
-	else
-		lt = localtime(&t);
+	struct tm lt;
+	if (utc) {
+		gmtime_r(&t, &lt);
+	} else {
+		localtime_r(&t, &lt);
+	}
 	Date ret;
-	ret.year = 1900 + lt->tm_year;
+	ret.year = 1900 + lt.tm_year;
 	// Index starting at 1 to match OS_Unix::get_date
 	//   and Windows SYSTEMTIME and tm_mon follows the typical structure
 	//   of 0-11, noted here: http://www.cplusplus.com/reference/ctime/tm/
-	ret.month = (Month)(lt->tm_mon + 1);
-	ret.day = lt->tm_mday;
-	ret.weekday = (Weekday)lt->tm_wday;
-	ret.dst = lt->tm_isdst;
+	ret.month = (Month)(lt.tm_mon + 1);
+	ret.day = lt.tm_mday;
+	ret.weekday = (Weekday)lt.tm_wday;
+	ret.dst = lt.tm_isdst;
 
 	return ret;
 }
 
 OS::Time OS_Unix::get_time(bool utc) const {
 	time_t t = time(NULL);
-	struct tm *lt;
-	if (utc)
-		lt = gmtime(&t);
-	else
-		lt = localtime(&t);
+	struct tm lt;
+	if (utc) {
+		gmtime_r(&t, &lt);
+	} else {
+		localtime_r(&t, &lt);
+	}
 	Time ret;
-	ret.hour = lt->tm_hour;
-	ret.min = lt->tm_min;
-	ret.sec = lt->tm_sec;
+	ret.hour = lt.tm_hour;
+	ret.min = lt.tm_min;
+	ret.sec = lt.tm_sec;
 	get_time_zone_info();
 	return ret;
 }
 
 OS::TimeZoneInfo OS_Unix::get_time_zone_info() const {
 	time_t t = time(NULL);
-	struct tm *lt = localtime(&t);
+	struct tm lt;
+	localtime_r(&t, &lt);
 	char name[16];
-	strftime(name, 16, "%Z", lt);
+	strftime(name, 16, "%Z", &lt);
 	name[15] = 0;
 	TimeZoneInfo ret;
 	ret.name = name;
 
 	char bias_buf[16];
-	strftime(bias_buf, 16, "%z", lt);
+	strftime(bias_buf, 16, "%z", &lt);
 	int bias;
 	bias_buf[15] = 0;
 	sscanf(bias_buf, "%d", &bias);
@@ -355,7 +356,7 @@ Error OS_Unix::execute(const String &p_path, const List<String> &p_arguments, bo
 		int status;
 		waitpid(pid, &status, 0);
 		if (r_exitcode)
-			*r_exitcode = WEXITSTATUS(status);
+			*r_exitcode = WIFEXITED(status) ? WEXITSTATUS(status) : status;
 
 	} else {
 
@@ -507,7 +508,7 @@ String OS_Unix::get_executable_path() const {
 		return OS::get_executable_path();
 	}
 	return b;
-#elif defined(__OpenBSD__)
+#elif defined(__OpenBSD__) || defined(__NetBSD__)
 	char resolved_path[MAXPATHLEN];
 
 	realpath(OS::get_executable_path().utf8().get_data(), resolved_path);

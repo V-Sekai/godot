@@ -1242,6 +1242,9 @@ int Tree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 
 
 				if (p_item->cells[i].text.size() > 0) {
 					float icon_width = p_item->cells[i].get_icon_size().width;
+					if (p_item->get_icon_max_width(i) > 0) {
+						icon_width = p_item->get_icon_max_width(i);
+					}
 					r.position.x += icon_width;
 					r.size.x -= icon_width;
 				}
@@ -1279,8 +1282,9 @@ int Tree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 
 			if (drop_mode_flags && drop_mode_over == p_item) {
 
 				Rect2 r = cell_rect;
+				bool has_parent = p_item->get_children() != nullptr;
 
-				if (drop_mode_section == -1 || drop_mode_section == 0) {
+				if (drop_mode_section == -1 || has_parent || drop_mode_section == 0) {
 					VisualServer::get_singleton()->canvas_item_add_rect(ci, Rect2(r.position.x, r.position.y, r.size.x, 1), cache.drop_position_color);
 				}
 
@@ -1289,7 +1293,7 @@ int Tree::draw_item(const Point2i &p_pos, const Point2 &p_draw_ofs, const Size2 
 					VisualServer::get_singleton()->canvas_item_add_rect(ci, Rect2(r.position.x + r.size.x - 1, r.position.y, 1, r.size.y), cache.drop_position_color);
 				}
 
-				if (drop_mode_section == 1 || drop_mode_section == 0) {
+				if ((drop_mode_section == 1 && !has_parent) || drop_mode_section == 0) {
 					VisualServer::get_singleton()->canvas_item_add_rect(ci, Rect2(r.position.x, r.position.y + r.size.y, r.size.x, 1), cache.drop_position_color);
 				}
 			}
@@ -2514,11 +2518,16 @@ void Tree::_gui_input(Ref<InputEvent> p_event) {
 				cache.hover_cell = col;
 
 				if (it != old_it || col != old_col) {
-					// Only need to update if mouse enters/exits a button
-					bool was_over_button = old_it && old_it->cells[old_col].custom_button;
-					bool is_over_button = it && it->cells[col].custom_button;
-					if (was_over_button || is_over_button) {
+					if (old_it && old_col >= old_it->cells.size()) {
+						// Columns may have changed since last update().
 						update();
+					} else {
+						// Only need to update if mouse enters/exits a button
+						bool was_over_button = old_it && old_it->cells[old_col].custom_button;
+						bool is_over_button = it && it->cells[col].custom_button;
+						if (was_over_button || is_over_button) {
+							update();
+						}
 					}
 				}
 			}

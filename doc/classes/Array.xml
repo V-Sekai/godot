@@ -20,7 +20,9 @@
 		var array2 = [3, "Four"]
 		print(array1 + array2) # ["One", 2, 3, "Four"]
 		[/codeblock]
+		[b]Note:[/b] Concatenating with the [code]+=[/code] operator will create a new array, which has a cost. If you want to append another array to an existing array, [method append_array] is more efficient.
 		[b]Note:[/b] Arrays are always passed by reference. To get a copy of an array which can be modified independently of the original array, use [method duplicate].
+		[b]Note:[/b] When declaring an array with [code]const[/code], the array itself can still be mutated by defining the values at individual indices or pushing/removing elements. Using [code]const[/code] will only prevent assigning the constant with another value after it was initialized.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -95,11 +97,25 @@
 				Appends an element at the end of the array (alias of [method push_back]).
 			</description>
 		</method>
+		<method name="append_array">
+			<argument index="0" name="array" type="Array">
+			</argument>
+			<description>
+				Appends another array at the end of this array.
+				[codeblock]
+				var array1 = [1, 2, 3]
+				var array2 = [4, 5, 6]
+				array1.append_array(array2)
+				print(array1) # Prints [1, 2, 3, 4, 5, 6].
+				[/codeblock]
+			</description>
+		</method>
 		<method name="back">
 			<return type="Variant">
 			</return>
 			<description>
-				Returns the last element of the array. Throws an error and returns [code]null[/code] if the array is empty.
+				Returns the last element of the array. Prints an error and returns [code]null[/code] if the array is empty.
+				[b]Note:[/b] Calling this function is not the same as writing [code]array[-1][/code]. If the array is empty, accessing by index will pause project execution when running from the editor.
 			</description>
 		</method>
 		<method name="bsearch">
@@ -192,7 +208,8 @@
 			<return type="Variant">
 			</return>
 			<description>
-				Returns the first element of the array. Throws an error and returns [code]null[/code] if the array is empty.
+				Returns the first element of the array. Prints an error and returns [code]null[/code] if the array is empty.
+				[b]Note:[/b] Calling this function is not the same as writing [code]array[0][/code]. If the array is empty, accessing by index will pause project execution when running from the editor.
 			</description>
 		</method>
 		<method name="has">
@@ -255,14 +272,14 @@
 			<return type="Variant">
 			</return>
 			<description>
-				Removes and returns the last element of the array. Returns [code]null[/code] if the array is empty.
+				Removes and returns the last element of the array. Returns [code]null[/code] if the array is empty, without printing an error message.
 			</description>
 		</method>
 		<method name="pop_front">
 			<return type="Variant">
 			</return>
 			<description>
-				Removes and returns the first element of the array. Returns [code]null[/code] if the array is empty.
+				Removes and returns the first element of the array. Returns [code]null[/code] if the array is empty, without printing an error message.
 			</description>
 		</method>
 		<method name="push_back">
@@ -283,7 +300,7 @@
 			<argument index="0" name="position" type="int">
 			</argument>
 			<description>
-				Removes an element from the array by index.
+				Removes an element from the array by index. If the index does not exist in the array, nothing happens.
 			</description>
 		</method>
 		<method name="resize">

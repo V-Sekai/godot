@@ -34,6 +34,7 @@
 #include "os_windows.h"
 
 #include "core/io/marshalls.h"
+#include "core/math/geometry.h"
 #include "core/version_generated.gen.h"
 #include "drivers/gles2/rasterizer_gles2.h"
 #include "drivers/gles3/rasterizer_gles3.h"
@@ -234,7 +235,6 @@ void OS_Windows::initialize_core() {
 	FileAccess::make_default<FileAccessWindows>(FileAccess::ACCESS_RESOURCES);
 	FileAccess::make_default<FileAccessWindows>(FileAccess::ACCESS_USERDATA);
 	FileAccess::make_default<FileAccessWindows>(FileAccess::ACCESS_FILESYSTEM);
-	//FileAccessBufferedFA<FileAccessWindows>::make_default();
 	DirAccess::make_default<DirAccessWindows>(DirAccess::ACCESS_RESOURCES);
 	DirAccess::make_default<DirAccessWindows>(DirAccess::ACCESS_USERDATA);
 	DirAccess::make_default<DirAccessWindows>(DirAccess::ACCESS_FILESYSTEM);
@@ -1854,10 +1854,12 @@ void OS_Windows::finalize_core() {
 
 void OS_Windows::alert(const String &p_alert, const String &p_title) {
 
-	if (!is_no_window_mode_enabled())
-		MessageBoxW(NULL, p_alert.c_str(), p_title.c_str(), MB_OK | MB_ICONEXCLAMATION | MB_TASKMODAL);
-	else
-		print_line("ALERT: " + p_alert);
+	if (is_no_window_mode_enabled()) {
+		print_line("ALERT: " + p_title + ": " + p_alert);
+		return;
+	}
+
+	MessageBoxW(NULL, p_alert.c_str(), p_title.c_str(), MB_OK | MB_ICONEXCLAMATION | MB_TASKMODAL);
 }
 
 void OS_Windows::set_mouse_mode(MouseMode p_mode) {
@@ -1950,6 +1952,36 @@ int OS_Windows::get_mouse_button_state() const {
 void OS_Windows::set_window_title(const String &p_title) {
 
 	SetWindowTextW(hWnd, p_title.c_str());
+}
+
+void OS_Windows::set_window_mouse_passthrough(const PoolVector2Array &p_region) {
+	mpath.clear();
+	for (int i = 0; i < p_region.size(); i++) {
+		mpath.push_back(p_region[i]);
+	}
+	_update_window_mouse_passthrough();
+}
+
+void OS_Windows::_update_window_mouse_passthrough() {
+	if (mpath.size() == 0) {
+		SetWindowRgn(hWnd, NULL, TRUE);
+	} else {
+		POINT *points = (POINT *)memalloc(sizeof(POINT) * mpath.size());
+		for (int i = 0; i < mpath.size(); i++) {
+			if (video_mode.borderless_window) {
+				points[i].x = mpath[i].x;
+				points[i].y = mpath[i].y;
+			} else {
+				points[i].x = mpath[i].x + GetSystemMetrics(SM_CXSIZEFRAME);
+				points[i].y = mpath[i].y + GetSystemMetrics(SM_CYSIZEFRAME) + GetSystemMetrics(SM_CYCAPTION);
+			}
+		}
+
+		HRGN region = CreatePolygonRgn(points, mpath.size(), ALTERNATE);
+		SetWindowRgn(hWnd, region, TRUE);
+		DeleteObject(region);
+		memfree(points);
+	}
 }
 
 void OS_Windows::set_video_mode(const VideoMode &p_video_mode, int p_screen) {
@@ -2236,6 +2268,10 @@ bool OS_Windows::is_window_resizable() const {
 }
 void OS_Windows::set_window_minimized(bool p_enabled) {
 
+	if (is_no_window_mode_enabled()) {
+		return;
+	}
+
 	if (p_enabled) {
 		maximized = false;
 		minimized = true;
@@ -2251,6 +2287,10 @@ bool OS_Windows::is_window_minimized() const {
 	return minimized;
 }
 void OS_Windows::set_window_maximized(bool p_enabled) {
+
+	if (is_no_window_mode_enabled()) {
+		return;
+	}
 
 	if (p_enabled) {
 		maximized = true;
@@ -2339,6 +2379,7 @@ void OS_Windows::set_borderless_window(bool p_borderless) {
 
 	preserve_window_size = true;
 	_update_window_style();
+	_update_window_mouse_passthrough();
 }
 
 bool OS_Windows::get_borderless_window() {
@@ -2371,7 +2412,7 @@ void OS_Windows::_update_window_style(bool p_repaint, bool p_maximized) {
 
 Error OS_Windows::open_dynamic_library(const String p_path, void *&p_library_handle, bool p_also_set_library_path) {
 
-	String path = p_path;
+	String path = p_path.replace("/", "\\");
 
 	if (!FileAccess::exists(path)) {
 		//this code exists so gdnative can load .dll files from within the executable path
@@ -2429,6 +2470,17 @@ void OS_Windows::request_attention() {
 	info.dwTimeout = 0;
 	info.uCount = 2;
 	FlashWindowEx(&info);
+}
+
+void *OS_Windows::get_native_handle(int p_handle_type) {
+	switch (p_handle_type) {
+		case APPLICATION_HANDLE: return hInstance;
+		case DISPLAY_HANDLE: return NULL; // Do we have a value to return here?
+		case WINDOW_HANDLE: return hWnd;
+		case WINDOW_VIEW: return gl_context->get_hdc();
+		case OPENGL_CONTEXT: return gl_context->get_hglrc();
+		default: return NULL;
+	}
 }
 
 String OS_Windows::get_name() const {
@@ -2839,9 +2891,10 @@ String OS_Windows::_quote_command_line_argument(const String &p_text) const {
 }
 
 Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments, bool p_blocking, ProcessID *r_child_id, String *r_pipe, int *r_exitcode, bool read_stderr, Mutex *p_pipe_mutex) {
+	String path = p_path.replace("/", "\\");
 
 	if (p_blocking && r_pipe) {
-		String argss = _quote_command_line_argument(p_path);
+		String argss = _quote_command_line_argument(path);
 		for (const List<String>::Element *E = p_arguments.front(); E; E = E->next()) {
 			argss += " " + _quote_command_line_argument(E->get());
 		}
@@ -2875,7 +2928,7 @@ Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments,
 		return OK;
 	}
 
-	String cmdline = _quote_command_line_argument(p_path);
+	String cmdline = _quote_command_line_argument(path);
 	const List<String>::Element *I = p_arguments.front();
 	while (I) {
 		cmdline += " " + _quote_command_line_argument(I->get());
@@ -2898,9 +2951,10 @@ Error OS_Windows::execute(const String &p_path, const List<String> &p_arguments,
 	ERR_FAIL_COND_V(ret == 0, ERR_CANT_FORK);
 
 	if (p_blocking) {
-
-		DWORD ret2 = WaitForSingleObject(pi.pi.hProcess, INFINITE);
+		WaitForSingleObject(pi.pi.hProcess, INFINITE);
 		if (r_exitcode) {
+			DWORD ret2;
+			GetExitCodeProcess(pi.pi.hProcess, &ret2);
 			*r_exitcode = ret2;
 		}
 
@@ -2949,7 +3003,7 @@ String OS_Windows::get_executable_path() const {
 	wchar_t bufname[4096];
 	GetModuleFileNameW(NULL, bufname, 4096);
 	String s = bufname;
-	return s;
+	return s.replace("\\", "/");
 }
 
 void OS_Windows::set_native_icon(const String &p_filename) {

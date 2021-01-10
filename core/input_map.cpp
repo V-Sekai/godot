@@ -30,6 +30,7 @@
 
 #include "input_map.h"
 
+#include "core/os/input.h"
 #include "core/os/keyboard.h"
 #include "core/project_settings.h"
 
@@ -100,6 +101,7 @@ List<StringName> InputMap::get_actions() const {
 }
 
 List<Ref<InputEvent> >::Element *InputMap::_find_event(Action &p_action, const Ref<InputEvent> &p_event, bool *p_pressed, float *p_strength) const {
+	ERR_FAIL_COND_V(!p_event.is_valid(), NULL);
 
 	for (List<Ref<InputEvent> >::Element *E = p_action.inputs.front(); E; E = E->next()) {
 
@@ -152,8 +154,12 @@ void InputMap::action_erase_event(const StringName &p_action, const Ref<InputEve
 	ERR_FAIL_COND_MSG(!input_map.has(p_action), "Request for nonexistent InputMap action '" + String(p_action) + "'.");
 
 	List<Ref<InputEvent> >::Element *E = _find_event(input_map[p_action], p_event);
-	if (E)
+	if (E) {
 		input_map[p_action].inputs.erase(E);
+		if (Input::get_singleton()->is_action_pressed(p_action)) {
+			Input::get_singleton()->action_release(p_action);
+		}
+	}
 }
 
 void InputMap::action_erase_events(const StringName &p_action) {

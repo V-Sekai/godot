@@ -47,9 +47,9 @@ void GDScriptLanguage::get_comment_delimiters(List<String> *p_delimiters) const 
 
 void GDScriptLanguage::get_string_delimiters(List<String> *p_delimiters) const {
 
+	p_delimiters->push_back("\"\"\" \"\"\"");
 	p_delimiters->push_back("\" \"");
 	p_delimiters->push_back("' '");
-	p_delimiters->push_back("\"\"\" \"\"\"");
 }
 
 String GDScriptLanguage::_get_processed_template(const String &p_template, const String &p_base_class_name) const {
@@ -644,7 +644,7 @@ static GDScriptCompletionIdentifier _type_from_gdtype(const GDScriptDataType &p_
 	ci.type.has_type = true;
 	ci.type.builtin_type = p_gdtype.builtin_type;
 	ci.type.native_type = p_gdtype.native_type;
-	ci.type.script_type = p_gdtype.script_type;
+	ci.type.script_type = Ref<Script>(p_gdtype.script_type);
 
 	switch (p_gdtype.kind) {
 		case GDScriptDataType::UNINITIALIZED: {
@@ -1881,6 +1881,12 @@ static void _find_identifiers_in_class(const GDScriptCompletionContext &p_contex
 		if (!p_only_functions) {
 			for (Map<StringName, GDScriptParser::ClassNode::Constant>::Element *E = p_context._class->constant_expressions.front(); E; E = E->next()) {
 				ScriptCodeCompletionOption option(E->key(), ScriptCodeCompletionOption::KIND_CONSTANT);
+				if (E->get().expression && E->get().expression->type == GDScriptParser::Node::TYPE_CONSTANT) {
+					GDScriptParser::ConstantNode *cnode = (GDScriptParser::ConstantNode *)E->get().expression;
+					if (cnode) {
+						option.default_value = cnode->value;
+					}
+				}
 				r_result.insert(option.display, option);
 			}
 			for (int i = 0; i < p_context._class->subclasses.size(); i++) {
@@ -2572,6 +2578,11 @@ Error GDScriptLanguage::complete_code(const String &p_code, const String &p_path
 			Variant::get_constants_for_type(parser.get_completion_built_in_constant(), &constants);
 			for (List<StringName>::Element *E = constants.front(); E; E = E->next()) {
 				ScriptCodeCompletionOption option(E->get().operator String(), ScriptCodeCompletionOption::KIND_CONSTANT);
+				bool valid = false;
+				Variant default_value = Variant::get_constant_value(parser.get_completion_built_in_constant(), E->get(), &valid);
+				if (valid) {
+					option.default_value = default_value;
+				}
 				options.insert(option.display, option);
 			}
 		} break;

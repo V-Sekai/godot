@@ -284,6 +284,14 @@ else:
         print("Automatically detected platform: " + selected_platform)
         env_base["platform"] = selected_platform
 
+if selected_platform in ["linux", "bsd", "linuxbsd"]:
+    if selected_platform == "linuxbsd":
+        # Alias for forward compatibility.
+        print('Platform "linuxbsd" is still called "x11" in Godot 3.2.x. Building for platform "x11".')
+    # Alias for convenience.
+    selected_platform = "x11"
+    env_base["platform"] = selected_platform
+
 if selected_platform in platform_list:
     tmppath = "./platform/" + selected_platform
     sys.path.insert(0, tmppath)
@@ -307,31 +315,6 @@ if selected_platform in platform_list:
         env["verbose"] = True
         env["warnings"] = "extra"
         env["werror"] = True
-
-    if env["vsproj"]:
-        env.vs_incs = []
-        env.vs_srcs = []
-
-        def AddToVSProject(sources):
-            for x in sources:
-                if type(x) == type(""):
-                    fname = env.File(x).path
-                else:
-                    fname = env.File(x)[0].path
-                pieces = fname.split(".")
-                if len(pieces) > 0:
-                    basename = pieces[0]
-                    basename = basename.replace("\\\\", "/")
-                    if os.path.isfile(basename + ".h"):
-                        env.vs_incs = env.vs_incs + [basename + ".h"]
-                    elif os.path.isfile(basename + ".hpp"):
-                        env.vs_incs = env.vs_incs + [basename + ".hpp"]
-                    if os.path.isfile(basename + ".c"):
-                        env.vs_srcs = env.vs_srcs + [basename + ".c"]
-                    elif os.path.isfile(basename + ".cpp"):
-                        env.vs_srcs = env.vs_srcs + [basename + ".cpp"]
-
-        env.AddToVSProject = AddToVSProject
 
     env.extra_suffix = ""
 
@@ -379,7 +362,7 @@ if selected_platform in platform_list:
         env.Prepend(CCFLAGS=["/std:c++14"])
 
     # Configure compiler warnings
-    if env.msvc:
+    if env.msvc:  # MSVC
         # Truncations, narrowing conversions, signed/unsigned comparisons...
         disable_nonessential_warnings = ["/wd4267", "/wd4244", "/wd4305", "/wd4018", "/wd4800"]
         if env["warnings"] == "extra":
@@ -392,25 +375,23 @@ if selected_platform in platform_list:
             env.Append(CCFLAGS=["/w"])
         # Set exception handling model to avoid warnings caused by Windows system headers.
         env.Append(CCFLAGS=["/EHsc"])
+
         if env["werror"]:
             env.Append(CCFLAGS=["/WX"])
-        # Force to use Unicode encoding
-        env.Append(MSVC_FLAGS=["/utf8"])
-    else:  # Rest of the world
+    else:  # GCC, Clang
         version = methods.get_compiler_version(env) or [-1, -1]
 
-        shadow_local_warning = []
-        all_plus_warnings = ["-Wwrite-strings"]
+        gcc_common_warnings = []
 
         if methods.using_gcc(env):
-            env.Append(CCFLAGS=["-Wno-misleading-indentation"])
+            gcc_common_warnings += ["-Wno-misleading-indentation"]
             if version[0] >= 7:
-                shadow_local_warning = ["-Wshadow-local"]
+                gcc_common_warnings += ["-Wshadow-local"]
 
         if env["warnings"] == "extra":
             # Note: enable -Wimplicit-fallthrough for Clang (already part of -Wextra for GCC)
             # once we switch to C++11 or later (necessary for our FALLTHROUGH macro).
-            env.Append(CCFLAGS=["-Wall", "-Wextra", "-Wno-unused-parameter"] + all_plus_warnings + shadow_local_warning)
+            env.Append(CCFLAGS=["-Wall", "-Wextra", "-Wwrite-strings", "-Wno-unused-parameter"] + gcc_common_warnings)
             env.Append(CXXFLAGS=["-Wctor-dtor-privacy", "-Wnon-virtual-dtor"])
             if methods.using_gcc(env):
                 env.Append(
@@ -426,11 +407,12 @@ if selected_platform in platform_list:
                 if version[0] >= 9:
                     env.Append(CCFLAGS=["-Wattribute-alias=2"])
         elif env["warnings"] == "all":
-            env.Append(CCFLAGS=["-Wall"] + shadow_local_warning)
+            env.Append(CCFLAGS=["-Wall"] + gcc_common_warnings)
         elif env["warnings"] == "moderate":
-            env.Append(CCFLAGS=["-Wall", "-Wno-unused"] + shadow_local_warning)
+            env.Append(CCFLAGS=["-Wall", "-Wno-unused"] + gcc_common_warnings)
         else:  # 'no'
             env.Append(CCFLAGS=["-w"])
+
         if env["werror"]:
             env.Append(CCFLAGS=["-Werror"])
         else:  # always enable those errors
@@ -502,13 +484,13 @@ if selected_platform in platform_list:
                 doc_path = config.get_doc_path()
                 for c in doc_classes:
                     env.doc_class_path[c] = path + "/" + doc_path
-            except:
+            except Exception:
                 pass
             # Get icon paths (if present)
             try:
                 icons_path = config.get_icons_path()
                 env.module_icons_paths.append(path + "/" + icons_path)
-            except:
+            except Exception:
                 # Default path for module icons
                 env.module_icons_paths.append(path + "/" + "icons")
             modules_enabled[name] = path
@@ -595,6 +577,10 @@ if selected_platform in platform_list:
     if scons_cache_path != None:
         CacheDir(scons_cache_path)
         print("Scons cache enabled... (path: '" + scons_cache_path + "')")
+
+    if env["vsproj"]:
+        env.vs_incs = []
+        env.vs_srcs = []
 
     Export("env")
 

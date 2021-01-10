@@ -517,6 +517,7 @@ TileSetEditor::TileSetEditor(EditorNode *p_editor) {
 	tools[SHAPE_NEW_RECTANGLE]->set_button_group(tg);
 	tools[SHAPE_NEW_RECTANGLE]->set_tooltip(TTR("Create a new rectangle."));
 	tools[SHAPE_NEW_RECTANGLE]->connect("pressed", this, "_on_tool_clicked", varray(SHAPE_NEW_RECTANGLE));
+	tools[SHAPE_NEW_RECTANGLE]->set_shortcut(ED_SHORTCUT("tileset_editor/shape_new_rectangle", TTR("New Rectangle"), KEY_MASK_SHIFT | KEY_R));
 
 	tools[SHAPE_NEW_POLYGON] = memnew(ToolButton);
 	toolbar->add_child(tools[SHAPE_NEW_POLYGON]);
@@ -524,6 +525,7 @@ TileSetEditor::TileSetEditor(EditorNode *p_editor) {
 	tools[SHAPE_NEW_POLYGON]->set_button_group(tg);
 	tools[SHAPE_NEW_POLYGON]->set_tooltip(TTR("Create a new polygon."));
 	tools[SHAPE_NEW_POLYGON]->connect("pressed", this, "_on_tool_clicked", varray(SHAPE_NEW_POLYGON));
+	tools[SHAPE_NEW_POLYGON]->set_shortcut(ED_SHORTCUT("tileset_editor/shape_new_polygon", TTR("New Polygon"), KEY_MASK_SHIFT | KEY_P));
 
 	separator_shape_toggle = memnew(VSeparator);
 	toolbar->add_child(separator_shape_toggle);
@@ -535,6 +537,7 @@ TileSetEditor::TileSetEditor(EditorNode *p_editor) {
 	toolbar->add_child(separator_delete);
 	tools[SHAPE_DELETE] = memnew(ToolButton);
 	tools[SHAPE_DELETE]->connect("pressed", this, "_on_tool_clicked", varray(SHAPE_DELETE));
+	tools[SHAPE_DELETE]->set_shortcut(ED_SHORTCUT("tileset_editor/shape_delete", TTR("Delete Selected Shape"), KEY_MASK_SHIFT | KEY_BACKSPACE));
 	toolbar->add_child(tools[SHAPE_DELETE]);
 
 	spin_priority = memnew(SpinBox);
@@ -2133,7 +2136,6 @@ void TileSetEditor::_select_previous_tile() {
 				int spacing = tileset->autotile_get_spacing(get_current_tile());
 				Vector2 size = tileset->tile_get_region(get_current_tile()).size;
 				Vector2 cell_count = (size / (tileset->autotile_get_size(get_current_tile()) + Vector2(spacing, spacing))).floor();
-				cell_count -= Vector2(1, 1);
 				edited_shape_coord = cell_count;
 				_select_edited_shape_coord();
 			} break;
@@ -2190,11 +2192,11 @@ void TileSetEditor::_select_next_subtile() {
 		int spacing = tileset->autotile_get_spacing(get_current_tile());
 		Vector2 size = tileset->tile_get_region(get_current_tile()).size;
 		Vector2 cell_count = (size / (tileset->autotile_get_size(get_current_tile()) + Vector2(spacing, spacing))).floor();
-		if (edited_shape_coord.x >= cell_count.x - 1 && edited_shape_coord.y >= cell_count.y - 1) {
+		if (edited_shape_coord.x > cell_count.x - 1 && edited_shape_coord.y > cell_count.y - 1) {
 			_select_next_tile();
 		} else {
 			edited_shape_coord.x++;
-			if (edited_shape_coord.x >= cell_count.x) {
+			if (edited_shape_coord.x > cell_count.x) {
 				edited_shape_coord.x = 0;
 				edited_shape_coord.y++;
 			}
@@ -2221,7 +2223,7 @@ void TileSetEditor::_select_previous_subtile() {
 		} else {
 			edited_shape_coord.x--;
 			if (edited_shape_coord.x == -1) {
-				edited_shape_coord.x = cell_count.x - 1;
+				edited_shape_coord.x = cell_count.x;
 				edited_shape_coord.y--;
 			}
 			_select_edited_shape_coord();
@@ -2342,8 +2344,8 @@ void TileSetEditor::_set_edited_collision_shape(const Ref<Shape2D> &p_shape) {
 }
 
 void TileSetEditor::_set_snap_step(Vector2 p_val) {
-	snap_step.x = CLAMP(p_val.x, 0, 256);
-	snap_step.y = CLAMP(p_val.y, 0, 256);
+	snap_step.x = CLAMP(p_val.x, 1, 256);
+	snap_step.y = CLAMP(p_val.y, 1, 256);
 	workspace->update();
 }
 
@@ -3095,6 +3097,7 @@ Vector2 TileSetEditor::snap_point(const Vector2 &point) {
 	anchor += tileset->tile_get_region(get_current_tile()).position;
 	anchor += WORKSPACE_MARGIN;
 	Rect2 region(anchor, tile_size);
+	Rect2 tile_region(tileset->tile_get_region(get_current_tile()).position + WORKSPACE_MARGIN, tileset->tile_get_region(get_current_tile()).size);
 	if (tileset->tile_get_tile_mode(get_current_tile()) == TileSet::SINGLE_TILE) {
 		region.position = tileset->tile_get_region(get_current_tile()).position + WORKSPACE_MARGIN;
 		region.size = tileset->tile_get_region(get_current_tile()).size;
@@ -3104,6 +3107,7 @@ Vector2 TileSetEditor::snap_point(const Vector2 &point) {
 		p.x = Math::snap_scalar_separation(snap_offset.x, snap_step.x, p.x, snap_separation.x);
 		p.y = Math::snap_scalar_separation(snap_offset.y, snap_step.y, p.y, snap_separation.y);
 	}
+
 	if (tools[SHAPE_KEEP_INSIDE_TILE]->is_pressed()) {
 		if (p.x < region.position.x)
 			p.x = region.position.x;
@@ -3114,6 +3118,20 @@ Vector2 TileSetEditor::snap_point(const Vector2 &point) {
 		if (p.y > region.position.y + region.size.y)
 			p.y = region.position.y + region.size.y;
 	}
+
+	if (p.x < tile_region.position.x) {
+		p.x = tile_region.position.x;
+	}
+	if (p.y < tile_region.position.y) {
+		p.y = tile_region.position.y;
+	}
+	if (p.x > (tile_region.position.x + tile_region.size.x)) {
+		p.x = (tile_region.position.x + tile_region.size.x);
+	}
+	if (p.y > (tile_region.position.y + tile_region.size.y)) {
+		p.y = (tile_region.position.y + tile_region.size.y);
+	}
+
 	return p;
 }
 

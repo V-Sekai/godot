@@ -192,7 +192,7 @@ public:
 
 	BIND2(shader_add_custom_define, RID, const String &)
 	BIND2C(shader_get_custom_defines, RID, Vector<String> *)
-	BIND1(shader_clear_custom_defines, RID)
+	BIND2(shader_remove_custom_define, RID, const String &)
 
 	/* COMMON MATERIAL API */
 
@@ -314,6 +314,7 @@ public:
 	BIND2(light_set_cull_mask, RID, uint32_t)
 	BIND2(light_set_reverse_cull_face_mode, RID, bool)
 	BIND2(light_set_use_gi, RID, bool)
+	BIND2(light_set_bake_mode, RID, LightBakeMode)
 
 	BIND2(light_omni_set_shadow_mode, RID, LightOmniShadowMode)
 	BIND2(light_omni_set_shadow_detail, RID, LightOmniShadowDetail)
@@ -484,6 +485,8 @@ public:
 	BIND2(viewport_set_shadow_atlas_size, RID, int)
 	BIND3(viewport_set_shadow_atlas_quadrant_subdivision, RID, int, int)
 	BIND2(viewport_set_msaa, RID, ViewportMSAA)
+	BIND2(viewport_set_use_fxaa, RID, bool)
+	BIND2(viewport_set_use_debanding, RID, bool)
 	BIND2(viewport_set_hdr, RID, bool)
 	BIND2(viewport_set_usage, RID, ViewportUsage)
 

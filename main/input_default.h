@@ -85,7 +85,6 @@ class InputDefault : public Input {
 		bool connected;
 		bool last_buttons[JOY_BUTTON_MAX + 19]; //apparently SDL specifies 35 possible buttons on android
 		float last_axis[JOY_AXIS_MAX];
-		float filter;
 		int last_hat;
 		int mapping;
 		int hat_current;
@@ -101,7 +100,6 @@ class InputDefault : public Input {
 			}
 			connected = false;
 			last_hat = HAT_MASK_CENTER;
-			filter = 0.01f;
 			mapping = -1;
 			hat_current = 0;
 		}
@@ -199,7 +197,7 @@ private:
 	Vector<JoyDeviceMapping> map_db;
 
 	JoyEvent _get_mapped_button_event(const JoyDeviceMapping &mapping, int p_button);
-	JoyEvent _get_mapped_axis_event(const JoyDeviceMapping &mapping, int p_axis, const JoyAxis &p_value);
+	JoyEvent _get_mapped_axis_event(const JoyDeviceMapping &mapping, int p_axis, float p_value);
 	void _get_mapped_hat_events(const JoyDeviceMapping &mapping, int p_hat, JoyEvent r_events[HAT_MAX]);
 	JoystickList _get_output_button(String output);
 	JoystickList _get_output_axis(String output);
