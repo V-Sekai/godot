@@ -30,13 +30,13 @@
 
 #include "servers/visual/shader_language.h"
 #include "core/engine.h"
+#include "core/io/resource_loader.h"
 #include "core/os/os.h"
 #include "core/print_string.h"
-#include "servers/visual_server.h"
-#include "core/io/resource_loader.h"
-#include "servers/visual/shader_language.h"
-#include "servers/visual/rasterizer.h"
 #include "scene/resources/shader.h"
+#include "servers/visual/rasterizer.h"
+#include "servers/visual/shader_language.h"
+#include "servers/visual_server.h"
 
 static bool _is_text_char(CharType c) {
 
@@ -997,7 +997,6 @@ bool ShaderLanguage::_find_identifier(const BlockNode *p_block, const Map<String
 		return true;
 	}
 
-
 	if (shader->globals.has(p_identifier)) {
 		if (r_data_type) {
 			*r_data_type = shader->globals[p_identifier].type;
@@ -1013,7 +1012,6 @@ bool ShaderLanguage::_find_identifier(const BlockNode *p_block, const Map<String
 		}
 		return true;
 	}
-
 
 	for (int i = 0; i < shader->functions.size(); i++) {
 
@@ -2863,7 +2861,6 @@ bool ShaderLanguage::_validate_assign(Node *p_node, const Map<StringName, BuiltI
 				*r_message = RTR("Varyings can only be assigned in vertex function.");
 			return false;
 		}
-
 
 		if (shader->globals.has(var->name)) {
 			if (shader->globals[var->name].is_constant || var->is_const) {
@@ -5095,7 +5092,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 
 	int texture_uniforms = 0;
 	int uniforms = 0;
-	
+
 	Set<String> includes;
 	int include_depth = 0;
 
@@ -5123,9 +5120,9 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 					return ERR_PARSE_ERROR;
 				}
 
-				String replacement = String("import \"") + tk.text +  String("\"");
+				String replacement = String("import \"") + tk.text + String("\"");
 				String empty;
-				for(int i = 0; i < replacement.size(); i++) {
+				for (int i = 0; i < replacement.size(); i++) {
 					empty += " ";
 				}
 				code = code.replace_first(replacement, empty);
@@ -5392,20 +5389,19 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 						while (true) {
 							tk = _get_token();
 							if (tk.type == TK_FILTER_NEAREST ||
-								tk.type == TK_FILTER_LINEAR ||
-								tk.type == TK_FILTER_NEAREST_MIPMAP ||
-								tk.type == TK_FILTER_LINEAR_MIPMAP ||
-								tk.type == TK_FILTER_NEAREST_MIPMAP_ANISO ||
-								tk.type == TK_FILTER_LINEAR_MIPMAP_ANISO ||
-								tk.type == TK_REPEAT_ENABLE ||
-								tk.type == TK_REPEAT_DISABLE ||
-								tk.type == TK_HINT_ROUGHNESS_NORMAL_TEXTURE ||
-								tk.type == TK_HINT_ROUGHNESS_R ||
-								tk.type == TK_HINT_ROUGHNESS_G ||
-								tk.type == TK_HINT_ROUGHNESS_B ||
-								tk.type == TK_HINT_ROUGHNESS_A ||
-								tk.type == TK_HINT_ROUGHNESS_GRAY)
-							{
+									tk.type == TK_FILTER_LINEAR ||
+									tk.type == TK_FILTER_NEAREST_MIPMAP ||
+									tk.type == TK_FILTER_LINEAR_MIPMAP ||
+									tk.type == TK_FILTER_NEAREST_MIPMAP_ANISO ||
+									tk.type == TK_FILTER_LINEAR_MIPMAP_ANISO ||
+									tk.type == TK_REPEAT_ENABLE ||
+									tk.type == TK_REPEAT_DISABLE ||
+									tk.type == TK_HINT_ROUGHNESS_NORMAL_TEXTURE ||
+									tk.type == TK_HINT_ROUGHNESS_R ||
+									tk.type == TK_HINT_ROUGHNESS_G ||
+									tk.type == TK_HINT_ROUGHNESS_B ||
+									tk.type == TK_HINT_ROUGHNESS_A ||
+									tk.type == TK_HINT_ROUGHNESS_GRAY) {
 								tk = _get_token();
 								if (tk.type != TK_COMMA) {
 									break;
@@ -5732,7 +5728,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 											_set_error("Expected ']'");
 											return ERR_PARSE_ERROR;
 										}
-									} else if (tk.type == TK_BRACKET_CLOSE){
+									} else if (tk.type == TK_BRACKET_CLOSE) {
 										array_size2 = array_size;
 										tk = _get_token();
 									} else {
