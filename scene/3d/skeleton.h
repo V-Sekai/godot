@@ -47,13 +47,13 @@ class SkinReference : public Reference {
 	GDCLASS(SkinReference, Reference)
 	friend class Skeleton;
 
-	Skeleton *skeleton_node;
+	Skeleton *skeleton_node = nullptr;
 	RID skeleton;
 	Ref<Skin> skin;
 	uint32_t bind_count = 0;
 	uint64_t skeleton_version = 0;
 	Vector<uint32_t> skin_bone_indices;
-	uint32_t *skin_bone_indices_ptrs;
+	uint32_t *skin_bone_indices_ptrs = nullptr;
 	void _skin_changed();
 
 protected:
@@ -61,6 +61,7 @@ protected:
 
 public:
 	RID get_skeleton() const;
+	Skeleton *get_skeleton_node() const;
 	Ref<Skin> get_skin() const;
 	~SkinReference();
 };
@@ -82,6 +83,7 @@ private:
 
 		bool enabled;
 		int parent;
+		Vector<int> children;
 		int sort_index; //used for re-sorting process order
 
 		bool disable_rest;
@@ -106,6 +108,7 @@ private:
 
 		Bone() {
 			parent = -1;
+			children = Vector<int>();
 			enabled = true;
 			disable_rest = false;
 			custom_pose_enable = false;
@@ -122,8 +125,12 @@ private:
 	Vector<int> process_order;
 	bool process_order_dirty;
 
-	void _make_dirty();
-	bool dirty;
+	void _make_bone_dirty(int p_bone = -1);
+	void _make_skins_dirty();
+	bool skins_dirty;
+	Vector<int> dirty_idxes;
+
+	int bones_root;
 
 	uint64_t version;
 
@@ -148,12 +155,14 @@ protected:
 	bool _set(const StringName &p_path, const Variant &p_value);
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	void _notification(int p_what);
+	void _update_bone_transform(int p_bone);
+	void _update_skins();
 	static void _bind_methods();
 
 public:
 	enum {
-
-		NOTIFICATION_UPDATE_SKELETON = 50
+		NOTIFICATION_UPDATE_SKELETON = 50,
+		NOTIFICATION_UPDATE_SKELETON_BONE_ONLY = 60
 	};
 
 	// skeleton creation api
@@ -166,6 +175,9 @@ public:
 	void set_bone_parent(int p_bone, int p_parent);
 	int get_bone_parent(int p_bone) const;
 
+	Array get_bone_children(int p_bone);
+	int get_bones_root();
+
 	void unparent_bone_and_rest(int p_bone);
 
 	void set_bone_disable_rest(int p_bone, bool p_disable);
@@ -175,7 +187,7 @@ public:
 
 	void set_bone_rest(int p_bone, const Transform &p_rest);
 	Transform get_bone_rest(int p_bone) const;
-	Transform get_bone_global_pose(int p_bone) const;
+	Transform get_bone_global_pose(int p_bone, bool update_skins = false) const;
 
 	void clear_bones_global_pose_override();
 	void set_bone_global_pose_override(int p_bone, const Transform &p_pose, float p_amount, bool p_persistent = false);
