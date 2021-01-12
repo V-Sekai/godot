@@ -43,9 +43,6 @@ void AnimatedValuesBackup::update_skeletons() {
 
 	for (int i = 0; i < entries.size(); i++) {
 		if (entries[i].bone_idx != -1) {
-			// 3D bone
-			Object::cast_to<Skeleton>(entries[i].object)->notification(Skeleton::NOTIFICATION_UPDATE_SKELETON);
-		} else {
 			Bone2D *bone = Object::cast_to<Bone2D>(entries[i].object);
 			if (bone && bone->skeleton) {
 				// 2D bone

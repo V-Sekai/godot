@@ -47,13 +47,13 @@ class SkinReference : public Reference {
 	GDCLASS(SkinReference, Reference)
 	friend class Skeleton;
 
-	Skeleton *skeleton_node = nullptr;
+	Skeleton *skeleton_node;
 	RID skeleton;
 	Ref<Skin> skin;
 	uint32_t bind_count = 0;
 	uint64_t skeleton_version = 0;
 	Vector<uint32_t> skin_bone_indices;
-	uint32_t *skin_bone_indices_ptrs = nullptr;
+	uint32_t *skin_bone_indices_ptrs;
 	void _skin_changed();
 
 protected:
@@ -67,82 +67,64 @@ public:
 };
 
 class Skeleton : public Spatial {
-
 	GDCLASS(Skeleton, Spatial);
 
 private:
 	friend class SkinReference;
 
+	struct Bone {
+		String name;
+
+		bool dirty = true;
+
+		bool enabled = true;
+		int parent = -1;
+		int sort_index = -1; //used for re-sorting process order
+		Vector<int> children = Vector<int>();
+
+		bool disable_rest = false;
+
+		// bones current rest bind
+		Transform rest;
+
+		// the current pose
+		Transform pose;
+
+		// the current global pose (inheriting from parent)
+		// this is the "natural" global pose - without custom poses or override taken into account
+		Transform pose_global_no_override;
+
+		real_t global_pose_override_amount = 0.0;
+		bool global_pose_override_reset = false;
+		Transform global_pose_override;
+
+		// the final pose, with custom pose applied or global_pose_override applied
+		Transform pose_global_final;
+
+		List<ObjectID> nodes_bound;
+
+		PhysicalBone *physical_bone;
+		PhysicalBone *cache_parent_physical_bone;
+	};
+
 	Set<SkinReference *> skin_bindings;
 
 	void _skin_changed();
 
-	struct Bone {
-
-		String name;
-
-		bool enabled;
-		int parent;
-		Vector<int> children;
-		int sort_index; //used for re-sorting process order
-
-		bool disable_rest;
-		Transform rest;
-
-		Transform pose;
-		Transform pose_global;
-
-		bool custom_pose_enable;
-		Transform custom_pose;
-
-		float global_pose_override_amount;
-		bool global_pose_override_reset;
-		Transform global_pose_override;
-
-#ifndef _3D_DISABLED
-		PhysicalBone *physical_bone;
-		PhysicalBone *cache_parent_physical_bone;
-#endif // _3D_DISABLED
-
-		List<uint32_t> nodes_bound;
-
-		Bone() {
-			parent = -1;
-			children = Vector<int>();
-			enabled = true;
-			disable_rest = false;
-			custom_pose_enable = false;
-			global_pose_override_amount = 0;
-			global_pose_override_reset = false;
-#ifndef _3D_DISABLED
-			physical_bone = NULL;
-			cache_parent_physical_bone = NULL;
-#endif // _3D_DISABLED
-		}
-	};
-
 	Vector<Bone> bones;
 	Vector<int> process_order;
+
 	bool process_order_dirty;
-
-	void _make_bone_dirty(int p_bone = -1);
-	void _make_skins_dirty();
-	bool skins_dirty;
-	Vector<int> dirty_idxes;
-
-	int bones_root;
-
+	bool dirty;
 	uint64_t version;
 
 	// bind helpers
 	Array _get_bound_child_nodes_to_bone(int p_bone) const {
-
 		Array bound;
 		List<Node *> children;
 		get_bound_child_nodes_to_bone(p_bone, &children);
 
 		for (int i = 0; i < children.size(); i++) {
-
 			bound.push_back(children[i]);
 		}
 		return bound;
@@ -150,19 +132,18 @@ private:
 
 	void _update_process_order();
 
+	_FORCE_INLINE_ bool update_bone_pose(Bone &p_bone, const Bone *p_bonesptr) const;
+
 protected:
 	bool _get(const StringName &p_path, Variant &r_ret) const;
 	bool _set(const StringName &p_path, const Variant &p_value);
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	void _notification(int p_what);
-	void _update_bone_transform(int p_bone);
-	void _update_skins();
 	static void _bind_methods();
 
 public:
 	enum {
-		NOTIFICATION_UPDATE_SKELETON = 50,
-		NOTIFICATION_UPDATE_SKELETON_BONE_ONLY = 60
+		NOTIFICATION_UPDATE_SKELETON = 50
 	};
 
 	// skeleton creation api
@@ -176,7 +157,6 @@ public:
 	int get_bone_parent(int p_bone) const;
 
 	Array get_bone_children(int p_bone);
-	int get_bones_root();
 
 	void unparent_bone_and_rest(int p_bone);
 
@@ -187,7 +167,9 @@ public:
 
 	void set_bone_rest(int p_bone, const Transform &p_rest);
 	Transform get_bone_rest(int p_bone) const;
-	Transform get_bone_global_pose(int p_bone, bool update_skins = false) const;
+	Transform get_bone_global_pose(int p_bone, bool force_update = false) const;
+	Transform get_bone_global_pose_without_override(int p_bone, bool force_update = false) const;
+	Transform get_bone_global_rest(int p_bone) const;
 
 	void clear_bones_global_pose_override();
 	void set_bone_global_pose_override(int p_bone, const Transform &p_pose, float p_amount, bool p_persistent = false);
@@ -206,16 +188,17 @@ public:
 	void set_bone_pose(int p_bone, const Transform &p_pose);
 	Transform get_bone_pose(int p_bone) const;
 
-	void set_bone_custom_pose(int p_bone, const Transform &p_custom_pose);
-	Transform get_bone_custom_pose(int p_bone) const;
+	void reset_bone_poses();
 
 	void localize_rests(); // used for loaders and tools
 	int get_process_order(int p_idx);
+	Vector<int> get_bone_process_orders();
 
 	Ref<SkinReference> register_skin(const Ref<Skin> &p_skin);
 
-#ifndef _3D_DISABLED
-	// Physical bone API
+	// Helper functions
+	Transform bone_transform_to_world_transform(Transform p_transform);
+	Transform world_transform_to_bone_transform(Transform p_transform);
 
 	void bind_physical_bone_to_bone(int p_bone, PhysicalBone *p_physical_bone);
 	void unbind_physical_bone_from_bone(int p_bone);
@@ -233,7 +216,6 @@ public:
 	void physical_bones_start_simulation_on(const Array &p_bones);
 	void physical_bones_add_collision_exception(RID p_exception);
 	void physical_bones_remove_collision_exception(RID p_exception);
-#endif // _3D_DISABLED
 
 public:
 	Skeleton();
