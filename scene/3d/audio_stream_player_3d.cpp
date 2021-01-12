@@ -206,88 +206,85 @@ void AudioStreamPlayer3D::_mix_audio() {
 		//mix!
 
 		{
-			int buffers = AudioServer::get_singleton()->get_channel_count();
+			if (GLOBAL_GET("audio/enable_resonance_audio")) {
+				ResonanceAudioWrapper::get_singleton()->push_source_buffer(audio_source_id, buffer_size, buffer);
+			} else {
+				int buffers = AudioServer::get_singleton()->get_channel_count();
+				for (int k = 0; k < buffers; k++) {
+					AudioFrame target_volume = stream_paused_fade_out ? AudioFrame(0.f, 0.f) : current.vol[k];
+					AudioFrame vol_prev = stream_paused_fade_in ? AudioFrame(0.f, 0.f) : prev_outputs[i].vol[k];
+					AudioFrame vol_inc = (target_volume - vol_prev) / float(buffer_size);
+					AudioFrame vol = vol_prev;
 
-			for (int k = 0; k < buffers; k++) {
-				AudioFrame target_volume = stream_paused_fade_out ? AudioFrame(0.f, 0.f) : current.vol[k];
-				AudioFrame vol_prev = stream_paused_fade_in ? AudioFrame(0.f, 0.f) : prev_outputs[i].vol[k];
-				AudioFrame vol_inc = (target_volume - vol_prev) / float(buffer_size);
-				AudioFrame vol = vol_prev;
+			        if (!AudioServer::get_singleton()->thread_has_channel_mix_buffer(current.bus_index, k)) {
+				        continue; //may have been deleted, will be updated on process
+                    }
+					AudioFrame *target = AudioServer::get_singleton()->thread_get_channel_mix_buffer(current.bus_index, k);
+					current.filter.set_mode(AudioFilterSW::HIGHSHELF);
+					current.filter.set_sampling_rate(AudioServer::get_singleton()->get_mix_rate());
+					current.filter.set_cutoff(attenuation_filter_cutoff_hz);
+					current.filter.set_resonance(1);
+					current.filter.set_stages(1);
+					current.filter.set_gain(current.filter_gain);
 
-			if (!AudioServer::get_singleton()->thread_has_channel_mix_buffer(current.bus_index, k)) {
-				continue; //may have been deleted, will be updated on process
-			}
+					if (interpolate_filter) {
 
-				if (GLOBAL_GET("audio/enable_resonance_audio")) {
-					ResonanceAudioWrapper::get_singleton()->push_source_buffer(audio_source_id, buffer_size, buffer);
-					continue;
-				}
+						current.filter_process[k * 2 + 0] = prev_outputs[i].filter_process[k * 2 + 0];
+						current.filter_process[k * 2 + 1] = prev_outputs[i].filter_process[k * 2 + 1];
 
-				AudioFrame *target = AudioServer::get_singleton()->thread_get_channel_mix_buffer(current.bus_index, k);
-				current.filter.set_mode(AudioFilterSW::HIGHSHELF);
-				current.filter.set_sampling_rate(AudioServer::get_singleton()->get_mix_rate());
-				current.filter.set_cutoff(attenuation_filter_cutoff_hz);
-				current.filter.set_resonance(1);
-				current.filter.set_stages(1);
-				current.filter.set_gain(current.filter_gain);
+						current.filter_process[k * 2 + 0].set_filter(&current.filter, false);
+						current.filter_process[k * 2 + 1].set_filter(&current.filter, false);
 
-				if (interpolate_filter) {
-
-					current.filter_process[k * 2 + 0] = prev_outputs[i].filter_process[k * 2 + 0];
-					current.filter_process[k * 2 + 1] = prev_outputs[i].filter_process[k * 2 + 1];
-
-					current.filter_process[k * 2 + 0].set_filter(&current.filter, false);
-					current.filter_process[k * 2 + 1].set_filter(&current.filter, false);
-
-					current.filter_process[k * 2 + 0].update_coeffs(buffer_size);
-					current.filter_process[k * 2 + 1].update_coeffs(buffer_size);
-					for (int j = 0; j < buffer_size; j++) {
-
-						AudioFrame f = buffer[j] * vol;
-						current.filter_process[k * 2 + 0].process_one_interp(f.l);
-						current.filter_process[k * 2 + 1].process_one_interp(f.r);
-
-						target[j] += f;
-						vol += vol_inc;
-					}
-				} else {
-					current.filter_process[k * 2 + 0].set_filter(&current.filter);
-					current.filter_process[k * 2 + 1].set_filter(&current.filter);
-
-					current.filter_process[k * 2 + 0].update_coeffs();
-					current.filter_process[k * 2 + 1].update_coeffs();
-					for (int j = 0; j < buffer_size; j++) {
-
-						AudioFrame f = buffer[j] * vol;
-						current.filter_process[k * 2 + 0].process_one(f.l);
-						current.filter_process[k * 2 + 1].process_one(f.r);
-
-						target[j] += f;
-						vol += vol_inc;
-					}
-				}
-				if (current.reverb_bus_index >= 0) {
-
-					if (!AudioServer::get_singleton()->thread_has_channel_mix_buffer(current.reverb_bus_index, k))
-						continue; //may have been deleted, will be updated on process
-
-					AudioFrame *rtarget = AudioServer::get_singleton()->thread_get_channel_mix_buffer(current.reverb_bus_index, k);
-
-					if (current.reverb_bus_index == prev_outputs[i].reverb_bus_index) {
-						AudioFrame rvol_inc = (current.reverb_vol[k] - prev_outputs[i].reverb_vol[k]) / float(buffer_size);
-						AudioFrame rvol = prev_outputs[i].reverb_vol[k];
-
+						current.filter_process[k * 2 + 0].update_coeffs(buffer_size);
+						current.filter_process[k * 2 + 1].update_coeffs(buffer_size);
 						for (int j = 0; j < buffer_size; j++) {
 
-							rtarget[j] += buffer[j] * rvol;
-							rvol += rvol_inc;
+							AudioFrame f = buffer[j] * vol;
+							current.filter_process[k * 2 + 0].process_one_interp(f.l);
+							current.filter_process[k * 2 + 1].process_one_interp(f.r);
+
+							target[j] += f;
+							vol += vol_inc;
 						}
 					} else {
+						current.filter_process[k * 2 + 0].set_filter(&current.filter);
+						current.filter_process[k * 2 + 1].set_filter(&current.filter);
 
-						AudioFrame rvol = current.reverb_vol[k];
+						current.filter_process[k * 2 + 0].update_coeffs();
+						current.filter_process[k * 2 + 1].update_coeffs();
 						for (int j = 0; j < buffer_size; j++) {
 
-							rtarget[j] += buffer[j] * rvol;
+							AudioFrame f = buffer[j] * vol;
+							current.filter_process[k * 2 + 0].process_one(f.l);
+							current.filter_process[k * 2 + 1].process_one(f.r);
+
+							target[j] += f;
+							vol += vol_inc;
+						}
+					}
+					if (current.reverb_bus_index >= 0) {
+
+						if (!AudioServer::get_singleton()->thread_has_channel_mix_buffer(current.reverb_bus_index, k))
+							continue; //may have been deleted, will be updated on process
+
+						AudioFrame *rtarget = AudioServer::get_singleton()->thread_get_channel_mix_buffer(current.reverb_bus_index, k);
+
+						if (current.reverb_bus_index == prev_outputs[i].reverb_bus_index) {
+							AudioFrame rvol_inc = (current.reverb_vol[k] - prev_outputs[i].reverb_vol[k]) / float(buffer_size);
+							AudioFrame rvol = prev_outputs[i].reverb_vol[k];
+
+							for (int j = 0; j < buffer_size; j++) {
+
+								rtarget[j] += buffer[j] * rvol;
+								rvol += rvol_inc;
+							}
+						} else {
+
+							AudioFrame rvol = current.reverb_vol[k];
+							for (int j = 0; j < buffer_size; j++) {
+
+								rtarget[j] += buffer[j] * rvol;
+							}
 						}
 					}
 				}
@@ -309,19 +306,30 @@ void AudioStreamPlayer3D::_mix_audio() {
 	stream_paused_fade_out = false;
 }
 
-float AudioStreamPlayer3D::_get_attenuation_db(float p_distance) const {
-	float att = 0;
+float AudioStreamPlayer3D::_accumulate_unit_db_for_attenuation(float p_attenuation) const {
+	float att = Math::linear2db(p_attenuation);
+	att += unit_db;
+	if (att > max_db) {
+		att = max_db;
+	}
+
+	return Math::db2linear(att);
+}
+
+float AudioStreamPlayer3D::_get_attenuation_for_distance(float p_distance) const {
+
+	float att = 1.0;
 	switch (attenuation_model) {
 		case ATTENUATION_INVERSE_DISTANCE: {
-			att = Math::linear2db(1.0 / ((p_distance / unit_size) + CMP_EPSILON));
+			att = (1.0 / ((p_distance / unit_size) + CMP_EPSILON));
 		} break;
 		case ATTENUATION_INVERSE_SQUARE_DISTANCE: {
 			float d = (p_distance / unit_size);
 			d *= d;
-			att = Math::linear2db(1.0 / (d + CMP_EPSILON));
+			att = (1.0 / (d + CMP_EPSILON));
 		} break;
 		case ATTENUATION_LOGARITHMIC: {
-			att = -20 * Math::log(p_distance / unit_size + CMP_EPSILON);
+			att = Math::db2linear(-20 * Math::log(p_distance / unit_size + CMP_EPSILON));
 		} break;
 		case ATTENUATION_DISABLED:
 			break;
@@ -331,15 +339,29 @@ float AudioStreamPlayer3D::_get_attenuation_db(float p_distance) const {
 		}
 	}
 
-	att += unit_db;
-	if (att > max_db) {
-		att = max_db;
-	}
-
 	return att;
 }
 
 void _update_sound() {
+}
+
+void AudioStreamPlayer3D::_update_sound_resonance(float distance) {
+	float attenuation = _get_attenuation_for_distance(distance);
+
+	float att_db = Math::linear2db(attenuation);
+	if (att_db > max_db - unit_db) {
+		att_db = max_db - unit_db;
+	}
+
+	attenuation = Math::db2linear(att_db);
+
+	if (max_distance > 0) {
+		float max_distance_multiplier = MAX(0, 1.0 - (distance / max_distance));
+		attenuation *= max_distance_multiplier;
+	}
+
+	ResonanceAudioWrapper::get_singleton()->set_source_volume(audio_source_id, Math::db2linear(unit_db));
+	ResonanceAudioWrapper::get_singleton()->set_source_attenuation(audio_source_id, attenuation);
 }
 
 void AudioStreamPlayer3D::_notification(int p_what) {
@@ -475,7 +497,11 @@ void AudioStreamPlayer3D::_notification(int p_what) {
 					}
 				}
 
-				float multiplier = Math::db2linear(_get_attenuation_db(dist));
+				if (GLOBAL_GET("audio/enable_resonance_audio")) {
+					_update_sound_resonance(dist);
+				}
+
+				float multiplier = _accumulate_unit_db_for_attenuation(_get_attenuation_for_distance(dist));
 				if (max_distance > 0) {
 					multiplier *= MAX(0, 1.0 - (dist / max_distance));
 				}
@@ -533,7 +559,7 @@ void AudioStreamPlayer3D::_notification(int p_what) {
 
 						if (uniformity > 0.0) {
 							float distance = listener_area_pos.length();
-							float attenuation = Math::db2linear(_get_attenuation_db(distance));
+							float attenuation = _accumulate_unit_db_for_attenuation(_get_attenuation_for_distance(distance));
 
 							//float dist_att_db = -20 * Math::log(dist + 0.00001); //logarithmic attenuation, like in real life
 

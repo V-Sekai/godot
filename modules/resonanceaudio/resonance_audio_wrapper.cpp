@@ -89,3 +89,7 @@ bool ResonanceAudioWrapper::pull_listener_buffer(int num_frames, AudioFrame *fra
 void ResonanceAudioWrapper::set_source_attenuation(AudioSourceId source, float attenuation_linear) {
 	resonance_api->SetSourceDistanceAttenuation(source.id, attenuation_linear);
 }
+
+void ResonanceAudioWrapper::set_source_volume(AudioSourceId source, float volume) {
+	resonance_api->SetSourceVolume(source.id, volume);
+}

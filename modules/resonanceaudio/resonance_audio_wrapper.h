@@ -61,6 +61,7 @@ public:
 	bool pull_listener_buffer(int num_frames, AudioFrame *frames);
 
 	void set_source_attenuation(AudioSourceId source, float attenuation_linear);
+	void set_source_volume(AudioSourceId source, float volume);
 };
 
 #endif
