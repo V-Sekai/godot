@@ -79,6 +79,8 @@
 #include "editor/project_manager.h"
 #endif
 
+#include "modules/resonanceaudio/resonance_audio_wrapper.h"
+
 /* Static members */
 
 // Singletons
@@ -1454,6 +1456,8 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 	ResourceLoader::load_path_remaps();
 
 	audio_server->load_default_bus_layout();
+
+	ResonanceAudioWrapper::get_singleton()->update_output_bus_from_project_settings();
 
 	if (use_debug_profiler && script_debugger) {
 		script_debugger->profiling_start();

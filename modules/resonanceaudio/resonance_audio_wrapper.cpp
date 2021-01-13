@@ -30,6 +30,7 @@
 
 #include "resonance_audio_wrapper.h"
 #include "servers/audio_server.h"
+#include "core/project_settings.h"
 
 ResonanceAudioWrapper *ResonanceAudioWrapper::singleton;
 
@@ -88,4 +89,16 @@ bool ResonanceAudioWrapper::pull_listener_buffer(int num_frames, AudioFrame *fra
 
 void ResonanceAudioWrapper::set_source_attenuation(AudioSourceId source, float attenuation_linear) {
 	resonance_api->SetSourceDistanceAttenuation(source.id, attenuation_linear);
+}
+
+int ResonanceAudioWrapper::get_bus_index() {
+	return bus_index;
+}
+
+void ResonanceAudioWrapper::set_bus_index(int p_bus_index) {
+	bus_index = p_bus_index;
+}
+
+void ResonanceAudioWrapper::update_output_bus_from_project_settings() {
+	set_bus_index(AudioServer::get_singleton()->thread_find_bus_index(GLOBAL_GET("audio/resonance_audio_bus")));
 }
