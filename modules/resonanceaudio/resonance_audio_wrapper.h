@@ -42,6 +42,7 @@ struct AudioSourceId {
 class ResonanceAudioWrapper : public Object {
 	GDCLASS(ResonanceAudioWrapper, Object);
 
+	int bus_index = 0; // Bus index ResonanceAudio gets outputted to
 	static ResonanceAudioWrapper *singleton;
 
 	vraudio::ResonanceAudioApi *resonance_api;
@@ -62,6 +63,11 @@ public:
 
 	void set_source_attenuation(AudioSourceId source, float attenuation_linear);
 	void set_source_volume(AudioSourceId source, float volume);
+
+	void set_bus_index(int p_bus_index);
+	int get_bus_index();
+
+	void update_output_bus_from_project_settings();
 };
 
 #endif

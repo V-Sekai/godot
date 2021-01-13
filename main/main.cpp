@@ -86,6 +86,8 @@
 #endif
 #endif
 
+#include "modules/resonanceaudio/resonance_audio_wrapper.h"
+
 #ifdef MODULE_GDSCRIPT_ENABLED
 #if defined(TOOLS_ENABLED) && !defined(GDSCRIPT_NO_LSP)
 #include "modules/gdscript/language_server/gdscript_language_server.h"
@@ -1638,6 +1640,8 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 	ScriptServer::init_languages();
 
 	audio_server->load_default_bus_layout();
+
+	ResonanceAudioWrapper::get_singleton()->update_output_bus_from_project_settings();
 
 	if (use_debug_profiler && script_debugger) {
 		script_debugger->profiling_start();

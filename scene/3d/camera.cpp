@@ -672,7 +672,7 @@ Vector3 Camera::get_doppler_tracked_velocity() const {
 }
 
 void Camera::_process_audio() {
-	AudioFrame *target = AudioServer::get_singleton()->thread_get_channel_mix_buffer(/* bus_index= */ 0, /* channel_idx= */ 0);
+	AudioFrame *target = AudioServer::get_singleton()->thread_get_channel_mix_buffer(ResonanceAudioWrapper::get_singleton()->get_bus_index(), /* channel_idx= */ 0);
 	size_t num_frames = AudioServer::get_singleton()->thread_get_mix_buffer_size();
 	ResonanceAudioWrapper::get_singleton()->pull_listener_buffer(num_frames, target);
 }

@@ -193,6 +193,7 @@ void AudioDriverManager::initialize(int p_driver) {
 	GLOBAL_DEF_RST("audio/output_latency", DEFAULT_OUTPUT_LATENCY);
 	GLOBAL_DEF_RST("audio/output_latency.web", 50); // Safer default output_latency for web.
 	GLOBAL_DEF_RST("audio/enable_resonance_audio", true);
+	GLOBAL_DEF_RST("audio/resonance_audio_bus", "Master");
 
 	int failed_driver = -1;
 
