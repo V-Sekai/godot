@@ -46,6 +46,7 @@ class ResonanceAudioWrapper : public Object {
 	static ResonanceAudioWrapper *singleton;
 
 	vraudio::ResonanceAudioApi *resonance_api;
+	int listener_count;
 
 public:
 	ResonanceAudioWrapper();
@@ -68,6 +69,13 @@ public:
 	int get_bus_index();
 
 	void update_output_bus_from_project_settings();
+
+	void _process_audio();
+	static void _process_audio_cb(void *self) { reinterpret_cast<ResonanceAudioWrapper *>(self)->_process_audio(); }
+
+	int get_listener_count();
+	void listener_count_increment();
+	void listener_count_decrement();
 };
 
 #endif

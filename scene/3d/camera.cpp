@@ -109,12 +109,16 @@ void Camera::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			if (viewport->is_audio_listener() && GLOBAL_GET("audio/enable_resonance_audio")) {
-				AudioServer::get_singleton()->add_callback(_process_audio_cb, this);
+				if (is_current()) {
+					ResonanceAudioWrapper::get_singleton()->set_head_transform(get_global_transform());
+				}
 			}
 		} break;
 		case NOTIFICATION_EXIT_TREE: {
 			if (viewport->is_audio_listener() && GLOBAL_GET("audio/enable_resonance_audio")) {
-				AudioServer::get_singleton()->remove_callback(_process_audio_cb, this);
+				if (is_current()) {
+					ResonanceAudioWrapper::get_singleton()->listener_count_decrement();
+				}
 			}
 		} break;
 
@@ -132,7 +136,9 @@ void Camera::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_TRANSFORM_CHANGED: {
 			if (viewport->is_audio_listener() && GLOBAL_GET("audio/enable_resonance_audio")) {
-				ResonanceAudioWrapper::get_singleton()->set_head_transform(get_global_transform());
+				if (is_current()) {
+					ResonanceAudioWrapper::get_singleton()->set_head_transform(get_global_transform());
+				}
 			}
 
 			_request_camera_update();
@@ -165,11 +171,21 @@ void Camera::_notification(int p_what) {
 		case NOTIFICATION_BECAME_CURRENT: {
 			if (viewport) {
 				viewport->find_world()->_register_camera(this);
+				if (viewport->is_audio_listener() && GLOBAL_GET("audio/enable_resonance_audio")) {
+					if (is_current()) {
+						ResonanceAudioWrapper::get_singleton()->listener_count_increment();
+					}
+				}
 			}
 		} break;
 		case NOTIFICATION_LOST_CURRENT: {
 			if (viewport) {
 				viewport->find_world()->_remove_camera(this);
+				if (viewport->is_audio_listener() && GLOBAL_GET("audio/enable_resonance_audio")) {
+					if (is_current()) {
+						ResonanceAudioWrapper::get_singleton()->listener_count_decrement();
+					}
+				}
 			}
 		} break;
 	}
@@ -669,12 +685,6 @@ Vector3 Camera::get_doppler_tracked_velocity() const {
 	} else {
 		return Vector3();
 	}
-}
-
-void Camera::_process_audio() {
-	AudioFrame *target = AudioServer::get_singleton()->thread_get_channel_mix_buffer(ResonanceAudioWrapper::get_singleton()->get_bus_index(), /* channel_idx= */ 0);
-	size_t num_frames = AudioServer::get_singleton()->thread_get_mix_buffer_size();
-	ResonanceAudioWrapper::get_singleton()->pull_listener_buffer(num_frames, target);
 }
 
 Camera::Camera() {

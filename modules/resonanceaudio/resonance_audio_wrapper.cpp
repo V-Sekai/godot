@@ -37,6 +37,7 @@ ResonanceAudioWrapper *ResonanceAudioWrapper::singleton;
 ResonanceAudioWrapper::ResonanceAudioWrapper() {
 	resonance_api = vraudio::CreateResonanceAudioApi(
 			/* num_channels= */ 2, AudioServer::get_singleton()->thread_get_mix_buffer_size(), AudioServer::get_singleton()->get_mix_rate());
+	listener_count = 0;
 	singleton = this;
 }
 
@@ -105,4 +106,30 @@ void ResonanceAudioWrapper::set_bus_index(int p_bus_index) {
 
 void ResonanceAudioWrapper::update_output_bus_from_project_settings() {
 	set_bus_index(AudioServer::get_singleton()->thread_find_bus_index(GLOBAL_GET("audio/resonance_audio_bus")));
+}
+
+void ResonanceAudioWrapper::_process_audio() {
+	AudioFrame *target = AudioServer::get_singleton()->thread_get_channel_mix_buffer(/* bus_index= */ 0, /* channel_idx= */ 0);
+	size_t num_frames = AudioServer::get_singleton()->thread_get_mix_buffer_size();
+	ResonanceAudioWrapper::get_singleton()->pull_listener_buffer(num_frames, target);
+}
+
+int ResonanceAudioWrapper::get_listener_count() {
+	return listener_count;
+}
+
+void ResonanceAudioWrapper::listener_count_increment() {
+	if (get_listener_count() == 0) {
+		AudioServer::get_singleton()->add_callback(_process_audio_cb, this);
+	}
+	listener_count++;
+}
+
+void ResonanceAudioWrapper::listener_count_decrement() {
+	if (get_listener_count() == 1) {
+		AudioServer::get_singleton()->remove_callback(_process_audio_cb, this);
+	}
+
+	listener_count--;
+	ERR_FAIL_COND(get_listener_count() < 0);
 }
