@@ -69,7 +69,7 @@ class PhysicsServerSW : public PhysicsServer {
 
 public:
 	static PhysicsServerSW *singleton;
-	Mutex *pending_shape_update_list_lock;
+	Mutex pending_shape_update_list_lock;
 
 	struct CollCbkData {
 		int max;
