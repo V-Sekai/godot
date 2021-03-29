@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_richtext = env_modules.Clone()
+
+env_richtext.Prepend(CPPPATH=["."])
+env_richtext.Prepend(CPPPATH=["#thirdparty/cmark-gfm/src"])
+env_richtext.Append(CPPDEFINES=["CMARK_NO_SHORT_NAMES"])
+env_richtext.Append(CPPDEFINES=["CMARK_GFM_STATIC_DEFINE"])
+
+thirdparty_dir = "#thirdparty/cmark-gfm/src/"
+thirdparty_sources = [
+    "arena.c",
+    "blocks.c",
+    "buffer.c",
+    "cmark.c",
+    "cmark_ctype.c",
+    "commonmark.c",
+    "footnotes.c",
+    "houdini_href_e.c",
+    "houdini_href_e.c",
+    "houdini_html_e.c",
+    "houdini_html_u.c",
+    "html.c",
+    "inlines.c",
+    "iterator.c",
+    "latex.c",
+    "linked_list.c",
+    "main.c",
+    "man.c",
+    "map.c",
+    "node.c",
+    "plaintext.c",
+    "plugin.c",
+    "references.c",
+    "registry.c",
+    "render.c",
+    "scanners.c",
+    "syntax_extension.c",
+    "utf8.c",
+    "xml.c",
+]
+richtext_sources = [thirdparty_dir + file for file in thirdparty_sources]
+
+env_thirdparty = env_richtext.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(env.modules_sources, richtext_sources)
+
+env_richtext.add_source_files(env.modules_sources, "*.cpp")

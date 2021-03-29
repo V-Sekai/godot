@@ -467,6 +467,7 @@ private:
 
 public:
 	String get_parsed_text() const;
+	String get_text();
 	void add_text(const String &p_text);
 	void add_image(const Ref<Texture2D> &p_image, const int p_width = 0, const int p_height = 0, const Color &p_color = Color(1.0, 1.0, 1.0), InlineAlign p_align = INLINE_ALIGN_CENTER);
 	void add_newline();
