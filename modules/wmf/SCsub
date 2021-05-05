@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+
+Import('env')
+Import('env_modules')
+
+env_wmf = env_modules.Clone()
+
+env_wmf.add_source_files(env.modules_sources, "*.cpp")
+
+EXTRALIBS = ['mfplat.lib', 'mf.lib']
+env.Append(LINKFLAGS=[p for p in EXTRALIBS])
+
+Export('env')
