@@ -3630,14 +3630,12 @@ Vector3 Node3DEditorViewport::_get_instance_position(const Point2 &p_pos) const 
 	Vector3 world_pos = _get_ray_pos(p_pos);
 
 	Vector3 point = world_pos + world_ray * MAX_DISTANCE;
-	Vector3 normal = Vector3(0.0, 0.0, 0.0);
 
 	PhysicsDirectSpaceState3D *ss = get_tree()->get_root()->get_world_3d()->get_direct_space_state();
 	PhysicsDirectSpaceState3D::RayResult result;
 
 	if (ss->intersect_ray(world_pos, world_pos + world_ray * MAX_DISTANCE, result)) {
 		point = result.position;
-		normal = result.normal;
 	}
 
 	return point;
