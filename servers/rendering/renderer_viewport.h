@@ -247,6 +247,7 @@ public:
 	void viewport_set_disable_2d(RID p_viewport, bool p_disable);
 	void viewport_set_environment_mode(RID p_viewport, RS::ViewportEnvironmentMode p_mode);
 	void viewport_set_disable_3d(RID p_viewport, bool p_disable);
+	void viewport_set_color_management(RID p_viewport);
 
 	bool viewport_is_environment_disabled(Viewport *viewport);
 

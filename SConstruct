@@ -255,6 +255,8 @@ opts.Add(BoolVariable("builtin_xatlas", "Use the built-in xatlas library", True)
 opts.Add(BoolVariable("builtin_zlib", "Use the built-in zlib library", True))
 opts.Add(BoolVariable("builtin_zstd", "Use the built-in Zstd library", True))
 
+opts.Add(BoolVariable("builtin_lcms", "Use the built-in lcms library", True))
+
 # Compilation environment setup
 opts.Add("CXX", "C++ compiler")
 opts.Add("CC", "C compiler")

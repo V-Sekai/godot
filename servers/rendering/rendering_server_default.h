@@ -624,6 +624,7 @@ public:
 	FUNC2(viewport_set_disable_2d, RID, bool)
 	FUNC2(viewport_set_environment_mode, RID, ViewportEnvironmentMode)
 	FUNC2(viewport_set_disable_3d, RID, bool)
+	FUNC1(viewport_set_color_management, RID);
 
 	FUNC2(viewport_set_canvas_cull_mask, RID, uint32_t)
 
