@@ -2552,10 +2552,11 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 			}
 
 			ERR_FAIL_COND_V(!a.has("POSITION"), ERR_PARSE_ERROR);
+			int64_t vertex_num = 0;
 			if (a.has("POSITION")) {
 				PackedVector3Array vertices = _decode_accessor_as_vec3(state, a["POSITION"], true);
 				array[Mesh::ARRAY_VERTEX] = vertices;
-				vertex_count = vertices.size();
+				vertex_num = vertices.size();
 			}
 			if (a.has("NORMAL")) {
 				array[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, a["NORMAL"], true);
@@ -2569,10 +2570,10 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 			if (a.has("TEXCOORD_1")) {
 				array[Mesh::ARRAY_TEX_UV2] = _decode_accessor_as_vec2(state, a["TEXCOORD_1"], true);
 				Vector<Color> custom_3;
-				custom_3.resize(vertex_count);
+				custom_3.resize(vertex_num);
 				// Godot Engine 3.x uses uv2 for light maps.
 				Vector<Vector2> tex_uv2 = array[Mesh::ARRAY_TEX_UV2];
-				for (int32_t color_i = 0; color_i < vertex_count; color_i++) {
+				for (int32_t color_i = 0; color_i < vertex_num; color_i++) {
 					Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
 					c.r = tex_uv2[color_i].x;
 					c.g = tex_uv2[color_i].y;
@@ -2581,7 +2582,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				array[Mesh::ARRAY_CUSTOM3] = custom_3;
 			}
 			Vector<Color> custom_0;
-			custom_0.resize(vertex_count);
+			custom_0.resize(vertex_num);
 			Vector<Vector2> texcoord_2;
 			Vector<Vector2> texcoord_3;
 			if (a.has("TEXCOORD_2")) {
@@ -2606,7 +2607,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				array[Mesh::ARRAY_CUSTOM0] = custom_0;
 			}
 			Vector<Color> custom_1;
-			custom_1.resize(vertex_count);
+			custom_1.resize(vertex_num);
 			Vector<Vector2> texcoord_4;
 			Vector<Vector2> texcoord_5;
 			if (a.has("TEXCOORD_4")) {
@@ -2631,7 +2632,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				array[Mesh::ARRAY_CUSTOM1] = custom_1;
 			}
 			Vector<Color> custom_2;
-			custom_2.resize(vertex_count);
+			custom_2.resize(vertex_num);
 			Vector<Vector2> texcoord_6;
 			Vector<Vector2> texcoord_7;
 			if (a.has("TEXCOORD_6")) {
