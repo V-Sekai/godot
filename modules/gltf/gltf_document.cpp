@@ -2211,15 +2211,21 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 			}
 			{
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV];
+				LocalVector<Vector2> uv1_channel;
+				uv1_channel.resize(a.size());
 				if (a.size()) {
-					attributes["TEXCOORD_0"] = _encode_accessor_as_vec2(state, a, true);
+					uv1_channel = a;
 				}
+				attributes["TEXCOORD_0"] = _encode_accessor_as_vec2(state, a, true);
 			}
 			{
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV2];
+				LocalVector<Vector2> uv2_channel;
+				uv2_channel.resize(a.size());
 				if (a.size()) {
-					attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, a, true);
+					uv2_channel = a;
 				}
+				attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, a, true);
 			}
 			{
 				Vector<Color> a = array[Mesh::ARRAY_CUSTOM0];
