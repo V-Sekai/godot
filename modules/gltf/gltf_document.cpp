@@ -2569,6 +2569,16 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 			}
 			if (a.has("TEXCOORD_1")) {
 				array[Mesh::ARRAY_TEX_UV2] = _decode_accessor_as_vec2(state, a["TEXCOORD_1"], true);
+				Vector<Color> custom_3;
+				custom_3.resize(vertex_count);
+				Vector<Vector2> tex_uv2 = array[Mesh::ARRAY_TEX_UV2];
+				for (int32_t color_i = 0; color_i < vertex_count; color_i++) {
+					Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
+					c.r = tex_uv2[color_i].x;
+					c.g = tex_uv2[color_i].y;
+					custom_3.write[color_i] = c;
+				}
+				array[Mesh::ARRAY_CUSTOM3] = custom_3;
 			}
 			Vector<Color> custom_0;
 			custom_0.resize(vertex_count);
@@ -2581,7 +2591,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				texcoord_3 = _decode_accessor_as_vec2(state, a["TEXCOORD_3"], true);
 			}
 			for (int32_t color_i = 0; color_i < custom_0.size(); color_i++) {
-				Color c;
+				Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
 				if (color_i < texcoord_2.size()) {
 					c.r = texcoord_2[color_i].x;
 					c.g = texcoord_2[color_i].y;
@@ -2606,7 +2616,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				texcoord_5 = _decode_accessor_as_vec2(state, a["TEXCOORD_5"], true);
 			}
 			for (int32_t color_i = 0; color_i < custom_1.size(); color_i++) {
-				Color c;
+				Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
 				if (color_i < texcoord_4.size()) {
 					c.r = texcoord_4[color_i].x;
 					c.g = texcoord_4[color_i].y;
@@ -2631,7 +2641,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				texcoord_7 = _decode_accessor_as_vec2(state, a["TEXCOORD_7"], true);
 			}
 			for (int32_t color_i = 0; color_i < custom_2.size(); color_i++) {
-				Color c;
+				Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
 				if (color_i < texcoord_6.size()) {
 					c.r = texcoord_6[color_i].x;
 					c.g = texcoord_6[color_i].y;
