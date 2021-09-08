@@ -2540,7 +2540,9 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				}
 				custom_0.write[color_i] = c;
 			}
-			array[Mesh::ARRAY_CUSTOM0] = custom_0;
+			if (a.has("TEXCOORD_2") || a.has("TEXCOORD_3")) {
+				array[Mesh::ARRAY_CUSTOM0] = custom_0;
+			}
 			Vector<Color> custom_1;
 			custom_1.resize(vertex_count);
 			Vector<Vector2> texcoord_4;
@@ -2563,7 +2565,9 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				}
 				custom_1.write[color_i] = c;
 			}
-			array[Mesh::ARRAY_CUSTOM1] = custom_1;
+			if (a.has("TEXCOORD_4") || a.has("TEXCOORD_5")) {
+				array[Mesh::ARRAY_CUSTOM1] = custom_1;
+			}
 			Vector<Color> custom_2;
 			custom_2.resize(vertex_count);
 			Vector<Vector2> texcoord_6;
@@ -2586,7 +2590,9 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				}
 				custom_2.write[color_i] = c;
 			}
-			array[Mesh::ARRAY_CUSTOM2] = custom_2;
+			if (a.has("TEXCOORD_6") || a.has("TEXCOORD_7")) {
+				array[Mesh::ARRAY_CUSTOM2] = custom_2;
+			}
 			if (a.has("COLOR_0")) {
 				array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 				has_vertex_color = true;
