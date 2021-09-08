@@ -2552,7 +2552,6 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 			}
 
 			ERR_FAIL_COND_V(!a.has("POSITION"), ERR_PARSE_ERROR);
-			int64_t vertex_count = 0;
 			if (a.has("POSITION")) {
 				PackedVector3Array vertices = _decode_accessor_as_vec3(state, a["POSITION"], true);
 				array[Mesh::ARRAY_VERTEX] = vertices;
