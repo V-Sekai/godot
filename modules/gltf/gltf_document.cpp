@@ -30,6 +30,7 @@
 
 #include "gltf_document.h"
 
+#include "core/math/vector2.h"
 #include "gltf_accessor.h"
 #include "gltf_animation.h"
 #include "gltf_camera.h"
@@ -2216,6 +2217,57 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV2];
 				if (a.size()) {
 					attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, a, true);
+				}
+			}
+			{
+				Vector<Color> a = array[Mesh::ARRAY_CUSTOM0];
+				if (a.size()) {
+					int32_t count = a.size();
+					LocalVector<Vector2> first_channel;
+					first_channel.resize(count);
+					LocalVector<Vector2> second_channel;
+					second_channel.resize(count);
+					for (int32_t color_i = 0; color_i < a.size(); color_i++) {
+						Color c = a[color_i];
+						first_channel[color_i] = Vector2(c.r, c.g);
+						second_channel[color_i] = Vector2(c.b, c.a);
+					}
+					attributes["TEXCOORD_2"] = _encode_accessor_as_vec2(state, first_channel, true);
+					attributes["TEXCOORD_3"] = _encode_accessor_as_vec2(state, second_channel, true);
+				}
+			}
+			{
+				Vector<Color> a = array[Mesh::ARRAY_CUSTOM1];
+				if (a.size()) {
+					int32_t count = a.size();
+					LocalVector<Vector2> first_channel;
+					first_channel.resize(count);
+					LocalVector<Vector2> second_channel;
+					second_channel.resize(count);
+					for (int32_t color_i = 0; color_i < a.size(); color_i++) {
+						Color c = a[color_i];
+						first_channel[color_i] = Vector2(c.r, c.g);
+						second_channel[color_i] = Vector2(c.b, c.a);
+					}
+					attributes["TEXCOORD_4"] = _encode_accessor_as_vec2(state, first_channel, true);
+					attributes["TEXCOORD_5"] = _encode_accessor_as_vec2(state, second_channel, true);
+				}
+			}
+			{
+				Vector<Color> a = array[Mesh::ARRAY_CUSTOM2];
+				if (a.size()) {
+					int32_t count = a.size();
+					LocalVector<Vector2> first_channel;
+					first_channel.resize(count);
+					LocalVector<Vector2> second_channel;
+					second_channel.resize(count);
+					for (int32_t color_i = 0; color_i < a.size(); color_i++) {
+						Color c = a[color_i];
+						first_channel[color_i] = Vector2(c.r, c.g);
+						second_channel[color_i] = Vector2(c.b, c.a);
+					}
+					attributes["TEXCOORD_6"] = _encode_accessor_as_vec2(state, first_channel, true);
+					attributes["TEXCOORD_7"] = _encode_accessor_as_vec2(state, second_channel, true);
 				}
 			}
 			{
