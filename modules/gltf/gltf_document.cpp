@@ -2212,7 +2212,7 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 			{
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV];
 				LocalVector<Vector2> uv1_channel;
-				uv1_channel.resize(a.size());
+				uv1_channel.resize(vertex_num);
 				if (a.size()) {
 					uv1_channel = a;
 				}
@@ -2221,7 +2221,7 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 			{
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV2];
 				LocalVector<Vector2> uv2_channel;
-				uv2_channel.resize(a.size());
+				uv2_channel.resize(vertex_num);
 				if (a.size()) {
 					uv2_channel = a;
 				}
