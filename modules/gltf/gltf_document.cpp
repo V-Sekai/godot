@@ -30,7 +30,6 @@
 
 #include "gltf_document.h"
 
-#include "core/math/vector2.h"
 #include "gltf_accessor.h"
 #include "gltf_animation.h"
 #include "gltf_camera.h"
@@ -49,6 +48,7 @@
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/math/disjoint_set.h"
+#include "core/math/vector2.h"
 #include "core/variant/typed_array.h"
 #include "core/variant/variant.h"
 #include "core/version.h"
