@@ -2235,52 +2235,55 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 						attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, empty, true);
 					}
 
-					int32_t count = a.size();
 					LocalVector<Vector2> first_channel;
-					first_channel.resize(count);
+					first_channel.resize(vertex_num);
 					LocalVector<Vector2> second_channel;
-					second_channel.resize(count);
-					for (int32_t color_i = 0; color_i < a.size(); color_i++) {
-						Color c = a[color_i];
-						first_channel[color_i] = Vector2(c.r, c.g);
-						second_channel[color_i] = Vector2(c.b, c.a);
+					second_channel.resize(vertex_num);
+					if (vertex_num == a.size()) {
+						for (int32_t color_i = 0; color_i < vertex_num; color_i++) {
+							Color c = a[color_i];
+							first_channel[color_i] = Vector2(c.r, c.g);
+							second_channel[color_i] = Vector2(c.b, c.a);
+						}
+						attributes["TEXCOORD_2"] = _encode_accessor_as_vec2(state, first_channel, true);
+						attributes["TEXCOORD_3"] = _encode_accessor_as_vec2(state, second_channel, true);
 					}
-					attributes["TEXCOORD_2"] = _encode_accessor_as_vec2(state, first_channel, true);
-					attributes["TEXCOORD_3"] = _encode_accessor_as_vec2(state, second_channel, true);
 				}
 			}
 			{
 				Vector<Color> a = array[Mesh::ARRAY_CUSTOM1];
 				if (a.size()) {
-					int32_t count = a.size();
 					LocalVector<Vector2> first_channel;
-					first_channel.resize(count);
+					first_channel.resize(vertex_num);
 					LocalVector<Vector2> second_channel;
-					second_channel.resize(count);
-					for (int32_t color_i = 0; color_i < a.size(); color_i++) {
-						Color c = a[color_i];
-						first_channel[color_i] = Vector2(c.r, c.g);
-						second_channel[color_i] = Vector2(c.b, c.a);
+					second_channel.resize(vertex_num);
+					if (vertex_num == a.size()) {
+						for (int32_t color_i = 0; color_i < vertex_num; color_i++) {
+							Color c = a[color_i];
+							first_channel[color_i] = Vector2(c.r, c.g);
+							second_channel[color_i] = Vector2(c.b, c.a);
+						}
+						attributes["TEXCOORD_4"] = _encode_accessor_as_vec2(state, first_channel, true);
+						attributes["TEXCOORD_5"] = _encode_accessor_as_vec2(state, second_channel, true);
 					}
-					attributes["TEXCOORD_4"] = _encode_accessor_as_vec2(state, first_channel, true);
-					attributes["TEXCOORD_5"] = _encode_accessor_as_vec2(state, second_channel, true);
 				}
 			}
 			{
 				Vector<Color> a = array[Mesh::ARRAY_CUSTOM2];
 				if (a.size()) {
-					int32_t count = a.size();
 					LocalVector<Vector2> first_channel;
-					first_channel.resize(count);
+					first_channel.resize(vertex_num);
 					LocalVector<Vector2> second_channel;
-					second_channel.resize(count);
-					for (int32_t color_i = 0; color_i < a.size(); color_i++) {
-						Color c = a[color_i];
-						first_channel[color_i] = Vector2(c.r, c.g);
-						second_channel[color_i] = Vector2(c.b, c.a);
+					second_channel.resize(vertex_num);
+					if (vertex_num == a.size()) {
+						for (int32_t color_i = 0; color_i < vertex_num; color_i++) {
+							Color c = a[color_i];
+							first_channel[color_i] = Vector2(c.r, c.g);
+							second_channel[color_i] = Vector2(c.b, c.a);
+						}
+						attributes["TEXCOORD_6"] = _encode_accessor_as_vec2(state, first_channel, true);
+						attributes["TEXCOORD_7"] = _encode_accessor_as_vec2(state, second_channel, true);
 					}
-					attributes["TEXCOORD_6"] = _encode_accessor_as_vec2(state, first_channel, true);
-					attributes["TEXCOORD_7"] = _encode_accessor_as_vec2(state, second_channel, true);
 				}
 			}
 			{
