@@ -61,6 +61,7 @@
 #include "scene/resources/surface_tool.h"
 
 #include "modules/modules_enabled.gen.h"
+#include <cstdint>
 #ifdef MODULE_CSG_ENABLED
 #include "modules/csg/csg_shape.h"
 #endif // MODULE_CSG_ENABLED
@@ -2499,8 +2500,11 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 			}
 
 			ERR_FAIL_COND_V(!a.has("POSITION"), ERR_PARSE_ERROR);
+			int64_t vertex_count = 0;
 			if (a.has("POSITION")) {
-				array[Mesh::ARRAY_VERTEX] = _decode_accessor_as_vec3(state, a["POSITION"], true);
+				PackedVector3Array vertices = _decode_accessor_as_vec3(state, a["POSITION"], true);
+				array[Mesh::ARRAY_VERTEX] = vertices;
+				vertex_count = vertices.size();
 			}
 			if (a.has("NORMAL")) {
 				array[Mesh::ARRAY_NORMAL] = _decode_accessor_as_vec3(state, a["NORMAL"], true);
@@ -2515,27 +2519,72 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				array[Mesh::ARRAY_TEX_UV2] = _decode_accessor_as_vec2(state, a["TEXCOORD_1"], true);
 			}
 			Vector<Color> custom_0;
+			custom_0.resize(vertex_count);
+			Vector<Vector2> texcoord_2;
+			Vector<Vector2> texcoord_3;
 			if (a.has("TEXCOORD_2")) {
-				Vector<Vector2> texcoord_2 = _decode_accessor_as_vec2(state, a["TEXCOORD_2"], true);
+				texcoord_2 = _decode_accessor_as_vec2(state, a["TEXCOORD_2"], true);
 			}
 			if (a.has("TEXCOORD_3")) {
-				Vector<Vector2> texcoord_3 = _decode_accessor_as_vec2(state, a["TEXCOORD_3"], true);
+				texcoord_3 = _decode_accessor_as_vec2(state, a["TEXCOORD_3"], true);
+			}
+			for (int32_t color_i = 0; color_i < custom_0.size(); color_i++) {
+				Color c;
+				if (color_i < texcoord_2.size()) {
+					c.r = texcoord_2[color_i].x;
+					c.g = texcoord_2[color_i].y;
+				}
+				if (color_i < texcoord_3.size()) {
+					c.b = texcoord_3[color_i].x;
+					c.a = texcoord_3[color_i].y;
+				}
+				custom_0.write[color_i] = c;
 			}
 			array[Mesh::ARRAY_CUSTOM0] = custom_0;
 			Vector<Color> custom_1;
+			custom_1.resize(vertex_count);
+			Vector<Vector2> texcoord_4;
+			Vector<Vector2> texcoord_5;
 			if (a.has("TEXCOORD_4")) {
-				Vector<Vector2> texcoord_4 = _decode_accessor_as_vec2(state, a["TEXCOORD_4"], true);
+				texcoord_4 = _decode_accessor_as_vec2(state, a["TEXCOORD_4"], true);
 			}
 			if (a.has("TEXCOORD_5")) {
-				Vector<Vector2> texcoord_5 = _decode_accessor_as_vec2(state, a["TEXCOORD_5"], true);
+				texcoord_5 = _decode_accessor_as_vec2(state, a["TEXCOORD_5"], true);
+			}
+			for (int32_t color_i = 0; color_i < custom_1.size(); color_i++) {
+				Color c;
+				if (color_i < texcoord_4.size()) {
+					c.r = texcoord_4[color_i].x;
+					c.g = texcoord_4[color_i].y;
+				}
+				if (color_i < texcoord_5.size()) {
+					c.b = texcoord_5[color_i].x;
+					c.a = texcoord_5[color_i].y;
+				}
+				custom_1.write[color_i] = c;
 			}
 			array[Mesh::ARRAY_CUSTOM1] = custom_1;
 			Vector<Color> custom_2;
+			custom_2.resize(vertex_count);
+			Vector<Vector2> texcoord_6;
+			Vector<Vector2> texcoord_7;
 			if (a.has("TEXCOORD_6")) {
-				Vector<Vector2> texcoord_6  = _decode_accessor_as_vec2(state, a["TEXCOORD_6"], true);
+				texcoord_6 = _decode_accessor_as_vec2(state, a["TEXCOORD_6"], true);
 			}
 			if (a.has("TEXCOORD_7")) {
-				Vector<Vector2> texcoord_7  = _decode_accessor_as_vec2(state, a["TEXCOORD_7"], true);
+				texcoord_7 = _decode_accessor_as_vec2(state, a["TEXCOORD_7"], true);
+			}
+			for (int32_t color_i = 0; color_i < custom_2.size(); color_i++) {
+				Color c;
+				if (color_i < texcoord_6.size()) {
+					c.r = texcoord_6[color_i].x;
+					c.g = texcoord_6[color_i].y;
+				}
+				if (color_i < texcoord_6.size()) {
+					c.b = texcoord_6[color_i].x;
+					c.a = texcoord_6[color_i].y;
+				}
+				custom_2.write[color_i] = c;
 			}
 			array[Mesh::ARRAY_CUSTOM2] = custom_2;
 			if (a.has("COLOR_0")) {
