@@ -2211,26 +2211,30 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 			}
 			{
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV];
-				LocalVector<Vector2> uv1_channel;
-				uv1_channel.resize(vertex_num);
 				if (a.size()) {
-					uv1_channel = a;
+					attributes["TEXCOORD_0"] = _encode_accessor_as_vec2(state, a, true);
 				}
-				attributes["TEXCOORD_0"] = _encode_accessor_as_vec2(state, a, true);
 			}
 			{
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV2];
-				// Sometimes may be empty causing problems for other uvs, but gltf2 requires sequential UVs.				
-				LocalVector<Vector2> uv2_channel;
-				uv2_channel.resize(vertex_num);
 				if (a.size()) {
-					uv2_channel = a;
+					attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, a, true);
 				}
-				attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, a, true);
 			}
 			{
 				Vector<Color> a = array[Mesh::ARRAY_CUSTOM0];
 				if (a.size()) {
+					if (!attributes.has("TEXCOORD_0")) {
+						Vector<Vector2> empty;
+						empty.resize(vertex_num);
+						attributes["TEXCOORD_0"] = _encode_accessor_as_vec2(state, empty, true);
+					}
+					if (!attributes.has("TEXCOORD_1")) {
+						Vector<Vector2> empty;
+						empty.resize(vertex_num);
+						attributes["TEXCOORD_1"] = _encode_accessor_as_vec2(state, empty, true);
+					}
+
 					int32_t count = a.size();
 					LocalVector<Vector2> first_channel;
 					first_channel.resize(count);
