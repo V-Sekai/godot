@@ -2514,6 +2514,30 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 			if (a.has("TEXCOORD_1")) {
 				array[Mesh::ARRAY_TEX_UV2] = _decode_accessor_as_vec2(state, a["TEXCOORD_1"], true);
 			}
+			Vector<Color> custom_0;
+			if (a.has("TEXCOORD_2")) {
+				Vector<Vector2> texcoord_2 = _decode_accessor_as_vec2(state, a["TEXCOORD_2"], true);
+			}
+			if (a.has("TEXCOORD_3")) {
+				Vector<Vector2> texcoord_3 = _decode_accessor_as_vec2(state, a["TEXCOORD_3"], true);
+			}
+			array[Mesh::ARRAY_CUSTOM0] = custom_0;
+			Vector<Color> custom_1;
+			if (a.has("TEXCOORD_4")) {
+				Vector<Vector2> texcoord_4 = _decode_accessor_as_vec2(state, a["TEXCOORD_4"], true);
+			}
+			if (a.has("TEXCOORD_5")) {
+				Vector<Vector2> texcoord_5 = _decode_accessor_as_vec2(state, a["TEXCOORD_5"], true);
+			}
+			array[Mesh::ARRAY_CUSTOM1] = custom_1;
+			Vector<Color> custom_2;
+			if (a.has("TEXCOORD_6")) {
+				Vector<Vector2> texcoord_6  = _decode_accessor_as_vec2(state, a["TEXCOORD_6"], true);
+			}
+			if (a.has("TEXCOORD_7")) {
+				Vector<Vector2> texcoord_7  = _decode_accessor_as_vec2(state, a["TEXCOORD_7"], true);
+			}
+			array[Mesh::ARRAY_CUSTOM2] = custom_2;
 			if (a.has("COLOR_0")) {
 				array[Mesh::ARRAY_COLOR] = _decode_accessor_as_color(state, a["COLOR_0"], true);
 				has_vertex_color = true;
