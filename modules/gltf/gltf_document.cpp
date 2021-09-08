@@ -2220,6 +2220,7 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 			}
 			{
 				Vector<Vector2> a = array[Mesh::ARRAY_TEX_UV2];
+				// Sometimes may be empty causing problems for other uvs, but gltf2 requires sequential UVs.				
 				LocalVector<Vector2> uv2_channel;
 				uv2_channel.resize(vertex_num);
 				if (a.size()) {
