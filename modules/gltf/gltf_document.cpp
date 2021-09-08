@@ -2571,6 +2571,7 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				array[Mesh::ARRAY_TEX_UV2] = _decode_accessor_as_vec2(state, a["TEXCOORD_1"], true);
 				Vector<Color> custom_3;
 				custom_3.resize(vertex_count);
+				// Godot Engine 3.x uses uv2 for light maps.
 				Vector<Vector2> tex_uv2 = array[Mesh::ARRAY_TEX_UV2];
 				for (int32_t color_i = 0; color_i < vertex_count; color_i++) {
 					Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
