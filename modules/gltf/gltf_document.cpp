@@ -2172,11 +2172,13 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 			}
 
 			Array array = import_mesh->get_surface_arrays(surface_i);
+			int32_t vertex_num = 0;
 			Dictionary attributes;
 			{
 				Vector<Vector3> a = array[Mesh::ARRAY_VERTEX];
 				ERR_FAIL_COND_V(!a.size(), ERR_INVALID_DATA);
 				attributes["POSITION"] = _encode_accessor_as_vec3(state, a, true);
+				vertex_num = a.size();
 			}
 			{
 				Vector<real_t> a = array[Mesh::ARRAY_TANGENT];
@@ -2305,13 +2307,12 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 					}
 					attributes["JOINTS_0"] = _encode_accessor_as_joints(state, attribs, true);
 				} else if ((a.size() / (JOINT_GROUP_SIZE * 2)) >= vertex_array.size()) {
-					int32_t vertex_count = vertex_array.size();
 					Vector<Color> joints_0;
-					joints_0.resize(vertex_count);
+					joints_0.resize(vertex_num);
 					Vector<Color> joints_1;
-					joints_1.resize(vertex_count);
+					joints_1.resize(vertex_num);
 					int32_t weights_8_count = JOINT_GROUP_SIZE * 2;
-					for (int32_t vertex_i = 0; vertex_i < vertex_count; vertex_i++) {
+					for (int32_t vertex_i = 0; vertex_i < vertex_num; vertex_i++) {
 						Color joint_0;
 						joint_0.r = a[vertex_i * weights_8_count + 0];
 						joint_0.g = a[vertex_i * weights_8_count + 1];
@@ -2341,13 +2342,12 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> state) {
 					}
 					attributes["WEIGHTS_0"] = _encode_accessor_as_weights(state, attribs, true);
 				} else if ((a.size() / (JOINT_GROUP_SIZE * 2)) >= vertex_array.size()) {
-					int32_t vertex_count = vertex_array.size();
 					Vector<Color> weights_0;
-					weights_0.resize(vertex_count);
+					weights_0.resize(vertex_num);
 					Vector<Color> weights_1;
-					weights_1.resize(vertex_count);
+					weights_1.resize(vertex_num);
 					int32_t weights_8_count = JOINT_GROUP_SIZE * 2;
-					for (int32_t vertex_i = 0; vertex_i < vertex_count; vertex_i++) {
+					for (int32_t vertex_i = 0; vertex_i < vertex_num; vertex_i++) {
 						Color weight_0;
 						weight_0.r = a[vertex_i * weights_8_count + 0];
 						weight_0.g = a[vertex_i * weights_8_count + 1];
@@ -2667,10 +2667,9 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				PackedInt32Array joints_1 = _decode_accessor_as_ints(state, a["JOINTS_1"], true);
 				ERR_FAIL_COND_V(joints_0.size() != joints_0.size(), ERR_INVALID_DATA);
 				int32_t weight_8_count = JOINT_GROUP_SIZE * 2;
-				int32_t vertex_count = joints_0.size() / JOINT_GROUP_SIZE;
 				Vector<int> joints;
-				joints.resize(vertex_count * weight_8_count);
-				for (int32_t vertex_i = 0; vertex_i < vertex_count; vertex_i++) {
+				joints.resize(vertex_num * weight_8_count);
+				for (int32_t vertex_i = 0; vertex_i < vertex_num; vertex_i++) {
 					joints.write[vertex_i * weight_8_count + 0] = joints_0[vertex_i * JOINT_GROUP_SIZE + 0];
 					joints.write[vertex_i * weight_8_count + 1] = joints_0[vertex_i * JOINT_GROUP_SIZE + 1];
 					joints.write[vertex_i * weight_8_count + 2] = joints_0[vertex_i * JOINT_GROUP_SIZE + 2];
@@ -2709,9 +2708,8 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> state) {
 				Vector<float> weights;
 				ERR_FAIL_COND_V(weights_0.size() != weights_1.size(), ERR_INVALID_DATA);
 				int32_t weight_8_count = JOINT_GROUP_SIZE * 2;
-				int32_t vertex_count = weights_0.size() / JOINT_GROUP_SIZE;
-				weights.resize(vertex_count * weight_8_count);
-				for (int32_t vertex_i = 0; vertex_i < vertex_count; vertex_i++) {
+				weights.resize(vertex_num * weight_8_count);
+				for (int32_t vertex_i = 0; vertex_i < vertex_num; vertex_i++) {
 					weights.write[vertex_i * weight_8_count + 0] = weights_0[vertex_i * JOINT_GROUP_SIZE + 0];
 					weights.write[vertex_i * weight_8_count + 1] = weights_0[vertex_i * JOINT_GROUP_SIZE + 1];
 					weights.write[vertex_i * weight_8_count + 2] = weights_0[vertex_i * JOINT_GROUP_SIZE + 2];
