@@ -23,5 +23,11 @@
 				[/codeblock]
 			</description>
 		</method>
+		<method name="print_tree">
+			<return type="int" enum="Error" />
+			<description>
+				Parses the script and prints its syntax tree to the standard output. This method is mostly useful for debugging the GDScript parser and compiler. Returns [constant OK] on success or an error code if parsing fails.
+			</description>
+		</method>
 	</methods>
 </class>
