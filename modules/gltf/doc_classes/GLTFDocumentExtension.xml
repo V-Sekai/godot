@@ -7,16 +7,52 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="export_post">
-			<return type="int" enum="Error" />
-			<argument index="0" name="document" type="GLTFDocument" />
+		<method name="_export_node" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="state" type="Resource" />
+			<argument index="1" name="gltf_node" type="Resource" />
+			<argument index="2" name="json" type="Dictionary" />
+			<argument index="3" name="node" type="Object" />
 			<description>
 			</description>
 		</method>
-		<method name="export_preflight">
-			<return type="int" enum="Error" />
-			<argument index="0" name="document" type="GLTFDocument" />
-			<argument index="1" name="node" type="Node" />
+		<method name="_export_post" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="state" type="Resource" />
+			<description>
+			</description>
+		</method>
+		<method name="_export_preflight" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="root" type="Object" />
+			<description>
+			</description>
+		</method>
+		<method name="_import_node" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="state" type="Resource" />
+			<argument index="1" name="gltf_node" type="Resource" />
+			<argument index="2" name="json" type="Dictionary" />
+			<argument index="3" name="node" type="Object" />
+			<description>
+			</description>
+		</method>
+		<method name="_import_post" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="state" type="Resource" />
+			<argument index="1" name="root" type="Object" />
+			<description>
+			</description>
+		</method>
+		<method name="_import_post_parse" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="state" type="Resource" />
+			<description>
+			</description>
+		</method>
+		<method name="_import_preflight" qualifiers="virtual">
+			<return type="int" />
+			<argument index="0" name="state" type="Resource" />
 			<description>
 			</description>
 		</method>
@@ -39,19 +75,6 @@
 		</method>
 		<method name="get_import_setting_keys" qualifiers="const">
 			<return type="Array" />
-			<description>
-			</description>
-		</method>
-		<method name="import_post">
-			<return type="int" enum="Error" />
-			<argument index="0" name="document" type="GLTFDocument" />
-			<argument index="1" name="node" type="Node" />
-			<description>
-			</description>
-		</method>
-		<method name="import_preflight">
-			<return type="int" enum="Error" />
-			<argument index="0" name="document" type="GLTFDocument" />
 			<description>
 			</description>
 		</method>
