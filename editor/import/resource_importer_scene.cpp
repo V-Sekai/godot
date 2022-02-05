@@ -193,9 +193,9 @@ Variant EditorScenePostImportPlugin::get_internal_option_update_view_required(In
 	return ret;
 }
 
-void EditorScenePostImportPlugin::internal_process(InternalImportCategory p_category, Node *p_base_scene, Node *p_node, RES p_resource, const Dictionary &p_options) {
+void EditorScenePostImportPlugin::internal_process(InternalImportCategory p_category, Node *p_base_scene, Node *p_node, Object *p_ref_counted, const Dictionary &p_options) {
 	current_options_dict = &p_options;
-	GDVIRTUAL_CALL(_internal_process, p_category, p_base_scene, p_node, p_resource);
+	GDVIRTUAL_CALL(_internal_process, p_category, p_base_scene, p_node, p_ref_counted);
 	current_options_dict = nullptr;
 }
 

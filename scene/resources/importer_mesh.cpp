@@ -294,8 +294,11 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 				const Vector3 &v1 = vertices_ptr[indices_ptr[j + 1]];
 				const Vector3 &v2 = vertices_ptr[indices_ptr[j + 2]];
 				Vector3 n = vec3_cross(v0 - v2, v0 - v1).normalized();
+				ERR_FAIL_INDEX(j + 0, int64_t(normals.size()));
 				n_ptr[j + 0] = n;
+				ERR_FAIL_INDEX(j + 1, int64_t(normals.size()));
 				n_ptr[j + 1] = n;
+				ERR_FAIL_INDEX(j + 2, int64_t(normals.size()));
 				n_ptr[j + 2] = n;
 			}
 		}
@@ -1049,7 +1052,9 @@ Error ImporterMesh::lightmap_unwrap_cached(const Transform3D &p_base_transform, 
 		uv_indices.resize(vertex_ofs + vc);
 
 		for (int j = 0; j < vc; j++) {
+			ERR_FAIL_INDEX_V(j, rvertices.size(), ERR_INVALID_DATA);
 			Vector3 v = transform.xform(rvertices[j]);
+			ERR_FAIL_INDEX_V(j, rnormals.size(), ERR_INVALID_DATA);
 			Vector3 n = normal_basis.xform(rnormals[j]).normalized();
 
 			vertices[(j + vertex_ofs) * 3 + 0] = v.x;
