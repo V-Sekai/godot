@@ -55,10 +55,10 @@ public:
 	virtual bool is_changing_original_tree() const;
 	virtual Array get_import_setting_keys() const;
 	virtual Variant get_import_setting(const StringName p_key) const;
-	virtual void set_import_setting(const StringName p_key, Variant p_var);
+	virtual void add_import_setting(const StringName p_key, Variant p_var);
 	virtual Array get_export_setting_keys() const;
 	virtual Variant get_export_setting(const StringName p_key) const;
-	virtual void set_export_setting(const StringName p_key, Variant p_var);
+	virtual void add_export_setting(const StringName p_key, Variant p_var);
 	virtual Error import_preflight(Ref<GLTFState> p_state);
 	virtual Error import_post_parse(Ref<GLTFState> p_state);
 	virtual Error export_post(Ref<GLTFState> p_state);

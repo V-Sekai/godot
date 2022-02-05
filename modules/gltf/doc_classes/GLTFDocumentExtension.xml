@@ -78,14 +78,14 @@
 			<description>
 			</description>
 		</method>
-		<method name="set_export_setting">
+		<method name="add_export_setting">
 			<return type="void" />
 			<argument index="0" name="key" type="StringName" />
 			<argument index="1" name="value" type="Variant" />
 			<description>
 			</description>
 		</method>
-		<method name="set_import_setting">
+		<method name="add_import_setting">
 			<return type="void" />
 			<argument index="0" name="key" type="StringName" />
 			<argument index="1" name="value" type="Variant" />

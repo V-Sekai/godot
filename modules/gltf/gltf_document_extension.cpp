@@ -38,8 +38,8 @@ void GLTFDocumentExtension::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_export_setting_keys"), &GLTFDocumentExtension::get_export_setting_keys);
 	ClassDB::bind_method(D_METHOD("get_import_setting", "key"), &GLTFDocumentExtension::get_import_setting);
 	ClassDB::bind_method(D_METHOD("get_export_setting", "key"), &GLTFDocumentExtension::get_export_setting);
-	ClassDB::bind_method(D_METHOD("set_import_setting", "key", "value"), &GLTFDocumentExtension::set_import_setting);
-	ClassDB::bind_method(D_METHOD("set_export_setting", "key", "value"), &GLTFDocumentExtension::set_export_setting);
+	ClassDB::bind_method(D_METHOD("add_import_setting", "key", "value"), &GLTFDocumentExtension::add_import_setting);
+	ClassDB::bind_method(D_METHOD("add_export_setting", "key", "value"), &GLTFDocumentExtension::add_export_setting);
 	GDVIRTUAL_BIND(_import_preflight, "state");
 	GDVIRTUAL_BIND(_import_post_parse, "state");
 	GDVIRTUAL_BIND(_import_node, "state", "gltf_node", "json", "node");
@@ -60,7 +60,7 @@ Variant GLTFDocumentExtension::get_import_setting(const StringName p_key) const 
 	return import_settings[p_key];
 }
 
-void GLTFDocumentExtension::set_import_setting(const StringName p_key, Variant p_var) {
+void GLTFDocumentExtension::add_import_setting(const StringName p_key, Variant p_var) {
 	import_settings[p_key] = p_var;
 }
 
@@ -75,7 +75,7 @@ Variant GLTFDocumentExtension::get_export_setting(const StringName p_key) const 
 	return import_settings[p_key];
 }
 
-void GLTFDocumentExtension::set_export_setting(const StringName p_key, Variant p_var) {
+void GLTFDocumentExtension::add_export_setting(const StringName p_key, Variant p_var) {
 	import_settings[p_key] = p_var;
 }
 

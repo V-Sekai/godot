@@ -1904,10 +1904,6 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 
 	ERR_FAIL_COND_V(!importer.is_valid(), ERR_FILE_UNRECOGNIZED);
 
-	for (int i = 0; i < post_importer_plugins.size(); i++) {
-		post_importer_plugins.write[i]->internal_process(EditorScenePostImportPlugin::INTERNAL_IMPORT_CATEGORY_PREFLIGHT, nullptr, nullptr, importer.ptr(), Dictionary());
-	}
-
 	float fps = p_options["animation/fps"];
 
 	int import_flags = 0;
@@ -1923,6 +1919,15 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 	bool ensure_tangents = p_options["meshes/ensure_tangents"];
 	if (ensure_tangents) {
 		import_flags |= EditorSceneFormatImporter::IMPORT_GENERATE_TANGENT_ARRAYS;
+	}
+
+	Dictionary options;
+	for (const KeyValue<StringName, Variant> &option : p_options) {
+		options[option.key] = option.value;
+	}
+
+	for (int i = 0; i < post_importer_plugins.size(); i++) {
+		post_importer_plugins.write[i]->internal_process(EditorScenePostImportPlugin::INTERNAL_IMPORT_CATEGORY_PREFLIGHT, nullptr, nullptr, importer.ptr(), options);
 	}
 
 	Error err = OK;
