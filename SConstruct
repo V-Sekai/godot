@@ -213,6 +213,7 @@ opts.Add(BoolVariable("debug_paths_relative", "Make file paths in debug symbols 
 opts.Add(EnumVariable("lto", "Link-time optimization (production builds)", "none", ("none", "auto", "thin", "full")))
 opts.Add(BoolVariable("production", "Set defaults to build Godot for use in production", False))
 opts.Add(BoolVariable("threads", "Enable threading support", True))
+opts.Add("ccache_bin", "Path to ccache, set empty to disable", "ccache")
 
 # Components
 opts.Add(BoolVariable("deprecated", "Enable compatibility code for deprecated and removed features", True))
@@ -401,6 +402,10 @@ for key, value in flag_list.items():
 
 # Update the environment to take platform-specific options into account.
 opts.Update(env, {**ARGUMENTS, **env.Dictionary()})
+
+ccache = Tool("ccache", toolpath=["misc/scons/site_tools"])
+if ccache.exists(env_base):
+    ccache.generate(env_base)
 
 # Detect modules.
 modules_detected = OrderedDict()
