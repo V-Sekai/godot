@@ -132,15 +132,9 @@ Quaternion Quaternion::slerp(const Quaternion &p_to, const real_t &p_weight) con
 	// adjust signs (if necessary)
 	if (cosom < 0.0f) {
 		cosom = -cosom;
-		to1.x = -p_to.x;
-		to1.y = -p_to.y;
-		to1.z = -p_to.z;
-		to1.w = -p_to.w;
+		to1 = -p_to;
 	} else {
-		to1.x = p_to.x;
-		to1.y = p_to.y;
-		to1.z = p_to.z;
-		to1.w = p_to.w;
+		to1 = p_to;
 	}
 
 	// calculate coefficients
@@ -194,11 +188,40 @@ Quaternion Quaternion::cubic_slerp(const Quaternion &p_b, const Quaternion &p_pr
 	ERR_FAIL_COND_V_MSG(!is_normalized(), Quaternion(), "The start quaternion must be normalized.");
 	ERR_FAIL_COND_V_MSG(!p_b.is_normalized(), Quaternion(), "The end quaternion must be normalized.");
 #endif
-	//the only way to do slerp :|
-	real_t t2 = (1.0f - p_weight) * p_weight * 2;
-	Quaternion sp = this->slerp(p_b, p_weight);
-	Quaternion sq = p_pre_a.slerpni(p_post_b, p_weight);
-	return sp.slerpni(sq, t2);
+	// Flip quaternions to shortest path if necessary.
+	Quaternion prep = this->dot(p_pre_a) < 0.0f ? -p_pre_a : p_pre_a;
+	Quaternion ret = *this;
+	Quaternion q_b;
+	Quaternion post_q;
+	if (this->dot(p_b) < 0.0f) {
+		q_b = -p_b;
+		// When comparing with already flipped q2, we need to flip q3 also when dot product is 0
+		// This keeps flipping between subsequent quaternions consistent.
+		post_q = q_b.dot(p_post_b) <= 0.0f ? -p_post_b : p_post_b;
+	} else {
+		q_b = p_b;
+		post_q = q_b.dot(p_post_b) < 0.0f ? -p_post_b : p_post_b;
+	}
+
+	// Calculate the coefficients.
+	if ((1.0 - Math::abs(dot(p_b))) > CMP_EPSILON) {
+		Quaternion ln_ret = ret.log();
+		Quaternion ln_to = q_b.log();
+		Quaternion ln_pre = prep.log();
+		Quaternion ln_post = post_q.log();
+		Quaternion ln = Quaternion(0, 0, 0, 0);
+		ln.x = Math::cubic_interpolate(ln_ret.x, ln_to.x, ln_pre.x, ln_post.x, p_weight);
+		ln.y = Math::cubic_interpolate(ln_ret.y, ln_to.y, ln_pre.y, ln_post.y, p_weight);
+		ln.z = Math::cubic_interpolate(ln_ret.z, ln_to.z, ln_pre.z, ln_post.z, p_weight);
+		ret = ln.exp();
+	} else {
+		ret.x = Math::cubic_interpolate(ret.x, q_b.x, prep.x, post_q.x, p_weight);
+		ret.y = Math::cubic_interpolate(ret.y, q_b.y, prep.y, post_q.y, p_weight);
+		ret.z = Math::cubic_interpolate(ret.z, q_b.z, prep.z, post_q.z, p_weight);
+		ret.w = Math::cubic_interpolate(ret.w, q_b.w, prep.w, post_q.w, p_weight);
+	}
+	// Calculate the final values.
+	return ret;
 }
 
 Quaternion::operator String() const {
