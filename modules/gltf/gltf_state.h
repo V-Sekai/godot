@@ -76,7 +76,9 @@ class GLTFState : public Resource {
 	String scene_name;
 	Vector<int> root_nodes;
 	Vector<Ref<GLTFTexture>> textures;
+
 	Vector<Ref<Texture2D>> images;
+	Vector<Ref<Image>> source_images;
 
 	Vector<Ref<GLTFSkin>> skins;
 	Vector<Ref<GLTFCamera>> cameras;

@@ -187,7 +187,7 @@ private:
 			const String &p_name);
 	GLTFTextureIndex _set_texture(Ref<GLTFState> state, Ref<Texture2D> p_texture);
 	Ref<Texture2D> _get_texture(Ref<GLTFState> state,
-			const GLTFTextureIndex p_texture);
+			const GLTFTextureIndex p_texture, bool p_is_normal_texture = false);
 	Error _parse_json(const String &p_path, Ref<GLTFState> state);
 	Error _parse_glb(Ref<FileAccess> f, Ref<GLTFState> state);
 	void _compute_node_heights(Ref<GLTFState> state);
