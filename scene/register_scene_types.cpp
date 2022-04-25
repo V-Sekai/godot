@@ -899,7 +899,6 @@ void register_scene_types() {
 	GDREGISTER_CLASS(SceneTree);
 	GDREGISTER_ABSTRACT_CLASS(SceneTreeTimer); // sorry, you can't create it
 
-#ifndef DISABLE_DEPRECATED
 	// Dropped in 4.0, near approximation.
 	ClassDB::add_compatibility_class("AnimationTreePlayer", "AnimationTree");
 	ClassDB::add_compatibility_class("BakedLightmap", "LightmapGI");
@@ -1061,7 +1060,6 @@ void register_scene_types() {
 	ClassDB::add_compatibility_class("StreamTexture2DArray", "CompressedTexture2DArray");
 	ClassDB::add_compatibility_class("StreamTexture3D", "CompressedTexture3D");
 	ClassDB::add_compatibility_class("StreamTextureLayered", "CompressedTextureLayered");
-#endif /* DISABLE_DEPRECATED */
 
 	OS::get_singleton()->yield(); // may take time to init
 
