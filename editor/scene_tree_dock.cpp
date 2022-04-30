@@ -226,6 +226,12 @@ void SceneTreeDock::_perform_instantiate_scenes(const Vector<String> &p_files, N
 		}
 		editor_data->get_undo_redo().add_do_method(instantiated_scene, "set_owner", edited_scene);
 		editor_data->get_undo_redo().add_do_method(editor_selection, "clear");
+
+		if (EditorSettings::get_singleton()->get("docks/scene_tree/instantiate_with_editable_children")) {
+			editor_data->get_undo_redo().add_do_method(EditorNode::get_singleton()->get_edited_scene(), "set_editable_instance", instantiated_scene, true);
+			editor_data->get_undo_redo().add_do_method(instantiated_scene, "set_display_folded", true);
+		}
+
 		editor_data->get_undo_redo().add_do_method(editor_selection, "add_node", instantiated_scene);
 		editor_data->get_undo_redo().add_do_reference(instantiated_scene);
 		editor_data->get_undo_redo().add_undo_method(parent, "remove_child", instantiated_scene);
@@ -285,6 +291,13 @@ void SceneTreeDock::_replace_with_branch_scene(const String &p_file, Node *base)
 	undo_redo->add_undo_method(editor_selection, "add_node", base);
 	undo_redo->add_do_property(scene_tree, "set_selected", instantiated_scene);
 	undo_redo->add_undo_property(scene_tree, "set_selected", base);
+
+	if (EditorSettings::get_singleton()->get("docks/scene_tree/instantiate_with_editable_children")) {
+		undo_redo->add_do_method(edited_scene, "set_editable_instance", instantiated_scene, true);
+		undo_redo->add_undo_method(edited_scene, "set_editable_instance", false);
+		undo_redo->add_do_method(instantiated_scene, "set_display_folded", base->is_displayed_folded());
+		undo_redo->add_undo_method(instantiated_scene, "set_display_folded", false);
+	}
 
 	undo_redo->add_do_reference(instantiated_scene);
 	undo_redo->add_undo_reference(base);
@@ -938,6 +951,10 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 		} break;
 		case TOOL_AUTO_EXPAND: {
 			scene_tree->set_auto_expand_selected(!EditorSettings::get_singleton()->get("docks/scene_tree/auto_expand_to_selected"), true);
+		} break;
+		case TOOL_INSTANTIATE_WITH_EDITABLE_CHILDREN: {
+			EditorSettings::get_singleton()->set("docks/scene_tree/instantiate_with_editable_children",
+					!EditorSettings::get_singleton()->get("docks/scene_tree/instantiate_with_editable_children"));
 		} break;
 		case TOOL_SCENE_EDITABLE_CHILDREN: {
 			if (!profile_allow_editing) {
@@ -2868,6 +2885,7 @@ void SceneTreeDock::_tree_rmb(const Vector2 &p_menu_pos) {
 void SceneTreeDock::_update_tree_menu() {
 	PopupMenu *tree_menu = button_tree_menu->get_popup();
 	tree_menu->set_item_checked(tree_menu->get_item_idx_from_text(TTR("Auto Expand to Selected")), EditorSettings::get_singleton()->get("docks/scene_tree/auto_expand_to_selected"));
+	tree_menu->set_item_checked(tree_menu->get_item_idx_from_text(TTR("Instantiate with Editable Children")), EditorSettings::get_singleton()->get("docks/scene_tree/instantiate_with_editable_children"));
 }
 
 void SceneTreeDock::_filter_changed(const String &p_filter) {
@@ -3428,6 +3446,7 @@ SceneTreeDock::SceneTreeDock(Node *p_scene_root, EditorSelection *p_editor_selec
 
 	PopupMenu *tree_menu = button_tree_menu->get_popup();
 	tree_menu->add_check_item(TTR("Auto Expand to Selected"), TOOL_AUTO_EXPAND);
+	tree_menu->add_check_item(TTR("Instantiate with Editable Children"), TOOL_INSTANTIATE_WITH_EDITABLE_CHILDREN);
 	tree_menu->connect("id_pressed", callable_mp(this, &SceneTreeDock::_tool_selected), make_binds(false));
 
 	button_hb = memnew(HBoxContainer);
