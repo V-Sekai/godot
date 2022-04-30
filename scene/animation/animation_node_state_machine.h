@@ -31,6 +31,7 @@
 #ifndef ANIMATION_NODE_STATE_MACHINE_H
 #define ANIMATION_NODE_STATE_MACHINE_H
 
+#include "core/math/expression.h"
 #include "scene/animation/animation_tree.h"
 
 class AnimationNodeStateMachineTransition : public Resource {
@@ -51,11 +52,18 @@ private:
 	float xfade = 0.0;
 	bool disabled = false;
 	int priority = 1;
+	String advance_expression;
+	NodePath advance_expression_base_node = NodePath();
+
+	friend class AnimationNodeStateMachinePlayback;
+	Ref<Expression> expression;
 
 protected:
 	static void _bind_methods();
 
 public:
+	Node *get_root_path();
+
 	void set_switch_mode(SwitchMode p_mode);
 	SwitchMode get_switch_mode() const;
 
@@ -66,6 +74,12 @@ public:
 	StringName get_advance_condition() const;
 
 	StringName get_advance_condition_name() const;
+
+	void set_advance_expression(const String &p_expression);
+	String get_advance_expression() const;
+
+	void set_advance_expression_base_node(const NodePath &p_expression_base_node);
+	NodePath get_advance_expression_base_node() const;
 
 	void set_xfade_time(float p_xfade);
 	float get_xfade_time() const;
