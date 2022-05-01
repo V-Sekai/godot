@@ -2421,8 +2421,10 @@ void EditorInspector::update_tree() {
 		valid_plugins.push_back(inspector_plugins[i]);
 	}
 
-	// Decide if properties should be drawn with the warning color (yellow).
+	// Decide if properties should be drawn with the warning color (yellow),
+	// or if the whole object should be considered read-only.
 	bool draw_warning = false;
+	bool all_read_only = false;
 	if (is_inside_tree()) {
 		Node *nod = Object::cast_to<Node>(object);
 		Node *es = EditorNode::get_singleton()->get_edited_scene();
@@ -2430,6 +2432,22 @@ void EditorInspector::update_tree() {
 			// Draw in warning color edited nodes that are not in the currently edited scene,
 			// as changes may be lost in the future.
 			draw_warning = true;
+		} else {
+			Resource *res = Object::cast_to<Resource>(object);
+			if (res) {
+				String path = res->get_path();
+				int srpos = path.find("::");
+				if (srpos != -1) {
+					String base = path.substr(0, srpos);
+					if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+						all_read_only = true;
+					}
+				}
+			} else {
+				if (object->is_class("EditorDebuggerRemoteObject")) {
+					all_read_only = true;
+				}
+			}
 		}
 	}
 
@@ -2937,7 +2955,7 @@ void EditorInspector::update_tree() {
 					ep->set_checkable(checkable);
 					ep->set_checked(checked);
 					ep->set_keying(keying);
-					ep->set_read_only(property_read_only);
+					ep->set_read_only(property_read_only || all_read_only);
 					ep->set_deletable(deletable_properties || p.name.begins_with("metadata/"));
 				}
 
