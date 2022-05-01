@@ -35,12 +35,31 @@
 
 void LightmapGIEditorPlugin::_bake_select_file(const String &p_file) {
 	if (lightmap) {
-		LightmapGI::BakeError err;
+		LightmapGI::BakeError err = LightmapGI::BAKE_ERROR_OK;
 		const uint64_t time_started = OS::get_singleton()->get_ticks_msec();
-		if (get_tree()->get_edited_scene_root() && get_tree()->get_edited_scene_root() == lightmap) {
-			err = lightmap->bake(lightmap, p_file, bake_func_step);
+		if (get_tree()->get_edited_scene_root()) {
+			Ref<LightmapGIData> lightmapGIData = lightmap->get_light_data();
+
+			if (lightmapGIData.is_valid()) {
+				String path = lightmapGIData->get_path();
+				int srpos = path.find("::");
+				if (srpos != -1) {
+					String base = path.substr(0, srpos);
+					if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+						err = LightmapGI::BAKE_ERROR_FOREIGN_DATA;
+					}
+				}
+			}
+
+			if (err == LightmapGI::BAKE_ERROR_OK) {
+				if (get_tree()->get_edited_scene_root() == lightmap) {
+					err = lightmap->bake(lightmap, p_file, bake_func_step);
+				} else {
+					err = lightmap->bake(lightmap->get_parent(), p_file, bake_func_step);
+				}
+			}
 		} else {
-			err = lightmap->bake(lightmap->get_parent(), p_file, bake_func_step);
+			err = LightmapGI::BAKE_ERROR_NO_SCENE_ROOT;
 		}
 
 		bake_func_end(time_started);
@@ -59,16 +78,21 @@ void LightmapGIEditorPlugin::_bake_select_file(const String &p_file) {
 
 				file_dialog->set_current_path(scene_path);
 				file_dialog->popup_file_dialog();
-
 			} break;
-			case LightmapGI::BAKE_ERROR_NO_MESHES:
+			case LightmapGI::BAKE_ERROR_NO_MESHES: {
 				EditorNode::get_singleton()->show_warning(TTR("No meshes to bake. Make sure they contain an UV2 channel and that the 'Bake Light' flag is on."));
-				break;
-			case LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE:
+			} break;
+			case LightmapGI::BAKE_ERROR_CANT_CREATE_IMAGE: {
 				EditorNode::get_singleton()->show_warning(TTR("Failed creating lightmap images, make sure path is writable."));
-				break;
+			} break;
+			case LightmapGI::BAKE_ERROR_NO_SCENE_ROOT: {
+				EditorNode::get_singleton()->show_warning(TTR("No editor scene root found."));
+			} break;
+			case LightmapGI::BAKE_ERROR_FOREIGN_DATA: {
+				EditorNode::get_singleton()->show_warning(TTR("Lightmap data is not local to the scene."));
+			} break;
 			default: {
-			}
+			} break;
 		}
 	}
 }
