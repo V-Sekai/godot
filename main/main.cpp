@@ -43,6 +43,7 @@
 #include "core/io/file_access_zip.h"
 #include "core/io/image_loader.h"
 #include "core/io/ip.h"
+#include "core/io/resource.h"
 #include "core/io/resource_loader.h"
 #include "core/object/message_queue.h"
 #include "core/os/os.h"
@@ -70,6 +71,7 @@
 #include "servers/physics_server_3d.h"
 #include "servers/register_server_types.h"
 #include "servers/rendering/rendering_server_default.h"
+#include "servers/resonanceaudio/resonance_audio_wrapper.h"
 #include "servers/text/text_server_dummy.h"
 #include "servers/text_server.h"
 #include "servers/xr_server.h"
@@ -115,6 +117,7 @@ static MessageQueue *message_queue = nullptr;
 
 // Initialized in setup2()
 static AudioServer *audio_server = nullptr;
+static ResonanceAudioServer *resonance_audio_server = nullptr;
 static DisplayServer *display_server = nullptr;
 static RenderingServer *rendering_server = nullptr;
 static CameraServer *camera_server = nullptr;
@@ -1719,6 +1722,8 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 	audio_server = memnew(AudioServer);
 	audio_server->init();
 
+	resonance_audio_server = memnew(ResonanceAudioServer);
+
 	// also init our xr_server from here
 	xr_server = memnew(XRServer);
 
@@ -2867,6 +2872,10 @@ void Main::cleanup(bool p_force) {
 
 	if (xr_server) {
 		memdelete(xr_server);
+	}
+
+	if (resonance_audio_server) {
+		memdelete(resonance_audio_server);
 	}
 
 	if (audio_server) {
