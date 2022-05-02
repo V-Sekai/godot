@@ -7,6 +7,13 @@
 	<tutorials>
 		<link title="AnimationTree">$DOCS_URL/tutorials/animation/animation_tree.html</link>
 	</tutorials>
+	<methods>
+		<method name="get_root_path">
+			<return type="Node" />
+			<description>
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="advance_condition" type="StringName" setter="set_advance_condition" getter="get_advance_condition" default="&amp;&quot;&quot;">
 			Turn on auto advance when this condition is set. The provided name will become a boolean parameter on the [AnimationTree] that can be controlled from code (see [url=$DOCS_URL/tutorials/animation/animation_tree.html#controlling-from-code][/url]). For example, if [member AnimationTree.tree_root] is an [AnimationNodeStateMachine] and [member advance_condition] is set to [code]"idle"[/code]:
@@ -18,6 +25,10 @@
 			GetNode&lt;AnimationTree&gt;("animation_tree").Set("parameters/conditions/idle", IsOnFloor &amp;&amp; (LinearVelocity.x == 0));
 			[/csharp]
 			[/codeblocks]
+		</member>
+		<member name="advance_expression" type="String" setter="set_advance_expression" getter="get_advance_expression" default="&quot;&quot;">
+		</member>
+		<member name="advance_expression_base_node" type="NodePath" setter="set_advance_expression_base_node" getter="get_advance_expression_base_node" default="NodePath(&quot;&quot;)">
 		</member>
 		<member name="auto_advance" type="bool" setter="set_auto_advance" getter="has_auto_advance" default="false">
 			Turn on the transition automatically when this state is reached. This works best with [constant SWITCH_MODE_AT_END].
