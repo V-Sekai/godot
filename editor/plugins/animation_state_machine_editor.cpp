@@ -54,7 +54,28 @@ bool AnimationNodeStateMachineEditor::can_edit(const Ref<AnimationNode> &p_node)
 void AnimationNodeStateMachineEditor::edit(const Ref<AnimationNode> &p_node) {
 	state_machine = p_node;
 
+	state_machine_is_foreign = false;
+
+	tool_create->set_disabled(false);
+	tool_connect->set_disabled(false);
+	tool_group->set_disabled(false);
+	tool_ungroup->set_disabled(false);
+	tool_erase->set_disabled(false);
+
 	if (state_machine.is_valid()) {
+		int srpos = state_machine->get_path().find("::");
+		if (srpos != -1) {
+			String base = state_machine->get_path().substr(0, srpos);
+			if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+				state_machine_is_foreign = true;
+
+				tool_create->set_disabled(true);
+				tool_connect->set_disabled(true);
+				tool_group->set_disabled(true);
+				tool_ungroup->set_disabled(true);
+				tool_erase->set_disabled(true);
+			}
+		}
 		selected_transition_from = StringName();
 		selected_transition_to = StringName();
 		selected_transition_index = -1;
@@ -75,7 +96,9 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 	Ref<InputEventKey> k = p_event;
 	if (tool_select->is_pressed() && k.is_valid() && k->is_pressed() && k->get_keycode() == Key::KEY_DELETE && !k->is_echo()) {
 		if (selected_node != StringName() || !selected_nodes.is_empty() || selected_transition_to != StringName() || selected_transition_from != StringName()) {
-			_erase_selected();
+			if (!state_machine_is_foreign) {
+				_erase_selected();
+			}
 			accept_event();
 		}
 	}
@@ -93,9 +116,11 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 	Ref<InputEventMouseButton> mb = p_event;
 
 	// Add new node
-	if (mb.is_valid() && mb->is_pressed() && !box_selecting && !connecting && ((tool_select->is_pressed() && mb->get_button_index() == MouseButton::RIGHT) || (tool_create->is_pressed() && mb->get_button_index() == MouseButton::LEFT))) {
-		connecting_from = StringName();
-		_open_menu(mb->get_position());
+	if (!state_machine_is_foreign) {
+		if (mb.is_valid() && mb->is_pressed() && !box_selecting && !connecting && ((tool_select->is_pressed() && mb->get_button_index() == MouseButton::RIGHT) || (tool_create->is_pressed() && mb->get_button_index() == MouseButton::LEFT))) {
+			connecting_from = StringName();
+			_open_menu(mb->get_position());
+		}
 	}
 
 	// Select node or push a field inside
@@ -317,7 +342,7 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 	}
 
 	// Move mouse while connecting
-	if (mm.is_valid() && connecting) {
+	if (mm.is_valid() && connecting && !state_machine_is_foreign) {
 		connecting_to = mm->get_position();
 		connecting_to_node = StringName();
 		state_machine_draw->update();
@@ -331,7 +356,7 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 	}
 
 	// Move mouse while moving a node
-	if (mm.is_valid() && dragging_selected_attempt) {
+	if (mm.is_valid() && dragging_selected_attempt && !state_machine_is_foreign) {
 		dragging_selected = true;
 		drag_ofs = mm->get_position() - drag_from;
 		snap_x = StringName();
