@@ -60,10 +60,22 @@ void NavigationMeshEditor::_bake_pressed() {
 	button_bake->set_pressed(false);
 
 	ERR_FAIL_COND(!node);
-	if (!node->get_navigation_mesh().is_valid()) {
+	Ref<NavigationMesh> navmesh = node->get_navigation_mesh();
+	if (!navmesh.is_valid()) {
 		err_dialog->set_text(TTR("A NavigationMesh resource must be set or created for this node to work."));
 		err_dialog->popup_centered();
 		return;
+	}
+
+	String path = navmesh->get_path();
+	int srpos = path.find("::");
+	if (srpos != -1) {
+		String base = path.substr(0, srpos);
+		if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+			err_dialog->set_text(TTR("Cannot generate navigation mesh because it does not belong to the edited scene. Make it unique first."));
+			err_dialog->popup_centered();
+			return;
+		}
 	}
 
 	NavigationMeshGenerator::get_singleton()->clear(node->get_navigation_mesh());
