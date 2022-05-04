@@ -131,7 +131,7 @@ env_base.__class__.use_windows_spawn_fix = methods.use_windows_spawn_fix
 
 env_base.__class__.add_shared_library = methods.add_shared_library
 env_base.__class__.add_library = methods.add_library
-env_base.__class__.add_program = methods.add_program
+env_base.__class__.add_program = methods.add_shared_library
 env_base.__class__.CommandNoCache = methods.CommandNoCache
 env_base.__class__.Run = methods.Run
 env_base.__class__.disable_warnings = methods.disable_warnings
@@ -801,7 +801,8 @@ if selected_platform in platform_list:
 
     Export("env")
 
-    # Build subdirs, the build order is dependent on link order.
+    # build subdirs, the build order is dependent on link order.
+    
     SConscript("core/SCsub")
     SConscript("servers/SCsub")
     SConscript("scene/SCsub")

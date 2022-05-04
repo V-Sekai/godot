@@ -40,7 +40,7 @@
 #include "main/main.h"
 #include "os_linuxbsd.h"
 
-int main(int argc, char *argv[]) {
+int godot_main(int argc, char *argv[]) {
 #if defined(SANITIZERS_ENABLED)
 	// Note: Set stack size to be at least 30 MB (vs 8 MB default) to avoid overflow, address sanitizer can increase stack usage up to 3 times.
 	struct rlimit stack_lim = { 0x1E00000, 0x1E00000 };
@@ -77,4 +77,8 @@ int main(int argc, char *argv[]) {
 	free(cwd);
 
 	return os.get_exit_code();
+}
+
+int main(int argc, char *argv[]) {
+	return godot_main(argc, argv);
 }
