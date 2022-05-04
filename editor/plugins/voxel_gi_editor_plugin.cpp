@@ -35,7 +35,9 @@
 
 void VoxelGIEditorPlugin::_bake() {
 	if (voxel_gi) {
-		if (voxel_gi->get_probe_data().is_null()) {
+		Ref<VoxelGIData> voxel_gi_data = voxel_gi->get_probe_data();
+
+		if (voxel_gi_data.is_null()) {
 			String path = get_tree()->get_edited_scene_root()->get_scene_file_path();
 			if (path.is_empty()) {
 				path = "res://" + voxel_gi->get_name() + "_data.res";
@@ -46,7 +48,18 @@ void VoxelGIEditorPlugin::_bake() {
 			probe_file->set_current_path(path);
 			probe_file->popup_file_dialog();
 			return;
+		} else {
+			String path = voxel_gi_data->get_path();
+			int srpos = path.find("::");
+			if (srpos != -1) {
+				String base = path.substr(0, srpos);
+				if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+					EditorNode::get_singleton()->show_warning(TTR("Voxel GI data is not local to the scene."));
+					return;
+				}
+			}
 		}
+
 		voxel_gi->bake();
 	}
 }
