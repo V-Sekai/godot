@@ -573,19 +573,33 @@ void AnimationLibraryEditor::update_tree() {
 		} else {
 			libitem->set_suffix(0, "");
 		}
-		libitem->set_editable(0, true);
-		libitem->set_metadata(0, K);
-		libitem->set_icon(0, get_theme_icon("AnimationLibrary", "EditorIcons"));
-		libitem->add_button(0, get_theme_icon("Add", "EditorIcons"), LIB_BUTTON_ADD, false, TTR("Add Animation to Library"));
-		libitem->add_button(0, get_theme_icon("Load", "EditorIcons"), LIB_BUTTON_LOAD, false, TTR("Load animation from file and add to library"));
-		libitem->add_button(0, get_theme_icon("ActionPaste", "EditorIcons"), LIB_BUTTON_PASTE, false, TTR("Paste Animation to Library from clipboard"));
+
 		Ref<AnimationLibrary> al = player->call("get_animation_library", K);
+		bool animation_library_is_foreign = false;
 		if (al->get_path().is_resource_file()) {
 			libitem->set_text(1, al->get_path().get_file());
 			libitem->set_tooltip(1, al->get_path());
 		} else {
 			libitem->set_text(1, TTR("[built-in]"));
+			int srpos = al->get_path().find("::");
+			if (srpos != -1) {
+				String base = al->get_path().substr(0, srpos);
+				if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+					animation_library_is_foreign = true;
+					libitem->set_text(1, TTR("[foreign]"));
+					libitem->set_tooltip(1, al->get_path());
+				}
+			}
 		}
+
+		libitem->set_editable(0, !animation_library_is_foreign);
+		libitem->set_metadata(0, K);
+		libitem->set_icon(0, get_theme_icon("AnimationLibrary", "EditorIcons"));
+
+		libitem->add_button(0, get_theme_icon("Add", "EditorIcons"), LIB_BUTTON_ADD, animation_library_is_foreign, TTR("Add Animation to Library"));
+		libitem->add_button(0, get_theme_icon("Load", "EditorIcons"), LIB_BUTTON_LOAD, animation_library_is_foreign, TTR("Load animation from file and add to library"));
+		libitem->add_button(0, get_theme_icon("ActionPaste", "EditorIcons"), LIB_BUTTON_PASTE, animation_library_is_foreign, TTR("Paste Animation to Library from clipboard"));
+
 		libitem->add_button(1, get_theme_icon("Save", "EditorIcons"), LIB_BUTTON_FILE, false, TTR("Save animation library to resource on disk"));
 		libitem->add_button(1, get_theme_icon("Remove", "EditorIcons"), LIB_BUTTON_DELETE, false, TTR("Remove animation library"));
 
@@ -596,20 +610,28 @@ void AnimationLibraryEditor::update_tree() {
 		for (const StringName &L : animations) {
 			TreeItem *anitem = tree->create_item(libitem);
 			anitem->set_text(0, L);
-			anitem->set_editable(0, true);
+			anitem->set_editable(0, !animation_library_is_foreign);
 			anitem->set_metadata(0, L);
 			anitem->set_icon(0, get_theme_icon("Animation", "EditorIcons"));
-			anitem->add_button(0, get_theme_icon("ActionCopy", "EditorIcons"), ANIM_BUTTON_COPY, false, TTR("Copy animation to clipboard"));
-			Ref<Animation> anim = al->get_animation(L);
+			anitem->add_button(0, get_theme_icon("ActionCopy", "EditorIcons"), ANIM_BUTTON_COPY, animation_library_is_foreign, TTR("Copy animation to clipboard"));
 
+			Ref<Animation> anim = al->get_animation(L);
 			if (anim->get_path().is_resource_file()) {
 				anitem->set_text(1, anim->get_path().get_file());
 				anitem->set_tooltip(1, anim->get_path());
 			} else {
 				anitem->set_text(1, TTR("[built-in]"));
+				int srpos = anim->get_path().find("::");
+				if (srpos != -1) {
+					String base = anim->get_path().substr(0, srpos);
+					if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+						anitem->set_text(1, TTR("[foreign]"));
+						anitem->set_tooltip(1, anim->get_path());
+					}
+				}
 			}
-			anitem->add_button(1, get_theme_icon("Save", "EditorIcons"), ANIM_BUTTON_FILE, false, TTR("Save animation to resource on disk"));
-			anitem->add_button(1, get_theme_icon("Remove", "EditorIcons"), ANIM_BUTTON_DELETE, false, TTR("Remove animation from Library"));
+			anitem->add_button(1, get_theme_icon("Save", "EditorIcons"), ANIM_BUTTON_FILE, animation_library_is_foreign, TTR("Save animation to resource on disk"));
+			anitem->add_button(1, get_theme_icon("Remove", "EditorIcons"), ANIM_BUTTON_DELETE, animation_library_is_foreign, TTR("Remove animation from Library"));
 		}
 	}
 }
