@@ -108,6 +108,43 @@ void EditorResourcePicker::_update_resource_preview(const String &p_path, const 
 	}
 }
 
+Ref<Resource> EditorResourcePicker::_make_resource_unique_recursively(Ref<Resource> p_resource) {
+	if (p_resource.is_null()) {
+		return nullptr;
+	}
+
+	List<PropertyInfo> property_list;
+	p_resource->get_property_list(&property_list);
+	List<Pair<String, Variant>> propvalues;
+	for (const PropertyInfo &pi : property_list) {
+		Pair<String, Variant> p;
+		if (pi.usage & PROPERTY_USAGE_STORAGE) {
+			p.first = pi.name;
+			p.second = p_resource->get(pi.name);
+		}
+
+		propvalues.push_back(p);
+	}
+
+	String orig_type = p_resource->get_class();
+	Object *inst = ClassDB::instantiate(orig_type);
+	Ref<Resource> unique_resource = Ref<Resource>(Object::cast_to<Resource>(inst));
+	ERR_FAIL_COND_V(unique_resource.is_null(), nullptr);
+
+	for (const Pair<String, Variant> &p : propvalues) {
+		Ref<Resource> resource_property = Ref<Resource>(Object::cast_to<Resource>(p.second));
+		if (resource_property.is_valid()) {
+			if (!resource_property->get_path().is_resource_file()) {
+				unique_resource->set(p.first, _make_resource_unique_recursively(p.second));
+				continue;
+			}
+		}
+		unique_resource->set(p.first, p.second);
+	}
+
+	return unique_resource;
+}
+
 void EditorResourcePicker::_resource_selected() {
 	if (edited_resource.is_null()) {
 		edit_button->set_pressed(true);
@@ -330,33 +367,11 @@ void EditorResourcePicker::_edit_menu_cbk(int p_which) {
 		} break;
 
 		case OBJ_MENU_MAKE_UNIQUE: {
+			edited_resource = _make_resource_unique_recursively(edited_resource);
 			if (edited_resource.is_null()) {
 				return;
 			}
 
-			List<PropertyInfo> property_list;
-			edited_resource->get_property_list(&property_list);
-			List<Pair<String, Variant>> propvalues;
-			for (const PropertyInfo &pi : property_list) {
-				Pair<String, Variant> p;
-				if (pi.usage & PROPERTY_USAGE_STORAGE) {
-					p.first = pi.name;
-					p.second = edited_resource->get(pi.name);
-				}
-
-				propvalues.push_back(p);
-			}
-
-			String orig_type = edited_resource->get_class();
-			Object *inst = ClassDB::instantiate(orig_type);
-			Ref<Resource> unique_resource = Ref<Resource>(Object::cast_to<Resource>(inst));
-			ERR_FAIL_COND(unique_resource.is_null());
-
-			for (const Pair<String, Variant> &p : propvalues) {
-				unique_resource->set(p.first, p.second);
-			}
-
-			edited_resource = unique_resource;
 			emit_signal(SNAME("resource_changed"), edited_resource);
 			_update_resource();
 		} break;
