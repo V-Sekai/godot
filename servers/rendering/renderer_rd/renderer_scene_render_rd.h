@@ -583,7 +583,7 @@ private:
 
 	/* GI */
 	bool screen_space_roughness_limiter = false;
-	float screen_space_roughness_limiter_amount = 0.25;
+	float screen_space_roughness_limiter_amount = 0.15915494;
 	float screen_space_roughness_limiter_limit = 0.18;
 
 	mutable RID_Owner<RenderBuffers> render_buffers_owner;
