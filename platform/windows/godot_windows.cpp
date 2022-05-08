@@ -200,7 +200,7 @@ int _main() {
 	return result;
 }
 
-int main(int argc, char **argv) {
+int godot_main(int argc, char **argv) {
 	// override the arguments for the test handler / if symbol is provided
 	// TEST_MAIN_OVERRIDE
 
@@ -215,6 +215,10 @@ int main(int argc, char **argv) {
 #else
 	return _main();
 #endif
+}
+
+int main(int argc, char *argv[]) {
+	return godot_main(argc, argv);
 }
 
 HINSTANCE godot_hinstance = nullptr;
