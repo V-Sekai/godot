@@ -2219,19 +2219,19 @@ bool PhysicalBone3D::PinJointData::_set(const StringName &p_name, const Variant 
 
 	if ("joint_constraints/bias" == p_name) {
 		bias = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->pin_joint_set_param(j, PhysicsServer3D::PIN_JOINT_BIAS, bias);
 		}
 
 	} else if ("joint_constraints/damping" == p_name) {
 		damping = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->pin_joint_set_param(j, PhysicsServer3D::PIN_JOINT_DAMPING, damping);
 		}
 
 	} else if ("joint_constraints/impulse_clamp" == p_name) {
 		impulse_clamp = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->pin_joint_set_param(j, PhysicsServer3D::PIN_JOINT_IMPULSE_CLAMP, impulse_clamp);
 		}
 
@@ -2275,31 +2275,31 @@ bool PhysicalBone3D::ConeJointData::_set(const StringName &p_name, const Variant
 
 	if ("joint_constraints/swing_span" == p_name) {
 		swing_span = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->cone_twist_joint_set_param(j, PhysicsServer3D::CONE_TWIST_JOINT_SWING_SPAN, swing_span);
 		}
 
 	} else if ("joint_constraints/twist_span" == p_name) {
 		twist_span = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->cone_twist_joint_set_param(j, PhysicsServer3D::CONE_TWIST_JOINT_TWIST_SPAN, twist_span);
 		}
 
 	} else if ("joint_constraints/bias" == p_name) {
 		bias = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->cone_twist_joint_set_param(j, PhysicsServer3D::CONE_TWIST_JOINT_BIAS, bias);
 		}
 
 	} else if ("joint_constraints/softness" == p_name) {
 		softness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->cone_twist_joint_set_param(j, PhysicsServer3D::CONE_TWIST_JOINT_SOFTNESS, softness);
 		}
 
 	} else if ("joint_constraints/relaxation" == p_name) {
 		relaxation = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->cone_twist_joint_set_param(j, PhysicsServer3D::CONE_TWIST_JOINT_RELAXATION, relaxation);
 		}
 
@@ -2349,37 +2349,37 @@ bool PhysicalBone3D::HingeJointData::_set(const StringName &p_name, const Varian
 
 	if ("joint_constraints/angular_limit_enabled" == p_name) {
 		angular_limit_enabled = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->hinge_joint_set_flag(j, PhysicsServer3D::HINGE_JOINT_FLAG_USE_LIMIT, angular_limit_enabled);
 		}
 
 	} else if ("joint_constraints/angular_limit_upper" == p_name) {
 		angular_limit_upper = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->hinge_joint_set_param(j, PhysicsServer3D::HINGE_JOINT_LIMIT_UPPER, angular_limit_upper);
 		}
 
 	} else if ("joint_constraints/angular_limit_lower" == p_name) {
 		angular_limit_lower = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->hinge_joint_set_param(j, PhysicsServer3D::HINGE_JOINT_LIMIT_LOWER, angular_limit_lower);
 		}
 
 	} else if ("joint_constraints/angular_limit_bias" == p_name) {
 		angular_limit_bias = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->hinge_joint_set_param(j, PhysicsServer3D::HINGE_JOINT_LIMIT_BIAS, angular_limit_bias);
 		}
 
 	} else if ("joint_constraints/angular_limit_softness" == p_name) {
 		angular_limit_softness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->hinge_joint_set_param(j, PhysicsServer3D::HINGE_JOINT_LIMIT_SOFTNESS, angular_limit_softness);
 		}
 
 	} else if ("joint_constraints/angular_limit_relaxation" == p_name) {
 		angular_limit_relaxation = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->hinge_joint_set_param(j, PhysicsServer3D::HINGE_JOINT_LIMIT_RELAXATION, angular_limit_relaxation);
 		}
 
@@ -2432,61 +2432,61 @@ bool PhysicalBone3D::SliderJointData::_set(const StringName &p_name, const Varia
 
 	if ("joint_constraints/linear_limit_upper" == p_name) {
 		linear_limit_upper = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_LINEAR_LIMIT_UPPER, linear_limit_upper);
 		}
 
 	} else if ("joint_constraints/linear_limit_lower" == p_name) {
 		linear_limit_lower = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_LINEAR_LIMIT_LOWER, linear_limit_lower);
 		}
 
 	} else if ("joint_constraints/linear_limit_softness" == p_name) {
 		linear_limit_softness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_LINEAR_LIMIT_SOFTNESS, linear_limit_softness);
 		}
 
 	} else if ("joint_constraints/linear_limit_restitution" == p_name) {
 		linear_limit_restitution = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_LINEAR_LIMIT_RESTITUTION, linear_limit_restitution);
 		}
 
 	} else if ("joint_constraints/linear_limit_damping" == p_name) {
 		linear_limit_damping = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_LINEAR_LIMIT_DAMPING, linear_limit_restitution);
 		}
 
 	} else if ("joint_constraints/angular_limit_upper" == p_name) {
 		angular_limit_upper = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_ANGULAR_LIMIT_UPPER, angular_limit_upper);
 		}
 
 	} else if ("joint_constraints/angular_limit_lower" == p_name) {
 		angular_limit_lower = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_ANGULAR_LIMIT_LOWER, angular_limit_lower);
 		}
 
 	} else if ("joint_constraints/angular_limit_softness" == p_name) {
 		angular_limit_softness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_ANGULAR_LIMIT_SOFTNESS, angular_limit_softness);
 		}
 
 	} else if ("joint_constraints/angular_limit_restitution" == p_name) {
 		angular_limit_restitution = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_ANGULAR_LIMIT_SOFTNESS, angular_limit_softness);
 		}
 
 	} else if ("joint_constraints/angular_limit_damping" == p_name) {
 		angular_limit_damping = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(j, PhysicsServer3D::SLIDER_JOINT_ANGULAR_LIMIT_DAMPING, angular_limit_damping);
 		}
 
@@ -2574,127 +2574,127 @@ bool PhysicalBone3D::SixDOFJointData::_set(const StringName &p_name, const Varia
 
 	if ("linear_limit_enabled" == var_name) {
 		axis_data[axis].linear_limit_enabled = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_flag(j, axis, PhysicsServer3D::G6DOF_JOINT_FLAG_ENABLE_LINEAR_LIMIT, axis_data[axis].linear_limit_enabled);
 		}
 
 	} else if ("linear_limit_upper" == var_name) {
 		axis_data[axis].linear_limit_upper = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_UPPER_LIMIT, axis_data[axis].linear_limit_upper);
 		}
 
 	} else if ("linear_limit_lower" == var_name) {
 		axis_data[axis].linear_limit_lower = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_LOWER_LIMIT, axis_data[axis].linear_limit_lower);
 		}
 
 	} else if ("linear_limit_softness" == var_name) {
 		axis_data[axis].linear_limit_softness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_LIMIT_SOFTNESS, axis_data[axis].linear_limit_softness);
 		}
 
 	} else if ("linear_spring_enabled" == var_name) {
 		axis_data[axis].linear_spring_enabled = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_flag(j, axis, PhysicsServer3D::G6DOF_JOINT_FLAG_ENABLE_LINEAR_SPRING, axis_data[axis].linear_spring_enabled);
 		}
 
 	} else if ("linear_spring_stiffness" == var_name) {
 		axis_data[axis].linear_spring_stiffness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_SPRING_STIFFNESS, axis_data[axis].linear_spring_stiffness);
 		}
 
 	} else if ("linear_spring_damping" == var_name) {
 		axis_data[axis].linear_spring_damping = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_SPRING_DAMPING, axis_data[axis].linear_spring_damping);
 		}
 
 	} else if ("linear_equilibrium_point" == var_name) {
 		axis_data[axis].linear_equilibrium_point = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_SPRING_EQUILIBRIUM_POINT, axis_data[axis].linear_equilibrium_point);
 		}
 
 	} else if ("linear_restitution" == var_name) {
 		axis_data[axis].linear_restitution = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_RESTITUTION, axis_data[axis].linear_restitution);
 		}
 
 	} else if ("linear_damping" == var_name) {
 		axis_data[axis].linear_damping = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_LINEAR_DAMPING, axis_data[axis].linear_damping);
 		}
 
 	} else if ("angular_limit_enabled" == var_name) {
 		axis_data[axis].angular_limit_enabled = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_flag(j, axis, PhysicsServer3D::G6DOF_JOINT_FLAG_ENABLE_ANGULAR_LIMIT, axis_data[axis].angular_limit_enabled);
 		}
 
 	} else if ("angular_limit_upper" == var_name) {
 		axis_data[axis].angular_limit_upper = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_UPPER_LIMIT, axis_data[axis].angular_limit_upper);
 		}
 
 	} else if ("angular_limit_lower" == var_name) {
 		axis_data[axis].angular_limit_lower = Math::deg2rad(real_t(p_value));
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_LOWER_LIMIT, axis_data[axis].angular_limit_lower);
 		}
 
 	} else if ("angular_limit_softness" == var_name) {
 		axis_data[axis].angular_limit_softness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_LIMIT_SOFTNESS, axis_data[axis].angular_limit_softness);
 		}
 
 	} else if ("angular_restitution" == var_name) {
 		axis_data[axis].angular_restitution = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_RESTITUTION, axis_data[axis].angular_restitution);
 		}
 
 	} else if ("angular_damping" == var_name) {
 		axis_data[axis].angular_damping = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_DAMPING, axis_data[axis].angular_damping);
 		}
 
 	} else if ("erp" == var_name) {
 		axis_data[axis].erp = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_ERP, axis_data[axis].erp);
 		}
 
 	} else if ("angular_spring_enabled" == var_name) {
 		axis_data[axis].angular_spring_enabled = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_flag(j, axis, PhysicsServer3D::G6DOF_JOINT_FLAG_ENABLE_ANGULAR_SPRING, axis_data[axis].angular_spring_enabled);
 		}
 
 	} else if ("angular_spring_stiffness" == var_name) {
 		axis_data[axis].angular_spring_stiffness = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_SPRING_STIFFNESS, axis_data[axis].angular_spring_stiffness);
 		}
 
 	} else if ("angular_spring_damping" == var_name) {
 		axis_data[axis].angular_spring_damping = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_SPRING_DAMPING, axis_data[axis].angular_spring_damping);
 		}
 
 	} else if ("angular_equilibrium_point" == var_name) {
 		axis_data[axis].angular_equilibrium_point = p_value;
-		if (j.is_valid()) {
+		if (j.is_valid() && can_update_server) {
 			PhysicsServer3D::get_singleton()->generic_6dof_joint_set_param(j, axis, PhysicsServer3D::G6DOF_JOINT_ANGULAR_SPRING_EQUILIBRIUM_POINT, axis_data[axis].angular_equilibrium_point);
 		}
 
@@ -3044,12 +3044,18 @@ void PhysicalBone3D::_fix_joint_offset() {
 void PhysicalBone3D::_reload_joint() {
 	if (!parent_skeleton) {
 		PhysicsServer3D::get_singleton()->joint_clear(joint);
+		if (joint_data) {
+			joint_data->can_update_server = false;
+		}
 		return;
 	}
 
 	PhysicalBone3D *body_a = parent_skeleton->get_physical_bone_parent(bone_id);
 	if (!body_a) {
 		PhysicsServer3D::get_singleton()->joint_clear(joint);
+		if (joint_data) {
+			joint_data->can_update_server = false;
+		}
 		return;
 	}
 
@@ -3059,6 +3065,7 @@ void PhysicalBone3D::_reload_joint() {
 
 	switch (get_joint_type()) {
 		case JOINT_TYPE_PIN: {
+			joint_data->can_update_server = true;
 			PhysicsServer3D::get_singleton()->joint_make_pin(joint, body_a->get_rid(), local_a.origin, get_rid(), joint_offset.origin);
 			const PinJointData *pjd(static_cast<const PinJointData *>(joint_data));
 			PhysicsServer3D::get_singleton()->pin_joint_set_param(joint, PhysicsServer3D::PIN_JOINT_BIAS, pjd->bias);
@@ -3067,6 +3074,7 @@ void PhysicalBone3D::_reload_joint() {
 
 		} break;
 		case JOINT_TYPE_CONE: {
+			joint_data->can_update_server = true;
 			PhysicsServer3D::get_singleton()->joint_make_cone_twist(joint, body_a->get_rid(), local_a, get_rid(), joint_offset);
 			const ConeJointData *cjd(static_cast<const ConeJointData *>(joint_data));
 			PhysicsServer3D::get_singleton()->cone_twist_joint_set_param(joint, PhysicsServer3D::CONE_TWIST_JOINT_SWING_SPAN, cjd->swing_span);
@@ -3077,6 +3085,7 @@ void PhysicalBone3D::_reload_joint() {
 
 		} break;
 		case JOINT_TYPE_HINGE: {
+			joint_data->can_update_server = true;
 			PhysicsServer3D::get_singleton()->joint_make_hinge(joint, body_a->get_rid(), local_a, get_rid(), joint_offset);
 			const HingeJointData *hjd(static_cast<const HingeJointData *>(joint_data));
 			PhysicsServer3D::get_singleton()->hinge_joint_set_flag(joint, PhysicsServer3D::HINGE_JOINT_FLAG_USE_LIMIT, hjd->angular_limit_enabled);
@@ -3088,6 +3097,7 @@ void PhysicalBone3D::_reload_joint() {
 
 		} break;
 		case JOINT_TYPE_SLIDER: {
+			joint_data->can_update_server = true;
 			PhysicsServer3D::get_singleton()->joint_make_slider(joint, body_a->get_rid(), local_a, get_rid(), joint_offset);
 			const SliderJointData *sjd(static_cast<const SliderJointData *>(joint_data));
 			PhysicsServer3D::get_singleton()->slider_joint_set_param(joint, PhysicsServer3D::SLIDER_JOINT_LINEAR_LIMIT_UPPER, sjd->linear_limit_upper);
@@ -3103,6 +3113,7 @@ void PhysicalBone3D::_reload_joint() {
 
 		} break;
 		case JOINT_TYPE_6DOF: {
+			joint_data->can_update_server = true;
 			PhysicsServer3D::get_singleton()->joint_make_generic_6dof(joint, body_a->get_rid(), local_a, get_rid(), joint_offset);
 			const SixDOFJointData *g6dofjd(static_cast<const SixDOFJointData *>(joint_data));
 			for (int axis = 0; axis < 3; ++axis) {
