@@ -108,7 +108,7 @@ bool AnimationPlayer::_set(const StringName &p_name, const Variant &p_value) {
 			Ref<AnimationLibrary> lib = d[lib_name];
 			add_animation_library(lib_name, lib);
 		}
-
+		emit_signal("animation_libraries_updated");
 	} else if (name.begins_with("next/")) {
 		String which = name.get_slicec('/', 1);
 		animation_set_next(which, p_value);
@@ -1239,6 +1239,23 @@ void AnimationPlayer::_animation_set_cache_update() {
 }
 
 void AnimationPlayer::_animation_added(const StringName &p_name, const StringName &p_library) {
+	{
+		int at_pos = -1;
+
+		for (uint32_t i = 0; i < animation_libraries.size(); i++) {
+			if (animation_libraries[i].name == p_library) {
+				at_pos = i;
+				break;
+			}
+		}
+
+		ERR_FAIL_COND(at_pos == -1);
+
+		ERR_FAIL_COND(!animation_libraries[at_pos].library->animations.has(p_name));
+
+		_ref_anim(animation_libraries[at_pos].library->animations[p_name]);
+	}
+
 	_animation_set_cache_update();
 
 	update_configuration_warnings();
@@ -1250,6 +1267,12 @@ void AnimationPlayer::_animation_removed(const StringName &p_name, const StringN
 	if (!animation_set.has(name)) {
 		return; // No need to update because not the one from the library being used.
 	}
+
+	AnimationData animation_data = animation_set[name];
+	if (animation_data.animation_library == p_library) {
+		_unref_anim(animation_data.animation);
+	}
+
 	_animation_set_cache_update();
 
 	// Erase blends if needed
@@ -1346,8 +1369,12 @@ Error AnimationPlayer::add_animation_library(const StringName &p_name, const Ref
 	animation_libraries.insert(insert_pos, ald);
 
 	ald.library->connect(SNAME("animation_added"), callable_mp(this, &AnimationPlayer::_animation_added), varray(p_name));
-	ald.library->connect(SNAME("animation_removed"), callable_mp(this, &AnimationPlayer::_animation_added), varray(p_name));
+	ald.library->connect(SNAME("animation_removed"), callable_mp(this, &AnimationPlayer::_animation_removed), varray(p_name));
 	ald.library->connect(SNAME("animation_renamed"), callable_mp(this, &AnimationPlayer::_animation_renamed), varray(p_name));
+
+	for (const KeyValue<StringName, Ref<Animation>> &K : ald.library->animations) {
+		_ref_anim(K.value);
+	}
 
 	_animation_set_cache_update();
 
@@ -1370,7 +1397,7 @@ void AnimationPlayer::remove_animation_library(const StringName &p_name) {
 	ERR_FAIL_COND(at_pos == -1);
 
 	animation_libraries[at_pos].library->disconnect(SNAME("animation_added"), callable_mp(this, &AnimationPlayer::_animation_added));
-	animation_libraries[at_pos].library->disconnect(SNAME("animation_removed"), callable_mp(this, &AnimationPlayer::_animation_added));
+	animation_libraries[at_pos].library->disconnect(SNAME("animation_removed"), callable_mp(this, &AnimationPlayer::_animation_removed));
 	animation_libraries[at_pos].library->disconnect(SNAME("animation_renamed"), callable_mp(this, &AnimationPlayer::_animation_renamed));
 
 	stop();
@@ -2123,6 +2150,7 @@ void AnimationPlayer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("animation_finished", PropertyInfo(Variant::STRING_NAME, "anim_name")));
 	ADD_SIGNAL(MethodInfo("animation_changed", PropertyInfo(Variant::STRING_NAME, "old_name"), PropertyInfo(Variant::STRING_NAME, "new_name")));
 	ADD_SIGNAL(MethodInfo("animation_started", PropertyInfo(Variant::STRING_NAME, "anim_name")));
+	ADD_SIGNAL(MethodInfo("animation_libraries_updated"));
 	ADD_SIGNAL(MethodInfo("caches_cleared"));
 
 	BIND_ENUM_CONSTANT(ANIMATION_PROCESS_PHYSICS);

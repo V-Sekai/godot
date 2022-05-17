@@ -261,6 +261,11 @@
 				Notifies when an animation starts playing.
 			</description>
 		</signal>
+		<signal name="animation_libraries_updated">
+			<description>
+				Notifies when the animation libraries have changed.
+			</description>
+		</signal>
 		<signal name="caches_cleared">
 			<description>
 				Notifies when the caches have been cleared, either automatically, or manually via [method clear_caches].
