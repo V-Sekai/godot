@@ -2089,17 +2089,169 @@ void SceneTreeDock::_toggle_placeholder_from_selection() {
 	}
 }
 
-void SceneTreeDock::_toggle_editable_children(Node *p_node) {
-	if (p_node) {
-		bool editable = !EditorNode::get_singleton()->get_edited_scene()->is_editable_instance(p_node);
-		EditorNode::get_singleton()->get_edited_scene()->set_editable_instance(p_node, editable);
-		if (editable) {
-			p_node->set_scene_instance_load_placeholder(false);
+void SceneTreeDock::_update_all_gizmos(Node *p_node) {
+	Node3DEditor::get_singleton()->update_all_gizmos(p_node);
+}
+
+template <class RootType>
+void SceneTreeDock::_reparent_nodes_to_typed_root(RootType *p_root, List<Node *> &p_nodes, Node *p_owner) {
+	for (Node *node : p_nodes) {
+		node->set_owner(p_owner);
+		if (node != p_root && node->get_owner() == p_owner) {
+			List<Node *> owned;
+			node->get_owned_by(p_owner, &owned, true);
+			// For Node2D and Node3D types, we can preserve the global transform when move them to the root node
+			if (typeid(RootType) == typeid(Node3D)) {
+				Node3D *node_3d = Object::cast_to<Node3D>(node);
+				if (node_3d) {
+					Transform3D gt = node_3d->get_global_transform();
+					node_3d->get_parent()->remove_child(node_3d);
+					p_root->add_child(node_3d);
+					node_3d->set_global_transform(gt);
+				} else {
+					node->get_parent()->remove_child(node);
+					p_root->add_child(node);
+				}
+			} else if (typeid(RootType) == typeid(Node2D)) {
+				Node2D *node_2d = Object::cast_to<Node2D>(node);
+				if (node_2d) {
+					Transform2D gt = node_2d->get_global_transform();
+					node_2d->get_parent()->remove_child(node_2d);
+					p_root->add_child(node_2d);
+					node_2d->set_global_transform(gt);
+				} else {
+					node->get_parent()->remove_child(node);
+					p_root->add_child(node);
+				}
+			} else {
+				node->get_parent()->remove_child(node);
+				p_root->add_child(node);
+			}
+
+			for (Node *F : owned) {
+				F->set_owner(p_owner);
+			}
+		}
+	}
+}
+
+void SceneTreeDock::_reparent_nodes_to_root(Node *p_root, Array p_nodes, Node *p_owner) {
+	List<Node *> nodes;
+	for (int i = 0; i < p_nodes.size(); i++) {
+		Node *node = Object::cast_to<Node>(p_nodes[i]);
+		ERR_FAIL_COND(node == nullptr);
+		nodes.push_back(node);
+	}
+
+	Node3D *node_3d = Object::cast_to<Node3D>(p_root);
+	if (node_3d) {
+		_reparent_nodes_to_typed_root<Node3D>(node_3d, nodes, p_owner);
+	} else {
+		Node2D *node_2d = Object::cast_to<Node2D>(p_root);
+		if (node_2d) {
+			_reparent_nodes_to_typed_root<Node2D>(node_2d, nodes, p_owner);
+		} else {
+			_reparent_nodes_to_typed_root<Node>(p_root, nodes, p_owner);
+		}
+	}
+}
+
+void SceneTreeDock::_reparent_nodes_to_paths_with_transform_and_name(Node *p_root, Array p_nodes, Array p_paths, Array p_transforms, Array p_names, Node *p_owner) {
+	ERR_FAIL_COND(p_nodes.size() != p_paths.size());
+	ERR_FAIL_COND(p_nodes.size() != p_transforms.size());
+	ERR_FAIL_COND(p_nodes.size() != p_names.size());
+
+	for (int i = 0; i < p_nodes.size(); i++) {
+		Node *node = Object::cast_to<Node>(p_nodes[i]);
+		ERR_FAIL_COND(node == nullptr);
+		NodePath np = p_paths[i];
+		Node *parent_node = p_root->get_node_or_null(np);
+		ERR_FAIL_COND(!parent_node);
+
+		List<Node *> owned;
+		node->get_owned_by(p_owner, &owned, true);
+
+		Node3D *node_3d = Object::cast_to<Node3D>(node);
+		if (node_3d) {
+			Transform3D transform = p_transforms[i];
+			node_3d->get_parent()->remove_child(node_3d);
+			parent_node->add_child(node_3d);
+			node_3d->set_transform(transform);
+		} else {
+			Node2D *node_2d = Object::cast_to<Node2D>(node);
+			if (node_2d) {
+				Transform2D transform = p_transforms[i];
+				node_2d->get_parent()->remove_child(node_2d);
+				parent_node->add_child(node_2d);
+				node_2d->set_transform(transform);
+			} else {
+				node->get_parent()->remove_child(node);
+				parent_node->add_child(node);
+			}
 		}
 
-		Node3DEditor::get_singleton()->update_all_gizmos(p_node);
+		node->set_name(p_names[i]);
 
-		scene_tree->update_tree();
+		for (Node *F : owned) {
+			F->set_owner(p_owner);
+		}
+	}
+}
+
+void SceneTreeDock::_toggle_editable_children(Node *p_node) {
+	if (p_node) {
+		editor_data->get_undo_redo().create_action(TTR("Toggle Editable Children"));
+
+		bool editable = !EditorNode::get_singleton()->get_edited_scene()->is_editable_instance(p_node);
+
+		editor_data->get_undo_redo().add_undo_method(EditorNode::get_singleton()->get_edited_scene(), "set_editable_instance", p_node, !editable);
+		editor_data->get_undo_redo().add_do_method(EditorNode::get_singleton()->get_edited_scene(), "set_editable_instance", p_node, editable);
+
+		if (editable) {
+			bool original_scene_instance_load_placeholder = p_node->get_scene_instance_load_placeholder();
+
+			editor_data->get_undo_redo().add_undo_method(p_node, "set_scene_instance_load_placeholder", original_scene_instance_load_placeholder);
+			editor_data->get_undo_redo().add_do_method(p_node, "set_scene_instance_load_placeholder", false);
+		} else {
+			Node *edited_scene = EditorNode::get_singleton()->get_edited_scene();
+
+			List<Node *> owned;
+			p_node->get_owned_by(edited_scene, &owned, false);
+
+			// Get the original paths, transforms, and names for undo
+			Array owned_nodes_array;
+			Array paths_array;
+			Array transform_array;
+			Array name_array;
+
+			for (Node *owned_node : owned) {
+				owned_nodes_array.push_back(owned_node);
+				paths_array.push_back(p_node->get_path_to(owned_node->get_parent()));
+				name_array.push_back(owned_node->get_name());
+				Node3D *node_3d = Object::cast_to<Node3D>(owned_node);
+				if (node_3d) {
+					transform_array.push_back(node_3d->get_transform());
+				} else {
+					Node2D *node_2d = Object::cast_to<Node2D>(owned_node);
+					if (node_2d) {
+						transform_array.push_back(node_2d->get_transform());
+					} else {
+						transform_array.push_back(Variant());
+					}
+				}
+			}
+
+			editor_data->get_undo_redo().add_undo_method(this, "_reparent_nodes_to_paths_with_transform_and_name", p_node, owned_nodes_array, paths_array, transform_array, name_array, edited_scene);
+			editor_data->get_undo_redo().add_do_method(this, "_reparent_nodes_to_root", p_node, owned_nodes_array, edited_scene);
+		}
+
+		editor_data->get_undo_redo().add_undo_method(this, "_update_all_gizmos", p_node);
+		editor_data->get_undo_redo().add_do_method(this, "_update_all_gizmos", p_node);
+
+		editor_data->get_undo_redo().add_undo_method(scene_tree, "update_tree");
+		editor_data->get_undo_redo().add_do_method(scene_tree, "update_tree");
+
+		editor_data->get_undo_redo().commit_action();
 	}
 }
 
@@ -3386,6 +3538,9 @@ void SceneTreeDock::_create_remap_for_resource(Ref<Resource> p_resource, HashMap
 
 void SceneTreeDock::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_set_owners"), &SceneTreeDock::_set_owners);
+	ClassDB::bind_method(D_METHOD("_update_all_gizmos"), &SceneTreeDock::_update_all_gizmos);
+	ClassDB::bind_method(D_METHOD("_reparent_nodes_to_root"), &SceneTreeDock::_reparent_nodes_to_root);
+	ClassDB::bind_method(D_METHOD("_reparent_nodes_to_paths_with_transform_and_name"), &SceneTreeDock::_reparent_nodes_to_paths_with_transform_and_name);
 
 	ClassDB::bind_method(D_METHOD("_update_script_button"), &SceneTreeDock::_update_script_button);
 
