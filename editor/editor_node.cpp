@@ -1227,7 +1227,7 @@ void EditorNode::save_resource_in_path(const Ref<Resource> &p_resource, const St
 }
 
 void EditorNode::save_resource(const Ref<Resource> &p_resource) {
-	if (p_resource->get_path().is_resource_file()) {
+	if (p_resource->get_path().is_resource_file() && !FileAccess::exists(p_resource->get_path() + ".import")) {
 		save_resource_in_path(p_resource, p_resource->get_path());
 	} else {
 		save_resource_as(p_resource);
@@ -1237,11 +1237,18 @@ void EditorNode::save_resource(const Ref<Resource> &p_resource) {
 void EditorNode::save_resource_as(const Ref<Resource> &p_resource, const String &p_at_path) {
 	{
 		String path = p_resource->get_path();
-		int srpos = path.find("::");
-		if (srpos != -1) {
-			String base = path.substr(0, srpos);
-			if (!get_edited_scene() || get_edited_scene()->get_scene_file_path() != base) {
-				show_warning(TTR("This resource can't be saved because it does not belong to the edited scene. Make it unique first."));
+		if (!path.is_resource_file()) {
+			int srpos = path.find("::");
+			if (srpos != -1) {
+				String base = path.substr(0, srpos);
+				if (!get_edited_scene() || get_edited_scene()->get_scene_file_path() != base) {
+					show_warning(TTR("This resource can't be saved because it does not belong to the edited scene. Make it unique first."));
+					return;
+				}
+			}
+		} else {
+			if (FileAccess::exists(path + ".import")) {
+				show_warning(TTR("This resource can't be saved because it was imported from another file. Make it unique first."));
 				return;
 			}
 		}
@@ -2191,7 +2198,14 @@ void EditorNode::_edit_current(bool p_skip_foreign) {
 	bool is_resource = current_obj->is_class("Resource");
 	bool is_node = current_obj->is_class("Node");
 
-	String editable_warning; // None by default.
+	String editable_info; // None by default.
+	bool info_is_warning = false;
+
+	if (current_obj->has_method("_read_only")) {
+		if (current_obj->call("_read_only")) {
+			editable_info = TTR("This object is marked as read-only, so it's not editable.");
+		}
+	}
 
 	if (is_resource) {
 		Resource *current_res = Object::cast_to<Resource>(current_obj);
@@ -2205,16 +2219,26 @@ void EditorNode::_edit_current(bool p_skip_foreign) {
 		int subr_idx = current_res->get_path().find("::");
 		if (subr_idx != -1) {
 			String base_path = current_res->get_path().substr(0, subr_idx);
-			if (FileAccess::exists(base_path + ".import")) {
-				editable_warning = TTR("This resource belongs to a scene that was imported, so it's not editable.\nPlease read the documentation relevant to importing scenes to better understand this workflow.");
+			if (!base_path.is_resource_file()) {
+				if (FileAccess::exists(base_path + ".import")) {
+					if ((get_edited_scene() && get_edited_scene()->get_scene_file_path() == base_path)) {
+						info_is_warning = true;
+					}
+					editable_info = TTR("This resource belongs to a scene that was imported, so it's not editable.\nPlease read the documentation relevant to importing scenes to better understand this workflow.");
+
+				} else {
+					if ((!get_edited_scene() || get_edited_scene()->get_scene_file_path() != base_path) && ResourceLoader::get_resource_type(base_path) == "PackedScene") {
+						editable_info = TTR("This resource belongs to a scene that was instantiated or inherited.\nChanges to it must be made inside the original scene.");
+					}
+				}
 			} else {
-				if ((!get_edited_scene() || get_edited_scene()->get_scene_file_path() != base_path) && ResourceLoader::get_resource_type(base_path) == "PackedScene") {
-					editable_warning = TTR("This resource belongs to a scene that was instantiated or inherited.\nChanges to it won't be kept when saving the current scene.");
+				if (FileAccess::exists(base_path + ".import")) {
+					editable_info = TTR("This resource belongs to a scene that was imported, so it's not editable.\nPlease read the documentation relevant to importing scenes to better understand this workflow.");
 				}
 			}
 		} else if (current_res->get_path().is_resource_file()) {
 			if (FileAccess::exists(current_res->get_path() + ".import")) {
-				editable_warning = TTR("This resource was imported, so it's not editable. Change its settings in the import panel and then re-import.");
+				editable_info = TTR("This resource was imported, so it's not editable. Change its settings in the import panel and then re-import.");
 			}
 		}
 	} else if (is_node) {
@@ -2235,7 +2259,8 @@ void EditorNode::_edit_current(bool p_skip_foreign) {
 		if (get_edited_scene() && !get_edited_scene()->get_scene_file_path().is_empty()) {
 			String source_scene = get_edited_scene()->get_scene_file_path();
 			if (FileAccess::exists(source_scene + ".import")) {
-				editable_warning = TTR("This scene was imported, so changes to it won't be kept.\nInstancing it or inheriting will allow making changes to it.\nPlease read the documentation relevant to importing scenes to better understand this workflow.");
+				editable_info = TTR("This scene was imported, so changes to it won't be kept.\nInstancing it or inheriting will allow making changes to it.\nPlease read the documentation relevant to importing scenes to better understand this workflow.");
+				info_is_warning = true;
 			}
 		}
 
@@ -2243,7 +2268,7 @@ void EditorNode::_edit_current(bool p_skip_foreign) {
 		Node *selected_node = nullptr;
 
 		if (current_obj->is_class("EditorDebuggerRemoteObject")) {
-			editable_warning = TTR("This is a remote object, so changes to it won't be kept.\nPlease read the documentation relevant to debugging to better understand this workflow.");
+			editable_info = TTR("This is a remote object, so it's not editable.\nPlease read the documentation relevant to debugging to better understand this workflow.");
 			disable_folding = true;
 		} else if (current_obj->is_class("MultiNodeEdit")) {
 			Node *scene = get_edited_scene();
@@ -2278,7 +2303,10 @@ void EditorNode::_edit_current(bool p_skip_foreign) {
 		InspectorDock::get_inspector_singleton()->update_tree();
 	}
 
-	InspectorDock::get_singleton()->set_warning(editable_warning);
+	InspectorDock::get_singleton()->set_info(
+			info_is_warning ? TTR("Changes may be lost!") : TTR("This object is read-only."),
+			editable_info,
+			info_is_warning);
 
 	if (InspectorDock::get_inspector_singleton()->is_using_folding() == disable_folding) {
 		InspectorDock::get_inspector_singleton()->set_use_folding(!disable_folding);
