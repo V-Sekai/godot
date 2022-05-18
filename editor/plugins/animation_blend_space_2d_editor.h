@@ -44,6 +44,7 @@ class AnimationNodeBlendSpace2DEditor : public AnimationTreeNodeEditorPlugin {
 	GDCLASS(AnimationNodeBlendSpace2DEditor, AnimationTreeNodeEditorPlugin);
 
 	Ref<AnimationNodeBlendSpace2D> blend_space;
+	bool blend_space_is_foreign = false;
 
 	PanelContainer *panel = nullptr;
 	Button *tool_blend = nullptr;
