@@ -125,21 +125,38 @@ void ReplicationEditor::_add_pressed() {
 	if (prop.is_empty()) {
 		return;
 	}
-	UndoRedo *undo_redo = EditorNode::get_singleton()->get_undo_redo();
-	undo_redo->create_action(TTR("Add property"));
-	config = current->get_replication_config();
-	if (config.is_null()) {
-		config.instantiate();
-		current->set_replication_config(config);
-		undo_redo->add_do_method(current, "set_replication_config", config);
-		undo_redo->add_undo_method(current, "set_replication_config", Ref<SceneReplicationConfig>());
-		_update_config();
+	Ref<SceneReplicationConfig> current_config = current->get_replication_config();
+
+	bool create_new_config = false;
+	if (current_config.is_null()) {
+		current_config.instantiate();
+		ERR_FAIL_COND(current_config.is_null());
+		current->set_replication_config(current_config);
+
+		create_new_config = true;
 	}
-	undo_redo->add_do_method(config.ptr(), "add_property", prop);
-	undo_redo->add_undo_method(config.ptr(), "remove_property", prop);
-	undo_redo->add_do_method(this, "_update_config");
-	undo_redo->add_undo_method(this, "_update_config");
-	undo_redo->commit_action();
+
+	TypedArray<NodePath> properties = current_config->get_properties();
+	if (properties.has(prop)) {
+		Dictionary formatdict;
+		formatdict["{prop_name}"] = String(prop);
+		EditorNode::get_singleton()->show_warning(TTR("Property '{prop_name}' already exists.").format(formatdict));
+	} else {
+		UndoRedo *undo_redo = EditorNode::get_singleton()->get_undo_redo();
+		undo_redo->create_action(TTR("Add property"));
+
+		if (create_new_config) {
+			undo_redo->add_do_method(current, "set_replication_config", current_config);
+			undo_redo->add_undo_method(current, "set_replication_config", Ref<SceneReplicationConfig>());
+		}
+
+		undo_redo->add_do_method(current_config.ptr(), "add_property", prop);
+		undo_redo->add_undo_method(current_config.ptr(), "remove_property", prop);
+		undo_redo->add_do_method(this, "_update_config");
+		undo_redo->add_undo_method(this, "_update_config");
+
+		undo_redo->commit_action();
+	}
 }
 
 void ReplicationEditor::_tree_item_edited() {
@@ -232,7 +249,40 @@ void ReplicationEditor::update_keying() {
 #endif
 }
 
+void ReplicationEditor::update_config_if_dirty() {
+	Ref<SceneReplicationConfig> new_config;
+	if (current) {
+		new_config = current->get_replication_config();
+	}
+
+	if (new_config != config) {
+		config = new_config;
+
+		_update_config();
+	}
+}
+
 void ReplicationEditor::_update_config() {
+	read_only = false;
+	if (config.is_valid()) {
+		int srpos = config->get_path().find("::");
+		if (srpos != -1) {
+			String base = config->get_path().substr(0, srpos);
+			if (ResourceLoader::get_resource_type(base) == "PackedScene") {
+				if (!get_tree()->get_edited_scene_root() || get_tree()->get_edited_scene_root()->get_scene_file_path() != base) {
+					read_only = true;
+				}
+			} else {
+				if (FileAccess::exists(base + ".import")) {
+					read_only = true;
+				}
+			}
+		}
+	}
+
+	np_line_edit->set_editable(!read_only);
+	add_button->set_disabled(read_only);
+
 	deleting = NodePath();
 	tree->clear();
 	tree->create_item();
@@ -252,13 +302,10 @@ void ReplicationEditor::edit(MultiplayerSynchronizer *p_sync) {
 	if (current == p_sync) {
 		return;
 	}
+
 	current = p_sync;
-	if (current) {
-		config = current->get_replication_config();
-	} else {
-		config.unref();
-	}
-	_update_config();
+
+	update_config_if_dirty();
 }
 
 Ref<Texture2D> ReplicationEditor::_get_class_icon(const Node *p_node) {
@@ -290,15 +337,15 @@ void ReplicationEditor::_add_property(const NodePath &p_property, bool p_spawn, 
 		icon = _get_class_icon(node);
 	}
 	item->set_icon(0, icon);
-	item->add_button(3, get_theme_icon(SNAME("Remove"), SNAME("EditorIcons")));
+	item->add_button(3, get_theme_icon(SNAME("Remove"), SNAME("EditorIcons")), -1, read_only);
 	item->set_text_alignment(1, HORIZONTAL_ALIGNMENT_CENTER);
 	item->set_cell_mode(1, TreeItem::CELL_MODE_CHECK);
 	item->set_checked(1, p_spawn);
-	item->set_editable(1, true);
+	item->set_editable(1, !read_only);
 	item->set_text_alignment(2, HORIZONTAL_ALIGNMENT_CENTER);
 	item->set_cell_mode(2, TreeItem::CELL_MODE_CHECK);
 	item->set_checked(2, p_sync);
-	item->set_editable(2, true);
+	item->set_editable(2, !read_only);
 }
 
 void ReplicationEditor::property_keyed(const String &p_property) {
@@ -342,6 +389,8 @@ void ReplicationEditor::property_keyed(const String &p_property) {
 ReplicationEditorPlugin::ReplicationEditorPlugin() {
 	repl_editor = memnew(ReplicationEditor);
 	EditorNode::get_singleton()->add_bottom_panel_item(TTR("Replication"), repl_editor);
+
+	set_process(true);
 }
 
 ReplicationEditorPlugin::~ReplicationEditorPlugin() {
@@ -368,6 +417,12 @@ void ReplicationEditorPlugin::_notification(int p_what) {
 			// TODO make lock usable.
 			//InspectorDock::get_inspector_singleton()->connect("object_inspected", callable_mp(repl_editor, &ReplicationEditor::update_keying));
 			get_tree()->connect("node_removed", callable_mp(this, &ReplicationEditorPlugin::_node_removed));
+		} break;
+		case NOTIFICATION_PROCESS: {
+			if (repl_editor) {
+				repl_editor->update_config_if_dirty();
+			}
+
 		} break;
 	}
 }
