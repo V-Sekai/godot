@@ -629,6 +629,7 @@ if selected_platform in platform_list:
                     env.Append(CCFLAGS=["-Wno-error=strict-overflow"])
                 if cc_version_major >= 12:  # False positives in our error macros, see GH-58747.
                     env.Append(CCFLAGS=["-Wno-error=return-type"])
+                    env.Append(CXXFLAGS=["-Wno-maybe-uninitialized"])  # Confused warning on audio_frame.h
             elif methods.using_clang(env) or methods.using_emcc(env):
                 env.Append(CXXFLAGS=["-Wno-error=#warnings"])
 
