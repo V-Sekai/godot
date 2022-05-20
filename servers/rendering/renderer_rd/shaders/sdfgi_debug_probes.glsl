@@ -2,12 +2,25 @@
 
 #version 450
 
+#ifdef USE_MULTIVIEW
+#ifdef has_VK_KHR_multiview
+#define ViewIndex gl_ViewIndex
+#else // has_VK_KHR_multiview
+// !BAS! This needs to become an input once we implement our fallback!
+#define ViewIndex 0
+#endif // has_VK_KHR_multiview
+#else // USE_MULTIVIEW
+// Set to zero, not supported in non stereo
+#define ViewIndex 0
+#endif //USE_MULTIVIEW
+
 #VERSION_DEFINES
 
 #define MAX_CASCADES 8
+#define MAX_VIEWS 2
 
 layout(push_constant, std430) uniform Params {
-	mat4 projection;
+	mat4 projection[MAX_VIEWS];
 
 	uint band_power;
 	uint sections_in_band;
@@ -85,7 +98,7 @@ void main() {
 
 	vertex += (cascades.data[params.cascade].offset + vec3(probe_cell) * probe_cell_size) / vec3(1.0, params.y_mult, 1.0);
 
-	gl_Position = params.projection * vec4(vertex, 1.0);
+	gl_Position = params.projection[ViewIndex] * vec4(vertex, 1.0);
 #endif
 
 #ifdef MODE_VISIBILITY
@@ -144,7 +157,7 @@ void main() {
 
 	visibility = dot(texelFetch(sampler3D(occlusion_texture, linear_sampler), tex_pos, 0), layer_axis[occlusion_layer]);
 
-	gl_Position = params.projection * vec4(vertex, 1.0);
+	gl_Position = params.projection[ViewIndex] * vec4(vertex, 1.0);
 
 #endif
 }
@@ -153,7 +166,21 @@ void main() {
 
 #version 450
 
+#ifdef USE_MULTIVIEW
+#ifdef has_VK_KHR_multiview
+#define ViewIndex gl_ViewIndex
+#else // has_VK_KHR_multiview
+// !BAS! This needs to become an input once we implement our fallback!
+#define ViewIndex 0
+#endif // has_VK_KHR_multiview
+#else // USE_MULTIVIEW
+// Set to zero, not supported in non stereo
+#define ViewIndex 0
+#endif //USE_MULTIVIEW
+
 #VERSION_DEFINES
+
+#define MAX_VIEWS 2
 
 layout(location = 0) out vec4 frag_color;
 
@@ -161,7 +188,7 @@ layout(set = 0, binding = 2) uniform texture2DArray lightprobe_texture;
 layout(set = 0, binding = 3) uniform sampler linear_sampler;
 
 layout(push_constant, std430) uniform Params {
-	mat4 projection;
+	mat4 projection[MAX_VIEWS];
 
 	uint band_power;
 	uint sections_in_band;
