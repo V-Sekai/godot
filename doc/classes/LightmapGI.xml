@@ -59,17 +59,21 @@
 		</constant>
 		<constant name="BAKE_ERROR_OK" value="0" enum="BakeError">
 		</constant>
-		<constant name="BAKE_ERROR_NO_LIGHTMAPPER" value="1" enum="BakeError">
+		<constant name="BAKE_ERROR_NO_SCENE_ROOT" value="1" enum="BakeError">
 		</constant>
-		<constant name="BAKE_ERROR_NO_SAVE_PATH" value="2" enum="BakeError">
+		<constant name="BAKE_ERROR_FOREIGN_DATA" value="2" enum="BakeError">
 		</constant>
-		<constant name="BAKE_ERROR_NO_MESHES" value="3" enum="BakeError">
+		<constant name="BAKE_ERROR_NO_LIGHTMAPPER" value="3" enum="BakeError">
 		</constant>
-		<constant name="BAKE_ERROR_MESHES_INVALID" value="4" enum="BakeError">
+		<constant name="BAKE_ERROR_NO_SAVE_PATH" value="4" enum="BakeError">
 		</constant>
-		<constant name="BAKE_ERROR_CANT_CREATE_IMAGE" value="5" enum="BakeError">
+		<constant name="BAKE_ERROR_NO_MESHES" value="5" enum="BakeError">
 		</constant>
-		<constant name="BAKE_ERROR_USER_ABORTED" value="6" enum="BakeError">
+		<constant name="BAKE_ERROR_MESHES_INVALID" value="6" enum="BakeError">
+		</constant>
+		<constant name="BAKE_ERROR_CANT_CREATE_IMAGE" value="7" enum="BakeError">
+		</constant>
+		<constant name="BAKE_ERROR_USER_ABORTED" value="8" enum="BakeError">
 		</constant>
 		<constant name="ENVIRONMENT_MODE_DISABLED" value="0" enum="EnvironmentMode">
 		</constant>
