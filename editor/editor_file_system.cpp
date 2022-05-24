@@ -682,6 +682,10 @@ void EditorFileSystem::scan() {
 		return;
 	}
 
+	if (currently_in_notification_process) {
+		notification_process_scan_pending = true;
+		return;
+	}
 	if (scanning || scanning_changes || thread.is_started()) {
 		return;
 	}
@@ -1148,6 +1152,10 @@ void EditorFileSystem::_thread_func_sources(void *_userdata) {
 }
 
 void EditorFileSystem::scan_changes() {
+	if (currently_in_notification_process) {
+		scan_changes_pending = true; // Already in process.
+		return;
+	}
 	if (first_scan || // Prevent a premature changes scan from inhibiting the first full scan
 			scanning || scanning_changes || thread.is_started()) {
 		scan_changes_pending = true;
@@ -1220,6 +1228,8 @@ void EditorFileSystem::_notification(int p_what) {
 
 		case NOTIFICATION_PROCESS: {
 			if (use_threads) {
+				ERR_FAIL_COND_MSG(currently_in_notification_process, "Reentrant call to EditorFileSystem::_notification. Should not happen!");
+				currently_in_notification_process = true;
 				if (scanning_changes) {
 					if (scanning_changes_done) {
 						scanning_changes = false;
@@ -1249,10 +1259,20 @@ void EditorFileSystem::_notification(int p_what) {
 					_queue_update_script_classes();
 					first_scan = false;
 				}
+				currently_in_notification_process = false;
 
 				if (!is_processing() && scan_changes_pending) {
 					scan_changes_pending = false;
 					scan_changes();
+				}
+				if (notification_process_scan_pending) {
+					notification_process_scan_pending = false;
+					scan();
+				}
+				Vector<String> files_to_update = notification_process_update_files_requested;
+				notification_process_update_files_requested.clear();
+				for (const String &s : files_to_update) {
+					update_file(s);
 				}
 			}
 		} break;
@@ -1517,7 +1537,7 @@ void EditorFileSystem::_scan_script_classes(EditorFileSystemDirectory *p_dir) {
 }
 
 void EditorFileSystem::update_script_classes() {
-	if (!update_script_classes_queued.is_set()) {
+	if (!update_script_classes_queued.is_set() || currently_in_notification_process) {
 		return;
 	}
 
@@ -1549,6 +1569,10 @@ void EditorFileSystem::_queue_update_script_classes() {
 }
 
 void EditorFileSystem::update_file(const String &p_file) {
+	if (currently_in_notification_process) {
+		notification_process_update_files_requested.append(p_file);
+		return;
+	}
 	EditorFileSystemDirectory *fs = nullptr;
 	int cpos = -1;
 
@@ -2074,6 +2098,7 @@ void EditorFileSystem::_reimport_thread(uint32_t p_index, ImportThreadData *p_im
 }
 
 void EditorFileSystem::reimport_files(const Vector<String> &p_files) {
+	ERR_FAIL_COND_MSG(importing, "Reentrant call to reimport_files detected!");
 	importing = true;
 	EditorProgress pr("reimport", TTR("(Re)Importing Assets"), p_files.size());
 
