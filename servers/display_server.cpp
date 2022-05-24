@@ -35,6 +35,7 @@
 #include "servers/display_server_headless.h"
 
 DisplayServer *DisplayServer::singleton = nullptr;
+Vector<DisplayServerRenderingDriverSetupCallback> DisplayServer::rendering_driver_setup_callbacks;
 
 bool DisplayServer::hidpi_allowed = false;
 

@@ -38,15 +38,28 @@
 
 class Texture2D;
 
+typedef void (*DisplayServerRenderingDriverSetupCallback)(const String &p_rendering_driver_name);
+
 class DisplayServer : public Object {
 	GDCLASS(DisplayServer, Object)
 
 	static DisplayServer *singleton;
 	static bool hidpi_allowed;
+	static Vector<DisplayServerRenderingDriverSetupCallback> rendering_driver_setup_callbacks;
 
 public:
 	_FORCE_INLINE_ static DisplayServer *get_singleton() {
 		return singleton;
+	}
+
+	_FORCE_INLINE_ static void register_rendering_driver_setup_callback(DisplayServerRenderingDriverSetupCallback p_callback) {
+		rendering_driver_setup_callbacks.push_back(p_callback);
+	}
+
+	_FORCE_INLINE_ static void call_rendering_driver_setup_callbacks(const String &p_rendering_driver_name) {
+		for (int i = 0; i < rendering_driver_setup_callbacks.size(); i++) {
+			rendering_driver_setup_callbacks[i](p_rendering_driver_name);
+		}
 	}
 
 	enum WindowMode {
