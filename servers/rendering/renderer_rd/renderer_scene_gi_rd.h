@@ -46,15 +46,59 @@
 #include "servers/rendering/renderer_rd/shaders/voxel_gi.glsl.gen.h"
 #include "servers/rendering/renderer_rd/shaders/voxel_gi_debug.glsl.gen.h"
 #include "servers/rendering/renderer_scene_render.h"
+#include "servers/rendering/renderer_storage.h"
 #include "servers/rendering/rendering_device.h"
+#include "servers/rendering/storage/voxel_gi_storage.h"
 
 // Forward declare RenderDataRD and RendererSceneRenderRD so we can pass it into some of our methods, these classes are pretty tightly bound
 struct RenderDataRD;
 class RendererSceneRenderRD;
 
-class RendererSceneGIRD {
+namespace RendererRD {
+
+class GRID : public RendererVoxelGIStorage {
+public:
+	/* VOXEL GI STORAGE */
+
+	struct VoxelGI {
+		RID octree_buffer;
+		RID data_buffer;
+		RID sdf_texture;
+
+		uint32_t octree_buffer_size = 0;
+		uint32_t data_buffer_size = 0;
+
+		Vector<int> level_counts;
+
+		int cell_count = 0;
+
+		Transform3D to_cell_xform;
+		AABB bounds;
+		Vector3i octree_size;
+
+		float dynamic_range = 2.0;
+		float energy = 1.0;
+		float bias = 1.4;
+		float normal_bias = 0.0;
+		float propagation = 0.7;
+		bool interior = false;
+		bool use_two_bounces = false;
+
+		float anisotropy_strength = 0.5;
+
+		uint32_t version = 1;
+		uint32_t data_version = 1;
+
+		RendererStorage::Dependency dependency;
+	};
+
 private:
 	RendererStorageRD *storage = nullptr;
+	static GRID *singleton;
+
+	/* VOXEL GI STORAGE */
+
+	mutable RID_Owner<VoxelGI, true> voxel_gi_owner;
 
 	/* VOXEL_GI INSTANCE */
 
@@ -196,10 +240,13 @@ private:
 			uint32_t use_occlusion;
 			float y_mult;
 
-			float cam_extent[3];
 			uint32_t probe_axis_size;
+			float z_near;
+			float reserved1;
+			float reserved2;
 
 			float cam_transform[16];
+			float inv_projection[16];
 		};
 
 		SdfgiDebugShaderRD debug;
@@ -209,12 +256,14 @@ private:
 
 		enum ProbeDebugMode {
 			PROBE_DEBUG_PROBES,
+			PROBE_DEBUG_PROBES_MULTIVIEW,
 			PROBE_DEBUG_VISIBILITY,
+			PROBE_DEBUG_VISIBILITY_MULTIVIEW,
 			PROBE_DEBUG_MAX
 		};
 
 		struct DebugProbesPushConstant {
-			float projection[16];
+			float projection[2][16];
 
 			uint32_t band_power;
 			uint32_t sections_in_band;
@@ -324,6 +373,60 @@ private:
 	} sdfgi_shader;
 
 public:
+	static GRID *get_singleton() { return singleton; }
+
+	/* VOXEL GI API */
+
+	VoxelGI *get_voxel_gi(RID p_rid) { return voxel_gi_owner.get_or_null(p_rid); };
+	bool owns_voxel_gi(RID p_rid) { return voxel_gi_owner.owns(p_rid); };
+
+	virtual RID voxel_gi_allocate() override;
+	virtual void voxel_gi_free(RID p_voxel_gi) override;
+	virtual void voxel_gi_initialize(RID p_voxel_gi) override;
+
+	virtual void voxel_gi_allocate_data(RID p_voxel_gi, const Transform3D &p_to_cell_xform, const AABB &p_aabb, const Vector3i &p_octree_size, const Vector<uint8_t> &p_octree_cells, const Vector<uint8_t> &p_data_cells, const Vector<uint8_t> &p_distance_field, const Vector<int> &p_level_counts) override;
+
+	virtual AABB voxel_gi_get_bounds(RID p_voxel_gi) const override;
+	virtual Vector3i voxel_gi_get_octree_size(RID p_voxel_gi) const override;
+	virtual Vector<uint8_t> voxel_gi_get_octree_cells(RID p_voxel_gi) const override;
+	virtual Vector<uint8_t> voxel_gi_get_data_cells(RID p_voxel_gi) const override;
+	virtual Vector<uint8_t> voxel_gi_get_distance_field(RID p_voxel_gi) const override;
+
+	virtual Vector<int> voxel_gi_get_level_counts(RID p_voxel_gi) const override;
+	virtual Transform3D voxel_gi_get_to_cell_xform(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_dynamic_range(RID p_voxel_gi, float p_range) override;
+	virtual float voxel_gi_get_dynamic_range(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_propagation(RID p_voxel_gi, float p_range) override;
+	virtual float voxel_gi_get_propagation(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_energy(RID p_voxel_gi, float p_energy) override;
+	virtual float voxel_gi_get_energy(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_bias(RID p_voxel_gi, float p_bias) override;
+	virtual float voxel_gi_get_bias(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_normal_bias(RID p_voxel_gi, float p_range) override;
+	virtual float voxel_gi_get_normal_bias(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_interior(RID p_voxel_gi, bool p_enable) override;
+	virtual bool voxel_gi_is_interior(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_use_two_bounces(RID p_voxel_gi, bool p_enable) override;
+	virtual bool voxel_gi_is_using_two_bounces(RID p_voxel_gi) const override;
+
+	virtual void voxel_gi_set_anisotropy_strength(RID p_voxel_gi, float p_strength) override;
+	virtual float voxel_gi_get_anisotropy_strength(RID p_voxel_gi) const override;
+
+	virtual uint32_t voxel_gi_get_version(RID p_probe) const override;
+	uint32_t voxel_gi_get_data_version(RID p_probe);
+
+	RID voxel_gi_get_octree_buffer(RID p_voxel_gi) const;
+	RID voxel_gi_get_data_buffer(RID p_voxel_gi) const;
+
+	RID voxel_gi_get_sdf_texture(RID p_voxel_gi);
+
 	/* VOXEL_GI INSTANCE */
 
 	//@TODO VoxelGIInstance is still directly used in the render code, we'll address this when we refactor the render code itself.
@@ -331,7 +434,7 @@ public:
 	struct VoxelGIInstance {
 		// access to our containers
 		RendererStorageRD *storage = nullptr;
-		RendererSceneGIRD *gi = nullptr;
+		GRID *gi = nullptr;
 
 		RID probe;
 		RID texture;
@@ -455,7 +558,7 @@ public:
 
 		// access to our containers
 		RendererStorageRD *storage = nullptr;
-		RendererSceneGIRD *gi = nullptr;
+		GRID *gi = nullptr;
 
 		// used for rendering (voxelization)
 		RID render_albedo;
@@ -497,7 +600,7 @@ public:
 		float min_cell_size = 0;
 		uint32_t probe_axis_count = 0; //amount of probes per axis, this is an odd number because it encloses endpoints
 
-		RID debug_uniform_set;
+		RID debug_uniform_set[2];
 		RID debug_probes_uniform_set;
 		RID cascades_ubo;
 
@@ -516,7 +619,7 @@ public:
 		int32_t cascade_dynamic_light_count[SDFGI::MAX_CASCADES]; //used dynamically
 		RID integrate_sky_uniform_set;
 
-		void create(RendererSceneEnvironmentRD *p_env, const Vector3 &p_world_position, uint32_t p_requested_history_size, RendererSceneGIRD *p_gi);
+		void create(RendererSceneEnvironmentRD *p_env, const Vector3 &p_world_position, uint32_t p_requested_history_size, GRID *p_gi);
 		void erase();
 		void update(RendererSceneEnvironmentRD *p_env, const Vector3 &p_world_position);
 		void update_light();
@@ -525,8 +628,8 @@ public:
 		int get_pending_region_data(int p_region, Vector3i &r_local_offset, Vector3i &r_local_size, AABB &r_bounds) const;
 		void update_cascades();
 
-		void debug_draw(const CameraMatrix &p_projection, const Transform3D &p_transform, int p_width, int p_height, RID p_render_target, RID p_texture);
-		void debug_probes(RD::DrawListID p_draw_list, RID p_framebuffer, const CameraMatrix &p_camera_with_transform);
+		void debug_draw(uint32_t p_view_count, const CameraMatrix *p_projections, const Transform3D &p_transform, int p_width, int p_height, RID p_render_target, RID p_texture, const Vector<RID> &p_texture_views);
+		void debug_probes(RD::DrawListID p_draw_list, RID p_framebuffer, const uint32_t p_view_count, const CameraMatrix *p_camera_with_transforms);
 
 		void pre_process_gi(const Transform3D &p_transform, RenderDataRD *p_render_data, RendererSceneRenderRD *p_scene_render);
 		void render_region(RID p_render_buffers, int p_region, const PagedArray<RendererSceneRender::GeometryInstance *> &p_instances, RendererSceneRenderRD *p_scene_render);
@@ -561,8 +664,16 @@ public:
 		RID full_dispatch;
 		RID full_mask;
 
-		RID uniform_set;
+		/* GI buffers */
+		RID ambient_buffer;
+		RID reflection_buffer;
+		RID ambient_view[2];
+		RID reflection_view[2];
+		RID uniform_set[2];
 		bool using_half_size_gi = false;
+		uint32_t view_count = 1;
+
+		void free();
 	};
 
 	struct SDFGIData {
@@ -644,8 +755,8 @@ public:
 	RID shader_version;
 	RID pipelines[MODE_MAX];
 
-	RendererSceneGIRD();
-	~RendererSceneGIRD();
+	GRID();
+	~GRID();
 
 	void init(RendererStorageRD *p_storage, RendererSceneSkyRD *p_sky);
 	void free();
@@ -653,7 +764,7 @@ public:
 	SDFGI *create_sdfgi(RendererSceneEnvironmentRD *p_env, const Vector3 &p_world_position, uint32_t p_requested_history_size);
 
 	void setup_voxel_gi_instances(RID p_render_buffers, const Transform3D &p_transform, const PagedArray<RID> &p_voxel_gi_instances, uint32_t &r_voxel_gi_instances_used, RendererSceneRenderRD *p_scene_render);
-	void process_gi(RID p_render_buffers, RID p_normal_roughness_buffer, RID p_voxel_gi_buffer, RID p_environment, const CameraMatrix &p_projection, const Transform3D &p_transform, const PagedArray<RID> &p_voxel_gi_instances, RendererSceneRenderRD *p_scene_render);
+	void process_gi(RID p_render_buffers, RID *p_normal_roughness_views, RID p_voxel_gi_buffer, RID p_environment, uint32_t p_view_count, const CameraMatrix *p_projections, const Transform3D &p_transform, const PagedArray<RID> &p_voxel_gi_instances, RendererSceneRenderRD *p_scene_render);
 
 	RID voxel_gi_instance_create(RID p_base);
 	void voxel_gi_instance_set_transform_to_data(RID p_probe, const Transform3D &p_xform);
@@ -661,5 +772,7 @@ public:
 	void voxel_gi_update(RID p_probe, bool p_update_light_instances, const Vector<RID> &p_light_instances, const PagedArray<RendererSceneRender::GeometryInstance *> &p_dynamic_objects, RendererSceneRenderRD *p_scene_render);
 	void debug_voxel_gi(RID p_voxel_gi, RD::DrawListID p_draw_list, RID p_framebuffer, const CameraMatrix &p_camera_with_transform, bool p_lighting, bool p_emission, float p_alpha);
 };
+
+} // namespace RendererRD
 
 #endif /* !RENDERING_SERVER_SCENE_GI_RD_H */

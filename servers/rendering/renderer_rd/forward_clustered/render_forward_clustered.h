@@ -32,6 +32,7 @@
 #define RENDERING_SERVER_SCENE_RENDER_FORWARD_CLUSTERED_H
 
 #include "core/templates/paged_allocator.h"
+#include "servers/rendering/renderer_rd/effects/resolve.h"
 #include "servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h"
 #include "servers/rendering/renderer_rd/pipeline_cache_rd.h"
 #include "servers/rendering/renderer_rd/renderer_scene_render_rd.h"
@@ -107,7 +108,10 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 		RID specular_only_fb;
 		int width, height;
 		HashMap<uint32_t, RID> color_framebuffers;
+
+		// for multiview
 		uint32_t view_count;
+		RID normal_roughness_views[2];
 
 		RID render_sdfgi_uniform_set;
 		void ensure_specular();
@@ -602,6 +606,8 @@ class RenderForwardClustered : public RendererSceneRenderRD {
 	RenderList render_list[RENDER_LIST_MAX];
 
 	virtual void _update_shader_quality_settings() override;
+
+	RendererRD::Resolve *resolve_effects = nullptr;
 
 protected:
 	virtual void _render_scene(RenderDataRD *p_render_data, const Color &p_default_bg_color) override;
