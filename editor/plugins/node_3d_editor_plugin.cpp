@@ -7036,7 +7036,7 @@ void Node3DEditor::snap_selected_nodes_to_floor() {
 			ray_params.to = to;
 			ray_params.exclude = excluded;
 
-			if (ss->intersect_ray(ray_params, result)) {
+			if (ss && ss->intersect_ray(ray_params, result)) {
 				snapped_to_floor = true;
 			}
 		}
