@@ -30,6 +30,7 @@
 
 #include "aabb.h"
 
+#include "core/error/error_macros.h"
 #include "core/string/print_string.h"
 #include "core/variant/variant.h"
 
@@ -48,7 +49,7 @@ bool AABB::operator!=(const AABB &p_rval) const {
 void AABB::merge_with(const AABB &p_aabb) {
 #ifdef MATH_CHECKS
 	if (unlikely(size.x < 0 || size.y < 0 || size.z < 0 || p_aabb.size.x < 0 || p_aabb.size.y < 0 || p_aabb.size.z < 0)) {
-		ERR_PRINT("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
+		ERR_PRINT_ONCE("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
 	}
 #endif
 	Vector3 beg_1, beg_2;
@@ -79,7 +80,7 @@ bool AABB::is_equal_approx(const AABB &p_aabb) const {
 AABB AABB::intersection(const AABB &p_aabb) const {
 #ifdef MATH_CHECKS
 	if (unlikely(size.x < 0 || size.y < 0 || size.z < 0 || p_aabb.size.x < 0 || p_aabb.size.y < 0 || p_aabb.size.z < 0)) {
-		ERR_PRINT("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
+		ERR_PRINT_ONCE("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
 	}
 #endif
 	Vector3 src_min = position;
@@ -116,7 +117,7 @@ AABB AABB::intersection(const AABB &p_aabb) const {
 bool AABB::intersects_ray(const Vector3 &p_from, const Vector3 &p_dir, Vector3 *r_clip, Vector3 *r_normal) const {
 #ifdef MATH_CHECKS
 	if (unlikely(size.x < 0 || size.y < 0 || size.z < 0)) {
-		ERR_PRINT("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
+		ERR_PRINT_ONCE("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
 	}
 #endif
 	Vector3 c1, c2;
@@ -164,7 +165,7 @@ bool AABB::intersects_ray(const Vector3 &p_from, const Vector3 &p_dir, Vector3 *
 bool AABB::intersects_segment(const Vector3 &p_from, const Vector3 &p_to, Vector3 *r_clip, Vector3 *r_normal) const {
 #ifdef MATH_CHECKS
 	if (unlikely(size.x < 0 || size.y < 0 || size.z < 0)) {
-		ERR_PRINT("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
+		ERR_PRINT_ONCE("AABB size is negative, this is not supported. Use AABB.abs() to get an AABB with a positive size.");
 	}
 #endif
 	real_t min = 0, max = 1;
