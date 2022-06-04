@@ -30,9 +30,18 @@
 
 #include "csg.h"
 
+#include "core/error/error_macros.h"
+#include "core/math/color.h"
 #include "core/math/geometry_2d.h"
 #include "core/math/math_funcs.h"
+#include "core/math/plane.h"
+#include "core/math/vector2.h"
+#include "core/math/vector3.h"
 #include "core/templates/sort_array.h"
+
+#include "core/variant/variant.h"
+#include "scene/resources/material.h"
+#include "scene/resources/mesh.h"
 
 // Static helper functions.
 
@@ -332,7 +341,6 @@ void CSGBrushOperation::merge_brushes(Operation p_operation, const CSGBrush &p_b
 			mesh_merge.add_face(points, uvs, p_brush_b.faces[i].smooth, p_brush_b.faces[i].invert, material, true);
 		}
 	}
-
 	// Mark faces that ended up inside the intersection.
 	mesh_merge.mark_inside_faces();
 

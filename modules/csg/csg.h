@@ -142,7 +142,7 @@ struct CSGBrushOperation {
 		HashMap<Ref<Material>, int> materials;
 		HashMap<Vector3, int> vertex_map;
 		OAHashMap<VertexKey, int, VertexKeyHash> snap_cache;
-		float vertex_snap = 0.0;
+		float vertex_snap = 1E-5;
 
 		inline void _add_distance(List<real_t> &r_intersectionsA, List<real_t> &r_intersectionsB, bool p_from_B, real_t p_distance) const;
 		inline bool _bvh_inside(FaceBVH *facebvhptr, int p_max_depth, int p_bvh_first, int p_face_idx) const;
