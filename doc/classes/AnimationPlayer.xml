@@ -255,6 +255,11 @@
 				Notifies when an animation finished playing.
 			</description>
 		</signal>
+		<signal name="animation_libraries_updated">
+			<description>
+				Notifies when the animation libraries have changed.
+			</description>
+		</signal>
 		<signal name="animation_started">
 			<argument index="0" name="anim_name" type="StringName" />
 			<description>
