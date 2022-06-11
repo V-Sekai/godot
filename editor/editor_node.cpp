@@ -61,6 +61,7 @@
 #include "scene/gui/tab_container.h"
 #include "scene/gui/texture_progress_bar.h"
 #include "scene/main/window.h"
+#include "scene/property_utils.h"
 #include "scene/resources/packed_scene.h"
 #include "servers/display_server.h"
 #include "servers/navigation_server_2d.h"
@@ -1014,6 +1015,7 @@ void EditorNode::_resources_reimported(const Vector<String> &p_resources) {
 
 	for (const String &E : scenes) {
 		reload_scene(E);
+		reload_instances_with_path_in_edited_scenes(E);
 	}
 
 	scene_tabs->set_current_tab(current_tab);
@@ -3772,6 +3774,66 @@ Error EditorNode::load_scene(const String &p_scene, bool p_ignore_broken_deps, b
 	return OK;
 }
 
+HashMap<StringName, Variant> EditorNode::get_modified_properties_for_node(Node *p_node) {
+	HashMap<StringName, Variant> modified_property_map;
+
+	List<PropertyInfo> pinfo;
+	p_node->get_property_list(&pinfo);
+	for (const PropertyInfo &E : pinfo) {
+		bool is_valid_revert = false;
+		Variant revert_value = EditorPropertyRevert::get_property_revert_value(p_node, E.name, &is_valid_revert);
+		Variant current_value = p_node->get(E.name);
+		if (is_valid_revert) {
+			if (PropertyUtils::is_property_value_different(current_value, revert_value)) {
+				modified_property_map[E.name] = current_value;
+			}
+		}
+	}
+
+	return modified_property_map;
+}
+
+void EditorNode::update_modification_table_for_node(
+		Node *p_edited_scene,
+		Node *p_root,
+		Node *p_node,
+		HashMap<NodePath, HashMap<StringName, Variant>> &p_modification_table,
+		List<AdditiveNodeEntry> &p_addition_list) {
+	if (p_node->get_owner() != p_edited_scene || p_node == p_root) {
+		HashMap<StringName, Variant> modified_properties = get_modified_properties_for_node(p_node);
+
+		if (!modified_properties.is_empty()) {
+			p_modification_table[p_root->get_path_to(p_node)] = modified_properties;
+		}
+	} else {
+		AdditiveNodeEntry new_additive_node_entry;
+		new_additive_node_entry.node = p_node;
+		new_additive_node_entry.parent = p_root->get_path_to(p_node->get_parent());
+		new_additive_node_entry.index = p_node->get_index();
+
+		//
+		Node2D *node_2d = Object::cast_to<Node2D>(p_node);
+		if (node_2d) {
+			new_additive_node_entry.global_transform_2d = node_2d->get_global_transform();
+		}
+		Node3D *node_3d = Object::cast_to<Node3D>(p_node);
+		if (node_3d) {
+			new_additive_node_entry.global_transform_3d = node_3d->get_global_transform();
+		}
+		//
+
+		p_addition_list.push_back(new_additive_node_entry);
+
+		return;
+	}
+
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		Node *child = p_node->get_child(i);
+		update_modification_table_for_node(p_edited_scene, p_root, child, p_modification_table, p_addition_list);
+	}
+}
+//
+
 void EditorNode::open_request(const String &p_path) {
 	if (!opening_prev) {
 		List<String>::Element *prev_scene = previous_scenes.find(p_path);
@@ -5615,6 +5677,219 @@ void EditorNode::reload_scene(const String &p_path) {
 
 	// Recover the tab.
 	scene_tabs->set_current_tab(current_tab);
+}
+
+void EditorNode::find_all_instances_inheriting_path_in_node(Node *p_node, const String &p_instance_path, List<Node *> &p_instance_list) {
+	String scene_file_path = p_node->get_scene_file_path();
+
+	// This is going to get messy...
+	if (p_node->get_scene_file_path() == p_instance_path) {
+		p_instance_list.push_back(p_node);
+	} else {
+		Node *current_node = p_node;
+
+		Ref<SceneState> inherited_state = current_node->get_scene_inherited_state();
+		while (inherited_state.is_valid()) {
+			String inherited_path = inherited_state->get_path();
+			if (inherited_path == p_instance_path) {
+				p_instance_list.push_back(p_node);
+				break;
+			}
+
+			inherited_state = inherited_state->get_base_scene_state();
+		}
+	}
+
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		Node *child = p_node->get_child(i);
+		find_all_instances_inheriting_path_in_node(child, p_instance_path, p_instance_list);
+	}
+}
+
+void EditorNode::reload_instances_with_path_in_edited_scenes(const String &p_instance_path) {
+	HashMap<Node *, List<Node *>> edited_scene_map;
+
+	// Walk through each opened scene to get a global list of all instances which match
+	// the current reimported scenes
+	for (int i = 0; i < editor_data.get_edited_scene_count(); i++) {
+		if (editor_data.get_scene_path(i) != p_instance_path) {
+			Node *edited_scene_root = editor_data.get_edited_scene_root(i);
+
+			if (edited_scene_root) {
+				List<Node *> valid_nodes;
+				find_all_instances_inheriting_path_in_node(edited_scene_root, p_instance_path, valid_nodes);
+				if (valid_nodes.size() > 0) {
+					edited_scene_map[edited_scene_root] = valid_nodes;
+				}
+			}
+		}
+	}
+
+	if (edited_scene_map.size() > 0) {
+		// Reload the new instance
+		Error err;
+		Ref<PackedScene> instance_scene_packed_scene = ResourceLoader::load(p_instance_path, "", ResourceFormatLoader::CACHE_MODE_REPLACE, &err);
+
+		ERR_FAIL_COND(err != OK);
+		ERR_FAIL_COND(instance_scene_packed_scene.is_null());
+
+		List<String> local_scene_cache;
+		local_scene_cache.push_back(p_instance_path);
+
+		for (const KeyValue<Node *, List<Node *>> &edited_scene_map_elem : edited_scene_map) {
+			for (Node *original_node : edited_scene_map_elem.value) {
+				Node *current_edited_scene = edited_scene_map_elem.key;
+
+				Transform2D original_node_transform_2d;
+				Transform3D original_node_transform_3d;
+
+				{
+					Node2D *original_node_2d = Object::cast_to<Node2D>(original_node);
+					if (original_node_2d) {
+						original_node_transform_2d = original_node_2d->get_global_transform();
+					}
+					Node3D *original_node_3d = Object::cast_to<Node3D>(original_node);
+					if (original_node_3d) {
+						original_node_transform_3d = original_node_3d->get_global_transform();
+					}
+				}
+
+				HashMap<NodePath, HashMap<StringName, Variant>> modification_table;
+				List<AdditiveNodeEntry> addition_list;
+
+				update_modification_table_for_node(current_edited_scene, original_node, original_node, modification_table, addition_list);
+
+				List<NodePath> selected_node_paths;
+				for (Node *selected_node : editor_selection->get_selected_node_list()) {
+					if (selected_node == original_node || original_node->is_ancestor_of(selected_node)) {
+						selected_node_paths.push_back(original_node->get_path_to(selected_node));
+						editor_selection->remove_node(selected_node);
+					}
+				}
+
+				// Remove all nodes which were added as additional elements (they will be restored later)
+				for (AdditiveNodeEntry additive_node_entry : addition_list) {
+					Node *addition_node = additive_node_entry.node;
+					addition_node->get_parent()->remove_child(addition_node);
+				}
+
+				// Delete all the ramining node children
+				while (original_node->get_child_count()) {
+					Node *child = original_node->get_child(0);
+
+					original_node->remove_child(child);
+					child->queue_delete();
+				}
+
+				// Reset the editable instance state
+				Node *owner = original_node->get_owner();
+				bool is_editable = owner->is_editable_instance(original_node);
+
+				// Load a replacement scene for the node
+				Ref<PackedScene> current_packed_scene;
+				if (original_node->get_scene_file_path() == p_instance_path) {
+					current_packed_scene = instance_scene_packed_scene;
+				} else {
+					List<String> required_load_paths;
+					required_load_paths.push_front(original_node->get_scene_file_path());
+					Ref<SceneState> inherited_state = original_node->get_scene_inherited_state();
+					while (inherited_state.is_valid()) {
+						String inherited_path = inherited_state->get_path();
+						required_load_paths.push_front(inherited_path);
+						inherited_state = inherited_state->get_base_scene_state();
+					}
+
+					// Attempt to load the inheritance chain in order. This does not work though and inherited scenes
+					// still not seem to get properly refreshed
+					for (String path : required_load_paths) {
+						if (local_scene_cache.find(path) == nullptr) {
+							current_packed_scene = ResourceLoader::load(path, "", ResourceFormatLoader::CACHE_MODE_REPLACE, &err);
+							local_scene_cache.push_back(path);
+						} else {
+							current_packed_scene = ResourceLoader::load(path, "", ResourceFormatLoader::CACHE_MODE_REUSE, &err);
+						}
+					}
+				}
+
+				ERR_FAIL_COND(current_packed_scene.is_null());
+
+				// Instantiate the node
+				Node *instantiated_node = nullptr;
+				if (current_packed_scene.is_valid()) {
+					instantiated_node = current_packed_scene->instantiate(PackedScene::GEN_EDIT_STATE_INSTANCE);
+				}
+
+				ERR_FAIL_COND(!instantiated_node);
+
+				// Replace the original node
+				original_node->replace_by(instantiated_node, true);
+				original_node->queue_delete();
+
+				owner->set_editable_instance(instantiated_node, is_editable);
+
+				// Attempt to re-add all the additional nodes
+				for (AdditiveNodeEntry additive_node_entry : addition_list) {
+					Node *parent_node = instantiated_node->get_node_or_null(additive_node_entry.parent);
+
+					if (!parent_node) {
+						parent_node = current_edited_scene;
+					}
+
+					parent_node->add_child(additive_node_entry.node);
+					parent_node->move_child(additive_node_entry.node, additive_node_entry.index);
+					additive_node_entry.node->set_owner(current_edited_scene);
+
+					// If the parent node was lost, attempt to restore the original global transform
+					if (!parent_node) {
+						Node2D *node_2d = Object::cast_to<Node2D>(additive_node_entry.node);
+						if (node_2d) {
+							node_2d->set_global_transform(additive_node_entry.global_transform_2d);
+						}
+						Node3D *node_3d = Object::cast_to<Node3D>(additive_node_entry.node);
+						if (node_3d) {
+							node_3d->set_global_transform(additive_node_entry.global_transform_3d);
+						}
+					}
+				}
+
+				// Restore the selection
+				if (selected_node_paths.size()) {
+					for (NodePath selected_node_path : selected_node_paths) {
+						Node *selected_node = instantiated_node->get_node_or_null(selected_node_path);
+						if (selected_node) {
+							editor_selection->add_node(selected_node);
+						}
+					}
+					editor_selection->update();
+				}
+
+				// Attempt to restore the modified properties for the instantitated node and all its owned children
+				for (KeyValue<NodePath, HashMap<StringName, Variant>> &E : modification_table) {
+					NodePath current_path = E.key;
+					Node *target_node = instantiated_node->get_node_or_null(current_path);
+
+					if (target_node) {
+						for (const KeyValue<StringName, Variant> &E2 : E.value) {
+							target_node->set(E2.key, E2.value);
+						}
+					}
+				}
+
+				// Just in case the transform gets altered by the modified properties table,
+				// attempt to restore the original
+				{
+					Node2D *instantiated_node_2d = Object::cast_to<Node2D>(instantiated_node);
+					if (instantiated_node_2d) {
+						instantiated_node_2d->set_global_transform(original_node_transform_2d);
+					}
+					Node3D *instantiated_node_3d = Object::cast_to<Node3D>(instantiated_node);
+					if (instantiated_node_3d) {
+						instantiated_node_3d->set_global_transform(original_node_transform_3d);
+					}
+				}
+			}
+		}
+	}
 }
 
 int EditorNode::plugin_init_callback_count = 0;
