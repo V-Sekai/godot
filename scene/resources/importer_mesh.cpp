@@ -155,7 +155,6 @@ Mesh::BlendShapeMode ImporterMesh::get_blend_shape_mode() const {
 }
 
 void ImporterMesh::add_surface(Mesh::PrimitiveType p_primitive, const Array &p_arrays, const Array &p_blend_shapes, const Dictionary &p_lods, const Ref<Material> &p_material, const String &p_name, const uint32_t p_flags) {
-	ERR_FAIL_COND(p_blend_shapes.size() != blend_shapes.size());
 	ERR_FAIL_COND(p_arrays.size() != Mesh::ARRAY_MAX);
 	Surface s;
 	s.primitive = p_primitive;
@@ -167,7 +166,7 @@ void ImporterMesh::add_surface(Mesh::PrimitiveType p_primitive, const Array &p_a
 	int vertex_count = vertex_array.size();
 	ERR_FAIL_COND(vertex_count == 0);
 
-	for (int i = 0; i < blend_shapes.size(); i++) {
+	for (int i = 0; i < p_blend_shapes.size(); i++) {
 		Array bsdata = p_blend_shapes[i];
 		ERR_FAIL_COND(bsdata.size() != Mesh::ARRAY_MAX);
 		Vector<Vector3> vertex_data = bsdata[Mesh::ARRAY_VERTEX];
