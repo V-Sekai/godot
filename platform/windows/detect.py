@@ -278,6 +278,9 @@ def configure_msvc(env, manual_msvc_config):
         env.AppendUnique(CPPDEFINES=["GLES3_ENABLED"])
         LIBS += ["opengl32"]
 
+    if env["target"] == "debug" or env["target"] == "release_debug":
+        LIBS += ["psapi", "dbghelp"]
+
     env.Append(LINKFLAGS=[p + env["LIBSUFFIX"] for p in LIBS])
 
     if manual_msvc_config:
@@ -441,12 +444,19 @@ def configure_mingw(env):
         ]
     )
 
-    env.Append(CPPDEFINES=["VULKAN_ENABLED"])
-    if not env["use_volk"]:
-        env.Append(LIBS=["vulkan"])
+    if (env["target"] == "debug" or env["target"] == "release_debug") and env["debug_symbols"]:
+        env.Append(
+            LINKFLAGS=["-Wl,--disable-dynamicbase", "-Wl,--disable-high-entropy-va"]
+        )  # Disable ASLR to support backtrace.
 
-    env.Append(CPPDEFINES=["GLES3_ENABLED"])
-    env.Append(LIBS=["opengl32"])
+    if env["vulkan"]:
+        env.Append(CPPDEFINES=["VULKAN_ENABLED"])
+        if not env["use_volk"]:
+            env.Append(LIBS=["vulkan"])
+
+    if env["opengl3"]:
+        env.Append(CPPDEFINES=["GLES3_ENABLED"])
+        env.Append(LIBS=["opengl32"])
 
     env.Append(CPPDEFINES=["MINGW_ENABLED", ("MINGW_HAS_SECURE_API", 1)])
 
