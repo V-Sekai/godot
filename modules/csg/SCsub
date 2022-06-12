@@ -6,6 +6,49 @@ Import("env_modules")
 # Godot's own source files
 env_csg = env_modules.Clone()
 
+# Thirdparty source files
+
+thirdparty_obj = []
+
+thirdparty_dir = "#thirdparty/manifold/"
+thirdparty_sources = [
+    "polygon/src/polygon.cpp",
+    "manifold/src/constructors.cpp",
+    "manifold/src/edge_op.cpp",
+    "manifold/src/face_op.cpp",
+    "manifold/src/impl.cpp",
+    "manifold/src/boolean_result.cpp",
+    "manifold/src/boolean3.cpp",
+    "manifold/src/manifold.cpp",
+    "manifold/src/properties.cpp",
+    "manifold/src/smoothing.cpp",
+    "manifold/src/sort.cpp",
+    "collider/src/collider.cpp",
+    "polygon/src/polygon.cpp",
+    "third_party/graphlite/src/connected_components.cpp",
+]
+
+env_csg.Append(CPPDEFINES=["THRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CPP"])
+env_csg.Append(LINKFLAGS=["-fno-exceptions"])
+
+thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
+env_csg.Prepend(
+    CPPPATH=[
+        thirdparty_dir + "manifold/include",
+        thirdparty_dir + "polygon/include",
+        thirdparty_dir + "utilities/include",
+        thirdparty_dir + "collider/include",
+        thirdparty_dir + "third_party",
+        thirdparty_dir + "third_party/graphlite/include",
+        thirdparty_dir + "third_party/thrust",
+        thirdparty_dir + "third_party/glm",
+    ]
+)
+env_thirdparty = env_csg.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
+env.modules_sources += thirdparty_obj
+
 # Godot's own source files
 env_csg.add_source_files(env.modules_sources, "*.cpp")
 if env["tools"]:
