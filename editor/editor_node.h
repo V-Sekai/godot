@@ -778,6 +778,24 @@ public:
 	Error load_scene(const String &p_scene, bool p_ignore_broken_deps = false, bool p_set_inherited = false, bool p_clear_errors = true, bool p_force_open_imported = false, bool p_silent_change_tab = false);
 	Error load_resource(const String &p_resource, bool p_ignore_broken_deps = false);
 
+	HashMap<StringName, Variant> get_modified_properties_for_node(Node *p_node);
+
+	struct AdditiveNodeEntry {
+		Node *node = nullptr;
+		NodePath parent = NodePath();
+		int index = 0;
+		// Used if the original parent node is lost
+		Transform2D global_transform_2d;
+		Transform3D global_transform_3d;
+	};
+
+	void update_modification_table_for_node(
+			Node *p_edited_scene,
+			Node *p_root,
+			Node *p_node,
+			HashMap<NodePath, HashMap<StringName, Variant>> &p_modification_table,
+			List<AdditiveNodeEntry> &p_addition_list);
+
 	bool is_scene_open(const String &p_path);
 
 	void set_current_version(uint64_t p_version);
@@ -825,6 +843,9 @@ public:
 	void open_export_template_manager();
 
 	void reload_scene(const String &p_path);
+
+	void find_all_instances_inheriting_path_in_node(Node *p_node, const String &p_instance_path, List<Node *> &p_instance_list);
+	void reload_instances_with_path_in_edited_scenes(const String &p_path);
 
 	bool is_exiting() const { return exiting; }
 
