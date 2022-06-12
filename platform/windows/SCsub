@@ -8,7 +8,6 @@ import platform_windows_builders
 
 common_win = [
     "godot_windows.cpp",
-    "crash_handler_windows.cpp",
     "os_windows.cpp",
     "display_server_windows.cpp",
     "key_mapping_windows.cpp",
@@ -18,6 +17,11 @@ common_win = [
     "vulkan_context_win.cpp",
     "gl_manager_windows.cpp",
 ]
+
+if env.msvc:
+    common_win += ["crash_handler_windows_seh.cpp"]
+else:
+    common_win += ["crash_handler_windows_signal.cpp"]
 
 res_file = "godot_res.rc"
 res_target = "godot_res" + env["OBJSUFFIX"]
