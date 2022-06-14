@@ -1525,13 +1525,16 @@ bool Node::is_greater_than(const Node *p_node) const {
 	return res;
 }
 
-void Node::get_owned_by(Node *p_by, List<Node *> *p_owned) {
+void Node::get_owned_by(Node *p_by, List<Node *> *p_owned, bool p_include_children_of_owned_by) {
 	if (data.owner == p_by) {
 		p_owned->push_back(this);
+		if (!p_include_children_of_owned_by) {
+			return;
+		}
 	}
 
 	for (int i = 0; i < get_child_count(); i++) {
-		get_child(i)->get_owned_by(p_by, p_owned);
+		get_child(i)->get_owned_by(p_by, p_owned, p_include_children_of_owned_by);
 	}
 }
 
