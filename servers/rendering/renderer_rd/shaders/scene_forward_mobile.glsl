@@ -105,18 +105,6 @@ layout(location = 8) mediump out vec3 center_normal_interp;
 #endif
 #endif
 
-#ifdef USE_MULTIVIEW
-#ifdef has_VK_KHR_multiview
-#define ViewIndex gl_ViewIndex
-#else
-// !BAS! This needs to become an input once we implement our fallback!
-#define ViewIndex 0
-#endif
-#else
-// Set to zero, not supported in non stereo
-#define ViewIndex 0
-#endif //USE_MULTIVIEW
-
 invariant gl_Position;
 
 #GLOBALS
