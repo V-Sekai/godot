@@ -98,6 +98,13 @@ layout(location = 8) out highp float dp_clip;
 
 #endif
 
+#ifdef USE_MULTIVIEW // mutually exclusive with MODE_DUAL_PARABOLOID
+layout(location = 7) highp out vec3 center_vertex_interp;
+#ifdef NORMAL_USED
+layout(location = 8) mediump out vec3 center_normal_interp;
+#endif
+#endif
+
 #ifdef USE_MULTIVIEW
 #ifdef has_VK_KHR_multiview
 #define ViewIndex gl_ViewIndex
@@ -354,6 +361,13 @@ void main() {
 
 #endif //MODE_RENDER_DEPTH
 
+#ifdef USE_MULTIVIEW
+	center_vertex_interp = (inv_eye_matrix * vec4(vertex_interp, 1.0)).xyz;
+#ifdef NORMAL_USED
+	center_normal_interp = mat3(inv_eye_matrix) * normal_interp;
+#endif
+#endif
+
 #ifdef OVERRIDE_POSITION
 	gl_Position = position;
 #else
@@ -450,6 +464,22 @@ layout(location = 6) mediump in vec3 binormal_interp;
 
 layout(location = 8) highp in float dp_clip;
 
+#endif
+
+#ifdef USE_MULTIVIEW // mutually exclusive with MODE_DUAL_PARABOLOID
+layout(location = 7) highp in vec3 center_vertex_interp;
+#else
+#define center_vertex_interp vertex_interp
+#endif
+
+#ifdef NORMAL_USED
+#ifdef USE_MULTIVIEW // mutually exclusive with MODE_DUAL_PARABOLOID
+layout(location = 8) mediump in vec3 center_normal_interp;
+#else
+#define center_normal_interp normal_interp
+#endif
+#else
+const vec3 center_normal_interp = vec3(0);
 #endif
 
 #ifdef USE_MULTIVIEW
@@ -596,6 +626,7 @@ void main() {
 
 	//lay out everything, whatever is unused is optimized away anyway
 	vec3 vertex = vertex_interp;
+	vec3 center_vertex = center_vertex_interp;
 	vec3 view = -normalize(vertex_interp);
 	vec3 albedo = vec3(1.0);
 	vec3 backlight = vec3(0.0);
@@ -702,7 +733,7 @@ void main() {
 
 // alpha hash can be used in unison with alpha antialiasing
 #ifdef ALPHA_HASH_USED
-	if (alpha < compute_alpha_hash_threshold(vertex, alpha_hash_scale)) {
+	if (alpha < compute_alpha_hash_threshold(center_vertex, alpha_hash_scale)) {
 		discard;
 	}
 #endif // ALPHA_HASH_USED
@@ -765,7 +796,7 @@ void main() {
 	// Draw "fixed" fog before volumetric fog to ensure volumetric fog can appear in front of the sky.
 
 	if (!sc_disable_fog && scene_data.fog_enabled) {
-		fog = fog_process(vertex);
+		fog = fog_process(center_vertex);
 	}
 
 #endif //!CUSTOM_FOG_USED
@@ -779,8 +810,8 @@ void main() {
 
 #ifndef MODE_RENDER_DEPTH
 
-	vec3 vertex_ddx = dFdx(vertex);
-	vec3 vertex_ddy = dFdy(vertex);
+	vec3 center_vertex_ddx = dFdx(center_vertex);
+	vec3 center_vertex_ddy = dFdy(center_vertex);
 
 	if (!sc_disable_decals) { //Decals
 		// must implement
@@ -798,7 +829,7 @@ void main() {
 				break;
 			}
 
-			vec3 uv_local = (decals.data[decal_index].xform * vec4(vertex, 1.0)).xyz;
+			vec3 uv_local = (decals.data[decal_index].xform * vec4(center_vertex, 1.0)).xyz;
 			if (any(lessThan(uv_local, vec3(0.0, -1.0, 0.0))) || any(greaterThan(uv_local, vec3(1.0)))) {
 				continue; //out of decal
 			}
@@ -806,12 +837,12 @@ void main() {
 			float fade = pow(1.0 - (uv_local.y > 0.0 ? uv_local.y : -uv_local.y), uv_local.y > 0.0 ? decals.data[decal_index].upper_fade : decals.data[decal_index].lower_fade);
 
 			if (decals.data[decal_index].normal_fade > 0.0) {
-				fade *= smoothstep(decals.data[decal_index].normal_fade, 1.0, dot(normal_interp, decals.data[decal_index].normal) * 0.5 + 0.5);
+				fade *= smoothstep(decals.data[decal_index].normal_fade, 1.0, dot(center_normal_interp, decals.data[decal_index].normal) * 0.5 + 0.5);
 			}
 
 			//we need ddx/ddy for mipmaps, so simulate them
-			vec2 ddx = (decals.data[decal_index].xform * vec4(vertex_ddx, 0.0)).xz;
-			vec2 ddy = (decals.data[decal_index].xform * vec4(vertex_ddy, 0.0)).xz;
+			vec2 ddx = (decals.data[decal_index].xform * vec4(center_vertex_ddx, 0.0)).xz;
+			vec2 ddy = (decals.data[decal_index].xform * vec4(center_vertex_ddy, 0.0)).xz;
 
 			if (decals.data[decal_index].albedo_rect != vec4(0.0)) {
 				//has albedo
@@ -980,7 +1011,7 @@ void main() {
 	if (bool(draw_call.flags & INSTANCE_FLAGS_USE_LIGHTMAP_CAPTURE)) { //has lightmap capture
 		uint index = draw_call.gi_offset;
 
-		vec3 wnormal = mat3(scene_data.inv_view_matrix * scene_data.inv_eye_matrix) * normal;
+		vec3 wnormal = mat3(scene_data.inv_view_matrix * inv_eye_matrix) * normal;
 		const float c1 = 0.429043;
 		const float c2 = 0.511664;
 		const float c3 = 0.743125;
@@ -1019,7 +1050,7 @@ void main() {
 			ambient_light += lm_light_l1_0 * 0.32573 * n.z;
 			ambient_light += lm_light_l1p1 * 0.32573 * n.x;
 			if (metallic > 0.01) { // since the more direct bounced light is lost, we can kind of fake it with this trick
-				vec3 r = reflect(normalize(-vertex), normal);
+				vec3 r = reflect(normalize(-center_vertex), normal);
 				specular_light += lm_light_l1n1 * 0.32573 * r.y;
 				specular_light += lm_light_l1_0 * 0.32573 * r.z;
 				specular_light += lm_light_l1p1 * 0.32573 * r.x;
@@ -1140,19 +1171,20 @@ void main() {
 #ifdef USE_SOFT_SHADOWS
 			//version with soft shadows, more expensive
 			if (directional_lights.data[i].shadow_enabled) {
-				float depth_z = -vertex.z;
+				float depth_z = -center_vertex.z;
 
 				vec4 pssm_coord;
 				vec3 light_dir = directional_lights.data[i].direction;
+				vec3 base_normal_bias = normalize(center_normal_interp) * (1.0 - max(0.0, dot(light_dir, -normalize(center_normal_interp))));
 
-#define BIAS_FUNC(m_var, m_idx)                                                                                                                                       \
-	m_var.xyz += light_dir * directional_lights.data[i].shadow_bias[m_idx];                                                                                           \
-	vec3 normal_bias = normalize(normal_interp) * (1.0 - max(0.0, dot(light_dir, -normalize(normal_interp)))) * directional_lights.data[i].shadow_normal_bias[m_idx]; \
-	normal_bias -= light_dir * dot(light_dir, normal_bias);                                                                                                           \
+#define BIAS_FUNC(m_var, m_idx)                                                                 \
+	m_var.xyz += light_dir * directional_lights.data[i].shadow_bias[m_idx];                     \
+	vec3 normal_bias = base_normal_bias * directional_lights.data[i].shadow_normal_bias[m_idx]; \
+	normal_bias -= light_dir * dot(light_dir, normal_bias);                                     \
 	m_var.xyz += normal_bias;
 
 				if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 0)
 
@@ -1169,7 +1201,7 @@ void main() {
 						shadow = sample_directional_pcf_shadow(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale, pssm_coord);
 					}
 				} else if (depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 1)
 
@@ -1186,7 +1218,7 @@ void main() {
 						shadow = sample_directional_pcf_shadow(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale, pssm_coord);
 					}
 				} else if (depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 2)
 
@@ -1203,7 +1235,7 @@ void main() {
 						shadow = sample_directional_pcf_shadow(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale, pssm_coord);
 					}
 				} else {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 3)
 
@@ -1226,7 +1258,7 @@ void main() {
 					float shadow2;
 
 					if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 						BIAS_FUNC(v, 1)
 						pssm_coord = (directional_lights.data[i].shadow_matrix2 * v);
 						pssm_coord /= pssm_coord.w;
@@ -1243,7 +1275,7 @@ void main() {
 
 						pssm_blend = smoothstep(0.0, directional_lights.data[i].shadow_split_offsets.x, depth_z);
 					} else if (depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 						BIAS_FUNC(v, 2)
 						pssm_coord = (directional_lights.data[i].shadow_matrix3 * v);
 						pssm_coord /= pssm_coord.w;
@@ -1260,7 +1292,7 @@ void main() {
 
 						pssm_blend = smoothstep(directional_lights.data[i].shadow_split_offsets.x, directional_lights.data[i].shadow_split_offsets.y, depth_z);
 					} else if (depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 						BIAS_FUNC(v, 3)
 						pssm_coord = (directional_lights.data[i].shadow_matrix4 * v);
 						pssm_coord /= pssm_coord.w;
@@ -1284,7 +1316,7 @@ void main() {
 					shadow = mix(shadow, shadow2, pssm_blend);
 				}
 
-				shadow = mix(shadow, 1.0, smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, vertex.z)); //done with negative values for performance
+				shadow = mix(shadow, 1.0, smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, center_vertex.z)); //done with negative values for performance
 
 #undef BIAS_FUNC
 			}
@@ -1292,12 +1324,12 @@ void main() {
 			// Soft shadow disabled version
 
 			if (directional_lights.data[i].shadow_enabled) {
-				float depth_z = -vertex.z;
+				float depth_z = -center_vertex.z;
 
 				vec4 pssm_coord;
 				float blur_factor;
 				vec3 light_dir = directional_lights.data[i].direction;
-				vec3 base_normal_bias = normalize(normal_interp) * (1.0 - max(0.0, dot(light_dir, -normalize(normal_interp))));
+				vec3 base_normal_bias = normalize(center_normal_interp) * (1.0 - max(0.0, dot(light_dir, -normalize(center_normal_interp))));
 
 #define BIAS_FUNC(m_var, m_idx)                                                                 \
 	m_var.xyz += light_dir * directional_lights.data[i].shadow_bias[m_idx];                     \
@@ -1306,14 +1338,14 @@ void main() {
 	m_var.xyz += normal_bias;
 
 				if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 0)
 
 					pssm_coord = (directional_lights.data[i].shadow_matrix1 * v);
 					blur_factor = 1.0;
 				} else if (depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 1)
 
@@ -1322,7 +1354,7 @@ void main() {
 					blur_factor = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.y;
 					;
 				} else if (depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 2)
 
@@ -1330,7 +1362,7 @@ void main() {
 					// Adjust shadow blur with reference to the first split to reduce discrepancy between shadow splits.
 					blur_factor = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.z;
 				} else {
-					vec4 v = vec4(vertex, 1.0);
+					vec4 v = vec4(center_vertex, 1.0);
 
 					BIAS_FUNC(v, 3)
 
@@ -1348,21 +1380,21 @@ void main() {
 					float blur_factor2;
 
 					if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 						BIAS_FUNC(v, 1)
 						pssm_coord = (directional_lights.data[i].shadow_matrix2 * v);
 						pssm_blend = smoothstep(0.0, directional_lights.data[i].shadow_split_offsets.x, depth_z);
 						// Adjust shadow blur with reference to the first split to reduce discrepancy between shadow splits.
 						blur_factor2 = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.y;
 					} else if (depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 						BIAS_FUNC(v, 2)
 						pssm_coord = (directional_lights.data[i].shadow_matrix3 * v);
 						pssm_blend = smoothstep(directional_lights.data[i].shadow_split_offsets.x, directional_lights.data[i].shadow_split_offsets.y, depth_z);
 						// Adjust shadow blur with reference to the first split to reduce discrepancy between shadow splits.
 						blur_factor2 = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.z;
 					} else if (depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 						BIAS_FUNC(v, 3)
 						pssm_coord = (directional_lights.data[i].shadow_matrix4 * v);
 						pssm_blend = smoothstep(directional_lights.data[i].shadow_split_offsets.y, directional_lights.data[i].shadow_split_offsets.z, depth_z);
@@ -1379,7 +1411,7 @@ void main() {
 					shadow = mix(shadow, shadow2, pssm_blend);
 				}
 
-				shadow = mix(shadow, 1.0, smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, vertex.z)); //done with negative values for performance
+				shadow = mix(shadow, 1.0, smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, center_vertex.z)); //done with negative values for performance
 
 #undef BIAS_FUNC
 			}
@@ -1458,11 +1490,11 @@ void main() {
 				break;
 			}
 
-			float shadow = light_process_omni_shadow(light_index, vertex, normal);
+			float shadow = light_process_omni_shadow(light_index, center_vertex, center_normal_interp);
 
 			shadow = blur_shadow(shadow);
 
-			light_process_omni(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, orms, shadow, albedo, alpha,
+			light_process_omni(light_index, vertex, view, normal, center_vertex_ddx, center_vertex_ddy, f0, orms, shadow, albedo, alpha,
 #ifdef LIGHT_BACKLIGHT_USED
 					backlight,
 #endif
@@ -1503,11 +1535,11 @@ void main() {
 				break;
 			}
 
-			float shadow = light_process_spot_shadow(light_index, vertex, normal);
+			float shadow = light_process_spot_shadow(light_index, center_vertex, center_normal_interp);
 
 			shadow = blur_shadow(shadow);
 
-			light_process_spot(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, orms, shadow, albedo, alpha,
+			light_process_spot(light_index, vertex, view, normal, center_vertex_ddx, center_vertex_ddy, f0, orms, shadow, albedo, alpha,
 #ifdef LIGHT_BACKLIGHT_USED
 					backlight,
 #endif

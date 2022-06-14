@@ -1935,7 +1935,7 @@ void fragment_shader(in SceneData scene_data) {
 				vec3(0, -1, 0),
 				vec3(0, 0, -1));
 
-		vec3 cam_normal = mat3(scene_data.inv_view_matrix) * normalize(center_normal_interp);
+		vec3 cam_normal = mat3(scene_data.inv_view_matrix) * normalize(normal);
 
 		float closest_dist = -1e20;
 
