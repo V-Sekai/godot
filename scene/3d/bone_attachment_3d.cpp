@@ -29,6 +29,7 @@
 /*************************************************************************/
 
 #include "bone_attachment_3d.h"
+#include "scene/scene_string_names.h"
 
 void BoneAttachment3D::_validate_property(PropertyInfo &property) const {
 	if (property.name == "bone_name") {
@@ -163,9 +164,13 @@ void BoneAttachment3D::_check_bind() {
 			bone_idx = sk->find_bone(bone_name);
 		}
 		if (bone_idx != -1) {
-			sk->call_deferred(SNAME("connect"), "bone_pose_changed", callable_mp(this, &BoneAttachment3D::on_bone_pose_update));
+			if (sk->is_connected(SceneStringNames::get_singleton()->bone_pose_changed, callable_mp(this, &BoneAttachment3D::on_bone_pose_update))) {
+				sk->disconnect(SceneStringNames::get_singleton()->bone_pose_changed, callable_mp(this, &BoneAttachment3D::on_bone_pose_update));
+			}
+			sk->connect(SceneStringNames::get_singleton()->bone_pose_changed, callable_mp(this, &BoneAttachment3D::on_bone_pose_update));
+
 			bound = true;
-			call_deferred(SNAME("on_bone_pose_update"), bone_idx);
+			on_bone_pose_update(bone_idx);
 		}
 	}
 }
@@ -191,7 +196,9 @@ void BoneAttachment3D::_check_unbind() {
 		Skeleton3D *sk = _get_skeleton3d();
 
 		if (sk) {
-			sk->disconnect(SNAME("bone_pose_changed"), callable_mp(this, &BoneAttachment3D::on_bone_pose_update));
+			if (sk->is_connected(SceneStringNames::get_singleton()->bone_pose_changed, callable_mp(this, &BoneAttachment3D::on_bone_pose_update))) {
+				sk->disconnect(SceneStringNames::get_singleton()->bone_pose_changed, callable_mp(this, &BoneAttachment3D::on_bone_pose_update));
+			}
 		}
 		bound = false;
 	}
