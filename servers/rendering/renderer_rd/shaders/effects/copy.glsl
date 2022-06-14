@@ -46,7 +46,7 @@ layout(set = 0, binding = 0) uniform samplerCubeArray source_color;
 #elif defined(MODE_CUBEMAP_TO_PANORAMA)
 layout(set = 0, binding = 0) uniform samplerCube source_color;
 #elif !defined(MODE_SET_COLOR)
-layout(set = 0, binding = 0) uniform sampler2D source_color;
+layout(set = 0, binding = 0) uniform sampler2DArray source_color;
 #endif
 
 #ifdef GLOW_USE_AUTO_EXPOSURE
@@ -54,17 +54,29 @@ layout(set = 1, binding = 0) uniform sampler2D source_auto_exposure;
 #endif
 
 #if defined(MODE_LINEARIZE_DEPTH_COPY) || defined(MODE_SIMPLE_COPY_DEPTH)
-layout(r32f, set = 3, binding = 0) uniform restrict writeonly image2D dest_buffer;
+layout(r32f, set = 3, binding = 0) uniform restrict writeonly image2DArray dest_buffer;
 #elif defined(DST_IMAGE_8BIT)
-layout(rgba8, set = 3, binding = 0) uniform restrict writeonly image2D dest_buffer;
+layout(rgba8, set = 3, binding = 0) uniform restrict writeonly image2DArray dest_buffer;
 #else
-layout(rgba32f, set = 3, binding = 0) uniform restrict writeonly image2D dest_buffer;
+layout(rgba32f, set = 3, binding = 0) uniform restrict writeonly image2DArray dest_buffer;
 #endif
 
 #ifdef MODE_GAUSSIAN_BLUR
 shared vec4 local_cache[256];
 shared vec4 temp_cache[128];
 #endif
+
+vec4 texelFetch(sampler2DArray tex, ivec2 pos, int lod) {
+	return texelFetch(tex, ivec3(pos, gl_GlobalInvocationID.z), lod);
+}
+
+vec4 textureLod(sampler2DArray tex, vec2 uv, float lod) {
+	return textureLod(tex, vec3(uv, gl_GlobalInvocationID.z), lod);
+}
+
+void imageStore(restrict writeonly image2DArray tex, ivec2 pos, vec4 color) {
+	imageStore(tex, ivec3(pos, gl_GlobalInvocationID.z), color);
+}
 
 void main() {
 	// Pixel being shaded
