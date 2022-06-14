@@ -675,7 +675,8 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 		RD::get_singleton()->draw_command_end_label(); // Setup Sky resolution buffers
 	}
 
-	_pre_opaque_render(p_render_data, false, false, false, RID(), RID());
+	RID null_rids[2];
+	_pre_opaque_render(p_render_data, false, false, false, null_rids, RID());
 
 	uint32_t spec_constant_base_flags = 0;
 
@@ -1539,6 +1540,8 @@ void RenderForwardMobile::_setup_environment(const RenderDataRD *p_render_data, 
 	RendererStorageRD::store_transform(p_render_data->cam_transform.affine_inverse(), scene_state.ubo.view_matrix);
 
 	for (uint32_t v = 0; v < p_render_data->view_count; v++) {
+		RendererStorageRD::store_transform(p_render_data->view_eye_matrix[v], scene_state.ubo.inv_eye_matrix_view[v]);
+		RendererStorageRD::store_transform(p_render_data->view_eye_matrix[v].affine_inverse(), scene_state.ubo.eye_matrix_view[v]);
 		projection = correction * p_render_data->view_projection[v];
 		RendererStorageRD::store_camera(projection, scene_state.ubo.projection_matrix_view[v]);
 		RendererStorageRD::store_camera(projection.inverse(), scene_state.ubo.inv_projection_matrix_view[v]);

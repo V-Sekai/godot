@@ -116,6 +116,13 @@ layout(location = 10) out flat uint instance_index_interp;
 #define ViewIndex 0
 #endif //USE_MULTIVIEW
 
+#ifdef USE_MULTIVIEW
+layout(location = 11) out vec3 center_vertex_interp;
+#ifdef NORMAL_USED
+layout(location = 12) out vec3 center_normal_interp;
+#endif
+#endif
+
 invariant gl_Position;
 
 #GLOBALS
@@ -251,9 +258,15 @@ void vertex_shader(in uint instance_index, in bool is_multimesh, in SceneData sc
 #endif
 
 #ifdef USE_MULTIVIEW
+	mat4 eye_matrix = scene_data.eye_matrix_view[ViewIndex];
+	mat4 inv_eye_matrix = scene_data.inv_eye_matrix_view[ViewIndex];
+	mat4 eye_view_matrix = eye_matrix * scene_data.view_matrix;
 	mat4 projection_matrix = scene_data.projection_matrix_view[ViewIndex];
 	mat4 inv_projection_matrix = scene_data.inv_projection_matrix_view[ViewIndex];
 #else
+	const mat4 eye_matrix = mat4(1.0f);
+	const mat4 inv_eye_matrix = mat4(1.0f);
+	const mat4 eye_view_matrix = scene_data.view_matrix;
 	mat4 projection_matrix = scene_data.projection_matrix;
 	mat4 inv_projection_matrix = scene_data.inv_projection_matrix;
 #endif //USE_MULTIVIEW
@@ -277,8 +290,8 @@ void vertex_shader(in uint instance_index, in bool is_multimesh, in SceneData sc
 
 	float roughness = 1.0;
 
-	mat4 modelview = scene_data.view_matrix * model_matrix;
-	mat3 modelview_normal = mat3(scene_data.view_matrix) * model_normal_matrix;
+	mat4 modelview = eye_view_matrix * model_matrix;
+	mat3 modelview_normal = mat3(eye_view_matrix) * model_normal_matrix;
 
 	{
 #CODE : VERTEX
@@ -303,14 +316,14 @@ void vertex_shader(in uint instance_index, in bool is_multimesh, in SceneData sc
 //using world coordinates
 #if !defined(SKIP_TRANSFORM_USED) && defined(VERTEX_WORLD_COORDS_USED)
 
-	vertex = (scene_data.view_matrix * vec4(vertex, 1.0)).xyz;
+	vertex = (eye_view_matrix * vec4(vertex, 1.0)).xyz;
 #ifdef NORMAL_USED
-	normal = (scene_data.view_matrix * vec4(normal, 0.0)).xyz;
+	normal = (eye_view_matrix * vec4(normal, 0.0)).xyz;
 #endif
 
 #if defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
-	binormal = (scene_data.view_matrix * vec4(binormal, 0.0)).xyz;
-	tangent = (scene_data.view_matrix * vec4(tangent, 0.0)).xyz;
+	binormal = (eye_view_matrix * vec4(binormal, 0.0)).xyz;
+	tangent = (eye_view_matrix * vec4(tangent, 0.0)).xyz;
 #endif
 #endif
 
@@ -350,6 +363,13 @@ void vertex_shader(in uint instance_index, in bool is_multimesh, in SceneData sc
 #endif
 
 #endif //MODE_RENDER_DEPTH
+
+#ifdef USE_MULTIVIEW
+	center_vertex_interp = (inv_eye_matrix * vec4(vertex_interp, 1.0)).xyz;
+#ifdef NORMAL_USED
+	center_normal_interp = mat3(inv_eye_matrix) * normal_interp;
+#endif
+#endif
 
 #ifdef OVERRIDE_POSITION
 	gl_Position = position;
@@ -464,6 +484,22 @@ layout(location = 9) in float dp_clip;
 layout(location = 10) in flat uint instance_index_interp;
 
 #ifdef USE_MULTIVIEW
+layout(location = 11) in vec3 center_vertex_interp;
+#else
+#define center_vertex_interp vertex_interp
+#endif
+
+#ifdef NORMAL_USED
+#ifdef USE_MULTIVIEW
+layout(location = 12) in vec3 center_normal_interp;
+#else
+#define center_normal_interp normal_interp
+#endif
+#else
+const vec3 center_normal_interp = vec3(0);
+#endif
+
+#ifdef USE_MULTIVIEW
 #ifdef has_VK_KHR_multiview
 #define ViewIndex gl_ViewIndex
 #else // has_VK_KHR_multiview
@@ -479,9 +515,13 @@ layout(location = 10) in flat uint instance_index_interp;
 
 #define model_matrix instances.data[draw_call.instance_index].transform
 #ifdef USE_MULTIVIEW
+#define eye_matrix scene_data.eye_matrix_view[ViewIndex]
+#define inv_eye_matrix scene_data.inv_eye_matrix_view[ViewIndex]
 #define projection_matrix scene_data.projection_matrix_view[ViewIndex]
 #define inv_projection_matrix scene_data.inv_projection_matrix_view[ViewIndex]
 #else
+#define eye_matrix mat4(1.0)
+#define inv_eye_matrix mat4(1.0)
 #define projection_matrix scene_data.projection_matrix
 #define inv_projection_matrix scene_data.inv_projection_matrix
 #endif
@@ -634,6 +674,7 @@ void fragment_shader(in SceneData scene_data) {
 
 	//lay out everything, whatever is unused is optimized away anyway
 	vec3 vertex = vertex_interp;
+	vec3 center_vertex = center_vertex_interp;
 	vec3 view = -normalize(vertex_interp);
 	vec3 albedo = vec3(1.0);
 	vec3 backlight = vec3(0.0);
@@ -736,7 +777,7 @@ void fragment_shader(in SceneData scene_data) {
 
 // alpha hash can be used in unison with alpha antialiasing
 #ifdef ALPHA_HASH_USED
-	if (alpha < compute_alpha_hash_threshold(vertex, alpha_hash_scale)) {
+	if (alpha < compute_alpha_hash_threshold(center_vertex, alpha_hash_scale)) {
 		discard;
 	}
 #endif // ALPHA_HASH_USED
@@ -799,7 +840,7 @@ void fragment_shader(in SceneData scene_data) {
 	// Draw "fixed" fog before volumetric fog to ensure volumetric fog can appear in front of the sky.
 
 	if (scene_data.fog_enabled) {
-		fog = fog_process(vertex);
+		fog = fog_process(center_vertex);
 	}
 
 	if (scene_data.volumetric_fog_enabled) {
@@ -836,8 +877,8 @@ void fragment_shader(in SceneData scene_data) {
 	uint cluster_z = uint(clamp((-vertex.z / scene_data.z_far) * 32.0, 0.0, 31.0));
 
 	//used for interpolating anything cluster related
-	vec3 vertex_ddx = dFdx(vertex);
-	vec3 vertex_ddy = dFdy(vertex);
+	vec3 center_vertex_ddx = dFdx(center_vertex);
+	vec3 center_vertex_ddy = dFdy(center_vertex);
 
 	{ // process decals
 
@@ -877,8 +918,7 @@ void fragment_shader(in SceneData scene_data) {
 				if (!bool(decals.data[decal_index].mask & instances.data[instance_index].layer_mask)) {
 					continue; //not masked
 				}
-
-				vec3 uv_local = (decals.data[decal_index].xform * vec4(vertex, 1.0)).xyz;
+				vec3 uv_local = (decals.data[decal_index].xform * vec4(center_vertex, 1.0)).xyz;
 				if (any(lessThan(uv_local, vec3(0.0, -1.0, 0.0))) || any(greaterThan(uv_local, vec3(1.0)))) {
 					continue; //out of decal
 				}
@@ -886,12 +926,12 @@ void fragment_shader(in SceneData scene_data) {
 				float fade = pow(1.0 - (uv_local.y > 0.0 ? uv_local.y : -uv_local.y), uv_local.y > 0.0 ? decals.data[decal_index].upper_fade : decals.data[decal_index].lower_fade);
 
 				if (decals.data[decal_index].normal_fade > 0.0) {
-					fade *= smoothstep(decals.data[decal_index].normal_fade, 1.0, dot(normal_interp, decals.data[decal_index].normal) * 0.5 + 0.5);
+					fade *= smoothstep(decals.data[decal_index].normal_fade, 1.0, dot(center_normal_interp, decals.data[decal_index].normal) * 0.5 + 0.5);
 				}
 
 				//we need ddx/ddy for mipmaps, so simulate them
-				vec2 ddx = (decals.data[decal_index].xform * vec4(vertex_ddx, 0.0)).xz;
-				vec2 ddy = (decals.data[decal_index].xform * vec4(vertex_ddy, 0.0)).xz;
+				vec2 ddx = (decals.data[decal_index].xform * vec4(center_vertex_ddx, 0.0)).xz;
+				vec2 ddy = (decals.data[decal_index].xform * vec4(center_vertex_ddy, 0.0)).xz;
 
 				if (decals.data[decal_index].albedo_rect != vec4(0.0)) {
 					//has albedo
@@ -1066,7 +1106,7 @@ void fragment_shader(in SceneData scene_data) {
 	if (bool(instances.data[instance_index].flags & INSTANCE_FLAGS_USE_LIGHTMAP_CAPTURE)) { //has lightmap capture
 		uint index = instances.data[instance_index].gi_offset;
 
-		vec3 wnormal = mat3(scene_data.inv_view_matrix) * normal;
+		vec3 wnormal = mat3(scene_data.inv_view_matrix * inv_eye_matrix) * normal;
 		const float c1 = 0.429043;
 		const float c2 = 0.511664;
 		const float c3 = 0.743125;
@@ -1105,7 +1145,7 @@ void fragment_shader(in SceneData scene_data) {
 			ambient_light += lm_light_l1_0 * 0.32573 * n.z;
 			ambient_light += lm_light_l1p1 * 0.32573 * n.x;
 			if (metallic > 0.01) { // since the more direct bounced light is lost, we can kind of fake it with this trick
-				vec3 r = reflect(normalize(-vertex), normal);
+				vec3 r = reflect(normalize(-center_vertex), normal);
 				specular_light += lm_light_l1n1 * 0.32573 * r.y;
 				specular_light += lm_light_l1_0 * 0.32573 * r.z;
 				specular_light += lm_light_l1p1 * 0.32573 * r.x;
@@ -1120,9 +1160,9 @@ void fragment_shader(in SceneData scene_data) {
 	if (sc_use_forward_gi && bool(instances.data[instance_index].flags & INSTANCE_FLAGS_USE_SDFGI)) { //has lightmap capture
 
 		//make vertex orientation the world one, but still align to camera
-		vec3 cam_pos = mat3(scene_data.inv_view_matrix) * vertex;
-		vec3 cam_normal = mat3(scene_data.inv_view_matrix) * normal;
-		vec3 cam_reflection = mat3(scene_data.inv_view_matrix) * reflect(-view, normal);
+		vec3 cam_pos = mat3(scene_data.inv_view_matrix) * center_vertex; // used for diffuse. not per-eye
+		vec3 cam_normal = mat3(scene_data.inv_view_matrix * inv_eye_matrix) * normal; // used for diffuse. not per-eye
+		vec3 cam_reflection = mat3(scene_data.inv_view_matrix) * reflect(-view, normal); // should be per-eye
 
 		//apply y-mult
 		cam_pos.y *= sdfgi.y_mult;
@@ -1191,22 +1231,26 @@ void fragment_shader(in SceneData scene_data) {
 
 	if (sc_use_forward_gi && bool(instances.data[instance_index].flags & INSTANCE_FLAGS_USE_VOXEL_GI)) { // process voxel_gi_instances
 
+		vec3 center_normal = mat3(inv_eye_matrix) * normal;
+		vec3 center_tangent = mat3(inv_eye_matrix) * tangent;
+		vec3 center_bitangent = mat3(inv_eye_matrix) * binormal;
+
 		uint index1 = instances.data[instance_index].gi_offset & 0xFFFF;
-		vec3 ref_vec = normalize(reflect(normalize(vertex), normal));
+		vec3 ref_vec = normalize(reflect(-view, normal)); // per-eye
 		//find arbitrary tangent and bitangent, then build a matrix
-		vec3 v0 = abs(normal.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
-		vec3 tangent = normalize(cross(v0, normal));
-		vec3 bitangent = normalize(cross(tangent, normal));
-		mat3 normal_mat = mat3(tangent, bitangent, normal);
+		vec3 v0 = abs(center_normal.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
+		vec3 tangent = normalize(cross(v0, center_normal));
+		vec3 bitangent = normalize(cross(center_tangent, center_normal));
+		mat3 center_normal_mat = mat3(center_tangent, center_bitangent, center_normal);
 
 		vec4 amb_accum = vec4(0.0);
 		vec4 spec_accum = vec4(0.0);
-		voxel_gi_compute(index1, vertex, normal, ref_vec, normal_mat, roughness * roughness, ambient_light, specular_light, spec_accum, amb_accum);
+		voxel_gi_compute(index1, center_vertex, center_normal, ref_vec, center_normal_mat, roughness * roughness, ambient_light, specular_light, spec_accum, amb_accum);
 
 		uint index2 = instances.data[instance_index].gi_offset >> 16;
 
 		if (index2 != 0xFFFF) {
-			voxel_gi_compute(index2, vertex, normal, ref_vec, normal_mat, roughness * roughness, ambient_light, specular_light, spec_accum, amb_accum);
+			voxel_gi_compute(index2, center_vertex, center_normal, ref_vec, center_normal_mat, roughness * roughness, ambient_light, specular_light, spec_accum, amb_accum);
 		}
 
 		if (amb_accum.a > 0.0) {
@@ -1228,12 +1272,20 @@ void fragment_shader(in SceneData scene_data) {
 		if (scene_data.gi_upscale_for_msaa) {
 			vec2 base_coord = screen_uv;
 			vec2 closest_coord = base_coord;
+#ifdef USE_MULTIVIEW
+			float closest_ang = dot(normal, textureLod(sampler2DArray(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), vec3(base_coord, ViewIndex), 0.0).xyz * 2.0 - 1.0);
+#else // USE_MULTIVIEW
 			float closest_ang = dot(normal, textureLod(sampler2D(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), base_coord, 0.0).xyz * 2.0 - 1.0);
+#endif // USE_MULTIVIEW
 
 			for (int i = 0; i < 4; i++) {
 				const vec2 neighbours[4] = vec2[](vec2(-1, 0), vec2(1, 0), vec2(0, -1), vec2(0, 1));
 				vec2 neighbour_coord = base_coord + neighbours[i] * scene_data.screen_pixel_size;
+#ifdef USE_MULTIVIEW
+				float neighbour_ang = dot(normal, textureLod(sampler2DArray(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), vec3(neighbour_coord, ViewIndex), 0.0).xyz * 2.0 - 1.0);
+#else // USE_MULTIVIEW
 				float neighbour_ang = dot(normal, textureLod(sampler2D(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), neighbour_coord, 0.0).xyz * 2.0 - 1.0);
+#endif // USE_MULTIVIEW
 				if (neighbour_ang > closest_ang) {
 					closest_ang = neighbour_ang;
 					closest_coord = neighbour_coord;
@@ -1246,8 +1298,13 @@ void fragment_shader(in SceneData scene_data) {
 			coord = screen_uv;
 		}
 
+#ifdef USE_MULTIVIEW
+		vec4 buffer_ambient = textureLod(sampler2DArray(ambient_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), vec3(coord, ViewIndex), 0.0);
+		vec4 buffer_reflection = textureLod(sampler2DArray(reflection_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), vec3(coord, ViewIndex), 0.0);
+#else // USE_MULTIVIEW
 		vec4 buffer_ambient = textureLod(sampler2D(ambient_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), coord, 0.0);
 		vec4 buffer_reflection = textureLod(sampler2D(reflection_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), coord, 0.0);
+#endif // USE_MULTIVIEW
 
 		ambient_light = mix(ambient_light, buffer_ambient.rgb, buffer_ambient.a);
 		specular_light = mix(specular_light, buffer_reflection.rgb, buffer_reflection.a);
@@ -1395,9 +1452,9 @@ void fragment_shader(in SceneData scene_data) {
 			float shadow = 1.0;
 
 			if (directional_lights.data[i].shadow_enabled) {
-				float depth_z = -vertex.z;
+				float depth_z = -center_vertex.z;
 				vec3 light_dir = directional_lights.data[i].direction;
-				vec3 base_normal_bias = normalize(normal_interp) * (1.0 - max(0.0, dot(light_dir, -normalize(normal_interp))));
+				vec3 base_normal_bias = normalize(center_normal_interp) * (1.0 - max(0.0, dot(light_dir, -normalize(center_normal_interp))));
 
 #define BIAS_FUNC(m_var, m_idx)                                                                 \
 	m_var.xyz += light_dir * directional_lights.data[i].shadow_bias[m_idx];                     \
@@ -1411,7 +1468,7 @@ void fragment_shader(in SceneData scene_data) {
 					const uint blend_max = directional_lights.data[i].blend_splits ? 2 : 1;
 
 					if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 0)
 
@@ -1427,7 +1484,7 @@ void fragment_shader(in SceneData scene_data) {
 					}
 
 					if (blend_count < blend_max && depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 1)
 
@@ -1452,7 +1509,7 @@ void fragment_shader(in SceneData scene_data) {
 					}
 
 					if (blend_count < blend_max && depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 2)
 
@@ -1477,7 +1534,7 @@ void fragment_shader(in SceneData scene_data) {
 					}
 
 					if (blend_count < blend_max) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 3)
 
@@ -1505,14 +1562,14 @@ void fragment_shader(in SceneData scene_data) {
 					float blur_factor;
 
 					if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 0)
 
 						pssm_coord = (directional_lights.data[i].shadow_matrix1 * v);
 						blur_factor = 1.0;
 					} else if (depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 1)
 
@@ -1520,7 +1577,7 @@ void fragment_shader(in SceneData scene_data) {
 						// Adjust shadow blur with reference to the first split to reduce discrepancy between shadow splits.
 						blur_factor = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.y;
 					} else if (depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 2)
 
@@ -1528,7 +1585,7 @@ void fragment_shader(in SceneData scene_data) {
 						// Adjust shadow blur with reference to the first split to reduce discrepancy between shadow splits.
 						blur_factor = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.z;
 					} else {
-						vec4 v = vec4(vertex, 1.0);
+						vec4 v = vec4(center_vertex, 1.0);
 
 						BIAS_FUNC(v, 3)
 
@@ -1546,21 +1603,21 @@ void fragment_shader(in SceneData scene_data) {
 						float blur_factor2;
 
 						if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-							vec4 v = vec4(vertex, 1.0);
+							vec4 v = vec4(center_vertex, 1.0);
 							BIAS_FUNC(v, 1)
 							pssm_coord = (directional_lights.data[i].shadow_matrix2 * v);
 							pssm_blend = smoothstep(0.0, directional_lights.data[i].shadow_split_offsets.x, depth_z);
 							// Adjust shadow blur with reference to the first split to reduce discrepancy between shadow splits.
 							blur_factor2 = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.y;
 						} else if (depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-							vec4 v = vec4(vertex, 1.0);
+							vec4 v = vec4(center_vertex, 1.0);
 							BIAS_FUNC(v, 2)
 							pssm_coord = (directional_lights.data[i].shadow_matrix3 * v);
 							pssm_blend = smoothstep(directional_lights.data[i].shadow_split_offsets.x, directional_lights.data[i].shadow_split_offsets.y, depth_z);
 							// Adjust shadow blur with reference to the first split to reduce discrepancy between shadow splits.
 							blur_factor2 = directional_lights.data[i].shadow_split_offsets.x / directional_lights.data[i].shadow_split_offsets.z;
 						} else if (depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-							vec4 v = vec4(vertex, 1.0);
+							vec4 v = vec4(center_vertex, 1.0);
 							BIAS_FUNC(v, 3)
 							pssm_coord = (directional_lights.data[i].shadow_matrix4 * v);
 							pssm_blend = smoothstep(directional_lights.data[i].shadow_split_offsets.y, directional_lights.data[i].shadow_split_offsets.z, depth_z);
@@ -1578,7 +1635,7 @@ void fragment_shader(in SceneData scene_data) {
 					}
 				}
 
-				shadow = mix(shadow, 1.0, smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, vertex.z)); //done with negative values for performance
+				shadow = mix(shadow, 1.0, smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, center_vertex.z)); //done with negative values for performance
 
 #undef BIAS_FUNC
 			} // shadows
@@ -1604,10 +1661,10 @@ void fragment_shader(in SceneData scene_data) {
 			float transmittance_z = transmittance_depth;
 
 			if (directional_lights.data[i].shadow_enabled) {
-				float depth_z = -vertex.z;
+				float depth_z = -center_vertex.z;
 
 				if (depth_z < directional_lights.data[i].shadow_split_offsets.x) {
-					vec4 trans_vertex = vec4(vertex - normalize(normal_interp) * directional_lights.data[i].shadow_transmittance_bias.x, 1.0);
+					vec4 trans_vertex = vec4(center_vertex - normalize(center_normal_interp) * directional_lights.data[i].shadow_transmittance_bias.x, 1.0);
 					vec4 trans_coord = directional_lights.data[i].shadow_matrix1 * trans_vertex;
 					trans_coord /= trans_coord.w;
 
@@ -1617,7 +1674,7 @@ void fragment_shader(in SceneData scene_data) {
 
 					transmittance_z = z - shadow_z;
 				} else if (depth_z < directional_lights.data[i].shadow_split_offsets.y) {
-					vec4 trans_vertex = vec4(vertex - normalize(normal_interp) * directional_lights.data[i].shadow_transmittance_bias.y, 1.0);
+					vec4 trans_vertex = vec4(center_vertex - normalize(center_normal_interp) * directional_lights.data[i].shadow_transmittance_bias.y, 1.0);
 					vec4 trans_coord = directional_lights.data[i].shadow_matrix2 * trans_vertex;
 					trans_coord /= trans_coord.w;
 
@@ -1627,7 +1684,7 @@ void fragment_shader(in SceneData scene_data) {
 
 					transmittance_z = z - shadow_z;
 				} else if (depth_z < directional_lights.data[i].shadow_split_offsets.z) {
-					vec4 trans_vertex = vec4(vertex - normalize(normal_interp) * directional_lights.data[i].shadow_transmittance_bias.z, 1.0);
+					vec4 trans_vertex = vec4(center_vertex - normalize(center_normal_interp) * directional_lights.data[i].shadow_transmittance_bias.z, 1.0);
 					vec4 trans_coord = directional_lights.data[i].shadow_matrix3 * trans_vertex;
 					trans_coord /= trans_coord.w;
 
@@ -1638,7 +1695,7 @@ void fragment_shader(in SceneData scene_data) {
 					transmittance_z = z - shadow_z;
 
 				} else {
-					vec4 trans_vertex = vec4(vertex - normalize(normal_interp) * directional_lights.data[i].shadow_transmittance_bias.w, 1.0);
+					vec4 trans_vertex = vec4(center_vertex - normalize(center_normal_interp) * directional_lights.data[i].shadow_transmittance_bias.w, 1.0);
 					vec4 trans_coord = directional_lights.data[i].shadow_matrix4 * trans_vertex;
 					trans_coord /= trans_coord.w;
 
@@ -1732,11 +1789,11 @@ void fragment_shader(in SceneData scene_data) {
 					continue; // Statically baked light and object uses lightmap, skip
 				}
 
-				float shadow = light_process_omni_shadow(light_index, vertex, normal);
+				float shadow = light_process_omni_shadow(light_index, center_vertex, center_normal_interp);
 
 				shadow = blur_shadow(shadow);
 
-				light_process_omni(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, orms, shadow, albedo, alpha,
+				light_process_omni(light_index, vertex, view, normal, center_vertex_ddx, center_vertex_ddy, f0, orms, shadow, albedo, alpha,
 #ifdef LIGHT_BACKLIGHT_USED
 						backlight,
 #endif
@@ -1804,11 +1861,11 @@ void fragment_shader(in SceneData scene_data) {
 					continue; // Statically baked light and object uses lightmap, skip
 				}
 
-				float shadow = light_process_spot_shadow(light_index, vertex, normal);
+				float shadow = light_process_spot_shadow(light_index, center_vertex, center_normal_interp);
 
 				shadow = blur_shadow(shadow);
 
-				light_process_spot(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, orms, shadow, albedo, alpha,
+				light_process_spot(light_index, vertex, view, normal, center_vertex_ddx, center_vertex_ddy, f0, orms, shadow, albedo, alpha,
 #ifdef LIGHT_BACKLIGHT_USED
 						backlight,
 #endif
@@ -1878,7 +1935,7 @@ void fragment_shader(in SceneData scene_data) {
 				vec3(0, -1, 0),
 				vec3(0, 0, -1));
 
-		vec3 cam_normal = mat3(scene_data.inv_view_matrix) * normalize(normal_interp);
+		vec3 cam_normal = mat3(scene_data.inv_view_matrix) * normalize(center_normal_interp);
 
 		float closest_dist = -1e20;
 
