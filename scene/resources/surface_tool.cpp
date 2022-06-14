@@ -1222,7 +1222,7 @@ SurfaceTool::SkinWeightCount SurfaceTool::get_skin_weight_count() const {
 
 void SurfaceTool::set_custom_format(int p_index, CustomFormat p_format) {
 	ERR_FAIL_INDEX(p_index, RS::ARRAY_CUSTOM_COUNT);
-	ERR_FAIL_COND(begun);
+	ERR_FAIL_COND(!begun);
 	last_custom_format[p_index] = p_format;
 }
 
