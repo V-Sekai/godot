@@ -1943,10 +1943,11 @@ void AnimationTrackEdit::_notification(int p_what) {
 			if (animation.is_null()) {
 				return;
 			}
-			ERR_FAIL_INDEX(track, animation->get_track_count());
 
-			type_icon = _get_key_type_icon();
-			selected_icon = get_theme_icon(SNAME("KeySelected"), SNAME("EditorIcons"));
+			if (track >= 0 && track < animation->get_track_count()) {
+				type_icon = _get_key_type_icon();
+				selected_icon = get_theme_icon(SNAME("KeySelected"), SNAME("EditorIcons"));
+			}
 		} break;
 
 		case NOTIFICATION_DRAW: {
