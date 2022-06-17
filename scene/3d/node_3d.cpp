@@ -179,8 +179,10 @@ void Node3D::_notification(int p_what) {
 			}
 
 #ifdef TOOLS_ENABLED
-			if (Engine::get_singleton()->is_editor_hint() && get_tree()->is_node_being_edited(this)) {
-				get_tree()->call_group_flags(SceneTree::GROUP_CALL_DEFERRED, SceneStringNames::get_singleton()->_spatial_editor_group, SceneStringNames::get_singleton()->_request_gizmo, this);
+			bool is_editor = Engine::get_singleton()->is_editor_hint();
+			bool is_edited = get_tree()->is_node_being_edited(this);
+			if (is_editor && is_edited) {
+				get_tree()->call_group_flags(SceneTree::GROUP_CALL_DEFAULT, SceneStringNames::get_singleton()->_spatial_editor_group, SceneStringNames::get_singleton()->_request_gizmo, this);
 			}
 #endif
 		} break;
