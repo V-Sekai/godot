@@ -469,6 +469,13 @@ void OpenXRAPI::destroy_instance() {
 		xrDestroyInstance(instance);
 		instance = XR_NULL_HANDLE;
 	}
+
+	if (graphics_extension) {
+		unregister_extension_wrapper(graphics_extension);
+		memdelete(graphics_extension);
+		graphics_extension = nullptr;
+	}
+
 	enabled_extensions.clear();
 }
 
@@ -1089,6 +1096,12 @@ void OpenXRAPI::set_xr_interface(OpenXRInterface *p_xr_interface) {
 
 void OpenXRAPI::register_extension_wrapper(OpenXRExtensionWrapper *p_extension_wrapper) {
 	registered_extension_wrappers.push_back(p_extension_wrapper);
+}
+
+void OpenXRAPI::unregister_extension_wrapper(OpenXRExtensionWrapper *p_extension_wrapper) {
+	if (registered_extension_wrappers.has(p_extension_wrapper)) {
+		registered_extension_wrappers.erase(p_extension_wrapper);
+	}
 }
 
 Size2 OpenXRAPI::get_recommended_target_size() {
