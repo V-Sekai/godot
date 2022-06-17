@@ -30,9 +30,18 @@
 
 #include "csg.h"
 
+#include "core/error/error_macros.h"
+#include "core/math/color.h"
 #include "core/math/geometry_2d.h"
 #include "core/math/math_funcs.h"
+#include "core/math/plane.h"
+#include "core/math/vector2.h"
+#include "core/math/vector3.h"
 #include "core/templates/sort_array.h"
+
+#include "core/variant/variant.h"
+#include "scene/resources/material.h"
+#include "scene/resources/mesh.h"
 
 // Static helper functions.
 
@@ -185,15 +194,6 @@ inline static bool are_segments_parallel(const Vector2 p_segment1_points[2], con
 
 // CSGBrush
 
-void CSGBrush::_regen_face_aabbs() {
-	for (int i = 0; i < faces.size(); i++) {
-		faces.write[i].aabb = AABB();
-		faces.write[i].aabb.position = faces[i].vertices[0];
-		faces.write[i].aabb.expand_to(faces[i].vertices[1]);
-		faces.write[i].aabb.expand_to(faces[i].vertices[2]);
-	}
-}
-
 void CSGBrush::build_from_faces(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uvs, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials, const Vector<bool> &p_flip_faces) {
 	faces.clear();
 
@@ -332,7 +332,6 @@ void CSGBrushOperation::merge_brushes(Operation p_operation, const CSGBrush &p_b
 			mesh_merge.add_face(points, uvs, p_brush_b.faces[i].smooth, p_brush_b.faces[i].invert, material, true);
 		}
 	}
-
 	// Mark faces that ended up inside the intersection.
 	mesh_merge.mark_inside_faces();
 
