@@ -573,10 +573,10 @@ void process_gi(ivec2 pos, vec3 vertex, inout vec4 ambient_light, inout vec4 ref
 	if (normal.length() > 0.5) {
 		//valid normal, can do GI
 		float roughness = normal_roughness.w;
+		vec3 view = -normalize(mat3(scene_data.cam_transform) * (vertex - scene_data.eye_offset[params.view_index].xyz));
 		vertex = mat3(scene_data.cam_transform) * vertex;
 		normal = normalize(mat3(scene_data.cam_transform) * normal);
-		vec3 reflection = normalize(reflect(normalize(vertex), normal));
-		vertex += scene_data.eye_offset[params.view_index].xyz;
+		vec3 reflection = normalize(reflect(-view, normal));
 
 #ifdef USE_SDFGI
 		sdfgi_process(vertex, normal, reflection, roughness, ambient_light, reflection_light);
