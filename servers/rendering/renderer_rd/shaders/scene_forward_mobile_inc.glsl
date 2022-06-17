@@ -4,6 +4,7 @@
 #if defined(USE_MULTIVIEW) && defined(has_VK_KHR_multiview)
 #extension GL_EXT_multiview : enable
 #endif
+#include "multiview_inc.glsl"
 
 #include "decal_data_inc.glsl"
 
@@ -134,6 +135,7 @@ struct SceneData {
 	// only used for multiview
 	highp mat4 projection_matrix_view[MAX_VIEWS];
 	highp mat4 inv_projection_matrix_view[MAX_VIEWS];
+	highp vec4 eye_offset[MAX_VIEWS];
 
 	highp vec2 viewport_size;
 	highp vec2 screen_pixel_size;
@@ -215,8 +217,8 @@ layout(set = 1, binding = 5) uniform highp texture2D directional_shadow_atlas;
 // this needs to change to providing just the lightmap we're using..
 layout(set = 1, binding = 6) uniform texture2DArray lightmap_textures[MAX_LIGHTMAP_TEXTURES];
 
-layout(set = 1, binding = 9) uniform highp texture2D depth_buffer;
-layout(set = 1, binding = 10) uniform mediump texture2D color_buffer;
+layout(set = 1, binding = 9) uniform highp texture2DScreen depth_buffer;
+layout(set = 1, binding = 10) uniform mediump texture2DScreen color_buffer;
 
 /* Set 2 Skeleton & Instancing (can change per item) */
 

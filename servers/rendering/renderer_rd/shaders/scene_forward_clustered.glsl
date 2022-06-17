@@ -104,18 +104,6 @@ layout(location = 9) out float dp_clip;
 
 layout(location = 10) out flat uint instance_index_interp;
 
-#ifdef USE_MULTIVIEW
-#ifdef has_VK_KHR_multiview
-#define ViewIndex gl_ViewIndex
-#else // has_VK_KHR_multiview
-// !BAS! This needs to become an input once we implement our fallback!
-#define ViewIndex 0
-#endif // has_VK_KHR_multiview
-#else // USE_MULTIVIEW
-// Set to zero, not supported in non stereo
-#define ViewIndex 0
-#endif //USE_MULTIVIEW
-
 invariant gl_Position;
 
 #GLOBALS
@@ -634,7 +622,11 @@ void fragment_shader(in SceneData scene_data) {
 
 	//lay out everything, whatever is unused is optimized away anyway
 	vec3 vertex = vertex_interp;
+#ifdef USE_MULTIVIEW
+	vec3 view = -normalize(vertex_interp - scene_data.eye_offset[ViewIndex].xyz);
+#else
 	vec3 view = -normalize(vertex_interp);
+#endif
 	vec3 albedo = vec3(1.0);
 	vec3 backlight = vec3(0.0);
 	vec4 transmittance_color = vec4(0.0, 0.0, 0.0, 1.0);
@@ -1192,7 +1184,7 @@ void fragment_shader(in SceneData scene_data) {
 	if (sc_use_forward_gi && bool(instances.data[instance_index].flags & INSTANCE_FLAGS_USE_VOXEL_GI)) { // process voxel_gi_instances
 
 		uint index1 = instances.data[instance_index].gi_offset & 0xFFFF;
-		vec3 ref_vec = normalize(reflect(normalize(vertex), normal));
+		vec3 ref_vec = normalize(reflect(-view, normal));
 		//find arbitrary tangent and bitangent, then build a matrix
 		vec3 v0 = abs(normal.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(0.0, 1.0, 0.0);
 		vec3 tangent = normalize(cross(v0, normal));
@@ -1228,12 +1220,12 @@ void fragment_shader(in SceneData scene_data) {
 		if (scene_data.gi_upscale_for_msaa) {
 			vec2 base_coord = screen_uv;
 			vec2 closest_coord = base_coord;
-			float closest_ang = dot(normal, textureLod(sampler2D(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), base_coord, 0.0).xyz * 2.0 - 1.0);
+			float closest_ang = dot(normal, textureLod(sampler2DScreen(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), base_coord, 0.0).xyz * 2.0 - 1.0);
 
 			for (int i = 0; i < 4; i++) {
 				const vec2 neighbours[4] = vec2[](vec2(-1, 0), vec2(1, 0), vec2(0, -1), vec2(0, 1));
 				vec2 neighbour_coord = base_coord + neighbours[i] * scene_data.screen_pixel_size;
-				float neighbour_ang = dot(normal, textureLod(sampler2D(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), neighbour_coord, 0.0).xyz * 2.0 - 1.0);
+				float neighbour_ang = dot(normal, textureLod(sampler2DScreen(normal_roughness_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), neighbour_coord, 0.0).xyz * 2.0 - 1.0);
 				if (neighbour_ang > closest_ang) {
 					closest_ang = neighbour_ang;
 					closest_coord = neighbour_coord;
@@ -1246,8 +1238,8 @@ void fragment_shader(in SceneData scene_data) {
 			coord = screen_uv;
 		}
 
-		vec4 buffer_ambient = textureLod(sampler2D(ambient_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), coord, 0.0);
-		vec4 buffer_reflection = textureLod(sampler2D(reflection_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), coord, 0.0);
+		vec4 buffer_ambient = textureLod(sampler2DScreen(ambient_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), coord, 0.0);
+		vec4 buffer_reflection = textureLod(sampler2DScreen(reflection_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), coord, 0.0);
 
 		ambient_light = mix(ambient_light, buffer_ambient.rgb, buffer_ambient.a);
 		specular_light = mix(specular_light, buffer_reflection.rgb, buffer_reflection.a);
@@ -1255,7 +1247,7 @@ void fragment_shader(in SceneData scene_data) {
 #endif // !USE_LIGHTMAP
 
 	if (bool(scene_data.ss_effects_flags & SCREEN_SPACE_EFFECTS_FLAGS_USE_SSAO)) {
-		float ssao = texture(sampler2D(ao_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), screen_uv).r;
+		float ssao = texture(sampler2DScreen(ao_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), screen_uv).r;
 		ao = min(ao, ssao);
 		ao_light_affect = mix(ao_light_affect, max(ao_light_affect, scene_data.ssao_light_affect), scene_data.ssao_ao_affect);
 	}
@@ -1310,7 +1302,11 @@ void fragment_shader(in SceneData scene_data) {
 #else
 				vec3 bent_normal = normal;
 #endif
+#ifdef USE_MULTIVIEW
+				reflection_process(reflection_index, view, vertex, bent_normal, roughness, ambient_light, specular_light, ambient_accum, reflection_accum);
+#else
 				reflection_process(reflection_index, vertex, bent_normal, roughness, ambient_light, specular_light, ambient_accum, reflection_accum);
+#endif
 			}
 		}
 
@@ -1333,7 +1329,7 @@ void fragment_shader(in SceneData scene_data) {
 	ao = mix(1.0, ao, ao_light_affect);
 
 	if (bool(scene_data.ss_effects_flags & SCREEN_SPACE_EFFECTS_FLAGS_USE_SSIL)) {
-		vec4 ssil = textureLod(sampler2D(ssil_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), screen_uv, 0.0);
+		vec4 ssil = textureLod(sampler2DScreen(ssil_buffer, material_samplers[SAMPLER_LINEAR_CLAMP]), screen_uv, 0.0);
 		ambient_light *= 1.0 - ssil.a;
 		ambient_light += ssil.rgb * albedo.rgb;
 	}
