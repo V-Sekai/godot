@@ -152,12 +152,16 @@ public:
 	virtual void get_script_method_list(List<MethodInfo> *p_list) const = 0;
 	virtual void get_script_property_list(List<PropertyInfo> *p_list) const = 0;
 
-	virtual int get_member_line(const StringName &p_member) const { return -1; }
+	virtual int get_member_line(const StringName &p_member) const {
+		return -1;
+	}
 
 	virtual void get_constants(HashMap<StringName, Variant> *p_constants) {}
 	virtual void get_members(HashSet<StringName> *p_constants) {}
 
-	virtual bool is_placeholder_fallback_enabled() const { return false; }
+	virtual bool is_placeholder_fallback_enabled() const {
+		return false;
+	}
 
 	virtual const Vector<Multiplayer::RPCConfig> get_rpc_methods() const = 0;
 
@@ -190,6 +194,7 @@ public:
 		return callp(p_method, sizeof...(p_args) == 0 ? nullptr : (const Variant **)argptrs, sizeof...(p_args), cerr);
 	}
 
+	virtual Variant call_const(const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error); // implement if language supports const functions
 	virtual void notification(int p_notification) = 0;
 	virtual String to_string(bool *r_valid) {
 		if (r_valid) {
