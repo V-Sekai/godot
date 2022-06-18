@@ -535,6 +535,7 @@ public:
 	};
 
 	struct JointData {
+		bool can_update_server = false;
 		virtual JointType get_joint_type() { return JOINT_TYPE_NONE; }
 
 		/// "j" is used to set the parameter inside the PhysicsServer3D
