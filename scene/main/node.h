@@ -185,8 +185,12 @@ private:
 	void _rpc_bind(const Variant **p_args, int p_argcount, Callable::CallError &r_error);
 	void _rpc_id_bind(const Variant **p_args, int p_argcount, Callable::CallError &r_error);
 
-	_FORCE_INLINE_ bool _is_internal_front() const { return data.parent && data.pos < data.parent->data.internal_children_front; }
-	_FORCE_INLINE_ bool _is_internal_back() const { return data.parent && data.pos >= data.parent->data.children.size() - data.parent->data.internal_children_back; }
+	_FORCE_INLINE_ bool _is_internal_front() const {
+		return data.parent && data.pos < data.parent->data.internal_children_front;
+	}
+	_FORCE_INLINE_ bool _is_internal_back() const {
+		return data.parent && data.pos >= data.parent->data.children.size() - data.parent->data.internal_children_back;
+	}
 
 	friend class SceneTree;
 
@@ -200,8 +204,12 @@ private:
 	void _acquire_unique_name_in_owner();
 
 protected:
-	void _block() { data.blocked++; }
-	void _unblock() { data.blocked--; }
+	void _block() {
+		data.blocked++;
+	}
+	void _unblock() {
+		data.blocked--;
+	}
 
 	void _notification(int p_notification);
 
@@ -267,6 +275,7 @@ public:
 		NOTIFICATION_POST_ENTER_TREE = 27,
 		NOTIFICATION_DISABLED = 28,
 		NOTIFICATION_ENABLED = 29,
+		NOTIFICATION_NODE_RECACHE_REQUESTED = 30,
 		//keep these linked to node
 
 		NOTIFICATION_WM_MOUSE_ENTER = 1002,
@@ -323,7 +332,9 @@ public:
 		return data.tree;
 	}
 
-	_FORCE_INLINE_ bool is_inside_tree() const { return data.inside_tree; }
+	_FORCE_INLINE_ bool is_inside_tree() const {
+		return data.inside_tree;
+	}
 
 	bool is_ancestor_of(const Node *p_node) const;
 	bool is_greater_than(const Node *p_node) const;
@@ -463,7 +474,9 @@ public:
 	//hacks for speed
 	static void init_node_hrcr();
 
-	void force_parent_owned() { data.parent_owned = true; } //hack to avoid duplicate nodes
+	void force_parent_owned() {
+		data.parent_owned = true;
+	} //hack to avoid duplicate nodes
 
 	void set_import_path(const NodePath &p_import_path); //path used when imported, used by scene editors to keep tracking
 	NodePath get_import_path() const;
@@ -474,7 +487,9 @@ public:
 
 	void clear_internal_tree_resource_paths();
 
-	_FORCE_INLINE_ Viewport *get_viewport() const { return data.viewport; }
+	_FORCE_INLINE_ Viewport *get_viewport() const {
+		return data.viewport;
+	}
 
 	virtual TypedArray<String> get_configuration_warnings() const;
 	String get_configuration_warnings_as_string() const;
