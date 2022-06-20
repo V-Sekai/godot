@@ -436,8 +436,8 @@ public:
 #undef ServerName
 #undef server_name
 
-#define ServerName RendererStorage
-#define server_name RSG::storage
+#define ServerName RendererGIEffect
+#define server_name RSG::gi_effect
 
 	FUNCRIDSPLIT(voxel_gi)
 
