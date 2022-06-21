@@ -164,6 +164,9 @@ void EditorPropertyMultilineText::_notification(int p_what) {
 			Ref<Font> font = get_theme_font(SNAME("font"), SNAME("Label"));
 			int font_size = get_theme_font_size(SNAME("font_size"), SNAME("Label"));
 			text->set_custom_minimum_size(Vector2(0, font->get_height(font_size) * 6));
+			text->add_theme_font_override("font", get_theme_font("expression", "EditorFonts"));
+			text->add_theme_font_size_override("font_size", get_theme_font_size("expression_size", "EditorFonts"));
+
 		} break;
 	}
 }
@@ -171,7 +174,7 @@ void EditorPropertyMultilineText::_notification(int p_what) {
 void EditorPropertyMultilineText::_bind_methods() {
 }
 
-EditorPropertyMultilineText::EditorPropertyMultilineText() {
+EditorPropertyMultilineText::EditorPropertyMultilineText(bool p_expression) {
 	HBoxContainer *hb = memnew(HBoxContainer);
 	hb->add_theme_constant_override("separation", 0);
 	add_child(hb);
@@ -188,6 +191,12 @@ EditorPropertyMultilineText::EditorPropertyMultilineText() {
 	hb->add_child(open_big_text);
 	big_text_dialog = nullptr;
 	big_text = nullptr;
+	if (p_expression) {
+		expression = true;
+		Ref<EditorStandardSyntaxHighlighter> highlighter;
+		highlighter.instantiate();
+		text->set_syntax_highlighter(highlighter);
+	}
 }
 
 ///////////////////// TEXT ENUM /////////////////////////
@@ -3741,6 +3750,9 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 			} else if (p_hint == PROPERTY_HINT_MULTILINE_TEXT) {
 				EditorPropertyMultilineText *editor = memnew(EditorPropertyMultilineText);
 				return editor;
+			} else if (p_hint == PROPERTY_HINT_EXPRESSION) {
+				EditorPropertyMultilineText *editor = memnew(EditorPropertyMultilineText(true));
+				return editor;
 			} else if (p_hint == PROPERTY_HINT_TYPE_STRING) {
 				EditorPropertyClassName *editor = memnew(EditorPropertyClassName);
 				editor->setup("Object", p_hint_text);
@@ -3749,11 +3761,11 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 				EditorPropertyLocale *editor = memnew(EditorPropertyLocale);
 				editor->setup(p_hint_text);
 				return editor;
-			} else if (p_hint == PROPERTY_HINT_DIR || p_hint == PROPERTY_HINT_FILE || p_hint == PROPERTY_HINT_SAVE_FILE || p_hint == PROPERTY_HINT_GLOBAL_DIR || p_hint == PROPERTY_HINT_GLOBAL_FILE) {
+			} else if (p_hint == PROPERTY_HINT_DIR || p_hint == PROPERTY_HINT_FILE || p_hint == PROPERTY_HINT_SAVE_FILE || p_hint == PROPERTY_HINT_GLOBAL_SAVE_FILE || p_hint == PROPERTY_HINT_GLOBAL_DIR || p_hint == PROPERTY_HINT_GLOBAL_FILE) {
 				Vector<String> extensions = p_hint_text.split(",");
-				bool global = p_hint == PROPERTY_HINT_GLOBAL_DIR || p_hint == PROPERTY_HINT_GLOBAL_FILE;
+				bool global = p_hint == PROPERTY_HINT_GLOBAL_DIR || p_hint == PROPERTY_HINT_GLOBAL_FILE || p_hint == PROPERTY_HINT_GLOBAL_SAVE_FILE;
 				bool folder = p_hint == PROPERTY_HINT_DIR || p_hint == PROPERTY_HINT_GLOBAL_DIR;
-				bool save = p_hint == PROPERTY_HINT_SAVE_FILE;
+				bool save = p_hint == PROPERTY_HINT_SAVE_FILE || p_hint == PROPERTY_HINT_GLOBAL_SAVE_FILE;
 				EditorPropertyPath *editor = memnew(EditorPropertyPath);
 				editor->setup(extensions, folder, global);
 				if (save) {
