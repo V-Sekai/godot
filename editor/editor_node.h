@@ -78,6 +78,7 @@ class HSplitContainer;
 class ImportDock;
 class LinkButton;
 class MenuButton;
+class Node2D;
 class NodeDock;
 class OrphanResourcesDialog;
 class Panel;
@@ -780,6 +781,43 @@ public:
 	Error load_scene(const String &p_scene, bool p_ignore_broken_deps = false, bool p_set_inherited = false, bool p_clear_errors = true, bool p_force_open_imported = false, bool p_silent_change_tab = false);
 	Error load_resource(const String &p_resource, bool p_ignore_broken_deps = false);
 
+	Transform3D get_node_3d_relative_transform_without_tree(const Node3D *p_node, const Node *p_root) const;
+	Transform2D get_canvas_item_relative_transform_without_tree(const CanvasItem *p_node, const Node *p_root) const;
+
+	void set_node_3d_relative_transform_without_tree(Node3D *p_node, const Node *p_root, const Transform3D p_transform) const;
+	void set_node_2d_relative_transform_without_tree(Node2D *p_node, const Node *p_root, const Transform2D p_transform) const;
+
+	HashMap<StringName, Variant> get_modified_properties_for_node(Node *p_node);
+
+	struct AdditiveNodeEntry {
+		Node *node = nullptr;
+		NodePath parent = NodePath();
+		Node *owner = nullptr;
+		int index = 0;
+		// Used if the original parent node is lost
+		Transform2D global_transform_2d;
+		Transform3D global_transform_3d;
+	};
+
+	struct ConnectionWithNodePath {
+		Connection connection;
+		NodePath node_path;
+	};
+
+	struct ModificationNodeEntry {
+		HashMap<StringName, Variant> property_table;
+		List<ConnectionWithNodePath> connections_to;
+		List<Connection> connections_from;
+		List<Node::GroupInfo> groups;
+	};
+
+	void update_diff_data_for_node(
+			Node *p_edited_scene,
+			Node *p_root,
+			Node *p_node,
+			HashMap<NodePath, ModificationNodeEntry> &p_modification_table,
+			List<AdditiveNodeEntry> &p_addition_list);
+
 	bool is_scene_open(const String &p_path);
 
 	void set_current_version(uint64_t p_version);
@@ -827,6 +865,9 @@ public:
 	void open_export_template_manager();
 
 	void reload_scene(const String &p_path);
+
+	void find_all_instances_inheriting_path_in_node(Node *p_root, Node *p_node, const String &p_instance_path, List<Node *> &p_instance_list);
+	void reload_instances_with_path_in_edited_scenes(const String &p_path);
 
 	bool is_exiting() const { return exiting; }
 
