@@ -69,6 +69,8 @@ private:
 
 	Ref<Texture2D> _get_class_icon(const Node *p_node);
 
+	bool read_only = false;
+
 	void _add_pressed();
 	void _tree_item_edited();
 	void _tree_button_pressed(Object *p_item, int p_column, int p_id, MouseButton p_button);
@@ -96,6 +98,7 @@ protected:
 	void _notification(int p_what);
 
 public:
+	void update_config_if_dirty();
 	void update_keying();
 	void edit(MultiplayerSynchronizer *p_object);
 	bool has_keying() const { return keying; }
