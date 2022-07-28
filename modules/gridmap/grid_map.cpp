@@ -643,11 +643,12 @@ bool GridMap::_octant_update(const OctantKey &p_key) {
 				}
 				nm.region = region;
 
+#ifdef DEBUG_ENABLED
 				// add navigation debugmesh visual instances if debug is enabled
 				SceneTree *st = SceneTree::get_singleton();
 				if (st && st->is_debugging_navigation_hint()) {
 					if (!nm.navmesh_debug_instance.is_valid()) {
-						RID navmesh_debug_rid = navmesh->get_debug_mesh()->get_rid();
+						RID navmesh_debug_rid = navmesh->_get_debug_mesh()->get_rid();
 						nm.navmesh_debug_instance = RS::get_singleton()->instance_create();
 						RS::get_singleton()->instance_set_base(nm.navmesh_debug_instance, navmesh_debug_rid);
 						RS::get_singleton()->mesh_surface_set_material(navmesh_debug_rid, 0, st->get_debug_navigation_material()->get_rid());
@@ -657,6 +658,7 @@ bool GridMap::_octant_update(const OctantKey &p_key) {
 						RS::get_singleton()->instance_set_transform(nm.navmesh_debug_instance, get_global_transform() * nm.xform);
 					}
 				}
+#endif
 			}
 
 			g.navmesh_ids[E] = nm;
