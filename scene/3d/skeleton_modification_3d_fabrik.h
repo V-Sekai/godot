@@ -30,7 +30,7 @@
 
 #include "core/templates/local_vector.h"
 #include "scene/3d/skeleton_3d.h"
-#include "scene/resources/skeleton_modification_3d.h"
+#include "scene/3d/skeleton_modification_3d.h"
 
 #ifndef SKELETON_MODIFICATION_3D_FABRIK_H
 #define SKELETON_MODIFICATION_3D_FABRIK_H
@@ -82,9 +82,7 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 
 public:
-	virtual void _execute(real_t p_delta) override;
-	virtual void _setup_modification(SkeletonModificationStack3D *p_stack) override;
-
+	void _notification(int p_what);
 	void set_target_node(const NodePath &p_target_node);
 	NodePath get_target_node() const;
 

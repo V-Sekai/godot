@@ -300,7 +300,7 @@ WorkerThreadPool::GroupID WorkerThreadPool::_add_group_task(const Callable &p_ca
 		group->tasks_used = 0;
 		p_tasks = 0;
 		if (p_template_userdata) {
-			memdelete(p_template_userdata);
+			p_template_userdata->~BaseTemplateUserdata();
 		}
 
 	} else {

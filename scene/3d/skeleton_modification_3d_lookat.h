@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  skeleton_ik_3d_editor_plugin.h                                       */
+/*  skeleton_modification_3d_lookat.h                                    */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,34 +28,58 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
-#ifndef SKELETON_IK_3D_EDITOR_PLUGIN_H
-#define SKELETON_IK_3D_EDITOR_PLUGIN_H
+#include "scene/3d/skeleton_3d.h"
+#include "scene/3d/skeleton_modification_3d.h"
 
-#include "editor/editor_plugin.h"
+#ifndef SKELETON_MODIFICATION_3D_LOOKAT_H
+#define SKELETON_MODIFICATION_3D_LOOKAT_H
 
-class SkeletonIK3D;
+class SkeletonModification3DLookAt : public SkeletonModification3D {
+	GDCLASS(SkeletonModification3DLookAt, SkeletonModification3D);
 
-class SkeletonIK3DEditorPlugin : public EditorPlugin {
-	GDCLASS(SkeletonIK3DEditorPlugin, EditorPlugin);
+private:
+	String bone_name = "";
+	int bone_idx = -1;
+	NodePath target_node;
+	ObjectID target_node_cache;
 
-	SkeletonIK3D *skeleton_ik = nullptr;
+	Vector3 additional_rotation = Vector3();
+	bool lock_rotation_to_plane = false;
+	int lock_rotation_plane = ROTATION_PLANE_X;
 
-	Button *play_btn = nullptr;
-
-	void _play();
+	void update_cache();
 
 protected:
 	static void _bind_methods();
-
+	void _notification(int32_t p_what);
+	bool _get(const StringName &p_path, Variant &r_ret) const;
+	bool _set(const StringName &p_path, const Variant &p_value);
+	void _get_property_list(List<PropertyInfo> *p_list) const;
 public:
-	virtual String get_name() const override { return "SkeletonIK3D"; }
-	bool has_main_screen() const override { return false; }
-	virtual void edit(Object *p_object) override;
-	virtual bool handles(Object *p_object) const override;
-	virtual void make_visible(bool p_visible) override;
+	enum ROTATION_PLANE {
+		ROTATION_PLANE_X,
+		ROTATION_PLANE_Y,
+		ROTATION_PLANE_Z
+	};
+	void set_bone_name(String p_name);
+	String get_bone_name() const;
 
-	SkeletonIK3DEditorPlugin();
-	~SkeletonIK3DEditorPlugin();
+	void set_bone_index(int p_idx);
+	int get_bone_index() const;
+
+	void set_target_node(const NodePath &p_target_node);
+	NodePath get_target_node() const;
+
+	void set_additional_rotation(Vector3 p_offset);
+	Vector3 get_additional_rotation() const;
+
+	void set_lock_rotation_to_plane(bool p_lock_to_plane);
+	bool get_lock_rotation_to_plane() const;
+	void set_lock_rotation_plane(int p_plane);
+	int get_lock_rotation_plane() const;
+
+	SkeletonModification3DLookAt() {}
+	~SkeletonModification3DLookAt() {}
 };
 
-#endif // SKELETON_IK_3D_EDITOR_PLUGIN_H
+#endif // SKELETON_MODIFICATION_3D_LOOKAT_H

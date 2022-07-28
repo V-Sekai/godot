@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  skeleton_modification_3d_lookat.h                                    */
+/*  skeleton_modification_3d_ccdik.h                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -28,26 +28,47 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
+#include "core/templates/local_vector.h"
 #include "scene/3d/skeleton_3d.h"
-#include "scene/resources/skeleton_modification_3d.h"
+#include "scene/3d/skeleton_modification_3d.h"
 
-#ifndef SKELETON_MODIFICATION_3D_LOOKAT_H
-#define SKELETON_MODIFICATION_3D_LOOKAT_H
+#ifndef SKELETON_MODIFICATION_3D_CCDIK_H
+#define SKELETON_MODIFICATION_3D_CCDIK_H
 
-class SkeletonModification3DLookAt : public SkeletonModification3D {
-	GDCLASS(SkeletonModification3DLookAt, SkeletonModification3D);
+class SkeletonModification3DCCDIK : public SkeletonModification3D {
+	GDCLASS(SkeletonModification3DCCDIK, SkeletonModification3D);
 
 private:
-	String bone_name = "";
-	int bone_idx = -1;
+	enum CCDIK_Axes {
+		AXIS_X,
+		AXIS_Y,
+		AXIS_Z
+	};
+
+	struct CCDIK_Joint_Data {
+		String bone_name = "";
+		int bone_idx = -1;
+		int ccdik_axis = 0;
+
+		bool enable_constraint = false;
+		real_t constraint_angle_min = 0;
+		real_t constraint_angle_max = (2.0 * Math_PI);
+		bool constraint_angles_invert = false;
+	};
+
+	LocalVector<CCDIK_Joint_Data> ccdik_data_chain;
 	NodePath target_node;
 	ObjectID target_node_cache;
 
-	Vector3 additional_rotation = Vector3(1, 0, 0);
-	bool lock_rotation_to_plane = false;
-	int lock_rotation_plane = ROTATION_PLANE_X;
+	NodePath tip_node;
+	ObjectID tip_node_cache;
 
-	void update_cache();
+	bool use_high_quality_solve = true;
+
+	void update_target_cache();
+	void update_tip_cache();
+
+	void _execute_ccdik_joint(int p_joint_idx, Node3D *p_target, Node3D *p_tip);
 
 protected:
 	static void _bind_methods();
@@ -56,34 +77,36 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 
 public:
-	enum ROTATION_PLANE {
-		ROTATION_PLANE_X,
-		ROTATION_PLANE_Y,
-		ROTATION_PLANE_Z
-	};
-
-	virtual void _execute(real_t p_delta) override;
-	virtual void _setup_modification(SkeletonModificationStack3D *p_stack) override;
-
-	void set_bone_name(String p_name);
-	String get_bone_name() const;
-
-	void set_bone_index(int p_idx);
-	int get_bone_index() const;
-
+	void _notification(int p_what);
 	void set_target_node(const NodePath &p_target_node);
 	NodePath get_target_node() const;
 
-	void set_additional_rotation(Vector3 p_offset);
-	Vector3 get_additional_rotation() const;
+	void set_tip_node(const NodePath &p_tip_node);
+	NodePath get_tip_node() const;
 
-	void set_lock_rotation_to_plane(bool p_lock_to_plane);
-	bool get_lock_rotation_to_plane() const;
-	void set_lock_rotation_plane(int p_plane);
-	int get_lock_rotation_plane() const;
+	void set_use_high_quality_solve(bool p_solve);
+	bool get_use_high_quality_solve() const;
 
-	SkeletonModification3DLookAt();
-	~SkeletonModification3DLookAt();
+	String get_ccdik_joint_bone_name(int p_joint_idx) const;
+	void set_ccdik_joint_bone_name(int p_joint_idx, String p_bone_name);
+	int get_ccdik_joint_bone_index(int p_joint_idx) const;
+	void set_ccdik_joint_bone_index(int p_joint_idx, int p_bone_idx);
+	int get_ccdik_joint_ccdik_axis(int p_joint_idx) const;
+	void set_ccdik_joint_ccdik_axis(int p_joint_idx, int p_axis);
+	bool get_ccdik_joint_enable_constraint(int p_joint_idx) const;
+	void set_ccdik_joint_enable_constraint(int p_joint_idx, bool p_enable);
+	real_t get_ccdik_joint_constraint_angle_min(int p_joint_idx) const;
+	void set_ccdik_joint_constraint_angle_min(int p_joint_idx, real_t p_angle_min);
+	real_t get_ccdik_joint_constraint_angle_max(int p_joint_idx) const;
+	void set_ccdik_joint_constraint_angle_max(int p_joint_idx, real_t p_angle_max);
+	bool get_ccdik_joint_constraint_invert(int p_joint_idx) const;
+	void set_ccdik_joint_constraint_invert(int p_joint_idx, bool p_invert);
+
+	int get_ccdik_data_chain_length();
+	void set_ccdik_data_chain_length(int p_new_length);
+
+	SkeletonModification3DCCDIK();
+	~SkeletonModification3DCCDIK();
 };
 
-#endif // SKELETON_MODIFICATION_3D_LOOKAT_H
+#endif // SKELETON_MODIFICATION_3D_CCDIK_H
