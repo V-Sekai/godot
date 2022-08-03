@@ -546,6 +546,17 @@ Patch `godot-node-debug-fix.patch` workarounds shadowing of Godot's Node class
 in the MSVC debugger.
 
 
+## manifold
+
+- Upstream: https://github.com/elalish/manifold
+- Version: master (12b43f50c44988cf3bc650df9fda180c8cc06163, 2024)
+- License: Apache 2.0
+
+File extracted from upstream source:
+
+- `src/`
+- `AUTHORS`, `LICENSE`
+
 ## mbedtls
 
 - Upstream: https://github.com/Mbed-TLS/mbedtls
