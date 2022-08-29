@@ -41,7 +41,7 @@ class SkeletonModification3DJiggle : public SkeletonModification3D {
 private:
 	struct Jiggle_Joint_Data {
 		String bone_name = "";
-		int bone_idx = -1;
+		mutable int bone_idx = UNCACHED_BONE_IDX;
 
 		bool override_defaults = false;
 		real_t stiffness = 3;
@@ -62,7 +62,8 @@ private:
 	};
 
 	NodePath target_node;
-	ObjectID target_node_cache;
+	String target_bone;
+	mutable Variant target_cache;
 	LocalVector<Jiggle_Joint_Data> jiggle_data_chain;
 
 	real_t stiffness = 3;
@@ -71,11 +72,12 @@ private:
 	bool use_gravity = false;
 	Vector3 gravity = Vector3(0, -6.0, 0);
 
+	bool initialized_dynamic_position = false;
 	bool use_colliders = false;
 	uint32_t collision_mask = 1;
 
 	void update_cache();
-	void _execute_jiggle_joint(int p_joint_idx, Node3D *p_target, real_t p_delta);
+	void _execute_jiggle_joint(int p_joint_idx, Vector3 target_position, real_t p_delta);
 	void _update_jiggle_joint_data();
 
 protected:
@@ -83,11 +85,16 @@ protected:
 	bool _get(const StringName &p_path, Variant &r_ret) const;
 	bool _set(const StringName &p_path, const Variant &p_value);
 	void _get_property_list(List<PropertyInfo> *p_list) const;
-	void _notification(int32_t p_what);
+	void skeleton_changed(Skeleton3D *skeleton) override;
+	void execute(real_t p_delta) override;
+	bool is_bone_property(String property_name) const override;
+	TypedArray<String> get_configuration_warnings() const override;
 
 public:
 	void set_target_node(const NodePath &p_target_node);
 	NodePath get_target_node() const;
+	void set_target_bone(const String &p_target_node);
+	String get_target_bone() const;
 
 	void set_stiffness(real_t p_stiffness);
 	real_t get_stiffness() const;
@@ -106,13 +113,11 @@ public:
 	void set_collision_mask(int p_mask);
 	int get_collision_mask() const;
 
-	int get_jiggle_data_chain_length();
-	void set_jiggle_data_chain_length(int p_new_length);
+	int get_jiggle_joint_count();
+	void set_jiggle_joint_count(int p_new_length);
 
-	void set_jiggle_joint_bone_name(int p_joint_idx, String p_name);
-	String get_jiggle_joint_bone_name(int p_joint_idx) const;
-	void set_jiggle_joint_bone_index(int p_joint_idx, int p_idx);
-	int get_jiggle_joint_bone_index(int p_joint_idx) const;
+	void set_jiggle_joint_bone(int p_joint_idx, String p_name);
+	String get_jiggle_joint_bone(int p_joint_idx) const;
 
 	void set_jiggle_joint_override(int p_joint_idx, bool p_override);
 	bool get_jiggle_joint_override(int p_joint_idx) const;

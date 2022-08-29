@@ -230,7 +230,6 @@ static const char *gdscript_function_renames[][2] = {
 	{ "add_stylebox_override", "add_theme_stylebox_override" }, // Control
 	{ "add_torque", "apply_torque" }, //RigidDynamicBody2D
 	{ "apply_changes", "_apply_changes" }, // EditorPlugin
-	{ "bind_child_node_to_bone", "set_bone_children" }, // Skeleton3D
 	{ "body_add_force", "body_apply_force" }, // PhysicsServer2D
 	{ "body_add_torque", "body_apply_torque" }, // PhysicsServer2D
 	{ "bumpmap_to_normalmap", "bump_map_to_normal_map" }, // Image
