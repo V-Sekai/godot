@@ -416,6 +416,13 @@ Files generated from upstream source:
 5. Copy `source/data/out/icudt74l.dat` to the `{GODOT_SOURCE}/thirdparty/icu4c/icudt74l.dat`
 
 
+## tinyies
+
+- Upstream: https://github.com/fknfilewalker/tinyies.git
+- Version: git (61cddc69dd5df67f61da77c71744a172de7136a5, 2022)
+- License: MIT
+
+
 ## jpeg-compressor
 
 - Upstream: https://github.com/richgel999/jpeg-compressor
