@@ -469,6 +469,10 @@ float Skeleton3D::get_motion_scale() const {
 
 // Skeleton creation api
 
+uint64_t Skeleton3D::get_version() const {
+	return version;
+}
+
 void Skeleton3D::add_bone(const String &p_name) {
 	ERR_FAIL_COND(p_name.is_empty() || p_name.contains(":") || p_name.contains("/"));
 
@@ -512,6 +516,7 @@ void Skeleton3D::set_bone_name(int p_bone, const String &p_name) {
 	}
 
 	bones.write[p_bone].name = p_name;
+	version++;
 }
 
 bool Skeleton3D::is_bone_parent_of(int p_bone, int p_parent_bone_id) const {
@@ -1128,6 +1133,7 @@ void Skeleton3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_bone", "name"), &Skeleton3D::find_bone);
 	ClassDB::bind_method(D_METHOD("get_bone_name", "bone_idx"), &Skeleton3D::get_bone_name);
 	ClassDB::bind_method(D_METHOD("set_bone_name", "bone_idx", "name"), &Skeleton3D::set_bone_name);
+	ClassDB::bind_method(D_METHOD("get_version"), &Skeleton3D::get_version);
 
 	ClassDB::bind_method(D_METHOD("get_bone_parent", "bone_idx"), &Skeleton3D::get_bone_parent);
 	ClassDB::bind_method(D_METHOD("set_bone_parent", "bone_idx", "parent_idx"), &Skeleton3D::set_bone_parent);

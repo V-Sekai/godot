@@ -34,36 +34,50 @@
 #include "core/string/node_path.h"
 #include "scene/3d/skeleton_3d.h"
 
-class SkeletonModification3D : public Node3D {
-	GDCLASS(SkeletonModification3D, Node3D);
+class SkeletonModification3D : public Node {
+	GDCLASS(SkeletonModification3D, Node);
 
-protected:
+private:
 	static void _bind_methods();
 
-	int execution_mode = 0; // 0 = process
-
 	bool enabled = true;
-	bool is_setup = false;
-	bool execution_error_found = false;
-	Skeleton3D *skeleton = nullptr;
+	bool skeleton_change_queued = true;
+	mutable Variant cached_skeleton;
+	mutable String bone_name_list;
+	uint64_t cached_skeleton_version = 0;
 	NodePath skeleton_path = NodePath("..");
 
-	bool _print_execution_error(bool p_condition, String p_message);
+protected:
+	bool _cache_bone(int &bone_cache, const String &target_bone_name) const;
+	bool _cache_target(Variant &cache, const NodePath &target_node_path, const String &target_bone_name) const;
 
 public:
-	real_t clamp_angle(real_t p_angle, real_t p_min_bound, real_t p_max_bound, bool p_invert);
+	enum { UNCACHED_BONE_IDX = -2 };
 
 	void set_enabled(bool p_enabled);
-	bool get_enabled();
-
-	void set_execution_mode(int p_mode);
-	int get_execution_mode() const;
-
-	void set_is_setup(bool p_setup);
-	bool get_is_setup() const;
+	bool get_enabled() const;
 
 	NodePath get_skeleton_path() const;
 	void set_skeleton_path(NodePath p_path);
+	Skeleton3D *get_skeleton() const;
+
+	void _validate_property(PropertyInfo &p_property) const;
+	void _notification(int32_t p_what);
+
+	virtual void skeleton_changed(Skeleton3D *skeleton);
+	GDVIRTUAL1(_skeleton_changed, Skeleton3D *);
+	virtual void execute(real_t delta);
+	GDVIRTUAL1(_execute, real_t);
+	virtual bool is_bone_property(String property_name) const;
+	GDVIRTUAL1R(bool, _is_bone_property, String);
+	virtual bool is_property_hidden(String property_name) const;
+	GDVIRTUAL1R(bool, _is_property_hidden, String);
+	TypedArray<String> get_configuration_warnings() const override;
+
+	int resolve_bone(const String &target_bone_name) const;
+	Variant resolve_target(const NodePath &target_node_path, const String &target_bone_name) const;
+	Transform3D get_target_transform(Variant resolved_target) const;
+	Quaternion get_target_quaternion(Variant resolved_target) const;
 
 	SkeletonModification3D() {}
 };

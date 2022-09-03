@@ -31,94 +31,60 @@
 #include "skeleton_modification_3d.h"
 #include "scene/3d/skeleton_3d.h"
 
+void SkeletonModification3D::_validate_property(PropertyInfo &p_property) const {
+	if (is_property_hidden(p_property.name)) {
+		p_property.usage = PROPERTY_USAGE_NO_EDITOR;
+	}
+	if (is_bone_property(p_property.name)) {
+		// Because it is a constant function, we cannot use the _get_skeleton_3d function.
+		const Skeleton3D *skel = get_skeleton();
+
+		if (skel) {
+			if (bone_name_list.is_empty()) {
+				for (int i = 0; i < skel->get_bone_count(); i++) {
+					if (i > 0) {
+						bone_name_list += ",";
+					}
+					bone_name_list += skel->get_bone_name(i);
+				}
+			}
+
+			p_property.hint = PROPERTY_HINT_ENUM;
+			p_property.hint_string = bone_name_list;
+		} else {
+			p_property.hint = PROPERTY_HINT_NONE;
+			p_property.hint_string = "";
+		}
+	}
+}
+
 void SkeletonModification3D::set_enabled(bool p_enabled) {
 	enabled = p_enabled;
 }
 
-bool SkeletonModification3D::get_enabled() {
+bool SkeletonModification3D::get_enabled() const {
 	return enabled;
 }
 
-// Helper function. Needed for CCDIK.
-real_t SkeletonModification3D::clamp_angle(real_t p_angle, real_t p_min_bound, real_t p_max_bound, bool p_invert) {
-	// Map to the 0 to 360 range (in radians though) instead of the -180 to 180 range.
-	if (p_angle < 0) {
-		p_angle = Math_TAU + p_angle;
-	}
-
-	// Make min and max in the range of 0 to 360 (in radians), and make sure they are in the right order
-	if (p_min_bound < 0) {
-		p_min_bound = Math_TAU + p_min_bound;
-	}
-	if (p_max_bound < 0) {
-		p_max_bound = Math_TAU + p_max_bound;
-	}
-	if (p_min_bound > p_max_bound) {
-		SWAP(p_min_bound, p_max_bound);
-	}
-
-	bool is_beyond_bounds = (p_angle < p_min_bound || p_angle > p_max_bound);
-	bool is_within_bounds = (p_angle > p_min_bound && p_angle < p_max_bound);
-
-	// Note: May not be the most optimal way to clamp, but it always constraints to the nearest angle.
-	if ((!p_invert && is_beyond_bounds) || (p_invert && is_within_bounds)) {
-		Vector2 min_bound_vec = Vector2(Math::cos(p_min_bound), Math::sin(p_min_bound));
-		Vector2 max_bound_vec = Vector2(Math::cos(p_max_bound), Math::sin(p_max_bound));
-		Vector2 angle_vec = Vector2(Math::cos(p_angle), Math::sin(p_angle));
-
-		if (angle_vec.distance_squared_to(min_bound_vec) <= angle_vec.distance_squared_to(max_bound_vec)) {
-			p_angle = p_min_bound;
-		} else {
-			p_angle = p_max_bound;
-		}
-	}
-
-	return p_angle;
-}
-
-bool SkeletonModification3D::_print_execution_error(bool p_condition, String p_message) {
-	// If the modification is not setup, don't bother printing the error
-	if (!is_setup) {
-		return p_condition;
-	}
-
-	if (p_condition && !execution_error_found) {
-		ERR_PRINT(p_message);
-		execution_error_found = true;
-	}
-	return p_condition;
-}
-
-void SkeletonModification3D::set_is_setup(bool p_is_setup) {
-	is_setup = p_is_setup;
-}
-
-bool SkeletonModification3D::get_is_setup() const {
-	return is_setup;
-}
-
-void SkeletonModification3D::set_execution_mode(int p_mode) {
-	execution_mode = p_mode;
-}
-
-int SkeletonModification3D::get_execution_mode() const {
-	return execution_mode;
-}
-
 void SkeletonModification3D::_bind_methods() {
+	GDVIRTUAL_BIND(_execute, "delta");
+	GDVIRTUAL_BIND(_skeleton_changed, "skeleton");
+	GDVIRTUAL_BIND(_is_bone_property, "property_name");
+	GDVIRTUAL_BIND(_is_property_hidden, "property_name");
+
 	ClassDB::bind_method(D_METHOD("set_skeleton_path", "path"), &SkeletonModification3D::set_skeleton_path);
 	ClassDB::bind_method(D_METHOD("get_skeleton_path"), &SkeletonModification3D::get_skeleton_path);
 	ClassDB::bind_method(D_METHOD("set_enabled", "enabled"), &SkeletonModification3D::set_enabled);
 	ClassDB::bind_method(D_METHOD("get_enabled"), &SkeletonModification3D::get_enabled);
-	ClassDB::bind_method(D_METHOD("set_is_setup", "is_setup"), &SkeletonModification3D::set_is_setup);
-	ClassDB::bind_method(D_METHOD("get_is_setup"), &SkeletonModification3D::get_is_setup);
-	ClassDB::bind_method(D_METHOD("set_execution_mode", "execution_mode"), &SkeletonModification3D::set_execution_mode);
-	ClassDB::bind_method(D_METHOD("get_execution_mode"), &SkeletonModification3D::get_execution_mode);
-	ClassDB::bind_method(D_METHOD("clamp_angle", "angle", "min", "max", "invert"), &SkeletonModification3D::clamp_angle);
+	ClassDB::bind_method(D_METHOD("execute", "delta"), &SkeletonModification3D::execute);
+
+	ClassDB::bind_method(D_METHOD("resolve_bone", "target_bone_name"), &SkeletonModification3D::resolve_bone);
+	ClassDB::bind_method(D_METHOD("resolve_target", "target_node_path", "target_bone_name"), &SkeletonModification3D::resolve_target);
+	ClassDB::bind_method(D_METHOD("get_target_transform", "resolved_target"), &SkeletonModification3D::get_target_transform);
+	ClassDB::bind_method(D_METHOD("get_target_quaternion", "resolved_target"), &SkeletonModification3D::get_target_quaternion);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enabled"), "set_enabled", "get_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton_path"), "set_skeleton_path", "get_skeleton_path");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "execution_mode", PROPERTY_HINT_ENUM, "process, physics_process"), "set_execution_mode", "get_execution_mode");
 }
 
 NodePath SkeletonModification3D::get_skeleton_path() const {
@@ -126,6 +92,161 @@ NodePath SkeletonModification3D::get_skeleton_path() const {
 }
 
 void SkeletonModification3D::set_skeleton_path(NodePath p_path) {
+	if (p_path.is_empty()) {
+		p_path = NodePath("..");
+	}
 	skeleton_path = p_path;
-	skeleton = cast_to<Skeleton3D>(get_node_or_null(p_path));
+	skeleton_change_queued = true;
+	cached_skeleton = Variant();
+	bone_name_list.clear();
+	update_configuration_warnings();
+}
+
+Skeleton3D *SkeletonModification3D::get_skeleton() const {
+	Skeleton3D *skeleton_node = cast_to<Skeleton3D>(cached_skeleton);
+	if (skeleton_node == nullptr) {
+		skeleton_node = cast_to<Skeleton3D>(get_node_or_null(skeleton_path));
+		cached_skeleton = skeleton_node;
+	}
+	return skeleton_node;
+}
+
+void SkeletonModification3D::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_ENTER_TREE: {
+			set_process_internal(get_enabled());
+			set_physics_process_internal(false);
+			cached_skeleton = Variant();
+			if (Engine::get_singleton()->is_editor_hint()) {
+				call_deferred(SNAME("update_configuration_warnings"));
+			}
+		} break;
+		case NOTIFICATION_READY: {
+			Skeleton3D *skel = get_skeleton();
+			if (skel) {
+				skeleton_changed(skel);
+			}
+		} break;
+		case NOTIFICATION_INTERNAL_PROCESS: {
+			ERR_FAIL_COND(!enabled);
+			execute(get_process_delta_time());
+		} break;
+	}
+}
+
+void SkeletonModification3D::skeleton_changed(Skeleton3D *skeleton) {
+	bone_name_list.clear();
+	cached_skeleton_version = skeleton->get_version();
+	skeleton_change_queued = false;
+	GDVIRTUAL_CALL(_skeleton_changed, skeleton);
+}
+
+int SkeletonModification3D::resolve_bone(const String &target_bone_name) const {
+	Skeleton3D *skel = get_skeleton();
+	if (skel) {
+		return skel->find_bone(target_bone_name);
+	}
+	return -1;
+}
+
+bool SkeletonModification3D::_cache_bone(int &bone_cache, const String &target_bone_name) const {
+	if (bone_cache == UNCACHED_BONE_IDX) {
+		bone_cache = resolve_bone(target_bone_name);
+	}
+	return bone_cache >= 0;
+}
+
+Variant SkeletonModification3D::resolve_target(const NodePath &target_node_path, const String &target_bone_name) const {
+	if (target_node_path.is_empty()) {
+		Skeleton3D *skel = get_skeleton();
+		if (skel) {
+			int found_bone = skel->find_bone(target_bone_name);
+			if (found_bone >= 0) {
+				return Variant(found_bone);
+			}
+		}
+	} else {
+		Node *resolved_node = get_node(target_node_path);
+		if (cast_to<Node3D>(resolved_node)) {
+			return Variant(resolved_node);
+		}
+	}
+	return Variant(false);
+}
+
+bool SkeletonModification3D::_cache_target(Variant &cache, const NodePath &target_node_path, const String &target_bone_name) const {
+	if (cache.get_type() == Variant::NIL) {
+		cache = resolve_target(target_node_path, target_bone_name);
+	}
+	return cache.get_type() == Variant::OBJECT || cache.get_type() == Variant::INT;
+}
+
+Transform3D SkeletonModification3D::get_target_transform(Variant resolved_target) const {
+	Skeleton3D *skel = get_skeleton();
+	if (resolved_target.get_type() == Variant::OBJECT) {
+		Node3D *resolved_node3d = cast_to<Node3D>((Object *)resolved_target);
+		return skel->get_global_transform().affine_inverse() * resolved_node3d->get_global_transform();
+	} else if (resolved_target.get_type() == Variant::INT) {
+		int resolved_bone = (int)resolved_target;
+		ERR_FAIL_COND_V(resolved_bone < 0, Transform3D());
+		Transform3D xform = skel->get_bone_pose(resolved_bone);
+		resolved_bone = skel->get_bone_parent(resolved_bone);
+		while (resolved_bone >= 0) {
+			xform = skel->get_bone_pose(resolved_bone) * xform;
+			resolved_bone = skel->get_bone_parent(resolved_bone);
+		}
+		return xform;
+	}
+	ERR_FAIL_V_MSG(Transform3D(), "Looking up transform of unresolved target.");
+}
+
+Quaternion SkeletonModification3D::get_target_quaternion(Variant resolved_target) const {
+	Skeleton3D *skel = get_skeleton();
+	if (resolved_target.get_type() == Variant::OBJECT) {
+		Node3D *resolved_node3d = cast_to<Node3D>((Object *)resolved_target);
+		return skel->get_global_transform().basis.get_rotation_quaternion().inverse() * resolved_node3d->get_global_transform().basis.get_rotation_quaternion();
+	} else if (resolved_target.get_type() == Variant::INT) {
+		int resolved_bone = (int)resolved_target;
+		ERR_FAIL_COND_V(resolved_bone < 0, Quaternion());
+		Quaternion quat = skel->get_bone_pose_rotation(resolved_bone);
+		resolved_bone = skel->get_bone_parent(resolved_bone);
+		while (resolved_bone >= 0) {
+			quat = skel->get_bone_pose_rotation(resolved_bone) * quat;
+			resolved_bone = skel->get_bone_parent(resolved_bone);
+		}
+		return quat;
+	}
+	ERR_FAIL_V_MSG(Quaternion(), "Looking up quaternion of unresolved target.");
+}
+
+void SkeletonModification3D::execute(real_t delta) {
+	Skeleton3D *skel = get_skeleton();
+	if (skel != nullptr) {
+		if (skel->get_version() != cached_skeleton_version || skeleton_change_queued) {
+			skeleton_changed(skel);
+		}
+	}
+	GDVIRTUAL_CALL(_execute, delta);
+}
+
+bool SkeletonModification3D::is_property_hidden(String p_property_name) const {
+	bool ret = false;
+	const_cast<SkeletonModification3D *>(this)->GDVIRTUAL_CALL(_is_property_hidden, p_property_name, ret);
+	return ret;
+}
+
+bool SkeletonModification3D::is_bone_property(String p_property_name) const {
+	bool ret = false;
+	const_cast<SkeletonModification3D *>(this)->GDVIRTUAL_CALL(_is_bone_property, p_property_name, ret);
+	return ret;
+}
+
+TypedArray<String> SkeletonModification3D::get_configuration_warnings() const {
+	TypedArray<String> ret = Node::get_configuration_warnings();
+
+	if (!get_skeleton()) {
+		ret.push_back("Modification skeleton_path must point to a Skeleton3D node.");
+	}
+
+	return ret;
 }

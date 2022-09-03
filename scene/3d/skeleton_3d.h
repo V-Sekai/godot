@@ -173,6 +173,7 @@ public:
 	};
 
 	// skeleton creation api
+	uint64_t get_version() const;
 	void add_bone(const String &p_name);
 	int find_bone(const String &p_name) const;
 	String get_bone_name(int p_bone) const;

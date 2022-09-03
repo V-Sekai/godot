@@ -7,6 +7,7 @@
 		Skeleton3D provides a hierarchical interface for managing bones, including pose, rest and animation (see [Animation]). It can also use ragdoll physics.
 		The overall transform of a bone with respect to the skeleton is determined by the following hierarchical order: rest pose, custom pose and pose.
 		Note that "global pose" below refers to the overall transform of the bone with respect to skeleton, so it not the actual global/world transform of the bone.
+		To setup different types of inverse kinematics for the given Skeleton3D, various [SkeletonModification2D] nodes should be added as children. They will update in node order.
 	</description>
 	<tutorials>
 		<link title="3D Inverse Kinematics Demo">https://godotengine.org/asset-library/asset/523</link>
@@ -41,14 +42,6 @@
 		<method name="create_skin_from_rest_transforms">
 			<return type="Skin" />
 			<description>
-			</description>
-		</method>
-		<method name="execute_modifications">
-			<return type="void" />
-			<param index="0" name="delta" type="float" />
-			<param index="1" name="execution_mode" type="int" />
-			<description>
-				Executes all the modifications on the [SkeletonModificationStack3D], if the Skeleton3D has one assigned.
 			</description>
 		</method>
 		<method name="find_bone" qualifiers="const">
@@ -166,16 +159,15 @@
 				Returns the rest transform for a bone [param bone_idx].
 			</description>
 		</method>
-		<method name="get_modification_stack">
-			<return type="SkeletonModificationStack3D" />
-			<description>
-				Returns the modification stack attached to this skeleton, if one exists.
-			</description>
-		</method>
 		<method name="get_parentless_bones" qualifiers="const">
 			<return type="PackedInt32Array" />
 			<description>
 				Returns an array with all of the bones that are parentless. Another way to look at this is that it returns the indexes of all the bones that are not dependent or modified by other bones in the Skeleton.
+			</description>
+		</method>
+		<method name="get_version" qualifiers="const">
+			<return type="int" />
+			<description>
 			</description>
 		</method>
 		<method name="global_pose_to_local_pose">
@@ -351,13 +343,6 @@
 			<param index="1" name="rest" type="Transform3D" />
 			<description>
 				Sets the rest transform for bone [param bone_idx].
-			</description>
-		</method>
-		<method name="set_modification_stack">
-			<return type="void" />
-			<param index="0" name="modification_stack" type="SkeletonModificationStack3D" />
-			<description>
-				Sets the modification stack for this skeleton to the passed-in modification stack, [param modification_stack].
 			</description>
 		</method>
 		<method name="unparent_bone_and_rest">
