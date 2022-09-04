@@ -5,7 +5,14 @@ respective folder names. Use two empty lines to separate categories for
 readability.
 
 
-## amd-fsr
+## alembic
+
+- Upstream: https://github.com/alembic/alembic.git
+- Version: 1.7.10
+- License: Modified BSD License
+
+
+## brotli
 
 - Upstream: https://github.com/GPUOpen-Effects/FidelityFX-FSR
 - Version: 1.0.2 (a21ffb8f6c13233ba336352bdff293894c706575, 2021)
@@ -669,7 +676,14 @@ with the provided patch.
   unnecessary code.
 
 
-## openxr
+## openexr's IlmBase
+
+- Upstream: https://github.com/openexr/openexr/tree/release/2.3/IlmBase
+- Version: v2.3.0
+- License: Modified BSD License
+
+
+## opus
 
 - Upstream: https://github.com/KhronosGroup/OpenXR-SDK
 - Version: 1.0.30 (55224479ab13db8ebc8ab1e3d49197bce6201b0b, 2023)

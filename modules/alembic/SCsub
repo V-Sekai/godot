@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+Import('env')
+
+env_alembic = env.Clone()
+env_alembic.disable_warnings()
+
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Half/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Half/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Iex/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IexMath/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/Imath/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThread.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutex.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadPool.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphore.cpp'))
+
+if(env['platform'] == 'windows'):
+    env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutexWin32.cpp'))
+    env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphoreWin32.cpp'))
+    env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadWin32.cpp'))
+else:
+    env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadMutexPosix.cpp'))
+    env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadPosix.cpp'))
+    env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphorePosixCompat.cpp'))
+    env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/IlmThread/IlmThreadSemaphorePosix.cpp'))
+
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/openexr/IlmBase/config/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Abc/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCollection/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreAbstract/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreFactory/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreLayer/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcCoreOgawa/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcGeom/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/AbcMaterial/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Ogawa/*.cpp'))
+env_alembic.add_source_files(env.modules_sources, Glob('#thirdparty/alembic/lib/Alembic/Util/*.cpp'))
+env_alembic.Append(CPPPATH=['#thirdparty/alembic/lib'])
+env_alembic.Append(CPPPATH=['#thirdparty/alembic/lib/Alembic/Util'])
+env_alembic.Append(CPPPATH=['#thirdparty/zlib/'])
+env_alembic.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Iex'])
+env_alembic.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Half'])
+env_alembic.Append(CPPPATH=['#thirdparty/openexr/IlmBase/IexMath'])
+env_alembic.Append(CPPPATH=['#thirdparty/openexr/IlmBase/Imath'])
+env_alembic.Append(CPPPATH=['#thirdparty/openexr/IlmBase/lex'])
+env_alembic.Append(CPPPATH=['ilmbase'])
+env_alembic.Append(CPPPATH=['.'])
+
+if (env.msvc == False and env['platform'] == 'windows' ):
+     env_alembic.Append(LDFLAGS="-pthread")
+
+if(env['platform'] == 'windows'):
+    env_alembic.Append(CPPFLAGS=['-DPLATFORM_WINDOWS'])
+    env_alembic.Append(CPPFLAGS=['-DPLATFORM=WINDOWS'])
+elif(env['platform'] == 'x11'):
+    env_alembic.Append(CPPFLAGS=['-DPLATFORM_LINUX'])
+    env_alembic.Append(CPPFLAGS=['-DPLATFORM=LINUX'])
+elif(env['platform'] == 'osx'):
+    env_alembic.Append(CPPFLAGS=['-DPLATFORM_DARWIN'])
+    env_alembic.Append(CPPFLAGS=['-DPLATFORM=DARWIN'])
+
+# Godot's own source files
+env_alembic.add_source_files(env.modules_sources, "*.cpp")

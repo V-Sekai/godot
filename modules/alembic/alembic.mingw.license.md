@@ -1,0 +1,1 @@
+Alembic patch is from https://github.com/Alexpux/MINGW-packages/blob/master/mingw-w64-alembic/0002-alembic-1.7.9-remove-msc_ver-and-fix-builtins-and-includes.patch under bsd-3 clause.
