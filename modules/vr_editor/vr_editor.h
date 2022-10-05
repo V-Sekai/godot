@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  GodotEditor.kt                                                        */
+/*  vr_editor.h                                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,48 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.editor
+#pragma once
 
-/**
- * Primary window of the Godot Editor.
- *
- * This is the implementation of the editor used when running on HorizonOS devices.
- */
-open class GodotEditor : BaseGodotEditor() {
+#include "editor/editor_node.h"
+#include "editor/scene/3d/node_3d_editor_plugin.h"
+#include "scene/main/viewport.h"
+#include "vr_editor_avatar.h"
+#include "vr_window.h"
 
-	override fun getExcludedPermissions(): MutableSet<String> {
-		val excludedPermissions = super.getExcludedPermissions().apply {
-			// The AVATAR_CAMERA and HEADSET_CAMERA permissions are requested when `CameraFeed.feed_is_active`
-			// is enabled.
-//			add("horizonos.permission.AVATAR_CAMERA")
-//			add("horizonos.permission.HEADSET_CAMERA")
-		}
-		return excludedPermissions
-	}
+class VREditor : public Node3D {
+	GDCLASS(VREditor, Node3D);
 
-	override fun getXRRuntimePermissions(): MutableSet<String> {
-		val xrRuntimePermissions = super.getXRRuntimePermissions()
-//		xrRuntimePermissions.add("com.oculus.permission.USE_SCENE")
-//		xrRuntimePermissions.add("horizonos.permission.USE_SCENE")
-		return xrRuntimePermissions
-	}
-}
+	enum {
+		GIZMO_VR_LAYER = Node3DEditorViewport::GIZMO_BASE_LAYER + 4, // 0-3 are taken by our normal views and while not shown, may still create/update things
+	};
+
+private:
+	Viewport *xr_viewport = nullptr; // Viewport we render our XR content too
+
+	VRWindow *editor_window = nullptr; // Window in which we show our editor
+	EditorNode *editor_node = nullptr; // Our editor instance
+	Node3DEditor *spatial_editor = nullptr; // Our 3D editor instance
+
+	VREditorAvatar *avatar = nullptr;
+
+	void _update_layers();
+
+	/* gizmo logic */
+	RID move_gizmo_instance[3], move_plane_gizmo_instance[3], rotate_gizmo_instance[4], scale_gizmo_instance[3], scale_plane_gizmo_instance[3], axis_gizmo_instance[3];
+	void _init_gizmo_instance();
+	void _finish_gizmo_instances();
+
+protected:
+	EditorNode *get_editor_node() const { return editor_node; }
+
+	static void _bind_methods();
+	void _notification(int p_notification);
+
+public:
+	static EditorNode *init_editor(SceneTree *p_scene_tree);
+
+	void update_transform_gizmo_view();
+
+	VREditor(Viewport *p_xr_viewport);
+	~VREditor();
+};

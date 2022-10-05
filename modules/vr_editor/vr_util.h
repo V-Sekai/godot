@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  GodotEditor.kt                                                        */
+/*  vr_util.h                                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,16 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.editor
+#pragma once
 
-/**
- * Primary window of the Godot Editor.
- *
- * This is the implementation of the editor used when running on HorizonOS devices.
- */
-open class GodotEditor : BaseGodotEditor() {
+#include "editor/settings/editor_settings.h"
+#include "scene/main/viewport.h"
+#include "servers/xr/xr_interface.h"
 
-	override fun getExcludedPermissions(): MutableSet<String> {
-		val excludedPermissions = super.getExcludedPermissions().apply {
-			// The AVATAR_CAMERA and HEADSET_CAMERA permissions are requested when `CameraFeed.feed_is_active`
-			// is enabled.
-//			add("horizonos.permission.AVATAR_CAMERA")
-//			add("horizonos.permission.HEADSET_CAMERA")
-		}
-		return excludedPermissions
-	}
+bool enable_passthrough(Ref<XRInterface> p_xr_interface, Viewport *p_viewport);
 
-	override fun getXRRuntimePermissions(): MutableSet<String> {
-		val xrRuntimePermissions = super.getXRRuntimePermissions()
-//		xrRuntimePermissions.add("com.oculus.permission.USE_SCENE")
-//		xrRuntimePermissions.add("horizonos.permission.USE_SCENE")
-		return xrRuntimePermissions
-	}
-}
+void disable_passthrough(Ref<XRInterface> p_xr_interface, Viewport *p_viewport);
+
+void update_passthrough_mode(Ref<XRInterface> p_xr_interface, Viewport *p_viewport);
+
+void configure_xr_interface(Ref<XRInterface> p_xr_interface, Viewport *p_viewport);

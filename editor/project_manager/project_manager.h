@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include "modules/modules_enabled.gen.h"
 #include "scene/gui/dialogs.h"
 #include "scene/gui/scroll_container.h"
 
@@ -249,6 +250,9 @@ class ProjectManager : public Control {
 	String version_convert_feature;
 	bool open_in_recovery_mode = false;
 	bool open_in_verbose_mode = false;
+#ifdef MODULE_VR_EDITOR_ENABLED
+	bool open_in_xr = false;
+#endif
 
 #ifndef DISABLE_DEPRECATED
 	void _minor_project_migrate();

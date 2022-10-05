@@ -51,6 +51,7 @@
 #include "editor/project_manager/engine_update_label.h"
 #include "editor/translations/editor_translation.h"
 #include "main/main.h"
+#include "modules/modules_enabled.gen.h"
 #include "modules/regex/regex.h"
 #include "scene/gui/color_picker.h"
 #include "scene/main/node.h"
@@ -625,6 +626,18 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	EDITOR_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "interface/multi_window/restore_windows_on_load", true, "");
 	EDITOR_SETTING_BASIC(Variant::BOOL, PROPERTY_HINT_NONE, "interface/multi_window/maximize_window", false, "");
 	set_restart_if_changed("interface/multi_window/enable", true);
+
+#ifdef MODULE_VR_EDITOR_ENABLED
+	// XR Editor
+#ifdef ANDROID_ENABLED
+	EDITOR_SETTING(Variant::BOOL, PROPERTY_HINT_NONE, "interface/xr_editor/enable_passthrough", true, "");
+#endif
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/xr_editor/grab_translation_deadzone", 0.025, "0.01,0.1,0.005");
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/xr_editor/grab_translation_speed_factor", 0.25, "0.1,1,0.05");
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/xr_editor/scroll_translation_deadzone", 0.25, "0.1,1,0.05");
+	EDITOR_SETTING(Variant::FLOAT, PROPERTY_HINT_RANGE, "interface/xr_editor/scroll_translation_speed_factor", 0.5, "0.1,1,0.1");
+	EDITOR_SETTING(Variant::INT, PROPERTY_HINT_RANGE, "interface/xr_editor/rotation_snap_angle_in_degrees", 10, "10,90,10");
+#endif
 
 	/* Filesystem */
 

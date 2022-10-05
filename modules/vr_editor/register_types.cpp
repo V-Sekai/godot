@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  GodotEditor.kt                                                        */
+/*  register_types.cpp                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.editor
+#include "register_types.h"
 
-/**
- * Primary window of the Godot Editor.
- *
- * This is the implementation of the editor used when running on HorizonOS devices.
- */
-open class GodotEditor : BaseGodotEditor() {
+#include "editor/editor_node.h"
 
-	override fun getExcludedPermissions(): MutableSet<String> {
-		val excludedPermissions = super.getExcludedPermissions().apply {
-			// The AVATAR_CAMERA and HEADSET_CAMERA permissions are requested when `CameraFeed.feed_is_active`
-			// is enabled.
-//			add("horizonos.permission.AVATAR_CAMERA")
-//			add("horizonos.permission.HEADSET_CAMERA")
-		}
-		return excludedPermissions
-	}
+void initialize_vr_editor_module(ModuleInitializationLevel p_level) {
+}
 
-	override fun getXRRuntimePermissions(): MutableSet<String> {
-		val xrRuntimePermissions = super.getXRRuntimePermissions()
-//		xrRuntimePermissions.add("com.oculus.permission.USE_SCENE")
-//		xrRuntimePermissions.add("horizonos.permission.USE_SCENE")
-		return xrRuntimePermissions
-	}
+void uninitialize_vr_editor_module(ModuleInitializationLevel p_level) {
 }

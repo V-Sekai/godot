@@ -36,6 +36,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void XRCamera3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_tracking_confidence"), &XRCamera3D::get_tracking_confidence);
+}
+
 void XRCamera3D::_bind_tracker() {
 	XRServer *xr_server = XRServer::get_singleton();
 	ERR_FAIL_NULL(xr_server);
@@ -98,6 +102,16 @@ PackedStringArray XRCamera3D::get_configuration_warnings() const {
 	}
 
 	return warnings;
+}
+
+XRPose::TrackingConfidence XRCamera3D::get_tracking_confidence() {
+	if (tracker.is_null()) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else if (!tracker->has_pose(pose_name)) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else {
+		return tracker->get_pose(pose_name)->get_tracking_confidence();
+	}
 }
 
 Vector3 XRCamera3D::project_local_ray_normal(const Point2 &p_pos) const {
@@ -249,6 +263,7 @@ void XRNode3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_is_active"), &XRNode3D::get_is_active);
 	ClassDB::bind_method(D_METHOD("get_has_tracking_data"), &XRNode3D::get_has_tracking_data);
 	ClassDB::bind_method(D_METHOD("get_pose"), &XRNode3D::get_pose);
+	ClassDB::bind_method(D_METHOD("get_tracking_confidence"), &XRNode3D::get_tracking_confidence);
 	ClassDB::bind_method(D_METHOD("trigger_haptic_pulse", "action_name", "frequency", "amplitude", "duration_sec", "delay_sec"), &XRNode3D::trigger_haptic_pulse);
 
 	ADD_SIGNAL(MethodInfo("tracking_changed", PropertyInfo(Variant::BOOL, "tracking")));
@@ -338,6 +353,16 @@ bool XRNode3D::get_is_active() const {
 
 bool XRNode3D::get_has_tracking_data() const {
 	return has_tracking_data;
+}
+
+XRPose::TrackingConfidence XRNode3D::get_tracking_confidence() {
+	if (tracker.is_null()) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else if (!tracker->has_pose(pose_name)) {
+		return XRPose::XR_TRACKING_CONFIDENCE_NONE;
+	} else {
+		return tracker->get_pose(pose_name)->get_tracking_confidence();
+	}
 }
 
 void XRNode3D::trigger_haptic_pulse(const String &p_action_name, double p_frequency, double p_amplitude, double p_duration_sec, double p_delay_sec) {
@@ -726,7 +751,7 @@ void XROrigin3D::_set_current(bool p_enabled, bool p_update_others) {
 	// This is then called a second time on NOTIFICATION_ENTER_TREE where we actually process activating this origin node.
 	current = p_enabled;
 
-	if (!is_inside_tree() || Engine::get_singleton()->is_editor_hint()) {
+	if (!is_inside_tree()) {
 		return;
 	}
 
@@ -788,48 +813,44 @@ void XROrigin3D::_notification(int p_what) {
 
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
-			if (!Engine::get_singleton()->is_editor_hint()) {
-				if (origin_nodes.is_empty()) {
-					// first entry always becomes current
-					current = true;
-				}
+			if (origin_nodes.is_empty()) {
+				// first entry always becomes current
+				current = true;
+			}
 
-				origin_nodes.push_back(this);
+			origin_nodes.push_back(this);
 
-				if (current) {
-					// set this again so we do whatever setup is needed.
-					set_current(true);
-				}
+			if (current) {
+				// set this again so we do whatever setup is needed.
+				set_current(true);
 			}
 		} break;
 
 		case NOTIFICATION_EXIT_TREE: {
-			if (!Engine::get_singleton()->is_editor_hint()) {
-				origin_nodes.erase(this);
+			origin_nodes.erase(this);
 
-				if (current) {
-					// We are no longer current
-					set_current(false);
-				}
+			if (current) {
+				// We are no longer current
+				set_current(false);
 			}
 		} break;
 
 		case NOTIFICATION_LOCAL_TRANSFORM_CHANGED:
 		case NOTIFICATION_TRANSFORM_CHANGED: {
-			if (current && !Engine::get_singleton()->is_editor_hint() && !is_physics_interpolated_and_enabled()) {
+			if (current && !is_physics_interpolated_and_enabled()) {
 				xr_server->set_world_origin(get_global_transform());
 			}
 		} break;
 
 		case NOTIFICATION_INTERNAL_PROCESS: {
-			if (current && !Engine::get_singleton()->is_editor_hint() && is_physics_interpolated_and_enabled()) {
+			if (current && is_physics_interpolated_and_enabled()) {
 				xr_server->set_world_origin(get_global_transform_interpolated());
 			}
 		} break;
 	}
 
 	if (current) {
-		// send our notification to all active XE interfaces, they may need to react to it also
+		// send our notification to all active XR interfaces, they may need to react to it also
 		for (int i = 0; i < xr_server->get_interface_count(); i++) {
 			Ref<XRInterface> interface = xr_server->get_interface(i);
 			if (interface.is_valid() && interface->is_initialized()) {
@@ -840,7 +861,7 @@ void XROrigin3D::_notification(int p_what) {
 }
 
 void XROrigin3D::_physics_interpolated_changed() {
-	if (current && !Engine::get_singleton()->is_editor_hint()) {
+	if (current) {
 		set_process_internal(is_physics_interpolated());
 	}
 }

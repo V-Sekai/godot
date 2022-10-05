@@ -147,6 +147,10 @@
 #endif // TOOLS_ENABLED && !GDSCRIPT_NO_LSP
 #endif // MODULE_GDSCRIPT_ENABLED
 
+#ifdef MODULE_VR_EDITOR_ENABLED
+#include "modules/vr_editor/vr_editor.h"
+#endif
+
 /* Static members */
 
 // Singletons
@@ -4419,8 +4423,13 @@ int Main::start() {
 				translation_server->get_editor_domain()->set_pseudolocalization_enabled(true);
 			}
 
-			editor_node = memnew(EditorNode);
-			sml->get_root()->add_child(editor_node);
+#ifdef MODULE_VR_EDITOR_ENABLED
+			editor_node = VREditor::init_editor(sml);
+#endif
+			if (!editor_node) {
+				editor_node = memnew(EditorNode);
+				sml->get_root()->add_child(editor_node);
+			}
 
 			if (!_export_preset.is_empty()) {
 				editor_node->export_preset(_export_preset, positional_arg, export_debug, export_pack_only, install_android_build_template, export_patch, patches);

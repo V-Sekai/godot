@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  GodotEditor.kt                                                        */
+/*  vr_collision.h                                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,67 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.editor
+#pragma once
 
-/**
- * Primary window of the Godot Editor.
- *
- * This is the implementation of the editor used when running on HorizonOS devices.
- */
-open class GodotEditor : BaseGodotEditor() {
+#include "scene/3d/node_3d.h"
+#include "scene/3d/xr/xr_nodes.h"
 
-	override fun getExcludedPermissions(): MutableSet<String> {
-		val excludedPermissions = super.getExcludedPermissions().apply {
-			// The AVATAR_CAMERA and HEADSET_CAMERA permissions are requested when `CameraFeed.feed_is_active`
-			// is enabled.
-//			add("horizonos.permission.AVATAR_CAMERA")
-//			add("horizonos.permission.HEADSET_CAMERA")
-		}
-		return excludedPermissions
-	}
+// VRCollision is a helper class for our poke and grab detection nodes to test if we're interacting with a shape.
+// We can't use the physics engine in the editor so this is a bare minimum implementation suitable specifically
+// for our VR interface. Note that it is inherited from Node3D so it can be added to our scene tree.
 
-	override fun getXRRuntimePermissions(): MutableSet<String> {
-		val xrRuntimePermissions = super.getXRRuntimePermissions()
-//		xrRuntimePermissions.add("com.oculus.permission.USE_SCENE")
-//		xrRuntimePermissions.add("horizonos.permission.USE_SCENE")
-		return xrRuntimePermissions
-	}
-}
+class VRCollision : public Node3D {
+	GDCLASS(VRCollision, Node3D);
+
+private:
+	bool enabled = true;
+	bool can_interact = true;
+	bool can_grab = false;
+
+	static Vector<VRCollision *> collisions;
+
+protected:
+	static void _bind_methods();
+
+public:
+	bool is_enabled() const { return enabled; }
+	void set_enabled(bool p_enabled) { enabled = p_enabled; }
+
+	bool get_can_interact() const { return can_interact; }
+	void set_can_interact(bool p_enable) { can_interact = p_enable; }
+
+	bool get_can_grab() const { return can_grab; }
+	void set_can_grab(bool p_enable) { can_grab = p_enable; }
+
+	virtual bool raycast(const Vector3 &p_global_origin, const Vector3 &p_global_dir, Vector3 &r_position) = 0;
+	virtual bool within_sphere(const Vector3 &p_global_origin, float p_radius, Vector3 &r_position) = 0;
+
+	static Vector<VRCollision *> get_hit_tests(bool p_inc_can_interact, bool p_inc_can_grab);
+
+	enum InteractType {
+		INTERACT_ENTER,
+		INTERACT_MOVED,
+		INTERACT_LEAVE,
+		INTERACT_PRESSED,
+		INTERACT_RELEASED
+	};
+
+	enum CollisionType {
+		NONE,
+		RAYCAST,
+		SPHERE
+	};
+
+	void on_grab_pressed(XRController3D &controller, const Vector3 &collision_position);
+	void on_grab_released(XRController3D &controller);
+
+	void _on_interact_enter(const Vector3 &p_position);
+	void _on_interact_moved(const Vector3 &p_position, float p_pressure);
+	void _on_interact_leave(const Vector3 &p_position);
+	void _on_interact_pressed(const Vector3 &p_position, MouseButton p_button);
+	void _on_interact_released(const Vector3 &p_position, MouseButton p_button);
+	void _on_interact_scrolled(const Vector3 &p_position, const Vector2 &p_scroll_delta);
+
+	VRCollision();
+	virtual ~VRCollision();
+};

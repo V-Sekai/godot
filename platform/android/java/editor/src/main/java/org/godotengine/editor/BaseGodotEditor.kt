@@ -108,6 +108,7 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 
 		// Info for the various classes used by the editor.
 		internal val EDITOR_MAIN_INFO = EditorWindowInfo(GodotEditor::class.java, 777, "")
+		internal val XR_EDITOR_MAIN_INFO = EditorWindowInfo(GodotXREditor::class.java, 1777, ":GodotXREditor")
 		internal val RUN_GAME_INFO = EditorWindowInfo(GodotGame::class.java, 667, ":GodotGame", LaunchPolicy.AUTO)
 		internal val EMBEDDED_RUN_GAME_INFO = EditorWindowInfo(EmbeddedGodotGame::class.java, 2667, ":EmbeddedGodotGame")
 		internal val XR_RUN_GAME_INFO = EditorWindowInfo(GodotXRGame::class.java, 1667, ":GodotXRGame")
@@ -393,6 +394,10 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 		}
 
 		if (hasEditor) {
+			if (xrMode == XR_MODE_ON ||
+				((xrMode == XR_MODE_DEFAULT && GodotLib.getGlobal("xr/openxr/enabled.editor").toBoolean()))) {
+				return XR_EDITOR_MAIN_INFO
+			}
 			return EDITOR_MAIN_INFO
 		}
 
@@ -436,6 +441,7 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 			EDITOR_MAIN_INFO.windowId -> EDITOR_MAIN_INFO
 			XR_RUN_GAME_INFO.windowId -> XR_RUN_GAME_INFO
 			EMBEDDED_RUN_GAME_INFO.windowId -> EMBEDDED_RUN_GAME_INFO
+			XR_EDITOR_MAIN_INFO.windowId -> XR_EDITOR_MAIN_INFO
 			else -> null
 		}
 	}
@@ -503,7 +509,12 @@ abstract class BaseGodotEditor : GodotActivity(), GameMenuFragment.GameMenuListe
 		} else {
 			Log.d(TAG, "Starting ${editorWindowInfo.windowClassName} with parameters ${args.contentToString()}")
 			newInstance.putExtra(EXTRA_NEW_LAUNCH, true)
-				.putExtra(EditorMessageDispatcher.EXTRA_MSG_DISPATCHER_PAYLOAD, editorMessageDispatcher.getMessageDispatcherPayload())
+				if (editorWindowInfo != EDITOR_MAIN_INFO && editorWindowInfo != XR_EDITOR_MAIN_INFO) {
+					newInstance.putExtra(
+						EditorMessageDispatcher.EXTRA_MSG_DISPATCHER_PAYLOAD,
+						editorMessageDispatcher.getMessageDispatcherPayload()
+					)
+				}
 			startActivity(newInstance, activityOptions?.toBundle())
 		}
 		return editorWindowInfo.windowId

@@ -286,6 +286,9 @@ void ProjectManager::_update_theme(bool p_skip_creation) {
 			open_btn_container->add_theme_constant_override("separation", 0);
 			open_options_popup->set_item_icon(0, get_editor_theme_icon(SNAME("Notification")));
 			open_options_popup->set_item_icon(1, get_editor_theme_icon(SNAME("NodeWarning")));
+#ifdef MODULE_VR_EDITOR_ENABLED
+			open_options_popup->set_item_icon(2, get_editor_theme_icon(SNAME("Edit")));
+#endif
 		}
 
 		// Dialogs
@@ -524,6 +527,12 @@ void ProjectManager::_open_selected_projects() {
 		args.push_back(path);
 
 		args.push_back("--editor");
+#ifdef MODULE_VR_EDITOR_ENABLED
+		if (open_in_xr) {
+			args.push_back("--xr-mode");
+			args.push_back("on");
+		}
+#endif
 
 		if (open_in_recovery_mode) {
 			args.push_back("--recovery-mode");
@@ -557,6 +566,11 @@ void ProjectManager::_open_selected_projects_check_warnings() {
 	const Size2i popup_min_size = Size2i(400.0 * EDSCALE, 0);
 
 	if (selected_list.size() > 1) {
+#ifdef MODULE_VR_EDITOR_ENABLED
+		if (open_in_xr) {
+			return;
+		}
+#endif
 		multi_open_ask->set_text(vformat(TTR("You requested to open %d projects in parallel. Do you confirm?\nNote that usual checks for engine version compatibility will be bypassed."), selected_list.size()));
 		multi_open_ask->popup_centered(popup_min_size);
 		return;
@@ -851,6 +865,12 @@ void ProjectManager::_on_open_options_selected(int p_option) {
 		case 1: // Edit in recovery mode.
 			_open_recovery_mode_ask(true);
 			break;
+#ifdef MODULE_VR_EDITOR_ENABLED
+		case 2: // Edit in XR.
+			open_in_xr = true;
+			_open_selected_projects_check_warnings();
+			break;
+#endif
 	}
 }
 
@@ -1604,6 +1624,9 @@ ProjectManager::ProjectManager() {
 			open_options_popup = memnew(PopupMenu);
 			open_options_popup->add_item(TTRC("Edit in verbose mode"));
 			open_options_popup->add_item(TTRC("Edit in recovery mode"));
+#ifdef MODULE_VR_EDITOR_ENABLED
+			open_options_popup->add_item(TTRC("Edit in XR"));
+#endif
 			open_options_popup->connect(SceneStringName(id_pressed), callable_mp(this, &ProjectManager::_on_open_options_selected));
 			open_options_btn->add_child(open_options_popup);
 

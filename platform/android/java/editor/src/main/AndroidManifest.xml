@@ -117,6 +117,16 @@
             android:screenOrientation="landscape"
             android:resizeableActivity="false"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+        <activity
+            android:name=".GodotXREditor"
+            android:configChanges="layoutDirection|locale|orientation|keyboardHidden|screenSize|smallestScreenSize|density|keyboard|navigation|screenLayout|uiMode"
+            android:process=":GodotXREditor"
+            android:launchMode="singleTask"
+            android:exported="false"
+            android:autoRemoveFromRecents="true"
+            android:screenOrientation="landscape"
+            android:resizeableActivity="false"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"/>
 
         <!--
         We remove this meta-data originating from the vendors plugin as we only need the loader for
@@ -125,10 +135,10 @@
         This needs to be removed once we start implementing the immersive version of the project
         manager and editor windows.
          -->
-        <meta-data
-            android:name="org.godotengine.plugin.v2.GodotOpenXR"
-            android:value="org.godotengine.openxr.vendors.GodotOpenXR"
-            tools:node="remove" />
+<!--        <meta-data-->
+<!--            android:name="org.godotengine.plugin.v2.GodotOpenXR"-->
+<!--            android:value="org.godotengine.openxr.vendors.GodotOpenXR"-->
+<!--            tools:node="remove" />-->
     </application>
 
 </manifest>

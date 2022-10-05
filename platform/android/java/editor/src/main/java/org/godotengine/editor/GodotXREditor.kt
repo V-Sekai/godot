@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  GodotXRGame.kt                                                       */
+/*  GodotXREditor.kt                                                     */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -30,15 +30,12 @@
 
 package org.godotengine.editor
 
-import org.godotengine.godot.GodotLib
 import org.godotengine.godot.xr.XRMode
 
 /**
- * Provide support for running XR apps / games from the editor window.
+ * Provide support for running the editor window in an immersive environment.
  */
-open class GodotXRGame: BaseGodotGame() {
-
-	override fun overrideOrientationRequest() = true
+open class GodotXREditor: GodotEditor() {
 
 	override fun getCommandLine(): MutableList<String> {
 		val updatedArgs = super.getCommandLine()
@@ -52,27 +49,7 @@ open class GodotXRGame: BaseGodotGame() {
 		return updatedArgs
 	}
 
-	override fun getEditorWindowInfo() = XR_RUN_GAME_INFO
+	override fun getEditorWindowInfo() = XR_EDITOR_MAIN_INFO
 
 	override fun getGodotAppLayout() = R.layout.godot_xr_layout
-
-	override fun getProjectPermissionsToEnable(): MutableList<String> {
-		val permissionsToEnable = super.getProjectPermissionsToEnable()
-
-		val xrRuntimePermission = getXRRuntimePermissions()
-		if (xrRuntimePermission.isNotEmpty() && GodotLib.getGlobal("xr/openxr/enabled").toBoolean()) {
-			// We only request permissions when the `automatically_request_runtime_permissions`
-			// project setting is enabled.
-			// If the project setting is not defined, we fall-back to the default behavior which is
-			// to automatically request permissions.
-			val automaticallyRequestPermissionsSetting = GodotLib.getGlobal("xr/openxr/extensions/automatically_request_runtime_permissions")
-			val automaticPermissionsRequestEnabled = automaticallyRequestPermissionsSetting.isNullOrEmpty() ||
-				automaticallyRequestPermissionsSetting.toBoolean()
-			if (automaticPermissionsRequestEnabled) {
-				permissionsToEnable.addAll(xrRuntimePermission)
-			}
-		}
-
-		return permissionsToEnable
-	}
 }

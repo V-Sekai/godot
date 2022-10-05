@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  GodotEditor.kt                                                        */
+/*  vr_keyboard.h                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-package org.godotengine.editor
+#pragma once
 
-/**
- * Primary window of the Godot Editor.
- *
- * This is the implementation of the editor used when running on HorizonOS devices.
- */
-open class GodotEditor : BaseGodotEditor() {
+#include "vr_window.h"
 
-	override fun getExcludedPermissions(): MutableSet<String> {
-		val excludedPermissions = super.getExcludedPermissions().apply {
-			// The AVATAR_CAMERA and HEADSET_CAMERA permissions are requested when `CameraFeed.feed_is_active`
-			// is enabled.
-//			add("horizonos.permission.AVATAR_CAMERA")
-//			add("horizonos.permission.HEADSET_CAMERA")
-		}
-		return excludedPermissions
-	}
+#include "scene/gui/button.h"
+#include "scene/gui/control.h"
 
-	override fun getXRRuntimePermissions(): MutableSet<String> {
-		val xrRuntimePermissions = super.getXRRuntimePermissions()
-//		xrRuntimePermissions.add("com.oculus.permission.USE_SCENE")
-//		xrRuntimePermissions.add("horizonos.permission.USE_SCENE")
-		return xrRuntimePermissions
-	}
-}
+class VRKeyboard : public VRWindow {
+	GDCLASS(VRKeyboard, VRWindow);
+
+private:
+	Ref<Theme> theme;
+
+	void _on_key_down(String p_scan_code_text, int p_unicode);
+	void _on_key_up(String p_scan_code_text, int p_unicode);
+	void _on_key_event(String p_scan_code_text, int p_unicode, bool pressed);
+	void _toggle_shift();
+	Control *_create_keyboard_row(const char *p_keys);
+
+	Button *shift_button;
+	Vector<Button *> update_case_on_shift;
+
+protected:
+	virtual void input(const Ref<InputEvent> &p_event) override;
+
+public:
+	VRKeyboard();
+	~VRKeyboard();
+};

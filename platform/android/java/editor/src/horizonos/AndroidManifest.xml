@@ -73,6 +73,18 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".GodotXREditor"
+            android:exported="false"
+            tools:node="merge">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.oculus.intent.category.VR" />
+                <category android:name="org.khronos.openxr.intent.category.IMMERSIVE_HMD" />
+            </intent-filter>
+        </activity>
+
         <!-- Supported Meta devices -->
         <meta-data
             android:name="com.oculus.supportedDevices"
