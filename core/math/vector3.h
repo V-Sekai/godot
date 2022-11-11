@@ -55,7 +55,7 @@ struct _NO_DISCARD_ Vector3 {
 			real_t z;
 		};
 
-		real_t coord[3] = { 0 };
+		real_t coord[3] = { 0, 0, 0 };
 	};
 
 	_FORCE_INLINE_ const real_t &operator[](const int p_axis) const {
