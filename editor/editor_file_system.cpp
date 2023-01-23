@@ -44,6 +44,7 @@
 #include "editor/editor_paths.h"
 #include "editor/editor_resource_preview.h"
 #include "editor/editor_settings.h"
+#include "editor/import/import_pipeline.h"
 
 EditorFileSystem *EditorFileSystem::singleton = nullptr;
 //the name is the version, to keep compatibility with different versions of Godot
@@ -1927,7 +1928,7 @@ Error EditorFileSystem::_reimport_group(const String &p_group_file, const Vector
 	return err;
 }
 
-Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<StringName, Variant> &p_custom_options, const String &p_custom_importer, Variant *p_generator_parameters) {
+Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<StringName, Variant> &p_custom_options, const String &p_custom_importer, Variant *p_generator_parameters, Ref<ImportPipeline> p_custom_pipeline) {
 	EditorFileSystemDirectory *fs = nullptr;
 	int cpos = -1;
 	bool found = _find_file(p_file, &fs, cpos);
@@ -1937,9 +1938,14 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 
 	HashMap<StringName, Variant> params = p_custom_options;
 	String importer_name; //empty by default though
+	Ref<ImportPipeline> pipeline;
 
 	if (!p_custom_importer.is_empty()) {
 		importer_name = p_custom_importer;
+	}
+
+	if (p_custom_pipeline != nullptr) {
+		pipeline = p_custom_pipeline;
 	}
 
 	ResourceUID::ID uid = ResourceUID::INVALID_ID;
@@ -1978,6 +1984,9 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 					if (cf->has_section_key("remap", "generator_parameters")) {
 						generator_parameters = cf->get_value("remap", "generator_parameters");
 					}
+				}
+				if (cf->has_section("post_import")) {
+					pipeline = cf->get_value("post_import", "pipeline");
 				}
 			}
 		}
@@ -2040,6 +2049,21 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 
 	ERR_FAIL_COND_V_MSG(err != OK, ERR_FILE_UNRECOGNIZED, "Error importing '" + p_file + "'.");
 
+	String save_extension = importer->get_save_extension();
+	if (pipeline != nullptr) {
+		Ref<Resource> resource = ResourceLoader::load(base_path + "." + save_extension);
+		resource = pipeline->execute(resource, p_file);
+		if (resource->get_class() != importer->get_resource_type()) {
+			ERR_PRINT("Pipeline can not change the resulting Resource type.");
+		} else {
+			if (save_extension == "ctex") {
+				save_extension = "res"; //todo: investigate why svg uses a not recognised save extension
+			}
+			resource->set_path(base_path + "." + save_extension, true);
+			EditorNode::get_singleton()->save_resource(resource);
+		}
+	}
+
 	//as import is complete, save the .import file
 
 	Vector<String> dest_paths;
@@ -2066,18 +2090,18 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 		f->store_line("uid=\"" + ResourceUID::get_singleton()->id_to_text(uid) + "\""); //store in readable format
 
 		if (err == OK) {
-			if (importer->get_save_extension().is_empty()) {
+			if (save_extension.is_empty()) {
 				//no path
 			} else if (import_variants.size()) {
 				//import with variants
 				for (const String &E : import_variants) {
-					String path = base_path.c_escape() + "." + E + "." + importer->get_save_extension();
+					String path = base_path.c_escape() + "." + E + "." + save_extension;
 
 					f->store_line("path." + E + "=\"" + path + "\"");
 					dest_paths.push_back(path);
 				}
 			} else {
-				String path = base_path + "." + importer->get_save_extension();
+				String path = base_path + "." + save_extension;
 				f->store_line("path=\"" + path + "\"");
 				dest_paths.push_back(path);
 			}
@@ -2131,6 +2155,13 @@ Error EditorFileSystem::_reimport_file(const String &p_file, const HashMap<Strin
 			String value;
 			VariantWriter::write_to_string(params[base], value);
 			f->store_line(base + "=" + value);
+		}
+
+		if (pipeline != nullptr) {
+			f->store_line("");
+			f->store_line("[post_import]");
+			f->store_line("");
+			f->store_line("pipeline=" + Variant(pipeline).get_construct_string() + "\n");
 		}
 	}
 
@@ -2192,8 +2223,9 @@ void EditorFileSystem::_find_group_files(EditorFileSystemDirectory *efd, HashMap
 	}
 }
 
-void EditorFileSystem::reimport_file_with_custom_parameters(const String &p_file, const String &p_importer, const HashMap<StringName, Variant> &p_custom_params) {
-	_reimport_file(p_file, p_custom_params, p_importer);
+
+void EditorFileSystem::reimport_file_with_custom_parameters(const String &p_file, const String &p_importer, const HashMap<StringName, Variant> &p_custom_params, Ref<ImportPipeline> p_custom_pipeline) {
+	_reimport_file(p_file, p_custom_params, p_importer, nullptr, p_custom_pipeline);
 
 	// Emit the resource_reimported signal for the single file we just reimported.
 	Vector<String> reloads;
