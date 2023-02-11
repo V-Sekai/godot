@@ -155,6 +155,13 @@
 				Sets camera to use orthogonal projection, also known as orthographic projection. Objects remain the same size on the screen no matter how far away they are.
 			</description>
 		</method>
+		<method name="camera_set_override_projection">
+			<return type="void" />
+			<param index="0" name="camera" type="RID" />
+			<param index="1" name="matrix" type="Projection" />
+			<description>
+			</description>
+		</method>
 		<method name="camera_set_perspective">
 			<return type="void" />
 			<param index="0" name="camera" type="RID" />
