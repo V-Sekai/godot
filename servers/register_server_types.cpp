@@ -60,6 +60,7 @@
 #include "display/native_menu.h"
 #include "display_server.h"
 #include "movie_writer/movie_writer.h"
+#include "movie_writer/movie_writer_exrwav.h"
 #include "movie_writer/movie_writer_mjpeg.h"
 #include "movie_writer/movie_writer_pngwav.h"
 #include "rendering/renderer_rd/framebuffer_cache_rd.h"
@@ -135,6 +136,7 @@ static bool has_server_feature_callback(const String &p_feature) {
 
 static MovieWriterMJPEG *writer_mjpeg = nullptr;
 static MovieWriterPNGWAV *writer_pngwav = nullptr;
+static MovieWriterEXRWAV *writer_exrwav = nullptr;
 
 void register_server_types() {
 	OS::get_singleton()->benchmark_begin_measure("Servers", "Register Extensions");
@@ -351,6 +353,11 @@ void register_server_types() {
 		writer_pngwav = memnew(MovieWriterPNGWAV);
 		MovieWriter::add_writer(writer_pngwav);
 	}
+    
+	if (GD_IS_CLASS_ENABLED(MovieWriterEXRWAV)) {
+		writer_exr = memnew(MovieWriterEXRWAV);
+		MovieWriter::add_writer(writer_exr);
+	}
 
 	OS::get_singleton()->benchmark_end_measure("Servers", "Register Extensions");
 }
@@ -365,6 +372,9 @@ void unregister_server_types() {
 	}
 	if (GD_IS_CLASS_ENABLED(MovieWriterPNGWAV)) {
 		memdelete(writer_pngwav);
+	}
+	if (GD_IS_CLASS_ENABLED(MovieWriterEXRWAV)) {
+		memdelete(writer_exr);
 	}
 	OS::get_singleton()->benchmark_end_measure("Servers", "Unregister Extensions");
 }
