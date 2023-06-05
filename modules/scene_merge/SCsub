@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_scene_optimize = env_modules.Clone()
+env_scene_optimize.Prepend(CPPPATH=["#thirdparty/mesh_optimizer"])
+
+env_thirdparty = env_scene_optimize.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(env.modules_sources, Glob("#thirdparty/meshoptimizer/src/*.cpp"))
+
+# Godot's own source files
+env_scene_optimize.add_source_files(env.modules_sources, "*.cpp")
