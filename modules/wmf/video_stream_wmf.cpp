@@ -1,11 +1,10 @@
 #include "video_stream_wmf.h"
 
 #include "core/io/file_access.h"
-#include "sample_grabber_callback.h"
+#include "media_grabber_callback.h"
 #include <mfapi.h>
 #include <mferror.h>
 #include <mfidl.h>
-#include <thirdparty/misc/yuv2rgb.h>
 #include <wmcodecdsp.h>
 
 #define CHECK_HR(func)                                                           \
@@ -71,12 +70,9 @@ HRESULT AddColourConversionNode(IMFTopology *pTopology,
 		IMFMediaType *inputType,
 		IMFTransform **ppColorTransform) {
 	HRESULT hr = S_OK;
-
 	IMFTransform *colorTransform;
 	CoCreateInstance(CLSID_CColorConvertDMO, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&colorTransform));
-
 	IMFMediaType *pInType = nullptr;
-
 	UINT32 uWidth, uHeight;
 	MFGetAttributeSize(inputType, MF_MT_FRAME_SIZE, &uWidth, &uHeight);
 	UINT32 interlaceMode;
@@ -86,23 +82,16 @@ HRESULT AddColourConversionNode(IMFTopology *pTopology,
 	CHECK_HR(pInType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video));
 	CHECK_HR(pInType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_NV12));
 	CHECK_HR(MFSetAttributeSize(pInType, MF_MT_FRAME_SIZE, uWidth, uHeight));
-
-	HRESULT hr_in = (colorTransform->SetInputType(0, pInType, 0));
-
 	IMFMediaType *pOutType = nullptr;
 	CHECK_HR(MFCreateMediaType(&pOutType));
-
 	hr = pOutType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
 	hr = pOutType->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24);
 	CHECK_HR(MFSetAttributeSize(pOutType, MF_MT_FRAME_SIZE, uWidth, uHeight));
-
-	HRESULT hr_out = (colorTransform->SetOutputType(0, pOutType, 0));
-
 	*ppColorTransform = colorTransform;
 	return hr;
 }
 
-HRESULT CreateSampleGrabber(UINT width, UINT height, SampleGrabberCallback *pSampleGrabber, IMFActivate **pSinkActivate) {
+HRESULT CreateSampleGrabber(UINT width, UINT height, MediaGrabberCallback *pSampleGrabber, IMFActivate **pSinkActivate) {
 	HRESULT hr = S_OK;
 	IMFMediaType *pType = NULL;
 
@@ -119,14 +108,13 @@ HRESULT CreateSampleGrabber(UINT width, UINT height, SampleGrabberCallback *pSam
 	return hr;
 }
 
-HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGrabber, IMFTopology **ppTopo, VideoStreamPlaybackWMF::StreamInfo *info) {
+HRESULT CreateTopology(IMFMediaSource *pSource, MediaGrabberCallback *pSampleGrabber, IMFTopology **ppTopo, VideoStreamPlaybackWMF::StreamInfo *info) {
 	IMFTopology *pTopology = NULL;
 	IMFPresentationDescriptor *pPD = NULL;
 	IMFStreamDescriptor *pSD = NULL;
 	IMFMediaTypeHandler *pHandler = NULL;
 	IMFTopologyNode *inputNode = NULL;
 	IMFTopologyNode *outputNode = NULL;
-	IMFTopologyNode *colorNode = NULL;
 	IMFTopologyNode *inputNodeAudio = NULL;
 	IMFTopologyNode *outputNodeAudio = NULL;
 	IMFActivate *audioActivate = NULL;
@@ -324,13 +312,6 @@ bool VideoStreamPlaybackWMF::is_paused() const {
 	return !is_video_paused;
 }
 
-void VideoStreamPlaybackWMF::set_loop(bool p_enabled) {
-}
-
-bool VideoStreamPlaybackWMF::has_loop() const {
-	return false;
-}
-
 double VideoStreamPlaybackWMF::get_length() const {
 	return stream_info.duration;
 }
@@ -377,15 +358,13 @@ void VideoStreamPlaybackWMF::set_file(const String &p_file) {
 	CHECK_HR(CreateMediaSource(p_file, &media_source));
 	CHECK_HR(MFCreateMediaSession(nullptr, &media_session));
 
-	CHECK_HR(SampleGrabberCallback::CreateInstance(&sample_grabber_callback, this, mtx));
+	CHECK_HR(MediaGrabberCallback::CreateInstance(&sample_grabber_callback, this));
 	CHECK_HR(CreateTopology(media_source, sample_grabber_callback, &topology, &stream_info));
 
 	CHECK_HR(media_session->SetTopology(0, topology));
 
 	if (SUCCEEDED(hr)) {
-		IMFRateControl *m_pRate;
-		HRESULT hrTmp = MFGetService(media_session, MF_RATE_CONTROL_SERVICE, IID_PPV_ARGS(&m_pRate));
-
+		IMFRateControl *m_pRate = nullptr;
 		BOOL bThin = false;
 		float fRate = 0.f;
 		CHECK_HR(m_pRate->GetRate(&bThin, &fRate));
@@ -523,13 +502,14 @@ int64_t VideoStreamPlaybackWMF::next_sample_time() {
 static int counter = 0;
 
 VideoStreamPlaybackWMF::VideoStreamPlaybackWMF() :
-		media_session(NULL), media_source(NULL), topology(NULL), presentation_clock(NULL), is_video_playing(false), is_video_paused(false), is_video_seekable(false), read_frame_idx(0), write_frame_idx(0) {
-	id = counter;
-	counter++;
+        media_session(NULL), media_source(NULL), topology(NULL), presentation_clock(NULL), 
+        read_frame_idx(0), write_frame_idx(0), is_video_playing(false), 
+        is_video_paused(false), is_video_seekable(false) {
+    id = counter;
+    counter++;
 
-	texture = Ref<ImageTexture>(memnew(ImageTexture));
-	// Make sure cache_frames.size() is something more than 0.
-	cache_frames.resize(24);
+    texture = Ref<ImageTexture>(memnew(ImageTexture));
+    cache_frames.resize(24);
 }
 
 VideoStreamPlaybackWMF::~VideoStreamPlaybackWMF() {

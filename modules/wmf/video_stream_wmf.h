@@ -7,7 +7,7 @@
 
 #include <deque>
 
-class SampleGrabberCallback;
+class MediaGrabberCallback;
 struct IMFMediaSession;
 struct IMFMediaSource;
 struct IMFTopology;
@@ -25,7 +25,7 @@ class VideoStreamPlaybackWMF : public VideoStreamPlayback {
 	IMFMediaSource *media_source;
 	IMFTopology *topology;
 	IMFPresentationClock *presentation_clock;
-	SampleGrabberCallback *sample_grabber_callback;
+	MediaGrabberCallback *sample_grabber_callback;
 
 	Vector<FrameData> cache_frames;
 	int read_frame_idx = 0;
@@ -62,9 +62,6 @@ public:
 
 	virtual void set_paused(bool p_paused) override;
 	virtual bool is_paused() const override;
-
-	virtual void set_loop(bool p_enable) override;
-	virtual bool has_loop() const override;
 
 	virtual double get_length() const override;
 	virtual String get_stream_name() const;
