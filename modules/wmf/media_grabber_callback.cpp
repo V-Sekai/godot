@@ -1,4 +1,4 @@
-#include "sample_grabber_callback.h"
+#include "media_grabber_callback.h"
 #include "core/string/print_string.h"
 #include "video_stream_wmf.h"
 #include <Shlwapi.h>
@@ -8,20 +8,12 @@
 #include <cstdio>
 #include <new>
 
-#define CHECK_HR(func)                                                         \
-	if (SUCCEEDED(hr)) {                                                       \
-		hr = (func);                                                           \
-		if (FAILED(hr)) {                                                      \
-			print_line(vformat("%s failed, return:", __FUNCTION__, itos(hr))); \
-		}                                                                      \
-	}
-
-SampleGrabberCallback::SampleGrabberCallback(VideoStreamPlaybackWMF *playback, Mutex &mtx) :
-		m_cRef(1), playback(playback), mtx(mtx) {
+MediaGrabberCallback::MediaGrabberCallback(VideoStreamPlaybackWMF *p_playback) :
+		m_cRef(1), playback(p_playback) {
 }
 
-HRESULT SampleGrabberCallback::CreateInstance(SampleGrabberCallback **ppCB, VideoStreamPlaybackWMF *playback, Mutex &mtx) {
-	*ppCB = new (std::nothrow) SampleGrabberCallback(playback, mtx);
+HRESULT MediaGrabberCallback::CreateInstance(MediaGrabberCallback **ppCB, VideoStreamPlaybackWMF *p_playback) {
+	*ppCB = new (std::nothrow) MediaGrabberCallback(p_playback);
 
 	if (ppCB == nullptr) {
 		return E_OUTOFMEMORY;
@@ -29,27 +21,24 @@ HRESULT SampleGrabberCallback::CreateInstance(SampleGrabberCallback **ppCB, Vide
 	return S_OK;
 }
 
-SampleGrabberCallback::~SampleGrabberCallback() {
-}
-
-STDMETHODIMP SampleGrabberCallback::QueryInterface(REFIID riid, void **ppv) {
+STDMETHODIMP MediaGrabberCallback::QueryInterface(REFIID riid, void **ppv) {
 	static const QITAB qit[] = {
-#pragma clang diagnostic ignored "-Wc++11-narrowing"
-		QITABENT(SampleGrabberCallback, IMFSampleGrabberSinkCallback),
-#pragma clang diagnostic ignored "-Wc++11-narrowing"
-		QITABENT(SampleGrabberCallback, IMFClockStateSink),
-		{ 0 }
+// #pragma clang diagnostic ignored "-Wc++11-narrowing"
+		QITABENT(MediaGrabberCallback, IMFSampleGrabberSinkCallback),
+// #pragma clang diagnostic ignored "-Wc++11-narrowing"
+		QITABENT(MediaGrabberCallback, IMFClockStateSink),
+		{ 0, 0 }
 	};
 	return QISearch(this, qit, riid, ppv);
 }
 
 STDMETHODIMP_(ULONG)
-SampleGrabberCallback::AddRef() {
+MediaGrabberCallback::AddRef() {
 	return InterlockedIncrement(&m_cRef);
 }
 
 STDMETHODIMP_(ULONG)
-SampleGrabberCallback::Release() {
+MediaGrabberCallback::Release() {
 	ULONG cRef = InterlockedDecrement(&m_cRef);
 	if (cRef == 0) {
 		delete this;
@@ -62,51 +51,56 @@ SampleGrabberCallback::Release() {
 // In these example, the IMFClockStateSink methods do not perform any actions.
 // You can use these methods to track the state of the sample grabber sink.
 
-STDMETHODIMP SampleGrabberCallback::OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset) {
+STDMETHODIMP MediaGrabberCallback::OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset) {
 	return S_OK;
 }
 
-STDMETHODIMP SampleGrabberCallback::OnClockStop(MFTIME hnsSystemTime) {
+STDMETHODIMP MediaGrabberCallback::OnClockStop(MFTIME hnsSystemTime) {
 	return S_OK;
 }
 
-STDMETHODIMP SampleGrabberCallback::OnClockPause(MFTIME hnsSystemTime) {
+STDMETHODIMP MediaGrabberCallback::OnClockPause(MFTIME hnsSystemTime) {
 	return S_OK;
 }
 
-STDMETHODIMP SampleGrabberCallback::OnClockRestart(MFTIME hnsSystemTime) {
+STDMETHODIMP MediaGrabberCallback::OnClockRestart(MFTIME hnsSystemTime) {
 	return S_OK;
 }
 
-STDMETHODIMP SampleGrabberCallback::OnClockSetRate(MFTIME hnsSystemTime, float flRate) {
+STDMETHODIMP MediaGrabberCallback::OnClockSetRate(MFTIME hnsSystemTime, float flRate) {
 	return S_OK;
 }
 
 // IMFSampleGrabberSink methods.
 
-STDMETHODIMP SampleGrabberCallback::OnSetPresentationClock(IMFPresentationClock *pClock) {
+STDMETHODIMP MediaGrabberCallback::OnSetPresentationClock(IMFPresentationClock *pClock) {
 	return S_OK;
 }
 
-HRESULT SampleGrabberCallback::CreateMediaSample(DWORD cbData, IMFSample **ppSample) {
-	assert(ppSample);
+HRESULT MediaGrabberCallback::CreateMediaSample(DWORD cbData, IMFSample **ppSample) {
+    assert(ppSample);
 
-	HRESULT hr = S_OK;
+    HRESULT hr = S_OK;
 
-	IMFSample *pSample = nullptr;
-	IMFMediaBuffer *pBuffer = nullptr;
+    IMFSample *pSample = nullptr;
+    IMFMediaBuffer *pBuffer = nullptr;
 
-	CHECK_HR(hr = MFCreateSample(&pSample));
-	CHECK_HR(hr = MFCreateMemoryBuffer(cbData, &pBuffer));
-	CHECK_HR(hr = pSample->AddBuffer(pBuffer));
+    hr = MFCreateSample(&pSample);
+    CHECK_HR(hr);
 
-	*ppSample = pSample;
-	(*ppSample)->AddRef();
+    hr = MFCreateMemoryBuffer(cbData, &pBuffer);
+    CHECK_HR(hr);
 
-	return hr;
+    hr = pSample->AddBuffer(pBuffer);
+    CHECK_HR(hr);
+
+    *ppSample = pSample;
+    (*ppSample)->AddRef();
+
+    return hr;
 }
 
-STDMETHODIMP SampleGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
+STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 		DWORD dwSampleFlags,
 		LONGLONG llSampleTime,
 		LONGLONG llSampleDuration,
@@ -116,10 +110,12 @@ STDMETHODIMP SampleGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	//assert(frame_data->size() == width * height * 3);
 
 	const int rgb24FrameSize = width * height * 3;
-	if (m_pSample == nullptr)
+	if (m_pSample == nullptr) {
 		CreateMediaSample(dwSampleSize, &m_pSample);
-	if (m_pOutSample == nullptr)
+	}
+	if (m_pOutSample == nullptr) {
 		CreateMediaSample(rgb24FrameSize, &m_pOutSample);
+	}
 
 	IMFMediaBuffer *pMediaBuffer = nullptr;
 	m_pSample->SetSampleTime(llSampleTime);
@@ -136,8 +132,9 @@ STDMETHODIMP SampleGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 
 	DWORD ProcessStatus;
 	CHECK_HR(m_pColorTransform->ProcessInput(0, m_pSample, 0));
-	if (FAILED(hr))
+	if (FAILED(hr)) {
 		print_line("Failed to process video frames");
+	}
 
 	MFT_OUTPUT_DATA_BUFFER RGBOutputDataBuffer;
 	RGBOutputDataBuffer.dwStreamID = 0;
@@ -145,8 +142,9 @@ STDMETHODIMP SampleGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	RGBOutputDataBuffer.pEvents = NULL;
 	RGBOutputDataBuffer.pSample = m_pOutSample;
 	CHECK_HR(m_pColorTransform->ProcessOutput(0, 1, &RGBOutputDataBuffer, &ProcessStatus));
-	if (FAILED(hr))
+	if (FAILED(hr)) {
 		print_line("Failed to process video frames");
+	}
 
 	IMFMediaBuffer *pOutputBuffer;
 	RGBOutputDataBuffer.pSample->GetBufferByIndex(0, &pOutputBuffer);
@@ -165,7 +163,7 @@ STDMETHODIMP SampleGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 
 		char *rgb_buffer = (char *)dst;
 		// convert 4 pixels at once
-		for (int i = 0; i < outDataLen; i += 12) {
+		for (size_t i = 0; i < outDataLen; i += 12) {
 			rgb_buffer[i + 0] = outData[i + 2];
 			rgb_buffer[i + 1] = outData[i + 1];
 			rgb_buffer[i + 2] = outData[i + 0];
@@ -182,7 +180,7 @@ STDMETHODIMP SampleGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 			rgb_buffer[i + 10] = outData[i + 10];
 			rgb_buffer[i + 11] = outData[i + 9];
 		}
-		//memcpy(rgb_buffer, outData, outDataLen);
+		memcpy(rgb_buffer, outData, outDataLen);
 	}
 	//mtx.unlock();
 
@@ -193,12 +191,12 @@ STDMETHODIMP SampleGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	return S_OK;
 }
 
-STDMETHODIMP SampleGrabberCallback::OnShutdown() {
+STDMETHODIMP MediaGrabberCallback::OnShutdown() {
 	print_line(__FUNCTION__);
 	return S_OK;
 }
 
-void SampleGrabberCallback::set_frame_size(int w, int h) {
+void MediaGrabberCallback::set_frame_size(int w, int h) {
 	width = w;
 	height = h;
 }

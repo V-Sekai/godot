@@ -1,29 +1,36 @@
-#ifndef SAMPLEGRABBERCALLBACK_H
-#define SAMPLEGRABBERCALLBACK_H
+#ifndef MediaGrabberCallback_H
+#define MediaGrabberCallback_H
 
 #include "core/io/resource_loader.h"
 #include "core/os/mutex.h"
 #include "scene/resources/video_stream.h"
 #include <mfidl.h>
 
+#define CHECK_HR(func)                                                         \
+	if (SUCCEEDED(hr)) {                                                       \
+		hr = (func);                                                           \
+		if (FAILED(hr)) {                                                      \
+			print_line(vformat("%s failed, return: %s", __FUNCTION__, itos(hr))); \
+		}                                                                      \
+	}
+
 class VideoStreamPlaybackWMF;
 
-class SampleGrabberCallback : public IMFSampleGrabberSinkCallback {
-	long m_cRef;
+class MediaGrabberCallback : public IMFSampleGrabberSinkCallback {
+	long m_cRef = 0;
 	VideoStreamPlaybackWMF *playback;
-	Mutex &mtx;
-	int width;
-	int height;
+	int width = 0;
+	int height = 0;
 
 	IMFTransform *m_pColorTransform = nullptr;
 	IMFSample *m_pSample = nullptr;
 	IMFSample *m_pOutSample = nullptr;
 
-	SampleGrabberCallback(VideoStreamPlaybackWMF *playback, Mutex &mtx);
+	MediaGrabberCallback(VideoStreamPlaybackWMF *playback);
 
 public:
-	static HRESULT CreateInstance(SampleGrabberCallback **ppCB, VideoStreamPlaybackWMF *playback, Mutex &mtx);
-	~SampleGrabberCallback();
+    virtual ~MediaGrabberCallback() {}
+	static HRESULT CreateInstance(MediaGrabberCallback **ppCB, VideoStreamPlaybackWMF *playback);
 
 	// IUnknown methods
 	STDMETHODIMP QueryInterface(REFIID iid, void **ppv);
@@ -32,14 +39,12 @@ public:
 	STDMETHODIMP_(ULONG)
 	Release();
 
-	// IMFClockStateSink methods
 	STDMETHODIMP OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset);
 	STDMETHODIMP OnClockStop(MFTIME hnsSystemTime);
 	STDMETHODIMP OnClockPause(MFTIME hnsSystemTime);
 	STDMETHODIMP OnClockRestart(MFTIME hnsSystemTime);
 	STDMETHODIMP OnClockSetRate(MFTIME hnsSystemTime, float flRate);
 
-	// IMFSampleGrabberSinkCallback methods
 	STDMETHODIMP OnSetPresentationClock(IMFPresentationClock *pClock);
 	STDMETHODIMP OnProcessSample(REFGUID guidMajorMediaType, DWORD dwSampleFlags,
 			LONGLONG llSampleTime, LONGLONG llSampleDuration, const BYTE *pSampleBuffer,
@@ -48,7 +53,6 @@ public:
 
 	HRESULT CreateMediaSample(DWORD cbData, IMFSample **ppSample);
 
-	// custom methods
 	void set_frame_size(int w, int h);
 	void set_color_transform(IMFTransform *mft) { m_pColorTransform = mft; }
 };
