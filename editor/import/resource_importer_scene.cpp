@@ -32,6 +32,7 @@
 
 #include "core/io/resource_saver.h"
 #include "editor/editor_node.h"
+#include "scene/3d/bone_attachment.h"
 #include "scene/3d/collision_shape.h"
 #include "scene/3d/mesh_instance.h"
 #include "scene/3d/navigation.h"
@@ -863,20 +864,19 @@ void ResourceImporterScene::_filter_tracks(Node *scene, const String &p_text) {
 	}
 }
 
-void ResourceImporterScene::_optimize_animations(Node *scene, float p_max_lin_error, float p_max_ang_error, float p_max_angle) {
-	if (!scene->has_node(String("AnimationPlayer"))) {
-		return;
+void ResourceImporterScene::_optimize_animations(Node *scene, float p_max_lin_error, float p_max_ang_error, float p_max_angle, bool p_use_convert_bezier) {
+	AnimationPlayer *ap = Object::cast_to<AnimationPlayer>(scene);
+	if (ap) {
+		List<StringName> anim_names;
+		ap->get_animation_list(&anim_names);
+		for (List<StringName>::Element *E = anim_names.front(); E; E = E->next()) {
+			Ref<Animation> a = ap->get_animation(E->get());
+			a->optimize(p_max_lin_error, p_max_ang_error, Math::deg2rad(p_max_angle), p_use_convert_bezier);
+		}
 	}
-	Node *n = scene->get_node(String("AnimationPlayer"));
-	ERR_FAIL_COND(!n);
-	AnimationPlayer *anim = Object::cast_to<AnimationPlayer>(n);
-	ERR_FAIL_COND(!anim);
 
-	List<StringName> anim_names;
-	anim->get_animation_list(&anim_names);
-	for (List<StringName>::Element *E = anim_names.front(); E; E = E->next()) {
-		Ref<Animation> a = anim->get_animation(E->get());
-		a->optimize(p_max_lin_error, p_max_ang_error, Math::deg2rad(p_max_angle));
+	for (int32_t i = 0; i < scene->get_child_count(); i++) {
+		_optimize_animations(scene->get_child(i), p_max_lin_error, p_max_ang_error, p_max_angle, p_use_convert_bezier);
 	}
 }
 
@@ -1110,7 +1110,8 @@ void ResourceImporterScene::get_import_options(List<ImportOption> *r_options, in
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "materials/storage", PROPERTY_HINT_ENUM, "Built-In,Files (.material),Files (.tres)", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), materials_out ? 1 : 0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "materials/keep_on_reimport"), materials_out));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "meshes/octahedral_compression"), true));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "meshes/compress", PROPERTY_HINT_FLAGS, "Vertex,Normal,Tangent,Color,TexUV,TexUV2,Bones,Weights,Index"), VS::ARRAY_COMPRESS_DEFAULT >> VS::ARRAY_COMPRESS_BASE));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "skeleton/point_to_children"), true));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "meshes/compress"), true));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "meshes/ensure_tangents"), true));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "meshes/storage", PROPERTY_HINT_ENUM, "Built-In,Files (.mesh),Files (.tres)"), meshes_out ? 1 : 0));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "meshes/light_baking", PROPERTY_HINT_ENUM, "Disabled,Enable,Gen Lightmaps", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), 0));
@@ -1127,6 +1128,7 @@ void ResourceImporterScene::get_import_options(List<ImportOption> *r_options, in
 	r_options->push_back(ImportOption(PropertyInfo(Variant::REAL, "animation/optimizer/max_angular_error"), 0.01));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::REAL, "animation/optimizer/max_angle"), 22));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "animation/optimizer/remove_unused_tracks"), true));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::BOOL, "animation/optimizer/convert_bezier/enabled"), true));
 	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "animation/clips/amount", PROPERTY_HINT_RANGE, "0,256,1", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), 0));
 	for (int i = 0; i < 256; i++) {
 		r_options->push_back(ImportOption(PropertyInfo(Variant::STRING, "animation/clip_" + itos(i + 1) + "/name"), ""));
@@ -1321,15 +1323,18 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 	bool use_optimizer = p_options["animation/optimizer/enabled"];
 	float anim_optimizer_linerr = p_options["animation/optimizer/max_linear_error"];
 	float anim_optimizer_angerr = p_options["animation/optimizer/max_angular_error"];
+	anim_optimizer_angerr = Math::deg2rad(anim_optimizer_angerr);
 	float anim_optimizer_maxang = p_options["animation/optimizer/max_angle"];
+	anim_optimizer_maxang = Math::deg2rad(anim_optimizer_maxang);
 	int light_bake_mode = p_options["meshes/light_baking"];
+	bool use_convert_bezier = p_options["animation/optimizer/convert_bezier/enabled"];
 
 	Map<Ref<Mesh>, List<Ref<Shape>>> collision_map;
 	List<Pair<NodePath, Node *>> node_renames;
 	scene = _fix_node(scene, scene, collision_map, LightBakeMode(light_bake_mode), node_renames);
 
 	if (use_optimizer) {
-		_optimize_animations(scene, anim_optimizer_linerr, anim_optimizer_angerr, anim_optimizer_maxang);
+		_optimize_animations(scene, anim_optimizer_linerr, anim_optimizer_angerr, anim_optimizer_maxang, use_convert_bezier);
 	}
 
 	Array animation_clips;

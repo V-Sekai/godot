@@ -527,6 +527,16 @@ Vector3 Spatial::get_rotation_degrees() const {
 	return get_rotation() * 180.0 / Math_PI;
 }
 
+Quat Spatial::get_rotation_quat() const {
+	return data.local_transform.basis.get_rotation_quat();
+}
+
+void Spatial::set_rotation_quat(const Quat &p_quat) {
+	Transform xform = get_transform();
+	xform.basis.set_quat_scale(p_quat, get_scale());
+	set_transform(xform);
+}
+
 Vector3 Spatial::get_scale() const {
 	if (data.dirty & DIRTY_VECTORS) {
 		data.scale = data.local_transform.basis.get_scale();
@@ -868,6 +878,8 @@ void Spatial::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_rotation"), &Spatial::get_rotation);
 	ClassDB::bind_method(D_METHOD("set_rotation_degrees", "euler_degrees"), &Spatial::set_rotation_degrees);
 	ClassDB::bind_method(D_METHOD("get_rotation_degrees"), &Spatial::get_rotation_degrees);
+	ClassDB::bind_method(D_METHOD("set_rotation_quat", "quat"), &Spatial::set_rotation_quat);
+	ClassDB::bind_method(D_METHOD("get_rotation_quat"), &Spatial::get_rotation_quat);
 	ClassDB::bind_method(D_METHOD("set_scale", "scale"), &Spatial::set_scale);
 	ClassDB::bind_method(D_METHOD("get_scale"), &Spatial::get_scale);
 
@@ -937,6 +949,7 @@ void Spatial::_bind_methods() {
 	ADD_GROUP("Transform", "");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "translation", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_translation", "get_translation");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "rotation_degrees", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_rotation_degrees", "get_rotation_degrees");
+	ADD_PROPERTY(PropertyInfo(Variant::QUAT, "rotation_quat", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_rotation_quat", "get_rotation_quat");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "rotation", PROPERTY_HINT_NONE, "", 0), "set_rotation", "get_rotation");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "scale", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR), "set_scale", "get_scale");
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM, "global_transform", PROPERTY_HINT_NONE, "", 0), "set_global_transform", "get_global_transform");

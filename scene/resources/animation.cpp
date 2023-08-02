@@ -29,9 +29,16 @@
 /**************************************************************************/
 
 #include "animation.h"
+#include "core/math/geometry.h"
+#include "core/math/math_defs.h"
+#include "core/math/plane.h"
+#include "core/math/vector3.h"
+#include "modules/keyframe_reduce/keyframe_reduce.h"
 #include "scene/scene_string_names.h"
 
 #include "core/math/geometry.h"
+#include "thirdparty/geometrics/Mathematics/IntpAkimaNonuniform1.h"
+#define ANIM_MIN_LENGTH 0.001
 
 bool Animation::_set(const StringName &p_name, const Variant &p_value) {
 	String name = p_name;
@@ -2282,44 +2289,76 @@ float Animation::bezier_track_interpolate(int p_track, float p_time) const {
 	if (idx < 0) {
 		return bt->values[0].value.value;
 	}
-
 	if (idx >= bt->values.size() - 1) {
 		return bt->values[bt->values.size() - 1].value.value;
 	}
+	if (idx >= bt->values.size() - 4) {
+		float t = p_time - bt->values[idx].time;
+		int iterations = 10;
 
-	float t = p_time - bt->values[idx].time;
+		float duration = bt->values[idx + 1].time - bt->values[idx].time; // time duration between our two keyframes
+		float low = 0; // 0% of the current animation segment
+		float high = 1; // 100% of the current animation segment
+		float middle;
 
-	int iterations = 10;
+		Vector2 start(0, bt->values[idx].value.value);
+		Vector2 start_out = start + bt->values[idx].value.out_handle;
+		Vector2 end(duration, bt->values[idx + 1].value.value);
+		Vector2 end_in = end + bt->values[idx + 1].value.in_handle;
 
-	float duration = bt->values[idx + 1].time - bt->values[idx].time; // time duration between our two keyframes
-	float low = 0; // 0% of the current animation segment
-	float high = 1; // 100% of the current animation segment
-	float middle;
+		//narrow high and low as much as possible
+		for (int i = 0; i < iterations; i++) {
 
-	Vector2 start(0, bt->values[idx].value.value);
-	Vector2 start_out = start + bt->values[idx].value.out_handle;
-	Vector2 end(duration, bt->values[idx + 1].value.value);
-	Vector2 end_in = end + bt->values[idx + 1].value.in_handle;
+			middle = (low + high) / 2;
 
-	//narrow high and low as much as possible
-	for (int i = 0; i < iterations; i++) {
-		middle = (low + high) / 2;
+			Vector2 interp = _bezier_interp(middle, start, start_out, end_in, end);
 
-		Vector2 interp = _bezier_interp(middle, start, start_out, end_in, end);
-
-		if (interp.x < t) {
-			low = middle;
-		} else {
-			high = middle;
+			if (interp.x < t) {
+				low = middle;
+			} else {
+				high = middle;
+			}
 		}
+
+		//interpolate the result:
+		Vector2 low_pos = _bezier_interp(low, start, start_out, end_in, end);
+		Vector2 high_pos = _bezier_interp(high, start, start_out, end_in, end);
+		float c = (t - low_pos.x) / (high_pos.x - low_pos.x);
+
+		return low_pos.linear_interpolate(high_pos, c).y;
+	}
+	Vector<real_t> X;
+	int interpolation_len = 4;
+	X.resize(interpolation_len);
+	X.write[0] = bt->values[idx].time;
+	X.write[1] = bt->values[idx + 1].time;
+	X.write[2] = bt->values[idx + 2].time;
+	X.write[3] = bt->values[idx + 3].time;
+	Vector<real_t> F;
+	F.resize(interpolation_len);
+	F.write[0] = bt->values[idx].value.value;
+	F.write[1] = bt->values[idx + 1].value.value;
+	F.write[2] = bt->values[idx + 2].value.value;
+	F.write[3] = bt->values[idx + 3].value.value;
+
+	int i = 0, j = 0;
+	for (i = 1; i < interpolation_len; ++i) {
+		real_t temp_x = X[i];
+		real_t temp_f = F[i];
+		if (Math::is_nan(temp_x) || Math::is_nan(temp_f)) {
+			continue;
+		}
+		for (j = i; j > 0 && X[j - 1] > temp_x; --j) {
+			X.write[j] = X[j - 1];
+			F.write[j] = F[j - 1];
+		}
+		X.write[j] = temp_x;
+		F.write[j] = temp_f;
 	}
 
-	//interpolate the result:
-	Vector2 low_pos = _bezier_interp(low, start, start_out, end_in, end);
-	Vector2 high_pos = _bezier_interp(high, start, start_out, end_in, end);
-	float c = (t - low_pos.x) / (high_pos.x - low_pos.x);
+	IntpAkimaNonuniform1<real_t> interpolator(interpolation_len, X.ptrw(), F.ptrw());
 
-	return low_pos.linear_interpolate(high_pos, c).y;
+	return interpolator(p_time);
 }
 
 int Animation::audio_track_insert_key(int p_track, float p_time, const RES &p_stream, float p_start_offset, float p_end_offset) {
@@ -2881,6 +2920,142 @@ bool Animation::_transform_track_optimize_key(const TKey<TransformKey> &t0, cons
 	return erase;
 }
 
+bool Animation::_quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Variant> &t1, const TKey<Variant> &t2, float p_alowed_linear_err, float p_alowed_angular_err, float p_max_optimizable_angle) {
+
+	real_t c = (t1.time - t0.time) / (t2.time - t0.time);
+	real_t t[3] = { -1, -1, -1 };
+
+	{ //rotation
+
+		const Quat &q0 = t0.value;
+		const Quat &q1 = t1.value;
+		const Quat &q2 = t2.value;
+
+		//localize both to rotation from q0
+
+		if (q0.is_equal_approx(q2)) {
+
+			if (!q0.is_equal_approx(q1))
+				return false;
+
+		} else {
+
+			Quat r02 = (q0.inverse() * q2).normalized();
+			Quat r01 = (q0.inverse() * q1).normalized();
+
+			Vector3 v02, v01;
+			real_t a02, a01;
+
+			r02.get_axis_angle(v02, a02);
+			r01.get_axis_angle(v01, a01);
+
+			if (Math::abs(a02) > p_max_optimizable_angle)
+				return false;
+
+			if (v01.dot(v02) < 0) {
+				//make sure both rotations go the same way to compare
+				v02 = -v02;
+				a02 = -a02;
+			}
+
+			real_t err_01 = Math::acos(v01.normalized().dot(v02.normalized())) / Math_PI;
+			if (err_01 > p_alowed_angular_err) {
+				//not rotating in the same axis
+				return false;
+			}
+
+			if (a01 * a02 < 0) {
+				//not rotating in the same direction
+				return false;
+			}
+
+			real_t tr = a01 / a02;
+			if (tr < 0 || tr > 1)
+				return false; //rotating too much or too less
+
+			t[1] = tr;
+		}
+	}
+
+	bool erase = false;
+	if (t[0] == -1 && t[1] == -1 && t[2] == -1) {
+
+		erase = true;
+	} else {
+
+		erase = true;
+		real_t lt = -1;
+		for (int j = 0; j < 3; j++) {
+			//search for t on first, one must be it
+			if (t[j] != -1) {
+				lt = t[j]; //official t
+				//validate rest
+				for (int k = j + 1; k < 3; k++) {
+					if (t[k] == -1)
+						continue;
+
+					if (Math::abs(lt - t[k]) > p_alowed_linear_err) {
+						erase = false;
+						break;
+					}
+				}
+				break;
+			}
+		}
+
+		ERR_FAIL_COND_V(lt == -1, false);
+
+		if (erase) {
+
+			if (Math::abs(lt - c) > p_alowed_linear_err) {
+				//todo, evaluate changing the transition if this fails?
+				//this could be done as a second pass and would be
+				//able to optimize more
+				erase = false;
+			}
+		}
+	}
+
+	return erase;
+}
+
+void Animation::_quat_track_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+
+	ERR_FAIL_INDEX(p_idx, tracks.size());
+	ERR_FAIL_COND(tracks[p_idx]->type != TYPE_VALUE);
+	bool prev_erased = false;
+	TKey<Variant> first_erased;
+
+	ValueTrack *vt = static_cast<ValueTrack *>(tracks[p_idx]);
+	for (int i = 1; i < vt->values.size() - 1; i++) {
+
+		TKey<Variant> &t0 = vt->values.write[i - 1];
+		TKey<Variant> &t1 = vt->values.write[i];
+		TKey<Variant> &t2 = vt->values.write[i + 1];
+
+		bool erase = _quat_track_optimize_key(t0, t1, t2, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+
+		if (prev_erased && !_quat_track_optimize_key(t0, first_erased, t2, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle)) {
+			//avoid error to go beyond first erased key
+			erase = false;
+		}
+
+		if (erase) {
+
+			if (!prev_erased) {
+				first_erased = t1;
+				prev_erased = true;
+			}
+
+			vt->values.remove(i);
+			i--;
+
+		} else {
+			prev_erased = false;
+		}
+	}
+}
+
 void Animation::_transform_track_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
 	ERR_FAIL_INDEX(p_idx, tracks.size());
 	ERR_FAIL_COND(tracks[p_idx]->type != TYPE_TRANSFORM);
@@ -2921,11 +3096,388 @@ void Animation::_transform_track_optimize(int p_idx, float p_allowed_linear_err,
 	}
 }
 
-void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
-	for (int i = 0; i < tracks.size(); i++) {
-		if (tracks[i]->type == TYPE_TRANSFORM) {
-			_transform_track_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+void Animation::_convert_blendshapes(int32_t p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+	ValueTrack *vt = static_cast<ValueTrack *>(tracks[p_idx]);
+	const String original_path = track_get_path(p_idx);
+	String path = original_path;
+	Ref<BezierKeyframeReduce> reduce;
+	reduce.instance();
+	Vector<BezierKeyframeReduce::Bezier> curves;
+	NodePath new_path = path;
+	BezierKeyframeReduce::KeyframeReductionSetting settings;
+	settings.max_error = p_allowed_linear_err;
+	for (int value_i = 0; value_i < vt->values.size(); value_i++) {
+		const TKey<Variant> &key = vt->values[value_i];
+		real_t time = key.time;
+		real_t value = key.value;
+		BezierKeyframeReduce::Vector2Bezier point = BezierKeyframeReduce::Vector2Bezier(time, value);
+		curves.push_back(BezierKeyframeReduce::Bezier(point, Vector2(), Vector2()));
+	}
+	if (!curves.size()) {
+		return;
+	}
+
+	Vector<BezierKeyframeReduce::Bezier> out_curves;
+	real_t rate = reduce->reduce(curves, out_curves, settings);
+	String full_node = String(new_path).split(":")[0];
+	String property = String(new_path).trim_prefix(full_node + ":");
+	String short_path = full_node.get_slicec('/', full_node.get_slice_count("/") - 1) + ":" + property;
+	if (Math::is_equal_approx(rate, 0)) {
+		print_line("Animation: Unable to reduce " + short_path);
+	} else {
+		print_line("Animation: Reduced " + short_path + " to " + rtos(Math::stepify(rate * 100, 0.1f)) + "%");
+	}
+	if (!out_curves.size()) {
+		return;
+	}
+	int32_t track = add_track(TrackType::TYPE_BEZIER);
+	track_set_path(track, new_path);
+	track_set_interpolation_type(track, vt->interpolation);
+	for (int32_t curve_i = 0; curve_i < out_curves.size(); curve_i++) {
+		BezierKeyframeReduce::BezierKeyframeReduce::Bezier curve = out_curves[curve_i];
+		bezier_track_insert_key(track, curve.time_value.x, curve.time_value.y, curve.in_handle, curve.out_handle);
+	}
+}
+
+void Animation::_convert_bezier(int32_t p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+	TransformTrack *tt = static_cast<TransformTrack *>(tracks[p_idx]);
+	const String original_path = track_get_path(p_idx);
+	String path = original_path;
+	if (path.split(":").size() == 2) {
+		String bone_name = path.get_slicec(':', 1);
+		path = path.get_slicec(':', 0) + ":" + bone_name + "/";
+	} else {
+		path += ":";
+	}
+	Vector<int32_t> types;
+	types.push_back(BEZIER_TRACK_LOC_X);
+	types.push_back(BEZIER_TRACK_LOC_Y);
+	types.push_back(BEZIER_TRACK_LOC_Z);
+	types.push_back(BEZIER_TRACK_SCALE_X);
+	types.push_back(BEZIER_TRACK_SCALE_Y);
+	types.push_back(BEZIER_TRACK_SCALE_Z);
+	types.push_back(BEZIER_TRACK_ROT_X0);
+	types.push_back(BEZIER_TRACK_ROT_X1);
+	types.push_back(BEZIER_TRACK_ROT_X2);
+	types.push_back(BEZIER_TRACK_ROT_Y0);
+	types.push_back(BEZIER_TRACK_ROT_Y1);
+	types.push_back(BEZIER_TRACK_ROT_Y2);
+	types.push_back(BEZIER_TRACK_ROT_Z0);
+	types.push_back(BEZIER_TRACK_ROT_Z1);
+	types.push_back(BEZIER_TRACK_ROT_Z2);
+	Ref<BezierKeyframeReduce> reduce;
+	reduce.instance();
+	Map<String, int32_t> rot_tracks;
+	for (int type_i = 0; type_i < types.size(); type_i++) {
+		Vector<BezierKeyframeReduce::Bezier> curves;
+		NodePath new_path;
+		BezierKeyframeReduce::KeyframeReductionSetting settings;		
+		// Magic number from https://bitsquid.blogspot.com/2009/11/bitsquid-low-level-animation-system.html
+		settings.max_error = 0.0014;
+		for (int transform_i = 0; transform_i < tt->transforms.size(); transform_i++) {
+			const TKey<TransformKey> &key = tt->transforms[transform_i];
+			real_t time = key.time;
+			Variant value = 0.0f;
+			Quat rot = key.value.rot;
+			rot.normalize();
+			Basis basis = rot;
+			if (types[type_i] == BEZIER_TRACK_LOC_X) {
+				Vector3 loc = key.value.loc;
+				value = loc.x;
+				new_path = path + "translation:x";
+			} else if (types[type_i] == BEZIER_TRACK_LOC_Y) {
+				Vector3 loc = key.value.loc;
+				value = loc.y;
+				new_path = path + "translation:y";
+			} else if (types[type_i] == BEZIER_TRACK_LOC_Z) {
+				Vector3 loc = key.value.loc;
+				value = loc.z;
+				new_path = path + "translation:z";
+			} else if (types[type_i] == BEZIER_TRACK_SCALE_X) {
+				Vector3 scale = key.value.scale;
+				value = scale.x;
+				new_path = path + "scale:x";
+			} else if (types[type_i] == BEZIER_TRACK_SCALE_Y) {
+				Vector3 scale = key.value.scale;
+				value = scale.y;
+				new_path = path + "scale:y";
+			} else if (types[type_i] == BEZIER_TRACK_SCALE_Z) {
+				Vector3 scale = key.value.scale;
+				value = scale.z;
+				new_path = path + "scale:z";
+			} else if (types[type_i] == BEZIER_TRACK_ROT_X0) {
+				value = basis.get_row(0).x;
+				new_path = path + "rotation_basis:x0";
+				rot_tracks.insert("x0", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_X1) {
+				value = basis.get_row(0).y;
+				new_path = path + "rotation_basis:x1";
+				rot_tracks.insert("x1", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_X2) {
+				value = basis.get_row(0).z;
+				new_path = path + "rotation_basis:x2";
+				rot_tracks.insert("x2", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_Y0) {
+				value = basis.get_row(1).x;
+				new_path = path + "rotation_basis:y0";
+				rot_tracks.insert("y0", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_Y1) {
+				value = basis.get_row(1).y;
+				new_path = path + "rotation_basis:y1";
+				rot_tracks.insert("y1", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_Y2) {
+				value = basis.get_row(1).z;
+				new_path = path + "rotation_basis:y2";
+				rot_tracks.insert("y2", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_Z0) {
+				value = basis.get_row(2).x;
+				new_path = path + "rotation_basis:z0";
+				rot_tracks.insert("z0", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_Z1) {
+				value = basis.get_row(2).y;
+				new_path = path + "rotation_basis:z1";
+				rot_tracks.insert("z1", get_track_count());
+			} else if (types[type_i] == BEZIER_TRACK_ROT_Z2) {
+				value = basis.get_row(2).z;
+				new_path = path + "rotation_basis:z2";
+				rot_tracks.insert("z2", get_track_count());
+			} else {
+				ERR_BREAK_MSG(true, "Animation: Unknown bezier type");
+			}
+			BezierKeyframeReduce::Vector2Bezier point = BezierKeyframeReduce::Vector2Bezier(time, value);
+			curves.push_back(BezierKeyframeReduce::Bezier(point, Vector2(), Vector2()));
 		}
+		Vector<BezierKeyframeReduce::Bezier> out_curves;
+		real_t rate = reduce->reduce(curves, out_curves, settings);
+		String full_node = String(new_path).split(":")[0];
+		String property = String(new_path).trim_prefix(full_node + ":");
+		String short_path = full_node.get_slicec('/', full_node.get_slice_count("/") - 1) + ":" + property;
+		if (Math::is_equal_approx(rate, 0)) {
+			print_line("Animation: Unable to reduce " + short_path);
+		} else {
+			print_verbose("Animation: Reduced " + short_path + " to " + rtos(Math::stepify(rate * 100, 0.1f)) + "%");
+		}
+		int32_t track = add_track(TrackType::TYPE_BEZIER);
+		track_set_path(track, new_path);
+		for (int32_t curve_i = 0; curve_i < out_curves.size(); curve_i++) {
+			BezierKeyframeReduce::Bezier curve = out_curves[curve_i];
+			bezier_track_insert_key(track, curve.time_value.x, curve.time_value.y, curve.in_handle, curve.out_handle);
+		}
+	}
+	int32_t track_rot_quat = add_track(TrackType::TYPE_VALUE);
+	track_set_path(track_rot_quat, path + "rotation_quat");
+	track_set_interpolation_type(track_rot_quat, InterpolationType::INTERPOLATION_LINEAR);
+	track_set_interpolation_loop_wrap(track_rot_quat, true);
+	for (Map<String, int32_t>::Element *E = rot_tracks.front(); E; E = E->next()) {
+		int32_t current_track = E->get();
+		if (current_track == -1) {
+			continue;
+		}
+		int32_t count = track_get_key_count(current_track);
+		for (int32_t key_i = 0; key_i < count; key_i++) {
+			float time = track_get_key_time(current_track, key_i);
+			Basis rot;
+			if (rot_tracks.has("x0")) {
+				float value = bezier_track_interpolate(rot_tracks["x0"], time);
+				Vector3 row = rot.get_row(0);
+				row.x = value;
+				rot.set_row(0, row);
+			}
+			if (rot_tracks.has("x1")) {
+				float value = bezier_track_interpolate(rot_tracks["x1"], time);
+				Vector3 row = rot.get_row(0);
+				row.y = value;
+				rot.set_row(0, row);
+			}
+			if (rot_tracks.has("x2")) {
+				float value = bezier_track_interpolate(rot_tracks["x2"], time);
+				Vector3 row = rot.get_row(0);
+				row.z = value;
+				rot.set_row(0, row);
+			}
+			if (rot_tracks.has("y0")) {
+				float value = bezier_track_interpolate(rot_tracks["y0"], time);
+				Vector3 row = rot.get_row(1);
+				row.x = value;
+				rot.set_row(1, row);
+			}
+			if (rot_tracks.has("y1")) {
+				float value = bezier_track_interpolate(rot_tracks["y1"], time);
+				Vector3 row = rot.get_row(1);
+				row.y = value;
+				rot.set_row(1, row);
+			}
+			if (rot_tracks.has("y2")) {
+				float value = bezier_track_interpolate(rot_tracks["y2"], time);
+				Vector3 row = rot.get_row(1);
+				row.z = value;
+				rot.set_row(1, row);
+			}
+			if (rot_tracks.has("z0")) {
+				float value = bezier_track_interpolate(rot_tracks["z0"], time);
+				Vector3 row = rot.get_row(2);
+				row.x = value;
+				rot.set_row(2, row);
+			}
+			if (rot_tracks.has("z1")) {
+				float value = bezier_track_interpolate(rot_tracks["z1"], time);
+				Vector3 row = rot.get_row(2);
+				row.y = value;
+				rot.set_row(2, row);
+			}
+			if (rot_tracks.has("z2")) {
+				float value = bezier_track_interpolate(rot_tracks["z2"], time);
+				Vector3 row = rot.get_row(2);
+				row.z = value;
+				rot.set_row(2, row);
+			}
+			Quat quat = rot.get_rotation_quat();
+			quat = quat.slerp(Quat(), 0.0f);
+			track_insert_key(track_rot_quat, time, quat);
+		}
+	}
+	if (rot_tracks.has("z2")) {
+		remove_track(rot_tracks["z2"]);
+	}
+	if (rot_tracks.has("z1")) {
+		remove_track(rot_tracks["z1"]);
+	}
+	if (rot_tracks.has("z0")) {
+		remove_track(rot_tracks["z0"]);
+	}
+	if (rot_tracks.has("y2")) {
+		remove_track(rot_tracks["y2"]);
+	}
+	if (rot_tracks.has("y1")) {
+		remove_track(rot_tracks["y1"]);
+	}
+	if (rot_tracks.has("y0")) {
+		remove_track(rot_tracks["y0"]);
+	}
+	if (rot_tracks.has("x2")) {
+		remove_track(rot_tracks["x2"]);
+	}
+	if (rot_tracks.has("x1")) {
+		remove_track(rot_tracks["x1"]);
+	}
+	if (rot_tracks.has("x0")) {
+		remove_track(rot_tracks["x0"]);
+	}
+}
+void Animation::_transform_track_bezier_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
+	ERR_FAIL_INDEX(p_idx, tracks.size());
+	ERR_FAIL_COND(tracks[p_idx]->type != TYPE_TRANSFORM);
+	_convert_bezier(p_idx, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+}
+
+void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle, bool p_convert_bezier) {
+	Vector<NodePath> removed_tracks;
+	int32_t track_count = tracks.size();
+	for (int i = 0; i < track_count; i++) {
+		if (tracks[i]->type == TYPE_TRANSFORM) {
+			if (p_convert_bezier) {
+				_transform_track_bezier_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+
+				removed_tracks.push_back(tracks[i]->path);
+			} else {
+				_transform_track_optimize(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+			}
+		} else if (tracks[i]->type == TYPE_VALUE && p_convert_bezier) {
+			const String original_path = track_get_path(i);
+			String path = original_path;
+			if (path.find("blend_shapes/") == -1) {
+				continue;
+			}
+			_convert_blendshapes(i, p_allowed_linear_err, p_allowed_angular_err, p_max_optimizable_angle);
+			removed_tracks.push_back(tracks[i]->path);
+		}
+	}
+	for (int i = 0; i < tracks.size(); i++) {
+		const String original_path = track_get_path(i);
+		String path = original_path;
+		if (path.split(":").size() == 2) {
+			String bone_name = path.get_slicec(':', 1);
+			path = path.get_slicec(':', 0) + ":" + bone_name + "/";
+		} else {
+			path += ":";
+		}
+
+		int32_t scale_x_track = find_track(path + "scale:x");
+		bool scale_x = scale_x_track != -1 && track_get_key_count(scale_x_track) == 2 &&
+					   Math::is_equal_approx(bezier_track_get_key_value(scale_x_track, 0), 1.0f) &&
+					   Math::is_equal_approx(bezier_track_get_key_value(scale_x_track, 1), 1.0f);
+		int32_t scale_y_track = find_track(path + "scale:y");
+		bool scale_y = scale_y_track != -1 && track_get_key_count(scale_y_track) == 2 &&
+					   Math::is_equal_approx(bezier_track_get_key_value(scale_y_track, 0), 1.0f) &&
+					   Math::is_equal_approx(bezier_track_get_key_value(scale_y_track, 1), 1.0f);
+		int32_t scale_z_track = find_track(path + "scale:z");
+		bool scale_z = scale_z_track != -1 && track_get_key_count(scale_z_track) == 2 &&
+					   Math::is_equal_approx(bezier_track_get_key_value(scale_z_track, 0), 1.0f) &&
+					   Math::is_equal_approx(bezier_track_get_key_value(scale_z_track, 1), 1.0f);
+		if (scale_x &&
+				scale_y &&
+				scale_z) {
+			remove_track(scale_z_track);
+			remove_track(scale_y_track);
+			remove_track(scale_x_track);
+			int32_t scale_track = add_track(TrackType::TYPE_VALUE);
+			track_set_path(scale_track, path + "scale");
+			track_insert_key(scale_track, 0.0f, Vector3(1.0f, 1.0f, 1.0f));
+			track_insert_key(scale_track, length, Vector3(1.0f, 1.0f, 1.0f));
+		}
+		int32_t translation_x_track = find_track(path + "translation:x");
+		bool translation_x = translation_x_track != -1 && track_get_key_count(translation_x_track) == 2 &&
+							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_x_track, 0), p_allowed_linear_err), 0.0) &&
+							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_x_track, 1), p_allowed_linear_err), 0.0);
+		int32_t translation_y_track = find_track(path + "translation:y");
+		bool translation_y = translation_y_track != -1 && track_get_key_count(translation_y_track) == 2 &&
+							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_y_track, 0), p_allowed_linear_err), 0.0) &&
+							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_y_track, 1), p_allowed_linear_err), 0.0);
+		int32_t translation_z_track = find_track(path + "translation:z");
+		bool translation_z = translation_z_track != -1 && track_get_key_count(translation_z_track) == 2 &&
+							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_z_track, 0), p_allowed_linear_err), 0.0) &&
+							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_z_track, 1), p_allowed_linear_err), 0.0);
+		if (translation_x &&
+				translation_y &&
+				translation_z) {
+			remove_track(translation_z_track);
+			remove_track(translation_y_track);
+			remove_track(translation_x_track);
+			int32_t translation_track = add_track(TrackType::TYPE_VALUE);
+			track_set_path(translation_track, path + "translation");
+			track_insert_key(translation_track, 0.0f, Vector3());
+			track_insert_key(translation_track, length, Vector3());
+		}
+		int32_t quat_track = find_track(path + "rotation_quat:");
+		bool is_rot_complete = quat_track != -1 && track_get_key_count(quat_track) == 2;
+		Quat rot_start;
+		if (is_rot_complete) {
+			rot_start = track_get_key_value(quat_track, 0);
+		}
+		Quat rot_end;
+		if (is_rot_complete) {
+			rot_end = track_get_key_value(quat_track, 1);
+		}
+		bool remove_quat = is_rot_complete && rot_start.is_equal_approx(Quat()) &&
+						   rot_end.is_equal_approx(Quat());
+		if (scale_x &&
+				scale_y &&
+				scale_z &&
+				translation_x &&
+				translation_y &&
+				translation_z &&
+				remove_quat) {
+			remove_track(quat_track);
+			int32_t translation_track = add_track(TrackType::TYPE_TRANSFORM);
+			track_set_path(translation_track, path + "transform");
+			transform_track_insert_key(translation_track, 0.0f, Vector3(), Quat(), Vector3(1.0f, 1.0f, 1.0f));
+			transform_track_insert_key(translation_track, length, Vector3(), Quat(), Vector3(1.0f, 1.0f, 1.0f));
+		}
+	}
+
+	for (int i = 0; i < removed_tracks.size(); i++) {
+		int32_t track = find_track(removed_tracks[i]);
+		remove_track(track);
 	}
 }
 

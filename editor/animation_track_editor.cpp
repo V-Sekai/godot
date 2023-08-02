@@ -5622,7 +5622,7 @@ void AnimationTrackEditor::_edit_menu_pressed(int p_option) {
 
 		} break;
 		case EDIT_OPTIMIZE_ANIMATION_CONFIRM: {
-			animation->optimize(optimize_linear_error->get_value(), optimize_angular_error->get_value(), optimize_max_angle->get_value());
+			animation->optimize(optimize_linear_error->get_value(), optimize_angular_error->get_value(), optimize_max_angle->get_value(), optimize_convert_bezier->is_pressed());
 			_update_tracks();
 			undo_redo->clear_history();
 
@@ -6142,6 +6142,9 @@ AnimationTrackEditor::AnimationTrackEditor() {
 	optimize_max_angle->set_min(0.0);
 	optimize_max_angle->set_step(0.1);
 	optimize_max_angle->set_value(22);
+	optimize_convert_bezier = memnew(CheckBox);
+	optimize_vb->add_margin_child(TTR("Convert to bezier curve:"), optimize_convert_bezier);
+	optimize_convert_bezier->set_pressed(false);
 
 	optimize_dialog->get_ok()->set_text(TTR("Optimize"));
 	optimize_dialog->connect("confirmed", this, "_edit_menu_pressed", varray(EDIT_OPTIMIZE_ANIMATION_CONFIRM));

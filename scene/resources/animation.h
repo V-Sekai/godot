@@ -63,6 +63,24 @@ public:
 
 	};
 
+	enum BezierTrackConvert {
+		BEZIER_TRACK_LOC_X,
+		BEZIER_TRACK_LOC_Y,
+		BEZIER_TRACK_LOC_Z,
+		BEZIER_TRACK_SCALE_X,
+		BEZIER_TRACK_SCALE_Y,
+		BEZIER_TRACK_SCALE_Z,
+		BEZIER_TRACK_ROT_X0,
+		BEZIER_TRACK_ROT_X1,
+		BEZIER_TRACK_ROT_X2,
+		BEZIER_TRACK_ROT_Y0,
+		BEZIER_TRACK_ROT_Y1,
+		BEZIER_TRACK_ROT_Y2,
+		BEZIER_TRACK_ROT_Z0,
+		BEZIER_TRACK_ROT_Z1,
+		BEZIER_TRACK_ROT_Z2,
+	};
+
 private:
 	struct Track {
 		TrackType type;
@@ -254,7 +272,23 @@ private:
 	}
 
 	bool _transform_track_optimize_key(const TKey<TransformKey> &t0, const TKey<TransformKey> &t1, const TKey<TransformKey> &t2, float p_alowed_linear_err, float p_alowed_angular_err, float p_max_optimizable_angle, const Vector3 &p_norm);
-	void _transform_track_optimize(int p_idx, float p_allowed_linear_err = 0.05, float p_allowed_angular_err = 0.01, float p_max_optimizable_angle = Math_PI * 0.125);
+	void _transform_track_optimize(int p_idx, float p_allowed_linear_err = 0.05, float p_allowed_angular_err = Math::deg2rad(0.01f), float p_max_optimizable_angle = Math::deg2rad(2.2f));
+	void _transform_track_bezier_optimize(int p_idx, float p_allowed_linear_err = 0.05, float p_allowed_angular_err = Math::deg2rad(0.01f), float p_max_optimizable_angle = Math::deg2rad(2.2f));
+	void _quat_track_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle);
+	bool _quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Variant> &t1, const TKey<Variant> &t2, float p_alowed_linear_err, float p_alowed_angular_err, float p_max_optimizable_angle);
+	void _convert_bezier(int32_t p_idx, real_t p_allowed_linear_err, real_t p_allowed_angular_err, real_t p_max_optimizable_angle);
+	void _convert_blendshapes(int32_t p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle);
+	Basis compute_rotation_matrix_from_ortho_6d(Vector3 x_raw, Vector3 y_raw) {
+		Vector3 x = x_raw.normalized();
+		Vector3 z = x.cross(y_raw);
+		z = z.normalized();
+		Vector3 y = z.cross(x);
+		Basis basis;
+		basis.set_axis(Vector3::AXIS_X, x);
+		basis.set_axis(Vector3::AXIS_Y, y);
+		basis.set_axis(Vector3::AXIS_Z, z);
+		return basis;
+	}
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -354,7 +388,7 @@ public:
 
 	void clear();
 
-	void optimize(float p_allowed_linear_err = 0.05, float p_allowed_angular_err = 0.01, float p_max_optimizable_angle = Math_PI * 0.125);
+	void optimize(float p_allowed_linear_err = 0.05, float p_allowed_angular_err = 0.01, float p_max_optimizable_angle = Math_PI * 0.125, bool p_convert_bezier = false);
 
 	Animation();
 	~Animation();

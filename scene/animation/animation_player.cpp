@@ -252,7 +252,13 @@ void AnimationPlayer::_ensure_node_caches(AnimationData *p_anim, Node *p_root_ov
 		uint32_t id = resource.is_valid() ? resource->get_instance_id() : child->get_instance_id();
 		int bone_idx = -1;
 
-		if (a->track_get_path(i).get_subname_count() == 1 && Object::cast_to<Skeleton>(child)) {
+		if (String(a->track_get_path(i)).get_slice_count(":") == 2 && Object::cast_to<Skeleton>(child)) {
+			Skeleton *sk = Object::cast_to<Skeleton>(child);
+			bone_idx = sk->find_bone(String(a->track_get_path(i).get_subname(0)).get_slicec('/', 0));
+			if (bone_idx == -1) {
+				continue;
+			}
+		} else if (a->track_get_path(i).get_subname_count() == 1 && Object::cast_to<Skeleton>(child)) {
 			Skeleton *sk = Object::cast_to<Skeleton>(child);
 			bone_idx = sk->find_bone(a->track_get_path(i).get_subname(0));
 			if (bone_idx == -1) {
@@ -398,9 +404,8 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 
 			} break;
 			case Animation::TYPE_VALUE: {
-				if (!nc->node) {
+				if (!nc->node && !nc->spatial)
 					continue;
-				}
 
 				//StringName property=a->track_get_path(i).get_property();
 
@@ -522,7 +527,6 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 						}
 					}
 				}
-
 			} break;
 			case Animation::TYPE_METHOD: {
 				if (!nc->node) {
@@ -580,7 +584,6 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 						}
 					}
 				}
-
 			} break;
 			case Animation::TYPE_BEZIER: {
 				if (!nc->node) {
@@ -703,71 +706,70 @@ void AnimationPlayer::_animation_process_animation(AnimationData *p_anim, float 
 						}
 					}
 				}
-
-			} break;
-			case Animation::TYPE_ANIMATION: {
-				AnimationPlayer *player = Object::cast_to<AnimationPlayer>(nc->node);
-				if (!player) {
-					continue;
-				}
-
-				if (p_delta == 0 || p_seeked) {
-					//seek
-					int idx = a->track_find_key(i, p_time);
-					if (idx < 0) {
+				break;
+				case Animation::TYPE_ANIMATION: {
+					AnimationPlayer *player = Object::cast_to<AnimationPlayer>(nc->node);
+					if (!player) {
 						continue;
 					}
 
-					float pos = a->track_get_key_time(i, idx);
+					if (p_delta == 0 || p_seeked) {
+						//seek
+						int idx = a->track_find_key(i, p_time);
+						if (idx < 0) {
+							continue;
+						}
 
-					StringName anim_name = a->animation_track_get_key_animation(i, idx);
-					if (String(anim_name) == "[stop]" || !player->has_animation(anim_name)) {
-						continue;
-					}
-
-					Ref<Animation> anim = player->get_animation(anim_name);
-
-					float at_anim_pos;
-
-					if (anim->has_loop()) {
-						at_anim_pos = Math::fposmod(p_time - pos, anim->get_length()); //seek to loop
-					} else {
-						at_anim_pos = MIN(anim->get_length(), p_time - pos); //seek to end
-					}
-
-					if (player->is_playing() || p_seeked) {
-						player->play(anim_name);
-						player->seek(at_anim_pos);
-						nc->animation_playing = true;
-						playing_caches.insert(nc);
-					} else {
-						player->set_assigned_animation(anim_name);
-						player->seek(at_anim_pos, true);
-					}
-				} else {
-					//find stuff to play
-					List<int> to_play;
-					a->track_get_key_indices_in_range(i, p_time, p_delta, &to_play);
-					if (to_play.size()) {
-						int idx = to_play.back()->get();
+						float pos = a->track_get_key_time(i, idx);
 
 						StringName anim_name = a->animation_track_get_key_animation(i, idx);
 						if (String(anim_name) == "[stop]" || !player->has_animation(anim_name)) {
-							if (playing_caches.has(nc)) {
-								playing_caches.erase(nc);
-								player->stop();
-								nc->animation_playing = false;
-							}
+							continue;
+						}
+
+						Ref<Animation> anim = player->get_animation(anim_name);
+
+						float at_anim_pos;
+
+						if (anim->has_loop()) {
+							at_anim_pos = Math::fposmod(p_time - pos, anim->get_length()); //seek to loop
 						} else {
+							at_anim_pos = MIN(anim->get_length(), p_time - pos); //seek to end
+						}
+
+						if (player->is_playing() || p_seeked) {
 							player->play(anim_name);
-							player->seek(0.0, true);
+							player->seek(at_anim_pos);
 							nc->animation_playing = true;
 							playing_caches.insert(nc);
+						} else {
+							player->set_assigned_animation(anim_name);
+							player->seek(at_anim_pos, true);
+						}
+					} else {
+						//find stuff to play
+						List<int> to_play;
+						a->track_get_key_indices_in_range(i, p_time, p_delta, &to_play);
+						if (to_play.size()) {
+							int idx = to_play.back()->get();
+
+							StringName anim_name = a->animation_track_get_key_animation(i, idx);
+							if (String(anim_name) == "[stop]" || !player->has_animation(anim_name)) {
+								if (playing_caches.has(nc)) {
+									playing_caches.erase(nc);
+									player->stop();
+									nc->animation_playing = false;
+								}
+							} else {
+								player->play(anim_name);
+								player->seek(0.0, true);
+								nc->animation_playing = true;
+								playing_caches.insert(nc);
+							}
 						}
 					}
-				}
-
-			} break;
+				} break;
+			}
 		}
 	}
 }
