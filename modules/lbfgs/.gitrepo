@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-lbfgs.git
+	branch = main
+	commit = a0a669c4bf87381766903ccecf8bb21a3e20f098
+	parent = d40e8bf2b4bc3cb63c87a4dea2c3f5ffe7591c0d
+	method = merge
+	cmdver = 0.4.9
