@@ -372,3 +372,5 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 *.generated.props
+
+!modules/*/thirdparty/*
