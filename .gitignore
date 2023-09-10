@@ -367,3 +367,5 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+
+!modules/*/thirdparty/*

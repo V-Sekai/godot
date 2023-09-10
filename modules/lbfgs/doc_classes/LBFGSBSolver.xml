@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LBFGSBSolver" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		The LBFGSBSolver class provides an implementation of the L-BFGSB optimization algorithm.
+	</brief_description>
+	<description>
+		L-BFGSB (Limited-memory Broyden-Fletcher-Goldfarb-Shanno with Bounds) is a variant of the L-BFGS optimization algorithm that supports bound constraints. It is not as robust as L-BFGS and has a time complexity of O(N*M), where N is the number of variables and M is the number of iterations.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_call_operator" qualifiers="virtual">
+			<return type="float" />
+			<param index="0" name="x" type="float[]" />
+			<param index="1" name="gradient" type="float[]" />
+			<description>
+				This method is used to calculate the function value and its gradient at a given point x.
+			</description>
+		</method>
+		<method name="minimize">
+			<return type="Array" />
+			<param index="0" name="x" type="float[]" />
+			<param index="1" name="fx" type="float" />
+			<param index="2" name="lower_bound" type="float[]" />
+			<param index="3" name="upper_bound" type="float[]" />
+			<description>
+				This method is used to find the minimum of the function starting from the initial guess x, subject to the given lower and upper bounds.
+			</description>
+		</method>
+	</methods>
+</class>
