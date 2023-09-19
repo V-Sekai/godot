@@ -37,13 +37,14 @@
 #include "core/object/script_language.h"
 
 #include "../thirdparty/LBFGSpp/include/LBFGSB.h"
+#include "scene/3d/node_3d.h"
 #include "thirdparty/eigen/Eigen/Core"
 
 #include <functional>
 #include <iostream>
 
-class LBFGSBSolver : public RefCounted {
-	GDCLASS(LBFGSBSolver, RefCounted);
+class LBFGSBSolver : public Node3D {
+	GDCLASS(LBFGSBSolver, Node3D);
 
 protected:
 	static void _bind_methods();
@@ -51,14 +52,13 @@ protected:
 
 	std::function<double(const Eigen::VectorXd &p_x, Eigen::VectorXd &r_grad)> operator_pointer;
 
-	double operator_call(const TypedArray<double> &p_x, TypedArray<double> &r_grad);
-
-public:
-	LBFGSBSolver();
-	double native_operator(const Eigen::VectorXd &r_x, Eigen::VectorXd &r_grad);
-	double call_operator(const TypedArray<double> &p_x, TypedArray<double> &r_grad);
 	static Eigen::VectorXd godot_to_eigen(const TypedArray<double> &p_array);
 	static TypedArray<double> eigen_to_godot(const Eigen::VectorXd &p_vector);
+	double operator_call(const TypedArray<double> &p_x, TypedArray<double> &r_grad);
+	double native_operator(const Eigen::VectorXd &r_x, Eigen::VectorXd &r_grad);
+public:
+	LBFGSBSolver();
+	double call_operator(const TypedArray<double> &p_x, TypedArray<double> &r_grad);
 	Array minimize(const TypedArray<double> &p_x,
 			const double &p_fx, const TypedArray<double> &p_lower_bound, const TypedArray<double> &p_upper_bound);
 };
