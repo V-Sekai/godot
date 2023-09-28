@@ -17,7 +17,7 @@
 				This method is used to calculate the function value and its gradient at a given point x.
 			</description>
 		</method>
-		<method name="minimize">
+		<method name="minimize" qualifiers="vararg">
 			<return type="Array" />
 			<param index="0" name="x" type="float[]" />
 			<param index="1" name="fx" type="float" />
