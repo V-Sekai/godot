@@ -32,12 +32,12 @@
 
 #ifdef TOOLS_ENABLED
 
-#include "modules/gltf/gltf_document.h"
 #include "core/config/project_settings.h"
-#include "editor/editor_settings.h"
 #include "editor/editor_file_system.h"
 #include "editor/editor_node.h"
+#include "editor/editor_settings.h"
 #include "editor/gui/editor_file_dialog.h"
+#include "modules/gltf/gltf_document.h"
 #include "scene/gui/popup_menu.h"
 
 String SceneExporterBlendPlugin::get_name() const {
@@ -80,7 +80,6 @@ void SceneExporterBlendPlugin::convert_scene_to_blend() {
 }
 
 void SceneExporterBlendPlugin::_gltf2_dialog_action(String p_file) {
-
 	Node *root = EditorNode::get_singleton()->get_tree()->get_edited_scene_root();
 	if (!root) {
 		EditorNode::get_singleton()->show_accept(TTR("This operation can't be done without a scene."), TTR("OK"));
