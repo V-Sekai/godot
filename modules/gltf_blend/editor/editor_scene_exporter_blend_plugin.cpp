@@ -89,7 +89,7 @@ void SceneExporterBlendPlugin::_gltf2_dialog_action(String p_file) {
 	Ref<GLTFDocument> doc;
 	doc.instantiate();
 	String blend_to_scene_setting = "import bpy, os, sys;bpy.ops.wm.read_homefile(use_empty=True);bpy.context.scene.render.fps=30;bpy.ops.import_scene.gltf(filepath='GODOT_SOURCE', bone_heuristic='BLENDER');bpy.ops.wm.save_mainfile(filepath='GODOT_SINK');";
-	String script = blend_to_scene_setting;
+	String blender_script = blend_to_scene_setting;
 	String source = "res://.godot/imported/" + p_file.get_file().get_basename().to_camel_case() + "-" + p_file.md5_text() + ".glb";
 	Ref<GLTFState> gltf_state;
 	gltf_state.instantiate();
@@ -103,17 +103,17 @@ void SceneExporterBlendPlugin::_gltf2_dialog_action(String p_file) {
 	}
 	String source_global = ProjectSettings::get_singleton()->globalize_path(source);
 	source_global = source_global.c_escape();
-	script = script.replace("GODOT_SOURCE", source_global);
+	blender_script = blender_script.replace("GODOT_SOURCE", source_global);
 	String sink = ProjectSettings::get_singleton()->globalize_path(p_file);
 	String sink_global = ProjectSettings::get_singleton()->globalize_path(sink);
 	sink_global = sink_global.c_escape();
-	script = script.replace("GODOT_SINK", sink_global);
+	blender_script = blender_script.replace("GODOT_SINK", sink_global);
 	String standard_out;
 	List<String> args;
 	args.push_back("--background");
 	args.push_back("--python-expr");
-	print_line(script);
-	args.push_back(script);
+	print_line(blender_script);
+	args.push_back(blender_script);
 	String addon_path = EditorSettings::get_singleton()->get_setting("filesystem/import/blender/blender3_path");
 	int32_t ret = OS::get_singleton()->execute(addon_path, args, &standard_out);
 	print_line(standard_out);
