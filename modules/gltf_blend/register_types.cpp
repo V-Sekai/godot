@@ -39,6 +39,9 @@
 #endif
 
 void initialize_gltf_blend_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
 #ifndef _3D_DISABLED
 #ifdef TOOLS_ENABLED
 	ClassDB::APIType prev_api = ClassDB::get_current_api();
@@ -49,4 +52,8 @@ void initialize_gltf_blend_module(ModuleInitializationLevel p_level) {
 #endif
 }
 
-void uninitialize_gltf_blend_module(ModuleInitializationLevel p_level) {}
+void uninitialize_gltf_blend_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+}
