@@ -31,11 +31,11 @@
 #include "register_types.h"
 
 #include "core/config/project_settings.h"
-#include "editor/editor_node.h"
 #include "editor/editor_plugin.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_scene_exporter_blend_plugin.h"
+#include "editor/editor_node.h"
 #endif
 
 void initialize_gltf_blend_module(ModuleInitializationLevel p_level) {
