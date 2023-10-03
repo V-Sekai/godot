@@ -37,6 +37,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_settings.h"
 #include "editor/gui/editor_file_dialog.h"
+#include "editor/import/resource_importer_scene.h"
 #include "modules/gltf/gltf_document.h"
 #include "scene/gui/popup_menu.h"
 
@@ -93,7 +94,8 @@ void SceneExporterBlendPlugin::_gltf2_dialog_action(String p_file) {
 	String source = "res://.godot/imported/" + p_file.get_file().get_basename().to_camel_case() + "-" + p_file.md5_text() + ".glb";
 	Ref<GLTFState> gltf_state;
 	gltf_state.instantiate();
-	Error err = doc->append_from_scene(root, gltf_state);
+	int32_t flags = EditorSceneFormatImporter::IMPORT_USE_NAMED_SKIN_BINDS;
+	Error err = doc->append_from_scene(root, gltf_state, flags);
 	if (err != OK) {
 		ERR_PRINT(vformat("Append from scene error %s.", itos(err)));
 	}
