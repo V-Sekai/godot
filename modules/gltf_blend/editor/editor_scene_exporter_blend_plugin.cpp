@@ -116,13 +116,15 @@ void SceneExporterBlendPlugin::_gltf2_dialog_action(String p_file) {
 	args.push_back(blender_script);
 	String addon_path;
 	if (OS::get_singleton()->get_name() == "Windows") {
-		addon_path = EditorSettings::get_singleton()->get_setting("filesystem/import/blender/blender3_path") + String("/Blender");
+		addon_path = EditorSettings::get_singleton()->get_setting("filesystem/import/blender/blender3_path");
+		addon_path += "/blender.exe";
 	} else {
-		addon_path = EditorSettings::get_singleton()->get_setting("filesystem/import/blender/blender3_path") + String("/blender");
+		addon_path = EditorSettings::get_singleton()->get_setting("filesystem/import/blender/blender3_path");
+		addon_path += "/blender";
 	}
 	int32_t ret = OS::get_singleton()->execute(addon_path, args, &standard_out);
-	print_line(standard_out);
 	if (ret != OK) {
+		print_line(standard_out);
 		print_error("Blender returned " + itos(ret));
 		return;
 	}
