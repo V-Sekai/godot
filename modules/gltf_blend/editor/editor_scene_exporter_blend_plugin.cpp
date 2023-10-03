@@ -128,6 +128,8 @@ void SceneExporterBlendPlugin::_gltf2_dialog_action(String p_file) {
 		print_error("Blender returned " + itos(ret));
 		return;
 	}
+	const Vector<String> p_files = {sink_global};
+	EditorFileSystem::get_singleton()->reimport_files(p_files);
 }
 
 #endif // TOOLS_ENABLED
