@@ -395,3 +395,5 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 *.generated.props
+
+!thirdparty/eigen/Eigen/StdDeque
