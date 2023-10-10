@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot_visual_script.git
+	branch = reset-path
+	commit = d85a4322efe61381fb73d0ca6133e4e9499709e3
+	parent = 6b727ebdd298bdfad8b5c5ea78100bfb6a537d79
+	method = merge
+	cmdver = 0.4.6
