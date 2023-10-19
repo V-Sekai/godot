@@ -1163,12 +1163,13 @@ void SurfaceTool::generate_tangents() {
 	SMikkTSpaceContext msc;
 	msc.m_pInterface = &mkif;
 
-	TangentGenerationContextUserData triangle_data;
+	TangentGenerationContextUserData triangle_data{};
 	triangle_data.vertices = &vertex_array;
-	for (Vertex &vertex : vertex_array) {
-		vertex.binormal = Vector3();
-		vertex.tangent = Vector3();
-	}
+    int task_id = WorkerThreadPool::get_singleton()->add_group_task(
+           callable_mp(this, &SurfaceTool::init_vertex_data), vertex_array.size());
+
+	WorkerThreadPool::get_singleton()->wait_for_group_task_completion(task_id);
+
 	triangle_data.indices = &index_array;
 	msc.m_pUserData = &triangle_data;
 
