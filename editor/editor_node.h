@@ -738,7 +738,7 @@ public:
 	static void add_init_callback(EditorNodeInitCallback p_callback) { _init_callbacks.push_back(p_callback); }
 	static void add_build_callback(EditorBuildCallback p_callback);
 
-	static bool immediate_confirmation_dialog(const String &p_text, const String &p_ok_text = TTR("Ok"), const String &p_cancel_text = TTR("Cancel"));
+	static bool immediate_confirmation_dialog(const String &p_text, const String &p_ok_text = RTR("Ok"), const String &p_cancel_text = RTR("Cancel"));
 
 	static void cleanup();
 
@@ -863,7 +863,7 @@ public:
 
 	void show_accept(const String &p_text, const String &p_title);
 	void show_save_accept(const String &p_text, const String &p_title);
-	void show_warning(const String &p_text, const String &p_title = TTR("Warning!"));
+	void show_warning(const String &p_text, const String &p_title = RTR("Warning!"));
 
 	void _copy_warning(const String &p_str);
 
