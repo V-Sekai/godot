@@ -139,20 +139,6 @@ elif env["builtin_libdatachannel"] and env["libdatachannel"]:
 
     env_thirdparty = env_webrtc.Clone()
     env_thirdparty.disable_warnings()
-
-    if env["disable_exceptions"]:
-        # If exceptions were disabled, we have to undo this when compiling the thirdparty code.
-        if env.msvc:
-            env_thirdparty["CPPDEFINES"] = [x for x in env_thirdparty["CPPDEFINES"] if "_HAS_EXCEPTIONS" not in x]
-            env_thirdparty.Append(CCFLAGS=["/EHsc"])
-        else:
-            env_thirdparty["CCFLAGS"] = [x for x in env_thirdparty["CCFLAGS"] if "-fno-exceptions" not in x]
-
-    if env.msvc:
-        env_thirdparty["CCFLAGS"] = ["/O1" if x == "/O2" else x for x in env_thirdparty["CCFLAGS"]]
-    else:
-        env_thirdparty["CCFLAGS"] = ["-Os" if (x == "-O2" or x == "-O3") else x for x in env_thirdparty["CCFLAGS"]]
-
     env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
     env.modules_sources += thirdparty_obj
 

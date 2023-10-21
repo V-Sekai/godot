@@ -40,10 +40,10 @@ public:
 	size_t maxMessageSize() const override;
 
 	void close(void) override;
-	bool send(message_variant data) override;
-	bool send(const byte *data, size_t size) override;
-	template <typename Buffer> bool sendBuffer(const Buffer &buf);
-	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
+	RTC_WRAPPED(bool) send(message_variant data) override;
+	RTC_WRAPPED(bool) send(const byte *data, size_t size) override;
+	template <typename Buffer> RTC_WRAPPED(bool) sendBuffer(const Buffer &buf);
+	template <typename Iterator> RTC_WRAPPED(bool) sendBuffer(Iterator first, Iterator last);
 
 private:
 	using CheshireCat<impl::DataChannel>::impl;
@@ -56,12 +56,12 @@ template <typename Buffer> std::pair<const byte *, size_t> to_bytes(const Buffer
 	                      buf.size() * sizeof(E));
 }
 
-template <typename Buffer> bool DataChannel::sendBuffer(const Buffer &buf) {
+template <typename Buffer> RTC_WRAPPED(bool) DataChannel::sendBuffer(const Buffer &buf) {
 	auto [bytes, size] = to_bytes(buf);
 	return send(bytes, size);
 }
 
-template <typename Iterator> bool DataChannel::sendBuffer(Iterator first, Iterator last) {
+template <typename Iterator> RTC_WRAPPED(bool) DataChannel::sendBuffer(Iterator first, Iterator last) {
 	size_t size = 0;
 	for (Iterator it = first; it != last; ++it)
 		size += it->size();

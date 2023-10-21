@@ -38,11 +38,7 @@ PeerConnection::PeerConnection(Configuration config)
     : CheshireCat<impl::PeerConnection>(std::move(config)) {}
 
 PeerConnection::~PeerConnection() {
-	try {
-		impl()->remoteClose();
-	} catch (const std::exception &e) {
-		PLOG_ERROR << e.what();
-	}
+	impl()->remoteClose();
 }
 
 void PeerConnection::close() { impl()->close(); }
@@ -74,7 +70,8 @@ bool PeerConnection::hasMedia() const {
 	return local && local->hasAudioOrVideo();
 }
 
-void PeerConnection::setLocalDescription(Description::Type type) {
+RTC_WRAPPED(void) PeerConnection::setLocalDescription(Description::Type type) {
+	RTC_BEGIN;
 	std::unique_lock signalingLock(impl()->signalingMutex);
 	PLOG_VERBOSE << "Setting local description, type=" << Description::typeToString(type);
 
@@ -85,7 +82,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 			impl()->rollbackLocalDescription();
 			impl()->changeSignalingState(SignalingState::Stable);
 		}
-		return;
+		RTC_RET;
 	}
 
 	// Guess the description type if unspecified
@@ -99,7 +96,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	// Only a local offer resets the negotiation needed flag
 	if (type == Description::Type::Offer && !impl()->negotiationNeeded.exchange(false)) {
 		PLOG_DEBUG << "No negotiation needed";
-		return;
+		RTC_RET;
 	}
 
 	// Get the new signaling state
@@ -110,7 +107,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 			std::ostringstream oss;
 			oss << "Unexpected local desciption type " << type << " in signaling state "
 			    << signalingState;
-			throw std::logic_error(oss.str());
+			RTC_THROW RTC_LOGIC_ERROR(oss.str());
 		}
 		newSignalingState = SignalingState::HaveLocalOffer;
 		break;
@@ -121,7 +118,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 			std::ostringstream oss;
 			oss << "Unexpected local description type " << type
 			    << " description in signaling state " << signalingState;
-			throw std::logic_error(oss.str());
+			RTC_THROW RTC_LOGIC_ERROR(oss.str());
 		}
 		newSignalingState = SignalingState::Stable;
 		break;
@@ -130,26 +127,28 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 		std::ostringstream oss;
 		oss << "Unexpected local description in signaling state " << signalingState << ", ignoring";
 		LOG_WARNING << oss.str();
-		return;
+		RTC_RET;
 	}
 	}
 
-	auto iceTransport = impl()->initIceTransport();
+	RTC_UNWRAP_RETHROW_DECL(auto, iceTransport, impl()->initIceTransport());
 	if (!iceTransport)
-		return; // closed
+		RTC_RET; // closed
 
-	Description local = iceTransport->getLocalDescription(type);
-	impl()->processLocalDescription(std::move(local));
+	RTC_UNWRAP_RETHROW_DECL(Description, local, iceTransport->getLocalDescription(type));
+	RTC_UNWRAP_RETHROW(impl()->processLocalDescription(std::move(local)));
 
 	impl()->changeSignalingState(newSignalingState);
 	signalingLock.unlock();
 
 	if (impl()->gatheringState == GatheringState::New) {
-		iceTransport->gatherLocalCandidates(impl()->localBundleMid());
+		RTC_UNWRAP_RETHROW(iceTransport->gatherLocalCandidates(impl()->localBundleMid()));
 	}
+	RTC_RET;
 }
 
-void PeerConnection::setRemoteDescription(Description description) {
+RTC_WRAPPED(void) PeerConnection::setRemoteDescription(Description description) {
+	RTC_BEGIN;
 	std::unique_lock signalingLock(impl()->signalingMutex);
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
@@ -157,10 +156,10 @@ void PeerConnection::setRemoteDescription(Description description) {
 		// This is mostly useless because we accept any offer
 		PLOG_VERBOSE << "Rolling back pending remote description";
 		impl()->changeSignalingState(SignalingState::Stable);
-		return;
+		RTC_RET;
 	}
 
-	impl()->validateRemoteDescription(description);
+	RTC_UNWRAP_RETHROW(impl()->validateRemoteDescription(description));
 
 	// Get the new signaling state
 	SignalingState signalingState = impl()->signalingState.load();
@@ -172,7 +171,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 			std::ostringstream oss;
 			oss << "Unexpected remote " << description.type() << " description in signaling state "
 			    << signalingState;
-			throw std::logic_error(oss.str());
+			RTC_THROW RTC_LOGIC_ERROR(oss.str());
 		}
 		newSignalingState = SignalingState::HaveRemoteOffer;
 		break;
@@ -193,7 +192,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 			std::ostringstream oss;
 			oss << "Unexpected remote " << description.type() << " description in signaling state "
 			    << signalingState;
-			throw std::logic_error(oss.str());
+			RTC_THROW RTC_LOGIC_ERROR(oss.str());
 		}
 		newSignalingState = SignalingState::Stable;
 		break;
@@ -205,7 +204,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 			std::ostringstream oss;
 			oss << "Unexpected remote " << description.type() << " description in signaling state "
 			    << signalingState;
-			throw std::logic_error(oss.str());
+			RTC_THROW RTC_LOGIC_ERROR(oss.str());
 		}
 		newSignalingState = SignalingState::Stable;
 		break;
@@ -213,7 +212,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 	default: {
 		std::ostringstream oss;
 		oss << "Unexpected remote description in signaling state " << signalingState;
-		throw std::logic_error(oss.str());
+		RTC_THROW RTC_LOGIC_ERROR(oss.str());
 	}
 	}
 
@@ -221,30 +220,31 @@ void PeerConnection::setRemoteDescription(Description description) {
 	auto remoteCandidates = description.extractCandidates();
 	auto type = description.type();
 
-	auto iceTransport = impl()->initIceTransport();
+	RTC_UNWRAP_RETHROW_DECL(auto, iceTransport, impl()->initIceTransport());
 	if (!iceTransport)
-		return; // closed
+		RTC_RET; // closed
 
-	iceTransport->setRemoteDescription(description); // ICE transport might reject the description
+	RTC_UNWRAP_RETHROW(iceTransport->setRemoteDescription(description)); // ICE transport might reject the description
 
-	impl()->processRemoteDescription(std::move(description));
+	RTC_UNWRAP_RETHROW(impl()->processRemoteDescription(std::move(description)));
 	impl()->changeSignalingState(newSignalingState);
 	signalingLock.unlock();
 
 	if (type == Description::Type::Offer) {
 		// This is an offer, we need to answer
 		if (!impl()->config.disableAutoNegotiation)
-			setLocalDescription(Description::Type::Answer);
+			RTC_UNWRAP_RETHROW(setLocalDescription(Description::Type::Answer));
 	}
 
 	for (const auto &candidate : remoteCandidates)
-		addRemoteCandidate(candidate);
+		RTC_UNWRAP_RETHROW(addRemoteCandidate(candidate));
+	RTC_RET;
 }
 
-void PeerConnection::addRemoteCandidate(Candidate candidate) {
+RTC_WRAPPED(void) PeerConnection::addRemoteCandidate(Candidate candidate) {
 	std::unique_lock signalingLock(impl()->signalingMutex);
 	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
-	impl()->processRemoteCandidate(std::move(candidate));
+	return impl()->processRemoteCandidate(std::move(candidate));
 }
 
 #if RTC_ENABLE_MEDIA
@@ -267,8 +267,9 @@ optional<string> PeerConnection::remoteAddress() const {
 
 uint16_t PeerConnection::maxDataChannelId() const { return impl()->maxDataChannelStream(); }
 
-shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChannelInit init) {
-	auto channelImpl = impl()->emplaceDataChannel(std::move(label), std::move(init));
+RTC_WRAPPED(shared_ptr<DataChannel>) PeerConnection::createDataChannel(string label, DataChannelInit init) {
+	RTC_BEGIN;
+	RTC_UNWRAP_RETHROW_DECL(auto, channelImpl, impl()->emplaceDataChannel(std::move(label), std::move(init)));
 	auto channel = std::make_shared<DataChannel>(channelImpl);
 
 	// Renegotiation is needed iff the current local description does not have application
@@ -277,7 +278,7 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChan
 		impl()->negotiationNeeded = true;
 
 	if (!impl()->config.disableAutoNegotiation)
-		setLocalDescription();
+		RTC_UNWRAP_RETHROW(setLocalDescription());
 
 	return channel;
 }
@@ -331,9 +332,13 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 
 void PeerConnection::resetCallbacks() { impl()->resetCallbacks(); }
 
-bool PeerConnection::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+RTC_WRAPPED(bool) PeerConnection::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+	RTC_BEGIN;
 	auto iceTransport = impl()->getIceTransport();
-	return iceTransport ? iceTransport->getSelectedCandidatePair(local, remote) : false;
+	if (iceTransport) {
+		RTC_UNWRAP_RETHROW(iceTransport->getSelectedCandidatePair(local, remote));
+	}
+	return false;
 }
 
 void PeerConnection::clearStats() {
