@@ -84,7 +84,9 @@ void PeerConnection::remoteClose() {
 	if (state.load() != State::Closed) {
 		// Close data channels and tracks asynchronously
 		mProcessor.enqueue(&PeerConnection::closeDataChannels, shared_from_this());
+#if RTC_ENABLE_MEDIA
 		mProcessor.enqueue(&PeerConnection::closeTracks, shared_from_this());
+#endif
 
 		closeTransports();
 	}
@@ -241,7 +243,9 @@ RTC_WRAPPED(shared_ptr<DtlsTransport>) PeerConnection::initDtlsTransport() {
 				    } else
 					    changeState(State::Connected);
 
+#if RTC_ENABLE_MEDIA
 				    mProcessor.enqueue(&PeerConnection::openTracks, shared_from_this());
+#endif
 				    break;
 			    case DtlsTransport::State::Failed:
 				    changeState(State::Failed);
@@ -386,7 +390,9 @@ void PeerConnection::closeTransports() {
 		return; // already closed
 
 	// Reset interceptor and callbacks now that state is changed
+#if RTC_ENABLE_MEDIA
 	setMediaHandler(nullptr);
+#endif
 	resetCallbacks();
 
 	// Pass the pointers to a thread, allowing to terminate a transport from its own thread
@@ -524,6 +530,7 @@ RTC_WRAPPED(void) PeerConnection::forwardMessage(message_ptr message) {
 }
 
 void PeerConnection::forwardMedia(message_ptr message) {
+#if RTC_ENABLE_MEDIA
 	if (!message)
 		return;
 
@@ -611,6 +618,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		// PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
+#endif
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
@@ -757,6 +765,7 @@ void PeerConnection::remoteCloseDataChannels() {
 	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->remoteClose(); RTC_RET; });
 }
 
+#if RTC_ENABLE_MEDIA
 shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 #if !RTC_ENABLE_MEDIA
 	// No media support, mark as removed
@@ -796,7 +805,6 @@ void PeerConnection::iterateTracks(std::function<void(shared_ptr<Track> track)> 
 }
 
 void PeerConnection::openTracks() {
-#if RTC_ENABLE_MEDIA
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
 		auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport);
 
@@ -816,13 +824,13 @@ void PeerConnection::openTracks() {
 			}
 		});
 	}
-#endif
 }
 
 void PeerConnection::closeTracks() {
 	std::shared_lock lock(mTracksMutex); // read-only
 	iterateTracks([&](shared_ptr<Track> track) { track->close(); });
 }
+#endif
 
 RTC_WRAPPED(void) PeerConnection::validateRemoteDescription(const Description &description) {
 	RTC_BEGIN;
@@ -905,6 +913,7 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 				        description.addMedia(std::move(reciprocated));
 			        },
 			        [&](Description::Media *remoteMedia) {
+#if RTC_ENABLE_MEDIA
 				        std::shared_lock lock(mTracksMutex);
 				        if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end()) {
 					        // Prefer local description
@@ -929,7 +938,7 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 					        }
 					        return;
 				        }
-
+#endif
 				        auto reciprocated = remoteMedia->reciprocate();
 #if !RTC_ENABLE_MEDIA
 				        if (!reciprocated.isRemoved()) {
@@ -938,7 +947,7 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 					        reciprocated.markRemoved();
 				        }
 #endif
-
+#if RTC_ENABLE_MEDIA
 				        PLOG_DEBUG << "Reciprocating media in local description, mid=\""
 				                   << reciprocated.mid() << "\", removed=" << std::boolalpha
 				                   << reciprocated.isRemoved();
@@ -954,6 +963,7 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 					        track->close();
 
 				        description.addMedia(track->description());
+#endif
 			        },
 			    },
 			    remote_media);
@@ -965,6 +975,7 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 
 	if (description.type() == Description::Type::Offer) {
 		// This is an offer, add locally created data channels and tracks
+#if RTC_ENABLE_MEDIA
 		// Add media for local tracks
 		std::shared_lock lock(mTracksMutex);
 		for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
@@ -980,6 +991,7 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 				description.addMedia(std::move(media));
 			}
 		}
+#endif
 
 		// Add application for data channels
 		if (!description.hasApplication()) {
@@ -1036,11 +1048,11 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 	                   &localDescriptionCallback, std::move(description));
 
 	// Reciprocated tracks might need to be open
+#if RTC_ENABLE_MEDIA
 	if (auto dtlsTransport = std::atomic_load(&mDtlsTransport);
 	    dtlsTransport && dtlsTransport->state() == Transport::State::Connected)
 		mProcessor.enqueue(&PeerConnection::openTracks, shared_from_this());
 #endif
-	RTC_RET;
 }
 
 RTC_WRAPPED(void) PeerConnection::processLocalCandidate(Candidate candidate) {
@@ -1137,6 +1149,7 @@ string PeerConnection::localBundleMid() const {
 	return mLocalDescription ? mLocalDescription->bundleMid() : "0";
 }
 
+#if RTC_ENABLE_MEDIA
 void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	std::unique_lock lock(mMediaHandlerMutex);
 	if (mMediaHandler)
@@ -1148,6 +1161,7 @@ shared_ptr<MediaHandler> PeerConnection::getMediaHandler() {
 	std::shared_lock lock(mMediaHandlerMutex);
 	return mMediaHandler;
 }
+#endif
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	auto dataChannel = weakDataChannel.lock();
@@ -1158,6 +1172,7 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	triggerPendingDataChannels();
 }
 
+#if RTC_ENABLE_MEDIA
 void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
 	auto track = weakTrack.lock();
 	if (track) {
@@ -1166,6 +1181,7 @@ void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
 	}
 	triggerPendingTracks();
 }
+#endif
 
 void PeerConnection::triggerPendingDataChannels() {
 	while (dataChannelCallback) {
@@ -1186,6 +1202,7 @@ void PeerConnection::triggerPendingDataChannels() {
 }
 
 void PeerConnection::triggerPendingTracks() {
+#if RTC_ENABLE_MEDIA
 	while (trackCallback) {
 		auto next = mPendingTracks.pop();
 		if (!next)
@@ -1201,6 +1218,7 @@ void PeerConnection::triggerPendingTracks() {
 
 		// Do not trigger open immediately for tracks as it'll be done later
 	}
+#endif
 }
 
 void PeerConnection::flushPendingDataChannels() {
@@ -1208,7 +1226,9 @@ void PeerConnection::flushPendingDataChannels() {
 }
 
 void PeerConnection::flushPendingTracks() {
+#if RTC_ENABLE_MEDIA
 	mProcessor.enqueue(&PeerConnection::triggerPendingTracks, shared_from_this());
+#endif
 }
 
 bool PeerConnection::changeState(State newState) {
@@ -1289,10 +1309,13 @@ void PeerConnection::resetCallbacks() {
 	iceStateChangeCallback = nullptr;
 	gatheringStateChangeCallback = nullptr;
 	signalingStateChangeCallback = nullptr;
+#if RTC_ENABLE_MEDIA
 	trackCallback = nullptr;
+#endif
 }
 
 void PeerConnection::updateTrackSsrcCache(const Description &description) {
+#if RTC_ENABLE_MEDIA
 	std::unique_lock lock(mTracksMutex); // for safely writing to mTracksBySsrc
 
 	// Setup SSRC -> Track mapping
@@ -1325,6 +1348,7 @@ void PeerConnection::updateTrackSsrcCache(const Description &description) {
 		        },
 		    },
 		    description.media(i));
+#endif
 }
 
 } // namespace rtc::impl
