@@ -247,11 +247,13 @@ RTC_WRAPPED(void) PeerConnection::addRemoteCandidate(Candidate candidate) {
 	return impl()->processRemoteCandidate(std::move(candidate));
 }
 
+#if RTC_ENABLE_MEDIA
 void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	impl()->setMediaHandler(std::move(handler));
 };
 
 shared_ptr<MediaHandler> PeerConnection::getMediaHandler() { return impl()->getMediaHandler(); };
+#endif
 
 optional<string> PeerConnection::localAddress() const {
 	auto iceTransport = impl()->getIceTransport();
@@ -287,6 +289,7 @@ void PeerConnection::onDataChannel(
 	impl()->flushPendingDataChannels();
 }
 
+#if RTC_ENABLE_MEDIA
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
 	auto trackImpl = impl()->emplaceTrack(std::move(description));
 	auto track = std::make_shared<Track>(trackImpl);
@@ -301,6 +304,7 @@ void PeerConnection::onTrack(std::function<void(std::shared_ptr<Track>)> callbac
 	impl()->trackCallback = callback;
 	impl()->flushPendingTracks();
 }
+#endif
 
 void PeerConnection::onLocalDescription(std::function<void(Description description)> callback) {
 	impl()->localDescriptionCallback = callback;

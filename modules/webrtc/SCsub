@@ -77,13 +77,10 @@ elif env["builtin_libdatachannel"] and env["libdatachannel"]:
         "src/impl/sctptransport.cpp",
         "src/impl/threadpool.cpp",
         "src/impl/tls.cpp",
-        "src/impl/track.cpp",
         "src/impl/transport.cpp",
         "src/impl/utils.cpp",
         "src/message.cpp",
         "src/peerconnection.cpp",
-        "src/rtp.cpp",
-        "src/track.cpp",
     ]
     thirdparty_sources = [thirdparty_dir + s for s in thirdparty_sources]
 

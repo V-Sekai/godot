@@ -68,10 +68,12 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void closeDataChannels();
 	void remoteCloseDataChannels();
 
+#if RTC_ENABLE_MEDIA
 	shared_ptr<Track> emplaceTrack(Description::Media description);
 	void iterateTracks(std::function<void(shared_ptr<Track> track)> func);
 	void openTracks();
 	void closeTracks();
+#endif
 
 	RTC_WRAPPED(void) validateRemoteDescription(const Description &description);
 	RTC_WRAPPED(void) processLocalDescription(Description description);
@@ -80,11 +82,15 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	RTC_WRAPPED(void) processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
 
+#if RTC_ENABLE_MEDIA
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();
+#endif
 
 	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
+#if RTC_ENABLE_MEDIA
 	void triggerTrack(weak_ptr<Track> weakTrack);
+#endif
 
 	void triggerPendingDataChannels();
 	void triggerPendingTracks();
@@ -120,7 +126,9 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	synchronized_callback<IceState> iceStateChangeCallback;
 	synchronized_callback<GatheringState> gatheringStateChangeCallback;
 	synchronized_callback<SignalingState> signalingStateChangeCallback;
+#if RTC_ENABLE_MEDIA
 	synchronized_callback<shared_ptr<rtc::Track>> trackCallback;
+#endif
 
 private:
 	void updateTrackSsrcCache(const Description &description);
@@ -133,10 +141,11 @@ private:
 	optional<Description> mCurrentLocalDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
+#if RTC_ENABLE_MEDIA
 	shared_ptr<MediaHandler> mMediaHandler;
 
 	mutable std::shared_mutex mMediaHandlerMutex;
-
+#endif
 	shared_ptr<IceTransport> mIceTransport;
 	shared_ptr<DtlsTransport> mDtlsTransport;
 	shared_ptr<SctpTransport> mSctpTransport;
@@ -145,13 +154,18 @@ private:
 	std::vector<weak_ptr<DataChannel>> mUnassignedDataChannels;
 	std::shared_mutex mDataChannelsMutex;
 
+#if RTC_ENABLE_MEDIA
 	std::unordered_map<string, weak_ptr<Track>> mTracks;         // by mid
 	std::unordered_map<uint32_t, weak_ptr<Track>> mTracksBySsrc; // by SSRC
 	std::vector<weak_ptr<Track>> mTrackLines;                    // by SDP order
 	std::shared_mutex mTracksMutex;
+#endif
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
+
+#if RTC_ENABLE_MEDIA
 	Queue<shared_ptr<Track>> mPendingTracks;
+#endif
 };
 
 } // namespace rtc::impl
