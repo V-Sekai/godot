@@ -93,15 +93,19 @@ public:
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
+#if RTC_ENABLE_MEDIA
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();
+#endif
 
 	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label,
 	                                                        DataChannelInit init = {});
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 
+#if RTC_ENABLE_MEDIA
 	[[nodiscard]] shared_ptr<Track> addTrack(Description::Media description);
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
+#endif
 
 	void onLocalDescription(std::function<void(Description description)> callback);
 	void onLocalCandidate(std::function<void(Candidate candidate)> callback);
