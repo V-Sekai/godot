@@ -23,7 +23,7 @@
 
 namespace rtc::gnutls {
 
-bool check(int ret, const string &message = "GnuTLS error");
+RTC_WRAPPED(bool) check(int ret, const string &message = "GnuTLS error");
 
 gnutls_certificate_credentials_t *new_credentials();
 void free_credentials(gnutls_certificate_credentials_t *creds);
@@ -52,9 +52,9 @@ gnutls_datum_t make_datum(char *data, size_t size);
 
 namespace rtc::mbedtls {
 
-bool check(int ret, const string &message = "MbedTLS error");
+RTC_WRAPPED(bool) check(int ret, const string &message = "MbedTLS error");
 
-string format_time(const std::chrono::system_clock::time_point &tp);
+RTC_WRAPPED(string) format_time(const std::chrono::system_clock::time_point &tp);
 
 std::shared_ptr<mbedtls_pk_context> new_pk_context();
 std::shared_ptr<mbedtls_x509_crt> new_x509_crt();
@@ -84,8 +84,8 @@ namespace rtc::openssl {
 void init();
 string error_string(unsigned long error);
 
-bool check(int success, const string &message = "OpenSSL error");
-bool check_error(int err, const string &message = "OpenSSL error");
+RTC_WRAPPED(bool) check(int success, const string &message = "OpenSSL error");
+RTC_WRAPPED(bool) check_error(int err, const string &message = "OpenSSL error");
 
 BIO *BIO_new_from_file(const string &filename);
 

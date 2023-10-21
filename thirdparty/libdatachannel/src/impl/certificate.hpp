@@ -20,11 +20,13 @@
 namespace rtc::impl {
 
 class Certificate {
+	RTC_WRAPPED_DEFAULT_CONSTRUCTABLE(Certificate);
+	Certificate() {}
 public:
-	static Certificate FromString(string crt_pem, string key_pem);
-	static Certificate FromFile(const string &crt_pem_file, const string &key_pem_file,
+	static RTC_WRAPPED(Certificate) FromString(string crt_pem, string key_pem);
+	static RTC_WRAPPED(Certificate) FromFile(const string &crt_pem_file, const string &key_pem_file,
 	                            const string &pass = "");
-	static Certificate Generate(CertificateType type, const string &commonName);
+	static RTC_WRAPPED(Certificate) Generate(CertificateType type, const string &commonName);
 
 #if USE_GNUTLS
 	Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey);
@@ -66,7 +68,7 @@ string make_fingerprint(X509 *x509);
 #endif
 
 using certificate_ptr = shared_ptr<Certificate>;
-using future_certificate_ptr = std::shared_future<certificate_ptr>;
+using future_certificate_ptr = std::shared_future<RTC_WRAPPED(certificate_ptr)>;
 
 future_certificate_ptr make_certificate(CertificateType type = CertificateType::Default);
 
