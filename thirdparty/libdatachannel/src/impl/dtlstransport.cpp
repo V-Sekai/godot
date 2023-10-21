@@ -46,17 +46,19 @@ void DtlsTransport::Init() {
 
 void DtlsTransport::Cleanup() { gnutls_global_deinit(); }
 
-DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
+DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate
                              optional<size_t> mtu, verifier_callback verifierCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active) {
+}
 
+RTC_WRAPPED(void) DtlsTransport::construct() {
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
 	if (!mCertificate)
-		throw std::invalid_argument("DTLS certificate is null");
+		RTC_THROW RTC_INVALID_ARGUMENT("DTLS certificate is null");
 
 	gnutls_certificate_credentials_t creds = mCertificate->credentials();
 	gnutls_certificate_set_verify_function(creds, CertificateCallback);
@@ -65,7 +67,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 	    GNUTLS_DATAGRAM | GNUTLS_NONBLOCK | (mIsClient ? GNUTLS_CLIENT : GNUTLS_SERVER);
 	gnutls::check(gnutls_init(&mSession, flags));
 
-	try {
+	RTC_TRY {
 		// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
 		// Therefore, the DTLS layer MUST NOT use any compression algorithm.
 		// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
@@ -92,14 +94,15 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
 		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
-	} catch (...) {
+	} RTC_CATCH (...) {
 		gnutls_deinit(mSession);
-		throw;
+		RTC_RETHROW;
 	}
 
 	// Set recommended medium-priority DSCP value for handshake
 	// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
 	mCurrentDscp = 10; // AF11: Assured Forwarding class 1, low drop probability
+	RTC_RET;
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -109,7 +112,7 @@ DtlsTransport::~DtlsTransport() {
 	gnutls_deinit(mSession);
 }
 
-void DtlsTransport::start() {
+RTC_WRAPPED(void) DtlsTransport::start() {
 	PLOG_DEBUG << "Starting DTLS transport";
 	registerIncoming();
 	changeState(State::Connecting);
@@ -185,7 +188,7 @@ void DtlsTransport::doRecv() {
 	if (state() != State::Connecting && state() != State::Connected)
 		return;
 
-	try {
+	RTC_TRY {
 		const size_t bufferSize = 4096;
 		char buffer[bufferSize];
 
@@ -206,7 +209,7 @@ void DtlsTransport::doRecv() {
 				}
 
 				if (ret == GNUTLS_E_LARGE_PACKET) {
-					throw std::runtime_error("MTU is too low");
+					RTC_THROW_WITHIN(RTC_RUNTIME_ERROR("MTU is too low"));
 				}
 
 			} while (!gnutls::check(ret, "Handshake failed")); // Re-call on non-fatal error
@@ -257,8 +260,8 @@ void DtlsTransport::doRecv() {
 				}
 			}
 		}
-	} catch (const std::exception &e) {
-		PLOG_ERROR << "DTLS recv: " << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_ERROR << "DTLS recv: " << e.RTC_WHAT();
 	}
 
 	gnutls_bye(mSession, GNUTLS_SHUT_WR);
@@ -275,7 +278,7 @@ void DtlsTransport::doRecv() {
 
 int DtlsTransport::CertificateCallback(gnutls_session_t session) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(gnutls_session_get_ptr(session));
-	try {
+	RTC_TRY {
 		if (gnutls_certificate_type_get(session) != GNUTLS_CRT_X509) {
 			return GNUTLS_E_CERTIFICATE_ERROR;
 		}
@@ -300,15 +303,15 @@ int DtlsTransport::CertificateCallback(gnutls_session_t session) {
 		bool success = t->mVerifierCallback(fingerprint);
 		return success ? GNUTLS_E_SUCCESS : GNUTLS_E_CERTIFICATE_ERROR;
 
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 }
 
 ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
-	try {
+	RTC_TRY {
 		if (len > 0) {
 			auto b = reinterpret_cast<const byte *>(data);
 			t->outgoing(make_message(b, b + len));
@@ -316,8 +319,8 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 		gnutls_transport_set_errno(t->mSession, 0);
 		return ssize_t(len);
 
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 		gnutls_transport_set_errno(t->mSession, ECONNRESET);
 		return -1;
 	}
@@ -325,7 +328,7 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 
 ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
-	try {
+	RTC_TRY {
 		while (t->mIncomingQueue.running()) {
 			auto next = t->mIncomingQueue.pop();
 			if (!next) {
@@ -347,8 +350,8 @@ ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size
 		gnutls_transport_set_errno(t->mSession, 0);
 		return 0;
 
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 		gnutls_transport_set_errno(t->mSession, ECONNRESET);
 		return -1;
 	}
@@ -356,11 +359,11 @@ ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size
 
 int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int /* ms */) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
-	try {
+	RTC_TRY {
 		return !t->mIncomingQueue.empty() ? 1 : 0;
 
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 		return 1;
 	}
 }
@@ -377,14 +380,16 @@ const mbedtls_ssl_srtp_profile srtpSupportedProtectionProfiles[] = {
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
                              optional<size_t> mtu, verifier_callback verifierCallback,
                              state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
+    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu),
       mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active) {
+}
 
+RTC_WRAPPED(void) DtlsTransport::construct() {
 	PLOG_DEBUG << "Initializing DTLS transport (MbedTLS)";
 
 	if (!mCertificate)
-		throw std::invalid_argument("DTLS certificate is null");
+		RTC_THROW RTC_INVALID_ARGUMENT("DTLS certificate is null");
 
 	mbedtls_entropy_init(&mEntropy);
 	mbedtls_ctr_drbg_init(&mDrbg);
@@ -392,14 +397,14 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 	mbedtls_ssl_config_init(&mConf);
 	mbedtls_ctr_drbg_set_prediction_resistance(&mDrbg, MBEDTLS_CTR_DRBG_PR_ON);
 
-	try {
-		mbedtls::check(mbedtls_ctr_drbg_seed(&mDrbg, mbedtls_entropy_func, &mEntropy, NULL, 0),
-		               "Failed creating Mbed TLS Context");
+	RTC_TRY {
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_ctr_drbg_seed(&mDrbg, mbedtls_entropy_func, &mEntropy, NULL, 0),
+		               "Failed creating Mbed TLS Context"));
 
-		mbedtls::check(mbedtls_ssl_config_defaults(
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_ssl_config_defaults(
 		                   &mConf, mIsClient ? MBEDTLS_SSL_IS_CLIENT : MBEDTLS_SSL_IS_SERVER,
 		                   MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT),
-		               "Failed creating Mbed TLS Context");
+		               "Failed creating Mbed TLS Context"));
 
 		mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 		mbedtls_ssl_conf_verify(&mConf, DtlsTransport::CertificateCallback, this);
@@ -407,31 +412,34 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		mbedtls_ssl_conf_rng(&mConf, mbedtls_ctr_drbg_random, &mDrbg);
 
 		auto [crt, pk] = mCertificate->credentials();
-		mbedtls::check(mbedtls_ssl_conf_own_cert(&mConf, crt.get(), pk.get()),
-		               "Failed creating Mbed TLS Context");
+		auto crt_ = crt;
+		auto pk_ = pk;
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_ssl_conf_own_cert(&mConf, crt_.get(), pk_.get()),
+		               "Failed creating Mbed TLS Context"));
 
 		mbedtls_ssl_conf_dtls_cookies(&mConf, NULL, NULL, NULL);
 #if RTC_ENABLE_MEDIA // Godot added
 		mbedtls_ssl_conf_dtls_srtp_protection_profiles(&mConf, srtpSupportedProtectionProfiles);
 #endif // RTC_ENABLE_MEDIA
 
-		mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf), "Failed creating Mbed TLS Context");
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf), "Failed creating Mbed TLS Context"));
 
 		mbedtls_ssl_set_export_keys_cb(&mSsl, DtlsTransport::ExportKeysCallback, this);
 		mbedtls_ssl_set_bio(&mSsl, this, WriteCallback, ReadCallback, NULL);
 		mbedtls_ssl_set_timer_cb(&mSsl, this, SetTimerCallback, GetTimerCallback);
 
-	} catch (...) {
+	} RTC_CATCH (...) {
 		mbedtls_entropy_free(&mEntropy);
 		mbedtls_ctr_drbg_free(&mDrbg);
 		mbedtls_ssl_free(&mSsl);
 		mbedtls_ssl_config_free(&mConf);
-		throw;
+		RTC_RETHROW;
 	}
 
 	// Set recommended medium-priority DSCP value for handshake
 	// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
 	mCurrentDscp = 10; // AF11: Assured Forwarding class 1, low drop probability
+	RTC_RET;
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -452,7 +460,7 @@ void DtlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-void DtlsTransport::start() {
+RTC_WRAPPED(void) DtlsTransport::start() {
 	PLOG_DEBUG << "Starting DTLS transport";
 	registerIncoming();
 	changeState(State::Connecting);
@@ -465,6 +473,7 @@ void DtlsTransport::start() {
 	}
 
 	enqueueRecv(); // to initiate the handshake
+	RTC_RET;
 }
 
 void DtlsTransport::stop() {
@@ -474,7 +483,7 @@ void DtlsTransport::stop() {
 	enqueueRecv();
 }
 
-bool DtlsTransport::send(message_ptr message) {
+RTC_WRAPPED(bool) DtlsTransport::send(message_ptr message) {
 	if (!message || state() != State::Connected)
 		return false;
 
@@ -489,9 +498,14 @@ bool DtlsTransport::send(message_ptr message) {
 		mCurrentDscp = message->dscp;
 		ret = mbedtls_ssl_write(&mSsl, reinterpret_cast<const unsigned char *>(message->data()),
 		                        message->size());
-	} while (!mbedtls::check(ret));
+		RTC_BEGIN;
+		RTC_UNWRAP_RETHROW_DECL(bool, cond, mbedtls::check(ret));
+		if (cond) {
+			break;
+		}
+	} while (1);
 
-	return mOutgoingResult;
+	return (bool)mOutgoingResult;
 }
 
 void DtlsTransport::incoming(message_ptr message) {
@@ -505,10 +519,11 @@ void DtlsTransport::incoming(message_ptr message) {
 	enqueueRecv();
 }
 
-bool DtlsTransport::outgoing(message_ptr message) {
+RTC_WRAPPED(bool) DtlsTransport::outgoing(message_ptr message) {
+	RTC_BEGIN;
 	message->dscp = mCurrentDscp;
 
-	bool result = Transport::outgoing(std::move(message));
+	RTC_UNWRAP_RETHROW_DECL(bool, result, Transport::outgoing(std::move(message)));
 	mOutgoingResult = result;
 	return result;
 }
@@ -529,7 +544,7 @@ void DtlsTransport::doRecv() {
 	if (state() != State::Connecting && state() != State::Connected)
 		return;
 
-	try {
+	RTC_TRY {
 		const size_t bufferSize = 4096;
 		char buffer[bufferSize];
 
@@ -551,7 +566,8 @@ void DtlsTransport::doRecv() {
 					return;
 				}
 
-				if (mbedtls::check(ret, "Handshake failed")) {
+				RTC_UNWRAP_CATCH_DECL(bool, res, mbedtls::check(ret, "Handshake failed"));
+				if (res) {
 					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
 					// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
 					{
@@ -585,7 +601,8 @@ void DtlsTransport::doRecv() {
 					break;
 				}
 
-				if (mbedtls::check(ret)) {
+				RTC_UNWRAP_CATCH_DECL(bool, res, mbedtls::check(ret, "Handshake failed"));
+				if (res) {
 					if (ret == 0) {
 						PLOG_DEBUG << "DTLS connection terminated";
 						break;
@@ -595,8 +612,8 @@ void DtlsTransport::doRecv() {
 				}
 			}
 		}
-	} catch (const std::exception &e) {
-		PLOG_ERROR << "DTLS recv: " << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_ERROR << "DTLS recv: " << e.RTC_WHAT();
 	}
 
 	if (state() == State::Connected) {
@@ -632,22 +649,22 @@ void DtlsTransport::ExportKeysCallback(void *ctx, mbedtls_ssl_key_export_type /*
 
 int DtlsTransport::WriteCallback(void *ctx, const unsigned char *buf, size_t len) {
 	auto *t = static_cast<DtlsTransport *>(ctx);
-	try {
+	RTC_TRY {
 		if (len > 0) {
 			auto b = reinterpret_cast<const byte *>(buf);
-			t->outgoing(make_message(b, b + len));
+			RTC_UNWRAP_CATCH(t->outgoing(make_message(b, b + len)));
 		}
 		return int(len);
 
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 		return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
 	}
 }
 
 int DtlsTransport::ReadCallback(void *ctx, unsigned char *buf, size_t len) {
 	auto *t = static_cast<DtlsTransport *>(ctx);
-	try {
+	RTC_TRY {
 		while (t->mIncomingQueue.running()) {
 			auto next = t->mIncomingQueue.pop();
 			if (!next) {
@@ -666,8 +683,8 @@ int DtlsTransport::ReadCallback(void *ctx, unsigned char *buf, size_t len) {
 		// Closed
 		return 0;
 
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 		return MBEDTLS_ERR_SSL_INTERNAL_ERROR;
 		;
 	}
@@ -712,7 +729,7 @@ void DtlsTransport::Init() {
 	if (!BioMethods) {
 		BioMethods = BIO_meth_new(BIO_TYPE_BIO, "DTLS writer");
 		if (!BioMethods)
-			throw std::runtime_error("Failed to create BIO methods for DTLS writer");
+			PLOG_ERROR << "Failed to create BIO methods for DTLS writer";
 		BIO_meth_set_create(BioMethods, BioMethodNew);
 		BIO_meth_set_destroy(BioMethods, BioMethodFree);
 		BIO_meth_set_write(BioMethods, BioMethodWrite);
@@ -733,15 +750,18 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active) {
+}
+
+RTC_WRAPPED(void) DtlsTransport::construct() {
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
 	if (!mCertificate)
-		throw std::invalid_argument("DTLS certificate is null");
+		RTC_THROW RTC_INVALID_ARGUMENT("DTLS certificate is null");
 
-	try {
+	RTC_TRY {
 		mCtx = SSL_CTX_new(DTLS_method());
 		if (!mCtx)
-			throw std::runtime_error("Failed to create SSL context");
+			RTC_THROW_WITHIN(RTC_RUNTIME_ERROR("Failed to create SSL context"));
 
 		// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
 		// Therefore, the DTLS layer MUST NOT use any compression algorithm.
@@ -779,7 +799,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 
 		mSsl = SSL_new(mCtx);
 		if (!mSsl)
-			throw std::runtime_error("Failed to create SSL instance");
+			RTC_THROW_WITHIN(RTC_RUNTIME_ERROR("Failed to create SSL instance"));
 
 		SSL_set_ex_data(mSsl, TransportExIndex, this);
 
@@ -791,7 +811,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		mInBio = BIO_new(BIO_s_mem());
 		mOutBio = BIO_new(BioMethods);
 		if (!mInBio || !mOutBio)
-			throw std::runtime_error("Failed to create BIO");
+			RTC_THROW_WITHIN(RTC_RUNTIME_ERROR("Failed to create BIO"));
 
 		BIO_set_mem_eof_return(mInBio, BIO_EOF);
 		BIO_set_data(mOutBio, this);
@@ -804,21 +824,22 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		if (SSL_set_tlsext_use_srtp(
 		        mSsl, "SRTP_AEAD_AES_256_GCM:SRTP_AEAD_AES_128_GCM:SRTP_AES128_CM_SHA1_80")) {
 			if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
-				throw std::runtime_error("Failed to set SRTP profile: " +
-				                         openssl::error_string(ERR_get_error()));
+				RTC_THROW_WITHIN(RTC_RUNTIME_ERROR("Failed to set SRTP profile: " +
+				                         openssl::error_string(ERR_get_error())));
 		}
 
-	} catch (...) {
+	} RTC_CATCH (...) {
 		if (mSsl)
 			SSL_free(mSsl);
 		if (mCtx)
 			SSL_CTX_free(mCtx);
-		throw;
+		RTC_RETHROW;
 	}
 
 	// Set recommended medium-priority DSCP value for handshake
 	// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
 	mCurrentDscp = 10; // AF11: Assured Forwarding class 1, low drop probability
+	RTC_RET;
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -915,7 +936,7 @@ void DtlsTransport::doRecv() {
 	if (state() != State::Connecting && state() != State::Connected)
 		return;
 
-	try {
+	RTC_TRY {
 		const size_t bufferSize = 4096;
 		byte buffer[bufferSize];
 
@@ -980,8 +1001,8 @@ void DtlsTransport::doRecv() {
 		std::lock_guard lock(mSslMutex);
 		SSL_shutdown(mSsl);
 
-	} catch (const std::exception &e) {
-		PLOG_ERROR << "DTLS recv: " << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_ERROR << "DTLS recv: " << e.RTC_WHAT();
 	}
 
 	if (state() == State::Connected) {
@@ -994,13 +1015,13 @@ void DtlsTransport::doRecv() {
 	}
 }
 
-void DtlsTransport::handleTimeout() {
+RTC_WRAPPED(void) DtlsTransport::handleTimeout() {
 	std::lock_guard lock(mSslMutex);
 
 	// Warning: This function breaks the usual return value convention
 	int ret = DTLSv1_handle_timeout(mSsl);
 	if (ret < 0) {
-		throw std::runtime_error("Handshake timeout"); // write BIO can't fail
+		RTC_THROW RTC_RUNTIME_ERROR("Handshake timeout"); // write BIO can't fail
 	} else if (ret > 0) {
 		LOG_VERBOSE << "DTLS retransmit done";
 	}
@@ -1013,7 +1034,7 @@ void DtlsTransport::handleTimeout() {
 		// recommended 1s so this allows for 5 retransmissions and fails after
 		// roughly 30s.
 		if (timeout > 30s)
-			throw std::runtime_error("Handshake timeout");
+			RTC_THROW RTC_RUNTIME_ERROR("Handshake timeout");
 
 		LOG_VERBOSE << "DTLS retransmit timeout is " << timeout.count() << "ms";
 		ThreadPool::Instance().schedule(timeout, [weak_this = weak_from_this()]() {
