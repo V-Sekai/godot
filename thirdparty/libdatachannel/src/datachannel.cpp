@@ -46,11 +46,11 @@ bool DataChannel::isClosed(void) const { return impl()->isClosed(); }
 
 size_t DataChannel::maxMessageSize() const { return impl()->maxMessageSize(); }
 
-bool DataChannel::send(message_variant data) {
+RTC_WRAPPED(bool) DataChannel::send(message_variant data) {
 	return impl()->outgoing(make_message(std::move(data)));
 }
 
-bool DataChannel::send(const byte *data, size_t size) {
+RTC_WRAPPED(bool) DataChannel::send(const byte *data, size_t size) {
 	return impl()->outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
 }
 
