@@ -97,7 +97,9 @@ void InitLogger(LogLevel level, LogCallback callback) {
 void Preload() { impl::Init::Instance().preload(); }
 std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
-void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
+RTC_WRAPPED(void) SetSctpSettings(SctpSettings s) {
+	return impl::Init::Instance().setSctpSettings(std::move(s));
+}
 
 } // namespace rtc
 

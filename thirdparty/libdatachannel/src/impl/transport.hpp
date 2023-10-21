@@ -35,15 +35,15 @@ public:
 	void onRecv(message_callback callback);
 	void onStateChange(state_callback callback);
 
-	virtual void start();
+	virtual RTC_WRAPPED(void) start();
 	virtual void stop();
-	virtual bool send(message_ptr message);
+	virtual RTC_WRAPPED(bool) send(message_ptr message);
 
 protected:
 	void recv(message_ptr message);
 	void changeState(State state);
 	virtual void incoming(message_ptr message);
-	virtual bool outgoing(message_ptr message);
+	virtual RTC_WRAPPED(bool) outgoing(message_ptr message);
 
 private:
 	const init_token mInitToken = Init::Instance().token();
