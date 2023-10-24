@@ -13,7 +13,7 @@ echo -e ".gitignore validation..."
 
 # ignorecase for the sake of Windows users.
 
-output=$(git -c core.ignorecase=true check-ignore --verbose --no-index **/* | \
+output=$(git -c core.ignorecase=false check-ignore --verbose --no-index **/* | \
     awk -F ':' '{ if ($3 !~ /^!/) print $0 }')
 
 # Then we take this result and return success if it's empty.
