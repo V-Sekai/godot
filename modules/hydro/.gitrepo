@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/hydro.git
 	branch = master
-	commit = 5d3ba61836b1a482492e34ae83de33d1179d6901
-	parent = df1b1ca9db3bd480fd7cd5be9b810f111d4ce26d
+	commit = a04bc9713a35b7e38156258b3acc783ce4e42a94
+	parent = fc8cf229a4d4001a2ce43bfb542d401d314e1bff
 	method = merge
 	cmdver = 0.4.6
