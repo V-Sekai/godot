@@ -40,9 +40,21 @@
 #include "editor/gui/scene_tree_editor.h"
 #include "editor/inspector_dock.h"
 #include "editor/property_selector.h"
+#include "editor/scene_tree_dock.h"
 #include "scene/gui/dialogs.h"
 #include "scene/gui/separator.h"
 #include "scene/gui/tree.h"
+
+ReplicationEditor *ReplicationEditor::singleton = nullptr;
+
+void ReplicationEditor::_node_removed(Node *p_node) {
+	if (p_node == current) {
+		pin->set_pressed(false);
+		current = nullptr;
+
+		emit_signal(SNAME("multiplayer_synchronizer_removed"), p_node);
+	}
+}
 
 void ReplicationEditor::_pick_node_filter_text_changed(const String &p_newtext) {
 	TreeItem *root_item = pick_node->get_scene_tree()->get_scene_tree()->get_root();
@@ -161,6 +173,12 @@ void ReplicationEditor::_add_sync_property(String p_path) {
 	undo_redo->commit_action();
 }
 
+void ReplicationEditor::_pin_pressed() {
+	emit_signal("pin_toggled");
+
+	SceneTreeDock::get_singleton()->get_tree_editor()->update_tree();
+}
+
 void ReplicationEditor::_pick_node_property_selected(String p_name) {
 	String adding_prop_path = String(adding_node_path) + ":" + p_name;
 
@@ -269,7 +287,9 @@ ReplicationEditor::ReplicationEditor() {
 	pin = memnew(Button);
 	pin->set_theme_type_variation("FlatButton");
 	pin->set_toggle_mode(true);
+	pin->set_tooltip_text(TTR("Pin Replication"));
 	hb->add_child(pin);
+	pin->connect(SNAME("pressed"), callable_mp(this, &ReplicationEditor::_pin_pressed));
 
 	tree = memnew(Tree);
 	tree->set_hide_root(true);
@@ -297,12 +317,17 @@ ReplicationEditor::ReplicationEditor() {
 	tree->add_child(drop_label);
 	drop_label->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
 
+	singleton = this;
+
 	SET_DRAG_FORWARDING_CDU(tree, ReplicationEditor);
 }
 
 void ReplicationEditor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_update_config"), &ReplicationEditor::_update_config);
 	ClassDB::bind_method(D_METHOD("_update_value", "property", "column", "value"), &ReplicationEditor::_update_value);
+
+	ADD_SIGNAL(MethodInfo("multiplayer_synchronizer_removed", PropertyInfo(Variant::OBJECT, "multiplayer_synchronizer")));
+	ADD_SIGNAL(MethodInfo("pin_toggled"));
 }
 
 bool ReplicationEditor::_can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) const {
@@ -363,11 +388,14 @@ void ReplicationEditor::_drop_data_fw(const Point2 &p_point, const Variant &p_da
 void ReplicationEditor::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE:
-		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
+		case NOTIFICATION_TRANSLATION_CHANGED:
 			add_theme_style_override("panel", EditorNode::get_singleton()->get_editor_theme()->get_stylebox(SNAME("panel"), SNAME("Panel")));
+			[[fallthrough]];
+		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
+		case NOTIFICATION_THEME_CHANGED: {
 			add_pick_button->set_icon(get_theme_icon(SNAME("Add"), EditorStringName(EditorIcons)));
 			pin->set_icon(get_theme_icon(SNAME("Pin"), EditorStringName(EditorIcons)));
-		} break;
+		};
 	}
 }
 
@@ -517,6 +545,10 @@ void ReplicationEditor::_update_config() {
 }
 
 void ReplicationEditor::edit(MultiplayerSynchronizer *p_sync) {
+	if (is_pinned()) {
+		return;
+	}
+
 	if (current == p_sync) {
 		return;
 	}

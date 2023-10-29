@@ -41,6 +41,7 @@
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/gui/editor_file_dialog.h"
 #include "editor/inspector_dock.h"
+#include "editor/plugins/animation_tree_editor_plugin.h"
 #include "editor/plugins/canvas_item_editor_plugin.h" // For onion skinning.
 #include "editor/plugins/node_3d_editor_plugin.h" // For onion skinning.
 #include "editor/scene_tree_dock.h"
@@ -56,6 +57,8 @@
 
 void AnimationPlayerEditor::_node_removed(Node *p_node) {
 	if (player && original_node == p_node) {
+		pin->set_pressed(false);
+
 		if (is_dummy) {
 			plugin->_clear_dummy_player();
 		}
@@ -116,7 +119,7 @@ void AnimationPlayerEditor::_notification(int p_what) {
 			updating = false;
 		} break;
 
-		case NOTIFICATION_ENTER_TREE: {
+		case NOTIFICATION_ENTER_TREE:
 			tool_anim->get_popup()->connect(SNAME("id_pressed"), callable_mp(this, &AnimationPlayerEditor::_animation_tool_menu));
 
 			onion_skinning->get_popup()->connect(SNAME("id_pressed"), callable_mp(this, &AnimationPlayerEditor::_onion_skinning_menu));
@@ -124,14 +127,10 @@ void AnimationPlayerEditor::_notification(int p_what) {
 			blend_editor.next->connect(SNAME("item_selected"), callable_mp(this, &AnimationPlayerEditor::_blend_editor_next_changed));
 
 			get_tree()->connect(SNAME("node_removed"), callable_mp(this, &AnimationPlayerEditor::_node_removed));
-
+			[[fallthrough]];
+		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED:
 			add_theme_style_override("panel", EditorNode::get_singleton()->get_editor_theme()->get_stylebox(SNAME("panel"), SNAME("Panel")));
-		} break;
-
-		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
-			add_theme_style_override("panel", EditorNode::get_singleton()->get_editor_theme()->get_stylebox(SNAME("panel"), SNAME("Panel")));
-		} break;
-
+			[[fallthrough]];
 		case NOTIFICATION_TRANSLATION_CHANGED:
 		case NOTIFICATION_LAYOUT_DIRECTION_CHANGED:
 		case NOTIFICATION_THEME_CHANGED: {
@@ -1734,6 +1733,7 @@ void AnimationPlayerEditor::_stop_onion_skinning() {
 }
 
 void AnimationPlayerEditor::_pin_pressed() {
+	emit_signal("pin_toggled");
 	SceneTreeDock::get_singleton()->get_tree_editor()->update_tree();
 }
 
@@ -1815,6 +1815,7 @@ void AnimationPlayerEditor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_stop_onion_skinning"), &AnimationPlayerEditor::_stop_onion_skinning);
 
 	ADD_SIGNAL(MethodInfo("animation_selected", PropertyInfo(Variant::STRING, "name")));
+	ADD_SIGNAL(MethodInfo("pin_toggled"));
 }
 
 AnimationPlayerEditor *AnimationPlayerEditor::singleton = nullptr;
@@ -2091,7 +2092,17 @@ void AnimationPlayerEditorPlugin::_notification(int p_what) {
 			InspectorDock::get_inspector_singleton()->connect(SNAME("property_keyed"), callable_mp(this, &AnimationPlayerEditorPlugin::_property_keyed));
 			anim_editor->get_track_editor()->connect(SNAME("keying_changed"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_keying));
 			InspectorDock::get_inspector_singleton()->connect(SNAME("edited_object_changed"), callable_mp(anim_editor->get_track_editor(), &AnimationTrackEditor::update_keying));
+			anim_editor->connect("pin_toggled", callable_mp(this, &AnimationPlayerEditorPlugin::_pin_toggled));
 			set_force_draw_over_forwarding_enabled();
+		} break;
+		case NOTIFICATION_EXIT_TREE: {
+			Node3DEditor::get_singleton()->disconnect(SNAME("transform_key_request"), callable_mp(this, &AnimationPlayerEditorPlugin::_transform_key_request));
+			InspectorDock::get_inspector_singleton()->disconnect(SNAME("property_keyed"), callable_mp(this, &AnimationPlayerEditorPlugin::_property_keyed));
+			anim_editor->get_track_editor()->disconnect(SNAME("keying_changed"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_keying));
+			InspectorDock::get_inspector_singleton()->disconnect(SNAME("edited_object_changed"), callable_mp(anim_editor->get_track_editor(), &AnimationTrackEditor::update_keying));
+			anim_editor->disconnect("pin_toggled", callable_mp(this, &AnimationPlayerEditorPlugin::_pin_toggled));
+
+			_clear_dummy_player();
 		} break;
 	}
 }
@@ -2122,34 +2133,67 @@ void AnimationPlayerEditorPlugin::_update_keying() {
 	InspectorDock::get_inspector_singleton()->set_keying(anim_editor->get_track_editor()->has_keying());
 }
 
+void AnimationPlayerEditorPlugin::_pin_toggled() {
+	if (!anim_editor->is_pinned()) {
+		if (anim_editor->get_selected_node()) {
+			AnimationMixer *selected_node = anim_editor->get_selected_node();
+			anim_editor->set_selected_node(nullptr);
+			edit(selected_node);
+		}
+	}
+}
+
 void AnimationPlayerEditorPlugin::edit(Object *p_object) {
+	bool update_player = false;
+	if (p_object != anim_editor->get_selected_node()) {
+		update_player = true;
+	}
+
+	anim_editor->set_selected_node(Object::cast_to<AnimationMixer>(p_object));
+
 	if (player && anim_editor && anim_editor->is_pinned()) {
+		// Only raise the panel if the editor is not currently visible and the node is the one we have pinned.
+		if (!anim_editor->is_visible_in_tree() && p_object == anim_editor->get_editing_node()) {
+			// Check if the AnimationTreeEditor's tree noed conflicts with this node.
+			if (AnimationTreeEditor::get_singleton()->get_animation_tree() != p_object) {
+				EditorNode::get_singleton()->make_bottom_panel_item_visible(anim_editor);
+			}
+		}
 		return; // Ignore, pinned.
 	}
 
-	player = nullptr;
+	if (update_player) {
+		player = nullptr;
+	}
+
 	if (!p_object) {
+		player = nullptr;
 		return;
 	}
 	last_mixer = p_object->get_instance_id();
 
 	AnimationMixer *src_node = Object::cast_to<AnimationMixer>(p_object);
 	bool is_dummy = false;
-	if (!p_object->is_class("AnimationPlayer")) {
-		// If it needs dummy AnimationPlayer, assign original AnimationMixer to LibraryEditor.
-		_update_dummy_player(src_node);
+	if (!player) {
+		if (!p_object->is_class("AnimationPlayer")) {
+			// If it needs dummy AnimationPlayer, assign original AnimationMixer to LibraryEditor.
+			_update_dummy_player(src_node);
 
-		is_dummy = true;
+			is_dummy = true;
 
-		if (!src_node->is_connected(SNAME("mixer_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player))) {
-			src_node->connect(SNAME("mixer_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player).bind(src_node), CONNECT_DEFERRED);
+			if (!src_node->is_connected(SNAME("mixer_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player))) {
+				src_node->connect(SNAME("mixer_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player).bind(src_node), CONNECT_DEFERRED);
+			}
+			if (!src_node->is_connected(SNAME("animation_libraries_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player))) {
+				src_node->connect(SNAME("animation_libraries_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player).bind(src_node), CONNECT_DEFERRED);
+			}
+		} else {
+			_clear_dummy_player();
+			player = Object::cast_to<AnimationPlayer>(p_object);
+
+			// If the class derives from the regular AnimationPlayer, select it in the bottom panel.
+			EditorNode::get_singleton()->make_bottom_panel_item_visible(anim_editor);
 		}
-		if (!src_node->is_connected(SNAME("animation_libraries_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player))) {
-			src_node->connect(SNAME("animation_libraries_updated"), callable_mp(this, &AnimationPlayerEditorPlugin::_update_dummy_player).bind(src_node), CONNECT_DEFERRED);
-		}
-	} else {
-		_clear_dummy_player();
-		player = Object::cast_to<AnimationPlayer>(p_object);
 	}
 	player->set_dummy(is_dummy);
 
@@ -2208,8 +2252,9 @@ bool AnimationPlayerEditorPlugin::handles(Object *p_object) const {
 }
 
 void AnimationPlayerEditorPlugin::make_visible(bool p_visible) {
+	anim_editor->set_selected_node(nullptr);
+
 	if (p_visible) {
-		EditorNode::get_singleton()->make_bottom_panel_item_visible(anim_editor);
 		anim_editor->set_process(true);
 		anim_editor->ensure_visibility();
 	}
