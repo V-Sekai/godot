@@ -171,6 +171,7 @@ public:
 
 		while (low <= high) {
 			middle = (low + high) / 2;
+			ERR_FAIL_INDEX_V(middle, points.size(), Color(0, 0, 0, 1));
 			const Point &point = points[middle];
 			if (point.offset > p_offset) {
 				high = middle - 1; //search low end of array
