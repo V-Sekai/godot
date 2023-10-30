@@ -217,11 +217,11 @@
 		</method>
 	</methods>
 	<members>
-		<member name="arm_elbow_direction_offset" type="float" setter="set_arm_roll_offset" getter="get_arm_roll_offset" default="-50.0">
+		<member name="arm_elbow_direction_offset" type="float" setter="set_arm_roll_offset" getter="get_arm_roll_offset" default="80.0">
 		</member>
 		<member name="arm_forearm_twist_offset" type="float" setter="set_arm_lower_twist_offset" getter="get_arm_lower_twist_offset" default="0.0">
 		</member>
-		<member name="arm_forearm_twisting" type="float" setter="set_arm_lower_limb_twist" getter="get_arm_lower_limb_twist" default="66.666">
+		<member name="arm_forearm_twisting" type="float" setter="set_arm_lower_limb_twist" getter="get_arm_lower_limb_twist" default="0.0">
 		</member>
 		<member name="arm_pole_offset" type="Vector3" setter="set_arm_pole_offset" getter="get_arm_pole_offset" default="Vector3(15, 0, 60)">
 		</member>
@@ -235,7 +235,7 @@
 		</member>
 		<member name="arm_target_rotation_influence" type="float" setter="set_arm_target_rotation_influence" getter="get_arm_target_rotation_influence" default="33.0">
 		</member>
-		<member name="arm_twist_inflection_point" type="float" setter="set_arm_twist_inflection_point_offset" getter="get_arm_twist_inflection_point_offset" default="20.0">
+		<member name="arm_twist_inflection_point" type="float" setter="set_arm_twist_inflection_point_offset" getter="get_arm_twist_inflection_point_offset" default="-180.0">
 		</member>
 		<member name="arm_twist_overflow" type="float" setter="set_arm_twist_overflow" getter="get_arm_twist_overflow" default="45.0">
 		</member>
