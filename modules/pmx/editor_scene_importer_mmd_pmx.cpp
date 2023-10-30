@@ -241,12 +241,6 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 			skeleton->set_bone_parent(bone_i, parent_index);
 		}
 	}
-	skeleton->set_bone_name(skeleton->find_bone(String(L"センター")), "Root");
-	BoneId hips_id = skeleton->find_bone(String(L"下半身"));
-	skeleton->set_bone_name(hips_id, "Hips");
-	BoneId spine_id = skeleton->find_bone(String(L"上半身"));
-	skeleton->set_bone_name(spine_id, "Spine");
-	set_bone_rest_and_parent(skeleton, spine_id, hips_id);
 
 	root->add_child(skeleton, true);
 	skeleton->set_owner(root);
@@ -264,31 +258,34 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		texture_path = p_path.get_base_dir() + "/" + texture_path;
 		print_verbose(vformat("Found texture %s", texture_path));
 
-		Ref<Texture2D> base_color_tex = ResourceLoader::load(texture_path, "Texture2D");
-
-		// If the texture is not found, try loading it with a case-insensitive search.
-		if (base_color_tex.is_null()) {
-			String found_file = find_file_case_insensitive_recursive(texture_path.get_file(), texture_path.get_base_dir());
-			if (!found_file.is_empty()) {
-				base_color_tex = ResourceLoader::load(found_file, "Texture2D");
-			}
+		Ref<Texture2D> base_color_tex;
+		String found_file = find_file_case_insensitive_recursive(texture_path.get_file(), texture_path.get_base_dir());
+		if (!found_file.is_empty()) {
+			base_color_tex = ResourceLoader::load(found_file, "Texture2D");
 		}
 
 		ERR_CONTINUE_MSG(base_color_tex.is_null(), vformat("Can't load texture: %s", texture_path));
 		texture_cache.write[texture_cache_i] = base_color_tex;
 	}
 
-	Vector<Ref<StandardMaterial3D>> material_cache;
+	Vector<Ref<Material>> material_cache;
 	material_cache.resize(pmx.material_count());
 	for (uint32_t material_cache_i = 0; material_cache_i < pmx.material_count(); material_cache_i++) {
-		Ref<StandardMaterial3D> material;
-		material.instantiate();
+		Ref<ShaderMaterial> material = memnew(ShaderMaterial);
+		material->set_shader(pmx_toon_shader);
 		int32_t texture_index = materials->at(material_cache_i)->texture_index()->value();
 		if (is_valid_index(materials->at(material_cache_i)->texture_index()) && texture_index < texture_cache.size() && !texture_cache[texture_index].is_null()) {
-			material->set_texture(StandardMaterial3D::TEXTURE_ALBEDO, texture_cache[texture_index]);
+			material->set_shader_parameter("albedo_texture", texture_cache[texture_index]);
 		}
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_cache_i)->diffuse();
-		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
+		material->set_shader_parameter("albedo", Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
+		float specular_shininess = materials->at(material_cache_i)->shininess();
+    	material->set_shader_parameter("specular_shininess", specular_shininess);
+		float rim_width = materials->at(material_cache_i)->edge_size();
+    	material->set_shader_parameter("rim_width", rim_width);
+		mmd_pmx_t::color4_t *rim_color = materials->at(material_cache_i)->edge_color();
+   		material->set_shader_parameter("rim_color", Color(rim_color->r(), rim_color->g(), rim_color->b()));
+
 		String material_name = convert_string(materials->at(material_cache_i)->name()->value(), pmx.header()->encoding());
 		material->set_name(material_name);
 		material_cache.write[material_cache_i] = material;
