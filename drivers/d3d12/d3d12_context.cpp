@@ -889,7 +889,7 @@ void D3D12Context::_wait_for_idle_queue(ID3D12CommandQueue *p_queue) {
 #endif
 }
 
-void D3D12Context::flush(bool p_flush_setup, bool p_flush_pending) {
+void D3D12Context::flush(bool p_flush_setup, bool p_flush_pending, bool p_sync) {
 	if (p_flush_setup && command_list_queue[0]) {
 		md.queue->ExecuteCommandLists(1, command_list_queue.ptr());
 		command_list_queue[0] = nullptr;
