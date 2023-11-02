@@ -99,6 +99,14 @@ Variant EditorSceneFormatImporter::get_option_visibility(const String &p_path, b
 	return ret;
 }
 
+int EditorSceneFormatImporter::get_importer_version() const {
+	return _importer_version;
+}
+
+void EditorSceneFormatImporter::set_importer_version(int p_version) {
+	_importer_version = p_version;
+}
+
 void EditorSceneFormatImporter::_bind_methods() {
 	GDVIRTUAL_BIND(_get_import_flags);
 	GDVIRTUAL_BIND(_get_extensions);
@@ -263,8 +271,8 @@ String ResourceImporterScene::get_resource_type() const {
 	return animation_importer ? "AnimationLibrary" : "PackedScene";
 }
 
-int ResourceImporterScene::get_format_version() const {
-	return 1;
+int ResourceImporterScene::get_latest_importer_version() const {
+	return RESOURCE_IMPORTER_SCENE_VERSION;
 }
 
 bool ResourceImporterScene::get_option_visibility(const String &p_path, const String &p_option, const HashMap<StringName, Variant> &p_options) const {
@@ -2413,6 +2421,7 @@ Error ResourceImporterScene::import(const String &p_source_file, const String &p
 	}
 
 	ERR_FAIL_COND_V(!importer.is_valid(), ERR_FILE_UNRECOGNIZED);
+	importer->set_importer_version(get_importer_version());
 
 	int import_flags = 0;
 

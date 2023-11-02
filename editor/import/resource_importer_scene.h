@@ -33,6 +33,7 @@
 
 #include "core/error/error_macros.h"
 #include "core/io/resource_importer.h"
+#include "core/io/resource_importer_scene_version.h"
 #include "core/variant/dictionary.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/resources/animation.h"
@@ -50,6 +51,8 @@ class AnimationPlayer;
 class ImporterMesh;
 class EditorSceneFormatImporter : public RefCounted {
 	GDCLASS(EditorSceneFormatImporter, RefCounted);
+
+	int _importer_version = RESOURCE_IMPORTER_SCENE_VERSION;
 
 protected:
 	static void _bind_methods();
@@ -79,6 +82,9 @@ public:
 	virtual Node *import_scene(const String &p_path, uint32_t p_flags, const HashMap<StringName, Variant> &p_options, List<String> *r_missing_deps, Error *r_err = nullptr);
 	virtual void get_import_options(const String &p_path, List<ResourceImporter::ImportOption> *r_options);
 	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option, const HashMap<StringName, Variant> &p_options);
+
+	int get_importer_version() const;
+	void set_importer_version(int p_version);
 
 	EditorSceneFormatImporter() {}
 };
@@ -254,7 +260,7 @@ public:
 	virtual void get_recognized_extensions(List<String> *p_extensions) const override;
 	virtual String get_save_extension() const override;
 	virtual String get_resource_type() const override;
-	virtual int get_format_version() const override;
+	virtual int get_latest_importer_version() const override;
 
 	virtual int get_preset_count() const override;
 	virtual String get_preset_name(int p_idx) const override;

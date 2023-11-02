@@ -33,6 +33,7 @@
 
 #include "extensions/gltf_document_extension.h"
 
+#include "core/io/resource_importer_scene_version.h"
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
 
 class GLTFDocument : public Resource {
@@ -73,6 +74,7 @@ public:
 
 private:
 	const float BAKE_FPS = 30.0f;
+	int _importer_version = RESOURCE_IMPORTER_SCENE_VERSION;
 	String _image_format = "PNG";
 	float _lossy_quality = 0.75f;
 	Ref<GLTFDocumentExtension> _image_save_extension;
@@ -86,6 +88,8 @@ public:
 	static void unregister_gltf_document_extension(Ref<GLTFDocumentExtension> p_extension);
 	static void unregister_all_gltf_document_extensions();
 
+	int get_importer_version() const;
+	void set_importer_version(int p_version);
 	void set_image_format(const String &p_image_format);
 	String get_image_format() const;
 	void set_lossy_quality(float p_lossy_quality);
