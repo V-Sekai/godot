@@ -52,6 +52,8 @@ protected:
 	GDVIRTUAL0RC(int, _get_import_order)
 	GDVIRTUAL3RC(bool, _get_option_visibility, String, StringName, Dictionary)
 	GDVIRTUAL5RC(Error, _import, String, String, Dictionary, TypedArray<String>, TypedArray<String>)
+	GDVIRTUAL0RC(int, _get_latest_importer_version)
+	GDVIRTUAL0RC(int, _get_importer_version)
 
 	Error _append_import_external_resource(const String &p_file, const Dictionary &p_custom_options = Dictionary(), const String &p_custom_importer = String(), Variant p_generator_parameters = Variant());
 
@@ -68,6 +70,8 @@ public:
 	virtual int get_import_order() const override;
 	virtual void get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset) const override;
 	virtual bool get_option_visibility(const String &p_path, const String &p_option, const HashMap<StringName, Variant> &p_options) const override;
+	virtual int get_importer_version() const;
+	virtual int get_latest_importer_version() const;
 	virtual Error import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata = nullptr) override;
 	Error append_import_external_resource(const String &p_file, const HashMap<StringName, Variant> &p_custom_options = HashMap<StringName, Variant>(), const String &p_custom_importer = String(), Variant p_generator_parameters = Variant());
 };

@@ -213,5 +213,23 @@ void EditorImportPlugin::_bind_methods() {
 	GDVIRTUAL_BIND(_get_import_order)
 	GDVIRTUAL_BIND(_get_option_visibility, "path", "option_name", "options")
 	GDVIRTUAL_BIND(_import, "source_file", "save_path", "options", "platform_variants", "gen_files");
+	GDVIRTUAL_BIND(_get_importer_version)
+	GDVIRTUAL_BIND(_get_latest_importer_version)
 	ClassDB::bind_method(D_METHOD("append_import_external_resource", "path", "custom_options", "custom_importer", "generator_parameters"), &EditorImportPlugin::_append_import_external_resource, DEFVAL(Dictionary()), DEFVAL(String()), DEFVAL(Variant()));
+}
+
+int EditorImportPlugin::get_importer_version() const {
+	int ret;
+	if (GDVIRTUAL_CALL(_get_importer_version, ret)) {
+		return ret;
+	}
+	ERR_FAIL_V_MSG(-1, "Unimplemented _get_importer_version in add-on.");
+}
+
+int EditorImportPlugin::get_latest_importer_version() const {
+	int ret;
+	if (GDVIRTUAL_CALL(_get_latest_importer_version, ret)) {
+		return ret;
+	}
+	ERR_FAIL_V_MSG(-1, "Unimplemented _get_latest_importer_version in add-on.");
 }

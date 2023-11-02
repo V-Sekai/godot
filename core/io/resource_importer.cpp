@@ -492,6 +492,11 @@ void ResourceImporter::set_importer_version(int p_version) {
 }
 
 void ResourceImporter::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_latest_importer_version"), &ResourceImporter::get_latest_importer_version);
+	ClassDB::bind_method(D_METHOD("get_importer_version"), &ResourceImporter::get_importer_version);
+	ClassDB::bind_method(D_METHOD("set_importer_version"), &ResourceImporter::set_importer_version);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "importer_version"), "set_importer_version", "get_importer_version");
+
 	BIND_ENUM_CONSTANT(IMPORT_ORDER_DEFAULT);
 	BIND_ENUM_CONSTANT(IMPORT_ORDER_SCENE);
 }
