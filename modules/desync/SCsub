@@ -1,0 +1,51 @@
+import subprocess
+import os
+from os.path import abspath, dirname
+
+Import("env")
+
+thirdparty_obj = []
+
+current_dir = os.getcwd()
+desync_dir = os.path.join(current_dir, "thirdparty/desync/cmd/desync")
+os.chdir(desync_dir)
+suffix = ".a"
+env_desync = env.Clone()
+if env.msvc:
+    env_desync.Append(CPPDEFINES=["_SILENCE_CXX17_C_HEADER_DEPRECATION_WARNING"])
+    suffix = ".lib"
+runtime = "desync_c_interface"
+subprocess.run(
+    [
+        "go",
+        "build",
+        "-o",
+        f"../../../../lib{runtime}{suffix}",
+        "-buildmode=c-archive",
+        ".",
+    ],
+    check=True,
+)
+# https://github.com/ashtonmeuser/godot-wasm/blob/master/SCsub#L44C58-L48C1
+os.chdir(current_dir)
+
+env["LIBRUNTIMESUFFIX"] = ".a"
+
+runtime_lib = env.File(
+    "{prefix}{runtime}{suffix}".format(
+        runtime=f"{runtime}",
+        prefix=env["LIBPREFIX"],
+        suffix=env.get("LIBRUNTIMESUFFIX", env["LIBSUFFIX"]),
+    )
+)
+env.Append(LIBS=[runtime_lib])
+if env["platform"] == "macos":
+    env.Append(LIBS=["resolv"])
+
+env_desync.add_source_files(env.modules_sources, "*.cpp")
+
+module_obj = []
+env_desync.add_source_files(module_obj, "*.cpp")
+env_desync.modules_sources += module_obj
+
+env.Depends(module_obj, thirdparty_obj)
