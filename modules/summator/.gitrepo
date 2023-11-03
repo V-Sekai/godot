@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot_summator.git
 	branch = main
-	commit = 21f2994adfd8abc824ea4a881c421861fa1389b4
-	parent = bd87568c3eb457f6411ab47fd2646ed6cdc81e61
+	commit = f5b13a81f215bec944874da156485559555c261b
+	parent = ae1a3501cf5a1715cfe263fdade6b8d2ddf88620
 	method = merge
 	cmdver = 0.4.6
