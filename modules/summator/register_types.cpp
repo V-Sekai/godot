@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-/* register_types.cpp */
-
 #include "register_types.h"
 
 #include "core/object/class_db.h"
@@ -46,5 +44,4 @@ void uninitialize_summator_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	// Nothing to do here in this example.
 }

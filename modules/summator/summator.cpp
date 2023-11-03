@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-/* summator.cpp */
-
 #include "summator.h"
 
 void Summator::add(int p_value) {
