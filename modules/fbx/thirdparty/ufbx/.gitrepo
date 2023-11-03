@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/ufbx/ufbx.git
+	branch = handedness-conversion
+	commit = 54fedd93fa5ae1a8060f956bfe8669043efd94c3
+	parent = be02fa7de00f8b815a0101e30852959d29cbc4bc
+	method = merge
+	cmdver = 0.4.6
