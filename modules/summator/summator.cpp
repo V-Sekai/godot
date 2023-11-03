@@ -49,5 +49,4 @@ void Summator::_bind_methods() {
 }
 
 Summator::Summator() {
-	count = 0;
 }

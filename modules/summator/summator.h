@@ -36,7 +36,7 @@
 class Summator : public RefCounted {
 	GDCLASS(Summator, RefCounted);
 
-	int count;
+	int count = 0;
 
 protected:
 	static void _bind_methods();
