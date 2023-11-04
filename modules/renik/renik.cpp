@@ -1406,20 +1406,20 @@ void RenIK::update_ik() {
 		Transform3D skel_inverse = skeleton->get_global_transform().affine_inverse();
 		SpineTransforms spine_global_transforms = perform_torso_ik();
 		if (hand_left_target_spatial) {
-			perform_hand_left_ik(spine_global_transforms.leftArmParentTransform, skel_inverse * hand_left_target_spatial->get_global_transform());
+			perform_hand_left_ik(spine_global_transforms.left_arm_parent_transform, skel_inverse * hand_left_target_spatial->get_global_transform());
 		}
 		if (hand_right_target_spatial) {
-			perform_hand_right_ik(spine_global_transforms.rightArmParentTransform, skel_inverse * hand_right_target_spatial->get_global_transform());
+			perform_hand_right_ik(spine_global_transforms.right_arm_parent_transform, skel_inverse * hand_right_target_spatial->get_global_transform());
 		}
 		if (foot_left_target_spatial) {
-			perform_foot_left_ik(spine_global_transforms.hipTransform, skel_inverse * foot_left_target_spatial->get_global_transform());
+			perform_foot_left_ik(spine_global_transforms.hip_transform, skel_inverse * foot_left_target_spatial->get_global_transform());
 		} else if (foot_placement) {
-			perform_foot_left_ik(spine_global_transforms.hipTransform, skel_inverse * placement.interpolated_left_foot);
+			perform_foot_left_ik(spine_global_transforms.hip_transform, skel_inverse * placement.interpolated_left_foot);
 		}
 		if (foot_right_target_spatial) {
-			perform_foot_right_ik(spine_global_transforms.hipTransform, skel_inverse * foot_right_target_spatial->get_global_transform());
+			perform_foot_right_ik(spine_global_transforms.hip_transform, skel_inverse * foot_right_target_spatial->get_global_transform());
 		} else if (foot_placement) {
-			perform_foot_right_ik(spine_global_transforms.hipTransform, skel_inverse * placement.interpolated_right_foot);
+			perform_foot_right_ik(spine_global_transforms.hip_transform, skel_inverse * placement.interpolated_right_foot);
 		}
 	}
 }

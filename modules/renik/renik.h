@@ -54,19 +54,19 @@ public:
 	void _initialize();
 
 	struct SpineTransforms {
-		Transform3D hipTransform;
-		Transform3D leftArmParentTransform;
-		Transform3D rightArmParentTransform;
-		Transform3D armParentTransform;
-		Transform3D headTransform;
+		Transform3D hip_transform;
+		Transform3D left_arm_parent_transform;
+		Transform3D right_arm_parent_transform;
+		Transform3D arm_parent_transform;
+		Transform3D head_transform;
 		SpineTransforms(Transform3D hip = Transform3D(),
 				Transform3D left_arm = Transform3D(),
 				Transform3D right_arm = Transform3D(),
 				Transform3D head = Transform3D()) {
-			hipTransform = hip;
-			leftArmParentTransform = left_arm;
-			rightArmParentTransform = right_arm;
-			headTransform = head;
+			hip_transform = hip;
+			left_arm_parent_transform = left_arm;
+			right_arm_parent_transform = right_arm;
+			head_transform = head;
 		}
 	};
 	void setup_humanoid_bones(bool set_targets);

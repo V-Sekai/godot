@@ -50,19 +50,19 @@ public:
 
 	void update(Skeleton3D *skeleton);
 
-	Transform3D get_extra_bones(Skeleton3D *skeleton, BoneId p_root_bone_id,
+	Transform3D get_extra_bones(Skeleton3D *p_skeleton, BoneId p_root_bone_id,
 			BoneId p_tip_bone_id);
-	Vector<BoneId> get_extra_bone_ids(Skeleton3D *skeleton, BoneId p_root_bone_id,
+	Vector<BoneId> get_extra_bone_ids(Skeleton3D *p_skeleton, BoneId p_root_bone_id,
 			BoneId p_tip_bone_id);
 
-	void set_leaf(Skeleton3D *skeleton, BoneId p_leaf_id);
-	void set_lower(Skeleton3D *skeleton, BoneId p_lower_id);
-	void set_upper(Skeleton3D *skeleton, BoneId p_upper_id);
+	void set_leaf(Skeleton3D *p_skeleton, BoneId p_leaf_id);
+	void set_lower(Skeleton3D *p_skeleton, BoneId p_lower_id);
+	void set_upper(Skeleton3D *p_skeleton, BoneId p_upper_id);
 	BoneId get_leaf_bone();
 	BoneId get_lower_bone();
 	BoneId get_upper_bone();
 	bool is_valid();
-	bool is_valid_in_skeleton(Skeleton3D *skeleton);
+	bool is_valid_in_skeleton(Skeleton3D *p_skeleton);
 	Transform3D get_upper();
 	Transform3D get_lower();
 	Transform3D get_leaf();
@@ -106,7 +106,7 @@ struct RenIKLimbSubSection : public Resource {
 	Quaternion rest_rotation;
 	BoneId id = -1;
 
-	RenIKLimbSubSection *prev = nullptr;
+	RenIKLimbSubSection *previous = nullptr;
 
 	float bone_length = 0;
 	float first_imaginary_bone_length = 0;
