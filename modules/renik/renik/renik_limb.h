@@ -139,7 +139,7 @@ struct RenIKMultiLimb : public Resource {
 	Quaternion pole_offset;
 	Vector3 target_position_influence;
 	float target_rotation_influence;
-	void init(Skeleton3D *skeleton, BoneId p_root_bone,
+	void init(Skeleton3D *p_skeleton, BoneId p_root_bone,
 			BoneId p_leaf_bone); // Create sections and calc all imaginary bones.
 };
 

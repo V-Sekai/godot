@@ -36,17 +36,13 @@
 #include <scene/main/node.h>
 
 namespace RenIKHelper {
-Quaternion align_vectors(Vector3 a, Vector3 b, float influence = 1);
-float smoothCurve(float number, float modifier = 0.5);
-Vector3 vector_rejection(Vector3 v, Vector3 normal);
-float safe_acos(float f);
-float safe_asin(float f);
-Vector3 get_perpendicular_vector(Vector3 v);
+Quaternion align_vectors(Vector3 p_a, Vector3 p_b, float p_influence = 1);
+Vector3 vector_rejection(Vector3 p_vector, Vector3 p_normal);
+float safe_acos(float p_value);
+Vector3 get_perpendicular_vector(Vector3 p_v);
 
-float log_clamp(float value, float target, float looseness);
-Vector3 log_clamp(Vector3 vector, Vector3 target, float looseness);
-Quaternion log_clamp(Quaternion quat, Quaternion target, float looseness);
-Basis log_clamp(Basis basis, Basis target, float looseness);
+float log_clamp(float p_value, float p_target, float p_looseness);
+Vector3 log_clamp(Vector3 p_vector, Vector3 p_target, float p_looseness);
 } // namespace RenIKHelper
 
 #endif

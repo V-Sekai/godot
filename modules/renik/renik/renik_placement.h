@@ -292,14 +292,14 @@ private:
 	void initialize_loop(Vector3 p_velocity, Vector3 p_left_ground,
 			Vector3 p_right_ground, bool p_left_grounded,
 			bool p_right_grounded);
-	void loop(Transform3D p_head, Vector3 p_velocity, Vector3 p_left_ground_pos,
+	void loop(Transform3D p_head, Vector3 p_velocity, Vector3 p_left_ground_position,
 			Vector3 p_left_normal, Vector3 p_right_ground_pos, Vector3 p_right_normal,
 			bool p_left_grounded, bool p_right_grounded, Gait p_gait);
 	void loop_foot(Transform3D &r_step, Transform3D &r_stand,
 			Transform3D &r_stand_local, Node3D *p_ground, Node3D **p_prev_ground,
 			int &r_loop_state, Vector3 &r_grounded_stop, Transform3D p_head,
 			float p_leg_length, float p_foot_length, Vector3 p_velocity,
-			float p_loop_scaling, float p_step_progress, Vector3 p_ground_pos,
+			float p_loop_scaling, float p_step_progress, Vector3 p_ground_position,
 			Vector3 p_ground_normal, Gait p_gait);
 	void step_direction(Vector3 p_forward, Vector3 p_side, Vector3 p_velocity,
 			Vector3 p_left_ground, Vector3 p_right_ground,

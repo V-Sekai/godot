@@ -40,19 +40,19 @@ void RenIKChain::init(Vector3 p_chain_curve_direction, float p_root_influence,
 	twist_start = p_twist_start;
 }
 
-void RenIKChain::init_chain(Skeleton3D *skeleton) {
+void RenIKChain::init_chain(Skeleton3D *p_skeleton) {
 	joints.clear();
 	total_length = 0;
-	if (skeleton && root_bone >= 0 && leaf_bone >= 0 &&
-			root_bone < skeleton->get_bone_count() &&
-			leaf_bone < skeleton->get_bone_count()) {
-		BoneId bone = skeleton->get_bone_parent(leaf_bone);
+	if (p_skeleton && root_bone >= 0 && leaf_bone >= 0 &&
+			root_bone < p_skeleton->get_bone_count() &&
+			leaf_bone < p_skeleton->get_bone_count()) {
+		BoneId bone = p_skeleton->get_bone_parent(leaf_bone);
 		// generate the chain of bones
 		Vector<BoneId> chain;
 		float last_length = 0.0f;
-		rest_leaf = skeleton->get_bone_rest(leaf_bone);
+		rest_leaf = p_skeleton->get_bone_rest(leaf_bone);
 		while (bone != root_bone) {
-			Transform3D rest_pose = skeleton->get_bone_rest(bone);
+			Transform3D rest_pose = p_skeleton->get_bone_rest(bone);
 			rest_leaf = rest_pose * rest_leaf.orthonormalized();
 			last_length = rest_pose.origin.length();
 			total_length += last_length;
@@ -64,10 +64,10 @@ void RenIKChain::init_chain(Skeleton3D *skeleton) {
 			}
 			chain.push_back(bone);
 			first_bone = bone;
-			bone = skeleton->get_bone_parent(bone);
+			bone = p_skeleton->get_bone_parent(bone);
 		}
 		total_length -= last_length;
-		total_length += skeleton->get_bone_rest(leaf_bone).origin.length();
+		total_length += p_skeleton->get_bone_rest(leaf_bone).origin.length();
 
 		if (total_length <= 0) { // invalid chain
 			total_length = 0;
@@ -82,7 +82,7 @@ void RenIKChain::init_chain(Skeleton3D *skeleton) {
 		for (int i = chain.size() - 1; i >= 0; i--) {
 			RenIKChain::Joint j;
 			j.id = chain[i];
-			Transform3D boneTransform = skeleton->get_bone_rest(j.id);
+			Transform3D boneTransform = p_skeleton->get_bone_rest(j.id);
 			j.rotation = boneTransform.basis.get_rotation_quaternion();
 			j.relative_prev = totalRotation.xform_inv(boneTransform.origin);
 			j.prev_distance = j.relative_prev.length();
@@ -121,7 +121,7 @@ void RenIKChain::init_chain(Skeleton3D *skeleton) {
 		}
 		if (!joints.is_empty()) {
 			RenIKChain::Joint oldJ = joints[joints.size() - 1];
-			oldJ.relative_next = -skeleton->get_bone_rest(leaf_bone).origin;
+			oldJ.relative_next = -p_skeleton->get_bone_rest(leaf_bone).origin;
 			oldJ.next_distance = oldJ.relative_next.length();
 			joints.set(joints.size() - 1, oldJ);
 		}
@@ -153,40 +153,40 @@ BoneId RenIKChain::get_leaf_bone() { return leaf_bone; }
 
 float RenIKChain::get_root_stiffness() { return root_influence; }
 
-void RenIKChain::set_root_stiffness(Skeleton3D *skeleton, float stiffness) {
-	root_influence = stiffness;
-	init_chain(skeleton);
+void RenIKChain::set_root_stiffness(Skeleton3D *p_skeleton, float p_stiffness) {
+	root_influence = p_stiffness;
+	init_chain(p_skeleton);
 }
 
 float RenIKChain::get_leaf_stiffness() { return leaf_influence; }
 
-void RenIKChain::set_leaf_stiffness(Skeleton3D *skeleton, float stiffness) {
-	leaf_influence = stiffness;
-	init_chain(skeleton);
+void RenIKChain::set_leaf_stiffness(Skeleton3D *p_skeleton, float p_stiffness) {
+	leaf_influence = p_stiffness;
+	init_chain(p_skeleton);
 }
 
 float RenIKChain::get_twist() { return twist_influence; }
 
-void RenIKChain::set_twist(Skeleton3D *skeleton, float p_twist) {
+void RenIKChain::set_twist(Skeleton3D *p_skeleton, float p_twist) {
 	twist_influence = p_twist;
-	init_chain(skeleton);
+	init_chain(p_skeleton);
 }
 
 float RenIKChain::get_twist_start() { return twist_start; }
 
-void RenIKChain::set_twist_start(Skeleton3D *skeleton, float p_twist_start) {
+void RenIKChain::set_twist_start(Skeleton3D *p_skeleton, float p_twist_start) {
 	twist_start = p_twist_start;
-	init_chain(skeleton);
+	init_chain(p_skeleton);
 }
 
-bool RenIKChain::contains_bone(Skeleton3D *skeleton, BoneId bone) {
-	if (skeleton) {
+bool RenIKChain::contains_bone(Skeleton3D *p_skeleton, BoneId p_bone) {
+	if (p_skeleton) {
 		BoneId spineBone = leaf_bone;
 		while (spineBone >= 0) {
-			if (spineBone == bone) {
+			if (spineBone == p_bone) {
 				return true;
 			}
-			spineBone = skeleton->get_bone_parent(spineBone);
+			spineBone = p_skeleton->get_bone_parent(spineBone);
 		}
 	}
 	return false;

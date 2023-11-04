@@ -274,7 +274,7 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 		Vector3 &r_grounded_stop, Transform3D p_head,
 		float p_leg_length, float p_foot_length,
 		Vector3 p_velocity, float p_loop_scaling,
-		float p_step_progress, Vector3 p_ground_pos,
+		float p_step_progress, Vector3 p_ground_position,
 		Vector3 p_ground_normal, Gait p_gait) {
 	Quaternion upright_foot = RenIKHelper::align_vectors(
 			Vector3(0, 1, 0), p_head.basis.xform_inv(p_ground_normal));
@@ -290,17 +290,17 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 	float loop_state_progress = 0;
 	r_loop_state =
 			get_loop_state(p_loop_scaling, p_step_progress, loop_state_progress, p_gait);
-	float head_distance = p_head.origin.distance_to(p_ground_pos);
+	float head_distance = p_head.origin.distance_to(p_ground_position);
 	float ease_scaling = p_loop_scaling * p_loop_scaling * p_loop_scaling *
 			p_loop_scaling; // ease the growth a little
 	float vertical_scaling = head_distance * ease_scaling;
 	float horizontal_scaling = p_leg_length * ease_scaling;
 	Transform3D grounded_foot =
-			Transform3D(p_head.basis * upright_foot, p_ground_pos);
+			Transform3D(p_head.basis * upright_foot, p_ground_position);
 	Transform3D lifted_foot = Transform3D(
 			grounded_foot.basis.rotated_local(Vector3(1, 0, 0),
 					ease_scaling * p_gait.lift_angle),
-			p_ground_pos +
+			p_ground_position +
 					p_ground_normal * vertical_scaling * p_gait.lift_vertical_scalar +
 					p_ground_normal * head_distance * p_gait.lift_vertical -
 					ground_velocity.normalized() * horizontal_scaling *
@@ -308,13 +308,13 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 	Transform3D apex_foot = Transform3D(
 			grounded_foot.basis.rotated_local(Vector3(1, 0, 0),
 					ease_scaling * p_gait.apex_angle),
-			p_ground_pos +
+			p_ground_position +
 					p_ground_normal * vertical_scaling * p_gait.apex_vertical_scalar +
 					p_ground_normal * head_distance * p_gait.apex_vertical);
 	Transform3D drop_foot = Transform3D(
 			grounded_foot.basis.rotated_local(Vector3(1, 0, 0),
 					ease_scaling * p_gait.drop_angle),
-			p_ground_pos +
+			p_ground_position +
 					p_ground_normal * vertical_scaling * p_gait.drop_vertical_scalar +
 					p_ground_normal * head_distance * p_gait.drop_vertical_scalar +
 					ground_velocity.normalized() * horizontal_scaling *
@@ -337,7 +337,7 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 			}
 			r_step = r_stand;
 
-			float step_distance = r_step.origin.distance_to(p_ground_pos) / p_leg_length;
+			float step_distance = r_step.origin.distance_to(p_ground_position) / p_leg_length;
 			Transform3D lean_offset;
 			float tip_toe_angle = step_distance * p_gait.tip_toe_distance_scalar +
 					horizontal_scaling * p_gait.tip_toe_speed_scalar;
@@ -353,7 +353,7 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 			break;
 		}
 		case LOOP_LIFT: {
-			float step_distance = r_step.origin.distance_to(p_ground_pos) / p_leg_length;
+			float step_distance = r_step.origin.distance_to(p_ground_position) / p_leg_length;
 			Transform3D lean_offset;
 			float tip_toe_angle = step_distance * p_gait.tip_toe_distance_scalar +
 					horizontal_scaling * p_gait.tip_toe_speed_scalar;
@@ -398,7 +398,7 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 
 	if (r_loop_state != LOOP_GROUND_IN && r_loop_state != LOOP_GROUND_OUT) {
 		// update standing positions to ensure a smooth transition to standing
-		r_stand.origin = p_ground_pos;
+		r_stand.origin = p_ground_position;
 		r_stand.basis = grounded_foot.basis;
 		if (p_ground != nullptr) {
 			Transform3D ground_global = p_ground->get_global_transform();
@@ -411,13 +411,13 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 			float contact_easing = p_gait.contact_point_ease +
 					p_gait.contact_point_ease_scalar * p_loop_scaling;
 			contact_easing = contact_easing > 1 ? 1 : contact_easing;
-			r_grounded_stop = r_grounded_stop.lerp(p_ground_pos, contact_easing);
+			r_grounded_stop = r_grounded_stop.lerp(p_ground_position, contact_easing);
 		}
 	}
 }
 
 void RenIKPlacement::loop(Transform3D p_head, Vector3 p_velocity,
-		Vector3 p_left_ground_pos, Vector3 p_left_normal,
+		Vector3 p_left_ground_position, Vector3 p_left_normal,
 		Vector3 p_right_ground_pos, Vector3 p_right_normal,
 		bool p_left_grounded, bool p_right_grounded, Gait p_gait) {
 	float stride_speed = step_pace * p_velocity.length() /
@@ -440,7 +440,7 @@ void RenIKPlacement::loop(Transform3D p_head, Vector3 p_velocity,
 		loop_foot(left_step, left_stand, left_stand_local, left_ground,
 				&prev_left_ground, left_loop_state, left_grounded_stop, p_head,
 				left_leg_length, left_foot_length, p_velocity, loop_scaling,
-				step_progress, p_left_ground_pos, p_left_normal, p_gait);
+				step_progress, p_left_ground_position, p_left_normal, p_gait);
 	} else {
 		Transform3D left_dangle =
 				dangle_foot(p_head, (spine_length + left_leg_length) * dangle_ratio,

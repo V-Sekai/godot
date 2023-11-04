@@ -58,7 +58,7 @@ private:
 	Vector<Joint> joints;
 	float total_length = 0;
 	Transform3D rest_leaf;
-	void init_chain(Skeleton3D *skeleton);
+	void init_chain(Skeleton3D *p_skeleton);
 	float root_influence =
 			0; // how much the start bone is influenced by the root rotation
 	float leaf_influence =
@@ -84,14 +84,14 @@ public:
 	BoneId get_leaf_bone();
 
 	float get_root_stiffness();
-	void set_root_stiffness(Skeleton3D *skeleton, float stiffness);
+	void set_root_stiffness(Skeleton3D *p_skeleton, float p_stiffness);
 	float get_leaf_stiffness();
-	void set_leaf_stiffness(Skeleton3D *skeleton, float stiffness);
+	void set_leaf_stiffness(Skeleton3D *p_skeleton, float p_stiffness);
 	float get_twist();
-	void set_twist(Skeleton3D *skeleton, float p_twist);
+	void set_twist(Skeleton3D *p_skeleton, float p_twist);
 	float get_twist_start();
-	void set_twist_start(Skeleton3D *skeleton, float p_twist_start);
-	bool contains_bone(Skeleton3D *skeleton, BoneId bone);
+	void set_twist_start(Skeleton3D *p_skeleton, float p_twist_start);
+	bool contains_bone(Skeleton3D *p_skeleton, BoneId p_bone);
 };
 
 #endif // RENIK_CHAIN_H
