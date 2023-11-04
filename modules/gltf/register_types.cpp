@@ -83,10 +83,6 @@ static void _editor_init() {
 		Ref<EditorSceneFormatImporterFBX> importer;
 		importer.instantiate();
 		ResourceImporterScene::get_scene_singleton()->add_importer(importer);
-
-		Ref<EditorFileSystemImportFormatSupportQueryFBX> fbx_import_query;
-		fbx_import_query.instantiate();
-		EditorFileSystem::get_singleton()->add_import_format_support_query(fbx_import_query);
 	}
 }
 #endif // TOOLS_ENABLED
