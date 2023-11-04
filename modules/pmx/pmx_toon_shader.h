@@ -3,7 +3,9 @@
 #include "core/string/ustring.h"
 
 String pmx_toon_shader_code = R"(
+
 shader_type spatial;
+render_mode depth_prepass_alpha, cull_disabled;
 
 uniform vec4 albedo : source_color = vec4(1.0f);
 uniform sampler2D albedo_texture : hint_default_white;
@@ -46,6 +48,7 @@ float split_specular(float specular) {
 
 void fragment() {
 	ALBEDO = albedo.rgb * texture(albedo_texture, UV).rgb;
+	ALPHA = albedo.a * texture(albedo_texture, UV).a;
 }
 
 void light() {
