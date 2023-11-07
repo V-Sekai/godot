@@ -75,7 +75,7 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 				if (library.is_null()) {
 					library.instantiate();
 				}
-				ap->add_animation_library(library->get_name() + "_baked", library);
+				ap->add_animation_library("Baked Animations " + library->get_name(), library);
 			}
 			mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, st->commit_to_arrays());
 		}
