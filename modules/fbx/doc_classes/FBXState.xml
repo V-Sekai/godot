@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FBXState" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_used_extension">
+			<return type="void" />
+			<param index="0" name="extension_name" type="String" />
+			<param index="1" name="required" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="get_additional_data">
+			<return type="Variant" />
+			<param index="0" name="extension_name" type="StringName" />
+			<description>
+			</description>
+		</method>
+		<method name="get_animation_player">
+			<return type="AnimationPlayer" />
+			<param index="0" name="idx" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_animation_players_count">
+			<return type="int" />
+			<param index="0" name="idx" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_animations">
+			<return type="FBXAnimation[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_handle_binary_image">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_images">
+			<return type="Texture2D[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_materials">
+			<return type="Material[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_meshes">
+			<return type="FBXMesh[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_node_index">
+			<return type="int" />
+			<param index="0" name="scene_node" type="Node" />
+			<description>
+			</description>
+		</method>
+		<method name="get_nodes">
+			<return type="FBXNode[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_scene_node">
+			<return type="Node" />
+			<param index="0" name="idx" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_skeletons">
+			<return type="FBXSkeleton[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_skins">
+			<return type="FBXSkin[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_textures">
+			<return type="FBXTexture[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_unique_animation_names">
+			<return type="String[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_unique_names">
+			<return type="String[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_additional_data">
+			<return type="void" />
+			<param index="0" name="extension_name" type="StringName" />
+			<param index="1" name="additional_data" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="set_animations">
+			<return type="void" />
+			<param index="0" name="animations" type="FBXAnimation[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_handle_binary_image">
+			<return type="void" />
+			<param index="0" name="method" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_images">
+			<return type="void" />
+			<param index="0" name="images" type="Texture2D[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_materials">
+			<return type="void" />
+			<param index="0" name="materials" type="Material[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_meshes">
+			<return type="void" />
+			<param index="0" name="meshes" type="FBXMesh[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_nodes">
+			<return type="void" />
+			<param index="0" name="nodes" type="FBXNode[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_skeletons">
+			<return type="void" />
+			<param index="0" name="skeletons" type="FBXSkeleton[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_skins">
+			<return type="void" />
+			<param index="0" name="skins" type="FBXSkin[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_textures">
+			<return type="void" />
+			<param index="0" name="textures" type="FBXTexture[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_unique_animation_names">
+			<return type="void" />
+			<param index="0" name="unique_animation_names" type="String[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_unique_names">
+			<return type="void" />
+			<param index="0" name="unique_names" type="String[]" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="base_path" type="String" setter="set_base_path" getter="get_base_path" default="&quot;&quot;">
+		</member>
+		<member name="buffers" type="PackedByteArray[]" setter="set_buffers" getter="get_buffers" default="[]">
+		</member>
+		<member name="copyright" type="String" setter="set_copyright" getter="get_copyright" default="&quot;&quot;">
+		</member>
+		<member name="create_animations" type="bool" setter="set_create_animations" getter="get_create_animations" default="true">
+		</member>
+		<member name="filename" type="String" setter="set_filename" getter="get_filename" default="&quot;&quot;">
+		</member>
+		<member name="glb_data" type="PackedByteArray" setter="set_glb_data" getter="get_glb_data" default="PackedByteArray()">
+		</member>
+		<member name="json" type="Dictionary" setter="set_json" getter="get_json" default="{}">
+		</member>
+		<member name="major_version" type="int" setter="set_major_version" getter="get_major_version" default="0">
+		</member>
+		<member name="minor_version" type="int" setter="set_minor_version" getter="get_minor_version" default="0">
+		</member>
+		<member name="root_nodes" type="PackedInt32Array" setter="set_root_nodes" getter="get_root_nodes" default="PackedInt32Array()">
+		</member>
+		<member name="scene_name" type="String" setter="set_scene_name" getter="get_scene_name" default="&quot;&quot;">
+		</member>
+		<member name="use_named_skin_binds" type="bool" setter="set_use_named_skin_binds" getter="get_use_named_skin_binds" default="false">
+		</member>
+	</members>
+	<constants>
+		<constant name="HANDLE_BINARY_DISCARD_TEXTURES" value="0">
+		</constant>
+		<constant name="HANDLE_BINARY_EXTRACT_TEXTURES" value="1">
+		</constant>
+		<constant name="HANDLE_BINARY_EMBED_AS_BASISU" value="2">
+		</constant>
+		<constant name="HANDLE_BINARY_EMBED_AS_UNCOMPRESSED" value="3">
+		</constant>
+	</constants>
+</class>
