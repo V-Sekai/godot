@@ -350,10 +350,21 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 		LocalVector<int> vertex_remap;
 		LocalVector<int> vertex_inverse_remap;
 		LocalVector<Vector3> merged_vertices;
-		LocalVector<Vector3> merged_normals;
+		LocalVector<Vector3> merged_attributes;
 		LocalVector<int> merged_normals_counts;
 		const Vector2 *uvs_ptr = uvs.ptr();
 		const Vector2 *uv2s_ptr = uv2s.ptr();
+
+
+		for (unsigned int j = 0; j < vertex_count; j++) {
+			float weight1 = weights[j * 2];     // Weight for bone 1
+			float weight2 = weights[j * 2 + 1]; // Weight for bone 2
+			float poor_mans_metric = Math::abs(weight1 - weight2);
+			
+			merged_attributes.push_back(Vector3(poor_mans_metric, 0, 0));
+		}
+
+
 
 		for (unsigned int j = 0; j < vertex_count; j++) {
 			const Vector3 &v = vertices_ptr[j];
@@ -372,7 +383,7 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 					bool is_normals_close = normals[idx.second].dot(n) > normal_merge_threshold;
 					if (is_uvs_close && is_uv2s_close && is_normals_close) {
 						vertex_remap.push_back(idx.first);
-						merged_normals[idx.first] += normals[idx.second];
+						merged_attributes[idx.first] += normals[idx.second];
 						merged_normals_counts[idx.first]++;
 						found = true;
 						break;
@@ -385,7 +396,7 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 					vertex_inverse_remap.push_back(j);
 					merged_vertices.push_back(v);
 					vertex_remap.push_back(vcount);
-					merged_normals.push_back(normals_ptr[j]);
+					merged_attributes.push_back(normals_ptr[j]);
 					merged_normals_counts.push_back(1);
 				}
 			} else {
@@ -395,7 +406,7 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 				vertex_inverse_remap.push_back(j);
 				merged_vertices.push_back(v);
 				vertex_remap.push_back(vcount);
-				merged_normals.push_back(normals_ptr[j]);
+				merged_attributes.push_back(normals_ptr[j]);
 				merged_normals_counts.push_back(1);
 			}
 		}
@@ -412,15 +423,15 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 
 		{
 			const int *counts_ptr = merged_normals_counts.ptr();
-			Vector3 *merged_normals_ptrw = merged_normals.ptr();
+			Vector3 *merged_normals_ptrw = merged_attributes.ptr();
 			for (unsigned int j = 0; j < merged_vertex_count; j++) {
 				merged_normals_ptrw[j] /= counts_ptr[j];
 			}
 		}
 
-		const float normal_weights[3] = {
+		const float attribute_weights[4] = {
 			// Give some weight to normal preservation, may be worth exposing as an import setting
-			2.0f, 2.0f, 2.0f
+			2.0f, 2.0f, 2.0f, 0.1f,
 		};
 
 		Vector<float> merged_vertices_f32 = vector3_to_float32_array(merged_vertices_ptr, merged_vertex_count);
@@ -451,7 +462,7 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 			PackedInt32Array new_indices;
 			new_indices.resize(index_count);
 
-			Vector<float> merged_normals_f32 = vector3_to_float32_array(merged_normals.ptr(), merged_normals.size());
+			Vector<float> attribute_normals_f32 = vector3_to_float32_array(merged_attributes.ptr(), merged_attributes.size());
 			const int simplify_options = SurfaceTool::SIMPLIFY_LOCK_BORDER;
 
 			size_t new_index_count = SurfaceTool::simplify_with_attrib_func(
@@ -459,9 +470,9 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 					(const uint32_t *)merged_indices_ptr, index_count,
 					merged_vertices_f32.ptr(), merged_vertex_count,
 					sizeof(float) * 3, // Vertex stride
-					merged_normals_f32.ptr(),
-					sizeof(float) * 3, // Attribute stride
-					normal_weights, 3,
+					attribute_normals_f32.ptr(),
+					sizeof(float) * 4, // Attribute stride
+					attribute_weights, 4,
 					index_target,
 					max_mesh_error,
 					simplify_options,
