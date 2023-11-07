@@ -11,7 +11,6 @@
 //         Copyright (c) 2019, Electronic Arts. All rights reserved.         //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "core/math/quaternion.h"
 #ifndef DEM_BONES_DEM_BONES
 #define DEM_BONES_DEM_BONES
 
@@ -1229,7 +1228,7 @@ private:
 	};
 
 public:
-	Dictionary convert_blend_shapes_without_bones(Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<String, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims);
+	Dictionary convert_blend_shapes_without_bones(Skeleton3D *p_skeleton, Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<String, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims);
 };
 
 template <class _Scalar, class _AniMeshScalar>
@@ -1454,12 +1453,15 @@ bool hasKeyFrame = false;
 Eigen::MatrixXf m;
 
 template <class _Scalar, class _AniMeshScalar>
-Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_without_bones(Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<String, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims) {
+Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_without_bones(Skeleton3D *p_skeleton, Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<String, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims) {
+	ERR_FAIL_NULL_V(p_skeleton, Dictionary());
+	ERR_FAIL_COND_V(!p_mesh.size(), Dictionary());
+	ERR_FAIL_COND_V(!p_vertex_array.size(), Dictionary());
 	Dictionary output;
 	output["mesh_array"] = p_mesh;
 	output["animation_library"] = Ref<AnimationLibrary>();
 	output["skeleton"] = memnew(Skeleton3D);
-	if (p_vertex_array.size() == 0) {
+	if (!p_vertex_array.size()) {
 		return output;
 	}
 	if (!p_anims.size()) {
@@ -1509,7 +1511,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 			float weight = anim->blend_shape_track_interpolate(track_i, time);
 			Vector<::Vector3> blend_vertices = p_blends[track_path];
 			for (int32_t j = 0; j < p_vertex_array.size(); j++) {
-				 if (j >= blend_vertices.size()) {
+				if (j >= blend_vertices.size()) {
 					break;
 				}
 				::Vector3 current_vertex = ::Vector3(vertex(3 * frame_i + 0, j), vertex(3 * frame_i + 1, j), vertex(3 * frame_i + 2, j));
@@ -1551,6 +1553,9 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	}
 
 	PackedInt32Array indices = p_mesh[Mesh::ARRAY_INDEX];
+	if (indices.size() % 3 != 0) {
+		return output;
+	}
 
 	// Assume the mesh is a triangle mesh.
 	const int indices_in_tri = 3;
@@ -1558,9 +1563,9 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	for (int32_t index_i = 0; index_i < indices.size(); index_i += 3) {
 		std::vector<int> polygon_indices;
 		polygon_indices.resize(indices_in_tri);
-		polygon_indices[0] = indices[index_i / 3 + 0];
-		polygon_indices[1] = indices[index_i / 3 + 1];
-		polygon_indices[2] = indices[index_i / 3 + 2];
+		polygon_indices[0] = indices[index_i + 0];
+		polygon_indices[1] = indices[index_i + 1];
+		polygon_indices[2] = indices[index_i + 2];
 		fv[index_i / 3] = polygon_indices;
 	}
 	rest_pose_geometry.resize(3, num_vertices);
@@ -1584,7 +1589,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 		bone_name.resize(num_bones);
 		for (int j = 0; j < num_bones; j++) {
 			std::ostringstream s;
-			s << "joint" << j;
+			s << "Joint: " << j;
 			bone_name[j] = s.str();
 			String joint_name = s.str().c_str();
 			skeleton->add_bone(joint_name);
@@ -1646,11 +1651,11 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	array_mesh.resize(Mesh::ARRAY_MAX);
 	PackedVector3Array vertex_array;
 	vertex_array.resize(num_vertices);
-	for (int32_t vertex_i = 0; vertex_i < num_vertices;
-			vertex_i++) {
+	for (int32_t vertex_i = 0; vertex_i < num_vertices; vertex_i++) {
 		vertex_array.write[vertex_i] = ::Vector3(rest_pose_geometry.col(vertex_i)(0), rest_pose_geometry.col(vertex_i)(1), rest_pose_geometry.col(vertex_i)(2));
 	}
 	array_mesh[Mesh::ARRAY_VERTEX] = vertex_array;
+	array_mesh[Mesh::ARRAY_INDEX] = indices;
 
 	output["mesh_array"] = array_mesh;
 	output["animation_library"] = animation_library;
