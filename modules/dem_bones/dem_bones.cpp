@@ -4,6 +4,7 @@
 #include "dem_bones_extension.h"
 
 #include "scene/3d/mesh_instance_3d.h"
+#include "scene/3d/skeleton_3d.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation_library.h"
 #include "scene/resources/importer_mesh.h"
@@ -41,7 +42,23 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 		// - To soft-lock skinning weights of vertices: in the input mesh,
 		// paint per-vertex colors in gray-scale. The closer the color to white,
 		// the more skinning weights of the vertex are preserved.
+
 		Ref<ArrayMesh> surface_mesh = mesh_instance_3d->get_mesh();
+		NodePath skeleton_path = mesh_instance_3d->get_skeleton_path();
+		Skeleton3D *skeleton = memnew(Skeleton3D);
+		if (mesh_instance_3d->get_parent_node_3d()) {
+			mesh_instance_3d->get_parent_node_3d()->add_child(skeleton, true);
+			skeleton->set_owner(p_scene);
+		} else {
+			memdelete(skeleton);
+			continue;
+		}
+		if (mesh_instance_3d->get_parent()) {
+			mesh_instance_3d->get_parent()->remove_child(mesh_instance_3d);
+		}
+		skeleton->add_child(mesh_instance_3d, true);
+		mesh_instance_3d->set_owner(p_scene);
+		mesh_instance_3d->set_skeleton_path(NodePath(".."));
 		if (surface_mesh.is_null()) {
 			continue;
 		}
@@ -49,13 +66,9 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 			continue;
 		}
 		mesh_instance_3d->set_mesh(Ref<ArrayMesh>());
-		Ref<SurfaceTool> st;
-		st.instantiate();
 		Ref<ArrayMesh> mesh;
 		mesh.instantiate();
 		for (int32_t surface_i = 0; surface_i < surface_mesh->get_surface_count(); surface_i++) {
-			st->clear();
-			st->begin(ArrayMesh::PRIMITIVE_TRIANGLES);
 			Array surface_arrays = surface_mesh->surface_get_arrays(surface_i);
 			HashMap<String, Vector<Vector3>> blends_arrays;
 			NodePath mesh_track;
@@ -66,10 +79,19 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 				blends_arrays[mesh_path + ":blend_shapes/" + blend_name] = surface_mesh->surface_get_blend_shape_arrays(surface_i)[blend_i];
 			}
 			Dem::DemBonesExt<double, float> bones;
-			Dictionary output = bones.convert_blend_shapes_without_bones(surface_arrays, surface_arrays[ArrayMesh::ARRAY_VERTEX], blends_arrays, animations);
+			Dictionary output = bones.convert_blend_shapes_without_bones(skeleton, surface_arrays, surface_arrays[ArrayMesh::ARRAY_VERTEX], blends_arrays, animations);
 			animations.clear();
+			if (!output.size()) {
+				continue;
+			}
 			Array mesh_array = output["mesh_array"];
-			st->create_from_triangle_arrays(mesh_array);
+			if (!mesh_array.size()) {
+				continue;
+			}
+			Ref<SurfaceTool> surface_tool;
+			surface_tool.instantiate();
+			surface_tool->begin(ArrayMesh::PRIMITIVE_TRIANGLES);
+			surface_tool->create_from_triangle_arrays(mesh_array);
 			if (output.has("animation_library")) {
 				Ref<AnimationLibrary> library = output["animation_library"];
 				if (library.is_null()) {
@@ -77,7 +99,7 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 				}
 				ap->add_animation_library("Baked Animations " + library->get_name(), library);
 			}
-			mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, st->commit_to_arrays());
+			mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_tool->commit_to_arrays());
 		}
 		mesh_instance_3d->set_mesh(mesh);
 	}

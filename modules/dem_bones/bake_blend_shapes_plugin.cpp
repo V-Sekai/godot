@@ -53,7 +53,7 @@ bool BakeBlendShapesPlugin::has_main_screen() const {
 BakeBlendShapesPlugin::BakeBlendShapesPlugin() {
 	file_export_lib = memnew(FileDialog);
 	EditorNode::get_singleton()->get_gui_base()->add_child(file_export_lib);
-	file_export_lib->set_title(RTR("Export Library"));
+	file_export_lib->set_title(RTR("Bake Blend Shapes"));
 	file_export_lib->set_file_mode(FileDialog::FILE_MODE_SAVE_FILE);
 	file_export_lib->set_access(FileDialog::ACCESS_FILESYSTEM);
 	file_export_lib->clear_filters();
