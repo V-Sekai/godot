@@ -1360,6 +1360,7 @@ void Dem::DemBonesExt<_Scalar, _AniMeshScalar>::compute_bind(int p_subject, Matr
 template <class _Scalar, class _AniMeshScalar>
 int Dem::DemBonesExt<_Scalar, _AniMeshScalar>::compute_root() {
 	VectorX err(num_bones);
+	// TODO 2023-1-07 Restore parallel compute.
 	// #pragma omp parallel for
 	for (int j = 0; j < num_bones; j++) {
 		double ej = 0;
@@ -1386,8 +1387,7 @@ void Dem::DemBonesExt<_Scalar, _AniMeshScalar>::compute() {
 		DemBonesExt<_Scalar, _AniMeshScalar>::computeTranformations();
 		DemBonesExt<_Scalar, _AniMeshScalar>::computeWeights();
 		double err = DemBonesExt<_Scalar, _AniMeshScalar>::rmse();
-		if ((err < prevErr * (1 + weightEps)) &&
-				((prevErr - err) < DemBonesExt<_Scalar, _AniMeshScalar>::tolerance * prevErr)) {
+		if (abs(prevErr - err) < DemBonesExt<_Scalar, _AniMeshScalar>::tolerance) {
 			np--;
 			if (np == 0) {
 				print_line("Convergence has been reached.");
@@ -1509,6 +1509,9 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 			float weight = anim->blend_shape_track_interpolate(track_i, time);
 			Vector<::Vector3> blend_vertices = p_blends[track_path];
 			for (int32_t j = 0; j < p_vertex_array.size(); j++) {
+				 if (j >= blend_vertices.size()) {
+					break;
+				}
 				::Vector3 current_vertex = ::Vector3(vertex(3 * frame_i + 0, j), vertex(3 * frame_i + 1, j), vertex(3 * frame_i + 2, j));
 				::Vector3 lerped_vertex = current_vertex.lerp(blend_vertices[j], weight);
 
