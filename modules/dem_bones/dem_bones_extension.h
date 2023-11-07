@@ -1588,11 +1588,8 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	if (needCreateJoints) {
 		bone_name.resize(num_bones);
 		for (int j = 0; j < num_bones; j++) {
-			std::ostringstream s;
-			s << "Joint: " << j;
-			bone_name[j] = s.str();
-			String joint_name = s.str().c_str();
-			skeleton->add_bone(joint_name);
+			std::string name = "joint_" + std::to_string(j);
+			bone_name[j] = name;
 		}
 	}
 
@@ -1602,16 +1599,27 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	for (int s = 0; s < num_subjects; s++) {
 		MatrixX local_rotations;
 		MatrixX local_translations;
-		MatrixX gb;
+		MatrixX global_bind_pose_matrices;
 		MatrixX local_bind_pose_rotation;
 		MatrixX local_bind_pose_translation;
 		bool degree_rot = false;
-		DemBonesExt<_Scalar, _AniMeshScalar>::compute_rotations_translations_bind_matrices(s, local_rotations, local_translations, gb, local_bind_pose_rotation, local_bind_pose_translation, degree_rot);
-		BoneId bone_id = skeleton->find_bone(String(bone_name[s].c_str()));
-		Transform3D rest = Transform3D(
-				Basis::from_euler(::Vector3(local_bind_pose_rotation(0), local_bind_pose_rotation(1), local_bind_pose_rotation(2))),
-				::Vector3(local_bind_pose_translation(0), local_bind_pose_translation(1), local_bind_pose_translation(2)));
-		skeleton->set_bone_rest(bone_id, rest);
+		DemBonesExt<_Scalar, _AniMeshScalar>::compute_rotations_translations_bind_matrices(s, local_rotations, local_translations, global_bind_pose_matrices, local_bind_pose_rotation, local_bind_pose_translation, degree_rot);
+
+		for (int32_t bone_i = 0; bone_i < num_bones; bone_i++) {
+			BoneId bone_id = skeleton->get_bone_count();
+			skeleton->add_bone(bone_name[bone_i].c_str());
+			Transform3D rest;
+			::Vector3 vec(local_bind_pose_translation.col(bone_i).template segment<3>(0)(0),
+					local_bind_pose_translation.col(bone_i).template segment<3>(0)(1),
+					local_bind_pose_translation.col(bone_i).template segment<3>(0)(2));
+			rest.origin = vec;
+			::Vector3 euler(local_bind_pose_rotation.col(bone_i).template segment<3>(0)(0),
+					local_bind_pose_rotation.col(bone_i).template segment<3>(0)(1),
+					local_bind_pose_rotation.col(bone_i).template segment<3>(0)(2));
+			rest.basis.set_euler(euler);
+			skeleton->set_bone_rest(bone_id, rest);
+		}
+
 		Ref<Animation> animation;
 		animation.instantiate();
 		animation->set_name("Animation_" + itos(s));
@@ -1622,13 +1630,21 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 				animation->add_track(Animation::TYPE_POSITION_3D);
 				animation->track_set_path(track_i, String(bone_name[bone_i].c_str()));
 				for (int frame_i = frame_start_index(s); frame_i < frame_start_index(s + 1); frame_i++) {
-					animation->position_track_insert_key(track_i, double(frame_i) / FPS, ::Vector3());
+					::Vector3 position(local_translations.col(bone_i).template segment<3>(frame_i)(0),
+							local_translations.col(bone_i).template segment<3>(frame_i)(1),
+							local_translations.col(bone_i).template segment<3>(frame_i)(2));
+					animation->position_track_insert_key(track_i, double(frame_i) / FPS, position);
 				}
 				track_i = animation->get_track_count();
 				animation->add_track(Animation::TYPE_ROTATION_3D);
 				animation->track_set_path(track_i, String(bone_name[bone_i].c_str()));
 				for (int frame_j = frame_start_index(s); frame_j < frame_start_index(s + 1); frame_j++) {
-					animation->rotation_track_insert_key(track_i, double(frame_j) / FPS, ::Quaternion());
+					::Vector3 rotation(local_rotations.col(bone_i).template segment<3>(frame_j)(0),
+							local_rotations.col(bone_i).template segment<3>(frame_j)(1),
+							local_rotations.col(bone_i).template segment<3>(frame_j)(2));
+					Basis basis;
+					basis.set_euler(rotation);
+					animation->rotation_track_insert_key(track_i, double(frame_j) / FPS, basis.get_rotation_quaternion());
 				}
 			}
 		}
