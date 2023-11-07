@@ -1515,9 +1515,9 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 				::Vector3 current_vertex = ::Vector3(vertex(3 * frame_i + 0, j), vertex(3 * frame_i + 1, j), vertex(3 * frame_i + 2, j));
 				::Vector3 lerped_vertex = current_vertex.lerp(blend_vertices[j], weight);
 
-				vertex(3 * frame_i + 0, j) = p_vertex_array[j].x;
-				vertex(3 * frame_i + 1, j) = p_vertex_array[j].y;
-				vertex(3 * frame_i + 2, j) = p_vertex_array[j].z;
+				vertex(3 * frame_i + 0, j) = lerped_vertex.x;
+				vertex(3 * frame_i + 1, j) = lerped_vertex.y;
+				vertex(3 * frame_i + 2, j) = lerped_vertex.z;
 			}
 			time += increment;
 			if (time >= length && !last) {
