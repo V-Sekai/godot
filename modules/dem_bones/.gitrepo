@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-dem-bones.git
+	branch = godot
+	commit = 85fe066735d379dcd07832540861a2cdcfbb7c69
+	parent = 5ee983188de97ae027f9b9c1443438063f708a7e
+	method = merge
+	cmdver = 0.4.6
