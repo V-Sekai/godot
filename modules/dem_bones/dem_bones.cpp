@@ -1,35 +1,24 @@
 #include "dem_bones.h"
 
+#include "core/variant/typed_array.h"
 #include "dem_bones_extension.h"
 
 #include "scene/3d/mesh_instance_3d.h"
+#include "scene/animation/animation_player.h"
 #include "scene/resources/animation_library.h"
 #include "scene/resources/importer_mesh.h"
 #include "scene/resources/surface_tool.h"
 
 Error BlendShapeBake::convert_scene(Node *p_scene) {
 	List<Node *> queue;
-	AnimationPlayer *ap = nullptr;
-	queue.push_back(p_scene);
-	while (!queue.is_empty()) {
-		List<Node *>::Element *front = queue.front();
-		Node *node = front->get();
-		ap = cast_to<AnimationPlayer>(node);
-		if (ap) {
-			queue.clear();
-			break;
-		}
-		int child_count = node->get_child_count();
-		for (int32_t i = 0; i < child_count; i++) {
-			queue.push_back(node->get_child(i));
-		}
-		queue.pop_front();
+	TypedArray<Node> nodes = p_scene->find_children("*", "AnimationPlayer");
+	if (!nodes.size()) {
+		return OK;
 	}
+	AnimationPlayer *ap = cast_to<AnimationPlayer>(nodes[0]);
 	if (!ap) {
 		return OK;
 	}
-	queue.push_back(p_scene);
-
 	List<StringName> animation_names;
 	ap->get_animation_list(&animation_names);
 	Vector<Ref<Animation>> animations;
@@ -37,15 +26,9 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 		Ref<Animation> anim = ap->get_animation(animation_name);
 		animations.push_back(anim);
 	}
-	while (!queue.is_empty()) {
-		List<Node *>::Element *front = queue.front();
-		Node *node = front->get();
-		int child_count = node->get_child_count();
-		for (int32_t i = 0; i < child_count; i++) {
-			queue.push_back(node->get_child(i));
-		}
-		queue.pop_front();
-		MeshInstance3D *mesh_instance_3d = cast_to<MeshInstance3D>(node);
+	nodes = p_scene->find_children("*", "MeshInstance3D");
+	for (int32_t node_i = 0; node_i < nodes.size(); node_i++) {
+		MeshInstance3D *mesh_instance_3d = cast_to<MeshInstance3D>(nodes[node_i]);
 		if (!mesh_instance_3d) {
 			continue;
 		}
@@ -92,7 +75,7 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 				if (library.is_null()) {
 					library.instantiate();
 				}
-				ap->add_animation_library(library->get_name(), library);
+				ap->add_animation_library(library->get_name() + "_baked", library);
 			}
 			mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, st->commit_to_arrays());
 		}
