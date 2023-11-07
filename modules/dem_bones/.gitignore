@@ -1,0 +1,14 @@
+/build
+/ExtLibs/*
+!/ExtLibs/Eigen
+!/ExtLibs/tclap
+!/ExtLibs/Alembic
+!/ExtLibs/FBXSDK
+!/ExtLibs/zlib
+.DS_Store
+__pycache__/
+*.o
+
+*.obj
+
+*.tmp
