@@ -31,8 +31,11 @@
 #include "camera_3d.h"
 
 #include "collision_object_3d.h"
+#include "core/config/project_settings.h"
 #include "core/math/projection.h"
 #include "scene/main/viewport.h"
+#include "servers/audio_server.h"
+#include "servers/resonanceaudio/resonance_audio_wrapper.h"
 
 void Camera3D::_update_audio_listener_state() {
 }
@@ -120,6 +123,10 @@ void Camera3D::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_TRANSFORM_CHANGED: {
+			if (viewport->is_audio_listener_3d() && GLOBAL_GET("audio/enable_resonance_audio")) {
+				ResonanceAudioServer::get_singleton()->set_head_transform(get_global_transform());
+			}
+
 			_request_camera_update();
 			if (doppler_tracking != DOPPLER_TRACKING_DISABLED) {
 				velocity_tracker->update_position(get_global_transform().origin);
@@ -708,7 +715,6 @@ RID Camera3D::get_pyramid_shape_rid() {
 		pyramid_shape_points = get_near_plane_points();
 		pyramid_shape = PhysicsServer3D::get_singleton()->convex_polygon_shape_create();
 		PhysicsServer3D::get_singleton()->shape_set_data(pyramid_shape, pyramid_shape_points);
-
 	} else { //check if points changed
 		Vector<Vector3> local_points = get_near_plane_points();
 
