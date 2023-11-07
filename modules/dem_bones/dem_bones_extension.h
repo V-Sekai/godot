@@ -1506,10 +1506,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 		double length = anim->get_length();
 		bool last = false;
 		for (int32_t frame_i = 0; frame_i < new_frames; frame_i++) {
-			float weight = 0.0f;
-			if (anim->blend_shape_track_interpolate(track_i, time, &weight) != OK) {
-				continue;
-			}
+			float weight = anim->blend_shape_track_interpolate(track_i, time);
 			Vector<::Vector3> blend_vertices = p_blends[track_path];
 			for (int32_t j = 0; j < p_vertex_array.size(); j++) {
 				::Vector3 current_vertex = ::Vector3(vertex(3 * frame_i + 0, j), vertex(3 * frame_i + 1, j), vertex(3 * frame_i + 2, j));
@@ -1579,7 +1576,6 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	DemBonesExt<_Scalar, _AniMeshScalar>::init();
 	DemBonesExt<_Scalar, _AniMeshScalar>::compute();
 	bool needCreateJoints = (bone_name.size() == 0);
-	double radius;
 	Skeleton3D *skeleton = memnew(Skeleton3D);
 	if (needCreateJoints) {
 		bone_name.resize(num_bones);
@@ -1590,10 +1586,9 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 			String joint_name = s.str().c_str();
 			skeleton->add_bone(joint_name);
 		}
-		radius = sqrt((rest_pose_geometry - (rest_pose_geometry.rowwise().sum() / num_vertices).replicate(1, num_vertices)).cwiseAbs().rowwise().maxCoeff().squaredNorm() / num_subjects);
 	}
 
-	print_line(vformat("The number of bones %d", bone_name.size()));
+	print_line("The number of bones " + itos(bone_name.size()));
 	Ref<AnimationLibrary> animation_library;
 	animation_library.instantiate();
 	for (int s = 0; s < num_subjects; s++) {
@@ -1615,7 +1610,6 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 		animation->set_length(double(frame_start_index(s + 1)) / FPS - double(frame_start_index(s)) / FPS);
 		if (needCreateJoints) {
 			for (int32_t bone_i = 0; bone_i < num_bones; bone_i++) {
-				BoneId parent_bone = parent[bone_i];
 				int32_t track_i = animation->get_track_count();
 				animation->add_track(Animation::TYPE_POSITION_3D);
 				animation->track_set_path(track_i, String(bone_name[bone_i].c_str()));
@@ -1643,7 +1637,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	print_line(vformat("Number of vertices %d", num_vertices));
 	print_line(vformat("Number of joints %d", num_bones));
 	print_line(vformat("Number of frames %d", num_total_frames));
-	print_line(vformat("Number of skinning weights %d", skinning_weights.size()));
+	print_line("Number of skinning weights " + itos(skinning_weights.size()));
 
 	Array array_mesh;
 	array_mesh.resize(Mesh::ARRAY_MAX);
@@ -1651,7 +1645,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	vertex_array.resize(num_vertices);
 	for (int32_t vertex_i = 0; vertex_i < num_vertices;
 			vertex_i++) {
-		vertex_array[vertex_i] = ::Vector3(rest_pose_geometry.col(vertex_i)(0), rest_pose_geometry.col(vertex_i)(1), rest_pose_geometry.col(vertex_i)(2));
+		vertex_array.write[vertex_i] = ::Vector3(rest_pose_geometry.col(vertex_i)(0), rest_pose_geometry.col(vertex_i)(1), rest_pose_geometry.col(vertex_i)(2));
 	}
 	array_mesh[Mesh::ARRAY_VERTEX] = vertex_array;
 
