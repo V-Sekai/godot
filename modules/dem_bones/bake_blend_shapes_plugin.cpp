@@ -35,7 +35,6 @@
 #include "core/object/object.h"
 #include "core/templates/vector.h"
 #include "dem_bones.h"
-#include "editor/editor_file_dialog.h"
 #include "editor/editor_file_system.h"
 #include "editor/editor_node.h"
 #include "scene/3d/mesh_instance_3d.h"
