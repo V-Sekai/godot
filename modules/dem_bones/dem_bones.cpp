@@ -88,6 +88,10 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 			if (!mesh_array.size()) {
 				continue;
 			}
+			Ref<Skin> mesh_skin = output["skin"];
+			if (mesh_skin.is_null()) {
+				continue;
+			}
 			Ref<SurfaceTool> surface_tool;
 			surface_tool.instantiate();
 			surface_tool->begin(ArrayMesh::PRIMITIVE_TRIANGLES);
@@ -99,7 +103,12 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 				}
 				ap->add_animation_library("Baked Animations " + library->get_name(), library);
 			}
+			surface_tool->set_skin_weight_count(SurfaceTool::SKIN_8_WEIGHTS);
 			mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_tool->commit_to_arrays());
+			Skeleton3D *new_skeleton = cast_to<Skeleton3D>(output["skeleton"]);
+			skeleton->replace_by(new_skeleton != nullptr ? new_skeleton : memnew(Skeleton3D));
+			new_skeleton->set_name(skeleton->get_class());
+			mesh_instance_3d->set_skin(mesh_skin);
 		}
 		mesh_instance_3d->set_mesh(mesh);
 	}

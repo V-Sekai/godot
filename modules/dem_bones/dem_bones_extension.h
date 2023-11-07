@@ -1596,6 +1596,8 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	print_line("The number of bones " + itos(bone_name.size()));
 	Ref<AnimationLibrary> animation_library;
 	animation_library.instantiate();
+	Ref<Skin> skin;
+	skin.instantiate();
 	for (int s = 0; s < num_subjects; s++) {
 		MatrixX local_rotations;
 		MatrixX local_translations;
@@ -1607,7 +1609,8 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 
 		for (int32_t bone_i = 0; bone_i < num_bones; bone_i++) {
 			BoneId bone_id = skeleton->get_bone_count();
-			skeleton->add_bone(bone_name[bone_i].c_str());
+			String new_bone_name = String(bone_name[bone_i].c_str());
+			skeleton->add_bone(new_bone_name);
 			Transform3D rest;
 			::Vector3 vec(local_bind_pose_translation.col(bone_i).template segment<3>(0)(0),
 					local_bind_pose_translation.col(bone_i).template segment<3>(0)(1),
@@ -1618,6 +1621,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 					local_bind_pose_rotation.col(bone_i).template segment<3>(0)(2));
 			rest.basis.set_euler(euler);
 			skeleton->set_bone_rest(bone_id, rest);
+			skin->add_named_bind(new_bone_name, rest.affine_inverse());
 		}
 
 		Ref<Animation> animation;
@@ -1667,15 +1671,38 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	array_mesh.resize(Mesh::ARRAY_MAX);
 	PackedVector3Array vertex_array;
 	vertex_array.resize(num_vertices);
+
+	Vector<float> weights_array;
+	Vector<int> bones_array;
 	for (int32_t vertex_i = 0; vertex_i < num_vertices; vertex_i++) {
 		vertex_array.write[vertex_i] = ::Vector3(rest_pose_geometry.col(vertex_i)(0), rest_pose_geometry.col(vertex_i)(1), rest_pose_geometry.col(vertex_i)(2));
+		Vector<float> vertex_weights;
+		Vector<int> vertex_bones;
+		for (typename SparseMatrix::InnerIterator it(skinning_weights, vertex_i); it; ++it) {
+			if (it.value() != 0) {
+				vertex_weights.push_back(it.value());
+				vertex_bones.push_back(it.row());
+			}
+		}
+		while (vertex_weights.size() < nnz) {
+			vertex_weights.push_back(0);
+		}
+		while (vertex_bones.size() < nnz) {
+			vertex_bones.push_back(0);
+		}
+
+		weights_array.append_array(vertex_weights);
+		bones_array.append_array(vertex_bones);
 	}
 	array_mesh[Mesh::ARRAY_VERTEX] = vertex_array;
 	array_mesh[Mesh::ARRAY_INDEX] = indices;
+	array_mesh[Mesh::ARRAY_WEIGHTS] = weights_array;
+	array_mesh[Mesh::ARRAY_BONES] = bones_array;
 
 	output["mesh_array"] = array_mesh;
 	output["animation_library"] = animation_library;
 	output["skeleton"] = skeleton;
+	output["skin"] = skin;
 	return output;
 }
 
