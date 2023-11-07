@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-dem-bones.git
 	branch = godot
-	commit = 3de40b16708e15519d4c84a14cb8dbba48f5d5c5
-	parent = 0f113ca655299627f100713f423552bac5055f23
+	commit = 308f59192e907821a7a864270f986a911388b6d8
+	parent = de1f32411fca397cb0684b01624f0b34d6a05037
 	method = merge
 	cmdver = 0.4.6
