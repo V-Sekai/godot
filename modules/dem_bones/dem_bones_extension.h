@@ -296,7 +296,7 @@ public:
 		for (_iterTransformations = 0; _iterTransformations < nTransIters;
 				_iterTransformations++) {
 			cbTransformationsIterBegin();
-			// #pragma omp parallel for
+			#pragma omp parallel for
 			for (int k = 0; k < num_total_frames; k++)
 				for (int j = 0; j < num_bones; j++)
 					if (lock_mat(j) == 0) {
@@ -352,7 +352,7 @@ public:
 			double reg_scale = pow(modelSize, 2) * num_total_frames;
 
 			trip.clear();
-			// #pragma omp parallel for
+			#pragma omp parallel for
 			for (int i = 0; i < num_vertices; i++) {
 				MatrixX aTai;
 				compute_aTa(i, aTai);
@@ -383,7 +383,7 @@ public:
 				wSolver.solve(indexing_row_col(aTai, idx.head(nnzi), idx.head(nnzi)),
 						indexing_vector(aTbi, idx.head(nnzi)), x, true, true);
 
-				// #pragma omp critical
+				#pragma omp critical
 				for (int j = 0; j < nnzi; j++)
 					if (x(j) != 0)
 						trip.push_back(Triplet(idx[j], i, x(j)));
@@ -429,7 +429,7 @@ public:
 	//! @return Root mean squared reconstruction error
 	_Scalar rmse() {
 		_Scalar e = 0;
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++) {
 			_Scalar ei = 0;
 			Matrix4 mki;
@@ -442,7 +442,7 @@ public:
 						vertex.vec3(k, i).template cast<_Scalar>())
 							  .squaredNorm();
 			}
-			// #pragma omp atomic
+			#pragma omp atomic
 			e += ei;
 		}
 		return std::sqrt(e / num_total_frames / num_vertices);
@@ -515,9 +515,9 @@ private:
   */
 	_Scalar errorVtxBone(int i, int j, bool par = true) {
 		_Scalar e = 0;
-		// #pragma omp parallel for if (par)
+		#pragma omp parallel for if (par)
 		for (int k = 0; k < num_total_frames; k++)
-			// #pragma omp atomic
+			#pragma omp atomic
 			e += (bone_transform_mat.rotMat(k, j) * rest_pose_geometry.vec3(frame_subject_id(k), i) + bone_transform_mat.transVec(k, j) -
 					vertex.vec3(k, i).template cast<_Scalar>())
 						 .squaredNorm();
@@ -540,13 +540,13 @@ private:
 		VectorX ei(num_vertices);
 		Eigen::VectorXi seed = Eigen::VectorXi::Constant(num_bones, -1);
 		VectorX gLabelMin(num_bones);
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++) {
 			int j = label(i);
 			if (j != -1) {
 				ei(i) = errorVtxBone(i, j, false);
 				if ((seed(j) == -1) || (ei(i) < gLabelMin(j))) {
-					// #pragma omp critical
+					#pragma omp critical
 					if ((seed(j) == -1) || (ei(i) < gLabelMin(j))) {
 						gLabelMin(j) = ei(i);
 						seed(j) = i;
@@ -587,7 +587,7 @@ private:
 			}
 		}
 
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++)
 			if (label(i) == -1) {
 				_Scalar gMin;
@@ -605,7 +605,7 @@ private:
 	 */
 	void computeTransFromLabel() {
 		bone_transform_mat = Matrix4::Identity().replicate(num_total_frames, num_bones);
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int frame_i = 0; frame_i < num_total_frames; frame_i++) {
 			MatrixX qpT = MatrixX::Zero(4, 4 * num_bones);
 			for (int vertex_i = 0; vertex_i < num_vertices; vertex_i++) {
@@ -655,20 +655,20 @@ private:
 		VectorX minE = VectorX::Constant(num_bones, std::numeric_limits<_Scalar>::max());
 		VectorX ce = VectorX::Zero(num_bones);
 
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++) {
 			int j = label(i);
 			d(i) = (rest_pose_geometry.col(i) - cu.col(j)).norm();
 			e(i) = sqrt(errorVtxBone(i, j, false));
 			if (d(i) < minD(j)) {
-				// #pragma omp critical
+				#pragma omp critical
 				minD(j) = std::min(minD(j), d(i));
 			}
 			if (e(i) < minE(j)) {
-				// #pragma omp critical
+				#pragma omp critical
 				minE(j) = std::min(minE(j), e(i));
 			}
-			// #pragma omp atomic
+			#pragma omp atomic
 			ce(j) += e(i);
 		}
 
@@ -676,13 +676,13 @@ private:
 		Eigen::VectorXi seed = Eigen::VectorXi::Constant(num_bones, -1);
 		VectorX gMax(num_bones);
 
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++) {
 			int j = label(i);
 			double tmp = abs((e(i) - minE(j)) * (d(i) - minD(j)));
 
 			if ((seed(j) == -1) || (tmp > gMax(j))) {
-				// #pragma omp critical
+				#pragma omp critical
 				if ((seed(j) == -1) || (tmp > gMax(j))) {
 					gMax(j) = tmp;
 					seed(j) = i;
@@ -708,9 +708,9 @@ private:
   */
 	void pruneBones(int threshold) {
 		Eigen::VectorXi s = Eigen::VectorXi::Zero(num_bones);
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++) {
-			// #pragma omp atomic
+			#pragma omp atomic
 			s(label(i))++;
 		}
 
@@ -730,7 +730,7 @@ private:
 				bone_transform_mat.template middleCols<4>(newID(j) * 4) =
 						bone_transform_mat.template middleCols<4>(j * 4);
 
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++)
 			label(i) = newID(label(i));
 
@@ -743,7 +743,7 @@ private:
 	 */
 	void initWeights() {
 		label = Eigen::VectorXi::Constant(num_vertices, -1);
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++) {
 			_Scalar gMin;
 			for (int j = 0; j < num_bones; j++) {
@@ -766,7 +766,7 @@ private:
 	 */
 	void compute_vuT() {
 		vuT = MatrixX::Zero(num_total_frames * 4, num_bones * 4);
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int k = 0; k < num_total_frames; k++) {
 			MatrixX vuTp = MatrixX::Zero(4, num_bones * 4);
 			for (int i = 0; i < num_vertices; i++)
@@ -798,7 +798,7 @@ private:
 	 */
 	void compute_uuT() {
 		Eigen::MatrixXi pos = Eigen::MatrixXi::Constant(num_bones, num_bones, -1);
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++)
 			for (typename SparseMatrix::InnerIterator it(skinning_weights, i); it; ++it)
 				for (typename SparseMatrix::InnerIterator jt(skinning_weights, i); jt; ++jt)
@@ -819,7 +819,7 @@ private:
 		uuT.innerIdx.conservativeResize(nnz);
 		uuT.val = MatrixX::Zero(num_subjects * 4, nnz * 4);
 
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++)
 			for (typename SparseMatrix::InnerIterator it(skinning_weights, i); it; ++it)
 				for (typename SparseMatrix::InnerIterator jt(skinning_weights, i); jt; ++jt)
@@ -834,7 +834,7 @@ private:
 						int p = pos(it.row(), jt.row()) * 4;
 						for (int c = 0; c < 4; c++)
 							for (int r = 0; r < 4 * num_subjects; r++)
-								// #pragma omp atomic
+								#pragma omp atomic
 								uuT.val(r, p + c) += _uuT(r, c);
 					}
 
@@ -863,7 +863,7 @@ private:
 			}
 
 		mTm = MatrixX::Zero(num_subjects * num_bones * 4, num_bones * 4);
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int p = 0; p < nPairs; p++) {
 			int i = idx(0, p);
 			int j = idx(1, p);
@@ -885,7 +885,7 @@ private:
 	/** Pre-compute aTb for weights update
 	 */
 	void compute_aTb() {
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++)
 			for (int j = 0; j < num_bones; j++)
 				if ((aTb(j, i) == 0) && (ws(j, i) > weightEps))
@@ -924,7 +924,7 @@ private:
 		VectorX d = VectorX::Zero(num_vertices);
 		std::vector<std::set<int>> isComputed(num_vertices);
 
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int f = 0; f < nFV; f++) {
 			int nf = (int)fv[f].size();
 			for (int g = 0; g < nf; g++) {
@@ -932,7 +932,7 @@ private:
 				int j = fv[f][(g + 1) % nf];
 
 				bool needCompute = false;
-				// #pragma omp critical
+				#pragma omp critical
 				if (isComputed[i].find(j) == isComputed[i].end()) {
 					needCompute = true;
 					isComputed[i].insert(j);
@@ -952,14 +952,14 @@ private:
 					}
 					val = 1 / (sqrt(val / num_total_frames) + epsDis);
 
-					// #pragma omp critical
+					#pragma omp critical
 					triplet.push_back(Triplet(i, j, -val));
-					// #pragma omp atomic
+					#pragma omp atomic
 					d(i) += val;
 
-					// #pragma omp critical
+					#pragma omp critical
 					triplet.push_back(Triplet(j, i, -val));
-					// #pragma omp atomic
+					#pragma omp atomic
 					d(j) += val;
 				}
 			}
@@ -987,12 +987,12 @@ private:
 	 */
 	void compute_ws() {
 		ws = skinning_weights.transpose();
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int j = 0; j < num_bones; j++)
 			ws.col(j) = smoothSolver.solve(ws.col(j));
 		ws.transposeInPlace();
 
-		// #pragma omp parallel for
+		#pragma omp parallel for
 		for (int i = 0; i < num_vertices; i++) {
 			ws.col(i) = ws.col(i).cwiseMax(0.0);
 			_Scalar si = ws.col(i).sum();
@@ -1228,7 +1228,7 @@ private:
 	};
 
 public:
-	Dictionary convert_blend_shapes_without_bones(Skeleton3D *p_skeleton, Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<String, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims);
+	Dictionary convert_blend_shapes_without_bones(Skeleton3D *p_skeleton, Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<NodePath, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims);
 };
 
 template <class _Scalar, class _AniMeshScalar>
@@ -1277,7 +1277,7 @@ void Dem::DemBonesExt<_Scalar, _AniMeshScalar>::compute_rotations_translations_b
 	r_local_bind_pose_rotation.resize(3, num_bones);
 	r_local_bind_pose_translation.resize(3, num_bones);
 
-	// #pragma omp parallel for
+	#pragma omp parallel for
 	for (int bone_i = 0; bone_i < num_bones; bone_i++) {
 		Eigen::Vector3i ro = rot_order.col(bone_i).template segment<3>(s * 3);
 
@@ -1360,7 +1360,7 @@ template <class _Scalar, class _AniMeshScalar>
 int Dem::DemBonesExt<_Scalar, _AniMeshScalar>::compute_root() {
 	VectorX err(num_bones);
 	// TODO 2023-1-07 Restore parallel compute.
-	// #pragma omp parallel for
+	#pragma omp parallel for
 	for (int j = 0; j < num_bones; j++) {
 		double ej = 0;
 		for (int i = 0; i < num_vertices; i++) {
@@ -1376,30 +1376,6 @@ int Dem::DemBonesExt<_Scalar, _AniMeshScalar>::compute_root() {
 	err.minCoeff(&rj);
 	return rj;
 }
-
-template <class _Scalar, class _AniMeshScalar>
-void Dem::DemBonesExt<_Scalar, _AniMeshScalar>::compute() {
-	int np = patience;
-	double prevErr = -1;
-	DemBones<_Scalar, _AniMeshScalar>::init();
-	for (int32_t iteration_i = 0; iteration_i < DemBonesExt<_Scalar, _AniMeshScalar>::nIters; iteration_i++) {
-		DemBonesExt<_Scalar, _AniMeshScalar>::computeTranformations();
-		DemBonesExt<_Scalar, _AniMeshScalar>::computeWeights();
-		double err = DemBonesExt<_Scalar, _AniMeshScalar>::rmse();
-		if (abs(prevErr - err) < DemBonesExt<_Scalar, _AniMeshScalar>::tolerance) {
-			np--;
-			if (np == 0) {
-				print_line("Convergence has been reached.");
-				break;
-			}
-		} else {
-			np = patience;
-		}
-		prevErr = err;
-		print_line("Root mean square error is " + rtos(prevErr));
-	}
-}
-
 template <class _Scalar, class _AniMeshScalar>
 void Dem::DemBonesExt<_Scalar, _AniMeshScalar>::euler_angles_from_rotation_matrix_to_rot(const Matrix3 &p_basis, Vector3 &r_input_euler, const Eigen::Vector3i &p_rotation_order, _Scalar p_epsilon /*= _Scalar(1e-10)*/) {
 	Vector3 r0 = p_basis.eulerAngles(p_rotation_order(2), p_rotation_order(1), p_rotation_order(0)).reverse();
@@ -1453,7 +1429,7 @@ bool hasKeyFrame = false;
 Eigen::MatrixXf m;
 
 template <class _Scalar, class _AniMeshScalar>
-Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_without_bones(Skeleton3D *p_skeleton, Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<String, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims) {
+Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_without_bones(Skeleton3D *p_skeleton, Array p_mesh, ::PackedVector3Array p_vertex_array, HashMap<NodePath, Vector<::Vector3>> p_blends, Vector<Ref<Animation>> p_anims) {
 	ERR_FAIL_NULL_V(p_skeleton, Dictionary());
 	ERR_FAIL_COND_V(!p_mesh.size(), Dictionary());
 	ERR_FAIL_COND_V(!p_vertex_array.size(), Dictionary());
@@ -1496,6 +1472,10 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 		DemBonesExt<_Scalar, _AniMeshScalar>::rest_pose_geometry(2, j) = lerped_vertex.z;
 	}
 
+	double time = 0.0;
+	const double increment = 1.0 / FPS;
+	bool last = false;
+	const double length = anim->get_length();
 	for (int32_t frame_i = 0; frame_i < new_frames; frame_i++) {
 		::LocalVector<::Vector3> lerped_vertices;
 		lerped_vertices.resize(p_vertex_array.size());
@@ -1503,32 +1483,26 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 			lerped_vertices[j] = p_vertex_array[j];
 		}
 		for (int32_t track_i = 0; track_i < anim->get_track_count(); track_i++) {
-			String track_path = anim->track_get_path(track_i);
+			NodePath track_path = anim->track_get_path(track_i);
+			if (track_path.is_empty()) {
+				continue;
+			}
 			Animation::TrackType track_type = anim->track_get_type(track_i);
 			if (track_type != Animation::TYPE_BLEND_SHAPE) {
 				continue;
 			}
-			const double increment = 1.0 / FPS;
-			double time = 0.0;
-			double length = anim->get_length();
-			bool last = false;
-			for (int32_t frame_i = 0; frame_i < new_frames; frame_i++) {
-				float weight = anim->blend_shape_track_interpolate(track_i, time);
-				::Vector<::Vector3> blend_vertices = p_blends[track_path];
-				for (int32_t j = 0; j < p_vertex_array.size(); j++) {
-					if (j >= blend_vertices.size()) {
-						break;
-					}
-					::Vector3 &lerped_vertex = lerped_vertices[j];
-					lerped_vertices[j] = lerped_vertex.lerp(blend_vertices[j], weight);
-				}
-				time += increment;
-				if (time >= length && !last) {
-					last = true;
-					time = length;
-				} else if (last) {
+			if (!p_blends.has(track_path)) {
+				continue;
+			}
+			float weight = anim->blend_shape_track_interpolate(track_i, time);
+			::Vector<::Vector3> blend_vertices = p_blends[track_path];
+			for (int32_t j = 0; j < blend_vertices.size(); j++) {
+				if (j >= blend_vertices.size()) {
 					break;
 				}
+				::Vector3 &lerped_vertex = lerped_vertices[j];
+				const ::Vector3 &blend_vertex = blend_vertices[j];
+				lerped_vertices[j] = blend_vertex.lerp(lerped_vertex, weight);
 			}
 		}
 		for (int32_t j = 0; j < lerped_vertices.size(); j++) {
@@ -1536,6 +1510,13 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 			DemBonesExt<_Scalar, _AniMeshScalar>::vertex(3 * frame_i + 0, j) = lerped_vertex.x;
 			DemBonesExt<_Scalar, _AniMeshScalar>::vertex(3 * frame_i + 1, j) = lerped_vertex.y;
 			DemBonesExt<_Scalar, _AniMeshScalar>::vertex(3 * frame_i + 2, j) = lerped_vertex.z;
+		}
+		time += increment;
+		if (time >= length && !last) {
+			last = true;
+			time = length;
+		} else if (last) {
+			break;
 		}
 	}
 
@@ -1576,9 +1557,9 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 		polygon_indices[2] = indices[index_i + 2];
 		fv[index_i / 3] = polygon_indices;
 	}
+	DemBonesExt<_Scalar, _AniMeshScalar>::num_bones = 40;
 	DemBonesExt<_Scalar, _AniMeshScalar>::bind_update = 2;
-	DemBonesExt<_Scalar, _AniMeshScalar>::num_bones = 200;
-	DemBonesExt<_Scalar, _AniMeshScalar>::compute();
+	DemBonesExt<_Scalar, _AniMeshScalar>::init();
 	bool is_creating_joints = (bone_name.size() == 0);
 	Skeleton3D *skeleton = memnew(Skeleton3D);
 	if (is_creating_joints) {
