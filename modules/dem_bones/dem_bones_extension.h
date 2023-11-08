@@ -1483,69 +1483,77 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 	}
 	constexpr float FPS = 30.0f;
 	int32_t new_frames = anim->get_length() * FPS;
-	vertex.resize(3 * new_frames, p_vertex_array.size());
+	DemBonesExt<_Scalar, _AniMeshScalar>::vertex.resize(3 * new_frames, p_vertex_array.size());
 
-	//! Animated mesh sequence, @c size = [3*#num_total_frames, #num_vertices], #vertex.@a col(@p i).@a
-	//! segment(3*@p k, 3) is the position of vertex @p i at frame @p k
-	// Eigen::Matrix<_AniMeshScalar, Eigen::Dynamic, Eigen::Dynamic> vertex;
+	DemBonesExt<_Scalar, _AniMeshScalar>::rest_pose_geometry.resize(3, p_vertex_array.size());
+	::LocalVector<::Vector3> lerped_vertices;
+	lerped_vertices.resize(p_vertex_array.size());
+	for (int32_t j = 0; j < p_vertex_array.size(); j++) {
+		lerped_vertices[j] = p_vertex_array[j];
+		::Vector3 &lerped_vertex = lerped_vertices[j];
+		DemBonesExt<_Scalar, _AniMeshScalar>::rest_pose_geometry(0, j) = lerped_vertex.x;
+		DemBonesExt<_Scalar, _AniMeshScalar>::rest_pose_geometry(1, j) = lerped_vertex.y;
+		DemBonesExt<_Scalar, _AniMeshScalar>::rest_pose_geometry(2, j) = lerped_vertex.z;
+	}
 
 	for (int32_t frame_i = 0; frame_i < new_frames; frame_i++) {
+		::LocalVector<::Vector3> lerped_vertices;
+		lerped_vertices.resize(p_vertex_array.size());
 		for (int32_t j = 0; j < p_vertex_array.size(); j++) {
-			vertex(3 * frame_i + 0, j) = p_vertex_array[j].x;
-			vertex(3 * frame_i + 1, j) = p_vertex_array[j].y;
-			vertex(3 * frame_i + 2, j) = p_vertex_array[j].z;
+			lerped_vertices[j] = p_vertex_array[j];
 		}
-	}
-
-	for (int32_t track_i = 0; track_i < anim->get_track_count(); track_i++) {
-		String track_path = anim->track_get_path(track_i);
-		Animation::TrackType track_type = anim->track_get_type(track_i);
-		if (track_type != Animation::TYPE_BLEND_SHAPE) {
-			continue;
-		}
-		const double increment = 1.0 / FPS;
-		double time = 0.0;
-		double length = anim->get_length();
-		bool last = false;
-		for (int32_t frame_i = 0; frame_i < new_frames; frame_i++) {
-			float weight = anim->blend_shape_track_interpolate(track_i, time);
-			Vector<::Vector3> blend_vertices = p_blends[track_path];
-			for (int32_t j = 0; j < p_vertex_array.size(); j++) {
-				if (j >= blend_vertices.size()) {
+		for (int32_t track_i = 0; track_i < anim->get_track_count(); track_i++) {
+			String track_path = anim->track_get_path(track_i);
+			Animation::TrackType track_type = anim->track_get_type(track_i);
+			if (track_type != Animation::TYPE_BLEND_SHAPE) {
+				continue;
+			}
+			const double increment = 1.0 / FPS;
+			double time = 0.0;
+			double length = anim->get_length();
+			bool last = false;
+			for (int32_t frame_i = 0; frame_i < new_frames; frame_i++) {
+				float weight = anim->blend_shape_track_interpolate(track_i, time);
+				::Vector<::Vector3> blend_vertices = p_blends[track_path];
+				for (int32_t j = 0; j < p_vertex_array.size(); j++) {
+					if (j >= blend_vertices.size()) {
+						break;
+					}
+					::Vector3 &lerped_vertex = lerped_vertices[j];
+					lerped_vertices[j] = lerped_vertex.lerp(blend_vertices[j], weight);
+				}
+				time += increment;
+				if (time >= length && !last) {
+					last = true;
+					time = length;
+				} else if (last) {
 					break;
 				}
-				::Vector3 current_vertex = ::Vector3(vertex(3 * frame_i + 0, j), vertex(3 * frame_i + 1, j), vertex(3 * frame_i + 2, j));
-				::Vector3 lerped_vertex = current_vertex.lerp(blend_vertices[j], weight);
-
-				vertex(3 * frame_i + 0, j) = lerped_vertex.x;
-				vertex(3 * frame_i + 1, j) = lerped_vertex.y;
-				vertex(3 * frame_i + 2, j) = lerped_vertex.z;
-			}
-			time += increment;
-			if (time >= length && !last) {
-				last = true;
-				time = length;
-			} else if (last) {
-				break;
 			}
 		}
+		for (int32_t j = 0; j < lerped_vertices.size(); j++) {
+			::Vector3 &lerped_vertex = lerped_vertices[j];
+			DemBonesExt<_Scalar, _AniMeshScalar>::vertex(3 * frame_i + 0, j) = lerped_vertex.x;
+			DemBonesExt<_Scalar, _AniMeshScalar>::vertex(3 * frame_i + 1, j) = lerped_vertex.y;
+			DemBonesExt<_Scalar, _AniMeshScalar>::vertex(3 * frame_i + 2, j) = lerped_vertex.z;
+		}
 	}
-	num_total_frames = new_frames;
 
-	num_vertices = p_vertex_array.size();
+	DemBonesExt<_Scalar, _AniMeshScalar>::num_total_frames = new_frames;
 
-	num_subjects = 1;
-	num_total_frames = FPS * anim->get_length();
-	fTime.resize(num_total_frames);
-	frame_start_index.resize(num_subjects + 1);
-	frame_start_index(0) = 0;
+	DemBonesExt<_Scalar, _AniMeshScalar>::num_vertices = p_vertex_array.size();
+
+	DemBonesExt<_Scalar, _AniMeshScalar>::num_subjects = 1;
+	DemBonesExt<_Scalar, _AniMeshScalar>::fTime.resize(num_total_frames);
+	DemBonesExt<_Scalar, _AniMeshScalar>::frame_start_index.resize(num_subjects + 1);
+	DemBonesExt<_Scalar, _AniMeshScalar>::frame_start_index(0) = 0;
 	for (int s = 0; s < num_subjects; s++) {
 		for (int32_t subjects_i = 0; subjects_i < num_subjects; subjects_i++) {
 			frame_start_index[s + 1] = frame_start_index[s] + num_total_frames; // TODO: fire 2022-05-22 Support different start frame
 		}
 	}
 
-	frame_subject_id.resize(num_total_frames);
+	DemBonesExt<_Scalar, _AniMeshScalar>::frame_subject_id.resize(num_total_frames);
 	for (int s = 0; s < num_subjects; s++) {
 		for (int k = frame_start_index(s); k < frame_start_index(s + 1); k++) {
 			frame_subject_id[k] = s;
@@ -1559,7 +1567,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 
 	// Assume the mesh is a triangle mesh.
 	const int indices_in_tri = 3;
-	fv.resize(indices.size() / 3);
+	DemBonesExt<_Scalar, _AniMeshScalar>::fv.resize(indices.size() / 3);
 	for (int32_t index_i = 0; index_i < indices.size(); index_i += 3) {
 		std::vector<int> polygon_indices;
 		polygon_indices.resize(indices_in_tri);
@@ -1568,24 +1576,12 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 		polygon_indices[2] = indices[index_i + 2];
 		fv[index_i / 3] = polygon_indices;
 	}
-	rest_pose_geometry.resize(3, num_vertices);
-	for (int32_t vertex_i = 0; vertex_i < p_vertex_array.size();
-			vertex_i++) {
-		float pos_x = p_vertex_array[vertex_i].x;
-		float pos_y = p_vertex_array[vertex_i].y;
-		float pos_z = p_vertex_array[vertex_i].z;
-		rest_pose_geometry.col(vertex_i) << pos_x, pos_y, pos_z;
-	}
-	nnz = 8;
-	bind_update = 2;
-	nIters = 100;
-	num_bones = 20;
-	nInitIters = 20;
-	DemBonesExt<_Scalar, _AniMeshScalar>::init();
+	DemBonesExt<_Scalar, _AniMeshScalar>::bind_update = 2;
+	DemBonesExt<_Scalar, _AniMeshScalar>::num_bones = 200;
 	DemBonesExt<_Scalar, _AniMeshScalar>::compute();
-	bool needCreateJoints = (bone_name.size() == 0);
+	bool is_creating_joints = (bone_name.size() == 0);
 	Skeleton3D *skeleton = memnew(Skeleton3D);
-	if (needCreateJoints) {
+	if (is_creating_joints) {
 		bone_name.resize(num_bones);
 		for (int j = 0; j < num_bones; j++) {
 			std::string name = "joint_" + std::to_string(j);
@@ -1628,11 +1624,14 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 		animation.instantiate();
 		animation->set_name("Animation_" + itos(s));
 		animation->set_length(double(frame_start_index(s + 1)) / FPS - double(frame_start_index(s)) / FPS);
-		if (needCreateJoints) {
+		if (is_creating_joints) {
 			for (int32_t bone_i = 0; bone_i < num_bones; bone_i++) {
 				int32_t track_i = animation->get_track_count();
 				animation->add_track(Animation::TYPE_POSITION_3D);
-				animation->track_set_path(track_i, String(bone_name[bone_i].c_str()));
+				animation->track_set_path(track_i, String(p_skeleton->get_owner()->get_path_to(p_skeleton)) + ":" + String(bone_name[bone_i].c_str()));
+				for (int frame_i = frame_start_index(s); frame_i < frame_start_index(s + 1); frame_i++) {
+					fTime[frame_i] = double(frame_i) / FPS;
+				}
 				for (int frame_i = frame_start_index(s); frame_i < frame_start_index(s + 1); frame_i++) {
 					::Vector3 position(local_translations.col(bone_i).template segment<3>(frame_i)(0),
 							local_translations.col(bone_i).template segment<3>(frame_i)(1),
@@ -1641,7 +1640,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 				}
 				track_i = animation->get_track_count();
 				animation->add_track(Animation::TYPE_ROTATION_3D);
-				animation->track_set_path(track_i, String(bone_name[bone_i].c_str()));
+				animation->track_set_path(track_i, String(p_skeleton->get_owner()->get_path_to(p_skeleton)) + ":" + String(bone_name[bone_i].c_str()));
 				for (int frame_j = frame_start_index(s); frame_j < frame_start_index(s + 1); frame_j++) {
 					::Vector3 rotation(local_rotations.col(bone_i).template segment<3>(frame_j)(0),
 							local_rotations.col(bone_i).template segment<3>(frame_j)(1),
