@@ -50,7 +50,7 @@ public:
 		int curN = (int)q2.size() + 1;
 		if (curN < maxSize) {
 			q2.resize(maxSize - 1);
-			#pragma omp parallel for
+			// #pragma omp parallel for
 			for (int n = curN - 1; n < maxSize - 1; n++)
 				q2[n] = MatrixX(VectorX::Constant(n + 2, _Scalar(1))
 										.householderQr()
