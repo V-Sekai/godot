@@ -44,7 +44,7 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 		// the more skinning weights of the vertex are preserved.
 
 		Ref<ArrayMesh> surface_mesh = mesh_instance_3d->get_mesh();
-		NodePath skeleton_path = mesh_instance_3d->get_skeleton_path();
+		String mesh_path = p_scene->get_path_to(mesh_instance_3d);
 		Skeleton3D *skeleton = memnew(Skeleton3D);
 		if (mesh_instance_3d->get_parent_node_3d()) {
 			mesh_instance_3d->get_parent_node_3d()->add_child(skeleton, true);
@@ -68,15 +68,21 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 		mesh_instance_3d->set_mesh(Ref<ArrayMesh>());
 		Ref<ArrayMesh> mesh;
 		mesh.instantiate();
+		Ref<SurfaceTool> surface_tool;
+		surface_tool.instantiate();
 		for (int32_t surface_i = 0; surface_i < surface_mesh->get_surface_count(); surface_i++) {
-			Array surface_arrays = surface_mesh->surface_get_arrays(surface_i);
-			HashMap<String, Vector<Vector3>> blends_arrays;
+			surface_tool->clear();
+			surface_tool->append_from(surface_mesh, surface_i, Transform3D());
+			surface_tool->deindex();
+			Array surface_arrays = surface_tool->commit_to_arrays();
+			HashMap<NodePath, Vector<Vector3>> blends_arrays;
 			NodePath mesh_track;
 			Vector<StringName> p_blend_paths;
-			String mesh_path = p_scene->get_path_to(mesh_instance_3d);
+			Array blend_arrays = surface_mesh->surface_get_blend_shape_arrays(surface_i);
 			for (int32_t blend_i = 0; blend_i < surface_mesh->get_blend_shape_count(); blend_i++) {
 				String blend_name = surface_mesh->get_blend_shape_name(blend_i);
-				blends_arrays[mesh_path + ":blend_shapes/" + blend_name] = surface_mesh->surface_get_blend_shape_arrays(surface_i)[blend_i];
+				Array blend_shape_array = blend_arrays[blend_i];
+				blends_arrays[mesh_path + ":" + blend_name] = blend_shape_array[ArrayMesh::ARRAY_VERTEX];
 			}
 			Dem::DemBonesExt<double, float> bones;
 			Dictionary output = bones.convert_blend_shapes_without_bones(skeleton, surface_arrays, surface_arrays[ArrayMesh::ARRAY_VERTEX], blends_arrays, animations);
@@ -92,8 +98,7 @@ Error BlendShapeBake::convert_scene(Node *p_scene) {
 			if (mesh_skin.is_null()) {
 				continue;
 			}
-			Ref<SurfaceTool> surface_tool;
-			surface_tool.instantiate();
+			surface_tool->clear();
 			surface_tool->begin(ArrayMesh::PRIMITIVE_TRIANGLES);
 			surface_tool->create_from_triangle_arrays(mesh_array);
 			if (output.has("animation_library")) {
