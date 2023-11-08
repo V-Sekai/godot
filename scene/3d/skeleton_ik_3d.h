@@ -31,6 +31,8 @@
 #ifndef SKELETON_IK_3D_H
 #define SKELETON_IK_3D_H
 
+#include "core/math/quaternion.h"
+#include "core/math/transform_3d.h"
 #ifndef _3D_DISABLED
 
 #include "scene/3d/skeleton_3d.h"
@@ -42,7 +44,7 @@ struct InverseKinematicChain : public Resource {
 public:
 	struct Joint {
 		Quaternion rotation;
-		BoneId id;
+		BoneId id = -1;
 		Vector3 relative_prev;
 		Vector3 relative_next;
 		float prev_distance = 0;
@@ -97,172 +99,9 @@ public:
 	bool contains_bone(Skeleton3D *p_skeleton, BoneId p_bone);
 };
 
-
-void InverseKinematicChain::init(Vector3 p_chain_curve_direction, float p_root_influence,
-		float p_leaf_influence, float p_twist_influence,
-		float p_twist_start) {
-	chain_curve_direction = p_chain_curve_direction;
-	root_influence = p_root_influence;
-	leaf_influence = p_leaf_influence;
-	twist_influence = p_twist_influence;
-	twist_start = p_twist_start;
-}
-
-void InverseKinematicChain::init_chain(Skeleton3D *p_skeleton) {
-	joints.clear();
-	total_length = 0;
-	if (p_skeleton && root_bone >= 0 && leaf_bone >= 0 &&
-			root_bone < p_skeleton->get_bone_count() &&
-			leaf_bone < p_skeleton->get_bone_count()) {
-		BoneId bone = p_skeleton->get_bone_parent(leaf_bone);
-		// generate the chain of bones
-		Vector<BoneId> chain;
-		float last_length = 0.0f;
-		rest_leaf = p_skeleton->get_bone_rest(leaf_bone);
-		while (bone != root_bone) {
-			Transform3D rest_pose = p_skeleton->get_bone_rest(bone);
-			rest_leaf = rest_pose * rest_leaf.orthonormalized();
-			last_length = rest_pose.origin.length();
-			total_length += last_length;
-			if (bone < 0) { // invalid chain
-				total_length = 0;
-				first_bone = -1;
-				rest_leaf = Transform3D();
-				return;
-			}
-			chain.push_back(bone);
-			first_bone = bone;
-			bone = p_skeleton->get_bone_parent(bone);
-		}
-		total_length -= last_length;
-		total_length += p_skeleton->get_bone_rest(leaf_bone).origin.length();
-
-		if (total_length <= 0) { // invalid chain
-			total_length = 0;
-			first_bone = -1;
-			rest_leaf = Transform3D();
-			return;
-		}
-
-		Basis totalRotation;
-		float progress = 0;
-		// flip the order and figure out the relative distances of these joints
-		for (int i = chain.size() - 1; i >= 0; i--) {
-			InverseKinematicChain::Joint j;
-			j.id = chain[i];
-			Transform3D boneTransform = p_skeleton->get_bone_rest(j.id);
-			j.rotation = boneTransform.basis.get_rotation_quaternion();
-			j.relative_prev = totalRotation.xform_inv(boneTransform.origin);
-			j.prev_distance = j.relative_prev.length();
-
-			// calc influences
-			progress += j.prev_distance;
-			float percentage = (progress / total_length);
-			float effectiveRootInfluence =
-					root_influence <= 0 || percentage >= root_influence
-					? 0
-					: (percentage - root_influence) / -root_influence;
-			float effectiveLeafInfluence =
-					leaf_influence <= 0 || percentage <= 1 - leaf_influence
-					? 0
-					: (percentage - (1 - leaf_influence)) / leaf_influence;
-			float effectiveTwistInfluence =
-					twist_start >= 1 || twist_influence <= 0 || percentage <= twist_start
-					? 0
-					: (percentage - twist_start) *
-							(twist_influence / (1 - twist_start));
-			j.root_influence =
-					effectiveRootInfluence > 1 ? 1 : effectiveRootInfluence;
-			j.leaf_influence =
-					effectiveLeafInfluence > 1 ? 1 : effectiveLeafInfluence;
-			j.twist_influence =
-					effectiveTwistInfluence > 1 ? 1 : effectiveTwistInfluence;
-
-			if (!joints.is_empty()) {
-				InverseKinematicChain::Joint oldJ = joints[joints.size() - 1];
-				oldJ.relative_next = -j.relative_prev;
-				oldJ.next_distance = j.prev_distance;
-				joints.set(joints.size() - 1, oldJ);
-			}
-			joints.push_back(j);
-			totalRotation = (totalRotation * boneTransform.basis).orthonormalized();
-		}
-		if (!joints.is_empty()) {
-			InverseKinematicChain::Joint oldJ = joints[joints.size() - 1];
-			oldJ.relative_next = -p_skeleton->get_bone_rest(leaf_bone).origin;
-			oldJ.next_distance = oldJ.relative_next.length();
-			joints.set(joints.size() - 1, oldJ);
-		}
-	}
-}
-
-void InverseKinematicChain::set_root_bone(Skeleton3D *skeleton, BoneId p_root_bone) {
-	root_bone = p_root_bone;
-	init_chain(skeleton);
-}
-void InverseKinematicChain::set_leaf_bone(Skeleton3D *skeleton, BoneId p_leaf_bone) {
-	leaf_bone = p_leaf_bone;
-	init_chain(skeleton);
-}
-
-bool InverseKinematicChain::is_valid() { return !joints.is_empty(); }
-
-float InverseKinematicChain::get_total_length() { return total_length; }
-
-Vector<InverseKinematicChain::Joint> InverseKinematicChain::get_joints() { return joints; }
-
-Transform3D InverseKinematicChain::get_relative_rest_leaf() { return rest_leaf; }
-
-BoneId InverseKinematicChain::get_first_bone() { return first_bone; }
-
-BoneId InverseKinematicChain::get_root_bone() { return root_bone; }
-
-BoneId InverseKinematicChain::get_leaf_bone() { return leaf_bone; }
-
-float InverseKinematicChain::get_root_stiffness() { return root_influence; }
-
-void InverseKinematicChain::set_root_stiffness(Skeleton3D *p_skeleton, float p_stiffness) {
-	root_influence = p_stiffness;
-	init_chain(p_skeleton);
-}
-
-float InverseKinematicChain::get_leaf_stiffness() { return leaf_influence; }
-
-void InverseKinematicChain::set_leaf_stiffness(Skeleton3D *p_skeleton, float p_stiffness) {
-	leaf_influence = p_stiffness;
-	init_chain(p_skeleton);
-}
-
-float InverseKinematicChain::get_twist() { return twist_influence; }
-
-void InverseKinematicChain::set_twist(Skeleton3D *p_skeleton, float p_twist) {
-	twist_influence = p_twist;
-	init_chain(p_skeleton);
-}
-
-float InverseKinematicChain::get_twist_start() { return twist_start; }
-
-void InverseKinematicChain::set_twist_start(Skeleton3D *p_skeleton, float p_twist_start) {
-	twist_start = p_twist_start;
-	init_chain(p_skeleton);
-}
-
-bool InverseKinematicChain::contains_bone(Skeleton3D *p_skeleton, BoneId p_bone) {
-	if (p_skeleton) {
-		BoneId spineBone = leaf_bone;
-		while (spineBone >= 0) {
-			if (spineBone == p_bone) {
-				return true;
-			}
-			spineBone = p_skeleton->get_bone_parent(spineBone);
-		}
-	}
-	return false;
-}
-
 class FabrikInverseKinematic {
 	struct EndEffector {
-		BoneId tip_bone;
+		BoneId tip_bone = -1;
 		Transform3D goal_transform;
 	};
 
@@ -324,13 +163,9 @@ public:
 private:
 	/// Init a chain that starts from the root to tip
 	static bool build_chain(Task *p_task, bool p_force_simple_chain = true);
-
 	static void solve_simple(Task *p_task, bool p_solve_magnet, Vector3 p_origin_pos);
-	/// Special solvers that solve only chains with one end effector
-	static void solve_simple_backwards(const Chain &r_chain, bool p_solve_magnet);
-	static void solve_simple_forwards(Chain &r_chain, bool p_solve_magnet, Vector3 p_origin_pos);
 
-	Vector<Transform3D> compute_global_transforms(const Vector<InverseKinematicChain::Joint> &joints, const Transform3D &root, const Transform3D &true_root) {
+	static Vector<Transform3D> compute_global_transforms(const Vector<InverseKinematicChain::Joint> &joints, const Transform3D &root, const Transform3D &true_root) {
 		Vector<Transform3D> global_transforms;
 		global_transforms.resize(joints.size());
 		Transform3D current_global_transform = true_root;
@@ -350,7 +185,7 @@ private:
 		return global_transforms;
 	}
 
-	void compute_rest_and_target_positions(const Vector<Transform3D> &p_global_transforms, const Transform3D &p_target, const Vector3 &p_priority, Vector<Vector3> &p_reference_positions, Vector<Vector3> &p_target_positions, Vector<real_t> &r_weights) {
+	static void compute_rest_and_target_positions(const Vector<Transform3D> &p_global_transforms, const Transform3D &p_target, const Vector3 &p_priority, Vector<Vector3> &p_reference_positions, Vector<Vector3> &p_target_positions, Vector<real_t> &r_weights) {
 		for (int joint_i = 0; joint_i < p_global_transforms.size(); joint_i++) {
 			Transform3D bone_direction_global_transform = p_global_transforms[joint_i];
 			real_t pin_weight = r_weights[joint_i];
@@ -411,7 +246,10 @@ private:
 		}
 	}
 
-	HashMap<BoneId, Quaternion> solve_ik_qcp(Ref<InverseKinematicChain> chain,
+
+public:
+
+	static HashMap<BoneId, Quaternion> solve_ik_qcp(Ref<InverseKinematicChain> chain,
 			Transform3D root,
 			Transform3D target) {
 		HashMap<BoneId, Quaternion> map;
@@ -446,15 +284,14 @@ private:
 			const Basis new_rot = global_transforms[parent_index].basis;
 
 			const Quaternion local_pose = new_rot.inverse() * solved_global_pose * new_rot;
+			Transform3D local_transform = global_transforms[parent_index] * Transform3D(Basis(local_pose));
 			map.insert(joints[joint_i].id, local_pose);
-
-			global_transforms.write[joint_i] = global_transforms[parent_index] * Transform3D(Basis(local_pose));
+			global_transforms.write[joint_i] = local_transform;
 		}
+
 
 		return map;
 	}
-
-public:
 	static Task *create_simple_task(Skeleton3D *p_sk, BoneId root_bone, BoneId tip_bone, const Transform3D &goal_transform);
 	static void free_task(Task *p_task);
 	// The goal of chain should be always in local space

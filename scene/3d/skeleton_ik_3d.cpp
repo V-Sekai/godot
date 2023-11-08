@@ -29,6 +29,8 @@
 /**************************************************************************/
 
 #include "skeleton_ik_3d.h"
+#include "core/math/quaternion.h"
+#include "scene/3d/skeleton_3d.h"
 
 #ifndef _3D_DISABLED
 
@@ -129,82 +131,34 @@ void FabrikInverseKinematic::solve_simple(Task *p_task, bool p_solve_magnet, Vec
 	real_t distance_to_goal(1e4);
 	real_t previous_distance_to_goal(0);
 	int can_solve(p_task->max_iterations);
+	Ref<InverseKinematicChain> inverse_kinematic_chain;
+	{
+		FabrikInverseKinematic::Chain chain = p_task->chain;
+		if (!chain.tips.size()) {
+			return;
+		}
+		inverse_kinematic_chain.instantiate();
+		inverse_kinematic_chain->set_root_bone(p_task->skeleton, chain.chain_root.bone);
+		for (int i = 0; i < chain.tips.size(); ++i) {
+			inverse_kinematic_chain->set_leaf_bone(p_task->skeleton, chain.tips[i].chain_item->bone);
+		}
+		inverse_kinematic_chain->init(Vector3(0, 15, -15), 0.5, 0.5, 1, 0);
+	}
+	Transform3D root = p_task->skeleton->get_bone_global_pose(inverse_kinematic_chain->get_root_bone());
+	Transform3D target = p_task->chain.tips[0].end_effector->goal_transform;
 	while (distance_to_goal > p_task->min_distance && Math::abs(previous_distance_to_goal - distance_to_goal) > 0.005 && can_solve) {
 		previous_distance_to_goal = distance_to_goal;
 		--can_solve;
 
-		solve_simple_backwards(p_task->chain, p_solve_magnet);
-		solve_simple_forwards(p_task->chain, p_solve_magnet, p_origin_pos);
-
-		distance_to_goal = p_task->chain.tips[0].end_effector->goal_transform.origin.distance_to(p_task->chain.tips[0].chain_item->current_pos);
-	}
-}
-
-void FabrikInverseKinematic::solve_simple_backwards(const Chain &r_chain, bool p_solve_magnet) {
-	if (p_solve_magnet && !r_chain.middle_chain_item) {
-		return;
-	}
-
-	Vector3 goal;
-	ChainItem *sub_chain_tip;
-	if (p_solve_magnet) {
-		goal = r_chain.magnet_position;
-		sub_chain_tip = r_chain.middle_chain_item;
-	} else {
-		goal = r_chain.tips[0].end_effector->goal_transform.origin;
-		sub_chain_tip = r_chain.tips[0].chain_item;
-	}
-
-	while (sub_chain_tip) {
-		sub_chain_tip->current_pos = goal;
-
-		if (sub_chain_tip->parent_item) {
-			// Not yet in the chain root
-			// So calculate next goal location
-
-			const Vector3 look_parent((sub_chain_tip->parent_item->current_pos - sub_chain_tip->current_pos).normalized());
-			goal = sub_chain_tip->current_pos + (look_parent * sub_chain_tip->length);
-
-			// [TODO] Constraints goes here
+		HashMap<BoneId, Quaternion> poses = solve_ik_qcp(inverse_kinematic_chain, root, target);
+		Vector<InverseKinematicChain::Joint> joints = inverse_kinematic_chain->get_joints();
+		for (int i = joints.size(); i-- > 0;) {
+			InverseKinematicChain::Joint joint = joints[i];
+			Quaternion rotation = poses[joint.id];
+			p_task->skeleton->set_bone_pose_rotation(joint.id, rotation);
 		}
 
-		sub_chain_tip = sub_chain_tip->parent_item;
-	}
-}
-
-void FabrikInverseKinematic::solve_simple_forwards(Chain &r_chain, bool p_solve_magnet, Vector3 p_origin_pos) {
-	if (p_solve_magnet && !r_chain.middle_chain_item) {
-		return;
-	}
-
-	ChainItem *sub_chain_root(&r_chain.chain_root);
-	Vector3 origin = p_origin_pos;
-
-	while (sub_chain_root) { // Reach the tip
-		sub_chain_root->current_pos = origin;
-
-		if (!sub_chain_root->children.is_empty()) {
-			ChainItem &child(sub_chain_root->children.write[0]);
-
-			// Is not tip
-			// So calculate next origin location
-
-			// Look child
-			sub_chain_root->current_ori = (child.current_pos - sub_chain_root->current_pos).normalized();
-			origin = sub_chain_root->current_pos + (sub_chain_root->current_ori * child.length);
-
-			// [TODO] Constraints goes here
-
-			if (p_solve_magnet && sub_chain_root == r_chain.middle_chain_item) {
-				// In case of magnet solving this is the tip
-				sub_chain_root = nullptr;
-			} else {
-				sub_chain_root = &child;
-			}
-		} else {
-			// Is tip
-			sub_chain_root = nullptr;
-		}
+		distance_to_goal = target.origin.distance_to(p_task->skeleton->get_bone_global_pose(inverse_kinematic_chain->get_root_bone()).origin);
 	}
 }
 
@@ -576,6 +530,168 @@ void SkeletonIK3D::_solve_chain() {
 		return;
 	}
 	FabrikInverseKinematic::solve(task, interpolation, override_tip_basis, use_magnet, magnet_position);
+}
+
+void InverseKinematicChain::init(Vector3 p_chain_curve_direction, float p_root_influence,
+		float p_leaf_influence, float p_twist_influence,
+		float p_twist_start) {
+	chain_curve_direction = p_chain_curve_direction;
+	root_influence = p_root_influence;
+	leaf_influence = p_leaf_influence;
+	twist_influence = p_twist_influence;
+	twist_start = p_twist_start;
+}
+
+void InverseKinematicChain::init_chain(Skeleton3D *p_skeleton) {
+	joints.clear();
+	total_length = 0;
+	if (p_skeleton && root_bone >= 0 && leaf_bone >= 0 &&
+			root_bone < p_skeleton->get_bone_count() &&
+			leaf_bone < p_skeleton->get_bone_count()) {
+		BoneId bone = p_skeleton->get_bone_parent(leaf_bone);
+		// generate the chain of bones
+		Vector<BoneId> chain;
+		float last_length = 0.0f;
+		rest_leaf = p_skeleton->get_bone_rest(leaf_bone);
+		while (bone != root_bone) {
+			Transform3D rest_pose = p_skeleton->get_bone_rest(bone);
+			rest_leaf = rest_pose * rest_leaf.orthonormalized();
+			last_length = rest_pose.origin.length();
+			total_length += last_length;
+			if (bone < 0) { // invalid chain
+				total_length = 0;
+				first_bone = -1;
+				rest_leaf = Transform3D();
+				return;
+			}
+			chain.push_back(bone);
+			first_bone = bone;
+			bone = p_skeleton->get_bone_parent(bone);
+		}
+		total_length -= last_length;
+		total_length += p_skeleton->get_bone_rest(leaf_bone).origin.length();
+
+		if (total_length <= 0) { // invalid chain
+			total_length = 0;
+			first_bone = -1;
+			rest_leaf = Transform3D();
+			return;
+		}
+
+		Basis totalRotation;
+		float progress = 0;
+		// flip the order and figure out the relative distances of these joints
+		for (int i = chain.size() - 1; i >= 0; i--) {
+			InverseKinematicChain::Joint j;
+			j.id = chain[i];
+			Transform3D boneTransform = p_skeleton->get_bone_rest(j.id);
+			j.rotation = boneTransform.basis.get_rotation_quaternion();
+			j.relative_prev = totalRotation.xform_inv(boneTransform.origin);
+			j.prev_distance = j.relative_prev.length();
+
+			// calc influences
+			progress += j.prev_distance;
+			float percentage = (progress / total_length);
+			float effectiveRootInfluence =
+					root_influence <= 0 || percentage >= root_influence
+					? 0
+					: (percentage - root_influence) / -root_influence;
+			float effectiveLeafInfluence =
+					leaf_influence <= 0 || percentage <= 1 - leaf_influence
+					? 0
+					: (percentage - (1 - leaf_influence)) / leaf_influence;
+			float effectiveTwistInfluence =
+					twist_start >= 1 || twist_influence <= 0 || percentage <= twist_start
+					? 0
+					: (percentage - twist_start) *
+							(twist_influence / (1 - twist_start));
+			j.root_influence =
+					effectiveRootInfluence > 1 ? 1 : effectiveRootInfluence;
+			j.leaf_influence =
+					effectiveLeafInfluence > 1 ? 1 : effectiveLeafInfluence;
+			j.twist_influence =
+					effectiveTwistInfluence > 1 ? 1 : effectiveTwistInfluence;
+
+			if (!joints.is_empty()) {
+				InverseKinematicChain::Joint oldJ = joints[joints.size() - 1];
+				oldJ.relative_next = -j.relative_prev;
+				oldJ.next_distance = j.prev_distance;
+				joints.set(joints.size() - 1, oldJ);
+			}
+			joints.push_back(j);
+			totalRotation = (totalRotation * boneTransform.basis).orthonormalized();
+		}
+		if (!joints.is_empty()) {
+			InverseKinematicChain::Joint oldJ = joints[joints.size() - 1];
+			oldJ.relative_next = -p_skeleton->get_bone_rest(leaf_bone).origin;
+			oldJ.next_distance = oldJ.relative_next.length();
+			joints.set(joints.size() - 1, oldJ);
+		}
+	}
+}
+
+void InverseKinematicChain::set_root_bone(Skeleton3D *skeleton, BoneId p_root_bone) {
+	root_bone = p_root_bone;
+	init_chain(skeleton);
+}
+void InverseKinematicChain::set_leaf_bone(Skeleton3D *skeleton, BoneId p_leaf_bone) {
+	leaf_bone = p_leaf_bone;
+	init_chain(skeleton);
+}
+
+bool InverseKinematicChain::is_valid() { return !joints.is_empty(); }
+
+float InverseKinematicChain::get_total_length() { return total_length; }
+
+Vector<InverseKinematicChain::Joint> InverseKinematicChain::get_joints() { return joints; }
+
+Transform3D InverseKinematicChain::get_relative_rest_leaf() { return rest_leaf; }
+
+BoneId InverseKinematicChain::get_first_bone() { return first_bone; }
+
+BoneId InverseKinematicChain::get_root_bone() { return root_bone; }
+
+BoneId InverseKinematicChain::get_leaf_bone() { return leaf_bone; }
+
+float InverseKinematicChain::get_root_stiffness() { return root_influence; }
+
+void InverseKinematicChain::set_root_stiffness(Skeleton3D *p_skeleton, float p_stiffness) {
+	root_influence = p_stiffness;
+	init_chain(p_skeleton);
+}
+
+float InverseKinematicChain::get_leaf_stiffness() { return leaf_influence; }
+
+void InverseKinematicChain::set_leaf_stiffness(Skeleton3D *p_skeleton, float p_stiffness) {
+	leaf_influence = p_stiffness;
+	init_chain(p_skeleton);
+}
+
+float InverseKinematicChain::get_twist() { return twist_influence; }
+
+void InverseKinematicChain::set_twist(Skeleton3D *p_skeleton, float p_twist) {
+	twist_influence = p_twist;
+	init_chain(p_skeleton);
+}
+
+float InverseKinematicChain::get_twist_start() { return twist_start; }
+
+void InverseKinematicChain::set_twist_start(Skeleton3D *p_skeleton, float p_twist_start) {
+	twist_start = p_twist_start;
+	init_chain(p_skeleton);
+}
+
+bool InverseKinematicChain::contains_bone(Skeleton3D *p_skeleton, BoneId p_bone) {
+	if (p_skeleton) {
+		BoneId spineBone = leaf_bone;
+		while (spineBone >= 0) {
+			if (spineBone == p_bone) {
+				return true;
+			}
+			spineBone = p_skeleton->get_bone_parent(spineBone);
+		}
+	}
+	return false;
 }
 
 #endif // _3D_DISABLED
