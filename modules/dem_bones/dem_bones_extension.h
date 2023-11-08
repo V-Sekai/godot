@@ -1651,7 +1651,7 @@ Dictionary Dem::DemBonesExt<_Scalar, _AniMeshScalar>::convert_blend_shapes_witho
 							local_rotations.col(bone_i).template segment<3>(frame_j)(1),
 							local_rotations.col(bone_i).template segment<3>(frame_j)(2));
 					Basis basis;
-					basis.set_euler(rotation);
+					basis.set_euler(rotation, EulerOrder::XYZ);
 					animation->rotation_track_insert_key(track_i, double(frame_j) / FPS, basis.get_rotation_quaternion());
 				}
 			}
