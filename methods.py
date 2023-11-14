@@ -1202,3 +1202,419 @@ def dump(env):
 
     with open(".scons_env.json", "w") as f:
         dump(env.Dictionary(), f, indent=4, default=non_serializable)
+
+
+# Augmented glob_recursive that also fills the dirs argument with traversed directories that have content.
+def glob_recursive_2(pattern, dirs, node="."):
+    from SCons import Node
+    from SCons.Script import Glob
+
+    results = []
+    for f in Glob(str(node) + "/*", source=True):
+        if type(f) is Node.FS.Dir:
+            results += glob_recursive_2(pattern, dirs, f)
+    r = Glob(str(node) + "/" + pattern, source=True)
+    if len(r) > 0 and not str(node) in dirs:
+        d = ""
+        for part in str(node).split("\\"):
+            d += part
+            if not d in dirs:
+                dirs.append(d)
+            d += "\\"
+    results += r
+    return results
+
+
+# Custom Visual Studio project generation logic that supports any platform that has a msvs.py
+# script, so Visual Studio can be used to run scons for any platform, with the right defines per target.
+# Invoked with scons vsproj=yes use_vsproj2=yes
+#
+# Only platforms that opt in to vs proj generation by having a msvs.py file in the platform folder are included.
+# Platforms with a msvs.py file will be added to the solution, but only the current active platform+target+arch
+# will have a build configuration generated, because we only know what the right defines/includes/flags/etc are
+# on the active build target.
+#
+# Platforms that don't support an editor target will have a dummy editor target that won't do anything on build,
+# but will have the files and configuration for the windows editor target.
+#
+# To generate build configuration files for all platforms+targets+arch combinations, users can call
+#   scons vsproj=yes use_vsproj2=yes vsproj_gen_only=yes
+# for each combination of platform+target+arch. This will generate the relevant vs project files but
+# skip the build process. This lets project files be quickly generated even if there are build errors.
+def generate_vs_project_2(env, original_args, project_name="godot"):
+    filtered_args = original_args.copy()
+
+    # Ignore the "vsproj" option to not regenerate the VS project on every build
+    filtered_args.pop("vsproj", None)
+
+    # This flag allows users to regenerate the proj files but skip the building process.
+    # This lets projects be regenerated even if there are build errors.
+    filtered_args.pop("vsproj_gen_only", None)
+
+    # The "progress" option is ignored as the current compilation progress indication doesn't work in VS
+    filtered_args.pop("progress", None)
+
+    # We add these three manually because they might not be explicitly passed in, and it's important to always set them.
+    filtered_args.pop("platform", None)
+    filtered_args.pop("target", None)
+    filtered_args.pop("arch", None)
+
+    # This one is set manually on the rebuild command, to regenerate the vcxproj files.
+    filtered_args.pop("use_vsproj2", None)
+
+    platform = env["platform"]
+    target = env["target"]
+    arch = env["arch"]
+
+    vs_configuration = {}
+    common_build_prefix = []
+    confs = []
+    for x in sorted(glob.glob("platform/*")):
+        # Only platforms that opt in to vs proj generation are included.
+        if not os.path.isdir(x) or not os.path.exists(x + "/msvs.py"):
+            continue
+        tmppath = "./" + x
+        sys.path.insert(0, tmppath)
+        import msvs
+
+        vs_plats = []
+        vs_confs = []
+        try:
+            platform_name = x[9:]
+            vs_plats = msvs.get_platforms()
+            vs_confs = msvs.get_configurations()
+            val = []
+            for plat in vs_plats:
+                val += [{"platform": plat[0], "architecture": plat[1]}]
+
+            vsconf = {"platform": platform_name, "targets": vs_confs, "arches": val}
+            confs += [vsconf]
+
+            # Save additional information about the configuration for the actively selected platform,
+            # so we can generate the platform-specific props file with all the build commands/defines/etc
+            if platform == platform_name:
+                common_build_prefix = msvs.get_build_prefix(env)
+                vs_configuration = vsconf
+        except Exception:
+            pass
+
+        sys.path.remove(tmppath)
+        sys.modules.pop("msvs")
+
+    headers = []
+    headers_dirs = []
+    for file in glob_recursive_2("*.h", headers_dirs):
+        headers.append(str(file).replace("/", "\\"))
+    for file in glob_recursive_2("*.hpp", headers_dirs):
+        headers.append(str(file).replace("/", "\\"))
+
+    sources = []
+    sources_dirs = []
+    for file in glob_recursive_2("*.cpp", sources_dirs):
+        sources.append(str(file).replace("/", "\\"))
+    for file in glob_recursive_2("*.c", sources_dirs):
+        sources.append(str(file).replace("/", "\\"))
+
+    skip_filters = False
+    import hashlib
+    import json
+
+    md5 = hashlib.md5(
+        json.dumps(headers + headers_dirs + sources + sources_dirs, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+
+    if os.path.exists(f"{project_name}.vcxproj.filters"):
+        existing_filters = open(f"{project_name}.vcxproj.filters", "r").read()
+        match = re.search(r"(?ms)^<!-- CHECKSUM$.([0-9a-f]{32})", existing_filters)
+        if match is not None and md5 == match.group(1):
+            skip_filters = True
+
+    import uuid
+
+    # Don't regenerate the filters file if nothing has changed, so we keep the existing UUIDs.
+    if not skip_filters:
+        print(f"Regenerating {project_name}.vcxproj.filters")
+
+        filters_template = open("misc/msvs/vcxproj.filters.template", "r").read()
+        for i in range(1, 10):
+            filters_template = filters_template.replace(f"%%UUID{i}%%", str(uuid.uuid4()))
+
+        filters = ""
+
+        for d in headers_dirs:
+            filters += f'<Filter Include="Header Files\\{d}"><UniqueIdentifier>{{{str(uuid.uuid4())}}}</UniqueIdentifier></Filter>\n'
+        for d in sources_dirs:
+            filters += f'<Filter Include="Source Files\\{d}"><UniqueIdentifier>{{{str(uuid.uuid4())}}}</UniqueIdentifier></Filter>\n'
+
+        filters_template = filters_template.replace("%%FILTERS%%", filters)
+
+        filters = ""
+        includes = ""
+        for file in headers:
+            filters += (
+                f'<ClInclude Include="{file}"><Filter>Header Files\\{os.path.dirname(file)}</Filter></ClInclude>\n'
+            )
+        filters_template = filters_template.replace("%%INCLUDES%%", filters)
+
+        filters = ""
+        for file in sources:
+            filters += (
+                f'<ClCompile Include="{file}"><Filter>Source Files\\{os.path.dirname(file)}</Filter></ClCompile>\n'
+            )
+
+        filters_template = filters_template.replace("%%COMPILES%%", filters)
+        filters_template = filters_template.replace("%%HASH%%", md5)
+
+        with open(f"{project_name}.vcxproj.filters", "w") as f:
+            f.write(filters_template)
+
+    envsources = []
+
+    envsources += env.core_sources
+    envsources += env.drivers_sources
+    envsources += env.main_sources
+    envsources += env.modules_sources
+    envsources += env.scene_sources
+    envsources += env.servers_sources
+    if env.editor_build:
+        envsources += env.editor_sources
+    envsources += env.platform_sources
+
+    headers_active = []
+    sources_active = []
+    for x in envsources:
+        basename = ""
+        if type(x) == type(""):
+            fname = env.File(x).path
+            parts = fname.split(".")
+            if len(parts) > 0 and parts[-1] in ["h", "hpp", "c", "cpp"]:
+                basename = fname
+        else:
+            # Some object files might get added directly as a File object and not a list.
+            try:
+                fname = env.File(x)[0].path
+            except:
+                fname = x.path
+                pass
+            idx = fname.find(env["OBJSUFFIX"])
+            if idx > 0:
+                basename = fname[:idx]
+
+        if basename:
+            basename = basename.replace("\\\\", "/")
+            if os.path.isfile(basename + ".h"):
+                headers_active += [basename + ".h"]
+            elif os.path.isfile(basename + ".hpp"):
+                headers_active += [basename + ".hpp"]
+            elif basename.endswith(".gen") and os.path.isfile(basename[:-4] + ".h"):
+                headers_active += [basename[:-4] + ".h"]
+            if os.path.isfile(basename + ".c"):
+                sources_active += [basename + ".c"]
+            elif os.path.isfile(basename + ".cpp"):
+                sources_active += [basename + ".cpp"]
+
+    includes = []
+    compiles = []
+    all_items = []
+    properties = []
+    activeItems = []
+
+    set_headers = set(headers_active)
+    set_sources = set(sources_active)
+    for file in headers:
+        all_items.append(f'<ClInclude Include="{file}">')
+        all_items.append(
+            f"  <ExcludedFromBuild Condition=\"!$(ActiveProjectItemList.Contains(';{file};'))\">true</ExcludedFromBuild>"
+        )
+        all_items.append("</ClInclude>")
+        if file in set_headers:
+            activeItems.append(file)
+
+    for file in sources:
+        all_items.append(f'<ClCompile Include="{file}">')
+        all_items.append(
+            f"  <ExcludedFromBuild Condition=\"!$(ActiveProjectItemList.Contains(';{file};'))\">true</ExcludedFromBuild>"
+        )
+        all_items.append("</ClCompile>")
+        if file in set_sources:
+            activeItems.append(file)
+
+    if vs_configuration:
+        vsconf = ""
+        for a in vs_configuration["arches"]:
+            if arch == a["architecture"]:
+                vsconf = f'{target}|{a["platform"]}'
+                break
+
+        condition = "'$(Configuration)|$(Platform)'=='" + vsconf + "'"
+        properties.append("<ActiveProjectItemList>;" + ";".join(activeItems) + ";</ActiveProjectItemList>")
+        output = f'bin\\godot{env["PROGSUFFIX"]}'
+
+        props_template = open("misc/msvs/props.template", "r").read()
+
+        props_template = props_template.replace("%%VSCONF%%", vsconf)
+        props_template = props_template.replace("%%CONDITION%%", condition)
+        props_template = props_template.replace("%%HEADERS%%", "\n    ".join(includes))
+        props_template = props_template.replace("%%SOURCES%%", "\n    ".join(compiles))
+        props_template = props_template.replace("%%PROPERTIES%%", "\n    ".join(properties))
+
+        props_template = props_template.replace("%%OUTPUT%%", output)
+        props_template = props_template.replace(
+            "%%DEFINES%%",
+            ";".join([f"{j[0]}={j[1]}" if type(j) is tuple or type(j) is list else j for j in list(env["CPPDEFINES"])]),
+        )
+        props_template = props_template.replace("%%INCLUDES%%", ";".join([str(j) for j in env["CPPPATH"]]))
+        props_template = props_template.replace(
+            "%%OPTIONS%%",
+            " ".join(env["CCFLAGS"]) + " " + " ".join([x for x in env["CXXFLAGS"] if not x.startswith("$")]),
+        )
+
+        # Windows allows us to have spaces in paths, so we need
+        # to double quote off the directory. However, the path ends
+        # in a backslash, so we need to remove this, lest it escape the
+        # last double quote off, confusing MSBuild
+        common_build_postfix = [
+            "--directory=&quot;$(ProjectDir.TrimEnd(&apos;\\&apos;))&quot;",
+            "progress=no",
+            f"platform={platform}",
+            f"target={target}",
+            f"arch={arch}",
+        ]
+
+        for arg, value in filtered_args.items():
+            common_build_postfix.append(f"{arg}={value}")
+
+        cmd_rebuild = [
+            "vsproj=yes",
+            "use_vsproj2=yes",
+            f"vsproj_name={project_name}",
+        ] + common_build_postfix
+
+        cmd_clean = [
+            "--clean",
+        ] + common_build_postfix
+
+        commands = "scons"
+        if len(common_build_prefix) == 0:
+            commands = "echo Starting SCons &amp;&amp; cmd /V /C " + commands
+        else:
+            common_build_prefix[0] = "echo Starting SCons &amp;&amp; cmd /V /C " + common_build_prefix[0]
+
+        cmd = " ^&amp; ".join(common_build_prefix + [" ".join([commands] + common_build_postfix)])
+        props_template = props_template.replace("%%BUILD%%", cmd)
+
+        cmd = " ^&amp; ".join(common_build_prefix + [" ".join([commands] + cmd_rebuild)])
+        props_template = props_template.replace("%%REBUILD%%", cmd)
+
+        cmd = " ^&amp; ".join(common_build_prefix + [" ".join([commands] + cmd_clean)])
+        props_template = props_template.replace("%%CLEAN%%", cmd)
+
+        with open(f"{project_name}.{platform}.{target}.{arch}.generated.props", "w") as f:
+            f.write(props_template)
+
+    proj_uuid = str(uuid.uuid4())
+    sln_uuid = str(uuid.uuid4())
+
+    if os.path.exists(f"{project_name}.sln"):
+        for line in open(f"{project_name}.sln", "r").read().splitlines():
+            if line.startswith('Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}")'):
+                proj_uuid = re.search(
+                    r"\"{(\b[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-\b[0-9a-fA-F]{12}\b)}\"$",
+                    line,
+                ).group(1)
+            elif line.strip().startswith("SolutionGuid ="):
+                sln_uuid = re.search(
+                    r"{(\b[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-\b[0-9a-fA-F]{12}\b)}", line
+                ).group(1)
+                break
+
+    configurations = []
+    imports = []
+    properties = []
+    section1 = []
+    section2 = []
+    for conf in confs:
+        godot_platform = conf["platform"]
+        for p in conf["arches"]:
+            sln_plat = p["platform"]
+            proj_plat = sln_plat
+            godot_arch = p["architecture"]
+
+            # Redirect editor configurations for non-Windows platforms to the Windows one, so the solution has all the permutations
+            # and VS doesn't complain about missing project configurations.
+            # These configurations are disabled, so they show up but won't build.
+            if godot_platform != "windows":
+                section1 += [f"editor|{sln_plat} = editor|{proj_plat}"]
+                section2 += [
+                    f"{{{proj_uuid}}}.editor|{proj_plat}.ActiveCfg = editor|{proj_plat}",
+                ]
+
+            for t in conf["targets"]:
+                godot_target = t
+
+                # Windows x86 is a special little flower that requires a project platform == Win32 but a solution platform == x86.
+                if godot_platform == "windows" and godot_target == "editor" and godot_arch == "x86_32":
+                    sln_plat = "x86"
+
+                configurations += [
+                    f'<ProjectConfiguration Include="{godot_target}|{proj_plat}">',
+                    f"  <Configuration>{godot_target}</Configuration>",
+                    f"  <Platform>{proj_plat}</Platform>",
+                    "</ProjectConfiguration>",
+                ]
+
+                if godot_platform != "windows":
+                    configurations += [
+                        f'<ProjectConfiguration Include="editor|{proj_plat}">',
+                        f"  <Configuration>editor</Configuration>",
+                        f"  <Platform>{proj_plat}</Platform>",
+                        "</ProjectConfiguration>",
+                    ]
+
+                p = f"{project_name}.{godot_platform}.{godot_target}.{godot_arch}.generated.props"
+                imports += [
+                    f'<Import Project="$(MSBuildProjectDirectory)\\{p}" Condition="Exists(\'$(MSBuildProjectDirectory)\\{p}\')"/>'
+                ]
+
+                section1 += [f"{godot_target}|{sln_plat} = {godot_target}|{sln_plat}"]
+
+                section2 += [
+                    f"{{{proj_uuid}}}.{godot_target}|{sln_plat}.ActiveCfg = {godot_target}|{proj_plat}",
+                    f"{{{proj_uuid}}}.{godot_target}|{sln_plat}.Build.0 = {godot_target}|{proj_plat}",
+                ]
+
+    section1 = sorted(section1)
+    section2 = sorted(section2)
+
+    proj_template = open("misc/msvs/vcxproj.template", "r").read()
+
+    proj_template = proj_template.replace("%%UUID%%", proj_uuid)
+    proj_template = proj_template.replace("%%CONFS%%", "\n    ".join(configurations))
+    proj_template = proj_template.replace("%%IMPORTS%%", "\n  ".join(imports))
+    proj_template = proj_template.replace("%%DEFAULT_ITEMS%%", "\n    ".join(all_items))
+    proj_template = proj_template.replace("%%PROPERTIES%%", "\n  ".join(properties))
+
+    with open(f"{project_name}.vcxproj", "w") as f:
+        f.write(proj_template)
+
+    sln_template = open("misc/msvs/sln.template", "r").read()
+    sln_template = sln_template.replace("%%NAME%%", project_name)
+    sln_template = sln_template.replace("%%UUID%%", proj_uuid)
+    sln_template = sln_template.replace("%%SLNUUID%%", sln_uuid)
+    sln_template = sln_template.replace("%%SECTION1%%", "\n    ".join(section1))
+    sln_template = sln_template.replace("%%SECTION2%%", "\n    ".join(section2))
+    with open(f"{project_name}.sln", "w") as f:
+        f.write(sln_template)
+
+    if original_args.get("vsproj_gen_only", False):
+        sys.exit()
+
+
+# Check if the user wants to use the new vs project generation logic,
+# but if this script is being imported from another script that's not SConstruct,
+# this will throw and we'll know we don't need to do anything.
+try:
+    if get_cmdline_bool("use_vsproj2", False):
+        generate_vs_project = generate_vs_project_2
+except:
+    pass
