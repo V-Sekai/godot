@@ -32,6 +32,8 @@
 
 #include "webrtc_data_channel.h"
 #include "webrtc_data_channel_extension.h"
+#include "webrtc_lib_data_channel.h"
+#include "webrtc_lib_peer_connection.h"
 #include "webrtc_multiplayer_peer.h"
 #include "webrtc_peer_connection.h"
 #include "webrtc_peer_connection_extension.h"
@@ -46,9 +48,11 @@ void initialize_webrtc_module(ModuleInitializationLevel p_level) {
 
 	ClassDB::register_custom_instance_class<WebRTCPeerConnection>();
 	GDREGISTER_CLASS(WebRTCPeerConnectionExtension);
+	GDREGISTER_CLASS(WebRTCLibPeerConnection);
 
 	GDREGISTER_ABSTRACT_CLASS(WebRTCDataChannel);
 	GDREGISTER_CLASS(WebRTCDataChannelExtension);
+	GDREGISTER_CLASS(WebRTCLibDataChannel);
 
 	GDREGISTER_CLASS(WebRTCMultiplayerPeer);
 }
