@@ -1053,6 +1053,7 @@ RTC_WRAPPED(void) PeerConnection::processLocalDescription(Description descriptio
 	    dtlsTransport && dtlsTransport->state() == Transport::State::Connected)
 		mProcessor.enqueue(&PeerConnection::openTracks, shared_from_this());
 #endif
+	RTC_RET;
 }
 
 RTC_WRAPPED(void) PeerConnection::processLocalCandidate(Candidate candidate) {
