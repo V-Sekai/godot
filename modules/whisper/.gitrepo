@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/v-sekai.whisper.git
 	branch = main
-	commit = 9ee9957fefa84aa7b5dc6207df9e04e215d363e6
-	parent = c68987d83a7b6d3a11dde009b4db3e5f20c64981
+	commit = 39d410e60eb539c9e74647665f41d65c17ec31ae
+	parent = d1eca558c6975128c138c80294d303d6742c2b98
 	method = merge
 	cmdver = 0.4.6
