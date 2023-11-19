@@ -13,6 +13,8 @@ def get_doc_classes():
         "WebRTCMultiplayerPeer",
         "WebRTCPeerConnectionExtension",
         "WebRTCDataChannelExtension",
+        "WebRTCLibDataChannel",
+        "WebRTCLibPeerConnection",
     ]
 
 
