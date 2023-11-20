@@ -145,6 +145,17 @@ Files extracted from upstream source:
 \* Note that while eigen contains code under many licenses, godot WILL SET BUT DOESN'T CURRENTLY SET, FIXEME the `-DEIGEN_MPL2_ONLY` flag described in `COPYING.README`, which ensures that no code licensed under a more restrictive license than MPL 2.0 is included in godot binaries.
 
 
+## dr_flac
+
+- Upstream: https://github.com/mackron/dr_libs.git
+- Version: v0.12.41 (e07e2b8264da5fa1331a0ca3d30a3606084c311f, 2023)
+- License: Public Domain or MIT-0
+
+Files extracted from upstream source:
+
+- `dr_flac.h`
+
+
 ## embree
 
 - Upstream: https://github.com/embree/embree
