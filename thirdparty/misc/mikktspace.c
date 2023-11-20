@@ -41,82 +41,276 @@
 
 // internal structure
 typedef struct {
-	float x, y, z;
-} SVec3;
+    float x, y, z, w;
+} Vec3;
 
-static tbool			veq( const SVec3 v1, const SVec3 v2 )
+typedef struct {
+    float x, y, z, w;
+} MVec3;
+
+#if defined(_M_X64) || defined(__x86_64__)
+	#define ARCH_SSE 1
+#else
+	#define ARCH_SSE 0
+#endif
+
+#ifdef __aarch64__
+    #include <arm_neon.h>
+    typedef float32x4_t SVec3;
+
+    #define vx(v) vgetq_lane_f32(v, 0)
+    #define vy(v) vgetq_lane_f32(v, 1)
+    #define vz(v) vgetq_lane_f32(v, 2)
+
+#elif ARCH_SSE
+	#include <xmmintrin.h>
+	#include <emmintrin.h>
+
+    typedef __m128 SVec3;
+
+    #define vx(v) _mm_cvtss_f32(_mm_shuffle_ps((v), (v), _MM_SHUFFLE(0, 0, 0, 0)))
+    #define vy(v) _mm_cvtss_f32(_mm_shuffle_ps((v), (v), _MM_SHUFFLE(1, 1, 1, 1)))
+    #define vz(v) _mm_cvtss_f32(_mm_shuffle_ps((v), (v), _MM_SHUFFLE(2, 2, 2, 2)))
+
+#else
+    typedef Vec3 SVec3;
+
+    #define vx(v) (v.x)
+    #define vy(v) (v.y)
+    #define vz(v) (v.z)
+#endif
+
+static SVec3 vload(const MVec3 *v)
 {
+#ifdef __aarch64__
+    return vld1q_f32(&v->x);
+#elif ARCH_SSE
+    return _mm_loadu_ps(&v->x);
+#else
+    SVec3 r;
+    r.x = v->x;
+    r.y = v->y;
+    r.z = v->z;
+    return r;
+#endif
+}
+
+static SVec3 vmake(const MVec3 v)
+{
+#ifdef __aarch64__
+    float32_t data[4] = {v.x, v.y, v.z, 0.0f};
+    return vld1q_f32(data);
+#elif ARCH_SSE
+    return _mm_setr_ps(v.x, v.y, v.z, 0.0f);
+#else
+    SVec3 r;
+    r.x = v.x;
+    r.y = v.y;
+    r.z = v.z;
+    return r;
+#endif
+}
+
+static MVec3 vstore(const SVec3 v)
+{
+    MVec3 r;
+    r.x = vx(v);
+    r.y = vy(v);
+    r.z = vz(v);
+    return r;
+}
+
+static int veq( const SVec3 v1, const SVec3 v2 )
+{
+#ifdef __aarch64__
+	uint32x4_t result = vceqq_f32(v1, v2);
+	return vgetq_lane_u32(result, 0) & vgetq_lane_u32(result, 1) & vgetq_lane_u32(result, 2);
+#elif ARCH_SSE
+	__m128 result = _mm_cmpeq_ps(v1, v2);
+	return _mm_movemask_ps(result) == 0x7;
+#else
 	return (v1.x == v2.x) && (v1.y == v2.y) && (v1.z == v2.z);
+#endif
 }
 
-static SVec3		vadd( const SVec3 v1, const SVec3 v2 )
+static SVec3 vadd( const SVec3 v1, const SVec3 v2 )
 {
-	SVec3 vRes;
-
-	vRes.x = v1.x + v2.x;
-	vRes.y = v1.y + v2.y;
-	vRes.z = v1.z + v2.z;
-
-	return vRes;
+#ifdef __aarch64__
+    float32x4_t result = vaddq_f32(v1, v2);
+    return vsetq_lane_f32(0.0f, result, 3);
+#elif ARCH_SSE
+    return _mm_add_ps(v1, v2);
+#else
+    SVec3 r;
+    r.x = v1.x + v2.x;
+    r.y = v1.y + v2.y;
+    r.z = v1.z + v2.z;
+    return r;
+#endif
 }
 
-
-static SVec3		vsub( const SVec3 v1, const SVec3 v2 )
+static SVec3 vsub( const SVec3 v1, const SVec3 v2 )
 {
-	SVec3 vRes;
-
-	vRes.x = v1.x - v2.x;
-	vRes.y = v1.y - v2.y;
-	vRes.z = v1.z - v2.z;
-
-	return vRes;
+#ifdef __aarch64__
+    return vsubq_f32(v1, v2);
+#elif ARCH_SSE
+    return _mm_sub_ps(v1, v2);
+#else
+    SVec3 r;
+    r.x = v1.x - v2.x;
+    r.y = v1.y - v2.y;
+    r.z = v1.z - v2.z;
+    return r;
+#endif
 }
 
-static SVec3		vscale(const float fS, const SVec3 v)
+static SVec3	vscale(const float fS, const SVec3 v)
 {
-	SVec3 vRes;
-
-	vRes.x = fS * v.x;
-	vRes.y = fS * v.y;
-	vRes.z = fS * v.z;
-
-	return vRes;
+#ifdef __aarch64__
+    return vmulq_n_f32(v, fS);
+#elif ARCH_SSE
+    return _mm_mul_ps(v, _mm_set_ps1(fS));
+#else
+    SVec3 r;
+    r.x = v.x * fS;
+    r.y = v.y * fS;
+    r.z = v.z * fS;
+    return r;
+#endif
 }
 
-static float			LengthSquared( const SVec3 v )
+static SVec3 vmul( const SVec3 v1, const SVec3 v2 )
 {
-	return v.x*v.x + v.y*v.y + v.z*v.z;
+#ifdef __aarch64__
+    return vmulq_f32(v1, v2);
+#elif ARCH_SSE
+    return _mm_mul_ps(v1, v2);
+#else
+    SVec3 r;
+    r.x = v1.x * v2.x;
+    r.y = v1.y * v2.y;
+    r.z = v1.z * v2.z;
+    return r;
+#endif
 }
 
-static float			Length( const SVec3 v )
+static SVec3 vdiv( const SVec3 v1, const SVec3 v2 )
 {
-	return sqrtf(LengthSquared(v));
+#ifdef __aarch64__
+    return vdivq_f32(v1, v2);
+#elif ARCH_SSE
+    return _mm_div_ps(v1, v2);
+#else
+    SVec3 r;
+    r.x = v1.x / v2.x;
+    r.y = v1.y / v2.y;
+    r.z = v1.z / v2.z;
+    return r;
+#endif
 }
 
-static SVec3		Normalize( const SVec3 v )
+static float vdot( const SVec3 v1, const SVec3 v2 )
 {
-	return vscale(1 / Length(v), v);
+#ifdef __aarch64__
+    return vaddvq_f32(vmulq_f32(v1, v2));
+#elif ARCH_SSE
+	__m128 t = _mm_mul_ps(v1, v2);
+	return vx(t) + vy(t) + vz(t);
+#else
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+#endif
 }
 
-static float		vdot( const SVec3 v1, const SVec3 v2)
+static SVec3 vmin( const SVec3 v1, const SVec3 v2 )
 {
-	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
+#ifdef __aarch64__
+	return vminq_f32(v1, v2);
+#elif ARCH_SSE
+	return _mm_min_ps(v1, v2);
+#else
+    SVec3 r;
+    r.x = fminf(v1.x, v2.x);
+    r.y = fminf(v1.y, v2.y);
+    r.z = fminf(v1.z, v2.z);
+    return r;
+#endif
 }
 
-
-static tbool NotZero(const float fX)
+static SVec3 vmax( const SVec3 v1, const SVec3 v2 )
 {
-	// could possibly use FLT_EPSILON instead
-	return fabsf(fX) > FLT_MIN;
+#ifdef __aarch64__
+	return vmaxq_f32(v1, v2);
+#elif ARCH_SSE
+	return _mm_max_ps(v1, v2);
+#else
+    SVec3 r;
+    r.x = fmaxf(v1.x, v2.x);
+    r.y = fmaxf(v1.y, v2.y);
+    r.z = fmaxf(v1.z, v2.z);
+    return r;
+#endif
 }
 
-static tbool VNotZero(const SVec3 v)
+static float LengthSquared( const SVec3 v )
 {
+#ifdef __aarch64__
+    return vaddvq_f32(vmulq_f32(v, v));
+#elif ARCH_SSE
+    __m128 t = _mm_mul_ps(v, v);
+    return vx(t) + vy(t) + vz(t);
+#else
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+#endif
+}
+
+static float Length( const SVec3 v )
+{
+    return sqrtf(LengthSquared(v));
+}
+
+static SVec3 Normalize(const SVec3 v)
+{
+    float len = Length(v);
+    if (len == 0.0f) {
+        SVec3 zeroVector = {0.0f, 0.0f, 0.0f};
+        return zeroVector;
+    }
+
+#ifdef __aarch64__
+    // Ensure v is compatible with vmulq_n_f32.
+    return vmulq_n_f32(v, 1.0f / len);
+#elif ARCH_SSE
+    // Ensure v is compatible with _mm_div_ps.
+    return _mm_div_ps(v, _mm_set_ps1(len));
+#else
+    SVec3 r;
+    r.x = v.x / len;
+    r.y = v.y / len;
+    r.z = v.z / len;
+    return r;
+#endif
+}
+
+static int NotZero(const float fX)
+{
+    // could possibly use FLT_EPSILON instead
+    return fabsf(fX) > FLT_MIN;
+}
+
+static int VNotZero(const SVec3 v)
+{
+#ifdef __aarch64__
+    uint32x4_t result = vcgtq_f32(vabsq_f32(v), vdupq_n_f32(FLT_MIN));
+    return vgetq_lane_u32(result, 0) | vgetq_lane_u32(result, 1) | vgetq_lane_u32(result, 2);
+#elif ARCH_SSE
 	// might change this to an epsilon based test
-	return NotZero(v.x) || NotZero(v.y) || NotZero(v.z);
+	__m128 t = _mm_andnot_ps(_mm_set_ps1(-0.0f), v);
+	__m128 c = _mm_cmpgt_ps(t, _mm_set_ps1(FLT_MIN));
+	return (_mm_movemask_ps(c) & 0x7) != 0;
+#else
+    return (fabsf(v.x) > FLT_MIN) || (fabsf(v.y) > FLT_MIN) || (fabsf(v.z) > FLT_MIN);
+#endif
 }
-
-
 
 typedef struct {
 	int iNrFaces;
@@ -143,7 +337,7 @@ typedef struct {
 	SGroup * AssignedGroup[3];
 	
 	// normalized first order face derivatives
-	SVec3 vOs, vOt;
+	MVec3 vOs, vOt;
 	float fMagS, fMagT;	// original magnitudes
 
 	// determines if the current and the next triangle are a quad.
@@ -153,9 +347,9 @@ typedef struct {
 } STriInfo;
 
 typedef struct {
-	SVec3 vOs;
+	MVec3 vOs;
 	float fMagS;
-	SVec3 vOt;
+	MVec3 vOt;
 	float fMagT;
 	int iCounter;	// this is to average back into quads.
 	tbool bOrient;
@@ -185,26 +379,35 @@ static STSpace AvgTSpace(const STSpace * pTS0, const STSpace * pTS1)
 {
 	STSpace ts_res;
 
+	SVec3 vOs, vOt;
+	SVec3 pTS0vOs = vload(&pTS0->vOs);
+	SVec3 pTS0vOt = vload(&pTS0->vOt);
+	SVec3 pTS1vOs = vload(&pTS1->vOs);
+	SVec3 pTS1vOt = vload(&pTS1->vOt);
+
 	// this if is important. Due to floating point precision
 	// averaging when ts0==ts1 will cause a slight difference
 	// which results in tangent space splits later on
 	if (pTS0->fMagS==pTS1->fMagS && pTS0->fMagT==pTS1->fMagT &&
-	   veq(pTS0->vOs,pTS1->vOs)	&& veq(pTS0->vOt, pTS1->vOt))
+	   veq(pTS0vOs,pTS1vOs)	&& veq(pTS0vOt, pTS1vOt))
 	{
 		ts_res.fMagS = pTS0->fMagS;
 		ts_res.fMagT = pTS0->fMagT;
-		ts_res.vOs = pTS0->vOs;
-		ts_res.vOt = pTS0->vOt;
+		vOs = pTS0vOs;
+		vOt = pTS0vOt;
 	}
 	else
 	{
 		ts_res.fMagS = 0.5f*(pTS0->fMagS+pTS1->fMagS);
 		ts_res.fMagT = 0.5f*(pTS0->fMagT+pTS1->fMagT);
-		ts_res.vOs = vadd(pTS0->vOs,pTS1->vOs);
-		ts_res.vOt = vadd(pTS0->vOt,pTS1->vOt);
-		if ( VNotZero(ts_res.vOs) ) ts_res.vOs = Normalize(ts_res.vOs);
-		if ( VNotZero(ts_res.vOt) ) ts_res.vOt = Normalize(ts_res.vOt);
+		vOs = vadd(pTS0vOs,pTS1vOs);
+		vOt = vadd(pTS0vOt,pTS1vOt);
+		if ( VNotZero(vOs) ) vOs = Normalize(vOs);
+		if ( VNotZero(vOt) ) vOt = Normalize(vOt);
 	}
+
+	ts_res.vOs = vstore(vOs);
+	ts_res.vOt = vstore(vOt);
 
 	return ts_res;
 }
@@ -339,8 +542,8 @@ tbool genTangSpace(const SMikkTSpaceContext * pContext, const float fAngularThre
 	memset(psTspace, 0, sizeof(STSpace)*iNrTSPaces);
 	for (t=0; t<iNrTSPaces; t++)
 	{
-		psTspace[t].vOs.x=1.0f; psTspace[t].vOs.y=0.0f; psTspace[t].vOs.z=0.0f; psTspace[t].fMagS = 1.0f;
-		psTspace[t].vOt.x=0.0f; psTspace[t].vOt.y=1.0f; psTspace[t].vOt.z=0.0f; psTspace[t].fMagT = 1.0f;
+		psTspace[t].vOs.x=1.0f; psTspace[t].vOs.y=0.0f; psTspace[t].vOs.z=0.0f; psTspace[t].vOs.w=0.0f; psTspace[t].fMagS = 1.0f;
+		psTspace[t].vOt.x=0.0f; psTspace[t].vOt.y=1.0f; psTspace[t].vOt.z=0.0f; psTspace[t].vOt.w=0.0f; psTspace[t].fMagT = 1.0f;
 	}
 
 	// make tspaces, each group is split up into subgroups if necessary
@@ -463,26 +666,22 @@ static void GenerateSharedVerticesIndexList(int piTriList_in_and_out[], const SM
 		const int index = piTriList_in_and_out[i];
 
 		const SVec3 vP = GetPosition(pContext, index);
-		if (vMin.x > vP.x) vMin.x = vP.x;
-		else if (vMax.x < vP.x) vMax.x = vP.x;
-		if (vMin.y > vP.y) vMin.y = vP.y;
-		else if (vMax.y < vP.y) vMax.y = vP.y;
-		if (vMin.z > vP.z) vMin.z = vP.z;
-		else if (vMax.z < vP.z) vMax.z = vP.z;
+		vMin = vmin(vMin, vP);
+		vMax = vmax(vMax, vP);
 	}
 
 	vDim = vsub(vMax,vMin);
 	iChannel = 0;
-	fMin = vMin.x; fMax=vMax.x;
-	if (vDim.y>vDim.x && vDim.y>vDim.z)
+	fMin = vx(vMin); fMax=vx(vMax);
+	if (vy(vDim)>vx(vDim) && vy(vDim)>vz(vDim))
 	{
 		iChannel=1;
-		fMin = vMin.y, fMax=vMax.y;
+		fMin = vy(vMin), fMax=vy(vMax);
 	}
-	else if (vDim.z>vDim.x)
+	else if (vz(vDim)>vx(vDim))
 	{
 		iChannel=2;
-		fMin = vMin.z, fMax=vMax.z;
+		fMin = vz(vMin), fMax=vz(vMax);
 	}
 
 	// make allocations
@@ -508,7 +707,7 @@ static void GenerateSharedVerticesIndexList(int piTriList_in_and_out[], const SM
 	{
 		const int index = piTriList_in_and_out[i];
 		const SVec3 vP = GetPosition(pContext, index);
-		const float fVal = iChannel==0 ? vP.x : (iChannel==1 ? vP.y : vP.z);
+		const float fVal = iChannel==0 ? vx (vP) : (iChannel==1 ? vy (vP) : vz(vP));
 		const int iCell = FindGridCell(fMin, fMax, fVal);
 		++piHashCount[iCell];
 	}
@@ -523,7 +722,7 @@ static void GenerateSharedVerticesIndexList(int piTriList_in_and_out[], const SM
 	{
 		const int index = piTriList_in_and_out[i];
 		const SVec3 vP = GetPosition(pContext, index);
-		const float fVal = iChannel==0 ? vP.x : (iChannel==1 ? vP.y : vP.z);
+		const float fVal = iChannel==0 ? vx (vP) : (iChannel==1 ? vy (vP) : vz(vP));
 		const int iCell = FindGridCell(fMin, fMax, fVal);
 		int * pTable = NULL;
 
@@ -558,8 +757,8 @@ static void GenerateSharedVerticesIndexList(int piTriList_in_and_out[], const SM
 			{
 				int i = pTable[e];
 				const SVec3 vP = GetPosition(pContext, piTriList_in_and_out[i]);
-				pTmpVert[e].vert[0] = vP.x; pTmpVert[e].vert[1] = vP.y;
-				pTmpVert[e].vert[2] = vP.z; pTmpVert[e].index = i;
+				pTmpVert[e].vert[0] = vx(vP); pTmpVert[e].vert[1] = vy(vP);
+				pTmpVert[e].vert[2] = vz(vP); pTmpVert[e].index = i;
 			}
 			MergeVertsFast(piTriList_in_and_out, pTmpVert, pContext, 0, iEntries-1);
 		}
@@ -620,10 +819,7 @@ static void MergeVertsFast(int piTriList_in_and_out[], STmpVert pTmpVert[], cons
 				const SVec3 vT2 = GetTexCoord(pContext, index2);
 				i2rec=i2;
 
-				//if (vP==vP2 && vN==vN2 && vT==vT2)
-				if (vP.x==vP2.x && vP.y==vP2.y && vP.z==vP2.z &&
-					vN.x==vN2.x && vN.y==vN2.y && vN.z==vN2.z &&
-					vT.x==vT2.x && vT.y==vT2.y && vT.z==vT2.z)
+				if (veq(vP, vP2) && veq(vN, vN2) && veq(vT, vT2))
 					bNotFound = TFALSE;
 				else
 					++l2;
@@ -875,31 +1071,34 @@ static int GenerateInitialVerticesIndexList(STriInfo pTriInfos[], int piTriList_
 static SVec3 GetPosition(const SMikkTSpaceContext * pContext, const int index)
 {
 	int iF, iI;
-	SVec3 res; float pos[3];
+	MVec3 res;
+	float *p;
 	IndexToData(&iF, &iI, index);
-	pContext->m_pInterface->m_getPosition(pContext, pos, iF, iI);
-	res.x=pos[0]; res.y=pos[1]; res.z=pos[2];
-	return res;
+	p = (float*)((char*)pContext->m_FastPosition + pContext->m_FastPositionIndex[iF * 3 + iI] * pContext->m_FastPositionStride);
+	res.x = p[0]; res.y = p[1]; res.z = p[2];
+	return vmake(res);
 }
 
 static SVec3 GetNormal(const SMikkTSpaceContext * pContext, const int index)
 {
 	int iF, iI;
-	SVec3 res; float norm[3];
+	MVec3 res;
+	float *p;
 	IndexToData(&iF, &iI, index);
-	pContext->m_pInterface->m_getNormal(pContext, norm, iF, iI);
-	res.x=norm[0]; res.y=norm[1]; res.z=norm[2];
-	return res;
+	p = (float*)((char*)pContext->m_FastNormal + pContext->m_FastNormalIndex[iF * 3 + iI] * pContext->m_FastNormalStride);
+	res.x = p[0]; res.y = p[1]; res.z = p[2];
+	return vmake(res);
 }
 
 static SVec3 GetTexCoord(const SMikkTSpaceContext * pContext, const int index)
 {
 	int iF, iI;
-	SVec3 res; float texc[2];
+	MVec3 res;
+	float *p;
 	IndexToData(&iF, &iI, index);
-	pContext->m_pInterface->m_getTexCoord(pContext, texc, iF, iI);
-	res.x=texc[0]; res.y=texc[1]; res.z=1.0f;
-	return res;
+	p = (float*)((char*)pContext->m_FastUV + pContext->m_FastUVIndex[iF * 2 + iI] * pContext->m_FastUVStride);
+	res.x = p[0]; res.y = p[1]; res.z = 1.0f;
+	return vmake(res);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -923,10 +1122,10 @@ static float CalcTexArea(const SMikkTSpaceContext * pContext, const int indices[
 	const SVec3 t2 = GetTexCoord(pContext, indices[1]);
 	const SVec3 t3 = GetTexCoord(pContext, indices[2]);
 
-	const float t21x = t2.x-t1.x;
-	const float t21y = t2.y-t1.y;
-	const float t31x = t3.x-t1.x;
-	const float t31y = t3.y-t1.y;
+	const float t21x = vx(t2)-vx(t1);
+	const float t21y = vy(t2)-vy(t1);
+	const float t31x = vx(t3)-vx(t1);
+	const float t31y = vy(t3)-vy(t1);
 
 	const float fSignedAreaSTx2 = t21x*t31y - t21y*t31x;
 
@@ -945,8 +1144,8 @@ static void InitTriInfo(STriInfo pTriInfos[], const int piTriListIn[], const SMi
 			pTriInfos[f].FaceNeighbors[i] = -1;
 			pTriInfos[f].AssignedGroup[i] = NULL;
 
-			pTriInfos[f].vOs.x=0.0f; pTriInfos[f].vOs.y=0.0f; pTriInfos[f].vOs.z=0.0f;
-			pTriInfos[f].vOt.x=0.0f; pTriInfos[f].vOt.y=0.0f; pTriInfos[f].vOt.z=0.0f;
+			pTriInfos[f].vOs.x=0.0f; pTriInfos[f].vOs.y=0.0f; pTriInfos[f].vOs.z=0.0f; pTriInfos[f].vOs.w=0.0f;
+			pTriInfos[f].vOt.x=0.0f; pTriInfos[f].vOt.y=0.0f; pTriInfos[f].vOt.z=0.0f; pTriInfos[f].vOt.w=0.0f;
 			pTriInfos[f].fMagS = 0;
 			pTriInfos[f].fMagT = 0;
 
@@ -965,10 +1164,10 @@ static void InitTriInfo(STriInfo pTriInfos[], const int piTriListIn[], const SMi
 		const SVec3 t2 = GetTexCoord(pContext, piTriListIn[f*3+1]);
 		const SVec3 t3 = GetTexCoord(pContext, piTriListIn[f*3+2]);
 
-		const float t21x = t2.x-t1.x;
-		const float t21y = t2.y-t1.y;
-		const float t31x = t3.x-t1.x;
-		const float t31y = t3.y-t1.y;
+		const float t21x = vx(t2)-vx(t1);
+		const float t21y = vy(t2)-vy(t1);
+		const float t31x = vx(t3)-vx(t1);
+		const float t31y = vy(t3)-vy(t1);
 		const SVec3 d1 = vsub(v2,v1);
 		const SVec3 d2 = vsub(v3,v1);
 
@@ -985,8 +1184,8 @@ static void InitTriInfo(STriInfo pTriInfos[], const int piTriListIn[], const SMi
 			const float fLenOs = Length(vOs);
 			const float fLenOt = Length(vOt);
 			const float fS = (pTriInfos[f].iFlag&ORIENT_PRESERVING)==0 ? (-1.0f) : 1.0f;
-			if ( NotZero(fLenOs) ) pTriInfos[f].vOs = vscale(fS/fLenOs, vOs);
-			if ( NotZero(fLenOt) ) pTriInfos[f].vOt = vscale(fS/fLenOt, vOt);
+			if ( NotZero(fLenOs) ) pTriInfos[f].vOs = vstore(vscale(fS/fLenOs, vOs));
+			if ( NotZero(fLenOt) ) pTriInfos[f].vOt = vstore(vscale(fS/fLenOt, vOt));
 
 			// evaluate magnitudes prior to normalization of vOs and vOt
 			pTriInfos[f].fMagS = fLenOs / fAbsArea;
@@ -1239,8 +1438,8 @@ static tbool GenerateTSpaces(STSpace psTspace[], const STriInfo pTriInfos[], con
 			n = GetNormal(pContext, iVertIndex);
 			
 			// project
-			vOs = vsub(pTriInfos[f].vOs, vscale(vdot(n,pTriInfos[f].vOs), n));
-			vOt = vsub(pTriInfos[f].vOt, vscale(vdot(n,pTriInfos[f].vOt), n));
+			vOs = vsub(vload(&pTriInfos[f].vOs), vscale(vdot(n,vload(&pTriInfos[f].vOs)), n));
+			vOt = vsub(vload(&pTriInfos[f].vOt), vscale(vdot(n,vload(&pTriInfos[f].vOt)), n));
 			if ( VNotZero(vOs) ) vOs = Normalize(vOs);
 			if ( VNotZero(vOt) ) vOt = Normalize(vOt);
 
@@ -1254,8 +1453,8 @@ static tbool GenerateTSpaces(STSpace psTspace[], const STriInfo pTriInfos[], con
 				const int iOF_2 = pTriInfos[t].iOrgFaceNumber;
 
 				// project
-				SVec3 vOs2 = vsub(pTriInfos[t].vOs, vscale(vdot(n,pTriInfos[t].vOs), n));
-				SVec3 vOt2 = vsub(pTriInfos[t].vOt, vscale(vdot(n,pTriInfos[t].vOt), n));
+				SVec3 vOs2 = vsub(vload(&pTriInfos[t].vOs), vscale(vdot(n,vload(&pTriInfos[t].vOs)), n));
+				SVec3 vOt2 = vsub(vload(&pTriInfos[t].vOt), vscale(vdot(n,vload(&pTriInfos[t].vOt)), n));
 				if ( VNotZero(vOs2) ) vOs2 = Normalize(vOs2);
 				if ( VNotZero(vOt2) ) vOt2 = Normalize(vOt2);
 
@@ -1362,9 +1561,12 @@ static STSpace EvalTspace(int face_indices[], const int iFaces, const int piTriL
 	STSpace res;
 	float fAngleSum = 0;
 	int face=0;
-	res.vOs.x=0.0f; res.vOs.y=0.0f; res.vOs.z=0.0f;
-	res.vOt.x=0.0f; res.vOt.y=0.0f; res.vOt.z=0.0f;
+	res.vOs.x=0.0f; res.vOs.y=0.0f; res.vOs.z=0.0f; res.vOs.w=0.0f;
+	res.vOt.x=0.0f; res.vOt.y=0.0f; res.vOt.z=0.0f; res.vOt.w=0.0f;
 	res.fMagS = 0; res.fMagT = 0;
+
+	SVec3 vOs = vload(&res.vOs);
+	SVec3 vOt = vload(&res.vOt);
 
 	for (face=0; face<iFaces; face++)
 	{
@@ -1384,8 +1586,8 @@ static STSpace EvalTspace(int face_indices[], const int iFaces, const int piTriL
 			// project
 			index = piTriListIn[3*f+i];
 			n = GetNormal(pContext, index);
-			vOs = vsub(pTriInfos[f].vOs, vscale(vdot(n,pTriInfos[f].vOs), n));
-			vOt = vsub(pTriInfos[f].vOt, vscale(vdot(n,pTriInfos[f].vOt), n));
+			vOs = vsub(vload(&pTriInfos[f].vOs), vscale(vdot(n,vload(&pTriInfos[f].vOs)), n));
+			vOt = vsub(vload(&pTriInfos[f].vOt), vscale(vdot(n,vload(&pTriInfos[f].vOt)), n));
 			if ( VNotZero(vOs) ) vOs = Normalize(vOs);
 			if ( VNotZero(vOt) ) vOt = Normalize(vOt);
 
@@ -1410,8 +1612,8 @@ static STSpace EvalTspace(int face_indices[], const int iFaces, const int piTriL
 			fMagS = pTriInfos[f].fMagS;
 			fMagT = pTriInfos[f].fMagT;
 
-			res.vOs=vadd(res.vOs, vscale(fAngle,vOs));
-			res.vOt=vadd(res.vOt,vscale(fAngle,vOt));
+			vOs=vadd(vOs, vscale(fAngle,vOs));
+			vOt=vadd(vOt,vscale(fAngle,vOt));
 			res.fMagS+=(fAngle*fMagS);
 			res.fMagT+=(fAngle*fMagT);
 			fAngleSum += fAngle;
@@ -1419,13 +1621,16 @@ static STSpace EvalTspace(int face_indices[], const int iFaces, const int piTriL
 	}
 
 	// normalize
-	if ( VNotZero(res.vOs) ) res.vOs = Normalize(res.vOs);
-	if ( VNotZero(res.vOt) ) res.vOt = Normalize(res.vOt);
+	if ( VNotZero(vOs) ) vOs = Normalize(vOs);
+	if ( VNotZero(vOt) ) vOt = Normalize(vOt);
 	if (fAngleSum>0)
 	{
 		res.fMagS /= fAngleSum;
 		res.fMagT /= fAngleSum;
 	}
+
+	res.vOs = vstore(vOs);
+	res.vOt = vstore(vOt);
 
 	return res;
 }
@@ -1446,6 +1651,18 @@ static tbool CompareSubGroups(const SSubGroup * pg1, const SSubGroup * pg2)
 static void QuickSort(int* pSortBuffer, int iLeft, int iRight, unsigned int uSeed)
 {
 	int iL, iR, n, index, iMid, iTmp;
+
+	if (iRight - iLeft < 16) {
+		for (iL = iLeft + 1; iL <= iRight; iL++) {
+			int v = pSortBuffer[iL];
+			for (iR = iL - 1; iR >= iLeft; iR--) {
+				if (pSortBuffer[iR] <= v) break;
+				pSortBuffer[iR + 1] = pSortBuffer[iR];
+			}
+			pSortBuffer[iR + 1] = v;
+		}
+		return;
+	}
 
 	// Random
 	unsigned int t=uSeed&31;
@@ -1650,6 +1867,19 @@ static void QuickSortEdges(SEdge * pSortBuffer, int iLeft, int iRight, const int
 			sTmp = pSortBuffer[iLeft];
 			pSortBuffer[iLeft] = pSortBuffer[iRight];
 			pSortBuffer[iRight] = sTmp;
+		}
+		return;
+	}
+
+	if (iElems < 8) {
+		for (iL = iLeft + 1; iL <= iRight; iL++) {
+			SEdge v = pSortBuffer[iL];
+			int x = v.array[channel];
+			for (iR = iL - 1; iR >= iLeft; iR--) {
+				if (pSortBuffer[iR].array[channel] <= x) break;
+				pSortBuffer[iR + 1] = pSortBuffer[iR];
+			}
+			pSortBuffer[iR + 1] = v;
 		}
 		return;
 	}

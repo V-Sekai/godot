@@ -392,11 +392,11 @@ static Error _parse_obj(const String &p_path, List<Ref<Mesh>> &r_meshes, bool p_
 					surf_tool->generate_normals();
 				}
 
+				surf_tool->index();
+
 				if (generate_tangents && uvs.size()) {
 					surf_tool->generate_tangents();
 				}
-
-				surf_tool->index();
 
 				print_verbose("OBJ: Current material library " + current_material_library + " has " + itos(material_map.has(current_material_library)));
 				print_verbose("OBJ: Current material " + current_material + " has " + itos(material_map.has(current_material_library) && material_map[current_material_library].has(current_material)));
