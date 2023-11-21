@@ -365,4 +365,4 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
-!modules/*/thirdparty/*
+!thirdparty/*
