@@ -49,11 +49,8 @@ class FBXState : public Resource {
 
 	String base_path;
 	String filename;
-	Dictionary json;
 	int major_version = 0;
 	int minor_version = 0;
-	String copyright;
-	Vector<uint8_t> glb_data;
 
 	bool use_named_skin_binds = false;
 	bool use_khr_texture_transform = false;
@@ -115,20 +112,11 @@ public:
 		handle_binary_image = p_handle_binary_image;
 	}
 
-	Dictionary get_json();
-	void set_json(Dictionary p_json);
-
 	int get_major_version();
 	void set_major_version(int p_major_version);
 
 	int get_minor_version();
 	void set_minor_version(int p_minor_version);
-
-	String get_copyright() const;
-	void set_copyright(const String &p_copyright);
-
-	Vector<uint8_t> get_glb_data();
-	void set_glb_data(Vector<uint8_t> p_glb_data);
 
 	bool get_use_named_skin_binds();
 	void set_use_named_skin_binds(bool p_use_named_skin_binds);

@@ -42,12 +42,6 @@ void FBXDocumentExtension::_bind_methods() {
 	GDVIRTUAL_BIND(_import_post_parse, "state");
 	GDVIRTUAL_BIND(_import_node, "state", "fbx_node", "json", "node");
 	GDVIRTUAL_BIND(_import_post, "state", "root");
-	// Export process.
-	GDVIRTUAL_BIND(_export_preflight, "state", "root");
-	GDVIRTUAL_BIND(_convert_scene_node, "state", "fbx_node", "scene_node");
-	GDVIRTUAL_BIND(_export_preserialize, "state");
-	GDVIRTUAL_BIND(_export_node, "state", "fbx_node", "json", "node");
-	GDVIRTUAL_BIND(_export_post, "state");
 }
 
 // Import process.
@@ -124,43 +118,5 @@ Error FBXDocumentExtension::import_post(Ref<FBXState> p_state, Node *p_root) {
 	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
 	Error err = OK;
 	GDVIRTUAL_CALL(_import_post, p_state, p_root, err);
-	return err;
-}
-
-// Export process.
-Error FBXDocumentExtension::export_preflight(Ref<FBXState> p_state, Node *p_root) {
-	ERR_FAIL_NULL_V(p_root, ERR_INVALID_PARAMETER);
-	Error err = OK;
-	GDVIRTUAL_CALL(_export_preflight, p_state, p_root, err);
-	return err;
-}
-
-void FBXDocumentExtension::convert_scene_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Node *p_scene_node) {
-	ERR_FAIL_NULL(p_state);
-	ERR_FAIL_NULL(p_gltf_node);
-	ERR_FAIL_NULL(p_scene_node);
-	GDVIRTUAL_CALL(_convert_scene_node, p_state, p_gltf_node, p_scene_node);
-}
-
-Error FBXDocumentExtension::export_preserialize(Ref<FBXState> p_state) {
-	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
-	Error err = OK;
-	GDVIRTUAL_CALL(_export_preserialize, p_state, err);
-	return err;
-}
-
-Error FBXDocumentExtension::export_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Dictionary &r_dict, Node *p_node) {
-	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
-	ERR_FAIL_NULL_V(p_gltf_node, ERR_INVALID_PARAMETER);
-	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
-	Error err = OK;
-	GDVIRTUAL_CALL(_export_node, p_state, p_gltf_node, r_dict, p_node, err);
-	return err;
-}
-
-Error FBXDocumentExtension::export_post(Ref<FBXState> p_state) {
-	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
-	Error err = OK;
-	GDVIRTUAL_CALL(_export_post, p_state, err);
 	return err;
 }

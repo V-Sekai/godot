@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="EditorSceneFormatImporterUFBX" inherits="EditorSceneFormatImporter" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
+		Import FBX files using the ufbx library.
 	</brief_description>
 	<description>
+		EditorSceneFormatImporterUFBX is designed to load FBX files and supports both binary and ASCII FBX files from version 3000 onward. This class handles invalid files and out of memory errors gracefully, and supports various 3D object types like meshes, skins, blend shapes, materials, and rigging information. It provides utilities for evaluating loaded scenes, such as polygon triangulation, index generation, animation curve evaluation, and CPU skinning. The class aims for feature parity with the official FBX SDK and supports FBX 7.4 specifications.
 	</description>
 	<tutorials>
 	</tutorials>

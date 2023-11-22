@@ -51,12 +51,6 @@ public:
 	virtual Error import_post_parse(Ref<FBXState> p_state);
 	virtual Error import_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Dictionary &r_json, Node *p_node);
 	virtual Error import_post(Ref<FBXState> p_state, Node *p_node);
-	// Export process.
-	virtual Error export_preflight(Ref<FBXState> p_state, Node *p_root);
-	virtual void convert_scene_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Node *p_scene_node);
-	virtual Error export_preserialize(Ref<FBXState> p_state);
-	virtual Error export_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Dictionary &r_json, Node *p_node);
-	virtual Error export_post(Ref<FBXState> p_state);
 
 	// Import process.
 	GDVIRTUAL2R(Error, _import_preflight, Ref<FBXState>, Vector<String>);
@@ -69,12 +63,6 @@ public:
 	GDVIRTUAL1R(Error, _import_post_parse, Ref<FBXState>);
 	GDVIRTUAL4R(Error, _import_node, Ref<FBXState>, Ref<FBXNode>, Dictionary, Node *);
 	GDVIRTUAL2R(Error, _import_post, Ref<FBXState>, Node *);
-	// Export process.
-	GDVIRTUAL2R(Error, _export_preflight, Ref<FBXState>, Node *);
-	GDVIRTUAL3(_convert_scene_node, Ref<FBXState>, Ref<FBXNode>, Node *);
-	GDVIRTUAL1R(Error, _export_preserialize, Ref<FBXState>);
-	GDVIRTUAL4R(Error, _export_node, Ref<FBXState>, Ref<FBXNode>, Dictionary, Node *);
-	GDVIRTUAL1R(Error, _export_post, Ref<FBXState>);
 };
 
 #endif // FBX_DOCUMENT_EXTENSION_H

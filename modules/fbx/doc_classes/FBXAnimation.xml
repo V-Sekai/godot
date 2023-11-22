@@ -3,11 +3,13 @@
 	<brief_description>
 	</brief_description>
 	<description>
+		FBXAnimation handles FBX animations.
 	</description>
 	<tutorials>
 	</tutorials>
 	<members>
 		<member name="loop" type="bool" setter="set_loop" getter="get_loop" default="false">
+			Determines whether the animation should loop.
 		</member>
 	</members>
 </class>

@@ -34,16 +34,10 @@
 
 void FBXState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_used_extension", "extension_name", "required"), &FBXState::add_used_extension);
-	ClassDB::bind_method(D_METHOD("get_json"), &FBXState::get_json);
-	ClassDB::bind_method(D_METHOD("set_json", "json"), &FBXState::set_json);
 	ClassDB::bind_method(D_METHOD("get_major_version"), &FBXState::get_major_version);
 	ClassDB::bind_method(D_METHOD("set_major_version", "major_version"), &FBXState::set_major_version);
 	ClassDB::bind_method(D_METHOD("get_minor_version"), &FBXState::get_minor_version);
 	ClassDB::bind_method(D_METHOD("set_minor_version", "minor_version"), &FBXState::set_minor_version);
-	ClassDB::bind_method(D_METHOD("get_copyright"), &FBXState::get_copyright);
-	ClassDB::bind_method(D_METHOD("set_copyright", "copyright"), &FBXState::set_copyright);
-	ClassDB::bind_method(D_METHOD("get_glb_data"), &FBXState::get_glb_data);
-	ClassDB::bind_method(D_METHOD("set_glb_data", "glb_data"), &FBXState::set_glb_data);
 	ClassDB::bind_method(D_METHOD("get_use_named_skin_binds"), &FBXState::get_use_named_skin_binds);
 	ClassDB::bind_method(D_METHOD("set_use_named_skin_binds", "use_named_skin_binds"), &FBXState::set_use_named_skin_binds);
 	ClassDB::bind_method(D_METHOD("get_nodes"), &FBXState::get_nodes);
@@ -87,11 +81,8 @@ void FBXState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_handle_binary_image"), &FBXState::get_handle_binary_image);
 	ClassDB::bind_method(D_METHOD("set_handle_binary_image", "method"), &FBXState::set_handle_binary_image);
 
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "json"), "set_json", "get_json"); // Dictionary
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "major_version"), "set_major_version", "get_major_version"); // int
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "minor_version"), "set_minor_version", "get_minor_version"); // int
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "copyright"), "set_copyright", "get_copyright"); // String
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_BYTE_ARRAY, "glb_data"), "set_glb_data", "get_glb_data"); // Vector<uint8_t>
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_named_skin_binds"), "set_use_named_skin_binds", "get_use_named_skin_binds"); // bool
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "nodes", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_nodes", "get_nodes"); // Vector<Ref<FBXNode>>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "buffers"), "set_buffers", "get_buffers"); // Vector<Vector<uint8_t>
@@ -128,14 +119,6 @@ void FBXState::add_used_extension(const String &p_extension_name, bool p_require
 	}
 }
 
-Dictionary FBXState::get_json() {
-	return json;
-}
-
-void FBXState::set_json(Dictionary p_json) {
-	json = p_json;
-}
-
 int FBXState::get_major_version() {
 	return major_version;
 }
@@ -150,22 +133,6 @@ int FBXState::get_minor_version() {
 
 void FBXState::set_minor_version(int p_minor_version) {
 	minor_version = p_minor_version;
-}
-
-String FBXState::get_copyright() const {
-	return copyright;
-}
-
-void FBXState::set_copyright(const String &p_copyright) {
-	copyright = p_copyright;
-}
-
-Vector<uint8_t> FBXState::get_glb_data() {
-	return glb_data;
-}
-
-void FBXState::set_glb_data(Vector<uint8_t> p_glb_data) {
-	glb_data = p_glb_data;
 }
 
 bool FBXState::get_use_named_skin_binds() {
