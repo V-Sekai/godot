@@ -194,27 +194,27 @@ void PolygonTriangulation::clear_tiling() {
 }
 
 bool PolygonTriangulation::start() {
-    round++;
-    numoftilingtris = 0;
+	round++;
+	numoftilingtris = 0;
 
-    if (numofpoints < 2) { // Check if there are enough points
-        print_line("ERROR: Not enough points!");
-        return false;
-    }
+	if (numofpoints < 2) { // Check if there are enough points
+		print_line("ERROR: Not enough points!");
+		return false;
+	}
 
-    int optTile;
-    if (!tile_segment(startEdge, 0, -1, optimalCost, optTile)) { // Check if tile_segment returns true
-        print_line("ERROR: tile_segment failed!");
-        return false;
-    }
+	int optTile;
+	if (!tile_segment(startEdge, 0, -1, optimalCost, optTile)) { // Check if tile_segment returns true
+		print_line("ERROR: tile_segment failed!");
+		return false;
+	}
 
-    build_tiling(startEdge, 0, optTile);
+	build_tiling(startEdge, 0, optTile);
 
-    if (numoftilingtris != numofpoints - 2) {
-        print_line("NOTICE: No solution!");
-        return false;
-    }
-    return true;
+	if (numoftilingtris != numofpoints - 2) {
+		print_line("NOTICE: No solution!");
+		return false;
+	}
+	return true;
 }
 
 void PolygonTriangulation::build_tiling(int eind, char side, int ti) {
