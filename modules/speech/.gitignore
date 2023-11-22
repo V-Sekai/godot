@@ -380,7 +380,6 @@ snow.png
 updown.png
 gcov.css
 
-!thirdparty/*
 !thirdparty/AEC3/base/abseil/absl/log
 !thirdparty/opus/celt/arm
 !thirdparty/opus/celt/x86
