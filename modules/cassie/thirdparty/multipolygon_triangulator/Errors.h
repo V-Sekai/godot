@@ -1,7 +1,7 @@
 #ifndef _ERRORS_H_
 #define _ERRORS_H_
 
-#define OUTPUT_ERROR 0
+#include "core/string/ustring.h"
 
 enum ShapeType {
 	ERROR_CURVE,
@@ -12,9 +12,8 @@ enum ShapeType {
 	ERROR_OTHERS
 };
 
-static void errors(int type, char *filename) {
-#if OUTPUT_ERROR
-	switch (type) {
+static void errors(int p_type, char *p_filename) {
+	switch (p_type) {
 		case ERROR_CURVE:
 			print_line("ERROR: Cannot open curve file!");
 			break;
@@ -36,8 +35,7 @@ static void errors(int type, char *filename) {
 		default:
 			break;
 	}
-	String filename_str = String(filename);
-	print_line("Curve: " + filename_str);
-#endif
+	String filename = String(p_filename);
+	print_line(String("Curve: ") + filename_str);
 }
 #endif
