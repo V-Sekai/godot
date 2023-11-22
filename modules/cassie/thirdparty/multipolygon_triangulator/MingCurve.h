@@ -4,8 +4,6 @@
 #ifndef _CONF_H_
 #define _CONF_H_
 
-#include "Errors.h"
-
 #define DO_EXP false
 #define GO_CMD 1
 
@@ -36,7 +34,16 @@
 #include <string>
 #include <vector>
 
+#include "thirdparty/eigen/Eigen/Dense"
+
 using namespace std;
+
+int delaunayRestrictedTriangulation(const double *inCurve, const int inNum,
+		double **outCurve, int *outPn,
+		double **outFaces, int *outNum,
+		float *weights, bool dosmooth, int subd,
+		int laps, Eigen::MatrixXd &V,
+		Eigen::MatrixXi &F);
 
 /**
  * The MingCurve class is used to represent a curve in 3D space. It provides methods for reading and manipulating the curve data.
@@ -50,7 +57,6 @@ public:
 	MingCurve(const double *inCurve, const float *inNrom, const int inNum,
 			int limit, bool hasNorm);
 	~MingCurve();
-
 	int getNumOfPoints();
 	double *getPoints();
 	double *getDeGenPoints();
@@ -70,6 +76,9 @@ public:
 	bool isDeGen; // degenerated cases: plane
 	bool badInput;
 
+	//----------------for edge protection------------//
+	bool loadOrgCurve(const double *inCurve, const int inNum);
+	void loadOrgNorm(const float *inNorm);
 private:
 	char *filename;
 	int numofpoints;
@@ -79,9 +88,6 @@ private:
 	int PT_LIMIT;
 	bool EXPSTOP;
 	bool withNorm;
-	//----------------for edge protection------------//
-	bool loadOrgCurve(const double *inCurve, const int inNum);
-	void loadOrgNorm(const float *inNorm);
 	int org_n;
 	int n_before;
 	int n_after;
@@ -106,7 +112,6 @@ private:
 
 	// ------------------- for cycle project -----------------//
 	bool isDeGenCase();
-	void perturbPts(double ptb);
 	// bool isDeGen; // degenerated cases: plane
 	void splitEdge(int p1, int p2ind, const Vector3 &newP, const Vector3 &newOrgP);
 

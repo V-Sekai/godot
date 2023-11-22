@@ -1,5 +1,8 @@
 #include "MingCurve.h"
 
+#include <iostream>
+#include "core/math/delaunay_3d.h"
+
 MingCurve::MingCurve(const double *inCurve, const int inNum, int limit,
 		bool hasNorm) {
 	numofpoints = 0;
@@ -182,7 +185,6 @@ void MingCurve::protectCorner() {
 	cliped.clear();
 	vector<int> acuteList;
 
-	int sizeCliped = org_n;
 	for (int i = 0; i < org_n; i++) {
 		newClip[0] = 0;
 		newClip[1] = 0;
@@ -291,12 +293,12 @@ void MingCurve::protectCorner() {
 }
 
 bool MingCurve::passTetGen() {
-	LocalVector<Vector3> mingw_points;
-	mingw_points.resize(org_n);
+	LocalVector<Vector3> ming_points;
+	ming_points.resize(org_n);
 	for (int32_t point_i = 0; point_i < org_n; point_i++) {
-		mingw_points[point_i] = tempC[point_i];
+		ming_points[point_i] = tempC[point_i];
 	}
-	LocalVector<OutputSimply> soup = Delaunay3d::tetrahedralize(points);
+	Vector<Delaunay3D::OutputSimplex>  soup = Delaunay3D::tetrahedralize(ming_points);
 	if (soup.size() == 0) {
 		return false;
 	}
@@ -320,14 +322,7 @@ bool MingCurve::isProtected() {
 		points.push_back(Vector3(pt[0], pt[1], pt[2]));
 	}
 
-	try {
-		Delaunay3d::TetrahedronSoup soup = Delaunay3d::tetrahedralize(points);
-	} catch (int e) {
-		cout << "MWT: tetrahedralization problem " << e << endl;
-		badInput = true;
-		delete[] used;
-		return true;
-	}
+	Vector<Delaunay3D::OutputSimplex> soup = Delaunay3D::tetrahedralize(points);
 
 	// save badedges for latter splitting
 	for (int i = 0; i < org_n; i++) {
@@ -350,8 +345,9 @@ bool MingCurve::isProtected() {
 	}
 
 	delete[] used;
-	if (besize > 0)
+	if (besize > 0) {
 		return false;
+	}
 
 	// save points and tris
 
@@ -392,7 +388,6 @@ void MingCurve::insertMidPointsTetgen() {
 // For getCurveAfterEP(), to check whether the orientation changes
 // if so, normals should be fliped
 bool MingCurve::sameOrientation(const vector<int> &newCurve) {
-	int ncsize = newCurve.size();
 	int pos1 = -1, pos2 = -1, pos = 0;
 	while (pos1 == -1 || pos2 == -1) {
 		if (newCurve[pos] == 1)
@@ -466,16 +461,16 @@ bool MingCurve::isDeGenCase() {
 
 	Vector3 startPt = tempC[0];
 	Vector3 startNorm = tempC[1] - tempC[0];
-	Vector3 stdNorm = (tempC[1] - tempC[0]) ^ (tempC[2] - tempC[0]);
+	Vector3 stdNorm = (tempC[1] - tempC[0]).cross(tempC[2] - tempC[0]);
 	stdNorm.normalize();
 
 	Vector3 curNorm;
 	Vector3 curPt;
 	bool breakout = false;
 	for (int i = 3; i < org_n - 1; i++) {
-		curNorm = (tempC[i] - startPt) ^ startNorm;
+		curNorm = (tempC[i] - startPt).cross(startNorm);
 		curNorm.normalize();
-		if (curNorm * stdNorm - 1 < plainEPS) {
+		if (curNorm.dot(stdNorm) - 1 < plainEPS) {
 			breakout = true;
 			break;
 		}
@@ -487,19 +482,19 @@ bool MingCurve::isDeGenCase() {
 	isDeGen = true;
 	return true;
 }
-// give some perturbation for tempC
-void MingCurve::perturbPts(double ptb) {
-	for (int i = 0; i < org_n; i++) {
-		tempC[i].pertube(ptb * (i % 5));
-	}
-}
+
 // main procedure
 // If the curve is not edge-protected, protect it by 2 steps:
 // 1.protectCorner; 2. insert mid points.
 bool MingCurve::edgeProtect(bool isdmwt) {
 	while (!passTetGen()) {
 		isDeGen = true;
-		perturbPts(plainPTB);
+		for (int i = 0; i < org_n; i++) {
+			// Apply perturbation for tempC
+			tempC[i].x += plainPTB * (rand() % 10000);
+			tempC[i].y += plainPTB * (rand() % 10000);
+			tempC[i].z += plainPTB * (rand() % 10000);
+		}
 		perturbNum++;
 		if (perturbNum > 500) {
 			badInput = true;
@@ -530,21 +525,20 @@ void MingCurve::statistics() {
 	if (!DO_EXP) {
 		print_line("=================================");
 		print_line(" File: \t\t" + String(filename));
-		print_line(" N_ratio:\t" + String(n_ratio));
+		print_line(" N_ratio:\t" + rtos(n_ratio));
 		print_line("");
-		print_line(" (T) Read files:\t" + String(timeReadIn));
-		print_line(" (T) Edge protect:\t" + String(timeEdgeProtect));
+		print_line(" (T) Read files:\t" + rtos(timeReadIn));
+		print_line(" (T) Edge protect:\t" + rtos(timeEdgeProtect));
 	} else {
-		print_line(String(filename) + "\t" + String(n_ratio) + "\t" + String(timeReadIn) + "\t" + String(timeEdgeProtect) + "\t");
+		print_line(String(filename) + "\t" + rtos(n_ratio) + "\t" + rtos(timeReadIn) + "\t" + rtos(timeEdgeProtect) + "\t");
 	}
 }
 
 #include "thirdparty/eigen/Eigen/Core"
 #include <iostream>
 
-#include "DWMT.h"
+#include "DMWT.h"
 #include "MingCurve.h"
-#include "refine.h"
 
 bool Triangulate(double *boundary, int nB, float targetEdgeLength,
 		double **vertices, int **faces, int *nV, int *nF) {
@@ -591,8 +585,7 @@ bool Triangulate(double *boundary, int nB, float targetEdgeLength,
 
 		std::cout << "triangulated" << std::endl;
 
-		refine_patch(V, F, targetEdgeLength, V_fine, F_fine);
-		std::cout << "refined patch" << std::endl;
+		// TODO: Refine the patch here. fire 2023-11-21
 
 		double *newVertices = new double[V_fine.size()];
 		int *newFaces = new int[F_fine.size()];
@@ -643,46 +636,41 @@ int delaunayRestrictedTriangulation(const double *inCurve, const int inNum,
 	const int UNKNOWN_ERROR = 0;
 	const int SUCCESS = 1;
 
-	float weightTri = weights[0];
-	float weightEdge = weights[1];
-	float weightBiTri = weights[2];
-	float weightTriBd = weights[3];
-	float weightWorst = weights[4];
+	// float weightTri = weights[0];
+	// float weightEdge = weights[1];
+	// float weightBiTri = weights[2];
+	// float weightTriBd = weights[3];
+	// float weightWorst = weights[4];
 
-	try {
-		MingCurve *myCurve = new MingCurve(inCurve, inNum, LIMIT, WITH_NORM);
-		if (!myCurve->edgeProtect(IS_DMWT)) {
-			delete myCurve;
-			print_line("MWT: (0) bad input, not able to protect curve");
-			return BAD_INPUT;
-		}
-
-		if (!myCurve->smoothCurve(dosmooth)) {
-			delete myCurve;
-			print_line("MWT: (0) bad input, not able to smooth curve");
-			return BAD_INPUT;
-		}
-
-		if (!myCurve->subdivideCurve(subd)) {
-			delete myCurve;
-			print_line("MWT: (0) bad input, not able to subdivide curve");
-			return BAD_INPUT;
-		}
-
-		if (!myCurve->laplacianSmooth(laps)) {
-			delete myCurve;
-			print_line("MWT: (0) bad input, not able to apply Laplacian smoothing");
-			return BAD_INPUT;
-		}
-
-		// Assuming V and F are output parameters
-		myCurve->getVertices(V);
-		myCurve->getFaces(F);
-
+	MingCurve *myCurve = new MingCurve(inCurve, inNum, LIMIT, WITH_NORM);
+	if (!myCurve->edgeProtect(IS_DMWT)) {
 		delete myCurve;
-	} catch (int e) {
-		print_line("MWT: Unknown Error!! Exception Nr. " + String::num(e));
-		return UNKNOWN_ERROR;
+		print_line("MWT: (0) bad input, not able to protect curve");
+		return BAD_INPUT;
 	}
+
+	// if (!myCurve->smoothCurve(dosmooth)) {
+	// 	delete myCurve;
+	// 	print_line("MWT: (0) bad input, not able to smooth curve");
+	// 	return BAD_INPUT;
+	// }
+
+	// if (!myCurve->subdivideCurve(subd)) {
+	// 	delete myCurve;
+	// 	print_line("MWT: (0) bad input, not able to subdivide curve");
+	// 	return BAD_INPUT;
+	// }
+
+	// if (!myCurve->laplacianSmooth(laps)) {
+	// 	delete myCurve;
+	// 	print_line("MWT: (0) bad input, not able to apply Laplacian smoothing");
+	// 	return BAD_INPUT;
+	// }
+
+	// // Assuming V and F are output parameters
+	// myCurve->getVertices(V);
+	// myCurve->getFaces(F);
+
+	delete myCurve;
 	return SUCCESS;
 }

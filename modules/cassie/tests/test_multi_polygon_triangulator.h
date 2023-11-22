@@ -4,10 +4,10 @@
 
 #include "tests/test_macros.h"
 
-#include "../src/DMWT.h"
+#include "../thirdparty/multipolygon_triangulator/DMWT.h"
 
 namespace TestPolygonTriangulation {
-TEST_CASE("[Modules][PolygonTriangulation] create") {
+TEST_CASE("[Modules][Cassie][PolygonTriangulation] create") {
 	Ref<PolygonTriangulation> triangulator = PolygonTriangulation::_create();
 
 	triangulator->set_weights(1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
