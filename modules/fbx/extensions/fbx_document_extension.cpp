@@ -37,7 +37,6 @@ void FBXDocumentExtension::_bind_methods() {
 	GDVIRTUAL_BIND(_parse_node_extensions, "state", "fbx_node", "extensions");
 	GDVIRTUAL_BIND(_parse_image_data, "state", "image_data", "mime_type", "ret_image");
 	GDVIRTUAL_BIND(_get_image_file_extension);
-	GDVIRTUAL_BIND(_parse_texture_json, "state", "texture_json", "ret_gltf_texture");
 	GDVIRTUAL_BIND(_generate_scene_node, "state", "fbx_node", "scene_parent");
 	GDVIRTUAL_BIND(_import_post_parse, "state");
 	GDVIRTUAL_BIND(_import_node, "state", "fbx_node", "json", "node");
@@ -78,14 +77,6 @@ String FBXDocumentExtension::get_image_file_extension() {
 	String ret;
 	GDVIRTUAL_CALL(_get_image_file_extension, ret);
 	return ret;
-}
-
-Error FBXDocumentExtension::parse_texture_json(Ref<FBXState> p_state, const Dictionary &p_texture_json, Ref<FBXTexture> r_gltf_texture) {
-	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
-	ERR_FAIL_NULL_V(r_gltf_texture, ERR_INVALID_PARAMETER);
-	Error err = OK;
-	GDVIRTUAL_CALL(_parse_texture_json, p_state, p_texture_json, r_gltf_texture, err);
-	return err;
 }
 
 Node3D *FBXDocumentExtension::generate_scene_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Node *p_scene_parent) {

@@ -81,14 +81,5 @@
 				Parses any extensions associated with the given FBX node.
 			</description>
 		</method>
-		<method name="_parse_texture_json" qualifiers="virtual">
-			<return type="int" enum="Error" />
-			<param index="0" name="state" type="FBXState" />
-			<param index="1" name="texture_json" type="Dictionary" />
-			<param index="2" name="ret_gltf_texture" type="FBXTexture" />
-			<description>
-				Parses texture data from a JSON object and returns an FBXTexture.
-			</description>
-		</method>
 	</methods>
 </class>
