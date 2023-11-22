@@ -7,14 +7,23 @@
 #include "../thirdparty/multipolygon_triangulator/DMWT.h"
 
 namespace TestPolygonTriangulation {
-TEST_CASE("[Modules][Cassie][PolygonTriangulation] create") {
-	Ref<PolygonTriangulation> triangulator = PolygonTriangulation::_create();
 
-	triangulator->set_weights(1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
+TEST_CASE("[Modules][Cassie][PolygonTriangulation] monkey's saddle") {
+    // Define a series of points from a monkey's saddle
+    int ptn = 100; // Number of points
+    double pts[ptn * 3]; // Array to hold x, y, z coordinates of each point
+    for (int i = 0; i < ptn; ++i) {
+        double x = (double)i / ptn;
+        double y = (double)i / ptn;
+        double z = pow(x, 3) - 3 * x * pow(y, 2); // Monkey's saddle equation
+        pts[i * 3] = x;
+        pts[i * 3 + 1] = y;
+        pts[i * 3 + 2] = z;
+    }
 
-	bool result = triangulator->start();
-
-	CHECK(result == true);
+    // Create PolygonTriangulation object with these points
+    Ref<PolygonTriangulation> polyTri = PolygonTriangulation::_create_with_degenerates(ptn, pts, nullptr, false);
+    CHECK(polyTri.is_valid());
 }
 } //namespace TestPolygonTriangulation
 

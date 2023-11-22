@@ -25,7 +25,6 @@ protected:
 	static void _bind_methods();
 
 public:
-	static Ref<PolygonTriangulation> _create();
 	static Ref<PolygonTriangulation> _create_with_degenerates(int ptn, double *pts, double *deGenPts, bool isdegen);
 	static Ref<PolygonTriangulation> _create_with_normals(int ptn, double *pts, double *deGenPts, float *norms, bool isdegen);
 

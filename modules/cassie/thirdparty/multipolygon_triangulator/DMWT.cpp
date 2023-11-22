@@ -194,18 +194,27 @@ void PolygonTriangulation::clear_tiling() {
 }
 
 bool PolygonTriangulation::start() {
-	round++;
-	numoftilingtris = 0;
-	// clearTiling();
-	int optTile;
-	tile_segment(startEdge, 0, -1, optimalCost, optTile);
-	build_tiling(startEdge, 0, optTile);
+    round++;
+    numoftilingtris = 0;
 
-	if (numoftilingtris != numofpoints - 2) {
-		print_line("NOTICE: No solution!");
-		return false;
-	}
-	return true;
+    if (numofpoints < 2) { // Check if there are enough points
+        print_line("ERROR: Not enough points!");
+        return false;
+    }
+
+    int optTile;
+    if (!tile_segment(startEdge, 0, -1, optimalCost, optTile)) { // Check if tile_segment returns true
+        print_line("ERROR: tile_segment failed!");
+        return false;
+    }
+
+    build_tiling(startEdge, 0, optTile);
+
+    if (numoftilingtris != numofpoints - 2) {
+        print_line("NOTICE: No solution!");
+        return false;
+    }
+    return true;
 }
 
 void PolygonTriangulation::build_tiling(int eind, char side, int ti) {
@@ -806,10 +815,6 @@ bool PolygonTriangulation::tile_segment(int eind, char side, int ti, float &this
 	return true;
 }
 
-Ref<PolygonTriangulation> PolygonTriangulation::_create() {
-	return Ref<PolygonTriangulation>(new PolygonTriangulation());
-}
-
 Ref<PolygonTriangulation> PolygonTriangulation::_create_with_degenerates(int ptn, double *pts, double *deGenPts, bool isdegen) {
 	return Ref<PolygonTriangulation>(new PolygonTriangulation(ptn, pts, deGenPts, isdegen));
 }
@@ -833,10 +838,4 @@ void PolygonTriangulation::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_point_limit", "limit"), &PolygonTriangulation::set_point_limit);
 	// ClassDB::bind_method(D_METHOD("get_result", "outFaces", "outNum", "outPoints", "outNorms", "outPn", "dosmooth", "subd", "laps"), &PolygonTriangulation::get_result);
 	// ClassDB::bind_method(D_METHOD("get_result_as_matrices", "matrix1", "matrix2", "matrix3"), &PolygonTriangulation::get_result_as_matrices);
-
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "EXPSTOP"), "", "get_expstop");
-}
-
-bool PolygonTriangulation::get_expstop() const {
-	return EXPSTOP;
 }
