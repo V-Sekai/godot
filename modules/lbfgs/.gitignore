@@ -364,5 +364,3 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
-
-!thirdparty/*
