@@ -9,7 +9,7 @@ subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlit
 env.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
 env.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
 env.Append(LIBPATH=["thirdparty/spmemvfs", "thirdparty/sqlite"])
-env.Append(LIBS=["mvsqlite"])
+env.Prepend(LIBS=["mvsqlite"])
 if env["platform"] == "windows":
     env.Append(LIBS=["ws2_32", "ntdll"])
 
