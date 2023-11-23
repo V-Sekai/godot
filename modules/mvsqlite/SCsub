@@ -14,13 +14,12 @@ env_thirdparty.Append(CPPDEFINES=["SQLITE_ENABLE_JSON1"])
 
 subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
 
-env_thirdparty.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
 env_thirdparty.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
-env_thirdparty.Append(LIBPATH=["thirdparty/spmemvfs", "thirdparty/sqlite"])
-if env_thirdparty["platform"] == "windows":
-    env_thirdparty.Prepend(LIBS=["ws2_32", "ntdll"])
+env.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
+if env["platform"] == "windows":
+    env.Prepend(LIBS=["ws2_32", "ntdll"])
 
-env_thirdparty.Prepend(LIBS=["mvsqlite"])
+env.Prepend(LIBS=["mvsqlite"])
 
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/sqlite/*.c")
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c")
