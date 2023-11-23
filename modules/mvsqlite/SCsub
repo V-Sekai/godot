@@ -2,13 +2,9 @@ Import("env")
 import subprocess
 
 env.Append(
-    CPPDEFINES=[
-        ("SQLITE_ENABLE_RBU", 1),
-        ("SQLITE_USE_URI", 1),
-        "SQLITE_ENABLE_JSON1"
-    ],
+    CPPDEFINES=[("SQLITE_ENABLE_RBU", 1), ("SQLITE_USE_URI", 1), "SQLITE_ENABLE_JSON1"],
     LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"],
-    LIBS=["mvsqlite"]
+    LIBS=["mvsqlite"],
 )
 env["builtin_zstd"] = False
 
@@ -18,12 +14,7 @@ if env["platform"] == "windows":
 env_thirdparty = env.Clone()
 env_thirdparty.disable_warnings()
 
-source_files = [
-    "thirdparty/sqlite/*.c",
-    "thirdparty/spmemvfs/*.c",
-    "src/*.cpp",
-    "*.cpp"
-]
+source_files = ["thirdparty/sqlite/*.c", "thirdparty/spmemvfs/*.c", "src/*.cpp", "*.cpp"]
 for source_file in source_files:
     env_thirdparty.add_source_files(env_thirdparty.modules_sources, source_file)
 
