@@ -16,8 +16,7 @@ concurrency:
 
 jobs:
   build-windows:
-    # Windows 10 with latest image
-    runs-on: "windows-latest"
+    runs-on: "ubuntu-latest"
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -55,9 +54,6 @@ jobs:
           target: x86_64-pc-windows-gnu
           toolchain: stable
           components: rustfmt, clippy
-
-      - name: Setup MSVC problem matcher
-        uses: ammaraskar/msvc-problem-matcher@master
 
       - name: Compilation
         uses: ./.github/actions/godot-build
