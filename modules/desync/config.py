@@ -8,6 +8,7 @@ def can_build(env, platform):
             return False
         try:
             import subprocess
+
             mingw_version = subprocess.check_output(["gcc", "--version"])
             print("MinGW is installed: ", mingw_version)
         except Exception as e:
