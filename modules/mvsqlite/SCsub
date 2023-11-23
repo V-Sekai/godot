@@ -22,5 +22,5 @@ if env_thirdparty["platform"] == "windows":
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/sqlite/*.c")
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c")
 
-env.add_source_files(env.modules_sources, "src/*.cpp")
-env.add_source_files(env.modules_sources, "*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "src/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "*.cpp")
