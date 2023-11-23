@@ -23,7 +23,9 @@ env_thirdparty.disable_warnings()
 env_thirdparty.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
 
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/sqlite/*.c")
-env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c")
+env_thirdparty.add_source_files(
+    env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c"
+)
 
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "src/*.cpp")
 
@@ -32,7 +34,7 @@ env.modules_sources += thirdparty_obj
 # Godot source files
 
 module_obj = []
- 
+
 env_thirdparty.add_source_files(module_obj, "src/*.cpp")
 env_thirdparty.add_source_files(module_obj, "*.cpp")
 env.modules_sources += module_obj
