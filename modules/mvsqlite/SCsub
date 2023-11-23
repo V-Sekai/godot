@@ -23,9 +23,7 @@ env_thirdparty.disable_warnings()
 env_thirdparty.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
 
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/sqlite/*.c")
-env_thirdparty.add_source_files(
-    env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c"
-)
+env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c")
 
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "src/*.cpp")
 
