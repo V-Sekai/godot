@@ -37,9 +37,3 @@ syscall = []
 default-tls = ["reqwest/default-tls"]
 rustls-tls = ["reqwest/rustls-tls"]
 global-init = ["tracing-subscriber"]
-
-[target.i686-pc-windows-gnu]
-rustflags=["-Clink-self-contained=yes", "-Clink-arg=-fuse-ld=lld"]
-
-[target.x86_64-pc-windows-gnu]
-rustflags=["-Clink-self-contained=yes", "-Clink-arg=-fuse-ld=lld"]

@@ -4,24 +4,23 @@ import subprocess
 import shutil
 import platform
 
-if env["platform"] == "windows" and (env["use_llvm"] or env["use_mingw"]):
-    subprocess.run(
-        ["cargo", "build", "--release", "--target=x86_64-pc-windows-gnu"], cwd="thirdparty/mvsqlite/mvsqlite"
+
+if env["platform"] == "windows":
+    windows_env = os.environ.copy()
+    windows_env["RUSTFLAGS"] = "-Clink-self-contained=yes -Clinker=ldd-link"
+    proc = subprocess.Popen(
+        ["cargo", "build", "--release", "--target=x86_64-pc-windows-msvc"],
+        cwd="thirdparty/mvsqlite/mvsqlite",
+        env=windows_env
     )
 else:
     subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
 
-if env["platform"] == "windows":
-    if env["use_llvm"] or env["use_mingw"]:
-        shutil.copy(
-            "thirdparty/mvsqlite/target/release/mvsqlite.a",
-            "mvsqlite.windows." + env["target"] + "." + env["arch"] + ".a",
-        )
-    else:
-        shutil.copy(
-            "thirdparty/mvsqlite/target/release/mvsqlite.lib",
-            "mvsqlite.windows." + env["target"] + "." + env["arch"] + ".lib",
-        )
+if env["platform"] == "windows" and os.name == 'nt':
+    shutil.copy(
+        "thirdparty/mvsqlite/target/x86_64-pc-windows-msvc/release/mvsqlite.lib",
+        "mvsqlite.windows." + env["target"] + "." + env["arch"] + ".lib",
+    )
 elif env["platform"] == "linux":
     shutil.copy(
         "thirdparty/mvsqlite/target/release/libmvsqlite.a",

@@ -52,8 +52,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          target: x86_64-pc-windows-gnu
-          default: x86_64-pc-windows-gnu
+          target: x86_64-pc-windows-msvc
           toolchain: stable
           components: rustfmt, clippy
 
