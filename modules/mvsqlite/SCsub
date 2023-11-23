@@ -1,0 +1,51 @@
+Import("env")
+import os
+import subprocess
+import shutil
+import platform
+
+subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
+
+if env["platform"] == "windows":
+    if env["use_llvm"] or env["use_mingw"]:
+        shutil.copy(
+            "thirdparty/mvsqlite/target/release/mvsqlite.a",
+            "mvsqlite.windows." + env["target"] + "." + env["arch"] + ".a",
+        )
+    else:
+        shutil.copy(
+            "thirdparty/mvsqlite/target/release/mvsqlite.lib",
+            "mvsqlite.windows." + env["target"] + "." + env["arch"] + ".lib",
+        )
+elif env["platform"] == "linux":
+    shutil.copy(
+        "thirdparty/mvsqlite/target/release/libmvsqlite.a",
+        "mvsqlite.linux." + env["target"] + "." + env["arch"] + ".a",
+    )
+elif env["platform"] == "macos":
+    shutil.copy(
+        "thirdparty/mvsqlite/target/release/libmvsqlite.a",
+        "mvsqlite.macos." + env["target"] + "." + env["arch"] + ".a",
+    )
+else:
+    shutil.copy(
+        "thirdparty/mvsqlite/target/release/libmvsqlite.a",
+        "mvsqlite." + env["platform"] + "." + env["target"] + "." + env["arch"] + ".a",
+    )
+
+env.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
+env.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
+env.Append(LIBPATH=["thirdparty/spmemvfs", "thirdparty/sqlite"])
+env.Prepend(LIBS=["mvsqlite"])
+
+env_thirdparty = env.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.Append(CPPDEFINES=[("SQLITE_ENABLE_RBU", 1)])
+env_thirdparty.Append(CPPDEFINES=[("SQLITE_USE_URI", 1)])
+env_thirdparty.Append(CPPDEFINES=["SQLITE_ENABLE_JSON1"])
+
+env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/sqlite/*.c")
+env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c")
+
+env.add_source_files(env.modules_sources, "src/*.cpp")
+env.add_source_files(env.modules_sources, "*.cpp")
