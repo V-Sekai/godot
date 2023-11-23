@@ -3,7 +3,7 @@ import subprocess
 
 
 def can_build(env, platform):
-    if platform == "windows" and os.name != 'nt' and env["use_mingw"]:
+    if platform == "windows" and os.name != "nt" and env["use_mingw"]:
         return False
     if platform == "windows":
         if not env["use_mingw"]:
