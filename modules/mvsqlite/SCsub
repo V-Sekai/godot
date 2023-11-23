@@ -21,6 +21,3 @@ for source_file in source_files:
 env.modules_sources += env_thirdparty.modules_sources
 
 subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
-
-# Force rebuilding the module files when the third-party library is updated.
-env.Depends(env_thirdparty.modules_sources, env_thirdparty.modules_sources)
