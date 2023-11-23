@@ -9,7 +9,9 @@ subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlit
 env.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
 env.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
 env.Append(LIBPATH=["thirdparty/spmemvfs", "thirdparty/sqlite"])
-env.Prepend(LIBS=["mvsqlite"])
+env.Append(LIBS=["mvsqlite"])
+if env["platform"] == "windows":
+    env.Append(LIBS=["ws2_32", "ntdll"])
 
 env_thirdparty = env.Clone()
 env_thirdparty.disable_warnings()
