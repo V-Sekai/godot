@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build-windows:
-    runs-on: "ubuntu-20.04"
+    runs-on: "windows-latest"
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
@@ -44,11 +44,9 @@ jobs:
           cache-name: ${{ matrix.cache-name }}
         continue-on-error: true
 
-      - name: Linux dependencies compiling for windows
+      - name: Prepare artifact
         run: |
-          sudo apt-get install -qq mingw-w64
-          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
-          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+          choco install winlibs
 
       - name: Setup python and scons
         uses: ./.github/actions/godot-deps
