@@ -11,12 +11,12 @@ if env["platform"] == "windows":
     proc = subprocess.Popen(
         ["cargo", "build", "--release", "--target=x86_64-pc-windows-msvc"],
         cwd="thirdparty/mvsqlite/mvsqlite",
-        env=windows_env
+        env=windows_env,
     )
 else:
     subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
 
-if env["platform"] == "windows" and os.name == 'nt':
+if env["platform"] == "windows" and os.name == "nt":
     shutil.copy(
         "thirdparty/mvsqlite/target/x86_64-pc-windows-msvc/release/mvsqlite.lib",
         "mvsqlite.windows." + env["target"] + "." + env["arch"] + ".lib",
