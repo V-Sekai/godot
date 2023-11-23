@@ -8,8 +8,11 @@ import platform
 if env["platform"] == "windows":
     windows_env = os.environ.copy()
     windows_env["RUSTFLAGS"] = "-Clink-self-contained=yes -Clinker=ldd-link"
+    rust_target = "--target=x86_64-pc-windows-gnu"
+    if os.name = 'nt':
+        rust_target = "--target=x86_64-pc-windows-msvc"
     proc = subprocess.Popen(
-        ["cargo", "build", "--release", "--target=x86_64-pc-windows-msvc"],
+        ["cargo", "build", "--release", rust_target],
         cwd="thirdparty/mvsqlite/mvsqlite",
         env=windows_env,
     )
