@@ -4,6 +4,8 @@ import subprocess
 import shutil
 import platform
 
+thirdparty_obj = []
+
 env_thirdparty = env.Clone()
 env_thirdparty.disable_warnings()
 env_thirdparty.Append(CPPDEFINES=[("SQLITE_ENABLE_RBU", 1)])
@@ -15,12 +17,25 @@ subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlit
 env_thirdparty.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
 env_thirdparty.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
 env_thirdparty.Append(LIBPATH=["thirdparty/spmemvfs", "thirdparty/sqlite"])
-env_thirdparty.Prepend(LIBS=["mvsqlite"])
 if env_thirdparty["platform"] == "windows":
-    env_thirdparty.Append(LIBS=["ws2_32", "ntdll"])
+    env_thirdparty.Prepend(LIBS=["ws2_32", "ntdll"])
+
+env_thirdparty.Prepend(LIBS=["mvsqlite"])
 
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/sqlite/*.c")
 env_thirdparty.add_source_files(env_thirdparty.modules_sources, "thirdparty/spmemvfs/*.c")
 
-env_thirdparty.add_source_files(env.modules_sources, "src/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "*.cpp")
+env_thirdparty.add_source_files(env_thirdparty.modules_sources, "src/*.cpp")
+
+env.modules_sources += thirdparty_obj
+
+# Godot source files
+
+module_obj = []
+
+env_thirdparty.add_source_files(module_obj, "src/*.cpp")
+env_thirdparty.add_source_files(module_obj, "*.cpp")
+env.modules_sources += module_obj
+
+# Needed to force rebuilding the module files when the thirdparty library is updated.
+env.Depends(module_obj, thirdparty_obj)
