@@ -4,41 +4,7 @@ import subprocess
 import shutil
 import platform
 
-
-if env["platform"] == "windows":
-    windows_env = os.environ.copy()
-    windows_env["RUSTFLAGS"] = "-Clink-self-contained=yes -Clinker=ldd-link"
-    rust_target = "--target=x86_64-pc-windows-gnu"
-    if os.name = 'nt':
-        rust_target = "--target=x86_64-pc-windows-msvc"
-    proc = subprocess.Popen(
-        ["cargo", "build", "--release", rust_target],
-        cwd="thirdparty/mvsqlite/mvsqlite",
-        env=windows_env,
-    )
-else:
-    subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
-
-if env["platform"] == "windows" and os.name == "nt":
-    shutil.copy(
-        "thirdparty/mvsqlite/target/x86_64-pc-windows-msvc/release/mvsqlite.lib",
-        "mvsqlite.windows." + env["target"] + "." + env["arch"] + ".lib",
-    )
-elif env["platform"] == "linux":
-    shutil.copy(
-        "thirdparty/mvsqlite/target/release/libmvsqlite.a",
-        "mvsqlite.linux." + env["target"] + "." + env["arch"] + ".a",
-    )
-elif env["platform"] == "macos":
-    shutil.copy(
-        "thirdparty/mvsqlite/target/release/libmvsqlite.a",
-        "mvsqlite.macos." + env["target"] + "." + env["arch"] + ".a",
-    )
-else:
-    shutil.copy(
-        "thirdparty/mvsqlite/target/release/libmvsqlite.a",
-        "mvsqlite." + env["platform"] + "." + env["target"] + "." + env["arch"] + ".a",
-    )
+subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
 
 env.Append(LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"])
 env.Append(CPPPATH=["src", "#modules/mvsqlite/src", "#modules/mvsqlite"])
