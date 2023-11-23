@@ -4,7 +4,10 @@ import subprocess
 import shutil
 import platform
 
-subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
+if env["platform"] == "windows" and (env["use_llvm"] or env["use_mingw"]):
+    subprocess.run(["cargo", "build", "--release", "--target=x86_64-pc-windows-gnu"], cwd="thirdparty/mvsqlite/mvsqlite")
+else:
+    subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
 
 if env["platform"] == "windows":
     if env["use_llvm"] or env["use_mingw"]:
