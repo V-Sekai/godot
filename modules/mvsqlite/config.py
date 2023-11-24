@@ -9,7 +9,7 @@ def can_build(env, platform):
         return False
     if platform == "windows" and not env["use_mingw"]:
         return False
-    if platform == "windows" and os.name != 'nt' and env["use_mingw"]:
+    if platform == "windows" and os.name != "nt" and env["use_mingw"]:
         return False
     try:
         subprocess.check_output(["rustup", "--version"], stderr=subprocess.STDOUT)
