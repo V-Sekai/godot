@@ -483,6 +483,8 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 				WARN_PRINT("Mesh LOD generation failed for mesh " + get_name() + " surface " + itos(i) + ", mesh is too complex. Some automatic LODs were not generated.");
 				break;
 			}
+			const size_t MAX_MESH_INDICES = pow(2, 24);
+			ERR_BREAK(new_index_count >= MAX_MESH_INDICES);
 
 			new_indices.resize(new_index_count);
 
@@ -522,6 +524,7 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 					Vector3 dir = face_normal / face_area;
 					int ray_count = CLAMP(5.0 * face_area * error_factor, 16, 64);
 
+					ERR_BREAK(static_cast<size_t>(current_ray_count + ray_count) >= MAX_MESH_INDICES);
 					rays.resize(current_ray_count + ray_count);
 					StaticRaycaster::Ray *rays_ptr = rays.ptrw();
 
@@ -543,12 +546,14 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 
 						Vector3 org = v0 * w + v1 * u + v2 * v;
 						org -= dir * ray_bias;
+						ERR_BREAK(static_cast<size_t>(current_ray_count + k) >= MAX_MESH_INDICES);
 						rays_ptr[current_ray_count + k] = StaticRaycaster::Ray(org, dir, 0.0f, ray_length);
 						rays_ptr[current_ray_count + k].id = j / 3;
 						ray_uvs_ptr[current_ray_count + k] = Vector2(u, v);
 					}
 
 					current_ray_count += ray_count;
+					ERR_BREAK(static_cast<size_t>(current_ray_count) >= MAX_MESH_INDICES);
 				}
 
 				raycaster->intersect(rays);
