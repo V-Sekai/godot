@@ -26,14 +26,14 @@ jobs:
             cache-name: windows-editor
             target: editor
             tests: true
-            sconsflags: debug_symbols=no use_mingw=yes use_llvm=yes windows_subsystem=console
+            sconsflags: debug_symbols=no use_mingw=yes windows_subsystem=console
             bin: "./bin/godot.windows.editor.x86_64.exe"
 
           - name: Template (target=template_release)
             cache-name: windows-template
             target: template_release
             tests: false
-            sconsflags: debug_symbols=no use_mingw=yes use_llvm=yes
+            sconsflags: debug_symbols=no use_mingw=yes
 
     steps:
       - uses: actions/checkout@v4
