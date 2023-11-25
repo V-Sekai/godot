@@ -1,0 +1,3 @@
+# Godot 4+ specific ignores
+.godot/
+vsekai_game_windows_x86_64/
