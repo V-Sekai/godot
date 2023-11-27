@@ -37,7 +37,7 @@ for source_file in source_files:
 
 env.modules_sources += env_thirdparty.modules_sources
 
-if env["platform"] == "windows" and env["use_mingw"]:
+if env["platform"] == "windows":
     subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite")
 else:
     subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
