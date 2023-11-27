@@ -40,7 +40,7 @@ env.modules_sources += env_thirdparty.modules_sources
 if env["platform"] == "windows":
     new_env = os.environ.copy()
     if env["use_mingw"] and env["use_llvm"]:
-        new_env['CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER'] = "ld"
+        new_env["CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"] = "ld"
     subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite", env=new_env)
 else:
     subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
