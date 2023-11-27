@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_fbx = env_modules.Clone()
+
+# Godot source files
+env_fbx.add_source_files(env.modules_sources, "*.cpp")
+env_fbx.add_source_files(env.modules_sources, "structures/*.cpp")
+env_fbx.add_source_files(env.modules_sources, "thirdparty/ufbx/ufbx.c")
+SConscript("extensions/SCsub")
+if env.editor_build:
+    env_fbx.add_source_files(env.modules_sources, "editor/*.cpp")
