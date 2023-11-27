@@ -10,6 +10,10 @@ env.Append(
 target = ""
 if env["platform"] == "windows" and env["use_mingw"]:
     target = "x86_64-pc-windows-gnu"
+elif env["platform"] == "windows" and not env["use_mingw"]:
+    target = "x86_64-pc-windows-msvc"
+
+if env["platform"] == "windows":
     env.Append(
         LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + target + "/release"],
     )
