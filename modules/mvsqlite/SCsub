@@ -1,54 +1,46 @@
+Import("env")
 import subprocess
 import os
 
-# Simplified platform check and target determination.
-target = ""
-is_windows = env["platform"] == "windows"
-if is_windows:
-    target = "x86_64-pc-windows-gnu" if env["use_mingw"] else "x86_64-pc-windows-msvc"
-
-# Append common values to environment only once outside the conditional checks.
 env.Append(
     CPPDEFINES=[("SQLITE_ENABLE_RBU", 1), ("SQLITE_USE_URI", 1), "SQLITE_ENABLE_JSON1"],
     LIBS=["mvsqlite"],
-    builtin_zstd=False
 )
 
-# Configure environment for Windows-specific settings.
-if is_windows:
+target = ""
+if env["platform"] == "windows" and env["use_mingw"]:
+    target = "x86_64-pc-windows-gnu"
+elif env["platform"] == "windows" and not env["use_mingw"]:
+    target = "x86_64-pc-windows-msvc"
+
+if env["platform"] == "windows":
     env.Append(
         LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + target + "/release"],
-        LIBS=["ws2_32", "ntdll", "userenv"]
     )
     subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
 else:
     env.Append(
-        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"]
+        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"],
     )
 
-# Clone environment for third-party and disable warnings.
+env["builtin_zstd"] = False
+
+if env["platform"] == "windows":
+    env.Append(LIBS=["ws2_32", "ntdll", "userenv"])
+
 env_thirdparty = env.Clone()
 env_thirdparty.disable_warnings()
 
-# Add source files.
-source_files = [
-    "thirdparty/sqlite/*.c",
-    "thirdparty/spmemvfs/*.c",
-    "src/*.cpp",
-    "*.cpp"
-]
+source_files = ["thirdparty/sqlite/*.c", "thirdparty/spmemvfs/*.c", "src/*.cpp", "*.cpp"]
 for source_file in source_files:
     env_thirdparty.add_source_files(env_thirdparty.modules_sources, source_file)
 
 env.modules_sources += env_thirdparty.modules_sources
 
-# Build using cargo.
-new_env = os.environ.copy() if is_windows else None
-cargo_cmd = ["cargo", "build", "--release"]
-
-if is_windows:
+if env["platform"] == "windows":
+    new_env = os.environ.copy()
     if env["use_mingw"] and env["use_llvm"]:
         new_env['CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER'] = "ld"
-    cargo_cmd.extend(["--target", target])
-
-subprocess.run(cargo_cmd, cwd="thirdparty/mvsqlite/mvsqlite", env=new_env)
+    subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite", env=new_env)
+else:
+    subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
