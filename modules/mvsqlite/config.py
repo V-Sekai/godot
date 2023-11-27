@@ -7,7 +7,7 @@ import os
 def can_build(env, platform):
     if platform == "ios" or platform == "web" or platform == "android":
         return False
-    if platform == "windows":
+    if platform == "windows" and not env["use_mingw"]:
         return False
     try:
         subprocess.check_output(["rustup", "--version"], stderr=subprocess.STDOUT)
