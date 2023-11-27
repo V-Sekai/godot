@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_document_extension.h                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,33 +28,39 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_DOCUMENT_EXTENSION_H
+#define FBX_DOCUMENT_EXTENSION_H
 
-#ifdef TOOLS_ENABLED
+#include "../fbx_state.h"
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+class FBXDocumentExtension : public Resource {
+	GDCLASS(FBXDocumentExtension, Resource);
 
-class Animation;
-class Node;
-
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+protected:
+	static void _bind_methods();
 
 public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
+	// Import process.
+	virtual Error import_preflight(Ref<FBXState> p_state, Vector<String> p_extensions);
+	virtual Vector<String> get_supported_extensions();
+	virtual Error parse_node_extensions(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Dictionary &p_extensions);
+	virtual Error parse_image_data(Ref<FBXState> p_state, const PackedByteArray &p_image_data, const String &p_mime_type, Ref<Image> r_image);
+	virtual String get_image_file_extension();
+	virtual Node3D *generate_scene_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Node *p_scene_parent);
+	virtual Error import_post_parse(Ref<FBXState> p_state);
+	virtual Error import_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Dictionary &r_json, Node *p_node);
+	virtual Error import_post(Ref<FBXState> p_state, Node *p_node);
+
+	// Import process.
+	GDVIRTUAL2R(Error, _import_preflight, Ref<FBXState>, Vector<String>);
+	GDVIRTUAL0R(Vector<String>, _get_supported_extensions);
+	GDVIRTUAL3R(Error, _parse_node_extensions, Ref<FBXState>, Ref<FBXNode>, Dictionary);
+	GDVIRTUAL4R(Error, _parse_image_data, Ref<FBXState>, PackedByteArray, String, Ref<Image>);
+	GDVIRTUAL0R(String, _get_image_file_extension);
+	GDVIRTUAL3R(Node3D *, _generate_scene_node, Ref<FBXState>, Ref<FBXNode>, Node *);
+	GDVIRTUAL1R(Error, _import_post_parse, Ref<FBXState>);
+	GDVIRTUAL4R(Error, _import_node, Ref<FBXState>, Ref<FBXNode>, Dictionary, Node *);
+	GDVIRTUAL2R(Error, _import_post, Ref<FBXState>, Node *);
 };
 
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_DOCUMENT_EXTENSION_H
