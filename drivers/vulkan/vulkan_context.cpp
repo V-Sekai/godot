@@ -2367,9 +2367,11 @@ void VulkanContext::append_command_buffer(VkCommandBuffer p_command_buffer) {
 	command_buffer_count++;
 }
 
-void VulkanContext::flush(bool p_flush_setup, bool p_flush_pending) {
+void VulkanContext::flush(bool p_flush_setup, bool p_flush_pending, bool p_sync) {
 	// Ensure everything else pending is executed.
-	vkDeviceWaitIdle(device);
+	if (p_sync) {
+		vkDeviceWaitIdle(device);
+	}
 
 	// Flush the pending setup buffer.
 
@@ -2412,7 +2414,9 @@ void VulkanContext::flush(bool p_flush_setup, bool p_flush_pending) {
 		ERR_FAIL_COND(err);
 	}
 
-	vkDeviceWaitIdle(device);
+	if (p_sync) {
+		vkDeviceWaitIdle(device);
+	}
 }
 
 Error VulkanContext::prepare_buffers() {
@@ -2473,7 +2477,7 @@ Error VulkanContext::swap_buffers() {
 		return OK;
 	}
 
-	//	print_line("swapbuffers?");
+	//	print_line("swap_buffers");
 	VkResult err;
 
 #if 0
