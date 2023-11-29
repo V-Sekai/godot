@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/V-Sekai.godot-mvsqlite.git
+	branch = main
+	commit = 6a49e6b8ad5737a54e8eefab0e4fc7bfe496ba01
+	parent = 3a5209930000d9d988131fa6edfea4de036eecbf
+	method = merge
+	cmdver = 0.4.6
