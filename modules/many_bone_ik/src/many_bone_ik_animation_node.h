@@ -81,24 +81,41 @@ class AnimationNodeOpenXRHandIKBlend2 : public AnimationNodeBlend2 {
 	Ref<SceneTreeTimer> timer = memnew(SceneTreeTimer);
 	void _on_timer_timeout();
 	void update_ik_bones_transform();
-	void update_skeleton_bones_transform();
 	Vector<Ref<IKEffectorTemplate3D>> get_bone_effectors() const;
 	void set_constraint_name(int32_t p_index, String p_name);
 	void set_pin_count(int32_t p_value);
 	void set_constraint_count(int32_t p_count);
 	void _remove_pin(int32_t p_index);
 	void _set_bone_count(int32_t p_count);
+	void generate_default_segments(Ref<IKBoneSegment3D> p_segment, Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik);
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
 	bool _get(const StringName &p_name, Variant &r_ret) const;
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	static void _bind_methods();
-	virtual void skeleton_changed(Skeleton3D *skeleton);
+	virtual void _changed();
 	virtual void execute(real_t delta);
 	void _notification(int p_what);
 
 public:
+	Skeleton3D *get_skeleton() const {
+		return nullptr;
+	}
+	static Ref<IKBone3D> _create_next_bone(Ref<IKBoneSegment3D> p_segment, BoneId p_bone_id, String p_bone_name, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik) {
+		String bone_name = p_bone_name;
+		Ref<IKBone3D> next_bone = Ref<IKBone3D>(memnew(IKBone3D(bone_name, p_bone_id, p_current_tip, p_pins, p_many_bone_ik->get_default_damp(), p_many_bone_ik)));
+		p_segment->get_root_segment()->insert_bone(p_bone_id, next_bone);
+		return next_bone;
+	}
+	static bool _is_parent_of_tip(Skeleton3D *p_skeleton, Ref<IKBone3D> p_current_tip, BoneId p_tip_bone) {
+		ERR_FAIL_NULL_V(p_skeleton, false);
+		ERR_FAIL_COND_V(p_current_tip.is_null(), false);
+		ERR_FAIL_COND_V(p_tip_bone == -1, false);
+		return p_skeleton->get_bone_parent(p_current_tip->get_bone_id()) >= p_tip_bone && p_tip_bone != -1;
+	}
+
+	void _process_segment_children(Ref<IKBoneSegment3D> p_segment, Vector<BoneId> &r_children, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &r_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik);
 	double _process(const AnimationMixer::PlaybackInfo p_playback_info, bool p_test_only) override;
 	bool has_filter() const override;
 	String get_caption() const override;
@@ -113,11 +130,9 @@ public:
 	void set_constraint_mode(bool p_enabled);
 	bool get_constraint_mode() const;
 	bool get_pin_enabled(int32_t p_effector_index) const;
-	void set_skeleton_node_path(NodePath p_skeleton_node_path);
-	void register_skeleton();
+	void _register();
 	void reset_constraints();
 	NodePath get_skeleton_node_path();
-	Skeleton3D *get_skeleton() const;
 	Vector<Ref<IKBone3D>> get_bone_list() const;
 	Vector<Ref<IKBoneSegment3D>> get_segmented_skeletons();
 	float get_iterations_per_frame() const;

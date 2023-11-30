@@ -111,32 +111,6 @@ void AnimationNodeOpenXRHandIKBlend2::update_ik_bones_transform() {
 		}
 		Transform3D bone_origin_to_parent_origin = get_skeleton()->get_bone_pose(bone->get_bone_id());
 		bone->set_pose(bone_origin_to_parent_origin);
-		if (bone->is_pinned()) {
-			bone->get_pin()->update_target_global_transform(get_skeleton(), this);
-		}
-	}
-}
-
-void AnimationNodeOpenXRHandIKBlend2::update_skeleton_bones_transform() {
-	for (int32_t bone_i = bone_list.size(); bone_i-- > 0;) {
-		Ref<IKBone3D> bone = bone_list[bone_i];
-		if (bone.is_null()) {
-			continue;
-		}
-		BoneId bone_id = bone->get_bone_id();
-		if (bone_id == -1) {
-			continue;
-		}
-		Skeleton3D *p_skeleton = get_skeleton();
-		if (p_skeleton) {
-			Transform3D bone_to_parent = bone->get_pose();
-			p_skeleton->set_bone_pose_position(bone_id, bone_to_parent.origin);
-			if (!bone_to_parent.basis.is_finite()) {
-				bone_to_parent.basis = Basis();
-			}
-			p_skeleton->set_bone_pose_rotation(bone_id, bone_to_parent.basis.get_rotation_quaternion());
-			p_skeleton->set_bone_pose_scale(bone_id, bone_to_parent.basis.get_scale());
-		}
 	}
 }
 
@@ -421,10 +395,7 @@ void AnimationNodeOpenXRHandIKBlend2::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_direction_transform", "index"), &AnimationNodeOpenXRHandIKBlend2::get_bone_direction_transform);
 	ClassDB::bind_method(D_METHOD("set_bone_direction_transform", "index", "transform"), &AnimationNodeOpenXRHandIKBlend2::set_bone_direction_transform);
 	ClassDB::bind_method(D_METHOD("remove_constraint", "index"), &AnimationNodeOpenXRHandIKBlend2::remove_constraint);
-	ClassDB::bind_method(D_METHOD("set_skeleton_node_path", "path"), &AnimationNodeOpenXRHandIKBlend2::set_skeleton_node_path);
-	ClassDB::bind_method(D_METHOD("get_skeleton_node_path"), &AnimationNodeOpenXRHandIKBlend2::get_skeleton_node_path);
-	ClassDB::bind_method(D_METHOD("register_skeleton"), &AnimationNodeOpenXRHandIKBlend2::register_skeleton);
-	ClassDB::bind_method(D_METHOD("reset_constraints"), &AnimationNodeOpenXRHandIKBlend2::register_skeleton);
+	ClassDB::bind_method(D_METHOD("reset_constraints"), &AnimationNodeOpenXRHandIKBlend2::reset_constraints);
 	ClassDB::bind_method(D_METHOD("set_dirty"), &AnimationNodeOpenXRHandIKBlend2::set_dirty);
 	ClassDB::bind_method(D_METHOD("set_kusudama_limit_cone_radius", "index", "cone_index", "radius"), &AnimationNodeOpenXRHandIKBlend2::set_kusudama_limit_cone_radius);
 	ClassDB::bind_method(D_METHOD("get_kusudama_limit_cone_radius", "index", "cone_index"), &AnimationNodeOpenXRHandIKBlend2::get_kusudama_limit_cone_radius);
@@ -722,18 +693,8 @@ void AnimationNodeOpenXRHandIKBlend2::execute(real_t delta) {
 		set_dirty();
 	}
 	if (is_dirty) {
-		skeleton_changed(get_skeleton());
+		_changed();
 		is_dirty = false;
-	}
-	if (bone_list.size()) {
-		Ref<IKNode3D> root_ik_bone = bone_list.write[0]->get_ik_transform();
-		if (root_ik_bone.is_null()) {
-			return;
-		}
-		Skeleton3D *skeleton = get_skeleton();
-		godot_skeleton_transform.instantiate();
-		godot_skeleton_transform->set_transform(skeleton->get_transform());
-		godot_skeleton_transform_inverse = skeleton->get_transform().affine_inverse();
 	}
 	bool has_pins = false;
 	for (Ref<IKEffectorTemplate3D> pin : pins) {
@@ -760,10 +721,10 @@ void AnimationNodeOpenXRHandIKBlend2::execute(real_t delta) {
 			segmented_skeleton->segment_solver(bone_damp, get_default_damp(), get_constraint_mode(), i, get_iterations_per_frame());
 		}
 	}
-	update_skeleton_bones_transform();
 }
 
-void AnimationNodeOpenXRHandIKBlend2::skeleton_changed(Skeleton3D *p_skeleton) {
+void AnimationNodeOpenXRHandIKBlend2::_changed() {
+	Skeleton3D *p_skeleton = get_skeleton();
 	if (!p_skeleton) {
 		return;
 	}
@@ -775,10 +736,11 @@ void AnimationNodeOpenXRHandIKBlend2::skeleton_changed(Skeleton3D *p_skeleton) {
 	segmented_skeletons.clear();
 	for (BoneId root_bone_index : roots) {
 		StringName parentless_bone = p_skeleton->get_bone_name(root_bone_index);
-		Ref<IKBoneSegment3D> segmented_skeleton = Ref<IKBoneSegment3D>(memnew(IKBoneSegment3D(p_skeleton, parentless_bone, pins, this, nullptr, root_bone_index, -1, stabilize_passes)));
+		Ref<IKBoneSegment3D> segmented_skeleton = Ref<IKBoneSegment3D>(memnew(IKBoneSegment3D(parentless_bone, pins, this, nullptr, root_bone_index, -1, stabilize_passes)));
 		ik_origin.instantiate();
 		segmented_skeleton->get_root()->get_ik_transform()->set_parent(ik_origin);
-		segmented_skeleton->generate_default_segments(pins, root_bone_index, -1, this);
+		generate_default_segments(segmented_skeleton, pins, root_bone_index, -1, this);
+
 		Vector<Ref<IKBone3D>> new_bone_list;
 		segmented_skeleton->create_bone_list(new_bone_list, true, queue_debug_skeleton);
 		bone_list.append_array(new_bone_list);
@@ -875,25 +837,6 @@ int32_t AnimationNodeOpenXRHandIKBlend2::find_constraint(String p_string) const 
 	return -1;
 }
 
-Skeleton3D *AnimationNodeOpenXRHandIKBlend2::get_skeleton() const {
-	return nullptr;
-	// Node *node = get_node_or_null(skeleton_node_path);
-	// if (!node) {
-	// 	return nullptr;
-	// }
-	// return cast_to<Skeleton3D>(node);
-}
-
-NodePath AnimationNodeOpenXRHandIKBlend2::get_skeleton_node_path() {
-	return skeleton_node_path;
-}
-
-void AnimationNodeOpenXRHandIKBlend2::set_skeleton_node_path(NodePath p_skeleton_node_path) {
-	skeleton_node_path = p_skeleton_node_path;
-	register_skeleton();
-	set_dirty(); // Duplicated for ease of verification.
-}
-
 void AnimationNodeOpenXRHandIKBlend2::_notification(int p_what) {
 	switch (p_what) {
 		// case NOTIFICATION_READY: {
@@ -973,11 +916,14 @@ void AnimationNodeOpenXRHandIKBlend2::set_bone_direction_transform(int32_t p_ind
 }
 
 Transform3D AnimationNodeOpenXRHandIKBlend2::get_bone_direction_transform(int32_t p_index) const {
-	if (p_index < 0 || p_index >= constraint_names.size() || get_skeleton() == nullptr) {
+	if (p_index < 0 || p_index >= constraint_names.size()) {
 		return Transform3D();
 	}
 
 	String bone_name = constraint_names[p_index];
+	if (!get_skeleton()) {
+		return Transform3D();
+	}
 	int32_t bone_index = get_skeleton()->find_bone(bone_name);
 	for (const Ref<IKBoneSegment3D> &segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
@@ -998,14 +944,11 @@ Transform3D AnimationNodeOpenXRHandIKBlend2::get_constraint_orientation_transfor
 	if (!segmented_skeletons.size()) {
 		return Transform3D();
 	}
-	if (!get_skeleton()) {
-		return Transform3D();
-	}
 	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKBone3D> ik_bone = segmented_skeleton->find_ik_bone(bone_name);
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -1020,14 +963,11 @@ Transform3D AnimationNodeOpenXRHandIKBlend2::get_constraint_orientation_transfor
 void AnimationNodeOpenXRHandIKBlend2::set_constraint_orientation_transform(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
 	String bone_name = constraint_names[p_index];
-	if (!get_skeleton()) {
-		return;
-	}
 	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKBone3D> ik_bone = segmented_skeleton->find_ik_bone(bone_name);
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -1045,14 +985,11 @@ Transform3D AnimationNodeOpenXRHandIKBlend2::get_constraint_twist_transform(int3
 	if (!segmented_skeletons.size()) {
 		return Transform3D();
 	}
-	if (!get_skeleton()) {
-		return Transform3D();
-	}
 	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKBone3D> ik_bone = segmented_skeleton->find_ik_bone(bone_name);
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -1067,14 +1004,11 @@ Transform3D AnimationNodeOpenXRHandIKBlend2::get_constraint_twist_transform(int3
 void AnimationNodeOpenXRHandIKBlend2::set_constraint_twist_transform(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
 	String bone_name = constraint_names[p_index];
-	if (!get_skeleton()) {
-		return;
-	}
 	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKBone3D> ik_bone = segmented_skeleton->find_ik_bone(bone_name);
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -1092,7 +1026,7 @@ bool AnimationNodeOpenXRHandIKBlend2::get_pin_enabled(int32_t p_effector_index) 
 	return !effector_template->get_target_node().is_empty();
 }
 
-void AnimationNodeOpenXRHandIKBlend2::register_skeleton() {
+void AnimationNodeOpenXRHandIKBlend2::_register() {
 	if (!get_pin_count() && !get_constraint_count()) {
 		reset_constraints();
 	}
@@ -1100,17 +1034,14 @@ void AnimationNodeOpenXRHandIKBlend2::register_skeleton() {
 }
 
 void AnimationNodeOpenXRHandIKBlend2::reset_constraints() {
-	Skeleton3D *skeleton = get_skeleton();
-	if (skeleton) {
-		int32_t saved_pin_count = get_pin_count();
-		set_pin_count(0);
-		set_pin_count(saved_pin_count);
-		int32_t saved_constraint_count = constraint_names.size();
-		set_constraint_count(0);
-		set_constraint_count(saved_constraint_count);
-		_set_bone_count(0);
-		_set_bone_count(saved_constraint_count);
-	}
+	int32_t saved_pin_count = get_pin_count();
+	set_pin_count(0);
+	set_pin_count(saved_pin_count);
+	int32_t saved_constraint_count = constraint_names.size();
+	set_constraint_count(0);
+	set_constraint_count(saved_constraint_count);
+	_set_bone_count(0);
+	_set_bone_count(saved_constraint_count);
 	set_dirty();
 }
 
@@ -1155,10 +1086,7 @@ void AnimationNodeOpenXRHandIKBlend2::set_kusudama_resistance(int32_t p_index, r
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		if (!get_skeleton()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKBone3D> ik_bone = segmented_skeleton->find_ik_bone(bone_name);
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -1166,17 +1094,6 @@ void AnimationNodeOpenXRHandIKBlend2::set_kusudama_resistance(int32_t p_index, r
 			continue;
 		}
 		ik_bone->get_constraint()->set_resistance(p_resistance);
-		Skeleton3D *p_skeleton = get_skeleton();
-		if (p_skeleton) {
-			BoneId bone_id = ik_bone->get_bone_id();
-			Transform3D bone_to_parent = ik_bone->get_pose();
-			p_skeleton->set_bone_pose_position(bone_id, bone_to_parent.origin);
-			if (!bone_to_parent.basis.is_finite()) {
-				bone_to_parent.basis = Basis();
-			}
-			p_skeleton->set_bone_pose_rotation(bone_id, bone_to_parent.basis.get_rotation_quaternion());
-			p_skeleton->set_bone_pose_scale(bone_id, bone_to_parent.basis.get_scale());
-		}
 		break;
 	}
 	set_dirty();
@@ -1209,10 +1126,7 @@ real_t AnimationNodeOpenXRHandIKBlend2::get_kusudama_twist_current(int32_t p_ind
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		if (!get_skeleton()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKBone3D> ik_bone = segmented_skeleton->find_ik_bone(bone_name);
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -1231,10 +1145,7 @@ void AnimationNodeOpenXRHandIKBlend2::set_kusudama_twist_current(int32_t p_index
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		if (!get_skeleton()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKBone3D> ik_bone = segmented_skeleton->find_ik_bone(bone_name);
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -1242,19 +1153,6 @@ void AnimationNodeOpenXRHandIKBlend2::set_kusudama_twist_current(int32_t p_index
 			continue;
 		}
 		ik_bone->get_constraint()->set_current_twist_rotation(ik_bone->get_ik_transform(), ik_bone->get_bone_direction_transform(), ik_bone->get_constraint_twist_transform(), p_rotation);
-
-		Skeleton3D *p_skeleton = get_skeleton();
-		if (p_skeleton) {
-			BoneId bone_id = ik_bone->get_bone_id();
-			Transform3D bone_to_parent = ik_bone->get_pose();
-			p_skeleton->set_bone_pose_position(bone_id, bone_to_parent.origin);
-			if (!bone_to_parent.basis.is_finite()) {
-				bone_to_parent.basis = Basis();
-			}
-			p_skeleton->set_bone_pose_rotation(bone_id, bone_to_parent.basis.get_rotation_quaternion());
-			p_skeleton->set_bone_pose_scale(bone_id, bone_to_parent.basis.get_scale());
-			notify_property_list_changed();
-		}
 	}
 }
 
@@ -1286,4 +1184,52 @@ bool AnimationNodeOpenXRHandIKBlend2::has_filter() const {
 
 String AnimationNodeOpenXRHandIKBlend2::get_caption() const {
 	return "IKBlend2";
+}
+
+void AnimationNodeOpenXRHandIKBlend2::generate_default_segments(Ref<IKBoneSegment3D> p_segment, Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik) {
+	Ref<IKBone3D> current_tip = p_segment->get_root();
+	Vector<BoneId> children;
+
+	while (!_is_parent_of_tip(get_skeleton(), current_tip, p_tip_bone)) {
+		if (get_skeleton()) {
+			children = get_skeleton()->get_bone_children(current_tip->get_bone_id());
+		} else {
+			children.clear();
+		}
+
+		if (children.is_empty() || p_segment->_has_multiple_children_or_pinned(children, current_tip)) {
+			_process_segment_children(p_segment, children, current_tip, p_pins, p_root_bone, p_tip_bone, p_many_bone_ik);
+			break;
+		} else {
+			Vector<BoneId>::Iterator bone_id_iterator = children.begin();
+			String bone_name;
+			if (get_skeleton()) {
+				bone_name = get_skeleton()->get_bone_name(*bone_id_iterator);
+			}
+			current_tip = _create_next_bone(p_segment, *bone_id_iterator, bone_name, current_tip, p_pins, p_many_bone_ik);
+		}
+	}
+
+	p_segment->_finalize_segment(current_tip);
+}
+
+void AnimationNodeOpenXRHandIKBlend2::_process_segment_children(Ref<IKBoneSegment3D> p_segment, Vector<BoneId> &r_children, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &r_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik) {
+	p_segment->set_tip(p_current_tip);
+	Ref<IKBoneSegment3D> parent(p_segment);
+
+	for (int32_t child_i = 0; child_i < r_children.size(); child_i++) {
+		BoneId child_bone = r_children[child_i];
+		Ref<IKBone3D> ik_bone = parent->get_ik_bone(child_bone);
+		if (ik_bone.is_null()) {
+			continue;
+		}
+		String child_name = ik_bone->get_name();
+		Ref<IKBoneSegment3D> child_segment = p_segment->_create_child_segment(child_name, r_pins, p_root_bone, p_tip_bone, p_many_bone_ik, parent);
+
+		generate_default_segments(child_segment, r_pins, p_root_bone, p_tip_bone, p_many_bone_ik);
+		if (child_segment->has_pinned_descendants()) {
+			p_segment->enable_pinned_descendants();
+			p_segment->get_child_segments().push_back(child_segment);
+		}
+	}
 }

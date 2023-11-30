@@ -71,7 +71,6 @@ public:
 	real_t get_weight() const;
 	void set_direction_priorities(Vector3 p_direction_priorities);
 	Vector3 get_direction_priorities() const;
-	void update_target_global_transform(Skeleton3D *p_skeleton, AnimationNodeOpenXRHandIKBlend2 *p_modification = nullptr);
 	const float MAX_KUSUDAMA_LIMIT_CONES = 30;
 	float get_passthrough_factor() const;
 	void set_passthrough_factor(float p_passthrough_factor);

@@ -58,12 +58,9 @@ class IKBoneSegment3D : public Resource {
 	PackedVector3Array tip_headings;
 	PackedVector3Array tip_headings_uniform;
 	Vector<double> heading_weights;
-	Skeleton3D *skeleton = nullptr;
 	bool pinned_descendants = false;
 	double previous_deviation = INFINITY;
 	int32_t default_stabilizing_pass_count = 0; // Move to the stabilizing pass to the ik solver. Set it free.
-	bool has_pinned_descendants();
-	void enable_pinned_descendants();
 	void update_target_headings(Ref<IKBone3D> p_for_bone, Vector<double> *r_weights, PackedVector3Array *r_htarget);
 	void update_tip_headings(Ref<IKBone3D> p_for_bone, PackedVector3Array *r_heading_tip);
 	void set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVector3Array *r_htip, PackedVector3Array *r_heading_tip, Vector<double> *r_weights, float p_dampening = -1, bool p_translate = false, bool p_constraint_mode = false, int32_t current_iteration = 0, int32_t total_iterations = 0);
@@ -71,17 +68,29 @@ class IKBoneSegment3D : public Resource {
 	void update_optimal_rotation(Ref<IKBone3D> p_for_bone, double p_damp, bool p_translate, bool p_constraint_mode, int32_t current_iteration, int32_t total_iterations);
 	float get_manual_msd(const PackedVector3Array &r_htip, const PackedVector3Array &r_htarget, const Vector<double> &p_weights);
 	HashMap<BoneId, Ref<IKBone3D>> bone_map;
-	bool _is_parent_of_tip(Ref<IKBone3D> p_current_tip, BoneId p_tip_bone);
-	bool _has_multiple_children_or_pinned(Vector<BoneId> &r_children, Ref<IKBone3D> p_current_tip);
-	void _process_children(Vector<BoneId> &r_children, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &r_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik);
-	Ref<IKBoneSegment3D> _create_child_segment(String &p_child_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik, Ref<IKBoneSegment3D> &p_parent);
-	Ref<IKBone3D> _create_next_bone(BoneId p_bone_id, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik);
-	void _finalize_segment(Ref<IKBone3D> p_current_tip);
 
 protected:
 	static void _bind_methods();
 
 public:
+	void set_tip(Ref<IKBone3D> p_tip) {
+		tip = p_tip;
+	}
+	Vector<Ref<IKBoneSegment3D>> get_child_segments() {
+		return child_segments;
+	}
+	bool has_pinned_descendants();
+	void enable_pinned_descendants();
+	void insert_bone(int32_t p_bone_id, Ref<IKBone3D> p_next_bone) {
+		bone_map[p_bone_id] = p_next_bone;
+	}
+	Ref<IKBoneSegment3D> get_root_segment() const {
+		return root_segment;
+	}
+	bool _has_multiple_children_or_pinned(Vector<BoneId> &r_children, Ref<IKBone3D> p_current_tip);
+	Ref<IKBoneSegment3D> _create_child_segment(String &p_child_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik, Ref<IKBoneSegment3D> &p_parent);
+	bool _is_parent_of_tip(Skeleton3D p_skeleton, Ref<IKBone3D> p_current_tip, BoneId p_tip_bone);
+	void _finalize_segment(Ref<IKBone3D> p_current_tip);
 	const double evec_prec = static_cast<double>(1E-6);
 	void update_pinned_list(Vector<Vector<double>> &r_weights);
 	static Quaternion clamp_to_quadrance_angle(Quaternion p_quat, double p_cos_half_angle);
@@ -95,10 +104,10 @@ public:
 	Vector<Ref<IKBoneSegment3D>> get_child_segments() const;
 	void create_bone_list(Vector<Ref<IKBone3D>> &p_list, bool p_recursive = false, bool p_debug_skeleton = false) const;
 	Ref<IKBone3D> get_ik_bone(BoneId p_bone) const;
+	Ref<IKBone3D> find_ik_bone(String p_bone_name) const;
 	void update_returnfulness_damp(int32_t p_iterations);
-	void generate_default_segments(Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik);
 	IKBoneSegment3D() {}
-	IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent = nullptr,
+	IKBoneSegment3D(StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent = nullptr,
 			BoneId root = -1, BoneId tip = -1, int32_t p_stabilizing_pass_count = 0);
 	~IKBoneSegment3D() {}
 };
