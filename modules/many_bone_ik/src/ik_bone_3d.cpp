@@ -53,44 +53,6 @@ void IKBone3D::set_parent(const Ref<IKBone3D> &p_parent) {
 	}
 }
 
-void IKBone3D::update_default_bone_direction_transform(Skeleton3D *p_skeleton) {
-	Vector3 child_centroid;
-	int child_count = 0;
-
-	for (Ref<IKBone3D> &ik_bone : children) {
-		child_centroid += ik_bone->get_ik_transform()->get_global_transform().origin;
-		child_count++;
-	}
-
-	if (child_count > 0) {
-		child_centroid /= child_count;
-	} else {
-		const PackedInt32Array &bone_children = p_skeleton->get_bone_children(bone_id);
-		for (BoneId child_bone_idx : bone_children) {
-			child_centroid += p_skeleton->get_bone_global_pose(child_bone_idx).origin;
-		}
-		child_centroid /= bone_children.size();
-	}
-
-	const Vector3 &godot_bone_origin = godot_skeleton_aligned_transform->get_global_transform().origin;
-	child_centroid -= godot_bone_origin;
-
-	if (Math::is_zero_approx(child_centroid.length_squared())) {
-		if (parent.is_valid()) {
-			child_centroid = parent->get_bone_direction_transform()->get_global_transform().basis.get_column(Vector3::AXIS_Y);
-		} else {
-			child_centroid = get_bone_direction_transform()->get_global_transform().basis.get_column(Vector3::AXIS_Y);
-		}
-	}
-
-	if (!Math::is_zero_approx(child_centroid.length_squared()) && (children.size() || p_skeleton->get_bone_children(bone_id).size())) {
-		child_centroid.normalize();
-		Vector3 bone_direction = bone_direction_transform->get_global_transform().basis.get_column(Vector3::AXIS_Y);
-		bone_direction.normalize();
-		bone_direction_transform->rotate_local_with_global(Quaternion(child_centroid, bone_direction));
-	}
-}
-
 void IKBone3D::update_default_constraint_transform() {
 	Ref<IKBone3D> parent_bone = get_parent();
 	if (parent_bone.is_valid()) {
@@ -275,10 +237,6 @@ Ref<IKNode3D> IKBone3D::get_constraint_twist_transform() {
 
 void IKBone3D::set_constraint_orientation_transform(Ref<IKNode3D> p_transform) {
 	constraint_orientation_transform = p_transform;
-}
-
-void IKBone3D::set_bone_direction_transform(Ref<IKNode3D> p_bone_direction) {
-	bone_direction_transform = p_bone_direction;
 }
 
 Ref<IKNode3D> IKBone3D::get_bone_direction_transform() {

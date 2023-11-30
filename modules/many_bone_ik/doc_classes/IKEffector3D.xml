@@ -16,7 +16,7 @@
 		</method>
 		<method name="set_target_transform_3d">
 			<return type="void" />
-			<param index="0" name="transform_3d" type="Transform3D" />
+			<param index="0" name="target_relative_to_skeleton_origin" type="Transform3D" />
 			<description>
 			</description>
 		</method>

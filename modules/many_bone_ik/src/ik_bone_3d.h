@@ -102,8 +102,6 @@ public:
 	bool is_orientationally_constrained();
 	Transform3D get_bone_direction_global_pose() const;
 	Ref<IKNode3D> get_bone_direction_transform();
-	void set_bone_direction_transform(Ref<IKNode3D> p_bone_direction);
-	void update_default_bone_direction_transform(Skeleton3D *p_skeleton);
 	void set_constraint_orientation_transform(Ref<IKNode3D> p_transform);
 	Ref<IKNode3D> get_constraint_orientation_transform();
 	Ref<IKNode3D> get_constraint_twist_transform();

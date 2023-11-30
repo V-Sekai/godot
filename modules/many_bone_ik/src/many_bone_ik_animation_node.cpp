@@ -788,9 +788,6 @@ void AnimationNodeOpenXRHandIKBlend2::skeleton_changed(Skeleton3D *p_skeleton) {
 		segmented_skeletons.push_back(segmented_skeleton);
 	}
 	update_ik_bones_transform();
-	for (Ref<IKBone3D> &ik_bone_3d : bone_list) {
-		ik_bone_3d->update_default_bone_direction_transform(p_skeleton);
-	}
 	for (int constraint_i = 0; constraint_i < constraint_count; ++constraint_i) {
 		String bone = constraint_names[constraint_i];
 		BoneId bone_id = p_skeleton->find_bone(bone);
