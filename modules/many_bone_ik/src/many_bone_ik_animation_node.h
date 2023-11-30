@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MANY_BONE_IK_3D_H
-#define MANY_BONE_IK_3D_H
+#ifndef MANY_BONE_IK_ANIMATION_NODE_H
+#define MANY_BONE_IK_ANIMATION_NODE_H
 
 #include "core/math/math_defs.h"
 #include "core/math/transform_3d.h"
@@ -170,4 +170,4 @@ public:
 	void set_dirty();
 };
 
-#endif // MANY_BONE_IK_3D_H
+#endif // MANY_BONE_IK_ANIMATION_NODE_H
