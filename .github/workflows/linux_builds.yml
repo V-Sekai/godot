@@ -124,6 +124,9 @@ jobs:
         if: '!matrix.legacy-scons'
         uses: ./.github/actions/godot-deps
 
+      - name: Install YASM
+        run: sudo apt-get update && sudo apt-get install -y yasm
+
       - name: Setup Python and SCons (legacy versions)
         if: matrix.legacy-scons
         uses: ./.github/actions/godot-deps

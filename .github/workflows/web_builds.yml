@@ -62,6 +62,9 @@ jobs:
       - name: Setup Python and SCons
         uses: ./.github/actions/godot-deps
 
+      - name: Install YASM
+        run: sudo apt-get update && sudo apt-get install -y yasm
+
       - name: Compilation
         uses: ./.github/actions/godot-build
         with:

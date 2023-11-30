@@ -30,6 +30,9 @@ jobs:
       - name: Setup Python and SCons
         uses: ./.github/actions/godot-deps
 
+      - name: Install YASM
+        run: brew install yasm
+
       - name: Compilation (arm64)
         uses: ./.github/actions/godot-build
         with:
