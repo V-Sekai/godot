@@ -99,9 +99,9 @@ protected:
 	void _notification(int p_what);
 
 public:
-	double _process(const AnimationMixer::PlaybackInfo p_playback_info, bool p_test_only);
-	bool has_filter() const;
-	String get_caption() const;
+	double _process(const AnimationMixer::PlaybackInfo p_playback_info, bool p_test_only) override;
+	bool has_filter() const override;
+	String get_caption() const override;
 	void set_pin_bone_name(int32_t p_effector_index, StringName p_name) const;
 	void add_constraint();
 	void set_stabilization_passes(int32_t p_passes);
