@@ -496,8 +496,6 @@ void AnimationNodeIKBlend2::_bind_methods() {
 }
 
 AnimationNodeIKBlend2::AnimationNodeIKBlend2() {
-	add_input("in");
-	add_input("target");
 }
 
 AnimationNodeIKBlend2::~AnimationNodeIKBlend2() {
