@@ -134,11 +134,6 @@
 			<description>
 			</description>
 		</method>
-		<method name="register_skeleton">
-			<return type="void" />
-			<description>
-			</description>
-		</method>
 		<method name="remove_constraint">
 			<return type="void" />
 			<param index="0" name="index" type="int" />
@@ -281,8 +276,6 @@
 			The default maximum number of radians a bone is allowed to rotate per solver iteration. The lower this value, the more natural the pose results. However, this will increase the number of iterations_per_frame the solver requires to converge.
 		</member>
 		<member name="iterations_per_frame" type="float" setter="set_iterations_per_frame" getter="get_iterations_per_frame" default="10.0">
-		</member>
-		<member name="skeleton_node_path" type="NodePath" setter="set_skeleton_node_path" getter="get_skeleton_node_path" default="NodePath(&quot;..&quot;)">
 		</member>
 		<member name="stabilization_passes" type="int" setter="set_stabilization_passes" getter="get_stabilization_passes" default="4">
 		</member>
