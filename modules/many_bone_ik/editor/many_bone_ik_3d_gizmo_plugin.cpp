@@ -58,11 +58,11 @@ void ManyBoneIK3DGizmoPlugin::_bind_methods() {
 }
 
 bool ManyBoneIK3DGizmoPlugin::has_gizmo(Node3D *p_spatial) {
-	return cast_to<AnimationNodeIK>(p_spatial);
+	return cast_to<AnimationNodeIKBlend2>(p_spatial);
 }
 
 String ManyBoneIK3DGizmoPlugin::get_gizmo_name() const {
-	return "AnimationNodeIK";
+	return "AnimationNodeIKBlend2";
 }
 
 void ManyBoneIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
@@ -78,9 +78,9 @@ void ManyBoneIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 	}
 	p_gizmo->clear();
 	Node *root = node_3d->get_tree()->get_edited_scene_root();
-	TypedArray<Node> nodes = root->find_children("*", "AnimationNodeIK");
+	TypedArray<Node> nodes = root->find_children("*", "AnimationNodeIKBlend2");
 	for (int32_t node_i = 0; node_i < nodes.size(); node_i++) {
-		AnimationNodeIK *many_bone_ik = cast_to<AnimationNodeIK>(nodes[node_i]);
+		AnimationNodeIKBlend2 *many_bone_ik = cast_to<AnimationNodeIKBlend2>(nodes[node_i]);
 		if (!many_bone_ik) {
 			return;
 		}
@@ -122,7 +122,7 @@ void ManyBoneIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 	}
 }
 
-void ManyBoneIK3DGizmoPlugin::create_gizmo_mesh(BoneId current_bone_idx, Ref<IKBone3D> ik_bone, EditorNode3DGizmo *p_gizmo, Color current_bone_color, Skeleton3D *many_bone_ik_skeleton,AnimationNodeIK *p_many_bone_ik) {
+void ManyBoneIK3DGizmoPlugin::create_gizmo_mesh(BoneId current_bone_idx, Ref<IKBone3D> ik_bone, EditorNode3DGizmo *p_gizmo, Color current_bone_color, Skeleton3D *many_bone_ik_skeleton,AnimationNodeIKBlend2 *p_many_bone_ik) {
 	Ref<IKKusudama3D> ik_kusudama = ik_bone->get_constraint();
 	if (ik_kusudama.is_null()) {
 		return;

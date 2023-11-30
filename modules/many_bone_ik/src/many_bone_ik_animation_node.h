@@ -44,8 +44,8 @@
 #include "editor/editor_undo_redo_manager.h"
 #endif
 
-class AnimationNodeIK : public AnimationNodeBlend2 {
-	GDCLASS(AnimationNodeIK, AnimationNodeBlend2);
+class AnimationNodeIKBlend2 : public AnimationNodeBlend2 {
+	GDCLASS(AnimationNodeIKBlend2, AnimationNodeBlend2);
 
 private:
 	StringName comfortable_animation;
@@ -115,7 +115,7 @@ public:
 		return Variant();
 	}
 	String get_caption() const {
-		return "IK";
+		return "IKBlend2";
 	}
 	void set_stabilization_passes(int32_t p_passes) {
 		for (Ref<IKBoneSegment3D> segment : segmented_skeletons) {
@@ -213,8 +213,8 @@ public:
 	int32_t get_bone_count() const;
 	void set_bone_damp(int32_t p_index, real_t p_damp);
 	real_t get_bone_damp(int32_t p_index) const;
-	AnimationNodeIK();
-	~AnimationNodeIK();
+	AnimationNodeIKBlend2();
+	~AnimationNodeIKBlend2();
 	void set_dirty();
 };
 

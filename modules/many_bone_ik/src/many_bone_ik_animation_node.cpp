@@ -38,7 +38,7 @@
 #include "editor/editor_node.h"
 #endif
 
-void AnimationNodeIK::_set_pin_count(int32_t p_value) {
+void AnimationNodeIKBlend2::_set_pin_count(int32_t p_value) {
 	int32_t old_count = pins.size();
 	pin_count = p_value;
 	pins.resize(p_value);
@@ -48,11 +48,11 @@ void AnimationNodeIK::_set_pin_count(int32_t p_value) {
 	set_dirty();
 }
 
-int32_t AnimationNodeIK::get_pin_count() const {
+int32_t AnimationNodeIKBlend2::get_pin_count() const {
 	return pin_count;
 }
 
-void AnimationNodeIK::set_pin_bone(int32_t p_pin_index, const String &p_bone) {
+void AnimationNodeIKBlend2::set_pin_bone(int32_t p_pin_index, const String &p_bone) {
 	ERR_FAIL_INDEX(p_pin_index, pins.size());
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	if (effector_template.is_null()) {
@@ -63,7 +63,7 @@ void AnimationNodeIK::set_pin_bone(int32_t p_pin_index, const String &p_bone) {
 	set_dirty();
 }
 
-void AnimationNodeIK::set_pin_target_nodepath(int32_t p_pin_index, const NodePath &p_target_node) {
+void AnimationNodeIKBlend2::set_pin_target_nodepath(int32_t p_pin_index, const NodePath &p_target_node) {
 	ERR_FAIL_INDEX(p_pin_index, pins.size());
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	if (effector_template.is_null()) {
@@ -74,17 +74,17 @@ void AnimationNodeIK::set_pin_target_nodepath(int32_t p_pin_index, const NodePat
 	set_dirty();
 }
 
-NodePath AnimationNodeIK::get_pin_target_nodepath(int32_t p_pin_index) {
+NodePath AnimationNodeIKBlend2::get_pin_target_nodepath(int32_t p_pin_index) {
 	ERR_FAIL_INDEX_V(p_pin_index, pins.size(), NodePath());
 	const Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	return effector_template->get_target_node();
 }
 
-Vector<Ref<IKEffectorTemplate3D>> AnimationNodeIK::get_bone_effectors() const {
+Vector<Ref<IKEffectorTemplate3D>> AnimationNodeIKBlend2::get_bone_effectors() const {
 	return pins;
 }
 
-void AnimationNodeIK::_remove_pin(int32_t p_index) {
+void AnimationNodeIKBlend2::_remove_pin(int32_t p_index) {
 	ERR_FAIL_INDEX(p_index, pins.size());
 	pins.remove_at(p_index);
 	pin_count--;
@@ -92,7 +92,7 @@ void AnimationNodeIK::_remove_pin(int32_t p_index) {
 	set_dirty();
 }
 
-void AnimationNodeIK::update_ik_bones_transform() {
+void AnimationNodeIKBlend2::update_ik_bones_transform() {
 	for (int32_t bone_i = bone_list.size(); bone_i-- > 0;) {
 		Ref<IKBone3D> bone = bone_list[bone_i];
 		if (bone.is_null()) {
@@ -105,7 +105,7 @@ void AnimationNodeIK::update_ik_bones_transform() {
 	}
 }
 
-void AnimationNodeIK::update_skeleton_bones_transform() {
+void AnimationNodeIKBlend2::update_skeleton_bones_transform() {
 	for (int32_t bone_i = bone_list.size(); bone_i-- > 0;) {
 		Ref<IKBone3D> bone = bone_list[bone_i];
 		if (bone.is_null()) {
@@ -118,7 +118,7 @@ void AnimationNodeIK::update_skeleton_bones_transform() {
 	}
 }
 
-void AnimationNodeIK::_get_property_list(List<PropertyInfo> *p_list) const {
+void AnimationNodeIKBlend2::_get_property_list(List<PropertyInfo> *p_list) const {
 	RBSet<String> existing_pins;
 	for (int32_t pin_i = 0; pin_i < get_pin_count(); pin_i++) {
 		const String bone_name = get_pin_bone_name(pin_i);
@@ -248,7 +248,7 @@ void AnimationNodeIK::_get_property_list(List<PropertyInfo> *p_list) const {
 	}
 }
 
-bool AnimationNodeIK::_get(const StringName &p_name, Variant &r_ret) const {
+bool AnimationNodeIKBlend2::_get(const StringName &p_name, Variant &r_ret) const {
 	String current_name = p_name;
 	if (current_name == "constraint_count") {
 		r_ret = get_constraint_count();
@@ -339,7 +339,7 @@ bool AnimationNodeIK::_get(const StringName &p_name, Variant &r_ret) const {
 	return false;
 }
 
-bool AnimationNodeIK::_set(const StringName &p_name, const Variant &p_value) {
+bool AnimationNodeIKBlend2::_set(const StringName &p_name, const Variant &p_value) {
 	String current_name = p_name;
 	if (current_name == "constraint_count") {
 		_set_constraint_count(p_value);
@@ -430,59 +430,59 @@ bool AnimationNodeIK::_set(const StringName &p_name, const Variant &p_value) {
 	return false;
 }
 
-void AnimationNodeIK::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_constraint_twist_transform", "index"), &AnimationNodeIK::get_constraint_twist_transform);
-	ClassDB::bind_method(D_METHOD("set_constraint_twist_transform", "index", "transform"), &AnimationNodeIK::set_constraint_twist_transform);
-	ClassDB::bind_method(D_METHOD("get_constraint_orientation_transform", "index"), &AnimationNodeIK::get_constraint_orientation_transform);
-	ClassDB::bind_method(D_METHOD("set_constraint_orientation_transform", "index", "transform"), &AnimationNodeIK::set_constraint_orientation_transform);
-	ClassDB::bind_method(D_METHOD("get_bone_direction_transform", "index"), &AnimationNodeIK::get_bone_direction_transform);
-	ClassDB::bind_method(D_METHOD("set_bone_direction_transform", "index", "transform"), &AnimationNodeIK::set_bone_direction_transform);
-	ClassDB::bind_method(D_METHOD("get_pin_enabled", "index"), &AnimationNodeIK::get_pin_enabled);
-	ClassDB::bind_method(D_METHOD("remove_constraint", "index"), &AnimationNodeIK::remove_constraint);
-	ClassDB::bind_method(D_METHOD("set_skeleton_node_path", "path"), &AnimationNodeIK::set_skeleton_node_path);
-	ClassDB::bind_method(D_METHOD("get_skeleton_node_path"), &AnimationNodeIK::get_skeleton_node_path);
-	ClassDB::bind_method(D_METHOD("register_skeleton"), &AnimationNodeIK::register_skeleton);
-	ClassDB::bind_method(D_METHOD("reset_constraints"), &AnimationNodeIK::register_skeleton);
-	ClassDB::bind_method(D_METHOD("set_pin_weight", "index", "weight"), &AnimationNodeIK::set_pin_weight);
-	ClassDB::bind_method(D_METHOD("get_pin_weight", "index"), &AnimationNodeIK::get_pin_weight);
-	ClassDB::bind_method(D_METHOD("set_dirty"), &AnimationNodeIK::set_dirty);
-	ClassDB::bind_method(D_METHOD("set_kusudama_limit_cone_radius", "index", "cone_index", "radius"), &AnimationNodeIK::set_kusudama_limit_cone_radius);
-	ClassDB::bind_method(D_METHOD("get_kusudama_limit_cone_radius", "index", "cone_index"), &AnimationNodeIK::get_kusudama_limit_cone_radius);
-	ClassDB::bind_method(D_METHOD("set_kusudama_limit_cone_center", "index", "cone_index", "center"), &AnimationNodeIK::set_kusudama_limit_cone_center);
-	ClassDB::bind_method(D_METHOD("get_kusudama_limit_cone_center", "index", "cone_index"), &AnimationNodeIK::get_kusudama_limit_cone_center);
-	ClassDB::bind_method(D_METHOD("set_kusudama_limit_cone_count", "index", "count"), &AnimationNodeIK::set_kusudama_limit_cone_count);
-	ClassDB::bind_method(D_METHOD("get_kusudama_limit_cone_count", "index"), &AnimationNodeIK::get_kusudama_limit_cone_count);
-	ClassDB::bind_method(D_METHOD("set_kusudama_twist", "index", "limit"), &AnimationNodeIK::set_kusudama_twist);
-	ClassDB::bind_method(D_METHOD("get_kusudama_twist", "index"), &AnimationNodeIK::get_kusudama_twist);
-	ClassDB::bind_method(D_METHOD("set_pin_passthrough_factor", "index", "falloff"), &AnimationNodeIK::set_pin_passthrough_factor);
-	ClassDB::bind_method(D_METHOD("get_pin_passthrough_factor", "index"), &AnimationNodeIK::get_pin_passthrough_factor);
-	ClassDB::bind_method(D_METHOD("get_constraint_name", "index"), &AnimationNodeIK::get_constraint_name);
-	ClassDB::bind_method(D_METHOD("get_iterations_per_frame"), &AnimationNodeIK::get_iterations_per_frame);
-	ClassDB::bind_method(D_METHOD("set_iterations_per_frame", "count"), &AnimationNodeIK::set_iterations_per_frame);
-	ClassDB::bind_method(D_METHOD("find_constraint", "name"), &AnimationNodeIK::find_constraint);
-	ClassDB::bind_method(D_METHOD("get_constraint_count"), &AnimationNodeIK::get_constraint_count);
-	ClassDB::bind_method(D_METHOD("get_pin_count"), &AnimationNodeIK::get_pin_count);
-	ClassDB::bind_method(D_METHOD("get_pin_bone_name", "index"), &AnimationNodeIK::get_pin_bone_name);
-	ClassDB::bind_method(D_METHOD("get_pin_direction_priorities", "index"), &AnimationNodeIK::get_pin_direction_priorities);
-	ClassDB::bind_method(D_METHOD("set_pin_direction_priorities", "index", "priority"), &AnimationNodeIK::set_pin_direction_priorities);
-	ClassDB::bind_method(D_METHOD("queue_print_skeleton"), &AnimationNodeIK::queue_print_skeleton);
-	ClassDB::bind_method(D_METHOD("get_default_damp"), &AnimationNodeIK::get_default_damp);
-	ClassDB::bind_method(D_METHOD("set_default_damp", "damp"), &AnimationNodeIK::set_default_damp);
-	ClassDB::bind_method(D_METHOD("get_pin_nodepath", "index"), &AnimationNodeIK::get_pin_nodepath);
-	ClassDB::bind_method(D_METHOD("set_pin_nodepath", "index", "nodepath"), &AnimationNodeIK::set_pin_nodepath);
-	ClassDB::bind_method(D_METHOD("get_bone_count"), &AnimationNodeIK::get_bone_count);
-	ClassDB::bind_method(D_METHOD("set_constraint_mode", "enabled"), &AnimationNodeIK::set_constraint_mode);
-	ClassDB::bind_method(D_METHOD("get_constraint_mode"), &AnimationNodeIK::get_constraint_mode);
-	ClassDB::bind_method(D_METHOD("set_ui_selected_bone", "bone"), &AnimationNodeIK::set_ui_selected_bone);
-	ClassDB::bind_method(D_METHOD("get_ui_selected_bone"), &AnimationNodeIK::get_ui_selected_bone);
-	ClassDB::bind_method(D_METHOD("set_twist_constraint_defaults", "defaults"), &AnimationNodeIK::set_twist_constraint_defaults);
-	ClassDB::bind_method(D_METHOD("get_twist_constraint_defaults"), &AnimationNodeIK::get_twist_constraint_defaults);
-	ClassDB::bind_method(D_METHOD("set_orientation_constraint_defaults", "defaults"), &AnimationNodeIK::set_orientation_constraint_defaults);
-	ClassDB::bind_method(D_METHOD("get_orientation_constraint_defaults"), &AnimationNodeIK::get_orientation_constraint_defaults);
-	ClassDB::bind_method(D_METHOD("set_bone_direction_constraint_defaults", "defaults"), &AnimationNodeIK::set_bone_direction_constraint_defaults);
-	ClassDB::bind_method(D_METHOD("get_bone_direction_constraint_defaults"), &AnimationNodeIK::get_bone_direction_constraint_defaults);
-	ClassDB::bind_method(D_METHOD("set_stabilization_passes", "passes"), &AnimationNodeIK::set_stabilization_passes);
-	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &AnimationNodeIK::get_stabilization_passes);
+void AnimationNodeIKBlend2::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_constraint_twist_transform", "index"), &AnimationNodeIKBlend2::get_constraint_twist_transform);
+	ClassDB::bind_method(D_METHOD("set_constraint_twist_transform", "index", "transform"), &AnimationNodeIKBlend2::set_constraint_twist_transform);
+	ClassDB::bind_method(D_METHOD("get_constraint_orientation_transform", "index"), &AnimationNodeIKBlend2::get_constraint_orientation_transform);
+	ClassDB::bind_method(D_METHOD("set_constraint_orientation_transform", "index", "transform"), &AnimationNodeIKBlend2::set_constraint_orientation_transform);
+	ClassDB::bind_method(D_METHOD("get_bone_direction_transform", "index"), &AnimationNodeIKBlend2::get_bone_direction_transform);
+	ClassDB::bind_method(D_METHOD("set_bone_direction_transform", "index", "transform"), &AnimationNodeIKBlend2::set_bone_direction_transform);
+	ClassDB::bind_method(D_METHOD("get_pin_enabled", "index"), &AnimationNodeIKBlend2::get_pin_enabled);
+	ClassDB::bind_method(D_METHOD("remove_constraint", "index"), &AnimationNodeIKBlend2::remove_constraint);
+	ClassDB::bind_method(D_METHOD("set_skeleton_node_path", "path"), &AnimationNodeIKBlend2::set_skeleton_node_path);
+	ClassDB::bind_method(D_METHOD("get_skeleton_node_path"), &AnimationNodeIKBlend2::get_skeleton_node_path);
+	ClassDB::bind_method(D_METHOD("register_skeleton"), &AnimationNodeIKBlend2::register_skeleton);
+	ClassDB::bind_method(D_METHOD("reset_constraints"), &AnimationNodeIKBlend2::register_skeleton);
+	ClassDB::bind_method(D_METHOD("set_pin_weight", "index", "weight"), &AnimationNodeIKBlend2::set_pin_weight);
+	ClassDB::bind_method(D_METHOD("get_pin_weight", "index"), &AnimationNodeIKBlend2::get_pin_weight);
+	ClassDB::bind_method(D_METHOD("set_dirty"), &AnimationNodeIKBlend2::set_dirty);
+	ClassDB::bind_method(D_METHOD("set_kusudama_limit_cone_radius", "index", "cone_index", "radius"), &AnimationNodeIKBlend2::set_kusudama_limit_cone_radius);
+	ClassDB::bind_method(D_METHOD("get_kusudama_limit_cone_radius", "index", "cone_index"), &AnimationNodeIKBlend2::get_kusudama_limit_cone_radius);
+	ClassDB::bind_method(D_METHOD("set_kusudama_limit_cone_center", "index", "cone_index", "center"), &AnimationNodeIKBlend2::set_kusudama_limit_cone_center);
+	ClassDB::bind_method(D_METHOD("get_kusudama_limit_cone_center", "index", "cone_index"), &AnimationNodeIKBlend2::get_kusudama_limit_cone_center);
+	ClassDB::bind_method(D_METHOD("set_kusudama_limit_cone_count", "index", "count"), &AnimationNodeIKBlend2::set_kusudama_limit_cone_count);
+	ClassDB::bind_method(D_METHOD("get_kusudama_limit_cone_count", "index"), &AnimationNodeIKBlend2::get_kusudama_limit_cone_count);
+	ClassDB::bind_method(D_METHOD("set_kusudama_twist", "index", "limit"), &AnimationNodeIKBlend2::set_kusudama_twist);
+	ClassDB::bind_method(D_METHOD("get_kusudama_twist", "index"), &AnimationNodeIKBlend2::get_kusudama_twist);
+	ClassDB::bind_method(D_METHOD("set_pin_passthrough_factor", "index", "falloff"), &AnimationNodeIKBlend2::set_pin_passthrough_factor);
+	ClassDB::bind_method(D_METHOD("get_pin_passthrough_factor", "index"), &AnimationNodeIKBlend2::get_pin_passthrough_factor);
+	ClassDB::bind_method(D_METHOD("get_constraint_name", "index"), &AnimationNodeIKBlend2::get_constraint_name);
+	ClassDB::bind_method(D_METHOD("get_iterations_per_frame"), &AnimationNodeIKBlend2::get_iterations_per_frame);
+	ClassDB::bind_method(D_METHOD("set_iterations_per_frame", "count"), &AnimationNodeIKBlend2::set_iterations_per_frame);
+	ClassDB::bind_method(D_METHOD("find_constraint", "name"), &AnimationNodeIKBlend2::find_constraint);
+	ClassDB::bind_method(D_METHOD("get_constraint_count"), &AnimationNodeIKBlend2::get_constraint_count);
+	ClassDB::bind_method(D_METHOD("get_pin_count"), &AnimationNodeIKBlend2::get_pin_count);
+	ClassDB::bind_method(D_METHOD("get_pin_bone_name", "index"), &AnimationNodeIKBlend2::get_pin_bone_name);
+	ClassDB::bind_method(D_METHOD("get_pin_direction_priorities", "index"), &AnimationNodeIKBlend2::get_pin_direction_priorities);
+	ClassDB::bind_method(D_METHOD("set_pin_direction_priorities", "index", "priority"), &AnimationNodeIKBlend2::set_pin_direction_priorities);
+	ClassDB::bind_method(D_METHOD("queue_print_skeleton"), &AnimationNodeIKBlend2::queue_print_skeleton);
+	ClassDB::bind_method(D_METHOD("get_default_damp"), &AnimationNodeIKBlend2::get_default_damp);
+	ClassDB::bind_method(D_METHOD("set_default_damp", "damp"), &AnimationNodeIKBlend2::set_default_damp);
+	ClassDB::bind_method(D_METHOD("get_pin_nodepath", "index"), &AnimationNodeIKBlend2::get_pin_nodepath);
+	ClassDB::bind_method(D_METHOD("set_pin_nodepath", "index", "nodepath"), &AnimationNodeIKBlend2::set_pin_nodepath);
+	ClassDB::bind_method(D_METHOD("get_bone_count"), &AnimationNodeIKBlend2::get_bone_count);
+	ClassDB::bind_method(D_METHOD("set_constraint_mode", "enabled"), &AnimationNodeIKBlend2::set_constraint_mode);
+	ClassDB::bind_method(D_METHOD("get_constraint_mode"), &AnimationNodeIKBlend2::get_constraint_mode);
+	ClassDB::bind_method(D_METHOD("set_ui_selected_bone", "bone"), &AnimationNodeIKBlend2::set_ui_selected_bone);
+	ClassDB::bind_method(D_METHOD("get_ui_selected_bone"), &AnimationNodeIKBlend2::get_ui_selected_bone);
+	ClassDB::bind_method(D_METHOD("set_twist_constraint_defaults", "defaults"), &AnimationNodeIKBlend2::set_twist_constraint_defaults);
+	ClassDB::bind_method(D_METHOD("get_twist_constraint_defaults"), &AnimationNodeIKBlend2::get_twist_constraint_defaults);
+	ClassDB::bind_method(D_METHOD("set_orientation_constraint_defaults", "defaults"), &AnimationNodeIKBlend2::set_orientation_constraint_defaults);
+	ClassDB::bind_method(D_METHOD("get_orientation_constraint_defaults"), &AnimationNodeIKBlend2::get_orientation_constraint_defaults);
+	ClassDB::bind_method(D_METHOD("set_bone_direction_constraint_defaults", "defaults"), &AnimationNodeIKBlend2::set_bone_direction_constraint_defaults);
+	ClassDB::bind_method(D_METHOD("get_bone_direction_constraint_defaults"), &AnimationNodeIKBlend2::get_bone_direction_constraint_defaults);
+	ClassDB::bind_method(D_METHOD("set_stabilization_passes", "passes"), &AnimationNodeIKBlend2::set_stabilization_passes);
+	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &AnimationNodeIKBlend2::get_stabilization_passes);
 
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton_node_path"), "set_skeleton_node_path", "get_skeleton_node_path");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations_per_frame", PROPERTY_HINT_RANGE, "1,150,1,or_greater"), "set_iterations_per_frame", "get_iterations_per_frame");
@@ -495,25 +495,25 @@ void AnimationNodeIK::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "stabilization_passes"), "set_stabilization_passes", "get_stabilization_passes");
 }
 
-AnimationNodeIK::AnimationNodeIK() {
+AnimationNodeIKBlend2::AnimationNodeIKBlend2() {
 	add_input("in");
 	add_input("target");
 }
 
-AnimationNodeIK::~AnimationNodeIK() {
+AnimationNodeIKBlend2::~AnimationNodeIKBlend2() {
 }
 
-void AnimationNodeIK::queue_print_skeleton() {
+void AnimationNodeIKBlend2::queue_print_skeleton() {
 	queue_debug_skeleton = true;
 }
 
-float AnimationNodeIK::get_pin_passthrough_factor(int32_t p_effector_index) const {
+float AnimationNodeIKBlend2::get_pin_passthrough_factor(int32_t p_effector_index) const {
 	ERR_FAIL_INDEX_V(p_effector_index, pins.size(), 0.0f);
 	const Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	return effector_template->get_passthrough_factor();
 }
 
-void AnimationNodeIK::set_pin_passthrough_factor(int32_t p_effector_index, const float p_passthrough_factor) {
+void AnimationNodeIKBlend2::set_pin_passthrough_factor(int32_t p_effector_index, const float p_passthrough_factor) {
 	ERR_FAIL_INDEX(p_effector_index, pins.size());
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	ERR_FAIL_NULL(effector_template);
@@ -521,7 +521,7 @@ void AnimationNodeIK::set_pin_passthrough_factor(int32_t p_effector_index, const
 	set_dirty();
 }
 
-void AnimationNodeIK::_set_constraint_count(int32_t p_count) {
+void AnimationNodeIKBlend2::_set_constraint_count(int32_t p_count) {
 	int32_t old_count = constraint_names.size();
 	constraint_count = p_count;
 	constraint_names.resize(p_count);
@@ -537,22 +537,22 @@ void AnimationNodeIK::_set_constraint_count(int32_t p_count) {
 	set_dirty();
 }
 
-int32_t AnimationNodeIK::get_constraint_count() const {
+int32_t AnimationNodeIKBlend2::get_constraint_count() const {
 	return constraint_count;
 }
 
-inline StringName AnimationNodeIK::get_constraint_name(int32_t p_index) const {
+inline StringName AnimationNodeIKBlend2::get_constraint_name(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), StringName());
 	return constraint_names[p_index];
 }
 
-void AnimationNodeIK::set_kusudama_twist(int32_t p_index, Vector2 p_to) {
+void AnimationNodeIKBlend2::set_kusudama_twist(int32_t p_index, Vector2 p_to) {
 	ERR_FAIL_INDEX(p_index, constraint_count);
 	kusudama_twist.write[p_index] = p_to;
 	set_dirty();
 }
 
-int32_t AnimationNodeIK::find_effector_id(StringName p_bone_name) {
+int32_t AnimationNodeIKBlend2::find_effector_id(StringName p_bone_name) {
 	for (int32_t constraint_i = 0; constraint_i < constraint_count; constraint_i++) {
 		if (constraint_names[constraint_i] == p_bone_name) {
 			return constraint_i;
@@ -561,7 +561,7 @@ int32_t AnimationNodeIK::find_effector_id(StringName p_bone_name) {
 	return -1;
 }
 
-void AnimationNodeIK::set_kusudama_limit_cone(int32_t p_constraint_index, int32_t p_index,
+void AnimationNodeIKBlend2::set_kusudama_limit_cone(int32_t p_constraint_index, int32_t p_index,
 		Vector3 p_center, float p_radius) {
 	ERR_FAIL_INDEX(p_constraint_index, kusudama_limit_cones.size());
 	Vector<Vector4> cones = kusudama_limit_cones.write[p_constraint_index];
@@ -579,7 +579,7 @@ void AnimationNodeIK::set_kusudama_limit_cone(int32_t p_constraint_index, int32_
 	set_dirty();
 }
 
-Vector3 AnimationNodeIK::get_kusudama_limit_cone_center(int32_t p_constraint_index, int32_t p_index) const {
+Vector3 AnimationNodeIKBlend2::get_kusudama_limit_cone_center(int32_t p_constraint_index, int32_t p_index) const {
 	if (unlikely((p_constraint_index) < 0 || (p_constraint_index) >= (kusudama_limit_cone_count.size()))) {
 		ERR_PRINT_ONCE("Can't get limit cone center.");
 		return Vector3(0.0, 1.0, 0.0);
@@ -600,19 +600,19 @@ Vector3 AnimationNodeIK::get_kusudama_limit_cone_center(int32_t p_constraint_ind
 	return ret;
 }
 
-float AnimationNodeIK::get_kusudama_limit_cone_radius(int32_t p_constraint_index, int32_t p_index) const {
+float AnimationNodeIKBlend2::get_kusudama_limit_cone_radius(int32_t p_constraint_index, int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_constraint_index, kusudama_limit_cone_count.size(), Math_TAU);
 	ERR_FAIL_INDEX_V(p_constraint_index, kusudama_limit_cones.size(), Math_TAU);
 	ERR_FAIL_INDEX_V(p_index, kusudama_limit_cones[p_constraint_index].size(), Math_TAU);
 	return kusudama_limit_cones[p_constraint_index][p_index].w;
 }
 
-int32_t AnimationNodeIK::get_kusudama_limit_cone_count(int32_t p_constraint_index) const {
+int32_t AnimationNodeIKBlend2::get_kusudama_limit_cone_count(int32_t p_constraint_index) const {
 	ERR_FAIL_INDEX_V(p_constraint_index, kusudama_limit_cone_count.size(), 0);
 	return kusudama_limit_cone_count[p_constraint_index];
 }
 
-void AnimationNodeIK::set_kusudama_limit_cone_count(int32_t p_constraint_index, int32_t p_count) {
+void AnimationNodeIKBlend2::set_kusudama_limit_cone_count(int32_t p_constraint_index, int32_t p_count) {
 	ERR_FAIL_INDEX(p_constraint_index, kusudama_limit_cone_count.size());
 	ERR_FAIL_INDEX(p_constraint_index, kusudama_limit_cones.size());
 	int32_t old_cone_count = kusudama_limit_cones[p_constraint_index].size();
@@ -629,22 +629,22 @@ void AnimationNodeIK::set_kusudama_limit_cone_count(int32_t p_constraint_index, 
 	set_dirty();
 }
 
-real_t AnimationNodeIK::get_default_damp() const {
+real_t AnimationNodeIKBlend2::get_default_damp() const {
 	return default_damp;
 }
 
-void AnimationNodeIK::set_default_damp(float p_default_damp) {
+void AnimationNodeIKBlend2::set_default_damp(float p_default_damp) {
 	default_damp = p_default_damp;
 	set_dirty();
 }
 
-StringName AnimationNodeIK::get_pin_bone_name(int32_t p_effector_index) const {
+StringName AnimationNodeIKBlend2::get_pin_bone_name(int32_t p_effector_index) const {
 	ERR_FAIL_INDEX_V(p_effector_index, pins.size(), "");
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	return effector_template->get_name();
 }
 
-void AnimationNodeIK::set_kusudama_limit_cone_radius(int32_t p_effector_index, int32_t p_index, float p_radius) {
+void AnimationNodeIKBlend2::set_kusudama_limit_cone_radius(int32_t p_effector_index, int32_t p_index, float p_radius) {
 	ERR_FAIL_INDEX(p_effector_index, kusudama_limit_cone_count.size());
 	ERR_FAIL_INDEX(p_effector_index, kusudama_limit_cones.size());
 	ERR_FAIL_INDEX(p_index, kusudama_limit_cone_count[p_effector_index]);
@@ -654,7 +654,7 @@ void AnimationNodeIK::set_kusudama_limit_cone_radius(int32_t p_effector_index, i
 	set_dirty();
 }
 
-void AnimationNodeIK::set_kusudama_limit_cone_center(int32_t p_effector_index, int32_t p_index, Vector3 p_center) {
+void AnimationNodeIKBlend2::set_kusudama_limit_cone_center(int32_t p_effector_index, int32_t p_index, Vector3 p_center) {
 	ERR_FAIL_INDEX(p_effector_index, kusudama_limit_cone_count.size());
 	ERR_FAIL_INDEX(p_effector_index, kusudama_limit_cones.size());
 	ERR_FAIL_INDEX(p_index, kusudama_limit_cones[p_effector_index].size());
@@ -671,35 +671,35 @@ void AnimationNodeIK::set_kusudama_limit_cone_center(int32_t p_effector_index, i
 	set_dirty();
 }
 
-Vector2 AnimationNodeIK::get_kusudama_twist(int32_t p_index) const {
+Vector2 AnimationNodeIKBlend2::get_kusudama_twist(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, kusudama_twist.size(), Vector2());
 	return kusudama_twist[p_index];
 }
 
-void AnimationNodeIK::_set_constraint_name(int32_t p_index, String p_name) {
+void AnimationNodeIKBlend2::_set_constraint_name(int32_t p_index, String p_name) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
 	constraint_names.write[p_index] = p_name;
 	set_dirty();
 }
 
-Vector<Ref<IKBoneSegment3D>> AnimationNodeIK::get_segmented_skeletons() {
+Vector<Ref<IKBoneSegment3D>> AnimationNodeIKBlend2::get_segmented_skeletons() {
 	return segmented_skeletons;
 }
-float AnimationNodeIK::get_iterations_per_frame() const {
+float AnimationNodeIKBlend2::get_iterations_per_frame() const {
 	return iterations_per_frame;
 }
 
-void AnimationNodeIK::set_iterations_per_frame(const float &p_iterations_per_frame) {
+void AnimationNodeIKBlend2::set_iterations_per_frame(const float &p_iterations_per_frame) {
 	iterations_per_frame = p_iterations_per_frame;
 }
 
-void AnimationNodeIK::_set_pin_bone_name(int32_t p_effector_index, StringName p_name) const {
+void AnimationNodeIKBlend2::_set_pin_bone_name(int32_t p_effector_index, StringName p_name) const {
 	ERR_FAIL_INDEX(p_effector_index, pins.size());
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	effector_template->set_name(p_name);
 }
 
-void AnimationNodeIK::set_pin_nodepath(int32_t p_effector_index, NodePath p_node_path) {
+void AnimationNodeIKBlend2::set_pin_nodepath(int32_t p_effector_index, NodePath p_node_path) {
 	ERR_FAIL_INDEX(p_effector_index, pins.size());
 	// TODO: fire 2023-31-2023 Fix this, it's not working.
 	// Node *node = get_node_or_null(p_node_path);
@@ -710,13 +710,13 @@ void AnimationNodeIK::set_pin_nodepath(int32_t p_effector_index, NodePath p_node
 	// effector_template->set_target_node(p_node_path);
 }
 
-NodePath AnimationNodeIK::get_pin_nodepath(int32_t p_effector_index) const {
+NodePath AnimationNodeIKBlend2::get_pin_nodepath(int32_t p_effector_index) const {
 	ERR_FAIL_INDEX_V(p_effector_index, pins.size(), NodePath());
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	return effector_template->get_target_node();
 }
 
-void AnimationNodeIK::execute(real_t delta) {
+void AnimationNodeIKBlend2::execute(real_t delta) {
 	// FIXME: fire 2023-31-2023 Fix this, it's not working.
 	// if (!is_visible_in_tree()) {
 	// 	return;
@@ -773,7 +773,7 @@ void AnimationNodeIK::execute(real_t delta) {
 	update_skeleton_bones_transform();
 }
 
-void AnimationNodeIK::skeleton_changed(Skeleton3D *p_skeleton) {
+void AnimationNodeIKBlend2::skeleton_changed(Skeleton3D *p_skeleton) {
 	if (!p_skeleton) {
 		return;
 	}
@@ -860,13 +860,13 @@ void AnimationNodeIK::skeleton_changed(Skeleton3D *p_skeleton) {
 	}
 }
 
-real_t AnimationNodeIK::get_pin_weight(int32_t p_pin_index) const {
+real_t AnimationNodeIKBlend2::get_pin_weight(int32_t p_pin_index) const {
 	ERR_FAIL_INDEX_V(p_pin_index, pins.size(), 0.0);
 	const Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	return effector_template->get_weight();
 }
 
-void AnimationNodeIK::set_pin_weight(int32_t p_pin_index, const real_t &p_weight) {
+void AnimationNodeIKBlend2::set_pin_weight(int32_t p_pin_index, const real_t &p_weight) {
 	ERR_FAIL_INDEX(p_pin_index, pins.size());
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	if (effector_template.is_null()) {
@@ -877,13 +877,13 @@ void AnimationNodeIK::set_pin_weight(int32_t p_pin_index, const real_t &p_weight
 	set_dirty();
 }
 
-Vector3 AnimationNodeIK::get_pin_direction_priorities(int32_t p_pin_index) const {
+Vector3 AnimationNodeIKBlend2::get_pin_direction_priorities(int32_t p_pin_index) const {
 	ERR_FAIL_INDEX_V(p_pin_index, pins.size(), Vector3(0, 0, 0));
 	const Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	return effector_template->get_direction_priorities();
 }
 
-void AnimationNodeIK::set_pin_direction_priorities(int32_t p_pin_index, const Vector3 &p_priority_direction) {
+void AnimationNodeIKBlend2::set_pin_direction_priorities(int32_t p_pin_index, const Vector3 &p_priority_direction) {
 	ERR_FAIL_INDEX(p_pin_index, pins.size());
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	if (effector_template.is_null()) {
@@ -894,11 +894,11 @@ void AnimationNodeIK::set_pin_direction_priorities(int32_t p_pin_index, const Ve
 	set_dirty();
 }
 
-void AnimationNodeIK::set_dirty() {
+void AnimationNodeIKBlend2::set_dirty() {
 	is_dirty = true;
 }
 
-int32_t AnimationNodeIK::find_constraint(String p_string) const {
+int32_t AnimationNodeIKBlend2::find_constraint(String p_string) const {
 	for (int32_t constraint_i = 0; constraint_i < constraint_count; constraint_i++) {
 		if (get_constraint_name(constraint_i) == p_string) {
 			return constraint_i;
@@ -907,7 +907,7 @@ int32_t AnimationNodeIK::find_constraint(String p_string) const {
 	return -1;
 }
 
-Skeleton3D *AnimationNodeIK::get_skeleton() const {
+Skeleton3D *AnimationNodeIKBlend2::get_skeleton() const {
 	// FIXME: fire 2023-31-2023 Fix this, it's not working.
 	// Node *node = get_node_or_null(skeleton_node_path);
 	// if (!node) {
@@ -917,17 +917,17 @@ Skeleton3D *AnimationNodeIK::get_skeleton() const {
 	return nullptr;
 }
 
-NodePath AnimationNodeIK::get_skeleton_node_path() {
+NodePath AnimationNodeIKBlend2::get_skeleton_node_path() {
 	return skeleton_node_path;
 }
 
-void AnimationNodeIK::set_skeleton_node_path(NodePath p_skeleton_node_path) {
+void AnimationNodeIKBlend2::set_skeleton_node_path(NodePath p_skeleton_node_path) {
 	skeleton_node_path = p_skeleton_node_path;
 	register_skeleton();
 	set_dirty(); // Duplicated for ease of verification.
 }
 
-void AnimationNodeIK::_notification(int p_what) {
+void AnimationNodeIKBlend2::_notification(int p_what) {
 	switch (p_what) {
 		// FIXME: fire 2023-31-2023 Fix this, it's not working.
 		// case NOTIFICATION_READY: {
@@ -947,7 +947,7 @@ void AnimationNodeIK::_notification(int p_what) {
 	}
 }
 
-void AnimationNodeIK::remove_constraint(int32_t p_index) {
+void AnimationNodeIKBlend2::remove_constraint(int32_t p_index) {
 	ERR_FAIL_INDEX(p_index, constraint_count);
 
 	constraint_names.remove_at(p_index);
@@ -964,7 +964,7 @@ void AnimationNodeIK::remove_constraint(int32_t p_index) {
 	set_dirty();
 }
 
-void AnimationNodeIK::_set_bone_count(int32_t p_count) {
+void AnimationNodeIKBlend2::_set_bone_count(int32_t p_count) {
 	bone_damp.resize(p_count);
 	for (int32_t bone_i = p_count; bone_i-- > bone_count;) {
 		bone_damp.write[bone_i] = Math_PI;
@@ -972,25 +972,25 @@ void AnimationNodeIK::_set_bone_count(int32_t p_count) {
 	bone_count = p_count;
 }
 
-int32_t AnimationNodeIK::get_bone_count() const {
+int32_t AnimationNodeIKBlend2::get_bone_count() const {
 	return bone_count;
 }
 
-real_t AnimationNodeIK::get_bone_damp(int32_t p_index) const {
+real_t AnimationNodeIKBlend2::get_bone_damp(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, bone_damp.size(), Math_PI);
 	return bone_damp[p_index];
 }
 
-void AnimationNodeIK::set_bone_damp(int32_t p_index, real_t p_damp) {
+void AnimationNodeIKBlend2::set_bone_damp(int32_t p_index, real_t p_damp) {
 	ERR_FAIL_INDEX(p_index, bone_damp.size());
 	bone_damp.write[p_index] = p_damp;
 }
 
-Vector<Ref<IKBone3D>> AnimationNodeIK::get_bone_list() {
+Vector<Ref<IKBone3D>> AnimationNodeIKBlend2::get_bone_list() {
 	return bone_list;
 }
 
-void AnimationNodeIK::set_bone_direction_transform(int32_t p_index, Transform3D p_transform) {
+void AnimationNodeIKBlend2::set_bone_direction_transform(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
 	String bone_name = constraint_names[p_index];
 	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
@@ -1012,7 +1012,7 @@ void AnimationNodeIK::set_bone_direction_transform(int32_t p_index, Transform3D 
 	}
 }
 
-Transform3D AnimationNodeIK::get_bone_direction_transform(int32_t p_index) const {
+Transform3D AnimationNodeIKBlend2::get_bone_direction_transform(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), Transform3D());
 	String bone_name = constraint_names[p_index];
 	if (!segmented_skeletons.size()) {
@@ -1037,7 +1037,7 @@ Transform3D AnimationNodeIK::get_bone_direction_transform(int32_t p_index) const
 	return Transform3D();
 }
 
-Transform3D AnimationNodeIK::get_constraint_orientation_transform(int32_t p_index) const {
+Transform3D AnimationNodeIKBlend2::get_constraint_orientation_transform(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), Transform3D());
 	String bone_name = constraint_names[p_index];
 	if (!segmented_skeletons.size()) {
@@ -1062,7 +1062,7 @@ Transform3D AnimationNodeIK::get_constraint_orientation_transform(int32_t p_inde
 	return Transform3D();
 }
 
-void AnimationNodeIK::set_constraint_orientation_transform(int32_t p_index, Transform3D p_transform) {
+void AnimationNodeIKBlend2::set_constraint_orientation_transform(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
 	String bone_name = constraint_names[p_index];
 	if (!get_skeleton()) {
@@ -1084,7 +1084,7 @@ void AnimationNodeIK::set_constraint_orientation_transform(int32_t p_index, Tran
 	}
 }
 
-Transform3D AnimationNodeIK::get_constraint_twist_transform(int32_t p_index) const {
+Transform3D AnimationNodeIKBlend2::get_constraint_twist_transform(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), Transform3D());
 	String bone_name = constraint_names[p_index];
 	if (!segmented_skeletons.size()) {
@@ -1109,7 +1109,7 @@ Transform3D AnimationNodeIK::get_constraint_twist_transform(int32_t p_index) con
 	return Transform3D();
 }
 
-void AnimationNodeIK::set_constraint_twist_transform(int32_t p_index, Transform3D p_transform) {
+void AnimationNodeIKBlend2::set_constraint_twist_transform(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
 	String bone_name = constraint_names[p_index];
 	if (!get_skeleton()) {
@@ -1131,20 +1131,20 @@ void AnimationNodeIK::set_constraint_twist_transform(int32_t p_index, Transform3
 	}
 }
 
-bool AnimationNodeIK::get_pin_enabled(int32_t p_effector_index) const {
+bool AnimationNodeIKBlend2::get_pin_enabled(int32_t p_effector_index) const {
 	ERR_FAIL_INDEX_V(p_effector_index, pins.size(), false);
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	return !effector_template->get_target_node().is_empty();
 }
 
-void AnimationNodeIK::register_skeleton() {
+void AnimationNodeIKBlend2::register_skeleton() {
 	if (!get_pin_count() && !get_constraint_count()) {
 		reset_constraints();
 	}
 	set_dirty();
 }
 
-void AnimationNodeIK::reset_constraints() {
+void AnimationNodeIKBlend2::reset_constraints() {
 	Skeleton3D *skeleton = get_skeleton();
 	if (skeleton) {
 		_set_pin_count(skeleton->get_bone_count());
@@ -1161,18 +1161,18 @@ void AnimationNodeIK::reset_constraints() {
 	set_dirty();
 }
 
-bool AnimationNodeIK::get_constraint_mode() const {
+bool AnimationNodeIKBlend2::get_constraint_mode() const {
 	return is_constraint_mode;
 }
 
-void AnimationNodeIK::set_constraint_mode(bool p_enabled) {
+void AnimationNodeIKBlend2::set_constraint_mode(bool p_enabled) {
 	is_constraint_mode = p_enabled;
 }
 
-int32_t AnimationNodeIK::get_ui_selected_bone() const {
+int32_t AnimationNodeIKBlend2::get_ui_selected_bone() const {
 	return ui_selected_bone;
 }
 
-void AnimationNodeIK::set_ui_selected_bone(int32_t p_ui_selected_bone) {
+void AnimationNodeIKBlend2::set_ui_selected_bone(int32_t p_ui_selected_bone) {
 	ui_selected_bone = p_ui_selected_bone;
 }

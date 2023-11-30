@@ -54,8 +54,8 @@ void initialize_many_bone_ik_module(ModuleInitializationLevel p_level) {
 // #endif
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
 		GDREGISTER_CLASS(IKEffectorTemplate3D);
-		GDREGISTER_CLASS(AnimationNodeIK);
-		GDREGISTER_CLASS(AnimationNodeIK);
+		GDREGISTER_CLASS(AnimationNodeIKBlend2);
+		GDREGISTER_CLASS(AnimationNodeIKBlend2);
 		GDREGISTER_CLASS(IKBone3D);
 		GDREGISTER_CLASS(IKNode3D);
 		GDREGISTER_CLASS(IKEffector3D);

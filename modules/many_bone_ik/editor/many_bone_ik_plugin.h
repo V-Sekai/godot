@@ -59,7 +59,7 @@ class ManyBoneIK3DEditor : public VBoxContainer {
 	GDCLASS(ManyBoneIK3DEditor, VBoxContainer);
 
 	Tree *joint_tree = nullptr;
-	AnimationNodeIK *ik = nullptr;
+	AnimationNodeIKBlend2 *ik = nullptr;
 	BoneId selected_bone = -1;
 
 	EditorInspectorSection *constraint_bone_section = nullptr;
@@ -82,7 +82,7 @@ protected:
 	void _notification(int p_what);
 
 public:
-	ManyBoneIK3DEditor(EditorInspectorPluginManyBoneIK *e_plugin,AnimationNodeIK *p_ik) {
+	ManyBoneIK3DEditor(EditorInspectorPluginManyBoneIK *e_plugin,AnimationNodeIKBlend2 *p_ik) {
 		ik = p_ik;
 		create_editors();
 	}

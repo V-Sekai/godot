@@ -99,10 +99,10 @@ public:
 	void create_bone_list(Vector<Ref<IKBone3D>> &p_list, bool p_recursive = false, bool p_debug_skeleton = false) const;
 	Vector<Ref<IKBone3D>> get_bone_list() const;
 	Ref<IKBone3D> get_ik_bone(BoneId p_bone) const;
-	void generate_default_segments_from_root(Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeIK *p_many_bone_ik);
+	void generate_default_segments_from_root(Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeIKBlend2 *p_many_bone_ik);
 	void update_pinned_list(Vector<Vector<real_t>> &r_weights);
 	IKBoneSegment3D() {}
-	IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeIK *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent = nullptr,
+	IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeIKBlend2 *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent = nullptr,
 			BoneId root = -1, BoneId tip = -1);
 	~IKBoneSegment3D() {}
 };

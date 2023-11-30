@@ -73,7 +73,7 @@ Vector3 IKEffector3D::get_direction_priorities() const {
 	return direction_priorities;
 }
 
-void IKEffector3D::update_target_global_transform(Skeleton3D *p_skeleton, AnimationNodeIK *p_many_bone_ik) {
+void IKEffector3D::update_target_global_transform(Skeleton3D *p_skeleton, AnimationNodeIKBlend2 *p_many_bone_ik) {
 	ERR_FAIL_NULL(p_skeleton);
 	ERR_FAIL_NULL(for_bone);
 	// FIXME: fire 2023-03-31 This is a hack to get the effector to work with the new IK system. It needs to be fixed properly.

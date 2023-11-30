@@ -53,7 +53,7 @@ Vector<Ref<IKBoneSegment3D>> IKBoneSegment3D::get_child_segments() const {
 	return child_segments;
 }
 
-void IKBoneSegment3D::generate_default_segments_from_root(Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeIK *p_many_bone_ik) {
+void IKBoneSegment3D::generate_default_segments_from_root(Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, AnimationNodeIKBlend2 *p_many_bone_ik) {
 	Ref<IKBone3D> temp_tip = root;
 	while (true) {
 		if (skeleton->get_bone_parent(temp_tip->get_bone_id()) >= p_tip_bone && p_tip_bone != -1) {
@@ -302,7 +302,7 @@ Ref<IKBoneSegment3D> IKBoneSegment3D::get_parent_segment() {
 	return parent_segment;
 }
 
-IKBoneSegment3D::IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeIK *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent,
+IKBoneSegment3D::IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeIKBlend2 *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent,
 		BoneId p_root, BoneId p_tip) {
 	root = p_root;
 	tip = p_tip;
