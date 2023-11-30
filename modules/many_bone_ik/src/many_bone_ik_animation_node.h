@@ -31,10 +31,10 @@
 #ifndef MANY_BONE_IK_ANIMATON_NODE_H
 #define MANY_BONE_IK_ANIMATON_NODE_H
 
-#include "scene/animation/animation_blend_tree.h"
 #include "ik_bone_3d.h"
 #include "ik_effector_template_3d.h"
 #include "math/ik_node_3d.h"
+#include "scene/animation/animation_blend_tree.h"
 
 #include "core/object/ref_counted.h"
 #include "core/os/memory.h"
@@ -84,6 +84,7 @@ private:
 	void _set_constraint_count(int32_t p_count);
 	void _remove_pin(int32_t p_index);
 	void _set_bone_count(int32_t p_count);
+	StringName ik_blend_amount = PNAME("blend_amount");
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -95,23 +96,23 @@ protected:
 	void _notification(int p_what);
 
 public:
-	void get_parameter_list(List<PropertyInfo> *r_list) const {
-		r_list->push_back(PropertyInfo(Variant::STRING_NAME, comfortable_animation, PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_READ_ONLY));
+	double _process(const AnimationMixer::PlaybackInfo p_playback_info, bool p_test_only) {
+		double amount = get_parameter(ik_blend_amount);
+
+		AnimationMixer::PlaybackInfo pi = p_playback_info;
+		pi.weight = 1.0 - amount;
+		double rem0 = blend_input(0, pi, FILTER_BLEND, sync, p_test_only);
+		pi.weight = amount;
+		double rem1 = blend_input(1, pi, FILTER_PASS, sync, p_test_only);
+
+		return amount > 0.5 ? rem1 : rem0; // Hacky but good enough.
+	}
+
+	bool has_filter() const {
+		return true;
 	}
 	Variant get_parameter_default_value(const StringName &p_parameter) const {
-		if (p_parameter == comfortable_animation) {
-			return "COMFORTABLE";
-		}
 		return Variant();
-	}
-	void set_comfortable_animation(const StringName &p_name) {
-		comfortable_animation = p_name;
-	}
-	StringName get_comfortable_animation() const {
-		return comfortable_animation;
-	}
-	bool has_filter() const override {
-		return true;
 	}
 	String get_caption() const {
 		return "IK";

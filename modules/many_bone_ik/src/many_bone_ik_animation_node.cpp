@@ -483,8 +483,6 @@ void AnimationNodeIK::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_direction_constraint_defaults"), &AnimationNodeIK::get_bone_direction_constraint_defaults);
 	ClassDB::bind_method(D_METHOD("set_stabilization_passes", "passes"), &AnimationNodeIK::set_stabilization_passes);
 	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &AnimationNodeIK::get_stabilization_passes);
-	ClassDB::bind_method(D_METHOD("set_comfortable_animation", "name"), &AnimationNodeIK::set_comfortable_animation);
-	ClassDB::bind_method(D_METHOD("get_comfortable_animation"), &AnimationNodeIK::get_comfortable_animation);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "comfortable_animation"), "set_comfortable_animation", "get_comfortable_animation");
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton_node_path"), "set_skeleton_node_path", "get_skeleton_node_path");
