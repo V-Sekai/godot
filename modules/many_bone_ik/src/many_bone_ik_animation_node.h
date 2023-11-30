@@ -52,8 +52,8 @@
 #include "editor/editor_undo_redo_manager.h"
 #endif
 
-class AnimationNodeIKBlend2 : public AnimationNodeBlend2 {
-	GDCLASS(AnimationNodeIKBlend2, AnimationNodeBlend2);
+class AnimationNodeOpenXRHandIKBlend2 : public AnimationNodeBlend2 {
+	GDCLASS(AnimationNodeOpenXRHandIKBlend2, AnimationNodeBlend2);
 
 	bool is_constraint_mode = false;
 	NodePath skeleton_path;
@@ -165,8 +165,8 @@ public:
 	void set_kusudama_limit_cone_radius(int32_t p_constraint_index, int32_t p_index, float p_radius);
 	real_t get_kusudama_twist_current(int32_t p_index) const;
 	void set_kusudama_twist_current(int32_t p_index, real_t p_rotation);
-	AnimationNodeIKBlend2();
-	~AnimationNodeIKBlend2();
+	AnimationNodeOpenXRHandIKBlend2();
+	~AnimationNodeOpenXRHandIKBlend2();
 	void set_dirty();
 };
 
