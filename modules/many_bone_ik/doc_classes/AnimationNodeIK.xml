@@ -226,8 +226,6 @@
 	<members>
 		<member name="bone_direction_constraint_defaults" type="Dictionary" setter="set_bone_direction_constraint_defaults" getter="get_bone_direction_constraint_defaults" default="{}">
 		</member>
-		<member name="comfortable_animation" type="StringName" setter="set_comfortable_animation" getter="get_comfortable_animation" default="&amp;&quot;&quot;">
-		</member>
 		<member name="constraint_mode" type="bool" setter="set_constraint_mode" getter="get_constraint_mode" default="false">
 		</member>
 		<member name="default_damp" type="float" setter="set_default_damp" getter="get_default_damp" default="0.0872665">
