@@ -84,7 +84,6 @@ private:
 	void _set_constraint_count(int32_t p_count);
 	void _remove_pin(int32_t p_index);
 	void _set_bone_count(int32_t p_count);
-	StringName ik_blend_amount = PNAME("blend_amount");
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -97,15 +96,25 @@ protected:
 
 public:
 	double _process(const AnimationMixer::PlaybackInfo p_playback_info, bool p_test_only) {
-		double amount = get_parameter(ik_blend_amount);
+		AnimationMixer::PlaybackInfo pi_humanoid = p_playback_info;
+		pi_humanoid.weight = 1.0; // Full weight because we're using this as our base.
+		double rem0 = blend_input(0, pi_humanoid, FILTER_BLEND, sync, p_test_only);
 
-		AnimationMixer::PlaybackInfo pi = p_playback_info;
-		pi.weight = 1.0 - amount;
-		double rem0 = blend_input(0, pi, FILTER_BLEND, sync, p_test_only);
-		pi.weight = amount;
-		double rem1 = blend_input(1, pi, FILTER_PASS, sync, p_test_only);
+		// If IK is needed, find the target transform for the IK from the hand pose.
+		if (!p_test_only) {
+			// Retrieve the target hand transform from the posed hand skeleton. This needs custom logic.
+			Transform3D hand_target_transform; // Placeholder for actual transform retrieval code.
 
-		return amount > 0.5 ? rem1 : rem0; // Hacky but good enough.
+			// Apply the IK to the humanoid skeleton to make the hand match the pose of the hand skeleton.
+			// This will require access to the humanoid's AnimationTree/IK system to manipulate bones.
+			// adjust_humanoid_ik_to_match_hand(hand_target_transform);
+		}
+
+		// Since we're not directly blending animation data but rather influencing the final pose with IK,
+		// there's no need for a second blend_input call related to the separate hand skeleton animation.
+
+		// The return value should reflect the remaining time of the main humanoid animation track.
+		return rem0;
 	}
 
 	bool has_filter() const {
