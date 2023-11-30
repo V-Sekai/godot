@@ -75,8 +75,8 @@ public:
 	const float MAX_KUSUDAMA_LIMIT_CONES = 30;
 	float get_passthrough_factor() const;
 	void set_passthrough_factor(float p_passthrough_factor);
-	void set_target_node(Skeleton3D *p_skeleton, const NodePath &p_target_node_path);
-	NodePath get_target_node() const;
+	void set_target_transform_3d(Transform3D p_target_relative_to_skeleton_origin);
+	Transform3D get_target_transform_3d() const;
 	Transform3D get_target_global_transform() const;
 	void set_target_node_rotation(bool p_use);
 	bool get_target_node_rotation() const;

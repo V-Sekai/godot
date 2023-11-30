@@ -9,18 +9,15 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_target_node" qualifiers="const">
-			<return type="NodePath" />
+		<method name="get_target_transform_3d" qualifiers="const">
+			<return type="Transform3D" />
 			<description>
-				Returns the NodePath of the target node for this effector. The target node is the node that the effector aims to reach.
 			</description>
 		</method>
-		<method name="set_target_node">
+		<method name="set_target_transform_3d">
 			<return type="void" />
-			<param index="0" name="skeleton" type="Skeleton3D" />
-			<param index="1" name="node" type="NodePath" />
+			<param index="0" name="transform_3d" type="Transform3D" />
 			<description>
-				Sets the target node for this effector using a Skeleton3D and a NodePath. The effector will aim to reach this target node.
 			</description>
 		</method>
 	</methods>

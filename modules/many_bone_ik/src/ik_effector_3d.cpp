@@ -33,21 +33,15 @@
 #include "core/typedefs.h"
 #include "ik_bone_3d.h"
 #include "many_bone_ik_animation_node.h"
-#include "math/ik_node_3d.h"
+#include "core/math/transform_3d.h"
 #include "scene/3d/node_3d.h"
 
-#ifdef TOOLS_ENABLED
-#include "editor/editor_data.h"
-#include "editor/editor_node.h"
-#endif
-
-void IKEffector3D::set_target_node(Skeleton3D *p_skeleton, const NodePath &p_target_node_path) {
-	ERR_FAIL_NULL(p_skeleton);
-	target_node_path = p_target_node_path;
+void IKEffector3D::set_target_transform_3d(Transform3D p_target_relative_to_skeleton_origin) {
+	target_relative_to_skeleton_origin = p_target_relative_to_skeleton_origin;
 }
 
-NodePath IKEffector3D::get_target_node() const {
-	return target_node_path;
+Transform3D IKEffector3D::get_target_transform_3d() const {
+	return target_relative_to_skeleton_origin;
 }
 
 void IKEffector3D::set_target_node_rotation(bool p_use) {
@@ -72,17 +66,6 @@ void IKEffector3D::set_direction_priorities(Vector3 p_direction_priorities) {
 
 Vector3 IKEffector3D::get_direction_priorities() const {
 	return direction_priorities;
-}
-
-void IKEffector3D::update_target_global_transform(Skeleton3D *p_skeleton, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik) {
-	ERR_FAIL_NULL(p_skeleton);
-	ERR_FAIL_NULL(for_bone);
-	// Node3D *current_target_node = cast_to<Node3D>(p_many_bone_ik->get_node_or_null(target_node_path));
-	// if (!current_target_node || !current_target_node->is_visible_in_tree()) {
-	// 	target_relative_to_skeleton_origin = p_skeleton->get_global_transform().affine_inverse() * for_bone->get_ik_transform()->get_global_transform();
-	// 	return;
-	// }
-	// target_relative_to_skeleton_origin = p_skeleton->get_global_transform().affine_inverse() * current_target_node->get_global_transform();
 }
 
 Transform3D IKEffector3D::get_target_global_transform() const {
@@ -152,10 +135,10 @@ int32_t IKEffector3D::update_effector_tip_headings(PackedVector3Array *p_heading
 }
 
 void IKEffector3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_target_node", "skeleton", "node"),
-			&IKEffector3D::set_target_node);
-	ClassDB::bind_method(D_METHOD("get_target_node"),
-			&IKEffector3D::get_target_node);
+	ClassDB::bind_method(D_METHOD("set_target_transform_3d", "target_relative_to_skeleton_origin"),
+			&IKEffector3D::set_target_transform_3d);
+	ClassDB::bind_method(D_METHOD("get_target_transform_3d"),
+			&IKEffector3D::get_target_transform_3d);
 	ClassDB::bind_method(D_METHOD("set_passthrough_factor", "amount"),
 			&IKEffector3D::set_passthrough_factor);
 	ClassDB::bind_method(D_METHOD("get_passthrough_factor"),

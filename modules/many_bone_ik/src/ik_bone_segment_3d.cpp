@@ -288,7 +288,7 @@ IKBoneSegment3D::IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_
 	root = p_root;
 	tip = p_tip;
 	skeleton = p_skeleton;
-	root = Ref<IKBone3D>(memnew(IKBone3D(p_root_bone_name, p_skeleton, p_parent, p_pins, Math_PI, p_many_bone_ik)));
+	root = Ref<IKBone3D>(memnew(IKBone3D(p_root_bone_name, p_root, p_parent, p_pins, Math_PI, p_many_bone_ik)));
 	if (p_parent.is_valid()) {
 		root_segment = p_parent->root_segment;
 	} else {
@@ -439,7 +439,7 @@ Ref<IKBoneSegment3D> IKBoneSegment3D::_create_child_segment(String &p_child_name
 
 Ref<IKBone3D> IKBoneSegment3D::_create_next_bone(BoneId p_bone_id, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &p_pins, AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik) {
 	String bone_name = skeleton->get_bone_name(p_bone_id);
-	Ref<IKBone3D> next_bone = Ref<IKBone3D>(memnew(IKBone3D(bone_name, skeleton, p_current_tip, p_pins, p_many_bone_ik->get_default_damp(), p_many_bone_ik)));
+	Ref<IKBone3D> next_bone = Ref<IKBone3D>(memnew(IKBone3D(bone_name, p_bone_id, p_current_tip, p_pins, p_many_bone_ik->get_default_damp(), p_many_bone_ik)));
 	root_segment->bone_map[p_bone_id] = next_bone;
 
 	return next_bone;

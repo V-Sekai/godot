@@ -192,14 +192,12 @@ void IKBone3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_constraint_twist_transform"), &IKBone3D::get_constraint_twist_transform);
 }
 
-IKBone3D::IKBone3D(StringName p_bone, Skeleton3D *p_skeleton, const Ref<IKBone3D> &p_parent, Vector<Ref<IKEffectorTemplate3D>> &p_pins, float p_default_dampening,
+IKBone3D::IKBone3D(StringName p_bone, int p_bone_id, const Ref<IKBone3D> &p_parent, Vector<Ref<IKEffectorTemplate3D>> &p_pins, float p_default_dampening,
 		AnimationNodeOpenXRHandIKBlend2 *p_many_bone_ik) {
-	ERR_FAIL_NULL(p_skeleton);
-
 	default_dampening = p_default_dampening;
 	cos_half_dampen = cos(default_dampening / real_t(2.0));
 	set_name(p_bone);
-	bone_id = p_skeleton->find_bone(p_bone);
+	bone_id = p_bone_id;
 	if (p_parent.is_valid()) {
 		set_parent(p_parent);
 	}
@@ -210,7 +208,13 @@ IKBone3D::IKBone3D(StringName p_bone, Skeleton3D *p_skeleton, const Ref<IKBone3D
 		if (elem->get_name() == p_bone && !elem->get_target_node().is_empty() && p_many_bone_ik /*&& p_many_bone_ik->get_node_or_null(elem->get_target_node())*/) {
 			create_pin();
 			Ref<IKEffector3D> effector = get_pin();
-			effector->set_target_node(p_skeleton, elem->get_target_node());
+			// Node3D *current_target_node = cast_to<Node3D>(p_many_bone_ik->get_node_or_null(target_node_path));
+			// if (!current_target_node || !current_target_node->is_visible_in_tree()) {
+			// 	target_relative_to_skeleton_origin = p_skeleton->get_global_transform().affine_inverse() * for_bone->get_ik_transform()->get_global_transform();
+			// 	return;
+			// }
+			// Transform3D target_relative_to_skeleton_origin = p_skeleton->get_global_transform().affine_inverse() * current_target_node->get_global_transform();
+			effector->set_target_transform_3d(Transform3D());
 			effector->set_passthrough_factor(elem->get_passthrough_factor());
 			effector->set_weight(elem->get_weight());
 			effector->set_direction_priorities(elem->get_direction_priorities());
