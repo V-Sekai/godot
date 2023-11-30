@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  many_bone_ik_3d.h                                                     */
+/*  many_bone_ik_animation_node.h                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,16 +28,24 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MANY_BONE_IK_ANIMATON_NODE_H
-#define MANY_BONE_IK_ANIMATON_NODE_H
+#ifndef MANY_BONE_IK_3D_H
+#define MANY_BONE_IK_3D_H
 
+#include "core/math/math_defs.h"
+#include "core/math/transform_3d.h"
+#include "core/math/vector3.h"
 #include "ik_bone_3d.h"
 #include "ik_effector_template_3d.h"
 #include "math/ik_node_3d.h"
-#include "scene/animation/animation_blend_tree.h"
 
 #include "core/object/ref_counted.h"
 #include "core/os/memory.h"
+#include "scene/3d/skeleton_3d.h"
+#include "scene/animation/animation_blend_tree.h"
+#include "scene/animation/animation_mixer.h"
+#include "scene/main/scene_tree.h"
+#include "scene/main/timer.h"
+#include "scene/resources/skeleton_profile.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_node.h"
@@ -47,41 +55,37 @@
 class AnimationNodeIKBlend2 : public AnimationNodeBlend2 {
 	GDCLASS(AnimationNodeIKBlend2, AnimationNodeBlend2);
 
-private:
-	StringName comfortable_animation;
-	Dictionary twist_constraint_defaults;
-	Dictionary orientation_constraint_defaults;
-	Dictionary bone_direction_constraint_defaults;
 	bool is_constraint_mode = false;
 	NodePath skeleton_path;
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
-	int32_t constraint_count = 0;
+	int32_t constraint_count = 0, pin_count = 0, bone_count = 0;
 	Vector<StringName> constraint_names;
-	int32_t pin_count = 0;
-	int32_t bone_count = 0;
 	Vector<Ref<IKEffectorTemplate3D>> pins;
 	Vector<Ref<IKBone3D>> bone_list;
 	Vector<Vector2> kusudama_twist;
 	Vector<float> bone_damp;
+	Vector<float> bone_resistance;
 	Vector<Vector<Vector4>> kusudama_limit_cones;
 	Vector<int> kusudama_limit_cone_count;
 	float MAX_KUSUDAMA_LIMIT_CONES = 10;
-	int32_t iterations_per_frame = 20;
-	float default_damp = Math::deg_to_rad(5.0f);
+	int32_t iterations_per_frame = 10;
+	float default_damp = Math::deg_to_rad(0.5f);
 	bool queue_debug_skeleton = false;
-	Ref<IKNode3D> godot_skeleton_transform = Ref<IKNode3D>(memnew(IKNode3D));
+	Ref<IKNode3D> godot_skeleton_transform;
 	Transform3D godot_skeleton_transform_inverse;
-	Ref<IKNode3D> ik_origin = Ref<IKNode3D>(memnew(IKNode3D));
+	Ref<IKNode3D> ik_origin;
 	bool is_dirty = true;
 	NodePath skeleton_node_path = NodePath("..");
-	int32_t ui_selected_bone = -1;
+	int32_t ui_selected_bone = -1, stabilize_passes = 4;
+	bool is_gizmo_dirty = false;
+	Ref<SceneTreeTimer> timer = memnew(SceneTreeTimer);
+	void _on_timer_timeout();
 	void update_ik_bones_transform();
 	void update_skeleton_bones_transform();
 	Vector<Ref<IKEffectorTemplate3D>> get_bone_effectors() const;
-	void _set_pin_bone_name(int32_t p_effector_index, StringName p_name) const;
-	void _set_constraint_name(int32_t p_index, String p_name);
-	void _set_pin_count(int32_t p_value);
-	void _set_constraint_count(int32_t p_count);
+	void set_constraint_name(int32_t p_index, String p_name);
+	void set_pin_count(int32_t p_value);
+	void set_constraint_count(int32_t p_count);
 	void _remove_pin(int32_t p_index);
 	void _set_bone_count(int32_t p_count);
 
@@ -95,76 +99,15 @@ protected:
 	void _notification(int p_what);
 
 public:
-	double _process(const AnimationMixer::PlaybackInfo p_playback_info, bool p_test_only) {
-		AnimationMixer::PlaybackInfo pi_humanoid = p_playback_info;
-		pi_humanoid.weight = 1.0; // Full weight because we're using this as our base.
-		double rem0 = blend_input(0, pi_humanoid, FILTER_BLEND, sync, p_test_only);
-
-		// If IK is needed, find the target transform for the IK from the hand pose.
-		if (!p_test_only) {
-			// Retrieve the target hand transform from the posed hand skeleton. This needs custom logic.
-			Transform3D hand_target_transform; // Placeholder for actual transform retrieval code.
-
-			// Apply the IK to the humanoid skeleton to make the hand match the pose of the hand skeleton.
-			// This will require access to the humanoid's AnimationTree/IK system to manipulate bones.
-			// adjust_humanoid_ik_to_match_hand(hand_target_transform);
-		}
-
-		// Since we're not directly blending animation data but rather influencing the final pose with IK,
-		// there's no need for a second blend_input call related to the separate hand skeleton animation.
-
-		// The return value should reflect the remaining time of the main humanoid animation track.
-		return rem0;
-	}
-
-	bool has_filter() const {
-		return true;
-	}
-	Variant get_parameter_default_value(const StringName &p_parameter) const {
-		return Variant();
-	}
-	String get_caption() const {
-		return "IKBlend2";
-	}
-	void set_stabilization_passes(int32_t p_passes) {
-		for (Ref<IKBoneSegment3D> segment : segmented_skeletons) {
-			if (segment.is_valid()) {
-				segment->set_stabilization_passes(p_passes);
-			}
-		}
-	}
-	int32_t get_stabilization_passes() {
-		for (Ref<IKBoneSegment3D> segment : segmented_skeletons) {
-			if (segment.is_valid()) {
-				return segment->get_stabilization_passes();
-			}
-		}
-		return 0;
-	}
-	void set_twist_constraint_defaults(Dictionary p_defaults) {
-		twist_constraint_defaults = p_defaults;
-	}
-	Dictionary get_twist_constraint_defaults() {
-		return twist_constraint_defaults;
-	}
-	void set_orientation_constraint_defaults(Dictionary p_defaults) {
-		orientation_constraint_defaults = p_defaults;
-	}
-	Dictionary get_orientation_constraint_defaults() {
-		return orientation_constraint_defaults;
-	}
-	void set_bone_direction_constraint_defaults(Dictionary p_defaults) {
-		bone_direction_constraint_defaults = p_defaults;
-	}
-	Dictionary get_bone_direction_constraint_defaults() {
-		return bone_direction_constraint_defaults;
-	}
-	Transform3D get_godot_skeleton_transform_inverse() {
-		return godot_skeleton_transform_inverse;
-	}
-	Ref<IKNode3D> get_godot_skeleton_transform() {
-		return godot_skeleton_transform;
-	}
+	double _process(const AnimationMixer::PlaybackInfo p_playback_info, bool p_test_only);
+	bool has_filter() const;
+	String get_caption() const;
+	void set_pin_bone_name(int32_t p_effector_index, StringName p_name) const;
+	void add_constraint();
+	void set_stabilization_passes(int32_t p_passes);
+	int32_t get_stabilization_passes();
+	Transform3D get_godot_skeleton_transform_inverse();
+	Ref<IKNode3D> get_godot_skeleton_transform();
 	void set_ui_selected_bone(int32_t p_ui_selected_bone);
 	int32_t get_ui_selected_bone() const;
 	void set_constraint_mode(bool p_enabled);
@@ -173,10 +116,9 @@ public:
 	void set_skeleton_node_path(NodePath p_skeleton_node_path);
 	void register_skeleton();
 	void reset_constraints();
-
 	NodePath get_skeleton_node_path();
 	Skeleton3D *get_skeleton() const;
-	Vector<Ref<IKBone3D>> get_bone_list();
+	Vector<Ref<IKBone3D>> get_bone_list() const;
 	Vector<Ref<IKBoneSegment3D>> get_segmented_skeletons();
 	float get_iterations_per_frame() const;
 	void set_iterations_per_frame(const float &p_iterations_per_frame);
@@ -201,30 +143,31 @@ public:
 	int32_t find_constraint(String p_string) const;
 	int32_t get_constraint_count() const;
 	StringName get_constraint_name(int32_t p_index) const;
-	void set_kusudama_twist(int32_t p_index, Vector2 p_limit);
-
+	void set_kusudama_resistance(int32_t p_index, real_t p_resistance);
+	real_t get_kusudama_resistance(int32_t p_index) const;
 	void set_constraint_twist_transform(int32_t p_index, Transform3D p_transform);
 	Transform3D get_constraint_twist_transform(int32_t p_index) const;
 	void set_constraint_orientation_transform(int32_t p_index, Transform3D p_transform);
 	Transform3D get_constraint_orientation_transform(int32_t p_index) const;
 	void set_bone_direction_transform(int32_t p_index, Transform3D p_transform);
 	Transform3D get_bone_direction_transform(int32_t p_index) const;
-
 	Vector2 get_kusudama_twist(int32_t p_index) const;
 	void set_kusudama_limit_cone(int32_t p_bone, int32_t p_index,
 			Vector3 p_center, float p_radius);
 	Vector3 get_kusudama_limit_cone_center(int32_t p_constraint_index, int32_t p_index) const;
 	float get_kusudama_limit_cone_radius(int32_t p_constraint_index, int32_t p_index) const;
+	int32_t get_kusudama_limit_cone_count(int32_t p_constraint_index) const;
+	int32_t get_bone_count() const;
+	void set_kusudama_twist_from_range(int32_t p_index, float from, float range);
+	void set_kusudama_twist(int32_t p_index, Vector2 p_limit);
+	void set_kusudama_limit_cone_count(int32_t p_constraint_index, int32_t p_count);
 	void set_kusudama_limit_cone_center(int32_t p_constraint_index, int32_t p_index, Vector3 p_center);
 	void set_kusudama_limit_cone_radius(int32_t p_constraint_index, int32_t p_index, float p_radius);
-	int32_t get_kusudama_limit_cone_count(int32_t p_constraint_index) const;
-	void set_kusudama_limit_cone_count(int32_t p_constraint_index, int32_t p_count);
-	int32_t get_bone_count() const;
-	void set_bone_damp(int32_t p_index, real_t p_damp);
-	real_t get_bone_damp(int32_t p_index) const;
+	real_t get_kusudama_twist_current(int32_t p_index) const;
+	void set_kusudama_twist_current(int32_t p_index, real_t p_rotation);
 	AnimationNodeIKBlend2();
 	~AnimationNodeIKBlend2();
 	void set_dirty();
 };
 
-#endif // MANY_BONE_IK_ANIMATON_NODE_H
+#endif // MANY_BONE_IK_3D_H

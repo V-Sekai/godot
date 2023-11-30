@@ -30,7 +30,7 @@
 
 #include "ik_effector_template_3d.h"
 
-#include "many_bone_ik_3d.h"
+#include "many_bone_ik_animation_node.h"
 
 void IKEffectorTemplate3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_target_node"), &IKEffectorTemplate3D::get_target_node);

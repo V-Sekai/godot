@@ -30,7 +30,7 @@
 
 #include "ik_bone_3d.h"
 #include "ik_kusudama_3d.h"
-#include "many_bone_ik_3d.h"
+#include "many_bone_ik_animation_node.h"
 #include "math/ik_node_3d.h"
 #include <cmath>
 
@@ -214,7 +214,7 @@ void IKBone3D::_bind_methods() {
 }
 
 IKBone3D::IKBone3D(StringName p_bone, Skeleton3D *p_skeleton, const Ref<IKBone3D> &p_parent, Vector<Ref<IKEffectorTemplate3D>> &p_pins, float p_default_dampening,
-		ManyBoneIK3D *p_many_bone_ik) {
+		AnimationNodeIKBlend2 *p_many_bone_ik) {
 	ERR_FAIL_NULL(p_skeleton);
 
 	default_dampening = p_default_dampening;
@@ -228,7 +228,7 @@ IKBone3D::IKBone3D(StringName p_bone, Skeleton3D *p_skeleton, const Ref<IKBone3D
 		if (elem.is_null()) {
 			continue;
 		}
-		if (elem->get_name() == p_bone && !elem->get_target_node().is_empty() && p_many_bone_ik && p_many_bone_ik->get_node_or_null(elem->get_target_node())) {
+		if (elem->get_name() == p_bone && !elem->get_target_node().is_empty() && p_many_bone_ik /*&& p_many_bone_ik->get_node_or_null(elem->get_target_node())*/) {
 			create_pin();
 			Ref<IKEffector3D> effector = get_pin();
 			effector->set_target_node(p_skeleton, elem->get_target_node());
