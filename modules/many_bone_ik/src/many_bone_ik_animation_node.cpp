@@ -33,25 +33,18 @@
 #include "core/error/error_macros.h"
 #include "core/io/json.h"
 #include "core/math/math_defs.h"
+#include "core/math/transform_3d.h"
 #include "core/object/class_db.h"
 #include "core/string/string_name.h"
 #include "core/variant/typed_array.h"
 #include "ik_bone_3d.h"
-#include "ik_kusudama_3d.h"
-#include "ik_limit_cone_3d.h"
 #include "scene/3d/marker_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/physics_body_3d.h"
-#include "scene/3d/skeleton_3d.h"
 #include "scene/animation/animation_tree.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
-#include "scene/resources/skeleton_profile.h"
 #include "scene/scene_string_names.h"
-
-#ifdef TOOLS_ENABLED
-#include "editor/editor_node.h"
-#endif
 
 void AnimationNodeOpenXRHandIKBlend2::set_pin_count(int32_t p_value) {
 	int32_t old_count = pins.size();
@@ -113,7 +106,11 @@ void AnimationNodeOpenXRHandIKBlend2::update_ik_bones_transform() {
 		if (bone.is_null()) {
 			continue;
 		}
-		bone->set_initial_pose(get_skeleton());
+		if (!get_skeleton()) {
+			continue;
+		}
+		Transform3D bone_origin_to_parent_origin = get_skeleton()->get_bone_pose(bone->get_bone_id());
+		bone->set_pose(bone_origin_to_parent_origin);
 		if (bone->is_pinned()) {
 			bone->get_pin()->update_target_global_transform(get_skeleton(), this);
 		}
@@ -126,10 +123,20 @@ void AnimationNodeOpenXRHandIKBlend2::update_skeleton_bones_transform() {
 		if (bone.is_null()) {
 			continue;
 		}
-		if (bone->get_bone_id() == -1) {
+		BoneId bone_id = bone->get_bone_id();
+		if (bone_id == -1) {
 			continue;
 		}
-		bone->set_skeleton_bone_pose(get_skeleton());
+		Skeleton3D *p_skeleton = get_skeleton();
+		if (p_skeleton) {
+			Transform3D bone_to_parent = bone->get_pose();
+			p_skeleton->set_bone_pose_position(bone_id, bone_to_parent.origin);
+			if (!bone_to_parent.basis.is_finite()) {
+				bone_to_parent.basis = Basis();
+			}
+			p_skeleton->set_bone_pose_rotation(bone_id, bone_to_parent.basis.get_rotation_quaternion());
+			p_skeleton->set_bone_pose_scale(bone_id, bone_to_parent.basis.get_scale());
+		}
 	}
 }
 
@@ -1162,7 +1169,17 @@ void AnimationNodeOpenXRHandIKBlend2::set_kusudama_resistance(int32_t p_index, r
 			continue;
 		}
 		ik_bone->get_constraint()->set_resistance(p_resistance);
-		ik_bone->set_skeleton_bone_pose(get_skeleton());
+		Skeleton3D *p_skeleton = get_skeleton();
+		if (p_skeleton) {
+			BoneId bone_id = ik_bone->get_bone_id();
+			Transform3D bone_to_parent = ik_bone->get_pose();
+			p_skeleton->set_bone_pose_position(bone_id, bone_to_parent.origin);
+			if (!bone_to_parent.basis.is_finite()) {
+				bone_to_parent.basis = Basis();
+			}
+			p_skeleton->set_bone_pose_rotation(bone_id, bone_to_parent.basis.get_rotation_quaternion());
+			p_skeleton->set_bone_pose_scale(bone_id, bone_to_parent.basis.get_scale());
+		}
 		break;
 	}
 	set_dirty();
@@ -1228,8 +1245,19 @@ void AnimationNodeOpenXRHandIKBlend2::set_kusudama_twist_current(int32_t p_index
 			continue;
 		}
 		ik_bone->get_constraint()->set_current_twist_rotation(ik_bone->get_ik_transform(), ik_bone->get_bone_direction_transform(), ik_bone->get_constraint_twist_transform(), p_rotation);
-		ik_bone->set_skeleton_bone_pose(get_skeleton());
-		notify_property_list_changed();
+
+		Skeleton3D *p_skeleton = get_skeleton();
+		if (p_skeleton) {
+			BoneId bone_id = ik_bone->get_bone_id();
+			Transform3D bone_to_parent = ik_bone->get_pose();
+			p_skeleton->set_bone_pose_position(bone_id, bone_to_parent.origin);
+			if (!bone_to_parent.basis.is_finite()) {
+				bone_to_parent.basis = Basis();
+			}
+			p_skeleton->set_bone_pose_rotation(bone_id, bone_to_parent.basis.get_rotation_quaternion());
+			p_skeleton->set_bone_pose_scale(bone_id, bone_to_parent.basis.get_scale());
+			notify_property_list_changed();
+		}
 	}
 }
 

@@ -120,8 +120,6 @@ public:
 	Transform3D get_global_pose() const;
 	void set_pose(const Transform3D &p_transform);
 	Transform3D get_pose() const;
-	void set_initial_pose(Skeleton3D *p_skeleton);
-	void set_skeleton_bone_pose(Skeleton3D *p_skeleton);
 	void create_pin();
 	bool is_pinned() const;
 	Ref<IKNode3D> get_ik_transform();

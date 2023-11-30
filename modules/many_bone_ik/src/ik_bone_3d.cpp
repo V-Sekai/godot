@@ -176,26 +176,6 @@ Transform3D IKBone3D::get_bone_direction_global_pose() const {
 	return bone_direction_transform->get_global_transform();
 }
 
-void IKBone3D::set_initial_pose(Skeleton3D *p_skeleton) {
-	ERR_FAIL_NULL(p_skeleton);
-	if (bone_id == -1) {
-		return;
-	}
-	Transform3D bone_origin_to_parent_origin = p_skeleton->get_bone_pose(bone_id);
-	set_pose(bone_origin_to_parent_origin);
-}
-
-void IKBone3D::set_skeleton_bone_pose(Skeleton3D *p_skeleton) {
-	ERR_FAIL_NULL(p_skeleton);
-	Transform3D bone_to_parent = get_pose();
-	p_skeleton->set_bone_pose_position(bone_id, bone_to_parent.origin);
-	if (!bone_to_parent.basis.is_finite()) {
-		bone_to_parent.basis = Basis();
-	}
-	p_skeleton->set_bone_pose_rotation(bone_id, bone_to_parent.basis.get_rotation_quaternion());
-	p_skeleton->set_bone_pose_scale(bone_id, bone_to_parent.basis.get_scale());
-}
-
 void IKBone3D::create_pin() {
 	pin = Ref<IKEffector3D>(memnew(IKEffector3D(this)));
 }
