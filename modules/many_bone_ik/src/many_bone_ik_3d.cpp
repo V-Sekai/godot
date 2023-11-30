@@ -759,9 +759,13 @@ void ManyBoneIK3D::skeleton_changed(Skeleton3D *p_skeleton) {
 	if (!p_skeleton) {
 		return;
 	}
+	Vector<int32_t> roots = p_skeleton->get_parentless_bones();
+	if (roots.is_empty()) {
+		return;
+	}
 	bone_list.clear();
 	segmented_skeletons.clear();
-	for (BoneId root_bone_index = 0; root_bone_index < get_skeleton()->get_bone_count(); root_bone_index++) {
+	for (BoneId root_bone_index : roots) {
 		StringName parentless_bone = p_skeleton->get_bone_name(root_bone_index);
 		Ref<IKBoneSegment3D> segmented_skeleton = Ref<IKBoneSegment3D>(memnew(IKBoneSegment3D(p_skeleton, parentless_bone, pins, this, nullptr, root_bone_index, -1, stabilize_passes)));
 		ik_origin.instantiate();
