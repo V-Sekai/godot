@@ -34,8 +34,7 @@
 #include "math/ik_node_3d.h"
 #include <cmath>
 
-void IKBone3D::set_bone_id(BoneId p_bone_id, Skeleton3D *p_skeleton) {
-	ERR_FAIL_NULL(p_skeleton);
+void IKBone3D::set_bone_id(BoneId p_bone_id) {
 	bone_id = p_bone_id;
 }
 

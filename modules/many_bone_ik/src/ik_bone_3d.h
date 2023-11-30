@@ -110,7 +110,7 @@ public:
 	void update_default_constraint_transform();
 	void add_constraint(Ref<IKKusudama3D> p_constraint);
 	Ref<IKKusudama3D> get_constraint() const;
-	void set_bone_id(BoneId p_bone_id, Skeleton3D *p_skeleton = nullptr);
+	void set_bone_id(BoneId p_bone_id);
 	BoneId get_bone_id() const;
 	void set_parent(const Ref<IKBone3D> &p_parent);
 	Ref<IKBone3D> get_parent() const;
