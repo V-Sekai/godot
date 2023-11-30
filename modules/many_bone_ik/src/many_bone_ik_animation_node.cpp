@@ -137,12 +137,12 @@ void AnimationNodeIK::_get_property_list(List<PropertyInfo> *p_list) const {
 		if (get_skeleton()) {
 			String names;
 			for (int bone_i = 0; bone_i < get_skeleton()->get_bone_count(); bone_i++) {
-				String name = get_skeleton()->get_bone_name(bone_i);
-				if (existing_pins.has(name)) {
+				String bone_name = get_skeleton()->get_bone_name(bone_i);
+				if (existing_pins.has(bone_name)) {
 					continue;
 				}
-				name += ",";
-				names += name;
+				bone_name += ",";
+				names += bone_name;
 			}
 			effector_name.hint = PROPERTY_HINT_ENUM_SUGGESTION;
 			effector_name.hint_string = names;
@@ -163,8 +163,8 @@ void AnimationNodeIK::_get_property_list(List<PropertyInfo> *p_list) const {
 
 	RBSet<String> existing_constraints;
 	for (int32_t constraint_i = 0; constraint_i < get_constraint_count(); constraint_i++) {
-		const String name = get_constraint_name(constraint_i);
-		existing_constraints.insert(name);
+		const String constraint_name = get_constraint_name(constraint_i);
+		existing_constraints.insert(constraint_name);
 	}
 	p_list->push_back(
 			PropertyInfo(Variant::INT, "constraint_count",
@@ -179,13 +179,13 @@ void AnimationNodeIK::_get_property_list(List<PropertyInfo> *p_list) const {
 		if (get_skeleton()) {
 			String names;
 			for (int bone_i = 0; bone_i < get_skeleton()->get_bone_count(); bone_i++) {
-				String name = get_skeleton()->get_bone_name(bone_i);
-				if (existing_constraints.has(name)) {
+				String current_bone_name = get_skeleton()->get_bone_name(bone_i);
+				if (existing_constraints.has(current_bone_name)) {
 					continue;
 				}
-				name += ",";
-				names += name;
-				existing_constraints.insert(name);
+				current_bone_name += ",";
+				names += current_bone_name;
+				existing_constraints.insert(current_bone_name);
 			}
 			bone_name.hint = PROPERTY_HINT_ENUM_SUGGESTION;
 			bone_name.hint_string = names;
@@ -231,9 +231,9 @@ void AnimationNodeIK::_get_property_list(List<PropertyInfo> *p_list) const {
 			if (get_skeleton()) {
 				String names;
 				for (int bone_i = 0; bone_i < get_skeleton()->get_bone_count(); bone_i++) {
-					String name = get_skeleton()->get_bone_name(bone_i);
-					name += ",";
-					names += name;
+					String current_bone_name = get_skeleton()->get_bone_name(bone_i);
+					current_bone_name += ",";
+					names += current_bone_name;
 				}
 				bone_name.hint = PROPERTY_HINT_ENUM_SUGGESTION;
 				bone_name.hint_string = names;
@@ -249,19 +249,19 @@ void AnimationNodeIK::_get_property_list(List<PropertyInfo> *p_list) const {
 }
 
 bool AnimationNodeIK::_get(const StringName &p_name, Variant &r_ret) const {
-	String name = p_name;
-	if (name == "constraint_count") {
+	String current_name = p_name;
+	if (current_name == "constraint_count") {
 		r_ret = get_constraint_count();
 		return true;
-	} else if (name == "pin_count") {
+	} else if (current_name == "pin_count") {
 		r_ret = get_pin_count();
 		return true;
-	} else if (name == "bone_count") {
+	} else if (current_name == "bone_count") {
 		r_ret = get_bone_count();
 		return true;
-	} else if (name.begins_with("pins/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
+	} else if (current_name.begins_with("pins/")) {
+		int index = current_name.get_slicec('/', 1).to_int();
+		String what = current_name.get_slicec('/', 2);
 		ERR_FAIL_INDEX_V(index, pins.size(), false);
 		Ref<IKEffectorTemplate3D> effector_template = pins[index];
 		ERR_FAIL_NULL_V(effector_template, false);
@@ -281,9 +281,9 @@ bool AnimationNodeIK::_get(const StringName &p_name, Variant &r_ret) const {
 			r_ret = get_pin_direction_priorities(index);
 			return true;
 		}
-	} else if (name.begins_with("bone/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
+	} else if (current_name.begins_with("bone/")) {
+		int index = current_name.get_slicec('/', 1).to_int();
+		String what = current_name.get_slicec('/', 2);
 		ERR_FAIL_INDEX_V(index, bone_count, false);
 		if (what == "bone_name") {
 			Skeleton3D *skeleton = get_skeleton();
@@ -297,9 +297,9 @@ bool AnimationNodeIK::_get(const StringName &p_name, Variant &r_ret) const {
 			r_ret = get_bone_damp(index);
 			return true;
 		}
-	} else if (name.begins_with("constraints/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
+	} else if (current_name.begins_with("constraints/")) {
+		int index = current_name.get_slicec('/', 1).to_int();
+		String what = current_name.get_slicec('/', 2);
 		ERR_FAIL_INDEX_V(index, constraint_count, false);
 		String begins = "constraints/" + itos(index) + "/kusudama_limit_cone";
 		if (what == "bone_name") {
@@ -315,9 +315,9 @@ bool AnimationNodeIK::_get(const StringName &p_name, Variant &r_ret) const {
 		} else if (what == "kusudama_limit_cone_count") {
 			r_ret = get_kusudama_limit_cone_count(index);
 			return true;
-		} else if (name.begins_with(begins)) {
-			int32_t cone_index = name.get_slicec('/', 3).to_int();
-			String cone_what = name.get_slicec('/', 4);
+		} else if (current_name.begins_with(begins)) {
+			int32_t cone_index = current_name.get_slicec('/', 3).to_int();
+			String cone_what = current_name.get_slicec('/', 4);
 			if (cone_what == "center") {
 				r_ret = get_kusudama_limit_cone_center(index, cone_index);
 				return true;
@@ -340,19 +340,19 @@ bool AnimationNodeIK::_get(const StringName &p_name, Variant &r_ret) const {
 }
 
 bool AnimationNodeIK::_set(const StringName &p_name, const Variant &p_value) {
-	String name = p_name;
-	if (name == "constraint_count") {
+	String current_name = p_name;
+	if (current_name == "constraint_count") {
 		_set_constraint_count(p_value);
 		return true;
-	} else if (name == "pin_count") {
+	} else if (current_name == "pin_count") {
 		_set_pin_count(p_value);
 		return true;
-	} else if (name == "bone_count") {
+	} else if (current_name == "bone_count") {
 		_set_bone_count(p_value);
 		return true;
-	} else if (name.begins_with("pins/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
+	} else if (current_name.begins_with("pins/")) {
+		int index = current_name.get_slicec('/', 1).to_int();
+		String what = current_name.get_slicec('/', 2);
 		ERR_FAIL_INDEX_V(index, pin_count, true);
 		if (what == "bone_name") {
 			set_pin_bone(index, p_value);
@@ -374,16 +374,16 @@ bool AnimationNodeIK::_set(const StringName &p_name, const Variant &p_value) {
 			set_pin_direction_priorities(index, p_value);
 			return true;
 		}
-	} else if (name.begins_with("bone/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
+	} else if (current_name.begins_with("bone/")) {
+		int index = current_name.get_slicec('/', 1).to_int();
+		String what = current_name.get_slicec('/', 2);
 		if (what == "damp") {
 			set_bone_damp(index, p_value);
 			return true;
 		}
-	} else if (name.begins_with("constraints/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
+	} else if (current_name.begins_with("constraints/")) {
+		int index = current_name.get_slicec('/', 1).to_int();
+		String what = current_name.get_slicec('/', 2);
 		String begins = "constraints/" + itos(index) + "/kusudama_limit_cone/";
 		if (what == "bone_name") {
 			if (index >= constraint_names.size()) {
@@ -402,9 +402,9 @@ bool AnimationNodeIK::_set(const StringName &p_name, const Variant &p_value) {
 		} else if (what == "kusudama_limit_cone_count") {
 			set_kusudama_limit_cone_count(index, p_value);
 			return true;
-		} else if (name.begins_with(begins)) {
-			int cone_index = name.get_slicec('/', 3).to_int();
-			String cone_what = name.get_slicec('/', 4);
+		} else if (current_name.begins_with(begins)) {
+			int cone_index = current_name.get_slicec('/', 3).to_int();
+			String cone_what = current_name.get_slicec('/', 4);
 			if (cone_what == "center") {
 				Vector3 center = p_value;
 				if (Math::is_zero_approx(center.length_squared())) {
@@ -917,6 +917,7 @@ Skeleton3D *AnimationNodeIK::get_skeleton() const {
 	// 	return nullptr;
 	// }
 	// return cast_to<Skeleton3D>(node);
+	return nullptr;
 }
 
 NodePath AnimationNodeIK::get_skeleton_node_path() {
@@ -997,6 +998,9 @@ void AnimationNodeIK::set_bone_direction_transform(int32_t p_index, Transform3D 
 	String bone_name = constraint_names[p_index];
 	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
+			continue;
+		}
+		if (!get_skeleton()) {
 			continue;
 		}
 		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));

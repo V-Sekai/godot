@@ -44,8 +44,8 @@
 #include "editor/editor_undo_redo_manager.h"
 #endif
 
-class AnimationNodeIK : public AnimationNodeSync {
-	GDCLASS(AnimationNodeIK, AnimationNodeSync);
+class AnimationNodeIK : public AnimationNodeBlend2 {
+	GDCLASS(AnimationNodeIK, AnimationNodeBlend2);
 
 private:
 	StringName comfortable_animation;
