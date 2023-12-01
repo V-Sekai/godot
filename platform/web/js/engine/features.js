@@ -84,11 +84,16 @@ const Features = { // eslint-disable-line no-unused-vars
 		if (!Features.isSecureContext()) {
 			missing.push('Secure Context - Check web server configuration (use HTTPS)');
 		}
-		if (!Features.isCrossOriginIsolated()) {
-			missing.push('Cross Origin Isolation - Check web server configuration (send correct headers)');
-		}
-		if (!Features.isSharedArrayBufferAvailable()) {
-			missing.push('SharedArrayBuffer - Check web server configuration (send correct headers)');
+
+		// eslint-disable-next-line no-undef
+		const compiledWithThreads = ___GODOT_THREADS_ENABLED;
+		if (compiledWithThreads) {
+			if (!Features.isCrossOriginIsolated()) {
+				missing.push('Cross Origin Isolation - Check web server configuration (send correct headers)');
+			}
+			if (!Features.isSharedArrayBufferAvailable()) {
+				missing.push('SharedArrayBuffer - Check web server configuration (send correct headers)');
+			}
 		}
 		// Audio is normally optional since we have a dummy fallback.
 		return missing;
