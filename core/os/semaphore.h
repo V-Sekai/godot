@@ -31,6 +31,8 @@
 #ifndef SEMAPHORE_H
 #define SEMAPHORE_H
 
+#ifdef THREADS_ENABLED
+
 #include "core/error/error_list.h"
 #include "core/typedefs.h"
 #ifdef DEBUG_ENABLED
@@ -129,5 +131,18 @@ public:
 	}
 #endif
 };
+
+#else // No threads.
+
+class Semaphore {
+public:
+	void post() const {}
+	void wait() const {}
+	bool try_wait() const {
+		return true;
+	};
+};
+
+#endif // THREADS_ENABLED
 
 #endif // SEMAPHORE_H
