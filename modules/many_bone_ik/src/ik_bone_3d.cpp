@@ -134,7 +134,7 @@ void IKBone3D::update_default_constraint_transform() {
 		direction -= constraint_orientation_transform->get_global_transform().origin;
 	}
 
-	Vector3 twist_axis = constraint_twist_transform->get_global_transform().basis.get_column(Vector3::AXIS_Y);
+	Vector3 twist_axis = constraint_twist_transform->get_global_transform().basis.get_column(Vector3::AXIS_Y).normalized();
 	Quaternion align_dir = Quaternion(twist_axis, direction);
 	constraint_twist_transform->rotate_local_with_global(align_dir);
 }

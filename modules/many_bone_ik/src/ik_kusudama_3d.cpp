@@ -327,7 +327,7 @@ void IKKusudama3D::set_axes_to_orientation_snap(Ref<IKNode3D> bone_direction, Re
 		constrained_ray->set_point_1(bone_ray->get_point_1());
 		constrained_ray->set_point_2(limiting_axes->to_global(in_limits));
 
-		Quaternion rectified_rot = Quaternion(bone_ray->get_heading(), constrained_ray->get_heading());
+		Quaternion rectified_rot = Quaternion(bone_ray->get_heading().normalized(), constrained_ray->get_heading().normalized()).normalized();
 		to_set->rotate_local_with_global(rectified_rot);
 	}
 }
