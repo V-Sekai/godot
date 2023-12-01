@@ -42,8 +42,8 @@ void IKLimitCone3D::update_tangent_handles(Ref<IKLimitCone3D> p_next) {
 		double radA = _get_radius();
 		double radB = p_next->_get_radius();
 
-		Vector3 A = get_control_point().normalized();
-		Vector3 B = p_next->get_control_point().normalized();
+		Vector3 A = get_control_point();
+		Vector3 B = p_next->get_control_point();
 
 		Vector3 arc_normal = A.cross(B).normalized();
 
@@ -187,47 +187,60 @@ void IKLimitCone3D::set_radius(double p_radius) {
 }
 
 bool IKLimitCone3D::determine_if_in_bounds(Ref<IKLimitCone3D> next, Vector3 input) const {
+	/**
+	 * Procedure : Check if input is contained in this cone, or the next cone
+	 * 	if it is, then we're finished and in bounds. otherwise,
+	 * check if the point  is contained within the tangent radii,
+	 * 	if it is, then we're out of bounds and finished, otherwise
+	 * in the tangent triangles while still remaining outside of the tangent radii
+	 * if it is, then we're finished and in bounds. otherwise, we're out of bounds.
+	 */
+
 	if (control_point.dot(input) >= radius_cosine) {
 		return true;
-	}
-
-	if (next.is_valid()) {
-		if (next->control_point.dot(input) >= next->radius_cosine) {
-			return true;
+	} else if (next != nullptr && next->control_point.dot(input) >= next->radius_cosine) {
+		return true;
+	} else {
+		if (next == nullptr) {
+			return false;
+		}
+		bool inTan1Rad = tangent_circle_center_next_1.dot(input) > tangent_circle_radius_next_cos;
+		if (inTan1Rad) {
+			return false;
+		}
+		bool inTan2Rad = tangent_circle_center_next_2.dot(input) > tangent_circle_radius_next_cos;
+		if (inTan2Rad) {
+			return false;
 		}
 
-		// Now we check against the tangent radii of the next cone
-		bool inTan1Rad = tangent_circle_center_next_1.dot(input) <= tangent_circle_radius_next_cos;
-		bool inTan2Rad = tangent_circle_center_next_2.dot(input) <= tangent_circle_radius_next_cos;
+		/*if we reach this point in the code, we are either on the path between two limit_cones, or on the path extending out from between them
+		 * but outside of their radii.
+		 * 	To determine which , we take the cross product of each control point with each tangent center.
+		 * 		The direction of each of the resultant vectors will represent the normal of a plane.
+		 * 		Each of these four planes define part of a boundary which determines if our point is in bounds.
+		 * 		If the dot product of our point with the normal of any of these planes is negative, we must be out
+		 * 		of bounds.
+		 *
+		 *	Older version of this code relied on a triangle intersection algorithm here, which I think is slightly less efficient on average
+		 *	as it didn't allow for early termination. .
+		 */
 
-		if (inTan1Rad && inTan2Rad) {
-			// Define additional volume beyond this cone
-			// which belongs to the space between this and the next cone.
+		Vector3 c1xc2 = control_point.cross(next->control_point);
+		double c1c2dir = input.dot(c1xc2);
 
-			// Determine whether we're within the boundary defined by tangent planes
-			Vector3 c1xc2 = control_point.cross(next->control_point);
-			double c1c2dir = input.dot(c1xc2);
-
-			if (c1c2dir < 0.0) {
-				Vector3 c1xt1 = control_point.cross(tangent_circle_center_next_1);
-				Vector3 t1xc2 = tangent_circle_center_next_1.cross(next->control_point);
-				return input.dot(c1xt1) > 0 && input.dot(t1xc2) > 0;
-			} else {
-				Vector3 t2xc1 = tangent_circle_center_next_2.cross(control_point);
-				Vector3 c2xt2 = next->control_point.cross(tangent_circle_center_next_2);
-				return input.dot(t2xc1) > 0 && input.dot(c2xt2) > 0;
-			}
+		if (c1c2dir < 0.0) {
+			Vector3 c1xt1 = control_point.cross(tangent_circle_center_next_1);
+			Vector3 t1xc2 = tangent_circle_center_next_1.cross(next->control_point);
+			return input.dot(c1xt1) > 0 && input.dot(t1xc2) > 0;
+		} else {
+			Vector3 t2xc1 = tangent_circle_center_next_2.cross(control_point);
+			Vector3 c2xt2 = next->control_point.cross(tangent_circle_center_next_2);
+			return input.dot(t2xc1) > 0 && input.dot(c2xt2) > 0;
 		}
 	}
-
-	return false;
 }
 
 Vector3 IKLimitCone3D::get_closest_path_point(Ref<IKLimitCone3D> next, Vector3 input) const {
-	if (!determine_if_in_bounds(next, input.normalized())) {
-		return Vector3(NAN, NAN, NAN);
-	}
-
 	Vector3 result = get_on_path_sequence(next, input);
 	bool is_number = !(Math::is_nan(result.x) && Math::is_nan(result.y) && Math::is_nan(result.z));
 	if (!is_number) {
@@ -274,9 +287,6 @@ IKLimitCone3D::IKLimitCone3D(Vector3 direction, double rad, Ref<IKKusudama3D> at
 }
 
 Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Vector3 input) const {
-	if (next.is_null()) {
-		return Vector3(NAN, NAN, NAN);
-	}
 	Vector3 c1xc2 = control_point.cross(next->control_point);
 	double c1c2dir = input.dot(c1xc2);
 	if (c1c2dir < 0.0) {
@@ -286,7 +296,8 @@ Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Ve
 			double to_next_cos = input.dot(tangent_circle_center_next_1);
 			if (to_next_cos > tangent_circle_radius_next_cos) {
 				Vector3 plane_normal = tangent_circle_center_next_1.cross(input).normalized();
-				Quaternion rotate_about_by = Quaternion(plane_normal, tangent_circle_radius_next).normalized();
+				plane_normal.normalize();
+				Quaternion rotate_about_by = Quaternion(plane_normal, tangent_circle_radius_next);
 				return rotate_about_by.xform(tangent_circle_center_next_1);
 			} else {
 				return input;
@@ -300,6 +311,7 @@ Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Ve
 		if (input.dot(t2xc1) > 0 && input.dot(c2xt2) > 0) {
 			if (input.dot(tangent_circle_center_next_2) > tangent_circle_radius_next_cos) {
 				Vector3 plane_normal = tangent_circle_center_next_2.cross(input).normalized();
+				plane_normal.normalize();
 				Quaternion rotate_about_by = Quaternion(plane_normal, tangent_circle_radius_next);
 				return rotate_about_by.xform(tangent_circle_center_next_2);
 			} else {
@@ -312,9 +324,6 @@ Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Ve
 }
 
 Vector3 IKLimitCone3D::closest_cone(Ref<IKLimitCone3D> next, Vector3 input) const {
-	if (next.is_null()) {
-		return control_point;
-	}
 	if (input.dot(control_point) > input.dot(next->control_point)) {
 		return control_point;
 	} else {
@@ -323,9 +332,6 @@ Vector3 IKLimitCone3D::closest_cone(Ref<IKLimitCone3D> next, Vector3 input) cons
 }
 
 Vector3 IKLimitCone3D::closest_point_on_closest_cone(Ref<IKLimitCone3D> next, Vector3 input, Vector<double> *in_bounds) const {
-	if (next.is_null()) {
-		return Vector3(NAN, NAN, NAN);
-	}
 	Vector3 closestToFirst = closest_to_cone(input, in_bounds);
 	if ((*in_bounds)[0] > 0.0) {
 		return closestToFirst;
@@ -374,9 +380,6 @@ void IKLimitCone3D::set_tangent_circle_center_next_2(Vector3 point) {
 }
 
 Vector3 IKLimitCone3D::get_on_path_sequence(Ref<IKLimitCone3D> next, Vector3 input) const {
-	if (next.is_null()) {
-		return Vector3(NAN, NAN, NAN);
-	}
 	Vector3 c1xc2 = get_control_point().cross(next->control_point).normalized();
 	double c1c2dir = input.dot(c1xc2);
 	if (c1c2dir < 0.0) {
