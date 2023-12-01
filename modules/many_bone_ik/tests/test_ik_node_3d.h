@@ -31,12 +31,12 @@
 #ifndef TEST_IK_NODE_3D_H
 #define TEST_IK_NODE_3D_H
 
-#include "modules/many_bone_ik/src/math/ik_node_3d.h"
+#include "modules/many_bone_ik/src/ik_bone_3d.h"
 #include "tests/test_macros.h"
 
 namespace TestIKNode3D {
 
-TEST_CASE("[Modules][IKNode3D] Transform operations") {
+TEST_CASE("[Modules][ManyBoneIK][IKNode3D] Transform operations") {
 	Ref<IKNode3D> node;
 	node.instantiate();
 
@@ -53,7 +53,7 @@ TEST_CASE("[Modules][IKNode3D] Transform operations") {
 	CHECK(node->get_global_transform() == gt);
 }
 
-TEST_CASE("[Modules][IKNode3D] Scale operations") {
+TEST_CASE("[Modules][ManyBoneIK][IKNode3D] Scale operations") {
 	Ref<IKNode3D> node;
 	node.instantiate();
 
@@ -62,7 +62,7 @@ TEST_CASE("[Modules][IKNode3D] Scale operations") {
 	CHECK(node->is_scale_disabled());
 }
 
-TEST_CASE("[Modules][IKNode3D] Parent operations") {
+TEST_CASE("[Modules][ManyBoneIK][IKNode3D] Parent operations") {
 	Ref<IKNode3D> node;
 	node.instantiate();
 	Ref<IKNode3D> parent;
@@ -73,7 +73,7 @@ TEST_CASE("[Modules][IKNode3D] Parent operations") {
 	CHECK(node->get_parent() == parent);
 }
 
-TEST_CASE("[Modules][IKNode3D] Coordinate transformations") {
+TEST_CASE("[Modules][ManyBoneIK][IKNode3D] Coordinate transformations") {
 	Ref<IKNode3D> node;
 	node.instantiate();
 
@@ -83,7 +83,7 @@ TEST_CASE("[Modules][IKNode3D] Coordinate transformations") {
 	CHECK(node->to_global(local) == global);
 }
 
-TEST_CASE("[Modules][IKNode3D] Test local transform calculation") {
+TEST_CASE("[Modules][ManyBoneIK][IKNode3D] Test local transform calculation") {
 	Ref<IKNode3D> node;
 	node.instantiate();
 

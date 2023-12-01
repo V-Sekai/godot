@@ -37,7 +37,7 @@
 
 namespace TestQCP {
 
-TEST_CASE("[Modules][QCP] Weighted Superpose") {
+TEST_CASE("[Modules][ManyBoneIK][QCP] Weighted Superpose") {
 	double epsilon = CMP_EPSILON;
 	QCP qcp(epsilon);
 
@@ -56,7 +56,7 @@ TEST_CASE("[Modules][QCP] Weighted Superpose") {
 	CHECK(abs(result.w - expected.w) < epsilon);
 }
 
-TEST_CASE("[Modules][QCP] Weighted Translation") {
+TEST_CASE("[Modules][ManyBoneIK][QCP] Weighted Translation") {
 	double epsilon = CMP_EPSILON;
 	QCP qcp(epsilon);
 
@@ -84,7 +84,7 @@ TEST_CASE("[Modules][QCP] Weighted Translation") {
 	CHECK(abs(translation_result.z - translation_vector.z) < epsilon);
 }
 
-TEST_CASE("[Modules][QCP] Weighted Translation Shortest Path") {
+TEST_CASE("[Modules][ManyBoneIK][QCP] Weighted Translation Shortest Path") {
 	double epsilon = CMP_EPSILON;
 	QCP qcp(epsilon);
 
