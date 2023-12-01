@@ -734,12 +734,12 @@ void ManyBoneIK3D::execute(real_t delta) {
 		}
 		segmented_skeleton->update_returnfulness_damp(get_iterations_per_frame());
 	}
-	for (int32_t i = 0; i < get_iterations_per_frame(); i++) {
+	for (int32_t i = 0; i < iterations_per_frame; i++) {
 		for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 			if (segmented_skeleton.is_null()) {
 				continue;
 			}
-			segmented_skeleton->segment_solver(bone_damp, get_default_damp(), get_constraint_mode(), i, get_iterations_per_frame());
+			segmented_skeleton->segment_solver(bone_damp, get_default_damp(), get_constraint_mode(), i, iterations_per_frame);
 		}
 	}
 	update_skeleton_bones_transform();
