@@ -110,26 +110,29 @@ void IKBoneSegment3D::update_optimal_rotation(Ref<IKBone3D> p_for_bone, double p
 	ERR_FAIL_NULL(p_for_bone);
 	update_target_headings(p_for_bone, &heading_weights, &target_headings);
 	update_tip_headings(p_for_bone, &tip_headings);
-	set_optimal_rotation(p_for_bone, &tip_headings, &target_headings, &heading_weights, p_damp, p_translate, p_constraint_mode);
+	set_optimal_rotation(p_for_bone, &tip_headings, &target_headings, &heading_weights, p_damp, p_translate, p_constraint_mode, current_iteration, total_iterations);
 }
 
-Quaternion IKBoneSegment3D::clamp_to_quadrance_angle(Quaternion p_quat, double p_cos_half_angle) {
-	double newCoeff = double(1.0) - (p_cos_half_angle * Math::abs(p_cos_half_angle));
-	Quaternion rot = p_quat;
-	double currentCoeff = rot.x * rot.x + rot.y * rot.y + rot.z * rot.z;
+Quaternion IKBoneSegment3D::clamp_to_quadrance_angle(Quaternion p_rotation, double p_cos_half_angle) {
+#ifdef MATH_CHECKS
+	ERR_FAIL_COND_V_MSG(!p_rotation.is_normalized(), Quaternion(), "The quaternion must be normalized.");
+#endif
+	double new_coefficient = double(1.0) - (p_cos_half_angle * Math::abs(p_cos_half_angle));
+	Quaternion rotation = p_rotation;
+	double current_coefficient = rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z;
 
-	if (newCoeff >= currentCoeff) {
-		return rot;
+	if (new_coefficient >= current_coefficient) {
+		return rotation;
 	} else {
 		// Calculate how much over the limit the rotation is, between 0 and 1
-		double over_limit = (currentCoeff - newCoeff) / (1.0 - newCoeff);
-		Quaternion clamped_rotation = rot;
-		clamped_rotation.w = rot.w < double(0.0) ? -p_cos_half_angle : p_cos_half_angle;
-		double compositeCoeff = Math::sqrt(newCoeff / currentCoeff);
-		clamped_rotation.x *= compositeCoeff;
-		clamped_rotation.y *= compositeCoeff;
-		clamped_rotation.z *= compositeCoeff;
-		return rot.slerp(clamped_rotation, over_limit);
+		double over_limit = (current_coefficient - new_coefficient) / (1.0 - new_coefficient);
+		Quaternion clamped_rotation = rotation;
+		clamped_rotation.w = rotation.w < double(0.0) ? -p_cos_half_angle : p_cos_half_angle;
+		double composite_coefficent = Math::sqrt(new_coefficient / current_coefficient);
+		clamped_rotation.x *= composite_coefficent;
+		clamped_rotation.y *= composite_coefficent;
+		clamped_rotation.z *= composite_coefficent;
+		return rotation.slerp(clamped_rotation, over_limit);
 	}
 }
 
@@ -153,6 +156,7 @@ void IKBoneSegment3D::set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVecto
 	ERR_FAIL_NULL(r_htip);
 	ERR_FAIL_NULL(r_htarget);
 	ERR_FAIL_NULL(r_weights);
+	ERR_FAIL_COND(!total_iterations);
 
 	update_target_headings(p_for_bone, &heading_weights, &target_headings);
 	Transform3D prev_transform = p_for_bone->get_pose();
