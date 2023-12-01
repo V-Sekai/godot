@@ -286,8 +286,7 @@ Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Ve
 			double to_next_cos = input.dot(tangent_circle_center_next_1);
 			if (to_next_cos > tangent_circle_radius_next_cos) {
 				Vector3 plane_normal = tangent_circle_center_next_1.cross(input).normalized();
-				plane_normal.normalize();
-				Quaternion rotate_about_by = Quaternion(plane_normal, tangent_circle_radius_next);
+				Quaternion rotate_about_by = Quaternion(plane_normal, tangent_circle_radius_next).normalized();
 				return rotate_about_by.xform(tangent_circle_center_next_1);
 			} else {
 				return input;
@@ -301,7 +300,6 @@ Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Ve
 		if (input.dot(t2xc1) > 0 && input.dot(c2xt2) > 0) {
 			if (input.dot(tangent_circle_center_next_2) > tangent_circle_radius_next_cos) {
 				Vector3 plane_normal = tangent_circle_center_next_2.cross(input).normalized();
-				plane_normal.normalize();
 				Quaternion rotate_about_by = Quaternion(plane_normal, tangent_circle_radius_next);
 				return rotate_about_by.xform(tangent_circle_center_next_2);
 			} else {
