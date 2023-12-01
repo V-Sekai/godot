@@ -42,8 +42,8 @@ void IKLimitCone3D::update_tangent_handles(Ref<IKLimitCone3D> p_next) {
 		double radA = _get_radius();
 		double radB = p_next->_get_radius();
 
-		Vector3 A = get_control_point();
-		Vector3 B = p_next->get_control_point();
+		Vector3 A = get_control_point().normalized();
+		Vector3 B = p_next->get_control_point().normalized();
 
 		Vector3 arc_normal = A.cross(B).normalized();
 
