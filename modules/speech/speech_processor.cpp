@@ -74,6 +74,24 @@ void SpeechProcessor::_bind_methods() {
 	BIND_CONSTANT(SPEECH_SETTING_PACKET_DELTA_TIME);
 }
 
+void SpeechProcessor::register_speech_processed(const std::function<void(SpeechInput *)> &callback) {
+	speech_processed = callback;
+}
+
+void SpeechProcessor::set_error_cancellation_bus(const String &p_name) {
+	if (!audio_server) {
+		return;
+	}
+
+	int index = audio_server->get_bus_index(p_name);
+	if (index != -1) {
+		int effect_count = audio_server->get_bus_effect_count(index);
+		for (int i = 0; i < effect_count; i++) {
+			audio_effect_error_cancellation_capture = audio_server->get_bus_effect(index, i);
+		}
+	}
+}
+
 uint32_t SpeechProcessor::_resample_audio_buffer(
 		const float *p_src, const uint32_t p_src_frame_count,
 		const uint32_t p_src_samplerate, const uint32_t p_target_samplerate,
@@ -268,6 +286,27 @@ bool SpeechProcessor::_16_pcm_mono_to_real_stereo(
 	return true;
 }
 
+bool SpeechProcessor::compress_buffer_internal(const PackedByteArray *p_pcm_byte_array, CompressedSpeechBuffer *p_output_buffer) {
+	p_output_buffer->buffer_size =
+			encode_buffer(p_pcm_byte_array, p_output_buffer->compressed_byte_array);
+	if (p_output_buffer->buffer_size != -1) {
+		return true;
+	}
+
+	return false;
+}
+
+bool SpeechProcessor::decompress_buffer_internal(SpeechDecoder *speech_decoder, const PackedByteArray *p_read_byte_array, const int p_read_size, PackedVector2Array *p_write_vec2_array) {
+	if (decode_buffer(speech_decoder, p_read_byte_array, &pcm_byte_array_cache,
+				p_read_size, SPEECH_SETTING_PCM_BUFFER_SIZE)) {
+		if (_16_pcm_mono_to_real_stereo(&pcm_byte_array_cache,
+					p_write_vec2_array)) {
+			return true;
+		}
+	}
+	return true;
+}
+
 Dictionary
 SpeechProcessor::compress_buffer(const PackedByteArray &p_pcm_byte_array,
 		Dictionary p_output_buffer) {
@@ -459,10 +498,75 @@ Dictionary SpeechProcessor::get_stats() const {
 	return stats;
 }
 
+void SpeechProcessor::print_opus_error(int error_code) {
+	switch (error_code) {
+		case OPUS_OK:
+			print_line("OpusCodec::OPUS_OK");
+			break;
+		case OPUS_BAD_ARG:
+			print_line("OpusCodec::OPUS_BAD_ARG");
+			break;
+		case OPUS_BUFFER_TOO_SMALL:
+			print_line("OpusCodec::OPUS_BUFFER_TOO_SMALL");
+			break;
+		case OPUS_INTERNAL_ERROR:
+			print_line("OpusCodec::OPUS_INTERNAL_ERROR");
+			break;
+		case OPUS_INVALID_PACKET:
+			print_line("OpusCodec::OPUS_INVALID_PACKET");
+			break;
+		case OPUS_UNIMPLEMENTED:
+			print_line("OpusCodec::OPUS_UNIMPLEMENTED");
+			break;
+		case OPUS_INVALID_STATE:
+			print_line("OpusCodec::OPUS_INVALID_STATE");
+			break;
+		case OPUS_ALLOC_FAIL:
+			print_line("OpusCodec::OPUS_ALLOC_FAIL");
+			break;
+	}
+}
+
 Ref<SpeechDecoder> SpeechProcessor::get_speech_decoder() {
 	Ref<SpeechDecoder> speech_decoder;
 	speech_decoder.instantiate();
 	return speech_decoder;
+}
+
+int SpeechProcessor::encode_buffer(const PackedByteArray *p_pcm_buffer, PackedByteArray *p_output_buffer) {
+	int number_of_bytes = -1;
+	if (encoder) {
+		const opus_int16 *pcm_buffer_pointer =
+				reinterpret_cast<const opus_int16 *>(p_pcm_buffer->ptr());
+
+		opus_int32 ret_value = opus_encode(
+				encoder, pcm_buffer_pointer, SPEECH_SETTING_BUFFER_FRAME_COUNT,
+				internal_buffer, SPEECH_SETTING_INTERNAL_BUFFER_SIZE);
+		if (ret_value >= 0) {
+			number_of_bytes = ret_value;
+
+			if (number_of_bytes > 0) {
+				unsigned char *output_buffer_pointer =
+						reinterpret_cast<unsigned char *>(p_output_buffer->ptrw());
+				memcpy(output_buffer_pointer, internal_buffer, number_of_bytes);
+			}
+		} else {
+			print_opus_error(ret_value);
+		}
+	}
+
+	return number_of_bytes;
+}
+
+bool SpeechProcessor::decode_buffer(SpeechDecoder *p_speech_decoder, const PackedByteArray *p_compressed_buffer, PackedByteArray *p_pcm_output_buffer, const int p_compressed_buffer_size, const int p_pcm_output_buffer_size) {
+	if (p_pcm_output_buffer->size() != p_pcm_output_buffer_size) {
+		ERR_PRINT("OpusCodec: decode_buffer output_buffer_size mismatch!");
+		return false;
+	}
+
+	return p_speech_decoder->process(
+			p_compressed_buffer, p_pcm_output_buffer, p_compressed_buffer_size,
+			p_pcm_output_buffer_size, SPEECH_SETTING_BUFFER_FRAME_COUNT);
 }
 
 SpeechProcessor::SpeechProcessor() {

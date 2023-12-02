@@ -31,47 +31,22 @@
 #ifndef SPEECH_H
 #define SPEECH_H
 
-#include "core/error/error_macros.h"
-#include "thirdparty/libsamplerate/src/samplerate.h"
-
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
+#include "core/error/error_macros.h"
 #include "core/os/mutex.h"
 #include "core/variant/array.h"
 #include "core/variant/dictionary.h"
+#include "playback_stats.h"
 #include "scene/main/node.h"
+#include "servers/audio/effects/audio_stream_generator.h"
 #include "servers/audio_server.h"
 
-#include "servers/audio/effects/audio_stream_generator.h"
+#include "speech_decoder.h"
 #include "speech_processor.h"
+#include "thirdparty/libsamplerate/src/samplerate.h"
 
-class PlaybackStats : public RefCounted {
-	GDCLASS(PlaybackStats, RefCounted);
-
-protected:
-	static void _bind_methods();
-
-public:
-	int64_t playback_ring_current_size = 0;
-	int64_t playback_ring_max_size = 0;
-	int64_t playback_ring_size_sum = 0;
-	double playback_get_frames = 0.0;
-	int64_t playback_pushed_calls = 0;
-	int64_t playback_discarded_calls = 0;
-	int64_t playback_push_buffer_calls = 0;
-	int64_t playback_blank_push_calls = 0;
-	double playback_position = 0.0;
-	double playback_skips = 0.0;
-
-	double jitter_buffer_size_sum = 0.0;
-	int64_t jitter_buffer_calls = 0;
-	int64_t jitter_buffer_max_size = 0;
-	int64_t jitter_buffer_current_size = 0;
-
-	int64_t playback_ring_buffer_length = 0;
-	int64_t buffer_frame_count = 0;
-	Dictionary get_playback_stats();
-};
+class SpeechProcessor;
 
 class Speech : public Node {
 	GDCLASS(Speech, Node);
