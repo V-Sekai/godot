@@ -22,7 +22,7 @@ public:
 				p_cache_dir_url.utf8().ptrw());
 		if (result != 0) {
 			printf("Error: storeUrl, indexUrl, and outputDir are required\n");
-            return ERR_INVALID_PARAMETER;
+			return ERR_INVALID_PARAMETER;
 		}
 		return OK;
 	}

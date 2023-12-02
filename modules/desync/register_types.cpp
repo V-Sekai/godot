@@ -7,14 +7,14 @@
 
 void initialize_desync_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-			return;
+		return;
 	}
 	ClassDB::register_class<Desync>();
 }
 
 void uninitialize_desync_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-			return;
+		return;
 	}
-   // Nothing to do here in this example.
+	// Nothing to do here in this example.
 }
