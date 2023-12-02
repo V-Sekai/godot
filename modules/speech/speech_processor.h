@@ -226,4 +226,5 @@ public:
 	SpeechProcessor();
 	~SpeechProcessor();
 };
+
 #endif // SPEECH_PROCESSOR_H
