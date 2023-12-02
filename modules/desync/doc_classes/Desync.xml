@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Desync" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Interface to the Desync library for extracting files.
+	</brief_description>
+	<description>
+		The Desync class provides an untar method, enabling file extraction via the Desync library.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="untar">
+			<return type="int" enum="Error" />
+			<param index="0" name="store_url" type="String" />
+			<param index="1" name="index_url" type="String" />
+			<param index="2" name="output_dir_url" type="String" />
+			<param index="3" name="cache_dir_url" type="String" />
+			<description>
+				Untars a file using the Desync library. Returns an integer representing the operation's outcome. A return value of 0 indicates success, any other value signifies an error.
+			</description>
+		</method>
+	</methods>
+</class>
