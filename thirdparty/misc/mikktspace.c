@@ -439,9 +439,19 @@ static const int g_iCells = 2048;
 // results for the same effective input value fVal.
 static NOINLINE int FindGridCell(const float fMin, const float fMax, const float fVal)
 {
-	const float fIndex = g_iCells * ((fVal-fMin)/(fMax-fMin));
-	const int iIndex = (int)fIndex;
-	return iIndex < g_iCells ? (iIndex >= 0 ? iIndex : 0) : (g_iCells - 1);
+    if (isnan(fMin) || isnan(fMax) || isnan(fVal) || fMax == fMin) {
+        return 0;
+    }
+
+    int iIndex = (int)(g_iCells * ((fVal-fMin)/(fMax-fMin)));
+
+    if (iIndex < 0) {
+        return 0;
+    } else if (iIndex >= g_iCells) {
+        return g_iCells - 1;
+    } else {
+        return iIndex;
+    }
 }
 
 static void MergeVertsFast(int piTriList_in_and_out[], STmpVert pTmpVert[], const SMikkTSpaceContext * pContext, const int iL_in, const int iR_in);
@@ -875,30 +885,30 @@ static int GenerateInitialVerticesIndexList(STriInfo pTriInfos[], int piTriList_
 static SVec3 GetPosition(const SMikkTSpaceContext * pContext, const int index)
 {
 	int iF, iI;
-	SVec3 res; float pos[3];
-	IndexToData(&iF, &iI, index);
-	pContext->m_pInterface->m_getPosition(pContext, pos, iF, iI);
-	res.x=pos[0]; res.y=pos[1]; res.z=pos[2];
+	SVec3 res;
+    float *p = (float*)((char*)pContext->m_FastPosition + 
+                        index * pContext->m_FastPositionStride);
+	res.x = p[0]; res.y = p[1]; res.z = p[2];
 	return res;
 }
 
 static SVec3 GetNormal(const SMikkTSpaceContext * pContext, const int index)
 {
 	int iF, iI;
-	SVec3 res; float norm[3];
-	IndexToData(&iF, &iI, index);
-	pContext->m_pInterface->m_getNormal(pContext, norm, iF, iI);
-	res.x=norm[0]; res.y=norm[1]; res.z=norm[2];
+	SVec3 res;
+    float *p = (float*)((char*)pContext->m_FastNormal + 
+                        index * pContext->m_FastNormalStride);
+	res.x = p[0]; res.y = p[1]; res.z = p[2];
 	return res;
 }
 
 static SVec3 GetTexCoord(const SMikkTSpaceContext * pContext, const int index)
 {
 	int iF, iI;
-	SVec3 res; float texc[2];
-	IndexToData(&iF, &iI, index);
-	pContext->m_pInterface->m_getTexCoord(pContext, texc, iF, iI);
-	res.x=texc[0]; res.y=texc[1]; res.z=1.0f;
+	SVec3 res;
+    float *p = (float*)((char*)pContext->m_FastUV + 
+                        index * pContext->m_FastUVStride);
+	res.x = p[0]; res.y = p[1]; res.z = 1.0f;
 	return res;
 }
 
@@ -1655,9 +1665,13 @@ static void QuickSortEdges(SEdge * pSortBuffer, int iLeft, int iRight, const int
 	}
 
 	// Random
-	t=uSeed&31;
-	t=(uSeed<<t)|(uSeed>>(32-t));
-	uSeed=uSeed+t+3;
+	t = uSeed & 31;
+	if (t != 0) {
+		t = (uSeed << t) | (uSeed >> (32 - t));
+	} else {
+		t = (uSeed << t);
+	}
+	uSeed = uSeed + t + 3;
 	// Random end
 
 	iL=iLeft, iR=iRight;

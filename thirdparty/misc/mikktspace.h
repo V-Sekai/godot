@@ -107,6 +107,16 @@ struct SMikkTSpaceContext
 {
 	SMikkTSpaceInterface * m_pInterface;	// initialized with callback functions
 	void * m_pUserData;						// pointer to client side mesh data etc. (passed as the first parameter with every interface call)
+
+	// Optimized the vertex representation.
+	const void *m_FastPosition;
+	size_t m_FastPositionStride;
+
+	const void *m_FastNormal;
+	size_t m_FastNormalStride;
+
+	const void *m_FastUV;
+	size_t m_FastUVStride;
 };
 
 // these are both thread safe!
