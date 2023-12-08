@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/fire/godot_happly.git
+	branch = master
+	commit = cfa2611550bc7da65855a78af0574b65deb81766
+	parent = a311a4b162364d032b03ddf2a0e603ba40615ad7
+	method = merge
+	cmdver = 0.4.6
