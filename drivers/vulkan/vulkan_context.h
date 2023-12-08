@@ -326,7 +326,7 @@ public:
 	void set_setup_buffer(VkCommandBuffer p_command_buffer);
 	void append_command_buffer(VkCommandBuffer p_command_buffer);
 	void resize_notify();
-	void flush(bool p_flush_setup = false, bool p_flush_pending = false);
+	void flush(bool p_flush_setup = false, bool p_flush_pending = false, bool p_sync = true);
 	Error prepare_buffers();
 	Error swap_buffers();
 	Error initialize();
