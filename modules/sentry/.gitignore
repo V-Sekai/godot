@@ -1,0 +1,51 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Python
+*.pyc
+*/__pycache/*
+
+# Example
+Example/.import/*
+Example/export/*
+
+
+# Sentry
+!thirdparty/sentry-native/*.md
+!thirdparty/sentry-native/*.txt
+thirdparty/sentry-native/build/*
+thirdparty/sentry-native/build/tests/*
+thirdparty/sentry-native/build/tests/unit/*
+thirdparty/sentry-native/build/tests/unit/CMakeFiles/*
+!thirdparty/sentry-native/EXTRACT_HERE.md
+example/.godot/*
