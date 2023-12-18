@@ -471,6 +471,11 @@ Comment: libSquish
 Copyright: 2006, Simon Brown
 License: Expat
 
+Files: ./thirdparty/ufbx/
+Comment: ufbx
+Copyright: 2020, Samuli Raivio
+License: Expat
+
 Files: ./thirdparty/thorvg/
 Comment: ThorVG
 Copyright: 2020-2023, The ThorVG Project
