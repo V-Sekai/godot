@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Desync" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		A class that provides an interface to the Desync library for untarring files.
+	</brief_description>
+	<description>
+		The Desync class exposes the `untar` method which allows you to untar files using the Desync library. This is achieved by calling C code from Go using the `cgo` feature in Go programming. The `untar` method requires four parameters: the store URL, the index URL, the output directory, and the cache directory.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="untar">
+			<return type="int" enum="Error" />
+			<param index="0" name="store_url" type="String" />
+			<param index="1" name="index_url" type="String" />
+			<param index="2" name="output_dir_url" type="String" />
+			<param index="3" name="cache_dir_url" type="String" />
+			<description>
+				This method untars a file using the Desync library. It returns an integer representing the success or failure of the operation. A return value of 0 indicates success, while any other value indicates an error.
+			</description>
+		</method>
+	</methods>
+</class>

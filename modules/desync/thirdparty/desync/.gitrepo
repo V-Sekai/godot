@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/desync.git
+	branch = cgo-untar
+	commit = e7eb4cfaca18e60f3842a7ac9b3698f35e2f55f5
+	parent = d6a31ae016da2bf9777daeae6189ed7f4b6f13cb
+	method = merge
+	cmdver = 0.4.6
