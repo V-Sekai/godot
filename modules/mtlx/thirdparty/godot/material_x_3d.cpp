@@ -93,7 +93,7 @@ Variant get_value_as_material_x_variant(mx::InputPtr p_input) {
 	return Variant();
 }
 
-Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path, mx::GenContext context) {
+Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 	mx::FilePath materialFilename = ProjectSettings::get_singleton()->globalize_path(p_path).utf8().get_data();
 	std::vector<MaterialPtr> materials;
 	mx::DocumentPtr dependLib = mx::createDocument();
@@ -107,7 +107,7 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path, mx::GenContext co
 	mx::UnitConverterRegistryPtr unitRegistry =
 			mx::UnitConverterRegistry::create();
 	// Initialize search paths.
-	mx::FileSearchPath searchPath = getDefaultSearchPath(context);
+	mx::FileSearchPath searchPath; // = getDefaultSearchPath(context);
 	try {
 		stdLib = mx::createDocument();
 		mx::FilePathVec libraryFolders;
@@ -122,20 +122,20 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path, mx::GenContext co
 			return FAILED;
 		}
 
-		// Initialize color management.
-		mx::DefaultColorManagementSystemPtr cms =
-				mx::DefaultColorManagementSystem::create(
-						context.getShaderGenerator().getTarget());
-		cms->loadLibrary(stdLib);
-		context.getShaderGenerator().setColorManagementSystem(cms);
+		// // Initialize color management.
+		// mx::DefaultColorManagementSystemPtr cms =
+		// 		mx::DefaultColorManagementSystem::create(
+		// 				context.getShaderGenerator().getTarget());
+		// cms->loadLibrary(stdLib);
+		// context.getShaderGenerator().setColorManagementSystem(cms);
 
-		// Initialize unit management.
-		mx::UnitSystemPtr unitSystem =
-				mx::UnitSystem::create(context.getShaderGenerator().getTarget());
-		unitSystem->loadLibrary(stdLib);
-		unitSystem->setUnitConverterRegistry(unitRegistry);
-		context.getShaderGenerator().setUnitSystem(unitSystem);
-		context.getOptions().targetDistanceUnit = "meter";
+		// // Initialize unit management.
+		// mx::UnitSystemPtr unitSystem =
+		// 		mx::UnitSystem::create(context.getShaderGenerator().getTarget());
+		// unitSystem->loadLibrary(stdLib);
+		// unitSystem->setUnitConverterRegistry(unitRegistry);
+		// context.getShaderGenerator().setUnitSystem(unitSystem);
+		// context.getOptions().targetDistanceUnit = "meter";
 
 		// Initialize unit management.
 		mx::UnitTypeDefPtr distanceTypeDef = stdLib->getUnitTypeDef("distance");
@@ -155,7 +155,7 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path, mx::GenContext co
 		}
 
 		// Clear user data on the generator.
-		context.clearUserData();
+		// context.clearUserData();
 	} catch (std::exception &e) {
 		std::cerr << "Failed to load standard data libraries: " << e.what()
 				  << std::endl;
@@ -197,14 +197,14 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path, mx::GenContext co
 }
 
 Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_path, bool p_use_sub_threads, int64_t p_cache_mode) const {
-	mx::GenContext context = mx::GlslShaderGenerator::create();
-	mx::ImageHandlerPtr imageHandler = mx::GLTextureHandler::create(mx::StbImageLoader::create());
+	// mx::GenContext context = mx::GlslShaderGenerator::create();
+	// mx::ImageHandlerPtr imageHandler = mx::GLTextureHandler::create(mx::StbImageLoader::create());
 	String save_path = ProjectSettings::get_singleton()->globalize_path(p_save_path);
 	String original_path = ProjectSettings::get_singleton()->globalize_path(p_original_path);
 	String folder = save_path.get_base_dir();
 	String mtlx = folder + "/" + save_path.get_file().get_basename() + ".mtlx";
 	std::string bakeFilename = mtlx.utf8().get_data();
-	mx::FileSearchPath searchPath = getDefaultSearchPath(context);
+	mx::FileSearchPath searchPath; // = getDefaultSearchPath(context);
 	mx::FilePath materialFilename = original_path.utf8().get_data();
 	searchPath.append(materialFilename.getParentPath());
 	mx::FilePathVec libraryFolders;
@@ -217,7 +217,7 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		mx::DocumentPtr doc = mx::createDocument();
 		Error err;
 		try {
-			err = load_mtlx_document(doc, original_path, context);
+			err = load_mtlx_document(doc, original_path);
 		} catch (std::exception &e) {
 			ERR_PRINT(String("Can't load materials. Error: ") + String(e.what()));
 			return Ref<Resource>();
@@ -230,7 +230,7 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		int bakeHeight = -1;
 		std::string bakeFormat;
 		bool bakeHdr = false;
-		imageHandler->setSearchPath(searchPath);
+		// imageHandler->setSearchPath(searchPath);
 
 		if (bakeFormat == std::string("EXR") || bakeFormat == std::string("exr")) {
 			bakeHdr = true;
@@ -242,43 +242,43 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 #endif
 		}
 		// Compute baking resolution.
-		mx::ImageVec imageVec = imageHandler->getReferencedImages(doc);
-		auto maxImageSize = mx::getMaxDimensions(imageVec);
-		if (bakeWidth == -1) {
-			bakeWidth = std::max(maxImageSize.first, (unsigned int)4);
-		}
-		if (bakeHeight == -1) {
-			bakeHeight = std::max(maxImageSize.second, (unsigned int)4);
-		}
+		// mx::ImageVec imageVec = imageHandler->getReferencedImages(doc);
+		// auto maxImageSize = mx::getMaxDimensions(imageVec);
+		// if (bakeWidth == -1) {
+		// 	bakeWidth = std::max(maxImageSize.first, (unsigned int)4);
+		// }
+		// if (bakeHeight == -1) {
+		// 	bakeHeight = std::max(maxImageSize.second, (unsigned int)4);
+		// }
 
 		// Construct a texture baker.
-		mx::Image::BaseType baseType =
-				bakeHdr ? mx::Image::BaseType::FLOAT : mx::Image::BaseType::UINT8;
-		mx::TextureBakerPtr baker =
-				mx::TextureBakerGlsl::create(bakeWidth, bakeHeight, baseType);
-		baker->setupUnitSystem(stdLib);
-		baker->setDistanceUnit(context.getOptions().targetDistanceUnit);
-		bool bakeAverage = false;
-		bool bakeOptimize = true;
-		baker->setAverageImages(bakeAverage);
-		baker->setOptimizeConstants(bakeOptimize);
-		Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
-		da->make_dir_recursive(folder);
+		// mx::Image::BaseType baseType =
+		// 		bakeHdr ? mx::Image::BaseType::FLOAT : mx::Image::BaseType::UINT8;
+		// mx::TextureBakerPtr baker =
+		// 		mx::TextureBakerGlsl::create(bakeWidth, bakeHeight, baseType);
+		// baker->setupUnitSystem(stdLib);
+		// baker->setDistanceUnit(context.getOptions().targetDistanceUnit);
+		// bool bakeAverage = false;
+		// bool bakeOptimize = true;
+		// baker->setAverageImages(bakeAverage);
+		// baker->setOptimizeConstants(bakeOptimize);
+		// Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+		// da->make_dir_recursive(folder);
 
-		// Bake all materials in the active document.
-		try {
-			baker->bakeAllMaterials(doc, searchPath, bakeFilename);
-		} catch (std::exception &e) {
-			ERR_PRINT(vformat("Can't bake material %s", bakeFilename.c_str()));
-		}
+		// // Bake all materials in the active document.
+		// try {
+		// 	baker->bakeAllMaterials(doc, searchPath, bakeFilename);
+		// } catch (std::exception &e) {
+		// 	ERR_PRINT(vformat("Can't bake material %s", bakeFilename.c_str()));
+		// }
 
-		// Release any render resources generated by the baking process.
-		imageHandler->releaseRenderResources();
+		// // Release any render resources generated by the baking process.
+		// imageHandler->releaseRenderResources();
 	}
 	mx::DocumentPtr new_doc = mx::createDocument();
 	Error err;
 	try {
-		err = load_mtlx_document(new_doc, bakeFilename.c_str(), context);
+		err = load_mtlx_document(new_doc, bakeFilename.c_str());
 	} catch (std::exception &e) {
 		ERR_PRINT(vformat("Can't load baked material %s", bakeFilename.c_str()));
 		return Ref<Resource>();
@@ -425,6 +425,6 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 
 MTLXLoader::MTLXLoader() {
 	// Initialize our base renderer.
-	_renderer = mx::GlslRenderer::create();
-	_renderer->initialize();
+	// _renderer = mx::GlslRenderer::create();
+	// _renderer->initialize();
 }

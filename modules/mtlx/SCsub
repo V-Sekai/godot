@@ -9,8 +9,8 @@ module_env["disable_exceptions"] = False
 module_env.Prepend(CPPPATH=['source'])
 module_env.Prepend(CPPPATH=['include'])
 
-if env["platform"] == "osx":
-    module_env.Prepend(LINKFLAGS=["-framework", "OpenGL", "-framework", "Foundation", "-framework", "Cocoa", "-lGLU", "-lglut"])
+if env["platform"] == "macos" or env["platform"] == "ios":
+    module_env.Append(CPPDEFINES=["DMATERIALXVIEW_METAL_BACKEND=1"])    
 elif env["platform"] == "linux":
     module_env.Append(CPPDEFINES=["__linux__"])
 
@@ -18,18 +18,18 @@ module_env.Append(CPPDEFINES=["GL_SILENCE_DEPRECATION"])
 
 env_thirdparty = module_env.Clone()
 env_thirdparty.disable_warnings()
-env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXBake/*.cpp")
+# env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXBake/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXCore/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXFormat/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXFormat/External/PugiXML/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenShader/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenShader/Nodes/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenGlsl/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenGlsl/Nodes/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRender/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderGlsl/External/GLew/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderGlsl/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/WindowWrapper.cpp")
+# env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRender/*.cpp")
+# env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderGlsl/External/GLew/*.cpp")
+# env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderGlsl/*.cpp")
+# env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenGlsl/*.cpp")
+# env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenGlsl/Nodes/*.cpp")
+# env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/WindowWrapper.cpp")
 if env["platform"] == "linuxbsd":
     env.Append(LIBS=["libXt"])
     env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/SimpleWindowLinux.cpp")

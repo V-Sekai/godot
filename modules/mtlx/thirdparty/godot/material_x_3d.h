@@ -6,9 +6,9 @@
 #include "core/io/resource_importer.h"
 #include "scene/resources/material.h"
 
-#include <MaterialXRenderGlsl/GLTextureHandler.h>
-#include <MaterialXRenderGlsl/GLUtil.h>
-#include <MaterialXRenderGlsl/TextureBaker.h>
+// #include <MaterialXRenderGlsl/GLTextureHandler.h>
+// #include <MaterialXRenderGlsl/GLUtil.h>
+// #include <MaterialXRenderGlsl/TextureBaker.h>
 
 #include <MaterialXRender/Harmonics.h>
 #include <MaterialXRender/OiioImageLoader.h>
@@ -23,9 +23,9 @@
 
 #include <MaterialXCore/Util.h>
 
-#include <MaterialXGenGlsl/GlslShaderGenerator.h>
-#include <MaterialXGenShader/UnitSystem.h>
-#include <MaterialXRenderGlsl/GlslProgram.h>
+// #include <MaterialXGenGlsl/GlslShaderGenerator.h>
+// #include <MaterialXGenShader/UnitSystem.h>
+// #include <MaterialXRenderGlsl/GlslProgram.h>
 
 #include <MaterialXGenGlsl/EsslShaderGenerator.h>
 
@@ -36,7 +36,7 @@ namespace mx = MaterialX;
 class MTLXLoader : public Resource {
 	GDCLASS(MTLXLoader, Resource);
     mx::DocumentPtr _stdLib;
-	mx::GlslRendererPtr _renderer;
+	// mx::GlslRendererPtr _renderer;
 protected:
 	static void _bind_methods() {
 		ClassDB::bind_method(D_METHOD("_load", "path", "original_path", "use_sub_threads", "cache_mode"), &MTLXLoader::_load);
