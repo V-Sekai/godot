@@ -11,7 +11,7 @@
 
 static Ref<MTLXLoader> resource_format_mtlx;
 
-void initialize_material_x_module(ModuleInitializationLevel p_level)
+void initialize_mtlx_module(ModuleInitializationLevel p_level)
 {
     if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE)
     {
@@ -31,7 +31,7 @@ void initialize_material_x_module(ModuleInitializationLevel p_level)
     }
 }
 
-void uninitialize_material_x_module(ModuleInitializationLevel p_level)
+void uninitialize_mtlx_module(ModuleInitializationLevel p_level)
 {
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE)
     {
