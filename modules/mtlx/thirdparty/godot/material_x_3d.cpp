@@ -4,6 +4,7 @@
 #include "core/io/config_file.h"
 #include "core/io/dir_access.h"
 #include "modules/tinyexr/image_loader_tinyexr.h"
+#include "scene/resources/image_texture.h"
 
 mx::FileSearchPath getDefaultSearchPath(mx::GenContext context) {
 	mx::FileSearchPath searchPath;
@@ -254,7 +255,7 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		mx::Image::BaseType baseType =
 				bakeHdr ? mx::Image::BaseType::FLOAT : mx::Image::BaseType::UINT8;
 		mx::TextureBakerPtr baker =
-				mx::TextureBaker::create(bakeWidth, bakeHeight, baseType);
+				mx::TextureBakerGlsl::create(bakeWidth, bakeHeight, baseType);
 		baker->setupUnitSystem(stdLib);
 		baker->setDistanceUnit(context.getOptions().targetDistanceUnit);
 		bool bakeAverage = false;

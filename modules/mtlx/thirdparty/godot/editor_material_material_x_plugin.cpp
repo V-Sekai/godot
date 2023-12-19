@@ -38,7 +38,7 @@
 #include "core/error/error_list.h"
 #include "core/object/object.h"
 #include "core/templates/vector.h"
-#include "editor/editor_file_dialog.h"
+#include "editor/gui/editor_file_dialog.h"
 #include "editor/editor_file_system.h"
 #include "editor/editor_node.h"
 #include "scene/3d/mesh_instance_3d.h"

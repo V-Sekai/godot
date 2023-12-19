@@ -36,7 +36,7 @@
 #include "material_x_3d.h"
 
 #include "editor/editor_plugin.h"
-#include "editor/editor_file_dialog.h"
+#include "editor/gui/editor_file_dialog.h"
 
 class MaterialXPlugin : public EditorPlugin {
 	GDCLASS(MaterialXPlugin, EditorPlugin);
