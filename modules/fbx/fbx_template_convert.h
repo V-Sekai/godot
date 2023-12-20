@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_template_convert.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,67 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_TEMPLATE_CONVERT_H
+#define FBX_TEMPLATE_CONVERT_H
 
-#ifdef TOOLS_ENABLED
+#include "core/templates/hash_set.h"
+#include "core/variant/array.h"
+#include "core/variant/dictionary.h"
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+namespace FBXTemplateConvert {
+template <class T>
+static Array to_array(const Vector<T> &p_inp) {
+	Array ret;
+	for (int i = 0; i < p_inp.size(); i++) {
+		ret.push_back(p_inp[i]);
+	}
+	return ret;
+}
 
-class Animation;
-class Node;
+template <class T>
+static TypedArray<T> to_array(const HashSet<T> &p_inp) {
+	TypedArray<T> ret;
+	typename HashSet<T>::Iterator elem = p_inp.begin();
+	while (elem) {
+		ret.push_back(*elem);
+		++elem;
+	}
+	return ret;
+}
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+template <class T>
+static void set_from_array(Vector<T> &r_out, const Array &p_inp) {
+	r_out.clear();
+	for (int i = 0; i < p_inp.size(); i++) {
+		r_out.push_back(p_inp[i]);
+	}
+}
 
-public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
+template <class T>
+static void set_from_array(HashSet<T> &r_out, const TypedArray<T> &p_inp) {
+	r_out.clear();
+	for (int i = 0; i < p_inp.size(); i++) {
+		r_out.insert(p_inp[i]);
+	}
+}
 
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
+template <class K, class V>
+static Dictionary to_dict(const HashMap<K, V> &p_inp) {
+	Dictionary ret;
+	for (const KeyValue<K, V> &E : p_inp) {
+		ret[E.key] = E.value;
+	}
+	return ret;
+}
 
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
+template <class K, class V>
+static void set_from_dict(HashMap<K, V> &r_out, const Dictionary &p_inp) {
+	r_out.clear();
+	Array keys = p_inp.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		r_out[keys[i]] = p_inp[keys[i]];
+	}
+}
+} //namespace FBXTemplateConvert
 
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_TEMPLATE_CONVERT_H
