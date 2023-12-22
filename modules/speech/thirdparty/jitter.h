@@ -96,52 +96,6 @@ TODO:
 #include "core/object/ref_counted.h"
 #include "core/variant/variant.h"
 
-/** Packet has been retrieved */
-#define JITTER_BUFFER_OK 0
-/** Packet is lost or is late */
-#define JITTER_BUFFER_MISSING 1
-/** A "fake" packet is meant to be inserted here to increase buffering */
-#define JITTER_BUFFER_INSERTION 2
-/** There was an error in the jitter buffer */
-#define JITTER_BUFFER_INTERNAL_ERROR -1
-/** Invalid argument */
-#define JITTER_BUFFER_BAD_ARGUMENT -2
-
-/** Set minimum amount of extra buffering required (margin) */
-#define JITTER_BUFFER_SET_MARGIN 0
-/** Get minimum amount of extra buffering required (margin) */
-#define JITTER_BUFFER_GET_MARGIN 1
-/* JITTER_BUFFER_SET_AVAILABLE_COUNT wouldn't make sense */
-
-/** Get the amount of available packets currently buffered */
-#define JITTER_BUFFER_GET_AVAILABLE_COUNT 3
-/** Included because of an early misspelling (will remove in next release) */
-#define JITTER_BUFFER_GET_AVALIABLE_COUNT 3
-
-/** Assign a function to destroy unused packet. When setting that, the jitter
-	buffer no longer copies packet data. */
-#define JITTER_BUFFER_SET_DESTROY_CALLBACK 4
-/**  */
-#define JITTER_BUFFER_GET_DESTROY_CALLBACK 5
-
-/** Tell the jitter buffer to only adjust the delay in multiples of the step parameter provided */
-#define JITTER_BUFFER_SET_DELAY_STEP 6
-/**  */
-#define JITTER_BUFFER_GET_DELAY_STEP 7
-
-/** Tell the jitter buffer to only do concealment in multiples of the size parameter provided */
-#define JITTER_BUFFER_SET_CONCEALMENT_SIZE 8
-#define JITTER_BUFFER_GET_CONCEALMENT_SIZE 9
-
-/** Absolute max amount of loss that can be tolerated regardless of the delay. Typical loss
-	should be half of that or less. */
-#define JITTER_BUFFER_SET_MAX_LATE_RATE 10
-#define JITTER_BUFFER_GET_MAX_LATE_RATE 11
-
-/** Equivalent cost of one percent late packet in timestamp units */
-#define JITTER_BUFFER_SET_LATE_COST 12
-#define JITTER_BUFFER_GET_LATE_COST 13
-
 #define speex_assert(cond)                           \
 	{                                                \
 		if (!(cond)) {                               \
@@ -181,6 +135,31 @@ protected:
 	static void _bind_methods();
 
 public:
+	enum {
+		JITTER_BUFFER_OK = 0,
+		JITTER_BUFFER_MISSING = 1,
+		JITTER_BUFFER_INSERTION = 2,
+		JITTER_BUFFER_INTERNAL_ERROR = -1,
+		JITTER_BUFFER_BAD_ARGUMENT = -2
+	};
+
+	enum {
+		JITTER_BUFFER_SET_MARGIN = 0,
+		JITTER_BUFFER_GET_MARGIN = 1,
+		JITTER_BUFFER_GET_AVAILABLE_COUNT = 3,
+		JITTER_BUFFER_GET_AVALIABLE_COUNT = 3, // Typo, will be removed in next release
+		JITTER_BUFFER_SET_DESTROY_CALLBACK = 4,
+		JITTER_BUFFER_GET_DESTROY_CALLBACK = 5,
+		JITTER_BUFFER_SET_DELAY_STEP = 6,
+		JITTER_BUFFER_GET_DELAY_STEP = 7,
+		JITTER_BUFFER_SET_CONCEALMENT_SIZE = 8,
+		JITTER_BUFFER_GET_CONCEALMENT_SIZE = 9,
+		JITTER_BUFFER_SET_MAX_LATE_RATE = 10,
+		JITTER_BUFFER_GET_MAX_LATE_RATE = 11,
+		JITTER_BUFFER_SET_LATE_COST = 12,
+		JITTER_BUFFER_GET_LATE_COST = 13
+	};
+
 	void set_data(const PackedByteArray &p_data);
 	void set_timestamp(int64_t p_timestamp);
 	void set_span(int64_t p_span);

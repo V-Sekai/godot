@@ -84,9 +84,8 @@ TODO:
 #include "core/error/error_macros.h"
 
 void VoipJitterBuffer::jitter_buffer_reset(Ref<JitterBuffer> jitter) {
-	ERR_FAIL_NULL(jitter);
-	int i;
-	for (i = 0; i < SPEEX_JITTER_MAX_BUFFER_SIZE; i++) {
+	ERR_FAIL_COND(jitter.is_null());
+	for (int i = 0; i < SPEEX_JITTER_MAX_BUFFER_SIZE; i++) {
 		if (jitter->packets[i].is_null()) {
 			continue;
 		}
@@ -103,7 +102,7 @@ void VoipJitterBuffer::jitter_buffer_reset(Ref<JitterBuffer> jitter) {
 	jitter->buffered = 0;
 	jitter->auto_tradeoff = 32000;
 
-	for (i = 0; i < MAX_BUFFERS; i++) {
+	for (int i = 0; i < MAX_BUFFERS; i++) {
 		tb_init(jitter->_tb[i]);
 		jitter->timeBuffers[i] = jitter->_tb[i];
 	}
@@ -111,16 +110,16 @@ void VoipJitterBuffer::jitter_buffer_reset(Ref<JitterBuffer> jitter) {
 }
 
 int VoipJitterBuffer::jitter_buffer_ctl(Ref<JitterBuffer> jitter, int request, int32_t *ptr) {
-	ERR_FAIL_NULL_V(jitter, -1);
+	ERR_FAIL_COND_V(jitter.is_null(), -1);
 	int count, i;
 	switch (request) {
-		case JITTER_BUFFER_SET_MARGIN:
+		case JitterBufferPacket::JITTER_BUFFER_SET_MARGIN:
 			jitter->buffer_margin = *ptr;
 			break;
-		case JITTER_BUFFER_GET_MARGIN:
+		case JitterBufferPacket::JITTER_BUFFER_GET_MARGIN:
 			*ptr = jitter->buffer_margin;
 			break;
-		case JITTER_BUFFER_GET_AVALIABLE_COUNT:
+		case JitterBufferPacket::JITTER_BUFFER_GET_AVALIABLE_COUNT:
 			count = 0;
 			for (i = 0; i < SPEEX_JITTER_MAX_BUFFER_SIZE; i++) {
 				if (jitter->packets[i].is_null()) {
@@ -135,36 +134,36 @@ int VoipJitterBuffer::jitter_buffer_ctl(Ref<JitterBuffer> jitter, int request, i
 			}
 			*ptr = count;
 			break;
-		case JITTER_BUFFER_SET_DESTROY_CALLBACK:
+		case JitterBufferPacket::JITTER_BUFFER_SET_DESTROY_CALLBACK:
 			jitter->destroy = (void (*)(void *))ptr;
 			break;
-		case JITTER_BUFFER_GET_DESTROY_CALLBACK:
+		case JitterBufferPacket::JITTER_BUFFER_GET_DESTROY_CALLBACK:
 			*(void (**)(void *))ptr = jitter->destroy;
 			break;
-		case JITTER_BUFFER_SET_DELAY_STEP:
+		case JitterBufferPacket::JITTER_BUFFER_SET_DELAY_STEP:
 			jitter->delay_step = *ptr;
 			break;
-		case JITTER_BUFFER_GET_DELAY_STEP:
+		case JitterBufferPacket::JITTER_BUFFER_GET_DELAY_STEP:
 			*ptr = jitter->delay_step;
 			break;
-		case JITTER_BUFFER_SET_CONCEALMENT_SIZE:
+		case JitterBufferPacket::JITTER_BUFFER_SET_CONCEALMENT_SIZE:
 			jitter->concealment_size = *ptr;
 			break;
-		case JITTER_BUFFER_GET_CONCEALMENT_SIZE:
+		case JitterBufferPacket::JITTER_BUFFER_GET_CONCEALMENT_SIZE:
 			*ptr = jitter->concealment_size;
 			break;
-		case JITTER_BUFFER_SET_MAX_LATE_RATE:
+		case JitterBufferPacket::JITTER_BUFFER_SET_MAX_LATE_RATE:
 			jitter->max_late_rate = *ptr;
 			jitter->window_size = 100 * TOP_DELAY / jitter->max_late_rate;
 			jitter->subwindow_size = jitter->window_size / MAX_BUFFERS;
 			break;
-		case JITTER_BUFFER_GET_MAX_LATE_RATE:
+		case JitterBufferPacket::JITTER_BUFFER_GET_MAX_LATE_RATE:
 			*ptr = jitter->max_late_rate;
 			break;
-		case JITTER_BUFFER_SET_LATE_COST:
+		case JitterBufferPacket::JITTER_BUFFER_SET_LATE_COST:
 			jitter->latency_tradeoff = *ptr;
 			break;
-		case JITTER_BUFFER_GET_LATE_COST:
+		case JitterBufferPacket::JITTER_BUFFER_GET_LATE_COST:
 			*ptr = jitter->latency_tradeoff;
 			break;
 		default:
@@ -197,19 +196,19 @@ Ref<JitterBuffer> VoipJitterBuffer::jitter_buffer_init(int step_size) {
 	jitter->latency_tradeoff = 0;
 	jitter->auto_adjust = 1;
 	tmp = 4;
-	jitter_buffer_ctl(jitter, JITTER_BUFFER_SET_MAX_LATE_RATE, &tmp);
+	jitter_buffer_ctl(jitter, JitterBufferPacket::JITTER_BUFFER_SET_MAX_LATE_RATE, &tmp);
 	jitter_buffer_reset(jitter);
 	return jitter;
 }
 
 void VoipJitterBuffer::jitter_buffer_destroy(Ref<JitterBuffer> jitter) {
-	ERR_FAIL_NULL(jitter);
+	ERR_FAIL_COND(jitter.is_null());
 	jitter_buffer_reset(jitter);
 }
 
 void VoipJitterBuffer::jitter_buffer_put(Ref<JitterBuffer> jitter, const Ref<JitterBufferPacket> packet) {
-	ERR_FAIL_NULL(jitter);
-	ERR_FAIL_NULL(packet);
+	ERR_FAIL_COND(jitter.is_null());
+	ERR_FAIL_COND(packet.is_null());
 	int i_jitter = 0, j_jitter = 0;
 	int late;
 
@@ -291,7 +290,7 @@ void VoipJitterBuffer::jitter_buffer_put(Ref<JitterBuffer> jitter, const Ref<Jit
 	}
 
 	/* Copy packet in buffer */
-	jitter->packets[i_jitter]->get_data() = packet->get_data();
+	jitter->packets[i_jitter]->set_data(packet->get_data());
 
 	jitter->packets[i_jitter]->set_timestamp(packet->get_timestamp());
 	jitter->packets[i_jitter]->set_span(packet->get_span());
@@ -307,7 +306,7 @@ void VoipJitterBuffer::jitter_buffer_put(Ref<JitterBuffer> jitter, const Ref<Jit
 Array VoipJitterBuffer::jitter_buffer_get(Ref<JitterBuffer> jitter, Ref<JitterBufferPacket> packet, int32_t desired_span) {
 	Array array;
 	array.resize(2);
-	array[0] = JITTER_BUFFER_MISSING;
+	array[0] = JitterBufferPacket::JITTER_BUFFER_MISSING;
 	int32_t start_offset = 0;
 	array[1] = start_offset;
 	ERR_FAIL_NULL_V(jitter, array);
@@ -340,7 +339,7 @@ Array VoipJitterBuffer::jitter_buffer_get(Ref<JitterBuffer> jitter, Ref<JitterBu
 			packet->set_timestamp(0);
 			packet->set_span(jitter->interp_requested);
 			array.resize(2);
-			array[0] = JITTER_BUFFER_MISSING;
+			array[0] = JitterBufferPacket::JITTER_BUFFER_MISSING;
 			array[1] = start_offset;
 			return array;
 		}
@@ -364,7 +363,7 @@ Array VoipJitterBuffer::jitter_buffer_get(Ref<JitterBuffer> jitter, Ref<JitterBu
 
 		jitter->buffered = packet->get_span() - desired_span;
 		array.resize(2);
-		array[0] = JITTER_BUFFER_INSERTION;
+		array[0] = JitterBufferPacket::JITTER_BUFFER_INSERTION;
 		array[1] = start_offset;
 		return array;
 	}
@@ -484,7 +483,7 @@ Array VoipJitterBuffer::jitter_buffer_get(Ref<JitterBuffer> jitter, Ref<JitterBu
 		jitter->buffered += start_offset;
 
 		array.resize(2);
-		array[0] = JITTER_BUFFER_OK;
+		array[0] = JitterBufferPacket::JITTER_BUFFER_OK;
 		array[1] = start_offset;
 		return array;
 	}
@@ -512,7 +511,7 @@ Array VoipJitterBuffer::jitter_buffer_get(Ref<JitterBuffer> jitter, Ref<JitterBu
 
 		jitter->buffered = packet->get_span() - desired_span;
 		array.resize(2);
-		array[0] = JITTER_BUFFER_INSERTION;
+		array[0] = JitterBufferPacket::JITTER_BUFFER_INSERTION;
 		array[1] = start_offset;
 		/*jitter->pointer_timestamp -= jitter->delay_step;*/
 		print_verbose(vformat("Forced to interpolate."));
@@ -528,15 +527,15 @@ Array VoipJitterBuffer::jitter_buffer_get(Ref<JitterBuffer> jitter, Ref<JitterBu
 
 		jitter->buffered = packet->get_span() - desired_span;
 		array.resize(2);
-		array[0] = JITTER_BUFFER_MISSING;
+		array[0] = JitterBufferPacket::JITTER_BUFFER_MISSING;
 		array[1] = start_offset;
 	}
 	return array;
 }
 
 int VoipJitterBuffer::jitter_buffer_get_another(Ref<JitterBuffer> jitter, Ref<JitterBufferPacket> packet) {
-	ERR_FAIL_NULL_V(jitter, JITTER_BUFFER_MISSING);
-	ERR_FAIL_NULL_V(packet, JITTER_BUFFER_MISSING);
+	ERR_FAIL_NULL_V(jitter, JitterBufferPacket::JITTER_BUFFER_MISSING);
+	ERR_FAIL_NULL_V(packet, JitterBufferPacket::JITTER_BUFFER_MISSING);
 	int i;
 	for (i = 0; i < SPEEX_JITTER_MAX_BUFFER_SIZE; i++) {
 		if (jitter->packets[i].is_null()) {
@@ -561,13 +560,13 @@ int VoipJitterBuffer::jitter_buffer_get_another(Ref<JitterBuffer> jitter, Ref<Ji
 		packet->set_span(jitter->packets[i]->get_span());
 		packet->set_sequence(jitter->packets[i]->get_sequence());
 		packet->set_user_data(jitter->packets[i]->get_user_data());
-		return JITTER_BUFFER_OK;
+		return JitterBufferPacket::JITTER_BUFFER_OK;
 	} else {
 		if (packet.is_valid()) {
 			packet->get_data().clear();
 		}
 		packet->set_span(0);
-		return JITTER_BUFFER_MISSING;
+		return JitterBufferPacket::JITTER_BUFFER_MISSING;
 	}
 }
 
