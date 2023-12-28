@@ -16,7 +16,6 @@ concurrency:
 
 jobs:
   build-windows:
-    # Windows 10 with latest image
     runs-on: "windows-latest"
     name: ${{ matrix.name }}
     strategy:
@@ -47,6 +46,14 @@ jobs:
 
       - name: Setup python and scons
         uses: ./.github/actions/godot-deps
+
+      - name: Install latest rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: x86_64-pc-windows-gnu
+          toolchain: stable
+          components: rustfmt, clippy
 
       - name: Download pre-built DirectX Shader Compiler
         uses: dsaltares/fetch-gh-release-asset@1.0.0
@@ -83,8 +90,9 @@ jobs:
 
       - name: Prepare artifact
         run: |
-          Remove-Item bin/* -Include *.exp,*.lib,*.pdb -Force
-
+          rm -f bin/*.{exp,lib,pdb}
+        shell: bash
+        
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
         with:
