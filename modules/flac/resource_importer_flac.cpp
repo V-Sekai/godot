@@ -85,7 +85,7 @@ bool ResourceImporterFLAC::has_advanced_options() const {
 void ResourceImporterFLAC::show_advanced_options(const String &p_path) {
 	Ref<AudioStreamFLAC> flac_stream = import_flac(p_path);
 	if (flac_stream.is_valid()) {
-		AudioStreamImportSettings::get_singleton()->edit(p_path, "flac", flac_stream);
+		AudioStreamImportSettingsDialog::get_singleton()->edit(p_path, "flac", flac_stream);
 	}
 }
 #endif
