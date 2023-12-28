@@ -32,12 +32,14 @@
 #define AUDIO_STREAM_PLAYER_3D_H
 
 #include "core/os/mutex.h"
+#include "core/templates/safe_refcount.h"
 #include "scene/3d/area_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/velocity_tracker_3d.h"
 #include "servers/audio/audio_filter_sw.h"
 #include "servers/audio/audio_stream.h"
 #include "servers/audio_server.h"
+#include "servers/resonanceaudio/resonance_audio_wrapper.h"
 
 class Camera3D;
 class AudioStreamPlayer3D : public Node3D {
@@ -120,6 +122,8 @@ private:
 
 	float panning_strength = 1.0f;
 	float cached_global_panning_strength = 0.5f;
+
+	AudioSourceId audio_source_id;
 
 protected:
 	void _validate_property(PropertyInfo &p_property) const;
