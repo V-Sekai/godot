@@ -32,6 +32,8 @@
 
 #include "webrtc_data_channel.h"
 #include "webrtc_data_channel_extension.h"
+#include "webrtc_lib_data_channel.h"
+#include "webrtc_lib_peer_connection.h"
 #include "webrtc_multiplayer_peer.h"
 #include "webrtc_peer_connection.h"
 #include "webrtc_peer_connection_extension.h"
