@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FBXNode" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		FBXNode represents an FBX Node.
+	</brief_description>
+	<description>
+		The FBXNode class handles 3D node data imported from FBX files. It includes methods for getting and setting additional data, mesh, and properties for children, height, parent, position, rotation, scale, skeleton, skin, and transform.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_additional_data">
+			<return type="Variant" />
+			<param index="0" name="extension_name" type="StringName" />
+			<description>
+				Returns the additional data associated with the given extension name.
+			</description>
+		</method>
+		<method name="get_mesh">
+			<return type="int" />
+			<description>
+				Returns the mesh index of the node.
+			</description>
+		</method>
+		<method name="set_additional_data">
+			<return type="void" />
+			<param index="0" name="extension_name" type="StringName" />
+			<param index="1" name="additional_data" type="Variant" />
+			<description>
+				Sets the additional data associated with the given extension name.
+			</description>
+		</method>
+		<method name="set_mesh">
+			<return type="void" />
+			<param index="0" name="mesh" type="int" />
+			<description>
+				Sets the mesh index of the node.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="children" type="PackedInt32Array" setter="set_children" getter="get_children" default="PackedInt32Array()">
+			An array of integers representing the children nodes of this node.
+		</member>
+		<member name="height" type="int" setter="set_height" getter="get_height" default="-1">
+			The height of the node.
+		</member>
+		<member name="parent" type="int" setter="set_parent" getter="get_parent" default="-1">
+			The parent node ID of this node.
+		</member>
+		<member name="position" type="Vector3" setter="set_position" getter="get_position" default="Vector3(0, 0, 0)">
+			The position of the node in 3D space.
+		</member>
+		<member name="rotation" type="Quaternion" setter="set_rotation" getter="get_rotation" default="Quaternion(0, 0, 0, 1)">
+			The rotation of the node in 3D space.
+		</member>
+		<member name="scale" type="Vector3" setter="set_scale" getter="get_scale" default="Vector3(1, 1, 1)">
+			The scale of the node in 3D space.
+		</member>
+		<member name="skeleton" type="int" setter="set_skeleton" getter="get_skeleton" default="-1">
+			The skeleton index associated with this node.
+		</member>
+		<member name="skin" type="int" setter="set_skin" getter="get_skin" default="-1">
+			The skin index associated with this node.
+		</member>
+		<member name="xform" type="Transform3D" setter="set_xform" getter="get_xform" default="Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)">
+			The transform of the node in 3D space.
+		</member>
+	</members>
+</class>
