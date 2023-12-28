@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_fbx = env_modules.Clone()
+env_fbx.Append(
+    CPPDEFINES=[
+        "UFBX_NO_SUBDIVISION",
+        "UFBX_NO_TESSELLATION",
+        "UFBX_NO_GEOMETRY_CACHE",
+        "UFBX_NO_SCENE_EVALUATION",
+        "UFBX_NO_INDEX_GENERATION",
+        "UFBX_NO_SKINNING_EVALUATION",
+        "UFBX_NO_FORMAT_OBJ",
+    ]
+)
+
+# Godot source files
+env_fbx.add_source_files(env.modules_sources, "*.cpp")
+env_fbx.add_source_files(env.modules_sources, "structures/*.cpp")
+env_fbx.add_source_files(env.modules_sources, "#thirdparty/ufbx/ufbx.c")
+SConscript("extensions/SCsub")
+if env.editor_build:
+    env_fbx.add_source_files(env.modules_sources, "editor/*.cpp")

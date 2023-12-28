@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_defines.h                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,42 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_DEFINES_H
+#define FBX_DEFINES_H
 
-#ifdef TOOLS_ENABLED
+// This file should only be included by other headers.
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+// Godot classes used by GLTF headers.
+class BoneAttachment3D;
+class CSGShape3D;
+class GridMap;
+class ImporterMeshInstance3D;
+class Light3D;
+class MeshInstance3D;
+class MultiMeshInstance3D;
+class Skeleton3D;
+class Skin;
 
-class Animation;
-class Node;
+// GLTF classes.
+class FBXAnimation;
+class FBXDocument;
+class FBXDocumentExtension;
+class FBXMesh;
+class FBXNode;
+class FBXSkeleton;
+class FBXSkin;
+class FBXState;
+class FBXTexture;
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+// GLTF index aliases.
+using FBXAnimationIndex = int;
+using FBXBufferIndex = int;
+using FBXImageIndex = int;
+using FBXMaterialIndex = int;
+using FBXMeshIndex = int;
+using FBXNodeIndex = int;
+using FBXSkeletonIndex = int;
+using FBXSkinIndex = int;
+using FBXTextureIndex = int;
 
-public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
-
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
-
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
-
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_DEFINES_H
