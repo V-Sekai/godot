@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_skeleton.h                                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,56 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_SKELETON_H
+#define FBX_SKELETON_H
 
-#ifdef TOOLS_ENABLED
+#include "../fbx_defines.h"
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+#include "core/io/resource.h"
 
-class Animation;
-class Node;
+class FBXSkeleton : public Resource {
+	GDCLASS(FBXSkeleton, Resource);
+	friend class FBXDocument;
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+private:
+	// The *synthesized* skeletons joints
+	Vector<FBXNodeIndex> joints;
+
+	// The roots of the skeleton. If there are multiple, each root must have the
+	// same parent (ie roots are siblings)
+	Vector<FBXNodeIndex> roots;
+
+	// The created Skeleton3D for the scene
+	Skeleton3D *godot_skeleton = nullptr;
+
+	// Set of unique bone names for the skeleton
+	HashSet<String> unique_names;
+
+	HashMap<int32_t, FBXNodeIndex> godot_bone_node;
+
+	Vector<BoneAttachment3D *> bone_attachments;
+
+protected:
+	static void _bind_methods();
 
 public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
+	Vector<FBXNodeIndex> get_joints();
+	void set_joints(Vector<FBXNodeIndex> p_joints);
+
+	Vector<FBXNodeIndex> get_roots();
+	void set_roots(Vector<FBXNodeIndex> p_roots);
+
+	Skeleton3D *get_godot_skeleton();
+
+	TypedArray<String> get_unique_names();
+	void set_unique_names(TypedArray<String> p_unique_names);
+
+	Dictionary get_godot_bone_node();
+	void set_godot_bone_node(Dictionary p_indict);
+
+	BoneAttachment3D *get_bone_attachment(int idx);
+
+	int32_t get_bone_attachment_count();
 };
 
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
-
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
-
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_SKELETON_H

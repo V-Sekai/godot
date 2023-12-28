@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_mesh.h                                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,34 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_MESH_H
+#define FBX_MESH_H
 
-#ifdef TOOLS_ENABLED
+#include "../fbx_defines.h"
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+#include "scene/resources/importer_mesh.h"
 
-class Animation;
-class Node;
+class FBXMesh : public Resource {
+	GDCLASS(FBXMesh, Resource);
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+private:
+	Ref<ImporterMesh> mesh;
+	Vector<float> blend_weights;
+	Vector<int> blend_channels;
+	TypedArray<Material> instance_materials;
 
-public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
-
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
+protected:
+	static void _bind_methods();
 
 public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
+	Ref<ImporterMesh> get_mesh();
+	void set_mesh(Ref<ImporterMesh> p_mesh);
+	Vector<float> get_blend_weights();
+	void set_blend_weights(Vector<float> p_blend_weights);
+	Vector<int> get_blend_channels();
+	void set_blend_channels(Vector<int> p_blend_channels);
+	TypedArray<Material> get_instance_materials();
+	void set_instance_materials(TypedArray<Material> p_instance_materials);
 };
 
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_MESH_H

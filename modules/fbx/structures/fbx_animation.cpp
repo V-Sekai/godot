@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_animation.cpp                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,46 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#include "fbx_animation.h"
 
-#ifdef TOOLS_ENABLED
+void FBXAnimation::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_loop"), &FBXAnimation::get_loop);
+	ClassDB::bind_method(D_METHOD("set_loop", "loop"), &FBXAnimation::set_loop);
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "loop"), "set_loop", "get_loop"); // bool
+}
 
-class Animation;
-class Node;
+bool FBXAnimation::get_loop() const {
+	return loop;
+}
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+void FBXAnimation::set_loop(bool p_val) {
+	loop = p_val;
+}
 
-public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
+HashMap<int, FBXAnimation::Track> &FBXAnimation::get_tracks() {
+	return tracks;
+}
 
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
+double FBXAnimation::get_time_begin() const {
+	return time_begin;
+}
 
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
+void FBXAnimation::set_time_begin(double p_val) {
+	time_begin = p_val;
+}
 
-#endif // TOOLS_ENABLED
+double FBXAnimation::get_time_end() const {
+	return time_end;
+}
 
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+void FBXAnimation::set_time_end(double p_val) {
+	time_end = p_val;
+}
+
+HashMap<int, FBXAnimation::BlendShapeTrack> &FBXAnimation::get_blend_tracks() {
+	return blend_tracks;
+}
+
+FBXAnimation::FBXAnimation() {
+}
