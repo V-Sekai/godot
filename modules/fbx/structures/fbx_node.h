@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_node.h                                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,68 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_NODE_H
+#define FBX_NODE_H
 
-#ifdef TOOLS_ENABLED
+#include "../fbx_defines.h"
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+#include "core/io/resource.h"
 
-class Animation;
-class Node;
+class FBXNode : public Resource {
+	GDCLASS(FBXNode, Resource);
+	friend class FBXDocument;
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+private:
+	// matrices need to be transformed to this
+	FBXNodeIndex parent = -1;
+	int height = -1;
+	Transform3D xform;
+	FBXMeshIndex mesh = -1;
+	FBXSkinIndex skin = -1;
+	FBXSkeletonIndex skeleton = -1;
+	bool joint = false;
+	Vector3 position;
+	Quaternion rotation;
+	Vector3 scale = Vector3(1, 1, 1);
+	Vector<int> children;
+	Dictionary additional_data;
 
-public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
-
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
+protected:
+	static void _bind_methods();
 
 public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
+	FBXNodeIndex get_parent();
+	void set_parent(FBXNodeIndex p_parent);
+
+	int get_height();
+	void set_height(int p_height);
+
+	Transform3D get_xform();
+	void set_xform(Transform3D p_xform);
+
+	FBXMeshIndex get_mesh();
+	void set_mesh(FBXMeshIndex p_mesh);
+
+	FBXSkinIndex get_skin();
+	void set_skin(FBXSkinIndex p_skin);
+
+	FBXSkeletonIndex get_skeleton();
+	void set_skeleton(FBXSkeletonIndex p_skeleton);
+
+	Vector3 get_position();
+	void set_position(Vector3 p_position);
+
+	Quaternion get_rotation();
+	void set_rotation(Quaternion p_rotation);
+
+	Vector3 get_scale();
+	void set_scale(Vector3 p_scale);
+
+	Vector<int> get_children();
+	void set_children(Vector<int> p_children);
+
+	Variant get_additional_data(const StringName &p_extension_name);
+	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
 };
 
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_NODE_H

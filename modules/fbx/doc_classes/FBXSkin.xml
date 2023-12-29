@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FBXSkin" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		FBXSkin represents a skin in an FBX file.
+	</brief_description>
+	<description>
+		The FBXSkin class handles skin data imported from FBX files. It includes methods for getting and setting inverse binds, joint indices to bone indices, joint indices to names, and properties for joints, roots, and skins.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_inverse_binds">
+			<return type="Transform3D[]" />
+			<description>
+				Gets an array of Transform3D objects representing the inverse binds [Transform3D].
+			</description>
+		</method>
+		<method name="get_joint_i_to_bone_i">
+			<return type="Dictionary" />
+			<description>
+				Gets a dictionary mapping joint indices to bone indices.
+			</description>
+		</method>
+		<method name="get_joint_i_to_name">
+			<return type="Dictionary" />
+			<description>
+				Gets a dictionary mapping joint indices to their names.
+			</description>
+		</method>
+		<method name="set_inverse_binds">
+			<return type="void" />
+			<param index="0" name="inverse_binds" type="Transform3D[]" />
+			<description>
+				Sets the inverse binds with the given array of [Transform3D] objects.
+			</description>
+		</method>
+		<method name="set_joint_i_to_bone_i">
+			<return type="void" />
+			<param index="0" name="joint_i_to_bone_i" type="Dictionary" />
+			<description>
+				Sets the mapping of joint indices to bone indices with the given dictionary.
+			</description>
+		</method>
+		<method name="set_joint_i_to_name">
+			<return type="void" />
+			<param index="0" name="joint_i_to_name" type="Dictionary" />
+			<description>
+				Sets the mapping of joint indices to their names with the given dictionary.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="godot_skin" type="Skin" setter="set_godot_skin" getter="get_godot_skin">
+			The Godot [Skin] associated with this FBX skin.
+		</member>
+		<member name="joints" type="PackedInt32Array" setter="set_joints" getter="get_joints" default="PackedInt32Array()">
+			An array of integers representing the joints in the [Skin].
+		</member>
+		<member name="joints_original" type="PackedInt32Array" setter="set_joints_original" getter="get_joints_original" default="PackedInt32Array()">
+			An array of integers representing the original joints in the [Skin].
+		</member>
+		<member name="non_joints" type="PackedInt32Array" setter="set_non_joints" getter="get_non_joints" default="PackedInt32Array()">
+			An array of integers representing the non-joint elements in the [Skin].
+		</member>
+		<member name="roots" type="PackedInt32Array" setter="set_roots" getter="get_roots" default="PackedInt32Array()">
+			An array of integers representing the root joints in the [Skin].
+		</member>
+		<member name="skeleton" type="int" setter="set_skeleton" getter="get_skeleton" default="-1">
+			The index of the skeleton associated with this [Skin].
+		</member>
+		<member name="skin_root" type="int" setter="set_skin_root" getter="get_skin_root" default="-1">
+			The index of the root of the [Skin].
+		</member>
+	</members>
+</class>
