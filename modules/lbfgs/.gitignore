@@ -153,9 +153,6 @@ gmon.out
 # Kdevelop
 *.kdev4
 
-# Mypy
-.mypy_cache
-
 # Qt Creator
 *.config
 *.creator
@@ -367,5 +364,3 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
-
-!modules/*/thirdparty/*
