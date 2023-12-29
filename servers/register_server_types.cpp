@@ -58,6 +58,7 @@
 #include "debugger/servers_debugger.h"
 #include "display_server.h"
 #include "movie_writer/movie_writer.h"
+#include "movie_writer/movie_writer_exrwav.h"
 #include "movie_writer/movie_writer_mjpeg.h"
 #include "movie_writer/movie_writer_pngwav.h"
 #include "navigation_server_2d.h"
@@ -115,6 +116,7 @@ static bool has_server_feature_callback(const String &p_feature) {
 
 static MovieWriterMJPEG *writer_mjpeg = nullptr;
 static MovieWriterPNGWAV *writer_pngwav = nullptr;
+static MovieWriterEXRWAV *writer_exrwav = nullptr;
 
 void register_server_types() {
 	OS::get_singleton()->benchmark_begin_measure("Servers", "Register Extensions");
@@ -296,6 +298,9 @@ void register_server_types() {
 	writer_pngwav = memnew(MovieWriterPNGWAV);
 	MovieWriter::add_writer(writer_pngwav);
 
+	writer_exrwav = memnew(MovieWriterEXRWAV);
+	MovieWriter::add_writer(writer_exrwav);
+
 	OS::get_singleton()->benchmark_end_measure("Servers", "Register Extensions");
 }
 
@@ -306,7 +311,8 @@ void unregister_server_types() {
 	memdelete(shader_types);
 	memdelete(writer_mjpeg);
 	memdelete(writer_pngwav);
-
+	memdelete(writer_exrwav);
+    
 	OS::get_singleton()->benchmark_end_measure("Servers", "Unregister Extensions");
 }
 
