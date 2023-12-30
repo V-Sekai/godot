@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-network-synchronizer.git
+	branch = main
+	commit = ecebe65c843197bf5d04a2395c1a9d3842e06679
+	parent = 13a0d6e9b253654f5cc2a44f3d0b3cae10440443
+	method = merge
+	cmdver = 0.4.6
