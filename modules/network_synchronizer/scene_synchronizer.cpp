@@ -1113,8 +1113,6 @@ void SceneSynchronizerBase::update_peers() {
 	ASSERT_COND(synchronizer_type == SYNCHRONIZER_TYPE_SERVER);
 #endif
 
-	const ServerSynchronizer *server_sync = static_cast<ServerSynchronizer *>(synchronizer);
-
 	if make_likely (peer_dirty == false) {
 		return;
 	}

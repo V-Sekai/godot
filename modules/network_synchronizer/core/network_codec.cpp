@@ -3,6 +3,7 @@
 #include "modules/network_synchronizer/core/network_interface.h"
 #include "modules/network_synchronizer/scene_synchronizer.h"
 #include "var_data.h"
+#include <climits>
 #include <vector>
 
 NS_NAMESPACE_BEGIN
@@ -51,7 +52,7 @@ void decode_variable(Variant &val, DataBuffer &p_buffer) {
 
 void encode_variable(const Vector<uint8_t> &val, DataBuffer &r_buffer) {
 	// TODO optimize?
-	CRASH_COND(val.size() >= 4294967295);
+	CRASH_COND(val.size() >= INT_MAX);
 	r_buffer.add_uint(val.size(), DataBuffer::COMPRESSION_LEVEL_1);
 	for (const auto v : val) {
 		r_buffer.add_uint(v, DataBuffer::COMPRESSION_LEVEL_3);

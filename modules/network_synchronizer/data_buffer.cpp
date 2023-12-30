@@ -1022,8 +1022,6 @@ void DataBuffer::read_data_buffer(DataBuffer &r_db) {
 
 void DataBuffer::add_bits(const uint8_t *p_data, int p_bit_count) {
 	ERR_FAIL_COND(is_reading);
-	const int initial_bit_count = p_bit_count;
-
 	make_room_in_bits(p_bit_count);
 
 	for (int i = 0; p_bit_count > 0; ++i) {
@@ -1042,8 +1040,6 @@ void DataBuffer::add_bits(const uint8_t *p_data, int p_bit_count) {
 
 void DataBuffer::read_bits(uint8_t *r_data, int p_bit_count) {
 	ERR_FAIL_COND(!is_reading);
-	const int initial_bit_count = p_bit_count;
-
 	for (int i = 0; p_bit_count > 0; ++i) {
 		const int this_bit_count = MIN(p_bit_count, 8);
 		p_bit_count -= this_bit_count;
