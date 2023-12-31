@@ -79,38 +79,39 @@ Error MeshDataTool::create_from_surface(const Ref<ArrayMesh> &p_mesh, int p_surf
 
 	const Vector3 *vr = varray.ptr();
 
-	const Vector3 *nr = nullptr;
+	Vector<Vector3> nr;
 	if (arrays[Mesh::ARRAY_NORMAL].get_type() != Variant::NIL) {
-		nr = arrays[Mesh::ARRAY_NORMAL].operator Vector<Vector3>().ptr();
+		nr = arrays[Mesh::ARRAY_NORMAL];
 	}
 
-	const real_t *ta = nullptr;
+	Vector<real_t> ta;
 	if (arrays[Mesh::ARRAY_TANGENT].get_type() != Variant::NIL) {
-		ta = arrays[Mesh::ARRAY_TANGENT].operator Vector<real_t>().ptr();
+		ta = arrays[Mesh::ARRAY_TANGENT];
 	}
 
-	const Vector2 *uv = nullptr;
+	Vector<Vector2> uv;
 	if (arrays[Mesh::ARRAY_TEX_UV].get_type() != Variant::NIL) {
-		uv = arrays[Mesh::ARRAY_TEX_UV].operator Vector<Vector2>().ptr();
+		uv = arrays[Mesh::ARRAY_TEX_UV];
 	}
-	const Vector2 *uv2 = nullptr;
+
+	Vector<Vector2> uv2;
 	if (arrays[Mesh::ARRAY_TEX_UV2].get_type() != Variant::NIL) {
-		uv2 = arrays[Mesh::ARRAY_TEX_UV2].operator Vector<Vector2>().ptr();
+		uv2 = arrays[Mesh::ARRAY_TEX_UV2];
 	}
 
-	const Color *col = nullptr;
+	Vector<Color> col;
 	if (arrays[Mesh::ARRAY_COLOR].get_type() != Variant::NIL) {
-		col = arrays[Mesh::ARRAY_COLOR].operator Vector<Color>().ptr();
+		col = arrays[Mesh::ARRAY_COLOR];
 	}
 
-	const int *bo = nullptr;
+	Vector<int> bo;
 	if (arrays[Mesh::ARRAY_BONES].get_type() != Variant::NIL) {
-		bo = arrays[Mesh::ARRAY_BONES].operator Vector<int>().ptr();
+		bo = arrays[Mesh::ARRAY_BONES];
 	}
 
-	const float *we = nullptr;
+	Vector<float> we;
 	if (arrays[Mesh::ARRAY_WEIGHTS].get_type() != Variant::NIL) {
-		we = arrays[Mesh::ARRAY_WEIGHTS].operator Vector<float>().ptr();
+		we = arrays[Mesh::ARRAY_WEIGHTS];
 	}
 
 	vertices.resize(vcount);
@@ -118,30 +119,32 @@ Error MeshDataTool::create_from_surface(const Ref<ArrayMesh> &p_mesh, int p_surf
 	for (int i = 0; i < vcount; i++) {
 		Vertex v;
 		v.vertex = vr[i];
-		if (nr) {
+		if (i < nr.size()) {
 			v.normal = nr[i];
 		}
-		if (ta) {
+		if (i < ta.size()) {
 			v.tangent = Plane(ta[i * 4 + 0], ta[i * 4 + 1], ta[i * 4 + 2], ta[i * 4 + 3]);
 		}
-		if (uv) {
+		if (i < uv.size()) {
 			v.uv = uv[i];
 		}
-		if (uv2) {
+		if (i < uv2.size()) {
 			v.uv2 = uv2[i];
 		}
-		if (col) {
+		if (i < col.size()) {
 			v.color = col[i];
 		}
 
-		if (we) {
+		// TODO: fire 2023-03-10 Handle 8 bones
+		if (i < we.size()) {
 			v.weights.push_back(we[i * 4 + 0]);
 			v.weights.push_back(we[i * 4 + 1]);
 			v.weights.push_back(we[i * 4 + 2]);
 			v.weights.push_back(we[i * 4 + 3]);
 		}
 
-		if (bo) {
+		// TODO: fire 2023-03-10 Handle 8 bone weights
+		if (i < bo.size()) {
 			v.bones.push_back(bo[i * 4 + 0]);
 			v.bones.push_back(bo[i * 4 + 1]);
 			v.bones.push_back(bo[i * 4 + 2]);
