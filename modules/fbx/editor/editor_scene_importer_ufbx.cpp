@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  editor_scene_importer_ufbx.cpp                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,56 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#include "editor_scene_importer_ufbx.h"
 
 #ifdef TOOLS_ENABLED
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+#include "modules/fbx/fbx_document.h"
 
-class Animation;
-class Node;
+#include "core/config/project_settings.h"
+#include "editor/editor_settings.h"
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+uint32_t EditorSceneFormatImporterUFBX::get_import_flags() const {
+	return ImportFlags::IMPORT_SCENE | ImportFlags::IMPORT_ANIMATION;
+}
 
-public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
+void EditorSceneFormatImporterUFBX::get_extensions(List<String> *r_extensions) const {
+	r_extensions->push_back("fbx");
+}
 
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
+Node *EditorSceneFormatImporterUFBX::import_scene(const String &p_path, uint32_t p_flags,
+		const HashMap<StringName, Variant> &p_options,
+		List<String> *r_missing_deps, Error *r_err) {
+	Ref<FBXDocument> gltf;
+	gltf.instantiate();
+	Ref<FBXState> state;
+	state.instantiate();
+	print_verbose(vformat("FBX path: %s", p_path));
+	String path = ProjectSettings::get_singleton()->globalize_path(p_path);
+	Error err = gltf->append_from_file(path, state, p_flags, p_path.get_base_dir());
+	if (err != OK) {
+		if (r_err) {
+			*r_err = FAILED;
+		}
+		return nullptr;
+	}
 
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
+#ifndef DISABLE_DEPRECATED
+	bool trimming = p_options.has("animation/trimming") ? (bool)p_options["animation/trimming"] : false;
+	bool remove_immutable = p_options.has("animation/remove_immutable_tracks") ? (bool)p_options["animation/remove_immutable_tracks"] : true;
+	return gltf->generate_scene(state, (float)p_options["animation/fps"], trimming, remove_immutable);
+#else
+	return gltf->generate_scene(state, (float)p_options["animation/fps"], (bool)p_options["animation/trimming"], (bool)p_options["animation/remove_immutable_tracks"]);
+#endif
+}
+
+Variant EditorSceneFormatImporterUFBX::get_option_visibility(const String &p_path, bool p_for_animation,
+		const String &p_option, const HashMap<StringName, Variant> &p_options) {
+	return true;
+}
+
+void EditorSceneFormatImporterUFBX::get_import_options(const String &p_path,
+		List<ResourceImporter::ImportOption> *r_options) {
+}
 
 #endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
