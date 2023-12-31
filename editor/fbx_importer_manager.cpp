@@ -56,8 +56,8 @@ void FBXImporterManager::show_dialog(bool p_exclusive) {
 	set_close_on_escape(!p_exclusive);
 
 	if (is_importing) {
-		get_cancel_button()->set_text(TTR("Disable FBX & Restart"));
-		get_cancel_button()->set_tooltip_text(TTR("Canceling this dialog will disable the FBX importer.\nYou can re-enable it in the Project Settings under Filesystem > Import > FBX > Enabled.\n\nThe editor will restart as importers are registered when the editor starts."));
+		get_cancel_button()->set_text(TTR("Disable FBX2glTF & Restart"));
+		get_cancel_button()->set_tooltip_text(TTR("Canceling this dialog will disable the FBX2glTF importer.\nYou can re-enable it in the Project Settings under Filesystem > Import > FBX > Enabled.\n\nThe editor will restart as importers are registered when the editor starts."));
 	} else {
 		get_cancel_button()->set_text(TTR("Cancel"));
 		get_cancel_button()->set_tooltip_text("");

@@ -869,6 +869,15 @@ Files extracted from upstream source:
 See `thorvg/update-thorvg.sh` for extraction instructions. Set the version
 number and run the script.
 
+## ufbx
+
+- Upstream: https://github.com/ufbx/ufbx
+- Version: handedness-conversion (54fedd93fa5ae1a8060f956bfe8669043efd94c3, 2023)
+- License: MIT
+
+Files extracted from upstream source:
+
+- `ufbx.{c,h}`
 
 ## vhacd
 
