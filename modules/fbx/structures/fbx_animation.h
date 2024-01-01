@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_animation.h                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,59 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_ANIMATION_H
+#define FBX_ANIMATION_H
 
-#ifdef TOOLS_ENABLED
+#include "scene/animation/animation_player.h"
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+class FBXAnimation : public Resource {
+	GDCLASS(FBXAnimation, Resource);
 
-class Animation;
-class Node;
-
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+protected:
+	static void _bind_methods();
 
 public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
+	enum Interpolation {
+		INTERP_LINEAR,
+		INTERP_STEP,
+		INTERP_CATMULLROMSPLINE,
+		INTERP_CUBIC_SPLINE,
+	};
 
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
+	template <class T>
+	struct Channel {
+		Interpolation interpolation = INTERP_LINEAR;
+		Vector<real_t> times;
+		Vector<T> values;
+	};
+
+	struct Track {
+		Channel<Vector3> position_track;
+		Channel<Quaternion> rotation_track;
+		Channel<Vector3> scale_track;
+	};
+
+	struct BlendShapeTrack {
+		Channel<real_t> weight_track;
+	};
 
 public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
+	bool get_loop() const;
+	void set_loop(bool p_val);
+	double get_time_begin() const;
+	void set_time_begin(double p_val);
+	double get_time_end() const;
+	void set_time_end(double p_val);
+	HashMap<int, FBXAnimation::Track> &get_tracks();
+	HashMap<int, BlendShapeTrack> &get_blend_tracks();
+	FBXAnimation();
+
+private:
+	bool loop = false;
+	double time_begin = 0.0;
+	double time_end = 0.0;
+	HashMap<int, Track> tracks;
+	HashMap<int, BlendShapeTrack> blend_tracks;
 };
 
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_ANIMATION_H

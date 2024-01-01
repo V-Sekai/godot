@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  editor_scene_importer_ufbx.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef EDITOR_SCENE_IMPORTER_UFBX_H
+#define EDITOR_SCENE_IMPORTER_UFBX_H
 
 #ifdef TOOLS_ENABLED
 
@@ -40,8 +40,8 @@
 class Animation;
 class Node;
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+class EditorSceneFormatImporterUFBX : public EditorSceneFormatImporter {
+	GDCLASS(EditorSceneFormatImporterUFBX, EditorSceneFormatImporter);
 
 public:
 	virtual uint32_t get_import_flags() const override;
@@ -53,18 +53,7 @@ public:
 			List<ResourceImporter::ImportOption> *r_options) override;
 	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
 			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
 };
-
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
-
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
-
 #endif // TOOLS_ENABLED
 
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // EDITOR_SCENE_IMPORTER_UFBX_H
