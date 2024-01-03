@@ -946,7 +946,7 @@ FBXImageIndex FBXDocument::_parse_image_save_image(Ref<FBXState> p_state, const 
 				EditorFileSystem::get_singleton()->update_file(file_path);
 				EditorFileSystem::get_singleton()->reimport_append(file_path, custom_options, String(), generator_parameters);
 			}
-			Ref<Texture2D> saved_image = ResourceLoader::load(file_path, "Texture2D");
+			Ref<Texture2D> saved_image = ResourceLoader::load(p_state->get_base_path().path_join(file_path), "Texture2D");
 			if (saved_image.is_valid()) {
 				p_state->images.push_back(saved_image);
 				p_state->source_images.push_back(saved_image->get_image());
@@ -996,14 +996,14 @@ Error FBXDocument::_parse_images(Ref<FBXState> p_state, const String &p_base_pat
 			data.resize(int(fbx_texture_file.content.size));
 			memcpy(data.ptrw(), fbx_texture_file.content.data, fbx_texture_file.content.size);
 		} else {
-			Ref<Texture2D> texture = ResourceLoader::load(path);
+			String base_dir = p_state->get_base_path();
+			Ref<Texture2D> texture = ResourceLoader::load(base_dir.path_join(path), "Texture2D");
 			if (texture.is_valid()) {
 				p_state->images.push_back(texture);
 				p_state->source_images.push_back(texture->get_image());
 				continue;
 			}
-			// Fallback to loading as byte array. This enables us to support the
-			// spec's requirement that we honor mimetype regardless of file URI.
+			// Fallback to loading as byte array.
 			data = FileAccess::get_file_as_bytes(path);
 			if (data.size() == 0) {
 				WARN_PRINT(vformat("FBX: Image index '%d' couldn't be loaded from path: %s because there was no data to load. Skipping it.", texture_i, path));
@@ -1103,7 +1103,7 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 				}
 			}
 
-			// Multiply the albedo alpha with the transparency texture if necessary
+			// Multiply the albedo alpha with the transparency texture if necessary.
 			if (albedo_texture.is_valid() && transparency_texture.is_valid() && albedo_texture != transparency_texture) {
 				Pair<uint64_t, uint64_t> key = { albedo_texture->get_rid().get_id(), transparency_texture->get_rid().get_id() };
 				FBXTextureIndex *texture_index_ptr = p_state->albedo_transparency_textures.getptr(key);
