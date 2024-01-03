@@ -48,36 +48,49 @@ void EditorSceneFormatImporterUFBX::get_extensions(List<String> *r_extensions) c
 Node *EditorSceneFormatImporterUFBX::import_scene(const String &p_path, uint32_t p_flags,
 		const HashMap<StringName, Variant> &p_options,
 		List<String> *r_missing_deps, Error *r_err) {
-	Ref<FBXDocument> gltf;
-	gltf.instantiate();
+	Ref<FBXDocument> fbx;
+	fbx.instantiate();
 	Ref<FBXState> state;
 	state.instantiate();
 	print_verbose(vformat("FBX path: %s", p_path));
 	String path = ProjectSettings::get_singleton()->globalize_path(p_path);
-	Error err = gltf->append_from_file(path, state, p_flags, p_path.get_base_dir());
+	bool allow_geometry_helper_nodes = p_options.has("fbx/allow_geometry_helper_nodes") ? (bool)p_options["fbx/allow_geometry_helper_nodes"] : false;
+	if (allow_geometry_helper_nodes) {
+		state->set_allow_geometry_helper_nodes(allow_geometry_helper_nodes);
+	}
+	p_flags |= EditorSceneFormatImporter::IMPORT_USE_NAMED_SKIN_BINDS;
+	Error err = fbx->append_from_file(path, state, p_flags, p_path.get_base_dir());
 	if (err != OK) {
 		if (r_err) {
 			*r_err = FAILED;
 		}
 		return nullptr;
 	}
-
 #ifndef DISABLE_DEPRECATED
 	bool trimming = p_options.has("animation/trimming") ? (bool)p_options["animation/trimming"] : false;
 	bool remove_immutable = p_options.has("animation/remove_immutable_tracks") ? (bool)p_options["animation/remove_immutable_tracks"] : true;
-	return gltf->generate_scene(state, (float)p_options["animation/fps"], trimming, remove_immutable);
+	return fbx->generate_scene(state, (float)p_options["animation/fps"], trimming, remove_immutable);
 #else
-	return gltf->generate_scene(state, (float)p_options["animation/fps"], (bool)p_options["animation/trimming"], (bool)p_options["animation/remove_immutable_tracks"]);
+	return fbx->generate_scene(state, (float)p_options["animation/fps"], (bool)p_options["animation/trimming"], (bool)p_options["animation/remove_immutable_tracks"]);
 #endif
 }
 
 Variant EditorSceneFormatImporterUFBX::get_option_visibility(const String &p_path, bool p_for_animation,
 		const String &p_option, const HashMap<StringName, Variant> &p_options) {
+	String file_extension = p_path.get_extension().to_lower();
+	if (file_extension != "gltf" && p_option.begins_with("gltf/")) {
+		return false;
+	}
+	if (file_extension != "fbx" && p_option.begins_with("fbx/")) {
+		return false;
+	}
 	return true;
 }
 
 void EditorSceneFormatImporterUFBX::get_import_options(const String &p_path,
 		List<ResourceImporter::ImportOption> *r_options) {
+	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::BOOL, "fbx/allow_geometry_helper_nodes"), false));
+	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::INT, "fbx/embedded_image_handling", PROPERTY_HINT_ENUM, "Discard All Textures,Extract Textures,Embed as Basis Universal,Embed as Uncompressed", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), FBXState::HANDLE_BINARY_EXTRACT_TEXTURES));
 }
 
 #endif // TOOLS_ENABLED

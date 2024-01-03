@@ -52,6 +52,7 @@
 // FIXME: Hardcoded to avoid editor dependency.
 #define FBX_IMPORT_USE_NAMED_SKIN_BINDS 16
 #define FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
+#define FBX_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
 
 #include <ufbx.h>
 
@@ -2557,8 +2558,13 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 	opts.target_axes = ufbx_axes_right_handed_y_up;
 	opts.target_unit_meters = 1.0f;
 	opts.space_conversion = UFBX_SPACE_CONVERSION_MODIFY_GEOMETRY;
-	opts.geometry_transform_handling = UFBX_GEOMETRY_TRANSFORM_HANDLING_HELPER_NODES;
-	opts.inherit_mode_handling = UFBX_INHERIT_MODE_HANDLING_COMPENSATE;
+	if (!p_state->get_allow_geometry_helper_nodes()) {
+		opts.geometry_transform_handling = UFBX_GEOMETRY_TRANSFORM_HANDLING_MODIFY_GEOMETRY_NO_FALLBACK;
+		opts.inherit_mode_handling = UFBX_INHERIT_MODE_HANDLING_IGNORE;
+	} else {
+		opts.geometry_transform_handling = UFBX_GEOMETRY_TRANSFORM_HANDLING_HELPER_NODES;
+		opts.inherit_mode_handling = UFBX_INHERIT_MODE_HANDLING_COMPENSATE;
+	}
 	opts.geometry_transform_helper_name.data = "GeometryTransformHelper";
 	opts.geometry_transform_helper_name.length = SIZE_MAX;
 	opts.scale_helper_name.data = "ScaleHelper";

@@ -55,6 +55,7 @@ class FBXState : public Resource {
 	bool use_named_skin_binds = false;
 	bool use_khr_texture_transform = false;
 	bool discard_meshes_and_materials = false;
+	bool allow_geometry_helper_nodes = false;
 	bool create_animations = true;
 
 	int handle_binary_image = HANDLE_BINARY_EXTRACT_TEXTURES;
@@ -190,6 +191,9 @@ public:
 
 	Variant get_additional_data(const StringName &p_extension_name);
 	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
+
+	bool get_allow_geometry_helper_nodes();
+	void set_allow_geometry_helper_nodes(bool p_allow_geometry_helper_nodes);
 };
 
 #endif // FBX_STATE_H

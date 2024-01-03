@@ -311,3 +311,11 @@ Variant FBXState::get_additional_data(const StringName &p_extension_name) {
 void FBXState::set_additional_data(const StringName &p_extension_name, Variant p_additional_data) {
 	additional_data[p_extension_name] = p_additional_data;
 }
+
+bool FBXState::get_allow_geometry_helper_nodes() {
+	return allow_geometry_helper_nodes;
+}
+
+void FBXState::set_allow_geometry_helper_nodes(bool p_allow_geometry_helper_nodes) {
+	allow_geometry_helper_nodes = p_allow_geometry_helper_nodes;
+}
