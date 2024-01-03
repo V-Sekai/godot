@@ -33,8 +33,6 @@
 
 #include "extensions/fbx_document_extension.h"
 
-#include "modules/modules_enabled.gen.h" // For csg, gridmap.
-
 class FBXDocument : public Resource {
 	GDCLASS(FBXDocument, Resource);
 	static Vector<Ref<FBXDocumentExtension>> all_document_extensions;

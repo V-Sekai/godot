@@ -38,7 +38,7 @@
 #include "structures/fbx_skin.h"
 #include "structures/fbx_texture.h"
 
-#include "thirdparty/ufbx/ufbx.h"
+#include <ufbx.h>
 
 class FBXState : public Resource {
 	GDCLASS(FBXState, Resource);
@@ -62,7 +62,7 @@ class FBXState : public Resource {
 	Vector<Ref<FBXNode>> nodes;
 	Vector<Vector<uint8_t>> buffers;
 
-	Vector<Ref<FBXMesh>> meshes; // meshes are loaded directly, no reason not to.
+	Vector<Ref<FBXMesh>> meshes; // Meshes are loaded directly, no reason not to.
 
 	Vector<AnimationPlayer *> animation_players;
 	HashMap<Ref<Material>, FBXMaterialIndex> material_cache;
@@ -103,7 +103,7 @@ public:
 		HANDLE_BINARY_DISCARD_TEXTURES = 0,
 		HANDLE_BINARY_EXTRACT_TEXTURES,
 		HANDLE_BINARY_EMBED_AS_BASISU,
-		HANDLE_BINARY_EMBED_AS_UNCOMPRESSED, // if this value changes from 3, ResourceImporterScene::pre_import must be changed as well.
+		HANDLE_BINARY_EMBED_AS_UNCOMPRESSED, // If this value changes from 3, ResourceImporterScene::pre_import must be changed as well.
 	};
 	int32_t get_handle_binary_image() {
 		return handle_binary_image;

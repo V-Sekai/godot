@@ -46,11 +46,6 @@ static void _editor_init() {
 }
 #endif // TOOLS_ENABLED
 
-#define FBX_REGISTER_DOCUMENT_EXTENSION(m_doc_ext_class) \
-	Ref<m_doc_ext_class> extension_##m_doc_ext_class;    \
-	extension_##m_doc_ext_class.instantiate();           \
-	FBXDocument::register_fbx_document_extension(extension_##m_doc_ext_class);
-
 void initialize_fbx_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_CLASS(FBXAnimation);
@@ -71,10 +66,10 @@ void initialize_fbx_module(ModuleInitializationLevel p_level) {
 		ClassDB::set_current_api(ClassDB::API_EDITOR);
 
 		GDREGISTER_CLASS(EditorSceneFormatImporterUFBX);
+
 		ClassDB::set_current_api(prev_api);
 		EditorNode::add_init_callback(_editor_init);
 	}
-
 #endif // TOOLS_ENABLED
 }
 

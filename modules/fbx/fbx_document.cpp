@@ -30,51 +30,30 @@
 
 #include "fbx_document.h"
 
-#include "core/config/project_settings.h"
 #include "core/crypto/crypto_core.h"
-#include "core/error/error_list.h"
-#include "core/error/error_macros.h"
 #include "core/io/config_file.h"
-#include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "core/io/image.h"
-#include "core/io/json.h"
-#include "core/io/stream_peer.h"
 #include "core/math/color.h"
 #include "core/math/disjoint_set.h"
-#include "core/string/print_string.h"
-#include "core/version.h"
-#include "drivers/png/png_driver_common.h"
 #include "scene/3d/bone_attachment_3d.h"
-#include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
-#include "scene/3d/light_3d.h"
-#include "scene/3d/mesh_instance_3d.h"
-#include "scene/3d/multimesh_instance_3d.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "scene/resources/portable_compressed_texture.h"
 #include "scene/resources/skin.h"
 #include "scene/resources/surface_tool.h"
 
-#include "modules/modules_enabled.gen.h" // For csg, gridmap.
-
 #ifdef TOOLS_ENABLED
 #include "editor/editor_file_system.h"
 #endif
-#ifdef MODULE_CSG_ENABLED
-#include "modules/csg/csg_shape.h"
-#endif // MODULE_CSG_ENABLED
-#ifdef MODULE_GRIDMAP_ENABLED
-#include "modules/gridmap/grid_map.h"
-#endif // MODULE_GRIDMAP_ENABLED
 
 // FIXME: Hardcoded to avoid editor dependency.
 #define FBX_IMPORT_USE_NAMED_SKIN_BINDS 16
 #define FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
 
-#include "thirdparty/ufbx/ufbx.h"
+#include <ufbx.h>
 
 #include <stdio.h>
 #include <stdlib.h>

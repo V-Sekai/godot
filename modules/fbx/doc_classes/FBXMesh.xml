@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="FBXMesh" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		FBXMesh represents an FBX Mesh.
+		FBXMesh represents an FBX mesh.
 	</brief_description>
 	<description>
 		FBXMesh handles 3D mesh data imported from FBX files. It includes properties for blend channels, blend weights, instance materials, and the mesh itself.

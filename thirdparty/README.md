@@ -869,6 +869,7 @@ Files extracted from upstream source:
 See `thorvg/update-thorvg.sh` for extraction instructions. Set the version
 number and run the script.
 
+
 ## ufbx
 
 - Upstream: https://github.com/ufbx/ufbx
@@ -878,6 +879,8 @@ number and run the script.
 Files extracted from upstream source:
 
 - `ufbx.{c,h}`
+- `LICENSE`
+
 
 ## vhacd
 

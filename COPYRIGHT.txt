@@ -481,11 +481,6 @@ Comment: libSquish
 Copyright: 2006, Simon Brown
 License: Expat
 
-Files: ./thirdparty/ufbx/
-Comment: ufbx
-Copyright: 2020, Samuli Raivio
-License: Expat
-
 Files: ./thirdparty/thorvg/
 Comment: ThorVG
 Copyright: 2020-2024, The ThorVG Project
@@ -496,6 +491,11 @@ Comment: TinyEXR
 Copyright: 2014-2021, Syoyo Fujita
   2002, Industrial Light & Magic, a division of Lucas Digital Ltd. LLC
 License: BSD-3-clause
+
+Files: ./thirdparty/ufbx/
+Comment: ufbx
+Copyright: 2020, Samuli Raivio
+License: Expat
 
 Files: ./thirdparty/vhacd/
 Comment: V-HACD

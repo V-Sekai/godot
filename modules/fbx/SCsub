@@ -4,7 +4,20 @@ Import("env")
 Import("env_modules")
 
 env_fbx = env_modules.Clone()
-env_fbx.Append(
+
+# Thirdparty source files
+
+thirdparty_obj = []
+
+thirdparty_dir = "#thirdparty/ufbx/"
+thirdparty_sources = [thirdparty_dir + "ufbx.c"]
+
+env_fbx.Prepend(CPPPATH=[thirdparty_dir])
+
+env_thirdparty = env_fbx.Clone()
+env_thirdparty.disable_warnings()
+
+env_thirdparty.Append(
     CPPDEFINES=[
         "UFBX_NO_SUBDIVISION",
         "UFBX_NO_TESSELLATION",
@@ -16,10 +29,15 @@ env_fbx.Append(
     ]
 )
 
+env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
+env.modules_sources += thirdparty_obj
+
 # Godot source files
+
 env_fbx.add_source_files(env.modules_sources, "*.cpp")
 env_fbx.add_source_files(env.modules_sources, "structures/*.cpp")
-env_fbx.add_source_files(env.modules_sources, "#thirdparty/ufbx/ufbx.c")
+
 SConscript("extensions/SCsub")
+
 if env.editor_build:
     env_fbx.add_source_files(env.modules_sources, "editor/*.cpp")

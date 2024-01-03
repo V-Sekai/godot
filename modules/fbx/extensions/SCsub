@@ -3,7 +3,11 @@
 Import("env")
 Import("env_modules")
 
-env_gltf = env_modules.Clone()
+env_fbx = env_modules.Clone()
+
+thirdparty_dir = "#thirdparty/ufbx/"
+env_fbx.Prepend(CPPPATH=[thirdparty_dir])
 
 # Godot source files
-env_gltf.add_source_files(env.modules_sources, "*.cpp")
+
+env_fbx.add_source_files(env.modules_sources, "*.cpp")
