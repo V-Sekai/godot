@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="FBXSkeleton" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		FBXSkeleton represents a skeleton in an FBX file.
+	</brief_description>
+	<description>
+		The FBXSkeleton class handles skeleton data imported from FBX files. It includes methods for getting and setting bone attachments, godot bone nodes, unique names, and properties for joints and roots.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_bone_attachment">
+			<return type="BoneAttachment3D" />
+			<param index="0" name="idx" type="int" />
+			<description>
+				Gets the BoneAttachment3D object at the given index.
+			</description>
+		</method>
+		<method name="get_bone_attachment_count">
+			<return type="int" />
+			<description>
+				Gets the count of bone attachments.
+			</description>
+		</method>
+		<method name="get_godot_bone_node">
+			<return type="Dictionary" />
+			<description>
+				Gets a dictionary representing the Godot bone node.
+			</description>
+		</method>
+		<method name="get_godot_skeleton">
+			<return type="Skeleton3D" />
+			<description>
+				Gets the Skeleton3D object representing the Godot skeleton.
+			</description>
+		</method>
+		<method name="get_unique_names">
+			<return type="String[]" />
+			<description>
+				Gets an array of unique names.
+			</description>
+		</method>
+		<method name="set_godot_bone_node">
+			<return type="void" />
+			<param index="0" name="godot_bone_node" type="Dictionary" />
+			<description>
+				Sets the Godot bone node with the given dictionary.
+			</description>
+		</method>
+		<method name="set_unique_names">
+			<return type="void" />
+			<param index="0" name="unique_names" type="String[]" />
+			<description>
+				Sets the unique names with the given array of strings.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="joints" type="PackedInt32Array" setter="set_joints" getter="get_joints" default="PackedInt32Array()">
+			An array of integers representing the joints in the skeleton.
+		</member>
+		<member name="roots" type="PackedInt32Array" setter="set_roots" getter="get_roots" default="PackedInt32Array()">
+			An array of integers representing the root joints in the skeleton.
+		</member>
+	</members>
+</class>
