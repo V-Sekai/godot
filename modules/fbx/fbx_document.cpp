@@ -2885,7 +2885,7 @@ Error FBXDocument::_parse_lights(Ref<FBXState> p_state) {
 		light->set_name(_as_string(fbx_light->name));
 		light->set_color(Color(fbx_light->color.x, fbx_light->color.y, fbx_light->color.z));
 		light->set_intensity(fbx_light->intensity);
-		Vector3 local_dir(fbx_light->local_direction.x, fbx_light->local_direction.y, fbx_light->local_direction.z);
+		Vector3 local_dir(fbx_light->local_direction.x, fbx_light->local_direction.y, -fbx_light->local_direction.z);
 		light->set_local_direction(local_dir);
 		light->set_type(fbx_light->type);
 		light->set_decay(fbx_light->decay);
