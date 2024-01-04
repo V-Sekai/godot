@@ -70,6 +70,10 @@ Node *EditorSceneFormatImporterUFBX::import_scene(const String &p_path, uint32_t
 	if (allow_geometry_helper_nodes) {
 		state->set_allow_geometry_helper_nodes(allow_geometry_helper_nodes);
 	}
+	if (p_options.has("fbx/embedded_image_handling")) {
+		int32_t enum_option = p_options["fbx/embedded_image_handling"];
+		state->set_handle_binary_image(enum_option);
+	}
 	p_flags |= EditorSceneFormatImporter::IMPORT_USE_NAMED_SKIN_BINDS;
 	Error err = fbx->append_from_file(path, state, p_flags, p_path.get_base_dir());
 	if (err != OK) {
