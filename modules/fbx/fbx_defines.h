@@ -46,6 +46,8 @@ class Skin;
 
 // GLTF classes.
 class FBXAnimation;
+class FBXLight;
+class FBXCamera;
 class FBXDocument;
 class FBXDocumentExtension;
 class FBXMesh;
@@ -58,6 +60,8 @@ class FBXTexture;
 // GLTF index aliases.
 using FBXAnimationIndex = int;
 using FBXBufferIndex = int;
+using FBXCameraIndex = int;
+using FBXLightIndex = int;
 using FBXImageIndex = int;
 using FBXMaterialIndex = int;
 using FBXMeshIndex = int;

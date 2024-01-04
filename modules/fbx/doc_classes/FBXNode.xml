@@ -39,6 +39,9 @@
 		</method>
 	</methods>
 	<members>
+		<member name="camera" type="int" setter="set_camera" getter="get_camera" default="-1">
+			The camera index associated with this node.
+		</member>
 		<member name="children" type="PackedInt32Array" setter="set_children" getter="get_children" default="PackedInt32Array()">
 			An array of integers representing the children nodes of this node.
 		</member>

@@ -43,6 +43,12 @@
 				Gets an array of FBXAnimation objects representing the animations in the [FBXState].
 			</description>
 		</method>
+		<method name="get_cameras">
+			<return type="FBXCamera[]" />
+			<description>
+				Gets an array of FBXCamera objects representing the animations in the [FBXState].
+			</description>
+		</method>
 		<method name="get_handle_binary_image">
 			<return type="int" />
 			<description>
@@ -130,6 +136,13 @@
 			<param index="0" name="animations" type="FBXAnimation[]" />
 			<description>
 				Sets the animations in the [FBXState] with the given array of FBXAnimation objects.
+			</description>
+		</method>
+		<method name="set_cameras">
+			<return type="void" />
+			<param index="0" name="cameras" type="FBXCamera[]" />
+			<description>
+				Sets the cameras in the [FBXState] with the given array of FBXCamera objects.
 			</description>
 		</method>
 		<method name="set_handle_binary_image">

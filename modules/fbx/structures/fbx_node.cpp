@@ -39,6 +39,8 @@ void FBXNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_xform", "xform"), &FBXNode::set_xform);
 	ClassDB::bind_method(D_METHOD("get_mesh"), &FBXNode::get_mesh);
 	ClassDB::bind_method(D_METHOD("set_mesh", "mesh"), &FBXNode::set_mesh);
+	ClassDB::bind_method(D_METHOD("get_camera"), &FBXNode::get_camera);
+	ClassDB::bind_method(D_METHOD("set_camera", "camera"), &FBXNode::set_camera);
 	ClassDB::bind_method(D_METHOD("get_skin"), &FBXNode::get_skin);
 	ClassDB::bind_method(D_METHOD("set_skin", "skin"), &FBXNode::set_skin);
 	ClassDB::bind_method(D_METHOD("get_skeleton"), &FBXNode::get_skeleton);
@@ -57,6 +59,7 @@ void FBXNode::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "parent"), "set_parent", "get_parent"); // FBXNodeIndex
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "height"), "set_height", "get_height"); // int
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "xform"), "set_xform", "get_xform"); // Transform3D
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "camera"), "set_camera", "get_camera"); // FBXCameraIndex
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "skin"), "set_skin", "get_skin"); // FBXSkinIndex
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "skeleton"), "set_skeleton", "get_skeleton"); // FBXSkeletonIndex
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position"), "set_position", "get_position"); // Vector3
@@ -95,6 +98,22 @@ FBXMeshIndex FBXNode::get_mesh() {
 
 void FBXNode::set_mesh(FBXMeshIndex p_mesh) {
 	mesh = p_mesh;
+}
+
+FBXCameraIndex FBXNode::get_camera() {
+	return camera;
+}
+
+void FBXNode::set_camera(FBXCameraIndex p_camera) {
+	camera = p_camera;
+}
+
+FBXLightIndex FBXNode::get_light() {
+	return light;
+}
+
+void FBXNode::set_light(FBXLightIndex p_light) {
+	light = p_light;
 }
 
 FBXSkinIndex FBXNode::get_skin() {

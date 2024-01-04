@@ -32,6 +32,8 @@
 #define FBX_STATE_H
 
 #include "structures/fbx_animation.h"
+#include "structures/fbx_camera.h"
+#include "structures/fbx_light.h"
 #include "structures/fbx_mesh.h"
 #include "structures/fbx_node.h"
 #include "structures/fbx_skeleton.h"
@@ -82,6 +84,8 @@ class FBXState : public Resource {
 
 	Vector<Ref<FBXSkin>> skins;
 	Vector<FBXSkinIndex> skin_indices;
+	Vector<Ref<FBXCamera>> cameras;
+	Vector<Ref<FBXLight>> lights;
 	HashSet<String> unique_names;
 	HashSet<String> unique_animation_names;
 
@@ -166,6 +170,9 @@ public:
 
 	TypedArray<FBXSkin> get_skins();
 	void set_skins(TypedArray<FBXSkin> p_skins);
+
+	TypedArray<FBXCamera> get_cameras();
+	void set_cameras(TypedArray<FBXCamera> p_cameras);
 
 	TypedArray<String> get_unique_names();
 	void set_unique_names(TypedArray<String> p_unique_names);

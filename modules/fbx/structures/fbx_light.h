@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  fbx_node.h                                                            */
+/*  fbx_light.h                                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,76 +28,62 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef FBX_NODE_H
-#define FBX_NODE_H
-
-#include "../fbx_defines.h"
+#ifndef FBX_LIGHT_H
+#define FBX_LIGHT_H
 
 #include "core/io/resource.h"
+#include "scene/3d/light_3d.h"
 
-class FBXNode : public Resource {
-	GDCLASS(FBXNode, Resource);
-	friend class FBXDocument;
+class Light3D;
+
+class FBXLight : public Resource {
+	GDCLASS(FBXLight, Resource);
 
 private:
-	// matrices need to be transformed to this
-	FBXNodeIndex parent = -1;
-	int height = -1;
-	Transform3D xform;
-	FBXMeshIndex mesh = -1;
-	FBXCameraIndex camera = -1;
-	FBXLightIndex light = -1;
-	FBXSkinIndex skin = -1;
-	FBXSkeletonIndex skeleton = -1;
-	bool joint = false;
-	Vector3 position;
-	Quaternion rotation;
-	Vector3 scale = Vector3(1, 1, 1);
-	Vector<int> children;
-	Dictionary additional_data;
+	Color color;
+	float intensity = 0.0f;
+	Vector3 local_direction = Vector3(0, 1, 0);
+	int type = -1;
+	int decay = 0;
+	int area_shape = -1;
+	float inner_angle = 0.0f;
+	float outer_angle = 0.0f;
+	bool cast_light = true;
+	bool cast_shadows = true;
 
 protected:
 	static void _bind_methods();
 
 public:
-	FBXNodeIndex get_parent();
-	void set_parent(FBXNodeIndex p_parent);
+	static Ref<FBXLight> from_node(const Light3D *p_camera);
+	Light3D *to_node() const;
 
-	int get_height();
-	void set_height(int p_height);
+	static Ref<FBXLight> from_dictionary(const Dictionary p_dictionary);
+	Dictionary to_dictionary() const;
 
-	Transform3D get_xform();
-	void set_xform(Transform3D p_xform);
-
-	FBXMeshIndex get_mesh();
-	void set_mesh(FBXMeshIndex p_mesh);
-
-	FBXCameraIndex get_camera();
-	void set_camera(FBXCameraIndex p_camera);
-
-	FBXLightIndex get_light();
-	void set_light(FBXLightIndex p_light);
-
-	FBXSkinIndex get_skin();
-	void set_skin(FBXSkinIndex p_skin);
-
-	FBXSkeletonIndex get_skeleton();
-	void set_skeleton(FBXSkeletonIndex p_skeleton);
-
-	Vector3 get_position();
-	void set_position(Vector3 p_position);
-
-	Quaternion get_rotation();
-	void set_rotation(Quaternion p_rotation);
-
-	Vector3 get_scale();
-	void set_scale(Vector3 p_scale);
-
-	Vector<int> get_children();
-	void set_children(Vector<int> p_children);
-
-	Variant get_additional_data(const StringName &p_extension_name);
-	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
+	void set_color(Color p_color) { color = p_color; }
+	// Color and intensity of the light, usually you want to use `color * intensity`
+	// NOTE: `intensity` is 0.01x of the property `"Intensity"` as that matches
+	// matches values in DCC programs before exporting.
+	void set_intensity(float p_intensity) { intensity = p_intensity; }
+	void set_local_direction(Vector3 p_local_direction) { local_direction = p_local_direction; }
+	void set_type(int p_type) { type = p_type; }
+	void set_decay(int p_decay) { decay = p_decay; }
+	void set_area_shape(int p_area_shape) { area_shape = p_area_shape; }
+	void set_inner_angle(float p_inner_angle) { inner_angle = p_inner_angle; }
+	void set_outer_angle(float p_outer_angle) { outer_angle = p_outer_angle; }
+	void set_cast_light(bool p_cast_light) { cast_light = p_cast_light; }
+	void set_cast_shadows(bool p_cast_shadows) { cast_shadows = p_cast_shadows; }
+	Color get_color() const { return color; }
+	float get_intensity() const { return intensity; }
+	Vector3 get_local_direction() const { return local_direction; }
+	int get_type() const { return type; }
+	int get_decay() const { return decay; }
+	int get_area_shape() const { return area_shape; }
+	float get_inner_angle() const { return inner_angle; }
+	float get_outer_angle() const { return outer_angle; }
+	bool is_casting_light() const { return cast_light; }
+	bool is_casting_shadows() const { return cast_shadows; }
 };
 
-#endif // FBX_NODE_H
+#endif // FBX_LIGHT_H

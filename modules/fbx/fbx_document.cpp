@@ -37,13 +37,16 @@
 #include "core/io/image.h"
 #include "core/math/color.h"
 #include "core/math/disjoint_set.h"
+#include "fbx_defines.h"
 #include "scene/3d/bone_attachment_3d.h"
+#include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "scene/resources/portable_compressed_texture.h"
 #include "scene/resources/skin.h"
 #include "scene/resources/surface_tool.h"
+#include "structures/fbx_light.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_file_system.h"
@@ -366,6 +369,12 @@ Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 			node->set_name(_as_string(fbx_node->name));
 		} else if (fbx_node->is_root) {
 			node->set_name("Root");
+		}
+		if (fbx_node->camera) {
+			node->camera = fbx_node->camera->typed_id;
+		}
+		if (fbx_node->light) {
+			node->light = fbx_node->light->typed_id;
 		}
 		if (fbx_node->mesh) {
 			node->mesh = fbx_node->mesh->typed_id;
@@ -1972,6 +1981,35 @@ void FBXDocument::_remove_duplicate_skins(Ref<FBXState> p_state) {
 	}
 }
 
+Error FBXDocument::_parse_cameras(Ref<FBXState> p_state) {
+	const ufbx_scene *fbx_scene = p_state->scene.get();
+	for (FBXCameraIndex i = 0; i < static_cast<FBXCameraIndex>(fbx_scene->cameras.count); i++) {
+		const ufbx_camera *fbx_camera = fbx_scene->cameras[i];
+
+		Ref<FBXCamera> camera;
+		camera.instantiate();
+		camera->set_name(_as_string(fbx_camera->name));
+		if (fbx_camera->projection_mode == UFBX_PROJECTION_MODE_PERSPECTIVE) {
+			camera->set_perspective(true);
+			camera->set_fov(Math::deg_to_rad(real_t(fbx_camera->field_of_view_deg.y)));
+		} else {
+			camera->set_perspective(false);
+			camera->set_size_mag(real_t(fbx_camera->orthographic_extent));
+		}
+		if (fbx_camera->near_plane != 0.0f) {
+			camera->set_depth_near(fbx_camera->near_plane);
+		}
+		if (fbx_camera->far_plane != 0.0f) {
+			camera->set_depth_far(fbx_camera->far_plane);
+		}
+		p_state->cameras.push_back(camera);
+	}
+
+	print_verbose("FBX: Total cameras: " + itos(p_state->cameras.size()));
+
+	return OK;
+}
+
 Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 	const ufbx_scene *fbx_scene = p_state->scene.get();
 	for (FBXAnimationIndex animation_i = 0; animation_i < static_cast<FBXAnimationIndex>(fbx_scene->anim_stacks.count); animation_i++) {
@@ -2061,6 +2099,8 @@ void FBXDocument::_assign_node_names(Ref<FBXState> p_state) {
 		if (fbx_node->get_name().is_empty()) {
 			if (fbx_node->mesh >= 0) {
 				fbx_node->set_name(_gen_unique_name(p_state, "Mesh"));
+			} else if (fbx_node->camera >= 0) {
+				fbx_node->set_name(_gen_unique_name(p_state, "Camera3D"));
 			} else {
 				fbx_node->set_name(_gen_unique_name(p_state, "Node"));
 			}
@@ -2102,6 +2142,28 @@ ImporterMeshInstance3D *FBXDocument::_generate_mesh_instance(Ref<FBXState> p_sta
 	}
 	mi->set_mesh(import_mesh);
 	return mi;
+}
+
+Camera3D *FBXDocument::_generate_camera(Ref<FBXState> p_state, const FBXNodeIndex p_node_index) {
+	Ref<FBXNode> fbx_node = p_state->nodes[p_node_index];
+
+	ERR_FAIL_INDEX_V(fbx_node->camera, p_state->cameras.size(), nullptr);
+
+	print_verbose("FBX: Creating camera for: " + fbx_node->get_name());
+
+	Ref<FBXCamera> c = p_state->cameras[fbx_node->camera];
+	return c->to_node();
+}
+
+Light3D *FBXDocument::_generate_light(Ref<FBXState> p_state, const FBXNodeIndex p_node_index) {
+	Ref<FBXNode> fbx_node = p_state->nodes[p_node_index];
+
+	ERR_FAIL_INDEX_V(fbx_node->light, p_state->lights.size(), nullptr);
+
+	print_verbose("FBX: Creating light for: " + fbx_node->get_name());
+
+	Ref<FBXLight> l = p_state->lights[fbx_node->light];
+	return l->to_node();
 }
 
 Node3D *FBXDocument::_generate_spatial(Ref<FBXState> p_state, const FBXNodeIndex p_node_index) {
@@ -2152,6 +2214,10 @@ void FBXDocument::_generate_scene_node(Ref<FBXState> p_state, const FBXNodeIndex
 			current_node->add_child(mesh_inst, true);
 		} else if (fbx_node->mesh >= 0) {
 			current_node = _generate_mesh_instance(p_state, p_node_index);
+		} else if (fbx_node->camera >= 0) {
+			current_node = _generate_camera(p_state, p_node_index);
+		} else if (fbx_node->light >= 0) {
+			current_node = _generate_light(p_state, p_node_index);
 		} else {
 			current_node = _generate_spatial(p_state, p_node_index);
 		}
@@ -2183,7 +2249,7 @@ void FBXDocument::_generate_skeleton_bone_node(Ref<FBXState> p_state, const FBXN
 	Skeleton3D *skeleton = p_state->skeletons[fbx_node->skeleton]->godot_skeleton;
 	// In this case, this node is already a bone in skeleton.
 	const bool is_skinned_mesh = (fbx_node->skin >= 0 && fbx_node->mesh >= 0);
-	const bool requires_extra_node = (fbx_node->mesh >= 0);
+	const bool requires_extra_node = (fbx_node->mesh >= 0 || fbx_node->camera >= 0 || fbx_node->light >= 0);
 
 	Skeleton3D *active_skeleton = Object::cast_to<Skeleton3D>(p_scene_parent);
 	if (active_skeleton != skeleton) {
@@ -2237,6 +2303,8 @@ void FBXDocument::_generate_skeleton_bone_node(Ref<FBXState> p_state, const FBXN
 		if (!current_node) {
 			if (fbx_node->mesh >= 0) {
 				current_node = _generate_mesh_instance(p_state, p_node_index);
+			} else if (fbx_node->camera >= 0) {
+				current_node = _generate_camera(p_state, p_node_index);
 			} else {
 				current_node = _generate_spatial(p_state, p_node_index);
 			}
@@ -2740,6 +2808,14 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	err = _parse_meshes(p_state);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
+	/* PARSE LIGHTS */
+	err = _parse_lights(p_state);
+	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
+
+	/* PARSE CAMERAS */
+	err = _parse_cameras(p_state);
+	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
+
 	/* PARSE ANIMATIONS */
 	err = _parse_animations(p_state);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
@@ -2797,4 +2873,27 @@ void FBXDocument::_zero_unused_elements(Vector<float> &cur_custom, int start, in
 			cur_custom.write[index + channel] = 0;
 		}
 	}
+}
+Error FBXDocument::_parse_lights(Ref<FBXState> p_state) {
+	const ufbx_scene *fbx_scene = p_state->scene.get();
+	for (size_t i = 0; i < fbx_scene->lights.count; i++) {
+		const ufbx_light *fbx_light = fbx_scene->lights.data[i];
+		Ref<FBXLight> light;
+		light.instantiate();
+		light->set_name(_as_string(fbx_light->name));
+		light->set_color(Color(fbx_light->color.x, fbx_light->color.y, fbx_light->color.z));
+		light->set_intensity(fbx_light->intensity);
+		Vector3 local_dir(fbx_light->local_direction.x, fbx_light->local_direction.y, fbx_light->local_direction.z);
+		light->set_local_direction(local_dir);
+		light->set_type(fbx_light->type);
+		light->set_decay(fbx_light->decay);
+		light->set_area_shape(fbx_light->area_shape);
+		light->set_inner_angle(Math::deg_to_rad(fbx_light->inner_angle));
+		light->set_outer_angle(Math::deg_to_rad(fbx_light->outer_angle));
+		light->set_cast_light(fbx_light->cast_light);
+		light->set_cast_shadows(fbx_light->cast_shadows);
+		p_state->lights.push_back(light);
+	}
+	print_verbose("FBX: Total lights: " + itos(p_state->lights.size()));
+	return OK;
 }

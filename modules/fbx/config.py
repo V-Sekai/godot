@@ -10,8 +10,10 @@ def get_doc_classes():
     return [
         "EditorSceneFormatImporterUFBX",
         "FBXAnimation",
+        "FBXCamera",
         "FBXDocument",
         "FBXDocumentExtension",
+        "FBXLight",
         "FBXMesh",
         "FBXNode",
         "FBXSkeleton",

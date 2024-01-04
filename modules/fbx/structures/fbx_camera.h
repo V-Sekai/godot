@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  fbx_node.h                                                            */
+/*  fbx_camera.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,76 +28,48 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef FBX_NODE_H
-#define FBX_NODE_H
-
-#include "../fbx_defines.h"
+#ifndef FBX_CAMERA_H
+#define FBX_CAMERA_H
 
 #include "core/io/resource.h"
 
-class FBXNode : public Resource {
-	GDCLASS(FBXNode, Resource);
-	friend class FBXDocument;
+class Camera3D;
+
+// Reference and test file:
+// https://github.com/KhronosGroup/glTF-Tutorials/blob/master/gltfTutorial/gltfTutorial_015_SimpleCameras.md
+
+class FBXCamera : public Resource {
+	GDCLASS(FBXCamera, Resource);
 
 private:
-	// matrices need to be transformed to this
-	FBXNodeIndex parent = -1;
-	int height = -1;
-	Transform3D xform;
-	FBXMeshIndex mesh = -1;
-	FBXCameraIndex camera = -1;
-	FBXLightIndex light = -1;
-	FBXSkinIndex skin = -1;
-	FBXSkeletonIndex skeleton = -1;
-	bool joint = false;
-	Vector3 position;
-	Quaternion rotation;
-	Vector3 scale = Vector3(1, 1, 1);
-	Vector<int> children;
-	Dictionary additional_data;
+	// GLTF has no default camera values, they should always be specified in
+	// the GLTF file. Here we default to Godot's default camera settings.
+	bool perspective = true;
+	real_t fov = Math::deg_to_rad(75.0);
+	real_t size_mag = 0.5;
+	real_t depth_far = 4000.0;
+	real_t depth_near = 0.05;
 
 protected:
 	static void _bind_methods();
 
 public:
-	FBXNodeIndex get_parent();
-	void set_parent(FBXNodeIndex p_parent);
+	bool get_perspective() const { return perspective; }
+	void set_perspective(bool p_val) { perspective = p_val; }
+	real_t get_fov() const { return fov; }
+	void set_fov(real_t p_val) { fov = p_val; }
+	real_t get_size_mag() const { return size_mag; }
+	void set_size_mag(real_t p_val) { size_mag = p_val; }
+	real_t get_depth_far() const { return depth_far; }
+	void set_depth_far(real_t p_val) { depth_far = p_val; }
+	real_t get_depth_near() const { return depth_near; }
+	void set_depth_near(real_t p_val) { depth_near = p_val; }
 
-	int get_height();
-	void set_height(int p_height);
+	static Ref<FBXCamera> from_node(const Camera3D *p_camera);
+	Camera3D *to_node() const;
 
-	Transform3D get_xform();
-	void set_xform(Transform3D p_xform);
-
-	FBXMeshIndex get_mesh();
-	void set_mesh(FBXMeshIndex p_mesh);
-
-	FBXCameraIndex get_camera();
-	void set_camera(FBXCameraIndex p_camera);
-
-	FBXLightIndex get_light();
-	void set_light(FBXLightIndex p_light);
-
-	FBXSkinIndex get_skin();
-	void set_skin(FBXSkinIndex p_skin);
-
-	FBXSkeletonIndex get_skeleton();
-	void set_skeleton(FBXSkeletonIndex p_skeleton);
-
-	Vector3 get_position();
-	void set_position(Vector3 p_position);
-
-	Quaternion get_rotation();
-	void set_rotation(Quaternion p_rotation);
-
-	Vector3 get_scale();
-	void set_scale(Vector3 p_scale);
-
-	Vector<int> get_children();
-	void set_children(Vector<int> p_children);
-
-	Variant get_additional_data(const StringName &p_extension_name);
-	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
+	static Ref<FBXCamera> from_dictionary(const Dictionary p_dictionary);
+	Dictionary to_dictionary() const;
 };
 
-#endif // FBX_NODE_H
+#endif // FBX_CAMERA_H
