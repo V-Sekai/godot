@@ -2890,8 +2890,8 @@ Error FBXDocument::_parse_lights(Ref<FBXState> p_state) {
 		light->set_type(fbx_light->type);
 		light->set_decay(fbx_light->decay);
 		light->set_area_shape(fbx_light->area_shape);
-		light->set_inner_angle(Math::deg_to_rad(fbx_light->inner_angle));
-		light->set_outer_angle(Math::deg_to_rad(fbx_light->outer_angle));
+		light->set_inner_angle(fbx_light->inner_angle);
+		light->set_outer_angle(fbx_light->outer_angle);
 		light->set_cast_light(fbx_light->cast_light);
 		light->set_cast_shadows(fbx_light->cast_shadows);
 		p_state->lights.push_back(light);

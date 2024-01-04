@@ -44,7 +44,7 @@ Ref<FBXLight> FBXLight::from_node(const Light3D *p_light) {
 	}
 
 	light->set_color(p_light->get_color());
-	light->set_intensity(p_light->get_param(Light3D::PARAM_ENERGY) / 100.0f);
+	light->set_intensity(p_light->get_param(Light3D::PARAM_ENERGY) / 54.61296099232f);
 	light->set_cast_shadows(p_light->has_shadow());
 
 	Transform3D light_local_transform = p_light->get_transform();
@@ -60,8 +60,8 @@ Ref<FBXLight> FBXLight::from_node(const Light3D *p_light) {
 		light->set_type(int(UFBX_LIGHT_SPOT));
 		Vector3 direction = -light_local_transform.basis.get_column(Vector3::AXIS_Z);
 		light->set_local_direction(direction.normalized());
-		light->set_inner_angle(spot_light->get_param(SpotLight3D::PARAM_SPOT_ANGLE));
-		light->set_outer_angle(spot_light->get_param(SpotLight3D::PARAM_SPOT_ATTENUATION));
+		light->set_outer_angle(spot_light->get_param(SpotLight3D::PARAM_SPOT_ANGLE) * 2.0f);
+		light->set_inner_angle(0 * 2.0f);
 	} else {
 		ERR_FAIL_V_MSG(light, "Unsupported Light3D type for FBXLight conversion.");
 	}
@@ -93,7 +93,7 @@ Light3D *FBXLight::to_node() const {
 	if (light) {
 		light->set_name(get_name());
 		light->set_color(color);
-		light->set_param(Light3D::PARAM_ENERGY, intensity * 100.0f);
+		light->set_param(Light3D::PARAM_ENERGY, intensity * 54.61296099232f);
 
 		light->set_shadow(cast_shadows);
 
@@ -108,23 +108,37 @@ Light3D *FBXLight::to_node() const {
 		} else if (spot_light) {
 			transform.set_look_at(Vector3(), -local_direction.normalized(), up_vector);
 			spot_light->set_transform(transform);
-			spot_light->set_param(SpotLight3D::PARAM_SPOT_ANGLE, inner_angle);
+			spot_light->set_param(SpotLight3D::PARAM_SPOT_ANGLE, outer_angle / 2.0f);
 		}
 		if (omni_light || spot_light) {
+			light->set_param(OmniLight3D::PARAM_RANGE, 4096);
+		}
+		if (spot_light) {
+			float angle_ratio = inner_angle / outer_angle;
+			float angle_attenuation = 0.0f;
 			switch (decay) {
-				case UFBX_LIGHT_DECAY_NONE:
-					light->set_param(Light3D::PARAM_ATTENUATION, 0.0f);
+				case UFBX_LIGHT_DECAY_NONE: {
+					angle_attenuation = 1.0f;
 					break;
-				case UFBX_LIGHT_DECAY_LINEAR:
-					light->set_param(Light3D::PARAM_ATTENUATION, 1.0f);
+				}
+				case UFBX_LIGHT_DECAY_LINEAR: {
+					angle_attenuation = 1.0f - angle_ratio;
 					break;
-				case UFBX_LIGHT_DECAY_QUADRATIC:
-					light->set_param(Light3D::PARAM_ATTENUATION, 2.0f);
+				}
+				case UFBX_LIGHT_DECAY_QUADRATIC: {
+					angle_attenuation = 0.2 / (1 - angle_ratio) - 0.1;
 					break;
-				case UFBX_LIGHT_DECAY_CUBIC:
-					light->set_param(Light3D::PARAM_ATTENUATION, 3.0f);
+				}
+				case UFBX_LIGHT_DECAY_CUBIC: {
+					float p_1 = 0.0f;
+					float p_2 = 0.0f;
+					float v_1 = 1.0f;
+					float v_2 = 0.0f;
+					angle_attenuation = Math::cubic_interpolate(p_1, p_2, v_1, v_2, angle_ratio);
 					break;
+				}
 			}
+			light->set_param(Light3D::PARAM_SPOT_ATTENUATION, angle_attenuation);
 		}
 	}
 
