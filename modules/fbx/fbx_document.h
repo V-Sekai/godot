@@ -59,6 +59,7 @@ public:
 	static void unregister_all_fbx_document_extensions();
 
 private:
+	String _get_texture_path(const String &p_base_directory, const String &p_source_file_path) const;
 	void _process_uv_set(PackedVector2Array &uv_array);
 	void _zero_unused_elements(Vector<float> &cur_custom, int start, int end, int num_channels);
 	void _build_parent_hierarchy(Ref<FBXState> p_state);
