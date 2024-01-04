@@ -56,15 +56,6 @@ public:
 	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
 };
 
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
-
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
-
 #endif // TOOLS_ENABLED
 
 #endif // EDITOR_SCENE_IMPORTER_FBX_H

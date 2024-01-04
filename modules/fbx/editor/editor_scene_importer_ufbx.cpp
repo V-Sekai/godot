@@ -33,6 +33,7 @@
 #ifdef TOOLS_ENABLED
 
 #include "modules/fbx/fbx_document.h"
+#include "modules/gltf/editor/editor_scene_importer_fbx.h"
 
 #include "core/config/project_settings.h"
 #include "editor/editor_settings.h"
@@ -48,6 +49,17 @@ void EditorSceneFormatImporterUFBX::get_extensions(List<String> *r_extensions) c
 Node *EditorSceneFormatImporterUFBX::import_scene(const String &p_path, uint32_t p_flags,
 		const HashMap<StringName, Variant> &p_options,
 		List<String> *r_missing_deps, Error *r_err) {
+	if (p_options.has("fbx/importer_type") && int(p_options["fbx/importer_type"]) == 1) {
+		Ref<EditorSceneFormatImporterFBX> fbx2gltf_importer;
+		fbx2gltf_importer.instantiate();
+		Node *scene = fbx2gltf_importer->import_scene(p_path, p_flags, p_options, r_missing_deps, r_err);
+		if (r_err && *r_err == OK) {
+			return scene;
+		} else {
+			return nullptr;
+		}
+	}
+
 	Ref<FBXDocument> fbx;
 	fbx.instantiate();
 	Ref<FBXState> state;
@@ -89,6 +101,7 @@ Variant EditorSceneFormatImporterUFBX::get_option_visibility(const String &p_pat
 
 void EditorSceneFormatImporterUFBX::get_import_options(const String &p_path,
 		List<ResourceImporter::ImportOption> *r_options) {
+	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::BOOL, "fbx/importer_type", PROPERTY_HINT_ENUM, "ufbx,fbx2glTF"), 0));
 	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::BOOL, "fbx/allow_geometry_helper_nodes"), false));
 	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::INT, "fbx/embedded_image_handling", PROPERTY_HINT_ENUM, "Discard All Textures,Extract Textures,Embed as Basis Universal,Embed as Uncompressed", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), FBXState::HANDLE_BINARY_EXTRACT_TEXTURES));
 }
