@@ -870,6 +870,18 @@ See `thorvg/update-thorvg.sh` for extraction instructions. Set the version
 number and run the script.
 
 
+## ufbx
+
+- Upstream: https://github.com/ufbx/ufbx
+- Version: git (85ed46443798d8824cb373451052ada6946e522e, 2023)
+- License: MIT
+
+Files extracted from upstream source:
+
+- `ufbx.{c,h}`
+- `LICENSE`
+
+
 ## vhacd
 
 - Upstream: https://github.com/kmammou/v-hacd

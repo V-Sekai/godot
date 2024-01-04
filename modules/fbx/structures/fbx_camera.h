@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_camera.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,34 +28,48 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#ifndef FBX_CAMERA_H
+#define FBX_CAMERA_H
 
-#ifdef TOOLS_ENABLED
+#include "core/io/resource.h"
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+class Camera3D;
 
-class Animation;
-class Node;
+// Reference and test file:
+// https://github.com/KhronosGroup/glTF-Tutorials/blob/master/gltfTutorial/gltfTutorial_015_SimpleCameras.md
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+class FBXCamera : public Resource {
+	GDCLASS(FBXCamera, Resource);
+
+private:
+	// GLTF has no default camera values, they should always be specified in
+	// the GLTF file. Here we default to Godot's default camera settings.
+	bool perspective = true;
+	real_t fov = Math::deg_to_rad(75.0);
+	real_t size_mag = 0.5;
+	real_t depth_far = 4000.0;
+	real_t depth_near = 0.05;
+
+protected:
+	static void _bind_methods();
 
 public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
+	bool get_perspective() const { return perspective; }
+	void set_perspective(bool p_val) { perspective = p_val; }
+	real_t get_fov() const { return fov; }
+	void set_fov(real_t p_val) { fov = p_val; }
+	real_t get_size_mag() const { return size_mag; }
+	void set_size_mag(real_t p_val) { size_mag = p_val; }
+	real_t get_depth_far() const { return depth_far; }
+	void set_depth_far(real_t p_val) { depth_far = p_val; }
+	real_t get_depth_near() const { return depth_near; }
+	void set_depth_near(real_t p_val) { depth_near = p_val; }
+
+	static Ref<FBXCamera> from_node(const Camera3D *p_camera);
+	Camera3D *to_node() const;
+
+	static Ref<FBXCamera> from_dictionary(const Dictionary p_dictionary);
+	Dictionary to_dictionary() const;
 };
 
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+#endif // FBX_CAMERA_H

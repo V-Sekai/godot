@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_fbx = env_modules.Clone()
+
+thirdparty_dir = "#thirdparty/ufbx/"
+env_fbx.Prepend(CPPPATH=[thirdparty_dir])
+
+# Godot source files
+
+env_fbx.add_source_files(env.modules_sources, "*.cpp")
