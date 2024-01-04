@@ -49,7 +49,7 @@ void EditorSceneFormatImporterFBX::get_extensions(List<String> *r_extensions) co
 Node *EditorSceneFormatImporterFBX::import_scene(const String &p_path, uint32_t p_flags,
 		const HashMap<StringName, Variant> &p_options,
 		List<String> *r_missing_deps, Error *r_err) {
-	if (p_options.has("fbx/importer_type") && int(p_options["fbx/importer_type"]) == 0) {
+	if (p_options.has("fbx/importer") && int(p_options["fbx/importer"]) == EditorSceneFormatImporterUFBX::FBX_IMPORTER_UFBX) {
 		Ref<EditorSceneFormatImporterUFBX> fbx2gltf_importer;
 		fbx2gltf_importer.instantiate();
 		Node *scene = fbx2gltf_importer->import_scene(p_path, p_flags, p_options, r_missing_deps, r_err);
@@ -125,7 +125,7 @@ Variant EditorSceneFormatImporterFBX::get_option_visibility(const String &p_path
 	if (p_option == "fbx/embedded_image_handling") {
 		return false;
 	}
-	if (p_options.has("fbx/importer_type") && int(p_options["fbx/importer_type"]) == EditorSceneFormatImporterUFBX::FBX_IMPORTER_TYPE_FBX2GLTF && p_option == "fbx/embedded_image_handling") {
+	if (p_options.has("fbx/importer") && int(p_options["fbx/importer"]) == EditorSceneFormatImporterUFBX::FBX_IMPORTER_FBX2GLTF && p_option == "fbx/embedded_image_handling") {
 		return false;
 	}
 	return true;
@@ -139,8 +139,8 @@ void EditorSceneFormatImporterFBX::get_import_options(const String &p_path,
 }
 
 void EditorSceneFormatImporterFBX::handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const {
-	if (!p_import_params.has("fbx/importer_type")) {
-		p_import_params["fbx/importer_type"] = EditorSceneFormatImporterUFBX::FBX_IMPORTER_TYPE_UFBX;
+	if (!p_import_params.has("fbx/importer")) {
+		p_import_params["fbx/importer"] = EditorSceneFormatImporterUFBX::FBX_IMPORTER_UFBX;
 	}
 }
 
