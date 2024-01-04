@@ -479,6 +479,12 @@ Vector<AudioFrame> AudioStreamPlayer3D::_update_panning() {
 		}
 
 		linear_attenuation = Math::db_to_linear(db_att);
+
+		// Bake in a constant factor here to allow the project setting defaults for 2d and 3d to be normalized to 1.0.
+		float tightness = cached_global_panning_strength * 2.0f;
+		tightness *= panning_strength;
+		_calc_output_vol(local_pos.normalized(), tightness, output_volume_vector);
+
 		for (Ref<AudioStreamPlayback> &playback : stream_playbacks) {
 			if (GLOBAL_GET("audio/enable_resonance_audio")) {
 				ResonanceAudioServer::get_singleton()->set_source_attenuation(audio_source_id, linear_attenuation);
@@ -487,10 +493,6 @@ Vector<AudioFrame> AudioStreamPlayer3D::_update_panning() {
 				AudioServer::get_singleton()->set_playback_highshelf_params(playback, linear_attenuation, attenuation_filter_cutoff_hz, AudioSourceId(-1));
 			}
 		}
-		// Bake in a constant factor here to allow the project setting defaults for 2d and 3d to be normalized to 1.0.
-		float tightness = cached_global_panning_strength * 2.0f;
-		tightness *= panning_strength;
-		_calc_output_vol(local_pos.normalized(), tightness, output_volume_vector);
 
 		for (unsigned int k = 0; k < 4; k++) {
 			output_volume_vector.write[k] = multiplier * output_volume_vector[k];
