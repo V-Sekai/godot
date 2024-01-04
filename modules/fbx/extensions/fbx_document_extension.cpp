@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_scene_importer_fbx.h                                           */
+/*  fbx_document_extension.cpp                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,43 +28,51 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_SCENE_IMPORTER_FBX_H
-#define EDITOR_SCENE_IMPORTER_FBX_H
+#include "fbx_document_extension.h"
 
-#ifdef TOOLS_ENABLED
+void FBXDocumentExtension::_bind_methods() {
+	// Import process.
+	GDVIRTUAL_BIND(_import_preflight, "state", "extensions");
+	GDVIRTUAL_BIND(_get_supported_extensions);
+	GDVIRTUAL_BIND(_generate_scene_node, "state", "fbx_node", "scene_parent");
+	GDVIRTUAL_BIND(_import_post_parse, "state");
+	GDVIRTUAL_BIND(_import_post, "state", "root");
+}
 
-#include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
-#include "editor/import/resource_importer_scene.h"
+// Import process.
+Error FBXDocumentExtension::import_preflight(Ref<FBXState> p_state, Vector<String> p_extensions) {
+	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
+	Error err = OK;
+	GDVIRTUAL_CALL(_import_preflight, p_state, p_extensions, err);
+	return err;
+}
 
-class Animation;
-class Node;
+Vector<String> FBXDocumentExtension::get_supported_extensions() {
+	Vector<String> ret;
+	GDVIRTUAL_CALL(_get_supported_extensions, ret);
+	return ret;
+}
 
-class EditorSceneFormatImporterFBX : public EditorSceneFormatImporter {
-	GDCLASS(EditorSceneFormatImporterFBX, EditorSceneFormatImporter);
+Node3D *FBXDocumentExtension::generate_scene_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Node *p_scene_parent) {
+	ERR_FAIL_NULL_V(p_state, nullptr);
+	ERR_FAIL_NULL_V(p_gltf_node, nullptr);
+	ERR_FAIL_NULL_V(p_scene_parent, nullptr);
+	Node3D *ret_node = nullptr;
+	GDVIRTUAL_CALL(_generate_scene_node, p_state, p_gltf_node, p_scene_parent, ret_node);
+	return ret_node;
+}
 
-public:
-	virtual uint32_t get_import_flags() const override;
-	virtual void get_extensions(List<String> *r_extensions) const override;
-	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
-			const HashMap<StringName, Variant> &p_options,
-			List<String> *r_missing_deps, Error *r_err = nullptr) override;
-	virtual void get_import_options(const String &p_path,
-			List<ResourceImporter::ImportOption> *r_options) override;
-	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
-			const HashMap<StringName, Variant> &p_options) override;
-	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
-};
+Error FBXDocumentExtension::import_post_parse(Ref<FBXState> p_state) {
+	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
+	Error err = OK;
+	GDVIRTUAL_CALL(_import_post_parse, p_state, err);
+	return err;
+}
 
-class EditorFileSystemImportFormatSupportQueryFBX : public EditorFileSystemImportFormatSupportQuery {
-	GDCLASS(EditorFileSystemImportFormatSupportQueryFBX, EditorFileSystemImportFormatSupportQuery);
-
-public:
-	virtual bool is_active() const override;
-	virtual Vector<String> get_file_extensions() const override;
-	virtual bool query() override;
-};
-
-#endif // TOOLS_ENABLED
-
-#endif // EDITOR_SCENE_IMPORTER_FBX_H
+Error FBXDocumentExtension::import_post(Ref<FBXState> p_state, Node *p_root) {
+	ERR_FAIL_NULL_V(p_root, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
+	Error err = OK;
+	GDVIRTUAL_CALL(_import_post, p_state, p_root, err);
+	return err;
+}
