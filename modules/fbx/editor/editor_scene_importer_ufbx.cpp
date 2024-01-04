@@ -97,6 +97,9 @@ Variant EditorSceneFormatImporterUFBX::get_option_visibility(const String &p_pat
 	if (file_extension != "gltf" && p_option.begins_with("gltf/")) {
 		return false;
 	}
+	if (p_options.has("fbx/importer_type") && int(p_options["fbx/importer_type"]) == FBX_IMPORTER_TYPE_FBX2GLTF && p_option == "fbx/embedded_image_handling") {
+		return false;
+	}
 	if (file_extension != "fbx" && p_option.begins_with("fbx/")) {
 		return false;
 	}
@@ -105,9 +108,15 @@ Variant EditorSceneFormatImporterUFBX::get_option_visibility(const String &p_pat
 
 void EditorSceneFormatImporterUFBX::get_import_options(const String &p_path,
 		List<ResourceImporter::ImportOption> *r_options) {
-	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::BOOL, "fbx/importer_type", PROPERTY_HINT_ENUM, "ufbx,fbx2glTF"), 0));
+	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::INT, "fbx/importer_type", PROPERTY_HINT_ENUM, "ufbx,fbx2glTF"), FBX_IMPORTER_TYPE_UFBX));
 	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::BOOL, "fbx/allow_geometry_helper_nodes"), false));
 	r_options->push_back(ResourceImporterScene::ImportOption(PropertyInfo(Variant::INT, "fbx/embedded_image_handling", PROPERTY_HINT_ENUM, "Discard All Textures,Extract Textures,Embed as Basis Universal,Embed as Uncompressed", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), FBXState::HANDLE_BINARY_EXTRACT_TEXTURES));
+}
+
+void EditorSceneFormatImporterUFBX::handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const {
+	if (!p_import_params.has("fbx/importer_type")) {
+		p_import_params["fbx/importer_type"] = EditorSceneFormatImporterUFBX::FBX_IMPORTER_TYPE_UFBX;
+	}
 }
 
 #endif // TOOLS_ENABLED

@@ -122,6 +122,12 @@ Node *EditorSceneFormatImporterFBX::import_scene(const String &p_path, uint32_t 
 
 Variant EditorSceneFormatImporterFBX::get_option_visibility(const String &p_path, bool p_for_animation,
 		const String &p_option, const HashMap<StringName, Variant> &p_options) {
+	if (p_option == "fbx/embedded_image_handling") {
+		return false;
+	}
+	if (p_options.has("fbx/importer_type") && int(p_options["fbx/importer_type"]) == EditorSceneFormatImporterUFBX::FBX_IMPORTER_TYPE_FBX2GLTF && p_option == "fbx/embedded_image_handling") {
+		return false;
+	}
 	return true;
 }
 
@@ -130,12 +136,11 @@ Variant EditorSceneFormatImporterFBX::get_option_visibility(const String &p_path
 
 void EditorSceneFormatImporterFBX::get_import_options(const String &p_path,
 		List<ResourceImporter::ImportOption> *r_options) {
-	ADD_OPTION_ENUM("fbx/importer_type", "ufbx,fbx2glTF", 0);
 }
 
 void EditorSceneFormatImporterFBX::handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const {
 	if (!p_import_params.has("fbx/importer_type")) {
-		p_import_params["fbx/importer_type"] = 0;
+		p_import_params["fbx/importer_type"] = EditorSceneFormatImporterUFBX::FBX_IMPORTER_TYPE_UFBX;
 	}
 }
 

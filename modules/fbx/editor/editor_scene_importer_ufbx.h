@@ -44,6 +44,10 @@ class EditorSceneFormatImporterUFBX : public EditorSceneFormatImporter {
 	GDCLASS(EditorSceneFormatImporterUFBX, EditorSceneFormatImporter);
 
 public:
+	enum FBX_IMPORTER_TYPE {
+		FBX_IMPORTER_TYPE_UFBX,
+		FBX_IMPORTER_TYPE_FBX2GLTF,
+	};
 	virtual uint32_t get_import_flags() const override;
 	virtual void get_extensions(List<String> *r_extensions) const override;
 	virtual Node *import_scene(const String &p_path, uint32_t p_flags,
@@ -53,6 +57,7 @@ public:
 			List<ResourceImporter::ImportOption> *r_options) override;
 	virtual Variant get_option_visibility(const String &p_path, bool p_for_animation, const String &p_option,
 			const HashMap<StringName, Variant> &p_options) override;
+	virtual void handle_compatibility_options(HashMap<StringName, Variant> &p_import_params) const override;
 };
 #endif // TOOLS_ENABLED
 
