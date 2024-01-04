@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-pmx
+	branch = master
+	commit = 6399503e17af93d084a2d293ae0eb19e30595314
+	parent = b38759ddfa19adb1b1c9f95b114826cf12a225b5
+	method = merge
+	cmdver = 0.4.6
