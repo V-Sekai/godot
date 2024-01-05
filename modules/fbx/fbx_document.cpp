@@ -2639,6 +2639,7 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 	opts.geometry_transform_helper_name.length = SIZE_MAX;
 	opts.scale_helper_name.data = "ScaleHelper";
 	opts.scale_helper_name.length = SIZE_MAX;
+	opts.node_depth_limit = 512;
 	opts.target_camera_axes = ufbx_axes_right_handed_y_up;
 	opts.target_light_axes = ufbx_axes_right_handed_y_up;
 	opts.clean_skin_weights = true;
