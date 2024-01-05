@@ -93,7 +93,7 @@ Light3D *FBXLight::to_node() const {
 	if (light) {
 		light->set_name(get_name());
 		light->set_color(color);
-		light->set_param(Light3D::PARAM_ENERGY, intensity * 54.61296099232f);
+		light->set_param(Light3D::PARAM_ENERGY, intensity);
 
 		light->set_shadow(cast_shadows);
 
@@ -113,32 +113,40 @@ Light3D *FBXLight::to_node() const {
 		if (omni_light || spot_light) {
 			light->set_param(OmniLight3D::PARAM_RANGE, 4096);
 		}
-		if (spot_light) {
-			float angle_ratio = inner_angle / outer_angle;
-			float angle_attenuation = 0.0f;
+
+		// This is "correct", but FBX files may have unexpected decay modes.
+		// Also does not match with what FBX2glTF does, so it might be better to not do any of this..
+#if 0
+		if (omni_light || spot_light) {
+			float attenuation = 1.0f;
 			switch (decay) {
 				case UFBX_LIGHT_DECAY_NONE: {
-					angle_attenuation = 1.0f;
+					attenuation = 0.001f;
 					break;
 				}
 				case UFBX_LIGHT_DECAY_LINEAR: {
-					angle_attenuation = 1.0f - angle_ratio;
+					attenuation = 1.0f;
 					break;
 				}
 				case UFBX_LIGHT_DECAY_QUADRATIC: {
-					angle_attenuation = 0.2 / (1 - angle_ratio) - 0.1;
+					attenuation = 2.0f;
 					break;
 				}
 				case UFBX_LIGHT_DECAY_CUBIC: {
-					float p_1 = 0.0f;
-					float p_2 = 0.0f;
-					float v_1 = 1.0f;
-					float v_2 = 0.0f;
-					angle_attenuation = Math::cubic_interpolate(p_1, p_2, v_1, v_2, angle_ratio);
+					attenuation = 3.0f;
 					break;
 				}
 			}
-			light->set_param(Light3D::PARAM_SPOT_ATTENUATION, angle_attenuation);
+			light->set_param(Light3D::PARAM_ATTENUATION, attenuation);
+		}
+#endif
+
+		if (spot_light) {
+			// Line of best fit derived from guessing, see https://www.desmos.com/calculator/biiflubp8b
+			// The points in desmos are not exact, except for (1, infinity).
+			float angle_ratio = inner_angle / outer_angle;
+			float angle_attenuation = 0.2 / (1 - angle_ratio) - 0.1;
+			light->set_param(SpotLight3D::PARAM_SPOT_ATTENUATION, angle_attenuation);
 		}
 	}
 
