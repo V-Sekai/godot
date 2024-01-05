@@ -78,7 +78,7 @@ Camera3D *FBXCamera::to_node() const {
 	// GLTF spec (yfov) is in radians, Godot's camera (fov) is in degrees.
 	camera->set_fov(Math::rad_to_deg(fov));
 	// GLTF spec (xmag and ymag) is a radius in meters, Godot's camera (size) is a diameter in meters.
-	camera->set_size(size_mag * 2.0f);
+	camera->set_size(size_mag);
 	camera->set_near(depth_near);
 	camera->set_far(depth_far);
 	return camera;

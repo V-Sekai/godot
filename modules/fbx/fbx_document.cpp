@@ -1996,7 +1996,7 @@ Error FBXDocument::_parse_cameras(Ref<FBXState> p_state) {
 			camera->set_fov(Math::deg_to_rad(real_t(fbx_camera->field_of_view_deg.y)));
 		} else {
 			camera->set_perspective(false);
-			camera->set_size_mag(real_t(fbx_camera->orthographic_extent));
+			camera->set_size_mag(real_t(fbx_camera->orthographic_size.y));
 		}
 		if (fbx_camera->near_plane != 0.0f) {
 			camera->set_depth_near(fbx_camera->near_plane);
