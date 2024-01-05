@@ -1996,7 +1996,7 @@ Error FBXDocument::_parse_cameras(Ref<FBXState> p_state) {
 			camera->set_fov(Math::deg_to_rad(real_t(fbx_camera->field_of_view_deg.y)));
 		} else {
 			camera->set_perspective(false);
-			camera->set_size_mag(real_t(fbx_camera->orthographic_extent));
+			camera->set_size_mag(real_t(fbx_camera->orthographic_size.y));
 		}
 		if (fbx_camera->near_plane != 0.0f) {
 			camera->set_depth_near(fbx_camera->near_plane);
@@ -2639,6 +2639,7 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 	opts.geometry_transform_helper_name.length = SIZE_MAX;
 	opts.scale_helper_name.data = "ScaleHelper";
 	opts.scale_helper_name.length = SIZE_MAX;
+	opts.node_depth_limit = 512;
 	opts.target_camera_axes = ufbx_axes_right_handed_y_up;
 	opts.target_light_axes = ufbx_axes_right_handed_y_up;
 	opts.clean_skin_weights = true;
