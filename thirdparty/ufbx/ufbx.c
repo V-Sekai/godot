@@ -551,7 +551,7 @@ ufbx_static_assert(sizeof_f64, sizeof(double) == 8);
 
 // -- Version
 
-#define UFBX_SOURCE_VERSION ufbx_pack_version(0, 8, 0)
+#define UFBX_SOURCE_VERSION ufbx_pack_version(0, 10, 0)
 const uint32_t ufbx_source_version = UFBX_SOURCE_VERSION;
 
 ufbx_static_assert(source_header_version, UFBX_SOURCE_VERSION/1000u == UFBX_HEADER_VERSION/1000u);
@@ -3033,6 +3033,8 @@ static ufbxi_noinline void ufbxi_fix_error_type(ufbx_error *error, const char *d
 		error->type = UFBX_ERROR_BAD_NURBS;
 	} else if (!strcmp(desc, "Bad index")) {
 		error->type = UFBX_ERROR_BAD_INDEX;
+	} else if (!strcmp(desc, "Node depth limit exceeded")) {
+		error->type = UFBX_ERROR_NODE_DEPTH_LIMIT;
 	} else if (!strcmp(desc, "Threaded ASCII parse error")) {
 		error->type = UFBX_ERROR_THREADED_ASCII_PARSE;
 	} else if (!strcmp(desc, "Unsafe options")) {
@@ -17730,6 +17732,9 @@ ufbxi_nodiscard ufbxi_noinline static int ufbxi_linearize_nodes(ufbxi_context *u
 			ufbxi_check_msg(depth <= num_nodes, "Cyclic node hierarchy");
 		}
 
+		if (uc->opts.node_depth_limit > 0) {
+			ufbxi_check_msg(depth <= uc->opts.node_depth_limit, "Node depth limit exceeded");
+		}
 		node->node_depth = depth;
 
 		// Second pass to cache the depths to avoid O(n^2)
@@ -21637,7 +21642,7 @@ static const ufbxi_aperture_format ufbxi_aperture_formats[] = {
 	{ 2772, 2072, }, // UFBX_APERTURE_FORMAT_IMAX
 };
 
-ufbxi_noinline static void ufbxi_update_camera(ufbx_camera *camera)
+ufbxi_noinline static void ufbxi_update_camera(ufbx_scene *scene, ufbx_camera *camera)
 {
 	camera->projection_mode = (ufbx_projection_mode)ufbxi_find_enum(&camera->props, ufbxi_CameraProjectionType, 0, UFBX_PROJECTION_MODE_ORTHOGRAPHIC);
 	camera->aspect_mode = (ufbx_aspect_mode)ufbxi_find_enum(&camera->props, ufbxi_AspectRatioMode, 0, UFBX_ASPECT_MODE_FIXED_HEIGHT);
@@ -21687,6 +21692,11 @@ ufbxi_noinline static void ufbxi_update_camera(ufbx_camera *camera)
 	}
 
 	film_size.y *= squeeze_ratio;
+
+	// TODO: Should this be done always?
+	ortho_extent *= scene->metadata.geometry_scale;
+	camera->near_plane *= scene->metadata.geometry_scale;
+	camera->far_plane *= scene->metadata.geometry_scale;
 
 	camera->focal_length_mm = focal_length;
 	camera->film_size_inch = film_size;
@@ -22342,7 +22352,7 @@ ufbxi_noinline static void ufbxi_update_scene(ufbx_scene *scene, bool initial, c
 	}
 
 	ufbxi_for_ptr_list(ufbx_camera, p_camera, scene->cameras) {
-		ufbxi_update_camera(*p_camera);
+		ufbxi_update_camera(scene, *p_camera);
 	}
 
 	ufbxi_for_ptr_list(ufbx_bone, p_bone, scene->bones) {
@@ -31302,6 +31312,18 @@ ufbx_abi uint32_t ufbx_ffi_triangulate_face(uint32_t *indices, size_t num_indice
 ufbx_abi size_t ufbx_ffi_get_triangulate_face_num_indices(const ufbx_face *face)
 {
 	return ufbx_get_triangulate_face_num_indices(*face);
+}
+
+ufbx_abi ufbx_vec3 ufbx_ffi_evaluate_baked_vec3(const ufbx_baked_vec3 *keyframes, size_t num_keyframes, double time)
+{
+	ufbx_baked_vec3_list list = { (ufbx_baked_vec3*)keyframes, num_keyframes };
+	return ufbx_evaluate_baked_vec3(list, time);
+}
+
+ufbx_abi ufbx_quat ufbx_ffi_evaluate_baked_quat(const ufbx_baked_quat *keyframes, size_t num_keyframes, double time)
+{
+	ufbx_baked_quat_list list = { (ufbx_baked_quat*)keyframes, num_keyframes };
+	return ufbx_evaluate_baked_quat(list, time);
 }
 
 #ifdef __cplusplus
