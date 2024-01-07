@@ -182,17 +182,25 @@ void EditorSceneImporterMMDPMX::add_vertex(Ref<SurfaceTool> p_surface, mmd_pmx_t
 }
 
 String EditorSceneImporterMMDPMX::convert_string(const std::string &p_string, uint8_t p_encoding) const {
-	String output;
-	if (!p_encoding) {
-		Vector<char16_t> buf;
-		buf.resize(p_string.length() / 2);
-		memcpy(buf.ptrw(), p_string.c_str(), p_string.length() / 2 * sizeof(char16_t));
-		output.parse_utf16(buf.ptr(), buf.size());
-	} else {
-		output.parse_utf8(p_string.data(), p_string.length());
-	}
-	return output;
+    String output;
+    if (!p_encoding && !p_string.empty()) {
+        Vector<char16_t> buf;
+        size_t str_len = p_string.size();
+        buf.resize(str_len / 2);
+        const char* str_data = p_string.c_str();
+        if (str_data != nullptr) {
+            memcpy(buf.ptrw(), str_data, str_len / 2 * sizeof(char16_t));
+            output.parse_utf16(buf.ptr(), buf.size());
+        }
+    } else if (!p_string.empty()) {
+        const char* str_data = p_string.data();
+        if (str_data != nullptr) {
+            output.parse_utf8(str_data, p_string.size());
+        }
+    }
+    return output;
 }
+
 
 Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint32_t p_flags, float p_bake_fps, Ref<PMXMMDState> r_state) {
 	if (r_state.is_null()) {
@@ -241,12 +249,19 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 			skeleton->set_bone_parent(bone_i, parent_index);
 		}
 	}
-	skeleton->set_bone_name(skeleton->find_bone(String(L"センター")), "Root");
-	BoneId hips_id = skeleton->find_bone(String(L"下半身"));
-	skeleton->set_bone_name(hips_id, "Hips");
-	BoneId spine_id = skeleton->find_bone(String(L"上半身"));
-	skeleton->set_bone_name(spine_id, "Spine");
-	set_bone_rest_and_parent(skeleton, spine_id, hips_id);
+	BoneId root_id = skeleton->find_bone(String(L"センター"));
+	if (root_id != -1) {
+		skeleton->set_bone_name(root_id, "Root");
+		BoneId hips_id = skeleton->find_bone(String(L"下半身"));
+		if (hips_id != -1) {
+			skeleton->set_bone_name(hips_id, "Hips");
+			BoneId spine_id = skeleton->find_bone(String(L"上半身"));
+			if (spine_id != -1) {
+				skeleton->set_bone_name(spine_id, "Spine");
+				set_bone_rest_and_parent(skeleton, spine_id, hips_id);
+			}
+		}
+	}
 
 	root->add_child(skeleton, true);
 	skeleton->set_owner(root);
@@ -377,6 +392,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 }
 
 void EditorSceneImporterMMDPMX::set_bone_rest_and_parent(Skeleton3D *p_skeleton, int32_t p_bone_id, int32_t p_parent_id) {
+	ERR_FAIL_NULL(p_skeleton);
 	Transform3D bone_global_pose = p_skeleton->get_bone_global_pose(p_bone_id);
 	Transform3D parent_global_pose_inverse = p_skeleton->get_bone_global_pose(p_parent_id).affine_inverse();
 	Transform3D new_bone_rest_pose = parent_global_pose_inverse * bone_global_pose;
