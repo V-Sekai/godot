@@ -34,7 +34,6 @@
 #ifdef TOOLS_ENABLED
 
 #include "editor/editor_file_system.h"
-#include "editor/fbx_importer_manager.h"
 #include "editor/import/resource_importer_scene.h"
 
 class Animation;
