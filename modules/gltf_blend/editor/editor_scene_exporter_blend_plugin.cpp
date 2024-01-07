@@ -37,7 +37,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_settings.h"
 #include "editor/gui/editor_file_dialog.h"
-#include "editor/import/resource_importer_scene.h"
+#include "editor/import/3d/resource_importer_scene.h"
 #include "modules/gltf/gltf_document.h"
 #include "scene/gui/popup_menu.h"
 
