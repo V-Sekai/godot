@@ -2635,6 +2635,7 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 		opts.geometry_transform_handling = UFBX_GEOMETRY_TRANSFORM_HANDLING_HELPER_NODES;
 		opts.inherit_mode_handling = UFBX_INHERIT_MODE_HANDLING_COMPENSATE;
 	}
+	opts.pivot_handling = UFBX_PIVOT_HANDLING_ADJUST_TO_PIVOT;
 	opts.geometry_transform_helper_name.data = "GeometryTransformHelper";
 	opts.geometry_transform_helper_name.length = SIZE_MAX;
 	opts.scale_helper_name.data = "ScaleHelper";
