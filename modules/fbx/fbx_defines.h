@@ -42,7 +42,6 @@ class Light3D;
 class MeshInstance3D;
 class MultiMeshInstance3D;
 class Skeleton3D;
-class Skin;
 
 // GLTF classes.
 class FBXAnimation;
