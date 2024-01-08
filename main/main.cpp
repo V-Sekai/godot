@@ -813,6 +813,16 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	for (const String &arg : platform_args) {
 		args.push_back(arg);
 	}
+#if defined(IOS_ENABLED) && defined(TOOLS_ENABLED)
+	String _cmd_path = OS::get_singleton()->get_user_data_dir().path_join("_cmd");
+	String _cmd_args_str = FileAccess::get_file_as_string(_cmd_path);
+	Vector<String> _cmd_args = _cmd_args_str.split("\n");
+	for (int i = 0; i < _cmd_args.size(); i++) {
+		args.push_back(_cmd_args[i]);
+	}
+	Ref<DirAccess> dir_access = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+	dir_access->remove(_cmd_path);
+#endif
 
 	List<String>::Element *I = args.front();
 
@@ -1859,12 +1869,21 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	if (default_renderer_mobile.is_empty()) {
 		default_renderer_mobile = "gl_compatibility";
 	}
+#ifndef IOS_ENABLED
 	// Default to Compatibility when using the project manager.
 	if (rendering_driver.is_empty() && rendering_method.is_empty() && project_manager) {
 		rendering_driver = "opengl3";
 		rendering_method = "gl_compatibility";
 		default_renderer_mobile = "gl_compatibility";
 	}
+#else
+	if (rendering_driver.is_empty() && rendering_method.is_empty() && project_manager) {
+		rendering_driver = "vulkan";
+		rendering_method = "mobile";
+		default_renderer_mobile = "mobile";
+	}
+#endif
+
 #endif
 	if (renderer_hints.is_empty()) {
 		ERR_PRINT("No renderers available.");
