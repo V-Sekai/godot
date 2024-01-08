@@ -1215,7 +1215,7 @@ void AudioServer::set_playback_bus_exclusive(Ref<AudioStreamPlayback> p_playback
 
 	HashMap<StringName, Vector<AudioFrame>> map;
 	map[p_bus] = p_volumes;
-	set_playback_bus_volumes_linear(p_playback, map, p_audio_source_id);
+	set_playback_bus_volumes_linear(p_playback, map, p_source_id);
 }
 
 void AudioServer::set_playback_bus_volumes_linear(Ref<AudioStreamPlayback> p_playback, const HashMap<StringName, Vector<AudioFrame>> &p_bus_volumes, AudioSourceId p_source_id) {
@@ -1237,7 +1237,7 @@ void AudioServer::set_playback_bus_volumes_linear(Ref<AudioStreamPlayback> p_pla
 
 		new_bus_details->bus_active[idx] = true;
 		new_bus_details->bus[idx] = pair.key;
-		new_bus_details->audio_source_id = p_audio_source_id;
+		new_bus_details->audio_source_id = p_source_id;
 		for (int channel_idx = 0; channel_idx < MAX_CHANNELS_PER_BUS; channel_idx++) {
 			new_bus_details->volume[idx][channel_idx] = pair.value[channel_idx];
 		}
@@ -1251,7 +1251,7 @@ void AudioServer::set_playback_bus_volumes_linear(Ref<AudioStreamPlayback> p_pla
 	bus_details_graveyard.insert(old_bus_details);
 }
 
-void AudioServer::set_playback_all_bus_volumes_linear(Ref<AudioStreamPlayback> p_playback, Vector<AudioFrame> p_volumes, AudioSourceId p_audio_source_id = AudioSourceId()) {
+void AudioServer::set_playback_all_bus_volumes_linear(Ref<AudioStreamPlayback> p_playback, Vector<AudioFrame> p_volumes, AudioSourceId p_audio_source_id) {
 	ERR_FAIL_COND(p_playback.is_null());
 	ERR_FAIL_COND(p_volumes.size() != MAX_CHANNELS_PER_BUS);
 
