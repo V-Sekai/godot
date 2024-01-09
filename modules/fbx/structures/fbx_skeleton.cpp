@@ -47,25 +47,25 @@ void FBXSkeleton::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_attachment_count"), &FBXSkeleton::get_bone_attachment_count);
 	ClassDB::bind_method(D_METHOD("get_bone_attachment", "idx"), &FBXSkeleton::get_bone_attachment);
 
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "joints"), "set_joints", "get_joints"); // Vector<GLTFNodeIndex>
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "roots"), "set_roots", "get_roots"); // Vector<GLTFNodeIndex>
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "joints"), "set_joints", "get_joints"); // Vector<FBXNodeIndex>
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "roots"), "set_roots", "get_roots"); // Vector<FBXNodeIndex>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "unique_names", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_unique_names", "get_unique_names"); // Set<String>
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "godot_bone_node", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_godot_bone_node", "get_godot_bone_node"); // RBMap<int32_t,
 }
 
-Vector<GLTFNodeIndex> FBXSkeleton::get_joints() {
+Vector<FBXNodeIndex> FBXSkeleton::get_joints() {
 	return joints;
 }
 
-void FBXSkeleton::set_joints(Vector<GLTFNodeIndex> p_joints) {
+void FBXSkeleton::set_joints(Vector<FBXNodeIndex> p_joints) {
 	joints = p_joints;
 }
 
-Vector<GLTFNodeIndex> FBXSkeleton::get_roots() {
+Vector<FBXNodeIndex> FBXSkeleton::get_roots() {
 	return roots;
 }
 
-void FBXSkeleton::set_roots(Vector<GLTFNodeIndex> p_roots) {
+void FBXSkeleton::set_roots(Vector<FBXNodeIndex> p_roots) {
 	roots = p_roots;
 }
 

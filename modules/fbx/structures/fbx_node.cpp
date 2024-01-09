@@ -56,23 +56,23 @@ void FBXNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_additional_data", "extension_name"), &FBXNode::get_additional_data);
 	ClassDB::bind_method(D_METHOD("set_additional_data", "extension_name", "additional_data"), &FBXNode::set_additional_data);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "parent"), "set_parent", "get_parent"); // GLTFNodeIndex
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "parent"), "set_parent", "get_parent"); // FBXNodeIndex
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "height"), "set_height", "get_height"); // int
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "xform"), "set_xform", "get_xform"); // Transform3D
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "camera"), "set_camera", "get_camera"); // GLTFCameraIndex
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "skin"), "set_skin", "get_skin"); // GLTFSkinIndex
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "skeleton"), "set_skeleton", "get_skeleton"); // GLTFSkeletonIndex
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "camera"), "set_camera", "get_camera"); // FBXCameraIndex
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "skin"), "set_skin", "get_skin"); // FBXSkinIndex
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "skeleton"), "set_skeleton", "get_skeleton"); // FBXSkeletonIndex
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "position"), "set_position", "get_position"); // Vector3
 	ADD_PROPERTY(PropertyInfo(Variant::QUATERNION, "rotation"), "set_rotation", "get_rotation"); // Quaternion
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "scale"), "set_scale", "get_scale"); // Vector3
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "children"), "set_children", "get_children"); // Vector<int>
 }
 
-GLTFNodeIndex FBXNode::get_parent() {
+FBXNodeIndex FBXNode::get_parent() {
 	return parent;
 }
 
-void FBXNode::set_parent(GLTFNodeIndex p_parent) {
+void FBXNode::set_parent(FBXNodeIndex p_parent) {
 	parent = p_parent;
 }
 
@@ -92,43 +92,43 @@ void FBXNode::set_xform(Transform3D p_xform) {
 	xform = p_xform;
 }
 
-GLTFMeshIndex FBXNode::get_mesh() {
+FBXMeshIndex FBXNode::get_mesh() {
 	return mesh;
 }
 
-void FBXNode::set_mesh(GLTFMeshIndex p_mesh) {
+void FBXNode::set_mesh(FBXMeshIndex p_mesh) {
 	mesh = p_mesh;
 }
 
-GLTFCameraIndex FBXNode::get_camera() {
+FBXCameraIndex FBXNode::get_camera() {
 	return camera;
 }
 
-void FBXNode::set_camera(GLTFCameraIndex p_camera) {
+void FBXNode::set_camera(FBXCameraIndex p_camera) {
 	camera = p_camera;
 }
 
-GLTFAnimationIndex FBXNode::get_light() {
+FBXLightIndex FBXNode::get_light() {
 	return light;
 }
 
-void FBXNode::set_light(GLTFAnimationIndex p_light) {
+void FBXNode::set_light(FBXLightIndex p_light) {
 	light = p_light;
 }
 
-GLTFSkinIndex FBXNode::get_skin() {
+FBXSkinIndex FBXNode::get_skin() {
 	return skin;
 }
 
-void FBXNode::set_skin(GLTFSkinIndex p_skin) {
+void FBXNode::set_skin(FBXSkinIndex p_skin) {
 	skin = p_skin;
 }
 
-GLTFSkeletonIndex FBXNode::get_skeleton() {
+FBXSkeletonIndex FBXNode::get_skeleton() {
 	return skeleton;
 }
 
-void FBXNode::set_skeleton(GLTFSkeletonIndex p_skeleton) {
+void FBXNode::set_skeleton(FBXSkeletonIndex p_skeleton) {
 	skeleton = p_skeleton;
 }
 

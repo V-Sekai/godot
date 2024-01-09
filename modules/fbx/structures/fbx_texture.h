@@ -34,20 +34,19 @@
 #include "../fbx_defines.h"
 
 #include "core/io/resource.h"
-#include "modules/gltf/structures/gltf_texture.h"
 
-class FBXTexture : public GLTFTexture {
-	GDCLASS(FBXTexture, GLTFTexture);
+class FBXTexture : public Resource {
+	GDCLASS(FBXTexture, Resource);
 
 private:
-	GLTFImageIndex src_image = -1;
+	FBXImageIndex src_image = -1;
 
 protected:
 	static void _bind_methods();
 
 public:
-	GLTFImageIndex get_src_image() const;
-	void set_src_image(GLTFImageIndex val);
+	FBXImageIndex get_src_image() const;
+	void set_src_image(FBXImageIndex val);
 };
 
 #endif // FBX_TEXTURE_H

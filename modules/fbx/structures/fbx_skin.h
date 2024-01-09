@@ -33,22 +33,21 @@
 
 #include "../fbx_defines.h"
 
-#include "modules/gltf/gltf_defines.h"
-#include "modules/gltf/structures/gltf_skin.h"
+#include "core/io/resource.h"
 #include "scene/resources/skin.h"
 
 template <typename T>
 class TypedArray;
 
-class FBXSkin : public GLTFSkin {
-	GDCLASS(FBXSkin, GLTFSkin);
+class FBXSkin : public Resource {
+	GDCLASS(FBXSkin, Resource);
 	friend class FBXDocument;
 
 private:
 	// The "skeleton" property defined in the gltf spec. -1 = Scene Root
-	GLTFNodeIndex skin_root = -1;
+	FBXNodeIndex skin_root = -1;
 
-	Vector<GLTFNodeIndex> joints_original;
+	Vector<FBXNodeIndex> joints_original;
 	Vector<Transform3D> inverse_binds;
 
 	// Note: joints + non_joints should form a complete subtree, or subtrees
@@ -56,18 +55,18 @@ private:
 
 	// All nodes that are skins that are caught in-between the original joints
 	// (inclusive of joints_original)
-	Vector<GLTFNodeIndex> joints;
+	Vector<FBXNodeIndex> joints;
 
 	// All Nodes that are caught in-between skin joint nodes, and are not
 	// defined as joints by any skin
-	Vector<GLTFNodeIndex> non_joints;
+	Vector<FBXNodeIndex> non_joints;
 
 	// The roots of the skin. In the case of multiple roots, their parent *must*
 	// be the same (the roots must be siblings)
-	Vector<GLTFNodeIndex> roots;
+	Vector<FBXNodeIndex> roots;
 
 	// The GLTF Skeleton this Skin points to (after we determine skeletons)
-	GLTFSkeletonIndex skeleton = -1;
+	FBXSkeletonIndex skeleton = -1;
 
 	// A mapping from the joint indices (in the order of joints_original) to the
 	// Godot Skeleton's bone_indices
@@ -82,23 +81,23 @@ protected:
 	static void _bind_methods();
 
 public:
-	GLTFNodeIndex get_skin_root();
-	void set_skin_root(GLTFNodeIndex p_skin_root);
+	FBXNodeIndex get_skin_root();
+	void set_skin_root(FBXNodeIndex p_skin_root);
 
-	Vector<GLTFNodeIndex> get_joints_original();
-	void set_joints_original(Vector<GLTFNodeIndex> p_joints_original);
+	Vector<FBXNodeIndex> get_joints_original();
+	void set_joints_original(Vector<FBXNodeIndex> p_joints_original);
 
 	TypedArray<Transform3D> get_inverse_binds();
 	void set_inverse_binds(TypedArray<Transform3D> p_inverse_binds);
 
-	Vector<GLTFNodeIndex> get_joints();
-	void set_joints(Vector<GLTFNodeIndex> p_joints);
+	Vector<FBXNodeIndex> get_joints();
+	void set_joints(Vector<FBXNodeIndex> p_joints);
 
-	Vector<GLTFNodeIndex> get_non_joints();
-	void set_non_joints(Vector<GLTFNodeIndex> p_non_joints);
+	Vector<FBXNodeIndex> get_non_joints();
+	void set_non_joints(Vector<FBXNodeIndex> p_non_joints);
 
-	Vector<GLTFNodeIndex> get_roots();
-	void set_roots(Vector<GLTFNodeIndex> p_roots);
+	Vector<FBXNodeIndex> get_roots();
+	void set_roots(Vector<FBXNodeIndex> p_roots);
 
 	int get_skeleton();
 	void set_skeleton(int p_skeleton);

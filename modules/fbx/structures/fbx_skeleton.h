@@ -34,7 +34,6 @@
 #include "../fbx_defines.h"
 
 #include "core/io/resource.h"
-#include "modules/gltf/gltf_defines.h"
 
 class FBXSkeleton : public Resource {
 	GDCLASS(FBXSkeleton, Resource);
@@ -42,11 +41,11 @@ class FBXSkeleton : public Resource {
 
 private:
 	// The *synthesized* skeletons joints
-	Vector<GLTFNodeIndex> joints;
+	Vector<FBXNodeIndex> joints;
 
 	// The roots of the skeleton. If there are multiple, each root must have the
 	// same parent (ie roots are siblings)
-	Vector<GLTFNodeIndex> roots;
+	Vector<FBXNodeIndex> roots;
 
 	// The created Skeleton3D for the scene
 	Skeleton3D *godot_skeleton = nullptr;
@@ -54,7 +53,7 @@ private:
 	// Set of unique bone names for the skeleton
 	HashSet<String> unique_names;
 
-	HashMap<int32_t, GLTFNodeIndex> godot_bone_node;
+	HashMap<int32_t, FBXNodeIndex> godot_bone_node;
 
 	Vector<BoneAttachment3D *> bone_attachments;
 
@@ -62,11 +61,11 @@ protected:
 	static void _bind_methods();
 
 public:
-	Vector<GLTFNodeIndex> get_joints();
-	void set_joints(Vector<GLTFNodeIndex> p_joints);
+	Vector<FBXNodeIndex> get_joints();
+	void set_joints(Vector<FBXNodeIndex> p_joints);
 
-	Vector<GLTFNodeIndex> get_roots();
-	void set_roots(Vector<GLTFNodeIndex> p_roots);
+	Vector<FBXNodeIndex> get_roots();
+	void set_roots(Vector<FBXNodeIndex> p_roots);
 
 	Skeleton3D *get_godot_skeleton();
 

@@ -30,7 +30,6 @@
 
 #include "gltf_document.h"
 
-#include "core/error/error_macros.h"
 #include "extensions/gltf_spec_gloss.h"
 
 #include "core/config/project_settings.h"
@@ -43,7 +42,6 @@
 #include "core/io/stream_peer.h"
 #include "core/math/disjoint_set.h"
 #include "core/version.h"
-#include "modules/gltf/gltf_state.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
@@ -4439,12 +4437,11 @@ Error GLTFDocument::_verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin) {
 }
 
 Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
-	Ref<GLTFState> state = p_state;
-	if (!state->json.has("skins")) {
+	if (!p_state->json.has("skins")) {
 		return OK;
 	}
 
-	const Array &skins = state->json["skins"];
+	const Array &skins = p_state->json["skins"];
 
 	// Create the base skins, and mark nodes that are joints
 	for (int i = 0; i < skins.size(); i++) {
@@ -4464,12 +4461,12 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 
 		for (int j = 0; j < joints.size(); j++) {
 			const GLTFNodeIndex node = joints[j];
-			ERR_FAIL_INDEX_V(node, state->nodes.size(), ERR_PARSE_ERROR);
+			ERR_FAIL_INDEX_V(node, p_state->nodes.size(), ERR_PARSE_ERROR);
 
 			skin->joints.push_back(node);
 			skin->joints_original.push_back(node);
 
-			state->nodes.write[node]->joint = true;
+			p_state->nodes.write[node]->joint = true;
 		}
 
 		if (d.has("name") && !String(d["name"]).is_empty()) {
@@ -4482,47 +4479,60 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 			skin->skin_root = d["skeleton"];
 		}
 
-		state->skins.push_back(skin);
+		p_state->skins.push_back(skin);
 	}
 
-	for (GLTFSkinIndex i = 0; i < state->skins.size(); ++i) {
-		Ref<GLTFSkin> skin = state->skins.write[i];
+	for (GLTFSkinIndex i = 0; i < p_state->skins.size(); ++i) {
+		Ref<GLTFSkin> skin = p_state->skins.write[i];
 
 		// Expand the skin to capture all the extra non-joints that lie in between the actual joints,
 		// and expand the hierarchy to ensure multi-rooted trees lie on the same height level
-		ERR_FAIL_COND_V(_expand_skin(state, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(_verify_skin(state, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(_expand_skin(p_state, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(_verify_skin(p_state, skin), ERR_PARSE_ERROR);
 	}
 
-	print_verbose("glTF: Total skins: " + itos(state->skins.size()));
+	print_verbose("glTF: Total skins: " + itos(p_state->skins.size()));
 
 	return OK;
 }
 
+void GLTFDocument::_recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
+		RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set) {
+	if (p_child_visited_set.has(p_node_index)) {
+		return;
+	}
+	p_child_visited_set.insert(p_node_index);
+	for (int i = 0; i < p_state->nodes[p_node_index]->children.size(); ++i) {
+		_recurse_children(p_state, p_state->nodes[p_node_index]->children[i], p_all_skin_nodes, p_child_visited_set);
+	}
+
+	if (p_state->nodes[p_node_index]->skin < 0 || p_state->nodes[p_node_index]->mesh < 0 || !p_state->nodes[p_node_index]->children.is_empty()) {
+		p_all_skin_nodes.insert(p_node_index);
+	}
+}
+
 Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
-	Ref<GLTFState> state;
-	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_DATA);
 	// Using a disjoint set, we are going to potentially combine all skins that are actually branches
 	// of a main skeleton, or treat skins defining the same set of nodes as ONE skeleton.
 	// This is another unclear issue caused by the current glTF specification.
 
 	DisjointSet<GLTFNodeIndex> skeleton_sets;
 
-	for (GLTFSkinIndex skin_i = 0; skin_i < state->skins.size(); ++skin_i) {
-		const Ref<GLTFSkin> skin = state->skins[skin_i];
+	for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
+		const Ref<GLTFSkin> skin = p_state->skins[skin_i];
 
 		HashSet<GLTFNodeIndex> child_visited_set;
 		RBSet<GLTFNodeIndex> all_skin_nodes;
 		for (int i = 0; i < skin->joints.size(); ++i) {
 			all_skin_nodes.insert(skin->joints[i]);
-			_recurse_children(state, skin->joints[i], all_skin_nodes, child_visited_set);
+			_recurse_children(p_state, skin->joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (int i = 0; i < skin->non_joints.size(); ++i) {
 			all_skin_nodes.insert(skin->non_joints[i]);
-			_recurse_children(state, skin->non_joints[i], all_skin_nodes, child_visited_set);
+			_recurse_children(p_state, skin->non_joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (GLTFNodeIndex node_index : all_skin_nodes) {
-			const GLTFNodeIndex parent = state->nodes[node_index]->parent;
+			const GLTFNodeIndex parent = p_state->nodes[node_index]->parent;
 			skeleton_sets.insert(node_index);
 
 			if (all_skin_nodes.has(parent)) {
@@ -4558,13 +4568,13 @@ Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
 				const GLTFNodeIndex node_j = highest_group_members[j];
 
 				// Even if they are siblings under the root! :)
-				if (state->nodes[node_i]->parent == state->nodes[node_j]->parent) {
+				if (p_state->nodes[node_i]->parent == p_state->nodes[node_j]->parent) {
 					skeleton_sets.create_union(node_i, node_j);
 				}
 			}
 
 			// Attach any parenting going on together (we need to do this n^2 times)
-			const GLTFNodeIndex node_i_parent = state->nodes[node_i]->parent;
+			const GLTFNodeIndex node_i_parent = p_state->nodes[node_i]->parent;
 			if (node_i_parent >= 0) {
 				for (int j = 0; j < groups.size() && i != j; ++j) {
 					const Vector<GLTFNodeIndex> &group = groups[j];
@@ -4591,8 +4601,8 @@ Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
 		Vector<GLTFNodeIndex> skeleton_nodes;
 		skeleton_sets.get_members(skeleton_nodes, skeleton_owner);
 
-		for (GLTFSkinIndex skin_i = 0; skin_i < state->skins.size(); ++skin_i) {
-			Ref<GLTFSkin> skin = state->skins.write[skin_i];
+		for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
+			Ref<GLTFSkin> skin = p_state->skins.write[skin_i];
 
 			// If any of the the skeletons nodes exist in a skin, that skin now maps to the skeleton
 			for (int i = 0; i < skeleton_nodes.size(); ++i) {
@@ -4608,24 +4618,24 @@ Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
 		for (int i = 0; i < skeleton_nodes.size(); ++i) {
 			const GLTFNodeIndex node_i = skeleton_nodes[i];
 
-			if (state->nodes[node_i]->joint) {
+			if (p_state->nodes[node_i]->joint) {
 				skeleton->joints.push_back(node_i);
 			} else {
 				non_joints.push_back(node_i);
 			}
 		}
 
-		state->skeletons.push_back(skeleton);
+		p_state->skeletons.push_back(skeleton);
 
-		_reparent_non_joint_skeleton_subtrees(p_state, state->skeletons.write[skel_i], non_joints);
+		_reparent_non_joint_skeleton_subtrees(p_state, p_state->skeletons.write[skel_i], non_joints);
 	}
 
-	for (GLTFSkeletonIndex skel_i = 0; skel_i < state->skeletons.size(); ++skel_i) {
-		Ref<GLTFSkeleton> skeleton = state->skeletons.write[skel_i];
+	for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
+		Ref<GLTFSkeleton> skeleton = p_state->skeletons.write[skel_i];
 
 		for (int i = 0; i < skeleton->joints.size(); ++i) {
 			const GLTFNodeIndex node_i = skeleton->joints[i];
-			Ref<GLTFNode> node = state->nodes[node_i];
+			Ref<GLTFNode> node = p_state->nodes[node_i];
 
 			ERR_FAIL_COND_V(!node->joint, ERR_PARSE_ERROR);
 			ERR_FAIL_COND_V(node->skeleton >= 0, ERR_PARSE_ERROR);
@@ -4890,6 +4900,30 @@ Error GLTFDocument::_create_skins(Ref<GLTFState> p_state) {
 	}
 
 	return OK;
+}
+
+bool GLTFDocument::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
+	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
+		return false;
+	}
+
+	for (int i = 0; i < p_skin_a->get_bind_count(); ++i) {
+		if (p_skin_a->get_bind_bone(i) != p_skin_b->get_bind_bone(i)) {
+			return false;
+		}
+		if (p_skin_a->get_bind_name(i) != p_skin_b->get_bind_name(i)) {
+			return false;
+		}
+
+		Transform3D a_xform = p_skin_a->get_bind_pose(i);
+		Transform3D b_xform = p_skin_b->get_bind_pose(i);
+
+		if (a_xform != b_xform) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void GLTFDocument::_remove_duplicate_skins(Ref<GLTFState> p_state) {
@@ -7685,66 +7719,4 @@ void GLTFDocument::set_root_node_mode(GLTFDocument::RootNodeMode p_root_node_mod
 
 GLTFDocument::RootNodeMode GLTFDocument::get_root_node_mode() const {
 	return _root_node_mode;
-}
-
-bool GLTFDocument::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
-	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
-		return false;
-	}
-
-	for (int i = 0; i < p_skin_a->get_bind_count(); ++i) {
-		if (p_skin_a->get_bind_bone(i) != p_skin_b->get_bind_bone(i)) {
-			return false;
-		}
-		if (p_skin_a->get_bind_name(i) != p_skin_b->get_bind_name(i)) {
-			return false;
-		}
-
-		Transform3D a_xform = p_skin_a->get_bind_pose(i);
-		Transform3D b_xform = p_skin_b->get_bind_pose(i);
-
-		if (a_xform != b_xform) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-void GLTFDocument::_recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index, RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set) {
-	List<GLTFNodeIndex> stack;
-
-	stack.push_back(p_node_index);
-
-	while (!stack.is_empty()) {
-		GLTFNodeIndex current_node_index = stack.front()->get();
-		stack.pop_front();
-
-		if (p_child_visited_set.has(current_node_index)) {
-			continue;
-		}
-
-		p_child_visited_set.insert(current_node_index);
-		TypedArray<GLTFNode> nodes = p_state->call("get_nodes");
-
-		Ref<GLTFNode> asset_node = nodes[current_node_index];
-
-		Array children_array = asset_node->call("get_children");
-		for (int i = 0; i < children_array.size(); ++i) {
-			GLTFNodeIndex child_index = children_array[i];
-			stack.push_back(child_index);
-		}
-
-		int skin_value = asset_node->call("get_skin");
-		int mesh_value = asset_node->call("get_mesh");
-
-		bool has_children = !children_array.is_empty();
-
-		bool has_invalid_skin = skin_value < 0;
-		bool has_invalid_mesh = mesh_value < 0;
-
-		if (has_invalid_skin || has_invalid_mesh || has_children) {
-			p_all_skin_nodes.insert(current_node_index);
-		}
-	}
 }

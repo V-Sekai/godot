@@ -33,23 +33,22 @@
 
 #include "../fbx_defines.h"
 
-#include "modules/gltf/structures/gltf_node.h"
+#include "core/io/resource.h"
 
-class FBXNode : public GLTFNode {
-	GDCLASS(FBXNode, GLTFNode);
+class FBXNode : public Resource {
+	GDCLASS(FBXNode, Resource);
 	friend class FBXDocument;
-	friend class AssetDocument3D;
 
 private:
 	// matrices need to be transformed to this
-	GLTFNodeIndex parent = -1;
+	FBXNodeIndex parent = -1;
 	int height = -1;
 	Transform3D xform;
-	GLTFMeshIndex mesh = -1;
-	GLTFCameraIndex camera = -1;
-	GLTFAnimationIndex light = -1;
-	GLTFSkinIndex skin = -1;
-	GLTFSkeletonIndex skeleton = -1;
+	FBXMeshIndex mesh = -1;
+	FBXCameraIndex camera = -1;
+	FBXLightIndex light = -1;
+	FBXSkinIndex skin = -1;
+	FBXSkeletonIndex skeleton = -1;
 	bool joint = false;
 	Vector3 position;
 	Quaternion rotation;
@@ -61,8 +60,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	GLTFNodeIndex get_parent();
-	void set_parent(GLTFNodeIndex p_parent);
+	FBXNodeIndex get_parent();
+	void set_parent(FBXNodeIndex p_parent);
 
 	int get_height();
 	void set_height(int p_height);
@@ -70,20 +69,20 @@ public:
 	Transform3D get_xform();
 	void set_xform(Transform3D p_xform);
 
-	GLTFMeshIndex get_mesh();
-	void set_mesh(GLTFMeshIndex p_mesh);
+	FBXMeshIndex get_mesh();
+	void set_mesh(FBXMeshIndex p_mesh);
 
-	GLTFCameraIndex get_camera();
-	void set_camera(GLTFCameraIndex p_camera);
+	FBXCameraIndex get_camera();
+	void set_camera(FBXCameraIndex p_camera);
 
-	GLTFAnimationIndex get_light();
-	void set_light(GLTFAnimationIndex p_light);
+	FBXLightIndex get_light();
+	void set_light(FBXLightIndex p_light);
 
-	GLTFSkinIndex get_skin();
-	void set_skin(GLTFSkinIndex p_skin);
+	FBXSkinIndex get_skin();
+	void set_skin(FBXSkinIndex p_skin);
 
-	GLTFSkeletonIndex get_skeleton();
-	void set_skeleton(GLTFSkeletonIndex p_skeleton);
+	FBXSkeletonIndex get_skeleton();
+	void set_skeleton(FBXSkeletonIndex p_skeleton);
 
 	Vector3 get_position();
 	void set_position(Vector3 p_position);
