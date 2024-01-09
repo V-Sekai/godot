@@ -38,6 +38,7 @@
 #include "core/math/color.h"
 #include "core/math/disjoint_set.h"
 #include "fbx_defines.h"
+#include "modules/gltf/gltf_state.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
@@ -1489,13 +1490,15 @@ Error FBXDocument::_verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 	return OK;
 }
 
-Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
-	const ufbx_scene *fbx_scene = p_state->scene.get();
+Error FBXDocument::_parse_skins(Ref<AssetDocumentState> p_state) {
+	Ref<FBXState> state = p_state;
+	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_DATA);
+	const ufbx_scene *fbx_scene = state->scene.get();
 	// Create the base skins, and mark nodes that are joints
 	for (const ufbx_skin_deformer *fbx_skin : fbx_scene->skin_deformers) {
 		// Do not create skins for skin deformers with zero clusters
 		if (fbx_skin->clusters.count == 0) {
-			p_state->skin_indices.push_back(-1);
+			state->skin_indices.push_back(-1);
 			continue;
 		}
 
@@ -1510,7 +1513,7 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 
 			skin->joints.push_back(node);
 			skin->joints_original.push_back(node);
-			p_state->nodes.write[node]->joint = true;
+			state->nodes.write[node]->joint = true;
 		}
 
 		if (fbx_skin->name.length > 0) {
@@ -1519,16 +1522,16 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 			skin->set_name(vformat("skin_%s", itos(fbx_skin->typed_id)));
 		}
 
-		p_state->skin_indices.push_back(p_state->skins.size());
-		p_state->skins.push_back(skin);
+		state->skin_indices.push_back(state->skins.size());
+		state->skins.push_back(skin);
 	}
 
 	// Mark all bones as joints to form skeletons.
 	for (const ufbx_bone *fbx_bone : fbx_scene->bones) {
 		for (const ufbx_node *fbx_node : fbx_bone->instances) {
 			const FBXNodeIndex node = fbx_node->typed_id;
-			if (!p_state->nodes.write[node]->joint) {
-				p_state->nodes.write[node]->joint = true;
+			if (!state->nodes.write[node]->joint) {
+				state->nodes.write[node]->joint = true;
 
 				// Mark root bones as virtual skins, we only need to mark the root node
 				// as `_expand_skin()` below will capture child bones.
@@ -1537,15 +1540,15 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 					skin.instantiate();
 					skin->joints.push_back(node);
 					skin->joints_original.push_back(node);
-					skin->set_name(vformat("skin_%s", itos(p_state->skins.size())));
-					p_state->skins.push_back(skin);
+					skin->set_name(vformat("skin_%s", itos(state->skins.size())));
+					state->skins.push_back(skin);
 				}
 			}
 		}
 	}
 
-	for (FBXSkinIndex i = 0; i < p_state->skins.size(); ++i) {
-		Ref<FBXSkin> skin = p_state->skins.write[i];
+	for (FBXSkinIndex i = 0; i < state->skins.size(); ++i) {
+		Ref<FBXSkin> skin = state->skins.write[i];
 
 		// Expand the skin to capture all the extra non-joints that lie in between the actual joints,
 		// and expand the hierarchy to ensure multi-rooted trees lie on the same height level
@@ -1553,7 +1556,7 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		ERR_FAIL_COND_V(_verify_skin(p_state, skin), ERR_PARSE_ERROR);
 	}
 
-	print_verbose("FBX: Total skins: " + itos(p_state->skins.size()));
+	print_verbose("FBX: Total skins: " + itos(state->skins.size()));
 
 	return OK;
 }

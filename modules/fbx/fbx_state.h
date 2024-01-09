@@ -31,6 +31,7 @@
 #ifndef FBX_STATE_H
 #define FBX_STATE_H
 
+#include "modules/gltf/gltf_document.h" // FIXME
 #include "structures/fbx_animation.h"
 #include "structures/fbx_camera.h"
 #include "structures/fbx_light.h"
@@ -42,8 +43,8 @@
 
 #include <ufbx.h>
 
-class FBXState : public Resource {
-	GDCLASS(FBXState, Resource);
+class FBXState : public AssetDocumentState {
+	GDCLASS(FBXState, AssetDocumentState);
 	friend class FBXDocument;
 
 	// Smart pointer that holds the loaded scene.

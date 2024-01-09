@@ -42,6 +42,7 @@
 #include "core/io/stream_peer.h"
 #include "core/math/disjoint_set.h"
 #include "core/version.h"
+#include "modules/gltf/gltf_state.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
@@ -4436,12 +4437,13 @@ Error GLTFDocument::_verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin) {
 	return OK;
 }
 
-Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
-	if (!p_state->json.has("skins")) {
+Error GLTFDocument::_parse_skins(Ref<AssetDocumentState> p_state) {
+	Ref<GLTFState> state = p_state;
+	if (!state->json.has("skins")) {
 		return OK;
 	}
 
-	const Array &skins = p_state->json["skins"];
+	const Array &skins = state->json["skins"];
 
 	// Create the base skins, and mark nodes that are joints
 	for (int i = 0; i < skins.size(); i++) {
@@ -4461,12 +4463,12 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 
 		for (int j = 0; j < joints.size(); j++) {
 			const GLTFNodeIndex node = joints[j];
-			ERR_FAIL_INDEX_V(node, p_state->nodes.size(), ERR_PARSE_ERROR);
+			ERR_FAIL_INDEX_V(node, state->nodes.size(), ERR_PARSE_ERROR);
 
 			skin->joints.push_back(node);
 			skin->joints_original.push_back(node);
 
-			p_state->nodes.write[node]->joint = true;
+			state->nodes.write[node]->joint = true;
 		}
 
 		if (d.has("name") && !String(d["name"]).is_empty()) {
@@ -4479,19 +4481,19 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 			skin->skin_root = d["skeleton"];
 		}
 
-		p_state->skins.push_back(skin);
+		state->skins.push_back(skin);
 	}
 
-	for (GLTFSkinIndex i = 0; i < p_state->skins.size(); ++i) {
-		Ref<GLTFSkin> skin = p_state->skins.write[i];
+	for (GLTFSkinIndex i = 0; i < state->skins.size(); ++i) {
+		Ref<GLTFSkin> skin = state->skins.write[i];
 
 		// Expand the skin to capture all the extra non-joints that lie in between the actual joints,
 		// and expand the hierarchy to ensure multi-rooted trees lie on the same height level
-		ERR_FAIL_COND_V(_expand_skin(p_state, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(_verify_skin(p_state, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(_expand_skin(state, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(_verify_skin(state, skin), ERR_PARSE_ERROR);
 	}
 
-	print_verbose("glTF: Total skins: " + itos(p_state->skins.size()));
+	print_verbose("glTF: Total skins: " + itos(state->skins.size()));
 
 	return OK;
 }

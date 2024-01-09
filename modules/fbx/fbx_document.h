@@ -89,7 +89,7 @@ private:
 	void _capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin);
 	Error _expand_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin);
 	Error _verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin);
-	Error _parse_skins(Ref<FBXState> p_state);
+	Error _parse_skins(Ref<AssetDocumentState> p_state);
 	Error _determine_skeletons(Ref<FBXState> p_state);
 	Error _reparent_non_joint_skeleton_subtrees(
 			Ref<FBXState> p_state, Ref<FBXSkeleton> p_skeleton,
