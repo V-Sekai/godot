@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gltf_state.h                                                          */
+/*  fbx_state.h                                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,76 +28,74 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GLTF_STATE_H
-#define GLTF_STATE_H
+#ifndef FBX_STATE_H
+#define FBX_STATE_H
 
-#include "extensions/gltf_light.h"
-#include "structures/gltf_accessor.h"
-#include "structures/gltf_animation.h"
-#include "structures/gltf_buffer_view.h"
-#include "structures/gltf_camera.h"
-#include "structures/gltf_mesh.h"
-#include "structures/gltf_node.h"
-#include "structures/gltf_skeleton.h"
-#include "structures/gltf_skin.h"
-#include "structures/gltf_texture.h"
-#include "structures/gltf_texture_sampler.h"
+#include "structures/fbx_animation.h"
+#include "structures/fbx_camera.h"
+#include "structures/fbx_light.h"
+#include "structures/fbx_mesh.h"
+#include "structures/fbx_node.h"
+#include "structures/fbx_skeleton.h"
+#include "structures/fbx_skin.h"
+#include "structures/fbx_texture.h"
 
-class GLTFState : public Resource {
-	GDCLASS(GLTFState, Resource);
-	friend class GLTFDocument;
+#include <ufbx.h>
+
+class FBXState : public Resource {
+	GDCLASS(FBXState, Resource);
+	friend class FBXDocument;
+
+	// Smart pointer that holds the loaded scene.
+	ufbx_unique_ptr<ufbx_scene> scene;
 
 	String base_path;
 	String filename;
-	Dictionary json;
 	int major_version = 0;
 	int minor_version = 0;
-	String copyright;
-	Vector<uint8_t> glb_data;
 
 	bool use_named_skin_binds = false;
 	bool use_khr_texture_transform = false;
 	bool discard_meshes_and_materials = false;
-	bool force_generate_tangents = false;
+	bool allow_geometry_helper_nodes = false;
 	bool create_animations = true;
-	bool force_disable_compression = false;
 
 	int handle_binary_image = HANDLE_BINARY_EXTRACT_TEXTURES;
 
-	Vector<Ref<GLTFNode>> nodes;
+	Vector<Ref<FBXNode>> nodes;
 	Vector<Vector<uint8_t>> buffers;
-	Vector<Ref<GLTFBufferView>> buffer_views;
-	Vector<Ref<GLTFAccessor>> accessors;
 
-	Vector<Ref<GLTFMesh>> meshes; // Meshes are loaded directly, no reason not to.
+	Vector<Ref<FBXMesh>> meshes; // Meshes are loaded directly, no reason not to.
 
 	Vector<AnimationPlayer *> animation_players;
-	HashMap<Ref<Material>, GLTFMaterialIndex> material_cache;
+	HashMap<Ref<Material>, FBXMaterialIndex> material_cache;
 	Vector<Ref<Material>> materials;
 
 	String scene_name;
 	Vector<int> root_nodes;
-	Vector<Ref<GLTFTexture>> textures;
-	Vector<Ref<GLTFTextureSampler>> texture_samplers;
-	Ref<GLTFTextureSampler> default_texture_sampler;
+	Vector<Ref<FBXTexture>> textures;
 	Vector<Ref<Texture2D>> images;
 	Vector<String> extensions_used;
 	Vector<String> extensions_required;
 	Vector<Ref<Image>> source_images;
 
-	Vector<Ref<GLTFSkin>> skins;
-	Vector<Ref<GLTFCamera>> cameras;
-	Vector<Ref<GLTFLight>> lights;
+	HashMap<uint64_t, Image::AlphaMode> alpha_mode_cache;
+	HashMap<Pair<uint64_t, uint64_t>, FBXTextureIndex, PairHash<uint64_t, uint64_t>> albedo_transparency_textures;
+
+	Vector<Ref<FBXSkin>> skins;
+	Vector<FBXSkinIndex> skin_indices;
+	Vector<Ref<FBXCamera>> cameras;
+	Vector<Ref<FBXLight>> lights;
 	HashSet<String> unique_names;
 	HashSet<String> unique_animation_names;
 
-	Vector<Ref<GLTFSkeleton>> skeletons;
-	Vector<Ref<GLTFAnimation>> animations;
-	HashMap<GLTFNodeIndex, Node *> scene_nodes;
-	HashMap<GLTFNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
+	Vector<Ref<FBXSkeleton>> skeletons;
+	Vector<Ref<FBXAnimation>> animations;
+	HashMap<FBXNodeIndex, Node *> scene_nodes;
+	HashMap<FBXNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
 
-	HashMap<ObjectID, GLTFSkeletonIndex> skeleton3d_to_gltf_skeleton;
-	HashMap<ObjectID, HashMap<ObjectID, GLTFSkinIndex>> skin_and_skeleton3d_to_gltf_skin;
+	HashMap<ObjectID, FBXSkeletonIndex> skeleton3d_to_fbx_skeleton;
+	HashMap<ObjectID, HashMap<ObjectID, FBXSkinIndex>> skin_and_skeleton3d_to_fbx_skin;
 	Dictionary additional_data;
 
 protected:
@@ -106,7 +104,7 @@ protected:
 public:
 	void add_used_extension(const String &p_extension, bool p_required = false);
 
-	enum GLTFHandleBinary {
+	enum FBXHandleBinary {
 		HANDLE_BINARY_DISCARD_TEXTURES = 0,
 		HANDLE_BINARY_EXTRACT_TEXTURES,
 		HANDLE_BINARY_EMBED_AS_BASISU,
@@ -119,20 +117,11 @@ public:
 		handle_binary_image = p_handle_binary_image;
 	}
 
-	Dictionary get_json();
-	void set_json(Dictionary p_json);
-
 	int get_major_version();
 	void set_major_version(int p_major_version);
 
 	int get_minor_version();
 	void set_minor_version(int p_minor_version);
-
-	String get_copyright() const;
-	void set_copyright(const String &p_copyright);
-
-	Vector<uint8_t> get_glb_data();
-	void set_glb_data(Vector<uint8_t> p_glb_data);
 
 	bool get_use_named_skin_binds();
 	void set_use_named_skin_binds(bool p_use_named_skin_binds);
@@ -149,20 +138,14 @@ public:
 	bool get_discard_meshes_and_materials();
 	void set_discard_meshes_and_materials(bool p_discard_meshes_and_materials);
 
-	TypedArray<GLTFNode> get_nodes();
-	void set_nodes(TypedArray<GLTFNode> p_nodes);
+	TypedArray<FBXNode> get_nodes();
+	void set_nodes(TypedArray<FBXNode> p_nodes);
 
 	TypedArray<PackedByteArray> get_buffers();
 	void set_buffers(TypedArray<PackedByteArray> p_buffers);
 
-	TypedArray<GLTFBufferView> get_buffer_views();
-	void set_buffer_views(TypedArray<GLTFBufferView> p_buffer_views);
-
-	TypedArray<GLTFAccessor> get_accessors();
-	void set_accessors(TypedArray<GLTFAccessor> p_accessors);
-
-	TypedArray<GLTFMesh> get_meshes();
-	void set_meshes(TypedArray<GLTFMesh> p_meshes);
+	TypedArray<FBXMesh> get_meshes();
+	void set_meshes(TypedArray<FBXMesh> p_meshes);
 
 	TypedArray<Material> get_materials();
 	void set_materials(TypedArray<Material> p_materials);
@@ -179,23 +162,17 @@ public:
 	PackedInt32Array get_root_nodes();
 	void set_root_nodes(PackedInt32Array p_root_nodes);
 
-	TypedArray<GLTFTexture> get_textures();
-	void set_textures(TypedArray<GLTFTexture> p_textures);
-
-	TypedArray<GLTFTextureSampler> get_texture_samplers();
-	void set_texture_samplers(TypedArray<GLTFTextureSampler> p_texture_samplers);
+	TypedArray<FBXTexture> get_textures();
+	void set_textures(TypedArray<FBXTexture> p_textures);
 
 	TypedArray<Texture2D> get_images();
 	void set_images(TypedArray<Texture2D> p_images);
 
-	TypedArray<GLTFSkin> get_skins();
-	void set_skins(TypedArray<GLTFSkin> p_skins);
+	TypedArray<FBXSkin> get_skins();
+	void set_skins(TypedArray<FBXSkin> p_skins);
 
-	TypedArray<GLTFCamera> get_cameras();
-	void set_cameras(TypedArray<GLTFCamera> p_cameras);
-
-	TypedArray<GLTFLight> get_lights();
-	void set_lights(TypedArray<GLTFLight> p_lights);
+	TypedArray<FBXCamera> get_cameras();
+	void set_cameras(TypedArray<FBXCamera> p_cameras);
 
 	TypedArray<String> get_unique_names();
 	void set_unique_names(TypedArray<String> p_unique_names);
@@ -203,17 +180,17 @@ public:
 	TypedArray<String> get_unique_animation_names();
 	void set_unique_animation_names(TypedArray<String> p_unique_names);
 
-	TypedArray<GLTFSkeleton> get_skeletons();
-	void set_skeletons(TypedArray<GLTFSkeleton> p_skeletons);
+	TypedArray<FBXSkeleton> get_skeletons();
+	void set_skeletons(TypedArray<FBXSkeleton> p_skeletons);
 
 	bool get_create_animations();
 	void set_create_animations(bool p_create_animations);
 
-	TypedArray<GLTFAnimation> get_animations();
-	void set_animations(TypedArray<GLTFAnimation> p_animations);
+	TypedArray<FBXAnimation> get_animations();
+	void set_animations(TypedArray<FBXAnimation> p_animations);
 
-	Node *get_scene_node(GLTFNodeIndex idx);
-	GLTFNodeIndex get_node_index(Node *p_node);
+	Node *get_scene_node(FBXNodeIndex idx);
+	FBXNodeIndex get_node_index(Node *p_node);
 
 	int get_animation_players_count(int idx);
 
@@ -221,6 +198,9 @@ public:
 
 	Variant get_additional_data(const StringName &p_extension_name);
 	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
+
+	bool get_allow_geometry_helper_nodes();
+	void set_allow_geometry_helper_nodes(bool p_allow_geometry_helper_nodes);
 };
 
-#endif // GLTF_STATE_H
+#endif // FBX_STATE_H
