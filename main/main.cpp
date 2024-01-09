@@ -1629,6 +1629,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	// Initialize WorkerThreadPool.
 	{
+#ifdef THREADS_ENABLED
 		int worker_threads = GLOBAL_GET("threading/worker_pool/max_threads");
 		bool low_priority_use_system_threads = GLOBAL_GET("threading/worker_pool/use_system_threads_for_low_priority_tasks");
 		float low_property_ratio = GLOBAL_GET("threading/worker_pool/low_priority_thread_ratio");
@@ -1638,6 +1639,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else {
 			WorkerThreadPool::get_singleton()->init(worker_threads, low_priority_use_system_threads, low_property_ratio);
 		}
+#else
+		WorkerThreadPool::get_singleton()->init(0, false, 0);
+#endif
 	}
 
 #ifdef TOOLS_ENABLED

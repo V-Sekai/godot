@@ -183,6 +183,7 @@ opts.Add(BoolVariable("separate_debug_symbols", "Extract debugging symbols to a 
 opts.Add(EnumVariable("lto", "Link-time optimization (production builds)", "none", ("none", "auto", "thin", "full")))
 opts.Add(BoolVariable("production", "Set defaults to build Godot for use in production", False))
 opts.Add(BoolVariable("generate_apk", "Generate an APK/AAB after building Android library by calling Gradle", False))
+opts.Add(BoolVariable("use_threads", "Use threads", True))
 
 # Components
 opts.Add(BoolVariable("deprecated", "Enable compatibility code for deprecated and removed features", True))
@@ -979,6 +980,9 @@ if selected_platform in platform_list:
 
         env.Tool("compilation_db")
         env.Alias("compiledb", env.CompilationDatabase())
+
+    if env["use_threads"]:
+        env.Append(CPPDEFINES=["THREADS_ENABLED"])
 
     Export("env")
 

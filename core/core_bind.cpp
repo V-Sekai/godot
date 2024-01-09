@@ -445,6 +445,10 @@ Error OS::set_thread_name(const String &p_name) {
 	return ::Thread::get_main_id();
 };
 
+bool OS::are_threads_enabled() const {
+	return ::Thread::are_threads_enabled();
+}
+
 bool OS::has_feature(const String &p_feature) const {
 	const bool *value_ptr = feature_cache.getptr(p_feature);
 	if (value_ptr) {
@@ -656,6 +660,7 @@ void OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_thread_name", "name"), &OS::set_thread_name);
 	ClassDB::bind_method(D_METHOD("get_thread_caller_id"), &OS::get_thread_caller_id);
 	ClassDB::bind_method(D_METHOD("get_main_thread_id"), &OS::get_main_thread_id);
+	ClassDB::bind_method(D_METHOD("are_threads_enabled"), &OS::are_threads_enabled);
 
 	ClassDB::bind_method(D_METHOD("has_feature", "tag_name"), &OS::has_feature);
 	ClassDB::bind_method(D_METHOD("is_sandboxed"), &OS::is_sandboxed);

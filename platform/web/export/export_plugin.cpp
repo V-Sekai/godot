@@ -150,6 +150,7 @@ void EditorExportPlatformWeb::_fix_html(Vector<uint8_t> &p_html, const Ref<Edito
 	config["executable"] = p_name;
 	config["args"] = args;
 	config["fileSizes"] = p_file_sizes;
+	config["ignoreDevtoolsInput"] = (bool)p_preset->get("input/ignore_devtools");
 
 	String head_include;
 	if (p_preset->get("html/export_icon")) {
@@ -335,8 +336,11 @@ void EditorExportPlatformWeb::get_export_options(List<ExportOption> *r_options) 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "variant/extensions_support"), false)); // Export type.
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "variant/thread_support"), true)); // Thread support (i.e. run with or without COEP/COOP headers).
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_desktop"), true)); // S3TC
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_mobile"), false)); // ETC or ETC2, depending on renderer
+
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "input/ignore_devtools"), true));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "html/export_icon"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "html/custom_html_shell", PROPERTY_HINT_FILE, "*.html"), ""));
@@ -377,10 +381,11 @@ bool EditorExportPlatformWeb::has_valid_export_configuration(const Ref<EditorExp
 	String err;
 	bool valid = false;
 	bool extensions = (bool)p_preset->get("variant/extensions_support");
+	bool thread_support = (bool)p_preset->get("variant/thread_support");
 
 	// Look for export templates (first official, and if defined custom templates).
-	bool dvalid = exists_export_template(_get_template_name(extensions, true), &err);
-	bool rvalid = exists_export_template(_get_template_name(extensions, false), &err);
+	bool dvalid = exists_export_template(_get_template_name(extensions, thread_support, true), &err);
+	bool rvalid = exists_export_template(_get_template_name(extensions, thread_support, false), &err);
 
 	if (p_preset->get("custom_template/debug") != "") {
 		dvalid = FileAccess::exists(p_preset->get("custom_template/debug"));
@@ -454,7 +459,8 @@ Error EditorExportPlatformWeb::export_project(const Ref<EditorExportPreset> &p_p
 	template_path = template_path.strip_edges();
 	if (template_path.is_empty()) {
 		bool extensions = (bool)p_preset->get("variant/extensions_support");
-		template_path = find_export_template(_get_template_name(extensions, p_debug));
+		bool thread_support = (bool)p_preset->get("variant/thread_support");
+		template_path = find_export_template(_get_template_name(extensions, thread_support, p_debug));
 	}
 
 	if (!template_path.is_empty() && !FileAccess::exists(template_path)) {

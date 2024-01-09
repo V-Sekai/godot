@@ -19,6 +19,12 @@
 				Displays a modal dialog box using the host platform's implementation. The engine execution is blocked until the dialog is closed.
 			</description>
 		</method>
+		<method name="are_threads_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns whether if Godot was built with threading capabilities.
+			</description>
+		</method>
 		<method name="close_midi_inputs">
 			<return type="void" />
 			<description>

@@ -31,27 +31,29 @@ def get_build_version():
     return v
 
 
-def create_engine_file(env, target, source, externs):
+def create_engine_file(env, target, source, externs, use_threads):
     if env["use_closure_compiler"]:
         return env.BuildJS(target, source, JSEXTERNS=externs)
-    return env.Textfile(target, [env.File(s) for s in source])
+    subst_dict = {"___GODOT_THREADS_ENABLED": "true" if use_threads else "false"}
+    return env.Substfile(target=target, source=[env.File(s) for s in source], SUBST_DICT=subst_dict)
 
 
 def create_template_zip(env, js, wasm, worker, side):
     binary_name = "godot.editor" if env.editor_build else "godot"
-    zip_dir = env.Dir("#bin/.web_zip")
+    zip_dir = env.Dir(env.GetTemplateZipPath())
     in_files = [
         js,
         wasm,
-        worker,
         "#platform/web/js/libs/audio.worklet.js",
     ]
     out_files = [
         zip_dir.File(binary_name + ".js"),
         zip_dir.File(binary_name + ".wasm"),
-        zip_dir.File(binary_name + ".worker.js"),
         zip_dir.File(binary_name + ".audio.worklet.js"),
     ]
+    if env["use_threads"]:
+        in_files.append(worker)
+        out_files.append(zip_dir.File(binary_name + ".worker.js"))
     # Dynamic linking (extensions) specific.
     if env["dlink_enabled"]:
         in_files.append(side)  # Side wasm (contains the actual Godot code).
@@ -65,11 +67,12 @@ def create_template_zip(env, js, wasm, worker, side):
             "godot.editor.html",
             "offline.html",
             "godot.editor.js",
-            "godot.editor.worker.js",
             "godot.editor.audio.worklet.js",
             "logo.svg",
             "favicon.png",
         ]
+        if env["use_threads"]:
+            cache.append("godot.editor.worker.js")
         opt_cache = ["godot.editor.wasm"]
         subst_dict = {
             "@GODOT_VERSION@": get_build_version(),
@@ -113,6 +116,10 @@ def create_template_zip(env, js, wasm, worker, side):
         ZIPSUFFIX="${PROGSUFFIX}${ZIPSUFFIX}",
         ZIPCOMSTR="Archiving $SOURCES as $TARGET",
     )
+
+
+def get_template_zip_path(env):
+    return "#bin/.web_zip"
 
 
 def add_js_libraries(env, libraries):
