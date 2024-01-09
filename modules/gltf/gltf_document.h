@@ -43,6 +43,7 @@ class AssetDocument3D : public Resource {
 	GDCLASS(AssetDocument3D, Resource);
 
 private:
+	virtual Error _determine_skeletons(Ref<AssetDocumentState> p_state) = 0;
 	virtual Error _parse_skins(Ref<AssetDocumentState> p_state) = 0;
 };
 
@@ -205,7 +206,7 @@ private:
 	Error _expand_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
 	Error _verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
 	Error _parse_skins(Ref<AssetDocumentState> p_state);
-	Error _determine_skeletons(Ref<GLTFState> p_state);
+	virtual Error _determine_skeletons(Ref<AssetDocumentState> p_state);
 	Error _reparent_non_joint_skeleton_subtrees(
 			Ref<GLTFState> p_state, Ref<GLTFSkeleton> p_skeleton,
 			const Vector<GLTFNodeIndex> &p_non_joints);

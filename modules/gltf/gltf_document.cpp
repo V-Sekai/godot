@@ -30,6 +30,7 @@
 
 #include "gltf_document.h"
 
+#include "core/error/error_macros.h"
 #include "extensions/gltf_spec_gloss.h"
 
 #include "core/config/project_settings.h"
@@ -4513,28 +4514,30 @@ void GLTFDocument::_recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex
 	}
 }
 
-Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
+Error GLTFDocument::_determine_skeletons(Ref<AssetDocumentState> p_state) {
+	Ref<GLTFState> state;
+	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_DATA);
 	// Using a disjoint set, we are going to potentially combine all skins that are actually branches
 	// of a main skeleton, or treat skins defining the same set of nodes as ONE skeleton.
 	// This is another unclear issue caused by the current glTF specification.
 
 	DisjointSet<GLTFNodeIndex> skeleton_sets;
 
-	for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-		const Ref<GLTFSkin> skin = p_state->skins[skin_i];
+	for (GLTFSkinIndex skin_i = 0; skin_i < state->skins.size(); ++skin_i) {
+		const Ref<GLTFSkin> skin = state->skins[skin_i];
 
 		HashSet<GLTFNodeIndex> child_visited_set;
 		RBSet<GLTFNodeIndex> all_skin_nodes;
 		for (int i = 0; i < skin->joints.size(); ++i) {
 			all_skin_nodes.insert(skin->joints[i]);
-			_recurse_children(p_state, skin->joints[i], all_skin_nodes, child_visited_set);
+			_recurse_children(state, skin->joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (int i = 0; i < skin->non_joints.size(); ++i) {
 			all_skin_nodes.insert(skin->non_joints[i]);
-			_recurse_children(p_state, skin->non_joints[i], all_skin_nodes, child_visited_set);
+			_recurse_children(state, skin->non_joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (GLTFNodeIndex node_index : all_skin_nodes) {
-			const GLTFNodeIndex parent = p_state->nodes[node_index]->parent;
+			const GLTFNodeIndex parent = state->nodes[node_index]->parent;
 			skeleton_sets.insert(node_index);
 
 			if (all_skin_nodes.has(parent)) {
@@ -4570,13 +4573,13 @@ Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
 				const GLTFNodeIndex node_j = highest_group_members[j];
 
 				// Even if they are siblings under the root! :)
-				if (p_state->nodes[node_i]->parent == p_state->nodes[node_j]->parent) {
+				if (state->nodes[node_i]->parent == state->nodes[node_j]->parent) {
 					skeleton_sets.create_union(node_i, node_j);
 				}
 			}
 
 			// Attach any parenting going on together (we need to do this n^2 times)
-			const GLTFNodeIndex node_i_parent = p_state->nodes[node_i]->parent;
+			const GLTFNodeIndex node_i_parent = state->nodes[node_i]->parent;
 			if (node_i_parent >= 0) {
 				for (int j = 0; j < groups.size() && i != j; ++j) {
 					const Vector<GLTFNodeIndex> &group = groups[j];
@@ -4603,8 +4606,8 @@ Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
 		Vector<GLTFNodeIndex> skeleton_nodes;
 		skeleton_sets.get_members(skeleton_nodes, skeleton_owner);
 
-		for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-			Ref<GLTFSkin> skin = p_state->skins.write[skin_i];
+		for (GLTFSkinIndex skin_i = 0; skin_i < state->skins.size(); ++skin_i) {
+			Ref<GLTFSkin> skin = state->skins.write[skin_i];
 
 			// If any of the the skeletons nodes exist in a skin, that skin now maps to the skeleton
 			for (int i = 0; i < skeleton_nodes.size(); ++i) {
@@ -4620,24 +4623,24 @@ Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
 		for (int i = 0; i < skeleton_nodes.size(); ++i) {
 			const GLTFNodeIndex node_i = skeleton_nodes[i];
 
-			if (p_state->nodes[node_i]->joint) {
+			if (state->nodes[node_i]->joint) {
 				skeleton->joints.push_back(node_i);
 			} else {
 				non_joints.push_back(node_i);
 			}
 		}
 
-		p_state->skeletons.push_back(skeleton);
+		state->skeletons.push_back(skeleton);
 
-		_reparent_non_joint_skeleton_subtrees(p_state, p_state->skeletons.write[skel_i], non_joints);
+		_reparent_non_joint_skeleton_subtrees(p_state, state->skeletons.write[skel_i], non_joints);
 	}
 
-	for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
-		Ref<GLTFSkeleton> skeleton = p_state->skeletons.write[skel_i];
+	for (GLTFSkeletonIndex skel_i = 0; skel_i < state->skeletons.size(); ++skel_i) {
+		Ref<GLTFSkeleton> skeleton = state->skeletons.write[skel_i];
 
 		for (int i = 0; i < skeleton->joints.size(); ++i) {
 			const GLTFNodeIndex node_i = skeleton->joints[i];
-			Ref<GLTFNode> node = p_state->nodes[node_i];
+			Ref<GLTFNode> node = state->nodes[node_i];
 
 			ERR_FAIL_COND_V(!node->joint, ERR_PARSE_ERROR);
 			ERR_FAIL_COND_V(node->skeleton >= 0, ERR_PARSE_ERROR);
