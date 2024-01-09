@@ -82,8 +82,6 @@ private:
 	Error _parse_materials(Ref<FBXState> p_state);
 	FBXNodeIndex _find_highest_node(Ref<FBXState> p_state,
 			const Vector<FBXNodeIndex> &p_subset);
-	void _recurse_children(Ref<FBXState> p_state, const FBXNodeIndex p_node_index,
-			RBSet<FBXNodeIndex> &p_all_skin_nodes, HashSet<FBXNodeIndex> &p_child_visited_set);
 	bool _capture_nodes_in_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin,
 			const FBXNodeIndex p_node_index);
 	void _capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin);

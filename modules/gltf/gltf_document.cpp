@@ -4499,21 +4499,6 @@ Error GLTFDocument::_parse_skins(Ref<AssetDocumentState> p_state) {
 	return OK;
 }
 
-void GLTFDocument::_recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
-		RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set) {
-	if (p_child_visited_set.has(p_node_index)) {
-		return;
-	}
-	p_child_visited_set.insert(p_node_index);
-	for (int i = 0; i < p_state->nodes[p_node_index]->children.size(); ++i) {
-		_recurse_children(p_state, p_state->nodes[p_node_index]->children[i], p_all_skin_nodes, p_child_visited_set);
-	}
-
-	if (p_state->nodes[p_node_index]->skin < 0 || p_state->nodes[p_node_index]->mesh < 0 || !p_state->nodes[p_node_index]->children.is_empty()) {
-		p_all_skin_nodes.insert(p_node_index);
-	}
-}
-
 Error GLTFDocument::_determine_skeletons(Ref<AssetDocumentState> p_state) {
 	Ref<GLTFState> state;
 	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_DATA);
@@ -7724,4 +7709,42 @@ bool AssetDocument3D::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> 
 	}
 
 	return true;
+}
+
+void AssetDocument3D::_recurse_children(Ref<AssetDocumentState> p_state, const AssetNodeIndex p_node_index, RBSet<AssetNodeIndex> &p_all_skin_nodes, HashSet<AssetNodeIndex> &p_child_visited_set) {
+	List<AssetNodeIndex> stack;
+
+	stack.push_back(p_node_index);
+
+	while (!stack.is_empty()) {
+		AssetNodeIndex current_node_index = stack.front()->get();
+		stack.pop_front();
+
+		if (p_child_visited_set.has(current_node_index)) {
+			continue;
+		}
+
+		p_child_visited_set.insert(current_node_index);
+		TypedArray<AssetDocumentNode> nodes = p_state->call("get_nodes");
+
+		Ref<AssetDocumentNode> asset_node = nodes[current_node_index];
+
+		Array children_array = asset_node->call("get_children");
+		for (int i = 0; i < children_array.size(); ++i) {
+			AssetNodeIndex child_index = children_array[i];
+			stack.push_back(child_index);
+		}
+
+		int skin_value = asset_node->call("get_skin");
+		int mesh_value = asset_node->call("get_mesh");
+
+		bool has_children = !children_array.is_empty();
+
+		bool has_invalid_skin = skin_value < 0;
+		bool has_invalid_mesh = mesh_value < 0;
+
+		if (has_invalid_skin || has_invalid_mesh || has_children) {
+			p_all_skin_nodes.insert(current_node_index);
+		}
+	}
 }

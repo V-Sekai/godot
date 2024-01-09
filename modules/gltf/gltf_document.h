@@ -31,12 +31,25 @@
 #ifndef GLTF_DOCUMENT_H
 #define GLTF_DOCUMENT_H
 
+#include "core/variant/typed_array.h"
 #include "extensions/gltf_document_extension.h"
 
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
 
+using AssetNodeIndex = int;
+using AssetSkinIndex = int;
+using AssetSkeletonIndex = int;
+using AssetSkinIndex = int;
+using AssetLightIndex = int;
+using AssetMeshIndex = int;
+using AssetCameraIndex = int;
+
 class AssetDocumentState : public Resource {
 	GDCLASS(AssetDocumentState, Resource);
+};
+
+class AssetDocumentNode : public Resource {
+	GDCLASS(AssetDocumentNode, Resource);
 };
 
 class AssetDocument3D : public Resource {
@@ -48,6 +61,7 @@ private:
 
 protected:
 	static bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);
+	static void _recurse_children(Ref<AssetDocumentState> p_state, const AssetNodeIndex p_node_index, RBSet<AssetNodeIndex> &p_all_skin_nodes, HashSet<AssetNodeIndex> &p_child_visited_set);
 };
 
 class GLTFDocument : public AssetDocument3D {
@@ -119,8 +133,6 @@ private:
 private:
 	GLTFNodeIndex _find_highest_node(Ref<GLTFState> p_state,
 			const Vector<GLTFNodeIndex> &p_subset);
-	void _recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
-			RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set);
 	bool _capture_nodes_in_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin,
 			const GLTFNodeIndex p_node_index);
 	void _capture_nodes_for_multirooted_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);

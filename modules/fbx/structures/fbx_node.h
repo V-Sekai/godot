@@ -33,11 +33,12 @@
 
 #include "../fbx_defines.h"
 
-#include "core/io/resource.h"
+#include "modules/gltf/gltf_document.h"
 
-class FBXNode : public Resource {
-	GDCLASS(FBXNode, Resource);
+class FBXNode : public AssetDocumentNode {
+	GDCLASS(FBXNode, AssetDocumentNode);
 	friend class FBXDocument;
+	friend class AssetDocument3D;
 
 private:
 	// matrices need to be transformed to this
