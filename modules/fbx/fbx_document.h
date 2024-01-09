@@ -33,10 +33,11 @@
 
 #include "extensions/fbx_document_extension.h"
 #include "modules/fbx/structures/fbx_light.h"
+#include "modules/gltf/gltf_document.h"
 #include "ufbx.h"
 
-class FBXDocument : public Resource {
-	GDCLASS(FBXDocument, Resource);
+class FBXDocument : public GLTFDocument {
+	GDCLASS(FBXDocument, GLTFDocument);
 	static Vector<Ref<FBXDocumentExtension>> all_document_extensions;
 	Vector<Ref<FBXDocumentExtension>> document_extensions;
 

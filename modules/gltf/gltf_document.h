@@ -35,8 +35,12 @@
 
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
 
-class GLTFDocument : public Resource {
-	GDCLASS(GLTFDocument, Resource);
+class AssetDocument3D : public Resource {
+	GDCLASS(AssetDocument3D, Resource);
+};
+
+class GLTFDocument : public AssetDocument3D {
+	GDCLASS(GLTFDocument, AssetDocument3D);
 	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
 	Vector<Ref<GLTFDocumentExtension>> document_extensions;
 
