@@ -99,7 +99,6 @@ private:
 	Error _create_skeletons(Ref<FBXState> p_state);
 	Error _map_skin_joints_indices_to_skeleton_bone_indices(Ref<FBXState> p_state);
 	Error _create_skins(Ref<FBXState> p_state);
-	bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);
 	void _remove_duplicate_skins(Ref<FBXState> p_state);
 	Error _parse_animations(Ref<FBXState> p_state);
 	BoneAttachment3D *_generate_bone_attachment(Ref<FBXState> p_state,

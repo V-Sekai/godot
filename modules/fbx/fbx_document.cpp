@@ -1952,30 +1952,6 @@ Error FBXDocument::_create_skins(Ref<FBXState> p_state) {
 	return OK;
 }
 
-bool FBXDocument::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
-	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
-		return false;
-	}
-
-	for (int i = 0; i < p_skin_a->get_bind_count(); ++i) {
-		if (p_skin_a->get_bind_bone(i) != p_skin_b->get_bind_bone(i)) {
-			return false;
-		}
-		if (p_skin_a->get_bind_name(i) != p_skin_b->get_bind_name(i)) {
-			return false;
-		}
-
-		Transform3D a_xform = p_skin_a->get_bind_pose(i);
-		Transform3D b_xform = p_skin_b->get_bind_pose(i);
-
-		if (a_xform != b_xform) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
 void FBXDocument::_remove_duplicate_skins(Ref<FBXState> p_state) {
 	for (int i = 0; i < p_state->skins.size(); ++i) {
 		for (int j = i + 1; j < p_state->skins.size(); ++j) {

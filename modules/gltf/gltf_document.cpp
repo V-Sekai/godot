@@ -4907,30 +4907,6 @@ Error GLTFDocument::_create_skins(Ref<GLTFState> p_state) {
 	return OK;
 }
 
-bool GLTFDocument::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
-	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
-		return false;
-	}
-
-	for (int i = 0; i < p_skin_a->get_bind_count(); ++i) {
-		if (p_skin_a->get_bind_bone(i) != p_skin_b->get_bind_bone(i)) {
-			return false;
-		}
-		if (p_skin_a->get_bind_name(i) != p_skin_b->get_bind_name(i)) {
-			return false;
-		}
-
-		Transform3D a_xform = p_skin_a->get_bind_pose(i);
-		Transform3D b_xform = p_skin_b->get_bind_pose(i);
-
-		if (a_xform != b_xform) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
 void GLTFDocument::_remove_duplicate_skins(Ref<GLTFState> p_state) {
 	for (int i = 0; i < p_state->skins.size(); ++i) {
 		for (int j = i + 1; j < p_state->skins.size(); ++j) {
@@ -7724,4 +7700,28 @@ void GLTFDocument::set_root_node_mode(GLTFDocument::RootNodeMode p_root_node_mod
 
 GLTFDocument::RootNodeMode GLTFDocument::get_root_node_mode() const {
 	return _root_node_mode;
+}
+
+bool AssetDocument3D::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
+	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
+		return false;
+	}
+
+	for (int i = 0; i < p_skin_a->get_bind_count(); ++i) {
+		if (p_skin_a->get_bind_bone(i) != p_skin_b->get_bind_bone(i)) {
+			return false;
+		}
+		if (p_skin_a->get_bind_name(i) != p_skin_b->get_bind_name(i)) {
+			return false;
+		}
+
+		Transform3D a_xform = p_skin_a->get_bind_pose(i);
+		Transform3D b_xform = p_skin_b->get_bind_pose(i);
+
+		if (a_xform != b_xform) {
+			return false;
+		}
+	}
+
+	return true;
 }

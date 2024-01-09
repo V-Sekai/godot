@@ -45,6 +45,9 @@ class AssetDocument3D : public Resource {
 private:
 	virtual Error _determine_skeletons(Ref<AssetDocumentState> p_state) = 0;
 	virtual Error _parse_skins(Ref<AssetDocumentState> p_state) = 0;
+
+protected:
+	static bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);
 };
 
 class GLTFDocument : public AssetDocument3D {
@@ -108,6 +111,31 @@ public:
 	float get_lossy_quality() const;
 	void set_root_node_mode(RootNodeMode p_root_node_mode);
 	RootNodeMode get_root_node_mode() const;
+
+private:
+	Error _parse_skins(Ref<AssetDocumentState> p_state);
+	virtual Error _determine_skeletons(Ref<AssetDocumentState> p_state);
+
+private:
+	GLTFNodeIndex _find_highest_node(Ref<GLTFState> p_state,
+			const Vector<GLTFNodeIndex> &p_subset);
+	void _recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
+			RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set);
+	bool _capture_nodes_in_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin,
+			const GLTFNodeIndex p_node_index);
+	void _capture_nodes_for_multirooted_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
+	Error _expand_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
+	Error _verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
+	Error _reparent_non_joint_skeleton_subtrees(
+			Ref<GLTFState> p_state, Ref<GLTFSkeleton> p_skeleton,
+			const Vector<GLTFNodeIndex> &p_non_joints);
+	Error _determine_skeleton_roots(Ref<GLTFState> p_state,
+			const GLTFSkeletonIndex p_skel_i);
+	Error _create_skeletons(Ref<GLTFState> p_state);
+	Error _map_skin_joints_indices_to_skeleton_bone_indices(Ref<GLTFState> p_state);
+	Error _serialize_skins(Ref<GLTFState> p_state);
+	Error _create_skins(Ref<GLTFState> p_state);
+	void _remove_duplicate_skins(Ref<GLTFState> p_state);
 
 private:
 	void _build_parent_hierachy(Ref<GLTFState> p_state);
@@ -196,28 +224,6 @@ private:
 			const Color &p_diffuse,
 			Color &r_base_color,
 			float &r_metallic);
-	GLTFNodeIndex _find_highest_node(Ref<GLTFState> p_state,
-			const Vector<GLTFNodeIndex> &p_subset);
-	void _recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
-			RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set);
-	bool _capture_nodes_in_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin,
-			const GLTFNodeIndex p_node_index);
-	void _capture_nodes_for_multirooted_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
-	Error _expand_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
-	Error _verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
-	Error _parse_skins(Ref<AssetDocumentState> p_state);
-	virtual Error _determine_skeletons(Ref<AssetDocumentState> p_state);
-	Error _reparent_non_joint_skeleton_subtrees(
-			Ref<GLTFState> p_state, Ref<GLTFSkeleton> p_skeleton,
-			const Vector<GLTFNodeIndex> &p_non_joints);
-	Error _determine_skeleton_roots(Ref<GLTFState> p_state,
-			const GLTFSkeletonIndex p_skel_i);
-	Error _create_skeletons(Ref<GLTFState> p_state);
-	Error _map_skin_joints_indices_to_skeleton_bone_indices(Ref<GLTFState> p_state);
-	Error _serialize_skins(Ref<GLTFState> p_state);
-	Error _create_skins(Ref<GLTFState> p_state);
-	bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);
-	void _remove_duplicate_skins(Ref<GLTFState> p_state);
 	Error _serialize_cameras(Ref<GLTFState> p_state);
 	Error _parse_cameras(Ref<GLTFState> p_state);
 	Error _parse_lights(Ref<GLTFState> p_state);
