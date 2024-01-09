@@ -37,10 +37,10 @@ void FBXTexture::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "src_image"), "set_src_image", "get_src_image"); // int
 }
 
-FBXImageIndex FBXTexture::get_src_image() const {
+GLTFImageIndex FBXTexture::get_src_image() const {
 	return src_image;
 }
 
-void FBXTexture::set_src_image(FBXImageIndex val) {
+void FBXTexture::set_src_image(GLTFImageIndex val) {
 	src_image = val;
 }

@@ -4438,7 +4438,7 @@ Error GLTFDocument::_verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin) {
 	return OK;
 }
 
-Error GLTFDocument::_parse_skins(Ref<AssetDocumentState> p_state) {
+Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 	Ref<GLTFState> state = p_state;
 	if (!state->json.has("skins")) {
 		return OK;
@@ -4499,7 +4499,7 @@ Error GLTFDocument::_parse_skins(Ref<AssetDocumentState> p_state) {
 	return OK;
 }
 
-Error GLTFDocument::_determine_skeletons(Ref<AssetDocumentState> p_state) {
+Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
 	Ref<GLTFState> state;
 	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_DATA);
 	// Using a disjoint set, we are going to potentially combine all skins that are actually branches
@@ -7687,7 +7687,7 @@ GLTFDocument::RootNodeMode GLTFDocument::get_root_node_mode() const {
 	return _root_node_mode;
 }
 
-bool AssetDocument3D::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
+bool GLTFDocument::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
 	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
 		return false;
 	}
@@ -7711,13 +7711,13 @@ bool AssetDocument3D::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> 
 	return true;
 }
 
-void AssetDocument3D::_recurse_children(Ref<AssetDocumentState> p_state, const AssetNodeIndex p_node_index, RBSet<AssetNodeIndex> &p_all_skin_nodes, HashSet<AssetNodeIndex> &p_child_visited_set) {
-	List<AssetNodeIndex> stack;
+void GLTFDocument::_recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index, RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set) {
+	List<GLTFNodeIndex> stack;
 
 	stack.push_back(p_node_index);
 
 	while (!stack.is_empty()) {
-		AssetNodeIndex current_node_index = stack.front()->get();
+		GLTFNodeIndex current_node_index = stack.front()->get();
 		stack.pop_front();
 
 		if (p_child_visited_set.has(current_node_index)) {
@@ -7725,13 +7725,13 @@ void AssetDocument3D::_recurse_children(Ref<AssetDocumentState> p_state, const A
 		}
 
 		p_child_visited_set.insert(current_node_index);
-		TypedArray<AssetDocumentNode> nodes = p_state->call("get_nodes");
+		TypedArray<GLTFNode> nodes = p_state->call("get_nodes");
 
-		Ref<AssetDocumentNode> asset_node = nodes[current_node_index];
+		Ref<GLTFNode> asset_node = nodes[current_node_index];
 
 		Array children_array = asset_node->call("get_children");
 		for (int i = 0; i < children_array.size(); ++i) {
-			AssetNodeIndex child_index = children_array[i];
+			GLTFNodeIndex child_index = children_array[i];
 			stack.push_back(child_index);
 		}
 

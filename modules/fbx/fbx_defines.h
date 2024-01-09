@@ -44,6 +44,23 @@ class MultiMeshInstance3D;
 class Skeleton3D;
 
 // GLTF classes.
+struct GLTFAccessor;
+class GLTFAnimation;
+class GLTFBufferView;
+class GLTFCamera;
+class GLTFDocument;
+class GLTFDocumentExtension;
+class GLTFLight;
+class GLTFMesh;
+class GLTFNode;
+class GLTFSkeleton;
+class GLTFSkin;
+class GLTFSpecGloss;
+class GLTFState;
+class GLTFTexture;
+class GLTFTextureSampler;
+
+// FBX classes.
 class FBXAnimation;
 class FBXLight;
 class FBXCamera;
@@ -57,16 +74,16 @@ class FBXState;
 class FBXTexture;
 
 // GLTF index aliases.
-using FBXAnimationIndex = int;
-using FBXBufferIndex = int;
-using FBXCameraIndex = int;
-using FBXLightIndex = int;
-using FBXImageIndex = int;
-using FBXMaterialIndex = int;
-using FBXMeshIndex = int;
-using FBXNodeIndex = int;
-using FBXSkeletonIndex = int;
-using FBXSkinIndex = int;
-using FBXTextureIndex = int;
+using GLTFAnimationIndex = int;
+using GLTFBufferIndex = int;
+using GLTFCameraIndex = int;
+using GLTFLightIndex = int;
+using GLTFImageIndex = int;
+using GLTFMaterialIndex = int;
+using GLTFMeshIndex = int;
+using GLTFNodeIndex = int;
+using GLTFSkeletonIndex = int;
+using GLTFSkinIndex = int;
+using GLTFTextureIndex = int;
 
 #endif // FBX_DEFINES_H

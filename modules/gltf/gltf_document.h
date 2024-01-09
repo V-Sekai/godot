@@ -36,38 +36,18 @@
 
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
 
-using AssetNodeIndex = int;
-using AssetSkinIndex = int;
-using AssetSkeletonIndex = int;
-using AssetSkinIndex = int;
-using AssetLightIndex = int;
-using AssetMeshIndex = int;
-using AssetCameraIndex = int;
-
-class AssetDocumentState : public Resource {
-	GDCLASS(AssetDocumentState, Resource);
-};
-
-class AssetDocumentNode : public Resource {
-	GDCLASS(AssetDocumentNode, Resource);
-};
-
-class AssetDocument3D : public Resource {
-	GDCLASS(AssetDocument3D, Resource);
+class GLTFDocument : public Resource {
+	GDCLASS(GLTFDocument, Resource);
+	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
+	Vector<Ref<GLTFDocumentExtension>> document_extensions;
 
 private:
-	virtual Error _determine_skeletons(Ref<AssetDocumentState> p_state) = 0;
-	virtual Error _parse_skins(Ref<AssetDocumentState> p_state) = 0;
+	virtual Error _determine_skeletons(Ref<GLTFState> p_state);
+	virtual Error _parse_skins(Ref<GLTFState> p_state);
 
 protected:
 	static bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);
-	static void _recurse_children(Ref<AssetDocumentState> p_state, const AssetNodeIndex p_node_index, RBSet<AssetNodeIndex> &p_all_skin_nodes, HashSet<AssetNodeIndex> &p_child_visited_set);
-};
-
-class GLTFDocument : public AssetDocument3D {
-	GDCLASS(GLTFDocument, AssetDocument3D);
-	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
-	Vector<Ref<GLTFDocumentExtension>> document_extensions;
+	static void _recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index, RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set);
 
 public:
 	const int32_t JOINT_GROUP_SIZE = 4;
@@ -125,10 +105,6 @@ public:
 	float get_lossy_quality() const;
 	void set_root_node_mode(RootNodeMode p_root_node_mode);
 	RootNodeMode get_root_node_mode() const;
-
-private:
-	Error _parse_skins(Ref<AssetDocumentState> p_state);
-	virtual Error _determine_skeletons(Ref<AssetDocumentState> p_state);
 
 private:
 	GLTFNodeIndex _find_highest_node(Ref<GLTFState> p_state,

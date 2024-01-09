@@ -57,31 +57,31 @@ void FBXSkin::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_godot_skin"), &FBXSkin::get_godot_skin);
 	ClassDB::bind_method(D_METHOD("set_godot_skin", "godot_skin"), &FBXSkin::set_godot_skin);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "skin_root"), "set_skin_root", "get_skin_root"); // FBXNodeIndex
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "joints_original"), "set_joints_original", "get_joints_original"); // Vector<FBXNodeIndex>
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "skin_root"), "set_skin_root", "get_skin_root"); // GLTFNodeIndex
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "joints_original"), "set_joints_original", "get_joints_original"); // Vector<GLTFNodeIndex>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "inverse_binds", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL), "set_inverse_binds", "get_inverse_binds"); // Vector<Transform3D>
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "joints"), "set_joints", "get_joints"); // Vector<FBXNodeIndex>
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "non_joints"), "set_non_joints", "get_non_joints"); // Vector<FBXNodeIndex>
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "roots"), "set_roots", "get_roots"); // Vector<FBXNodeIndex>
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "joints"), "set_joints", "get_joints"); // Vector<GLTFNodeIndex>
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "non_joints"), "set_non_joints", "get_non_joints"); // Vector<GLTFNodeIndex>
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "roots"), "set_roots", "get_roots"); // Vector<GLTFNodeIndex>
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "skeleton"), "set_skeleton", "get_skeleton"); // int
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "joint_i_to_bone_i", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL), "set_joint_i_to_bone_i", "get_joint_i_to_bone_i"); // RBMap<int,
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "joint_i_to_name", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL), "set_joint_i_to_name", "get_joint_i_to_name"); // RBMap<int,
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "godot_skin", PROPERTY_HINT_RESOURCE_TYPE, "Skin"), "set_godot_skin", "get_godot_skin"); // Ref<Skin>
 }
 
-FBXNodeIndex FBXSkin::get_skin_root() {
+GLTFNodeIndex FBXSkin::get_skin_root() {
 	return skin_root;
 }
 
-void FBXSkin::set_skin_root(FBXNodeIndex p_skin_root) {
+void FBXSkin::set_skin_root(GLTFNodeIndex p_skin_root) {
 	skin_root = p_skin_root;
 }
 
-Vector<FBXNodeIndex> FBXSkin::get_joints_original() {
+Vector<GLTFNodeIndex> FBXSkin::get_joints_original() {
 	return joints_original;
 }
 
-void FBXSkin::set_joints_original(Vector<FBXNodeIndex> p_joints_original) {
+void FBXSkin::set_joints_original(Vector<GLTFNodeIndex> p_joints_original) {
 	joints_original = p_joints_original;
 }
 
@@ -93,27 +93,27 @@ void FBXSkin::set_inverse_binds(TypedArray<Transform3D> p_inverse_binds) {
 	FBXTemplateConvert::set_from_array(inverse_binds, p_inverse_binds);
 }
 
-Vector<FBXNodeIndex> FBXSkin::get_joints() {
+Vector<GLTFNodeIndex> FBXSkin::get_joints() {
 	return joints;
 }
 
-void FBXSkin::set_joints(Vector<FBXNodeIndex> p_joints) {
+void FBXSkin::set_joints(Vector<GLTFNodeIndex> p_joints) {
 	joints = p_joints;
 }
 
-Vector<FBXNodeIndex> FBXSkin::get_non_joints() {
+Vector<GLTFNodeIndex> FBXSkin::get_non_joints() {
 	return non_joints;
 }
 
-void FBXSkin::set_non_joints(Vector<FBXNodeIndex> p_non_joints) {
+void FBXSkin::set_non_joints(Vector<GLTFNodeIndex> p_non_joints) {
 	non_joints = p_non_joints;
 }
 
-Vector<FBXNodeIndex> FBXSkin::get_roots() {
+Vector<GLTFNodeIndex> FBXSkin::get_roots() {
 	return roots;
 }
 
-void FBXSkin::set_roots(Vector<FBXNodeIndex> p_roots) {
+void FBXSkin::set_roots(Vector<GLTFNodeIndex> p_roots) {
 	roots = p_roots;
 }
 

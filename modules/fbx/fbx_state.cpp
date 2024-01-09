@@ -266,15 +266,15 @@ void FBXState::set_animations(TypedArray<FBXAnimation> p_animations) {
 	FBXTemplateConvert::set_from_array(animations, p_animations);
 }
 
-Node *FBXState::get_scene_node(FBXNodeIndex idx) {
+Node *FBXState::get_scene_node(GLTFNodeIndex idx) {
 	if (!scene_nodes.has(idx)) {
 		return nullptr;
 	}
 	return scene_nodes[idx];
 }
 
-FBXNodeIndex FBXState::get_node_index(Node *p_node) {
-	for (KeyValue<FBXNodeIndex, Node *> x : scene_nodes) {
+GLTFNodeIndex FBXState::get_node_index(Node *p_node) {
+	for (KeyValue<GLTFNodeIndex, Node *> x : scene_nodes) {
 		if (x.value == p_node) {
 			return x.key;
 		}

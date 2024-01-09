@@ -31,7 +31,9 @@
 #ifndef FBX_STATE_H
 #define FBX_STATE_H
 
+#include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_document.h" // FIXME
+#include "modules/gltf/gltf_state.h"
 #include "structures/fbx_animation.h"
 #include "structures/fbx_camera.h"
 #include "structures/fbx_light.h"
@@ -43,8 +45,8 @@
 
 #include <ufbx.h>
 
-class FBXState : public AssetDocumentState {
-	GDCLASS(FBXState, AssetDocumentState);
+class FBXState : public GLTFState {
+	GDCLASS(FBXState, GLTFState);
 	friend class FBXDocument;
 
 	// Smart pointer that holds the loaded scene.
@@ -69,7 +71,7 @@ class FBXState : public AssetDocumentState {
 	Vector<Ref<FBXMesh>> meshes; // Meshes are loaded directly, no reason not to.
 
 	Vector<AnimationPlayer *> animation_players;
-	HashMap<Ref<Material>, FBXMaterialIndex> material_cache;
+	HashMap<Ref<Material>, GLTFMaterialIndex> material_cache;
 	Vector<Ref<Material>> materials;
 
 	String scene_name;
@@ -81,10 +83,10 @@ class FBXState : public AssetDocumentState {
 	Vector<Ref<Image>> source_images;
 
 	HashMap<uint64_t, Image::AlphaMode> alpha_mode_cache;
-	HashMap<Pair<uint64_t, uint64_t>, FBXTextureIndex, PairHash<uint64_t, uint64_t>> albedo_transparency_textures;
+	HashMap<Pair<uint64_t, uint64_t>, GLTFTextureIndex, PairHash<uint64_t, uint64_t>> albedo_transparency_textures;
 
 	Vector<Ref<FBXSkin>> skins;
-	Vector<FBXSkinIndex> skin_indices;
+	Vector<GLTFSkinIndex> skin_indices;
 	Vector<Ref<FBXCamera>> cameras;
 	Vector<Ref<FBXLight>> lights;
 	HashSet<String> unique_names;
@@ -92,11 +94,11 @@ class FBXState : public AssetDocumentState {
 
 	Vector<Ref<FBXSkeleton>> skeletons;
 	Vector<Ref<FBXAnimation>> animations;
-	HashMap<FBXNodeIndex, Node *> scene_nodes;
-	HashMap<FBXNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
+	HashMap<GLTFNodeIndex, Node *> scene_nodes;
+	HashMap<GLTFNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
 
-	HashMap<ObjectID, FBXSkeletonIndex> skeleton3d_to_fbx_skeleton;
-	HashMap<ObjectID, HashMap<ObjectID, FBXSkinIndex>> skin_and_skeleton3d_to_fbx_skin;
+	HashMap<ObjectID, GLTFSkeletonIndex> skeleton3d_to_fbx_skeleton;
+	HashMap<ObjectID, HashMap<ObjectID, GLTFSkeletonIndex>> skin_and_skeleton3d_to_fbx_skin;
 	Dictionary additional_data;
 
 protected:
@@ -190,8 +192,8 @@ public:
 	TypedArray<FBXAnimation> get_animations();
 	void set_animations(TypedArray<FBXAnimation> p_animations);
 
-	Node *get_scene_node(FBXNodeIndex idx);
-	FBXNodeIndex get_node_index(Node *p_node);
+	Node *get_scene_node(GLTFNodeIndex idx);
+	GLTFNodeIndex get_node_index(Node *p_node);
 
 	int get_animation_players_count(int idx);
 
