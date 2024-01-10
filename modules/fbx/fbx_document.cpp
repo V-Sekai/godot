@@ -1300,15 +1300,11 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 
 				if (fbx_element->type == UFBX_ELEMENT_BLEND_CHANNEL && prop_name == UFBX_DeformPercent) {
 					const ufbx_blend_channel *fbx_blend_channel = ufbx_as_blend_channel(fbx_element);
-
-					int blend_i = fbx_blend_channel->typed_id;
 					GLTFAnimation::Channel<real_t> blend_shape_track;
-
 					for (const ufbx_baked_vec3 &key : fbx_baked_prop.keys) {
 						blend_shape_track.times.push_back(float(key.time));
 						blend_shape_track.values.push_back(real_t(key.value.x / 100.0));
 					}
-
 					animation->get_tracks()[node].weight_tracks.push_back(blend_shape_track);
 				}
 			}
