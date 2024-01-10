@@ -28,14 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GLTF_TEMPLATE_CONVERT_H
-#define GLTF_TEMPLATE_CONVERT_H
+#ifndef TEMPLATE_CONVERT_H
+#define TEMPLATE_CONVERT_H
 
 #include "core/templates/hash_set.h"
 #include "core/variant/array.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
-
 
 template <class T>
 static Array to_array(const Vector<T> &p_inp) {
@@ -91,4 +90,4 @@ static void set_from_dict(HashMap<K, V> &r_out, const Dictionary &p_inp) {
 	}
 }
 
-#endif // GLTF_TEMPLATE_CONVERT_H
+#endif // TEMPLATE_CONVERT_H
