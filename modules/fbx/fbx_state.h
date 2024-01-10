@@ -32,7 +32,6 @@
 #define FBX_STATE_H
 
 #include "modules/fbx/fbx_defines.h"
-#include "modules/gltf/structures/gltf_animation.h"
 #include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/structures/gltf_animation.h"
 #include "modules/gltf/structures/gltf_mesh.h"
