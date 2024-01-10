@@ -49,7 +49,7 @@ public:
 
 	template <class T>
 	struct Channel {
-		Interpolation interpolation;
+		Interpolation interpolation = INTERP_LINEAR;
 		Vector<real_t> times;
 		Vector<T> values;
 	};
@@ -65,11 +65,14 @@ public:
 	bool get_loop() const;
 	void set_loop(bool p_val);
 	HashMap<int, GLTFAnimation::Track> &get_tracks();
+	Variant get_additional_data(const StringName &p_extension_name);
+	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
 	GLTFAnimation();
 
 private:
 	bool loop = false;
 	HashMap<int, Track> tracks;
+	Dictionary additional_data;
 };
 
 #endif // GLTF_ANIMATION_H
