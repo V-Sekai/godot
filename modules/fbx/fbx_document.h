@@ -32,7 +32,7 @@
 #define FBX_DOCUMENT_H
 
 #include "extensions/fbx_document_extension.h"
-#include "fbx_utility.h"
+#include "fbx_skin_utility.h"
 #include "modules/fbx/structures/fbx_light.h"
 #include "modules/fbx/structures/fbx_node.h"
 #include "ufbx.h"
