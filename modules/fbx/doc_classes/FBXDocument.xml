@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="FBXDocument" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="FBXDocument" inherits="GLTFDocument" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 		Handles FBX documents.
 	</brief_description>
@@ -10,36 +10,6 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="append_from_buffer">
-			<return type="int" enum="Error" />
-			<param index="0" name="bytes" type="PackedByteArray" />
-			<param index="1" name="base_path" type="String" />
-			<param index="2" name="state" type="FBXState" />
-			<param index="3" name="flags" type="int" default="0" />
-			<description>
-				Appends data from a buffer to the FBX document.
-			</description>
-		</method>
-		<method name="append_from_file">
-			<return type="int" enum="Error" />
-			<param index="0" name="path" type="String" />
-			<param index="1" name="state" type="FBXState" />
-			<param index="2" name="flags" type="int" default="0" />
-			<param index="3" name="base_path" type="String" default="&quot;&quot;" />
-			<description>
-				Appends data from a file to the FBX document.
-			</description>
-		</method>
-		<method name="generate_scene">
-			<return type="Node" />
-			<param index="0" name="state" type="FBXState" />
-			<param index="1" name="bake_fps" type="float" default="30" />
-			<param index="2" name="trimming" type="bool" default="false" />
-			<param index="3" name="remove_immutable_tracks" type="bool" default="true" />
-			<description>
-				Generates a scene from the FBX document.
-			</description>
-		</method>
 		<method name="register_fbx_document_extension" qualifiers="static">
 			<return type="void" />
 			<param index="0" name="extension" type="FBXDocumentExtension" />

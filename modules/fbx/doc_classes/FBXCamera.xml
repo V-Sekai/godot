@@ -1,35 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="FBXCamera" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="FBXCamera" inherits="GLTFCamera" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
 	</description>
 	<tutorials>
 	</tutorials>
-	<methods>
-		<method name="from_dictionary" qualifiers="static">
-			<return type="FBXCamera" />
-			<param index="0" name="dictionary" type="Dictionary" />
-			<description>
-			</description>
-		</method>
-		<method name="from_node" qualifiers="static">
-			<return type="FBXCamera" />
-			<param index="0" name="camera_node" type="Camera3D" />
-			<description>
-			</description>
-		</method>
-		<method name="to_dictionary" qualifiers="const">
-			<return type="Dictionary" />
-			<description>
-			</description>
-		</method>
-		<method name="to_node" qualifiers="const">
-			<return type="Camera3D" />
-			<description>
-			</description>
-		</method>
-	</methods>
 	<members>
 		<member name="depth_far" type="float" setter="set_depth_far" getter="get_depth_far" default="4000.0">
 		</member>

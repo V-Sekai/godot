@@ -32,14 +32,15 @@
 #define FBX_CAMERA_H
 
 #include "core/io/resource.h"
+#include "modules/gltf/structures/gltf_camera.h"
 
 class Camera3D;
 
 // Reference and test file:
 // https://github.com/KhronosGroup/glTF-Tutorials/blob/master/gltfTutorial/gltfTutorial_015_SimpleCameras.md
 
-class FBXCamera : public Resource {
-	GDCLASS(FBXCamera, Resource);
+class FBXCamera : public GLTFCamera {
+	GDCLASS(FBXCamera, GLTFCamera);
 
 private:
 	// GLTF has no default camera values, they should always be specified in

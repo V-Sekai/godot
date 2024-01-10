@@ -32,12 +32,13 @@
 #define FBX_LIGHT_H
 
 #include "core/io/resource.h"
+#include "modules/gltf/structures/gltf_camera.h"
 #include "scene/3d/light_3d.h"
 
 class Light3D;
 
-class FBXLight : public Resource {
-	GDCLASS(FBXLight, Resource);
+class FBXLight : public GLTFCamera {
+	GDCLASS(FBXLight, GLTFCamera);
 
 private:
 	Color color;
