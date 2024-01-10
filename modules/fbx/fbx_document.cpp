@@ -648,6 +648,9 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 
 				// Find the first imported skin deformer
 				for (ufbx_skin_deformer *fbx_skin : fbx_mesh->skin_deformers) {
+					if (!p_state->skin_indices.has(fbx_skin->typed_id)) {
+						continue;
+					}
 					FBXSkinIndex skin_i = p_state->skin_indices[fbx_skin->typed_id];
 					if (skin_i < 0) {
 						continue;
@@ -1493,14 +1496,11 @@ Error FBXDocument::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_sk
 
 Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 	const ufbx_scene *fbx_scene = p_state->scene.get();
-
-	Vector<FBXNodeIndex> skin_indices_out;
-	Vector<Ref<FBXSkin>> skin_out;
-	HashMap<FBXNodeIndex, bool>  joint_mapping;
+	HashMap<FBXNodeIndex, bool> joint_mapping;
 
 	for (const ufbx_skin_deformer *fbx_skin : fbx_scene->skin_deformers) {
 		if (fbx_skin->clusters.count == 0) {
-			skin_indices_out.push_back(-1);
+			p_state->skin_indices.push_back(-1);
 			continue;
 		}
 
@@ -1523,9 +1523,8 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		} else {
 			skin->set_name(vformat("skin_%s", itos(fbx_skin->typed_id)));
 		}
-
-		skin_indices_out.push_back(p_state->skins.size());
-		skin_out.push_back(skin);
+		p_state->skin_indices.push_back(p_state->skins.size());
+		p_state->skins.push_back(skin);
 	}
 
 	for (const ufbx_bone *fbx_bone : fbx_scene->bones) {
@@ -1546,11 +1545,11 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		}
 	}
 	Error err = asset_parse_skins(
+			p_state->skin_indices.duplicate(),
+			p_state->skins.duplicate(),
+			p_state->nodes.duplicate(),
 			p_state->skin_indices,
 			p_state->skins,
-			p_state->nodes,
-			skin_indices_out,
-			skin_out,
 			joint_mapping);
 	if (err != OK) {
 		return err;
@@ -1944,49 +1943,49 @@ Error FBXDocument::_map_skin_joints_indices_to_skeleton_bone_indices(
 	return OK;
 }
 
-Error FBXDocument::_create_skins(Ref<FBXState> p_state) {
-	for (FBXSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-		Ref<FBXSkin> gltf_skin = p_state->skins.write[skin_i];
+Error FBXDocument::_create_skins(Vector<Ref<FBXSkin>>& skins, Vector<Ref<FBXNode>>& nodes, bool use_named_skin_binds, HashSet<String>& unique_names) {
+    for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
+        Ref<FBXSkin> gltf_skin = skins.write[skin_i];
 
-		Ref<Skin> skin;
-		skin.instantiate();
+        Ref<Skin> skin;
+        skin.instantiate();
 
-		// Some skins don't have IBM's! What absolute monsters!
-		const bool has_ibms = !gltf_skin->inverse_binds.is_empty();
+        // Some skins don't have IBM's! What absolute monsters!
+        const bool has_ibms = !gltf_skin->inverse_binds.is_empty();
 
-		for (int joint_i = 0; joint_i < gltf_skin->joints_original.size(); ++joint_i) {
-			FBXNodeIndex node = gltf_skin->joints_original[joint_i];
-			String bone_name = p_state->nodes[node]->get_name();
+        for (int joint_i = 0; joint_i < gltf_skin->joints_original.size(); ++joint_i) {
+            FBXNodeIndex node = gltf_skin->joints_original[joint_i];
+            String bone_name = nodes[node]->get_name();
 
-			Transform3D xform;
-			if (has_ibms) {
-				xform = gltf_skin->inverse_binds[joint_i];
-			}
+            Transform3D xform;
+            if (has_ibms) {
+                xform = gltf_skin->inverse_binds[joint_i];
+            }
 
-			if (p_state->use_named_skin_binds) {
-				skin->add_named_bind(bone_name, xform);
-			} else {
-				int32_t bone_i = gltf_skin->joint_i_to_bone_i[joint_i];
-				skin->add_bind(bone_i, xform);
-			}
-		}
+            if (use_named_skin_binds) {
+                skin->add_named_bind(bone_name, xform);
+            } else {
+                int32_t bone_i = gltf_skin->joint_i_to_bone_i[joint_i];
+                skin->add_bind(bone_i, xform);
+            }
+        }
 
-		gltf_skin->godot_skin = skin;
-	}
+        gltf_skin->godot_skin = skin;
+    }
 
-	// Purge the duplicates!
-	_remove_duplicate_skins(p_state->skins);
+    // Purge the duplicates!
+    _remove_duplicate_skins(skins);
 
-	// Create unique names now, after removing duplicates
-	for (FBXSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-		Ref<Skin> skin = p_state->skins.write[skin_i]->godot_skin;
-		if (skin->get_name().is_empty()) {
-			// Make a unique name, no gltf node represents this skin
-			skin->set_name(_gen_unique_name(p_state->unique_names, "Skin"));
-		}
-	}
+    // Create unique names now, after removing duplicates
+    for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
+        Ref<Skin> skin = skins.write[skin_i]->godot_skin;
+        if (skin->get_name().is_empty()) {
+            // Make a unique name, no node represents this skin
+            skin->set_name(_gen_unique_name(unique_names, "Skin"));
+        }
+    }
 
-	return OK;
+    return OK;
 }
 
 bool FBXDocument::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
@@ -2849,7 +2848,7 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* CREATE SKINS */
-	err = _create_skins(p_state);
+	err = _create_skins(p_state->skins, p_state->nodes, p_state->use_named_skin_binds, p_state->unique_names);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* PARSE MESHES (we have enough info now) */
