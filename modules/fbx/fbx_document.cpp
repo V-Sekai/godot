@@ -1852,7 +1852,7 @@ Error FBXDocument::_create_skeletons(
 		Vector<Ref<FBXNode>> nodes,
 		HashMap<ObjectID, FBXSkeletonIndex> &skeleton3d_to_fbx_skeleton,
 		Vector<Ref<FBXSkeleton>> &skeletons,
-		HashMap<FBXNodeIndex, Node *> scene_nodes) {
+		HashMap<FBXNodeIndex, Node *> &scene_nodes) {
 	for (FBXSkeletonIndex skel_i = 0; skel_i < skeletons.size(); ++skel_i) {
 		Ref<FBXSkeleton> fbx_skeleton = skeletons.write[skel_i];
 
