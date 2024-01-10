@@ -1291,10 +1291,7 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 		for (const ufbx_baked_element &fbx_baked_element : fbx_baked_anim->elements) {
 			const ufbx_element *fbx_element = fbx_scene->elements[fbx_baked_element.element_id];
 			const GLTFNodeIndex node = fbx_element->typed_id;
-			if (node < 0) {
-				ERR_CONTINUE_MSG(true, "Invalid node index for animation: " + itos(node));
-			}
-
+			ERR_CONTINUE(static_cast<uint32_t>(node) >= animation->get_tracks().size());
 			for (const ufbx_baked_prop &fbx_baked_prop : fbx_baked_element.props) {
 				String prop_name = _as_string(fbx_baked_prop.name);
 
