@@ -795,11 +795,10 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 
 		Ref<GLTFMesh> mesh;
 		mesh.instantiate();
-		mesh->set_blend_weights(blend_weights);
-		TypedArray<int> blend_channels_array = to_array(blend_channels);
 		Dictionary additional_data;
-		additional_data["blend_channels"] = blend_channels_array;
-		mesh->set_additional_data("GODOT_fbx", additional_data);
+		additional_data["blend_channels"] = blend_channels;
+		mesh->set_additional_data("GODOT_mesh_blend_channels", additional_data);
+		mesh->set_blend_weights(blend_weights);
 		mesh->set_mesh(import_mesh);
 
 		p_state->meshes.push_back(mesh);
@@ -1257,12 +1256,10 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 			animation->set_name(_gen_unique_animation_name(p_state, anim_name));
 		}
 
-		// Set time begin and end using GLTFAnimation methods
-
 		Dictionary additional_data;
 		additional_data["time_begin"] = fbx_anim_stack->time_begin;
 		additional_data["time_end"] = fbx_anim_stack->time_end;
-		animation->set_additional_data("GODOT_fbx", additional_data);
+		animation->set_additional_data("GODOT_animation_time_begin_time_end", additional_data);
 		ufbx_bake_opts opts = {};
 		ufbx_error error;
 		ufbx_unique_ptr<ufbx_baked_anim> fbx_baked_anim{ ufbx_bake_anim(fbx_scene, fbx_anim_stack->anim, &opts, &error) };
@@ -1276,7 +1273,6 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 			const GLTFNodeIndex node = fbx_baked_node.typed_id;
 			GLTFAnimation::Track &track = animation->get_tracks()[node];
 
-			// Use GLTFAnimation::Channel to store position, rotation and scale keys
 			for (const ufbx_baked_vec3 &key : fbx_baked_node.translation_keys) {
 				track.position_track.times.push_back(float(key.time));
 				track.position_track.values.push_back(_as_vec3(key.value));
@@ -1292,9 +1288,12 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 				track.scale_track.values.push_back(_as_vec3(key.value));
 			}
 		}
-
 		for (const ufbx_baked_element &fbx_baked_element : fbx_baked_anim->elements) {
 			const ufbx_element *fbx_element = fbx_scene->elements[fbx_baked_element.element_id];
+			const GLTFNodeIndex node = fbx_element->typed_id;
+			if (node >= animation->get_tracks().size()) {
+				ERR_CONTINUE_MSG(true, "Invalid node index for animation: " + itos(node));
+			}
 
 			for (const ufbx_baked_prop &fbx_baked_prop : fbx_baked_element.props) {
 				String prop_name = _as_string(fbx_baked_prop.name);
@@ -1303,17 +1302,17 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 					const ufbx_blend_channel *fbx_blend_channel = ufbx_as_blend_channel(fbx_element);
 
 					int blend_i = fbx_blend_channel->typed_id;
-					// FIXME: Convert
-					// GLTFAnimation::BlendShapeTrack &track = animation-> get_blend_tracks()[blend_i];
+					GLTFAnimation::Channel<real_t> blend_shape_track;
 
-					// for (const ufbx_baked_vec3 &key : fbx_baked_prop.keys) {
-					// 	track.weight_track.times.push_back(float(key.time));
-					// 	track.weight_track.values.push_back(real_t(key.value.x / 100.0));
-					// }
+					for (const ufbx_baked_vec3 &key : fbx_baked_prop.keys) {
+						blend_shape_track.times.push_back(float(key.time));
+						blend_shape_track.values.push_back(real_t(key.value.x / 100.0));
+					}
+
+					animation->get_tracks()[node].weight_tracks.push_back(blend_shape_track);
 				}
 			}
 		}
-
 		p_state->animations.push_back(animation);
 	}
 
@@ -1629,7 +1628,7 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		animation->set_loop_mode(Animation::LOOP_LINEAR);
 	}
 
-	Dictionary additional_data = anim->get_additional_data("GODOT_fbx");
+	Dictionary additional_data = anim->get_additional_data("GODOT_animation_time_begin_time_end");
 
 	double anim_start_offset = p_trimming ? double(additional_data["time_begin"]) : 0.0;
 
@@ -1783,23 +1782,25 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		ERR_CONTINUE(mesh.is_null());
 		ERR_CONTINUE(mesh->get_mesh().is_null());
 		ERR_CONTINUE(mesh->get_mesh()->get_mesh().is_null());
-
-		TypedArray<int> blend_channels = additional_data["blend_channels"];
+		GLTFAnimation::Track track = anim->get_tracks()[node_index];
+		Dictionary additional_data = mesh->get_additional_data("GODOT_mesh_blend_channels");
+		Vector<int> blend_channels = additional_data["blend_channels"];
 		for (int i = 0; i < blend_channels.size(); i++) {
-			GLTFAnimation::Track blend_track = anim->get_tracks()[blend_channels[i]];
-			const String blend_path = String(mesh_instance_node_path) + ":" + String(mesh->get_mesh()->get_blend_shape_name(i));
+			GLTFAnimation::Track tracks = anim->get_tracks()[blend_channels[i]];
+			for (int channel_i = 0; channel_i < tracks.weight_tracks.size(); channel_i++) {
+				GLTFAnimation::Channel<double> weights = tracks.weight_tracks[channel_i];
+				const String blend_path = String(mesh_instance_node_path) + ":" + String(mesh->get_mesh()->get_blend_shape_name(i));
+				const int track_idx = animation->get_track_count();
+				animation->add_track(Animation::TYPE_BLEND_SHAPE);
+				animation->track_set_path(track_idx, blend_path);
+				animation->track_set_imported(track_idx, true); // Helps merging later.
 
-			const int track_idx = animation->get_track_count();
-			animation->add_track(Animation::TYPE_BLEND_SHAPE);
-			animation->track_set_path(track_idx, blend_path);
-			animation->track_set_imported(track_idx, true); // Helps merging later.
-
-			animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
-			GLTFAnimation::Channel<double> weight_track = blend_track.weight_tracks[blend_channels[i]];
-			for (int j = 0; j < weight_track.times.size(); j++) {
-				const float t = weight_track.times[j] - anim_start_offset;
-				const float attribs = weight_track.values[j];
-				animation->blend_shape_track_insert_key(track_idx, t, attribs);
+				animation->track_set_interpolation_type(track_idx, Animation::INTERPOLATION_LINEAR);
+				for (int j = 0; j < weights.times.size(); j++) {
+					const double t = weights.times[j] - anim_start_offset;
+					const double attribs = weights.values[j];
+					animation->blend_shape_track_insert_key(track_idx, t, attribs);
+				}
 			}
 		}
 	}
