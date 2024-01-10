@@ -165,11 +165,7 @@ public:
 		}
 		dict["joint_i_to_name"] = joint_i_to_name_dict;
 
-		if (godot_skin.is_valid()) {
-			dict["godot_skin"] = godot_skin;
-		} else {
-			dict["godot_skin"] = Ref<Skin>();
-		}
+		dict["godot_skin"] = godot_skin;
 		return dict;
 	}
 
@@ -233,18 +229,9 @@ public:
 			StringName value = joint_i_to_name_dict[key];
 			joint_i_to_name[key] = value;
 		}
-
 		if (dict.has("godot_skin")) {
-			Variant godot_skin_res_id = dict["godot_skin"];
-			if (godot_skin_res_id.get_type() != Variant::NIL) {
-				Ref<Skin> res = Ref<Resource>(ObjectDB::get_instance(godot_skin_res_id));
-				ERR_FAIL_COND_V(res.is_null(), ERR_INVALID_DATA);
-				godot_skin = res;
-			} else {
-				godot_skin = Ref<Skin>();
-			}
+			godot_skin = dict["godot_skin"];
 		}
-
 		return OK;
 	}
 };

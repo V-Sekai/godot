@@ -270,6 +270,7 @@ Error SkinTool::_determine_skeletons(
 
 	for (GLTFSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
 		const Ref<GLTFSkin> skin = skins[skin_i];
+		ERR_CONTINUE(skin.is_null());
 
 		HashSet<GLTFNodeIndex> child_visited_set;
 		RBSet<GLTFNodeIndex> all_skin_nodes;
@@ -586,6 +587,7 @@ Error SkinTool::_map_skin_joints_indices_to_skeleton_bone_indices(
 		Vector<Ref<GLTFNode>> &nodes) {
 	for (GLTFSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
 		Ref<GLTFSkin> skin = skins.write[skin_i];
+		ERR_CONTINUE(skin.is_null());
 
 		Ref<GLTFSkeleton> skeleton = skeletons[skin->skeleton];
 
@@ -606,6 +608,7 @@ Error SkinTool::_map_skin_joints_indices_to_skeleton_bone_indices(
 Error SkinTool::_create_skins(Vector<Ref<GLTFSkin>> &skins, Vector<Ref<GLTFNode>> &nodes, bool use_named_skin_binds, HashSet<String> &unique_names) {
 	for (GLTFSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
 		Ref<GLTFSkin> gltf_skin = skins.write[skin_i];
+		ERR_CONTINUE(gltf_skin.is_null());
 
 		Ref<Skin> skin;
 		skin.instantiate();
@@ -638,7 +641,9 @@ Error SkinTool::_create_skins(Vector<Ref<GLTFSkin>> &skins, Vector<Ref<GLTFNode>
 
 	// Create unique names now, after removing duplicates
 	for (GLTFSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
+		ERR_CONTINUE(skins.get(skin_i).is_null());
 		Ref<Skin> skin = skins.write[skin_i]->godot_skin;
+		ERR_CONTINUE(skin.is_null());
 		if (skin->get_name().is_empty()) {
 			// Make a unique name, no node represents this skin
 			skin->set_name(FBXDocument::_gen_unique_name(unique_names, "Skin"));

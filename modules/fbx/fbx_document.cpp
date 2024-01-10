@@ -31,13 +31,11 @@
 #include "fbx_document.h"
 
 #include "core/crypto/crypto_core.h"
-#include "core/error/error_macros.h"
 #include "core/io/config_file.h"
 #include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "core/io/image.h"
 #include "core/math/color.h"
-#include "core/variant/dictionary.h"
 #include "fbx_defines.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
@@ -1816,33 +1814,43 @@ void FBXDocument::_process_mesh_instances(Ref<FBXState> p_state, Node *p_scene_r
 	for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
 		Ref<GLTFNode> node = p_state->nodes[node_i];
 
-		if (node->skin >= 0 && node->mesh >= 0) {
-			const GLTFSkinIndex skin_i = node->skin;
-
-			ImporterMeshInstance3D *mi = nullptr;
-			HashMap<GLTFNodeIndex, ImporterMeshInstance3D *>::Iterator mi_element = p_state->scene_mesh_instances.find(node_i);
-			if (mi_element) {
-				mi = mi_element->value;
-			} else {
-				HashMap<GLTFNodeIndex, Node *>::Iterator si_element = p_state->scene_nodes.find(node_i);
-				ERR_CONTINUE_MSG(!si_element, vformat("Unable to find node %d", node_i));
-				mi = Object::cast_to<ImporterMeshInstance3D>(si_element->value);
-				ERR_CONTINUE_MSG(mi == nullptr, vformat("Unable to cast node %d of type %s to ImporterMeshInstance3D", node_i, si_element->value->get_class_name()));
-			}
-
-			const GLTFSkeletonIndex skel_i = p_state->skins.write[node->skin]->skeleton;
-			Ref<GLTFSkeleton> fbx_skeleton = p_state->skeletons.write[skel_i];
-			Skeleton3D *skeleton = fbx_skeleton->godot_skeleton;
-			ERR_CONTINUE_MSG(skeleton == nullptr, vformat("Unable to find Skeleton for node %d skin %d", node_i, skin_i));
-
-			mi->get_parent()->remove_child(mi);
-			skeleton->add_child(mi, true);
-			mi->set_owner(skeleton->get_owner());
-
-			mi->set_skin(p_state->skins.write[skin_i]->godot_skin);
-			mi->set_skeleton_path(mi->get_path_to(skeleton));
-			mi->set_transform(Transform3D());
+		if (node.is_null() || !(node->skin >= 0 && node->mesh >= 0)) {
+			continue;
 		}
+
+		const GLTFSkinIndex skin_i = node->skin;
+
+		ImporterMeshInstance3D *mi = nullptr;
+		HashMap<GLTFNodeIndex, ImporterMeshInstance3D *>::Iterator mi_element = p_state->scene_mesh_instances.find(node_i);
+		if (!mi_element) {
+			HashMap<GLTFNodeIndex, Node *>::Iterator si_element = p_state->scene_nodes.find(node_i);
+			ERR_CONTINUE_MSG(!si_element, vformat("Unable to find node %d", node_i));
+			mi = Object::cast_to<ImporterMeshInstance3D>(si_element->value);
+			ERR_CONTINUE_MSG(mi == nullptr, vformat("Unable to cast node %d of type %s to ImporterMeshInstance3D", node_i, si_element->value->get_class_name()));
+		} else {
+			mi = mi_element->value;
+		}
+
+		bool is_skin_valid = node->skin >= 0;
+		bool is_skin_accessible = is_skin_valid && node->skin < p_state->skins.size();
+		bool is_valid = is_skin_accessible && p_state->skins.write[node->skin]->skeleton >= 0;
+
+		if (!is_valid) {
+			continue;
+		}
+
+		const GLTFSkeletonIndex skel_i = p_state->skins.write[node->skin]->skeleton;
+		Ref<GLTFSkeleton> fbx_skeleton = p_state->skeletons.write[skel_i];
+		Skeleton3D *skeleton = fbx_skeleton->godot_skeleton;
+		ERR_CONTINUE_MSG(skeleton == nullptr, vformat("Unable to find Skeleton for node %d skin %d", node_i, skin_i));
+
+		mi->get_parent()->remove_child(mi);
+		skeleton->add_child(mi, true);
+		mi->set_owner(skeleton->get_owner());
+
+		mi->set_skin(p_state->skins.write[skin_i]->godot_skin);
+		mi->set_skeleton_path(mi->get_path_to(skeleton));
+		mi->set_transform(Transform3D());
 	}
 }
 
@@ -2205,19 +2213,19 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 	}
 	TypedArray<Dictionary> skins;
 	for (Ref<GLTFSkin> skin : p_state->skins) {
-		if (skin.is_null()) {
-			skin.instantiate();
+		Dictionary new_skin_dictionary;
+		if (skin.is_valid()) {
+			new_skin_dictionary = skin->to_dictionary();
 		}
-		Dictionary new_skin_dictionary = skin->to_dictionary();
 		skins.push_back(new_skin_dictionary);
 	}
 
 	TypedArray<Dictionary> nodes;
 	for (Ref<GLTFNode> node : p_state->nodes) {
-		if (node.is_null()) {
-			node.instantiate();
+		Dictionary new_node_dictionary;
+		if (node.is_valid()) {
+			new_node_dictionary = node->to_dictionary();
 		}
-		Dictionary new_node_dictionary = node->to_dictionary();
 		nodes.push_back(new_node_dictionary);
 	}
 	Error err = SkinTool::asset_parse_skins(
@@ -2238,14 +2246,12 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		Error err = new_skin->from_dictionary(skin_dictionary);
 		if (err == OK) {
 			p_state->skins.push_back(new_skin);
-			continue;
-		} else {
-			p_state->skins.push_back(Ref<GLTFSkin>());
 		}
 	}
 
 	for (int i = 0; i < p_state->skins.size(); ++i) {
 		Ref<GLTFSkin> skin = p_state->skins.write[i];
+		ERR_FAIL_COND_V(skin.is_null(), ERR_PARSE_ERROR);
 		// Expand and verify the skin
 		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
 		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
