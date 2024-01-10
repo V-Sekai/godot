@@ -47,6 +47,7 @@ bool SkinTool::_capture_nodes_in_skin(const Vector<Ref<FBXNode>> &nodes, Ref<FBX
 
 	return false;
 }
+
 void SkinTool::_capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	DisjointSet<SkinNodeIndex> disjoint_set;
 
@@ -126,6 +127,7 @@ void SkinTool::_capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r_nodes
 
 	} while (!all_same);
 }
+
 Error SkinTool::_expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	_capture_nodes_for_multirooted_skin(r_nodes, p_skin);
 
@@ -170,6 +172,7 @@ Error SkinTool::_expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin)
 
 	return OK;
 }
+
 Error SkinTool::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	// This may seem duplicated from expand_skins, but this is really a sanity check! (so it kinda is)
 	// In case additional interpolating logic is added to the skins, this will help ensure that you
@@ -234,6 +237,7 @@ Error SkinTool::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin)
 
 	return OK;
 }
+
 void SkinTool::_recurse_children(
 		Vector<Ref<FBXNode>> &nodes,
 		const SkinNodeIndex p_node_index,
@@ -254,6 +258,7 @@ void SkinTool::_recurse_children(
 		p_all_skin_nodes.insert(p_node_index);
 	}
 }
+
 Error SkinTool::_determine_skeletons(
 		Vector<Ref<FBXSkin>> &skins,
 		Vector<Ref<FBXNode>> &nodes,
@@ -393,6 +398,7 @@ Error SkinTool::_determine_skeletons(
 
 	return OK;
 }
+
 Error SkinTool::_reparent_non_joint_skeleton_subtrees(
 		Vector<Ref<FBXNode>> &nodes,
 		Ref<FBXSkeleton> p_skeleton,
@@ -439,6 +445,7 @@ Error SkinTool::_reparent_non_joint_skeleton_subtrees(
 
 	return OK;
 }
+
 Error SkinTool::_determine_skeleton_roots(
 		Vector<Ref<FBXNode>> &nodes,
 		Vector<Ref<FBXSkeleton>> &skeletons,
@@ -494,6 +501,7 @@ Error SkinTool::_determine_skeleton_roots(
 
 	return OK;
 }
+
 Error SkinTool::_create_skeletons(
 		HashSet<String> &unique_names,
 		Vector<Ref<FBXSkin>> &skins,
@@ -572,6 +580,7 @@ Error SkinTool::_create_skeletons(
 
 	return OK;
 }
+
 Error SkinTool::_map_skin_joints_indices_to_skeleton_bone_indices(
 		Vector<Ref<FBXSkin>> &skins,
 		Vector<Ref<FBXSkeleton>> &skeletons,
@@ -594,6 +603,7 @@ Error SkinTool::_map_skin_joints_indices_to_skeleton_bone_indices(
 
 	return OK;
 }
+
 Error SkinTool::_create_skins(Vector<Ref<FBXSkin>> &skins, Vector<Ref<FBXNode>> &nodes, bool use_named_skin_binds, HashSet<String> &unique_names) {
 	for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
 		Ref<FBXSkin> gltf_skin = skins.write[skin_i];
@@ -638,6 +648,7 @@ Error SkinTool::_create_skins(Vector<Ref<FBXSkin>> &skins, Vector<Ref<FBXNode>> 
 
 	return OK;
 }
+
 bool SkinTool::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
 	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
 		return false;
@@ -661,6 +672,7 @@ bool SkinTool::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_
 
 	return true;
 }
+
 void SkinTool::_remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins) {
 	for (int i = 0; i < r_skins.size(); ++i) {
 		for (int j = i + 1; j < r_skins.size(); ++j) {
@@ -674,6 +686,7 @@ void SkinTool::_remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins) {
 		}
 	}
 }
+
 String SkinTool::_gen_unique_bone_name(HashSet<String> unique_names, const String &p_name) {
 	String s_name = _sanitize_bone_name(p_name);
 	if (s_name.is_empty()) {
@@ -697,6 +710,7 @@ String SkinTool::_gen_unique_bone_name(HashSet<String> unique_names, const Strin
 
 	return u_name;
 }
+
 Error SkinTool::asset_parse_skins(
 		const Vector<SkinNodeIndex> &input_skin_indices,
 		const Vector<Ref<FBXSkin>> &input_skins,
@@ -724,6 +738,7 @@ Error SkinTool::asset_parse_skins(
 
 	return OK;
 }
+
 String SkinTool::_sanitize_bone_name(const String &p_name) {
 	String bone_name = p_name;
 	bone_name = bone_name.replace(":", "_");
