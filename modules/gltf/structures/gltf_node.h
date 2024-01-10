@@ -101,82 +101,8 @@ public:
 	Variant get_additional_data(const StringName &p_extension_name);
 	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
 
-	Dictionary to_dictionary() const {
-		Dictionary dict;
-		dict["parent"] = parent;
-		dict["height"] = height;
-		dict["xform"] = xform;
-		dict["mesh"] = mesh;
-		dict["camera"] = camera;
-		dict["light"] = light;
-		dict["skin"] = skin;
-		dict["skeleton"] = skeleton;
-		dict["joint"] = joint;
-		dict["position"] = position;
-		dict["rotation"] = rotation;
-		dict["scale"] = scale;
-
-		Array children_array;
-		for (int i = 0; i < children.size(); ++i) {
-			children_array.push_back(children[i]);
-		}
-		dict["children"] = children_array;
-
-		dict["additional_data"] = additional_data;
-
-		return dict;
-	}
-	Error from_dictionary(const Dictionary &dict) {
-		ERR_FAIL_COND_V(!dict.has("parent"), ERR_INVALID_DATA);
-		parent = dict["parent"];
-
-		ERR_FAIL_COND_V(!dict.has("height"), ERR_INVALID_DATA);
-		height = dict["height"];
-
-		ERR_FAIL_COND_V(!dict.has("xform"), ERR_INVALID_DATA);
-		xform = dict["xform"];
-
-		ERR_FAIL_COND_V(!dict.has("mesh"), ERR_INVALID_DATA);
-		mesh = dict["mesh"];
-
-		ERR_FAIL_COND_V(!dict.has("camera"), ERR_INVALID_DATA);
-		camera = dict["camera"];
-
-		ERR_FAIL_COND_V(!dict.has("light"), ERR_INVALID_DATA);
-		light = dict["light"];
-
-		ERR_FAIL_COND_V(!dict.has("skin"), ERR_INVALID_DATA);
-		skin = dict["skin"];
-
-		ERR_FAIL_COND_V(!dict.has("skeleton"), ERR_INVALID_DATA);
-		skeleton = dict["skeleton"];
-
-		ERR_FAIL_COND_V(!dict.has("joint"), ERR_INVALID_DATA);
-		joint = dict["joint"];
-
-		ERR_FAIL_COND_V(!dict.has("position"), ERR_INVALID_DATA);
-		position = dict["position"];
-
-		ERR_FAIL_COND_V(!dict.has("rotation"), ERR_INVALID_DATA);
-		rotation = dict["rotation"];
-
-		ERR_FAIL_COND_V(!dict.has("scale"), ERR_INVALID_DATA);
-		scale = dict["scale"];
-
-		if (dict.has("children")) {
-			Array children_array = dict["children"];
-			children.clear();
-			for (int i = 0; i < children_array.size(); ++i) {
-				children.push_back(children_array[i]);
-			}
-		}
-
-		if (dict.has("additional_data")) {
-			additional_data = dict["additional_data"];
-		}
-
-		return OK;
-	}
+	Dictionary to_dictionary() const;
+	Error from_dictionary(const Dictionary &dict);
 };
 
 #endif // GLTF_NODE_H
