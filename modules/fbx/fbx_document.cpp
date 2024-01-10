@@ -31,11 +31,13 @@
 #include "fbx_document.h"
 
 #include "core/crypto/crypto_core.h"
+#include "core/error/error_macros.h"
 #include "core/io/config_file.h"
 #include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "core/io/image.h"
 #include "core/math/color.h"
+#include "core/variant/dictionary.h"
 #include "fbx_defines.h"
 #include "modules/gltf/gltf_defines.h"
 #include "scene/3d/bone_attachment_3d.h"
@@ -2202,15 +2204,45 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 			}
 		}
 	}
+	TypedArray<Dictionary> skins;
+	for (Ref<FBXSkin> skin : p_state->skins) {
+		if (skin.is_null()) {
+			skin.instantiate();
+		}
+		Dictionary new_skin_dictionary = skin->to_dictionary();
+		skins.push_back(new_skin_dictionary);
+	}
+
+	TypedArray<Dictionary> nodes;
+	for (Ref<FBXNode> node : p_state->nodes) {
+		if (node.is_null()) {
+			node.instantiate();
+		}
+		Dictionary new_node_dictionary = node->to_dictionary();
+		nodes.push_back(new_node_dictionary);
+	}
 	Error err = SkinTool::asset_parse_skins(
 			p_state->skin_indices.duplicate(),
-			p_state->skins.duplicate(),
-			p_state->nodes.duplicate(),
+			skins.duplicate(),
+			nodes.duplicate(),
 			p_state->skin_indices,
-			p_state->skins,
+			skins,
 			joint_mapping);
 	if (err != OK) {
 		return err;
+	}
+	p_state->skins.clear();
+	for (int32_t skin_i = 0; skin_i < skins.size(); skin_i++) {
+		Dictionary skin_dictionary = skins[skin_i];
+		Ref<FBXSkin> new_skin;
+		new_skin.instantiate();
+		Error err = new_skin->from_dictionary(skin_dictionary);
+		if (err == OK) {
+			p_state->skins.push_back(new_skin);
+			continue;
+		} else {
+			p_state->skins.push_back(Ref<FBXSkin>());
+		}
 	}
 
 	for (int i = 0; i < p_state->skins.size(); ++i) {

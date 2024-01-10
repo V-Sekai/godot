@@ -34,6 +34,7 @@
 #include "../fbx_defines.h"
 
 #include "core/io/resource.h"
+#include "core/variant/dictionary.h"
 #include "scene/resources/skin.h"
 
 template <typename T>
@@ -112,6 +113,137 @@ public:
 
 	Ref<Skin> get_godot_skin();
 	void set_godot_skin(Ref<Skin> p_godot_skin);
+
+	Dictionary to_dictionary() {
+		Dictionary dict;
+		dict["skin_root"] = skin_root;
+
+		Array joints_original_array;
+		for (int i = 0; i < joints_original.size(); ++i) {
+			joints_original_array.push_back(joints_original[i]);
+		}
+		dict["joints_original"] = joints_original_array;
+
+		Array inverse_binds_array;
+		for (int i = 0; i < inverse_binds.size(); ++i) {
+			inverse_binds_array.push_back(inverse_binds[i]);
+		}
+		dict["inverse_binds"] = inverse_binds_array;
+
+		Array joints_array;
+		for (int i = 0; i < joints.size(); ++i) {
+			joints_array.push_back(joints[i]);
+		}
+		dict["joints"] = joints_array;
+
+		Array non_joints_array;
+		for (int i = 0; i < non_joints.size(); ++i) {
+			non_joints_array.push_back(non_joints[i]);
+		}
+		dict["non_joints"] = non_joints_array;
+
+		Array roots_array;
+		for (int i = 0; i < roots.size(); ++i) {
+			roots_array.push_back(roots[i]);
+		}
+		dict["roots"] = roots_array;
+
+		dict["skeleton"] = skeleton;
+
+		Dictionary joint_i_to_bone_i_dict;
+		for (HashMap<int, int>::Iterator E = joint_i_to_bone_i.begin(); E; ++E) {
+			joint_i_to_bone_i_dict[E->key] = E->value;
+		}
+		dict["joint_i_to_bone_i"] = joint_i_to_bone_i_dict;
+
+		Dictionary joint_i_to_name_dict;
+		for (HashMap<int, StringName>::Iterator E = joint_i_to_name.begin(); E; ++E) {
+			joint_i_to_name_dict[E->key] = E->value;
+		}
+		dict["joint_i_to_name"] = joint_i_to_name_dict;
+
+		if (godot_skin.is_valid()) {
+			dict["godot_skin"] = godot_skin;
+		} else {
+			dict["godot_skin"] = Ref<Skin>();
+		}
+		return dict;
+	}
+
+	Error from_dictionary(const Dictionary &dict) {
+		ERR_FAIL_COND_V(!dict.has("skin_root"), ERR_INVALID_DATA);
+		skin_root = dict["skin_root"];
+
+		ERR_FAIL_COND_V(!dict.has("joints_original"), ERR_INVALID_DATA);
+		Array joints_original_array = dict["joints_original"];
+		joints_original.clear();
+		for (int i = 0; i < joints_original_array.size(); ++i) {
+			joints_original.push_back(joints_original_array[i]);
+		}
+
+		ERR_FAIL_COND_V(!dict.has("inverse_binds"), ERR_INVALID_DATA);
+		Array inverse_binds_array = dict["inverse_binds"];
+		inverse_binds.clear();
+		for (int i = 0; i < inverse_binds_array.size(); ++i) {
+			ERR_FAIL_COND_V(inverse_binds_array[i].get_type() != Variant::TRANSFORM3D, ERR_INVALID_DATA);
+			inverse_binds.push_back(inverse_binds_array[i]);
+		}
+
+		ERR_FAIL_COND_V(!dict.has("joints"), ERR_INVALID_DATA);
+		Array joints_array = dict["joints"];
+		joints.clear();
+		for (int i = 0; i < joints_array.size(); ++i) {
+			joints.push_back(joints_array[i]);
+		}
+
+		ERR_FAIL_COND_V(!dict.has("non_joints"), ERR_INVALID_DATA);
+		Array non_joints_array = dict["non_joints"];
+		non_joints.clear();
+		for (int i = 0; i < non_joints_array.size(); ++i) {
+			non_joints.push_back(non_joints_array[i]);
+		}
+
+		ERR_FAIL_COND_V(!dict.has("roots"), ERR_INVALID_DATA);
+		Array roots_array = dict["roots"];
+		roots.clear();
+		for (int i = 0; i < roots_array.size(); ++i) {
+			roots.push_back(roots_array[i]);
+		}
+
+		ERR_FAIL_COND_V(!dict.has("skeleton"), ERR_INVALID_DATA);
+		skeleton = dict["skeleton"];
+
+		ERR_FAIL_COND_V(!dict.has("joint_i_to_bone_i"), ERR_INVALID_DATA);
+		Dictionary joint_i_to_bone_i_dict = dict["joint_i_to_bone_i"];
+		joint_i_to_bone_i.clear();
+		for (int i = 0; i < joint_i_to_bone_i_dict.keys().size(); ++i) {
+			int key = joint_i_to_bone_i_dict.keys()[i];
+			int value = joint_i_to_bone_i_dict[key];
+			joint_i_to_bone_i[key] = value;
+		}
+
+		ERR_FAIL_COND_V(!dict.has("joint_i_to_name"), ERR_INVALID_DATA);
+		Dictionary joint_i_to_name_dict = dict["joint_i_to_name"];
+		joint_i_to_name.clear();
+		for (int i = 0; i < joint_i_to_name_dict.keys().size(); ++i) {
+			int key = joint_i_to_name_dict.keys()[i];
+			StringName value = joint_i_to_name_dict[key];
+			joint_i_to_name[key] = value;
+		}
+
+		if (dict.has("godot_skin")) {
+			Variant godot_skin_res_id = dict["godot_skin"];
+			if (godot_skin_res_id.get_type() != Variant::NIL) {
+				Ref<Skin> res = Ref<Resource>(ObjectDB::get_instance(godot_skin_res_id));
+				ERR_FAIL_COND_V(res.is_null(), ERR_INVALID_DATA);
+				godot_skin = res;
+			} else {
+				godot_skin = Ref<Skin>();
+			}
+		}
+
+		return OK;
+	}
 };
 
 #endif // FBX_SKIN_H

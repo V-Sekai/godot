@@ -99,6 +99,9 @@ public:
 
 	Variant get_additional_data(const StringName &p_extension_name);
 	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
+
+	Dictionary to_dictionary() const;
+	Error from_dictionary(const Dictionary &dict);
 };
 
 #endif // FBX_NODE_H

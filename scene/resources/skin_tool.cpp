@@ -1,11 +1,12 @@
 #include "skin_tool.h"
 
+#include "core/variant/dictionary.h"
 #include "modules/fbx/fbx_defines.h"
-#include "scene/3d/skeleton_3d.h"
-#include "modules/fbx/structures/fbx_skin.h"
+#include "modules/fbx/fbx_document.h"
 #include "modules/fbx/structures/fbx_node.h"
 #include "modules/fbx/structures/fbx_skeleton.h"
-#include "modules/fbx/fbx_document.h"
+#include "modules/fbx/structures/fbx_skin.h"
+#include "scene/3d/skeleton_3d.h"
 
 SkinNodeIndex SkinTool::_find_highest_node(Vector<Ref<FBXNode>> &r_nodes, const Vector<FBXNodeIndex> &p_subset) {
 	int highest = -1;
@@ -712,12 +713,13 @@ String SkinTool::_gen_unique_bone_name(HashSet<String> unique_names, const Strin
 }
 
 Error SkinTool::asset_parse_skins(
-		const Vector<SkinNodeIndex> &input_skin_indices,
-		const Vector<Ref<FBXSkin>> &input_skins,
-		const Vector<Ref<FBXNode>> &input_nodes,
-		Vector<SkinNodeIndex> &output_skin_indices,
-		Vector<Ref<FBXSkin>> &output_skins,
-		HashMap<FBXNodeIndex, bool> &joint_mapping) {
+		const Vector<SkinNodeIndex> &input_skin_indices, // Input indices of the skins
+		const TypedArray<Dictionary> &input_skins, // Input skins as an array of dictionaries
+		const TypedArray<Dictionary> &input_nodes, // Input nodes as an array of dictionaries
+		Vector<SkinNodeIndex> &output_skin_indices, // Output indices that will hold the valid skin indices
+		TypedArray<Dictionary> &output_skins, // Output skins that will hold the corresponding skins for the valid indices
+		HashMap<FBXNodeIndex, bool> &joint_mapping) { // Mapping of joint indices to a boolean indicating whether they exist or not
+
 	output_skin_indices.clear();
 	output_skins.clear();
 	joint_mapping.clear();

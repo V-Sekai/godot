@@ -8,6 +8,8 @@
 
 #include "core/math/disjoint_set.h"
 
+#include "core/variant/dictionary.h"
+#include "core/variant/typed_array.h"
 #include "modules/fbx/fbx_defines.h"
 #include "scene/main/node.h"
 #include "scene/resources/skin.h"
@@ -59,9 +61,9 @@ public:
 	static void _remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins);
 	static Error asset_parse_skins(
 			const Vector<SkinNodeIndex> &input_skin_indices,
-			const Vector<Ref<FBXSkin>> &input_skins,
-			const Vector<Ref<FBXNode>> &input_nodes,
+			const TypedArray<Dictionary> &input_skins,
+			const TypedArray<Dictionary> &input_nodes,
 			Vector<SkinNodeIndex> &output_skin_indices,
-			Vector<Ref<FBXSkin>> &output_skins,
+			TypedArray<Dictionary> &output_skins,
 			HashMap<FBXNodeIndex, bool> &joint_mapping);
 };
