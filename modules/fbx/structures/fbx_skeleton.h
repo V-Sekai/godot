@@ -38,6 +38,7 @@
 class FBXSkeleton : public Resource {
 	GDCLASS(FBXSkeleton, Resource);
 	friend class FBXDocument;
+	friend class FBXSkinUtility;
 
 private:
 	// The *synthesized* skeletons joints

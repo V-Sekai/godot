@@ -38,6 +38,7 @@
 class FBXNode : public Resource {
 	GDCLASS(FBXNode, Resource);
 	friend class FBXDocument;
+	friend class FBXSkinUtility;
 
 private:
 	// matrices need to be transformed to this

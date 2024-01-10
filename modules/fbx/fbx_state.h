@@ -45,6 +45,8 @@
 class FBXState : public Resource {
 	GDCLASS(FBXState, Resource);
 	friend class FBXDocument;
+	friend class FBXSkinUtility;
+	friend class FBXSkin;
 
 	// Smart pointer that holds the loaded scene.
 	ufbx_unique_ptr<ufbx_scene> scene;

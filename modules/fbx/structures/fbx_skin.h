@@ -42,6 +42,8 @@ class TypedArray;
 class FBXSkin : public Resource {
 	GDCLASS(FBXSkin, Resource);
 	friend class FBXDocument;
+	friend class FBXSkinUtility;
+	friend class FBXNode;
 
 private:
 	// The "skeleton" property defined in the gltf spec. -1 = Scene Root
