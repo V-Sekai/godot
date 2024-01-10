@@ -38,7 +38,5 @@ using FBXCameraIndex = int;
 using FBXLightIndex = int;
 using FBXImageIndex = int;
 using FBXMaterialIndex = int;
-using FBXMeshIndex = int;
-using FBXTextureIndex = int;
 
 #endif // FBX_DEFINES_H

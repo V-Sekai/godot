@@ -51,12 +51,12 @@ void initialize_fbx_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(FBXAnimation);
 		GDREGISTER_CLASS(FBXDocument);
 		GDREGISTER_CLASS(FBXDocumentExtension);
-		GDREGISTER_CLASS(FBXMesh);
+		GDREGISTER_CLASS(GLTFMesh);
 		GDREGISTER_CLASS(GLTFNode);
 		GDREGISTER_CLASS(FBXCamera);
 		GDREGISTER_CLASS(FBXLight);
 		GDREGISTER_CLASS(FBXState);
-		GDREGISTER_CLASS(FBXTexture);
+		GDREGISTER_CLASS(GLTFTexture);
 	}
 
 #ifdef TOOLS_ENABLED

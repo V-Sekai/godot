@@ -33,15 +33,15 @@
 
 #include "modules/fbx/fbx_defines.h"
 #include "modules/gltf/gltf_defines.h"
+#include "modules/gltf/structures/gltf_mesh.h"
 #include "modules/gltf/structures/gltf_node.h"
 #include "modules/gltf/structures/gltf_skeleton.h"
 #include "modules/gltf/structures/gltf_skin.h"
+#include "modules/gltf/structures/gltf_texture.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "structures/fbx_animation.h"
 #include "structures/fbx_camera.h"
 #include "structures/fbx_light.h"
-#include "structures/fbx_mesh.h"
-#include "structures/fbx_texture.h"
 
 #include "thirdparty/ufbx/ufbx.h"
 
@@ -70,7 +70,7 @@ class FBXState : public Resource {
 	Vector<Ref<GLTFNode>> nodes;
 	Vector<Vector<uint8_t>> buffers;
 
-	Vector<Ref<FBXMesh>> meshes; // Meshes are loaded directly, no reason not to.
+	Vector<Ref<GLTFMesh>> meshes; // Meshes are loaded directly, no reason not to.
 
 	Vector<AnimationPlayer *> animation_players;
 	HashMap<Ref<Material>, FBXMaterialIndex> material_cache;
@@ -78,14 +78,14 @@ class FBXState : public Resource {
 
 	String scene_name;
 	Vector<int> root_nodes;
-	Vector<Ref<FBXTexture>> textures;
+	Vector<Ref<GLTFTexture>> textures;
 	Vector<Ref<Texture2D>> images;
 	Vector<String> extensions_used;
 	Vector<String> extensions_required;
 	Vector<Ref<Image>> source_images;
 
 	HashMap<uint64_t, Image::AlphaMode> alpha_mode_cache;
-	HashMap<Pair<uint64_t, uint64_t>, FBXTextureIndex, PairHash<uint64_t, uint64_t>> albedo_transparency_textures;
+	HashMap<Pair<uint64_t, uint64_t>, GLTFTextureIndex, PairHash<uint64_t, uint64_t>> albedo_transparency_textures;
 
 	Vector<Ref<GLTFSkin>> skins;
 	Vector<GLTFSkinIndex> skin_indices;
@@ -149,8 +149,8 @@ public:
 	TypedArray<PackedByteArray> get_buffers();
 	void set_buffers(TypedArray<PackedByteArray> p_buffers);
 
-	TypedArray<FBXMesh> get_meshes();
-	void set_meshes(TypedArray<FBXMesh> p_meshes);
+	TypedArray<GLTFMesh> get_meshes();
+	void set_meshes(TypedArray<GLTFMesh> p_meshes);
 
 	TypedArray<Material> get_materials();
 	void set_materials(TypedArray<Material> p_materials);
@@ -167,8 +167,8 @@ public:
 	PackedInt32Array get_root_nodes();
 	void set_root_nodes(PackedInt32Array p_root_nodes);
 
-	TypedArray<FBXTexture> get_textures();
-	void set_textures(TypedArray<FBXTexture> p_textures);
+	TypedArray<GLTFTexture> get_textures();
+	void set_textures(TypedArray<GLTFTexture> p_textures);
 
 	TypedArray<Texture2D> get_images();
 	void set_images(TypedArray<Texture2D> p_images);

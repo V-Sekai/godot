@@ -89,7 +89,7 @@ private:
 	String _sanitize_animation_name(const String &p_name);
 	String _gen_unique_animation_name(Ref<FBXState> p_state, const String &p_name);
 	Ref<Texture2D> _get_texture(Ref<FBXState> p_state,
-			const FBXTextureIndex p_texture, int p_texture_type);
+			const GLTFTextureIndex p_texture, int p_texture_type);
 	Error _parse_meshes(Ref<FBXState> p_state);
 	Ref<Image> _parse_image_bytes_into_image(Ref<FBXState> p_state, const Vector<uint8_t> &p_bytes, const String &p_filename, int p_index);
 	FBXImageIndex _parse_image_save_image(Ref<FBXState> p_state, const Vector<uint8_t> &p_bytes, const String &p_file_extension, int p_index, Ref<Image> p_image);

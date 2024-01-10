@@ -126,11 +126,11 @@ void GLTFSkin::set_skeleton(int p_skeleton) {
 }
 
 Dictionary GLTFSkin::get_joint_i_to_bone_i() {
-	return to_dict(joint_i_to_bone_i);
+	return to_dictionary(joint_i_to_bone_i);
 }
 
 void GLTFSkin::set_joint_i_to_bone_i(Dictionary p_joint_i_to_bone_i) {
-	set_from_dict(joint_i_to_bone_i, p_joint_i_to_bone_i);
+	set_from_dictionary(joint_i_to_bone_i, p_joint_i_to_bone_i);
 }
 
 Dictionary GLTFSkin::get_joint_i_to_name() {

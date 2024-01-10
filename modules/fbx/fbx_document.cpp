@@ -36,6 +36,7 @@
 #include "core/io/file_access_memory.h"
 #include "core/io/image.h"
 #include "core/math/color.h"
+#include "core/templates/template_convert.h"
 #include "fbx_defines.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
@@ -56,11 +57,6 @@
 #define FBX_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
 
 #include <ufbx.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <cstdint>
-#include <limits>
 
 static size_t _file_access_read_fn(void *user, void *data, size_t size) {
 	FileAccess *file = static_cast<FileAccess *>(user);
@@ -796,10 +792,11 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 			}
 		}
 
-		Ref<FBXMesh> mesh;
+		Ref<GLTFMesh> mesh;
 		mesh.instantiate();
 		mesh->set_blend_weights(blend_weights);
-		mesh->set_blend_channels(blend_channels);
+		TypedArray<int> blend_channels_array = to_array(blend_channels);
+		mesh->set_additional_data("GODOT_blend_channels", blend_channels_array);
 		mesh->set_mesh(import_mesh);
 
 		p_state->meshes.push_back(mesh);
@@ -987,7 +984,7 @@ Error FBXDocument::_parse_images(Ref<FBXState> p_state, const String &p_base_pat
 
 	// Create a texture for each file texture.
 	for (int texture_file_i = 0; texture_file_i < static_cast<int>(fbx_scene->texture_files.count); texture_file_i++) {
-		Ref<FBXTexture> texture;
+		Ref<GLTFTexture> texture;
 		texture.instantiate();
 		texture->set_src_image(FBXImageIndex(texture_file_i));
 		p_state->textures.push_back(texture);
@@ -998,7 +995,7 @@ Error FBXDocument::_parse_images(Ref<FBXState> p_state, const String &p_base_pat
 	return OK;
 }
 
-Ref<Texture2D> FBXDocument::_get_texture(Ref<FBXState> p_state, const FBXTextureIndex p_texture, int p_texture_types) {
+Ref<Texture2D> FBXDocument::_get_texture(Ref<FBXState> p_state, const GLTFTextureIndex p_texture, int p_texture_types) {
 	ERR_FAIL_INDEX_V(p_texture, p_state->textures.size(), Ref<Texture2D>());
 	const FBXImageIndex image = p_state->textures[p_texture]->get_src_image();
 	ERR_FAIL_INDEX_V(image, p_state->images.size(), Ref<Texture2D>());
@@ -1050,7 +1047,7 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 			bool wrap = base_texture->wrap_u == UFBX_WRAP_REPEAT && base_texture->wrap_v == UFBX_WRAP_REPEAT;
 			material->set_flag(BaseMaterial3D::FLAG_USE_TEXTURE_REPEAT, wrap);
 
-			Ref<Texture2D> albedo_texture = _get_texture(p_state, FBXTextureIndex(base_texture->file_index), TEXTURE_TYPE_GENERIC);
+			Ref<Texture2D> albedo_texture = _get_texture(p_state, GLTFTextureIndex(base_texture->file_index), TEXTURE_TYPE_GENERIC);
 
 			// Search for transparency map.
 			Ref<Texture2D> transparency_texture;
@@ -1061,7 +1058,7 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 			for (const ufbx_texture *transparency_source : transparency_sources) {
 				const ufbx_texture *fbx_transparency_texture = _get_file_texture(transparency_source);
 				if (fbx_transparency_texture) {
-					transparency_texture = _get_texture(p_state, FBXTextureIndex(fbx_transparency_texture->file_index), TEXTURE_TYPE_GENERIC);
+					transparency_texture = _get_texture(p_state, GLTFTextureIndex(fbx_transparency_texture->file_index), TEXTURE_TYPE_GENERIC);
 					if (transparency_texture.is_valid()) {
 						break;
 					}
@@ -1071,7 +1068,7 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 			// Multiply the albedo alpha with the transparency texture if necessary.
 			if (albedo_texture.is_valid() && transparency_texture.is_valid() && albedo_texture != transparency_texture) {
 				Pair<uint64_t, uint64_t> key = { albedo_texture->get_rid().get_id(), transparency_texture->get_rid().get_id() };
-				FBXTextureIndex *texture_index_ptr = p_state->albedo_transparency_textures.getptr(key);
+				GLTFTextureIndex *texture_index_ptr = p_state->albedo_transparency_textures.getptr(key);
 				if (texture_index_ptr != nullptr) {
 					if (*texture_index_ptr >= 0) {
 						albedo_texture = _get_texture(p_state, *texture_index_ptr, TEXTURE_TYPE_GENERIC);
@@ -1099,12 +1096,12 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 
 						FBXImageIndex new_image = _parse_image_save_image(p_state, PackedByteArray(), "", -1, albedo_image);
 						if (new_image >= 0) {
-							Ref<FBXTexture> new_texture;
+							Ref<GLTFTexture> new_texture;
 							new_texture.instantiate();
 							new_texture->set_src_image(FBXImageIndex(new_image));
 							p_state->textures.push_back(new_texture);
 
-							FBXTextureIndex texture_index = p_state->textures.size() - 1;
+							GLTFTextureIndex texture_index = p_state->textures.size() - 1;
 							p_state->albedo_transparency_textures[key] = texture_index;
 
 							albedo_texture = _get_texture(p_state, texture_index, TEXTURE_TYPE_GENERIC);
@@ -1159,14 +1156,14 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 
 			const ufbx_texture *metalness_texture = _get_file_texture(fbx_material->pbr.metalness.texture);
 			if (metalness_texture) {
-				material->set_texture(BaseMaterial3D::TEXTURE_METALLIC, _get_texture(p_state, FBXTextureIndex(metalness_texture->file_index), TEXTURE_TYPE_GENERIC));
+				material->set_texture(BaseMaterial3D::TEXTURE_METALLIC, _get_texture(p_state, GLTFTextureIndex(metalness_texture->file_index), TEXTURE_TYPE_GENERIC));
 				material->set_metallic_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
 				material->set_metallic(1.0);
 			}
 
 			const ufbx_texture *roughness_texture = _get_file_texture(fbx_material->pbr.roughness.texture);
 			if (roughness_texture) {
-				material->set_texture(BaseMaterial3D::TEXTURE_ROUGHNESS, _get_texture(p_state, FBXTextureIndex(roughness_texture->file_index), TEXTURE_TYPE_GENERIC));
+				material->set_texture(BaseMaterial3D::TEXTURE_ROUGHNESS, _get_texture(p_state, GLTFTextureIndex(roughness_texture->file_index), TEXTURE_TYPE_GENERIC));
 				material->set_roughness_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
 				material->set_roughness(1.0);
 			}
@@ -1174,7 +1171,7 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 
 		const ufbx_texture *normal_texture = _get_file_texture(fbx_material->pbr.normal_map.texture);
 		if (normal_texture) {
-			material->set_texture(BaseMaterial3D::TEXTURE_NORMAL, _get_texture(p_state, FBXTextureIndex(normal_texture->file_index), TEXTURE_TYPE_NORMAL));
+			material->set_texture(BaseMaterial3D::TEXTURE_NORMAL, _get_texture(p_state, GLTFTextureIndex(normal_texture->file_index), TEXTURE_TYPE_NORMAL));
 			material->set_feature(BaseMaterial3D::FEATURE_NORMAL_MAPPING, true);
 			if (fbx_material->pbr.normal_map.has_value) {
 				material->set_normal_scale(fbx_material->pbr.normal_map.value_real);
@@ -1183,7 +1180,7 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 
 		const ufbx_texture *occlusion_texture = _get_file_texture(fbx_material->pbr.ambient_occlusion.texture);
 		if (occlusion_texture) {
-			material->set_texture(BaseMaterial3D::TEXTURE_AMBIENT_OCCLUSION, _get_texture(p_state, FBXTextureIndex(occlusion_texture->file_index), TEXTURE_TYPE_GENERIC));
+			material->set_texture(BaseMaterial3D::TEXTURE_AMBIENT_OCCLUSION, _get_texture(p_state, GLTFTextureIndex(occlusion_texture->file_index), TEXTURE_TYPE_GENERIC));
 			material->set_ao_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
 			material->set_feature(BaseMaterial3D::FEATURE_AMBIENT_OCCLUSION, true);
 		}
@@ -1196,7 +1193,7 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 
 		const ufbx_texture *emission_texture = _get_file_texture(fbx_material->pbr.ambient_occlusion.texture);
 		if (emission_texture) {
-			material->set_texture(BaseMaterial3D::TEXTURE_EMISSION, _get_texture(p_state, FBXTextureIndex(emission_texture->file_index), TEXTURE_TYPE_GENERIC));
+			material->set_texture(BaseMaterial3D::TEXTURE_EMISSION, _get_texture(p_state, GLTFTextureIndex(emission_texture->file_index), TEXTURE_TYPE_GENERIC));
 			material->set_feature(BaseMaterial3D::FEATURE_EMISSION, true);
 			material->set_emission(Color(0, 0, 0));
 		}
@@ -1362,7 +1359,7 @@ ImporterMeshInstance3D *FBXDocument::_generate_mesh_instance(Ref<FBXState> p_sta
 	print_verbose("FBX: Creating mesh for: " + fbx_node->get_name());
 
 	p_state->scene_mesh_instances.insert(p_node_index, mi);
-	Ref<FBXMesh> mesh = p_state->meshes.write[fbx_node->mesh];
+	Ref<GLTFMesh> mesh = p_state->meshes.write[fbx_node->mesh];
 	if (mesh.is_null()) {
 		return mi;
 	}
@@ -1772,12 +1769,12 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 			mesh_instance_node_path = node_path;
 		}
 
-		Ref<FBXMesh> mesh = p_state->meshes[node->mesh];
+		Ref<GLTFMesh> mesh = p_state->meshes[node->mesh];
 		ERR_CONTINUE(mesh.is_null());
 		ERR_CONTINUE(mesh->get_mesh().is_null());
 		ERR_CONTINUE(mesh->get_mesh()->get_mesh().is_null());
-
-		Vector<int> blend_channels = mesh->get_blend_channels();
+		Dictionary mesh_additional_data = mesh->get_additional_data("GODOT_blend_channels");
+		TypedArray<int> blend_channels = mesh_additional_data["blend_channels"];
 		for (int i = 0; i < blend_channels.size(); i++) {
 			FBXAnimation::BlendShapeTrack *blend_track = anim->get_blend_tracks().getptr(blend_channels[i]);
 			if (blend_track) {
