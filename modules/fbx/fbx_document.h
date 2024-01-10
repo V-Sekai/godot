@@ -65,13 +65,11 @@ private:
 	void _build_parent_hierarchy(Ref<FBXState> p_state);
 	Error _parse_scenes(Ref<FBXState> p_state);
 	Error _parse_nodes(Ref<FBXState> p_state);
-	String _gen_unique_name(Ref<FBXState> p_state, const String &p_name);
+	String _gen_unique_name(HashSet<String> &unique_names, const String &p_name);
 	String _sanitize_animation_name(const String &p_name);
 	String _gen_unique_animation_name(Ref<FBXState> p_state, const String &p_name);
 	String _sanitize_bone_name(const String &p_name);
-	String _gen_unique_bone_name(Ref<FBXState> p_state,
-			const FBXSkeletonIndex p_skel_i,
-			const String &p_name);
+	String _gen_unique_bone_name(HashSet<String> unique_names, const String &p_name);
 	Ref<Texture2D> _get_texture(Ref<FBXState> p_state,
 			const FBXTextureIndex p_texture, int p_texture_type);
 	Error _parse_meshes(Ref<FBXState> p_state);
@@ -79,27 +77,53 @@ private:
 	FBXImageIndex _parse_image_save_image(Ref<FBXState> p_state, const Vector<uint8_t> &p_bytes, const String &p_file_extension, int p_index, Ref<Image> p_image);
 	Error _parse_images(Ref<FBXState> p_state, const String &p_base_path);
 	Error _parse_materials(Ref<FBXState> p_state);
-	FBXNodeIndex _find_highest_node(Ref<FBXState> p_state,
-			const Vector<FBXNodeIndex> &p_subset);
-	void _recurse_children(Ref<FBXState> p_state, const FBXNodeIndex p_node_index,
-			RBSet<FBXNodeIndex> &p_all_skin_nodes, HashSet<FBXNodeIndex> &p_child_visited_set);
-	bool _capture_nodes_in_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin,
-			const FBXNodeIndex p_node_index);
-	void _capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin);
-	Error _expand_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin);
-	Error _verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin);
+
 	Error _parse_skins(Ref<FBXState> p_state);
-	Error _determine_skeletons(Ref<FBXState> p_state);
+
+	FBXNodeIndex _find_highest_node(Vector<Ref<FBXNode>> &r_nodes, const Vector<FBXNodeIndex> &p_subset);
+	void _recurse_children(
+			Vector<Ref<FBXNode>> &nodes,
+			const FBXNodeIndex p_node_index,
+			RBSet<FBXNodeIndex> &p_all_skin_nodes,
+			HashSet<FBXNodeIndex> &p_child_visited_set);
+	bool _capture_nodes_in_skin(const Vector<Ref<FBXNode>> &nodes, Ref<FBXSkin> p_skin, const FBXNodeIndex p_node_index);
+	void _capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin);
+	Error _expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin);
+	Error _verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin);
+	static Error asset_parse_skins(
+			const Vector<int> &current_skin_indices,
+			const Vector<Ref<FBXSkin>> &current_skins,
+			const Vector<Ref<FBXNode>> &current_nodes,
+			Vector<int> *skin_indices_out,
+			Vector<Ref<FBXSkin>> *skins_out,
+			HashMap<FBXNodeIndex, bool> *joints_out);
+	Error _determine_skeletons(
+			Vector<Ref<FBXSkin>> &skins,
+			Vector<Ref<FBXNode>> &nodes,
+			Vector<Ref<FBXSkeleton>> &skeletons);
 	Error _reparent_non_joint_skeleton_subtrees(
-			Ref<FBXState> p_state, Ref<FBXSkeleton> p_skeleton,
+			Vector<Ref<FBXNode>> &nodes,
+			Ref<FBXSkeleton> p_skeleton,
 			const Vector<FBXNodeIndex> &p_non_joints);
-	Error _determine_skeleton_roots(Ref<FBXState> p_state,
+	Error _determine_skeleton_roots(
+			Vector<Ref<FBXNode>> &nodes,
+			Vector<Ref<FBXSkeleton>> &skeletons,
 			const FBXSkeletonIndex p_skel_i);
-	Error _create_skeletons(Ref<FBXState> p_state);
-	Error _map_skin_joints_indices_to_skeleton_bone_indices(Ref<FBXState> p_state);
-	Error _create_skins(Ref<FBXState> p_state);
 	bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);
-	void _remove_duplicate_skins(Ref<FBXState> p_state);
+	void _remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins);
+	Error _create_skeletons(
+			HashSet<String> &unique_names,
+			Vector<Ref<FBXSkin>> &skins,
+			Vector<Ref<FBXNode>> nodes,
+			HashMap<ObjectID, FBXSkeletonIndex> &skeleton3d_to_fbx_skeleton,
+			Vector<Ref<FBXSkeleton>> &skeletons,
+			HashMap<FBXNodeIndex, Node *> &scene_nodes);
+	Error _map_skin_joints_indices_to_skeleton_bone_indices(
+			Vector<Ref<FBXSkin>> &skins,
+			Vector<Ref<FBXSkeleton>> &skeletons,
+			Vector<Ref<FBXNode>> nodes);
+	Error _create_skins(Ref<FBXState> p_state);
+
 	Error _parse_animations(Ref<FBXState> p_state);
 	BoneAttachment3D *_generate_bone_attachment(Ref<FBXState> p_state,
 			Skeleton3D *p_skeleton,

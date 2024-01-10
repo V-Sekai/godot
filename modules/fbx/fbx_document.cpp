@@ -38,6 +38,7 @@
 #include "core/math/color.h"
 #include "core/math/disjoint_set.h"
 #include "fbx_defines.h"
+#include "modules/gltf/gltf_defines.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
@@ -252,7 +253,7 @@ static bool _thread_pool_wait_fn(void *user, ufbx_thread_pool_context ctx, uint3
 	return true;
 }
 
-String FBXDocument::_gen_unique_name(Ref<FBXState> p_state, const String &p_name) {
+String FBXDocument::_gen_unique_name(HashSet<String> &unique_names, const String &p_name) {
 	const String s_name = p_name.validate_node_name();
 
 	String u_name;
@@ -263,13 +264,13 @@ String FBXDocument::_gen_unique_name(Ref<FBXState> p_state, const String &p_name
 		if (index > 1) {
 			u_name += itos(index);
 		}
-		if (!p_state->unique_names.has(u_name)) {
+		if (!unique_names.has(u_name)) {
 			break;
 		}
 		index++;
 	}
 
-	p_state->unique_names.insert(u_name);
+	unique_names.insert(u_name);
 
 	return u_name;
 }
@@ -314,7 +315,7 @@ String FBXDocument::_sanitize_bone_name(const String &p_name) {
 	return bone_name;
 }
 
-String FBXDocument::_gen_unique_bone_name(Ref<FBXState> p_state, const FBXSkeletonIndex p_skel_i, const String &p_name) {
+String FBXDocument::_gen_unique_bone_name(HashSet<String> unique_names, const String &p_name) {
 	String s_name = _sanitize_bone_name(p_name);
 	if (s_name.is_empty()) {
 		s_name = "bone";
@@ -327,13 +328,13 @@ String FBXDocument::_gen_unique_bone_name(Ref<FBXState> p_state, const FBXSkelet
 		if (index > 1) {
 			u_name += "_" + itos(index);
 		}
-		if (!p_state->skeletons[p_skel_i]->unique_names.has(u_name)) {
+		if (!unique_names.has(u_name)) {
 			break;
 		}
 		index++;
 	}
 
-	p_state->skeletons.write[p_skel_i]->unique_names.insert(u_name);
+	unique_names.insert(u_name);
 
 	return u_name;
 }
@@ -429,7 +430,7 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 		if (fbx_mesh->name.length > 0) {
 			mesh_name = _as_string(fbx_mesh->name);
 		}
-		import_mesh->set_name(_gen_unique_name(p_state, mesh_name));
+		import_mesh->set_name(_gen_unique_name(p_state->unique_names, mesh_name));
 
 		bool use_blend_shapes = false;
 		if (fbx_mesh->blend_deformers.count > 0) {
@@ -1259,13 +1260,13 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 	return OK;
 }
 
-FBXNodeIndex FBXDocument::_find_highest_node(Ref<FBXState> p_state, const Vector<FBXNodeIndex> &p_subset) {
+FBXNodeIndex FBXDocument::_find_highest_node(Vector<Ref<FBXNode>> &r_nodes, const Vector<FBXNodeIndex> &p_subset) {
 	int highest = -1;
 	FBXNodeIndex best_node = -1;
 
 	for (int i = 0; i < p_subset.size(); ++i) {
 		const FBXNodeIndex node_i = p_subset[i];
-		const Ref<FBXNode> node = p_state->nodes[node_i];
+		const Ref<FBXNode> node = r_nodes[node_i];
 
 		if (highest == -1 || node->height < highest) {
 			highest = node->height;
@@ -1276,16 +1277,17 @@ FBXNodeIndex FBXDocument::_find_highest_node(Ref<FBXState> p_state, const Vector
 	return best_node;
 }
 
-bool FBXDocument::_capture_nodes_in_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin, const FBXNodeIndex p_node_index) {
+bool FBXDocument::_capture_nodes_in_skin(const Vector<Ref<FBXNode>> &nodes, Ref<FBXSkin> p_skin, const FBXNodeIndex p_node_index) {
 	bool found_joint = false;
+	Ref<FBXNode> current_node = nodes[p_node_index];
 
-	for (int i = 0; i < p_state->nodes[p_node_index]->children.size(); ++i) {
-		found_joint |= _capture_nodes_in_skin(p_state, p_skin, p_state->nodes[p_node_index]->children[i]);
+	for (int i = 0; i < current_node->children.size(); ++i) {
+		found_joint |= _capture_nodes_in_skin(nodes, p_skin, current_node->children[i]);
 	}
 
 	if (found_joint) {
 		// Mark it if we happen to find another skins joint...
-		if (p_state->nodes[p_node_index]->joint && p_skin->joints.find(p_node_index) < 0) {
+		if (current_node->joint && p_skin->joints.find(p_node_index) < 0) {
 			p_skin->joints.push_back(p_node_index);
 		} else if (p_skin->non_joints.find(p_node_index) < 0) {
 			p_skin->non_joints.push_back(p_node_index);
@@ -1299,12 +1301,12 @@ bool FBXDocument::_capture_nodes_in_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_s
 	return false;
 }
 
-void FBXDocument::_capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
+void FBXDocument::_capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	DisjointSet<FBXNodeIndex> disjoint_set;
 
 	for (int i = 0; i < p_skin->joints.size(); ++i) {
 		const FBXNodeIndex node_index = p_skin->joints[i];
-		const FBXNodeIndex parent = p_state->nodes[node_index]->parent;
+		const FBXNodeIndex parent = r_nodes[node_index]->parent;
 		disjoint_set.insert(node_index);
 
 		if (p_skin->joints.find(parent) >= 0) {
@@ -1325,8 +1327,8 @@ void FBXDocument::_capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref
 	for (int i = 0; i < roots.size(); ++i) {
 		const FBXNodeIndex root = roots[i];
 
-		if (maxHeight == -1 || p_state->nodes[root]->height < maxHeight) {
-			maxHeight = p_state->nodes[root]->height;
+		if (maxHeight == -1 || r_nodes[root]->height < maxHeight) {
+			maxHeight = r_nodes[root]->height;
 		}
 	}
 
@@ -1334,10 +1336,10 @@ void FBXDocument::_capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref
 	// This sucks, but 99% of all game engines (not just Godot) would have this same issue.
 	for (int i = 0; i < roots.size(); ++i) {
 		FBXNodeIndex current_node = roots[i];
-		while (p_state->nodes[current_node]->height > maxHeight) {
-			FBXNodeIndex parent = p_state->nodes[current_node]->parent;
+		while (r_nodes[current_node]->height > maxHeight) {
+			FBXNodeIndex parent = r_nodes[current_node]->parent;
 
-			if (p_state->nodes[parent]->joint && p_skin->joints.find(parent) < 0) {
+			if (r_nodes[parent]->joint && p_skin->joints.find(parent) < 0) {
 				p_skin->joints.push_back(parent);
 			} else if (p_skin->non_joints.find(parent) < 0) {
 				p_skin->non_joints.push_back(parent);
@@ -1355,18 +1357,18 @@ void FBXDocument::_capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref
 
 	do {
 		all_same = true;
-		const FBXNodeIndex first_parent = p_state->nodes[roots[0]]->parent;
+		const FBXNodeIndex first_parent = r_nodes[roots[0]]->parent;
 
 		for (int i = 1; i < roots.size(); ++i) {
-			all_same &= (first_parent == p_state->nodes[roots[i]]->parent);
+			all_same &= (first_parent == r_nodes[roots[i]]->parent);
 		}
 
 		if (!all_same) {
 			for (int i = 0; i < roots.size(); ++i) {
 				const FBXNodeIndex current_node = roots[i];
-				const FBXNodeIndex parent = p_state->nodes[current_node]->parent;
+				const FBXNodeIndex parent = r_nodes[current_node]->parent;
 
-				if (p_state->nodes[parent]->joint && p_skin->joints.find(parent) < 0) {
+				if (r_nodes[parent]->joint && p_skin->joints.find(parent) < 0) {
 					p_skin->joints.push_back(parent);
 				} else if (p_skin->non_joints.find(parent) < 0) {
 					p_skin->non_joints.push_back(parent);
@@ -1379,8 +1381,8 @@ void FBXDocument::_capture_nodes_for_multirooted_skin(Ref<FBXState> p_state, Ref
 	} while (!all_same);
 }
 
-Error FBXDocument::_expand_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
-	_capture_nodes_for_multirooted_skin(p_state, p_skin);
+Error FBXDocument::_expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
+	_capture_nodes_for_multirooted_skin(r_nodes, p_skin);
 
 	// Grab all nodes that lay in between skin joints/nodes
 	DisjointSet<FBXNodeIndex> disjoint_set;
@@ -1391,7 +1393,7 @@ Error FBXDocument::_expand_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 
 	for (int i = 0; i < all_skin_nodes.size(); ++i) {
 		const FBXNodeIndex node_index = all_skin_nodes[i];
-		const FBXNodeIndex parent = p_state->nodes[node_index]->parent;
+		const FBXNodeIndex parent = r_nodes[node_index]->parent;
 		disjoint_set.insert(node_index);
 
 		if (all_skin_nodes.find(parent) >= 0) {
@@ -1408,7 +1410,7 @@ Error FBXDocument::_expand_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 		Vector<FBXNodeIndex> set;
 		disjoint_set.get_members(set, out_owners[i]);
 
-		const FBXNodeIndex root = _find_highest_node(p_state, set);
+		const FBXNodeIndex root = _find_highest_node(r_nodes, set);
 		ERR_FAIL_COND_V(root < 0, FAILED);
 		out_roots.push_back(root);
 	}
@@ -1416,7 +1418,7 @@ Error FBXDocument::_expand_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 	out_roots.sort();
 
 	for (int i = 0; i < out_roots.size(); ++i) {
-		_capture_nodes_in_skin(p_state, p_skin, out_roots[i]);
+		_capture_nodes_in_skin(r_nodes, p_skin, out_roots[i]);
 	}
 
 	p_skin->roots = out_roots;
@@ -1424,7 +1426,7 @@ Error FBXDocument::_expand_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 	return OK;
 }
 
-Error FBXDocument::_verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
+Error FBXDocument::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	// This may seem duplicated from expand_skins, but this is really a sanity check! (so it kinda is)
 	// In case additional interpolating logic is added to the skins, this will help ensure that you
 	// do not cause it to self implode into a fiery blaze
@@ -1441,7 +1443,7 @@ Error FBXDocument::_verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 
 	for (int i = 0; i < all_skin_nodes.size(); ++i) {
 		const FBXNodeIndex node_index = all_skin_nodes[i];
-		const FBXNodeIndex parent = p_state->nodes[node_index]->parent;
+		const FBXNodeIndex parent = r_nodes[node_index]->parent;
 		disjoint_set.insert(node_index);
 
 		if (all_skin_nodes.find(parent) >= 0) {
@@ -1458,7 +1460,7 @@ Error FBXDocument::_verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 		Vector<FBXNodeIndex> set;
 		disjoint_set.get_members(set, out_owners[i]);
 
-		const FBXNodeIndex root = _find_highest_node(p_state, set);
+		const FBXNodeIndex root = _find_highest_node(r_nodes, set);
 		ERR_FAIL_COND_V(root < 0, FAILED);
 		out_roots.push_back(root);
 	}
@@ -1479,9 +1481,9 @@ Error FBXDocument::_verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 	}
 
 	// Make sure all parents of a multi-rooted skin are the SAME
-	const FBXNodeIndex parent = p_state->nodes[out_roots[0]]->parent;
+	const FBXNodeIndex parent = r_nodes[out_roots[0]]->parent;
 	for (int i = 1; i < out_roots.size(); ++i) {
-		if (p_state->nodes[out_roots[i]]->parent != parent) {
+		if (r_nodes[out_roots[i]]->parent != parent) {
 			return FAILED;
 		}
 	}
@@ -1490,12 +1492,18 @@ Error FBXDocument::_verify_skin(Ref<FBXState> p_state, Ref<FBXSkin> p_skin) {
 }
 
 Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
+	Vector<int> temp_skin_indices;
+	Vector<Ref<FBXSkin>> temp_skins;
+	HashMap<FBXNodeIndex, bool> joints;
+
 	const ufbx_scene *fbx_scene = p_state->scene.get();
-	// Create the base skins, and mark nodes that are joints
+
+	temp_skin_indices.clear();
+	temp_skins.clear();
+
 	for (const ufbx_skin_deformer *fbx_skin : fbx_scene->skin_deformers) {
-		// Do not create skins for skin deformers with zero clusters
 		if (fbx_skin->clusters.count == 0) {
-			p_state->skin_indices.push_back(-1);
+			temp_skin_indices.push_back(-1);
 			continue;
 		}
 
@@ -1519,82 +1527,107 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 			skin->set_name(vformat("skin_%s", itos(fbx_skin->typed_id)));
 		}
 
-		p_state->skin_indices.push_back(p_state->skins.size());
-		p_state->skins.push_back(skin);
+		temp_skin_indices.push_back(temp_skins.size());
+		temp_skins.push_back(skin);
 	}
 
-	// Mark all bones as joints to form skeletons.
 	for (const ufbx_bone *fbx_bone : fbx_scene->bones) {
 		for (const ufbx_node *fbx_node : fbx_bone->instances) {
 			const FBXNodeIndex node = fbx_node->typed_id;
 			if (!p_state->nodes.write[node]->joint) {
 				p_state->nodes.write[node]->joint = true;
 
-				// Mark root bones as virtual skins, we only need to mark the root node
-				// as `_expand_skin()` below will capture child bones.
 				if (!(fbx_node->parent && fbx_node->parent->attrib_type == UFBX_ELEMENT_BONE)) {
 					Ref<FBXSkin> skin;
 					skin.instantiate();
 					skin->joints.push_back(node);
 					skin->joints_original.push_back(node);
-					skin->set_name(vformat("skin_%s", itos(p_state->skins.size())));
-					p_state->skins.push_back(skin);
+					skin->set_name(vformat("skin_%s", itos(temp_skins.size())));
+					temp_skins.push_back(skin);
 				}
 			}
 		}
 	}
 
-	for (FBXSkinIndex i = 0; i < p_state->skins.size(); ++i) {
+	Error err = asset_parse_skins(
+			temp_skin_indices,
+			temp_skins,
+			p_state->nodes,
+			&p_state->skin_indices,
+			&p_state->skins,
+			&joints);
+	if (err != OK) {
+		return err;
+	}
+
+	for (int i = 0; i < p_state->skins.size(); ++i) {
 		Ref<FBXSkin> skin = p_state->skins.write[i];
 
-		// Expand the skin to capture all the extra non-joints that lie in between the actual joints,
-		// and expand the hierarchy to ensure multi-rooted trees lie on the same height level
-		ERR_FAIL_COND_V(_expand_skin(p_state, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(_verify_skin(p_state, skin), ERR_PARSE_ERROR);
+		// Expand and verify the skin
+		ERR_FAIL_COND_V(_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
 	}
 
 	print_verbose("FBX: Total skins: " + itos(p_state->skins.size()));
 
+	for (HashMap<FBXNodeIndex, bool>::Iterator it = joints.begin(); it != joints.end(); ++it) {
+		FBXNodeIndex node_index = it->key;
+		bool is_joint = it->value;
+		if (is_joint) {
+			if (p_state->nodes.size() > node_index) {
+				p_state->nodes.write[node_index]->joint = true;
+			}
+		}
+	}
+
 	return OK;
 }
-
-void FBXDocument::_recurse_children(Ref<FBXState> p_state, const FBXNodeIndex p_node_index,
-		RBSet<FBXNodeIndex> &p_all_skin_nodes, HashSet<FBXNodeIndex> &p_child_visited_set) {
+void FBXDocument::_recurse_children(
+		Vector<Ref<FBXNode>> &nodes,
+		const FBXNodeIndex p_node_index,
+		RBSet<FBXNodeIndex> &p_all_skin_nodes,
+		HashSet<FBXNodeIndex> &p_child_visited_set) {
 	if (p_child_visited_set.has(p_node_index)) {
 		return;
 	}
 	p_child_visited_set.insert(p_node_index);
-	for (int i = 0; i < p_state->nodes[p_node_index]->children.size(); ++i) {
-		_recurse_children(p_state, p_state->nodes[p_node_index]->children[i], p_all_skin_nodes, p_child_visited_set);
+
+	Ref<FBXNode> current_node = nodes[p_node_index];
+	for (int i = 0; i < current_node->children.size(); ++i) {
+		_recurse_children(nodes, current_node->children[i], p_all_skin_nodes, p_child_visited_set);
 	}
 
-	if (p_state->nodes[p_node_index]->skin < 0 || p_state->nodes[p_node_index]->mesh < 0 || !p_state->nodes[p_node_index]->children.is_empty()) {
+	// Continue to use 'current_node' for clarity and direct access.
+	if (current_node->skin < 0 || current_node->mesh < 0 || !current_node->children.is_empty()) {
 		p_all_skin_nodes.insert(p_node_index);
 	}
 }
 
-Error FBXDocument::_determine_skeletons(Ref<FBXState> p_state) {
+Error FBXDocument::_determine_skeletons(
+		Vector<Ref<FBXSkin>> &skins,
+		Vector<Ref<FBXNode>> &nodes,
+		Vector<Ref<FBXSkeleton>> &skeletons) {
 	// Using a disjoint set, we are going to potentially combine all skins that are actually branches
 	// of a main skeleton, or treat skins defining the same set of nodes as ONE skeleton.
 	// This is another unclear issue caused by the current glTF specification.
 
 	DisjointSet<FBXNodeIndex> skeleton_sets;
 
-	for (FBXSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-		const Ref<FBXSkin> skin = p_state->skins[skin_i];
+	for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
+		const Ref<FBXSkin> skin = skins[skin_i];
 
 		HashSet<FBXNodeIndex> child_visited_set;
 		RBSet<FBXNodeIndex> all_skin_nodes;
 		for (int i = 0; i < skin->joints.size(); ++i) {
 			all_skin_nodes.insert(skin->joints[i]);
-			_recurse_children(p_state, skin->joints[i], all_skin_nodes, child_visited_set);
+			_recurse_children(nodes, skin->joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (int i = 0; i < skin->non_joints.size(); ++i) {
 			all_skin_nodes.insert(skin->non_joints[i]);
-			_recurse_children(p_state, skin->non_joints[i], all_skin_nodes, child_visited_set);
+			_recurse_children(nodes, skin->non_joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (FBXNodeIndex node_index : all_skin_nodes) {
-			const FBXNodeIndex parent = p_state->nodes[node_index]->parent;
+			const FBXNodeIndex parent = nodes[node_index]->parent;
 			skeleton_sets.insert(node_index);
 
 			if (all_skin_nodes.has(parent)) {
@@ -1618,7 +1651,7 @@ Error FBXDocument::_determine_skeletons(Ref<FBXState> p_state) {
 		for (int i = 0; i < groups_representatives.size(); ++i) {
 			Vector<FBXNodeIndex> group;
 			skeleton_sets.get_members(group, groups_representatives[i]);
-			highest_group_members.push_back(_find_highest_node(p_state, group));
+			highest_group_members.push_back(_find_highest_node(nodes, group));
 			groups.push_back(group);
 		}
 
@@ -1630,13 +1663,13 @@ Error FBXDocument::_determine_skeletons(Ref<FBXState> p_state) {
 				const FBXNodeIndex node_j = highest_group_members[j];
 
 				// Even if they are siblings under the root! :)
-				if (p_state->nodes[node_i]->parent == p_state->nodes[node_j]->parent) {
+				if (nodes[node_i]->parent == nodes[node_j]->parent) {
 					skeleton_sets.create_union(node_i, node_j);
 				}
 			}
 
 			// Attach any parenting going on together (we need to do this n^2 times)
-			const FBXNodeIndex node_i_parent = p_state->nodes[node_i]->parent;
+			const FBXNodeIndex node_i_parent = nodes[node_i]->parent;
 			if (node_i_parent >= 0) {
 				for (int j = 0; j < groups.size() && i != j; ++j) {
 					const Vector<FBXNodeIndex> &group = groups[j];
@@ -1663,8 +1696,8 @@ Error FBXDocument::_determine_skeletons(Ref<FBXState> p_state) {
 		Vector<FBXNodeIndex> skeleton_nodes;
 		skeleton_sets.get_members(skeleton_nodes, skeleton_owner);
 
-		for (FBXSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-			Ref<FBXSkin> skin = p_state->skins.write[skin_i];
+		for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
+			Ref<FBXSkin> skin = skins.write[skin_i];
 
 			// If any of the the skeletons nodes exist in a skin, that skin now maps to the skeleton
 			for (int i = 0; i < skeleton_nodes.size(); ++i) {
@@ -1680,37 +1713,40 @@ Error FBXDocument::_determine_skeletons(Ref<FBXState> p_state) {
 		for (int i = 0; i < skeleton_nodes.size(); ++i) {
 			const FBXNodeIndex node_i = skeleton_nodes[i];
 
-			if (p_state->nodes[node_i]->joint) {
+			if (nodes[node_i]->joint) {
 				skeleton->joints.push_back(node_i);
 			} else {
 				non_joints.push_back(node_i);
 			}
 		}
 
-		p_state->skeletons.push_back(skeleton);
+		skeletons.push_back(skeleton);
 
-		_reparent_non_joint_skeleton_subtrees(p_state, p_state->skeletons.write[skel_i], non_joints);
+		_reparent_non_joint_skeleton_subtrees(nodes, skeletons.write[skel_i], non_joints);
 	}
 
-	for (FBXSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
-		Ref<FBXSkeleton> skeleton = p_state->skeletons.write[skel_i];
+	for (FBXSkeletonIndex skel_i = 0; skel_i < skeletons.size(); ++skel_i) {
+		Ref<FBXSkeleton> skeleton = skeletons.write[skel_i];
 
 		for (int i = 0; i < skeleton->joints.size(); ++i) {
 			const FBXNodeIndex node_i = skeleton->joints[i];
-			Ref<FBXNode> node = p_state->nodes[node_i];
+			Ref<FBXNode> node = nodes[node_i];
 
 			ERR_FAIL_COND_V(!node->joint, ERR_PARSE_ERROR);
 			ERR_FAIL_COND_V(node->skeleton >= 0, ERR_PARSE_ERROR);
 			node->skeleton = skel_i;
 		}
 
-		ERR_FAIL_COND_V(_determine_skeleton_roots(p_state, skel_i), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(_determine_skeleton_roots(nodes, skeletons, skel_i), ERR_PARSE_ERROR);
 	}
 
 	return OK;
 }
 
-Error FBXDocument::_reparent_non_joint_skeleton_subtrees(Ref<FBXState> p_state, Ref<FBXSkeleton> p_skeleton, const Vector<FBXNodeIndex> &p_non_joints) {
+Error FBXDocument::_reparent_non_joint_skeleton_subtrees(
+		Vector<Ref<FBXNode>> &nodes,
+		Ref<FBXSkeleton> p_skeleton,
+		const Vector<FBXNodeIndex> &p_non_joints) {
 	DisjointSet<FBXNodeIndex> subtree_set;
 
 	// Populate the disjoint set with ONLY non joints that are in the skeleton hierarchy (non_joints vector)
@@ -1726,8 +1762,8 @@ Error FBXDocument::_reparent_non_joint_skeleton_subtrees(Ref<FBXState> p_state, 
 
 		subtree_set.insert(node_i);
 
-		const FBXNodeIndex parent_i = p_state->nodes[node_i]->parent;
-		if (parent_i >= 0 && p_non_joints.find(parent_i) >= 0 && !p_state->nodes[parent_i]->joint) {
+		const FBXNodeIndex parent_i = nodes[node_i]->parent;
+		if (parent_i >= 0 && p_non_joints.find(parent_i) >= 0 && !nodes[parent_i]->joint) {
 			subtree_set.create_union(parent_i, node_i);
 		}
 	}
@@ -1744,7 +1780,7 @@ Error FBXDocument::_reparent_non_joint_skeleton_subtrees(Ref<FBXState> p_state, 
 		subtree_set.get_members(subtree_nodes, subtree_root);
 
 		for (int subtree_i = 0; subtree_i < subtree_nodes.size(); ++subtree_i) {
-			Ref<FBXNode> node = p_state->nodes[subtree_nodes[subtree_i]];
+			Ref<FBXNode> node = nodes[subtree_nodes[subtree_i]];
 			node->joint = true;
 			// Add the joint to the skeletons joints
 			p_skeleton->joints.push_back(subtree_nodes[subtree_i]);
@@ -1754,11 +1790,14 @@ Error FBXDocument::_reparent_non_joint_skeleton_subtrees(Ref<FBXState> p_state, 
 	return OK;
 }
 
-Error FBXDocument::_determine_skeleton_roots(Ref<FBXState> p_state, const FBXSkeletonIndex p_skel_i) {
+Error FBXDocument::_determine_skeleton_roots(
+		Vector<Ref<FBXNode>> &nodes,
+		Vector<Ref<FBXSkeleton>> &skeletons,
+		const FBXSkeletonIndex p_skel_i) {
 	DisjointSet<FBXNodeIndex> disjoint_set;
 
-	for (FBXNodeIndex i = 0; i < p_state->nodes.size(); ++i) {
-		const Ref<FBXNode> node = p_state->nodes[i];
+	for (FBXNodeIndex i = 0; i < nodes.size(); ++i) {
+		const Ref<FBXNode> node = nodes[i];
 
 		if (node->skeleton != p_skel_i) {
 			continue;
@@ -1766,12 +1805,12 @@ Error FBXDocument::_determine_skeleton_roots(Ref<FBXState> p_state, const FBXSke
 
 		disjoint_set.insert(i);
 
-		if (node->parent >= 0 && p_state->nodes[node->parent]->skeleton == p_skel_i) {
+		if (node->parent >= 0 && nodes[node->parent]->skeleton == p_skel_i) {
 			disjoint_set.create_union(node->parent, i);
 		}
 	}
 
-	Ref<FBXSkeleton> skeleton = p_state->skeletons.write[p_skel_i];
+	Ref<FBXSkeleton> skeleton = skeletons.write[p_skel_i];
 
 	Vector<FBXNodeIndex> representatives;
 	disjoint_set.get_representatives(representatives);
@@ -1781,7 +1820,7 @@ Error FBXDocument::_determine_skeleton_roots(Ref<FBXState> p_state, const FBXSke
 	for (int i = 0; i < representatives.size(); ++i) {
 		Vector<FBXNodeIndex> set;
 		disjoint_set.get_members(set, representatives[i]);
-		const FBXNodeIndex root = _find_highest_node(p_state, set);
+		const FBXNodeIndex root = _find_highest_node(nodes, set);
 		ERR_FAIL_COND_V(root < 0, FAILED);
 		roots.push_back(root);
 	}
@@ -1797,9 +1836,9 @@ Error FBXDocument::_determine_skeleton_roots(Ref<FBXState> p_state, const FBXSke
 	}
 
 	// Check that the subtrees have the same parent root
-	const FBXNodeIndex parent = p_state->nodes[roots[0]]->parent;
+	const FBXNodeIndex parent = nodes[roots[0]]->parent;
 	for (int i = 1; i < roots.size(); ++i) {
-		if (p_state->nodes[roots[i]]->parent != parent) {
+		if (nodes[roots[i]]->parent != parent) {
 			return FAILED;
 		}
 	}
@@ -1807,13 +1846,19 @@ Error FBXDocument::_determine_skeleton_roots(Ref<FBXState> p_state, const FBXSke
 	return OK;
 }
 
-Error FBXDocument::_create_skeletons(Ref<FBXState> p_state) {
-	for (FBXSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
-		Ref<FBXSkeleton> fbx_skeleton = p_state->skeletons.write[skel_i];
+Error FBXDocument::_create_skeletons(
+		HashSet<String> &unique_names,
+		Vector<Ref<FBXSkin>> &skins,
+		Vector<Ref<FBXNode>> nodes,
+		HashMap<ObjectID, FBXSkeletonIndex> &skeleton3d_to_fbx_skeleton,
+		Vector<Ref<FBXSkeleton>> &skeletons,
+		HashMap<FBXNodeIndex, Node *> scene_nodes) {
+	for (FBXSkeletonIndex skel_i = 0; skel_i < skeletons.size(); ++skel_i) {
+		Ref<FBXSkeleton> fbx_skeleton = skeletons.write[skel_i];
 
 		Skeleton3D *skeleton = memnew(Skeleton3D);
 		fbx_skeleton->godot_skeleton = skeleton;
-		p_state->skeleton3d_to_fbx_skeleton[skeleton->get_instance_id()] = skel_i;
+		skeleton3d_to_fbx_skeleton[skeleton->get_instance_id()] = skel_i;
 
 		// Make a unique name, no gltf node represents this skeleton
 		skeleton->set_name("Skeleton3D");
@@ -1832,14 +1877,14 @@ Error FBXDocument::_create_skeletons(Ref<FBXState> p_state) {
 			const FBXNodeIndex node_i = bones.front()->get();
 			bones.pop_front();
 
-			Ref<FBXNode> node = p_state->nodes[node_i];
+			Ref<FBXNode> node = nodes[node_i];
 			ERR_FAIL_COND_V(node->skeleton != skel_i, FAILED);
 
 			{ // Add all child nodes to the stack (deterministically)
 				Vector<FBXNodeIndex> child_nodes;
 				for (int i = 0; i < node->children.size(); ++i) {
 					const FBXNodeIndex child_i = node->children[i];
-					if (p_state->nodes[child_i]->skeleton == skel_i) {
+					if (nodes[child_i]->skeleton == skel_i) {
 						child_nodes.push_back(child_i);
 					}
 				}
@@ -1857,7 +1902,7 @@ Error FBXDocument::_create_skeletons(Ref<FBXState> p_state) {
 				node->set_name("bone");
 			}
 
-			node->set_name(_gen_unique_bone_name(p_state, skel_i, node->get_name()));
+			node->set_name(_gen_unique_bone_name(unique_names, node->get_name()));
 
 			skeleton->add_bone(node->get_name());
 			skeleton->set_bone_rest(bone_index, node->xform);
@@ -1865,30 +1910,33 @@ Error FBXDocument::_create_skeletons(Ref<FBXState> p_state) {
 			skeleton->set_bone_pose_rotation(bone_index, node->rotation.normalized());
 			skeleton->set_bone_pose_scale(bone_index, node->scale);
 
-			if (node->parent >= 0 && p_state->nodes[node->parent]->skeleton == skel_i) {
-				const int bone_parent = skeleton->find_bone(p_state->nodes[node->parent]->get_name());
+			if (node->parent >= 0 && nodes[node->parent]->skeleton == skel_i) {
+				const int bone_parent = skeleton->find_bone(nodes[node->parent]->get_name());
 				ERR_FAIL_COND_V(bone_parent < 0, FAILED);
-				skeleton->set_bone_parent(bone_index, skeleton->find_bone(p_state->nodes[node->parent]->get_name()));
+				skeleton->set_bone_parent(bone_index, skeleton->find_bone(nodes[node->parent]->get_name()));
 			}
 
-			p_state->scene_nodes.insert(node_i, skeleton);
+			scene_nodes.insert(node_i, skeleton);
 		}
 	}
 
-	ERR_FAIL_COND_V(_map_skin_joints_indices_to_skeleton_bone_indices(p_state), ERR_PARSE_ERROR);
+	ERR_FAIL_COND_V(_map_skin_joints_indices_to_skeleton_bone_indices(skins, skeletons, nodes), ERR_PARSE_ERROR);
 
 	return OK;
 }
 
-Error FBXDocument::_map_skin_joints_indices_to_skeleton_bone_indices(Ref<FBXState> p_state) {
-	for (FBXSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-		Ref<FBXSkin> skin = p_state->skins.write[skin_i];
+Error FBXDocument::_map_skin_joints_indices_to_skeleton_bone_indices(
+		Vector<Ref<FBXSkin>> &skins,
+		Vector<Ref<FBXSkeleton>> &skeletons,
+		Vector<Ref<FBXNode>> nodes) {
+	for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
+		Ref<FBXSkin> skin = skins.write[skin_i];
 
-		Ref<FBXSkeleton> skeleton = p_state->skeletons[skin->skeleton];
+		Ref<FBXSkeleton> skeleton = skeletons[skin->skeleton];
 
 		for (int joint_index = 0; joint_index < skin->joints_original.size(); ++joint_index) {
 			const FBXNodeIndex node_i = skin->joints_original[joint_index];
-			const Ref<FBXNode> node = p_state->nodes[node_i];
+			const Ref<FBXNode> node = nodes[node_i];
 
 			const int bone_index = skeleton->godot_skeleton->find_bone(node->get_name());
 			ERR_FAIL_COND_V(bone_index < 0, FAILED);
@@ -1931,14 +1979,14 @@ Error FBXDocument::_create_skins(Ref<FBXState> p_state) {
 	}
 
 	// Purge the duplicates!
-	_remove_duplicate_skins(p_state);
+	_remove_duplicate_skins(p_state->skins);
 
 	// Create unique names now, after removing duplicates
 	for (FBXSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
 		Ref<Skin> skin = p_state->skins.write[skin_i]->godot_skin;
 		if (skin->get_name().is_empty()) {
 			// Make a unique name, no gltf node represents this skin
-			skin->set_name(_gen_unique_name(p_state, "Skin"));
+			skin->set_name(_gen_unique_name(p_state->unique_names, "Skin"));
 		}
 	}
 
@@ -1969,15 +2017,15 @@ bool FBXDocument::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_sk
 	return true;
 }
 
-void FBXDocument::_remove_duplicate_skins(Ref<FBXState> p_state) {
-	for (int i = 0; i < p_state->skins.size(); ++i) {
-		for (int j = i + 1; j < p_state->skins.size(); ++j) {
-			const Ref<Skin> skin_i = p_state->skins[i]->godot_skin;
-			const Ref<Skin> skin_j = p_state->skins[j]->godot_skin;
+void FBXDocument::_remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins) {
+	for (int i = 0; i < r_skins.size(); ++i) {
+		for (int j = i + 1; j < r_skins.size(); ++j) {
+			const Ref<Skin> skin_i = r_skins[i]->godot_skin;
+			const Ref<Skin> skin_j = r_skins[j]->godot_skin;
 
 			if (_skins_are_same(skin_i, skin_j)) {
 				// replace it and delete the old
-				p_state->skins.write[j]->godot_skin = skin_i;
+				r_skins.write[j]->godot_skin = skin_i;
 			}
 		}
 	}
@@ -2100,15 +2148,15 @@ void FBXDocument::_assign_node_names(Ref<FBXState> p_state) {
 
 		if (fbx_node->get_name().is_empty()) {
 			if (fbx_node->mesh >= 0) {
-				fbx_node->set_name(_gen_unique_name(p_state, "Mesh"));
+				fbx_node->set_name(_gen_unique_name(p_state->unique_names, "Mesh"));
 			} else if (fbx_node->camera >= 0) {
-				fbx_node->set_name(_gen_unique_name(p_state, "Camera3D"));
+				fbx_node->set_name(_gen_unique_name(p_state->unique_names, "Camera3D"));
 			} else {
-				fbx_node->set_name(_gen_unique_name(p_state, "Node"));
+				fbx_node->set_name(_gen_unique_name(p_state->unique_names, "Node"));
 			}
 		}
 
-		fbx_node->set_name(_gen_unique_name(p_state, fbx_node->get_name()));
+		fbx_node->set_name(_gen_unique_name(p_state->unique_names, fbx_node->get_name()));
 	}
 }
 
@@ -2262,7 +2310,7 @@ void FBXDocument::_generate_skeleton_bone_node(Ref<FBXState> p_state, const FBXN
 			p_scene_parent->add_child(bone_attachment, true);
 			bone_attachment->set_owner(p_scene_root);
 			// There is no fbx_node that represent this, so just directly create a unique name
-			bone_attachment->set_name(_gen_unique_name(p_state, "BoneAttachment3D"));
+			bone_attachment->set_name(_gen_unique_name(p_state->unique_names, "BoneAttachment3D"));
 			// We change the scene_parent to our bone attachment now. We do not set current_node because we want to make the node
 			// and attach it to the bone_attachment
 			p_scene_parent = bone_attachment;
@@ -2385,7 +2433,7 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 	String anim_name = anim->get_name();
 	if (anim_name.is_empty()) {
 		// No node represent these, and they are not in the hierarchy, so just make a unique name
-		anim_name = _gen_unique_name(p_state, "Animation");
+		anim_name = _gen_unique_name(p_state->unique_names, "Animation");
 	}
 
 	Ref<Animation> animation;
@@ -2797,11 +2845,11 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* DETERMINE SKELETONS */
-	err = _determine_skeletons(p_state);
+	err = _determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* CREATE SKELETONS */
-	err = _create_skeletons(p_state);
+	err = _create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes, p_state->skeleton3d_to_fbx_skeleton, p_state->skeletons, p_state->scene_nodes);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* CREATE SKINS */
@@ -2921,4 +2969,40 @@ String FBXDocument::_get_texture_path(const String &p_base_dir, const String &p_
 		base_dir = base_dir.get_base_dir().replace("res://", "");
 	}
 	return String();
+}
+
+Error FBXDocument::asset_parse_skins(
+		const Vector<int> &current_skin_indices,
+		const Vector<Ref<FBXSkin>> &current_skins,
+		const Vector<Ref<FBXNode>> &current_nodes,
+		Vector<int> *skin_indices_out,
+		Vector<Ref<FBXSkin>> *skins_out,
+		HashMap<FBXNodeIndex, bool> *joints_out) {
+	if (!skin_indices_out || !skins_out || !joints_out) {
+		return ERR_INVALID_PARAMETER; // Replace with appropriate error code for null parameters
+	}
+
+	skin_indices_out->clear();
+	skins_out->clear();
+	joints_out->clear();
+
+	for (int i = 0; i < current_skin_indices.size(); ++i) {
+		int skin_index = current_skin_indices[i];
+		if (skin_index >= 0 && skin_index < current_skins.size()) {
+			skin_indices_out->push_back(skin_index);
+			skins_out->push_back(current_skins[skin_index]);
+
+			Ref<FBXSkin> skin = current_skins[skin_index];
+
+			Vector<FBXNodeIndex> joint_indices = skin->get_joints();
+			for (int j = 0; j < joint_indices.size(); ++j) {
+				(*joints_out)[joint_indices[j]] = true;
+			}
+		} else {
+			// Handle invalid skin index if necessary
+			skin_indices_out->push_back(-1);
+		}
+	}
+
+	return OK; // Successfully parsed skins
 }
