@@ -33,7 +33,7 @@
 
 #include "extensions/fbx_document_extension.h"
 #include "modules/fbx/structures/fbx_light.h"
-#include "modules/fbx/structures/fbx_node.h"
+#include "modules/gltf/gltf_state.h"
 #include "scene/resources/skin_tool.h"
 
 #include "thirdparty/ufbx/ufbx.h"
@@ -99,12 +99,12 @@ private:
 	Error _parse_animations(Ref<FBXState> p_state);
 	BoneAttachment3D *_generate_bone_attachment(Ref<FBXState> p_state,
 			Skeleton3D *p_skeleton,
-			const FBXNodeIndex p_node_index,
-			const FBXNodeIndex p_bone_index);
-	ImporterMeshInstance3D *_generate_mesh_instance(Ref<FBXState> p_state, const FBXNodeIndex p_node_index);
-	Camera3D *_generate_camera(Ref<FBXState> p_state, const FBXNodeIndex p_node_index);
-	Light3D *_generate_light(Ref<FBXState> p_state, const FBXNodeIndex p_node_index);
-	Node3D *_generate_spatial(Ref<FBXState> p_state, const FBXNodeIndex p_node_index);
+			const GLTFNodeIndex p_node_index,
+			const GLTFNodeIndex p_bone_index);
+	ImporterMeshInstance3D *_generate_mesh_instance(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index);
+	Camera3D *_generate_camera(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index);
+	Light3D *_generate_light(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index);
+	Node3D *_generate_spatial(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index);
 	void _assign_node_names(Ref<FBXState> p_state);
 	Error _parse_cameras(Ref<FBXState> p_state);
 	Error _parse_lights(Ref<FBXState> p_state);
@@ -120,8 +120,8 @@ public:
 public:
 	Error _parse_fbx_state(Ref<FBXState> p_state, const String &p_search_path);
 	void _process_mesh_instances(Ref<FBXState> p_state, Node *p_scene_root);
-	void _generate_scene_node(Ref<FBXState> p_state, const FBXNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root);
-	void _generate_skeleton_bone_node(Ref<FBXState> p_state, const FBXNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root);
+	void _generate_scene_node(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root);
+	void _generate_skeleton_bone_node(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root);
 	void _import_animation(Ref<FBXState> p_state, AnimationPlayer *p_animation_player,
 			const FBXAnimationIndex p_index, const float p_bake_fps, const bool p_trimming, const bool p_remove_immutable_tracks);
 	Error _parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> p_file);

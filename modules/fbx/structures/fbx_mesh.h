@@ -31,7 +31,7 @@
 #ifndef FBX_MESH_H
 #define FBX_MESH_H
 
-#include "../fbx_defines.h"
+#include "modules/gltf/gltf_defines.h"
 
 #include "scene/resources/importer_mesh.h"
 

@@ -31,36 +31,6 @@
 #ifndef GLTF_DEFINES_H
 #define GLTF_DEFINES_H
 
-// This file should only be included by other headers.
-
-// Godot classes used by GLTF headers.
-class BoneAttachment3D;
-class CSGShape3D;
-class GridMap;
-class ImporterMeshInstance3D;
-class Light3D;
-class MeshInstance3D;
-class MultiMeshInstance3D;
-class Skeleton3D;
-class Skin;
-
-// GLTF classes.
-struct GLTFAccessor;
-class GLTFAnimation;
-class GLTFBufferView;
-class GLTFCamera;
-class GLTFDocument;
-class GLTFDocumentExtension;
-class GLTFLight;
-class GLTFMesh;
-class GLTFNode;
-class GLTFSkeleton;
-class GLTFSkin;
-class GLTFSpecGloss;
-class GLTFState;
-class GLTFTexture;
-class GLTFTextureSampler;
-
 // GLTF index aliases.
 using GLTFAccessorIndex = int;
 using GLTFAnimationIndex = int;

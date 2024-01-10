@@ -15,9 +15,7 @@ def get_doc_classes():
         "FBXDocumentExtension",
         "FBXLight",
         "FBXMesh",
-        "FBXNode",
-        "FBXSkeleton",
-        "FBXSkin",
+        "GLTFNode",
         "FBXState",
         "FBXTexture",
     ]

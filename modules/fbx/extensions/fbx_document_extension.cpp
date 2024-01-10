@@ -53,7 +53,7 @@ Vector<String> FBXDocumentExtension::get_supported_extensions() {
 	return ret;
 }
 
-Node3D *FBXDocumentExtension::generate_scene_node(Ref<FBXState> p_state, Ref<FBXNode> p_gltf_node, Node *p_scene_parent) {
+Node3D *FBXDocumentExtension::generate_scene_node(Ref<FBXState> p_state, Ref<GLTFNode> p_gltf_node, Node *p_scene_parent) {
 	ERR_FAIL_NULL_V(p_state, nullptr);
 	ERR_FAIL_NULL_V(p_gltf_node, nullptr);
 	ERR_FAIL_NULL_V(p_scene_parent, nullptr);

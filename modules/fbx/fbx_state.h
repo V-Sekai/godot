@@ -31,13 +31,16 @@
 #ifndef FBX_STATE_H
 #define FBX_STATE_H
 
+#include "modules/fbx/fbx_defines.h"
+#include "modules/gltf/gltf_defines.h"
+#include "modules/gltf/structures/gltf_node.h"
+#include "modules/gltf/structures/gltf_skeleton.h"
+#include "modules/gltf/structures/gltf_skin.h"
+#include "scene/3d/importer_mesh_instance_3d.h"
 #include "structures/fbx_animation.h"
 #include "structures/fbx_camera.h"
 #include "structures/fbx_light.h"
 #include "structures/fbx_mesh.h"
-#include "structures/fbx_node.h"
-#include "structures/fbx_skeleton.h"
-#include "structures/fbx_skin.h"
 #include "structures/fbx_texture.h"
 
 #include "thirdparty/ufbx/ufbx.h"
@@ -46,7 +49,7 @@ class FBXState : public Resource {
 	GDCLASS(FBXState, Resource);
 	friend class FBXDocument;
 	friend class SkinTool;
-	friend class FBXSkin;
+	friend class GLTFSkin;
 
 	// Smart pointer that holds the loaded scene.
 	ufbx_unique_ptr<ufbx_scene> scene;
@@ -64,7 +67,7 @@ class FBXState : public Resource {
 
 	int handle_binary_image = HANDLE_BINARY_EXTRACT_TEXTURES;
 
-	Vector<Ref<FBXNode>> nodes;
+	Vector<Ref<GLTFNode>> nodes;
 	Vector<Vector<uint8_t>> buffers;
 
 	Vector<Ref<FBXMesh>> meshes; // Meshes are loaded directly, no reason not to.
@@ -84,20 +87,20 @@ class FBXState : public Resource {
 	HashMap<uint64_t, Image::AlphaMode> alpha_mode_cache;
 	HashMap<Pair<uint64_t, uint64_t>, FBXTextureIndex, PairHash<uint64_t, uint64_t>> albedo_transparency_textures;
 
-	Vector<Ref<FBXSkin>> skins;
-	Vector<FBXSkinIndex> skin_indices;
+	Vector<Ref<GLTFSkin>> skins;
+	Vector<GLTFSkinIndex> skin_indices;
 	Vector<Ref<FBXCamera>> cameras;
 	Vector<Ref<FBXLight>> lights;
 	HashSet<String> unique_names;
 	HashSet<String> unique_animation_names;
 
-	Vector<Ref<FBXSkeleton>> skeletons;
+	Vector<Ref<GLTFSkeleton>> skeletons;
 	Vector<Ref<FBXAnimation>> animations;
-	HashMap<FBXNodeIndex, Node *> scene_nodes;
-	HashMap<FBXNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
+	HashMap<GLTFNodeIndex, Node *> scene_nodes;
+	HashMap<GLTFNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
 
-	HashMap<ObjectID, FBXSkeletonIndex> skeleton3d_to_fbx_skeleton;
-	HashMap<ObjectID, HashMap<ObjectID, FBXSkinIndex>> skin_and_skeleton3d_to_fbx_skin;
+	HashMap<ObjectID, GLTFSkeletonIndex> skeleton3d_to_fbx_skeleton;
+	HashMap<ObjectID, HashMap<ObjectID, GLTFSkinIndex>> skin_and_skeleton3d_to_fbx_skin;
 	Dictionary additional_data;
 
 protected:
@@ -140,8 +143,8 @@ public:
 	bool get_discard_meshes_and_materials();
 	void set_discard_meshes_and_materials(bool p_discard_meshes_and_materials);
 
-	TypedArray<FBXNode> get_nodes();
-	void set_nodes(TypedArray<FBXNode> p_nodes);
+	TypedArray<GLTFNode> get_nodes();
+	void set_nodes(TypedArray<GLTFNode> p_nodes);
 
 	TypedArray<PackedByteArray> get_buffers();
 	void set_buffers(TypedArray<PackedByteArray> p_buffers);
@@ -170,8 +173,8 @@ public:
 	TypedArray<Texture2D> get_images();
 	void set_images(TypedArray<Texture2D> p_images);
 
-	TypedArray<FBXSkin> get_skins();
-	void set_skins(TypedArray<FBXSkin> p_skins);
+	TypedArray<GLTFSkin> get_skins();
+	void set_skins(TypedArray<GLTFSkin> p_skins);
 
 	TypedArray<FBXCamera> get_cameras();
 	void set_cameras(TypedArray<FBXCamera> p_cameras);
@@ -182,8 +185,8 @@ public:
 	TypedArray<String> get_unique_animation_names();
 	void set_unique_animation_names(TypedArray<String> p_unique_names);
 
-	TypedArray<FBXSkeleton> get_skeletons();
-	void set_skeletons(TypedArray<FBXSkeleton> p_skeletons);
+	TypedArray<GLTFSkeleton> get_skeletons();
+	void set_skeletons(TypedArray<GLTFSkeleton> p_skeletons);
 
 	bool get_create_animations();
 	void set_create_animations(bool p_create_animations);
@@ -191,8 +194,8 @@ public:
 	TypedArray<FBXAnimation> get_animations();
 	void set_animations(TypedArray<FBXAnimation> p_animations);
 
-	Node *get_scene_node(FBXNodeIndex idx);
-	FBXNodeIndex get_node_index(Node *p_node);
+	Node *get_scene_node(GLTFNodeIndex idx);
+	GLTFNodeIndex get_node_index(Node *p_node);
 
 	int get_animation_players_count(int idx);
 

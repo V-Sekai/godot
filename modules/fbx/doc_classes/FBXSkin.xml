@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="FBXSkin" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="GLTFSkin" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		FBXSkin represents a skin in an FBX file.
+		GLTFSkin represents a skin in an FBX file.
 	</brief_description>
 	<description>
-		The FBXSkin class handles skin data imported from FBX files. It includes methods for getting and setting inverse binds, joint indices to bone indices, joint indices to names, and properties for joints, roots, and skins.
+		The GLTFSkin class handles skin data imported from FBX files. It includes methods for getting and setting inverse binds, joint indices to bone indices, joint indices to names, and properties for joints, roots, and skins.
 	</description>
 	<tutorials>
 	</tutorials>

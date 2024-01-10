@@ -31,7 +31,7 @@
 #ifndef FBX_TEXTURE_H
 #define FBX_TEXTURE_H
 
-#include "../fbx_defines.h"
+#include "modules/fbx/fbx_defines.h"
 
 #include "core/io/resource.h"
 

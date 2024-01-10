@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="FBXNode" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="GLTFNode" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		FBXNode represents an FBX node.
+		GLTFNode represents an FBX node.
 	</brief_description>
 	<description>
-		The FBXNode class handles 3D node data imported from FBX files. It includes methods for getting and setting additional data, mesh, and properties for children, height, parent, position, rotation, scale, skeleton, skin, and transform.
+		The GLTFNode class handles 3D node data imported from FBX files. It includes methods for getting and setting additional data, mesh, and properties for children, height, parent, position, rotation, scale, skeleton, skin, and transform.
 	</description>
 	<tutorials>
 	</tutorials>

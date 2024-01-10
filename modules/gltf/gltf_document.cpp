@@ -30,6 +30,7 @@
 
 #include "gltf_document.h"
 
+#include "core/object/object_id.h"
 #include "extensions/gltf_spec_gloss.h"
 
 #include "core/config/project_settings.h"
@@ -42,6 +43,7 @@
 #include "core/io/stream_peer.h"
 #include "core/math/disjoint_set.h"
 #include "core/version.h"
+#include "modules/gltf/gltf_state.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
@@ -51,6 +53,7 @@
 #include "scene/resources/image_texture.h"
 #include "scene/resources/portable_compressed_texture.h"
 #include "scene/resources/skin.h"
+#include "scene/resources/skin_tool.h"
 #include "scene/resources/surface_tool.h"
 
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
@@ -74,7 +77,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstdint>
-#include <limits>
 
 static Ref<ImporterMesh> _mesh_to_importer_mesh(Ref<Mesh> p_mesh) {
 	Ref<ImporterMesh> importer_mesh;
@@ -4206,236 +4208,6 @@ void GLTFDocument::spec_gloss_to_metal_base_color(const Color &p_specular_factor
 	r_base_color = r_base_color.clamp();
 }
 
-GLTFNodeIndex GLTFDocument::_find_highest_node(Ref<GLTFState> p_state, const Vector<GLTFNodeIndex> &p_subset) {
-	int highest = -1;
-	GLTFNodeIndex best_node = -1;
-
-	for (int i = 0; i < p_subset.size(); ++i) {
-		const GLTFNodeIndex node_i = p_subset[i];
-		const Ref<GLTFNode> node = p_state->nodes[node_i];
-
-		if (highest == -1 || node->height < highest) {
-			highest = node->height;
-			best_node = node_i;
-		}
-	}
-
-	return best_node;
-}
-
-bool GLTFDocument::_capture_nodes_in_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin, const GLTFNodeIndex p_node_index) {
-	bool found_joint = false;
-
-	for (int i = 0; i < p_state->nodes[p_node_index]->children.size(); ++i) {
-		found_joint |= _capture_nodes_in_skin(p_state, p_skin, p_state->nodes[p_node_index]->children[i]);
-	}
-
-	if (found_joint) {
-		// Mark it if we happen to find another skins joint...
-		if (p_state->nodes[p_node_index]->joint && p_skin->joints.find(p_node_index) < 0) {
-			p_skin->joints.push_back(p_node_index);
-		} else if (p_skin->non_joints.find(p_node_index) < 0) {
-			p_skin->non_joints.push_back(p_node_index);
-		}
-	}
-
-	if (p_skin->joints.find(p_node_index) > 0) {
-		return true;
-	}
-
-	return false;
-}
-
-void GLTFDocument::_capture_nodes_for_multirooted_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin) {
-	DisjointSet<GLTFNodeIndex> disjoint_set;
-
-	for (int i = 0; i < p_skin->joints.size(); ++i) {
-		const GLTFNodeIndex node_index = p_skin->joints[i];
-		const GLTFNodeIndex parent = p_state->nodes[node_index]->parent;
-		disjoint_set.insert(node_index);
-
-		if (p_skin->joints.find(parent) >= 0) {
-			disjoint_set.create_union(parent, node_index);
-		}
-	}
-
-	Vector<GLTFNodeIndex> roots;
-	disjoint_set.get_representatives(roots);
-
-	if (roots.size() <= 1) {
-		return;
-	}
-
-	int maxHeight = -1;
-
-	// Determine the max height rooted tree
-	for (int i = 0; i < roots.size(); ++i) {
-		const GLTFNodeIndex root = roots[i];
-
-		if (maxHeight == -1 || p_state->nodes[root]->height < maxHeight) {
-			maxHeight = p_state->nodes[root]->height;
-		}
-	}
-
-	// Go up the tree till all of the multiple roots of the skin are at the same hierarchy level.
-	// This sucks, but 99% of all game engines (not just Godot) would have this same issue.
-	for (int i = 0; i < roots.size(); ++i) {
-		GLTFNodeIndex current_node = roots[i];
-		while (p_state->nodes[current_node]->height > maxHeight) {
-			GLTFNodeIndex parent = p_state->nodes[current_node]->parent;
-
-			if (p_state->nodes[parent]->joint && p_skin->joints.find(parent) < 0) {
-				p_skin->joints.push_back(parent);
-			} else if (p_skin->non_joints.find(parent) < 0) {
-				p_skin->non_joints.push_back(parent);
-			}
-
-			current_node = parent;
-		}
-
-		// replace the roots
-		roots.write[i] = current_node;
-	}
-
-	// Climb up the tree until they all have the same parent
-	bool all_same;
-
-	do {
-		all_same = true;
-		const GLTFNodeIndex first_parent = p_state->nodes[roots[0]]->parent;
-
-		for (int i = 1; i < roots.size(); ++i) {
-			all_same &= (first_parent == p_state->nodes[roots[i]]->parent);
-		}
-
-		if (!all_same) {
-			for (int i = 0; i < roots.size(); ++i) {
-				const GLTFNodeIndex current_node = roots[i];
-				const GLTFNodeIndex parent = p_state->nodes[current_node]->parent;
-
-				if (p_state->nodes[parent]->joint && p_skin->joints.find(parent) < 0) {
-					p_skin->joints.push_back(parent);
-				} else if (p_skin->non_joints.find(parent) < 0) {
-					p_skin->non_joints.push_back(parent);
-				}
-
-				roots.write[i] = parent;
-			}
-		}
-
-	} while (!all_same);
-}
-
-Error GLTFDocument::_expand_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin) {
-	_capture_nodes_for_multirooted_skin(p_state, p_skin);
-
-	// Grab all nodes that lay in between skin joints/nodes
-	DisjointSet<GLTFNodeIndex> disjoint_set;
-
-	Vector<GLTFNodeIndex> all_skin_nodes;
-	all_skin_nodes.append_array(p_skin->joints);
-	all_skin_nodes.append_array(p_skin->non_joints);
-
-	for (int i = 0; i < all_skin_nodes.size(); ++i) {
-		const GLTFNodeIndex node_index = all_skin_nodes[i];
-		const GLTFNodeIndex parent = p_state->nodes[node_index]->parent;
-		disjoint_set.insert(node_index);
-
-		if (all_skin_nodes.find(parent) >= 0) {
-			disjoint_set.create_union(parent, node_index);
-		}
-	}
-
-	Vector<GLTFNodeIndex> out_owners;
-	disjoint_set.get_representatives(out_owners);
-
-	Vector<GLTFNodeIndex> out_roots;
-
-	for (int i = 0; i < out_owners.size(); ++i) {
-		Vector<GLTFNodeIndex> set;
-		disjoint_set.get_members(set, out_owners[i]);
-
-		const GLTFNodeIndex root = _find_highest_node(p_state, set);
-		ERR_FAIL_COND_V(root < 0, FAILED);
-		out_roots.push_back(root);
-	}
-
-	out_roots.sort();
-
-	for (int i = 0; i < out_roots.size(); ++i) {
-		_capture_nodes_in_skin(p_state, p_skin, out_roots[i]);
-	}
-
-	p_skin->roots = out_roots;
-
-	return OK;
-}
-
-Error GLTFDocument::_verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin) {
-	// This may seem duplicated from expand_skins, but this is really a safety check! (so it kinda is)
-	// In case additional interpolating logic is added to the skins, this will help ensure that you
-	// do not cause it to self implode into a fiery blaze
-
-	// We are going to re-calculate the root nodes and compare them to the ones saved in the skin,
-	// then ensure the multiple trees (if they exist) are on the same sublevel
-
-	// Grab all nodes that lay in between skin joints/nodes
-	DisjointSet<GLTFNodeIndex> disjoint_set;
-
-	Vector<GLTFNodeIndex> all_skin_nodes;
-	all_skin_nodes.append_array(p_skin->joints);
-	all_skin_nodes.append_array(p_skin->non_joints);
-
-	for (int i = 0; i < all_skin_nodes.size(); ++i) {
-		const GLTFNodeIndex node_index = all_skin_nodes[i];
-		const GLTFNodeIndex parent = p_state->nodes[node_index]->parent;
-		disjoint_set.insert(node_index);
-
-		if (all_skin_nodes.find(parent) >= 0) {
-			disjoint_set.create_union(parent, node_index);
-		}
-	}
-
-	Vector<GLTFNodeIndex> out_owners;
-	disjoint_set.get_representatives(out_owners);
-
-	Vector<GLTFNodeIndex> out_roots;
-
-	for (int i = 0; i < out_owners.size(); ++i) {
-		Vector<GLTFNodeIndex> set;
-		disjoint_set.get_members(set, out_owners[i]);
-
-		const GLTFNodeIndex root = _find_highest_node(p_state, set);
-		ERR_FAIL_COND_V(root < 0, FAILED);
-		out_roots.push_back(root);
-	}
-
-	out_roots.sort();
-
-	ERR_FAIL_COND_V(out_roots.size() == 0, FAILED);
-
-	// Make sure the roots are the exact same (they better be)
-	ERR_FAIL_COND_V(out_roots.size() != p_skin->roots.size(), FAILED);
-	for (int i = 0; i < out_roots.size(); ++i) {
-		ERR_FAIL_COND_V(out_roots[i] != p_skin->roots[i], FAILED);
-	}
-
-	// Single rooted skin? Perfectly ok!
-	if (out_roots.size() == 1) {
-		return OK;
-	}
-
-	// Make sure all parents of a multi-rooted skin are the SAME
-	const GLTFNodeIndex parent = p_state->nodes[out_roots[0]]->parent;
-	for (int i = 1; i < out_roots.size(); ++i) {
-		if (p_state->nodes[out_roots[i]]->parent != parent) {
-			return FAILED;
-		}
-	}
-
-	return OK;
-}
-
 Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 	if (!p_state->json.has("skins")) {
 		return OK;
@@ -4487,353 +4259,11 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 
 		// Expand the skin to capture all the extra non-joints that lie in between the actual joints,
 		// and expand the hierarchy to ensure multi-rooted trees lie on the same height level
-		ERR_FAIL_COND_V(_expand_skin(p_state, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(_verify_skin(p_state, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
 	}
 
 	print_verbose("glTF: Total skins: " + itos(p_state->skins.size()));
-
-	return OK;
-}
-
-void GLTFDocument::_recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
-		RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set) {
-	if (p_child_visited_set.has(p_node_index)) {
-		return;
-	}
-	p_child_visited_set.insert(p_node_index);
-	for (int i = 0; i < p_state->nodes[p_node_index]->children.size(); ++i) {
-		_recurse_children(p_state, p_state->nodes[p_node_index]->children[i], p_all_skin_nodes, p_child_visited_set);
-	}
-
-	if (p_state->nodes[p_node_index]->skin < 0 || p_state->nodes[p_node_index]->mesh < 0 || !p_state->nodes[p_node_index]->children.is_empty()) {
-		p_all_skin_nodes.insert(p_node_index);
-	}
-}
-
-Error GLTFDocument::_determine_skeletons(Ref<GLTFState> p_state) {
-	// Using a disjoint set, we are going to potentially combine all skins that are actually branches
-	// of a main skeleton, or treat skins defining the same set of nodes as ONE skeleton.
-	// This is another unclear issue caused by the current glTF specification.
-
-	DisjointSet<GLTFNodeIndex> skeleton_sets;
-
-	for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-		const Ref<GLTFSkin> skin = p_state->skins[skin_i];
-
-		HashSet<GLTFNodeIndex> child_visited_set;
-		RBSet<GLTFNodeIndex> all_skin_nodes;
-		for (int i = 0; i < skin->joints.size(); ++i) {
-			all_skin_nodes.insert(skin->joints[i]);
-			_recurse_children(p_state, skin->joints[i], all_skin_nodes, child_visited_set);
-		}
-		for (int i = 0; i < skin->non_joints.size(); ++i) {
-			all_skin_nodes.insert(skin->non_joints[i]);
-			_recurse_children(p_state, skin->non_joints[i], all_skin_nodes, child_visited_set);
-		}
-		for (GLTFNodeIndex node_index : all_skin_nodes) {
-			const GLTFNodeIndex parent = p_state->nodes[node_index]->parent;
-			skeleton_sets.insert(node_index);
-
-			if (all_skin_nodes.has(parent)) {
-				skeleton_sets.create_union(parent, node_index);
-			}
-		}
-
-		// We are going to connect the separate skin subtrees in each skin together
-		// so that the final roots are entire sets of valid skin trees
-		for (int i = 1; i < skin->roots.size(); ++i) {
-			skeleton_sets.create_union(skin->roots[0], skin->roots[i]);
-		}
-	}
-
-	{ // attempt to joint all touching subsets (siblings/parent are part of another skin)
-		Vector<GLTFNodeIndex> groups_representatives;
-		skeleton_sets.get_representatives(groups_representatives);
-
-		Vector<GLTFNodeIndex> highest_group_members;
-		Vector<Vector<GLTFNodeIndex>> groups;
-		for (int i = 0; i < groups_representatives.size(); ++i) {
-			Vector<GLTFNodeIndex> group;
-			skeleton_sets.get_members(group, groups_representatives[i]);
-			highest_group_members.push_back(_find_highest_node(p_state, group));
-			groups.push_back(group);
-		}
-
-		for (int i = 0; i < highest_group_members.size(); ++i) {
-			const GLTFNodeIndex node_i = highest_group_members[i];
-
-			// Attach any siblings together (this needs to be done n^2/2 times)
-			for (int j = i + 1; j < highest_group_members.size(); ++j) {
-				const GLTFNodeIndex node_j = highest_group_members[j];
-
-				// Even if they are siblings under the root! :)
-				if (p_state->nodes[node_i]->parent == p_state->nodes[node_j]->parent) {
-					skeleton_sets.create_union(node_i, node_j);
-				}
-			}
-
-			// Attach any parenting going on together (we need to do this n^2 times)
-			const GLTFNodeIndex node_i_parent = p_state->nodes[node_i]->parent;
-			if (node_i_parent >= 0) {
-				for (int j = 0; j < groups.size() && i != j; ++j) {
-					const Vector<GLTFNodeIndex> &group = groups[j];
-
-					if (group.find(node_i_parent) >= 0) {
-						const GLTFNodeIndex node_j = highest_group_members[j];
-						skeleton_sets.create_union(node_i, node_j);
-					}
-				}
-			}
-		}
-	}
-
-	// At this point, the skeleton groups should be finalized
-	Vector<GLTFNodeIndex> skeleton_owners;
-	skeleton_sets.get_representatives(skeleton_owners);
-
-	// Mark all the skins actual skeletons, after we have merged them
-	for (GLTFSkeletonIndex skel_i = 0; skel_i < skeleton_owners.size(); ++skel_i) {
-		const GLTFNodeIndex skeleton_owner = skeleton_owners[skel_i];
-		Ref<GLTFSkeleton> skeleton;
-		skeleton.instantiate();
-
-		Vector<GLTFNodeIndex> skeleton_nodes;
-		skeleton_sets.get_members(skeleton_nodes, skeleton_owner);
-
-		for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-			Ref<GLTFSkin> skin = p_state->skins.write[skin_i];
-
-			// If any of the the skeletons nodes exist in a skin, that skin now maps to the skeleton
-			for (int i = 0; i < skeleton_nodes.size(); ++i) {
-				GLTFNodeIndex skel_node_i = skeleton_nodes[i];
-				if (skin->joints.find(skel_node_i) >= 0 || skin->non_joints.find(skel_node_i) >= 0) {
-					skin->skeleton = skel_i;
-					continue;
-				}
-			}
-		}
-
-		Vector<GLTFNodeIndex> non_joints;
-		for (int i = 0; i < skeleton_nodes.size(); ++i) {
-			const GLTFNodeIndex node_i = skeleton_nodes[i];
-
-			if (p_state->nodes[node_i]->joint) {
-				skeleton->joints.push_back(node_i);
-			} else {
-				non_joints.push_back(node_i);
-			}
-		}
-
-		p_state->skeletons.push_back(skeleton);
-
-		_reparent_non_joint_skeleton_subtrees(p_state, p_state->skeletons.write[skel_i], non_joints);
-	}
-
-	for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
-		Ref<GLTFSkeleton> skeleton = p_state->skeletons.write[skel_i];
-
-		for (int i = 0; i < skeleton->joints.size(); ++i) {
-			const GLTFNodeIndex node_i = skeleton->joints[i];
-			Ref<GLTFNode> node = p_state->nodes[node_i];
-
-			ERR_FAIL_COND_V(!node->joint, ERR_PARSE_ERROR);
-			ERR_FAIL_COND_V(node->skeleton >= 0, ERR_PARSE_ERROR);
-			node->skeleton = skel_i;
-		}
-
-		ERR_FAIL_COND_V(_determine_skeleton_roots(p_state, skel_i), ERR_PARSE_ERROR);
-	}
-
-	return OK;
-}
-
-Error GLTFDocument::_reparent_non_joint_skeleton_subtrees(Ref<GLTFState> p_state, Ref<GLTFSkeleton> p_skeleton, const Vector<GLTFNodeIndex> &p_non_joints) {
-	DisjointSet<GLTFNodeIndex> subtree_set;
-
-	// Populate the disjoint set with ONLY non joints that are in the skeleton hierarchy (non_joints vector)
-	// This way we can find any joints that lie in between joints, as the current glTF specification
-	// mentions nothing about non-joints being in between joints of the same skin. Hopefully one day we
-	// can remove this code.
-
-	// skinD depicted here explains this issue:
-	// https://github.com/KhronosGroup/glTF-Asset-Generator/blob/master/Output/Positive/Animation_Skin
-
-	for (int i = 0; i < p_non_joints.size(); ++i) {
-		const GLTFNodeIndex node_i = p_non_joints[i];
-
-		subtree_set.insert(node_i);
-
-		const GLTFNodeIndex parent_i = p_state->nodes[node_i]->parent;
-		if (parent_i >= 0 && p_non_joints.find(parent_i) >= 0 && !p_state->nodes[parent_i]->joint) {
-			subtree_set.create_union(parent_i, node_i);
-		}
-	}
-
-	// Find all the non joint subtrees and re-parent them to a new "fake" joint
-
-	Vector<GLTFNodeIndex> non_joint_subtree_roots;
-	subtree_set.get_representatives(non_joint_subtree_roots);
-
-	for (int root_i = 0; root_i < non_joint_subtree_roots.size(); ++root_i) {
-		const GLTFNodeIndex subtree_root = non_joint_subtree_roots[root_i];
-
-		Vector<GLTFNodeIndex> subtree_nodes;
-		subtree_set.get_members(subtree_nodes, subtree_root);
-
-		for (int subtree_i = 0; subtree_i < subtree_nodes.size(); ++subtree_i) {
-			Ref<GLTFNode> node = p_state->nodes[subtree_nodes[subtree_i]];
-			node->joint = true;
-			// Add the joint to the skeletons joints
-			p_skeleton->joints.push_back(subtree_nodes[subtree_i]);
-		}
-	}
-
-	return OK;
-}
-
-Error GLTFDocument::_determine_skeleton_roots(Ref<GLTFState> p_state, const GLTFSkeletonIndex p_skel_i) {
-	DisjointSet<GLTFNodeIndex> disjoint_set;
-
-	for (GLTFNodeIndex i = 0; i < p_state->nodes.size(); ++i) {
-		const Ref<GLTFNode> node = p_state->nodes[i];
-
-		if (node->skeleton != p_skel_i) {
-			continue;
-		}
-
-		disjoint_set.insert(i);
-
-		if (node->parent >= 0 && p_state->nodes[node->parent]->skeleton == p_skel_i) {
-			disjoint_set.create_union(node->parent, i);
-		}
-	}
-
-	Ref<GLTFSkeleton> skeleton = p_state->skeletons.write[p_skel_i];
-
-	Vector<GLTFNodeIndex> representatives;
-	disjoint_set.get_representatives(representatives);
-
-	Vector<GLTFNodeIndex> roots;
-
-	for (int i = 0; i < representatives.size(); ++i) {
-		Vector<GLTFNodeIndex> set;
-		disjoint_set.get_members(set, representatives[i]);
-		const GLTFNodeIndex root = _find_highest_node(p_state, set);
-		ERR_FAIL_COND_V(root < 0, FAILED);
-		roots.push_back(root);
-	}
-
-	roots.sort();
-
-	skeleton->roots = roots;
-
-	if (roots.size() == 0) {
-		return FAILED;
-	} else if (roots.size() == 1) {
-		return OK;
-	}
-
-	// Check that the subtrees have the same parent root
-	const GLTFNodeIndex parent = p_state->nodes[roots[0]]->parent;
-	for (int i = 1; i < roots.size(); ++i) {
-		if (p_state->nodes[roots[i]]->parent != parent) {
-			return FAILED;
-		}
-	}
-
-	return OK;
-}
-
-Error GLTFDocument::_create_skeletons(Ref<GLTFState> p_state) {
-	for (GLTFSkeletonIndex skel_i = 0; skel_i < p_state->skeletons.size(); ++skel_i) {
-		Ref<GLTFSkeleton> gltf_skeleton = p_state->skeletons.write[skel_i];
-
-		Skeleton3D *skeleton = memnew(Skeleton3D);
-		gltf_skeleton->godot_skeleton = skeleton;
-		p_state->skeleton3d_to_gltf_skeleton[skeleton->get_instance_id()] = skel_i;
-
-		// Make a unique name, no gltf node represents this skeleton
-		skeleton->set_name("Skeleton3D");
-
-		List<GLTFNodeIndex> bones;
-
-		for (int i = 0; i < gltf_skeleton->roots.size(); ++i) {
-			bones.push_back(gltf_skeleton->roots[i]);
-		}
-
-		// Make the skeleton creation deterministic by going through the roots in
-		// a sorted order, and DEPTH FIRST
-		bones.sort();
-
-		while (!bones.is_empty()) {
-			const GLTFNodeIndex node_i = bones.front()->get();
-			bones.pop_front();
-
-			Ref<GLTFNode> node = p_state->nodes[node_i];
-			ERR_FAIL_COND_V(node->skeleton != skel_i, FAILED);
-
-			{ // Add all child nodes to the stack (deterministically)
-				Vector<GLTFNodeIndex> child_nodes;
-				for (int i = 0; i < node->children.size(); ++i) {
-					const GLTFNodeIndex child_i = node->children[i];
-					if (p_state->nodes[child_i]->skeleton == skel_i) {
-						child_nodes.push_back(child_i);
-					}
-				}
-
-				// Depth first insertion
-				child_nodes.sort();
-				for (int i = child_nodes.size() - 1; i >= 0; --i) {
-					bones.push_front(child_nodes[i]);
-				}
-			}
-
-			const int bone_index = skeleton->get_bone_count();
-
-			if (node->get_name().is_empty()) {
-				node->set_name("bone");
-			}
-
-			node->set_name(_gen_unique_bone_name(p_state, skel_i, node->get_name()));
-
-			skeleton->add_bone(node->get_name());
-			skeleton->set_bone_rest(bone_index, node->xform);
-			skeleton->set_bone_pose_position(bone_index, node->position);
-			skeleton->set_bone_pose_rotation(bone_index, node->rotation.normalized());
-			skeleton->set_bone_pose_scale(bone_index, node->scale);
-
-			if (node->parent >= 0 && p_state->nodes[node->parent]->skeleton == skel_i) {
-				const int bone_parent = skeleton->find_bone(p_state->nodes[node->parent]->get_name());
-				ERR_FAIL_COND_V(bone_parent < 0, FAILED);
-				skeleton->set_bone_parent(bone_index, skeleton->find_bone(p_state->nodes[node->parent]->get_name()));
-			}
-
-			p_state->scene_nodes.insert(node_i, skeleton);
-		}
-	}
-
-	ERR_FAIL_COND_V(_map_skin_joints_indices_to_skeleton_bone_indices(p_state), ERR_PARSE_ERROR);
-
-	return OK;
-}
-
-Error GLTFDocument::_map_skin_joints_indices_to_skeleton_bone_indices(Ref<GLTFState> p_state) {
-	for (GLTFSkinIndex skin_i = 0; skin_i < p_state->skins.size(); ++skin_i) {
-		Ref<GLTFSkin> skin = p_state->skins.write[skin_i];
-
-		Ref<GLTFSkeleton> skeleton = p_state->skeletons[skin->skeleton];
-
-		for (int joint_index = 0; joint_index < skin->joints_original.size(); ++joint_index) {
-			const GLTFNodeIndex node_i = skin->joints_original[joint_index];
-			const Ref<GLTFNode> node = p_state->nodes[node_i];
-
-			const int bone_index = skeleton->godot_skeleton->find_bone(node->get_name());
-			ERR_FAIL_COND_V(bone_index < 0, FAILED);
-
-			skin->joint_i_to_bone_i.insert(joint_index, bone_index);
-		}
-	}
 
 	return OK;
 }
@@ -7423,7 +6853,9 @@ Error GLTFDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_
 
 Node *GLTFDocument::_generate_scene_node_tree(Ref<GLTFState> p_state) {
 	// Generate the skeletons and skins (if any).
-	Error err = _create_skeletons(p_state);
+	HashMap<ObjectID, SkinSkeletonIndex> skeleton_map;
+	Error err = SkinTool::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes, 
+		skeleton_map, p_state->skeletons, p_state->scene_nodes);
 	ERR_FAIL_COND_V_MSG(err != OK, nullptr, "GLTF: Failed to create skeletons.");
 	err = _create_skins(p_state);
 	ERR_FAIL_COND_V_MSG(err != OK, nullptr, "GLTF: Failed to create skins.");
@@ -7625,7 +7057,7 @@ Error GLTFDocument::_parse_gltf_state(Ref<GLTFState> p_state, const String &p_se
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* DETERMINE SKELETONS */
-	err = _determine_skeletons(p_state);
+	err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* PARSE MESHES (we have enough info now) */

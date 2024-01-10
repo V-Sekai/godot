@@ -32,8 +32,14 @@
 #define GLTF_DOCUMENT_H
 
 #include "extensions/gltf_document_extension.h"
+#include "modules/csg/csg_shape.h"
+#include "modules/gltf/extensions/gltf_spec_gloss.h"
+#include "gltf_defines.h"
 
+#include "modules/gridmap/grid_map.h"
+#include "scene/3d/mesh_instance_3d.h"
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
+#include "scene/3d/multimesh_instance_3d.h"
 
 class GLTFDocument : public Resource {
 	GDCLASS(GLTFDocument, Resource);
@@ -184,24 +190,7 @@ private:
 			const Color &p_diffuse,
 			Color &r_base_color,
 			float &r_metallic);
-	GLTFNodeIndex _find_highest_node(Ref<GLTFState> p_state,
-			const Vector<GLTFNodeIndex> &p_subset);
-	void _recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
-			RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set);
-	bool _capture_nodes_in_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin,
-			const GLTFNodeIndex p_node_index);
-	void _capture_nodes_for_multirooted_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
-	Error _expand_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
-	Error _verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
 	Error _parse_skins(Ref<GLTFState> p_state);
-	Error _determine_skeletons(Ref<GLTFState> p_state);
-	Error _reparent_non_joint_skeleton_subtrees(
-			Ref<GLTFState> p_state, Ref<GLTFSkeleton> p_skeleton,
-			const Vector<GLTFNodeIndex> &p_non_joints);
-	Error _determine_skeleton_roots(Ref<GLTFState> p_state,
-			const GLTFSkeletonIndex p_skel_i);
-	Error _create_skeletons(Ref<GLTFState> p_state);
-	Error _map_skin_joints_indices_to_skeleton_bone_indices(Ref<GLTFState> p_state);
 	Error _serialize_skins(Ref<GLTFState> p_state);
 	Error _create_skins(Ref<GLTFState> p_state);
 	bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);

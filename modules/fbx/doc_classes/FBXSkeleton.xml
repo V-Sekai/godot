@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="FBXSkeleton" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="GLTFSkeleton" inherits="Resource" is_experimental="true" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		FBXSkeleton represents a skeleton in an FBX file.
+		GLTFSkeleton represents a skeleton in an FBX file.
 	</brief_description>
 	<description>
-		The FBXSkeleton class handles skeleton data imported from FBX files. It includes methods for getting and setting bone attachments, godot bone nodes, unique names, and properties for joints and roots.
+		The GLTFSkeleton class handles skeleton data imported from FBX files. It includes methods for getting and setting bone attachments, godot bone nodes, unique names, and properties for joints and roots.
 	</description>
 	<tutorials>
 	</tutorials>

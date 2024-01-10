@@ -30,7 +30,7 @@
 
 #include "fbx_state.h"
 
-#include "fbx_template_convert.h"
+#include "core/templates/template_convert.h"
 
 void FBXState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_used_extension", "extension_name", "required"), &FBXState::add_used_extension);
@@ -86,7 +86,7 @@ void FBXState::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "major_version"), "set_major_version", "get_major_version"); // int
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "minor_version"), "set_minor_version", "get_minor_version"); // int
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_named_skin_binds"), "set_use_named_skin_binds", "get_use_named_skin_binds"); // bool
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "nodes", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_nodes", "get_nodes"); // Vector<Ref<FBXNode>>
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "nodes", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_nodes", "get_nodes"); // Vector<Ref<GLTFNode>>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "buffers"), "set_buffers", "get_buffers"); // Vector<Vector<uint8_t>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "meshes", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_meshes", "get_meshes"); // Vector<Ref<FBXMesh>>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "materials", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_materials", "get_materials"); // Vector<Ref<Material>
@@ -96,11 +96,11 @@ void FBXState::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::PACKED_INT32_ARRAY, "root_nodes"), "set_root_nodes", "get_root_nodes"); // Vector<int>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "textures", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_textures", "get_textures"); // Vector<Ref<FBXTexture>>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "images", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_images", "get_images"); // Vector<Ref<Texture>
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "skins", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_skins", "get_skins"); // Vector<Ref<FBXSkin>>
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "skins", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_skins", "get_skins"); // Vector<Ref<GLTFSkin>>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "cameras", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_cameras", "get_cameras"); // Vector<Ref<FBXCamera>>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "unique_names", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_unique_names", "get_unique_names"); // Set<String>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "unique_animation_names", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_unique_animation_names", "get_unique_animation_names"); // Set<String>
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "skeletons", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_skeletons", "get_skeletons"); // Vector<Ref<FBXSkeleton>>
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "skeletons", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_skeletons", "get_skeletons"); // Vector<Ref<GLTFSkeleton>>
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "create_animations"), "set_create_animations", "get_create_animations"); // bool
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "animations", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_animations", "get_animations"); // Vector<Ref<FBXAnimation>>
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "handle_binary_image", PROPERTY_HINT_ENUM, "Discard All Textures,Extract Textures,Embed As Basis Universal,Embed as Uncompressed", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_handle_binary_image", "get_handle_binary_image"); // enum
@@ -146,36 +146,36 @@ void FBXState::set_use_named_skin_binds(bool p_use_named_skin_binds) {
 	use_named_skin_binds = p_use_named_skin_binds;
 }
 
-TypedArray<FBXNode> FBXState::get_nodes() {
-	return FBXTemplateConvert::to_array(nodes);
+TypedArray<GLTFNode> FBXState::get_nodes() {
+	return to_array(nodes);
 }
 
-void FBXState::set_nodes(TypedArray<FBXNode> p_nodes) {
-	FBXTemplateConvert::set_from_array(nodes, p_nodes);
+void FBXState::set_nodes(TypedArray<GLTFNode> p_nodes) {
+	set_from_array(nodes, p_nodes);
 }
 
 TypedArray<PackedByteArray> FBXState::get_buffers() {
-	return FBXTemplateConvert::to_array(buffers);
+	return to_array(buffers);
 }
 
 void FBXState::set_buffers(TypedArray<PackedByteArray> p_buffers) {
-	FBXTemplateConvert::set_from_array(buffers, p_buffers);
+	set_from_array(buffers, p_buffers);
 }
 
 TypedArray<FBXMesh> FBXState::get_meshes() {
-	return FBXTemplateConvert::to_array(meshes);
+	return to_array(meshes);
 }
 
 void FBXState::set_meshes(TypedArray<FBXMesh> p_meshes) {
-	FBXTemplateConvert::set_from_array(meshes, p_meshes);
+	set_from_array(meshes, p_meshes);
 }
 
 TypedArray<Material> FBXState::get_materials() {
-	return FBXTemplateConvert::to_array(materials);
+	return to_array(materials);
 }
 
 void FBXState::set_materials(TypedArray<Material> p_materials) {
-	FBXTemplateConvert::set_from_array(materials, p_materials);
+	set_from_array(materials, p_materials);
 }
 
 String FBXState::get_scene_name() {
@@ -195,59 +195,59 @@ void FBXState::set_root_nodes(PackedInt32Array p_root_nodes) {
 }
 
 TypedArray<FBXTexture> FBXState::get_textures() {
-	return FBXTemplateConvert::to_array(textures);
+	return to_array(textures);
 }
 
 void FBXState::set_textures(TypedArray<FBXTexture> p_textures) {
-	FBXTemplateConvert::set_from_array(textures, p_textures);
+	set_from_array(textures, p_textures);
 }
 
 TypedArray<Texture2D> FBXState::get_images() {
-	return FBXTemplateConvert::to_array(images);
+	return to_array(images);
 }
 
 void FBXState::set_images(TypedArray<Texture2D> p_images) {
-	FBXTemplateConvert::set_from_array(images, p_images);
+	set_from_array(images, p_images);
 }
 
-TypedArray<FBXSkin> FBXState::get_skins() {
-	return FBXTemplateConvert::to_array(skins);
+TypedArray<GLTFSkin> FBXState::get_skins() {
+	return to_array(skins);
 }
 
-void FBXState::set_skins(TypedArray<FBXSkin> p_skins) {
-	FBXTemplateConvert::set_from_array(skins, p_skins);
+void FBXState::set_skins(TypedArray<GLTFSkin> p_skins) {
+	set_from_array(skins, p_skins);
 }
 
 TypedArray<FBXCamera> FBXState::get_cameras() {
-	return FBXTemplateConvert::to_array(cameras);
+	return to_array(cameras);
 }
 
 void FBXState::set_cameras(TypedArray<FBXCamera> p_cameras) {
-	FBXTemplateConvert::set_from_array(cameras, p_cameras);
+	set_from_array(cameras, p_cameras);
 }
 
 TypedArray<String> FBXState::get_unique_names() {
-	return FBXTemplateConvert::to_array(unique_names);
+	return to_array(unique_names);
 }
 
 void FBXState::set_unique_names(TypedArray<String> p_unique_names) {
-	FBXTemplateConvert::set_from_array(unique_names, p_unique_names);
+	set_from_array(unique_names, p_unique_names);
 }
 
 TypedArray<String> FBXState::get_unique_animation_names() {
-	return FBXTemplateConvert::to_array(unique_animation_names);
+	return to_array(unique_animation_names);
 }
 
 void FBXState::set_unique_animation_names(TypedArray<String> p_unique_animation_names) {
-	FBXTemplateConvert::set_from_array(unique_animation_names, p_unique_animation_names);
+	set_from_array(unique_animation_names, p_unique_animation_names);
 }
 
-TypedArray<FBXSkeleton> FBXState::get_skeletons() {
-	return FBXTemplateConvert::to_array(skeletons);
+TypedArray<GLTFSkeleton> FBXState::get_skeletons() {
+	return to_array(skeletons);
 }
 
-void FBXState::set_skeletons(TypedArray<FBXSkeleton> p_skeletons) {
-	FBXTemplateConvert::set_from_array(skeletons, p_skeletons);
+void FBXState::set_skeletons(TypedArray<GLTFSkeleton> p_skeletons) {
+	set_from_array(skeletons, p_skeletons);
 }
 
 bool FBXState::get_create_animations() {
@@ -259,22 +259,22 @@ void FBXState::set_create_animations(bool p_create_animations) {
 }
 
 TypedArray<FBXAnimation> FBXState::get_animations() {
-	return FBXTemplateConvert::to_array(animations);
+	return to_array(animations);
 }
 
 void FBXState::set_animations(TypedArray<FBXAnimation> p_animations) {
-	FBXTemplateConvert::set_from_array(animations, p_animations);
+	set_from_array(animations, p_animations);
 }
 
-Node *FBXState::get_scene_node(FBXNodeIndex idx) {
+Node *FBXState::get_scene_node(GLTFNodeIndex idx) {
 	if (!scene_nodes.has(idx)) {
 		return nullptr;
 	}
 	return scene_nodes[idx];
 }
 
-FBXNodeIndex FBXState::get_node_index(Node *p_node) {
-	for (KeyValue<FBXNodeIndex, Node *> x : scene_nodes) {
+GLTFNodeIndex FBXState::get_node_index(Node *p_node) {
+	for (KeyValue<GLTFNodeIndex, Node *> x : scene_nodes) {
 		if (x.value == p_node) {
 			return x.key;
 		}

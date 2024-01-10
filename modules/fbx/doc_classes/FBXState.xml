@@ -81,9 +81,9 @@
 			</description>
 		</method>
 		<method name="get_nodes">
-			<return type="FBXNode[]" />
+			<return type="GLTFNode[]" />
 			<description>
-				Gets an array of [FBXNode] objects representing the nodes in the [FBXState].
+				Gets an array of [GLTFNode] objects representing the nodes in the [FBXState].
 			</description>
 		</method>
 		<method name="get_scene_node">
@@ -94,15 +94,15 @@
 			</description>
 		</method>
 		<method name="get_skeletons">
-			<return type="FBXSkeleton[]" />
+			<return type="GLTFSkeleton[]" />
 			<description>
-				Gets an array of [FBXSkeleton] objects representing the skeletons in the [FBXState].
+				Gets an array of [GLTFSkeleton] objects representing the skeletons in the [FBXState].
 			</description>
 		</method>
 		<method name="get_skins">
-			<return type="FBXSkin[]" />
+			<return type="GLTFSkin[]" />
 			<description>
-				Gets an array of [FBXSkin] objects representing the skins in the [FBXState].
+				Gets an array of [GLTFSkin] objects representing the skins in the [FBXState].
 			</description>
 		</method>
 		<method name="get_textures">
@@ -175,23 +175,23 @@
 		</method>
 		<method name="set_nodes">
 			<return type="void" />
-			<param index="0" name="nodes" type="FBXNode[]" />
+			<param index="0" name="nodes" type="GLTFNode[]" />
 			<description>
-				Sets the nodes in the [FBXState] with the given array of [FBXNode] objects.
+				Sets the nodes in the [FBXState] with the given array of [GLTFNode] objects.
 			</description>
 		</method>
 		<method name="set_skeletons">
 			<return type="void" />
-			<param index="0" name="skeletons" type="FBXSkeleton[]" />
+			<param index="0" name="skeletons" type="GLTFSkeleton[]" />
 			<description>
-				Sets the skeletons in the [FBXState] with the given array of [FBXSkeleton] objects.
+				Sets the skeletons in the [FBXState] with the given array of [GLTFSkeleton] objects.
 			</description>
 		</method>
 		<method name="set_skins">
 			<return type="void" />
-			<param index="0" name="skins" type="FBXSkin[]" />
+			<param index="0" name="skins" type="GLTFSkin[]" />
 			<description>
-				Sets the skins in the [FBXState] with the given array of [FBXSkin] objects.
+				Sets the skins in the [FBXState] with the given array of [GLTFSkin] objects.
 			</description>
 		</method>
 		<method name="set_textures">

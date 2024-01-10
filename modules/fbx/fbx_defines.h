@@ -31,31 +31,6 @@
 #ifndef FBX_DEFINES_H
 #define FBX_DEFINES_H
 
-// This file should only be included by other headers.
-
-// Godot classes used by GLTF headers.
-class BoneAttachment3D;
-class CSGShape3D;
-class GridMap;
-class ImporterMeshInstance3D;
-class Light3D;
-class MeshInstance3D;
-class MultiMeshInstance3D;
-class Skeleton3D;
-
-// GLTF classes.
-class FBXAnimation;
-class FBXLight;
-class FBXCamera;
-class FBXDocument;
-class FBXDocumentExtension;
-class FBXMesh;
-class FBXNode;
-class FBXSkeleton;
-class FBXSkin;
-class FBXState;
-class FBXTexture;
-
 // GLTF index aliases.
 using FBXAnimationIndex = int;
 using FBXBufferIndex = int;
@@ -64,9 +39,6 @@ using FBXLightIndex = int;
 using FBXImageIndex = int;
 using FBXMaterialIndex = int;
 using FBXMeshIndex = int;
-using FBXNodeIndex = int;
-using FBXSkeletonIndex = int;
-using FBXSkinIndex = int;
 using FBXTextureIndex = int;
 
 #endif // FBX_DEFINES_H
