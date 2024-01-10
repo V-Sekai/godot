@@ -35,6 +35,8 @@
 
 #include "core/io/resource.h"
 
+#include "scene/3d/skeleton_3d.h"
+
 class FBXSkeleton : public Resource {
 	GDCLASS(FBXSkeleton, Resource);
 	friend class FBXDocument;
@@ -79,6 +81,59 @@ public:
 	BoneAttachment3D *get_bone_attachment(int idx);
 
 	int32_t get_bone_attachment_count();
+
+	Dictionary to_dictionary() {
+		Dictionary dict;
+		dict["joints"] = Variant(joints);
+		dict["roots"] = Variant(roots);
+		dict["godot_skeleton"] = godot_skeleton;
+	
+		Array unique_names_array;
+		for (const String &name : unique_names) {
+			unique_names_array.push_back(name);
+		}
+		dict["unique_names"] = unique_names_array;
+	
+		Dictionary bone_node_dict;
+		for (HashMap<int32_t,FBXNodeIndex>::Iterator E = godot_bone_node.begin(); E; ++E) {
+			bone_node_dict[E->key] = E->value;
+		}
+		dict["godot_bone_node"] = bone_node_dict;
+	
+		return dict;
+	}
+	
+	Error from_dictionary(const Dictionary &dict) {
+		ERR_FAIL_COND_V(!dict.has("joints"), ERR_INVALID_DATA);
+		joints = dict["joints"];
+	
+		ERR_FAIL_COND_V(!dict.has("roots"), ERR_INVALID_DATA);
+		roots = dict["roots"];
+	
+		if (dict.has("godot_skeleton")) {
+			godot_skeleton = Object::cast_to<Skeleton3D>(dict["godot_skeleton"]);
+		}
+	
+		ERR_FAIL_COND_V(!dict.has("unique_names"), ERR_INVALID_DATA);
+		Array unique_names_array = dict["unique_names"];
+		unique_names.clear();
+		for (int i = 0; i < unique_names_array.size(); ++i) {
+			unique_names.insert(unique_names_array[i]);
+		}
+	
+		ERR_FAIL_COND_V(!dict.has("godot_bone_node"), ERR_INVALID_DATA);
+		Dictionary bone_node_dict = dict["godot_bone_node"];
+		godot_bone_node.clear();
+		for (int i = 0; i < bone_node_dict.size(); ++i) {
+			Variant key = bone_node_dict.get_key_at_index(i);
+			int32_t index = key;
+			FBXNodeIndex value = bone_node_dict[key];
+			godot_bone_node[index] = value;
+		}
+	
+		return OK;
+	}
+	
 };
 
 #endif // FBX_SKELETON_H
