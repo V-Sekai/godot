@@ -1773,8 +1773,7 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		ERR_CONTINUE(mesh.is_null());
 		ERR_CONTINUE(mesh->get_mesh().is_null());
 		ERR_CONTINUE(mesh->get_mesh()->get_mesh().is_null());
-		Dictionary mesh_additional_data = mesh->get_additional_data("GODOT_blend_channels");
-		TypedArray<int> blend_channels = mesh_additional_data["blend_channels"];
+		TypedArray<int> blend_channels = mesh->get_additional_data("GODOT_blend_channels");
 		for (int i = 0; i < blend_channels.size(); i++) {
 			FBXAnimation::BlendShapeTrack *blend_track = anim->get_blend_tracks().getptr(blend_channels[i]);
 			if (blend_track) {
