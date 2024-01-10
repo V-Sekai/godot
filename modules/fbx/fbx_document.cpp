@@ -1784,7 +1784,7 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		for (int i = 0; i < blend_channels.size(); i++) {
 			GLTFAnimation::Track tracks = anim->get_tracks()[blend_channels[i]];
 			for (int channel_i = 0; channel_i < tracks.weight_tracks.size(); channel_i++) {
-				GLTFAnimation::Channel<double> weights = tracks.weight_tracks[channel_i];
+				GLTFAnimation::Channel<float> weights = tracks.weight_tracks[channel_i];
 				const String blend_path = String(mesh_instance_node_path) + ":" + String(mesh->get_mesh()->get_blend_shape_name(i));
 				const int track_idx = animation->get_track_count();
 				animation->add_track(Animation::TYPE_BLEND_SHAPE);
