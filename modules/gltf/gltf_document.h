@@ -32,13 +32,13 @@
 #define GLTF_DOCUMENT_H
 
 #include "extensions/gltf_document_extension.h"
+#include "gltf_defines.h"
 #include "modules/csg/csg_shape.h"
 #include "modules/gltf/extensions/gltf_spec_gloss.h"
-#include "gltf_defines.h"
 
 #include "modules/gridmap/grid_map.h"
-#include "scene/3d/mesh_instance_3d.h"
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
+#include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/multimesh_instance_3d.h"
 
 class GLTFDocument : public Resource {
