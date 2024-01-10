@@ -40,7 +40,7 @@
 #include "structures/fbx_skin.h"
 #include "structures/fbx_texture.h"
 
-#include <ufbx.h>
+#include "thirdparty/ufbx/ufbx.h"
 
 class FBXState : public Resource {
 	GDCLASS(FBXState, Resource);
