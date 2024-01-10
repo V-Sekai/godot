@@ -42,7 +42,7 @@ class TypedArray;
 class FBXSkin : public Resource {
 	GDCLASS(FBXSkin, Resource);
 	friend class FBXDocument;
-	friend class FBXSkinUtility;
+	friend class SkinTool;
 	friend class FBXNode;
 
 private:

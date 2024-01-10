@@ -2026,15 +2026,15 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* DETERMINE SKELETONS */
-	err = FBXSkinUtility::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons);
+	err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* CREATE SKELETONS */
-	err = FBXSkinUtility::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes, p_state->skeleton3d_to_fbx_skeleton, p_state->skeletons, p_state->scene_nodes);
+	err = SkinTool::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes, p_state->skeleton3d_to_fbx_skeleton, p_state->skeletons, p_state->scene_nodes);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* CREATE SKINS */
-	err = FBXSkinUtility::_create_skins(p_state->skins, p_state->nodes, p_state->use_named_skin_binds, p_state->unique_names);
+	err = SkinTool::_create_skins(p_state->skins, p_state->nodes, p_state->use_named_skin_binds, p_state->unique_names);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* PARSE MESHES (we have enough info now) */
@@ -2202,7 +2202,7 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 			}
 		}
 	}
-	Error err = FBXSkinUtility::asset_parse_skins(
+	Error err = SkinTool::asset_parse_skins(
 			p_state->skin_indices.duplicate(),
 			p_state->skins.duplicate(),
 			p_state->nodes.duplicate(),
@@ -2217,8 +2217,8 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		Ref<FBXSkin> skin = p_state->skins.write[i];
 
 		// Expand and verify the skin
-		ERR_FAIL_COND_V(FBXSkinUtility::_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(FBXSkinUtility::_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
 	}
 
 	print_verbose("FBX: Total skins: " + itos(p_state->skins.size()));

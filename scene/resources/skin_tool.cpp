@@ -1,4 +1,4 @@
-#include "fbx_skin_utility.h"
+#include "skin_tool.h"
 
 #include "modules/fbx/fbx_defines.h"
 #include "scene/3d/skeleton_3d.h"
@@ -7,7 +7,7 @@
 #include "modules/fbx/structures/fbx_skeleton.h"
 #include "modules/fbx/fbx_document.h"
 
-SkinNodeIndex FBXSkinUtility::_find_highest_node(Vector<Ref<FBXNode>> &r_nodes, const Vector<FBXNodeIndex> &p_subset) {
+SkinNodeIndex SkinTool::_find_highest_node(Vector<Ref<FBXNode>> &r_nodes, const Vector<FBXNodeIndex> &p_subset) {
 	int highest = -1;
 	SkinNodeIndex best_node = -1;
 
@@ -24,7 +24,7 @@ SkinNodeIndex FBXSkinUtility::_find_highest_node(Vector<Ref<FBXNode>> &r_nodes, 
 	return best_node;
 }
 
-bool FBXSkinUtility::_capture_nodes_in_skin(const Vector<Ref<FBXNode>> &nodes, Ref<FBXSkin> p_skin, const SkinNodeIndex p_node_index) {
+bool SkinTool::_capture_nodes_in_skin(const Vector<Ref<FBXNode>> &nodes, Ref<FBXSkin> p_skin, const SkinNodeIndex p_node_index) {
 	bool found_joint = false;
 	Ref<FBXNode> current_node = nodes[p_node_index];
 
@@ -47,7 +47,7 @@ bool FBXSkinUtility::_capture_nodes_in_skin(const Vector<Ref<FBXNode>> &nodes, R
 
 	return false;
 }
-void FBXSkinUtility::_capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
+void SkinTool::_capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	DisjointSet<SkinNodeIndex> disjoint_set;
 
 	for (int i = 0; i < p_skin->joints.size(); ++i) {
@@ -126,7 +126,7 @@ void FBXSkinUtility::_capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r
 
 	} while (!all_same);
 }
-Error FBXSkinUtility::_expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
+Error SkinTool::_expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	_capture_nodes_for_multirooted_skin(r_nodes, p_skin);
 
 	// Grab all nodes that lay in between skin joints/nodes
@@ -170,7 +170,7 @@ Error FBXSkinUtility::_expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p
 
 	return OK;
 }
-Error FBXSkinUtility::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
+Error SkinTool::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin) {
 	// This may seem duplicated from expand_skins, but this is really a sanity check! (so it kinda is)
 	// In case additional interpolating logic is added to the skins, this will help ensure that you
 	// do not cause it to self implode into a fiery blaze
@@ -234,7 +234,7 @@ Error FBXSkinUtility::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p
 
 	return OK;
 }
-void FBXSkinUtility::_recurse_children(
+void SkinTool::_recurse_children(
 		Vector<Ref<FBXNode>> &nodes,
 		const SkinNodeIndex p_node_index,
 		RBSet<FBXNodeIndex> &p_all_skin_nodes,
@@ -254,7 +254,7 @@ void FBXSkinUtility::_recurse_children(
 		p_all_skin_nodes.insert(p_node_index);
 	}
 }
-Error FBXSkinUtility::_determine_skeletons(
+Error SkinTool::_determine_skeletons(
 		Vector<Ref<FBXSkin>> &skins,
 		Vector<Ref<FBXNode>> &nodes,
 		Vector<Ref<FBXSkeleton>> &skeletons) {
@@ -271,11 +271,11 @@ Error FBXSkinUtility::_determine_skeletons(
 		RBSet<FBXNodeIndex> all_skin_nodes;
 		for (int i = 0; i < skin->joints.size(); ++i) {
 			all_skin_nodes.insert(skin->joints[i]);
-			FBXSkinUtility::_recurse_children(nodes, skin->joints[i], all_skin_nodes, child_visited_set);
+			SkinTool::_recurse_children(nodes, skin->joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (int i = 0; i < skin->non_joints.size(); ++i) {
 			all_skin_nodes.insert(skin->non_joints[i]);
-			FBXSkinUtility::_recurse_children(nodes, skin->non_joints[i], all_skin_nodes, child_visited_set);
+			SkinTool::_recurse_children(nodes, skin->non_joints[i], all_skin_nodes, child_visited_set);
 		}
 		for (FBXNodeIndex node_index : all_skin_nodes) {
 			const FBXNodeIndex parent = nodes[node_index]->parent;
@@ -302,7 +302,7 @@ Error FBXSkinUtility::_determine_skeletons(
 		for (int i = 0; i < groups_representatives.size(); ++i) {
 			Vector<SkinNodeIndex> group;
 			skeleton_sets.get_members(group, groups_representatives[i]);
-			highest_group_members.push_back(FBXSkinUtility::_find_highest_node(nodes, group));
+			highest_group_members.push_back(SkinTool::_find_highest_node(nodes, group));
 			groups.push_back(group);
 		}
 
@@ -373,7 +373,7 @@ Error FBXSkinUtility::_determine_skeletons(
 
 		skeletons.push_back(skeleton);
 
-		FBXSkinUtility::_reparent_non_joint_skeleton_subtrees(nodes, skeletons.write[skel_i], non_joints);
+		SkinTool::_reparent_non_joint_skeleton_subtrees(nodes, skeletons.write[skel_i], non_joints);
 	}
 
 	for (SkinSkeletonIndex skel_i = 0; skel_i < skeletons.size(); ++skel_i) {
@@ -388,12 +388,12 @@ Error FBXSkinUtility::_determine_skeletons(
 			node->skeleton = skel_i;
 		}
 
-		ERR_FAIL_COND_V(FBXSkinUtility::_determine_skeleton_roots(nodes, skeletons, skel_i), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_determine_skeleton_roots(nodes, skeletons, skel_i), ERR_PARSE_ERROR);
 	}
 
 	return OK;
 }
-Error FBXSkinUtility::_reparent_non_joint_skeleton_subtrees(
+Error SkinTool::_reparent_non_joint_skeleton_subtrees(
 		Vector<Ref<FBXNode>> &nodes,
 		Ref<FBXSkeleton> p_skeleton,
 		const Vector<SkinNodeIndex> &p_non_joints) {
@@ -439,7 +439,7 @@ Error FBXSkinUtility::_reparent_non_joint_skeleton_subtrees(
 
 	return OK;
 }
-Error FBXSkinUtility::_determine_skeleton_roots(
+Error SkinTool::_determine_skeleton_roots(
 		Vector<Ref<FBXNode>> &nodes,
 		Vector<Ref<FBXSkeleton>> &skeletons,
 		const SkinSkeletonIndex p_skel_i) {
@@ -494,7 +494,7 @@ Error FBXSkinUtility::_determine_skeleton_roots(
 
 	return OK;
 }
-Error FBXSkinUtility::_create_skeletons(
+Error SkinTool::_create_skeletons(
 		HashSet<String> &unique_names,
 		Vector<Ref<FBXSkin>> &skins,
 		Vector<Ref<FBXNode>> &nodes,
@@ -572,7 +572,7 @@ Error FBXSkinUtility::_create_skeletons(
 
 	return OK;
 }
-Error FBXSkinUtility::_map_skin_joints_indices_to_skeleton_bone_indices(
+Error SkinTool::_map_skin_joints_indices_to_skeleton_bone_indices(
 		Vector<Ref<FBXSkin>> &skins,
 		Vector<Ref<FBXSkeleton>> &skeletons,
 		Vector<Ref<FBXNode>> &nodes) {
@@ -594,7 +594,7 @@ Error FBXSkinUtility::_map_skin_joints_indices_to_skeleton_bone_indices(
 
 	return OK;
 }
-Error FBXSkinUtility::_create_skins(Vector<Ref<FBXSkin>> &skins, Vector<Ref<FBXNode>> &nodes, bool use_named_skin_binds, HashSet<String> &unique_names) {
+Error SkinTool::_create_skins(Vector<Ref<FBXSkin>> &skins, Vector<Ref<FBXNode>> &nodes, bool use_named_skin_binds, HashSet<String> &unique_names) {
 	for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
 		Ref<FBXSkin> gltf_skin = skins.write[skin_i];
 
@@ -638,7 +638,7 @@ Error FBXSkinUtility::_create_skins(Vector<Ref<FBXSkin>> &skins, Vector<Ref<FBXN
 
 	return OK;
 }
-bool FBXSkinUtility::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
+bool SkinTool::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b) {
 	if (p_skin_a->get_bind_count() != p_skin_b->get_bind_count()) {
 		return false;
 	}
@@ -661,7 +661,7 @@ bool FBXSkinUtility::_skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p
 
 	return true;
 }
-void FBXSkinUtility::_remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins) {
+void SkinTool::_remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins) {
 	for (int i = 0; i < r_skins.size(); ++i) {
 		for (int j = i + 1; j < r_skins.size(); ++j) {
 			const Ref<Skin> skin_i = r_skins[i]->godot_skin;
@@ -674,7 +674,7 @@ void FBXSkinUtility::_remove_duplicate_skins(Vector<Ref<FBXSkin>> &r_skins) {
 		}
 	}
 }
-String FBXSkinUtility::_gen_unique_bone_name(HashSet<String> unique_names, const String &p_name) {
+String SkinTool::_gen_unique_bone_name(HashSet<String> unique_names, const String &p_name) {
 	String s_name = _sanitize_bone_name(p_name);
 	if (s_name.is_empty()) {
 		s_name = "bone";
@@ -697,7 +697,7 @@ String FBXSkinUtility::_gen_unique_bone_name(HashSet<String> unique_names, const
 
 	return u_name;
 }
-Error FBXSkinUtility::asset_parse_skins(
+Error SkinTool::asset_parse_skins(
 		const Vector<SkinNodeIndex> &input_skin_indices,
 		const Vector<Ref<FBXSkin>> &input_skins,
 		const Vector<Ref<FBXNode>> &input_nodes,
@@ -724,7 +724,7 @@ Error FBXSkinUtility::asset_parse_skins(
 
 	return OK;
 }
-String FBXSkinUtility::_sanitize_bone_name(const String &p_name) {
+String SkinTool::_sanitize_bone_name(const String &p_name) {
 	String bone_name = p_name;
 	bone_name = bone_name.replace(":", "_");
 	bone_name = bone_name.replace("/", "_");

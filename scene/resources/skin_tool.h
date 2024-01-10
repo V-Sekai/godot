@@ -15,8 +15,8 @@
 using SkinNodeIndex = int;
 using SkinSkeletonIndex = int;
 
-class FBXSkinUtility : public Resource {
-	GDCLASS(FBXSkinUtility, Resource);
+class SkinTool : public Resource {
+	GDCLASS(SkinTool, Resource);
 public:
 	static String _sanitize_bone_name(const String &p_name);
 	static String _gen_unique_bone_name(HashSet<String> unique_names, const String &p_name);

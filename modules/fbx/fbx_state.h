@@ -45,7 +45,7 @@
 class FBXState : public Resource {
 	GDCLASS(FBXState, Resource);
 	friend class FBXDocument;
-	friend class FBXSkinUtility;
+	friend class SkinTool;
 	friend class FBXSkin;
 
 	// Smart pointer that holds the loaded scene.

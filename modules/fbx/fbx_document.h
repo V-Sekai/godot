@@ -34,7 +34,7 @@
 #include "extensions/fbx_document_extension.h"
 #include "modules/fbx/structures/fbx_light.h"
 #include "modules/fbx/structures/fbx_node.h"
-#include "scene/resources/fbx_skin_utility.h"
+#include "scene/resources/skin_tool.h"
 
 #include "thirdparty/ufbx/ufbx.h"
 
