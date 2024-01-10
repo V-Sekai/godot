@@ -1291,7 +1291,7 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 		for (const ufbx_baked_element &fbx_baked_element : fbx_baked_anim->elements) {
 			const ufbx_element *fbx_element = fbx_scene->elements[fbx_baked_element.element_id];
 			const GLTFNodeIndex node = fbx_element->typed_id;
-			if (node >= animation->get_tracks().size()) {
+			if (node < 0) {
 				ERR_CONTINUE_MSG(true, "Invalid node index for animation: " + itos(node));
 			}
 
@@ -1299,7 +1299,6 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 				String prop_name = _as_string(fbx_baked_prop.name);
 
 				if (fbx_element->type == UFBX_ELEMENT_BLEND_CHANNEL && prop_name == UFBX_DeformPercent) {
-					const ufbx_blend_channel *fbx_blend_channel = ufbx_as_blend_channel(fbx_element);
 					GLTFAnimation::Channel<real_t> blend_shape_track;
 					for (const ufbx_baked_vec3 &key : fbx_baked_prop.keys) {
 						blend_shape_track.times.push_back(float(key.time));
