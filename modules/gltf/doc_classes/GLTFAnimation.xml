@@ -10,14 +10,14 @@
 	<methods>
 		<method name="get_additional_data">
 			<return type="Variant" />
-			<param index="0" name="_unnamed_arg0" type="StringName" />
+			<param index="0" name="extension_name" type="StringName" />
 			<description>
 			</description>
 		</method>
 		<method name="set_additional_data">
 			<return type="void" />
-			<param index="0" name="additional_data" type="StringName" />
-			<param index="1" name="_unnamed_arg1" type="Variant" />
+			<param index="0" name="extension_name" type="StringName" />
+			<param index="1" name="additional_data" type="Variant" />
 			<description>
 			</description>
 		</method>
