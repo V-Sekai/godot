@@ -38,9 +38,9 @@
 			</description>
 		</method>
 		<method name="get_animations">
-			<return type="FBXAnimation[]" />
+			<return type="GLTFAnimation[]" />
 			<description>
-				Gets an array of FBXAnimation objects representing the animations in the [FBXState].
+				Gets an array of GLTFAnimation objects representing the animations in the [FBXState].
 			</description>
 		</method>
 		<method name="get_cameras">
@@ -133,9 +133,9 @@
 		</method>
 		<method name="set_animations">
 			<return type="void" />
-			<param index="0" name="animations" type="FBXAnimation[]" />
+			<param index="0" name="animations" type="GLTFAnimation[]" />
 			<description>
-				Sets the animations in the [FBXState] with the given array of FBXAnimation objects.
+				Sets the animations in the [FBXState] with the given array of GLTFAnimation objects.
 			</description>
 		</method>
 		<method name="set_cameras">

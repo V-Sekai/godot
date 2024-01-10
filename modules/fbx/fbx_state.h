@@ -32,14 +32,15 @@
 #define FBX_STATE_H
 
 #include "modules/fbx/fbx_defines.h"
+#include "modules/gltf/structures/gltf_animation.h"
 #include "modules/gltf/gltf_defines.h"
+#include "modules/gltf/structures/gltf_animation.h"
 #include "modules/gltf/structures/gltf_mesh.h"
 #include "modules/gltf/structures/gltf_node.h"
 #include "modules/gltf/structures/gltf_skeleton.h"
 #include "modules/gltf/structures/gltf_skin.h"
 #include "modules/gltf/structures/gltf_texture.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
-#include "structures/fbx_animation.h"
 #include "structures/fbx_camera.h"
 #include "structures/fbx_light.h"
 
@@ -95,7 +96,7 @@ class FBXState : public Resource {
 	HashSet<String> unique_animation_names;
 
 	Vector<Ref<GLTFSkeleton>> skeletons;
-	Vector<Ref<FBXAnimation>> animations;
+	Vector<Ref<GLTFAnimation>> animations;
 	HashMap<GLTFNodeIndex, Node *> scene_nodes;
 	HashMap<GLTFNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
 
@@ -191,8 +192,8 @@ public:
 	bool get_create_animations();
 	void set_create_animations(bool p_create_animations);
 
-	TypedArray<FBXAnimation> get_animations();
-	void set_animations(TypedArray<FBXAnimation> p_animations);
+	TypedArray<GLTFAnimation> get_animations();
+	void set_animations(TypedArray<GLTFAnimation> p_animations);
 
 	Node *get_scene_node(GLTFNodeIndex idx);
 	GLTFNodeIndex get_node_index(Node *p_node);

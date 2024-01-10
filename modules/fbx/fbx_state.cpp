@@ -31,6 +31,7 @@
 #include "fbx_state.h"
 
 #include "core/templates/template_convert.h"
+#include "modules/gltf/structures/gltf_animation.h"
 
 void FBXState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_used_extension", "extension_name", "required"), &FBXState::add_used_extension);
@@ -102,7 +103,7 @@ void FBXState::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "unique_animation_names", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_unique_animation_names", "get_unique_animation_names"); // Set<String>
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "skeletons", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_skeletons", "get_skeletons"); // Vector<Ref<GLTFSkeleton>>
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "create_animations"), "set_create_animations", "get_create_animations"); // bool
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "animations", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_animations", "get_animations"); // Vector<Ref<FBXAnimation>>
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "animations", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_animations", "get_animations"); // Vector<Ref<GLTFAnimation>>
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "handle_binary_image", PROPERTY_HINT_ENUM, "Discard All Textures,Extract Textures,Embed As Basis Universal,Embed as Uncompressed", PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_INTERNAL | PROPERTY_USAGE_EDITOR), "set_handle_binary_image", "get_handle_binary_image"); // enum
 
 	BIND_CONSTANT(HANDLE_BINARY_DISCARD_TEXTURES);
@@ -258,11 +259,11 @@ void FBXState::set_create_animations(bool p_create_animations) {
 	create_animations = p_create_animations;
 }
 
-TypedArray<FBXAnimation> FBXState::get_animations() {
+TypedArray<GLTFAnimation> FBXState::get_animations() {
 	return to_array(animations);
 }
 
-void FBXState::set_animations(TypedArray<FBXAnimation> p_animations) {
+void FBXState::set_animations(TypedArray<GLTFAnimation> p_animations) {
 	set_from_array(animations, p_animations);
 }
 

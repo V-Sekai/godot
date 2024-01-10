@@ -48,7 +48,6 @@ static void _editor_init() {
 
 void initialize_fbx_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_CLASS(FBXAnimation);
 		GDREGISTER_CLASS(FBXDocument);
 		GDREGISTER_CLASS(FBXDocumentExtension);
 		GDREGISTER_CLASS(GLTFMesh);
