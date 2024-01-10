@@ -1212,7 +1212,6 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 
 	return OK;
 }
-
 Error FBXDocument::_parse_cameras(Ref<FBXState> p_state) {
 	const ufbx_scene *fbx_scene = p_state->scene.get();
 	for (FBXCameraIndex i = 0; i < static_cast<FBXCameraIndex>(fbx_scene->cameras.count); i++) {
