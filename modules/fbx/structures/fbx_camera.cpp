@@ -33,18 +33,6 @@
 #include "scene/3d/camera_3d.h"
 
 void FBXCamera::_bind_methods() {
-	ClassDB::bind_static_method("FBXCamera", D_METHOD("from_node", "camera_node"), &FBXCamera::from_node);
-	ClassDB::bind_method(D_METHOD("to_node"), &FBXCamera::to_node);
-
-	ClassDB::bind_method(D_METHOD("get_perspective"), &FBXCamera::get_perspective);
-	ClassDB::bind_method(D_METHOD("set_perspective", "perspective"), &FBXCamera::set_perspective);
-	ClassDB::bind_method(D_METHOD("get_fov"), &FBXCamera::get_fov);
-	ClassDB::bind_method(D_METHOD("set_fov", "fov"), &FBXCamera::set_fov);
-	ClassDB::bind_method(D_METHOD("get_size_mag"), &FBXCamera::get_size_mag);
-	ClassDB::bind_method(D_METHOD("set_size_mag", "size_mag"), &FBXCamera::set_size_mag);
-	ClassDB::bind_method(D_METHOD("get_depth_far"), &FBXCamera::get_depth_far);
-	ClassDB::bind_method(D_METHOD("set_depth_far", "zdepth_far"), &FBXCamera::set_depth_far);
-
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "perspective"), "set_perspective", "get_perspective");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "fov"), "set_fov", "get_fov");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "size_mag"), "set_size_mag", "get_size_mag");

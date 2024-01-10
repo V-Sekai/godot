@@ -33,8 +33,8 @@
 void GLTFAnimation::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_loop"), &GLTFAnimation::get_loop);
 	ClassDB::bind_method(D_METHOD("set_loop", "loop"), &GLTFAnimation::set_loop);
-	ClassDB::bind_method(D_METHOD("get_additional_data"), &GLTFAnimation::get_additional_data);
-	ClassDB::bind_method(D_METHOD("set_additional_data", "additional_data"), &GLTFAnimation::set_additional_data);
+	ClassDB::bind_method(D_METHOD("get_additional_data", "extension_name"), &GLTFAnimation::get_additional_data);
+	ClassDB::bind_method(D_METHOD("set_additional_data", "extension_name", "additional_data"), &GLTFAnimation::set_additional_data);
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "loop"), "set_loop", "get_loop"); // bool
 }

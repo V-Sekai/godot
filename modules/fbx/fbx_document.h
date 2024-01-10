@@ -111,8 +111,7 @@ private:
 	Error _parse_lights(Ref<FBXState> p_state);
 
 public:
-	Error
-	append_from_file(String p_path, Ref<FBXState> p_state, uint32_t p_flags = 0, String p_base_path = String());
+	Error append_from_file(String p_path, Ref<FBXState> p_state, uint32_t p_flags = 0, String p_base_path = String());
 	Error append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<FBXState> p_state, uint32_t p_flags = 0);
 
 public:

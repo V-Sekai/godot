@@ -1915,10 +1915,6 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 }
 
 void FBXDocument::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("append_from_file", "path", "state", "flags", "base_path"),
-			&FBXDocument::append_from_file, DEFVAL(0), DEFVAL(String()));
-	ClassDB::bind_method(D_METHOD("append_from_buffer", "bytes", "base_path", "state", "flags"),
-			&FBXDocument::append_from_buffer, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("generate_scene", "state", "bake_fps", "trimming", "remove_immutable_tracks"),
 			&FBXDocument::generate_scene, DEFVAL(30), DEFVAL(false), DEFVAL(true));
 	ClassDB::bind_static_method("FBXDocument", D_METHOD("register_fbx_document_extension", "extension", "first_priority"),
