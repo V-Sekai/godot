@@ -25,7 +25,6 @@ class SkinTool : public Resource {
 	static SkinNodeIndex _find_highest_node(Vector<Ref<FBXNode>> &r_nodes, const Vector<SkinNodeIndex> &p_subset);
 	static bool _capture_nodes_in_skin(const Vector<Ref<FBXNode>> &nodes, Ref<FBXSkin> p_skin, const SkinNodeIndex p_node_index);
 	static void _capture_nodes_for_multirooted_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin);
-	static Error _parse_skins(Ref<FBXState> p_state);
 	static void _recurse_children(
 			Vector<Ref<FBXNode>> &nodes,
 			const SkinNodeIndex p_node_index,
