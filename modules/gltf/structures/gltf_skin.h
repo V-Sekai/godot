@@ -39,12 +39,8 @@
 template <typename T>
 class TypedArray;
 
-class AssetSkin : public Resource {
-	GDCLASS(AssetSkin, Resource);
-};
-
-class GLTFSkin : public AssetSkin {
-	GDCLASS(GLTFSkin, AssetSkin);
+class GLTFSkin : public Resource {
+	GDCLASS(GLTFSkin, Resource);
 	friend class GLTFDocument;
 	friend class SkinTool;
 	friend class FBXDocument;
