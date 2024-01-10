@@ -1620,9 +1620,9 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		animation->set_loop_mode(Animation::LOOP_LINEAR);
 	}
 
-	Dictionary additional_data = anim->get_additional_data("GODOT_animation_time_begin_time_end");
+	Dictionary additional_animation_data = anim->get_additional_data("GODOT_animation_time_begin_time_end");
 
-	double anim_start_offset = p_trimming ? double(additional_data["time_begin"]) : 0.0;
+	double anim_start_offset = p_trimming ? double(additional_animation_data["time_begin"]) : 0.0;
 
 	for (const KeyValue<int, GLTFAnimation::Track> &track_i : anim->get_tracks()) {
 		const GLTFAnimation::Track &track = track_i.value;
@@ -1775,8 +1775,8 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		ERR_CONTINUE(mesh->get_mesh().is_null());
 		ERR_CONTINUE(mesh->get_mesh()->get_mesh().is_null());
 		GLTFAnimation::Track track = anim->get_tracks()[node_index];
-		Dictionary additional_data = mesh->get_additional_data("GODOT_mesh_blend_channels");
-		Vector<int> blend_channels = additional_data["blend_channels"];
+		Dictionary mesh_additional_data = mesh->get_additional_data("GODOT_mesh_blend_channels");
+		Vector<int> blend_channels = mesh_additional_data["blend_channels"];
 		for (int i = 0; i < blend_channels.size(); i++) {
 			GLTFAnimation::Track tracks = anim->get_tracks()[blend_channels[i]];
 			for (int channel_i = 0; channel_i < tracks.weight_tracks.size(); channel_i++) {
@@ -1796,7 +1796,7 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 			}
 		}
 	}
-	animation->set_length(double(additional_data["time_end"]) - double(additional_data["time_begin"]));
+	animation->set_length(double(additional_animation_data["time_end"]) - double(additional_animation_data["time_begin"]));
 
 	Ref<AnimationLibrary> library;
 	if (!p_animation_player->has_animation_library("")) {
@@ -2241,7 +2241,7 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		Dictionary skin_dictionary = skins[skin_i];
 		Ref<GLTFSkin> new_skin;
 		new_skin.instantiate();
-		Error err = new_skin->from_dictionary(skin_dictionary);
+		err = new_skin->from_dictionary(skin_dictionary);
 		if (err == OK) {
 			p_state->skins.push_back(new_skin);
 		}
