@@ -91,12 +91,12 @@ private:
 	Error _expand_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin);
 	Error _verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_skin);
 	static Error asset_parse_skins(
-			const Vector<int> &current_skin_indices,
-			const Vector<Ref<FBXSkin>> &current_skins,
-			const Vector<Ref<FBXNode>> &current_nodes,
-			Vector<int> *skin_indices_out,
-			Vector<Ref<FBXSkin>> *skins_out,
-			HashMap<FBXNodeIndex, bool> *joints_out);
+			const Vector<FBXNodeIndex> &input_skin_indices,
+			const Vector<Ref<FBXSkin>> &input_skins,
+			const Vector<Ref<FBXNode>> &input_nodes,
+			Vector<FBXNodeIndex> &output_skin_indices,
+			Vector<Ref<FBXSkin>> &output_skins,
+			HashMap<FBXNodeIndex, bool> &joint_mapping);
 	Error _determine_skeletons(
 			Vector<Ref<FBXSkin>> &skins,
 			Vector<Ref<FBXNode>> &nodes,
@@ -114,14 +114,14 @@ private:
 	Error _create_skeletons(
 			HashSet<String> &unique_names,
 			Vector<Ref<FBXSkin>> &skins,
-			Vector<Ref<FBXNode>> nodes,
+			Vector<Ref<FBXNode>> &nodes,
 			HashMap<ObjectID, FBXSkeletonIndex> &skeleton3d_to_fbx_skeleton,
 			Vector<Ref<FBXSkeleton>> &skeletons,
 			HashMap<FBXNodeIndex, Node *> &scene_nodes);
 	Error _map_skin_joints_indices_to_skeleton_bone_indices(
 			Vector<Ref<FBXSkin>> &skins,
 			Vector<Ref<FBXSkeleton>> &skeletons,
-			Vector<Ref<FBXNode>> nodes);
+			Vector<Ref<FBXNode>> &nodes);
 	Error _create_skins(Ref<FBXState> p_state);
 
 	Error _parse_animations(Ref<FBXState> p_state);

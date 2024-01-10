@@ -1492,18 +1492,15 @@ Error FBXDocument::_verify_skin(Vector<Ref<FBXNode>> &r_nodes, Ref<FBXSkin> p_sk
 }
 
 Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
-	Vector<int> temp_skin_indices;
-	Vector<Ref<FBXSkin>> temp_skins;
-	HashMap<FBXNodeIndex, bool> joints;
-
 	const ufbx_scene *fbx_scene = p_state->scene.get();
 
-	temp_skin_indices.clear();
-	temp_skins.clear();
+	Vector<FBXNodeIndex> skin_indices_out;
+	Vector<Ref<FBXSkin>> skin_out;
+	HashMap<FBXNodeIndex, bool>  joint_mapping;
 
 	for (const ufbx_skin_deformer *fbx_skin : fbx_scene->skin_deformers) {
 		if (fbx_skin->clusters.count == 0) {
-			temp_skin_indices.push_back(-1);
+			skin_indices_out.push_back(-1);
 			continue;
 		}
 
@@ -1527,8 +1524,8 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 			skin->set_name(vformat("skin_%s", itos(fbx_skin->typed_id)));
 		}
 
-		temp_skin_indices.push_back(temp_skins.size());
-		temp_skins.push_back(skin);
+		skin_indices_out.push_back(p_state->skins.size());
+		skin_out.push_back(skin);
 	}
 
 	for (const ufbx_bone *fbx_bone : fbx_scene->bones) {
@@ -1542,20 +1539,19 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 					skin.instantiate();
 					skin->joints.push_back(node);
 					skin->joints_original.push_back(node);
-					skin->set_name(vformat("skin_%s", itos(temp_skins.size())));
-					temp_skins.push_back(skin);
+					skin->set_name(vformat("skin_%s", itos(p_state->skins.size())));
+					p_state->skins.push_back(skin);
 				}
 			}
 		}
 	}
-
 	Error err = asset_parse_skins(
-			temp_skin_indices,
-			temp_skins,
+			p_state->skin_indices,
+			p_state->skins,
 			p_state->nodes,
-			&p_state->skin_indices,
-			&p_state->skins,
-			&joints);
+			skin_indices_out,
+			skin_out,
+			joint_mapping);
 	if (err != OK) {
 		return err;
 	}
@@ -1570,7 +1566,7 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 
 	print_verbose("FBX: Total skins: " + itos(p_state->skins.size()));
 
-	for (HashMap<FBXNodeIndex, bool>::Iterator it = joints.begin(); it != joints.end(); ++it) {
+	for (HashMap<FBXNodeIndex, bool>::Iterator it = joint_mapping.begin(); it != joint_mapping.end(); ++it) {
 		FBXNodeIndex node_index = it->key;
 		bool is_joint = it->value;
 		if (is_joint) {
@@ -1849,7 +1845,7 @@ Error FBXDocument::_determine_skeleton_roots(
 Error FBXDocument::_create_skeletons(
 		HashSet<String> &unique_names,
 		Vector<Ref<FBXSkin>> &skins,
-		Vector<Ref<FBXNode>> nodes,
+		Vector<Ref<FBXNode>> &nodes,
 		HashMap<ObjectID, FBXSkeletonIndex> &skeleton3d_to_fbx_skeleton,
 		Vector<Ref<FBXSkeleton>> &skeletons,
 		HashMap<FBXNodeIndex, Node *> &scene_nodes) {
@@ -1928,7 +1924,7 @@ Error FBXDocument::_create_skeletons(
 Error FBXDocument::_map_skin_joints_indices_to_skeleton_bone_indices(
 		Vector<Ref<FBXSkin>> &skins,
 		Vector<Ref<FBXSkeleton>> &skeletons,
-		Vector<Ref<FBXNode>> nodes) {
+		Vector<Ref<FBXNode>> &nodes) {
 	for (FBXSkinIndex skin_i = 0; skin_i < skins.size(); ++skin_i) {
 		Ref<FBXSkin> skin = skins.write[skin_i];
 
@@ -2972,37 +2968,29 @@ String FBXDocument::_get_texture_path(const String &p_base_dir, const String &p_
 }
 
 Error FBXDocument::asset_parse_skins(
-		const Vector<int> &current_skin_indices,
-		const Vector<Ref<FBXSkin>> &current_skins,
-		const Vector<Ref<FBXNode>> &current_nodes,
-		Vector<int> *skin_indices_out,
-		Vector<Ref<FBXSkin>> *skins_out,
-		HashMap<FBXNodeIndex, bool> *joints_out) {
-	if (!skin_indices_out || !skins_out || !joints_out) {
-		return ERR_INVALID_PARAMETER; // Replace with appropriate error code for null parameters
-	}
+		const Vector<FBXNodeIndex> &input_skin_indices,
+		const Vector<Ref<FBXSkin>> &input_skins,
+		const Vector<Ref<FBXNode>> &input_nodes,
+		Vector<FBXNodeIndex> &output_skin_indices,
+		Vector<Ref<FBXSkin>> &output_skins,
+		HashMap<FBXNodeIndex, bool> &joint_mapping) {
+	output_skin_indices.clear();
+	output_skins.clear();
+	joint_mapping.clear();
 
-	skin_indices_out->clear();
-	skins_out->clear();
-	joints_out->clear();
-
-	for (int i = 0; i < current_skin_indices.size(); ++i) {
-		int skin_index = current_skin_indices[i];
-		if (skin_index >= 0 && skin_index < current_skins.size()) {
-			skin_indices_out->push_back(skin_index);
-			skins_out->push_back(current_skins[skin_index]);
-
-			Ref<FBXSkin> skin = current_skins[skin_index];
-
-			Vector<FBXNodeIndex> joint_indices = skin->get_joints();
-			for (int j = 0; j < joint_indices.size(); ++j) {
-				(*joints_out)[joint_indices[j]] = true;
+	for (int i = 0; i < input_skin_indices.size(); ++i) {
+		FBXNodeIndex skin_index = input_skin_indices[i];
+		if (skin_index >= 0 && skin_index < input_skins.size()) {
+			output_skin_indices.push_back(skin_index);
+			output_skins.push_back(input_skins[skin_index]);
+			Ref<FBXSkin> skin = input_skins[skin_index];
+			Vector<FBXNodeIndex> skin_joints = skin->get_joints();
+			for (int j = 0; j < skin_joints.size(); ++j) {
+				FBXNodeIndex joint_index = skin_joints[j];
+				joint_mapping[joint_index] = true;
 			}
-		} else {
-			// Handle invalid skin index if necessary
-			skin_indices_out->push_back(-1);
 		}
 	}
 
-	return OK; // Successfully parsed skins
+	return OK;
 }
