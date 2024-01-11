@@ -170,23 +170,68 @@ opts = Variables(customs, ARGUMENTS)
 # Target build options
 opts.Add("platform", "Target platform (%s)" % ("|".join(platform_list),), "")
 opts.Add("p", "Platform (alias for 'platform')", "")
-opts.Add(EnumVariable("target", "Compilation target", "editor", ("editor", "template_release", "template_debug")))
-opts.Add(EnumVariable("arch", "CPU architecture", "auto", ["auto"] + architectures, architecture_aliases))
+opts.Add(
+    EnumVariable(
+        "target",
+        "Compilation target",
+        "editor",
+        ("editor", "template_release", "template_debug"),
+    )
+)
+opts.Add(
+    EnumVariable(
+        "arch",
+        "CPU architecture",
+        "auto",
+        ["auto"] + architectures,
+        architecture_aliases,
+    )
+)
 opts.Add(BoolVariable("dev_build", "Developer build with dev-only debugging code (DEV_ENABLED)", False))
 opts.Add(
     EnumVariable(
-        "optimize", "Optimization level", "speed_trace", ("none", "custom", "debug", "speed", "speed_trace", "size")
+        "optimize",
+        "Optimization level",
+        "speed_trace",
+        ("none", "custom", "debug", "speed", "speed_trace", "size"),
     )
 )
 opts.Add(BoolVariable("debug_symbols", "Build with debugging symbols", False))
 opts.Add(BoolVariable("separate_debug_symbols", "Extract debugging symbols to a separate file", False))
-opts.Add(EnumVariable("lto", "Link-time optimization (production builds)", "none", ("none", "auto", "thin", "full")))
+opts.Add(
+    EnumVariable(
+        "lto",
+        "Link-time optimization (production builds)",
+        "none",
+        ("none", "auto", "thin", "full"),
+    )
+)
 opts.Add(BoolVariable("production", "Set defaults to build Godot for use in production", False))
-opts.Add(BoolVariable("generate_apk", "Generate an APK/AAB after building Android library by calling Gradle", False))
+opts.Add(
+    BoolVariable(
+        "generate_apk",
+        "Generate an APK/AAB after building Android library by calling Gradle",
+        False,
+    )
+)
+opts.Add(BoolVariable("use_threads", "Enable threading support", True))
 
 # Components
-opts.Add(BoolVariable("deprecated", "Enable compatibility code for deprecated and removed features", True))
-opts.Add(EnumVariable("precision", "Set the floating-point precision level", "single", ("single", "double")))
+opts.Add(
+    BoolVariable(
+        "deprecated",
+        "Enable compatibility code for deprecated and removed features",
+        True,
+    )
+)
+opts.Add(
+    EnumVariable(
+        "precision",
+        "Set the floating-point precision level",
+        "single",
+        ("single", "double"),
+    )
+)
 opts.Add(BoolVariable("minizip", "Enable ZIP archive support using minizip", True))
 opts.Add(BoolVariable("brotli", "Enable Brotli for decompresson and WOFF2 fonts support", True))
 opts.Add(BoolVariable("xaudio2", "Enable the XAudio2 audio driver", False))
@@ -196,36 +241,93 @@ opts.Add(BoolVariable("d3d12", "Enable the Direct3D 12 rendering driver (Windows
 opts.Add(BoolVariable("openxr", "Enable the OpenXR driver", True))
 opts.Add(BoolVariable("use_volk", "Use the volk library to load the Vulkan loader dynamically", True))
 opts.Add(BoolVariable("disable_exceptions", "Force disabling exception handling code", True))
-opts.Add("custom_modules", "A list of comma-separated directory paths containing custom modules to build.", "")
-opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
+opts.Add(
+    "custom_modules",
+    "A list of comma-separated directory paths containing custom modules to build.",
+    "",
+)
+opts.Add(
+    BoolVariable(
+        "custom_modules_recursive",
+        "Detect custom modules recursively for each specified path.",
+        True,
+    )
+)
 
 # Advanced options
-opts.Add(BoolVariable("dev_mode", "Alias for dev options: verbose=yes warnings=extra werror=yes tests=yes", False))
+opts.Add(
+    BoolVariable(
+        "dev_mode",
+        "Alias for dev options: verbose=yes warnings=extra werror=yes tests=yes",
+        False,
+    )
+)
 opts.Add(BoolVariable("tests", "Build the unit tests", False))
 opts.Add(BoolVariable("fast_unsafe", "Enable unsafe options for faster rebuilds", False))
-opts.Add(BoolVariable("compiledb", "Generate compilation DB (`compile_commands.json`) for external tools", False))
+opts.Add(
+    BoolVariable(
+        "compiledb",
+        "Generate compilation DB (`compile_commands.json`) for external tools",
+        False,
+    )
+)
 opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
 opts.Add(BoolVariable("progress", "Show a progress indicator during compilation", True))
-opts.Add(EnumVariable("warnings", "Level of compilation warnings", "all", ("extra", "all", "moderate", "no")))
+opts.Add(
+    EnumVariable(
+        "warnings",
+        "Level of compilation warnings",
+        "all",
+        ("extra", "all", "moderate", "no"),
+    )
+)
 opts.Add(BoolVariable("werror", "Treat compiler warnings as errors", False))
-opts.Add("extra_suffix", "Custom extra suffix added to the base filename of all generated binary files", "")
-opts.Add("object_prefix", "Custom prefix added to the base filename of all generated object files", "")
+opts.Add(
+    "extra_suffix",
+    "Custom extra suffix added to the base filename of all generated binary files",
+    "",
+)
+opts.Add(
+    "object_prefix",
+    "Custom prefix added to the base filename of all generated object files",
+    "",
+)
 opts.Add(BoolVariable("vsproj", "Generate a Visual Studio solution", False))
 opts.Add("vsproj_name", "Name of the Visual Studio solution", "godot")
-opts.Add("import_env_vars", "A comma-separated list of environment variables to copy from the outer environment.", "")
+opts.Add(
+    "import_env_vars",
+    "A comma-separated list of environment variables to copy from the outer environment.",
+    "",
+)
 opts.Add(BoolVariable("disable_3d", "Disable 3D nodes for a smaller executable", False))
 opts.Add(BoolVariable("disable_advanced_gui", "Disable advanced GUI nodes and behaviors", False))
 opts.Add("build_profile", "Path to a file containing a feature build profile", "")
-opts.Add(BoolVariable("modules_enabled_by_default", "If no, disable all modules except ones explicitly enabled", True))
+opts.Add(
+    BoolVariable(
+        "modules_enabled_by_default",
+        "If no, disable all modules except ones explicitly enabled",
+        True,
+    )
+)
 opts.Add(BoolVariable("no_editor_splash", "Don't use the custom splash screen for the editor", True))
 opts.Add(
     "system_certs_path",
     "Use this path as TLS certificates default for editor and Linux/BSD export templates (for package maintainers)",
     "",
 )
-opts.Add(BoolVariable("use_precise_math_checks", "Math checks use very precise epsilon (debug option)", False))
+opts.Add(
+    BoolVariable(
+        "use_precise_math_checks",
+        "Math checks use very precise epsilon (debug option)",
+        False,
+    )
+)
 opts.Add(BoolVariable("scu_build", "Use single compilation unit build", False))
-opts.Add("scu_limit", "Max includes per SCU file when using scu_build (determines RAM use)", "0")
+opts.Add(
+    "scu_limit",
+    "Max includes per SCU file when using scu_build (determines RAM use)",
+    "0",
+)
 
 opts.Add(BoolVariable("use_resonance_audio", "Use the audio spatializer.", True))
 
@@ -251,7 +353,13 @@ opts.Add(BoolVariable("builtin_mbedtls", "Use the built-in mbedTLS library", Tru
 opts.Add(BoolVariable("builtin_miniupnpc", "Use the built-in miniupnpc library", True))
 opts.Add(BoolVariable("builtin_openxr", "Use the built-in OpenXR library", True))
 opts.Add(BoolVariable("builtin_pcre2", "Use the built-in PCRE2 library", True))
-opts.Add(BoolVariable("builtin_pcre2_with_jit", "Use JIT compiler for the built-in PCRE2 library", True))
+opts.Add(
+    BoolVariable(
+        "builtin_pcre2_with_jit",
+        "Use JIT compiler for the built-in PCRE2 library",
+        True,
+    )
+)
 opts.Add(BoolVariable("builtin_recastnavigation", "Use the built-in Recast navigation library", True))
 opts.Add(BoolVariable("builtin_rvo2_2d", "Use the built-in RVO2 2D library", True))
 opts.Add(BoolVariable("builtin_rvo2_3d", "Use the built-in RVO2 3D library", True))
@@ -790,7 +898,10 @@ if selected_platform in platform_list:
             if cc_version_major >= 12:  # False positives in our error macros, see GH-58747.
                 common_warnings += ["-Wno-return-type"]
         elif methods.using_clang(env) or methods.using_emcc(env):
-            common_warnings += ["-Wshadow-field-in-constructor", "-Wshadow-uncaptured-local"]
+            common_warnings += [
+                "-Wshadow-field-in-constructor",
+                "-Wshadow-uncaptured-local",
+            ]
             # We often implement `operator<` for structs of pointers as a requirement
             # for putting them in `Set` or `Map`. We don't mind about unreliable ordering.
             common_warnings += ["-Wno-ordered-compare-function-pointers"]
@@ -840,6 +951,10 @@ if selected_platform in platform_list:
         suffix += ".double"
 
     suffix += "." + env["arch"]
+
+    if not env["use_threads"]:
+        suffix += ".nothreads"
+
     suffix += env.extra_suffix
 
     sys.path.remove(tmppath)
@@ -951,7 +1066,10 @@ if selected_platform in platform_list:
             src_suffix=".glsl",
         ),
         "GLES3_GLSL": env.Builder(
-            action=env.Run(gles3_builders.build_gles3_headers, 'Building GLES3 GLSL header: "$TARGET"'),
+            action=env.Run(
+                gles3_builders.build_gles3_headers,
+                'Building GLES3 GLSL header: "$TARGET"',
+            ),
             suffix="glsl.gen.h",
             src_suffix=".glsl",
         ),
@@ -979,6 +1097,9 @@ if selected_platform in platform_list:
 
         env.Tool("compilation_db")
         env.Alias("compiledb", env.CompilationDatabase())
+
+    if env["use_threads"]:
+        env.Append(CPPDEFINES=["THREADS_ENABLED"])
 
     Export("env")
 
