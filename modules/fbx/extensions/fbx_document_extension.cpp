@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gltf_template_convert.h                                               */
+/*  fbx_document_extension.cpp                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,67 +28,51 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GLTF_TEMPLATE_CONVERT_H
-#define GLTF_TEMPLATE_CONVERT_H
+#include "fbx_document_extension.h"
 
-#include "core/templates/hash_set.h"
-#include "core/variant/array.h"
-#include "core/variant/dictionary.h"
+void FBXDocumentExtension::_bind_methods() {
+	// Import process.
+	GDVIRTUAL_BIND(_import_preflight, "state", "extensions");
+	GDVIRTUAL_BIND(_get_supported_extensions);
+	GDVIRTUAL_BIND(_generate_scene_node, "state", "fbx_node", "scene_parent");
+	GDVIRTUAL_BIND(_import_post_parse, "state");
+	GDVIRTUAL_BIND(_import_post, "state", "root");
+}
 
-namespace GLTFTemplateConvert {
-template <class T>
-static Array to_array(const Vector<T> &p_inp) {
-	Array ret;
-	for (int i = 0; i < p_inp.size(); i++) {
-		ret.push_back(p_inp[i]);
-	}
+// Import process.
+Error FBXDocumentExtension::import_preflight(Ref<FBXState> p_state, Vector<String> p_extensions) {
+	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
+	Error err = OK;
+	GDVIRTUAL_CALL(_import_preflight, p_state, p_extensions, err);
+	return err;
+}
+
+Vector<String> FBXDocumentExtension::get_supported_extensions() {
+	Vector<String> ret;
+	GDVIRTUAL_CALL(_get_supported_extensions, ret);
 	return ret;
 }
 
-template <class T>
-static TypedArray<T> to_array(const HashSet<T> &p_inp) {
-	TypedArray<T> ret;
-	typename HashSet<T>::Iterator elem = p_inp.begin();
-	while (elem) {
-		ret.push_back(*elem);
-		++elem;
-	}
-	return ret;
+Node3D *FBXDocumentExtension::generate_scene_node(Ref<FBXState> p_state, Ref<GLTFNode> p_gltf_node, Node *p_scene_parent) {
+	ERR_FAIL_NULL_V(p_state, nullptr);
+	ERR_FAIL_NULL_V(p_gltf_node, nullptr);
+	ERR_FAIL_NULL_V(p_scene_parent, nullptr);
+	Node3D *ret_node = nullptr;
+	GDVIRTUAL_CALL(_generate_scene_node, p_state, p_gltf_node, p_scene_parent, ret_node);
+	return ret_node;
 }
 
-template <class T>
-static void set_from_array(Vector<T> &r_out, const Array &p_inp) {
-	r_out.clear();
-	for (int i = 0; i < p_inp.size(); i++) {
-		r_out.push_back(p_inp[i]);
-	}
+Error FBXDocumentExtension::import_post_parse(Ref<FBXState> p_state) {
+	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
+	Error err = OK;
+	GDVIRTUAL_CALL(_import_post_parse, p_state, err);
+	return err;
 }
 
-template <class T>
-static void set_from_array(HashSet<T> &r_out, const TypedArray<T> &p_inp) {
-	r_out.clear();
-	for (int i = 0; i < p_inp.size(); i++) {
-		r_out.insert(p_inp[i]);
-	}
+Error FBXDocumentExtension::import_post(Ref<FBXState> p_state, Node *p_root) {
+	ERR_FAIL_NULL_V(p_root, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_state, ERR_INVALID_PARAMETER);
+	Error err = OK;
+	GDVIRTUAL_CALL(_import_post, p_state, p_root, err);
+	return err;
 }
-
-template <class K, class V>
-static Dictionary to_dict(const HashMap<K, V> &p_inp) {
-	Dictionary ret;
-	for (const KeyValue<K, V> &E : p_inp) {
-		ret[E.key] = E.value;
-	}
-	return ret;
-}
-
-template <class K, class V>
-static void set_from_dict(HashMap<K, V> &r_out, const Dictionary &p_inp) {
-	r_out.clear();
-	Array keys = p_inp.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		r_out[keys[i]] = p_inp[keys[i]];
-	}
-}
-} //namespace GLTFTemplateConvert
-
-#endif // GLTF_TEMPLATE_CONVERT_H
