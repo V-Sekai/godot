@@ -38,6 +38,8 @@
 class GLTFNode : public Resource {
 	GDCLASS(GLTFNode, Resource);
 	friend class GLTFDocument;
+	friend class SkinTool;
+	friend class FBXDocument;
 
 private:
 	// matrices need to be transformed to this
@@ -98,6 +100,9 @@ public:
 
 	Variant get_additional_data(const StringName &p_extension_name);
 	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
+
+	Dictionary to_dictionary() const;
+	Error from_dictionary(const Dictionary &dict);
 };
 
 #endif // GLTF_NODE_H
