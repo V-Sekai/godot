@@ -166,6 +166,9 @@ Dictionary FBXLight::to_dictionary() const {
 }
 
 void FBXLight::_bind_methods() {
+	ClassDB::bind_static_method("FBXLight", D_METHOD("from_node", "light_node"), &FBXLight::from_node);
+	ClassDB::bind_static_method("FBXLight", D_METHOD("from_dictionary", "dictionary"), &FBXLight::from_dictionary);
+
 	ClassDB::bind_method(D_METHOD("set_color", "color"), &FBXLight::set_color);
 	ClassDB::bind_method(D_METHOD("get_color"), &FBXLight::get_color);
 

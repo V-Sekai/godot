@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="FBXLight" inherits="GLTFCamera" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="FBXLight" inherits="GLTFLight" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
@@ -13,13 +13,13 @@
 		</member>
 		<member name="cast_shadows" type="bool" setter="set_cast_shadows" getter="is_casting_shadows" default="true">
 		</member>
-		<member name="color" type="Color" setter="set_color" getter="get_color" default="Color(0, 0, 0, 1)">
+		<member name="color" type="Color" setter="set_color" getter="get_color" default="Color(1, 1, 1, 1)">
 		</member>
 		<member name="decay" type="int" setter="set_decay" getter="get_decay" default="0">
 		</member>
 		<member name="inner_angle" type="float" setter="set_inner_angle" getter="get_inner_angle" default="0.0">
 		</member>
-		<member name="intensity" type="float" setter="set_intensity" getter="get_intensity" default="0.0">
+		<member name="intensity" type="float" setter="set_intensity" getter="get_intensity" default="1.0">
 		</member>
 		<member name="local_direction" type="Vector3" setter="set_local_direction" getter="get_local_direction" default="Vector3(0, 1, 0)">
 		</member>

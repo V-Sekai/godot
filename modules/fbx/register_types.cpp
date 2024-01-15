@@ -76,5 +76,5 @@ void uninitialize_fbx_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	FBXDocument::unregister_all_fbx_document_extensions();
+	FBXDocument::unregister_all_gltf_document_extensions();
 }

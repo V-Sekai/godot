@@ -9,21 +9,4 @@
 	</description>
 	<tutorials>
 	</tutorials>
-	<methods>
-		<method name="register_fbx_document_extension" qualifiers="static">
-			<return type="void" />
-			<param index="0" name="extension" type="FBXDocumentExtension" />
-			<param index="1" name="first_priority" type="bool" default="false" />
-			<description>
-				Registers an extension for the FBX document.
-			</description>
-		</method>
-		<method name="unregister_fbx_document_extension" qualifiers="static">
-			<return type="void" />
-			<param index="0" name="extension" type="FBXDocumentExtension" />
-			<description>
-				Unregisters an extension from the FBX document.
-			</description>
-		</method>
-	</methods>
 </class>

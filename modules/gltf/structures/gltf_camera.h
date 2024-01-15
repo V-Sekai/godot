@@ -54,22 +54,22 @@ protected:
 	static void _bind_methods();
 
 public:
-	bool get_perspective() const { return perspective; }
-	void set_perspective(bool p_val) { perspective = p_val; }
-	real_t get_fov() const { return fov; }
-	void set_fov(real_t p_val) { fov = p_val; }
-	real_t get_size_mag() const { return size_mag; }
-	void set_size_mag(real_t p_val) { size_mag = p_val; }
-	real_t get_depth_far() const { return depth_far; }
-	void set_depth_far(real_t p_val) { depth_far = p_val; }
-	real_t get_depth_near() const { return depth_near; }
-	void set_depth_near(real_t p_val) { depth_near = p_val; }
+	virtual bool get_perspective() const { return perspective; }
+	virtual void set_perspective(bool p_val) { perspective = p_val; }
+	virtual real_t get_fov() const { return fov; }
+	virtual void set_fov(real_t p_val) { fov = p_val; }
+	virtual real_t get_size_mag() const { return size_mag; }
+	virtual void set_size_mag(real_t p_val) { size_mag = p_val; }
+	virtual real_t get_depth_far() const { return depth_far; }
+	virtual void set_depth_far(real_t p_val) { depth_far = p_val; }
+	virtual real_t get_depth_near() const { return depth_near; }
+	virtual void set_depth_near(real_t p_val) { depth_near = p_val; }
 
 	static Ref<GLTFCamera> from_node(const Camera3D *p_camera);
-	Camera3D *to_node() const;
+	virtual Camera3D *to_node() const;
 
 	static Ref<GLTFCamera> from_dictionary(const Dictionary p_dictionary);
-	Dictionary to_dictionary() const;
+	virtual Dictionary to_dictionary() const;
 };
 
 #endif // GLTF_CAMERA_H

@@ -33,6 +33,7 @@
 
 #include "modules/fbx/fbx_defines.h"
 #include "modules/gltf/gltf_defines.h"
+#include "modules/gltf/gltf_state.h"
 #include "modules/gltf/structures/gltf_animation.h"
 #include "modules/gltf/structures/gltf_mesh.h"
 #include "modules/gltf/structures/gltf_node.h"
@@ -45,8 +46,8 @@
 
 #include "thirdparty/ufbx/ufbx.h"
 
-class FBXState : public Resource {
-	GDCLASS(FBXState, Resource);
+class FBXState : public GLTFState {
+	GDCLASS(FBXState, GLTFState);
 	friend class FBXDocument;
 	friend class SkinTool;
 	friend class GLTFSkin;

@@ -33,6 +33,8 @@
 #include "scene/3d/camera_3d.h"
 
 void FBXCamera::_bind_methods() {
+	ClassDB::bind_static_method("FBXCamera", D_METHOD("from_node", "camera_node"), &FBXCamera::from_node);
+	ClassDB::bind_static_method("FBXCamera", D_METHOD("from_dictionary", "dictionary"), &FBXCamera::from_dictionary);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "perspective"), "set_perspective", "get_perspective");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "fov"), "set_fov", "get_fov");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "size_mag"), "set_size_mag", "get_size_mag");

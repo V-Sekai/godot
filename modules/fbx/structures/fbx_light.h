@@ -32,13 +32,14 @@
 #define FBX_LIGHT_H
 
 #include "core/io/resource.h"
+#include "modules/gltf/extensions/gltf_light.h"
 #include "modules/gltf/structures/gltf_camera.h"
 #include "scene/3d/light_3d.h"
 
 class Light3D;
 
-class FBXLight : public GLTFCamera {
-	GDCLASS(FBXLight, GLTFCamera);
+class FBXLight : public GLTFLight {
+	GDCLASS(FBXLight, GLTFLight);
 
 private:
 	Color color;
@@ -57,10 +58,10 @@ protected:
 
 public:
 	static Ref<FBXLight> from_node(const Light3D *p_camera);
-	Light3D *to_node() const;
+	Light3D *to_node() const override;
 
 	static Ref<FBXLight> from_dictionary(const Dictionary p_dictionary);
-	Dictionary to_dictionary() const;
+	Dictionary to_dictionary() const override;
 
 	void set_color(Color p_color) { color = p_color; }
 	// Color and intensity of the light, usually you want to use `color * intensity`
