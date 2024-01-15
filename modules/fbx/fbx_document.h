@@ -75,11 +75,6 @@ public:
 protected:
 	static void _bind_methods();
 
-public:
-	static void register_fbx_document_extension(Ref<FBXDocumentExtension> p_extension, bool p_first_priority = false);
-	static void unregister_fbx_document_extension(Ref<FBXDocumentExtension> p_extension);
-	static void unregister_all_fbx_document_extensions();
-
 private:
 	String _get_texture_path(const String &p_base_directory, const String &p_source_file_path) const;
 	void _process_uv_set(PackedVector2Array &uv_array);
@@ -111,11 +106,15 @@ private:
 	Error _parse_lights(Ref<FBXState> p_state);
 
 public:
-	Error append_from_file(String p_path, Ref<FBXState> p_state, uint32_t p_flags = 0, String p_base_path = String());
-	Error append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<FBXState> p_state, uint32_t p_flags = 0);
-
-public:
-	Node *generate_scene(Ref<FBXState> p_state, float p_bake_fps = 30.0f, bool p_trimming = false, bool p_remove_immutable_tracks = true);
+	static void register_fbx_document_extension(Ref<FBXDocumentExtension> p_extension, bool p_first_priority = false);
+	static void unregister_fbx_document_extension(Ref<FBXDocumentExtension> p_extension);
+	static void unregister_all_fbx_document_extensions();
+	virtual Error append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, String p_base_path = String()) override;
+	virtual Error append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0);
+	virtual Error append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint32_t p_flags = 0);
+	virtual Node *generate_scene(Ref<GLTFState> p_state, float p_bake_fps = 30.0f, bool p_trimming = false, bool p_remove_immutable_tracks = true) override;
+	virtual PackedByteArray generate_buffer(Ref<GLTFState> p_state) override;
+	virtual Error write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) override;
 
 public:
 	Error _parse_fbx_state(Ref<FBXState> p_state, const String &p_search_path);
