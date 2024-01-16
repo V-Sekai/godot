@@ -31,6 +31,7 @@
 #ifndef GLTF_DOCUMENT_H
 #define GLTF_DOCUMENT_H
 
+#include "core/templates/hash_set.h"
 #include "extensions/gltf_document_extension.h"
 #include "gltf_defines.h"
 #include "modules/csg/csg_shape.h"
@@ -87,6 +88,7 @@ private:
 
 protected:
 	static void _bind_methods();
+	String _gen_unique_name(Ref<GLTFState> p_state, const String &p_name);
 
 public:
 	static void register_gltf_document_extension(Ref<GLTFDocumentExtension> p_extension, bool p_first_priority = false);
@@ -102,6 +104,7 @@ public:
 	float get_lossy_quality() const;
 	void set_root_node_mode(RootNodeMode p_root_node_mode);
 	RootNodeMode get_root_node_mode() const;
+	static String _gen_unique_name_static(HashSet<String> &r_unique_names, const String &p_name);
 
 private:
 	void _build_parent_hierachy(Ref<GLTFState> p_state);
@@ -112,7 +115,6 @@ private:
 	Error _parse_nodes(Ref<GLTFState> p_state);
 	String _get_type_name(const GLTFType p_component);
 	String _get_accessor_type_name(const GLTFType p_type);
-	String _gen_unique_name(Ref<GLTFState> p_state, const String &p_name);
 	String _sanitize_animation_name(const String &p_name);
 	String _gen_unique_animation_name(Ref<GLTFState> p_state, const String &p_name);
 	String _sanitize_bone_name(const String &p_name);

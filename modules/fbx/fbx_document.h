@@ -70,8 +70,6 @@ public:
 	static Vector3 _as_vec3(const ufbx_vec3 &p_vector) {
 		return Vector3(real_t(p_vector.x), real_t(p_vector.y), real_t(p_vector.z));
 	}
-	static String _gen_unique_name(HashSet<String> &unique_names, const String &p_name);
-
 protected:
 	static void _bind_methods();
 

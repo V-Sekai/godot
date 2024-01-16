@@ -66,10 +66,10 @@ public:
 	real_t get_depth_near() const { return depth_near; }
 	void set_depth_near(real_t p_val) { depth_near = p_val; }
 
-	static Ref<FBXCamera> from_node(const Camera3D *p_camera);
+	static Ref<FBXCamera> from_fbx_node(const Camera3D *p_camera);
 	Camera3D *to_node() const;
 
-	static Ref<FBXCamera> from_dictionary(const Dictionary p_dictionary);
+	static Ref<FBXCamera> from_fbx_dictionary(const Dictionary p_dictionary);
 	Dictionary to_dictionary() const;
 };
 

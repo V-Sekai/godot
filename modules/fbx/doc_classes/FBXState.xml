@@ -7,35 +7,6 @@
 	</description>
 	<tutorials>
 	</tutorials>
-	<members>
-		<member name="base_path" type="String" setter="set_base_path" getter="get_base_path" default="&quot;&quot;">
-			The base path for the FBX file.
-		</member>
-		<member name="buffers" type="PackedByteArray[]" setter="set_buffers" getter="get_buffers" default="[]">
-			The buffers used to store data in the FBXState.
-		</member>
-		<member name="create_animations" type="bool" setter="set_create_animations" getter="get_create_animations" default="true">
-			A flag indicating whether animations should be created from the FBX file.
-		</member>
-		<member name="filename" type="String" setter="set_filename" getter="get_filename" default="&quot;&quot;">
-			The filename of the FBX file.
-		</member>
-		<member name="major_version" type="int" setter="set_major_version" getter="get_major_version" default="0">
-			The major version number of the FBX file.
-		</member>
-		<member name="minor_version" type="int" setter="set_minor_version" getter="get_minor_version" default="0">
-			The minor version number of the FBX file.
-		</member>
-		<member name="root_nodes" type="PackedInt32Array" setter="set_root_nodes" getter="get_root_nodes" default="PackedInt32Array()">
-			An array of root nodes in the FBXState.
-		</member>
-		<member name="scene_name" type="String" setter="set_scene_name" getter="get_scene_name" default="&quot;&quot;">
-			The name of the scene in the FBX file.
-		</member>
-		<member name="use_named_skin_binds" type="bool" setter="set_use_named_skin_binds" getter="get_use_named_skin_binds" default="false">
-			A flag indicating whether named skin binds should be used.
-		</member>
-	</members>
 	<constants>
 		<constant name="HANDLE_BINARY_DISCARD_TEXTURES" value="0">
 			Constant representing the option to discard textures when handling binary data.

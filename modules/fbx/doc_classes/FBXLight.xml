@@ -6,6 +6,20 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="from_fbx_dictionary" qualifiers="static">
+			<return type="FBXLight" />
+			<param index="0" name="dictionary" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="from_fbx_node" qualifiers="static">
+			<return type="FBXLight" />
+			<param index="0" name="light_node" type="Light3D" />
+			<description>
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="area_shape" type="int" setter="set_area_shape" getter="get_area_shape" default="-1">
 		</member>
@@ -19,8 +33,9 @@
 		</member>
 		<member name="inner_angle" type="float" setter="set_inner_angle" getter="get_inner_angle" default="0.0">
 		</member>
-		<member name="intensity" type="float" setter="set_intensity" getter="get_intensity" default="1.0">
+		<member name="intensity" type="float" setter="set_intensity" getter="get_intensity" default="0.0">
 		</member>
+		<member name="intensity" type="float" setter="set_intensity" getter="get_intensity" overrides="GLTFLight" default="0.0" />
 		<member name="local_direction" type="Vector3" setter="set_local_direction" getter="get_local_direction" default="Vector3(0, 1, 0)">
 		</member>
 		<member name="outer_angle" type="float" setter="set_outer_angle" getter="get_outer_angle" default="0.0">

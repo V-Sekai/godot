@@ -6,6 +6,20 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="from_fbx_dictionary" qualifiers="static">
+			<return type="FBXCamera" />
+			<param index="0" name="dictionary" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="from_fbx_node" qualifiers="static">
+			<return type="FBXCamera" />
+			<param index="0" name="camera_node" type="Camera3D" />
+			<description>
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="depth_far" type="float" setter="set_depth_far" getter="get_depth_far" default="4000.0">
 		</member>

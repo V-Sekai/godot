@@ -31,14 +31,21 @@
 #include "fbx_document.h"
 
 #include "core/crypto/crypto_core.h"
+#include "core/error/error_macros.h"
 #include "core/io/config_file.h"
 #include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "core/io/image.h"
 #include "core/math/color.h"
+#include "core/templates/hash_set.h"
 #include "core/templates/template_convert.h"
+#include "core/variant/typed_array.h"
 #include "fbx_defines.h"
+#include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/structures/gltf_animation.h"
+#include "modules/gltf/structures/gltf_skeleton.h"
+#include "modules/gltf/structures/gltf_skin.h"
+#include "modules/gltf/structures/gltf_texture.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
@@ -46,6 +53,7 @@
 #include "scene/resources/material.h"
 #include "scene/resources/portable_compressed_texture.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/resources/texture.h"
 #include "structures/fbx_light.h"
 
 #ifdef TOOLS_ENABLED
@@ -230,28 +238,6 @@ static bool _thread_pool_wait_fn(void *user, ufbx_thread_pool_context ctx, uint3
 	return true;
 }
 
-String FBXDocument::_gen_unique_name(HashSet<String> &unique_names, const String &p_name) {
-	const String s_name = p_name.validate_node_name();
-
-	String u_name;
-	int index = 1;
-	while (true) {
-		u_name = s_name;
-
-		if (index > 1) {
-			u_name += itos(index);
-		}
-		if (!unique_names.has(u_name)) {
-			break;
-		}
-		index++;
-	}
-
-	unique_names.insert(u_name);
-
-	return u_name;
-}
-
 String FBXDocument::_sanitize_animation_name(const String &p_name) {
 	// Animations disallow the normal node invalid characters as well as  "," and "["
 	// (See animation/animation_player.cpp::add_animation)
@@ -274,28 +260,32 @@ String FBXDocument::_gen_unique_animation_name(Ref<FBXState> p_state, const Stri
 		if (index > 1) {
 			u_name += itos(index);
 		}
-		if (!p_state->unique_animation_names.has(u_name)) {
+		if (!p_state->get_unique_animation_names().has(u_name)) {
 			break;
 		}
 		index++;
 	}
 
-	p_state->unique_animation_names.insert(u_name);
-
+	TypedArray<String> unique_animation_names = p_state->get_unique_animation_names();
+	unique_animation_names.push_back(u_name);
+	p_state->set_unique_animation_names(unique_animation_names);
 	return u_name;
 }
 
 Error FBXDocument::_parse_scenes(Ref<FBXState> p_state) {
-	p_state->unique_names.insert("Skeleton3D"); // Reserve skeleton name.
-
+	TypedArray<String> unique_names = p_state->get_unique_names();
+	unique_names.push_back("Skeleton3D"); // Reserve skeleton name.
+	p_state->set_unique_names(unique_names);
 	const ufbx_scene *fbx_scene = p_state->scene.get();
 
 	// TODO: Multi-document support, would need test files for structure
-	p_state->scene_name = "";
+	p_state->set_scene_name(String());
 
 	// TODO: Append the root node directly if we use root-based space conversion
 	for (const ufbx_node *root_node : fbx_scene->root_node->children) {
-		p_state->root_nodes.push_back(int(root_node->typed_id));
+		PackedInt32Array root_nodes = p_state->get_root_nodes();
+		root_nodes.push_back(int(root_node->typed_id));
+		p_state->set_root_nodes(root_nodes);
 	}
 
 	return OK;
@@ -303,7 +293,7 @@ Error FBXDocument::_parse_scenes(Ref<FBXState> p_state) {
 
 Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 	const ufbx_scene *fbx_scene = p_state->scene.get();
-
+	TypedArray<GLTFNode> nodes = p_state->get_nodes();
 	for (int node_i = 0; node_i < static_cast<int>(fbx_scene->nodes.count); node_i++) {
 		const ufbx_node *fbx_node = fbx_scene->nodes[node_i];
 
@@ -340,27 +330,33 @@ Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 			node->children.push_back(child->typed_id);
 		}
 
-		p_state->nodes.push_back(node);
+		nodes.push_back(node);
 	}
 
 	// build the hierarchy
-	for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); node_i++) {
-		for (int j = 0; j < p_state->nodes[node_i]->children.size(); j++) {
-			GLTFNodeIndex child_i = p_state->nodes[node_i]->children[j];
+	for (GLTFNodeIndex node_i = 0; node_i < p_state->get_nodes().size(); node_i++) {
+		for (int j = 0; j < Ref<GLTFNode>(nodes[node_i])->children.size(); j++) {
+			GLTFNodeIndex child_i = Ref<GLTFNode>(nodes[node_i])->children[j];
 
-			ERR_FAIL_INDEX_V(child_i, p_state->nodes.size(), ERR_FILE_CORRUPT);
-			ERR_CONTINUE(p_state->nodes[child_i]->parent != -1); //node already has a parent, wtf.
+			ERR_FAIL_INDEX_V(child_i, p_state->get_nodes().size(), ERR_FILE_CORRUPT);
+			ERR_CONTINUE(Ref<GLTFNode>(p_state->get_nodes()[child_i])->parent != -1); //node already has a parent, wtf.
 
-			p_state->nodes.write[child_i]->parent = node_i;
+			Ref<GLTFNode>(nodes[child_i])->parent = node_i;
 		}
 	}
+
+	p_state->set_nodes(nodes);
 
 	return OK;
 }
 
 Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 	ufbx_scene *fbx_scene = p_state->scene.get();
-
+	TypedArray<String> unique_names = p_state->get_unique_names();
+	HashSet<String> unique_names_set;
+	for (auto unique_name : unique_names_set) {
+		unique_names_set.insert(unique_name);
+	}
 	for (const ufbx_mesh *fbx_mesh : fbx_scene->meshes) {
 		print_verbose("FBX: Parsing mesh: " + itos(int64_t(fbx_mesh->typed_id)));
 
@@ -376,7 +372,8 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 		if (fbx_mesh->name.length > 0) {
 			mesh_name = _as_string(fbx_mesh->name);
 		}
-		import_mesh->set_name(_gen_unique_name(p_state->unique_names, mesh_name));
+
+		import_mesh->set_name(_gen_unique_name(p_state, mesh_name));
 
 		bool use_blend_shapes = false;
 		if (fbx_mesh->blend_deformers.count > 0) {
@@ -604,7 +601,9 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 
 					// Tag all nodes to use the skin
 					for (const ufbx_node *node : fbx_mesh->instances) {
-						p_state->nodes[node->typed_id]->skin = skin_i;
+						Ref<GLTFNode> gltf_node = p_state->get_nodes()[node->typed_id];
+						gltf_node->set_skin(skin_i);
+						p_state->set_node_index(node->typed_id, gltf_node);
 					}
 
 					num_skin_weights = fbx_skin->max_weights_per_vertex > 4 ? 8 : 4;
@@ -760,15 +759,15 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 
 				Ref<Material> mat;
 				String mat_name;
-				if (!p_state->discard_meshes_and_materials) {
+				if (!p_state->get_discard_meshes_and_materials()) {
 					ufbx_material *fbx_material = nullptr;
 					if (fbx_mesh_part.index < fbx_mesh->materials.count) {
 						fbx_material = fbx_mesh->materials[fbx_mesh_part.index];
 					}
 					if (fbx_material) {
 						const int material = int(fbx_material->typed_id);
-						ERR_FAIL_INDEX_V(material, p_state->materials.size(), ERR_FILE_CORRUPT);
-						Ref<Material> mat3d = p_state->materials[material];
+						ERR_FAIL_INDEX_V(material, p_state->get_materials().size(), ERR_FILE_CORRUPT);
+						Ref<Material> mat3d = p_state->get_materials()[material];
 						ERR_FAIL_NULL_V(mat3d, ERR_FILE_CORRUPT);
 
 						Ref<BaseMaterial3D> base_material = mat3d;
@@ -801,11 +800,13 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 		mesh->set_blend_weights(blend_weights);
 		mesh->set_mesh(import_mesh);
 
-		p_state->meshes.push_back(mesh);
+		TypedArray<GLTFMesh> meshes = p_state->get_meshes();
+		meshes.push_back(mesh);
+		p_state->set_meshes(meshes);
 	}
 
-	print_verbose("FBX: Total meshes: " + itos(p_state->meshes.size()));
-
+	print_verbose("FBX: Total meshes: " + itos(p_state->get_meshes().size()));
+	p_state->set_unique_names(to_array(unique_names_set));
 	return OK;
 }
 
@@ -839,35 +840,36 @@ Ref<Image> FBXDocument::_parse_image_bytes_into_image(Ref<FBXState> p_state, con
 }
 
 FBXImageIndex FBXDocument::_parse_image_save_image(Ref<FBXState> p_state, const Vector<uint8_t> &p_bytes, const String &p_file_extension, int p_index, Ref<Image> p_image) {
-	FBXState::FBXHandleBinary handling = FBXState::FBXHandleBinary(p_state->handle_binary_image);
-	if (p_image->is_empty() || handling == FBXState::FBXHandleBinary::HANDLE_BINARY_DISCARD_TEXTURES) {
+	FBXState::GLTFHandleBinary handling = GLTFState::GLTFHandleBinary(p_state->get_handle_binary_image());
+	if (p_image->is_empty() || handling == FBXState::HANDLE_BINARY_DISCARD_TEXTURES) {
 		if (p_index < 0) {
 			return -1;
 		}
-		p_state->images.push_back(Ref<Texture2D>());
-		p_state->source_images.push_back(Ref<Image>());
-		return p_state->images.size() - 1;
+		p_state->add_image(Ref<Texture2D>());
+		p_state->add_source_image(Ref<Image>());
+		return p_state->get_images().size() - 1;
 	}
 #ifdef TOOLS_ENABLED
-	if (Engine::get_singleton()->is_editor_hint() && handling == FBXState::FBXHandleBinary::HANDLE_BINARY_EXTRACT_TEXTURES) {
-		if (p_state->base_path.is_empty()) {
+	TypedArray<Texture2D> images = p_state->get_images();
+	if (Engine::get_singleton()->is_editor_hint() && handling == GLTFState::HANDLE_BINARY_EXTRACT_TEXTURES) {
+		if (p_state->get_base_path().is_empty()) {
 			if (p_index < 0) {
 				return -1;
 			}
-			p_state->images.push_back(Ref<Texture2D>());
-			p_state->source_images.push_back(Ref<Image>());
+			p_state->add_image(Ref<Texture2D>());
+			p_state->add_source_image(Ref<Image>());
 		} else if (p_image->get_name().is_empty()) {
 			if (p_index < 0) {
 				return -1;
 			}
 			WARN_PRINT(vformat("FBX: Image index '%d' couldn't be named. Skipping it.", p_index));
-			p_state->images.push_back(Ref<Texture2D>());
-			p_state->source_images.push_back(Ref<Image>());
+			p_state->add_image(Ref<Texture2D>());
+			p_state->add_source_image(Ref<Image>());
 		} else {
 			bool must_import = true;
 			Vector<uint8_t> img_data = p_image->get_data();
 			Dictionary generator_parameters;
-			String file_path = p_state->get_base_path().path_join(p_state->filename.get_basename() + "_" + p_image->get_name());
+			String file_path = p_state->get_base_path().path_join(p_state->get_filename().get_basename() + "_" + p_image->get_name());
 			file_path += p_file_extension.is_empty() ? ".png" : p_file_extension;
 			if (FileAccess::exists(file_path + ".import")) {
 				Ref<ConfigFile> config;
@@ -912,29 +914,31 @@ FBXImageIndex FBXDocument::_parse_image_save_image(Ref<FBXState> p_state, const 
 			}
 			Ref<Texture2D> saved_image = ResourceLoader::load(_get_texture_path(p_state->get_base_path(), file_path), "Texture2D");
 			if (saved_image.is_valid()) {
-				p_state->images.push_back(saved_image);
-				p_state->source_images.push_back(saved_image->get_image());
+				TypedArray<Texture2D> images = p_state->get_images();
+				images.push_back(saved_image);
+				p_state->set_images(images);
 			} else if (p_index < 0) {
 				return -1;
 			} else {
 				WARN_PRINT(vformat("FBX: Image index '%d' couldn't be loaded with the name: %s. Skipping it.", p_index, p_image->get_name()));
 				// Placeholder to keep count.
-				p_state->images.push_back(Ref<Texture2D>());
-				p_state->source_images.push_back(Ref<Image>());
+				images.push_back(saved_image);
+				images.push_back(Ref<Texture2D>());
 			}
 		}
-		return p_state->images.size() - 1;
+		p_state->set_images(images);
+		return images.size() - 1;
 	}
 #endif // TOOLS_ENABLED
-	if (handling == FBXState::FBXHandleBinary::HANDLE_BINARY_EMBED_AS_BASISU) {
+	if (handling == FBXState::GLTFHandleBinary::HANDLE_BINARY_EMBED_AS_BASISU) {
 		Ref<PortableCompressedTexture2D> tex;
 		tex.instantiate();
 		tex->set_name(p_image->get_name());
 		tex->set_keep_compressed_buffer(true);
 		tex->create_from_image(p_image, PortableCompressedTexture2D::COMPRESSION_MODE_BASIS_UNIVERSAL);
-		p_state->images.push_back(tex);
-		p_state->source_images.push_back(p_image);
-		return p_state->images.size() - 1;
+		images.push_back(tex);
+		p_state->set_images(images);
+		return images.size() - 1;
 	}
 	// This handles the case of HANDLE_BINARY_EMBED_AS_UNCOMPRESSED, and it also serves
 	// as a fallback for HANDLE_BINARY_EXTRACT_TEXTURES when this is not the editor.
@@ -942,9 +946,9 @@ FBXImageIndex FBXDocument::_parse_image_save_image(Ref<FBXState> p_state, const 
 	tex.instantiate();
 	tex->set_name(p_image->get_name());
 	tex->set_image(p_image);
-	p_state->images.push_back(tex);
-	p_state->source_images.push_back(p_image);
-	return p_state->images.size() - 1;
+	images.push_back(tex);
+	p_state->set_images(images);
+	return images.size() - 1;
 }
 
 Error FBXDocument::_parse_images(Ref<FBXState> p_state, const String &p_base_path) {
@@ -963,16 +967,16 @@ Error FBXDocument::_parse_images(Ref<FBXState> p_state, const String &p_base_pat
 			String base_dir = p_state->get_base_path();
 			Ref<Texture2D> texture = ResourceLoader::load(_get_texture_path(base_dir, path), "Texture2D");
 			if (texture.is_valid()) {
-				p_state->images.push_back(texture);
-				p_state->source_images.push_back(texture->get_image());
+				p_state->add_image(texture);
+				p_state->add_source_image(texture->get_image());
 				continue;
 			}
 			// Fallback to loading as byte array.
 			data = FileAccess::get_file_as_bytes(path);
 			if (data.size() == 0) {
 				WARN_PRINT(vformat("FBX: Image index '%d' couldn't be loaded from path: %s because there was no data to load. Skipping it.", texture_i, path));
-				p_state->images.push_back(Ref<Texture2D>()); // Placeholder to keep count.
-				p_state->source_images.push_back(Ref<Image>());
+				p_state->add_image(Ref<Texture2D>()); // Placeholder to keep count.
+				p_state->add_source_image(Ref<Image>());
 				continue;
 			}
 		}
@@ -989,24 +993,26 @@ Error FBXDocument::_parse_images(Ref<FBXState> p_state, const String &p_base_pat
 		Ref<GLTFTexture> texture;
 		texture.instantiate();
 		texture->set_src_image(FBXImageIndex(texture_file_i));
-		p_state->textures.push_back(texture);
+		TypedArray<GLTFTexture> textures = p_state->get_textures();
+		textures.push_back(texture);
+		p_state->set_textures(textures);
 	}
 
-	print_verbose("FBX: Total images: " + itos(p_state->images.size()));
-
+	print_verbose("FBX: Total images: " + itos(p_state->get_images().size()));
 	return OK;
 }
 
 Ref<Texture2D> FBXDocument::_get_texture(Ref<FBXState> p_state, const GLTFTextureIndex p_texture, int p_texture_types) {
-	ERR_FAIL_INDEX_V(p_texture, p_state->textures.size(), Ref<Texture2D>());
-	const FBXImageIndex image = p_state->textures[p_texture]->get_src_image();
-	ERR_FAIL_INDEX_V(image, p_state->images.size(), Ref<Texture2D>());
-	if (FBXState::FBXHandleBinary(p_state->handle_binary_image) == FBXState::FBXHandleBinary::HANDLE_BINARY_EMBED_AS_BASISU) {
-		ERR_FAIL_INDEX_V(image, p_state->source_images.size(), Ref<Texture2D>());
+	ERR_FAIL_INDEX_V(p_texture, p_state->get_textures().size(), Ref<Texture2D>());
+	Ref<GLTFTexture> texture = p_state->get_textures()[p_texture];
+	const FBXImageIndex image = texture->get_src_image();
+	ERR_FAIL_INDEX_V(image, p_state->get_images().size(), Ref<Texture2D>());
+	if (FBXState::GLTFHandleBinary(p_state->get_handle_binary_image()) == FBXState::GLTFHandleBinary::HANDLE_BINARY_EMBED_AS_BASISU) {
+		ERR_FAIL_INDEX_V(image, p_state->get_source_images().size(), Ref<Texture2D>());
 		Ref<PortableCompressedTexture2D> portable_texture;
 		portable_texture.instantiate();
 		portable_texture->set_keep_compressed_buffer(true);
-		Ref<Image> new_img = p_state->source_images[image]->duplicate();
+		Ref<Image> new_img = p_state->get_source_images()[image].duplicate();
 		ERR_FAIL_COND_V(new_img.is_null(), Ref<Texture2D>());
 		new_img->generate_mipmaps();
 		if (p_texture_types) {
@@ -1014,10 +1020,10 @@ Ref<Texture2D> FBXDocument::_get_texture(Ref<FBXState> p_state, const GLTFTextur
 		} else {
 			portable_texture->create_from_image(new_img, PortableCompressedTexture2D::COMPRESSION_MODE_BASIS_UNIVERSAL, false);
 		}
-		p_state->images.write[image] = portable_texture;
-		p_state->source_images.write[image] = new_img;
+		p_state->set_image_index(image, portable_texture);
+		p_state->set_source_image_index(image, new_img);
 	}
-	return p_state->images[image];
+	return p_state->get_images()[image];
 }
 
 Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
@@ -1101,9 +1107,9 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 							Ref<GLTFTexture> new_texture;
 							new_texture.instantiate();
 							new_texture->set_src_image(FBXImageIndex(new_image));
-							p_state->textures.push_back(new_texture);
+							p_state->add_texture(new_texture);
 
-							GLTFTextureIndex texture_index = p_state->textures.size() - 1;
+							GLTFTextureIndex texture_index = p_state->get_textures().size() - 1;
 							p_state->albedo_transparency_textures[key] = texture_index;
 
 							albedo_texture = _get_texture(p_state, texture_index, TEXTURE_TYPE_GENERIC);
@@ -1203,10 +1209,10 @@ Error FBXDocument::_parse_materials(Ref<FBXState> p_state) {
 		if (fbx_material->features.double_sided.enabled && fbx_material->features.double_sided.is_explicit) {
 			material->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
 		}
-		p_state->materials.push_back(material);
+		p_state->add_material(material);
 	}
 
-	print_verbose("Total materials: " + itos(p_state->materials.size()));
+	print_verbose("Total materials: " + itos(p_state->get_materials().size()));
 
 	return OK;
 }
@@ -1231,10 +1237,10 @@ Error FBXDocument::_parse_cameras(Ref<FBXState> p_state) {
 		if (fbx_camera->far_plane != 0.0f) {
 			camera->set_depth_far(fbx_camera->far_plane);
 		}
-		p_state->cameras.push_back(camera);
+		p_state->add_camera(camera);
 	}
 
-	print_verbose("FBX: Total cameras: " + itos(p_state->cameras.size()));
+	print_verbose("FBX: Total cameras: " + itos(p_state->get_cameras().size()));
 
 	return OK;
 }
@@ -1305,17 +1311,17 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 				}
 			}
 		}
-		p_state->animations.push_back(animation);
+		p_state->add_animation(animation);
 	}
 
-	print_verbose("FBX: Total animations '" + itos(p_state->animations.size()) + "'.");
+	print_verbose("FBX: Total animations '" + itos(p_state->get_animations().size()) + "'.");
 
 	return OK;
 }
 
 void FBXDocument::_assign_node_names(Ref<FBXState> p_state) {
-	for (int i = 0; i < p_state->nodes.size(); i++) {
-		Ref<GLTFNode> fbx_node = p_state->nodes[i];
+	for (int i = 0; i < p_state->get_nodes().size(); i++) {
+		Ref<GLTFNode> fbx_node = p_state->get_nodes()[i];
 
 		// Any joints get unique names generated when the skeleton is made, unique to the skeleton
 		if (fbx_node->skeleton >= 0) {
@@ -1324,21 +1330,21 @@ void FBXDocument::_assign_node_names(Ref<FBXState> p_state) {
 
 		if (fbx_node->get_name().is_empty()) {
 			if (fbx_node->mesh >= 0) {
-				fbx_node->set_name(_gen_unique_name(p_state->unique_names, "Mesh"));
+				fbx_node->set_name(_gen_unique_name(p_state, "Mesh"));
 			} else if (fbx_node->camera >= 0) {
-				fbx_node->set_name(_gen_unique_name(p_state->unique_names, "Camera3D"));
+				fbx_node->set_name(_gen_unique_name(p_state, "Camera3D"));
 			} else {
-				fbx_node->set_name(_gen_unique_name(p_state->unique_names, "Node"));
+				fbx_node->set_name(_gen_unique_name(p_state, "Node"));
 			}
 		}
 
-		fbx_node->set_name(_gen_unique_name(p_state->unique_names, fbx_node->get_name()));
+		fbx_node->set_name(_gen_unique_name(p_state, fbx_node->get_name()));
 	}
 }
 
 BoneAttachment3D *FBXDocument::_generate_bone_attachment(Ref<FBXState> p_state, Skeleton3D *p_skeleton, const GLTFNodeIndex p_node_index, const GLTFNodeIndex p_bone_index) {
-	Ref<GLTFNode> fbx_node = p_state->nodes[p_node_index];
-	Ref<GLTFNode> bone_node = p_state->nodes[p_bone_index];
+	Ref<GLTFNode> fbx_node = p_state->get_nodes()[p_node_index];
+	Ref<GLTFNode> bone_node = p_state->get_nodes()[p_bone_index];
 	BoneAttachment3D *bone_attachment = memnew(BoneAttachment3D);
 	print_verbose("FBX: Creating bone attachment for: " + fbx_node->get_name());
 
@@ -1350,15 +1356,15 @@ BoneAttachment3D *FBXDocument::_generate_bone_attachment(Ref<FBXState> p_state, 
 }
 
 ImporterMeshInstance3D *FBXDocument::_generate_mesh_instance(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index) {
-	Ref<GLTFNode> fbx_node = p_state->nodes[p_node_index];
+	Ref<GLTFNode> fbx_node = p_state->get_nodes()[p_node_index];
 
-	ERR_FAIL_INDEX_V(fbx_node->mesh, p_state->meshes.size(), nullptr);
+	ERR_FAIL_INDEX_V(fbx_node->mesh, p_state->get_meshes().size(), nullptr);
 
 	ImporterMeshInstance3D *mi = memnew(ImporterMeshInstance3D);
 	print_verbose("FBX: Creating mesh for: " + fbx_node->get_name());
 
-	p_state->scene_mesh_instances.insert(p_node_index, mi);
-	Ref<GLTFMesh> mesh = p_state->meshes.write[fbx_node->mesh];
+	p_state->set_scene_mesh_instance_index(p_node_index, mi->get_instance_id());
+	Ref<GLTFMesh> mesh = p_state->get_nodes()[fbx_node->mesh];
 	if (mesh.is_null()) {
 		return mi;
 	}
@@ -1371,29 +1377,29 @@ ImporterMeshInstance3D *FBXDocument::_generate_mesh_instance(Ref<FBXState> p_sta
 }
 
 Camera3D *FBXDocument::_generate_camera(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index) {
-	Ref<GLTFNode> fbx_node = p_state->nodes[p_node_index];
+	Ref<GLTFNode> fbx_node = p_state->get_nodes()[p_node_index];
 
-	ERR_FAIL_INDEX_V(fbx_node->camera, p_state->cameras.size(), nullptr);
+	ERR_FAIL_INDEX_V(fbx_node->camera, p_state->get_cameras().size(), nullptr);
 
 	print_verbose("FBX: Creating camera for: " + fbx_node->get_name());
 
-	Ref<FBXCamera> c = p_state->cameras[fbx_node->camera];
+	Ref<FBXCamera> c = p_state->get_cameras()[fbx_node->camera];
 	return c->to_node();
 }
 
 Light3D *FBXDocument::_generate_light(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index) {
-	Ref<GLTFNode> fbx_node = p_state->nodes[p_node_index];
+	Ref<GLTFNode> fbx_node = p_state->get_nodes()[p_node_index];
 
-	ERR_FAIL_INDEX_V(fbx_node->light, p_state->lights.size(), nullptr);
+	ERR_FAIL_INDEX_V(fbx_node->light, p_state->get_lights().size(), nullptr);
 
 	print_verbose("FBX: Creating light for: " + fbx_node->get_name());
 
-	Ref<FBXLight> l = p_state->lights[fbx_node->light];
+	Ref<FBXLight> l = p_state->get_lights()[fbx_node->light];
 	return l->to_node();
 }
 
 Node3D *FBXDocument::_generate_spatial(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index) {
-	Ref<GLTFNode> fbx_node = p_state->nodes[p_node_index];
+	Ref<GLTFNode> fbx_node = p_state->get_nodes()[p_node_index];
 
 	Node3D *spatial = memnew(Node3D);
 	print_verbose("FBX: Converting spatial: " + fbx_node->get_name());
@@ -1402,7 +1408,7 @@ Node3D *FBXDocument::_generate_spatial(Ref<FBXState> p_state, const GLTFNodeInde
 }
 
 void FBXDocument::_generate_scene_node(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root) {
-	Ref<GLTFNode> fbx_node = p_state->nodes[p_node_index];
+	Ref<GLTFNode> fbx_node = p_state->get_nodes()[p_node_index];
 
 	if (fbx_node->skeleton >= 0) {
 		_generate_skeleton_bone_node(p_state, p_node_index, p_scene_parent, p_scene_root);
@@ -1461,18 +1467,20 @@ void FBXDocument::_generate_scene_node(Ref<FBXState> p_state, const GLTFNodeInde
 	current_node->set_transform(fbx_node->xform);
 	current_node->set_name(fbx_node->get_name());
 
-	p_state->scene_nodes.insert(p_node_index, current_node);
+	p_state->set_scene_mesh_instance_index(p_node_index, current_node->get_instance_id());
 	for (int i = 0; i < fbx_node->children.size(); ++i) {
 		_generate_scene_node(p_state, fbx_node->children[i], current_node, p_scene_root);
 	}
 }
 
 void FBXDocument::_generate_skeleton_bone_node(Ref<FBXState> p_state, const GLTFNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root) {
-	Ref<GLTFNode> fbx_node = p_state->nodes[p_node_index];
+	Ref<GLTFNode> fbx_node = p_state->get_nodes()[p_node_index];
 
 	Node3D *current_node = nullptr;
 
-	Skeleton3D *skeleton = p_state->skeletons[fbx_node->skeleton]->godot_skeleton;
+	Ref<GLTFSkeleton> gltf_skeleton = p_state->get_skeletons()[fbx_node->skeleton];
+	ERR_FAIL_COND(gltf_skeleton.is_null());
+	Skeleton3D *skeleton = gltf_skeleton->godot_skeleton;
 	// In this case, this node is already a bone in skeleton.
 	const bool is_skinned_mesh = (fbx_node->skin >= 0 && fbx_node->mesh >= 0);
 	const bool requires_extra_node = (fbx_node->mesh >= 0 || fbx_node->camera >= 0 || fbx_node->light >= 0);
@@ -1486,7 +1494,7 @@ void FBXDocument::_generate_skeleton_bone_node(Ref<FBXState> p_state, const GLTF
 			p_scene_parent->add_child(bone_attachment, true);
 			bone_attachment->set_owner(p_scene_root);
 			// There is no fbx_node that represent this, so just directly create a unique name
-			bone_attachment->set_name(_gen_unique_name(p_state->unique_names, "BoneAttachment3D"));
+			bone_attachment->set_name(_gen_unique_name(p_state, "BoneAttachment3D"));
 			// We change the scene_parent to our bone attachment now. We do not set current_node because we want to make the node
 			// and attach it to the bone_attachment
 			p_scene_parent = bone_attachment;
@@ -1546,7 +1554,7 @@ void FBXDocument::_generate_skeleton_bone_node(Ref<FBXState> p_state, const GLTF
 		current_node->set_name(fbx_node->get_name());
 	}
 
-	p_state->scene_nodes.insert(p_node_index, current_node);
+	p_state->set_scene_mesh_instance_index(p_node_index, current_node->get_instance_id());
 
 	for (int i = 0; i < fbx_node->children.size(); ++i) {
 		_generate_scene_node(p_state, fbx_node->children[i], active_skeleton, p_scene_root);
@@ -1604,12 +1612,12 @@ struct SceneFormatImporterGLTFInterpolate<Quaternion> {
 };
 
 void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_animation_player, const FBXAnimationIndex p_index, const float p_bake_fps, const bool p_trimming, const bool p_remove_immutable_tracks) {
-	Ref<GLTFAnimation> anim = p_state->animations[p_index];
+	Ref<GLTFAnimation> anim = p_state->get_animations()[p_index];
 
 	String anim_name = anim->get_name();
 	if (anim_name.is_empty()) {
 		// No node represent these, and they are not in the hierarchy, so just make a unique name
-		anim_name = _gen_unique_name(p_state->unique_names, "Animation");
+		anim_name = _gen_unique_name(p_state, "Animation");
 	}
 
 	Ref<Animation> animation;
@@ -1633,14 +1641,15 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		GLTFNodeIndex node_index = track_i.key;
 		Node *root = p_animation_player->get_parent();
 		ERR_FAIL_NULL(root);
-		HashMap<GLTFNodeIndex, Node *>::Iterator node_element = p_state->scene_nodes.find(node_index);
-		ERR_CONTINUE_MSG(!node_element, vformat("Unable to find node %d for animation.", node_index));
-		node_path = root->get_path_to(node_element->value);
+		Node *node = p_state->get_scene_node(node_index);
+		ERR_CONTINUE_MSG(!node, vformat("Unable to find node %d for animation.", node_index));
+		node_path = root->get_path_to(node);
 
-		const Ref<GLTFNode> fbx_node = p_state->nodes[track_i.key];
+		const Ref<GLTFNode> fbx_node = p_state->get_nodes()[track_i.key];
 
 		if (fbx_node->skeleton >= 0) {
-			const Skeleton3D *sk = p_state->skeletons[fbx_node->skeleton]->godot_skeleton;
+			Ref<GLTFSkeleton> gltf_skeleton = p_state->get_skeletons()[fbx_node->skeleton];
+			const Skeleton3D *sk = gltf_skeleton->godot_skeleton;
 			ERR_FAIL_NULL(sk);
 
 			const String path = p_animation_player->get_parent()->get_path_to(sk);
@@ -1662,7 +1671,8 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 			if (track.position_track.values.size()) {
 				bool is_default = true; // Discard the track if all it contains is default values.
 				if (p_remove_immutable_tracks) {
-					Vector3 base_pos = p_state->nodes[track_i.key]->position;
+					Ref<GLTFNode> gltf_node = p_state->get_nodes()[track_i.key];
+					Vector3 base_pos = gltf_node->get_position();
 					for (int i = 0; i < track.position_track.times.size(); i++) {
 						Vector3 value = track.position_track.values[track.position_track.interpolation == GLTFAnimation::INTERP_CUBIC_SPLINE ? (1 + i * 3) : i];
 						if (!value.is_equal_approx(base_pos)) {
@@ -1682,7 +1692,8 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 			if (track.rotation_track.values.size()) {
 				bool is_default = true; // Discard the track if all the track contains is the default values.
 				if (p_remove_immutable_tracks) {
-					Quaternion base_rot = p_state->nodes[track_i.key]->rotation.normalized();
+					Ref<GLTFNode> gltf_node = p_state->get_nodes()[track_i.key];
+					Quaternion base_rot = gltf_node->rotation.normalized();
 					for (int i = 0; i < track.rotation_track.times.size(); i++) {
 						Quaternion value = track.rotation_track.values[track.rotation_track.interpolation == GLTFAnimation::INTERP_CUBIC_SPLINE ? (1 + i * 3) : i].normalized();
 						if (!value.is_equal_approx(base_rot)) {
@@ -1702,7 +1713,8 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 			if (track.scale_track.values.size()) {
 				bool is_default = true; // Discard the track if all the track contains is the default values.
 				if (p_remove_immutable_tracks) {
-					Vector3 base_scale = p_state->nodes[track_i.key]->scale;
+					Ref<GLTFNode> gltf_node = p_state->get_nodes()[track_i.key];
+					Vector3 base_scale = gltf_node->scale;
 					for (int i = 0; i < track.scale_track.times.size(); i++) {
 						Vector3 value = track.scale_track.values[track.scale_track.interpolation == GLTFAnimation::INTERP_CUBIC_SPLINE ? (1 + i * 3) : i];
 						if (!value.is_equal_approx(base_scale)) {
@@ -1749,8 +1761,8 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 		}
 	}
 
-	for (GLTFNodeIndex node_index = 0; node_index < p_state->nodes.size(); node_index++) {
-		Ref<GLTFNode> node = p_state->nodes[node_index];
+	for (GLTFNodeIndex node_index = 0; node_index < p_state->get_nodes().size(); node_index++) {
+		Ref<GLTFNode> node = p_state->get_nodes()[node_index];
 		if (node->mesh < 0) {
 			continue;
 		}
@@ -1760,17 +1772,17 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 
 		Node *root = p_animation_player->get_parent();
 		ERR_FAIL_NULL(root);
-		HashMap<GLTFNodeIndex, Node *>::Iterator node_element = p_state->scene_nodes.find(node_index);
-		ERR_CONTINUE_MSG(!node_element, vformat("Unable to find node %d for animation.", node_index));
-		NodePath node_path = root->get_path_to(node_element->value);
-		HashMap<GLTFNodeIndex, ImporterMeshInstance3D *>::Iterator mesh_instance_element = p_state->scene_mesh_instances.find(node_index);
+		Node *godot_node = p_state->get_scene_node(node_index);
+		ERR_CONTINUE_MSG(!godot_node, vformat("Unable to find node %d for animation.", node_index));
+		NodePath node_path = root->get_path_to(godot_node);
+		ImporterMeshInstance3D *mesh_instance_element = Object::cast_to<ImporterMeshInstance3D>(p_state->get_scene_node(node_index));
 		if (mesh_instance_element) {
-			mesh_instance_node_path = root->get_path_to(mesh_instance_element->value);
+			mesh_instance_node_path = root->get_path_to(mesh_instance_element);
 		} else {
 			mesh_instance_node_path = node_path;
 		}
 
-		Ref<GLTFMesh> mesh = p_state->meshes[node->mesh];
+		Ref<GLTFMesh> mesh = p_state->get_meshes()[node->mesh];
 		ERR_CONTINUE(mesh.is_null());
 		ERR_CONTINUE(mesh->get_mesh().is_null());
 		ERR_CONTINUE(mesh->get_mesh()->get_mesh().is_null());
@@ -1809,8 +1821,8 @@ void FBXDocument::_import_animation(Ref<FBXState> p_state, AnimationPlayer *p_an
 }
 
 void FBXDocument::_process_mesh_instances(Ref<FBXState> p_state, Node *p_scene_root) {
-	for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); ++node_i) {
-		Ref<GLTFNode> node = p_state->nodes[node_i];
+	for (GLTFNodeIndex node_i = 0; node_i < p_state->get_nodes().size(); ++node_i) {
+		Ref<GLTFNode> node = p_state->get_nodes()[node_i];
 
 		if (node.is_null() || !(node->skin >= 0 && node->mesh >= 0)) {
 			continue;
@@ -1819,26 +1831,24 @@ void FBXDocument::_process_mesh_instances(Ref<FBXState> p_state, Node *p_scene_r
 		const GLTFSkinIndex skin_i = node->skin;
 
 		ImporterMeshInstance3D *mi = nullptr;
-		HashMap<GLTFNodeIndex, ImporterMeshInstance3D *>::Iterator mi_element = p_state->scene_mesh_instances.find(node_i);
+		ImporterMeshInstance3D *mi_element = Object::cast_to<ImporterMeshInstance3D>(p_state->get_scene_node(node_i));
 		if (!mi_element) {
-			HashMap<GLTFNodeIndex, Node *>::Iterator si_element = p_state->scene_nodes.find(node_i);
-			ERR_CONTINUE_MSG(!si_element, vformat("Unable to find node %d", node_i));
-			mi = Object::cast_to<ImporterMeshInstance3D>(si_element->value);
-			ERR_CONTINUE_MSG(mi == nullptr, vformat("Unable to cast node %d of type %s to ImporterMeshInstance3D", node_i, si_element->value->get_class_name()));
+			ERR_CONTINUE_MSG(mi == nullptr, vformat("Unable to cast node %d of type %s to ImporterMeshInstance3D", node_i, p_state->get_scene_node(node_i)->get_class_name()));
 		} else {
-			mi = mi_element->value;
+			mi = mi_element;
 		}
 
-		bool is_skin_valid = node->skin >= 0;
-		bool is_skin_accessible = is_skin_valid && node->skin < p_state->skins.size();
-		bool is_valid = is_skin_accessible && p_state->skins.write[node->skin]->skeleton >= 0;
+		bool is_skin_valid = skin_i >= 0;
+		bool is_skin_accessible = is_skin_valid && node->skin < p_state->get_skins().size();
+		Ref<GLTFSkin> gltf_skin = p_state->get_skins()[skin_i];
+		bool is_valid = is_skin_accessible && gltf_skin->skeleton >= 0;
 
 		if (!is_valid) {
 			continue;
 		}
 
-		const GLTFSkeletonIndex skel_i = p_state->skins.write[node->skin]->skeleton;
-		Ref<GLTFSkeleton> fbx_skeleton = p_state->skeletons.write[skel_i];
+		const GLTFSkeletonIndex skel_i = gltf_skin->skeleton;
+		Ref<GLTFSkeleton> fbx_skeleton = p_state->get_skeletons()[skel_i];
 		Skeleton3D *skeleton = fbx_skeleton->godot_skeleton;
 		ERR_CONTINUE_MSG(skeleton == nullptr, vformat("Unable to find Skeleton for node %d skin %d", node_i, skin_i));
 
@@ -1846,7 +1856,7 @@ void FBXDocument::_process_mesh_instances(Ref<FBXState> p_state, Node *p_scene_r
 		skeleton->add_child(mi, true);
 		mi->set_owner(skeleton->get_owner());
 
-		mi->set_skin(p_state->skins.write[skin_i]->godot_skin);
+		mi->set_skin(gltf_skin->godot_skin);
 		mi->set_skeleton_path(mi->get_path_to(skeleton));
 		mi->set_transform(Transform3D());
 	}
@@ -1881,7 +1891,7 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 	opts.target_camera_axes = ufbx_axes_right_handed_y_up;
 	opts.target_light_axes = ufbx_axes_right_handed_y_up;
 	opts.clean_skin_weights = true;
-	if (p_state->discard_meshes_and_materials) {
+	if (p_state->get_discard_meshes_and_materials()) {
 		opts.ignore_geometry = true;
 		opts.ignore_embedded = true;
 	}
@@ -1920,14 +1930,17 @@ void FBXDocument::_bind_methods() {
 
 void FBXDocument::_build_parent_hierarchy(Ref<FBXState> p_state) {
 	// Build the hierarchy.
-	for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); node_i++) {
-		for (int j = 0; j < p_state->nodes[node_i]->children.size(); j++) {
-			GLTFNodeIndex child_i = p_state->nodes[node_i]->children[j];
-			ERR_FAIL_INDEX(child_i, p_state->nodes.size());
-			if (p_state->nodes.write[child_i]->parent != -1) {
+	for (GLTFNodeIndex node_i = 0; node_i < p_state->get_nodes().size(); node_i++) {
+		Ref<GLTFNode> gltf_node = p_state->get_nodes()[node_i];
+		for (int j = 0; j < gltf_node->children.size(); j++) {
+			GLTFNodeIndex child_i = gltf_node->children[j];
+			Ref<GLTFNode> gltf_node_child = p_state->get_nodes()[child_i];
+			ERR_FAIL_INDEX(child_i, p_state->get_nodes().size());
+			if (gltf_node_child->parent != -1) {
 				continue;
 			}
-			p_state->nodes.write[child_i]->parent = node_i;
+			gltf_node_child->parent = node_i;
+			p_state->set_node_index(child_i, gltf_node_child);
 		}
 	}
 }
@@ -1946,7 +1959,7 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	err = _parse_nodes(p_state);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
-	if (!p_state->discard_meshes_and_materials) {
+	if (!p_state->get_discard_meshes_and_materials()) {
 		/* PARSE IMAGES */
 		err = _parse_images(p_state, p_search_path);
 
@@ -1962,17 +1975,28 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	err = _parse_skins(p_state);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
+	TypedArray<GLTFSkin> gltf_skins = p_state->get_skins();
+	TypedArray<GLTFNode> gltf_nodes = p_state->get_nodes();
+	TypedArray<GLTFSkeleton> gltf_skeletons = p_state->get_skeletons();
+	err = SkinTool::_determine_skeletons(gltf_skins, gltf_nodes, gltf_skeletons);
+
 	/* DETERMINE SKELETONS */
-	err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons);
+	err = SkinTool::_determine_skeletons(gltf_skins, gltf_nodes, gltf_skeletons);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
+	HashMap<ObjectID, GLTFSkeletonIndex> skeleton3d_to_fbx_skeleton;
 	/* CREATE SKELETONS */
-	err = SkinTool::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes, p_state->skeleton3d_to_fbx_skeleton, p_state->skeletons, p_state->scene_nodes);
+	HashSet<String> unique_names = p_state->get_unique_names_set();
+	err = SkinTool::_create_skeletons(unique_names, gltf_skins, gltf_nodes, skeleton3d_to_fbx_skeleton, gltf_skeletons, p_state->get_scene_nodes_reference());
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* CREATE SKINS */
-	err = SkinTool::_create_skins(p_state->skins, p_state->nodes, p_state->use_named_skin_binds, p_state->unique_names);
+	err = SkinTool::_create_skins(gltf_skins, gltf_nodes, p_state->get_use_named_skin_binds(), unique_names);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
+
+	p_state->set_skins(gltf_skins);
+	p_state->set_nodes(gltf_nodes);
+	p_state->set_skeletons(gltf_skeletons);
 
 	/* PARSE MESHES (we have enough info now) */
 	err = _parse_meshes(p_state);
@@ -1994,8 +2018,8 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	_assign_node_names(p_state);
 
 	Node3D *root = memnew(Node3D);
-	for (int32_t root_i = 0; root_i < p_state->root_nodes.size(); root_i++) {
-		_generate_scene_node(p_state, p_state->root_nodes[root_i], root, root);
+	for (int32_t root_i = 0; root_i < p_state->get_root_nodes().size(); root_i++) {
+		_generate_scene_node(p_state, p_state->get_root_nodes()[root_i], root, root);
 	}
 
 	return OK;
@@ -2035,9 +2059,9 @@ Error FBXDocument::_parse_lights(Ref<FBXState> p_state) {
 		light->set_outer_angle(fbx_light->outer_angle);
 		light->set_cast_light(fbx_light->cast_light);
 		light->set_cast_shadows(fbx_light->cast_shadows);
-		p_state->lights.push_back(light);
+		p_state->add_light(light);
 	}
-	print_verbose("FBX: Total lights: " + itos(p_state->lights.size()));
+	print_verbose("FBX: Total lights: " + itos(p_state->get_lights().size()));
 	return OK;
 }
 
@@ -2083,7 +2107,9 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 
 			skin->joints.push_back(node);
 			skin->joints_original.push_back(node);
-			p_state->nodes.write[node]->joint = true;
+			TypedArray<GLTFNode> gltf_nodes = p_state->get_nodes();
+			Ref<GLTFNode> gltf_node = gltf_nodes[0];
+			gltf_node->joint = true;
 		}
 
 		if (fbx_skin->name.length > 0) {
@@ -2091,41 +2117,44 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		} else {
 			skin->set_name(vformat("skin_%s", itos(fbx_skin->typed_id)));
 		}
-		p_state->skin_indices.push_back(p_state->skins.size());
-		p_state->skins.push_back(skin);
+		p_state->skin_indices.push_back(p_state->get_skins().size());
+		p_state->add_skin(skin);
 	}
 
 	for (const ufbx_bone *fbx_bone : fbx_scene->bones) {
 		for (const ufbx_node *fbx_node : fbx_bone->instances) {
 			const GLTFNodeIndex node = fbx_node->typed_id;
-			if (!p_state->nodes.write[node]->joint) {
-				p_state->nodes.write[node]->joint = true;
+			Ref<GLTFNode> gltf_node = p_state->get_nodes()[node];
+			if (gltf_node->joint >= 0) {
+				gltf_node->joint = true;
 
 				if (!(fbx_node->parent && fbx_node->parent->attrib_type == UFBX_ELEMENT_BONE)) {
 					Ref<GLTFSkin> skin;
 					skin.instantiate();
 					skin->joints.push_back(node);
 					skin->joints_original.push_back(node);
-					skin->set_name(vformat("skin_%s", itos(p_state->skins.size())));
-					p_state->skins.push_back(skin);
+					skin->set_name(vformat("skin_%s", itos(p_state->get_skins().size())));
+					p_state->add_skin(skin);
 				}
 			}
 		}
 	}
 	TypedArray<Dictionary> skins;
-	for (Ref<GLTFSkin> skin : p_state->skins) {
+	for (int32_t skin_i = 0; skin_i < p_state->get_skins().size(); skin_i++) {
+		Ref<GLTFSkin> gltf_skin = p_state->get_skins()[skin_i];
 		Dictionary new_skin_dictionary;
-		if (skin.is_valid()) {
-			new_skin_dictionary = skin->to_dictionary();
+		if (gltf_skin.is_valid()) {
+			new_skin_dictionary = gltf_skin->to_dictionary();
 		}
 		skins.push_back(new_skin_dictionary);
 	}
 
 	TypedArray<Dictionary> nodes;
-	for (Ref<GLTFNode> node : p_state->nodes) {
+	for (int32_t node_i = 0; node_i < p_state->get_nodes().size(); node_i++) {
+		Ref<GLTFNode> gltf_node = p_state->get_nodes()[node_i];
 		Dictionary new_node_dictionary;
-		if (node.is_valid()) {
-			new_node_dictionary = node->to_dictionary();
+		if (gltf_node.is_valid()) {
+			new_node_dictionary = gltf_node->to_dictionary();
 		}
 		nodes.push_back(new_node_dictionary);
 	}
@@ -2139,37 +2168,40 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 	if (err != OK) {
 		return err;
 	}
-	p_state->skins.clear();
+	p_state->set_skins(TypedArray<GLTFSkin>());
 	for (int32_t skin_i = 0; skin_i < skins.size(); skin_i++) {
 		Dictionary skin_dictionary = skins[skin_i];
 		Ref<GLTFSkin> new_skin;
 		new_skin.instantiate();
 		err = new_skin->from_dictionary(skin_dictionary);
 		if (err == OK) {
-			p_state->skins.push_back(new_skin);
+			p_state->add_skin(new_skin);
 		}
 	}
 
-	for (int i = 0; i < p_state->skins.size(); ++i) {
-		Ref<GLTFSkin> skin = p_state->skins.write[i];
+	TypedArray<GLTFNode> godot_nodes = p_state->get_nodes();
+	for (int i = 0; i < p_state->get_skins().size(); ++i) {
+		Ref<GLTFSkin> skin = p_state->get_skins()[i];
 		ERR_FAIL_COND_V(skin.is_null(), ERR_PARSE_ERROR);
 		// Expand and verify the skin
-		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
+
+		ERR_FAIL_COND_V(SkinTool::_expand_skin(godot_nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_verify_skin(godot_nodes, skin), ERR_PARSE_ERROR);
 	}
 
-	print_verbose("FBX: Total skins: " + itos(p_state->skins.size()));
+	print_verbose("FBX: Total skins: " + itos(p_state->get_skins().size()));
 
 	for (HashMap<GLTFNodeIndex, bool>::Iterator it = joint_mapping.begin(); it != joint_mapping.end(); ++it) {
 		GLTFNodeIndex node_index = it->key;
 		bool is_joint = it->value;
 		if (is_joint) {
-			if (p_state->nodes.size() > node_index) {
-				p_state->nodes.write[node_index]->joint = true;
+			if (godot_nodes.size() > node_index) {
+				Ref<GLTFNode> gltf_node = godot_nodes[node_index];
+				gltf_node->joint = true;
 			}
 		}
 	}
-
+	p_state->set_nodes(godot_nodes);
 	return OK;
 }
 
@@ -2179,9 +2211,9 @@ Error FBXDocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint3
 	if (state.is_null()) {
 		state.instantiate();
 	}
-	state->filename = p_path.get_file().get_basename();
-	state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
-	state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
+	state->set_filename(p_path.get_file().get_basename());
+	state->set_use_named_skin_binds(p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS);
+	state->set_discard_meshes_and_materials(p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS);
 	Error err;
 	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ, &err);
 	ERR_FAIL_COND_V(err != OK, ERR_FILE_CANT_OPEN);
@@ -2190,7 +2222,7 @@ Error FBXDocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint3
 	if (base_path.is_empty()) {
 		base_path = p_path.get_base_dir();
 	}
-	state->base_path = base_path;
+	state->set_base_path(base_path);
 	err = _parse(state, base_path, file);
 	ERR_FAIL_COND_V(err != OK, err);
 	for (Ref<FBXDocumentExtension> ext : document_extensions) {
@@ -2207,14 +2239,14 @@ Error FBXDocument::append_from_buffer(PackedByteArray p_bytes, String p_base_pat
 	Ref<FBXState> state = p_state;
 	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_PARAMETER);
 	Error err = FAILED;
-	state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
-	state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
+	state->set_use_named_skin_binds(p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS);
+	state->set_discard_meshes_and_materials(p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS);
 
 	Ref<FileAccessMemory> file_access;
 	file_access.instantiate();
 	file_access->open_custom(p_bytes.ptr(), p_bytes.size());
-	state->base_path = p_base_path.get_base_dir();
-	err = _parse(p_state, state->base_path, file_access);
+	state->set_base_path(p_base_path.get_base_dir());
+	err = _parse(p_state, state->get_base_path(), file_access);
 	ERR_FAIL_COND_V(err != OK, err);
 	for (Ref<FBXDocumentExtension> ext : document_extensions) {
 		ERR_CONTINUE(ext.is_null());
@@ -2233,17 +2265,20 @@ Error FBXDocument::append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint3
 Node *FBXDocument::generate_scene(Ref<GLTFState> p_state, float p_bake_fps, bool p_trimming, bool p_remove_immutable_tracks) {
 	Ref<FBXState> state = p_state;
 	ERR_FAIL_COND_V(state.is_null(), nullptr);
-	ERR_FAIL_INDEX_V(0, state->root_nodes.size(), nullptr);
-	GLTFNodeIndex fbx_root = state->root_nodes.write[0];
+	ERR_FAIL_INDEX_V(0, state->get_root_nodes().size(), nullptr);
+	GLTFNodeIndex fbx_root = state->get_root_nodes()[0];
 	Node *fbx_root_node = state->get_scene_node(fbx_root);
-	Node *root = fbx_root_node->get_parent();
+	Node *root = fbx_root_node;
+	if (fbx_root_node) {
+		root = fbx_root_node->get_parent();
+	}
 	ERR_FAIL_NULL_V(root, nullptr);
 	_process_mesh_instances(state, root);
-	if (state->get_create_animations() && state->animations.size()) {
+	if (state->get_create_animations() && state->get_animations().size()) {
 		AnimationPlayer *ap = memnew(AnimationPlayer);
 		root->add_child(ap, true);
 		ap->set_owner(root);
-		for (int i = 0; i < state->animations.size(); i++) {
+		for (int i = 0; i < state->get_animations().size(); i++) {
 			_import_animation(state, ap, i, p_bake_fps, p_trimming, p_remove_immutable_tracks);
 		}
 	}
