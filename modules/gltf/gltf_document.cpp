@@ -4243,17 +4243,14 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 
 		p_state->skins.push_back(skin);
 	}
-	TypedArray<GLTFNode> nodes = p_state->get_nodes();
 	for (GLTFSkinIndex i = 0; i < p_state->skins.size(); ++i) {
 		Ref<GLTFSkin> skin = p_state->skins.write[i];
 
 		// Expand the skin to capture all the extra non-joints that lie in between the actual joints,
 		// and expand the hierarchy to ensure multi-rooted trees lie on the same height level
-		ERR_FAIL_COND_V(SkinTool::_expand_skin(nodes, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(SkinTool::_verify_skin(nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->get_nodes_reference(), skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->get_nodes_reference(), skin), ERR_PARSE_ERROR);
 	}
-	p_state->set_nodes(nodes);
-
 	print_verbose("glTF: Total skins: " + itos(p_state->skins.size()));
 
 	return OK;
@@ -6845,16 +6842,8 @@ Error GLTFDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_
 Node *GLTFDocument::_generate_scene_node_tree(Ref<GLTFState> p_state) {
 	// Generate the skeletons and skins (if any).
 	HashMap<ObjectID, SkinSkeletonIndex> skeleton_map;
-	TypedArray<GLTFSkin> gltf_skins = p_state->get_skins();
-	TypedArray<GLTFNode> gltf_nodes = p_state->get_nodes();
-	TypedArray<GLTFSkeleton> gltf_skeletons = p_state->get_skeletons();
-	Error err = SkinTool::_create_skeletons(p_state->unique_names, gltf_skins, gltf_nodes,
-			skeleton_map, gltf_skeletons, p_state->scene_nodes);
-	p_state->set_skins(gltf_skins);
-	p_state->set_nodes(gltf_nodes);
-	p_state->set_skeletons(gltf_skeletons);
-	
-	
+	Error err = SkinTool::_create_skeletons(p_state->unique_names, p_state->get_skins_reference(), p_state->get_nodes_reference(),
+			skeleton_map, p_state->get_skeletons_reference(), p_state->scene_nodes);
 	ERR_FAIL_COND_V_MSG(err != OK, nullptr, "GLTF: Failed to create skeletons.");
 	err = _create_skins(p_state);
 	ERR_FAIL_COND_V_MSG(err != OK, nullptr, "GLTF: Failed to create skins.");
@@ -7058,14 +7047,8 @@ Error GLTFDocument::_parse_gltf_state(Ref<GLTFState> p_state, const String &p_se
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* DETERMINE SKELETONS */
-	TypedArray<GLTFSkin> gltf_skins = p_state->get_skins();
-	TypedArray<GLTFNode> gltf_nodes = p_state->get_nodes();
-	TypedArray<GLTFSkeleton> gltf_skeletons = p_state->get_skeletons();
-	err = SkinTool::_determine_skeletons(gltf_skins, gltf_nodes, gltf_skeletons);
+	err = SkinTool::_determine_skeletons(p_state->get_skins_reference(), p_state->get_nodes_reference(), p_state->get_skeletons_reference());
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
-	p_state->set_skins(gltf_skins);
-	p_state->set_nodes(gltf_nodes);
-	p_state->set_skeletons(gltf_skeletons);
 
 	/* PARSE MESHES (we have enough info now) */
 	err = _parse_meshes(p_state);

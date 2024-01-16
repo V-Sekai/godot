@@ -293,7 +293,7 @@ Error FBXDocument::_parse_scenes(Ref<FBXState> p_state) {
 
 Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 	const ufbx_scene *fbx_scene = p_state->scene.get();
-	TypedArray<GLTFNode> nodes = p_state->get_nodes();
+
 	for (int node_i = 0; node_i < static_cast<int>(fbx_scene->nodes.count); node_i++) {
 		const ufbx_node *fbx_node = fbx_scene->nodes[node_i];
 
@@ -330,22 +330,20 @@ Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 			node->children.push_back(child->typed_id);
 		}
 
-		nodes.push_back(node);
+		p_state->get_nodes_reference().push_back(node);
 	}
 
 	// build the hierarchy
-	for (GLTFNodeIndex node_i = 0; node_i < p_state->get_nodes().size(); node_i++) {
-		for (int j = 0; j < Ref<GLTFNode>(nodes[node_i])->children.size(); j++) {
-			GLTFNodeIndex child_i = Ref<GLTFNode>(nodes[node_i])->children[j];
+	for (GLTFNodeIndex node_i = 0; node_i < p_state->get_nodes_reference().size(); node_i++) {
+		for (int j = 0; j < p_state->get_nodes_reference()[node_i]->children.size(); j++) {
+			GLTFNodeIndex child_i = p_state->get_nodes_reference()[node_i]->children[j];
 
-			ERR_FAIL_INDEX_V(child_i, p_state->get_nodes().size(), ERR_FILE_CORRUPT);
-			ERR_CONTINUE(Ref<GLTFNode>(p_state->get_nodes()[child_i])->parent != -1); //node already has a parent, wtf.
+			ERR_FAIL_INDEX_V(child_i, p_state->get_nodes_reference().size(), ERR_FILE_CORRUPT);
+			ERR_CONTINUE(p_state->get_nodes_reference()[child_i]->parent != -1); //node already has a parent, wtf.
 
-			Ref<GLTFNode>(nodes[child_i])->parent = node_i;
+			p_state->get_nodes_reference().write[child_i]->parent = node_i;
 		}
 	}
-
-	p_state->set_nodes(nodes);
 
 	return OK;
 }
@@ -1930,17 +1928,14 @@ void FBXDocument::_bind_methods() {
 
 void FBXDocument::_build_parent_hierarchy(Ref<FBXState> p_state) {
 	// Build the hierarchy.
-	for (GLTFNodeIndex node_i = 0; node_i < p_state->get_nodes().size(); node_i++) {
-		Ref<GLTFNode> gltf_node = p_state->get_nodes()[node_i];
-		for (int j = 0; j < gltf_node->children.size(); j++) {
-			GLTFNodeIndex child_i = gltf_node->children[j];
-			Ref<GLTFNode> gltf_node_child = p_state->get_nodes()[child_i];
-			ERR_FAIL_INDEX(child_i, p_state->get_nodes().size());
-			if (gltf_node_child->parent != -1) {
+	for (GLTFNodeIndex node_i = 0; node_i < p_state->get_nodes_reference().size(); node_i++) {
+		for (int j = 0; j < p_state->get_nodes_reference()[node_i]->children.size(); j++) {
+			GLTFNodeIndex child_i = p_state->get_nodes_reference()[node_i]->children[j];
+			ERR_FAIL_INDEX(child_i, p_state->get_nodes_reference().size());
+			if (p_state->get_nodes_reference().write[child_i]->parent != -1) {
 				continue;
 			}
-			gltf_node_child->parent = node_i;
-			p_state->set_node_index(child_i, gltf_node_child);
+			p_state->get_nodes_reference().write[child_i]->parent = node_i;
 		}
 	}
 }
@@ -1975,28 +1970,21 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	err = _parse_skins(p_state);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
-	TypedArray<GLTFSkin> gltf_skins = p_state->get_skins();
-	TypedArray<GLTFNode> gltf_nodes = p_state->get_nodes();
-	TypedArray<GLTFSkeleton> gltf_skeletons = p_state->get_skeletons();
-	err = SkinTool::_determine_skeletons(gltf_skins, gltf_nodes, gltf_skeletons);
+	err = SkinTool::_determine_skeletons(p_state->get_skins_reference(), p_state->get_nodes_reference(), p_state->get_skeletons_reference());
 
 	/* DETERMINE SKELETONS */
-	err = SkinTool::_determine_skeletons(gltf_skins, gltf_nodes, gltf_skeletons);
+	err = SkinTool::_determine_skeletons(p_state->get_skins_reference(),  p_state->get_nodes_reference(), p_state->get_skeletons_reference());
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	HashMap<ObjectID, GLTFSkeletonIndex> skeleton3d_to_fbx_skeleton;
 	/* CREATE SKELETONS */
 	HashSet<String> unique_names = p_state->get_unique_names_set();
-	err = SkinTool::_create_skeletons(unique_names, gltf_skins, gltf_nodes, skeleton3d_to_fbx_skeleton, gltf_skeletons, p_state->get_scene_nodes_reference());
+	err = SkinTool::_create_skeletons(unique_names, p_state->get_skins_reference(), p_state->get_nodes_reference(), skeleton3d_to_fbx_skeleton, p_state->get_skeletons_reference(), p_state->get_scene_nodes_reference());
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* CREATE SKINS */
-	err = SkinTool::_create_skins(gltf_skins, gltf_nodes, p_state->get_use_named_skin_binds(), unique_names);
+	err = SkinTool::_create_skins(p_state->get_skins_reference(), p_state->get_nodes_reference(), p_state->get_use_named_skin_binds(), unique_names);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
-
-	p_state->set_skins(gltf_skins);
-	p_state->set_nodes(gltf_nodes);
-	p_state->set_skeletons(gltf_skeletons);
 
 	/* PARSE MESHES (we have enough info now) */
 	err = _parse_meshes(p_state);
@@ -2185,8 +2173,8 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		ERR_FAIL_COND_V(skin.is_null(), ERR_PARSE_ERROR);
 		// Expand and verify the skin
 
-		ERR_FAIL_COND_V(SkinTool::_expand_skin(godot_nodes, skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(SkinTool::_verify_skin(godot_nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->get_nodes_reference(), skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->get_nodes_reference(), skin), ERR_PARSE_ERROR);
 	}
 
 	print_verbose("FBX: Total skins: " + itos(p_state->get_skins().size()));

@@ -165,6 +165,9 @@ public:
 		ERR_FAIL_INDEX(p_index, nodes.size());
 		nodes.write[p_index] = p_node;
 	}
+	Vector<Ref<GLTFNode>> &get_nodes_reference() {
+		return nodes;
+	}
 
 	TypedArray<PackedByteArray> get_buffers();
 	void set_buffers(TypedArray<PackedByteArray> p_buffers);
@@ -237,6 +240,10 @@ public:
 		skins.push_back(p_skin);
 	}
 
+	Vector<Ref<GLTFSkin>> &get_skins_reference() {
+		return skins;
+	}
+
 	TypedArray<GLTFCamera> get_cameras();
 	void set_cameras(TypedArray<GLTFCamera> p_cameras);
 	void add_camera(Ref<GLTFCamera> p_camera) {
@@ -264,6 +271,9 @@ public:
 	void set_skeleton_index(GLTFSkeletonIndex p_index, TypedArray<GLTFSkeleton> p_skeleton) {
 		ERR_FAIL_INDEX(p_index, skeletons.size());
 		skeletons.write[p_index] = p_skeleton;
+	}
+	Vector<Ref<GLTFSkeleton>>& get_skeletons_reference() {
+		return skeletons;
 	}
 
 	bool get_create_animations();
