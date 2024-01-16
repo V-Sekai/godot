@@ -31,14 +31,13 @@
 #include "fbx_document.h"
 
 #include "core/crypto/crypto_core.h"
-#include "modules/gltf/extensions/gltf_document_extension.h"
-#include "scene/resources/skin_tool.h"
 #include "core/io/config_file.h"
 #include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "core/io/image.h"
 #include "core/math/color.h"
 #include "fbx_defines.h"
+#include "modules/gltf/extensions/gltf_document_extension.h"
 #include "modules/gltf/structures/gltf_animation.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
@@ -46,6 +45,7 @@
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "scene/resources/portable_compressed_texture.h"
+#include "scene/resources/skin_tool.h"
 #include "scene/resources/surface_tool.h"
 #include "structures/fbx_light.h"
 
