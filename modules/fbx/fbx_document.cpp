@@ -2220,7 +2220,7 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 		}
 		nodes.push_back(new_node_dictionary);
 	}
-	Error err = SkinTool::asset_parse_skins(
+	Error err = SkinTool::_asset_parse_skins(
 			p_state->skin_indices.duplicate(),
 			skins.duplicate(),
 			nodes.duplicate(),

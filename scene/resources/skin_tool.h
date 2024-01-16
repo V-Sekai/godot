@@ -77,7 +77,7 @@ class SkinTool : public Resource {
 public:
 	static Error _expand_skin(Vector<Ref<GLTFNode>> &r_nodes, Ref<GLTFSkin> p_skin);
 	static Error _verify_skin(Vector<Ref<GLTFNode>> &r_nodes, Ref<GLTFSkin> p_skin);
-	static Error asset_parse_skins(
+	static Error _asset_parse_skins(
 			const Vector<SkinNodeIndex> &input_skin_indices,
 			const TypedArray<Dictionary> &input_skins,
 			const TypedArray<Dictionary> &input_nodes,
