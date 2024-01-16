@@ -31,18 +31,15 @@
 #ifndef FBX_DOCUMENT_H
 #define FBX_DOCUMENT_H
 
-#include "extensions/fbx_document_extension.h"
+#include "modules/fbx/fbx_state.h"
 #include "modules/fbx/structures/fbx_light.h"
 #include "modules/gltf/gltf_document.h"
 #include "modules/gltf/gltf_state.h"
-#include "scene/resources/skin_tool.h"
 
 #include "thirdparty/ufbx/ufbx.h"
 
 class FBXDocument : public GLTFDocument {
 	GDCLASS(FBXDocument, GLTFDocument);
-	static Vector<Ref<FBXDocumentExtension>> all_document_extensions;
-	Vector<Ref<FBXDocumentExtension>> document_extensions;
 
 private:
 	const float BAKE_FPS = 30.0f;
@@ -74,11 +71,6 @@ public:
 
 protected:
 	static void _bind_methods();
-
-public:
-	static void register_fbx_document_extension(Ref<FBXDocumentExtension> p_extension, bool p_first_priority = false);
-	static void unregister_fbx_document_extension(Ref<FBXDocumentExtension> p_extension);
-	static void unregister_all_fbx_document_extensions();
 
 private:
 	String _get_texture_path(const String &p_base_directory, const String &p_source_file_path) const;

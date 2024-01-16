@@ -43,8 +43,6 @@
 
 class GLTFDocument : public Resource {
 	GDCLASS(GLTFDocument, Resource);
-	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
-	Vector<Ref<GLTFDocumentExtension>> document_extensions;
 
 public:
 	const int32_t JOINT_GROUP_SIZE = 4;
@@ -88,6 +86,8 @@ private:
 protected:
 	static void _bind_methods();
 	String _gen_unique_name(Ref<GLTFState> p_state, const String &p_name);
+	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
+	Vector<Ref<GLTFDocumentExtension>> document_extensions;
 
 public:
 	static void register_gltf_document_extension(Ref<GLTFDocumentExtension> p_extension, bool p_first_priority = false);

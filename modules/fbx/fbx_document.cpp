@@ -31,12 +31,13 @@
 #include "fbx_document.h"
 
 #include "core/crypto/crypto_core.h"
+#include "modules/gltf/extensions/gltf_document_extension.h"
+#include "scene/resources/skin_tool.h"
 #include "core/io/config_file.h"
 #include "core/io/file_access.h"
 #include "core/io/file_access_memory.h"
 #include "core/io/image.h"
 #include "core/math/color.h"
-#include "core/templates/template_convert.h"
 #include "fbx_defines.h"
 #include "modules/gltf/structures/gltf_animation.h"
 #include "scene/3d/bone_attachment_3d.h"
@@ -839,8 +840,8 @@ Ref<Image> FBXDocument::_parse_image_bytes_into_image(Ref<FBXState> p_state, con
 }
 
 FBXImageIndex FBXDocument::_parse_image_save_image(Ref<FBXState> p_state, const Vector<uint8_t> &p_bytes, const String &p_file_extension, int p_index, Ref<Image> p_image) {
-	FBXState::FBXHandleBinary handling = FBXState::FBXHandleBinary(p_state->handle_binary_image);
-	if (p_image->is_empty() || handling == FBXState::FBXHandleBinary::HANDLE_BINARY_DISCARD_TEXTURES) {
+	FBXState::GLTFHandleBinary handling = FBXState::GLTFHandleBinary(p_state->handle_binary_image);
+	if (p_image->is_empty() || handling == FBXState::GLTFHandleBinary::HANDLE_BINARY_DISCARD_TEXTURES) {
 		if (p_index < 0) {
 			return -1;
 		}
@@ -849,7 +850,7 @@ FBXImageIndex FBXDocument::_parse_image_save_image(Ref<FBXState> p_state, const 
 		return p_state->images.size() - 1;
 	}
 #ifdef TOOLS_ENABLED
-	if (Engine::get_singleton()->is_editor_hint() && handling == FBXState::FBXHandleBinary::HANDLE_BINARY_EXTRACT_TEXTURES) {
+	if (Engine::get_singleton()->is_editor_hint() && handling == FBXState::GLTFHandleBinary::HANDLE_BINARY_EXTRACT_TEXTURES) {
 		if (p_state->base_path.is_empty()) {
 			if (p_index < 0) {
 				return -1;
@@ -926,7 +927,7 @@ FBXImageIndex FBXDocument::_parse_image_save_image(Ref<FBXState> p_state, const 
 		return p_state->images.size() - 1;
 	}
 #endif // TOOLS_ENABLED
-	if (handling == FBXState::FBXHandleBinary::HANDLE_BINARY_EMBED_AS_BASISU) {
+	if (handling == FBXState::HANDLE_BINARY_EMBED_AS_BASISU) {
 		Ref<PortableCompressedTexture2D> tex;
 		tex.instantiate();
 		tex->set_name(p_image->get_name());
@@ -1001,7 +1002,7 @@ Ref<Texture2D> FBXDocument::_get_texture(Ref<FBXState> p_state, const GLTFTextur
 	ERR_FAIL_INDEX_V(p_texture, p_state->textures.size(), Ref<Texture2D>());
 	const FBXImageIndex image = p_state->textures[p_texture]->get_src_image();
 	ERR_FAIL_INDEX_V(image, p_state->images.size(), Ref<Texture2D>());
-	if (FBXState::FBXHandleBinary(p_state->handle_binary_image) == FBXState::FBXHandleBinary::HANDLE_BINARY_EMBED_AS_BASISU) {
+	if (FBXState::GLTFHandleBinary(p_state->handle_binary_image) == FBXState::HANDLE_BINARY_EMBED_AS_BASISU) {
 		ERR_FAIL_INDEX_V(image, p_state->source_images.size(), Ref<Texture2D>());
 		Ref<PortableCompressedTexture2D> portable_texture;
 		portable_texture.instantiate();
@@ -1517,15 +1518,15 @@ void FBXDocument::_generate_skeleton_bone_node(Ref<FBXState> p_state, const GLTF
 			// and attach it to the bone_attachment
 			p_scene_parent = bone_attachment;
 		}
-		// Check if any FBXDocumentExtension classes want to generate a node for us.
-		for (Ref<FBXDocumentExtension> ext : document_extensions) {
+		// Check if any GLTFDocumentExtension classes want to generate a node for us.
+		for (Ref<GLTFDocumentExtension> ext : document_extensions) {
 			ERR_CONTINUE(ext.is_null());
 			current_node = ext->generate_scene_node(p_state, fbx_node, p_scene_parent);
 			if (current_node) {
 				break;
 			}
 		}
-		// If none of our FBXDocumentExtension classes generated us a node, we generate one.
+		// If none of our GLTFDocumentExtension classes generated us a node, we generate one.
 		if (!current_node) {
 			if (fbx_node->mesh >= 0) {
 				current_node = _generate_mesh_instance(p_state, p_node_index);
@@ -1915,10 +1916,6 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 }
 
 void FBXDocument::_bind_methods() {
-	ClassDB::bind_static_method("FBXDocument", D_METHOD("register_fbx_document_extension", "extension", "first_priority"),
-			&FBXDocument::register_fbx_document_extension, DEFVAL(false));
-	ClassDB::bind_static_method("FBXDocument", D_METHOD("unregister_fbx_document_extension", "extension"),
-			&FBXDocument::unregister_fbx_document_extension);
 }
 
 void FBXDocument::_build_parent_hierarchy(Ref<FBXState> p_state) {
@@ -1933,26 +1930,6 @@ void FBXDocument::_build_parent_hierarchy(Ref<FBXState> p_state) {
 			p_state->nodes.write[child_i]->parent = node_i;
 		}
 	}
-}
-
-Vector<Ref<FBXDocumentExtension>> FBXDocument::all_document_extensions;
-
-void FBXDocument::register_fbx_document_extension(Ref<FBXDocumentExtension> p_extension, bool p_first_priority) {
-	if (all_document_extensions.find(p_extension) == -1) {
-		if (p_first_priority) {
-			all_document_extensions.insert(0, p_extension);
-		} else {
-			all_document_extensions.push_back(p_extension);
-		}
-	}
-}
-
-void FBXDocument::unregister_fbx_document_extension(Ref<FBXDocumentExtension> p_extension) {
-	all_document_extensions.erase(p_extension);
-}
-
-void FBXDocument::unregister_all_fbx_document_extensions() {
-	all_document_extensions.clear();
 }
 
 Node *FBXDocument::generate_scene(Ref<GLTFState> p_state, float p_bake_fps, bool p_trimming, bool p_remove_immutable_tracks) {
@@ -1991,7 +1968,7 @@ Error FBXDocument::append_from_buffer(PackedByteArray p_bytes, String p_base_pat
 	state->base_path = p_base_path.get_base_dir();
 	err = _parse(state, state->base_path, file_access);
 	ERR_FAIL_COND_V(err != OK, err);
-	for (Ref<FBXDocumentExtension> ext : document_extensions) {
+	for (Ref<GLTFDocumentExtension> ext : get_all_gltf_document_extensions()) {
 		ERR_CONTINUE(ext.is_null());
 		err = ext->import_post_parse(state);
 		ERR_FAIL_COND_V(err != OK, err);
@@ -2089,7 +2066,7 @@ Error FBXDocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint3
 	state->base_path = base_path;
 	err = _parse(p_state, base_path, file);
 	ERR_FAIL_COND_V(err != OK, err);
-	for (Ref<FBXDocumentExtension> ext : document_extensions) {
+	for (Ref<GLTFDocumentExtension> ext : document_extensions) {
 		ERR_CONTINUE(ext.is_null());
 		err = ext->import_post_parse(p_state);
 		ERR_FAIL_COND_V(err != OK, err);
