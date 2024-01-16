@@ -126,7 +126,6 @@ public:
 		return ERR_UNAVAILABLE;
 	}
 
-
 public:
 	Error _parse_fbx_state(Ref<FBXState> p_state, const String &p_search_path);
 	void _process_mesh_instances(Ref<FBXState> p_state, Node *p_scene_root);
