@@ -92,6 +92,9 @@ Light3D *FBXLight::to_node() const {
 
 	if (light) {
 		light->set_name(get_name());
+		light->set_color(color);
+		light->set_param(Light3D::PARAM_ENERGY, intensity);
+
 		light->set_shadow(cast_shadows);
 
 		Transform3D transform;
