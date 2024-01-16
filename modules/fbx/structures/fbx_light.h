@@ -40,8 +40,6 @@ class FBXLight : public GLTFLight {
 	GDCLASS(FBXLight, GLTFLight);
 
 private:
-	Color color;
-	float intensity = 0.0f;
 	Vector3 local_direction = Vector3(0, 1, 0);
 	int type = -1;
 	int decay = 0;
@@ -61,10 +59,6 @@ public:
 	static Ref<FBXLight> from_dictionary(const Dictionary p_dictionary);
 	Dictionary to_dictionary() const;
 
-	// Color and intensity of the light, usually you want to use `color * intensity`
-	// NOTE: `intensity` is 0.01x of the property `"Intensity"` as that matches
-	// matches values in DCC programs before exporting.
-	void set_intensity(float p_intensity) { intensity = p_intensity; }
 	void set_local_direction(Vector3 p_local_direction) { local_direction = p_local_direction; }
 	void set_type(int p_type) { type = p_type; }
 	void set_decay(int p_decay) { decay = p_decay; }
@@ -73,7 +67,6 @@ public:
 	void set_outer_angle(float p_outer_angle) { outer_angle = p_outer_angle; }
 	void set_cast_light(bool p_cast_light) { cast_light = p_cast_light; }
 	void set_cast_shadows(bool p_cast_shadows) { cast_shadows = p_cast_shadows; }
-	float get_intensity() const { return intensity; }
 	Vector3 get_local_direction() const { return local_direction; }
 	int get_type() const { return type; }
 	int get_decay() const { return decay; }
