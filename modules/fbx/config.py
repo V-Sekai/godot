@@ -11,11 +11,8 @@ def get_doc_classes():
         "EditorSceneFormatImporterUFBX",
         "FBXCamera",
         "FBXDocument",
-        "FBXDocumentExtension",
         "FBXLight",
-        "FBXMesh",
         "FBXState",
-        "FBXTexture",
     ]
 
 
