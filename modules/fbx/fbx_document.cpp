@@ -1915,6 +1915,12 @@ Error FBXDocument::_parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> 
 }
 
 void FBXDocument::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("generate_scene", "state", "bake_fps", "trimming", "remove_immutable_tracks"),
+			&FBXDocument::generate_scene, DEFVAL(30), DEFVAL(false), DEFVAL(true));
+	ClassDB::bind_static_method("FBXDocument", D_METHOD("register_fbx_document_extension", "extension", "first_priority"),
+			&FBXDocument::register_fbx_document_extension, DEFVAL(false));
+	ClassDB::bind_static_method("FBXDocument", D_METHOD("unregister_fbx_document_extension", "extension"),
+			&FBXDocument::unregister_fbx_document_extension);
 }
 
 void FBXDocument::_build_parent_hierarchy(Ref<FBXState> p_state) {
@@ -1949,6 +1955,47 @@ void FBXDocument::unregister_fbx_document_extension(Ref<FBXDocumentExtension> p_
 
 void FBXDocument::unregister_all_fbx_document_extensions() {
 	all_document_extensions.clear();
+}
+
+Node *FBXDocument::generate_scene(Ref<FBXState> p_state, float p_bake_fps, bool p_trimming, bool p_remove_immutable_tracks) {
+	ERR_FAIL_NULL_V(p_state, nullptr);
+	ERR_FAIL_INDEX_V(0, p_state->root_nodes.size(), nullptr);
+	GLTFNodeIndex fbx_root = p_state->root_nodes.write[0];
+	Node *fbx_root_node = p_state->get_scene_node(fbx_root);
+	Node *root = fbx_root_node->get_parent();
+	ERR_FAIL_NULL_V(root, nullptr);
+	_process_mesh_instances(p_state, root);
+	if (p_state->get_create_animations() && p_state->animations.size()) {
+		AnimationPlayer *ap = memnew(AnimationPlayer);
+		root->add_child(ap, true);
+		ap->set_owner(root);
+		for (int i = 0; i < p_state->animations.size(); i++) {
+			_import_animation(p_state, ap, i, p_bake_fps, p_trimming, p_remove_immutable_tracks);
+		}
+	}
+	ERR_FAIL_NULL_V(root, nullptr);
+	return root;
+}
+
+Error FBXDocument::append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<FBXState> p_state, uint32_t p_flags) {
+	ERR_FAIL_NULL_V(p_state, FAILED);
+	ERR_FAIL_NULL_V(p_bytes.ptr(), ERR_INVALID_DATA);
+	Error err = FAILED;
+	p_state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
+	p_state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
+
+	Ref<FileAccessMemory> file_access;
+	file_access.instantiate();
+	file_access->open_custom(p_bytes.ptr(), p_bytes.size());
+	p_state->base_path = p_base_path.get_base_dir();
+	err = _parse(p_state, p_state->base_path, file_access);
+	ERR_FAIL_COND_V(err != OK, err);
+	for (Ref<FBXDocumentExtension> ext : document_extensions) {
+		ERR_CONTINUE(ext.is_null());
+		err = ext->import_post_parse(p_state);
+		ERR_FAIL_COND_V(err != OK, err);
+	}
+	return OK;
 }
 
 Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_search_path) {
@@ -2017,6 +2064,33 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 		_generate_scene_node(p_state, p_state->root_nodes[root_i], root, root);
 	}
 
+	return OK;
+}
+
+Error FBXDocument::append_from_file(String p_path, Ref<FBXState> p_state, uint32_t p_flags, String p_base_path) {
+	ERR_FAIL_COND_V(p_path.is_empty(), ERR_FILE_NOT_FOUND);
+	if (p_state == Ref<FBXState>()) {
+		p_state.instantiate();
+	}
+	p_state->filename = p_path.get_file().get_basename();
+	p_state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
+	p_state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
+	Error err;
+	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ, &err);
+	ERR_FAIL_COND_V(err != OK, ERR_FILE_CANT_OPEN);
+	ERR_FAIL_NULL_V(file, ERR_FILE_CANT_OPEN);
+	String base_path = p_base_path;
+	if (base_path.is_empty()) {
+		base_path = p_path.get_base_dir();
+	}
+	p_state->base_path = base_path;
+	err = _parse(p_state, base_path, file);
+	ERR_FAIL_COND_V(err != OK, err);
+	for (Ref<FBXDocumentExtension> ext : document_extensions) {
+		ERR_CONTINUE(ext.is_null());
+		err = ext->import_post_parse(p_state);
+		ERR_FAIL_COND_V(err != OK, err);
+	}
 	return OK;
 }
 
@@ -2190,97 +2264,4 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 	}
 
 	return OK;
-}
-
-Error FBXDocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path) {
-	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
-	ERR_FAIL_COND_V(p_state->get_class_static() != FBXState::get_class_static(), ERR_INVALID_PARAMETER);
-	Ref<FBXState> state = p_state;
-	ERR_FAIL_COND_V(p_path.is_empty(), ERR_FILE_NOT_FOUND);
-	if (state.is_null()) {
-		state.instantiate();
-	}
-	state->filename = p_path.get_file().get_basename();
-	state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
-	state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
-	Error err;
-	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ, &err);
-	ERR_FAIL_COND_V(err != OK, ERR_FILE_CANT_OPEN);
-	ERR_FAIL_NULL_V(file, ERR_FILE_CANT_OPEN);
-	String base_path = p_base_path;
-	if (base_path.is_empty()) {
-		base_path = p_path.get_base_dir();
-	}
-	state->base_path = base_path;
-	err = _parse(p_state, base_path, file);
-	ERR_FAIL_COND_V(err != OK, err);
-	for (Ref<FBXDocumentExtension> ext : document_extensions) {
-		ERR_CONTINUE(ext.is_null());
-		err = ext->import_post_parse(p_state);
-		ERR_FAIL_COND_V(err != OK, err);
-	}
-	return OK;
-}
-
-Error FBXDocument::append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<GLTFState> p_state, uint32_t p_flags) {
-	ERR_FAIL_NULL_V(p_state, FAILED);
-	ERR_FAIL_NULL_V(p_bytes.ptr(), ERR_INVALID_DATA);
-	Ref<FBXState> state = p_state;
-	ERR_FAIL_NULL_V(state, FAILED);
-	Error err = FAILED;
-	state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
-	state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
-
-	Ref<FileAccessMemory> file_access;
-	file_access.instantiate();
-	file_access->open_custom(p_bytes.ptr(), p_bytes.size());
-	state->base_path = p_base_path.get_base_dir();
-	err = _parse(p_state, state->base_path, file_access);
-	ERR_FAIL_COND_V(err != OK, err);
-	for (Ref<FBXDocumentExtension> ext : document_extensions) {
-		ERR_CONTINUE(ext.is_null());
-		err = ext->import_post_parse(p_state);
-		ERR_FAIL_COND_V(err != OK, err);
-	}
-	return OK;
-}
-
-Error FBXDocument::append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint32_t p_flags) {
-	Ref<FBXState> state = p_state;
-	ERR_FAIL_NULL_V(state, ERR_INVALID_PARAMETER);
-	return FAILED;
-}
-
-Node *FBXDocument::generate_scene(Ref<GLTFState> p_state, float p_bake_fps, bool p_trimming, bool p_remove_immutable_tracks) {
-	ERR_FAIL_NULL_V(p_state, nullptr);
-	Ref<FBXState> state = p_state;
-	ERR_FAIL_NULL_V(state, nullptr);
-	ERR_FAIL_INDEX_V(0, state->root_nodes.size(), nullptr);
-	GLTFNodeIndex fbx_root = state->root_nodes.write[0];
-	Node *fbx_root_node = p_state->get_scene_node(fbx_root);
-	Node *root = fbx_root_node->get_parent();
-	ERR_FAIL_NULL_V(root, nullptr);
-	_process_mesh_instances(p_state, root);
-	if (p_state->get_create_animations() && state->animations.size()) {
-		AnimationPlayer *ap = memnew(AnimationPlayer);
-		root->add_child(ap, true);
-		ap->set_owner(root);
-		for (int i = 0; i < state->animations.size(); i++) {
-			_import_animation(p_state, ap, i, p_bake_fps, p_trimming, p_remove_immutable_tracks);
-		}
-	}
-	ERR_FAIL_NULL_V(root, nullptr);
-	return root;
-}
-
-PackedByteArray FBXDocument::generate_buffer(Ref<GLTFState> p_state) {
-	Ref<FBXState> state = p_state;
-	ERR_FAIL_NULL_V(state, PackedByteArray());
-	return PackedByteArray();
-}
-
-Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) {
-	Ref<FBXState> state = p_state;
-	ERR_FAIL_NULL_V(state, ERR_INVALID_PARAMETER);
-	return FAILED;
 }
