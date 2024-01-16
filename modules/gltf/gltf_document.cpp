@@ -31,7 +31,6 @@
 #include "gltf_document.h"
 
 #include "core/object/object_id.h"
-#include "core/variant/typed_array.h"
 #include "extensions/gltf_spec_gloss.h"
 
 #include "core/config/project_settings.h"
@@ -44,10 +43,7 @@
 #include "core/io/stream_peer.h"
 #include "core/math/disjoint_set.h"
 #include "core/version.h"
-#include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_state.h"
-#include "modules/gltf/structures/gltf_skeleton.h"
-#include "modules/gltf/structures/gltf_skin.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
@@ -476,7 +472,25 @@ Error GLTFDocument::_serialize_nodes(Ref<GLTFState> p_state) {
 }
 
 String GLTFDocument::_gen_unique_name(Ref<GLTFState> p_state, const String &p_name) {
-	return _gen_unique_name_static(p_state->unique_names, p_name);
+	const String s_name = p_name.validate_node_name();
+
+	String u_name;
+	int index = 1;
+	while (true) {
+		u_name = s_name;
+
+		if (index > 1) {
+			u_name += itos(index);
+		}
+		if (!p_state->unique_names.has(u_name)) {
+			break;
+		}
+		index++;
+	}
+
+	p_state->unique_names.insert(u_name);
+
+	return u_name;
 }
 
 String GLTFDocument::_sanitize_animation_name(const String &p_name) {
@@ -4243,14 +4257,16 @@ Error GLTFDocument::_parse_skins(Ref<GLTFState> p_state) {
 
 		p_state->skins.push_back(skin);
 	}
+
 	for (GLTFSkinIndex i = 0; i < p_state->skins.size(); ++i) {
 		Ref<GLTFSkin> skin = p_state->skins.write[i];
 
 		// Expand the skin to capture all the extra non-joints that lie in between the actual joints,
 		// and expand the hierarchy to ensure multi-rooted trees lie on the same height level
-		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->get_nodes_reference(), skin), ERR_PARSE_ERROR);
-		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->get_nodes_reference(), skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
+		ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
 	}
+
 	print_verbose("glTF: Total skins: " + itos(p_state->skins.size()));
 
 	return OK;
@@ -6842,8 +6858,8 @@ Error GLTFDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_
 Node *GLTFDocument::_generate_scene_node_tree(Ref<GLTFState> p_state) {
 	// Generate the skeletons and skins (if any).
 	HashMap<ObjectID, SkinSkeletonIndex> skeleton_map;
-	Error err = SkinTool::_create_skeletons(p_state->unique_names, p_state->get_skins_reference(), p_state->get_nodes_reference(),
-			skeleton_map, p_state->get_skeletons_reference(), p_state->scene_nodes);
+	Error err = SkinTool::_create_skeletons(p_state->unique_names, p_state->skins, p_state->nodes,
+			skeleton_map, p_state->skeletons, p_state->scene_nodes);
 	ERR_FAIL_COND_V_MSG(err != OK, nullptr, "GLTF: Failed to create skeletons.");
 	err = _create_skins(p_state);
 	ERR_FAIL_COND_V_MSG(err != OK, nullptr, "GLTF: Failed to create skins.");
@@ -7047,7 +7063,7 @@ Error GLTFDocument::_parse_gltf_state(Ref<GLTFState> p_state, const String &p_se
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* DETERMINE SKELETONS */
-	err = SkinTool::_determine_skeletons(p_state->get_skins_reference(), p_state->get_nodes_reference(), p_state->get_skeletons_reference());
+	err = SkinTool::_determine_skeletons(p_state->skins, p_state->nodes, p_state->skeletons);
 	ERR_FAIL_COND_V(err != OK, ERR_PARSE_ERROR);
 
 	/* PARSE MESHES (we have enough info now) */
@@ -7141,26 +7157,4 @@ void GLTFDocument::set_root_node_mode(GLTFDocument::RootNodeMode p_root_node_mod
 
 GLTFDocument::RootNodeMode GLTFDocument::get_root_node_mode() const {
 	return _root_node_mode;
-}
-
-String GLTFDocument::_gen_unique_name_static(HashSet<String> &r_unique_names, const String &p_name) {
-	const String s_name = p_name.validate_node_name();
-
-	String u_name;
-	int index = 1;
-	while (true) {
-		u_name = s_name;
-
-		if (index > 1) {
-			u_name += itos(index);
-		}
-		if (!r_unique_names.has(u_name)) {
-			break;
-		}
-		index++;
-	}
-
-	r_unique_names.insert(u_name);
-
-	return u_name;
 }

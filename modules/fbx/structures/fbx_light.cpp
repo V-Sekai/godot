@@ -34,7 +34,7 @@
 
 #include "ufbx.h"
 
-Ref<FBXLight> FBXLight::from_fbx_node(const Light3D *p_light) {
+Ref<FBXLight> FBXLight::from_node(const Light3D *p_light) {
 	Ref<FBXLight> light;
 	light.instantiate();
 	light->set_name(p_light->get_name());
@@ -153,7 +153,7 @@ Light3D *FBXLight::to_node() const {
 	return light;
 }
 
-Ref<FBXLight> FBXLight::from_fbx_dictionary(const Dictionary p_dictionary) {
+Ref<FBXLight> FBXLight::from_dictionary(const Dictionary p_dictionary) {
 	ERR_FAIL_COND_V_MSG(!p_dictionary.has("type"), Ref<FBXLight>(), "Failed to parse GLTF camera, missing required field 'type'.");
 	Ref<FBXLight> light;
 	light.instantiate();
@@ -166,8 +166,11 @@ Dictionary FBXLight::to_dictionary() const {
 }
 
 void FBXLight::_bind_methods() {
-	ClassDB::bind_static_method("FBXLight", D_METHOD("from_fbx_node", "light_node"), &FBXLight::from_fbx_node);
-	ClassDB::bind_static_method("FBXLight", D_METHOD("from_fbx_dictionary", "dictionary"), &FBXLight::from_fbx_dictionary);
+	ClassDB::bind_method(D_METHOD("set_color", "color"), &FBXLight::set_color);
+	ClassDB::bind_method(D_METHOD("get_color"), &FBXLight::get_color);
+
+	ClassDB::bind_method(D_METHOD("set_intensity", "intensity"), &FBXLight::set_intensity);
+	ClassDB::bind_method(D_METHOD("get_intensity"), &FBXLight::get_intensity);
 
 	ClassDB::bind_method(D_METHOD("set_local_direction", "local_direction"), &FBXLight::set_local_direction);
 	ClassDB::bind_method(D_METHOD("get_local_direction"), &FBXLight::get_local_direction);

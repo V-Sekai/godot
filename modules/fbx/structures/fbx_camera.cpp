@@ -33,8 +33,6 @@
 #include "scene/3d/camera_3d.h"
 
 void FBXCamera::_bind_methods() {
-	ClassDB::bind_static_method("FBXCamera", D_METHOD("from_fbx_node", "camera_node"), &FBXCamera::from_fbx_node);
-	ClassDB::bind_static_method("FBXCamera", D_METHOD("from_fbx_dictionary", "dictionary"), &FBXCamera::from_fbx_dictionary);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "perspective"), "set_perspective", "get_perspective");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "fov"), "set_fov", "get_fov");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "size_mag"), "set_size_mag", "get_size_mag");
@@ -42,7 +40,7 @@ void FBXCamera::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "depth_near"), "set_depth_near", "get_depth_near");
 }
 
-Ref<FBXCamera> FBXCamera::from_fbx_node(const Camera3D *p_camera) {
+Ref<FBXCamera> FBXCamera::from_node(const Camera3D *p_camera) {
 	Ref<FBXCamera> c;
 	c.instantiate();
 	c->set_name(p_camera->get_name());
@@ -69,7 +67,7 @@ Camera3D *FBXCamera::to_node() const {
 	return camera;
 }
 
-Ref<FBXCamera> FBXCamera::from_fbx_dictionary(const Dictionary p_dictionary) {
+Ref<FBXCamera> FBXCamera::from_dictionary(const Dictionary p_dictionary) {
 	ERR_FAIL_COND_V_MSG(!p_dictionary.has("type"), Ref<FBXCamera>(), "Failed to parse GLTF camera, missing required field 'type'.");
 	Ref<FBXCamera> camera;
 	camera.instantiate();

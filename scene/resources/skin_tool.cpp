@@ -676,7 +676,7 @@ Error SkinTool::_create_skins(Vector<Ref<GLTFSkin>> &skins, Vector<Ref<GLTFNode>
 		ERR_CONTINUE(skin.is_null());
 		if (skin->get_name().is_empty()) {
 			// Make a unique name, no node represents this skin
-			skin->set_name(FBXDocument::_gen_unique_name_static(unique_names, "Skin"));
+			skin->set_name(FBXDocument::_gen_unique_name(unique_names, "Skin"));
 		}
 	}
 

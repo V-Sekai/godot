@@ -31,16 +31,8 @@
 #ifndef GLTF_STATE_H
 #define GLTF_STATE_H
 
-#include "core/error/error_macros.h"
-#include "core/object/class_db.h"
-#include "core/object/object_id.h"
-#include "core/templates/hash_map.h"
-#include "core/templates/template_convert.h"
 #include "extensions/gltf_light.h"
-#include "modules/gltf/gltf_defines.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
-#include "scene/resources/material.h"
-#include "scene/resources/texture.h"
 #include "structures/gltf_accessor.h"
 #include "structures/gltf_animation.h"
 #include "structures/gltf_buffer_view.h"
@@ -161,13 +153,6 @@ public:
 
 	TypedArray<GLTFNode> get_nodes();
 	void set_nodes(TypedArray<GLTFNode> p_nodes);
-	void set_node_index(GLTFNodeIndex p_index, Ref<GLTFNode> p_node) {
-		ERR_FAIL_INDEX(p_index, nodes.size());
-		nodes.write[p_index] = p_node;
-	}
-	Vector<Ref<GLTFNode>> &get_nodes_reference() {
-		return nodes;
-	}
 
 	TypedArray<PackedByteArray> get_buffers();
 	void set_buffers(TypedArray<PackedByteArray> p_buffers);
@@ -183,9 +168,6 @@ public:
 
 	TypedArray<Material> get_materials();
 	void set_materials(TypedArray<Material> p_materials);
-	void add_material(Ref<Material> p_material) {
-		materials.push_back(p_material);
-	}
 
 	String get_scene_name();
 	void set_scene_name(String p_scene_name);
@@ -201,89 +183,36 @@ public:
 
 	TypedArray<GLTFTexture> get_textures();
 	void set_textures(TypedArray<GLTFTexture> p_textures);
-	void add_texture(Ref<GLTFTexture> p_texture) {
-		textures.push_back(p_texture);
-	}
 
 	TypedArray<GLTFTextureSampler> get_texture_samplers();
 	void set_texture_samplers(TypedArray<GLTFTextureSampler> p_texture_samplers);
 
 	TypedArray<Texture2D> get_images();
 	void set_images(TypedArray<Texture2D> p_images);
-	void set_image_index(GLTFTextureIndex p_index, Ref<Texture2D> p_texture) {
-		images.write[p_index] = p_texture;
-	}
-	void add_image(Ref<Image> p_image) {
-		images.push_back(p_image);
-	}
-
-	TypedArray<Image> get_source_images() {
-		return to_array(source_images);
-	}
-	void set_source_images(TypedArray<Image> p_images) {
-		source_images.clear();
-		source_images.resize(p_images.size());
-		for (int32_t image_i = 0; image_i < p_images.size(); image_i++) {
-			source_images.write[image_i] = p_images[image_i];
-		}
-	}
-	void set_source_image_index(GLTFImageIndex p_index, Ref<Image> p_texture) {
-		images.write[p_index] = p_texture;
-	}
-	void add_source_image(Ref<Image> p_image) {
-		source_images.push_back(p_image);
-	}
 
 	TypedArray<GLTFSkin> get_skins();
 	void set_skins(TypedArray<GLTFSkin> p_skins);
-	void add_skin(Ref<GLTFSkin> p_skin) {
-		skins.push_back(p_skin);
-	}
-
-	Vector<Ref<GLTFSkin>> &get_skins_reference() {
-		return skins;
-	}
 
 	TypedArray<GLTFCamera> get_cameras();
 	void set_cameras(TypedArray<GLTFCamera> p_cameras);
-	void add_camera(Ref<GLTFCamera> p_camera) {
-		cameras.push_back(p_camera);
-	}
 
 	TypedArray<GLTFLight> get_lights();
 	void set_lights(TypedArray<GLTFLight> p_lights);
-	void add_light(Ref<GLTFLight> p_light) {
-		lights.push_back(p_light);
-	}
 
 	TypedArray<String> get_unique_names();
 	void set_unique_names(TypedArray<String> p_unique_names);
-
-	HashSet<String> &get_unique_names_set() {
-		return unique_names;
-	}
 
 	TypedArray<String> get_unique_animation_names();
 	void set_unique_animation_names(TypedArray<String> p_unique_names);
 
 	TypedArray<GLTFSkeleton> get_skeletons();
 	void set_skeletons(TypedArray<GLTFSkeleton> p_skeletons);
-	void set_skeleton_index(GLTFSkeletonIndex p_index, TypedArray<GLTFSkeleton> p_skeleton) {
-		ERR_FAIL_INDEX(p_index, skeletons.size());
-		skeletons.write[p_index] = p_skeleton;
-	}
-	Vector<Ref<GLTFSkeleton>>& get_skeletons_reference() {
-		return skeletons;
-	}
 
 	bool get_create_animations();
 	void set_create_animations(bool p_create_animations);
 
 	TypedArray<GLTFAnimation> get_animations();
 	void set_animations(TypedArray<GLTFAnimation> p_animations);
-	void add_animation(Ref<GLTFAnimation> p_animation) {
-		animations.push_back(p_animation);
-	}
 
 	Node *get_scene_node(GLTFNodeIndex idx);
 	GLTFNodeIndex get_node_index(Node *p_node);
@@ -294,18 +223,6 @@ public:
 
 	Variant get_additional_data(const StringName &p_extension_name);
 	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
-
-	void set_scene_mesh_instance_index(GLTFNodeIndex p_index, ObjectID p_object_id) {
-		if (!scene_mesh_instances.has(p_index)) {
-			return;
-		}
-		ImporterMeshInstance3D *mesh_instance = Object::cast_to<ImporterMeshInstance3D>(ObjectDB::get_instance(p_object_id));
-		scene_mesh_instances[p_index] = mesh_instance;
-	}
-
-	HashMap<GLTFNodeIndex, Node *> &get_scene_nodes_reference() {
-		return scene_nodes;
-	}
 };
 
 #endif // GLTF_STATE_H
