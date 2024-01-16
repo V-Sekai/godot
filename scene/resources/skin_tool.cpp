@@ -30,6 +30,7 @@
 
 #include "skin_tool.h"
 
+#include "core/math/disjoint_set.h"
 #include "core/variant/dictionary.h"
 #include "modules/fbx/fbx_document.h"
 #include "modules/gltf/structures/gltf_skeleton.h"

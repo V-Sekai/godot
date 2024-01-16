@@ -28,19 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef SKIN_TOOL_H
+#define SKIN_TOOL_H
 
 #include "core/io/resource.h"
-#include "core/object/ref_counted.h"
 #include "core/templates/hash_map.h"
 #include "core/templates/hash_set.h"
 #include "core/templates/rb_set.h"
 
-#include "core/math/disjoint_set.h"
-
-#include "core/variant/dictionary.h"
-#include "core/variant/typed_array.h"
-#include "modules/fbx/fbx_defines.h"
 #include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/structures/gltf_node.h"
 #include "modules/gltf/structures/gltf_skeleton.h"
@@ -102,3 +97,5 @@ public:
 			HashMap<GLTFNodeIndex, Node *> &scene_nodes);
 	static Error _create_skins(Vector<Ref<GLTFSkin>> &skins, Vector<Ref<GLTFNode>> &nodes, bool use_named_skin_binds, HashSet<String> &unique_names);
 };
+
+#endif // SKIN_TOOL_H
