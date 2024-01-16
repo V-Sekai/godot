@@ -31,14 +31,13 @@
 #ifndef FBX_LIGHT_H
 #define FBX_LIGHT_H
 
-#include "core/io/resource.h"
-#include "modules/gltf/structures/gltf_camera.h"
+#include "modules/gltf/extensions/gltf_light.h"
 #include "scene/3d/light_3d.h"
 
 class Light3D;
 
-class FBXLight : public GLTFCamera {
-	GDCLASS(FBXLight, GLTFCamera);
+class FBXLight : public GLTFLight {
+	GDCLASS(FBXLight, GLTFLight);
 
 private:
 	Color color;
