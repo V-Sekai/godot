@@ -166,9 +166,6 @@ Dictionary FBXLight::to_dictionary() const {
 }
 
 void FBXLight::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_color", "color"), &FBXLight::set_color);
-	ClassDB::bind_method(D_METHOD("get_color"), &FBXLight::get_color);
-
 	ClassDB::bind_method(D_METHOD("set_intensity", "intensity"), &FBXLight::set_intensity);
 	ClassDB::bind_method(D_METHOD("get_intensity"), &FBXLight::get_intensity);
 
@@ -196,7 +193,6 @@ void FBXLight::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_cast_shadows", "cast_shadows"), &FBXLight::set_cast_shadows);
 	ClassDB::bind_method(D_METHOD("is_casting_shadows"), &FBXLight::is_casting_shadows);
 
-	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "color"), "set_color", "get_color");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "intensity"), "set_intensity", "get_intensity");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "local_direction"), "set_local_direction", "get_local_direction");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "type"), "set_type", "get_type");
