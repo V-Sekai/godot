@@ -49,12 +49,9 @@ static void _editor_init() {
 void initialize_fbx_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_CLASS(FBXDocument);
-		GDREGISTER_CLASS(GLTFMesh);
-		GDREGISTER_CLASS(GLTFNode);
 		GDREGISTER_CLASS(FBXCamera);
 		GDREGISTER_CLASS(FBXLight);
 		GDREGISTER_CLASS(FBXState);
-		GDREGISTER_CLASS(GLTFTexture);
 	}
 
 #ifdef TOOLS_ENABLED
