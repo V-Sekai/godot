@@ -746,7 +746,7 @@ String SkinTool::_gen_unique_bone_name(HashSet<String> unique_names, const Strin
 	return u_name;
 }
 
-Error SkinTool::asset_parse_skins(
+Error SkinTool::_asset_parse_skins(
 		const Vector<SkinNodeIndex> &input_skin_indices, // Input indices of the skins
 		const TypedArray<Dictionary> &input_skins, // Input skins as an array of dictionaries
 		const TypedArray<Dictionary> &input_nodes, // Input nodes as an array of dictionaries

@@ -472,25 +472,7 @@ Error GLTFDocument::_serialize_nodes(Ref<GLTFState> p_state) {
 }
 
 String GLTFDocument::_gen_unique_name(Ref<GLTFState> p_state, const String &p_name) {
-	const String s_name = p_name.validate_node_name();
-
-	String u_name;
-	int index = 1;
-	while (true) {
-		u_name = s_name;
-
-		if (index > 1) {
-			u_name += itos(index);
-		}
-		if (!p_state->unique_names.has(u_name)) {
-			break;
-		}
-		index++;
-	}
-
-	p_state->unique_names.insert(u_name);
-
-	return u_name;
+	return _gen_unique_name_static(p_state->unique_names, p_name);
 }
 
 String GLTFDocument::_sanitize_animation_name(const String &p_name) {
@@ -7157,4 +7139,26 @@ void GLTFDocument::set_root_node_mode(GLTFDocument::RootNodeMode p_root_node_mod
 
 GLTFDocument::RootNodeMode GLTFDocument::get_root_node_mode() const {
 	return _root_node_mode;
+}
+
+String GLTFDocument::_gen_unique_name_static(HashSet<String> &r_unique_names, const String &p_name) {
+	const String s_name = p_name.validate_node_name();
+
+	String u_name;
+	int index = 1;
+	while (true) {
+		u_name = s_name;
+
+		if (index > 1) {
+			u_name += itos(index);
+		}
+		if (!r_unique_names.has(u_name)) {
+			break;
+		}
+		index++;
+	}
+
+	r_unique_names.insert(u_name);
+
+	return u_name;
 }
