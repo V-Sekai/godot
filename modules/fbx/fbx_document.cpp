@@ -1955,42 +1955,45 @@ void FBXDocument::unregister_all_fbx_document_extensions() {
 	all_document_extensions.clear();
 }
 
-Node *FBXDocument::generate_scene(Ref<FBXState> p_state, float p_bake_fps, bool p_trimming, bool p_remove_immutable_tracks) {
-	ERR_FAIL_NULL_V(p_state, nullptr);
-	ERR_FAIL_INDEX_V(0, p_state->root_nodes.size(), nullptr);
-	GLTFNodeIndex fbx_root = p_state->root_nodes.write[0];
-	Node *fbx_root_node = p_state->get_scene_node(fbx_root);
+Node *FBXDocument::generate_scene(Ref<GLTFState> p_state, float p_bake_fps, bool p_trimming, bool p_remove_immutable_tracks) {
+	Ref<FBXState> state = p_state;
+	ERR_FAIL_COND_V(state.is_null(), nullptr);
+	ERR_FAIL_NULL_V(state, nullptr);
+	ERR_FAIL_INDEX_V(0, state->root_nodes.size(), nullptr);
+	GLTFNodeIndex fbx_root = state->root_nodes.write[0];
+	Node *fbx_root_node = state->get_scene_node(fbx_root);
 	Node *root = fbx_root_node->get_parent();
 	ERR_FAIL_NULL_V(root, nullptr);
-	_process_mesh_instances(p_state, root);
-	if (p_state->get_create_animations() && p_state->animations.size()) {
+	_process_mesh_instances(state, root);
+	if (state->get_create_animations() && state->animations.size()) {
 		AnimationPlayer *ap = memnew(AnimationPlayer);
 		root->add_child(ap, true);
 		ap->set_owner(root);
-		for (int i = 0; i < p_state->animations.size(); i++) {
-			_import_animation(p_state, ap, i, p_bake_fps, p_trimming, p_remove_immutable_tracks);
+		for (int i = 0; i < state->animations.size(); i++) {
+			_import_animation(state, ap, i, p_bake_fps, p_trimming, p_remove_immutable_tracks);
 		}
 	}
 	ERR_FAIL_NULL_V(root, nullptr);
 	return root;
 }
 
-Error FBXDocument::append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<FBXState> p_state, uint32_t p_flags) {
-	ERR_FAIL_NULL_V(p_state, FAILED);
+Error FBXDocument::append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<GLTFState> p_state, uint32_t p_flags) {
+	Ref<FBXState> state = p_state;
+	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_NULL_V(p_bytes.ptr(), ERR_INVALID_DATA);
 	Error err = FAILED;
-	p_state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
-	p_state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
+	state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
+	state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
 
 	Ref<FileAccessMemory> file_access;
 	file_access.instantiate();
 	file_access->open_custom(p_bytes.ptr(), p_bytes.size());
-	p_state->base_path = p_base_path.get_base_dir();
-	err = _parse(p_state, p_state->base_path, file_access);
+	state->base_path = p_base_path.get_base_dir();
+	err = _parse(state, state->base_path, file_access);
 	ERR_FAIL_COND_V(err != OK, err);
 	for (Ref<FBXDocumentExtension> ext : document_extensions) {
 		ERR_CONTINUE(ext.is_null());
-		err = ext->import_post_parse(p_state);
+		err = ext->import_post_parse(state);
 		ERR_FAIL_COND_V(err != OK, err);
 	}
 	return OK;
@@ -2065,14 +2068,16 @@ Error FBXDocument::_parse_fbx_state(Ref<FBXState> p_state, const String &p_searc
 	return OK;
 }
 
-Error FBXDocument::append_from_file(String p_path, Ref<FBXState> p_state, uint32_t p_flags, String p_base_path) {
+Error FBXDocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags, String p_base_path) {
+	Ref<FBXState> state = p_state;
+	ERR_FAIL_COND_V(state.is_null(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(p_path.is_empty(), ERR_FILE_NOT_FOUND);
 	if (p_state == Ref<FBXState>()) {
 		p_state.instantiate();
 	}
-	p_state->filename = p_path.get_file().get_basename();
-	p_state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
-	p_state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
+	state->filename = p_path.get_file().get_basename();
+	state->use_named_skin_binds = p_flags & FBX_IMPORT_USE_NAMED_SKIN_BINDS;
+	state->discard_meshes_and_materials = p_flags & FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS;
 	Error err;
 	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ, &err);
 	ERR_FAIL_COND_V(err != OK, ERR_FILE_CANT_OPEN);
@@ -2081,7 +2086,7 @@ Error FBXDocument::append_from_file(String p_path, Ref<FBXState> p_state, uint32
 	if (base_path.is_empty()) {
 		base_path = p_path.get_base_dir();
 	}
-	p_state->base_path = base_path;
+	state->base_path = base_path;
 	err = _parse(p_state, base_path, file);
 	ERR_FAIL_COND_V(err != OK, err);
 	for (Ref<FBXDocumentExtension> ext : document_extensions) {
