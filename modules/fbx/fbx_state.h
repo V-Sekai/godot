@@ -45,8 +45,8 @@
 
 #include "thirdparty/ufbx/ufbx.h"
 
-class FBXState : public Resource {
-	GDCLASS(FBXState, Resource);
+class FBXState : public GLTFState {
+	GDCLASS(FBXState, GLTFState);
 	friend class FBXDocument;
 	friend class SkinTool;
 	friend class GLTFSkin;
