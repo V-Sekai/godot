@@ -2764,6 +2764,8 @@
 			[b]Note:[/b] A flag value must be at least [code]1[/code] and at most [code]2 ** 32 - 1[/code].
 			[b]Note:[/b] Unlike [constant PROPERTY_HINT_ENUM], the previous explicit value is not taken into account. For the hint [code]"A:16,B,C"[/code], A is 16, B is 2, C is 4.
 		</constant>
+		<constant name="PROPERTY_HINT_FLAG_LIST" value="38" enum="PropertyHint">
+		</constant>
 		<constant name="PROPERTY_HINT_LAYERS_2D_RENDER" value="7" enum="PropertyHint">
 			Hints that an [int] property is a bitmask using the optionally named 2D render layers.
 		</constant>
@@ -2912,7 +2914,7 @@
 		<constant name="PROPERTY_HINT_PASSWORD" value="36" enum="PropertyHint">
 			Hints that a string property is a password, and every character is replaced with the secret character.
 		</constant>
-		<constant name="PROPERTY_HINT_MAX" value="38" enum="PropertyHint">
+		<constant name="PROPERTY_HINT_MAX" value="39" enum="PropertyHint">
 			Represents the size of the [enum PropertyHint] enum.
 		</constant>
 		<constant name="PROPERTY_USAGE_NONE" value="0" enum="PropertyUsageFlags" is_bitfield="true">
