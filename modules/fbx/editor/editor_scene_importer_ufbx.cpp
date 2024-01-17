@@ -59,7 +59,6 @@ Node *EditorSceneFormatImporterUFBX::import_scene(const String &p_path, uint32_t
 			return nullptr;
 		}
 	}
-
 	Ref<FBXDocument> fbx;
 	fbx.instantiate();
 	Ref<FBXState> state;
@@ -82,13 +81,7 @@ Node *EditorSceneFormatImporterUFBX::import_scene(const String &p_path, uint32_t
 		}
 		return nullptr;
 	}
-#ifndef DISABLE_DEPRECATED
-	bool trimming = p_options.has("animation/trimming") ? (bool)p_options["animation/trimming"] : false;
-	bool remove_immutable = p_options.has("animation/remove_immutable_tracks") ? (bool)p_options["animation/remove_immutable_tracks"] : true;
-	return fbx->generate_scene(state, (float)p_options["animation/fps"], trimming, remove_immutable);
-#else
 	return fbx->generate_scene(state, (float)p_options["animation/fps"], (bool)p_options["animation/trimming"], (bool)p_options["animation/remove_immutable_tracks"]);
-#endif
 }
 
 Variant EditorSceneFormatImporterUFBX::get_option_visibility(const String &p_path, bool p_for_animation,

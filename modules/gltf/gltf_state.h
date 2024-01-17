@@ -48,6 +48,7 @@ class GLTFState : public Resource {
 	GDCLASS(GLTFState, Resource);
 	friend class GLTFDocument;
 
+protected:
 	String base_path;
 	String filename;
 	Dictionary json;

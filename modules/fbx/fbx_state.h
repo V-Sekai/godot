@@ -54,56 +54,14 @@ class FBXState : public GLTFState {
 
 	// Smart pointer that holds the loaded scene.
 	ufbx_unique_ptr<ufbx_scene> scene;
-
-	String base_path;
-	String filename;
-	int major_version = 0;
-	int minor_version = 0;
-
-	bool use_named_skin_binds = false;
-	bool use_khr_texture_transform = false;
-	bool discard_meshes_and_materials = false;
 	bool allow_geometry_helper_nodes = false;
-	bool create_animations = true;
-
-	int handle_binary_image = HANDLE_BINARY_EXTRACT_TEXTURES;
-
-	Vector<Ref<GLTFNode>> nodes;
-	Vector<Vector<uint8_t>> buffers;
-
-	Vector<Ref<GLTFMesh>> meshes; // Meshes are loaded directly, no reason not to.
-
-	Vector<AnimationPlayer *> animation_players;
-	HashMap<Ref<Material>, FBXMaterialIndex> material_cache;
-	Vector<Ref<Material>> materials;
-
-	String scene_name;
-	Vector<int> root_nodes;
-	Vector<Ref<GLTFTexture>> textures;
-	Vector<Ref<Texture2D>> images;
-	Vector<String> extensions_used;
-	Vector<String> extensions_required;
-	Vector<Ref<Image>> source_images;
 
 	HashMap<uint64_t, Image::AlphaMode> alpha_mode_cache;
 	HashMap<Pair<uint64_t, uint64_t>, GLTFTextureIndex, PairHash<uint64_t, uint64_t>> albedo_transparency_textures;
 
-	Vector<Ref<GLTFSkin>> skins;
 	Vector<GLTFSkinIndex> skin_indices;
-	Vector<Ref<FBXCamera>> cameras;
-	Vector<Ref<FBXLight>> lights;
-	HashSet<String> unique_names;
-	HashSet<String> unique_animation_names;
-
-	Vector<Ref<GLTFSkeleton>> skeletons;
-	Vector<Ref<GLTFAnimation>> animations;
-	HashMap<GLTFNodeIndex, Node *> scene_nodes;
-	HashMap<GLTFNodeIndex, ImporterMeshInstance3D *> scene_mesh_instances;
-
 	HashMap<ObjectID, GLTFSkeletonIndex> skeleton3d_to_fbx_skeleton;
 	HashMap<ObjectID, HashMap<ObjectID, GLTFSkinIndex>> skin_and_skeleton3d_to_fbx_skin;
-	Dictionary additional_data;
-
 protected:
 	static void _bind_methods();
 

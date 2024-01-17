@@ -1939,7 +1939,10 @@ Node *FBXDocument::generate_scene(Ref<GLTFState> p_state, float p_bake_fps, bool
 	ERR_FAIL_INDEX_V(0, state->root_nodes.size(), nullptr);
 	GLTFNodeIndex fbx_root = state->root_nodes.write[0];
 	Node *fbx_root_node = state->get_scene_node(fbx_root);
-	Node *root = fbx_root_node->get_parent();
+	Node *root = fbx_root_node;
+	if (fbx_root_node && fbx_root_node->get_parent()) {
+		root = fbx_root_node->get_parent();
+	}
 	ERR_FAIL_NULL_V(root, nullptr);
 	_process_mesh_instances(state, root);
 	if (state->get_create_animations() && state->animations.size()) {
