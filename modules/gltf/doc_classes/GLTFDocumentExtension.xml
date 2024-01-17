@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		Extends the functionality of the [GLTFDocument] class by allowing you to run arbitrary code at various stages of GLTF import or export.
-		To use, make a new class extending GLTFDocumentExtension, override any methods you need, make an instance of your class, and register it using [method GLTFDocument.register_gltf_document_extension].
+		To use, make a new class extending GLTFDocumentExtension, override any methods you need, make an instance of your class, and register it using [method AssetDocument3D.register_gltf_document_extension].
 		[b]Note:[/b] Like GLTFDocument itself, all GLTFDocumentExtension classes must be stateless in order to function properly. If you need to store data, use the [code]set_additional_data[/code] and [code]get_additional_data[/code] methods in [GLTFState] or [GLTFNode].
 	</description>
 	<tutorials>
@@ -55,7 +55,7 @@
 			<param index="0" name="state" type="GLTFState" />
 			<description>
 				Part of the export process. This method is run after [method _convert_scene_node] and before [method _get_saveable_image_formats].
-				This method can be used to alter the state before performing serialization. It runs every time when generating a buffer with [method GLTFDocument.generate_buffer] or writing to the file system with [method GLTFDocument.write_to_filesystem].
+				This method can be used to alter the state before performing serialization. It runs every time when generating a buffer with [method AssetDocument3D.generate_buffer] or writing to the file system with [method AssetDocument3D.write_to_filesystem].
 			</description>
 		</method>
 		<method name="_generate_scene_node" qualifiers="virtual">
@@ -79,7 +79,7 @@
 			<return type="PackedStringArray" />
 			<description>
 				Part of the export process. This method is run after [method _convert_scene_node] and before [method _export_node].
-				Returns an array of the image formats that can be saved/exported by this extension. This extension will only be selected as the image exporter if the [GLTFDocument]'s [member GLTFDocument.image_format] is in this array. If this [GLTFDocumentExtension] is selected as the image exporter, one of the [method _save_image_at_path] or [method _serialize_image_to_bytes] methods will run next, otherwise [method _export_node] will run next. If the format name contains [code]"Lossy"[/code], the lossy quality slider will be displayed.
+				Returns an array of the image formats that can be saved/exported by this extension. This extension will only be selected as the image exporter if the [GLTFDocument]'s [member AssetDocument3D.image_format] is in this array. If this [GLTFDocumentExtension] is selected as the image exporter, one of the [method _save_image_at_path] or [method _serialize_image_to_bytes] methods will run next, otherwise [method _export_node] will run next. If the format name contains [code]"Lossy"[/code], the lossy quality slider will be displayed.
 			</description>
 		</method>
 		<method name="_get_supported_extensions" qualifiers="virtual">
