@@ -37,6 +37,7 @@
 #include "core/io/image.h"
 #include "core/math/color.h"
 #include "fbx_defines.h"
+#include "modules/gltf/asset_document_3d.h"
 #include "modules/gltf/extensions/gltf_document_extension.h"
 #include "modules/gltf/structures/gltf_animation.h"
 #include "scene/3d/bone_attachment_3d.h"

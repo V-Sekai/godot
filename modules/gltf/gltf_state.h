@@ -46,6 +46,7 @@
 
 class GLTFState : public Resource {
 	GDCLASS(GLTFState, Resource);
+	friend class AssetDocument3D;
 	friend class GLTFDocument;
 
 protected:

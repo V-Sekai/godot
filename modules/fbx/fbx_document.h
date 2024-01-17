@@ -33,13 +33,14 @@
 
 #include "modules/fbx/fbx_state.h"
 #include "modules/fbx/structures/fbx_light.h"
-#include "modules/gltf/gltf_document.h"
+#include "modules/gltf/asset_document_3d.h"
+#include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_state.h"
 
 #include "thirdparty/ufbx/ufbx.h"
 
-class FBXDocument : public GLTFDocument {
-	GDCLASS(FBXDocument, GLTFDocument);
+class FBXDocument : public AssetDocument3D {
+	GDCLASS(FBXDocument, AssetDocument3D);
 
 private:
 	const float BAKE_FPS = 30.0f;

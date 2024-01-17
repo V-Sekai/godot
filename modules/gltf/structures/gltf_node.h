@@ -37,6 +37,7 @@
 
 class GLTFNode : public Resource {
 	GDCLASS(GLTFNode, Resource);
+	friend class AssetDocument3D;
 	friend class GLTFDocument;
 	friend class SkinTool;
 	friend class FBXDocument;
