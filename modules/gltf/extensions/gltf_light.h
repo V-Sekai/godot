@@ -40,6 +40,7 @@ class Light3D;
 class GLTFLight : public Resource {
 	GDCLASS(GLTFLight, Resource)
 	friend class GLTFDocument;
+	friend class FBXLight;
 
 protected:
 	static void _bind_methods();

@@ -83,10 +83,6 @@ static void _editor_init() {
 		Ref<EditorSceneFormatImporterFBX> importer;
 		importer.instantiate();
 		ResourceImporterScene::add_scene_importer(importer);
-
-		Ref<EditorFileSystemImportFormatSupportQueryFBX> fbx_import_query;
-		fbx_import_query.instantiate();
-		EditorFileSystem::get_singleton()->add_import_format_support_query(fbx_import_query);
 	}
 }
 #endif // TOOLS_ENABLED
@@ -103,6 +99,7 @@ void initialize_gltf_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(GLTFAnimation);
 		GDREGISTER_CLASS(GLTFBufferView);
 		GDREGISTER_CLASS(GLTFCamera);
+		GDREGISTER_CLASS(AssetDocument3D);
 		GDREGISTER_CLASS(GLTFDocument);
 		GDREGISTER_CLASS(GLTFDocumentExtension);
 		GDREGISTER_CLASS(GLTFDocumentExtensionConvertImporterMesh);
