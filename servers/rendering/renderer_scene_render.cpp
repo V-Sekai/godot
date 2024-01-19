@@ -52,6 +52,12 @@ void RendererSceneRender::CameraData::set_camera(const Transform3D p_transform, 
 #undef far
 #endif
 
+void RendererSceneRender::CameraData::set_override_projection(const Projection &p_projection) {
+	if (view_count == 1) {
+		view_projection[0] = p_projection;
+	}
+}
+
 void RendererSceneRender::CameraData::set_multiview_camera(uint32_t p_view_count, const Transform3D *p_transforms, const Projection *p_projections, bool p_is_orthogonal, bool p_vaspect) {
 	ERR_FAIL_COND_MSG(p_view_count != 2, "Incorrect view count for stereoscopic view");
 
