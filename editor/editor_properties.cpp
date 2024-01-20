@@ -808,6 +808,87 @@ EditorPropertyFlags::EditorPropertyFlags() {
 	add_child(vbox);
 }
 
+///////////////////// FLAG LIST /////////////////////////
+
+void EditorPropertyFlagList::_set_read_only(bool p_read_only) {
+	add_button->set_visible(!p_read_only);
+	for (int i = 0; i < erase_buttons.size(); i++) {
+		erase_buttons[i]->set_visible(!p_read_only);
+	}
+}
+
+void EditorPropertyFlagList::_flag_added(int p_index) {
+	uint32_t value = get_edited_object()->get(get_edited_property());
+	value |= 1 << p_index;
+	emit_changed(get_edited_property(), value);
+}
+
+void EditorPropertyFlagList::_flag_removed(int p_index) {
+	uint32_t value = get_edited_object()->get(get_edited_property());
+	value &= ~(1 << uint32_t(p_index));
+	emit_changed(get_edited_property(), value);
+}
+
+void EditorPropertyFlagList::update_property() {
+	uint32_t value = get_edited_object()->get(get_edited_property());
+
+	while (vbox->get_child_count() > 0) {
+		memdelete(vbox->get_child(0));
+	}
+
+	add_button->get_popup()->clear();
+	erase_buttons.clear();
+
+	for (int i = 0; i < options.size(); i++) {
+		bool enabled = uint32_t(1 << i) & value;
+		add_button->get_popup()->add_item(options[i], i);
+		add_button->get_popup()->set_item_disabled(i, enabled); // Enabled items can't be added twice, so disable them.
+		if (enabled) {
+			HBoxContainer *hb = memnew(HBoxContainer);
+			Label *l = memnew(Label);
+			l->set_text(options[i]);
+			hb->add_child(l);
+			l->set_h_size_flags(SIZE_EXPAND_FILL);
+			Button *b = memnew(Button);
+			b->set_flat(true);
+			b->set_icon(get_theme_icon(SNAME("Close"), SNAME("EditorIcons")));
+			erase_buttons.push_back(b);
+			hb->add_child(b);
+			vbox->add_child(hb);
+			b->connect("pressed", callable_mp(this, &EditorPropertyFlagList::_flag_removed).bind(i), CONNECT_DEFERRED);
+		}
+	}
+}
+
+void EditorPropertyFlagList::setup(const Vector<String> &p_options) {
+	options = p_options;
+}
+
+void EditorPropertyFlagList::_notification(int p_what) {
+	if (p_what == NOTIFICATION_READY || p_what == NOTIFICATION_THEME_CHANGED) {
+		add_button->set_icon(get_theme_icon(SNAME("Add"), SNAME("EditorIcons")));
+		for (int i = 0; i < erase_buttons.size(); i++) {
+			erase_buttons[i]->set_icon(get_theme_icon(SNAME("Close"), SNAME("EditorIcons")));
+		}
+	}
+}
+
+void EditorPropertyFlagList::_bind_methods() {
+}
+
+EditorPropertyFlagList::EditorPropertyFlagList() {
+	HBoxContainer *hb = memnew(HBoxContainer);
+	add_child(hb);
+	vbox = memnew(VBoxContainer);
+	vbox->set_h_size_flags(SIZE_EXPAND_FILL);
+	hb->add_child(vbox);
+	add_button = memnew(MenuButton);
+	add_button->set_flat(true);
+	add_button->set_v_size_flags(SIZE_SHRINK_BEGIN);
+	hb->add_child(add_button);
+	add_button->get_popup()->connect("id_pressed", callable_mp(this, &EditorPropertyFlagList::_flag_added));
+}
+
 ///////////////////// LAYERS /////////////////////////
 
 void EditorPropertyLayersGrid::_rename_pressed(int p_menu) {
@@ -3549,6 +3630,11 @@ EditorProperty *EditorInspectorDefaultPlugin::get_editor_for_property(Object *p_
 
 			} else if (p_hint == PROPERTY_HINT_FLAGS) {
 				EditorPropertyFlags *editor = memnew(EditorPropertyFlags);
+				Vector<String> options = p_hint_text.split(",");
+				editor->setup(options);
+				return editor;
+			} else if (p_hint == PROPERTY_HINT_FLAG_LIST) {
+				EditorPropertyFlagList *editor = memnew(EditorPropertyFlagList);
 				Vector<String> options = p_hint_text.split(",");
 				editor->setup(options);
 				return editor;

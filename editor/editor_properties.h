@@ -254,6 +254,27 @@ public:
 	EditorPropertyFlags();
 };
 
+class EditorPropertyFlagList : public EditorProperty {
+	GDCLASS(EditorPropertyFlagList, EditorProperty);
+	MenuButton *add_button = nullptr;
+	VBoxContainer *vbox = nullptr;
+	Vector<Button *> erase_buttons;
+	Vector<String> options;
+
+	void _flag_added(int p_index);
+	void _flag_removed(int p_index);
+
+protected:
+	virtual void _set_read_only(bool p_read_only) override;
+	static void _bind_methods();
+	void _notification(int p_what);
+
+public:
+	void setup(const Vector<String> &p_options);
+	virtual void update_property() override;
+	EditorPropertyFlagList();
+};
+
 ///////////////////// LAYERS /////////////////////////
 
 class EditorPropertyLayersGrid : public Control {
