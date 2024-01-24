@@ -56,38 +56,61 @@ Error ImageLoaderIES::load_image(Ref<Image> p_image, Ref<FileAccess> p_fileacces
 		}
 		texture_data.write[i] = inner_vector;
 	}
-	float number_of_horizontal_angles = ies.number_horizontal_angles;
-	float max_horizontal_angle = ies.max_horizontal_angle; // Like 180.
-	float min_horizontal_angle = ies.min_horizontal_angle; // Like 0.
-	float number_of_vertical_angles = ies.number_vertical_angles;
-	float max_vertical_angle = ies.max_vertical_angle; // Like 90.
-	float min_vertical_angle = ies.min_vertical_angle; // Like 0.
 
-	Ref<Image> image = Image::create_empty(max_horizontal_angle - min_horizontal_angle, max_vertical_angle - min_vertical_angle, false, Image::FORMAT_RGBF);
+	int number_of_vertical_angles = ies.number_vertical_angles;
+	int number_of_horizontal_angles = ies.number_horizontal_angles;
+
+	float target_horizontal = 360.0f;
+	float target_vertical = 180.0f;
+	float min_horizontal_angle = ies.min_horizontal_angle;
+	float max_horizontal_angle = ies.max_horizontal_angle;
+	float min_vertical_angle = ies.min_vertical_angle;
+	float max_vertical_angle = ies.max_vertical_angle;
+	Ref<Image> image = Image::create_empty(target_horizontal, target_vertical - min_vertical_angle, false, Image::FORMAT_RGBF);
 	image->fill(Color());
 	for (int i = 0; i < image->get_height(); ++i) {
 		for (int j = 0; j < image->get_width(); ++j) {
 			float original_i = static_cast<float>(i) * (max_vertical_angle - min_vertical_angle) / image->get_height() + min_vertical_angle;
 			float original_j = static_cast<float>(j) * (max_horizontal_angle - min_horizontal_angle) / image->get_width() + min_horizontal_angle;
+			float new_i = (original_i - min_vertical_angle) / (max_vertical_angle - min_vertical_angle) * (target_vertical - min_vertical_angle);
+			float new_j = (original_j - min_horizontal_angle) / (max_horizontal_angle - min_horizontal_angle) * (target_horizontal - min_horizontal_angle);
 
-			int tex_i = static_cast<int>(original_i * number_of_vertical_angles / (max_vertical_angle - min_vertical_angle));
-			float normalized_angle = (original_j - min_horizontal_angle) / (max_horizontal_angle - min_horizontal_angle);
-			float index_f = normalized_angle * number_of_horizontal_angles;
+			if (new_i >= min_vertical_angle && new_i <= max_vertical_angle && new_j >= min_horizontal_angle && new_j <= max_horizontal_angle) {
+				int tex_i = static_cast<int>(original_i * number_of_vertical_angles / (max_vertical_angle - min_vertical_angle));
+				float normalized_angle = (original_j - min_horizontal_angle) / (max_horizontal_angle - min_horizontal_angle);
+				float index_f = normalized_angle * number_of_horizontal_angles;
 
-			int index_pre = CLAMP(static_cast<int>(index_f) - 1, 0, number_of_horizontal_angles - 2);
-			int index_from = CLAMP(static_cast<int>(index_f), 0, number_of_horizontal_angles - 2);
-			int index_to = CLAMP(index_from + 1, 0, number_of_horizontal_angles - 2);
-			int index_post = CLAMP(index_to + 1, 0, number_of_horizontal_angles - 2);
+				int index_pre = CLAMP(static_cast<int>(index_f) - 1, 0, number_of_horizontal_angles - 2);
+				int index_from = CLAMP(static_cast<int>(index_f), 0, number_of_horizontal_angles - 2);
+				int index_to = CLAMP(index_from + 1, 0, number_of_horizontal_angles - 2);
+				int index_post = CLAMP(index_to + 1, 0, number_of_horizontal_angles - 2);
 
-			float intensity_pre = texture_data[tex_i][index_pre];
-			float intensity_from = texture_data[tex_i][index_from];
-			float intensity_to = texture_data[tex_i][index_to];
-			float intensity_post = texture_data[tex_i][index_post];
-			float intensity = Math::cubic_interpolate(intensity_pre, intensity_from, intensity_to, intensity_post, index_f - index_from);
-			image->set_pixel(j, i, Color(intensity, intensity, intensity));
+				float intensity_pre = texture_data[tex_i][index_pre];
+				float intensity_from = texture_data[tex_i][index_from];
+				float intensity_to = texture_data[tex_i][index_to];
+				float intensity_post = texture_data[tex_i][index_post];
+				float intensity_j = Math::cubic_interpolate(intensity_pre, intensity_from, intensity_to, intensity_post, index_f - index_from) / ies.max_candela;
+
+				float normalized_i = (original_i - min_vertical_angle) / (max_vertical_angle - min_vertical_angle);
+				float index_f_i = normalized_i * number_of_vertical_angles;
+
+				int index_pre_i = CLAMP(static_cast<int>(index_f_i) - 1, 0, number_of_vertical_angles - 2);
+				int index_from_i = CLAMP(static_cast<int>(index_f_i), 0, number_of_vertical_angles - 2);
+				int index_to_i = CLAMP(index_from_i + 1, 0, number_of_vertical_angles - 2);
+				int index_post_i = CLAMP(index_to_i + 1, 0, number_of_vertical_angles - 2);
+
+				float intensity_pre_i = texture_data[index_pre_i][tex_i];
+				float intensity_from_i = texture_data[index_from_i][tex_i];
+				float intensity_to_i = texture_data[index_to_i][tex_i];
+				float intensity_post_i = texture_data[index_post_i][tex_i];
+
+				float intensity_i = Math::cubic_interpolate(intensity_pre_i, intensity_from_i, intensity_to_i, intensity_post_i, index_f_i - index_from_i) / ies.max_candela;
+
+				float final_intensity = (intensity_j + intensity_i) / 2;
+				image->set_pixel(j, i, Color(final_intensity, final_intensity, final_intensity));
+			}
 		}
 	}
-
 	p_image->set_data(image->get_width(), image->get_height(), false, Image::FORMAT_RGBF, image->get_data());
 	p_image->generate_mipmaps();
 	return OK;
