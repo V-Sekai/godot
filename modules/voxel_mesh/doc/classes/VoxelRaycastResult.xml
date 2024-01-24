@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelRaycastResult" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="distance" type="float" setter="" getter="get_distance" default="0.0">
+		</member>
+		<member name="position" type="Vector3" setter="" getter="get_position" default="Vector3(0, 0, 0)">
+		</member>
+		<member name="previous_position" type="Vector3" setter="" getter="get_previous_position" default="Vector3(0, 0, 0)">
+		</member>
+	</members>
+</class>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelMesherBlocky" inherits="VoxelMesher" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="library" type="VoxelLibrary" setter="set_library" getter="get_library">
+		</member>
+		<member name="occlusion_darkness" type="float" setter="set_occlusion_darkness" getter="get_occlusion_darkness" default="0.8">
+		</member>
+		<member name="occlusion_enabled" type="bool" setter="set_occlusion_enabled" getter="get_occlusion_enabled" default="true">
+		</member>
+	</members>
+</class>

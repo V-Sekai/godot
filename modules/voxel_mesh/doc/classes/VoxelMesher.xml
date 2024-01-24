@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelMesher" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="build_mesh">
+			<return type="Mesh" />
+			<param index="0" name="voxel_buffer" type="VoxelBuffer" />
+			<param index="1" name="materials" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="get_maximum_padding" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_minimum_padding" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>

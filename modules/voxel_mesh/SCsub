@@ -1,0 +1,50 @@
+Import("env")
+Import("env_modules")
+
+env_voxel = env_modules.Clone()
+
+voxel_files = [
+    "*.cpp",
+    "constants/*.cpp",
+    "meshers/blocky/*.cpp",
+    "meshers/dmc/*.cpp",
+    "meshers/cubes/*.cpp",
+    "meshers/*.cpp",
+    "streams/*.cpp",
+    "streams/sqlite/*.cpp",
+    "streams/region/*.cpp",
+    "storage/*.cpp",
+    "generators/*.cpp",
+    "generators/graph/*.cpp",
+    "generators/simple/*.cpp",
+    "util/*.cpp",
+    "util/godot/*.cpp",
+    # "util/noise/*.cpp",
+    "util/noise/fast_noise_lite.cpp",
+    "util/noise/fast_noise_lite_gradient.cpp",
+    "terrain/*.cpp",
+    "terrain/instancing/*.cpp",
+    "server/*.cpp",
+    "edition/*.cpp",
+    "thirdparty/lz4/*.c",
+    "thirdparty/sqlite/*.c",
+    "thirdparty/meshoptimizer/*.cpp",
+]
+
+if env.editor_build:
+    # Editor-only stuff
+    voxel_editor_files = [
+        "editor/*.cpp",
+        "editor/graph/*.cpp",
+        "editor/terrain/*.cpp",
+        "editor/fast_noise_lite/*.cpp",
+        "editor/instance_library/*.cpp",
+        "vox/*.cpp",
+    ]
+    voxel_files += voxel_editor_files
+
+for f in voxel_files:
+    env_voxel.add_source_files(env.modules_sources, f)
+
+if env["platform"] in ["osx", "android"]:
+    env_voxel.Append(CXXFLAGS=["-Wno-inconsistent-missing-override"])

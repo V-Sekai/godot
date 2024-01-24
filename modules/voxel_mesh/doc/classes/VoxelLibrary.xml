@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelLibrary" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="bake">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="create_voxel">
+			<return type="Voxel" />
+			<param index="0" name="id" type="int" />
+			<param index="1" name="name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_voxel">
+			<return type="Voxel" />
+			<param index="0" name="id" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_voxel_by_name">
+			<return type="Voxel" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+			</description>
+		</method>
+		<method name="get_voxel_index_from_name" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="name" type="StringName" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="atlas_size" type="int" setter="set_atlas_size" getter="get_atlas_size" default="16">
+		</member>
+		<member name="bake_tangents" type="bool" setter="set_bake_tangents" getter="get_bake_tangents" default="true">
+		</member>
+		<member name="voxel_count" type="int" setter="set_voxel_count" getter="get_voxel_count" default="0">
+		</member>
+	</members>
+	<constants>
+		<constant name="MAX_VOXEL_TYPES" value="65536">
+		</constant>
+	</constants>
+</class>
