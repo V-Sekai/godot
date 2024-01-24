@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/voxel_mesh.git
 	branch = main
-	commit = b5097dfc2939c27c812293ce9fcbd6961b8588a1
-	parent = b5097dfc2939c27c812293ce9fcbd6961b8588a1
+	commit = 50ac854aa32dddfdc3ae385a037cc7772785ecc8
+	parent = 12a85a0066a1e189a8d31beb0f7594677a5a8aec
 	method = merge
 	cmdver = 0.4.6
