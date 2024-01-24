@@ -26,7 +26,6 @@ SOFTWARE.
 #include <string>
 #include <map>
 #include <vector>
-#include <fstream>
 #include <sstream>
 #include <limits>
 #include <algorithm>
@@ -99,10 +98,10 @@ public:
         T max_candela;
     };
 
-    static bool load_ies(const std::string& file, std::string& err_out, std::string& warn_out, light& ies_out) {
-        std::ifstream f(file);
+    static bool load_ies_from_buffer(const std::string& bufferInput, std::string& err_out, std::string& warn_out, light& ies_out) {
+       std::istringstream f(bufferInput);
         if (!f) {
-            err_out = "Failed reading file: " + file;
+            err_out = "Failed reading file.";
             return false;
         }
 
@@ -115,7 +114,7 @@ public:
         if (f.good()) {
             std::getline(f, line);
             if (!read_property("IESNA", line, ies_out.ies_version)) {
-                warn_out = "First line did not start with IESNA " + file;
+                warn_out = "First line did not start with IESNA.";
             }
         }
         // read properties
@@ -124,7 +123,7 @@ public:
             read_property(line, ies_out.properties);
         }
         if (ies_out.tilt.empty()) {
-            err_out = "TILT propertie not found: " + file;
+            err_out = "TILT property not found.";
             return false;
         }
 
@@ -138,11 +137,11 @@ public:
         std::replace(s.begin(), s.end(), ',', ' ');
 
         // go through the data
-        std::stringstream buffer;
-        buffer.str(s);
+        std::stringstream bufferStream;
+        bufferStream.str(s);
 
         T value;
-#define NEXT_VALUE(name) if (!(buffer >> value)) { err_out = "Error reading <" name "> property: " + file; f.close(); return false; }
+        #define NEXT_VALUE(name) if (!(bufferStream >> value)) { err_out = "Error reading <" name "> property."; return false; }
 
         // <lamp to luminaire geometry> <#tilt angles> <angles> <multiplying factors>
         if (ies_out.tilt == "INCLUDE") {
@@ -202,11 +201,10 @@ public:
             if (ies_out.max_candela < value) ies_out.max_candela = value;
         }
 #undef NEXT_VALUE
-        f.close();
         return true;
     }
 
-    static bool write_ies(const std::string& filename, const light& ies, const uint32_t precision = std::numeric_limits<T>::max_digits10) {
+    static std::string write_ies_to_buffer(const light& ies, const uint32_t precision = std::numeric_limits<T>::max_digits10) {
         std::stringstream ss;
         ss.precision(precision);
 
@@ -262,11 +260,7 @@ public:
             else if (i < (count - 1)) ss << " ";
         }
 
-        std::ofstream file(filename, std::ios::out | std::ios::trunc);
-        if (!file.is_open()) return false;
-        file << ss.rdbuf();
-        file.close();
-        return true;
+        return ss.str();
     }
 
 private:

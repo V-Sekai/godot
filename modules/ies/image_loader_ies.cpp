@@ -31,34 +31,65 @@
 #include "image_loader_ies.h"
 
 #include "core/io/file_access.h"
-#include "core/string/ustring.h"
+#include "core/io/image.h"
 
-#include "thirdparty/ies/ies_loader.h"
-#include <ios>
+#include "thirdparty/tinyies/tiny_ies.hpp"
 
 Error ImageLoaderIES::load_image(Ref<Image> p_image, Ref<FileAccess> p_fileaccess, BitField<ImageFormatLoader::LoaderFlags> p_flags, float p_scale) {
 	ERR_FAIL_COND_V(p_fileaccess.is_null(), ERR_INVALID_PARAMETER);
-	IESFileInfo info = {};
+	tiny_ies<float>::light ies;
 	std::string ies_file = p_fileaccess->get_as_utf8_string(true).utf8().get_data();
+	std::string err_out, warn_out;
+	if (!tiny_ies<float>::load_ies_from_buffer(ies_file, err_out, warn_out, ies)) {
+		ERR_PRINT(vformat("IES image loader error: %s", err_out.c_str()));
+		return FAILED;
+	}
+	ERR_FAIL_COND_V(ies.number_vertical_angles <= 1, ERR_INVALID_DATA);
+	ERR_FAIL_COND_V(ies.number_horizontal_angles <= 1, ERR_INVALID_DATA);
+	Vector<Vector<float>> texture_data;
+	texture_data.resize(ies.number_vertical_angles);
+	for (int i = 0; i < ies.number_vertical_angles; ++i) {
+		Vector<float> inner_vector;
+		inner_vector.resize(ies.number_horizontal_angles);
+		for (int j = 0; j < ies.number_horizontal_angles; ++j) {
+			inner_vector.write[j] = ies.candela[i * ies.number_horizontal_angles + j];
+		}
+		texture_data.write[i] = inner_vector;
+	}
+	float number_of_horizontal_angles = ies.number_horizontal_angles;
+	float max_horizontal_angle = ies.max_horizontal_angle; // Like 180.
+	float min_horizontal_angle = ies.min_horizontal_angle; // Like 0.
+	float number_of_vertical_angles = ies.number_vertical_angles;
+	float max_vertical_angle = ies.max_vertical_angle; // Like 90.
+	float min_vertical_angle = ies.min_vertical_angle; // Like 0.
 
-	IESLoadHelper IESLoader;
-	if (!IESLoader.load(ies_file, info)) {
-		ERR_PRINT(vformat("IES image loader error: %s", info.error().c_str()));
-		return FAILED;
+	Ref<Image> image = Image::create_empty(max_horizontal_angle - min_horizontal_angle, max_vertical_angle - min_vertical_angle, false, Image::FORMAT_RGBF);
+	image->fill(Color());
+	for (int i = 0; i < image->get_height(); ++i) {
+		for (int j = 0; j < image->get_width(); ++j) {
+			float original_i = static_cast<float>(i) * (max_vertical_angle - min_vertical_angle) / image->get_height() + min_vertical_angle;
+			float original_j = static_cast<float>(j) * (max_horizontal_angle - min_horizontal_angle) / image->get_width() + min_horizontal_angle;
+
+			int tex_i = static_cast<int>(original_i * number_of_vertical_angles / (max_vertical_angle - min_vertical_angle));
+			float normalized_angle = (original_j - min_horizontal_angle) / (max_horizontal_angle - min_horizontal_angle);
+			float index_f = normalized_angle * number_of_horizontal_angles;
+
+			int index_pre = CLAMP(static_cast<int>(index_f) - 1, 0, number_of_horizontal_angles - 2);
+			int index_from = CLAMP(static_cast<int>(index_f), 0, number_of_horizontal_angles - 2);
+			int index_to = CLAMP(index_from + 1, 0, number_of_horizontal_angles - 2);
+			int index_post = CLAMP(index_to + 1, 0, number_of_horizontal_angles - 2);
+
+			float intensity_pre = texture_data[tex_i][index_pre];
+			float intensity_from = texture_data[tex_i][index_from];
+			float intensity_to = texture_data[tex_i][index_to];
+			float intensity_post = texture_data[tex_i][index_post];
+			float intensity = Math::cubic_interpolate(intensity_pre, intensity_from, intensity_to, intensity_post, index_f - index_from);
+			image->set_pixel(j, i, Color(intensity, intensity, intensity));
+		}
 	}
-	int32_t width = 512;
-	width *= p_scale;
-	int32_t height = 1;
-	int32_t channel_count = 3;
-	Vector<uint8_t> imgdata;
-	imgdata.resize(width * height * channel_count * sizeof(float));
-	if (!IESLoader.saveAs1D(info, (float *)imgdata.ptrw(), width, channel_count)) {
-		ERR_PRINT(vformat("IES save error: %s", info.error().c_str()));
-		return FAILED;
-	}
-	p_image = Image::create_from_data(width, height, false, Image::FORMAT_RGBF, imgdata);
+
+	p_image->set_data(image->get_width(), image->get_height(), false, Image::FORMAT_RGBF, image->get_data());
 	p_image->generate_mipmaps();
-
 	return OK;
 }
 
