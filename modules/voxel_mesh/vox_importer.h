@@ -31,7 +31,7 @@
 #ifndef VOX_IMPORTER_H
 #define VOX_IMPORTER_H
 
-#include "editor/import/resource_importer_scene.h"
+#include "editor/import/3d/resource_importer_scene.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/resources/importer_mesh.h"
 #include <editor/import/editor_import_plugin.h>
