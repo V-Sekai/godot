@@ -45,7 +45,9 @@
 class Delaunay3D {
 	struct Simplex;
 
-	int ACCEL_GRID_SIZE = 16;
+	enum {
+		ACCEL_GRID_SIZE = 16
+	};
 	struct GridPos {
 		Vector3i pos;
 		List<Simplex *>::Element *E = nullptr;
