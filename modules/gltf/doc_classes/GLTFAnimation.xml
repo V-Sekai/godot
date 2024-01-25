@@ -7,6 +7,21 @@
 	<tutorials>
 		<link title="Runtime file loading and saving">$DOCS_URL/tutorials/io/runtime_file_loading_and_saving.html</link>
 	</tutorials>
+	<methods>
+		<method name="get_additional_data">
+			<return type="Variant" />
+			<param index="0" name="extension_name" type="StringName" />
+			<description>
+			</description>
+		</method>
+		<method name="set_additional_data">
+			<return type="void" />
+			<param index="0" name="extension_name" type="StringName" />
+			<param index="1" name="additional_data" type="Variant" />
+			<description>
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="loop" type="bool" setter="set_loop" getter="get_loop" default="false">
 		</member>
