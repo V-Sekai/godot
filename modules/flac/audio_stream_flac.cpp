@@ -193,6 +193,10 @@ void AudioStreamFLAC::set_data(const Vector<uint8_t> &p_data) {
 	drflac *pflac = drflac_open_memory(src_datar, src_data_len, nullptr);
 	ERR_FAIL_COND(pflac == nullptr);
 
+	if (pflac->channels != 2) {
+		ERR_FAIL_MSG("Number of channels must be exactly 2.");
+	}
+
 	channels = pflac->channels;
 	sample_rate = pflac->sampleRate;
 	length = float(pflac->totalPCMFrameCount) / float(sample_rate);
