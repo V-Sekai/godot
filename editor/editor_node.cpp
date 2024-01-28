@@ -5508,9 +5508,9 @@ void EditorNode::_notify_scene_updated(Node *p_node) {
 	if (skel_3d) {
 		skel_3d->reset_bone_poses();
 	} else {
-		BoneAttachment3D *attachment = Object::cast_to<BoneAttachment3D>(p_node);
-		if (attachment) {
-			attachment->notify_rebind_required();
+		SkeletonModifier3D *modification = Object::cast_to<SkeletonModifier3D>(p_node);
+		if (modification) {
+			modification->notify_rebind_required();
 		}
 	}
 
