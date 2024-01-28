@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bone_attachment_3d.h                                                  */
+/*  physical_bone_simulator_3d.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,63 +28,84 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BONE_ATTACHMENT_3D_H
-#define BONE_ATTACHMENT_3D_H
+#ifndef PHYSICAL_BONE_SIMULATOR_3D_H
+#define PHYSICAL_BONE_SIMULATOR_3D_H
 
 #include "scene/3d/skeleton_modifier_3d.h"
-#ifdef TOOLS_ENABLED
-#include "scene/resources/bone_map.h"
-#endif // TOOLS_ENABLED
 
-class BoneAttachment3D : public SkeletonModifier3D {
-	GDCLASS(BoneAttachment3D, SkeletonModifier3D);
+#include "scene/3d/physics_body_3d.h"
 
-	bool bound = false;
-	String bone_name;
-	int bone_idx = -1;
+class PhysicalBone3D;
 
-	bool override_pose = false;
-	void _override_pose();
+class PhysicalBoneSimulator3D : public SkeletonModifier3D {
+	GDCLASS(PhysicalBoneSimulator3D, SkeletonModifier3D);
+
+	real_t interpolation = 1.0;
+	bool simulating = false;
+	bool enabled = true;
+
+	struct SimulatedBone {
+		int parent;
+		Vector<int> child_bones;
+
+		Transform3D global_pose;
+
+		PhysicalBone3D *physical_bone = nullptr;
+		PhysicalBone3D *cache_parent_physical_bone = nullptr;
+
+		SimulatedBone() {
+			parent = -1;
+			global_pose = Transform3D();
+			physical_bone = nullptr;
+			cache_parent_physical_bone = nullptr;
+		}
+	};
+
+	Vector<SimulatedBone> bones;
+
+	/// This is a slow API, so it's cached
+	PhysicalBone3D *_get_physical_bone_parent(int p_bone);
+	void _rebuild_physical_bones_cache();
 
 protected:
-	void _validate_property(PropertyInfo &p_property) const;
-	void _notification(int p_what);
+	static void _bind_methods();
+
+	virtual void _set_active(bool p_active) override;
+
+	void _bone_list_changed();
+	void _pose_updated();
 
 	virtual void _process_modification(double p_delta) override;
 
-	static void _bind_methods();
-
-	virtual ObjectID _update_skeleton_path_extend() override;
-
 	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
 
-	void _update_bone();
-
-#ifndef DISABLE_DEPRECATED
-	void set_use_external_skeleton_bind_compat_87888(bool use_external_skeleton);
-	bool get_use_external_skeleton_bind_compat_87888() const;
-	static void _bind_compatibility_methods();
-#endif // DISABLE_DEPRECATED
-
 public:
-#ifdef TOOLS_ENABLED
-	virtual void notify_skeleton_bones_renamed(Node *p_base_scene, Skeleton3D *p_skeleton, Dictionary p_rename_map);
-#endif // TOOLS_ENABLED
+#ifndef DISABLE_DEPRECATED
+	bool is_compat = false;
+#endif // _DISABLE_DEPRECATED
+	void set_interpolation(real_t p_interpolation);
+	real_t get_interpolation() const;
 
-	virtual PackedStringArray get_configuration_warnings() const override;
+	int find_bone(const String &p_name) const;
+	String get_bone_name(int p_bone) const;
+	int get_bone_count() const;
+	bool is_bone_parent_of(int p_bone_id, int p_parent_bone_id) const;
 
-	void set_bone_name(const String &p_name);
-	String get_bone_name() const;
+	Transform3D get_bone_global_pose(int p_bone) const;
+	void set_bone_global_pose(int p_bone, const Transform3D &p_pose);
 
-	void set_bone_idx(const int &p_idx);
-	int get_bone_idx() const;
+	void bind_physical_bone_to_bone(int p_bone, PhysicalBone3D *p_physical_bone);
+	void unbind_physical_bone_from_bone(int p_bone);
 
-	void set_override_pose(bool p_override);
-	bool get_override_pose() const;
+	PhysicalBone3D *get_physical_bone(int p_bone);
+	PhysicalBone3D *get_physical_bone_parent(int p_bone);
 
-	virtual void on_bone_pose_update(int p_bone_index);
+	void physical_bones_stop_simulation();
+	void physical_bones_start_simulation_on(const TypedArray<StringName> &p_bones);
+	void physical_bones_add_collision_exception(RID p_exception);
+	void physical_bones_remove_collision_exception(RID p_exception);
 
-	BoneAttachment3D();
+	PhysicalBoneSimulator3D();
 };
 
-#endif // BONE_ATTACHMENT_3D_H
+#endif // PHYSICAL_BONE_SIMULATOR_3D_H
