@@ -5262,13 +5262,7 @@ void GLTFDocument::_convert_skeleton_to_gltf(Skeleton3D *p_skeleton3d, Ref<GLTFS
 }
 
 void GLTFDocument::_convert_bone_attachment_to_gltf(BoneAttachment3D *p_bone_attachment, Ref<GLTFState> p_state, GLTFNodeIndex p_parent_node_index, GLTFNodeIndex p_root_node_index, Ref<GLTFNode> p_gltf_node) {
-	Skeleton3D *skeleton;
-	// Note that relative transforms to external skeletons and pose overrides are not supported.
-	if (p_bone_attachment->get_use_external_skeleton()) {
-		skeleton = cast_to<Skeleton3D>(p_bone_attachment->get_node_or_null(p_bone_attachment->get_external_skeleton()));
-	} else {
-		skeleton = cast_to<Skeleton3D>(p_bone_attachment->get_parent());
-	}
+	Skeleton3D *skeleton = p_bone_attachment->get_skeleton();
 	GLTFSkeletonIndex skel_gltf_i = -1;
 	if (skeleton != nullptr && p_state->skeleton3d_to_gltf_skeleton.has(skeleton->get_instance_id())) {
 		skel_gltf_i = p_state->skeleton3d_to_gltf_skeleton[skeleton->get_instance_id()];
