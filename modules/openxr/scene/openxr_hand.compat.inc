@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bone_attachment_3d.h                                                  */
+/*  openxr_hand.compat.inc                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,66 +28,19 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BONE_ATTACHMENT_3D_H
-#define BONE_ATTACHMENT_3D_H
-
-#include "scene/3d/skeleton_modifier_3d.h"
-#ifdef TOOLS_ENABLED
-#include "scene/resources/bone_map.h"
-#endif // TOOLS_ENABLED
-
-class BoneAttachment3D : public SkeletonModifier3D {
-	GDCLASS(BoneAttachment3D, SkeletonModifier3D);
-
-	bool bound = false;
-	String bone_name;
-	int bone_idx = -1;
-
-	bool override_pose = false;
-	void _override_pose();
-	void _retrieve_pose();
-
-protected:
-	void _validate_property(PropertyInfo &p_property) const;
-	void _notification(int p_what);
-
-	virtual void _process_modification(double p_delta) override;
-
-	static void _bind_methods();
-
-	virtual ObjectID _update_skeleton_path_extend() override;
-
-	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
-
-	void _update_bone();
-
 #ifndef DISABLE_DEPRECATED
-	void _set_use_external_skeleton_bind_compat_87888(bool use_external_skeleton);
-	bool _get_use_external_skeleton_bind_compat_87888() const;
-	static void _bind_compatibility_methods();
+
+void OpenXRHand::_set_hand_skeleton_bind_compat_87888(const NodePath &p_hand_skeleton) {
+	set_external_skeleton(p_hand_skeleton);
+}
+
+NodePath OpenXRHand::_get_hand_skeleton_bind_compat_87888() const {
+	return get_external_skeleton();
+}
+
+void OpenXRHand::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("set_hand_skeleton", "hand_skeleton"), &OpenXRHand::_set_hand_skeleton_bind_compat_87888);
+	ClassDB::bind_compatibility_method(D_METHOD("get_hand_skeleton"), &OpenXRHand::_get_hand_skeleton_bind_compat_87888);
+}
+
 #endif // DISABLE_DEPRECATED
-
-public:
-#ifdef TOOLS_ENABLED
-	virtual void notify_skeleton_bones_renamed(Node *p_base_scene, Skeleton3D *p_skeleton, Dictionary p_rename_map);
-#endif // TOOLS_ENABLED
-
-	virtual PackedStringArray get_configuration_warnings() const override;
-
-	void set_bone_name(const String &p_name);
-	String get_bone_name() const;
-
-	void set_bone_idx(const int &p_idx);
-	int get_bone_idx() const;
-
-	void set_override_pose(bool p_override);
-	bool get_override_pose() const;
-
-#ifndef DISABLE_DEPRECATED
-	virtual void on_bone_pose_update(int p_bone_index);
-#endif // DISABLE_DEPRECATED
-
-	BoneAttachment3D();
-};
-
-#endif // BONE_ATTACHMENT_3D_H
