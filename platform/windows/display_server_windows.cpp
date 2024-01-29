@@ -247,8 +247,13 @@ public:
 	// IUnknown methods
 	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) {
 		static const QITAB qit[] = {
+#ifdef __MINGW32__
+			{ &__uuidof(IFileDialogEvents), static_cast<int>(OFFSETOFCLASS(IFileDialogEvents, FileDialogEventHandler)) },
+			{ &__uuidof(IFileDialogControlEvents), static_cast<int>(OFFSETOFCLASS(IFileDialogControlEvents, FileDialogEventHandler)) },
+#else
 			QITABENT(FileDialogEventHandler, IFileDialogEvents),
 			QITABENT(FileDialogEventHandler, IFileDialogControlEvents),
+#endif
 			{ 0, 0 },
 		};
 		return QISearch(this, qit, riid, ppv);
