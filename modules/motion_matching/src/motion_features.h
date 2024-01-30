@@ -105,8 +105,8 @@ public:
 	int root_track_pos = -1, root_track_quat = -1; //, root_track_scale = -1;
 
 	String root_bone_name = "%GeneralSkeleton:Root";
-	void set_root_bone_name(String value) {
-		root_bone_name = value;
+	void set_root_bone_name(String p_value = "%GeneralSkeleton:Root") {
+		root_bone_name = p_value;
 	}
 	String get_root_bone_name() { return root_bone_name; }
 
@@ -161,7 +161,7 @@ public:
 
 protected:
 	static void _bind_methods() {
-		ClassDB::bind_method(D_METHOD("set_weight", "value"), &RootVelocityMotionFeature::set_weight, DEFVAL(1.0f));
+		ClassDB::bind_method(D_METHOD("set_weight", "value"), &RootVelocityMotionFeature::set_weight);
 		ClassDB::bind_method(D_METHOD("get_weight"), &RootVelocityMotionFeature::get_weight);
 		ClassDB::add_property(get_class_static(), PropertyInfo(Variant::FLOAT, "weight"), "set_weight", "get_weight");
 
@@ -169,7 +169,7 @@ protected:
 		// ClassDB::bind_method( D_METHOD("get_body"), &RootVelocityMotionFeature::get_body);
 		// ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH,"Character",godot::PROPERTY_HINT_NODE_PATH_VALID_TYPES,"CharacterBody3D"),"set_body","get_body");
 
-		ClassDB::bind_method(D_METHOD("set_root_bone_name", "value"), &RootVelocityMotionFeature::set_root_bone_name, DEFVAL("%GeneralSkeleton:Root"));
+		ClassDB::bind_method(D_METHOD("set_root_bone_name", "value"), &RootVelocityMotionFeature::set_root_bone_name);
 		ClassDB::bind_method(D_METHOD("get_root_bone_name"), &RootVelocityMotionFeature::get_root_bone_name);
 		ADD_PROPERTY(PropertyInfo(Variant::STRING, "Root Bone"), "set_root_bone_name", "get_root_bone_name");
 		// ClassDB::bind_method( D_METHOD("setup_for_animation","animation"), &RootVelocityMotionFeature::setup_for_animation);
