@@ -40,8 +40,8 @@ struct CritDampSpring : public RefCounted {
 
 	static constexpr float Ln2 = 0.69314718056;
 	static float square(float x);
-	static Vector3 damp_adjustment_exact(Vector3 g, float halflife, float dt, float eps = 1e-8);
-	static Quaternion damp_adjustment_exact_quat(Quaternion g, float halflife, float dt, float eps = 1e-8);
+	static Vector3 damp_adjustment_exact(Vector3 g, float halflife, float dt, float eps = 1e-8f);
+	static Quaternion damp_adjustment_exact_quat(Quaternion g, float halflife, float dt, float eps = 1e-8f);
 	static Variant damper_exponential(Variant variable, Variant goal, float damping, float dt);
 	static float fast_negexp(float x);
 	static Variant damper_exact(Variant variable, Variant goal, float halflife, float dt, float eps = 1e-5f);
