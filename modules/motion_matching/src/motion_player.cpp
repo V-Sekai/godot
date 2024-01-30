@@ -31,6 +31,7 @@
 #include "motion_player.h"
 #include "scene/3d/physics_body_3d.h"
 #include "scene/3d/skeleton_3d.h"
+#include <climits>
 #include <cstdint>
 
 void MotionPlayer::set_skeleton_to_pose(Ref<Animation> animation, double time) {
@@ -463,7 +464,7 @@ void MotionPlayer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("recalculate_weights"), &MotionPlayer::recalculate_weights);
 	ClassDB::bind_method(D_METHOD("baking_data"), &MotionPlayer::baking_data);
-	ClassDB::bind_method(D_METHOD("query_pose", "include_category", "exclude_category"), &MotionPlayer::query_pose, DEFVAL(std::numeric_limits<int64_t>::max()), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("query_pose", "include_category", "exclude_category"), &MotionPlayer::query_pose, DEFVAL(INT64_MAX), DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("check_query_results", "Query", "Result count"), &MotionPlayer::check_query_results);
 }
 
