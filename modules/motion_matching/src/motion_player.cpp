@@ -36,8 +36,11 @@
 #include <cstdint>
 
 void MotionPlayer::set_skeleton_to_pose(Ref<Animation> animation, double time) {
+	ERR_FAIL_COND(animation.is_null());
 	CharacterBody3D *the_char = cast_to<CharacterBody3D>(get_node(main_node));
+	ERR_FAIL_NULL(the_char);
 	Skeleton3D *current_skeleton = cast_to<Skeleton3D>(the_char->get_node(NodePath("Armature/GeneralSkeleton")));
+	ERR_FAIL_NULL(current_skeleton);
 	for (auto bone_id = 0; bone_id < current_skeleton->get_bone_count(); ++bone_id) {
 		const auto bone_name = "%GeneralSkeleton:" + skeleton->get_bone_name(bone_id);
 		const auto pos_track = animation->find_track(NodePath(bone_name), Animation::TrackType::TYPE_POSITION_3D);
