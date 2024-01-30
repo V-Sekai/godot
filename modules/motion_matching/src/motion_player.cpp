@@ -329,7 +329,10 @@ TypedArray<Dictionary> MotionPlayer::query_pose(int64_t included_category, int64
 
 Array MotionPlayer::check_query_results(PackedFloat32Array query, int64_t nb_result) {
 	if (kdt == nullptr) {
-		auto nb_dimensions = query.size();
+		int64_t nb_dimensions = query.size();
+		if (!nb_dimensions) {
+			return Array();
+		}
 		Kdtree::KdNodeVector nodes{};
 		for (int64_t i = 0; i < MotionData.size() / nb_dimensions; ++i) {
 			auto begin = MotionData.ptr(), end = MotionData.ptr(); // We use the ptr as iterator.
@@ -356,7 +359,7 @@ Array MotionPlayer::check_query_results(PackedFloat32Array query, int64_t nb_res
 
 	kdt->set_distance(distance_type, &tmp_weight);
 
-	auto query_data = Kdtree::CoordPoint(query.ptr(), std::next(query.ptr(), query.size()));
+	Kdtree::CoordPoint query_data = Kdtree::CoordPoint(query.ptr(), std::next(query.ptr(), query.size()));
 
 	print_line("query Constructed");
 
@@ -372,9 +375,9 @@ Array MotionPlayer::check_query_results(PackedFloat32Array query, int64_t nb_res
 				i.index >= db_anim_category.size()) {
 			continue;
 		}
-		const auto anim_name = names[db_anim_index[i.index]];
-		const auto anim_time = db_anim_timestamp[i.index];
-		const auto anim_cat = db_anim_category[i.index];
+		const StringName anim_name = names[db_anim_index[i.index]];
+		const float anim_time = db_anim_timestamp[i.index];
+		const int anim_cat = db_anim_category[i.index];
 		Array anim_array;
 		anim_array.resize(3);
 		anim_array[0] = anim_name;
