@@ -21,8 +21,8 @@
 		</method>
 		<method name="query_pose">
 			<return type="Dictionary[]" />
-			<param index="0" name="include_category" type="int" default="9223372036854775807" />
-			<param index="1" name="exclude_category" type="int" default="0" />
+			<param index="0" name="include_category" type="int" />
+			<param index="1" name="exclude_category" type="int" />
 			<description>
 			</description>
 		</method>

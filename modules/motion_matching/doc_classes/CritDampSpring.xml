@@ -65,7 +65,7 @@
 			<param index="0" name="g" type="Vector3" />
 			<param index="1" name="halflife" type="float" />
 			<param index="2" name="dt" type="float" />
-			<param index="3" name="eps" type="float" default="1e-08" />
+			<param index="3" name="eps" type="float" />
 			<description>
 			</description>
 		</method>
@@ -74,7 +74,7 @@
 			<param index="0" name="g" type="Quaternion" />
 			<param index="1" name="halflife" type="float" />
 			<param index="2" name="dt" type="float" />
-			<param index="3" name="eps" type="float" default="1e-08" />
+			<param index="3" name="eps" type="float" />
 			<description>
 			</description>
 		</method>
@@ -104,7 +104,7 @@
 		<method name="damping_to_halflife" qualifiers="static">
 			<return type="float" />
 			<param index="0" name="damping" type="float" />
-			<param index="1" name="eps" type="float" default="1e-05" />
+			<param index="1" name="eps" type="float" />
 			<description>
 			</description>
 		</method>
@@ -126,7 +126,7 @@
 		<method name="halflife_to_damping" qualifiers="static">
 			<return type="float" />
 			<param index="0" name="halflife" type="float" />
-			<param index="1" name="eps" type="float" default="1e-05" />
+			<param index="1" name="eps" type="float" />
 			<description>
 			</description>
 		</method>
@@ -163,7 +163,7 @@
 			<param index="4" name="t_goal" type="float" />
 			<param index="5" name="halflife" type="float" />
 			<param index="6" name="dt" type="float" />
-			<param index="7" name="apprehension" type="float" default="2.0" />
+			<param index="7" name="apprehension" type="float" />
 			<description>
 			</description>
 		</method>
