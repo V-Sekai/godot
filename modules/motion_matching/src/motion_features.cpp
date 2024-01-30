@@ -431,7 +431,7 @@ void PredictionMotionFeature::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "weight_prediction_angle"), "set_weight_prediction_angle", "get_weight_prediction_angle");
 
 	ClassDB::bind_method(D_METHOD("set_root_bone_name", "root_bone_name"), &PredictionMotionFeature::set_root_bone_name, DEFVAL("%GeneralSkeleton:Root"));
-	ClassDB::bind_method(D_METHOD("get_root_bone_name"), &PredictionMotionFeature::get_weight_prediction_angle);
+	ClassDB::bind_method(D_METHOD("get_root_bone_name"), &PredictionMotionFeature::get_root_bone_name);
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_bone_name"), "set_root_bone_name", "get_root_bone_name");
 	ClassDB::bind_method(D_METHOD("set_past_time_dt", "past_time_delta"), &PredictionMotionFeature::set_past_time_dt);
 	ClassDB::bind_method(D_METHOD("get_past_time_dt"), &PredictionMotionFeature::get_past_time_dt);
