@@ -489,6 +489,9 @@ void MotionPlayer::_notification(int p_what) {
 			print_line(vformat("Total Dimension %d", nb_dimensions));
 			print_line("Constructing kdtree");
 			Kdtree::KdNodeVector nodes{};
+			if (!nb_dimensions) {
+				return;
+			}
 			for (int64_t i = 0; i < MotionData.size() / nb_dimensions; ++i) {
 				auto begin = MotionData.ptr(), end = MotionData.ptr(); // We use the ptr as iterator.
 				begin = std::next(begin, nb_dimensions * i);
@@ -520,6 +523,7 @@ void MotionPlayer::_notification(int p_what) {
 		} break;
 	}
 }
+
 void MotionPlayer::set_distance_type(int value) {
 	distance_type = value;
 	if (kdt != nullptr && 0 <= distance_type && distance_type <= 2)
