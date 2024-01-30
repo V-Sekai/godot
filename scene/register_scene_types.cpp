@@ -31,7 +31,6 @@
 #include "register_scene_types.h"
 
 #include "core/config/project_settings.h"
-#include "core/extension/gdextension_manager.h"
 #include "core/object/class_db.h"
 #include "core/os/os.h"
 #include "scene/2d/animated_sprite_2d.h"
@@ -141,6 +140,7 @@
 #include "scene/main/window.h"
 #include "scene/resources/animated_texture.h"
 #include "scene/resources/animation_library.h"
+#include "scene/resources/asset_state_3d.h"
 #include "scene/resources/atlas_texture.h"
 #include "scene/resources/audio_stream_polyphonic.h"
 #include "scene/resources/audio_stream_wav.h"
@@ -273,6 +273,8 @@
 #include "scene/3d/world_environment.h"
 #include "scene/3d/xr_nodes.h"
 #include "scene/animation/root_motion_view.h"
+#include "scene/resources/asset_document_3d.h"
+#include "scene/resources/asset_state_3d.h"
 #include "scene/resources/environment.h"
 #include "scene/resources/fog_material.h"
 #include "scene/resources/importer_mesh.h"
@@ -507,6 +509,8 @@ void register_scene_types() {
 	GDREGISTER_CLASS(Skeleton3D);
 	GDREGISTER_CLASS(ImporterMesh);
 	GDREGISTER_CLASS(ImporterMeshInstance3D);
+	GDREGISTER_ABSTRACT_CLASS(AssetState3D);
+	GDREGISTER_ABSTRACT_CLASS(AssetDocument3D);
 	GDREGISTER_VIRTUAL_CLASS(VisualInstance3D);
 	GDREGISTER_VIRTUAL_CLASS(GeometryInstance3D);
 	GDREGISTER_CLASS(Camera3D);
