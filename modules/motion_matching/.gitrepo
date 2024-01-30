@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot_motion_matching.git
+	branch = main
+	commit = b21fad55b7d0850c9539bc744eaffb6584abd45c
+	parent = 9ab5cedef6de32826b9184e960b3880df3888a5a
+	method = merge
+	cmdver = 0.4.6
