@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "motion_player.h"
+#include "core/error/error_macros.h"
 #include "scene/3d/physics_body_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include <climits>
@@ -54,7 +55,7 @@ void MotionPlayer::set_skeleton_to_pose(Ref<Animation> animation, double time) {
 
 void MotionPlayer::reset_skeleton_poses() {
 	skeleton = cast_to<Skeleton3D>(get_node(skeleton_path));
-	print_line((skeleton == nullptr) ? "Skeleton error, path not found" : "Skeleton set");
+	ERR_FAIL_NULL_MSG(skeleton, "Skeleton error, path not found");
 	print_line("Resetting the skeleton");
 	skeleton->reset_bone_poses();
 	print_line("Skeleton reset");
@@ -62,6 +63,7 @@ void MotionPlayer::reset_skeleton_poses() {
 
 void MotionPlayer::baking_data() {
 	skeleton = cast_to<Skeleton3D>(get_node(skeleton_path));
+	ERR_FAIL_NULL_MSG(skeleton, "Skeleton error, path not found");
 
 	if (motion_features.size() == 0) {
 		print_line("Motions Features is empty");
@@ -72,6 +74,7 @@ void MotionPlayer::baking_data() {
 	}
 	Node *character;
 	character = get_node(main_node);
+	ERR_FAIL_NULL_MSG(character, "Character not found");
 
 	if (kdt != nullptr) {
 		delete kdt;
