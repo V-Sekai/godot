@@ -11,7 +11,7 @@
 		</member>
 		<member name="past_time_dt" type="PackedFloat32Array" setter="set_past_time_dt" getter="get_past_time_dt" default="PackedFloat32Array()">
 		</member>
-		<member name="root_bone_name" type="float" setter="set_root_bone_name" getter="get_root_bone_name" default="1.0">
+		<member name="root_bone_name" type="String" setter="set_root_bone_name" getter="get_root_bone_name" default="&quot;%GeneralSkeleton:Root&quot;">
 		</member>
 		<member name="weight_history_pos" type="float" setter="set_weight_history_pos" getter="get_weight_history_pos" default="1.0">
 		</member>
