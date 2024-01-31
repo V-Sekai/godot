@@ -62,8 +62,8 @@ class MotionPlayer : public Node {
 	static constexpr float time_delta = 1.f / 30.f;
 
 public:
-	MotionPlayer() {};
-	~MotionPlayer() {};
+	MotionPlayer(){};
+	~MotionPlayer(){};
 
 	PackedFloat32Array MotionData;
 
