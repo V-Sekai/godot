@@ -1,0 +1,59 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+*.exp
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Scons 
+.vscode/
+.sconsign.dblite
+
+.DS_Store
+
+*.os
+
+__pycache__/
+
+# Logs
+*.log
+!modules/motion_matching/thirdparty/motionmatchingboost/bin.v2/config.log
+
+x86/
+!modules/motion_matching/thirdparty/motionmatchingboost/boost/predef/architecture/x86/
+
+![Dd]ebug/
+![Rr]elease/
+
+[Aa][Rr][Mm]/
+!modules/motion_matching/thirdparty/motionmatchingboost/boost/predef/hardware/simd/arm/
+!modules/motion_matching/thirdparty/motionmatchingboost/bin.v2/config.log
+!modules/motion_matching/thirdparty/motionmatchingboost/boost/predef/architecture/x86/
+!modules/motion_matching/thirdparty/motionmatchingboost/boost/predef/hardware/simd/arm/
