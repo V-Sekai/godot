@@ -97,8 +97,6 @@
 #ifndef ufbx_assert
 	#if defined(UFBX_NO_ASSERT)
 		#define ufbx_assert(cond) (void)0
-	#elif defined(UFBX_VOID_ASSERT)
-		#define ufbx_assert(cond) (void)(!(cond))
 	#else
 		#include <assert.h>
 		#define ufbx_assert(cond) assert(cond)
@@ -885,6 +883,9 @@ struct ufbx_node {
 	// There may be multiple copies of a single `ufbx_mesh` with different materials
 	// in the `ufbx_node` instances.
 	ufbx_material_list materials;
+
+	// Bind pose
+	ufbx_nullable ufbx_pose *bind_pose;
 
 	// Visibility state.
 	bool visible;
@@ -1931,7 +1932,6 @@ struct ufbx_skin_cluster {
 
 	// Matrix that specifies the rest/bind pose transform of the node,
 	// not generally needed for skinning, use `geometry_to_bone` instead.
-	// NOTE: This does not account for unit scaling!
 	ufbx_matrix bind_to_world;
 
 	// Precomputed matrix/transform that accounts for the current bone transform
@@ -3194,9 +3194,18 @@ struct ufbx_constraint {
 // -- Miscellaneous
 
 typedef struct ufbx_bone_pose {
+
+	// Node to apply the pose to.
 	ufbx_node *bone_node;
-	// NOTE: This does not account for unit scaling!
+
+	// Matrix from node local space to world space.
 	ufbx_matrix bone_to_world;
+
+	// Matrix from node local space to parent space.
+	// NOTE: FBX only stores world transformations so this is approximated from
+	// the parent world transform.
+	ufbx_matrix bone_to_parent;
+
 } ufbx_bone_pose;
 
 UFBX_LIST_TYPE(ufbx_bone_pose_list, ufbx_bone_pose);
@@ -3209,7 +3218,10 @@ struct ufbx_pose {
 		uint32_t typed_id;
 	}; };
 
+	// Set if this pose is marked as a bind pose.
 	bool is_bind_pose;
+
+	// List of bone poses, sorted by `ufbx_node.typed_id`.
 	ufbx_bone_pose_list bone_poses;
 };
 
@@ -3855,6 +3867,9 @@ typedef enum ufbx_error_type UFBX_ENUM_REPR {
 
 	// File not found.
 	UFBX_ERROR_FILE_NOT_FOUND,
+
+	// Empty file.
+	UFBX_ERROR_EMPTY_FILE,
 
 	// External file not found.
 	// See `ufbx_load_opts.load_external_files` for more information.
@@ -4951,6 +4966,10 @@ ufbx_abi void ufbx_free_baked_anim(ufbx_baked_anim *bake);
 ufbx_abi ufbx_vec3 ufbx_evaluate_baked_vec3(ufbx_baked_vec3_list keyframes, double time);
 ufbx_abi ufbx_quat ufbx_evaluate_baked_quat(ufbx_baked_quat_list keyframes, double time);
 
+// Poses
+
+ufbx_abi ufbx_bone_pose *ufbx_get_bone_pose(const ufbx_pose *pose, const ufbx_node *node);
+
 // Materials
 
 ufbx_abi ufbx_texture *ufbx_find_prop_texture_len(const ufbx_material *material, const char *name, size_t name_len);
@@ -5110,7 +5129,6 @@ ufbx_unsafe ufbx_abi void ufbx_thread_pool_run_task(ufbx_thread_pool_context ctx
 
 ufbx_unsafe ufbx_abi void ufbx_thread_pool_set_user_ptr(ufbx_thread_pool_context ctx, void *user_ptr);
 ufbx_unsafe ufbx_abi void *ufbx_thread_pool_get_user_ptr(ufbx_thread_pool_context ctx);
-
 
 // -- Inline API
 

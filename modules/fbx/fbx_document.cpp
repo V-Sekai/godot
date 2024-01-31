@@ -337,6 +337,20 @@ Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 
 			node->xform.basis.set_quaternion_scale(node->rotation, node->scale);
 			node->xform.origin = node->position;
+
+			if (fbx_node->bind_pose) {
+				ufbx_bone_pose *pose = ufbx_get_bone_pose(fbx_node->bind_pose, fbx_node);
+				ufbx_transform rest_transform = ufbx_matrix_to_transform(&pose->bone_to_parent);
+
+				Vector3 rest_position = _as_vec3(rest_transform.translation);
+				Quaternion rest_rotation = _as_quaternion(rest_transform.rotation);
+				Vector3 rest_scale = _as_vec3(rest_transform.scale);
+
+				node->rest_xform.basis.set_quaternion_scale(rest_rotation, rest_scale);
+				node->rest_xform.origin = rest_position;
+			} else {
+				node->rest_xform = node->xform;
+			}
 		}
 
 		for (const ufbx_node *child : fbx_node->children) {

@@ -606,6 +606,7 @@ Error GLTFDocument::_parse_nodes(Ref<GLTFState> p_state) {
 
 			node->xform.basis.set_quaternion_scale(node->rotation, node->scale);
 			node->xform.origin = node->position;
+			node->rest_xform = node->xform;
 		}
 
 		if (n.has("extensions")) {

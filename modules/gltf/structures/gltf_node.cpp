@@ -37,6 +37,8 @@ void GLTFNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_height", "height"), &GLTFNode::set_height);
 	ClassDB::bind_method(D_METHOD("get_xform"), &GLTFNode::get_xform);
 	ClassDB::bind_method(D_METHOD("set_xform", "xform"), &GLTFNode::set_xform);
+	ClassDB::bind_method(D_METHOD("get_rest_xform"), &GLTFNode::get_rest_xform);
+	ClassDB::bind_method(D_METHOD("set_rest_xform", "rest_xform"), &GLTFNode::set_rest_xform);
 	ClassDB::bind_method(D_METHOD("get_mesh"), &GLTFNode::get_mesh);
 	ClassDB::bind_method(D_METHOD("set_mesh", "mesh"), &GLTFNode::set_mesh);
 	ClassDB::bind_method(D_METHOD("get_camera"), &GLTFNode::get_camera);
@@ -61,6 +63,7 @@ void GLTFNode::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "parent"), "set_parent", "get_parent"); // GLTFNodeIndex
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "height"), "set_height", "get_height"); // int
 	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "xform"), "set_xform", "get_xform"); // Transform3D
+	ADD_PROPERTY(PropertyInfo(Variant::TRANSFORM3D, "rest_xform"), "set_rest_xform", "get_rest_xform"); // Transform3D
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mesh"), "set_mesh", "get_mesh"); // GLTFMeshIndex
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "camera"), "set_camera", "get_camera"); // GLTFCameraIndex
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "skin"), "set_skin", "get_skin"); // GLTFSkinIndex
@@ -94,6 +97,14 @@ Transform3D GLTFNode::get_xform() {
 
 void GLTFNode::set_xform(Transform3D p_xform) {
 	xform = p_xform;
+}
+
+Transform3D GLTFNode::get_rest_xform() {
+	return rest_xform;
+}
+
+void GLTFNode::set_rest_xform(Transform3D p_rest_xform) {
+	rest_xform = p_rest_xform;
 }
 
 GLTFMeshIndex GLTFNode::get_mesh() {
