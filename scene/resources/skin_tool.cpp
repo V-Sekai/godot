@@ -592,7 +592,8 @@ Error SkinTool::_create_skeletons(
 			node->set_name(_gen_unique_bone_name(unique_names, node->get_name()));
 
 			skeleton->add_bone(node->get_name());
-			skeleton->set_bone_rest(bone_index, node->rest_xform);
+			Transform3D rest_transform = node->get_additional_data("GODOT_rest_transform");
+			skeleton->set_bone_rest(bone_index, rest_transform);
 			skeleton->set_bone_pose_position(bone_index, node->position);
 			skeleton->set_bone_pose_rotation(bone_index, node->rotation.normalized());
 			skeleton->set_bone_pose_scale(bone_index, node->scale);

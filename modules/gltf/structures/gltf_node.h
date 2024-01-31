@@ -47,7 +47,6 @@ private:
 	GLTFNodeIndex parent = -1;
 	int height = -1;
 	Transform3D xform;
-	Transform3D rest_xform;
 	GLTFMeshIndex mesh = -1;
 	GLTFCameraIndex camera = -1;
 	GLTFSkinIndex skin = -1;

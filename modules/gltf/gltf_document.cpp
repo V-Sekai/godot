@@ -604,9 +604,10 @@ Error GLTFDocument::_parse_nodes(Ref<GLTFState> p_state) {
 				node->scale = _arr_to_vec3(n["scale"]);
 			}
 
-			node->xform.basis.set_quaternion_scale(node->rotation, node->scale);
-			node->xform.origin = node->position;
-			node->rest_xform = node->xform;
+			Transform3D godot_rest_transform;
+			godot_rest_transform.basis.set_quaternion_scale(node->rotation, node->scale);
+			godot_rest_transform.origin = node->position;
+			node->set_additional_data("GODOT_rest_transform", godot_rest_transform);
 		}
 
 		if (n.has("extensions")) {

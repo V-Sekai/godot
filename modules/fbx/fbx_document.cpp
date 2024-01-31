@@ -345,11 +345,12 @@ Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 				Vector3 rest_position = _as_vec3(rest_transform.translation);
 				Quaternion rest_rotation = _as_quaternion(rest_transform.rotation);
 				Vector3 rest_scale = _as_vec3(rest_transform.scale);
-
-				node->rest_xform.basis.set_quaternion_scale(rest_rotation, rest_scale);
-				node->rest_xform.origin = rest_position;
+				Transform3D godot_rest_xform;
+				godot_rest_xform.basis.set_quaternion_scale(rest_rotation, rest_scale);
+				godot_rest_xform.origin = rest_position;
+				node->set_additional_data("GODOT_rest_transform", godot_rest_xform);
 			} else {
-				node->rest_xform = node->xform;
+				node->set_additional_data("GODOT_rest_transform", node->xform);
 			}
 		}
 
