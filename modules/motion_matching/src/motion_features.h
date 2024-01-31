@@ -96,7 +96,7 @@ protected:
 
 #include "scene/3d/physics_body_3d.h"
 
-struct RootVelocityMotionFeature : public MotionFeature {
+class RootVelocityMotionFeature : public MotionFeature {
 	GDCLASS(RootVelocityMotionFeature, MotionFeature)
 public:
 	CharacterBody3D *body;
@@ -190,7 +190,7 @@ protected:
 	}
 };
 
-struct BonePositionVelocityMotionFeature : public MotionFeature {
+class BonePositionVelocityMotionFeature : public MotionFeature {
 	GDCLASS(BonePositionVelocityMotionFeature, MotionFeature)
 	Skeleton3D *skeleton = nullptr;
 	NodePath to_skeleton{};
@@ -223,7 +223,7 @@ protected:
 	virtual void debug_pose_gizmo(Ref<RefCounted> gizmo, const PackedFloat32Array data, Transform3D tr = Transform3D{}) override;
 };
 
-struct PredictionMotionFeature : public MotionFeature {
+class PredictionMotionFeature : public MotionFeature {
 	GDCLASS(PredictionMotionFeature, MotionFeature)
 
 	GETSET(Skeleton3D *, skeleton, nullptr);
