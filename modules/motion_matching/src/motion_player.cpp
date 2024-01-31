@@ -426,7 +426,7 @@ void MotionPlayer::_bind_methods() {
 		ClassDB::bind_method(D_METHOD("set_main_node", "path"), &MotionPlayer::set_main_node);
 		ClassDB::bind_method(D_METHOD("get_main_node"), &MotionPlayer::get_main_node);
 		ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "main_node"), "set_main_node", "get_main_node");
-		ClassDB::bind_method(D_METHOD("set_skeleton_path", "skeleton path"), &MotionPlayer::set_skeleton);
+		ClassDB::bind_method(D_METHOD("set_skeleton_path", "skeleton_path"), &MotionPlayer::set_skeleton);
 		ClassDB::bind_method(D_METHOD("get_skeleton"), &MotionPlayer::get_skeleton);
 		ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton_node_path"), "set_skeleton_path", "get_skeleton");
 
