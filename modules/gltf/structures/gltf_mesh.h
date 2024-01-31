@@ -42,6 +42,7 @@ private:
 	Ref<ImporterMesh> mesh;
 	Vector<float> blend_weights;
 	TypedArray<Material> instance_materials;
+	Dictionary additional_data;
 
 protected:
 	static void _bind_methods();
@@ -53,6 +54,8 @@ public:
 	void set_blend_weights(Vector<float> p_blend_weights);
 	TypedArray<Material> get_instance_materials();
 	void set_instance_materials(TypedArray<Material> p_instance_materials);
+	Variant get_additional_data(const StringName &p_extension_name);
+	void set_additional_data(const StringName &p_extension_name, Variant p_additional_data);
 };
 
 #endif // GLTF_MESH_H

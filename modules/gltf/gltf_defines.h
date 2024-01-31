@@ -49,6 +49,7 @@ struct GLTFAccessor;
 class GLTFAnimation;
 class GLTFBufferView;
 class GLTFCamera;
+class AssetDocument3D;
 class GLTFDocument;
 class GLTFDocumentExtension;
 class GLTFLight;
