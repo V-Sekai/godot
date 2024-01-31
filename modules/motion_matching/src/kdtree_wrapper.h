@@ -40,9 +40,9 @@
 
 #include "../thirdparty/kdtree.hpp"
 
-struct KDTree : public Resource {
+class KDTree : public Resource {
 	GDCLASS(KDTree, Resource)
-
+public:
 	Kdtree::KdTree *kd = nullptr;
 	KDTree() :
 			kd{ nullptr } {

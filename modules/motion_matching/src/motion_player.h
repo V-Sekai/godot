@@ -61,12 +61,13 @@
 #define STR(x) #x
 #define STRING_PREFIX(prefix, s) STR(prefix##s)
 
-struct MotionPlayer : public Node {
+class MotionPlayer : public Node {
 	GDCLASS(MotionPlayer, Node)
 
 	static constexpr float interval = 0.1;
 	static constexpr float time_delta = 1.f / 30.f;
 
+public:
 	MotionPlayer() = default;
 	~MotionPlayer() = default;
 

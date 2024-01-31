@@ -35,9 +35,10 @@
 #include "core/variant/dictionary.h"
 #include "core/variant/variant.h"
 
-struct CritDampSpring : public RefCounted {
+class CritDampSpring : public RefCounted {
 	GDCLASS(CritDampSpring, RefCounted)
-
+	
+public:
 	static constexpr float Ln2 = 0.69314718056;
 	static float square(float x);
 	static Vector3 damp_adjustment_exact(Vector3 g, float halflife, float dt, float eps = 1e-8f);

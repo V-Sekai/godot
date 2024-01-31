@@ -36,10 +36,10 @@
 #include "core/io/resource.h"
 #include "core/object/class_db.h"
 
-struct AABBTree : public Resource {
+class AABBTree : public Resource {
 	GDCLASS(AABBTree, Resource)
 	aabb::Tree bvh{};
-
+public:
 	void setup_tree(int dim, float fattening, int64_t nb_particles, bool touching_is_overlap);
 	void insert_particle_at_position(int64_t index, PackedFloat32Array position, float radius);
 	void insert_particle(int64_t index, PackedFloat32Array lowerbound, PackedFloat32Array upperbound);

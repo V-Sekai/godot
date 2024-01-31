@@ -66,7 +66,7 @@
 	BINDER(type, variable, __VA_ARGS__)                    \
 	ADD_PROPERTY(PropertyInfo(variant_type, #variable), STRING_PREFIX(set_, variable), STRING_PREFIX(get_, variable));
 
-struct MotionFeature : public Resource {
+class MotionFeature : public Resource {
 	GDCLASS(MotionFeature, Resource)
 public:
 	static constexpr float delta = 0.016f;
