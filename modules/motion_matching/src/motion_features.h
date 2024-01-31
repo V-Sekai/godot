@@ -380,10 +380,4 @@ protected:
 	virtual void debug_pose_gizmo(Ref<RefCounted> gizmo, const PackedFloat32Array data, Transform3D tr = Transform3D{}) override;
 };
 
-#undef MAKE_RESOURCE_TYPE_HINT
-#undef GETSET
-#undef STR
-#undef STRING_PREFIX
-#undef BINDER
-
 #endif // MOTION_FEATURES_H

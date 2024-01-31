@@ -42,12 +42,12 @@ void MotionPlayer::set_skeleton_to_pose(Ref<Animation> animation, double time) {
 	Skeleton3D *current_skeleton = cast_to<Skeleton3D>(the_char->get_node(NodePath("Armature/GeneralSkeleton")));
 	ERR_FAIL_NULL(current_skeleton);
 	for (auto bone_id = 0; bone_id < current_skeleton->get_bone_count(); ++bone_id) {
-		const auto bone_name = "%GeneralSkeleton:" + skeleton->get_bone_name(bone_id);
-		const auto pos_track = animation->find_track(NodePath(bone_name), Animation::TrackType::TYPE_POSITION_3D);
-		const auto rot_track = animation->find_track(NodePath(bone_name), Animation::TrackType::TYPE_ROTATION_3D);
+		const String bone_name = "%GeneralSkeleton:" + current_skeleton->get_bone_name(bone_id);
+		const int pos_track = animation->find_track(NodePath(bone_name), Animation::TrackType::TYPE_POSITION_3D);
+		const int rot_track = animation->find_track(NodePath(bone_name), Animation::TrackType::TYPE_ROTATION_3D);
 		if (pos_track >= 0) {
 			const Vector3 position = animation->position_track_interpolate(pos_track, time);
-			current_skeleton->set_bone_pose_position(bone_id, position * skeleton->get_motion_scale());
+			current_skeleton->set_bone_pose_position(bone_id, position * current_skeleton->get_motion_scale());
 		}
 		if (rot_track >= 0) {
 			const Quaternion rotation = animation->rotation_track_interpolate(rot_track, time);
@@ -57,21 +57,21 @@ void MotionPlayer::set_skeleton_to_pose(Ref<Animation> animation, double time) {
 }
 
 void MotionPlayer::reset_skeleton_poses() {
-	skeleton = cast_to<Skeleton3D>(get_node(skeleton_path));
-	ERR_FAIL_NULL_MSG(skeleton, "Skeleton error, path not found");
+	Skeleton3D *current_skeleton = cast_to<Skeleton3D>(get_node(skeleton_path));
+	ERR_FAIL_NULL_MSG(current_skeleton, "Skeleton error, path not found");
 	print_line("Resetting the skeleton");
-	skeleton->reset_bone_poses();
+	current_skeleton->reset_bone_poses();
 	print_line("Skeleton reset");
 }
 
 void MotionPlayer::baking_data() {
-	skeleton = cast_to<Skeleton3D>(get_node(skeleton_path));
-	ERR_FAIL_NULL_MSG(skeleton, "Skeleton error, path not found");
+	Skeleton3D *current_skeleton = cast_to<Skeleton3D>(get_node(skeleton_path));
+	ERR_FAIL_NULL_MSG(current_skeleton, "Skeleton error, path not found");
 
 	if (motion_features.size() == 0) {
 		print_line("Motions Features is empty");
 		return;
-	} else if (skeleton == nullptr) {
+	} else if (current_skeleton == nullptr) {
 		print_line("Skeleton isn't properly set");
 		return;
 	}
@@ -230,7 +230,7 @@ void MotionPlayer::baking_data() {
 
 	print_line(vformat("Nb poses %d", int64_t(nodes.size())));
 
-	skeleton->reset_bone_poses();
+	current_skeleton->reset_bone_poses();
 }
 
 void MotionPlayer::recalculate_weights() {
@@ -539,3 +539,7 @@ void MotionPlayer::set_distance_type(int value) {
 		kdt->set_distance(distance_type);
 }
 int MotionPlayer::get_distance_type() { return distance_type; }
+void MotionPlayer::set_skeleton(NodePath path) {
+	skeleton_path = path;
+}
+NodePath MotionPlayer::get_skeleton() { return skeleton_path; }
