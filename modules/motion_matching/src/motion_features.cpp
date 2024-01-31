@@ -235,10 +235,6 @@ PackedFloat32Array BonePositionVelocityMotionFeature::get_weights() {
 	return result;
 }
 
-float BonePositionVelocityMotionFeature::get_weight_bone_pos() const {
-	return weight_bone_pos;
-}
-
 void BonePositionVelocityMotionFeature::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_to_skeleton", "value"), &BonePositionVelocityMotionFeature::set_to_skeleton);
 	ClassDB::bind_method(D_METHOD("get_to_skeleton"), &BonePositionVelocityMotionFeature::get_to_skeleton);
