@@ -14,8 +14,8 @@
 		</method>
 		<method name="check_query_results">
 			<return type="Array" />
-			<param index="0" name="Query" type="PackedFloat32Array" />
-			<param index="1" name="Result count" type="int" />
+			<param index="0" name="query" type="PackedFloat32Array" />
+			<param index="1" name="result_count" type="int" />
 			<description>
 			</description>
 		</method>
@@ -53,7 +53,7 @@
 		</member>
 		<member name="category_track_names" type="String[]" setter="set_category_track_names" getter="get_category_track_names" default="[]">
 		</member>
-		<member name="category_value" type="int" setter="set_category_value" getter="get_category_value" default="0">
+		<member name="category_value" type="int" setter="set_category_value" getter="get_category_value" default="2147483647">
 		</member>
 		<member name="db_anim_category" type="PackedInt32Array" setter="set_db_anim_category" getter="get_db_anim_category" default="PackedInt32Array()">
 		</member>

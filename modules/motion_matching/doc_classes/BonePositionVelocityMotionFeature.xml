@@ -7,9 +7,9 @@
 	<tutorials>
 	</tutorials>
 	<members>
-		<member name="Bones" type="PackedStringArray" setter="set_bone_names" getter="get_bone_names" default="PackedStringArray()">
+		<member name="bones" type="PackedStringArray" setter="set_bone_names" getter="get_bone_names" default="PackedStringArray()">
 		</member>
-		<member name="Skeleton" type="NodePath" setter="set_to_skeleton" getter="get_to_skeleton" default="NodePath(&quot;&quot;)">
+		<member name="skeleton" type="NodePath" setter="set_to_skeleton" getter="get_to_skeleton" default="NodePath(&quot;&quot;)">
 		</member>
 	</members>
 </class>
