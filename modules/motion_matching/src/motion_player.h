@@ -244,14 +244,7 @@ public:
 		const std::bitset<64> m_exclude_category;
 		Category_Pred(int64_t included_category_bitfield, int64_t excluded_category_bitfield = 0) :
 				m_desired_category{ static_cast<uint64_t>(included_category_bitfield) }, m_exclude_category{ static_cast<uint64_t>(excluded_category_bitfield) } {}
-
-		virtual bool operator()(const Kdtree::KdNode &node) const {
-			static constexpr std::bitset<64> zero = {};
-			const std::bitset<64> node_category = *((int32_t *)node.data);
-			const bool include = (m_desired_category & node_category) == node_category;
-			const bool exclude = (m_exclude_category & node_category) == zero;
-			return include && exclude;
-		}
+		virtual bool operator()(const Kdtree::KdNode &node) const;
 	};
 	// Calculate the weights using the features get_weights() functions.
 	// Take into consideration the number of dimensions.

@@ -538,8 +538,19 @@ void MotionPlayer::set_distance_type(int value) {
 	if (kdt != nullptr && 0 <= distance_type && distance_type <= 2)
 		kdt->set_distance(distance_type);
 }
+
 int MotionPlayer::get_distance_type() { return distance_type; }
+
 void MotionPlayer::set_skeleton(NodePath path) {
 	skeleton_path = path;
 }
+
 NodePath MotionPlayer::get_skeleton() { return skeleton_path; }
+
+bool MotionPlayer::Category_Pred::operator()(const Kdtree::KdNode &node) const {
+	static constexpr std::bitset<64> zero = {};
+	const std::bitset<64> node_category = *((int32_t *)node.data);
+	const bool include = (m_desired_category & node_category) == node_category;
+	const bool exclude = (m_exclude_category & node_category) == zero;
+	return include && exclude;
+}
