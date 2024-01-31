@@ -89,6 +89,9 @@ Variant EditorSceneFormatImporterUFBX::get_option_visibility(const String &p_pat
 	if (file_extension != "fbx" && p_option.begins_with("fbx/")) {
 		return false;
 	}
+	if ((file_extension != "gltf" && file_extension != "glb") && p_option.begins_with("gltf/")) {
+		return false;
+	}
 	return true;
 }
 
