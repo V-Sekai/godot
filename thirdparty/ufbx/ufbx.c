@@ -18189,7 +18189,7 @@ static ufbxi_noinline bool ufbxi_bone_pose_less(void *user, const void *va, cons
 {
 	(void)user;
 	const ufbx_bone_pose *a = (const ufbx_bone_pose *)va, *b = (const ufbx_bone_pose *)vb;
-	return a->bone_node < b->bone_node;
+	return a->bone_node->typed_id < b->bone_node->typed_id;
 }
 
 ufbxi_nodiscard ufbxi_noinline static int ufbxi_sort_videos_by_filename(ufbxi_context *uc, ufbx_video **videos, size_t count)
@@ -29592,7 +29592,7 @@ ufbx_abi ufbx_bone_pose *ufbx_get_bone_pose(const ufbx_pose *pose, const ufbx_no
 	if (!pose || !node) return NULL;
 	size_t index = SIZE_MAX;
 	ufbxi_macro_lower_bound_eq(ufbx_bone_pose, 8, &index, pose->bone_poses.data, 0, pose->bone_poses.count,
-		( a->bone_node < node ), ( a->bone_node == node ));
+		( a->bone_node->typed_id < node->typed_id ), ( a->bone_node == node ));
 	return index < SIZE_MAX ? &pose->bone_poses.data[index] : NULL;
 }
 

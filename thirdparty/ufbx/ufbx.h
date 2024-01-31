@@ -3221,7 +3221,8 @@ struct ufbx_pose {
 	// Set if this pose is marked as a bind pose.
 	bool is_bind_pose;
 
-	// List of bone poses, sorted by `ufbx_node.typed_id`.
+	// List of bone poses.
+	// Sorted by `ufbx_node.typed_id`.
 	ufbx_bone_pose_list bone_poses;
 };
 

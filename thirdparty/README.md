@@ -873,7 +873,7 @@ number and run the script.
 ## ufbx
 
 - Upstream: https://github.com/ufbx/ufbx
-- Version: git (6163260eb203ca3e6dd26306324b8e4946229523, 2024)
+- Version: git (f23f4ace9e43c67eb3aef5ff017376f6505dd68b, 2024)
 - License: MIT
 
 Files extracted from upstream source:
