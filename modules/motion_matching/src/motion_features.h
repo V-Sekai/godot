@@ -52,7 +52,7 @@
 #include "scene/resources/animation.h"
 #include "scene/resources/primitive_meshes.h"
 
-struct MotionFeature : public Resource {
+class MotionFeature : public Resource {
 	GDCLASS(MotionFeature, Resource)
 public:
 	static constexpr float delta = 0.016f;
@@ -82,7 +82,7 @@ protected:
 
 #include "scene/3d/physics_body_3d.h"
 
-struct RootVelocityMotionFeature : public MotionFeature {
+class RootVelocityMotionFeature : public MotionFeature {
 	GDCLASS(RootVelocityMotionFeature, MotionFeature)
 public:
 	CharacterBody3D *body;
@@ -152,22 +152,7 @@ public:
 	}
 
 protected:
-	static void _bind_methods() {
-		ClassDB::bind_method(D_METHOD("set_weight", "value"), &RootVelocityMotionFeature::set_weight, DEFVAL(1.0f));
-		ClassDB::bind_method(D_METHOD("get_weight"), &RootVelocityMotionFeature::get_weight);
-		ClassDB::add_property(get_class_static(), PropertyInfo(Variant::FLOAT, "weight"), "set_weight", "get_weight");
-
-		// ClassDB::bind_method( D_METHOD("set_body","value"), &RootVelocityMotionFeature::set_body);
-		// ClassDB::bind_method( D_METHOD("get_body"), &RootVelocityMotionFeature::get_body);
-		// ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH,"Character",godot::PROPERTY_HINT_NODE_PATH_VALID_TYPES,"CharacterBody3D"),"set_body","get_body");
-
-		ClassDB::bind_method(D_METHOD("set_root_bone_name", "value"), &RootVelocityMotionFeature::set_root_bone_name, DEFVAL("%GeneralSkeleton:Root"));
-		ClassDB::bind_method(D_METHOD("get_root_bone_name"), &RootVelocityMotionFeature::get_root_bone_name);
-		ADD_PROPERTY(PropertyInfo(Variant::STRING, "Root Bone"), "set_root_bone_name", "get_root_bone_name");
-		// ClassDB::bind_method( D_METHOD("setup_for_animation","animation"), &RootVelocityMotionFeature::setup_for_animation);
-		// ClassDB::bind_method( D_METHOD("bake_animation_pose","animation","time"), &RootVelocityMotionFeature::bake_animation_pose);
-		// ClassDB::bind_method( D_METHOD("narrowphase_evaluate_cost","data_to_evaluate"), &RootVelocityMotionFeature::narrowphase_evaluate_cost);
-	}
+	static void _bind_methods();
 
 	virtual void debug_pose_gizmo(Ref<RefCounted> p_gizmo, const PackedFloat32Array data, Transform3D tr = Transform3D{}) override {
 #ifdef TOOLS_ENABLED
@@ -182,18 +167,22 @@ protected:
 	}
 };
 
-struct BonePositionVelocityMotionFeature : public MotionFeature {
+class BonePositionVelocityMotionFeature : public MotionFeature {
 	GDCLASS(BonePositionVelocityMotionFeature, MotionFeature)
 	Skeleton3D *skeleton = nullptr;
+	PackedStringArray bone_names{};
+	PackedInt32Array bones_id{};
+	CharacterBody3D *the_char = nullptr;
+	HashMap<uint32_t, PackedInt32Array> bone_tracks{};
+	float last_time_queried = 0.0f;
+	float weight_bone_pos{ 1.0f };
+	float weight_bone_vel{ 1.0f };
+public:
 	NodePath to_skeleton{};
 	void set_to_skeleton(NodePath path);
 	NodePath get_to_skeleton();
-	PackedStringArray bone_names{};
 	void set_bone_names(PackedStringArray value);
 	PackedStringArray get_bone_names();
-	PackedInt32Array bones_id{};
-	HashMap<uint32_t, PackedInt32Array> bone_tracks{};
-	CharacterBody3D *the_char = nullptr;
 	virtual int get_dimension() override;
 	virtual void setup_nodes(Variant character) override;
 	virtual void setup_for_animation(Ref<Animation> animation) override;
@@ -202,17 +191,14 @@ struct BonePositionVelocityMotionFeature : public MotionFeature {
 	PackedVector3Array last_known_positions{};
 	PackedVector3Array last_known_velocities{};
 	PackedFloat32Array last_known_result{};
-	float last_time_queried = 0.0f;
 	virtual PackedFloat32Array broadphase_query_pose(Dictionary blackboard, float delta) override;
 	virtual float narrowphase_evaluate_cost(PackedFloat32Array to_convert) override;
-	float weight_bone_pos{ 1.0f };
 	float get_weight_bone_pos() const {
 		return weight_bone_pos;
 	}
 	void set_weight_bone_pos(float value) {
 		weight_bone_pos = value;
 	}
-	float weight_bone_vel{ 1.0f };
 	float get_weight_bone_vel() const {
 		return weight_bone_vel;
 	}
@@ -226,8 +212,9 @@ protected:
 	virtual void debug_pose_gizmo(Ref<RefCounted> gizmo, const PackedFloat32Array data, Transform3D tr = Transform3D{}) override;
 };
 
-struct PredictionMotionFeature : public MotionFeature {
+class PredictionMotionFeature : public MotionFeature {
 	GDCLASS(PredictionMotionFeature, MotionFeature)
+public:
 	Skeleton3D *skeleton{ nullptr };
 
 	Skeleton3D *get_skeleton() {

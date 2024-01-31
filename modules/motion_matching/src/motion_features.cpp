@@ -238,11 +238,11 @@ PackedFloat32Array BonePositionVelocityMotionFeature::get_weights() {
 void BonePositionVelocityMotionFeature::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_to_skeleton", "value"), &BonePositionVelocityMotionFeature::set_to_skeleton);
 	ClassDB::bind_method(D_METHOD("get_to_skeleton"), &BonePositionVelocityMotionFeature::get_to_skeleton);
-	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "Skeleton", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "Skeleton3D"), "set_to_skeleton", "get_to_skeleton");
+	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "skeleton", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "Skeleton3D"), "set_to_skeleton", "get_to_skeleton");
 
 	ClassDB::bind_method(D_METHOD("set_bone_names", "value"), &BonePositionVelocityMotionFeature::set_bone_names);
 	ClassDB::bind_method(D_METHOD("get_bone_names"), &BonePositionVelocityMotionFeature::get_bone_names);
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "Bones"), "set_bone_names", "get_bone_names");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_STRING_ARRAY, "bones"), "set_bone_names", "get_bone_names");
 }
 
 void BonePositionVelocityMotionFeature::debug_pose_gizmo(Ref<RefCounted> p_gizmo, const PackedFloat32Array p_data, Transform3D p_tr) {
@@ -465,4 +465,21 @@ void PredictionMotionFeature::debug_pose_gizmo(Ref<RefCounted> p_gizmo, const Pa
 		}
 	}
 #endif
+}
+
+void RootVelocityMotionFeature::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_weight", "value"), &RootVelocityMotionFeature::set_weight, DEFVAL(1.0f));
+	ClassDB::bind_method(D_METHOD("get_weight"), &RootVelocityMotionFeature::get_weight);
+	ClassDB::add_property(get_class_static(), PropertyInfo(Variant::FLOAT, "weight"), "set_weight", "get_weight");
+
+	// ClassDB::bind_method( D_METHOD("set_body","value"), &RootVelocityMotionFeature::set_body);
+	// ClassDB::bind_method( D_METHOD("get_body"), &RootVelocityMotionFeature::get_body);
+	// ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH,"Character",godot::PROPERTY_HINT_NODE_PATH_VALID_TYPES,"CharacterBody3D"),"set_body","get_body");
+
+	ClassDB::bind_method(D_METHOD("set_root_bone_name", "value"), &RootVelocityMotionFeature::set_root_bone_name, DEFVAL("%GeneralSkeleton:Root"));
+	ClassDB::bind_method(D_METHOD("get_root_bone_name"), &RootVelocityMotionFeature::get_root_bone_name);
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_bone"), "set_root_bone_name", "get_root_bone_name");
+	// ClassDB::bind_method( D_METHOD("setup_for_animation","animation"), &RootVelocityMotionFeature::setup_for_animation);
+	// ClassDB::bind_method( D_METHOD("bake_animation_pose","animation","time"), &RootVelocityMotionFeature::bake_animation_pose);
+	// ClassDB::bind_method( D_METHOD("narrowphase_evaluate_cost","data_to_evaluate"), &RootVelocityMotionFeature::narrowphase_evaluate_cost);
 }
