@@ -32,13 +32,19 @@
 #define GLTF_DOCUMENT_H
 
 #include "extensions/gltf_document_extension.h"
+#include "gltf_defines.h"
+#include "modules/csg/csg_shape.h"
+#include "modules/gltf/extensions/gltf_spec_gloss.h"
+#include "modules/gltf/gltf_state.h"
+#include "modules/gridmap/grid_map.h"
+#include "scene/3d/mesh_instance_3d.h"
+#include "scene/3d/multimesh_instance_3d.h"
+#include "scene/resources/asset_document_3d.h"
 
 #include "modules/modules_enabled.gen.h" // For csg, gridmap.
 
-class GLTFDocument : public Resource {
-	GDCLASS(GLTFDocument, Resource);
-	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
-	Vector<Ref<GLTFDocumentExtension>> document_extensions;
+class GLTFDocument : public AssetDocument3D {
+	GDCLASS(GLTFDocument, AssetDocument3D);
 
 public:
 	const int32_t JOINT_GROUP_SIZE = 4;
@@ -71,6 +77,28 @@ public:
 		ROOT_NODE_MODE_MULTI_ROOT,
 	};
 
+public:
+	virtual Error append_data_from_file(String p_path, Ref<AssetState3D> p_state, uint32_t p_flags = 0, String p_base_path = String()) override {
+		return append_from_file(p_path, p_state, p_flags, p_base_path);
+	}
+	virtual Error append_data_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<AssetState3D> p_state, uint32_t p_flags = 0) override {
+		return append_from_buffer(p_bytes, p_base_path, p_state, p_flags);
+	}
+	virtual Error append_data_from_scene(Node *p_node, Ref<AssetState3D> p_state, uint32_t p_flags = 0) override {
+		return append_from_scene(p_node, p_state, p_flags);
+	}
+
+public:
+	virtual Node *create_scene(Ref<AssetState3D> p_state, float p_bake_fps = 30.0f, bool p_trimming = false, bool p_remove_immutable_tracks = true) override {
+		return generate_scene(p_state, p_bake_fps, p_trimming, p_remove_immutable_tracks);
+	}
+	virtual PackedByteArray create_buffer(Ref<AssetState3D> p_state) override {
+		return generate_buffer(p_state);
+	}
+	virtual Error write_asset_to_filesystem(Ref<AssetState3D> p_state, const String &p_path) override {
+		return write_to_filesystem(p_state, p_path);
+	}
+
 private:
 	const float BAKE_FPS = 30.0f;
 	int _naming_version = 1;
@@ -81,6 +109,9 @@ private:
 
 protected:
 	static void _bind_methods();
+	String _gen_unique_name(Ref<GLTFState> p_state, const String &p_name);
+	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
+	Vector<Ref<GLTFDocumentExtension>> document_extensions;
 
 public:
 	static void register_gltf_document_extension(Ref<GLTFDocumentExtension> p_extension, bool p_first_priority = false);
@@ -96,6 +127,7 @@ public:
 	float get_lossy_quality() const;
 	void set_root_node_mode(RootNodeMode p_root_node_mode);
 	RootNodeMode get_root_node_mode() const;
+	static String _gen_unique_name_static(HashSet<String> &r_unique_names, const String &p_name);
 
 private:
 	void _build_parent_hierachy(Ref<GLTFState> p_state);
@@ -106,7 +138,6 @@ private:
 	Error _parse_nodes(Ref<GLTFState> p_state);
 	String _get_type_name(const GLTFType p_component);
 	String _get_accessor_type_name(const GLTFType p_type);
-	String _gen_unique_name(Ref<GLTFState> p_state, const String &p_name);
 	String _sanitize_animation_name(const String &p_name);
 	String _gen_unique_animation_name(Ref<GLTFState> p_state, const String &p_name);
 	String _sanitize_bone_name(const String &p_name);
@@ -184,24 +215,7 @@ private:
 			const Color &p_diffuse,
 			Color &r_base_color,
 			float &r_metallic);
-	GLTFNodeIndex _find_highest_node(Ref<GLTFState> p_state,
-			const Vector<GLTFNodeIndex> &p_subset);
-	void _recurse_children(Ref<GLTFState> p_state, const GLTFNodeIndex p_node_index,
-			RBSet<GLTFNodeIndex> &p_all_skin_nodes, HashSet<GLTFNodeIndex> &p_child_visited_set);
-	bool _capture_nodes_in_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin,
-			const GLTFNodeIndex p_node_index);
-	void _capture_nodes_for_multirooted_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
-	Error _expand_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
-	Error _verify_skin(Ref<GLTFState> p_state, Ref<GLTFSkin> p_skin);
 	Error _parse_skins(Ref<GLTFState> p_state);
-	Error _determine_skeletons(Ref<GLTFState> p_state);
-	Error _reparent_non_joint_skeleton_subtrees(
-			Ref<GLTFState> p_state, Ref<GLTFSkeleton> p_skeleton,
-			const Vector<GLTFNodeIndex> &p_non_joints);
-	Error _determine_skeleton_roots(Ref<GLTFState> p_state,
-			const GLTFSkeletonIndex p_skel_i);
-	Error _create_skeletons(Ref<GLTFState> p_state);
-	Error _map_skin_joints_indices_to_skeleton_bone_indices(Ref<GLTFState> p_state);
 	Error _serialize_skins(Ref<GLTFState> p_state);
 	Error _create_skins(Ref<GLTFState> p_state);
 	bool _skins_are_same(const Ref<Skin> p_skin_a, const Ref<Skin> p_skin_b);
@@ -313,14 +327,14 @@ private:
 	static float get_max_component(const Color &p_color);
 
 public:
-	Error append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, String p_base_path = String());
-	Error append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0);
-	Error append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint32_t p_flags = 0);
+	virtual Error append_from_file(String p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, String p_base_path = String());
+	virtual Error append_from_buffer(PackedByteArray p_bytes, String p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0);
+	virtual Error append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint32_t p_flags = 0);
 
 public:
-	Node *generate_scene(Ref<GLTFState> p_state, float p_bake_fps = 30.0f, bool p_trimming = false, bool p_remove_immutable_tracks = true);
-	PackedByteArray generate_buffer(Ref<GLTFState> p_state);
-	Error write_to_filesystem(Ref<GLTFState> p_state, const String &p_path);
+	virtual Node *generate_scene(Ref<GLTFState> p_state, float p_bake_fps = 30.0f, bool p_trimming = false, bool p_remove_immutable_tracks = true);
+	virtual PackedByteArray generate_buffer(Ref<GLTFState> p_state);
+	virtual Error write_to_filesystem(Ref<GLTFState> p_state, const String &p_path);
 
 public:
 	Error _parse_gltf_state(Ref<GLTFState> p_state, const String &p_search_path);
