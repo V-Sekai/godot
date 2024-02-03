@@ -36,7 +36,6 @@
 
 typedef int BoneId;
 
-class PhysicalBone3D;
 class Skeleton3D;
 
 class SkinReference : public RefCounted {
@@ -66,17 +65,30 @@ public:
 class Skeleton3D : public Node3D {
 	GDCLASS(Skeleton3D, Node3D);
 
+#ifndef DISABLE_DEPRECATED
+	Node *simulator = nullptr;
+	void setup_simulator();
+	void remove_simulator();
+#endif // _DISABLE_DEPRECATED
 private:
 	friend class SkinReference;
 
 	struct Bone {
 		String name;
 
-		bool enabled;
 		int parent;
+		Vector<int> child_bones;
 
 		Transform3D rest;
 		Transform3D global_rest;
+
+		bool enabled;
+		Transform3D pose_cache;
+		bool pose_cache_dirty = true;
+		Vector3 pose_position;
+		Quaternion pose_rotation;
+		Vector3 pose_scale = Vector3(1, 1, 1);
+		Transform3D global_pose;
 
 		_FORCE_INLINE_ void update_pose_cache() {
 			if (pose_cache_dirty) {
@@ -85,42 +97,28 @@ private:
 				pose_cache_dirty = false;
 			}
 		}
-		bool pose_cache_dirty = true;
-		Transform3D pose_cache;
-		Vector3 pose_position;
-		Quaternion pose_rotation;
-		Vector3 pose_scale = Vector3(1, 1, 1);
 
-		Transform3D pose_global;
+#ifndef DISABLE_DEPRECATED
 		Transform3D pose_global_no_override;
-
 		real_t global_pose_override_amount = 0.0;
 		bool global_pose_override_reset = false;
 		Transform3D global_pose_override;
-
-		PhysicalBone3D *physical_bone = nullptr;
-		PhysicalBone3D *cache_parent_physical_bone = nullptr;
-
-		Vector<int> child_bones;
+#endif // _DISABLE_DEPRECATED
 
 		Bone() {
 			parent = -1;
+			child_bones = Vector<int>();
 			enabled = true;
+#ifndef DISABLE_DEPRECATED
 			global_pose_override_amount = 0;
 			global_pose_override_reset = false;
-#ifndef _3D_DISABLED
-			physical_bone = nullptr;
-			cache_parent_physical_bone = nullptr;
-#endif // _3D_DISABLED
-			child_bones = Vector<int>();
+#endif // _DISABLE_DEPRECATED
 		}
 	};
 
 	HashSet<SkinReference *> skin_bindings;
-
 	void _skin_changed();
 
-	bool animate_physical_bones = true;
 	Vector<Bone> bones;
 	bool process_order_dirty = false;
 
@@ -173,8 +171,6 @@ public:
 	void set_bone_rest(int p_bone, const Transform3D &p_rest);
 	Transform3D get_bone_rest(int p_bone) const;
 	Transform3D get_bone_global_rest(int p_bone) const;
-	Transform3D get_bone_global_pose(int p_bone) const;
-	Transform3D get_bone_global_pose_no_override(int p_bone) const;
 
 	void set_bone_enabled(int p_bone, bool p_enabled);
 	bool is_bone_enabled(int p_bone) const;
@@ -187,23 +183,20 @@ public:
 	float get_motion_scale() const;
 
 	// posing api
-
+	Transform3D get_bone_pose(int p_bone) const;
+	Vector3 get_bone_pose_position(int p_bone) const;
+	Quaternion get_bone_pose_rotation(int p_bone) const;
+	Vector3 get_bone_pose_scale(int p_bone) const;
+	void set_bone_pose(int p_bone, const Transform3D &p_pose);
 	void set_bone_pose_position(int p_bone, const Vector3 &p_position);
 	void set_bone_pose_rotation(int p_bone, const Quaternion &p_rotation);
 	void set_bone_pose_scale(int p_bone, const Vector3 &p_scale);
 
-	Transform3D get_bone_pose(int p_bone) const;
-
-	Vector3 get_bone_pose_position(int p_bone) const;
-	Quaternion get_bone_pose_rotation(int p_bone) const;
-	Vector3 get_bone_pose_scale(int p_bone) const;
+	Transform3D get_bone_global_pose(int p_bone) const;
+	void set_bone_global_pose(int p_bone, const Transform3D &p_pose);
 
 	void reset_bone_pose(int p_bone);
 	void reset_bone_poses();
-
-	void clear_bones_global_pose_override();
-	Transform3D get_bone_global_pose_override(int p_bone) const;
-	void set_bone_global_pose_override(int p_bone, const Transform3D &p_pose, real_t p_amount, bool p_persistent = false);
 
 	void localize_rests(); // used for loaders and tools
 
@@ -215,27 +208,20 @@ public:
 	void force_update_all_bone_transforms();
 	void force_update_bone_children_transforms(int bone_idx);
 
-	// Physical bone API
+#ifndef DISABLE_DEPRECATED
+	Transform3D get_bone_global_pose_no_override(int p_bone) const;
+	void clear_bones_global_pose_override();
+	Transform3D get_bone_global_pose_override(int p_bone) const;
+	void set_bone_global_pose_override(int p_bone, const Transform3D &p_pose, real_t p_amount, bool p_persistent = false);
 
+	Node *get_simulator();
 	void set_animate_physical_bones(bool p_enabled);
 	bool get_animate_physical_bones() const;
-
-	void bind_physical_bone_to_bone(int p_bone, PhysicalBone3D *p_physical_bone);
-	void unbind_physical_bone_from_bone(int p_bone);
-
-	PhysicalBone3D *get_physical_bone(int p_bone);
-	PhysicalBone3D *get_physical_bone_parent(int p_bone);
-
-private:
-	/// This is a slow API, so it's cached
-	PhysicalBone3D *_get_physical_bone_parent(int p_bone);
-	void _rebuild_physical_bones_cache();
-
-public:
 	void physical_bones_stop_simulation();
 	void physical_bones_start_simulation_on(const TypedArray<StringName> &p_bones);
 	void physical_bones_add_collision_exception(RID p_exception);
 	void physical_bones_remove_collision_exception(RID p_exception);
+#endif // _DISABLE_DEPRECATED
 
 public:
 	Skeleton3D();
