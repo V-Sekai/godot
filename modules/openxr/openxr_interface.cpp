@@ -686,14 +686,53 @@ Dictionary OpenXRInterface::get_system_info() {
 }
 
 bool OpenXRInterface::supports_play_area_mode(XRInterface::PlayAreaMode p_mode) {
-	return false;
+	if (p_mode == XRInterface::XR_PLAY_AREA_3DOF) {
+		return false;
+	}
+	return true;
 }
 
 XRInterface::PlayAreaMode OpenXRInterface::get_play_area_mode() const {
+	if (!openxr_api || !initialized) {
+		return XRInterface::XR_PLAY_AREA_UNKNOWN;
+	}
+
+	XrReferenceSpaceType reference_space = openxr_api->get_reference_space();
+
+	if (reference_space == XR_REFERENCE_SPACE_TYPE_LOCAL) {
+		return XRInterface::XR_PLAY_AREA_SITTING;
+	} else if (reference_space == XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT) {
+		return XRInterface::XR_PLAY_AREA_ROOMSCALE;
+	} else if (reference_space == XR_REFERENCE_SPACE_TYPE_STAGE) {
+		return XRInterface::XR_PLAY_AREA_STAGE;
+	}
+
 	return XRInterface::XR_PLAY_AREA_UNKNOWN;
 }
 
 bool OpenXRInterface::set_play_area_mode(XRInterface::PlayAreaMode p_mode) {
+	ERR_FAIL_NULL_V(openxr_api, false);
+
+	XrReferenceSpaceType reference_space;
+
+	if (p_mode == XRInterface::XR_PLAY_AREA_SITTING) {
+		reference_space = XR_REFERENCE_SPACE_TYPE_LOCAL;
+	} else if (p_mode == XRInterface::XR_PLAY_AREA_ROOMSCALE) {
+		reference_space = XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT;
+	} else if (p_mode == XRInterface::XR_PLAY_AREA_STAGE) {
+		reference_space = XR_REFERENCE_SPACE_TYPE_STAGE;
+	} else {
+		return false;
+	}
+
+	if (openxr_api->set_requested_reference_space(reference_space)) {
+		XRServer *xr_server = XRServer::get_singleton();
+		if (xr_server) {
+			xr_server->clear_reference_frame();
+		}
+		return true;
+	}
+
 	return false;
 }
 

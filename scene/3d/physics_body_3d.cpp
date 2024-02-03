@@ -31,6 +31,9 @@
 #include "physics_body_3d.h"
 
 #include "scene/scene_string_names.h"
+#ifndef DISABLE_DEPRECATED
+#include "scene/3d/skeleton_3d.h"
+#endif //_DISABLE_DEPRECATED
 
 void PhysicsBody3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("move_and_collide", "motion", "test_only", "safe_margin", "recovery_as_collision", "max_collisions"), &PhysicsBody3D::_move, DEFVAL(false), DEFVAL(0.001), DEFVAL(false), DEFVAL(1));
@@ -2238,11 +2241,13 @@ void PhysicalBone3D::reset_physics_simulation_state() {
 }
 
 void PhysicalBone3D::reset_to_rest_position() {
-	if (parent_skeleton) {
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	Skeleton3D *skeleton = get_skeleton();
+	if (simulator && skeleton) {
 		if (-1 == bone_id) {
-			set_global_transform(parent_skeleton->get_global_transform() * body_offset);
+			set_global_transform((skeleton->get_global_transform() * body_offset).orthonormalized());
 		} else {
-			set_global_transform(parent_skeleton->get_global_transform() * parent_skeleton->get_bone_global_pose(bone_id) * body_offset);
+			set_global_transform((skeleton->get_global_transform() * simulator->get_bone_global_pose(bone_id) * body_offset).orthonormalized());
 		}
 	}
 }
@@ -2880,15 +2885,14 @@ bool PhysicalBone3D::_get(const StringName &p_name, Variant &r_ret) const {
 }
 
 void PhysicalBone3D::_get_property_list(List<PropertyInfo> *p_list) const {
-	Skeleton3D *parent = find_skeleton_parent(get_parent());
-
-	if (parent) {
+	Skeleton3D *skeleton = get_skeleton();
+	if (skeleton) {
 		String names;
-		for (int i = 0; i < parent->get_bone_count(); i++) {
+		for (int i = 0; i < skeleton->get_bone_count(); i++) {
 			if (i > 0) {
 				names += ",";
 			}
-			names += parent->get_bone_name(i);
+			names += skeleton->get_bone_name(i);
 		}
 
 		p_list->push_back(PropertyInfo(Variant::STRING_NAME, PNAME("bone_name"), PROPERTY_HINT_ENUM, names));
@@ -2904,7 +2908,8 @@ void PhysicalBone3D::_get_property_list(List<PropertyInfo> *p_list) const {
 void PhysicalBone3D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE:
-			parent_skeleton = find_skeleton_parent(get_parent());
+		case NOTIFICATION_PARENTED:
+			_update_simulator_path();
 			update_bone_id();
 			reset_to_rest_position();
 			reset_physics_simulation_state();
@@ -2914,13 +2919,13 @@ void PhysicalBone3D::_notification(int p_what) {
 			break;
 
 		case NOTIFICATION_EXIT_TREE: {
-			if (parent_skeleton) {
+			PhysicalBoneSimulator3D *simulator = get_simulator();
+			if (simulator) {
 				if (-1 != bone_id) {
-					parent_skeleton->unbind_physical_bone_from_bone(bone_id);
+					simulator->unbind_physical_bone_from_bone(bone_id);
 					bone_id = -1;
 				}
 			}
-			parent_skeleton = nullptr;
 			PhysicsServer3D::get_singleton()->joint_clear(joint);
 		} break;
 
@@ -2964,10 +2969,12 @@ void PhysicalBone3D::_body_state_changed(PhysicsDirectBodyState3D *p_state) {
 
 	Transform3D global_transform(p_state->get_transform());
 
-	// Update skeleton
-	if (parent_skeleton) {
+	// Update simulator
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	Skeleton3D *skeleton = get_skeleton();
+	if (simulator && skeleton) {
 		if (-1 != bone_id) {
-			parent_skeleton->set_bone_global_pose_override(bone_id, parent_skeleton->get_global_transform().affine_inverse() * (global_transform * body_offset_inverse), 1.0, true);
+			simulator->set_bone_global_pose(bone_id, skeleton->get_global_transform().affine_inverse() * (global_transform * body_offset_inverse));
 		}
 	}
 }
@@ -3062,14 +3069,6 @@ void PhysicalBone3D::_bind_methods() {
 	BIND_ENUM_CONSTANT(JOINT_TYPE_6DOF);
 }
 
-Skeleton3D *PhysicalBone3D::find_skeleton_parent(Node *p_parent) {
-	if (!p_parent) {
-		return nullptr;
-	}
-	Skeleton3D *s = Object::cast_to<Skeleton3D>(p_parent);
-	return s ? s : find_skeleton_parent(p_parent->get_parent());
-}
-
 void PhysicalBone3D::_update_joint_offset() {
 	_fix_joint_offset();
 
@@ -3084,18 +3083,20 @@ void PhysicalBone3D::_update_joint_offset() {
 
 void PhysicalBone3D::_fix_joint_offset() {
 	// Clamp joint origin to bone origin
-	if (parent_skeleton) {
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	if (simulator) {
 		joint_offset.origin = body_offset.affine_inverse().origin;
 	}
 }
 
 void PhysicalBone3D::_reload_joint() {
-	if (!parent_skeleton) {
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	if (!simulator || !simulator->get_skeleton()) {
 		PhysicsServer3D::get_singleton()->joint_clear(joint);
 		return;
 	}
 
-	PhysicalBone3D *body_a = parent_skeleton->get_physical_bone_parent(bone_id);
+	PhysicalBone3D *body_a = simulator->get_physical_bone_parent(bone_id);
 	if (!body_a) {
 		PhysicsServer3D::get_singleton()->joint_clear(joint);
 		return;
@@ -3187,6 +3188,36 @@ void PhysicalBone3D::_on_bone_parent_changed() {
 	_reload_joint();
 }
 
+void PhysicalBone3D::_update_simulator_path() {
+	simulator_id = ObjectID();
+	PhysicalBoneSimulator3D *sim = cast_to<PhysicalBoneSimulator3D>(get_parent());
+	if (sim) {
+		simulator_id = sim->get_instance_id();
+		return;
+	}
+#ifndef DISABLE_DEPRECATED
+	Skeleton3D *sk = cast_to<Skeleton3D>(get_parent());
+	if (sk) {
+		PhysicalBoneSimulator3D *ssim = cast_to<PhysicalBoneSimulator3D>(sk->get_simulator());
+		if (ssim) {
+			simulator_id = ssim->get_instance_id();
+		}
+	}
+#endif // _DISABLE_DEPRECATED
+}
+
+PhysicalBoneSimulator3D *PhysicalBone3D::get_simulator() const {
+	return Object::cast_to<PhysicalBoneSimulator3D>(ObjectDB::get_instance(simulator_id));
+}
+
+Skeleton3D *PhysicalBone3D::get_skeleton() const {
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	if (simulator) {
+		return simulator->get_skeleton();
+	}
+	return nullptr;
+}
+
 #ifdef TOOLS_ENABLED
 void PhysicalBone3D::_set_gizmo_move_joint(bool p_move_joint) {
 	gizmo_move_joint = p_move_joint;
@@ -3203,10 +3234,6 @@ Transform3D PhysicalBone3D::get_local_gizmo_transform() const {
 
 const PhysicalBone3D::JointData *PhysicalBone3D::get_joint_data() const {
 	return joint_data;
-}
-
-Skeleton3D *PhysicalBone3D::find_skeleton_parent() {
-	return find_skeleton_parent(this);
 }
 
 void PhysicalBone3D::set_joint_type(JointType p_joint_type) {
@@ -3415,21 +3442,22 @@ PhysicalBone3D::~PhysicalBone3D() {
 }
 
 void PhysicalBone3D::update_bone_id() {
-	if (!parent_skeleton) {
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	if (!simulator) {
 		return;
 	}
 
-	const int new_bone_id = parent_skeleton->find_bone(bone_name);
+	const int new_bone_id = simulator->find_bone(bone_name);
 
 	if (new_bone_id != bone_id) {
 		if (-1 != bone_id) {
 			// Assert the unbind from old node
-			parent_skeleton->unbind_physical_bone_from_bone(bone_id);
+			simulator->unbind_physical_bone_from_bone(bone_id);
 		}
 
 		bone_id = new_bone_id;
 
-		parent_skeleton->bind_physical_bone_to_bone(bone_id, this);
+		simulator->bind_physical_bone_to_bone(bone_id, this);
 
 		_fix_joint_offset();
 		reset_physics_simulation_state();
@@ -3438,10 +3466,12 @@ void PhysicalBone3D::update_bone_id() {
 
 void PhysicalBone3D::update_offset() {
 #ifdef TOOLS_ENABLED
-	if (parent_skeleton) {
-		Transform3D bone_transform(parent_skeleton->get_global_transform());
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	Skeleton3D *skeleton = get_skeleton();
+	if (simulator && skeleton) {
+		Transform3D bone_transform(skeleton->get_global_transform());
 		if (-1 != bone_id) {
-			bone_transform *= parent_skeleton->get_bone_global_pose(bone_id);
+			bone_transform *= simulator->get_bone_global_pose(bone_id);
 		}
 
 		if (gizmo_move_joint) {
@@ -3455,7 +3485,7 @@ void PhysicalBone3D::update_offset() {
 }
 
 void PhysicalBone3D::_start_physics_simulation() {
-	if (_internal_simulate_physics || !parent_skeleton) {
+	if (_internal_simulate_physics || !simulator_id.is_valid()) {
 		return;
 	}
 	reset_to_rest_position();
@@ -3469,10 +3499,11 @@ void PhysicalBone3D::_start_physics_simulation() {
 }
 
 void PhysicalBone3D::_stop_physics_simulation() {
-	if (!parent_skeleton) {
+	PhysicalBoneSimulator3D *simulator = get_simulator();
+	if (!simulator) {
 		return;
 	}
-	if (parent_skeleton->get_animate_physical_bones()) {
+	if (!simulator->is_active()) {
 		set_body_mode(PhysicsServer3D::BODY_MODE_KINEMATIC);
 		PhysicsServer3D::get_singleton()->body_set_collision_layer(get_rid(), get_collision_layer());
 		PhysicsServer3D::get_singleton()->body_set_collision_mask(get_rid(), get_collision_mask());
@@ -3485,7 +3516,6 @@ void PhysicalBone3D::_stop_physics_simulation() {
 	}
 	if (_internal_simulate_physics) {
 		PhysicsServer3D::get_singleton()->body_set_state_sync_callback(get_rid(), Callable());
-		parent_skeleton->set_bone_global_pose_override(bone_id, Transform3D(), 0.0, false);
 		set_as_top_level(false);
 		_internal_simulate_physics = false;
 	}

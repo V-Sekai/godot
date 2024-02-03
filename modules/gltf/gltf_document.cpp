@@ -3816,7 +3816,6 @@ Error GLTFDocument::_serialize_materials(Ref<GLTFState> p_state) {
 						}
 						img->decompress();
 						img->convert(Image::FORMAT_RGBA8);
-						img->convert_ra_rgba8_to_rg();
 						for (int32_t y = 0; y < img->get_height(); y++) {
 							for (int32_t x = 0; x < img->get_width(); x++) {
 								Color c = img->get_pixel(x, y);
@@ -5834,13 +5833,7 @@ void GLTFDocument::_convert_skeleton_to_gltf(Skeleton3D *p_skeleton3d, Ref<GLTFS
 }
 
 void GLTFDocument::_convert_bone_attachment_to_gltf(BoneAttachment3D *p_bone_attachment, Ref<GLTFState> p_state, GLTFNodeIndex p_parent_node_index, GLTFNodeIndex p_root_node_index, Ref<GLTFNode> p_gltf_node) {
-	Skeleton3D *skeleton;
-	// Note that relative transforms to external skeletons and pose overrides are not supported.
-	if (p_bone_attachment->get_use_external_skeleton()) {
-		skeleton = cast_to<Skeleton3D>(p_bone_attachment->get_node_or_null(p_bone_attachment->get_external_skeleton()));
-	} else {
-		skeleton = cast_to<Skeleton3D>(p_bone_attachment->get_parent());
-	}
+	Skeleton3D *skeleton = p_bone_attachment->get_skeleton();
 	GLTFSkeletonIndex skel_gltf_i = -1;
 	if (skeleton != nullptr && p_state->skeleton3d_to_gltf_skeleton.has(skeleton->get_instance_id())) {
 		skel_gltf_i = p_state->skeleton3d_to_gltf_skeleton[skeleton->get_instance_id()];
@@ -6079,22 +6072,22 @@ struct SceneFormatImporterGLTFInterpolate {
 template <>
 struct SceneFormatImporterGLTFInterpolate<Quaternion> {
 	Quaternion lerp(const Quaternion &a, const Quaternion &b, const float c) const {
-		ERR_FAIL_COND_V_MSG(!a.is_normalized(), Quaternion(), "The quaternion \"a\" must be normalized.");
-		ERR_FAIL_COND_V_MSG(!b.is_normalized(), Quaternion(), "The quaternion \"b\" must be normalized.");
+		ERR_FAIL_COND_V_MSG(!a.is_normalized(), Quaternion(), vformat("The quaternion \"a\" %s must be normalized.", a));
+		ERR_FAIL_COND_V_MSG(!b.is_normalized(), Quaternion(), vformat("The quaternion \"b\" %s must be normalized.", b));
 
 		return a.slerp(b, c).normalized();
 	}
 
 	Quaternion catmull_rom(const Quaternion &p0, const Quaternion &p1, const Quaternion &p2, const Quaternion &p3, const float c) {
-		ERR_FAIL_COND_V_MSG(!p1.is_normalized(), Quaternion(), "The quaternion \"p1\" must be normalized.");
-		ERR_FAIL_COND_V_MSG(!p2.is_normalized(), Quaternion(), "The quaternion \"p2\" must be normalized.");
+		ERR_FAIL_COND_V_MSG(!p1.is_normalized(), Quaternion(), vformat("The quaternion \"p1\" (%s) must be normalized.", p1));
+		ERR_FAIL_COND_V_MSG(!p2.is_normalized(), Quaternion(), vformat("The quaternion \"p2\" (%s) must be normalized.", p2));
 
 		return p1.slerp(p2, c).normalized();
 	}
 
 	Quaternion bezier(const Quaternion start, const Quaternion control_1, const Quaternion control_2, const Quaternion end, const float t) {
-		ERR_FAIL_COND_V_MSG(!start.is_normalized(), Quaternion(), "The start quaternion must be normalized.");
-		ERR_FAIL_COND_V_MSG(!end.is_normalized(), Quaternion(), "The end quaternion must be normalized.");
+		ERR_FAIL_COND_V_MSG(!start.is_normalized(), Quaternion(), vformat("The start quaternion %s must be normalized.", start));
+		ERR_FAIL_COND_V_MSG(!end.is_normalized(), Quaternion(), vformat("The end quaternion %s must be normalized.", end));
 
 		return start.slerp(end, t).normalized();
 	}
