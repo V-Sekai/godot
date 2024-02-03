@@ -293,24 +293,22 @@ real_t Quaternion::get_angle() const {
 }
 
 Quaternion::Quaternion(const Vector3 &p_axis, real_t p_angle) {
-#ifdef MATH_CHECKS
-	ERR_FAIL_COND_MSG(!p_axis.is_normalized(), "The axis Vector3 " + p_axis.operator String() + " must be normalized.");
-#endif
-	real_t d = p_axis.length();
-	if (d == 0) {
+	real_t norm = p_axis.length_squared();
+	if (norm == 0) {
 		x = 0;
 		y = 0;
 		z = 0;
-		w = 0;
-	} else {
-		real_t sin_angle = Math::sin(p_angle * 0.5f);
-		real_t cos_angle = Math::cos(p_angle * 0.5f);
-		real_t s = sin_angle / d;
-		x = p_axis.x * s;
-		y = p_axis.y * s;
-		z = p_axis.z * s;
-		w = cos_angle;
+		w = 1;
+		return;
 	}
+
+	real_t half_angle = -0.5 * p_angle;
+	real_t coeff = -sin(half_angle) / sqrt(norm);
+
+	x = coeff * p_axis.x;
+	y = coeff * p_axis.y;
+	z = coeff * p_axis.z;
+	w = cos(half_angle);
 }
 
 // Euler constructor expects a vector containing the Euler angles in the format
