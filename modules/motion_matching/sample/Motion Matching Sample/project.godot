@@ -16,4 +16,4 @@ config/icon="res://icon.svg"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/MM/plugin.cfg", "res://addons/MotionMatching/plugin.cfg")
+enabled=PackedStringArray("res://addons/MM/plugin.cfg")
