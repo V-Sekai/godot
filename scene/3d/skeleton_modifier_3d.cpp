@@ -259,6 +259,7 @@ void SkeletonModifier3D::advance(double p_time) {
 void SkeletonModifier3D::process_modification(double p_delta) {
 	GDVIRTUAL_CALL(_process_modification, p_delta);
 	_process_modification(p_delta);
+	emit_signal(SNAME("modification_processed"));
 }
 
 void SkeletonModifier3D::_process_modification(double p_delta) {
@@ -300,6 +301,7 @@ void SkeletonModifier3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "target_animation_mixer", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "AnimationMixer"), "set_target_animation_mixer", "get_target_animation_mixer");
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "external_skeleton", PROPERTY_HINT_NODE_PATH_VALID_TYPES, "Skeleton3D"), "set_external_skeleton", "get_external_skeleton");
 
+	ADD_SIGNAL(MethodInfo("modification_processed"));
 	GDVIRTUAL_BIND(_process_modification, "delta");
 }
 

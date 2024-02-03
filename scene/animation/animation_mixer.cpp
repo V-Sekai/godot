@@ -957,6 +957,7 @@ void AnimationMixer::_process_animation(double p_delta, bool p_update_only) {
 		_blend_apply();
 		_blend_post_process();
 	};
+	emit_signal(SNAME("mixer_applied"));
 	_post_process(p_delta);
 	clear_animation_instances();
 	clear_post_processes();
@@ -2232,6 +2233,7 @@ void AnimationMixer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo(SNAME("animation_libraries_updated")));
 	ADD_SIGNAL(MethodInfo(SNAME("animation_finished"), PropertyInfo(Variant::STRING_NAME, "anim_name")));
 	ADD_SIGNAL(MethodInfo(SNAME("animation_started"), PropertyInfo(Variant::STRING_NAME, "anim_name")));
+	ADD_SIGNAL(MethodInfo(SNAME("mixer_applied")));
 	ADD_SIGNAL(MethodInfo(SNAME("caches_cleared")));
 
 	ClassDB::bind_method(D_METHOD("_reset"), &AnimationMixer::reset);

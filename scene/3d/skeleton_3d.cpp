@@ -370,9 +370,7 @@ void Skeleton3D::set_bone_global_pose(int p_bone, const Transform3D &p_pose) {
 		pt = get_bone_global_pose(bones[p_bone].parent);
 	}
 	Transform3D t = pt.affine_inverse() * p_pose;
-	set_bone_pose_position(p_bone, t.origin);
-	set_bone_pose_rotation(p_bone, t.basis.get_rotation_quaternion());
-	set_bone_pose_scale(p_bone, t.basis.get_scale());
+	set_bone_pose(p_bone, t);
 }
 
 void Skeleton3D::set_motion_scale(float p_motion_scale) {
@@ -568,6 +566,14 @@ void Skeleton3D::clear_bones() {
 
 // Posing api
 
+void Skeleton3D::set_bone_pose(int p_bone, const Transform3D &p_pose) {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX(p_bone, bone_size);
+
+	set_bone_pose_position(p_bone, p_pose.origin);
+	set_bone_pose_rotation(p_bone, p_pose.basis.get_rotation_quaternion());
+	set_bone_pose_scale(p_bone, p_pose.basis.get_scale());
+}
 void Skeleton3D::set_bone_pose_position(int p_bone, const Vector3 &p_position) {
 	const int bone_size = bones.size();
 	ERR_FAIL_INDEX(p_bone, bone_size);
@@ -852,6 +858,7 @@ void Skeleton3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_bones"), &Skeleton3D::clear_bones);
 
 	ClassDB::bind_method(D_METHOD("get_bone_pose", "bone_idx"), &Skeleton3D::get_bone_pose);
+	ClassDB::bind_method(D_METHOD("set_bone_pose", "bone_idx", "pose"), &Skeleton3D::set_bone_pose);
 	ClassDB::bind_method(D_METHOD("set_bone_pose_position", "bone_idx", "position"), &Skeleton3D::set_bone_pose_position);
 	ClassDB::bind_method(D_METHOD("set_bone_pose_rotation", "bone_idx", "rotation"), &Skeleton3D::set_bone_pose_rotation);
 	ClassDB::bind_method(D_METHOD("set_bone_pose_scale", "bone_idx", "scale"), &Skeleton3D::set_bone_pose_scale);

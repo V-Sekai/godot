@@ -317,8 +317,18 @@ void PhysicalBoneSimulator3D::_process_modification(double p_delta) {
 		}
 	} else {
 		ERR_FAIL_COND(skeleton->get_bone_count() != bones.size());
+		LocalVector<Transform3D> local_poses;
 		for (int i = 0; i < skeleton->get_bone_count(); i++) {
-			skeleton->set_bone_global_pose(i, skeleton->get_bone_global_pose(i).interpolate_with(bones[i].global_pose, interpolation));
+			Transform3D pt;
+			if (skeleton->get_bone_parent(i) >= 0) {
+				pt = get_bone_global_pose(skeleton->get_bone_parent(i));
+			}
+			local_poses.push_back(pt.affine_inverse() * skeleton->get_bone_global_pose(i).interpolate_with(bones[i].global_pose, interpolation));
+		}
+		for (int i = 0; i < skeleton->get_bone_count(); i++) {
+			skeleton->set_bone_pose_position(i, local_poses[i].origin);
+			skeleton->set_bone_pose_rotation(i, local_poses[i].basis.get_rotation_quaternion());
+			skeleton->set_bone_pose_scale(i, local_poses[i].basis.get_scale());
 		}
 	}
 }

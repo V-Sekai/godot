@@ -329,6 +329,11 @@
 				Notifies when the caches have been cleared, either automatically, or manually via [method clear_caches].
 			</description>
 		</signal>
+		<signal name="mixer_applied">
+			<description>
+				Notifies when the blending result related have been applied to the target objects. If [SkeletonModifier3D] is registered, this means it is before the modification.
+			</description>
+		</signal>
 		<signal name="mixer_updated">
 			<description>
 				Notifies when the property related process have been updated. Mainly used to update dummy [AnimationPlayer] in animation player editor and [SkeletonModifier3D].

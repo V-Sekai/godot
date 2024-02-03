@@ -39,4 +39,11 @@
 			Sets the [NodePath] to the target [AnimationMixer]. [SkeletonModifier3D] has the same update process with that.
 		</member>
 	</members>
+	<signals>
+		<signal name="modification_processed">
+			<description>
+				Notifies when the modification have been finished.
+			</description>
+		</signal>
+	</signals>
 </class>

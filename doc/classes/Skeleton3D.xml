@@ -251,6 +251,7 @@
 			<param index="1" name="pose" type="Transform3D" />
 			<description>
 				Sets the global pose transform, [param pose], for the bone at [param bone_idx].
+				[b]Note:[/b] If other bone poses have been changed, this method execute an update process and will cause performance to deteriorate. If you know that multiple global poses will be applied, consider using [method set_bone_pose] with precalculation.
 			</description>
 		</method>
 		<method name="set_bone_global_pose_override" is_deprecated="true">
@@ -270,6 +271,7 @@
 			<param index="0" name="bone_idx" type="int" />
 			<param index="1" name="name" type="String" />
 			<description>
+				Sets the bone name, [param name], for the bone at [param bone_idx].
 			</description>
 		</method>
 		<method name="set_bone_parent">
@@ -279,6 +281,14 @@
 			<description>
 				Sets the bone index [param parent_idx] as the parent of the bone at [param bone_idx]. If -1, then bone has no parent.
 				[b]Note:[/b] [param parent_idx] must be less than [param bone_idx].
+			</description>
+		</method>
+		<method name="set_bone_pose">
+			<return type="void" />
+			<param index="0" name="bone_idx" type="int" />
+			<param index="1" name="pose" type="Transform3D" />
+			<description>
+				Sets the pose transform, [param pose], for the bone at [param bone_idx].
 			</description>
 		</method>
 		<method name="set_bone_pose_position">
