@@ -6389,10 +6389,6 @@ EditorNode::EditorNode() {
 		import_wav.instantiate();
 		ResourceFormatImporter::get_singleton()->add_importer(import_wav);
 
-		Ref<ResourceImporterOBJ> import_obj;
-		import_obj.instantiate();
-		ResourceFormatImporter::get_singleton()->add_importer(import_obj);
-
 		Ref<ResourceImporterShaderFile> import_shader_file;
 		import_shader_file.instantiate();
 		ResourceFormatImporter::get_singleton()->add_importer(import_shader_file);
@@ -6416,6 +6412,10 @@ EditorNode::EditorNode() {
 			import_escn.instantiate();
 			ResourceImporterScene::add_scene_importer(import_escn);
 		}
+
+		Ref<ResourceImporterOBJ> import_obj;
+		import_obj.instantiate();
+		ResourceFormatImporter::get_singleton()->add_importer(import_obj);
 
 		Ref<ResourceImporterBitMap> import_bitmap;
 		import_bitmap.instantiate();
