@@ -43,8 +43,8 @@
 #include <functional>
 #include <iostream>
 
-class LBFGSBSolver : public Node3D {
-	GDCLASS(LBFGSBSolver, Node3D);
+class LBFGSBSolver : public RefCounted {
+	GDCLASS(LBFGSBSolver, RefCounted);
 
 protected:
 	static void _bind_methods();
