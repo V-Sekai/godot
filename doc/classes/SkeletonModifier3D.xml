@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SkeletonModifier3D" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		A Node that may modify Skeleton3D's bone.
+	</brief_description>
+	<description>
+		[SkeletonModifier3D] retrieves a target [Skeleton3D] by either having a [Skeleton3D] parent or set [member external_skeleton].
+		Also, if set [member target_animation_mixer], it is possible to process the animation in the same process as the [AnimationMixer]. At this time, [method SkeletonModifier3D._process_modification] always performs after playback process of the [AnimationMixer].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_process_modification" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				This method can be registered with [AnimationMixer] by [method AnimationMixer.add_post_process]. You should do things like get the [Skeleton3D]'s current pose and apply the pose here.
+			</description>
+		</method>
+		<method name="advance">
+			<return type="void" />
+			<param index="0" name="delta" type="float" />
+			<description>
+				Manually advance the modifications by the specified time (in seconds).
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="active" type="bool" setter="set_active" getter="is_active" default="true">
+			If [code]true[/code], the [SkeletonModifier3D] will be processing.
+		</member>
+		<member name="callback_mode_process" type="int" setter="set_callback_mode_process" getter="get_callback_mode_process" enum="AnimationMixer.AnimationCallbackModeProcess" default="1">
+			The process notification in which to update modifications. If you use [SkeletonModifier3D] at the same time as [AnimationMixer], you need to match this property between them or set [member target_animation_mixer].
+		</member>
+		<member name="external_skeleton" type="NodePath" setter="set_external_skeleton" getter="get_external_skeleton" default="NodePath(&quot;&quot;)">
+			Sets the [NodePath] to the external [Skeleton3D] that the [SkeletonModifier3D] node should use instead of the parent [Skeleton3D].
+		</member>
+		<member name="target_animation_mixer" type="NodePath" setter="set_target_animation_mixer" getter="get_target_animation_mixer" default="NodePath(&quot;&quot;)">
+			Sets the [NodePath] to the target [AnimationMixer]. [SkeletonModifier3D] has the same update process with that.
+		</member>
+	</members>
+	<signals>
+		<signal name="modification_processed">
+			<description>
+				Notifies when the modification have been finished.
+			</description>
+		</signal>
+	</signals>
+</class>
