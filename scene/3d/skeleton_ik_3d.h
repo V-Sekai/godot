@@ -31,9 +31,7 @@
 #ifndef SKELETON_IK_3D_H
 #define SKELETON_IK_3D_H
 
-#ifndef _3D_DISABLED
-
-#include "scene/3d/skeleton_3d.h"
+#include "scene/3d/skeleton_modifier_3d.h"
 
 class FabrikInverseKinematic {
 	struct EndEffector {
@@ -111,14 +109,16 @@ public:
 	static void free_task(Task *p_task);
 	// The goal of chain should be always in local space
 	static void set_goal(Task *p_task, const Transform3D &p_goal);
-	static void make_goal(Task *p_task, const Transform3D &p_inverse_transf, real_t blending_delta);
+	static void make_goal(Task *p_task, const Transform3D &p_inverse_transf);
 	static void solve(Task *p_task, real_t blending_delta, bool override_tip_basis, bool p_use_magnet, const Vector3 &p_magnet_position);
 
 	static void _update_chain(const Skeleton3D *p_skeleton, ChainItem *p_chain_item);
 };
 
-class SkeletonIK3D : public Node {
-	GDCLASS(SkeletonIK3D, Node);
+class SkeletonIK3D : public SkeletonModifier3D {
+	GDCLASS(SkeletonIK3D, SkeletonModifier3D);
+
+	bool internal_active = false;
 
 	StringName root_bone;
 	StringName tip_bone;
@@ -132,7 +132,6 @@ class SkeletonIK3D : public Node {
 	real_t min_distance = 0.01;
 	int max_iterations = 10;
 
-	Variant skeleton_ref = Variant();
 	Variant target_node_override_ref = Variant();
 	FabrikInverseKinematic::Task *task = nullptr;
 
@@ -141,6 +140,8 @@ protected:
 
 	static void _bind_methods();
 	virtual void _notification(int p_what);
+
+	virtual void _process_modification(double p_delta) override;
 
 public:
 	SkeletonIK3D();
@@ -189,7 +190,5 @@ private:
 	void reload_goal();
 	void _solve_chain();
 };
-
-#endif // _3D_DISABLED
 
 #endif // SKELETON_IK_3D_H
