@@ -651,10 +651,6 @@ void ManyBoneIK3D::set_pin_bone_name(int32_t p_effector_index, StringName p_name
 
 void ManyBoneIK3D::set_pin_nodepath(int32_t p_effector_index, NodePath p_node_path) {
 	ERR_FAIL_INDEX(p_effector_index, pins.size());
-	Node *node = get_node_or_null(p_node_path);
-	if (!node) {
-		return;
-	}
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	effector_template->set_target_node(p_node_path);
 }
