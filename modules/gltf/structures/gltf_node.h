@@ -37,7 +37,10 @@
 
 class GLTFNode : public Resource {
 	GDCLASS(GLTFNode, Resource);
+	friend class AssetDocument3D;
 	friend class GLTFDocument;
+	friend class SkinTool;
+	friend class FBXDocument;
 
 private:
 	GLTFNodeIndex parent = -1;
@@ -64,6 +67,9 @@ public:
 
 	Transform3D get_xform();
 	void set_xform(Transform3D p_xform);
+
+	Transform3D get_rest_xform();
+	void set_rest_xform(Transform3D p_rest_xform);
 
 	GLTFMeshIndex get_mesh();
 	void set_mesh(GLTFMeshIndex p_mesh);
