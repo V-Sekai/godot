@@ -221,4 +221,4 @@ private:
 	unsigned int _lod_index = 0;
 };
 
-#endif // VOXEL_MAP_H
+#endif // VOXEL_DATA_MAP_H

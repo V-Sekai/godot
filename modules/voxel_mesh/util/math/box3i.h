@@ -31,7 +31,7 @@
 #ifndef BOX3I_H
 #define BOX3I_H
 
-#include "vector3i.h"
+#include "voxel_vector3i.h"
 #include <core/variant/variant.h>
 
 // Axis-aligned box using integer coordinates

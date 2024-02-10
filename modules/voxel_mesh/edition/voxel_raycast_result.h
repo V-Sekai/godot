@@ -31,7 +31,7 @@
 #ifndef VOXEL_RAYCAST_RESULT_H
 #define VOXEL_RAYCAST_RESULT_H
 
-#include "../util/math/vector3i.h"
+#include "../util/math/voxel_vector3i.h"
 #include "core/object/ref_counted.h"
 
 // This class exists only to make the script API nicer.

@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "../util/math/vector3i.h"
+#include "../util/math/voxel_vector3i.h"
 #include "../util/profiling.h"
 #include <core/math/vector3.h>
 

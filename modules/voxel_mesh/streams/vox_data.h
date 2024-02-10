@@ -33,7 +33,7 @@
 
 #include "../util/fixed_array.h"
 #include "../util/math/color8.h"
-#include "../util/math/vector3i.h"
+#include "../util/math/voxel_vector3i.h"
 
 #include <core/math/basis.h>
 #include <core/string/ustring.h>

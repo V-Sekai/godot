@@ -31,7 +31,7 @@
 #include "vox_importer.h"
 #include "constants/voxel_string_names.h"
 #include "meshers/cubes/voxel_mesher_cubes.h"
-#include "modules/voxel_mesh/util/math/vector3i.h"
+#include "modules/voxel_mesh/util/math/voxel_vector3i.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "storage/voxel_buffer.h"

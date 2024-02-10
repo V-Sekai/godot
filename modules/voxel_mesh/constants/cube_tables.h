@@ -31,7 +31,7 @@
 #ifndef CUBE_TABLES_H
 #define CUBE_TABLES_H
 
-#include "../util/math/vector3i.h"
+#include "../util/math/voxel_vector3i.h"
 #include <core/math/vector3.h>
 
 namespace Cube {

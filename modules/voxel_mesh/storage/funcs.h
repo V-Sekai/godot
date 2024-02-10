@@ -32,7 +32,7 @@
 #define VOXEL_STORAGE_FUNCS_H
 
 #include "../constants/voxel_constants.h"
-#include "../util/math/vector3i.h"
+#include "../util/math/voxel_vector3i.h"
 #include "../util/span.h"
 #include <stdint.h>
 
