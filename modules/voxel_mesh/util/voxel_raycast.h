@@ -32,10 +32,10 @@
 #include "../util/profiling.h"
 #include <core/math/vector3.h>
 
-template <typename Predicate_F> // f(Vector3i position) -> bool
+template <typename Predicate_F> // f(VoxelVector3i position) -> bool
 bool voxel_raycast(Vector3 ray_origin, Vector3 ray_direction,
 		Predicate_F predicate, real_t max_distance,
-		Vector3i &out_hit_pos, Vector3i &out_prev_pos,
+		VoxelVector3i &out_hit_pos, VoxelVector3i &out_prev_pos,
 		float &out_distance_along_ray,
 		float &out_distance_along_ray_prev) {
 	VOXEL_PROFILE_SCOPE();
@@ -58,9 +58,9 @@ bool voxel_raycast(Vector3 ray_origin, Vector3 ray_direction,
 	/* Initialisation */
 
 	// Voxel position
-	Vector3i hit_pos(Math::floor(ray_origin.x), Math::floor(ray_origin.y),
+	VoxelVector3i hit_pos(Math::floor(ray_origin.x), Math::floor(ray_origin.y),
 			Math::floor(ray_origin.z));
-	Vector3i hit_prev_pos = hit_pos;
+	VoxelVector3i hit_prev_pos = hit_pos;
 
 	// Voxel step
 	const int xi_step = ray_direction.x > 0 ? 1 : ray_direction.x < 0 ? -1
