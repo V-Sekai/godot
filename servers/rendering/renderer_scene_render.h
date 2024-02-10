@@ -279,6 +279,7 @@ public:
 		Vector2 taa_jitter;
 
 		void set_camera(const Transform3D p_transform, const Projection p_projection, bool p_is_orthogonal, bool p_vaspect, const Vector2 &p_taa_jitter = Vector2(), uint32_t p_visible_layers = 0xFFFFFFFF);
+		void set_override_projection(const Projection &p_projection);
 		void set_multiview_camera(uint32_t p_view_count, const Transform3D *p_transforms, const Projection *p_projections, bool p_is_orthogonal, bool p_vaspect);
 	};
 
