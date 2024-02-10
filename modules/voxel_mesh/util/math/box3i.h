@@ -53,7 +53,7 @@ public:
 
 	static inline Box3i from_center_extents(VoxelVector3i center,
 			VoxelVector3i extents) {
-		return Box3i(center - extents, 2 * extents);
+		return Box3i(center - extents, VoxelVector3i(2, 2, 2) * extents);
 	}
 
 	// max is exclusive

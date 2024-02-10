@@ -222,18 +222,6 @@ _FORCE_INLINE_ VoxelVector3i operator*(const VoxelVector3i &a,
 	return VoxelVector3i(a.x * b.x, a.y * b.y, a.z * b.z);
 }
 
-_FORCE_INLINE_ VoxelVector3i operator*(const VoxelVector3i &a, int n) {
-	return VoxelVector3i(a.x * n, a.y * n, a.z * n);
-}
-
-_FORCE_INLINE_ VoxelVector3i operator*(int n, const VoxelVector3i &a) {
-	return VoxelVector3i(a.x * n, a.y * n, a.z * n);
-}
-
-_FORCE_INLINE_ VoxelVector3i operator/(const VoxelVector3i &a, int n) {
-	return VoxelVector3i(a.x / n, a.y / n, a.z / n);
-}
-
 _FORCE_INLINE_ VoxelVector3i operator/(const VoxelVector3i &a,
 		const VoxelVector3i &d) {
 	return VoxelVector3i(a.x / d.x, a.y / d.y, a.z / d.z);

@@ -61,7 +61,7 @@ public:
 
 	// Converts block coodinates into voxel coordinates
 	_FORCE_INLINE_ VoxelVector3i block_to_voxel(VoxelVector3i bpos) const {
-		return bpos * _block_size;
+		return bpos * VoxelVector3i(_block_size, _block_size, _block_size);
 	}
 
 	VoxelDataMap();

@@ -31,6 +31,7 @@
 #include "vox_importer.h"
 #include "constants/voxel_string_names.h"
 #include "meshers/cubes/voxel_mesher_cubes.h"
+#include "modules/voxel_mesh/util/math/vector3i.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "storage/voxel_buffer.h"
@@ -114,7 +115,6 @@ VoxelVoxImporter::build_mesh(VoxelBuffer &voxels, VoxelMesher &mesher,
 	Ref<ImporterMesh> mesh;
 	mesh.instantiate();
 
-	int surface_index = 0;
 	for (int i = 0; i < output.surfaces.size(); ++i) {
 		Array surface = output.surfaces[i];
 
@@ -140,7 +140,6 @@ VoxelVoxImporter::build_mesh(VoxelBuffer &voxels, VoxelMesher &mesher,
 		material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, texture);
 		material->set_texture_filter(BaseMaterial3D::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
 		mesh->add_surface(output.primitive_type, surface, Array(), Dictionary(), material);
-		++surface_index;
 	}
 
 	return mesh;
@@ -211,7 +210,7 @@ Node *VoxelVoxImporter::import_scene(const String &p_path, uint32_t p_flags, con
 		mesh_info.mesh = mesh;
 		// In MagicaVoxel scene graph, pivots are at the center of models, not at
 		// the lower corner.
-		mesh_info.pivot = (voxels->get_size() / 2 - VoxelVector3i(1)).to_vec3();
+		mesh_info.pivot = (voxels->get_size() / VoxelVector3i(2, 2, 2) - VoxelVector3i(1)).to_vec3();
 		meshes.write[model_index] = mesh_info;
 	}
 
