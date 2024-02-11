@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef VOXEL_STORAGE_FUNCS_H
-#define VOXEL_STORAGE_FUNCS_H
+#ifndef FUNCS_H
+#define FUNCS_H
 
 #include "../constants/voxel_constants.h"
 #include "../util/math/voxel_vector3i.h"
@@ -227,4 +227,4 @@ inline void debug_check_texture_indices(FixedArray<uint8_t, 4> indices) {
 	}
 }
 
-#endif // VOXEL_STORAGE_FUNCS_H
+#endif // FUNCS_H
