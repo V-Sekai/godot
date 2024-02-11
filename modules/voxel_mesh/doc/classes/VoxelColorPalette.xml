@@ -9,18 +9,7 @@
 	<methods>
 		<method name="get_color" qualifiers="const">
 			<return type="Color" />
-			<param index="0" name="_unnamed_arg0" type="int" />
-			<description>
-			</description>
-		</method>
-		<method name="get_colors" qualifiers="const">
-			<return type="PackedColorArray" />
-			<description>
-			</description>
-		</method>
-		<method name="set_color">
-			<return type="void" />
-			<param index="0" name="colors" type="PackedColorArray" />
+			<param index="0" name="index" type="int" />
 			<description>
 			</description>
 		</method>

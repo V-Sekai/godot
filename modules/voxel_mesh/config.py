@@ -46,8 +46,6 @@ def get_doc_classes():
         "VoxelToolBuffer",
         "VoxelBlockSerializer",
         "VoxelVoxLoader",
-        "FastNoiseLite",
-        "FastNoiseLiteGradient",
         "VoxelMesher",
         "VoxelMesherBlocky",
         "VoxelMesherDMC",
