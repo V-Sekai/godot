@@ -1,0 +1,15 @@
+[submodule "src/thirdparty/nanosvg"]
+	path = src/thirdparty/nanosvg
+	url = https://github.com/poke1024/nanosvg
+[submodule "src/thirdparty/polypartition"]
+	path = src/thirdparty/polypartition
+	url = https://github.com/poke1024/polypartition
+[submodule "src/thirdparty/fp16"]
+	path = src/thirdparty/fp16
+	url = https://github.com/Maratyszcza/FP16
+[submodule "src/thirdparty/robin-map"]
+	path = src/thirdparty/robin-map
+	url = https://github.com/Tessil/robin-map
+[submodule "src/thirdparty/tinyxml2"]
+	path = src/thirdparty/tinyxml2
+	url = https://github.com/leethomason/tinyxml2

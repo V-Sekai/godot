@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VGRadialGradient" inherits="VGGradient" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="center" type="Vector2" setter="set_center" getter="get_center" default="Vector2(50, 50)">
+		</member>
+		<member name="focal" type="Vector2" setter="set_focal" getter="get_focal" default="Vector2(0, 0)">
+		</member>
+		<member name="radius" type="float" setter="set_radius" getter="get_radius" default="200.0">
+		</member>
+	</members>
+</class>

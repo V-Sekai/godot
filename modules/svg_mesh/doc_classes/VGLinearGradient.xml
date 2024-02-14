@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VGLinearGradient" inherits="VGGradient" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="p1" type="Vector2" setter="set_p1" getter="get_p1" default="Vector2(0, 0)">
+		</member>
+		<member name="p2" type="Vector2" setter="set_p2" getter="get_p2" default="Vector2(100, 100)">
+		</member>
+	</members>
+</class>

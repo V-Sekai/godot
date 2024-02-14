@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot_svg_mesh.git
+	branch = main
+	commit = 4183b87df4386dec30495f1a14652bb159e0b932
+	parent = dcb3978e65ca490eb14ee607cc6bc4de80771828
+	method = merge
+	cmdver = 0.4.9

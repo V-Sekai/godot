@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+Import('env')
+Import('env_modules')
+
+env_tove = env_modules.Clone()
+
+env_thirdparty = env_tove.Clone()
+
+env_thirdparty["disable_exceptions"] = False
+if env_thirdparty.msvc:
+	env_thirdparty.Append(CXXFLAGS=["/EHsc"])
+else:
+	env_thirdparty.Append(CXXFLAGS=["-fexceptions"])
+
+env_thirdparty.disable_warnings()
+import os
+dir_path = Dir('.').abspath
+
+env_thirdparty.Append(CPPPATH=[os.path.join(dir_path, 'thirdparty/tove2d/src')])
+
+env_thirdparty.Append(CXXFLAGS=[
+	'-DTOVE_GODOT',
+	'-I' + os.path.join(dir_path, 'thirdparty/tove2d/src/thirdparty/fp16/include')])
+
+def package_sl(target, source, env):
+	with open(source[0].abspath, "r") as sl:
+		with open(target[0].abspath, "w") as out:
+			out.write('w << R"GLSL(\n')
+			out.write(sl.read())
+			out.write(')GLSL";\n')
+
+env_thirdparty.Append(BUILDERS={
+	'PackageSL':Builder(action=package_sl)})
+
+env_thirdparty.PackageSL(
+	'thirdparty/tove2d/src/glsl/fill.frag.inc',
+	Glob('thirdparty/tove2d/src/glsl/fill.frag'))
+
+env_thirdparty.PackageSL(
+	'thirdparty/tove2d/src/glsl/line.vert.inc',
+	Glob('thirdparty/tove2d/src/glsl/line.vert'))
+
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/clipper.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/tove2d/src/cpp/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/tove2d/src/cpp/mesh/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/tove2d/src/cpp/shader/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/tove2d/src/cpp/gpux/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/tove2d/src/thirdparty/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/tove2d/src/thirdparty/polypartition/src/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "thirdparty/tove2d/src/thirdparty/tinyxml2/tinyxml2.cpp")
+
+env_tove.add_source_files(env.modules_sources, "*.cpp")

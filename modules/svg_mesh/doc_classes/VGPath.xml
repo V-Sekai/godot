@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VGPath" inherits="Node2D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="import_svg">
+			<return type="void" />
+			<param index="0" name="path" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="insert_curve">
+			<return type="void" />
+			<param index="0" name="subpath" type="int" />
+			<param index="1" name="t" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="recenter">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="remove_curve">
+			<return type="void" />
+			<param index="0" name="subpath" type="int" />
+			<param index="1" name="curve" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_points">
+			<return type="void" />
+			<param index="0" name="subpath" type="int" />
+			<param index="1" name="points" type="Array" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="fill_color" type="VGPaint" setter="set_fill_color" getter="get_fill_color">
+		</member>
+		<member name="line_color" type="VGPaint" setter="set_line_color" getter="get_line_color">
+		</member>
+		<member name="line_width" type="float" setter="set_line_width" getter="get_line_width" default="1.0">
+		</member>
+		<member name="renderer" type="VGRenderer" setter="set_renderer" getter="get_renderer">
+		</member>
+	</members>
+</class>
