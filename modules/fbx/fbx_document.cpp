@@ -989,9 +989,10 @@ Error FBXDocument::_parse_images(Ref<FBXState> p_state, const String &p_base_pat
 	const ufbx_scene *fbx_scene = p_state->scene.get();
 	for (int texture_i = 0; texture_i < static_cast<int>(fbx_scene->texture_files.count); texture_i++) {
 		const ufbx_texture_file &fbx_texture_file = fbx_scene->texture_files[texture_i];
-		String path = _as_string(fbx_texture_file.filename);
+		String path = _as_string(fbx_texture_file.relative_filename);
 		path = ProjectSettings::get_singleton()->localize_path(path);
-
+		path = p_base_path.path_join(path);
+		path = path.simplify_path();
 		Vector<uint8_t> data;
 		if (fbx_texture_file.content.size > 0 && fbx_texture_file.content.size <= INT_MAX) {
 			data.resize(int(fbx_texture_file.content.size));
@@ -2368,21 +2369,27 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 
 	return OK;
 }
+
 PackedByteArray FBXDocument::create_buffer(Ref<ModelState3D> p_state) {
 	return PackedByteArray();
 }
+
 Error FBXDocument::write_asset_to_filesystem(Ref<ModelState3D> p_state, const String &p_path) {
 	return ERR_UNAVAILABLE;
 }
+
 Error FBXDocument::append_data_from_scene(Node *p_node, Ref<ModelState3D> p_state, uint32_t p_flags) {
 	return ERR_UNAVAILABLE;
 }
+
 Vector3 FBXDocument::_as_vec3(const ufbx_vec3 &p_vector) {
 	return Vector3(real_t(p_vector.x), real_t(p_vector.y), real_t(p_vector.z));
 }
+
 String FBXDocument::_as_string(const ufbx_string &p_string) {
 	return String::utf8(p_string.data, (int)p_string.length);
 }
+
 Transform3D FBXDocument::_as_xform(const ufbx_matrix &p_mat) {
 	Transform3D xform;
 	xform.basis.set_column(Vector3::AXIS_X, _as_vec3(p_mat.cols[0]));
