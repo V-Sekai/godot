@@ -312,3 +312,15 @@ GH-84419
 Validate extension JSON: API was removed: classes/Node/constants/NOTIFICATION_NODE_RECACHE_REQUESTED
 
 Removed unused NOTIFICATION_NODE_RECACHE_REQUESTED notification. It also used to conflict with CanvasItem.NOTIFICATION_DRAW and Window.NOTIFICATION_VISIBILITY_CHANGED (which still need to be resolved).
+
+
+GH-81746
+--------
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_buffer
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_file
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_scene
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/generate_buffer
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/generate_scene
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/write_to_filesystem
+
+`p_state` parameter type in GLTFDocument methods has been updated from `Ref<GLTFState>` to `Ref<ModelState3D>`. This change is due to the fact that `GLTFState` now extends `ModelState3D`, encapsulating 3D model state management.

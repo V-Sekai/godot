@@ -349,3 +349,15 @@ Validate extension JSON: Error: Hash changed for 'classes/EditorUndoRedoManager/
 Validate extension JSON: Error: Hash changed for 'classes/UndoRedo/methods/create_action', from 0AEC1BFC to E87757EB. This means that the function has changed and no compatibility function was provided.
 
 Added a optional parameters with default values. No adjustments should be necessary.
+
+
+GH-81746
+--------
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_buffer
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_file
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_scene
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/generate_buffer
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/generate_scene
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/write_to_filesystem
+
+`p_state` parameter type in GLTFDocument methods has been updated from `Ref<GLTFState>` to `Ref<ModelState3D>`. This change is due to the fact that `GLTFState` now extends `ModelState3D`, encapsulating 3D model state management.
