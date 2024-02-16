@@ -318,6 +318,7 @@ Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 
 		if (fbx_node->name.length > 0) {
 			node->set_name(_as_string(fbx_node->name));
+			node->set_original_name(node->get_name());
 		} else if (fbx_node->is_root) {
 			node->set_name("Root");
 		}
@@ -376,6 +377,18 @@ Error FBXDocument::_parse_nodes(Ref<FBXState> p_state) {
 Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 	ufbx_scene *fbx_scene = p_state->scene.get();
 
+	LocalVector<int> nodes_by_mesh_id;
+	nodes_by_mesh_id.reserve(fbx_scene->meshes.count);
+	for (size_t i = 0; i < fbx_scene->meshes.count; i++) {
+		nodes_by_mesh_id.push_back(-1);
+	}
+	for (int i = 0; i < p_state->nodes.size(); i++) {
+		const Ref<GLTFNode> &node = p_state->nodes[i];
+		if (node->mesh >= 0 && (unsigned)node->mesh < nodes_by_mesh_id.size()) {
+			nodes_by_mesh_id[node->mesh] = i;
+		}
+	}
+
 	for (const ufbx_mesh *fbx_mesh : fbx_scene->meshes) {
 		print_verbose("FBX: Parsing mesh: " + itos(int64_t(fbx_mesh->typed_id)));
 
@@ -388,8 +401,14 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 		Ref<ImporterMesh> import_mesh;
 		import_mesh.instantiate();
 		String mesh_name = "mesh";
+		String original_name;
 		if (fbx_mesh->name.length > 0) {
 			mesh_name = _as_string(fbx_mesh->name);
+			original_name = mesh_name;
+		} else if (fbx_mesh->typed_id < (unsigned)p_state->nodes.size() && nodes_by_mesh_id[fbx_mesh->typed_id] != -1) {
+			const Ref<GLTFNode> &node = p_state->nodes[nodes_by_mesh_id[fbx_mesh->typed_id]];
+			original_name = node->get_original_name();
+			mesh_name = node->get_name();
 		}
 		import_mesh->set_name(_gen_unique_name(p_state->unique_mesh_names, mesh_name));
 
@@ -815,6 +834,8 @@ Error FBXDocument::_parse_meshes(Ref<FBXState> p_state) {
 		mesh->set_additional_data("GODOT_mesh_blend_channels", additional_data);
 		mesh->set_blend_weights(blend_weights);
 		mesh->set_mesh(import_mesh);
+		mesh->set_name(import_mesh->get_name());
+		mesh->set_original_name(original_name);
 
 		p_state->meshes.push_back(mesh);
 	}
@@ -1269,6 +1290,7 @@ Error FBXDocument::_parse_animations(Ref<FBXState> p_state) {
 			if (anim_name_lower.begins_with("loop") || anim_name_lower.ends_with("loop") || anim_name_lower.begins_with("cycle") || anim_name_lower.ends_with("cycle")) {
 				animation->set_loop(true);
 			}
+			animation->set_original_name(anim_name);
 			animation->set_name(_gen_unique_animation_name(p_state, anim_name));
 		}
 

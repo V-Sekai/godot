@@ -62,6 +62,9 @@ public:
 	};
 
 public:
+	String get_original_name();
+	void set_original_name(String p_name);
+
 	bool get_loop() const;
 	void set_loop(bool p_val);
 	HashMap<int, GLTFAnimation::Track> &get_tracks();
@@ -70,6 +73,7 @@ public:
 	GLTFAnimation();
 
 private:
+	String original_name;
 	bool loop = false;
 	HashMap<int, Track> tracks;
 	Dictionary additional_data;

@@ -39,6 +39,7 @@ class GLTFMesh : public Resource {
 	GDCLASS(GLTFMesh, Resource);
 
 private:
+	String original_name;
 	Ref<ImporterMesh> mesh;
 	Vector<float> blend_weights;
 	TypedArray<Material> instance_materials;
@@ -48,6 +49,8 @@ protected:
 	static void _bind_methods();
 
 public:
+	String get_original_name();
+	void set_original_name(String p_name);
 	Ref<ImporterMesh> get_mesh();
 	void set_mesh(Ref<ImporterMesh> p_mesh);
 	Vector<float> get_blend_weights();

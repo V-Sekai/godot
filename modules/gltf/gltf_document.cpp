@@ -584,6 +584,7 @@ Error GLTFDocument::_parse_nodes(Ref<GLTFState> p_state) {
 		const Dictionary &n = nodes[i];
 
 		if (n.has("name")) {
+			node->set_original_name(n["name"]);
 			node->set_name(n["name"]);
 		}
 		if (n.has("camera")) {
@@ -2562,8 +2563,10 @@ Error GLTFDocument::_parse_meshes(Ref<GLTFState> p_state) {
 		String mesh_name = "mesh";
 		if (d.has("name") && !String(d["name"]).is_empty()) {
 			mesh_name = d["name"];
+			mesh->set_original_name(mesh_name);
 		}
 		import_mesh->set_name(_gen_unique_name(p_state, vformat("%s_%s", p_state->scene_name, mesh_name)));
+		mesh->set_name(import_mesh->get_name());
 
 		for (int j = 0; j < primitives.size(); j++) {
 			uint64_t flags = RS::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
@@ -4670,6 +4673,7 @@ Error GLTFDocument::_parse_animations(Ref<GLTFState> p_state) {
 			if (anim_name_lower.begins_with("loop") || anim_name_lower.ends_with("loop") || anim_name_lower.begins_with("cycle") || anim_name_lower.ends_with("cycle")) {
 				animation->set_loop(true);
 			}
+			animation->set_original_name(anim_name);
 			animation->set_name(_gen_unique_animation_name(p_state, anim_name));
 		}
 
@@ -4950,6 +4954,7 @@ void GLTFDocument::_convert_scene_node(Ref<GLTFState> p_state, Node *p_current, 
 #endif // TOOLS_ENABLED
 	Ref<GLTFNode> gltf_node;
 	gltf_node.instantiate();
+	gltf_node->set_original_name(p_current->get_name());
 	gltf_node->set_name(_gen_unique_name(p_state, p_current->get_name()));
 	if (cast_to<Node3D>(p_current)) {
 		Node3D *spatial = cast_to<Node3D>(p_current);
@@ -5041,10 +5046,12 @@ void GLTFDocument::_convert_csg_shape_to_gltf(CSGShape3D *p_current, GLTFNodeInd
 	Ref<GLTFMesh> gltf_mesh;
 	gltf_mesh.instantiate();
 	gltf_mesh->set_mesh(mesh);
+	gltf_mesh->set_original_name(csg->get_name());
 	GLTFMeshIndex mesh_i = p_state->meshes.size();
 	p_state->meshes.push_back(gltf_mesh);
 	p_gltf_node->mesh = mesh_i;
 	p_gltf_node->transform = csg->get_meshes()[0];
+	p_gltf_node->set_original_name(csg->get_name());
 	p_gltf_node->set_name(_gen_unique_name(p_state, csg->get_name()));
 }
 #endif // MODULE_CSG_ENABLED
@@ -5118,9 +5125,11 @@ void GLTFDocument::_convert_grid_map_to_gltf(GridMap *p_grid_map, GLTFNodeIndex 
 		Ref<GLTFMesh> gltf_mesh;
 		gltf_mesh.instantiate();
 		gltf_mesh->set_mesh(_mesh_to_importer_mesh(p_grid_map->get_mesh_library()->get_item_mesh(cell)));
+		gltf_mesh->set_original_name(p_grid_map->get_mesh_library()->get_item_name(cell));
 		new_gltf_node->mesh = p_state->meshes.size();
 		p_state->meshes.push_back(gltf_mesh);
 		new_gltf_node->transform = cell_xform * p_grid_map->get_transform();
+		new_gltf_node->set_original_name(p_grid_map->get_mesh_library()->get_item_name(cell));
 		new_gltf_node->set_name(_gen_unique_name(p_state, p_grid_map->get_mesh_library()->get_item_name(cell)));
 	}
 }
@@ -5142,6 +5151,7 @@ void GLTFDocument::_convert_multi_mesh_instance_to_gltf(
 	if (mesh.is_null()) {
 		return;
 	}
+	gltf_mesh->set_original_name(multi_mesh->get_name());
 	gltf_mesh->set_name(multi_mesh->get_name());
 	Ref<ImporterMesh> importer_mesh;
 	importer_mesh.instantiate();
@@ -5189,6 +5199,7 @@ void GLTFDocument::_convert_multi_mesh_instance_to_gltf(
 		new_gltf_node.instantiate();
 		new_gltf_node->mesh = mesh_index;
 		new_gltf_node->transform = transform;
+		new_gltf_node->set_original_name(p_multi_mesh_instance->get_name());
 		new_gltf_node->set_name(_gen_unique_name(p_state, p_multi_mesh_instance->get_name()));
 		p_gltf_node->children.push_back(p_state->nodes.size());
 		p_state->nodes.push_back(new_gltf_node);
@@ -5212,6 +5223,7 @@ void GLTFDocument::_convert_skeleton_to_gltf(Skeleton3D *p_skeleton3d, Ref<GLTFS
 		joint_node.instantiate();
 		// Note that we cannot use _gen_unique_bone_name here, because glTF spec requires all node
 		// names to be unique regardless of whether or not they are used as joints.
+		joint_node->set_original_name(skeleton->get_bone_name(bone_i));
 		joint_node->set_name(_gen_unique_name(p_state, skeleton->get_bone_name(bone_i)));
 		joint_node->transform = skeleton->get_bone_pose(bone_i);
 		joint_node->joint = true;
@@ -6350,6 +6362,7 @@ void GLTFDocument::_convert_animation(Ref<GLTFState> p_state, AnimationPlayer *p
 	Ref<Animation> animation = p_animation_player->get_animation(p_animation_track_name);
 	Ref<GLTFAnimation> gltf_animation;
 	gltf_animation.instantiate();
+	gltf_animation->set_original_name(p_animation_track_name);
 	gltf_animation->set_name(_gen_unique_name(p_state, p_animation_track_name));
 	for (int32_t track_i = 0; track_i < animation->get_track_count(); track_i++) {
 		if (!animation->track_is_enabled(track_i)) {
