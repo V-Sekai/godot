@@ -155,7 +155,10 @@ struct AudioFrame {
 		left = p_v2.x;
 		right = p_v2.y;
 	}
-	_ALWAYS_INLINE_ AudioFrame() {}
+	_ALWAYS_INLINE_ AudioFrame() {
+		l = 0.0f;
+		r = 0.0f;
+	}
 };
 
 _ALWAYS_INLINE_ AudioFrame operator*(float p_scalar, const AudioFrame &p_frame) {
