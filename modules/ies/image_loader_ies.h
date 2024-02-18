@@ -34,9 +34,10 @@
 #include "core/io/image_loader.h"
 
 class ImageLoaderIES : public ImageFormatLoader {
+	GDCLASS(ImageLoaderIES, ImageFormatLoader);
 public:
-	virtual Error load_image(Ref<Image> p_image, Ref<FileAccess> p_fileaccess, BitField<ImageFormatLoader::LoaderFlags> p_flags = FLAG_NONE, float p_scale = 1.0);
-	virtual void get_recognized_extensions(List<String> *p_extensions) const;
+	virtual Error load_image(Ref<Image> p_image, Ref<FileAccess> p_fileaccess, BitField<ImageFormatLoader::LoaderFlags> p_flags = FLAG_NONE, float p_scale = 1.0) override;
+	virtual void get_recognized_extensions(List<String> *p_extensions) const override;
 	ImageLoaderIES();
 };
 
