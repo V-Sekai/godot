@@ -147,3 +147,15 @@ GH-84792
 Validate extension JSON: Error: Field 'classes/RenderingServer/methods/environment_set_fog/arguments': size changed value in new API, from 10 to 11.
 
 Added fog mode argument. Compatibility method registered.
+
+
+GH-81746
+--------
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_buffer
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_file
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/append_from_scene
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/generate_buffer
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/generate_scene
+Validate extension JSON: API was removed: classes/GLTFDocument/methods/write_to_filesystem
+
+`p_state` parameter type in GLTFDocument methods has been updated from `Ref<GLTFState>` to `Ref<ModelState3D>`. This change is due to the fact that `GLTFState` now extends `ModelState3D`, encapsulating 3D model state management.
