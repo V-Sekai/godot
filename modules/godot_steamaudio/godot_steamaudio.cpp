@@ -125,14 +125,15 @@ int init_global_state_steamaudio(GlobalStateSteamAudio &global_state) {
 	global_state.opencl_device = nullptr;
 	global_state.tan_device = nullptr;
 
-	//This would be a good point to check Godot project settings for the type of raytracer to use for indirect sims
+	// This would be a good point to check Godot project settings for the type of raytracer to use for indirect sims
 	// global_state.use_radeon_rays = ??
 	// also, opencl may not be supported on all platforms, so fallback should be to use embree
 	// this may especially be the case on Linux platforms
 
-	//Get these from project settings
+	// Get these from project settings.
 
 	IPLSceneType scene_type = IPL_SCENETYPE_EMBREE;
+
 	if (global_state.use_radeon_rays) {
 		IPLOpenCLDeviceSettings ocl_device_settings{};
 		ocl_device_settings.type = IPL_OPENCLDEVICETYPE_ANY;
@@ -142,17 +143,14 @@ int init_global_state_steamaudio(GlobalStateSteamAudio &global_state) {
 
 		IPLOpenCLDeviceList ocl_device_list = nullptr;
 		error_code = iplOpenCLDeviceListCreate(global_state.phonon_ctx, &(ocl_device_settings), &(ocl_device_list));
-		if (error_code) {
-			printf("Err code for iplOpenCLDeviceListCreate: %d\n", error_code);
-			printf("Falling back to Embree (CPU)\n");
-			global_state.use_radeon_rays = false;
-		} else {
+		
+		if (!error_code) {
 			int num_ocl_devs = iplOpenCLDeviceListGetNumDevices(ocl_device_list);
 
 			for (int i = 0; i < num_ocl_devs; i++) {
 				IPLOpenCLDeviceDesc ocl_device_desc;
 				iplOpenCLDeviceListGetDeviceDesc(ocl_device_list, i, &(ocl_device_desc));
-				printf("Found openCL device: %s %s %s\n", ocl_device_desc.platformName, ocl_device_desc.platformVendor, ocl_device_desc.platformVersion);
+				printf("Found the openCL device: %s %s %s\n", ocl_device_desc.platformName, ocl_device_desc.platformVendor, ocl_device_desc.platformVersion);
 				printf("%s %s %s\n", ocl_device_desc.deviceName, ocl_device_desc.deviceVendor, ocl_device_desc.deviceVersion);
 				printf("Is CPU? %d\n", ocl_device_desc.type == IPL_OPENCLDEVICETYPE_CPU ? 1 : 0);
 				printf("Is GPU? %d\n", ocl_device_desc.type == IPL_OPENCLDEVICETYPE_GPU ? 1 : 0);
@@ -161,16 +159,19 @@ int init_global_state_steamaudio(GlobalStateSteamAudio &global_state) {
 			//Actually initialize radeon_rays_device here and set scenetype
 			scene_type = IPL_SCENETYPE_RADEONRAYS;
 			iplOpenCLDeviceListRelease(&(ocl_device_list));
+		} else {
+			printf("Error code for iplOpenCLDeviceListCreate: %d\n", error_code);
+			printf("Try to use Embree (CPU) fallback.");
+			global_state.use_radeon_rays = false;
 		}
 	}
 
 	if (!global_state.use_radeon_rays) {
-		//create Embree device
 		IPLEmbreeDeviceSettings embree_device_settings{};
 		error_code = iplEmbreeDeviceCreate(global_state.phonon_ctx, &(embree_device_settings), &(global_state.embree_device));
 		if (error_code) {
-			printf("Err code for iplEmbreeDeviceCreate: %d\n", error_code);
-			return (int)error_code;
+			printf("Error code for iplEmbreeDeviceCreate: %d\n", error_code);
+			scene_type = IPL_SCENETYPE_DEFAULT;
 		}
 	}
 
@@ -205,7 +206,7 @@ int init_global_state_steamaudio(GlobalStateSteamAudio &global_state) {
 	global_state.simulator = nullptr;
 	error_code = iplSimulatorCreate(global_state.phonon_ctx, &(global_state.sim_settings), &(global_state.simulator));
 	if (error_code) {
-		printf("Err code for iplSimulatorCreate: %d\n", error_code);
+		printf("Error code for iplSimulatorCreate: %d\n", error_code);
 		return (int)error_code;
 	}
 

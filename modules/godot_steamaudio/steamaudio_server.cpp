@@ -30,11 +30,13 @@ void SteamAudioServer::_bind_methods() {
 }
 
 void SteamAudioServer::tick() {
-	if (!global_state_initialized.load())
+	if (!global_state_initialized.load()) {
 		return;
+	}
 
-	if (listener == nullptr)
+	if (!listener) {
 		return;
+	}
 
 	//We should only update the scene and simulator if neither simulation is running
 	//this function blocks until the direct simulation finished
@@ -112,8 +114,9 @@ void SteamAudioServer::tick() {
 		}
 	}
 
-	if (indirect_thread_processing.load())
+	if (indirect_thread_processing.load()) {
 		return;
+	}
 
 	//If we got here, outputs should be ready
 
@@ -216,7 +219,7 @@ void SteamAudioServer::finish() {
 }
 
 bool SteamAudioServer::register_listener(SteamAudioListener *rx) {
-	if (rx == nullptr) {
+	if (!rx) {
 		return false;
 	}
 	listener = rx;
