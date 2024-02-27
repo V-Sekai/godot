@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-steamaudio.git
 	branch = main
-	commit = dcd5416d0b88297f4a85e949372139cce87f62b5
-	parent = 520745cddfcc41e216ea0fce15ad4b9d62680c55
+	commit = 1724ee61ddafc0e60090411ee0f1e9aecaf4c5ee
+	parent = 5d49fac2b096b51806236158a2e5bbba8355d5d7
 	method = merge
 	cmdver = 0.4.6
