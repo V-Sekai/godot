@@ -8,7 +8,7 @@ You can find the Steam® Audio Github page [here](https://github.com/ValveSoftwa
 
 This is a module, meaning it must be compiled as you build the Godot engine. Work is being done to move this module to the GDExtension framework to avoid the need to recompile the engine.
 
-At this time, this repository only supports Windows builds. Contributions to get Linux and Mac support working would be greatly appreciated.
+At this time, this repository only supports Mac and Windows builds. Contributions to get Linux support working would be greatly appreciated.
 If you are unfamiliar with compiling Godot from source, please read this guide from the official docs: [Compiling Godot from Source](https://docs.godotengine.org/en/stable/contributing/development/compiling/index.html). To get a Windows build going, clone or copy this repository into the Godot source's modules folder:
 
 ```bash
