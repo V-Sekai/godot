@@ -83,6 +83,7 @@ elif env["platform"] == "macos":
     env.Append(LINKFLAGS=[f"-L{lib_path}", "-lphonon", "-Wl,-rpath,'$$ORIGIN':."])
     env.Append(LIBS=["phonon"])
     copy_libraries(lib_path, "*.bundle", target_bin_dir)
+    copy_libraries(lib_path, "*.dylib", target_bin_dir)
 elif env["platform"] == "linux":
     lib_path = os.path.abspath("./external/steamaudio/lib/linux-x64")
     env.Append(LIBPATH=[lib_path])
