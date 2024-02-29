@@ -2,9 +2,9 @@
 
 
 def can_build(env, platform):
-    if platform in ["web", "android", "linux"]:
-        return False
-    return True
+    if platform not in ["web", "android", "linux"]:
+        return True
+    return False
 
 
 def configure(env):
