@@ -888,38 +888,33 @@ Error GLTFDocument::_encode_accessors(Ref<GLTFState> p_state) {
 		d["normalized"] = accessor->normalized;
 		d["max"] = accessor->max;
 		d["min"] = accessor->min;
-		d["bufferView"] = accessor->buffer_view; //optional because it may be sparse...
+		d["bufferView"] = accessor->buffer_view;
 
-		// Dictionary s;
-		// s["count"] = accessor->sparse_count;
-		// ERR_FAIL_COND_V(!s.has("count"), ERR_PARSE_ERROR);
+		if (accessor->sparse_count > 0) {
+			Dictionary s;
+			s["count"] = accessor->sparse_count;
 
-		// s["indices"] = accessor->sparse_accessors;
-		// ERR_FAIL_COND_V(!s.has("indices"), ERR_PARSE_ERROR);
+			Dictionary si;
+			si["bufferView"] = accessor->sparse_indices_buffer_view;
+			si["componentType"] = accessor->sparse_indices_component_type;
+			if (accessor->sparse_indices_byte_offset != -1) {
+				si["byteOffset"] = accessor->sparse_indices_byte_offset;
+			}
+			ERR_FAIL_COND_V(!si.has("bufferView") || !si.has("componentType"), ERR_PARSE_ERROR);
+			s["indices"] = si;
 
-		// Dictionary si;
+			Dictionary sv;
+			sv["bufferView"] = accessor->sparse_values_buffer_view;
+			if (accessor->sparse_values_byte_offset != -1) {
+				sv["byteOffset"] = accessor->sparse_values_byte_offset;
+			}
+			ERR_FAIL_COND_V(!sv.has("bufferView"), ERR_PARSE_ERROR);
+			s["values"] = sv;
 
-		// si["bufferView"] = accessor->sparse_indices_buffer_view;
+			ERR_FAIL_COND_V(!s.has("count") || !s.has("indices") || !s.has("values"), ERR_PARSE_ERROR);
+			d["sparse"] = s;
+		}
 
-		// ERR_FAIL_COND_V(!si.has("bufferView"), ERR_PARSE_ERROR);
-		// si["componentType"] = accessor->sparse_indices_component_type;
-
-		// if (si.has("byteOffset")) {
-		// 	si["byteOffset"] = accessor->sparse_indices_byte_offset;
-		// }
-
-		// ERR_FAIL_COND_V(!si.has("componentType"), ERR_PARSE_ERROR);
-		// s["indices"] = si;
-		// Dictionary sv;
-
-		// sv["bufferView"] = accessor->sparse_values_buffer_view;
-		// if (sv.has("byteOffset")) {
-		// 	sv["byteOffset"] = accessor->sparse_values_byte_offset;
-		// }
-		// ERR_FAIL_COND_V(!sv.has("bufferView"), ERR_PARSE_ERROR);
-		// s["values"] = sv;
-		// ERR_FAIL_COND_V(!s.has("values"), ERR_PARSE_ERROR);
-		// d["sparse"] = s;
 		accessors.push_back(d);
 	}
 
@@ -1143,7 +1138,7 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> p_state, const double *p_
 	const uint32_t offset = bv->byte_offset = p_byte_offset;
 	Vector<uint8_t> &gltf_buffer = p_state->buffers.write[0];
 
-	int stride = _get_component_type_size(p_component_type);
+	int stride = component_count * component_size;
 	if (p_for_vertex && stride % 4) {
 		stride += 4 - (stride % 4); //according to spec must be multiple of 4
 	}
@@ -1152,13 +1147,14 @@ Error GLTFDocument::_encode_buffer_view(Ref<GLTFState> p_state, const double *p_
 
 	print_verbose("glTF: encoding accessor offset " + itos(p_byte_offset) + " view offset: " + itos(bv->byte_offset) + " total buffer len: " + itos(gltf_buffer.size()) + " view len " + itos(bv->byte_length));
 
-	const int buffer_end = (stride * (p_count - 1)) + _get_component_type_size(p_component_type);
+	const int buffer_end = (stride * (p_count - 1)) + component_size;
 	// TODO define bv->byte_stride
 	bv->byte_offset = gltf_buffer.size();
 	if (p_for_vertex_indices) {
 		bv->indices = true;
 	} else if (p_for_vertex) {
 		bv->vertex_attributes = true;
+		bv->byte_stride = stride;
 	}
 
 	switch (p_component_type) {
@@ -1976,6 +1972,91 @@ GLTFAccessorIndex GLTFDocument::_encode_accessor_as_vec3(Ref<GLTFState> p_state,
 	return p_state->accessors.size() - 1;
 }
 
+GLTFAccessorIndex GLTFDocument::_encode_sparse_accessor_as_vec3(Ref<GLTFState> p_state, const Vector<Vector3> p_attribs, const Vector<Vector3> p_reference_attribs, const bool p_for_vertex, const GLTFAccessorIndex p_reference_accessor) {
+	if (p_attribs.size() == 0) {
+		return -1;
+	}
+
+	const int element_count = 3;
+	Vector<double> attribs, type_max, type_min;
+	attribs.resize(p_attribs.size() * element_count);
+	type_max.resize(element_count);
+	type_min.resize(element_count);
+
+	Vector<double> changed_indices;
+	Vector<double> changed_values;
+
+	for (int i = 0; i < p_attribs.size(); i++) {
+		Vector3 attrib = p_attribs[i];
+		attribs.write[(i * element_count) + 0] = _filter_number(attrib.x);
+		attribs.write[(i * element_count) + 1] = _filter_number(attrib.y);
+		attribs.write[(i * element_count) + 2] = _filter_number(attrib.z);
+		bool is_different = false;
+		if (i < p_reference_attribs.size()) {
+			is_different = !attrib.is_equal_approx(p_reference_attribs[i]);
+		} else {
+			is_different = !attrib.is_zero_approx();
+		}
+		if (is_different) {
+			changed_indices.push_back(i);
+			changed_values.push_back(_filter_number(attrib.x));
+			changed_values.push_back(_filter_number(attrib.y));
+			changed_values.push_back(_filter_number(attrib.z));
+		}
+		_calc_accessor_min_max(i, element_count, type_max, attribs, type_min);
+	}
+	_round_min_max_components(type_min, type_max);
+
+	if (attribs.size() % element_count != 0) {
+		return -1;
+	}
+
+	Ref<GLTFAccessor> sparse_accessor;
+	sparse_accessor.instantiate();
+	int64_t size = p_state->buffers[0].size();
+	const GLTFType type = GLTFType::TYPE_VEC3;
+	const int component_type = GLTFDocument::COMPONENT_TYPE_FLOAT;
+
+	sparse_accessor->normalized = false;
+	sparse_accessor->count = p_attribs.size();
+	sparse_accessor->type = type;
+	sparse_accessor->component_type = component_type;
+	if (p_reference_accessor < p_state->accessors.size() && p_reference_accessor >= 0 && p_state->accessors[p_reference_accessor].is_valid()) {
+		sparse_accessor->byte_offset = p_state->accessors[p_reference_accessor]->byte_offset;
+		sparse_accessor->buffer_view = p_state->accessors[p_reference_accessor]->buffer_view;
+	}
+	sparse_accessor->max = type_max;
+	sparse_accessor->min = type_min;
+
+	if (changed_indices.size() > 0 && changed_indices.size() < p_attribs.size() / 2) {
+		// If more than half of vertices changed, it is probably not worthwhile to use a sparse accessor.
+
+		GLTFBufferIndex buffer_view_i_indices = -1, buffer_view_i_values = -1;
+		sparse_accessor->sparse_indices_component_type = GLTFDocument::TYPE_UNSIGNED_INT;
+		if (_encode_buffer_view(p_state, changed_indices.ptr(), changed_indices.size(), GLTFType::TYPE_SCALAR, sparse_accessor->sparse_indices_component_type, sparse_accessor->normalized, sparse_accessor->sparse_indices_byte_offset, false, buffer_view_i_indices) != OK) {
+			return -1;
+		}
+		// There is one changed_indices per changed index, but 3 changed_values per changed index
+		if (_encode_buffer_view(p_state, changed_values.ptr(), changed_indices.size(), sparse_accessor->type, sparse_accessor->component_type, sparse_accessor->normalized, sparse_accessor->sparse_values_byte_offset, false, buffer_view_i_values) != OK) {
+			return -1;
+		}
+		sparse_accessor->sparse_indices_buffer_view = buffer_view_i_indices;
+		sparse_accessor->sparse_values_buffer_view = buffer_view_i_values;
+		sparse_accessor->sparse_count = changed_indices.size();
+	} else if (changed_indices.size() > 0) {
+		GLTFBufferIndex buffer_view_i;
+		sparse_accessor->byte_offset = 0;
+		Error err = _encode_buffer_view(p_state, attribs.ptr(), p_attribs.size(), type, component_type, sparse_accessor->normalized, size, p_for_vertex, buffer_view_i);
+		if (err != OK) {
+			return -1;
+		}
+		sparse_accessor->buffer_view = buffer_view_i;
+	}
+	p_state->accessors.push_back(sparse_accessor);
+
+	return p_state->accessors.size() - 1;
+}
+
 GLTFAccessorIndex GLTFDocument::_encode_accessor_as_xform(Ref<GLTFState> p_state, const Vector<Transform3D> p_attribs, const bool p_for_vertex) {
 	if (p_attribs.size() == 0) {
 		return -1;
@@ -2466,6 +2547,23 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> p_state) {
 			print_verbose("glTF: Mesh has targets");
 			if (import_mesh->get_blend_shape_count()) {
 				ArrayMesh::BlendShapeMode shape_mode = import_mesh->get_blend_shape_mode();
+				Vector<Vector3> reference_vertex_array = array[Mesh::ARRAY_VERTEX];
+				Vector<Vector3> reference_normal_array = array[Mesh::ARRAY_NORMAL];
+				Vector<Vector3> reference_tangent_array;
+				{
+					Vector<real_t> tarr = array[Mesh::ARRAY_TANGENT];
+					if (tarr.size()) {
+						const int ret_size = tarr.size() / 4;
+						reference_tangent_array.resize(ret_size);
+						for (int i = 0; i < ret_size; i++) {
+							Vector3 vec3;
+							vec3.x = tarr[(i * 4) + 0];
+							vec3.y = tarr[(i * 4) + 1];
+							vec3.z = tarr[(i * 4) + 2];
+							reference_tangent_array.write[i] = vec3;
+						}
+					}
+				}
 				for (int morph_i = 0; morph_i < import_mesh->get_blend_shape_count(); morph_i++) {
 					Array array_morph = import_mesh->get_surface_blend_shape_arrays(surface_i, morph_i);
 					Dictionary t;
@@ -2479,13 +2577,24 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> p_state) {
 								varr.write[blend_i] = Vector3(varr[blend_i]) - src_varr[blend_i];
 							}
 						}
-
-						t["POSITION"] = _encode_accessor_as_vec3(p_state, varr, true);
+						GLTFAccessorIndex position_accessor = attributes["POSITION"];
+						if (position_accessor != -1) {
+							int new_accessor = _encode_sparse_accessor_as_vec3(p_state, varr, reference_vertex_array, true, position_accessor);
+							if (new_accessor != -1) {
+								t["POSITION"] = new_accessor;
+							}
+						}
 					}
 
 					Vector<Vector3> narr = array_morph[Mesh::ARRAY_NORMAL];
 					if (narr.size()) {
-						t["NORMAL"] = _encode_accessor_as_vec3(p_state, narr, true);
+						GLTFAccessorIndex normal_accessor = attributes["NORMAL"];
+						if (normal_accessor != -1) {
+							int new_accessor = _encode_sparse_accessor_as_vec3(p_state, narr, reference_normal_array, true, normal_accessor);
+							if (new_accessor != -1) {
+								t["NORMAL"] = new_accessor;
+							}
+						}
 					}
 					Vector<real_t> tarr = array_morph[Mesh::ARRAY_TANGENT];
 					if (tarr.size()) {
@@ -2497,8 +2606,15 @@ Error GLTFDocument::_serialize_meshes(Ref<GLTFState> p_state) {
 							vec3.x = tarr[(i * 4) + 0];
 							vec3.y = tarr[(i * 4) + 1];
 							vec3.z = tarr[(i * 4) + 2];
+							attribs.write[i] = vec3;
 						}
-						t["TANGENT"] = _encode_accessor_as_vec3(p_state, attribs, true);
+						GLTFAccessorIndex tangent_accessor = attributes["TANGENT"];
+						if (tangent_accessor != -1) {
+							int new_accessor = _encode_sparse_accessor_as_vec3(p_state, attribs, reference_tangent_array, true, tangent_accessor);
+							if (new_accessor != -1) {
+								t["TANGENT"] = new_accessor;
+							}
+						}
 					}
 					targets.push_back(t);
 				}
