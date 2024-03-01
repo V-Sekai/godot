@@ -2,7 +2,7 @@
 
 
 def can_build(env, platform):
-    if platform not in ["web", "android", "linux"]:
+    if platform not in ["web", "android", "linuxbsd"]:
         return True
     return False
 
