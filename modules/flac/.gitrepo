@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/V-Sekai.flac.git
+	branch = master
+	commit = 73de59e803ade5cfeb49e52cd33f9ef7c04ca2f0
+	parent = 4714e95896c8db02616ea6ec7f9aff92dec1cae4
+	method = merge
+	cmdver = 0.4.6
