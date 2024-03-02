@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  openxr_hand.h                                                         */
+/*  physical_bone_simulator_3d.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,100 +28,87 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OPENXR_HAND_H
-#define OPENXR_HAND_H
+#ifndef PHYSICAL_BONE_SIMULATOR_3D_H
+#define PHYSICAL_BONE_SIMULATOR_3D_H
 
 #include "scene/3d/skeleton_modifier_3d.h"
 
-#include <openxr/openxr.h>
+#include "scene/3d/physics/physical_bone_3d.h"
 
-class OpenXRAPI;
-class OpenXRHandTrackingExtension;
+class PhysicalBone3D;
 
-class OpenXRHand : public SkeletonModifier3D {
-	GDCLASS(OpenXRHand, SkeletonModifier3D);
+class PhysicalBoneSimulator3D : public SkeletonModifier3D {
+	GDCLASS(PhysicalBoneSimulator3D, SkeletonModifier3D);
 
-public:
-	enum Hands { // Deprecated, need to change this to OpenXRInterface::Hands.
-		HAND_LEFT,
-		HAND_RIGHT,
-		HAND_MAX
+	real_t interpolation = 1.0;
+	bool simulating = false;
+	bool enabled = true;
+
+	struct SimulatedBone {
+		int parent;
+		Vector<int> child_bones;
+
+		Transform3D global_pose;
+
+		PhysicalBone3D *physical_bone = nullptr;
+		PhysicalBone3D *cache_parent_physical_bone = nullptr;
+
+		SimulatedBone() {
+			parent = -1;
+			global_pose = Transform3D();
+			physical_bone = nullptr;
+			cache_parent_physical_bone = nullptr;
+		}
 	};
 
-	enum MotionRange { // Deprecated, need to change this to OpenXRInterface::HandMotionRange.
-		MOTION_RANGE_UNOBSTRUCTED,
-		MOTION_RANGE_CONFORM_TO_CONTROLLER,
-		MOTION_RANGE_MAX
-	};
+	Vector<SimulatedBone> bones;
 
-	enum SkeletonRig {
-		SKELETON_RIG_OPENXR,
-		SKELETON_RIG_HUMANOID,
-		SKELETON_RIG_MAX
-	};
-
-	enum BoneUpdate {
-		BONE_UPDATE_FULL,
-		BONE_UPDATE_ROTATION_ONLY,
-		BONE_UPDATE_MAX
-	};
-
-private:
-	struct JointData {
-		int bone = -1;
-		int parent_joint = -1;
-	};
-
-	OpenXRAPI *openxr_api = nullptr;
-	OpenXRHandTrackingExtension *hand_tracking_ext = nullptr;
-
-	Hands hand = HAND_LEFT;
-	MotionRange motion_range = MOTION_RANGE_UNOBSTRUCTED;
-	NodePath hand_skeleton;
-	SkeletonRig skeleton_rig = SKELETON_RIG_OPENXR;
-	BoneUpdate bone_update = BONE_UPDATE_FULL;
-
-	JointData joints[XR_HAND_JOINT_COUNT_EXT];
-
-	void _set_motion_range();
-
-	void _get_joint_data();
-	void _update_skeleton();
+	/// This is a slow API, so it's cached
+	PhysicalBone3D *_get_physical_bone_parent(int p_bone);
+	void _rebuild_physical_bones_cache();
+	void _reset_physical_bones_state();
 
 protected:
 	static void _bind_methods();
 
+	virtual void _set_active(bool p_active) override;
+
+	void _bone_list_changed();
+	void _pose_updated();
+
 	virtual void _process_modification(double p_delta) override;
 
-#ifndef DISABLE_DEPRECATED
-	bool _set(const StringName &p_name, const Variant &p_value);
-	bool _get(const StringName &p_name, Variant &r_ret) const;
-	void _set_hand_skeleton_bind_compat_87888(const NodePath &p_hand_skeleton);
-	NodePath _get_hand_skeleton_bind_compat_87888() const;
-	static void _bind_compatibility_methods();
-#endif // DISABLE_DEPRECATED
+	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
 
 public:
-	OpenXRHand();
+#ifndef DISABLE_DEPRECATED
+	bool is_compat = false;
+#endif // _DISABLE_DEPRECATED
+	bool is_simulating_physics() const;
 
-	void set_hand(Hands p_hand);
-	Hands get_hand() const;
+	void set_interpolation(real_t p_interpolation);
+	real_t get_interpolation() const;
 
-	void set_motion_range(MotionRange p_motion_range);
-	MotionRange get_motion_range() const;
+	int find_bone(const String &p_name) const;
+	String get_bone_name(int p_bone) const;
+	int get_bone_count() const;
+	bool is_bone_parent_of(int p_bone_id, int p_parent_bone_id) const;
 
-	void set_skeleton_rig(SkeletonRig p_skeleton_rig);
-	SkeletonRig get_skeleton_rig() const;
+	Transform3D get_bone_global_pose(int p_bone) const;
+	void set_bone_global_pose(int p_bone, const Transform3D &p_pose);
 
-	void set_bone_update(BoneUpdate p_bone_update);
-	BoneUpdate get_bone_update() const;
+	void bind_physical_bone_to_bone(int p_bone, PhysicalBone3D *p_physical_bone);
+	void unbind_physical_bone_from_bone(int p_bone);
 
-	void _notification(int p_what);
+	PhysicalBone3D *get_physical_bone(int p_bone);
+	PhysicalBone3D *get_physical_bone_parent(int p_bone);
+
+	void physical_bones_stop_simulation();
+	void physical_bones_start_simulation_on(const TypedArray<StringName> &p_bones);
+	void physical_bones_add_collision_exception(RID p_exception);
+	void physical_bones_remove_collision_exception(RID p_exception);
+
+	PhysicalBoneSimulator3D();
 };
 
-VARIANT_ENUM_CAST(OpenXRHand::Hands)
-VARIANT_ENUM_CAST(OpenXRHand::MotionRange)
-VARIANT_ENUM_CAST(OpenXRHand::SkeletonRig)
-VARIANT_ENUM_CAST(OpenXRHand::BoneUpdate)
-
-#endif // OPENXR_HAND_H
+#endif // PHYSICAL_BONE_SIMULATOR_3D_H
