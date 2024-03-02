@@ -30,9 +30,9 @@
 
 #include "camera_3d.h"
 
-#include "collision_object_3d.h"
 #include "core/config/project_settings.h"
 #include "core/math/projection.h"
+#include "scene/3d/physics/collision_object_3d.h"
 #include "scene/main/viewport.h"
 #include "servers/audio_server.h"
 #include "servers/resonanceaudio/resonance_audio_wrapper.h"
