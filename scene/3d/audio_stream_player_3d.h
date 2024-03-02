@@ -114,6 +114,7 @@ private:
 	float cached_global_panning_strength = 0.5f;
 
 	AudioSourceId audio_source_id;
+
 protected:
 	void _validate_property(PropertyInfo &p_property) const;
 	void _notification(int p_what);
