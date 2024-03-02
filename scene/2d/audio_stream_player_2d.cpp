@@ -179,7 +179,7 @@ void AudioStreamPlayer2D::_update_panning() {
 
 	for (const Ref<AudioStreamPlayback> &playback : internal->stream_playbacks) {
 		AudioServer::get_singleton()->set_playback_bus_exclusive(playback, _get_actual_bus(), volume_vector, AudioSourceId(-1));
-    }
+	}
 
 	for (Ref<AudioStreamPlayback> &playback : internal->stream_playbacks) {
 		AudioServer::get_singleton()->set_playback_pitch_scale(playback, internal->pitch_scale);
