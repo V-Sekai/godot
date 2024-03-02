@@ -2866,8 +2866,8 @@ Error Main::setup2(bool p_show_boot_logo) {
 		audio_server = memnew(AudioServer);
 		audio_server->init();
 
-	    resonance_audio_server = memnew(ResonanceAudioServer);
-		
+		resonance_audio_server = memnew(ResonanceAudioServer);
+
 		OS::get_singleton()->benchmark_end_measure("Servers", "Audio");
 	}
 
