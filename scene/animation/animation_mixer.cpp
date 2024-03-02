@@ -36,6 +36,7 @@
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/skeleton_3d.h"
+#include "scene/3d/skeleton_modifier_3d.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/animation.h"
 #include "scene/scene_string_names.h"
@@ -121,6 +122,47 @@ void AnimationMixer::_validate_property(PropertyInfo &p_property) const {
 		p_property.usage |= PROPERTY_USAGE_READ_ONLY;
 	}
 #endif // TOOLS_ENABLED
+}
+
+void AnimationMixer::_pre_process() {
+	current_frame++;
+}
+
+void AnimationMixer::_process_changed() {
+	if (!is_inside_tree()) {
+		return;
+	}
+	SceneTree *st = get_tree();
+	if (!st) {
+		return;
+	}
+	current_frame = 0;
+	prev_frame = (uint64_t)INFINITY;
+	if (!active) {
+		if (st->is_connected(SNAME("process_frame"), callable_mp(this, &AnimationMixer::_pre_process))) {
+			st->disconnect(SNAME("process_frame"), callable_mp(this, &AnimationMixer::_pre_process));
+		}
+		if (st->is_connected(SNAME("physics_frame"), callable_mp(this, &AnimationMixer::_pre_process))) {
+			st->disconnect(SNAME("physics_frame"), callable_mp(this, &AnimationMixer::_pre_process));
+		}
+	} else {
+		if (callback_mode_process == ANIMATION_CALLBACK_MODE_PROCESS_IDLE) {
+			if (st->is_connected(SNAME("physics_frame"), callable_mp(this, &AnimationMixer::_pre_process))) {
+				st->disconnect(SNAME("physics_frame"), callable_mp(this, &AnimationMixer::_pre_process));
+			}
+			if (!st->is_connected(SNAME("process_frame"), callable_mp(this, &AnimationMixer::_pre_process))) {
+				st->connect(SNAME("process_frame"), callable_mp(this, &AnimationMixer::_pre_process));
+			}
+		} else if (callback_mode_process == ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS) {
+			if (st->is_connected(SNAME("process_frame"), callable_mp(this, &AnimationMixer::_pre_process))) {
+				st->disconnect(SNAME("process_frame"), callable_mp(this, &AnimationMixer::_pre_process));
+			}
+			if (!st->is_connected(SNAME("physics_frame"), callable_mp(this, &AnimationMixer::_pre_process))) {
+				st->connect(SNAME("physics_frame"), callable_mp(this, &AnimationMixer::_pre_process));
+			}
+		}
+	}
+	emit_signal(SNAME("mixer_updated"));
 }
 
 /* -------------------------------------------- */
@@ -442,6 +484,7 @@ void AnimationMixer::set_active(bool p_active) {
 	if (!active && is_inside_tree()) {
 		_clear_caches();
 	}
+	_process_changed();
 }
 
 bool AnimationMixer::is_active() const {
@@ -481,10 +524,6 @@ void AnimationMixer::set_callback_mode_process(AnimationCallbackModeProcess p_mo
 	if (was_active) {
 		set_active(true);
 	}
-
-#ifdef TOOLS_ENABLED
-	emit_signal(SNAME("mixer_updated"));
-#endif // TOOLS_ENABLED
 }
 
 AnimationMixer::AnimationCallbackModeProcess AnimationMixer::get_callback_mode_process() const {
@@ -493,9 +532,7 @@ AnimationMixer::AnimationCallbackModeProcess AnimationMixer::get_callback_mode_p
 
 void AnimationMixer::set_callback_mode_method(AnimationCallbackModeMethod p_mode) {
 	callback_mode_method = p_mode;
-#ifdef TOOLS_ENABLED
 	emit_signal(SNAME("mixer_updated"));
-#endif // TOOLS_ENABLED
 }
 
 AnimationMixer::AnimationCallbackModeMethod AnimationMixer::get_callback_mode_method() const {
@@ -928,7 +965,10 @@ void AnimationMixer::_process_animation(double p_delta, bool p_update_only) {
 		_blend_apply();
 		_blend_post_process();
 	};
+	emit_signal(SNAME("mixer_applied"));
+	_post_process(p_delta);
 	clear_animation_instances();
+	clear_post_processes();
 }
 
 Variant AnimationMixer::post_process_key_value(const Ref<Animation> &p_anim, int p_track, Variant p_value, ObjectID p_object_id, int p_object_sub_idx) {
@@ -1817,6 +1857,28 @@ void AnimationMixer::_blend_apply() {
 	}
 }
 
+void AnimationMixer::clear_post_processes() {
+	post_processes.clear();
+	prev_frame = current_frame;
+}
+
+void AnimationMixer::_post_process(double p_delta) {
+	post_process_delta = p_delta;
+	for (const ObjectID &oid : post_processes) {
+		Object *t_obj = ObjectDB::get_instance(oid);
+		if (!t_obj) {
+			continue;
+		}
+#ifndef _3D_DISABLED
+		SkeletonModifier3D *mod = cast_to<SkeletonModifier3D>(t_obj);
+		if (!mod) {
+			continue;
+		}
+		mod->advance(post_process_delta);
+#endif // _3D_DISABLED
+	}
+}
+
 void AnimationMixer::_call_object(ObjectID p_object_id, const StringName &p_method, const Vector<Variant> &p_params, bool p_deferred) {
 	// Separate function to use alloca() more efficiently
 	const Variant **argptrs = (const Variant **)alloca(sizeof(Variant *) * p_params.size());
@@ -1862,6 +1924,27 @@ void AnimationMixer::advance(double p_time) {
 
 void AnimationMixer::clear_caches() {
 	_clear_caches();
+}
+
+bool AnimationMixer::is_processed() const {
+	return current_frame == prev_frame;
+}
+
+void AnimationMixer::add_post_process(Object *p_object) {
+#ifndef _3D_DISABLED
+	SkeletonModifier3D *mod = cast_to<SkeletonModifier3D>(p_object);
+	ERR_FAIL_NULL_MSG(mod, "Registering object is not SkeletonModifier3D.");
+
+	if (!is_processing_internal() || is_processed()) {
+		mod->advance(post_process_delta); // AnimationMixer is not active or already processed, call post process immediately.
+		return;
+	}
+
+	ObjectID oid = mod->get_instance_id();
+	if (!post_processes.has(oid)) {
+		post_processes.push_back(oid);
+	}
+#endif // _3D_DISABLED
 }
 
 /* -------------------------------------------- */
@@ -2132,6 +2215,7 @@ void AnimationMixer::_notification(int p_what) {
 				set_process_internal(false);
 			}
 			_clear_caches();
+			_process_changed();
 		} break;
 
 		case NOTIFICATION_INTERNAL_PROCESS: {
@@ -2224,20 +2308,19 @@ void AnimationMixer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_caches"), &AnimationMixer::clear_caches);
 	ClassDB::bind_method(D_METHOD("advance", "delta"), &AnimationMixer::advance);
 	GDVIRTUAL_BIND(_post_process_key_value, "animation", "track", "value", "object_id", "object_sub_idx");
-
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "active"), "set_active", "is_active");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deterministic"), "set_deterministic", "is_deterministic");
-
-	/* ---- Reset on save ---- */
-	ClassDB::bind_method(D_METHOD("set_reset_on_save_enabled", "enabled"), &AnimationMixer::set_reset_on_save_enabled);
-	ClassDB::bind_method(D_METHOD("is_reset_on_save_enabled"), &AnimationMixer::is_reset_on_save_enabled);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reset_on_save", PROPERTY_HINT_NONE, ""), "set_reset_on_save_enabled", "is_reset_on_save_enabled");
+	ClassDB::bind_method(D_METHOD("is_processed"), &AnimationMixer::is_processed);
+	ClassDB::bind_method(D_METHOD("add_post_process", "object"), &AnimationMixer::add_post_process);
 
 	/* ---- Capture feature ---- */
 	ClassDB::bind_method(D_METHOD("capture", "name", "duration", "trans_type", "ease_type"), &AnimationMixer::capture, DEFVAL(Tween::TRANS_LINEAR), DEFVAL(Tween::EASE_IN));
 
-	ADD_SIGNAL(MethodInfo("mixer_updated")); // For updating dummy player.
+	/* ---- Reset on save ---- */
+	ClassDB::bind_method(D_METHOD("set_reset_on_save_enabled", "enabled"), &AnimationMixer::set_reset_on_save_enabled);
+	ClassDB::bind_method(D_METHOD("is_reset_on_save_enabled"), &AnimationMixer::is_reset_on_save_enabled);
 
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "active"), "set_active", "is_active");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deterministic"), "set_deterministic", "is_deterministic");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reset_on_save", PROPERTY_HINT_NONE, ""), "set_reset_on_save_enabled", "is_reset_on_save_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "root_node"), "set_root_node", "get_root_node");
 
 	ADD_GROUP("Root Motion", "root_motion_");
@@ -2266,7 +2349,9 @@ void AnimationMixer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo(SNAME("animation_libraries_updated")));
 	ADD_SIGNAL(MethodInfo(SNAME("animation_finished"), PropertyInfo(Variant::STRING_NAME, "anim_name")));
 	ADD_SIGNAL(MethodInfo(SNAME("animation_started"), PropertyInfo(Variant::STRING_NAME, "anim_name")));
+	ADD_SIGNAL(MethodInfo(SNAME("mixer_applied")));
 	ADD_SIGNAL(MethodInfo(SNAME("caches_cleared")));
+	ADD_SIGNAL(MethodInfo(SNAME("mixer_updated")));
 
 	ClassDB::bind_method(D_METHOD("_reset"), &AnimationMixer::reset);
 	ClassDB::bind_method(D_METHOD("_restore", "backup"), &AnimationMixer::restore);
