@@ -341,6 +341,8 @@ protected:
 
 	/* ---- Blending processor ---- */
 	virtual void _process_animation(double p_delta, bool p_update_only = false);
+
+	// For post process with retrieved key value during blending.
 	virtual Variant _post_process_key_value(const Ref<Animation> &p_anim, int p_track, Variant p_value, ObjectID p_object_id, int p_object_sub_idx = -1);
 	Variant post_process_key_value(const Ref<Animation> &p_anim, int p_track, Variant p_value, ObjectID p_object_id, int p_object_sub_idx = -1);
 	GDVIRTUAL5RC(Variant, _post_process_key_value, Ref<Animation>, int, Variant, ObjectID, int);
@@ -353,6 +355,16 @@ protected:
 	void _blend_apply();
 	virtual void _blend_post_process();
 	void _call_object(ObjectID p_object_id, const StringName &p_method, const Vector<Variant> &p_params, bool p_deferred);
+
+	// For post process to execute some external nodes after applying animation.
+	uint64_t current_frame = 0;
+	uint64_t prev_frame = (uint64_t)INFINITY;
+	double post_process_delta = 0;
+	void _pre_process();
+	void _process_changed();
+	Vector<ObjectID> post_processes;
+	void clear_post_processes();
+	void _post_process(double p_delta);
 
 	/* ---- Capture feature ---- */
 	struct CaptureCache {
@@ -377,7 +389,6 @@ protected:
 
 #ifndef DISABLE_DEPRECATED
 	virtual Variant _post_process_key_value_bind_compat_86687(const Ref<Animation> &p_anim, int p_track, Variant p_value, Object *p_object, int p_object_idx = -1);
-
 	static void _bind_compatibility_methods();
 #endif // DISABLE_DEPRECATED
 
@@ -437,6 +448,10 @@ public:
 	void clear_animation_instances();
 	virtual void advance(double p_time);
 	virtual void clear_caches(); ///< must be called by hand if an animation was modified after added
+
+	// For post process to execute some external nodes after applying animation.
+	bool is_processed() const;
+	void add_post_process(Object *p_object);
 
 	/* ---- Capture feature ---- */
 	void capture(const StringName &p_name, double p_duration, Tween::TransitionType p_trans_type = Tween::TRANS_LINEAR, Tween::EaseType p_ease_type = Tween::EASE_IN);
