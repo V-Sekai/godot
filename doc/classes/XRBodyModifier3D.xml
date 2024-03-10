@@ -24,6 +24,9 @@
 		<member name="show_when_tracked" type="bool" setter="set_show_when_tracked" getter="get_show_when_tracked" default="true">
 			If true then the nodes visibility is determined by whether tracking data is available.
 		</member>
+		<member name="target" type="NodePath" setter="set_target" getter="get_target" default="NodePath(&quot;&quot;)">
+			A [NodePath] to a [Skeleton3D] to animate.
+		</member>
 	</members>
 	<constants>
 		<constant name="BODY_UPDATE_UPPER_BODY" value="1" enum="BodyUpdate" is_bitfield="true">

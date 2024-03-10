@@ -31,41 +31,40 @@
 #ifndef BONE_ATTACHMENT_3D_H
 #define BONE_ATTACHMENT_3D_H
 
-#include "scene/3d/skeleton_modifier_3d.h"
+#include "scene/3d/skeleton_3d.h"
 #ifdef TOOLS_ENABLED
 #include "scene/resources/bone_map.h"
 #endif // TOOLS_ENABLED
 
-class BoneAttachment3D : public SkeletonModifier3D {
-	GDCLASS(BoneAttachment3D, SkeletonModifier3D);
+class BoneAttachment3D : public Node3D {
+	GDCLASS(BoneAttachment3D, Node3D);
 
 	bool bound = false;
 	String bone_name;
 	int bone_idx = -1;
 
 	bool override_pose = false;
-	void _override_pose();
-	void _retrieve_pose();
+	bool _override_dirty = false;
+
+	bool use_external_skeleton = false;
+	NodePath external_skeleton_node;
+	ObjectID external_skeleton_node_cache;
+
+	void _check_bind();
+	void _check_unbind();
+
+	void _transform_changed();
+	void _update_external_skeleton_cache();
+	Skeleton3D *_get_skeleton3d();
 
 protected:
 	void _validate_property(PropertyInfo &p_property) const;
+	bool _get(const StringName &p_path, Variant &r_ret) const;
+	bool _set(const StringName &p_path, const Variant &p_value);
+	void _get_property_list(List<PropertyInfo> *p_list) const;
 	void _notification(int p_what);
 
-	virtual void _process_modification(double p_delta) override;
-
 	static void _bind_methods();
-
-	virtual ObjectID _update_skeleton_path_extend() override;
-
-	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
-
-	void _update_bone();
-
-#ifndef DISABLE_DEPRECATED
-	void _set_use_external_skeleton_bind_compat_87888(bool use_external_skeleton);
-	bool _get_use_external_skeleton_bind_compat_87888() const;
-	static void _bind_compatibility_methods();
-#endif // DISABLE_DEPRECATED
 
 public:
 #ifdef TOOLS_ENABLED
@@ -83,9 +82,16 @@ public:
 	void set_override_pose(bool p_override);
 	bool get_override_pose() const;
 
-#ifndef DISABLE_DEPRECATED
+	void set_use_external_skeleton(bool p_external_skeleton);
+	bool get_use_external_skeleton() const;
+	void set_external_skeleton(NodePath p_skeleton);
+	NodePath get_external_skeleton() const;
+
 	virtual void on_bone_pose_update(int p_bone_index);
-#endif // DISABLE_DEPRECATED
+
+#ifdef TOOLS_ENABLED
+	virtual void notify_rebind_required();
+#endif
 
 	BoneAttachment3D();
 };
