@@ -240,3 +240,18 @@ Validate extension JSON: Error: Field 'classes/EditorPlugin/methods/add_control_
 
 Added optional argument to add_control_to_bottom_panel and add_control_to_dock to specify a shortcut that toggles the bottom panel/dock's visibility.
 Compatibility method registered.
+
+
+GH-87888
+--------
+Validate extension JSON: API was removed: classes/BoneAttachment3D/methods/get_external_skeleton
+Validate extension JSON: API was removed: classes/BoneAttachment3D/methods/set_external_skeleton
+Validate extension JSON: API was removed: classes/BoneAttachment3D/methods/get_use_external_skeleton
+Validate extension JSON: API was removed: classes/BoneAttachment3D/methods/set_use_external_skeleton
+Validate extension JSON: API was removed: classes/OpenXRHand/methods/get_hand_skeleton
+Validate extension JSON: API was removed: classes/OpenXRHand/methods/set_hand_skeleton
+Validate extension JSON: API was removed: classes/OpenXRHand/properties/hand_skeleton
+Validate extension JSON: API was removed: classes/Skeleton3D/properties/animate_physical_bones
+
+These definitions have been moved to those base classes, so the APIs are actually available or compatibility methods registered.
+Some properties were renamed for integration, but the old setter/getters are kept.
