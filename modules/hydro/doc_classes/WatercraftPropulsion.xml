@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="WatercraftPropulsion" inherits="Node3D" version="4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Adds a propulsion system to a [HydroRigidBody]
+	</brief_description>
+	<description>
+		This can be used to add prop or jet drives, bow thrusters, or more to a [HydroRigidBody]-based watercraft.  The propulsion system will only provide thrust when its origin is underwater.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="direction" type="Vector3" setter="set_direction" getter="get_direction" default="Vector3(0, 0, 0)">
+			The direction that the propulsion system will push the watercraft.
+		</member>
+		<member name="origin" type="Vector3" setter="set_origin" getter="get_origin" default="Vector3(0, 0, 0)">
+			The location of the propulsion system.
+		</member>
+		<member name="value" type="float" setter="set_value" getter="get_value" default="0.0">
+			The amount of thrust applied by the propulsion system.
+		</member>
+	</members>
+</class>

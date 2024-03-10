@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3 uid="uid://dk8mbhuscqv0y"]
+
+[ext_resource type="Script" path="res://hydro/core/Gary.gd" id="1"]
+
+[sub_resource type="CapsuleShape3D" id="1"]
+radius = 0.6
+height = 2.0
+
+[node name="Gary" type="CharacterBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.52113, 0.98772)
+script = ExtResource( "1" )
+
+[node name="Capsule" type="CollisionShape3D" parent="."]
+shape = SubResource( "1" )
+
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="Camera" type="Camera3D" parent="Head"]
+fov = 70.0
+far = 10000.0

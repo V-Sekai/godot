@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/hydro.git
+	branch = master
+	commit = d71eeff1968a6d0e6c38ed3eae4674c06751c0f1
+	parent = f28964805e44a5c068ce8fd9d1e00697fcd922dc
+	method = merge
+	cmdver = 0.4.6
