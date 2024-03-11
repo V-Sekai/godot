@@ -116,10 +116,9 @@ Quaternion QCP::calculate_rotation() {
 			quaternion_x /= min;
 			quaternion_y /= min;
 			quaternion_z /= min;
-			result = Quaternion(quaternion_x, quaternion_y, quaternion_z, quaternion_w).normalized();
+			result = Quaternion(quaternion_x, quaternion_y, quaternion_z, -quaternion_w).normalized();
 		}
 	}
-	result.w *= -1;
 
 	return result;
 }
