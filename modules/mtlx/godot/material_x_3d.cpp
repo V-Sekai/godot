@@ -307,7 +307,7 @@ void MTLXLoader::create_node(const mx::NodePtr &node, int depth, Ref<VisualShade
 	String expression_text = String(node->getName().c_str());
 	print_verbose(String("MaterialX node " + expression_text));
 	expression_node->set_expression(expression_text);
-	shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 200, -200), id++);
+	shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 200, -400), id++);
 	int i = 0;
 	for (mx::InputPtr input : node->getInputs()) {
 		const std::string &input_name = input->getName();
