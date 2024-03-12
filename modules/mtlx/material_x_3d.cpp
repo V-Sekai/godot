@@ -85,6 +85,7 @@ void apply_materialx_modifiers(mx::DocumentPtr doc, const DocumentModifiers &mod
 	}
 }
 
+/*
 Variant get_value_as_material_x_variant(mx::InputPtr p_input) {
 	if (!p_input) {
 		return Variant();
@@ -123,6 +124,7 @@ Variant get_value_as_material_x_variant(mx::InputPtr p_input) {
 	}
 	return Variant();
 }
+*/
 
 Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 	mx::FilePath materialFilename = ProjectSettings::get_singleton()->globalize_path(p_path).utf8().get_data();
