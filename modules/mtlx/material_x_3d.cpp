@@ -217,11 +217,6 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 	// Apply modifiers to the content document.
 	apply_materialx_modifiers(p_doc, modifiers);
 
-	// Validate the document.
-	std::string message;
-	if (!p_doc->validate(&message)) {
-		print_line(vformat(String("Validation warnings for %s"), String(message.c_str())));
-	}
 	return OK;
 }
 
