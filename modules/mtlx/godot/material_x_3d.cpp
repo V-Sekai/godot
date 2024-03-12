@@ -49,7 +49,7 @@ mx::FileSearchPath getDefaultSearchPath(mx::GenContext context) {
 	return searchPath;
 }
 
-void applyModifiers(mx::DocumentPtr doc, const DocumentModifiers &modifiers) {
+void apply_materialx_modifiers(mx::DocumentPtr doc, const DocumentModifiers &modifiers) {
 	for (mx::ElementPtr elem : doc->traverseTree()) {
 		if (modifiers.remapElements.count(elem->getCategory())) {
 			elem->setCategory(modifiers.remapElements.at(elem->getCategory()));
@@ -226,7 +226,7 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 	DocumentModifiers modifiers;
 	// TODO: fire 2022-03-11 Does nothing yet.
 	// Apply modifiers to the content document.
-	applyModifiers(p_doc, modifiers);
+	apply_materialx_modifiers(p_doc, modifiers);
 
 	// Validate the document.
 	std::string message;
@@ -263,7 +263,8 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 	Ref<ShaderMaterial> mat;
 	mat.instantiate();
 	Ref<VisualShader> shader;
-	shader.instantiate();
+	, ol;
+	.shader.instantiate();
 	std::set<mx::NodePtr> processed_nodes;
 	int id = 2;
 
