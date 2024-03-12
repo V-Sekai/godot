@@ -240,14 +240,6 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 	mx::GenContext context = mx::GlslShaderGenerator::create();
 	String save_path = ProjectSettings::get_singleton()->globalize_path(p_save_path);
 	String original_path = ProjectSettings::get_singleton()->globalize_path(p_original_path);
-	String folder = save_path.get_base_dir();
-	mx::FileSearchPath searchPath;
-	mx::FilePath materialFilename = original_path.utf8().get_data();
-	searchPath.append(materialFilename.getParentPath());
-	mx::DocumentPtr stdLib = mx::createDocument();
-	mx::FilePathVec libraryFolders;
-	libraryFolders.push_back(original_path.utf8().get_data());
-	mx::StringSet xincludeFiles = mx::loadLibraries(libraryFolders, searchPath, stdLib);
 	mx::DocumentPtr doc = mx::createDocument();
 	Error err;
 	try {
@@ -325,6 +317,10 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		}
 		connect_node(node, 0, shader, processed_nodes, id, node_ids);
 	}
+	mx::XmlWriteOptions writeOptions;
+	writeOptions.writeXIncludeEnable = false;
+	std::string xmlString = mx::writeToXmlString(doc, &writeOptions);
+	print_line(String("MaterialX State: \n") + String(xmlString.c_str()));
 	mat->set_shader(shader);
 	return mat;
 }
@@ -339,13 +335,13 @@ void MTLXLoader::create_node(const mx::NodePtr &node, int depth, Ref<VisualShade
 	Ref<VisualShaderNodeExpression> expression_node;
 	expression_node.instantiate();
 	String expression_text = String(node->getName().c_str());
-	print_verbose(String("MaterialX node " + expression_text));
+	print_line(String("MaterialX node " + expression_text));
 	expression_node->set_expression(expression_text);
 	shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 200, -200), id++);
 	int i = 0;
 	for (mx::InputPtr input : node->getInputs()) {
 		const std::string &input_name = input->getName();
-		print_verbose(String("MaterialX input " + String(input_name.c_str())));
+		print_line(String("MaterialX input " + String(input_name.c_str())));
 		mx::ValuePtr value = input->getValue();
 		if (value) {
 			std::string typeString = value->getTypeString();
@@ -357,7 +353,7 @@ void MTLXLoader::create_node(const mx::NodePtr &node, int depth, Ref<VisualShade
 	i = 0;
 	for (mx::OutputPtr output : node->getOutputs()) {
 		const std::string &output_name = output->getName();
-		print_verbose(String("MaterialX output " + String(output_name.c_str())));
+		print_line(String("MaterialX output " + String(output_name.c_str())));
 		expression_node->add_output_port(i, Variant::NIL, output_name.c_str());
 		i++;
 	}
