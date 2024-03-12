@@ -272,50 +272,45 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 			continue;
 		}
 		const mx::NodePtr &node = element->asA<mx::Node>();
+		if (!node) {
+			continue;
+		}
 		process_node(node, 0, shader, processed_nodes, id);
 	}
-
+	for (int i = 2; i < id; i++) {
+		if (shader->get_node(VisualShader::TYPE_FRAGMENT, i)->get_output_port_count() > 0 &&
+				shader->get_node(VisualShader::TYPE_FRAGMENT, id)->get_input_port_count() > 0) {
+			shader->connect_nodes(VisualShader::TYPE_FRAGMENT, i, 0, id, 0);
+		}
+	}
 	mat->set_shader(shader);
 	return mat;
 }
 
 void MTLXLoader::process_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
 		int &id) const {
-	if (!node) {
-		return;
-	}
 	if (processed_nodes.find(node) != processed_nodes.end()) {
 		return;
 	}
-
 	processed_nodes.insert(node);
-
 	Ref<VisualShaderNodeExpression> expression_node;
 	expression_node.instantiate();
-
 	for (mx::InputPtr input : node->getInputs()) {
-		const std::string &input_name = input->getName();
-		print_verbose(String("MaterialX input " + String(input_name.c_str())));
-		expression_node->set_expression(input_name.c_str());
-		shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 100, -100), id++);
+		const std::string &node_name = node->getName();
+		print_verbose(String("MaterialX input " + String(node_name.c_str())));
+		expression_node->set_expression(node_name.c_str());
+		shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 200, -200), id++);
 	}
-
-	for (size_t i = 0; i < node->getOutputCount(); i++) {
-		expression_node->add_output_port(i, Variant::NIL, "");
+	int i = 0;
+	for (mx::OutputPtr output : node->getOutputs()) {
+		const std::string &output_name = output->getName();
+		expression_node->add_output_port(i, Variant::NIL, output_name.c_str());
+		i++;
 	}
-
-	for (int i = 2; i < id; i++) {
-		if (shader->get_node(VisualShader::TYPE_FRAGMENT, i)->get_output_port_count() > 0 &&
-				shader->get_node(VisualShader::TYPE_FRAGMENT, id)->get_input_port_count() > 0) {
-			shader->connect_nodes(VisualShader::TYPE_FRAGMENT, i, 0, id, depth);
+	for (mx::ElementPtr child_element : node->getChildren()) {
+		mx::NodePtr child_node = child_element->asA<mx::Node>();
+		if (child_node) {
+			process_node(child_node, depth + 1, shader, processed_nodes, id); // increment depth for each recursive call
 		}
-	}
-
-	std::vector<mx::NodePtr> shader_nodes = mx::getShaderNodes(node);
-	if (shader_nodes.empty()) {
-		return;
-	}
-	for (mx::NodePtr child_node : shader_nodes) {
-		process_node(child_node, depth + 1, shader, processed_nodes, id); // increment depth for each recursive call
 	}
 }
