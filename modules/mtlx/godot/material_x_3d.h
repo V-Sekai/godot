@@ -35,7 +35,7 @@ using namespace godot;
 namespace mx = MaterialX;
 class MTLXLoader : public Resource {
 	GDCLASS(MTLXLoader, Resource);
-    mx::DocumentPtr _stdLib;
+	mx::DocumentPtr _stdLib;
 	// mx::GlslRendererPtr _renderer;
 protected:
 	static void _bind_methods() {

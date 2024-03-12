@@ -37,5 +37,5 @@ elif env["platform"] == "macos":
 elif env["platform"] == "windows":
     env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/SimpleWindowWindows.cpp")
 
-module_env.add_source_files(env.modules_sources, "thirdparty/godot/*.cpp")
+module_env.add_source_files(env.modules_sources, "godot/*.cpp")
 module_env.add_source_files(env.modules_sources, "*.cpp")

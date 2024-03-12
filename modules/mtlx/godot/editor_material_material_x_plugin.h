@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  editor_material_material_x_plugin.h                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,45 +28,29 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-
-#include "godot/material_x_3d.h"
-
-#include "core/io/resource.h"
+#ifndef EDITOR_IMPORTER_MATERIALX_PLUGIN_H
+#define EDITOR_IMPORTER_MATERIALX_PLUGIN_H
 
 #ifdef TOOLS_ENABLED
-    #include "godot/editor_material_material_x_plugin.h"
-    #include "editor/editor_node.h"
-#endif
 
-static Ref<MTLXLoader> resource_format_mtlx;
+#include "material_x_3d.h"
 
-void initialize_mtlx_module(ModuleInitializationLevel p_level)
-{
-    if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE)
-    {
-        GDREGISTER_CLASS(MTLXLoader);
-        resource_format_mtlx.instantiate();
-        ResourceLoader::add_resource_format_loader(resource_format_mtlx);
-#ifdef TOOLS_ENABLED
-        // Editor-specific API.
-        ClassDB::APIType prev_api = ClassDB::get_current_api();
-        ClassDB::set_current_api(ClassDB::API_EDITOR);
+#include "editor/editor_plugin.h"
+#include "editor/gui/editor_file_dialog.h"
 
-        EditorPlugins::add_by_type<MaterialXPlugin>();
+class MaterialXPlugin : public EditorPlugin {
+	GDCLASS(MaterialXPlugin, EditorPlugin);
 
-        ClassDB::set_current_api(prev_api);
-#endif
-        return;
-    }
-}
+	EditorFileDialog *file_export_lib = nullptr;
+	void _material_x_dialog_action();
+	void save_materialx_as_resource(String p_file);
 
-void uninitialize_mtlx_module(ModuleInitializationLevel p_level)
-{
-    if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE)
-    {
-        return;
-    }
-    ResourceLoader::remove_resource_format_loader(resource_format_mtlx);
-    resource_format_mtlx.unref();
-}
+public:
+	virtual String get_name() const override;
+	bool has_main_screen() const override;
+	MaterialXPlugin();
+};
+
+#endif // TOOLS_ENABLED
+
+#endif // EDITOR_SCENE_EXPORTER_GLTF_PLUGIN_H
