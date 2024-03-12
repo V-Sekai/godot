@@ -4,7 +4,6 @@ Import("env")
 
 module_env = env.Clone()
 
-
 module_env.Prepend(CPPPATH=["source"])
 module_env.Prepend(CPPPATH=["include"])
 
@@ -24,18 +23,26 @@ if env["disable_exceptions"]:
         env_thirdparty.AppendUnique(CCFLAGS=["/EHsc"])
     elif not env.msvc and "-fno-exceptions" in env_thirdparty["CCFLAGS"]:
         env_thirdparty["CCFLAGS"].remove("-fno-exceptions")
+env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRender/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderGlsl/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXCore/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXFormat/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXFormat/External/PugiXML/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenShader/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenShader/Nodes/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/WindowWrapper.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenGlsl/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXGenGlsl/Nodes/*.cpp")
 if env["platform"] == "linuxbsd":
     env.Append(LIBS=["libXt"])
     env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/SimpleWindowLinux.cpp")
 elif env["platform"] == "macos":
     env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/SimpleWindowMac.cpp")
+    env_no_arc = env_thirdparty.Clone()
+    env_no_arc.Append(CCFLAGS=["-fno-objc-arc"])
+    env_no_arc.add_source_files(env.modules_sources, "source/MaterialXRenderGlsl/GLCocoaWrappers.m")
+    env_no_arc.add_source_files(env.modules_sources, "source/MaterialXRenderHw/WindowCocoaWrappers.m")
 elif env["platform"] == "windows":
     env_thirdparty.add_source_files(env.modules_sources, "source/MaterialXRenderHw/SimpleWindowWindows.cpp")
-
 module_env.add_source_files(env.modules_sources, "godot/*.cpp")
 module_env.add_source_files(env.modules_sources, "*.cpp")
