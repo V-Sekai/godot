@@ -35,6 +35,7 @@
 
 #include "core/io/resource_importer.h"
 #include "scene/resources/material.h"
+#include "scene/resources/visual_shader.h"
 
 #include <MaterialXRenderGlsl/GLTextureHandler.h>
 #include <MaterialXRenderGlsl/GLUtil.h>
@@ -68,6 +69,8 @@ namespace mx = MaterialX;
 class MTLXLoader : public Resource {
 	GDCLASS(MTLXLoader, Resource);
 	mx::DocumentPtr _stdLib;
+	void process_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
+			int &id) const;
 
 protected:
 	static void _bind_methods() {
@@ -76,7 +79,8 @@ protected:
 
 public:
 	virtual Variant _load(const String &p_save_path, const String &p_original_path, bool p_use_sub_threads, int64_t p_cache_mode) const;
-	MTLXLoader();
+	MTLXLoader() {
+	}
 };
 
 using MaterialPtr = std::shared_ptr<class Material>;

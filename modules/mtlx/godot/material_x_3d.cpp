@@ -35,8 +35,12 @@
 #include "core/io/dir_access.h"
 #include "modules/tinyexr/image_loader_tinyexr.h"
 #include "scene/resources/image_texture.h"
+#include "scene/resources/material.h"
+#include "scene/resources/visual_shader.h"
 
 #include "modules/mtlx/source/MaterialXRenderGlsl/TextureBaker.h"
+
+#include <cstddef>
 
 mx::FileSearchPath getDefaultSearchPath(mx::GenContext context) {
 	mx::FileSearchPath searchPath;
@@ -144,13 +148,13 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 
 	mx::UnitConverterRegistryPtr unitRegistry =
 			mx::UnitConverterRegistry::create();
-	// Initialize search paths.
-	mx::FileSearchPath searchPath; // = getDefaultSearchPath(context);
+	mx::FileSearchPath searchPath;
 	try {
 		stdLib = mx::createDocument();
 		mx::FilePathVec libraryFolders;
 		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path(p_path.get_base_dir()).utf8().get_data());
-		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("res://libraries").utf8().get_data());
+		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("res://").utf8().get_data());
+		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("user://").utf8().get_data());
 		mx::StringSet xincludeFiles = mx::loadLibraries(libraryFolders, searchPath, stdLib);
 		// Import libraries.
 		if (xincludeFiles.empty()) {
@@ -175,7 +179,6 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 		// context.getShaderGenerator().setUnitSystem(unitSystem);
 		// context.getOptions().targetDistanceUnit = "meter";
 
-		// Initialize unit management.
 		mx::UnitTypeDefPtr distanceTypeDef = stdLib->getUnitTypeDef("distance");
 		distanceUnitConverter = mx::LinearUnitConverter::create(distanceTypeDef);
 		unitRegistry->addUnitConverter(distanceTypeDef, distanceUnitConverter);
@@ -184,7 +187,6 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 				mx::LinearUnitConverter::create(angleTypeDef);
 		unitRegistry->addUnitConverter(angleTypeDef, angleConverter);
 
-		// Create the list of supported distance units.
 		auto unitScales = distanceUnitConverter->getUnitScale();
 		distanceUnitOptions.resize(unitScales.size());
 		for (auto unitScale : unitScales) {
@@ -258,138 +260,62 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		return Ref<Resource>();
 	}
 	std::vector<mx::TypedElementPtr> renderable_materials = findRenderableElements(doc);
-	Ref<StandardMaterial3D> mat;
+	Ref<ShaderMaterial> mat;
 	mat.instantiate();
+	Ref<VisualShader> shader;
+	shader.instantiate();
+	std::set<mx::NodePtr> processed_nodes;
+	int id = 2;
 	for (size_t i = 0; i < renderable_materials.size(); i++) {
 		const mx::TypedElementPtr &element = renderable_materials[i];
 		if (!element || !element->isA<mx::Node>()) {
 			continue;
 		}
 		const mx::NodePtr &node = element->asA<mx::Node>();
-		for (mx::NodePtr node_inputs : mx::getShaderNodes(node)) {
-			for (mx::InputPtr input : node_inputs->getInputs()) {
-				const std::string &input_name = input->getName();
-				print_verbose(String("MaterialX input " + String(input_name.c_str())));
-				if (input->hasOutputString()) {
-					mx::NodeGraphPtr node_graph = doc->getChildOfType<mx::NodeGraph>(input->getNodeGraphString());
-					if (!node_graph) {
-						continue;
-					}
-					String file_prefix = node_graph->getFilePrefix().c_str();
-					mx::OutputPtr output = node_graph->getOutput(input->getOutputString());
-					mx::NodePtr image_node = node_graph->getNode(output->getNodeName());
-					if (!image_node) {
-						continue;
-					}
-					if (!image_node->getInputs().size()) {
-						continue;
-					}
-					String filepath = image_node->getInputs()[0]->getValueString().c_str();
-					if (input_name == "normal") {
-						mx::NodePtr normal_image_node = node_graph->getNode(image_node->getInputs()[0]->getNodeName());
-						if (!normal_image_node->getInputs().size()) {
-							continue;
-						}
-						filepath = normal_image_node->getInputs()[0]->getValueString().c_str();
-					}
-					filepath = filepath.replace("\\", "/");
-					filepath = ProjectSettings::get_singleton()->localize_path(filepath);
-					if (!filepath.begins_with("res://")) {
-						String localized_folder = ProjectSettings::get_singleton()->localize_path(folder) + "/" + file_prefix;
-						filepath = localized_folder + "/" + filepath;
-						filepath = ProjectSettings::get_singleton()->localize_path(filepath);
-					}
-					filepath = filepath.lstrip("res://");
-					String line = String("MaterialX attribute filepath " + filepath);
-					print_verbose(String("MaterialX attribute name " + String(input->getOutputString().c_str())));
-					print_verbose(line);
-					Ref<ImageTexture> tex;
-					tex.instantiate();
-					Ref<Image> mtlx_image;
-					mtlx_image.instantiate();
-					err = mtlx_image->load(filepath);
-					if (err == OK) {
-						mtlx_image->generate_mipmaps();
-						tex = ImageTexture::create_from_image(mtlx_image);
-					}
-					if (input_name == "base_color") {
-						mat->set_flag(BaseMaterial3D::FLAG_ALBEDO_TEXTURE_FORCE_SRGB, true);
-						mat->set_texture(BaseMaterial3D::TextureParam::TEXTURE_ALBEDO, tex);
-					} else if (input_name == "metallic") {
-						if (mat->get_metallic() == 0.0f) {
-							mat->set_metallic(1.0f);
-						}
-						mat->set_metallic_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_BLUE);
-						mat->set_texture(BaseMaterial3D::TEXTURE_METALLIC, tex);
-					} else if (input_name == "roughness") {
-						mat->set_texture(BaseMaterial3D::TEXTURE_ROUGHNESS, tex);
-						mat->set_roughness_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_GREEN);
-					} else if (input_name == "normal") {
-						mat->set_feature(StandardMaterial3D::FEATURE_NORMAL_MAPPING, true);
-						mat->set_texture(StandardMaterial3D::TEXTURE_NORMAL, tex);
-					} else if (input_name == "emissive") {
-						mat->set_feature(BaseMaterial3D::FEATURE_EMISSION, true);
-						mat->set_texture(BaseMaterial3D::TEXTURE_EMISSION, tex);
-					} else if (input_name == "occlusion") {
-						mat->set_texture(BaseMaterial3D::TEXTURE_AMBIENT_OCCLUSION, tex);
-						mat->set_ao_texture_channel(BaseMaterial3D::TEXTURE_CHANNEL_RED);
-					}
-					continue;
-				}
-				Variant v = get_value_as_material_x_variant(input);
-				// <input name="transmission" type="float" value="0" />
-				// <input name="specular_color" type="color3" value="1, 1, 1" />
-				// <input name="ior" type="float" value="1.5" />
-				// <input name="alpha" type="float" value="1" />
-				// <input name="sheen_color" type="color3" value="0, 0, 0" />
-				// <input name="sheen_roughness" type="float" value="0" />
-				// <input name="clearcoat" type="float" value="0" />
-				// <input name="clearcoat_roughness" type="float" value="0" />
-				// <input name="clearcoat_normal" type="vector3" value="0, 0, 1" />
-				// <input name="thickness" type="float" value="0" />
-				// <input name="attenuation_distance" type="float" value="100000" />
-				// <input name="attenuation_color" type="color3" value="0, 0, 0" />
-				if (input_name == "base_color") {
-					Color c = mat->get_albedo();
-					Color variant_color = v;
-					c.r = variant_color.r;
-					c.g = variant_color.g;
-					c.b = variant_color.b;
-					c.a = variant_color.a;
-					mat->set_albedo(c);
-				} else if (input_name == "metallic") {
-					mat->set_metallic(v);
-				} else if (input_name == "roughness") {
-					mat->set_roughness(v);
-				} else if (input_name == "specular") {
-					mat->set_specular(v);
-				} else if (input_name == "normal") {
-					mat->set_feature(StandardMaterial3D::FEATURE_NORMAL_MAPPING, true);
-				} else if (input_name == "emissive") {
-					mat->set_feature(BaseMaterial3D::FEATURE_EMISSION, true);
-					mat->set_emission(v);
-				} else if (input_name == "alpha_mode") {
-					if (v) {
-						mat->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA);
-						mat->set_alpha_antialiasing(BaseMaterial3D::ALPHA_ANTIALIASING_ALPHA_TO_COVERAGE_AND_TO_ONE);
-						mat->set_depth_draw_mode(BaseMaterial3D::DEPTH_DRAW_ALWAYS);
-					}
-				} else if (input_name == "alpha_cutoff") {
-					mat->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA_SCISSOR);
-					mat->set_depth_draw_mode(BaseMaterial3D::DEPTH_DRAW_ALWAYS);
-					mat->set_alpha_scissor_threshold(v);
-				} else if (input_name == "base_color") {
-					Color c = mat->get_albedo();
-					c.a = c.a * Color(v).a;
-					mat->set_albedo(c);
-				}
-				print_verbose(String("MaterialX attribute value ") + String(v));
-			}
-		}
+		process_node(node, 0, shader, processed_nodes, id);
 	}
 
+	mat->set_shader(shader);
 	return mat;
 }
 
-MTLXLoader::MTLXLoader() {
+void MTLXLoader::process_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
+		int &id) const {
+	if (!node) {
+		return;
+	}
+	if (processed_nodes.find(node) != processed_nodes.end()) {
+		return;
+	}
+
+	processed_nodes.insert(node);
+
+	Ref<VisualShaderNodeExpression> expression_node;
+	expression_node.instantiate();
+
+	for (mx::InputPtr input : node->getInputs()) {
+		const std::string &input_name = input->getName();
+		print_verbose(String("MaterialX input " + String(input_name.c_str())));
+		expression_node->set_expression(input_name.c_str());
+		shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 100, -100), id++);
+	}
+
+	for (size_t i = 0; i < node->getOutputCount(); i++) {
+		expression_node->add_output_port(i, Variant::NIL, "");
+	}
+
+	for (int i = 2; i < id; i++) {
+		if (shader->get_node(VisualShader::TYPE_FRAGMENT, i)->get_output_port_count() > 0 &&
+				shader->get_node(VisualShader::TYPE_FRAGMENT, id)->get_input_port_count() > 0) {
+			shader->connect_nodes(VisualShader::TYPE_FRAGMENT, i, 0, id, depth);
+		}
+	}
+
+	std::vector<mx::NodePtr> shader_nodes = mx::getShaderNodes(node);
+	if (shader_nodes.empty()) {
+		return;
+	}
+	for (mx::NodePtr child_node : shader_nodes) {
+		process_node(child_node, depth + 1, shader, processed_nodes, id); // increment depth for each recursive call
+	}
 }
