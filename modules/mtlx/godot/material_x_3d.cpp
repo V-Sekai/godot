@@ -263,8 +263,7 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 	Ref<ShaderMaterial> mat;
 	mat.instantiate();
 	Ref<VisualShader> shader;
-	, ol;
-	.shader.instantiate();
+	shader.instantiate();
 	std::set<mx::NodePtr> processed_nodes;
 	int id = 2;
 
