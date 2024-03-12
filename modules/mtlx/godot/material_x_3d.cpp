@@ -304,6 +304,13 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 			print_line(String("Output: ") + String(pair.first.c_str()) + ", Slot: " + itos(pair.second));
 		}
 
+		String shader_name = node->getCategory().c_str();
+		std::vector<mx::NodePtr> shader_nodes = mx::getShaderNodes(node); // Convert to Godot Vector
+		if (!shader_nodes.empty()) {
+			shader_name = shader_nodes[0]->getCategory().c_str();
+		}
+		print_line(String("Shader Name: ") + shader_name);
+
 		create_node(node, 0, shader, processed_nodes, id, node_ids);
 	}
 
