@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  material_x_3d.cpp                                                     */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "material_x_3d.h"
 
 #include "core/config/project_settings.h"
@@ -63,7 +93,13 @@ void applyModifiers(mx::DocumentPtr doc, const DocumentModifiers &modifiers) {
 }
 
 Variant get_value_as_material_x_variant(mx::InputPtr p_input) {
+	if (!p_input) {
+		return Variant();
+	}
 	mx::ValuePtr value = p_input->getValue();
+	if (!value) {
+		return Variant();
+	}
 	if (value->getTypeString() == "float") {
 		return value->asA<float>();
 	} else if (value->getTypeString() == "integer") {
@@ -200,97 +236,28 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 
 Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_path, bool p_use_sub_threads, int64_t p_cache_mode) const {
 	mx::GenContext context = mx::GlslShaderGenerator::create();
-	mx::ImageHandlerPtr imageHandler = mx::GLTextureHandler::create(mx::StbImageLoader::create());
 	String save_path = ProjectSettings::get_singleton()->globalize_path(p_save_path);
 	String original_path = ProjectSettings::get_singleton()->globalize_path(p_original_path);
 	String folder = save_path.get_base_dir();
-	String mtlx = folder + "/" + save_path.get_file().get_basename() + ".mtlx";
-	std::string bakeFilename = mtlx.utf8().get_data();
-	mx::FileSearchPath searchPath; // = getDefaultSearchPath(context);
+	mx::FileSearchPath searchPath;
 	mx::FilePath materialFilename = original_path.utf8().get_data();
 	searchPath.append(materialFilename.getParentPath());
+	mx::DocumentPtr stdLib = mx::createDocument();
 	mx::FilePathVec libraryFolders;
 	libraryFolders.push_back(original_path.utf8().get_data());
-	mx::DocumentPtr stdLib;
-	stdLib = mx::createDocument();
 	mx::StringSet xincludeFiles = mx::loadLibraries(libraryFolders, searchPath, stdLib);
-	{
-		// Load source document.
-		mx::DocumentPtr doc = mx::createDocument();
-		Error err;
-		try {
-			err = load_mtlx_document(doc, original_path);
-		} catch (std::exception &e) {
-			ERR_PRINT(String("Can't load materials. Error: ") + String(e.what()));
-			return Ref<Resource>();
-		}
-
-		if (err != OK) {
-			return Ref<Resource>();
-		}
-		int bakeWidth = -1;
-		int bakeHeight = -1;
-		std::string bakeFormat;
-		bool bakeHdr = false;
-		imageHandler->setSearchPath(searchPath);
-
-		if (bakeFormat == std::string("EXR") || bakeFormat == std::string("exr")) {
-			bakeHdr = true;
-#if MATERIALX_BUILD_OIIO
-			imageHandler->addLoader(mx::OiioImageLoader::create());
-#else
-			ERR_PRINT("OpenEXR is not supported");
-			return ERR_UNAVAILABLE;
-#endif
-		}
-		// Compute baking resolution.
-		mx::ImageVec imageVec = imageHandler->getReferencedImages(doc);
-		auto maxImageSize = mx::getMaxDimensions(imageVec);
-		if (bakeWidth == -1) {
-			bakeWidth = std::max(maxImageSize.first, (unsigned int)4);
-		}
-		if (bakeHeight == -1) {
-			bakeHeight = std::max(maxImageSize.second, (unsigned int)4);
-		}
-
-		// Construct a texture baker.
-		mx::Image::BaseType baseType =
-				bakeHdr ? mx::Image::BaseType::FLOAT : mx::Image::BaseType::UINT8;
-		mx::TextureBakerPtr baker =
-				mx::TextureBakerGlsl::create(bakeWidth, bakeHeight, baseType);
-		baker->setupUnitSystem(stdLib);
-		baker->setDistanceUnit(context.getOptions().targetDistanceUnit);
-		bool bakeAverage = false;
-		bool bakeOptimize = true;
-		baker->setAverageImages(bakeAverage);
-		baker->setOptimizeConstants(bakeOptimize);
-		Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
-		da->make_dir_recursive(folder);
-
-		// Bake all materials in the active document.
-		try {
-			baker->bakeAllMaterials(doc, searchPath, bakeFilename);
-		} catch (std::exception &e) {
-			ERR_PRINT(vformat("Can't bake material %s", bakeFilename.c_str()));
-		}
-
-		// Release any render resources generated by the baking process.
-		imageHandler->releaseRenderResources();
-	}
-	mx::DocumentPtr new_doc = mx::createDocument();
+	mx::DocumentPtr doc = mx::createDocument();
 	Error err;
 	try {
-		err = load_mtlx_document(new_doc, bakeFilename.c_str());
+		err = load_mtlx_document(doc, original_path);
 	} catch (std::exception &e) {
-		ERR_PRINT(vformat("Can't load baked material %s", bakeFilename.c_str()));
+		ERR_PRINT(String("Can't load materials. Error: ") + String(e.what()));
 		return Ref<Resource>();
 	}
-
-	xincludeFiles = mx::loadLibraries(libraryFolders, searchPath, stdLib);
 	if (err != OK) {
 		return Ref<Resource>();
 	}
-	std::vector<mx::TypedElementPtr> renderable_materials = findRenderableElements(new_doc);
+	std::vector<mx::TypedElementPtr> renderable_materials = findRenderableElements(doc);
 	Ref<StandardMaterial3D> mat;
 	mat.instantiate();
 	for (size_t i = 0; i < renderable_materials.size(); i++) {
@@ -304,7 +271,7 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 				const std::string &input_name = input->getName();
 				print_verbose(String("MaterialX input " + String(input_name.c_str())));
 				if (input->hasOutputString()) {
-					mx::NodeGraphPtr node_graph = new_doc->getChildOfType<mx::NodeGraph>(input->getNodeGraphString());
+					mx::NodeGraphPtr node_graph = doc->getChildOfType<mx::NodeGraph>(input->getNodeGraphString());
 					if (!node_graph) {
 						continue;
 					}
@@ -419,13 +386,10 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 				print_verbose(String("MaterialX attribute value ") + String(v));
 			}
 		}
-		break;
 	}
+
 	return mat;
 }
 
 MTLXLoader::MTLXLoader() {
-	// Initialize our base renderer.
-	// _renderer = mx::GlslRenderer::create();
-	// _renderer->initialize();
 }
