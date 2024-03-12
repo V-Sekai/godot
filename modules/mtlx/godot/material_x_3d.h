@@ -69,8 +69,11 @@ namespace mx = MaterialX;
 class MTLXLoader : public Resource {
 	GDCLASS(MTLXLoader, Resource);
 	mx::DocumentPtr _stdLib;
-	void process_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
-			int &id) const;
+	void create_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
+			int &id, std::map<mx::NodePtr, int> &node_ids) const;
+	void connect_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
+			int &id, const std::map<mx::NodePtr, int> &node_ids) const;
+	int get_node_id(const mx::NodePtr &node, const std::map<mx::NodePtr, int> &node_ids) const;
 
 protected:
 	static void _bind_methods() {

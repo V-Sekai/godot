@@ -266,6 +266,9 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 	shader.instantiate();
 	std::set<mx::NodePtr> processed_nodes;
 	int id = 2;
+
+	std::map<mx::NodePtr, int> node_ids; // TODO move to godot map.
+
 	for (size_t i = 0; i < renderable_materials.size(); i++) {
 		const mx::TypedElementPtr &element = renderable_materials[i];
 		if (!element || !element->isA<mx::Node>()) {
@@ -275,42 +278,78 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		if (!node) {
 			continue;
 		}
-		process_node(node, 0, shader, processed_nodes, id);
+		create_node(node, 0, shader, processed_nodes, id, node_ids);
 	}
-	for (int i = 2; i < id; i++) {
-		if (shader->get_node(VisualShader::TYPE_FRAGMENT, i)->get_output_port_count() > 0 &&
-				shader->get_node(VisualShader::TYPE_FRAGMENT, id)->get_input_port_count() > 0) {
-			shader->connect_nodes(VisualShader::TYPE_FRAGMENT, i, 0, id, 0);
+	for (size_t i = 0; i < renderable_materials.size(); i++) {
+		const mx::TypedElementPtr &element = renderable_materials[i];
+		if (!element || !element->isA<mx::Node>()) {
+			continue;
 		}
+		const mx::NodePtr &node = element->asA<mx::Node>();
+		if (!node) {
+			continue;
+		}
+		connect_node(node, 0, shader, processed_nodes, id, node_ids);
 	}
 	mat->set_shader(shader);
 	return mat;
 }
 
-void MTLXLoader::process_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
-		int &id) const {
+void MTLXLoader::create_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
+		int &id, std::map<mx::NodePtr, int> &node_ids) const {
 	if (processed_nodes.find(node) != processed_nodes.end()) {
 		return;
 	}
 	processed_nodes.insert(node);
+	node_ids[node] = id;
 	Ref<VisualShaderNodeExpression> expression_node;
 	expression_node.instantiate();
+	String expression_text = String(node->getName().c_str());
+	print_verbose(String("MaterialX node " + expression_text));
+	expression_node->set_expression(expression_text);
 	for (mx::InputPtr input : node->getInputs()) {
-		const std::string &node_name = node->getName();
-		print_verbose(String("MaterialX input " + String(node_name.c_str())));
-		expression_node->set_expression(node_name.c_str());
+		const std::string &input_name = input->getName();
+		print_verbose(String("MaterialX input " + String(input_name.c_str())));
 		shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 200, -200), id++);
 	}
 	int i = 0;
 	for (mx::OutputPtr output : node->getOutputs()) {
 		const std::string &output_name = output->getName();
+		print_verbose(String("MaterialX output " + String(output_name.c_str())));
 		expression_node->add_output_port(i, Variant::NIL, output_name.c_str());
 		i++;
 	}
 	for (mx::ElementPtr child_element : node->getChildren()) {
 		mx::NodePtr child_node = child_element->asA<mx::Node>();
 		if (child_node) {
-			process_node(child_node, depth + 1, shader, processed_nodes, id); // increment depth for each recursive call
+			create_node(child_node, depth + 1, shader, processed_nodes, id, node_ids); // increment depth for each recursive call
 		}
+	}
+}
+
+void MTLXLoader::connect_node(const mx::NodePtr &node, int depth, Ref<VisualShader> &shader, std::set<mx::NodePtr> &processed_nodes,
+		int &id, const std::map<mx::NodePtr, int> &node_ids) const {
+	for (mx::InputPtr input : node->getInputs()) {
+		if (input->getConnectedNode() != nullptr) {
+			mx::NodePtr connected_node = input->getConnectedNode();
+			if (node_ids.find(connected_node) == node_ids.end() || node_ids.find(node) == node_ids.end()) {
+				ERR_PRINT("Error: MaterialX Node not found in the map.");
+				continue;
+			}
+			int source_id = node_ids.at(connected_node);
+			int target_id = node_ids.at(node);
+			shader->connect_nodes(VisualShader::TYPE_FRAGMENT, source_id, 0, target_id, 0);
+		}
+	}
+}
+
+int MTLXLoader::get_node_id(const mx::NodePtr &node, const std::map<mx::NodePtr, int> &node_ids) const {
+	auto it = node_ids.find(node); // TODO: Remove auto.
+	if (it != node_ids.end()) {
+		return it->second;
+	} else {
+		// Handle error: Node ID not found
+		ERR_PRINT("Node ID not found");
+		return -1;
 	}
 }
