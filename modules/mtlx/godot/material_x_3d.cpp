@@ -266,9 +266,9 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 	shader.instantiate();
 	std::set<mx::NodePtr> processed_nodes;
 	int id = 2;
-
 	std::map<mx::NodePtr, int> node_ids; // TODO move to godot map.
 	std::map<mx::NodePtr, std::map<std::string, int>> node_input_slot_maps; // TODO move to godot map.
+	std::map<mx::NodePtr, std::map<std::string, int>> node_output_slot_maps; // TODO move to godot map.
 
 	for (size_t i = 0; i < renderable_materials.size(); i++) {
 		const mx::TypedElementPtr &element = renderable_materials[i];
@@ -279,18 +279,34 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		if (!node) {
 			continue;
 		}
+
+		// Input slot map
 		std::map<std::string, int> input_slot_map;
-		int slot_number = 0;
+		int input_slot_number = 0;
 		for (mx::InputPtr input : node->getInputs()) {
-			input_slot_map[input->getName()] = slot_number++;
+			input_slot_map[input->getName()] = input_slot_number++;
 		}
 		node_input_slot_maps[node] = input_slot_map;
 		print_line(String("Input slot map for node: ") + node->getName().c_str());
 		for (const auto &pair : input_slot_map) {
 			print_line(String("Input: ") + String(pair.first.c_str()) + ", Slot: " + itos(pair.second));
 		}
+
+		// Output slot map
+		std::map<std::string, int> output_slot_map;
+		int output_slot_number = 0;
+		for (mx::OutputPtr output : node->getOutputs()) {
+			output_slot_map[output->getName()] = output_slot_number++;
+		}
+		node_output_slot_maps[node] = output_slot_map;
+		print_line(String("Output slot map for node: ") + node->getName().c_str());
+		for (const auto &pair : output_slot_map) {
+			print_line(String("Output: ") + String(pair.first.c_str()) + ", Slot: " + itos(pair.second));
+		}
+
 		create_node(node, 0, shader, processed_nodes, id, node_ids);
 	}
+
 	for (size_t i = 0; i < renderable_materials.size(); i++) {
 		const mx::TypedElementPtr &element = renderable_materials[i];
 		if (!element || !element->isA<mx::Node>()) {
