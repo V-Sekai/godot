@@ -346,6 +346,11 @@ void MTLXLoader::create_node(const mx::NodePtr &node, int depth, Ref<VisualShade
 	for (mx::InputPtr input : node->getInputs()) {
 		const std::string &input_name = input->getName();
 		print_verbose(String("MaterialX input " + String(input_name.c_str())));
+		mx::ValuePtr value = input->getValue();
+		if (value) {
+			std::string typeString = value->getTypeString();
+			print_line(String("MaterialX input type: ") + typeString.c_str());
+		}
 		expression_node->add_input_port(i, Variant::NIL, input_name.c_str());
 		i++;
 	}
