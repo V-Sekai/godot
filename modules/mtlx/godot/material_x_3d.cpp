@@ -42,13 +42,6 @@
 
 #include <cstddef>
 
-mx::FileSearchPath getDefaultSearchPath(mx::GenContext context) {
-	mx::FileSearchPath searchPath;
-	searchPath.append(ProjectSettings::get_singleton()->globalize_path("res://").utf8().get_data());
-	searchPath.append(ProjectSettings::get_singleton()->globalize_path("res://libraries").utf8().get_data());
-	return searchPath;
-}
-
 void apply_materialx_modifiers(mx::DocumentPtr doc, const DocumentModifiers &modifiers) {
 	for (mx::ElementPtr elem : doc->traverseTree()) {
 		if (modifiers.remapElements.count(elem->getCategory())) {
@@ -153,8 +146,8 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 		stdLib = mx::createDocument();
 		mx::FilePathVec libraryFolders;
 		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path(p_path.get_base_dir()).utf8().get_data());
-		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("res://").utf8().get_data());
-		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("user://").utf8().get_data());
+		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("res://libraries").utf8().get_data());
+		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("user://libraries").utf8().get_data());
 		mx::StringSet xincludeFiles = mx::loadLibraries(libraryFolders, searchPath, stdLib);
 		// Import libraries.
 		if (xincludeFiles.empty()) {
