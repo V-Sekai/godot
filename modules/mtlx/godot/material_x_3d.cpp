@@ -238,12 +238,17 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 	try {
 		err = load_mtlx_document(doc, original_path);
 	} catch (std::exception &e) {
-		ERR_PRINT(String("Can't load materials. Error: ") + String(e.what()));
+		ERR_PRINT(String("Can't load Materialx materials. Error: ") + String(e.what()));
 		return Ref<Resource>();
 	}
 	if (err != OK) {
 		return Ref<Resource>();
 	}
+
+	std::string message;
+	bool docValid = doc->validate(&message);
+	ERR_FAIL_COND_V_MSG(!docValid, Ref<Resource>(), String("The MaterialX document is invalid: [") + String(doc->getSourceUri().c_str()) + "] " + String(message.c_str()));
+
 	std::vector<mx::TypedElementPtr> renderable_materials = findRenderableElements(doc);
 	Ref<ShaderMaterial> mat;
 	mat.instantiate();
