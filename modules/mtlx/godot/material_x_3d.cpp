@@ -38,10 +38,6 @@
 #include "scene/resources/material.h"
 #include "scene/resources/visual_shader.h"
 
-#include "modules/mtlx/source/MaterialXRenderGlsl/TextureBaker.h"
-
-#include <cstddef>
-
 void apply_materialx_modifiers(mx::DocumentPtr doc, const DocumentModifiers &modifiers) {
 	for (mx::ElementPtr elem : doc->traverseTree()) {
 		if (modifiers.remapElements.count(elem->getCategory())) {

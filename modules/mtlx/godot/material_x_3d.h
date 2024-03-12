@@ -37,15 +37,6 @@
 #include "scene/resources/material.h"
 #include "scene/resources/visual_shader.h"
 
-#include <MaterialXRenderGlsl/GLTextureHandler.h>
-#include <MaterialXRenderGlsl/GLUtil.h>
-#include <MaterialXRenderGlsl/TextureBaker.h>
-
-#include <MaterialXRender/Harmonics.h>
-#include <MaterialXRender/OiioImageLoader.h>
-#include <MaterialXRender/StbImageLoader.h>
-#include <MaterialXRender/Util.h>
-
 #include <MaterialXGenShader/DefaultColorManagementSystem.h>
 #include <MaterialXGenShader/ShaderTranslator.h>
 
@@ -54,13 +45,7 @@
 
 #include <MaterialXCore/Util.h>
 
-#include <MaterialXGenGlsl/GlslShaderGenerator.h>
-#include <MaterialXGenShader/UnitSystem.h>
-#include <MaterialXRenderGlsl/GlslProgram.h>
-
 #include <MaterialXGenGlsl/EsslShaderGenerator.h>
-
-// TODO: FIRE 2024-03-12 - Cleanup includes.
 
 #include <iostream>
 
