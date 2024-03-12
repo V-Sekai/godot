@@ -307,12 +307,15 @@ void MTLXLoader::create_node(const mx::NodePtr &node, int depth, Ref<VisualShade
 	String expression_text = String(node->getName().c_str());
 	print_verbose(String("MaterialX node " + expression_text));
 	expression_node->set_expression(expression_text);
+	shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 200, -200), id++);
+	int i = 0;
 	for (mx::InputPtr input : node->getInputs()) {
 		const std::string &input_name = input->getName();
 		print_verbose(String("MaterialX input " + String(input_name.c_str())));
-		shader->add_node(VisualShader::TYPE_FRAGMENT, expression_node, Vector2(depth * 200, -200), id++);
+		expression_node->add_input_port(i, Variant::NIL, input_name.c_str());
+		i++;
 	}
-	int i = 0;
+	i = 0;
 	for (mx::OutputPtr output : node->getOutputs()) {
 		const std::string &output_name = output->getName();
 		print_verbose(String("MaterialX output " + String(output_name.c_str())));
@@ -332,8 +335,12 @@ void MTLXLoader::connect_node(const mx::NodePtr &node, int depth, Ref<VisualShad
 	for (mx::InputPtr input : node->getInputs()) {
 		if (input->getConnectedNode() != nullptr) {
 			mx::NodePtr connected_node = input->getConnectedNode();
-			if (node_ids.find(connected_node) == node_ids.end() || node_ids.find(node) == node_ids.end()) {
-				ERR_PRINT("Error: MaterialX Node not found in the map.");
+			if (node_ids.find(connected_node) == node_ids.end()) {
+				ERR_PRINT("Error: Connected MaterialX Node '" + String(connected_node->getName().c_str()) + "' not found in the map.");
+				continue;
+			}
+			if (node_ids.find(node) == node_ids.end()) {
+				ERR_PRINT("Error: MaterialX Node '" + String(node->getName().c_str()) + "' not found in the map.");
 				continue;
 			}
 			int source_id = node_ids.at(connected_node);
