@@ -317,10 +317,6 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 		}
 		connect_node(node, 0, shader, processed_nodes, id, node_ids);
 	}
-	mx::XmlWriteOptions writeOptions;
-	writeOptions.writeXIncludeEnable = false;
-	std::string xmlString = mx::writeToXmlString(doc, &writeOptions);
-	print_line(String("MaterialX State: \n") + String(xmlString.c_str()));
 	mat->set_shader(shader);
 	return mat;
 }
