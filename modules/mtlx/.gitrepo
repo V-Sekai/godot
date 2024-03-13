@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-mtlx.git
 	branch = godot-4.3
-	commit = 04757d2b7b4f094d4e2de54a692a4eb3220a82ae
-	parent = 5be2963421492070d42fd36c0dcb6aff096762a8
+	commit = d98e8aed0962fcc61ce27eff8d9ae537f96b23f3
+	parent = 80d08249a9951c8bf432580170d694557de3fbc0
 	method = merge
 	cmdver = 0.4.6
