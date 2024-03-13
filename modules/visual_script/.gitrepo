@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot_visual_script.git
 	branch = main
-	commit = 3c4504c96eb9f942ec2d6d276c72bd4f0358ea67
-	parent = f28964805e44a5c068ce8fd9d1e00697fcd922dc
+	commit = 43b0128a96ce84a42b42ed5cb653365337b81147
+	parent = c829e68a1fa02c8f89f249c351f3bf0d3887d510
 	method = merge
 	cmdver = 0.4.6

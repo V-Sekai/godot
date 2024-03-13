@@ -1,79 +1,54 @@
-# Godot Engine
+# VisualScript module for Godot
 
-<p align="center">
-  <a href="https://godotengine.org">
-    <img src="logo_outlined.svg" width="400" alt="Godot Engine logo">
-  </a>
-</p>
+This repository contains the implementation of the "VisualScript" visual
+scripting language which used to be included directly in
+[Godot Engine](https://godotengine.org/) from Godot 3.0 until its removal in
+Godot 4.0.
 
-## 2D and 3D cross-platform game engine
+[See this blog post](https://godotengine.org/article/godot-4-will-discontinue-visual-scripting)
+for details on why the VisualScript implementation was removed from Godot 4.0.
 
-**[Godot Engine](https://godotengine.org) is a feature-packed, cross-platform
-game engine to create 2D and 3D games from a unified interface.** It provides a
-comprehensive set of [common tools](https://godotengine.org/features), so that users can focus on making games
-without having to reinvent the wheel. Games can be exported with one click to a
-number of platforms, including the major desktop platforms (Linux, macOS,
-Windows), mobile platforms (Android, iOS), as well as Web-based platforms
-(HTML5) and
-[consoles](https://docs.godotengine.org/en/latest/tutorials/platform/consoles.html).
+This repository has two aims:
 
-## Free, open source and community-driven
+- Initially, this is a straight copy of the `modules/visual_script/` folder in
+  the Godot source tree, and can still be compiled as such to restore this
+  functionality in Godot 4.0.
+- Ideally, if there is community interest and participation, we would like this
+  module (which needs to be compiled together with the engine in a custom build)
+  converted to use GDExtension via [godot-cpp](https://github.com/godotengine/godot-cpp),
+  allowing it to be distributed as a compiled library that can add this
+  functionality back to a stock Godot build. As an extension, this feature could
+  also evolved more freely, attracting new contributors with innovative ideas,
+  and thus become a better visual scripting solution than what we had in the
+  Godot 3.x era.
 
-Godot is completely free and open source under the very permissive [MIT license](https://godotengine.org/license).
-No strings attached, no royalties, nothing. The users' games are theirs, down
-to the last line of engine code. Godot's development is fully independent and
-community-driven, empowering users to help shape their engine to match their
-expectations. It is supported by the [Software Freedom Conservancy](https://sfconservancy.org/)
-not-for-profit.
+## Compiling
 
-Before being open sourced in [February 2014](https://github.com/godotengine/godot/commit/0b806ee0fc9097fa7bda7ac0109191c9c5e0a1ac),
-Godot had been developed by [Juan Linietsky](https://github.com/reduz) and
-[Ariel Manzur](https://github.com/punto-) (both still maintaining the project) for several
-years as an in-house engine, used to publish several work-for-hire titles.
+For now this is still a C++ module, so it needs to be compiled together with
+Godot as a custom build.
 
-![Screenshot of a 3D scene in the Godot Engine editor](https://raw.githubusercontent.com/godotengine/godot-design/master/screenshots/editor_tps_demo_1920x1080.jpg)
+[See the Godot documentation](https://docs.godotengine.org/en/latest/development/compiling/)
+for instructions on how to compile the engine.
 
-## Getting the engine
+To add this module, it should be cloned or copied as the `modules/visual_script/`
+folder in the Godot source tree.
 
-### Binary downloads
+For example:
 
-Official binaries for the Godot editor and the export templates can be found
-[on the homepage](https://godotengine.org/download).
+```
+git clone https://github.com/godotengine/godot
+cd godot/modules
+git clone https://github.com/godotengine/godot-visual-script visual_script
+cd ..
+scons
+```
 
-### Compiling from source
+Note that a custom `visual_script` name is given for this repository's clone, so
+that the final structure looks like `modules/visual_script/` and not
+`modules/godot-visual-script/`.
 
-[See the official docs](https://docs.godotengine.org/en/latest/development/compiling/)
-for compilation instructions for every supported platform.
+## Contributing
 
-## Community and contributing
-
-Godot is not only an engine but an ever-growing community of users and engine
-developers. The main community channels are listed [on the homepage](https://godotengine.org/community).
-
-The best way to get in touch with the core engine developers is to join the
-[Godot Contributors Chat](https://chat.godotengine.org).
-
-To get started contributing to the project, see the [contributing guide](CONTRIBUTING.md).
-
-## Documentation and demos
-
-The official documentation is hosted on [ReadTheDocs](https://docs.godotengine.org).
-It is maintained by the Godot community in its own [GitHub repository](https://github.com/godotengine/godot-docs).
-
-The [class reference](https://docs.godotengine.org/en/latest/classes/)
-is also accessible from the Godot editor.
-
-We also maintain official demos in their own [GitHub repository](https://github.com/godotengine/godot-demo-projects)
-as well as a list of [awesome Godot community resources](https://github.com/godotengine/awesome-godot).
-
-There are also a number of other
-[learning resources](https://docs.godotengine.org/en/latest/community/tutorials.html)
-provided by the community, such as text and video tutorials, demos, etc.
-Consult the [community channels](https://godotengine.org/community)
-for more information.
-
-[![Actions Build Status](https://github.com/godotengine/godot/workflows/Godot/badge.svg?branch=master)](https://github.com/godotengine/godot/actions)
-[![Code Triagers Badge](https://www.codetriage.com/godotengine/godot/badges/users.svg)](https://www.codetriage.com/godotengine/godot)
-[![Translate on Weblate](https://hosted.weblate.org/widgets/godot-engine/-/godot/svg-badge.svg)](https://hosted.weblate.org/engage/godot-engine/?utm_source=widget)
-[![Total alerts on LGTM](https://img.shields.io/lgtm/alerts/g/godotengine/godot.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/godotengine/godot/alerts)
-[![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/godotengine/godot)](https://www.tickgit.com/browse?repo=github.com/godotengine/godot)
+If you're interested in working on porting this C++ module to GDExtension,
+please join the `#scripting` (to discuss VisualScript) and `#gdextension` (to
+discuss GDExtension and `godot-cpp`) on the [Godot Contributors Chat](https://chat.godotengine.org).
