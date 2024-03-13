@@ -700,8 +700,8 @@ bool VisualScriptPropertySelector::SearchRunner::_phase_init() {
 	if (selector_ui->search_classes->is_pressed()) {
 		search_flags |= SEARCH_CLASSES;
 	}
-		search_flags |= SEARCH_CONSTRUCTORS;
-		if (selector_ui->search_methods->is_pressed()) {
+	search_flags |= SEARCH_CONSTRUCTORS;
+	if (selector_ui->search_methods->is_pressed()) {
 		search_flags |= SEARCH_METHODS;
 	}
 	if (selector_ui->search_operators->is_pressed()) {
@@ -842,153 +842,153 @@ bool VisualScriptPropertySelector::SearchRunner::_phase_node_classes_build() {
 }
 
 bool VisualScriptPropertySelector::SearchRunner::_phase_match_classes() {
-    DocData::ClassDoc &class_doc = iterator_doc->value;
-if ((!_is_class_disabled_by_feature_profile(class_doc.name) &&
+	DocData::ClassDoc &class_doc = iterator_doc->value;
+	if ((!_is_class_disabled_by_feature_profile(class_doc.name) &&
 				!_is_class_disabled_by_scope(class_doc.name)) ||
-        _match_visual_script(class_doc)) {
-        if (class_doc.inherits == "VisualScriptCustomNode") {
-            class_doc.script_path = "res://" + class_doc.name.unquote();
-            Ref<Script> script = ResourceLoader::load(class_doc.script_path);
-            Ref<VisualScriptCustomNode> vsn;
-            vsn.instantiate();
-            vsn->set_script(script);
-            class_doc.name = vsn->get_caption();
-            if (combined_docs.has(vsn->get_category())) {
-                class_doc.inherits = vsn->get_category();
-            } else if (combined_docs.has("VisualScriptNode/" + vsn->get_category())) {
-                class_doc.inherits = "VisualScriptNode/" + vsn->get_category();
-            } else if (combined_docs.has("VisualScriptCustomNode/" +
+			_match_visual_script(class_doc)) {
+		if (class_doc.inherits == "VisualScriptCustomNode") {
+			class_doc.script_path = "res://" + class_doc.name.unquote();
+			Ref<Script> script = ResourceLoader::load(class_doc.script_path);
+			Ref<VisualScriptCustomNode> vsn;
+			vsn.instantiate();
+			vsn->set_script(script);
+			class_doc.name = vsn->get_caption();
+			if (combined_docs.has(vsn->get_category())) {
+				class_doc.inherits = vsn->get_category();
+			} else if (combined_docs.has("VisualScriptNode/" + vsn->get_category())) {
+				class_doc.inherits = "VisualScriptNode/" + vsn->get_category();
+			} else if (combined_docs.has("VisualScriptCustomNode/" +
 							   vsn->get_category())) {
-                class_doc.inherits = "VisualScriptCustomNode/" + vsn->get_category();
-            } else {
-                class_doc.inherits = "";
-            }
-            class_doc.brief_description = "";
-            class_doc.constructors.clear();
-            class_doc.methods.clear();
-            class_doc.operators.clear();
-            class_doc.signals.clear();
-            class_doc.constants.clear();
-            class_doc.enums.clear();
-            class_doc.properties.clear();
-            class_doc.theme_properties.clear();
-        }
+				class_doc.inherits = "VisualScriptCustomNode/" + vsn->get_category();
+			} else {
+				class_doc.inherits = "";
+			}
+			class_doc.brief_description = "";
+			class_doc.constructors.clear();
+			class_doc.methods.clear();
+			class_doc.operators.clear();
+			class_doc.signals.clear();
+			class_doc.constants.clear();
+			class_doc.enums.clear();
+			class_doc.properties.clear();
+			class_doc.theme_properties.clear();
+		}
 
-        matches[class_doc.name] = ClassMatch();
-        ClassMatch &match = matches[class_doc.name];
+		matches[class_doc.name] = ClassMatch();
+		ClassMatch &match = matches[class_doc.name];
 
-        match.doc = &class_doc;
-// Match class name.
-        if (search_flags & SEARCH_CLASSES || _match_visual_script(class_doc)) {
-            if (term == " ") {
+		match.doc = &class_doc;
+		// Match class name.
+		if (search_flags & SEARCH_CLASSES || _match_visual_script(class_doc)) {
+			if (term == " ") {
 				match.name = !_match_is_hidden(class_doc);
 			} else {
 				match.name = _match_string(term, class_doc.name);
 			}
 			//	match.name = term == " " || _match_string(term, class_doc.name);
-        }
+		}
 
-// Match members if the term is long enough.
-        if (term.length() >= 0) {
-            if (search_flags & SEARCH_CONSTRUCTORS) {
-                for (int i = 0; i < class_doc.constructors.size(); i++) {
-                    String method_name = (search_flags & SEARCH_CASE_SENSITIVE)
+		// Match members if the term is long enough.
+		if (term.length() >= 0) {
+			if (search_flags & SEARCH_CONSTRUCTORS) {
+				for (int i = 0; i < class_doc.constructors.size(); i++) {
+					String method_name = (search_flags & SEARCH_CASE_SENSITIVE)
 							? class_doc.constructors[i].name
 							: class_doc.constructors[i].name.to_lower();
-                    if (method_name.find(term) > -1 || term == " " ||
-                        (term.begins_with(".") &&
+					if (method_name.find(term) > -1 || term == " " ||
+							(term.begins_with(".") &&
 									method_name.begins_with(term.substr(1))) ||
-                        (term.ends_with("(") &&
+							(term.ends_with("(") &&
 									method_name.ends_with(
 											term.left(term.length() - 1).strip_edges())) ||
-                        (term.begins_with(".") && term.ends_with("(") &&
+							(term.begins_with(".") && term.ends_with("(") &&
 									method_name ==
 											term.substr(1, term.length() - 2).strip_edges())) {
-                        match.constructors.push_back(
+						match.constructors.push_back(
 								const_cast<DocData::MethodDoc *>(&class_doc.constructors[i]));
-                    }
-                }
-            }
-            if (search_flags & SEARCH_METHODS) {
-                for (int i = 0; i < class_doc.methods.size(); i++) {
-                    String method_name = (search_flags & SEARCH_CASE_SENSITIVE)
+					}
+				}
+			}
+			if (search_flags & SEARCH_METHODS) {
+				for (int i = 0; i < class_doc.methods.size(); i++) {
+					String method_name = (search_flags & SEARCH_CASE_SENSITIVE)
 							? class_doc.methods[i].name
 							: class_doc.methods[i].name.to_lower();
-                    if (method_name.find(term) > -1 || term == " " ||
-                        (term.begins_with(".") &&
+					if (method_name.find(term) > -1 || term == " " ||
+							(term.begins_with(".") &&
 									method_name.begins_with(term.substr(1))) ||
-                        (term.ends_with("(") &&
+							(term.ends_with("(") &&
 									method_name.ends_with(
 											term.left(term.length() - 1).strip_edges())) ||
-                        (term.begins_with(".") && term.ends_with("(") &&
+							(term.begins_with(".") && term.ends_with("(") &&
 									method_name ==
 											term.substr(1, term.length() - 2).strip_edges())) {
-                        match.methods.push_back(
+						match.methods.push_back(
 								const_cast<DocData::MethodDoc *>(&class_doc.methods[i]));
-                    }
-                }
-            }
-            if (search_flags & SEARCH_OPERATORS) {
-                for (int i = 0; i < class_doc.operators.size(); i++) {
-                    String method_name = (search_flags & SEARCH_CASE_SENSITIVE)
+					}
+				}
+			}
+			if (search_flags & SEARCH_OPERATORS) {
+				for (int i = 0; i < class_doc.operators.size(); i++) {
+					String method_name = (search_flags & SEARCH_CASE_SENSITIVE)
 							? class_doc.operators[i].name
 							: class_doc.operators[i].name.to_lower();
-                    if (method_name.find(term) > -1 || term == " " ||
-                        (term.begins_with(".") &&
+					if (method_name.find(term) > -1 || term == " " ||
+							(term.begins_with(".") &&
 									method_name.begins_with(term.substr(1))) ||
-                        (term.ends_with("(") &&
+							(term.ends_with("(") &&
 									method_name.ends_with(
 											term.left(term.length() - 1).strip_edges())) ||
-                        (term.begins_with(".") && term.ends_with("(") &&
+							(term.begins_with(".") && term.ends_with("(") &&
 									method_name ==
 											term.substr(1, term.length() - 2).strip_edges())) {
-                        match.operators.push_back(
+						match.operators.push_back(
 								const_cast<DocData::MethodDoc *>(&class_doc.operators[i]));
-                    }
-                }
-            }
-            if (search_flags & SEARCH_SIGNALS) {
-                for (int i = 0; i < class_doc.signals.size(); i++) {
-                    if (_match_string(term, class_doc.signals[i].name) || term == " ") {
-                        match.signals.push_back(
+					}
+				}
+			}
+			if (search_flags & SEARCH_SIGNALS) {
+				for (int i = 0; i < class_doc.signals.size(); i++) {
+					if (_match_string(term, class_doc.signals[i].name) || term == " ") {
+						match.signals.push_back(
 								const_cast<DocData::MethodDoc *>(&class_doc.signals[i]));
-                    }
-                }
-            }
-            if (search_flags & SEARCH_CONSTANTS) {
-                for (int i = 0; i < class_doc.constants.size(); i++) {
-                    if (_match_string(term, class_doc.constants[i].name) || term == " ") {
-                        match.constants.push_back(
+					}
+				}
+			}
+			if (search_flags & SEARCH_CONSTANTS) {
+				for (int i = 0; i < class_doc.constants.size(); i++) {
+					if (_match_string(term, class_doc.constants[i].name) || term == " ") {
+						match.constants.push_back(
 								const_cast<DocData::ConstantDoc *>(&class_doc.constants[i]));
-                    }
-                }
-            }
-            if (search_flags & SEARCH_PROPERTIES) {
-                for (int i = 0; i < class_doc.properties.size(); i++) {
-                    if (_match_string(term, class_doc.properties[i].name) ||
-                        term == " " ||
-                        _match_string(term, class_doc.properties[i].getter) ||
-                        _match_string(term, class_doc.properties[i].setter)) {
-                        match.properties.push_back(
+					}
+				}
+			}
+			if (search_flags & SEARCH_PROPERTIES) {
+				for (int i = 0; i < class_doc.properties.size(); i++) {
+					if (_match_string(term, class_doc.properties[i].name) ||
+							term == " " ||
+							_match_string(term, class_doc.properties[i].getter) ||
+							_match_string(term, class_doc.properties[i].setter)) {
+						match.properties.push_back(
 								const_cast<DocData::PropertyDoc *>(&class_doc.properties[i]));
-                    }
-                }
-            }
-            if (search_flags & SEARCH_THEME_ITEMS) {
-                for (int i = 0; i < class_doc.theme_properties.size(); i++) {
-                    if (_match_string(term, class_doc.theme_properties[i].name) ||
-                        term == " ") {
-                        match.theme_properties.push_back(
+					}
+				}
+			}
+			if (search_flags & SEARCH_THEME_ITEMS) {
+				for (int i = 0; i < class_doc.theme_properties.size(); i++) {
+					if (_match_string(term, class_doc.theme_properties[i].name) ||
+							term == " ") {
+						match.theme_properties.push_back(
 								const_cast<DocData::ThemeItemDoc *>(
 										&class_doc.theme_properties[i]));
-                    }
-                }
-            }
-        }
-    }
+					}
+				}
+			}
+		}
+	}
 
-    ++iterator_doc;
-    return !iterator_doc;
+	++iterator_doc;
+	return !iterator_doc;
 }
 
 bool VisualScriptPropertySelector::SearchRunner::_phase_class_items_init() {
