@@ -1,0 +1,43 @@
+# SCsub
+Import('env')
+Import('env_modules')
+
+env_bonjour = env.Clone()
+thirdparty_dir = "#thirdparty/mDNSResponder-878.30.4/"
+
+bonjour_src = [
+	"mDNSShared/DebugServices.c",
+	"mDNSShared/GenLinkedList.c",
+	"mDNSShared/dnssd_ipc.c",
+	"mDNSShared/dnssd_clientlib.c",
+	"mDNSShared/dnssd_clientstub.c",
+]
+
+includes_dir = []
+
+if env['platform'] == "windows":
+    env_bonjour.Append(CCFLAGS=["/DWIN32", "/DNDEBUG", "/DWINDOWS", "/DUSE_TCP_LOOPBACK", "/DNOT_HAVE_SA_LEN"])
+    bonjour_src.append("mDNSWindows/DLL/dllmain.c")
+    includes_dir = [thirdparty_dir + file for file in ["mDNSWindows", "mDNSWindows/DLL", "mDNSShared", "mDNSCore"]]
+elif env['platform'] == "osx":
+    env_bonjour.Append(CCFLAGS=[""])
+    includes_dir = [thirdparty_dir + file for file in ["mDNSMacOSX", "mDNSShared", "mDNSCore"]]
+elif env['platform'] == "x11":
+    env_bonjour.Append(CCFLAGS=["-D_GNU_SOURCE", "-DHAVE_IPV6", "-DNOT_HAVE_SA_LEN", "-DUSES_NETLINK", "-DHAVE_LINUX", "-DTARGET_OS_LINUX", "-fno-strict-aliasing"])
+    includes_dir = [thirdparty_dir + file for file in ["mDNSPosix", "mDNSShared", "mDNSCore"]]
+
+sources = [thirdparty_dir + file for file in bonjour_src]
+
+env_bonjour.add_source_files(env.modules_sources, sources)
+
+env_bonjour.Append(CPPPATH=includes_dir)
+
+env_bonjour.add_source_files(env.modules_sources, "*.cpp")
+
+# We don't want godot's dependencies to be injected into our shared library.
+#env_bonjour['LIBS'] = []
+
+#shared_lib = env_bonjour.SharedLibrary(target='#bin/bonjour', source=sources)
+#shared_lib_shim = shared_lib[0].name.rsplit('.', 1)[0]
+#env.Append(LIBS=[shared_lib_shim])
+#env.Append(LIBPATH=['#bin'])
