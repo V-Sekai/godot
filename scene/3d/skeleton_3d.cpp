@@ -32,11 +32,10 @@
 #include "skeleton_3d.compat.inc"
 
 #include "core/variant/type_info.h"
+#include "scene/3d/physics/physical_bone_3d.h"
+#include "scene/3d/physics/physics_body_3d.h"
 #include "scene/resources/surface_tool.h"
 #include "scene/scene_string_names.h"
-#ifndef DISABLE_DEPRECATED
-#include "scene/3d/physical_bone_simulator_3d.h"
-#endif // _DISABLE_DEPRECATED
 
 void SkinReference::_skin_changed() {
 	if (skeleton_node) {
@@ -70,12 +69,6 @@ SkinReference::~SkinReference() {
 
 bool Skeleton3D::_set(const StringName &p_path, const Variant &p_value) {
 	String path = p_path;
-
-#ifndef DISABLE_DEPRECATED
-	if (path.begins_with("animate_physical_bones")) {
-		set_animate_physical_bones(p_value);
-	}
-#endif
 
 	if (!path.begins_with("bones/")) {
 		return false;
@@ -140,12 +133,6 @@ bool Skeleton3D::_set(const StringName &p_path, const Variant &p_value) {
 
 bool Skeleton3D::_get(const StringName &p_path, Variant &r_ret) const {
 	String path = p_path;
-
-#ifndef DISABLE_DEPRECATED
-	if (path.begins_with("animate_physical_bones")) {
-		r_ret = get_animate_physical_bones();
-	}
-#endif
 
 	if (!path.begins_with("bones/")) {
 		return false;
@@ -264,29 +251,7 @@ void Skeleton3D::_update_process_order() {
 	}
 
 	process_order_dirty = false;
-
-	emit_signal("bone_list_changed");
 }
-
-#ifndef DISABLE_DEPRECATED
-void Skeleton3D::setup_simulator() {
-	PhysicalBoneSimulator3D *sim = memnew(PhysicalBoneSimulator3D);
-	simulator = sim;
-	sim->is_compat = true;
-	sim->set_active(false); // Don't run unneeded process.
-
-	// Hacky... but might enough for compatibility.
-	// INFINITY possibly used by BoneAttachment3D, so we will keep room here.
-	sim->set_process_priority((int)INFINITY - 1);
-
-	add_child(sim);
-}
-
-void Skeleton3D::remove_simulator() {
-	remove_child(simulator);
-	memdelete(simulator);
-}
-#endif // _DISABLE_DEPRECATED
 
 void Skeleton3D::_notification(int p_what) {
 	switch (p_what) {
@@ -294,15 +259,7 @@ void Skeleton3D::_notification(int p_what) {
 			if (dirty) {
 				notification(NOTIFICATION_UPDATE_SKELETON);
 			}
-#ifndef DISABLE_DEPRECATED
-			setup_simulator();
-#endif // _DISABLE_DEPRECATED
 		} break;
-#ifndef DISABLE_DEPRECATED
-		case NOTIFICATION_EXIT_TREE: {
-			remove_simulator();
-		} break;
-#endif // _DISABLE_DEPRECATED
 		case NOTIFICATION_UPDATE_SKELETON: {
 			RenderingServer *rs = RenderingServer::get_singleton();
 			Bone *bonesptr = bones.ptrw();
@@ -365,12 +322,56 @@ void Skeleton3D::_notification(int p_what) {
 				for (uint32_t i = 0; i < bind_count; i++) {
 					uint32_t bone_index = E->skin_bone_indices_ptrs[i];
 					ERR_CONTINUE(bone_index >= (uint32_t)len);
-					rs->skeleton_bone_set_transform(skeleton, i, bonesptr[bone_index].global_pose * skin->get_bind_pose(i));
+					rs->skeleton_bone_set_transform(skeleton, i, bonesptr[bone_index].pose_global * skin->get_bind_pose(i));
 				}
 			}
 			emit_signal(SceneStringNames::get_singleton()->pose_updated);
 		} break;
+
+#ifndef _3D_DISABLED
+		case NOTIFICATION_INTERNAL_PHYSICS_PROCESS: {
+			// This is active only if the skeleton animates the physical bones
+			// and the state of the bone is not active.
+			if (animate_physical_bones) {
+				for (int i = 0; i < bones.size(); i += 1) {
+					if (bones[i].physical_bone) {
+						if (bones[i].physical_bone->is_simulating_physics() == false) {
+							bones[i].physical_bone->reset_to_rest_position();
+						}
+					}
+				}
+			}
+		} break;
+		case NOTIFICATION_READY: {
+			if (Engine::get_singleton()->is_editor_hint()) {
+				set_physics_process_internal(true);
+			}
+		} break;
+#endif // _3D_DISABLED
 	}
+}
+
+void Skeleton3D::clear_bones_global_pose_override() {
+	for (int i = 0; i < bones.size(); i += 1) {
+		bones.write[i].global_pose_override_amount = 0;
+		bones.write[i].global_pose_override_reset = true;
+	}
+	_make_dirty();
+}
+
+void Skeleton3D::set_bone_global_pose_override(int p_bone, const Transform3D &p_pose, real_t p_amount, bool p_persistent) {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX(p_bone, bone_size);
+	bones.write[p_bone].global_pose_override_amount = p_amount;
+	bones.write[p_bone].global_pose_override = p_pose;
+	bones.write[p_bone].global_pose_override_reset = !p_persistent;
+	_make_dirty();
+}
+
+Transform3D Skeleton3D::get_bone_global_pose_override(int p_bone) const {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX_V(p_bone, bone_size, Transform3D());
+	return bones[p_bone].global_pose_override;
 }
 
 Transform3D Skeleton3D::get_bone_global_pose(int p_bone) const {
@@ -379,19 +380,16 @@ Transform3D Skeleton3D::get_bone_global_pose(int p_bone) const {
 	if (dirty) {
 		const_cast<Skeleton3D *>(this)->notification(NOTIFICATION_UPDATE_SKELETON);
 	}
-	return bones[p_bone].global_pose;
+	return bones[p_bone].pose_global;
 }
 
-void Skeleton3D::set_bone_global_pose(int p_bone, const Transform3D &p_pose) {
+Transform3D Skeleton3D::get_bone_global_pose_no_override(int p_bone) const {
 	const int bone_size = bones.size();
-	ERR_FAIL_INDEX(p_bone, bone_size);
-
-	Transform3D pt;
-	if (bones[p_bone].parent >= 0) {
-		pt = get_bone_global_pose(bones[p_bone].parent);
+	ERR_FAIL_INDEX_V(p_bone, bone_size, Transform3D());
+	if (dirty) {
+		const_cast<Skeleton3D *>(this)->notification(NOTIFICATION_UPDATE_SKELETON);
 	}
-	Transform3D t = pt.affine_inverse() * p_pose;
-	set_bone_pose(p_bone, t);
+	return bones[p_bone].pose_global_no_override;
 }
 
 void Skeleton3D::set_motion_scale(float p_motion_scale) {
@@ -590,15 +588,6 @@ void Skeleton3D::clear_bones() {
 
 // Posing api
 
-void Skeleton3D::set_bone_pose(int p_bone, const Transform3D &p_pose) {
-	const int bone_size = bones.size();
-	ERR_FAIL_INDEX(p_bone, bone_size);
-
-	set_bone_pose_position(p_bone, p_pose.origin);
-	set_bone_pose_rotation(p_bone, p_pose.basis.get_rotation_quaternion());
-	set_bone_pose_scale(p_bone, p_pose.basis.get_scale());
-}
-
 void Skeleton3D::set_bone_pose_position(int p_bone, const Vector3 &p_position) {
 	const int bone_size = bones.size();
 	ERR_FAIL_INDEX(p_bone, bone_size);
@@ -696,6 +685,173 @@ void Skeleton3D::localize_rests() {
 			bones_to_process.push_back(bones[current_bone_idx].child_bones[i]);
 		}
 	}
+}
+
+void Skeleton3D::set_animate_physical_bones(bool p_enabled) {
+	animate_physical_bones = p_enabled;
+
+	if (Engine::get_singleton()->is_editor_hint() == false) {
+		bool sim = false;
+		for (int i = 0; i < bones.size(); i += 1) {
+			if (bones[i].physical_bone) {
+				bones[i].physical_bone->reset_physics_simulation_state();
+				if (bones[i].physical_bone->is_simulating_physics()) {
+					sim = true;
+				}
+			}
+		}
+		set_physics_process_internal(sim == false && p_enabled);
+	}
+}
+
+bool Skeleton3D::get_animate_physical_bones() const {
+	return animate_physical_bones;
+}
+
+void Skeleton3D::bind_physical_bone_to_bone(int p_bone, PhysicalBone3D *p_physical_bone) {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX(p_bone, bone_size);
+	ERR_FAIL_COND(bones[p_bone].physical_bone);
+	ERR_FAIL_NULL(p_physical_bone);
+	bones.write[p_bone].physical_bone = p_physical_bone;
+
+	_rebuild_physical_bones_cache();
+}
+
+void Skeleton3D::unbind_physical_bone_from_bone(int p_bone) {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX(p_bone, bone_size);
+	bones.write[p_bone].physical_bone = nullptr;
+
+	_rebuild_physical_bones_cache();
+}
+
+PhysicalBone3D *Skeleton3D::get_physical_bone(int p_bone) {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX_V(p_bone, bone_size, nullptr);
+
+	return bones[p_bone].physical_bone;
+}
+
+PhysicalBone3D *Skeleton3D::get_physical_bone_parent(int p_bone) {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX_V(p_bone, bone_size, nullptr);
+
+	if (bones[p_bone].cache_parent_physical_bone) {
+		return bones[p_bone].cache_parent_physical_bone;
+	}
+
+	return _get_physical_bone_parent(p_bone);
+}
+
+PhysicalBone3D *Skeleton3D::_get_physical_bone_parent(int p_bone) {
+	const int bone_size = bones.size();
+	ERR_FAIL_INDEX_V(p_bone, bone_size, nullptr);
+
+	const int parent_bone = bones[p_bone].parent;
+	if (0 > parent_bone) {
+		return nullptr;
+	}
+
+	PhysicalBone3D *pb = bones[parent_bone].physical_bone;
+	if (pb) {
+		return pb;
+	} else {
+		return get_physical_bone_parent(parent_bone);
+	}
+}
+
+void Skeleton3D::_rebuild_physical_bones_cache() {
+	const int b_size = bones.size();
+	for (int i = 0; i < b_size; ++i) {
+		PhysicalBone3D *parent_pb = _get_physical_bone_parent(i);
+		if (parent_pb != bones[i].cache_parent_physical_bone) {
+			bones.write[i].cache_parent_physical_bone = parent_pb;
+			if (bones[i].physical_bone) {
+				bones[i].physical_bone->_on_bone_parent_changed();
+			}
+		}
+	}
+}
+
+void _pb_stop_simulation(Node *p_node) {
+	for (int i = p_node->get_child_count() - 1; 0 <= i; --i) {
+		_pb_stop_simulation(p_node->get_child(i));
+	}
+
+	PhysicalBone3D *pb = Object::cast_to<PhysicalBone3D>(p_node);
+	if (pb) {
+		pb->set_simulate_physics(false);
+	}
+}
+
+void Skeleton3D::physical_bones_stop_simulation() {
+	_pb_stop_simulation(this);
+	if (Engine::get_singleton()->is_editor_hint() == false && animate_physical_bones) {
+		set_physics_process_internal(true);
+	}
+}
+
+void _pb_start_simulation(const Skeleton3D *p_skeleton, Node *p_node, const Vector<int> &p_sim_bones) {
+	for (int i = p_node->get_child_count() - 1; 0 <= i; --i) {
+		_pb_start_simulation(p_skeleton, p_node->get_child(i), p_sim_bones);
+	}
+
+	PhysicalBone3D *pb = Object::cast_to<PhysicalBone3D>(p_node);
+	if (pb) {
+		if (p_sim_bones.is_empty()) { // If no bones is specified, activate ragdoll on full body.
+			pb->set_simulate_physics(true);
+		} else {
+			for (int i = p_sim_bones.size() - 1; 0 <= i; --i) {
+				if (p_sim_bones[i] == pb->get_bone_id() || p_skeleton->is_bone_parent_of(pb->get_bone_id(), p_sim_bones[i])) {
+					pb->set_simulate_physics(true);
+					break;
+				}
+			}
+		}
+	}
+}
+
+void Skeleton3D::physical_bones_start_simulation_on(const TypedArray<StringName> &p_bones) {
+	set_physics_process_internal(false);
+
+	Vector<int> sim_bones;
+	if (p_bones.size() > 0) {
+		sim_bones.resize(p_bones.size());
+		int c = 0;
+		for (int i = sim_bones.size() - 1; 0 <= i; --i) {
+			int bone_id = find_bone(p_bones[i]);
+			if (bone_id != -1) {
+				sim_bones.write[c++] = bone_id;
+			}
+		}
+		sim_bones.resize(c);
+	}
+
+	_pb_start_simulation(this, this, sim_bones);
+}
+
+void _physical_bones_add_remove_collision_exception(bool p_add, Node *p_node, RID p_exception) {
+	for (int i = p_node->get_child_count() - 1; 0 <= i; --i) {
+		_physical_bones_add_remove_collision_exception(p_add, p_node->get_child(i), p_exception);
+	}
+
+	CollisionObject3D *co = Object::cast_to<CollisionObject3D>(p_node);
+	if (co) {
+		if (p_add) {
+			PhysicsServer3D::get_singleton()->body_add_collision_exception(co->get_rid(), p_exception);
+		} else {
+			PhysicsServer3D::get_singleton()->body_remove_collision_exception(co->get_rid(), p_exception);
+		}
+	}
+}
+
+void Skeleton3D::physical_bones_add_collision_exception(RID p_exception) {
+	_physical_bones_add_remove_collision_exception(true, this, p_exception);
+}
+
+void Skeleton3D::physical_bones_remove_collision_exception(RID p_exception) {
+	_physical_bones_add_remove_collision_exception(false, this, p_exception);
 }
 
 void Skeleton3D::_skin_changed() {
@@ -805,43 +961,32 @@ void Skeleton3D::force_update_bone_children_transforms(int p_bone_idx) {
 			Transform3D pose = b.pose_cache;
 
 			if (b.parent >= 0) {
-				b.global_pose = bonesptr[b.parent].global_pose * pose;
+				b.pose_global = bonesptr[b.parent].pose_global * pose;
+				b.pose_global_no_override = bonesptr[b.parent].pose_global_no_override * pose;
 			} else {
-				b.global_pose = pose;
+				b.pose_global = pose;
+				b.pose_global_no_override = pose;
 			}
 		} else {
 			if (b.parent >= 0) {
-				b.global_pose = bonesptr[b.parent].global_pose * b.rest;
+				b.pose_global = bonesptr[b.parent].pose_global * b.rest;
+				b.pose_global_no_override = bonesptr[b.parent].pose_global_no_override * b.rest;
 			} else {
-				b.global_pose = b.rest;
+				b.pose_global = b.rest;
+				b.pose_global_no_override = b.rest;
 			}
 		}
 		if (rest_dirty) {
 			b.global_rest = b.parent >= 0 ? bonesptr[b.parent].global_rest * b.rest : b.rest;
 		}
 
-#ifndef DISABLE_DEPRECATED
-		if (bone_enabled) {
-			Transform3D pose = b.pose_cache;
-			if (b.parent >= 0) {
-				b.pose_global_no_override = bonesptr[b.parent].pose_global_no_override * pose;
-			} else {
-				b.pose_global_no_override = pose;
-			}
-		} else {
-			if (b.parent >= 0) {
-				b.pose_global_no_override = bonesptr[b.parent].pose_global_no_override * b.rest;
-			} else {
-				b.pose_global_no_override = b.rest;
-			}
-		}
 		if (b.global_pose_override_amount >= CMP_EPSILON) {
-			b.global_pose = b.global_pose.interpolate_with(b.global_pose_override, b.global_pose_override_amount);
+			b.pose_global = b.pose_global.interpolate_with(b.global_pose_override, b.global_pose_override_amount);
 		}
+
 		if (b.global_pose_override_reset) {
 			b.global_pose_override_amount = 0.0;
 		}
-#endif // _DISABLE_DEPRECATED
 
 		// Add the bone's children to the list of bones to be processed.
 		int child_bone_size = b.child_bones.size();
@@ -883,7 +1028,6 @@ void Skeleton3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("clear_bones"), &Skeleton3D::clear_bones);
 
 	ClassDB::bind_method(D_METHOD("get_bone_pose", "bone_idx"), &Skeleton3D::get_bone_pose);
-	ClassDB::bind_method(D_METHOD("set_bone_pose", "bone_idx", "pose"), &Skeleton3D::set_bone_pose);
 	ClassDB::bind_method(D_METHOD("set_bone_pose_position", "bone_idx", "position"), &Skeleton3D::set_bone_pose_position);
 	ClassDB::bind_method(D_METHOD("set_bone_pose_rotation", "bone_idx", "rotation"), &Skeleton3D::set_bone_pose_rotation);
 	ClassDB::bind_method(D_METHOD("set_bone_pose_scale", "bone_idx", "scale"), &Skeleton3D::set_bone_pose_scale);
@@ -898,8 +1042,11 @@ void Skeleton3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_bone_enabled", "bone_idx"), &Skeleton3D::is_bone_enabled);
 	ClassDB::bind_method(D_METHOD("set_bone_enabled", "bone_idx", "enabled"), &Skeleton3D::set_bone_enabled, DEFVAL(true));
 
+	ClassDB::bind_method(D_METHOD("clear_bones_global_pose_override"), &Skeleton3D::clear_bones_global_pose_override);
+	ClassDB::bind_method(D_METHOD("set_bone_global_pose_override", "bone_idx", "pose", "amount", "persistent"), &Skeleton3D::set_bone_global_pose_override, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("get_bone_global_pose_override", "bone_idx"), &Skeleton3D::get_bone_global_pose_override);
 	ClassDB::bind_method(D_METHOD("get_bone_global_pose", "bone_idx"), &Skeleton3D::get_bone_global_pose);
-	ClassDB::bind_method(D_METHOD("set_bone_global_pose", "bone_idx", "pose"), &Skeleton3D::set_bone_global_pose);
+	ClassDB::bind_method(D_METHOD("get_bone_global_pose_no_override", "bone_idx"), &Skeleton3D::get_bone_global_pose_no_override);
 
 	ClassDB::bind_method(D_METHOD("force_update_all_bone_transforms"), &Skeleton3D::force_update_all_bone_transforms);
 	ClassDB::bind_method(D_METHOD("force_update_bone_child_transform", "bone_idx"), &Skeleton3D::force_update_bone_children_transforms);
@@ -910,119 +1057,27 @@ void Skeleton3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_show_rest_only", "enabled"), &Skeleton3D::set_show_rest_only);
 	ClassDB::bind_method(D_METHOD("is_show_rest_only"), &Skeleton3D::is_show_rest_only);
 
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "motion_scale", PROPERTY_HINT_RANGE, "0.001,10,0.001,or_greater"), "set_motion_scale", "get_motion_scale");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "show_rest_only"), "set_show_rest_only", "is_show_rest_only");
-
-	ADD_SIGNAL(MethodInfo("pose_updated"));
-	ADD_SIGNAL(MethodInfo("bone_pose_changed", PropertyInfo(Variant::INT, "bone_idx")));
-	ADD_SIGNAL(MethodInfo("bone_enabled_changed", PropertyInfo(Variant::INT, "bone_idx")));
-	ADD_SIGNAL(MethodInfo("bone_list_changed"));
-	ADD_SIGNAL(MethodInfo("show_rest_only_changed"));
-
-	BIND_CONSTANT(NOTIFICATION_UPDATE_SKELETON);
-
-#ifndef DISABLE_DEPRECATED
-	ClassDB::bind_method(D_METHOD("clear_bones_global_pose_override"), &Skeleton3D::clear_bones_global_pose_override);
-	ClassDB::bind_method(D_METHOD("set_bone_global_pose_override", "bone_idx", "pose", "amount", "persistent"), &Skeleton3D::set_bone_global_pose_override, DEFVAL(false));
-	ClassDB::bind_method(D_METHOD("get_bone_global_pose_override", "bone_idx"), &Skeleton3D::get_bone_global_pose_override);
-	ClassDB::bind_method(D_METHOD("get_bone_global_pose_no_override", "bone_idx"), &Skeleton3D::get_bone_global_pose_no_override);
-
 	ClassDB::bind_method(D_METHOD("set_animate_physical_bones", "enabled"), &Skeleton3D::set_animate_physical_bones);
 	ClassDB::bind_method(D_METHOD("get_animate_physical_bones"), &Skeleton3D::get_animate_physical_bones);
+
 	ClassDB::bind_method(D_METHOD("physical_bones_stop_simulation"), &Skeleton3D::physical_bones_stop_simulation);
 	ClassDB::bind_method(D_METHOD("physical_bones_start_simulation", "bones"), &Skeleton3D::physical_bones_start_simulation_on, DEFVAL(Array()));
 	ClassDB::bind_method(D_METHOD("physical_bones_add_collision_exception", "exception"), &Skeleton3D::physical_bones_add_collision_exception);
 	ClassDB::bind_method(D_METHOD("physical_bones_remove_collision_exception", "exception"), &Skeleton3D::physical_bones_remove_collision_exception);
-#endif // _DISABLE_DEPRECATED
-}
 
-#ifndef DISABLE_DEPRECATED
-void Skeleton3D::clear_bones_global_pose_override() {
-	for (int i = 0; i < bones.size(); i += 1) {
-		bones.write[i].global_pose_override_amount = 0;
-		bones.write[i].global_pose_override_reset = true;
-	}
-	_make_dirty();
-}
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "motion_scale", PROPERTY_HINT_RANGE, "0.001,10,0.001,or_greater"), "set_motion_scale", "get_motion_scale");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "show_rest_only"), "set_show_rest_only", "is_show_rest_only");
+#ifndef _3D_DISABLED
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "animate_physical_bones"), "set_animate_physical_bones", "get_animate_physical_bones");
+#endif // _3D_DISABLED
 
-void Skeleton3D::set_bone_global_pose_override(int p_bone, const Transform3D &p_pose, real_t p_amount, bool p_persistent) {
-	const int bone_size = bones.size();
-	ERR_FAIL_INDEX(p_bone, bone_size);
-	bones.write[p_bone].global_pose_override_amount = p_amount;
-	bones.write[p_bone].global_pose_override = p_pose;
-	bones.write[p_bone].global_pose_override_reset = !p_persistent;
-	_make_dirty();
-}
+	ADD_SIGNAL(MethodInfo("pose_updated"));
+	ADD_SIGNAL(MethodInfo("bone_pose_changed", PropertyInfo(Variant::INT, "bone_idx")));
+	ADD_SIGNAL(MethodInfo("bone_enabled_changed", PropertyInfo(Variant::INT, "bone_idx")));
+	ADD_SIGNAL(MethodInfo("show_rest_only_changed"));
 
-Transform3D Skeleton3D::get_bone_global_pose_override(int p_bone) const {
-	const int bone_size = bones.size();
-	ERR_FAIL_INDEX_V(p_bone, bone_size, Transform3D());
-	return bones[p_bone].global_pose_override;
+	BIND_CONSTANT(NOTIFICATION_UPDATE_SKELETON);
 }
-
-Transform3D Skeleton3D::get_bone_global_pose_no_override(int p_bone) const {
-	const int bone_size = bones.size();
-	ERR_FAIL_INDEX_V(p_bone, bone_size, Transform3D());
-	if (dirty) {
-		const_cast<Skeleton3D *>(this)->notification(NOTIFICATION_UPDATE_SKELETON);
-	}
-	return bones[p_bone].pose_global_no_override;
-}
-
-Node *Skeleton3D::get_simulator() {
-	return simulator;
-}
-
-void Skeleton3D::set_animate_physical_bones(bool p_enabled) {
-	PhysicalBoneSimulator3D *sim = cast_to<PhysicalBoneSimulator3D>(simulator);
-	if (!sim) {
-		return;
-	}
-	sim->set_active(p_enabled);
-}
-
-bool Skeleton3D::get_animate_physical_bones() const {
-	PhysicalBoneSimulator3D *sim = cast_to<PhysicalBoneSimulator3D>(simulator);
-	if (!sim) {
-		return false;
-	}
-	return sim->is_active();
-}
-
-void Skeleton3D::physical_bones_stop_simulation() {
-	PhysicalBoneSimulator3D *sim = cast_to<PhysicalBoneSimulator3D>(simulator);
-	if (!sim) {
-		return;
-	}
-	sim->physical_bones_stop_simulation();
-	sim->set_active(false);
-}
-
-void Skeleton3D::physical_bones_start_simulation_on(const TypedArray<StringName> &p_bones) {
-	PhysicalBoneSimulator3D *sim = cast_to<PhysicalBoneSimulator3D>(simulator);
-	if (!sim) {
-		return;
-	}
-	sim->set_active(true);
-	sim->physical_bones_start_simulation_on(p_bones);
-}
-
-void Skeleton3D::physical_bones_add_collision_exception(RID p_exception) {
-	PhysicalBoneSimulator3D *sim = cast_to<PhysicalBoneSimulator3D>(simulator);
-	if (!sim) {
-		return;
-	}
-	sim->physical_bones_add_collision_exception(p_exception);
-}
-
-void Skeleton3D::physical_bones_remove_collision_exception(RID p_exception) {
-	PhysicalBoneSimulator3D *sim = cast_to<PhysicalBoneSimulator3D>(simulator);
-	if (!sim) {
-		return;
-	}
-	sim->physical_bones_remove_collision_exception(p_exception);
-}
-#endif // _DISABLE_DEPRECATED
 
 Skeleton3D::Skeleton3D() {
 }
