@@ -68,7 +68,7 @@ CNAME *(*CNAME::_create)() = NULL;
 public:\
 	static CNAME *_create() { return memnew(IMPNAME); }\
 	static void make_default() { CNAME::_create = IMPNAME::_create; }\
-protected:\
-/* clang-format on */
+protected: \
+	/* clang-format on */
 
 #endif // WEBSOCKETMACTOS_H

@@ -57,15 +57,23 @@ public:
 	virtual ~btRayShape();
 
 	void setLength(btScalar p_length);
-	btScalar getLength() const { return m_length; }
+	btScalar getLength() const {
+		return m_length;
+	}
 
 	virtual void setMargin(btScalar margin);
 
 	void setSlipsOnSlope(bool p_slipsOnSlope);
-	bool getSlipsOnSlope() const { return slipsOnSlope; }
+	bool getSlipsOnSlope() const {
+		return slipsOnSlope;
+	}
 
-	const btTransform &getSupportPoint() const { return m_cacheSupportPoint; }
-	const btScalar &getScaledLength() const { return m_cacheScaledLength; }
+	const btTransform &getSupportPoint() const {
+		return m_cacheSupportPoint;
+	}
+	const btScalar &getScaledLength() const {
+		return m_cacheScaledLength;
+	}
 
 	virtual btVector3 localGetSupportingVertex(const btVector3 &vec) const;
 #ifndef __SPU__
