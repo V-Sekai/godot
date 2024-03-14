@@ -1,4 +1,6 @@
 def can_build(env, platform):
+    if platform == "android":
+        return False
     return True
 
 
