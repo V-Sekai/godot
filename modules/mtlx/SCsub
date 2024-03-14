@@ -3,9 +3,9 @@ Import("env")
 module_env = env.Clone()
 
 if env.msvc:
-    module_env.Append(CCFLAGS = '/EHsc')
+    module_env.Append(CCFLAGS="/EHsc")
 else:
-    module_env.Append(CCFLAGS = '-fexceptions')
+    module_env.Append(CCFLAGS="-fexceptions")
 
 module_env.Prepend(CPPPATH=["thirdparty/mtlx/source", "#modules/mtlx", "thirdparty/mtlx/include"])
 
