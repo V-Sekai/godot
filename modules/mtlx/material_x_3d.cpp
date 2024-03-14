@@ -268,7 +268,6 @@ Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_pa
 			continue;
 		}
 
-		// Input slot map
 		std::map<std::string, int> input_slot_map;
 		int input_slot_number = 0;
 		for (mx::InputPtr input : node->getInputs()) {
@@ -352,7 +351,7 @@ void MTLXLoader::create_node(const mx::NodePtr &node, int depth, Ref<VisualShade
 	for (mx::ElementPtr child_element : node->getChildren()) {
 		mx::NodePtr child_node = child_element->asA<mx::Node>();
 		if (child_node) {
-			create_node(child_node, depth + 1, shader, processed_nodes, id, node_ids); // increment depth for each recursive call
+			create_node(child_node, depth + 1, shader, processed_nodes, id, node_ids);
 		}
 	}
 }
@@ -378,11 +377,10 @@ void MTLXLoader::connect_node(const mx::NodePtr &node, int depth, Ref<VisualShad
 }
 
 int MTLXLoader::get_node_id(const mx::NodePtr &node, const std::map<mx::NodePtr, int> &node_ids) const {
-	auto it = node_ids.find(node); // TODO: Remove auto.
+	auto it = node_ids.find(node);
 	if (it != node_ids.end()) {
 		return it->second;
 	} else {
-		// Handle error: Node ID not found
 		ERR_PRINT("Node ID not found");
 		return -1;
 	}
