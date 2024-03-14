@@ -34,7 +34,6 @@ def add_source_files_with_exclusion(env, sources, pattern):
 
 
 add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXRender/*.cpp")
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderGlsl/*.cpp")
 add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXCore/*.cpp")
 add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXFormat/*.cpp")
 add_source_files_with_exclusion(
@@ -47,10 +46,6 @@ add_source_files_with_exclusion(
 add_source_files_with_exclusion(
     env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/WindowWrapper.cpp"
 )
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenGlsl/*.cpp")
-add_source_files_with_exclusion(
-    env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenGlsl/Nodes/*.cpp"
-)
 
 if env["platform"] == "linuxbsd":
     env.Append(LIBS=["libXt"])
@@ -59,10 +54,6 @@ if env["platform"] == "linuxbsd":
     )
 elif env["platform"] == "macos":
     env_thirdparty.add_source_files(env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/SimpleWindowMac.cpp")
-    env_no_arc = env_thirdparty.Clone()
-    env_no_arc.Append(CCFLAGS=["-fno-objc-arc"])
-    env_no_arc.add_source_files(env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderGlsl/GLCocoaWrappers.m")
-    env_no_arc.add_source_files(env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/WindowCocoaWrappers.m")
 elif env["platform"] == "windows":
     env_thirdparty.add_source_files(
         env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/SimpleWindowWindows.cpp"
