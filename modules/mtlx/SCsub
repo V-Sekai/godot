@@ -21,8 +21,6 @@ if env["disable_exceptions"]:
     elif not env.msvc and "-fno-exceptions" in env_thirdparty["CCFLAGS"]:
         env_thirdparty["CCFLAGS"].remove("-fno-exceptions")
 
-exclude_files = ["thirdparty/mtlx/source/MaterialXRender/OiioImageLoader.cpp"]
-
 
 def add_source_files_with_exclusion(env, sources, pattern):
     import glob
@@ -33,36 +31,14 @@ def add_source_files_with_exclusion(env, sources, pattern):
             env.add_source_files(sources, file)
 
 
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXCore/*.cpp")
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXFormat/*.cpp")
-add_source_files_with_exclusion(
+env.add_source_files(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXCore/*.cpp")
+env.add_source_files(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXFormat/*.cpp")
+env.add_source_files(
     env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXFormat/External/PugiXML/*.cpp"
 )
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenShader/*.cpp")
-add_source_files_with_exclusion(
-    env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenShader/Nodes/*.cpp"
-)
-add_source_files_with_exclusion(
-    env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/WindowWrapper.cpp"
-)
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenGlsl/*.cpp")
-add_source_files_with_exclusion(
-    env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenGlsl/Nodes/*.cpp"
-)
+env.add_source_files(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenShader/*.cpp")
+env.add_source_files(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenShader/Nodes/*.cpp")
+env.add_source_files(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenGlsl/*.cpp")
+env.add_source_files(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXGenGlsl/Nodes/*.cpp")
 
-if env["platform"] == "linuxbsd":
-    env.Append(LIBS=["libXt"])
-    env_thirdparty.add_source_files(
-        env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/SimpleWindowLinux.cpp"
-    )
-elif env["platform"] == "macos":
-    env_thirdparty.add_source_files(env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/SimpleWindowMac.cpp")
-    env_no_arc = env_thirdparty.Clone()
-    env_no_arc.Append(CCFLAGS=["-fno-objc-arc"])
-    env_no_arc.add_source_files(env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderGlsl/GLCocoaWrappers.m")
-    env_no_arc.add_source_files(env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/WindowCocoaWrappers.m")
-elif env["platform"] == "windows":
-    env_thirdparty.add_source_files(
-        env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderHw/SimpleWindowWindows.cpp"
-    )
 module_env.add_source_files(env.modules_sources, "*.cpp")
