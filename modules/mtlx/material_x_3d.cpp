@@ -146,9 +146,9 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path(p_path.get_base_dir()).utf8().get_data());
 		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("res://libraries").utf8().get_data());
 		libraryFolders.push_back(ProjectSettings::get_singleton()->globalize_path("user://libraries").utf8().get_data());
-		mx::StringSet xincludeFiles = mx::loadLibraries(libraryFolders, searchPath, stdLib);
+		mx::StringSet xincludeFilesLib = mx::loadLibraries(libraryFolders, searchPath, stdLib);
 		// Import libraries.
-		if (xincludeFiles.empty()) {
+		if (xincludeFilesLib.empty()) {
 			std::cerr << "Could not find standard data libraries on the given "
 						 "search path: "
 					  << searchPath.asString() << std::endl;
@@ -200,18 +200,19 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 
 	// Set up read options.
 	mx::XmlReadOptions readOptions;
-	readOptions.readXIncludeFunction = [](mx::DocumentPtr p_doc,
-											   const mx::FilePath &materialFilename,
-											   const mx::FileSearchPath &searchPath,
-											   const mx::XmlReadOptions *newReadoptions) {
-		mx::FilePath resolvedFilename = searchPath.find(materialFilename);
+	readOptions.readXIncludeFunction = [](mx::DocumentPtr docLambda,
+										const mx::FilePath &filenameLambda,
+										const mx::FileSearchPath &pathLambda,
+										const mx::XmlReadOptions *newReadoptions) {
+		mx::FilePath resolvedFilename = pathLambda.find(filenameLambda);
 		if (resolvedFilename.exists()) {
-			readFromXmlFile(p_doc, resolvedFilename, searchPath, newReadoptions);
+			readFromXmlFile(docLambda, resolvedFilename, pathLambda, newReadoptions);
 		} else {
-			std::cerr << "Include file not found: " << materialFilename.asString()
-					  << std::endl;
+			std::cerr << "Include file not found: " << filenameLambda.asString()
+					<< std::endl;
 		}
 	};
+
 	mx::readFromXmlFile(p_doc, materialFilename, searchPath, &readOptions);
 
 	DocumentModifiers modifiers;
