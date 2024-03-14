@@ -38,8 +38,6 @@
 #include "scene/resources/material.h"
 #include "scene/resources/visual_shader.h"
 
-#include "modules/mtlx/thirdparty/mtlx/source/MaterialXCore/Util.h"
-
 void apply_materialx_modifiers(mx::DocumentPtr doc, const DocumentModifiers &modifiers) {
 	for (mx::ElementPtr elem : doc->traverseTree()) {
 		if (modifiers.remapElements.count(elem->getCategory())) {
@@ -230,6 +228,7 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 }
 
 Variant MTLXLoader::_load(const String &p_save_path, const String &p_original_path, bool p_use_sub_threads, int64_t p_cache_mode) const {
+	mx::GenContext context = mx::GlslShaderGenerator::create();
 	String save_path = ProjectSettings::get_singleton()->globalize_path(p_save_path);
 	String original_path = ProjectSettings::get_singleton()->globalize_path(p_original_path);
 	mx::DocumentPtr doc = mx::createDocument();
