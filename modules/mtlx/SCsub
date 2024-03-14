@@ -33,8 +33,6 @@ def add_source_files_with_exclusion(env, sources, pattern):
             env.add_source_files(sources, file)
 
 
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXRender/*.cpp")
-add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXRenderGlsl/*.cpp")
 add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXCore/*.cpp")
 add_source_files_with_exclusion(env_thirdparty, env.modules_sources, "thirdparty/mtlx/source/MaterialXFormat/*.cpp")
 add_source_files_with_exclusion(
