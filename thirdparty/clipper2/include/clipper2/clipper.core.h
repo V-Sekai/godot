@@ -45,6 +45,8 @@ namespace Clipper2Lib
     "Invalid scale (either 0 or too large)";
   static const char* non_pair_error =
     "There must be 2 values for each coordinate";
+  static const char* undefined_error =
+    "There is an undefined error in Clipper2";
 #endif
 
   // error codes (2^n)
