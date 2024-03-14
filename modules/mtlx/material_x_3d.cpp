@@ -201,15 +201,15 @@ Error load_mtlx_document(mx::DocumentPtr p_doc, String p_path) {
 	// Set up read options.
 	mx::XmlReadOptions readOptions;
 	readOptions.readXIncludeFunction = [](mx::DocumentPtr docLambda,
-										const mx::FilePath &filenameLambda,
-										const mx::FileSearchPath &pathLambda,
-										const mx::XmlReadOptions *newReadoptions) {
+											   const mx::FilePath &filenameLambda,
+											   const mx::FileSearchPath &pathLambda,
+											   const mx::XmlReadOptions *newReadoptions) {
 		mx::FilePath resolvedFilename = pathLambda.find(filenameLambda);
 		if (resolvedFilename.exists()) {
 			readFromXmlFile(docLambda, resolvedFilename, pathLambda, newReadoptions);
 		} else {
 			std::cerr << "Include file not found: " << filenameLambda.asString()
-					<< std::endl;
+					  << std::endl;
 		}
 	};
 
