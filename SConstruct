@@ -195,7 +195,7 @@ opts.Add(BoolVariable("opengl3", "Enable the OpenGL/GLES3 rendering driver", Tru
 opts.Add(BoolVariable("d3d12", "Enable the Direct3D 12 rendering driver (Windows only)", False))
 opts.Add(BoolVariable("openxr", "Enable the OpenXR driver", True))
 opts.Add(BoolVariable("use_volk", "Use the volk library to load the Vulkan loader dynamically", True))
-opts.Add(BoolVariable("disable_exceptions", "Force disabling exception handling code", True))
+opts.Add(BoolVariable("disable_exceptions", "Force disabling exception handling code", False))
 opts.Add("custom_modules", "A list of comma-separated directory paths containing custom modules to build.", "")
 opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
 
