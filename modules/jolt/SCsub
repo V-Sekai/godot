@@ -83,6 +83,7 @@ elif env["platform"] == "macos":
         cmake_platform_opts += ' -DCMAKE_OSX_ARCHITECTURES="arm64" -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" '
     elif env["arch"] == "x86_64":
         cmake_platform_opts += ' -DCMAKE_OSX_ARCHITECTURES="x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET="10.15" '
+    cmake_platform_opts += ' -DCMAKE_EXE_LINKER_FLAGS="-ld_classic"'
 
 elif env["platform"] == "windows":
     cmake_generator_type = "Ninja"
