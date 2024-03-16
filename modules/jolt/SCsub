@@ -7,7 +7,7 @@ Import("env_modules")
 # Build the JoltPhysics static library using CMake
 
 compiler = ""
-jolt_build_dir = os.path.join(".", "thirdparty", "JoltPhysics", "Build")
+jolt_build_dir = os.path.join("thirdparty", "JoltPhysics", "Build")
 out_build_dir = "JOLT_BUILD"
 cmake_generator_type = ""
 cpu_count = multiprocessing.cpu_count()
@@ -114,7 +114,10 @@ if env["platform"] == "windows":
 # Now setup the JoltPhysics module compilation
 pwd = os.getcwd()
 
+env_modules.Prepend(CPPPATH=[os.path.join(pwd, "thirdparty", "JoltPhysics")])
+
 jolt_physics_module = env_modules.Clone()
+
 
 # Define the same MACROS defined on the physics sync module.
 jolt_physics_module.Append(CPPDEFINES=[("JPH_CROSS_PLATFORM_DETERMINISTIC", 1)])
@@ -148,9 +151,6 @@ else:
     # it to be always on, so this macro is necessary here.
     jolt_physics_module.Append(CPPDEFINES=[("JPH_DEBUG_RENDERER", 1)])
 
-
-jolt_physics_module.Prepend(CPPPATH=[os.path.join(pwd, "thirdparty", "JoltPhysics")])
-
 env.Append(LIBPATH=[os.path.join(pwd, out_build_dir)])
 env.Append(LIBS=["Jolt"])
 
@@ -167,7 +167,7 @@ if env["platform"] == "windows":
     cmake_opts += " -DCMAKE_CC_FLAGS_RELEASE=/MT"
 cmake_opts += cmake_platform_opts
 
-mimalloc_build_dir = os.path.join(".", "thirdparty", "mimalloc")
+mimalloc_build_dir = os.path.join("thirdparty", "mimalloc")
 out_build_dir = os.path.join(".", "MIMALLOC_BUILD")
 
 cmake_generate_command = "cmake -S {} -B {} -G {} -DCMAKE_BUILD_TYPE={} {}".format(
