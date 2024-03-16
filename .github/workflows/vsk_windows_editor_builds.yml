@@ -24,7 +24,7 @@ jobs:
       matrix:
         include:
           - name: Editor (target=editor, tests=yes)
-            cache-name: windows-editor
+            cache-name: windows-editor-double
             target: editor
             tests: false
             sconsflags: debug_symbols=yes vsproj=yes vsproj_gen_only=no windows_subsystem=console precision=double
