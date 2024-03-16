@@ -1,0 +1,105 @@
+/*************************************************************************/
+/*  register_types.cpp                                                   */
+/*************************************************************************/
+/*                       This file is part of:                           */
+/*                           GODOT ENGINE                                */
+/*                      https://godotengine.org                          */
+/*************************************************************************/
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/*                                                                       */
+/* Permission is hereby granted, free of charge, to any person obtaining */
+/* a copy of this software and associated documentation files (the       */
+/* "Software"), to deal in the Software without restriction, including   */
+/* without limitation the rights to use, copy, modify, merge, publish,   */
+/* distribute, sublicense, and/or sell copies of the Software, and to    */
+/* permit persons to whom the Software is furnished to do so, subject to */
+/* the following conditions:                                             */
+/*                                                                       */
+/* The above copyright notice and this permission notice shall be        */
+/* included in all copies or substantial portions of the Software.       */
+/*                                                                       */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
+/*************************************************************************/
+
+/**
+	@author AndreaCatania
+*/
+
+#include "register_types.h"
+
+#include "core/config/engine.h"
+#include "core/config/project_settings.h"
+#include "core/core.h"
+#include "core/error/error_macros.h"
+#include "core/scene_synchronizer_debugger.h"
+#include "data_buffer.h"
+#include "godot4/gd_network_interface.h"
+#include "godot4/gd_scene_synchronizer.h"
+#include "godot4/input_network_encoder.h"
+
+#ifdef DEBUG_ENABLED
+#include "tests/tests.h"
+#endif
+
+void initialize_network_synchronizer_module(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
+		NS::SceneSynchronizerBase::install_synchronizer(
+				GdSceneSynchronizer::encode,
+				GdSceneSynchronizer::decode,
+				GdSceneSynchronizer::compare,
+				GdSceneSynchronizer::stringify,
+				[](const std::string &p_str) {
+					print_line(p_str.c_str());
+				},
+				[](const char *p_function, const char *p_file, int p_line, const std::string &p_error, const std::string &p_message, NS::PrintMessageType p_type) {
+					_err_print_error(
+							p_function,
+							p_file,
+							p_line,
+							String(p_error.c_str()),
+							String(p_message.c_str()),
+							p_type == NS::PrintMessageType::ERROR ? ERR_HANDLER_ERROR : ERR_HANDLER_WARNING);
+				},
+				[]() {
+					_err_flush_stdout();
+				});
+
+		GDREGISTER_CLASS(DataBuffer);
+		GDREGISTER_CLASS(GdSceneSynchronizer);
+		GDREGISTER_CLASS(InputNetworkEncoder);
+
+		memnew(SceneSynchronizerDebugger);
+
+		GLOBAL_DEF("NetworkSynchronizer/debug_server_speedup", false);
+		GLOBAL_DEF("NetworkSynchronizer/log_debug_rewindings", false);
+		GLOBAL_DEF("NetworkSynchronizer/log_level", 3);
+		GLOBAL_DEF("NetworkSynchronizer/log_debug_nodes_relevancy_update", false);
+		GLOBAL_DEF("NetworkSynchronizer/debugger/dump_enabled", false);
+		GLOBAL_DEF("NetworkSynchronizer/debugger/dump_classes", Array());
+	} else if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+#ifdef DEBUG_ENABLED
+		List<String> args = OS::get_singleton()->get_cmdline_args();
+		if (args.find("--unit-test-netsync")) {
+			NS_GD_Test::test_var_data_conversin();
+			NS_Test::test_all();
+		}
+#endif
+	}
+}
+
+void uninitialize_network_synchronizer_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SERVERS) {
+		return;
+	}
+
+	if (SceneSynchronizerDebugger::singleton()) {
+		memdelete(SceneSynchronizerDebugger::singleton());
+	}
+}

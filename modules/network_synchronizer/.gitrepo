@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/GameNetworking/network_synchronizer.git
+	branch = main
+	commit = 5c3c636a30bf2a51ae8153e5133944c79576b901
+	parent = 281191aa040a368844a96ea60f543745e9e162e6
+	method = merge
+	cmdver = 0.4.6
