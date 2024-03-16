@@ -196,6 +196,7 @@ if env["platform"] == "windows":
     env.Execute(jolt_move_command)
 
 jolt_physics_module.Prepend(CPPPATH=[os.path.join(pwd, "thirdparty", "mimalloc", "include")])
+jolt_physics_module.add_source_files(env.modules_sources, Glob("#modules/the_mirror/physics/*.cpp"))
 
 env.Append(LIBPATH=[os.path.join(pwd, out_build_dir)])
 env.Append(LIBS=["mimalloc"])
