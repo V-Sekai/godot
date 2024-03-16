@@ -53,3 +53,5 @@ jobs:
 
       - name: Upload artifact
         uses: ./.github/actions/upload-artifact
+        with:
+          name: android-editor-double
