@@ -33,16 +33,16 @@ jobs:
         uses: ./.github/actions/godot-deps
 
       - name: Compilation (arm32)
-        run: scons platform=android arch=arm32 production=yes target=editor ${{ env.SCONSFLAGS }}
+        run: scons platform=android arch=arm32 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
 
       - name: Compilation (arm64)
-        run: scons platform=android arch=arm64 production=yes target=editor ${{ env.SCONSFLAGS }}
+        run: scons platform=android arch=arm64 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
 
       - name: Compilation (x86_32)
-        run: scons platform=android arch=x86_32 production=yes target=editor ${{ env.SCONSFLAGS }}
+        run: scons platform=android arch=x86_32 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
 
       - name: Compilation (x86_64)
-        run: scons platform=android arch=x86_64 production=yes target=editor ${{ env.SCONSFLAGS }}
+        run: scons platform=android arch=x86_64 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
 
       - name: Generate Godot templates
         run: |
