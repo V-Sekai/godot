@@ -1,0 +1,57 @@
+name: 🤖 Android VSK Editor Builds
+
+on:
+  workflow_call:
+
+env:
+  GODOT_BASE_BRANCH: master
+  SCONSFLAGS: "verbose=yes warnings=extra werror=yes debug_symbols=no module_text_server_fb_enabled=yes precision=double"
+
+concurrency:
+  group: "ci-${{ github.actor }}-${{ github.head_ref || github.run_number }}-${{ github.ref }}-android-editor"
+  cancel-in-progress: true
+
+jobs:
+  vsk-android-editor:
+    runs-on: ubuntu-20.04
+    name: Build Android Editor
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Godot build cache
+        uses: ./.github/actions/godot-cache
+        continue-on-error: true
+
+      - name: Setup python and scons
+        uses: ./.github/actions/godot-deps
+
+      - name: Compilation (arm32)
+        run: scons platform=android arch=arm32 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
+
+      - name: Compilation (arm64)
+        run: scons platform=android arch=arm64 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
+
+      - name: Compilation (x86_32)
+        run: scons platform=android arch=x86_32 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
+
+      - name: Compilation (x86_64)
+        run: scons platform=android arch=x86_64 production=yes target=editor store_release=yes ${{ env.SCONSFLAGS }}
+
+      - name: Generate Godot templates
+        run: |
+          cd platform/android/java
+          ./gradlew generateGodotEditor
+          cd ../../..
+          ls -l bin/
+
+      - name: Upload artifact
+        uses: ./.github/actions/upload-artifact
+        with:
+          name: android-editor-double
