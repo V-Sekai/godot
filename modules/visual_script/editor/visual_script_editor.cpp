@@ -42,10 +42,10 @@
 #include "core/variant/variant.h"
 #include "editor/editor_node.h"
 #include "editor/editor_resource_preview.h"
-#include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/inspector_dock.h"
+#include "editor/themes/editor_scale.h"
 #include "scene/gui/check_button.h"
 #include "scene/gui/graph_edit.h"
 #include "scene/gui/separator.h"
@@ -3081,8 +3081,7 @@ PackedInt32Array VisualScriptEditor::get_breakpoints() {
 	return breakpoints;
 }
 
-void VisualScriptEditor::add_callback(const String &p_function,
-		PackedStringArray p_args) {
+void VisualScriptEditor::add_callback(const String &p_function, const PackedStringArray &p_args) {
 	if (script->has_function(p_function)) {
 		_update_members();
 		_update_graph();

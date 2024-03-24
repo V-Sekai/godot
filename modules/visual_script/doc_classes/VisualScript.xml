@@ -24,7 +24,7 @@
 			<param index="0" name="name" type="StringName" />
 			<param index="1" name="func_node_id" type="int" />
 			<description>
-				Add a function with the specified name to the VisualScript, and assign the root [VisualScriptFunction] node's id as [code]func_node_id[/code].
+				Add a function with the specified name to the VisualScript, and assign the root [VisualScriptFunction] node's id as func_node_id.
 			</description>
 		</method>
 		<method name="add_node">
@@ -120,7 +120,7 @@
 			<param index="2" name="to_node" type="int" />
 			<param index="3" name="to_port" type="int" />
 			<description>
-				Connect two data ports. The value of [code]from_node[/code]'s [code]from_port[/code] would be fed into [code]to_node[/code]'s [code]to_port[/code].
+				Connect two data ports. The value of from_node's from_port would be fed into to_node's to_port.
 			</description>
 		</method>
 		<method name="data_disconnect">
@@ -130,7 +130,7 @@
 			<param index="2" name="to_node" type="int" />
 			<param index="3" name="to_port" type="int" />
 			<description>
-				Disconnect two data ports previously connected with [method data_connect].
+				Disconnect two data ports previously connected with data_connect.
 			</description>
 		</method>
 		<method name="get_function_node_id" qualifiers="const">
@@ -286,8 +286,8 @@
 			<param index="1" name="from_output" type="int" />
 			<param index="2" name="to_node" type="int" />
 			<description>
-				Connect two sequence ports. The execution will flow from of [code]from_node[/code]'s [code]from_output[/code] into [code]to_node[/code].
-				Unlike [method data_connect], there isn't a [code]to_port[/code], since the target node can have only one sequence port.
+				Connect two sequence ports. The execution will flow from of from_node's from_output into to_node.
+				Unlike data_connect, there isn't a to_port, since the target node can have only one sequence port.
 			</description>
 		</method>
 		<method name="sequence_disconnect">

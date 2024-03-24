@@ -40,8 +40,8 @@
 #include "editor/doc_tools.h"
 #include "editor/editor_feature_profile.h"
 #include "editor/editor_node.h"
-#include "editor/editor_scale.h"
 #include "editor/editor_settings.h"
+#include "editor/themes/editor_scale.h"
 #include "scene/main/node.h"
 #include "scene/main/window.h"
 

@@ -371,7 +371,7 @@ public:
 	virtual void set_source_code(const String &p_code) override;
 	virtual Error reload(bool p_keep_state = false) override;
 
-	virtual String get_class_icon_path() const;
+	virtual String get_class_icon_path() const override;
 #ifdef TOOLS_ENABLED
 	virtual Vector<DocData::ClassDoc> get_documentation() const override {
 		Vector<DocData::ClassDoc> docs;
@@ -634,8 +634,10 @@ public:
 	virtual void finish() override;
 
 	/* EDITOR FUNCTIONS */
+	virtual void profiling_set_save_native_calls(bool p_enable) override {}
+	virtual void reload_scripts(const Array &p_scripts, bool p_soft_reload) override {}
+	virtual bool is_control_flow_keyword(const String &p_string) const override { return false; }
 	virtual void get_reserved_words(List<String> *p_words) const override;
-	virtual bool is_control_flow_keyword(String p_keyword) const override;
 	virtual void
 	get_comment_delimiters(List<String> *p_delimiters) const override;
 	virtual void get_string_delimiters(List<String> *p_delimiters) const override;

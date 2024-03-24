@@ -19,7 +19,7 @@
 			The type to be used when [member call_mode] is set to [constant CALL_MODE_BASIC_TYPE].
 		</member>
 		<member name="call_mode" type="int" setter="set_call_mode" getter="get_call_mode" enum="VisualScriptFunctionCall.CallMode" default="0">
-			[code]call_mode[/code] determines the target object on which the method will be called. See [enum CallMode] for options.
+			call_mode determines the target object on which the method will be called. See [enum CallMode] for options.
 		</member>
 		<member name="function" type="StringName" setter="set_function" getter="get_function" default="&amp;&quot;&quot;">
 			The name of the function to be called.

@@ -339,6 +339,7 @@ protected:
 	static void _bind_methods();
 
 public:
+	virtual CodeTextEditor *get_code_editor() const override { return nullptr; }
 	virtual void
 	add_syntax_highlighter(Ref<EditorSyntaxHighlighter> p_highlighter) override;
 	virtual void
@@ -367,8 +368,7 @@ public:
 	virtual PackedInt32Array get_breakpoints() override;
 	virtual void set_breakpoint(int p_line, bool p_enable) override{};
 	virtual void clear_breakpoints() override{};
-	virtual void add_callback(const String &p_function,
-			PackedStringArray p_args) override;
+	virtual void add_callback(const String &p_function, const PackedStringArray &p_args) override;
 	virtual void update_settings() override;
 	virtual bool show_members_overview() override;
 	virtual void set_debugger_active(bool p_active) override;

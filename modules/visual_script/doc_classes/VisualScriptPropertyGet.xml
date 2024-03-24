@@ -28,7 +28,7 @@
 			The name of the property to retrieve. Changing this will clear [member index].
 		</member>
 		<member name="set_mode" type="int" setter="set_call_mode" getter="get_call_mode" enum="VisualScriptPropertyGet.CallMode" default="0">
-			[code]set_mode[/code] determines the target object from which the property will be retrieved. See [enum CallMode] for options.
+			set_mode determines the target object from which the property will be retrieved. See [enum CallMode] for options.
 		</member>
 	</members>
 	<constants>
