@@ -1,0 +1,93 @@
+name: 🐧 Linux Builds
+on:
+  workflow_call:
+
+# Global Settings
+env:
+  # Used for the cache key. Add version suffix to force clean build.
+  GODOT_BASE_BRANCH: master
+  SCONSFLAGS: verbose=yes warnings=extra werror=yes module_text_server_fb_enabled=yes
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  TSAN_OPTIONS: suppressions=misc/error_suppressions/tsan.txt
+
+concurrency:
+  group: ci-${{github.actor}}-${{github.head_ref || github.run_number}}-${{github.ref}}-linux
+  cancel-in-progress: true
+
+jobs:
+  vsk-build-linux:
+    runs-on: "ubuntu-20.04"
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Editor with doubles (target=editor, scu_build=yes, precision=double, linker=gold)
+            cache-name: linux-editor-double
+            target: editor
+            # Debug symbols disabled as they're huge on this build and we hit the 14 GB limit for runners.
+            sconsflags: scu_build=yes debug_symbols=no precision=double linker=gold
+            bin: "./bin/godot.linuxbsd.editor.double.x86_64.san"
+            build-mono: false
+            tests: false
+            proj-test: false
+            # Generate an API dump for godot-cpp tests.
+            api-dump: true
+            # Skip 2GiB artifact speeding up action.
+            artifact: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Need newer mesa for lavapipe to work properly.
+      - name: Linux dependencies for tests
+        if: ${{ matrix.proj-test }}
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys EB8B81E14DA65431D7504EA8F63F0F2B90935439
+          sudo add-apt-repository "deb https://ppa.launchpadcontent.net/kisak/turtle/ubuntu focal main"
+          sudo apt-get install -qq mesa-vulkan-drivers
+
+      # TODO: Figure out somehow how to embed this one.
+      - name: wayland-scanner dependency
+        run: |
+          sudo apt-get install libwayland-bin
+
+      - name: Free disk space on runner
+        run: |
+          echo "Disk usage before:" && df -h
+          sudo rm -rf /usr/local/lib/android
+          echo "Disk usage after:" && df -h
+
+      - name: Setup Godot build cache
+        uses: ./.github/actions/godot-cache
+        with:
+          cache-name: ${{ matrix.cache-name }}
+        continue-on-error: true
+
+      - name: Setup python and scons
+        uses: ./.github/actions/godot-deps
+
+      - name: Setup GCC problem matcher
+        uses: ammaraskar/gcc-problem-matcher@master
+
+      - name: Compilation
+        uses: ./.github/actions/godot-build
+        with:
+          sconsflags: ${{ env.SCONSFLAGS }} ${{ matrix.sconsflags }}
+          platform: linuxbsd
+          target: ${{ matrix.target }}
+          tests: ${{ matrix.tests }}
+
+      - name: Prepare artifact
+        if: ${{ matrix.artifact }}
+        run: |
+          strip bin/godot.*
+          chmod +x bin/godot.*
+
+      - name: Upload artifact
+        uses: ./.github/actions/upload-artifact
+        if: ${{ matrix.artifact }}
+        with:
+          name: ${{ matrix.cache-name }}
