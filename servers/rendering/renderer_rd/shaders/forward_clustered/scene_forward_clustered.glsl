@@ -1509,7 +1509,7 @@ void fragment_shader(in SceneData scene_data) {
 			ivec2 closest_coord = coord;
 
 #ifdef USE_MULTIVIEW
-			vec4 closest_nr = texelFetch(sampler2DArray(normal_roughness_buffer, SAMPLER_LINEAR_CLAMP), ivec3(coord, ViewIndex), 0);			
+			vec4 closest_nr = texelFetch(sampler2DArray(normal_roughness_buffer, SAMPLER_LINEAR_CLAMP), ivec3(coord, ViewIndex), 0);
 #else // USE_MULTIVIEW
 			vec4 closest_nr = texelFetch(sampler2D(normal_roughness_buffer, SAMPLER_LINEAR_CLAMP), coord, 0);
 #endif // USE_MULTIVIEW
@@ -1519,8 +1519,8 @@ void fragment_shader(in SceneData scene_data) {
 			if (dynamic_object) {
 				closest_r = 1.0 - closest_r;
 			}
-			closest_r /= (127.0 / 255.0);	
-			
+			closest_r /= (127.0 / 255.0);
+
 			float closest_ang = dot(normal, normalize(closest_nr.xyz * 2.0 - 1.0));
 			closest_ang -= abs(closest_r - roughness) * 0.5;
 
@@ -1538,8 +1538,8 @@ void fragment_shader(in SceneData scene_data) {
 				if (dynamic_object) {
 					r = 1.0 - r;
 				}
-				r /= (127.0 / 255.0);	
-											
+				r /= (127.0 / 255.0);
+
 				float ang = dot(normal, normalize(closest_nr.xyz * 2.0 - 1.0));
 				ang -= abs(r - roughness) * 0.5;
 

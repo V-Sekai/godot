@@ -1923,7 +1923,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 	if (depth_pre_pass) { //depth pre pass
 		bool needs_pre_resolve = _needs_post_prepass_render(p_render_data, using_hddagi || using_voxelgi);
-		
+
 		if (needs_pre_resolve) {
 			RENDER_TIMESTAMP("GI + Render Depth Pre-Pass (Parallel)");
 		} else {
@@ -1943,7 +1943,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 
 		bool finish_depth = using_ssao || using_ssil || using_hddagi || using_voxelgi || ce_pre_opaque_resolved_depth || ce_post_opaque_resolved_depth;
 		RenderListParameters render_list_params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, depth_pass_mode, 0, rb_data.is_null(), p_render_data->directional_light_soft_shadows, rp_uniform_set, get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_WIREFRAME, Vector2(), p_render_data->scene_data->lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, p_render_data->scene_data->view_count, 0, spec_constant_base_flags);
-		
+
 		_render_list_with_draw_list(&render_list_params, depth_framebuffer, needs_pre_resolve ? RD::INITIAL_ACTION_LOAD : RD::INITIAL_ACTION_CLEAR, RD::FINAL_ACTION_STORE, needs_pre_resolve ? RD::INITIAL_ACTION_LOAD : RD::INITIAL_ACTION_CLEAR, RD::FINAL_ACTION_STORE, needs_pre_resolve ? Vector<Color>() : depth_pass_clear);
 
 		RD::get_singleton()->draw_command_end_label();
