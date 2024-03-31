@@ -32,22 +32,6 @@ repos:
         language: python
         files: ^(doc|modules|platform).*xml$
 
-      - id: copyright-headers
-        name: copyright-headers
-        language: python
-        files: \.(c|h|cpp|hpp|cc|cxx|m|mm|inc|java)$
-        entry: python3 misc/scripts/copyright_headers.py
-        exclude: |
-          (?x)^(
-            .*thirdparty.*|
-            .*-so_wrap.*|
-            core/math/bvh_.*\.inc$|
-            platform/android/java/lib/src/com.*|
-            platform/android/java/lib/src/org/godotengine/godot/gl/GLSurfaceView.*|
-            platform/android/java/lib/src/org/godotengine/godot/gl/EGLLogWrapper.*|
-            platform/android/java/lib/src/org/godotengine/godot/utils/ProcessPhoenix.*
-          )
-
       - id: dotnet-format
         name: dotnet-format
         language: python
