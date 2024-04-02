@@ -43,6 +43,7 @@
 // Include default mbedTLS config.
 #include <mbedtls/mbedtls_config.h>
 
+#undef MBEDTLS_SSL_PROTO_TLS1_3
 // Disable weak cryptography.
 #undef MBEDTLS_KEY_EXCHANGE_DHE_PSK_ENABLED
 #undef MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED
