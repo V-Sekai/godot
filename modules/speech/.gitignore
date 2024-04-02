@@ -389,4 +389,4 @@ gcov.css
 !thirdparty/opus/silk/fixed/x86
 
 !thirdparty/godot-cpp/gdextension/extension_api.json
-!thirdparty/godot-cpp/test/project/bin
+!thirdparty/godot-cpp/test/*
