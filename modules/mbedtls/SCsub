@@ -121,6 +121,9 @@ module_obj = []
 
 env_mbed_tls.add_source_files(module_obj, "*.cpp")
 
+if env_mbed_tls.msvc:
+    env_mbed_tls.Append(CCFLAGS=["/wd4200"])
+
 if env["tests"]:
     env_mbed_tls.Append(CPPDEFINES=["TESTS_ENABLED"])
     env_mbed_tls.add_source_files(module_obj, "./tests/*.cpp")
