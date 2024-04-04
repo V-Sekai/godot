@@ -124,7 +124,17 @@ class ImporterMesh : public Resource {
 		Vector<Pair<int, float>> get_elements();
 	};
 
-	Vector<int> _get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index);
+	struct VectorIntHasher {
+		static _FORCE_INLINE_ uint32_t hash(const Vector<int> &p_vec) {
+			uint32_t hash = 0;
+			for (int i = 0; i < p_vec.size(); i++) {
+				hash = hash * 16777619 ^ p_vec[i];
+			}
+			return hash;
+		}
+	};
+	Vector<int> _get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index,
+			HashMap<Vector<int>, Vector<int>, VectorIntHasher> &r_primary_bones_cache);
 
 	float get_bone_influence_similarity(const Vector<int> &p_influence_1, const Vector<int> &p_influence_2);
 

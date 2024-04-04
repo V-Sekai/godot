@@ -34,6 +34,7 @@
 #include "core/math/convex_hull.h"
 #include "core/math/random_pcg.h"
 #include "core/math/static_raycaster.h"
+#include "core/templates/oa_hash_map.h"
 #include "core/templates/rb_map.h"
 #include "scene/resources/surface_tool.h"
 
@@ -358,11 +359,13 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 		const Vector2 *uvs_ptr = uvs.ptr();
 		const Vector2 *uv2s_ptr = uv2s.ptr();
 
+		HashMap<Vector<int>, Vector<int>, VectorIntHasher> primary_bones_cache;
+
 		for (unsigned int j = 0; j < vertex_count; j++) {
 			const Vector3 &v = vertices_ptr[j];
 			const Vector3 &n = normals_ptr[j];
 
-			Vector<int> primary_bone_influence = _get_primary_bone_influence(bones, weights, j);
+			Vector<int> primary_bone_influence = _get_primary_bone_influence(bones, weights, j, primary_bones_cache);
 			RBMap<Vector3, LocalVector<Pair<int, int>>>::Iterator E = unique_vertices.find(v);
 
 			if (E) {
@@ -1403,7 +1406,13 @@ float ImporterMesh::get_bone_influence_similarity(const Vector<int> &p_influence
 	return dot / (sqrt(denom_a) * sqrt(denom_b));
 }
 
-Vector<int> ImporterMesh::_get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index) {
+Vector<int> ImporterMesh::_get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index,
+		HashMap<Vector<int>, Vector<int>, VectorIntHasher> &r_primary_bones_cache) {
+	Vector<int> *found_primary_bones = r_primary_bones_cache.getptr(r_bones);
+	if (found_primary_bones) {
+		return *found_primary_bones;
+	}
+
 	TopElements bone_weight_pairs(8);
 	for (int i = 0; i < r_bones.size(); i++) {
 		bone_weight_pairs.insert(Pair<int, float>(r_bones[i], r_weights[i]));
@@ -1413,7 +1422,7 @@ Vector<int> ImporterMesh::_get_primary_bone_influence(Vector<int> &r_bones, Vect
 	for (Pair<int, float> pair : bone_weight_pairs.get_elements()) {
 		primary_bones.push_back(pair.first);
 	}
-
+	r_primary_bones_cache.insert(r_bones, primary_bones);
 	return primary_bones;
 }
 
