@@ -173,7 +173,14 @@ class ImporterMesh : public Resource {
 			return hash;
 		}
 	};
-	Vector<int> _get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index);
+
+	struct BoneWeightPair {
+		int bone;
+		float weight;
+		BoneWeightPair* begin() { return this; }
+		BoneWeightPair* end() { return this + 1; }
+	};
+	LocalVector<Vector<int>> _get_primary_bone_influences(Vector<int> bones, Vector<float> weights);
 
 	float get_bone_influence_similarity(const Vector<int> &p_influence_1, const Vector<int> &p_influence_2);
 
