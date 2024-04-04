@@ -1408,12 +1408,20 @@ LocalVector<Vector<int>> ImporterMesh::_get_primary_bone_influences(Vector<int> 
 
 	for (unsigned int j = 0; j < bones.size(); j++) {
 		TopElements bone_weight_pairs(8);
-		bone_weight_pairs.insert(Pair<int, float>(bones[j], weights[j]));
+
+		for (int i = 0; i < 8; i++) {
+			if (i < bones.size()) {
+				bone_weight_pairs.insert(Pair<int, float>(bones[i], weights[i]));
+			} else {
+				bone_weight_pairs.insert(Pair<int, float>(0, 0.0f));
+			}
+		}
 
 		Vector<int> primary_bones;
 		for (const Pair<int, float> &pair : bone_weight_pairs.get_elements()) {
 			primary_bones.push_back(pair.first);
 		}
+
 		primary_bone_influences[j] = std::move(primary_bones);
 	}
 
