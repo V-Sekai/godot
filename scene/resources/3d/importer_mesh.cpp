@@ -1407,7 +1407,7 @@ LocalVector<Vector<int>> ImporterMesh::_get_primary_bone_influences(Vector<int> 
 	primary_bone_influences.resize(bones.size());
 
 	for (unsigned int j = 0; j < bones.size(); j++) {
-		TopElements bone_weight_pairs(8);
+		TopElements bone_weight_pairs(1);
 		bone_weight_pairs.insert(Pair<int, float>(bones[j], weights[j]));
 
 		Vector<int> primary_bones;
