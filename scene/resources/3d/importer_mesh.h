@@ -112,16 +112,56 @@ class ImporterMesh : public Resource {
 	};
 
 	class TopElements {
-	private:
-		Vector<Pair<int, float>> elements;
-		int limit;
+		Vector<Pair<int, float>> heap;
+		int size = 0;
 
 	public:
-		TopElements(int p_limit) :
-				limit(p_limit) {}
-		void insert(Pair<int, float> p_pair);
-		void heapify(int p_index);
-		Vector<Pair<int, float>> get_elements();
+		TopElements(int capacity) {
+			heap.resize(capacity);
+		}
+
+		void insert(Pair<int, float> key) {
+			if (size == heap.size()) {
+				return;
+			}
+
+			size++;
+			int i = size - 1;
+			heap.write[i] = key;
+
+			while (i != 0 && heap[parent(i)].second < heap[i].second) {
+				SWAP(heap.write[i], heap.write[parent(i)]);
+				i = parent(i);
+			}
+		}
+
+		Vector<Pair<int, float>> get_elements() {
+			return heap;
+		}
+
+	private:
+		int parent(int i) { return (i - 1) / 2; }
+		int left(int i) { return (2 * i + 1); }
+		int right(int i) { return (2 * i + 2); }
+
+		void heapify(int i) {
+			int largest = i;
+			int l = left(i);
+			int r = right(i);
+
+			if (l < size && heap[l].second > heap[largest].second) {
+				largest = l;
+			}
+
+			if (r < size && heap[r].second > heap[largest].second) {
+				largest = r;
+			}
+
+			if (largest != i) {
+				SWAP(heap.write[i], heap.write[largest]);
+				heapify(largest);
+			}
+		}
 	};
 
 	struct VectorIntHasher {
@@ -133,8 +173,7 @@ class ImporterMesh : public Resource {
 			return hash;
 		}
 	};
-	Vector<int> _get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index,
-			HashMap<Vector<int>, Vector<int>, VectorIntHasher> &r_primary_bones_cache);
+	Vector<int> _get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index);
 
 	float get_bone_influence_similarity(const Vector<int> &p_influence_1, const Vector<int> &p_influence_2);
 

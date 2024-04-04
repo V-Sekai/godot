@@ -359,15 +359,19 @@ void ImporterMesh::generate_lods(float p_normal_merge_angle, float p_normal_spli
 		const Vector2 *uvs_ptr = uvs.ptr();
 		const Vector2 *uv2s_ptr = uv2s.ptr();
 
-		HashMap<Vector<int>, Vector<int>, VectorIntHasher> primary_bones_cache;
+		OAHashMap<unsigned int, Vector<int>> bone_influence_cache;
 
 		for (unsigned int j = 0; j < vertex_count; j++) {
 			const Vector3 &v = vertices_ptr[j];
 			const Vector3 &n = normals_ptr[j];
-
-			Vector<int> primary_bone_influence = _get_primary_bone_influence(bones, weights, j, primary_bones_cache);
+			Vector<int> primary_bone_influence;
+			if (!bone_influence_cache.has(j)) {
+				primary_bone_influence = _get_primary_bone_influence(bones, weights, j);
+				bone_influence_cache.insert(j, primary_bone_influence);
+			} else {
+				bone_influence_cache.lookup(j, primary_bone_influence);
+			}
 			RBMap<Vector3, LocalVector<Pair<int, int>>>::Iterator E = unique_vertices.find(v);
-
 			if (E) {
 				const LocalVector<Pair<int, int>> &close_verts = E->value;
 
@@ -1406,65 +1410,17 @@ float ImporterMesh::get_bone_influence_similarity(const Vector<int> &p_influence
 	return dot / (sqrt(denom_a) * sqrt(denom_b));
 }
 
-Vector<int> ImporterMesh::_get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index,
-		HashMap<Vector<int>, Vector<int>, VectorIntHasher> &r_primary_bones_cache) {
-	Vector<int> *found_primary_bones = r_primary_bones_cache.getptr(r_bones);
-	if (found_primary_bones) {
-		return *found_primary_bones;
-	}
-
+Vector<int> ImporterMesh::_get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index) {
 	TopElements bone_weight_pairs(8);
 	for (int i = 0; i < r_bones.size(); i++) {
 		bone_weight_pairs.insert(Pair<int, float>(r_bones[i], r_weights[i]));
 	}
 
 	Vector<int> primary_bones;
-	for (Pair<int, float> pair : bone_weight_pairs.get_elements()) {
+	for (const Pair<int, float>& pair : bone_weight_pairs.get_elements()) {
 		primary_bones.push_back(pair.first);
 	}
-	r_primary_bones_cache.insert(r_bones, primary_bones);
 	return primary_bones;
-}
-
-void ImporterMesh::TopElements::heapify(int p_index) {
-	int smallest = p_index, left = 2 * p_index + 1, right = 2 * p_index + 2;
-
-	if (left < elements.size() && !BoneWeightComparator()(elements[smallest], elements[left])) {
-		smallest = left;
-	}
-	if (right < elements.size() && !BoneWeightComparator()(elements[smallest], elements[right])) {
-		smallest = right;
-	}
-
-	if (smallest != p_index) {
-		SWAP(elements.write[p_index], elements.write[smallest]);
-		heapify(smallest);
-	}
-}
-
-void ImporterMesh::TopElements::insert(Pair<int, float> p_pair) {
-	if (elements.size() < limit || BoneWeightComparator()(p_pair, elements[0])) {
-		if (elements.size() == limit) {
-			elements.remove_at(0);
-			for (int i = elements.size() / 2 - 1; i >= 0; i--) {
-				heapify(i);
-			}
-		}
-
-		elements.push_back(p_pair);
-		int i = elements.size() - 1;
-
-		while (i > 0 && BoneWeightComparator()(elements[i], elements[(i - 1) / 2])) {
-			SWAP(elements.write[i], elements.write[(i - 1) / 2]);
-			i = (i - 1) / 2;
-		}
-	}
-}
-
-Vector<Pair<int, float>> ImporterMesh::TopElements::get_elements() {
-	Vector<Pair<int, float>> sorted_elements = elements;
-	sorted_elements.sort_custom<BoneWeightComparator>(BoneWeightComparator());
-	return sorted_elements;
 }
 
 int ImporterMesh::VertexSimilarityComparator::get_similarity(const Vector<int> &p_a, const Vector<int> &p_b) const {
