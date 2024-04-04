@@ -87,67 +87,19 @@ class ImporterMesh : public Resource {
 		Vector<int> primary_bone_influence;
 	};
 
-	Vector<float> merged_attribute_to_float32_array(const MergedAttribute *p_attributes, size_t p_count) {
-		Vector<float> floats;
-		if (p_count == 0) {
-			return floats;
-		}
-
-		size_t total_size = 0;
-		for (size_t i = 0; i < p_count; ++i) {
-			total_size += 3 + p_attributes[i].primary_bone_influence.size();
-		}
-
-		floats.resize(total_size);
-		float *floats_w = floats.ptrw();
-
-		for (size_t i = 0; i < p_count; ++i) {
-			const MergedAttribute &attr = p_attributes[i];
-			floats_w[0] = attr.normal.x;
-			floats_w[1] = attr.normal.y;
-			floats_w[2] = attr.normal.z;
-
-			for (int j = 0; j < attr.primary_bone_influence.size(); ++j) {
-				floats_w[j + 3] = static_cast<float>(attr.primary_bone_influence[j]);
-			}
-
-			floats_w += 3 + attr.primary_bone_influence.size();
-		}
-		return floats;
-	}
-
+	Vector<float> merged_attribute_to_float32_array(const MergedAttribute *p_attributes, size_t p_count);
 	struct PairHasher {
-		static _FORCE_INLINE_ uint32_t hash(const Pair<Vector<int>, Vector<int>> &p_pair) {
-			uint32_t hash = 0;
-			for (int i : p_pair.first) {
-				hash = hash * 31 + HashMapHasherDefault::hash(i);
-			}
-			for (int i : p_pair.second) {
-				hash = hash * 31 + HashMapHasherDefault::hash(i);
-			}
-			return hash;
-		}
+		static _FORCE_INLINE_ uint32_t hash(const Pair<Vector<int>, Vector<int>> &p_pair);
 	};
-
 	struct VertexSimilarityComparator {
 		Vector<int> target_bones;
 
 		VertexSimilarityComparator(const Vector<int> &p_target) :
 				target_bones(p_target) {}
 
-		_FORCE_INLINE_ bool operator()(const Vector<int> &p_p, const Vector<int> &p_q) const {
-			return get_similarity(p_p, target_bones) > get_similarity(p_q, target_bones);
-		}
+		_FORCE_INLINE_ bool operator()(const Vector<int> &p_p, const Vector<int> &p_q) const;
 
-		int get_similarity(const Vector<int> &p_a, const Vector<int> &p_b) const {
-			int similarity = 0;
-			for (int i : p_a) {
-				if (p_b.find(i) != -1) {
-					similarity++;
-				}
-			}
-			return similarity;
-		}
+		int get_similarity(const Vector<int> &p_a, const Vector<int> &p_b) const;
 	};
 
 	struct BoneWeightComparator {
@@ -167,74 +119,14 @@ class ImporterMesh : public Resource {
 	public:
 		TopElements(int p_limit) :
 				limit(p_limit) {}
-
-		void insert(Pair<int, float> p_pair) {
-			if (elements.size() < limit || BoneWeightComparator()(p_pair, elements[0])) {
-				if (elements.size() == limit) {
-					elements.remove_at(0);
-					for (int i = elements.size() / 2 - 1; i >= 0; i--) {
-						heapify(i);
-					}
-				}
-
-				elements.push_back(p_pair);
-				int i = elements.size() - 1;
-
-				while (i > 0 && BoneWeightComparator()(elements[i], elements[(i - 1) / 2])) {
-					SWAP(elements.write[i], elements.write[(i - 1) / 2]);
-					i = (i - 1) / 2;
-				}
-			}
-		}
-
-		void heapify(int p_index) {
-			int smallest = p_index, left = 2 * p_index + 1, right = 2 * p_index + 2;
-
-			if (left < elements.size() && !BoneWeightComparator()(elements[smallest], elements[left])) {
-				smallest = left;
-			}
-			if (right < elements.size() && !BoneWeightComparator()(elements[smallest], elements[right])) {
-				smallest = right;
-			}
-
-			if (smallest != p_index) {
-				SWAP(elements.write[p_index], elements.write[smallest]);
-				heapify(smallest);
-			}
-		}
-
-		Vector<Pair<int, float>> get_elements() {
-			Vector<Pair<int, float>> sorted_elements = elements;
-			sorted_elements.sort_custom<BoneWeightComparator>(BoneWeightComparator());
-			return sorted_elements;
-		}
+		void insert(Pair<int, float> p_pair);
+		void heapify(int p_index);
+		Vector<Pair<int, float>> get_elements();
 	};
 
-	Vector<int> _get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index) {
-		TopElements bone_weight_pairs(8);
-		for (int i = 0; i < r_bones.size(); i++) {
-			bone_weight_pairs.insert(Pair<int, float>(r_bones[i], r_weights[i]));
-		}
+	Vector<int> _get_primary_bone_influence(Vector<int> &r_bones, Vector<float> &r_weights, int p_index);
 
-		Vector<int> primary_bones;
-		for (Pair<int, float> pair : bone_weight_pairs.get_elements()) {
-			primary_bones.push_back(pair.first);
-		}
-
-		return primary_bones;
-	}
-
-	float get_bone_influence_similarity(const Vector<int> &p_influence_1, const Vector<int> &p_influence_2) {
-		ERR_FAIL_COND_V(p_influence_1.size() != p_influence_2.size(), 0.0f);
-
-		float dot = 0.0f, denom_a = 0.0f, denom_b = 0.0f;
-		for (int i = 0; i < p_influence_1.size(); ++i) {
-			dot += p_influence_1[i] * p_influence_2[i];
-			denom_a += p_influence_1[i] * p_influence_1[i];
-			denom_b += p_influence_2[i] * p_influence_2[i];
-		}
-		return dot / (sqrt(denom_a) * sqrt(denom_b));
-	}
+	float get_bone_influence_similarity(const Vector<int> &p_influence_1, const Vector<int> &p_influence_2);
 
 protected:
 	void _set_data(const Dictionary &p_data);
