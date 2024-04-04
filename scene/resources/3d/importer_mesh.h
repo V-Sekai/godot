@@ -177,8 +177,8 @@ class ImporterMesh : public Resource {
 	struct BoneWeightPair {
 		int bone;
 		float weight;
-		BoneWeightPair* begin() { return this; }
-		BoneWeightPair* end() { return this + 1; }
+		BoneWeightPair *begin() { return this; }
+		BoneWeightPair *end() { return this + 1; }
 	};
 	LocalVector<Vector<int>> _get_primary_bone_influences(Vector<int> bones, Vector<float> weights);
 
