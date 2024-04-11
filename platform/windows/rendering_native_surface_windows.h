@@ -31,8 +31,8 @@
 #ifndef RENDERING_NATIVE_SURFACE_WINDOWS_H
 #define RENDERING_NATIVE_SURFACE_WINDOWS_H
 
-#include "servers/rendering/rendering_native_surface.h"
 #include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

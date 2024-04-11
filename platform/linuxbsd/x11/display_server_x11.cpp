@@ -6066,9 +6066,9 @@ DisplayServerX11::DisplayServerX11(const String &p_rendering_driver, WindowMode 
 	bool driver_found = false;
 #if defined(RD_ENABLED)
 #ifdef VULKAN_ENABLED
-		if (rendering_driver == "vulkan") {
-			driver_found = true;
-		}
+	if (rendering_driver == "vulkan") {
+		driver_found = true;
+	}
 #endif
 #endif
 	// Initialize context and rendering device.

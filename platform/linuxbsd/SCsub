@@ -16,9 +16,7 @@ libgodot_files = [
     "godot_runtime_api.cpp",
 ]
 
-executable_files = [
-    "godot_linuxbsd.cpp"
-]
+executable_files = ["godot_linuxbsd.cpp"]
 
 if env["use_sowrap"]:
     common_linuxbsd.append("xkbcommon-so_wrap.c")

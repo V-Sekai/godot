@@ -31,8 +31,8 @@
 #ifndef RENDERING_NATIVE_SURFACE_WAYLAND_H
 #define RENDERING_NATIVE_SURFACE_WAYLAND_H
 
-#include "servers/rendering/rendering_native_surface.h"
 #include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
 
 class RenderingNativeSurfaceWayland : public RenderingNativeSurface {
 	GDCLASS(RenderingNativeSurfaceWayland, RenderingNativeSurface);

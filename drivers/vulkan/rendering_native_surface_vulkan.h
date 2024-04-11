@@ -31,8 +31,8 @@
 #ifndef RENDERING_NATIVE_SURFACE_VULKAN_H
 #define RENDERING_NATIVE_SURFACE_VULKAN_H
 
-#include "servers/rendering/rendering_native_surface.h"
 #include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
 
 #ifdef VULKAN_ENABLED
 #ifdef USE_VOLK

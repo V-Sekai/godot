@@ -31,8 +31,8 @@
 #ifdef VULKAN_ENABLED
 
 #include "rendering_context_driver_vulkan_wayland.h"
-#include "rendering_native_surface_wayland.h"
 #include "drivers/vulkan/rendering_native_surface_vulkan.h"
+#include "rendering_native_surface_wayland.h"
 
 #ifdef USE_VOLK
 #include <volk.h>
