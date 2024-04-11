@@ -10,17 +10,25 @@ env.platform_sources = []
 reg_apis_inc = '#include "register_platform_apis.h"\n'
 reg_apis = "void register_platform_apis() {\n"
 unreg_apis = "void unregister_platform_apis() {\n"
+reg_core_apis = "void register_core_platform_apis() {\n"
+unreg_core_apis = "void unregister_core_platform_apis() {\n"
 for platform in env.platform_apis:
     platform_dir = env.Dir(platform)
     env.add_source_files(env.platform_sources, platform + "/api/api.cpp")
     reg_apis += "\tregister_" + platform + "_api();\n"
     unreg_apis += "\tunregister_" + platform + "_api();\n"
+    reg_core_apis += "\tregister_core_" + platform + "_api();\n"
+    unreg_core_apis += "\tunregister_core_" + platform + "_api();\n"
     reg_apis_inc += '#include "' + platform + '/api/api.h"\n'
 reg_apis_inc += "\n"
+reg_core_apis += "}\n\n"
+unreg_core_apis += "}\n\n"
 reg_apis += "}\n\n"
 unreg_apis += "}\n"
 
-methods.write_file_if_needed("register_platform_apis.gen.cpp", reg_apis_inc + reg_apis + unreg_apis)
+methods.write_file_if_needed(
+    "register_platform_apis.gen.cpp", reg_apis_inc + reg_core_apis + unreg_core_apis + reg_apis + unreg_apis
+)
 env.add_source_files(env.platform_sources, "register_platform_apis.gen.cpp")
 
 lib = env.add_library("platform", env.platform_sources)

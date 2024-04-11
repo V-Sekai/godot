@@ -40,6 +40,7 @@
 #include "core/debugger/engine_profiler.h"
 #include "core/extension/gdextension.h"
 #include "core/extension/gdextension_manager.h"
+#include "core/extension/godot_instance.h"
 #include "core/input/input.h"
 #include "core/input/input_map.h"
 #include "core/input/shortcut.h"
@@ -266,6 +267,7 @@ void register_core_types() {
 	GDREGISTER_ABSTRACT_CLASS(ResourceImporter);
 
 	GDREGISTER_CLASS(GDExtension);
+	GDREGISTER_CLASS(GodotInstance);
 
 	GDREGISTER_ABSTRACT_CLASS(GDExtensionManager);
 
@@ -354,12 +356,12 @@ void register_core_singletons() {
 	OS::get_singleton()->benchmark_end_measure("Core", "Register Singletons");
 }
 
-void register_core_extensions() {
+void register_core_extensions(GDExtensionInitializationFunction p_init_func) {
 	OS::get_singleton()->benchmark_begin_measure("Core", "Register Extensions");
 
 	// Hardcoded for now.
 	GDExtension::initialize_gdextensions();
-	gdextension_manager->load_extensions();
+	gdextension_manager->load_extensions(p_init_func);
 	gdextension_manager->initialize_extensions(GDExtension::INITIALIZATION_LEVEL_CORE);
 	_is_core_extensions_registered = true;
 

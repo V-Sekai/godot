@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_macos.h                               */
+/*  rendering_native_surface_windows.h                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,56 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
-#define RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
+#ifndef RENDERING_NATIVE_SURFACE_WINDOWS_H
+#define RENDERING_NATIVE_SURFACE_WINDOWS_H
 
-#ifdef VULKAN_ENABLED
+#include "servers/rendering/rendering_native_surface.h"
+#include "core/variant/native_ptr.h"
 
-#include "drivers/vulkan/rendering_context_driver_vulkan.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
-#import <QuartzCore/CAMetalLayer.h>
-
-class RenderingContextDriverVulkanMacOS : public RenderingContextDriverVulkan {
-private:
-	virtual const char *_get_platform_surface_extension() const override final;
-
-protected:
-	SurfaceID surface_create(const void *p_platform_data) override final;
-
+class RenderingNativeSurfaceWindows : public RenderingNativeSurface {
 public:
-	struct WindowPlatformData {
-		CAMetalLayer *const *layer_ptr;
+	enum class DriverType {
+		D3D12,
+		Vulkan
 	};
 
-	RenderingContextDriverVulkanMacOS();
-	~RenderingContextDriverVulkanMacOS();
+private:
+	GDCLASS(RenderingNativeSurfaceWindows, RenderingNativeSurface);
+
+	static void _bind_methods();
+
+	HWND window;
+	HINSTANCE instance;
+	DriverType driver_type;
+
+public:
+	static Ref<RenderingNativeSurfaceWindows> create_api(GDExtensionConstPtr<const void> p_window, GDExtensionConstPtr<const void> p_instance);
+
+	static Ref<RenderingNativeSurfaceWindows> create(HWND p_window, HINSTANCE p_instance);
+
+	HWND get_window_handle() const {
+		return window;
+	};
+
+	HINSTANCE get_instance() const {
+		return instance;
+	};
+
+	void set_driver_type(DriverType p_driver_type) {
+		driver_type = p_driver_type;
+	}
+
+	DriverType get_driver_type() {
+		return driver_type;
+	}
+
+	RenderingContextDriver *create_rendering_context() override;
+
+	RenderingNativeSurfaceWindows();
+	~RenderingNativeSurfaceWindows();
 };
 
-#endif // VULKAN_ENABLED
-
-#endif // RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
+#endif // RENDERING_NATIVE_SURFACE_WINDOWS_H

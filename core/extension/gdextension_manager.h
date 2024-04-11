@@ -82,7 +82,7 @@ public:
 
 	static GDExtensionManager *get_singleton();
 
-	void load_extensions();
+	void load_extensions(GDExtensionInitializationFunction p_init_func = nullptr);
 	void reload_extensions();
 
 	GDExtensionManager();
