@@ -34,7 +34,7 @@
 #include "platform/windows/rendering_context_driver_vulkan_windows.h"
 #endif
 #if defined(D3D12_ENABLED)
-#include "drivers/d3d12/rendering_context_driver_d3d12.h
+#include "drivers/d3d12/rendering_context_driver_d3d12.h"
 #endif
 
 void RenderingNativeSurfaceWindows::_bind_methods() {

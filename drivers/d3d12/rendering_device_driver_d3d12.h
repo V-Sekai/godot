@@ -34,7 +34,6 @@
 #include "core/templates/hash_map.h"
 #include "core/templates/paged_allocator.h"
 #include "core/templates/self_list.h"
-#include "servers/rendering/rendering_device_driver.h"
 
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
@@ -56,6 +55,8 @@
 // Annoying define from winnt.h. Reintroduced by some of the headers above.
 #undef MemoryBarrier
 #endif
+
+#include "servers/rendering/rendering_device_driver.h"
 
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
