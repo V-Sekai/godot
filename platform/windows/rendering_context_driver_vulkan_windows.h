@@ -45,7 +45,7 @@ protected:
 
 public:
 	RenderingContextDriverVulkanWindows();
-	~RenderingContextDriverVulkanWindows() override final;
+	~RenderingContextDriverVulkanWindows() override;
 };
 
 #endif // VULKAN_ENABLED
