@@ -67,6 +67,7 @@ using Microsoft::WRL::ComPtr;
 
 struct dxil_validator;
 class RenderingContextDriverD3D12;
+struct MemoryBarrier;
 
 // Design principles:
 // - D3D12 structs are zero-initialized and fields not requiring a non-zero value are omitted (except in cases where expresivity reasons apply).
