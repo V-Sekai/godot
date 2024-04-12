@@ -43,7 +43,9 @@ static Ref<ResourceSaverPNG> resource_saver_png;
 
 void register_core_driver_types() {
 	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceApple)
+#ifdef VULKAN_ENABLED
 	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceVulkan)
+#endif
 
 	image_loader_png.instantiate();
 	ImageLoader::add_image_format_loader(image_loader_png);
