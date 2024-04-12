@@ -55,7 +55,6 @@ private:
 
 public:
 	static Ref<RenderingNativeSurfaceWindows> create_api(GDExtensionConstPtr<const void> p_window, GDExtensionConstPtr<const void> p_instance);
-
 	static Ref<RenderingNativeSurfaceWindows> create(HWND p_window, HINSTANCE p_instance);
 
 	HWND get_window_handle() const {
