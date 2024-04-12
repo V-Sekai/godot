@@ -78,7 +78,7 @@ DisplayServerIOS::DisplayServerIOS(const String &p_rendering_driver, WindowMode 
 		if (!layer) {
 			ERR_FAIL_MSG("Failed to create iOS Vulkan rendering layer.");
 		}
-		apple_surface = RenderingNativeSurfaceApple::create((CAMetalLayer *const *)&layer);
+		apple_surface = RenderingNativeSurfaceApple::create((__bridge void *)layer);
 		rendering_context = apple_surface->create_rendering_context();
 	}
 #endif
