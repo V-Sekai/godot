@@ -32,6 +32,7 @@
 
 #include "core/os/os.h"
 
+#include "platform/windows/rendering_native_surface_windows.h"
 #include "rendering_context_driver_vulkan_windows.h"
 
 #ifdef USE_VOLK
