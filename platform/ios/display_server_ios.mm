@@ -42,6 +42,7 @@
 
 #include "core/config/project_settings.h"
 #include "core/io/file_access_pack.h"
+#include "drivers/apple/rendering_native_surface_apple.h"
 
 #import <sys/utsname.h>
 
