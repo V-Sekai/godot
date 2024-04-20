@@ -63,3 +63,33 @@ jobs:
     # appropriately.
     needs: linux-build
     uses: ./.github/workflows/godot_cpp_test.yml
+
+  vsk-android-editor-build:
+    if: ${{ vars.DISABLE_GODOT_CI == '' }}
+    name: 🤖 Android
+    needs: godot-cpp-test
+    uses: ./.github/workflows/vsk_android_editor_build.yml
+
+  vsk-linux-editor-build:
+    if: ${{ vars.DISABLE_GODOT_CI == '' }}
+    name: 🐧 Linux
+    needs: godot-cpp-test
+    uses: ./.github/workflows/vsk_linux_editor_builds.yml
+    
+  vsk-macos-editor-build:
+    if: ${{ vars.DISABLE_GODOT_CI == '' }}
+    name: 🍎 macOS
+    needs: godot-cpp-test
+    uses: ./.github/workflows/vsk_macos_editor_builds.yml
+
+  vsk-windows-editor-build:
+    if: ${{ vars.DISABLE_GODOT_CI == '' }}
+    name: 🏁 Windows
+    needs: godot-cpp-test
+    uses: ./.github/workflows/vsk_windows_editor_builds.yml
+      
+  vsk-web-editor-build:
+    if: ${{ vars.DISABLE_GODOT_CI == '' }}
+    name: 🌐 Web
+    needs: godot-cpp-test
+    uses: ./.github/workflows/vsk_web_editor_builds.yml
