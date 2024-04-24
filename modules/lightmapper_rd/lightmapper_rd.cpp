@@ -2059,6 +2059,7 @@ Vector3 LightmapperRD::get_bake_probe_point(int p_probe) const {
 
 Vector<Color> LightmapperRD::get_bake_probe_sh(int p_probe) const {
 	ERR_FAIL_INDEX_V(p_probe, probe_positions.size(), Vector<Color>());
+	ERR_FAIL_INDEX_V(p_probe * 9, probe_values.size(), Vector<Color>());
 	Vector<Color> ret;
 	ret.resize(9);
 	memcpy(ret.ptrw(), &probe_values[p_probe * 9], sizeof(Color) * 9);
