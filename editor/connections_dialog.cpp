@@ -1382,7 +1382,7 @@ void ConnectionsDock::update_tree() {
 	}
 	tree->clear();
 
-	if (!selected_node) {
+	if (!selected_node || selected_node->is_queued_for_deletion()) {
 		return;
 	}
 
