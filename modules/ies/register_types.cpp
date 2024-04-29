@@ -32,14 +32,14 @@
 
 #include "image_loader_ies.h"
 
-static ImageLoaderIES *image_loader_ies = nullptr;
+static Ref<ImageLoaderIES> image_loader_ies = nullptr;
 
 void initialize_ies_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
 
-	image_loader_ies = memnew(ImageLoaderIES);
+	image_loader_ies.instantiate();
 	ImageLoader::add_image_format_loader(image_loader_ies);
 }
 
@@ -48,5 +48,5 @@ void uninitialize_ies_module(ModuleInitializationLevel p_level) {
 		return;
 	}
 
-	memdelete(image_loader_ies);
+	image_loader_ies.unref();
 }
