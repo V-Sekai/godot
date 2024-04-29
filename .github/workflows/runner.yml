@@ -87,9 +87,3 @@ jobs:
     name: 🏁 Windows
     needs: godot-cpp-test
     uses: ./.github/workflows/vsk_windows_editor_builds.yml
-
-  vsk-web-editor-build:
-    if: ${{ vars.DISABLE_GODOT_CI == '' }}
-    name: 🌐 Web
-    needs: godot-cpp-test
-    uses: ./.github/workflows/vsk_web_editor_builds.yml
