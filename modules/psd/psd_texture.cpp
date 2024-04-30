@@ -132,7 +132,6 @@ void PSDTexture::parse() {
 
 	layers.clear();
 
-	const std::wstring rawFile = L"";
 	Ref<StreamPeerBuffer> file;
 	file.instantiate();
 	file->set_big_endian(true);
