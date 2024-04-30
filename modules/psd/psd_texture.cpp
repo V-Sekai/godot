@@ -254,7 +254,7 @@ void PSDTexture::parse() {
 			// fall back to the ASCII name in case no Unicode name was found.
 			std::wstringstream ssLayerName;
 			if (layer->utf16Name) {
-				ssLayerName << reinterpret_cast<wchar_t *>(layer->utf16Name);
+				ssLayerName << String(layer->name.c_str()).get_data();
 			} else {
 				ssLayerName << layer->name.c_str();
 			}
@@ -317,7 +317,7 @@ void PSDTexture::ExportLayer(const wchar_t *p_name, unsigned int p_width, unsign
 
 	Ref<Texture> texture_layer = ImageTexture::create_from_image(image_layer);
 
-	layers[String(p_name)] = texture_layer;
+	layers[p_name] = texture_layer;
 }
 
 Array PSDTexture::get_layer_names() const {

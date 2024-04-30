@@ -41,7 +41,7 @@ class PSDLayer : public Texture2D {
 
 protected:
 	Ref<PSDTexture> psd;
-	String layer = "";
+	String layer;
 
 	static void _bind_methods();
 
