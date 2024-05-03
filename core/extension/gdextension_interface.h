@@ -2895,7 +2895,10 @@ typedef void (*GDExtensionsInterfaceEditorHelpLoadXmlFromUtf8CharsAndLen)(const 
 typedef GDExtensionObjectPtr (*GDExtensionInterfaceCreateGodotInstance)(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func);
 typedef void (*GDExtensionInterfaceDestroyGodotInstance)(GDExtensionObjectPtr p_godot_instance);
 
-GDExtensionObjectPtr gdextension_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func);
+#if defined(_WIN32)
+__declspec(dllexport)
+#endif
+		GDExtensionObjectPtr gdextension_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func);
 
 #ifdef __cplusplus
 }
