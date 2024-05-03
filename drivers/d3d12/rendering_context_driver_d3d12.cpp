@@ -245,7 +245,7 @@ void RenderingContextDriverD3D12::driver_free(RenderingDeviceDriver *p_driver) {
 }
 
 RenderingContextDriver::SurfaceID RenderingContextDriverD3D12::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
-	Ref<RenderingNativeSurfaceWindows> windows_native_surface = Object::cast_to<RenderingNativeSurfaceWindows>(*p_native_surface);
+	Ref<RenderingNativeSurfaceWindows> windows_native_surface = p_native_surface;
 	ERR_FAIL_COND_V(windows_native_surface.is_null(), SurfaceID());
 	Surface *surface = memnew(Surface);
 	surface->hwnd = windows_native_surface->get_window_handle();
