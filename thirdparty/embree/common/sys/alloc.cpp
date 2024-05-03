@@ -87,21 +87,39 @@ namespace embree
       return nullptr;
 
     assert((align & (align-1)) == 0);
-    void* ptr = _mm_malloc(size,align);
     // -- GODOT start --
+    void* ptr = nullptr;
     // if (size != 0 && ptr == nullptr)
     //   throw std::bad_alloc();
+  #if __STDC_VERSION__ >= 201112L
+    ptr = aligned_alloc(align, size);
+  #elif _POSIX_VERSION >= 200112L
+    posix_memalign(&ptr, align, size);
+  #elif defined(_MSC_VER) || defined(__MINGW32__)
+    ptr = _aligned_malloc(size, align);
+  #else
+    ptr = _mm_malloc(size, align);
+  #endif
+
     if (size != 0 && ptr == nullptr) {
       abort();
     }
     // -- GODOT end --
+
     return ptr;
   }
 
   void alignedFree(void* ptr)
   {
-    if (ptr)
-      _mm_free(ptr);
+    if (ptr) {
+    // -- GODOT start --
+      #if defined(_MSC_VER) || defined(__MINGW32__)
+        _aligned_free(ptr);
+      #else
+        free(ptr);
+      #endif
+    // -- GODOT end --
+    }
   }
 
 #if defined(EMBREE_SYCL_SUPPORT)

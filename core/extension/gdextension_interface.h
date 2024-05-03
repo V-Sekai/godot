@@ -2892,6 +2892,11 @@ typedef void (*GDExtensionsInterfaceEditorHelpLoadXmlFromUtf8Chars)(const char *
  */
 typedef void (*GDExtensionsInterfaceEditorHelpLoadXmlFromUtf8CharsAndLen)(const char *p_data, GDExtensionInt p_size);
 
+typedef GDExtensionObjectPtr (*GDExtensionInterfaceCreateGodotInstance)(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func);
+typedef void (*GDExtensionInterfaceDestroyGodotInstance)(GDExtensionObjectPtr p_godot_instance);
+
+GDExtensionObjectPtr gdextension_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func);
+
 #ifdef __cplusplus
 }
 #endif

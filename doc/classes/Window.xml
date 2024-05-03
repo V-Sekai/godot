@@ -531,6 +531,13 @@
 				Sets layout direction and text writing direction. Right-to-left layouts are necessary for certain languages (e.g. Arabic and Hebrew).
 			</description>
 		</method>
+		<method name="set_native_surface">
+			<return type="void" />
+			<param index="0" name="native_surface" type="RenderingNativeSurface" />
+			<description>
+				Set the native surface of a window.
+			</description>
+		</method>
 		<method name="set_unparent_when_invisible">
 			<return type="void" />
 			<param index="0" name="unparent" type="bool" />
