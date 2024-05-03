@@ -37,7 +37,7 @@
 
 static OS_Windows *os = nullptr;
 
-class GodotInstanceLinuxBSD : public GodotInstance {
+class GodotInstancWindows : public GodotInstance {
 public:
 	bool start() override {
 		const bool result = GodotInstance::start();
@@ -52,14 +52,14 @@ public:
 };
 
 GDExtensionObjectPtr create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func) {
-	os = new OS_Windows();
+	os = new OS_Windows(nullptr);
 
 	Error err = Main::setup(p_argv[0], p_argc - 1, &p_argv[1], false, p_init_func);
 	if (err != OK) {
 		return nullptr;
 	}
 
-	GodotInstance *godot_instance = memnew(GodotInstanceLinuxBSD);
+	GodotInstance *godot_instance = memnew(GodotInstancWindows);
 
 	return (GDExtensionObjectPtr)godot_instance;
 }
