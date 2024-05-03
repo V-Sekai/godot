@@ -9,8 +9,6 @@ import platform_windows_builders
 sources = []
 
 common_win = [
-    "godot_windows.cpp",
-    "godot_runtime_api.cpp",
     "os_windows.cpp",
     "display_server_windows.cpp",
     "key_mapping_windows.cpp",
@@ -25,6 +23,12 @@ common_win = [
     "rendering_context_driver_vulkan_windows.cpp",
     "rendering_native_surface_windows.cpp",
 ]
+
+libgodot_files = [
+    "godot_runtime_api.cpp",
+]
+
+executable_files = ["godot_windows.cpp"]
 
 if env.msvc:
     common_win += ["crash_handler_windows_seh.cpp"]
@@ -56,13 +60,13 @@ env.add_source_files(sources, common_win)
 sources += res_obj
 
 if env["library_type"] == "static_library":
-    prog = env.add_library("#bin/godot", sources, PROGSUFFIX=env["PROGSUFFIX"])
+    prog = env.add_library("#bin/godot", sources + libgodot_files, PROGSUFFIX=env["PROGSUFFIX"])
     arrange_program_clean(prog)
 elif env["library_type"] == "shared_library":
-    prog = env.add_shared_library("#bin/godot", sources, PROGSUFFIX=env["PROGSUFFIX"])
+    prog = env.add_shared_library("#bin/godot", sources + libgodot_files, PROGSUFFIX=env["PROGSUFFIX"])
     arrange_program_clean(prog)
 else:
-    prog = env.add_program("#bin/godot", sources, PROGSUFFIX=env["PROGSUFFIX"])
+    prog = env.add_program("#bin/godot", sources + executable_files, PROGSUFFIX=env["PROGSUFFIX"])
     arrange_program_clean(prog)
 
     # Build console wrapper app.
