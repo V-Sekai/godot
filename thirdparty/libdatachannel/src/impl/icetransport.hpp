@@ -37,35 +37,36 @@ public:
 
 	enum class GatheringState { New = 0, InProgress = 1, Complete = 2 };
 
-	using candidate_callback = std::function<void(const Candidate &candidate)>;
+	using candidate_callback = std::function<RTC_WRAPPED(void)(const Candidate &candidate)>;
 	using gathering_state_callback = std::function<void(GatheringState state)>;
 
-	IceTransport(const Configuration &config, candidate_callback candidateCallback,
+	IceTransport(candidate_callback candidateCallback,
 	             state_callback stateChangeCallback,
 	             gathering_state_callback gatheringStateChangeCallback);
 	~IceTransport();
 
+	RTC_WRAPPED(void) construct(const Configuration &config);
 	Description::Role role() const;
 	GatheringState gatheringState() const;
-	Description getLocalDescription(Description::Type type) const;
-	void setRemoteDescription(const Description &description);
+	RTC_WRAPPED(Description) getLocalDescription(Description::Type type) const;
+	RTC_WRAPPED(void) setRemoteDescription(const Description &description);
 	bool addRemoteCandidate(const Candidate &candidate);
-	void gatherLocalCandidates(string mid);
+	RTC_WRAPPED(void) gatherLocalCandidates(string mid);
 
 	optional<string> getLocalAddress() const;
 	optional<string> getRemoteAddress() const;
 
-	bool send(message_ptr message) override; // false if dropped
+	RTC_WRAPPED(bool) send(message_ptr message) override; // false if dropped
 
-	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
+	RTC_WRAPPED(bool) getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 private:
-	bool outgoing(message_ptr message) override;
+	RTC_WRAPPED(bool) outgoing(message_ptr message) override;
 
 	void changeGatheringState(GatheringState state);
 
 	void processStateChange(unsigned int state);
-	void processCandidate(const string &candidate);
+	RTC_WRAPPED(void) processCandidate(const string &candidate);
 	void processGatheringDone();
 	void processTimeout();
 

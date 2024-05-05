@@ -13,36 +13,36 @@ namespace rtc::impl {
 
 void Channel::triggerOpen() {
 	mOpenTriggered = true;
-	try {
+	RTC_TRY {
 		openCallback();
-	} catch (const std::exception &e) {
-		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << "Uncaught exception in callback: " << e.RTC_WHAT();
 	}
 	flushPendingMessages();
 }
 
 void Channel::triggerClosed() {
-	try {
+	RTC_TRY {
 		closedCallback();
-	} catch (const std::exception &e) {
-		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << "Uncaught exception in callback: " << e.RTC_WHAT();
 	}
 }
 
 void Channel::triggerError(string error) {
-	try {
+	RTC_TRY {
 		errorCallback(std::move(error));
-	} catch (const std::exception &e) {
-		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << "Uncaught exception in callback: " << e.RTC_WHAT();
 	}
 }
 
 void Channel::triggerAvailable(size_t count) {
 	if (count == 1) {
-		try {
+		RTC_TRY {
 			availableCallback();
-		} catch (const std::exception &e) {
-			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		} RTC_CATCH (const RTC_EXCEPTION &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.RTC_WHAT();
 		}
 	}
 
@@ -53,10 +53,10 @@ void Channel::triggerBufferedAmount(size_t amount) {
 	size_t previous = bufferedAmount.exchange(amount);
 	size_t threshold = bufferedAmountLowThreshold.load();
 	if (previous > threshold && amount <= threshold) {
-		try {
+		RTC_TRY {
 			bufferedAmountLowCallback();
-		} catch (const std::exception &e) {
-			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		} RTC_CATCH (const RTC_EXCEPTION &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.RTC_WHAT();
 		}
 	}
 }
@@ -70,10 +70,10 @@ void Channel::flushPendingMessages() {
 		if (!next)
 			break;
 
-		try {
+		RTC_TRY {
 			messageCallback(*next);
-		} catch (const std::exception &e) {
-			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		} RTC_CATCH (const RTC_EXCEPTION &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.RTC_WHAT();
 		}
 	}
 }

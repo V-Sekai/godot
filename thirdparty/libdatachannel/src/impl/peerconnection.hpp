@@ -43,9 +43,9 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	optional<Description> remoteDescription() const;
 	size_t remoteMaxMessageSize() const;
 
-	shared_ptr<IceTransport> initIceTransport();
-	shared_ptr<DtlsTransport> initDtlsTransport();
-	shared_ptr<SctpTransport> initSctpTransport();
+	RTC_WRAPPED(shared_ptr<IceTransport>) initIceTransport();
+	RTC_WRAPPED(shared_ptr<DtlsTransport>) initDtlsTransport();
+	RTC_WRAPPED(shared_ptr<SctpTransport>) initSctpTransport();
 	shared_ptr<IceTransport> getIceTransport() const;
 	shared_ptr<DtlsTransport> getDtlsTransport() const;
 	shared_ptr<SctpTransport> getSctpTransport() const;
@@ -54,16 +54,16 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void endLocalCandidates();
 	void rollbackLocalDescription();
 	bool checkFingerprint(const std::string &fingerprint) const;
-	void forwardMessage(message_ptr message);
+	RTC_WRAPPED(void) forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
 
-	shared_ptr<DataChannel> emplaceDataChannel(string label, DataChannelInit init);
+	RTC_WRAPPED(shared_ptr<DataChannel>) emplaceDataChannel(string label, DataChannelInit init);
 	std::pair<shared_ptr<DataChannel>, bool> findDataChannel(uint16_t stream);
 	bool removeDataChannel(uint16_t stream);
 	uint16_t maxDataChannelStream() const;
-	void assignDataChannels();
-	void iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func);
+	RTC_WRAPPED(void) assignDataChannels();
+	void iterateDataChannels(std::function<RTC_WRAPPED(void)(shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
 	void remoteCloseDataChannels();
@@ -75,11 +75,11 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void closeTracks();
 #endif
 
-	void validateRemoteDescription(const Description &description);
-	void processLocalDescription(Description description);
-	void processLocalCandidate(Candidate candidate);
-	void processRemoteDescription(Description description);
-	void processRemoteCandidate(Candidate candidate);
+	RTC_WRAPPED(void) validateRemoteDescription(const Description &description);
+	RTC_WRAPPED(void) processLocalDescription(Description description);
+	RTC_WRAPPED(void) processLocalCandidate(Candidate candidate);
+	RTC_WRAPPED(void) processRemoteDescription(Description description);
+	RTC_WRAPPED(void) processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
 
 #if RTC_ENABLE_MEDIA
@@ -107,11 +107,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	// Helper method for asynchronous callback invocation
 	template <typename... Args> void trigger(synchronized_callback<Args...> *cb, Args... args) {
-		try {
-			(*cb)(std::move(args...));
-		} catch (const std::exception &e) {
-			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
-		}
+		(*cb)(std::move(args...));
 	}
 
 	const Configuration config;
