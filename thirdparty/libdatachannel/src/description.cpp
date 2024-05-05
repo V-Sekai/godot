@@ -55,13 +55,14 @@ inline std::pair<string_view, string_view> parse_pair(string_view attr) {
 	return std::make_pair(std::move(key), std::move(value));
 }
 
-template <typename T> T to_integer(string_view s) {
+template <typename T> RTC_WRAPPED(T) to_integer(string_view s) {
 	const string str(s);
-	try {
-		return std::is_signed<T>::value ? T(std::stol(str)) : T(std::stoul(str));
-	} catch (...) {
-		throw std::invalid_argument("Invalid integer \"" + str + "\" in description");
+	char *p;
+	T ret = std::is_signed<T>::value ? T(strtol(str.c_str(), &p, 10)) : T(strtoul(str.c_str(), &p, 10));
+	if (*p == 0) {
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid integer \"" + str + "\" in description");
 	}
+	return ret;
 }
 
 inline bool is_sha256_fingerprint(string_view f) {
@@ -86,9 +87,13 @@ namespace rtc {
 
 namespace utils = impl::utils;
 
-Description::Description(const string &sdp, Type type, Role role)
+Description::Description(Type type, Role role)
     : mType(Type::Unspec), mRole(role) {
-	hintType(type);
+}
+RTC_WRAPPED(Description) Description::create(const string &sdp, Type type, Role role) {
+	RTC_BEGIN;
+	Description ret(type, role);
+	ret.hintType(type);
 
 	int index = -1;
 	shared_ptr<Entry> current;
@@ -101,11 +106,11 @@ Description::Description(const string &sdp, Type type, Role role)
 			continue;
 
 		if (match_prefix(line, "m=")) { // Media description line (aka m-line)
-			current = createEntry(line.substr(2), std::to_string(++index), Direction::Unknown);
+			current = ret.createEntry(line.substr(2), std::to_string(++index), Direction::Unknown);
 
 		} else if (match_prefix(line, "o=")) { // Origin line
 			std::istringstream origin(line.substr(2));
-			origin >> mUsername >> mSessionId;
+			origin >> ret.mUsername >> ret.mSessionId;
 
 		} else if (match_prefix(line, "a=")) { // Attribute line
 			string attr = line.substr(2);
@@ -113,53 +118,56 @@ Description::Description(const string &sdp, Type type, Role role)
 
 			if (key == "setup") {
 				if (value == "active")
-					mRole = Role::Active;
+					ret.mRole = Role::Active;
 				else if (value == "passive")
-					mRole = Role::Passive;
+					ret.mRole = Role::Passive;
 				else
-					mRole = Role::ActPass;
+					ret.mRole = Role::ActPass;
 
 			} else if (key == "fingerprint") {
 				if (match_prefix(value, "sha-256 ") || match_prefix(value, "SHA-256 ")) {
 					string fingerprint{value.substr(8)};
 					trim_begin(fingerprint);
-					setFingerprint(std::move(fingerprint));
+					RTC_UNWRAP_RETHROW(ret.setFingerprint(std::move(fingerprint)));
 				} else {
 					PLOG_WARNING << "Unknown SDP fingerprint format: " << value;
 				}
 			} else if (key == "ice-ufrag") {
-				mIceUfrag = value;
+				ret.mIceUfrag = value;
 			} else if (key == "ice-pwd") {
-				mIcePwd = value;
+				ret.mIcePwd = value;
 			} else if (key == "ice-options") {
-				mIceOptions = utils::explode(string(value), ',');
+				ret.mIceOptions = utils::explode(string(value), ',');
 			} else if (key == "candidate") {
-				addCandidate(Candidate(attr, bundleMid()));
+				RTC_UNWRAP_RETHROW_DECL(Candidate, tmp, Candidate::create(attr, ret.bundleMid()));
+				ret.addCandidate(tmp);
 			} else if (key == "end-of-candidates") {
-				mEnded = true;
+				ret.mEnded = true;
 			} else if (current) {
-				current->parseSdpLine(std::move(line));
+				RTC_UNWRAP_RETHROW(current->parseSdpLine(std::move(line)));
 			} else {
-				mAttributes.emplace_back(attr);
+				ret.mAttributes.emplace_back(attr);
 			}
 
 		} else if (current) {
-			current->parseSdpLine(std::move(line));
+			RTC_UNWRAP_RETHROW(current->parseSdpLine(std::move(line)));
 		}
 	}
 
-	if (mUsername.empty())
-		mUsername = "rtc";
+	if (ret.mUsername.empty())
+		ret.mUsername = "rtc";
 
-	if (mSessionId.empty()) {
+	if (ret.mSessionId.empty()) {
 		auto uniform = std::bind(std::uniform_int_distribution<uint32_t>(), utils::random_engine());
-		mSessionId = std::to_string(uniform());
+		ret.mSessionId = std::to_string(uniform());
 	}
+	return ret;
 }
 
-Description::Description(const string &sdp, string typeString)
-    : Description(sdp, !typeString.empty() ? stringToType(typeString) : Type::Unspec,
-                  Role::ActPass) {}
+RTC_WRAPPED(Description) Description::create(const string &sdp, string typeString) {
+    return create(sdp, !typeString.empty() ? stringToType(typeString) : Type::Unspec,
+                  Role::ActPass);
+}
 
 Description::Type Description::type() const { return mType; }
 
@@ -191,13 +199,14 @@ void Description::hintType(Type type) {
 		mType = type;
 }
 
-void Description::setFingerprint(string fingerprint) {
+RTC_WRAPPED(void) Description::setFingerprint(string fingerprint) {
 	if (!is_sha256_fingerprint(fingerprint))
-		throw std::invalid_argument("Invalid SHA256 fingerprint \"" + fingerprint + "\"");
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid SHA256 fingerprint \"" + fingerprint + "\"");
 
 	std::transform(fingerprint.begin(), fingerprint.end(), fingerprint.begin(),
 	               [](char c) { return char(std::toupper(c)); });
 	mFingerprint.emplace(std::move(fingerprint));
+	RTC_RET;
 }
 
 void Description::addIceOption(string option) {
@@ -459,46 +468,47 @@ void Description::clearMedia() {
 	mApplication.reset();
 }
 
-variant<Description::Media *, Description::Application *> Description::media(unsigned int index) {
+RTC_WRAPPED(variant<Description::Media * RTC_COMMA Description::Application *>)
+Description::media(unsigned int index) {
 	if (index >= mEntries.size())
-		throw std::out_of_range("Media index out of range");
+		RTC_THROW RTC_OUT_OF_RANGE("Media index out of range");
 
 	const auto &entry = mEntries[index];
 	if (entry == mApplication) {
 		auto result = dynamic_cast<Application *>(entry.get());
 		if (!result)
-			throw std::logic_error("Bad type of application in description");
+			RTC_THROW RTC_LOGIC_ERROR("Bad type of application in description");
 
-		return result;
+		return (variant<Description::Media *, Description::Application *>)result;
 
 	} else {
 		auto result = dynamic_cast<Media *>(entry.get());
 		if (!result)
-			throw std::logic_error("Bad type of media in description");
+			RTC_THROW RTC_LOGIC_ERROR("Bad type of media in description");
 
-		return result;
+		return (variant<Description::Media *, Description::Application *>)result;
 	}
 }
 
-variant<const Description::Media *, const Description::Application *>
+RTC_WRAPPED(variant<const Description::Media * RTC_COMMA const Description::Application *>)
 Description::media(unsigned int index) const {
 	if (index >= mEntries.size())
-		throw std::out_of_range("Media index out of range");
+		RTC_THROW RTC_OUT_OF_RANGE("Media index out of range");
 
 	const auto &entry = mEntries[index];
 	if (entry == mApplication) {
 		auto result = dynamic_cast<Application *>(entry.get());
 		if (!result)
-			throw std::logic_error("Bad type of application in description");
+			RTC_THROW RTC_LOGIC_ERROR("Bad type of application in description");
 
-		return result;
+		return (variant<const Description::Media *, const Description::Application *>)result;
 
 	} else {
 		auto result = dynamic_cast<Media *>(entry.get());
 		if (!result)
-			throw std::logic_error("Bad type of media in description");
+			RTC_THROW RTC_LOGIC_ERROR("Bad type of media in description");
 
-		return result;
+		return (variant<const Description::Media *, const Description::Application *>)result;
 	}
 }
 
@@ -559,10 +569,10 @@ std::vector<int> Description::Entry::extIds() {
 	return result;
 }
 
-Description::Entry::ExtMap *Description::Entry::extMap(int id) {
+RTC_WRAPPED(Description::Entry::ExtMap *) Description::Entry::extMap(int id) {
 	auto it = mExtMaps.find(id);
 	if (it == mExtMaps.end())
-		throw std::invalid_argument("extmap not found");
+		RTC_THROW RTC_INVALID_ARGUMENT("extmap not found");
 
 	return &it->second;
 }
@@ -641,7 +651,8 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	return sdp.str();
 }
 
-void Description::Entry::parseSdpLine(string_view line) {
+RTC_WRAPPED(void) Description::Entry::parseSdpLine(string_view line) {
+	RTC_BEGIN;
 	if (match_prefix(line, "a=")) {
 		string_view attr = line.substr(2);
 		auto [key, value] = parse_pair(attr);
@@ -649,12 +660,14 @@ void Description::Entry::parseSdpLine(string_view line) {
 		if (key == "mid") {
 			mMid = value;
 		} else if (key == "extmap") {
-			auto id = Description::Media::ExtMap::parseId(value);
+			const string_view& value_ = value;
+			RTC_UNWRAP_RETHROW_DECL(int, id, Description::Media::ExtMap::parseId(value_));
 			auto it = mExtMaps.find(id);
-			if (it == mExtMaps.end())
-				it = mExtMaps.insert(std::make_pair(id, Description::Media::ExtMap(value))).first;
-			else
-				it->second.setDescription(value);
+			if (it == mExtMaps.end()) {
+				RTC_UNWRAP_RETHROW_DECL(auto, tmp, Description::Media::ExtMap::create(value_));
+				it = mExtMaps.insert(std::make_pair(id, tmp)).first;
+			} else
+				RTC_UNWRAP_RETHROW(it->second.setDescription(value_));
 
 		} else if (attr == "sendonly")
 			mDirection = Direction::SendOnly;
@@ -673,9 +686,10 @@ void Description::Entry::parseSdpLine(string_view line) {
 			mAttributes.emplace_back(attr);
 		}
 	}
+	RTC_RET;
 }
 
-int Description::Entry::ExtMap::parseId(string_view description) {
+RTC_WRAPPED(int) Description::Entry::ExtMap::parseId(string_view description) {
 	size_t p = description.find(' ');
 	return to_integer<int>(description.substr(0, p));
 }
@@ -686,19 +700,26 @@ Description::Entry::ExtMap::ExtMap(int id, string uri, Direction direction) {
 	this->direction = direction;
 }
 
-Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(description); }
+RTC_WRAPPED(Description::Entry::ExtMap) Description::Entry::ExtMap::create(string_view description) {
+	Description::Entry::ExtMap ret;
+	RTC_BEGIN;
+	RTC_UNWRAP_RETHROW(ret.setDescription(description));
+	return ret;
+}
 
-void Description::Entry::ExtMap::setDescription(string_view description) {
+RTC_WRAPPED(void)
+Description::Entry::ExtMap::setDescription(string_view description) {
+	RTC_BEGIN;
 	const size_t uriStart = description.find(' ');
 	if (uriStart == string::npos)
-		throw std::invalid_argument("Invalid description for extmap");
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid description for extmap");
 
 	const string_view idAndDirection = description.substr(0, uriStart);
 	const size_t idSplit = idAndDirection.find('/');
-	if (idSplit == string::npos) {
-		this->id = to_integer<int>(idAndDirection);
-	} else {
-		this->id = to_integer<int>(idAndDirection.substr(0, idSplit));
+	if (idSplit == string::npos)
+		RTC_UNWRAP_RETHROW_VAR(this->id, to_integer<int>(idAndDirection));
+	else {
+		RTC_UNWRAP_RETHROW_VAR(this->id, (to_integer<int>(idAndDirection.substr(0, idSplit))));
 
 		const string_view directionStr = idAndDirection.substr(idSplit + 1);
 		if (directionStr == "sendonly")
@@ -710,7 +731,7 @@ void Description::Entry::ExtMap::setDescription(string_view description) {
 		else if (directionStr == "inactive")
 			this->direction = Direction::Inactive;
 		else
-			throw std::invalid_argument("Invalid direction for extmap");
+			RTC_THROW RTC_INVALID_ARGUMENT("Invalid direction for extmap");
 	}
 
 	const string_view uriAndAttributes = description.substr(uriStart + 1);
@@ -722,6 +743,7 @@ void Description::Entry::ExtMap::setDescription(string_view description) {
 		this->uri = uriAndAttributes.substr(0, attributeSplit);
 		this->attributes = uriAndAttributes.substr(attributeSplit + 1);
 	}
+	RTC_RET;
 }
 
 void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid,
@@ -825,24 +847,33 @@ string Description::Application::generateSdpLines(string_view eol) const {
 	return sdp.str();
 }
 
-void Description::Application::parseSdpLine(string_view line) {
+RTC_WRAPPED(void) Description::Application::parseSdpLine(string_view line) {
+	RTC_BEGIN;
 	if (match_prefix(line, "a=")) {
 		string_view attr = line.substr(2);
 		auto [key, value] = parse_pair(attr);
+		const string_view &value_ = value;
 
 		if (key == "sctp-port") {
-			mSctpPort = to_integer<uint16_t>(value);
+			RTC_UNWRAP_RETHROW_VAR(mSctpPort, to_integer<uint16_t>(value_));
 		} else if (key == "max-message-size") {
-			mMaxMessageSize = to_integer<size_t>(value);
+			RTC_UNWRAP_RETHROW_VAR(mMaxMessageSize, to_integer<size_t>(value_));
 		} else {
-			Entry::parseSdpLine(line);
+			RTC_UNWRAP_RETHROW(Entry::parseSdpLine(line));
 		}
 	} else {
-		Entry::parseSdpLine(line);
+		RTC_UNWRAP_RETHROW(Entry::parseSdpLine(line));
 	}
+	RTC_RET;
 }
 
-Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown) {
+Description::Media::Media(const string& sdp) :
+	Entry(sdp, "", Direction::Unknown) {
+}
+
+RTC_WRAPPED(Description::Media) Description::Media::create(const string &sdp) {
+	RTC_BEGIN;
+	Media ret = sdp;
 	std::istringstream ss(sdp);
 	while (ss) {
 		string line;
@@ -851,11 +882,12 @@ Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown
 		if (line.empty())
 			continue;
 
-		parseSdpLine(line);
+		RTC_UNWRAP_RETHROW(ret.parseSdpLine(line));
 	}
 
-	if (mid().empty())
-		throw std::invalid_argument("Missing mid in media description");
+	if (ret.mid().empty())
+		PLOG_WARNING << "Missing mid in media description";
+	return ret;
 }
 
 Description::Media::Media(const string &mline, string mid, Direction dir)
@@ -929,10 +961,10 @@ std::vector<int> Description::Media::payloadTypes() const {
 	return result;
 }
 
-Description::Media::RtpMap *Description::Media::rtpMap(int payloadType) {
+RTC_WRAPPED(Description::Media::RtpMap *) Description::Media::rtpMap(int payloadType) {
 	auto it = mRtpMaps.find(payloadType);
 	if (it == mRtpMaps.end())
-		throw std::invalid_argument("rtpmap not found");
+		RTC_THROW RTC_INVALID_ARGUMENT("rtpmap not found");
 
 	return &it->second;
 }
@@ -968,10 +1000,12 @@ void Description::Media::removeFormat(const string &format) {
 		removeRtpMap(pt);
 }
 
-void Description::Media::addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate) {
-	RtpMap rtp(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate));
+RTC_WRAPPED(void) Description::Media::addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate) {
+	RTC_BEGIN;
+	RTC_UNWRAP_RETHROW_DECL(RtpMap, rtp, RtpMap::create(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate)));
 	rtp.fmtps.emplace_back("apt=" + std::to_string(origPayloadType));
 	addRtpMap(rtp);
+	RTC_RET;
 }
 
 string Description::Media::generateSdpLines(string_view eol) const {
@@ -1002,22 +1036,25 @@ string Description::Media::generateSdpLines(string_view eol) const {
 	return sdp.str();
 }
 
-void Description::Media::parseSdpLine(string_view line) {
+RTC_WRAPPED(void) Description::Media::parseSdpLine(string_view line) {
+	RTC_BEGIN;
 	if (match_prefix(line, "a=")) {
 		string_view attr = line.substr(2);
 		auto [key, value] = parse_pair(attr);
+		const string_view &value_ = value;
 
 		if (key == "rtpmap") {
-			auto pt = Description::Media::RtpMap::parsePayloadType(value);
+			RTC_UNWRAP_RETHROW_DECL(auto, pt, Description::Media::RtpMap::parsePayloadType(value_));
 			auto it = mRtpMaps.find(pt);
-			if (it == mRtpMaps.end())
-				it = mRtpMaps.insert(std::make_pair(pt, Description::Media::RtpMap(value))).first;
-			else
-				it->second.setDescription(value);
+			if (it == mRtpMaps.end()) {
+				RTC_UNWRAP_RETHROW_DECL(Description::Media::RtpMap, tmp, Description::Media::RtpMap::create(value_));
+				it = mRtpMaps.insert(std::make_pair(pt, tmp)).first;
+			} else
+				RTC_UNWRAP_RETHROW(it->second.setDescription(value_));
 
 		} else if (key == "rtcp-fb") {
 			size_t p = value.find(' ');
-			int pt = to_integer<int>(value.substr(0, p));
+			RTC_UNWRAP_RETHROW_DECL(int, pt, to_integer<int>(value_.substr(0, p)));
 			auto it = mRtpMaps.find(pt);
 			if (it == mRtpMaps.end())
 				it = mRtpMaps.insert(std::make_pair(pt, Description::Media::RtpMap(pt))).first;
@@ -1026,7 +1063,7 @@ void Description::Media::parseSdpLine(string_view line) {
 
 		} else if (key == "fmtp") {
 			size_t p = value.find(' ');
-			int pt = to_integer<int>(value.substr(0, p));
+			RTC_UNWRAP_RETHROW_DECL(int, pt, to_integer<int>(value_.substr(0, p)));
 			auto it = mRtpMaps.find(pt);
 			if (it == mRtpMaps.end())
 				it = mRtpMaps.insert(std::make_pair(pt, Description::Media::RtpMap(pt))).first;
@@ -1037,7 +1074,7 @@ void Description::Media::parseSdpLine(string_view line) {
 			// always added
 
 		} else if (key == "ssrc") {
-			auto ssrc = to_integer<uint32_t>(value);
+			RTC_UNWRAP_RETHROW_DECL(auto, ssrc, to_integer<uint32_t>(value_));
 			if (!hasSSRC(ssrc))
 				mSsrcs.emplace_back(ssrc);
 
@@ -1049,14 +1086,15 @@ void Description::Media::parseSdpLine(string_view line) {
 			mAttributes.emplace_back(attr);
 
 		} else {
-			Entry::parseSdpLine(line);
+			RTC_UNWRAP_RETHROW(Entry::parseSdpLine(line));
 		}
 
 	} else if (match_prefix(line, "b=AS")) {
-		mBas = to_integer<int>(line.substr(line.find(':') + 1));
+		RTC_UNWRAP_RETHROW_VAR(mBas, to_integer<int>(line.substr(line.find(':') + 1)));
 	} else {
-		Entry::parseSdpLine(line);
+		RTC_UNWRAP_RETHROW(Entry::parseSdpLine(line));
 	}
+	RTC_RET;
 }
 
 Description::Media::RtpMap::RtpMap(int payloadType) {
@@ -1064,24 +1102,31 @@ Description::Media::RtpMap::RtpMap(int payloadType) {
 	this->clockRate = 0;
 }
 
-int Description::Media::RtpMap::parsePayloadType(string_view mline) {
+RTC_WRAPPED(Description::Media::RtpMap) Description::Media::RtpMap::create(string_view description) {
+	RTC_BEGIN;
+	RtpMap ret = RtpMap(0);
+	RTC_UNWRAP_RETHROW(ret.setDescription(description));
+	return ret;
+}
+
+
+RTC_WRAPPED(int) Description::Media::RtpMap::parsePayloadType(string_view mline) {
 	size_t p = mline.find(' ');
 	return to_integer<int>(mline.substr(0, p));
 }
 
-Description::Media::RtpMap::RtpMap(string_view description) { setDescription(description); }
-
-void Description::Media::RtpMap::setDescription(string_view description) {
+RTC_WRAPPED(void) Description::Media::RtpMap::setDescription(string_view description) {
+	RTC_BEGIN;
 	size_t p = description.find(' ');
 	if (p == string::npos)
-		throw std::invalid_argument("Invalid format description for rtpmap");
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid format description for rtpmap");
 
-	this->payloadType = to_integer<int>(description.substr(0, p));
+	RTC_UNWRAP_RETHROW_VAR(this->payloadType, to_integer<int>(description.substr(0, p)));
 
 	string_view line = description.substr(p + 1);
 	size_t spl = line.find('/');
 	if (spl == string::npos)
-		throw std::invalid_argument("Invalid format description for rtpmap");
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid format description for rtpmap");
 
 	this->format = line.substr(0, spl);
 
@@ -1091,11 +1136,12 @@ void Description::Media::RtpMap::setDescription(string_view description) {
 		spl = line.find(' ');
 	}
 	if (spl == string::npos)
-		this->clockRate = to_integer<int>(line);
+		RTC_UNWRAP_RETHROW_VAR(this->clockRate, to_integer<int>(line));
 	else {
-		this->clockRate = to_integer<int>(line.substr(0, spl));
+		RTC_UNWRAP_RETHROW_VAR(this->clockRate, (to_integer<int>(line.substr(0, spl))));
 		this->encParams = line.substr(spl + 1);
 	}
+	RTC_RET;
 }
 
 void Description::Media::RtpMap::addFeedback(string fb) {
@@ -1127,7 +1173,8 @@ void Description::Media::RtpMap::removeParameter(const string &str) {
 Description::Audio::Audio(string mid, Direction dir)
     : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
-void Description::Audio::addAudioCodec(int payloadType, string codec, optional<string> profile) {
+RTC_WRAPPED(void) Description::Audio::addAudioCodec(int payloadType, string codec, optional<string> profile) {
+	RTC_BEGIN;
 	if (codec.find('/') == string::npos) {
 		if (codec == "PCMA" || codec == "PCMU")
 			codec += "/8000/1";
@@ -1135,42 +1182,44 @@ void Description::Audio::addAudioCodec(int payloadType, string codec, optional<s
 			codec += "/48000/2";
 	}
 
-	RtpMap map(std::to_string(payloadType) + ' ' + codec);
+	RTC_UNWRAP_RETHROW_DECL(RtpMap, map, RtpMap::create(std::to_string(payloadType) + ' ' + codec));
 
 	if (profile)
 		map.fmtps.emplace_back(*profile);
 
 	addRtpMap(map);
+	RTC_RET;
 }
 
-void Description::Audio::addOpusCodec(int payloadType, optional<string> profile) {
-	addAudioCodec(payloadType, "opus", profile);
+RTC_WRAPPED(void) Description::Audio::addOpusCodec(int payloadType, optional<string> profile) {
+	return addAudioCodec(payloadType, "opus", profile);
 }
 
-void Description::Audio::addPCMACodec(int payloadType, optional<string> profile) {
-	addAudioCodec(payloadType, "PCMA", profile);
+RTC_WRAPPED(void) Description::Audio::addPCMACodec(int payloadType, optional<string> profile) {
+	return addAudioCodec(payloadType, "PCMA", profile);
 }
 
-void Description::Audio::addPCMUCodec(int payloadType, optional<string> profile) {
-	addAudioCodec(payloadType, "PCMU", profile);
+RTC_WRAPPED(void) Description::Audio::addPCMUCodec(int payloadType, optional<string> profile) {
+	return addAudioCodec(payloadType, "PCMU", profile);
 }
 
-void Description::Audio::addAacCodec(int payloadType, optional<string> profile) {
+RTC_WRAPPED(void) Description::Audio::addAacCodec(int payloadType, optional<string> profile) {
 	if (profile) {
-		addAudioCodec(payloadType, "MP4A-LATM", profile);
+		return addAudioCodec(payloadType, "MP4A-LATM", profile);
 	} else {
-		addAudioCodec(payloadType, "MP4A-LATM", "cpresent=1");
+		return addAudioCodec(payloadType, "MP4A-LATM", "cpresent=1");
 	}
 }
 
 Description::Video::Video(string mid, Direction dir)
     : Media("video 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
-void Description::Video::addVideoCodec(int payloadType, string codec, optional<string> profile) {
+RTC_WRAPPED(void) Description::Video::addVideoCodec(int payloadType, string codec, optional<string> profile) {
+	RTC_BEGIN;
 	if (codec.find('/') == string::npos)
 		codec += "/90000";
 
-	RtpMap map(std::to_string(payloadType) + ' ' + codec);
+	RTC_UNWRAP_RETHROW_DECL(RtpMap, map, RtpMap::create(std::to_string(payloadType) + ' ' + codec));
 
 	map.addFeedback("nack");
 	map.addFeedback("nack pli");
@@ -1194,26 +1243,27 @@ void Description::Video::addVideoCodec(int payloadType, string codec, optional<s
 	// // TODO rtx-time is how long can a request be stashed for before needing to resend it.
 	// Needs to be parameterized rtx.addAttribute("apt=" + std::to_string(payloadType) +
 	// ";rtx-time=3000"); addFormat(rtx);
+	RTC_RET;
 }
 
-void Description::Video::addH264Codec(int payloadType, optional<string> profile) {
-	addVideoCodec(payloadType, "H264", profile);
+RTC_WRAPPED(void) Description::Video::addH264Codec(int payloadType, optional<string> profile) {
+	return addVideoCodec(payloadType, "H264", profile);
 }
 
-void Description::Video::addH265Codec(int payloadType, optional<string> profile) {
-	addVideoCodec(payloadType, "H265", profile);
+RTC_WRAPPED(void) Description::Video::addH265Codec(int payloadType, optional<string> profile) {
+	return addVideoCodec(payloadType, "H265", profile);
 }
 
-void Description::Video::addVP8Codec(int payloadType, optional<string> profile) {
-	addVideoCodec(payloadType, "VP8", profile);
+RTC_WRAPPED(void) Description::Video::addVP8Codec(int payloadType, optional<string> profile) {
+	return addVideoCodec(payloadType, "VP8", profile);
 }
 
-void Description::Video::addVP9Codec(int payloadType, optional<string> profile) {
-	addVideoCodec(payloadType, "VP9", profile);
+RTC_WRAPPED(void) Description::Video::addVP9Codec(int payloadType, optional<string> profile) {
+	return addVideoCodec(payloadType, "VP9", profile);
 }
 
-void Description::Video::addAV1Codec(int payloadType, optional<string> profile) {
-	addVideoCodec(payloadType, "AV1", profile);
+RTC_WRAPPED(void) Description::Video::addAV1Codec(int payloadType, optional<string> profile) {
+	return addVideoCodec(payloadType, "AV1", profile);
 }
 
 Description::Type Description::stringToType(const string &typeString) {

@@ -33,8 +33,8 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 
 	void close();
 	void remoteClose();
-	bool outgoing(message_ptr message);
-	void incoming(message_ptr message);
+	RTC_WRAPPED(bool) outgoing(message_ptr message);
+	RTC_WRAPPED(void) incoming(message_ptr message);
 
 	optional<message_variant> receive() override;
 	optional<message_variant> peek() override;
@@ -49,9 +49,9 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	bool isClosed(void) const;
 	size_t maxMessageSize() const;
 
-	virtual void assignStream(uint16_t stream);
-	virtual void open(shared_ptr<SctpTransport> transport);
-	virtual void processOpenMessage(message_ptr);
+	virtual RTC_WRAPPED(void) assignStream(uint16_t stream);
+	virtual RTC_WRAPPED(void) open(shared_ptr<SctpTransport> transport);
+	virtual RTC_WRAPPED(void) processOpenMessage(message_ptr);
 
 protected:
 	const weak_ptr<impl::PeerConnection> mPeerConnection;
@@ -76,16 +76,16 @@ struct OutgoingDataChannel final : public DataChannel {
 	                    Reliability reliability);
 	~OutgoingDataChannel();
 
-	void open(shared_ptr<SctpTransport> transport) override;
-	void processOpenMessage(message_ptr message) override;
+	RTC_WRAPPED(void) open(shared_ptr<SctpTransport> transport) override;
+	RTC_WRAPPED(void) processOpenMessage(message_ptr message) override;
 };
 
 struct IncomingDataChannel final : public DataChannel {
 	IncomingDataChannel(weak_ptr<PeerConnection> pc, weak_ptr<SctpTransport> transport);
 	~IncomingDataChannel();
 
-	void open(shared_ptr<SctpTransport> transport) override;
-	void processOpenMessage(message_ptr message) override;
+	RTC_WRAPPED(void) open(shared_ptr<SctpTransport> transport) override;
+	RTC_WRAPPED(void) processOpenMessage(message_ptr message) override;
 };
 
 } // namespace rtc::impl

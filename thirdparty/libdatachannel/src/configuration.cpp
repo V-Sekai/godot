@@ -7,10 +7,13 @@
  */
 
 #include "configuration.hpp"
+#include "rtp.hpp"
 
+#include "impl/internals.hpp"
 #include "impl/utils.hpp"
 
 #include <cassert>
+#include <cstdlib>
 #include <regex>
 
 namespace {
@@ -42,8 +45,10 @@ namespace utils = impl::utils;
 
 IceServer::IceServer(const string &url) {
 	std::vector<optional<string>> opt;
-	if (!parse_url(url, opt))
-		throw std::invalid_argument("Invalid ICE server URL: " + url);
+	if (!parse_url(url, opt)) {
+		PLOG_WARNING << "Invalid ICE server URL: " << url;
+		return;
+	}
 
 	string scheme = opt[2].value_or("stun");
 	relayType = RelayType::TurnUdp;
@@ -54,8 +59,10 @@ IceServer::IceServer(const string &url) {
 	else if (scheme == "turns" || scheme == "TURNS") {
 		type = Type::Turn;
 		relayType = RelayType::TurnTls;
-	} else
-		throw std::invalid_argument("Unknown ICE server protocol: " + scheme);
+	} else {
+		type = Type::Turn;
+		PLOG_WARNING << "Unknown ICE server protocol: " << scheme;
+	}
 
 	if (auto &query = opt[15]) {
 		if (query->find("transport=udp") != string::npos)
@@ -79,10 +86,11 @@ IceServer::IceServer(const string &url) {
 	}
 
 	string service = opt[12].value_or(relayType == RelayType::TurnTls ? "5349" : "3478");
-	try {
-		port = uint16_t(std::stoul(service));
-	} catch (...) {
-		throw std::invalid_argument("Invalid ICE server port in URL: " + service);
+	{
+		port = uint16_t(std::strtoul(service.c_str(), nullptr, 10));
+	}
+	if (port == 0) {
+		PLOG_WARNING << "Invalid ICE server port in URL: " << service;
 	}
 }
 
@@ -91,10 +99,11 @@ IceServer::IceServer(string hostname_, uint16_t port_)
 
 IceServer::IceServer(string hostname_, string service_)
     : hostname(std::move(hostname_)), type(Type::Stun) {
-	try {
-		port = uint16_t(std::stoul(service_));
-	} catch (...) {
-		throw std::invalid_argument("Invalid ICE server port: " + service_);
+	{
+		port = uint16_t(std::strtoul(service_.c_str(), nullptr, 10));
+	}
+	if (port == 0) {
+		PLOG_WARNING << "Invalid ICE server port: " << service_;
 	}
 }
 
@@ -107,25 +116,30 @@ IceServer::IceServer(string hostname_, string service_, string username_, string
                      RelayType relayType_)
     : hostname(std::move(hostname_)), type(Type::Turn), username(std::move(username_)),
       password(std::move(password_)), relayType(relayType_) {
-	try {
-		port = uint16_t(std::stoul(service_));
-	} catch (...) {
-		throw std::invalid_argument("Invalid ICE server port: " + service_);
+	{
+		port = uint16_t(std::strtoul(service_.c_str(), nullptr, 10));
+	}
+	if (port == 0) {
+		PLOG_WARNING << "Invalid ICE server port : " << service_;
 	}
 }
 
 ProxyServer::ProxyServer(const string &url) {
 	std::vector<optional<string>> opt;
-	if (!parse_url(url, opt))
-		throw std::invalid_argument("Invalid proxy server URL: " + url);
+	if (!parse_url(url, opt)) {
+		PLOG_WARNING << "Invalid proxy server URL: " << url;
+		return;
+	}
 
 	string scheme = opt[2].value_or("http");
 	if (scheme == "http" || scheme == "HTTP")
 		type = Type::Http;
 	else if (scheme == "socks5" || scheme == "SOCKS5")
 		type = Type::Socks5;
-	else
-		throw std::invalid_argument("Unknown proxy server protocol: " + scheme);
+	else {
+		type = Type::Http;
+		PLOG_WARNING << "Unknown proxy server protocol: " << scheme;
+	}
 
 	username = opt[6];
 	password = opt[8];
@@ -137,10 +151,11 @@ ProxyServer::ProxyServer(const string &url) {
 		hostname.pop_back();
 
 	string service = opt[12].value_or(type == Type::Socks5 ? "1080" : "3128");
-	try {
-		port = uint16_t(std::stoul(service));
-	} catch (...) {
-		throw std::invalid_argument("Invalid proxy server port in URL: " + service);
+	{
+		port = uint16_t(std::strtoul(service.c_str(), nullptr, 10));
+	}
+	if (port == 0) {
+		PLOG_WARNING << "Invalid proxy server port in URL: " << service;
 	}
 }
 

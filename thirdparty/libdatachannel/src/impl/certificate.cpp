@@ -49,7 +49,7 @@ Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_
 	return Certificate(std::move(creds));
 }
 
-Certificate Certificate::Generate(CertificateType type, const string &commonName) {
+RTC_WRAPPED(Certificate) Certificate::Generate(CertificateType type, const string &commonName) {
 	PLOG_DEBUG << "Generating certificate (GnuTLS)";
 
 	using namespace gnutls;
@@ -76,7 +76,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		break;
 	}
 	default:
-		throw std::invalid_argument("Unknown certificate type");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unknown certificate type");
 	}
 
 	using namespace std::chrono;
@@ -154,7 +154,7 @@ string make_fingerprint(mbedtls_x509_crt *crt) {
 	uint8_t buffer[size];
 	std::stringstream fingerprint;
 
-	mbedtls::check(
+	(void)mbedtls::check(
 	    mbedtls_sha256(crt->raw.p, crt->raw.len, reinterpret_cast<unsigned char *>(buffer), 0),
 	    "Failed to generate certificate fingerprint");
 
@@ -171,40 +171,42 @@ string make_fingerprint(mbedtls_x509_crt *crt) {
 Certificate::Certificate(shared_ptr<mbedtls_x509_crt> crt, shared_ptr<mbedtls_pk_context> pk)
     : mCrt(crt), mPk(pk), mFingerprint(make_fingerprint(crt.get())) {}
 
-Certificate Certificate::FromString(string crt_pem, string key_pem) {
+RTC_WRAPPED(Certificate) Certificate::FromString(string crt_pem, string key_pem) {
+	RTC_BEGIN;
 	PLOG_DEBUG << "Importing certificate from PEM string (MbedTLS)";
 
 	auto crt = mbedtls::new_x509_crt();
 	auto pk = mbedtls::new_pk_context();
 
-	mbedtls::check(mbedtls_x509_crt_parse(crt.get(),
+	RTC_UNWRAP_RETHROW(mbedtls::check(mbedtls_x509_crt_parse(crt.get(),
 	                                      reinterpret_cast<const unsigned char *>(crt_pem.c_str()),
 	                                      crt_pem.length()),
-	               "Failed to parse certificate");
-	mbedtls::check(mbedtls_pk_parse_key(pk.get(),
+	               "Failed to parse certificate"));
+	RTC_UNWRAP_RETHROW(mbedtls::check(mbedtls_pk_parse_key(pk.get(),
 	                                    reinterpret_cast<const unsigned char *>(key_pem.c_str()),
 	                                    key_pem.size(), NULL, 0, NULL, 0),
-	               "Failed to parse key");
+	               "Failed to parse key"));
 
 	return Certificate(std::move(crt), std::move(pk));
 }
 
-Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
+RTC_WRAPPED(Certificate) Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
                                   const string &pass) {
+	RTC_BEGIN;
 	PLOG_DEBUG << "Importing certificate from PEM file (MbedTLS): " << crt_pem_file;
 
 	auto crt = mbedtls::new_x509_crt();
 	auto pk = mbedtls::new_pk_context();
 
-	mbedtls::check(mbedtls_x509_crt_parse_file(crt.get(), crt_pem_file.c_str()),
-	               "Failed to parse certificate");
-	mbedtls::check(mbedtls_pk_parse_keyfile(pk.get(), key_pem_file.c_str(), pass.c_str(), 0, NULL),
-	               "Failed to parse key");
+	RTC_UNWRAP_RETHROW(mbedtls::check(mbedtls_x509_crt_parse_file(crt.get(), crt_pem_file.c_str()),
+	               "Failed to parse certificate"));
+	RTC_UNWRAP_RETHROW(mbedtls::check(mbedtls_pk_parse_keyfile(pk.get(), key_pem_file.c_str(), pass.c_str(), 0, NULL),
+	               "Failed to parse key"));
 
 	return Certificate(std::move(crt), std::move(pk));
 }
 
-Certificate Certificate::Generate(CertificateType type, const string &commonName) {
+RTC_WRAPPED(Certificate) Certificate::Generate(CertificateType type, const string &commonName) {
 	PLOG_DEBUG << "Generating certificate (MbedTLS)";
 
 	mbedtls_entropy_context entropy;
@@ -220,10 +222,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	mbedtls_x509write_crt_init(&wcrt);
 	mbedtls_mpi_init(&serial);
 
-	try {
-		mbedtls::check(mbedtls_ctr_drbg_seed(
+	RTC_TRY {
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_ctr_drbg_seed(
 		    &drbg, mbedtls_entropy_func, &entropy,
-		    reinterpret_cast<const unsigned char *>(commonName.data()), commonName.size()));
+		    reinterpret_cast<const unsigned char *>(commonName.data()), commonName.size())));
 
 		switch (type) {
 		// RFC 8827 WebRTC Security Architecture 6.5. Communications Security
@@ -232,47 +234,47 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
 		case CertificateType::Default:
 		case CertificateType::Ecdsa: {
-			mbedtls::check(mbedtls_pk_setup(pk.get(), mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)));
-			mbedtls::check(mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(*pk.get()),
+			RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_pk_setup(pk.get(), mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY))));
+			RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(*pk.get()),
 			                                   mbedtls_ctr_drbg_random, &drbg),
-			               "Unable to generate ECDSA P-256 key pair");
+			               "Unable to generate ECDSA P-256 key pair"));
 			break;
 		}
 		case CertificateType::Rsa: {
 			const unsigned int nbits = 2048;
 			const int exponent = 65537;
 
-			mbedtls::check(mbedtls_pk_setup(pk.get(), mbedtls_pk_info_from_type(MBEDTLS_PK_RSA)));
-			mbedtls::check(mbedtls_rsa_gen_key(mbedtls_pk_rsa(*pk.get()), mbedtls_ctr_drbg_random,
+			RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_pk_setup(pk.get(), mbedtls_pk_info_from_type(MBEDTLS_PK_RSA))));
+			RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_rsa_gen_key(mbedtls_pk_rsa(*pk.get()), mbedtls_ctr_drbg_random,
 			                                   &drbg, nbits, exponent),
-			               "Unable to generate RSA key pair");
+			               "Unable to generate RSA key pair"));
 			break;
 		}
 		default:
-			throw std::invalid_argument("Unknown certificate type");
+			RTC_THROW_WITHIN(RTC_INVALID_ARGUMENT("Unknown certificate type"));
 		}
 
 		auto now = std::chrono::system_clock::now();
-		string notBefore = mbedtls::format_time(now - std::chrono::hours(1));
-		string notAfter = mbedtls::format_time(now + std::chrono::hours(24 * 365));
+		RTC_UNWRAP_CATCH_DECL(string, notBefore, mbedtls::format_time(now - std::chrono::hours(1)));
+		RTC_UNWRAP_CATCH_DECL(string, notAfter, mbedtls::format_time(now + std::chrono::hours(24 * 365)));
 
 		const size_t serialBufferSize = 16;
 		unsigned char serialBuffer[serialBufferSize];
-		mbedtls::check(mbedtls_ctr_drbg_random(&drbg, serialBuffer, serialBufferSize),
-		               "Failed to generate certificate");
-		mbedtls::check(mbedtls_mpi_read_binary(&serial, serialBuffer, serialBufferSize),
-		               "Failed to generate certificate");
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_ctr_drbg_random(&drbg, serialBuffer, serialBufferSize),
+		               "Failed to generate certificate"));
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_mpi_read_binary(&serial, serialBuffer, serialBufferSize),
+		               "Failed to generate certificate"));
 
 		std::string name = std::string("O=" + commonName + ",CN=" + commonName);
-		mbedtls::check(mbedtls_x509write_crt_set_serial(&wcrt, &serial),
-		               "Failed to generate certificate");
-		mbedtls::check(mbedtls_x509write_crt_set_subject_name(&wcrt, name.c_str()),
-		               "Failed to generate certificate");
-		mbedtls::check(mbedtls_x509write_crt_set_issuer_name(&wcrt, name.c_str()),
-		               "Failed to generate certificate");
-		mbedtls::check(
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_x509write_crt_set_serial_raw(&wcrt, serialBuffer, serialBufferSize),
+		               "Failed to generate certificate"));
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_x509write_crt_set_subject_name(&wcrt, name.c_str()),
+		               "Failed to generate certificate"));
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_x509write_crt_set_issuer_name(&wcrt, name.c_str()),
+		               "Failed to generate certificate"));
+		RTC_UNWRAP_CATCH(mbedtls::check(
 		    mbedtls_x509write_crt_set_validity(&wcrt, notBefore.c_str(), notAfter.c_str()),
-		    "Failed to generate certificate");
+		    "Failed to generate certificate"));
 
 		mbedtls_x509write_crt_set_version(&wcrt, MBEDTLS_X509_CRT_VERSION_3);
 		mbedtls_x509write_crt_set_subject_key(&wcrt, pk.get());
@@ -286,19 +288,19 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		auto certificateLen = mbedtls_x509write_crt_der(
 		    &wcrt, certificateBuffer, certificateBufferSize, mbedtls_ctr_drbg_random, &drbg);
 		if (certificateLen <= 0) {
-			throw std::runtime_error("Certificate generation failed");
+			RTC_THROW_WITHIN(RTC_RUNTIME_ERROR("Certificate generation failed"));
 		}
 
-		mbedtls::check(mbedtls_x509_crt_parse_der(
+		RTC_UNWRAP_CATCH(mbedtls::check(mbedtls_x509_crt_parse_der(
 		                   crt.get(), (certificateBuffer + certificateBufferSize - certificateLen),
 		                   certificateLen),
-		               "Failed to generate certificate");
-	} catch (...) {
+		               "Failed to generate certificate"));
+	} RTC_CATCH (...) {
 		mbedtls_entropy_free(&entropy);
 		mbedtls_ctr_drbg_free(&drbg);
 		mbedtls_x509write_crt_free(&wcrt);
 		mbedtls_mpi_free(&serial);
-		throw;
+		RTC_RETHROW;
 	}
 
 	mbedtls_entropy_free(&entropy);
@@ -329,7 +331,7 @@ int dummy_pass_cb(char *buf, int size, int /*rwflag*/, void *u) {
 
 } // namespace
 
-Certificate Certificate::FromString(string crt_pem, string key_pem) {
+RTC_WRAPPED(Certificate) Certificate::FromString(string crt_pem, string key_pem) {
 	PLOG_DEBUG << "Importing certificate from PEM string (OpenSSL)";
 
 	BIO *bio = BIO_new(BIO_s_mem());
@@ -337,7 +339,7 @@ Certificate Certificate::FromString(string crt_pem, string key_pem) {
 	auto x509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free);
 	BIO_free(bio);
 	if (!x509)
-		throw std::invalid_argument("Unable to import PEM certificate");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unable to import PEM certificate");
 
 	bio = BIO_new(BIO_s_mem());
 	BIO_write(bio, key_pem.data(), int(key_pem.size()));
@@ -345,46 +347,46 @@ Certificate Certificate::FromString(string crt_pem, string key_pem) {
 	                                 EVP_PKEY_free);
 	BIO_free(bio);
 	if (!pkey)
-		throw std::invalid_argument("Unable to import PEM key");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unable to import PEM key");
 
 	return Certificate(x509, pkey);
 }
 
-Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
+RTC_WRAPPED(Certificate) Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
                                   const string &pass) {
 	PLOG_DEBUG << "Importing certificate from PEM file (OpenSSL): " << crt_pem_file;
 
 	BIO *bio = openssl::BIO_new_from_file(crt_pem_file);
 	if (!bio)
-		throw std::invalid_argument("Unable to open PEM certificate file");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unable to open PEM certificate file");
 
 	auto x509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free);
 	BIO_free(bio);
 	if (!x509)
-		throw std::invalid_argument("Unable to import PEM certificate from file");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unable to import PEM certificate from file");
 
 	bio = openssl::BIO_new_from_file(key_pem_file);
 	if (!bio)
-		throw std::invalid_argument("Unable to open PEM key file");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unable to open PEM key file");
 
 	auto pkey = shared_ptr<EVP_PKEY>(
 	    PEM_read_bio_PrivateKey(bio, nullptr, dummy_pass_cb, const_cast<char *>(pass.c_str())),
 	    EVP_PKEY_free);
 	BIO_free(bio);
 	if (!pkey)
-		throw std::invalid_argument("Unable to import PEM key from file");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unable to import PEM key from file");
 
 	return Certificate(x509, pkey);
 }
 
-Certificate Certificate::Generate(CertificateType type, const string &commonName) {
+RTC_WRAPPED(Certificate) Certificate::Generate(CertificateType type, const string &commonName) {
 	PLOG_DEBUG << "Generating certificate (OpenSSL)";
 
 	shared_ptr<X509> x509(X509_new(), X509_free);
 	unique_ptr<BIGNUM, decltype(&BN_free)> serial_number(BN_new(), BN_free);
 	unique_ptr<X509_NAME, decltype(&X509_NAME_free)> name(X509_NAME_new(), X509_NAME_free);
 	if (!x509 || !serial_number || !name)
-		throw std::runtime_error("Unable to allocate structures for certificate generation");
+		RTC_THROW RTC_RUNTIME_ERROR("Unable to allocate structures for certificate generation");
 
 	shared_ptr<EVP_PKEY> pkey;
 	switch (type) {
@@ -402,7 +404,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		unique_ptr<EC_KEY, decltype(&EC_KEY_free)> ecc(
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
 		if (!pkey || !ecc)
-			throw std::runtime_error("Unable to allocate structure for ECDSA P-256 key pair");
+			RTC_THROW RTC_RUNTIME_ERROR("Unable to allocate structure for ECDSA P-256 key pair");
 
 		EC_KEY_set_asn1_flag(ecc.get(), OPENSSL_EC_NAMED_CURVE); // Set ASN1 OID
 		if (!EC_KEY_generate_key(ecc.get()) ||
@@ -410,7 +412,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		                            ecc.release())) // the key will be freed when pkey is freed
 #endif
 		if (!pkey)
-			throw std::runtime_error("Unable to generate ECDSA P-256 key pair");
+			RTC_THROW RTC_RUNTIME_ERROR("Unable to generate ECDSA P-256 key pair");
 
 		break;
 	}
@@ -424,7 +426,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
 		unique_ptr<BIGNUM, decltype(&BN_free)> exponent(BN_new(), BN_free);
 		if (!pkey || !rsa || !exponent)
-			throw std::runtime_error("Unable to allocate structures for RSA key pair");
+			RTC_THROW RTC_RUNTIME_ERROR("Unable to allocate structures for RSA key pair");
 
 		const unsigned int e = 65537; // 2^16 + 1
 		if (!BN_set_word(exponent.get(), e) ||
@@ -433,12 +435,12 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		                         rsa.release())) // the key will be freed when pkey is freed
 #endif
 		if (!pkey)
-			throw std::runtime_error("Unable to generate RSA key pair");
+			RTC_THROW RTC_RUNTIME_ERROR("Unable to generate RSA key pair");
 
 		break;
 	}
 	default:
-		throw std::invalid_argument("Unknown certificate type");
+		RTC_THROW RTC_INVALID_ARGUMENT("Unknown certificate type");
 	}
 
 	const size_t serialSize = 16;
@@ -446,7 +448,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	    reinterpret_cast<unsigned char *>(const_cast<char *>(commonName.c_str()));
 
 	if (!X509_set_pubkey(x509.get(), pkey.get()))
-		throw std::runtime_error("Unable to set certificate public key");
+		RTC_THROW RTC_RUNTIME_ERROR("Unable to set certificate public key");
 
 	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
@@ -456,10 +458,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	                                -1, 0) ||
 	    !X509_set_subject_name(x509.get(), name.get()) ||
 	    !X509_set_issuer_name(x509.get(), name.get()))
-		throw std::runtime_error("Unable to set certificate properties");
+		RTC_THROW RTC_RUNTIME_ERROR("Unable to set certificate properties");
 
 	if (!X509_sign(x509.get(), pkey.get(), EVP_sha256()))
-		throw std::runtime_error("Unable to auto-sign certificate");
+		RTC_THROW RTC_RUNTIME_ERROR("Unable to auto-sign certificate");
 
 	return Certificate(x509, pkey);
 }
@@ -471,12 +473,12 @@ std::tuple<X509 *, EVP_PKEY *> Certificate::credentials() const {
 	return {mX509.get(), mPKey.get()};
 }
 
-string make_fingerprint(X509 *x509) {
+RTC_WRAPPED(string) make_fingerprint(X509 *x509) {
 	const size_t size = 32;
 	unsigned char buffer[size];
 	unsigned int len = size;
 	if (!X509_digest(x509, EVP_sha256(), buffer, &len))
-		throw std::runtime_error("X509 fingerprint error");
+		RTC_THROW RTC_RUNTIME_ERROR("X509 fingerprint error");
 
 	std::ostringstream oss;
 	oss << std::hex << std::uppercase << std::setfill('0');
@@ -493,8 +495,10 @@ string make_fingerprint(X509 *x509) {
 // Common for GnuTLS, Mbed TLS, and OpenSSL
 
 future_certificate_ptr make_certificate(CertificateType type) {
-	return ThreadPool::Instance().enqueue([type, token = Init::Instance().token()]() {
-		return std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
+	return ThreadPool::Instance().enqueue([type, token = Init::Instance().token()]() -> RTC_WRAPPED(certificate_ptr) {
+		RTC_BEGIN;
+		RTC_UNWRAP_RETHROW_DECL(auto, tmp, Certificate::Generate(type, "libdatachannel"));
+		return std::make_shared<Certificate>(tmp);
 	});
 }
 
