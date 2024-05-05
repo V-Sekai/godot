@@ -62,15 +62,11 @@ string url_decode(const string &str) {
 		char c = str[i++];
 		if (c == '%') {
 			auto value = str.substr(i, 2);
-			try {
-				if (value.size() != 2 || !std::isxdigit(value[0]) || !std::isxdigit(value[1]))
-					throw std::exception();
-
+			if (value.size() != 2 || !std::isxdigit(value[0]) || !std::isxdigit(value[1])) {
+				PLOG_WARNING << "Invalid percent-encoded character in URL: \"%" + value + "\"";
+			} else {
 				c = static_cast<char>(std::stoi(value, nullptr, 16));
 				i += 2;
-
-			} catch (...) {
-				PLOG_WARNING << "Invalid percent-encoded character in URL: \"%" + value + "\"";
 			}
 		}
 
@@ -119,14 +115,10 @@ std::seed_seq random_seed() {
 	std::vector<unsigned int> seed;
 
 	// Seed with random device
-	try {
-		// On some systems an exception might be thrown if the random_device can't be initialized
-		std::random_device device;
-		// 128 bits should be more than enough
-		std::generate_n(std::back_inserter(seed), 4, std::ref(device));
-	} catch (...) {
-		// Ignore
-	}
+	// On some systems an exception might be thrown if the random_device can't be initialized
+	std::random_device device;
+	// 128 bits should be more than enough
+	std::generate_n(std::back_inserter(seed), 4, std::ref(device));
 
 	// Seed with high-resolution clock
 	using std::chrono::high_resolution_clock;

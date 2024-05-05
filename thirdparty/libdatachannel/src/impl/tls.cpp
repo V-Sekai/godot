@@ -16,12 +16,12 @@
 namespace rtc::gnutls {
 
 // Return false on non-fatal error
-bool check(int ret, const string &message) {
+RTC_WRAPPED(bool) check(int ret, const string &message) {
 	if (ret < 0) {
 		if (!gnutls_error_is_fatal(ret)) {
 			return false;
 		}
-		throw std::runtime_error(message + ": " + gnutls_strerror(ret));
+		RTC_THROW RTC_RUNTIME_ERROR(message + ": " + gnutls_strerror(ret));
 	}
 	return true;
 }
@@ -97,7 +97,7 @@ size_t my_strftme(char *buf, size_t size, const char *format, const time_t *t) {
 namespace rtc::mbedtls {
 
 // Return false on non-fatal error
-bool check(int ret, const string &message) {
+RTC_WRAPPED(bool) check(int ret, const string &message) {
 	if (ret < 0) {
 		if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
 		    ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS || ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS ||
@@ -107,17 +107,17 @@ bool check(int ret, const string &message) {
 		// const size_t bufferSize = 1024;
 		// char buffer[bufferSize];
 		// mbedtls_strerror(ret, reinterpret_cast<char *>(buffer), bufferSize);
-		throw std::runtime_error(message + ": Error " + std::to_string(ret));
+		RTC_THROW RTC_RUNTIME_ERROR(message + ": Error " + std::to_string(ret));
 	}
 	return true;
 }
 
-string format_time(const std::chrono::system_clock::time_point &tp) {
+RTC_WRAPPED(string) format_time(const std::chrono::system_clock::time_point &tp) {
 	time_t t = std::chrono::system_clock::to_time_t(tp);
 	const size_t bufferSize = 256;
 	char buffer[bufferSize];
 	if (my_strftme(buffer, bufferSize, "%Y%m%d%H%M%S", &t) == 0)
-		throw std::runtime_error("Time conversion failed");
+		RTC_THROW RTC_RUNTIME_ERROR("Time conversion failed");
 
 	return string(buffer);
 };
@@ -170,18 +170,18 @@ string error_string(unsigned long error) {
 	return string(buffer);
 }
 
-bool check(int success, const string &message) {
+RTC_WRAPPED(bool) check(int success, const string &message) {
 	unsigned long last_error = ERR_peek_last_error();
 	ERR_clear_error();
 
 	if (success > 0)
 		return true;
 
-	throw std::runtime_error(message + (last_error != 0 ? ": " + error_string(last_error) : ""));
+	RTC_THROW RTC_RUNTIME_ERROR(message + (last_error != 0 ? ": " + error_string(last_error) : ""));
 }
 
 // Return false on recoverable error
-bool check_error(int err, const string &message) {
+RTC_WRAPPED(bool) check_error(int err, const string &message) {
 	unsigned long last_error = ERR_peek_last_error();
 	ERR_clear_error();
 
@@ -189,13 +189,13 @@ bool check_error(int err, const string &message) {
 		return true;
 
 	if (err == SSL_ERROR_ZERO_RETURN)
-		throw std::runtime_error(message + ": peer closed connection");
+		RTC_THROW RTC_RUNTIME_ERROR(message + ": peer closed connection");
 
 	if (err == SSL_ERROR_SYSCALL)
-		throw std::runtime_error(message + ": fatal I/O error");
+		RTC_THROW RTC_RUNTIME_ERROR(message + ": fatal I/O error");
 
 	if (err == SSL_ERROR_SSL)
-		throw std::runtime_error(message +
+		RTC_THROW RTC_RUNTIME_ERROR(message +
 		                         (last_error != 0 ? ": " + error_string(last_error) : ""));
 
 	// SSL_ERROR_WANT_READ and SSL_ERROR_WANT_WRITE end up here
@@ -204,7 +204,7 @@ bool check_error(int err, const string &message) {
 
 BIO *BIO_new_from_file(const string &filename) {
 	BIO *bio = nullptr;
-	try {
+	RTC_TRY {
 		std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
 		if (!ifs.is_open())
 			return nullptr;
@@ -220,7 +220,7 @@ BIO *BIO_new_from_file(const string &filename) {
 		ifs.close();
 		return bio;
 
-	} catch (const std::exception &) {
+	} RTC_CATCH (const RTC_EXCEPTION &) {
 		BIO_free(bio);
 		return nullptr;
 	}

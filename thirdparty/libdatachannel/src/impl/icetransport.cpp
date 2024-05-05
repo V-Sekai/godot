@@ -46,7 +46,7 @@ void IceTransport::Cleanup() {
 	// Dummy
 }
 
-IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
+IceTransport::IceTransport(candidate_callback candidateCallback,
                            state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
     : Transport(nullptr, std::move(stateChangeCallback)), mRole(Description::Role::ActPass),
@@ -54,7 +54,9 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
       mCandidateCallback(std::move(candidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
       mAgent(nullptr, nullptr) {
+}
 
+RTC_WRAPPED(void) IceTransport::construct(const Configuration &config) {
 	PLOG_DEBUG << "Initializing ICE transport (libjuice)";
 
 	juice_log_level_t level;
@@ -153,7 +155,8 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	// Create agent
 	mAgent = decltype(mAgent)(juice_create(&jconfig), juice_destroy);
 	if (!mAgent)
-		throw std::runtime_error("Failed to create the ICE agent");
+		RTC_THROW RTC_RUNTIME_ERROR("Failed to create the ICE agent");
+	RTC_RET;
 }
 
 IceTransport::~IceTransport() {
@@ -163,27 +166,28 @@ IceTransport::~IceTransport() {
 
 Description::Role IceTransport::role() const { return mRole; }
 
-Description IceTransport::getLocalDescription(Description::Type type) const {
+RTC_WRAPPED(Description) IceTransport::getLocalDescription(Description::Type type) const {
+	RTC_BEGIN;
 	char sdp[JUICE_MAX_SDP_STRING_LEN];
 	if (juice_get_local_description(mAgent.get(), sdp, JUICE_MAX_SDP_STRING_LEN) < 0)
-		throw std::runtime_error("Failed to generate local SDP");
+		RTC_THROW RTC_RUNTIME_ERROR("Failed to generate local SDP");
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 	// setup:actpass.
 	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
-	Description desc(string(sdp), type,
-	                 type == Description::Type::Offer ? Description::Role::ActPass : mRole);
+	RTC_UNWRAP_RETHROW_DECL(Description, desc, Description::create(string(sdp), type,
+	                 type == Description::Type::Offer ? Description::Role::ActPass : mRole));
 	desc.addIceOption("trickle");
 	return desc;
 }
 
-void IceTransport::setRemoteDescription(const Description &description) {
+RTC_WRAPPED(void) IceTransport::setRemoteDescription(const Description &description) {
 	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
 	// setup:passive.
 	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
 	if (description.type() == Description::Type::Answer &&
 	    description.role() == Description::Role::ActPass)
-		throw std::invalid_argument("Illegal role actpass in remote answer description");
+		RTC_THROW RTC_INVALID_ARGUMENT("Illegal role actpass in remote answer description");
 
 	// RFC 5763: Note that if the answerer uses setup:passive, then the DTLS handshake
 	// will not begin until the answerer is received, which adds additional latency.
@@ -194,31 +198,33 @@ void IceTransport::setRemoteDescription(const Description &description) {
 		                                                        : Description::Role::Active;
 
 	if (mRole == description.role())
-		throw std::invalid_argument("Incompatible roles with remote description");
+		RTC_THROW RTC_INVALID_ARGUMENT("Incompatible roles with remote description");
 
 	mMid = description.bundleMid();
 	if (juice_set_remote_description(mAgent.get(),
 	                                 description.generateApplicationSdp("\r\n").c_str()) < 0)
-		throw std::invalid_argument("Invalid ICE settings from remote SDP");
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid ICE settings from remote SDP");
+	RTC_RET;
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
-	// Don't try to pass unresolved candidates for more safety
+	// Don't RTC_TRY to pass unresolved candidates for more safety
 	if (!candidate.isResolved())
 		return false;
 
 	return juice_add_remote_candidate(mAgent.get(), string(candidate).c_str()) >= 0;
 }
 
-void IceTransport::gatherLocalCandidates(string mid) {
+RTC_WRAPPED(void) IceTransport::gatherLocalCandidates(string mid) {
 	mMid = std::move(mid);
 
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);
 
 	if (juice_gather_candidates(mAgent.get()) < 0) {
-		throw std::runtime_error("Failed to gather local ICE candidates");
+		RTC_THROW RTC_RUNTIME_ERROR("Failed to gather local ICE candidates");
 	}
+	RTC_RET;
 }
 
 optional<string> IceTransport::getLocalAddress() const {
@@ -238,17 +244,18 @@ optional<string> IceTransport::getRemoteAddress() const {
 	return nullopt;
 }
 
-bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+RTC_WRAPPED(bool) IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+	RTC_BEGIN;
 	char sdpLocal[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
 	char sdpRemote[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
 	if (juice_get_selected_candidates(mAgent.get(), sdpLocal, JUICE_MAX_CANDIDATE_SDP_STRING_LEN,
 	                                  sdpRemote, JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0) {
 		if (local) {
-			*local = Candidate(sdpLocal, mMid);
+			RTC_UNWRAP_RETHROW_VAR(*local, Candidate::create(sdpLocal, mMid));
 			local->resolve(Candidate::ResolveMode::Simple);
 		}
 		if (remote) {
-			*remote = Candidate(sdpRemote, mMid);
+			RTC_UNWRAP_RETHROW_VAR(*remote, Candidate::create(sdpRemote, mMid));
 			remote->resolve(Candidate::ResolveMode::Simple);
 		}
 		return true;
@@ -256,7 +263,7 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 	return false;
 }
 
-bool IceTransport::send(message_ptr message) {
+RTC_WRAPPED(bool) IceTransport::send(message_ptr message) {
 	auto s = state();
 	if (!message || (s != State::Connected && s != State::Completed))
 		return false;
@@ -265,7 +272,7 @@ bool IceTransport::send(message_ptr message) {
 	return outgoing(message);
 }
 
-bool IceTransport::outgoing(message_ptr message) {
+RTC_WRAPPED(bool) IceTransport::outgoing(message_ptr message) {
 	// Explicit Congestion Notification takes the least-significant 2 bits of the DS field
 	int ds = int(message->dscp << 2);
 	return juice_send_diffserv(mAgent.get(), reinterpret_cast<const char *>(message->data()),
@@ -297,47 +304,50 @@ void IceTransport::processStateChange(unsigned int state) {
 	};
 }
 
-void IceTransport::processCandidate(const string &candidate) {
-	mCandidateCallback(Candidate(candidate, mMid));
+RTC_WRAPPED(void) IceTransport::processCandidate(const string &candidate) {
+	RTC_BEGIN;
+	RTC_UNWRAP_RETHROW_DECL(Candidate, tmp, Candidate::create(candidate, mMid));
+	RTC_UNWRAP_RETHROW(mCandidateCallback(tmp));
+	RTC_RET;
 }
 
 void IceTransport::processGatheringDone() { changeGatheringState(GatheringState::Complete); }
 
 void IceTransport::StateChangeCallback(juice_agent_t *, juice_state_t state, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(user_ptr);
-	try {
+	RTC_TRY {
 		iceTransport->processStateChange(static_cast<unsigned int>(state));
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 void IceTransport::CandidateCallback(juice_agent_t *, const char *sdp, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(user_ptr);
-	try {
-		iceTransport->processCandidate(sdp);
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	RTC_TRY {
+		RTC_UNWRAP_CATCH(iceTransport->processCandidate(sdp));
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 void IceTransport::GatheringDoneCallback(juice_agent_t *, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(user_ptr);
-	try {
+	RTC_TRY {
 		iceTransport->processGatheringDone();
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 void IceTransport::RecvCallback(juice_agent_t *, const char *data, size_t size, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(user_ptr);
-	try {
+	RTC_TRY {
 		PLOG_VERBOSE << "Incoming size=" << size;
 		auto b = reinterpret_cast<const byte *>(data);
 		iceTransport->incoming(make_message(b, b + size));
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
@@ -377,7 +387,7 @@ void IceTransport::Init() {
 
 	MainLoop = decltype(MainLoop)(g_main_loop_new(nullptr, FALSE), g_main_loop_unref);
 	if (!MainLoop)
-		throw std::runtime_error("Failed to create the main loop");
+		PLOG_ERROR << "Failed to create the main loop";
 
 	MainLoopThread = std::thread(g_main_loop_run, MainLoop.get());
 }
@@ -397,7 +407,7 @@ static void closeNiceAgent(NiceAgent *niceAgent) {
 	nice_agent_close_async(niceAgent, closeNiceAgentCallback, nullptr);
 }
 
-IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
+IceTransport::IceTransport(candidate_callback candidateCallback,
                            state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
     : Transport(nullptr, std::move(stateChangeCallback)), mRole(Description::Role::ActPass),
@@ -405,11 +415,13 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
       mCandidateCallback(std::move(candidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
       mNiceAgent(nullptr, nullptr), mOutgoingDscp(0) {
+}
 
+RTC_WRAPPED(void) IceTransport::construct(const Configuration &config) {
 	PLOG_DEBUG << "Initializing ICE transport (libnice)";
 
 	if (!MainLoop)
-		throw std::logic_error("Main loop for nice agent is not created");
+		RTC_THROW RTC_LOGIC_ERROR("Main loop for nice agent is not created");
 
 	// RFC 8445: The nomination process that was referred to as "aggressive nomination" in RFC 5245
 	// has been deprecated in this specification.
@@ -426,11 +438,11 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	    closeNiceAgent);
 
 	if (!mNiceAgent)
-		throw std::runtime_error("Failed to create the nice agent");
+		RTC_THROW RTC_RUNTIME_ERROR("Failed to create the nice agent");
 
 	mStreamId = nice_agent_add_stream(mNiceAgent.get(), 1);
 	if (!mStreamId)
-		throw std::runtime_error("Failed to add a stream");
+		RTC_THROW RTC_RUNTIME_ERROR("Failed to add a stream");
 
 	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", TRUE, nullptr); // decided later
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-udp", TRUE, nullptr);
@@ -618,7 +630,7 @@ IceTransport::~IceTransport() {
 
 Description::Role IceTransport::role() const { return mRole; }
 
-Description IceTransport::getLocalDescription(Description::Type type) const {
+RTC_WRAPPED(Description) IceTransport::getLocalDescription(Description::Type type) const {
 	// RFC 8445: The initiating agent that started the ICE processing MUST take the controlling
 	// role, and the other MUST take the controlled role.
 	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode",
@@ -636,13 +648,13 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	return desc;
 }
 
-void IceTransport::setRemoteDescription(const Description &description) {
+RTC_WRAPPED(void) IceTransport::setRemoteDescription(const Description &description) {
 	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
 	// setup:passive.
 	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
 	if (description.type() == Description::Type::Answer &&
 	    description.role() == Description::Role::ActPass)
-		throw std::invalid_argument("Illegal role actpass in remote answer description");
+		RTC_THROW RTC_INVALID_ARGUMENT("Illegal role actpass in remote answer description");
 
 	// RFC 5763: Note that if the answerer uses setup:passive, then the DTLS handshake
 	// will not begin until the answerer is received, which adds additional latency.
@@ -653,7 +665,8 @@ void IceTransport::setRemoteDescription(const Description &description) {
 		                                                        : Description::Role::Active;
 
 	if (mRole == description.role())
-		throw std::invalid_argument("Incompatible roles with remote description");
+		RTC_THROW RTC_INVALID_ARGUMENT("Incompatible roles with remote description");
+		RTC_THROW RTC_INVALID_ARGUMENT("Incompatible roles with remote description");
 
 	mMid = description.bundleMid();
 	mTrickleTimeout = !description.ended() ? 30s : 0s;
@@ -661,11 +674,11 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	// Warning: libnice expects "\n" as end of line
 	if (nice_agent_parse_remote_sdp(mNiceAgent.get(),
 	                                description.generateApplicationSdp("\n").c_str()) < 0)
-		throw std::invalid_argument("Invalid ICE settings from remote SDP");
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid ICE settings from remote SDP");
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
-	// Don't try to pass unresolved candidates to libnice for more safety
+	// Don't RTC_TRY to pass unresolved candidates to libnice for more safety
 	if (!candidate.isResolved())
 		return false;
 
@@ -686,14 +699,14 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	return ret > 0;
 }
 
-void IceTransport::gatherLocalCandidates(string mid) {
+RTC_WRAPPED(void) IceTransport::gatherLocalCandidates(string mid) {
 	mMid = std::move(mid);
 
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);
 
 	if (!nice_agent_gather_candidates(mNiceAgent.get(), mStreamId)) {
-		throw std::runtime_error("Failed to gather local ICE candidates");
+		RTC_THROW RTC_RUNTIME_ERROR("Failed to gather local ICE candidates");
 	}
 }
 
@@ -798,10 +811,10 @@ void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,
                                      gpointer userData) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(userData);
 	gchar *cand = nice_agent_generate_local_candidate_sdp(agent, candidate);
-	try {
+	RTC_TRY {
 		iceTransport->processCandidate(cand);
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 	g_free(cand);
 }
@@ -809,41 +822,41 @@ void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,
 void IceTransport::GatheringDoneCallback(NiceAgent * /*agent*/, guint /*streamId*/,
                                          gpointer userData) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(userData);
-	try {
+	RTC_TRY {
 		iceTransport->processGatheringDone();
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 void IceTransport::StateChangeCallback(NiceAgent * /*agent*/, guint /*streamId*/,
                                        guint /*componentId*/, guint state, gpointer userData) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(userData);
-	try {
+	RTC_TRY {
 		iceTransport->processStateChange(state);
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 void IceTransport::RecvCallback(NiceAgent * /*agent*/, guint /*streamId*/, guint /*componentId*/,
                                 guint len, gchar *buf, gpointer userData) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(userData);
-	try {
+	RTC_TRY {
 		PLOG_VERBOSE << "Incoming size=" << len;
 		auto b = reinterpret_cast<byte *>(buf);
 		iceTransport->incoming(make_message(b, b + len));
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 gboolean IceTransport::TimeoutCallback(gpointer userData) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(userData);
-	try {
+	RTC_TRY {
 		iceTransport->processTimeout();
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 	return FALSE;
 }

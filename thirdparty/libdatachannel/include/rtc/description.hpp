@@ -41,8 +41,12 @@ public:
 		Unknown = RTC_DIRECTION_UNKNOWN
 	};
 
-	Description(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
-	Description(const string &sdp, string typeString);
+private:
+	RTC_WRAPPED_DEFAULT_CONSTRUCTABLE(Description);
+	Description(Type type = Type::Unspec, Role role = Role::ActPass);
+public:
+	static RTC_WRAPPED(Description) create(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
+	static RTC_WRAPPED(Description) create(const string &sdp, string typeString);
 
 	Type type() const;
 	string typeString() const;
@@ -55,7 +59,7 @@ public:
 	bool ended() const;
 
 	void hintType(Type type);
-	void setFingerprint(string fingerprint);
+	RTC_WRAPPED(void) setFingerprint(string fingerprint);
 	void addIceOption(string option);
 	void removeIceOption(const string &option);
 
@@ -94,12 +98,16 @@ public:
 		void addRid(string rid);
 
 		struct RTC_CPP_EXPORT ExtMap {
-			static int parseId(string_view description);
+		private:
+			RTC_WRAPPED_DEFAULT_CONSTRUCTABLE(ExtMap);
+			ExtMap() {}
+		public:
+			static RTC_WRAPPED(int) parseId(string_view description);
 
 			ExtMap(int id, string uri, Direction direction = Direction::Unknown);
-			ExtMap(string_view description);
+			static RTC_WRAPPED(ExtMap) create(string_view description);
 
-			void setDescription(string_view description);
+			RTC_WRAPPED(void) setDescription(string_view description);
 
 			int id;
 			string uri;
@@ -108,7 +116,7 @@ public:
 		};
 
 		std::vector<int> extIds();
-		ExtMap *extMap(int id);
+		RTC_WRAPPED(ExtMap *) extMap(int id);
 		void addExtMap(ExtMap map);
 		void removeExtMap(int id);
 
@@ -116,9 +124,10 @@ public:
 		string generateSdp(string_view eol = "\r\n", string_view addr = "0.0.0.0",
 		                   uint16_t port = 9) const;
 
-		virtual void parseSdpLine(string_view line);
+		virtual RTC_WRAPPED(void) parseSdpLine(string_view line);
 
 	protected:
+		Entry() {}
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 
 		virtual string generateSdpLines(string_view eol) const;
@@ -151,7 +160,7 @@ public:
 		optional<uint16_t> sctpPort() const;
 		optional<size_t> maxMessageSize() const;
 
-		virtual void parseSdpLine(string_view line) override;
+		virtual RTC_WRAPPED(void) parseSdpLine(string_view line) override;
 
 	private:
 		virtual string generateSdpLines(string_view eol) const override;
@@ -162,8 +171,11 @@ public:
 
 	// Media (non-data)
 	class RTC_CPP_EXPORT Media : public Entry {
-	public:
+		RTC_WRAPPED_DEFAULT_CONSTRUCTABLE(Media);
+		Media() {}
 		Media(const string &sdp);
+	public:
+		RTC_WRAPPED(Media) create(const string &sdp);
 		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
 		virtual ~Media() = default;
 
@@ -184,12 +196,16 @@ public:
 		void setBitrate(int bitrate);
 
 		struct RTC_CPP_EXPORT RtpMap {
-			static int parsePayloadType(string_view description);
+		private:
+			RTC_WRAPPED_DEFAULT_CONSTRUCTABLE(RtpMap);
+			RtpMap() {}
+		public:
+			static RTC_WRAPPED(int) parsePayloadType(string_view description);
 
 			explicit RtpMap(int payloadType);
-			RtpMap(string_view description);
+			static RTC_WRAPPED(RtpMap) create(string_view description);
 
-			void setDescription(string_view description);
+			RTC_WRAPPED(void) setDescription(string_view description);
 
 			void addFeedback(string fb);
 			void removeFeedback(const string &str);
@@ -207,14 +223,14 @@ public:
 
 		bool hasPayloadType(int payloadType) const;
 		std::vector<int> payloadTypes() const;
-		RtpMap *rtpMap(int payloadType);
+		RTC_WRAPPED(RtpMap *) rtpMap(int payloadType);
 		void addRtpMap(RtpMap map);
 		void removeRtpMap(int payloadType);
 		void removeFormat(const string &format);
 
-		void addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate);
+		RTC_WRAPPED(void) addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate);
 
-		virtual void parseSdpLine(string_view line) override;
+		virtual RTC_WRAPPED(void) parseSdpLine(string_view line) override;
 
 	private:
 		virtual string generateSdpLines(string_view eol) const override;
@@ -230,25 +246,25 @@ public:
 	public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
-		void addAudioCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addAudioCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
-		void addOpusCodec(int payloadType, optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
-		void addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
-		void addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
-		void addAacCodec(int payloadType, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addOpusCodec(int payloadType, optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
+		RTC_WRAPPED(void) addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addAacCodec(int payloadType, optional<string> profile = std::nullopt);
 	};
 
 	class RTC_CPP_EXPORT Video : public Media {
 	public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 
-		void addVideoCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addVideoCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
-		void addH264Codec(int payloadType, optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
-		void addH265Codec(int payloadType, optional<string> profile = std::nullopt);
-		void addVP8Codec(int payloadType, optional<string> profile = std::nullopt);
-		void addVP9Codec(int payloadType, optional<string> profile = std::nullopt);
-		void addAV1Codec(int payloadType, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addH264Codec(int payloadType, optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
+		RTC_WRAPPED(void) addH265Codec(int payloadType, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addVP8Codec(int payloadType, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addVP9Codec(int payloadType, optional<string> profile = std::nullopt);
+		RTC_WRAPPED(void) addAV1Codec(int payloadType, optional<string> profile = std::nullopt);
 	};
 
 	bool hasApplication() const;
@@ -262,8 +278,9 @@ public:
 	int addAudio(string mid = "audio", Direction dir = Direction::SendOnly);
 	void clearMedia();
 
-	variant<Media *, Application *> media(unsigned int index);
-	variant<const Media *, const Application *> media(unsigned int index) const;
+	RTC_WRAPPED(variant<Media * RTC_COMMA Application *>) media(unsigned int index);
+	RTC_WRAPPED(variant<const Media * RTC_COMMA const Application *>) media(unsigned int index) const;
+
 	unsigned int mediaCount() const;
 
 	const Application *application() const;

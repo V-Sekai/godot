@@ -22,13 +22,13 @@ public:
 	enum class TransportType { Unknown, Udp, TcpActive, TcpPassive, TcpSo, TcpUnknown };
 
 	Candidate();
-	Candidate(string candidate);
-	Candidate(string candidate, string mid);
+	static RTC_WRAPPED(Candidate) create(string candidate);
+	static RTC_WRAPPED(Candidate) create(string candidate, string mid);
 
 	void hintMid(string mid);
-	void changeAddress(string addr);
-	void changeAddress(string addr, uint16_t port);
-	void changeAddress(string addr, string service);
+	RTC_WRAPPED(void) changeAddress(string addr);
+	RTC_WRAPPED(void) changeAddress(string addr, uint16_t port);
+	RTC_WRAPPED(void) changeAddress(string addr, string service);
 
 	enum class ResolveMode { Simple, Lookup };
 	bool resolve(ResolveMode mode = ResolveMode::Simple);
@@ -49,7 +49,7 @@ public:
 	optional<uint16_t> port() const;
 
 private:
-	void parse(string candidate);
+	RTC_WRAPPED(void) parse(string candidate);
 
 	string mFoundation;
 	uint32_t mComponent, mPriority;
