@@ -28,7 +28,7 @@ namespace rtc::impl {
 class SctpTransport final : public Transport, public std::enable_shared_from_this<SctpTransport> {
 public:
 	static void Init();
-	static void SetSettings(const SctpSettings &s);
+	static RTC_WRAPPED(void) SetSettings(const SctpSettings &s);
 	static void Cleanup();
 
 	using amount_callback = std::function<void(uint16_t streamId, size_t amount)>;
@@ -38,16 +38,17 @@ public:
 		uint16_t remote = DEFAULT_SCTP_PORT;
 	};
 
-	SctpTransport(shared_ptr<Transport> lower, const Configuration &config, Ports ports,
+	SctpTransport(shared_ptr<Transport> lower, Ports ports,
 	              message_callback recvCallback, amount_callback bufferedAmountCallback,
 	              state_callback stateChangeCallback);
 	~SctpTransport();
+	RTC_WRAPPED(void) construct(const Configuration &config);
 
 	void onBufferedAmount(amount_callback callback);
 
-	void start() override;
+	RTC_WRAPPED(void) start() override;
 	void stop() override;
-	bool send(message_ptr message) override; // false if buffered
+	RTC_WRAPPED(bool) send(message_ptr message) override; // false if buffered
 	bool flush();
 	void closeStream(unsigned int stream);
 	void close();
@@ -75,17 +76,17 @@ private:
 
 	struct sockaddr_conn getSockAddrConn(uint16_t port);
 
-	void connect();
+	RTC_WRAPPED(void) connect();
 	void shutdown();
 	void incoming(message_ptr message) override;
-	bool outgoing(message_ptr message) override;
+	RTC_WRAPPED(bool) outgoing(message_ptr message) override;
 
 	void doRecv();
 	void doFlush();
 	void enqueueRecv();
 	void enqueueFlush();
-	bool trySendQueue();
-	bool trySendMessage(message_ptr message);
+	RTC_WRAPPED(bool) trySendQueue();
+	RTC_WRAPPED(bool) trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, ptrdiff_t delta);
 	void triggerBufferedAmount(uint16_t streamId, size_t amount);
 	void sendReset(uint16_t streamId);

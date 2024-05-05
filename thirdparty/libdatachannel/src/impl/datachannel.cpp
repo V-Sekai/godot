@@ -79,10 +79,10 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, string label, string proto
 
 DataChannel::~DataChannel() {
 	PLOG_VERBOSE << "Destroying DataChannel";
-	try {
+	RTC_TRY {
 		close();
-	} catch (const std::exception &e) {
-		PLOG_ERROR << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_ERROR << e.RTC_WHAT();
 	}
 }
 
@@ -148,16 +148,17 @@ size_t DataChannel::maxMessageSize() const {
 	return pc ? pc->remoteMaxMessageSize() : DEFAULT_MAX_MESSAGE_SIZE;
 }
 
-void DataChannel::assignStream(uint16_t stream) {
+RTC_WRAPPED(void) DataChannel::assignStream(uint16_t stream) {
 	std::unique_lock lock(mMutex);
 
 	if (mStream.has_value())
-		throw std::logic_error("DataChannel already has a stream assigned");
+		RTC_THROW RTC_LOGIC_ERROR("DataChannel already has a stream assigned");
 
 	mStream = stream;
+	RTC_RET;
 }
 
-void DataChannel::open(shared_ptr<SctpTransport> transport) {
+RTC_WRAPPED(void) DataChannel::open(shared_ptr<SctpTransport> transport) {
 	{
 		std::unique_lock lock(mMutex);
 		mSctpTransport = transport;
@@ -165,26 +166,28 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 
 	if (!mIsClosed && !mIsOpen.exchange(true))
 		triggerOpen();
+	RTC_RET;
 }
 
-void DataChannel::processOpenMessage(message_ptr) {
+RTC_WRAPPED(void) DataChannel::processOpenMessage(message_ptr) {
 	PLOG_WARNING << "Received an open message for a user-negotiated DataChannel, ignoring";
+	RTC_RET;
 }
 
-bool DataChannel::outgoing(message_ptr message) {
+RTC_WRAPPED(bool) DataChannel::outgoing(message_ptr message) {
 	shared_ptr<SctpTransport> transport;
 	{
 		std::shared_lock lock(mMutex);
 		transport = mSctpTransport.lock();
 
 		if (!transport || mIsClosed)
-			throw std::runtime_error("DataChannel is closed");
+			RTC_THROW RTC_RUNTIME_ERROR("DataChannel is closed");
 
 		if (!mStream.has_value())
-			throw std::logic_error("DataChannel has no stream assigned");
+			RTC_THROW RTC_LOGIC_ERROR("DataChannel has no stream assigned");
 
 		if (message->size() > maxMessageSize())
-			throw std::invalid_argument("Message size exceeds limit");
+			RTC_THROW RTC_INVALID_ARGUMENT("Message size exceeds limit");
 
 		// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 		message->reliability = mIsOpen ? mReliability : nullptr;
@@ -194,9 +197,10 @@ bool DataChannel::outgoing(message_ptr message) {
 	return transport->send(message);
 }
 
-void DataChannel::incoming(message_ptr message) {
+RTC_WRAPPED(void) DataChannel::incoming(message_ptr message) {
+	RTC_BEGIN;
 	if (!message || mIsClosed)
-		return;
+		RTC_RET;
 
 	switch (message->type) {
 	case Message::Control: {
@@ -205,7 +209,7 @@ void DataChannel::incoming(message_ptr message) {
 		auto raw = reinterpret_cast<const uint8_t *>(message->data());
 		switch (raw[0]) {
 		case MESSAGE_OPEN:
-			processOpenMessage(message);
+			RTC_UNWRAP_RETHROW(processOpenMessage(message));
 			break;
 		case MESSAGE_ACK:
 			if (!mIsOpen.exchange(true)) {
@@ -230,6 +234,7 @@ void DataChannel::incoming(message_ptr message) {
 		// Ignore
 		break;
 	}
+	RTC_RET;
 }
 
 OutgoingDataChannel::OutgoingDataChannel(weak_ptr<PeerConnection> pc, string label, string protocol,
@@ -238,12 +243,13 @@ OutgoingDataChannel::OutgoingDataChannel(weak_ptr<PeerConnection> pc, string lab
 
 OutgoingDataChannel::~OutgoingDataChannel() {}
 
-void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
+RTC_WRAPPED(void) OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
+	RTC_BEGIN;
 	std::unique_lock lock(mMutex);
 	mSctpTransport = transport;
 
 	if (!mStream.has_value())
-		throw std::runtime_error("DataChannel has no stream assigned");
+		RTC_THROW RTC_RUNTIME_ERROR("DataChannel has no stream assigned");
 
 	uint8_t channelType;
 	uint32_t reliabilityParameter;
@@ -283,11 +289,13 @@ void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
 
 	lock.unlock();
 
-	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream.value()));
+	RTC_UNWRAP_RETHROW(transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream.value())));
+	RTC_RET;
 }
 
-void OutgoingDataChannel::processOpenMessage(message_ptr) {
+RTC_WRAPPED(void) OutgoingDataChannel::processOpenMessage(message_ptr) {
 	PLOG_WARNING << "Received an open message for a locally-created DataChannel, ignoring";
+	RTC_RET;
 }
 
 IncomingDataChannel::IncomingDataChannel(weak_ptr<PeerConnection> pc,
@@ -299,21 +307,23 @@ IncomingDataChannel::IncomingDataChannel(weak_ptr<PeerConnection> pc,
 
 IncomingDataChannel::~IncomingDataChannel() {}
 
-void IncomingDataChannel::open(shared_ptr<SctpTransport>) {
+RTC_WRAPPED(void) IncomingDataChannel::open(shared_ptr<SctpTransport>) {
 	// Ignore
+	RTC_RET;
 }
 
-void IncomingDataChannel::processOpenMessage(message_ptr message) {
+RTC_WRAPPED(void) IncomingDataChannel::processOpenMessage(message_ptr message) {
+	RTC_BEGIN;
 	std::unique_lock lock(mMutex);
 	auto transport = mSctpTransport.lock();
 	if (!transport)
-		throw std::logic_error("DataChannel has no transport");
+		RTC_THROW RTC_LOGIC_ERROR("DataChannel has no transport");
 
 	if (!mStream.has_value())
-		throw std::logic_error("DataChannel has no stream assigned");
+		RTC_THROW RTC_LOGIC_ERROR("DataChannel has no stream assigned");
 
 	if (message->size() < sizeof(OpenMessage))
-		throw std::invalid_argument("DataChannel open message too small");
+		RTC_THROW RTC_INVALID_ARGUMENT("DataChannel open message too small");
 
 	OpenMessage open = *reinterpret_cast<const OpenMessage *>(message->data());
 	open.priority = ntohs(open.priority);
@@ -322,7 +332,7 @@ void IncomingDataChannel::processOpenMessage(message_ptr message) {
 	open.protocolLength = ntohs(open.protocolLength);
 
 	if (message->size() < sizeof(OpenMessage) + size_t(open.labelLength + open.protocolLength))
-		throw std::invalid_argument("DataChannel open message truncated");
+		RTC_THROW RTC_INVALID_ARGUMENT("DataChannel open message truncated");
 
 	auto end = reinterpret_cast<const char *>(message->data() + sizeof(OpenMessage));
 	mLabel.assign(end, open.labelLength);
@@ -349,10 +359,11 @@ void IncomingDataChannel::processOpenMessage(message_ptr message) {
 	auto &ack = *reinterpret_cast<AckMessage *>(buffer.data());
 	ack.type = MESSAGE_ACK;
 
-	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream.value()));
+	RTC_UNWRAP_RETHROW(transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream.value())));
 
 	if (!mIsOpen.exchange(true))
 		triggerOpen();
+	RTC_RET;
 }
 
 } // namespace rtc::impl

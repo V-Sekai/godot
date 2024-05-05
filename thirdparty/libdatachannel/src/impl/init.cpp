@@ -44,11 +44,11 @@ struct Init::TokenPayload {
 		std::thread t(
 		    [](std::promise<void> promise) {
 			    utils::this_thread::set_name("RTC cleanup");
-			    try {
+			    RTC_TRY {
 				    Init::Instance().doCleanup();
 				    promise.set_value();
-			    } catch (const std::exception &e) {
-				    PLOG_WARNING << e.what();
+			    } RTC_CATCH (const RTC_EXCEPTION &e) {
+				    PLOG_WARNING << e.RTC_WHAT();
 				    promise.set_exception(std::make_exception_ptr(e));
 			    }
 		    },
@@ -96,12 +96,14 @@ std::shared_future<void> Init::cleanup() {
 	return mCleanupFuture;
 }
 
-void Init::setSctpSettings(SctpSettings s) {
+RTC_WRAPPED(void) Init::setSctpSettings(SctpSettings s) {
+	RTC_BEGIN;
 	std::lock_guard lock(mMutex);
 	if (mGlobal)
-		SctpTransport::SetSettings(s);
+		RTC_UNWRAP_RETHROW(SctpTransport::SetSettings(s));
 
 	mCurrentSctpSettings = std::move(s); // store for next init
+	RTC_RET;
 }
 
 void Init::doInit() {
@@ -115,7 +117,7 @@ void Init::doInit() {
 #ifdef _WIN32
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
-		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
+		PLOG_ERROR << ("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
 	int concurrency = std::thread::hardware_concurrency();
@@ -136,7 +138,11 @@ void Init::doInit() {
 #endif
 
 	SctpTransport::Init();
-	SctpTransport::SetSettings(mCurrentSctpSettings);
+	RTC_TRY {
+		RTC_UNWRAP_CATCH(SctpTransport::SetSettings(mCurrentSctpSettings));
+	} RTC_CATCH(RTC_EXCEPTION e) {
+		PLOG_ERROR << e.RTC_WHAT();
+	}
 	DtlsTransport::Init();
 #if RTC_ENABLE_WEBSOCKET
 	TlsTransport::Init();

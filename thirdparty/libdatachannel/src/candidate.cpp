@@ -57,19 +57,27 @@ Candidate::Candidate()
       mTransportString("unknown"), mType(Type::Unknown), mTransportType(TransportType::Unknown),
       mNode("0.0.0.0"), mService("9"), mFamily(Family::Unresolved), mPort(0) {}
 
-Candidate::Candidate(string candidate) : Candidate() {
-	if (!candidate.empty())
-		parse(std::move(candidate));
+RTC_WRAPPED(Candidate) Candidate::create(string candidate) {
+	RTC_BEGIN;
+	Candidate ret;
+	if (!candidate.empty()) {
+		RTC_UNWRAP_RETHROW(ret.parse(std::move(candidate)));
+	}
+	return ret;
 }
 
-Candidate::Candidate(string candidate, string mid) : Candidate() {
-	if (!candidate.empty())
-		parse(std::move(candidate));
+RTC_WRAPPED(Candidate) Candidate::create(string candidate, string mid) {
+	RTC_BEGIN;
+	Candidate ret;
+	if (!candidate.empty()) {
+		RTC_UNWRAP_RETHROW(ret.parse(std::move(candidate)));
+	}
 	if (!mid.empty())
-		mMid.emplace(std::move(mid));
+		ret.mMid.emplace(std::move(mid));
+	return ret;
 }
 
-void Candidate::parse(string candidate) {
+RTC_WRAPPED(void) Candidate::parse(string candidate) {
 	using TypeMap_t = std::unordered_map<string, Type>;
 	using TcpTypeMap_t = std::unordered_map<string, TransportType>;
 
@@ -93,8 +101,11 @@ void Candidate::parse(string candidate) {
 	std::istringstream iss(candidate);
 	string typ_;
 	if (!(iss >> mFoundation >> mComponent >> mTransportString >> mPriority &&
-	      iss >> mNode >> mService >> typ_ >> mTypeString && typ_ == "typ"))
-		throw std::invalid_argument("Invalid candidate format");
+	      iss >> mNode >> mService >> typ_ >> mTypeString && typ_ == "typ")) {
+		PLOG_ERROR << "Invalid candidate format";
+		mType = Type::Unknown;
+		RTC_RET;
+	}
 
 	std::getline(iss, mTail);
 	trim_begin(mTail);
@@ -123,6 +134,7 @@ void Candidate::parse(string candidate) {
 	} else {
 		mTransportType = TransportType::Unknown;
 	}
+	return RTC_VOID;
 }
 
 void Candidate::hintMid(string mid) {
@@ -130,13 +142,19 @@ void Candidate::hintMid(string mid) {
 		mMid.emplace(std::move(mid));
 }
 
-void Candidate::changeAddress(string addr) { changeAddress(std::move(addr), mService); }
-
-void Candidate::changeAddress(string addr, uint16_t port) {
-	changeAddress(std::move(addr), std::to_string(port));
+RTC_WRAPPED(void) Candidate::changeAddress(string addr) {
+	RTC_BEGIN;
+	RTC_UNWRAP_RETHROW(changeAddress(std::move(addr), mService));
+	return RTC_VOID;
 }
 
-void Candidate::changeAddress(string addr, string service) {
+RTC_WRAPPED(void) Candidate::changeAddress(string addr, uint16_t port) {
+	RTC_BEGIN;
+	RTC_UNWRAP_RETHROW(changeAddress(std::move(addr), std::to_string(port)));
+	return RTC_VOID;
+}
+
+RTC_WRAPPED(void) Candidate::changeAddress(string addr, string service) {
 	mNode = std::move(addr);
 	mService = std::move(service);
 
@@ -145,7 +163,8 @@ void Candidate::changeAddress(string addr, string service) {
 	mPort = 0;
 
 	if (!resolve(ResolveMode::Simple))
-		throw std::invalid_argument("Invalid candidate address \"" + addr + ":" + service + "\"");
+		RTC_THROW RTC_INVALID_ARGUMENT("Invalid candidate address \"" + addr + ":" + service + "\"");
+	RTC_RET;
 }
 
 bool Candidate::resolve(ResolveMode mode) {
@@ -177,9 +196,9 @@ bool Candidate::resolve(ResolveMode mode) {
 				if (getnameinfo(p->ai_addr, socklen_t(p->ai_addrlen), nodebuffer,
 				                MAX_NUMERICNODE_LEN, servbuffer, MAX_NUMERICSERV_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					try {
+					RTC_TRY {
 						mPort = uint16_t(std::stoul(servbuffer));
-					} catch (...) {
+					} RTC_CATCH (...) {
 						return false;
 					}
 					mAddress = nodebuffer;
