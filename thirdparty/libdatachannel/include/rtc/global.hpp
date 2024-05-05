@@ -50,7 +50,7 @@ struct SctpSettings {
 	optional<std::chrono::milliseconds> heartbeatInterval;
 };
 
-RTC_CPP_EXPORT void SetSctpSettings(SctpSettings s);
+RTC_CPP_EXPORT RTC_WRAPPED(void) SetSctpSettings(SctpSettings s);
 
 } // namespace rtc
 

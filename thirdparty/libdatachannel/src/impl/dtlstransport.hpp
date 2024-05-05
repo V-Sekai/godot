@@ -35,15 +35,16 @@ public:
 	              verifier_callback verifierCallback, state_callback stateChangeCallback);
 	~DtlsTransport();
 
-	virtual void start() override;
+	RTC_WRAPPED(void) construct();
+	virtual RTC_WRAPPED(void) start() override;
 	virtual void stop() override;
-	virtual bool send(message_ptr message) override; // false if dropped
+	virtual RTC_WRAPPED(bool) send(message_ptr message) override; // false if dropped
 
 	bool isClient() const { return mIsClient; }
 
 protected:
 	virtual void incoming(message_ptr message) override;
-	virtual bool outgoing(message_ptr message) override;
+	virtual RTC_WRAPPED(bool) outgoing(message_ptr message) override;
 	virtual bool demuxMessage(message_ptr message);
 	virtual void postHandshake();
 

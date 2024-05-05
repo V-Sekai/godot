@@ -25,7 +25,13 @@ Transport::~Transport() {
 void Transport::registerIncoming() {
 	if (mLower) {
 		PLOG_VERBOSE << "Registering incoming callback";
-		mLower->onRecv(std::bind(&Transport::incoming, this, std::placeholders::_1));
+		mLower->onRecv([this](message_ptr message) -> void {
+			RTC_TRY {
+				Transport::incoming(message);
+			} RTC_CATCH(RTC_EXCEPTION e) {
+				PLOG_WARNING << e.RTC_WHAT(); // FIXME
+			}
+		});
 	}
 }
 
@@ -44,32 +50,32 @@ void Transport::onStateChange(state_callback callback) {
 	mStateChangeCallback = std::move(callback);
 }
 
-void Transport::start() { registerIncoming(); }
+RTC_WRAPPED(void) Transport::start() { registerIncoming(); RTC_RET; }
 
 void Transport::stop() { unregisterIncoming(); }
 
-bool Transport::send(message_ptr message) { return outgoing(message); }
+RTC_WRAPPED(bool) Transport::send(message_ptr message) { return outgoing(message); }
 
 void Transport::recv(message_ptr message) {
-	try {
+	RTC_TRY {
 		mRecvCallback(message);
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 void Transport::changeState(State state) {
-	try {
+	RTC_TRY {
 		if (mState.exchange(state) != state)
 			mStateChangeCallback(state);
-	} catch (const std::exception &e) {
-		PLOG_WARNING << e.what();
+	} RTC_CATCH (const RTC_EXCEPTION &e) {
+		PLOG_WARNING << e.RTC_WHAT();
 	}
 }
 
 void Transport::incoming(message_ptr message) { recv(message); }
 
-bool Transport::outgoing(message_ptr message) {
+RTC_WRAPPED(bool) Transport::outgoing(message_ptr message) {
 	if (mLower)
 		return mLower->send(message);
 	else

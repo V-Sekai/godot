@@ -87,18 +87,18 @@ public:
 	optional<string> localAddress() const;
 	optional<string> remoteAddress() const;
 	uint16_t maxDataChannelId() const;
-	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
+	RTC_WRAPPED(bool) getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
-	void setLocalDescription(Description::Type type = Description::Type::Unspec);
-	void setRemoteDescription(Description description);
-	void addRemoteCandidate(Candidate candidate);
+	RTC_WRAPPED(void) setLocalDescription(Description::Type type = Description::Type::Unspec);
+	RTC_WRAPPED(void) setRemoteDescription(Description description);
+	RTC_WRAPPED(void) addRemoteCandidate(Candidate candidate);
 
 #if RTC_ENABLE_MEDIA
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();
 #endif
 
-	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label,
+	[[nodiscard]] RTC_WRAPPED(shared_ptr<DataChannel>) createDataChannel(string label,
 	                                                        DataChannelInit init = {});
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 

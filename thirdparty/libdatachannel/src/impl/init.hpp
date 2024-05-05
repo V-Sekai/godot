@@ -32,7 +32,7 @@ public:
 	init_token token();
 	void preload();
 	std::shared_future<void> cleanup();
-	void setSctpSettings(SctpSettings s);
+	RTC_WRAPPED(void) setSctpSettings(SctpSettings s);
 
 private:
 	Init();
