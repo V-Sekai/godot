@@ -756,7 +756,7 @@ void Node3DEditorViewport::_select_clicked(bool p_allow_locked) {
 				editor_selection->add_node(selected);
 			}
 		} else {
-			if (!editor_selection->is_selected(selected)) {
+			if (editor_selection->get_full_selected_node_list().size() != 1 || !editor_selection->is_selected(selected)) {
 				editor_selection->clear();
 				editor_selection->add_node(selected);
 				EditorNode::get_singleton()->edit_node(selected);
@@ -822,10 +822,36 @@ ObjectID Node3DEditorViewport::_select_ray(const Point2 &p_pos) const {
 				item = Object::cast_to<Node>(spat);
 				if (item != edited_scene) {
 					item = edited_scene->get_deepest_editable_node(item);
+					if (item->get_owner() != edited_scene) {
+						// Get the highest level owner for this node
+						Node *root_item_owner = item;
+						while (root_item_owner->get_owner() != edited_scene) {
+							root_item_owner = root_item_owner->get_owner();
+						}
+
+						// For the existing list of selections, check if we have the root owner
+						// of the selected item
+						bool selection_valid = false;
+						List<Node *> selected_node_list = editor_selection->get_selected_node_list();
+						for (int k = 0; k < selected_node_list.size(); k++) {
+							if (selected_node_list[k] == root_item_owner) {
+								selection_valid = true;
+								break;
+							}
+						}
+
+						// If the root owner of the the item was not selected, make that
+						// the selected item instead
+						if (!selection_valid) {
+							item = root_item_owner;
+						}
+					}
 				}
 
-				closest = item->get_instance_id();
-				closest_dist = dist;
+				if (item) {
+					closest = item->get_instance_id();
+					closest_dist = dist;
+				}
 			}
 		}
 	}
@@ -1045,6 +1071,18 @@ void Node3DEditorViewport::_select_region() {
 		Node *item = Object::cast_to<Node>(sp);
 		if (item != edited_scene) {
 			item = edited_scene->get_deepest_editable_node(item);
+		}
+
+		// Get the highest level node if part of an editable instance
+		while (item->get_owner() != edited_scene) {
+			item = item->get_owner();
+			if (!item) {
+				break;
+			}
+		}
+
+		if (!item) {
+			continue;
 		}
 
 		// Replace the node by the group if grouped
