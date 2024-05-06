@@ -247,6 +247,8 @@ opts.Add(BoolVariable("scu_build", "Use single compilation unit build", False))
 opts.Add("scu_limit", "Max includes per SCU file when using scu_build (determines RAM use)", "0")
 opts.Add(BoolVariable("engine_update_check", "Enable engine update checks in the Project Manager", True))
 
+opts.Add(BoolVariable("use_resonance_audio", "Use the audio spatializer.", True))
+
 # Thirdparty libraries
 opts.Add(BoolVariable("builtin_brotli", "Use the built-in Brotli library", True))
 opts.Add(BoolVariable("builtin_certs", "Use the built-in SSL certificates bundles", True))
@@ -471,6 +473,12 @@ if env.debug_features:
     # DEBUG_ENABLED enables debugging *features* and debug-only code, which is intended
     # to give *users* extra debugging information for their game development.
     env.Append(CPPDEFINES=["DEBUG_ENABLED"])
+
+# ensure that anything depending on eigen will only be linked with permissively licensed code.
+env.Append(CPPDEFINES=["EIGEN_MPL2_ONLY"])
+
+if env["use_precise_math_checks"]:
+    env.Append(CPPDEFINES=["PRECISE_MATH_CHECKS"])
 
 if env.dev_build:
     # DEV_ENABLED enables *engine developer* code which should only be compiled for those
