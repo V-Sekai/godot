@@ -35,6 +35,7 @@
 #include "core/string/ustring.h"
 #include "core/templates/local_vector.h"
 #include "core/version.h"
+#include "platform/windows/rendering_native_surface_windows.h"
 #include "servers/rendering/rendering_device.h"
 
 #if defined(__GNUC__) && !defined(__clang__)
@@ -244,10 +245,11 @@ void RenderingContextDriverD3D12::driver_free(RenderingDeviceDriver *p_driver) {
 	memdelete(p_driver);
 }
 
-RenderingContextDriver::SurfaceID RenderingContextDriverD3D12::surface_create(const void *p_platform_data) {
-	const WindowPlatformData *wpd = (const WindowPlatformData *)(p_platform_data);
+RenderingContextDriver::SurfaceID RenderingContextDriverD3D12::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
+	Ref<RenderingNativeSurfaceWindows> windows_native_surface = p_native_surface;
+	ERR_FAIL_COND_V(windows_native_surface.is_null(), SurfaceID());
 	Surface *surface = memnew(Surface);
-	surface->hwnd = wpd->window;
+	surface->hwnd = windows_native_surface->get_window_handle();
 	return SurfaceID(surface);
 }
 

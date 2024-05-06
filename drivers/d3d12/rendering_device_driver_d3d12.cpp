@@ -1846,7 +1846,7 @@ void RenderingDeviceDriverD3D12::command_pipeline_barrier(
 		CommandBufferID p_cmd_buffer,
 		BitField<RDD::PipelineStageBits> p_src_stages,
 		BitField<RDD::PipelineStageBits> p_dst_stages,
-		VectorView<RDD::MemoryBarrier> p_memory_barriers,
+		VectorView<RDD::MemoryAccessBarrier> p_memory_barriers,
 		VectorView<RDD::BufferBarrier> p_buffer_barriers,
 		VectorView<RDD::TextureBarrier> p_texture_barriers) {
 	if (p_src_stages.has_flag(PIPELINE_STAGE_ALL_COMMANDS_BIT) && p_dst_stages.has_flag(PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
