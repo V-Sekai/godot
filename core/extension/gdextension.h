@@ -46,6 +46,7 @@ class GDExtension : public Resource {
 
 	friend class GDExtensionManager;
 
+	bool embedded = false;
 	void *library = nullptr; // pointer if valid,
 	String library_path;
 	bool reloadable = false;
@@ -127,6 +128,7 @@ public:
 	static String find_extension_library(const String &p_path, Ref<ConfigFile> p_config, std::function<bool(String)> p_has_feature, PackedStringArray *r_tags = nullptr);
 	static Vector<SharedObject> find_extension_dependencies(const String &p_path, Ref<ConfigFile> p_config, std::function<bool(String)> p_has_feature);
 
+	Error initialize_extension_function(GDExtensionInitializationFunction initialization_function, const String &p_entry_symbol);
 	Error open_library(const String &p_path, const String &p_entry_symbol, Vector<SharedObject> *p_dependencies = nullptr);
 	void close_library();
 
@@ -137,6 +139,7 @@ public:
 		INITIALIZATION_LEVEL_EDITOR = GDEXTENSION_INITIALIZATION_EDITOR
 	};
 
+	bool is_embedded() const;
 	bool is_library_open() const;
 
 #ifdef TOOLS_ENABLED

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_macos.h                               */
+/*  rendering_native_surface_x11.h                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,39 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
-#define RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
+#ifndef RENDERING_NATIVE_SURFACE_X11_H
+#define RENDERING_NATIVE_SURFACE_X11_H
 
-#ifdef VULKAN_ENABLED
+#include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
 
-#include "drivers/vulkan/rendering_context_driver_vulkan.h"
+#include <X11/Xlib.h>
 
-#import <QuartzCore/CAMetalLayer.h>
+class RenderingNativeSurfaceX11 : public RenderingNativeSurface {
+	GDCLASS(RenderingNativeSurfaceX11, RenderingNativeSurface);
 
-class RenderingContextDriverVulkanMacOS : public RenderingContextDriverVulkan {
-private:
-	virtual const char *_get_platform_surface_extension() const override final;
+	static void _bind_methods();
 
-protected:
-	SurfaceID surface_create(const void *p_platform_data) override final;
+	::Window window;
+	Display *display;
 
 public:
-	struct WindowPlatformData {
-		CAMetalLayer *const *layer_ptr;
+	static Ref<RenderingNativeSurfaceX11> create_api(GDExtensionConstPtr<const void> p_window, GDExtensionConstPtr<const void> p_display);
+
+	static Ref<RenderingNativeSurfaceX11> create(::Window p_window, Display *p_display);
+
+	::Window get_window() const {
+		return window;
 	};
 
-	RenderingContextDriverVulkanMacOS();
-	~RenderingContextDriverVulkanMacOS();
+	Display *get_display() const {
+		return display;
+	};
+
+	RenderingContextDriver *create_rendering_context() override;
+
+	RenderingNativeSurfaceX11();
+	~RenderingNativeSurfaceX11();
 };
 
-#endif // VULKAN_ENABLED
-
-#endif // RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
+#endif // RENDERING_NATIVE_SURFACE_X11_H
