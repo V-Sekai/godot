@@ -56,4 +56,6 @@ else:
         LIBS=["mvsqlite"],
     )
 
-    subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
+    # Add architecture targets for Mac
+    subprocess.run(["cargo", "build", "--release", "--target", "x86_64-apple-darwin"], cwd="thirdparty/mvsqlite/mvsqlite")
+    subprocess.run(["cargo", "build", "--release", "--target", "aarch64-apple-darwin"], cwd="thirdparty/mvsqlite/mvsqlite")
