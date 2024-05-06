@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LassoDB" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		The lasso aims to reduce the difficulty of selecting objects in VR where they may be unevenly distributed in 3d space and the user may have bad aim or shaky hands. Traditional approaches to selecting objects in VR use lasers and raycasting, but this requires precision on the user's part especially for objects that are small, far away, or partially occluded by another object. There are two things the lasso does to fix the issue:
+		1. Use dynamic Voronoi hitboxes instead of raycasting to fixed 3d colliders.
+		2. Refine selections with Delaunay triangles
+	</brief_description>
+	<description>
+		[b]Voronoi hitboxes[/b]
+		Voronoi diagrams are made by taking a set of points in a space, and partitioning that space into cells based on how close that space is to one of the points. The space around point A would be in cell A and the space around point B would be placed in cell B etc. If there were only two points, A and B, and they were placed on the left and right of a 2d plane respectively, then everything on the left half of the plane would be in A's cell because it's closer to A and everything on the right would belong to B's cell. An example of Voronoi diagrams can be found on Wikipedia.
+		In lasso's implementation, we are using Voronoi diagrams as hitboxes. A Voronoi cell contains the space around a point. If a user doesn't click on the point, but clicks somewhere in the space around the point, we assume that they had bad aim or shakey hands and probably meant to click on the point and auto correct for them. The way we "draw" the voronoi diagram is by projecting the origin of each interactable object as a point on the unit sphere around hand or controller that's making the selection and then drawing the lines of the voronoi diagram like you would on a regular 2d surface.
+		The point nearest where the selection laser coming out of the controller intersects the unit sphere is the only point we're interested in, so to calculate which Voronoi cell the intersection is in, we calculate its distance on the unit sphere to every point and then select the one with the lowest distance. This takes O(n) time. Note, that since distance is calculated in the curved space of the unit sphere, the distances are curved too. It's like calculating the distance from New York to LA on a globe, it wouldn't make sense to calculate the distance going through the earth, you calculate it by traveling along the surface of the globe.
+		Then because we want to give more weight to objects that are bigger or closer to the hand or controller in 3d space, we actually use a multiplicatively weighted Voronoi diagram where the weight being multiplied is their size and the inverse distance of the interactable object in 3d space from the hand or controller. What this means is that we take all the distances on the unit sphere that we calculated of the selection laser point to all the other points and multiply it by the size divided by the 3d euclidan distance of the 3d objects those points came from. Using a multiplicatively weighted Voronoi diagram changes the hitboxes to look something more like this multiplicative weighted Voronoi diagramand it means it's easier to select closer and larger objects.
+		By using Voronoi diagrams, we are dynamically changing the size and shape of an object's hitbox based on it's size and position in 3d space. We can ensure that objects that are isolated by themselves, require very little precision to select compared to objects that are clumped up together and users can err on the safe side. By err on the safe side, I mean if a user wanted to select the leftmost object in a group of objects, they can click on the empty space to the left of the group. In practice, this feels very intuitive.
+		[b]Delaunay refinement[/b]
+		Even with the help of Voronoi hitboxes, it is possible to select the wrong object by accident, so the lasso provides a way to refine one's selection with the use of Delaunay triangles. Delaunay triangles can be formed by drawing a line from the point of a Voronoi cell to all of it's neighbors. When done for all points in a Voronoi diagram, a mesh of triangles is formed and it is possible to move from any point in the diagram to another by simply traversing these lines. In lasso, we use the joystick direction to pick which line to traverse by simply comparing the angle of all lines connected to the currently selected point and traversing the point that is closest to the angle of the joystick.
+		Building a full Delaunay triangle mesh is expensive and we only care about the edges of the triangles connected to the current dot we have selected, so instead we look at all possible edges of triangles by connecting our currently selected point to all other points and take advantage of the relationship between Voronoi diagrams and Delaunay triangles to weed out the edges that would not be part of the Delaunay triangle mesh.
+		In a regular unweighted Voronoi diagram, one edge of a cell perfectly bisects the edge of a Delaunay triangle. If we bisect all the potential Delaynay lines and check for which one of those bisecting lines the joystick directional vector first intersects with, we can determine which bisecting lines would have made up the edges of the Voronoi cell of the current point and ignore all others. The only two lines we care about are the ones closest in angle to the joystick's directional vector, one will have a greater angle, one will have a smaller angle, and one of them is guaranteed to be the first bisecting edge that the joystick directional vector intersected.
+		Calculating which bisecting edge comes from the other line that we care about turns out to add an order of complexity to our problem, so in lasso we ignore it and just hope that the first line we found was the line the user meant to traverse. This tends to work perfectly most of the time.
+		Even with our imperfect implementation, this approach allows the user to select one object and change their selection to another other object in the scene with their joystick. Because of the way that Delaunay triangles work, there is a guaranteed path from one point to another along these lines that can usually be found by continually holding the joystick in the relative direction of the target object.
+		[b]Implementation adjustments[/b]
+		In lasso, we put a lower threshold on which objects can be selected with the Voronoi hitboxes, so that the entire unit sphere isn't completely covered by hitboxes, allowing the user to select nothing if they point their hand far enough away from everything else. We also don't allow the Delaunay refinement to change the selection to something that is more than 45 degrees away from the currently selected object, lastly, we boost the size of the currently selected object's Voronoi hitbox, so once you select an object, it's not easy to unselect it unless you very purposefully point your selection laser at something else. This was done to make selections feel "sticky" and help combat shakey hands from rapidly selecting and deselecting an object if the laser was pointed at the border between two Voronoi hitboxes.
+	</description>
+	<tutorials>
+		<link title="Voronoi_diagram">https://en.wikipedia.org/wiki/Voronoi_diagram</link>
+		<link title="Multiplicative weighted Voronoi diagram">https://www.researchgate.net/figure/Multiplicative-weighted-Voronoi-diagram-MWVD-of-20-sensors-Each-sensor-is-represented_fig2_220442964</link>
+	</tutorials>
+	<methods>
+		<method name="add_point">
+			<return type="void" />
+			<param index="0" name="point" type="LassoPoint" />
+			<description>
+				Lasso stores the score on each point, so you don't need to recalc for any point.
+			</description>
+		</method>
+		<method name="calc_top_redirecting_power">
+			<return type="Node" />
+			<param index="0" name="snapped_point" type="Node" />
+			<param index="1" name="viewpoint" type="Transform3D" />
+			<param index="2" name="redirection_direction" type="Vector2" />
+			<description>
+				You have something already selected and want to use a joystick to redirect the snapping to the next closest thing in a certain direction
+				like if you selected something, but you actually meant to click the thing to the right of it, you'd move your joystick to the right to redirect the snap to it.
+			</description>
+		</method>
+		<method name="calc_top_two_snapping_power">
+			<return type="Array" />
+			<param index="0" name="source" type="Transform3D" />
+			<param index="1" name="current_snap" type="Node" />
+			<param index="2" name="snap_max_power_increase" type="float" />
+			<param index="3" name="snap_increase_amount" type="float" />
+			<param index="4" name="snap_lock" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="remove_point">
+			<return type="void" />
+			<param index="0" name="point" type="LassoPoint" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
