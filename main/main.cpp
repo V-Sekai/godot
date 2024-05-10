@@ -734,6 +734,7 @@ Error Main::test_setup() {
 
 	ClassDB::set_current_api(ClassDB::API_CORE);
 #endif
+	register_core_platform_apis();
 	register_platform_apis();
 
 	// Theme needs modules to be initialized so that sub-resources can be loaded.
@@ -795,6 +796,7 @@ void Main::test_cleanup() {
 	uninitialize_modules(MODULE_INITIALIZATION_LEVEL_SCENE);
 
 	unregister_platform_apis();
+	unregister_core_platform_apis();
 	unregister_driver_types();
 	unregister_scene_types();
 
@@ -805,6 +807,7 @@ void Main::test_cleanup() {
 	GDExtensionManager::get_singleton()->deinitialize_extensions(GDExtension::INITIALIZATION_LEVEL_SERVERS);
 	uninitialize_modules(MODULE_INITIALIZATION_LEVEL_SERVERS);
 	unregister_server_types();
+	unregister_core_server_types();
 
 	EngineDebugger::deinitialize();
 	OS::get_singleton()->finalize();
@@ -890,7 +893,7 @@ int Main::test_entrypoint(int argc, char *argv[], bool &tests_need_run) {
  *   in help, it's a bit messy and should be globalized with the setup() parsing somehow.
  */
 
-Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_phase) {
+Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_phase, GDExtensionInitializationFunction p_init_func) {
 	Thread::make_main_thread();
 	set_current_thread_safe_for_nodes(true);
 
@@ -908,6 +911,8 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	register_core_types();
 	register_core_driver_types();
+
+	register_core_platform_apis();
 
 	MAIN_PRINT("Main: Initialize Globals");
 
@@ -1793,7 +1798,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	OS::get_singleton()->ensure_user_data_dir();
 
 	initialize_modules(MODULE_INITIALIZATION_LEVEL_CORE);
-	register_core_extensions(); // core extensions must be registered after globals setup and before display
+	register_core_extensions(p_init_func); // core extensions must be registered after globals setup and before display
 
 	ResourceUID::get_singleton()->load_from_cache(true); // load UUIDs from cache.
 
@@ -2424,6 +2429,9 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	message_queue = memnew(MessageQueue);
 
+	// Register Core Server Types
+	register_core_server_types();
+
 	Thread::release_main_thread(); // If setup2() is called from another thread, that one will become main thread, so preventively release this one.
 	set_current_thread_safe_for_nodes(false);
 
@@ -2473,6 +2481,7 @@ error:
 		memdelete(packed_data);
 	}
 
+	unregister_core_platform_apis();
 	unregister_core_driver_types();
 	unregister_core_extensions();
 	unregister_core_types();
@@ -4244,6 +4253,7 @@ void Main::cleanup(bool p_force) {
 	GDExtensionManager::get_singleton()->deinitialize_extensions(GDExtension::INITIALIZATION_LEVEL_SERVERS);
 	uninitialize_modules(MODULE_INITIALIZATION_LEVEL_SERVERS);
 	unregister_server_types();
+	unregister_core_server_types();
 
 	EngineDebugger::deinitialize();
 

@@ -60,5 +60,37 @@ env.add_source_files(env.platform_sources, register_platform_apis)
 for platform in env.platform_apis:
     env.add_source_files(env.platform_sources, f"{platform}/api/api.cpp")
 
+# Register core platform APIs
+def register_core_platform_apis_builder(target, source, env):
+    platforms = source[0].read()
+    for p in platforms:
+        api_inc = f'#include "{p}/api/api.h"'
+        api_reg = f"\tregister_core_{p}_api();"
+        api_unreg = f"\tunregister_core_{p}_api();"
+        with methods.generated_wrapper(target) as file:
+            file.write(
+                f"""\
+{api_inc}
+
+void register_core_platform_apis() {{
+{api_reg}
+}}
+
+void unregister_core_platform_apis() {{
+{api_unreg}
+}}
+"""
+            )
+
+
+
+register_core_platform_apis = env.CommandNoCache(
+    "register_core_platform_apis.gen.cpp", env.Value(env.platform_apis), env.Run(register_core_platform_apis_builder)
+)
+env.add_source_files(env.platform_sources, register_core_platform_apis)
+for core in env.platform_apis:
+    env.add_source_files(env.platform_sources, f"{core}/api/api.cpp")
+
 lib = env.add_library("platform", env.platform_sources)
+
 env.Prepend(LIBS=[lib])
