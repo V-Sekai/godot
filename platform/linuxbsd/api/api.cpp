@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_ios.mm                                */
+/*  api.cpp                                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "rendering_context_driver_vulkan_ios.h"
+#include "api.h"
 
-#ifdef VULKAN_ENABLED
+#ifdef LINUXBSD_ENABLED
+#include "core/object/class_db.h"
 
-#ifdef USE_VOLK
-#include <volk.h>
-#else
-#include <vulkan/vulkan_metal.h>
+#ifdef WAYLAND_ENABLED
+#include "platform/linuxbsd/wayland/rendering_native_surface_wayland.h"
 #endif
 
-const char *RenderingContextDriverVulkanIOS::_get_platform_surface_extension() const {
-	return VK_EXT_METAL_SURFACE_EXTENSION_NAME;
+#ifdef X11_ENABLED
+#include "platform/linuxbsd/x11/rendering_native_surface_x11.h"
+#endif
+
+#endif
+
+void register_core_linuxbsd_api() {
+#ifdef LINUXBSD_ENABLED
+#ifdef WAYLAND_ENABLED
+	GDREGISTER_INTERNAL_CLASS(RenderingNativeSurfaceWayland);
+#endif
+#ifdef X11_ENABLED
+	GDREGISTER_INTERNAL_CLASS(RenderingNativeSurfaceX11);
+#endif
+#endif
 }
 
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanIOS::surface_create(const void *p_platform_data) {
-	const WindowPlatformData *wpd = (const WindowPlatformData *)(p_platform_data);
-
-	VkMetalSurfaceCreateInfoEXT create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-	create_info.pLayer = *wpd->layer_ptr;
-
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	VkResult err = vkCreateMetalSurfaceEXT(instance_get(), &create_info, nullptr, &vk_surface);
-	ERR_FAIL_COND_V(err != VK_SUCCESS, SurfaceID());
-
-	Surface *surface = memnew(Surface);
-	surface->vk_surface = vk_surface;
-	return SurfaceID(surface);
+void unregister_core_linuxbsd_api() {
 }
 
-RenderingContextDriverVulkanIOS::RenderingContextDriverVulkanIOS() {
-	// Does nothing.
+void register_linuxbsd_api() {
 }
 
-RenderingContextDriverVulkanIOS::~RenderingContextDriverVulkanIOS() {
-	// Does nothing.
+void unregister_linuxbsd_api() {
 }
-
-#endif // VULKAN_ENABLED

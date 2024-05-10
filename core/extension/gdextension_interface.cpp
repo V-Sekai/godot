@@ -33,6 +33,7 @@
 #include "core/config/engine.h"
 #include "core/extension/gdextension.h"
 #include "core/extension/gdextension_compat_hashes.h"
+#include "core/extension/godot_runtime_api.h"
 #include "core/io/file_access.h"
 #include "core/io/xml_parser.h"
 #include "core/object/class_db.h"
@@ -1504,6 +1505,20 @@ static void *gdextension_classdb_get_class_tag(GDExtensionConstStringNamePtr p_c
 	return class_info ? class_info->class_ptr : nullptr;
 }
 
+GDExtensionObjectPtr gdextension_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func) {
+#ifdef LIBRARY_ENABLED
+	return create_godot_instance(p_argc, p_argv, p_init_func);
+#else
+	return nullptr;
+#endif
+}
+
+static void gdextension_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
+#ifdef LIBRARY_ENABLED
+	destroy_godot_instance(p_godot_instance);
+#endif
+}
+
 static void gdextension_editor_add_plugin(GDExtensionConstStringNamePtr p_classname) {
 #ifdef TOOLS_ENABLED
 	const StringName classname = *reinterpret_cast<const StringName *>(p_classname);
@@ -1684,6 +1699,8 @@ void gdextension_setup_interface() {
 	REGISTER_INTERFACE_FUNC(editor_remove_plugin);
 	REGISTER_INTERFACE_FUNC(editor_help_load_xml_from_utf8_chars);
 	REGISTER_INTERFACE_FUNC(editor_help_load_xml_from_utf8_chars_and_len);
+	REGISTER_INTERFACE_FUNC(create_godot_instance);
+	REGISTER_INTERFACE_FUNC(destroy_godot_instance);
 }
 
 #undef REGISTER_INTERFACE_FUNCTION
