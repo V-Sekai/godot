@@ -1448,9 +1448,11 @@ static void QuickSort(int* pSortBuffer, int iLeft, int iRight, unsigned int uSee
 	int iL, iR, n, index, iMid, iTmp;
 
 	// Random
-	unsigned int t=uSeed&31;
-	t=(uSeed<<t)|(uSeed>>(32-t));
-	uSeed=uSeed+t+3;
+	unsigned int t = uSeed & 31;
+	if(t != 0){
+		t = (uSeed << t) | (uSeed >> (32 - t));
+	}
+	uSeed = uSeed + t + 3;
 	// Random end
 
 	iL=iLeft; iR=iRight;
