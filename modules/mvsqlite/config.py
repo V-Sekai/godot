@@ -3,7 +3,7 @@ import os
 
 
 def can_build(env, platform):
-    if platform in ("ios", "macos", "web", "android"):
+    if platform in ("ios", "web", "android"):
         return False
 
     try:
