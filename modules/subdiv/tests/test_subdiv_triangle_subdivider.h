@@ -65,4 +65,4 @@
 // 	CHECK(result_index_array.size() % 3 == 0);
 // }
 
-#endif
+#endif // TEST_SUBDIV_TRIANGLE_SUBDIVIDER_H

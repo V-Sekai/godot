@@ -241,7 +241,7 @@ bool TopologyDataImporter::_merge_to_quads(PackedInt32Array &index_array, Packed
 	PackedInt32Array quad_index_array;
 	PackedVector2Array quad_uv_array;
 	for (int i = 0; i < index_array.size(); i += 6) {
-		// initalize unshared with verts from triangle 1
+		// initialize unshared with verts from triangle 1
 		PackedInt32Array unshared_verts;
 		PackedInt32Array pos_unshared_verts; // array to keep track of index of index in index_array
 		for (int t1 = i; t1 < i + 3; t1++) {

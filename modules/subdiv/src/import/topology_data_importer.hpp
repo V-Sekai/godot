@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TOPOLOGY_DATA_IMPORTER_H
-#define TOPOLOGY_DATA_IMPORTER_H
+#ifndef TOPOLOGY_DATA_IMPORTER_HPP
+#define TOPOLOGY_DATA_IMPORTER_HPP
 
 #include "core/object/object.h"
 #include "core/templates/hash_map.h"
@@ -91,4 +91,4 @@ public:
 
 VARIANT_ENUM_CAST(TopologyDataImporter::ImportMode);
 
-#endif
+#endif // TOPOLOGY_DATA_IMPORTER_HPP

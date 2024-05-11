@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef QUAD_SUBDIVIDER_H
-#define QUAD_SUBDIVIDER_H
+#ifndef QUAD_SUBDIVIDER_HPP
+#define QUAD_SUBDIVIDER_HPP
 
 #include "core/object/ref_counted.h"
 
@@ -51,4 +51,4 @@ protected:
 	virtual Array _get_direct_triangle_arrays() const override;
 };
 
-#endif
+#endif // QUAD_SUBDIVIDER_HPP
