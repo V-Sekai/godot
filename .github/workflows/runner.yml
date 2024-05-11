@@ -63,3 +63,51 @@ jobs:
     # appropriately.
     needs: linux-build
     uses: ./.github/workflows/godot_cpp_test.yml
+
+  completion:
+    needs:
+      [
+        static-checks,
+        android-build,
+        ios-build,
+        linux-build,
+        macos-build,
+        windows-build,
+        web-build,
+        godot-cpp-test,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout desync
+        uses: actions/checkout@v2
+        with:
+          repository: V-Sekai/desync
+          fetch-depth: 0
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "^1.15.6"
+      - uses: actions/cache@v1
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - run: go test
+      - run: GOOS=windows GOARCH=amd64 go build -o ./archive/desync-windows-amd64.exe ./cmd/desync
+      - run: GOOS=darwin GOARCH=amd64 go build -o ./archive/desync-macos-amd64 ./cmd/desync
+      - run: GOOS=linux GOARCH=amd64 go build -o ./archive/desync-linux-amd64 ./cmd/desync
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+      - name: Package Code
+        run: |
+          mkdir -p archive/store
+          for artifact in $(ls artifacts); do
+            ./archive/desync-linux-amd64 tar -i -s archive/store --chunk-size 4096:16384:65536 archive/$artifact.caidx artifacts/$artifact
+          done
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: casync-archives
+          path: archive
