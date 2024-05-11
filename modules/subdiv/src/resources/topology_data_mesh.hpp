@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TOPOLOGY_DATA_MESH_H
-#define TOPOLOGY_DATA_MESH_H
+#ifndef TOPOLOGY_DATA_MESH_HPP
+#define TOPOLOGY_DATA_MESH_HPP
 
 #include "core/io/resource.h"
 #include "scene/resources/material.h"
@@ -54,7 +54,7 @@ public:
 		ARRAY_BONES = Mesh::ARRAY_BONES,
 		ARRAY_WEIGHTS = Mesh::ARRAY_WEIGHTS,
 		ARRAY_INDEX = Mesh::ARRAY_INDEX,
-		ARRAY_UV_INDEX = Mesh::ARRAY_MAX, //just an index array for uv's (ARRAY_INDEX does not work with uv's anymore in favour of face connection)
+		ARRAY_UV_INDEX = Mesh::ARRAY_MAX, //just an index array for uv's (ARRAY_INDEX does not work with uv's anymore in favor of face connection)
 		ARRAY_MAX = Mesh::ARRAY_MAX + 1
 	};
 
@@ -134,4 +134,4 @@ public:
 };
 
 VARIANT_ENUM_CAST(TopologyDataMesh::ArrayType);
-#endif
+#endif // TOPOLOGY_DATA_MESH_HPP

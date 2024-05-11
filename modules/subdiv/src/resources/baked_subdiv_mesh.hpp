@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef BAKED_SUBDIV_MESH_H
-#define BAKED_SUBDIV_MESH_H
+#ifndef BAKED_SUBDIV_MESH_HPP
+#define BAKED_SUBDIV_MESH_HPP
 
 #include "core/io/resource.h"
 #include "core/object/class_db.h"
@@ -62,4 +62,4 @@ public:
 	~BakedSubdivMesh();
 };
 
-#endif
+#endif // BAKED_SUBDIV_MESH_HPP

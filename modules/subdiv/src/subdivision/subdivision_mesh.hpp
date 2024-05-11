@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SUBDIVISION_MESH_H
-#define SUBDIVISION_MESH_H
+#ifndef SUBDIVISION_MESH_HPP
+#define SUBDIVISION_MESH_HPP
 
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/resources/mesh.h"
@@ -69,4 +69,4 @@ public:
 	int64_t surface_get_index_array_size(int p_surface) const;
 };
 
-#endif
+#endif // SUBDIVISION_MESH_HPP

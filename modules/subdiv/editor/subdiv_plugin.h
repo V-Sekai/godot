@@ -31,7 +31,7 @@
 #ifndef SUBDIV_PLUGIN_H
 #define SUBDIV_PLUGIN_H
 
-#include "editor/editor_plugin.h"
+#include "editor/plugins/editor_plugin.h"
 #include "editor/import/editor_import_plugin.h"
 #include "modules/gltf/gltf_document.h"
 

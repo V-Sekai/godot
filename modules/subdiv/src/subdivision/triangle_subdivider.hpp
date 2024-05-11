@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TRIANGLE_SUBDIVIDER_H
-#define TRIANGLE_SUBDIVIDER_H
+#ifndef TRIANGLE_SUBDIVIDER_HPP
+#define TRIANGLE_SUBDIVIDER_HPP
 
 #include "core/object/ref_counted.h"
 
@@ -51,4 +51,4 @@ protected:
 	virtual Array _get_direct_triangle_arrays() const override;
 };
 
-#endif
+#endif // TRIANGLE_SUBDIVIDER_HPP
