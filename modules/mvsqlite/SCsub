@@ -25,43 +25,43 @@ for source_file in source_files:
 
 env.modules_sources += env_thirdparty.modules_sources
 
-target = ''
+target = ""
 arch = platform.machine()
 env_platform = env["platform"]
 
 if env_platform == "windows":
-    if arch == 'x86_64':
-        target = 'x86_64-pc-windows-gnu'
-    elif arch == 'i386':
-        target = 'i686-pc-windows-gnu'
+    if arch == "x86_64":
+        target = "x86_64-pc-windows-gnu"
+    elif arch == "i386":
+        target = "i686-pc-windows-gnu"
 
 elif env_platform == "linuxbsd" or env_platform == "linux":
-    if arch == 'x86_64':
-        target = 'x86_64-unknown-linux-gnu'
-    elif arch == 'i386':
-        target = 'i686-unknown-linux-gnu'
+    if arch == "x86_64":
+        target = "x86_64-unknown-linux-gnu"
+    elif arch == "i386":
+        target = "i686-unknown-linux-gnu"
 
 elif env_platform == "macos":
     env.Append(LINKFLAGS=["-framework", "SystemConfiguration"])
-    if arch == 'x86_64':
-        target = 'x86_64-apple-darwin'
-    elif arch == 'arm64':
-        target = 'aarch64-apple-darwin'
+    if arch == "x86_64":
+        target = "x86_64-apple-darwin"
+    elif arch == "arm64":
+        target = "aarch64-apple-darwin"
 
 elif env_platform == "android":
-    if arch == 'armv7':
-        target = 'armv7-linux-androideabi'
-    elif arch == 'aarch64':
-        target = 'aarch64-linux-android'
+    if arch == "armv7":
+        target = "armv7-linux-androideabi"
+    elif arch == "aarch64":
+        target = "aarch64-linux-android"
 
 elif env_platform == "ios":
-    if arch == 'armv7':
-        target = 'armv7-apple-ios'
-    elif arch == 'aarch64':
-        target = 'aarch64-apple-ios'
+    if arch == "armv7":
+        target = "armv7-apple-ios"
+    elif arch == "aarch64":
+        target = "aarch64-apple-ios"
 
 elif env_platform == "web":
-    target = 'wasm32-unknown-unknown'
+    target = "wasm32-unknown-unknown"
 
 
 subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
