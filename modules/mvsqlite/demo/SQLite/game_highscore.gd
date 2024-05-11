@@ -17,17 +17,17 @@ func _ready():
 		return
 
 	open = true
-
+	var query: MVSQLiteQuery = db.create_query("CREATE TABLE IF NOT EXISTS highscore (id INTEGER PRIMARY KEY, score INTEGER NOT NULL);")
+	
 	# Create table
-	var query = "CREATE TABLE IF NOT EXISTS highscore (id INTEGER PRIMARY KEY, score INTEGER NOT NULL);"
-	if not db.create_query(query).execute().is_empty():
+	if not query.execute([]).is_empty():
 		return
-
+	query = db.create_query("SELECT id, score FROM highscore LIMIT 1;")
 	# Retrieve current highscore
-	var rows = db.fetch_array("SELECT id, score FROM highscore LIMIT 1;");
+	var rows = query.execute()
 	if (rows and not rows.is_empty()):
-		row_id = rows[0]['id'];
-		highscore = rows[0]['score'];
+		row_id = rows[0][0];
+		highscore = rows[0][1];
 
 	# Test
 	set_highscore(1000)
@@ -62,11 +62,11 @@ func set_highscore(score):
 func get_highscore():
 	if not open:
 		return
-
+	var query: MVSQLiteQuery = db.create_query("SELECT score FROM highscore WHERE id=? LIMIT 1;");
 	# Retrieve highscore from database
-	var rows = db.fetch_array_with_args("SELECT score FROM highscore WHERE id=? LIMIT 1;", [row_id]);
+	var rows = query.execute([row_id])
 	if (rows and not rows.is_empty()):
-		highscore = rows[0]['score'];
+		highscore = rows[0][0]
 
 	# Return the highscore
 	return highscore

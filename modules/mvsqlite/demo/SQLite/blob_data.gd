@@ -52,6 +52,6 @@ func create_db():
 		data["time_created"]["second"]]);
 	var bytes = var_to_bytes(data);
 	print(bytes.size());
-	db.query(create_table_query)
-	db.query_with_args(insert_data_query, [0, bytes]);
+	var query: MVSQLiteQuery = db.create_query(create_table_query)
+	query.execute([])
 	db.close();

@@ -5,7 +5,7 @@ func _ready() -> void:
 	var db: MVSQLite = MVSQLite.new();
 
 	# Open item database
-	if (!db.open("mvsqlite://test")):
+	if (!db.open("mvsqlite")):
 		print("Failed opening database.");
 		return;
 	var query: String = "SELECT

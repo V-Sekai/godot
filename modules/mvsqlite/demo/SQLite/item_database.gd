@@ -12,17 +12,13 @@ func _ready() -> void:
 	if !open_database(db, "res://items.db"):
 		print("Failed opening database.")
 		return
+		
 
 	# Create a new query
-	var query = MVSQLiteQuery.new()
-	query.set_database(db)
-	query.set_query("SELECT * FROM potion ORDER BY id ASC")
-
-	# Execute the query
-	query.execute()
+	var query: MVSQLiteQuery = db.create_query("SELECT * FROM potion ORDER BY id ASC")
 
 	# Get item list from db
-	var pots = query.get_result()
+	var pots = query.execute()
 	if (pots == null or pots.is_empty()):
 		return
 
