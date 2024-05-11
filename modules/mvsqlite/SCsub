@@ -83,11 +83,6 @@ elif env_platform == "macos":
     env.Append(
         LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + f"{target}" + "/release"],
         LIBS=["mvsqlite"],
-        CPPDEFINES=[
-            ("SQLITE_ENABLE_RBU", 1),
-            ("SQLITE_USE_URI", 1),
-            "SQLITE_ENABLE_JSON1",
-        ],
     )
     for target in targets:
         subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
@@ -96,11 +91,6 @@ elif env_platform == "macos":
 else:
     env.Append(
         LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"],
-        CPPDEFINES=[
-            ("SQLITE_ENABLE_RBU", 1),
-            ("SQLITE_USE_URI", 1),
-            "SQLITE_ENABLE_JSON1",
-        ],
         LIBS=["mvsqlite"],
     )
 
