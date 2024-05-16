@@ -26,8 +26,6 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma warning(disable: 4996) // Fixes "unsafe" warnings for strdup and strncpy
-
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

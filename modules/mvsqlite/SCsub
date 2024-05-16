@@ -5,7 +5,9 @@ import platform
 Import("env")
 
 env.Append(
-    CPPDEFINES=[("SQLITE_ENABLE_RBU", 1), ("SQLITE_USE_URI", 1), "SQLITE_ENABLE_JSON1"],
+    CPPDEFINES=[("SQLITE_DEFAULT_SYNCHRONOUS", 1), ("SQLITE_ENABLE_RBU", 1), ("SQLITE_USE_URI", 1), "SQLITE_ENABLE_JSON1", "SQLITE_ENABLE_FTS3", "SQLITE_ENABLE_FTS4",
+    "SQLITE_ENABLE_FTS5", "SQLITE_ENABLE_RTREE", "SQLITE_ENABLE_DBSTAT_VTAB", "SQLITE_ENABLE_COLUMN_METADATA", "SQLITE_ENABLE_MATH_FUNCTIONS",
+    "SQLITE_OMIT_WAL", ("SQLITE_DEFAULT_FOREIGN_KEYS", 1), ("SQLITE_TEMP_STORE", 3)],
 )
 
 env["builtin_zstd"] = False
@@ -14,10 +16,11 @@ env_thirdparty = env.Clone()
 env_thirdparty.disable_warnings()
 
 source_files = [
+    "src/*.cpp",
+    "src/*.c",
+    "*.cpp",
     "thirdparty/sqlite/*.c",
     "thirdparty/spmemvfs/*.c",
-    "src/*.cpp",
-    "*.cpp",
 ]
 
 for source_file in source_files:
