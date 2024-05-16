@@ -15,7 +15,7 @@ build-patched-sqlite3: mvsqlite
 LIBS = ""
 
 ifeq ($(shell uname -s), Darwin)
-	LIBS = -L../target/release -lmvsqlite -lpthread -lm -framework Security -framework SystemConfiguration -framework CoreFoundation
+	LIBS = -L../target/release -lmvsqlite -lpthread -lm -framework Security
 else
 	LIBS = -L../target/release -lmvsqlite -lpthread -lm -lws2_32 -lbcrypt -luserenv -lntdll
 endif

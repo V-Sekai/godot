@@ -1,9 +1,9 @@
 [package]
 name = "mvfs"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "Apache-2.0"
-authors = ["Heyang Zhou <heyang.zhou@icloud.com>"]
+authors = ["K. S. Ernest (iFire) Lee <ernest.lee@chibifire.com>", "Heyang Zhou <heyang.zhou@icloud.com>"]
 description = "mvfs"
 repository = "https://github.com/V-Sekai/mvsqlite.git"
 
@@ -22,4 +22,3 @@ lazy_static = "1.4.0"
 reqwest = { version = "0.11.11", default-features = false } # the dependent crate should set its own features
 moka = { version = "0.9.4" }
 bytes = "1.4.0"
-mio = "0.8.11"

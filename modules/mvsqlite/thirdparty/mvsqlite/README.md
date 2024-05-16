@@ -76,7 +76,6 @@ Set environment variables, and run the shell:
 
 ```bash
 export RUST_LOG=info MVSQLITE_DATA_PLANE="http://localhost:7000"
-export DYLD_LIBRARY_PATH=/usr/local/lib
 
 # "test" is the key of the namespace we created earlier
 LD_PRELOAD=../libmvsqlite_preload.so LD_LIBRARY_PATH=. ./sqlite3 test
