@@ -1,0 +1,171 @@
+[gd_scene format=3 uid="uid://lnm33tdoorrc"]
+
+[node name="Node3D" type="Node3D"]
+
+[node name="BUILDING_MESH_hall_entrance_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.0208, 10.5, 10.0208)
+size = Vector3(10, 6, 3)
+
+[node name="BUILDING_MESH_corridor_school_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 91.8518, 10.5, 80.8518)
+size = Vector3(20, 15, 5)
+
+[node name="BUILDING_MESH_auditorium_main_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.7307, 7.5, 34.2307)
+size = Vector3(20, 15, 5)
+
+[node name="BUILDING_MESH_classroom_standard_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32.3453, 11.5, 20.3453)
+size = Vector3(12, 8, 3)
+
+[node name="BUILDING_MESH_hall_mess_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.8161, 7, 6.31608)
+size = Vector3(6, 4, 2.5)
+
+[node name="BUILDING_MESH_kitchen_main_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.81608, 5, 5.06608)
+size = Vector3(10, 10, 2.5)
+
+[node name="BUILDING_MESH_hub_dormitory_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.2127, 6, 14.2127)
+size = Vector3(6, 4, 3)
+
+[node name="BUILDING_MESH_room_dorm_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.7611, 4, 12.7611)
+size = Vector3(4, 4, 3)
+
+[node name="BUILDING_MESH_bedroom_individual_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.2659, 8.5, 20.5159)
+size = Vector3(5, 5, 3)
+
+[node name="BUILDING_MESH_courtyard_main_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 64.181, 17, 47.681)
+size = Vector3(5, 5, 1)
+
+[node name="BUILDING_MESH_garden_common_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 31.6127, 3.5, 29.3627)
+size = Vector3(8, 6, 3)
+
+[node name="BUILDING_MESH_lab_science_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.0811, 11, 5.58114)
+size = Vector3(7, 7, 3)
+
+[node name="BUILDING_MESH_office_principal_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 3.5, 1.5)
+size = Vector3(7, 7, 3)
+
+[node name="BUILDING_MESH_railing_standard_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.4455, 3.5, 14.4455)
+size = Vector3(2, 1, 3)
+
+[node name="BUILDING_MESH_lab_alchemy_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 47.9583, 18, 30.4583)
+size = Vector3(8, 6, 3)
+
+[node name="BUILDING_MESH_lab_computer_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.6252, 13.5, 24.6252)
+size = Vector3(6, 6, 3)
+
+[node name="BUILDING_MESH_room_home_economics_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.1008, 11, 5.35078)
+size = Vector3(7, 7, 2.5)
+
+[node name="BUILDING_MESH_room_music_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.8541, 12.5, 8.3541)
+size = Vector3(15, 10, 5)
+
+[node name="BUILDING_MESH_theatre_main_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.4393, 22.5, 53.9393)
+size = Vector3(20, 15, 7)
+
+[node name="BUILDING_MESH_gymnasium_main_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 8, 9.5)
+size = Vector3(8, 8, 4)
+
+[node name="BUILDING_MESH_room_gigachad_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.5, 1)
+size = Vector3(3, 3, 2)
+
+[node name="BUILDING_MESH_room_janitor_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.1721, 9.5, 6.92214)
+size = Vector3(4, 4, 2.5)
+
+[node name="BUILDING_MESH_office_teacher_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.3146, 9.5, 20.0646)
+size = Vector3(4, 4, 2.5)
+
+[node name="BUILDING_MESH_room_break_teacher_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.7884, 4, 12.2884)
+size = Vector3(4, 4, 2.5)
+
+[node name="BUILDING_MESH_staircase_main_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.4455, 10.5, 17.4455)
+size = Vector3(6, 6, 3)
+
+[node name="BUILDING_MESH_dorms_teacher_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 2.5, 1.25)
+size = Vector3(5, 5, 2.5)
+
+[node name="BUILDING_MESH_office_headmaster_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 2.5, 1.25)
+size = Vector3(5, 5, 2.5)
+
+[node name="CITY_MESH_road_straight_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.8953, 0.15, 35.7953)
+size = Vector3(2, 0.1, 1)
+
+[node name="CITY_MESH_road_turn_right_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.513, 1.05, 16.063)
+size = Vector3(2, 2, 0.1)
+
+[node name="CITY_MESH_road_turn_left_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17.1091, 2.55, 14.2091)
+size = Vector3(2, 2, 0.1)
+
+[node name="CITY_MESH_road_intersection_T_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.7351, 6.65, 44.7351)
+size = Vector3(3, 3, 0.1)
+
+[node name="CITY_MESH_square_central_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.3925, 4.05, 24.0425)
+size = Vector3(5, 5, 0.2)
+
+[node name="CITY_MESH_park_common_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24.2748, 7, 19.6248)
+size = Vector3(1, 1, 1.5)
+
+[node name="CITY_MESH_kiosk_newspapers_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.195, 3, 11.045)
+size = Vector3(1, 1, 1.5)
+
+[node name="CITY_MESH_kiosk_snacks_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.4103, 3.5, 10.5103)
+size = Vector3(1, 1, 1.5)
+
+[node name="CITY_MESH_kiosk_flowers_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.3423, 6.5, 20.9423)
+size = Vector3(10, 6, 3)
+
+[node name="CITY_MESH_building_dormitory_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 51.943, 4, 49.443)
+size = Vector3(8, 8, 3)
+
+[node name="CITY_MESH_building_lab_student_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.0943, 14.5, 45.5943)
+size = Vector3(6, 7, 3)
+
+[node name="CITY_MESH_building_library_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.9444, 7, 41.4444)
+size = Vector3(15, 6, 5)
+
+[node name="CITY_MESH_station_train_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.9425, 3.1, 23.3425)
+size = Vector3(0.2, 0.2, 3)
+
+[node name="CITY_MESH_streetlamp_standard_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28.9771, 4.15, 27.0271)
+size = Vector3(1, 1, 2)
+
+[node name="CITY_MESH_tree_park_01" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.3894, 6, 11.1394)
+size = Vector3(3, 10, 3)
