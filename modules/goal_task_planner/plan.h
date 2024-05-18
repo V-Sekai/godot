@@ -57,10 +57,6 @@ private:
 	TypedArray<Domain> domains;
 	Ref<Domain> current_domain;
 
-	int64_t _next_state_number;
-	int64_t _next_multigoal_number;
-	int64_t _next_domain_number;
-
 	// ##
 	// ##If verify_goals is True, then whenever the planner uses a method m to refine
 	// ##a unigoal or multigoal, it will insert a "verification" task into the
@@ -77,16 +73,10 @@ public:
 	int get_verbose() const { return verbose; }
 	TypedArray<Domain> get_domains() const { return domains; }
 	Ref<Domain> get_current_domain() const { return current_domain; }
-	int get_next_state_number() const { return _next_state_number; }
-	int get_next_multigoal_number() const { return _next_multigoal_number; }
-	int get_next_domain_number() const { return _next_domain_number; }
 
 	void set_verbose(int v) { verbose = v; }
 	void set_domains(TypedArray<Domain> d) { domains = d; }
 	void set_current_domain(Ref<Resource> cd) { current_domain = cd; }
-	void set_next_state_number(int nsn) { _next_state_number = nsn; }
-	void set_next_multigoal_number(int nmn) { _next_multigoal_number = nmn; }
-	void set_next_domain_number(int ndn) { _next_domain_number = ndn; }
 
 	void print_domain(Ref<Domain> domain) {
 		if (domain == nullptr) {
