@@ -34,7 +34,6 @@ void Domain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_m_verify_g", "state", "method", "state_var", "arg", "desired_val", "depth"), &Domain::_m_verify_g);
 	ClassDB::bind_static_method("Domain", D_METHOD("_goals_not_achieved", "state", "multigoal"), &Domain::_goals_not_achieved);
 	ClassDB::bind_method(D_METHOD("_m_verify_mg", "state", "method", "multigoal", "depth"), &Domain::_m_verify_mg);
-	ClassDB::bind_method(D_METHOD("display"), &Domain::display);
 
 	ClassDB::bind_method(D_METHOD("set_verbose", "value"), &Domain::set_verbose);
 	ClassDB::bind_method(D_METHOD("get_verbose"), &Domain::get_verbose);
@@ -58,12 +57,12 @@ void Domain::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "multigoal_method_list"), "set_multigoal_method_list", "get_multigoal_method_list");
 }
 
-Variant Domain::_m_verify_g(Dictionary state, String method, String state_var, String arg, Variant desired_val, int depth) {
-	Dictionary state_dict = state[state_var];
+Variant Domain::_m_verify_g(Dictionary p_state, String p_method, String p_state_variable, String p_arguments, Variant p_desired_value, int p_depth) {
+	Dictionary state_dict = p_state[p_state_variable];
 
-	if (state_dict[arg] != desired_val) {
+	if (state_dict[p_arguments] != p_desired_value) {
 		if (verbose >= 3) {
-			print_line(vformat("Depth %d: method %s didn't achieve\nGoal %s[%s] = %s", depth, method, state_var, arg, desired_val));
+			print_line(vformat("Depth %d: method %s didn't achieve\nGoal %s[%s] = %s", p_depth, p_method, p_state_variable, p_arguments, p_desired_value));
 		}
 		return false;
 	}
@@ -76,22 +75,22 @@ Variant Domain::_m_verify_g(Dictionary state, String method, String state_var, S
 	// }
 
 	if (verbose >= 3) {
-		print_line(vformat("Depth %d: method %s achieved\nGoal %s[%s] = %s", depth, method, state_var, arg, desired_val));
+		print_line(vformat("Depth %d: method %s achieved\nGoal %s[%s] = %s", p_depth, p_method, p_state_variable, p_arguments, p_desired_value));
 	}
 	return Array();
 }
 
-Dictionary Domain::_goals_not_achieved(Dictionary state, Ref<Multigoal> multigoal) {
+Dictionary Domain::_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal) {
 	Dictionary incomplete;
-	Array keys = multigoal->get_state().keys();
+	Array keys = p_multigoal->get_state().keys();
 	for (int i = 0; i < keys.size(); ++i) {
 		String n = keys[i];
-		Dictionary sub_dict = multigoal->get_state()[n];
+		Dictionary sub_dict = p_multigoal->get_state()[n];
 		Array sub_keys = sub_dict.keys();
 		for (int j = 0; j < sub_keys.size(); ++j) {
 			String arg = sub_keys[j];
 			Variant val = sub_dict[arg];
-			if (state[n].get_type() == Variant::DICTIONARY && Dictionary(state[n]).has(arg) && val != Dictionary(state[n])[arg]) {
+			if (p_state[n].get_type() == Variant::DICTIONARY && Dictionary(p_state[n]).has(arg) && val != Dictionary(p_state[n])[arg]) {
 				if (!incomplete.has(n)) {
 					incomplete[n] = Dictionary();
 				}
@@ -104,11 +103,11 @@ Dictionary Domain::_goals_not_achieved(Dictionary state, Ref<Multigoal> multigoa
 	return incomplete;
 }
 
-Variant Domain::_m_verify_mg(Dictionary state, String method, Ref<Multigoal> multigoal, int depth) {
-	Dictionary goal_dict = _goals_not_achieved(state, multigoal);
+Variant Domain::_m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth) {
+	Dictionary goal_dict = _goals_not_achieved(p_state, p_multigoal);
 	if (!goal_dict.is_empty()) {
 		if (verbose >= 3) {
-			print_line(vformat("Depth %d: method %s didn't achieve %s", depth, method, multigoal));
+			print_line(vformat("Depth %d: method %s didn't achieve %s", p_depth, p_method, p_multigoal));
 		}
 		return false;
 	}
@@ -121,11 +120,8 @@ Variant Domain::_m_verify_mg(Dictionary state, String method, Ref<Multigoal> mul
 	// }
 
 	if (verbose >= 3) {
-		print_line(vformat("Depth %d: method %s achieved %s", depth, method, multigoal));
+		print_line(vformat("Depth %d: method %s achieved %s", p_depth, p_method, p_multigoal));
 	}
 	return Array();
 }
 
-void Domain::display() {
-	print_line(to_string());
-}

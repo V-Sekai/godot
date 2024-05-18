@@ -46,7 +46,7 @@ private:
 	Dictionary _state;
 
 public:
-	String _to_string();
+	String to_string() override;
 	Dictionary get_state() const;
 	void set_state(Dictionary value);
 	void _init(String multigoal_name, Dictionary state_variables);
