@@ -52,7 +52,7 @@ Variant Domain::_m_verify_g(Dictionary state, String method, String state_var, S
 }
 
 Dictionary Domain::_goals_not_achieved(Dictionary state, Ref<Multigoal> multigoal) {
-	Dictionary unachieved;
+	Dictionary incomplete;
 	Array keys = multigoal->get_state().keys();
 	for (int i = 0; i < keys.size(); ++i) {
 		String n = keys[i];
@@ -62,16 +62,16 @@ Dictionary Domain::_goals_not_achieved(Dictionary state, Ref<Multigoal> multigoa
 			String arg = sub_keys[j];
 			Variant val = sub_dict[arg];
 			if (state[n].get_type() == Variant::DICTIONARY && Dictionary(state[n]).has(arg) && val != Dictionary(state[n])[arg]) {
-				if (!unachieved.has(n)) {
-					unachieved[n] = Dictionary();
+				if (!incomplete.has(n)) {
+					incomplete[n] = Dictionary();
 				}
-				Dictionary temp = unachieved[n];
+				Dictionary temp = incomplete[n];
 				temp[arg] = val;
-				unachieved[n] = temp;
+				incomplete[n] = temp;
 			}
 		}
 	}
-	return unachieved;
+	return incomplete;
 }
 
 Variant Domain::_m_verify_mg(Dictionary state, String method, Ref<Multigoal> multigoal, int depth) {

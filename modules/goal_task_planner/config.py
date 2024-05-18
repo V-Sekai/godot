@@ -10,6 +10,7 @@ def get_doc_classes():
     return [
         "Multigoal",
         "Domain",
+        "Plan",
     ]
 
 def get_doc_path():
