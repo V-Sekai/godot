@@ -35,7 +35,6 @@
 // temporal_constraint.h
 // SPDX-License-Identifier: MIT
 
-
 #include "core/io/resource.h"
 #include "core/math/vector2i.h"
 

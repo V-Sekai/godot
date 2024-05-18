@@ -35,7 +35,6 @@
 // simple_temporal_network.h
 // SPDX-License-Identifier: MIT
 
-
 #include "core/io/resource.h"
 #include "core/math/vector2i.h"
 #include "temporal_constraint.h"

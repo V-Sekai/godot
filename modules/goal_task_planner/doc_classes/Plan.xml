@@ -6,4 +6,96 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="declare_actions">
+			<return type="Dictionary" />
+			<param index="0" name="actions" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="declare_multigoal_methods">
+			<return type="Array" />
+			<param index="0" name="methods" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="declare_task_methods">
+			<return type="Dictionary" />
+			<param index="0" name="task_name" type="String" />
+			<param index="1" name="methods" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="declare_unigoal_methods">
+			<return type="Dictionary" />
+			<param index="0" name="state_var_name" type="StringName" />
+			<param index="1" name="methods" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="find_plan">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="get_current_domain" qualifiers="const">
+			<return type="Domain" />
+			<description>
+			</description>
+		</method>
+		<method name="get_domains" qualifiers="const">
+			<return type="Domain[]" />
+			<description>
+			</description>
+		</method>
+		<method name="get_verbose" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="m_split_multigoal">
+			<return type="Array" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="multigoal" type="Multigoal" />
+			<description>
+			</description>
+		</method>
+		<method name="run_lazy_lookahead">
+			<return type="Dictionary" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<param index="2" name="max_tries" type="int" default="10" />
+			<description>
+			</description>
+		</method>
+		<method name="seek_plan">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<param index="2" name="plan" type="Array" />
+			<param index="3" name="depth" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_current_domain">
+			<return type="void" />
+			<param index="0" name="current_domain" type="Domain" />
+			<description>
+			</description>
+		</method>
+		<method name="set_domains">
+			<return type="void" />
+			<param index="0" name="domain" type="Domain[]" />
+			<description>
+			</description>
+		</method>
+		<method name="set_verbose">
+			<return type="void" />
+			<param index="0" name="level" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
 </class>

@@ -31,6 +31,13 @@
 #include "domain.h"
 
 void Domain::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("print_domain"), &Domain::print_domain);
+	ClassDB::bind_method(D_METHOD("print_actions"), &Domain::print_actions);
+	ClassDB::bind_method(D_METHOD("print_task_methods"), &Domain::print_task_methods);
+	ClassDB::bind_method(D_METHOD("print_unigoal_methods"), &Domain::print_unigoal_methods);
+	ClassDB::bind_method(D_METHOD("print_multigoal_methods"), &Domain::print_multigoal_methods);
+	ClassDB::bind_method(D_METHOD("print_methods"), &Domain::print_methods);
+
 	ClassDB::bind_method(D_METHOD("_m_verify_g", "state", "method", "state_var", "arg", "desired_val", "depth"), &Domain::_m_verify_g);
 	ClassDB::bind_static_method("Domain", D_METHOD("_goals_not_achieved", "state", "multigoal"), &Domain::_goals_not_achieved);
 	ClassDB::bind_method(D_METHOD("_m_verify_mg", "state", "method", "multigoal", "depth"), &Domain::_m_verify_mg);
@@ -124,4 +131,3 @@ Variant Domain::_m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal>
 	}
 	return Array();
 }
-

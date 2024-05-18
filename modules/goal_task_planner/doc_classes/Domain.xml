@@ -6,6 +6,38 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="print_actions" qualifiers="const">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="print_domain" qualifiers="const">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="print_methods" qualifiers="const">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="print_multigoal_methods" qualifiers="const">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="print_task_methods" qualifiers="const">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="print_unigoal_methods" qualifiers="const">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+	</methods>
 	<members>
 		<member name="action_dict" type="Dictionary" setter="set_action_dict" getter="get_action_dict" default="{}">
 		</member>
