@@ -35,7 +35,7 @@ void Multigoal::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_state", "value"), &Multigoal::set_state);
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "state"), "set_state", "get_state");
 
-	ClassDB::bind_method(D_METHOD("_init", "multigoal_name", "state_variables"), &Multigoal::_init);
+	ClassDB::bind_method(D_METHOD("initialize", "multigoal_name", "state_variables"), &Multigoal::_initialize);
 	ClassDB::bind_method(D_METHOD("state_vars"), &Multigoal::state_vars);
 }
 
@@ -51,7 +51,7 @@ void Multigoal::set_state(Dictionary value) {
 	_state = value;
 }
 
-void Multigoal::_init(String multigoal_name, Dictionary state_variables) {
+void Multigoal::_initialize(String multigoal_name, Dictionary state_variables) {
 	set_name(multigoal_name);
 	_state = state_variables;
 }

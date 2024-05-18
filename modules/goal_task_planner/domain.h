@@ -44,24 +44,24 @@ class Domain : public Resource {
 
 private:
 	int verbose = 0;
-	Dictionary _action_dict;
-	Dictionary _task_method_dict;
-	Dictionary _unigoal_method_dict;
-	Array _multigoal_method_list;
+	Dictionary action_dictionary;
+	Dictionary task_method_dictionary;
+	Dictionary unigoal_method_dictionary;
+	Array multigoal_method_list;
 	// Ref<SimpleTemporalNetwork> stn;
 
 public:
 	void set_verbose(int p_value) { verbose = p_value; }
-	void set_action_dict(Dictionary p_value) { _action_dict = p_value; }
-	void set_task_method_dict(Dictionary p_value) { _task_method_dict = p_value; }
-	void set_unigoal_method_dict(Dictionary p_value) { _unigoal_method_dict = p_value; }
-	void set_multigoal_method_list(Array p_value) { _multigoal_method_list = p_value; }
+	void set_action_dictionary(Dictionary p_value) { action_dictionary = p_value; }
+	void set_task_method_dictionary(Dictionary p_value) { task_method_dictionary = p_value; }
+	void set_unigoal_method_dictionary(Dictionary p_value) { unigoal_method_dictionary = p_value; }
+	void set_multigoal_method_list(Array p_value) { multigoal_method_list = p_value; }
 
 	int get_verbose() const { return verbose; }
-	Dictionary get_action_dict() const { return _action_dict; }
-	Dictionary get_task_method_dict() const { return _task_method_dict; }
-	Dictionary get_unigoal_method_dict() const { return _unigoal_method_dict; }
-	Array get_multigoal_method_list() const { return _multigoal_method_list; }
+	Dictionary get_action_dictionary() const { return action_dictionary; }
+	Dictionary get_task_method_dictionary() const { return task_method_dictionary; }
+	Dictionary get_unigoal_method_dictionary() const { return unigoal_method_dictionary; }
+	Array get_multigoal_method_list() const { return multigoal_method_list; }
 
 public:
 	Variant _m_verify_g(Dictionary p_state, String p_method, String p_state_var, String p_arguments, Variant p_desired_values, int p_depth);

@@ -38,14 +38,14 @@ void Domain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_verbose", "value"), &Domain::set_verbose);
 	ClassDB::bind_method(D_METHOD("get_verbose"), &Domain::get_verbose);
 
-	ClassDB::bind_method(D_METHOD("set_action_dict", "value"), &Domain::set_action_dict);
-	ClassDB::bind_method(D_METHOD("get_action_dict"), &Domain::get_action_dict);
+	ClassDB::bind_method(D_METHOD("set_action_dict", "value"), &Domain::set_action_dictionary);
+	ClassDB::bind_method(D_METHOD("get_action_dict"), &Domain::get_action_dictionary);
 
-	ClassDB::bind_method(D_METHOD("set_task_method_dict", "value"), &Domain::set_task_method_dict);
-	ClassDB::bind_method(D_METHOD("get_task_method_dict"), &Domain::get_task_method_dict);
+	ClassDB::bind_method(D_METHOD("set_task_method_dict", "value"), &Domain::set_task_method_dictionary);
+	ClassDB::bind_method(D_METHOD("get_task_method_dict"), &Domain::get_task_method_dictionary);
 
-	ClassDB::bind_method(D_METHOD("set_unigoal_method_dict", "value"), &Domain::set_unigoal_method_dict);
-	ClassDB::bind_method(D_METHOD("get_unigoal_method_dict"), &Domain::get_unigoal_method_dict);
+	ClassDB::bind_method(D_METHOD("set_unigoal_method_dict", "value"), &Domain::set_unigoal_method_dictionary);
+	ClassDB::bind_method(D_METHOD("get_unigoal_method_dict"), &Domain::get_unigoal_method_dictionary);
 
 	ClassDB::bind_method(D_METHOD("set_multigoal_method_list", "value"), &Domain::set_multigoal_method_list);
 	ClassDB::bind_method(D_METHOD("get_multigoal_method_list"), &Domain::get_multigoal_method_list);

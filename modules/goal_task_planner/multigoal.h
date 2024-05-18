@@ -49,8 +49,7 @@ public:
 	String to_string() override;
 	Dictionary get_state() const;
 	void set_state(Dictionary value);
-	void _init(String multigoal_name, Dictionary state_variables);
-	void display(String heading = "");
+	void _initialize(String multigoal_name, Dictionary state_variables);
 	Array state_vars();
 
 protected:
