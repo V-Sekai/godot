@@ -3,18 +3,20 @@
 #include "register_types.h"
 
 #include "core/object/class_db.h"
-#include "summator.h"
+
+#include "multigoal.h"
+#include "domain.h"
 
 void initialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 			return;
 	}
-	ClassDB::register_class<Summator>();
+	ClassDB::register_class<Domain>();
+	ClassDB::register_class<Multigoal>();
 }
 
 void uninitialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 			return;
 	}
-   // Nothing to do here in this example.
 }

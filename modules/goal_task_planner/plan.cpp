@@ -1,56 +1,161 @@
-# Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
-# K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
-# plan.gd
-# SPDX-License-Identifier: MIT
+// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
+// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
+// plan.gd
+// SPDX-License-Identifier: MIT
 
-# SPDX-FileCopyrightText: 2021 University of Maryland
-# SPDX-License-Identifier: BSD-3-Clause-Clear
-# Author: Dana Nau <nau@umd.edu>, July 7, 2021
-# Author: K. S. Ernest (iFire) Lee <ernest.lee@chibifire.com>, August 28, 2022
+// SPDX-FileCopyrightText: 2021 University of Maryland
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+// Author: Dana Nau <nau@umd.edu>, July 7, 2021
+// Author: K. S. Ernest (iFire) Lee <ernest.lee@chibifire.com>, August 28, 2022
 
-extends Resource
-
-## Task Goal is an automated planning system that can plan for both tasks and
-## goals.
-
-## How much information to print while the program is running
-##
-## verbose is a global value whose initial value is 1. Its value determines how
-## much debugging information GTPyhop will print:
-## - verbose = 0: print nothing
-## - verbose = 1: print the initial parameters and the answer
-## - verbose = 2: also print a message on each recursive call
-## - verbose = 3: also print some info about intermediate computations
-@export var verbose: int = 0
-
-## A list of all domains that have been created
-@export var domains: Array[Resource] = []
-
-# #The Domain object that find_plan, run_lazy_lookahead, etc., will use.
-@export var current_domain: Resource
-
-## Sequence number to use when making copies of states.
-var _next_state_number: int = 0
-
-## Sequence number to use when making copies of multigoals.
-var _next_multigoal_number: int = 0
-
-## Sequence number to use when making copies of domains.
-var _next_domain_number: int = 0
-
-const _domain_const = preload("domain.gd")
+#include "plan.h"
 
 
-##	Print domain's actions, commands, and methods. The optional 'domain'
-##	argument defaults to the current domain
-func print_domain(domain: Object = null) -> void:
-	if domain == null:
-		domain = current_domain
-	print("Domain name: %s" % resource_name)
-	print_actions(domain)
-	print_methods(domain)
-	print_simple_temporal_network(domain)
+#include "plan.h"
 
+void Plan::print_domain(Object* domain) {
+    if (domain == nullptr) {
+        domain = current_domain;
+    }
+
+    std::cout << "Domain name: " << resource_name << std::endl;
+
+    print_actions(domain);
+    print_methods(domain);
+    print_simple_temporal_network(domain);
+}
+
+
+void Plan::print_simple_temporal_network(Object* domain) {
+    // Implementation goes here
+}
+
+void Plan::print_actions(Object* domain) {
+    // Implementation goes here
+}
+
+void Plan::_print_task_methods(Object* domain) {
+    // Implementation goes here
+}
+
+void Plan::_print_unigoal_methods(Object* domain) {
+    // Implementation goes here
+}
+
+void Plan::_print_multigoal_methods(Object* domain) {
+    // Implementation goes here
+}
+
+void Plan::print_methods(Object* domain) {
+    // Implementation goes here
+}
+
+Dictionary Plan::declare_actions(Array actions) {
+    // Implementation goes here
+    return Dictionary();
+}
+
+
+std::map<std::string, std::vector<Method>> Plan::declare_task_methods(std::string task_name, std::vector<Method> methods) {
+    if (current_domain == nullptr) {
+       print_line("Cannot declare methods until a domain has been created.");
+        return {};
+    }
+
+    auto it = current_domain->_task_method_dict.find(task_name);
+    if (it != current_domain->_task_method_dict.end()) {
+        // task_name is already in the dictionary
+        for (const auto& m : methods) {
+            // check if method is not already in the list
+            if (std::find(it->second.begin(), it->second.end(), m) == it->second.end()) {
+                it->second.push_back(m);
+            }
+        }
+    } else {
+        // task_name is not in the dictionary, so add it
+        current_domain->_task_method_dict[task_name] = methods;
+    }
+
+    return current_domain->_task_method_dict;
+}
+
+
+Dictionary Plan::declare_unigoal_methods(StringName state_var_name, Array methods) {
+    // Implementation goes here
+    return Dictionary();
+}
+
+Array Plan::declare_multigoal_methods(Array methods) {
+    // Implementation goes here
+    return Array();
+}
+
+Array Plan::m_split_multigoal(Dictionary state, Multigoal multigoal) {
+    // Implementation goes here
+    return Array();
+}
+
+Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth) {
+    // Implementation goes here
+    return Variant();
+}
+
+Variant Plan::_refine_task_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth) {
+    // Implementation goes here
+    return Variant();
+}
+
+Variant Plan::_refine_unigoal_and_continue(Dictionary state, Array goal1, Array todo_list, Array plan, int depth) {
+    // Implementation goes here
+    return Variant();
+}
+
+Variant Plan::_refine_multigoal_and_continue(Dictionary state, Multigoal goal1, Array todo_list, Array plan, int depth) {
+    // Implementation goes here
+    return Variant();
+}
+
+Variant Plan::find_plan(Dictionary state, Array todo_list) {
+    // Implementation goes here
+    return Variant();
+}
+
+Variant Plan::seek_plan(Dictionary state, Array todo_list, Array plan, int depth) {
+    // Implementation goes here
+    return Variant();
+}
+
+String Plan::_item_to_string(Variant item) {
+    // Implementation goes here
+    return String();
+}
+
+Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries) {
+    // Implementation goes here
+    return Dictionary();
+}
+
+Variant Plan::_apply_task_and_continue(Dictionary state, Callable command, Array args) {
+    if (verbose >= 3) {
+        print("_apply_command_and_continue %s, args = %s", {command.get_method().to_string(), args.to_string()});
+    }
+
+    Variant next_state = command.callv(command.get_method(), {state} + args);
+
+    if (!next_state) {
+        if (verbose >= 3) {
+            print("Not applicable command %s", {command.get_method().to_string(), args.to_string()});
+        }
+        return false;
+    }
+
+    if (verbose >= 3) {
+        print("Applied");
+        print(next_state);
+    }
+
+    return next_state;
+}
 
 func print_simple_temporal_network(domain: Object = null) -> void:
 	if domain == null:
@@ -136,41 +241,6 @@ func declare_actions(actions):
 	for action in actions:
 		current_domain._action_dict[action.get_method()] = action
 	return current_domain._action_dict
-
-
-##	'task_name' should be a character string, and 'methods' should be a list
-##	of functions. declare_task_methods adds each member of 'methods' to the
-##	current domain's list of methods to use for tasks of the form
-##		[task_name, arg1, ..., argn].
-##
-##	Example:
-##		declare_task_methods('travel', travel_by_car, travel_by_foot)
-##	says that travel_by_car and travel_by_foot are methods and that GTPyhop
-##	should try using them for any task whose task name is 'travel', e.g.,
-##		['travel', 'alice', 'store']
-##		['travel', 'alice', 'umd', 'ucla']
-##		['travel', 'alice', 'umd', 'ucla', 'slowly']
-##		['travel', 'bob', 'home', 'park', 'looking', 'at', 'birds']
-##
-##	This is like Pyhop's declare_methods function, except that it can be
-##	called several times to declare more methods for the same task.
-func declare_task_methods(task_name: StringName, methods: Array):
-	if current_domain == null:
-		print("Cannot declare methods until a domain has been created.")
-		return []
-	if task_name in current_domain._task_method_dict:
-		var old_methods = current_domain._task_method_dict[task_name]
-		# even though current_domain._task_method_dict[task_name] is a list,
-		# we don't want to add any methods that are already in it
-		var method_arrays: Array = []
-		for m in methods:
-			if not old_methods.has(m):
-				method_arrays.push_back(m)
-		current_domain._task_method_dict[task_name].append_array(method_arrays)
-	else:
-		current_domain._task_method_dict[task_name] = methods
-	return current_domain._task_method_dict
-
 
 ##	'state_var_name' should be a character string, and 'methods' should be a
 ##	list of functions. declare_unigoal_method adds each member of 'methods'
@@ -570,19 +640,3 @@ func run_lazy_lookahead(state: Dictionary, todo_list: Array, max_tries: int = 10
 		print("RunLazyLookahead> final state %s" % state)
 
 	return state
-
-
-func _apply_task_and_continue(state: Dictionary, command: Callable, args: Array) -> Variant:
-	if verbose >= 3:
-		print("_apply_command_and_continue %s, args = %s" % [[str(command.get_method())] + [args]])
-
-	var next_state = command.get_object().callv(command.get_method(), [state] + args)
-	if not next_state:
-		if verbose >= 3:
-			print("Not applicable command %s" % [command.get_method(), args])
-		return false
-
-	if verbose >= 3:
-		print("Applied")
-		print(next_state)
-	return next_state
