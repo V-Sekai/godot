@@ -577,10 +577,4 @@ void Plan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &Plan::find_plan);
 	ClassDB::bind_method(D_METHOD("seek_plan", "state", "todo_list", "plan", "depth"), &Plan::seek_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &Plan::run_lazy_lookahead, DEFVAL(10));
-	ClassDB::bind_method(D_METHOD("_apply_action_and_continue", "state", "task", "todo_list", "plan", "depth"), &Plan::_apply_action_and_continue);
-	ClassDB::bind_method(D_METHOD("_refine_task_and_continue", "state", "task", "todo_list", "plan", "depth"), &Plan::_refine_task_and_continue);
-	ClassDB::bind_method(D_METHOD("_refine_multigoal_and_continue", "state", "goal", "todo_list", "plan", "depth"), &Plan::_refine_multigoal_and_continue);
-	ClassDB::bind_method(D_METHOD("_refine_unigoal_and_continue", "state", "goal", "todo_list", "plan", "depth"), &Plan::_refine_unigoal_and_continue);
-	ClassDB::bind_method(D_METHOD("_item_to_string", "item"), &Plan::_item_to_string);
-	ClassDB::bind_method(D_METHOD("_apply_task_and_continue", "state", "command", "arguments"), &Plan::_apply_task_and_continue);
 }

@@ -31,37 +31,37 @@
 #include "domain.h"
 
 void Domain::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("print_domain"), &Domain::print_domain);
-	ClassDB::bind_method(D_METHOD("print_actions"), &Domain::print_actions);
-	ClassDB::bind_method(D_METHOD("print_task_methods"), &Domain::print_task_methods);
-	ClassDB::bind_method(D_METHOD("print_unigoal_methods"), &Domain::print_unigoal_methods);
-	ClassDB::bind_method(D_METHOD("print_multigoal_methods"), &Domain::print_multigoal_methods);
-	ClassDB::bind_method(D_METHOD("print_methods"), &Domain::print_methods);
+    ClassDB::bind_method(D_METHOD("print_domain"), &Domain::print_domain);
+    ClassDB::bind_method(D_METHOD("print_actions"), &Domain::print_actions);
+    ClassDB::bind_method(D_METHOD("print_task_methods"), &Domain::print_task_methods);
+    ClassDB::bind_method(D_METHOD("print_unigoal_methods"), &Domain::print_unigoal_methods);
+    ClassDB::bind_method(D_METHOD("print_multigoal_methods"), &Domain::print_multigoal_methods);
+    ClassDB::bind_method(D_METHOD("print_methods"), &Domain::print_methods);
 
-	ClassDB::bind_method(D_METHOD("_m_verify_g", "state", "method", "state_var", "arg", "desired_val", "depth"), &Domain::_m_verify_g);
-	ClassDB::bind_static_method("Domain", D_METHOD("_goals_not_achieved", "state", "multigoal"), &Domain::_goals_not_achieved);
-	ClassDB::bind_method(D_METHOD("_m_verify_mg", "state", "method", "multigoal", "depth"), &Domain::_m_verify_mg);
+    ClassDB::bind_method(D_METHOD("_m_verify_g", "state", "method", "state_variable", "arg", "desired_value", "depth"), &Domain::_m_verify_g);
+    ClassDB::bind_static_method("Domain", D_METHOD("_goals_not_achieved", "state", "multigoal"), &Domain::_goals_not_achieved);
+    ClassDB::bind_method(D_METHOD("_m_verify_mg", "state", "method", "multigoal", "depth"), &Domain::_m_verify_mg);
 
-	ClassDB::bind_method(D_METHOD("set_verbose", "value"), &Domain::set_verbose);
-	ClassDB::bind_method(D_METHOD("get_verbose"), &Domain::get_verbose);
+    ClassDB::bind_method(D_METHOD("set_verbose", "value"), &Domain::set_verbose);
+    ClassDB::bind_method(D_METHOD("get_verbose"), &Domain::get_verbose);
 
-	ClassDB::bind_method(D_METHOD("set_action_dict", "value"), &Domain::set_action_dictionary);
-	ClassDB::bind_method(D_METHOD("get_action_dict"), &Domain::get_action_dictionary);
+    ClassDB::bind_method(D_METHOD("set_action_dictionary", "value"), &Domain::set_action_dictionary);
+    ClassDB::bind_method(D_METHOD("get_action_dictionary"), &Domain::get_action_dictionary);
 
-	ClassDB::bind_method(D_METHOD("set_task_method_dict", "value"), &Domain::set_task_method_dictionary);
-	ClassDB::bind_method(D_METHOD("get_task_method_dict"), &Domain::get_task_method_dictionary);
+    ClassDB::bind_method(D_METHOD("set_task_method_dictionary", "value"), &Domain::set_task_method_dictionary);
+    ClassDB::bind_method(D_METHOD("get_task_method_dictionary"), &Domain::get_task_method_dictionary);
 
-	ClassDB::bind_method(D_METHOD("set_unigoal_method_dict", "value"), &Domain::set_unigoal_method_dictionary);
-	ClassDB::bind_method(D_METHOD("get_unigoal_method_dict"), &Domain::get_unigoal_method_dictionary);
+    ClassDB::bind_method(D_METHOD("set_unigoal_method_dictionary", "value"), &Domain::set_unigoal_method_dictionary);
+    ClassDB::bind_method(D_METHOD("get_unigoal_method_dictionary"), &Domain::get_unigoal_method_dictionary);
 
-	ClassDB::bind_method(D_METHOD("set_multigoal_method_list", "value"), &Domain::set_multigoal_method_list);
-	ClassDB::bind_method(D_METHOD("get_multigoal_method_list"), &Domain::get_multigoal_method_list);
+    ClassDB::bind_method(D_METHOD("set_multigoal_method_list", "value"), &Domain::set_multigoal_method_list);
+    ClassDB::bind_method(D_METHOD("get_multigoal_method_list"), &Domain::get_multigoal_method_list);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "action_dict"), "set_action_dict", "get_action_dict");
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "task_method_dict"), "set_task_method_dict", "get_task_method_dict");
-	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "unigoal_method_dict"), "set_unigoal_method_dict", "get_unigoal_method_dict");
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "multigoal_method_list"), "set_multigoal_method_list", "get_multigoal_method_list");
+    ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
+    ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "action_dictionary"), "set_action_dictionary", "get_action_dictionary");
+    ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "task_method_dictionary"), "set_task_method_dictionary", "get_task_method_dictionary");
+    ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "unigoal_method_dictionary"), "set_unigoal_method_dictionary", "get_unigoal_method_dictionary");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "multigoal_method_list"), "set_multigoal_method_list", "get_multigoal_method_list");
 }
 
 Variant Domain::_m_verify_g(Dictionary p_state, String p_method, String p_state_variable, String p_arguments, Variant p_desired_value, int p_depth) {
