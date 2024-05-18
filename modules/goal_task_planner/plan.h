@@ -88,113 +88,113 @@ public:
 	void set_next_multigoal_number(int nmn) { _next_multigoal_number = nmn; }
 	void set_next_domain_number(int ndn) { _next_domain_number = ndn; }
 
-	// void Plan::print_domain(Ref<Domain> domain) {
+	void print_domain(Ref<Domain> domain) {
+		if (domain == nullptr) {
+			domain = current_domain;
+		}
+
+		print_line(vformat("Domain name: %s", get_name()));
+
+		print_actions(domain);
+		print_methods(domain);
+		// print_simple_temporal_network(domain);
+	}
+
+	// void Plan::print_simple_temporal_network(Ref<Domain> domain) {
 	// 	if (domain == nullptr) {
 	// 		domain = current_domain;
 	// 	}
 
-	// 	print_line(vformat("Domain name: %s", get_name()));
-
-	// 	print_actions(domain);
-	// 	print_methods(domain);
-	// 	// print_simple_temporal_network(domain);
-	// }
-
-	// // void Plan::print_simple_temporal_network(Ref<Domain> domain) {
-	// // 	if (domain == nullptr) {
-	// // 		domain = current_domain;
-	// // 	}
-
-	// // 	if (domain->stn) {
-	// // 		std::cout << "-- Simple Temporal Network: " << domain->stn.to_dictionary() << std::endl;
-	// // 	} else {
-	// // 		std::cout << "-- There is no Simple Temporal Network --" << std::endl;
-	// // 	}
-	// // }
-	// void Plan::print_actions(Ref<Domain> domain) {
-	// 	if (domain.is_null()) {
-	// 		domain = current_domain;
-	// 	}
-
-	// 	if (!domain->get_action_dict().is_empty()) {
-	// 		String actions = "-- Actions: ";
-
-	// 		// Create an iterator for the action_dict
-	// 		Array keys = domain->get_action_dict().keys();
-	// 		for (int i = 0; i < keys.size(); ++i) {
-	// 			if (i != 0) {
-	// 				actions += ", ";
-	// 			}
-	// 			actions += String(keys[i]);
-	// 		}
-
-	// 		print_line(actions);
+	// 	if (domain->stn) {
+	// 		std::cout << "-- Simple Temporal Network: " << domain->stn.to_dictionary() << std::endl;
 	// 	} else {
-	// 		print_line("-- There are no actions --");
+	// 		std::cout << "-- There is no Simple Temporal Network --" << std::endl;
 	// 	}
 	// }
-	// void Plan::_print_task_methods(Ref<Domain> domain) {
-	// 	if (!domain->get_task_method_dict().is_empty()) {
-	// 		print_line("\nTask name:         Relevant task methods:");
-	// 		print_line("---------------    ----------------------");
+	void print_actions(Ref<Domain> domain) {
+		if (domain.is_null()) {
+			domain = current_domain;
+		}
 
-	// 		String string_array;
-	// 		Array keys = domain->get_task_method_dict().keys();
-	// 		for (int i = 0; i < keys.size(); ++i) {
-	// 			string_array += String(keys[i]) + ", ";
-	// 		}
-	// 		print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+		if (!domain->get_action_dictionary().is_empty()) {
+			String actions = "-- Actions: ";
 
-	// 		print_line("");
-	// 	} else {
-	// 		print_line("-- There are no task methods --");
-	// 	}
-	// }
+			// Create an iterator for the action_dict
+			Array keys = domain->get_action_dictionary().keys();
+			for (int i = 0; i < keys.size(); ++i) {
+				if (i != 0) {
+					actions += ", ";
+				}
+				actions += String(keys[i]);
+			}
 
-	// void Plan::_print_unigoal_methods(Ref<Domain> domain) {
-	// 	if (!domain->get_unigoal_method_dict().is_empty()) {
-	// 		print_line("Blackboard var name:    Relevant unigoal methods:");
-	// 		print_line("---------------    -------------------------");
+			print_line(actions);
+		} else {
+			print_line("-- There are no actions --");
+		}
+	}
+	void _print_task_methods(Ref<Domain> domain) {
+		if (!domain->get_task_method_dictionary().is_empty()) {
+			print_line("\nTask name:         Relevant task methods:");
+			print_line("---------------    ----------------------");
 
-	// 		Array keys = domain->get_unigoal_method_dict().keys();
-	// 		for (int j = 0; j < keys.size(); ++j) {
-	// 			String string_array;
-	// 			Array methods = domain->get_unigoal_method_dict()[keys[j]];
-	// 			for (int i = 0; i < methods.size(); ++i) {
-	// 				String m = methods[i];
-	// 				string_array += m + ", ";
-	// 			}
-	// 			print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
-	// 		}
+			String string_array;
+			Array keys = domain->get_task_method_dictionary().keys();
+			for (int i = 0; i < keys.size(); ++i) {
+				string_array += String(keys[i]) + ", ";
+			}
+			print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
 
-	// 		print_line("");
-	// 	} else {
-	// 		print_line("-- There are no unigoal methods --");
-	// 	}
-	// }
-	// void Plan::_print_multigoal_methods(Ref<Domain> domain) {
-	// 	if (!domain->get_multigoal_method_list().is_empty()) {
-	// 		String string_array;
-	// 		Array methods = domain->get_multigoal_method_list();
-	// 		for (int i = 0; i < methods.size(); ++i) {
-	// 			Variant m = methods[i];
-	// 			string_array += String(m) + ", ";
-	// 		}
-	// 		print_line("-- Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
-	// 	} else {
-	// 		print_line("-- There are no multigoal methods --");
-	// 	}
-	// }
+			print_line("");
+		} else {
+			print_line("-- There are no task methods --");
+		}
+	}
 
-	// void Plan::print_methods(Ref<Domain> domain) {
-	// 	if (domain == nullptr) {
-	// 		domain = current_domain;
-	// 	}
+	void _print_unigoal_methods(Ref<Domain> domain) {
+		if (!domain->get_unigoal_method_dictionary().is_empty()) {
+			print_line("Blackboard var name:    Relevant unigoal methods:");
+			print_line("---------------    -------------------------");
 
-	// 	_print_task_methods(domain);
-	// 	_print_unigoal_methods(domain);
-	// 	_print_multigoal_methods(domain);
-	// }
+			Array keys = domain->get_unigoal_method_dictionary().keys();
+			for (int j = 0; j < keys.size(); ++j) {
+				String string_array;
+				Array methods = domain->get_unigoal_method_dictionary()[keys[j]];
+				for (int i = 0; i < methods.size(); ++i) {
+					String m = methods[i];
+					string_array += m + ", ";
+				}
+				print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+			}
+
+			print_line("");
+		} else {
+			print_line("-- There are no unigoal methods --");
+		}
+	}
+	void _print_multigoal_methods(Ref<Domain> domain) {
+		if (!domain->get_multigoal_method_list().is_empty()) {
+			String string_array;
+			Array methods = domain->get_multigoal_method_list();
+			for (int i = 0; i < methods.size(); ++i) {
+				Variant m = methods[i];
+				string_array += String(m) + ", ";
+			}
+			print_line("-- Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+		} else {
+			print_line("-- There are no multigoal methods --");
+		}
+	}
+
+	void print_methods(Ref<Domain> domain) {
+		if (domain == nullptr) {
+			domain = current_domain;
+		}
+
+		_print_task_methods(domain);
+		_print_unigoal_methods(domain);
+		_print_multigoal_methods(domain);
+	}
 
 	Dictionary declare_actions(Array p_actions) {
 		if (current_domain.is_null()) {
@@ -640,86 +640,86 @@ public:
 		return String(item);
 	}
 
-	// Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10) {
-	// 	if (verbose >= 1) {
-	// 		print_line(vformat("RunLazyLookahead> run_lazy_lookahead, verbose = %s, max_tries = %s", verbose, max_tries));
-	// 		print_line(vformat("RunLazyLookahead> initial state: %s", state.keys()));
-	// 		print_line(vformat("RunLazyLookahead> To do: %s", todo_list));
-	// 	}
+	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10) {
+		if (verbose >= 1) {
+			print_line(vformat("RunLazyLookahead> run_lazy_lookahead, verbose = %s, max_tries = %s", verbose, max_tries));
+			print_line(vformat("RunLazyLookahead> initial state: %s", state.keys()));
+			print_line(vformat("RunLazyLookahead> To do: %s", todo_list));
+		}
 
-	// 	Dictionary ordinals;
-	// 	ordinals[1] = "st";
-	// 	ordinals[2] = "nd";
-	// 	ordinals[3] = "rd";
+		Dictionary ordinals;
+		ordinals[1] = "st";
+		ordinals[2] = "nd";
+		ordinals[3] = "rd";
 
-	// 	for (int tries = 1; tries <= max_tries; tries++) {
-	// 		if (verbose >= 1) {
-	// 			print_line(vformat("RunLazyLookahead> %sth call to find_plan:", tries, ordinals.get(tries, "")));
-	// 		}
+		for (int tries = 1; tries <= max_tries; tries++) {
+			if (verbose >= 1) {
+				print_line(vformat("RunLazyLookahead> %sth call to find_plan:", tries, ordinals.get(tries, "")));
+			}
 
-	// 		Variant plan = find_plan(state, todo_list);
-	// 		if (
-	// 				plan.is_null() || (plan.get_type() == Variant::ARRAY && ((Array)plan).is_empty()) || (plan.get_type() == Variant::DICTIONARY && ((Dictionary)plan).is_empty())) {
-	// 			if (verbose >= 1) {
-	// 				print_line("run_lazy_lookahead: find_plan has failed");
-	// 			}
-	// 			return state;
-	// 		}
+			Variant plan = find_plan(state, todo_list);
+			if (
+					plan.is_null() || (plan.get_type() == Variant::ARRAY && ((Array)plan).is_empty()) || (plan.get_type() == Variant::DICTIONARY && ((Dictionary)plan).is_empty())) {
+				if (verbose >= 1) {
+					print_line("run_lazy_lookahead: find_plan has failed");
+				}
+				return state;
+			}
 
-	// 		if (
-	// 				plan.is_null() || (plan.get_type() == Variant::ARRAY && ((Array)plan).is_empty()) || (plan.get_type() == Variant::DICTIONARY && ((Dictionary)plan).is_empty())) {
-	// 			if (verbose >= 1) {
-	// 				print_line(vformat("RunLazyLookahead> Empty plan => success\nafter %s calls to find_plan.", tries));
-	// 			}
-	// 			if (verbose >= 2) {
-	// 				print_line(vformat("> final state %s", state));
-	// 			}
-	// 			return state;
-	// 		}
+			if (
+					plan.is_null() || (plan.get_type() == Variant::ARRAY && ((Array)plan).is_empty()) || (plan.get_type() == Variant::DICTIONARY && ((Dictionary)plan).is_empty())) {
+				if (verbose >= 1) {
+					print_line(vformat("RunLazyLookahead> Empty plan => success\nafter %s calls to find_plan.", tries));
+				}
+				if (verbose >= 2) {
+					print_line(vformat("> final state %s", state));
+				}
+				return state;
+			}
 
-	// 		if (plan.get_type() != Variant::BOOL) {
-	// 			Array action_list = plan;
-	// 			for (int i = 0; i < action_list.size(); i++) {
-	// 				Array action = action_list[i];
-	// 				String action_name = current_domain->get_action_dict()[action[0]];
-	// 				if (verbose >= 1) {
-	// 					String action_arguments;
-	// 					Array actions = action.slice(1, action.size());
-	// 					for (Variant element : actions) {
-	// 						action_arguments += String(" ") + String(element);
-	// 					}
-	// 					print_line(vformat("RunLazyLookahead> Task: %s, %s", action_name , action_arguments));
-	// 				}
+			if (plan.get_type() != Variant::BOOL) {
+				Array action_list = plan;
+				for (int i = 0; i < action_list.size(); i++) {
+					Array action = action_list[i];
+					Callable action_name = current_domain->get_action_dictionary()[action[0]];
+					if (verbose >= 1) {
+						String action_arguments;
+						Array actions = action.slice(1, action.size());
+						for (Variant element : actions) {
+							action_arguments += String(" ") + String(element);
+						}
+						print_line(vformat("RunLazyLookahead> Task: %s, %s", action_name.get_method(), action_arguments));
+					}
 
-	// 				Dictionary new_state = _apply_task_and_continue(state, action_name, action.slice(1, action.size()));
-	// 				if (!new_state.is_empty()) {
-	// 					if (verbose >= 2) {
-	// 						print_line(new_state);
-	// 					}
-	// 					state = new_state;
-	// 				} else {
-	// 					if (verbose >= 1) {
-	// 						print_line(vformat("RunLazyLookahead> WARNING: action %s failed; will call find_plan.", action_name));
-	// 					}
-	// 					break;
-	// 				}
-	// 			}
-	// 		}
+					Dictionary new_state = _apply_task_and_continue(state, action_name, action.slice(1, action.size()));
+					if (!new_state.is_empty()) {
+						if (verbose >= 2) {
+							print_line(new_state);
+						}
+						state = new_state;
+					} else {
+						if (verbose >= 1) {
+							print_line(vformat("RunLazyLookahead> WARNING: action %s failed; will call find_plan.", action_name));
+						}
+						break;
+					}
+				}
+			}
 
-	// 		if (verbose >= 1 && !state.is_empty()) {
-	// 			print_line("RunLazyLookahead> Plan ended; will call find_plan again.");
-	// 		}
-	// 	}
+			if (verbose >= 1 && !state.is_empty()) {
+				print_line("RunLazyLookahead> Plan ended; will call find_plan again.");
+			}
+		}
 
-	// 	if (verbose >= 1) {
-	// 		print_line("RunLazyLookahead> Too many tries, giving up.");
-	// 	}
-	// 	if (verbose >= 2) {
-	// 		print_line(vformat("RunLazyLookahead> final state %s", state));
-	// 	}
+		if (verbose >= 1) {
+			print_line("RunLazyLookahead> Too many tries, giving up.");
+		}
+		if (verbose >= 2) {
+			print_line(vformat("RunLazyLookahead> final state %s", state));
+		}
 
-	// 	return state;
-	// }
+		return state;
+	}
 
 	Variant _apply_task_and_continue(Dictionary state, Callable command, Array args) {
 		if (verbose >= 3) {
