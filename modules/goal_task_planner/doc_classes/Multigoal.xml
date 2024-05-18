@@ -7,6 +7,13 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="initialize">
+			<return type="void" />
+			<param index="0" name="multigoal_name" type="String" />
+			<param index="1" name="state_variables" type="Dictionary" />
+			<description>
+			</description>
+		</method>
 		<method name="state_vars">
 			<return type="Array" />
 			<description>
