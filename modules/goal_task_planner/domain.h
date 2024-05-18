@@ -1,44 +1,76 @@
+/**************************************************************************/
+/*  domain.h                                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef DOMAIN_H
+#define DOMAIN_H
 // Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
 // K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
 // domain.h
 // SPDX-License-Identifier: MIT
 
-#pragma once
 
 #include "core/io/resource.h"
 #include "multigoal.h"
 
 class Domain : public Resource {
-    GDCLASS(Domain, Resource);
+	GDCLASS(Domain, Resource);
 
 private:
-    int verbose = 0;
-    Dictionary _action_dict;
-    Dictionary _task_method_dict;
-    Dictionary _unigoal_method_dict;
-    Array _multigoal_method_list;
-    // Ref<SimpleTemporalNetwork> stn;
+	int verbose = 0;
+	Dictionary _action_dict;
+	Dictionary _task_method_dict;
+	Dictionary _unigoal_method_dict;
+	Array _multigoal_method_list;
+	// Ref<SimpleTemporalNetwork> stn;
 
 public:
+	void set_verbose(int value) { verbose = value; }
+	void set_action_dict(Dictionary value) { _action_dict = value; }
+	void set_task_method_dict(Dictionary value) { _task_method_dict = value; }
+	void set_unigoal_method_dict(Dictionary value) { _unigoal_method_dict = value; }
+	void set_multigoal_method_list(Array value) { _multigoal_method_list = value; }
 
-    void set_verbose(int value) { verbose = value; }
-    void set_action_dict(Dictionary value) { _action_dict = value; }
-    void set_task_method_dict(Dictionary value) { _task_method_dict = value; }
-    void set_unigoal_method_dict(Dictionary value) { _unigoal_method_dict = value; }
-    void set_multigoal_method_list(Array value) { _multigoal_method_list = value; }
-
-    int get_verbose() const { return verbose; }
-    Dictionary get_action_dict() const { return _action_dict; }
-    Dictionary get_task_method_dict() const { return _task_method_dict; }
-    Dictionary get_unigoal_method_dict() const { return _unigoal_method_dict; }
-    Array get_multigoal_method_list() const { return _multigoal_method_list; }
+	int get_verbose() const { return verbose; }
+	Dictionary get_action_dict() const { return _action_dict; }
+	Dictionary get_task_method_dict() const { return _task_method_dict; }
+	Dictionary get_unigoal_method_dict() const { return _unigoal_method_dict; }
+	Array get_multigoal_method_list() const { return _multigoal_method_list; }
 
 public:
-    Variant _m_verify_g(Dictionary state, String method, String state_var, String arg, Variant desired_val, int depth);
-    static Dictionary _goals_not_achieved(Dictionary state, Ref<Multigoal> multigoal);
-    Variant _m_verify_mg(Dictionary state, String method, Ref<Multigoal> multigoal, int depth);
-    void display();
+	Variant _m_verify_g(Dictionary state, String method, String state_var, String arg, Variant desired_val, int depth);
+	static Dictionary _goals_not_achieved(Dictionary state, Ref<Multigoal> multigoal);
+	Variant _m_verify_mg(Dictionary state, String method, Ref<Multigoal> multigoal, int depth);
+	void display();
 
 protected:
-    static void _bind_methods();
+	static void _bind_methods();
 };
+
+#endif // DOMAIN_H
