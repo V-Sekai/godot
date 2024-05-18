@@ -9,634 +9,586 @@
 // Author: K. S. Ernest (iFire) Lee <ernest.lee@chibifire.com>, August 28, 2022
 
 #include "plan.h"
+#include "core/variant/dictionary.h"
+#include "modules/goal_task_planner/domain.h"
 
+void Plan::print_domain(Ref<Domain> domain) {
+	if (domain == nullptr) {
+		domain = current_domain;
+	}
 
-#include "plan.h"
+	print_line(vformat("Domain name: %s", get_name()));
 
-void Plan::print_domain(Object* domain) {
-    if (domain == nullptr) {
-        domain = current_domain;
-    }
-
-    std::cout << "Domain name: " << resource_name << std::endl;
-
-    print_actions(domain);
-    print_methods(domain);
-    print_simple_temporal_network(domain);
+	print_actions(domain);
+	print_methods(domain);
+	// print_simple_temporal_network(domain);
 }
 
+// void Plan::print_simple_temporal_network(Ref<Domain> domain) {
+// 	if (domain == nullptr) {
+// 		domain = current_domain;
+// 	}
 
-void Plan::print_simple_temporal_network(Object* domain) {
-    // Implementation goes here
+// 	if (domain->stn) {
+// 		std::cout << "-- Simple Temporal Network: " << domain->stn.to_dictionary() << std::endl;
+// 	} else {
+// 		std::cout << "-- There is no Simple Temporal Network --" << std::endl;
+// 	}
+// }
+void Plan::print_actions(Ref<Domain> domain) {
+	if (domain.is_null()) {
+		domain = current_domain;
+	}
+
+	if (!domain->get_action_dict().is_empty()) {
+		String actions = "-- Actions: ";
+
+		// Create an iterator for the action_dict
+		Array keys = domain->get_action_dict().keys();
+		for (int i = 0; i < keys.size(); ++i) {
+			if (i != 0) {
+				actions += ", ";
+			}
+			actions += String(keys[i]);
+		}
+
+		print_line(actions);
+	} else {
+		print_line("-- There are no actions --");
+	}
+}
+void Plan::_print_task_methods(Ref<Domain> domain) {
+	if (!domain->get_task_method_dict().is_empty()) {
+		print_line("\nTask name:         Relevant task methods:");
+		print_line("---------------    ----------------------");
+
+		String string_array;
+		Array keys = domain->get_task_method_dict().keys();
+		for (int i = 0; i < keys.size(); ++i) {
+			string_array += String(keys[i]) + ", ";
+		}
+		print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+
+		print_line("");
+	} else {
+		print_line("-- There are no task methods --");
+	}
 }
 
-void Plan::print_actions(Object* domain) {
-    // Implementation goes here
-}
+void Plan::_print_unigoal_methods(Ref<Domain> domain) {
+	if (!domain->get_unigoal_method_dict().is_empty()) {
+		print_line("Blackboard var name:    Relevant unigoal methods:");
+		print_line("---------------    -------------------------");
 
-void Plan::_print_task_methods(Object* domain) {
-    // Implementation goes here
-}
+		Array keys = domain->get_unigoal_method_dict().keys();
+		for (int j = 0; j < keys.size(); ++j) {
+			String string_array;
+			Array methods = domain->get_unigoal_method_dict()[keys[j]];
+			for (int i = 0; i < methods.size(); ++i) {
+				String m = methods[i];
+				string_array += m + ", ";
+			}
+			print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+		}
 
-void Plan::_print_unigoal_methods(Object* domain) {
-    // Implementation goes here
+		print_line("");
+	} else {
+		print_line("-- There are no unigoal methods --");
+	}
 }
-
-void Plan::_print_multigoal_methods(Object* domain) {
-    // Implementation goes here
-}
-
-void Plan::print_methods(Object* domain) {
-    // Implementation goes here
+void Plan::_print_multigoal_methods(Ref<Domain> domain) {
+	if (!domain->get_multigoal_method_list().is_empty()) {
+		String string_array;
+		Array methods = domain->get_multigoal_method_list();
+		for (int i = 0; i < methods.size(); ++i) {
+			Variant m = methods[i];
+			string_array += String(m) + ", ";
+		}
+		print_line("-- Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+	} else {
+		print_line("-- There are no multigoal methods --");
+	}
 }
 
 Dictionary Plan::declare_actions(Array actions) {
-    // Implementation goes here
-    return Dictionary();
+	if (current_domain == nullptr) {
+		print_line("Cannot declare actions until a domain has been created.");
+		return Dictionary();
+	}
+
+	for (int i = 0; i < actions.size(); ++i) {
+		Variant action = actions[i];
+		current_domain->get_action_dict()[action.get_method()] = action;
+	}
+
+	return current_domain->get_action_dict();
 }
 
+void Plan::print_methods(Ref<Domain> domain) {
+	if (domain == nullptr) {
+		domain = current_domain;
+	}
 
-std::map<std::string, std::vector<Method>> Plan::declare_task_methods(std::string task_name, std::vector<Method> methods) {
-    if (current_domain == nullptr) {
-       print_line("Cannot declare methods until a domain has been created.");
-        return {};
-    }
-
-    auto it = current_domain->_task_method_dict.find(task_name);
-    if (it != current_domain->_task_method_dict.end()) {
-        // task_name is already in the dictionary
-        for (const auto& m : methods) {
-            // check if method is not already in the list
-            if (std::find(it->second.begin(), it->second.end(), m) == it->second.end()) {
-                it->second.push_back(m);
-            }
-        }
-    } else {
-        // task_name is not in the dictionary, so add it
-        current_domain->_task_method_dict[task_name] = methods;
-    }
-
-    return current_domain->_task_method_dict;
+	_print_task_methods(domain);
+	_print_unigoal_methods(domain);
+	_print_multigoal_methods(domain);
 }
+Dictionary Plan::declare_task_methods(String task_name, Array methods) {
+	if (current_domain == nullptr) {
+		print_line("Cannot declare methods until a domain has been created.");
+		return Dictionary();
+	}
 
+	if (current_domain->get_task_method_dict().has(task_name)) {
+		// task_name is already in the dictionary
+		Array existing_methods = current_domain->get_task_method_dict()[task_name];
+		for (int i = 0; i < methods.size(); ++i) {
+			Variant m = methods[i];
+			// check if method is not already in the list
+			if (existing_methods.find(m) == -1) {
+				existing_methods.push_back(m);
+			}
+		}
+		current_domain->get_task_method_dict()[task_name] = existing_methods;
+	} else {
+		// task_name is not in the dictionary, so add it
+		current_domain->get_task_method_dict()[task_name] = methods;
+	}
+
+	return current_domain->get_task_method_dict();
+}
 
 Dictionary Plan::declare_unigoal_methods(StringName state_var_name, Array methods) {
-    // Implementation goes here
-    return Dictionary();
+	if (current_domain == nullptr) {
+		print_line("Cannot declare methods until a domain has been created.");
+		return Dictionary();
+	}
+
+	if (!current_domain->_unigoal_method_dict.has(state_var_name)) {
+		current_domain->_unigoal_method_dict[state_var_name] = methods;
+	} else {
+		Array old_methods = current_domain->_unigoal_method_dict[state_var_name];
+		Array method_array;
+		for (int i = 0; i < methods.size(); ++i) {
+			Variant m = methods[i];
+			if (!old_methods.has(m)) {
+				method_array.push_back(m);
+			}
+		}
+		current_domain->_unigoal_method_dict[state_var_name].append_array(method_array);
+	}
+
+	return current_domain->_unigoal_method_dict;
 }
 
 Array Plan::declare_multigoal_methods(Array methods) {
-    // Implementation goes here
-    return Array();
+	if (current_domain == nullptr) {
+		print_line("Cannot declare methods until a domain has been created.");
+		return Array();
+	}
+
+	Array method_array;
+	for (int i = 0; i < methods.size(); ++i) {
+		Variant m = methods[i];
+		if (!current_domain->_multigoal_method_list.has(m)) {
+			method_array.push_back(m);
+		}
+	}
+
+	current_domain->_multigoal_method_list.append_array(method_array);
+
+	return current_domain->_multigoal_method_list;
 }
 
-Array Plan::m_split_multigoal(Dictionary state, Multigoal multigoal) {
-    // Implementation goes here
-    return Array();
+Array Plan::m_split_multigoal(Dictionary state, Ref<Multigoal> multigoal) {
+	Dictionary goal_dict = get_current_domain()->_goals_not_achieved(state, multigoal);
+	Array goal_list;
+
+	for (int i = 0; i < goal_dict.size(); ++i) {
+		String state_var_name = goal_dict.get_key_at_index(i).operator String();
+		Array args = goal_dict[state_var_name];
+
+		for (int j = 0; j < args.size(); ++j) {
+			Variant arg = args[j];
+			if (goal_dict[state_var_name].has(arg) && goal_dict[state_var_name].size() > 0) {
+				Variant val = goal_dict[state_var_name][arg];
+				Array goal = [ state_var_name, arg, val ];
+				goal_list.push_back(goal);
+			}
+		}
+	}
+
+	if (!goal_list.is_empty()) {
+		// achieve goals, then check whether they're all simultaneously true
+		goal_list.push_back(multigoal);
+	}
+
+	return goal_list;
 }
 
 Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth) {
-    // Implementation goes here
-    return Variant();
+	Callable action = current_domain->get_action_dict()[task1[0]];
+	if (verbose >= 2) {
+		Array action_info = task1.slice(1);
+		action_info.insert(0, action.get_method());
+
+		String action_info_str;
+		for (int i = 0; i < action_info.size(); ++i) {
+			action_info_str += String(action_info[i]);
+			if (i != action_info.size() - 1) { // Not the last element
+				action_info_str += ", "; // Add comma for separation
+			}
+		}
+		print_line("Depth " + itos(depth) + ", Action " + action_info_str + ": ");
+	}
+
+	Array args = task1.slice(1);
+	args.insert(0, state);
+	Variant new_state = action.get_object()->callv(action.get_method(), args);
+
+	if (new_state) {
+		if (verbose >= 3) {
+			print_line("Intermediate computation: Action applied successfully.");
+			print_line("New state: " + String(new_state));
+		}
+
+		Array new_plan = plan;
+		new_plan.push_back(task1);
+		return seek_plan(new_state, todo_list, new_plan, depth + 1);
+	}
+
+	if (verbose >= 3) {
+		print_line("Intermediate computation: Failed to apply action. The new state is not valid.");
+		print_line("New state: " + String(new_state));
+		print_line("Task: " + String(task1));
+		print_line("State: " + String(state));
+	}
+
+	if (verbose >= 2) {
+		Array action_info = task1.slice(1);
+		action_info.insert(0, action.get_method());
+		print_line("Recursive call: Not applicable action: " + String(action_info));
+	}
+
+	return false;
 }
 
 Variant Plan::_refine_task_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth) {
-    // Implementation goes here
-    return Variant();
+	Array relevant = current_domain->get_task_method_dict()[task1[0]];
+	if (verbose >= 3) {
+		Array string_array;
+		for (int i = 0; i < relevant.size(); i++) {
+			string_array.push_back(relevant[i].get_method());
+		}
+		print_line("Depth " + itos(depth) + ", Task " + String(task1) + ", Methods " + String(string_array));
+	}
+
+	for (int i = 0; i < relevant.size(); i++) {
+		if (verbose >= 2) {
+			print_line("Depth " + itos(depth) + ", Trying method " + String(relevant[i].get_method()) + ": ");
+		}
+
+		Array args = task1.slice(1);
+		args.insert(0, state);
+		Variant subtasks = relevant[i].get_object().callv(relevant[i].get_method(), args);
+
+		if (subtasks.get_type() == Variant::ARRAY) {
+			if (verbose >= 3) {
+				print_line("Intermediate computation: Method applicable.");
+				print_line("Depth " + itos(depth) + ", Subtasks: " + String(subtasks));
+			}
+
+			Array new_todo_list = subtasks + todo_list;
+			Variant result = seek_plan(state, new_todo_list, plan, depth + 1);
+
+			if (result.get_type() == Variant::ARRAY) {
+				return result;
+			}
+		}
+	}
+
+	if (verbose >= 2) {
+		print_line("Recursive call: Failed to accomplish task: " + String(task1));
+	}
+
+	return false;
 }
 
 Variant Plan::_refine_unigoal_and_continue(Dictionary state, Array goal1, Array todo_list, Array plan, int depth) {
-    // Implementation goes here
-    return Variant();
+	if (verbose >= 3) {
+		print_line("Depth " + itos(depth) + ", Goal " + String(goal1) + ": ");
+	}
+
+	String state_var_name = goal1[0];
+	String arg = goal1[1];
+	Variant val = goal1[2];
+
+	if (state[state_var_name][arg] == val) {
+		if (verbose >= 3) {
+			print_line("Intermediate computation: Goal already achieved.");
+		}
+		return seek_plan(state, todo_list, plan, depth + 1);
+	}
+
+	Array relevant = current_domain._unigoal_method_dict[state_var_name];
+
+	if (verbose >= 3) {
+		Array string_array;
+		for (int i = 0; i < relevant.size(); i++) {
+			string_array.push_back(relevant[i].get_method());
+		}
+		print_line("Methods " + String(string_array));
+	}
+
+	for (int i = 0; i < relevant.size(); i++) {
+		if (verbose >= 2) {
+			print_line("Depth " + itos(depth) + ", Trying method " + String(relevant[i].get_method()) + ": ");
+		}
+
+		Variant subgoals = relevant[i].get_object().callv(relevant[i].get_method(), Array::make(state, arg, val));
+
+		if (subgoals.get_type() == Variant::ARRAY) {
+			if (verbose >= 3) {
+				print_line("Depth " + itos(depth) + ", Subgoals: " + String(subgoals));
+			}
+
+			Array verification;
+
+			if (verify_goals) {
+				verification.push_back(Array::make("_verify_g", String(relevant[i].get_method()), state_var_name, arg, val, depth));
+			} else {
+				verification.clear();
+			}
+
+			todo_list = subgoals + verification + todo_list;
+			Variant result = seek_plan(state, todo_list, plan, depth + 1);
+
+			if (result.get_type() == Variant::ARRAY) {
+				return result;
+			}
+		}
+	}
+
+	if (verbose >= 2) {
+		print_line("Recursive call: Failed to achieve goal: " + String(goal1));
+	}
+
+	return false;
 }
 
-Variant Plan::_refine_multigoal_and_continue(Dictionary state, Multigoal goal1, Array todo_list, Array plan, int depth) {
-    // Implementation goes here
-    return Variant();
+Variant Plan::_refine_multigoal_and_continue(Dictionary state, Ref<Multigoal> goal1, Array todo_list, Array plan, int depth) {
+	if (verbose >= 3) {
+		print_line("Depth " + itos(depth) + ", Multigoal " + String(goal1) + ": ");
+	}
+
+	Array relevant = current_domain._multigoal_method_list;
+
+	if (verbose >= 3) {
+		Array string_array;
+		for (int i = 0; i < relevant.size(); i++) {
+			string_array.push_back(relevant[i].get_method());
+		}
+		print_line("Methods " + String(string_array));
+	}
+
+	for (int i = 0; i < relevant.size(); i++) {
+		if (verbose >= 2) {
+			print_line("Depth " + itos(depth) + ", Trying method " + String(relevant[i].get_method()) + ": ");
+		}
+
+		Variant subgoals = relevant[i].get_object().callv(relevant[i].get_method(), Array::make(state, goal1));
+
+		if (subgoals.get_type() == Variant::ARRAY) {
+			if (verbose >= 3) {
+				print_line("Intermediate computation: Method applicable.");
+				print_line("Depth " + itos(depth) + ", Subgoals: " + String(subgoals));
+			}
+
+			Array verification;
+
+			if (verify_goals) {
+				verification.push_back(Array::make("_verify_mg", String(relevant[i].get_method()), goal1, depth));
+			} else {
+				verification.clear();
+			}
+
+			todo_list = subgoals + verification + todo_list;
+			Variant result = seek_plan(state, todo_list, plan, depth + 1);
+
+			if (result.get_type() == Variant::ARRAY) {
+				return result;
+			}
+		} else {
+			if (verbose >= 3) {
+				print_line("Intermediate computation: Method not applicable: " + String(relevant[i]));
+			}
+		}
+	}
+
+	if (verbose >= 2) {
+		print_line("Recursive call: Failed to achieve multigoal: " + String(goal1));
+	}
+
+	return false;
 }
 
 Variant Plan::find_plan(Dictionary state, Array todo_list) {
-    // Implementation goes here
-    return Variant();
+	if (verbose >= 1) {
+		String todo_string = todo_list;
+		print_line("FindPlan> find_plan, verbose=" + itos(verbose) + ":");
+		print_line("    state = " + String(state) + "\n    todo_list = " + todo_string);
+	}
+
+	Variant result = seek_plan(state, todo_list, Array(), 0);
+
+	if (verbose >= 1) {
+		print_line("FindPlan> result = " + String(result) + "\n");
+	}
+
+	return result;
 }
 
 Variant Plan::seek_plan(Dictionary state, Array todo_list, Array plan, int depth) {
-    // Implementation goes here
-    return Variant();
+	if (verbose >= 2) {
+		Array todo_array;
+		for (int i = 0; i < todo_list.size(); i++) {
+			todo_array.push_back(_item_to_string(todo_list[i]));
+		}
+		String todo_string = "[" + String(", ").join(todo_array) + "]";
+		print_line("Depth " + itos(depth) + " todo_list " + todo_string);
+	}
+
+	if (todo_list.empty()) {
+		if (verbose >= 3) {
+			print_line("depth " + itos(depth) + " no more tasks or goals, return plan");
+		}
+		return plan;
+	}
+
+	Variant item1 = todo_list.front();
+	todo_list.pop_front();
+
+	if (Object::cast_to<Multigoal>(item1)) {
+		return _refine_multigoal_and_continue(state, item1, todo_list, plan, depth);
+	} else if (item1.get_type() == Variant::ARRAY) {
+		Array item1_array = item1;
+		if (current_domain->_action_dict.has(item1_array[0])) {
+			return _apply_action_and_continue(state, item1, todo_list, plan, depth);
+		} else if (current_domain->_task_method_dict.has(item1_array[0])) {
+			return _refine_task_and_continue(state, item1, todo_list, plan, depth);
+		} else if (current_domain->_unigoal_method_dict.has(item1_array[0])) {
+			return _refine_unigoal_and_continue(state, item1, todo_list, plan, depth);
+		}
+	}
+
+	print_line("Depth " + itos(depth) + ": " + String(item1) + " isn't an action, task, unigoal, or multigoal\n");
+
+	return false;
 }
 
 String Plan::_item_to_string(Variant item) {
-    // Implementation goes here
-    return String();
+	return String(item);
 }
 
-Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries) {
-    // Implementation goes here
-    return Dictionary();
+Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10) {
+	if (verbose >= 1) {
+		print_line(vformat("RunLazyLookahead> run_lazy_lookahead, verbose = %s, max_tries = %s", verbose, max_tries));
+		print_line(vformat("RunLazyLookahead> initial state: %s", state.keys()));
+		print_line(vformat("RunLazyLookahead> To do: %s", todo_list));
+	}
+
+	Dictionary ordinals;
+	ordinals[1] = "st";
+	ordinals[2] = "nd";
+	ordinals[3] = "rd";
+
+	for (int tries = 1; tries <= max_tries; tries++) {
+		if (verbose >= 1) {
+			print_line(vformat("RunLazyLookahead> %sth call to find_plan:", tries, ordinals.get(tries, "")));
+		}
+
+		Variant plan = find_plan(state, todo_list);
+		if (
+				plan.is_null() || (plan.get_type() == Variant::ARRAY && ((Array)plan).is_empty()) || (plan.get_type() == Variant::DICTIONARY && ((Dictionary)plan).empty())) {
+			if (verbose >= 1) {
+				print_line("run_lazy_lookahead: find_plan has failed");
+			}
+			return state;
+		}
+
+		if (
+				plan.is_null() || (plan.get_type() == Variant::ARRAY && ((Array)plan).is_empty()) || (plan.get_type() == Variant::DICTIONARY && ((Dictionary)plan).empty())) {
+			if (verbose >= 1) {
+				print_line(vformat("RunLazyLookahead> Empty plan => success\nafter %s calls to find_plan.", tries));
+			}
+			if (verbose >= 2) {
+				print_line(vformat("> final state %s", state));
+			}
+			return state;
+		}
+
+		if (plan.get_type() != Variant::BOOL) {
+			Array action_list = plan;
+			for (int i = 0; i < action_list.size(); i++) {
+				Array action = action_list[i];
+				String action_name = current_domain._action_dict[action[0]];
+				if (verbose >= 1) {
+					print_line(vformat("RunLazyLookahead> Task: %s", action_name + action.slice(1, action.size())));
+				}
+
+				Dictionary new_state = _apply_task_and_continue(state, action_name, action.slice(1, action.size()));
+				if (!new_state.empty()) {
+					if (verbose >= 2) {
+						print_line(new_state);
+					}
+					state = new_state;
+				} else {
+					if (verbose >= 1) {
+						print_line(vformat("RunLazyLookahead> WARNING: action %s failed; will call find_plan.", action_name));
+					}
+					break;
+				}
+			}
+		}
+
+		if (verbose >= 1 && !state.empty()) {
+			print_line("RunLazyLookahead> Plan ended; will call find_plan again.");
+		}
+	}
+
+	if (verbose >= 1) {
+		print_line("RunLazyLookahead> Too many tries, giving up.");
+	}
+	if (verbose >= 2) {
+		print_line(vformat("RunLazyLookahead> final state %s", state));
+	}
+
+	return state;
 }
 
 Variant Plan::_apply_task_and_continue(Dictionary state, Callable command, Array args) {
-    if (verbose >= 3) {
-        print("_apply_command_and_continue %s, args = %s", {command.get_method().to_string(), args.to_string()});
-    }
+	if (verbose >= 3) {
+		print_line(vformat("_apply_command_and_continue %s, args = %s", command.get_method().to_string(), args.to_string()));
+	}
 
-    Variant next_state = command.callv(command.get_method(), {state} + args);
+	Variant next_state;
+	Array call_args = { state };
+	call_args.append_array(args);
+	command.callv(command.get_method(), call_args, &next_state);
 
-    if (!next_state) {
-        if (verbose >= 3) {
-            print("Not applicable command %s", {command.get_method().to_string(), args.to_string()});
-        }
-        return false;
-    }
+	if (!next_state) {
+		if (verbose >= 3) {
+			print_line(vformat("Not applicable command %s", command.get_method().to_string(), args.to_string()));
+		}
+		return false;
+	}
 
-    if (verbose >= 3) {
-        print("Applied");
-        print(next_state);
-    }
+	if (verbose >= 3) {
+		print_line("Applied");
+		print_line(next_state);
+	}
 
-    return next_state;
+	return next_state;
 }
 
-func print_simple_temporal_network(domain: Object = null) -> void:
-	if domain == null:
-		domain = current_domain
-	if domain.stn:
-		print("-- Simple Temporal Network: %s" % domain.stn.to_dictionary())
-	else:
-		print("-- There is no Simple Temporal Network --")
-
-
-## Print the names of all the actions
-func print_actions(domain: Object = null) -> void:
-	if domain == null:
-		domain = current_domain
-	if domain._action_dict:
-		print("-- Actions:", ", ".join(domain._action_dict.keys()))
-	else:
-		print("-- There are no actions --")
-
-
-func _print_task_methods(domain: Object = null) -> void:
-	if domain._task_method_dict:
-		print("")
-		print("Task name:         Relevant task methods:")
-		print("---------------    ----------------------")
-		var string_array: Array = Array()
-		for task in domain._task_method_dict:
-			string_array.append(task)
-		print("{task:<19}" + ", ".join(string_array))
-		print("")
-	else:
-		print("-- There are no task methods --")
-
-
-func _print_unigoal_methods(domain: Object = null) -> void:
-	if domain._unigoal_method_dict:
-		print("Blackboard var name:    Relevant unigoal methods:")
-		print("---------------    -------------------------")
-		for v in domain._unigoal_method_dict:
-			var string_array: PackedStringArray = PackedStringArray()
-			for f in domain._unigoal_method_dict[v]:
-				string_array.push_back(f.get_method())
-			print("{var:<19}" + ", ".join(string_array))
-		print("")
-	else:
-		print("-- There are no unigoal methods --")
-
-
-func _print_multigoal_methods(domain: Object = null) -> void:
-	if domain._multigoal_method_list:
-		var string_array: PackedStringArray = PackedStringArray()
-		for f in domain._multigoal_method_list:
-			string_array.push_back(f.get_method())
-		print(
-			"-- Multigoal methods:",
-			", ".join(string_array),
-		)
-	else:
-		print("-- There are no multigoal methods --")
-
-
-## Print tables showing what all the methods are
-func print_methods(domain: Object = null) -> void:
-	if domain == null:
-		domain = current_domain
-	_print_task_methods(domain)
-	_print_unigoal_methods(domain)
-	_print_multigoal_methods(domain)
-
-
-##	declare_actions adds each member of 'actions' to the current domain's list
-##	of actions. For example, this says that pickup and putdown are actions:
-##		declare_actions(pickup,putdown)
-##
-##	declare_actions can be called multiple times to add more actions.
-##
-##	You can see the current domain's list of actions by executing
-##		current_domain.display()
-func declare_actions(actions):
-	if current_domain == null:
-		print("Cannot declare actions until a domain has been created.")
-		return []
-	for action in actions:
-		current_domain._action_dict[action.get_method()] = action
-	return current_domain._action_dict
-
-##	'state_var_name' should be a character string, and 'methods' should be a
-##	list of functions. declare_unigoal_method adds each member of 'methods'
-##	to the current domain's list of relevant methods for goals of the form
-##		(state_var_name, arg, value)
-##	where 'arg' and 'value' are the state variable's argument and the desired
-##	value. For example,
-##		declare_unigoal_method('loc',travel_by_car)
-##	says that travel_by_car is relevant for goals such as these:
-##		('loc', 'alice', 'ucla')
-##		('loc', 'bob', 'home')
-##
-##	The above kind of goal, i.e., a desired value for a single state
-##	variable, is called a "unigoal". To achieve a unigoal, GTPyhop will go
-##	through the unigoal's list of relevant methods one by one, trying each
-##	method until it finds one that is successful.
-##
-##	To see each unigoal's list of relevant methods, use
-##		current_domain.display()
-func declare_unigoal_methods(state_var_name: StringName, methods: Array):
-	if current_domain == null:
-		print("Cannot declare methods until a domain has been created.")
-		return []
-	if not state_var_name in current_domain._unigoal_method_dict.keys():
-		current_domain._unigoal_method_dict[state_var_name] = methods
-	else:
-		var old_methods = current_domain._unigoal_method_dict[state_var_name]
-		var method_array: Array = []
-		for m in methods:
-			if not old_methods.has(m):
-				method_array.push_back(m)
-		current_domain._unigoal_method_dict[state_var_name].append_array(method_array)
-	return current_domain._unigoal_method_dict
-
-
-##	declare_multigoal_methods adds each method in 'methods' to the current
-##	domain's list of multigoal methods. For example, this says that
-##	stack_all_blocks and unstack_all_blocks are multigoal methods:
-##		declare_multigoal_methods(stack_all_blocks, unstack_all_blocks)
-##
-##	When GTPyhop tries to achieve a multigoal, it will go through the list
-##	of multigoal methods one by one, trying each method until it finds one
-##	that is successful. You can see the list by executing
-##		current_domain.display()
-##
-##	declare_multigoal_methods can be called multiple times to add more
-##	multigoal methods to the list.
-##
-##	For more information, see the docstring for the Multigoal class.
-func declare_multigoal_methods(methods: Array):
-	if current_domain == null:
-		print("Cannot declare methods until a domain has been created.")
-		return []
-	var method_array: Array = []
-	for m in methods:
-		if not m in current_domain._multigoal_method_list:
-			method_array.push_back(m)
-	current_domain._multigoal_method_list = current_domain._multigoal_method_list + method_array
-	return current_domain._multigoal_method_list
-
-
-##	m_split_multigoal is the only multigoal method that GTPyhop provides,
-##	and GTPyhop won't use it unless the user declares it explicitly using
-##		declare_multigoal_methods(m_split_multigoal)
-##
-##	The method's purpose is to try to achieve a multigoal by achieving each
-##	of the multigoal's individual goals sequentially. Parameters:
-##		- 'state' is the current state
-##		- 'multigoal' is the multigoal to achieve
-##	If multigoal is true in the current state, m_split_multigoal returns
-##	[]. Otherwise, it returns a goal list
-##		[g_1, ..., g_n, multigoal],
-##
-##	where g_1, ..., g_n are all of the goals in multigoal that aren't true
-##	in the current state. This tells the planner to achieve g_1, ..., g_n
-##	sequentially, then try to achieve multigoal again. Usually this means
-##	m_split_multigal will be used repeatedly, until it succeeds in producing
-##	a state in which all of the goals in multigoal are simultaneously true.
-##
-##	The main problem with m_split_multigoal is that it isn't smart about
-##	choosing the order in which to achieve g_1, ..., g_n. Some orderings may
-##	work much better than others. Thus, rather than using the method as it's
-##	defined below, one might want to modify it to choose a good order, e.g.,
-##	by using domain-specific information or a heuristic function.
-func m_split_multigoal(state: Dictionary, multigoal: Multigoal):
-	var goal_dict: Dictionary = _domain_const._goals_not_achieved(state, multigoal)
-	var goal_list: Array = []
-	for state_var_name in goal_dict.keys():
-		for arg in goal_dict[state_var_name]:
-			# print("state_var_name: ", state_var_name)
-			# print("arg: ", arg)
-			if goal_dict[state_var_name].has(arg) and goal_dict[state_var_name].size() > 0:
-				var val = goal_dict[state_var_name][arg]
-				goal_list.append([state_var_name, arg, val])
-	if not goal_list.is_empty():
-		# achieve goals, then check whether they're all simultaneously true
-		return goal_list + [multigoal]
-	return goal_list
-
-
-##
-##If verify_goals is True, then whenever the planner uses a method m to refine
-##a unigoal or multigoal, it will insert a "verification" task into the
-##current partial plan. If verify_goals is False, the planner won't insert any
-##verification tasks into the plan.
-##
-##The purpose of the verification task is to raise an exception if the
-##refinement produced by m doesn't achieve the goal or multigoal that it is
-##supposed to achieve. The verification task won't insert anything into the
-##final plan; it just will verify whether m did what it was supposed to do.
-var verify_goals: bool = true
-
-
-## Actions in HTN are atomic units of work, representing the simplest tasks that can't be further broken down. Actions often called primitives.
-func _apply_action_and_continue(
-	state: Dictionary, task1: Array, todo_list: Array, plan: Array, depth: int
-) -> Variant:
-	var action: Callable = current_domain._action_dict[task1[0]]
-	if verbose >= 2:
-		print("Depth %s, Action %s: " % [depth, str([action.get_method()] + task1.slice(1))])
-	var new_state = action.get_object().callv(action.get_method(), [state] + task1.slice(1))
-	if new_state:
-		if verbose >= 3:
-			print("Intermediate computation: Action applied successfully.")
-			print("New state: ", new_state)
-		return seek_plan(new_state, todo_list, plan + [task1], depth + 1)
-	if verbose >= 3:
-		print("Intermediate computation: Failed to apply action. The new state is not valid.")
-		print("New state: ", new_state)
-		print("Task: ", task1)
-		print("State: ", state)
-	if verbose >= 2:
-		print(
-			"Recursive call: Not applicable action: ", str([action.get_method()] + task1.slice(1))
-		)
-	return false
-
-
-func _refine_task_and_continue(
-	state: Dictionary, task1: Array, todo_list: Array, plan: Array, depth: int
-) -> Variant:
-	var relevant: Array = current_domain._task_method_dict[task1[0]]
-	if verbose >= 3:
-		var string_array: PackedStringArray = []
-		for m in relevant:
-			string_array.push_back(m.get_method())
-		print("Depth %s, Task %s, Methods %s" % [depth, task1, string_array])
-	for method in relevant:
-		if verbose >= 2:
-			print("Depth %s, Trying method %s: " % [depth, method.get_method()])
-		var subtasks: Variant = method.get_object().callv(
-			method.get_method(), [state] + task1.slice(1)
-		)
-		if subtasks is Array:
-			if verbose >= 3:
-				print("Intermediate computation: Method applicable.")
-				print("Depth %s, Subtasks: %s" % [depth, subtasks])
-
-			var result: Variant = seek_plan(state, subtasks + todo_list, plan, depth + 1)
-			if result is Array:
-				return result
-	if verbose >= 2:
-		print("Recursive call: Failed to accomplish task: ", task1)
-	return false
-
-
-func _refine_unigoal_and_continue(
-	state: Dictionary, goal1: Array, todo_list: Array, plan: Array, depth: int
-) -> Variant:
-	if verbose >= 3:
-		print("Depth %s, Goal %s: " % [depth, goal1])
-
-	var state_var_name: String = goal1[0]
-	var arg: String = goal1[1]
-	var val: Variant = goal1[2]
-
-	if state.get(state_var_name).get(arg) == val:
-		if verbose >= 3:
-			print("Intermediate computation: Goal already achieved.")
-		return seek_plan(state, todo_list, plan, depth + 1)
-
-	var relevant = current_domain._unigoal_method_dict[state_var_name]
-
-	if verbose >= 3:
-		var string_array: PackedStringArray = []
-		for m in relevant:
-			string_array.push_back(m.get_method())
-		print("Methods %s " % string_array)
-
-	for method in relevant:
-		if verbose >= 2:
-			print("Depth %s, Trying method %s: " % [depth, method.get_method()])
-
-		var subgoals: Variant = method.get_object().callv(method.get_method(), [state] + [arg, val])
-
-		if subgoals is Array:
-			if verbose >= 3:
-				print("Depth %s, Subgoals: %s" % [depth, subgoals])
-
-			var verification = []
-
-			if verify_goals:
-				verification = [
-					["_verify_g", str(method.get_method()), state_var_name, arg, val, depth]
-				]
-			else:
-				verification = []
-
-			todo_list = subgoals + verification + todo_list
-			var result: Variant = seek_plan(state, todo_list, plan, depth + 1)
-
-			if result is Array:
-				return result
-
-	if verbose >= 2:
-		print("Recursive call: Failed to achieve goal: ", goal1)
-
-	return false
-
-
-func _refine_multigoal_and_continue(
-	state: Dictionary, goal1: Multigoal, todo_list: Array, plan: Array, depth: int
-) -> Variant:
-	if verbose >= 3:
-		print("Depth %s, Multigoal %s: " % [depth, goal1])
-
-	var relevant: Array = current_domain._multigoal_method_list
-
-	if verbose >= 3:
-		var string_array: PackedStringArray = PackedStringArray()
-		for m in relevant:
-			string_array.push_back(m.get_method())
-		print("Methods %s" % string_array)
-
-	for method in relevant:
-		if verbose >= 2:
-			print("Depth %s, Trying method %s: " % [depth, method.get_method()])
-
-		var subgoals: Variant = method.get_object().callv(method.get_method(), [state, goal1])
-
-		if subgoals is Array:
-			if verbose >= 3:
-				print("Intermediate computation: Method applicable.")
-				print("Depth %s, Subgoals: %s" % [depth, subgoals])
-
-			var verification = []
-
-			if verify_goals:
-				verification = [["_verify_mg", str(method.get_method()), goal1, depth]]
-			else:
-				verification = []
-
-			todo_list = subgoals + verification + todo_list
-			var result: Variant = seek_plan(state, todo_list, plan, depth + 1)
-
-			if result is Array:
-				return result
-		else:
-			if verbose >= 3:
-				print("Intermediate computation: Method not applicable: ", method)
-
-	if verbose >= 2:
-		print("Recursive call: Failed to achieve multigoal: ", goal1)
-
-	return false
-
-
-func find_plan(state: Dictionary, todo_list: Array) -> Variant:
-	if verbose >= 1:
-		var todo_string = todo_list
-		print("FindPlan> find_plan, verbose=%s:" % verbose)
-		print("    state = %s\n    todo_list = %s" % [state, todo_string])
-
-	var result: Variant = seek_plan(state, todo_list, [], 0)
-
-	if verbose >= 1:
-		print("FindPlan> result = ", result, "\n")
-
-	return result
-
-
-func seek_plan(state: Dictionary, todo_list: Array, plan: Array, depth: int) -> Variant:
-	if verbose >= 2:
-		var todo_array: PackedStringArray = []
-		for x in todo_list:
-			todo_array.push_back(_item_to_string(x))
-		var todo_string = "[" + ", ".join(todo_array) + "]"
-		print("Depth %s todo_list %s" % [depth, todo_string])
-
-	if todo_list.is_empty():
-		if verbose >= 3:
-			print("depth %s no more tasks or goals, return plan" % [depth])
-		return plan
-
-	var item1 = todo_list.front()
-	todo_list.pop_front()
-
-	if item1 is Multigoal:
-		return _refine_multigoal_and_continue(state, item1, todo_list, plan, depth)
-	elif item1 is Array:
-		if item1[0] in current_domain._action_dict.keys():
-			return _apply_action_and_continue(state, item1, todo_list, plan, depth)
-		elif item1[0] in current_domain._task_method_dict.keys():
-			return _refine_task_and_continue(state, item1, todo_list, plan, depth)
-		elif item1[0] in current_domain._unigoal_method_dict.keys():
-			return _refine_unigoal_and_continue(state, item1, todo_list, plan, depth)
-
-	print("Depth %s: %s isn't an action, task, unigoal, or multigoal\n" % [depth, item1])
-
-	return false
-
-
-func _item_to_string(item):
-	return str(item)
-
-
-## An adaptation of the run_lazy_lookahead algorithm from Ghallab et al.
-## (2016), Automated Planning and Acting. It works roughly like this:
-##   loop:
-##       plan = find_plan(state, todo_list)
-##       if plan = [] then return state    // the new current state
-##       for each action in plan:
-##           try to execute the corresponding command
-##           if the command fails, continue the outer loop
-## Arguments:
-##   - 'state' is a state;
-##   - 'todo_list' is a list of tasks, goals, and multigoals;
-##   - max_tries is a bound on how many times to execute the outer loop.
-##
-## Note: whenever run_lazy_lookahead encounters an action for which there is
-## no corresponding command definition, it uses the action definition instead.
-func run_lazy_lookahead(state: Dictionary, todo_list: Array, max_tries: int = 10) -> Dictionary:
-	if verbose >= 1:
-		print(
-			(
-				"RunLazyLookahead> run_lazy_lookahead, verbose = %s, max_tries = %s"
-				% [verbose, max_tries]
-			)
-		)
-		print("RunLazyLookahead> initial state: %s" % [state.keys()])
-		print("RunLazyLookahead> To do:", todo_list)
-
-	var ordinals = {1: "st", 2: "nd", 3: "rd"}
-
-	for tries in range(1, max_tries + 1):
-		if verbose >= 1:
-			print("RunLazyLookahead> %s%s call to find_plan:" % [tries, ordinals.get(tries, "")])
-
-		var plan = find_plan(state, todo_list)
-		if (
-			plan == null
-			or (typeof(plan) == TYPE_ARRAY and plan.is_empty())
-			or (typeof(plan) == TYPE_DICTIONARY and !plan)
-		):
-			if verbose >= 1:
-				print("run_lazy_lookahead: find_plan has failed")
-			return state
-
-		if (
-			plan == null
-			or (typeof(plan) == TYPE_ARRAY and plan.is_empty())
-			or (typeof(plan) == TYPE_DICTIONARY and !plan)
-		):
-			if verbose >= 1:
-				print("RunLazyLookahead> Empty plan => success\nafter {tries} calls to find_plan.")
-			if verbose >= 2:
-				print("> final state %s" % [state])
-			return state
-
-		if typeof(plan) != TYPE_BOOL:
-			for action in plan:
-				var action_name = current_domain._action_dict.get(action[0])
-				if verbose >= 1:
-					print("RunLazyLookahead> Task: %s" % [[action_name] + action.slice(1)])
-
-				var new_state = _apply_task_and_continue(state, action_name, action.slice(1))
-				if new_state is Dictionary:
-					if verbose >= 2:
-						print(new_state)
-					state = new_state
-				else:
-					if verbose >= 1:
-						print(
-							(
-								"RunLazyLookahead> WARNING: action %s failed; will call find_plan."
-								% [action_name]
-							)
-						)
-					break
-
-		if verbose >= 1 and state != null:
-			print("RunLazyLookahead> Plan ended; will call find_plan again.")
-
-	if verbose >= 1:
-		print("RunLazyLookahead> Too many tries, giving up.")
-	if verbose >= 2:
-		print("RunLazyLookahead> final state %s" % state)
-
-	return state
+void Plan::_bind_methods() {}
