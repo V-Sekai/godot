@@ -80,7 +80,7 @@ public:
 	Variant seek_plan(Dictionary state, Array todo_list, Array plan, int depth);
 	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10);
 
-public:
+private:
 	Variant _apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth);
 	Variant _refine_task_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth);
 	Variant _refine_multigoal_and_continue(Dictionary state, Ref<Multigoal> goal1, Array todo_list, Array plan, int depth);
