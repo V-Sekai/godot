@@ -13,4 +13,16 @@
 			</description>
 		</method>
 	</methods>
+	<members>
+		<member name="action_dict" type="Dictionary" setter="set_action_dict" getter="get_action_dict" default="{}">
+		</member>
+		<member name="multigoal_method_list" type="Array" setter="set_multigoal_method_list" getter="get_multigoal_method_list" default="[]">
+		</member>
+		<member name="task_method_dict" type="Dictionary" setter="set_task_method_dict" getter="get_task_method_dict" default="{}">
+		</member>
+		<member name="unigoal_method_dict" type="Dictionary" setter="set_unigoal_method_dict" getter="get_unigoal_method_dict" default="{}">
+		</member>
+		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
+		</member>
+	</members>
 </class>
