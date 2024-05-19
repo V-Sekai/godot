@@ -28,6 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#ifndef PLAN_H
+#define PLAN_H
 // Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
 // K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
 // SPDX-License-Identifier: MIT
@@ -36,8 +38,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-#ifndef PLAN_H
-#define PLAN_H
 
 #include "core/io/resource.h"
 #include "core/variant/callable.h"
@@ -71,10 +71,10 @@ public:
 	void set_verbose(int p_level);
 	void set_domains(TypedArray<Domain> p_domain);
 	void set_current_domain(Ref<Domain> p_current_domain) { current_domain = p_current_domain; }
-	Dictionary declare_actions(Array p_actions);
-	Dictionary declare_task_methods(String p_task_name, Array p_methods);
-	Dictionary declare_unigoal_methods(StringName p_state_var_name, Array p_methods);
-	Array declare_multigoal_methods(Array p_methods);
+	Dictionary declare_actions(TypedArray<Callable> p_actions);
+	Dictionary declare_task_methods(String p_task_name, TypedArray<Callable> p_methods);
+	Dictionary declare_unigoal_methods(StringName p_state_var_name, TypedArray<Callable> p_methods);
+	Array declare_multigoal_methods(TypedArray<Callable> p_methods);
 	Array m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 	Variant find_plan(Dictionary state, Array todo_list);
 	Variant seek_plan(Dictionary state, Array todo_list, Array plan, int depth);

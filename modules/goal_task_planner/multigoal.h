@@ -28,13 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#ifndef MULTIGOAL_H
+#define MULTIGOAL_H
 // Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
 // K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
 // multigoal.h
 // SPDX-License-Identifier: MIT
 
-#ifndef MULTIGOAL_H
-#define MULTIGOAL_H
 
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
