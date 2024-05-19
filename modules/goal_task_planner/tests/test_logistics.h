@@ -411,22 +411,20 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
 
 	Variant plan = planner->find_plan(state1.duplicate(true), task);
 
-	CHECK_EQ(plan, Array());
-	// CHECK_ARRAY_EQ(
-	// 		plan,
-	// 		varray(
-	// 				Dictionary::make("drive_truck", "truck1", "location1"),
-	// 				Dictionary::make("load_truck", "package1", "truck1"),
-	// 				Dictionary::make("drive_truck", "truck1", "airport1"),
-	// 				Dictionary::make("unload_truck", "package1", "airport1"),
-	// 				Dictionary::make("fly_plane", "plane2", "airport1"),
-	// 				Dictionary::make("load_plane", "package1", "plane2"),
-	// 				Dictionary::make("fly_plane", "plane2", "airport2"),
-	// 				Dictionary::make("unload_plane", "package1", "airport2"),
-	// 				Dictionary::make("drive_truck", "truck6", "airport2"),
-	// 				Dictionary::make("load_truck", "package1", "truck6"),
-	// 				Dictionary::make("drive_truck", "truck6", "location10"),
-	// 				Dictionary::make("unload_truck", "package1", "location10")));
+	TypedArray<Array> answer;
+	answer.push_back(varray("drive_truck", "truck1", "location1"));
+	answer.push_back(varray("load_truck", "package1", "truck1"));
+	answer.push_back(varray("drive_truck", "truck1", "airport1"));
+	answer.push_back(varray("unload_truck", "package1", "airport1"));
+	answer.push_back(varray("fly_plane", "plane2", "airport1"));
+	answer.push_back(varray("fly_plane", "plane2", "airport2"));
+	answer.push_back(varray("unload_plane", "package1", "airport2"));
+	answer.push_back(varray("drive_truck", "truck6", "airport2"));
+	answer.push_back(varray("load_truck", "package1", "truck6"));
+	answer.push_back(varray("drive_truck", "truck6", "location10"));	
+	answer.push_back(varray("fly_plane", "plane2", "airport2"));	
+	answer.push_back(varray("unload_truck", "package1", "location10"));
+	CHECK_EQ(plan, answer);
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 3") {
@@ -454,16 +452,13 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
 	before_each(state1, planner, the_domain);
 	Array task;
 	task.push_back(varray("at", "package1", "location2"));
-
 	Variant plan = planner->find_plan(state1.duplicate(true), task);
-	CHECK_EQ(plan, Array());
-	// CHECK_ARRAY_EQ(
-	// 		plan,
-	// 		varray(
-	// 				Dictionary::make("drive_truck", "truck1", "location1"),
-	// 				Dictionary::make("load_truck", "package1", "truck1"),
-	// 				Dictionary::make("drive_truck", "truck1", "location2"),
-	// 				Dictionary::make("unload_truck", "package1", "location2")));
+	TypedArray<Array> answer;
+	answer.push_back(varray("drive_truck", "truck1", "location1"));
+	answer.push_back(varray("load_truck", "package1", "truck1"));
+	answer.push_back(varray("drive_truck", "truck1", "location2"));
+	answer.push_back(varray("unload_truck", "package1", "location2"));
+	CHECK_EQ(plan, answer);
 }
 
 } // namespace TestLogistics
