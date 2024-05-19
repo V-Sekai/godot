@@ -61,6 +61,7 @@ static Variant unload_truck(Dictionary p_state, String p_object, String p_locati
 static Dictionary fly_plane(Dictionary p_state, String p_plane, String p_airport) {
 	Dictionary plane_at = p_state["plane_at"];
 	plane_at[p_plane] = p_airport;
+	p_state["plane_at"] = plane_at;
 	return p_state;
 }
 
@@ -417,12 +418,12 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
 	answer.push_back(varray("drive_truck", "truck1", "airport1"));
 	answer.push_back(varray("unload_truck", "package1", "airport1"));
 	answer.push_back(varray("fly_plane", "plane2", "airport1"));
+	answer.push_back(varray("load_plane", "package1", "plane2"));
 	answer.push_back(varray("fly_plane", "plane2", "airport2"));
 	answer.push_back(varray("unload_plane", "package1", "airport2"));
 	answer.push_back(varray("drive_truck", "truck6", "airport2"));
 	answer.push_back(varray("load_truck", "package1", "truck6"));
 	answer.push_back(varray("drive_truck", "truck6", "location10"));	
-	answer.push_back(varray("fly_plane", "plane2", "airport2"));	
 	answer.push_back(varray("unload_truck", "package1", "location10"));
 	CHECK_EQ(plan, answer);
 }
