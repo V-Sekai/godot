@@ -76,89 +76,12 @@ public:
 	// 		std::cout << "-- There is no Simple Temporal Network --" << std::endl;
 	// 	}
 	// }
-	void print_domain() const {
-		print_line(vformat("Domain name: %s", get_name()));
-		print_actions();
-		print_methods();
-		// print_simple_temporal_network(p_domain);
-	}
-
-	void print_actions() const {
-		if (get_action_dictionary().is_empty()) {
-			print_line("-- There are no actions --");
-			return;
-		}
-		String actions = "-- Actions: ";
-
-		// Create an iterator for the action_dict
-		Array keys = get_action_dictionary().keys();
-		for (int i = 0; i < keys.size(); ++i) {
-			if (i != 0) {
-				actions += ", ";
-			}
-			actions += String(keys[i]);
-		}
-		print_line(actions);
-	}
-
-	void print_task_methods() const {
-		if (get_task_method_dictionary().is_empty()) {
-			print_line("-- There are no task methods --");
-			return;
-		}
-		print_line("\nTask name:         Relevant task methods:");
-		print_line("---------------    ----------------------");
-
-		String string_array;
-		Array keys = get_task_method_dictionary().keys();
-		for (int i = 0; i < keys.size(); ++i) {
-			string_array += String(keys[i]) + ", ";
-		}
-		print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
-
-		print_line("");
-	}
-
-	void print_unigoal_methods() const {
-		if (get_unigoal_method_dictionary().is_empty()) {
-			print_line("-- There are no unigoal methods --");
-			return;
-		}
-		print_line("Blackboard var name:    Relevant unigoal methods:");
-		print_line("---------------    -------------------------");
-		Array keys = get_unigoal_method_dictionary().keys();
-		for (int j = 0; j < keys.size(); ++j) {
-			String string_array;
-			Array methods = get_unigoal_method_dictionary()[keys[j]];
-			for (int i = 0; i < methods.size(); ++i) {
-				String m = methods[i];
-				string_array += m + ", ";
-			}
-			print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
-		}
-
-		print_line("");
-	}
-
-	void print_multigoal_methods() const {
-		if (get_multigoal_method_list().is_empty()) {
-			print_line("-- There are no multigoal methods --");
-			return;
-		}
-		String string_array;
-		Array methods = get_multigoal_method_list();
-		for (int i = 0; i < methods.size(); ++i) {
-			Variant m = methods[i];
-			string_array += String(m) + ", ";
-		}
-		print_line("-- Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
-	}
-
-	void print_methods() const {
-		print_task_methods();
-		print_unigoal_methods();
-		print_multigoal_methods();
-	}
+	void print_domain() const;
+	void print_actions() const;
+	void print_task_methods() const;
+	void print_unigoal_methods() const;
+	void print_multigoal_methods() const;
+	void print_methods() const;
 
 public:
 	Variant _m_verify_g(Dictionary p_state, String p_method, String p_state_var, String p_arguments, Variant p_desired_values, int p_depth);

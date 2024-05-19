@@ -9,14 +9,14 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
+#include "tests/test_macros.h"
+
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
 #include "core/variant/variant.h"
-#include "tests/test_macros.h"
 
 #include "modules/goal_task_planner/plan.h"
-#include <cstdint>
 
 namespace TestLogistics {
 
@@ -238,6 +238,7 @@ Variant move_between_city(Dictionary state, String o, String l) {
 }
 
 void before_each(Dictionary &state1, Ref<Plan> planner, Ref<Domain> the_domain) {
+	planner->set_verbose(3);
 	state1.clear();
 	TypedArray<Domain> domains;
 	domains.push_back(the_domain);
@@ -305,7 +306,7 @@ void before_each(Dictionary &state1, Ref<Plan> planner, Ref<Domain> the_domain) 
 	state1["in_city"] = in_city;
 }
 
-TEST_CASE("[Logistics] Move Goal 1") {
+TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
@@ -332,7 +333,7 @@ TEST_CASE("[Logistics] Move Goal 1") {
 	// 				Dictionary::make("unload_truck", "package2", "location3")));
 }
 
-TEST_CASE("[Logistics] Move Goal 2") {
+TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
@@ -363,7 +364,7 @@ TEST_CASE("[Logistics] Move Goal 2") {
 	// 				Dictionary::make("unload_truck", "package1", "location10")));
 }
 
-TEST_CASE("[Logistics] Move Goal 3") {
+TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 3") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
@@ -379,7 +380,7 @@ TEST_CASE("[Logistics] Move Goal 3") {
 	CHECK_EQ(plan, Array());
 }
 
-TEST_CASE("[Logistics] Move Goal 4") {
+TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
@@ -390,7 +391,6 @@ TEST_CASE("[Logistics] Move Goal 4") {
 	task.push_back(varray("at", "package1", "location2"));
 
 	Variant plan = planner->find_plan(state1.duplicate(true), task);
-
 	CHECK_EQ(plan, Array());
 	// CHECK_ARRAY_EQ(
 	// 		plan,
