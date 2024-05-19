@@ -74,13 +74,6 @@ Variant Domain::method_verify_goal(Dictionary p_state, String p_method, String p
 		return false;
 	}
 
-	// if (!stn->is_consistent()) {
-	//     if (verbose >= 3) {
-	//         print_line(vformat("Depth %d: method %s resulted in inconsistent STN for %s", depth, method));
-	//     }
-	//     return false;
-	// }
-
 	if (p_verbose >= 3) {
 		print_line(vformat("Depth %d: method %s achieved\nGoal %s[%s] = %s", p_depth, p_method, p_state_variable, p_arguments, p_desired_value));
 	}
