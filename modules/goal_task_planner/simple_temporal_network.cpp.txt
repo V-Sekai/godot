@@ -31,12 +31,10 @@
 // simple_temporal_network.cpp
 
 #include "simple_temporal_network.h"
+#include "modules/goal_task_planner/temporal_constraint.h"
 
 String SimpleTemporalNetwork::_to_string() {
-	if (resource_name.is_empty()) {
-		return "SimpleTemporalNetwork";
-	}
-	return resource_name;
+	return get_name();
 }
 
 int SimpleTemporalNetwork::get_node_index(int time_point) {
@@ -60,7 +58,7 @@ int SimpleTemporalNetwork::get_node_index(int time_point) {
 bool SimpleTemporalNetwork::check_overlap(Ref<TemporalConstraint> new_constraint) {
 	for (int i = 0; i < constraints.size(); i++) {
 		Ref<TemporalConstraint> constraint = constraints[i];
-		if (constraint->resource_name == new_constraint->resource_name) {
+		if (constraint->get_name() == new_constraint->get_name()) {
 			if (constraint->overlaps_with(new_constraint)) {
 				return true;
 			}
@@ -77,15 +75,15 @@ bool SimpleTemporalNetwork::add_temporal_constraint(Ref<TemporalConstraint> from
 	add_constraints_to_list(from_constraint, to_constraint);
 
 	Ref<TemporalConstraint> from_node = process_constraint(from_constraint);
-	if (!from_node) {
+	if (from_node.is_null()) {
 		print_line("Failed to process from_constraint");
 		return false;
 	}
 
 	Ref<TemporalConstraint> to_node = nullptr;
-	if (to_constraint != nullptr) {
+	if (to_constraint.is_valid()) {
 		to_node = process_constraint(to_constraint);
-		if (!to_node) {
+		if (to_node.is_null()) {
 			print_line("Failed to process to_constraint");
 			return false;
 		}
@@ -110,10 +108,10 @@ void SimpleTemporalNetwork::update_constraints_list(Ref<TemporalConstraint> cons
 }
 
 void SimpleTemporalNetwork::add_constraints_to_list(Ref<TemporalConstraint> from_constraint, Ref<TemporalConstraint> to_constraint) {
-	if (from_constraint) {
+	if (from_constraint.is_valid()) {
 		constraints.append(from_constraint);
 	}
-	if (to_constraint) {
+	if (to_constraint.is_valid()) {
 		constraints.append(to_constraint);
 	}
 }
@@ -181,7 +179,7 @@ bool SimpleTemporalNetwork::is_consistent() {
 Array SimpleTemporalNetwork::enumerate_decompositions(Ref<TemporalConstraint> vertex) {
 	Array leafs;
 
-	if (!Object::cast_to<TemporalConstraint>(vertex)) {
+	if (vertex.is_null()) {
 		print_line("Error: vertex must be an instance of TemporalConstraint.");
 		return leafs;
 	}
@@ -195,14 +193,14 @@ Array SimpleTemporalNetwork::enumerate_decompositions(Ref<TemporalConstraint> ve
 			Array children = get_children(vertex);
 			for (int i = 0; i < children.size(); i++) {
 				Ref<TemporalConstraint> child = children[i];
-				leafs += enumerate_decompositions(child);
+				leafs.append_array(enumerate_decompositions(child));
 			}
 		} else {
 			Array op;
 			Array children = get_children(vertex);
 			for (int i = 0; i < children.size(); i++) {
 				Ref<TemporalConstraint> child = children[i];
-				op += enumerate_decompositions(child);
+				op.append_array(enumerate_decompositions(child));
 			}
 			leafs = cartesian_product(op);
 		}
@@ -265,12 +263,12 @@ void SimpleTemporalNetwork::update_state(Dictionary state) {
 		Variant value = state[key];
 
 		if (Object::cast_to<TemporalConstraint>(value)) {
-			Ref<TemporalConstraint> constraint = TemporalConstraint::_new();
-			constraint->time_interval.x = value["time_interval"]["x"];
-			constraint->time_interval.y = value["time_interval"]["y"];
-			constraint->duration = value["duration"];
-			constraint->temporal_qualifier = value["temporal_qualifier"];
-			constraint->resource_name = value["resource_name"];
+			Ref<TemporalConstraint> constraint;
+			constraint.instantiate();
+			constraint->set_time_interval(Vector2( value.get("time_interval").get("x"), value.get("time_interval").get("y")));
+			constraint->set_duration(  value["duration"]);
+			constraint->set_temporal_qualifier( TemporalConstraint::TemporalQualifier(value.get("temporal_qualifier")));
+			constraint->set_name(value.get("resource_name"));
 
 			add_temporal_constraint(constraint);
 		}

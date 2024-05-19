@@ -30,10 +30,6 @@
 
 #ifndef TEMPORAL_CONSTRAINT_H
 #define TEMPORAL_CONSTRAINT_H
-// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
-// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
-// temporal_constraint.h
-// SPDX-License-Identifier: MIT
 
 #include "core/io/resource.h"
 #include "core/math/vector2i.h"
@@ -65,7 +61,7 @@ public:
 
 	void set_time_interval(Vector2i interval) { time_interval = interval; }
 	void set_duration(int dur) { duration = dur; }
-	void set_temporal_qualifier(int qualifier) { temporal_qualifier = TimeQualifier(qualifier); }
+	void set_temporal_qualifier(int qualifier) { temporal_qualifier = TemporalQualifier(qualifier); }
 
 protected:
 	static void _bind_methods();

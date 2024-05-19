@@ -30,11 +30,10 @@
 
 #ifndef GOAL_TASK_PLANNER_REGISTER_TYPES_H
 #define GOAL_TASK_PLANNER_REGISTER_TYPES_H
-/* register_types.h */
 
 #include "modules/register_module_types.h"
 
 void initialize_goal_task_planner_module(ModuleInitializationLevel p_level);
 void uninitialize_goal_task_planner_module(ModuleInitializationLevel p_level);
-/* yes, the word in the middle must be the same as the module folder name */
+
 #endif // GOAL_TASK_PLANNER_REGISTER_TYPES_H

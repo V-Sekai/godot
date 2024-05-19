@@ -34,7 +34,7 @@
 // Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
 // K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
 // SPDX-License-Identifier: MIT
-
+//
 // SPDX-FileCopyrightText: 2021 University of Maryland
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
