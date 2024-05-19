@@ -54,7 +54,7 @@ Dictionary Plan::declare_actions(TypedArray<Callable> p_actions) {
 		return Dictionary();
 	}
 
-	Dictionary action_dictionary = current_domain->get_action_dictionary();
+	Dictionary action_dictionary = current_domain->get_actions();
 
 	for (int64_t i = 0; i < p_actions.size(); ++i) {
 		Callable action = p_actions[i];
@@ -65,7 +65,7 @@ Dictionary Plan::declare_actions(TypedArray<Callable> p_actions) {
 		action_dictionary[method_name] = action;
 	}
 
-	current_domain->set_action_dictionary(action_dictionary);
+	current_domain->set_actions(action_dictionary);
 
 	return action_dictionary;
 }
@@ -76,7 +76,7 @@ Dictionary Plan::declare_task_methods(String p_task_name, TypedArray<Callable> p
 		return Dictionary();
 	}
 
-	Dictionary task_method_dictionary = current_domain->get_task_method_dictionary();
+	Dictionary task_method_dictionary = current_domain->get_task_methods();
 
 	if (task_method_dictionary.has(p_task_name)) {
 		// task_name is already in the dictionary
@@ -94,7 +94,7 @@ Dictionary Plan::declare_task_methods(String p_task_name, TypedArray<Callable> p
 		task_method_dictionary[p_task_name] = p_methods;
 	}
 
-	current_domain->set_task_method_dictionary(task_method_dictionary);
+	current_domain->set_task_methods(task_method_dictionary);
 
 	return task_method_dictionary;
 }
@@ -105,7 +105,7 @@ Dictionary Plan::declare_unigoal_methods(StringName p_state_variable_name, Typed
 		return Dictionary();
 	}
 
-	Dictionary unigoal_method_dict = current_domain->get_unigoal_method_dictionary();
+	Dictionary unigoal_method_dict = current_domain->get_unigoal_methods();
 
 	if (!unigoal_method_dict.has(p_state_variable_name)) {
 		unigoal_method_dict[p_state_variable_name] = p_methods;
@@ -120,7 +120,7 @@ Dictionary Plan::declare_unigoal_methods(StringName p_state_variable_name, Typed
 		unigoal_method_dict[p_state_variable_name] = existing_methods;
 	}
 
-	current_domain->set_unigoal_method_dictionary(unigoal_method_dict); // Assuming this setter method exists
+	current_domain->set_unigoal_methods(unigoal_method_dict); // Assuming this setter method exists
 
 	return unigoal_method_dict;
 }
@@ -131,7 +131,7 @@ Array Plan::declare_multigoal_methods(TypedArray<Callable> p_methods) {
 		return Array();
 	}
 
-	Array method_array = current_domain->get_multigoal_method_list();
+	Array method_array = current_domain->get_multigoal_methods();
 
 	for (int i = 0; i < p_methods.size(); ++i) {
 		Variant m = p_methods[i];
@@ -140,13 +140,13 @@ Array Plan::declare_multigoal_methods(TypedArray<Callable> p_methods) {
 		}
 	}
 
-	current_domain->set_multigoal_method_list(method_array);
+	current_domain->set_multigoal_methods(method_array);
 
 	return method_array;
 }
 
-Array Plan::m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
-	Dictionary goal_dict = get_current_domain()->_goals_not_achieved(p_state, p_multigoal);
+Array Plan::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
+	Dictionary goal_dict = get_current_domain()->method_goals_not_achieved(p_state, p_multigoal);
 	Array goal_list;
 
 	for (int i = 0; i < goal_dict.size(); ++i) {
@@ -175,7 +175,7 @@ Array Plan::m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
 }
 
 Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array p_plan, int depth) {
-	Callable action = current_domain->get_action_dictionary()[task1[0]];
+	Callable action = current_domain->get_actions()[task1[0]];
 
 	if (verbose >= 2) {
 		Array action_info = task1.slice(1);
@@ -216,7 +216,7 @@ Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array to
 }
 
 Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const Array p_plan, const int p_depth) {
-	Array relevant = current_domain->get_task_method_dictionary()[p_task1[0]];
+	Array relevant = current_domain->get_task_methods()[p_task1[0]];
 	if (verbose >= 3) {
 		print_line("Depth " + itos(p_depth) + ", Task " + _item_to_string(p_task1) + ", Todo List " + _item_to_string(p_todo_list) + ", Plan " + _item_to_string(p_plan));
 	}
@@ -261,7 +261,7 @@ Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref
 		print_line("Depth " + itos(p_depth) + ", Multigoal " + p_goal1->get_name() + ": " + _item_to_string(p_goal1));
 	}
 
-	Array relevant = current_domain->get_multigoal_method_list();
+	Array relevant = current_domain->get_multigoal_methods();
 
 	if (verbose >= 3) {
 		Array string_array;
@@ -329,7 +329,7 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 		return seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
 	}
 
-	Array relevant = current_domain->get_unigoal_method_dictionary()[state_variable_name];
+	Array relevant = current_domain->get_unigoal_methods()[state_variable_name];
 	if (verbose >= 3) {
 		print_line("Methods: " + _item_to_string(relevant));
 	}
@@ -407,9 +407,9 @@ Variant Plan::seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int
 		return _refine_multigoal_and_continue(p_state, todo_item, p_todo_list, p_plan, p_depth);
 	} else if (todo_item.is_array()) {
 		Array item = todo_item;
-		Dictionary actions = current_domain->get_action_dictionary();
-		Dictionary tasks = current_domain->get_task_method_dictionary();
-		Dictionary unigoals = current_domain->get_unigoal_method_dictionary();
+		Dictionary actions = current_domain->get_actions();
+		Dictionary tasks = current_domain->get_task_methods();
+		Dictionary unigoals = current_domain->get_unigoal_methods();
 		Variant item_name = item.front();
 		bool is_action = actions.has(item_name);
 		bool is_task = tasks.has(item_name);
@@ -470,7 +470,7 @@ Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_t
 			Array action_list = plan;
 			for (int i = 0; i < action_list.size(); i++) {
 				Array action = action_list[i];
-				Callable action_name = current_domain->get_action_dictionary()[action[0]];
+				Callable action_name = current_domain->get_actions()[action[0]];
 				if (verbose >= 1) {
 					String action_arguments;
 					Array actions = action.slice(1, action.size());
@@ -534,16 +534,24 @@ Variant Plan::_apply_task_and_continue(Dictionary p_state, Callable p_command, A
 
 void Plan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_verbose"), &Plan::get_verbose);
-	ClassDB::bind_method(D_METHOD("get_domains"), &Plan::get_domains);
-	ClassDB::bind_method(D_METHOD("get_current_domain"), &Plan::get_current_domain);
 	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &Plan::set_verbose);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
+
+	ClassDB::bind_method(D_METHOD("get_domains"), &Plan::get_domains);
 	ClassDB::bind_method(D_METHOD("set_domains", "domain"), &Plan::set_domains);
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "domains", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_domains", "get_domains");
+
+	ClassDB::bind_method(D_METHOD("get_current_domain"), &Plan::get_current_domain);
 	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &Plan::set_current_domain);
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_domain", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_current_domain", "get_current_domain");
+
 	ClassDB::bind_method(D_METHOD("declare_actions", "actions"), &Plan::declare_actions);
 	ClassDB::bind_method(D_METHOD("declare_task_methods", "task_name", "methods"), &Plan::declare_task_methods);
 	ClassDB::bind_method(D_METHOD("declare_unigoal_methods", "state_var_name", "methods"), &Plan::declare_unigoal_methods);
 	ClassDB::bind_method(D_METHOD("declare_multigoal_methods", "methods"), &Plan::declare_multigoal_methods);
-	ClassDB::bind_method(D_METHOD("m_split_multigoal", "state", "multigoal"), &Plan::m_split_multigoal);
+
+	ClassDB::bind_method(D_METHOD("method_split_multigoal", "state", "multigoal"), &Plan::method_split_multigoal);
+
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &Plan::find_plan);
 	ClassDB::bind_method(D_METHOD("seek_plan", "state", "todo_list", "plan", "depth"), &Plan::seek_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &Plan::run_lazy_lookahead, DEFVAL(10));

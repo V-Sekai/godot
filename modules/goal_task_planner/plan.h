@@ -74,7 +74,7 @@ public:
 	Dictionary declare_task_methods(String p_task_name, TypedArray<Callable> p_methods);
 	Dictionary declare_unigoal_methods(StringName p_state_var_name, TypedArray<Callable> p_methods);
 	Array declare_multigoal_methods(TypedArray<Callable> p_methods);
-	Array m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
+	Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 	Variant find_plan(Dictionary state, Array todo_list);
 	Variant seek_plan(Dictionary state, Array todo_list, Array p_plan, int depth);
 	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10);

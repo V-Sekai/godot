@@ -7,6 +7,35 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="method_goals_not_achieved" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="multigoal" type="Multigoal" />
+			<description>
+			</description>
+		</method>
+		<method name="method_verify_goal" qualifiers="static">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="method" type="String" />
+			<param index="2" name="state_var" type="String" />
+			<param index="3" name="arguments" type="String" />
+			<param index="4" name="desired_values" type="Variant" />
+			<param index="5" name="depth" type="int" />
+			<param index="6" name="verbose" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="method_verify_multigoal" qualifiers="static">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="method" type="String" />
+			<param index="2" name="multigoal" type="Multigoal" />
+			<param index="3" name="depth" type="int" />
+			<param index="4" name="verbose" type="int" />
+			<description>
+			</description>
+		</method>
 		<method name="print_actions" qualifiers="const">
 			<return type="void" />
 			<description>
@@ -39,13 +68,13 @@
 		</method>
 	</methods>
 	<members>
-		<member name="action_dictionary" type="Dictionary" setter="set_action_dictionary" getter="get_action_dictionary" default="{}">
+		<member name="actions" type="Dictionary" setter="set_actions" getter="get_actions" default="{}">
 		</member>
-		<member name="multigoal_method_list" type="Array" setter="set_multigoal_method_list" getter="get_multigoal_method_list" default="[]">
+		<member name="multigoal_methods" type="Array" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[]">
 		</member>
-		<member name="task_method_dictionary" type="Dictionary" setter="set_task_method_dictionary" getter="get_task_method_dictionary" default="{ &quot;_verify_g&quot;: [Callable()], &quot;_verify_mg&quot;: [Callable()] }">
+		<member name="tasks" type="Dictionary" setter="set_task_methods" getter="get_task_methods" default="{ &quot;_verify_g&quot;: [Callable()], &quot;_verify_mg&quot;: [Callable()] }">
 		</member>
-		<member name="unigoal_method_dictionary" type="Dictionary" setter="set_unigoal_method_dictionary" getter="get_unigoal_method_dictionary" default="{}">
+		<member name="unigoal_methods" type="Dictionary" setter="set_unigoal_methods" getter="get_unigoal_methods" default="{}">
 		</member>
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
 		</member>
