@@ -35,7 +35,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 

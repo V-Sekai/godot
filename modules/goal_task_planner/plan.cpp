@@ -530,9 +530,9 @@ Variant Plan::_apply_task_and_continue(Dictionary p_state, Callable p_command, A
 }
 
 void Plan::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("get_verify_goals"), &Plan::get_verify_goals);
-    ClassDB::bind_method(D_METHOD("set_verify_goals", "value"), &Plan::set_verify_goals);
-    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "verify_goals"), "set_verify_goals", "get_verify_goals");
+	ClassDB::bind_method(D_METHOD("get_verify_goals"), &Plan::get_verify_goals);
+	ClassDB::bind_method(D_METHOD("set_verify_goals", "value"), &Plan::set_verify_goals);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "verify_goals"), "set_verify_goals", "get_verify_goals");
 
 	ClassDB::bind_method(D_METHOD("get_verbose"), &Plan::get_verbose);
 	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &Plan::set_verbose);
