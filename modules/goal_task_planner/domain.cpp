@@ -131,3 +131,7 @@ Variant Domain::_m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal>
 	}
 	return Array();
 }
+
+Domain::Domain(String p_name) {
+	set_name(p_name);
+}

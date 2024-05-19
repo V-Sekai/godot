@@ -27,13 +27,16 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
+// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
+// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
+// SPDX-License-Identifier: MIT
+
+// SPDX-FileCopyrightText: 2021 University of Maryland
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+// Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
 #ifndef DOMAIN_H
 #define DOMAIN_H
-// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
-// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
-// domain.h
-// SPDX-License-Identifier: MIT
 
 #include "core/io/resource.h"
 #include "multigoal.h"
@@ -50,6 +53,7 @@ private:
 	// Ref<SimpleTemporalNetwork> stn;
 
 public:
+	Domain(String p_name = "");
 	void set_verbose(int p_value) { verbose = p_value; }
 	void set_action_dictionary(Dictionary p_value) { action_dictionary = p_value; }
 	void set_task_method_dictionary(Dictionary p_value) { task_method_dictionary = p_value; }

@@ -27,14 +27,16 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
+// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
+// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
+// SPDX-License-Identifier: MIT
+
+// SPDX-FileCopyrightText: 2021 University of Maryland
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+// Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
 #ifndef MULTIGOAL_H
 #define MULTIGOAL_H
-// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
-// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
-// multigoal.h
-// SPDX-License-Identifier: MIT
-
 
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
@@ -46,11 +48,11 @@ private:
 	Dictionary _state;
 
 public:
+	Multigoal(String multigoal_name = "", Dictionary state_variables = Dictionary());
 	String to_string() override;
 	Dictionary get_state() const;
 	void set_state(Dictionary value);
-	void _initialize(String multigoal_name, Dictionary state_variables);
-	Array state_vars();
+	Array state_variables();
 
 protected:
 	static void _bind_methods();
