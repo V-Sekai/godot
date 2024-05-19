@@ -38,9 +38,9 @@ void Domain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("print_multigoal_methods"), &Domain::print_multigoal_methods);
 	ClassDB::bind_method(D_METHOD("print_methods"), &Domain::print_methods);
 
-	ClassDB::bind_method(D_METHOD("_m_verify_g", "state", "method", "state_variable", "arg", "desired_value", "depth"), &Domain::_m_verify_g);
+	ClassDB::bind_static_method("Domain", D_METHOD("_m_verify_g", "state", "method", "state_variable", "arg", "desired_value", "depth", "verbose"), &Domain::_m_verify_g);
 	ClassDB::bind_static_method("Domain", D_METHOD("_goals_not_achieved", "state", "multigoal"), &Domain::_goals_not_achieved);
-	ClassDB::bind_method(D_METHOD("_m_verify_mg", "state", "method", "multigoal", "depth"), &Domain::_m_verify_mg);
+	ClassDB::bind_static_method("Domain", D_METHOD("_m_verify_mg", "state", "method", "multigoal", "depth", "verbose"), &Domain::_m_verify_mg);
 
 	ClassDB::bind_method(D_METHOD("set_verbose", "value"), &Domain::set_verbose);
 	ClassDB::bind_method(D_METHOD("get_verbose"), &Domain::get_verbose);
@@ -64,11 +64,11 @@ void Domain::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "multigoal_method_list"), "set_multigoal_method_list", "get_multigoal_method_list");
 }
 
-Variant Domain::_m_verify_g(Dictionary p_state, String p_method, String p_state_variable, String p_arguments, Variant p_desired_value, int p_depth) {
+Variant Domain::_m_verify_g(Dictionary p_state, String p_method, String p_state_variable, String p_arguments, Variant p_desired_value, int p_depth, int p_verbose) {
 	Dictionary state_dict = p_state[p_state_variable];
 
 	if (state_dict[p_arguments] != p_desired_value) {
-		if (verbose >= 3) {
+		if (p_verbose >= 3) {
 			print_line(vformat("Depth %d: method %s didn't achieve\nGoal %s[%s] = %s", p_depth, p_method, p_state_variable, p_arguments, p_desired_value));
 		}
 		return false;
@@ -81,7 +81,7 @@ Variant Domain::_m_verify_g(Dictionary p_state, String p_method, String p_state_
 	//     return false;
 	// }
 
-	if (verbose >= 3) {
+	if (p_verbose >= 3) {
 		print_line(vformat("Depth %d: method %s achieved\nGoal %s[%s] = %s", p_depth, p_method, p_state_variable, p_arguments, p_desired_value));
 	}
 	return Array();
@@ -110,10 +110,10 @@ Dictionary Domain::_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_mult
 	return incomplete;
 }
 
-Variant Domain::_m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth) {
+Variant Domain::_m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int p_verbose) {
 	Dictionary goal_dict = _goals_not_achieved(p_state, p_multigoal);
 	if (!goal_dict.is_empty()) {
-		if (verbose >= 3) {
+		if (p_verbose >= 3) {
 			print_line(vformat("Depth %d: method %s didn't achieve %s", p_depth, p_method, p_multigoal));
 		}
 		return false;
@@ -126,7 +126,7 @@ Variant Domain::_m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal>
 	//     return false;
 	// }
 
-	if (verbose >= 3) {
+	if (p_verbose >= 3) {
 		print_line(vformat("Depth %d: method %s achieved %s", p_depth, p_method, p_multigoal));
 	}
 	return Array();
@@ -134,6 +134,8 @@ Variant Domain::_m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal>
 
 Domain::Domain(String p_name) {
 	set_name(p_name);
+	task_method_dictionary["_verify_g"] = varray(callable_mp_static(&Domain::_m_verify_g));
+	task_method_dictionary["_verify_mg"] = varray(callable_mp_static(&Domain::_m_verify_mg));
 }
 
 void Domain::print_domain() const {
@@ -179,6 +181,7 @@ void Domain::print_task_methods() const {
 
 	print_line("");
 }
+
 void Domain::print_unigoal_methods() const {
 	if (get_unigoal_method_dictionary().is_empty()) {
 		print_line("-- There are no unigoal methods --");
@@ -194,11 +197,13 @@ void Domain::print_unigoal_methods() const {
 			String m = methods[i];
 			string_array += m + ", ";
 		}
-		print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+		string_array = string_array.substr(0, string_array.length() - 2);
+		print_line(String(keys[j]) + ":    " + string_array);
 	}
 
 	print_line("");
 }
+
 void Domain::print_multigoal_methods() const {
 	if (get_multigoal_method_list().is_empty()) {
 		print_line("-- There are no multigoal methods --");
@@ -212,6 +217,7 @@ void Domain::print_multigoal_methods() const {
 	}
 	print_line("-- Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
 }
+
 void Domain::print_methods() const {
 	print_task_methods();
 	print_unigoal_methods();

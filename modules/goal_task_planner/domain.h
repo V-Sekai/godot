@@ -84,9 +84,9 @@ public:
 	void print_methods() const;
 
 public:
-	Variant _m_verify_g(Dictionary p_state, String p_method, String p_state_var, String p_arguments, Variant p_desired_values, int p_depth);
+	static Variant _m_verify_g(Dictionary p_state, String p_method, String p_state_var, String p_arguments, Variant p_desired_values, int p_depth, int verbose);
 	static Dictionary _goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal);
-	Variant _m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth);
+	static Variant _m_verify_mg(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int verbose);
 
 protected:
 	static void _bind_methods();

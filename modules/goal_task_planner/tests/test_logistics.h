@@ -9,6 +9,8 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
+#include "core/error/error_macros.h"
+#include "core/variant/array.h"
 #include "tests/test_macros.h"
 
 #include "core/variant/callable.h"
@@ -20,98 +22,113 @@
 
 namespace TestLogistics {
 
-//This file is based on the logistics-domain examples included with HGNpyhop:
+// This file is based on the logistics-domain examples included with HGNpyhop:
 //	https://github.com/ospur/hgn-pyhop
-//For a discussion of the adaptations that were needed, see the relevant
-//section of Some_GTPyhop_Details.md in the top-level directory.
-//-- Dana Nau <nau@umd.edu>, July 20, 2021
+//
+// For a discussion of the adaptations that were needed, see the relevant
+// section of Some_GTPyhop_Details.md in the top-level directory.
+//
+// -- Dana Nau <nau@umd.edu>, July 20, 2021
 
 // Actions
 
-static Dictionary drive_truck(Dictionary p_state, String p_t, String p_l) {
-	p_state[p_t] = p_l;
-	return p_state;
-}
-
-static Dictionary load_truck(Dictionary p_state, String p_o, String p_t) {
-	p_state[p_o] = p_t;
-	return p_state;
-}
-
-static Variant unload_truck(Dictionary p_state, String p_o, String p_l) {
+static Dictionary drive_truck(Dictionary p_state, String p_truck, String p_location) {
 	Dictionary truck_at = p_state["truck_at"];
-	Variant t = p_state[p_o];
-	if (truck_at[t] == p_l) {
-		p_state[p_o] = p_l;
+	truck_at[p_truck] = p_location;
+	p_state["truck_at"] = truck_at;
+	return p_state;
+}
+
+static Dictionary load_truck(Dictionary p_state, String p_object, String p_truck) {
+	Dictionary at = p_state["at"];
+	at[p_object] = p_truck;
+	p_state["at"] = at;
+	return p_state;
+}
+
+static Variant unload_truck(Dictionary p_state, String p_object, String p_location) {
+	Dictionary at = p_state["at"];
+	Variant truck = at[p_object];
+	Dictionary truck_at = p_state["truck_at"];
+	if (truck_at[truck] == p_location) {
+		at[p_object] = p_location;
+		p_state["at"] = at;
 		return p_state;
 	}
 	return false;
 }
 
-static Dictionary fly_plane(Dictionary p_state, String p_plane, String p_a) {
+static Dictionary fly_plane(Dictionary p_state, String p_plane, String p_airport) {
 	Dictionary plane_at = p_state["plane_at"];
-	plane_at[p_plane] = p_a;
+	plane_at[p_plane] = p_airport;
 	return p_state;
 }
 
-static Dictionary load_plane(Dictionary p_state, String p_o, String p_plane) {
-	p_state[p_o] = p_plane;
+static Dictionary load_plane(Dictionary p_state, String p_object, String p_plane) {
+	Dictionary at = p_state["at"];
+	at[p_object] = p_plane;
+	p_state["at"] = at;
 	return p_state;
 }
 
-static Variant unload_plane(Dictionary p_state, String p_o, String p_airport) {
+static Variant unload_plane(Dictionary p_state, String p_object, String p_airport) {
+	Dictionary at = p_state["at"];
+	String plane = at[p_object];
 	Dictionary plane_at = p_state["plane_at"];
-	String plane = p_state[p_o];
 	if (plane_at[plane] == p_airport) {
-		p_state[p_o] = p_airport;
+		at[p_object] = p_airport;
+		p_state["at"] = at;
 		return p_state;
 	}
 	return false;
 }
 
-// Helper functions for the methods
+// Helper functions for the methods.
 
-//  Find a truck in the same city as the package
+// Find a truck in the same city as the package.
 
-static Variant find_truck(Dictionary state, String o) {
-	Dictionary trucks = state["trucks"];
-	Dictionary truck_at = state["truck_at"];
-	Dictionary in_city = state["in_city"];
-	Dictionary at = state["at"];
-	for (int64_t i = 0; i < trucks.size(); ++i) {
-		String truck = trucks.keys()[i];
-		if (in_city[truck_at[truck]] == in_city[at[o]]) {
+static Variant find_truck(Dictionary p_state, String p_object) {
+	Array trucks = p_state["trucks"];
+
+	Dictionary truck_at = p_state["truck_at"];
+	Dictionary in_city = p_state["in_city"];
+	Dictionary at = p_state["at"];
+	for (String truck : trucks) {
+		if (in_city[truck_at[truck]] == in_city[at[p_object]]) {
 			return truck;
 		}
 	}
 	return false;
 }
 
-//  Find a plane in the same city as the package; if none available, find a random plane
+//  Find a plane in the same city as the package; if none available, find a random plane.
 
-static Variant find_plane(Dictionary state, String o) {
+static Variant find_plane(Dictionary p_state, String p_object) {
 	Variant random_plane;
-	Dictionary in_city = state["in_city"];
-	Dictionary airplanes = state["airplanes"];
-	Dictionary plane_at = state["plane_at"];
-	Dictionary at = state["at"];
+	Array airplanes = p_state["airplanes"];
+
+	Dictionary in_city = p_state["in_city"];
+	Dictionary plane_at = p_state["plane_at"];
+	Dictionary at = p_state["at"];
 	for (int64_t i = 0; i < airplanes.size(); ++i) {
-		String plane = airplanes.keys()[i];
-		if (in_city[plane_at[plane]] == in_city[at[o]]) {
+		String plane = airplanes[i];
+		if (in_city[plane_at[plane]] == in_city[at[p_object]]) {
 			return plane;
 		}
+		random_plane = plane;
 	}
-	return false;
+	return random_plane;
 }
 
-//  Find an airport in the same city as the location
+//  Find an airport in the same city as the location.
 
-static Variant find_airport(Dictionary state, String l) {
-	Dictionary airports = state["airports"];
-	Dictionary in_city = state["in_city"];
+static Variant find_airport(Dictionary p_state, String p_location) {
+	Array airports = p_state["airports"];
+
+	Dictionary in_city = p_state["in_city"];
 	for (int i = 0; i < airports.size(); ++i) {
-		String airport = airports.keys()[i];
-		if (in_city[airport] == in_city[l]) {
+		String airport = airports[i];
+		if (in_city[airport] == in_city[p_location]) {
 			return airport;
 		}
 	}
@@ -120,92 +137,115 @@ static Variant find_airport(Dictionary state, String l) {
 
 // Methods to call the actions
 
-static Variant m_drive_truck(Dictionary state, String t, String l) {
-	Dictionary trucks = state["trucks"];
-	Dictionary locations = state["locations"];
-	Dictionary in_city = state["in_city"];
-	Dictionary truck_at = state["truck_at"];
-	if (trucks.has(t) && locations.has(l) && in_city[truck_at[t]] == in_city[l]) {
-		return varray(varray("drive_truck", t, l));
+static Variant m_drive_truck(Dictionary p_state, String p_truck, String p_location) {
+	Array trucks = p_state["trucks"];
+	Array locations = p_state["locations"];
+
+	Dictionary in_city = p_state["in_city"];
+	Dictionary truck_at = p_state["truck_at"];
+	if (trucks.has(p_truck) && locations.has(p_location) && in_city[truck_at[p_truck]] == in_city[p_location]) {
+		TypedArray<Array> task;
+		task.push_back(varray("drive_truck", p_truck, p_location));
+		return task;
 	}
 	return false;
 }
 
-static Variant m_load_truck(Dictionary state, String o, String t) {
-	Dictionary packages = state["packages"];
-	Dictionary trucks = state["trucks"];
-	Dictionary at = state["at"];
-	Dictionary truck_at = state["truck_at"];
-	if (packages.has(o) && trucks.has(t) && at[o] == truck_at[t]) {
-		return varray(varray("load_truck", o, t));
+static Variant m_load_truck(Dictionary p_state, String p_object, String p_truck) {
+	Array packages = p_state["packages"];
+	Array trucks = p_state["trucks"];
+
+	Dictionary at = p_state["at"];
+	Dictionary truck_at = p_state["truck_at"];
+
+	bool is_package_existing = packages.has(p_object);
+	bool is_truck_existing = trucks.has(p_truck);
+	bool is_object_at_truck = (at[p_object] == truck_at[p_truck]);
+
+	if (is_package_existing && is_truck_existing && is_object_at_truck) {
+		TypedArray<Array> todo;
+		todo.push_back(varray("load_truck", p_object, p_truck));
+		return todo;
 	}
 	return false;
 }
 
-static Variant m_unload_truck(Dictionary state, String o, String l) {
-	Dictionary packages = state["packages"];
-	Dictionary at = state["at"];
-	Dictionary trucks = state["trucks"];
-	Dictionary locations = state["locations"];
-	if (packages.has(o) && trucks.has(at[o]) && locations.has(l)) {
-		return varray(varray("unload_truck", o, l));
+static Variant m_unload_truck(Dictionary p_state, String p_object, String p_location) {
+	Array packages = p_state["packages"];
+	Array trucks = p_state["trucks"];
+	Array locations = p_state["locations"];
+
+	Dictionary at = p_state["at"];
+	if (packages.has(p_object) && trucks.has(at[p_object]) && locations.has(p_location)) {
+		TypedArray<Array> todo;
+		todo.push_back(varray("unload_truck", p_object, p_location));
+		return todo;
 	}
 	return false;
 }
 
-static Variant m_fly_plane(Dictionary state, String plane, String a) {
-	Dictionary airplanes = state["airplanes"];
-	Dictionary airports = state["airports"];
-	if (airplanes.has(plane) && airports.has(a)) {
-		return varray(varray("fly_plane", plane, a));
+static Variant m_fly_plane(Dictionary p_state, String p_plane, String p_airport) {
+	Array airplanes = p_state["airplanes"];
+	Array airports = p_state["airports"];
+	if (airplanes.has(p_plane) && airports.has(p_airport)) {
+		TypedArray<Array> todo;
+		todo.push_back(varray("fly_plane", p_plane, p_airport));
+		return todo;
 	}
 	return false;
 }
 
-static Variant m_load_plane(Dictionary state, String o, String plane) {
-	Dictionary packages = state["packages"];
-	Dictionary airplanes = state["airplanes"];
-	Dictionary at = state["at"];
-	Dictionary plane_at = state["plane_at"];
-	if (packages.has(o) && airplanes.has(plane) && at[o] == plane_at[plane]) {
-		return varray(varray("load_plane", o, plane));
+static Variant m_load_plane(Dictionary p_state, String p_object, String p_plane) {
+	Array packages = p_state["packages"];
+	Array airplanes = p_state["airplanes"];
+
+	Dictionary at = p_state["at"];
+	Dictionary plane_at = p_state["plane_at"];
+	if (packages.has(p_object) && airplanes.has(p_plane) && at[p_object] == plane_at[p_plane]) {
+		TypedArray<Array> todo;
+		todo.push_back(varray("load_plane", p_object, p_plane));
+		return todo;
 	}
 	return false;
 }
 
-static Variant m_unload_plane(Dictionary state, String o, String a) {
-	Dictionary packages = state["packages"];
-	Dictionary at = state["at"];
-	Dictionary airplanes = state["airplanes"];
-	Dictionary airports = state["airports"];
-	if (packages.has(o) && airplanes.has(at[o]) && airports.has(a)) {
-		return varray(varray("unload_plane", o, a));
+static Variant m_unload_plane(Dictionary p_state, String p_object, String p_airport) {
+	Dictionary packages = p_state["packages"];
+	Dictionary at = p_state["at"];
+	Dictionary airplanes = p_state["airplanes"];
+	Dictionary airports = p_state["airports"];
+	if (packages.has(p_object) && airplanes.has(at[p_object]) && airports.has(p_airport)) {
+		TypedArray<Array> todo;
+		todo.push_back(varray("unload_plane", p_object, p_airport));
+		return todo;
 	}
 	return false;
 }
 
 // Other methods
 
-static Variant move_within_city(Dictionary state, String o, String l) {
-	Dictionary packages = state["packages"];
-	Dictionary locations = state["locations"];
-	Dictionary in_city = state["in_city"];
-	Dictionary at = state["at"];
-	String t = find_truck(state, o);
-	if (packages.has(o) && locations.has(at[o]) && in_city[at[o]] == in_city[l] && !t.is_empty()) {
-		Array result;
-		result.push_back(varray("truck_at", t, at[o]));
-		result.push_back(varray("at", o, t));
-		result.push_back(varray("truck_at", t, l));
-		result.push_back(varray("at", o, l));
-		return result;
+static Variant move_within_city(Dictionary p_state, String p_object, String p_location) {
+	Array packages = p_state["packages"];
+	Array locations = p_state["locations"];
+
+	Dictionary in_city = p_state["in_city"];
+	Dictionary at = p_state["at"];
+	String truck = find_truck(p_state, p_object);
+	if (packages.has(p_object) && locations.has(at[p_object]) && in_city[at[p_object]] == in_city[p_location] && !truck.is_empty()) {
+		TypedArray<Array> todo;
+		todo.push_back(varray("truck_at", truck, at[p_object]));
+		todo.push_back(varray("at", p_object, truck));
+		todo.push_back(varray("truck_at", truck, p_location));
+		todo.push_back(varray("at", p_object, p_location));
+		return todo;
 	}
 	return false;
 }
 
 static Variant move_between_airports(Dictionary state, String o, String a) {
-	Dictionary packages = state["packages"];
-	Dictionary airports = state["airports"];
+	Array packages = state["packages"];
+	Array airports = state["airports"];
+
 	Dictionary in_city = state["in_city"];
 	Dictionary at = state["at"];
 	String plane = find_plane(state, o);
@@ -220,81 +260,107 @@ static Variant move_between_airports(Dictionary state, String o, String a) {
 	return false;
 }
 
-Variant move_between_city(Dictionary state, String o, String l) {
-	Dictionary packages = state["packages"];
-	Dictionary locations = state["locations"];
-	Dictionary in_city = state["in_city"];
-	Dictionary at = state["at"];
-	String a1 = find_airport(state, at[o]);
-	String a2 = find_airport(state, l);
-	if (packages.has(o) && locations.has(at[o]) && in_city[at[o]] != in_city[l] && !a1.is_empty() && !a2.is_empty()) {
-		Array result;
-		result.push_back(varray("at", o, a1));
-		result.push_back(varray("at", o, a2));
-		result.push_back(varray("at", o, l));
-		return result;
+Variant move_between_city(Dictionary p_state, String p_object, String p_location) {
+	Array packages = p_state["packages"];
+	Array locations = p_state["locations"];
+
+	Dictionary in_city = p_state["in_city"];
+	Dictionary at = p_state["at"];
+	String airport_1 = find_airport(p_state, at[p_object]);
+	String airport_2 = find_airport(p_state, p_location);
+	if (packages.has(p_object) && locations.has(at[p_object]) && in_city[at[p_object]] != in_city[p_location] && !airport_1.is_empty() && !airport_2.is_empty()) {
+		TypedArray<Array> todo;
+		todo.push_back(varray("at", p_object, airport_1));
+		todo.push_back(varray("at", p_object, airport_2));
+		todo.push_back(varray("at", p_object, p_location));
+		return todo;
 	}
 	return false;
 }
 
-void before_each(Dictionary &state1, Ref<Plan> planner, Ref<Domain> the_domain) {
-	planner->set_verbose(3);
-	state1.clear();
+void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_domain) {
+	ERR_FAIL_COND(p_planner.is_null());
+	ERR_FAIL_COND(p_the_domain.is_null());
+	p_planner->set_verbose(3);
+	p_state.clear();
 	TypedArray<Domain> domains;
-	domains.push_back(the_domain);
-	planner->set_domains(domains);
+	domains.push_back(p_the_domain);
+	p_planner->set_domains(domains);
 
 	// If we've changed to some other domain, this will change us back.
-	planner->set_current_domain(the_domain);
+	p_planner->set_current_domain(p_the_domain);
 	TypedArray<Callable> actions;
-	actions.push_back(callable_mp_static(drive_truck));
-	actions.push_back(callable_mp_static(load_truck));
-	actions.push_back(callable_mp_static(unload_truck));
-	actions.push_back(callable_mp_static(fly_plane));
-	actions.push_back(callable_mp_static(load_plane));
-	actions.push_back(callable_mp_static(unload_plane));
-	planner->declare_actions(actions);
+	actions.push_back(callable_mp_static(&drive_truck));
+	actions.push_back(callable_mp_static(&load_truck));
+	actions.push_back(callable_mp_static(&unload_truck));
+	actions.push_back(callable_mp_static(&fly_plane));
+	actions.push_back(callable_mp_static(&load_plane));
+	actions.push_back(callable_mp_static(&unload_plane));
+	p_planner->declare_actions(actions);
 
 	TypedArray<Callable> truck_at_methods;
-	truck_at_methods.push_back(callable_mp_static(m_drive_truck));
-	planner->declare_unigoal_methods("truck_at", truck_at_methods);
+	truck_at_methods.push_back(callable_mp_static(&m_drive_truck));
+	p_planner->declare_unigoal_methods("truck_at", truck_at_methods);
 
 	TypedArray<Callable> plane_at_methods;
-	plane_at_methods.push_back(callable_mp_static(m_fly_plane));
-	planner->declare_unigoal_methods("plane_at", plane_at_methods);
+	plane_at_methods.push_back(callable_mp_static(&m_fly_plane));
+	p_planner->declare_unigoal_methods("plane_at", plane_at_methods);
 
 	TypedArray<Callable> at_methods;
-	at_methods.push_back(callable_mp_static(m_load_truck));
-	at_methods.push_back(callable_mp_static(m_unload_truck));
-	at_methods.push_back(callable_mp_static(m_load_plane));
-	at_methods.push_back(callable_mp_static(m_unload_plane));
-	at_methods.push_back(callable_mp_static(move_within_city));
-	at_methods.push_back(callable_mp_static(move_between_airports));
-	at_methods.push_back(callable_mp_static(move_between_city));
-	planner->declare_unigoal_methods("at", at_methods);
+	at_methods.push_back(callable_mp_static(&m_load_truck));
+	at_methods.push_back(callable_mp_static(&m_unload_truck));
+	at_methods.push_back(callable_mp_static(&m_load_plane));
+	at_methods.push_back(callable_mp_static(&m_unload_plane));
+	p_planner->declare_unigoal_methods("at", at_methods);
 
-	planner->get_current_domain()->print_domain();
+	TypedArray<Callable> move_methods;
+	at_methods.push_back(callable_mp_static(&move_within_city));
+	at_methods.push_back(callable_mp_static(&move_between_airports));
+	at_methods.push_back(callable_mp_static(&move_between_city));
+	p_planner->declare_unigoal_methods("at", move_methods);
 
-	state1["packages"] = varray("package1", "package2");
-	state1["trucks"] = varray("truck1", "truck6");
-	state1["airplanes"] = varray("plane2");
-	state1["locations"] = varray("location1", "location2", "location3", "airport1", "location10", "airport2");
-	state1["airports"] = varray("airport1", "airport2");
-	state1["cities"] = varray("city1", "city2");
+	p_planner->get_current_domain()->print_domain();
+	Array packages;
+	packages.push_back("package1");
+	packages.push_back("package2");
+	p_state["packages"] = packages;
+	Array trucks;
+	trucks.push_back("truck1");
+	trucks.push_back("truck6");
+	p_state["trucks"] = trucks;
+	Array airplanes;
+	airplanes.push_back("plane2");
+	p_state["airplanes"] = airplanes;
+	Array locations;
+	locations.push_back("location1");
+	locations.push_back("location2");
+	locations.push_back("location3");
+	locations.push_back("airport1");
+	locations.push_back("location10");
+	locations.push_back("airport2");
+	p_state["locations"] = locations;
+	Array airports;
+	airports.push_back("airport1");
+	airports.push_back("airport2");
+	p_state["airports"] = airports;
+	Array cities;
+	cities.push_back("city1");
+	cities.push_back("city2");
+	p_state["cities"] = cities;
 
 	Dictionary at;
 	at["package1"] = "location1";
 	at["package2"] = "location2";
-	state1["at"] = at;
+	p_state["at"] = at;
 
 	Dictionary truck_at;
 	truck_at["truck1"] = "location3";
 	truck_at["truck6"] = "location10";
-	state1["truck_at"] = truck_at;
+	p_state["truck_at"] = truck_at;
 
 	Dictionary plane_at;
 	plane_at["plane2"] = "airport2";
-	state1["plane_at"] = plane_at;
+	p_state["plane_at"] = plane_at;
 
 	Dictionary in_city;
 	in_city["location1"] = "city1";
@@ -303,7 +369,7 @@ void before_each(Dictionary &state1, Ref<Plan> planner, Ref<Domain> the_domain) 
 	in_city["airport1"] = "city1";
 	in_city["location10"] = "city2";
 	in_city["airport2"] = "city2";
-	state1["in_city"] = in_city;
+	p_state["in_city"] = in_city;
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
@@ -313,24 +379,23 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
 	the_domain.instantiate("Move Goal 1");
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
-	Array task;
+	TypedArray<Array> task;
 	task.push_back(varray("at", "package1", "location2"));
 	task.push_back(varray("at", "package2", "location3"));
 	Variant plan = planner->find_plan(
 			state1.duplicate(true),
 			task);
 
-	CHECK_EQ(plan, Array());
-	// CHECK_ARRAY_EQ(
-	// 		plan,
-	// 		varray(
-	// 				Dictionary::make("drive_truck", "truck1", "location1"),
-	// 				Dictionary::make("load_truck", "package1", "truck1"),
-	// 				Dictionary::make("drive_truck", "truck1", "location2"),
-	// 				Dictionary::make("unload_truck", "package1", "location2"),
-	// 				Dictionary::make("load_truck", "package2", "truck1"),
-	// 				Dictionary::make("drive_truck", "truck1", "location3"),
-	// 				Dictionary::make("unload_truck", "package2", "location3")));
+	TypedArray<Array> answer;
+	answer.push_back(varray("drive_truck", "truck1", "location1"));
+	answer.push_back(varray("load_truck", "package1", "truck1"));
+	answer.push_back(varray("drive_truck", "truck1", "location2"));
+	answer.push_back(varray("unload_truck", "package1", "location2"));
+	answer.push_back(varray("load_truck", "package2", "truck1"));
+	answer.push_back(varray("drive_truck", "truck1", "location3"));
+	answer.push_back(varray("unload_truck", "package2", "location3"));
+
+	CHECK_EQ(plan, answer);
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {

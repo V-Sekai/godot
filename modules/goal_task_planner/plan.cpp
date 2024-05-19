@@ -29,6 +29,12 @@
 /**************************************************************************/
 
 #include "plan.h"
+#include "core/string/string_builder.h"
+#include "core/variant/array.h"
+#include "core/variant/callable.h"
+#include "core/variant/dictionary.h"
+#include "core/variant/typed_array.h"
+#include "core/variant/variant.h"
 #include "modules/goal_task_planner/domain.h"
 
 int Plan::get_verbose() const { return verbose; }
@@ -47,15 +53,20 @@ Dictionary Plan::declare_actions(TypedArray<Callable> p_actions) {
 		return Dictionary();
 	}
 
-	for (int i = 0; i < p_actions.size(); ++i) {
+	Dictionary action_dictionary = current_domain->get_action_dictionary();
+
+	for (int64_t i = 0; i < p_actions.size(); ++i) {
 		Callable action = p_actions[i];
 		if (action.is_null()) {
 			continue;
 		}
-		current_domain->get_action_dictionary()[action.get_method()] = action;
+		String method_name = action.get_method();
+		action_dictionary[method_name] = action;
 	}
 
-	return current_domain->get_action_dictionary();
+	current_domain->set_action_dictionary(action_dictionary);
+
+	return action_dictionary;
 }
 
 Dictionary Plan::declare_task_methods(String p_task_name, TypedArray<Callable> p_methods) {
@@ -64,9 +75,11 @@ Dictionary Plan::declare_task_methods(String p_task_name, TypedArray<Callable> p
 		return Dictionary();
 	}
 
-	if (current_domain->get_task_method_dictionary().has(p_task_name)) {
+	Dictionary task_method_dictionary = current_domain->get_task_method_dictionary();
+
+	if (task_method_dictionary.has(p_task_name)) {
 		// task_name is already in the dictionary
-		Array existing_methods = current_domain->get_task_method_dictionary()[p_task_name];
+		Array existing_methods = task_method_dictionary[p_task_name];
 		for (int i = 0; i < p_methods.size(); ++i) {
 			Variant m = p_methods[i];
 			// check if method is not already in the list
@@ -74,38 +87,41 @@ Dictionary Plan::declare_task_methods(String p_task_name, TypedArray<Callable> p
 				existing_methods.push_back(m);
 			}
 		}
-		current_domain->get_action_dictionary()[p_task_name] = existing_methods;
+		task_method_dictionary[p_task_name] = existing_methods;
 	} else {
 		// The task_name is not in the dictionary, so add it.
-		current_domain->get_task_method_dictionary()[p_task_name] = p_methods;
+		task_method_dictionary[p_task_name] = p_methods;
 	}
 
-	return current_domain->get_task_method_dictionary();
+	current_domain->set_task_method_dictionary(task_method_dictionary);
+
+	return task_method_dictionary;
 }
 
-Dictionary Plan::declare_unigoal_methods(StringName p_state_var_name, TypedArray<Callable> p_methods) {
-	if (current_domain == nullptr) {
+Dictionary Plan::declare_unigoal_methods(StringName p_state_variable_name, TypedArray<Callable> p_methods) {
+	if (current_domain.is_null()) {
 		print_line("Cannot declare methods until a domain has been created.");
 		return Dictionary();
 	}
 
-	if (!current_domain->get_unigoal_method_dictionary().has(p_state_var_name)) {
-		current_domain->get_unigoal_method_dictionary()[p_state_var_name] = p_methods;
+	Dictionary unigoal_method_dict = current_domain->get_unigoal_method_dictionary();
+
+	if (!unigoal_method_dict.has(p_state_variable_name)) {
+		unigoal_method_dict[p_state_variable_name] = p_methods;
 	} else {
-		Array existing_methods = current_domain->get_unigoal_method_dictionary()[p_state_var_name];
-		Array method_array;
+		Array existing_methods = unigoal_method_dict[p_state_variable_name];
 		for (int i = 0; i < p_methods.size(); ++i) {
 			Variant m = p_methods[i];
 			if (!existing_methods.has(m)) {
-				method_array.push_back(m);
+				existing_methods.push_back(m);
 			}
 		}
-		Array existing_method_array = current_domain->get_unigoal_method_dictionary()[p_state_var_name];
-		existing_method_array.append_array(method_array);
-		current_domain->get_unigoal_method_dictionary()[p_state_var_name] = existing_method_array;
+		unigoal_method_dict[p_state_variable_name] = existing_methods;
 	}
 
-	return current_domain->get_unigoal_method_dictionary();
+	current_domain->set_unigoal_method_dictionary(unigoal_method_dict); // Assuming this setter method exists
+
+	return unigoal_method_dict;
 }
 
 Array Plan::declare_multigoal_methods(TypedArray<Callable> p_methods) {
@@ -114,17 +130,18 @@ Array Plan::declare_multigoal_methods(TypedArray<Callable> p_methods) {
 		return Array();
 	}
 
-	Array method_array;
+	Array method_array = current_domain->get_multigoal_method_list();
+
 	for (int i = 0; i < p_methods.size(); ++i) {
 		Variant m = p_methods[i];
-		if (!current_domain->get_multigoal_method_list().has(m)) {
+		if (!method_array.has(m)) {
 			method_array.push_back(m);
 		}
 	}
 
-	current_domain->get_multigoal_method_list().append_array(method_array);
+	current_domain->set_multigoal_method_list(method_array);
 
-	return current_domain->get_multigoal_method_list();
+	return method_array;
 }
 
 Array Plan::m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
@@ -156,33 +173,34 @@ Array Plan::m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
 	return goal_list;
 }
 
-Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth) {
+Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, TypedArray<Array> todo_list, TypedArray<Array> plan, int depth) {
 	Callable action = current_domain->get_action_dictionary()[task1[0]];
+
 	if (verbose >= 2) {
 		Array action_info = task1.slice(1);
 		action_info.insert(0, action.get_method());
 
-		String action_info_str;
+		String action_info_str = "[";
 		for (int i = 0; i < action_info.size(); ++i) {
 			action_info_str += String(action_info[i]);
-			if (i != action_info.size() - 1) { // Not the last element
-				action_info_str += ", "; // Add comma for separation
+			if (i != action_info.size() - 1) {
+				action_info_str += ", ";
 			}
 		}
+		action_info_str += "]";
 		print_line("Depth " + itos(depth) + ", Action " + action_info_str + ": ");
 	}
 
-	Array args = task1.slice(1);
-	args.insert(0, state);
-	Variant new_state = action.get_object()->callv(action.get_method(), args);
+	Array arguments = task1.slice(1);
+	arguments.insert(0, state);
+	Variant new_state = action.callv(arguments);
 
 	if (new_state) {
 		if (verbose >= 3) {
 			print_line("Intermediate computation: Action applied successfully.");
 			print_line("New state: " + String(new_state));
 		}
-
-		Array new_plan = plan;
+		TypedArray<Array> new_plan = plan;
 		new_plan.push_back(task1);
 		return seek_plan(new_state, todo_list, new_plan, depth + 1);
 	}
@@ -211,7 +229,7 @@ Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array to
 	return false;
 }
 
-Variant Plan::_refine_task_and_continue(Dictionary state, Array task1, Array todo_list, Array plan, int depth) {
+Variant Plan::_refine_task_and_continue(Dictionary state, Array task1, TypedArray<Array> todo_list, TypedArray<Array> plan, int depth) {
 	Array relevant = current_domain->get_task_method_dictionary()[task1[0]];
 	if (verbose >= 3) {
 		Array string_array;
@@ -243,26 +261,23 @@ Variant Plan::_refine_task_and_continue(Dictionary state, Array task1, Array tod
 	}
 
 	for (int i = 0; i < relevant.size(); i++) {
+		Callable method = relevant[i];
 		if (verbose >= 2) {
-			print_line("Depth " + itos(depth) + ", Trying method " + String(relevant[i].call("get_method")) + ": ");
+			print_line("Depth " + itos(depth) + ", Trying method " + String(method.get_method()) + ": ");
 		}
-
-		Array args = task1.slice(1);
-		args.insert(0, state);
-		Variant subtasks = relevant[i].call("get_object").call("callv", relevant[i].call("get_method"), args);
-
+		Array arguments;
+		arguments.push_back(state);
+		arguments.append_array(task1.slice(1));
+		Variant subtasks = method.callv(arguments);
 		if (subtasks.get_type() == Variant::ARRAY) {
 			if (verbose >= 3) {
 				print_line("Intermediate computation: Method applicable.");
 				print_line("Depth " + itos(depth) + ", Subtasks: " + String(subtasks));
 			}
-			Array new_todo_list;
-			Array new_subtasks;
-			new_subtasks.append(subtasks);
-			new_subtasks.append(todo_list);
-			new_todo_list.append(new_subtasks);
-			Variant result = seek_plan(state, new_todo_list, plan, depth + 1);
-
+			TypedArray<Array> new_subtasks;
+			new_subtasks.append_array(subtasks);
+			new_subtasks.append_array(todo_list);
+			Variant result = seek_plan(state, new_subtasks, plan, depth + 1);
 			if (result.get_type() == Variant::ARRAY) {
 				return result;
 			}
@@ -271,15 +286,19 @@ Variant Plan::_refine_task_and_continue(Dictionary state, Array task1, Array tod
 
 	if (verbose >= 2) {
 		print_line("Recursive call: Failed to accomplish task: ");
+		PackedStringArray task_string_array;
+		task_string_array.push_back("[");
 		for (Variant t : task1) {
-			print_line(t);
+			task_string_array.push_back(String(t));
+			task_string_array.push_back(",");
 		}
+		task_string_array.push_back("]");
+		print_line(String().join(task_string_array));
 	}
-
 	return false;
 }
 
-Variant Plan::_refine_multigoal_and_continue(Dictionary state, Ref<Multigoal> goal1, Array todo_list, Array plan, int depth) {
+Variant Plan::_refine_multigoal_and_continue(Dictionary state, Ref<Multigoal> goal1, TypedArray<Array> todo_list, TypedArray<Array> plan, int depth) {
 	if (verbose >= 3) {
 		print_line("Depth " + itos(depth) + ", Multigoal " + goal1->get_name() + ": ");
 	}
@@ -297,25 +316,21 @@ Variant Plan::_refine_multigoal_and_continue(Dictionary state, Ref<Multigoal> go
 		if (verbose >= 2) {
 			print_line("Depth " + itos(depth) + ", Trying method " + String(relevant[i].call("get_method")) + ": ");
 		}
-
-		Variant subgoals = relevant[i].call("get_object").call("callv", relevant[i].call("get_method"), varray(state, goal1));
-
+		Callable callable = relevant[i];
+		Array arguments;
+		arguments.push_back(state);
+		arguments.push_back(goal1);
+		Variant subgoals = callable.callv(arguments);
 		if (subgoals.get_type() == Variant::ARRAY) {
 			if (verbose >= 3) {
 				print_line("Intermediate computation: Method applicable.");
 				print_line("Depth " + itos(depth) + ", Subgoals: " + String(subgoals));
 			}
-
-			Array verification;
-
-			if (verify_goals) {
-				verification.push_back(varray("_verify_mg", String(relevant[i].call("get_method")), goal1, depth));
-			} else {
-				verification.clear();
-			}
-
-			todo_list.clear();
 			todo_list.append_array(subgoals);
+			TypedArray<Array> verification;
+			if (verify_goals) {
+				verification.push_back(varray("_verify_mg", callable.get_method(), goal1, depth, verbose));
+			}
 			todo_list.append_array(verification);
 			todo_list.append_array(todo_list);
 			Variant result = seek_plan(state, todo_list, plan, depth + 1);
@@ -337,62 +352,67 @@ Variant Plan::_refine_multigoal_and_continue(Dictionary state, Ref<Multigoal> go
 	return false;
 }
 
-Variant Plan::_refine_unigoal_and_continue(Dictionary state, Array goal1, Array todo_list, Array plan, int depth) {
+Variant Plan::_refine_unigoal_and_continue(Dictionary p_state, Array p_goal1, TypedArray<Array> p_todo_list, TypedArray<Array> p_plan, int p_depth) {
 	if (verbose >= 3) {
-		for (int i = 0; i < goal1.size(); ++i) {
-			print_line("Depth " + itos(depth) + ", Goal " + String(goal1[i]) + ": ");
+		String goals_list = vformat("Depth %d, Goals: ", p_depth);
+		goals_list += "[";
+		for (int i = 0; i < p_goal1.size(); i++) {
+			if (p_goal1[i].get_type() == Variant::STRING || p_goal1[i].get_type() == Variant::STRING_NAME) {
+				goals_list += "\"" + String(p_goal1[i]) + "\", ";
+			} else {
+				goals_list += String(p_goal1[i]) + ", ";
+			}
 		}
+		goals_list = goals_list.substr(0, goals_list.length() - 2);
+		goals_list += "]";
+		print_line(goals_list);
 	}
 
-	String state_var_name = goal1[0];
-	String arg = goal1[1];
-	Variant val = goal1[2];
+	String state_variable_name = p_goal1[0];
+	String argument = p_goal1[1];
+	Variant value = p_goal1[2];
 
-	if (state[state_var_name].get(arg) == val) {
+	Dictionary state_variable = p_state[state_variable_name];
+
+	if (state_variable[argument] == value) {
 		if (verbose >= 3) {
 			print_line("Intermediate computation: Goal already achieved.");
 		}
-		return seek_plan(state, todo_list, plan, depth + 1);
+		return seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
 	}
 
-	Array relevant = current_domain->get_unigoal_method_dictionary()[state_var_name];
+	Array relevant = current_domain->get_unigoal_method_dictionary()[state_variable_name];
 
 	if (verbose >= 3) {
 		Array string_array;
 		for (int i = 0; i < relevant.size(); i++) {
 			string_array.push_back(relevant[i].call("get_method"));
 		}
+		String methods_list = "Methods: ";
 		for (int i = 0; i < string_array.size(); ++i) {
-			print_line("Methods " + String(string_array[i]));
+			methods_list += String(string_array[i]) + ", ";
 		}
+		methods_list = methods_list.substr(0, methods_list.length() - 2);
+		print_line(methods_list);
 	}
 
 	for (int i = 0; i < relevant.size(); i++) {
+		Callable method = relevant[i];
 		if (verbose >= 2) {
-			print_line("Depth " + itos(depth) + ", Trying method " + String(relevant[i].call("get_method")) + ": ");
+			print_line("Depth " + itos(p_depth) + ", Trying method " + String(method.get_method()) + ": ");
 		}
-
-		Variant subgoals = relevant[i].call("get_object").call("callv", relevant[i].call("get_method"), varray(state, arg, val));
-
+		Variant subgoals = method.call(p_state, argument, value);
 		if (subgoals.get_type() == Variant::ARRAY) {
 			if (verbose >= 3) {
-				print_line("Depth " + itos(depth) + ", Subgoals: " + String(subgoals));
+				print_line("Depth " + itos(p_depth) + ", Subgoals: " + String(subgoals));
 			}
-
-			Array verification;
-
-			if (verify_goals) {
-				verification.push_back(varray("_verify_g", String(relevant[i].call("get_method")), state_var_name, arg, val, depth));
-			} else {
-				verification.clear();
-			}
-
-			todo_list.clear();
+			TypedArray<Array> todo_list;
 			todo_list.append_array(subgoals);
-			todo_list.append_array(verification);
-			todo_list.append_array(todo_list);
-			Variant result = seek_plan(state, todo_list, plan, depth + 1);
-
+			if (verify_goals) {
+				todo_list.push_back(varray("_verify_g", method.get_method(), state_variable_name, argument, value, p_depth, verbose));
+			}
+			todo_list.append_array(p_todo_list);
+			Variant result = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
 			if (result.get_type() == Variant::ARRAY) {
 				return result;
 			}
@@ -400,15 +420,27 @@ Variant Plan::_refine_unigoal_and_continue(Dictionary state, Array goal1, Array 
 	}
 
 	if (verbose >= 2) {
-		for (int i = 0; i < goal1.size(); ++i) {
-			print_line("Recursive call: Failed to achieve goal: " + String(goal1[i]));
+		StringBuilder goal_string_array;
+		goal_string_array.append("[");
+		for (int i = 0; i < p_goal1.size(); ++i) {
+			Variant variant = p_goal1[i];
+			if (variant.is_string()) {
+				goal_string_array.append(String("\"") + String(variant) + String("\""));
+			} else {
+				goal_string_array.append(String(variant));
+			}
+			if (i != p_goal1.size() - 1) {
+				goal_string_array.append(", ");
+			}
 		}
+		goal_string_array.append("]");
+		print_line("Recursive call: Failed to achieve goal: " + goal_string_array.as_string());
 	}
 
 	return false;
 }
 
-Variant Plan::find_plan(Dictionary state, Array todo_list) {
+Variant Plan::find_plan(Dictionary state, TypedArray<Array> todo_list) {
 	if (verbose >= 1) {
 		print_line("FindPlan> find_plan, verbose=" + itos(verbose) + ":");
 		String todo_string;
@@ -444,16 +476,20 @@ Variant Plan::find_plan(Dictionary state, Array todo_list) {
 	return result;
 }
 
-Variant Plan::seek_plan(Dictionary state, Array todo_list, Array plan, int depth) {
+Variant Plan::seek_plan(Dictionary state, TypedArray<Array> todo_list, Array plan, int depth) {
 	if (verbose >= 2) {
 		Array todo_array;
 		for (int i = 0; i < todo_list.size(); i++) {
 			todo_array.push_back(_item_to_string(todo_list[i]));
 		}
-		String todo_string;
+		String todo_string = "[";
 		for (int i = 0; i < todo_array.size(); ++i) {
-			todo_string += "[" + String(todo_array[i]) + "]";
+			if (i != 0) {
+				todo_string += ", ";
+			}
+			todo_string += String(todo_array[i]);
 		}
+		todo_string += "]";
 		print_line("Depth " + itos(depth) + ", Todo List Item " + todo_string);
 	}
 
@@ -464,23 +500,33 @@ Variant Plan::seek_plan(Dictionary state, Array todo_list, Array plan, int depth
 		return plan;
 	}
 
-	Variant item1 = todo_list.front();
+	Variant todo_item = todo_list.front();
 	todo_list.pop_front();
 
-	if (Object::cast_to<Multigoal>(item1)) {
-		return _refine_multigoal_and_continue(state, item1, todo_list, plan, depth);
-	} else if (item1.get_type() == Variant::ARRAY) {
-		Array item1_array = item1;
-		if (current_domain->get_action_dictionary().has(item1_array[0])) {
-			return _apply_action_and_continue(state, item1, todo_list, plan, depth);
-		} else if (current_domain->get_task_method_dictionary().has(item1_array[0])) {
-			return _refine_task_and_continue(state, item1, todo_list, plan, depth);
-		} else if (current_domain->get_unigoal_method_dictionary().has(item1_array[0])) {
-			return _refine_unigoal_and_continue(state, item1, todo_list, plan, depth);
+	if (Object::cast_to<Multigoal>(todo_item)) {
+		return _refine_multigoal_and_continue(state, todo_item, todo_list, plan, depth);
+	} else if (todo_item.get_type() == Variant::ARRAY) {
+		Array item = todo_item;
+		Dictionary actions = current_domain->get_action_dictionary();
+		Dictionary tasks = current_domain->get_task_method_dictionary();
+		Dictionary unigoals = current_domain->get_unigoal_method_dictionary();
+		Variant item_name = item.front();
+		if (verbose >= 3) {
+			print_line(vformat("depth: %s item name: %s", itos(depth), _item_to_string(item_name)));
+		}
+		bool is_action = actions.has(item_name);
+		bool is_task = tasks.has(item_name);
+		bool is_unigoal = unigoals.has(item_name);
+		if (is_action) {
+			return _apply_action_and_continue(state, item, todo_list, plan, depth);
+		} else if (is_task) {
+			return _refine_task_and_continue(state, item, todo_list, plan, depth);
+		} else if (is_unigoal) {
+			return _refine_unigoal_and_continue(state, item, todo_list, plan, depth);
 		}
 	}
 
-	print_line("Depth " + itos(depth) + ": " + String(item1) + " isn't an action, task, unigoal, or multigoal\n");
+	print_line("Depth " + itos(depth) + ": " + String(todo_item) + " isn't an action, task, unigoal, or multigoal\n");
 
 	return false;
 }
@@ -489,7 +535,7 @@ String Plan::_item_to_string(Variant item) {
 	return String(item);
 }
 
-Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries) {
+Dictionary Plan::run_lazy_lookahead(Dictionary state, TypedArray<Array> todo_list, int max_tries) {
 	if (verbose >= 1) {
 		print_line(vformat("RunLazyLookahead> run_lazy_lookahead, verbose = %s, max_tries = %s", verbose, max_tries));
 		print_line(vformat("RunLazyLookahead> initial state: %s", state.keys()));
