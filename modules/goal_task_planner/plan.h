@@ -30,9 +30,6 @@
 
 #ifndef PLAN_H
 #define PLAN_H
-// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
-// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
-// SPDX-License-Identifier: MIT
 
 // SPDX-FileCopyrightText: 2021 University of Maryland
 // SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -52,6 +49,7 @@ private:
 	int verbose;
 	TypedArray<Domain> domains;
 	Ref<Domain> current_domain;
+
 	// If verify_goals is True, then whenever the planner uses a method m to refine
 	// unigoal or multigoal, it will insert a "verification" task into the
 	// current partial plan. If verify_goals is False, the planner won't insert any
@@ -64,21 +62,30 @@ private:
 	bool verify_goals = true;
 
 public:
+	// Configuration properties.
 	int get_verbose() const;
-	TypedArray<Domain> get_domains() const;
-	Ref<Domain> get_current_domain() const;
 	void set_verbose(int p_level);
+	TypedArray<Domain> get_domains() const;
 	void set_domains(TypedArray<Domain> p_domain);
+	Ref<Domain> get_current_domain() const;
 	void set_current_domain(Ref<Domain> p_current_domain) { current_domain = p_current_domain; }
+	void set_verify_goals(bool value);
+	bool get_verify_goals() const;
+
+public:
+	// These are the general apis.
 	Dictionary declare_actions(TypedArray<Callable> p_actions);
 	Dictionary declare_task_methods(String p_task_name, TypedArray<Callable> p_methods);
 	Dictionary declare_unigoal_methods(StringName p_state_var_name, TypedArray<Callable> p_methods);
 	Array declare_multigoal_methods(TypedArray<Callable> p_methods);
-	Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 	Variant find_plan(Dictionary state, Array todo_list);
 	Variant seek_plan(Dictionary state, Array todo_list, Array p_plan, int depth);
+
+public:
+	// These have specific uses.
 	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10);
 	static String _item_to_string(Variant item);
+	Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 
 private:
 	Variant _apply_task_and_continue(Dictionary state, Callable command, Array args);

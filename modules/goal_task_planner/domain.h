@@ -30,14 +30,10 @@
 
 #ifndef DOMAIN_H
 #define DOMAIN_H
-// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
-// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
-// SPDX-License-Identifier: MIT
 
 // SPDX-FileCopyrightText: 2021 University of Maryland
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
-
 
 #include "core/io/resource.h"
 #include "multigoal.h"
@@ -51,7 +47,6 @@ private:
 	Dictionary task_method_dictionary;
 	Dictionary unigoal_method_dictionary;
 	Array multigoal_method_list;
-	// Ref<SimpleTemporalNetwork> stn;
 
 public:
 	Domain(String p_name = "");
@@ -66,17 +61,6 @@ public:
 	Dictionary get_task_methods() const { return task_method_dictionary; }
 	Dictionary get_unigoal_methods() const { return unigoal_method_dictionary; }
 	Array get_multigoal_methods() const { return multigoal_method_list; }
-	// void Plan::print_simple_temporal_network(Ref<Domain> domain) {
-	// 	if (domain == nullptr) {
-	// 		domain = current_domain;
-	// 	}
-
-	// 	if (domain->stn) {
-	// 		std::cout << "-- Simple Temporal Network: " << domain->stn.to_dictionary() << std::endl;
-	// 	} else {
-	// 		std::cout << "-- There is no Simple Temporal Network --" << std::endl;
-	// 	}
-	// }
 	void print_domain() const;
 	void print_actions() const;
 	void print_task_methods() const;

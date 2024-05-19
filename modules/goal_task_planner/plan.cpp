@@ -29,14 +29,11 @@
 /**************************************************************************/
 
 #include "plan.h"
-#include "core/string/print_string.h"
-#include "core/string/string_builder.h"
 #include "core/variant/array.h"
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
-#include "core/variant/variant.h"
-#include "modules/goal_task_planner/domain.h"
+#include "domain.h"
 
 int Plan::get_verbose() const { return verbose; }
 
@@ -533,6 +530,10 @@ Variant Plan::_apply_task_and_continue(Dictionary p_state, Callable p_command, A
 }
 
 void Plan::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("get_verify_goals"), &Plan::get_verify_goals);
+    ClassDB::bind_method(D_METHOD("set_verify_goals", "value"), &Plan::set_verify_goals);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "verify_goals"), "set_verify_goals", "get_verify_goals");
+
 	ClassDB::bind_method(D_METHOD("get_verbose"), &Plan::get_verbose);
 	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &Plan::set_verbose);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
@@ -555,4 +556,12 @@ void Plan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &Plan::find_plan);
 	ClassDB::bind_method(D_METHOD("seek_plan", "state", "todo_list", "plan", "depth"), &Plan::seek_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &Plan::run_lazy_lookahead, DEFVAL(10));
+}
+
+bool Plan::get_verify_goals() const {
+	return verify_goals;
+}
+
+void Plan::set_verify_goals(bool value) {
+	verify_goals = value;
 }

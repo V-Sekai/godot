@@ -112,13 +112,6 @@ Variant Domain::method_verify_multigoal(Dictionary p_state, String p_method, Ref
 		return false;
 	}
 
-	// if (!stn->is_consistent()) {
-	//     if (verbose >= 3) {
-	//         print_line(vformat("Depth %d: method %s resulted in inconsistent STN for %s", depth, method));
-	//     }
-	//     return false;
-	// }
-
 	if (p_verbose >= 3) {
 		print_line(vformat("Depth %d: method %s achieved %s", p_depth, p_method, p_multigoal));
 	}
@@ -135,7 +128,6 @@ void Domain::print_domain() const {
 	print_line(vformat("Domain name: %s", get_name()));
 	print_actions();
 	print_methods();
-	// print_simple_temporal_network(p_domain);
 }
 
 void Domain::print_actions() const {

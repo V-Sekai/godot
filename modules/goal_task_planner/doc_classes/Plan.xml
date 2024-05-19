@@ -85,5 +85,8 @@
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
 			The verbosity level of the plan's output.
 		</member>
+		<member name="verify_goals" type="bool" setter="set_verify_goals" getter="get_verify_goals" default="true">
+			Adds a verification of the state if the goals are met.
+		</member>
 	</members>
 </class>

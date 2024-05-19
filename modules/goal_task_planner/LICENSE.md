@@ -1,6 +1,7 @@
-MIT License
+SPDX-License-Identifier: MIT
 
-Copyright (c) 2022-present K. S. Ernest (iFire) Lee
+Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
+K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

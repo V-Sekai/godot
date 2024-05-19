@@ -31,10 +31,6 @@
 #ifndef TEST_LOGISTICS_H
 #define TEST_LOGISTICS_H
 
-// Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
-// K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
-// SPDX-License-Identifier: MIT
-//
 // SPDX-FileCopyrightText: 2021 University of Maryland
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
@@ -116,7 +112,6 @@ static Dictionary unload_truck(Dictionary p_state, String p_object, String p_loc
 // Helper functions for the methods.
 
 // Find a truck in the same city as the package.
-
 static Variant _find_truck(Dictionary p_state, String p_object) {
 	Array trucks = p_state["trucks"];
 
