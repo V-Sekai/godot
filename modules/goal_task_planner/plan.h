@@ -75,17 +75,17 @@ public:
 	Dictionary declare_unigoal_methods(StringName p_state_var_name, TypedArray<Callable> p_methods);
 	Array declare_multigoal_methods(TypedArray<Callable> p_methods);
 	Array m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
-	Variant find_plan(Dictionary state, TypedArray<Array> todo_list);
-	Variant seek_plan(Dictionary state, TypedArray<Array> todo_list, Array plan, int depth);
-	Dictionary run_lazy_lookahead(Dictionary state, TypedArray<Array> todo_list, int max_tries = 10);
+	Variant find_plan(Dictionary state, Array todo_list);
+	Variant seek_plan(Dictionary state, Array todo_list, TypedArray<Array> plan, int depth);
+	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10);
+	static String _item_to_string(Variant item);
 
 private:
-	Variant _apply_action_and_continue(Dictionary state, Array task1, TypedArray<Array> todo_list, TypedArray<Array> plan, int depth);
-	Variant _refine_task_and_continue(Dictionary state, Array task1, TypedArray<Array> todo_list, TypedArray<Array> plan, int depth);
-	Variant _refine_multigoal_and_continue(Dictionary state, Ref<Multigoal> goal1, TypedArray<Array> todo_list, TypedArray<Array> plan, int depth);
-	Variant _refine_unigoal_and_continue(Dictionary state, Array goal1, TypedArray<Array> todo_list, TypedArray<Array> plan, int depth);
-	String _item_to_string(Variant item);
 	Variant _apply_task_and_continue(Dictionary state, Callable command, Array args);
+	Variant _apply_action_and_continue(Dictionary state, Array task1, Array todo_list, TypedArray<Array> plan, int depth);
+	Variant _refine_task_and_continue(const Dictionary state, const Array task1, const Array todo_list, const TypedArray<Array> plan, const int depth);
+	Variant _refine_multigoal_and_continue(const Dictionary state, const Ref<Multigoal> goal1, const Array todo_list, const TypedArray<Array> plan, const int depth);
+	Variant _refine_unigoal_and_continue(const Dictionary state, const Array goal1, const Array todo_list, const TypedArray<Array> plan, const int depth);
 
 protected:
 	static void _bind_methods();
