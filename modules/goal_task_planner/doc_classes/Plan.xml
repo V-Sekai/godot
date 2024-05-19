@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="Plan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
+		A class for planning and executing tasks.
 	</brief_description>
 	<description>
+		The Plan class provides methods for declaring actions, goals, and tasks, as well as finding and executing plans to achieve those goals. It also supports multi-goal and uni-goal methods.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -11,12 +13,14 @@
 			<return type="Dictionary" />
 			<param index="0" name="actions" type="Callable[]" />
 			<description>
+				Declares the actions that can be performed by the plan.
 			</description>
 		</method>
 		<method name="declare_multigoal_methods">
 			<return type="Array" />
 			<param index="0" name="methods" type="Callable[]" />
 			<description>
+				Declares the methods used to achieve multiple goals.
 			</description>
 		</method>
 		<method name="declare_task_methods">
@@ -24,6 +28,7 @@
 			<param index="0" name="task_name" type="String" />
 			<param index="1" name="methods" type="Callable[]" />
 			<description>
+				Declares the methods used to perform a specific task.
 			</description>
 		</method>
 		<method name="declare_unigoal_methods">
@@ -31,6 +36,7 @@
 			<param index="0" name="state_var_name" type="StringName" />
 			<param index="1" name="methods" type="Callable[]" />
 			<description>
+				Declares the methods used to achieve a single goal.
 			</description>
 		</method>
 		<method name="find_plan">
@@ -38,6 +44,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="todo_list" type="Array" />
 			<description>
+				Finds a plan to achieve the goals in the todo list from the given state.
 			</description>
 		</method>
 		<method name="method_split_multigoal">
@@ -45,6 +52,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="multigoal" type="Multigoal" />
 			<description>
+				Splits a multi-goal into individual goals.
 			</description>
 		</method>
 		<method name="run_lazy_lookahead">
@@ -53,6 +61,7 @@
 			<param index="1" name="todo_list" type="Array" />
 			<param index="2" name="max_tries" type="int" default="10" />
 			<description>
+				Runs a lazy lookahead search to find a plan, trying up to max_tries times.
 			</description>
 		</method>
 		<method name="seek_plan">
@@ -62,15 +71,19 @@
 			<param index="2" name="plan" type="Array" />
 			<param index="3" name="depth" type="int" />
 			<description>
+				Seeks a plan to achieve the goals in the todo list from the given state, using the provided plan as a starting point.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="current_domain" type="Domain" setter="set_current_domain" getter="get_current_domain">
+			The current domain in which the plan operates.
 		</member>
 		<member name="domains" type="Domain[]" setter="set_domains" getter="get_domains" default="[]">
+			The domains available to the plan.
 		</member>
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
+			The verbosity level of the plan's output.
 		</member>
 	</members>
 </class>
