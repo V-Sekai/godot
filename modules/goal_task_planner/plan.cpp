@@ -374,14 +374,14 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 
 Variant Plan::find_plan(Dictionary state, Array todo_list) {
 	if (verbose >= 1) {
-		print_line("FindPlan> find_plan, verbose=" + itos(verbose) + ":");
+		print_line("verbose=" + itos(verbose) + ":");
 		print_line("    state = " + _item_to_string(state) + "\n    todo_list = " + _item_to_string(todo_list));
 	}
 
 	Variant result = seek_plan(state, todo_list, Array(), 0);
 
 	if (verbose >= 1) {
-		print_line("FindPlan> result = " + _item_to_string(result));
+		print_line("result = " + _item_to_string(result));
 	}
 
 	return result;
@@ -428,9 +428,9 @@ String Plan::_item_to_string(Variant item) {
 
 Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries) {
 	if (verbose >= 1) {
-		print_line(vformat("RunLazyLookahead> run_lazy_lookahead, verbose = %s, max_tries = %s", verbose, max_tries));
-		print_line(vformat("RunLazyLookahead> initial state: %s", state.keys()));
-		print_line(vformat("RunLazyLookahead> To do: %s", todo_list));
+		print_line(vformat("run_lazy_lookahead: verbose = %s, max_tries = %s", verbose, max_tries));
+		print_line(vformat("Initial state: %s", state.keys()));
+		print_line(vformat("To do: %s", todo_list));
 	}
 
 	Dictionary ordinals;
@@ -440,7 +440,7 @@ Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_t
 
 	for (int tries = 1; tries <= max_tries; tries++) {
 		if (verbose >= 1) {
-			print_line(vformat("RunLazyLookahead> %sth call to find_plan:", tries, ordinals.get(tries, "")));
+			print_line(vformat("run_lazy_lookahead: %sth call to find_plan:", tries, ordinals.get(tries, "")));
 		}
 
 		Variant plan = find_plan(state, todo_list);
@@ -455,10 +455,10 @@ Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_t
 		if (
 				plan.is_null() || (plan.get_type() == Variant::ARRAY && ((Array)plan).is_empty()) || (plan.get_type() == Variant::DICTIONARY && ((Dictionary)plan).is_empty())) {
 			if (verbose >= 1) {
-				print_line(vformat("RunLazyLookahead> Empty plan => success\nafter %s calls to find_plan.", tries));
+				print_line(vformat("run_lazy_lookahead: Empty plan => success\nafter %s calls to find_plan.", tries));
 			}
 			if (verbose >= 2) {
-				print_line(vformat("> final state %s", state));
+				print_line(vformat("run_lazy_lookahead: final state %s", state));
 			}
 			return state;
 		}
@@ -474,7 +474,7 @@ Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_t
 					for (Variant element : actions) {
 						action_arguments += String(" ") + String(element);
 					}
-					print_line(vformat("RunLazyLookahead> Task: %s, %s", action_name.get_method(), action_arguments));
+					print_line(vformat("run_lazy_lookahead: Task: %s, %s", action_name.get_method(), action_arguments));
 				}
 
 				Dictionary new_state = _apply_task_and_continue(state, action_name, action.slice(1, action.size()));
@@ -485,7 +485,7 @@ Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_t
 					state = new_state;
 				} else {
 					if (verbose >= 1) {
-						print_line(vformat("RunLazyLookahead> WARNING: action %s failed; will call find_plan.", action_name));
+						print_line(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
 					}
 					break;
 				}
@@ -498,10 +498,10 @@ Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_t
 	}
 
 	if (verbose >= 1) {
-		print_line("RunLazyLookahead> Too many tries, giving up.");
+		print_line("run_lazy_lookahead: Too many tries, giving up.");
 	}
 	if (verbose >= 2) {
-		print_line(vformat("RunLazyLookahead> final state %s", state));
+		print_line(vformat("run_lazy_lookahead: final state %s", state));
 	}
 
 	return state;
@@ -509,7 +509,7 @@ Dictionary Plan::run_lazy_lookahead(Dictionary state, Array todo_list, int max_t
 
 Variant Plan::_apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments) {
 	if (verbose >= 3) {
-		print_line(vformat("_apply_command_and_continue %s, args = %s", p_command.get_method(), _item_to_string(p_arguments)));
+		print_line(vformat("_apply_task_and_continue %s, args = %s", p_command.get_method(), _item_to_string(p_arguments)));
 	}
 	Array argument;
 	argument.push_back(p_state);

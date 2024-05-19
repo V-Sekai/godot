@@ -133,10 +133,10 @@ void Domain::print_domain() const {
 void Domain::print_actions() const {
 	Dictionary action_dict = get_actions();
 	if (action_dict.is_empty()) {
-		print_line("-- There are no actions --");
+		print_line("There are no actions.");
 		return;
 	}
-	String actions = "-- Actions: ";
+	String actions = "Actions: ";
 
 	Array keys = action_dict.keys();
 	for (int i = 0; i < keys.size(); ++i) {
@@ -151,11 +151,10 @@ void Domain::print_actions() const {
 
 void Domain::print_task_methods() const {
 	if (get_task_methods().is_empty()) {
-		print_line("-- There are no task methods --");
+		print_line("There are no task methods.");
 		return;
 	}
-	print_line("Task name:         Relevant task methods:");
-	print_line("---------------    ----------------------");
+	print_line("Task name: Relevant task methods:");
 
 	String string_array;
 	Array keys = get_task_methods().keys();
@@ -169,11 +168,10 @@ void Domain::print_task_methods() const {
 
 void Domain::print_unigoal_methods() const {
 	if (get_unigoal_methods().is_empty()) {
-		print_line("-- There are no unigoal methods --");
+		print_line("There are no unigoal methods.");
 		return;
 	}
-	print_line("Blackboard var name:    Relevant unigoal methods:");
-	print_line("---------------    -------------------------");
+	print_line("Blackboard var name: Relevant unigoal methods:");
 	Array keys = get_unigoal_methods().keys();
 	for (int j = 0; j < keys.size(); ++j) {
 		String string_array;
@@ -186,12 +184,12 @@ void Domain::print_unigoal_methods() const {
 		print_line(String(keys[j]) + ":    " + string_array);
 	}
 
-	print_line("");
+	print_line(String());
 }
 
 void Domain::print_multigoal_methods() const {
 	if (get_multigoal_methods().is_empty()) {
-		print_line("-- There are no multigoal methods --");
+		print_line("There are no multigoal methods.");
 		return;
 	}
 	String string_array;
@@ -200,7 +198,7 @@ void Domain::print_multigoal_methods() const {
 		Variant m = methods[i];
 		string_array += String(m) + ", ";
 	}
-	print_line("-- Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
+	print_line("Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
 }
 
 void Domain::print_methods() const {
