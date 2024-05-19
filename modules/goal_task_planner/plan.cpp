@@ -174,7 +174,7 @@ Array Plan::m_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
 	return goal_list;
 }
 
-Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array todo_list, TypedArray<Array> plan, int depth) {
+Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array p_plan, int depth) {
 	Callable action = current_domain->get_action_dictionary()[task1[0]];
 
 	if (verbose >= 2) {
@@ -192,7 +192,7 @@ Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array to
 			print_line("Intermediate computation: Action applied successfully.");
 			print_line("New state: " + String(new_state));
 		}
-		TypedArray<Array> new_plan = plan;
+		TypedArray<Array> new_plan = p_plan;
 		new_plan.push_back(task1);
 		return seek_plan(new_state, todo_list, new_plan, depth + 1);
 	}
@@ -215,7 +215,7 @@ Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array to
 	return false;
 }
 
-Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const TypedArray<Array> p_plan, const int p_depth) {
+Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const Array p_plan, const int p_depth) {
 	Array relevant = current_domain->get_task_method_dictionary()[p_task1[0]];
 	if (verbose >= 3) {
 		print_line("Depth " + itos(p_depth) + ", Task " + _item_to_string(p_task1) + ", Todo List " + _item_to_string(p_todo_list) + ", Plan " + _item_to_string(p_plan));
@@ -256,7 +256,7 @@ Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_
 	return false;
 }
 
-Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref<Multigoal> p_goal1, const Array p_todo_list, const TypedArray<Array> p_plan, const int p_depth) {
+Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref<Multigoal> p_goal1, const Array p_todo_list, const Array p_plan, const int p_depth) {
 	if (verbose >= 3) {
 		print_line("Depth " + itos(p_depth) + ", Multigoal " + p_goal1->get_name() + ": " + _item_to_string(p_goal1));
 	}
@@ -269,6 +269,7 @@ Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref
 			print_line(String("Methods ") + String(relevant[i].call("get_method")));
 		}
 	}
+	Array todo_list = p_todo_list;
 	for (int i = 0; i < relevant.size(); i++) {
 		if (verbose >= 2) {
 			print_line("Depth " + itos(p_depth) + ", Trying method " + String(relevant[i].call("get_method")) + ": ");
@@ -294,7 +295,9 @@ Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref
 			if (!p_todo_list.is_empty()) {
 				subtodo_list.append_array(p_todo_list);
 			}
-			Variant result = seek_plan(p_state, subtodo_list, p_plan, p_depth + 1);
+			todo_list.clear();
+			todo_list = subtodo_list;
+			Variant result = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
 			if (result.is_array()) {
 				return result;
 			}
@@ -308,7 +311,7 @@ Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref
 	return false;
 }
 
-Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array p_goal1, const Array p_todo_list, const TypedArray<Array> p_plan, const int p_depth) {
+Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array p_goal1, const Array p_todo_list, const Array p_plan, const int p_depth) {
 	if (verbose >= 3) {
 		String goals_list = vformat("Depth %d, Goals: %s", p_depth, _item_to_string(p_goal1));
 	}
@@ -349,6 +352,7 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 			if (!todo_list.is_empty()) {
 				subtodo_list.append_array(todo_list);
 			}
+			todo_list.clear();
 			todo_list = subtodo_list;
 			if (verbose >= 3) {
 				print_line("Depth " + itos(p_depth) + ", Seeking todo list " + _item_to_string(todo_list));
@@ -386,7 +390,7 @@ Variant Plan::find_plan(Dictionary state, Array todo_list) {
 	return result;
 }
 
-Variant Plan::seek_plan(Dictionary p_state, Array p_todo_list, TypedArray<Array> p_plan, int p_depth) {
+Variant Plan::seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth) {
 	if (verbose >= 2) {
 		print_line("Depth " + itos(p_depth) + ", Todo List: " + _item_to_string(p_todo_list));
 	}
@@ -398,7 +402,7 @@ Variant Plan::seek_plan(Dictionary p_state, Array p_todo_list, TypedArray<Array>
 		return p_plan;
 	}
 	Variant todo_item = p_todo_list.front();
-	p_todo_list.pop_front();
+	p_todo_list = p_todo_list.slice(1);
 	if (Object::cast_to<Multigoal>(todo_item)) {
 		return _refine_multigoal_and_continue(p_state, todo_item, p_todo_list, p_plan, p_depth);
 	} else if (todo_item.is_array()) {

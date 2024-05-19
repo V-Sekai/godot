@@ -27,6 +27,9 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
+
+#ifndef DOMAIN_H
+#define DOMAIN_H
 // Copyright (c) 2023-present. This file is part of V-Sekai https://v-sekai.org/.
 // K. S. Ernest (Fire) Lee & Contributors (see .all-contributorsrc).
 // SPDX-License-Identifier: MIT
@@ -35,8 +38,6 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-#ifndef DOMAIN_H
-#define DOMAIN_H
 
 #include "core/io/resource.h"
 #include "multigoal.h"
