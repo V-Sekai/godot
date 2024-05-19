@@ -238,9 +238,9 @@ Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_
 			if (!p_todo_list.is_empty()) {
 				todo_list.append_array(p_todo_list);
 			}
-			Variant result = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
-			if (result.is_array()) {
-				return result;
+			Variant plan = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
+			if (plan.is_array()) {
+				return plan;
 			}
 		} else {
 			if (verbose >= 3) {
@@ -297,9 +297,9 @@ Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref
 			}
 			todo_list.clear();
 			todo_list = subtodo_list;
-			Variant result = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
-			if (result.is_array()) {
-				return result;
+			Variant plan = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
+			if (plan.is_array()) {
+				return plan;
 			}
 		}
 	}
@@ -357,9 +357,9 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 			if (verbose >= 3) {
 				print_line("Depth " + itos(p_depth) + ", Seeking todo list " + _item_to_string(todo_list));
 			}
-			Variant result = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
-			if (result.is_array()) {
-				return result;
+			Variant plan = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
+			if (plan.is_array()) {
+				return plan;
 			}
 		} else {
 			if (verbose >= 3) {
