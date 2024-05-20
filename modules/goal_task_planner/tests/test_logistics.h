@@ -365,7 +365,6 @@ void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_dom
 	at_methods.push_back(callable_mp_static(&method_move_between_city));
 	p_the_domain->add_unigoal_methods("at", move_methods);
 
-	p_planner->get_current_domain()->print_domain();
 	Array packages;
 	packages.push_back("package1");
 	packages.push_back("package2");
