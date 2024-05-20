@@ -419,7 +419,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] m_drive_truck") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("m_drive_truck");
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	TypedArray<Array> task;
@@ -434,7 +434,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Fly plane") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("Fly plane");
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	TypedArray<Array> task;
@@ -449,7 +449,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Load truck") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("Load truck");
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	TypedArray<Array> task;
@@ -463,7 +463,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("Move Goal 1");
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	TypedArray<Array> task;
@@ -488,7 +488,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("Move Goal 2");
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 
@@ -517,7 +517,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 3") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("Move Goal 3");
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 
@@ -533,7 +533,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("Move Goal 4");
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	Array task;
@@ -551,7 +551,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("run_lazy_lookahead");
+	the_domain.instantiate();
 	Dictionary state;
 	before_each(state, planner, the_domain);
 	Array task;
@@ -596,7 +596,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal") {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
-	the_domain.instantiate("Multigoal");
+	the_domain.instantiate();
 	Dictionary state;
 	before_each(state, planner, the_domain);
 	Ref<Multigoal> multi_goal;

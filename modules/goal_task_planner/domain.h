@@ -50,7 +50,7 @@ private:
 	TypedArray<Callable> multigoal_method_list;
 
 public:
-	Domain(String p_name = "");
+	Domain();
 	void set_actions(Dictionary p_value) { action_dictionary = p_value; }
 	void set_task_methods(Dictionary p_value) { task_method_dictionary = p_value; }
 	void set_unigoal_methods(Dictionary p_value) { unigoal_method_dictionary = p_value; }

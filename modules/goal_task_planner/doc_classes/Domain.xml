@@ -4,7 +4,7 @@
 		The domain in which goals are to be achieved.
 	</brief_description>
 	<description>
-		The Domain class is used to represent the environment or context in which multiple goals need to be achieved. It provides methods for verifying goals and multi-goals, as well as printing various aspects of the domain.
+		The Domain class is used to represent the environment or context in which multiple goals need to be achieved.
 	</description>
 	<tutorials>
 	</tutorials>

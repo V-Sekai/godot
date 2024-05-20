@@ -82,8 +82,7 @@ Variant Domain::method_verify_goal(Dictionary p_state, String p_method, String p
 	return Array();
 }
 
-Domain::Domain(String p_name) {
-	set_name(p_name);
+Domain::Domain() {
 	task_method_dictionary["_verify_g"] = varray(callable_mp_static(&Domain::method_verify_goal));
 	task_method_dictionary["_verify_mg"] = varray(callable_mp_static(&Multigoal::method_verify_multigoal));
 	multigoal_method_list.push_back(callable_mp_static(&Multigoal::method_split_multigoal));
