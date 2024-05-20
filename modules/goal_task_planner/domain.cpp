@@ -218,7 +218,7 @@ void Domain::print_methods() const {
 	print_multigoal_methods();
 }
 
-void Domain::add_multigoal_methods(Array p_methods) {
+void Domain::add_multigoal_methods(TypedArray<Callable> p_methods) {
 	for (int i = 0; i < p_methods.size(); ++i) {
 		Variant m = p_methods[i];
 		if (!multigoal_method_list.has(m)) {
@@ -227,7 +227,7 @@ void Domain::add_multigoal_methods(Array p_methods) {
 	}
 }
 
-void Domain::add_unigoal_methods(String p_task_name, Array p_methods) {
+void Domain::add_unigoal_methods(String p_task_name, TypedArray<Callable> p_methods) {
 	if (!unigoal_method_dictionary.has(p_task_name)) {
 		unigoal_method_dictionary[p_task_name] = p_methods;
 	} else {
@@ -242,7 +242,7 @@ void Domain::add_unigoal_methods(String p_task_name, Array p_methods) {
 	}
 }
 
-void Domain::add_task_methods(String p_task_name, Array p_methods) {
+void Domain::add_task_methods(String p_task_name, TypedArray<Callable> p_methods) {
 	if (task_method_dictionary.has(p_task_name)) {
 		Array existing_methods = task_method_dictionary[p_task_name];
 		for (int i = 0; i < p_methods.size(); ++i) {
@@ -257,7 +257,7 @@ void Domain::add_task_methods(String p_task_name, Array p_methods) {
 	}
 }
 
-void Domain::add_actions(Array p_actions) {
+void Domain::add_actions(TypedArray<Callable> p_actions) {
 	for (int64_t i = 0; i < p_actions.size(); ++i) {
 		Callable action = p_actions[i];
 		if (action.is_null()) {

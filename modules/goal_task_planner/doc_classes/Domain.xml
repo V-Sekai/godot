@@ -9,6 +9,32 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="add_actions">
+			<return type="void" />
+			<param index="0" name="actions" type="Callable[]" />
+			<description>
+			</description>
+		</method>
+		<method name="add_multigoal_methods">
+			<return type="void" />
+			<param index="0" name="methods" type="Callable[]" />
+			<description>
+			</description>
+		</method>
+		<method name="add_task_methods">
+			<return type="void" />
+			<param index="0" name="task_name" type="String" />
+			<param index="1" name="methods" type="Callable[]" />
+			<description>
+			</description>
+		</method>
+		<method name="add_unigoal_methods">
+			<return type="void" />
+			<param index="0" name="task_name" type="String" />
+			<param index="1" name="methods" type="Callable[]" />
+			<description>
+			</description>
+		</method>
 		<method name="method_goals_not_achieved" qualifiers="static">
 			<return type="Dictionary" />
 			<param index="0" name="state" type="Dictionary" />
@@ -82,7 +108,7 @@
 		<member name="actions" type="Dictionary" setter="set_actions" getter="get_actions" default="{}">
 			The actions that can be performed in the domain, represented as a dictionary.
 		</member>
-		<member name="multigoal_methods" type="Array" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[]">
+		<member name="multigoal_methods" type="Array" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[Callable()]">
 			The methods for achieving multi-goals, represented as an array.
 		</member>
 		<member name="tasks" type="Dictionary" setter="set_task_methods" getter="get_task_methods" default="{ &quot;_verify_g&quot;: [Callable()], &quot;_verify_mg&quot;: [Callable()] }">
@@ -90,9 +116,6 @@
 		</member>
 		<member name="unigoal_methods" type="Dictionary" setter="set_unigoal_methods" getter="get_unigoal_methods" default="{}">
 			The methods for achieving uni-goals, represented as a dictionary.
-		</member>
-		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
-			The verbosity level for the domain, represented as an integer.
 		</member>
 	</members>
 </class>

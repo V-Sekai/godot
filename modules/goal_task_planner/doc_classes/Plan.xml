@@ -9,36 +9,6 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="declare_actions">
-			<return type="Dictionary" />
-			<param index="0" name="actions" type="Callable[]" />
-			<description>
-				Declares the actions that can be performed by the plan.
-			</description>
-		</method>
-		<method name="declare_multigoal_methods">
-			<return type="Array" />
-			<param index="0" name="methods" type="Callable[]" />
-			<description>
-				Declares the methods used to achieve multiple goals.
-			</description>
-		</method>
-		<method name="declare_task_methods">
-			<return type="Dictionary" />
-			<param index="0" name="task_name" type="String" />
-			<param index="1" name="methods" type="Callable[]" />
-			<description>
-				Declares the methods used to perform a specific task.
-			</description>
-		</method>
-		<method name="declare_unigoal_methods">
-			<return type="Dictionary" />
-			<param index="0" name="state_var_name" type="StringName" />
-			<param index="1" name="methods" type="Callable[]" />
-			<description>
-				Declares the methods used to achieve a single goal.
-			</description>
-		</method>
 		<method name="find_plan">
 			<return type="Variant" />
 			<param index="0" name="state" type="Dictionary" />
@@ -47,7 +17,7 @@
 				Finds a plan to achieve the goals in the todo list from the given state.
 			</description>
 		</method>
-		<method name="method_split_multigoal">
+		<method name="method_split_multigoal" qualifiers="static">
 			<return type="Array" />
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="multigoal" type="Multigoal" />

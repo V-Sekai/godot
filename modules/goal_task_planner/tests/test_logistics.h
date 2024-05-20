@@ -425,7 +425,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] m_drive_truck") {
 	TypedArray<Array> task;
 	task.push_back(varray("truck_at", "truck1", "location2"));
 	Variant plan = planner->find_plan(state1, task);
-	TypedArray<Array> answer;
+	Array answer;
 	answer.push_back(varray("drive_truck", "truck1", "location2"));
 	CHECK_EQ(plan, answer);
 }
@@ -443,10 +443,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Fly plane") {
 	TypedArray<Array> answer;
 	answer.push_back(varray("fly_plane", "plane2", "airport1"));
 	CHECK_EQ(plan, answer);
-}
-
-TEST_CASE("[Modules][GoalTaskPlanner] Load plane") {
-	MESSAGE("Case is tested by the Move Goal 2");
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Load truck") {

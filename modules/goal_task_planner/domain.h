@@ -52,10 +52,10 @@ private:
 public:
 	Domain(String p_name = "");
 	void set_actions(Dictionary p_value) { action_dictionary = p_value; }
-	void add_actions(Array p_actions);
-	void add_task_methods(String p_task_name, Array p_methods);
-	void add_unigoal_methods(String p_task_name, Array p_methods);
-	void add_multigoal_methods(Array p_methods);
+	void add_actions(TypedArray<Callable> p_actions);
+	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
+	void add_unigoal_methods(String p_task_name, TypedArray<Callable> p_methods);
+	void add_multigoal_methods(TypedArray<Callable> p_methods);
 	void set_task_methods(Dictionary p_value) { task_method_dictionary = p_value; }
 	void set_unigoal_methods(Dictionary p_value) { unigoal_method_dictionary = p_value; }
 	void set_multigoal_methods(Array p_value) { multigoal_method_list = p_value; }
