@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Multigoal" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		A class representing multiple goals to be achieved.
+	</brief_description>
+	<description>
+		The Multigoal class is used to represent a set of goals that need to be achieved. It provides methods for managing the state variables associated with these goals.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="state_variables">
+			<return type="Array" />
+			<description>
+				Returns an array of state variables associated with the multi-goal.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="state" type="Dictionary" setter="set_state" getter="get_state" default="{}">
+			The current state of the multi-goal, represented as a dictionary of state variables.
+		</member>
+	</members>
+</class>
