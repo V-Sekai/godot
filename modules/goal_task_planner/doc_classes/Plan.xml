@@ -34,16 +34,6 @@
 				Runs a lazy lookahead search to find a plan, trying up to max_tries times.
 			</description>
 		</method>
-		<method name="seek_plan">
-			<return type="Variant" />
-			<param index="0" name="state" type="Dictionary" />
-			<param index="1" name="todo_list" type="Array" />
-			<param index="2" name="plan" type="Array" />
-			<param index="3" name="depth" type="int" />
-			<description>
-				Seeks a plan to achieve the goals in the todo list from the given state, using the provided plan as a starting point.
-			</description>
-		</method>
 	</methods>
 	<members>
 		<member name="current_domain" type="Domain" setter="set_current_domain" getter="get_current_domain">
