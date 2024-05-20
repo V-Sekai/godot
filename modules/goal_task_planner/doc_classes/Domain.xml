@@ -4,7 +4,7 @@
 		The [Domain] in which goals are to be achieved.
 	</brief_description>
 	<description>
-		The [Domain] represents the environment or context of a [Plan] in which multiple actions, goals, [MultiGoal]s, and tasks need to be achieved.
+		The [Domain] represents the environment or context of a [Plan] in which multiple actions, goals, [Multigoal]s, and tasks need to be achieved.
 	</description>
 	<tutorials>
 	</tutorials>
