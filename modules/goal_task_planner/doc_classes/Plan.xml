@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="Plan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		A class for planning and executing tasks.
+		Plans and executes tasks.
 	</brief_description>
 	<description>
-		The Plan class provides methods for declaring actions, goals, and tasks, as well as finding and executing plans to achieve those goals. It also supports multi-goal and uni-goal methods.
+		The [Plan] provides methods for declaring actions, goals, [Multigoal], and tasks, as well as finding and executing plans to achieve those goals in a [Domain].
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,7 +14,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="todo_list" type="Array" />
 			<description>
-				Finds a plan to achieve the goals in the todo list from the given state.
+				Finds a [Plan] to achieve the goals in the todo list from the given state.
 			</description>
 		</method>
 		<method name="run_lazy_lookahead">
@@ -23,19 +23,19 @@
 			<param index="1" name="todo_list" type="Array" />
 			<param index="2" name="max_tries" type="int" default="10" />
 			<description>
-				Runs a lazy lookahead search to find a plan, trying up to max_tries times.
+				Runs a lazy lookahead search to find a [Plan], trying up to max_tries times.
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="current_domain" type="Domain" setter="set_current_domain" getter="get_current_domain">
-			The current domain in which the plan operates.
+			The current [Domain] in which the [Plan] operates.
 		</member>
 		<member name="domains" type="Domain[]" setter="set_domains" getter="get_domains" default="[]">
-			The domains available to the plan.
+			The [Domain]s available to the [Plan].
 		</member>
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
-			The verbosity level of the plan's output.
+			The verbosity level of the [Plan]'s output.
 		</member>
 		<member name="verify_goals" type="bool" setter="set_verify_goals" getter="get_verify_goals" default="true">
 			Adds a verification of the state if the goals are met.

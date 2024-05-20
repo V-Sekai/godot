@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="Multigoal" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		A class representing multiple goals to be achieved.
+		A [Multigoal] represents multiple goals to be achieved in a [Plan] and [Domain].
 	</brief_description>
 	<description>
-		The Multigoal class is used to represent a set of goals that need to be achieved. It provides methods for managing the state variables associated with these goals.
+		The [Multigoal] represents a set of goals that a [Plan] needs to be achieved and provides methods for managing the state variables associated with these goals.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -14,7 +14,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="multigoal" type="Multigoal" />
 			<description>
-				Verifies if the goals that have not been achieved given the current state and multi-goal.
+				Verifies if the goals that have not been achieved given the current state and [Multigoal].
 			</description>
 		</method>
 		<method name="method_split_multigoal" qualifiers="static">
@@ -33,19 +33,19 @@
 			<param index="3" name="depth" type="int" />
 			<param index="4" name="verbose" type="int" />
 			<description>
-				Verifies if a multi-goal has been achieved given the current state, method, multi-goal, depth, and verbosity level.
+				Verifies if a [Multigoal] has been achieved given the current state, method, multi-goal, depth, and verbosity level.
 			</description>
 		</method>
 		<method name="state_variables">
 			<return type="Array" />
 			<description>
-				Returns an array of state variables associated with the multi-goal.
+				Returns an array of state variables associated with the [Multigoal].
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="state" type="Dictionary" setter="set_state" getter="get_state" default="{}">
-			The current state of the multi-goal, represented as a dictionary of state variables.
+			The current state of the [Multigoal], represented as a [Dictionary] of state variables.
 		</member>
 	</members>
 </class>
