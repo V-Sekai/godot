@@ -50,7 +50,6 @@ void Plan::set_domains(TypedArray<Domain> d) { domains = d; }
 Array Plan::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
 	Dictionary goal_state = Domain::method_goals_not_achieved(p_state, p_multigoal);
 	Array goal_list;
-
 	for (Variant state_variable_name : goal_state.keys()) {
 		Variant state_values = goal_state[state_variable_name];
 		if (state_values.get_type() != Variant::DICTIONARY) {
@@ -70,7 +69,6 @@ Array Plan::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoa
 			goal_list.push_back(goal);
 		}
 	}
-
 	for (Variant state_variable_name : p_state.keys()) {
 		Variant state_values = p_state[state_variable_name];
 		if (state_values.get_type() != Variant::DICTIONARY) {
@@ -101,12 +99,10 @@ Array Plan::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoa
 			}
 		}
 	}
-
 	if (!goal_list.is_empty()) {
 		// Achieve goals, then check whether they're all simultaneously true.
 		goal_list.push_back(p_multigoal);
 	}
-	print_line(_item_to_string(goal_list));
 	return goal_list;
 }
 
