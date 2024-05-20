@@ -37,13 +37,13 @@
 
 #include "core/io/resource.h"
 #include "core/variant/callable.h"
+
 #include "multigoal.h"
 
 class Domain : public Resource {
 	GDCLASS(Domain, Resource);
 
 private:
-	int verbose = 0;
 	Dictionary action_dictionary;
 	Dictionary task_method_dictionary;
 	Dictionary unigoal_method_dictionary;
@@ -51,7 +51,6 @@ private:
 
 public:
 	Domain(String p_name = "");
-	void set_verbose(int p_value) { verbose = p_value; }
 	void set_actions(Dictionary p_value) { action_dictionary = p_value; }
 	void add_actions(Array p_actions);
 	void add_task_methods(String p_task_name, Array p_methods);
@@ -61,7 +60,6 @@ public:
 	void set_unigoal_methods(Dictionary p_value) { unigoal_method_dictionary = p_value; }
 	void set_multigoal_methods(Array p_value) { multigoal_method_list = p_value; }
 
-	int get_verbose() const { return verbose; }
 	Dictionary get_actions() const { return action_dictionary; }
 	Dictionary get_task_methods() const { return task_method_dictionary; }
 	Dictionary get_unigoal_methods() const { return unigoal_method_dictionary; }

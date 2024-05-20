@@ -35,19 +35,17 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-#include "core/io/resource.h"
-#include "core/variant/callable.h"
-#include "core/variant/typed_array.h"
-#include "core/variant/variant.h"
-
 #include "domain.h"
+
+#include "core/variant/callable.h"
+#include "core/variant/variant.h"
 
 class Plan : public Resource {
 	GDCLASS(Plan, Resource);
 
 private:
 	int verbose = 0;
-	TypedArray<Domain> domains;
+	Array domains;
 	Ref<Domain> current_domain;
 
 	// If verify_goals is True, then whenever the planner uses a method m to refine
@@ -73,15 +71,13 @@ public:
 	bool get_verify_goals() const;
 
 public:
-	// These are the general apis.
 	Variant find_plan(Dictionary state, Array todo_list);
 	Variant seek_plan(Dictionary state, Array todo_list, Array p_plan, int depth);
 
 public:
-	// These have specific uses.
 	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10);
 	static String _item_to_string(Variant item);
-	Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
+	static Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 
 private:
 	Variant _apply_task_and_continue(Dictionary state, Callable command, Array args);

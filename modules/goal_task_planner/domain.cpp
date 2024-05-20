@@ -30,13 +30,13 @@
 
 #include "domain.h"
 
-#include "core/variant/callable.h"
+#include "plan.h"
 
 void Domain::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("add_multigoal_methods", "methods"), &Domain::add_multigoal_methods);
-    ClassDB::bind_method(D_METHOD("add_unigoal_methods", "task_name", "methods"), &Domain::add_unigoal_methods);
-    ClassDB::bind_method(D_METHOD("add_task_methods", "task_name", "methods"), &Domain::add_task_methods);
-    ClassDB::bind_method(D_METHOD("add_actions", "actions"), &Domain::add_actions);
+	ClassDB::bind_method(D_METHOD("add_multigoal_methods", "methods"), &Domain::add_multigoal_methods);
+	ClassDB::bind_method(D_METHOD("add_unigoal_methods", "task_name", "methods"), &Domain::add_unigoal_methods);
+	ClassDB::bind_method(D_METHOD("add_task_methods", "task_name", "methods"), &Domain::add_task_methods);
+	ClassDB::bind_method(D_METHOD("add_actions", "actions"), &Domain::add_actions);
 
 	ClassDB::bind_static_method("Domain", D_METHOD("method_verify_goal", "state", "method", "state_var", "arguments", "desired_values", "depth", "verbose"), &Domain::method_verify_goal);
 	ClassDB::bind_static_method("Domain", D_METHOD("method_goals_not_achieved", "state", "multigoal"), &Domain::method_goals_not_achieved);
@@ -48,9 +48,6 @@ void Domain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("print_unigoal_methods"), &Domain::print_unigoal_methods);
 	ClassDB::bind_method(D_METHOD("print_multigoal_methods"), &Domain::print_multigoal_methods);
 	ClassDB::bind_method(D_METHOD("print_methods"), &Domain::print_methods);
-
-	ClassDB::bind_method(D_METHOD("set_verbose", "value"), &Domain::set_verbose);
-	ClassDB::bind_method(D_METHOD("get_verbose"), &Domain::get_verbose);
 
 	ClassDB::bind_method(D_METHOD("set_actions", "value"), &Domain::set_actions);
 	ClassDB::bind_method(D_METHOD("get_actions"), &Domain::get_actions);
@@ -64,7 +61,6 @@ void Domain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_multigoal_methods", "value"), &Domain::set_multigoal_methods);
 	ClassDB::bind_method(D_METHOD("get_multigoal_methods"), &Domain::get_multigoal_methods);
 
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "actions"), "set_actions", "get_actions");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "tasks"), "set_task_methods", "get_task_methods");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "unigoal_methods"), "set_unigoal_methods", "get_unigoal_methods");
@@ -88,29 +84,36 @@ Variant Domain::method_verify_goal(Dictionary p_state, String p_method, String p
 }
 
 Dictionary Domain::method_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal) {
-	Dictionary incomplete;
-	Array keys = p_multigoal->get_state().keys();
-	for (int i = 0; i < keys.size(); ++i) {
-		String n = keys[i];
-		Dictionary sub_dict = p_multigoal->get_state()[n];
-		Array sub_keys = sub_dict.keys();
-		for (int j = 0; j < sub_keys.size(); ++j) {
-			String arg = sub_keys[j];
-			Variant val = sub_dict[arg];
-			if (p_state[n].get_type() == Variant::DICTIONARY && Dictionary(p_state[n]).has(arg) && val != Dictionary(p_state[n])[arg]) {
-				if (!incomplete.has(n)) {
-					incomplete[n] = Dictionary();
-				}
-				Dictionary temp = incomplete[n];
-				temp[arg] = val;
-				incomplete[n] = temp;
-			}
-		}
-	}
-	return incomplete;
+    bool is_multigoal_null = p_multigoal.is_null();
+    if (is_multigoal_null) {
+        return p_state;
+    }
+    Dictionary unmatched_states;
+    for (Variant element : p_multigoal->get_state().keys()) {
+        Dictionary sub_dictionary = p_multigoal->get_state()[element];
+        for (Variant argument : sub_dictionary.keys()) {
+            Variant value = sub_dictionary[argument];
+            bool is_state_element_dictionary = p_state[element].get_type() == Variant::DICTIONARY;
+            bool does_state_element_have_arguments = Dictionary(p_state[element]).has(argument);
+            bool are_values_different = value != Dictionary(p_state[element])[argument];
+            if (is_state_element_dictionary && does_state_element_have_arguments && are_values_different) {
+                bool is_missing_element = !unmatched_states.has(element);
+                if (is_missing_element) {
+                    unmatched_states[element] = Dictionary();
+                }
+                Dictionary temp = unmatched_states[element];
+                temp[argument] = value;
+                unmatched_states[element] = temp;
+            }
+        }
+    }
+    return unmatched_states;
 }
 
 Variant Domain::method_verify_multigoal(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int p_verbose) {
+	if (p_multigoal.is_null()) {
+		return false;
+	}
 	Dictionary goal_dict = method_goals_not_achieved(p_state, p_multigoal);
 	if (!goal_dict.is_empty()) {
 		if (p_verbose >= 3) {
@@ -129,6 +132,7 @@ Domain::Domain(String p_name) {
 	set_name(p_name);
 	task_method_dictionary["_verify_g"] = varray(callable_mp_static(&Domain::method_verify_goal));
 	task_method_dictionary["_verify_mg"] = varray(callable_mp_static(&Domain::method_verify_multigoal));
+	multigoal_method_list.push_back(callable_mp_static(&Plan::method_split_multigoal));
 }
 
 void Domain::print_domain() const {

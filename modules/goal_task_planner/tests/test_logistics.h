@@ -38,6 +38,8 @@
 #include "core/error/error_macros.h"
 #include "core/string/print_string.h"
 #include "core/variant/array.h"
+#include "modules/goal_task_planner/domain.h"
+#include "modules/goal_task_planner/multigoal.h"
 #include "tests/test_macros.h"
 
 #include "core/variant/callable.h"
@@ -546,6 +548,80 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
 	task.push_back(varray("at", "package1", "location2"));
 	Variant plan = planner->find_plan(state1, task);
 	TypedArray<Array> answer;
+	answer.push_back(varray("drive_truck", "truck1", "location1"));
+	answer.push_back(varray("load_truck", "package1", "truck1"));
+	answer.push_back(varray("drive_truck", "truck1", "location2"));
+	answer.push_back(varray("unload_truck", "package1", "location2"));
+	CHECK_EQ(plan, answer);
+}
+
+TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate("run_lazy_lookahead");
+	Dictionary state;
+	before_each(state, planner, the_domain);
+	planner->set_verbose(3);
+	Array task;
+	task.push_back(varray("at", "package1", "location2"));
+	Dictionary final_state = planner->run_lazy_lookahead(state, task);
+
+	Dictionary answer;
+	answer["packages"] = varray("package1", "package2");
+	answer["trucks"] = varray("truck1", "truck6");
+	answer["airplanes"] = varray("plane2");
+	answer["locations"] = varray("airport1", "location1", "location2", "location3", "airport2", "location10");
+	answer["airports"] = varray("airport1", "airport2");
+	answer["cities"] = varray("city1", "city2");
+
+	Dictionary at;
+	at["package1"] = "location2";
+	at["package2"] = "location2";
+	answer["at"] = at;
+
+	Dictionary truck_at;
+	truck_at["truck1"] = "location2";
+	truck_at["truck6"] = "location10";
+	answer["truck_at"] = truck_at;
+
+	Dictionary plane_at;
+	plane_at["plane2"] = "airport2";
+	answer["plane_at"] = plane_at;
+
+	Dictionary in_city;
+	in_city["airport1"] = "city1";
+	in_city["location1"] = "city1";
+	in_city["location2"] = "city1";
+	in_city["location3"] = "city1";
+	in_city["airport2"] = "city2";
+	in_city["location10"] = "city2";
+	answer["in_city"] = in_city;
+
+	CHECK_EQ(final_state, answer);
+}
+
+TEST_CASE("[Modules][GoalTaskPlanner] Multigoal") {
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate("Multigoal");
+	Dictionary state;
+	before_each(state, planner, the_domain);
+	planner->set_verbose(3);
+	Ref<Multigoal> multi_goal;
+	Dictionary goal_state = state.duplicate(true);
+	Dictionary at = goal_state["at"];
+	at["package1"] = "location2";
+	Dictionary truck_at = goal_state["truck_at"];
+	truck_at["truck1"] = "location1";
+	goal_state["truck_at"] = truck_at;
+	goal_state["at"] = at;
+	multi_goal.instantiate("Multigoal", goal_state);
+	Array task;
+	task.push_back(multi_goal);
+	Array plan = planner->find_plan(state, task);
+	Array answer;
 	answer.push_back(varray("drive_truck", "truck1", "location1"));
 	answer.push_back(varray("load_truck", "package1", "truck1"));
 	answer.push_back(varray("drive_truck", "truck1", "location2"));
