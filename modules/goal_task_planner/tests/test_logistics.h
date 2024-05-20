@@ -562,7 +562,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
 	the_domain.instantiate("run_lazy_lookahead");
 	Dictionary state;
 	before_each(state, planner, the_domain);
-	planner->set_verbose(3);
 	Array task;
 	task.push_back(varray("at", "package1", "location2"));
 	Dictionary final_state = planner->run_lazy_lookahead(state, task);
@@ -608,7 +607,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal") {
 	the_domain.instantiate("Multigoal");
 	Dictionary state;
 	before_each(state, planner, the_domain);
-	planner->set_verbose(3);
 	Ref<Multigoal> multi_goal;
 	Dictionary goal_state = state.duplicate(true);
 	Dictionary at = goal_state["at"];
