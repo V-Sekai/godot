@@ -108,7 +108,7 @@
 		<member name="actions" type="Dictionary" setter="set_actions" getter="get_actions" default="{}">
 			The actions that can be performed in the domain, represented as a dictionary.
 		</member>
-		<member name="multigoal_methods" type="Array" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[Callable()]">
+		<member name="multigoal_methods" type="Callable[]" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[Callable()]">
 			The methods for achieving multi-goals, represented as an array.
 		</member>
 		<member name="tasks" type="Dictionary" setter="set_task_methods" getter="get_task_methods" default="{ &quot;_verify_g&quot;: [Callable()], &quot;_verify_mg&quot;: [Callable()] }">
