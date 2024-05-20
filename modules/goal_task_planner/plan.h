@@ -46,7 +46,7 @@ class Plan : public Resource {
 	GDCLASS(Plan, Resource);
 
 private:
-	int verbose;
+	int verbose = 0;
 	TypedArray<Domain> domains;
 	Ref<Domain> current_domain;
 
@@ -74,10 +74,6 @@ public:
 
 public:
 	// These are the general apis.
-	Dictionary declare_actions(TypedArray<Callable> p_actions);
-	Dictionary declare_task_methods(String p_task_name, TypedArray<Callable> p_methods);
-	Dictionary declare_unigoal_methods(StringName p_state_var_name, TypedArray<Callable> p_methods);
-	Array declare_multigoal_methods(TypedArray<Callable> p_methods);
 	Variant find_plan(Dictionary state, Array todo_list);
 	Variant seek_plan(Dictionary state, Array todo_list, Array p_plan, int depth);
 

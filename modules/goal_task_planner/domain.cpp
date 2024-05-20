@@ -30,7 +30,14 @@
 
 #include "domain.h"
 
+#include "core/variant/callable.h"
+
 void Domain::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("add_multigoal_methods", "methods"), &Domain::add_multigoal_methods);
+    ClassDB::bind_method(D_METHOD("add_unigoal_methods", "task_name", "methods"), &Domain::add_unigoal_methods);
+    ClassDB::bind_method(D_METHOD("add_task_methods", "task_name", "methods"), &Domain::add_task_methods);
+    ClassDB::bind_method(D_METHOD("add_actions", "actions"), &Domain::add_actions);
+
 	ClassDB::bind_static_method("Domain", D_METHOD("method_verify_goal", "state", "method", "state_var", "arguments", "desired_values", "depth", "verbose"), &Domain::method_verify_goal);
 	ClassDB::bind_static_method("Domain", D_METHOD("method_goals_not_achieved", "state", "multigoal"), &Domain::method_goals_not_achieved);
 	ClassDB::bind_static_method("Domain", D_METHOD("method_verify_multigoal", "state", "method", "multigoal", "depth", "verbose"), &Domain::method_verify_multigoal);
@@ -205,4 +212,54 @@ void Domain::print_methods() const {
 	print_task_methods();
 	print_unigoal_methods();
 	print_multigoal_methods();
+}
+
+void Domain::add_multigoal_methods(Array p_methods) {
+	for (int i = 0; i < p_methods.size(); ++i) {
+		Variant m = p_methods[i];
+		if (!multigoal_method_list.has(m)) {
+			multigoal_method_list.push_back(m);
+		}
+	}
+}
+
+void Domain::add_unigoal_methods(String p_task_name, Array p_methods) {
+	if (!unigoal_method_dictionary.has(p_task_name)) {
+		unigoal_method_dictionary[p_task_name] = p_methods;
+	} else {
+		Array existing_methods = unigoal_method_dictionary[p_task_name];
+		for (int i = 0; i < p_methods.size(); ++i) {
+			Variant m = p_methods[i];
+			if (!existing_methods.has(m)) {
+				existing_methods.push_back(m);
+			}
+		}
+		unigoal_method_dictionary[p_task_name] = existing_methods;
+	}
+}
+
+void Domain::add_task_methods(String p_task_name, Array p_methods) {
+	if (task_method_dictionary.has(p_task_name)) {
+		Array existing_methods = task_method_dictionary[p_task_name];
+		for (int i = 0; i < p_methods.size(); ++i) {
+			Variant m = p_methods[i];
+			if (existing_methods.find(m) == -1) {
+				existing_methods.push_back(m);
+			}
+		}
+		task_method_dictionary[p_task_name] = existing_methods;
+	} else {
+		task_method_dictionary[p_task_name] = p_methods;
+	}
+}
+
+void Domain::add_actions(Array p_actions) {
+	for (int64_t i = 0; i < p_actions.size(); ++i) {
+		Callable action = p_actions[i];
+		if (action.is_null()) {
+			continue;
+		}
+		String method_name = action.get_method();
+		action_dictionary[method_name] = action;
+	}
 }

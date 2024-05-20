@@ -343,28 +343,28 @@ void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_dom
 	actions.push_back(callable_mp_static(&fly_plane));
 	actions.push_back(callable_mp_static(&load_plane));
 	actions.push_back(callable_mp_static(&unload_plane));
-	p_planner->declare_actions(actions);
+	p_the_domain->add_actions(actions);
 
 	TypedArray<Callable> truck_at_methods;
 	truck_at_methods.push_back(callable_mp_static(&method_drive_truck));
-	p_planner->declare_unigoal_methods("truck_at", truck_at_methods);
+	p_the_domain->add_unigoal_methods("truck_at", truck_at_methods);
 
 	TypedArray<Callable> plane_at_methods;
 	plane_at_methods.push_back(callable_mp_static(&method_fly_plane));
-	p_planner->declare_unigoal_methods("plane_at", plane_at_methods);
+	p_the_domain->add_unigoal_methods("plane_at", plane_at_methods);
 
 	TypedArray<Callable> at_methods;
 	at_methods.push_back(callable_mp_static(&method_load_truck));
 	at_methods.push_back(callable_mp_static(&method_unload_truck));
 	at_methods.push_back(callable_mp_static(&method_load_plane));
 	at_methods.push_back(callable_mp_static(&method_unload_plane));
-	p_planner->declare_unigoal_methods("at", at_methods);
+	p_the_domain->add_unigoal_methods("at", at_methods);
 
 	TypedArray<Callable> move_methods;
 	at_methods.push_back(callable_mp_static(&method_move_within_city));
 	at_methods.push_back(callable_mp_static(&method_move_between_airports));
 	at_methods.push_back(callable_mp_static(&method_move_between_city));
-	p_planner->declare_unigoal_methods("at", move_methods);
+	p_the_domain->add_unigoal_methods("at", move_methods);
 
 	p_planner->get_current_domain()->print_domain();
 	Array packages;

@@ -45,103 +45,6 @@ void Plan::set_verbose(int v) { verbose = v; }
 
 void Plan::set_domains(TypedArray<Domain> d) { domains = d; }
 
-Dictionary Plan::declare_actions(TypedArray<Callable> p_actions) {
-	if (current_domain.is_null()) {
-		print_line("Cannot declare actions until a domain has been created.");
-		return Dictionary();
-	}
-
-	Dictionary action_dictionary = current_domain->get_actions();
-
-	for (int64_t i = 0; i < p_actions.size(); ++i) {
-		Callable action = p_actions[i];
-		if (action.is_null()) {
-			continue;
-		}
-		String method_name = action.get_method();
-		action_dictionary[method_name] = action;
-	}
-
-	current_domain->set_actions(action_dictionary);
-
-	return action_dictionary;
-}
-
-Dictionary Plan::declare_task_methods(String p_task_name, TypedArray<Callable> p_methods) {
-	if (current_domain == nullptr) {
-		print_line("Cannot declare methods until a domain has been created.");
-		return Dictionary();
-	}
-
-	Dictionary task_method_dictionary = current_domain->get_task_methods();
-
-	if (task_method_dictionary.has(p_task_name)) {
-		// task_name is already in the dictionary
-		Array existing_methods = task_method_dictionary[p_task_name];
-		for (int i = 0; i < p_methods.size(); ++i) {
-			Variant m = p_methods[i];
-			// check if method is not already in the list
-			if (existing_methods.find(m) == -1) {
-				existing_methods.push_back(m);
-			}
-		}
-		task_method_dictionary[p_task_name] = existing_methods;
-	} else {
-		// The task_name is not in the dictionary, so add it.
-		task_method_dictionary[p_task_name] = p_methods;
-	}
-
-	current_domain->set_task_methods(task_method_dictionary);
-
-	return task_method_dictionary;
-}
-
-Dictionary Plan::declare_unigoal_methods(StringName p_state_variable_name, TypedArray<Callable> p_methods) {
-	if (current_domain.is_null()) {
-		print_line("Cannot declare methods until a domain has been created.");
-		return Dictionary();
-	}
-
-	Dictionary unigoal_method_dict = current_domain->get_unigoal_methods();
-
-	if (!unigoal_method_dict.has(p_state_variable_name)) {
-		unigoal_method_dict[p_state_variable_name] = p_methods;
-	} else {
-		Array existing_methods = unigoal_method_dict[p_state_variable_name];
-		for (int i = 0; i < p_methods.size(); ++i) {
-			Variant m = p_methods[i];
-			if (!existing_methods.has(m)) {
-				existing_methods.push_back(m);
-			}
-		}
-		unigoal_method_dict[p_state_variable_name] = existing_methods;
-	}
-
-	current_domain->set_unigoal_methods(unigoal_method_dict); // Assuming this setter method exists
-
-	return unigoal_method_dict;
-}
-
-Array Plan::declare_multigoal_methods(TypedArray<Callable> p_methods) {
-	if (current_domain == nullptr) {
-		print_line("Cannot declare methods until a domain has been created.");
-		return Array();
-	}
-
-	Array method_array = current_domain->get_multigoal_methods();
-
-	for (int i = 0; i < p_methods.size(); ++i) {
-		Variant m = p_methods[i];
-		if (!method_array.has(m)) {
-			method_array.push_back(m);
-		}
-	}
-
-	current_domain->set_multigoal_methods(method_array);
-
-	return method_array;
-}
-
 Array Plan::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
 	Dictionary goal_dict = get_current_domain()->method_goals_not_achieved(p_state, p_multigoal);
 	Array goal_list;
@@ -545,11 +448,6 @@ void Plan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_current_domain"), &Plan::get_current_domain);
 	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &Plan::set_current_domain);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_domain", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_current_domain", "get_current_domain");
-
-	ClassDB::bind_method(D_METHOD("declare_actions", "actions"), &Plan::declare_actions);
-	ClassDB::bind_method(D_METHOD("declare_task_methods", "task_name", "methods"), &Plan::declare_task_methods);
-	ClassDB::bind_method(D_METHOD("declare_unigoal_methods", "state_var_name", "methods"), &Plan::declare_unigoal_methods);
-	ClassDB::bind_method(D_METHOD("declare_multigoal_methods", "methods"), &Plan::declare_multigoal_methods);
 
 	ClassDB::bind_method(D_METHOD("method_split_multigoal", "state", "multigoal"), &Plan::method_split_multigoal);
 
