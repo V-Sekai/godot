@@ -328,13 +328,12 @@ Variant method_move_between_city(Dictionary p_state, String p_object, String p_l
 void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_domain) {
 	ERR_FAIL_COND(p_planner.is_null());
 	ERR_FAIL_COND(p_the_domain.is_null());
-	p_planner->set_verbose(3);
+	p_planner->set_verbose(0);
 	p_state.clear();
 	TypedArray<Domain> domains;
 	domains.push_back(p_the_domain);
 	p_planner->set_domains(domains);
 
-	// If we've changed to some other domain, this will change us back.
 	p_planner->set_current_domain(p_the_domain);
 	TypedArray<Callable> actions;
 	actions.push_back(callable_mp_static(&drive_truck));
