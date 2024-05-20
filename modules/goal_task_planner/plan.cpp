@@ -29,13 +29,12 @@
 /**************************************************************************/
 
 #include "plan.h"
-#include "core/string/print_string.h"
-#include "core/variant/array.h"
+
 #include "core/variant/callable.h"
-#include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
-#include "core/variant/variant.h"
-#include "domain.h"
+
+#include "modules/goal_task_planner/domain.h"
+#include "modules/goal_task_planner/multigoal.h"
 
 int Plan::get_verbose() const { return verbose; }
 
@@ -126,7 +125,7 @@ Variant Plan::_apply_action_and_continue(Dictionary state, Array task1, Array to
 		}
 		TypedArray<Array> new_plan = p_plan;
 		new_plan.push_back(task1);
-		return seek_plan(new_state, todo_list, new_plan, depth + 1);
+		return _seek_plan(new_state, todo_list, new_plan, depth + 1);
 	}
 
 	if (verbose >= 3) {
@@ -170,7 +169,7 @@ Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_
 			if (!p_todo_list.is_empty()) {
 				todo_list.append_array(p_todo_list);
 			}
-			Variant plan = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
+			Variant plan = _seek_plan(p_state, todo_list, p_plan, p_depth + 1);
 			if (plan.is_array()) {
 				return plan;
 			}
@@ -226,7 +225,7 @@ Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref
 			}
 			todo_list.clear();
 			todo_list = subtodo_list;
-			Variant plan = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
+			Variant plan = _seek_plan(p_state, todo_list, p_plan, p_depth + 1);
 			if (plan.is_array()) {
 				return plan;
 			}
@@ -255,7 +254,7 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 		if (verbose >= 3) {
 			print_line("Intermediate computation: Goal already achieved.");
 		}
-		return seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
+		return _seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
 	}
 
 	Array relevant = current_domain->get_unigoal_methods()[state_variable_name];
@@ -286,7 +285,7 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 			if (verbose >= 3) {
 				print_line("Depth: " + itos(p_depth) + ", Seeking todo list " + _item_to_string(todo_list));
 			}
-			Variant plan = seek_plan(p_state, todo_list, p_plan, p_depth + 1);
+			Variant plan = _seek_plan(p_state, todo_list, p_plan, p_depth + 1);
 			if (plan.is_array()) {
 				return plan;
 			}
@@ -310,7 +309,7 @@ Variant Plan::find_plan(Dictionary state, Array todo_list) {
 		print_line("    state = " + _item_to_string(state) + "\n    todo_list = " + _item_to_string(todo_list));
 	}
 
-	Variant result = seek_plan(state, todo_list, Array(), 0);
+	Variant result = _seek_plan(state, todo_list, Array(), 0);
 
 	if (verbose >= 1) {
 		print_line("result = " + _item_to_string(result));
@@ -319,7 +318,7 @@ Variant Plan::find_plan(Dictionary state, Array todo_list) {
 	return result;
 }
 
-Variant Plan::seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth) {
+Variant Plan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth) {
 	if (verbose >= 2) {
 		print_line("Depth: " + itos(p_depth) + ", Todo List: " + _item_to_string(p_todo_list));
 	}
@@ -479,7 +478,6 @@ void Plan::_bind_methods() {
 	ClassDB::bind_static_method("Plan", D_METHOD("method_split_multigoal", "state", "multigoal"), &Plan::method_split_multigoal);
 
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &Plan::find_plan);
-	ClassDB::bind_method(D_METHOD("seek_plan", "state", "todo_list", "plan", "depth"), &Plan::seek_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &Plan::run_lazy_lookahead, DEFVAL(10));
 }
 

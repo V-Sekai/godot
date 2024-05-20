@@ -35,17 +35,18 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-#include "domain.h"
+#include "core/io/resource.h"
+#include "core/variant/typed_array.h"
 
-#include "core/variant/callable.h"
-#include "core/variant/variant.h"
+#include "modules/goal_task_planner/multigoal.h"
 
+class Domain;
 class Plan : public Resource {
 	GDCLASS(Plan, Resource);
 
 private:
 	int verbose = 0;
-	Array domains;
+	TypedArray<Domain> domains;
 	Ref<Domain> current_domain;
 
 	// If verify_goals is True, then whenever the planner uses a method m to refine
@@ -60,7 +61,6 @@ private:
 	bool verify_goals = true;
 
 public:
-	// Configuration properties.
 	int get_verbose() const;
 	void set_verbose(int p_level);
 	TypedArray<Domain> get_domains() const;
@@ -72,7 +72,6 @@ public:
 
 public:
 	Variant find_plan(Dictionary state, Array todo_list);
-	Variant seek_plan(Dictionary state, Array todo_list, Array p_plan, int depth);
 
 public:
 	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10);
@@ -80,6 +79,7 @@ public:
 	static Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 
 private:
+	Variant _seek_plan(Dictionary state, Array todo_list, Array p_plan, int depth);
 	Variant _apply_task_and_continue(Dictionary state, Callable command, Array args);
 	Variant _apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array p_plan, int depth);
 	Variant _refine_task_and_continue(const Dictionary state, const Array task1, const Array todo_list, const Array p_plan, const int depth);

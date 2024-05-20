@@ -35,11 +35,11 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-#include "core/io/resource.h"
-#include "core/variant/callable.h"
-
 #include "multigoal.h"
 
+#include "core/variant/typed_array.h"
+
+class Plan;
 class Domain : public Resource {
 	GDCLASS(Domain, Resource);
 
@@ -52,10 +52,6 @@ private:
 public:
 	Domain(String p_name = "");
 	void set_actions(Dictionary p_value) { action_dictionary = p_value; }
-	void add_actions(TypedArray<Callable> p_actions);
-	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
-	void add_unigoal_methods(String p_task_name, TypedArray<Callable> p_methods);
-	void add_multigoal_methods(TypedArray<Callable> p_methods);
 	void set_task_methods(Dictionary p_value) { task_method_dictionary = p_value; }
 	void set_unigoal_methods(Dictionary p_value) { unigoal_method_dictionary = p_value; }
 	void set_multigoal_methods(Array p_value) { multigoal_method_list = p_value; }
@@ -72,6 +68,12 @@ public:
 	void print_unigoal_methods() const;
 	void print_multigoal_methods() const;
 	void print_methods() const;
+
+public:
+	void add_actions(TypedArray<Callable> p_actions);
+	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
+	void add_unigoal_methods(String p_task_name, TypedArray<Callable> p_methods);
+	void add_multigoal_methods(TypedArray<Callable> p_methods);
 
 public:
 	static Variant method_verify_goal(Dictionary p_state, String p_method, String p_state_var, String p_arguments, Variant p_desired_values, int p_depth, int verbose);
