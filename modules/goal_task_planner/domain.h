@@ -77,8 +77,6 @@ public:
 
 public:
 	static Variant method_verify_goal(Dictionary p_state, String p_method, String p_state_var, String p_arguments, Variant p_desired_values, int p_depth, int verbose);
-	static Dictionary method_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal);
-	static Variant method_verify_multigoal(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int verbose);
 
 protected:
 	static void _bind_methods();

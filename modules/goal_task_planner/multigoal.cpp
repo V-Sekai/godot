@@ -35,6 +35,9 @@ void Multigoal::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_state", "value"), &Multigoal::set_state);
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "state"), "set_state", "get_state");
 	ClassDB::bind_method(D_METHOD("state_variables"), &Multigoal::state_variables);
+	ClassDB::bind_static_method("Multigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal"), &Multigoal::method_goals_not_achieved);
+	ClassDB::bind_static_method("Multigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal", "depth", "verbose"), &Multigoal::method_verify_multigoal);
+	ClassDB::bind_static_method("Multigoal", D_METHOD("method_split_multigoal", "state", "multigoal"), &Multigoal::method_split_multigoal);
 }
 
 Dictionary Multigoal::get_state() const {
@@ -52,4 +55,106 @@ Multigoal::Multigoal(String p_multigoal_name, Dictionary p_state_variables) {
 
 Array Multigoal::state_variables() {
 	return state.keys();
+}
+
+Array Multigoal::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
+	Dictionary goal_state = method_goals_not_achieved(p_state, p_multigoal);
+	Array goal_list;
+	for (Variant state_variable_name : goal_state.keys()) {
+		Variant state_values = goal_state[state_variable_name];
+		if (state_values.get_type() != Variant::DICTIONARY) {
+			continue;
+		}
+		Dictionary goal_value_dictionary = state_values;
+		Dictionary state_variable = state_values;
+		for (Variant state_goal : state_variable.keys()) {
+			if (!state_variable.has(state_goal)) {
+				continue;
+			}
+			Array goal;
+			goal.resize(3);
+			goal[0] = state_variable_name;
+			goal[1] = state_goal;
+			goal[2] = state_variable[state_goal];
+			goal_list.push_back(goal);
+		}
+	}
+	for (Variant state_variable_name : p_state.keys()) {
+		Variant state_values = p_state[state_variable_name];
+		if (state_values.get_type() != Variant::DICTIONARY) {
+			continue;
+		}
+		Dictionary goal_value_dictionary = state_values;
+		Dictionary state_variable = state_values;
+		for (Variant state_goal : state_variable.keys()) {
+			if (!state_variable.has(state_goal)) {
+				continue;
+			}
+			Array goal;
+			goal.resize(3);
+			goal[0] = state_variable_name;
+			goal[1] = state_goal;
+			goal[2] = state_variable[state_goal];
+			bool exists = false;
+			for (int i = 0; i < goal_list.size(); i++) {
+				Array existing_goal = goal_list[i];
+				if (existing_goal[0] == goal[0] && existing_goal[1] == goal[1]) {
+					exists = true;
+					break;
+				}
+			}
+
+			if (!exists) {
+				goal_list.push_back(goal);
+			}
+		}
+	}
+	if (!goal_list.is_empty()) {
+		// Achieve goals, then check whether they're all simultaneously true.
+		goal_list.push_back(p_multigoal);
+	}
+	return goal_list;
+}
+Variant Multigoal::method_verify_multigoal(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int p_verbose) {
+	if (p_multigoal.is_null()) {
+		return false;
+	}
+	Dictionary goal_dict = method_goals_not_achieved(p_state, p_multigoal);
+	if (!goal_dict.is_empty()) {
+		if (p_verbose >= 3) {
+			print_line(vformat("Depth %d: method %s didn't achieve %s", p_depth, p_method, p_multigoal));
+		}
+		return false;
+	}
+
+	if (p_verbose >= 3) {
+		print_line(vformat("Depth %d: method %s achieved %s", p_depth, p_method, p_multigoal));
+	}
+	return Array();
+}
+Dictionary Multigoal::method_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal) {
+	bool is_multigoal_null = p_multigoal.is_null();
+	if (is_multigoal_null) {
+		return p_state;
+	}
+	Dictionary unmatched_states;
+	for (Variant element : p_multigoal->get_state().keys()) {
+		Dictionary sub_dictionary = p_multigoal->get_state()[element];
+		for (Variant argument : sub_dictionary.keys()) {
+			Variant value = sub_dictionary[argument];
+			bool is_state_element_dictionary = p_state[element].get_type() == Variant::DICTIONARY;
+			bool does_state_element_have_arguments = Dictionary(p_state[element]).has(argument);
+			bool are_values_different = value != Dictionary(p_state[element])[argument];
+			if (is_state_element_dictionary && does_state_element_have_arguments && are_values_different) {
+				bool is_missing_element = !unmatched_states.has(element);
+				if (is_missing_element) {
+					unmatched_states[element] = Dictionary();
+				}
+				Dictionary temp = unmatched_states[element];
+				temp[argument] = value;
+				unmatched_states[element] = temp;
+			}
+		}
+	}
+	return unmatched_states;
 }

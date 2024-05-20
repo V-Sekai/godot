@@ -75,7 +75,6 @@ public:
 
 public:
 	Dictionary run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
-	static Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 
 private:
 	static String _item_to_string(Variant p_item);

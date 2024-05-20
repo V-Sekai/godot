@@ -9,6 +9,33 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="method_goals_not_achieved" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="multigoal" type="Multigoal" />
+			<description>
+				Verifies if the goals that have not been achieved given the current state and multi-goal.
+			</description>
+		</method>
+		<method name="method_split_multigoal" qualifiers="static">
+			<return type="Array" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="multigoal" type="Multigoal" />
+			<description>
+				Verifies if a specific goal has been achieved given the current state, method, state variable, arguments, desired values, depth, and verbosity level.
+			</description>
+		</method>
+		<method name="method_verify_multigoal" qualifiers="static">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="method" type="String" />
+			<param index="2" name="multigoal" type="Multigoal" />
+			<param index="3" name="depth" type="int" />
+			<param index="4" name="verbose" type="int" />
+			<description>
+				Verifies if a multi-goal has been achieved given the current state, method, multi-goal, depth, and verbosity level.
+			</description>
+		</method>
 		<method name="state_variables">
 			<return type="Array" />
 			<description>

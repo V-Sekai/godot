@@ -46,65 +46,6 @@ void Plan::set_verbose(int p_verbose) { verbose = p_verbose; }
 
 void Plan::set_domains(TypedArray<Domain> p_domain) { domains = p_domain; }
 
-Array Plan::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
-	Dictionary goal_state = Domain::method_goals_not_achieved(p_state, p_multigoal);
-	Array goal_list;
-	for (Variant state_variable_name : goal_state.keys()) {
-		Variant state_values = goal_state[state_variable_name];
-		if (state_values.get_type() != Variant::DICTIONARY) {
-			continue;
-		}
-		Dictionary goal_value_dictionary = state_values;
-		Dictionary state_variable = state_values;
-		for (Variant state_goal : state_variable.keys()) {
-			if (!state_variable.has(state_goal)) {
-				continue;
-			}
-			Array goal;
-			goal.resize(3);
-			goal[0] = state_variable_name;
-			goal[1] = state_goal;
-			goal[2] = state_variable[state_goal];
-			goal_list.push_back(goal);
-		}
-	}
-	for (Variant state_variable_name : p_state.keys()) {
-		Variant state_values = p_state[state_variable_name];
-		if (state_values.get_type() != Variant::DICTIONARY) {
-			continue;
-		}
-		Dictionary goal_value_dictionary = state_values;
-		Dictionary state_variable = state_values;
-		for (Variant state_goal : state_variable.keys()) {
-			if (!state_variable.has(state_goal)) {
-				continue;
-			}
-			Array goal;
-			goal.resize(3);
-			goal[0] = state_variable_name;
-			goal[1] = state_goal;
-			goal[2] = state_variable[state_goal];
-			bool exists = false;
-			for (int i = 0; i < goal_list.size(); i++) {
-				Array existing_goal = goal_list[i];
-				if (existing_goal[0] == goal[0] && existing_goal[1] == goal[1]) {
-					exists = true;
-					break;
-				}
-			}
-
-			if (!exists) {
-				goal_list.push_back(goal);
-			}
-		}
-	}
-	if (!goal_list.is_empty()) {
-		// Achieve goals, then check whether they're all simultaneously true.
-		goal_list.push_back(p_multigoal);
-	}
-	return goal_list;
-}
-
 Variant Plan::_apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth) {
 	Callable action = current_domain->get_actions()[p_first_task[0]];
 
@@ -474,8 +415,6 @@ void Plan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_current_domain"), &Plan::get_current_domain);
 	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &Plan::set_current_domain);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_domain", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_current_domain", "get_current_domain");
-
-	ClassDB::bind_static_method("Plan", D_METHOD("method_split_multigoal", "state", "multigoal"), &Plan::method_split_multigoal);
 
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &Plan::find_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &Plan::run_lazy_lookahead, DEFVAL(10));

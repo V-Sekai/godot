@@ -17,14 +17,6 @@
 				Finds a plan to achieve the goals in the todo list from the given state.
 			</description>
 		</method>
-		<method name="method_split_multigoal" qualifiers="static">
-			<return type="Array" />
-			<param index="0" name="state" type="Dictionary" />
-			<param index="1" name="multigoal" type="Multigoal" />
-			<description>
-				Splits a multi-goal into individual goals.
-			</description>
-		</method>
 		<method name="run_lazy_lookahead">
 			<return type="Dictionary" />
 			<param index="0" name="state" type="Dictionary" />
