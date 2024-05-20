@@ -62,14 +62,6 @@ public:
 	TypedArray<Callable> get_multigoal_methods() const { return multigoal_method_list; }
 
 public:
-	void print_domain() const;
-	void print_actions() const;
-	void print_task_methods() const;
-	void print_unigoal_methods() const;
-	void print_multigoal_methods() const;
-	void print_methods() const;
-
-public:
 	void add_actions(TypedArray<Callable> p_actions);
 	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
 	void add_unigoal_methods(String p_task_name, TypedArray<Callable> p_methods);

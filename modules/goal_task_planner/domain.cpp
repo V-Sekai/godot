@@ -41,13 +41,6 @@ void Domain::_bind_methods() {
 
 	ClassDB::bind_static_method("Domain", D_METHOD("method_verify_goal", "state", "method", "state_var", "arguments", "desired_values", "depth", "verbose"), &Domain::method_verify_goal);
 
-	ClassDB::bind_method(D_METHOD("print_domain"), &Domain::print_domain);
-	ClassDB::bind_method(D_METHOD("print_actions"), &Domain::print_actions);
-	ClassDB::bind_method(D_METHOD("print_task_methods"), &Domain::print_task_methods);
-	ClassDB::bind_method(D_METHOD("print_unigoal_methods"), &Domain::print_unigoal_methods);
-	ClassDB::bind_method(D_METHOD("print_multigoal_methods"), &Domain::print_multigoal_methods);
-	ClassDB::bind_method(D_METHOD("print_methods"), &Domain::print_methods);
-
 	ClassDB::bind_method(D_METHOD("set_actions", "value"), &Domain::set_actions);
 	ClassDB::bind_method(D_METHOD("get_actions"), &Domain::get_actions);
 
@@ -86,89 +79,6 @@ Domain::Domain() {
 	task_method_dictionary["_verify_g"] = varray(callable_mp_static(&Domain::method_verify_goal));
 	task_method_dictionary["_verify_mg"] = varray(callable_mp_static(&Multigoal::method_verify_multigoal));
 	multigoal_method_list.push_back(callable_mp_static(&Multigoal::method_split_multigoal));
-}
-
-void Domain::print_domain() const {
-	print_line(vformat("Domain name: %s", get_name()));
-	print_actions();
-	print_methods();
-}
-
-void Domain::print_actions() const {
-	Dictionary action_dict = get_actions();
-	if (action_dict.is_empty()) {
-		print_line("There are no actions.");
-		return;
-	}
-	String actions = "Actions: ";
-
-	Array keys = action_dict.keys();
-	for (int i = 0; i < keys.size(); ++i) {
-		if (i != 0) {
-			actions += ", ";
-		}
-		String key = keys[i];
-		actions += key;
-	}
-	print_line(actions);
-}
-
-void Domain::print_task_methods() const {
-	if (get_task_methods().is_empty()) {
-		print_line("There are no task methods.");
-		return;
-	}
-	print_line("Task name: Relevant task methods:");
-
-	String string_array;
-	Array keys = get_task_methods().keys();
-	for (int i = 0; i < keys.size(); ++i) {
-		string_array += String(keys[i]) + ", ";
-	}
-	print_line(string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
-
-	print_line("");
-}
-
-void Domain::print_unigoal_methods() const {
-	if (get_unigoal_methods().is_empty()) {
-		print_line("There are no unigoal methods.");
-		return;
-	}
-	print_line("Blackboard var name: Relevant unigoal methods:");
-	Array keys = get_unigoal_methods().keys();
-	for (int j = 0; j < keys.size(); ++j) {
-		String string_array;
-		Array methods = get_unigoal_methods()[keys[j]];
-		for (int i = 0; i < methods.size(); ++i) {
-			String m = methods[i];
-			string_array += m + ", ";
-		}
-		string_array = string_array.substr(0, string_array.length() - 2);
-		print_line(String(keys[j]) + ":    " + string_array);
-	}
-
-	print_line(String());
-}
-
-void Domain::print_multigoal_methods() const {
-	if (get_multigoal_methods().is_empty()) {
-		print_line("There are no multigoal methods.");
-		return;
-	}
-	String string_array;
-	Array methods = get_multigoal_methods();
-	for (int i = 0; i < methods.size(); ++i) {
-		Variant m = methods[i];
-		string_array += String(m) + ", ";
-	}
-	print_line("Multigoal methods: " + string_array.substr(0, string_array.length() - 2)); // Remove last comma and space
-}
-
-void Domain::print_methods() const {
-	print_task_methods();
-	print_unigoal_methods();
-	print_multigoal_methods();
 }
 
 void Domain::add_multigoal_methods(TypedArray<Callable> p_methods) {

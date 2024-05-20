@@ -48,42 +48,6 @@
 				Verifies if a specific goal has been achieved given the current state, method, state variable, arguments, desired values, depth, and verbosity level.
 			</description>
 		</method>
-		<method name="print_actions" qualifiers="const">
-			<return type="void" />
-			<description>
-				Prints the actions currently available in the domain.
-			</description>
-		</method>
-		<method name="print_domain" qualifiers="const">
-			<return type="void" />
-			<description>
-				Prints the current state of the domain.
-			</description>
-		</method>
-		<method name="print_methods" qualifiers="const">
-			<return type="void" />
-			<description>
-				Prints the methods currently available in the domain.
-			</description>
-		</method>
-		<method name="print_multigoal_methods" qualifiers="const">
-			<return type="void" />
-			<description>
-				Prints the multi-goal methods currently available in the domain.
-			</description>
-		</method>
-		<method name="print_task_methods" qualifiers="const">
-			<return type="void" />
-			<description>
-				Prints the task methods currently available in the domain.
-			</description>
-		</method>
-		<method name="print_unigoal_methods" qualifiers="const">
-			<return type="void" />
-			<description>
-				Prints the uni-goal methods currently available in the domain.
-			</description>
-		</method>
 	</methods>
 	<members>
 		<member name="actions" type="Dictionary" setter="set_actions" getter="get_actions" default="{}">
