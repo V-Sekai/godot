@@ -42,13 +42,12 @@ class Multigoal : public Resource {
 	GDCLASS(Multigoal, Resource);
 
 private:
-	Dictionary _state;
+	Dictionary state;
 
 public:
-	Multigoal(String multigoal_name = "", Dictionary state_variables = Dictionary());
-	String to_string() override;
+	Multigoal(String p_multigoal_name = "", Dictionary p_state_variables = Dictionary());
 	Dictionary get_state() const;
-	void set_state(Dictionary value);
+	void set_state(Dictionary p_value);
 	Array state_variables();
 
 protected:

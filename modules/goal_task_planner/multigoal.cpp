@@ -37,23 +37,19 @@ void Multigoal::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("state_variables"), &Multigoal::state_variables);
 }
 
-String Multigoal::to_string() {
-	return get_name();
-}
-
 Dictionary Multigoal::get_state() const {
-	return _state;
+	return state;
 }
 
-void Multigoal::set_state(Dictionary value) {
-	_state = value;
+void Multigoal::set_state(Dictionary p_value) {
+	state = p_value;
 }
 
-Multigoal::Multigoal(String multigoal_name, Dictionary state_variables) {
-	set_name(multigoal_name);
-	_state = state_variables;
+Multigoal::Multigoal(String p_multigoal_name, Dictionary p_state_variables) {
+	set_name(p_multigoal_name);
+	state = p_state_variables;
 }
 
 Array Multigoal::state_variables() {
-	return _state.keys();
+	return state.keys();
 }

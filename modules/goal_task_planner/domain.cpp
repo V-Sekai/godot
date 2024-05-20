@@ -84,30 +84,30 @@ Variant Domain::method_verify_goal(Dictionary p_state, String p_method, String p
 }
 
 Dictionary Domain::method_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal) {
-    bool is_multigoal_null = p_multigoal.is_null();
-    if (is_multigoal_null) {
-        return p_state;
-    }
-    Dictionary unmatched_states;
-    for (Variant element : p_multigoal->get_state().keys()) {
-        Dictionary sub_dictionary = p_multigoal->get_state()[element];
-        for (Variant argument : sub_dictionary.keys()) {
-            Variant value = sub_dictionary[argument];
-            bool is_state_element_dictionary = p_state[element].get_type() == Variant::DICTIONARY;
-            bool does_state_element_have_arguments = Dictionary(p_state[element]).has(argument);
-            bool are_values_different = value != Dictionary(p_state[element])[argument];
-            if (is_state_element_dictionary && does_state_element_have_arguments && are_values_different) {
-                bool is_missing_element = !unmatched_states.has(element);
-                if (is_missing_element) {
-                    unmatched_states[element] = Dictionary();
-                }
-                Dictionary temp = unmatched_states[element];
-                temp[argument] = value;
-                unmatched_states[element] = temp;
-            }
-        }
-    }
-    return unmatched_states;
+	bool is_multigoal_null = p_multigoal.is_null();
+	if (is_multigoal_null) {
+		return p_state;
+	}
+	Dictionary unmatched_states;
+	for (Variant element : p_multigoal->get_state().keys()) {
+		Dictionary sub_dictionary = p_multigoal->get_state()[element];
+		for (Variant argument : sub_dictionary.keys()) {
+			Variant value = sub_dictionary[argument];
+			bool is_state_element_dictionary = p_state[element].get_type() == Variant::DICTIONARY;
+			bool does_state_element_have_arguments = Dictionary(p_state[element]).has(argument);
+			bool are_values_different = value != Dictionary(p_state[element])[argument];
+			if (is_state_element_dictionary && does_state_element_have_arguments && are_values_different) {
+				bool is_missing_element = !unmatched_states.has(element);
+				if (is_missing_element) {
+					unmatched_states[element] = Dictionary();
+				}
+				Dictionary temp = unmatched_states[element];
+				temp[argument] = value;
+				unmatched_states[element] = temp;
+			}
+		}
+	}
+	return unmatched_states;
 }
 
 Variant Domain::method_verify_multigoal(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int p_verbose) {

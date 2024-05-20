@@ -67,24 +67,24 @@ public:
 	void set_domains(TypedArray<Domain> p_domain);
 	Ref<Domain> get_current_domain() const;
 	void set_current_domain(Ref<Domain> p_current_domain) { current_domain = p_current_domain; }
-	void set_verify_goals(bool value);
+	void set_verify_goals(bool p_value);
 	bool get_verify_goals() const;
 
 public:
-	Variant find_plan(Dictionary state, Array todo_list);
+	Variant find_plan(Dictionary p_state, Array p_todo_list);
 
 public:
-	Dictionary run_lazy_lookahead(Dictionary state, Array todo_list, int max_tries = 10);
-	static String _item_to_string(Variant item);
+	Dictionary run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
 	static Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
 
 private:
-	Variant _seek_plan(Dictionary state, Array todo_list, Array p_plan, int depth);
-	Variant _apply_task_and_continue(Dictionary state, Callable command, Array args);
-	Variant _apply_action_and_continue(Dictionary state, Array task1, Array todo_list, Array p_plan, int depth);
-	Variant _refine_task_and_continue(const Dictionary state, const Array task1, const Array todo_list, const Array p_plan, const int depth);
-	Variant _refine_multigoal_and_continue(const Dictionary state, const Ref<Multigoal> goal1, const Array todo_list, const Array p_plan, const int depth);
-	Variant _refine_unigoal_and_continue(const Dictionary state, const Array goal1, const Array todo_list, const Array p_plan, const int depth);
+	static String _item_to_string(Variant p_item);
+	Variant _seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth);
+	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
+	Variant _apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth);
+	Variant _refine_task_and_continue(const Dictionary p_state, const Array p_first_task, const Array p_todo_list, const Array p_plan, const int p_depth);
+	Variant _refine_multigoal_and_continue(const Dictionary p_state, const Ref<Multigoal> p_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
+	Variant _refine_unigoal_and_continue(const Dictionary p_state, const Array p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
 
 protected:
 	static void _bind_methods();
