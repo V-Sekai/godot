@@ -35,18 +35,14 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-#include "core/error/error_macros.h"
-#include "core/string/print_string.h"
 #include "core/variant/array.h"
-#include "modules/goal_task_planner/domain.h"
-#include "modules/goal_task_planner/multigoal.h"
-#include "tests/test_macros.h"
-
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
-#include "core/variant/variant.h"
+#include "tests/test_macros.h"
 
+#include "modules/goal_task_planner/domain.h"
+#include "modules/goal_task_planner/multigoal.h"
 #include "modules/goal_task_planner/plan.h"
 
 namespace TestLogistics {
@@ -547,7 +543,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
 	Array task;
 	task.push_back(varray("at", "package1", "location2"));
 	Variant plan = planner->find_plan(state1, task);
-	TypedArray<Array> answer;
+	Array answer;
 	answer.push_back(varray("drive_truck", "truck1", "location1"));
 	answer.push_back(varray("load_truck", "package1", "truck1"));
 	answer.push_back(varray("drive_truck", "truck1", "location2"));
