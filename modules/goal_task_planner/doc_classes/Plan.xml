@@ -16,10 +16,10 @@
 			<description>
 				Finds a [Plan] to achieve the todo list from the given state.
 				The todo list is an array of goals, [Multigoal], tasks and actions.
-				A goal is one subject-predicate-object triple.
-				A [Multigoal] is a state [Dictionary] of subject-predicate-object triples.
+				A goal is one predicate-subject-object triple.
+				A [Multigoal] is a state [Dictionary] of predicate-subject-object triples.
 				Tasks can have any number of arguments but only return either false or a series of goals, [Multigoal], tasks and, actions.
-				Actions can have any number of arguments but only return the state of of subject-predicate-object triples.
+				Actions can have any number of arguments but only return the state of of predicate-subject-object triples.
 			</description>
 		</method>
 		<method name="run_lazy_lookahead">
