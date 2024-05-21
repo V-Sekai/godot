@@ -60,14 +60,8 @@ public:
 
 	Quat slerp(const Quat &p_to, const real_t &p_weight) const;
 	Quat slerpni(const Quat &p_to, const real_t &p_weight) const;
-	Quat cubic_slerp(const Quat &p_q, const Quat &p_prep, const Quat &p_postq, const real_t &p_t) const;
-	static _ALWAYS_INLINE_ float cubic_interpolate(float p_from, float p_to, float p_pre, float p_post, float p_weight) {
-		return 0.5f *
-				((p_from * 2.0f) +
-						(-p_pre + p_to) * p_weight +
-						(2.0f * p_pre - 5.0f * p_from + 4.0f * p_to - p_post) * (p_weight * p_weight) +
-						(-p_pre + 3.0f * p_from - 3.0f * p_to + p_post) * (p_weight * p_weight * p_weight));
-	}
+	Quat cubic_slerp(const Quat &p_b, const Quat &p_pre_a, const Quat &p_post_b, const real_t &p_weight) const;
+
 	void set_axis_angle(const Vector3 &axis, const real_t &angle);
 	_FORCE_INLINE_ void get_axis_angle(Vector3 &r_axis, real_t &r_angle) const {
 		r_angle = 2 * Math::acos(w);
@@ -77,25 +71,8 @@ public:
 		r_axis.z = z * r;
 	}
 
-	// Squad (Spherical Spline Quaternions, [Shoemake 1987]) implementation for Unity by Vegard Myklebust.
-	// Made available under Creative Commons license CC0. License details can be found here:
-	// https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt
-	// https://gist.github.com/usefulslug
-	// Returns a smooth approximation between the current quaternion and post using a and b as 'tangents'
-	Quat squad(const Quat p_a, const Quat p_b, const Quat p_post, const float p_t) const;
-	Quat log() const;
-	Quat exp() const;
-	Quat exp_map(Quat p_p = Quat()) const;
-	Quat log_map(Quat p_p = Quat()) const;
-
-	// Tries to compute sensible tangent values for the quaternion
-	Quat intermediate(Quat p_a, Quat p_b) const;
-
-	// Returns a quaternion between a and b as part of a smooth squad segment
-	Quat spline_segment(const Quat p_a, const Quat p_b, const Quat p_post, const float p_t) const;
-
-	void operator*=(const Quat &q);
-	Quat operator*(const Quat &q) const;
+	void operator*=(const Quat &p_q);
+	Quat operator*(const Quat &p_q) const;
 
 	Quat operator*(const Vector3 &v) const {
 		return Quat(w * v.x + y * v.z - z * v.y,
