@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_keyframe_reduce = env_modules.Clone()
+thirdparty = "#modules/keyframe_reduce/thirdparty"
+env_keyframe_reduce.Prepend(CPPPATH=[thirdparty])
+
+# Godot's own source files
+env_keyframe_reduce.add_source_files(env.modules_sources, "*.cpp")
