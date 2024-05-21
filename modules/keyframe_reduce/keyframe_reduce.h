@@ -140,7 +140,7 @@ private:
 	// @param int/float p_end
 	// @param int/float p_step
 	// @return LocalVector<String> range
-	LocalVector<double> float_range(double p_start, double p_end, double p_step);
+	LocalVector<double> _float_range(double p_start, double p_end, double p_step);
 
 	// 	Add cubic bezier points between the provided first and last index
 	// 	and it's tangents. Based in the weighted tangent settings the
@@ -152,13 +152,13 @@ private:
 	// 	@param uint last
 	// 	@param Vector2Bezier tan1
 	// 	@param Vector2Bezier tan2
-	void fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, uint32_t p_first, uint32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error);
+	void _fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, uint32_t p_first, uint32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error);
 
 	// 	@param Vector2Bezier pt1:
 	// 	@param Vector2Bezier tan1:
 	// 	@param Vector2Bezier tan2:
 	// 	@param Vector2Bezier pt2:
-	void add_curve(LocalVector<Bezier> &r_curves, Vector2Bezier p_pt_1, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, Vector2Bezier p_pt_2);
+	void _add_curve(LocalVector<Bezier> &r_curves, Vector2Bezier p_pt_1, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, Vector2Bezier p_pt_2);
 
 	// Based on the weighted tangent setting either use a least-squares
 	// method to find Bezier controls points for a region or use Wu/Barsky
@@ -168,7 +168,7 @@ private:
 	// @param dict uPrime:
 	// @param Vector2Bezier tan1:
 	// @param Vector2Bezier tan2:
-	LocalVector<Vector2Bezier> generate_bezier(const LocalVector<Bezier> &p_curves, uint32_t p_first, uint32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2);
+	LocalVector<Vector2Bezier> _generate_bezier(const LocalVector<Bezier> &p_curves, uint32_t p_first, uint32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2);
 
 	// Given set of points and their parameterization, try to find a better
 	// parameterization.
@@ -176,7 +176,7 @@ private:
 	// @param int last:
 	// @param dict u:
 	// @param list curve:
-	void reparameterize(LocalVector<Bezier> p_existing_curves, uint32_t p_first, uint32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, LocalVector<Vector2Bezier> p_curves);
+	void _reparameterize(LocalVector<Bezier> p_existing_curves, uint32_t p_first, uint32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, LocalVector<Vector2Bezier> p_curves);
 
 	// Use Newton-Raphson iteration to find better root.
 	// @param list curve:
@@ -184,21 +184,21 @@ private:
 	// @param Vector2Bezier u
 	// @return New root point
 	// @rtype Vector2Bezier
-	Vector2Bezier find_root(LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_curve, Vector2Bezier p_u);
+	Vector2Bezier _find_root(LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_curve, Vector2Bezier p_u);
 
 	// Evaluate a bezier curve at a particular parameter value.
 	// @param int degree:
 	// @param list curve:
 	// @param float t:
 	// @return  Vector2Bezier point on curve
-	Vector2Bezier evaluate(int32_t p_degree, LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_t);
+	Vector2Bezier _evaluate(int32_t p_degree, LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_t);
 
 	// Assign parameter values to digitized points using relative distances
 	// between points.
 	// @param uint first:
 	// @param uint last:
 	// @return dictionary of chord length parameterization
-	HashMap<int, Vector2Bezier> chord_length_parameterize(LocalVector<Bezier> p_curves, uint32_t p_first, uint32_t p_last);
+	HashMap<int, Vector2Bezier> _chord_length_parameterize(LocalVector<Bezier> p_curves, uint32_t p_first, uint32_t p_last);
 
 	// Find the maximum squared distance of digitized points to fitted
 	// curve.
@@ -207,13 +207,13 @@ private:
 	// @param list curve:
 	// @param dict u:
 	// @return tuple of Max distance and max index
-	Vector2Bezier find_max_error(const LocalVector<Bezier> &p_existing_curves, uint32_t p_first, uint32_t p_last, LocalVector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u);
+	Vector2Bezier _find_max_error(const LocalVector<Bezier> &p_existing_curves, uint32_t p_first, uint32_t p_last, LocalVector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u);
 
-	real_t min_real_list(LocalVector<real_t> p_reals);
+	real_t _min_real_list(LocalVector<real_t> p_reals);
 
-	real_t max_real_list(LocalVector<real_t> p_reals);
+	real_t _max_real_list(LocalVector<real_t> p_reals);
 
-	real_t sum_real_list(LocalVector<real_t> p_reals);
+	real_t _sum_real_list(LocalVector<real_t> p_reals);
 
 	// The automatic tangent split will take the average of all values and
 	// the average of just the minimum and maximum value and remaps that on
@@ -254,14 +254,14 @@ private:
 	// Fit bezier curves to the points based on the provided maximum error
 	// value and the bezier weighted tangents.
 	// @return list of bezier segments
-	LocalVector<Bezier> fit(FitState p_state);
+	LocalVector<Bezier> _fit(FitState p_state);
 
 	struct KeyframeTime {
 		LocalVector<Vector2Bezier> points;
 		LocalVector<real_t> angles;
 	};
 
-	LocalVector<real_t> get_values(LocalVector<Bezier> p_curves, LocalVector<double> p_frames);
+	LocalVector<real_t> _get_values(LocalVector<Bezier> p_curves, LocalVector<double> p_frames);
 
 	// Sample the current animation curve based on the start and end frame,
 	// and the provided step size. Vector2Ds and angles will be returned.
@@ -269,7 +269,7 @@ private:
 	// @param int end:
 	// @param int/float step:
 	// @return list of sample points and angles
-	KeyframeTime sample(const LocalVector<Bezier> p_curves, uint32_t p_start, uint32_t p_end, real_t p_step);
+	KeyframeTime _sample(const LocalVector<Bezier> p_curves, uint32_t p_start, uint32_t p_end, real_t p_step);
 
 public:
 	// Reduce the number of keyframes on the animation curve. Useful when
