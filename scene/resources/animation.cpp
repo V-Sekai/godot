@@ -37,7 +37,6 @@
 #include "scene/scene_string_names.h"
 
 #include "core/math/geometry.h"
-#include "thirdparty/geometrics/Mathematics/IntpAkimaNonuniform1.h"
 #define ANIM_MIN_LENGTH 0.001
 
 bool Animation::_set(const StringName &p_name, const Variant &p_value) {
@@ -2289,76 +2288,44 @@ float Animation::bezier_track_interpolate(int p_track, float p_time) const {
 	if (idx < 0) {
 		return bt->values[0].value.value;
 	}
+
 	if (idx >= bt->values.size() - 1) {
 		return bt->values[bt->values.size() - 1].value.value;
 	}
-	if (idx >= bt->values.size() - 4) {
-		float t = p_time - bt->values[idx].time;
-		int iterations = 10;
 
-		float duration = bt->values[idx + 1].time - bt->values[idx].time; // time duration between our two keyframes
-		float low = 0; // 0% of the current animation segment
-		float high = 1; // 100% of the current animation segment
-		float middle;
+	float t = p_time - bt->values[idx].time;
 
-		Vector2 start(0, bt->values[idx].value.value);
-		Vector2 start_out = start + bt->values[idx].value.out_handle;
-		Vector2 end(duration, bt->values[idx + 1].value.value);
-		Vector2 end_in = end + bt->values[idx + 1].value.in_handle;
+	int iterations = 10;
 
-		//narrow high and low as much as possible
-		for (int i = 0; i < iterations; i++) {
+	float duration = bt->values[idx + 1].time - bt->values[idx].time; // time duration between our two keyframes
+	float low = 0; // 0% of the current animation segment
+	float high = 1; // 100% of the current animation segment
+	float middle;
 
-			middle = (low + high) / 2;
+	Vector2 start(0, bt->values[idx].value.value);
+	Vector2 start_out = start + bt->values[idx].value.out_handle;
+	Vector2 end(duration, bt->values[idx + 1].value.value);
+	Vector2 end_in = end + bt->values[idx + 1].value.in_handle;
 
-			Vector2 interp = _bezier_interp(middle, start, start_out, end_in, end);
+	//narrow high and low as much as possible
+	for (int i = 0; i < iterations; i++) {
+		middle = (low + high) / 2;
 
-			if (interp.x < t) {
-				low = middle;
-			} else {
-				high = middle;
-			}
+		Vector2 interp = _bezier_interp(middle, start, start_out, end_in, end);
+
+		if (interp.x < t) {
+			low = middle;
+		} else {
+			high = middle;
 		}
-
-		//interpolate the result:
-		Vector2 low_pos = _bezier_interp(low, start, start_out, end_in, end);
-		Vector2 high_pos = _bezier_interp(high, start, start_out, end_in, end);
-		float c = (t - low_pos.x) / (high_pos.x - low_pos.x);
-
-		return low_pos.linear_interpolate(high_pos, c).y;
-	}
-	Vector<real_t> X;
-	int interpolation_len = 4;
-	X.resize(interpolation_len);
-	X.write[0] = bt->values[idx].time;
-	X.write[1] = bt->values[idx + 1].time;
-	X.write[2] = bt->values[idx + 2].time;
-	X.write[3] = bt->values[idx + 3].time;
-	Vector<real_t> F;
-	F.resize(interpolation_len);
-	F.write[0] = bt->values[idx].value.value;
-	F.write[1] = bt->values[idx + 1].value.value;
-	F.write[2] = bt->values[idx + 2].value.value;
-	F.write[3] = bt->values[idx + 3].value.value;
-
-	int i = 0, j = 0;
-	for (i = 1; i < interpolation_len; ++i) {
-		real_t temp_x = X[i];
-		real_t temp_f = F[i];
-		if (Math::is_nan(temp_x) || Math::is_nan(temp_f)) {
-			continue;
-		}
-		for (j = i; j > 0 && X[j - 1] > temp_x; --j) {
-			X.write[j] = X[j - 1];
-			F.write[j] = F[j - 1];
-		}
-		X.write[j] = temp_x;
-		F.write[j] = temp_f;
 	}
 
-	IntpAkimaNonuniform1<real_t> interpolator(interpolation_len, X.ptrw(), F.ptrw());
+	//interpolate the result:
+	Vector2 low_pos = _bezier_interp(low, start, start_out, end_in, end);
+	Vector2 high_pos = _bezier_interp(high, start, start_out, end_in, end);
+	float c = (t - low_pos.x) / (high_pos.x - low_pos.x);
 
-	return interpolator(p_time);
+	return low_pos.linear_interpolate(high_pos, c).y;
 }
 
 int Animation::audio_track_insert_key(int p_track, float p_time, const RES &p_stream, float p_start_offset, float p_end_offset) {
