@@ -50,7 +50,7 @@ TEST_CASE("[Module][Keyframe Reduce][Vector2Bezier] Signed angle between points"
 	Vector2Bezier point1(0, 0);
 	Vector2Bezier point2(1, 0);
 	Vector2Bezier point3(0, 1);
-	CHECK(point1.signed_angle(point2, point3) == Math_PI / 2.0);
+	CHECK(Math::is_equal_approx(point1.signed_angle(point2, point3), Math_PI / 2.0));
 }
 
 TEST_CASE("[Module][Keyframe Reduce][Bezier] Normalized Bezier") {
