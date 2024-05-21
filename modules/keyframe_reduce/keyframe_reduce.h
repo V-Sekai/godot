@@ -120,7 +120,7 @@ public:
 	};
 
 	struct FitState {
-		Vector<Bezier> points;
+		LocalVector<Bezier> points;
 		real_t max_error;
 	};
 
@@ -139,8 +139,8 @@ private:
 	// @param int/float p_start
 	// @param int/float p_end
 	// @param int/float p_step
-	// @return Vector<String> range
-	Vector<double> float_range(double p_start, double p_end, double p_step);
+	// @return LocalVector<String> range
+	LocalVector<double> float_range(double p_start, double p_end, double p_step);
 
 	// 	Add cubic bezier points between the provided first and last index
 	// 	and it's tangents. Based in the weighted tangent settings the
@@ -152,13 +152,13 @@ private:
 	// 	@param int last
 	// 	@param Vector2Bezier tan1
 	// 	@param Vector2Bezier tan2
-	void fit_cubic(const Vector<Bezier> &p_curves, Vector<Bezier> &r_keyframes, int32_t p_first, int32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error);
+	void fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, int32_t p_first, int32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error);
 
 	// 	@param Vector2Bezier pt1:
 	// 	@param Vector2Bezier tan1:
 	// 	@param Vector2Bezier tan2:
 	// 	@param Vector2Bezier pt2:
-	void add_curve(Vector<Bezier> &r_curves, Vector2Bezier p_pt_1, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, Vector2Bezier p_pt_2);
+	void add_curve(LocalVector<Bezier> &r_curves, Vector2Bezier p_pt_1, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, Vector2Bezier p_pt_2);
 
 	// Based on the weighted tangent setting either use a least-squares
 	// method to find Bezier controls points for a region or use Wu/Barsky
@@ -168,7 +168,7 @@ private:
 	// @param dict uPrime:
 	// @param Vector2Bezier tan1:
 	// @param Vector2Bezier tan2:
-	Vector<Vector2Bezier> generate_bezier(const Vector<Bezier> &p_curves, int32_t p_first, int32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2);
+	LocalVector<Vector2Bezier> generate_bezier(const LocalVector<Bezier> &p_curves, int32_t p_first, int32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2);
 
 	// Given set of points and their parameterization, try to find a better
 	// parameterization.
@@ -176,7 +176,7 @@ private:
 	// @param int last:
 	// @param dict u:
 	// @param list curve:
-	void reparameterize(Vector<Bezier> p_existing_curves, int32_t p_first, int32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, Vector<Vector2Bezier> p_curves);
+	void reparameterize(LocalVector<Bezier> p_existing_curves, int32_t p_first, int32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, LocalVector<Vector2Bezier> p_curves);
 
 	// Use Newton-Raphson iteration to find better root.
 	// @param list curve:
@@ -184,21 +184,21 @@ private:
 	// @param Vector2Bezier u
 	// @return New root point
 	// @rtype Vector2Bezier
-	Vector2Bezier find_root(Vector<Vector2Bezier> p_curves, Vector2Bezier p_curve, Vector2Bezier p_u);
+	Vector2Bezier find_root(LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_curve, Vector2Bezier p_u);
 
 	// Evaluate a bezier curve at a particular parameter value.
 	// @param int degree:
 	// @param list curve:
 	// @param float t:
 	// @return  Vector2Bezier point on curve
-	Vector2Bezier evaluate(int32_t p_degree, Vector<Vector2Bezier> p_curves, Vector2Bezier p_t);
+	Vector2Bezier evaluate(int32_t p_degree, LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_t);
 
 	// Assign parameter values to digitized points using relative distances
 	// between points.
 	// @param int first:
 	// @param int last:
 	// @return dictionary of chord length parameterization
-	HashMap<int, Vector2Bezier> chord_length_parameterize(Vector<Bezier> p_curves, int32_t p_first, int32_t p_last);
+	HashMap<int, Vector2Bezier> chord_length_parameterize(LocalVector<Bezier> p_curves, int32_t p_first, int32_t p_last);
 
 	// Find the maximum squared distance of digitized points to fitted
 	// curve.
@@ -207,13 +207,13 @@ private:
 	// @param list curve:
 	// @param dict u:
 	// @return tuple of Max distance and max index
-	Vector2Bezier find_max_error(const Vector<Bezier> &p_existing_curves, int32_t p_first, int32_t p_last, Vector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u);
+	Vector2Bezier find_max_error(const LocalVector<Bezier> &p_existing_curves, int32_t p_first, int32_t p_last, LocalVector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u);
 
-	real_t min_real_list(Vector<real_t> p_reals);
+	real_t min_real_list(LocalVector<real_t> p_reals);
 
-	real_t max_real_list(Vector<real_t> p_reals);
+	real_t max_real_list(LocalVector<real_t> p_reals);
 
-	real_t sum_real_list(Vector<real_t> p_reals);
+	real_t sum_real_list(LocalVector<real_t> p_reals);
 
 	// The automatic tangent split will take the average of all values and
 	// the average of just the minimum and maximum value and remaps that on
@@ -222,7 +222,7 @@ private:
 	// threshold.
 	// @param list of angles:
 	// @return list of split indices
-	Vector<int32_t> _find_tangent_split_auto(Vector<real_t> p_angles);
+	LocalVector<int32_t> _find_tangent_split_auto(LocalVector<real_t> p_angles);
 
 	// Loop existing frames and see if any keyframes contain tangents that
 	// are not unified. If this is the case the index of the closest sampled
@@ -232,14 +232,14 @@ private:
 	// @param int end
 	// @param int/float step
 	// @return list of split indices
-	Vector<int32_t> _find_tangent_split_existing(const Vector<Bezier> p_frames, int32_t p_start, int32_t p_end, real_t p_step);
+	LocalVector<int32_t> _find_tangent_split_existing(const LocalVector<Bezier> p_frames, int32_t p_start, int32_t p_end, real_t p_step);
 
 	// The threshold tangent split will process all angles and check if that
 	// angle falls in or outside of user provided threshold.
 	// @param list angles:
 	// @param int/float threshold:
 	// @return list of split indices
-	Vector<int32_t> _find_tangent_split_threshold(Vector<real_t> p_angles, real_t p_threshold);
+	LocalVector<int32_t> _find_tangent_split_threshold(LocalVector<real_t> p_angles, real_t p_threshold);
 
 	// Split provided points list based on the split indices provided. The
 	// lists will have a duplicate end and start points relating to each
@@ -247,21 +247,21 @@ private:
 	// @param list p_curves:
 	// @param list p_split:
 	// @return list of split bezier points
-	Vector<Bezier> _split_points(const Vector<Bezier> &p_curves, Vector<int32_t> &p_split);
+	LocalVector<Bezier> _split_points(const LocalVector<Bezier> &p_curves, LocalVector<int32_t> &p_split);
 
 	// Ported from Paper.js -
 	// The Swiss Army Knife of Vector Graphics Scripting. http://paperjs.org/
 	// Fit bezier curves to the points based on the provided maximum error
 	// value and the bezier weighted tangents.
 	// @return list of bezier segments
-	Vector<Bezier> fit(FitState p_state);
+	LocalVector<Bezier> fit(FitState p_state);
 
 	struct KeyframeTime {
-		Vector<Vector2Bezier> points;
-		Vector<real_t> angles;
+		LocalVector<Vector2Bezier> points;
+		LocalVector<real_t> angles;
 	};
 
-	Vector<real_t> get_values(Vector<Bezier> p_curves, Vector<double> p_frames);
+	LocalVector<real_t> get_values(LocalVector<Bezier> p_curves, LocalVector<double> p_frames);
 
 	// Sample the current animation curve based on the start and end frame,
 	// and the provided step size. Vector2Ds and angles will be returned.
@@ -269,15 +269,15 @@ private:
 	// @param int end:
 	// @param int/float step:
 	// @return list of sample points and angles
-	KeyframeTime sample(const Vector<Bezier> p_curves, int32_t p_start, int32_t p_end, real_t p_step);
+	KeyframeTime sample(const LocalVector<Bezier> p_curves, int32_t p_start, int32_t p_end, real_t p_step);
 
 public:
 	// Reduce the number of keyframes on the animation curve. Useful when
 	// you are working with baked curves.
-	// @param Vector<Bezier> r_points
-	// @param Vector<Bezier> r_keyframes
+	// @param LocalVector<Bezier> r_points
+	// @param LocalVector<Bezier> r_keyframes
 	// @param KeyframeReductionSetting p_settings
 	// @return float Reduction rate
-	real_t reduce(const Vector<Bezier> &p_points, Vector<Bezier> &r_keyframes, KeyframeReductionSetting p_settings);
+	real_t reduce(const LocalVector<Bezier> &p_points, LocalVector<Bezier> &r_keyframes, KeyframeReductionSetting p_settings);
 };
 #endif // KEYFRAME_REDUCE_H

@@ -61,8 +61,8 @@ using namespace std;
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-Vector<double> BezierKeyframeReduce::float_range(double p_start, double p_end, double p_step) {
-	Vector<double> values;
+LocalVector<double> BezierKeyframeReduce::float_range(double p_start, double p_end, double p_step) {
+	LocalVector<double> values;
 	while (p_start < p_end) {
 		values.push_back(p_start);
 		p_start += p_step;
@@ -71,7 +71,7 @@ Vector<double> BezierKeyframeReduce::float_range(double p_start, double p_end, d
 	return values;
 };
 
-void BezierKeyframeReduce::fit_cubic(const Vector<Bezier> &p_curves, Vector<Bezier> &r_keyframes, int32_t p_first, int32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error) {
+void BezierKeyframeReduce::fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, int32_t p_first, int32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error) {
 	//use heuristic if region only has two points in it
 	if (p_last - p_first == 1) {
 		// get points
@@ -97,7 +97,7 @@ void BezierKeyframeReduce::fit_cubic(const Vector<Bezier> &p_curves, Vector<Bezi
 	int32_t maxIndex = 0;
 	for (int32_t i = 0; i < iterations; i++) {
 		// generate curve
-		Vector<Vector2Bezier> curve = generate_bezier(p_curves, p_first, p_last, uPrime, p_tan_1, p_tan_2);
+		LocalVector<Vector2Bezier> curve = generate_bezier(p_curves, p_first, p_last, uPrime, p_tan_1, p_tan_2);
 
 		// find max deviation of points to fitted curve
 		Vector2Bezier max_error_vec = find_max_error(p_curves, p_first, p_last, curve, uPrime);
@@ -129,9 +129,9 @@ void BezierKeyframeReduce::fit_cubic(const Vector<Bezier> &p_curves, Vector<Bezi
 // 	@param Vector2Bezier tan1:
 // 	@param Vector2Bezier tan2:
 // 	@param Vector2Bezier pt2:
-void BezierKeyframeReduce::add_curve(Vector<Bezier> &r_curves, Vector2Bezier p_pt_1, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, Vector2Bezier p_pt_2) {
+void BezierKeyframeReduce::add_curve(LocalVector<Bezier> &r_curves, Vector2Bezier p_pt_1, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, Vector2Bezier p_pt_2) {
 	// update previous keyframe with out handle
-	Bezier &prev = r_curves.write[r_curves.size() - 1];
+	Bezier &prev = r_curves[r_curves.size() - 1];
 	prev.out_handle = p_tan_1 - p_pt_1;
 
 	// create new keyframe
@@ -147,7 +147,7 @@ void BezierKeyframeReduce::add_curve(Vector<Bezier> &r_curves, Vector2Bezier p_p
 // @param dict uPrime:
 // @param Vector2Bezier tan1:
 // @param Vector2Bezier tan2:
-Vector<Vector2Bezier> BezierKeyframeReduce::generate_bezier(const Vector<Bezier> &p_curves, int32_t p_first, int32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2) {
+LocalVector<Vector2Bezier> BezierKeyframeReduce::generate_bezier(const LocalVector<Bezier> &p_curves, int32_t p_first, int32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2) {
 	Vector2Bezier pt1 = p_curves[p_first].time_value;
 	Vector2Bezier pt2 = p_curves[p_last].time_value;
 
@@ -156,9 +156,9 @@ Vector<Vector2Bezier> BezierKeyframeReduce::generate_bezier(const Vector<Bezier>
 	Vector2Bezier handle1;
 	Vector2Bezier handle2;
 	// use least-squares method to find Bezier control points for region.
-	Vector<Vector2Bezier> C;
+	LocalVector<Vector2Bezier> C;
 	C.resize(4);
-	Vector<Vector2Bezier> X;
+	LocalVector<Vector2Bezier> X;
 	X.resize(2);
 	int32_t range_i = p_last - p_first + 1;
 	for (int32_t i = 0; i < range_i; i++) {
@@ -172,12 +172,12 @@ Vector<Vector2Bezier> BezierKeyframeReduce::generate_bezier(const Vector<Bezier>
 		Vector2Bezier a1 = p_tan_1 * b1;
 		Vector2Bezier a2 = p_tan_2 * b2;
 		Vector2Bezier tmp = (p_curves[p_first + i].time_value - pt1 * (b0 + b1) - pt2 * (b2 + b3));
-		C.write[0] += a1 * a1;
-		C.write[1] += a1 * a2;
-		C.write[2] = C[1];
-		C.write[3] += a2 * a2;
-		X.write[0] += a1 * tmp;
-		X.write[1] += a2 * tmp;
+		C[0] += a1 * a1;
+		C[1] += a1 * a2;
+		C[2] = C[1];
+		C[3] += a2 * a2;
+		X[0] += a1 * tmp;
+		X[1] += a2 * tmp;
 	}
 
 	//compute the determinants of C and X
@@ -231,20 +231,20 @@ Vector<Vector2Bezier> BezierKeyframeReduce::generate_bezier(const Vector<Bezier>
 	// positioned exactly at the first and last data points
 	// Control points 1 and 2 are positioned an alpha distance out
 	// on the tangent vectors, left and right, respectively
-	Vector<Vector2Bezier> curve;
+	LocalVector<Vector2Bezier> curve;
 	curve.resize(4);
-	curve.write[0] = pt1;
+	curve[0] = pt1;
 	Vector2Bezier pt2_tmp = p_tan_1 * alpha1;
 	if (handle1 == Vector2Bezier()) {
 		pt2_tmp = handle1;
 	}
-	curve.write[1] = pt1 + pt2_tmp;
+	curve[1] = pt1 + pt2_tmp;
 	Vector2Bezier pt3_tmp = p_tan_2 * alpha2;
 	if (handle2 == Vector2Bezier()) {
 		pt2_tmp = handle2;
 	}
-	curve.write[2] = pt2 + pt3_tmp;
-	curve.write[3] = pt2;
+	curve[2] = pt2 + pt3_tmp;
+	curve[3] = pt2;
 	return curve;
 }
 
@@ -254,7 +254,7 @@ Vector<Vector2Bezier> BezierKeyframeReduce::generate_bezier(const Vector<Bezier>
 // @param int last:
 // @param dict u:
 // @param list curve:
-void BezierKeyframeReduce::reparameterize(Vector<Bezier> p_existing_curves, int32_t p_first, int32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, Vector<Vector2Bezier> p_curves) {
+void BezierKeyframeReduce::reparameterize(LocalVector<Bezier> p_existing_curves, int32_t p_first, int32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, LocalVector<Vector2Bezier> p_curves) {
 	int32_t i_range = p_last + 1;
 	for (int32_t i = p_first; i < i_range; i++) {
 		r_u[i - p_first] = find_root(p_curves, p_existing_curves[i].time_value, r_u[i - p_first]);
@@ -267,13 +267,13 @@ void BezierKeyframeReduce::reparameterize(Vector<Bezier> p_existing_curves, int3
 // @param Vector2Bezier u
 // @return New root point
 // @rtype Vector2Bezier
-Vector2Bezier BezierKeyframeReduce::find_root(Vector<Vector2Bezier> p_curves, Vector2Bezier p_curve, Vector2Bezier p_u) {
+Vector2Bezier BezierKeyframeReduce::find_root(LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_curve, Vector2Bezier p_u) {
 	// generate control vertices for Q'
-	Vector<Vector2Bezier> curve1;
+	LocalVector<Vector2Bezier> curve1;
 	for (int32_t curve_i = 0; curve_i < 3; curve_i++) {
 		curve1.push_back(p_curves[curve_i + 1] - p_curves[curve_i] * 3);
 	}
-	Vector<Vector2Bezier> curve2;
+	LocalVector<Vector2Bezier> curve2;
 	for (int32_t curve_i = 0; curve_i < 2; curve_i++) {
 		// generate control vertices for Q''
 		curve2.push_back((curve1[curve_i + 1] - curve1[curve_i]) * 2);
@@ -299,16 +299,16 @@ Vector2Bezier BezierKeyframeReduce::find_root(Vector<Vector2Bezier> p_curves, Ve
 // @param list curve:
 // @param float t:
 // @return  Vector2Bezier point on curve
-Vector2Bezier BezierKeyframeReduce::evaluate(int32_t p_degree, Vector<Vector2Bezier> p_curves, Vector2Bezier p_t) {
+Vector2Bezier BezierKeyframeReduce::evaluate(int32_t p_degree, LocalVector<Vector2Bezier> p_curves, Vector2Bezier p_t) {
 	// copy array
-	Vector<Vector2Bezier> curves = p_curves;
+	LocalVector<Vector2Bezier> curves = p_curves;
 
 	// triangle computation
 	int32_t i_range = p_degree + 1;
 	for (int32_t i = 1; i < i_range; i++) {
 		int32_t j_range = p_degree - i + 1;
 		for (int32_t j = 0; j < j_range; j++) {
-			curves.write[j] = (curves[j] * (Vector2Bezier(1.0f, 1.0f) - p_t)) + (curves[j + 1] * p_t);
+			curves[j] = (curves[j] * (Vector2Bezier(1.0f, 1.0f) - p_t)) + (curves[j + 1] * p_t);
 		}
 	}
 
@@ -320,7 +320,7 @@ Vector2Bezier BezierKeyframeReduce::evaluate(int32_t p_degree, Vector<Vector2Bez
 // @param int first:
 // @param int last:
 // @return dictionary of chord length parameterization
-HashMap<int, Vector2Bezier> BezierKeyframeReduce::chord_length_parameterize(Vector<Bezier> p_curves, int32_t p_first, int32_t p_last) {
+HashMap<int, Vector2Bezier> BezierKeyframeReduce::chord_length_parameterize(LocalVector<Bezier> p_curves, int32_t p_first, int32_t p_last) {
 	HashMap<int, Vector2Bezier> u;
 	u.insert(0, Vector2Bezier());
 	int32_t range_i = p_last + 1;
@@ -344,7 +344,7 @@ HashMap<int, Vector2Bezier> BezierKeyframeReduce::chord_length_parameterize(Vect
 // @param list curve:
 // @param dict u:
 // @return tuple of Max distance and max index
-Vector2Bezier BezierKeyframeReduce::find_max_error(const Vector<Bezier> &p_existing_curves, int32_t p_first, int32_t p_last, Vector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u) {
+Vector2Bezier BezierKeyframeReduce::find_max_error(const LocalVector<Bezier> &p_existing_curves, int32_t p_first, int32_t p_last, LocalVector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u) {
 	real_t maxDist = 0.0f;
 	real_t maxIndex = Math::floor((p_last - p_first + 1.0f) / 2.0f);
 
@@ -361,7 +361,7 @@ Vector2Bezier BezierKeyframeReduce::find_max_error(const Vector<Bezier> &p_exist
 	return Vector2Bezier(maxDist, maxIndex);
 }
 
-real_t BezierKeyframeReduce::min_real_list(Vector<real_t> p_reals) {
+real_t BezierKeyframeReduce::min_real_list(LocalVector<real_t> p_reals) {
 	if (p_reals.is_empty()) {
 		return 0;
 	}
@@ -372,7 +372,7 @@ real_t BezierKeyframeReduce::min_real_list(Vector<real_t> p_reals) {
 	return min;
 }
 
-real_t BezierKeyframeReduce::max_real_list(Vector<real_t> p_reals) {
+real_t BezierKeyframeReduce::max_real_list(LocalVector<real_t> p_reals) {
 	if (p_reals.is_empty()) {
 		return 0.0f;
 	}
@@ -383,7 +383,7 @@ real_t BezierKeyframeReduce::max_real_list(Vector<real_t> p_reals) {
 	return max;
 }
 
-real_t BezierKeyframeReduce::sum_real_list(Vector<real_t> p_reals) {
+real_t BezierKeyframeReduce::sum_real_list(LocalVector<real_t> p_reals) {
 	if (p_reals.is_empty()) {
 		return 0.0f;
 	}
@@ -401,9 +401,9 @@ real_t BezierKeyframeReduce::sum_real_list(Vector<real_t> p_reals) {
 // threshold.
 // @param list of angles:
 // @return list of split indices
-Vector<int32_t> BezierKeyframeReduce::_find_tangent_split_auto(Vector<real_t> p_angles) {
+LocalVector<int32_t> BezierKeyframeReduce::_find_tangent_split_auto(LocalVector<real_t> p_angles) {
 	// get angles from points
-	Vector<int32_t> splits;
+	LocalVector<int32_t> splits;
 
 	// get average variables
 	real_t min_list = min_real_list(p_angles);
@@ -420,7 +420,7 @@ Vector<int32_t> BezierKeyframeReduce::_find_tangent_split_auto(Vector<real_t> p_
 			(Math::log(maxAngle) - Math::log(minAngle)) * average;
 
 	if (mean * 10 > average) {
-		return Vector<int32_t>();
+		return LocalVector<int32_t>();
 	}
 
 	// split based on angles
@@ -441,8 +441,8 @@ Vector<int32_t> BezierKeyframeReduce::_find_tangent_split_auto(Vector<real_t> p_
 // @param int end
 // @param int/float step
 // @return list of split indices
-Vector<int32_t> BezierKeyframeReduce::_find_tangent_split_existing(const Vector<Bezier> p_frames, int32_t p_start, int32_t p_end, real_t p_step) {
-	Vector<int32_t> splits;
+LocalVector<int32_t> BezierKeyframeReduce::_find_tangent_split_existing(const LocalVector<Bezier> p_frames, int32_t p_start, int32_t p_end, real_t p_step) {
+	LocalVector<int32_t> splits;
 	for (int32_t i = 0; i < p_frames.size(); i++) {
 		// get closest index
 		int32_t index = int((i - p_start) / p_step);
@@ -462,8 +462,8 @@ Vector<int32_t> BezierKeyframeReduce::_find_tangent_split_existing(const Vector<
 // @param list angles:
 // @param int/float threshold:
 // @return list of split indices
-Vector<int32_t> BezierKeyframeReduce::_find_tangent_split_threshold(Vector<real_t> p_angles, real_t p_threshold) {
-	Vector<int32_t> splits;
+LocalVector<int32_t> BezierKeyframeReduce::_find_tangent_split_threshold(LocalVector<real_t> p_angles, real_t p_threshold) {
+	LocalVector<int32_t> splits;
 	// split based on angles
 	for (int32_t i = 0; i < p_angles.size(); i++) {
 		if (p_angles[i] > p_threshold) {
@@ -479,7 +479,7 @@ Vector<int32_t> BezierKeyframeReduce::_find_tangent_split_threshold(Vector<real_
 // @param list p_curves:
 // @param list p_split:
 // @return list of split bezier points
-Vector<Bezier> BezierKeyframeReduce::_split_points(const Vector<Bezier> &p_curves, Vector<int32_t> &p_split) {
+LocalVector<Bezier> BezierKeyframeReduce::_split_points(const LocalVector<Bezier> &p_curves, LocalVector<int32_t> &p_split) {
 	// validate split
 	if (p_split.is_empty()) {
 		return p_curves;
@@ -499,7 +499,7 @@ Vector<Bezier> BezierKeyframeReduce::_split_points(const Vector<Bezier> &p_curve
 	for (int32_t split_i = 0; split_i < p_split.size(); split_i++) {
 		split_set.insert(p_split[split_i]);
 	}
-	Vector<int32_t> split_list;
+	LocalVector<int32_t> split_list;
 	for (int32_t split : split_set) {
 		split_list.push_back(split);
 	}
@@ -507,11 +507,11 @@ Vector<Bezier> BezierKeyframeReduce::_split_points(const Vector<Bezier> &p_curve
 	p_split.sort();
 
 	// split range for looping
-	Vector<int32_t> splitA;
+	LocalVector<int32_t> splitA;
 	for (int32_t i = 0; i < p_split.size() - 1; i++) {
 		splitA.push_back(p_split[i]);
 	}
-	Vector<int32_t> splitB;
+	LocalVector<int32_t> splitB;
 	for (int32_t i = 1; i < p_split.size(); i++) {
 		if (!p_split.size()) {
 			break;
@@ -520,8 +520,8 @@ Vector<Bezier> BezierKeyframeReduce::_split_points(const Vector<Bezier> &p_curve
 	}
 
 	// get lists
-	Vector<Bezier> final_points;
-	Vector<Vector2Bezier> zipped_splits;
+	LocalVector<Bezier> final_points;
+	LocalVector<Vector2Bezier> zipped_splits;
 	for (int32_t split_i = 0; split_i < splitA.size() && split_i < splitB.size(); split_i++) {
 		zipped_splits.push_back(Vector2Bezier(splitA[split_i], splitB[split_i]));
 	}
@@ -542,13 +542,13 @@ Vector<Bezier> BezierKeyframeReduce::_split_points(const Vector<Bezier> &p_curve
 // Fit bezier curves to the points based on the provided maximum error
 // value and the bezier weighted tangents.
 // @return list of bezier segments
-Vector<Bezier> BezierKeyframeReduce::fit(FitState p_state) {
+LocalVector<Bezier> BezierKeyframeReduce::fit(FitState p_state) {
 	real_t error = p_state.max_error;
 	int32_t length = p_state.points.size();
 	if (length == 0) {
-		return Vector<Bezier>();
+		return LocalVector<Bezier>();
 	}
-	Vector<Bezier> segments;
+	LocalVector<Bezier> segments;
 	// add first point as a keyframe
 	segments.push_back(p_state.points[0]);
 
@@ -567,8 +567,8 @@ Vector<Bezier> BezierKeyframeReduce::fit(FitState p_state) {
 	return segments;
 }
 
-Vector<real_t> BezierKeyframeReduce::get_values(Vector<Bezier> p_curves, Vector<double> p_frames) {
-	Vector<real_t> values;
+LocalVector<real_t> BezierKeyframeReduce::get_values(LocalVector<Bezier> p_curves, LocalVector<double> p_frames) {
+	LocalVector<real_t> values;
 	for (int32_t frame_i = 0; frame_i < p_frames.size(); frame_i++) {
 		int32_t frame = p_frames[frame_i];
 		Vector2Bezier vec2 = p_curves[frame].time_value;
@@ -584,15 +584,15 @@ Vector<real_t> BezierKeyframeReduce::get_values(Vector<Bezier> p_curves, Vector<
 // @param int end:
 // @param int/float step:
 // @return list of sample points and angles
-BezierKeyframeReduce::KeyframeTime BezierKeyframeReduce::sample(const Vector<Bezier> p_curves, int32_t p_start, int32_t p_end, real_t p_step) {
+BezierKeyframeReduce::KeyframeTime BezierKeyframeReduce::sample(const LocalVector<Bezier> p_curves, int32_t p_start, int32_t p_end, real_t p_step) {
 	BezierKeyframeReduce::KeyframeTime frame_values;
 	// get frames and values
-	Vector<double> frames = float_range(p_start, p_end, p_step);
-	Vector<real_t> values = get_values(p_curves, frames);
+	LocalVector<double> frames = float_range(p_start, p_end, p_step);
+	LocalVector<real_t> values = get_values(p_curves, frames);
 
 	// get points and angles
-	Vector<real_t> angles;
-	Vector<Vector2Bezier> points;
+	LocalVector<real_t> angles;
+	LocalVector<Vector2Bezier> points;
 	for (int32_t frame_i = 0; frame_i < frames.size(); frame_i++) {
 		double time = frames[frame_i];
 		real_t value = values[frame_i];
@@ -615,15 +615,15 @@ BezierKeyframeReduce::KeyframeTime BezierKeyframeReduce::sample(const Vector<Bez
 
 // Reduce the number of keyframes on the animation curve. Useful when
 // you are working with baked curves.
-// @param Vector<Bezier> r_points
-// @param Vector<Bezier> r_keyframes
+// @param LocalVector<Bezier> r_points
+// @param LocalVector<Bezier> r_keyframes
 // @param KeyframeReductionSetting p_settings
 // @return float Reduction rate
-real_t BezierKeyframeReduce::reduce(const Vector<Bezier> &p_points, Vector<Bezier> &r_keyframes, KeyframeReductionSetting p_settings) {
+real_t BezierKeyframeReduce::reduce(const LocalVector<Bezier> &p_points, LocalVector<Bezier> &r_keyframes, KeyframeReductionSetting p_settings) {
 	if (!p_points.size()) {
 		return 0.0f;
 	}
-	Vector<Bezier> points = p_points;
+	LocalVector<Bezier> points = p_points;
 	// get start and end frames
 	int32_t start = 0;
 	int32_t end = points.size() - 1;
@@ -632,17 +632,26 @@ real_t BezierKeyframeReduce::reduce(const Vector<Bezier> &p_points, Vector<Bezie
 	BezierKeyframeReduce::KeyframeTime sampled_frame_values = sample(points, start, end, p_settings.step_size);
 
 	// get split indices
-	Vector<int32_t> split;
+	LocalVector<int32_t> split;
 
-	split.append_array(_find_tangent_split_auto(sampled_frame_values.angles));
+	LocalVector<int32_t> tangent_split_auto = _find_tangent_split_auto(sampled_frame_values.angles);
+	for (int i = 0; i < tangent_split_auto.size(); ++i) {
+		split.push_back(tangent_split_auto[i]);
+	}
 
-	split.append_array(_find_tangent_split_existing(
-			p_points, start, end, p_settings.step_size));
-	split.append_array(_find_tangent_split_threshold(
-			sampled_frame_values.angles, p_settings.tangent_split_angle_threshold_in_degrees));
+	LocalVector<int32_t> tangent_split_existing = _find_tangent_split_existing(p_points, start, end, p_settings.step_size);
+	for (int i = 0; i < tangent_split_existing.size(); ++i) {
+		split.push_back(tangent_split_existing[i]);
+	}
+
+	LocalVector<int32_t> tangent_split_threshold = _find_tangent_split_threshold(sampled_frame_values.angles, p_settings.tangent_split_angle_threshold_in_degrees);
+	for (int i = 0; i < tangent_split_threshold.size(); ++i) {
+		split.push_back(tangent_split_threshold[i]);
+	}
+
 	{
 		// get split points
-		Vector<Bezier> split_points = _split_points(points, split);
+		LocalVector<Bezier> split_points = _split_points(points, split);
 
 		// fit points and get keyframes
 		FitState state;
