@@ -148,8 +148,8 @@ private:
 	// 	the curve will be added to the keyframes, if not the curve will be
 	// 	split at the point of max error and the function will be called
 	// 	again.
-	// 	@param uint first
-	// 	@param uint last
+	// 	@param uint32_t first
+	// 	@param uint32_t last
 	// 	@param Vector2Bezier tan1
 	// 	@param Vector2Bezier tan2
 	void _fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, uint32_t p_first, uint32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error);
@@ -195,15 +195,15 @@ private:
 
 	// Assign parameter values to digitized points using relative distances
 	// between points.
-	// @param uint first:
-	// @param uint last:
+	// @param uint32_t first:
+	// @param uint32_t last:
 	// @return dictionary of chord length parameterization
 	HashMap<int, Vector2Bezier> _chord_length_parameterize(LocalVector<Bezier> p_curves, uint32_t p_first, uint32_t p_last);
 
 	// Find the maximum squared distance of digitized points to fitted
 	// curve.
-	// @param uint first:
-	// @param uint last:
+	// @param uint32_t first:
+	// @param uint32_t last:
 	// @param list curve:
 	// @param dict u:
 	// @return tuple of Max distance and max index
