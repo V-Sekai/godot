@@ -59,33 +59,22 @@ TEST_CASE("[Module][Keyframe Reduce] Reduction rate") {
 }
 
 TEST_CASE("[Module][Keyframe Reduce] Reduction rate on constants") {
-    // Create a vector of Bezier curves with constant values
-    Vector<Bezier> points;
-    points.push_back(Bezier(Vector2Bezier(1, 1), Vector2Bezier(1, 1), Vector2Bezier(1, 1)));
-    points.push_back(Bezier(Vector2Bezier(1, 1), Vector2Bezier(1, 1), Vector2Bezier(1, 1)));
-    points.push_back(Bezier(Vector2Bezier(1, 1), Vector2Bezier(1, 1), Vector2Bezier(1, 1)));
-
-    // Define the keyframe reduction settings
-    BezierKeyframeReduce::KeyframeReductionSetting settings;
-    settings.max_error = 0.1f;
-    settings.step_size = 0.5f;
-    settings.tangent_split_angle_threshold_in_degrees = 5.0f;
-
-    // Instantiate a BezierKeyframeReduce object
-    Ref<BezierKeyframeReduce> keyframe_reduce;
-    keyframe_reduce.instantiate();
-
-    // Create a vector to hold the reduced keyframes
-    Vector<Bezier> keyframes;
-
-    // Perform the reduction and get the reduction rate
-    real_t reduction_rate = keyframe_reduce->reduce(points, keyframes, settings);
-
-    // Check that the reduction rate is less than or equal to 1.0
-    CHECK(reduction_rate <= 1.0);
-
-    // Check that the size of the reduced keyframes is less than or equal to the original points size
-    CHECK(keyframes.size() <= points.size());
+	Vector<Bezier> points;
+	double time = 0.0f;
+	while (time <= 10.0f) {
+		time += 1.0f;
+		points.append(Bezier(Vector2Bezier(time, 1.0), Vector2Bezier(), Vector2Bezier()));
+	}
+	BezierKeyframeReduce::KeyframeReductionSetting settings;
+	settings.max_error = 0.1f;
+	settings.step_size = 0.5f;
+	settings.tangent_split_angle_threshold_in_degrees = 5.0f;
+	Ref<BezierKeyframeReduce> keyframe_reduce;
+	keyframe_reduce.instantiate();
+	Vector<Bezier> keyframes;
+	real_t reduction_rate = keyframe_reduce->reduce(points, keyframes, settings);
+	CHECK(reduction_rate <= 1.0);
+	CHECK(keyframes.size() <= points.size());
 }
 } // namespace TestKeyframeReduction
 
