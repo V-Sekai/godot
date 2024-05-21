@@ -86,6 +86,9 @@ TEST_CASE("[Module][Keyframe Reduce] Reduction rate") {
 	real_t reduction_rate = keyframe_reduce->reduce(points, keyframes, settings);
 	CHECK(reduction_rate <= 1.0);
 	CHECK(keyframes.size() <= points.size());
+	for (int i = 0; i < keyframes.size(); ++i) {
+		CHECK_MESSAGE(true, vformat("Reduced keyframe time value: %s In: %s Out: %s", String(keyframes[i].time_value), String(keyframes[i].in_handle), String(keyframes[i].out_handle)));
+	}
 }
 
 TEST_CASE("[Module][Keyframe Reduce] Reduction rate on constants") {
@@ -105,6 +108,9 @@ TEST_CASE("[Module][Keyframe Reduce] Reduction rate on constants") {
 	real_t reduction_rate = keyframe_reduce->reduce(points, keyframes, settings);
 	CHECK(reduction_rate <= 1.0);
 	CHECK(keyframes.size() <= points.size());
+	for (int i = 0; i < keyframes.size(); ++i) {
+		CHECK_MESSAGE(true, vformat("Reduced keyframe time value: %s In: %s Out: %s", String(keyframes[i].time_value), String(keyframes[i].in_handle), String(keyframes[i].out_handle)));
+	}
 }
 } // namespace TestKeyframeReduction
 
