@@ -639,7 +639,7 @@ real_t BezierKeyframeReduce::reduce(const Vector<Bezier> &p_points, Vector<Bezie
 	split.append_array(_find_tangent_split_existing(
 			p_points, start, end, p_settings.step_size));
 	split.append_array(_find_tangent_split_threshold(
-			sampled_frame_values.angles, p_settings.tangent_split_angle_thresholdValue));
+			sampled_frame_values.angles, p_settings.tangent_split_angle_threshold_in_degrees));
 	{
 		// get split points
 		Vector<Bezier> split_points = _split_points(points, split);
