@@ -148,11 +148,11 @@ private:
 	// 	the curve will be added to the keyframes, if not the curve will be
 	// 	split at the point of max error and the function will be called
 	// 	again.
-	// 	@param int first
-	// 	@param int last
+	// 	@param uint first
+	// 	@param uint last
 	// 	@param Vector2Bezier tan1
 	// 	@param Vector2Bezier tan2
-	void fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, int32_t p_first, int32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error);
+	void fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, uint32_t p_first, uint32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error);
 
 	// 	@param Vector2Bezier pt1:
 	// 	@param Vector2Bezier tan1:
@@ -168,7 +168,7 @@ private:
 	// @param dict uPrime:
 	// @param Vector2Bezier tan1:
 	// @param Vector2Bezier tan2:
-	LocalVector<Vector2Bezier> generate_bezier(const LocalVector<Bezier> &p_curves, int32_t p_first, int32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2);
+	LocalVector<Vector2Bezier> generate_bezier(const LocalVector<Bezier> &p_curves, uint32_t p_first, uint32_t p_last, HashMap<int, Vector2Bezier> p_u_prime, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2);
 
 	// Given set of points and their parameterization, try to find a better
 	// parameterization.
@@ -176,7 +176,7 @@ private:
 	// @param int last:
 	// @param dict u:
 	// @param list curve:
-	void reparameterize(LocalVector<Bezier> p_existing_curves, int32_t p_first, int32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, LocalVector<Vector2Bezier> p_curves);
+	void reparameterize(LocalVector<Bezier> p_existing_curves, uint32_t p_first, uint32_t p_last, HashMap<int32_t, Vector2Bezier> &r_u, LocalVector<Vector2Bezier> p_curves);
 
 	// Use Newton-Raphson iteration to find better root.
 	// @param list curve:
@@ -195,19 +195,19 @@ private:
 
 	// Assign parameter values to digitized points using relative distances
 	// between points.
-	// @param int first:
-	// @param int last:
+	// @param uint first:
+	// @param uint last:
 	// @return dictionary of chord length parameterization
-	HashMap<int, Vector2Bezier> chord_length_parameterize(LocalVector<Bezier> p_curves, int32_t p_first, int32_t p_last);
+	HashMap<int, Vector2Bezier> chord_length_parameterize(LocalVector<Bezier> p_curves, uint32_t p_first, uint32_t p_last);
 
 	// Find the maximum squared distance of digitized points to fitted
 	// curve.
-	// @param int first:
-	// @param int last:
+	// @param uint first:
+	// @param uint last:
 	// @param list curve:
 	// @param dict u:
 	// @return tuple of Max distance and max index
-	Vector2Bezier find_max_error(const LocalVector<Bezier> &p_existing_curves, int32_t p_first, int32_t p_last, LocalVector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u);
+	Vector2Bezier find_max_error(const LocalVector<Bezier> &p_existing_curves, uint32_t p_first, uint32_t p_last, LocalVector<Vector2Bezier> p_curves, HashMap<int, Vector2Bezier> p_u);
 
 	real_t min_real_list(LocalVector<real_t> p_reals);
 
@@ -232,7 +232,7 @@ private:
 	// @param int end
 	// @param int/float step
 	// @return list of split indices
-	LocalVector<int32_t> _find_tangent_split_existing(const LocalVector<Bezier> p_frames, int32_t p_start, int32_t p_end, real_t p_step);
+	LocalVector<int32_t> _find_tangent_split_existing(const LocalVector<Bezier> p_frames, uint32_t p_start, uint32_t p_end, real_t p_step);
 
 	// The threshold tangent split will process all angles and check if that
 	// angle falls in or outside of user provided threshold.
@@ -247,7 +247,7 @@ private:
 	// @param list p_curves:
 	// @param list p_split:
 	// @return list of split bezier points
-	LocalVector<Bezier> _split_points(const LocalVector<Bezier> &p_curves, LocalVector<int32_t> &p_split);
+	LocalVector<Bezier> _split_points(const LocalVector<Bezier> &p_curves, LocalVector<uint32_t> &p_split);
 
 	// Ported from Paper.js -
 	// The Swiss Army Knife of Vector Graphics Scripting. http://paperjs.org/
@@ -269,7 +269,7 @@ private:
 	// @param int end:
 	// @param int/float step:
 	// @return list of sample points and angles
-	KeyframeTime sample(const LocalVector<Bezier> p_curves, int32_t p_start, int32_t p_end, real_t p_step);
+	KeyframeTime sample(const LocalVector<Bezier> p_curves, uint32_t p_start, uint32_t p_end, real_t p_step);
 
 public:
 	// Reduce the number of keyframes on the animation curve. Useful when
