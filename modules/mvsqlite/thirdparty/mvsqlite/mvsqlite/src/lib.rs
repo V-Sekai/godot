@@ -212,7 +212,7 @@ pub extern "C" fn init_mvsqlite() {
             std::process::abort();
         }));
 
-        let mut io_engine_kind = IoEngineKind::MultiThread;
+        let mut io_engine_kind = IoEngineKind::CurrentThread;
         let mut fork_tolerant = false;
 
         if let Ok(s) = std::env::var("MVSQLITE_FORK_TOLERANT") {
