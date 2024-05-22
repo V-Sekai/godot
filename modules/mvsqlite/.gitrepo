@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/V-Sekai.godot-mvsqlite.git
 	branch = main
-	commit = e0d4436d8fd118e0b0e0d64c79dc49e1a70b30f2
-	parent = 3b1de37af5d085cc881b398cc73fd0a91ccff27a
+	commit = 7bbad8d9e8e0305a918b042fbfccfd956d55591d
+	parent = 68100e995d779cf46c640f33d319bee04b5be44f
 	method = merge
 	cmdver = 0.4.6
