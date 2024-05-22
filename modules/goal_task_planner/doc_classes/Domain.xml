@@ -54,7 +54,7 @@
 			The actions that can be performed in the [Domain], represented as a [Dictionary].
 		</member>
 		<member name="multigoal_methods" type="Callable[]" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[Callable()]">
-			The methods for achieving [Multigoal]s, represented as an [Array[ of [Callable].
+			The methods for achieving [Multigoal]s, represented as an [Array] of [Callable].
 		</member>
 		<member name="tasks" type="Dictionary" setter="set_task_methods" getter="get_task_methods" default="{ &quot;_verify_g&quot;: [Callable()], &quot;_verify_mg&quot;: [Callable()] }">
 			The tasks that can be performed in the [Domain], represented as a [Dictionary] of [Callable].
