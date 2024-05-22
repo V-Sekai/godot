@@ -4,7 +4,8 @@
 		Manages and executes tasks within a specified domain.
 	</brief_description>
 	<description>
-		The [Plan] class provides methods for declaring actions, goals, [Multigoal], and tasks. It also facilitates finding and executing plans to achieve those goals within a specific [Domain].
+		The [Plan] class provides methods for declaring actions, goals, [Multigoal], and tasks. It also facilitates the process of finding and executing plans to achieve those goals within a specific [Domain].
+		[Plan] represents a totally-ordered version of Goal-Task-Network (GTN) planning. However, it does not support sharing and task insertion, and it is not a temporal planner.
 	</description>
 	<tutorials>
 	</tutorials>

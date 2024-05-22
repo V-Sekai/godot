@@ -38,7 +38,7 @@
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 
-#import "domain.h"
+#include "domain.h"
 
 class Multigoal : public Resource {
 	GDCLASS(Multigoal, Resource);

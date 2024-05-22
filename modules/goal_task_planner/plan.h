@@ -44,7 +44,6 @@ class Domain;
 class Plan : public Resource {
 	GDCLASS(Plan, Resource);
 
-private:
 	int verbose = 0;
 	TypedArray<Domain> domains;
 	Ref<Domain> current_domain;
@@ -59,6 +58,13 @@ private:
 	// supposed to achieve. The verification task won't insert anything into the
 	// final plan; it just will verify whether m did what it was supposed to do.
 	bool verify_goals = true;
+	static String _item_to_string(Variant p_item);
+	Variant _seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth);
+	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
+	Variant _apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth);
+	Variant _refine_task_and_continue(const Dictionary p_state, const Array p_first_task, const Array p_todo_list, const Array p_plan, const int p_depth);
+	Variant _refine_multigoal_and_continue(const Dictionary p_state, const Ref<Multigoal> p_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
+	Variant _refine_unigoal_and_continue(const Dictionary p_state, const Array p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
 
 public:
 	int get_verbose() const;
@@ -69,21 +75,8 @@ public:
 	void set_current_domain(Ref<Domain> p_current_domain) { current_domain = p_current_domain; }
 	void set_verify_goals(bool p_value);
 	bool get_verify_goals() const;
-
-public:
 	Variant find_plan(Dictionary p_state, Array p_todo_list);
-
-public:
 	Dictionary run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
-
-private:
-	static String _item_to_string(Variant p_item);
-	Variant _seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth);
-	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
-	Variant _apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth);
-	Variant _refine_task_and_continue(const Dictionary p_state, const Array p_first_task, const Array p_todo_list, const Array p_plan, const int p_depth);
-	Variant _refine_multigoal_and_continue(const Dictionary p_state, const Ref<Multigoal> p_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
-	Variant _refine_unigoal_and_continue(const Dictionary p_state, const Array p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
 
 protected:
 	static void _bind_methods();

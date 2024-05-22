@@ -280,14 +280,11 @@ Variant Plan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, in
 		Dictionary tasks = current_domain->get_task_methods();
 		Dictionary unigoals = current_domain->get_unigoal_methods();
 		Variant item_name = item.front();
-		bool is_action = actions.has(item_name);
-		bool is_task = tasks.has(item_name);
-		bool is_unigoal = unigoals.has(item_name);
-		if (is_action) {
+		if (actions.has(item_name)) {
 			return _apply_action_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
-		} else if (is_task) {
+		} else if (tasks.has(item_name)) {
 			return _refine_task_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
-		} else if (is_unigoal) {
+		} else if (unigoals.has(item_name)) {
 			return _refine_unigoal_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
 		}
 	}
