@@ -123,6 +123,7 @@ public:
 	static Pair<int, int> calculate_coordinates(const Vector2 &sourceUv, int width, int height);
 	MeshTextureAtlas();
 	static Node *merge_meshes(Node *p_root);
+
 private:
 	static int godot_xatlas_print(const char *p_print_string, ...);
 	static Vector2 interpolate_source_uvs(const Vector3 &bar, const AtlasTextureArguments *args);

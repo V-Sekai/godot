@@ -46,7 +46,6 @@ Copyright (c) 2013 Thekla, Inc
 Copyright NVIDIA Corporation 2006 -- Ignacio Castano <icastano@nvidia.com>
 */
 
-
 #include "core/object/ref_counted.h"
 
 #include "core/object/ref_counted.h"
