@@ -415,14 +415,7 @@ Ref<X509Certificate> CryptoMbedTLS::generate_self_signed_certificate(Ref<CryptoK
 	uint8_t rand_serial[20];
 	mbedtls_ctr_drbg_random(&ctr_drbg, rand_serial, sizeof(rand_serial));
 
-#if MBEDTLS_VERSION_MAJOR >= 3
 	mbedtls_x509write_crt_set_serial_raw(&crt, rand_serial, sizeof(rand_serial));
-#else
-	mbedtls_mpi serial;
-	mbedtls_mpi_init(&serial);
-	ERR_FAIL_COND_V(mbedtls_mpi_read_binary(&serial, rand_serial, sizeof(rand_serial)), nullptr);
-	mbedtls_x509write_crt_set_serial(&crt, &serial);
-#endif
 
 	mbedtls_x509write_crt_set_validity(&crt, p_not_before.utf8().get_data(), p_not_after.utf8().get_data());
 	mbedtls_x509write_crt_set_basic_constraints(&crt, 1, -1);
