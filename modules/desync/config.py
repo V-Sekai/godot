@@ -5,7 +5,7 @@ import subprocess
 def can_build(env, platform):
     try:
         subprocess.check_output(["go", "--version"], stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         print("Go not found. desync build skipped.")
         return False
     
