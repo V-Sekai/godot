@@ -35,7 +35,7 @@
 
 #include "editor/editor_file_system.h"
 #include "editor/editor_node.h"
-#include "editor/editor_plugin.h"
+#include "editor/plugins/editor_plugin.h"
 #include "editor/gui/editor_file_dialog.h"
 #include "modules/scene_merge/scene_merge.h"
 #include "scene/gui/check_box.h"
