@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot_scene_merge.git
+	branch = main
+	commit = 9cd62ae5e8aa912227ce0d8925e9341f7ce1ddde
+	parent = e0b6a007edb54770bef776e72c493cde92458ff6
+	method = merge
+	cmdver = 0.4.6
