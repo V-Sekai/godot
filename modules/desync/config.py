@@ -3,6 +3,12 @@ import subprocess
 
 
 def can_build(env, platform):
+    try:
+        subprocess.check_output(["go", "--version"], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        print("Go not found. desync build skipped.")
+        return False
+
     if platform == "web":
         return False
     if platform == "ios":
