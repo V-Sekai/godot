@@ -8,7 +8,7 @@ def can_build(env, platform):
     except subprocess.CalledProcessError:
         print("Go not found. desync build skipped.")
         return False
-
+    
     if platform == "web":
         return False
     if platform == "ios":
@@ -21,8 +21,6 @@ def can_build(env, platform):
         if not env["use_mingw"]:
             return False
         try:
-            import subprocess
-
             mingw_version = subprocess.check_output(["gcc", "--version"])
             print("MinGW is installed: ", mingw_version)
         except Exception as e:
