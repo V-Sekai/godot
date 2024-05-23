@@ -32,7 +32,6 @@
 #define DESYNC_REGISTER_TYPES_H
 /* register_types.h */
 
-
 #include "modules/register_module_types.h"
 
 void initialize_desync_module(ModuleInitializationLevel p_level);

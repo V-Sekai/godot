@@ -10,7 +10,7 @@ def can_build(env, platform):
         return False
     except subprocess.CalledProcessError as e:
         pass
-    
+
     if platform == "web":
         return False
     if platform == "ios":
