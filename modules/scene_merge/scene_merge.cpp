@@ -31,10 +31,7 @@
 #include "scene_merge.h"
 
 #include "modules/scene_merge/merge.h"
-#include "scene/resources/packed_scene.h"
 
 Node *SceneMerge::merge(Node *p_root_node) {
-	Ref<MeshMergeMeshInstanceWithMaterialAtlas> repack;
-	repack.instantiate();
-	return repack->merge(p_root_node);
+	return MeshTextureAtlas::merge_meshes(p_root_node);
 }
