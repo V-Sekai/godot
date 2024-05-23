@@ -28,6 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#ifndef MERGE_H
+#define MERGE_H
 /*
 xatlas
 https://github.com/jpcy/xatlas
@@ -44,8 +46,6 @@ Copyright (c) 2013 Thekla, Inc
 Copyright NVIDIA Corporation 2006 -- Ignacio Castano <icastano@nvidia.com>
 */
 
-#ifndef MERGE_H
-#define MERGE_H
 
 #include "core/object/ref_counted.h"
 

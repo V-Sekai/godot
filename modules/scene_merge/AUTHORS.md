@@ -96,7 +96,7 @@ name is available.
     Jakub Grzesik (kubecz3k)
     Jérôme Gully (Nutriz)
     Joan Fons Sanchez (JFonS)
-    Johan Manuel (29jm)
+    Johan Manual (29jm)
     Joshua Grams (JoshuaGrams)
     Juan Linietsky (reduz)
     Julian Murgia (StraToN)

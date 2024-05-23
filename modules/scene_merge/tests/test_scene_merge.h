@@ -1,3 +1,32 @@
+/**************************************************************************/
+/*  test_scene_merge.h                                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
 #ifndef TEST_SCENE_MERGE_H
 #define TEST_SCENE_MERGE_H
@@ -51,57 +80,57 @@ TEST_CASE("[Modules][SceneMerge] MeshMergeMeshInstanceWithMaterialAtlasTest") {
 }
 
 TEST_CASE("[Modules][SceneMerge] CalculateCoordinates") {
-    Vector2 source_uv(0.5, 0.5);
-    int width = 100;
-    int height = 200;
-    Pair<int, int> result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, 50);
-    CHECK_EQ(result.second, 100);
+	Vector2 source_uv(0.5, 0.5);
+	int width = 100;
+	int height = 200;
+	Pair<int, int> result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, 50);
+	CHECK_EQ(result.second, 100);
 
-    source_uv = Vector2(1.0, 0.0);
-    result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, 100);
-    CHECK_EQ(result.second, 0);
+	source_uv = Vector2(1.0, 0.0);
+	result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, 100);
+	CHECK_EQ(result.second, 0);
 
-    source_uv = Vector2(0.0, 1.0);
-    result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, 0);
-    CHECK_EQ(result.second, 200);
+	source_uv = Vector2(0.0, 1.0);
+	result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, 0);
+	CHECK_EQ(result.second, 200);
 
-    source_uv = Vector2(0.0, 0.0);
-    result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, 0);
-    CHECK_EQ(result.second, 0);
+	source_uv = Vector2(0.0, 0.0);
+	result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, 0);
+	CHECK_EQ(result.second, 0);
 }
 
 TEST_CASE("[Modules][SceneMerge] CalculateCoordinates - Extremes") {
-    Vector2 source_uv;
-    int width = 100;
-    int height = 200;
-    Pair<int, int> result;
-    // Test with max float value
-    source_uv = Vector2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-    result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, width);
-    CHECK_EQ(result.second, height);
+	Vector2 source_uv;
+	int width = 100;
+	int height = 200;
+	Pair<int, int> result;
+	// Test with max float value
+	source_uv = Vector2(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+	result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, width);
+	CHECK_EQ(result.second, height);
 
-    // Test with lowest float value (should be negative)
-    source_uv = Vector2(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
-    result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, 0);
-    CHECK_EQ(result.second, 0);
+	// Test with lowest float value (should be negative)
+	source_uv = Vector2(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
+	result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, 0);
+	CHECK_EQ(result.second, 0);
 
-    // Test with positive infinity
-    source_uv = Vector2(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
-    result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, width);
-    CHECK_EQ(result.second, height);
+	// Test with positive infinity
+	source_uv = Vector2(std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity());
+	result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, width);
+	CHECK_EQ(result.second, height);
 
-    // Test with negative infinity
-    source_uv = Vector2(-std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity());
-    result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
-    CHECK_EQ(result.first, 0);
-    CHECK_EQ(result.second, 0);
+	// Test with negative infinity
+	source_uv = Vector2(-std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity());
+	result = MeshMergeMeshInstanceWithMaterialAtlas::calculate_coordinates(source_uv, width, height);
+	CHECK_EQ(result.first, 0);
+	CHECK_EQ(result.second, 0);
 }
 
 } // namespace TestSceneMerge
