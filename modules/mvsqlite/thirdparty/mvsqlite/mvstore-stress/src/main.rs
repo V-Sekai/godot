@@ -4,57 +4,57 @@ mod tester;
 use anyhow::Result;
 use backtrace::Backtrace;
 use mvclient::{MultiVersionClient, MultiVersionClientConfig};
-use structopt::StructOpt;
+use clap::Parser;
 use tester::{Tester, TesterConfig};
 use tracing_subscriber::{fmt::SubscriberBuilder, EnvFilter};
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "mvstore-stress", about = "stress test mvstore")]
+#[derive(Debug, Parser)]
+#[clap(name = "mvstore-stress", about = "stress test mvstore")]
 struct Opt {
     /// Data plane URL.
-    #[structopt(long)]
+    #[clap(long)]
     data_plane: String,
 
     /// Admin API URL.
-    #[structopt(long)]
+    #[clap(long)]
     admin_api: String,
 
     /// Output log in JSON format.
-    #[structopt(long)]
+    #[clap(long)]
     json: bool,
 
     /// Namespace key.
-    #[structopt(long, env = "NS_KEY")]
+    #[clap(long, env = "NS_KEY")]
     ns_key: String,
 
     /// Number of concurrent tasks.
-    #[structopt(long)]
+    #[clap(long)]
     concurrency: u64,
 
     /// Number of iterations.
-    #[structopt(long)]
+    #[clap(long)]
     iterations: u64,
 
     /// Number of pages.
-    #[structopt(long)]
+    #[clap(long)]
     pages: u32,
 
     /// Disable read-your-writes tests.
-    #[structopt(long)]
+    #[clap(long)]
     disable_ryw: bool,
 
     /// Permit HTTP 410 commit responses.
-    #[structopt(long)]
+    #[clap(long)]
     permit_410: bool,
 
     /// Disable read sets.
-    #[structopt(long)]
+    #[clap(long)]
     disable_read_set: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     if opt.json {
         SubscriberBuilder::default()

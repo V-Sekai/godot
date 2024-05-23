@@ -14,7 +14,7 @@ use anyhow::Result;
 use backtrace::Backtrace;
 use mvfs::{types::LockKind, vfs::AbstractHttpClient, Connection};
 use slab::Slab;
-use structopt::StructOpt;
+use clap::Parser;
 use tokio::sync::Mutex;
 use tracing_subscriber::{fmt::SubscriberBuilder, EnvFilter};
 
@@ -40,31 +40,31 @@ fn parse_db_name(name: &str) -> Option<DbName> {
     Some(DbName { ns, fakeino_delta })
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "mvsqlite-fuse", about = "mvsqlite fuse")]
+#[derive(Debug, Parser)]
+#[clap(name = "mvsqlite-fuse", about = "mvsqlite fuse")]
 struct Opt {
     /// Data plane URL.
-    #[structopt(long, env = "MVSQLITE_FUSE_DATA_PLANE")]
+    #[clap(long, env = "MVSQLITE_FUSE_DATA_PLANE")]
     data_plane: String,
 
     /// Comma-separated namespace mappings: file1=ns1,file2=ns2
-    #[structopt(long, env = "MVSQLITE_FUSE_NAMESPACES")]
+    #[clap(long, env = "MVSQLITE_FUSE_NAMESPACES")]
     namespaces: String,
 
     /// Disk sector size.
-    #[structopt(long, default_value = "8192", env = "MVSQLITE_FUSE_SECTOR_SIZE")]
+    #[clap(long, default_value = "8192", env = "MVSQLITE_FUSE_SECTOR_SIZE")]
     sector_size: usize,
 
     /// Mount point.
-    #[structopt(long, env = "MVSQLITE_FUSE_MOUNTPOINT")]
+    #[clap(long, env = "MVSQLITE_FUSE_MOUNTPOINT")]
     mountpoint: String,
 
     /// Auto unmount on process exit.
-    #[structopt(long)]
+    #[clap(long)]
     auto_unmount: bool,
 
     /// Allow root.
-    #[structopt(long)]
+    #[clap(long)]
     allow_root: bool,
 }
 
@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
         std::process::abort();
     }));
 
-    let opt: Opt = Opt::from_args();
+    let opt: Opt = Opt::parse();
     let namespaces = opt
         .namespaces
         .split(',')

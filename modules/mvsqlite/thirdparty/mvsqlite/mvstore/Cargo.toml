@@ -27,7 +27,6 @@ tracing = "0.1"
 rand = "0.8.5"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "fmt", "json"] }
 foundationdb = { version = "0.8.0", features = ["embedded-fdb-include"] }
-structopt = "0.3.26"
 hyper = { version = "0.14.20", features = ["full"] }
 url = "2.3.1"
 hex = "0.4.3"
@@ -47,3 +46,4 @@ heapless = { version = "0.7", features = ["serde"] }
 lmdb-rkv = "0.14.0"
 bumpalo = "3.11.1"
 itertools = "0.10.5"
+clap = { version = "4.5.4", features = ["derive", "env"] }
