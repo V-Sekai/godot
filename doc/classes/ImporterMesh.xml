@@ -160,6 +160,13 @@
 				Returns the primitive type of the requested surface (see [method add_surface]).
 			</description>
 		</method>
+		<method name="mesh_unwrap">
+			<return type="int" enum="Error" />
+			<param index="0" name="base_transform" type="Transform3D" />
+			<param index="1" name="texel_size" type="float" />
+			<description>
+			</description>
+		</method>
 		<method name="set_blend_shape_mode">
 			<return type="void" />
 			<param index="0" name="mode" type="int" enum="Mesh.BlendShapeMode" />

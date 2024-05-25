@@ -64,6 +64,7 @@
 #define GLTF_IMPORT_USE_NAMED_SKIN_BINDS 16
 #define GLTF_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
 #define GLTF_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
+#define GLTF_IMPORT_GENERATE_UV_ARRAYS 128
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -414,6 +415,16 @@ Error GLTFDocument::_serialize_nodes(Ref<GLTFState> p_state) {
 		}
 		if (gltf_node->mesh != -1) {
 			node["mesh"] = gltf_node->mesh;
+			if (p_state->force_generate_uvs && gltf_node->mesh >= 0) {
+				Ref<ImporterMesh> mesh = p_state->meshes[gltf_node->mesh]->get_mesh();
+				for (int32_t index_i = 0; index_i < mesh->get_surface_count(); index_i++) {
+					uint32_t format = mesh->get_surface_format(index_i);
+					if (!(format & Mesh::ARRAY_FORMAT_TEX_UV)) {
+						mesh->mesh_unwrap(Transform3D());
+						break;
+					}
+				}
+			}
 		}
 		if (gltf_node->skin != -1) {
 			node["skin"] = gltf_node->skin;
@@ -5673,6 +5684,16 @@ void GLTFDocument::_generate_scene_node(Ref<GLTFState> p_state, const GLTFNodeIn
 		args.append(p_scene_root);
 		current_node->propagate_call(StringName("set_owner"), args);
 		current_node->set_transform(gltf_node->transform);
+		if (p_state->force_generate_uvs && gltf_node->mesh >= 0) {
+			Ref<ImporterMesh> mesh = p_state->meshes[gltf_node->mesh]->get_mesh();
+			for (int32_t index_i = 0; index_i < mesh->get_surface_count(); index_i++) {
+				uint32_t format = mesh->get_surface_format(index_i);
+				if (!(format & Mesh::ARRAY_FORMAT_TEX_UV)) {
+					mesh->mesh_unwrap(Transform3D());
+					break;
+				}
+			}
+		}
 	}
 
 	p_state->scene_nodes.insert(p_node_index, current_node);
@@ -7349,6 +7370,7 @@ Error GLTFDocument::append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint
 	state->discard_meshes_and_materials = p_flags & GLTF_IMPORT_DISCARD_MESHES_AND_MATERIALS;
 	state->force_generate_tangents = p_flags & GLTF_IMPORT_GENERATE_TANGENT_ARRAYS;
 	state->force_disable_compression = p_flags & GLTF_IMPORT_FORCE_DISABLE_MESH_COMPRESSION;
+	state->force_generate_uvs = p_flags & GLTF_IMPORT_GENERATE_UV_ARRAYS;
 	if (!state->buffers.size()) {
 		state->buffers.push_back(Vector<uint8_t>());
 	}
@@ -7389,6 +7411,7 @@ Error GLTFDocument::append_from_buffer(PackedByteArray p_bytes, String p_base_pa
 	state->discard_meshes_and_materials = p_flags & GLTF_IMPORT_DISCARD_MESHES_AND_MATERIALS;
 	state->force_generate_tangents = p_flags & GLTF_IMPORT_GENERATE_TANGENT_ARRAYS;
 	state->force_disable_compression = p_flags & GLTF_IMPORT_FORCE_DISABLE_MESH_COMPRESSION;
+	state->force_generate_uvs = p_flags & GLTF_IMPORT_GENERATE_UV_ARRAYS;
 
 	Ref<FileAccessMemory> file_access;
 	file_access.instantiate();
@@ -7415,6 +7438,7 @@ Error GLTFDocument::append_from_file(String p_path, Ref<GLTFState> p_state, uint
 	state->discard_meshes_and_materials = p_flags & GLTF_IMPORT_DISCARD_MESHES_AND_MATERIALS;
 	state->force_generate_tangents = p_flags & GLTF_IMPORT_GENERATE_TANGENT_ARRAYS;
 	state->force_disable_compression = p_flags & GLTF_IMPORT_FORCE_DISABLE_MESH_COMPRESSION;
+	state->force_generate_uvs = p_flags & GLTF_IMPORT_GENERATE_UV_ARRAYS;
 
 	Error err;
 	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ, &err);

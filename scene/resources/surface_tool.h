@@ -31,7 +31,7 @@
 #ifndef SURFACE_TOOL_H
 #define SURFACE_TOOL_H
 
-#include "core/templates/local_vector.h"
+#include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/mesh.h"
 #include "thirdparty/misc/mikktspace.h"
 
@@ -226,7 +226,7 @@ public:
 	void create_from_blend_shape(const Ref<Mesh> &p_existing, int p_surface, const String &p_blend_shape_name);
 	void append_from(const Ref<Mesh> &p_existing, int p_surface, const Transform3D &p_xform);
 	Ref<ArrayMesh> commit(const Ref<ArrayMesh> &p_existing = Ref<ArrayMesh>(), uint64_t p_compress_flags = 0);
-
+	Ref<ImporterMesh> commit_importer_mesh(const Ref<ImporterMesh> &p_existing, uint64_t p_compress_flags);
 	SurfaceTool();
 };
 

@@ -1387,6 +1387,7 @@ void SurfaceTool::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_from_blend_shape", "existing", "surface", "blend_shape"), &SurfaceTool::create_from_blend_shape);
 	ClassDB::bind_method(D_METHOD("append_from", "existing", "surface", "transform"), &SurfaceTool::append_from);
 	ClassDB::bind_method(D_METHOD("commit", "existing", "flags"), &SurfaceTool::commit, DEFVAL(Variant()), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("commit_importer_mesh", "existing", "flags"), &SurfaceTool::commit, DEFVAL(Variant()), DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("commit_to_arrays"), &SurfaceTool::commit_to_arrays);
 
 	BIND_ENUM_CONSTANT(CUSTOM_RGBA8_UNORM);
@@ -1406,4 +1407,33 @@ SurfaceTool::SurfaceTool() {
 	for (int i = 0; i < RS::ARRAY_CUSTOM_COUNT; i++) {
 		last_custom_format[i] = CUSTOM_MAX;
 	}
+}
+
+Ref<ImporterMesh> SurfaceTool::commit_importer_mesh(const Ref<ImporterMesh> &p_existing, uint64_t p_compress_flags) {
+	Ref<ImporterMesh> mesh;
+	if (p_existing.is_valid()) {
+		mesh = p_existing;
+	} else {
+		mesh.instantiate();
+	}
+
+	int varr_len = vertex_array.size();
+
+	if (varr_len == 0) {
+		return mesh;
+	}
+
+	Array a = commit_to_arrays();
+
+	uint64_t compress_flags = (p_compress_flags >> RS::ARRAY_COMPRESS_FLAGS_BASE) << RS::ARRAY_COMPRESS_FLAGS_BASE;
+	static const uint64_t shift[RS::ARRAY_CUSTOM_COUNT] = { Mesh::ARRAY_FORMAT_CUSTOM0_SHIFT, Mesh::ARRAY_FORMAT_CUSTOM1_SHIFT, Mesh::ARRAY_FORMAT_CUSTOM2_SHIFT, Mesh::ARRAY_FORMAT_CUSTOM3_SHIFT };
+	for (int i = 0; i < RS::ARRAY_CUSTOM_COUNT; i++) {
+		if (last_custom_format[i] != CUSTOM_MAX) {
+			compress_flags |= uint64_t(last_custom_format[i]) << shift[i];
+		}
+	}
+
+	mesh->add_surface(primitive, a, Array(), Dictionary(), material, String(), compress_flags);
+
+	return mesh;
 }

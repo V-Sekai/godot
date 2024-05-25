@@ -58,5 +58,7 @@
 		</constant>
 		<constant name="IMPORT_FORCE_DISABLE_MESH_COMPRESSION" value="64">
 		</constant>
+		<constant name="IMPORT_GENERATE_UV_ARRAYS" value="128">
+		</constant>
 	</constants>
 </class>

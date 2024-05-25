@@ -1341,6 +1341,7 @@ Size2i ImporterMesh::get_lightmap_size_hint() const {
 }
 
 void ImporterMesh::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("mesh_unwrap", "base_transform", "texel_size"), &ImporterMesh::mesh_unwrap);
 	ClassDB::bind_method(D_METHOD("add_blend_shape", "name"), &ImporterMesh::add_blend_shape);
 	ClassDB::bind_method(D_METHOD("get_blend_shape_count"), &ImporterMesh::get_blend_shape_count);
 	ClassDB::bind_method(D_METHOD("get_blend_shape_name", "blend_shape_idx"), &ImporterMesh::get_blend_shape_name);
@@ -1375,4 +1376,214 @@ void ImporterMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_lightmap_size_hint"), &ImporterMesh::get_lightmap_size_hint);
 
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "_data", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "_set_data", "_get_data");
+}
+
+Error ImporterMesh::mesh_unwrap(const Transform3D &p_base_transform, float p_texel_size) {
+	Vector<uint8_t> null_cache;
+	return mesh_unwrap_cached(p_base_transform, p_texel_size, null_cache, null_cache, false);
+}
+
+struct ArrayMeshLightmapSurface {
+	Ref<Material> material;
+	LocalVector<SurfaceTool::Vertex> vertices;
+	Mesh::PrimitiveType primitive = Mesh::PrimitiveType::PRIMITIVE_MAX;
+	uint64_t format = 0;
+};
+
+Error ImporterMesh::mesh_unwrap_cached(const Transform3D &p_base_transform, float p_texel_size, const Vector<uint8_t> &p_src_cache, Vector<uint8_t> &r_dst_cache, bool p_generate_cache) {
+	ERR_FAIL_COND_V(!array_mesh_lightmap_unwrap_callback, ERR_UNCONFIGURED);
+	ERR_FAIL_COND_V_MSG(get_surface_count() == 0, ERR_UNAVAILABLE, "Can't unwrap mesh with no surfaces.");
+	ERR_FAIL_COND_V_MSG(blend_shapes.size() != 0, ERR_UNAVAILABLE, "Can't unwrap mesh with blend shapes.");
+	ERR_FAIL_COND_V_MSG(p_texel_size <= 0.0f, ERR_PARAMETER_RANGE_ERROR, "Texel size must be greater than 0.");
+
+	LocalVector<float> vertices;
+	LocalVector<float> normals;
+	LocalVector<int> indices;
+	LocalVector<float> uv;
+	LocalVector<Pair<int, int>> uv_indices;
+
+	Vector<ArrayMeshLightmapSurface> lightmap_surfaces;
+
+	// Keep only the scale
+	Basis basis = p_base_transform.get_basis();
+	Vector3 scale = Vector3(basis.get_column(0).length(), basis.get_column(1).length(), basis.get_column(2).length());
+
+	Transform3D transform;
+	transform.scale(scale);
+
+	Basis normal_basis = transform.basis.inverse().transposed();
+
+	for (int i = 0; i < get_surface_count(); i++) {
+		ArrayMeshLightmapSurface s;
+		s.primitive = get_surface_primitive_type(i);
+
+		ERR_FAIL_COND_V_MSG(s.primitive != Mesh::PRIMITIVE_TRIANGLES, ERR_UNAVAILABLE, "Only triangles are supported for mesh unwrap.");
+		s.format = get_surface_format(i);
+
+		Array arrays = get_surface_arrays(i);
+		s.material = get_surface_material(i);
+		SurfaceTool::create_vertex_array_from_arrays(arrays, s.vertices, &s.format);
+
+		PackedVector3Array rvertices = arrays[Mesh::ARRAY_VERTEX];
+		int vc = rvertices.size();
+
+		PackedVector3Array rnormals = arrays[Mesh::ARRAY_NORMAL];
+
+		int vertex_ofs = vertices.size() / 3;
+
+		vertices.resize((vertex_ofs + vc) * 3);
+		normals.resize((vertex_ofs + vc) * 3);
+		uv_indices.resize(vertex_ofs + vc);
+
+		for (int j = 0; j < vc; j++) {
+			Vector3 v = transform.xform(rvertices[j]);
+			Vector3 n = normal_basis.xform(rnormals[j]).normalized();
+
+			vertices[(j + vertex_ofs) * 3 + 0] = v.x;
+			vertices[(j + vertex_ofs) * 3 + 1] = v.y;
+			vertices[(j + vertex_ofs) * 3 + 2] = v.z;
+			normals[(j + vertex_ofs) * 3 + 0] = n.x;
+			normals[(j + vertex_ofs) * 3 + 1] = n.y;
+			normals[(j + vertex_ofs) * 3 + 2] = n.z;
+			uv_indices[j + vertex_ofs] = Pair<int, int>(i, j);
+		}
+
+		PackedInt32Array rindices = arrays[Mesh::ARRAY_INDEX];
+		int ic = rindices.size();
+
+		float eps = 1.19209290e-7F; // Taken from xatlas.h
+		if (ic == 0) {
+			for (int j = 0; j < vc / 3; j++) {
+				Vector3 p0 = transform.xform(rvertices[j * 3 + 0]);
+				Vector3 p1 = transform.xform(rvertices[j * 3 + 1]);
+				Vector3 p2 = transform.xform(rvertices[j * 3 + 2]);
+
+				if ((p0 - p1).length_squared() < eps || (p1 - p2).length_squared() < eps || (p2 - p0).length_squared() < eps) {
+					continue;
+				}
+
+				indices.push_back(vertex_ofs + j * 3 + 0);
+				indices.push_back(vertex_ofs + j * 3 + 1);
+				indices.push_back(vertex_ofs + j * 3 + 2);
+			}
+
+		} else {
+			for (int j = 0; j < ic / 3; j++) {
+				Vector3 p0 = transform.xform(rvertices[rindices[j * 3 + 0]]);
+				Vector3 p1 = transform.xform(rvertices[rindices[j * 3 + 1]]);
+				Vector3 p2 = transform.xform(rvertices[rindices[j * 3 + 2]]);
+
+				if ((p0 - p1).length_squared() < eps || (p1 - p2).length_squared() < eps || (p2 - p0).length_squared() < eps) {
+					continue;
+				}
+
+				indices.push_back(vertex_ofs + rindices[j * 3 + 0]);
+				indices.push_back(vertex_ofs + rindices[j * 3 + 1]);
+				indices.push_back(vertex_ofs + rindices[j * 3 + 2]);
+			}
+		}
+
+		lightmap_surfaces.push_back(s);
+	}
+
+	//unwrap
+
+	bool use_cache = p_generate_cache; // Used to request cache generation and to know if cache was used
+	uint8_t *gen_cache;
+	int gen_cache_size;
+	float *gen_uvs;
+	int *gen_vertices;
+	int *gen_indices;
+	int gen_vertex_count;
+	int gen_index_count;
+	int size_x;
+	int size_y;
+
+	bool ok = array_mesh_lightmap_unwrap_callback(p_texel_size, vertices.ptr(), normals.ptr(), vertices.size() / 3, indices.ptr(), indices.size(), p_src_cache.ptr(), &use_cache, &gen_cache, &gen_cache_size, &gen_uvs, &gen_vertices, &gen_vertex_count, &gen_indices, &gen_index_count, &size_x, &size_y);
+
+	if (!ok) {
+		return ERR_CANT_CREATE;
+	}
+
+	clear();
+
+	//create surfacetools for each surface..
+	LocalVector<Ref<SurfaceTool>> surfaces_tools;
+
+	for (int i = 0; i < lightmap_surfaces.size(); i++) {
+		Ref<SurfaceTool> st;
+		st.instantiate();
+		st->begin(Mesh::PRIMITIVE_TRIANGLES);
+		st->set_material(lightmap_surfaces[i].material);
+		surfaces_tools.push_back(st); //stay there
+	}
+
+	print_verbose("Mesh: Gen indices: " + itos(gen_index_count));
+
+	//go through all indices
+	for (int i = 0; i < gen_index_count; i += 3) {
+		ERR_FAIL_INDEX_V(gen_vertices[gen_indices[i + 0]], (int)uv_indices.size(), ERR_BUG);
+		ERR_FAIL_INDEX_V(gen_vertices[gen_indices[i + 1]], (int)uv_indices.size(), ERR_BUG);
+		ERR_FAIL_INDEX_V(gen_vertices[gen_indices[i + 2]], (int)uv_indices.size(), ERR_BUG);
+
+		ERR_FAIL_COND_V(uv_indices[gen_vertices[gen_indices[i + 0]]].first != uv_indices[gen_vertices[gen_indices[i + 1]]].first || uv_indices[gen_vertices[gen_indices[i + 0]]].first != uv_indices[gen_vertices[gen_indices[i + 2]]].first, ERR_BUG);
+
+		int surface = uv_indices[gen_vertices[gen_indices[i + 0]]].first;
+
+		for (int j = 0; j < 3; j++) {
+			SurfaceTool::Vertex v = lightmap_surfaces[surface].vertices[uv_indices[gen_vertices[gen_indices[i + j]]].second];
+
+			if (lightmap_surfaces[surface].format & Mesh::ARRAY_FORMAT_COLOR) {
+				surfaces_tools[surface]->set_color(v.color);
+			}
+			if (lightmap_surfaces[surface].format & Mesh::ARRAY_FORMAT_NORMAL) {
+				surfaces_tools[surface]->set_normal(v.normal);
+			}
+			if (lightmap_surfaces[surface].format & Mesh::ARRAY_FORMAT_TANGENT) {
+				Plane t;
+				t.normal = v.tangent;
+				t.d = v.binormal.dot(v.normal.cross(v.tangent)) < 0 ? -1 : 1;
+				surfaces_tools[surface]->set_tangent(t);
+			}
+			if (lightmap_surfaces[surface].format & Mesh::ARRAY_FORMAT_BONES) {
+				surfaces_tools[surface]->set_bones(v.bones);
+			}
+			if (lightmap_surfaces[surface].format & Mesh::ARRAY_FORMAT_WEIGHTS) {
+				surfaces_tools[surface]->set_weights(v.weights);
+			}
+			Vector2 new_uv(gen_uvs[gen_indices[i + j] * 2 + 0], gen_uvs[gen_indices[i + j] * 2 + 1]);
+			if (lightmap_surfaces[surface].format & Mesh::ARRAY_FORMAT_TEX_UV) {
+				surfaces_tools[surface]->set_uv(new_uv);
+			}
+			if (lightmap_surfaces[surface].format & Mesh::ARRAY_FORMAT_TEX_UV2) {
+				surfaces_tools[surface]->set_uv2(v.uv2);
+			}
+			surfaces_tools[surface]->add_vertex(v.vertex);
+		}
+	}
+
+	//generate surfaces
+	for (unsigned int i = 0; i < surfaces_tools.size(); i++) {
+		surfaces_tools[i]->index();
+		surfaces_tools[i]->generate_normals();
+		surfaces_tools[i]->generate_tangents();
+		surfaces_tools[i]->commit_importer_mesh(Ref<ImporterMesh>((ImporterMesh *)this), lightmap_surfaces[i].format);
+	}
+
+	set_lightmap_size_hint(Size2(size_x, size_y));
+
+	if (gen_cache_size > 0) {
+		r_dst_cache.resize(gen_cache_size);
+		memcpy(r_dst_cache.ptrw(), gen_cache, gen_cache_size);
+		memfree(gen_cache);
+	}
+
+	if (!use_cache) {
+		// Cache was not used, free the buffers
+		memfree(gen_vertices);
+		memfree(gen_indices);
+		memfree(gen_uvs);
+	}
+
+	return OK;
 }

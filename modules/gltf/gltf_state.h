@@ -65,6 +65,7 @@ protected:
 	bool create_animations = true;
 	bool force_disable_compression = false;
 	bool import_as_skeleton_bones = false;
+	bool force_generate_uvs = false;
 
 	int handle_binary_image = HANDLE_BINARY_EXTRACT_TEXTURES;
 
@@ -216,6 +217,9 @@ public:
 
 	bool get_import_as_skeleton_bones();
 	void set_import_as_skeleton_bones(bool p_import_as_skeleton_bones);
+
+	bool get_force_generate_uvs();
+	void set_force_generate_uvs(bool p_force_generate_uvs);
 
 	TypedArray<GLTFAnimation> get_animations();
 	void set_animations(TypedArray<GLTFAnimation> p_animations);

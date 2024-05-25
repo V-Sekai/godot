@@ -90,6 +90,13 @@
 				[b]FIXME:[/b] Document possible values for [param flags], it changed in 4.0. Likely some combinations of [enum Mesh.ArrayFormat].
 			</description>
 		</method>
+		<method name="commit_importer_mesh">
+			<return type="ArrayMesh" />
+			<param index="0" name="existing" type="ArrayMesh" default="null" />
+			<param index="1" name="flags" type="int" default="0" />
+			<description>
+			</description>
+		</method>
 		<method name="commit_to_arrays">
 			<return type="Array" />
 			<description>

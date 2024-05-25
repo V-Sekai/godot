@@ -130,6 +130,8 @@ public:
 	bool has_mesh() const;
 	Ref<ArrayMesh> get_mesh(const Ref<ArrayMesh> &p_base = Ref<ArrayMesh>());
 	void clear();
+	Error mesh_unwrap(const Transform3D &p_base_transform, float p_texel_size = 0.05f);
+	Error mesh_unwrap_cached(const Transform3D &p_base_transform, float p_texel_size, const Vector<uint8_t> &p_src_cache, Vector<uint8_t> &r_dst_cache, bool p_generate_cache = false);
 };
 
 #endif // IMPORTER_MESH_H
