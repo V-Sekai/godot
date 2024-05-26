@@ -5147,11 +5147,8 @@ GLTFMeshIndex GLTFDocument::_convert_mesh_to_gltf(Ref<GLTFState> p_state, MeshIn
 	TypedArray<Material> instance_materials;
 	for (int32_t surface_i = 0; surface_i < current_mesh->get_surface_count(); surface_i++) {
 		Ref<Material> mat = current_mesh->get_surface_material(surface_i);
-		if (p_mesh_instance->get_surface_override_material(surface_i).is_valid()) {
-			mat = p_mesh_instance->get_surface_override_material(surface_i);
-		}
-		if (p_mesh_instance->get_material_override().is_valid()) {
-			mat = p_mesh_instance->get_material_override();
+		if (p_mesh_instance->get_active_material(surface_i).is_valid()) {
+			mat = p_mesh_instance->get_active_material(surface_i);
 		}
 		instance_materials.append(mat);
 	}
@@ -5323,11 +5320,21 @@ void GLTFDocument::_convert_csg_shape_to_gltf(CSGShape3D *p_current, GLTFNodeInd
 	Ref<ImporterMesh> mesh;
 	mesh.instantiate();
 	{
-		Ref<Mesh> csg_mesh = csg->get_meshes()[1];
+		Ref<ArrayMesh> csg_mesh = csg->get_meshes()[1];
 
 		for (int32_t surface_i = 0; surface_i < csg_mesh->get_surface_count(); surface_i++) {
 			Array array = csg_mesh->surface_get_arrays(surface_i);
-			Ref<Material> mat = csg_mesh->surface_get_material(surface_i);
+
+			Ref<Material> mat;
+
+			Ref<Material> mat_surface_override = csg_mesh->surface_get_material(surface_i);
+			if (mat_surface_override.is_valid()) {
+				mat = mat_surface_override;
+			}
+			Ref<Material> mat_override = csg->get_material_override();
+			if (mat_override.is_valid()) {
+				mat = mat_override;
+			}
 			String mat_name;
 			if (mat.is_valid()) {
 				mat_name = mat->get_name();
@@ -5348,7 +5355,7 @@ void GLTFDocument::_convert_csg_shape_to_gltf(CSGShape3D *p_current, GLTFNodeInd
 	GLTFMeshIndex mesh_i = p_state->meshes.size();
 	p_state->meshes.push_back(gltf_mesh);
 	p_gltf_node->mesh = mesh_i;
-	p_gltf_node->transform = csg->get_meshes()[0];
+	p_gltf_node->transform = csg->get_transform();
 	p_gltf_node->set_original_name(csg->get_name());
 	p_gltf_node->set_name(_gen_unique_name(p_state, csg->get_name()));
 }
