@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://7ovmm8etgpsn"]
+
+[ext_resource type="Script" path="res://sqlite_player_server_test/client.gd" id="1_1se6r"]
+
+[node name="Scene" type="Node"]
+process_thread_group = 2
+process_thread_group_order = 0
+process_thread_messages = 0
+script = ExtResource("1_1se6r")
