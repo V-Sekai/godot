@@ -3420,9 +3420,9 @@ bool DisplayServerWindows::is_window_transparency_available() const {
 #define SIGNATURE_MASK 0xFFFFFF00
 // Keeping the name suggested by Microsoft, but this macro really answers:
 // Is this mouse event emulated from touch or pen input?
-#define IsPenEvent(dw) (((dw) & SIGNATURE_MASK) == MI_WP_SIGNATURE)
+#define IsPenEvent(dw) (((dw)&SIGNATURE_MASK) == MI_WP_SIGNATURE)
 // This one tells whether the event comes from touchscreen (and not from pen).
-#define IsTouchEvent(dw) (IsPenEvent(dw) && ((dw) & 0x80))
+#define IsTouchEvent(dw) (IsPenEvent(dw) && ((dw)&0x80))
 
 void DisplayServerWindows::_touch_event(WindowID p_window, bool p_pressed, float p_x, float p_y, int idx) {
 	if (touch_state.has(idx) == p_pressed) {
@@ -3801,13 +3801,9 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			}
 		} break;
 		case WM_ACTIVATE: {
-			// Activation can happen just after the window has been created, even before the callbacks are set.
-			// Therefore, it's safer to defer the delivery of the event.
-			if (!windows[window_id].activate_timer_id) {
-				windows[window_id].activate_timer_id = SetTimer(windows[window_id].hWnd, 1, USER_TIMER_MINIMUM, (TIMERPROC) nullptr);
-			}
-			windows[window_id].activate_state = GET_WM_ACTIVATE_STATE(wParam, lParam);
-			return 0;
+			_process_activate_event(window_id, wParam, lParam);
+
+			return 0; // Return to the message loop.
 		} break;
 		case WM_GETMINMAXINFO: {
 			if (windows[window_id].resizable && !windows[window_id].fullscreen) {
@@ -3939,12 +3935,8 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 			}
 		} break;
 		case WM_CLOSE: {
-			if (windows[window_id].activate_timer_id) {
-				KillTimer(windows[window_id].hWnd, windows[window_id].activate_timer_id);
-				windows[window_id].activate_timer_id = 0;
-			}
 			_send_window_event(windows[window_id], WINDOW_EVENT_CLOSE_REQUEST);
-			return 0;
+			return 0; // Jump back.
 		}
 		case WM_MOUSELEAVE: {
 			if (window_mouseover_id == window_id) {
@@ -4736,10 +4728,6 @@ LRESULT DisplayServerWindows::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 					Main::iteration();
 				}
 				_THREAD_SAFE_LOCK_
-			} else if (wParam == windows[window_id].activate_timer_id) {
-				_process_activate_event(window_id);
-				KillTimer(windows[window_id].hWnd, windows[window_id].activate_timer_id);
-				windows[window_id].activate_timer_id = 0;
 			}
 		} break;
 		case WM_SYSKEYUP:
@@ -4938,27 +4926,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	}
 }
 
-void DisplayServerWindows::_process_activate_event(WindowID p_window_id) {
-	WindowData &wd = windows[p_window_id];
-	if (wd.activate_state == WA_ACTIVE || wd.activate_state == WA_CLICKACTIVE) {
+void DisplayServerWindows::_process_activate_event(WindowID p_window_id, WPARAM wParam, LPARAM lParam) {
+	if (LOWORD(wParam) == WA_ACTIVE || LOWORD(wParam) == WA_CLICKACTIVE) {
 		last_focused_window = p_window_id;
 		_set_mouse_mode_impl(mouse_mode);
-		if (!IsIconic(wd.hWnd)) {
-			SetFocus(wd.hWnd);
+		if (!IsIconic(windows[p_window_id].hWnd)) {
+			SetFocus(windows[p_window_id].hWnd);
 		}
-		wd.window_focused = true;
-		_send_window_event(wd, WINDOW_EVENT_FOCUS_IN);
+		windows[p_window_id].window_focused = true;
+		_send_window_event(windows[p_window_id], WINDOW_EVENT_FOCUS_IN);
 	} else { // WM_INACTIVE.
 		Input::get_singleton()->release_pressed_events();
-		track_mouse_leave_event(wd.hWnd);
+		track_mouse_leave_event(windows[p_window_id].hWnd);
 		// Release capture unconditionally because it can be set due to dragging, in addition to captured mode.
 		ReleaseCapture();
-		wd.window_focused = false;
-		_send_window_event(wd, WINDOW_EVENT_FOCUS_OUT);
+		windows[p_window_id].window_focused = false;
+		_send_window_event(windows[p_window_id], WINDOW_EVENT_FOCUS_OUT);
 	}
 
-	if ((tablet_get_current_driver() == "wintab") && wintab_available && wd.wtctx) {
-		wintab_WTEnable(wd.wtctx, wd.activate_state);
+	if ((tablet_get_current_driver() == "wintab") && wintab_available && windows[p_window_id].wtctx) {
+		wintab_WTEnable(windows[p_window_id].wtctx, GET_WM_ACTIVATE_STATE(wParam, lParam));
 	}
 }
 

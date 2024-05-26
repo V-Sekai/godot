@@ -505,7 +505,7 @@ class DisplayServerWindows : public DisplayServer {
 	WindowID _get_focused_window_or_popup() const;
 	void _register_raw_input_devices(WindowID p_target_window);
 
-	void _process_activate_event(WindowID p_window_id);
+	void DisplayServerWindows::_process_activate_event(WindowID p_window_id, WPARAM wParam, LPARAM lParam);
 	void _process_key_events();
 
 	static void _dispatch_input_events(const Ref<InputEvent> &p_event);
