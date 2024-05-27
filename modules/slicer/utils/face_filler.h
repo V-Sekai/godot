@@ -31,13 +31,7 @@
 #ifndef FACE_FILLER_H
 #define FACE_FILLER_H
 
-#include "core/error/error_macros.h"
 #include "slicer_face.h"
-
-// This just mimics logic found in TriangleMesh#Create
-_FORCE_INLINE_ Vector3 snap_vertex(Vector3 v) {
-	return v.snapped(Vector3(0.0001, 0.0001, 0.0001));
-}
 
 /**
  * Responsible for serializing data from vertex arrays, as they are
@@ -122,8 +116,7 @@ struct FaceFiller {
 			faces.write[face_idx].has_uvs = has_uvs;
 			faces.write[face_idx].has_uv2s = has_uv2s;
 		}
-		ERR_FAIL_COND_MSG(lookup_idx < 0 || lookup_idx >= vertices.size(), "Cannot fill empty vertex array.");
-		faces.write[face_idx].vertex[set_offset] = snap_vertex(vertices[lookup_idx]);
+		faces.write[face_idx].vertex[set_offset] = vertices[lookup_idx].snapped(Vector3(0.0001, 0.0001, 0.0001));
 
 		if (has_normals) {
 			faces.write[face_idx].normal[set_offset] = normals[lookup_idx];
@@ -131,7 +124,7 @@ struct FaceFiller {
 
 		if (has_tangents) {
 			faces.write[face_idx].tangent[set_offset] = Vector4(
-					tangents[lookup_idx * 4],
+					tangents[lookup_idx * 4 + 0],
 					tangents[lookup_idx * 4 + 1],
 					tangents[lookup_idx * 4 + 2],
 					tangents[lookup_idx * 4 + 3]);

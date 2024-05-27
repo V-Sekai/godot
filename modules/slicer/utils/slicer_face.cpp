@@ -47,7 +47,6 @@ void ortho_normalize(Vector3 &normal, Vector3 &tangent) {
 
 Vector<SlicerFace> parse_mesh_arrays(const Ref<Mesh> mesh, int surface_idx, bool is_index_array) {
 	ERR_FAIL_COND_V(mesh.is_null(), Vector<SlicerFace>());
-	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), Vector<SlicerFace>());
 	Vector<SlicerFace> faces;
 	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), faces);
 	int vert_count = is_index_array ? mesh->surface_get_array_index_len(surface_idx) : mesh->surface_get_array_len(surface_idx);
