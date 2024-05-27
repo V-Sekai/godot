@@ -68,31 +68,32 @@ struct FaceFiller {
 	Vector<Vector2> uvs;
 
 	Vector<Vector2> uv2s;
-	Vector<SlicerFace> faces;
+	Vector<SlicerFace> &faces;
 
 	// Yuck. What an eye sore this constructor is
-	FaceFiller(Vector<SlicerFace> &p_faces, const Array &surface_arrays) : faces(p_faces) {
-		vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+	FaceFiller(Vector<SlicerFace> &r_faces, const Array &p_surface_arrays) :
+			faces(r_faces) {
+		vertices = p_surface_arrays[Mesh::ARRAY_VERTEX];
 
-		normals = surface_arrays[Mesh::ARRAY_NORMAL];
+		normals = p_surface_arrays[Mesh::ARRAY_NORMAL];
 		has_normals = normals.size() > 0 && normals.size() == vertices.size();
 
-		tangents = surface_arrays[Mesh::ARRAY_TANGENT];
+		tangents = p_surface_arrays[Mesh::ARRAY_TANGENT];
 		has_tangents = tangents.size() > 0 && tangents.size() == vertices.size() * 4;
 
-		colors = surface_arrays[Mesh::ARRAY_COLOR];
+		colors = p_surface_arrays[Mesh::ARRAY_COLOR];
 		has_colors = colors.size() > 0 && colors.size() == vertices.size();
 
-		bones = surface_arrays[Mesh::ARRAY_BONES];
+		bones = p_surface_arrays[Mesh::ARRAY_BONES];
 		has_bones = bones.size() > 0 && bones.size() == vertices.size() * 4;
 
-		weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
+		weights = p_surface_arrays[Mesh::ARRAY_WEIGHTS];
 		has_weights = weights.size() > 0 && weights.size() == vertices.size() * 4;
 
-		uvs = surface_arrays[Mesh::ARRAY_TEX_UV];
+		uvs = p_surface_arrays[Mesh::ARRAY_TEX_UV];
 		has_uvs = uvs.size() > 0 && uvs.size() == vertices.size();
 
-		uv2s = surface_arrays[Mesh::ARRAY_TEX_UV2];
+		uv2s = p_surface_arrays[Mesh::ARRAY_TEX_UV2];
 		has_uv2s = uv2s.size() > 0 && uv2s.size() == vertices.size();
 	}
 
