@@ -31,9 +31,9 @@
 #ifndef SLICER_H
 #define SLICER_H
 
-#include "sliced_mesh.h"
-
 #include "scene/3d/node_3d.h"
+#include "scene/resources/mesh.h"
+#include "sliced_mesh.h"
 
 /**
  * Helper for cutting a convex mesh along a plane and returning
@@ -60,6 +60,8 @@ public:
 	 * Generates a plane based on the given position and normal and offsets it by the given Transform3D before applying the slice
 	 */
 	Ref<SlicedMesh> slice(const Ref<Mesh> mesh, const Transform3D mesh_transform, const Vector3 position, const Vector3 normal, const Ref<Material> cross_section_material);
+	~Slicer() {}
+	Slicer() {}
 };
 
 #endif // SLICER_H

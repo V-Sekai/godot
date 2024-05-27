@@ -28,9 +28,11 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "slicer.h"
-
 #include "register_types.h"
+
+#include "core/object/class_db.h"
+#include "sliced_mesh.h"
+#include "slicer.h"
 
 void initialize_slicer_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(Slicer);

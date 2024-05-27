@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  intersector.test.cpp                                                  */
+/*  test_intersector.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -192,4 +192,4 @@ TEST_SUITE("[split_face_by_plane]") {
 }
 } //namespace TestIntersector
 
-#endif
+#endif // TEST_INTERSECTOR_H
