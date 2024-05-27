@@ -241,7 +241,9 @@ void EditorLog::_process_message(const String &p_msg, MessageType p_type, bool p
 		_add_log_line(message);
 		messages.push_back(message);
 	}
-
+	if (!type_filter_map.has(p_type)) {
+		return;
+	}
 	type_filter_map[p_type]->set_message_count(type_filter_map[p_type]->get_message_count() + 1);
 }
 
