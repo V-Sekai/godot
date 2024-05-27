@@ -36,8 +36,6 @@
 #include "core/math/vector2.h"
 #include "scene/resources/mesh.h"
 
-#include "slicer_vector4.h"
-
 /**
  * Godot's Face3 only keeps track of a mesh's vertices but we want to keep track
  * of things like UV and normal mappings
