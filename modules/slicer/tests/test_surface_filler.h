@@ -39,7 +39,7 @@
 namespace TestSurfaceFiller {
 
 TEST_SUITE("[surface_filler]") {
-	TEST_CASE("adds a new surface to an array") {
+	TEST_CASE("[Modules][Slicer][SceneTree] adds a new surface to an array") {
 		SlicerFace face_1(Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 1));
 		SlicerFace face_2(Vector3(1, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 0));
 
