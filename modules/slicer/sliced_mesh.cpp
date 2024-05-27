@@ -58,7 +58,6 @@ void create_surface(const Vector<SlicerFace> &faces, const Ref<Material> materia
  */
 void create_cross_section_surface(const Vector<SlicerFace> &faces, const Ref<Material> material, Ref<ArrayMesh> mesh, bool is_upper) {
 	ERR_FAIL_COND(mesh.is_null());
-	ERR_FAIL_COND(material.is_null());
 	if (faces.size() == 0) {
 		return;
 	}
