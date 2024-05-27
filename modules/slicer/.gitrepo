@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/fire/godot-slicer.git
 	branch = main
-	commit = 208cdc92c0a6b1468e1262b949acd222cbc83874
-	parent = 06e0e409b7cc7305c8a60d63fc3dac1ac8fd4474
+	commit = eb0fed87d803f9764bf3531e5ccf08dab11879bd
+	parent = af225ddd8f78a45d32ab23406e99eb19a66bfa0d
 	method = merge
 	cmdver = 0.4.6
