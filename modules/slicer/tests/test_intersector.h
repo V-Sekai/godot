@@ -59,8 +59,7 @@ TEST_SUITE("[split_face_by_plane]") {
 	Plane plane(Vector3(0, 1, 0), 0);
 
 	TEST_CASE("Smoke test") {
-		Ref<SphereMesh> sphere_mesh;
-		sphere_mesh.instantiate();
+		Ref<SphereMesh> sphere_mesh = memnew(SphereMesh);
 		Vector<SlicerFace> faces = SlicerFace::faces_from_surface(sphere_mesh, 0);
 		REQUIRE(faces.size() == 4224);
 		Intersector::SplitResult result;

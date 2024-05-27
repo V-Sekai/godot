@@ -28,16 +28,21 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#if 0
+#ifndef TEST_SLICED_MESH_H
+#define TEST_SLICED_MESH_H
+
+#include "tests/test_macros.h"
 
 #include "../sliced_mesh.h"
-#include "catch.hpp"
+#include "scene/resources/material.h"
 
-TEST_CASE("[SlicedMesh]") {
-	SECTION("Creates new meshes") {
+namespace TestSlicedMesh {
+
+TEST_SUITE("[SlicedMesh]") {
+	TEST_CASE("Creates new meshes") {
 		Intersector::SplitResult result;
-		PoolVector<Intersector::SplitResult> results;
-		result.material = Ref<SpatialMaterial>();
+		Vector<Intersector::SplitResult> results;
+		result.material = Ref<StandardMaterial3D>();
 		result.lower_faces.push_back(SlicerFace(Vector3(0, 0, 0), Vector3(0, 1, 0), Vector3(0, 1, 1)));
 		result.lower_faces.push_back(SlicerFace(Vector3(0, 1, 1), Vector3(0, 0, 1), Vector3(0, 0, 0)));
 
@@ -46,8 +51,9 @@ TEST_CASE("[SlicedMesh]") {
 
 		results.push_back(result);
 
-		PoolVector<SlicerFace> cross_section_faces;
-		Ref<SpatialMaterial> cross_section_material;
+		Vector<SlicerFace> cross_section_faces;
+		Ref<StandardMaterial3D> cross_section_material;
+		cross_section_material.instantiate();
 		cross_section_faces.push_back(SlicerFace(Vector3(0, 1, 0), Vector3(1, 1, 0), Vector3(0, 1, 1)));
 
 		SlicedMesh sliced(results, cross_section_faces, cross_section_material);
@@ -64,5 +70,6 @@ TEST_CASE("[SlicedMesh]") {
 		REQUIRE(sliced.upper_mesh->surface_get_material(1) == cross_section_material);
 	}
 }
+} //namespace TestSlicedMesh
 
-#endif
+#endif // TEST_SLICED_MESH_H
