@@ -38,7 +38,7 @@
 
 namespace TestIntersector {
 
-TEST_SUITE("[get_side_of]") {
+TEST_SUITE("[Modules][Slicer][get_side_of]") {
 	// A plane with a normal pointing directly up, 5 units off of the origin
 	Plane plane(Vector3(0, 1, 0), 5);
 	TEST_CASE("Finds points under plane") {
@@ -58,7 +58,7 @@ TEST_SUITE("[get_side_of]") {
 TEST_SUITE("[split_face_by_plane]") {
 	Plane plane(Vector3(0, 1, 0), 0);
 
-	TEST_CASE("Smoke test") {
+	TEST_CASE("[Modules][Slicer][SceneTree] Smoke test") {
 		Ref<SphereMesh> sphere_mesh = memnew(SphereMesh);
 		Vector<SlicerFace> faces = SlicerFace::faces_from_surface(sphere_mesh, 0);
 		REQUIRE(faces.size() == 4224);
@@ -71,7 +71,7 @@ TEST_SUITE("[split_face_by_plane]") {
 		REQUIRE(result.intersection_points.size() == 256);
 	}
 
-	TEST_CASE("points_all_on_same_side") {
+	TEST_CASE("[Modules][Slicer] points_all_on_same_side") {
 		Intersector::SplitResult result;
 		Intersector::split_face_by_plane(plane, SlicerFace(Vector3(0, 1, 0), Vector3(1, 2, 0), Vector3(2, 1, 0)), result);
 		REQUIRE(result.upper_faces.size() == 1);
@@ -85,7 +85,7 @@ TEST_SUITE("[split_face_by_plane]") {
 		REQUIRE(result.intersection_points.size() == 0);
 	}
 
-	TEST_CASE("one_side_is_parallel") {
+	TEST_CASE("[Modules][Slicer] one_side_is_parallel") {
 		Intersector::SplitResult result;
 		Intersector::split_face_by_plane(plane, SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 0), Vector3(2, 0, 0)), result);
 		REQUIRE(result.upper_faces.size() == 1);
@@ -99,7 +99,7 @@ TEST_SUITE("[split_face_by_plane]") {
 		REQUIRE(result.intersection_points.size() == 0);
 	}
 
-	TEST_CASE("pointed_away") {
+	TEST_CASE("[Modules][Slicer] pointed_away") {
 		Intersector::SplitResult result;
 		Intersector::split_face_by_plane(plane, SlicerFace(Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(2, 1, 0)), result);
 		REQUIRE(result.upper_faces.size() == 1);
@@ -113,7 +113,7 @@ TEST_SUITE("[split_face_by_plane]") {
 		REQUIRE(result.intersection_points.size() == 0);
 	}
 
-	TEST_SUITE("face_split_in_half") {
+	TEST_SUITE("[Modules][Slicer][face_split_in_half]") {
 		TEST_CASE("point a is on plane") {
 			Intersector::SplitResult result;
 			Intersector::split_face_by_plane(plane, SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 0), Vector3(1, -1, 0)), result);
@@ -126,7 +126,7 @@ TEST_SUITE("[split_face_by_plane]") {
 			REQUIRE(result.lower_faces[0] == SlicerFace(Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, -1, 0)));
 		}
 
-		TEST_CASE("point b is on plane") {
+		TEST_CASE("[Modules][Slicer] point b is on plane") {
 			Intersector::SplitResult result;
 			Intersector::split_face_by_plane(plane, SlicerFace(Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 1, 0)), result);
 			REQUIRE(result.upper_faces.size() == 1);
@@ -138,7 +138,7 @@ TEST_SUITE("[split_face_by_plane]") {
 			REQUIRE(result.lower_faces[0] == SlicerFace(Vector3(1, 0, 0), Vector3(0, 0, 0), Vector3(0, -1, 0)));
 		}
 
-		TEST_CASE("point c is on plane") {
+		TEST_CASE("[Modules][Slicer] point c is on plane") {
 			Intersector::SplitResult result;
 			Intersector::split_face_by_plane(plane, SlicerFace(Vector3(0, 1, 0), Vector3(0, -1, 0), Vector3(1, 0, 0)), result);
 			REQUIRE(result.upper_faces.size() == 1);
@@ -151,8 +151,8 @@ TEST_SUITE("[split_face_by_plane]") {
 		}
 	}
 
-	TEST_SUITE("full_split") {
-		TEST_CASE("point a is lone") {
+	TEST_SUITE("[full_split]") {
+		TEST_CASE("[Modules][Slicer] point a is lone") {
 			Intersector::SplitResult result;
 			Intersector::split_face_by_plane(plane, SlicerFace(Vector3(1, 1, 0), Vector3(2, -1, 0), Vector3(0, -1, 0)), result);
 			REQUIRE(result.upper_faces.size() == 1);
@@ -164,7 +164,7 @@ TEST_SUITE("[split_face_by_plane]") {
 			REQUIRE(result.lower_faces[0] == SlicerFace(Vector3(2, -1, 0), Vector3(0.5, 0, 0), Vector3(1.5, 0, 0)));
 			REQUIRE(result.lower_faces[1] == SlicerFace(Vector3(0, -1, 0), Vector3(0.5, 0, 0), Vector3(2, -1, 0)));
 		}
-		TEST_CASE("point b is lone") {
+		TEST_CASE("[Modules][Slicer] point b is lone") {
 			Intersector::SplitResult result;
 			Intersector::split_face_by_plane(plane, SlicerFace(Vector3(0, -1, 0), Vector3(1, 1, 0), Vector3(2, -1, 0)), result);
 			REQUIRE(result.upper_faces.size() == 1);
@@ -176,7 +176,7 @@ TEST_SUITE("[split_face_by_plane]") {
 			REQUIRE(result.lower_faces[0] == SlicerFace(Vector3(2, -1, 0), Vector3(0.5, 0, 0), Vector3(1.5, 0, 0)));
 			REQUIRE(result.lower_faces[1] == SlicerFace(Vector3(0, -1, 0), Vector3(0.5, 0, 0), Vector3(2, -1, 0)));
 		}
-		TEST_CASE("point c is lone") {
+		TEST_CASE("[Modules][Slicer] point c is lone") {
 			Intersector::SplitResult result;
 			Intersector::split_face_by_plane(plane, SlicerFace(Vector3(2, -1, 0), Vector3(0, -1, 0), Vector3(1, 1, 0)), result);
 			REQUIRE(result.upper_faces.size() == 1);

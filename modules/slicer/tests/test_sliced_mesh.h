@@ -39,7 +39,7 @@
 namespace TestSlicedMesh {
 
 TEST_SUITE("[SlicedMesh]") {
-	TEST_CASE("Creates new meshes") {
+	TEST_CASE("[Modules][Slicer][SceneTree] Creates new meshes") {
 		Intersector::SplitResult result;
 		Vector<Intersector::SplitResult> results;
 		result.material = Ref<StandardMaterial3D>();
