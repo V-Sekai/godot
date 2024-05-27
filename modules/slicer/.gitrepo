@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/fire/godot-slicer.git
+	branch = master
+	commit = a2d5b8c39ac534b54b6c6be1d3cda4b3991571c4
+	parent = e95fbeddcca08fb7b8033515ad62133252015913
+	method = merge
+	cmdver = 0.4.6
