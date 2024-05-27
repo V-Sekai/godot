@@ -188,17 +188,17 @@ void SlicerFace::compute_tangents() {
 	Vector3 n1 = normal[0];
 	Vector3 nt1 = sdir;
 	ortho_normalize(n1, nt1);
-	SlicerVector4 tan_a = SlicerVector4(nt1.x, nt1.y, nt1.z, (n1.cross(nt1).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
+	Vector4 tan_a = Vector4(nt1.x, nt1.y, nt1.z, (n1.cross(nt1).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
 
 	Vector3 n2 = normal[1];
 	Vector3 nt2 = sdir;
 	ortho_normalize(n2, nt2);
-	SlicerVector4 tan_b = SlicerVector4(nt2.x, nt2.y, nt2.z, (n2.cross(nt2).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
+	Vector4 tan_b = Vector4(nt2.x, nt2.y, nt2.z, (n2.cross(nt2).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
 
 	Vector3 n3 = normal[2];
 	Vector3 nt3 = sdir;
 	ortho_normalize(n3, nt3);
-	SlicerVector4 tan_c = SlicerVector4(nt3.x, nt3.y, nt3.z, (n3.cross(nt3).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
+	Vector4 tan_c = Vector4(nt3.x, nt3.y, nt3.z, (n3.cross(nt3).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
 
 	set_tangents(tan_a, tan_b, tan_c);
 }

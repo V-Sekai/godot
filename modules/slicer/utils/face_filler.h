@@ -130,7 +130,7 @@ struct FaceFiller {
 		}
 
 		if (has_tangents) {
-			faces.write[face_idx].tangent[set_offset] = SlicerVector4(
+			faces.write[face_idx].tangent[set_offset] = Vector4(
 					tangents[lookup_idx * 4],
 					tangents[lookup_idx * 4 + 1],
 					tangents[lookup_idx * 4 + 2],
@@ -142,7 +142,7 @@ struct FaceFiller {
 		}
 
 		if (has_bones) {
-			faces.write[face_idx].bones[set_offset] = SlicerVector4(
+			faces.write[face_idx].bones[set_offset] = Vector4(
 					bones[lookup_idx * 4],
 					bones[lookup_idx * 4 + 1],
 					bones[lookup_idx * 4 + 2],
@@ -150,7 +150,7 @@ struct FaceFiller {
 		}
 
 		if (has_weights) {
-			faces.write[face_idx].weights[set_offset] = SlicerVector4(
+			faces.write[face_idx].weights[set_offset] = Vector4(
 					weights[lookup_idx],
 					weights[lookup_idx * 4 + 1],
 					weights[lookup_idx * 4 + 2],
