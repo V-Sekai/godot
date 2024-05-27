@@ -5,9 +5,11 @@ A port of [Ezy-Slicer](https://github.com/DavidArayan/ezy-slice) for the [Godot 
 ![Example Image](/imgs/example.png)
 
 ## About
+
 Built as a Godot module in C++, Slicer is a port of [David Arayan's Ezy-Slicer](https://github.com/DavidArayan/ezy-slice) Unity plugin (who deserves all credit). It allows for the dynamic slicing of convex meshes along a plane. Built against Godot version 3.2.1.
 
 ## Installing
+
 Slicer follows the installation procedure defined in the [Godot custom module documentation guide](https://docs.godotengine.org/en/stable/development/cpp/custom_modules_in_cpp.html). It can be built into a compilation of the engine by cloning the repo into Godot's modules folder:
 
 ```bash
@@ -15,6 +17,7 @@ git clone git@github.com:cj-dimaggio/godot-slicer.git <godot-repo>/modules/slice
 ```
 
 ## Using
+
 After building Godot with the Slicer module a `Slicer` node will now be available under `Spatial`. A `Slicer` instance can then be used to trigger slices of `Mesh` geometry like so:
 
 ```gdscript
@@ -49,22 +52,12 @@ func cut(plane_origin: Vector3, plane_normal: Vector3):
         print("Instantiate the lower cut mesh somewhere")
 ```
 
-An example project can also be found at: https://github.com/cj-dimaggio/godot-slicer-example-project
-
+An example project can also be found at: https://github.com/V-Sekai-fire/godot-slicer-example-project
 
 ## Development
-For development purposes, Slicer can be built as a dynamic library by passing in the `slicer_shared=no` option to SCons and using the `slicer-shared` build alias, such as:
+
+There is a test suite that can be built and run on Unix systems using:
 
 ```bash
-scons slicer_shared=yes slicer-shared
+scons platform=osx tests=yes
 ```
-
-which will build a new dynamic library artifact into Godot's `./bin` folder.
-
-There is also a test suite that can be built and run on Unix systems using:
-
-```bash
-scons platform=osx slicer_tests=yes
-```
-
-For more information on the testing framework and development see the [corresponding readme](./tests/README.md).
