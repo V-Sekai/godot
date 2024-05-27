@@ -33,10 +33,10 @@
 
 #include "tests/test_macros.h"
 
-namespace TestIntersector {
-
 #include "../utils/intersector.h"
 #include "scene/resources/3d/primitive_meshes.h"
+
+namespace TestIntersector {
 
 TEST_SUITE("[get_side_of]") {
 	// A plane with a normal pointing directly up, 5 units off of the origin
