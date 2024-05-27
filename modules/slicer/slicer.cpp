@@ -30,15 +30,14 @@
 
 #include "slicer.h"
 
+#include "core/error/error_macros.h"
 #include "utils/intersector.h"
 #include "utils/slicer_face.h"
 #include "utils/triangulator.h"
 
 Ref<SlicedMesh> Slicer::slice_by_plane(const Ref<Mesh> mesh, const Plane plane, const Ref<Material> cross_section_material) {
 	// TODO - This function is a little heavy. Maybe we should break it up
-	if (mesh.is_null()) {
-		return Ref<SlicedMesh>();
-	}
+	ERR_FAIL_COND_V(mesh.is_null(), Ref<SlicedMesh>());
 
 	Vector<Intersector::SplitResult> split_results;
 	split_results.resize(mesh->get_surface_count());
@@ -50,7 +49,7 @@ Ref<SlicedMesh> Slicer::slice_by_plane(const Ref<Mesh> mesh, const Plane plane, 
 		Intersector::SplitResult results = split_results[i];
 
 		results.material = mesh->surface_get_material(i);
-		Vector<SlicerFace> faces = SlicerFace::faces_from_surface(**mesh, i);
+		Vector<SlicerFace> faces = SlicerFace::faces_from_surface(mesh, i);
 
 		for (int j = 0; j < faces.size(); j++) {
 			Intersector::split_face_by_plane(plane, faces[j], results);

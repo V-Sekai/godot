@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "slicer_face.h"
+#include "core/error/error_macros.h"
 #include "face_filler.h"
 #include "triangulator.h"
 
@@ -44,16 +45,19 @@ void ortho_normalize(Vector3 &normal, Vector3 &tangent) {
 	tangent.normalize();
 }
 
-Vector<SlicerFace> parse_mesh_arrays(const Mesh &mesh, int surface_idx, bool is_index_array) {
+Vector<SlicerFace> parse_mesh_arrays(const Ref<Mesh> mesh, int surface_idx, bool is_index_array) {
+	ERR_FAIL_COND_V(mesh.is_null(), Vector<SlicerFace> ());
+	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), Vector<SlicerFace> ());
 	Vector<SlicerFace> faces;
-	int vert_count = is_index_array ? mesh.surface_get_array_index_len(surface_idx) : mesh.surface_get_array_len(surface_idx);
+	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), faces);
+	int vert_count = is_index_array ? mesh->surface_get_array_index_len(surface_idx) : mesh->surface_get_array_len(surface_idx);
 	if (vert_count == 0 || vert_count % 3 != 0) {
 		return faces;
 	}
 
 	faces.resize(vert_count / 3);
 
-	Array arrays = mesh.surface_get_arrays(surface_idx);
+	Array arrays = mesh->surface_get_arrays(surface_idx);
 	FaceFiller filler(faces, arrays);
 
 	if (is_index_array) {
@@ -71,14 +75,16 @@ Vector<SlicerFace> parse_mesh_arrays(const Mesh &mesh, int surface_idx, bool is_
 	return faces;
 }
 
-Vector<SlicerFace> SlicerFace::faces_from_surface(const Mesh &mesh, int surface_idx) {
+Vector<SlicerFace> SlicerFace::faces_from_surface(Ref<Mesh> mesh, int surface_idx) {
+	ERR_FAIL_COND_V(mesh.is_null(), Vector<SlicerFace>());
+	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), Vector<SlicerFace>());
 	// Slicer functionality really only makes sense in the context of a mesh composed of
 	// triangles
-	if (mesh.surface_get_primitive_type(surface_idx) != Mesh::PRIMITIVE_TRIANGLES) {
+	if (mesh->surface_get_primitive_type(surface_idx) != Mesh::PRIMITIVE_TRIANGLES) {
 		return Vector<SlicerFace>();
 	}
 
-	if (mesh.surface_get_format(surface_idx) & Mesh::ARRAY_FORMAT_INDEX) {
+	if (mesh->surface_get_format(surface_idx) & Mesh::ARRAY_FORMAT_INDEX) {
 		return parse_mesh_arrays(mesh, surface_idx, true);
 	} else {
 		return parse_mesh_arrays(mesh, surface_idx, false);
@@ -182,17 +188,17 @@ void SlicerFace::compute_tangents() {
 	Vector3 n1 = normal[0];
 	Vector3 nt1 = sdir;
 	ortho_normalize(n1, nt1);
-	SlicerVector4 tan_a = SlicerVector4(nt1.x, nt1.y, nt1.z, (n1.cross(nt1).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
+	Vector4 tan_a = Vector4(nt1.x, nt1.y, nt1.z, (n1.cross(nt1).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
 
 	Vector3 n2 = normal[1];
 	Vector3 nt2 = sdir;
 	ortho_normalize(n2, nt2);
-	SlicerVector4 tan_b = SlicerVector4(nt2.x, nt2.y, nt2.z, (n2.cross(nt2).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
+	Vector4 tan_b = Vector4(nt2.x, nt2.y, nt2.z, (n2.cross(nt2).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
 
 	Vector3 n3 = normal[2];
 	Vector3 nt3 = sdir;
 	ortho_normalize(n3, nt3);
-	SlicerVector4 tan_c = SlicerVector4(nt3.x, nt3.y, nt3.z, (n3.cross(nt3).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
+	Vector4 tan_c = Vector4(nt3.x, nt3.y, nt3.z, (n3.cross(nt3).dot(tdir) < 0.0f) ? -1.0f : 1.0f);
 
 	set_tangents(tan_a, tan_b, tan_c);
 }

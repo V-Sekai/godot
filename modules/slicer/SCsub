@@ -18,5 +18,4 @@ sources = [
 
 module_env = env.Clone()
 
-module_env.Append(CCFLAGS=['-O2'])
 module_env.add_source_files(env.modules_sources, sources)

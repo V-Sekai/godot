@@ -35,9 +35,15 @@
 #include "slicer.h"
 
 void initialize_slicer_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
 	GDREGISTER_CLASS(Slicer);
 	GDREGISTER_CLASS(SlicedMesh);
 }
 
 void uninitialize_slicer_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
 }

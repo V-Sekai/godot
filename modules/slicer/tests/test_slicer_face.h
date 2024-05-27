@@ -183,9 +183,9 @@ TEST_CASE("[SlicerFace]") {
 		face.compute_tangents();
 
 		REQUIRE(face.has_tangents);
-		REQUIRE(face.tangent[0] == SlicerVector4(1, 0, 0, 1));
-		REQUIRE(face.tangent[1] == SlicerVector4(1, 0, 0, 1));
-		REQUIRE(face.tangent[2] == SlicerVector4(0.816496551, -0.408248246, -0.408248246, 1));
+		REQUIRE(face.tangent[0] == Vector4(1, 0, 0, 1));
+		REQUIRE(face.tangent[1] == Vector4(1, 0, 0, 1));
+		REQUIRE(face.tangent[2] == Vector4(0.816496551, -0.408248246, -0.408248246, 1));
 	}
 
 	SECTION("sub_face") {
@@ -229,11 +229,11 @@ TEST_CASE("[SlicerFace]") {
 
 	SECTION("set_tangents") {
 		SlicerFace face;
-		face.set_tangents(SlicerVector4(0, 0, 0, 0), SlicerVector4(0.5, 0.5, 0.5, 0.5), SlicerVector4(1, 1, 1, 1));
+		face.set_tangents(Vector4(0, 0, 0, 0), Vector4(0.5, 0.5, 0.5, 0.5), Vector4(1, 1, 1, 1));
 		REQUIRE(face.has_tangents);
-		REQUIRE(face.tangent[0] == SlicerVector4(0, 0, 0, 0));
-		REQUIRE(face.tangent[1] == SlicerVector4(0.5, 0.5, 0.5, 0.5));
-		REQUIRE(face.tangent[2] == SlicerVector4(1, 1, 1, 1));
+		REQUIRE(face.tangent[0] == Vector4(0, 0, 0, 0));
+		REQUIRE(face.tangent[1] == Vector4(0.5, 0.5, 0.5, 0.5));
+		REQUIRE(face.tangent[2] == Vector4(1, 1, 1, 1));
 	}
 
 	SECTION("set_colors") {
@@ -247,20 +247,20 @@ TEST_CASE("[SlicerFace]") {
 
 	SECTION("set_bones") {
 		SlicerFace face;
-		face.set_bones(SlicerVector4(0, 0, 0, 0), SlicerVector4(0.5, 0.5, 0.5, 0.5), SlicerVector4(1, 1, 1, 1));
+		face.set_bones(Vector4(0, 0, 0, 0), Vector4(0.5, 0.5, 0.5, 0.5), Vector4(1, 1, 1, 1));
 		REQUIRE(face.has_bones);
-		REQUIRE(face.bones[0] == SlicerVector4(0, 0, 0, 0));
-		REQUIRE(face.bones[1] == SlicerVector4(0.5, 0.5, 0.5, 0.5));
-		REQUIRE(face.bones[2] == SlicerVector4(1, 1, 1, 1));
+		REQUIRE(face.bones[0] == Vector4(0, 0, 0, 0));
+		REQUIRE(face.bones[1] == Vector4(0.5, 0.5, 0.5, 0.5));
+		REQUIRE(face.bones[2] == Vector4(1, 1, 1, 1));
 	}
 
 	SECTION("set_weights") {
 		SlicerFace face;
-		face.set_weights(SlicerVector4(0, 0, 0, 0), SlicerVector4(0.5, 0.5, 0.5, 0.5), SlicerVector4(1, 1, 1, 1));
+		face.set_weights(Vector4(0, 0, 0, 0), Vector4(0.5, 0.5, 0.5, 0.5), Vector4(1, 1, 1, 1));
 		REQUIRE(face.has_weights);
-		REQUIRE(face.weights[0] == SlicerVector4(0, 0, 0, 0));
-		REQUIRE(face.weights[1] == SlicerVector4(0.5, 0.5, 0.5, 0.5));
-		REQUIRE(face.weights[2] == SlicerVector4(1, 1, 1, 1));
+		REQUIRE(face.weights[0] == Vector4(0, 0, 0, 0));
+		REQUIRE(face.weights[1] == Vector4(0.5, 0.5, 0.5, 0.5));
+		REQUIRE(face.weights[2] == Vector4(1, 1, 1, 1));
 	}
 
 	SECTION("set_uv2s") {

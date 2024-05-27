@@ -55,13 +55,13 @@ TEST_CASE("[triangulator]") {
 		REQUIRE((faces[0].uv[0] == Vector2(0, 0) && faces[0].uv[1] == Vector2(1, 0) && faces[0].uv[2] == Vector2(1, 1)));
 		REQUIRE((faces[1].uv[0] == Vector2(0, 0) && faces[1].uv[1] == Vector2(1, 1) && faces[1].uv[2] == Vector2(0, 1)));
 
-		REQUIRE(faces[0].tangent[0] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[0].tangent[1] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[0].tangent[2] == SlicerVector4(-1, 0, 0, -1));
+		REQUIRE(faces[0].tangent[0] == Vector4(-1, 0, 0, -1));
+		REQUIRE(faces[0].tangent[1] == Vector4(-1, 0, 0, -1));
+		REQUIRE(faces[0].tangent[2] == Vector4(-1, 0, 0, -1));
 
-		REQUIRE(faces[1].tangent[0] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[1].tangent[1] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[1].tangent[2] == SlicerVector4(-1, 0, 0, -1));
+		REQUIRE(faces[1].tangent[0] == Vector4(-1, 0, 0, -1));
+		REQUIRE(faces[1].tangent[1] == Vector4(-1, 0, 0, -1));
+		REQUIRE(faces[1].tangent[2] == Vector4(-1, 0, 0, -1));
 	}
 }
 

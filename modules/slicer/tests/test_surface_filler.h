@@ -40,8 +40,8 @@ TEST_CASE("[surface_filler]") {
 		face_1.set_uvs(Vector2(0, 0), Vector2(1, 0), Vector2(1, 1));
 		face_2.set_uvs(Vector2(1, 1), Vector2(0, 1), Vector2(0, 0));
 
-		face_1.set_tangents(SlicerVector4(1, 0, 0, 1), SlicerVector4(1, 0, 0, 1), SlicerVector4(1, 0, 0, 1));
-		face_2.set_tangents(SlicerVector4(1, 0, 0, 1), SlicerVector4(1, 0, 0, 1), SlicerVector4(1, 0, 0, 1));
+		face_1.set_tangents(Vector4(1, 0, 0, 1), Vector4(1, 0, 0, 1), Vector4(1, 0, 0, 1));
+		face_2.set_tangents(Vector4(1, 0, 0, 1), Vector4(1, 0, 0, 1), Vector4(1, 0, 0, 1));
 
 		PoolVector<SlicerFace> faces;
 		faces.push_back(face_1);
