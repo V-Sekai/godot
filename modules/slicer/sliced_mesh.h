@@ -51,31 +51,25 @@ public:
 	Ref<Mesh> upper_mesh;
 	Ref<Mesh> lower_mesh;
 
-	void set_upper_mesh(const Ref<Mesh> &_upper_mesh) {
-		upper_mesh = _upper_mesh;
+	void set_upper_mesh(const Ref<Mesh> &p_upper_mesh) {
+		upper_mesh = p_upper_mesh;
 	}
 	Ref<Mesh> get_upper_mesh() const {
 		return upper_mesh;
 	};
 
-	void set_lower_mesh(const Ref<Mesh> &_lower_mesh) {
-		lower_mesh = _lower_mesh;
+	void set_lower_mesh(const Ref<Mesh> &p_lower_mesh) {
+		lower_mesh = p_lower_mesh;
 	}
 	Ref<Mesh> get_lower_mesh() const {
 		return lower_mesh;
 	};
 
-	SlicedMesh(Ref<Mesh> _upper_mesh, Ref<Mesh> _lower_mesh) {
-		upper_mesh = _upper_mesh;
-		lower_mesh = _lower_mesh;
-	}
-
 	/**
 	 * Transforms a vector of split results and a vector of faces representing
 	 * the cross section of a slice and creates an upper and lower mesh from them
 	 */
-	SlicedMesh(const Vector<Intersector::SplitResult> &surface_splits = Vector<Intersector::SplitResult>(), const Vector<SlicerFace> &cross_section_faces = Vector<SlicerFace>(), Ref<Material> cross_section_material = Ref<Material>());
-	~SlicedMesh() {}
+	void create_mesh(const Vector<Intersector::SplitResult> &surface_splits, const Vector<SlicerFace> &cross_section_faces, const Ref<Material> cross_section_material);
 };
 
 #endif // SLICED_MESH_H

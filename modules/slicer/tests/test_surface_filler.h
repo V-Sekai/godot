@@ -58,16 +58,15 @@ TEST_SUITE("[surface_filler]") {
 			filler.fill(i, i);
 		}
 
-		ArrayMesh mesh;
-		Ref<StandardMaterial3D> material;
-		material.instantiate();
+		Ref<ArrayMesh> mesh = memnew(ArrayMesh);
+		Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
 
 		filler.add_to_mesh(mesh, material);
-		REQUIRE(mesh.get_surface_count() == 1);
-		REQUIRE(mesh.surface_get_material(0) == material);
-		REQUIRE(mesh.surface_get_primitive_type(0) == Mesh::PRIMITIVE_TRIANGLES);
+		REQUIRE(mesh->get_surface_count() == 1);
+		REQUIRE(mesh->surface_get_material(0) == material);
+		REQUIRE(mesh->surface_get_primitive_type(0) == Mesh::PRIMITIVE_TRIANGLES);
 
-		Array arrays = mesh.surface_get_arrays(0);
+		Array arrays = mesh->surface_get_arrays(0);
 
 		Vector<Vector3> vertices = arrays[Mesh::ARRAY_VERTEX];
 		Vector<Vector2> uvs = arrays[Mesh::ARRAY_TEX_UV];

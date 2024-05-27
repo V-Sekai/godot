@@ -31,6 +31,7 @@
 #include "slicer.h"
 
 #include "core/error/error_macros.h"
+#include "modules/slicer/sliced_mesh.h"
 #include "utils/intersector.h"
 #include "utils/slicer_face.h"
 #include "utils/triangulator.h"
@@ -74,8 +75,10 @@ Ref<SlicedMesh> Slicer::slice_by_plane(const Ref<Mesh> mesh, const Plane plane, 
 
 	Vector<SlicerFace> cross_section_faces = Triangulator::monotone_chain(intersection_points, plane.normal);
 
-	SlicedMesh *sliced_mesh = memnew(SlicedMesh(split_results, cross_section_faces, cross_section_material));
-	return Ref<SlicedMesh>(sliced_mesh);
+	Ref<SlicedMesh> sliced_mesh;
+	sliced_mesh.instantiate();
+	sliced_mesh->create_mesh(split_results, cross_section_faces, cross_section_material);
+	return sliced_mesh;
 }
 
 Ref<SlicedMesh> Slicer::slice_mesh(const Ref<Mesh> mesh, const Vector3 position, const Vector3 normal, const Ref<Material> cross_section_material) {

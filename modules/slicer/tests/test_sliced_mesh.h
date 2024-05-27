@@ -56,18 +56,19 @@ TEST_SUITE("[SlicedMesh]") {
 		cross_section_material.instantiate();
 		cross_section_faces.push_back(SlicerFace(Vector3(0, 1, 0), Vector3(1, 1, 0), Vector3(0, 1, 1)));
 
-		SlicedMesh sliced(results, cross_section_faces, cross_section_material);
-		REQUIRE_FALSE(sliced.lower_mesh.is_null());
-		REQUIRE_FALSE(sliced.upper_mesh.is_null());
+		Ref<SlicedMesh> sliced = memnew(SlicedMesh);
+		sliced->create_mesh(results, cross_section_faces, cross_section_material);
+		REQUIRE_FALSE(sliced->lower_mesh.is_null());
+		REQUIRE_FALSE(sliced->upper_mesh.is_null());
 
-		REQUIRE(sliced.lower_mesh->get_surface_count() == 2);
-		REQUIRE(sliced.upper_mesh->get_surface_count() == 2);
+		REQUIRE(sliced->lower_mesh->get_surface_count() == 2);
+		REQUIRE(sliced->upper_mesh->get_surface_count() == 2);
 
-		REQUIRE(sliced.lower_mesh->surface_get_material(0) == result.material);
-		REQUIRE(sliced.lower_mesh->surface_get_material(1) == cross_section_material);
+		REQUIRE(sliced->lower_mesh->surface_get_material(0) == result.material);
+		REQUIRE(sliced->lower_mesh->surface_get_material(1) == cross_section_material);
 
-		REQUIRE(sliced.upper_mesh->surface_get_material(0) == result.material);
-		REQUIRE(sliced.upper_mesh->surface_get_material(1) == cross_section_material);
+		REQUIRE(sliced->upper_mesh->surface_get_material(0) == result.material);
+		REQUIRE(sliced->upper_mesh->surface_get_material(1) == cross_section_material);
 	}
 }
 } //namespace TestSlicedMesh
