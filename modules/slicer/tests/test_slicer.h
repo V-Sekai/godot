@@ -28,17 +28,22 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#if 0
+#ifndef TEST_SLICER_H
+#define TEST_SLICER_H
+
+#include "tests/test_macros.h"
 
 #include "../slicer.h"
-#include "scene/resources/primitive_meshes.h"
+#include "scene/resources/3d/primitive_meshes.h"
 
-TEST_CASE("[Slicer]") {
+namespace TestIntersector {
+
+TEST_SUITE("[Slicer]") {
 	Plane plane(Vector3(1, 0, 0), 0);
 
-	SECTION("Smoke test") {
+	TEST_CASE("[Modules][Slicer][SceneTree] Smoke test") {
 		Ref<SphereMesh> sphere_mesh;
-		sphere_mesh.instance();
+		sphere_mesh.instantiate();
 		Slicer slicer;
 		Ref<SlicedMesh> sliced_mesh = slicer.slice_by_plane(sphere_mesh, plane, NULL);
 		REQUIRE_FALSE(sliced_mesh.is_null());
@@ -46,5 +51,6 @@ TEST_CASE("[Slicer]") {
 		REQUIRE_FALSE(sliced_mesh->lower_mesh.is_null());
 	}
 }
+} //namespace TestIntersector
 
-#endif
+#endif // TEST_SLICER_H

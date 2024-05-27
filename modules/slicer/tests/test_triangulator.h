@@ -28,20 +28,25 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#if 0
+#ifndef TEST_TRIANGULATOR_H
+#define TEST_TRIANGULATOR_H
+
+#include "tests/test_macros.h"
 
 #include "../utils/triangulator.h"
 
-TEST_CASE("[triangulator]") {
-	SECTION("monotone_chain") {
-		PoolVector<Vector3> interception_points;
+namespace TestTriangulator {
+
+TEST_SUITE("[triangulator]") {
+	TEST_CASE("monotone_chain") {
+		Vector<Vector3> interception_points;
 		interception_points.push_back(Vector3(0, 0, 0));
 		interception_points.push_back(Vector3(1, 0, 0));
 		interception_points.push_back(Vector3(1, 0, 1));
 		interception_points.push_back(Vector3(0, 0, 1));
 		interception_points.push_back(Vector3(0.5, 0, 0.5));
 
-		PoolVector<SlicerFace> faces = Triangulator::monotone_chain(interception_points, Vector3(0, 1, 0));
+		Vector<SlicerFace> faces = Triangulator::monotone_chain(interception_points, Vector3(0, 1, 0));
 		REQUIRE(faces.size() == 2);
 		REQUIRE(faces[0] == SlicerFace(Vector3(1, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 0)));
 		REQUIRE(faces[1] == SlicerFace(Vector3(1, 0, 1), Vector3(0, 0, 0), Vector3(1, 0, 0)));
@@ -64,5 +69,6 @@ TEST_CASE("[triangulator]") {
 		REQUIRE(faces[1].tangent[2] == Vector4(-1, 0, 0, -1));
 	}
 }
+} //namespace TestTriangulator
 
-#endif
+#endif // TEST_TRIANGULATOR_H

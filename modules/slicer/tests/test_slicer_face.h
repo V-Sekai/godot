@@ -28,10 +28,16 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#if 0
+#ifndef TEST_SLICER_FACE_H
+#define TEST_SLICER_FACE_H
+
+#include "scene/resources/mesh.h"
+#include "tests/test_macros.h"
 
 #include "../utils/slicer_face.h"
-#include "scene/resources/primitive_meshes.h"
+#include "scene/resources/3d/primitive_meshes.h"
+
+namespace TestSlicerFace {
 
 float rand(int max) {
 	return Math::random(0, max);
@@ -45,11 +51,11 @@ Array make_test_array(int faces) {
 	Array arrays;
 	arrays.resize(Mesh::ARRAY_MAX);
 
-	PoolVector<Vector3> points;
-	PoolVector<Vector3> normals;
-	PoolVector<Color> colors;
-	PoolVector<real_t> tangents;
-	PoolVector<Vector2> uvs;
+	Vector<Vector3> points;
+	Vector<Vector3> normals;
+	Vector<Color> colors;
+	Vector<real_t> tangents;
+	Vector<Vector2> uvs;
 
 	for (int i = 0; i < faces * 3; i++) {
 		points.push_back(Vector3(rand(10), rand(10), rand(10)));
@@ -73,30 +79,30 @@ Array make_test_array(int faces) {
 	return arrays;
 }
 
-TEST_CASE("[SlicerFace]") {
-	SECTION("faces_from_surface") {
-		SECTION("Parses faces similar to built in method") {
-			SphereMesh sphere_mesh;
-			auto control_faces = sphere_mesh.get_faces();
-			PoolVector<SlicerFace> faces = SlicerFace::faces_from_surface(sphere_mesh, 0);
+TEST_SUITE("[SlicerFace]") {
+	TEST_SUITE("faces_from_surface") {
+		TEST_CASE("[Modules][Slicer][SceneTree] Parses faces similar to built in method") {
+			Ref<SphereMesh> sphere_mesh = memnew(SphereMesh);
+			auto control_faces = sphere_mesh->get_faces();
+			Vector<SlicerFace> faces = SlicerFace::faces_from_surface(sphere_mesh, 0);
 			REQUIRE(faces.size() == control_faces.size());
 			for (int i = 0; i < faces.size(); i++) {
 				REQUIRE(faces[i] == control_faces[i]);
 			}
 		}
 
-		SECTION("With non indexed arrays") {
-			ArrayMesh array_mesh;
+		TEST_CASE("[Modules][Slicer][SceneTree] With non indexed arrays") {
+			Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
 			Array arrays = make_test_array(3);
-			array_mesh.add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
-			PoolVector<SlicerFace> faces = SlicerFace::faces_from_surface(array_mesh, 0);
+			array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+			Vector<SlicerFace> faces = SlicerFace::faces_from_surface(array_mesh, 0);
 			REQUIRE(faces.size() == 3);
 
-			PoolVector<Vector3> points = arrays[Mesh::ARRAY_VERTEX];
-			PoolVector<Vector3> normals = arrays[Mesh::ARRAY_NORMAL];
-			PoolVector<Color> colors = arrays[Mesh::ARRAY_COLOR];
-			PoolVector<real_t> tangents = arrays[Mesh::ARRAY_TANGENT];
-			PoolVector<Vector2> uvs = arrays[Mesh::ARRAY_TEX_UV];
+			Vector<Vector3> points = arrays[Mesh::ARRAY_VERTEX];
+			Vector<Vector3> normals = arrays[Mesh::ARRAY_NORMAL];
+			Vector<Color> colors = arrays[Mesh::ARRAY_COLOR];
+			Vector<real_t> tangents = arrays[Mesh::ARRAY_TANGENT];
+			Vector<Vector2> uvs = arrays[Mesh::ARRAY_TEX_UV];
 
 			for (int i = 0; i < 3; i++) {
 				REQUIRE(faces[i].has_normals == true);
@@ -122,25 +128,25 @@ TEST_CASE("[SlicerFace]") {
 			}
 		}
 
-		SECTION("With indexed arrays") {
-			ArrayMesh array_mesh;
+		TEST_CASE("[Modules][Slicer][SceneTree] With indexed arrays") {
+			Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
 			Array arrays = make_test_array(24);
 			int idxs[9] = { 1, 4, 7, 10, 13, 14, 17, 19, 21 };
-			PoolVector<int> indices;
+			Vector<int> indices;
 			for (int i = 0; i < 9; i++) {
 				indices.push_back(idxs[i]);
 			}
 
 			arrays[Mesh::ARRAY_INDEX] = indices;
-			array_mesh.add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
-			PoolVector<SlicerFace> faces = SlicerFace::faces_from_surface(array_mesh, 0);
+			array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arrays);
+			Vector<SlicerFace> faces = SlicerFace::faces_from_surface(array_mesh, 0);
 			REQUIRE(faces.size() == 3);
 
-			PoolVector<Vector3> points = arrays[Mesh::ARRAY_VERTEX];
-			PoolVector<Vector3> normals = arrays[Mesh::ARRAY_NORMAL];
-			PoolVector<Color> colors = arrays[Mesh::ARRAY_COLOR];
-			PoolVector<real_t> tangents = arrays[Mesh::ARRAY_TANGENT];
-			PoolVector<Vector2> uvs = arrays[Mesh::ARRAY_TEX_UV];
+			Vector<Vector3> points = arrays[Mesh::ARRAY_VERTEX];
+			Vector<Vector3> normals = arrays[Mesh::ARRAY_NORMAL];
+			Vector<Color> colors = arrays[Mesh::ARRAY_COLOR];
+			Vector<real_t> tangents = arrays[Mesh::ARRAY_TANGENT];
+			Vector<Vector2> uvs = arrays[Mesh::ARRAY_TEX_UV];
 
 			for (int i = 0; i < 9; i++) {
 				int face = i / 3;
@@ -165,13 +171,13 @@ TEST_CASE("[SlicerFace]") {
 			}
 		}
 	}
-	SECTION("barycentric_weights") {
+	TEST_CASE("[Modules][Slicer] barycentric_weights") {
 		SlicerFace face(Vector3(0, 0, 0), Vector3(2, 0, 0), Vector3(2, 2, 0));
 		Vector3 weights = face.barycentric_weights(Vector3(1, 1, 0));
 		REQUIRE(weights == Vector3(0.5, 0, 0.5));
 	}
 
-	SECTION("compute_tangents") {
+	TEST_CASE("[Modules][Slicer] compute_tangents") {
 		SlicerFace face(Vector3(0, 0, 0), Vector3(2, 0, 0), Vector3(2, 2, 0));
 
 		// Doesn't work without uvs and normals
@@ -188,7 +194,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.tangent[2] == Vector4(0.816496551, -0.408248246, -0.408248246, 1));
 	}
 
-	SECTION("sub_face") {
+	TEST_CASE("[Modules][Slicer] sub_face") {
 		SlicerFace face(Vector3(0, 0, 0), Vector3(0, 1, 0), Vector3(0, 1, 1));
 		face.set_uvs(Vector2(0, 0), Vector2(1, 0), Vector2(1, 1));
 		SlicerFace sub_face = face.sub_face(Vector3(0, 0, 0), Vector3(0, 0.5, 0), Vector3(0, 0.5, 0.5));
@@ -209,7 +215,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE_FALSE(sub_face.has_weights);
 	}
 
-	SECTION("set_uvs") {
+	TEST_CASE("[Modules][Slicer] set_uvs") {
 		SlicerFace face;
 		face.set_uvs(Vector2(0, 0), Vector2(0.5, 0.5), Vector2(1, 1));
 		REQUIRE(face.has_uvs);
@@ -218,7 +224,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.uv[2] == Vector2(1, 1));
 	}
 
-	SECTION("set_normals") {
+	TEST_CASE("[Modules][Slicer] set_normals") {
 		SlicerFace face;
 		face.set_normals(Vector3(0, 0, 0), Vector3(0.5, 0.5, 0.5), Vector3(1, 1, 1));
 		REQUIRE(face.has_normals);
@@ -227,7 +233,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.normal[2] == Vector3(1, 1, 1));
 	}
 
-	SECTION("set_tangents") {
+	TEST_CASE("[Modules][Slicer] set_tangents") {
 		SlicerFace face;
 		face.set_tangents(Vector4(0, 0, 0, 0), Vector4(0.5, 0.5, 0.5, 0.5), Vector4(1, 1, 1, 1));
 		REQUIRE(face.has_tangents);
@@ -236,7 +242,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.tangent[2] == Vector4(1, 1, 1, 1));
 	}
 
-	SECTION("set_colors") {
+	TEST_CASE("[Modules][Slicer] set_colors") {
 		SlicerFace face;
 		face.set_colors(Color(0, 0, 0, 0), Color(0.5, 0.5, 0.5, 0.5), Color(1, 1, 1, 1));
 		REQUIRE(face.has_colors);
@@ -245,7 +251,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.color[2] == Color(1, 1, 1, 1));
 	}
 
-	SECTION("set_bones") {
+	TEST_CASE("[Modules][Slicer] set_bones") {
 		SlicerFace face;
 		face.set_bones(Vector4(0, 0, 0, 0), Vector4(0.5, 0.5, 0.5, 0.5), Vector4(1, 1, 1, 1));
 		REQUIRE(face.has_bones);
@@ -254,7 +260,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.bones[2] == Vector4(1, 1, 1, 1));
 	}
 
-	SECTION("set_weights") {
+	TEST_CASE("[Modules][Slicer] set_weights") {
 		SlicerFace face;
 		face.set_weights(Vector4(0, 0, 0, 0), Vector4(0.5, 0.5, 0.5, 0.5), Vector4(1, 1, 1, 1));
 		REQUIRE(face.has_weights);
@@ -263,7 +269,7 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.weights[2] == Vector4(1, 1, 1, 1));
 	}
 
-	SECTION("set_uv2s") {
+	TEST_CASE("[Modules][Slicer] set_uv2s") {
 		SlicerFace face;
 		face.set_uv2s(Vector2(0, 0), Vector2(0.5, 0.5), Vector2(1, 1));
 		REQUIRE(face.has_uv2s);
@@ -272,12 +278,13 @@ TEST_CASE("[SlicerFace]") {
 		REQUIRE(face.uv2[2] == Vector2(1, 1));
 	}
 
-	SECTION("operator==") {
+	TEST_CASE("[Modules][Slicer] operator==") {
 		REQUIRE(SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 1), Vector3(2, 2, 2)) == SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 1), Vector3(2, 2, 2)));
 		REQUIRE_FALSE(SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 1), Vector3(2, 2, 2)) == SlicerFace(Vector3(1, 0, 0), Vector3(1, 1, 1), Vector3(2, 2, 2)));
 		REQUIRE_FALSE(SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 1), Vector3(2, 2, 2)) == SlicerFace(Vector3(0, 0, 0), Vector3(0, 1, 1), Vector3(2, 2, 2)));
 		REQUIRE_FALSE(SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 1), Vector3(2, 2, 2)) == SlicerFace(Vector3(0, 0, 0), Vector3(1, 1, 1), Vector3(0, 2, 2)));
 	}
 }
+} //namespace TestSlicerFace
 
-#endif
+#endif // TEST_SLICER_FACE_H
