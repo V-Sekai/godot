@@ -31,6 +31,7 @@
 #ifndef FACE_FILLER_H
 #define FACE_FILLER_H
 
+#include "core/error/error_macros.h"
 #include "slicer_face.h"
 
 // This just mimics logic found in TriangleMesh#Create
@@ -70,29 +71,28 @@ struct FaceFiller {
 	Vector<SlicerFace> faces;
 
 	// Yuck. What an eye sore this constructor is
-	FaceFiller(Vector<SlicerFace> &p_faces, const Array &surface_arrays) {
-		faces = p_faces;
-		Vector<Vector3> vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+	FaceFiller(Vector<SlicerFace> &p_faces, const Array &surface_arrays) : faces(p_faces) {
+		vertices = surface_arrays[Mesh::ARRAY_VERTEX];
 
-		Vector<Vector3> normals = surface_arrays[Mesh::ARRAY_NORMAL];
+		normals = surface_arrays[Mesh::ARRAY_NORMAL];
 		has_normals = normals.size() > 0 && normals.size() == vertices.size();
 
-		Vector<real_t> tangents = surface_arrays[Mesh::ARRAY_TANGENT];
+		tangents = surface_arrays[Mesh::ARRAY_TANGENT];
 		has_tangents = tangents.size() > 0 && tangents.size() == vertices.size() * 4;
 
-		Vector<Color> colors = surface_arrays[Mesh::ARRAY_COLOR];
+		colors = surface_arrays[Mesh::ARRAY_COLOR];
 		has_colors = colors.size() > 0 && colors.size() == vertices.size();
 
-		Vector<real_t> bones = surface_arrays[Mesh::ARRAY_BONES];
+		bones = surface_arrays[Mesh::ARRAY_BONES];
 		has_bones = bones.size() > 0 && bones.size() == vertices.size() * 4;
 
-		Vector<real_t> weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
+		weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
 		has_weights = weights.size() > 0 && weights.size() == vertices.size() * 4;
 
-		Vector<Vector2> uvs = surface_arrays[Mesh::ARRAY_TEX_UV];
+		uvs = surface_arrays[Mesh::ARRAY_TEX_UV];
 		has_uvs = uvs.size() > 0 && uvs.size() == vertices.size();
 
-		Vector<Vector2> uv2s = surface_arrays[Mesh::ARRAY_TEX_UV2];
+		uv2s = surface_arrays[Mesh::ARRAY_TEX_UV2];
 		has_uv2s = uv2s.size() > 0 && uv2s.size() == vertices.size();
 	}
 
@@ -121,7 +121,7 @@ struct FaceFiller {
 			faces.write[face_idx].has_uvs = has_uvs;
 			faces.write[face_idx].has_uv2s = has_uv2s;
 		}
-
+		ERR_FAIL_COND_MSG(lookup_idx < 0 || lookup_idx >= vertices.size(), "Cannot fill empty vertex array.");
 		faces.write[face_idx].vertex[set_offset] = snap_vertex(vertices[lookup_idx]);
 
 		if (has_normals) {

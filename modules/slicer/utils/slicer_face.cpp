@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "slicer_face.h"
+#include "core/error/error_macros.h"
 #include "face_filler.h"
 #include "triangulator.h"
 
@@ -44,16 +45,19 @@ void ortho_normalize(Vector3 &normal, Vector3 &tangent) {
 	tangent.normalize();
 }
 
-Vector<SlicerFace> parse_mesh_arrays(const Mesh &mesh, int surface_idx, bool is_index_array) {
+Vector<SlicerFace> parse_mesh_arrays(const Ref<Mesh> mesh, int surface_idx, bool is_index_array) {
+	ERR_FAIL_COND_V(mesh.is_null(), Vector<SlicerFace> ());
+	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), Vector<SlicerFace> ());
 	Vector<SlicerFace> faces;
-	int vert_count = is_index_array ? mesh.surface_get_array_index_len(surface_idx) : mesh.surface_get_array_len(surface_idx);
+	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), faces);
+	int vert_count = is_index_array ? mesh->surface_get_array_index_len(surface_idx) : mesh->surface_get_array_len(surface_idx);
 	if (vert_count == 0 || vert_count % 3 != 0) {
 		return faces;
 	}
 
 	faces.resize(vert_count / 3);
 
-	Array arrays = mesh.surface_get_arrays(surface_idx);
+	Array arrays = mesh->surface_get_arrays(surface_idx);
 	FaceFiller filler(faces, arrays);
 
 	if (is_index_array) {
@@ -71,14 +75,16 @@ Vector<SlicerFace> parse_mesh_arrays(const Mesh &mesh, int surface_idx, bool is_
 	return faces;
 }
 
-Vector<SlicerFace> SlicerFace::faces_from_surface(const Mesh &mesh, int surface_idx) {
+Vector<SlicerFace> SlicerFace::faces_from_surface(Ref<Mesh> mesh, int surface_idx) {
+	ERR_FAIL_COND_V(mesh.is_null(), Vector<SlicerFace>());
+	ERR_FAIL_INDEX_V(surface_idx, mesh->get_surface_count(), Vector<SlicerFace>());
 	// Slicer functionality really only makes sense in the context of a mesh composed of
 	// triangles
-	if (mesh.surface_get_primitive_type(surface_idx) != Mesh::PRIMITIVE_TRIANGLES) {
+	if (mesh->surface_get_primitive_type(surface_idx) != Mesh::PRIMITIVE_TRIANGLES) {
 		return Vector<SlicerFace>();
 	}
 
-	if (mesh.surface_get_format(surface_idx) & Mesh::ARRAY_FORMAT_INDEX) {
+	if (mesh->surface_get_format(surface_idx) & Mesh::ARRAY_FORMAT_INDEX) {
 		return parse_mesh_arrays(mesh, surface_idx, true);
 	} else {
 		return parse_mesh_arrays(mesh, surface_idx, false);
