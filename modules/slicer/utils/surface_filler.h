@@ -180,7 +180,6 @@ struct SurfaceFiller {
 	 */
 	void add_to_mesh(Ref<ArrayMesh> mesh, Ref<Material> material) {
 		ERR_FAIL_COND(mesh.is_null());
-		ERR_FAIL_COND(material.is_null());
 		arrays[Mesh::ARRAY_VERTEX] = vertices;
 
 		if (has_normals) {

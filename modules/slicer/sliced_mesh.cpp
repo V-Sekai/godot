@@ -29,6 +29,8 @@
 /**************************************************************************/
 
 #include "sliced_mesh.h"
+#include "core/error/error_macros.h"
+#include "scene/resources/material.h"
 #include "utils/surface_filler.h"
 
 /*
@@ -37,7 +39,6 @@
  */
 void create_surface(const Vector<SlicerFace> &faces, const Ref<Material> material, Ref<ArrayMesh> mesh) {
 	ERR_FAIL_COND(mesh.is_null());
-	ERR_FAIL_COND(material.is_null());
 	if (faces.size() == 0) {
 		return;
 	}
@@ -104,6 +105,8 @@ Ref<Mesh> create_mesh_half(
 		// I believe Ezy-Slice has a way of specifying the existing material to use,
 		// we may want to add that as a TODO
 		cross_section_material = mesh->surface_get_material(0);
+	} else if (cross_section_material.is_null()) {
+		cross_section_material = Ref<Material>(memnew(StandardMaterial3D));
 	}
 
 	create_cross_section_surface(cross_section_faces, cross_section_material, mesh, is_upper);
@@ -121,6 +124,6 @@ void SlicedMesh::_bind_methods() {
 }
 
 void SlicedMesh::create_mesh(const Vector<Intersector::SplitResult> &surface_splits, const Vector<SlicerFace> &cross_section_faces, const Ref<Material> cross_section_material) {
-	upper_mesh = Ref<Mesh>(create_mesh_half(surface_splits, cross_section_faces, cross_section_material, true));
-	lower_mesh = Ref<Mesh>(create_mesh_half(surface_splits, cross_section_faces, cross_section_material, false));
+	upper_mesh = create_mesh_half(surface_splits, cross_section_faces, cross_section_material, true);
+	lower_mesh = create_mesh_half(surface_splits, cross_section_faces, cross_section_material, false);
 }
