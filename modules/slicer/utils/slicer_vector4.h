@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_triangulator.h                                                   */
+/*  slicer_vector4.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,41 +28,73 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#if 0
+#ifndef SLICER_VECTOR4_H
+#define SLICER_VECTOR4_H
 
-#include "../utils/triangulator.h"
+#include "core/math/math_defs.h"
+#include "core/string/ustring.h"
 
-TEST_CASE("[triangulator]") {
-	SECTION("monotone_chain") {
-		PoolVector<Vector3> interception_points;
-		interception_points.push_back(Vector3(0, 0, 0));
-		interception_points.push_back(Vector3(1, 0, 0));
-		interception_points.push_back(Vector3(1, 0, 1));
-		interception_points.push_back(Vector3(0, 0, 1));
-		interception_points.push_back(Vector3(0.5, 0, 0.5));
+/**
+ * Godot does not currently have a 4 dimensional Vector class so we just
+ * throw one together ourselves. We're not looking for much more than a
+ * simple container to make the code for vertex tangents, bones, and weights
+ * cleaner. Functionality can be added piecemeal as needed.
+ *
+ * TODO - Would it be better just to use the Godot Color class instead? Functionally
+ * I believe the only difference would be that Color doesn't use `real_t` so values
+ * might have lower precision. It also might just be a bit misleading.
+ */
+struct SlicerVector4 {
+	enum Axis {
+		AXIS_X,
+		AXIS_Y,
+		AXIS_Z,
+		AXIS_W,
+	};
 
-		PoolVector<SlicerFace> faces = Triangulator::monotone_chain(interception_points, Vector3(0, 1, 0));
-		REQUIRE(faces.size() == 2);
-		REQUIRE(faces[0] == SlicerFace(Vector3(1, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 0)));
-		REQUIRE(faces[1] == SlicerFace(Vector3(1, 0, 1), Vector3(0, 0, 0), Vector3(1, 0, 0)));
+	union {
+		struct {
+			real_t x;
+			real_t y;
+			real_t z;
+			real_t w;
+		};
 
-		REQUIRE((faces[0].has_normals && faces[0].has_uvs && faces[0].has_tangents));
-		REQUIRE((faces[1].has_normals && faces[1].has_uvs && faces[1].has_tangents));
+		real_t coord[4];
+	};
 
-		REQUIRE((faces[0].normal[0] == Vector3(0, 1, 0) && faces[0].normal[1] == Vector3(0, 1, 0) && faces[0].normal[2] == Vector3(0, 1, 0)));
-		REQUIRE((faces[1].normal[0] == Vector3(0, 1, 0) && faces[1].normal[1] == Vector3(0, 1, 0) && faces[1].normal[2] == Vector3(0, 1, 0)));
-
-		REQUIRE((faces[0].uv[0] == Vector2(0, 0) && faces[0].uv[1] == Vector2(1, 0) && faces[0].uv[2] == Vector2(1, 1)));
-		REQUIRE((faces[1].uv[0] == Vector2(0, 0) && faces[1].uv[1] == Vector2(1, 1) && faces[1].uv[2] == Vector2(0, 1)));
-
-		REQUIRE(faces[0].tangent[0] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[0].tangent[1] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[0].tangent[2] == SlicerVector4(-1, 0, 0, -1));
-
-		REQUIRE(faces[1].tangent[0] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[1].tangent[1] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[1].tangent[2] == SlicerVector4(-1, 0, 0, -1));
+	_FORCE_INLINE_ const real_t &operator[](int p_axis) const {
+		return coord[p_axis];
 	}
-}
 
-#endif
+	_FORCE_INLINE_ real_t &operator[](int p_axis) {
+		return coord[p_axis];
+	}
+
+	SlicerVector4 operator*(real_t scalar) const {
+		return SlicerVector4(x * scalar, y * scalar, z * scalar, w * scalar);
+	}
+
+	SlicerVector4 operator+(const SlicerVector4 &other) const {
+		return SlicerVector4(x + other.x, y + other.y, z + other.z, w + other.w);
+	}
+
+	bool operator==(const SlicerVector4 &other) const {
+		return x == other.x && y == other.y && z == other.z && w == other.w;
+	}
+
+	operator String() const {
+		return (rtos(x) + ", " + rtos(y) + ", " + rtos(z), +", " + rtos(w));
+	}
+
+	_FORCE_INLINE_ SlicerVector4(real_t p_x, real_t p_y, real_t p_z, real_t p_w) {
+		x = p_x;
+		y = p_y;
+		z = p_z;
+		w = p_w;
+	}
+
+	_FORCE_INLINE_ SlicerVector4() { x = y = z = w = 0; }
+};
+
+#endif // SLICER_VECTOR4_H

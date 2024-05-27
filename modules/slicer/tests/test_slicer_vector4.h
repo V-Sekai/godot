@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_triangulator.h                                                   */
+/*  test_slicer_vector4.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,38 +30,51 @@
 
 #if 0
 
-#include "../utils/triangulator.h"
+#include "../utils/slicer_vector4.h"
 
-TEST_CASE("[triangulator]") {
-	SECTION("monotone_chain") {
-		PoolVector<Vector3> interception_points;
-		interception_points.push_back(Vector3(0, 0, 0));
-		interception_points.push_back(Vector3(1, 0, 0));
-		interception_points.push_back(Vector3(1, 0, 1));
-		interception_points.push_back(Vector3(0, 0, 1));
-		interception_points.push_back(Vector3(0.5, 0, 0.5));
+TEST_CASE("[SlicerVector4]") {
+	SECTION("x,y,z,w maps to coord") {
+		SlicerVector4 vec = SlicerVector4(0.5, 1.5, 2.5, 3.5);
+		REQUIRE(vec.x == 0.5);
+		REQUIRE(vec.y == 1.5);
+		REQUIRE(vec.z == 2.5);
+		REQUIRE(vec.w == 3.5);
 
-		PoolVector<SlicerFace> faces = Triangulator::monotone_chain(interception_points, Vector3(0, 1, 0));
-		REQUIRE(faces.size() == 2);
-		REQUIRE(faces[0] == SlicerFace(Vector3(1, 0, 1), Vector3(0, 0, 1), Vector3(0, 0, 0)));
-		REQUIRE(faces[1] == SlicerFace(Vector3(1, 0, 1), Vector3(0, 0, 0), Vector3(1, 0, 0)));
+		REQUIRE(vec.coord[0] == 0.5);
+		REQUIRE(vec.coord[1] == 1.5);
+		REQUIRE(vec.coord[2] == 2.5);
+		REQUIRE(vec.coord[3] == 3.5);
 
-		REQUIRE((faces[0].has_normals && faces[0].has_uvs && faces[0].has_tangents));
-		REQUIRE((faces[1].has_normals && faces[1].has_uvs && faces[1].has_tangents));
+		vec.x = 5.0;
 
-		REQUIRE((faces[0].normal[0] == Vector3(0, 1, 0) && faces[0].normal[1] == Vector3(0, 1, 0) && faces[0].normal[2] == Vector3(0, 1, 0)));
-		REQUIRE((faces[1].normal[0] == Vector3(0, 1, 0) && faces[1].normal[1] == Vector3(0, 1, 0) && faces[1].normal[2] == Vector3(0, 1, 0)));
+		REQUIRE(vec.x == 5.0);
+		REQUIRE(vec.coord[0] == 5.0);
+	}
 
-		REQUIRE((faces[0].uv[0] == Vector2(0, 0) && faces[0].uv[1] == Vector2(1, 0) && faces[0].uv[2] == Vector2(1, 1)));
-		REQUIRE((faces[1].uv[0] == Vector2(0, 0) && faces[1].uv[1] == Vector2(1, 1) && faces[1].uv[2] == Vector2(0, 1)));
+	SECTION("operator*") {
+		SlicerVector4 vec = SlicerVector4(1, 2, 3, 4) * 2;
 
-		REQUIRE(faces[0].tangent[0] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[0].tangent[1] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[0].tangent[2] == SlicerVector4(-1, 0, 0, -1));
+		REQUIRE(vec.x == 2);
+		REQUIRE(vec.y == 4);
+		REQUIRE(vec.z == 6);
+		REQUIRE(vec.w == 8);
+	}
 
-		REQUIRE(faces[1].tangent[0] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[1].tangent[1] == SlicerVector4(-1, 0, 0, -1));
-		REQUIRE(faces[1].tangent[2] == SlicerVector4(-1, 0, 0, -1));
+	SECTION("operator*+") {
+		SlicerVector4 vec = SlicerVector4(1, 2, 3, 4) + SlicerVector4(2, 3, 4, 5);
+
+		REQUIRE(vec.x == 3);
+		REQUIRE(vec.y == 5);
+		REQUIRE(vec.z == 7);
+		REQUIRE(vec.w == 9);
+	}
+
+	SECTION("operator==") {
+		REQUIRE(SlicerVector4(1, 1, 1, 1) == SlicerVector4(1, 1, 1, 1));
+		REQUIRE_FALSE(SlicerVector4(1, 1, 1, 1) == SlicerVector4(2, 1, 1, 1));
+		REQUIRE_FALSE(SlicerVector4(1, 1, 1, 1) == SlicerVector4(1, 2, 1, 1));
+		REQUIRE_FALSE(SlicerVector4(1, 1, 1, 1) == SlicerVector4(1, 1, 2, 1));
+		REQUIRE_FALSE(SlicerVector4(1, 1, 1, 1) == SlicerVector4(1, 1, 1, 2));
 	}
 }
 

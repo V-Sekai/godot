@@ -31,7 +31,6 @@
 #ifndef FACE_FILLER_H
 #define FACE_FILLER_H
 
-#include "core/error/error_macros.h"
 #include "slicer_face.h"
 
 // This just mimics logic found in TriangleMesh#Create
@@ -68,32 +67,32 @@ struct FaceFiller {
 	Vector<Vector2> uvs;
 
 	Vector<Vector2> uv2s;
-	Vector<SlicerFace> &faces;
+	Vector<SlicerFace> faces;
 
 	// Yuck. What an eye sore this constructor is
-	FaceFiller(Vector<SlicerFace> &r_faces, const Array &p_surface_arrays) :
-			faces(r_faces) {
-		vertices = p_surface_arrays[Mesh::ARRAY_VERTEX];
+	FaceFiller(Vector<SlicerFace> &p_faces, const Array &surface_arrays) {
+		faces = p_faces;
+		Vector<Vector3> vertices = surface_arrays[Mesh::ARRAY_VERTEX];
 
-		normals = p_surface_arrays[Mesh::ARRAY_NORMAL];
+		Vector<Vector3> normals = surface_arrays[Mesh::ARRAY_NORMAL];
 		has_normals = normals.size() > 0 && normals.size() == vertices.size();
 
-		tangents = p_surface_arrays[Mesh::ARRAY_TANGENT];
+		Vector<real_t> tangents = surface_arrays[Mesh::ARRAY_TANGENT];
 		has_tangents = tangents.size() > 0 && tangents.size() == vertices.size() * 4;
 
-		colors = p_surface_arrays[Mesh::ARRAY_COLOR];
+		Vector<Color> colors = surface_arrays[Mesh::ARRAY_COLOR];
 		has_colors = colors.size() > 0 && colors.size() == vertices.size();
 
-		bones = p_surface_arrays[Mesh::ARRAY_BONES];
+		Vector<real_t> bones = surface_arrays[Mesh::ARRAY_BONES];
 		has_bones = bones.size() > 0 && bones.size() == vertices.size() * 4;
 
-		weights = p_surface_arrays[Mesh::ARRAY_WEIGHTS];
+		Vector<real_t> weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
 		has_weights = weights.size() > 0 && weights.size() == vertices.size() * 4;
 
-		uvs = p_surface_arrays[Mesh::ARRAY_TEX_UV];
+		Vector<Vector2> uvs = surface_arrays[Mesh::ARRAY_TEX_UV];
 		has_uvs = uvs.size() > 0 && uvs.size() == vertices.size();
 
-		uv2s = p_surface_arrays[Mesh::ARRAY_TEX_UV2];
+		Vector<Vector2> uv2s = surface_arrays[Mesh::ARRAY_TEX_UV2];
 		has_uv2s = uv2s.size() > 0 && uv2s.size() == vertices.size();
 	}
 
@@ -122,7 +121,7 @@ struct FaceFiller {
 			faces.write[face_idx].has_uvs = has_uvs;
 			faces.write[face_idx].has_uv2s = has_uv2s;
 		}
-		ERR_FAIL_COND_MSG(lookup_idx < 0 || lookup_idx >= vertices.size(), "Cannot fill empty vertex array.");
+
 		faces.write[face_idx].vertex[set_offset] = snap_vertex(vertices[lookup_idx]);
 
 		if (has_normals) {
@@ -130,7 +129,7 @@ struct FaceFiller {
 		}
 
 		if (has_tangents) {
-			faces.write[face_idx].tangent[set_offset] = Vector4(
+			faces.write[face_idx].tangent[set_offset] = SlicerVector4(
 					tangents[lookup_idx * 4],
 					tangents[lookup_idx * 4 + 1],
 					tangents[lookup_idx * 4 + 2],
@@ -142,7 +141,7 @@ struct FaceFiller {
 		}
 
 		if (has_bones) {
-			faces.write[face_idx].bones[set_offset] = Vector4(
+			faces.write[face_idx].bones[set_offset] = SlicerVector4(
 					bones[lookup_idx * 4],
 					bones[lookup_idx * 4 + 1],
 					bones[lookup_idx * 4 + 2],
@@ -150,7 +149,7 @@ struct FaceFiller {
 		}
 
 		if (has_weights) {
-			faces.write[face_idx].weights[set_offset] = Vector4(
+			faces.write[face_idx].weights[set_offset] = SlicerVector4(
 					weights[lookup_idx],
 					weights[lookup_idx * 4 + 1],
 					weights[lookup_idx * 4 + 2],

@@ -36,6 +36,8 @@
 #include "core/math/vector2.h"
 #include "scene/resources/mesh.h"
 
+#include "slicer_vector4.h"
+
 /**
  * Godot's Face3 only keeps track of a mesh's vertices but we want to keep track
  * of things like UV and normal mappings
@@ -49,16 +51,16 @@ struct SlicerFace : public Face3 {
 	Vector3 normal[3];
 
 	bool has_tangents;
-	Vector4 tangent[3];
+	SlicerVector4 tangent[3];
 
 	bool has_colors;
 	Color color[3];
 
 	bool has_bones;
-	Vector4 bones[3];
+	SlicerVector4 bones[3];
 
 	bool has_weights;
-	Vector4 weights[3];
+	SlicerVector4 weights[3];
 
 	// Documentation says that uvs can be either Vector2 or Vector3
 	// but glancing through the visual server code it seems its just
@@ -75,7 +77,7 @@ struct SlicerFace : public Face3 {
 	 * associated with each vertex and can handle both indexed and non indexed vertex
 	 * arrays
 	 */
-	static Vector<SlicerFace> faces_from_surface(const Ref<Mesh> mesh, int surface_idx);
+	static Vector<SlicerFace> faces_from_surface(const Mesh &mesh, int surface_idx);
 
 	/**
 	 * Creates a new face while using barycentric weights to interpolate UV, normal, etc
@@ -108,7 +110,7 @@ struct SlicerFace : public Face3 {
 		normal[2] = c;
 	}
 
-	void set_tangents(Vector4 a, Vector4 b, Vector4 c) {
+	void set_tangents(SlicerVector4 a, SlicerVector4 b, SlicerVector4 c) {
 		has_tangents = true;
 		tangent[0] = a;
 		tangent[1] = b;
@@ -122,14 +124,14 @@ struct SlicerFace : public Face3 {
 		color[2] = c;
 	}
 
-	void set_bones(Vector4 a, Vector4 b, Vector4 c) {
+	void set_bones(SlicerVector4 a, SlicerVector4 b, SlicerVector4 c) {
 		has_bones = true;
 		bones[0] = a;
 		bones[1] = b;
 		bones[2] = c;
 	}
 
-	void set_weights(Vector4 a, Vector4 b, Vector4 c) {
+	void set_weights(SlicerVector4 a, SlicerVector4 b, SlicerVector4 c) {
 		has_weights = true;
 		weights[0] = a;
 		weights[1] = b;
