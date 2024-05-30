@@ -5,6 +5,63 @@ var numpy = numpy.new()
 var Math = Math.new()
 var scipy = scipy.new()
 
+## This function performs a robust skin weight transfer between two meshes.
+##
+## Parameters:
+## v1 (Array): An array of 3D coordinates representing the vertices of the source mesh. Each element in the array is a tuple or list of three numbers, representing the x, y, and z coordinates of a vertex.
+## f1 (Array): An array of face indices for the source mesh. Each element in the array is a tuple or list of three integers, representing the indices of the vertices that make up a face.
+## w (Array): An array of weights for the source mesh. The weights represent how much influence each bone has on each vertex. Each element in the array is a list of numbers, where each number represents the weight of a bone for a particular vertex.
+## v2 (Array): Similar to `v1`, this is an array of 3D coordinates representing the vertices of the target mesh.
+## f2 (Array): Similar to `f1`, this is an array of face indices for the target mesh.
+##
+## The function first calculates normals for both meshes. It then registers the source and target meshes along with their normals.
+## A closest point matching is performed where for every vertex on the target mesh, the closest point on the source mesh is found and weights are copied over.
+## An inpainting process is then carried out to fill in missing data in the skin weights.
+## Finally, an optional smoothing operation can be applied to the weights.
+##
+## Returns:
+## None
+func robust_skin_weight_transfer(v1, f1, w, v2, f2):
+    var n1 = calculate_normals(v1, f1)
+    var n2 = calculate_normals(v2, f2)
+    var num_bones = w.size() 
+
+    # Register source and target Mesh geometries, plus their Normals
+    register_surface_mesh("SourceMesh", v1, f1)
+    register_surface_mesh("TargetMesh", v2, f2)
+    add_vector_quantity("SourceMesh", "Normals", n1)
+    add_vector_quantity("TargetMesh", "Normals", n2)
+
+    # Section 3.1 Closest Point Matching
+    var distance_threshold = 0.05 * bounding_box_diagonal(v2) # threshold distance D
+    var distance_threshold_squared = distance_threshold * distance_threshold
+    var angle_threshold_degrees = 30 # threshold angle theta in degrees
+
+    # for every vertex on the target mesh find the closest point on the source mesh and copy weights over
+    var matched, skin_weights_interpolated = Utils.find_matches_closest_surface(v1,f1,n1,v2,f2,n2,w,distance_threshold_squared,angle_threshold_degrees)
+
+    # visualize vertices for which we found a match
+    add_scalar_quantity("TargetMesh", "Matched", matched)
+
+    # Section 3.2 Skinning Weights Inpainting
+    var inpainted_weights, success = Utils.inpaint(v2, f2, skin_weights_interpolated, matched)
+
+    if (not success):
+        print("[Error] Inpainting failed.")
+        return
+
+    # Visualize the weights for each bone
+    add_scalar_quantity("TargetMesh", "Bone1", inpainted_weights[0])
+    add_scalar_quantity("TargetMesh", "Bone2", inpainted_weights[1])
+
+    # Optional smoothing
+    var smoothed_inpainted_weights, vids_to_smooth = Utils.smooth(v2, f2, inpainted_weights, matched, distance_threshold, num_smooth_iter_steps=10, smooth_alpha=0.2)
+    add_scalar_quantity("TargetMesh", "VIDs_to_smooth", vids_to_smooth)
+
+    # Visualize the smoothed weights for each bone
+    add_scalar_quantity("TargetMesh", "SmoothedBone1", smoothed_inpainted_weights[0])
+    add_scalar_quantity("TargetMesh", "SmoothedBone2", smoothed_inpainted_weights[1])
+
 ## Given a number of points find their closest points on the surface of the V,F mesh
 ##
 ## Args:
