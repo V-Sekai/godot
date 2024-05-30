@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai-fire/godot-robust-skin-weights-transfer.git
+	branch = main
+	commit = dbbc231435e576e2dd1d404b6d8bf111e01be5d8
+	parent = 8bf8f41fc017531b502fe77b36c3b14e180cec5c
+	method = merge
+	cmdver = 0.4.6
