@@ -163,4 +163,4 @@ cython_debug/
 .DS_Store
 *.ini
 
-!modules/robust_skin_weight_transfer/**/*.obj
+!**/*.obj
