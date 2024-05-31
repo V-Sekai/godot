@@ -62,32 +62,32 @@ ps.get_surface_mesh("TargetMesh").add_scalar_quantity("Matched", Matched, define
 #
 InpaintedWeights, success = inpaint(V2, F2, SkinWeights_interpolated, Matched)
 
-if success:
-    # Visualize the weights for each bone
-    ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-        "Bone1", InpaintedWeights[:, 0], defined_on="vertices", cmap="blues"
-    )
-    ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-        "Bone2", InpaintedWeights[:, 1], defined_on="vertices", cmap="blues"
-    )
-
-    # Optional smoothing
-    SmoothedInpaintedWeights, VIDs_to_smooth = smooth(
-        V2, F2, InpaintedWeights, Matched, dDISTANCE_THRESHOLD, num_smooth_iter_steps=10, smooth_alpha=0.2
-    )
-    ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-        "VIDs_to_smooth", VIDs_to_smooth, defined_on="vertices", cmap="blues"
-    )
-
-    # Visualize the smoothed weights for each bone
-    ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-        "SmoothedBone1", InpaintedWeights[:, 0], defined_on="vertices", cmap="blues"
-    )
-    ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-        "SmoothedBone2", InpaintedWeights[:, 1], defined_on="vertices", cmap="blues"
-    )
-
-    ps.show()
-
-else:
+if not success:
     print("[Error] Inpainting failed.")
+    exit(0)
+
+# Visualize the weights for each bone
+ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
+    "Bone1", InpaintedWeights[:, 0], defined_on="vertices", cmap="blues"
+)
+ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
+    "Bone2", InpaintedWeights[:, 1], defined_on="vertices", cmap="blues"
+)
+
+# Optional smoothing
+SmoothedInpaintedWeights, VIDs_to_smooth = smooth(
+    V2, F2, InpaintedWeights, Matched, dDISTANCE_THRESHOLD, num_smooth_iter_steps=10, smooth_alpha=0.2
+)
+ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
+    "VIDs_to_smooth", VIDs_to_smooth, defined_on="vertices", cmap="blues"
+)
+
+# Visualize the smoothed weights for each bone
+ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
+    "SmoothedBone1", InpaintedWeights[:, 0], defined_on="vertices", cmap="blues"
+)
+ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
+    "SmoothedBone2", InpaintedWeights[:, 1], defined_on="vertices", cmap="blues"
+)
+
+ps.show()
