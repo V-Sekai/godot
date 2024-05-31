@@ -173,7 +173,15 @@ def inpaint(V2, F2, W2, Matched):
     return W_inpainted, results
 
 
-def smooth(target_vertices, target_faces, skinning_weights, matched, distance_threshold, num_smooth_iter_steps=10, smooth_alpha=0.2):
+def smooth(
+    target_vertices,
+    target_faces,
+    skinning_weights,
+    matched,
+    distance_threshold,
+    num_smooth_iter_steps=10,
+    smooth_alpha=0.2,
+):
     """
     Smooth weights in the areas for which weights were inpainted and also their close neighbors.
 
