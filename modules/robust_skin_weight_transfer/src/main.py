@@ -103,10 +103,10 @@ def main():
 
     # Visualize the smoothed weights for each bone
     ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-        "SmoothedBone1", inpainted_weights[:, 0], defined_on="vertices", cmap="blues"
+        "SmoothedBone1", smoothed_inpainted_weights[:, 0], defined_on="vertices", cmap="blues"
     )
     ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-        "SmoothedBone2", inpainted_weights[:, 1], defined_on="vertices", cmap="blues"
+        "SmoothedBone2", smoothed_inpainted_weights[:, 1], defined_on="vertices", cmap="blues"
     )
 
     ps.show()
