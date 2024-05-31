@@ -24,7 +24,7 @@ var scipy = scipy.new()
 func robust_skin_weight_transfer(v1, f1, w, v2, f2):
     var n1 = calculate_normals(v1, f1)
     var n2 = calculate_normals(v2, f2)
-    var num_bones = w.size() 
+    var num_bones = w.size()
 
     # Register source and target Mesh geometries, plus their Normals
     register_surface_mesh("SourceMesh", v1, f1)
@@ -183,7 +183,7 @@ func is_valid_array(sparse_matrix):
             break
     return not has_invalid_numbers
 
-## Inpaint weights for all the vertices on the target mesh for which we didnt
+## Inpaint weights for all the vertices on the target mesh for which we didn't
 ## find a good match on the source (i.e. Matched[i] == False).
 ##
 ## Args:
@@ -228,7 +228,7 @@ func inpaint(V2, F2, W2, Matched):
     A = is_valid_array(Q)
     if (not is_valid):
         print("[Error] System matrix is invalid:")
-    
+
     var Aeq = sparse_csc_matrix(0, 0)
     var Beq = []
     var B = zeros(L.shape[0], W2.shape[1])
@@ -253,7 +253,7 @@ func get_points_within_distance(V, VID, adj_list, VIDs_to_smooth, distance):
                 if not queue.has(nn):
                     queue.append(nn)
 
-## Smooth weights in the areas for which weights were inpainted and also their close neighbours.
+## Smooth weights in the areas for which weights were inpainted and also their close neighbors.
 ##
 ## Args:
 ##     V2: #V2 by 3 target mesh vertices
