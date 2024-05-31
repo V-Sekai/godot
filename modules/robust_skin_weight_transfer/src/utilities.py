@@ -124,13 +124,11 @@ def find_matches_closest_surface(
     for row_index in range(0, target_vertices.shape[0]):
         normalized_source_normal = normalize_vector(source_normals_matched_interpolated[row_index, :])
         normalized_target_normal = normalize_vector(target_normals[row_index, :])
-        radian_angle = np.arccos(np.dot(normalized_source_normal, normalized_target_normal))
+
+        # Take the absolute value of the dot product
+        radian_angle = np.arccos(np.abs(np.dot(normalized_source_normal, normalized_target_normal)))
+
         degree_angle = math.degrees(radian_angle)
-
-        # Adjust angle if it's more than 90 degrees
-        if degree_angle > 90:
-            degree_angle = 180 - degree_angle
-
         if squared_distance[row_index] <= distance_threshold_squared and degree_angle <= angle_threshold_degrees:
             matched[row_index] = True
 
