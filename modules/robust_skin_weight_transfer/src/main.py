@@ -17,10 +17,7 @@ def load_mesh(mesh_path):
     return vertices, faces, normals
 
 
-def main():
-    # Parse arguments
-    arguments = parse_arguments()
-
+def main(source_mesh, target_mesh):
     # Initialize polyscope
     ps.init()
 
@@ -28,11 +25,11 @@ def main():
     current_folder = os.path.dirname(os.path.abspath(__file__))
 
     # Load the source mesh
-    source_mesh_path = os.path.join(current_folder, arguments.source_mesh)
+    source_mesh_path = os.path.join(current_folder, source_mesh)
     vertices_1, faces_1, normals_1 = load_mesh(source_mesh_path)
 
     # Load the target mesh
-    target_mesh_path = os.path.join(current_folder, arguments.target_mesh)
+    target_mesh_path = os.path.join(current_folder, target_mesh)
     vertices_2, faces_2, normals_2 = load_mesh(target_mesh_path)
 
     # You can setup your own skin weights matrix W \in R^(|V1| x num_bones) here
@@ -113,4 +110,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    arguments = parse_arguments()
+    main(arguments.source_mesh, arguments.target_mesh)
+
