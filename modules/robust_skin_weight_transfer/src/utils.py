@@ -5,108 +5,130 @@ import numpy as np
 import scipy as sp
 
 
-def find_closest_point_on_surface(P, V, F):
+def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
     """
-    Given a number of points find their closest points on the surface of the V,F mesh
+    Given a number of points find their closest points on the surface of the mesh_vertices, mesh_triangles mesh
 
     Args:
-        P: #P by 3, where every row is a point coordinate
-        V: #V by 3 mesh vertices
-        F: #F by 3 mesh triangles indices
+        points: #points by 3, where every row is a point coordinate
+        mesh_vertices: #mesh_vertices by 3 mesh vertices
+        mesh_triangles: #mesh_triangles by 3 mesh triangles indices
     Returns:
-        sqrD #P smallest squared distances
-        I #P primitive indices corresponding to smallest distances
-        C #P by 3 closest points
-        B #P by 3 of the barycentric coordinates of the closest point
+        smallest_squared_distances: #points smallest squared distances
+        primitive_indices: #points primitive indices corresponding to smallest distances
+        closest_points: #points by 3 closest points
+        barycentric_coordinates: #points by 3 of the barycentric coordinates of the closest point
     """
 
-    sqrD, I, C = igl.point_mesh_squared_distance(P, V, F)
+    smallest_squared_distances, primitive_indices, closest_points = igl.point_mesh_squared_distance(
+        points, mesh_vertices, mesh_triangles
+    )
 
-    F_closest = F[I, :]
-    V1 = V[F_closest[:, 0], :]
-    V2 = V[F_closest[:, 1], :]
-    V3 = V[F_closest[:, 2], :]
+    closest_triangles = mesh_triangles[primitive_indices, :]
+    vertex_1 = mesh_vertices[closest_triangles[:, 0], :]
+    vertex_2 = mesh_vertices[closest_triangles[:, 1], :]
+    vertex_3 = mesh_vertices[closest_triangles[:, 2], :]
 
-    B = igl.barycentric_coordinates_tri(C, V1, V2, V3)
+    barycentric_coordinates = igl.barycentric_coordinates_tri(closest_points, vertex_1, vertex_2, vertex_3)
 
-    return sqrD, I, C, B
+    return smallest_squared_distances, primitive_indices, closest_points, barycentric_coordinates
 
 
-def interpolate_attribute_from_bary(A, B, I, F):
+def interpolate_attribute_from_bary(vertex_attributes, barycentric_coordinates, primitive_indices, mesh_triangles):
     """
-    Interpolate per-vertex attributes A via barycentric coordinates B of the F[I,:] vertices
+    Interpolate per-vertex attributes vertex_attributes via barycentric coordinates barycentric_coordinates of the mesh_triangles[primitive_indices,:] vertices
 
     Args:
-        A: #V by N per-vertex attributes
-        B  #B by 3 array of the barycentric coordinates of some points
-        I  #B primitive indices containing the closest point
-        F: #F by 3 mesh triangle indices
+        vertex_attributes: #mesh_vertices by N per-vertex attributes
+        barycentric_coordinates: #barycentric_coordinates by 3 array of the barycentric coordinates of some points
+        primitive_indices: #barycentric_coordinates primitive indices containing the closest point
+        mesh_triangles: #mesh_triangles by 3 mesh triangle indices
     Returns:
-        A_out #B interpolated attributes
+        interpolated_attributes: #barycentric_coordinates interpolated attributes
     """
-    F_closest = F[I, :]
-    a1 = A[F_closest[:, 0], :]
-    a2 = A[F_closest[:, 1], :]
-    a3 = A[F_closest[:, 2], :]
+    closest_triangles = mesh_triangles[primitive_indices, :]
+    attribute_1 = vertex_attributes[closest_triangles[:, 0], :]
+    attribute_2 = vertex_attributes[closest_triangles[:, 1], :]
+    attribute_3 = vertex_attributes[closest_triangles[:, 2], :]
 
-    b1 = B[:, 0]
-    b2 = B[:, 1]
-    b3 = B[:, 2]
+    barycentric_coordinate_1 = barycentric_coordinates[:, 0]
+    barycentric_coordinate_2 = barycentric_coordinates[:, 1]
+    barycentric_coordinate_3 = barycentric_coordinates[:, 2]
 
-    b1 = b1.reshape(-1, 1)
-    b2 = b2.reshape(-1, 1)
-    b3 = b3.reshape(-1, 1)
+    barycentric_coordinate_1 = barycentric_coordinate_1.reshape(-1, 1)
+    barycentric_coordinate_2 = barycentric_coordinate_2.reshape(-1, 1)
+    barycentric_coordinate_3 = barycentric_coordinate_3.reshape(-1, 1)
 
-    A_out = a1 * b1 + a2 * b2 + a3 * b3
+    interpolated_attributes = (
+        attribute_1 * barycentric_coordinate_1
+        + attribute_2 * barycentric_coordinate_2
+        + attribute_3 * barycentric_coordinate_3
+    )
 
-    return A_out
+    return interpolated_attributes
 
 
-def normalize_vec(v):
-    return v / np.linalg.norm(v)
+def normalize_vector(vector):
+    return vector / np.linalg.norm(vector)
 
 
-def find_matches_closest_surface(V1, F1, N1, V2, F2, N2, W1, dDISTANCE_THRESHOLD_SQRD, dANGLE_THRESHOLD_DEGREES):
+def find_matches_closest_surface(
+    source_vertices,
+    source_triangles,
+    source_normals,
+    target_vertices,
+    target_triangles,
+    target_normals,
+    source_weights,
+    distance_threshold_squared,
+    angle_threshold_degrees,
+):
     """
     For each vertex on the target mesh find a match on the source mesh.
 
     Args:
-        V1: #V1 by 3 source mesh vertices
-        F1: #F1 by 3 source mesh triangles indices
-        N1: #V1 by 3 source mesh normals
+        source_vertices: #source_vertices by 3 source mesh vertices
+        source_triangles: #source_triangles by 3 source mesh triangles indices
+        source_normals: #source_vertices by 3 source mesh normals
 
-        V2: #V2 by 3 target mesh vertices
-        F2: #F2 by 3 target mesh triangles indices
-        N2: #V2 by 3 target mesh normals
+        target_vertices: #target_vertices by 3 target mesh vertices
+        target_triangles: #target_triangles by 3 target mesh triangles indices
+        target_normals: #target_vertices by 3 target mesh normals
 
-        W1: #V1 by num_bones source mesh skin weights
+        source_weights: #source_vertices by num_bones source mesh skin weights
 
-        dDISTANCE_THRESHOLD_SQRD: scalar distance threshold
-        dANGLE_THRESHOLD_DEGREES: scalar normal threshold
+        distance_threshold_squared: scalar distance threshold
+        angle_threshold_degrees: scalar normal threshold
 
     Returns:
-        Matched: #V2 array of bools, where Matched[i] is True if we found a good match for vertex i on the source mesh
-        W2: #V2 by num_bones, where W2[i,:] are skinning weights copied directly from source using closest point method
+        matched: #target_vertices array of bools, where matched[i] is True if we found a good match for vertex i on the source mesh
+        target_weights: #target_vertices by num_bones, where target_weights[i,:] are skinning weights copied directly from source using closest point method
     """
 
-    Matched = np.zeros(shape=(V2.shape[0]), dtype=bool)
-    sqrD, I, C, B = find_closest_point_on_surface(V2, V1, F1)
+    matched = np.zeros(shape=(target_vertices.shape[0]), dtype=bool)
+    squared_distance, closest_indices, closest_points, barycentric_coordinates = find_closest_point_on_surface(
+        target_vertices, source_vertices, source_triangles
+    )
 
     # for each closest point on the source, interpolate its per-vertex attributes(skin weights and normals)
     # using the barycentric coordinates
-    W2 = interpolate_attribute_from_bary(W1, B, I, F1)
-    N1_match_interpolated = interpolate_attribute_from_bary(N1, B, I, F1)
+    target_weights = interpolate_attribute_from_bary(
+        source_weights, barycentric_coordinates, closest_indices, source_triangles
+    )
+    source_normals_matched_interpolated = interpolate_attribute_from_bary(
+        source_normals, barycentric_coordinates, closest_indices, source_triangles
+    )
 
     # check that the closest point passes our distance and normal thresholds
-    for RowIdx in range(0, V2.shape[0]):
-        n1 = normalize_vec(N1_match_interpolated[RowIdx, :])
-        n2 = normalize_vec(N2[RowIdx, :])
-        rad_angle = np.arccos(np.dot(n1, n2))
-        deg_angle = math.degrees(rad_angle)
-        if sqrD[RowIdx] <= dDISTANCE_THRESHOLD_SQRD and deg_angle <= dANGLE_THRESHOLD_DEGREES:
-            Matched[RowIdx] = True
+    for row_index in range(0, target_vertices.shape[0]):
+        normalized_source_normal = normalize_vector(source_normals_matched_interpolated[row_index, :])
+        normalized_target_normal = normalize_vector(target_normals[row_index, :])
+        radian_angle = np.arccos(np.dot(normalized_source_normal, normalized_target_normal))
+        degree_angle = math.degrees(radian_angle)
+        if squared_distance[row_index] <= distance_threshold_squared and degree_angle <= angle_threshold_degrees:
+            matched[row_index] = True
 
-    return Matched, W2
+    return matched, target_weights
 
 
 def is_valid_array(sparse_matrix):
