@@ -14,7 +14,7 @@ Python bindings for [libigl](https://github.com/libigl/libigl-python-bindings)
 ### Simple Transfer
 
 ```python
-pip3 install libigl polyscope
+pip3 install libigl polyscope robust_laplacian
 python3 src/sphere_to_plane_transfer.py
 ```
 
