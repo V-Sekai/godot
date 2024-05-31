@@ -6,13 +6,13 @@ import polyscope as ps
 from utilities import find_matches_closest_surface, inpaint, smooth
 
 # Initialize argument parser
-parser = argparse.ArgumentParser(description='Process some meshes.')
-parser.add_argument('--source_mesh', type=str, default='../meshes/sphere.obj',
+argument_parser = argparse.ArgumentParser(description='Process some meshes.')
+argument_parser.add_argument('--source_mesh', type=str, default='../meshes/sphere.obj',
                     help='Path to the source mesh file')
-parser.add_argument('--target_mesh', type=str, default='../meshes/grid.obj',
+argument_parser.add_argument('--target_mesh', type=str, default='../meshes/grid.obj',
                     help='Path to the target mesh file')
 
-args = parser.parse_args()
+arguments = argument_parser.parse_args()
 
 # Initialize polyscope
 ps.init()
@@ -21,57 +21,57 @@ ps.init()
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
 # Load the source mesh
-source_mesh_path = os.path.join(current_folder, args.source_mesh)
-V, F = igl.read_triangle_mesh(source_mesh_path)
-V1, F1, _, _ = igl.remove_unreferenced(V, F)
-if V.shape[0] != V1.shape[0]:
+source_mesh_path = os.path.join(current_folder, arguments.source_mesh)
+vertices, faces = igl.read_triangle_mesh(source_mesh_path)
+vertices_1, faces_1, _, _ = igl.remove_unreferenced(vertices, faces)
+if vertices.shape[0] != vertices_1.shape[0]:
     print("[Warning] Source mesh has unreferenced vertices which were removed")
-N1 = igl.per_vertex_normals(V1, F1)
+normals_1 = igl.per_vertex_normals(vertices_1, faces_1)
 
 # Load the target mesh
-target_mesh_path = os.path.join(current_folder, args.target_mesh)
-V, F = igl.read_triangle_mesh(target_mesh_path)
-V2, F2, _, _ = igl.remove_unreferenced(V, F)
-if V.shape[0] != V2.shape[0]:
+target_mesh_path = os.path.join(current_folder, arguments.target_mesh)
+vertices, faces = igl.read_triangle_mesh(target_mesh_path)
+vertices_2, faces_2, _, _ = igl.remove_unreferenced(vertices, faces)
+if vertices.shape[0] != vertices_2.shape[0]:
     print("[Warning] Target mesh has unreferenced vertices which were removed")
-N2 = igl.per_vertex_normals(V2, F2)
+normals_2 = igl.per_vertex_normals(vertices_2, faces_2)
 
 # You can setup your own skin weights matrix W \in R^(|V1| x num_bones) here
-# W = np.load("source_skinweights.npy")
+# skin_weights = np.load("source_skinweights.npy")
 
 # For now, generate simple per-vertex data (can be skinning weights but can be any scalar data)
-W = np.ones((V1.shape[0], 2))  # our simple rig has only 2 bones
-W[:, 0] = 0.3  # first bone has an influence of 0.3 on all vertices
-W[:, 1] = 0.7  # second bone has an influence of 0.7 on all vertices
+skin_weights = np.ones((vertices_1.shape[0], 2))  # our simple rig has only 2 bones
+skin_weights[:, 0] = 0.3  # first bone has an influence of 0.3 on all vertices
+skin_weights[:, 1] = 0.7  # second bone has an influence of 0.7 on all vertices
 
-num_bones = W.shape[1]
+number_of_bones = skin_weights.shape[1]
 
 # Register source and target Mesh geometries, plus their Normals
-ps.register_surface_mesh("SourceMesh", V1, F1, smooth_shade=True)
-ps.register_surface_mesh("TargetMesh", V2, F2, smooth_shade=True)
-ps.get_surface_mesh("SourceMesh").add_vector_quantity("Normals", N1, defined_on="vertices", color=(0.2, 0.5, 0.5))
-ps.get_surface_mesh("TargetMesh").add_vector_quantity("Normals", N2, defined_on="vertices", color=(0.2, 0.5, 0.5))
+ps.register_surface_mesh("SourceMesh", vertices_1, faces_1, smooth_shade=True)
+ps.register_surface_mesh("TargetMesh", vertices_2, faces_2, smooth_shade=True)
+ps.get_surface_mesh("SourceMesh").add_vector_quantity("Normals", normals_1, defined_on="vertices", color=(0.2, 0.5, 0.5))
+ps.get_surface_mesh("TargetMesh").add_vector_quantity("Normals", normals_2, defined_on="vertices", color=(0.2, 0.5, 0.5))
 
 #
 # Section 3.1 Closest Point Matching
 #
-dDISTANCE_THRESHOLD = 0.05 * igl.bounding_box_diagonal(V2)  # threshold distance D
-dDISTANCE_THRESHOLD_SQRD = dDISTANCE_THRESHOLD * dDISTANCE_THRESHOLD
-dANGLE_THRESHOLD_DEGREES = 30  # threshold angle theta in degrees
+distance_threshold = 0.05 * igl.bounding_box_diagonal(vertices_2)  # threshold distance D
+distance_threshold_squared = distance_threshold * distance_threshold
+angle_threshold_degrees = 30  # threshold angle theta in degrees
 
 # for every vertex on the target mesh find the closest point on the source mesh and copy weights over
-Matched, SkinWeights_interpolated = find_matches_closest_surface(
-    V1, F1, N1, V2, F2, N2, W, dDISTANCE_THRESHOLD_SQRD, dANGLE_THRESHOLD_DEGREES
+matched, interpolated_skin_weights = find_matches_closest_surface(
+    vertices_1, faces_1, normals_1, vertices_2, faces_2, normals_2, skin_weights, distance_threshold_squared, angle_threshold_degrees
 )
 
 # visualize vertices for which we found a match
-ps.get_surface_mesh("TargetMesh").add_scalar_quantity("Matched", Matched, defined_on="vertices", cmap="blues")
+ps.get_surface_mesh("TargetMesh").add_scalar_quantity("Matched", matched, defined_on="vertices", cmap="blues")
 
 
 #
 # Section 3.2 Skinning Weights Inpainting
 #
-InpaintedWeights, success = inpaint(V2, F2, SkinWeights_interpolated, Matched)
+inpainted_weights, success = inpaint(vertices_2, faces_2, interpolated_skin_weights, matched)
 
 if not success:
     print("[Error] Inpainting failed.")
@@ -79,26 +79,26 @@ if not success:
 
 # Visualize the weights for each bone
 ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-    "Bone1", InpaintedWeights[:, 0], defined_on="vertices", cmap="blues"
+    "Bone1", inpainted_weights[:, 0], defined_on="vertices", cmap="blues"
 )
 ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-    "Bone2", InpaintedWeights[:, 1], defined_on="vertices", cmap="blues"
+    "Bone2", inpainted_weights[:, 1], defined_on="vertices", cmap="blues"
 )
 
 # Optional smoothing
-SmoothedInpaintedWeights, VIDs_to_smooth = smooth(
-    V2, F2, InpaintedWeights, Matched, dDISTANCE_THRESHOLD, num_smooth_iter_steps=10, smooth_alpha=0.2
+smoothed_inpainted_weights, vertex_ids_to_smooth = smooth(
+    vertices_2, faces_2, inpainted_weights, matched, distance_threshold, num_smooth_iter_steps=10, smooth_alpha=0.2
 )
 ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-    "VIDs_to_smooth", VIDs_to_smooth, defined_on="vertices", cmap="blues"
+    "VertexIDsToSmooth", vertex_ids_to_smooth, defined_on="vertices", cmap="blues"
 )
 
 # Visualize the smoothed weights for each bone
 ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-    "SmoothedBone1", InpaintedWeights[:, 0], defined_on="vertices", cmap="blues"
+    "SmoothedBone1", inpainted_weights[:, 0], defined_on="vertices", cmap="blues"
 )
 ps.get_surface_mesh("TargetMesh").add_scalar_quantity(
-    "SmoothedBone2", InpaintedWeights[:, 1], defined_on="vertices", cmap="blues"
+    "SmoothedBone2", inpainted_weights[:, 1], defined_on="vertices", cmap="blues"
 )
 
 ps.show()
