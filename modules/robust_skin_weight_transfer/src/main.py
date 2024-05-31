@@ -7,6 +7,16 @@ from cli import parse_arguments
 from utilities import find_matches_closest_surface, inpaint, smooth
 
 
+def load_mesh(mesh_path):
+    vertices, faces = igl.read_triangle_mesh(mesh_path)
+    vertices_original = vertices.copy()  # Save original vertices for comparison
+    vertices, faces, _, _ = igl.remove_unreferenced(vertices, faces)
+    if vertices_original.shape[0] != vertices.shape[0]:
+        print("[Warning] Mesh has unreferenced vertices which were removed")
+    normals = igl.per_vertex_normals(vertices, faces)
+    return vertices, faces, normals
+
+
 def main():
     # Parse arguments
     arguments = parse_arguments()
@@ -19,20 +29,11 @@ def main():
 
     # Load the source mesh
     source_mesh_path = os.path.join(current_folder, arguments.source_mesh)
-
-    vertices, faces = igl.read_triangle_mesh(source_mesh_path)
-    vertices_1, faces_1, _, _ = igl.remove_unreferenced(vertices, faces)
-    if vertices.shape[0] != vertices_1.shape[0]:
-        print("[Warning] Source mesh has unreferenced vertices which were removed")
-    normals_1 = igl.per_vertex_normals(vertices_1, faces_1)
+    vertices_1, faces_1, normals_1 = load_mesh(source_mesh_path)
 
     # Load the target mesh
     target_mesh_path = os.path.join(current_folder, arguments.target_mesh)
-    vertices, faces = igl.read_triangle_mesh(target_mesh_path)
-    vertices_2, faces_2, _, _ = igl.remove_unreferenced(vertices, faces)
-    if vertices.shape[0] != vertices_2.shape[0]:
-        print("[Warning] Target mesh has unreferenced vertices which were removed")
-    normals_2 = igl.per_vertex_normals(vertices_2, faces_2)
+    vertices_2, faces_2, normals_2 = load_mesh(target_mesh_path)
 
     # You can setup your own skin weights matrix W \in R^(|V1| x num_bones) here
     # skin_weights = np.load("source_skinweights.npy")
