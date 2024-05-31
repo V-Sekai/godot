@@ -15,7 +15,7 @@ Python bindings for [libigl](https://github.com/libigl/libigl-python-bindings)
 
 ```python
 pip3 install libigl polyscope robust_laplacian
-python3 src/sphere_to_plane_transfer.py
+python3 src/main.py
 ```
 
 This will perform a simple transfer of weights from a sphere to the plane above it.
