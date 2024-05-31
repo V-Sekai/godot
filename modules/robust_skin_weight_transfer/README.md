@@ -14,7 +14,8 @@ Python bindings for [libigl](https://github.com/libigl/libigl-python-bindings)
 ### Simple Transfer
 
 ```python
-python src/sphere_to_plane_transfer.py
+pip3 install libigl polyscope
+python3 src/sphere_to_plane_transfer.py
 ```
 
 This will perform a simple transfer of weights from a sphere to the plane above it.
