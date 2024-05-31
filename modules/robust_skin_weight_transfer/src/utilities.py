@@ -173,62 +173,62 @@ def inpaint(V2, F2, W2, Matched):
     return W_inpainted, results
 
 
-def smooth(V2, F2, W2, Matched, dDISTANCE_THRESHOLD, num_smooth_iter_steps=10, smooth_alpha=0.2):
+def smooth(target_vertices, target_faces, skinning_weights, matched, distance_threshold, num_smooth_iter_steps=10, smooth_alpha=0.2):
     """
     Smooth weights in the areas for which weights were inpainted and also their close neighbors.
 
     Args:
-        V2: #V2 by 3 target mesh vertices
-        F2: #F2 by 3 target mesh triangles indices
-        W2: #V2 by num_bones skinning weights
-        Matched: #V2 array of bools, where Matched[i] is True if we found a good match for vertex i on the source mesh
-        dDISTANCE_THRESHOLD_SQRD: scalar distance threshold
+        target_vertices: #V2 by 3 target mesh vertices
+        target_faces: #F2 by 3 target mesh triangles indices
+        skinning_weights: #V2 by num_bones skinning weights
+        matched: #V2 array of bools, where Matched[i] is True if we found a good match for vertex i on the source mesh
+        distance_threshold: scalar distance threshold
         num_smooth_iter_steps: scalar number of smoothing steps
         smooth_alpha: scalar the smoothing strength
 
     Returns:
-        W2_smoothed: #V2 by num_bones new smoothed weights
-        VIDs_to_smooth: 1D array of vertex IDs for which smoothing was applied
+        smoothed_weights: #V2 by num_bones new smoothed weights
+        vertices_ids_to_smooth: 1D array of vertex IDs for which smoothing was applied
     """
 
-    NotMatched = ~Matched
-    VIDs_to_smooth = np.array(NotMatched, copy=True)
+    not_matched = ~matched
+    vertices_ids_to_smooth = np.array(not_matched, copy=True)
 
-    adj_list = igl.adjacency_list(F2)
+    adjacency_list = igl.adjacency_list(target_faces)
 
-    def get_points_within_distance(V, VID, distance=dDISTANCE_THRESHOLD):
+    def get_points_within_distance(vertices, vertex_id, distance=distance_threshold):
         """
         Get all neighbors of vertex VID within dDISTANCE_THRESHOLD
         """
 
         queue = []
-        queue.append(VID)
+        queue.append(vertex_id)
         while len(queue) != 0:
             vv = queue.pop()
-            neigh = adj_list[vv]
-            for nn in neigh:
-                if ~VIDs_to_smooth[nn] and np.linalg.norm(V[VID, :] - V[nn]) < distance:
-                    VIDs_to_smooth[nn] = True
+            neighbors = adjacency_list[vv]
+            for nn in neighbors:
+                if ~vertices_ids_to_smooth[nn] and np.linalg.norm(vertices[vertex_id, :] - vertices[nn]) < distance:
+                    vertices_ids_to_smooth[nn] = True
                     if nn not in queue:
                         queue.append(nn)
 
-    for i in range(0, V2.shape[0]):
-        if NotMatched[i]:
-            get_points_within_distance(V2, i)
+    for i in range(0, target_vertices.shape[0]):
+        if not_matched[i]:
+            get_points_within_distance(target_vertices, i)
 
-    W2_smoothed = np.array(W2, copy=True)
+    smoothed_weights = np.array(skinning_weights, copy=True)
     for step_idx in range(0, num_smooth_iter_steps):
-        for i in range(0, V2.shape[0]):
-            if VIDs_to_smooth[i]:
-                neigh = adj_list[i]
-                num = len(neigh)
-                weight = W2_smoothed[i, :]
+        for i in range(0, target_vertices.shape[0]):
+            if vertices_ids_to_smooth[i]:
+                neighbors = adjacency_list[i]
+                num = len(neighbors)
+                weight = smoothed_weights[i, :]
 
                 new_weight = (1 - smooth_alpha) * weight
-                for influence_idx in neigh:
-                    weight_connected = W2_smoothed[influence_idx, :]
+                for influence_idx in neighbors:
+                    weight_connected = smoothed_weights[influence_idx, :]
                     new_weight += (weight_connected / num) * smooth_alpha
 
-                W2_smoothed[i, :] = new_weight
+                smoothed_weights[i, :] = new_weight
 
-    return W2_smoothed, VIDs_to_smooth
+    return smoothed_weights, vertices_ids_to_smooth
