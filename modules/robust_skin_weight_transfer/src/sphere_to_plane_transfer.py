@@ -3,7 +3,7 @@ import os
 import igl
 import numpy as np
 import polyscope as ps
-from utils import find_matches_closest_surface, inpaint, smooth
+from utilities import find_matches_closest_surface, inpaint, smooth
 
 # Initialize polyscope
 ps.init()
