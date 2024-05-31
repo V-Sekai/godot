@@ -1,9 +1,18 @@
 import os
-
+import argparse
 import igl
 import numpy as np
 import polyscope as ps
 from utilities import find_matches_closest_surface, inpaint, smooth
+
+# Initialize argument parser
+parser = argparse.ArgumentParser(description='Process some meshes.')
+parser.add_argument('--source_mesh', type=str, default='../meshes/sphere.obj',
+                    help='Path to the source mesh file')
+parser.add_argument('--target_mesh', type=str, default='../meshes/grid.obj',
+                    help='Path to the target mesh file')
+
+args = parser.parse_args()
 
 # Initialize polyscope
 ps.init()
@@ -12,14 +21,16 @@ ps.init()
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
 # Load the source mesh
-V, F = igl.read_triangle_mesh(current_folder + "/../meshes/sphere.obj")
+source_mesh_path = os.path.join(current_folder, args.source_mesh)
+V, F = igl.read_triangle_mesh(source_mesh_path)
 V1, F1, _, _ = igl.remove_unreferenced(V, F)
 if V.shape[0] != V1.shape[0]:
     print("[Warning] Source mesh has unreferenced vertices which were removed")
 N1 = igl.per_vertex_normals(V1, F1)
 
 # Load the target mesh
-V, F = igl.read_triangle_mesh(current_folder + "/../meshes/grid.obj")
+target_mesh_path = os.path.join(current_folder, args.target_mesh)
+V, F = igl.read_triangle_mesh(target_mesh_path)
 V2, F2, _, _ = igl.remove_unreferenced(V, F)
 if V.shape[0] != V2.shape[0]:
     print("[Warning] Target mesh has unreferenced vertices which were removed")
