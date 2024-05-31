@@ -3,6 +3,7 @@ import math
 import igl
 import numpy as np
 import scipy as sp
+from robust_laplacian import mesh_laplacian
 
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
@@ -153,23 +154,11 @@ def inpaint(V2, F2, W2, Matched):
     """
 
     # Compute the laplacian
-    L = 2 * igl.cotmatrix(V2, F2)
-    M = igl.massmatrix(V2, F2, igl.MASSMATRIX_TYPE_VORONOI)
+    L, M = mesh_laplacian(V2, F2)
+    L = -L  # Flip the sign of the Laplacian
     Minv = sp.sparse.diags(1 / M.diagonal())
 
-    is_valid = is_valid_array(L)
-    if not is_valid:
-        print("[Error] Laplacian is invalid:")
-
-    is_valid = is_valid_array(Minv)
-    if not is_valid:
-        print("[Error] Mass matrix is invalid:")
-
     Q = -L + L * Minv * L
-
-    is_valid = is_valid_array(Q)
-    if not is_valid:
-        print("[Error] System matrix is invalid:")
 
     Aeq = sp.sparse.csc_matrix((0, 0))
     Beq = np.array([])
