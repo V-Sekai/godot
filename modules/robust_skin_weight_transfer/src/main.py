@@ -42,8 +42,6 @@ def main():
     skin_weights[:, 0] = 0.3  # first bone has an influence of 0.3 on all vertices
     skin_weights[:, 1] = 0.7  # second bone has an influence of 0.7 on all vertices
 
-    number_of_bones = skin_weights.shape[1]
-
     # Register source and target Mesh geometries, plus their Normals
     ps.register_surface_mesh("SourceMesh", vertices_1, faces_1, smooth_shade=True)
     ps.register_surface_mesh("TargetMesh", vertices_2, faces_2, smooth_shade=True)
