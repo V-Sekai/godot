@@ -1,10 +1,11 @@
 import os
-import argparse
+
 import igl
 import numpy as np
 import polyscope as ps
-from utilities import find_matches_closest_surface, inpaint, smooth
 from cli import parse_arguments
+from utilities import find_matches_closest_surface, inpaint, smooth
+
 
 def main():
     # Parse arguments
@@ -46,8 +47,12 @@ def main():
     # Register source and target Mesh geometries, plus their Normals
     ps.register_surface_mesh("SourceMesh", vertices_1, faces_1, smooth_shade=True)
     ps.register_surface_mesh("TargetMesh", vertices_2, faces_2, smooth_shade=True)
-    ps.get_surface_mesh("SourceMesh").add_vector_quantity("Normals", normals_1, defined_on="vertices", color=(0.2, 0.5, 0.5))
-    ps.get_surface_mesh("TargetMesh").add_vector_quantity("Normals", normals_2, defined_on="vertices", color=(0.2, 0.5, 0.5))
+    ps.get_surface_mesh("SourceMesh").add_vector_quantity(
+        "Normals", normals_1, defined_on="vertices", color=(0.2, 0.5, 0.5)
+    )
+    ps.get_surface_mesh("TargetMesh").add_vector_quantity(
+        "Normals", normals_2, defined_on="vertices", color=(0.2, 0.5, 0.5)
+    )
 
     #
     # Section 3.1 Closest Point Matching
@@ -58,12 +63,19 @@ def main():
 
     # for every vertex on the target mesh find the closest point on the source mesh and copy weights over
     matched, interpolated_skin_weights = find_matches_closest_surface(
-        vertices_1, faces_1, normals_1, vertices_2, faces_2, normals_2, skin_weights, distance_threshold_squared, angle_threshold_degrees
+        vertices_1,
+        faces_1,
+        normals_1,
+        vertices_2,
+        faces_2,
+        normals_2,
+        skin_weights,
+        distance_threshold_squared,
+        angle_threshold_degrees,
     )
 
     # visualize vertices for which we found a match
     ps.get_surface_mesh("TargetMesh").add_scalar_quantity("Matched", matched, defined_on="vertices", cmap="blues")
-
 
     #
     # Section 3.2 Skinning Weights Inpainting
@@ -99,6 +111,7 @@ def main():
     )
 
     ps.show()
+
 
 if __name__ == "__main__":
     main()
