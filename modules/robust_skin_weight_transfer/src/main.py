@@ -1,4 +1,5 @@
 import os
+from typing import Tuple
 
 import igl
 import numpy as np
@@ -7,7 +8,7 @@ from cli import parse_arguments
 from utilities import find_matches_closest_surface, inpaint, smooth
 
 
-def load_mesh(mesh_path):
+def load_mesh(mesh_path: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     vertices, faces = igl.read_triangle_mesh(mesh_path)
     vertices_original = vertices.copy()  # Save original vertices for comparison
     vertices, faces, _, _ = igl.remove_unreferenced(vertices, faces)
@@ -17,26 +18,26 @@ def load_mesh(mesh_path):
     return vertices, faces, normals
 
 
-def main(source_mesh, target_mesh):
+def main(source_mesh: str, target_mesh: str) -> None:
     # Initialize polyscope
     ps.init()
 
     # Get the directory of the current file
-    current_folder = os.path.dirname(os.path.abspath(__file__))
+    current_folder: str = os.path.dirname(os.path.abspath(__file__))
 
     # Load the source mesh
-    source_mesh_path = os.path.join(current_folder, source_mesh)
+    source_mesh_path: str = os.path.join(current_folder, source_mesh)
     vertices_1, faces_1, normals_1 = load_mesh(source_mesh_path)
 
     # Load the target mesh
-    target_mesh_path = os.path.join(current_folder, target_mesh)
+    target_mesh_path: str = os.path.join(current_folder, target_mesh)
     vertices_2, faces_2, normals_2 = load_mesh(target_mesh_path)
 
     # You can setup your own skin weights matrix W \in R^(|V1| x num_bones) here
     # skin_weights = np.load("source_skinweights.npy")
 
     # For now, generate simple per-vertex data (can be skinning weights but can be any scalar data)
-    skin_weights = np.ones((vertices_1.shape[0], 2))  # our simple rig has only 2 bones
+    skin_weights: np.ndarray = np.ones((vertices_1.shape[0], 2))  # our simple rig has only 2 bones
     skin_weights[:, 0] = 0.3  # first bone has an influence of 0.3 on all vertices
     skin_weights[:, 1] = 0.7  # second bone has an influence of 0.7 on all vertices
 
@@ -53,9 +54,9 @@ def main(source_mesh, target_mesh):
     #
     # Section 3.1 Closest Point Matching
     #
-    distance_threshold = 0.05 * igl.bounding_box_diagonal(vertices_2)  # threshold distance D
-    distance_threshold_squared = distance_threshold * distance_threshold
-    angle_threshold_degrees = 30  # threshold angle theta in degrees
+    distance_threshold: float = 0.05 * igl.bounding_box_diagonal(vertices_2)  # threshold distance D
+    distance_threshold_squared: float = distance_threshold * distance_threshold
+    angle_threshold_degrees: int = 30  # threshold angle theta in degrees
 
     # for every vertex on the target mesh find the closest point on the source mesh and copy weights over
     matched, interpolated_skin_weights = find_matches_closest_surface(
@@ -112,4 +113,3 @@ def main(source_mesh, target_mesh):
 if __name__ == "__main__":
     arguments = parse_arguments()
     main(arguments.source_mesh, arguments.target_mesh)
-
