@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai-fire/godot-robust-skin-weights-transfer.git
 	branch = main
-	commit = fa664da77bae607364c4f50b6dbe4665059f96d8
-	parent = f803f71eb03dec4a145f7087ee7c5dcef3688923
+	commit = 3ddafca0f25f81560ae4f6cedd00d50e960032c6
+	parent = 339f35c594edb8cf24d8146dcf5b337328fc42e4
 	method = merge
 	cmdver = 0.4.6
