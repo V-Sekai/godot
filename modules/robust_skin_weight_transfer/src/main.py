@@ -124,7 +124,9 @@ def main(source_mesh: str, target_mesh: str, output_file: str) -> None:
         "vertices": vertices_2.tolist(),
         "faces": faces_2.tolist(),
         "normals": normals_2.tolist(),
-        "uvs": uvs_2.tolist()
+        "uvs": uvs_2.tolist(),
+        "weights": smoothed_inpainted_weights.tolist(),
+        "bones": np.array([[0, 0, 0, 1], [1, 0, 0, 1]]).tolist()
     }
 
     # Write the final mesh to the output file
