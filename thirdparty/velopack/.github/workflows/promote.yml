@@ -1,0 +1,22 @@
+name: Promote Stable Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fast-forward master branch
+        run: |
+          git checkout master
+          git merge develop --ff-only
+      - name: Push
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.MASTER_TOKEN }}
+          branch: master

@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/velopack/velopack.git
+	branch = develop
+	commit = e413bb7f31b09631f2e9415db20e1e56899c4c9c
+	parent = 2182945ae6fdb3851cb46019f1794e4223c2a30c
+	method = merge
+	cmdver = 0.4.9

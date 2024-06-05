@@ -1,0 +1,119 @@
+[package]
+name = "velopack_bins"
+publish = false
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+windows = []
+
+[lib]
+name = "velopack_bins"
+path = "src/lib.rs"
+doctest = false
+
+[[bin]]
+name = "setup"
+path = "src/setup.rs"
+required-features = ["windows"]
+
+[[bin]]
+name = "stub"
+path = "src/stub.rs"
+required-features = ["windows"]
+
+[[bin]]
+name = "update"
+path = "src/update.rs"
+
+[[bin]]
+name = "testapp"
+path = "src/testapp.rs"
+
+[dependencies]
+velopack.workspace = true
+anyhow.workspace = true
+rand.workspace = true
+log.workspace = true
+simplelog.workspace = true
+clap.workspace = true
+semver.workspace = true
+chrono.workspace = true
+lazy_static.workspace = true
+strum.workspace = true
+derivative.workspace = true
+glob.workspace = true
+remove_dir_all.workspace = true
+time.workspace = true
+os_info.workspace = true
+bitflags.workspace = true
+regex.workspace = true
+normpath.workspace = true
+simple-stopwatch.workspace = true
+file-rotate.workspace = true
+wait-timeout.workspace = true
+pretty-bytes-rust.workspace = true
+enum-flags.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+native-dialog.workspace = true
+waitpid-any.workspace = true
+dialog.workspace = true
+libc.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+fs_extra.workspace = true
+memmap2.workspace = true
+image.workspace = true
+winsafe = { version = "0.0.20", features = ["gui"] }
+windows = { version = "0.58", default-features = false, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Com",
+    "Win32_UI",
+    "Win32_UI_Shell",
+    "Win32_System_Threading",
+    "Win32_System_SystemInformation",
+    "Win32_System_Variant",
+    "Win32_System_Environment",
+    "Win32_Storage_EnhancedStorage",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Kernel",
+    "Wdk",
+    "Wdk_System",
+    "Wdk_System_Threading",
+] }
+webview2-com = "0.33"
+libloading.workspace = true
+strsim.workspace = true
+same-file.workspace = true
+filelocksmith.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+ntest.workspace = true
+pretty_assertions.workspace = true
+sha1_smol.workspace = true
+
+[build-dependencies]
+semver.workspace = true
+
+[target.'cfg(windows)'.build-dependencies]
+winres.workspace = true

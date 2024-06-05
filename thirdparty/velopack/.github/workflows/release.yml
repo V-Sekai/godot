@@ -1,0 +1,161 @@
+name: Publish to NuGet.org
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_run_id:
+        description: 'Workflow Run ID to publish'
+        required: true
+        default: ''
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build version
+        uses: actions/download-artifact@v4
+        with:
+          name: build-version
+          run-id: ${{ github.event.inputs.workflow_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./
+
+      - name: Download vpk
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          run-id: ${{ github.event.inputs.workflow_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./packages
+          
+      - name: Download lib-nodejs
+        uses: actions/download-artifact@v4
+        with:
+          name: lib-nodejs
+          run-id: ${{ github.event.inputs.workflow_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./lib-nodejs
+          
+      - name: Download lib-rust
+        uses: actions/download-artifact@v4
+        with:
+          name: lib-rust
+          run-id: ${{ github.event.inputs.workflow_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./lib-rust
+
+      - name: Download lib-c
+        uses: actions/download-artifact@v4
+        with:
+          name: lib-c
+          run-id: ${{ github.event.inputs.workflow_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./lib-c-files
+
+      - name: Load version from file
+        run: |
+          version=$(cat version.txt | xargs)
+          echo "PKG_VERSION=$version" >> $GITHUB_ENV
+
+      - name: Create lib-c zip package
+        run: |
+          mkdir lib-c
+          zip -r ./lib-c/velopack_libc_$PKG_VERSION.zip ./lib-c-files
+
+      - uses: actions/checkout@v4
+        with:
+          path: ./repo
+          fetch-depth: 0
+          
+      - name: Tag the commit with version and push
+        working-directory: ./repo
+        run: |
+          echo $PKG_VERSION
+          COMMIT_HASH=$(gh run view ${{ github.event.inputs.workflow_run_id }} --json headSha -q ".headSha")
+          git checkout $COMMIT_HASH
+          git tag $PKG_VERSION
+          git push origin $PKG_VERSION
+
+      - name: Generate Release
+        working-directory: ./repo
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $currentTag = Get-Content -Path "../version.txt" -Raw
+          $currentTag = $currentTag.Trim()
+
+          # Get the previous release tag
+          Write-Host "Detecting previous release tag..."
+          if ($currentTag -like "*-*") {
+          # For prerelease versions, retain the full tag for output
+              $previousTag = git tag --list | Where-Object { $_ -like "*-*" } | 
+                  ForEach-Object { 
+                      $versionPart = $_.Split('-')[0]
+                      [PSCustomObject]@{ FullTag = $_; Version = [System.Version]$versionPart }
+                  } | Sort-Object Version -Descending | Select-Object -Skip 1 -First 1 | ForEach-Object { $_.FullTag }
+              $releaseArg = "--prerelease"
+          } else {
+              $previousTag = git tag --list | Where-Object { $_ -notlike "*-*" } | %{ [System.Version]$_ } | Sort-Object -Descending | Select-Object -Skip 1 -First 1
+              $releaseArg = "--latest"
+          }
+
+          Write-Host "Current tag: $currentTag"
+          Write-Host "Previous tag: $previousTag"
+
+          # Generate release notes
+          Write-Host "Generating release notes..."
+          $headers = @{
+              "Authorization" = "Bearer ${{ github.token }}"
+              "Accept" = "application/vnd.github.v3+json"
+          }
+          $body = @{
+              "tag_name" = "$currentTag"
+              "previous_tag_name" = "$previousTag"
+          } | ConvertTo-Json
+          $apiUrl = "https://api.github.com/repos/velopack/velopack/releases/generate-notes"
+          $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body -ContentType 'application/json'
+
+          $releaseName = $response.name
+          $releaseBody = $response.body
+
+          # Create release
+          Write-Host "Creating release..."
+          $notesFilePath = "./RELEASE_NOTES.md"
+          $releaseBody | Out-File -FilePath $notesFilePath -Encoding utf8
+          gh release create $currentTag --title $releaseName --notes-file $notesFilePath $releaseArg --verify-tag
+
+          # Upload artifacts
+          Write-Host "Uploading artifacts..."
+          gh release upload $currentTag (get-item ../packages/*.nupkg)
+          gh release upload $currentTag (get-item ../lib-nodejs/*.tgz)
+          gh release upload $currentTag (get-item ../lib-rust/*.crate)
+          gh release upload $currentTag (get-item ../lib-c/*.zip)
+
+      - name: Publish NuGet Packages
+        run: |
+          for f in packages/*.nupkg; do
+            dotnet nuget push "$f" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+          
+      - name: Publish NPM Package
+        working-directory: ./lib-nodejs
+        run: |
+          npm set "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}"
+          npm publish velopack-$PKG_VERSION.tgz --access public
+          
+      - name: Publish Rust Crate
+        working-directory: ./lib-rust
+        run: |
+          tar -xzf velopack-$PKG_VERSION.crate
+          cd velopack-$PKG_VERSION
+          rm Cargo.toml.orig
+          rm .cargo_vcs_info.json
+          cargo login ${{ secrets.CARGO_TOKEN }}
+          cargo publish --allow-dirty --no-verify

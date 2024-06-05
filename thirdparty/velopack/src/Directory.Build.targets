@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <PropertyGroup Condition=" '$(VelopackPackageId)' != '' ">
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Copyright>Copyright © Velopack Ltd. All rights reserved.</Copyright>
+    <Authors>Velopack Ltd;Caelan Sayler;Kevin Bost</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/velopack/velopack</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/velopack/velopack</RepositoryUrl>
+    <PackageTags>windows;macos;osx;updater;dotnet;installer;desktop;squirrel;velopack;autoupdate;automatic-updates</PackageTags>
+    <PackageIcon>Velopack_200.png</PackageIcon>
+    <PackageReadmeFile>README_NUGET.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Title>$(VelopackPackageId)</Title>
+    <Product>$(VelopackPackageId)</Product>
+    <PackageId>$(VelopackPackageId)</PackageId>
+    <IsPackable>true</IsPackable>
+    <!-- source link -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <EmbedAllSources>true</EmbedAllSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(VelopackPackageId)' != '' ">
+    <None Include="$(MSBuildThisFileDirectory)..\artwork\Velopack_200.png" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)..\README_NUGET.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <Target Name="AddNugetVendorLibs" BeforeTargets="Build" Condition=" '$(VelopackPackageVendorLibs)' == 'true' ">
+    <ItemGroup>
+      <None Include="$(MSBuildThisFileDirectory)..\vendor\**" Pack="true" PackagePath="vendor" />
+      <None Include="$(MSBuildThisFileDirectory)..\artwork\DefaultApp.icns" Pack="true" PackagePath="vendor" />
+      <None Include="$(MSBuildThisFileDirectory)..\artwork\DefaultApp.png" Pack="true" PackagePath="vendor" />
+    </ItemGroup>
+    <ItemGroup Condition=" '$(PackRustAssets)' == 'true' ">
+      <None Include="$(MSBuildThisFileDirectory)..\target\release\update.exe" Pack="true" PackagePath="vendor" />
+      <None Include="$(MSBuildThisFileDirectory)..\target\release\setup.exe" Pack="true" PackagePath="vendor" />
+      <None Include="$(MSBuildThisFileDirectory)..\target\release\stub.exe" Pack="true" PackagePath="vendor" />
+      <None Include="$(MSBuildThisFileDirectory)..\target\release\UpdateMac" Pack="true" PackagePath="vendor" />
+      <None Include="$(MSBuildThisFileDirectory)..\target\release\UpdateNix_x64" Pack="true" PackagePath="vendor" />
+      <None Include="$(MSBuildThisFileDirectory)..\target\release\UpdateNix_arm64" Pack="true" PackagePath="vendor" />
+    </ItemGroup>
+  </Target>
+
+  <!--<Target Name="CleanPackageOutput" BeforeTargets="Build" Condition=" '$(VelopackPackageId)' != '' ">
+    <ItemGroup>
+      <_ExistingPackage Include="$(PackageOutputPath)\$(PackageId)*.nupkg" />
+      <_PackageToDelete Include="@(_ExistingPackage)"
+                        Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Filename)', '$(PackageId)\.\d\.\d\.\d.*'))" />
+    </ItemGroup>
+    <Delete Files="@(_PackageToDelete)" ContinueOnError="true">
+      <Output TaskParameter="DeletedFiles" ItemName="_CleanedPackages" />
+    </Delete>
+    <Message Text="Cleaned existing packages: @(_CleanedPackages -> '%(Filename)%(Extension)')"
+             Condition="'@(_CleanedPackages)' != ''" />
+  </Target>
+
+  <Target Name="CleanCachedPackageId" AfterTargets="Build;Pack" Condition=" '$(VelopackPackageId)' != '' ">
+    <PropertyGroup>
+      <PackageFolder>$(NuGetCache)\$(PackageId.ToLowerInvariant())</PackageFolder>
+    </PropertyGroup>
+
+    <Message Text="Cleaning $(PackageFolder)" Condition="Exists($(PackageFolder))" />
+    <Exec Command='rd "$(PackageFolder)" /q /s' Condition="Exists($(PackageFolder)) and '$(OS)' == 'Windows_NT'" />
+    <Exec Command='rm -rf "$(PackageFolder)"' Condition="Exists($(PackageFolder)) and '$(OS)' != 'Windows_NT'" />
+  </Target>
+
+  <Target Name="CleanHttpNuGetCache"
+          Condition="'$(CleanHttpNuGetCacheOnPack)' == 'true' and Exists('$(HttpNuGetCache)') and '$(VelopackPackageId)' != ''"
+          AfterTargets="Build;Pack">
+    <Message Text="Cleaning $(HttpNuGetCache)" />
+    <Exec Command='rd "$(HttpNuGetCache)" /q /s' Condition="'$(OS)' == 'Windows_NT'" />
+    <Exec Command='rm -rf "$(HttpNuGetCache)"' Condition="'$(OS)' != 'Windows_NT'" />
+  </Target>-->
+
+</Project>

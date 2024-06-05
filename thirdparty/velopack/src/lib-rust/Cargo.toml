@@ -1,0 +1,57 @@
+[package]
+name = "velopack"
+description = "Installer and automatic updates for cross-platform desktop applications"
+readme = "README.md"
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["zstd"]
+delta = ["zstd"]
+async = ["async-std"]
+typescript = ["ts-rs"]
+
+[package.metadata.docs.rs]
+features = ["async", "delta"]
+
+[lib]
+name = "velopack"
+path = "src/lib.rs"
+
+[dependencies]
+log.workspace = true
+ureq.workspace = true
+url.workspace = true
+semver.workspace = true
+xml.workspace = true
+derivative.workspace = true
+glob.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+zip.workspace = true
+thiserror.workspace = true
+lazy_static.workspace = true
+regex.workspace = true
+normpath.workspace = true
+bitflags.workspace = true
+rand.workspace = true
+native-tls.workspace = true
+sha1.workspace = true
+sha2.workspace = true
+
+# typescript
+ts-rs = { workspace = true, optional = true }
+
+# delta packages
+zstd = { workspace = true, optional = true }
+
+# async
+async-std = { workspace = true, optional = true }

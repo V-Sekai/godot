@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <ProjectName Condition=" '$(ProjectName)' == '' ">$(MSBuildProjectName)</ProjectName>
+    <BaseOutputPath>$([System.IO.Path]::GetFullPath($(MSBuildThisFileDirectory)..\build\))</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(BaseOutputPath)obj\$(ProjectName)\</BaseIntermediateOutputPath>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <BeforeTargetFrameworkInferenceTargets>$(MSBuildThisFileDirectory)SelfContained.targets</BeforeTargetFrameworkInferenceTargets>
+    <NoWarn>$(NoWarn);NETSDK1188;NU5100</NoWarn>
+
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./</PathMap>
+
+    <Product>Velopack</Product>
+    <Description>Installer and automatic update framework for cross-platform desktop applications</Description>
+    <HttpNuGetCache>$(LocalAppData)\NuGet\v3-cache</HttpNuGetCache>
+    <CleanHttpNuGetCacheOnPack Condition="'$(CleanHttpNuGetCacheOnPack)' == ''">true</CleanHttpNuGetCacheOnPack>
+    <NuGetCache>$(UserProfile)\.nuget\packages</NuGetCache>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)..\Velopack.snk</AssemblyOriginatorKeyFile>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(MSBuildProjectExtension)'=='.csproj' ">
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.6.*" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+  </ItemGroup>
+
+</Project>

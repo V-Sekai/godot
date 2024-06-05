@@ -1,0 +1,61 @@
+{
+  "name": "velopack",
+  "version": "0.0.0",
+  "description": "",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {
+    "test": "npm run dev && cross-env VELOPACK_RESTART=true VELOPACK_DEBUG=true jest",
+    "dev": "cargo build -p velopack_nodeffi -p velopack_bins && tsc -p tsconfig.build.json && node copy-lib.js",
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "del-cli **/*.node lib velopack-*.tgz",
+    "lint": "prettier . --write"
+  },
+  "bugs": {
+    "url": "https://github.com/velopack/velopack/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/velopack/velopack.git"
+  },
+  "keywords": [
+    "updater",
+    "autoupdate",
+    "installer",
+    "desktop",
+    "squirrel",
+    "velopack",
+    "electron",
+    "macos",
+    "windows",
+    "linux",
+    "cross-platform",
+    "automatic-updates"
+  ],
+  "homepage": "https://velopack.io",
+  "author": "Velopack Ltd, Caelan Sayler",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0 <=21.7.3"
+  },
+  "files": [
+    "lib/**/*.ts",
+    "lib/**/*.js",
+    "lib/**/*.node"
+  ],
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.4",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.16",
+    "cross-env": "^7.0.3",
+    "del-cli": "^6.0.0",
+    "jest": "^29.7.0",
+    "prettier": "3.3.3",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@neon-rs/load": "^0.1.73"
+  }
+}
