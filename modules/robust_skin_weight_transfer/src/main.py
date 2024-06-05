@@ -49,7 +49,7 @@ def main(source_mesh: str, target_mesh: str, output_file: str) -> None:
     skin_weights: np.ndarray = np.ones((vertices_1.shape[0], 2))  # our simple rig has only 2 bones
     skin_weights[:, 0] = 0.3  # first bone has an influence of 0.3 on all vertices
     skin_weights[:, 1] = 0.7  # second bone has an influence of 0.7 on all vertices
-
+    
     # Register source and target Mesh geometries, plus their Normals
     ps.register_surface_mesh("SourceMesh", vertices_1, faces_1, smooth_shade=True)
     ps.register_surface_mesh("TargetMesh", vertices_2, faces_2, smooth_shade=True)
@@ -119,6 +119,8 @@ def main(source_mesh: str, target_mesh: str, output_file: str) -> None:
     # Write the final mesh to the output file
     output_file_path: str = os.path.join(current_folder, output_file)
 
+    skin_bones_target: np.ndarray = np.stack([np.eye(4) for _ in range(2)], axis=0)
+
     # Prepare the data to be written as JSON
     mesh_data = {
         "vertices": vertices_2.tolist(),
@@ -126,7 +128,7 @@ def main(source_mesh: str, target_mesh: str, output_file: str) -> None:
         "normals": normals_2.tolist(),
         "uvs": uvs_2.tolist(),
         "weights": smoothed_inpainted_weights.tolist(),
-        "bones": np.array([[0, 0, 0, 1], [1, 0, 0, 1]]).tolist()
+        "bones": skin_bones_target.tolist()
     }
 
     # Write the final mesh to the output file
