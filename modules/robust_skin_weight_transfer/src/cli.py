@@ -10,6 +10,9 @@ def parse_arguments() -> Namespace:
     argument_parser.add_argument(
         "--target_mesh", type=str, default="../meshes/grid.obj", help="Path to the target mesh file"
     )
+    argument_parser.add_argument(
+        "--output_file", type=str, default="../meshes/output.json", help="Path to the output file"
+    )
 
     arguments: Namespace = argument_parser.parse_args()
     return arguments
