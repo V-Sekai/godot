@@ -1,0 +1,100 @@
+import os
+import subprocess
+import platform
+
+Import("env")
+
+env.Append(
+    CPPDEFINES=[("SQLITE_DEFAULT_SYNCHRONOUS", 1), ("SQLITE_ENABLE_RBU", 1), ("SQLITE_USE_URI", 1), "SQLITE_ENABLE_JSON1", "SQLITE_ENABLE_FTS3", "SQLITE_ENABLE_FTS4",
+    "SQLITE_ENABLE_FTS5", "SQLITE_ENABLE_RTREE", "SQLITE_ENABLE_DBSTAT_VTAB", "SQLITE_ENABLE_COLUMN_METADATA", "SQLITE_ENABLE_MATH_FUNCTIONS",
+    "SQLITE_OMIT_WAL", ("SQLITE_DEFAULT_FOREIGN_KEYS", 1), ("SQLITE_TEMP_STORE", 3)],
+)
+
+env["builtin_zstd"] = False
+
+env_thirdparty = env.Clone()
+env_thirdparty.disable_warnings()
+
+source_files = [
+    "src/*.cpp",
+    "src/*.c",
+    "*.cpp",
+    "thirdparty/sqlite/*.c",
+    "thirdparty/spmemvfs/*.c",
+]
+
+for source_file in source_files:
+    env_thirdparty.add_source_files(env_thirdparty.modules_sources, source_file)
+
+env.modules_sources += env_thirdparty.modules_sources
+
+target = ""
+arch = env["arch"]
+env_platform = env["platform"]
+
+if env_platform == "windows":
+    if arch == "x86_64":
+        target = "x86_64-pc-windows-gnu"
+
+elif env_platform == "linuxbsd" or env_platform == "linux":
+    if arch == "x86_64":
+        target = "x86_64-unknown-linux-gnu"
+
+elif env_platform == "macos":
+    if arch == "x86_64":
+        target = "x86_64-apple-darwin"
+    elif arch == "arm64":
+        target = "aarch64-apple-darwin"
+
+elif env_platform == "android":
+    if arch == "armv7":
+        target = "armv7-linux-androideabi"
+    elif arch == "aarch64":
+        target = "aarch64-linux-android"
+
+elif env_platform == "ios":
+    if arch == "aarch64":
+        target = "aarch64-apple-ios"
+
+elif env_platform == "web":
+    target = "wasm32-unknown-unknown"
+
+
+subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
+
+if env["platform"] == "windows":
+    env.Append(LIBS=[File("thirdparty/mvsqlite/target/" + target + "/release/libmvsqlite.a")])
+
+    env.Append(
+        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + target + "/release"],
+        LIBS=["ws2_32", "ntdll", "userenv"],
+    )
+
+    os_env = os.environ.copy()
+    os_env["CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER"] = "ld"
+
+    subprocess.run(
+        ["cargo", "build", "--release", "--target", target],
+        cwd="thirdparty/mvsqlite/mvsqlite",
+        env=os_env,
+    )
+elif env_platform == "macos":
+    env.Append(LINKFLAGS=["-framework", "SystemConfiguration"])
+
+    targets = ["x86_64-apple-darwin", "aarch64-apple-darwin"]
+
+    env.Append(
+        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/" + f"{target}" + "/release"],
+        LIBS=["mvsqlite"],
+    )
+    for target in targets:
+        subprocess.check_output(["rustup", "target", "add", target], stderr=subprocess.STDOUT)
+        subprocess.run(["cargo", "build", "--release", "--target", target], cwd="thirdparty/mvsqlite/mvsqlite")
+
+else:
+    env.Append(
+        LIBPATH=["#modules/mvsqlite/thirdparty/mvsqlite/target/release"],
+        LIBS=["mvsqlite"],
+    )
+
+    subprocess.run(["cargo", "build", "--release"], cwd="thirdparty/mvsqlite/mvsqlite")
