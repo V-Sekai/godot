@@ -2888,7 +2888,6 @@ bool Animation::_transform_track_optimize_key(const TKey<TransformKey> &t0, cons
 }
 
 bool Animation::_quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Variant> &t1, const TKey<Variant> &t2, float p_alowed_linear_err, float p_alowed_angular_err, float p_max_optimizable_angle) {
-
 	real_t c = (t1.time - t0.time) / (t2.time - t0.time);
 	real_t t[3] = { -1, -1, -1 };
 
@@ -2901,12 +2900,10 @@ bool Animation::_quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Var
 		//localize both to rotation from q0
 
 		if (q0.is_equal_approx(q2)) {
-
 			if (!q0.is_equal_approx(q1))
 				return false;
 
 		} else {
-
 			Quat r02 = (q0.inverse() * q2).normalized();
 			Quat r01 = (q0.inverse() * q1).normalized();
 
@@ -2946,10 +2943,8 @@ bool Animation::_quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Var
 
 	bool erase = false;
 	if (t[0] == -1 && t[1] == -1 && t[2] == -1) {
-
 		erase = true;
 	} else {
-
 		erase = true;
 		real_t lt = -1;
 		for (int j = 0; j < 3; j++) {
@@ -2973,7 +2968,6 @@ bool Animation::_quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Var
 		ERR_FAIL_COND_V(lt == -1, false);
 
 		if (erase) {
-
 			if (Math::abs(lt - c) > p_alowed_linear_err) {
 				//todo, evaluate changing the transition if this fails?
 				//this could be done as a second pass and would be
@@ -2987,7 +2981,6 @@ bool Animation::_quat_track_optimize_key(const TKey<Variant> &t0, const TKey<Var
 }
 
 void Animation::_quat_track_optimize(int p_idx, float p_allowed_linear_err, float p_allowed_angular_err, float p_max_optimizable_angle) {
-
 	ERR_FAIL_INDEX(p_idx, tracks.size());
 	ERR_FAIL_COND(tracks[p_idx]->type != TYPE_VALUE);
 	bool prev_erased = false;
@@ -2995,7 +2988,6 @@ void Animation::_quat_track_optimize(int p_idx, float p_allowed_linear_err, floa
 
 	ValueTrack *vt = static_cast<ValueTrack *>(tracks[p_idx]);
 	for (int i = 1; i < vt->values.size() - 1; i++) {
-
 		TKey<Variant> &t0 = vt->values.write[i - 1];
 		TKey<Variant> &t1 = vt->values.write[i];
 		TKey<Variant> &t2 = vt->values.write[i + 1];
@@ -3008,7 +3000,6 @@ void Animation::_quat_track_optimize(int p_idx, float p_allowed_linear_err, floa
 		}
 
 		if (erase) {
-
 			if (!prev_erased) {
 				first_erased = t1;
 				prev_erased = true;
@@ -3371,16 +3362,16 @@ void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err
 
 		int32_t scale_x_track = find_track(path + "scale:x");
 		bool scale_x = scale_x_track != -1 && track_get_key_count(scale_x_track) == 2 &&
-					   Math::is_equal_approx(bezier_track_get_key_value(scale_x_track, 0), 1.0f) &&
-					   Math::is_equal_approx(bezier_track_get_key_value(scale_x_track, 1), 1.0f);
+				Math::is_equal_approx(bezier_track_get_key_value(scale_x_track, 0), 1.0f) &&
+				Math::is_equal_approx(bezier_track_get_key_value(scale_x_track, 1), 1.0f);
 		int32_t scale_y_track = find_track(path + "scale:y");
 		bool scale_y = scale_y_track != -1 && track_get_key_count(scale_y_track) == 2 &&
-					   Math::is_equal_approx(bezier_track_get_key_value(scale_y_track, 0), 1.0f) &&
-					   Math::is_equal_approx(bezier_track_get_key_value(scale_y_track, 1), 1.0f);
+				Math::is_equal_approx(bezier_track_get_key_value(scale_y_track, 0), 1.0f) &&
+				Math::is_equal_approx(bezier_track_get_key_value(scale_y_track, 1), 1.0f);
 		int32_t scale_z_track = find_track(path + "scale:z");
 		bool scale_z = scale_z_track != -1 && track_get_key_count(scale_z_track) == 2 &&
-					   Math::is_equal_approx(bezier_track_get_key_value(scale_z_track, 0), 1.0f) &&
-					   Math::is_equal_approx(bezier_track_get_key_value(scale_z_track, 1), 1.0f);
+				Math::is_equal_approx(bezier_track_get_key_value(scale_z_track, 0), 1.0f) &&
+				Math::is_equal_approx(bezier_track_get_key_value(scale_z_track, 1), 1.0f);
 		if (scale_x &&
 				scale_y &&
 				scale_z) {
@@ -3394,16 +3385,16 @@ void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err
 		}
 		int32_t translation_x_track = find_track(path + "translation:x");
 		bool translation_x = translation_x_track != -1 && track_get_key_count(translation_x_track) == 2 &&
-							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_x_track, 0), p_allowed_linear_err), 0.0) &&
-							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_x_track, 1), p_allowed_linear_err), 0.0);
+				Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_x_track, 0), p_allowed_linear_err), 0.0) &&
+				Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_x_track, 1), p_allowed_linear_err), 0.0);
 		int32_t translation_y_track = find_track(path + "translation:y");
 		bool translation_y = translation_y_track != -1 && track_get_key_count(translation_y_track) == 2 &&
-							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_y_track, 0), p_allowed_linear_err), 0.0) &&
-							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_y_track, 1), p_allowed_linear_err), 0.0);
+				Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_y_track, 0), p_allowed_linear_err), 0.0) &&
+				Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_y_track, 1), p_allowed_linear_err), 0.0);
 		int32_t translation_z_track = find_track(path + "translation:z");
 		bool translation_z = translation_z_track != -1 && track_get_key_count(translation_z_track) == 2 &&
-							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_z_track, 0), p_allowed_linear_err), 0.0) &&
-							 Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_z_track, 1), p_allowed_linear_err), 0.0);
+				Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_z_track, 0), p_allowed_linear_err), 0.0) &&
+				Math::is_equal_approx(Math::stepify(bezier_track_get_key_value(translation_z_track, 1), p_allowed_linear_err), 0.0);
 		if (translation_x &&
 				translation_y &&
 				translation_z) {
@@ -3426,7 +3417,7 @@ void Animation::optimize(float p_allowed_linear_err, float p_allowed_angular_err
 			rot_end = track_get_key_value(quat_track, 1);
 		}
 		bool remove_quat = is_rot_complete && rot_start.is_equal_approx(Quat()) &&
-						   rot_end.is_equal_approx(Quat());
+				rot_end.is_equal_approx(Quat());
 		if (scale_x &&
 				scale_y &&
 				scale_z &&
