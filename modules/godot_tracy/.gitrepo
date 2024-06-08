@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot_tracy.git
 	branch = main
-	commit = db3663cd6e005f51b0eccf4a6260e31d0678433b
-	parent = 705b7a0b0bd535c95e4e8fb439f3d84b3fb4f427
+	commit = fe69e1e609e94ec668dc34f15dd92dfcfa9d8801
+	parent = d5e123494050d1de30f3e4f1935805a907d4c014
 	method = merge
 	cmdver = 0.4.6
