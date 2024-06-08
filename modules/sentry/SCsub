@@ -1,20 +1,36 @@
 #!/usr/bin/env python
 
 import pathlib
+import os
+import inspect
+import subprocess
 
 Import("env")
 module_env = env.Clone()
 
-import os
-import inspect
 src_file_path = inspect.getfile(lambda: None)
 src_folder_path = os.path.dirname(src_file_path)
 
 module_env.Append(CPPDEFINES=["SENTRY_BUILD_STATIC"])
 
-import subprocess
 old_cwd = os.getcwd()
 os.chdir("thirdparty/sentry-native")
+
+# Create build directory
+if not os.path.exists('build'):
+    os.makedirs('build')
+
+# Change to the build directory
+os.chdir('build')
+
+# Run cmake to generate build system files
+subprocess.check_call(['cmake', '..'])
+
+# Build the project
+subprocess.check_call(['make'])
+
+os.chdir(old_cwd)
+
 print(src_folder_path)
 env.Append(LIBPATH=[src_folder_path + "/thirdparty/sentry-native/build"])
 env.Append(LIBPATH=[src_folder_path + "/thirdparty/sentry-native/build/external"])
@@ -22,6 +38,8 @@ env.Append(LIBS=["sentry", "libbreakpad_client"])
 env.Append(LINKFLAGS=[src_folder_path + "/thirdparty/sentry-native/build/libsentry.a"])
 env.Append(LIBS=["version", "winhttp", "dbghelp",])
 env.Append(CPPPATH=["thirdparty/sentry-native/include"])
+
 os.chdir(old_cwd)
+
 # Godot source files
 module_env.add_source_files(module_env.modules_sources, "*.cpp")
