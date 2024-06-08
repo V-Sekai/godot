@@ -72,6 +72,8 @@ example/.godot/*
 !thirdparty/sentry-native/external/crashpad/snapshot/x86
 !thirdparty/sentry-native/external/crashpad/snapshot/x86/cpuid_reader.cc
 !thirdparty/sentry-native/external/crashpad/snapshot/x86/cpuid_reader.h
+!thirdparty/sentry-native/external/crashpad/.gitignore:34:/third_party/libfuzzer  modules/sentry/thirdparty/sentry-native/external/crashpad/third_party/libfuzzer
+!thirdparty/sentry-native/external/crashpad/.gitignore:34:/third_party/libfuzzer  modules/sentry/thirdparty/sentry-native/external/crashpad/third_party/libfuzzer/BUILD.gn
 !thirdparty/sentry-native/external/crashpad/third_party/mini_chromium/mini_chromium/base/debug
 !thirdparty/sentry-native/external/crashpad/third_party/mini_chromium/mini_chromium/base/debug/alias.cc
 !thirdparty/sentry-native/external/crashpad/third_party/mini_chromium/mini_chromium/base/debug/alias.h

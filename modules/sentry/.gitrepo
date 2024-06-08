@@ -5,8 +5,8 @@
 ;
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-sentry-native.git
-	branch = merge
-	commit = db133790046c10559f121413d2749bd9966cb529
-	parent = 1ce146fbab94cce8ecb65c9c766c88dd82db4943
+	branch = main
+	commit = d7b5cd8bad6afecb76b1c49013ddd80d65140e82
+	parent = 3345d55c21ae9b811cd023fb097cd6fa4ecbef13
 	method = merge
 	cmdver = 0.4.6
