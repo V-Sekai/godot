@@ -1,0 +1,82 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Python
+*.pyc
+*/__pycache/*
+
+# Example
+Example/.import/*
+Example/export/*
+
+
+# Sentry
+!thirdparty/sentry-native/*.md
+!thirdparty/sentry-native/*.txt
+thirdparty/sentry-native/build/*
+thirdparty/sentry-native/build/tests/*
+thirdparty/sentry-native/build/tests/unit/*
+thirdparty/sentry-native/build/tests/unit/CMakeFiles/*
+!thirdparty/sentry-native/EXTRACT_HERE.md
+example/.godot/*
+
+!thirdparty/sentry-native/external/breakpad/src/client/linux/log/*
+!thirdparty/sentry-native/external/breakpad/src/client/mac/gcov/libgcov.a
+!thirdparty/sentry-native/external/crashpad/Makefile
+!thirdparty/sentry-native/external/crashpad/snapshot/x86/*
+!thirdparty/sentry-native/external/crashpad/third_party/libfuzzer/*
+!thirdparty/sentry-native/external/crashpad/third_party/mini_chromium/mini_chromium/base/debug/*
+!thirdparty/sentry-native/build/libsentry.a
+!thirdparty/sentry-native/external/breakpad/src/client/ios/Breakpad_Prefix.pch
+!thirdparty/sentry-native/external/breakpad/src/client/mac/Framework/Breakpad_Prefix.pch
+!thirdparty/sentry-native/external/crashpad/build/ios/setup_ios_gn.config
+!thirdparty/sentry-native/external/crashpad/handler/win/z7_test.dll
+!thirdparty/sentry-native/external/crashpad/snapshot/elf/elf_image_reader_fuzzer_corpus/crashpad_snapshot_test_both_dt_hash_styles.so
+!thirdparty/sentry-native/external/crashpad/util/misc/capture_context_win_arm64.obj
+!thirdparty/sentry-native/tests/fixtures/*.so
+!thirdparty/sentry-native/external/breakpad/src/client/linux/log
+!thirdparty/sentry-native/external/breakpad/src/client/linux/log/log.cc
+!thirdparty/sentry-native/external/breakpad/src/client/linux/log/log.h
+!thirdparty/sentry-native/external/breakpad/src/client/mac/gcov/libgcov.a
+!thirdparty/sentry-native/external/crashpad/Makefile
+!thirdparty/sentry-native/external/crashpad/snapshot/x86
+!thirdparty/sentry-native/external/crashpad/snapshot/x86/cpuid_reader.cc
+!thirdparty/sentry-native/external/crashpad/snapshot/x86/cpuid_reader.h
+!thirdparty/sentry-native/external/crashpad/third_party/mini_chromium/mini_chromium/base/debug
+!thirdparty/sentry-native/external/crashpad/third_party/mini_chromium/mini_chromium/base/debug/alias.cc
+!thirdparty/sentry-native/external/crashpad/third_party/mini_chromium/mini_chromium/base/debug/alias.h
+!thirdparty/sentry-native/external/breakpad/src/client/mac/gcov/libgcov.a
+!thirdparty/sentry-native/external/crashpad/Makefile
+!thirdparty/sentry-native/external/crashpad/third_party/libfuzzer
+!thirdparty/sentry-native/external/crashpad/third_party/libfuzzer/BUILD.gn
+!thirdparty/sentry-native/external/breakpad/src/client/mac/gcov/libgcov.a
