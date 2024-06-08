@@ -10,7 +10,7 @@ class VideoStreamPlaybackWMF;
 
 
 class SampleGrabberCallback : public IMFSampleGrabberSinkCallback {
-	
+
 	long m_cRef;
 	VideoStreamPlaybackWMF* playback;
 	Mutex& mtx;

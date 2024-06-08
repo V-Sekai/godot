@@ -63,7 +63,7 @@ STDMETHODIMP_(ULONG) SampleGrabberCallback::Release()
 
 // IMFClockStateSink methods.
 
-// In these example, the IMFClockStateSink methods do not perform any actions. 
+// In these example, the IMFClockStateSink methods do not perform any actions.
 // You can use these methods to track the state of the sample grabber sink.
 
 STDMETHODIMP SampleGrabberCallback::OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset)

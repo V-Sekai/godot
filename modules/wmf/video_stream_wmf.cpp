@@ -151,7 +151,7 @@ HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGr
 		CHECK_HR(pSD->GetMediaTypeHandler(&pHandler));
 		CHECK_HR(pHandler->GetMajorType(&majorType));
 
-		if (majorType == MFMediaType_Video && bSelected) 
+		if (majorType == MFMediaType_Video && bSelected)
 		{
 			print_line("Video Stream");
 
@@ -168,7 +168,7 @@ HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGr
 
 			CHECK_HR(AddSourceNode(pTopology, pSource, pPD, pSD,&inputNode));
 			CHECK_HR(AddOutputNode(pTopology, pSinkActivate, 0, &outputNode));
-			
+
 			CHECK_HR(inputNode->ConnectOutput(0, outputNode, 0));
 			//CHECK_HR(colorNode->ConnectOutput(0, outputNode, 0));
 
@@ -377,7 +377,7 @@ void VideoStreamPlaybackWMF::seek(float p_time) {
     print_line(__FUNCTION__ ": " + rtos(p_time));
 
 	if (media_session) {
-		
+
 		p_time *= 10000000.0;
 
 		HRESULT hr = S_OK;
