@@ -3138,7 +3138,7 @@ void Animation::_convert_bezier(int32_t p_idx, float p_allowed_linear_err, float
 	for (int type_i = 0; type_i < types.size(); type_i++) {
 		Vector<BezierKeyframeReduce::Bezier> curves;
 		NodePath new_path;
-		BezierKeyframeReduce::KeyframeReductionSetting settings;		
+		BezierKeyframeReduce::KeyframeReductionSetting settings;
 		// Magic number from https://bitsquid.blogspot.com/2009/11/bitsquid-low-level-animation-system.html
 		settings.max_error = 0.0014;
 		for (int transform_i = 0; transform_i < tt->transforms.size(); transform_i++) {
