@@ -1,6 +1,6 @@
 # godot-sentry-native
 
-This is a custom C++ Godot Module that reports crashes (and other events) to [Sentry.io](https://sentry.io/) or [GlitchTip](https://glitchtip.com/).
+This is a custom C++ Godot Module that reports crashes (and other events) to [Sentry.io](https://sentry.io/).
 
 This is super handy when trying to track down crashes that happen in release builds on your users devices.
 
@@ -57,10 +57,6 @@ This is to build Godot editor for testing integration
 1. `scoop install sentry-cli`
 1. Upload debug symbols. 
 1. `sentry-cli debug-files upload bin --org godot --project godot-project` Use `--wait` if you want to see errors.
-
-## Create a Gitchtip account
-
-Documentation to be written.
 
 ## Create a Sentry.io account
 
