@@ -1,8 +1,8 @@
 #include "tracy_profiler.h"
 
 #include "core/math/color.h"
-#include "tracy/public/tracy/Tracy.hpp"
-#include "tracy/public/tracy/TracyC.h"
+#include "thirdparty/tracy/public/tracy/Tracy.hpp"
+#include "thirdparty/tracy/public/tracy/TracyC.h"
 
 TracyProfiler *TracyProfiler::singleton = nullptr;
 

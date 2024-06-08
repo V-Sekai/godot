@@ -2,7 +2,7 @@
 
 #include "core/config/engine.h"
 #include "core/object/object.h"
-#include "tracy/public/common/TracyColor.hpp"
+#include "thirdparty/tracy/public/common/TracyColor.hpp"
 
 class TracyProfiler : public Object {
 	GDCLASS(TracyProfiler, Object);
