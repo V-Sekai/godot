@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="Opentelemetry" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="OpenTelemetry" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		The Opentelemetry class provides methods for tracing and metrics collection.
+		The OpenTelemetry class provides methods for tracing and metrics collection.
 	</brief_description>
 	<description>
 		OpenTelemetry is a set of APIs, libraries, agents, and collector services to capture distributed traces and metrics from your application. You can analyze them, and use other observability tools.
