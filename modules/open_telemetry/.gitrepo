@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot_open_telemetry.git
 	branch = main
-	commit = 0343be6ffef470fc52643429589a337823c56b75
-	parent = 4f09a42f50de6f0be86cdaee02893ce48cc74f3c
+	commit = d67f8b6087ac2714d5aa2031a0db11dab14abec2
+	parent = 8d34a234687ef6325c9677e6384efa6804d17163
 	method = merge
 	cmdver = 0.4.6
