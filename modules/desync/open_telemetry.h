@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.h                                                      */
+/*  open_telemetry.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,12 +28,29 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DESYNC_REGISTER_TYPES_H
-#define DESYNC_REGISTER_TYPES_H
+#ifndef OPEN_TELEMETRY_H
+#define OPEN_TELEMETRY_H
 
-#include "modules/register_module_types.h"
+#include "core/object/ref_counted.h"
+#include "core/variant/dictionary.h"
 
-void initialize_golang_module(ModuleInitializationLevel p_level);
-void uninitialize_golang_module(ModuleInitializationLevel p_level);
+#include "libdesync_c_interface.h"
 
-#endif // DESYNC_REGISTER_TYPES_H
+class OpenTelemetry : public RefCounted {
+	GDCLASS(OpenTelemetry, RefCounted);
+
+protected:
+	static void _bind_methods();
+
+public:
+	String init_tracer_provider(String p_name, String p_host, Dictionary p_attributes);
+	String start_span(String p_name);
+	String start_span_with_parent(String p_name, String p_parent_span_uuid);
+	void add_event(String p_span_uuid, String p_event_name);
+	void set_attributes(String p_span_uuid, Dictionary p_attributes);
+	void record_error(String p_span_uuid, String p_error);
+	void end_span(String p_span_uuid);
+	String shutdown();
+};
+
+#endif // OPEN_TELEMETRY_H

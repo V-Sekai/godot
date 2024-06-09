@@ -38,7 +38,8 @@ def can_build(env, platform):
 
 def get_doc_classes():
     return [
-        "Desync",
+        "Desync",        
+        "OpenTelemetry",
     ]
 
 

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Opentelemetry" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		The Opentelemetry class provides methods for tracing and metrics collection.
+	</brief_description>
+	<description>
+		OpenTelemetry is a set of APIs, libraries, agents, and collector services to capture distributed traces and metrics from your application. You can analyze them, and use other observability tools.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_event">
+			<return type="void" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="name" type="String" />
+			<description>
+				Adds an event to the span with the given id.
+			</description>
+		</method>
+		<method name="end_span">
+			<return type="void" />
+			<param index="0" name="id" type="String" />
+			<description>
+				Ends the span with the given id.
+			</description>
+		</method>
+		<method name="init_tracer_provider">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="host" type="String" />
+			<param index="2" name="attributes" type="Dictionary" />
+			<description>
+				Initializes a new tracer provider.
+			</description>
+		</method>
+		<method name="record_error">
+			<return type="void" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="err" type="String" />
+			<description>
+				Records an error event in the span with the given id.
+			</description>
+		</method>
+		<method name="set_attributes">
+			<return type="void" />
+			<param index="0" name="id" type="String" />
+			<param index="1" name="attributes" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="shutdown">
+			<return type="String" />
+			<description>
+				Shuts down the OpenTelemetry SDK.
+			</description>
+		</method>
+		<method name="start_span">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Starts a new span with the given name.
+			</description>
+		</method>
+		<method name="start_span_with_parent">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="parent_id" type="String" />
+			<description>
+				Starts a new span with the given name and parent id.
+			</description>
+		</method>
+	</methods>
+</class>
