@@ -32,8 +32,8 @@
 
 #include "register_types.h"
 
-#include "core/object/class_db.h"
 #include "casync.h"
+#include "core/object/class_db.h"
 #include "open_telemetry.h"
 
 void initialize_golang_module(ModuleInitializationLevel p_level) {

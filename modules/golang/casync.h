@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  desync.h                                                              */
+/*  casync.h                                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DESYNC_H
-#define DESYNC_H
+#ifndef CASYNC_H
+#define CASYNC_H
 
 #include "core/error/error_list.h"
 #include "core/object/ref_counted.h"
@@ -57,4 +57,4 @@ public:
 	Casync();
 };
 
-#endif // DESYNC_H
+#endif // CASYNC_H
