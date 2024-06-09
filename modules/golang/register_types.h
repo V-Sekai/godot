@@ -28,12 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DESYNC_REGISTER_TYPES_H
-#define DESYNC_REGISTER_TYPES_H
+#ifndef GOLANG_REGISTER_TYPES_H
+#define GOLANG_REGISTER_TYPES_H
 
 #include "modules/register_module_types.h"
 
 void initialize_golang_module(ModuleInitializationLevel p_level);
 void uninitialize_golang_module(ModuleInitializationLevel p_level);
 
-#endif // DESYNC_REGISTER_TYPES_H
+#endif // GOLANG_REGISTER_TYPES_H
