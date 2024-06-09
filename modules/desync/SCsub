@@ -12,9 +12,6 @@ os.chdir(desync_dir)
 suffix = ".a"
 env_desync = env.Clone()
 
-if env["platform"] == "web":
-    env_desync.Append(LINKFLAGS=["-sERROR_ON_UNDEFINED_SYMBOLS=0"])
-
 if env.msvc:
     env_desync.Append(CPPDEFINES=["_SILENCE_CXX17_C_HEADER_DEPRECATION_WARNING"])
     suffix = ".lib"

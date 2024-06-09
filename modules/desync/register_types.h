@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-/* register_types.h */
-
 #ifndef DESYNC_REGISTER_TYPES_H
 #define DESYNC_REGISTER_TYPES_H
 

@@ -3,6 +3,14 @@ import subprocess
 
 
 def can_build(env, platform):
+    try:
+        subprocess.check_output(["go", "--version"], stderr=subprocess.STDOUT)
+    except FileNotFoundError:
+        print("Go not found. desync build skipped.")
+        return False
+    except subprocess.CalledProcessError as e:
+        pass
+
     if platform == "web":
         return False
     if platform == "ios":
@@ -15,8 +23,6 @@ def can_build(env, platform):
         if not env["use_mingw"]:
             return False
         try:
-            import subprocess
-
             mingw_version = subprocess.check_output(["gcc", "--version"])
             print("MinGW is installed: ", mingw_version)
         except Exception as e:
