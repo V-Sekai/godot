@@ -20,6 +20,8 @@ def can_build(env, platform):
     if platform == "windows":
         if os.name != "nt" and env["use_mingw"]:
             return False
+        if not env["use_mingw"]:
+            return False
         try:
             mingw_version = subprocess.check_output(["gcc", "--version"])
             print("MinGW is installed: ", mingw_version)
