@@ -40,7 +40,6 @@ void OpenTelemetry::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_attributes", "span_uuid", "attributes"), &OpenTelemetry::set_attributes);
 	ClassDB::bind_method(D_METHOD("record_error", "span_uuid", "err"), &OpenTelemetry::record_error);
 	ClassDB::bind_method(D_METHOD("end_span", "span_uuid"), &OpenTelemetry::end_span);
-	ClassDB::bind_method(D_METHOD("shutdown"), &OpenTelemetry::shutdown);
 }
 
 String OpenTelemetry::init_tracer_provider(String p_name, String p_host, Dictionary p_attributes) {
@@ -100,9 +99,4 @@ void OpenTelemetry::end_span(String p_span_uuid) {
 	CharString c_span_id = p_span_uuid.utf8();
 	char *cstr_span_id = c_span_id.ptrw();
 	EndSpan(cstr_span_id);
-}
-
-String OpenTelemetry::shutdown() {
-	char *shutdown_result = Shutdown();
-	return String(shutdown_result);
 }

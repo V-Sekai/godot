@@ -50,7 +50,6 @@ public:
 	void set_attributes(String p_span_uuid, Dictionary p_attributes);
 	void record_error(String p_span_uuid, String p_error);
 	void end_span(String p_span_uuid);
-	String shutdown();
 };
 
 #endif // OPEN_TELEMETRY_H
