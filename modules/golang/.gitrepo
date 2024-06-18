@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-desync.git
+	branch = main
+	commit = c502f480ee32477f7d1ce722aca3f3a19012288e
+	parent = 316adf8796b9bc50134bc9868ac363b3f053f20c
+	method = merge
+	cmdver = 0.4.6
