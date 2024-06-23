@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-speech.git
+	branch = main
+	commit = 26d912766be19a7cf4f6cc1fba810525c495effb
+	parent = cbfe9cf11a957005210d427ffd88451b03619f91
+	method = merge
+	cmdver = 0.4.6
