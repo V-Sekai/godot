@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="RiscvEmulator" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="exec">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="fork_exec">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="invoke_function">
+			<return type="int" />
+			<param index="0" name="function" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="load">
+			<return type="void" />
+			<param index="0" name="buffer" type="PackedByteArray" />
+			<param index="1" name="arguments" type="PackedStringArray" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="arguments" type="PackedStringArray" setter="set_arguments" getter="get_arguments" default="PackedStringArray()">
+		</member>
+		<member name="buffer" type="PackedByteArray" setter="set_buffer" getter="get_buffer" default="PackedByteArray()">
+		</member>
+	</members>
+</class>

@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai-fire/godot-riscv.git
+	branch = main
+	commit = d48170e112ada98a417a97eed985366a6e232fed
+	parent = ecea5252fc3e33af8939db98df080cc9a893dea8
+	method = merge
+	cmdver = 0.4.6

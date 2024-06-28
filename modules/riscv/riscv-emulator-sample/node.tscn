@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://gdxq1lcxvydx"]
+
+[ext_resource type="Script" path="res://node.gd" id="1_d5okd"]
+
+[sub_resource type="RiscvEmulator" id="RiscvEmulator_af1c7"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1_d5okd")
+machine = SubResource("RiscvEmulator_af1c7")

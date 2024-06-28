@@ -1,0 +1,110 @@
+Import("env")
+
+env_riscv = env.Clone()
+
+env_riscv.Append(CPPPATH=["#modules/riscv", "thirdparty/libriscv/lib"])
+
+env_riscv.Append(
+    CPPDEFINES=[
+        "_DARWIN_C_SOURCE",
+        # "RISCV_DEBUG",
+        "RISCV_EXT_A",
+        "RISCV_EXT_C",
+        "RISCV_EXT_V",
+        "RISCV_32I",
+        "RISCV_64I",
+        # "RISCV_128I",
+        "RISCV_FCSR",
+        # "RISCV_EXPERIMENTAL",
+        "RISCV_MEMORY_TRAPS",
+        "RISCV_MULTIPROCESS",
+        # "RISCV_BINARY_TRANSLATION",
+        "RISCV_FLAT_RW_ARENA",
+        # "RISCV_ENCOMPASSING_ARENA",
+        "RISCV_THREADED",
+        # "RISCV_TAILCALL_DISPATCH",
+        # "RISCV_LIBTCC",
+    ]
+)
+
+thirdparty_obj = []
+
+thirdparty_sources = [
+    "thirdparty/libriscv/lib/libriscv/rv64i.cpp",
+    "thirdparty/libriscv/lib/libriscv/cpu.cpp",
+    "thirdparty/libriscv/lib/libriscv/debug.cpp",
+    "thirdparty/libriscv/lib/libriscv/decode_bytecodes.cpp",
+    "thirdparty/libriscv/lib/libriscv/decoder_cache.cpp",
+    "thirdparty/libriscv/lib/libriscv/machine.cpp",
+    "thirdparty/libriscv/lib/libriscv/machine_defaults.cpp",
+    "thirdparty/libriscv/lib/libriscv/memory.cpp",
+    "thirdparty/libriscv/lib/libriscv/memory_elf.cpp",
+    "thirdparty/libriscv/lib/libriscv/memory_mmap.cpp",
+    "thirdparty/libriscv/lib/libriscv/memory_rw.cpp",
+    "thirdparty/libriscv/lib/libriscv/multiprocessing.cpp",
+    "thirdparty/libriscv/lib/libriscv/native_libc.cpp",
+    "thirdparty/libriscv/lib/libriscv/native_threads.cpp",
+    "thirdparty/libriscv/lib/libriscv/posix/minimal.cpp",
+    "thirdparty/libriscv/lib/libriscv/posix/signals.cpp",
+    "thirdparty/libriscv/lib/libriscv/posix/threads.cpp",
+    "thirdparty/libriscv/lib/libriscv/posix/socket_calls.cpp",
+    "thirdparty/libriscv/lib/libriscv/serialize.cpp",
+    "thirdparty/libriscv/lib/libriscv/util/crc32c.cpp",
+    "thirdparty/libriscv/lib/libriscv/bytecode_dispatch.cpp",
+    # "thirdparty/libriscv/lib/libriscv/bytecode_impl.cpp",
+    # "thirdparty/libriscv/lib/libriscv/cpu_dispatch.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rv128i.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rva128_instr.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rva_instr.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rvc_instr.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rvf_instr.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rvi_fuse.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rvi_instr.cpp",
+    # "thirdparty/libriscv/lib/libriscv/rvv_instr.cpp",
+    # "thirdparty/libriscv/lib/libriscv/tailcall_dispatch.cpp",
+    # "thirdparty/libriscv/lib/libriscv/threaded_dispatch.cpp",
+    # "thirdparty/libriscv/lib/libriscv/threaded_rewriter.cpp",
+    # "thirdparty/libriscv/lib/libriscv/tr_api.cpp",
+    # "thirdparty/libriscv/lib/libriscv/tr_compiler.cpp",
+    # "thirdparty/libriscv/lib/libriscv/tr_emit.cpp",
+    # "thirdparty/libriscv/lib/libriscv/tr_emit_rvc.cpp",
+    # "thirdparty/libriscv/lib/libriscv/tr_tcc.cpp",
+    # "thirdparty/libriscv/lib/libriscv/tr_translate.cpp",
+]
+
+if env["platform"] == "windows":    
+    thirdparty_sources += [
+        "thirdparty/libriscv/lib/libriscv/windows/dlfcn.cpp",
+        "thirdparty/libriscv/lib/libriscv/windows/system_calls.cpp",
+        "thirdparty/libriscv/lib/libriscv/windows/tr_msvc.cpp",
+    ]
+elif env["platform"] == "linux": 
+    thirdparty_sources += [
+        "thirdparty/libriscv/lib/libriscv/linux/syscalls_epoll.cpp",
+        "thirdparty/libriscv/lib/libriscv/linux/syscalls_mman.cpp",
+        "thirdparty/libriscv/lib/libriscv/linux/syscalls_poll.cpp",
+        "thirdparty/libriscv/lib/libriscv/linux/syscalls_select.cpp",
+        "thirdparty/libriscv/lib/libriscv/linux/system_calls.cpp",
+    ]
+    
+if env["platform"] != "windows":  
+    thirdparty_sources += [
+        "thirdparty/libriscv/lib/libriscv/linux/system_calls.cpp",
+    ]
+
+if env["platform"] != "windows" or env["use_mingw"]:
+    env_riscv.Append(CXXFLAGS=["-std=c++20"])
+else:
+    env_riscv.Append(CXXFLAGS=["/std:c++20"])
+    
+
+env_riscv.add_source_files(thirdparty_obj, thirdparty_sources)
+
+env.modules_sources += thirdparty_obj
+
+module_obj = []
+
+env_riscv.add_source_files(module_obj, "*.cpp")
+env.modules_sources += module_obj
+
+env.Depends(module_obj, thirdparty_obj)
