@@ -251,6 +251,7 @@ namespace riscv
 						dst = (int32_t) ((uint32_t)dst + (uint32_t)src);
 						return;
 					}
+        			[[fallthrough]];
 					case 0x6: // RESERVED
 					case 0x7: // RESERVED
 						break;

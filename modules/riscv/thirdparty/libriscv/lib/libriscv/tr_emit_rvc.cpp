@@ -250,6 +250,7 @@ rv32i_instruction Emitter<W>::emit_rvc()
 						instr.Rtype.rs2 = ci.CA.srs2 + 8;
 						break;
 					}
+        			[[fallthrough]];
 					case 0x6: // RESERVED
 					case 0x7: // RESERVED
 						break;
