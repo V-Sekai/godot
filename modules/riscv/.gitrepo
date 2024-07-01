@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai-fire/godot-riscv.git
 	branch = main
-	commit = dc66e307108b693fcee63a11172a072d98410fe0
-	parent = e78d8f8e88d00aff079679a0338a0406e9268fe9
+	commit = 8c8c077e8562f089782b7a38353ae62fefeb23cf
+	parent = 9489fe09d8532db5faaae8430f6683651f84cd04
 	method = merge
 	cmdver = 0.4.6
