@@ -30,6 +30,7 @@ env_riscv.Append(
 thirdparty_obj = []
 
 thirdparty_sources = [
+    "thirdparty/libriscv/lib/libriscv/rv32i.cpp",
     "thirdparty/libriscv/lib/libriscv/rv64i.cpp",
     "thirdparty/libriscv/lib/libriscv/cpu.cpp",
     "thirdparty/libriscv/lib/libriscv/debug.cpp",
