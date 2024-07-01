@@ -243,7 +243,7 @@ continue_segment:
 
 while (true) {
     switch (decoder->get_bytecode()) {
-    #define INSTRUCTION(bc, lbl) case bc:
+    #define INSTRUCTION(bc, lbl) [[fallthrough]]; case bc:
 
 #else
     goto *computed_opcode[decoder->get_bytecode()];
