@@ -168,6 +168,19 @@ Files extracted from upstream source:
 - `doctest/doctest.h` as `doctest.h`
 - `LICENSE.txt`
 
+## eigen
+
+- Upstream: https://gitlab.com/libeigen/eigen/
+- Version: 3.3.7
+- License: Multiple* (BSD-3-Clause, GPLv3, LGPL 2.1, Minpack, MPL 2.0)
+
+Files extracted from upstream source:
+
+- All files in `Eigen/` except `CMakeLists.txt`
+- All `COPYING.*` files.
+
+\* Note that while eigen contains code under many licenses, godot WILL SET BUT DOESN'T CURRENTLY SET, FIXEME the `-DEIGEN_MPL2_ONLY` flag described in `COPYING.README`, which ensures that no code licensed under a more restrictive license than MPL 2.0 is included in godot binaries.
+
 
 ## embree
 
@@ -790,6 +803,17 @@ Files extracted from upstream source:
 - `AUTHORS` and `LICENCE`
 
 
+## pffft
+
+- Upstream: https://bitbucket.org/jpommier/pffft
+- Version: hg (29e4f76, 2016)
+- License: FFTPACK5 (BSD-like) 
+
+Files extracted from upstream source:
+
+- all files
+
+
 ## recastnavigation
 
 - Upstream: https://github.com/recastnavigation/recastnavigation
@@ -846,6 +870,20 @@ Some downstream changes have been made and are identified by
 `// -- GODOT begin --` and `// -- GODOT end --` comments.
 They can be reapplied using the patches included in the `patches`
 folder.
+
+
+## resonanceaudio
+
+- Upstream: https://github.com/resonance-audio/resonance-audio
+- Version: git (1213ab78f00645fd2807285ccd4bed1375a50bfb, 2020)
+- License: Apache 2.0
+
+Files extracted from upstream source:
+
+- `resonance_audio/` and `platforms/common` folders without `*.test.cpp` and `*test.h`
+- `third_party/SADIE_hrtf_database` folder without `generate_hrtf_assets.py`, `WAV/*` and `hrtf_assets.iad`
+- LICENSE
+- AUTHORS
 
 
 ## squish
