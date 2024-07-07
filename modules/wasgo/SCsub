@@ -10,6 +10,7 @@ common_includes = [
     "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common",
     "./thirdparty/wasm-micro-runtime/core/shared/utils",
+    "./thirdparty/zycore-c/include"
 ]
 
 common_sdk = [
@@ -38,13 +39,26 @@ common_sdk = [
     "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_intrinsic.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_loader_common.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c",
+    "./thirdparty/zycore-c/src/Allocator.c",
+    "./thirdparty/zycore-c/src/ArgParse.c",
+    "./thirdparty/zycore-c/src/Bitset.c",
+    "./thirdparty/zycore-c/src/Format.c",
+    "./thirdparty/zycore-c/src/List.c",
+    "./thirdparty/zycore-c/src/String.c",
+    "./thirdparty/zycore-c/src/Vector.c",
+    "./thirdparty/zycore-c/src/Zycore.c",
+    "./thirdparty/zycore-c/src/API/Memory.c",
+    "./thirdparty/zycore-c/src/API/Process.c",
+    "./thirdparty/zycore-c/src/API/Synchronization.c",
+    "./thirdparty/zycore-c/src/API/Terminal.c",
+    "./thirdparty/zycore-c/src/API/Thread.c"
 ]
 
 platform_settings = {
     "windows": {
         "sdk": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/platform_init.c",
-            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/posix_malloc.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_malloc.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_memmap.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_time.c",
@@ -111,13 +125,14 @@ else:
     module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
 
-# JavaScript-specific settings
 if platform == "javascript":
     module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
 else:
+    module_env.Prepend(CPPPATH=["thirdparty/zydis/include"])
     module_env.Append(
         CPPDEFINES=[
             "BUILD_TARGET_X86_64",
+            "ZYCORE_STATIC_BUILD",
             ("WASM_ENABLE_AOT", 1),
         ]
     )
