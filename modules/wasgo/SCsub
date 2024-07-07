@@ -181,6 +181,9 @@ if platform == "windows":
 
 module_env.Prepend(
     CPPDEFINES=[
+        "WASM_ENABLE_FAST_JIT",
+        ("WASM_API_EXTERN", ""),
+        ("WASM_RUNTIME_API_EXTERN", ""),
         ("OS_ENABLE_HW_BOUND_CHECK", 1),
         ("OS_ENABLE_WAKEUP_BLOCKING_OP", 1),
         ("BH_FREE", "wasm_runtime_free"),
