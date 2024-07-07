@@ -29,6 +29,7 @@ common_sdk = [
     "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-builtin/libc_builtin_wrapper.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_c_api.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_exec_env.c",
+    "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_memory.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_native.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_runtime_common.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_shared_memory.c",
@@ -66,7 +67,6 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_blocking_op.c",
-            "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_memory.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin",
@@ -82,7 +82,6 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_blocking_op.c",
-            "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_memory.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/linux",
@@ -92,13 +91,13 @@ platform_settings = {
     },
 }
 
-module_env.Prepend(CPPPATH=common_includes)
+env.Prepend(CPPPATH=common_includes)
 
 platform = module_env["platform"]
 if platform in platform_settings:
     settings = platform_settings[platform]
     common_sdk += settings["sdk"]
-    module_env.Prepend(CPPPATH=settings["includes"])
+    env.Prepend(CPPPATH=settings["includes"])
     module_env.Append(CPPDEFINES=settings["defines"])
 
 if platform == "windows":
@@ -119,7 +118,7 @@ else:
 if platform == "javascript":
     module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
 else:
-    module_env.Prepend(CPPPATH=["thirdparty/zydis/include", "thirdparty/zydis/src", "thirdparty/zycore-c/include"])
+    env.Prepend(CPPPATH=["thirdparty/zydis/include", "thirdparty/zydis/src", "thirdparty/zycore-c/include"])
     module_env.Append(
         CPPDEFINES=[
             "BUILD_TARGET_X86_64",
@@ -202,11 +201,10 @@ module_env.Prepend(
     ]
 )
 
-env_thirdparty = module_env.Clone()
-env_thirdparty.disable_warnings()
-env_thirdparty.add_source_files(env.modules_sources, common_sdk)
-env_thirdparty.add_source_files(env.modules_sources, "src/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "api/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "api/shared/*.cpp")
+module_env.disable_warnings()
+module_env.add_source_files(env.modules_sources, common_sdk)
+module_env.add_source_files(env.modules_sources, "src/*.cpp")
+module_env.add_source_files(env.modules_sources, "api/*.cpp")
+module_env.add_source_files(env.modules_sources, "api/shared/*.cpp")
 
-module_env.add_source_files(env.modules_sources, "*.cpp")
+env.add_source_files(env.modules_sources, "*.cpp")
