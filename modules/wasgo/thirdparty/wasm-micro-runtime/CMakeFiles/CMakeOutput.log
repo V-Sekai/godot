@@ -1,0 +1,441 @@
+The system is: Windows - 10.0.18363 - AMD64
+Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+Compiler:  
+Build flags: 
+Id flags:  
+
+The output was:
+0
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Build started 11/2/2020 6:29:06 AM.
+Project "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\3.14.19060802-MSVC_2\CompilerIdC\CompilerIdC.vcxproj" on node 1 (default targets).
+PrepareForBuild:
+  Creating directory "Debug\".
+  Creating directory "Debug\CompilerIdC.tlog\".
+InitializeBuildStatus:
+  Creating "Debug\CompilerIdC.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
+ClCompile:
+  C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.22.27905\bin\HostX86\x86\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /Oy- /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\" /Fd"Debug\vc142.pdb" /Gd /TC /analyze- /FC /errorReport:queue CMakeCCompilerId.c
+  CMakeCCompilerId.c
+Link:
+  C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.22.27905\bin\HostX86\x86\link.exe /ERRORREPORT:QUEUE /OUT:".\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\CompilerIdC.lib" /MACHINE:X86 /SAFESEH Debug\CMakeCCompilerId.obj
+  CompilerIdC.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\3.14.19060802-MSVC_2\CompilerIdC\.\CompilerIdC.exe
+PostBuildEvent:
+  for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
+  :VCEnd
+  CMAKE_C_COMPILER=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.22.27905\bin\Hostx86\x86\cl.exe
+FinalizeBuildStatus:
+  Deleting file "Debug\CompilerIdC.tlog\unsuccessfulbuild".
+  Touching "Debug\CompilerIdC.tlog\CompilerIdC.lastbuildstate".
+Done Building Project "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\3.14.19060802-MSVC_2\CompilerIdC\CompilerIdC.vcxproj" (default targets).
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.52
+
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.vcxproj"
+
+The C compiler identification is MSVC, found in "C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/3.14.19060802-MSVC_2/CompilerIdC/CompilerIdC.exe"
+
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+Compiler:  
+Build flags: 
+Id flags:  
+
+The output was:
+0
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Build started 11/2/2020 6:29:08 AM.
+Project "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\3.14.19060802-MSVC_2\CompilerIdCXX\CompilerIdCXX.vcxproj" on node 1 (default targets).
+PrepareForBuild:
+  Creating directory "Debug\".
+  Creating directory "Debug\CompilerIdCXX.tlog\".
+InitializeBuildStatus:
+  Creating "Debug\CompilerIdCXX.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
+ClCompile:
+  C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.22.27905\bin\HostX86\x86\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /Oy- /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\" /Fd"Debug\vc142.pdb" /Gd /TP /analyze- /FC /errorReport:queue CMakeCXXCompilerId.cpp
+  CMakeCXXCompilerId.cpp
+Link:
+  C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.22.27905\bin\HostX86\x86\link.exe /ERRORREPORT:QUEUE /OUT:".\CompilerIdCXX.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\CompilerIdCXX.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\CompilerIdCXX.lib" /MACHINE:X86 /SAFESEH Debug\CMakeCXXCompilerId.obj
+  CompilerIdCXX.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\3.14.19060802-MSVC_2\CompilerIdCXX\.\CompilerIdCXX.exe
+PostBuildEvent:
+  for %%i in (cl.exe) do @echo CMAKE_CXX_COMPILER=%%~$PATH:i
+  :VCEnd
+  CMAKE_CXX_COMPILER=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.22.27905\bin\Hostx86\x86\cl.exe
+FinalizeBuildStatus:
+  Deleting file "Debug\CompilerIdCXX.tlog\unsuccessfulbuild".
+  Touching "Debug\CompilerIdCXX.tlog\CompilerIdCXX.lastbuildstate".
+Done Building Project "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\3.14.19060802-MSVC_2\CompilerIdCXX\CompilerIdCXX.vcxproj" (default targets).
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.89
+
+
+Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
+
+Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.vcxproj"
+
+The CXX compiler identification is MSVC, found in "C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/3.14.19060802-MSVC_2/CompilerIdCXX/CompilerIdCXX.exe"
+
+Determining if the C compiler works passed with the following output:
+Change Dir: C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe cmTC_e43c5.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=16.0 /v:m 
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.22.27905 for x86
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  testCCompiler.c
+  cl /c /ZI /JMC /W3 /WX- /diagnostics:column /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_e43c5.dir\Debug\\" /Fd"cmTC_e43c5.dir\Debug\vc142.pdb" /Gd /TC /analyze- /errorReport:queue "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\testCCompiler.c"
+testCCompiler.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification [C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\cmTC_e43c5.vcxproj]
+  cmTC_e43c5.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\Debug\cmTC_e43c5.exe
+
+
+Detecting C compiler ABI info compiled with the following output:
+Change Dir: C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe cmTC_dd748.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=16.0 /v:m 
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.22.27905 for x86
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  CMakeCCompilerABI.c
+  cl /c /ZI /JMC /W3 /WX- /diagnostics:column /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_dd748.dir\Debug\\" /Fd"cmTC_dd748.dir\Debug\vc142.pdb" /Gd /TC /analyze- /errorReport:queue "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\share\cmake-3.14\Modules\CMakeCCompilerABI.c"
+CMakeCCompilerABI.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification [C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\cmTC_dd748.vcxproj]
+  cmTC_dd748.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\Debug\cmTC_dd748.exe
+
+
+
+
+Detecting C [] compiler features compiled with the following output:
+Change Dir: C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe cmTC_de1b5.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=16.0 /v:m 
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.22.27905 for x86
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  feature_tests.c
+  cl /c /ZI /JMC /W3 /WX- /diagnostics:column /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_de1b5.dir\Debug\\" /Fd"cmTC_de1b5.dir\Debug\vc142.pdb" /Gd /TC /analyze- /errorReport:queue "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\feature_tests.c"
+feature_tests.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification [C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\cmTC_de1b5.vcxproj]
+  cmTC_de1b5.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\Debug\cmTC_de1b5.exe
+
+
+    Feature record: C_FEATURE:1c_function_prototypes
+    Feature record: C_FEATURE:1c_variadic_macros
+Determining if the CXX compiler works passed with the following output:
+Change Dir: C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe cmTC_c048d.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=16.0 /v:m 
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.22.27905 for x86
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  testCXXCompiler.cxx
+  cl /c /ZI /JMC /W3 /WX- /diagnostics:column /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_c048d.dir\Debug\\" /Fd"cmTC_c048d.dir\Debug\vc142.pdb" /Gd /TP /analyze- /errorReport:queue "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\testCXXCompiler.cxx"
+testCXXCompiler.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification [C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\cmTC_c048d.vcxproj]
+  cmTC_c048d.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\Debug\cmTC_c048d.exe
+
+
+Detecting CXX compiler ABI info compiled with the following output:
+Change Dir: C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe cmTC_efd84.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=16.0 /v:m 
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.22.27905 for x86
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  CMakeCXXCompilerABI.cpp
+  cl /c /ZI /JMC /W3 /WX- /diagnostics:column /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_efd84.dir\Debug\\" /Fd"cmTC_efd84.dir\Debug\vc142.pdb" /Gd /TP /analyze- /errorReport:queue "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\share\cmake-3.14\Modules\CMakeCXXCompilerABI.cpp"
+CMakeCXXCompilerABI.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification [C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\cmTC_efd84.vcxproj]
+  cmTC_efd84.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\Debug\cmTC_efd84.exe
+
+
+
+
+Detecting CXX [] compiler features compiled with the following output:
+Change Dir: C:/Users/Michael/Documents/_Active/godot-wasm/godot/modules/WasGo/wasm-micro-runtime/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/MSBuild/Current/Bin/MSBuild.exe cmTC_68790.vcxproj /p:Configuration=Debug /p:Platform=Win32 /p:VisualStudioVersion=16.0 /v:m 
+Microsoft (R) Build Engine version 16.2.37902+b5aaefc9f for .NET Framework
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.22.27905 for x86
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  feature_tests.cxx
+  cl /c /ZI /JMC /W3 /WX- /diagnostics:column /Od /Ob0 /Oy- /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\"Debug\"" /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /GR /Fo"cmTC_68790.dir\Debug\\" /Fd"cmTC_68790.dir\Debug\vc142.pdb" /Gd /TP /analyze- /errorReport:queue "C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\feature_tests.cxx"
+feature_tests.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/SAFESEH' specification [C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\cmTC_68790.vcxproj]
+  cmTC_68790.vcxproj -> C:\Users\Michael\Documents\_Active\godot-wasm\godot\modules\WasGo\wasm-micro-runtime\CMakeFiles\CMakeTmp\Debug\cmTC_68790.exe
+
+
+    Feature record: CXX_FEATURE:1cxx_aggregate_default_initializers
+    Feature record: CXX_FEATURE:1cxx_alias_templates
+    Feature record: CXX_FEATURE:1cxx_alignas
+    Feature record: CXX_FEATURE:1cxx_alignof
+    Feature record: CXX_FEATURE:1cxx_attributes
+    Feature record: CXX_FEATURE:1cxx_attribute_deprecated
+    Feature record: CXX_FEATURE:1cxx_auto_type
+    Feature record: CXX_FEATURE:1cxx_binary_literals
+    Feature record: CXX_FEATURE:1cxx_constexpr
+    Feature record: CXX_FEATURE:1cxx_contextual_conversions
+    Feature record: CXX_FEATURE:1cxx_decltype
+    Feature record: CXX_FEATURE:1cxx_decltype_auto
+    Feature record: CXX_FEATURE:1cxx_decltype_incomplete_return_types
+    Feature record: CXX_FEATURE:1cxx_default_function_template_args
+    Feature record: CXX_FEATURE:1cxx_defaulted_functions
+    Feature record: CXX_FEATURE:1cxx_defaulted_move_initializers
+    Feature record: CXX_FEATURE:1cxx_delegating_constructors
+    Feature record: CXX_FEATURE:1cxx_deleted_functions
+    Feature record: CXX_FEATURE:1cxx_digit_separators
+    Feature record: CXX_FEATURE:1cxx_enum_forward_declarations
+    Feature record: CXX_FEATURE:1cxx_explicit_conversions
+    Feature record: CXX_FEATURE:1cxx_extended_friend_declarations
+    Feature record: CXX_FEATURE:1cxx_extern_templates
+    Feature record: CXX_FEATURE:1cxx_final
+    Feature record: CXX_FEATURE:1cxx_func_identifier
+    Feature record: CXX_FEATURE:1cxx_generalized_initializers
+    Feature record: CXX_FEATURE:1cxx_generic_lambdas
+    Feature record: CXX_FEATURE:1cxx_inheriting_constructors
+    Feature record: CXX_FEATURE:1cxx_inline_namespaces
+    Feature record: CXX_FEATURE:1cxx_lambdas
+    Feature record: CXX_FEATURE:1cxx_lambda_init_captures
+    Feature record: CXX_FEATURE:1cxx_local_type_template_args
+    Feature record: CXX_FEATURE:1cxx_long_long_type
+    Feature record: CXX_FEATURE:1cxx_noexcept
+    Feature record: CXX_FEATURE:1cxx_nonstatic_member_init
+    Feature record: CXX_FEATURE:1cxx_nullptr
+    Feature record: CXX_FEATURE:1cxx_override
+    Feature record: CXX_FEATURE:1cxx_range_for
+    Feature record: CXX_FEATURE:1cxx_raw_string_literals
+    Feature record: CXX_FEATURE:1cxx_reference_qualified_functions
+    Feature record: CXX_FEATURE:1cxx_return_type_deduction
+    Feature record: CXX_FEATURE:1cxx_right_angle_brackets
+    Feature record: CXX_FEATURE:1cxx_rvalue_references
+    Feature record: CXX_FEATURE:1cxx_sizeof_member
+    Feature record: CXX_FEATURE:1cxx_static_assert
+    Feature record: CXX_FEATURE:1cxx_strong_enums
+    Feature record: CXX_FEATURE:1cxx_template_template_parameters
+    Feature record: CXX_FEATURE:1cxx_thread_local
+    Feature record: CXX_FEATURE:1cxx_trailing_return_types
+    Feature record: CXX_FEATURE:1cxx_unicode_literals
+    Feature record: CXX_FEATURE:1cxx_uniform_initialization
+    Feature record: CXX_FEATURE:1cxx_unrestricted_unions
+    Feature record: CXX_FEATURE:1cxx_user_literals
+    Feature record: CXX_FEATURE:1cxx_variable_templates
+    Feature record: CXX_FEATURE:1cxx_variadic_macros
+    Feature record: CXX_FEATURE:1cxx_variadic_templates
+Checking whether the ASM compiler is MSVC using "-?" matched "Microsoft":
+Microsoft (R) C/C++ Optimizing Compiler Version 19.22.27905 for x86
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+                         C/C++ COMPILER OPTIONS
+
+
+                              -OPTIMIZATION-
+
+/O1 maximum optimizations (favor space) /O2 maximum optimizations (favor speed)
+/Ob<n> inline expansion (default n=0)   /Od disable optimizations (default)
+/Og enable global optimization          /Oi[-] enable intrinsic functions
+/Os favor code space                    /Ot favor code speed
+/Ox optimizations (favor speed)         /Oy[-] enable frame pointer omission 
+/favor:<blend|ATOM> select processor to optimize for, one of:
+    blend - a combination of optimizations for several different x86 processors
+    ATOM - Intel(R) Atom(TM) processors 
+
+                             -CODE GENERATION-
+
+/Gu[-] ensure distinct functions have distinct addresses
+/Gw[-] separate global variables for linker
+/GF enable read-only string pooling     /Gm[-] enable minimal rebuild
+/Gy[-] separate functions for linker    /GS[-] enable security checks
+/GR[-] enable C++ RTTI                  /GX[-] enable C++ EH (same as /EHsc)
+/guard:cf[-] enable CFG (control flow guard)
+/EHs enable C++ EH (no SEH exceptions)  /EHa enable C++ EH (w/ SEH exceptions)
+/EHc extern "C" defaults to nothrow     
+/EHr always generate noexcept runtime termination checks
+/fp:<except[-]|fast|precise|strict> choose floating-point model:
+    except[-] - consider floating-point exceptions when generating code
+    fast - "fast" floating-point model; results are less predictable
+    precise - "precise" floating-point model; results are predictable
+    strict - "strict" floating-point model (implies /fp:except)
+/Qfast_transcendentals generate inline FP intrinsics even with /fp:except
+/Qspectre[-] enable mitigations for CVE 2017-5753
+/Qpar[-] enable parallel code generation
+/Qpar-report:1 auto-parallelizer diagnostic; indicate parallelized loops
+/Qpar-report:2 auto-parallelizer diagnostic; indicate loops not parallelized
+/Qvec-report:1 auto-vectorizer diagnostic; indicate vectorized loops
+/Qvec-report:2 auto-vectorizer diagnostic; indicate loops not vectorized
+/GL[-] enable link-time code generation 
+/volatile:<iso|ms> choose volatile model:
+    iso - Acquire/release semantics not guaranteed on volatile accesses
+    ms  - Acquire/release semantics guaranteed on volatile accesses
+/GA optimize for Windows Application    /Ge force stack checking for all funcs
+/Gs[num] control stack checking calls   /Gh enable _penter function call
+/GH enable _pexit function call         /GT generate fiber-safe TLS accesses
+/RTC1 Enable fast checks (/RTCsu)       /RTCc Convert to smaller type checks
+/RTCs Stack Frame runtime checking      /RTCu Uninitialized local usage checks
+/clr[:option] compile for common language runtime, where option is:
+    pure - produce IL-only output file (no native executable code)
+    safe - produce IL-only verifiable output file
+    noAssembly - do not produce an assembly
+    nostdlib - ignore the system .NET framework directory when searching for assemblies
+    nostdimport - do not import any required assemblies implicitly
+    initialAppDomain - enable initial AppDomain behavior of Visual C++ 2002
+/Gd __cdecl calling convention          /Gr __fastcall calling convention
+/Gz __stdcall calling convention        /GZ Enable stack checks (/RTCs)
+/Gv __vectorcall calling convention     /QIfist[-] use FIST instead of ftol()
+/hotpatch ensure function padding for hotpatchable images
+/arch:<IA32|SSE|SSE2|AVX|AVX2|AVX512> minimum CPU architecture requirements, one of:
+   IA32 - use no enhanced instructions and use x87 for floating point
+   SSE - enable use of instructions available with SSE-enabled CPUs
+   SSE2 - (default) enable use of instructions available with SSE2-enabled CPUs
+   AVX - enable use of instructions available with AVX-enabled CPUs
+   AVX2 - enable use of instructions available with AVX2-enabled CPUs
+   AVX512 - enable use of instructions available with AVX-512-enabled CPUs
+/Qimprecise_fwaits generate FWAITs only on "try" boundaries, not inside "try"
+/Qsafe_fp_loads generate safe FP loads  
+
+                              -OUTPUT FILES-
+
+/Fa[file] name assembly listing file    /FA[scu] configure assembly listing
+/Fd[file] name .PDB file                /Fe<file> name executable file
+/Fm[file] name map file                 /Fo<file> name object file
+/Fp<file> name precompiled header file  /Fr[file] name source browser file
+/FR[file] name extended .SBR file       /Fi[file] name preprocessed file
+/Fd: <file> name .PDB file              /Fe: <file> name executable file
+/Fm: <file> name map file               /Fo: <file> name object file
+/Fp: <file> name .PCH file              /FR: <file> name extended .SBR file
+/Fi: <file> name preprocessed file      
+/doc[file] process XML documentation comments and optionally name the .xdc file
+
+                              -PREPROCESSOR-
+
+/AI<dir> add to assembly search path    /FU<file> forced using assembly/module 
+/C don't strip comments                 /D<name>{=|#}<text> define macro
+/E preprocess to stdout                 /EP preprocess to stdout, no #line
+/P preprocess to file                   /Fx merge injected code to file
+/FI<file> name forced include file      /U<name> remove predefined macro
+/u remove all predefined macros         /I<dir> add to include search path
+/X ignore "standard places"             
+/PH generate #pragma file_hash when preprocessing
+
+                                -LANGUAGE-
+
+/std:<c++14|c++17|c++latest> C++ standard version
+    c++14 - ISO/IEC 14882:2014 (default)
+    c++17 - ISO/IEC 14882:2017
+    c++latest - latest draft standard (feature set subject to change)
+/permissive[-] enable some nonconforming code to compile (feature set subject to change) (on by default)
+/Ze enable extensions (default)         /Za disable extensions
+/ZW enable WinRT language extensions    /Zs syntax check only
+/Zc:arg1[,arg2] C++ language conformance, where arguments can be:
+  forScope[-]           enforce Standard C++ for scoping rules
+  wchar_t[-]            wchar_t is the native type, not a typedef
+  auto[-]               enforce the new Standard C++ meaning for auto
+  trigraphs[-]          enable trigraphs (off by default)
+  rvalueCast[-]         enforce Standard C++ explicit type conversion rules
+  strictStrings[-]      disable string-literal to [char|wchar_t]*
+                        conversion (off by default)
+  implicitNoexcept[-]   enable implicit noexcept on required functions
+  threadSafeInit[-]     enable thread-safe local static initialization
+  inline[-]             remove unreferenced function or data if it is
+                        COMDAT or has internal linkage only (off by default)
+  sizedDealloc[-]       enable C++14 global sized deallocation
+                        functions (on by default)
+  throwingNew[-]        assume operator new throws on failure (off by default)
+  referenceBinding[-]   a temporary will not bind to an non-const
+                        lvalue reference (off by default)
+  twoPhase-             disable two-phase name lookup
+  ternary[-]            enforce C++11 rules for conditional operator (off by default)
+  noexceptTypes[-]      enforce C++17 noexcept rules (on by default in C++17 or later)
+  alignedNew[-]         enable C++17 alignment of dynamically allocated objects (on by default)
+/await enable resumable functions extension
+/constexpr:depth<N>     recursion depth limit for constexpr evaluation (default: 512)
+/constexpr:backtrace<N> show N constexpr evaluations in diagnostics (default: 10)
+/constexpr:steps<N>     terminate constexpr evaluation after N steps (default: 100000)
+/Zi enable debugging information        /Z7 enable old-style debug info
+/Zo[-] generate richer debugging information for optimized code (on by default)
+/ZH:SHA_256             use SHA256 for file checksum in debug info (experimental)
+/Zp[n] pack structs on n-byte boundary  /Zl omit default library name in .OBJ
+/vd{0|1|2} disable/enable vtordisp      /vm<x> type of pointers to members
+/ZI enable Edit and Continue debug info 
+/openmp enable OpenMP 2.0 language extensions
+/openmp:experimental enable OpenMP 2.0 language extensions plus select OpenMP 3.0+ language extensions
+
+                              -MISCELLANEOUS-
+
+@<file> options response file           /?, /help print this help message
+/bigobj generate extended object format /c compile only, no link
+/errorReport:option Report internal compiler errors to Microsoft
+    none - do not send report                
+    prompt - prompt to immediately send report
+    queue - at next admin logon, prompt to send report (default)
+    send - send report automatically         
+/FC use full pathnames in diagnostics   /H<num> max external name length
+/J default char type is unsigned        
+/MP[n] use up to 'n' processes for compilation
+/nologo suppress copyright message      /showIncludes show include file names
+/Tc<source file> compile file as .c     /Tp<source file> compile file as .cpp
+/TC compile all files as .c             /TP compile all files as .cpp
+/V<string> set version string           /Yc[file] create .PCH file
+/Yd put debug info in every .OBJ        /Yl[sym] inject .PCH ref for debug lib
+/Yu[file] use .PCH file                 /Y- disable all PCH options
+/Zm<n> max memory alloc (% of default)  /FS force to use MSPDBSRV.EXE
+/source-charset:<iana-name>|.nnnn set source character set
+/execution-charset:<iana-name>|.nnnn set execution character set
+/utf-8 set source and execution character set to UTF-8
+/validate-charset[-] validate UTF-8 files for only legal characters
+/fastfail[-] enable fast-fail mode      /JMC[-] enable native just my code
+
+                                -LINKING-
+
+/LD Create .DLL                         /LDd Create .DLL debug library
+/LN Create a .netmodule                 /F<num> set stack size
+/link [linker options and libraries]    /MD link with MSVCRT.LIB
+/MT link with LIBCMT.LIB                /MDd link with MSVCRTD.LIB debug lib
+/MTd link with LIBCMTD.LIB debug lib    
+
+                              -CODE ANALYSIS-
+
+/analyze[-] Enable native analysis      /analyze:quiet[-] No warning to console
+/analyze:log<name> Warnings to file     /analyze:autolog Log to *.pftlog
+/analyze:autolog:ext<ext> Log to *.<ext>/analyze:autolog- No log file
+/analyze:WX- Warnings not fatal         /analyze:stacksize<num> Max stack frame
+/analyze:max_paths<num> Max paths       /analyze:only Analyze, no code gen
+
+                              -DIAGNOSTICS-
+
+/diagnostics:<args,...> controls the format of diagnostic messages:
+             classic   - retains prior format
+             column[-] - prints column information
+             caret[-]  - prints column and the indicated line of source
+/Wall enable all warnings               /w   disable all warnings
+/W<n> set warning level (default n=1)   
+/Wv:xx[.yy[.zzzzz]] disable warnings introduced after version xx.yy.zzzzz
+/WX treat warnings as errors            /WL enable one line diagnostics
+/wd<n> disable warning n                /we<n> treat warning n as an error
+/wo<n> issue warning n once             /w<l><n> set warning level 1-4 for n
+/external:I <path>      - location of external headers
+/external:env:<var>     - environment variable with locations of external headers
+/external:anglebrackets - treat all headers included via <> as external
+/external:W<n>          - warning level for external headers
+/external:templates[-]  - evaluate warning level across template instantiation chain
+/sdl enable additional security features and warnings
+

@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="WasGoState" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_callable">
+			<return type="Callable" />
+			<param index="0" name="func" type="String" />
+			<param index="1" name="definition" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_aabb">
+			<return type="AABB" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_basis">
+			<return type="Basis" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_bool">
+			<return type="bool" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_color">
+			<return type="Color" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_float">
+			<return type="float" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_int">
+			<return type="int" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_nodepath">
+			<return type="NodePath" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_plane">
+			<return type="Plane" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_quat">
+			<return type="Quaternion" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_rect2">
+			<return type="Rect2" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_string">
+			<return type="String" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_transform">
+			<return type="Transform3D" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_transform2d">
+			<return type="Transform2D" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_vector2">
+			<return type="Vector2" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_property_vector3">
+			<return type="Vector3" />
+			<param index="0" name="property" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_int_property">
+			<return type="void" />
+			<param index="0" name="value" type="int" />
+			<param index="1" name="key" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_aabb">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="AABB" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_basis">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Basis" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_bool">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_color">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Color" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_float">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_int">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_nodepath">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="NodePath" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_plane">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Plane" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_quat">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Quaternion" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_rect2">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Rect2" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_string">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_transform">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Transform3D" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_transform2d">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Transform2D" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_vector2">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Vector2" />
+			<description>
+			</description>
+		</method>
+		<method name="set_property_vector3">
+			<return type="void" />
+			<param index="0" name="property" type="String" />
+			<param index="1" name="value" type="Vector3" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="runtime_heap_size" type="int" setter="set_heap_size" getter="get_heap_size" default="8192">
+		</member>
+		<member name="runtime_stack_size" type="int" setter="set_stack_size" getter="get_stack_size" default="8192">
+		</member>
+		<member name="script_binary" type="WasmResource" setter="set_wasm_script" getter="get_wasm_script">
+		</member>
+		<member name="script_properties" type="Dictionary" setter="set_properties" getter="get_properties" default="{}">
+		</member>
+	</members>
+</class>
