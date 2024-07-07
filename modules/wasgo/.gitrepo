@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/wasgo.git
 	branch = main
-	commit = bf288d97561bfff5205c0449a1b0b42c9c65aa1a
-	parent = beef1ed80098486e9e7b761844a7cd18deaf155e
+	commit = 5b853030f230ddd75fe1a39cacfc33103703fe3e
+	parent = 3efb38c39a1918d476bb0ba27f90247843e22bcd
 	method = merge
 	cmdver = 0.4.6
