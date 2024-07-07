@@ -1,22 +1,26 @@
 import json
-from pathlib import Path
 import os
 import re
+from pathlib import Path
+
 
 def find_files_recursively(dir, glob_pattern):
     return ["{0}".format(path.relative_to(dir)) for path in Path(dir).rglob(glob_pattern)]
+
 
 def parse_method(method_line, class_name):
     if "(" not in method_line:
         return {}
 
     method = {}
-    pre_paren = method_line[:method_line.find("(")]
-    post_paren = method_line[method_line.find("("):]
+    pre_paren = method_line[: method_line.find("(")]
+    post_paren = method_line[method_line.find("(") :]
     pre_words = [word.strip() for word in pre_paren.split()]
     method["virtual"] = "virtual" in pre_words
     method["static"] = "static" in pre_words
-    pre_word_names = [word for word in pre_words if word not in ["virtual", "static", "inline"]]  # TODO add other qualifiers
+    pre_word_names = [
+        word for word in pre_words if word not in ["virtual", "static", "inline"]
+    ]  # TODO add other qualifiers
     if not pre_word_names:
         return {}
     method["name"] = pre_word_names[-1]
@@ -37,7 +41,7 @@ def parse_method(method_line, class_name):
 
     if ")" not in post_paren:
         return {}
-    argument_string = post_paren[1:post_paren.rfind(")")]
+    argument_string = post_paren[1 : post_paren.rfind(")")]
     if len(argument_string) < 2:
         method["arguments"] = []
 
@@ -55,7 +59,7 @@ def parse_method(method_line, class_name):
                     "name": arg_name.strip(),
                     "type": arg_type.strip(),
                     "default_value": arg_value.strip(),
-                    "has_default_value": default_value
+                    "has_default_value": default_value,
                 }
                 args.append(arg)
                 arg_name = ""
@@ -92,14 +96,15 @@ def parse_method(method_line, class_name):
             "name": arg_name.strip(),
             "type": arg_type.strip(),
             "default_value": arg_value.strip(),
-            "has_default_value": default_value
+            "has_default_value": default_value,
         }
         args.append(arg)
     method["arguments"] = args
     return method
 
+
 def extract_methods_from_header(header_content, class_name):
-    method_pattern = re.compile(r'\b(?:virtual\s+|static\s+)?\w[\w\s:&*<>]*\s+\w+\s*\([^)]*\)\s*(?:const)?\s*;')
+    method_pattern = re.compile(r"\b(?:virtual\s+|static\s+)?\w[\w\s:&*<>]*\s+\w+\s*\([^)]*\)\s*(?:const)?\s*;")
     methods = []
     for line in header_content.splitlines():
         line = line.strip()
@@ -109,21 +114,17 @@ def extract_methods_from_header(header_content, class_name):
                 methods.append(method_info)
     return methods
 
+
 def parse_struct(struct_lines):
     return parse_class(struct_lines, True)
+
 
 def parse_class(class_lines, public_default=False):
     if not class_lines:
         return {}
-    class_dict = {
-        "classes": [],
-        "structs": [],
-        "enums": [],
-        "constants": [],
-        "methods": []
-    }
+    class_dict = {"classes": [], "structs": [], "enums": [], "constants": [], "methods": []}
     public = public_default  # change to true for structs
-    
+
     curly_brace_count = 0
     nested_class_lines = []
     nested_struct_lines = []
@@ -134,7 +135,7 @@ def parse_class(class_lines, public_default=False):
             class_name = line[5:]  # remove the class keyword
             parent_string = ""
             if "{" in class_name:
-                class_name = class_name[:class_name.find("{")]
+                class_name = class_name[: class_name.find("{")]
             if ":" in class_name:
                 char_index = class_name.find(":")
                 parent_string = class_name[char_index:]
@@ -201,15 +202,16 @@ def parse_class(class_lines, public_default=False):
 
     return class_dict
 
+
 def parse_header_file(file_path):
     # assumes that header files are prettified and have newlines at the regular places
     # if that's not the case, just run a prettifier on the files and try again
     # note the opening brace must be on the same line for class, struct, enum, and method definitions
     try:
-        with open(file_path, 'r', encoding='utf-8') as input_file:
+        with open(file_path, "r", encoding="utf-8") as input_file:
             lines = input_file.readlines()
     except UnicodeDecodeError:
-        with open(file_path, 'r', encoding='latin-1') as input_file:
+        with open(file_path, "r", encoding="latin-1") as input_file:
             lines = input_file.readlines()
 
     classes = []
@@ -255,12 +257,9 @@ def parse_header_file(file_path):
                 enums.append(enum_lines)
                 enum_lines.clear()
 
-    header_file = {
-        "classes": classes,
-        "structs": structs,
-        "enums": enums
-    }
+    header_file = {"classes": classes, "structs": structs, "enums": enums}
     return header_file
+
 
 if __name__ == "__main__":
     input_folder = "../../../"
@@ -280,5 +279,5 @@ if __name__ == "__main__":
         if not input_file.startswith("thirdparty/") and not input_file.startswith("tests/"):
             file_classes_dict[input_file] = parse_header_file(os.path.join(input_folder, input_file))
 
-    with open('wasgo_api.json', 'w') as file:
+    with open("wasgo_api.json", "w") as file:
         file.write(json.dumps(file_classes_dict, indent=4))  # use `json.loads` to do the reverse

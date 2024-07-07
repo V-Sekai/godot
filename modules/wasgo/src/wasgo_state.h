@@ -39,7 +39,6 @@ These get saved with the scene and when the game is run they're used by the Wasm
 These nodes also handle things like translating wasm commands to Godot functions.
 */
 
-
 #include "core/variant/variant.h"
 #include "resource_wasm.h"
 #include "scene/main/node.h"

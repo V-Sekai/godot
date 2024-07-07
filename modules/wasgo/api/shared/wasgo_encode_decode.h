@@ -32,7 +32,6 @@
 #define WASGO_ENCODE_DECODE_H
 //Lots of this is copied from Godot's marshalls.h
 
-
 // #include "reference.h"
 // #include "typedefs.h"
 #include "wasgoid.h"

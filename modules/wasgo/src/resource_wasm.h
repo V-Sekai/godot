@@ -32,7 +32,6 @@
 #define RESOURCE_WASM_H
 /* resource_wasm.h */
 
-
 #include "core/io/resource.h"
 #include "core/io/resource_loader.h"
 #include "wasm_export.h"
