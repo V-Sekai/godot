@@ -1,5 +1,5 @@
 def can_build(env, platform):
-    return not platform in ["web", "android", "ios"]
+    return platform not in ["web", "android", "ios"]
 
 
 def configure(env):

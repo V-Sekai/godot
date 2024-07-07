@@ -43,4 +43,4 @@ public:
 	static int test();
 };
 
-#endif
+#endif // WASGO_TEST_H

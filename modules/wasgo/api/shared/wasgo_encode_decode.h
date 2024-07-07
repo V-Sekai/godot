@@ -28,10 +28,10 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-//Lots of this is copied from Godot's marshalls.h
-
 #ifndef WASGO_ENCODE_DECODE_H
 #define WASGO_ENCODE_DECODE_H
+//Lots of this is copied from Godot's marshalls.h
+
 
 // #include "reference.h"
 // #include "typedefs.h"
@@ -42,7 +42,7 @@
 // #include "core/variant/variant.h"
 
 /**
- * Miscellaneous helpers for marshalling data types, and encoding
+ * Miscellaneous helpers for marshaling data types, and encoding
  * in an endian independent way
  */
 
@@ -247,4 +247,4 @@ static inline double decode_double(const WasGoByte *p_arr) {
 // Error decode_variant(Variant &r_variant, const WasGoByte *p_buffer, int p_len, int *r_len = NULL, bool p_allow_objects = false);
 // Error encode_variant(const Variant &p_variant, WasGoByte *r_buffer, int &r_len, bool p_full_objects = false);
 
-#endif
+#endif // WASGO_ENCODE_DECODE_H

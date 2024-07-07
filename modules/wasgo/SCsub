@@ -60,7 +60,7 @@ elif module_env["platform"] == "windows" and module_env["use_mingw"]:
 elif module_env["platform"] == "linuxbsd":
     sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.s")
 elif module_env["platform"] == "macos" and module_env["arch"] == "arm64":
-    sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_osx_universal.s") 
+    sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_osx_universal.s")
 else:
     sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
 

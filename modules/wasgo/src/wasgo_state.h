@@ -28,6 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#ifndef WASGO_STATE_H
+#define WASGO_STATE_H
 /*
 This file defines the WasGoState class.
 A WasGoState contains everything needed to run a wasm script.
@@ -37,8 +39,6 @@ These get saved with the scene and when the game is run they're used by the Wasm
 These nodes also handle things like translating wasm commands to Godot functions.
 */
 
-#ifndef WASGO_STATE_H
-#define WASGO_STATE_H
 
 #include "core/variant/variant.h"
 #include "resource_wasm.h"
@@ -282,4 +282,4 @@ bool _wasgo_is_processing_input(wasm_exec_env_t p_exec_env);
 bool _wasgo_is_processing_unhandled_input(wasm_exec_env_t p_exec_env);
 bool _wasgo_is_processing_unhandled_key_input(wasm_exec_env_t p_exec_env);
 
-#endif
+#endif // WASGO_STATE_H

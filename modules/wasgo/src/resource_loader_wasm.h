@@ -28,10 +28,10 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-/* resource_loader_wasm.h */
-
 #ifndef RESOURCE_LOADER_WASM_H
 #define RESOURCE_LOADER_WASM_H
+/* resource_loader_wasm.h */
+
 
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
@@ -45,4 +45,5 @@ public:
 	virtual bool handles_type(const String &p_type) const override;
 	virtual String get_resource_type(const String &p_path) const override;
 };
+
 #endif // RESOURCE_LOADER_WASM_H

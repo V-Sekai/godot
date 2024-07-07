@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef WASGO_FUNCTION_TABLE
-#define WASGO_FUNCTION_TABLE
+#ifndef WASGO_FUNCTION_TABLE_H
+#define WASGO_FUNCTION_TABLE_H
 #include "src/wasgo_state.h"
 #include "wasgo_math.h"
 #include "wasgo_native_wrappers.h"
@@ -482,4 +482,4 @@ static NativeSymbol native_symbols[] = {
 	//     EXPORT_WASM_API_WITH_SIG(_wasgo_WasGoState_constructor,"()i"),
 
 };
-#endif
+#endif // WASGO_FUNCTION_TABLE_H

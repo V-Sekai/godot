@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef WASGO_NATIVE_WRAPPER_HEADERS
-#define WASGO_NATIVE_WRAPPER_HEADERS
+#ifndef WASGO_NATIVE_WRAPPERS_H
+#define WASGO_NATIVE_WRAPPERS_H
 #include "src/wasgo_state.h"
 #include "wasm_export.h"
 // #include "core/io/marshalls.h"
@@ -5663,4 +5663,4 @@ inline void _wasgo_variant_deconstructor(wasm_exec_env_t exec_env, WasGoState::W
 // 	}
 // 	return;
 // }
-#endif
+#endif // WASGO_NATIVE_WRAPPERS_H

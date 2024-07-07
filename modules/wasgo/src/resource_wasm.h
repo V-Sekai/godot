@@ -28,10 +28,10 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-/* resource_wasm.h */
-
 #ifndef RESOURCE_WASM_H
 #define RESOURCE_WASM_H
+/* resource_wasm.h */
+
 
 #include "core/io/resource.h"
 #include "core/io/resource_loader.h"

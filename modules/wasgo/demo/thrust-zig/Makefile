@@ -8,7 +8,7 @@ SRCS := $(wildcard *.zig ../../api/Custom/*.cpp ../../api/Custom/wasgo/*.cpp ../
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
-INC_DIRS := 
+INC_DIRS :=
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 CPPFLAGS ?= build-lib $(INC_FLAGS)

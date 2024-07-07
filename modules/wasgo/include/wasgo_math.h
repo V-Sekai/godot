@@ -28,6 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#ifndef WASGO_MATH_H
+#define WASGO_MATH_H
 #include "wasm_export.h"
 #include <math.h>
 #include <stdlib.h>
@@ -85,3 +87,4 @@ inline int _wasgo_rand(wasm_exec_env_t exec_env) {
 // inline float _wasgo_random(wasm_exec_env_t exec_env) {
 // 	return random();
 // }
+#endif // WASGO_MATH_H

@@ -64,4 +64,4 @@ public:
 	void initialize(NativeSymbol symbols[], int native_symbol_size);
 };
 
-#endif
+#endif // WASGO_RUNTIME_H

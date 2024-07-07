@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef WASGO_CALLABLE
-#define WASGO_CALLABLE
+#ifndef WASGO_CALLABLE_H
+#define WASGO_CALLABLE_H
 #include "core/variant/callable.h"
 #include "core/variant/variant.h"
 #include "src/wasgo_state.h"
@@ -56,4 +56,4 @@ public:
 	virtual ~WasGoCallable();
 };
 
-#endif
+#endif // WASGO_CALLABLE_H

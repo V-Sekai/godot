@@ -3,8 +3,8 @@
 ## Contributors
 
 * MMMaellon
-* Pushknat 
-* Rammalyala 
+* Pushknat
+* Rammalyala
 * Luftccc
 * iFire
 * Lyuma
