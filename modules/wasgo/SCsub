@@ -130,13 +130,17 @@ if platform == "windows":
             module_env["AS"] = "x86_64-w64-mingw32-as"
             print(old_as + " not found. switching to " + str(module_env["AS"]))
     module_env["ASFLAGS"] = "-c"
-    module_env.Prepend(CPPDEFINES=["BUILD_TARGET_X86_64"])
+    module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_64"])
 
-module_env.Prepend(
+env.Append(
+    CPPDEFINES = [
+            ("WASM_API_EXTERN", ""),
+            ("WASM_RUNTIME_API_EXTERN", "")
+        ]
+    )
+module_env.Append(
     CPPDEFINES=[
         # "WASM_ENABLE_FAST_JIT", TODO: 20240707 fire
-        ("WASM_API_EXTERN", ""),
-        ("WASM_RUNTIME_API_EXTERN", ""),
         ("BH_FREE", "wasm_runtime_free"),
         "_WINSOCK_DEPRECATED_NO_WARNINGS",
         ("BH_MALLOC", "wasm_runtime_malloc"),

@@ -624,6 +624,9 @@ def configure_msvc(env: "SConsEnvironment", vcvars_msvc_config):
 
     env.Append(LINKFLAGS=["/NATVIS:platform\\windows\\godot.natvis"])
     env.AppendUnique(LINKFLAGS=["/STACK:" + str(STACK_SIZE)])
+    
+    # Ignore inconsistent linking
+    env.Append(LINKFLAGS=["/ignore:4273"]) 
 
 
 def configure_mingw(env: "SConsEnvironment"):
