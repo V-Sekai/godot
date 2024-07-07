@@ -66,6 +66,7 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_memmap.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_blocking_op.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin",
@@ -80,6 +81,7 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_memmap.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_blocking_op.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/linux",
