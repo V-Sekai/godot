@@ -103,7 +103,6 @@ if platform in platform_settings:
 if platform == "windows":
     if module_env.msvc:
         common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
-        module_env.Append(LINKFLAGS=['/IGNORE:4286'])
     elif module_env["use_mingw"]:
         common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64_GAS.s")
 elif platform == "linuxbsd":
@@ -187,8 +186,6 @@ module_env.Append(
         ("BH_FREE", "wasm_runtime_free"),
         ("BH_MALLOC", "wasm_runtime_malloc"),
         "HAVE_STRUCT_TIMESPEC",
-        ("WASM_API_EXTERN", ""),
-        ("WASM_RUNTIME_API_EXTERN", ""),
         ("WASM_ENABLE_BULK_MEMORY", 0),
         ("WASM_ENABLE_FAST_INTERP", 0),
         ("WASM_ENABLE_INTERP", 1),
