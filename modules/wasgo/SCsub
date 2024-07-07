@@ -43,6 +43,7 @@ sdk = [
     "./thirdparty/wasm-micro-runtime/core/iwasm/interpreter/wasm_runtime.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_intrinsic.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_loader_common.c",
+    "./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c",
 ]
 
 wasi = [
@@ -95,11 +96,6 @@ elif module_env["platform"] == "macos":
         "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
         "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
     ]
-
-    if module_env.get("arch") == "aarch64":
-        sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_aarch64_simd.s")
-    else:
-        sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64_simd.s")
 
     module_env.Prepend(
         CPPPATH=[
