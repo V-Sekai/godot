@@ -179,7 +179,7 @@ if platform == "windows":
             print(old_as + " not found. switching to " + str(module_env["AS"]))
     module_env["ASFLAGS"] = "-c"
 
-env.Append(
+module_env.Prepend(
     CPPDEFINES=[
         ("OS_ENABLE_HW_BOUND_CHECK", 1),
         ("OS_ENABLE_WAKEUP_BLOCKING_OP", 1),
