@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/bytecodealliance/wasm-micro-runtime.git
+	branch = main
+	commit = 0feae05379feb856f6b1af6c0dc5cf57f87155b7
+	parent = ec3145dd58e750187230ea4fcdf41d6f0152b37e
+	method = merge
+	cmdver = 0.4.6

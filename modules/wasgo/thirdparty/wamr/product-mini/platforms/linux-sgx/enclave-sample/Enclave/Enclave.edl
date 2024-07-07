@@ -1,0 +1,34 @@
+/*
+ * Copyright (C) 2019 Intel Corporation.  All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+ */
+
+#define WASM_ENABLE_SGX_IPFS 0
+#define WASM_ENABLE_LIB_RATS 0
+
+enclave {
+    from "sgx_tstdc.edl" import *;
+    from "sgx_pthread.edl" import *;
+    from "sgx_wamr.edl" import *;
+#if WASM_ENABLE_LIB_RATS != 0
+    from "rats.edl" import *;
+    from "sgx_tsgxssl.edl" import *;
+#endif
+#if WASM_ENABLE_SGX_IPFS != 0
+    from "sgx_tprotected_fs.edl" import *;
+#endif
+
+    trusted {
+        /* define ECALLs here. */
+        public void ecall_handle_command(unsigned cmd,
+                                         [in, out, size=cmd_buf_size]uint8_t *cmd_buf,
+                                         unsigned cmd_buf_size);
+        public void ecall_iwasm_main([user_check]uint8_t *wasm_file_buf,
+                                     uint32_t wasm_file_size);
+    };
+
+    untrusted {
+        /* define OCALLs here. */
+        int ocall_print([in, string]const char* str);
+    };
+};
