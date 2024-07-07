@@ -280,5 +280,5 @@ if __name__ == "__main__":
         if not input_file.startswith("thirdparty/") and not input_file.startswith("tests/"):
             file_classes_dict[input_file] = parse_header_file(os.path.join(input_folder, input_file))
 
-    with open('test_run.json', 'w') as file:
+    with open('wasgo_api.json', 'w') as file:
         file.write(json.dumps(file_classes_dict, indent=4))  # use `json.loads` to do the reverse

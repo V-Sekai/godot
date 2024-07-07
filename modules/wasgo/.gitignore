@@ -470,3 +470,5 @@ __pycache__/
 !thirdparty/wasm-micro-runtime/wamr-sdk/opt/wasi-sdk/share/wasi-sysroot/lib/wasm32-wasi/libwasi-emulated-mman.a
 !thirdparty/wasm-micro-runtime/wamr-sdk/opt/wasi-sdk/share/wasi-sysroot/lib/wasm32-wasi/libwasi-emulated-signal.a
 !thirdparty/wasm-micro-runtime/wamr-sdk/opt/wasi-sdk/share/wasi-sysroot/lib/wasm32-wasi/libxnet.a
+
+api/wasgo_api.json

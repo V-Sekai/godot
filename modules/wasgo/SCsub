@@ -8,8 +8,6 @@ module_env.Prepend(
     CPPPATH=[
         "./thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/include",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src",
         "./thirdparty/wasm-micro-runtime/build-scripts/../core/iwasm/include",
         "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc",
         "./thirdparty/wasm-micro-runtime/core/iwasm/common",
@@ -45,14 +43,6 @@ sdk = [
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_loader_common.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c",
 ]
-
-wasi = [
-    # "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-wasi/libc_wasi_wrapper.c",
-    # "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/posix.c",
-    # "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/random.c",
-    # "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-wasi/sandboxed-system-primitives/src/str.c",
-]
-sdk = sdk + wasi
 
 if module_env["platform"] == "windows" and module_env.msvc:
     sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
@@ -177,7 +167,7 @@ module_env.Append(
         ("WASM_ENABLE_BULK_MEMORY", 0),
         ("WASM_ENABLE_FAST_INTERP", 0),
         ("WASM_ENABLE_INTERP", 1),
-        # ("WASM_ENABLE_LIBC_WASI", 1),
+        ("WASM_ENABLE_MODULE_INST_CONTEXT", 1),
         ("WASM_ENABLE_LIBC_BUILTIN", 1),
         ("WASM_ENABLE_MINI_LOADER", 0),
         ("WASM_ENABLE_MULTI_MODULE", 0),

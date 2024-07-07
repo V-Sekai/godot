@@ -59,5 +59,5 @@ void _input(InputEvent event) {
 	// InputEventMouse mouse_event = (InputEventMouse)event;
 	InputEventMouseMotion mouse_motion = InputEventMouseMotion(InputEventMouse(InputEventWithModifiers(event)));
 	mouse_speed = mouse_speed.linear_interpolate(mouse_motion.get_relative() / 1000, sensitivity);
-	// printf("mouse speed: %d %d\n", int(mouse_speed.x * 1000), int(mouse_speed.y * 1000));
+	printf("mouse speed: %d %d\n", int(mouse_speed.x * 1000), int(mouse_speed.y * 1000));
 }
