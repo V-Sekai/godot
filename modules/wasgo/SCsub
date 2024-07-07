@@ -50,7 +50,7 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_time.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_socket.c",
-            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_file.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_util.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows",
