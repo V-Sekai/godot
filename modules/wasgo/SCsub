@@ -165,12 +165,6 @@ else:
             print(old_as + " not found. switching to " + str(module_env["AS"]))
     module_env["ASFLAGS"] = "-c"
 
-module_env.Prepend(
-    CPPPATH=[
-        ".",
-    ]
-)
-
 module_env.Append(
     CPPDEFINES=[
         "TIME_UTC=1",  # Don't know if this is correct. Windows uses local time.

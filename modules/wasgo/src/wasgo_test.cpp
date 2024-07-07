@@ -37,7 +37,7 @@
 #undef HashMap
 #undef Vector
 #include "core/io/file_access.h"
-#include "include/wasgo_function_table.h"
+#include "modules/wasgo/include/wasgo_function_table.h"
 #include "wasgo_callable.h"
 #include "wasgo_state.h"
 #include "wasm_export.h"

@@ -30,7 +30,7 @@
 
 #ifndef WASGO_FUNCTION_TABLE_H
 #define WASGO_FUNCTION_TABLE_H
-#include "src/wasgo_state.h"
+#include "modules/wasgo/src/wasgo_state.h"
 #include "wasgo_math.h"
 #include "wasgo_native_wrappers.h"
 #include "wasm_export.h"

@@ -30,13 +30,13 @@
 
 #ifndef WASGO_NATIVE_WRAPPERS_H
 #define WASGO_NATIVE_WRAPPERS_H
-#include "src/wasgo_state.h"
+#include "modules/wasgo/src/wasgo_state.h"
 #include "wasm_export.h"
 // #include "core/io/marshalls.h"
 // #include "core/variant/variant.h"
 // #include "scene/register_scene_types.h"
 // #include "scene/scene_string_names.h"
-#include "api/shared/wasgo_encode_decode.h"
+#include "modules/wasgo/api/shared/wasgo_encode_decode.h"
 // // #include "scene/2d/animated_sprite.h"
 // #include "scene/2d/area_2d.h"
 // #include "scene/2d/audio_stream_player_2d.h"

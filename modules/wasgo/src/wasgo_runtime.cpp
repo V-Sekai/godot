@@ -29,7 +29,7 @@
 /**************************************************************************/
 
 #include "wasgo_runtime.h"
-#include "include/wasgo_function_table.h"
+#include "modules/wasgo/include/wasgo_function_table.h"
 #include "wasm_export.h"
 
 char WasGoRuntime::global_heap_buf[512 * 1024 * 100];
