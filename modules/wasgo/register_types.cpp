@@ -58,6 +58,7 @@ void initialize_wasgo_module(ModuleInitializationLevel p_level) {
 	Engine::get_singleton()->add_singleton(Engine::Singleton("WasGo", WasGoRuntime::get_singleton()));
 	wasm_loader.instantiate();
 	ResourceLoader::add_resource_format_loader(wasm_loader);
+	WasGoTest::test();
 }
 
 void uninitialize_wasgo_module(ModuleInitializationLevel p_level) {
