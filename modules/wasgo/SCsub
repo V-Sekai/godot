@@ -1,6 +1,12 @@
 # SCsub
 Import("env")
 
+env.Append(
+    CPPDEFINES=[
+    ("WASM_API_EXTERN", ""),
+    ("WASM_RUNTIME_API_EXTERN", ""),]
+)
+
 module_env = env.Clone()
 
 common_includes = [
