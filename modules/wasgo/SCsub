@@ -3,20 +3,16 @@ Import("env")
 
 module_env = env.Clone()
 
-# add include files
-module_env.Prepend(
-    CPPPATH=[
-        "./thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/aot",
-        "./thirdparty/wasm-micro-runtime/build-scripts/../core/iwasm/include",
-        "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/common",
-        "./thirdparty/wasm-micro-runtime/core/shared/utils",
-        # "./thirdparty/wasm-micro-runtime/core/shared/utils/uncommon",
-    ]
-)
+common_includes = [
+    "./thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
+    "./thirdparty/wasm-micro-runtime/core/iwasm/aot",
+    "./thirdparty/wasm-micro-runtime/core/iwasm/include",
+    "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc",
+    "./thirdparty/wasm-micro-runtime/core/iwasm/common",
+    "./thirdparty/wasm-micro-runtime/core/shared/utils",
+]
 
-sdk = [
+common_sdk = [
     "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc/ems/ems_alloc.c",
     "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc/ems/ems_hmu.c",
     "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc/ems/ems_kfc.c",
@@ -44,89 +40,78 @@ sdk = [
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c",
 ]
 
-if module_env["platform"] == "windows" and module_env.msvc:
-    sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
-elif module_env["platform"] == "windows" and module_env["use_mingw"]:
-    sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64_GAS.s")
-elif module_env["platform"] == "linuxbsd":
-    sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.s")
-elif module_env["platform"] == "macos" and module_env["arch"] == "arm64":
-    sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_osx_universal.s")
-else:
-    sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
-
-
-if module_env["platform"] == "windows":
-    sdk += [
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/platform_init.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/posix_malloc.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_memmap.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_thread.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_time.c",
-    ]
-    module_env.Prepend(
-        CPPPATH=[
+platform_settings = {
+    "windows": {
+        "sdk": [
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/platform_init.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/posix_malloc.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_memmap.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_thread.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_time.c",
+        ],
+        "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows",
-            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/../include",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/include",
             "./thirdparty/wasm-micro-runtime/core/iwasm/include",
-        ]
-    )
-    module_env.Append(
-        CPPDEFINES=[
-            "BH_PLATFORM_WINDOWS",
-            "WIN32",
-            "_WINDOWS",
-        ]
-    )
-elif module_env["platform"] == "macos":
-    sdk += [
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin/platform_init.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_malloc.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_memmap.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
-    ]
-
-    module_env.Prepend(
-        CPPPATH=[
+        ],
+        "defines": ["BH_PLATFORM_WINDOWS", "WIN32", "_WINDOWS"],
+    },
+    "macos": {
+        "sdk": [
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin/platform_init.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_malloc.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_memmap.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
+        ],
+        "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin",
-            "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin/../include",
-        ]
-    )
-    module_env.Append(
-        CPPDEFINES=[
-            "BH_PLATFORM_DARWIN",
-        ]
-    )
-else:
-    module_env.Prepend(
-        CPPPATH=[
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/include",
+        ],
+        "defines": ["BH_PLATFORM_DARWIN"],
+    },
+    "linuxbsd": {
+        "sdk": [
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/linux/platform_init.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_malloc.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_memmap.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
+        ],
+        "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/linux",
-            "./thirdparty/wasm-micro-runtime/core/shared/platform/linux/../include",
-        ]
-    )
-    posix = [
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_malloc.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_memmap.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
-        "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
-    ]
-    sdk = sdk + posix
-    sdk.append("./thirdparty/wasm-micro-runtime/core/shared/platform/linux/platform_init.c")
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/include",
+        ],
+        "defines": ["BH_PLATFORM_LINUX"],
+    },
+}
 
-    module_env.Append(
-        CPPDEFINES=[
-            "BH_PLATFORM_LINUX",
-        ]
-    )
+module_env.Prepend(CPPPATH=common_includes)
 
-if module_env["platform"] == "javascript":
-    # Web probably cannot build AOT
-    module_env.Append(
-        CPPDEFINES=[
-            "BUILD_TARGET_X86_32",
-        ]
-    )
+# Add platform-specific settings
+platform = module_env["platform"]
+if platform in platform_settings:
+    settings = platform_settings[platform]
+    common_sdk += settings["sdk"]
+    module_env.Prepend(CPPPATH=settings["includes"])
+    module_env.Append(CPPDEFINES=settings["defines"])
+
+# Architecture-specific settings
+if platform == "windows":
+    if module_env.msvc:
+        common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
+    elif module_env["use_mingw"]:
+        common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64_GAS.s")
+elif platform == "linuxbsd":
+    common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.s")
+elif platform == "macos" and module_env["arch"] == "arm64":
+    common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_osx_universal.s")
+else:
+    common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
+
+# JavaScript-specific settings
+if platform == "javascript":
+    module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
 else:
     module_env.Append(
         CPPDEFINES=[
@@ -134,16 +119,16 @@ else:
             ("WASM_ENABLE_AOT", 1),
         ]
     )
-    sdk += [
+    common_sdk += [
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_loader.c",
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_runtime.c",
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/arch/aot_reloc_x86_64.c",
     ]
 
-if module_env["platform"] == "windows" and module_env.msvc:
-    module_env["AS"] = "ml64"
-else:
-    if module_env["platform"] == "windows":
+if platform == "windows":
+    if module_env.msvc:
+        module_env["AS"] = "ml64"
+    else:
         import subprocess
 
         try:
@@ -178,7 +163,7 @@ module_env.Append(
 
 env_thirdparty = module_env.Clone()
 env_thirdparty.disable_warnings()
-env_thirdparty.add_source_files(env.modules_sources, sdk)
+env_thirdparty.add_source_files(env.modules_sources, common_sdk)
 env_thirdparty.add_source_files(env.modules_sources, "src/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "api/*.cpp")
 env_thirdparty.add_source_files(env.modules_sources, "api/shared/*.cpp")
