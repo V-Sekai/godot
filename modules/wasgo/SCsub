@@ -138,6 +138,12 @@ if platform == "windows":
     module_env["ASFLAGS"] = "-c"
     module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_64"])
 
+env.Append(
+    CPPDEFINES = [
+            ("WASM_API_EXTERN", ""),
+            ("WASM_RUNTIME_API_EXTERN", "")
+        ]
+    )
 module_env.Append(
     CPPDEFINES=[
         # "WASM_ENABLE_FAST_JIT", TODO: 20240707 fire
