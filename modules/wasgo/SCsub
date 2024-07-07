@@ -94,8 +94,13 @@ elif module_env["platform"] == "macos":
         "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_memmap.c",
         "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
         "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_aarch64_simd.s",
     ]
+
+    if module_env.get("arch") == "aarch64":
+        sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_aarch64_simd.s")
+    else:
+        sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64_simd.s")
+
     module_env.Prepend(
         CPPPATH=[
             "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin",
