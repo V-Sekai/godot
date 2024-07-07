@@ -115,20 +115,23 @@ else:
     module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
 
-module_env.Prepend(CPPPATH=["thirdparty/zydis/include", "thirdparty/zydis/src", "thirdparty/zycore-c/include"])
-module_env.Append(
-    CPPDEFINES=[
-        "BUILD_TARGET_X86_64",
-        "ZYCORE_STATIC_BUILD",
-        "ZYDIS_STATIC_BUILD",
-        ("WASM_ENABLE_AOT", 1),
-    ]
-)
+if platform == "javascript":
+    module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
+else:
+    module_env.Prepend(CPPPATH=["thirdparty/zydis/include", "thirdparty/zydis/src", "thirdparty/zycore-c/include"])
+    module_env.Append(
+        CPPDEFINES=[
+            "BUILD_TARGET_X86_64",
+            "ZYCORE_STATIC_BUILD",
+            "ZYDIS_STATIC_BUILD",
+            ("WASM_ENABLE_AOT", 1),
+        ]
+    )
+    common_sdk += [
+        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_loader.c",
+        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_runtime.c",
+        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/arch/aot_reloc_x86_64.c",
 
-common_sdk += [
-    "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_loader.c",
-    "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_runtime.c",
-    "./thirdparty/wasm-micro-runtime/core/iwasm/aot/arch/aot_reloc_x86_64.c",
     "./thirdparty/zycore-c/src/Allocator.c",
     "./thirdparty/zycore-c/src/ArgParse.c",
     "./thirdparty/zycore-c/src/Bitset.c",
@@ -158,7 +161,7 @@ common_sdk += [
     "./thirdparty/zydis/src/String.c",
     "./thirdparty/zydis/src/Utils.c",
     "./thirdparty/zydis/src/Zydis.c",
-]
+    ]
 
 if platform == "windows":
     if module_env.msvc:
@@ -176,17 +179,14 @@ if platform == "windows":
             print(old_as + " not found. switching to " + str(module_env["AS"]))
     module_env["ASFLAGS"] = "-c"
 
-module_env.Append(
+module_env.Prepend(
     CPPDEFINES=[
         "WASM_ENABLE_FAST_JIT",
         ("WASM_API_EXTERN", ""),
         ("WASM_RUNTIME_API_EXTERN", ""),
-        ("OS_ENABLE_WAKEUP_BLOCKING_OP", 1),
-        "_WINSOCK_DEPRECATED_NO_WARNINGS",
         ("BH_FREE", "wasm_runtime_free"),
+        "_WINSOCK_DEPRECATED_NO_WARNINGS",
         ("BH_MALLOC", "wasm_runtime_malloc"),
-        ("WA_FREE", "memdelete"),
-        ("WA_MALLOC", "memalloc"),
         "HAVE_STRUCT_TIMESPEC",
         ("WASM_ENABLE_BULK_MEMORY", 0),
         ("WASM_ENABLE_FAST_INTERP", 0),
@@ -201,11 +201,9 @@ module_env.Append(
 
 )
 
-env_thirdparty = module_env.Clone()
-env_thirdparty.disable_warnings()
-env_thirdparty.add_source_files(env.modules_sources, common_sdk)
-env_thirdparty.add_source_files(env.modules_sources, "src/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "api/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "api/shared/*.cpp")
+module_env.add_source_files(env.modules_sources, common_sdk)
+module_env.add_source_files(env.modules_sources, "src/*.cpp")
+module_env.add_source_files(env.modules_sources, "api/*.cpp")
+module_env.add_source_files(env.modules_sources, "api/shared/*.cpp")
 
 module_env.add_source_files(env.modules_sources, "*.cpp")
