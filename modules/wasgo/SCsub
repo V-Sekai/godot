@@ -131,7 +131,7 @@ else:
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_loader.c",
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_runtime.c",
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/arch/aot_reloc_x86_64.c",
-        
+
     "./thirdparty/zycore-c/src/Allocator.c",
     "./thirdparty/zycore-c/src/ArgParse.c",
     "./thirdparty/zycore-c/src/Bitset.c",
