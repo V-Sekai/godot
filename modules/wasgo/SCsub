@@ -88,7 +88,6 @@ platform_settings = {
 
 module_env.Prepend(CPPPATH=common_includes)
 
-# Add platform-specific settings
 platform = module_env["platform"]
 if platform in platform_settings:
     settings = platform_settings[platform]
@@ -96,17 +95,20 @@ if platform in platform_settings:
     module_env.Prepend(CPPPATH=settings["includes"])
     module_env.Append(CPPDEFINES=settings["defines"])
 
-# Architecture-specific settings
 if platform == "windows":
+    module_env.Append(CPPDEFINES=[("TIME_UTC", 0)])
     if module_env.msvc:
         common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
     elif module_env["use_mingw"]:
         common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64_GAS.s")
 elif platform == "linuxbsd":
+    module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.s")
 elif platform == "macos" and module_env["arch"] == "arm64":
+    module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_osx_universal.s")
 else:
+    module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
 
 # JavaScript-specific settings
@@ -143,7 +145,6 @@ if platform == "windows":
 
 module_env.Append(
     CPPDEFINES=[
-        "TIME_UTC=1",  # Don't know if this is correct. Windows uses local time.
         ("BH_FREE", "wasm_runtime_free"),
         ("BH_MALLOC", "wasm_runtime_malloc"),
         "HAVE_STRUCT_TIMESPEC",
@@ -157,7 +158,7 @@ module_env.Append(
         ("WASM_ENABLE_MINI_LOADER", 0),
         ("WASM_ENABLE_MULTI_MODULE", 0),
         ("WASM_ENABLE_SHARED_MEMORY", 0),
-        # ("WASGO_API_GENERATION", "wasgo_api.json"), # will default to wasgo_api.json if no filename is provided
+        ("WASGO_API_GENERATION", "wasgo_api.json"),
     ]
 )
 
