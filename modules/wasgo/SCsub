@@ -29,7 +29,6 @@ common_sdk = [
     "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-builtin/libc_builtin_wrapper.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_c_api.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_exec_env.c",
-    "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_memory.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_native.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_runtime_common.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_shared_memory.c",
@@ -67,6 +66,7 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_blocking_op.c",
+            "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_memory.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/darwin",
@@ -82,6 +82,7 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_time.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/common/posix/posix_blocking_op.c",
+            "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_memory.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/linux",
@@ -101,10 +102,10 @@ if platform in platform_settings:
     module_env.Append(CPPDEFINES=settings["defines"])
 
 if platform == "windows":
-    if module_env.msvc:
-        common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
-    elif module_env["use_mingw"]:
+    if module_env["use_mingw"]:
         common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64_GAS.s")
+    else:
+        common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
 elif platform == "linuxbsd":
     module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.s")
