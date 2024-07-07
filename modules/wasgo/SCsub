@@ -145,6 +145,7 @@ if platform == "windows":
 
 module_env.Append(
     CPPDEFINES=[
+        ("OS_ENABLE_WAKEUP_BLOCKING_OP", 1),
         ("BH_FREE", "wasm_runtime_free"),
         ("BH_MALLOC", "wasm_runtime_malloc"),
         "HAVE_STRUCT_TIMESPEC",
