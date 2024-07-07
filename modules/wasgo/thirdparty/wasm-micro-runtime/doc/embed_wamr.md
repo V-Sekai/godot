@@ -1,8 +1,32 @@
 Embedding WAMR guideline
 =====================================
 
+**Note**: This document is about how to embed WAMR into C/C++ host applications, for other languages, please refer to: [Embed WAMR into Python](../language-bindings/python), [Embed WAMR into Go](../language-bindings/go).
 
-**Note**: All the embedding APIs supported by the runtime are defined under folder [core/iwasm/include](../core/iwasm/include). The API details are available in the header files.
+All the embedding APIs supported by the runtime are defined under folder [core/iwasm/include](../core/iwasm/include). The API details are available in the header files.
+
+## Embed WAMR into developer's project
+
+WAMR is designed to be easy embeddable in any project, a typical way of building WAMR is to use cmake, developer can configure features by setting cmake variables and then include the script `runtime_lib.cmake` under folder [build-scripts](../build-scripts) in his CMakeList.txt, for example:
+``` cmake
+set (WAMR_BUILD_PLATFORM "linux")
+set (WAMR_BUILD_TARGET "X86_64")
+set (WAMR_BUILD_INTERP 1)
+set (WAMR_BUILD_FAST_INTERP 1)
+set (WAMR_BUILD_AOT 1)
+set (WAMR_BUILD_LIBC_BUILTIN 1)
+set (WAMR_BUILD_LIBC_WASI 1)
+set (WAMR_BUILD_SIMD 1)
+set (WAMR_ROOT_DIR path/to/wamr/root)
+
+include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
+add_library(vmlib ${WAMR_RUNTIME_LIB_SOURCE})
+
+target_link_libraries (your_project vmlib)
+```
+Examples can be found in [CMakeLists.txt of linux platform](../product-mini/platforms/linux/CMakeLists.txt) and [other platforms](../product-mini/platforms). The available features to configure can be found in [Build WAMR vmcore](./build_wamr.md#wamr-vmcore-cmake-building-configurations).
+
+Developer can also use Makefile to embed WAMR, by defining macros and including directories, and adding the source files, examples can be found in [makefile of alios-things platform](../product-mini/platforms/alios-things/aos.mk) and [makefile of nuttx platform](../product-mini/platforms/nuttx/wamr.mk).
 
 ## The runtime initialization
 
@@ -76,7 +100,7 @@ After a module is instantiated, the runtime embedder can lookup the target WASM 
 ```c
   /* lookup a WASM function by its name
      The function signature can NULL here */
-  func = wasm_runtime_lookup_function(module_inst, "fib", NULL);
+  func = wasm_runtime_lookup_function(module_inst, "fib");
 
   /* creat an execution environment to execute the WASM functions */
   exec_env = wasm_runtime_create_exec_env(module_inst, stack_size);
@@ -87,7 +111,7 @@ There are several ways to call WASM function:
 1. Function call with parameters in an array of 32 bits elements and size:
 
 ```c
-  unit32 argv[2];
+  uint32 argv[2];
 
   /* arguments are always transferred in 32-bit element */
   argv[0] = 8;
@@ -106,11 +130,11 @@ There are several ways to call WASM function:
 The parameters are transferred in an array of 32 bits elements. For parameters that occupy 4 or fewer bytes, each parameter can be a single array element. For parameters in types like double or int64, each parameter will take two array elements. The function return value will be sent back in the first one or two elements of the array according to the value type. See the sample code below:
 
 ```c
-  unit32 argv[6];
+  uint32 argv[6];
   char arg1 = 'a';
   int arg2 = 10;
   double arg3 = 1.0;
-  int 64 arg4 = 100;
+  int64 arg4 = 100;
   double ret;
 
   argv[0] = arg1;
@@ -138,7 +162,7 @@ The parameters are transferred in an array of 32 bits elements. For parameters t
 2. Function call with results and arguments both in `wasm_val_t` struct and size:
 
 ```c
-  unit32 num_args = 1, num_results = 1;
+  uint32 num_args = 1, num_results = 1;
   wasm_val_t args[1], results[1];
 
   /* set the argument type and value */
@@ -159,7 +183,7 @@ The parameters are transferred in an array of 32 bits elements. For parameters t
 3. Function call with variant argument support:
 
 ```c
-  unit32 num_args = 1, num_results = 1;
+  uint32 num_args = 1, num_results = 1;
   wasm_val_t results[1];
 
   /* call the WASM function */
@@ -183,44 +207,44 @@ There are two runtime APIs available for this purpose.
 /**
  * malloc a buffer from instance's private memory space.
  *
- * return: the buffer address in instance's memory space (pass to the WASM funciton)
+ * return: the buffer address in instance's memory space (pass to the WASM function)
  * p_native_addr: return the native address of allocated memory
  * size: the buffer size to allocate
  */
-uint32_t
+uint64_t
 wasm_runtime_module_malloc(wasm_module_inst_t module_inst,
-                           uint32_t size, void **p_native_addr);
+                           uint64_t size, void **p_native_addr);
 
 /**
  * malloc a buffer from instance's private memory space,
  * and copy the data from another native buffer to it.
  *
- * return: the buffer address in instance's memory space (pass to the WASM funciton)
+ * return: the buffer address in instance's memory space (pass to the WASM function)
  * src: the native buffer address
  * size: the size of buffer to be allocated and copy data
  */
-uint32_t
-wasm_runtime_module_dup_data(WASMModuleInstanceCommon *module_inst,
-                             const char *src, uint32_t size);
+uint64_t
+wasm_runtime_module_dup_data(wasm_module_inst_t module_inst,
+                             const char *src, uint64_t size);
 
 /* free the memory allocated from module memory space */
 void
-wasm_runtime_module_free(wasm_module_inst_t module_inst, uint32_t ptr);
+wasm_runtime_module_free(wasm_module_inst_t module_inst, uint64_t ptr);
 ```
 
 Usage sample:
 
 ```c
 char * buffer = NULL;
-uint32_t buffer_for_wasm;
+uint64_t buffer_for_wasm;
 
 buffer_for_wasm = wasm_runtime_module_malloc(module_inst, 100, &buffer);
 if (buffer_for_wasm != 0) {
-    unit32 argv[2];
+    uint32 argv[3];
     strncpy(buffer, "hello", 100); /* use native address for accessing in runtime */
     argv[0] = buffer_for_wasm;     /* pass the buffer address for WASM space */
-    argv[1] = 100;                 /* the size of buffer */
-    wasm_runtime_call_wasm(exec_env, func, 2, argv);
+    argv[2] = 100;                 /* the size of buffer */
+    wasm_runtime_call_wasm(exec_env, func, 3, argv);
 
     /* it is runtime embedder's responsibility to release the memory,
        unless the WASM app will free the passed pointer in its code */
@@ -234,68 +258,69 @@ We can't pass structure data or class objects through the pointer since the memo
 
 ## Execute wasm functions in multiple threads
 
-The `exec_env` is not thread safety, it will cause unexpected behavior if the same `exec_env` is used in multiple threads. However, we've provided two ways to execute wasm functions concurrently:
+It isn't safe to use an `exec_env` object in multiple threads concurrently.
+To run a multi-threaded application, you basically need a separate `exec_env`
+for each threads.
 
-- You can use `pthread` APIs in your wasm application, see [pthread library](./pthread_library.md) for more details.
+### Approaches to manage `exec_env` objects and threads
 
-- The `spawn exec_env` and `spawn thread` APIs are available, you can use these APIs to manage the threads in native:
+WAMR supports two approaches to manage `exec_env` and threads as described
+below.  While they are not exclusive, you usually only need to use one of
+them.
 
-  *spawn exec_env:*
+#### Make your WASM application manage threads
 
-  `spawn exec_env` API spawns a `new_exec_env` base on the original `exec_env`, use can use it in other threads:
+  You can make your WASM application spawn threads by itself,
+  typically using `pthread` APIs like `pthread_create`.
+  See [pthread library](./pthread_library.md) and
+  [pthread implementations](./pthread_impls.md) for more details.
+  In this case, WAMR manages `exec_env` for the spawned threads.
+
+#### Make your embedder manage threads
+
+  The `spawn exec_env` and `spawn thread` APIs are available for the embedder.
+  You can use these APIs to manage the threads.
+  See [Thread related embedder API](./embed_wamr_spawn_api.md) for details.
+
+### Other notes about threads
+
+* You can manage the maximum number of threads
 
   ```C
-  new_exec_env = wasm_runtime_spawn_exec_env(exec_env);
-
-    /* Then you can use new_exec_env in your new thread */
-    module_inst = wasm_runtime_get_module_inst(new_exec_env);
-    func_inst = wasm_runtime_lookup_function(module_inst, ...);
-    wasm_runtime_call_wasm(new_exec_env, func_inst, ...);
-
-  /* you need to use this API to manually destroy the spawned exec_env */
-  wasm_runtime_destroy_spawned_exec_env(new_exec_env);
+  init_args.max_thread_num = THREAD_NUM;
+  /* If this init argument is not set, the default maximum thread number is 4 */
   ```
 
-  *spawn thread:*
+* To share memory among threads, you need to build your WASM application with shared memory
 
-  You can also use `spawn thread` API to avoid manually manage the spawned exec_env:
-
-  ```C
-  wasm_thread_t wasm_tid;
-  void *wamr_thread_cb(wasm_exec_env_t exec_env, void *arg)
-  {
-    module_inst = wasm_runtime_get_module_inst(exec_env);
-    func_inst = wasm_runtime_lookup_function(module_inst, ...);
-    wasm_runtime_call_wasm(exec_env, func_inst, ...);
-  }
-  wasm_runtime_spawn_thread(exec_env, &wasm_tid, wamr_thread_cb, NULL);
-  /* Use wasm_runtime_join_thread to join the spawned thread */
-  wasm_runtime_join_thread(wasm_tid, NULL);
-  ```
-
-**Note1: You can manage the maximum number of threads can be created:**
-
-```C
-init_args.max_thread_num = THREAD_NUM;
-/* If this init argument is not set, the default maximum thread number is 4 */
-```
-
-**Note2: The wasm application should be built with `--shared-memory` and `-pthread` enabled:**
-
-```bash
-  /opt/wasi-sdk/bin/clang -o test.wasm test.c -nostdlib -pthread    \
-    -Wl,--shared-memory,--max-memory=131072                         \
-    -Wl,--no-entry,--export=__heap_base,--export=__data_end         \
-    -Wl,--export=__wasm_call_ctors,--export=${your_func_name}
-```
-
-  **Note3: The pthread library feature should be enabled while building the runtime:**
+  For example, it can be done with `--shared-memory` and `-pthread`.
 
   ```bash
-  cmake .. -DWAMR_BUILD_LIB_PTHREAD=1
+    /opt/wasi-sdk/bin/clang -o test.wasm test.c -nostdlib -pthread    \
+      -Wl,--shared-memory,--max-memory=131072                         \
+      -Wl,--no-entry,--export=__heap_base,--export=__data_end         \
+      -Wl,--export=__wasm_call_ctors,--export=${your_func_name}
   ```
 
-[Here](../samples/spawn-thread) is a sample to show how to use these APIs.
+* The corresponding threading feature should be enabled while building the runtime
+
+  - WAMR lib-pthread (legacy)
+
+    ```bash
+    cmake .. -DWAMR_BUILD_LIB_PTHREAD=1
+    ```
+
+  - wasi-threads
+
+    ```bash
+    cmake .. -DWAMR_BUILD_LIB_WASI_THREADS=1
+    ```
+
+  - `wasm_runtime_spawn_exec_env` and `wasm_runtime_spawn_thread`
+
+    ```bash
+    cmake .. -DWAMR_BUILD_THREAD_MGR=1 -DWAMR_BUILD_SHARED_MEMORY=1
+    ```
 
 ## The deinitialization procedure
 

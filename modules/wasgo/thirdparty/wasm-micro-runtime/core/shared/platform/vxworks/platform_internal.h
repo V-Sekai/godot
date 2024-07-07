@@ -54,17 +54,24 @@ typedef pthread_t korp_tid;
 typedef pthread_mutex_t korp_mutex;
 typedef pthread_cond_t korp_cond;
 typedef pthread_t korp_thread;
+typedef pthread_rwlock_t korp_rwlock;
+typedef sem_t korp_sem;
+
+#define OS_THREAD_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
+
+#define os_thread_local_attribute __thread
+
+typedef int os_file_handle;
+typedef DIR *os_dir_stream;
+typedef int os_raw_file_handle;
 
 #if WASM_DISABLE_HW_BOUND_CHECK == 0
-#if defined(BUILD_TARGET_X86_64) \
-    || defined(BUILD_TARGET_AMD_64) \
+#if defined(BUILD_TARGET_X86_64) || defined(BUILD_TARGET_AMD_64) \
     || defined(BUILD_TARGET_AARCH64)
 
 #include <setjmp.h>
 
 #define OS_ENABLE_HW_BOUND_CHECK
-
-#define os_thread_local_attribute __thread
 
 typedef jmp_buf korp_jmpbuf;
 
@@ -72,23 +79,35 @@ typedef jmp_buf korp_jmpbuf;
 #define os_longjmp longjmp
 #define os_alloca alloca
 
-#define os_getpagesize getpagesize
-
 typedef void (*os_signal_handler)(void *sig_addr);
 
-int os_signal_init(os_signal_handler handler);
+int
+os_thread_signal_init(os_signal_handler handler);
 
-void os_signal_destroy();
+void
+os_thread_signal_destroy();
 
-void os_signal_unmask();
+bool
+os_thread_signal_inited();
 
-void os_sigreturn();
+void
+os_signal_unmask();
+
+void
+os_sigreturn();
 #endif /* end of BUILD_TARGET_X86_64/AMD_64/AARCH64 */
 #endif /* end of WASM_DISABLE_HW_BOUND_CHECK */
+
+#define os_getpagesize getpagesize
+
+static inline os_file_handle
+os_get_invalid_handle()
+{
+    return -1;
+}
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* end of _PLATFORM_INTERNAL_H */
-

@@ -4,10 +4,24 @@
 ######## SGX SDK Settings ########
 
 SGX_SDK ?= /opt/intel/sgxsdk
+SGX_SSL ?= /opt/intel/sgxssl
 SGX_MODE ?= SIM
 SGX_ARCH ?= x64
 SGX_DEBUG ?= 0
 SPEC_TEST ?= 0
+
+# These variables are automatically set by CMakeLists.txt
+WAMR_BUILD_SGX_IPFS = 0
+WAMR_BUILD_LIB_RATS = 0
+WAMR_BUILD_GLOBAL_HEAP_POOL = 0
+WAMR_BUILD_GLOBAL_HEAP_SIZE = 10485760
+WAMR_BUILD_STATIC_PGO = 0
+WAMR_BUILD_LIBC_WASI = 1
+
+VMLIB_BUILD_DIR ?= $(CURDIR)/../build
+LIB_RATS_SRC ?= $(VMLIB_BUILD_DIR)/_deps/librats-build
+LIB_RATS_INSTALL_DIR := $(VMLIB_BUILD_DIR)/librats/lib/librats
+LIB_RATS_INCLUDE_DIR := $(VMLIB_BUILD_DIR)/librats/include
 
 ifeq ($(shell getconf LONG_BIT), 32)
 	SGX_ARCH := x86
@@ -49,8 +63,13 @@ endif
 
 App_Cpp_Files := App/App.cpp
 App_Include_Paths := -IApp -I$(SGX_SDK)/include
+ifeq ($(WAMR_BUILD_LIB_RATS), 1)
+	App_Include_Paths += -I$(LIB_RATS_INCLUDE_DIR)
+endif
 
-App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
+App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths) \
+			   -DWASM_ENABLE_STATIC_PGO=$(WAMR_BUILD_STATIC_PGO) \
+			   -DWASM_ENABLE_LIBC_WASI=$(WAMR_BUILD_LIBC_WASI)
 
 # Three configuration modes - Debug, prerelease, release
 #   Debug - Macro DEBUG enabled.
@@ -64,6 +83,12 @@ else
 	App_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
 endif
 
+ifeq ($(SPEC_TEST), 1)
+	App_C_Flags += -DWASM_ENABLE_SPEC_TEST=1
+else
+	App_C_Flags += -DWASM_ENABLE_SPEC_TEST=0
+endif
+
 App_Cpp_Flags := $(App_C_Flags) -std=c++11
 App_Link_Flags := $(SGX_COMMON_CFLAGS) libvmlib_untrusted.a -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread
 
@@ -71,6 +96,10 @@ ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim
 else
 	App_Link_Flags += -lsgx_uae_service
+endif
+
+ifeq ($(WAMR_BUILD_LIB_RATS), 1)
+	App_Link_Flags += -L$(LIB_RATS_INSTALL_DIR) -L$(SGX_SSL)/lib64 -lrats_u -lsgx_dcap_ql -lsgx_dcap_quoteverify -lsgx_ukey_exchange -lsgx_usgxssl
 endif
 
 App_Cpp_Objects := $(App_Cpp_Files:.cpp=.o)
@@ -86,6 +115,12 @@ else
 	Trts_Library_Name := sgx_trts
 	Service_Library_Name := sgx_tservice
 endif
+
+ifeq ($(WAMR_BUILD_SGX_IPFS), 1)
+	Intel_Ipfs_Trusted_Flag = -lsgx_tprotected_fs
+	App_Link_Flags += -lsgx_uprotected_fs
+endif
+
 Crypto_Library_Name := sgx_tcrypto
 
 WAMR_ROOT := $(CURDIR)/../../../../
@@ -99,20 +134,46 @@ Enclave_Include_Paths := -IEnclave -I$(WAMR_ROOT)/core/iwasm/include \
                          -I$(SGX_SDK)/include/tlibc \
                          -I$(SGX_SDK)/include/stlport
 
-Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)
+ifeq ($(WAMR_BUILD_LIB_RATS), 1)
+	Enclave_Include_Paths += -I$(LIB_RATS_INCLUDE_DIR) -I$(SGX_SSL)/include
+endif
+
+Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden \
+				   -fpie -fstack-protector $(Enclave_Include_Paths) \
+				   -DWASM_GLOBAL_HEAP_SIZE=$(WAMR_BUILD_GLOBAL_HEAP_SIZE) \
+				   -DWASM_ENABLE_GLOBAL_HEAP_POOL=$(WAMR_BUILD_GLOBAL_HEAP_POOL) \
+				   -DWASM_ENABLE_LIB_RATS=$(WAMR_BUILD_LIB_RATS) \
+				   -DWASM_ENABLE_STATIC_PGO=$(WAMR_BUILD_STATIC_PGO) \
+				   -DWASM_ENABLE_LIBC_WASI=$(WAMR_BUILD_LIBC_WASI)
 ifeq ($(SPEC_TEST), 1)
 	Enclave_C_Flags += -DWASM_ENABLE_SPEC_TEST=1
 else
 	Enclave_C_Flags += -DWASM_ENABLE_SPEC_TEST=0
 endif
-Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++03 -nostdinc++
-Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) \
-	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \
-    libvmlib.a \
-	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -lsgx_pthread -l$(Crypto_Library_Name) -l$(Service_Library_Name) -Wl,--end-group \
+
+ifeq ($(WAMR_BUILD_LIB_RATS), 1)
+	Rats_Lib_Link_Dirs := -L$(LIB_RATS_INSTALL_DIR) -L$(LIB_RATS_INSTALL_DIR)/attesters -L$(LIB_RATS_INSTALL_DIR)/verifiers -L$(SGX_SSL)/lib64 -L$(VMLIB_BUILD_DIR)/external/libcbor/src/libcbor/lib -L$(LIB_RATS_INSTALL_DIR)/crypto_wrappers
+	Rats_Lib_W_Link_libs := -lattester_nullattester -lattester_sgx_ecdsa -lattester_sgx_la \
+						-lverifier_nullverifier -lverifier_sgx_la -lverifier_sgx_ecdsa_qve -lcbor \
+						-lrats_lib -lsgx_tsgxssl -lcrypto_wrapper_nullcrypto -lcrypto_wrapper_openssl
+	Rats_Lib_NW_Link_libs := -lsgx_dcap_tvl -lsgx_tsgxssl_crypto
+endif
+
+Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++11 -nostdinc++
+Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) ${Rats_Lib_Link_Dirs} \
+	-Wl,--whole-archive -l$(Trts_Library_Name) ${Rats_Lib_W_Link_libs} $(Intel_Ipfs_Trusted_Flag) -Wl,--no-whole-archive \
+	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -lsgx_pthread -lsgx_tkey_exchange -l$(Crypto_Library_Name) -l$(Service_Library_Name) $(Rats_Lib_NW_Link_libs) -Wl,--end-group \
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
 	-Wl,--defsym,__ImageBase=0
+
+Enclave_Edl_Search_Path     =   --search-path ../Enclave \
+								--search-path $(SGX_SDK)/include \
+								--search-path $(WAMR_ROOT)/core/shared/platform/linux-sgx
+ifeq ($(WAMR_BUILD_LIB_RATS), 1)
+	Enclave_Edl_Search_Path	+=	--search-path $(LIB_RATS_INCLUDE_DIR)/librats/edl --search-path $(SGX_SSL)/include
+endif
+
 
 Enclave_Cpp_Objects := $(Enclave_Cpp_Files:.cpp=.o)
 
@@ -150,12 +211,14 @@ ifneq ($(Build_Mode), HW_RELEASE)
 endif
 
 ######## App Objects ########
+librats:
+ifeq ($(WAMR_BUILD_LIB_RATS), 1)
+	@cd $(LIB_RATS_SRC) && make install
+	@echo "librats build success"
+endif
 
-App/Enclave_u.c: $(SGX_EDGER8R) Enclave/Enclave.edl
-	@cd App && $(SGX_EDGER8R) --untrusted ../Enclave/Enclave.edl \
-		--search-path ../Enclave \
-		--search-path $(SGX_SDK)/include \
-		--search-path $(WAMR_ROOT)/core/shared/platform/linux-sgx
+App/Enclave_u.c: $(SGX_EDGER8R) Enclave/Enclave.edl librats
+	@cd App && $(SGX_EDGER8R) --untrusted ../Enclave/Enclave.edl $(Enclave_Edl_Search_Path)
 	@echo "GEN  =>  $@"
 
 App/Enclave_u.o: App/Enclave_u.c
@@ -166,7 +229,7 @@ App/%.o: App/%.cpp
 	@$(CXX) $(App_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-libvmlib_untrusted.a: ../build/libvmlib_untrusted.a
+libvmlib_untrusted.a: $(VMLIB_BUILD_DIR)/libvmlib_untrusted.a
 	@cp $< $@
 	@echo "CP $@  <=  $<"
 
@@ -176,12 +239,8 @@ $(App_Name): App/Enclave_u.o $(App_Cpp_Objects) libvmlib_untrusted.a
 
 
 ######## Enclave Objects ########
-
-Enclave/Enclave_t.c: $(SGX_EDGER8R) Enclave/Enclave.edl
-	@cd Enclave && $(SGX_EDGER8R) --trusted ../Enclave/Enclave.edl \
-		--search-path ../Enclave \
-		--search-path $(SGX_SDK)/include \
-		--search-path $(WAMR_ROOT)/core/shared/platform/linux-sgx
+Enclave/Enclave_t.c: $(SGX_EDGER8R) Enclave/Enclave.edl librats
+	@cd Enclave && $(SGX_EDGER8R) --trusted ../Enclave/Enclave.edl $(Enclave_Edl_Search_Path)
 	@echo "GEN  =>  $@"
 
 Enclave/Enclave_t.o: Enclave/Enclave_t.c
@@ -192,7 +251,7 @@ Enclave/%.o: Enclave/%.cpp
 	@$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-libvmlib.a: ../build/libvmlib.a
+libvmlib.a: $(VMLIB_BUILD_DIR)/libvmlib.a
 	@cp $< $@
 	@echo "CP $@  <=  $<"
 

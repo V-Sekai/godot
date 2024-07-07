@@ -3,8 +3,8 @@
 
 cmake_minimum_required(VERSION 3.8.2)
 
-include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
-project(NONE)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(wamr)
 
 enable_language (ASM)
 
@@ -36,7 +36,21 @@ if (NOT DEFINED WAMR_BUILD_LIBC_WASI)
   set (WAMR_BUILD_LIBC_WASI 0)
 endif ()
 
-set (WAMR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/wamr)
+if (WAMR_BUILD_TARGET STREQUAL "RISCV64_LP64" OR WAMR_BUILD_TARGET STREQUAL "RISCV32_ILP32")
+  set (WAMR_BUILD_FAST_INTERP 1)
+endif ()
+
+# Override the global heap usage
+if (NOT DEFINED WAMR_BUILD_GLOBAL_HEAP_POOL)
+  set (WAMR_BUILD_GLOBAL_HEAP_POOL 1)
+endif ()
+
+# Override the global heap size for small devices
+if (NOT DEFINED WAMR_BUILD_GLOBAL_HEAP_SIZE)
+  set (WAMR_BUILD_GLOBAL_HEAP_SIZE 131072) # 128 KB
+endif ()
+
+set (WAMR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../..)
 
 include (${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
 

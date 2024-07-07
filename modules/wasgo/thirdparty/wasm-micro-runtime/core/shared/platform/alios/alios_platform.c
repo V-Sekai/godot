@@ -38,15 +38,26 @@ os_realloc(void *ptr, unsigned size)
 
 void
 os_free(void *ptr)
+{}
+
+int
+os_dumps_proc_mem_info(char *out, unsigned int size)
 {
+    return -1;
 }
 
 void *
-os_mmap(void *hint, size_t size, int prot, int flags)
+os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
 {
-    if ((uint64)size >= UINT32_MAX)
+    void *addr;
+
+    if (size >= UINT32_MAX)
         return NULL;
-    return BH_MALLOC((uint32)size);
+
+    if ((addr = BH_MALLOC((uint32)size)))
+        memset(addr, 0, (uint32)size);
+
+    return addr;
 }
 
 void
@@ -63,5 +74,8 @@ os_mprotect(void *addr, size_t size, int prot)
 
 void
 os_dcache_flush()
-{
-}
+{}
+
+void
+os_icache_flush(void *start, size_t len)
+{}

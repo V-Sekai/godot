@@ -5,12 +5,23 @@ set (PLATFORM_SHARED_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 add_definitions(-DBH_PLATFORM_WINDOWS)
 add_definitions(-DHAVE_STRUCT_TIMESPEC)
-
+add_definitions(-D_WINSOCK_DEPRECATED_NO_WARNINGS)
 
 include_directories(${PLATFORM_SHARED_DIR})
 include_directories(${PLATFORM_SHARED_DIR}/../include)
 
-file (GLOB_RECURSE source_all ${PLATFORM_SHARED_DIR}/*.c)
+file (GLOB_RECURSE source_all ${PLATFORM_SHARED_DIR}/*.c
+			      ${PLATFORM_SHARED_DIR}/*.cpp)
+
+if (NOT WAMR_BUILD_LIBC_WASI EQUAL 1)
+    list(REMOVE_ITEM source_all ${PLATFORM_SHARED_DIR}/win_file.c)
+else()
+    include (${CMAKE_CURRENT_LIST_DIR}/../common/libc-util/platform_common_libc_util.cmake)
+    set(source_all ${source_all} ${PLATFORM_COMMON_LIBC_UTIL_SOURCE})
+endif()
+
+include (${CMAKE_CURRENT_LIST_DIR}/../common/memory/platform_api_memory.cmake)
+set (source_all ${source_all} ${PLATFORM_COMMON_MEMORY_SOURCE})
 
 set (PLATFORM_SHARED_SOURCE ${source_all})
 

@@ -27,12 +27,20 @@ set (DEFINED_SYMBOLS
 "${WAMR_ROOT_DIR}/wamr-sdk/app/libc-builtin-sysroot/share/defined-symbols.txt")
 
 set (CMAKE_EXE_LINKER_FLAGS
-    "-Wl,--shared-memory,--max-memory=131072,       \
-    -Wl,--no-entry,--strip-all,--export=main,       \
-    -Wl,--export=__heap_base,--export=__data_end    \
-    -Wl,--export=__wasm_call_ctors  \
-    -Wl,--allow-undefined-file=${DEFINED_SYMBOLS}"
+     "-Wl,--shared-memory,--max-memory=131072,          \
+      -Wl,--no-entry,--strip-all,                       \
+      -Wl,--export=__heap_base,--export=__data_end      \
+      -Wl,--export=__wasm_call_ctors                    \
+      -Wl,--export=main -Wl,--export=__main_argc_argv   \
+      -Wl,--allow-undefined"
+      #-Wl,--allow-undefined-file=${DEFINED_SYMBOLS}"
 )
 
 add_executable(test.wasm  main.c)
 target_link_libraries(test.wasm)
+
+add_executable(main_thread_exception.wasm  main_thread_exception.c)
+target_link_libraries(main_thread_exception.wasm)
+
+add_executable(main_global_atomic.wasm  main_global_atomic.c)
+target_link_libraries(main_global_atomic.wasm)

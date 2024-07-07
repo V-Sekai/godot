@@ -49,10 +49,11 @@ wasm_native_lookup_libc_builtin_global(const char *module_name,
  *
  * @return the native function pointer if success, NULL otherwise
  */
-void*
+void *
 wasm_native_resolve_symbol(const char *module_name, const char *field_name,
-                           const WASMType *func_type, const char **p_signature,
-                           void **p_attachment, bool *p_call_conv_raw);
+                           const WASMFuncType *func_type,
+                           const char **p_signature, void **p_attachment,
+                           bool *p_call_conv_raw);
 
 bool
 wasm_native_register_natives(const char *module_name,
@@ -65,14 +66,52 @@ wasm_native_register_natives_raw(const char *module_name,
                                  uint32 n_native_symbols);
 
 bool
+wasm_native_unregister_natives(const char *module_name,
+                               NativeSymbol *native_symbols);
+
+#if WASM_ENABLE_MODULE_INST_CONTEXT != 0
+struct WASMModuleInstanceCommon;
+
+void *
+wasm_native_create_context_key(
+    void (*dtor)(struct WASMModuleInstanceCommon *inst, void *ctx));
+
+void
+wasm_native_destroy_context_key(void *key);
+
+void
+wasm_native_set_context(struct WASMModuleInstanceCommon *inst, void *key,
+                        void *ctx);
+void
+wasm_native_set_context_spread(struct WASMModuleInstanceCommon *inst, void *key,
+                               void *ctx);
+void *
+wasm_native_get_context(struct WASMModuleInstanceCommon *inst, void *key);
+
+void
+wasm_native_call_context_dtors(struct WASMModuleInstanceCommon *inst);
+
+void
+wasm_native_inherit_contexts(struct WASMModuleInstanceCommon *child,
+                             struct WASMModuleInstanceCommon *parent);
+#else /* WASM_ENABLE_MODULE_INST_CONTEXT */
+#define wasm_native_call_context_dtors(inst) (void)(inst)
+#define wasm_native_inherit_contexts(child, parent) (void)(parent)
+#endif /* WASM_ENABLE_MODULE_INST_CONTEXT */
+
+bool
 wasm_native_init();
 
 void
 wasm_native_destroy();
+
+#if WASM_ENABLE_QUICK_AOT_ENTRY != 0
+void *
+wasm_native_lookup_quick_aot_entry(const WASMFuncType *func_type);
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* end of _WASM_NATIVE_H */
-

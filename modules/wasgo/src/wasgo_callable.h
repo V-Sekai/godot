@@ -52,7 +52,7 @@ public:
 	virtual const Callable *get_base_comparator() const override;
 
 	// WasGoCallable();
-	WasGoCallable(WasGoState *p_state, String p_func, String p_definition);
+	WasGoCallable(WasGoState *p_state, String p_func);
 	virtual ~WasGoCallable();
 };
 

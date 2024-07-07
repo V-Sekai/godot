@@ -1,5 +1,8 @@
 # WAMR pthread library
 
+**Note**: This document describes the old pthread implementation.
+See [Pthread implementations](pthread_impls.md).
+
 WAMR provides a built-in library to support pthread APIs. You can call pthread APIs in your application source code.
 
 ## Build and run
@@ -57,7 +60,7 @@ To build this C program into WebAssembly app with libc-builtin, you can use this
 
 You can also build this program with WASI, but we need to make some changes to wasi-sysroot:
 
-1. disable malloc / free of wasi as they don't support shared memory
+1. disable malloc/free of wasi, as they are not atomic operations:
     ``` bash
     /opt/wasi-sdk/bin/llvm-ar -d /opt/wasi-sdk/share/wasi-sysroot/lib/wasm32-wasi/libc.a dlmalloc.o
     ```
@@ -78,9 +81,30 @@ Then build the program with this command:
 # -Wl,--no-check-features: the errno.o in wasi-sysroot is not compatible with pthread feature, pass this option to avoid errors
 ```
 
-**Build AoT module**
+**Build with EMCC**
 
-You can build the wasm module into AoT module with pthread support, please pass option `--enable-multi-thread` to wamrc:
+> Note: This document is based on `emcc 2.0.26`, other version may not work with these commands
+
+EMCC's `-pthread` option is not compatible with standalone mode, we need to pass `-mbulk-memory -matomics` to the compiler and `--shared-memory,--no-check-features` to linker manually
+
+EMCC provides some empty implementation for pthread related APIs, we need to remove them from emcc's libc.
+``` bash
+cd ${emsdk_dir}/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten
+emar d libc.a library_pthread_stub.o
+emranlib libc.a
+```
+
+``` bash
+emcc -O3 -mbulk-memory -matomics -s MALLOC="none"   \
+     -Wl,--export=__data_end,--export=__heap_base   \
+     -Wl,--shared-memory,--no-check-features        \
+     -s ERROR_ON_UNDEFINED_SYMBOLS=0                \
+     main.c -o test.wasm
+```
+
+**Build AOT module**
+
+You can build the wasm module into AOT module with pthread support, please pass option `--enable-multi-thread` to wamrc:
 ``` bash
 wamrc --enable-multi-thread -o test.aot test.wasm
 ```
@@ -93,7 +117,7 @@ cmake .. -DWAMR_BUILD_LIB_PTHREAD=1
 make
 # Then you can run the wasm module above:
 ./iwasm test.wasm
-# Or the AoT module:
+# Or the AOT module:
 # ./iwasm test.aot
 ```
 
@@ -108,7 +132,7 @@ make
 ```
 
 
-## Aux stack seperation
+## Aux stack separation
 The compiler may use some spaces in the linear memory as an auxiliary stack. When pthread is enabled, every thread should have its own aux stack space, so the total aux stack space reserved by the compiler will be divided into N + 1 parts, where N is the maximum number of threads that can be created by the user code.
 
 The default value of N is 4, which means you can create 4 threads at most. This value can be changed by an option if you are using product-mini:
@@ -153,6 +177,8 @@ int pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
                            unsigned int useconds);
 
 int pthread_cond_signal(pthread_cond_t *cond);
+
+int pthread_cond_broadcast(pthread_cond_t *cond);
 
 int pthread_cond_destroy(pthread_cond_t *cond);
 

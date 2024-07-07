@@ -13,8 +13,7 @@ bh_platform_init()
 
 void
 bh_platform_destroy()
-{
-}
+{}
 
 int
 os_printf(const char *format, ...)
@@ -23,7 +22,11 @@ os_printf(const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
+#ifndef BH_VPRINTF
     ret += vprintf(format, ap);
+#else
+    ret += BH_VPRINTF(format, ap);
+#endif
     va_end(ap);
 
     return ret;
@@ -32,6 +35,9 @@ os_printf(const char *format, ...)
 int
 os_vprintf(const char *format, va_list ap)
 {
+#ifndef BH_VPRINTF
     return vprintf(format, ap);
+#else
+    return BH_VPRINTF(format, ap);
+#endif
 }
-

@@ -17,40 +17,62 @@ struct WASMFunctionInstance;
 struct WASMExecEnv;
 
 typedef struct WASMInterpFrame {
-  /* The frame of the caller that are calling the current function. */
-  struct WASMInterpFrame *prev_frame;
+    /* The frame of the caller that are calling the current function. */
+    struct WASMInterpFrame *prev_frame;
 
-  /* The current WASM function. */
-  struct WASMFunctionInstance *function;
+    /* The current WASM function. */
+    struct WASMFunctionInstance *function;
 
-  /* Instruction pointer of the bytecode array.  */
-  uint8 *ip;
+    /* Instruction pointer of the bytecode array.  */
+    uint8 *ip;
+
+#if WASM_ENABLE_FAST_JIT != 0
+    uint8 *jitted_return_addr;
+#endif
+
+#if WASM_ENABLE_PERF_PROFILING != 0
+    uint64 time_started;
+#endif
+
+#if WASM_ENABLE_EXCE_HANDLING != 0
+    /* set to true if the callee returns an exception rather than
+     * result values on the stack
+     */
+    bool exception_raised;
+    uint32 tag_index;
+#endif
 
 #if WASM_ENABLE_FAST_INTERP != 0
-  /* return offset of the first return value of current frame.
-    the callee will put return values here continuously */
-  uint32 ret_offset;
-  uint32 *lp;
-  uint32 operand[1];
-#else
-  /* Operand stack top pointer of the current frame.  The bottom of
-     the stack is the next cell after the last local variable.  */
-  uint32 *sp_bottom;
-  uint32 *sp_boundary;
-  uint32 *sp;
-
-  WASMBranchBlock *csp_bottom;
-  WASMBranchBlock *csp_boundary;
-  WASMBranchBlock *csp;
-
-  /* Frame data, the layout is:
-     lp: param_cell_count + local_cell_count
-     sp_bottom to sp_boundary: stack of data
-     csp_bottom to csp_boundary: stack of block
-     ref to frame end: data types of local vairables and stack data
-     */
-  uint32 lp[1];
+    /* Return offset of the first return value of current frame,
+       the callee will put return values here continuously */
+    uint32 ret_offset;
+    uint32 *lp;
+#if WASM_ENABLE_GC != 0
+    uint8 *frame_ref;
 #endif
+    uint32 operand[1];
+#else  /* else of WASM_ENABLE_FAST_INTERP != 0 */
+    /* Operand stack top pointer of the current frame. The bottom of
+       the stack is the next cell after the last local variable. */
+    uint32 *sp_bottom;
+    uint32 *sp_boundary;
+    uint32 *sp;
+
+    WASMBranchBlock *csp_bottom;
+    WASMBranchBlock *csp_boundary;
+    WASMBranchBlock *csp;
+
+    /**
+     * Frame data, the layout is:
+     *  lp: parameters and local variables
+     *  sp_bottom to sp_boundary: wasm operand stack
+     *  csp_bottom to csp_boundary: wasm label stack
+     *  frame ref flags: only available for GC
+     *    whether each cell in local and stack area is a GC obj
+     *  jit spill cache: only available for fast jit
+     */
+    uint32 lp[1];
+#endif /* end of WASM_ENABLE_FAST_INTERP != 0 */
 } WASMInterpFrame;
 
 /**
@@ -64,19 +86,33 @@ typedef struct WASMInterpFrame {
 static inline unsigned
 wasm_interp_interp_frame_size(unsigned all_cell_num)
 {
-  return align_uint((uint32)offsetof(WASMInterpFrame, lp)
-                    + all_cell_num * 5, 4);
+    unsigned frame_size;
+
+#if WASM_ENABLE_FAST_INTERP == 0
+#if WASM_ENABLE_GC == 0
+    frame_size = (uint32)offsetof(WASMInterpFrame, lp) + all_cell_num * 4;
+#else
+    frame_size =
+        (uint32)offsetof(WASMInterpFrame, lp) + align_uint(all_cell_num * 5, 4);
+#endif
+#else
+    frame_size = (uint32)offsetof(WASMInterpFrame, operand) + all_cell_num * 4;
+#endif
+    return align_uint(frame_size, 4);
 }
 
 void
 wasm_interp_call_wasm(struct WASMModuleInstance *module_inst,
                       struct WASMExecEnv *exec_env,
-                      struct WASMFunctionInstance *function,
-                      uint32 argc, uint32 argv[]);
+                      struct WASMFunctionInstance *function, uint32 argc,
+                      uint32 argv[]);
 
-#if WASM_ENABLE_CUSTOM_NAME_SECTION != 0
-void
-wasm_interp_dump_call_stack(struct WASMExecEnv *exec_env);
+#if WASM_ENABLE_GC != 0
+bool
+wasm_interp_traverse_gc_rootset(struct WASMExecEnv *exec_env, void *heap);
+
+uint8 *
+wasm_interp_get_frame_ref(WASMInterpFrame *frame);
 #endif
 
 #ifdef __cplusplus

@@ -10,7 +10,6 @@
 		<method name="get_callable">
 			<return type="Callable" />
 			<param index="0" name="func" type="String" />
-			<param index="1" name="definition" type="String" />
 			<description>
 			</description>
 		</method>

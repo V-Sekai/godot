@@ -50,6 +50,18 @@ WAMR_BUILD_INTERP = 1
 # Enable AOT by default.
 WAMR_BUILD_AOT = 1
 
+# Override the global heap usage
+ifndef WAMR_BUILD_GLOBAL_HEAP_POOL
+WAMR_BUILD_GLOBAL_HEAP_POOL=1
+endif
+GLOBAL_DEFINES += WASM_ENABLE_GLOBAL_HEAP_POOL=${WAMR_BUILD_GLOBAL_HEAP_POOL}
+
+# Override the global heap size for small devices
+ifndef WAMR_BUILD_GLOBAL_HEAP_SIZE
+WAMR_BUILD_GLOBAL_HEAP_SIZE = 262144 # 256 kB
+endif
+GLOBAL_DEFINES += WASM_GLOBAL_HEAP_SIZE=${WAMR_BUILD_GLOBAL_HEAP_SIZE}
+
 ifeq (${WAMR_BUILD_INTERP}, 1)
 GLOBAL_DEFINES += WASM_ENABLE_INTERP=1
 endif
@@ -86,6 +98,7 @@ $(NAME)_SOURCES := ${SHARED_ROOT}/platform/alios/alios_platform.c \
                    ${SHARED_ROOT}/mem-alloc/ems/ems_alloc.c \
                    ${SHARED_ROOT}/mem-alloc/ems/ems_hmu.c \
                    ${SHARED_ROOT}/utils/bh_assert.c \
+                   ${SHARED_ROOT}/utils/bh_bitmap.c \
                    ${SHARED_ROOT}/utils/bh_common.c \
                    ${SHARED_ROOT}/utils/bh_hashmap.c \
                    ${SHARED_ROOT}/utils/bh_list.c \
@@ -94,10 +107,13 @@ $(NAME)_SOURCES := ${SHARED_ROOT}/platform/alios/alios_platform.c \
                    ${SHARED_ROOT}/utils/bh_vector.c \
                    ${SHARED_ROOT}/utils/runtime_timer.c \
                    ${IWASM_ROOT}/libraries/libc-builtin/libc_builtin_wrapper.c \
+                   ${IWASM_ROOT}/common/wasm_application.c \
                    ${IWASM_ROOT}/common/wasm_runtime_common.c \
                    ${IWASM_ROOT}/common/wasm_native.c \
                    ${IWASM_ROOT}/common/wasm_exec_env.c \
+                   ${IWASM_ROOT}/common/wasm_loader_common.c \
                    ${IWASM_ROOT}/common/wasm_memory.c \
+                   ${IWASM_ROOT}/common/wasm_c_api.c \
                    ${IWASM_ROOT}/common/arch/${INVOKE_NATIVE} \
                    src/main.c
 
@@ -110,6 +126,7 @@ endif
 ifeq (${WAMR_BUILD_AOT}, 1)
 $(NAME)_SOURCES += ${IWASM_ROOT}/aot/aot_loader.c \
                    ${IWASM_ROOT}/aot/arch/${AOT_RELOC} \
-                   ${IWASM_ROOT}/aot/aot_runtime.c
+                   ${IWASM_ROOT}/aot/aot_runtime.c \
+                   ${IWASM_ROOT}/aot/aot_intrinsic.c
 endif
 

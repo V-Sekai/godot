@@ -12,6 +12,9 @@
 extern "C" {
 #endif
 
+/* Minimum initial size of hash map */
+#define HASH_MAP_MIN_SIZE 4
+
 /* Maximum initial size of hash map */
 #define HASH_MAP_MAX_SIZE 65536
 
@@ -25,16 +28,16 @@ typedef uint32 (*HashFunc)(const void *key);
 typedef bool (*KeyEqualFunc)(void *key1, void *key2);
 
 /* Key destroy function: to destroy the key, auto called
-   when an hash element is removed. */
+   for each key when the hash map is destroyed. */
 typedef void (*KeyDestroyFunc)(void *key);
 
 /* Value destroy function: to destroy the value, auto called
-   when an hash element is removed. */
-typedef void (*ValueDestroyFunc)(void *key);
+   for each value when the hash map is destroyed. */
+typedef void (*ValueDestroyFunc)(void *value);
 
 /* traverse callback function:
    auto called when traverse every hash element */
-typedef void (*TraverseCallbackFunc)(void *key, void *value);
+typedef void (*TraverseCallbackFunc)(void *key, void *value, void *user_data);
 
 /**
  * Create a hash map.
@@ -44,18 +47,16 @@ typedef void (*TraverseCallbackFunc)(void *key, void *value);
  * @param hash_func hash function of the key, must be specified
  * @param key_equal_func key equal function, check whether two keys
  *                       are equal, must be specified
- * @param key_destroy_func key destroy function, called when an hash element
- *                         is removed if it is not NULL
- * @param value_destroy_func value destroy function, called when an hash
- *                           element is removed if it is not NULL
+ * @param key_destroy_func key destroy function, called for each key if not NULL
+ *                         when the hash map is destroyed
+ * @param value_destroy_func value destroy function, called for each value if
+ *                           not NULL when the hash map is destroyed
  *
  * @return the hash map created, NULL if failed
  */
-HashMap*
-bh_hash_map_create(uint32 size, bool use_lock,
-                   HashFunc hash_func,
-                   KeyEqualFunc key_equal_func,
-                   KeyDestroyFunc key_destroy_func,
+HashMap *
+bh_hash_map_create(uint32 size, bool use_lock, HashFunc hash_func,
+                   KeyEqualFunc key_equal_func, KeyDestroyFunc key_destroy_func,
                    ValueDestroyFunc value_destroy_func);
 
 /**
@@ -79,7 +80,7 @@ bh_hash_map_insert(HashMap *map, void *key, void *value);
  *
  * @return the value of the found element if success, NULL otherwise
  */
-void*
+void *
 bh_hash_map_find(HashMap *map, void *key);
 
 /**
@@ -95,8 +96,7 @@ bh_hash_map_find(HashMap *map, void *key);
  *       it will be copied to p_old_value for user to process.
  */
 bool
-bh_hash_map_update(HashMap *map, void *key, void *value,
-                   void **p_old_value);
+bh_hash_map_update(HashMap *map, void *key, void *value, void **p_old_value);
 
 /**
  * Remove an element from the hash map
@@ -112,8 +112,8 @@ bh_hash_map_update(HashMap *map, void *key, void *value,
  *       p_old_key and p_old_value for user to process.
  */
 bool
-bh_hash_map_remove(HashMap *map, void *key,
-                   void **p_old_key, void **p_old_value);
+bh_hash_map_remove(HashMap *map, void *key, void **p_old_key,
+                   void **p_old_value);
 
 /**
  * Destroy the hashmap
@@ -144,24 +144,25 @@ bh_hash_map_get_struct_size(HashMap *hashmap);
  * @return the memory space occupied by HashMapElem structure
  */
 uint32
-bh_hash_map_get_elem_struct_size();
+bh_hash_map_get_elem_struct_size(void);
 
 /**
  * Traverse the hash map and call the callback function
  *
  * @param map the hash map to traverse
- * @callback the function to be called for every element
+ * @param callback the function to be called for every element
+ * @param user_data the argument to be passed to the callback function
  *
  * @return true if success, false otherwise
  * Note: if the hash map has lock, the map will be locked during traverse,
  *       keep the callback function as simple as possible.
  */
 bool
-bh_hash_map_traverse(HashMap *map, TraverseCallbackFunc callback);
+bh_hash_map_traverse(HashMap *map, TraverseCallbackFunc callback,
+                     void *user_data);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* endof WASM_HASHMAP_H */
-

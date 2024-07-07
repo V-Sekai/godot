@@ -55,17 +55,39 @@ typedef pthread_t korp_tid;
 typedef pthread_mutex_t korp_mutex;
 typedef pthread_cond_t korp_cond;
 typedef pthread_t korp_thread;
+typedef pthread_rwlock_t korp_rwlock;
+typedef sem_t korp_sem;
+
+#define OS_THREAD_MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
+
+#define os_thread_local_attribute __thread
+
+#define bh_socket_t int
+
+#if WASM_DISABLE_WRITE_GS_BASE == 0
+#if defined(BUILD_TARGET_X86_64) || defined(BUILD_TARGET_AMD_64)
+#define os_writegsbase(base_addr)                                 \
+    do {                                                          \
+        uint64 __gs_value = (uint64)(uintptr_t)base_addr;         \
+        asm volatile("wrgsbase %0" ::"r"(__gs_value) : "memory"); \
+    } while (0)
+#if 0
+/* _writegsbase_u64 also works, but need to add -mfsgsbase flag for gcc */
+#include <immintrin.h>
+#define os_writegsbase(base_addr) \
+    _writegsbase_u64(((uint64)(uintptr_t)base_addr))
+#endif
+#endif
+#endif
 
 #if WASM_DISABLE_HW_BOUND_CHECK == 0
-#if defined(BUILD_TARGET_X86_64) \
-    || defined(BUILD_TARGET_AMD_64) \
-    || defined(BUILD_TARGET_AARCH64)
+#if defined(BUILD_TARGET_X86_64) || defined(BUILD_TARGET_AMD_64)            \
+    || defined(BUILD_TARGET_AARCH64) || defined(BUILD_TARGET_RISCV64_LP64D) \
+    || defined(BUILD_TARGET_RISCV64_LP64)
 
 #include <setjmp.h>
 
 #define OS_ENABLE_HW_BOUND_CHECK
-
-#define os_thread_local_attribute __thread
 
 typedef jmp_buf korp_jmpbuf;
 
@@ -73,23 +95,45 @@ typedef jmp_buf korp_jmpbuf;
 #define os_longjmp longjmp
 #define os_alloca alloca
 
-#define os_getpagesize getpagesize
-
 typedef void (*os_signal_handler)(void *sig_addr);
 
-int os_signal_init(os_signal_handler handler);
+int
+os_thread_signal_init(os_signal_handler handler);
 
-void os_signal_destroy();
+void
+os_thread_signal_destroy();
 
-void os_signal_unmask();
+bool
+os_thread_signal_inited();
 
-void os_sigreturn();
-#endif /* end of BUILD_TARGET_X86_64/AMD_64/AARCH64 */
+void
+os_signal_unmask();
+
+void
+os_sigreturn();
+#endif /* end of BUILD_TARGET_X86_64/AMD_64/AARCH64/RISCV64 */
 #endif /* end of WASM_DISABLE_HW_BOUND_CHECK */
+
+#define os_getpagesize getpagesize
+
+#if WASM_DISABLE_WAKEUP_BLOCKING_OP == 0
+#define OS_ENABLE_WAKEUP_BLOCKING_OP
+#endif
+void
+os_set_signal_number_for_blocking_op(int signo);
+
+typedef int os_file_handle;
+typedef DIR *os_dir_stream;
+typedef int os_raw_file_handle;
+
+static inline os_file_handle
+os_get_invalid_handle()
+{
+    return -1;
+}
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* end of _PLATFORM_INTERNAL_H */
-

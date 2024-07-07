@@ -180,7 +180,7 @@ public:
 	void _unhandled_input(Ref<InputEvent> p_event);
 	void _unhandled_key_input(Ref<InputEventKey> p_event);
 
-	Callable get_callable(String p_func, String p_definition);
+	Callable get_callable(String p_func);
 
 private:
 	wasm_module_inst_t module_inst = NULL;

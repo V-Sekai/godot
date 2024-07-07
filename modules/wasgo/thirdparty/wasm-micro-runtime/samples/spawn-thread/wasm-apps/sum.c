@@ -3,7 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
  */
 
-int sum(int start, int length)
+/*
+ * have something in bss so that llvm synthesizes
+ * wasm start function for this module.
+ */
+char *
+return_bss()
+{
+    static char bss[4096];
+    return bss;
+}
+
+int
+sum(int start, int length)
 {
     int sum = 0, i;
 

@@ -7,7 +7,12 @@
 #define ZEPHYR_DRIVERS_DISPLAY_DISPLAY_ILI9340_H_
 #include "board_config.h"
 #include <autoconf.h>
+
+#if KERNEL_VERSION_NUMBER < 0x030200 /* version 3.2.0 */
 #include <zephyr.h>
+#else
+#include <zephyr/kernel.h>
+#endif
 
 #define ILI9340_CMD_ENTER_SLEEP 0x10
 #define ILI9340_CMD_EXIT_SLEEP 0x11
@@ -52,15 +57,17 @@ struct ili9340_data;
  * @param tx_len Number of bytes in tx_data buffer
  *
  */
-void ili9340_transmit(struct ili9340_data *data, u8_t cmd, void *tx_data,
-        size_t tx_len);
+void
+ili9340_transmit(struct ili9340_data *data, uint8_t cmd, void *tx_data,
+                 size_t tx_len);
 
 /**
  * Perform LCD specific initialization
  *
  * @param data Device data structure
  */
-void ili9340_lcd_init(struct ili9340_data *data);
+void
+ili9340_lcd_init(struct ili9340_data *data);
 
 #define DT_ILITEK_ILI9340_0_LABEL "DISPLAY"
 #define CONFIG_DISPLAY_LOG_LEVEL 0

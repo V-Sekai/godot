@@ -1,23 +1,16 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
 
 #include "wasm_c_api.h"
-#include "wasm_export.h"
-#include "bh_platform.h"
-
-extern bool
-reader(const char *module_name, uint8 **p_buffer, uint32 *p_size);
-
-extern void
-destroyer(uint8 *buffer, uint32 size);
 
 #define own
 
 // A function to be called from Wasm code.
 own wasm_trap_t* hello_callback(
-  const wasm_val_t args[], wasm_val_t results[]
+  const wasm_val_vec_t* args, wasm_val_vec_t* results
 ) {
   printf("Calling back...\n");
   printf("> Hello World!\n");
@@ -26,8 +19,6 @@ own wasm_trap_t* hello_callback(
 
 
 int main(int argc, const char* argv[]) {
-  wasm_runtime_set_module_reader(reader, destroyer);
-
   // Initialize.
   printf("Initializing...\n");
   wasm_engine_t* engine = wasm_engine_new();
@@ -44,16 +35,42 @@ int main(int argc, const char* argv[]) {
     printf("> Error loading module!\n");
     return 1;
   }
-  fseek(file, 0L, SEEK_END);
-  size_t file_size = ftell(file);
-  fseek(file, 0L, SEEK_SET);
+
+  int ret = fseek(file, 0L, SEEK_END);
+  if (ret == -1) {
+    printf("> Error loading module!\n");
+    fclose(file);
+    return 1;
+  }
+
+  long file_size = ftell(file);
+  if (file_size == -1) {
+    printf("> Error loading module!\n");
+    fclose(file);
+    return 1;
+  }
+
+  ret = fseek(file, 0L, SEEK_SET);
+  if (ret == -1) {
+    printf("> Error loading module!\n");
+    fclose(file);
+    return 1;
+  }
+
   wasm_byte_vec_t binary;
   wasm_byte_vec_new_uninitialized(&binary, file_size);
   if (fread(binary.data, file_size, 1, file) != 1) {
     printf("> Error loading module!\n");
+    fclose(file);
     return 1;
   }
   fclose(file);
+
+  if (!wasm_module_validate(store, &binary)) {
+    printf("> Error validate module!\n");
+    wasm_byte_vec_delete(&binary);
+    return 1;
+  }
 
   // Compile.
   printf("Compiling module...\n");
@@ -65,6 +82,8 @@ int main(int argc, const char* argv[]) {
 
   wasm_byte_vec_delete(&binary);
 
+  assert(wasm_module_set_name(module, "hello"));
+
   // Create external print functions.
   printf("Creating callback...\n");
   own wasm_functype_t* hello_type = wasm_functype_new_0_0();
@@ -75,9 +94,10 @@ int main(int argc, const char* argv[]) {
 
   // Instantiate.
   printf("Instantiating module...\n");
-  const wasm_extern_t* imports[] = { wasm_func_as_extern(hello_func) };
+  wasm_extern_t* externs[] = { wasm_func_as_extern(hello_func) };
+  wasm_extern_vec_t imports = WASM_ARRAY_VEC(externs);
   own wasm_instance_t* instance =
-    wasm_instance_new(store, module, imports, NULL);
+    wasm_instance_new(store, module, &imports, NULL);
   if (!instance) {
     printf("> Error instantiating module!\n");
     return 1;
@@ -93,10 +113,17 @@ int main(int argc, const char* argv[]) {
     printf("> Error accessing exports!\n");
     return 1;
   }
+
   const wasm_func_t* run_func = wasm_extern_as_func(exports.data[0]);
   if (run_func == NULL) {
     printf("> Error accessing export!\n");
     return 1;
+  }
+
+  {
+    const char* name = wasm_module_get_name(module);
+    assert(strncmp(name, "hello", 5) == 0);
+    printf("> removing module %s \n", name);
   }
 
   wasm_module_delete(module);
@@ -104,9 +131,13 @@ int main(int argc, const char* argv[]) {
 
   // Call.
   printf("Calling export...\n");
-  if (wasm_func_call(run_func, NULL, NULL)) {
-    printf("> Error calling function!\n");
-    return 1;
+  wasm_val_vec_t args = WASM_EMPTY_VEC;
+  wasm_val_vec_t results = WASM_EMPTY_VEC;
+  wasm_trap_t *trap = wasm_func_call(run_func, &args, &results);
+  if (trap) {
+      printf("> Error calling function!\n");
+      wasm_trap_delete(trap);
+      return 1;
   }
 
   wasm_extern_vec_delete(&exports);

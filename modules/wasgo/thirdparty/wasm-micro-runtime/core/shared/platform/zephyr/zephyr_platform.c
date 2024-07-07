@@ -25,13 +25,14 @@ disable_mpu_rasr_xn(void)
        would most likely be set at index 2. */
     for (index = 0U; index < 8; index++) {
         MPU->RNR = index;
+#ifdef MPU_RASR_XN_Msk
         if (MPU->RASR & MPU_RASR_XN_Msk) {
             MPU->RASR |= ~MPU_RASR_XN_Msk;
         }
+#endif
     }
-
 }
-#endif  /* end of CONFIG_ARM_MPU */
+#endif /* end of CONFIG_ARM_MPU */
 #endif
 
 static int
@@ -73,20 +74,28 @@ bh_platform_destroy()
 void *
 os_malloc(unsigned size)
 {
-    return NULL;
+    return malloc(size);
 }
 
 void *
 os_realloc(void *ptr, unsigned size)
 {
-    return NULL;
+    return realloc(ptr, size);
 }
 
 void
 os_free(void *ptr)
 {
+    free(ptr);
 }
 
+int
+os_dumps_proc_mem_info(char *out, unsigned int size)
+{
+    return -1;
+}
+
+#if 0
 struct out_context {
     int count;
 };
@@ -104,20 +113,91 @@ char_out(int c, void *ctx)
 int
 os_vprintf(const char *fmt, va_list ap)
 {
+#if 0
     struct out_context ctx = { 0 };
-    z_vprintk(char_out, &ctx, fmt, ap);
+    cbvprintf(char_out, &ctx, fmt, ap);
     return ctx.count;
+#else
+    vprintk(fmt, ap);
+    return 0;
+#endif
+}
+#endif
+
+int
+os_printf(const char *format, ...)
+{
+    int ret = 0;
+    va_list ap;
+
+    va_start(ap, format);
+#ifndef BH_VPRINTF
+    ret += vprintf(format, ap);
+#else
+    ret += BH_VPRINTF(format, ap);
+#endif
+    va_end(ap);
+
+    return ret;
+}
+
+int
+os_vprintf(const char *format, va_list ap)
+{
+#ifndef BH_VPRINTF
+    return vprintf(format, ap);
+#else
+    return BH_VPRINTF(format, ap);
+#endif
+}
+
+#if KERNEL_VERSION_NUMBER <= 0x020400 /* version 2.4.0 */
+void
+abort(void)
+{
+    int i = 0;
+    os_printf("%d\n", 1 / i);
+}
+#endif
+
+#if KERNEL_VERSION_NUMBER <= 0x010E01 /* version 1.14.1 */
+size_t
+strspn(const char *s, const char *accept)
+{
+    os_printf("## unimplemented function %s called", __FUNCTION__);
+    return 0;
+}
+
+size_t
+strcspn(const char *s, const char *reject)
+{
+    os_printf("## unimplemented function %s called", __FUNCTION__);
+    return 0;
+}
+#endif
+
+void *
+os_mmap(void *hint, size_t size, int prot, int flags, os_file_handle file)
+{
+    void *addr;
+
+    if ((uint64)size >= UINT32_MAX)
+        return NULL;
+
+    if (exec_mem_alloc_func)
+        addr = exec_mem_alloc_func((uint32)size);
+    else
+        addr = BH_MALLOC(size);
+
+    if (addr)
+        memset(addr, 0, size);
+    return addr;
 }
 
 void *
-os_mmap(void *hint, size_t size, int prot, int flags)
+os_mremap(void *old_addr, size_t old_size, size_t new_size)
 {
-    if ((uint64)size >= UINT32_MAX)
-        return NULL;
-    if (exec_mem_alloc_func)
-        return exec_mem_alloc_func((uint32)size);
-    else
-        return BH_MALLOC(size);
+    return os_mremap_slow(old_addr, old_size, new_size);
 }
 
 void
@@ -139,17 +219,34 @@ void
 os_dcache_flush()
 {
 #if defined(CONFIG_CPU_CORTEX_M7) && defined(CONFIG_ARM_MPU)
+#if KERNEL_VERSION_NUMBER < 0x030300 /* version 3.3.0 */
     uint32 key;
     key = irq_lock();
     SCB_CleanDCache();
     irq_unlock(key);
+#else
+    sys_cache_data_flush_all();
+#endif
+#elif defined(CONFIG_SOC_CVF_EM7D) && defined(CONFIG_ARC_MPU) \
+    && defined(CONFIG_CACHE_FLUSHING)
+    __asm__ __volatile__("sync");
+    z_arc_v2_aux_reg_write(_ARC_V2_DC_FLSH, BIT(0));
+    __asm__ __volatile__("sync");
 #endif
 }
 
-void set_exec_mem_alloc_func(exec_mem_alloc_func_t alloc_func,
-                             exec_mem_free_func_t free_func)
+void
+os_icache_flush(void *start, size_t len)
+{
+#if KERNEL_VERSION_NUMBER >= 0x030300 /* version 3.3.0 */
+    sys_cache_instr_flush_range(start, len);
+#endif
+}
+
+void
+set_exec_mem_alloc_func(exec_mem_alloc_func_t alloc_func,
+                        exec_mem_free_func_t free_func)
 {
     exec_mem_alloc_func = alloc_func;
     exec_mem_free_func = free_func;
 }
-

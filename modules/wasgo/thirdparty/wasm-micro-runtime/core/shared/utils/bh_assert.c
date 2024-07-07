@@ -5,11 +5,10 @@
 
 #include "bh_assert.h"
 
-void bh_assert_internal(int v, const char *file_name, int line_number,
-                        const char *expr_string)
+void
+bh_assert_internal(int64 v, const char *file_name, int line_number,
+                   const char *expr_string)
 {
-    int i;
-
     if (v)
         return;
 
@@ -19,13 +18,8 @@ void bh_assert_internal(int v, const char *file_name, int line_number,
     if (!expr_string)
         expr_string = "NULL EXPR_STRING";
 
-    os_printf("\nASSERTION FAILED: %s, at file %s, line %d\n",
-              expr_string, file_name, line_number);
+    LOG_ERROR("\nASSERTION FAILED: %s, at file %s, line %d\n", expr_string,
+              file_name, line_number);
 
-    i = os_printf(" ");
-
-    /* divived by 0 to make it abort */
-    os_printf("%d\n", i / (i - 1));
-    while (1);
+    abort();
 }
-

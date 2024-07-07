@@ -84,16 +84,14 @@ const Callable *WasGoCallable::get_base_comparator() const {
 	return nullptr;
 };
 
-WasGoCallable::WasGoCallable(WasGoState *p_state, String p_func, String p_definition) {
+WasGoCallable::WasGoCallable(WasGoState *p_state, String p_func) {
 	if (p_state != nullptr && p_state->module_inst != nullptr) {
 		wasgo_state_id = p_state->get_instance_id();
-		ERR_FAIL_COND(!(wasgo_func = wasm_runtime_lookup_function(p_state->module_inst, p_func.utf8().get_data(), p_definition.utf8().get_data())));
-
+		ERR_FAIL_COND(!(wasgo_func = wasm_runtime_lookup_function(p_state->module_inst, p_func.utf8().get_data())));
 		if (wasgo_func == nullptr) {
 			printf("NULL FUNC");
 		}
 		print_line(String("wasgo_func: ") + p_func);
-		print_line(String("wasgo_func_definition: ") + p_definition);
 	}
 }
 WasGoCallable::~WasGoCallable() {
