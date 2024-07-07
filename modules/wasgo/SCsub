@@ -115,54 +115,6 @@ else:
     module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
 
-if platform == "javascript":
-    module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
-else:
-    module_env.Prepend(CPPPATH=["thirdparty/zydis/include", "thirdparty/zydis/src", "thirdparty/zycore-c/include"])
-    module_env.Append(
-        CPPDEFINES=[
-            "BUILD_TARGET_X86_64",
-            "ZYCORE_STATIC_BUILD",
-            "ZYDIS_STATIC_BUILD",
-            ("WASM_ENABLE_AOT", 1),
-        ]
-    )
-    common_sdk += [
-        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_loader.c",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_runtime.c",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/arch/aot_reloc_x86_64.c",
-
-    "./thirdparty/zycore-c/src/Allocator.c",
-    "./thirdparty/zycore-c/src/ArgParse.c",
-    "./thirdparty/zycore-c/src/Bitset.c",
-    "./thirdparty/zycore-c/src/Format.c",
-    "./thirdparty/zycore-c/src/List.c",
-    "./thirdparty/zycore-c/src/String.c",
-    "./thirdparty/zycore-c/src/Vector.c",
-    "./thirdparty/zycore-c/src/Zycore.c",
-    "./thirdparty/zycore-c/src/API/Memory.c",
-    "./thirdparty/zycore-c/src/API/Process.c",
-    "./thirdparty/zycore-c/src/API/Synchronization.c",
-    "./thirdparty/zycore-c/src/API/Terminal.c",
-    "./thirdparty/zycore-c/src/API/Thread.c",
-    "./thirdparty/zydis/src/Decoder.c",
-    "./thirdparty/zydis/src/DecoderData.c",
-    "./thirdparty/zydis/src/Encoder.c",
-    "./thirdparty/zydis/src/EncoderData.c",
-    "./thirdparty/zydis/src/Formatter.c",
-    "./thirdparty/zydis/src/FormatterATT.c",
-    "./thirdparty/zydis/src/FormatterBase.c",
-    "./thirdparty/zydis/src/FormatterBuffer.c",
-    "./thirdparty/zydis/src/FormatterIntel.c",
-    "./thirdparty/zydis/src/MetaInfo.c",
-    "./thirdparty/zydis/src/Mnemonic.c",
-    "./thirdparty/zydis/src/Register.c",
-    "./thirdparty/zydis/src/SharedData.c",
-    "./thirdparty/zydis/src/String.c",
-    "./thirdparty/zydis/src/Utils.c",
-    "./thirdparty/zydis/src/Zydis.c",
-    ]
-
 if platform == "windows":
     if module_env.msvc:
         module_env["AS"] = "ml64"
@@ -178,6 +130,7 @@ if platform == "windows":
             module_env["AS"] = "x86_64-w64-mingw32-as"
             print(old_as + " not found. switching to " + str(module_env["AS"]))
     module_env["ASFLAGS"] = "-c"
+    module_env.Prepend(CPPDEFINES=["BUILD_TARGET_X86_64"])
 
 module_env.Prepend(
     CPPDEFINES=[
