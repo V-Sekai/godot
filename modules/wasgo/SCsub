@@ -10,7 +10,6 @@ common_includes = [
     "./thirdparty/wasm-micro-runtime/core/shared/mem-alloc",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common",
     "./thirdparty/wasm-micro-runtime/core/shared/utils",
-    "./thirdparty/zycore-c/include"
 ]
 
 common_sdk = [
@@ -26,6 +25,7 @@ common_sdk = [
     "./thirdparty/wasm-micro-runtime/core/shared/utils/bh_queue.c",
     "./thirdparty/wasm-micro-runtime/core/shared/utils/bh_vector.c",
     "./thirdparty/wasm-micro-runtime/core/shared/utils/runtime_timer.c",
+    "./thirdparty/wasm-micro-runtime/core/shared/platform/common/memory/mremap.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/libraries/libc-builtin/libc_builtin_wrapper.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_c_api.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_exec_env.c",
@@ -39,19 +39,6 @@ common_sdk = [
     "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_intrinsic.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_loader_common.c",
     "./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c",
-    "./thirdparty/zycore-c/src/Allocator.c",
-    "./thirdparty/zycore-c/src/ArgParse.c",
-    "./thirdparty/zycore-c/src/Bitset.c",
-    "./thirdparty/zycore-c/src/Format.c",
-    "./thirdparty/zycore-c/src/List.c",
-    "./thirdparty/zycore-c/src/String.c",
-    "./thirdparty/zycore-c/src/Vector.c",
-    "./thirdparty/zycore-c/src/Zycore.c",
-    "./thirdparty/zycore-c/src/API/Memory.c",
-    "./thirdparty/zycore-c/src/API/Process.c",
-    "./thirdparty/zycore-c/src/API/Synchronization.c",
-    "./thirdparty/zycore-c/src/API/Terminal.c",
-    "./thirdparty/zycore-c/src/API/Thread.c"
 ]
 
 platform_settings = {
@@ -62,6 +49,8 @@ platform_settings = {
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_memmap.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_thread.c",
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_time.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_socket.c",
+            "./thirdparty/wasm-micro-runtime/core/shared/platform/windows/win_file.c",
         ],
         "includes": [
             "./thirdparty/wasm-micro-runtime/core/shared/platform/windows",
@@ -110,7 +99,6 @@ if platform in platform_settings:
     module_env.Append(CPPDEFINES=settings["defines"])
 
 if platform == "windows":
-    module_env.Append(CPPDEFINES=[("TIME_UTC", 0)])
     if module_env.msvc:
         common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_em64.asm")
     elif module_env["use_mingw"]:
@@ -128,11 +116,12 @@ else:
 if platform == "javascript":
     module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
 else:
-    module_env.Prepend(CPPPATH=["thirdparty/zydis/include"])
+    module_env.Prepend(CPPPATH=["thirdparty/zydis/include", "thirdparty/zydis/src", "thirdparty/zycore-c/include"])
     module_env.Append(
         CPPDEFINES=[
             "BUILD_TARGET_X86_64",
             "ZYCORE_STATIC_BUILD",
+            "ZYDIS_STATIC_BUILD",
             ("WASM_ENABLE_AOT", 1),
         ]
     )
@@ -140,6 +129,36 @@ else:
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_loader.c",
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_runtime.c",
         "./thirdparty/wasm-micro-runtime/core/iwasm/aot/arch/aot_reloc_x86_64.c",
+        
+    "./thirdparty/zycore-c/src/Allocator.c",
+    "./thirdparty/zycore-c/src/ArgParse.c",
+    "./thirdparty/zycore-c/src/Bitset.c",
+    "./thirdparty/zycore-c/src/Format.c",
+    "./thirdparty/zycore-c/src/List.c",
+    "./thirdparty/zycore-c/src/String.c",
+    "./thirdparty/zycore-c/src/Vector.c",
+    "./thirdparty/zycore-c/src/Zycore.c",
+    "./thirdparty/zycore-c/src/API/Memory.c",
+    "./thirdparty/zycore-c/src/API/Process.c",
+    "./thirdparty/zycore-c/src/API/Synchronization.c",
+    "./thirdparty/zycore-c/src/API/Terminal.c",
+    "./thirdparty/zycore-c/src/API/Thread.c",
+    "./thirdparty/zydis/src/Decoder.c",
+    "./thirdparty/zydis/src/DecoderData.c",
+    "./thirdparty/zydis/src/Encoder.c",
+    "./thirdparty/zydis/src/EncoderData.c",
+    "./thirdparty/zydis/src/Formatter.c",
+    "./thirdparty/zydis/src/FormatterATT.c",
+    "./thirdparty/zydis/src/FormatterBase.c",
+    "./thirdparty/zydis/src/FormatterBuffer.c",
+    "./thirdparty/zydis/src/FormatterIntel.c",
+    "./thirdparty/zydis/src/MetaInfo.c",
+    "./thirdparty/zydis/src/Mnemonic.c",
+    "./thirdparty/zydis/src/Register.c",
+    "./thirdparty/zydis/src/SharedData.c",
+    "./thirdparty/zydis/src/String.c",
+    "./thirdparty/zydis/src/Utils.c",
+    "./thirdparty/zydis/src/Zydis.c",
     ]
 
 if platform == "windows":
