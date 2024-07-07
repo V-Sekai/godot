@@ -48,7 +48,7 @@ void initialize_wasgo_module(ModuleInitializationLevel p_level) {
 	}
 	// printf("REGISTERING WASGO\n");
 	// printf("Creating some test wasgo objects\n");
-	wasgo_runtime = new (WasGoRuntime);
+	wasgo_runtime = memnew(WasGoRuntime);
 	// wasgo_runtime->initialize(native_symbols, sizeof(native_symbols)/sizeof(NativeSymbol));
 	ClassDB::register_class<WasGoState>();
 	ClassDB::register_class<ResourceFormatLoaderWasm>();
@@ -66,4 +66,9 @@ void uninitialize_wasgo_module(ModuleInitializationLevel p_level) {
 	}
 	ResourceLoader::remove_resource_format_loader(wasm_loader);
 	wasm_loader.unref();
+
+	if (wasgo_runtime) {
+		memdelete(wasgo_runtime);
+		wasgo_runtime = nullptr;
+	}
 }
