@@ -117,51 +117,6 @@ else:
 
 if platform == "javascript":
     module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
-else:
-    module_env.Prepend(CPPPATH=["thirdparty/zydis/include", "thirdparty/zydis/src", "thirdparty/zycore-c/include"])
-    module_env.Append(
-        CPPDEFINES=[
-            "BUILD_TARGET_X86_64",
-            "ZYCORE_STATIC_BUILD",
-            "ZYDIS_STATIC_BUILD",
-            ("WASM_ENABLE_AOT", 1),
-        ]
-    )
-    common_sdk += [
-        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_loader.c",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_runtime.c",
-        "./thirdparty/wasm-micro-runtime/core/iwasm/aot/arch/aot_reloc_x86_64.c",
-
-    "./thirdparty/zycore-c/src/Allocator.c",
-    "./thirdparty/zycore-c/src/ArgParse.c",
-    "./thirdparty/zycore-c/src/Bitset.c",
-    "./thirdparty/zycore-c/src/Format.c",
-    "./thirdparty/zycore-c/src/List.c",
-    "./thirdparty/zycore-c/src/String.c",
-    "./thirdparty/zycore-c/src/Vector.c",
-    "./thirdparty/zycore-c/src/Zycore.c",
-    "./thirdparty/zycore-c/src/API/Memory.c",
-    "./thirdparty/zycore-c/src/API/Process.c",
-    "./thirdparty/zycore-c/src/API/Synchronization.c",
-    "./thirdparty/zycore-c/src/API/Terminal.c",
-    "./thirdparty/zycore-c/src/API/Thread.c",
-    "./thirdparty/zydis/src/Decoder.c",
-    "./thirdparty/zydis/src/DecoderData.c",
-    "./thirdparty/zydis/src/Encoder.c",
-    "./thirdparty/zydis/src/EncoderData.c",
-    "./thirdparty/zydis/src/Formatter.c",
-    "./thirdparty/zydis/src/FormatterATT.c",
-    "./thirdparty/zydis/src/FormatterBase.c",
-    "./thirdparty/zydis/src/FormatterBuffer.c",
-    "./thirdparty/zydis/src/FormatterIntel.c",
-    "./thirdparty/zydis/src/MetaInfo.c",
-    "./thirdparty/zydis/src/Mnemonic.c",
-    "./thirdparty/zydis/src/Register.c",
-    "./thirdparty/zydis/src/SharedData.c",
-    "./thirdparty/zydis/src/String.c",
-    "./thirdparty/zydis/src/Utils.c",
-    "./thirdparty/zydis/src/Zydis.c",
-    ]
 
 if platform == "windows":
     if module_env.msvc:
@@ -184,9 +139,7 @@ module_env.Prepend(
         "WASM_ENABLE_FAST_JIT",
         ("WASM_API_EXTERN", ""),
         ("WASM_RUNTIME_API_EXTERN", ""),
-        ("BH_FREE", "wasm_runtime_free"),
         "_WINSOCK_DEPRECATED_NO_WARNINGS",
-        ("BH_MALLOC", "wasm_runtime_malloc"),
         "HAVE_STRUCT_TIMESPEC",
         ("WASM_ENABLE_BULK_MEMORY", 0),
         ("WASM_ENABLE_FAST_INTERP", 0),
