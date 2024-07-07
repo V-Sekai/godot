@@ -115,10 +115,8 @@ else:
     module_env.Append(CPPDEFINES=[("TIME_UTC", 1)])
     common_sdk.append("./thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c")
 
-if platform == "javascript":
-    module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_32"])
-
 if platform == "windows":
+    module_env.Append(CPPDEFINES=["BUILD_TARGET_AMD_64"])
     if module_env.msvc:
         module_env["AS"] = "ml64"
     else:
