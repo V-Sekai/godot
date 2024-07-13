@@ -9,17 +9,19 @@ env.Append(
 
 module_env = env.Clone()
 
-module_env.Append(
-    CPPFLAGS=[
-        "-Wno-implicit-fallthrough",
-        "-Wno-incompatible-pointer-types-discards-qualifiers",
-        "-Wno-ignored-qualifiers",
-        "-Wno-unknown-warning-option",
-    ]
-)
-
-if module_env["platform"] == "linux":
-    module_env.Append(CPPFLAGS=["-Wno-error=discarded-qualifiers"])
+if not module_env.msvc:
+    module_env.Append(
+        CPPFLAGS=[
+            "-Wno-implicit-fallthrough",
+            "-Wno-incompatible-pointer-types-discards-qualifiers",
+            "-Wno-ignored-qualifiers",
+            "-Wno-unknown-warning-option",
+            "-Wno-unused-variable",
+        ],
+        CFLAGS=[
+            "-Wno-discarded-qualifiers",
+        ]
+    )
 
 common_includes = [
     "thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
@@ -176,9 +178,11 @@ module_env.Append(
 
 )
 
-module_env.add_source_files(env.modules_sources, common_sdk)
-module_env.add_source_files(env.modules_sources, "src/*.cpp")
-module_env.add_source_files(env.modules_sources, "api/*.cpp")
-module_env.add_source_files(env.modules_sources, "api/shared/*.cpp")
+env_thirdparty = module_env.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(env.modules_sources, common_sdk)
+env_thirdparty.add_source_files(env.modules_sources, "src/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "api/*.cpp")
+env_thirdparty.add_source_files(env.modules_sources, "api/shared/*.cpp")
 
 module_env.add_source_files(env.modules_sources, "*.cpp")
