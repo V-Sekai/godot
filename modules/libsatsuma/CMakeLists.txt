@@ -28,8 +28,8 @@ set(CMAKE_FIND_USE_PACKAGE_REGISTRY OFF) # since CMake 3.16
 set(EXTERNAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external")
 
 add_subdirectory(src)
-add_subdirectory(external/lemon)
-add_subdirectory(external/timekeeper)
+add_subdirectory(thirdparty/lemon)
+add_subdirectory(thirdparty/timekeeper)
 
 if(${SATSUMA_ENABLE_TESTS})
     enable_testing()
