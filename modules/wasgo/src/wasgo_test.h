@@ -39,8 +39,6 @@ class WasGoTest : public Object {
 
 public:
 	WasGoTest();
-
-	static int test();
 };
 
 #endif // WASGO_TEST_H

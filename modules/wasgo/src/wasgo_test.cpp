@@ -132,24 +132,3 @@ extern "C" void print_usage(void) {
 	fprintf(stdout, "Options:\r\n");
 	fprintf(stdout, "  -f [path of wasm file] \n");
 }
-
-int WasGoTest::test() {
-	printf("We got to the test\n");
-	RuntimeInitArgs init_args;
-	memset(&init_args, 0, sizeof(RuntimeInitArgs));
-	printf("Creating WasGoState.\n");
-	Ref<WasmResource> reference = ResourceLoader::load("turning.wasm");
-	ERR_FAIL_COND_V(reference.is_null(), FAILED);
-	WasGoState *state = memnew(WasGoState); // This leaks memory because it's not put in the tree.
-	state->set_wasm_script(reference);
-	return 0;
-	// FIXME: 20240707 fire - Restore callables.
-	printf("Creating Wasm callable.\n");
-	WasGoCallable callable = WasGoCallable(state, "test");
-	Variant var = Variant(420);
-	const Variant *args = &var;
-	Variant return_val = Variant(0);
-	Callable::CallError r_call_error;
-	callable.call(&args, 0, return_val, r_call_error);
-	return 0;
-}
