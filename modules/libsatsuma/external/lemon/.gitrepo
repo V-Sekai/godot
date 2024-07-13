@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/cgg-bern/lemon
+	branch = cgg
+	commit = 129cee881431d777cc3058b93c59ef01dd3909ee
+	parent = cbcdb36aaaaf385dae232bf473e2b44b210eb8c7
+	method = merge
+	cmdver = 0.4.6

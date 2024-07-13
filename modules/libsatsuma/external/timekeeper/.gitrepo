@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/cgg-bern/libTimekeeper
+	branch = main
+	commit = 4f4b180e84c5fb4cdbf9c98ec2d260a75d8eeda2
+	parent = 1d009e40a551be3f0f71ec6a97cf789aae92bd0b
+	method = merge
+	cmdver = 0.4.6
