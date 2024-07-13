@@ -13,6 +13,6 @@ env.Append(CPPPATH=['#modules/libsatsuma/thirdparty/lemon'])
 env.Append(CPPPATH=['#modules/libsatsuma/thirdparty/timekeeper/src'])
 env.Append(CPPPATH=['#modules/libsatsuma'])
 
-env.Append(CXXFLAGS=['-std=c++20'])
+env.Append(CXXFLAGS=['-std=c++2a'])
 
 env.add_source_files(env.modules_sources, sources)
