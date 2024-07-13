@@ -1395,9 +1395,7 @@ WASMModuleCommon *
 wasm_runtime_load(uint8 *buf, uint32 size, char *error_buf,
                   uint32 error_buf_size)
 {
-    LoadArgs args = { 0 };
-    args.name = "";
-    args.wasm_binary_freeable = false;
+    LoadArgs args = { };
     return wasm_runtime_load_ex(buf, size, &args, error_buf, error_buf_size);
 }
 
