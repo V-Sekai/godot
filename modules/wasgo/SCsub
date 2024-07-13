@@ -18,6 +18,9 @@ module_env.Append(
     ]
 )
 
+if module_env["platform"] == "linux":
+    module_env.Append(CPPFLAGS=["-Wno-error=discarded-qualifiers"])
+
 common_includes = [
     "thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
     "thirdparty/wasm-micro-runtime/core/iwasm/aot",
