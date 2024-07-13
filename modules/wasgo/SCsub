@@ -1,13 +1,17 @@
-# SCsub
 Import("env")
 
 env.Append(
     CPPDEFINES=[
-    ("WASM_API_EXTERN", ""),
-    ("WASM_RUNTIME_API_EXTERN", ""),]
+        ("WASM_API_EXTERN", ""),
+        ("WASM_RUNTIME_API_EXTERN", ""),
+    ],
 )
 
 module_env = env.Clone()
+
+module_env.Append(
+    CPPFLAGS=["-Wno-implicit-fallthrough"]
+)
 
 common_includes = [
     "thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
