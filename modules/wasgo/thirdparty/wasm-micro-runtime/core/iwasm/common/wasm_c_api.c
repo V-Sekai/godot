@@ -2359,9 +2359,7 @@ quit:
 wasm_module_t *
 wasm_module_new(wasm_store_t *store, const wasm_byte_vec_t *binary)
 {
-    LoadArgs args = { 0 };
-    args.name = "";
-    args.clone_wasm_binary = true;
+    LoadArgs args = { "", true, true };
     return wasm_module_new_ex(store, (wasm_byte_vec_t *)binary, &args);
 }
 
