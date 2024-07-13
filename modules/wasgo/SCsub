@@ -10,7 +10,11 @@ env.Append(
 module_env = env.Clone()
 
 module_env.Append(
-    CPPFLAGS=["-Wno-implicit-fallthrough", "-Wno-incompatible-pointer-types-discards-qualifiers"]
+    CPPFLAGS=[
+        "-Wno-implicit-fallthrough", 
+        "-Wno-incompatible-pointer-types-discards-qualifiers",
+        "-Wno-discarded-qualifiers"
+    ]
 )
 
 common_includes = [
