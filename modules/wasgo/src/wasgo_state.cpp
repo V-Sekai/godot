@@ -49,19 +49,19 @@ void WasGoState::_initialize() {
 	exec_env = wasm_runtime_create_exec_env(module_inst, stack_size);
 	wasm_runtime_set_user_data(exec_env, this);
 	void *wasgo_func = wasm_runtime_lookup_function(module_inst, "test");
-	printf("found func %x\n", wasgo_func);
+	printf("found func %p\n", wasgo_func);
 
-	if (notification_callback = wasm_runtime_lookup_function(module_inst, "_notification")) {
+	if ((notification_callback = wasm_runtime_lookup_function(module_inst, "_notification"))) {
 		print_line("The notification callback found.");
 	}
-	if (ready_callback = wasm_runtime_lookup_function(module_inst, "_ready")) {
+	if ((ready_callback = wasm_runtime_lookup_function(module_inst, "_ready"))) {
 		print_line("The ready callback found.");
 	}
-	if (process_callback = wasm_runtime_lookup_function(module_inst, "_process")) {
+	if ((process_callback = wasm_runtime_lookup_function(module_inst, "_process"))) {
 		set_process(true);
 		print_line("The process callback found.");
 	}
-	if (physics_process_callback = wasm_runtime_lookup_function(module_inst, "_physics_process")) {
+	if ((physics_process_callback = wasm_runtime_lookup_function(module_inst, "_physics_process"))) {
 		set_physics_process(true);
 		print_line("The physics_process callback found.");
 	}

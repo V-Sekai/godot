@@ -13,7 +13,7 @@ module_env.Append(
     CPPFLAGS=[
         "-Wno-implicit-fallthrough", 
         "-Wno-incompatible-pointer-types-discards-qualifiers",
-        "-Wno-discarded-qualifiers"
+        "-Wno-ignored-qualifiers"
     ]
 )
 

@@ -135,30 +135,10 @@ extern "C" void print_usage(void) {
 
 int WasGoTest::test() {
 	printf("We got to the test\n");
-
-	static char test_global_heap_buf[512 * 1024 * 100];
-	char *buffer = nullptr, error_buf[128];
-	int opt;
-	char *wasm_path = "turning.wasm";
-
-	wasm_module_t module = NULL;
-	wasm_module_inst_t module_inst = NULL;
-	wasm_exec_env_t exec_env = NULL;
-	uint32_t buf_size, stack_size = 809200, heap_size = 809200;
-	wasm_function_inst_t func = NULL;
-	wasm_function_inst_t func2 = NULL;
-	char *native_buffer = NULL;
-	uint32_t wasm_buffer = 0;
-
 	RuntimeInitArgs init_args;
 	memset(&init_args, 0, sizeof(RuntimeInitArgs));
-
-	int ret_val = -1;
-	uint32 argv[4];
-	double arg_d = 0.000101;
-
 	printf("Creating WasGoState.\n");
-	Ref<WasmResource> reference = ResourceLoader::load(wasm_path);
+	Ref<WasmResource> reference = ResourceLoader::load("turning.wasm");
 	ERR_FAIL_COND_V(reference.is_null(), FAILED);
 	WasGoState *state = memnew(WasGoState); // This leaks memory because it's not put in the tree.
 	state->set_wasm_script(reference);
