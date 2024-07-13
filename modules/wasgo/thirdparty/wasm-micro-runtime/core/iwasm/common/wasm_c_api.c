@@ -2359,7 +2359,7 @@ quit:
 wasm_module_t *
 wasm_module_new(wasm_store_t *store, const wasm_byte_vec_t *binary)
 {
-    LoadArgs args = { "", true, true };
+    LoadArgs args = {};
     return wasm_module_new_ex(store, (wasm_byte_vec_t *)binary, &args);
 }
 
