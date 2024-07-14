@@ -36,6 +36,13 @@ if not module_env.msvc:
             "-Wno-discarded-qualifiers",
         ]
     )
+else:
+    module_env.Append(
+        LINKFLAGS=[
+            "/ignore:4286", # Doubly defined symbols.
+            "/force",
+        ]
+    )
 
 common_sdk = [
     "thirdparty/wasm-micro-runtime/core/shared/mem-alloc/ems/ems_alloc.c",
@@ -159,8 +166,8 @@ module_env.Append(
     CPPDEFINES=[
         # "WASM_ENABLE_FAST_JIT", TODO: 20240707 fire
         ("BH_FREE", "wasm_runtime_free"),
-        "_WINSOCK_DEPRECATED_NO_WARNINGS",
         ("BH_MALLOC", "wasm_runtime_malloc"),
+        "_WINSOCK_DEPRECATED_NO_WARNINGS",
         "HAVE_STRUCT_TIMESPEC",
         ("WASM_ENABLE_BULK_MEMORY", 0),
         ("WASM_ENABLE_FAST_INTERP", 0),
