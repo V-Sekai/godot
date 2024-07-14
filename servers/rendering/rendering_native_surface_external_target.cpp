@@ -1,0 +1,395 @@
+/**************************************************************************/
+/*  rendering_native_surface_external_target.cpp                          */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#include "servers/rendering/rendering_native_surface_external_target.h"
+
+#include "servers/display_server_embedded.h"
+#include "servers/rendering/rendering_device.h"
+#include "drivers/vulkan/rendering_device_driver_vulkan.h"
+#include "platform_gl.h"
+
+struct WindowData {
+#if defined(GLES3_ENABLED)
+	uint32_t backingWidth;
+	uint32_t backingHeight;
+	GLuint viewFramebuffer;
+	GLuint colorTexture;
+	GLuint depthTexture;
+#endif
+};
+
+class GLESContextExternal : public GLESContext {
+public:
+	void set_surface(Ref<RenderingNativeSurfaceExternalTarget> p_surface);
+	void set_opengl_callbacks(Callable p_make_current, Callable p_done_current, GLADloadfunc p_get_proc_address);
+	virtual void initialize() override;
+	virtual bool create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) override;
+	virtual void resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) override;
+	virtual void begin_rendering(DisplayServer::WindowID p_id) override;
+	virtual void end_rendering(DisplayServer::WindowID p_id) override;
+	virtual bool destroy_framebuffer(DisplayServer::WindowID p_id) override;
+	virtual void deinitialize() override;
+	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const override;
+	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const override;
+	virtual GLuint get_color_texture(DisplayServer::WindowID p_id) const override;
+
+	GLESContextExternal() {};
+	~GLESContextExternal() {};
+
+private:
+	Ref<RenderingNativeSurfaceExternalTarget> surface;
+	HashMap<DisplayServer::WindowID, WindowData> windows;
+	HashMap<DisplayServer::WindowID, Ref<RenderingNativeSurface>> window_surface_map;
+	HashMap<Ref<RenderingNativeSurface>, DisplayServer::WindowID> surface_window_map;
+#if defined(GLES3_ENABLED)
+	Callable make_current;
+    Callable done_current;
+	GLADloadfunc get_proc_address = nullptr;
+#endif
+};
+
+void GLESContextExternal::set_surface(Ref<RenderingNativeSurfaceExternalTarget> p_surface) {
+	surface = p_surface;
+}
+
+void GLESContextExternal::set_opengl_callbacks(Callable p_make_current, Callable p_done_current, GLADloadfunc p_get_proc_address) {
+	make_current = p_make_current;
+	done_current = p_done_current;
+	get_proc_address = p_get_proc_address;
+}
+
+void GLESContextExternal::initialize() {
+#if defined(GLES3_ENABLED)
+	RasterizerGLES3::preloadGL(get_proc_address);
+
+	make_current.call();
+#endif
+}
+
+bool GLESContextExternal::create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) {
+	Ref<RenderingNativeSurfaceExternalTarget> external_surface = Object::cast_to<RenderingNativeSurfaceExternalTarget>(*p_native_surface);
+	if (!external_surface.is_valid()) {
+		ERR_PRINT("Given surface is not RenderingNativeSurfaceExternalTarget.");
+		return false;
+	}
+
+	WindowData& gles_data = windows[p_id];
+	gles_data.backingWidth = surface->get_width();
+	gles_data.backingHeight = surface->get_height();
+
+#if defined(GLES3_ENABLED)
+	make_current.call();
+
+	// Generate Framebuffer.
+	glGenFramebuffers(1, &gles_data.viewFramebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, gles_data.viewFramebuffer);
+	
+	// Bind color texture.
+	glGenTextures(1, &gles_data.colorTexture);
+	glBindTexture(GL_TEXTURE_2D, gles_data.colorTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, gles_data.backingWidth, gles_data.backingHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gles_data.colorTexture, 0);
+
+	// Bind depth texture.
+	glGenTextures(1, &gles_data.depthTexture);
+	glBindTexture(GL_TEXTURE_2D, gles_data.depthTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, gles_data.backingWidth, gles_data.backingHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, gles_data.depthTexture, 0);
+
+	// Check if framebuffer has been created successfully.
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		ERR_PRINT(vformat("failed to make complete framebuffer object: code %d", glCheckFramebufferStatus(GL_FRAMEBUFFER)));
+		return false;
+	}
+
+	surface_window_map[external_surface] = p_id;
+	window_surface_map[p_id] = external_surface;
+
+	return true;
+#endif
+}
+
+void GLESContextExternal::resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) {
+	ERR_FAIL_COND(!windows.has(p_id));
+	WindowData& gles_data = windows[p_id];
+#if defined(GLES3_ENABLED)
+	make_current.call();
+	destroy_framebuffer(p_id);
+	surface->resize(Size2i(p_width, p_height));
+	create_framebuffer(p_id, surface);
+#endif
+}
+
+void GLESContextExternal::begin_rendering(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND(!windows.has(p_id));
+	WindowData& gles_data = windows[p_id];
+#if defined(GLES3_ENABLED)
+	make_current.call();
+	glBindFramebuffer(GL_FRAMEBUFFER, gles_data.viewFramebuffer);
+#endif
+}
+
+void GLESContextExternal::end_rendering(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND(!windows.has(p_id));
+#if defined(GLES3_ENABLED)
+	make_current.call();
+#ifdef DEBUG_ENABLED
+	GLenum err = glGetError();
+	if (err) {
+		ERR_PRINT(vformat("DrawView: %d error", err));
+	}
+#endif
+#endif
+}
+
+bool GLESContextExternal::destroy_framebuffer(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND_V(!windows.has(p_id), false);
+	WindowData& gles_data = windows[p_id];
+#if defined(GLES3_ENABLED)
+	make_current.call();
+
+	glDeleteFramebuffers(1, &gles_data.viewFramebuffer);
+	gles_data.viewFramebuffer = 0;
+
+	glDeleteTextures(1, &gles_data.colorTexture);
+	gles_data.colorTexture = 0;
+
+	if (gles_data.depthTexture) {
+		glDeleteTextures(1, &gles_data.depthTexture);
+		gles_data.depthTexture = 0;
+	}
+
+	Ref<RenderingNativeSurfaceExternalTarget> external_surface = window_surface_map[p_id];
+	surface_window_map.erase(external_surface);
+	window_surface_map.erase(p_id);
+
+	windows.erase(p_id);
+	return true;
+#else
+	windows.erase(p_id);
+	return false;
+#endif
+}
+
+void GLESContextExternal::deinitialize() {
+#if defined(GLES3_ENABLED)
+	done_current.call();
+#endif
+}
+
+uint64_t GLESContextExternal::get_fbo(DisplayServer::WindowID p_id) const {
+	ERR_FAIL_COND_V(!windows.has(p_id), 0);
+	const WindowData& gles_data = windows[p_id];
+#if defined(GLES3_ENABLED)
+	return gles_data.viewFramebuffer;
+#else
+	return 0;
+#endif
+}
+
+DisplayServer::WindowID GLESContextExternal::get_window(Ref<RenderingNativeSurface> p_native_surface) const {
+	ERR_FAIL_COND_V(!surface_window_map.has(p_native_surface), DisplayServer::INVALID_WINDOW_ID);
+	return surface_window_map[p_native_surface];
+}
+
+GLuint GLESContextExternal::get_color_texture(DisplayServer::WindowID p_id) const {
+	ERR_FAIL_COND_V(!windows.has(p_id), 0);
+	const WindowData& gles_data = windows[p_id];
+#if defined(GLES3_ENABLED)
+	return gles_data.colorTexture;
+#else
+	return 0;
+#endif
+}
+
+void RenderingNativeSurfaceExternalTarget::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_width"), &RenderingNativeSurfaceExternalTarget::get_width);
+	ClassDB::bind_method(D_METHOD("get_height"), &RenderingNativeSurfaceExternalTarget::get_height);
+	ClassDB::bind_method(D_METHOD("get_window"), &RenderingNativeSurfaceExternalTarget::get_window);
+
+	ClassDB::bind_static_method("RenderingNativeSurfaceExternalTarget", D_METHOD("create", "rendering_driver", "initial_size"), &RenderingNativeSurfaceExternalTarget::create_api);
+	
+	ClassDB::bind_method(D_METHOD("set_external_swapchain_callbacks", "images_created", "images_released"), &RenderingNativeSurfaceExternalTarget::set_external_swapchain_callbacks);
+	ClassDB::bind_method(D_METHOD("resize", "new_size"), &RenderingNativeSurfaceExternalTarget::resize);
+	ClassDB::bind_method(D_METHOD("acquire_next_image"), &RenderingNativeSurfaceExternalTarget::acquire_next_image);
+	ClassDB::bind_method(D_METHOD("release_image", "index"), &RenderingNativeSurfaceExternalTarget::release_image);
+
+	ClassDB::bind_method(D_METHOD("set_opengl_callbacks", "make_current", "done_current", "get_proc_address"), &RenderingNativeSurfaceExternalTarget::set_opengl_callbacks);
+	ClassDB::bind_method(D_METHOD("get_frame_texture", "window_id"), &RenderingNativeSurfaceExternalTarget::get_frame_texture);
+}
+
+RenderingDeviceDriverVulkan *get_rendering_device_driver() {
+	RenderingDeviceDriverVulkan *driver = (RenderingDeviceDriverVulkan *)RenderingDevice::get_singleton()->get_driver();
+
+	return driver;
+}
+
+RDD::SwapChainID get_swapchain(RenderingContextDriver::SurfaceID p_surface) {
+	RenderingDevice *rendering_device = RenderingDevice::get_singleton();
+	RenderingContextDriverVulkan *context = (RenderingContextDriverVulkan *)rendering_device->get_context();
+	DisplayServer::WindowID window = context->window_get_from_surface(p_surface);
+
+	ERR_FAIL_COND_V_MSG(window == DisplayServer::INVALID_WINDOW_ID, RDD::SwapChainID(), "Window not set for this surface.");
+
+	RDD::SwapChainID swapchain = rendering_device->screen_get_swapchain(window);
+
+	return swapchain;
+}
+
+uint32_t RenderingNativeSurfaceExternalTarget::get_width() const {
+	return width;
+}
+
+uint32_t RenderingNativeSurfaceExternalTarget::get_height() const {
+	return height;
+}
+
+DisplayServer::WindowID RenderingNativeSurfaceExternalTarget::get_window() {
+	DisplayServer::WindowID window;
+
+	if (rendering_driver == "vulkan") {
+		RenderingDevice *rendering_device = RenderingDevice::get_singleton();
+		RenderingContextDriverVulkan *context = (RenderingContextDriverVulkan *)rendering_device->get_context();
+		window = context->window_get_from_surface(surface);
+	} else if (rendering_driver == "opengl3") {
+		window = DisplayServerEmbedded::get_singleton()->get_native_surface_window_id(Ref<RenderingNativeSurface>(this));
+	}
+
+	return window;
+}
+
+void RenderingNativeSurfaceExternalTarget::set_surface(RenderingContextDriver::SurfaceID p_surface) {
+	ERR_FAIL_COND_MSG(p_surface == -1, "Invalid surface given.");
+
+	surface = p_surface;
+}
+
+RenderingContextDriver::SurfaceID RenderingNativeSurfaceExternalTarget::get_surface_id() {
+	return surface;
+}
+
+Ref<RenderingNativeSurfaceExternalTarget> RenderingNativeSurfaceExternalTarget::create_api(String p_rendering_driver, Size2i p_initial_size) {
+    Ref<RenderingNativeSurfaceExternalTarget> result = nullptr;
+#ifdef VULKAN_ENABLED
+	result = create(p_rendering_driver, p_initial_size);
+#endif
+	return result;
+}
+
+#ifdef VULKAN_ENABLED
+Ref<RenderingNativeSurfaceExternalTarget> RenderingNativeSurfaceExternalTarget::create(String p_rendering_driver, Size2i p_initial_size) {
+    Ref<RenderingNativeSurfaceExternalTarget> result(memnew(RenderingNativeSurfaceExternalTarget(p_rendering_driver, p_initial_size.width, p_initial_size.height)));
+	return result;
+}
+#endif
+
+RenderingContextDriver *RenderingNativeSurfaceExternalTarget::create_rendering_context(const String &p_driver_name) {
+#if defined(VULKAN_ENABLED)
+	return memnew(RenderingContextDriverVulkan);
+#else
+	return nullptr;
+#endif
+}
+
+void RenderingNativeSurfaceExternalTarget::setup_external_swapchain_callbacks() {
+	RenderingDeviceDriverVulkan *driver = get_rendering_device_driver();
+	RDD::SwapChainID swapchain = get_swapchain(surface);
+
+	ERR_FAIL_COND_MSG(swapchain == RDD::SwapChainID(), "Swapchain not set for this surface.");
+
+	driver->external_swap_chain_set_callbacks(swapchain, post_images_created_callback, pre_images_released_callback);
+}
+
+void RenderingNativeSurfaceExternalTarget::set_external_swapchain_callbacks(Callable p_images_created, Callable p_images_released) {
+	// NOTE: p_images_created: host wraps godot's swapchain images into qsgvulkantextures usable by the host
+    // NOTE: p_images_released: host frees all it's qsgvulkantextures
+
+	post_images_created_callback = p_images_created;
+	pre_images_released_callback = p_images_released;
+}
+
+void RenderingNativeSurfaceExternalTarget::resize(Size2i p_new_size) {
+	width = p_new_size.x;
+	height = p_new_size.y;
+
+	if (rendering_driver == "vulkan") {
+		RenderingDevice *rendering_device = RenderingDevice::get_singleton();
+		RenderingContextDriverVulkan *context = (RenderingContextDriverVulkan *)rendering_device->get_context();
+		context->surface_set_size(surface, p_new_size.x, p_new_size.y);
+	}
+}
+
+int RenderingNativeSurfaceExternalTarget::acquire_next_image() {
+	RenderingDeviceDriverVulkan *driver = get_rendering_device_driver();
+	RDD::SwapChainID swapchain = get_swapchain(surface);
+
+	ERR_FAIL_COND_V_MSG(swapchain == RDD::SwapChainID(), -1, "Swapchain not set for this surface.");
+
+	int acquired_buffer_index = driver->external_swap_chain_grab_image(swapchain);
+	return acquired_buffer_index;
+}
+
+void RenderingNativeSurfaceExternalTarget::release_image(int p_index) {
+	RenderingDeviceDriverVulkan *driver = get_rendering_device_driver();
+	RDD::SwapChainID swapchain = get_swapchain(surface);
+
+	ERR_FAIL_COND_MSG(swapchain == RDD::SwapChainID(), "Swapchain not set for this surface.");
+
+	driver->external_swap_chain_release_image(swapchain, p_index);
+}
+
+void RenderingNativeSurfaceExternalTarget::set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address) {
+	make_current = p_make_current;
+	done_current = p_done_current;
+	get_proc_address = (GLADloadfunc)p_get_proc_address;
+}
+
+GLESContext *RenderingNativeSurfaceExternalTarget::create_gles_context() {
+#if defined(GLES3_ENABLED)
+	GLESContextExternal *gles_context = memnew(GLESContextExternal);
+	gles_context->set_surface(Ref<RenderingNativeSurfaceExternalTarget>(this));
+	gles_context->set_opengl_callbacks(make_current, done_current, get_proc_address);
+	return (GLESContext *)gles_context;
+#else
+	return nullptr;
+#endif
+}
+
+uint32_t RenderingNativeSurfaceExternalTarget::get_frame_texture(DisplayServer::WindowID p_window_id) const {
+	return DisplayServer::get_singleton()->window_get_native_handle(DisplayServer::WINDOW_HANDLE, p_window_id);
+}
+
+RenderingNativeSurfaceExternalTarget::RenderingNativeSurfaceExternalTarget(String p_rendering_driver, int p_width, int p_height) {
+	rendering_driver = p_rendering_driver;
+	width = p_width;
+	height = p_height;
+}

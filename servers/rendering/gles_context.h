@@ -40,12 +40,17 @@ class GLESContext {
 public:
 	virtual void initialize() = 0;
 	virtual bool create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) = 0;
-	virtual void resized(DisplayServer::WindowID p_id) = 0;
+	virtual void resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) = 0;
 	virtual void begin_rendering(DisplayServer::WindowID p_id) = 0;
 	virtual void end_rendering(DisplayServer::WindowID p_id) = 0;
 	virtual bool destroy_framebuffer(DisplayServer::WindowID p_id) = 0;
 	virtual void deinitialize() = 0;
 	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const = 0;
+	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const = 0;
+	virtual GLuint get_color_texture(DisplayServer::WindowID p_id) const = 0;
+
+	GLESContext() {};
+	virtual ~GLESContext() {};
 };
 
 #endif // GLES_CONTEXT_H

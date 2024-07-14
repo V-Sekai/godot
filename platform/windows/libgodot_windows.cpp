@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_windows.cpp                           */
+/*  libgodot_windows.cpp                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,46 +28,43 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#if defined(WINDOWS_ENABLED) && defined(VULKAN_ENABLED)
+#include "core/extension/libgodot.h"
 
-#include "core/os/os.h"
+#include "core/extension/godot_instance.h"
+#include "main/main.h"
 
-#include "drivers/vulkan/rendering_native_surface_vulkan.h"
-#include "rendering_context_driver_vulkan_windows.h"
+#include "os_windows.h"
 
-#include "drivers/vulkan/godot_vulkan.h"
+static OS_Windows *os = nullptr;
 
-const char *RenderingContextDriverVulkanWindows::_get_platform_surface_extension() const {
-	return VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
+static GodotInstance *instance = nullptr;
+
+GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, InvokeCallbackFunction p_async_func, ExecutorData p_async_data, InvokeCallbackFunction p_sync_func, ExecutorData p_sync_data, void *p_platform_data) {
+	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
+
+	os = new OS_Windows((HINSTANCE) p_platform_data);
+
+	Error err = Main::setup(p_argv[0], p_argc - 1, &p_argv[1], false);
+	if (err != OK) {
+		return nullptr;
+	}
+
+	instance = memnew(GodotInstance);
+	if (!instance->initialize(p_init_func)) {
+		memdelete(instance);
+		instance = nullptr;
+		return nullptr;
+	}
+
+	return (GDExtensionObjectPtr)instance;
 }
 
-RenderingContextDriverVulkanWindows::RenderingContextDriverVulkanWindows() {
-	// Workaround for Vulkan not working on setups with AMD integrated graphics + NVIDIA dedicated GPU (GH-57708).
-	// This prevents using AMD integrated graphics with Vulkan entirely, but it allows the engine to start
-	// even on outdated/broken driver setups.
-	OS::get_singleton()->set_environment("DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1", "1");
+void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
+	GodotInstance *godot_instance = (GodotInstance *)p_godot_instance;
+	if (instance == godot_instance) {
+		godot_instance->stop();
+		memdelete(godot_instance);
+		instance = nullptr;
+		Main::cleanup();
+	}
 }
-
-RenderingContextDriverVulkanWindows::~RenderingContextDriverVulkanWindows() {
-	// Does nothing.
-}
-
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanWindows::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
-	Ref<RenderingNativeSurfaceWindows> windows_native_surface = Object::cast_to<RenderingNativeSurfaceWindows>(*p_native_surface);
-	ERR_FAIL_COND_V(windows_native_surface.is_null(), SurfaceID());
-
-	VkWin32SurfaceCreateInfoKHR create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	create_info.hinstance = windows_native_surface->get_instance();
-	create_info.hwnd = windows_native_surface->get_window_handle();
-
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	VkResult err = vkCreateWin32SurfaceKHR(instance_get(), &create_info, get_allocation_callbacks(VK_OBJECT_TYPE_SURFACE_KHR), &vk_surface);
-	ERR_FAIL_COND_V(err != VK_SUCCESS, SurfaceID());
-
-	Ref<RenderingNativeSurfaceVulkan> vulkan_surface = RenderingNativeSurfaceVulkan::create(vk_surface);
-	RenderingContextDriver::SurfaceID result = RenderingContextDriverVulkan::surface_create(vulkan_surface);
-	return result;
-}
-
-#endif // WINDOWS_ENABLED && VULKAN_ENABLED

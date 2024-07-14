@@ -38,3 +38,6 @@ RenderingNativeSurface::RenderingNativeSurface() {
 
 RenderingNativeSurface::~RenderingNativeSurface() {
 }
+
+void RenderingNativeSurface::setup_external_swapchain_callbacks() {
+}

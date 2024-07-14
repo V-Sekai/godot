@@ -375,6 +375,7 @@ public:
 
 	virtual FenceID fence_create() = 0;
 	virtual Error fence_wait(FenceID p_fence) = 0;
+	virtual void frame_cleanup(FenceID p_fence) = 0;
 	virtual void fence_free(FenceID p_fence) = 0;
 
 	/********************/
@@ -450,6 +451,24 @@ public:
 	// Tells the swapchain the max_fps so it can use the proper frame pacing.
 	// Android uses this with Swappy library. Some implementations or platforms may ignore this hint.
 	virtual void swap_chain_set_max_fps(SwapChainID p_swap_chain, int p_max_fps) {}
+
+	// Retrieve a swap chain's mutex.
+	virtual BinaryMutex &swap_chain_get_mutex(SwapChainID p_swap_chain) = 0;
+
+	// Set whether a frame is currently used by a swap chain or not.
+	virtual void swap_chain_set_frame_in_use(SwapChainID p_swap_chain, size_t p_index, bool p_in_use) = 0;
+
+	// Retrieve the buffer of the last drawn frame.
+	virtual int swap_chain_get_last_drawn_buffer(SwapChainID p_swap_chain) = 0;
+
+	// Update the buffer of the last drawn frame.
+	virtual void swap_chain_set_last_drawn_buffer(SwapChainID p_swap_chain, int p_buffer) = 0;
+
+	// Retrieve the index of the currently drawn frame.
+	virtual uint32_t swap_chain_get_image_index(SwapChainID p_swap_chain) = 0;
+
+	// Retrieve swap chain version.
+	virtual uint64_t swap_chain_get_version(SwapChainID p_swap_chain) = 0;
 
 	// Wait until all rendering associated to the swap chain is finished before deleting it.
 	virtual void swap_chain_free(SwapChainID p_swap_chain) = 0;
