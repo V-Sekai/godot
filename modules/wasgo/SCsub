@@ -7,7 +7,21 @@ env.Append(
     ],
 )
 
-module_env = env.Clone()
+wasgo_env = env.Clone()
+
+common_includes = [
+    "thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
+    "thirdparty/wasm-micro-runtime/core/iwasm/aot",
+    "thirdparty/wasm-micro-runtime/core/iwasm/include",
+    "thirdparty/wasm-micro-runtime/core/shared/mem-alloc",
+    "thirdparty/wasm-micro-runtime/core/iwasm/common",
+    "thirdparty/wasm-micro-runtime/core/shared/utils",
+]
+
+wasgo_env.Prepend(CPPPATH=common_includes)
+
+module_env = wasgo_env.Clone()
+module_env.disable_warnings()
 
 if not module_env.msvc:
     module_env.Append(
@@ -22,15 +36,6 @@ if not module_env.msvc:
             "-Wno-discarded-qualifiers",
         ]
     )
-
-common_includes = [
-    "thirdparty/wasm-micro-runtime/core/iwasm/interpreter",
-    "thirdparty/wasm-micro-runtime/core/iwasm/aot",
-    "thirdparty/wasm-micro-runtime/core/iwasm/include",
-    "thirdparty/wasm-micro-runtime/core/shared/mem-alloc",
-    "thirdparty/wasm-micro-runtime/core/iwasm/common",
-    "thirdparty/wasm-micro-runtime/core/shared/utils",
-]
 
 common_sdk = [
     "thirdparty/wasm-micro-runtime/core/shared/mem-alloc/ems/ems_alloc.c",
@@ -111,8 +116,6 @@ platform_settings = {
     },
 }
 
-module_env.Prepend(CPPPATH=common_includes)
-
 platform = module_env["platform"]
 if platform in platform_settings:
     settings = platform_settings[platform]
@@ -152,12 +155,6 @@ if platform == "windows":
     module_env["ASFLAGS"] = "-c"
     module_env.Append(CPPDEFINES=["BUILD_TARGET_X86_64"])
 
-env.Append(
-    CPPDEFINES = [
-            ("WASM_API_EXTERN", ""),
-            ("WASM_RUNTIME_API_EXTERN", "")
-        ]
-    )
 module_env.Append(
     CPPDEFINES=[
         # "WASM_ENABLE_FAST_JIT", TODO: 20240707 fire
@@ -178,11 +175,9 @@ module_env.Append(
 
 )
 
-env_thirdparty = module_env.Clone()
-env_thirdparty.disable_warnings()
-env_thirdparty.add_source_files(env.modules_sources, common_sdk)
-env_thirdparty.add_source_files(env.modules_sources, "src/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "api/*.cpp")
-env_thirdparty.add_source_files(env.modules_sources, "api/shared/*.cpp")
+module_env.add_source_files(env.modules_sources, common_sdk)
+module_env.add_source_files(env.modules_sources, "src/*.cpp")
+module_env.add_source_files(env.modules_sources, "api/*.cpp")
+module_env.add_source_files(env.modules_sources, "api/shared/*.cpp")
 
-module_env.add_source_files(env.modules_sources, "*.cpp")
+wasgo_env.add_source_files(env.modules_sources, "*.cpp")
