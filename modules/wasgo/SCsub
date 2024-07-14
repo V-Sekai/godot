@@ -70,6 +70,7 @@ common_sdk = [
     "thirdparty/wasm-micro-runtime/core/iwasm/interpreter/wasm_runtime.c",
     "thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_intrinsic.c",
     "thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_loader_common.c",
+    "thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c",
 ]
 
 platform_settings = {
