@@ -2,8 +2,8 @@ Import("env")
 
 env.Append(
     CPPDEFINES=[
-        ("WASM_API_EXTERN", ""),
-        ("WASM_RUNTIME_API_EXTERN", ""),
+        ("WASM_API_EXTERN", "extern"),
+        ("WASM_RUNTIME_API_EXTERN", "extern"),
     ],
 )
 
@@ -70,7 +70,6 @@ common_sdk = [
     "thirdparty/wasm-micro-runtime/core/iwasm/interpreter/wasm_runtime.c",
     "thirdparty/wasm-micro-runtime/core/iwasm/aot/aot_intrinsic.c",
     "thirdparty/wasm-micro-runtime/core/iwasm/common/wasm_loader_common.c",
-    "thirdparty/wasm-micro-runtime/core/iwasm/common/arch/invokeNative_general.c",
 ]
 
 platform_settings = {
@@ -167,8 +166,6 @@ module_env.Append(
         # "WASM_ENABLE_FAST_JIT", TODO: 20240707 fire
         ("BH_FREE", "wasm_runtime_free"),
         ("BH_MALLOC", "wasm_runtime_malloc"),
-        "_WINSOCK_DEPRECATED_NO_WARNINGS",
-        "HAVE_STRUCT_TIMESPEC",
         ("WASM_ENABLE_BULK_MEMORY", 0),
         ("WASM_ENABLE_FAST_INTERP", 0),
         ("WASM_ENABLE_INTERP", 1),
@@ -178,6 +175,9 @@ module_env.Append(
         ("WASM_ENABLE_MULTI_MODULE", 0),
         ("WASM_ENABLE_SHARED_MEMORY", 0),
         ("WASGO_API_GENERATION", "wasgo_api.json"),
+        "COMPILING_WASM_RUNTIME_API",
+        "_WINSOCK_DEPRECATED_NO_WARNINGS",
+        "HAVE_STRUCT_TIMESPEC",
     ]
 
 )
