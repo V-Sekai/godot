@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_macos.h                               */
+/*  rendering_native_surface.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,28 +28,24 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef RENDERING_NATIVE_SURFACE_H
+#define RENDERING_NATIVE_SURFACE_H
 
-#ifdef VULKAN_ENABLED
+#include "core/object/class_db.h"
+#include "core/object/ref_counted.h"
 
-#include "drivers/vulkan/rendering_context_driver_vulkan.h"
+class RenderingContextDriver;
 
-#import <QuartzCore/CAMetalLayer.h>
+class RenderingNativeSurface : public RefCounted {
+	GDCLASS(RenderingNativeSurface, RefCounted);
 
-class RenderingContextDriverVulkanMacOS : public RenderingContextDriverVulkan {
-private:
-	virtual const char *_get_platform_surface_extension() const override final;
-
-protected:
-	SurfaceID surface_create(const void *p_platform_data) override final;
+	static void _bind_methods();
 
 public:
-	struct WindowPlatformData {
-		CAMetalLayer *const *layer_ptr;
-	};
+	RenderingNativeSurface();
+	~RenderingNativeSurface();
 
-	RenderingContextDriverVulkanMacOS();
-	~RenderingContextDriverVulkanMacOS();
+	virtual RenderingContextDriver *create_rendering_context(const String &p_driver_name) = 0;
 };
 
-#endif // VULKAN_ENABLED
+#endif // RENDERING_NATIVE_SURFACE_H
