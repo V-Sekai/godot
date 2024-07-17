@@ -129,7 +129,6 @@ env.__class__.use_windows_spawn_fix = methods.use_windows_spawn_fix
 
 env.__class__.add_shared_library = methods.add_shared_library
 env.__class__.add_library = methods.add_library
-env.__class__.add_program = methods.add_program
 env.__class__.CommandNoCache = methods.CommandNoCache
 env.__class__.Run = methods.Run
 env.__class__.disable_warnings = methods.disable_warnings
@@ -193,6 +192,14 @@ opts.Add("custom_modules", "A list of comma-separated directory paths containing
 opts.Add(BoolVariable("custom_modules_recursive", "Detect custom modules recursively for each specified path.", True))
 
 # Advanced options
+opts.Add(
+    EnumVariable(
+        "library_type",
+        "Build library type",
+        "executable",
+        ("executable", "static_library", "shared_library"),
+    )
+)
 opts.Add(
     BoolVariable(
         "dev_mode", "Alias for dev options: verbose=yes warnings=extra werror=yes tests=yes strict_checks=yes", False
@@ -297,7 +304,21 @@ if env["import_env_vars"]:
 
 # Platform selection: validate input, and add options.
 
-if not env["platform"]:
+if env.scons_version < (4, 3) and not env["platform"]:
+    env["platform"] = env["p"]
+
+if env["library_type"] == "static_library":
+    env.Append(CPPDEFINES=["LIBGODOT_ENABLED"])
+elif env["library_type"] == "shared_library":
+    env.Append(CPPDEFINES=["LIBGODOT_ENABLED"])
+    env.Append(CCFLAGS=["-fPIC"])
+    env.Append(STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME=True)
+else:
+    env.__class__.add_program = methods.add_program
+
+if env["platform"] != "":
+    selected_platform = env["platform"]
+else:
     # Missing `platform` argument, try to detect platform automatically
     if (
         sys.platform.startswith("linux")
@@ -314,6 +335,7 @@ if not env["platform"]:
 
     if env["platform"]:
         print(f"Automatically detected platform: {env['platform']}")
+
 
 # Deprecated aliases kept for compatibility.
 if env["platform"] in compatibility_platform_aliases:

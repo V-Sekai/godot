@@ -31,6 +31,7 @@ android_files = [
     "variant/callable_jni.cpp",
     "dialog_utils_jni.cpp",
     "game_menu_utils_jni.cpp",
+    "rendering_native_surface_android.cpp",
 ]
 
 env_android = env.Clone()
