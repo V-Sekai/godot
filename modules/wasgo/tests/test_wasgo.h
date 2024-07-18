@@ -225,6 +225,7 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 
     WasGoState *state = memnew(WasGoState);
     state->set_wasm_script(reference, runtime);
+    memdelete(state);
     // MESSAGE("Creating Wasm callable.");
     // WasGoCallable callable = WasGoCallable(state, "test");
     // Variant var = Variant(420);
