@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_logistics.h                                                      */
+/*  test_wasgo.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -34,11 +34,11 @@
 #include "modules/wasgo/src/wasgo_runtime.h"
 #include "tests/test_macros.h"
 
-#include "modules/wasgo/thirdparty/wasm-micro-runtime/core/iwasm/include/wasm_export.h"
-#include <stdlib.h>
+#include "modules/wasgo/src/resource_wasm.h"
 #include "modules/wasgo/src/wasgo_callable.h"
 #include "modules/wasgo/src/wasgo_state.h"
-#include "modules/wasgo/src/resource_wasm.h"
+#include "modules/wasgo/thirdparty/wasm-micro-runtime/core/iwasm/include/wasm_export.h"
+#include <stdlib.h>
 
 namespace TestWasgo {
 
@@ -211,28 +211,28 @@ j!\002 \a(\002\000\r\000 \006A\001\020\364\200\200\200\000\v \004 \0026\002\f \0
 \000get\000..\\..\\api\\Custom/cowdata.h\000p_index\000size()\000..\\..\\api\\Custom/Vector.h\000operator[]\000((Vector<T> *)(this))->_cowdata.size()\000converting string to nodepath\000entering for loop\000about to memnew\000entering another for loop\000path so far:\000, \000, \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000Unicode error: \000invalid skip\000overlong rejected\000no space left\000invalid len\000invalid utf8\000invalid utf8 overlong\000../../api/Custom/ustring.cpp\000Condition \"overflow\" is true. Returned: sign == 1 \077 (0x7fffffff) : (-1-0x7fffffff)\000Condition \"overflow\" is true. Returned: sign == 1 \077 (0x7fffffffffffffff) : (-1-0x7fffffffffffffff)\000.\000to_int\000to_int64\000find\000read_pos>=len\000get\000..\\..\\api\\Custom/cowdata.h\000p_index\000size()\000resize\000Condition \"p_size < 0\" is true. Returned: ERR_INVALID_PARAMETER\000Condition \"!_get_alloc_size_checked(p_size, &alloc_size)\" is true. Returned: ERR_OUT_OF_MEMORY\000Condition \"!ptr\" is true. Returned: ERR_OUT_OF_MEMORY\000Condition \"!_ptrnew\" is true. Returned: ERR_OUT_OF_MEMORY\000set\000built_in_strtod\000Exponent too high\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\044\100\000\000\000\000\000\000Y\100\000\000\000\000\000\210\303\100\000\000\000\000\204\327\227A\000\200\3407y\303AC\027n\005\265\265\270\223F\365\371\077\351\003O8M2\0350\371Hw\202Z<\277s\177\335O\025u, \000";
 const size_t TURNING_WASM_len = sizeof(TURNING_WASM) - 1;
 TEST_CASE("[Modules][WasGo] Turning Callable") {
-    RuntimeInitArgs init_args;
-    memset(&init_args, 0, sizeof(RuntimeInitArgs));
+	RuntimeInitArgs init_args;
+	memset(&init_args, 0, sizeof(RuntimeInitArgs));
 
 	Vector<uint8_t> wasm_buffer;
-    wasm_buffer.resize(TURNING_WASM_len);
-    memcpy(wasm_buffer.ptrw(), TURNING_WASM, TURNING_WASM_len);
+	wasm_buffer.resize(TURNING_WASM_len);
+	memcpy(wasm_buffer.ptrw(), TURNING_WASM, TURNING_WASM_len);
 
-    Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
-    Ref<WasmResource> reference = memnew(WasmResource);
+	Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
+	Ref<WasmResource> reference = memnew(WasmResource);
 	reference->set_wasm_buffer(wasm_buffer, runtime);
-    REQUIRE_MESSAGE(reference.is_valid(), "Creating WasGoState.");
+	REQUIRE_MESSAGE(reference.is_valid(), "Creating WasGoState.");
 
-    WasGoState *state = memnew(WasGoState);
-    state->set_wasm_script(reference, runtime);
-    memdelete(state);
-    // MESSAGE("Creating Wasm callable.");
-    // WasGoCallable callable = WasGoCallable(state, "test");
-    // Variant var = Variant(420);
-    // const Variant *args = &var;
-    // Variant return_val = Variant(0);
-    // Callable::CallError r_call_error;
-    // callable.call(&args, 0, return_val, r_call_error);
+	WasGoState *state = memnew(WasGoState);
+	state->set_wasm_script(reference, runtime);
+	memdelete(state);
+	// MESSAGE("Creating Wasm callable.");
+	// WasGoCallable callable = WasGoCallable(state, "test");
+	// Variant var = Variant(420);
+	// const Variant *args = &var;
+	// Variant return_val = Variant(0);
+	// Callable::CallError r_call_error;
+	// callable.call(&args, 0, return_val, r_call_error);
 }
 } // namespace TestWasgo
 

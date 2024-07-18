@@ -50,6 +50,7 @@ class WasGoRuntime : public Resource {
 	RID_PtrOwner<WASMModuleCommon> module_rids;
 	static char global_heap_buf[512 * 1024 * 100];
 	static RuntimeInitArgs init_args;
+
 public:
 	RID load_module(Vector<uint8_t> wasm_code, String &r_error);
 	void unload_module(RID module_rid);
