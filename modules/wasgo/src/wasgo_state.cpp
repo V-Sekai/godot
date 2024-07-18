@@ -28,13 +28,15 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "wasgo_state.h"
+#include <cstdint>
+
 #include "core/error/error_macros.h"
 #include "core/io/marshalls.h"
+
 #include "wasgo_callable.h"
 #include "wasgo_runtime.h"
-#include "wasm_export.h"
-#include <cstdint>
+#include "wasgo_state.h"
+#include "modules/wasgo/thirdparty/wasm-micro-runtime/core/iwasm/include/wasm_export.h"
 
 void WasGoState::_initialize(Ref<WasGoRuntime> p_wasgo_runtime) {
 	ERR_FAIL_COND(p_wasgo_runtime.is_null());
@@ -925,4 +927,25 @@ void WasGoState::set_int_property(int p_value, String key) {
 
 Callable WasGoState::get_callable(String p_func) {
 	return (Callable)memnew(WasGoCallable(this, p_func));
+}
+
+int WasGoState::call_wasm_function(String func_name, int argc, uint32_t *argv) const {
+    wasm_module_inst_t module_inst = module_inst;
+    if (!exec_env || !module_inst) {
+        ERR_PRINT("exec_env or module_inst is null.");
+        return -1;
+    }
+	// Lookup the function instance
+	wasm_function_inst_t func_inst = wasm_runtime_lookup_function(module_inst, func_name.utf8().get_data());
+	if (!func_inst) {
+		ERR_PRINT("Function instance not found.");
+		return -1;
+	}
+
+	// Call the wasm_runtime_call_wasm function with correct arguments
+	if (!wasm_runtime_call_wasm(exec_env, func_inst, argc, argv)) {
+		return -1;
+	}
+
+	return 0;
 }

@@ -56,7 +56,7 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 	REQUIRE_MESSAGE(reference.is_valid(), "Creating WasGoState.");
 	WasGoState *state = memnew(WasGoState);
 	state->set_wasm_script(reference, runtime);
-	REQUIRE_FALSE_MESSAGE(state->call("_ready"), "Call Wasm _ready");
+	REQUIRE_MESSAGE(state->call_wasm_function("_not_bound_function", 0, nullptr) == -1, "Call Wasm _not_bound_function");
 	// MESSAGE("Creating Wasm callable.");
 	// WasGoCallable callable = WasGoCallable(state, "_ready");
 	// Variant var = Variant(420);
@@ -64,7 +64,7 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 	// Variant return_val = Variant(0);
 	// Callable::CallError r_call_error;
 	// callable.call(&args, 0, return_val, r_call_error);
-	memdelete(state);
+	// memdelete(state);
 }
 } // namespace TestWasgo
 

@@ -139,8 +139,7 @@ public:
 	void init(wasm_module_t instance);
 
 	// Starting from here
-	int call_wasm_function(String func_name, int argc = 0, uint32_t *argv = nullptr);
-
+	int call_wasm_function(String func_name, int argc, uint32_t *argv) const;
 	int call_object_function(WasGoID object_id, int argc, uint32_t *argv);
 	// int call_variant_function(WasGoID object_id, int argc, uint32_t *argv);
 	// int call_array_function(WasGoID array_id, int argc, uint32_t *argv);
