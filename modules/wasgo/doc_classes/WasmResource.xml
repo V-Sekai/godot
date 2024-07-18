@@ -7,14 +7,14 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_wasm_buf">
+		<method name="get_wasm_buffer">
 			<return type="PackedByteArray" />
 			<description>
 			</description>
 		</method>
-		<method name="set_wasm_buf">
+		<method name="set_wasm_buffer">
 			<return type="void" />
-			<param index="0" name="buf" type="PackedByteArray" />
+			<param index="0" name="buffer" type="PackedByteArray" />
 			<param index="1" name="runtime" type="WasGoRuntime" />
 			<description>
 			</description>
