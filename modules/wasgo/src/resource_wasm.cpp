@@ -52,14 +52,14 @@ Error WasmResource::load_file(const String &p_path, Ref<WasGoRuntime> p_wasgo_ru
 	if (read_amt != buf.size()) {
 		return file->get_error();
 	}
-	set_wasm_buf(buf, p_wasgo_runtime);
+	set_wasm_buffer(buf, p_wasgo_runtime);
 	if (module_rid == RID()) {
 		return Error::ERR_COMPILATION_FAILED;
 	}
 	return OK;
 }
 
-void WasmResource::set_wasm_buf(Vector<uint8_t> p_buffer, Ref<WasGoRuntime> p_runtime) {
+void WasmResource::set_wasm_buffer(Vector<uint8_t> p_buffer, Ref<WasGoRuntime> p_runtime) {
 	if (module_rid != RID()) {
 		return; // Avoid mutating already-loaded module.
 	}
@@ -76,6 +76,6 @@ RID WasmResource::get_rid() const {
 }
 
 void WasmResource::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_wasm_buf", "buf", "runtime"), &WasmResource::set_wasm_buf);
-	ClassDB::bind_method(D_METHOD("get_wasm_buf"), &WasmResource::get_wasm_buf);
+	ClassDB::bind_method(D_METHOD("set_wasm_buffer", "buffer", "runtime"), &WasmResource::set_wasm_buffer);
+	ClassDB::bind_method(D_METHOD("get_wasm_buffer"), &WasmResource::get_wasm_buffer);
 }

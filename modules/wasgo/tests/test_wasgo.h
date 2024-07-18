@@ -220,7 +220,7 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 
     Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
     Ref<WasmResource> reference = memnew(WasmResource);
-	reference->set_wasm_buf(wasm_buffer, runtime);
+	reference->set_wasm_buffer(wasm_buffer, runtime);
     REQUIRE_MESSAGE(reference.is_valid(), "Creating WasGoState.");
 
     WasGoState *state = memnew(WasGoState);

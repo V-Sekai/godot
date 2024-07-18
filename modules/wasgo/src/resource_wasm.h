@@ -46,8 +46,8 @@ private:
 
 public:
 	Error load_file(const String &p_path, Ref<WasGoRuntime> p_wasgo_runtime);
-	void set_wasm_buf(Vector<uint8_t> p_buffer, Ref<WasGoRuntime> p_runtime);
-	const Vector<uint8_t> &get_wasm_buf() { return wasm_buf; }
+	void set_wasm_buffer(Vector<uint8_t> p_buffer, Ref<WasGoRuntime> p_runtime);
+	const Vector<uint8_t> &get_wasm_buffer() { return wasm_buf; }
 	virtual RID get_rid() const override;
 };
 
