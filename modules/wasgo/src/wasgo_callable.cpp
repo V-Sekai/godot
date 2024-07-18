@@ -35,18 +35,23 @@
 uint32_t WasGoCallable::hash() const {
 	return 0;
 };
+
 String WasGoCallable::get_as_text() const {
 	return "";
 };
+
 CallableCustom::CompareEqualFunc WasGoCallable::get_compare_equal_func() const {
 	return &equal_func;
 };
+
 CallableCustom::CompareLessFunc WasGoCallable::get_compare_less_func() const {
 	return &less_func;
 };
+
 ObjectID WasGoCallable::get_object() const {
 	return wasgo_state_id;
 }
+
 void WasGoCallable::call(const Variant **p_arguments, int p_argcount, Variant &r_return_value, Callable::CallError &r_call_error) const {
 	r_call_error.error = Callable::CallError::CALL_ERROR_INVALID_METHOD; // Can't find anything better
 	r_return_value = Variant();
@@ -77,9 +82,11 @@ void WasGoCallable::call(const Variant **p_arguments, int p_argcount, Variant &r
 	}
 	r_return_value = argv[0];
 };
+
 Error WasGoCallable::rpc(int p_peer_id, const Variant **p_arguments, int p_argcount, Callable::CallError &r_call_error) const {
 	return FAILED;
 };
+
 const Callable *WasGoCallable::get_base_comparator() const {
 	return nullptr;
 };
@@ -94,12 +101,14 @@ WasGoCallable::WasGoCallable(WasGoState *p_state, String p_func) {
 		print_line(String("wasgo_func: ") + p_func);
 	}
 }
+
 WasGoCallable::~WasGoCallable() {
 }
 
 bool WasGoCallable::equal_func(const CallableCustom *p_a, const CallableCustom *p_b) {
 	return false;
 }
+
 bool WasGoCallable::less_func(const CallableCustom *p_a, const CallableCustom *p_b) {
 	return false;
 }
