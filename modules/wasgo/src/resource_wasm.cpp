@@ -37,7 +37,7 @@
 
 #include "wasgo_runtime.h"
 
-Error WasmResource::load_file(const String &p_path) {
+Error WasmResource::load_file(const String &p_path, Ref<WasGoRuntime> p_wasgo_runtime) {
 	if (!wasm_buf.is_empty()) {
 		return Error::ERR_ALREADY_IN_USE;
 	}
@@ -52,21 +52,21 @@ Error WasmResource::load_file(const String &p_path) {
 	if (read_amt != buf.size()) {
 		return file->get_error();
 	}
-	set_wasm_buf(buf);
+	set_wasm_buf(buf, p_wasgo_runtime);
 	if (module_rid == RID()) {
 		return Error::ERR_COMPILATION_FAILED;
 	}
 	return OK;
 }
 
-void WasmResource::set_wasm_buf(Vector<uint8_t> buf) {
+void WasmResource::set_wasm_buf(Vector<uint8_t> p_buffer, Ref<WasGoRuntime> p_runtime) {
 	if (module_rid != RID()) {
 		return; // Avoid mutating already-loaded module.
 	}
-	ERR_FAIL_COND(!buf.size());
+	ERR_FAIL_COND(!p_buffer.size());
 	String err_string;
-	wasm_buf = buf;
-	module_rid = WasGoRuntime::get_singleton()->load_module(wasm_buf, err_string);
+	wasm_buf = p_buffer;
+	module_rid = p_runtime->load_module(wasm_buf, err_string);
 
 	ERR_FAIL_COND_MSG(module_rid == RID(), vformat("Failed to load wasm module %s: \"%s\".", get_path(), err_string));
 }
@@ -75,14 +75,7 @@ RID WasmResource::get_rid() const {
 	return module_rid;
 }
 
-WasmResource::~WasmResource() {
-	if (module_rid != RID()) {
-		WasGoRuntime::get_singleton()->unload_module(module_rid);
-	}
-}
-
 void WasmResource::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_wasm_buf", "buf"), &WasmResource::set_wasm_buf);
+	ClassDB::bind_method(D_METHOD("set_wasm_buf", "buf", "runtime"), &WasmResource::set_wasm_buf);
 	ClassDB::bind_method(D_METHOD("get_wasm_buf"), &WasmResource::get_wasm_buf);
-	ADD_PROPERTY(PropertyInfo(Variant::PACKED_BYTE_ARRAY, "wasm_buf"), "set_wasm_buf", "get_wasm_buf");
 }

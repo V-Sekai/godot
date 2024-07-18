@@ -30,8 +30,10 @@
 
 #ifndef WASGO_CALLABLE_H
 #define WASGO_CALLABLE_H
+
 #include "core/variant/callable.h"
 #include "core/variant/variant.h"
+
 #include "modules/wasgo/src/wasgo_state.h"
 
 class WasGoCallable : public CallableCustom {

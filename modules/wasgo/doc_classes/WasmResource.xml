@@ -6,8 +6,18 @@
 	</description>
 	<tutorials>
 	</tutorials>
-	<members>
-		<member name="wasm_buf" type="PackedByteArray" setter="set_wasm_buf" getter="get_wasm_buf" default="PackedByteArray()">
-		</member>
-	</members>
+	<methods>
+		<method name="get_wasm_buf">
+			<return type="PackedByteArray" />
+			<description>
+			</description>
+		</method>
+		<method name="set_wasm_buf">
+			<return type="void" />
+			<param index="0" name="buf" type="PackedByteArray" />
+			<param index="1" name="runtime" type="WasGoRuntime" />
+			<description>
+			</description>
+		</method>
+	</methods>
 </class>

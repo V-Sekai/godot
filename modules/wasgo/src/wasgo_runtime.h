@@ -31,29 +31,26 @@
 #ifndef WASGO_RUNTIME_H
 #define WASGO_RUNTIME_H
 
-#include "core/config/engine.h"
-#include "core/io/file_access.h"
+#include "core/io/resource.h"
+#include "core/object/object.h"
+#include "core/object/ref_counted.h"
 #include "core/templates/rid_owner.h"
-#include "core/variant/variant.h"
-#include "resource_loader_wasm.h"
-#include "resource_wasm.h"
+
+#include "modules/wasgo/thirdparty/wasm-micro-runtime/core/iwasm/include/wasm_export.h"
 
 struct WASMModuleCommon;
 typedef struct WASMModuleCommon *wasm_module_t;
 struct WASMModuleInstanceCommon;
 typedef struct WASMModuleInstanceCommon *wasm_module_inst_t;
 
-class WasGoRuntime : public Object {
-	GDCLASS(WasGoRuntime, Object);
-	static WasGoRuntime *singleton;
+class WasGoRuntime : public Resource {
+	GDCLASS(WasGoRuntime, Resource);
 
 	Mutex mutex;
 	RID_PtrOwner<WASMModuleCommon> module_rids;
-
-public:
-	static WasGoRuntime *get_singleton();
 	static char global_heap_buf[512 * 1024 * 100];
 	static RuntimeInitArgs init_args;
+public:
 	RID load_module(Vector<uint8_t> wasm_code, String &r_error);
 	void unload_module(RID module_rid);
 

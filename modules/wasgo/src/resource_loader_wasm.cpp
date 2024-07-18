@@ -32,16 +32,17 @@
 
 #include "resource_loader_wasm.h"
 
+#include "modules/wasgo/src/wasgo_runtime.h"
 #include "resource_wasm.h"
 
 Ref<Resource> ResourceFormatLoaderWasm::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
-	Ref<WasmResource> wasm;
-	wasm.instantiate();
+	Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
+	Ref<WasmResource> wasm = memnew(WasmResource);
 	if (r_error) {
 		*r_error = OK;
 	}
-	*r_error = wasm->load_file(p_path);
-	return wasm;
+	*r_error = wasm->load_file(p_path, runtime);
+	return runtime;
 }
 
 void ResourceFormatLoaderWasm::get_recognized_extensions(List<String> *r_extensions) const {
@@ -51,7 +52,7 @@ void ResourceFormatLoaderWasm::get_recognized_extensions(List<String> *r_extensi
 }
 
 String ResourceFormatLoaderWasm::get_resource_type(const String &p_path) const {
-	return "Resource";
+	return "WasGoRuntime";
 }
 
 bool ResourceFormatLoaderWasm::handles_type(const String &p_type) const {

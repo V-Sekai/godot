@@ -29,18 +29,20 @@
 /**************************************************************************/
 
 #include "wasgo_state.h"
+#include "core/error/error_macros.h"
 #include "core/io/marshalls.h"
 #include "wasgo_callable.h"
 #include "wasgo_runtime.h"
 #include "wasm_export.h"
 #include <cstdint>
 
-void WasGoState::_initialize() {
+void WasGoState::_initialize(Ref<WasGoRuntime> p_wasgo_runtime) {
+	ERR_FAIL_COND(p_wasgo_runtime.is_null());
 	_stop();
 	reference_object(this);
 	ERR_FAIL_COND(!wasm_script.is_valid());
 	String err_string;
-	module_inst = WasGoRuntime::get_singleton()->instantiate_module(wasm_script->get_rid(),
+	module_inst = p_wasgo_runtime->instantiate_module(wasm_script->get_rid(),
 			stack_size,
 			heap_size,
 			err_string);
@@ -105,7 +107,7 @@ void WasGoState::_stop() {
 }
 
 void WasGoState::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_wasm_script", "wasm_script"), &WasGoState::set_wasm_script);
+	ClassDB::bind_method(D_METHOD("set_wasm_script", "wasm_script", "runtime"), &WasGoState::set_wasm_script);
 	ClassDB::bind_method(D_METHOD("get_wasm_script"), &WasGoState::get_wasm_script);
 	ClassDB::bind_method(D_METHOD("set_properties", "properties"), &WasGoState::set_properties);
 	ClassDB::bind_method(D_METHOD("get_properties"), &WasGoState::get_properties);
@@ -158,7 +160,6 @@ void WasGoState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_callable", "func"), &WasGoState::get_callable);
 
 	ADD_GROUP("script", "script_");
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "script_binary", PROPERTY_HINT_RESOURCE_TYPE, "WasmResource"), "set_wasm_script", "get_wasm_script");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "script_properties", PROPERTY_HINT_NONE, ""), "set_properties", "get_properties");
 
 	ADD_GROUP("runtime", "runtime_");
@@ -311,14 +312,14 @@ int WasGoState::get_heap_size() {
 	return heap_size;
 }
 
-void WasGoState::set_wasm_script(Ref<WasmResource> p_wasm_script) {
+void WasGoState::set_wasm_script(Ref<WasmResource> p_wasm_script, Ref<WasGoRuntime> p_runtime) {
 	// Only change it if the wasm module is not active
 	ERR_FAIL_COND(is_active()); // Fail instead of stopping.
 	if (!is_active()) {
 		_stop();
 	}
 	wasm_script = p_wasm_script;
-	_initialize();
+	_initialize(p_runtime);
 	if (is_inside_tree() && ready_callback) { // call the ready callback again because we must have missed the first one
 		if (!wasm_runtime_call_wasm(exec_env, ready_callback, 0, nullptr)) {
 			printf("wasm ready callback failed. %s\n", wasm_runtime_get_exception(module_inst));

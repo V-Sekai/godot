@@ -30,9 +30,7 @@
 
 #ifndef RESOURCE_LOADER_WASM_H
 #define RESOURCE_LOADER_WASM_H
-/* resource_loader_wasm.h */
 
-#include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
 
 class ResourceFormatLoaderWasm : public ResourceFormatLoader {

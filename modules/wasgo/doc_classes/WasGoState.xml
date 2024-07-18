@@ -103,6 +103,11 @@
 			<description>
 			</description>
 		</method>
+		<method name="get_wasm_script">
+			<return type="WasmResource" />
+			<description>
+			</description>
+		</method>
 		<method name="set_int_property">
 			<return type="void" />
 			<param index="0" name="value" type="int" />
@@ -215,13 +220,18 @@
 			<description>
 			</description>
 		</method>
+		<method name="set_wasm_script">
+			<return type="void" />
+			<param index="0" name="wasm_script" type="WasmResource" />
+			<param index="1" name="runtime" type="WasGoRuntime" />
+			<description>
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="runtime_heap_size" type="int" setter="set_heap_size" getter="get_heap_size" default="8192">
 		</member>
 		<member name="runtime_stack_size" type="int" setter="set_stack_size" getter="get_stack_size" default="8192">
-		</member>
-		<member name="script_binary" type="WasmResource" setter="set_wasm_script" getter="get_wasm_script">
 		</member>
 		<member name="script_properties" type="Dictionary" setter="set_properties" getter="get_properties" default="{}">
 		</member>

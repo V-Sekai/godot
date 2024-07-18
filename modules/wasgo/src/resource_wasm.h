@@ -30,11 +30,9 @@
 
 #ifndef RESOURCE_WASM_H
 #define RESOURCE_WASM_H
-/* resource_wasm.h */
 
 #include "core/io/resource.h"
-#include "core/io/resource_loader.h"
-#include "wasm_export.h"
+#include "modules/wasgo/src/wasgo_runtime.h"
 
 class WasmResource : public Resource {
 	GDCLASS(WasmResource, Resource);
@@ -44,16 +42,13 @@ protected:
 
 private:
 	Vector<uint8_t> wasm_buf;
-	RID module_rid = RID();
+	RID module_rid;
 
 public:
-	Error load_file(const String &p_path);
-
-	void set_wasm_buf(Vector<uint8_t> buf);
+	Error load_file(const String &p_path, Ref<WasGoRuntime> p_wasgo_runtime);
+	void set_wasm_buf(Vector<uint8_t> p_buffer, Ref<WasGoRuntime> p_runtime);
 	const Vector<uint8_t> &get_wasm_buf() { return wasm_buf; }
 	virtual RID get_rid() const override;
-
-	~WasmResource();
 };
 
 #endif // RESOURCE_WASM_H

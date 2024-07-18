@@ -46,8 +46,6 @@ void initialize_wasgo_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	// printf("REGISTERING WASGO\n");
-	// printf("Creating some test wasgo objects\n");
 	wasgo_runtime = memnew(WasGoRuntime);
 	// wasgo_runtime->initialize(native_symbols, sizeof(native_symbols)/sizeof(NativeSymbol));
 	ClassDB::register_class<WasGoState>();
@@ -55,7 +53,6 @@ void initialize_wasgo_module(ModuleInitializationLevel p_level) {
 	ClassDB::register_class<WasmResource>();
 	ClassDB::register_class<WasGoRuntime>();
 	// ClassDB::register_class<WasGoCallable>();
-	Engine::get_singleton()->add_singleton(Engine::Singleton("WasGo", WasGoRuntime::get_singleton()));
 	wasm_loader.instantiate();
 	ResourceLoader::add_resource_format_loader(wasm_loader);
 }

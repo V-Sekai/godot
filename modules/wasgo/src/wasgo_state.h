@@ -39,18 +39,20 @@ These get saved with the scene and when the game is run they're used by the Wasm
 These nodes also handle things like translating wasm commands to Godot functions.
 */
 
+#include "core/object/ref_counted.h"
 #include "core/variant/variant.h"
-#include "resource_wasm.h"
 #include "scene/main/node.h"
-#include "wasm_export.h"
+
+#include "modules/wasgo/src/resource_wasm.h"
+#include "modules/wasgo/thirdparty/wasm-micro-runtime/core/iwasm/include/wasm_export.h"
 
 class WasGoState : public Node {
-	friend class WasGoCallable;
 	GDCLASS(WasGoState, Node);
+	friend class WasGoCallable;
 
 	// Properties
 	Ref<WasmResource> wasm_script;
-	Dictionary properties = {}; // Properties to be passed to the script when it starts up
+	Dictionary properties; // Properties to be passed to the script when it starts up
 	uint32_t stack_size = 8192;
 	uint32_t heap_size = 8192;
 
@@ -79,7 +81,7 @@ public:
 	WasGoState();
 	~WasGoState();
 
-	void _initialize();
+	void _initialize(Ref<WasGoRuntime> p_wasgo_runtime);
 	void _stop();
 
 	void _validate_property(PropertyInfo &property) const;
@@ -92,7 +94,7 @@ public:
 	void set_heap_size(int p_heap_size);
 	int get_heap_size();
 
-	void set_wasm_script(Ref<WasmResource> p_wasm_script);
+	void set_wasm_script(Ref<WasmResource> p_wasm_script, Ref<WasGoRuntime> p_runtime);
 	Ref<WasmResource> get_wasm_script();
 
 	void set_properties(Dictionary p_properties);

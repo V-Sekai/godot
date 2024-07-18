@@ -33,12 +33,7 @@
 #include "wasm_export.h"
 
 char WasGoRuntime::global_heap_buf[512 * 1024 * 100];
-WasGoRuntime *WasGoRuntime::singleton = NULL;
 RuntimeInitArgs WasGoRuntime::init_args;
-
-WasGoRuntime *WasGoRuntime::get_singleton() {
-	return singleton;
-}
 
 // wasm_module_t WasGoRuntime::load_module(String script_path){
 RID WasGoRuntime::load_module(Vector<uint8_t> wasm_code, String &r_error) {
@@ -91,8 +86,7 @@ wasm_module_inst_t WasGoRuntime::instantiate_module(RID module_rid,
 }
 
 WasGoRuntime::WasGoRuntime() {
-	singleton = this;
-	singleton->initialize(native_symbols, sizeof(native_symbols) / sizeof(NativeSymbol));
+	initialize(native_symbols, sizeof(native_symbols) / sizeof(NativeSymbol));
 }
 
 WasGoRuntime::~WasGoRuntime() {
