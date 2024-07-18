@@ -92,13 +92,16 @@ const Callable *WasGoCallable::get_base_comparator() const {
 };
 
 WasGoCallable::WasGoCallable(WasGoState *p_state, String p_func) {
-	if (p_state != nullptr && p_state->module_inst != nullptr) {
+	if (p_state && p_state->module_inst) {
 		wasgo_state_id = p_state->get_instance_id();
-		ERR_FAIL_COND(!(wasgo_func = wasm_runtime_lookup_function(p_state->module_inst, p_func.utf8().get_data())));
-		if (wasgo_func == nullptr) {
-			printf("NULL FUNC");
+		wasgo_func = wasm_runtime_lookup_function(p_state->module_inst, p_func.utf8().get_data());
+		if (!wasgo_func) {
+			ERR_PRINT(vformat("Function '%s' not found.\n", p_func.utf8().get_data()));
+			return;
 		}
 		print_line(String("wasgo_func: ") + p_func);
+	} else {
+		ERR_PRINT("Invalid state or module instance.");
 	}
 }
 

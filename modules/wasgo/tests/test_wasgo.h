@@ -31,6 +31,7 @@
 #ifndef TEST_WASGO_H
 #define TEST_WASGO_H
 
+#include "modules/wasgo/src/wasgo_callable.h"
 #include "modules/wasgo/src/wasgo_runtime.h"
 #include "tests/test_macros.h"
 
@@ -47,9 +48,9 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 	memset(&init_args, 0, sizeof(RuntimeInitArgs));
 
 	Vector<uint8_t> wasm_buffer;
-	const size_t TURNING_WASM_len = sizeof(TURNING_WASM) / sizeof(TURNING_WASM[0]);
-	wasm_buffer.resize(TURNING_WASM_len);
-	memcpy(wasm_buffer.ptrw(), TURNING_WASM, TURNING_WASM_len);
+	const size_t STACK_OVERFLOW_WASM_len = sizeof(STACK_OVERFLOW_WASM) / sizeof(STACK_OVERFLOW_WASM[0]);
+	wasm_buffer.resize(STACK_OVERFLOW_WASM_len);
+	memcpy(wasm_buffer.ptrw(), STACK_OVERFLOW_WASM, STACK_OVERFLOW_WASM_len);
 
 	Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
 	Ref<WasmResource> reference = memnew(WasmResource);
@@ -58,14 +59,14 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 
 	WasGoState *state = memnew(WasGoState);
 	state->set_wasm_script(reference, runtime);
+	MESSAGE("Creating Wasm callable.");
+	WasGoCallable callable = WasGoCallable(state, "_ready");
+	Variant var = Variant(420);
+	const Variant *args = &var;
+	Variant return_val = Variant(0);
+	Callable::CallError r_call_error;
+	callable.call(&args, 0, return_val, r_call_error);
 	memdelete(state);
-	// MESSAGE("Creating Wasm callable.");
-	// WasGoCallable callable = WasGoCallable(state, "test");
-	// Variant var = Variant(420);
-	// const Variant *args = &var;
-	// Variant return_val = Variant(0);
-	// Callable::CallError r_call_error;
-	// callable.call(&args, 0, return_val, r_call_error);
 }
 } // namespace TestWasgo
 
