@@ -46,19 +46,17 @@ namespace TestWasgo {
 TEST_CASE("[Modules][WasGo] Turning Callable") {
 	RuntimeInitArgs init_args;
 	memset(&init_args, 0, sizeof(RuntimeInitArgs));
-
 	Vector<uint8_t> wasm_buffer;
 	const size_t STACK_OVERFLOW_WASM_len = sizeof(STACK_OVERFLOW_WASM) / sizeof(STACK_OVERFLOW_WASM[0]);
 	wasm_buffer.resize(STACK_OVERFLOW_WASM_len);
 	memcpy(wasm_buffer.ptrw(), STACK_OVERFLOW_WASM, STACK_OVERFLOW_WASM_len);
-
 	Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
 	Ref<WasmResource> reference = memnew(WasmResource);
 	reference->set_wasm_buffer(wasm_buffer, runtime);
 	REQUIRE_MESSAGE(reference.is_valid(), "Creating WasGoState.");
-
 	WasGoState *state = memnew(WasGoState);
 	state->set_wasm_script(reference, runtime);
+	REQUIRE_FALSE_MESSAGE(state->call("_ready"), "Call Wasm _ready");
 	// MESSAGE("Creating Wasm callable.");
 	// WasGoCallable callable = WasGoCallable(state, "_ready");
 	// Variant var = Variant(420);
