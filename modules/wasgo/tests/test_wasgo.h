@@ -47,8 +47,9 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 	memset(&init_args, 0, sizeof(RuntimeInitArgs));
 
 	Vector<uint8_t> wasm_buffer;
-	wasm_buffer.resize(turningcnt);
-	memcpy(wasm_buffer.ptrw(), turning, turningcnt);
+    const size_t TURNING_WASM_len = sizeof(TURNING_WASM) / sizeof(TURNING_WASM[0]);
+	wasm_buffer.resize(TURNING_WASM_len);
+	memcpy(wasm_buffer.ptrw(), TURNING_WASM, TURNING_WASM_len);
 
 	Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
 	Ref<WasmResource> reference = memnew(WasmResource);
