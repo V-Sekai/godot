@@ -64,15 +64,31 @@ TEST_CASE("[Modules][WasGo] Turning Callable") {
 	WasGoState *state = memnew(WasGoState);
 	state->set_wasm_script(reference, runtime);
 	REQUIRE_MESSAGE(state->call_wasm_function("_not_bound_function", 0, nullptr) == -1, "Call Wasm _not_bound_function");
-	// MESSAGE("Creating Wasm callable.");
-	// WasGoCallable callable = WasGoCallable(state, "_ready");
-	// Variant var = Variant(420);
-	// const Variant *args = &var;
-	// Variant return_val = Variant(0);
-	// Callable::CallError r_call_error;
-	// callable.call(&args, 0, return_val, r_call_error);
-	// memdelete(state);
+	memdelete(state);
 }
+
+// TEST_CASE("[Modules][WasGo] Callable") {
+// 	RuntimeInitArgs init_args;
+// 	memset(&init_args, 0, sizeof(RuntimeInitArgs));
+// 	Vector<uint8_t> wasm_buffer;
+// 	const size_t STACK_OVERFLOW_WASM_len = sizeof(STACK_OVERFLOW_WASM) / sizeof(STACK_OVERFLOW_WASM[0]);
+// 	wasm_buffer.resize(STACK_OVERFLOW_WASM_len);
+// 	memcpy(wasm_buffer.ptrw(), STACK_OVERFLOW_WASM, STACK_OVERFLOW_WASM_len);
+// 	Ref<WasGoRuntime> runtime = memnew(WasGoRuntime);
+// 	Ref<WasmResource> reference = memnew(WasmResource);
+// 	reference->set_wasm_buffer(wasm_buffer, runtime);
+// 	REQUIRE_MESSAGE(reference.is_valid(), "Creating WasGoState.");
+// 	WasGoState *state = memnew(WasGoState);
+// 	state->set_wasm_script(reference, runtime);
+// 	MESSAGE("Creating Wasm callable.");
+// 	WasGoCallable callable = WasGoCallable(state, "_ready");
+// 	Variant var = Variant(420);
+// 	const Variant *args = &var;
+// 	Variant return_val = Variant(0);
+// 	Callable::CallError r_call_error;
+// 	callable.call(&args, 0, return_val, r_call_error);
+// 	memdelete(state);
+// }
 
 extern "C" bool wasm_runtime_call_indirect(wasm_exec_env_t exec_env,
 		uint32_t element_indices,

@@ -935,17 +935,13 @@ int WasGoState::call_wasm_function(String func_name, int argc, uint32_t *argv) c
         ERR_PRINT("exec_env or module_inst is null.");
         return -1;
     }
-	// Lookup the function instance
 	wasm_function_inst_t func_inst = wasm_runtime_lookup_function(module_inst, func_name.utf8().get_data());
 	if (!func_inst) {
 		ERR_PRINT("Function instance not found.");
 		return -1;
 	}
-
-	// Call the wasm_runtime_call_wasm function with correct arguments
 	if (!wasm_runtime_call_wasm(exec_env, func_inst, argc, argv)) {
 		return -1;
 	}
-
 	return 0;
 }
