@@ -2444,3 +2444,28 @@ CSGPolygon3D::CSGPolygon3D() {
 	path_joined = false;
 	path = nullptr;
 }
+
+///////////////
+
+CSGBrush *CSGConvexHull3D::_build_brush() {
+    CSGBrush *new_brush = memnew(CSGBrush);
+    Ref<Mesh> mesh = get_mesh();
+    Vector<Vector3> points;
+    if (mesh.is_valid()) {
+        for (int i = 0; i < mesh->get_surface_count(); ++i) {
+            Array vertices = mesh->surface_get_arrays(i)[Mesh::ARRAY_VERTEX];
+            for (int j = 0; j < vertices.size(); ++j) {
+                points.push_back(vertices[j]);
+            }
+        }
+        if (points.size() < 4) {
+            return new_brush;
+        }
+    } else {
+        return new_brush;
+    }
+
+    make_brush_hull(new_brush, points, get_material());
+
+    return new_brush;
+}

@@ -456,4 +456,11 @@ VARIANT_ENUM_CAST(CSGPolygon3D::Mode)
 VARIANT_ENUM_CAST(CSGPolygon3D::PathRotation)
 VARIANT_ENUM_CAST(CSGPolygon3D::PathIntervalType)
 
+class CSGConvexHull3D : public CSGMesh3D {
+	GDCLASS(CSGConvexHull3D, CSGMesh3D);
+
+private:
+	virtual CSGBrush *_build_brush() override;
+};
+
 #endif // CSG_SHAPE_H

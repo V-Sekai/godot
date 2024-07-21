@@ -368,10 +368,8 @@ static void pack_manifold(
 static void unpack_manifold(
 		const manifold::Manifold &p_manifold,
 		const HashMap<int32_t, Ref<Material>> &mesh_materials,
+		Ref<StandardMaterial3D> default_material,
 		CSGBrush *r_mesh_merge) {
-	Ref<StandardMaterial3D> default_material;
-	default_material.instantiate();
-
 	manifold::MeshGL mesh = p_manifold.GetMeshGL();
 
 	constexpr int32_t order[3] = { 0, 2, 1 };
@@ -407,6 +405,7 @@ static void unpack_manifold(
 
 				ERR_FAIL_COND_MSG(property_i * mesh.numProp >= mesh.vertProperties.size(), "Invalid index into vertex properties");
 
+				// Position is guaranteed. Others are not.
 				face.vertices[tri_order_i] = Vector3(
 						mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_POSITION_X],
 						mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_POSITION_Y],
@@ -416,8 +415,12 @@ static void unpack_manifold(
 						mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_UV_X_0],
 						mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_UV_Y_0]);
 
-				face.smooth = mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_SMOOTH_GROUP] > 0.5f;
-				face.invert = mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_INVERT] > 0.5f;
+				if (mesh.numProp > MANIFOLD_PROPERTY_SMOOTH_GROUP) {
+					face.smooth = mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_SMOOTH_GROUP] > 0.5f;
+				}
+				if (mesh.numProp > MANIFOLD_PROPERTY_INVERT) {
+					face.invert = mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_INVERT] > 0.5f;
+				}
 			}
 
 			r_mesh_merge->faces.push_back(face);
@@ -430,6 +433,9 @@ static void unpack_manifold(
 // CSGBrushOperation
 
 void CSGBrushOperation::merge_brushes(Operation p_operation, const CSGBrush &p_brush_a, const CSGBrush &p_brush_b, CSGBrush &r_merged_brush, float p_vertex_snap) {
+	Ref<StandardMaterial3D> default_material;
+	default_material.instantiate();
+
 	HashMap<int32_t, Ref<Material>> mesh_materials;
 	manifold::Manifold brush_a;
 	pack_manifold(&p_brush_a, brush_a, mesh_materials, p_vertex_snap);
@@ -447,7 +453,23 @@ void CSGBrushOperation::merge_brushes(Operation p_operation, const CSGBrush &p_b
 			merged_brush = brush_a - brush_b;
 			break;
 	}
-	unpack_manifold(merged_brush, mesh_materials, &r_merged_brush);
+	unpack_manifold(merged_brush, mesh_materials, default_material, &r_merged_brush);
+}
+
+void make_brush_hull(
+		CSGBrush *brush,
+		const Vector<Vector3> &points,
+		const Ref<Material> material) {
+
+	std::vector<glm::vec3> converted_points;
+	for (int i = 0; i < points.size(); i++) {
+		converted_points.push_back(glm::vec3(points[i].x, points[i].y, points[i].z));
+	}
+
+	HashMap<int32_t, Ref<Material>> mesh_materials;
+	manifold::Manifold m;
+	m = m.Hull(converted_points);
+	unpack_manifold(m, mesh_materials, material, brush);
 }
 
 // CSGBrushOperation::MeshMerge

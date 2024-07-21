@@ -207,4 +207,9 @@ struct CSGBrushOperation {
 	void update_faces(const CSGBrush &p_brush_a, const int p_face_idx_a, const CSGBrush &p_brush_b, const int p_face_idx_b, Build2DFaceCollection &p_collection, float p_vertex_snap);
 };
 
+extern void make_brush_hull(
+		CSGBrush *brush,
+		const Vector<Vector3> &points,
+		const Ref<Material> material);
+
 #endif // CSG_H
