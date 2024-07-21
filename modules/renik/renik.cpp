@@ -770,13 +770,13 @@ void RenIK::_bind_methods() {
 			&RenIK::get_sideways_scaling_ease);
 	ClassDB::bind_method(D_METHOD("set_sideways_scaling_ease", "scaling_ease"),
 			&RenIK::set_sideways_scaling_ease);
-	ClassDB::bind_method(D_METHOD("setup_humanoid_bones"),
+	ClassDB::bind_method(D_METHOD("setup_humanoid_bones", "set_targets"),
 			&RenIK::setup_humanoid_bones);
 
 	ClassDB::bind_method(D_METHOD("set_setup_humanoid_bones", "set_targets"), &RenIK::set_setup_humanoid_bones);
 	ClassDB::bind_method(D_METHOD("get_setup_humanoid_bones"), &RenIK::get_setup_humanoid_bones);
 
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "setup_humanoid_bones"), "set_setup_humanoid_bones", "get_setup_humanoid_bones");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "enable_humanoid_bones"), "set_setup_humanoid_bones", "get_setup_humanoid_bones");
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "live_preview"), "set_live_preview",
 			"get_live_preview");
@@ -1531,28 +1531,26 @@ RenIK::SpineTransforms RenIK::perform_torso_ik() {
 							spine_chain->get_joints()[0].relative_prev));
 		}
 
+		Transform3D hipLocalPose = skeleton->get_bone_pose(hip);
+		Transform3D correctedHipTransform = hipGlobalTransform;
+		correctedHipTransform.set_origin(-hipLocalPose.origin);
+
 		HashMap<BoneId, Quaternion> ik_map = solve_ik_qcp(
 				spine_chain,
-				hipGlobalTransform * skeleton->get_bone_rest(hip).basis.inverse(),
+				correctedHipTransform * skeleton->get_bone_rest(hip).basis.inverse(),
 				headGlobalTransform);
-		//skeleton->set_bone_global_pose_override(
-		//    hip, hipGlobalTransform, 1.0f, true);
 		skeleton->set_bone_pose_rotation(hip, hipGlobalTransform.get_basis().get_rotation_quaternion());
 		skeleton->set_bone_pose_position(hip, hipGlobalTransform.get_origin());
 
 		apply_ik_map(ik_map, hipGlobalTransform,
 				bone_id_order(spine_chain));
 
-		// Keep Hip and Head as global poses tand then apply them as global pose
-		// override
 		Quaternion neckQuaternion = Quaternion();
 		int parent_bone = skeleton->get_bone_parent(head);
 		while (parent_bone != -1) {
 			neckQuaternion = skeleton->get_bone_pose_rotation(parent_bone) * neckQuaternion;
 			parent_bone = skeleton->get_bone_parent(parent_bone);
 		}
-		//skeleton->set_bone_global_pose_override(
-		//    head, headGlobalTransform, 1.0f, true);
 		skeleton->set_bone_pose_rotation(head, neckQuaternion.inverse() * headGlobalTransform.get_basis().get_rotation_quaternion());
 
 		// Calculate and return the parent bone position for the arms
