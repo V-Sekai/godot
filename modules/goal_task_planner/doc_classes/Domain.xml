@@ -5,7 +5,7 @@
 	</brief_description>
 	<description>
 		The [Domain] represents the environment or context of a [Plan] in which multiple actions, goals, [Multigoal]s, and tasks need to be achieved.
-        Actions and methods are written directly as functions. Their preconditions are if tests, and their effects are their returned values.
+		        Actions and methods are written directly as functions. Their preconditions are if tests, and their effects are their returned values.
 	</description>
 	<tutorials>
 	</tutorials>
