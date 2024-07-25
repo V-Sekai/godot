@@ -3360,8 +3360,8 @@ float RenIK::get_sideways_scaling_ease() const {
 }
 
 HashMap<BoneId, Quaternion> RenIK::solve_ik_qcp(Ref<RenIKChain> chain,
-	Transform3D root,
-	Transform3D target) {
+		Transform3D root,
+		Transform3D target) {
 	HashMap<BoneId, Quaternion> map;
 
 	if (!chain->is_valid()) {
@@ -3370,31 +3370,31 @@ HashMap<BoneId, Quaternion> RenIK::solve_ik_qcp(Ref<RenIKChain> chain,
 
 	Vector<RenIKChain::Joint> joints = chain->get_joints();
 	const Transform3D true_root = root.translated_local(joints[0].relative_prev);
-    const Vector3 priority = Vector3(1.0 / 7.0, 1.0 / 7.0, 1.0 / 7.0);
+	const Vector3 priority = Vector3(1.0 / 7.0, 1.0 / 7.0, 1.0 / 7.0);
 
 	Vector<Transform3D> global_transforms;
 	global_transforms.resize(joints.size());
-    Transform3D current_global_transform = true_root;
+	Transform3D current_global_transform = true_root;
 
-    Vector<Transform3D> local_transforms;
-    local_transforms.resize(joints.size());
+	Vector<Transform3D> local_transforms;
+	local_transforms.resize(joints.size());
 
-    for (int i = 0; i < joints.size(); i++) {
-        Transform3D local_transform;
-        local_transform.basis = Basis(joints[i].rotation);
-        if (i == 0) {
-            local_transform.origin = root.origin;
-        } else {
-            local_transform.origin = joints[i - 1].relative_next;
-        }
-        local_transforms.write[i] = local_transform;
-    }
+	for (int i = 0; i < joints.size(); i++) {
+		Transform3D local_transform;
+		local_transform.basis = Basis(joints[i].rotation);
+		if (i == 0) {
+			local_transform.origin = root.origin;
+		} else {
+			local_transform.origin = joints[i - 1].relative_next;
+		}
+		local_transforms.write[i] = local_transform;
+	}
 
-    for (int i = 0; i < joints.size(); i++) {
-        current_global_transform *= local_transforms[i];
-        global_transforms.write[i] = current_global_transform;
-    }
-	
+	for (int i = 0; i < joints.size(); i++) {
+		current_global_transform *= local_transforms[i];
+		global_transforms.write[i] = current_global_transform;
+	}
+
 	static constexpr double evec_prec = static_cast<double>(1E-6);
 	QCP qcp = QCP(evec_prec);
 
