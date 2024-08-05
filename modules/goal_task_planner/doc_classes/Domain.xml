@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Domain" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		The [Domain] in which goals are to be achieved.
+	</brief_description>
+	<description>
+		The [Domain] represents the environment or context of a [Plan] in which multiple actions, goals, [Multigoal]s, and tasks need to be achieved.
+		        Actions and methods are written directly as functions. Their preconditions are if tests, and their effects are their returned values.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_actions">
+			<return type="void" />
+			<param index="0" name="actions" type="Callable[]" />
+			<description>
+			</description>
+		</method>
+		<method name="add_multigoal_methods">
+			<return type="void" />
+			<param index="0" name="methods" type="Callable[]" />
+			<description>
+			</description>
+		</method>
+		<method name="add_task_methods">
+			<return type="void" />
+			<param index="0" name="task_name" type="String" />
+			<param index="1" name="methods" type="Callable[]" />
+			<description>
+			</description>
+		</method>
+		<method name="add_unigoal_methods">
+			<return type="void" />
+			<param index="0" name="task_name" type="String" />
+			<param index="1" name="methods" type="Callable[]" />
+			<description>
+			</description>
+		</method>
+		<method name="method_verify_goal" qualifiers="static">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="method" type="String" />
+			<param index="2" name="state_var" type="String" />
+			<param index="3" name="arguments" type="String" />
+			<param index="4" name="desired_values" type="Variant" />
+			<param index="5" name="depth" type="int" />
+			<param index="6" name="verbose" type="int" />
+			<description>
+				Verifies if a specific goal has been achieved given the current state, method, state variable, arguments, desired values, depth, and verbosity level.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="actions" type="Dictionary" setter="set_actions" getter="get_actions" default="{}">
+			The actions that can be performed in the [Domain], represented as a [Dictionary].
+		</member>
+		<member name="multigoal_methods" type="Callable[]" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[Callable()]">
+			The methods for achieving [Multigoal]s, represented as an [Array] of [Callable].
+		</member>
+		<member name="tasks" type="Dictionary" setter="set_task_methods" getter="get_task_methods" default="{ &quot;_verify_g&quot;: [Callable()], &quot;_verify_mg&quot;: [Callable()] }">
+			The tasks that can be performed in the [Domain], represented as a [Dictionary] of [Callable].
+		</member>
+		<member name="unigoal_methods" type="Dictionary" setter="set_unigoal_methods" getter="get_unigoal_methods" default="{}">
+			The methods for achieving uni-goals, represented as a [Dictionary].
+		</member>
+	</members>
+</class>
