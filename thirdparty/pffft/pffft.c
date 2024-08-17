@@ -577,7 +577,7 @@ static void radb3_ps(int ido, int l1, const v4sf *RESTRICT cc, v4sf *RESTRICT ch
 {
   static const float taur = -0.5f;
   static const float taui = 0.866025403784439f;
-  static const float taui_2 = 0.866025403784439f*2;
+  static const float taui_2 = 1.732050807568878f; // 0.866025403784439f*2;
   int i, k, ic;
   v4sf ci2, ci3, di2, di3, cr2, cr3, dr2, dr3, ti2, tr2;
   for (k=0; k<l1; k++) {
@@ -1475,7 +1475,7 @@ static NEVER_INLINE(void) pffft_real_finalize(int Ncvec, const v4sf *in, v4sf *o
   v4sf_union cr, ci, *uout = (v4sf_union*)out;
   v4sf save = in[7], zero=VZERO();
   float xr0, xi0, xr1, xi1, xr2, xi2, xr3, xi3;
-  static const float s = M_SQRT2/2;
+  static const float s = 0.707106781186548f; // M_SQRT2/2;
 
   cr.v = in[0]; ci.v = in[Ncvec*2-1];
   assert(in != out);
