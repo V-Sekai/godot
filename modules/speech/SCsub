@@ -174,8 +174,8 @@ thirdparty_sources = [
     "silk/stereo_quant_pred.c",
 ]
 
-if env["platform"] == "windows" and env["arch"] == "x86_64":
-    thirdparty_sources += ["celt/x86/pitch_sse.c"]
+if env["arch"] == "x86_64":
+    thirdparty_sources += ["celt/x86/pitch_sse.c", "celt/x86/pitch_sse2.c", "celt/x86/pitch_sse4_1.c"]
 
 opus_sources_silk = []
 
