@@ -28,9 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef SPEECH_REGISTER_TYPES_H
+#define SPEECH_REGISTER_TYPES_H
 
 #include "modules/register_module_types.h"
 
 void initialize_speech_module(ModuleInitializationLevel p_level);
 void uninitialize_speech_module(ModuleInitializationLevel p_level);
+
+#endif // SPEECH_REGISTER_TYPES_H

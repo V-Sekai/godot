@@ -28,6 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SPEECH_MACROS_HPP
-#define SPEECH_MACROS_HPP
-#endif
+#ifndef MACROS_H
+#define MACROS_H
+#endif // MACROS_H

@@ -28,7 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef PLAYBACK_STATS_H
+#define PLAYBACK_STATS_H
 #include "core/object/ref_counted.h"
 
 class PlaybackStats : public RefCounted {
@@ -58,3 +59,5 @@ public:
 	int64_t buffer_frame_count = 0;
 	Dictionary get_playback_stats();
 };
+
+#endif // PLAYBACK_STATS_H

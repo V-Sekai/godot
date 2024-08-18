@@ -636,7 +636,7 @@ void Speech::remove_player_audio(int p_player_id) {
 			return;
 		}
 	}
-	print_error(vformat("Attempted to remove a non-existant player_audio entry (%s)", p_player_id));
+	print_error(vformat("Attempted to remove a non-existent player_audio entry (%s)", p_player_id));
 }
 
 void Speech::clear_all_player_audio() {

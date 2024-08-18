@@ -83,7 +83,7 @@ private:
 	// copying from the back.
 	InputPacket *get_next_valid_input_packet();
 
-	// Is responsible for recieving packets from the SpeechProcessor and then
+	// Is responsible for receiving packets from the SpeechProcessor and then
 	// compressing them
 	void speech_processed(SpeechProcessor::SpeechInput *p_mic_input);
 
