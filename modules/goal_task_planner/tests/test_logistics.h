@@ -422,7 +422,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] m_drive_truck") {
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
-	TypedArray<Array> task;
+	Array task;
 	task.push_back(varray("truck_at", "truck1", "location2"));
 	Variant plan = planner->find_plan(state1, task);
 	Array answer;
@@ -437,10 +437,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Fly plane") {
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
-	TypedArray<Array> task;
+	Array task;
 	task.push_back(varray("plane_at", "plane2", "airport1"));
 	Variant plan = planner->find_plan(state1, task);
-	TypedArray<Array> answer;
+	Array answer;
 	answer.push_back(varray("fly_plane", "plane2", "airport1"));
 	CHECK_EQ(plan, answer);
 }
@@ -452,10 +452,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Load truck") {
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
-	TypedArray<Array> task;
+	Array task;
 	task.push_back(varray("at", "package1", "truck6"));
 	Variant plan = planner->find_plan(state1, task);
-	TypedArray<Array> answer;
+	Array answer;
 	CHECK_NE(plan, answer);
 }
 
@@ -466,14 +466,14 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
-	TypedArray<Array> task;
+	Array task;
 	task.push_back(varray("at", "package1", "location2"));
 	task.push_back(varray("at", "package2", "location3"));
 	Variant plan = planner->find_plan(
 			state1,
 			task);
 
-	TypedArray<Array> answer;
+	Array answer;
 	answer.push_back(varray("drive_truck", "truck1", "location1"));
 	answer.push_back(varray("load_truck", "package1", "truck1"));
 	answer.push_back(varray("drive_truck", "truck1", "location2"));
@@ -497,7 +497,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
 
 	Variant plan = planner->find_plan(state1, task);
 
-	TypedArray<Array> answer;
+	Array answer;
 	answer.push_back(varray("drive_truck", "truck1", "location1"));
 	answer.push_back(varray("load_truck", "package1", "truck1"));
 	answer.push_back(varray("drive_truck", "truck1", "airport1"));
