@@ -96,7 +96,8 @@ Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_
 		Callable method = relevant[i];
 		Array arguments;
 		arguments.push_back(p_state);
-		arguments.append_array(p_task1.slice(1));
+		Array argument_slices = p_task1.slice(1);
+		arguments.append_array(argument_slices);
 		if (verbose >= 2) {
 			print_line("Depth: " + itos(p_depth) + ", Trying method: " + _item_to_string(method));
 		}
