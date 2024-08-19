@@ -64,7 +64,7 @@ Variant Plan::_apply_action_and_continue(Dictionary p_state, Array p_first_task,
 			print_line("Intermediate computation: Action applied successfully.");
 			print_line("New state: " + String(new_state));
 		}
-		TypedArray<Array> new_plan = p_plan;
+		Array new_plan = p_plan;
 		new_plan.push_back(p_first_task);
 		return _seek_plan(new_state, p_todo_list, new_plan, p_depth + 1);
 	}
@@ -212,7 +212,7 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 		Variant result = method.call(p_state, argument, value);
 		if (result.is_array()) {
 			Array subgoals = result;
-			TypedArray<Array> subtodo_list;
+			Array subtodo_list;
 			if (!subgoals.is_empty()) {
 				subtodo_list.append_array(subgoals);
 			}
