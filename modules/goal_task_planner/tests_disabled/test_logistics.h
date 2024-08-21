@@ -31,7 +31,6 @@
 #ifndef TEST_LOGISTICS_H
 #define TEST_LOGISTICS_H
 
-#if TOOLS_ENABLED
 // SPDX-FileCopyrightText: 2021 University of Maryland
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
@@ -602,7 +601,5 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal") {
 }
 
 } // namespace TestLogistics
-
-#endif
 
 #endif // TEST_LOGISTICS_H
