@@ -82,7 +82,6 @@ TODO:
 
 #include "jitter.h"
 #include "core/error/error_macros.h"
-#include "core/string/print_string.h"
 
 void VoipJitterBuffer::jitter_buffer_reset(Ref<JitterBuffer> jitter) {
 	if (jitter.is_null()) {
@@ -307,9 +306,6 @@ void VoipJitterBuffer::jitter_buffer_put(Ref<JitterBuffer> jitter, const Ref<Jit
 	} else {
 		jitter->arrival[i_jitter] = jitter->next_stop;
 	}
-
-	// Update buffered value
-	jitter->buffered += packet->get_span();
 }
 
 Array VoipJitterBuffer::jitter_buffer_get(Ref<JitterBuffer> jitter, Ref<JitterBufferPacket> packet, int32_t desired_span) {
@@ -608,12 +604,12 @@ int VoipJitterBuffer::jitter_buffer_get_pointer_timestamp(Ref<JitterBuffer> jitt
 }
 
 void VoipJitterBuffer::jitter_buffer_tick(Ref<JitterBuffer> jitter) {
-    if (jitter.is_null()) {
-        return;
-    }
-    /* Automatically-adjust the buffering delay if requested */
-    if (jitter->auto_adjust) {
-        _jitter_buffer_update_delay(jitter, nullptr);
+	if (jitter.is_null()) {
+		return;
+	}
+	/* Automatically-adjust the buffering delay if requested */
+	if (jitter->auto_adjust) {
+		_jitter_buffer_update_delay(jitter, nullptr);
     }
 
     if (jitter->buffered >= 0) {
