@@ -1,0 +1,59 @@
+[gd_scene load_steps=3 format=3 uid="uid://qb561bq27ksx"]
+
+[ext_resource type="Script" path="res://vsk_speech/scenes/entry_point.gd" id="1_rgc2c"]
+
+[sub_resource type="AudioStreamMicrophone" id="AudioStreamMicrophone_tmvyd"]
+
+[node name="EntryPoint" type="Node"]
+script = ExtResource("1_rgc2c")
+
+[node name="MicrophoneStreamAudio" type="AudioStreamPlayer" parent="."]
+stream = SubResource("AudioStreamMicrophone_tmvyd")
+volume_db = 1.0
+bus = &"Mic"
+
+[node name="GodotSpeech" type="Speech" parent="."]
+
+[node name="SpeechProcessor" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor2" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor3" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor4" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor5" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor6" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor7" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor8" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor9" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor10" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor11" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor12" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor13" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor14" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor15" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor16" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor17" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor18" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor19" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor20" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor21" type="SpeechProcessor" parent="GodotSpeech"]
+
+[node name="SpeechProcessor22" type="SpeechProcessor" parent="GodotSpeech"]
