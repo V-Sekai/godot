@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "speech_processor.h"
+#include "core/config/project_settings.h"
 #include "opus_custom.h"
 
 #include <algorithm>
@@ -156,35 +157,10 @@ void SpeechProcessor::_mix_audio(const Vector2 *p_capture_buffer, const Vector2 
 								static_cast<size_t>(capture_real_array_offset));
 		capture_real_array_offset = 0;
 		const float *capture_real_array_read_ptr = capture_real_array.ptr();
-		const float *reference_real_array_read_ptr = reference_real_array.ptr();
 		double_t sum = 0;
 		while (capture_real_array_offset < resampled_frame_count - SPEECH_SETTING_BUFFER_FRAME_COUNT) {
 			sum = 0.0;
-			// Speaker frame.
-			for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
-				float frame_error_cancellation_float = reference_real_array_read_ptr[static_cast<size_t>(capture_real_array_offset) + i];
-				mix_reference_buffer.write[i] = webrtc::FloatToS16(frame_error_cancellation_float);
-			}
-			ref_frame.UpdateFrame(0, mix_reference_buffer.ptr(), SPEECH_SETTING_BUFFER_FRAME_COUNT, SPEECH_SETTING_VOICE_SAMPLE_RATE, webrtc::AudioFrame::kNormalSpeech, webrtc::AudioFrame::kVadActive, 1);
-			// Microphone frame.
-			for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
-				float frame_float = capture_real_array_read_ptr[static_cast<size_t>(capture_real_array_offset) + i];
-				sum += fabsf(frame_float);
-				mix_capture_buffer.write[i] = webrtc::FloatToS16(frame_float);
-			}
-			capture_frame.UpdateFrame(0, mix_capture_buffer.ptr(), SPEECH_SETTING_BUFFER_FRAME_COUNT, SPEECH_SETTING_VOICE_SAMPLE_RATE, webrtc::AudioFrame::kNormalSpeech, webrtc::AudioFrame::kVadActive, 1);
-			capture_audio->CopyFrom(&capture_frame);
-			reference_audio->CopyFrom(&ref_frame);
-			reference_audio->SplitIntoFrequencyBands();
-			echo_controller->AnalyzeRender(reference_audio.get());
-			reference_audio->MergeFrequencyBands();
-			echo_controller->AnalyzeCapture(capture_audio.get());
-			capture_audio->SplitIntoFrequencyBands();
-			hp_filter->Process(capture_audio.get(), true);
-			echo_controller->ProcessCapture(capture_audio.get(), nullptr, false);
-			capture_audio->MergeFrequencyBands();
-			capture_audio->CopyTo(&capture_frame);
-			memcpy(mix_byte_array.ptrw(), capture_frame.data(), mix_byte_array.size());
+			memcpy(mix_byte_array.ptrw(), mix_capture_buffer.ptr(), mix_byte_array.size());
 			Dictionary voice_data_packet;
 			voice_data_packet["buffer"] = mix_byte_array;
 			float average = (float)sum / (float)SPEECH_SETTING_BUFFER_FRAME_COUNT;
@@ -237,21 +213,6 @@ void SpeechProcessor::start() {
 	audio_input_stream_player->play();
 	audio_effect_capture->clear_buffer();
 	audio_effect_error_cancellation_capture->clear_buffer();
-	webrtc::EchoCanceller3Factory aec_factory = webrtc::EchoCanceller3Factory(aec_config);
-	echo_controller = aec_factory.Create(SPEECH_SETTING_VOICE_SAMPLE_RATE, SPEECH_SETTING_CHANNEL_COUNT, SPEECH_SETTING_CHANNEL_COUNT);
-	hp_filter = std::make_unique<webrtc::HighPassFilter>(SPEECH_SETTING_VOICE_SAMPLE_RATE, SPEECH_SETTING_CHANNEL_COUNT);
-
-	webrtc::StreamConfig config = webrtc::StreamConfig(SPEECH_SETTING_VOICE_SAMPLE_RATE, SPEECH_SETTING_CHANNEL_COUNT, false);
-
-	reference_audio = std::make_unique<webrtc::AudioBuffer>(
-			config.sample_rate_hz(), config.num_channels(),
-			config.sample_rate_hz(), config.num_channels(),
-			config.sample_rate_hz(), config.num_channels());
-	capture_audio = std::make_unique<webrtc::AudioBuffer>(
-			config.sample_rate_hz(), config.num_channels(),
-			config.sample_rate_hz(), config.num_channels(),
-			config.sample_rate_hz(), config.num_channels());
-	echo_controller->SetAudioBufferDelay(AudioServer::get_singleton()->get_output_latency());
 }
 
 void SpeechProcessor::stop() {

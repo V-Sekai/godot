@@ -31,14 +31,10 @@
 #ifndef SPEECH_PROCESSOR_H
 #define SPEECH_PROCESSOR_H
 
-#include "core/config/engine.h"
-#include "core/config/project_settings.h"
-#include "core/object/class_db.h"
 #include "core/object/ref_counted.h"
 #include "core/os/mutex.h"
 #include "scene/audio/audio_stream_player.h"
 #include "scene/main/node.h"
-#include "servers/audio/audio_stream.h"
 #include "servers/audio/effects/audio_effect_capture.h"
 #include "servers/audio_server.h"
 
@@ -46,11 +42,6 @@
 #include <stdlib.h>
 #include <functional>
 
-#include "thirdparty/AEC3/api/echo_canceller3_config.h"
-#include "thirdparty/AEC3/api/echo_canceller3_factory.h"
-#include "thirdparty/AEC3/audio_processing/audio_buffer.h"
-#include "thirdparty/AEC3/audio_processing/high_pass_filter.h"
-#include "thirdparty/AEC3/audio_processing/include/audio_processing.h"
 #include "thirdparty/libsamplerate/src/samplerate.h"
 #include "thirdparty/opus/opus/opus.h"
 
@@ -149,15 +140,7 @@ private:
 	int64_t capture_error_cancellation_ring_size_sum = 0;
 	int32_t capture_error_cancellation_get_calls = 0;
 	int64_t capture_error_cancellation_get_frames = 0;
-
-	webrtc::EchoCanceller3Config aec_config;
-	std::unique_ptr<webrtc::AudioBuffer> reference_audio;
-	std::unique_ptr<webrtc::AudioBuffer> capture_audio;
-	const int kLinearOutputRateHz = 16000;
-	std::unique_ptr<webrtc::EchoControl> echo_controller;
-	std::unique_ptr<webrtc::HighPassFilter> hp_filter;
-	webrtc::AudioFrame ref_frame, capture_frame;
-
+	
 public:
 	struct SpeechInput {
 		PackedByteArray *pcm_byte_array = nullptr;
