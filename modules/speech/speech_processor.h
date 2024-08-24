@@ -140,7 +140,7 @@ private:
 	int64_t capture_error_cancellation_ring_size_sum = 0;
 	int32_t capture_error_cancellation_get_calls = 0;
 	int64_t capture_error_cancellation_get_frames = 0;
-	
+
 public:
 	struct SpeechInput {
 		PackedByteArray *pcm_byte_array = nullptr;
