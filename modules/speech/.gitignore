@@ -379,14 +379,3 @@ ruby.png
 snow.png
 updown.png
 gcov.css
-
-!thirdparty/AEC3/base/abseil/absl/log
-!thirdparty/opus/celt/arm
-!thirdparty/opus/celt/x86
-!thirdparty/opus/silk/arm
-!thirdparty/opus/silk/x86
-!thirdparty/libsamplerate/Win32
-!thirdparty/opus/silk/fixed/x86
-
-!thirdparty/godot-cpp/gdextension/extension_api.json
-!thirdparty/godot-cpp/test/*

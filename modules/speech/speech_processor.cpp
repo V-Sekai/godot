@@ -1,35 +1,34 @@
-/**************************************************************************/
-/*  speech_processor.cpp                                                  */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
+/*************************************************************************/
+/*  speech_processor.cpp                                                 */
+/*************************************************************************/
+/*                       This file is part of:                           */
+/*                           GODOT ENGINE                                */
+/*                      https://godotengine.org                          */
+/*************************************************************************/
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
+/*                                                                       */
+/* Permission is hereby granted, free of charge, to any person obtaining */
+/* a copy of this software and associated documentation files (the       */
+/* "Software"), to deal in the Software without restriction, including   */
+/* without limitation the rights to use, copy, modify, merge, publish,   */
+/* distribute, sublicense, and/or sell copies of the Software, and to    */
+/* permit persons to whom the Software is furnished to do so, subject to */
+/* the following conditions:                                             */
+/*                                                                       */
+/* The above copyright notice and this permission notice shall be        */
+/* included in all copies or substantial portions of the Software.       */
+/*                                                                       */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
+/*************************************************************************/
 
 #include "speech_processor.h"
-#include "core/config/project_settings.h"
 #include "opus_custom.h"
 
 #include <algorithm>
@@ -75,24 +74,6 @@ void SpeechProcessor::_bind_methods() {
 	BIND_CONSTANT(SPEECH_SETTING_PACKET_DELTA_TIME);
 }
 
-void SpeechProcessor::register_speech_processed(const std::function<void(SpeechInput *)> &callback) {
-	speech_processed = callback;
-}
-
-void SpeechProcessor::set_error_cancellation_bus(const String &p_name) {
-	if (!audio_server) {
-		return;
-	}
-
-	int index = audio_server->get_bus_index(p_name);
-	if (index != -1) {
-		int effect_count = audio_server->get_bus_effect_count(index);
-		for (int i = 0; i < effect_count; i++) {
-			audio_effect_error_cancellation_capture = audio_server->get_bus_effect(index, i);
-		}
-	}
-}
-
 uint32_t SpeechProcessor::_resample_audio_buffer(
 		const float *p_src, const uint32_t p_src_frame_count,
 		const uint32_t p_src_samplerate, const uint32_t p_target_samplerate,
@@ -104,9 +85,9 @@ uint32_t SpeechProcessor::_resample_audio_buffer(
 		src_data.data_out = p_dst;
 
 		src_data.input_frames = p_src_frame_count;
-		src_data.src_ratio = (double)p_target_samplerate / (double)p_src_samplerate;
-		src_data.output_frames = int(p_src_frame_count * src_data.src_ratio);
+		src_data.output_frames = p_src_frame_count * RESAMPLED_BUFFER_FACTOR;
 
+		src_data.src_ratio = (double)p_target_samplerate / (double)p_src_samplerate;
 		src_data.end_of_input = 0;
 
 		int error = src_process(libresample_state, &src_data);
@@ -157,10 +138,35 @@ void SpeechProcessor::_mix_audio(const Vector2 *p_capture_buffer, const Vector2 
 								static_cast<size_t>(capture_real_array_offset));
 		capture_real_array_offset = 0;
 		const float *capture_real_array_read_ptr = capture_real_array.ptr();
+		const float *reference_real_array_read_ptr = reference_real_array.ptr();
 		double_t sum = 0;
 		while (capture_real_array_offset < resampled_frame_count - SPEECH_SETTING_BUFFER_FRAME_COUNT) {
 			sum = 0.0;
-			memcpy(mix_byte_array.ptrw(), mix_capture_buffer.ptr(), mix_byte_array.size());
+			// Speaker frame.
+			for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
+				float frame_error_cancellation_float = reference_real_array_read_ptr[static_cast<size_t>(capture_real_array_offset) + i];
+				mix_reference_buffer.write[i] = webrtc::FloatToS16(frame_error_cancellation_float);
+			}
+			ref_frame.UpdateFrame(0, mix_reference_buffer.ptr(), SPEECH_SETTING_BUFFER_FRAME_COUNT, SPEECH_SETTING_VOICE_SAMPLE_RATE, webrtc::AudioFrame::kNormalSpeech, webrtc::AudioFrame::kVadActive, 1);
+			// Microphone frame.
+			for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
+				float frame_float = capture_real_array_read_ptr[static_cast<size_t>(capture_real_array_offset) + i];
+				sum += fabsf(frame_float);
+				mix_capture_buffer.write[i] = webrtc::FloatToS16(frame_float);
+			}
+			capture_frame.UpdateFrame(0, mix_capture_buffer.ptr(), SPEECH_SETTING_BUFFER_FRAME_COUNT, SPEECH_SETTING_VOICE_SAMPLE_RATE, webrtc::AudioFrame::kNormalSpeech, webrtc::AudioFrame::kVadActive, 1);
+			capture_audio->CopyFrom(&capture_frame);
+			reference_audio->CopyFrom(&ref_frame);
+			reference_audio->SplitIntoFrequencyBands();
+			echo_controller->AnalyzeRender(reference_audio.get());
+			reference_audio->MergeFrequencyBands();
+			echo_controller->AnalyzeCapture(capture_audio.get());
+			capture_audio->SplitIntoFrequencyBands();
+			hp_filter->Process(capture_audio.get(), true);
+			echo_controller->ProcessCapture(capture_audio.get(), nullptr, false);
+			capture_audio->MergeFrequencyBands();
+			capture_audio->CopyTo(&capture_frame);
+			memcpy(mix_byte_array.ptrw(), capture_frame.data(), mix_byte_array.size());
 			Dictionary voice_data_packet;
 			voice_data_packet["buffer"] = mix_byte_array;
 			float average = (float)sum / (float)SPEECH_SETTING_BUFFER_FRAME_COUNT;
@@ -213,6 +219,21 @@ void SpeechProcessor::start() {
 	audio_input_stream_player->play();
 	audio_effect_capture->clear_buffer();
 	audio_effect_error_cancellation_capture->clear_buffer();
+	webrtc::EchoCanceller3Factory aec_factory = webrtc::EchoCanceller3Factory(aec_config);
+	echo_controller = aec_factory.Create(SPEECH_SETTING_VOICE_SAMPLE_RATE, SPEECH_SETTING_CHANNEL_COUNT, SPEECH_SETTING_CHANNEL_COUNT);
+	hp_filter = std::make_unique<webrtc::HighPassFilter>(SPEECH_SETTING_VOICE_SAMPLE_RATE, SPEECH_SETTING_CHANNEL_COUNT);
+
+	webrtc::StreamConfig config = webrtc::StreamConfig(SPEECH_SETTING_VOICE_SAMPLE_RATE, SPEECH_SETTING_CHANNEL_COUNT, false);
+
+	reference_audio = std::make_unique<webrtc::AudioBuffer>(
+			config.sample_rate_hz(), config.num_channels(),
+			config.sample_rate_hz(), config.num_channels(),
+			config.sample_rate_hz(), config.num_channels());
+	capture_audio = std::make_unique<webrtc::AudioBuffer>(
+			config.sample_rate_hz(), config.num_channels(),
+			config.sample_rate_hz(), config.num_channels(),
+			config.sample_rate_hz(), config.num_channels());
+	echo_controller->SetAudioBufferDelay(AudioServer::get_singleton()->get_output_latency());
 }
 
 void SpeechProcessor::stop() {
@@ -244,27 +265,6 @@ bool SpeechProcessor::_16_pcm_mono_to_real_stereo(
 		src_buffer_ptr++;
 	}
 
-	return true;
-}
-
-bool SpeechProcessor::compress_buffer_internal(const PackedByteArray *p_pcm_byte_array, CompressedSpeechBuffer *p_output_buffer) {
-	p_output_buffer->buffer_size =
-			encode_buffer(p_pcm_byte_array, p_output_buffer->compressed_byte_array);
-	if (p_output_buffer->buffer_size != -1) {
-		return true;
-	}
-
-	return false;
-}
-
-bool SpeechProcessor::decompress_buffer_internal(SpeechDecoder *speech_decoder, const PackedByteArray *p_read_byte_array, const int p_read_size, PackedVector2Array *p_write_vec2_array) {
-	if (decode_buffer(speech_decoder, p_read_byte_array, &pcm_byte_array_cache,
-				p_read_size, SPEECH_SETTING_PCM_BUFFER_SIZE)) {
-		if (_16_pcm_mono_to_real_stereo(&pcm_byte_array_cache,
-					p_write_vec2_array)) {
-			return true;
-		}
-	}
 	return true;
 }
 
@@ -459,75 +459,10 @@ Dictionary SpeechProcessor::get_stats() const {
 	return stats;
 }
 
-void SpeechProcessor::print_opus_error(int error_code) {
-	switch (error_code) {
-		case OPUS_OK:
-			print_line("OpusCodec::OPUS_OK");
-			break;
-		case OPUS_BAD_ARG:
-			print_line("OpusCodec::OPUS_BAD_ARG");
-			break;
-		case OPUS_BUFFER_TOO_SMALL:
-			print_line("OpusCodec::OPUS_BUFFER_TOO_SMALL");
-			break;
-		case OPUS_INTERNAL_ERROR:
-			print_line("OpusCodec::OPUS_INTERNAL_ERROR");
-			break;
-		case OPUS_INVALID_PACKET:
-			print_line("OpusCodec::OPUS_INVALID_PACKET");
-			break;
-		case OPUS_UNIMPLEMENTED:
-			print_line("OpusCodec::OPUS_UNIMPLEMENTED");
-			break;
-		case OPUS_INVALID_STATE:
-			print_line("OpusCodec::OPUS_INVALID_STATE");
-			break;
-		case OPUS_ALLOC_FAIL:
-			print_line("OpusCodec::OPUS_ALLOC_FAIL");
-			break;
-	}
-}
-
 Ref<SpeechDecoder> SpeechProcessor::get_speech_decoder() {
 	Ref<SpeechDecoder> speech_decoder;
 	speech_decoder.instantiate();
 	return speech_decoder;
-}
-
-int SpeechProcessor::encode_buffer(const PackedByteArray *p_pcm_buffer, PackedByteArray *p_output_buffer) {
-	int number_of_bytes = -1;
-	if (encoder) {
-		const opus_int16 *pcm_buffer_pointer =
-				reinterpret_cast<const opus_int16 *>(p_pcm_buffer->ptr());
-
-		opus_int32 ret_value = opus_encode(
-				encoder, pcm_buffer_pointer, SPEECH_SETTING_BUFFER_FRAME_COUNT,
-				internal_buffer, SPEECH_SETTING_INTERNAL_BUFFER_SIZE);
-		if (ret_value >= 0) {
-			number_of_bytes = ret_value;
-
-			if (number_of_bytes > 0) {
-				unsigned char *output_buffer_pointer =
-						reinterpret_cast<unsigned char *>(p_output_buffer->ptrw());
-				memcpy(output_buffer_pointer, internal_buffer, number_of_bytes);
-			}
-		} else {
-			print_opus_error(ret_value);
-		}
-	}
-
-	return number_of_bytes;
-}
-
-bool SpeechProcessor::decode_buffer(SpeechDecoder *p_speech_decoder, const PackedByteArray *p_compressed_buffer, PackedByteArray *p_pcm_output_buffer, const int p_compressed_buffer_size, const int p_pcm_output_buffer_size) {
-	if (p_pcm_output_buffer->size() != p_pcm_output_buffer_size) {
-		ERR_PRINT("OpusCodec: decode_buffer output_buffer_size mismatch!");
-		return false;
-	}
-
-	return p_speech_decoder->process(
-			p_compressed_buffer, p_pcm_output_buffer, p_compressed_buffer_size,
-			p_pcm_output_buffer_size, SPEECH_SETTING_BUFFER_FRAME_COUNT);
 }
 
 SpeechProcessor::SpeechProcessor() {
