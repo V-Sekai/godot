@@ -20,6 +20,12 @@
 		<link title="Using AnimationTree">$DOCS_URL/tutorials/animation/animation_tree.html</link>
 	</tutorials>
 	<methods>
+		<method name="get_current_delta" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the playback delta within the current animation state.
+			</description>
+		</method>
 		<method name="get_current_length" qualifiers="const">
 			<return type="float" />
 			<description>
@@ -76,6 +82,12 @@
 				Returns the current travel path as computed internally by the A* algorithm.
 			</description>
 		</method>
+		<method name="is_next_requested" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns if the playback has been set to immediately transition from the current state to the next state.
+			</description>
+		</method>
 		<method name="is_playing" qualifiers="const">
 			<return type="bool" />
 			<description>
@@ -86,6 +98,13 @@
 			<return type="void" />
 			<description>
 				If there is a next path by travel or auto advance, immediately transitions from the current state to the next state.
+			</description>
+		</method>
+		<method name="set_travel_path">
+			<return type="void" />
+			<param index="0" name="path" type="StringName[]" />
+			<description>
+				Overrides the current travel path.
 			</description>
 		</method>
 		<method name="start">

@@ -323,6 +323,7 @@ class AnimationNodeStateMachinePlayback : public Resource {
 	Ref<AnimationNodeStateMachineTransition> _get_group_end_transition() const;
 
 	TypedArray<StringName> _get_travel_path() const;
+	void _set_travel_path(TypedArray<StringName> p_path);
 
 protected:
 	static void _bind_methods();
@@ -331,13 +332,17 @@ public:
 	void travel(const StringName &p_state, bool p_reset_on_teleport = true);
 	void start(const StringName &p_state, bool p_reset = true);
 	void next();
+	bool is_next_requested() const;
 	void stop();
 	bool is_playing() const;
 	bool is_end() const;
 	StringName get_current_node() const;
 	StringName get_fading_from_node() const;
 	Vector<StringName> get_travel_path() const;
-	float get_current_play_pos() const;
+	void set_travel_path(Vector<StringName> p_path);
+
+	double get_current_play_pos() const;
+	double get_current_delta() const;
 	float get_current_length() const;
 
 	float get_fading_from_play_pos() const;

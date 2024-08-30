@@ -275,6 +275,10 @@ void AnimationNodeStateMachinePlayback::next() {
 	_next_main();
 }
 
+bool AnimationNodeStateMachinePlayback::is_next_requested() const {
+	return next_request;
+}
+
 void AnimationNodeStateMachinePlayback::stop() {
 	ERR_FAIL_COND_EDMSG(is_grouped, "Grouped AnimationNodeStateMachinePlayback must be handled by parent AnimationNodeStateMachinePlayback. You need to retrieve the parent Root/Nested AnimationNodeStateMachine.");
 	_stop_main();
@@ -326,8 +330,24 @@ TypedArray<StringName> AnimationNodeStateMachinePlayback::_get_travel_path() con
 	return Variant(get_travel_path()).operator Array();
 }
 
-float AnimationNodeStateMachinePlayback::get_current_play_pos() const {
+void AnimationNodeStateMachinePlayback::set_travel_path(Vector<StringName> p_path) {
+	path = p_path;
+}
+
+void AnimationNodeStateMachinePlayback::_set_travel_path(TypedArray<StringName> p_path) {
+	Vector<StringName> path;
+	for (const StringName &part : p_path) {
+		path.append(part);
+	}
+	set_travel_path(path);
+}
+
+double AnimationNodeStateMachinePlayback::get_current_play_pos() const {
 	return current_nti.position;
+}
+
+double AnimationNodeStateMachinePlayback::get_current_delta() const {
+	return current_nti.delta;
 }
 
 float AnimationNodeStateMachinePlayback::get_current_length() const {
@@ -1209,10 +1229,12 @@ void AnimationNodeStateMachinePlayback::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("travel", "to_node", "reset_on_teleport"), &AnimationNodeStateMachinePlayback::travel, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("start", "node", "reset"), &AnimationNodeStateMachinePlayback::start, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("next"), &AnimationNodeStateMachinePlayback::next);
+	ClassDB::bind_method(D_METHOD("is_next_requested"), &AnimationNodeStateMachinePlayback::is_next_requested);
 	ClassDB::bind_method(D_METHOD("stop"), &AnimationNodeStateMachinePlayback::stop);
 	ClassDB::bind_method(D_METHOD("is_playing"), &AnimationNodeStateMachinePlayback::is_playing);
 	ClassDB::bind_method(D_METHOD("get_current_node"), &AnimationNodeStateMachinePlayback::get_current_node);
 	ClassDB::bind_method(D_METHOD("get_current_play_position"), &AnimationNodeStateMachinePlayback::get_current_play_pos);
+	ClassDB::bind_method(D_METHOD("get_current_delta"), &AnimationNodeStateMachinePlayback::get_current_delta);
 	ClassDB::bind_method(D_METHOD("get_current_length"), &AnimationNodeStateMachinePlayback::get_current_length);
 	ClassDB::bind_method(D_METHOD("get_fading_from_node"), &AnimationNodeStateMachinePlayback::get_fading_from_node);
 	ClassDB::bind_method(D_METHOD("get_fading_from_play_position"), &AnimationNodeStateMachinePlayback::get_fading_from_play_pos);
@@ -1220,6 +1242,7 @@ void AnimationNodeStateMachinePlayback::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_fading_position"), &AnimationNodeStateMachinePlayback::get_fading_pos);
 	ClassDB::bind_method(D_METHOD("get_fading_length"), &AnimationNodeStateMachinePlayback::get_fading_time);
 	ClassDB::bind_method(D_METHOD("get_travel_path"), &AnimationNodeStateMachinePlayback::_get_travel_path);
+	ClassDB::bind_method(D_METHOD("set_travel_path"), &AnimationNodeStateMachinePlayback::_set_travel_path);
 
 	ADD_SIGNAL(MethodInfo(SceneStringName(state_started), PropertyInfo(Variant::STRING_NAME, "state")));
 	ADD_SIGNAL(MethodInfo(SceneStringName(state_finished), PropertyInfo(Variant::STRING_NAME, "state")));
