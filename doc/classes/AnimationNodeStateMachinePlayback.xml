@@ -20,6 +20,12 @@
 		<link title="Using AnimationTree">$DOCS_URL/tutorials/animation/animation_tree.html</link>
 	</tutorials>
 	<methods>
+		<method name="get_current_delta" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the playback delta within the current animation state.
+			</description>
+		</method>
 		<method name="get_current_length" qualifiers="const">
 			<return type="float" />
 			<description>
@@ -40,16 +46,40 @@
 				Returns the playback position within the current animation state.
 			</description>
 		</method>
+		<method name="get_fade_from_delta" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the playback delta within the animation state you are fading from.
+			</description>
+		</method>
+		<method name="get_fade_from_play_position" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the playback position within the animation state you are fading from.
+			</description>
+		</method>
 		<method name="get_fading_from_node" qualifiers="const">
 			<return type="StringName" />
 			<description>
 				Returns the starting state of currently fading animation.
 			</description>
 		</method>
+		<method name="get_fading_position" qualifiers="const">
+			<return type="float" />
+			<description>
+				Get the time of the currently in-progress transition.
+			</description>
+		</method>
 		<method name="get_travel_path" qualifiers="const">
 			<return type="StringName[]" />
 			<description>
 				Returns the current travel path as computed internally by the A* algorithm.
+			</description>
+		</method>
+		<method name="is_next_requested" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns if the playback has been set to immedately transition from the current state to the next state.
 			</description>
 		</method>
 		<method name="is_playing" qualifiers="const">
@@ -62,6 +92,13 @@
 			<return type="void" />
 			<description>
 				If there is a next path by travel or auto advance, immediately transitions from the current state to the next state.
+			</description>
+		</method>
+		<method name="set_travel_path">
+			<return type="void" />
+			<param index="0" name="path" type="StringName[]" />
+			<description>
+				Overrides the current travel path.
 			</description>
 		</method>
 		<method name="start">
