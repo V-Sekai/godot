@@ -3,10 +3,14 @@ def can_build(env, platform):
 
 
 def configure(env):
-    from SCons.Script import BoolVariable, Help, Variables
+    pass
 
-    env_vars = Variables()
-    env_vars.Add(BoolVariable("lottie", "Enable Lottie support using thorvg", True))
 
-    env_vars.Update(env)
-    Help(env_vars.GenerateHelpText(env))
+def get_doc_classes():
+    return [
+        "ResourceImporterLottie",
+    ]
+
+
+def get_doc_path():
+    return "doc_classes"

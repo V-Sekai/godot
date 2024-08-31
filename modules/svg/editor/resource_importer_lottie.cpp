@@ -31,123 +31,155 @@
 #include "resource_importer_lottie.h"
 #include "core/io/dir_access.h"
 #include "core/io/json.h"
-#include "modules/svg/lottie_texture.h"
+#include "core/os/memory.h"
 
-String ResourceImporterLottieJSON::get_importer_name() const {
-	return "lottie_texture_2d";
-}
-String ResourceImporterLottieJSON::get_visible_name() const {
-	return "LottieTexture2D";
-}
-int ResourceImporterLottieJSON::get_preset_count() const {
-	return 0;
-}
-bool ResourceImporterLottieJSON::get_option_visibility(const String &p_path, const String &p_option, const HashMap<StringName, Variant> &p_options) const {
-	return true;
-}
-void ResourceImporterLottieJSON::get_recognized_extensions(List<String> *p_extensions) const {
-	p_extensions->push_back("json");
-}
-String ResourceImporterLottieJSON::get_save_extension() const {
-	return "lottiejson";
-}
-String ResourceImporterLottieJSON::get_resource_type() const {
-	return "LottieTexture2D";
-}
-void ResourceImporterLottieJSON::get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset) const {
-	String str = FileAccess::get_file_as_string(p_path);
-	Ref<JSON> json;
-	json.instantiate();
-	Error err = json->parse(str, true);
-	if (err != OK) {
-		ERR_PRINT("Error parsing JSON file: " + p_path);
-		return;
-	}
-	if (!LottieTexture2D::validate(json)) {
-		ERR_PRINT("Invalid Lottie file: " + p_path);
-		return;
-	}
-	Ref<LottieTexture2D> lottie = memnew(LottieTexture2D);
-	lottie->update(json, 0, 0, 0, 1, 0);
-	int total_frame_count = lottie->get_lottie_frame_count();
-	int fps = total_frame_count / lottie->get_lottie_duration();
-	int default_frame_count = fps <= 30 ? total_frame_count : total_frame_count * 30 / fps;
-	int columns = Math::ceil(Math::sqrt((float)default_frame_count));
-	int rows = Math::ceil(((float)default_frame_count) / columns);
-	Vector2 texture_size = lottie->get_lottie_image_size() * Vector2(columns, rows);
-	int default_size_limit = 1024;
-	float default_scale = 1.0;
-	if (texture_size[texture_size.max_axis_index()] > default_size_limit) {
-		default_scale = default_size_limit / texture_size[texture_size.max_axis_index()];
+#include <thorvg.h>
+
+static Ref<Image> lottie_to_sprite_sheet(Ref<JSON> json, float begin, float end, float fps, int columns, float scale, int size_limit) {
+	std::unique_ptr<tvg::SwCanvas> sw_canvas = tvg::SwCanvas::gen();
+	std::unique_ptr<tvg::Animation> animation = tvg::Animation::gen();
+	tvg::Picture *picture = animation->picture();
+	tvg::Result res = sw_canvas->push(tvg::cast(picture));
+	ERR_FAIL_COND_V(res != tvg::Result::Success, Ref<Image>());
+
+	String lottie_str = json->get_parsed_text();
+	if (lottie_str.is_empty()) {
+		// Set p_sort_keys to false, otherwise ThorVG can't load it
+		lottie_str = JSON::stringify(json->get_data(), "", false);
 	}
 
-	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/scale"), default_scale));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/frame_begin"), 0));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/frame_end"), total_frame_count - 1));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/frame_count"), default_frame_count));
-	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/columns"), 0));
-}
-Error ResourceImporterLottieJSON::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
-	// Invalid Lottie file if no import options
-	if (p_options.is_empty()) {
-		return ERR_INVALID_DATA;
+	res = picture->load(lottie_str.utf8(), lottie_str.utf8().size(), "lottie", true);
+	ERR_FAIL_COND_V_MSG(res != tvg::Result::Success, Ref<Image>(), "Failed to load Lottie");
+
+	float origin_width, origin_height;
+	picture->size(&origin_width, &origin_height);
+
+	end = CLAMP(end, begin, 1);
+	int total_frame_count = animation->totalFrame();
+	int frame_count = MAX(1, animation->duration() * CLAMP(end - begin, 0, 1) * fps);
+	int sheet_columns = columns <= 0 ? Math::ceil(Math::sqrt((float)frame_count)) : columns;
+	int sheet_rows = Math::ceil(((float)frame_count) / sheet_columns);
+	Vector2 texture_size = Vector2(origin_width * sheet_columns * scale, origin_height * sheet_rows * scale);
+	if (texture_size[texture_size.max_axis_index()] > size_limit) {
+		scale = size_limit / texture_size[texture_size.max_axis_index()];
 	}
-	Ref<JSON> json;
-	json.instantiate();
-	Error err = json->parse(FileAccess::get_file_as_string(p_source_file), true);
-	if (err != OK) {
-		String err_text = "Error parsing JSON file at '" + p_source_file + "', on line " + itos(json->get_error_line()) + ": " + json->get_error_message();
-		ERR_PRINT(err_text);
-		return ERR_INVALID_DATA;
+	uint32_t width = MAX(1, round(origin_width * scale));
+	uint32_t height = MAX(1, round(origin_height * scale));
+
+	const uint32_t max_dimension = 16384;
+	if (width * sheet_columns > max_dimension || height * sheet_rows > max_dimension) {
+		WARN_PRINT(vformat(
+				String::utf8("Target canvas dimensions %d×%d (with scale %.2f, rows %d, columns %d) exceed the max supported dimensions %d×%d. The target canvas will be scaled down."),
+				width, height, scale, sheet_rows, sheet_columns, max_dimension, max_dimension));
+		width = MIN(width, max_dimension / sheet_columns);
+		height = MIN(height, max_dimension / sheet_rows);
+		scale = MIN(width / origin_width, height / origin_height);
 	}
-	const float scale = p_options["lottie/scale"];
-	const float frame_begin = p_options["lottie/frame_begin"];
-	const float frame_end = p_options["lottie/frame_end"];
-	const int frame_count = p_options["lottie/frame_count"];
-	const int columns = p_options["lottie/columns"];
-	Ref<LottieTexture2D> lottie;
-	lottie.instantiate();
-	lottie->update(json, frame_begin, frame_end, frame_count, scale, columns);
-	err = ResourceSaver::save(lottie, p_save_path + ".lottiejson");
-	return err;
+	picture->size(width, height);
+
+	uint32_t *buffer = (uint32_t *)memalloc(sizeof(uint32_t) * width * height);
+	memset(buffer, 0, sizeof(uint32_t) * width * height);
+
+	sw_canvas->sync();
+	res = sw_canvas->target(buffer, width, width, height, tvg::SwCanvas::ARGB8888S);
+	if (res != tvg::Result::Success) {
+		memfree(buffer);
+		ERR_FAIL_V_MSG(Ref<Image>(), "Couldn't set target on ThorVG canvas.");
+	}
+
+	Ref<Image> image = Image::create_empty(width * sheet_columns, height * sheet_rows, false, Image::FORMAT_RGBA8);
+
+	for (int row = 0; row < sheet_rows; row++) {
+		for (int column = 0; column < sheet_columns; column++) {
+			if (row * sheet_columns + column >= frame_count) {
+				break;
+			}
+			float progress = ((float)(row * sheet_columns + column)) / frame_count;
+			float current_frame = total_frame_count * (begin + (end - begin) * progress);
+
+			animation->frame(current_frame);
+			res = sw_canvas->update(picture);
+			if (res != tvg::Result::Success) {
+				memfree(buffer);
+				ERR_FAIL_V_MSG(Ref<Image>(), "Couldn't update ThorVG pictures on canvas.");
+			}
+			res = sw_canvas->draw();
+			if (res != tvg::Result::Success) {
+				memfree(buffer);
+				ERR_FAIL_V_MSG(Ref<Image>(), "Couldn't draw ThorVG pictures on canvas.");
+			}
+			res = sw_canvas->sync();
+			if (res != tvg::Result::Success) {
+				memfree(buffer);
+				ERR_FAIL_V_MSG(Ref<Image>(), "Couldn't sync ThorVG canvas.");
+			}
+
+			for (uint32_t y = 0; y < height; y++) {
+				for (uint32_t x = 0; x < width; x++) {
+					uint32_t n = buffer[y * width + x];
+					Color color;
+					color.set_r8((n >> 16) & 0xff);
+					color.set_g8((n >> 8) & 0xff);
+					color.set_b8(n & 0xff);
+					color.set_a8((n >> 24) & 0xff);
+					image->set_pixel(x + width * column, y + height * row, color);
+				}
+			}
+			sw_canvas->clear(false);
+		}
+	}
+	memfree(buffer);
+	return image;
 }
 
-ResourceImporterLottieJSON::ResourceImporterLottieJSON() {}
+static bool validate_lottie(Ref<JSON> p_json) {
+	String str = p_json->get_parsed_text();
+	if (str.is_empty()) {
+		str = p_json->stringify(p_json->get_data(), "", false);
+	}
+	// use ThorVG to check if it's Lottie file.
+	std::unique_ptr<tvg::Picture> picture = tvg::Picture::gen();
+	tvg::Result res = picture->load(str.utf8(), str.utf8().size(), "lottie", true);
+	return res == tvg::Result::Success;
+}
 
-ResourceImporterLottieJSON::~ResourceImporterLottieJSON() {}
-
-//////////////////////////////////////////////////////////////
-
-String ResourceImporterLottieCTEX::get_importer_name() const {
+String ResourceImporterLottie::get_importer_name() const {
 	return "lottie_compressed_texture_2d";
 }
-String ResourceImporterLottieCTEX::get_visible_name() const {
+String ResourceImporterLottie::get_visible_name() const {
 	return "CompressedTexture2D";
 }
-int ResourceImporterLottieCTEX::get_preset_count() const {
+int ResourceImporterLottie::get_preset_count() const {
 	return 1;
 }
-String ResourceImporterLottieCTEX::get_preset_name(int p_idx) const {
-	return p_idx == 0 ? ResourceImporterTexture::get_preset_name(PRESET_2D) : "";
+String ResourceImporterLottie::get_preset_name(int p_idx) const {
+	return p_idx == 0 ? importer_ctex->get_preset_name(ResourceImporterTexture::PRESET_2D) : "";
 }
-void ResourceImporterLottieCTEX::get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset) const {
-	lottie_json_importer->get_import_options(p_path, r_options, p_preset);
+void ResourceImporterLottie::get_import_options(const String &p_path, List<ImportOption> *r_options, int p_preset) const {
+	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "lottie/size_limit", PROPERTY_HINT_RANGE, "0,4096,1,or_greater"), 2048));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/scale", PROPERTY_HINT_RANGE, "0,1,0.001,or_greater"), 1));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/begin", PROPERTY_HINT_RANGE, "0,1,0.001"), 0));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/end", PROPERTY_HINT_RANGE, "0,1,0.001"), 1));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::FLOAT, "lottie/fps", PROPERTY_HINT_RANGE, "0,60,0.1,or_greater"), 30));
+	r_options->push_back(ImportOption(PropertyInfo(Variant::INT, "lottie/columns", PROPERTY_HINT_RANGE, "0,16,1,or_greater"), 0));
 	if (r_options->is_empty()) {
 		return;
 	}
-	ResourceImporterTexture::get_import_options(p_path, r_options, p_preset);
+	importer_ctex->get_import_options(p_path, r_options, p_preset);
 }
-bool ResourceImporterLottieCTEX::get_option_visibility(const String &p_path, const String &p_option, const HashMap<StringName, Variant> &p_options) const {
-	return ResourceImporterTexture::get_option_visibility(p_path, p_option, p_options);
+bool ResourceImporterLottie::get_option_visibility(const String &p_path, const String &p_option, const HashMap<StringName, Variant> &p_options) const {
+	return importer_ctex->get_option_visibility(p_path, p_option, p_options);
 }
-void ResourceImporterLottieCTEX::get_recognized_extensions(List<String> *p_extensions) const {
-	p_extensions->push_back("json");
+void ResourceImporterLottie::get_recognized_extensions(List<String> *p_extensions) const {
+	p_extensions->push_back("lottie");
 }
-Error ResourceImporterLottieCTEX::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
-	// Invalid Lottie file if no import options
-	if (p_options.is_empty()) {
-		return ERR_INVALID_DATA;
-	}
+String ResourceImporterLottie::get_save_extension() const {
+	return importer_ctex->get_save_extension();
+}
+String ResourceImporterLottie::get_resource_type() const {
+	return importer_ctex->get_resource_type();
+}
+Error ResourceImporterLottie::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	Ref<JSON> json;
 	json.instantiate();
 	Error err = json->parse(FileAccess::get_file_as_string(p_source_file), true);
@@ -156,21 +188,27 @@ Error ResourceImporterLottieCTEX::import(const String &p_source_file, const Stri
 		ERR_PRINT(err_text);
 		return ERR_INVALID_DATA;
 	}
+	ERR_FAIL_COND_V(!validate_lottie(json), ERR_INVALID_DATA);
+
+	const int size_limit = p_options["lottie/size_limit"];
 	const float scale = p_options["lottie/scale"];
-	const float frame_begin = p_options["lottie/frame_begin"];
-	const float frame_end = p_options["lottie/frame_end"];
-	const int frame_count = p_options["lottie/frame_count"];
+	const float begin = p_options["lottie/begin"];
+	const float end = p_options["lottie/end"];
+	const float fps = p_options["lottie/fps"];
 	const int columns = p_options["lottie/columns"];
-	Ref<LottieTexture2D> lottie;
-	lottie.instantiate();
-	lottie->update(json, frame_begin, frame_end, frame_count, scale, columns);
+
+	Ref<Image> image = lottie_to_sprite_sheet(json, begin, end, fps, columns, scale, size_limit);
 
 	String tmp_image = p_save_path + ".tmp.webp";
-	err = lottie->get_image()->save_webp(tmp_image);
+	err = image->save_webp(tmp_image);
 	if (err == OK) {
-		err = ResourceImporterTexture::import(tmp_image, p_save_path, p_options, r_platform_variants, r_gen_files, r_metadata);
+		err = importer_ctex->import(tmp_image, p_save_path, p_options, r_platform_variants, r_gen_files, r_metadata);
 		Ref<DirAccess> d = DirAccess::create(DirAccess::ACCESS_RESOURCES);
 		err = d->remove(tmp_image);
 	}
 	return err;
+}
+
+ResourceImporterLottie::ResourceImporterLottie() {
+	importer_ctex.instantiate();
 }

@@ -58,7 +58,7 @@ thirdparty_sources = [
     "src/renderer/sw_engine/tvgSwStroke.cpp",
 ]
 
-if env["lottie"]:
+if env.editor_build:
     thirdparty_sources += [
         "src/renderer/tvgAnimation.cpp",
         # Lottie loader
@@ -82,7 +82,8 @@ env_svg.Prepend(CPPPATH=[thirdparty_dir + "inc"])
 
 # Enable ThorVG static object linking.
 env_svg.Append(CPPDEFINES=["TVG_STATIC"])
-if env["lottie"]:
+
+if env.editor_build:
     env_svg.Append(CPPDEFINES=["THORVG_LOTTIE_LOADER_SUPPORT", "LOTTIE_ENABLED"])
 
 env_thirdparty = env_svg.Clone()
@@ -99,7 +100,7 @@ env_thirdparty.Prepend(
     ]
 )
 
-if env["lottie"]:
+if env.editor_build:
     env_thirdparty.Prepend(CPPPATH=[thirdparty_dir + "src/loaders/lottie"])
 if env["builtin_libpng"]:
     env_thirdparty.Prepend(CPPPATH=["#thirdparty/libpng"])
@@ -116,10 +117,8 @@ env.modules_sources += thirdparty_obj
 module_obj = []
 
 env_svg.add_source_files(module_obj, ["register_types.cpp", "image_loader_svg.cpp"])
-if env["lottie"]:
-    env_svg.add_source_files(module_obj, "lottie_texture.cpp")
-    if env.editor_build:
-        env_svg.add_source_files(module_obj, "editor/resource_importer_lottie.cpp")
+if env.editor_build:
+    env_svg.add_source_files(module_obj, "editor/*.cpp")
 
 env.modules_sources += module_obj
 
