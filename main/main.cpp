@@ -283,6 +283,7 @@ static bool include_docs_in_extension_api_dump = false;
 static bool validate_extension_api = false;
 static String validate_extension_api_file;
 #endif
+static bool game = false;
 bool profile_gpu = false;
 
 // Constants.
@@ -1666,6 +1667,11 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 					OS::get_singleton()->print("Invalid project path specified: \"%s\", aborting.\n", p.utf8().get_data());
 					goto error;
 				}
+
+				editor = false;
+				cmdline_tool = false;
+				game = true;
+
 				N = N->next();
 			} else {
 				OS::get_singleton()->print("Missing relative or absolute path, aborting.\n");
@@ -4149,12 +4155,12 @@ int Main::start() {
 			GDExtensionInterfaceDump::generate_gdextension_interface_file("gdextension_interface.h");
 		}
 
-		if (dump_extension_api) {
+		if (!game && dump_extension_api) {
 			Engine::get_singleton()->set_editor_hint(true); // "extension_api.json" should always contains editor singletons.
 			GDExtensionAPIDump::generate_extension_json_file("extension_api.json", include_docs_in_extension_api_dump);
 		}
 
-		if (dump_gdextension_interface || dump_extension_api) {
+		if (dump_gdextension_interface || (!game && dump_extension_api)) {
 			return EXIT_SUCCESS;
 		}
 
@@ -4681,6 +4687,17 @@ int Main::start() {
 
 	OS::get_singleton()->benchmark_end_measure("Startup", "Main::Start");
 	OS::get_singleton()->benchmark_dump();
+
+#ifdef TOOLS_ENABLED
+	if (game && dump_extension_api) {
+		Engine::get_singleton()->set_editor_hint(true); // "extension_api.json" should always contains editor singletons.
+		GDExtensionAPIDump::generate_extension_json_file("extension_api.json", include_docs_in_extension_api_dump);
+
+		memdelete(main_loop);
+		main_loop = nullptr;
+		OS::get_singleton()->set_main_loop(main_loop);
+	}
+#endif
 
 	return EXIT_SUCCESS;
 }
