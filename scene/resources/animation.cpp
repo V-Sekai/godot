@@ -3492,6 +3492,11 @@ real_t Animation::bezier_track_interpolate(int p_track, double p_time) const {
 	Vector2 end(duration, bt->values[idx + 1].value.value);
 	Vector2 end_in = end + bt->values[idx + 1].value.in_handle;
 
+	// Check for infinite handles.
+	if (Math::is_inf(end_in.x) || Math::is_inf(start_out.x)) {
+		return start.y;
+	}
+
 	//narrow high and low as much as possible
 	for (int i = 0; i < iterations; i++) {
 		real_t middle = (low + high) / 2;

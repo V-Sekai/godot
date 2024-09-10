@@ -136,30 +136,35 @@ void AnimationBezierTrackEdit::_draw_track(int p_track, const Color &p_color) {
 			} else if (j == point_start) {
 				h = start.y; // Make sure it always connects.
 			} else { // Custom interpolation, used because it needs to show paths affected by moving the selection or handles.
-				int iterations = 10;
-				float low = 0;
-				float high = 1;
+				// Check for infinite handles.
+				if (Math::is_inf(out_handle.x) || Math::is_inf(in_handle.x)) {
+					h = start.y;
+				} else {
+					int iterations = 10;
+					float low = 0;
+					float high = 1;
 
-				// Narrow high and low as much as possible.
-				for (int k = 0; k < iterations; k++) {
-					float middle = (low + high) / 2.0;
+					// Narrow high and low as much as possible.
+					for (int k = 0; k < iterations; k++) {
+						float middle = (low + high) / 2.0;
 
-					Vector2 interp = start.bezier_interpolate(out_handle, in_handle, end, middle);
+						Vector2 interp = start.bezier_interpolate(out_handle, in_handle, end, middle);
 
-					if (interp.x < t) {
-						low = middle;
-					} else {
-						high = middle;
+						if (interp.x < t) {
+							low = middle;
+						} else {
+							high = middle;
+						}
 					}
+
+					// Interpolate the result.
+					Vector2 low_pos = start.bezier_interpolate(out_handle, in_handle, end, low);
+					Vector2 high_pos = start.bezier_interpolate(out_handle, in_handle, end, high);
+
+					float c = (t - low_pos.x) / (high_pos.x - low_pos.x);
+
+					h = low_pos.lerp(high_pos, c).y;
 				}
-
-				// Interpolate the result.
-				Vector2 low_pos = start.bezier_interpolate(out_handle, in_handle, end, low);
-				Vector2 high_pos = start.bezier_interpolate(out_handle, in_handle, end, high);
-
-				float c = (t - low_pos.x) / (high_pos.x - low_pos.x);
-
-				h = low_pos.lerp(high_pos, c).y;
 			}
 
 			h = _bezier_h_to_pixel(h);
@@ -1051,6 +1056,8 @@ void AnimationBezierTrackEdit::gui_input(const Ref<InputEvent> &p_event) {
 					menu->add_icon_item(get_editor_theme_icon(SNAME("BezierHandlesLinear")), TTR("Make Handles Linear"), MENU_KEY_SET_HANDLE_LINEAR);
 					menu->add_icon_item(get_editor_theme_icon(SNAME("BezierHandlesBalanced")), TTR("Make Handles Balanced"), MENU_KEY_SET_HANDLE_BALANCED);
 					menu->add_icon_item(get_editor_theme_icon(SNAME("BezierHandlesMirror")), TTR("Make Handles Mirrored"), MENU_KEY_SET_HANDLE_MIRRORED);
+					menu->add_icon_item(get_editor_theme_icon(SNAME("BezierHandlesFree")), TTR("Make Left Handle Constant"), MENU_KEY_SET_LEFT_HANDLE_CONSTANT);
+					menu->add_icon_item(get_editor_theme_icon(SNAME("BezierHandlesFree")), TTR("Make Right Handle Constant"), MENU_KEY_SET_RIGHT_HANDLE_CONSTANT);
 					menu->add_separator();
 					menu->add_icon_item(get_editor_theme_icon(SNAME("BezierHandlesBalanced")), TTR("Make Handles Balanced (Auto Tangent)"), MENU_KEY_SET_HANDLE_AUTO_BALANCED);
 					menu->add_icon_item(get_editor_theme_icon(SNAME("BezierHandlesMirror")), TTR("Make Handles Mirrored (Auto Tangent)"), MENU_KEY_SET_HANDLE_AUTO_MIRRORED);
@@ -1703,6 +1710,31 @@ void AnimationBezierTrackEdit::_menu_selected(int p_index) {
 		} break;
 		case MENU_KEY_SET_HANDLE_MIRRORED: {
 			_change_selected_keys_handle_mode(Animation::HANDLE_MODE_MIRRORED);
+		} break;
+		case MENU_KEY_SET_LEFT_HANDLE_CONSTANT: {
+			EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
+			undo_redo->create_action(TTR("Update Selected Key Left Handle Constant"), UndoRedo::MERGE_DISABLE, animation.ptr());
+			for (SelectionSet::Element *E = selection.back(); E; E = E->prev()) {
+				const IntPair track_key_pair = E->get();
+				undo_redo->add_undo_method(editor, "_bezier_track_set_key_handle_mode", animation.ptr(), track_key_pair.first, track_key_pair.second, animation->bezier_track_get_key_handle_mode(track_key_pair.first, track_key_pair.second), Animation::HANDLE_SET_MODE_NONE);
+				undo_redo->add_undo_method(animation.ptr(), "bezier_track_set_key_in_handle", track_key_pair.first, track_key_pair.second, animation->bezier_track_get_key_in_handle(track_key_pair.first, track_key_pair.second));
+				undo_redo->add_undo_method(animation.ptr(), "bezier_track_set_key_out_handle", track_key_pair.first, track_key_pair.second, animation->bezier_track_get_key_out_handle(track_key_pair.first, track_key_pair.second));
+				undo_redo->add_do_method(editor, "_bezier_track_set_key_handle_mode", animation.ptr(), track_key_pair.first, track_key_pair.second, Animation::HANDLE_MODE_FREE, Animation::HANDLE_SET_MODE_RESET);
+				undo_redo->add_do_method(animation.ptr(), "bezier_track_set_key_in_handle", track_key_pair.first, track_key_pair.second, Vector2(-HUGE_VAL, 0.0));
+			}
+			undo_redo->commit_action();
+		} break;
+		case MENU_KEY_SET_RIGHT_HANDLE_CONSTANT: {
+			EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
+			undo_redo->create_action(TTR("Update Selected Key Right Handle Constant"), UndoRedo::MERGE_DISABLE, animation.ptr());
+			for (SelectionSet::Element *E = selection.back(); E; E = E->prev()) {
+				const IntPair track_key_pair = E->get();
+				undo_redo->add_undo_method(editor, "_bezier_track_set_key_handle_mode", animation.ptr(), track_key_pair.first, track_key_pair.second, animation->bezier_track_get_key_handle_mode(track_key_pair.first, track_key_pair.second), Animation::HANDLE_SET_MODE_NONE);
+				undo_redo->add_undo_method(animation.ptr(), "bezier_track_set_key_out_handle", track_key_pair.first, track_key_pair.second, animation->bezier_track_get_key_out_handle(track_key_pair.first, track_key_pair.second));
+				undo_redo->add_do_method(editor, "_bezier_track_set_key_handle_mode", animation.ptr(), track_key_pair.first, track_key_pair.second, Animation::HANDLE_MODE_FREE, Animation::HANDLE_SET_MODE_RESET);
+				undo_redo->add_do_method(animation.ptr(), "bezier_track_set_key_out_handle", track_key_pair.first, track_key_pair.second, Vector2(HUGE_VAL, 0.0));
+			}
+			undo_redo->commit_action();
 		} break;
 		case MENU_KEY_SET_HANDLE_AUTO_BALANCED: {
 			_change_selected_keys_handle_mode(Animation::HANDLE_MODE_BALANCED, true);
