@@ -191,6 +191,7 @@ opts.Add(BoolVariable("deprecated", "Enable compatibility code for deprecated an
 opts.Add(
     EnumVariable("precision", "Set the floating-point precision level", "single", ["single", "double"], ignorecase=2)
 )
+opts.Add(BoolVariable("libdatachannel", "Enable the built-in libdatachannel webrtc implementation", True))
 opts.Add(BoolVariable("minizip", "Enable ZIP archive support using minizip", True))
 opts.Add(BoolVariable("brotli", "Enable Brotli for decompression and WOFF2 fonts support", True))
 opts.Add(BoolVariable("xaudio2", "Enable the XAudio2 audio driver on supported platforms", False))
@@ -276,6 +277,7 @@ opts.Add(BoolVariable("builtin_glslang", "Use the built-in glslang library", Tru
 opts.Add(BoolVariable("builtin_graphite", "Use the built-in Graphite library", True))
 opts.Add(BoolVariable("builtin_harfbuzz", "Use the built-in HarfBuzz library", True))
 opts.Add(BoolVariable("builtin_icu4c", "Use the built-in ICU library", True))
+opts.Add(BoolVariable("builtin_libdatachannel", "Use the built-in libdatachannel library", True))
 opts.Add(BoolVariable("builtin_libjpeg_turbo", "Use the built-in libjpeg-turbo library", True))
 opts.Add(BoolVariable("builtin_libogg", "Use the built-in libogg library", True))
 opts.Add(BoolVariable("builtin_libpng", "Use the built-in libpng library", True))
