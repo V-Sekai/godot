@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_macos.mm                              */
+/*  godot_runtime_api.mm                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,28 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "rendering_context_driver_vulkan_macos.h"
+#include "core/extension/godot_runtime_api.h"
 
-#ifdef VULKAN_ENABLED
+#include "core/extension/godot_instance.h"
+#include "main/main.h"
 
-#ifdef USE_VOLK
-#include <volk.h>
-#else
-#include <vulkan/vulkan_metal.h>
-#endif
+#import "os_ios.h"
 
-const char *RenderingContextDriverVulkanMacOS::_get_platform_surface_extension() const {
-	return VK_EXT_METAL_SURFACE_EXTENSION_NAME;
+static OS_IOS *os = nullptr;
+
+GDExtensionObjectPtr create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func) {
+	os = new OS_IOS();
+
+	Error err = Main::setup(p_argv[0], p_argc - 1, &p_argv[1], false, p_init_func);
+	if (err != OK) {
+		return nullptr;
+	}
+
+	GodotInstance *godot_instance = memnew(GodotInstance);
+
+	return (GDExtensionObjectPtr)godot_instance;
 }
 
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanMacOS::surface_create(const void *p_platform_data) {
-	const WindowPlatformData *wpd = (const WindowPlatformData *)(p_platform_data);
-
-	VkMetalSurfaceCreateInfoEXT create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-	create_info.pLayer = *wpd->layer_ptr;
-
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	VkResult err = vkCreateMetalSurfaceEXT(instance_get(), &create_info, nullptr, &vk_surface);
-	ERR_FAIL_COND_V(err != VK_SUCCESS, SurfaceID());
-
-	Surface *surface = memnew(Surface);
-	surface->vk_surface = vk_surface;
-	return SurfaceID(surface);
+void destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
+	memdelete((GodotInstance *)p_godot_instance);
 }
-
-RenderingContextDriverVulkanMacOS::RenderingContextDriverVulkanMacOS() {
-	// Does nothing.
-}
-
-RenderingContextDriverVulkanMacOS::~RenderingContextDriverVulkanMacOS() {
-	// Does nothing.
-}
-
-#endif // VULKAN_ENABLED
