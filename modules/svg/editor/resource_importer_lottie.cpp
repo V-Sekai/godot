@@ -32,6 +32,7 @@
 #include "core/io/dir_access.h"
 #include "core/io/json.h"
 #include "core/os/memory.h"
+#include "modules/zip/zip_reader.h"
 
 #include <thorvg.h>
 
@@ -180,15 +181,44 @@ String ResourceImporterLottie::get_resource_type() const {
 	return importer_ctex->get_resource_type();
 }
 Error ResourceImporterLottie::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
-	Ref<JSON> json;
-	json.instantiate();
-	Error err = json->parse(FileAccess::get_file_as_string(p_source_file), true);
-	if (err != OK) {
-		String err_text = "Error parsing JSON file at '" + p_source_file + "', on line " + itos(json->get_error_line()) + ": " + json->get_error_message();
-		ERR_PRINT(err_text);
-		return ERR_INVALID_DATA;
+	Error err = OK;
+	Ref<JSON> lottie_json;
+	lottie_json.instantiate();
+	String lottie_str = FileAccess::get_file_as_string(p_source_file, &err);
+	if (err == OK) {
+		err = lottie_json->parse(lottie_str, true);
 	}
-	ERR_FAIL_COND_V(!validate_lottie(json), ERR_INVALID_DATA);
+	if (err != OK) {
+		Ref<ZIPReader> zip_reader;
+		zip_reader.instantiate();
+		err = zip_reader->open(p_source_file);
+		ERR_FAIL_COND_V(err != OK, err);
+		String manifest_str;
+		PackedByteArray manifest_data = zip_reader->read_file("manifest.json", true);
+		err = manifest_str.parse_utf8(reinterpret_cast<const char *>(manifest_data.ptr()), manifest_data.size());
+		ERR_FAIL_COND_V(err != OK, err);
+		Ref<JSON> manifest;
+		manifest.instantiate();
+		err = manifest->parse(manifest_str, true);
+		ERR_FAIL_COND_V(err != OK, err);
+		Array animations = ((Dictionary)manifest->get_data())["animations"];
+		String anim_file;
+		for (Dictionary anim : animations) {
+			String file = "animations/" + (String)(anim["id"]) + ".json";
+			if (zip_reader->file_exists(file, true)) {
+				anim_file = file;
+				break;
+			}
+		}
+		ERR_FAIL_COND_V_MSG(anim_file.is_empty(), ERR_INVALID_DATA, "Animations in lottie manifest don't exist");
+		PackedByteArray lottie_data = zip_reader->read_file(anim_file, true);
+		lottie_str.clear();
+		err = lottie_str.parse_utf8(reinterpret_cast<const char *>(lottie_data.ptr()), lottie_data.size());
+		ERR_FAIL_COND_V(err != OK, err);
+		err = lottie_json->parse(lottie_str, true);
+		ERR_FAIL_COND_V(err != OK, err);
+	}
+	ERR_FAIL_COND_V(!validate_lottie(lottie_json), ERR_INVALID_DATA);
 
 	const int size_limit = p_options["lottie/size_limit"];
 	const float scale = p_options["lottie/scale"];
@@ -197,8 +227,8 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 	const float fps = p_options["lottie/fps"];
 	const int columns = p_options["lottie/columns"];
 
-	Ref<Image> image = lottie_to_sprite_sheet(json, begin, end, fps, columns, scale, size_limit);
-
+	Ref<Image> image = lottie_to_sprite_sheet(lottie_json, begin, end, fps, columns, scale, size_limit);
+	ERR_FAIL_COND_V(image.is_null(), ERR_INVALID_DATA);
 	String tmp_image = p_save_path + ".tmp.webp";
 	err = image->save_webp(tmp_image);
 	if (err == OK) {
