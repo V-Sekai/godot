@@ -360,8 +360,8 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 	print_verbose("Loading resource: " + remapped_path);
 
 	Error load_err = OK;
-	Ref<Resource> res = _load(load_task.remapped_path,
-			load_task.remapped_path != load_task.local_path ? load_task.local_path : String(),
+	Ref<Resource> res = _load(remapped_path,
+			remapped_path != load_task.local_path ? load_task.local_path : String(),
 			load_task.type_hint,
 			load_task.cache_mode,
 			load_task.using_whitelist,
@@ -550,7 +550,6 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 }
 
 Ref<Resource> ResourceLoader::load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_type_hint, ResourceFormatLoader::CacheMode p_cache_mode, Error *r_error) {
-
 	if (r_error) {
 		*r_error = OK;
 	}
