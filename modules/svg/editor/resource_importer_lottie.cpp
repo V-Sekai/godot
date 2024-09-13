@@ -36,17 +36,58 @@
 
 #include <thorvg.h>
 
-static Ref<Image> lottie_to_sprite_sheet(Ref<JSON> json, float begin, float end, float fps, int columns, float scale, int size_limit) {
+Ref<JSON> read_lottie_json(String p_path) {
+	Error err = OK;
+	Ref<JSON> lottie_json;
+	lottie_json.instantiate();
+	String lottie_str = FileAccess::get_file_as_string(p_path, &err);
+	if (err == OK) {
+		err = lottie_json->parse(lottie_str, true);
+	}
+	if (err != OK) {
+		Ref<ZIPReader> zip_reader;
+		zip_reader.instantiate();
+		err = zip_reader->open(p_path);
+		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to open dotLottie: %s", error_names[err]));
+		String manifest_str;
+		PackedByteArray manifest_data = zip_reader->read_file("manifest.json", true);
+		err = manifest_str.parse_utf8(reinterpret_cast<const char *>(manifest_data.ptr()), manifest_data.size());
+		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to parse dotLottie manifest: %s", error_names[err]));
+		Ref<JSON> manifest;
+		manifest.instantiate();
+		err = manifest->parse(manifest_str, true);
+		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to parse dotLottie manifest: %s", error_names[err]));
+		Array animations = ((Dictionary)manifest->get_data())["animations"];
+		String anim_file;
+		for (Dictionary anim : animations) {
+			String file = "animations/" + (String)(anim["id"]) + ".json";
+			if (zip_reader->file_exists(file, true)) {
+				anim_file = file;
+				break;
+			}
+		}
+		ERR_FAIL_COND_V_MSG(anim_file.is_empty(), nullptr, "Animations in dotLottie manifest don't exist");
+		PackedByteArray lottie_data = zip_reader->read_file(anim_file, true);
+		lottie_str.clear();
+		err = lottie_str.parse_utf8(reinterpret_cast<const char *>(lottie_data.ptr()), lottie_data.size());
+		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to parse lottie animation %s: %s", anim_file, error_names[err]));
+		err = lottie_json->parse(lottie_str, true);
+		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to parse lottie animation %s: %s", anim_file, error_names[err]));
+	}
+	return lottie_json;
+}
+
+Ref<Image> lottie_to_sprite_sheet(Ref<JSON> p_json, float p_begin, float p_end, float p_fps, int p_columns, float p_scale, int p_size_limit, Size2i *r_sprite_size, int *r_columns, int *r_frame_count) {
 	std::unique_ptr<tvg::SwCanvas> sw_canvas = tvg::SwCanvas::gen();
 	std::unique_ptr<tvg::Animation> animation = tvg::Animation::gen();
 	tvg::Picture *picture = animation->picture();
 	tvg::Result res = sw_canvas->push(tvg::cast(picture));
 	ERR_FAIL_COND_V(res != tvg::Result::Success, Ref<Image>());
 
-	String lottie_str = json->get_parsed_text();
+	String lottie_str = p_json->get_parsed_text();
 	if (lottie_str.is_empty()) {
 		// Set p_sort_keys to false, otherwise ThorVG can't load it
-		lottie_str = JSON::stringify(json->get_data(), "", false);
+		lottie_str = JSON::stringify(p_json->get_data(), "", false);
 	}
 
 	res = picture->load(lottie_str.utf8(), lottie_str.utf8().size(), "lottie", true);
@@ -55,26 +96,26 @@ static Ref<Image> lottie_to_sprite_sheet(Ref<JSON> json, float begin, float end,
 	float origin_width, origin_height;
 	picture->size(&origin_width, &origin_height);
 
-	end = CLAMP(end, begin, 1);
+	p_end = CLAMP(p_end, p_begin, 1);
 	int total_frame_count = animation->totalFrame();
-	int frame_count = MAX(1, animation->duration() * CLAMP(end - begin, 0, 1) * fps);
-	int sheet_columns = columns <= 0 ? Math::ceil(Math::sqrt((float)frame_count)) : columns;
+	int frame_count = MAX(1, animation->duration() * CLAMP(p_end - p_begin, 0, 1) * p_fps);
+	int sheet_columns = p_columns <= 0 ? Math::ceil(Math::sqrt((float)frame_count)) : p_columns;
 	int sheet_rows = Math::ceil(((float)frame_count) / sheet_columns);
-	Vector2 texture_size = Vector2(origin_width * sheet_columns * scale, origin_height * sheet_rows * scale);
-	if (texture_size[texture_size.max_axis_index()] > size_limit) {
-		scale = size_limit / texture_size[texture_size.max_axis_index()];
+	Vector2 texture_size = Vector2(origin_width * sheet_columns * p_scale, origin_height * sheet_rows * p_scale);
+	if (texture_size[texture_size.max_axis_index()] > p_size_limit) {
+		p_scale = p_size_limit / texture_size[texture_size.max_axis_index()];
 	}
-	uint32_t width = MAX(1, round(origin_width * scale));
-	uint32_t height = MAX(1, round(origin_height * scale));
+	uint32_t width = MAX(1, round(origin_width * p_scale));
+	uint32_t height = MAX(1, round(origin_height * p_scale));
 
 	const uint32_t max_dimension = 16384;
 	if (width * sheet_columns > max_dimension || height * sheet_rows > max_dimension) {
 		WARN_PRINT(vformat(
 				String::utf8("Target canvas dimensions %d×%d (with scale %.2f, rows %d, columns %d) exceed the max supported dimensions %d×%d. The target canvas will be scaled down."),
-				width, height, scale, sheet_rows, sheet_columns, max_dimension, max_dimension));
+				width, height, p_scale, sheet_rows, sheet_columns, max_dimension, max_dimension));
 		width = MIN(width, max_dimension / sheet_columns);
 		height = MIN(height, max_dimension / sheet_rows);
-		scale = MIN(width / origin_width, height / origin_height);
+		p_scale = MIN(width / origin_width, height / origin_height);
 	}
 	picture->size(width, height);
 
@@ -96,7 +137,7 @@ static Ref<Image> lottie_to_sprite_sheet(Ref<JSON> json, float begin, float end,
 				break;
 			}
 			float progress = ((float)(row * sheet_columns + column)) / frame_count;
-			float current_frame = total_frame_count * (begin + (end - begin) * progress);
+			float current_frame = total_frame_count * (p_begin + (p_end - p_begin) * progress);
 
 			animation->frame(current_frame);
 			res = sw_canvas->update(picture);
@@ -106,8 +147,7 @@ static Ref<Image> lottie_to_sprite_sheet(Ref<JSON> json, float begin, float end,
 			}
 			res = sw_canvas->draw();
 			if (res != tvg::Result::Success) {
-				memfree(buffer);
-				ERR_FAIL_V_MSG(Ref<Image>(), "Couldn't draw ThorVG pictures on canvas.");
+				WARN_PRINT_ONCE("Couldn't draw ThorVG pictures on canvas.");
 			}
 			res = sw_canvas->sync();
 			if (res != tvg::Result::Success) {
@@ -130,15 +170,24 @@ static Ref<Image> lottie_to_sprite_sheet(Ref<JSON> json, float begin, float end,
 		}
 	}
 	memfree(buffer);
+	if (r_sprite_size) {
+		*r_sprite_size = Size2i(width, height);
+	}
+	if (r_columns) {
+		*r_columns = sheet_columns;
+	}
+	if (r_frame_count) {
+		*r_frame_count = frame_count;
+	}
 	return image;
 }
 
-static bool validate_lottie(Ref<JSON> p_json) {
+bool validate_lottie(Ref<JSON> p_json) {
 	String str = p_json->get_parsed_text();
 	if (str.is_empty()) {
 		str = p_json->stringify(p_json->get_data(), "", false);
 	}
-	// use ThorVG to check if it's Lottie file.
+	// Use ThorVG to check if it's valid lottie.
 	std::unique_ptr<tvg::Picture> picture = tvg::Picture::gen();
 	tvg::Result res = picture->load(str.utf8(), str.utf8().size(), "lottie", true);
 	return res == tvg::Result::Success;
@@ -182,43 +231,9 @@ String ResourceImporterLottie::get_resource_type() const {
 }
 Error ResourceImporterLottie::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	Error err = OK;
-	Ref<JSON> lottie_json;
-	lottie_json.instantiate();
-	String lottie_str = FileAccess::get_file_as_string(p_source_file, &err);
-	if (err == OK) {
-		err = lottie_json->parse(lottie_str, true);
-	}
-	if (err != OK) {
-		Ref<ZIPReader> zip_reader;
-		zip_reader.instantiate();
-		err = zip_reader->open(p_source_file);
-		ERR_FAIL_COND_V(err != OK, err);
-		String manifest_str;
-		PackedByteArray manifest_data = zip_reader->read_file("manifest.json", true);
-		err = manifest_str.parse_utf8(reinterpret_cast<const char *>(manifest_data.ptr()), manifest_data.size());
-		ERR_FAIL_COND_V(err != OK, err);
-		Ref<JSON> manifest;
-		manifest.instantiate();
-		err = manifest->parse(manifest_str, true);
-		ERR_FAIL_COND_V(err != OK, err);
-		Array animations = ((Dictionary)manifest->get_data())["animations"];
-		String anim_file;
-		for (Dictionary anim : animations) {
-			String file = "animations/" + (String)(anim["id"]) + ".json";
-			if (zip_reader->file_exists(file, true)) {
-				anim_file = file;
-				break;
-			}
-		}
-		ERR_FAIL_COND_V_MSG(anim_file.is_empty(), ERR_INVALID_DATA, "Animations in lottie manifest don't exist");
-		PackedByteArray lottie_data = zip_reader->read_file(anim_file, true);
-		lottie_str.clear();
-		err = lottie_str.parse_utf8(reinterpret_cast<const char *>(lottie_data.ptr()), lottie_data.size());
-		ERR_FAIL_COND_V(err != OK, err);
-		err = lottie_json->parse(lottie_str, true);
-		ERR_FAIL_COND_V(err != OK, err);
-	}
-	ERR_FAIL_COND_V(!validate_lottie(lottie_json), ERR_INVALID_DATA);
+	Ref<JSON> lottie_json = read_lottie_json(p_source_file);
+
+	ERR_FAIL_COND_V(lottie_json.is_null() || !validate_lottie(lottie_json), ERR_INVALID_DATA);
 
 	const int size_limit = p_options["lottie/size_limit"];
 	const float scale = p_options["lottie/scale"];
@@ -227,14 +242,25 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 	const float fps = p_options["lottie/fps"];
 	const int columns = p_options["lottie/columns"];
 
-	Ref<Image> image = lottie_to_sprite_sheet(lottie_json, begin, end, fps, columns, scale, size_limit);
+	Size2i sprite_size;
+	int column_r;
+	int frame_count;
+	Ref<Image> image = lottie_to_sprite_sheet(lottie_json, begin, end, fps, columns, scale, size_limit, &sprite_size, &column_r, &frame_count);
 	ERR_FAIL_COND_V(image.is_null(), ERR_INVALID_DATA);
-	String tmp_image = p_save_path + ".tmp.webp";
-	err = image->save_webp(tmp_image);
+	String tmp_image = p_save_path + ".tmp.png";
+	err = image->save_png(tmp_image);
 	if (err == OK) {
 		err = importer_ctex->import(tmp_image, p_save_path, p_options, r_platform_variants, r_gen_files, r_metadata);
 		Ref<DirAccess> d = DirAccess::create(DirAccess::ACCESS_RESOURCES);
 		err = d->remove(tmp_image);
+		if (r_metadata) {
+			Dictionary meta;
+			meta["sprite_size"] = sprite_size;
+			meta["columns"] = column_r;
+			meta["frame_count"] = frame_count;
+			meta["fps"] = fps;
+			*r_metadata = meta;
+		}
 	}
 	return err;
 }
