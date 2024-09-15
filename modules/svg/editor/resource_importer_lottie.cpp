@@ -182,17 +182,6 @@ Ref<Image> lottie_to_sprite_sheet(Ref<JSON> p_json, float p_begin, float p_end, 
 	return image;
 }
 
-bool validate_lottie(Ref<JSON> p_json) {
-	String str = p_json->get_parsed_text();
-	if (str.is_empty()) {
-		str = p_json->stringify(p_json->get_data(), "", false);
-	}
-	// Use ThorVG to check if it's valid lottie.
-	std::unique_ptr<tvg::Picture> picture = tvg::Picture::gen();
-	tvg::Result res = picture->load(str.utf8(), str.utf8().size(), "lottie", true);
-	return res == tvg::Result::Success;
-}
-
 String ResourceImporterLottie::get_importer_name() const {
 	return "lottie_compressed_texture_2d";
 }
@@ -233,7 +222,7 @@ Error ResourceImporterLottie::import(const String &p_source_file, const String &
 	Error err = OK;
 	Ref<JSON> lottie_json = read_lottie_json(p_source_file);
 
-	ERR_FAIL_COND_V(lottie_json.is_null() || !validate_lottie(lottie_json), ERR_INVALID_DATA);
+	ERR_FAIL_COND_V(lottie_json.is_null(), ERR_INVALID_DATA);
 
 	const int size_limit = p_options["lottie/size_limit"];
 	const float scale = p_options["lottie/scale"];
