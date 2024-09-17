@@ -7,15 +7,18 @@ Sample code for the Siggraph Asia 2023 Technical Communications paper - [Robust 
 
 Python bindings for [libigl](https://github.com/libigl/libigl-python-bindings)
 
-[Polyscope](https://polyscope.run/py/installing/)
-
 ## Running
 
 ### Simple Transfer
 
 ```python
-pip3 install libigl polyscope robust_laplacian
-python3 src/main.py
+brew install micromamba
+/opt/homebrew/opt/micromamba/bin/micromamba shell init -s zsh -p ~/micromamba
+source ~/.zshrc
+micromamba create --name robust_weight_transfer -c conda-forge python=3.10
+micromamba activate robust_weight_transfer
+arch -arm64 pip3 install libigl robust_laplacian
+python src/main.py
 ```
 
 This will perform a simple transfer of weights from a sphere to the plane above it.
