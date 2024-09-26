@@ -7,6 +7,6 @@
 	remote = https://github.com/libigl/libigl.git
 	branch = main
 	commit = 0e02103df7b0f0303e055123de9489c56cae3978
-	parent = 1f546dec40b3a328a5e5d01b0bb41eb5d97ecb1b
+	parent = 0bd0341679c7cb1978db91668a05a59a4b195bcc
 	method = merge
-	cmdver = 0.4.6
+	cmdver = 0.4.9
