@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/nmwsharp/nonmanifold-laplacian.git
+	branch = master
+	commit = d9f1b15f2838f89b5d51db220f541441ef2cda61
+	parent = 337cdf7c3b2d258add5f92a6fca12b663944baca
+	method = merge
+	cmdver = 0.4.9
