@@ -1,0 +1,35 @@
+// Copyright 2017-2023, Nicholas Sharp and the Polyscope contributors. https://polyscope.run
+
+#pragma once
+
+#include "polyscope/affine_remapper.h"
+#include "polyscope/color_quantity.h"
+#include "polyscope/histogram.h"
+#include "polyscope/point_cloud.h"
+#include "polyscope/point_cloud_quantity.h"
+
+#include <vector>
+
+namespace polyscope {
+
+class PointCloudColorQuantity : public PointCloudQuantity, public ColorQuantity<PointCloudColorQuantity> {
+public:
+  PointCloudColorQuantity(std::string name, const std::vector<glm::vec3>& values, PointCloud& pointCloud_);
+
+  virtual void draw() override;
+
+  virtual void buildPickUI(size_t ind) override;
+  virtual void refresh() override;
+
+  virtual std::string niceName() override;
+
+  // === Members
+
+protected:
+  void createPointProgram();
+
+  std::shared_ptr<render::ShaderProgram> pointProgram;
+};
+
+
+} // namespace polyscope
