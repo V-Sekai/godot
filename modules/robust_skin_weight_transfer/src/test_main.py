@@ -152,34 +152,33 @@ class TestMeshProcessing(unittest.TestCase):
         np.testing.assert_equal(is_valid_array(valid_matrix), True)
         np.testing.assert_equal(is_valid_array(invalid_matrix), False)
 
-    # def test_inpaint(self):
-    #     V2 = np.array([
-    #         [0, 0, 0],
-    #         [1, 0, 0],
-    #         [0, 1, 0],
-    #         [1, 1, 0]  # This vertex needs inpainting
-    #     ])
-    #     F2 = np.array([
-    #         [0, 1, 2],
-    #         [1, 2, 3]
-    #     ])
-    #     W2 = np.array([
-    #         [1, 0],
-    #         [0, 1],
-    #         [0.5, 0.5],
-    #         [0, 0]  # Initial weights for the vertex that needs inpainting
-    #     ])
-    #     Matched = np.array([True, True, True, False])
-    #     expected_W_inpainted = np.array([
-    #         [1, 0],
-    #         [0, 1],
-    #         [0.5, 0.5],
-    #         [0.5, 0.5]  # Expected inpainted weights
-    #     ])
-    #     W_inpainted, success = inpaint(V2, F2, W2, Matched)
-    #     np.testing.assert_equal(success, True)
-    #     np.testing.assert_array_almost_equal(W_inpainted, expected_W_inpainted)
-
+    def test_inpaint(self):
+        V2 = np.array([
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 1, 0],
+            [1, 1, 0]  # This vertex needs inpainting
+        ])
+        F2 = np.array([
+            [0, 1, 2],
+            [1, 2, 3]
+        ])
+        W2 = np.array([
+            [1, 0],
+            [0, 1],
+            [0.5, 0.5],
+            [0, 0]  # Initial weights for the vertex that needs inpainting
+        ])
+        Matched = np.array([True, True, True, False])
+        expected_W_inpainted = np.array([[1.      , 0.      ],
+            [0.      , 1.      ],
+            [0.5     , 0.5     ],
+            [0.117647, 0.882353] # Expected inpainted weights
+        ])
+        W_inpainted, success = inpaint(V2, F2, W2, Matched)
+        np.testing.assert_equal(success, True)
+        np.testing.assert_array_almost_equal(W_inpainted, expected_W_inpainted)
+    
     def test_smooth(self):
         target_vertices = np.array([
             [0, 0, 0],
@@ -201,14 +200,7 @@ class TestMeshProcessing(unittest.TestCase):
         ])
         matched = np.array([True, True, True, False, False])
         distance_threshold = 1.5  # Distance threshold for smoothing
-        expected_smoothed_weights = np.array(
-            [[0.85,       0.15      ],
-            [0.10666667, 0.89333333],
-            [0.48044444, 0.51955556],
-            [0.25871111, 0.74128889],
-            [0.1,        0.9       ]]
-        )
-        expected_vertices_ids_to_smooth = np.array([ True,  True,  True,  True,  True])
+
         smoothed_weights, vertices_ids_to_smooth = smooth(
             target_vertices,
             target_faces,
@@ -218,6 +210,16 @@ class TestMeshProcessing(unittest.TestCase):
             num_smooth_iter_steps=1,  # Single iteration for simplicity
             smooth_alpha=0.2
         )
+
+        expected_smoothed_weights = np.array([
+            [0.85,       0.15      ],
+            [0.10666667, 0.89333333],
+            [0.48044444, 0.51955556],
+            [0.25871111, 0.74128889],
+            [0.1,        0.9       ]
+        ])
+        expected_vertices_ids_to_smooth = np.array([True, True, True, True, True])
+
         np.testing.assert_array_almost_equal(smoothed_weights, expected_smoothed_weights)
         np.testing.assert_array_equal(vertices_ids_to_smooth, expected_vertices_ids_to_smooth)
 

@@ -6,7 +6,7 @@ from typing import Tuple
 import igl
 import numpy as np
 import scipy as sp
-from robust_laplacian import mesh_laplacian
+import robust_laplacian
 
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
@@ -144,7 +144,6 @@ def is_valid_array(sparse_matrix):
     has_invalid_numbers = np.isnan(sparse_matrix.data).any() or np.isinf(sparse_matrix.data).any()
     return not has_invalid_numbers
 
-import logging
 
 def inpaint(V2, F2, W2, Matched):
     """
@@ -174,7 +173,7 @@ def inpaint(V2, F2, W2, Matched):
         return None, False
     
     # Compute the laplacian
-    L, M = mesh_laplacian(V2, F2)
+    L, M = robust_laplacian.mesh_laplacian(V2, F2)
     L = -L  # Flip the sign of the Laplacian
     Minv = sp.sparse.diags(1 / M.diagonal())
     Q = -L + L * Minv * L
