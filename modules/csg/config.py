@@ -17,6 +17,7 @@ def get_doc_classes():
         "CSGShape3D",
         "CSGSphere3D",
         "CSGTorus3D",
+        "CSGConvexCage3D",
     ]
 
 
