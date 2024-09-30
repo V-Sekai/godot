@@ -9,22 +9,52 @@ import scipy as sp
 import robust_laplacian
 import trimesh
 
-def create_triangles_on_volume(source_mesh_path, target_mesh_path, output_path):
+
+def create_diamond():
+    # Define vertices for a small diamond shape scaled to mm
+    scale_factor = 0.02  # Scaling down from meters to millimeters
+    vertices = np.array([
+        [0, 0, 1],   # Top vertex
+        [1, 0, 0],   # Side vertex
+        [-1, 0, 0],  # Side vertex
+        [0, 1, 0],   # Side vertex
+        [0, -1, 0],  # Side vertex
+        [0, 0, -1]   # Bottom vertex
+    ]) * scale_factor  # Apply scale factor to each vertex
+    
+    # Define faces connecting the vertices
+    faces = np.array([
+        [0, 1, 3],
+        [0, 3, 2],
+        [0, 2, 4],
+        [0, 4, 1],
+        [5, 3, 1],
+        [5, 2, 3],
+        [5, 4, 2],
+        [5, 1, 4]
+    ])
+    
+    return trimesh.Trimesh(vertices=vertices, faces=faces)
+
+def create_diamonds_on_volume(source_path, target_path, output_path, margin=0.5):
     """
-    Creates triangles on volume at target mesh.
+    Creates a swept volume between a character body mesh and its clothing mesh with a specified margin.
     
     Args:
-        source_mesh_path (str): Path to the source mesh file (.obj).
-        target_mesh_path (str): Path to the target mesh file (.obj).
+        character_body_path (str): Path to the character body mesh file (.obj).
+        clothing_path (str): Path to the clothing mesh file (.obj).
         output_path (str): Path where the swept volume mesh will be saved (.obj).
+        margin (float): Margin distance in millimeters to be added to the clothing mesh.
     """
-    source_mesh = trimesh.load(source_mesh_path)
+    # Load meshes
+    source_mesh = trimesh.load(source_path)
     if hasattr(source_mesh, 'to_geometry'):
         source_mesh = source_mesh.to_geometry()
-    target_mesh = trimesh.load(target_mesh_path)
+    target_mesh = trimesh.load(target_path)
     if hasattr(target_mesh, 'to_geometry'):
         target_mesh = target_mesh.to_geometry()
 
+    # Prepare data for closest point calculation
     test_points = np.array(source_mesh.vertices)
     mesh_vertices = np.array(target_mesh.vertices)
     mesh_faces = np.array(target_mesh.faces)
@@ -32,17 +62,18 @@ def create_triangles_on_volume(source_mesh_path, target_mesh_path, output_path):
     distances, face_indices, points, barycentric = find_closest_point_on_surface(
         test_points, mesh_vertices, mesh_faces
     )
+
     all_meshes = []
 
-    for idx, point in enumerate(points):
-        face_vertex_indices = mesh_faces[face_indices[idx]]
-        triangle_vertices = mesh_vertices[face_vertex_indices]
-        triangle_mesh = trimesh.Trimesh(vertices=triangle_vertices, faces=[[0, 1, 2]], process=False)
-        all_meshes.append(triangle_mesh)
+    diamond_mesh_template = create_diamond()
+    for point in points:
+        diamond_mesh = diamond_mesh_template.copy()
+        diamond_mesh.apply_translation(point)
+        all_meshes.append(diamond_mesh)
         
     combined_mesh = trimesh.util.concatenate(all_meshes)
+    combined_mesh = combined_mesh + target_mesh
     combined_mesh.export(output_path)
-    
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
     """
@@ -382,6 +413,6 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    create_triangles_on_volume(args.source_mesh, args.target_mesh, args.output_file)
+    create_diamonds_on_volume(args.source_mesh, args.target_mesh, args.output_file)
 
 # python src/main.py --source_mesh "meshes/sphere.obj" --target_mesh "meshes/grid.obj" --output_file "meshes/swept_cage.obj"
