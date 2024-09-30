@@ -4,7 +4,9 @@ from main import (find_closest_point_on_surface, interpolate_attribute_from_bary
                   normalize_vector, find_matches_closest_surface, is_valid_array,
                   inpaint, smooth)
 
+
 class TestMeshProcessing(unittest.TestCase):
+    
     def test_find_closest_point_on_surface(self):
         vertices = np.array([
             [-1, -1, -1], [1, -1, -1], [1, 1, -1]

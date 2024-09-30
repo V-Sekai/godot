@@ -7,7 +7,43 @@ import igl
 import numpy as np
 import scipy as sp
 import robust_laplacian
+import trimesh
 
+def create_swept_volume(character_body_path, clothing_path, output_path, margin=0.5):
+    """
+    Creates a swept volume between a character body mesh and its clothing mesh with a specified margin.
+    
+    Args:
+        character_body_path (str): Path to the character body mesh file (.obj).
+        clothing_path (str): Path to the clothing mesh file (.obj).
+        output_path (str): Path where the swept volume mesh will be saved (.obj).
+        margin (float): Margin distance in millimeters to be added to the clothing mesh.
+    """
+    # Load meshes
+    character_body = trimesh.load(character_body_path)
+    clothing = trimesh.load(clothing_path)
+
+    # Prepare data for closest point calculation
+    test_points = np.array(character_body.vertices)
+    mesh_vertices = np.array(clothing.vertices)
+    mesh_faces = np.array(clothing.faces)
+
+    # Find closest points on the clothing mesh for each vertex in the character body
+    distances, face_indices, points, barycentric = find_closest_point_on_surface(
+        test_points, mesh_vertices, mesh_faces
+    )
+    
+    points_mesh = trimesh.Trimesh(vertices=points)
+
+    # Create the convex hull mesh using trimesh
+    convex_hull_mesh = points_mesh.convex_hull
+
+    # Combine the extruded mesh with the original clothing mesh
+    combined_mesh = character_body + convex_hull_mesh
+
+    # Export the combined mesh to the specified output path
+    combined_mesh.export(output_path)
+    
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
     """
@@ -336,26 +372,19 @@ def main(source_mesh: str, target_mesh: str, output_file: str) -> None:
     with open(output_file_path, "w") as f:
         json.dump(mesh_data, f)
 
-
-if __name__ == "__main__":
-    arguments = parse_arguments()
-    main(arguments.source_mesh, arguments.target_mesh, arguments.output_file)
-
 import argparse
 from argparse import ArgumentParser, Namespace
 
+def parse_arguments():
+    # TODO output mesh with weight transferred.
+    parser = argparse.ArgumentParser(description="Generate a swept volume mesh between two given meshes.")
+    parser.add_argument("--source_mesh", type=str, required=True, help="Path to the source mesh file")
+    parser.add_argument("--target_mesh", type=str, required=True, help="Path to the target mesh file")
+    parser.add_argument("--output_file", type=str, required=True, help="Path to the output file")
+    return parser.parse_args()
 
-def parse_arguments() -> Namespace:
-    argument_parser: ArgumentParser = argparse.ArgumentParser(description="Process some meshes.")
-    argument_parser.add_argument(
-        "--source_mesh", type=str, default="../meshes/sphere.obj", help="Path to the source mesh file"
-    )
-    argument_parser.add_argument(
-        "--target_mesh", type=str, default="../meshes/grid.obj", help="Path to the target mesh file"
-    )
-    argument_parser.add_argument(
-        "--output_file", type=str, default="../meshes/output.json", help="Path to the output file"
-    )
+if __name__ == "__main__":
+    args = parse_arguments()
+    create_swept_volume(args.source_mesh, args.target_mesh, args.output_file)
 
-    arguments: Namespace = argument_parser.parse_args()
-    return arguments
+# python src/main.py --source_mesh "meshes/sphere.obj" --target_mesh "meshes/grid.obj" --output_file "meshes/swept_cage.obj"
