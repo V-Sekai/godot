@@ -8,8 +8,33 @@ import numpy as np
 import scipy as sp
 import robust_laplacian
 import trimesh
-
-def create_volume(source, target, output_path):
+def create_diamond():
+    # Define vertices for a small diamond shape scaled to mm
+    scale_factor = 0.005  # Scaling down from meters to millimeters
+    vertices = np.array([
+        [0, 0, 1],   # Top vertex
+        [1, 0, 0],   # Side vertex
+        [-1, 0, 0],  # Side vertex
+        [0, 1, 0],   # Side vertex
+        [0, -1, 0],  # Side vertex
+        [0, 0, -1]   # Bottom vertex
+    ]) * scale_factor  # Apply scale factor to each vertex
+    
+    # Define faces connecting the vertices
+    faces = np.array([
+        [0, 1, 3],
+        [0, 3, 2],
+        [0, 2, 4],
+        [0, 4, 1],
+        [5, 3, 1],
+        [5, 2, 3],
+        [5, 4, 2],
+        [5, 1, 4]
+    ])
+    
+    return trimesh.Trimesh(vertices=vertices, faces=faces)
+    
+def create_cages(source, target, outer_mesh_path):
     """
     Creates a swept volume between a character body mesh and its clothing mesh with a specified margin.
     
@@ -19,12 +44,41 @@ def create_volume(source, target, output_path):
         output_path (str): Path where the swept volume mesh will be saved (.obj).
         margin (float): Margin distance in millimeters to be added to the clothing mesh.
     """
+    source_mesh = trimesh.load(source)
+    if hasattr(source_mesh, 'to_geometry'):
+        source_mesh = source_mesh.to_geometry()
     target_mesh = trimesh.load(target)
     if hasattr(target_mesh, 'to_geometry'):
         target_mesh = target_mesh.to_geometry()
-    vertices = np.array(target_mesh.vertices)
-    final_mesh = trimesh.Trimesh(vertices=vertices).convex_hull
-    final_mesh.export(output_path)
+    source_vertices = np.array(source_mesh.vertices)
+    outer_mesh = trimesh.Trimesh(vertices=source_vertices).convex_hull
+    target_vertices = np.array(target_mesh.vertices)
+    target_faces = np.array(target_mesh.faces)
+    # source_faces = np.array(source_mesh.faces)
+    # distances, face_indices, points, barycentric = find_closest_point_on_surface(
+    #     target_vertices, source_vertices, source_faces 
+    # )
+    # all_meshes = []
+    # diamond_mesh_template = create_diamond()
+    # for point in points:
+    #     diamond_mesh = diamond_mesh_template.copy()
+    #     diamond_mesh.apply_translation(point)
+    #     all_meshes.append(diamond_mesh)
+    # inner_mesh = trimesh.util.concatenate(all_meshes)
+    # inner_mesh.export(inner_mesh_path)
+    
+    distances, face_indices, points, barycentric = find_closest_point_on_surface(
+        source_vertices, target_vertices, target_faces 
+    )
+    all_meshes = []
+    diamond_mesh_template = create_diamond()
+    for point in points:
+        diamond_mesh = diamond_mesh_template.copy()
+        diamond_mesh.apply_translation(point)
+        all_meshes.append(diamond_mesh)
+    outer_mesh = trimesh.util.concatenate(all_meshes)
+    outer_mesh.export(outer_mesh_path)
+    
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
     """
@@ -359,11 +413,9 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Generate a swept volume mesh between two given meshes.")
     parser.add_argument("--source_mesh", type=str, required=True, help="Path to the source mesh file")
     parser.add_argument("--target_mesh", type=str, required=True, help="Path to the target mesh file")
-    parser.add_argument("--output_file", type=str, required=True, help="Path to the output file")
+    parser.add_argument("--cage_file", type=str, required=True, help="Path to the cage_file file")
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_arguments()
-    create_volume(args.source_mesh, args.target_mesh, args.output_file)
-
-# python src/main.py --source_mesh "meshes/sphere.obj" --target_mesh "meshes/grid.obj" --output_file "meshes/swept_cage.obj"
+    create_cages(args.source_mesh, args.target_mesh, args.cage_file)
