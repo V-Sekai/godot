@@ -8,6 +8,7 @@ import numpy as np
 import scipy as sp
 import robust_laplacian
 import trimesh
+
 def create_diamond():
     # Define vertices for a small diamond shape scaled to mm
     scale_factor = 0.005  # Scaling down from meters to millimeters
@@ -54,31 +55,21 @@ def create_cages(source, target, outer_mesh_path):
     outer_mesh = trimesh.Trimesh(vertices=source_vertices).convex_hull
     target_vertices = np.array(target_mesh.vertices)
     target_faces = np.array(target_mesh.faces)
-    # source_faces = np.array(source_mesh.faces)
-    # distances, face_indices, points, barycentric = find_closest_point_on_surface(
-    #     target_vertices, source_vertices, source_faces 
-    # )
-    # all_meshes = []
-    # diamond_mesh_template = create_diamond()
-    # for point in points:
-    #     diamond_mesh = diamond_mesh_template.copy()
-    #     diamond_mesh.apply_translation(point)
-    #     all_meshes.append(diamond_mesh)
-    # inner_mesh = trimesh.util.concatenate(all_meshes)
-    # inner_mesh.export(inner_mesh_path)
-    
     distances, face_indices, points, barycentric = find_closest_point_on_surface(
         source_vertices, target_vertices, target_faces 
     )
-    all_meshes = []
+    all_meshes = [target_mesh]
     diamond_mesh_template = create_diamond()
-    for point in points:
+    test_points = np.array(target_mesh.vertices)
+    num_points_to_select = 200
+    selected_indices = np.random.choice(len(test_points), num_points_to_select, replace=False)
+    selected_test_points = test_points[selected_indices]
+    for point in selected_test_points:
         diamond_mesh = diamond_mesh_template.copy()
         diamond_mesh.apply_translation(point)
         all_meshes.append(diamond_mesh)
-    outer_mesh = trimesh.util.concatenate(all_meshes)
+    outer_mesh = trimesh.util.concatenate(all_meshes).convex_hull
     outer_mesh.export(outer_mesh_path)
-    
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
     """
