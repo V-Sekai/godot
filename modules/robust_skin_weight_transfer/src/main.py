@@ -9,87 +9,57 @@ import scipy as sp
 import robust_laplacian
 import trimesh
 
-def create_diamond():
-    # Define vertices for a small diamond shape scaled to mm
-    scale_factor = 0.02  # Scaling down from meters to millimeters
-    vertices = np.array([
-        [0, 0, 1],   # Top vertex
-        [1, 0, 0],   # Side vertex
-        [-1, 0, 0],  # Side vertex
-        [0, 1, 0],   # Side vertex
-        [0, -1, 0],  # Side vertex
-        [0, 0, -1]   # Bottom vertex
-    ]) * scale_factor  # Apply scale factor to each vertex
-    
-    # Define faces connecting the vertices
-    faces = np.array([
-        [0, 1, 3],
-        [0, 3, 2],
-        [0, 2, 4],
-        [0, 4, 1],
-        [5, 3, 1],
-        [5, 2, 3],
-        [5, 4, 2],
-        [5, 1, 4]
-    ])
-    
-    return trimesh.Trimesh(vertices=vertices, faces=faces)
-
-def create_swept_volume(character_body_path, clothing_path, output_path, margin=0.5):
+def create_triangles_on_volume(source_mesh_path, target_mesh_path, output_path):
     """
-    Creates a swept volume between a character body mesh and its clothing mesh with a specified margin.
+    Creates triangles on volume at target mesh.
     
     Args:
-        character_body_path (str): Path to the character body mesh file (.obj).
-        clothing_path (str): Path to the clothing mesh file (.obj).
+        source_mesh_path (str): Path to the source mesh file (.obj).
+        target_mesh_path (str): Path to the target mesh file (.obj).
         output_path (str): Path where the swept volume mesh will be saved (.obj).
-        margin (float): Margin distance in millimeters to be added to the clothing mesh.
     """
-    # Load meshes
-    character_body = trimesh.load(character_body_path)
-    if hasattr(character_body, 'to_geometry'):
-        character_body = character_body.to_geometry()
-    clothing = trimesh.load(clothing_path)
-    if hasattr(clothing, 'to_geometry'):
-        clothing = clothing.to_geometry()
+    source_mesh = trimesh.load(source_mesh_path)
+    if hasattr(source_mesh, 'to_geometry'):
+        source_mesh = source_mesh.to_geometry()
+    target_mesh = trimesh.load(target_mesh_path)
+    if hasattr(target_mesh, 'to_geometry'):
+        target_mesh = target_mesh.to_geometry()
 
-    # Prepare data for closest point calculation
-    test_points = np.array(character_body.vertices)
-    mesh_vertices = np.array(clothing.vertices)
-    mesh_faces = np.array(clothing.faces)
+    test_points = np.array(source_mesh.vertices)
+    mesh_vertices = np.array(target_mesh.vertices)
+    mesh_faces = np.array(target_mesh.faces)
 
     distances, face_indices, points, barycentric = find_closest_point_on_surface(
         test_points, mesh_vertices, mesh_faces
     )
 
-    all_meshes = [character_body]
+    all_meshes = []
 
-    diamond_mesh_template = create_diamond()
-    for point in points:
-        diamond_mesh = diamond_mesh_template.copy()
-        diamond_mesh.apply_translation(point)
-        all_meshes.append(diamond_mesh)
+    for idx, point in enumerate(points):
+        face_vertex_indices = mesh_faces[face_indices[idx]]
+        triangle_vertices = mesh_vertices[face_vertex_indices]
+        triangle_mesh = trimesh.Trimesh(vertices=triangle_vertices, faces=[[0, 1, 2]], process=False)
+        triangle_mesh.apply_translation(point)
+        
+        all_meshes.append(triangle_mesh)
         
     combined_mesh = trimesh.util.concatenate(all_meshes)
-    combined_mesh = character_body + combined_mesh + clothing
     combined_mesh.export(output_path)
     
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
     """
-    Given a number of points, find their closest points on the surface of the mesh defined by mesh_vertices and mesh_triangles.
-
     Args:
-        points (np.ndarray): An array of shape (#points, 3) where each row represents a point coordinate.
-        mesh_vertices (np.ndarray): An array of shape (#mesh_vertices, 3) representing mesh vertices.
-        mesh_triangles (np.ndarray): An array of shape (#mesh_triangles, 3) representing mesh triangle indices.
+        points (np.ndarray): An array of shape (#points, 3), where each row represents the coordinates of a point in 3D space.
+        mesh_vertices (np.ndarray): An array of shape (#mesh_vertices, 3), representing the vertices of the target mesh surface.
+        mesh_triangles (np.ndarray): An array of shape (#mesh_triangles, 3), where each row contains indices that correspond to the vertices forming a triangle on the target mesh surface.
 
     Returns:
-        tuple: A tuple containing:
-            - smallest_squared_distances (np.ndarray): An array of shape (#points,) representing the smallest squared distances from each point to the mesh.
-            - primitive_indices (np.ndarray): An array of shape (#points,) representing the indices of the triangles corresponding to the smallest distances.
-            - closest_points (np.ndarray): An array of shape (#points, 3) representing the closest points on the mesh.
-            - barycentric_coordinates (np.ndarray): An array of shape (#points, 3) representing the barycentric coordinates of the closest points.
+        tuple: A tuple containing four elements:
+            - smallest_squared_distances (np.ndarray): An array of shape (#points,), which holds the smallest squared distances from each input point to the closest point on the target mesh surface.
+            - primitive_indices (np.ndarray): An array of shape (#points,), indicating the index of the triangle in `mesh_triangles` where the closest point was found for each input point.
+            - closest_points (np.ndarray): An array of shape (#points, 3), representing the coordinates of the closest points on the target mesh surface for each input point.
+            - barycentric_coordinates (np.ndarray): An array of shape (#points, 3), providing the barycentric coordinates of each closest point relative to the vertices of the triangle it lies on.
     """
     points = np.asarray(points, dtype=np.float64)
     mesh_vertices = np.asarray(mesh_vertices, dtype=np.float64)
@@ -415,6 +385,6 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    create_swept_volume(args.source_mesh, args.target_mesh, args.output_file)
+    create_triangles_on_volume(args.source_mesh, args.target_mesh, args.output_file)
 
 # python src/main.py --source_mesh "meshes/sphere.obj" --target_mesh "meshes/grid.obj" --output_file "meshes/swept_cage.obj"
