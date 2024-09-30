@@ -32,15 +32,12 @@ def create_triangles_on_volume(source_mesh_path, target_mesh_path, output_path):
     distances, face_indices, points, barycentric = find_closest_point_on_surface(
         test_points, mesh_vertices, mesh_faces
     )
-
     all_meshes = []
 
     for idx, point in enumerate(points):
         face_vertex_indices = mesh_faces[face_indices[idx]]
         triangle_vertices = mesh_vertices[face_vertex_indices]
         triangle_mesh = trimesh.Trimesh(vertices=triangle_vertices, faces=[[0, 1, 2]], process=False)
-        triangle_mesh.apply_translation(point)
-        
         all_meshes.append(triangle_mesh)
         
     combined_mesh = trimesh.util.concatenate(all_meshes)
