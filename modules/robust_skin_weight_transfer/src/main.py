@@ -9,6 +9,32 @@ import scipy as sp
 import robust_laplacian
 import trimesh
 
+def create_diamond():
+    # Define vertices for a small diamond shape scaled to mm
+    scale_factor = 0.02  # Scaling down from meters to millimeters
+    vertices = np.array([
+        [0, 0, 1],   # Top vertex
+        [1, 0, 0],   # Side vertex
+        [-1, 0, 0],  # Side vertex
+        [0, 1, 0],   # Side vertex
+        [0, -1, 0],  # Side vertex
+        [0, 0, -1]   # Bottom vertex
+    ]) * scale_factor  # Apply scale factor to each vertex
+    
+    # Define faces connecting the vertices
+    faces = np.array([
+        [0, 1, 3],
+        [0, 3, 2],
+        [0, 2, 4],
+        [0, 4, 1],
+        [5, 3, 1],
+        [5, 2, 3],
+        [5, 4, 2],
+        [5, 1, 4]
+    ])
+    
+    return trimesh.Trimesh(vertices=vertices, faces=faces)
+
 def create_swept_volume(character_body_path, clothing_path, output_path, margin=0.5):
     """
     Creates a swept volume between a character body mesh and its clothing mesh with a specified margin.
@@ -21,27 +47,31 @@ def create_swept_volume(character_body_path, clothing_path, output_path, margin=
     """
     # Load meshes
     character_body = trimesh.load(character_body_path)
+    if hasattr(character_body, 'to_geometry'):
+        character_body = character_body.to_geometry()
     clothing = trimesh.load(clothing_path)
+    if hasattr(clothing, 'to_geometry'):
+        clothing = clothing.to_geometry()
 
     # Prepare data for closest point calculation
     test_points = np.array(character_body.vertices)
     mesh_vertices = np.array(clothing.vertices)
     mesh_faces = np.array(clothing.faces)
 
-    # Find closest points on the clothing mesh for each vertex in the character body
     distances, face_indices, points, barycentric = find_closest_point_on_surface(
         test_points, mesh_vertices, mesh_faces
     )
-    
-    points_mesh = trimesh.Trimesh(vertices=points)
 
-    # Create the convex hull mesh using trimesh
-    convex_hull_mesh = points_mesh.convex_hull
+    all_meshes = [character_body]
 
-    # Combine the extruded mesh with the original clothing mesh
-    combined_mesh = character_body + convex_hull_mesh
-
-    # Export the combined mesh to the specified output path
+    diamond_mesh_template = create_diamond()
+    for point in points:
+        diamond_mesh = diamond_mesh_template.copy()
+        diamond_mesh.apply_translation(point)
+        all_meshes.append(diamond_mesh)
+        
+    combined_mesh = trimesh.util.concatenate(all_meshes)
+    combined_mesh = character_body + combined_mesh + clothing
     combined_mesh.export(output_path)
     
 
