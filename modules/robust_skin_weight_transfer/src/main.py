@@ -12,7 +12,7 @@ import trimesh
 
 def create_diamond():
     # Define vertices for a small diamond shape scaled to mm
-    scale_factor = 0.02  # Scaling down from meters to millimeters
+    scale_factor = 0.0005  # Scaling down from meters to millimeters
     vertices = np.array([
         [0, 0, 1],   # Top vertex
         [1, 0, 0],   # Side vertex
@@ -35,32 +35,32 @@ def create_diamond():
     ])
     
     return trimesh.Trimesh(vertices=vertices, faces=faces)
-
-def create_diamonds_on_volume(source_path, target_path, output_path, margin=0.5):
+    
+def create_diamonds_on_volume(source_path, target_path, output_path):
     """
-    Creates a swept volume between a character body mesh and its clothing mesh with a specified margin.
+    Creates a swept volume between a clothing body mesh and its character mesh.
     
     Args:
-        character_body_path (str): Path to the character body mesh file (.obj).
-        clothing_path (str): Path to the clothing mesh file (.obj).
-        output_path (str): Path where the swept volume mesh will be saved (.obj).
-        margin (float): Margin distance in millimeters to be added to the clothing mesh.
+        source_path (str): Path to the clothing body mesh file (.obj).
+        target_path (str): Path to the character mesh file (.obj).
+        output_path (str): Path where the output mesh will be saved (.obj).
     """
     # Load meshes
-    source_mesh = trimesh.load(source_path)
-    if hasattr(source_mesh, 'to_geometry'):
-        source_mesh = source_mesh.to_geometry()
-    target_mesh = trimesh.load(target_path)
-    if hasattr(target_mesh, 'to_geometry'):
-        target_mesh = target_mesh.to_geometry()
-
-    # Prepare data for closest point calculation
-    test_points = np.array(source_mesh.vertices)
-    mesh_vertices = np.array(target_mesh.vertices)
-    mesh_faces = np.array(target_mesh.faces)
+    clothing_mesh = trimesh.load(source_path)
+    if hasattr(clothing_mesh, 'to_geometry'):
+        clothing_mesh = clothing_mesh.to_geometry()
+    body_mesh = trimesh.load(target_path)
+    if hasattr(body_mesh, 'to_geometry'):
+        body_mesh = body_mesh.to_geometry()
+    test_points = np.array(clothing_mesh.vertices)
+    num_points_to_select = 100
+    selected_indices = np.random.choice(len(test_points), num_points_to_select, replace=False)
+    selected_test_points = test_points[selected_indices]
+    body_vertices = np.array(body_mesh.vertices)
+    body_faces = np.array(body_mesh.faces)
 
     distances, face_indices, points, barycentric = find_closest_point_on_surface(
-        test_points, mesh_vertices, mesh_faces
+        selected_test_points, body_vertices, body_faces
     )
 
     all_meshes = []
@@ -70,10 +70,9 @@ def create_diamonds_on_volume(source_path, target_path, output_path, margin=0.5)
         diamond_mesh = diamond_mesh_template.copy()
         diamond_mesh.apply_translation(point)
         all_meshes.append(diamond_mesh)
-        
     combined_mesh = trimesh.util.concatenate(all_meshes)
-    combined_mesh = combined_mesh + target_mesh
-    combined_mesh.export(output_path)
+    final_mesh = combined_mesh
+    final_mesh.export(output_path)
 
 def find_closest_point_on_surface(points, mesh_vertices, mesh_triangles):
     """
