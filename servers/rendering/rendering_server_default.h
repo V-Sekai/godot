@@ -1091,7 +1091,7 @@ public:
 #define ServerName RendererCompositor
 #define server_name RSG::rasterizer
 
-	FUNC4S(set_boot_image, const Ref<Image> &, const Color &, bool, bool)
+	FUNC5S(set_boot_image, const Ref<Image> &, const Color &, bool, DisplayServer::WindowID, bool)
 
 	/* STATUS INFORMATION */
 
