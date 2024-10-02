@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_native_surface.h                                            */
+/*  api.cpp                                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,26 +28,26 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_NATIVE_SURFACE_H
-#define RENDERING_NATIVE_SURFACE_H
+#include "api.h"
 
+#ifdef MACOS_ENABLED
 #include "core/object/class_db.h"
-#include "core/object/ref_counted.h"
 
-class RenderingContextDriver;
-class GLESContext;
+#include "drivers/apple/rendering_native_surface_apple.h"
 
-class RenderingNativeSurface : public RefCounted {
-	GDCLASS(RenderingNativeSurface, RefCounted);
+#endif
 
-	static void _bind_methods();
+void register_core_macos_api() {
+#ifdef MACOS_ENABLED
+	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceApple);
+#endif
+}
 
-public:
-	RenderingNativeSurface();
-	~RenderingNativeSurface();
+void unregister_core_macos_api() {
+}
 
-	virtual RenderingContextDriver *create_rendering_context(const String &p_driver_name) = 0;
-	virtual GLESContext *create_gles_context() { return nullptr; };
-};
+void register_macos_api() {
+}
 
-#endif // RENDERING_NATIVE_SURFACE_H
+void unregister_macos_api() {
+}
