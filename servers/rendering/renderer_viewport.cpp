@@ -936,7 +936,9 @@ void RendererViewport::draw_viewports(bool p_swap_buffers) {
 
 	if (p_swap_buffers && !blit_to_screen_list.is_empty()) {
 		for (const KeyValue<int, Vector<BlitToScreen>> &E : blit_to_screen_list) {
+			DisplayServer::get_singleton()->gl_window_make_current(E.key);
 			RSG::rasterizer->blit_render_targets_to_screen(E.key, E.value.ptr(), E.value.size());
+			RSG::rasterizer->gl_end_frame(p_swap_buffers);
 		}
 	}
 }
