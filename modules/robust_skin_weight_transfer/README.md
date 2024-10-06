@@ -75,7 +75,7 @@ if find_closest_point_on_surface can get the normal of that point, then can it a
 
 Chev — Today
 
-you can use the index of the triangle to look up other informations
+you can use the index of the triangle to look up other information
 it's the backend of robust weight transfer. trying to port it from python to c++
 
 janie bean — Today
