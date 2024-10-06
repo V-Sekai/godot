@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LassoPoint" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="enable_snapping">
+			<return type="void" />
+			<param index="0" name="on" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="get_origin">
+			<return type="Node" />
+			<description>
+			</description>
+		</method>
+		<method name="get_size">
+			<return type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="get_snap_locked">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="get_snap_score">
+			<return type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="get_snapping_enabled">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="get_snapping_power">
+			<return type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="register_point">
+			<return type="void" />
+			<param index="0" name="p_database" type="LassoDB" />
+			<param index="1" name="p_origin" type="Node" />
+			<description>
+			</description>
+		</method>
+		<method name="set_size">
+			<return type="void" />
+			<param index="0" name="p_size" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="set_snap_locked">
+			<return type="void" />
+			<param index="0" name="p_enable" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="set_snapping_power">
+			<return type="void" />
+			<param index="0" name="p_snapping_power" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="unregister_point">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
