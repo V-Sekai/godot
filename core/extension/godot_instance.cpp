@@ -45,21 +45,30 @@ GodotInstance::GodotInstance() {
 GodotInstance::~GodotInstance() {
 }
 
-bool GodotInstance::initialize(GDExtensionInitializationFunction p_init_func) {
+bool GodotInstance::initialize(GDExtensionInitializationFunction p_init_func, GodotInstanceCallbacks *p_callbacks) {
+	callbacks = p_callbacks;
 	GDExtensionManager *gdextension_manager = GDExtensionManager::get_singleton();
 	GDExtensionConstPtr<const GDExtensionInitializationFunction> ptr((const GDExtensionInitializationFunction *)&p_init_func);
 	GDExtensionManager::LoadStatus status = gdextension_manager->load_function_extension("libgodot://main", ptr);
 	return status == GDExtensionManager::LoadStatus::LOAD_STATUS_OK;
 }
 
+#define CALL_CB(cb)          \
+	if (callbacks) {         \
+		callbacks->cb(this); \
+	}
+
 bool GodotInstance::start() {
+	CALL_CB(before_setup2);
 	Error err = Main::setup2();
 	if (err != OK) {
 		return false;
 	}
+	CALL_CB(before_start);
 	started = Main::start() == EXIT_SUCCESS;
 	if (started) {
 		OS::get_singleton()->get_main_loop()->initialize();
+		CALL_CB(after_start);
 	}
 	return started;
 }
