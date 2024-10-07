@@ -39,6 +39,15 @@ static GodotInstance *instance = nullptr;
 
 class GodotInstanceCallbacksIOS : public GodotInstanceCallbacks {
 public:
+	void before_setup2(GodotInstance *p_instance) override {
+
+	};
+	void before_start(GodotInstance *p_instance) override {
+
+	};
+	void after_start(GodotInstance *p_instance) override {
+
+	};
 	void focus_out(GodotInstance *p_instance) override {
 		OS_IOS::get_singleton()->on_focus_out();
 	}
