@@ -34,6 +34,14 @@
 #include "core/object/class_db.h"
 #include "core/object/object.h"
 
+class GodotInstance;
+class GodotInstanceCallbacks {
+public:
+	virtual void before_setup2(GodotInstance *p_instance) = 0;
+	virtual void before_start(GodotInstance *p_instance) = 0;
+	virtual void after_start(GodotInstance *p_instance) = 0;
+};
+
 class GodotInstance : public Object {
 	GDCLASS(GodotInstance, Object);
 
@@ -41,11 +49,13 @@ class GodotInstance : public Object {
 
 	bool started = false;
 
+	GodotInstanceCallbacks *callbacks = nullptr;
+
 public:
 	GodotInstance();
 	~GodotInstance();
 
-	bool initialize(GDExtensionInitializationFunction p_init_func);
+	bool initialize(GDExtensionInitializationFunction p_init_func, GodotInstanceCallbacks *p_callbacks = nullptr);
 
 	bool start();
 	bool is_started();

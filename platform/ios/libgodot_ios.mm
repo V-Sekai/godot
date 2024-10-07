@@ -38,6 +38,23 @@ static OS_IOS *os = nullptr;
 
 static GodotInstance *instance = nullptr;
 
+class GodotInstanceCallbacksIOS : public GodotInstanceCallbacks {
+public:
+	void before_setup2(GodotInstance *p_instance) override {
+
+	};
+
+	void before_start(GodotInstance *p_instance) override {
+
+	};
+
+	void after_start(GodotInstance *p_instance) override {
+
+	};
+};
+
+static GodotInstanceCallbacksIOS callbacks;
+
 GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
 
@@ -49,7 +66,7 @@ GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], 
 	}
 
 	instance = memnew(GodotInstance);
-	if (!instance->initialize(p_init_func)) {
+	if (!instance->initialize(p_init_func, &callbacks)) {
 		memdelete(instance);
 		instance = nullptr;
 		return nullptr;
