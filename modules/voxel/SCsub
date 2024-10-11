@@ -18,6 +18,11 @@ if not env["arch"].startswith("x86"):
 
 INCLUDE_TESTS = env["voxel_tests"]
 
+env.Append(CPPDEFINES=[
+	# Tell engine-agnostic code we are using Godot Engine as a module
+	"ZN_GODOT"
+])
+
 env_voxel = env_modules.Clone()
 
 voxel_files = common.get_sources(env_voxel, env.editor_build, INCLUDE_TESTS)
