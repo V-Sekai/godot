@@ -76,7 +76,7 @@ GenerateColumnMultipassTask::~GenerateColumnMultipassTask() {
 void GenerateColumnMultipassTask::run(ThreadedTaskContext &ctx) {
 	ZN_DSTACK();
 	ZN_PROFILE_SCOPE();
-	ZN_ASSERT(_generator != nullptr);
+	ZN_ASSERT(_generator.is_valid());
 
 	Map &map = _generator_internal->map;
 	BufferedTaskScheduler &task_scheduler = BufferedTaskScheduler::get_for_current_thread();
