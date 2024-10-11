@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelEngine" inherits="Object" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Singleton holding common settings and handling voxel processing tasks in background threads.
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_stats" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Gets debug information about shared voxel processing.
+				The returned dictionary has the following structure:
+				[codeblock]
+				{
+					"thread_pools": {
+						"general": {
+							"tasks": int,
+							"active_threads": int,
+							"thread_count": int,
+							"task_names": PackedStringArray
+						}
+					},
+					"tasks": {
+						"streaming": int,
+						"meshing": int,
+						"generation": int,
+						"main_thread": int
+					},
+					"memory_pools": {
+						"voxel_used": int,
+						"voxel_total": int,
+						"block_count": int,
+						"std_allocated": int,
+						"std_deallocated": int,
+						"std_current": int
+					}
+				}
+				[/codeblock]
+			</description>
+		</method>
+		<method name="get_version_major" qualifiers="const">
+			<return type="int" />
+			<description>
+				Gets the major version number of the voxel engine. For example, in [code]1.2.0[/code], [code]1[/code] is the major version.
+			</description>
+		</method>
+		<method name="get_version_minor" qualifiers="const">
+			<return type="int" />
+			<description>
+				Gets the minor version number of the voxel engine. For example, in [code]1.2.0[/code], [code]2[/code] is the minor version.
+			</description>
+		</method>
+		<method name="get_version_patch" qualifiers="const">
+			<return type="int" />
+			<description>
+				Gets the patch version number of the voxel engine. For example, in [code]1.2.0[/code], [code]0[/code] is the patch version.
+			</description>
+		</method>
+	</methods>
+</class>

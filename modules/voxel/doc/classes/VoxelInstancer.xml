@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelInstancer" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Spawns items on top of voxel surfaces.
+	</brief_description>
+	<description>
+		Add-on to voxel nodes, allowing to spawn static elements on the surface. These elements are rendered with hardware instancing, can have collisions, and also be persistent. It must be child of a voxel node.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="debug_dump_as_scene" qualifiers="const">
+			<return type="void" />
+			<param index="0" name="fpath" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_get_block_count" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_get_draw_flag" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="flag" type="int" enum="VoxelInstancer.DebugDrawFlag" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_get_instance_counts" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_is_draw_enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_set_draw_enabled">
+			<return type="void" />
+			<param index="0" name="enabled" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_set_draw_flag">
+			<return type="void" />
+			<param index="0" name="flag" type="int" enum="VoxelInstancer.DebugDrawFlag" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="library" type="VoxelInstanceLibrary" setter="set_library" getter="get_library">
+			Library from which instances to spawn will be taken from.
+		</member>
+		<member name="up_mode" type="int" setter="set_up_mode" getter="get_up_mode" enum="VoxelInstancer.UpMode" default="0">
+			Where to consider the "up" direction is on the terrain when generating instances. See also [VoxelInstanceGenerator].
+		</member>
+	</members>
+	<constants>
+		<constant name="MAX_LOD" value="8">
+		</constant>
+		<constant name="UP_MODE_POSITIVE_Y" value="0" enum="UpMode">
+			Up is towards the positive Y axis. This is the default assumption in Godot.
+		</constant>
+		<constant name="UP_MODE_SPHERE" value="1" enum="UpMode">
+			Up is opposite from the direction where the terrain's origin is. May be used if your terrain is a planet for example.
+		</constant>
+		<constant name="DEBUG_DRAW_ALL_BLOCKS" value="0" enum="DebugDrawFlag">
+		</constant>
+		<constant name="DEBUG_DRAW_EDITED_BLOCKS" value="1" enum="DebugDrawFlag">
+		</constant>
+		<constant name="DEBUG_DRAW_FLAGS_COUNT" value="2" enum="DebugDrawFlag">
+		</constant>
+	</constants>
+</class>

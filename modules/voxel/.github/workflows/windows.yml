@@ -1,0 +1,130 @@
+name: 🚪 Windows Builds
+on:
+  push:
+    branches: [ master, github_actions, "1.2" ]
+  pull_request:
+    branches: [ master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Global Cache Settings
+# SCONS_CACHE for windows must be set in the build environment
+env:
+  GODOT_BASE_BRANCH: "4.3-stable"
+  SCONS_CACHE_MSVC_CONFIG: true
+  SCONS_CACHE_LIMIT: 4096
+
+jobs:
+  windows:
+    # Windows 10 with latest image
+    runs-on: "windows-latest"
+    name: ${{matrix.name}}
+
+    strategy:
+      matrix:
+        include:
+          - name: 4.3 Editor
+            target: editor
+            precision: single
+            executable_name: godot.windows.editor.x86_64.exe
+            tracy: no
+          
+          - name: 4.3 Profiling Editor
+            target: editor
+            precision: single
+            # This is not a built-in feature of Godot so we have to do some changes manually
+            executable_name: godot.windows.tracy.editor.x86_64.exe
+            original_executable_name: godot.windows.editor.x86_64.exe
+            tracy: yes
+
+          - name: 4.3 Editor Float64
+            target: editor
+            precision: double
+            executable_name: godot.windows.editor.double.x86_64.exe
+            tracy: no
+
+          - name: 4.3 Template
+            target: template_release
+            precision: single
+            executable_name: godot.windows.template_release.x86_64.exe
+            tracy: no
+
+    steps:
+      # Clone Godot
+      - uses: actions/checkout@v4
+        with:
+          repository: godotengine/godot
+          ref: ${{ env.GODOT_BASE_BRANCH }}
+
+      # Clone our module under the correct directory
+      - uses: actions/checkout@v4
+        with:
+          path: modules/voxel
+
+      # Upload cache on completion and check it out now
+      # Editing this is pretty dangerous for Windows since it can break and needs to be properly tested with a fresh cache.
+      - name: Load .scons_cache directory
+        id: windows-cache
+        #uses: ${{matrix.cache_action}}
+        uses: actions/cache@v4
+        with:
+          path: /.scons_cache/
+          key: ${{matrix.executable_name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
+          restore-keys: |
+            ${{matrix.executable_name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}-${{github.sha}}
+            ${{matrix.executable_name}}-${{env.GODOT_BASE_BRANCH}}-${{github.ref}}
+            ${{matrix.executable_name}}-${{env.GODOT_BASE_BRANCH}}
+
+      # Use python 3.x release (works cross platform; best to keep self contained in it's own step)
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v5
+        with:
+          # Semantic version range syntax or exact version of a Python version
+          python-version: '3.x'
+          # Optional - x64 or x86 architecture, defaults to x64
+          architecture: 'x64'
+
+      # Setup scons, print python version and scons version info, so if anything is broken it won't run the build.
+      - name: Configuring Python packages
+        run: |
+          python -c "import sys; print(sys.version)"
+          python -m pip install scons pywin32
+          python --version
+          scons --version
+
+      - name: Install Tracy
+        if: ${{ matrix.tracy == 'yes' }}
+        uses: actions/checkout@v4
+        with:
+          repository: wolfpld/tracy
+          ref: v0.10
+          path: thirdparty/tracy
+
+      # This is to instrument specific parts of Godot. Our module already has built-in instrumentation.
+      - name: Instrument code
+        if: ${{ matrix.tracy == 'yes' }}
+        run:
+          python modules/voxel/misc/instrument.py -d . -c modules/voxel/misc/instruments.json
+
+      # We should always be explicit with our flags usage here since it's gonna be sure to always set those flags
+      # TODO Enhancement: we'd like to use `warnings=extra` with MSVC but Godot doesn't compile yet with that level of warnings.
+      # See https://github.com/godotengine/godot/issues/66537
+      - name: Compilation
+        env:
+          SCONS_CACHE: /.scons_cache/
+        run: |
+          scons verbose=yes warnings=all werror=yes platform=windows tests=no target=${{matrix.target}} dev_build=no precision=${{matrix.precision}} tracy=${{matrix.tracy}} production=yes
+
+      - name: "Rename executable"
+        if: ${{ matrix.tracy == 'yes' }}
+        run:
+          mv bin/${{matrix.original_executable_name}} bin/${{matrix.executable_name}}
+
+      # Make build available
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{matrix.executable_name}}
+          path: bin/${{matrix.executable_name}}
+

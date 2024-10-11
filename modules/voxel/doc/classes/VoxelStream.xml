@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelStream" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Implements loading and saving voxel blocks, mainly using files.
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="flush">
+			<return type="void" />
+			<description>
+				Forces cached data to be saved to the filesystem. Some streams might use a cache to improve performance of frequent I/Os.
+				This should not be called frequently if performance is a concern. May be used if you require all data to be written now. Note that implementations should already do this automatically when the resource is destroyed or their configuration changes. Some implementations may do nothing if they have no cache.
+				Note that terrains save asynchronously, so flushing might not always fulfill your goal if saving tasks are still queued and haven't called into [VoxelStream] yet. See [method VoxelTerrain.save_modified_blocks] or [method VoxelLodTerrain.save_modified_blocks].
+			</description>
+		</method>
+		<method name="get_block_size" qualifiers="const">
+			<return type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="get_used_channels_mask" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="load_voxel_block">
+			<return type="int" enum="VoxelStream.ResultCode" />
+			<param index="0" name="out_buffer" type="VoxelBuffer" />
+			<param index="1" name="origin_in_voxels" type="Vector3i" />
+			<param index="2" name="lod_index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="save_voxel_block">
+			<return type="void" />
+			<param index="0" name="buffer" type="VoxelBuffer" />
+			<param index="1" name="origin_in_voxels" type="Vector3i" />
+			<param index="2" name="lod_index" type="int" />
+			<description>
+				[code]buffer[/code]: Block of voxels to save. It is strongly recommended to not keep a reference to that data afterward, because streams are allowed to cache it, and saved data must represent either snapshots (copies) or last references to the data after the volume they belonged to is destroyed.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="save_generator_output" type="bool" setter="set_save_generator_output" getter="get_save_generator_output" default="false">
+			When this is enabled, if a block cannot be found in the stream and it gets generated, then the generated block will immediately be saved into the stream. This can be used if the generator is too expensive to run on the fly (like Minecraft does), but it will require more disk usage (amount of I/Os and space) and eventual network traffic. If this setting is off, only modified blocks will be saved.
+		</member>
+	</members>
+	<constants>
+		<constant name="RESULT_ERROR" value="0" enum="ResultCode">
+			An error occurred when loading the block. The request will be aborted.
+		</constant>
+		<constant name="RESULT_BLOCK_FOUND" value="2" enum="ResultCode">
+			The block was found.
+		</constant>
+		<constant name="RESULT_BLOCK_NOT_FOUND" value="1" enum="ResultCode">
+			The block was not found. The requester may fallback on using the generator, if any.
+		</constant>
+	</constants>
+</class>

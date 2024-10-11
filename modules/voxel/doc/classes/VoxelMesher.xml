@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelMesher" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Base class for all meshing algorithms.
+	</brief_description>
+	<description>
+		In order to be rendered by Godot, voxels can be transformed into a mesh. There are various ways to do this, that's why this class is only a base for other, specialized ones. Voxel nodes automatically make use of meshers, but you can also produce meshes manually. For this, you may use one of the derived classes. Meshers can be re-used, which often yields better performance by reducing memory allocations.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="build_mesh">
+			<return type="Mesh" />
+			<param index="0" name="voxel_buffer" type="VoxelBuffer" />
+			<param index="1" name="materials" type="Material[]" />
+			<param index="2" name="additional_data" type="Dictionary" default="{}" />
+			<description>
+				Builds a mesh from the provided voxels. Materials will be attached to each surface based on the provided array. The way materials are used can depend on the type of mesher. 
+				Meshers are initially meant to work on chunks, so voxels within an outer margin of the buffer will not be part of the result. They are considered "neighbors" and may eventually affect face culling. If you want to use a mesher to make a standalone voxel mesh, make sure it is padded by air. The size of that margin is determined by [method get_minimum_padding] and [method get_maximum_padding].
+			</description>
+		</method>
+		<method name="get_maximum_padding" qualifiers="const">
+			<return type="int" />
+			<description>
+				Gets by how much voxels must be padded before their lower corner in order for the mesher to work.
+			</description>
+		</method>
+		<method name="get_minimum_padding" qualifiers="const">
+			<return type="int" />
+			<description>
+				Gets by how much voxels must be padded after their upper corner in order for the mesher to work.
+			</description>
+		</method>
+	</methods>
+</class>

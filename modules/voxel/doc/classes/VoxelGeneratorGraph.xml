@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelGeneratorGraph" inherits="VoxelGenerator" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Graph-based voxel generator.
+	</brief_description>
+	<description>
+		Generates voxel data from a graph of per-voxel operations.
+		The graph must be created, compiled, and only then blocks can be generated.
+		It can be used with SDF-based smooth terrain, and also blocky terrains.
+		Warning: methods to modify the graph should only be called from the main thread.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="bake_sphere_bumpmap">
+			<return type="void" />
+			<param index="0" name="im" type="Image" />
+			<param index="1" name="ref_radius" type="float" />
+			<param index="2" name="sdf_min" type="float" />
+			<param index="3" name="sdf_max" type="float" />
+			<description>
+				Bakes a spherical bumpmap (or heightmap) using SDF output produced by the generator, if any. The bumpmap uses a panorama projection.
+				[code]ref_radius[/code]: radius of the sphere on which heights will be sampled.
+				[code]strength[/code]: strength of produced normals, may default to 1.0.
+			</description>
+		</method>
+		<method name="bake_sphere_normalmap">
+			<return type="void" />
+			<param index="0" name="im" type="Image" />
+			<param index="1" name="ref_radius" type="float" />
+			<param index="2" name="strength" type="float" />
+			<description>
+				Bakes a spherical normalmap using SDF output produced by the generator, if any. The normalmap uses a panorama projection. It is assumed the generator produces a spherical shape (like a planet). Such normalmap can be used to add more detail to distant views of a terrain using this generator.
+				[code]ref_radius[/code]: radius of the sphere on which normals will be sampled.
+				[code]strength[/code]: strength of produced normals, may default to 1.0.
+				Note: an alternative is to use distance normals feature with [VoxelLodTerrain].
+			</description>
+		</method>
+		<method name="clear">
+			<return type="void" />
+			<description>
+				Erases all nodes and connections from the graph.
+			</description>
+		</method>
+		<method name="compile">
+			<return type="Dictionary" />
+			<description>
+				Compiles the graph so it can be used to generate blocks.
+				If it succeeds, the returned result is a dictionary with the following layout:
+				[codeblock]
+				{
+					"success": true
+				}
+				[/codeblock]
+				If it fails, the returned result may contain a message and the ID of a graph node that could be the cause:
+				[codeblock]
+				{
+					"success": false,
+					"node_id": int,
+					"message": String
+				}
+				[/codeblock]
+				The node ID will be -1 if the error is not about a particular node.
+			</description>
+		</method>
+		<method name="debug_analyze_range" qualifiers="const">
+			<return type="Vector2" />
+			<param index="0" name="min_pos" type="Vector3" />
+			<param index="1" name="max_pos" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_load_waves_preset">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="debug_measure_microseconds_per_voxel">
+			<return type="float" />
+			<param index="0" name="use_singular_queries" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="get_main_function" qualifiers="const">
+			<return type="VoxelGraphFunction" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="debug_block_clipping" type="bool" setter="set_debug_clipped_blocks" getter="is_debug_clipped_blocks" default="false">
+			When enabled, if the graph outputs SDF data, generated blocks that would otherwise be clipped will be inverted. This has the effect of them showing up as "walls artifacts", which is useful to visualize where the optimization occurs.
+		</member>
+		<member name="sdf_clip_threshold" type="float" setter="set_sdf_clip_threshold" getter="get_sdf_clip_threshold" default="1.5">
+			When generating SDF blocks for a terrain, if the range analysis of a block is beyond this threshold, its SDF data will be considered either fully 1, or fully -1. This optimizes memory and processing time.
+		</member>
+		<member name="subdivision_size" type="int" setter="set_subdivision_size" getter="get_subdivision_size" default="16">
+			When generating SDF blocks for a terrain, and if block size is divisible by this value, range analysis will operate on such subdivision. This allows to optimize away more precise areas. However, it may not be set too small otherwise overhead will outweight the benefits.
+		</member>
+		<member name="use_optimized_execution_map" type="bool" setter="set_use_optimized_execution_map" getter="is_using_optimized_execution_map" default="true">
+			If enabled, when generating blocks for a terrain, the generator will attempt to skip specific nodes if they are found to have no importance in specific areas.
+		</member>
+		<member name="use_subdivision" type="bool" setter="set_use_subdivision" getter="is_using_subdivision" default="true">
+			If enabled, [member subdivision_size] will be used.
+		</member>
+		<member name="use_xz_caching" type="bool" setter="set_use_xz_caching" getter="is_using_xz_caching" default="true">
+			If enabled, the generator will run only once branches of the graph that only depend on X and Z. This is effective when part of the graph generates a heightmap, as this part is not volumetric.
+		</member>
+	</members>
+	<signals>
+		<signal name="node_name_changed">
+			<param index="0" name="node_id" type="int" />
+			<description>
+			</description>
+		</signal>
+	</signals>
+</class>

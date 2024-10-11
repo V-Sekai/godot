@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelViewer" inherits="Node3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Attach this as a child node of characters, so the voxel world will know where to load blocks around them.
+		If no viewer is present in the world, nothing will generate.
+	</brief_description>
+	<description>
+		The voxel world uses the position and options of all the [VoxelViewer] nodes to determine where to load blocks, and prioritize updates. For example, a voxel placed 100 units away from a player will have much lower priority than the modifications that player is doing when digging in front of them.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_network_peer_id" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_network_peer_id">
+			<return type="void" />
+			<param index="0" name="id" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="enabled_in_editor" type="bool" setter="set_enabled_in_editor" getter="is_enabled_in_editor" default="false">
+			Sets whether this viewer will cause loading to occur in the editor. This is mainly intented for testing purposes.
+			Note that streaming in editor can also be turned off on terrains.
+		</member>
+		<member name="requires_collisions" type="bool" setter="set_requires_collisions" getter="is_requiring_collisions" default="true">
+			If set to [code]true[/code], the engine will generate classic collision shapes around this viewer.
+		</member>
+		<member name="requires_data_block_notifications" type="bool" setter="set_requires_data_block_notifications" getter="is_requiring_data_block_notifications" default="false">
+		</member>
+		<member name="requires_visuals" type="bool" setter="set_requires_visuals" getter="is_requiring_visuals" default="true">
+			If set to [code]true[/code], the engine will generate meshes around this viewer. This may be enabled for the local player.
+		</member>
+		<member name="view_distance" type="int" setter="set_view_distance" getter="get_view_distance" default="128">
+			How far should voxels generate around this viewer.
+		</member>
+		<member name="view_distance_vertical_ratio" type="float" setter="set_view_distance_vertical_ratio" getter="get_view_distance_vertical_ratio" default="1.0">
+			Modifies vertical view distance to be a ratio of the [member view_distance] property. For example, if [member view_distance] is 100 and this property is 0.5, then horizontal view distance will be 100 and vertical view distance will be 50.
+		</member>
+	</members>
+</class>

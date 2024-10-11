@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="zylann::Span&lt;*&gt;">
+    <Expand>
+        <Item Name="[size]">_size</Item>
+        <ArrayItems>
+            <Size>_size</Size>
+            <ValuePointer>_ptr</ValuePointer>
+        </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="zylann::SmallVector&lt;*&gt;">
+    <Expand>
+        <Item Name="[size]">_size</Item>
+        <ArrayItems>
+            <Size>_size</Size>
+            <ValuePointer>(ValueType*)_items</ValuePointer>
+        </ArrayItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

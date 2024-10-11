@@ -1,0 +1,129 @@
+site_name: Voxel Tools documentation
+# TODO Enhancement: this should be changed to an environment variable
+# This is fine for now, but when we have to support multiple versions of the documentation,
+# the URL will vary, so in the long term we should not hardcode it here.
+# This would be needed: https://github.com/readthedocs/readthedocs.org/issues/8260
+site_url: https://voxel-tools.readthedocs.io/en/latest/
+theme: readthedocs
+
+docs_dir: source
+
+extra_css:
+  - css/extra.css
+
+nav:
+  - 'index.md'
+  - 'getting_the_module.md'
+  - 'quick_start.md'
+  - 'overview.md'
+  - 'terrain_types.md'
+  - 'blocky_terrain.md'
+  - 'smooth_terrain.md'
+  - 'generators.md'
+  - 'graph_nodes.md'
+  - 'streams.md'
+  - 'instancing.md'
+  - 'editor.md'
+  - 'multiplayer.md'
+  - 'navigation.md'
+  - 'scripting.md'
+  - 'procedural_generation.md'
+  - 'performance.md'
+  - 'module_development.md'
+  - 'changelog.md'
+  - '___.md'
+  - 'Scripting API':
+    # <generated_class_list>
+    - api/all_classes.md
+    - api/FastNoise2.md
+    - api/VoxelAStarGrid3D.md
+    - api/VoxelBlockSerializer.md
+    - api/VoxelBlockyAttribute.md
+    - api/VoxelBlockyAttributeAxis.md
+    - api/VoxelBlockyAttributeCustom.md
+    - api/VoxelBlockyAttributeDirection.md
+    - api/VoxelBlockyAttributeRotation.md
+    - api/VoxelBlockyLibrary.md
+    - api/VoxelBlockyLibraryBase.md
+    - api/VoxelBlockyModel.md
+    - api/VoxelBlockyModelCube.md
+    - api/VoxelBlockyModelEmpty.md
+    - api/VoxelBlockyModelMesh.md
+    - api/VoxelBlockyType.md
+    - api/VoxelBlockyTypeLibrary.md
+    - api/VoxelBoxMover.md
+    - api/VoxelBuffer.md
+    - api/VoxelColorPalette.md
+    - api/VoxelDataBlockEnterInfo.md
+    - api/VoxelEngine.md
+    - api/VoxelGenerator.md
+    - api/VoxelGeneratorFlat.md
+    - api/VoxelGeneratorGraph.md
+    - api/VoxelGeneratorHeightmap.md
+    - api/VoxelGeneratorImage.md
+    - api/VoxelGeneratorMultipassCB.md
+    - api/VoxelGeneratorNoise.md
+    - api/VoxelGeneratorNoise2D.md
+    - api/VoxelGeneratorScript.md
+    - api/VoxelGeneratorWaves.md
+    - api/VoxelGraphFunction.md
+    - api/VoxelInstanceComponent.md
+    - api/VoxelInstanceGenerator.md
+    - api/VoxelInstanceLibrary.md
+    - api/VoxelInstanceLibraryItem.md
+    - api/VoxelInstanceLibraryMultiMeshItem.md
+    - api/VoxelInstanceLibrarySceneItem.md
+    - api/VoxelInstancer.md
+    - api/VoxelInstancerRigidBody.md
+    - api/VoxelLodTerrain.md
+    - api/VoxelMeshSDF.md
+    - api/VoxelMesher.md
+    - api/VoxelMesherBlocky.md
+    - api/VoxelMesherCubes.md
+    - api/VoxelMesherTransvoxel.md
+    - api/VoxelModifier.md
+    - api/VoxelModifierMesh.md
+    - api/VoxelModifierSphere.md
+    - api/VoxelNode.md
+    - api/VoxelRaycastResult.md
+    - api/VoxelSaveCompletionTracker.md
+    - api/VoxelStream.md
+    - api/VoxelStreamMemory.md
+    - api/VoxelStreamRegionFiles.md
+    - api/VoxelStreamSQLite.md
+    - api/VoxelStreamScript.md
+    - api/VoxelTerrain.md
+    - api/VoxelTerrainMultiplayerSynchronizer.md
+    - api/VoxelTool.md
+    - api/VoxelToolBuffer.md
+    - api/VoxelToolLodTerrain.md
+    - api/VoxelToolMultipassGenerator.md
+    - api/VoxelToolTerrain.md
+    - api/VoxelViewer.md
+    - api/VoxelVoxLoader.md
+    - api/ZN_FastNoiseLite.md
+    - api/ZN_FastNoiseLiteGradient.md
+    - api/ZN_SpotNoise.md
+    - api/ZN_ThreadedTask.md
+    # </generated_class_list>
+  - 'Serialization formats':
+    - 'specs/block_format_v1.md'
+    - 'specs/block_format_v2.md'
+    - 'specs/block_format_v3.md'
+    - 'specs/block_format_v4.md'
+    - 'specs/compressed_container.md'
+    - 'specs/instances_format_v0.md'
+    - 'specs/instances_format_v1.md'
+    - 'specs/region_format_v2.md'
+    - 'specs/region_format_v3.md'
+    - 'specs/sqlite_format_v0.md'
+    - 'specs/sqlite_format_v1.md'
+
+markdown_extensions:
+    # Makes permalinks appear on headings
+    - toc:
+        permalink: True
+    # Makes boxes for notes and warnings
+    - admonition
+    # Better highlighter which supports GDScript
+    - codehilite

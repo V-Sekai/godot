@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelBlockyLibrary" inherits="VoxelBlockyLibraryBase" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Contains a list of models that can be used by [VoxelMesherBlocky].
+	</brief_description>
+	<description>
+		Provides a list of models that can be used by [VoxelMesherBlocky]. Each model corresponds to an ID in voxel data, and is generally defined from a mesh. Some extra properties can also be defined, such as how sides get culled by neighbor voxels, or how it is treated by some functionality of the voxel engine.
+		If you create this library from code, it needs to be baked at the end using the [method VoxelBlockyLibraryBase.bake] function.
+		The first model (at index 0) is conventionally used for "air" or "empty".
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_model">
+			<return type="int" />
+			<param index="0" name="model" type="VoxelBlockyModel" />
+			<description>
+				Adds a model to the library. Returns its index, which will be the value of voxels representing it.
+			</description>
+		</method>
+		<method name="get_model" qualifiers="const">
+			<return type="VoxelBlockyModel" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Gets a model from its index.
+			</description>
+		</method>
+		<method name="get_model_index_from_resource_name" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Finds the index of the first model having the specified resource name. If not found, returns [code]null[/code].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="models" type="VoxelBlockyModel[]" setter="set_models" getter="get_models" default="[]">
+			Array of all the models. The index of each model corresponds to the value representing them in voxel data's TYPE channel.
+		</member>
+	</members>
+</class>
