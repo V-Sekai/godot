@@ -36,4 +36,4 @@
 void initialize_lasso_module(ModuleInitializationLevel p_level);
 void uninitialize_lasso_module(ModuleInitializationLevel p_level);
 
-#endif
+#endif // LASSO_REGISTER_TYPES_H
