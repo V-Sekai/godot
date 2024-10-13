@@ -32,7 +32,7 @@
 #include <core/math/math_defs.h>
 #include <servers/xr_server.h>
 
-LassoPoint::LassoPoint(){};
+LassoPoint::LassoPoint() {};
 
 LassoPoint::~LassoPoint() {
 	unregister_point();
@@ -269,7 +269,7 @@ Node *LassoDB::calc_top_redirecting_power(Node *snapped_origin,
 						float intersect_x = bisecting_x;
 						float intersect_y = bisecting_x * slope;
 						next_power = pow(intersect_x, 2) +
-									 pow(intersect_y, 2); // squared euclidian distance
+									 pow(intersect_y, 2); // squared euclidean distance
 					} else {
 						// This is the most common case
 						// equation taken from the internet.
