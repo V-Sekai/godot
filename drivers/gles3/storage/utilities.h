@@ -47,7 +47,7 @@ public:
 
 	FramebufferBinding(GLenum p_target, GLuint p_framebuffer, bool p_bind) {
 		target = p_target;
-		GLenum binding_target;
+		GLenum binding_target = 0;
 		switch (p_target) {
 			case GL_FRAMEBUFFER:
 				binding_target = GL_FRAMEBUFFER_BINDING;
