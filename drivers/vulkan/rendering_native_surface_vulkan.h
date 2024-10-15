@@ -46,9 +46,9 @@ class RenderingNativeSurfaceVulkan : public RenderingNativeSurface {
 #endif
 
 public:
+#ifdef VULKAN_ENABLED
 	static Ref<RenderingNativeSurfaceVulkan> create_api(GDExtensionConstPtr<const void> vulkan_surface);
 
-#ifdef VULKAN_ENABLED
 	static Ref<RenderingNativeSurfaceVulkan> create(VkSurfaceKHR vulkan_surface);
 
 	VkSurfaceKHR get_vulkan_surface() const {
