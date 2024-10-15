@@ -37,6 +37,8 @@
 #include "core/version.h"
 #include "servers/rendering/rendering_device.h"
 
+#include "platform/windows/rendering_native_surface_windows.h"
+
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
