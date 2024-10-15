@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.h                                                      */
+/*  register_types.cpp                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,12 +28,25 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GOLANG_REGISTER_TYPES_H
-#define GOLANG_REGISTER_TYPES_H
+/* register_types.cpp */
 
-#include "modules/register_module_types.h"
+#include "register_types.h"
 
-void initialize_golang_module(ModuleInitializationLevel p_level);
-void uninitialize_golang_module(ModuleInitializationLevel p_level);
+#include "casync.h"
+#include "core/object/class_db.h"
+#include "open_telemetry.h"
 
-#endif // GOLANG_REGISTER_TYPES_H
+void initialize_desync_otel_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+	ClassDB::register_class<Casync>();
+	ClassDB::register_class<OpenTelemetry>();
+}
+
+void uninitialize_desync_otel_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+	// Nothing to do here in this example.
+}
