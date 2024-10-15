@@ -99,8 +99,8 @@ void GLESContextApple::initialize() {
 
 void GLESContextApple::resized(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
-	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
+	WindowData &gles_data = windows[p_id];
 	[EAGLContext setCurrentContext:context];
 	CAEAGLLayer *layer = gles_data.layer;
 	destroy_framebuffer(p_id);
@@ -110,8 +110,8 @@ void GLESContextApple::resized(DisplayServer::WindowID p_id) {
 
 void GLESContextApple::begin_rendering(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
-	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
+	WindowData &gles_data = windows[p_id];
 	[EAGLContext setCurrentContext:context];
 	glBindFramebufferOES(GL_FRAMEBUFFER_OES, gles_data.viewFramebuffer);
 #endif
@@ -119,8 +119,8 @@ void GLESContextApple::begin_rendering(DisplayServer::WindowID p_id) {
 
 void GLESContextApple::end_rendering(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
-	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
+	WindowData &gles_data = windows[p_id];
 	[EAGLContext setCurrentContext:context];
 	glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer);
 	[context presentRenderbuffer:GL_RENDERBUFFER_OES];
@@ -163,8 +163,8 @@ bool GLESContextApple::create_framebuffer(DisplayServer::WindowID p_id, Ref<Rend
 }
 
 bool GLESContextApple::create_framebuffer(DisplayServer::WindowID p_id, void *p_layer) {
-	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
+	WindowData &gles_data = windows[p_id];
 	[EAGLContext setCurrentContext:context];
 	gles_data.layer = (__bridge CAEAGLLayer *)p_layer;
 
@@ -201,8 +201,8 @@ bool GLESContextApple::create_framebuffer(DisplayServer::WindowID p_id, void *p_
 // Clean up any buffers we have allocated.
 bool GLESContextApple::destroy_framebuffer(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND_V(!windows.has(p_id), false);
-	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
+	WindowData &gles_data = windows[p_id];
 	[EAGLContext setCurrentContext:context];
 	glDeleteFramebuffersOES(1, &gles_data.viewFramebuffer);
 	gles_data.viewFramebuffer = 0;
