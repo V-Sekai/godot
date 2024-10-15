@@ -38,6 +38,7 @@
 class GodotInstance;
 class GodotInstanceCallbacks {
 public:
+    virtual ~GodotInstanceCallbacks() {} 
 	virtual void before_setup2(GodotInstance *p_instance) = 0;
 	virtual void before_start(GodotInstance *p_instance) = 0;
 	virtual void after_start(GodotInstance *p_instance) = 0;
