@@ -8,7 +8,7 @@ def can_build(env, platform):
     except FileNotFoundError:
         print("Go not found. desync build skipped.")
         return False
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
         pass
 
     if platform == "web":
@@ -25,7 +25,7 @@ def can_build(env, platform):
         try:
             mingw_version = subprocess.check_output(["gcc", "--version"])
             print("MinGW is installed: ", mingw_version)
-        except Exception:
+        except Exception as e:
             print("MinGW is not installed or not found in PATH")
             return False
         return True
@@ -47,7 +47,7 @@ def configure(env):
     try:
         go_version = subprocess.check_output(["go", "version"])
         print("Golang is installed: ", go_version)
-    except Exception:
+    except Exception as e:
         print("Golang is not installed or not found in PATH")
         return False
     return True
