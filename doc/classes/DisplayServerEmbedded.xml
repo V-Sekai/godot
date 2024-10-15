@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisplayServerEmbedded" inherits="DisplayServer" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_singleton" qualifiers="static">
+			<return type="DisplayServerEmbedded" />
+			<description>
+			</description>
+		</method>
+		<method name="key">
+			<return type="void" />
+			<param index="0" name="key" type="int" enum="Key" />
+			<param index="1" name="char" type="int" />
+			<param index="2" name="unshifted" type="int" enum="Key" />
+			<param index="3" name="physical" type="int" enum="Key" />
+			<param index="4" name="modifiers" type="int" enum="KeyModifierMask" is_bitfield="true" />
+			<param index="5" name="pressed" type="bool" />
+			<param index="6" name="window" type="int" default="0" />
+			<description>
+			</description>
+		</method>
+		<method name="resize_window">
+			<return type="void" />
+			<param index="0" name="size" type="Vector2i" />
+			<param index="1" name="id" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_content_scale">
+			<return type="void" />
+			<param index="0" name="content_scale" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="set_native_surface" qualifiers="static">
+			<return type="void" />
+			<param index="0" name="native_surface" type="RenderingNativeSurface" />
+			<description>
+			</description>
+		</method>
+		<method name="touch_drag">
+			<return type="void" />
+			<param index="0" name="idx" type="int" />
+			<param index="1" name="prev_x" type="int" />
+			<param index="2" name="prev_y" type="int" />
+			<param index="3" name="x" type="int" />
+			<param index="4" name="y" type="int" />
+			<param index="5" name="pressure" type="float" />
+			<param index="6" name="tilt" type="Vector2" />
+			<param index="7" name="window" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="touch_press">
+			<return type="void" />
+			<param index="0" name="idx" type="int" />
+			<param index="1" name="x" type="int" />
+			<param index="2" name="y" type="int" />
+			<param index="3" name="pressed" type="bool" />
+			<param index="4" name="double_click" type="bool" />
+			<param index="5" name="window" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="touches_canceled">
+			<return type="void" />
+			<param index="0" name="idx" type="int" />
+			<param index="1" name="window" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
