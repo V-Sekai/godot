@@ -187,7 +187,7 @@ bool DisplayServerWayland::_show_window() {
 			struct wl_surface *wl_surface = wayland_thread.window_get_wl_surface(wd.id);
 			wd.wl_egl_window = wl_egl_window_create(wl_surface, wd.rect.size.width, wd.rect.size.height);
 
-			Error err = egl_manager->window_create(MAIN_WINDOW_ID, wayland_thread.get_wl_display(), wd.wl_egl_window, wd.rect.size.width, wd.rect.size.height);
+			err = egl_manager->window_create(MAIN_WINDOW_ID, wayland_thread.get_wl_display(), wd.wl_egl_window, wd.rect.size.width, wd.rect.size.height);
 			ERR_FAIL_COND_V_MSG(err == ERR_CANT_CREATE, false, "Can't show a GLES3 window.");
 
 			window_set_vsync_mode(wd.vsync_mode, MAIN_WINDOW_ID);
