@@ -971,7 +971,7 @@ void RenderingContextDriverVulkan::driver_free(RenderingDeviceDriver *p_driver) 
 
 RenderingContextDriver::SurfaceID RenderingContextDriverVulkan::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
 	Ref<RenderingNativeSurfaceVulkan> vulkan_native_surface = Object::cast_to<RenderingNativeSurfaceVulkan>(*p_native_surface);
-	ERR_FAIL_COND_V(vulkan_native_surface == nullptr, SurfaceID());
+	ERR_FAIL_COND_V(vulkan_native_surface.is_null(), SurfaceID());
 
 	Surface *surface = memnew(Surface);
 	surface->vk_surface = vulkan_native_surface->get_vulkan_surface();
