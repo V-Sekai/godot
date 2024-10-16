@@ -503,6 +503,9 @@ private:
 	HScrollBar *h_scroll = nullptr;
 	VScrollBar *v_scroll = nullptr;
 
+	bool h_scroll_enabled = true;
+	bool v_scroll_enabled = true;
+
 	Vector2i content_size_cache;
 	bool fit_content_height = false;
 	bool fit_content_width = false;
@@ -978,9 +981,11 @@ public:
 	VScrollBar *get_v_scroll_bar() const;
 	HScrollBar *get_h_scroll_bar() const;
 
+	void set_v_scroll_visibility(bool p_enabled);
 	void set_v_scroll(double p_scroll);
 	double get_v_scroll() const;
 
+	void set_h_scroll_visibility(bool p_enabled);
 	void set_h_scroll(int p_scroll);
 	int get_h_scroll() const;
 

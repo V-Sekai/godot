@@ -320,6 +320,8 @@ public:
 	EditorHelpBit(const String &p_symbol = String());
 };
 
+void _add_text_to_rt(const String &p_bbcode, RichTextLabel *p_rt, const Control *p_owner_node, const String &p_class = "");
+
 // Standard tooltips do not allow you to hover over them.
 // This class is intended as a temporary workaround.
 class EditorHelpBitTooltip : public PopupPanel {

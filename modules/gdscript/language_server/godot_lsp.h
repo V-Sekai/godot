@@ -83,8 +83,20 @@ struct Position {
 	 */
 	int character = 0;
 
-	_FORCE_INLINE_ bool operator==(const Position &p_other) const {
+	_FORCE_INLINE_ bool operator == (const Position &p_other) const {
 		return line == p_other.line && character == p_other.character;
+	}
+
+	_FORCE_INLINE_ bool operator >= (const Position &p_other) const {
+		if (line > p_other.line) return true;
+		if (line == p_other.line && character >= p_other.character) return true;
+		return false;
+	}
+
+	_FORCE_INLINE_ bool operator <= (const Position &p_other) const {
+		if (line < p_other.line) return true;
+		if (line == p_other.line && character <= p_other.character) return true;
+		return false;
 	}
 
 	String to_string() const {
@@ -120,8 +132,12 @@ struct Range {
 	 */
 	Position end;
 
-	_FORCE_INLINE_ bool operator==(const Range &p_other) const {
+	_FORCE_INLINE_ bool operator == (const Range &p_other) const {
 		return start == p_other.start && end == p_other.end;
+	}
+
+	bool is_within(const Range& other) const {
+		return start >= other.start && end <= other.end;
 	}
 
 	bool contains(const Position &p_pos) const {
@@ -1170,6 +1186,11 @@ struct DocumentSymbol {
 	String detail;
 
 	/**
+	 * More detail for this symbol - without values, e.g the signature of a function.
+	 */
+	String reduced_detail;
+
+	/**
 	 * Documentation for this symbol.
 	 */
 	String documentation;
@@ -1212,10 +1233,12 @@ struct DocumentSymbol {
 	DocumentUri uri;
 	String script_path;
 
+	DocumentSymbol *parent = nullptr;
+
 	/**
 	 * Children of this symbol, e.g. properties of a class.
 	 */
-	Vector<DocumentSymbol> children;
+	Vector<DocumentSymbol *> children;
 
 	Dictionary to_json(bool with_doc = false) const {
 		Dictionary dict;
@@ -1232,10 +1255,10 @@ struct DocumentSymbol {
 		if (!children.is_empty()) {
 			Array arr;
 			for (int i = 0; i < children.size(); i++) {
-				if (children[i].local) {
+				if (children[i]->local) {
 					continue;
 				}
-				arr.push_back(children[i].to_json(with_doc));
+				arr.push_back(children[i]->to_json(with_doc));
 			}
 			if (!children.is_empty()) {
 				dict["children"] = arr;

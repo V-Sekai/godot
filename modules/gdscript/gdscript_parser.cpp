@@ -4939,7 +4939,7 @@ String GDScriptParser::DataType::to_string() const {
 			return "Variant";
 		case BUILTIN:
 			if (builtin_type == Variant::NIL) {
-				return "null";
+				return "void";
 			}
 			if (builtin_type == Variant::ARRAY && has_container_element_type(0)) {
 				return vformat("Array[%s]", get_container_element_type(0).to_string());
