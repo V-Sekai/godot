@@ -116,10 +116,12 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	//assert(frame_data->size() == width * height * 3);
 
 	const int rgb24FrameSize = width * height * 3;
-	if (m_pSample == nullptr)
+	if (m_pSample == nullptr) {
 		CreateMediaSample(dwSampleSize, &m_pSample);
-	if (m_pOutSample == nullptr)
+	}
+	if (m_pOutSample == nullptr) {
 		CreateMediaSample(rgb24FrameSize, &m_pOutSample);
+	}
 
 	IMFMediaBuffer *pMediaBuffer = nullptr;
 	m_pSample->SetSampleTime(llSampleTime);
@@ -136,8 +138,9 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 
 	DWORD ProcessStatus;
 	CHECK_HR(m_pColorTransform->ProcessInput(0, m_pSample, 0));
-	if (FAILED(hr))
+	if (FAILED(hr)) {
 		print_line("Failed to process video frames");
+	}
 
 	MFT_OUTPUT_DATA_BUFFER RGBOutputDataBuffer;
 	RGBOutputDataBuffer.dwStreamID = 0;
@@ -145,8 +148,9 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	RGBOutputDataBuffer.pEvents = NULL;
 	RGBOutputDataBuffer.pSample = m_pOutSample;
 	CHECK_HR(m_pColorTransform->ProcessOutput(0, 1, &RGBOutputDataBuffer, &ProcessStatus));
-	if (FAILED(hr))
+	if (FAILED(hr)) {
 		print_line("Failed to process video frames");
+	}
 
 	IMFMediaBuffer *pOutputBuffer;
 	RGBOutputDataBuffer.pSample->GetBufferByIndex(0, &pOutputBuffer);
