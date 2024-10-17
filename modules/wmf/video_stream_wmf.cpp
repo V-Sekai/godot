@@ -1,7 +1,10 @@
 #include "video_stream_wmf.h"
 
+#include "core/config/project_settings.h"
+#include "core/error/error_macros.h"
 #include "core/io/file_access.h"
 #include "media_grabber_callback.h"
+#include "scene/resources/video_stream.h"
 #include <mfapi.h>
 #include <mferror.h>
 #include <mfidl.h>
@@ -363,8 +366,10 @@ void VideoStreamPlaybackWMF::set_file(const String &p_file) {
 
 	CHECK_HR(media_session->SetTopology(0, topology));
 
-	if (SUCCEEDED(hr)) {
-		IMFRateControl *m_pRate = nullptr;
+	IMFRateControl *m_pRate = nullptr;
+    CHECK_HR(media_session->QueryInterface(&m_pRate));
+
+	if (SUCCEEDED(hr) && m_pRate != nullptr) {
 		BOOL bThin = false;
 		float fRate = 0.f;
 		CHECK_HR(m_pRate->GetRate(&bThin, &fRate));
@@ -522,7 +527,7 @@ void VideoStreamWMF::_bind_methods() {
 Ref<VideoStreamPlayback> VideoStreamWMF::instantiate_playback() {
 	Ref<VideoStreamPlaybackWMF> pb = memnew(VideoStreamPlaybackWMF);
 	pb->set_audio_track(audio_track);
-	pb->set_file(file);
+	pb->set_file(get_file());
 	return pb;
 }
 

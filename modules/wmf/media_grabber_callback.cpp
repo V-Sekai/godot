@@ -34,9 +34,9 @@ MediaGrabberCallback::~MediaGrabberCallback() {
 
 STDMETHODIMP MediaGrabberCallback::QueryInterface(REFIID riid, void **ppv) {
 	static const QITAB qit[] = {
-#pragma clang diagnostic ignored "-Wc++11-narrowing"
+// #pragma clang diagnostic ignored "-Wc++11-narrowing"
 		QITABENT(MediaGrabberCallback, IMFSampleGrabberSinkCallback),
-#pragma clang diagnostic ignored "-Wc++11-narrowing"
+// #pragma clang diagnostic ignored "-Wc++11-narrowing"
 		QITABENT(MediaGrabberCallback, IMFClockStateSink),
 		{ 0 }
 	};

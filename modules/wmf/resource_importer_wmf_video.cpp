@@ -44,9 +44,8 @@ void ResourceImporterWMFVideo::get_import_options(const String &p_path, List<Imp
 }
 
 Error ResourceImporterWMFVideo::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
-	VideoStreamWMF *stream = memnew(VideoStreamWMF);
-	stream->set_file(p_source_file);
-	Ref<VideoStreamWMF> wmfv_stream = Ref<VideoStreamWMF>(stream);
+	Ref<VideoStreamWMF> wmfv_stream = memnew(VideoStreamWMF);
+	wmfv_stream->set_file(p_source_file);
 	return ResourceSaver::save(wmfv_stream, p_save_path + ".wmfvstr");
 }
 

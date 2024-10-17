@@ -102,8 +102,8 @@ protected:
 	int audio_track = 0;
 
 public:
-	void set_file(const String &p_file);
-	String get_file();
+	virtual void set_file(const String &p_file);
+	virtual String get_file();
 
 	virtual void set_audio_track(int p_track);
 	virtual Ref<VideoStreamPlayback> instantiate_playback();
