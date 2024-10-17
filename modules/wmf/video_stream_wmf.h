@@ -4,6 +4,7 @@
 #include "core/io/resource_loader.h"
 #include "core/os/mutex.h"
 #include "scene/resources/video_stream.h"
+#include "scene/resources/image_texture.h"
 
 #include <deque>
 

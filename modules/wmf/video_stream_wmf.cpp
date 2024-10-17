@@ -492,11 +492,11 @@ void VideoStreamPlaybackWMF::present() {
 
 int64_t VideoStreamPlaybackWMF::next_sample_time() {
 	MutexLock lock(mtx);
-	int64_t time = INT64_MAX;
+	int64_t sample_time = INT64_MAX;
 	if (!cache_frames.is_empty()) {
-		time = cache_frames[read_frame_idx].sample_time;
+		sample_time = cache_frames[read_frame_idx].sample_time;
 	}
-	return time;
+	return sample_time;
 }
 
 static int counter = 0;
