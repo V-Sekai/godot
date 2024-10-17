@@ -72,8 +72,6 @@ public:
 	virtual double get_playback_position() const override;
 	virtual void seek(double p_time) override;
 
-	void set_file(const String &p_file);
-
 	virtual Ref<Texture2D> get_texture() const override;
 	virtual void update(double p_delta) override;
 
@@ -105,12 +103,6 @@ protected:
 
 public:
 	Ref<VideoStreamPlayback> instantiate_playback() override;
-
-	void set_file(const String &p_file);
-
-	String get_file() {
-		return file;
-	}
 
 	void set_audio_track(int p_track) override {
 		audio_track = p_track;

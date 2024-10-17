@@ -517,10 +517,6 @@ VideoStreamPlaybackWMF::~VideoStreamPlaybackWMF() {
 }
 
 void VideoStreamWMF::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_file", "file"), &VideoStreamWMF::set_file);
-	ClassDB::bind_method(D_METHOD("get_file"), &VideoStreamWMF::get_file);
-
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "file", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL), "set_file", "get_file");
 }
 
 Ref<VideoStreamPlayback> VideoStreamWMF::instantiate_playback() {
@@ -528,10 +524,6 @@ Ref<VideoStreamPlayback> VideoStreamWMF::instantiate_playback() {
 	pb->set_audio_track(audio_track);
 	pb->set_file(file);
 	return pb;
-}
-
-void VideoStreamWMF::set_file(const String &p_file) {
-	file = p_file;
 }
 
 VideoStreamWMF::VideoStreamWMF() {
