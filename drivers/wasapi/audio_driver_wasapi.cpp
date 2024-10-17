@@ -92,7 +92,7 @@ __CRT_UUID_DECL(IAudioClient3, 0x7ED4EE07, 0x8E67, 0x4CD4, 0x8C, 0x1A, 0x2B, 0x7
 
 #endif // __MINGW32__ || __MINGW64__
 
-#ifndef PKEY_Device_FriendlyName
+#if !defined(PKEY_Device_FriendlyName)
 
 #undef DEFINE_PROPERTYKEY
 /* clang-format off */
