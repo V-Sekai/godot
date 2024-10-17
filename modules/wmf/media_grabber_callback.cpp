@@ -12,7 +12,7 @@
 	if (SUCCEEDED(hr)) {                                                       \
 		hr = (func);                                                           \
 		if (FAILED(hr)) {                                                      \
-			print_line(vformat("%s failed, return:", __FUNCTION__, itos(hr))); \
+			print_line(vformat("%s failed, return: %s", __FUNCTION__, itos(hr))); \
 		}                                                                      \
 	}
 
@@ -169,7 +169,7 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 
 		char *rgb_buffer = (char *)dst;
 		// convert 4 pixels at once
-		for (int i = 0; i < outDataLen; i += 12) {
+		for (size_t i = 0; i < outDataLen; i += 12) {
 			rgb_buffer[i + 0] = outData[i + 2];
 			rgb_buffer[i + 1] = outData[i + 1];
 			rgb_buffer[i + 2] = outData[i + 0];
@@ -186,7 +186,7 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 			rgb_buffer[i + 10] = outData[i + 10];
 			rgb_buffer[i + 11] = outData[i + 9];
 		}
-		//memcpy(rgb_buffer, outData, outDataLen);
+		memcpy(rgb_buffer, outData, outDataLen);
 	}
 	//mtx.unlock();
 

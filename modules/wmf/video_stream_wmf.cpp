@@ -4,6 +4,7 @@
 #include "core/error/error_macros.h"
 #include "core/io/file_access.h"
 #include "media_grabber_callback.h"
+#include "scene/resources/image_texture.h"
 #include "scene/resources/video_stream.h"
 #include <mfapi.h>
 #include <mferror.h>
@@ -14,7 +15,7 @@
 	if (SUCCEEDED(hr)) {                                                         \
 		hr = (func);                                                             \
 		if (FAILED(hr)) {                                                        \
-			print_line(vformat("%s failed, return:%s", __FUNCTION__, itos(hr))); \
+			print_line(vformat("%s failed, return: %s", __FUNCTION__, itos(hr))); \
 		}                                                                        \
 	}
 #define SafeRelease(p)      \
@@ -137,14 +138,23 @@ HRESULT CreateTopology(IMFMediaSource *pSource, MediaGrabberCallback *pSampleGra
 		GUID majorType;
 
 		CHECK_HR(pPD->GetStreamDescriptorByIndex(i, &bSelected, &pSD));
+		if (!bSelected) {
+			continue; // Skip deselected streams early
+		}
+
 		CHECK_HR(pSD->GetMediaTypeHandler(&pHandler));
 		CHECK_HR(pHandler->GetMajorType(&majorType));
 
-		if (majorType == MFMediaType_Video && bSelected) {
+		if (majorType == MFMediaType_Video) {
 			print_line("Video Stream");
 
 			IMFMediaType *pType = NULL;
-			CHECK_HR(pHandler->GetMediaTypeByIndex(0, &pType));
+			CHECK_HR(pHandler->GetCurrentMediaType(&pType));
+			if (!pType) {
+				hr = MF_E_INVALIDMEDIATYPE;
+				break;
+			}
+
 			UINT32 width, height;
 			MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &width, &height);
 
@@ -158,7 +168,6 @@ HRESULT CreateTopology(IMFMediaSource *pSource, MediaGrabberCallback *pSampleGra
 			CHECK_HR(AddOutputNode(pTopology, pSinkActivate, 0, &outputNode));
 
 			CHECK_HR(inputNode->ConnectOutput(0, outputNode, 0));
-			//CHECK_HR(colorNode->ConnectOutput(0, outputNode, 0));
 
 			info->size.x = width;
 			info->size.y = height;
@@ -393,7 +402,8 @@ void VideoStreamPlaybackWMF::set_file(const String &p_file) {
 			cache_frames.write[i].data.resize(rgb24_frame_size);
 		}
 		read_frame_idx = write_frame_idx = 0;
-		Ref<Image> img = Image::create_empty(stream_info.size.x, stream_info.size.y, false, Image::FORMAT_RGB8);
+		
+		Ref<Image> img = memnew(Image(stream_info.size.x, stream_info.size.y, 0, Image::FORMAT_RGBA8, frame_data)); //zero copy image creation
 		texture->create_from_image(img);
 	} else {
 		SafeRelease(media_session);
@@ -408,7 +418,6 @@ void VideoStreamPlaybackWMF::update(double p_delta) {
 	if (!is_video_playing || is_video_paused) {
 		return;
 	}
-
 	if (media_session) {
 		HRESULT hr = S_OK;
 		HRESULT hrStatus = S_OK;
@@ -468,16 +477,14 @@ void VideoStreamPlaybackWMF::write_frame_done() {
 		// The time gap between videos is larger than the buffer size
 		// so need to extend the buffer size.
 
-		/*
-		int current_size = cache_frames.size();
-		cache_frames.resize(current_size + 10);
+		// int current_size = cache_frames.size();
+		// cache_frames.resize(current_size + 10);
 
-		const int rgb24_frame_size = stream_info.size.x * stream_info.size.y * 3;
-		for (int i = 0; i < cache_frames.size(); ++i) {
-			cache_frames.write[i].data.resize(rgb24_frame_size);
-		}
-		next_write_frame_idx = write_frame_idx + 1;
-		*/
+		// const int rgb24_frame_size = stream_info.size.x * stream_info.size.y * 3;
+		// for (int i = 0; i < cache_frames.size(); ++i) {
+		// 	cache_frames.write[i].data.resize(rgb24_frame_size);
+		// }
+		// next_write_frame_idx = write_frame_idx + 1;
 	}
 
 	write_frame_idx = next_write_frame_idx;
@@ -492,7 +499,7 @@ void VideoStreamPlaybackWMF::present() {
 	read_frame_idx = (read_frame_idx + 1) % cache_frames.size();
 	mtx.unlock();
 	Ref<Image> img = memnew(Image(stream_info.size.x, stream_info.size.y, 0, Image::FORMAT_RGB8, the_frame.data));
-	texture->create_from_image(img);
+	texture->update(img);
 }
 
 int64_t VideoStreamPlaybackWMF::next_sample_time() {
