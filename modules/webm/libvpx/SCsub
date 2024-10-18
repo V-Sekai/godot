@@ -227,7 +227,7 @@ webm_multithread = env_libvpx["platform"] != "javascript"
 cpu = env_libvpx["arch"]
 webm_cpu_x86 = False
 webm_cpu_arm = False
-if cpu == "x86_64":
+if cpu == "x86_64" or cpu == "arm64" or cpu == "arm32":
     import os
     import subprocess
 
