@@ -1,8 +1,8 @@
 def can_build(env, platform):
-    if platform in ["iphone", "web"]:
-        return False
+    if platform in ["windows"]:
+        return True
 
-    return True
+    return False
 
 
 def configure(env):
