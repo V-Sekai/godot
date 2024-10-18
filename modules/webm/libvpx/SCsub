@@ -229,7 +229,7 @@ webm_multithread = env_libvpx["platform"] != "javascript"
 cpu = env_libvpx["arch"]
 webm_cpu_x86 = False
 webm_cpu_arm = False
-if cpu == "arm64" or cpu == "arm32":
+if (cpu == "arm64" or cpu == "arm32") and env["platform"] not in ["ios", "macos"]:
     webm_cpu_arm = True
 elif cpu == "x86_64":
     webm_cpu_x86 = True
