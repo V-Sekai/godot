@@ -451,27 +451,27 @@ void VideoStreamPlaybackWMF::update(double p_delta) {
 	}
 	if (media_session) {
 		HRESULT hr = S_OK;
-		HRESULT hrStatus = S_OK;
+		HRESULT hr_status = S_OK;
 		MediaEventType met = 0;
-		IMFMediaEvent *prevent = nullptr;
+		IMFMediaEvent *media_event = nullptr;
 
-		hr = media_session->GetEvent(MF_EVENT_FLAG_NO_WAIT, &prevent);
+		hr = media_session->GetEvent(MF_EVENT_FLAG_NO_WAIT, &media_event);
 		if (SUCCEEDED(hr)) {
-			hr = pEvent->GetStatus(&hrStatus);
+			hr = media_event->GetStatus(&hr_status);
 			if (SUCCEEDED(hr)) {
-				hr = pEvent->GetType(&met);
+				hr = media_event->GetType(&met);
 				if (SUCCEEDED(hr)) {
 					if (met == MESessionEnded) {
 						// We're done playing
 						media_session->Stop();
 						is_video_playing = false;
-						SafeRelease(prevent);
+						SafeRelease(media_event);
 						return;
 					}
 				}
 			}
 		}
-		SafeRelease(prevent);
+		SafeRelease(media_event);
 
 		present();
 	}

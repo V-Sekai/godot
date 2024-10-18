@@ -169,7 +169,7 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	MFT_OUTPUT_DATA_BUFFER RGBOutputDataBuffer;
 	RGBOutputDataBuffer.dwStreamID = 0;
 	RGBOutputDataBuffer.dwStatus = 0;
-	RGBOutputDataBuffer.prevents = NULL;
+	RGBOutputDataBuffer.pEvents = NULL;
 	RGBOutputDataBuffer.pSample = m_pOutSample;
 	CHECK_HR(m_pColorTransform->ProcessOutput(0, 1, &RGBOutputDataBuffer, &ProcessStatus));
 	if (FAILED(hr)) {
