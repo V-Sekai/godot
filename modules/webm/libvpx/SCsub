@@ -256,9 +256,7 @@ if webm_cpu_x86:
     webm_simd_optimizations = True
 
 if webm_cpu_arm:
-    if env_libvpx["platform"] == "iphone":
-        env_libvpx["ASFLAGS"] = "-arch armv7"
-    elif env_libvpx["platform"] == "android" and env["android_arch"] == "armv7" or env["platform"] == "linuxbsd":
+    if env_libvpx["arch"] == "arm32" or env_libvpx["arch"] == "arm32":
         env_libvpx["ASFLAGS"] = "-mfpu=neon"
     elif env_libvpx["platform"] == "uwp":
         env_libvpx["AS"] = "armasm"
