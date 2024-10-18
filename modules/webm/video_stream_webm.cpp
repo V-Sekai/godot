@@ -356,27 +356,33 @@ bool VideoStreamPlaybackWebm::should_process(WebMFrame &video_frame) {
 void VideoStreamPlaybackWebm::delete_pointers() {
 	if (pcm) {
 		memfree(pcm);
+		pcm = nullptr;
 	}
 
 	if (audio_frame) {
 		memdelete(audio_frame);
+		audio_frame = nullptr;
 	}
 	if (video_frames) {
 		for (int i = 0; i < video_frames_capacity; ++i) {
 			memdelete(video_frames[i]);
+			video_frames[i] = nullptr;
 		}
 		memfree(video_frames);
 	}
 
 	if (video) {
 		memdelete(video);
+		video = nullptr;
 	}
 	if (audio) {
 		memdelete(audio);
+		audio = nullptr;
 	}
 
 	if (webm) {
 		memdelete(webm);
+		webm = nullptr;
 	}
 }
 
