@@ -147,8 +147,8 @@ const silk_NLSF_CB_struct silk_NLSF_CB_NB_MB =
 {
     32,
     10,
-    SILK_FIX_CONST( 0.18, 16 ),
-    SILK_FIX_CONST( 1.0 / 0.18, 6 ),
+    11797, // Precomputed value of SILK_FIX_CONST(0.18, 16)
+    364, // Precomputed value of SILK_FIX_CONST(1.0 / 0.18, 6)
     silk_NLSF_CB1_NB_MB_Q8,
     silk_NLSF_CB1_iCDF_NB_MB,
     silk_NLSF_PRED_NB_MB_Q8,

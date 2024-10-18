@@ -64,9 +64,12 @@ static const opus_val16 pred_coef[4] = {29440, 26112, 21248, 16384};
 static const opus_val16 beta_coef[4] = {30147, 22282, 12124, 6554};
 static const opus_val16 beta_intra = 4915;
 #else
-static const opus_val16 pred_coef[4] = {29440/32768., 26112/32768., 21248/32768., 16384/32768.};
-static const opus_val16 beta_coef[4] = {30147/32768., 22282/32768., 12124/32768., 6554/32768.};
-static const opus_val16 beta_intra = 4915/32768.;
+// static const opus_val16 pred_coef[4] = {29440/32768., 26112/32768., 21248/32768., 16384/32768.};
+// static const opus_val16 beta_coef[4] = {30147/32768., 22282/32768., 12124/32768., 6554/32768.};
+// static const opus_val16 beta_intra = 4915/32768.;
+static const opus_val16 pred_coef[4] = {0.8984375f, 0.796875f, 0.6484375f, 0.5f};
+static const opus_val16 beta_coef[4] = {0.920013427734375f, 0.67999267578125f, 0.3699951171875f, 0.20001220703125f};
+static const opus_val16 beta_intra = 0.149993896484375f;
 #endif
 
 /*Parameters of the Laplace-like probability models used for the coarse energy.
