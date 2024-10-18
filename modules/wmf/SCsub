@@ -4,7 +4,7 @@ Import("env_modules")
 if env["use_mingw"]:
     env.Append(LIBS=["dxva2", "evr", "mf", "mfplat", "mfplay", "mfreadwrite", "mfuuid", "wmcodecdspuuid"])
     env.Append(LINKFLAGS=['-Wl,--allow-multiple-definition'])
-else:    
+else:
     env.Append(LINKFLAGS=["dxva2.lib", "evr.lib", "mf.lib", "mfplat.lib", "mfplay.lib", "mfreadwrite.lib", "mfuuid.lib", "wmcodecdspuuid.lib"])
 
 env_wmf = env_modules.Clone()

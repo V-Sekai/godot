@@ -1,10 +1,40 @@
-#ifndef WINDOWS_MEDIA_FOUNDATION_VIDEO_H
-#define WINDOWS_MEDIA_FOUNDATION_VIDEO_H
+/**************************************************************************/
+/*  video_stream_wmf.h                                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef VIDEO_STREAM_WMF_H
+#define VIDEO_STREAM_WMF_H
 
 #include "core/io/resource_loader.h"
 #include "core/os/mutex.h"
-#include "scene/resources/video_stream.h"
 #include "scene/resources/image_texture.h"
+#include "scene/resources/video_stream.h"
 
 #include <deque>
 
@@ -46,7 +76,7 @@ class VideoStreamPlaybackWMF : public VideoStreamPlayback {
 	void *mix_udata = nullptr;
 
 	double time = 0;
-	
+
 	void shutdown_stream();
 
 public:
@@ -111,4 +141,4 @@ public:
 	~VideoStreamWMF();
 };
 
-#endif
+#endif // VIDEO_STREAM_WMF_H
