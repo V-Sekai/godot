@@ -1,5 +1,5 @@
 def can_build(env, platform):
-    if platform in ["windows"]:
+    if platform in ["macos"]:
         return True
 
     return False
