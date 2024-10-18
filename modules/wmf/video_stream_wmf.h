@@ -52,6 +52,8 @@ struct FrameData {
 class VideoStreamPlaybackWMF : public VideoStreamPlayback {
 	GDCLASS(VideoStreamPlaybackWMF, VideoStreamPlayback);
 
+	String file;
+
 	IMFMediaSession *media_session;
 	IMFMediaSource *media_source;
 	IMFTopology *topology;

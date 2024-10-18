@@ -137,7 +137,6 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 		const BYTE *pSampleBuffer,
 		DWORD dwSampleSize) {
 	HRESULT hr = S_OK;
-	//assert(frame_data->size() == width * height * 3);
 
 	const int rgb24FrameSize = width * height * 3;
 	if (m_pSample == nullptr) {
@@ -183,7 +182,6 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	DWORD outDataLen;
 	pOutputBuffer->Lock(&outData, NULL, &outDataLen);
 
-	mtx.lock();
 	{
 		FrameData *frame = playback->get_next_writable_frame();
 		frame->sample_time = llSampleTime / 10000;
@@ -212,7 +210,6 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 		}
 		// memcpy(rgb_buffer, outData, outDataLen);
 	}
-	mtx.unlock();
 
 	pOutputBuffer->Unlock();
 
