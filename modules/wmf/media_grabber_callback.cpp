@@ -8,12 +8,12 @@
 #include <cstdio>
 #include <new>
 
-MediaGrabberCallback::MediaGrabberCallback(VideoStreamPlaybackWMF *p_playback) :
-		m_cRef(1), playback(p_playback) {
+MediaGrabberCallback::MediaGrabberCallback(VideoStreamPlaybackWMF *p_playback, Mutex& p_mtx) :
+		m_cRef(1), playback(p_playback), mtx(p_mtx) {
 }
 
-HRESULT MediaGrabberCallback::CreateInstance(MediaGrabberCallback **ppCB, VideoStreamPlaybackWMF *p_playback) {
-	*ppCB = new (std::nothrow) MediaGrabberCallback(p_playback);
+HRESULT MediaGrabberCallback::CreateInstance(MediaGrabberCallback **ppCB, VideoStreamPlaybackWMF *p_playback, Mutex& p_mtx) {
+	*ppCB = new (std::nothrow) MediaGrabberCallback(p_playback, p_mtx);
 
 	if (ppCB == nullptr) {
 		return E_OUTOFMEMORY;
@@ -153,7 +153,7 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 	DWORD outDataLen;
 	pOutputBuffer->Lock(&outData, NULL, &outDataLen);
 
-	//mtx.lock();
+	mtx.lock();
 	{
 		FrameData *frame = playback->get_next_writable_frame();
 		frame->sample_time = llSampleTime / 10000;
@@ -180,9 +180,9 @@ STDMETHODIMP MediaGrabberCallback::OnProcessSample(REFGUID guidMajorMediaType,
 			rgb_buffer[i + 10] = outData[i + 10];
 			rgb_buffer[i + 11] = outData[i + 9];
 		}
-		memcpy(rgb_buffer, outData, outDataLen);
+		// memcpy(rgb_buffer, outData, outDataLen);
 	}
-	//mtx.unlock();
+	mtx.unlock();
 
 	pOutputBuffer->Unlock();
 

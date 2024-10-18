@@ -28,7 +28,7 @@ class VideoStreamPlaybackWMF : public VideoStreamPlayback {
 	IMFPresentationClock *presentation_clock;
 	MediaGrabberCallback *sample_grabber_callback;
 
-	Vector<FrameData> cache_frames;
+	LocalVector<FrameData> cache_frames;
 	int read_frame_idx = 0;
 	int write_frame_idx = 0;
 

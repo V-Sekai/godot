@@ -19,6 +19,7 @@ class VideoStreamPlaybackWMF;
 class MediaGrabberCallback : public IMFSampleGrabberSinkCallback {
 	long m_cRef = 0;
 	VideoStreamPlaybackWMF *playback;
+	Mutex& mtx;
 	int width = 0;
 	int height = 0;
 
@@ -26,11 +27,11 @@ class MediaGrabberCallback : public IMFSampleGrabberSinkCallback {
 	IMFSample *m_pSample = nullptr;
 	IMFSample *m_pOutSample = nullptr;
 
-	MediaGrabberCallback(VideoStreamPlaybackWMF *playback);
+	MediaGrabberCallback(VideoStreamPlaybackWMF *playback, Mutex& p_mtx);
 
 public:
     virtual ~MediaGrabberCallback() {}
-	static HRESULT CreateInstance(MediaGrabberCallback **ppCB, VideoStreamPlaybackWMF *playback);
+	static HRESULT CreateInstance(MediaGrabberCallback **ppCB, VideoStreamPlaybackWMF *playback, Mutex& p_mtx);
 
 	// IUnknown methods
 	STDMETHODIMP QueryInterface(REFIID iid, void **ppv);
