@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/bitwes/Gut.git
+	branch = main
+	commit = 3c4504c96eb9f942ec2d6d276c72bd4f0358ea67
+	parent = 02c0a1e411db576dae203fd6a8868627c4c5a10e
+	method = merge
+	cmdver = 0.4.9
