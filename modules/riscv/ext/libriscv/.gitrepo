@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/fwsGonzo/libriscv.git
+	branch = master
+	commit = 15007b1d32ab5e655a61049af93890207f4f6cb0
+	parent = 48d9e4b2de78a065105c12578ad050679d9cc8c1
+	method = merge
+	cmdver = 0.4.9
