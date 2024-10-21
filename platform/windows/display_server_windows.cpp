@@ -49,6 +49,8 @@
 
 #include "servers/rendering/dummy/rasterizer_dummy.h"
 
+#include "rendering_native_surface_windows.h"
+
 #if defined(VULKAN_ENABLED)
 #include "rendering_context_driver_vulkan_windows.h"
 #endif
@@ -6467,12 +6469,11 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 
 #ifdef RD_ENABLED
 		Ref<RenderingNativeSurfaceWindows> windows_surface = nullptr;
-#ifdef VULKAN_ENABLED || D3D12_ENABLED
+#if defined(VULKAN_ENABLED) || defined(D3D12_ENABLED)
 		if (rendering_driver == "vulkan" || rendering_driver == "d3d12") {
 			windows_surface = RenderingNativeSurfaceWindows::create(wd.hWnd, hInstance);
 		}
 #endif
-
 		if (!rendering_context) {
 			if (windows_surface.is_valid()) {
 				rendering_context = windows_surface->create_rendering_context(rendering_driver);
@@ -6493,12 +6494,14 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 				memdelete(rendering_context);
 				rendering_context = nullptr;
 				windows.erase(id);
+				windows_surface = nullptr;
 				return INVALID_WINDOW_ID;
 			}
 
 			rendering_context->window_set_size(id, real_client_rect.right - real_client_rect.left - off_x, real_client_rect.bottom - real_client_rect.top);
 			rendering_context->window_set_vsync_mode(id, p_vsync_mode);
 			wd.context_created = true;
+			windows_surface = nullptr;
 		}
 #endif
 
