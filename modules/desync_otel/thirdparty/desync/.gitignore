@@ -1,0 +1,4 @@
+cmd/desync/vsekai_game_windows_x86_64/
+cmd/desync/desync_c_interface.a
+cmd/desync/desync_c_interface.h
+cmd/desync/cgo_untar
