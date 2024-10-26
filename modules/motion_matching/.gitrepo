@@ -4,9 +4,9 @@
 ; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
 ;
 [subrepo]
-	remote = https://github.com/GuilhermeGSousa/godot-motion-matching.git
-	branch = engine-module
-	commit = 9c31f20b48beb052c98df35c39053b3f1ca23eaa
-	parent = d2841ee0754c895eeafab67201b21fbbbd9ae6ed
+	remote = https://github.com/V-Sekai/godot-motion-matching
+	branch = next
+	commit = 0063cc11915180af51d7597e5d993861816ac873
+	parent = 1372a411c2f1a2404abb6a367689b097d6156328
 	method = merge
 	cmdver = 0.4.6
