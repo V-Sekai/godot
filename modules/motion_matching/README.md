@@ -22,9 +22,13 @@ You'll find on this repo:
 
 ### Credits
 I want to thank all the contributors that made this project possible!
+
 [Fire](https://github.com/fire)
+
 [GeorgeS](https://github.com/GeorgeS2019)
+
 [Remi](https://github.com/Remi123)
+
 [Roberts Kalnins](https://github.com/rkalnins)
 
 ### Sources
