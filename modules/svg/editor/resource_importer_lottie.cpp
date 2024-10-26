@@ -102,21 +102,16 @@ Ref<Image> lottie_to_sprite_sheet(Ref<JSON> p_json, float p_begin, float p_end, 
 	int sheet_columns = p_columns <= 0 ? Math::ceil(Math::sqrt((float)frame_count)) : p_columns;
 	int sheet_rows = Math::ceil(((float)frame_count) / sheet_columns);
 	Vector2 texture_size = Vector2(origin_width * sheet_columns * p_scale, origin_height * sheet_rows * p_scale);
+
+	const uint32_t max_dimension = 16384;
+	if (p_size_limit <= 0) {
+		p_size_limit = max_dimension;
+	}
 	if (texture_size[texture_size.max_axis_index()] > p_size_limit) {
-		p_scale = p_size_limit / texture_size[texture_size.max_axis_index()];
+		p_scale = p_size_limit / MAX(origin_width * sheet_columns, origin_height * sheet_rows);
 	}
 	uint32_t width = MAX(1, round(origin_width * p_scale));
 	uint32_t height = MAX(1, round(origin_height * p_scale));
-
-	const uint32_t max_dimension = 16384;
-	if (width * sheet_columns > max_dimension || height * sheet_rows > max_dimension) {
-		WARN_PRINT(vformat(
-				String::utf8("Target canvas dimensions %d×%d (with scale %.2f, rows %d, columns %d) exceed the max supported dimensions %d×%d. The target canvas will be scaled down."),
-				width, height, p_scale, sheet_rows, sheet_columns, max_dimension, max_dimension));
-		width = MIN(width, max_dimension / sheet_columns);
-		height = MIN(height, max_dimension / sheet_rows);
-		p_scale = MIN(width / origin_width, height / origin_height);
-	}
 	picture->size(width, height);
 
 	uint32_t *buffer = (uint32_t *)memalloc(sizeof(uint32_t) * width * height);
