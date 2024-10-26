@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="ResourceImporterLottie" inherits="ResourceImporter" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
+		Import a Lottie animation as a sprite sheet.
 	</brief_description>
 	<description>
+		This imports a Lottie animation to a [CompressedTexture2D]. See also [ResourceImporterTexture].
+		[b]Note:[/b] Both JSON and dotLottie (extra resources are ignored) are supported. Only files with the [code].lottie[/code] extension are recognized. You will have to rename the JSON file extension to [code].lottie[/code] to import it.
 	</description>
 	<tutorials>
 	</tutorials>
