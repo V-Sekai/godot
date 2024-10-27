@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/GuilhermeGSousa/godot-motion-matching.git
 	branch = engine-module
-	commit = bb6398134cc7dc762fcdb91ec573d701d5b9c4db
-	parent = 244ea0e032203adc334dca8dd730f281268b86ba
+	commit = 9fce150cd64eef1377157c0f84d4ca22a84a7de0
+	parent = efa4316f64b897ae9f2ba9086b2d2422b0ce2edc
 	method = merge
 	cmdver = 0.4.6
