@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/GuilhermeGSousa/godot-motion-matching.git
 	branch = mm-animation-node
-	commit = 3a19b4cd8b80fa0a644cb8a24a956ac96b99cb95
-	parent = c2babeb4b533191a490b4d461036f1bf1c0023ee
+	commit = 3df6b9914f695123ba881a02c941a5b54463d432
+	parent = fde9e70fb923910edf5fa087621eaf4a1c618331
 	method = merge
 	cmdver = 0.4.6
