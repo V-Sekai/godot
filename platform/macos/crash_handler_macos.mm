@@ -54,21 +54,24 @@
 #include <mach-o/getsect.h>
 
 static uint64_t load_address() {
-	const struct segment_command_64 *cmd = getsegbyname("__TEXT");
-	char full_path[1024];
-	uint32_t size = sizeof(full_path);
+    uint32_t dyld_count = _dyld_image_count();
+    for (uint32_t i = 0; i < dyld_count; i++) {
+        const struct mach_header_64* header = (const struct mach_header_64*)_dyld_get_image_header(i);
+        intptr_t slide = _dyld_get_image_vmaddr_slide(i);
+        const struct load_command* cmd = (const struct load_command*)(header + 1);
 
-	if (cmd && !_NSGetExecutablePath(full_path, &size)) {
-		uint32_t dyld_count = _dyld_image_count();
-		for (uint32_t i = 0; i < dyld_count; i++) {
-			const char *image_name = _dyld_get_image_name(i);
-			if (image_name && strncmp(image_name, full_path, 1024) == 0) {
-				return cmd->vmaddr + _dyld_get_image_vmaddr_slide(i);
-			}
-		}
-	}
+        for (uint32_t j = 0; j < header->ncmds; j++) {
+            if (cmd->cmd == LC_SEGMENT_64) {
+                const struct segment_command_64* segcmd = (const struct segment_command_64*)cmd;
+                if (strcmp(segcmd->segname, "__TEXT") == 0) {
+                    return segcmd->vmaddr + slide;
+                }
+            }
+            cmd = (const struct load_command*)((char*)cmd + cmd->cmdsize);
+        }
+    }
 
-	return 0;
+    return 0;
 }
 
 static void handle_crash(int sig) {

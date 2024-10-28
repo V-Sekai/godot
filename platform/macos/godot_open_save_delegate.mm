@@ -30,6 +30,8 @@
 
 #include "godot_open_save_delegate.h"
 
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+
 @implementation GodotOpenSaveDelegate
 
 - (instancetype)init {
@@ -176,15 +178,25 @@
 	}
 	if ([new_allowed_types count] > 0) {
 		NSMutableArray *type_filters = [new_allowed_types objectAtIndex:0];
+		NSMutableArray<UTType *> *contentTypes = [[NSMutableArray alloc] init];
+
 		if (type_filters && [type_filters count] == 1 && [[type_filters objectAtIndex:0] isEqualToString:@"*"]) {
-			[p_panel setAllowedFileTypes:nil];
+			// Allow all file types by not setting specific content types and allowing other file types
+			[p_panel setAllowedContentTypes:@[]]; // Do not set any specific types
 			[p_panel setAllowsOtherFileTypes:true];
 		} else {
+			for (NSString *type in type_filters) {
+				UTType *utType = [UTType typeWithIdentifier:type];
+				if (utType) {
+					[contentTypes addObject:utType];
+				}
+			}
+			[p_panel setAllowedContentTypes:contentTypes];
 			[p_panel setAllowsOtherFileTypes:false];
-			[p_panel setAllowedFileTypes:type_filters];
 		}
 	} else {
-		[p_panel setAllowedFileTypes:nil];
+		// Default to allowing all file types if no filters are specified
+		[p_panel setAllowedContentTypes:@[]]; // Do not set any specific types
 		[p_panel setAllowsOtherFileTypes:true];
 	}
 }
@@ -242,25 +254,32 @@
 }
 
 - (void)popupFileAction:(id)p_sender {
-	NSPopUpButton *btn = p_sender;
-	if (btn) {
-		NSUInteger index = [btn indexOfSelectedItem];
-		if (allowed_types && index < [allowed_types count]) {
-			NSMutableArray *type_filters = [allowed_types objectAtIndex:index];
-			if (type_filters && [type_filters count] == 1 && [[type_filters objectAtIndex:0] isEqualToString:@"*"]) {
-				[dialog setAllowedFileTypes:nil];
-				[dialog setAllowsOtherFileTypes:true];
-			} else {
-				[dialog setAllowsOtherFileTypes:false];
-				[dialog setAllowedFileTypes:type_filters];
-			}
-			cur_index = index;
-		} else {
-			[dialog setAllowedFileTypes:nil];
-			[dialog setAllowsOtherFileTypes:true];
-			cur_index = -1;
-		}
-	}
+    NSPopUpButton *btn = p_sender;
+    if (btn) {
+        NSUInteger index = [btn indexOfSelectedItem];
+        if (allowed_types && index < [allowed_types count]) {
+            NSMutableArray *type_filters = [allowed_types objectAtIndex:index];
+            if (type_filters && [type_filters count] == 1 && [[type_filters objectAtIndex:0] isEqualToString:@"*"]) {
+                [dialog setAllowedContentTypes:@[]];
+                [dialog setAllowsOtherFileTypes:true];
+            } else {
+                [dialog setAllowsOtherFileTypes:false];
+                NSMutableArray<UTType *> *contentTypes = [NSMutableArray array];
+                for (NSString *fileExtension in type_filters) {
+                    UTType *type = [UTType typeWithFilenameExtension:fileExtension];
+                    if (type) {
+                        [contentTypes addObject:type];
+                    }
+                }
+                [dialog setAllowedContentTypes:contentTypes];
+            }
+            cur_index = index;
+        } else {
+            [dialog setAllowedContentTypes:@[]];
+            [dialog setAllowsOtherFileTypes:true];
+            cur_index = -1;
+        }
+    }
 }
 
 - (void)setRootPath:(const String &)p_root_path {
