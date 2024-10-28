@@ -42,7 +42,6 @@
 #include "scene/3d/physics/character_body_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/animation/animation_player.h"
-#include "scene/animation/animation_tree.h"
 
 class MMCharacter : public CharacterBody3D {
     GDCLASS(MMCharacter, CharacterBody3D)
@@ -59,7 +58,6 @@ private:
     // Motion Matching
     Skeleton3D* _skeleton{nullptr};
     AnimationPlayer* _animation_player{nullptr};
-    AnimationTree* _animation_tree{nullptr};
     float _time_since_last_query{0.f};
     bool _force_transition{false};
     MMQueryOutput _last_query_output;
@@ -134,7 +132,6 @@ public:
     // Motion Matching
     GETSET(NodePath, skeleton_path)
     GETSET(NodePath, animation_player_path)
-    GETSET(NodePath, animation_tree_path)
     GETSET(float, query_frequency, 2.0f)
     GETSET(Ref<MMSynchronizer>, synchronizer)
 
