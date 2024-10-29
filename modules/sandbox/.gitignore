@@ -1,0 +1,16 @@
+build/
+.build/
+.godot/
+.mingw/
+.vscode/
+program/test
+.sconsign.dblite
+.DS_Store
+*.o
+*.os
+*.elf
+bin/addons/godot_sandbox/bin/*
+
+# Ignore all CPP files in the bintr directory
+src/bintr/*.cpp
+*.pyc
