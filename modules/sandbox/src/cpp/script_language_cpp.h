@@ -6,6 +6,7 @@
 
 GODOT_NAMESPACE
 
+#if !defined(GODOT_MODULE)
 class CPPScriptLanguage : public ScriptLanguageExtension {
 	GDCLASS(CPPScriptLanguage, ScriptLanguageExtension);
 
@@ -77,3 +78,4 @@ public:
 	CPPScriptLanguage() {}
 	~CPPScriptLanguage() {}
 };
+#endif

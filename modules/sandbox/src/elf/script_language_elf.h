@@ -2,12 +2,18 @@
 
 #include "../config.h"
 #include <godot_cpp/classes/script.hpp>
-#include <godot_cpp/classes/script_language_extension.hpp>
 
 GODOT_NAMESPACE
 
+#ifdef GODOT_MODULE
+#include "modules/sandbox/src/godot/script_instance.h"
+class ELFScriptLanguage : public ScriptInstanceExtension {
+	GDCLASS(ELFScriptLanguage, ScriptInstanceExtension);
+#else
+#include <godot_cpp/classes/script_language_extension.hpp>
 class ELFScriptLanguage : public ScriptLanguageExtension {
 	GDCLASS(ELFScriptLanguage, ScriptLanguageExtension);
+#endif
 
 protected:
 	static void GODOT_CPP_FUNC (bind_methods)() {}

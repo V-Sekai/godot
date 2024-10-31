@@ -12,7 +12,7 @@ class Sandbox;
 namespace godot {
 	class ScriptInstanceExtension;
 }
-
+#if !defined(GODOT_MODULE)
 class ELFScript : public ScriptExtension {
 	GDCLASS(ELFScript, ScriptExtension);
 
@@ -94,3 +94,4 @@ public:
 	ELFScript() {}
 	~ELFScript() {}
 };
+#endif

@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/script_language.hpp>
 GODOT_NAMESPACE
 
+#if !defined(GODOT_MODULE)
 class CPPScript : public ScriptExtension {
 	GDCLASS(CPPScript, ScriptExtension);
 
@@ -87,3 +88,4 @@ private:
 	static inline const char *docker_container_name = "godot-cpp-compiler";
 	static inline const char *docker_image_name = "ghcr.io/libriscv/cpp_compiler";
 };
+#endif

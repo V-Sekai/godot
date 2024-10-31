@@ -17,6 +17,10 @@ public:
 	virtual Error GODOT_CPP_FUNC (save)(const Ref<Resource> &p_resource, const String &p_path, uint32_t p_flags) override;
 	virtual Error GODOT_CPP_FUNC (set_uid)(const String &p_path, int64_t p_uid) override;
 	virtual bool GODOT_CPP_FUNC (recognize)(const Ref<Resource> &p_resource) const override;
+#ifdef GODOT_MODULE
+   	virtual void get_recognized_extensions(const Ref<Resource> &p_resource, List<String> *p_extensions) const override;
+#else
 	virtual PackedStringArray GODOT_CPP_FUNC (get_recognized_extensions)(const Ref<Resource> &p_resource) const override;
+#endif
 	virtual bool GODOT_CPP_FUNC (recognize_path)(const Ref<Resource> &p_resource, const String &p_path) const override;
 };
