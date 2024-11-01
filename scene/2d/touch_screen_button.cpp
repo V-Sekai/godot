@@ -330,7 +330,7 @@ void TouchScreenButton::_release(bool p_exiting_tree) {
 	}
 }
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 TouchScreenButton::_edit_get_rect() const {
 	if (texture_normal.is_null()) {
 		return CanvasItem::_edit_get_rect();

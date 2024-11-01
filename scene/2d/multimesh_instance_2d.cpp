@@ -84,7 +84,7 @@ Ref<Texture2D> MultiMeshInstance2D::get_texture() const {
 	return texture;
 }
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 MultiMeshInstance2D::_edit_get_rect() const {
 	if (multimesh.is_valid()) {
 		AABB aabb = multimesh->get_aabb();

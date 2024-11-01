@@ -30,7 +30,7 @@
 
 #include "visible_on_screen_notifier_2d.h"
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 VisibleOnScreenNotifier2D::_edit_get_rect() const {
 	return rect;
 }

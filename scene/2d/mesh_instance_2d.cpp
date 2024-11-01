@@ -88,7 +88,7 @@ Ref<Texture2D> MeshInstance2D::get_texture() const {
 	return texture;
 }
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 MeshInstance2D::_edit_get_rect() const {
 	if (mesh.is_valid()) {
 		AABB aabb = mesh->get_aabb();

@@ -76,7 +76,7 @@ protected:
 #endif // DISABLE_DEPRECATED
 
 public:
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 	virtual Rect2 _edit_get_rect() const override;
 	virtual bool _edit_use_rect() const override;
 #endif
