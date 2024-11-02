@@ -396,8 +396,6 @@ public:
 	virtual Size2 _edit_get_scale() const override;
 
 	virtual void _edit_set_rect(const Rect2 &p_edit_rect) override;
-	virtual Rect2 _edit_get_rect() const override;
-	virtual bool _edit_use_rect() const override;
 
 	virtual void _edit_set_rotation(real_t p_rotation) override;
 	virtual real_t _edit_get_rotation() const override;
@@ -409,6 +407,12 @@ public:
 
 	virtual Size2 _edit_get_minimum_size() const override;
 #endif
+
+#ifdef DEBUG_ENABLED
+	virtual Rect2 _edit_get_rect() const override;
+	virtual bool _edit_use_rect() const override;
+#endif
+
 	virtual void reparent(Node *p_parent, bool p_keep_global_transform = true) override;
 
 	// Editor integration.

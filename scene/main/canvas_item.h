@@ -193,11 +193,9 @@ public:
 		NOTIFICATION_WORLD_2D_CHANGED = 36,
 	};
 
-	/* EDITOR */
-#ifdef TOOLS_ENABLED
-	// Select the node
-	virtual bool _edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const;
+	/* EDITOR AND DEBUGGING */
 
+#ifdef TOOLS_ENABLED
 	// Save and restore a CanvasItem state
 	virtual void _edit_set_state(const Dictionary &p_state) {}
 	virtual Dictionary _edit_get_state() const { return Dictionary(); }
@@ -216,9 +214,7 @@ public:
 	virtual real_t _edit_get_rotation() const { return 0.0; }
 
 	// Used to resize/move the node
-	virtual bool _edit_use_rect() const { return false; } // MAYBE REPLACE BY A _edit_get_editmode()
 	virtual void _edit_set_rect(const Rect2 &p_rect) {}
-	virtual Rect2 _edit_get_rect() const { return Rect2(0, 0, 0, 0); }
 	virtual Size2 _edit_get_minimum_size() const { return Size2(-1, -1); } // LOOKS WEIRD
 
 	// Used to set a pivot
@@ -227,6 +223,17 @@ public:
 	virtual Point2 _edit_get_pivot() const { return Point2(); }
 
 	virtual Transform2D _edit_get_transform() const;
+#endif
+
+#ifdef DEBUG_ENABLED
+	// Those need to be available in debug runtime, to allow for node selection.
+
+	// Select the node.
+	virtual bool _edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const;
+
+	// Used to resize/move the node.
+	virtual bool _edit_use_rect() const { return false; } // Maybe replace with _edit_get_editmode().
+	virtual Rect2 _edit_get_rect() const { return Rect2(0, 0, 0, 0); }
 #endif
 
 	void update_draw_order();

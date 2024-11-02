@@ -56,7 +56,9 @@ Point2 AnimatedSprite2D::_edit_get_pivot() const {
 bool AnimatedSprite2D::_edit_use_pivot() const {
 	return true;
 }
+#endif
 
+#ifdef DEBUG_ENABLED
 Rect2 AnimatedSprite2D::_edit_get_rect() const {
 	return _get_rect();
 }
