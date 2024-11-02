@@ -142,7 +142,7 @@ RID NavigationRegion2D::get_region_rid() const {
 	return get_rid();
 }
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 NavigationRegion2D::_edit_get_rect() const {
 	return navigation_polygon.is_valid() ? navigation_polygon->_edit_get_rect() : Rect2();
 }

@@ -343,7 +343,6 @@ Light2D::~Light2D() {
 //////////////////////////////
 
 #ifdef TOOLS_ENABLED
-
 Dictionary PointLight2D::_edit_get_state() const {
 	Dictionary state = Node2D::_edit_get_state();
 	state["offset"] = get_texture_offset();
@@ -367,7 +366,9 @@ Point2 PointLight2D::_edit_get_pivot() const {
 bool PointLight2D::_edit_use_pivot() const {
 	return true;
 }
+#endif
 
+#ifdef DEBUG_ENABLED
 Rect2 PointLight2D::_edit_get_rect() const {
 	if (texture.is_null()) {
 		return Rect2();

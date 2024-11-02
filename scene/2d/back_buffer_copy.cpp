@@ -45,7 +45,7 @@ void BackBufferCopy::_update_copy_mode() {
 	}
 }
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 BackBufferCopy::_edit_get_rect() const {
 	return rect;
 }

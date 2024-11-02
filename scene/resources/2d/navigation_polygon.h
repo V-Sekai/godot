@@ -68,7 +68,7 @@ protected:
 	TypedArray<Vector<Vector2>> _get_outlines() const;
 
 public:
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 	Rect2 _edit_get_rect() const;
 	bool _edit_is_selected_on_click(const Point2 &p_point, double p_tolerance) const;
 #endif

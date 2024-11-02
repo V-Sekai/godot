@@ -35,7 +35,7 @@
 
 #define LINE_GRAB_WIDTH 8
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 OccluderPolygon2D::_edit_get_rect() const {
 	if (rect_cache_dirty) {
 		if (closed) {
@@ -218,7 +218,7 @@ void LightOccluder2D::_notification(int p_what) {
 	}
 }
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 LightOccluder2D::_edit_get_rect() const {
 	return occluder_polygon.is_valid() ? occluder_polygon->_edit_get_rect() : Rect2();
 }

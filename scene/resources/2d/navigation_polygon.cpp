@@ -36,7 +36,7 @@
 
 #include "thirdparty/misc/polypartition.h"
 
-#ifdef TOOLS_ENABLED
+#ifdef DEBUG_ENABLED
 Rect2 NavigationPolygon::_edit_get_rect() const {
 	RWLockRead read_lock(rwlock);
 	if (rect_cache_dirty) {

@@ -140,14 +140,6 @@ void Control::_edit_set_rect(const Rect2 &p_edit_rect) {
 	set_size(p_edit_rect.size.snappedf(1), ControlEditorToolbar::get_singleton()->is_anchors_mode_enabled());
 }
 
-Rect2 Control::_edit_get_rect() const {
-	return Rect2(Point2(), get_size());
-}
-
-bool Control::_edit_use_rect() const {
-	return true;
-}
-
 void Control::_edit_set_rotation(real_t p_rotation) {
 	set_rotation(p_rotation);
 }
@@ -177,6 +169,16 @@ bool Control::_edit_use_pivot() const {
 
 Size2 Control::_edit_get_minimum_size() const {
 	return get_combined_minimum_size();
+}
+#endif
+
+#ifdef DEBUG_ENABLED
+Rect2 Control::_edit_get_rect() const {
+	return Rect2(Point2(), get_size());
+}
+
+bool Control::_edit_use_rect() const {
+	return true;
 }
 #endif
 
