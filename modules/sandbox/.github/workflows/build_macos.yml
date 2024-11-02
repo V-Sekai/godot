@@ -61,5 +61,5 @@ jobs:
         with:
           name: godot-sandbox-macos-${{ matrix.arch }}-${{ matrix.precision }}
           path: |
-            ${{ github.workspace }}/bin/**/libgodot_riscv.macos.template_release${{ matrix.extension }}.universal.framework/**
+            ${{ github.workspace }}/bin/**/*.universal
           if-no-files-found: error

@@ -9,7 +9,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-GODOT_NAMESPACE
+using namespace godot;
 
 static const int HEAP_SYSCALLS_BASE = 480;
 static const int MEMORY_SYSCALLS_BASE = 485;
@@ -70,14 +70,16 @@ void Sandbox::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("assault", "test", "iterations"), &Sandbox::assault);
 	ClassDB::bind_method(D_METHOD("has_function", "function"), &Sandbox::has_function);
 	ClassDB::bind_method(D_METHOD("get_functions"), &Sandbox::get_functions);
+	ClassDB::bind_method(D_METHOD("address_of", "symbol"), &Sandbox::address_of);
+	ClassDB::bind_method(D_METHOD("lookup_address", "address"), &Sandbox::lookup_address);
 	ClassDB::bind_static_method("Sandbox", D_METHOD("generate_api", "language", "header_extra", "use_argument_names"), &Sandbox::generate_api, DEFVAL("cpp"), DEFVAL(""), DEFVAL(false));
 
 	// Profiling.
-	ClassDB::bind_method(D_METHOD("get_hotspots", "elf", "total"), &Sandbox::get_hotspots, DEFVAL(10));
-	ClassDB::bind_method(D_METHOD("clear_hotspots"), &Sandbox::clear_hotspots);
+	ClassDB::bind_static_method("Sandbox", D_METHOD("get_hotspots", "elf_hint", "callable", "total"), &Sandbox::get_hotspots, DEFVAL(""), DEFVAL(Callable()), DEFVAL(6));
+	ClassDB::bind_static_method("Sandbox", D_METHOD("clear_hotspots"), &Sandbox::clear_hotspots);
 
 	// Binary translation.
-	ClassDB::bind_method(D_METHOD("emit_binary_translation", "ignore_instruction_limit", "automatic_nbit_address_space"), &Sandbox::emit_binary_translation, DEFVAL(true), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("emit_binary_translation", "ignore_instruction_limit", "automatic_nbit_address_space"), &Sandbox::emit_binary_translation, DEFVAL(false), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("is_binary_translated"), &Sandbox::is_binary_translated);
 
 	// Properties.
@@ -517,7 +519,7 @@ void Sandbox::setup_arguments_native(gaddr_t arrayDataPtr, GuestVariant *v, cons
 				break;
 			}
 			case Variant::OBJECT: { // Objects are represented as uintptr_t
-				Object *obj = inner->to_object();
+				godot::Object *obj = inner->to_object();
 				this->add_scoped_object(obj);
 				machine.cpu.reg(index++) = uintptr_t(obj); // Fits in a single register
 				break;
@@ -598,7 +600,7 @@ GuestVariant *Sandbox::setup_arguments(gaddr_t &sp, const Variant **args, int ar
 				g_arg.v.f = inner->flt;
 				break;
 			case Variant::OBJECT: {
-				Object *obj = inner->to_object();
+				godot::Object *obj = inner->to_object();
 				// Objects passed directly as arguments are implicitly trusted/allowed
 				g_arg.set_object(*this, obj);
 				break;
@@ -646,19 +648,39 @@ Variant Sandbox::vmcall_internal(gaddr_t address, const Variant **args, int argc
 				m_machine->set_max_instructions(get_instructions_max() << 20);
 				m_machine->cpu.jump(address);
 				m_machine->cpu.simulate_precise();
-			} else if (UNLIKELY(this->m_profiling_data != nullptr)) {
+			} else if (UNLIKELY(this->get_profiling())) {
+				LocalProfilingData &profdata = *this->m_local_profiling_data;
 				m_machine->cpu.jump(address);
-				ProfilingData &profdata = *this->m_profiling_data;
 				do {
-					const int32_t next = std::max(int32_t(0), int32_t(profdata.profiling_interval) - int32_t(profdata.profiler_icounter_accumulator));
+					const int32_t next = std::max(int32_t(1), int32_t(profdata.profiling_interval) - int32_t(profdata.profiler_icounter_accumulator));
 					m_machine->simulate<false>(next, 0u);
 					if (m_machine->instruction_limit_reached()) {
 						profdata.profiler_icounter_accumulator = 0;
-						profdata.visited[m_machine->cpu.pc()]++;
+						profdata.visited.push_back(m_machine->cpu.pc());
 					}
 				} while (m_machine->instruction_limit_reached());
 				// update the accumulator with the remaining instructions
 				profdata.profiler_icounter_accumulator += m_machine->instruction_counter();
+				if (profdata.profiler_icounter_accumulator >= profdata.profiling_interval) {
+					profdata.profiler_icounter_accumulator = 0;
+				}
+				if (!profdata.visited.empty()) {
+					ProfilingData &gprofdata = *this->m_profiling_data;
+					// Determine ELF path
+					std::string_view path = "";
+					if (this->m_program_data.is_valid()) {
+						path = this->m_program_data->get_std_path();
+					}
+					// Update the global profiler
+					{
+						std::scoped_lock lock(profiling_mutex);
+						std::unordered_map<gaddr_t, int> &visited = gprofdata.visited[path];
+						for (const gaddr_t address : profdata.visited) {
+							visited[address] ++;
+						}
+					}
+					profdata.visited.clear();
+				}
 			} else {
 				m_machine->simulate_with(get_instructions_max() << 20, 0u, address);
 			}
@@ -736,7 +758,7 @@ gaddr_t Sandbox::cached_address_of(int64_t hash, const String &function) const {
 	if (it == m_lookup.end()) {
 		const CharString ascii = function.ascii();
 		const std::string_view str{ ascii.get_data(), (size_t)ascii.length() };
-		address = address_of(str);
+		address = machine().address_of(str);
 		if (address != 0x0) {
 			// We tolerate exceptions here, as we are just trying to improve performance
 			// If that fails, the function will still work, just a tiny bit slower
@@ -762,8 +784,13 @@ gaddr_t Sandbox::cached_address_of(int64_t hash, const String &function) const {
 	return address;
 }
 
-gaddr_t Sandbox::address_of(std::string_view name) const {
-	return machine().address_of(name);
+gaddr_t Sandbox::address_of(const String &symbol) const {
+	return machine().address_of(std::string_view(symbol.utf8().ptr()));
+}
+
+String Sandbox::lookup_address(gaddr_t address) const {
+	riscv::Memory<RISCV_ARCH>::Callsite callsite = machine().memory.lookup(address);
+	return String::utf8(callsite.name.c_str(), callsite.name.size());
 }
 
 bool Sandbox::has_function(const StringName &p_function) const {

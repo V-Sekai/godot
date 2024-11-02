@@ -118,23 +118,17 @@ Linting:
 ./scripts/clang-tidy.sh
 ```
 
-Build as module:
-
-```sh
-# Build bindings in sandbox
-scons generate_bindings=true build_library=no godot_repo=godot
-# Clone godot
-git clone https://github.com/godotengine/godot.git
-# Make a symbolic link
-cd ../godot/modules
-ln -s /path/to/your/sandbox sandbox
-# Build godot editor
-scons verbose=True target=editor enable_sandbox_module=True disable_exceptions=False
-```
-
 ## Icons
 
 The script icon is built from the Godot icons. It's using the same font as the Godot Logo, which is Lilita One. The icons are then imported into Godot once in order to check the box `Scale With Editor` in the import panel.
+
+## Module
+
+If you want to build this as a module, simply download the `sandbox.zip` from releases, unzip it, and copy it to the modules folder in godot, build it:
+
+```sh
+scons module_sandbox_enabled=True disable_exceptions=False target=editor
+```
 
 ## Contributors ✨
 

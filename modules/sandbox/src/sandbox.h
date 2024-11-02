@@ -1,13 +1,13 @@
 #pragma once
 
-#include "config.h"
 #include <godot_cpp/classes/control.hpp>
+
 #include <godot_cpp/core/binder_common.hpp>
 #include <godot_cpp/templates/hash_set.hpp>
 #include <libriscv/machine.hpp>
 #include <optional>
 
-GODOT_NAMESPACE
+using namespace godot;
 #define RISCV_ARCH riscv::RISCV64
 using gaddr_t = riscv::address_type<RISCV_ARCH>;
 using machine_t = riscv::Machine<RISCV_ARCH>;
@@ -125,7 +125,7 @@ public:
 
 	/// @brief Get whether profiling of the guest program is enabled.
 	/// @return True if profiling is enabled, false otherwise.
-	bool get_profiling() const { return m_profiling_data != nullptr; }
+	bool get_profiling() const { return m_local_profiling_data != nullptr; }
 
 	// -= Sandbox Properties =-
 
@@ -158,8 +158,11 @@ public:
 
 	// -= Address Lookup =-
 
-	gaddr_t address_of(std::string_view name) const;
+	gaddr_t address_of(const String &symbol) const;
+
 	gaddr_t cached_address_of(int64_t hash, const String &name) const;
+
+	String lookup_address(gaddr_t address) const;
 
 	/// @brief Check if a function exists in the guest program.
 	/// @param p_function The name of the function to check.
@@ -178,8 +181,8 @@ public:
 	/// @param tree_base The tree base node.
 	/// @note The tree base is the owner node that the sandbox will use to access the node tree. When scripts
 	/// try to access the node path ".", they will be accessing this node, and navigating relative to it.
-	void set_tree_base(Node *tree_base) { this->m_tree_base = tree_base; }
-	Node *get_tree_base() const { return this->m_tree_base; }
+	void set_tree_base(godot::Node *tree_base) { this->m_tree_base = tree_base; }
+	godot::Node *get_tree_base() const { return this->m_tree_base; }
 
 	// -= Scoped objects and variants =-
 
@@ -253,18 +256,18 @@ public:
 
 	/// @brief Add an object to the list of allowed objects.
 	/// @param obj The object to add.
-	void add_allowed_object(Object *obj);
+	void add_allowed_object(godot::Object *obj);
 
 	/// @brief Remove an object from the list of allowed objects.
 	/// @param obj The object to remove.
 	/// @note If the list becomes empty, all objects are allowed.
-	void remove_allowed_object(Object *obj);
+	void remove_allowed_object(godot::Object *obj);
 
 	/// @brief Clear the list of allowed objects.
 	void clear_allowed_objects();
 
 	/// @brief Check if an object is allowed in the sandbox.
-	bool is_allowed_object(Object *obj) const;
+	bool is_allowed_object(godot::Object *obj) const;
 
 	/// @brief Set a callback to check if an object is allowed in the sandbox.
 	/// @param callback The callable to check if an object is allowed.
@@ -287,7 +290,7 @@ public:
 	/// @brief Check if accessing a method on an object is allowed in the sandbox.
 	/// @param method The name of the method to check.
 	/// @return True if the method is allowed, false otherwise.
-	bool is_allowed_method(Object *obj, const Variant &method) const;
+	bool is_allowed_method(godot::Object *obj, const Variant &method) const;
 
 	/// @brief Set a callback to check if a method is allowed in the sandbox.
 	/// @param callback The callable to check if a method is allowed.
@@ -297,7 +300,7 @@ public:
 	/// @param obj The object to check.
 	/// @param property The name of the property to check.
 	/// @return True if the property is allowed, false otherwise.
-	bool is_allowed_property(Object *obj, const Variant &property, bool is_set) const;
+	bool is_allowed_property(godot::Object *obj, const Variant &property, bool is_set) const;
 
 	/// @brief Set a callback to check if a property is allowed in the sandbox.
 	/// @param callback The callable to check if a property is allowed.
@@ -391,6 +394,24 @@ public:
 	/// TODO: Implement this
 	//Array get_method_list() const;
 
+	// -= Profiling & Hotspots =-
+
+	/// @brief Generate the top N hotspots from profiling recorded so far.
+	/// @param elf_hint A hint used when the path to the ELF file is not available. It can be passed to the callback.
+	/// @param lookup A callback that must resolve an address of an unknown program, given elf_hint and an address as arguments.
+	/// @param total The maximum number of hotspots to generate.
+	/// @return The top hotspots recorded globally so far, sorted by the number of hits.
+	static Array get_hotspots(const String &elf_hint, const Callable &lookup, unsigned total = 10);
+
+	/// @brief Clear all recorded hotspots.
+	static void clear_hotspots();
+
+	/// @brief Enable or disable profiling of the guest program.
+	/// @param enable True to enable profiling, false to disable it.
+	/// @param interval The interval in instructions between each profiling update. This interval
+	/// is accumulated so that even if a function returns early, the interval is still counted.
+	void enable_profiling(bool enable, uint32_t interval = 500);
+
 	// -= Self-testing, inspection and internal functions =-
 
 	/// @brief Get the current Callable set for redirecting stdout.
@@ -430,7 +451,7 @@ public:
 	/// @return The binary translation code.
 	/// @note This is only available if the RISCV_BINARY_TRANSLATION flag is set.
 	/// @warning Do *NOT* enable automatic_nbit_as unless you are sure the program is compatible with it.
-	String emit_binary_translation(bool ignore_instruction_limit = true, bool automatic_nbit_as = false) const;
+	String emit_binary_translation(bool ignore_instruction_limit = false, bool automatic_nbit_as = false) const;
 
 	/// @brief  Check if the program has found and loaded binary translation.
 	/// @return True if binary translation is loaded, false otherwise.
@@ -442,9 +463,6 @@ public:
 	const machine_t &machine() const { return *m_machine; }
 	void print(const Variant &v);
 	static String generate_api(String language = "cpp", String header_extra = "", bool use_argument_names = false);
-	void enable_profiling(bool enable, uint32_t interval = 20000);
-	String get_hotspots(const String &elf, int total = 10) const;
-	void clear_hotspots() const;
 
 private:
 	static void generate_runtime_cpp_api(bool use_argument_names = false);
@@ -465,7 +483,7 @@ private:
 	void setup_arguments_native(gaddr_t arrayDataPtr, GuestVariant *v, const Variant **args, int argc);
 
 	machine_t *m_machine = nullptr;
-	Node *m_tree_base = nullptr;
+	godot::Node *m_tree_base = nullptr;
 	uint32_t m_max_refs = MAX_REFS;
 	uint32_t m_memory_max = MAX_VMEM;
 	int64_t m_insn_max = MAX_INSTRUCTIONS;
@@ -486,7 +504,7 @@ private:
 	mutable std::unordered_map<int64_t, gaddr_t> m_lookup;
 
 	// Restrictions
-	std::unordered_set<Object *> m_allowed_objects;
+	std::unordered_set<godot::Object *> m_allowed_objects;
 	// If an object is not in the allowed list, and a callable is set for the
 	// just-in-time allowed objects, it will be called to check if the object is allowed.
 	Callable m_just_in_time_allowed_objects;
@@ -517,11 +535,19 @@ private:
 	unsigned m_calls_made = 0;
 
 	struct ProfilingData {
-		std::unordered_map<gaddr_t, int> visited;
-		uint32_t profiling_interval = 2000;
+		// ELF path -> Address -> Count
+		// Anonymous sandboxes are stored as ""
+		std::unordered_map<std::string_view, std::unordered_map<gaddr_t, int>> visited;
+	};
+	static inline std::unique_ptr<ProfilingData> m_profiling_data = nullptr;
+	struct LocalProfilingData {
+		std::vector<gaddr_t> visited;
+		uint32_t profiling_interval = 500;
 		uint32_t profiler_icounter_accumulator = 0;
 	};
-	mutable std::unique_ptr<ProfilingData> m_profiling_data = nullptr;
+	std::unique_ptr<LocalProfilingData> m_local_profiling_data = nullptr;
+	static inline std::mutex profiling_mutex;
+	static inline std::mutex generate_hotspots_mutex;
 
 	// Global statistics
 	static inline uint64_t m_global_timeouts = 0;
@@ -542,7 +568,7 @@ inline void Sandbox::CurrentState::reset() {
 	scoped_objects.clear();
 }
 
-inline bool Sandbox::is_allowed_object(Object *obj) const {
+inline bool Sandbox::is_allowed_object(godot::Object *obj) const {
 	// If the allowed list is empty, and the allowed-object callback is not set, all objects are allowed
 	if (m_allowed_objects.empty() && !m_just_in_time_allowed_objects.is_valid())
 		return true;

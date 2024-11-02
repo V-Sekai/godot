@@ -5,8 +5,8 @@
 ;
 [subrepo]
 	remote = https://github.com/libriscv/godot-sandbox.git
-	branch = module-build-fixes-part-2
-	commit = 52554abbe6dc81757a1b6b1aa9d96173ce7d839b
-	parent = 2e16358ab00e3a8f712f9ac083f378c9f3084e88
+	branch = main
+	commit = a428c59f2d36840997adba4bc0080f3073414a27
+	parent = ef30a668e5cf49f0ba992a6f288ead7eb856b2d7
 	method = merge
 	cmdver = 0.4.6
