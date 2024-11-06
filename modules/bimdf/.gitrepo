@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai-fire/godot-min-deviation-flow-bidirected-graph.git
+	branch = main
+	commit = c90972a8519de82d387eb2c99f8db521f9a1389c
+	parent = 1d4f04adf3aaea3e133dd47a091ced988bdfb18e
+	method = merge
+	cmdver = 0.4.6

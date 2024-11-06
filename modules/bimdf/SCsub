@@ -1,0 +1,37 @@
+Import('env')
+
+own_sources = []
+third_party_sources = []
+
+own_sources += env.Glob('*.cpp')
+
+third_party_sources += env.Glob('thirdparty/libsatsuma/src/libsatsuma/Problems/*.cc')
+third_party_sources += env.Glob('thirdparty/libsatsuma/src/libsatsuma/Extra/*.cc')
+third_party_sources += env.Glob('thirdparty/libsatsuma/src/libsatsuma/IO/*.cc')
+third_party_sources += env.Glob('thirdparty/libsatsuma/src/libsatsuma/Reductions/*.cc')
+third_party_sources += [
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/BiMDFDoubleCover.cc',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/BiMDFGuess.cc',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/BiMDFRefinement.cc',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/EvenBiMDF.cc',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/Matching.cc',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/MCF.cc',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/TJoinMST.cc',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers/OrientBinet.cc',
+]
+
+module_env = env.Clone()
+module_env.Prepend(CPPPATH=[
+    'thirdparty/libsatsuma/src',
+    'thirdparty/libsatsuma/external/lemon',
+    'thirdparty/libsatsuma/external/timekeeper/src',
+    'thirdparty/libsatsuma/src/libsatsuma/Solvers',
+    '#modules/bimdf'
+])
+env_thirdparty = module_env.Clone()
+env_thirdparty.disable_warnings()
+
+own_sources += ["register_types.cpp"]
+
+module_env.add_source_files(module_env.modules_sources, own_sources)
+env_thirdparty.add_source_files(env_thirdparty.modules_sources, third_party_sources)

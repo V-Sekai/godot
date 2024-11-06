@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai-fire/libsatsuma.git
+	branch = main
+	commit = ae6715b6995331190487cdba723c6d87dd91c405
+	parent = d5be12a23333458ec54b8d5782ea1e5de2baac3c
+	method = merge
+	cmdver = 0.4.6
