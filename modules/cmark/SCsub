@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+env_cmark = env_modules.Clone()
+env_cmark.Append(CPPDEFINES=["CMARK_GFM_STATIC_DEFINE"])
+env_cmark.Prepend(CPPPATH=["."])
+env_cmark.Prepend(CPPPATH=["thirdparty/cmark-gfm/src"])
+env_cmark_gfm = env_cmark.Clone()
+env_cmark_gfm.disable_warnings()
+env_cmark_gfm.add_source_files(env.modules_sources, "thirdparty/cmark-gfm/src/*.c")
+env_cmark.add_source_files(env.modules_sources, "*.cpp")
