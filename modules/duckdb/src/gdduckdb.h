@@ -3,12 +3,9 @@
 
 #include "duckdb/duckdb.h"
 
-#include <godot_cpp/variant/utility_functions.hpp>
-
-#include <godot_cpp/core/binder_common.hpp>
-#include <godot_cpp/core/class_db.hpp>
-
-#include <godot_cpp/classes/ref_counted.hpp>
+#include "core/object/class_db.h"
+#include "core/object/ref_counted.h"
+#include "core/variant/typed_array.h"
 
 //#include <godot_cpp/classes/global_constants.hpp>
 // #include <godot_cpp/classes/marshalls.hpp>
@@ -19,8 +16,6 @@
 #include <memory>
 #include <sstream>
 #include <vector>
-
-namespace godot {
 
 class GDDuckDB : public RefCounted {
         GDCLASS(GDDuckDB, RefCounted);
@@ -94,9 +89,6 @@ public:
         // Properties
         bool set_path(const String &_path);
         String get_path() const;
-
 };
-
-}
 
 #endif // ! GDDuckDB_CLASS_H

@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+module_env = env.Clone()
+
+module_env.Append(CCFLAGS=['-fexceptions'])
+module_env.Append(CPPPATH=["src/", "thirdparty/"])
+sources = module_env.Glob("src/*.cpp") + module_env.Glob("*.cpp")
+module_env.add_source_files(module_env.modules_sources, sources)
