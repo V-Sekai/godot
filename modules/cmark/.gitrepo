@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-cmark.git
 	branch = main
-	commit = 0ea8067f6825dfb388de030dc366f77f5b823660
-	parent = eab2de11a95f15f7b1ff0208688178b633820fbc
+	commit = 973e09c60ebbd23925ce3876e9ceaa932cfdfc41
+	parent = ef2595c144cb218eb26a184553249dced28af88d
 	method = merge
 	cmdver = 0.4.6
