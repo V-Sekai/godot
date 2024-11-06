@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/duckdb/duckdb.git
+	branch = main
+	commit = 564eb25ef0ec700c8a289fe852c16629a19650bd
+	parent = 28c06fb1c92b837faaf20f6e5647832ae5c0366e
+	method = merge
+	cmdver = 0.4.6
