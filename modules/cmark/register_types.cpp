@@ -33,7 +33,6 @@
 #include "core/io/resource_importer.h"
 #include "resource_importer_commonmark.h"
 
-
 void initialize_cmark_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;

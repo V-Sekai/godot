@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CommonmarkData" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="convert_commonmark">
+			<return type="String" />
+			<param index="0" name="document" type="String" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="html" type="String" setter="set_html" getter="get_html" default="&quot;&quot;">
+		</member>
+	</members>
+</class>

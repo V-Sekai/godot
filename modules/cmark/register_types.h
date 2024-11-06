@@ -36,5 +36,4 @@
 void initialize_cmark_module(ModuleInitializationLevel p_level);
 void uninitialize_cmark_module(ModuleInitializationLevel p_level);
 
-
 #endif // CMARK_REGISTER_TYPES_H

@@ -33,10 +33,10 @@
 
 #include "core/io/json.h"
 #include "core/io/resource_importer.h"
+#include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/object/class_db.h"
 #include "core/object/object.h"
-#include "core/io/resource_loader.h"
 
 class CommonmarkData : public Resource {
 	GDCLASS(CommonmarkData, Resource);
@@ -47,7 +47,7 @@ protected:
 
 		ClassDB::bind_method(D_METHOD("set_html", "html"), &CommonmarkData::set_html);
 		ClassDB::bind_method(D_METHOD("get_html"), &CommonmarkData::get_html);
-		ClassDB::bind_method(D_METHOD("convert_commonmark"), &CommonmarkData::convert_commonmark);
+		ClassDB::bind_method(D_METHOD("convert_commonmark", "document"), &CommonmarkData::convert_commonmark);
 
 		ADD_PROPERTY(PropertyInfo(Variant::STRING, "html"), "set_html", "get_html");
 	}
