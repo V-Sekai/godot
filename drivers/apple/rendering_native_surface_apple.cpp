@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  api.cpp                                                               */
+/*  rendering_native_surface_apple.cpp                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,26 +28,50 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "api.h"
+#include "rendering_native_surface_apple.h"
 
-#ifdef MACOS_ENABLED
-#include "core/object/class_db.h"
-
-#include "drivers/apple/rendering_native_surface_apple.h"
-
+#ifdef VULKAN_ENABLED
+#include "drivers/vulkan/rendering_context_driver_vulkan_moltenvk.h"
 #endif
 
-void register_core_macos_api() {
-#ifdef MACOS_ENABLED
-	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceApple);
+#ifdef METAL_ENABLED
+#include "drivers/metal/rendering_context_driver_metal.h"
 #endif
+
+void RenderingNativeSurfaceApple::_bind_methods() {
+	ClassDB::bind_static_method("RenderingNativeSurfaceApple", D_METHOD("create", "layer"), &RenderingNativeSurfaceApple::create_api);
 }
 
-void unregister_core_macos_api() {
+Ref<RenderingNativeSurfaceApple> RenderingNativeSurfaceApple::create_api(/* GDExtensionConstPtr<const void> */ uint64_t p_layer) {
+	return RenderingNativeSurfaceApple::create((void *)p_layer /* .operator const void *() */);
 }
 
-void register_macos_api() {
+Ref<RenderingNativeSurfaceApple> RenderingNativeSurfaceApple::create(void *p_layer) {
+	Ref<RenderingNativeSurfaceApple> result = memnew(RenderingNativeSurfaceApple);
+	result->layer = p_layer;
+	return result;
 }
 
-void unregister_macos_api() {
+RenderingContextDriver *RenderingNativeSurfaceApple::create_rendering_context(const String &p_driver_name) {
+#ifdef __APPLE__
+#ifdef VULKAN_ENABLED
+	if (p_driver_name == "vulkan") {
+		return memnew(RenderingContextDriverVulkanMoltenVk);
+	}
+#endif
+#ifdef METAL_ENABLED
+	if (p_driver_name == "vulkan") {
+		return memnew(RenderingContextDriverMetal);
+	}
+#endif
+#endif // __APPLE__
+	return nullptr;
+}
+
+RenderingNativeSurfaceApple::RenderingNativeSurfaceApple() {
+	// Does nothing.
+}
+
+RenderingNativeSurfaceApple::~RenderingNativeSurfaceApple() {
+	// Does nothing.
 }

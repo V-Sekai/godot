@@ -34,7 +34,13 @@
 #include "core/variant/native_ptr.h"
 #include "servers/rendering/rendering_native_surface.h"
 
-#include "drivers/vulkan/godot_vulkan.h"
+#ifdef VULKAN_ENABLED
+#ifdef USE_VOLK
+#include <volk.h>
+#else
+#include <vulkan/vulkan.h>
+#endif
+#endif
 
 class RenderingNativeSurfaceVulkan : public RenderingNativeSurface {
 	GDCLASS(RenderingNativeSurfaceVulkan, RenderingNativeSurface);
