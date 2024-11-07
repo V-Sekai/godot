@@ -33,6 +33,8 @@
 #include "drivers/png/image_loader_png.h"
 #include "drivers/png/resource_saver_png.h"
 
+#include "servers/rendering/rendering_native_surface.h"
+
 #ifdef VULKAN_ENABLED
 #include "drivers/vulkan/rendering_native_surface_vulkan.h"
 #endif

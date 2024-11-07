@@ -46,7 +46,7 @@ RenderingContextDriver::SurfaceID RenderingContextDriverVulkanAndroid::surface_c
 
 	VkAndroidSurfaceCreateInfoKHR create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-	create_info.window = wpd->window;
+	create_info.window = android_native_surface->get_window();
 
 	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
 	VkResult err = vkCreateAndroidSurfaceKHR(instance_get(), &create_info, get_allocation_callbacks(VK_OBJECT_TYPE_SURFACE_KHR), &vk_surface);
@@ -54,7 +54,7 @@ RenderingContextDriver::SurfaceID RenderingContextDriverVulkanAndroid::surface_c
 
 	Ref<RenderingNativeSurfaceVulkan> vulkan_surface = RenderingNativeSurfaceVulkan::create(vk_surface);
 	RenderingContextDriver::SurfaceID result = RenderingContextDriverVulkan::surface_create(vulkan_surface);
-	memdelete(vulkan_surface);
+	vulkan_surface.unref();
 	return result;
 }
 
