@@ -49,11 +49,11 @@ public:
 
 	struct wl_display *get_display() const {
 		return display;
-	};
+	}
 
 	struct wl_surface *get_surface() const {
 		return surface;
-	};
+	}
 
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
 

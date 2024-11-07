@@ -45,7 +45,7 @@ public:
 
 	void *get_layer() const {
 		return layer;
-	};
+	}
 
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
 	GLESContext *create_gles_context() override;

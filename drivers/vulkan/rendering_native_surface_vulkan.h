@@ -53,7 +53,7 @@ public:
 
 	VkSurfaceKHR get_vulkan_surface() const {
 		return vulkan_surface;
-	};
+	}
 #endif
 
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
