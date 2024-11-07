@@ -50,7 +50,7 @@ public:
 
 	ANativeWindow *get_window() const {
 		return window;
-	};
+	}
 
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
 

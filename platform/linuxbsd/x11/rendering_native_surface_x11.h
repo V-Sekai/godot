@@ -51,11 +51,11 @@ public:
 
 	::Window get_window() const {
 		return window;
-	};
+	}
 
 	Display *get_display() const {
 		return display;
-	};
+	}
 
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
 
