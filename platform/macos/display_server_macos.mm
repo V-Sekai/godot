@@ -3631,7 +3631,7 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, WindowM
 #if defined(RD_ENABLED)
 #if defined(VULKAN_ENABLED)
 	if (rendering_driver == "vulkan") {
-		rendering_context = memnew(RenderingContextDriverVulkanMacOS);
+		rendering_context = memnew(RenderingContextDriverVulkan);
 	}
 #endif
 #if defined(METAL_ENABLED)

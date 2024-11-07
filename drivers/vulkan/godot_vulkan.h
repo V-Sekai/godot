@@ -33,7 +33,7 @@
 
 #ifdef USE_VOLK
 #include <volk.h>
-#else
+#elif defined(VULKAN_ENABLED)
 #include <stdint.h>
 #define VK_NO_STDINT_H
 #include <vulkan/vulkan.h>

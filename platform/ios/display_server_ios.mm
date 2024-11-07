@@ -47,6 +47,8 @@
 
 #import <GameController/GameController.h>
 
+#include "drivers/apple/rendering_native_surface_apple.h"
+
 static const float kDisplayServerIOSAcceleration = 1.f;
 
 DisplayServerIOS *DisplayServerIOS::get_singleton() {
