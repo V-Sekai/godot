@@ -75,6 +75,7 @@ class SceneTreeEditor : public Control {
 	Node *revoke_node = nullptr;
 
 	bool auto_expand_selected = true;
+	bool hide_filtered_out_parents = false;
 	bool connect_to_script_mode = false;
 	bool connecting_signal = false;
 
@@ -180,6 +181,7 @@ public:
 	void update_tree() { _update_tree(); }
 
 	void set_auto_expand_selected(bool p_auto, bool p_update_settings);
+	void set_hide_filtered_out_parents(bool p_hide, bool p_update_settings);
 	void set_connect_to_script_mode(bool p_enable);
 	void set_connecting_signal(bool p_enable);
 
