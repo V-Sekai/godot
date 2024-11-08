@@ -204,7 +204,7 @@ class AnimationTimelineEdit : public Range {
 	HBoxContainer *len_hb = nullptr;
 	EditorSpinSlider *length = nullptr;
 	Button *loop = nullptr;
-	TextureRect *time_icon = nullptr;
+	OptionButton *time_gauge = nullptr;
 
 	MenuButton *add_track = nullptr;
 	Control *play_position = nullptr; //separate control used to draw so updates for only position changed are much faster
@@ -218,7 +218,8 @@ class AnimationTimelineEdit : public Range {
 	Rect2 hsize_rect;
 
 	bool editing = false;
-	bool use_fps = false;
+	bool use_fps_timeline = false;
+	bool use_fps_snap = true;
 
 	Ref<ViewPanner> panner;
 	void _pan_callback(Vector2 p_scroll_vec, Ref<InputEvent> p_event);
@@ -239,6 +240,8 @@ class AnimationTimelineEdit : public Range {
 
 	float _get_zoom_scale(double p_zoom_value) const;
 	void _scroll_to_start();
+
+	void _timeline_mode_changed(int p_mode);
 
 protected:
 	static void _bind_methods();
@@ -263,8 +266,11 @@ public:
 
 	void update_values();
 
-	void set_use_fps(bool p_use_fps);
-	bool is_using_fps() const;
+	void set_use_fps_timeline(bool p_use_fps);
+	bool is_using_fps_timeline() const;
+
+	void set_use_fps_snap(bool p_use_fps);
+	bool is_using_fps_snap() const;
 
 	void set_hscroll(HScrollBar *p_hscroll);
 

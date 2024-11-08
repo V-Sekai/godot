@@ -1357,13 +1357,23 @@ float AnimationTimelineEdit::_get_zoom_scale(double p_zoom_value) const {
 	}
 }
 
+void AnimationTimelineEdit::_timeline_mode_changed(int p_mode) {
+	bool use_fps = p_mode == 1;
+	set_use_fps_timeline(use_fps);
+	if (track_edit->editor->key_edit) {
+		track_edit->editor->key_edit->set_use_fps(use_fps);
+	}
+	track_edit->editor->marker_edit->set_use_fps(use_fps);
+}
+
 void AnimationTimelineEdit::_anim_length_changed(double p_new_len) {
 	if (editing) {
 		return;
 	}
 
 	p_new_len = MAX(SECOND_DECIMAL, p_new_len);
-	if (use_fps && animation->get_step() > 0) {
+	if (use_fps_timeline && animation->get_step() > 0) {
+		p_new_len = Math::snapped(p_new_len, FPS_STEP_FRACTION);
 		p_new_len *= animation->get_step();
 	}
 
@@ -1442,7 +1452,10 @@ void AnimationTimelineEdit::_notification(int p_what) {
 		case NOTIFICATION_THEME_CHANGED: {
 			add_track->set_icon(get_editor_theme_icon(SNAME("Add")));
 			loop->set_icon(get_editor_theme_icon(SNAME("Loop")));
-			time_icon->set_texture(get_editor_theme_icon(SNAME("Time")));
+
+			time_gauge->get_popup()->clear();
+			time_gauge->get_popup()->add_icon_item(get_editor_theme_icon(SNAME("Time")), TTR("Second"));
+			time_gauge->get_popup()->add_icon_item(get_editor_theme_icon(SNAME("Time")), TTR("FPS"));
 
 			add_track->get_popup()->clear();
 			add_track->get_popup()->add_icon_item(get_editor_theme_icon(SNAME("KeyValue")), TTR("Property Track..."));
@@ -1618,7 +1631,7 @@ void AnimationTimelineEdit::_notification(int p_what) {
 				}
 			}
 
-			if (use_fps) {
+			if (use_fps_timeline) {
 				float step_size = animation->get_step();
 				if (step_size > 0) {
 					int prev_frame_ofs = -10000000;
@@ -1800,11 +1813,10 @@ void AnimationTimelineEdit::update_values() {
 	}
 
 	editing = true;
-	if (use_fps && animation->get_step() > 0.0) {
+	if (use_fps_timeline && animation->get_step() > 0.0) {
 		length->set_value(animation->get_length() / animation->get_step());
 		length->set_step(FPS_DECIMAL);
 		length->set_tooltip_text(TTR("Animation length (frames)"));
-		time_icon->set_tooltip_text(TTR("Animation length (frames)"));
 		if (track_edit) {
 			track_edit->editor->_update_key_edit();
 			track_edit->editor->marker_edit->_update_key_edit();
@@ -1813,7 +1825,6 @@ void AnimationTimelineEdit::update_values() {
 		length->set_value(animation->get_length());
 		length->set_step(SECOND_DECIMAL);
 		length->set_tooltip_text(TTR("Animation length (seconds)"));
-		time_icon->set_tooltip_text(TTR("Animation length (seconds)"));
 	}
 
 	switch (animation->get_loop_mode()) {
@@ -1943,13 +1954,21 @@ void AnimationTimelineEdit::_zoom_callback(float p_zoom_factor, Vector2 p_origin
 	get_zoom()->set_value(MAX(0.01, current_zoom_value - (1.0 - p_zoom_factor)));
 }
 
-void AnimationTimelineEdit::set_use_fps(bool p_use_fps) {
-	use_fps = p_use_fps;
+void AnimationTimelineEdit::set_use_fps_timeline(bool p_use_fps) {
+	use_fps_timeline = p_use_fps;
 	queue_redraw();
 }
 
-bool AnimationTimelineEdit::is_using_fps() const {
-	return use_fps;
+bool AnimationTimelineEdit::is_using_fps_timeline() const {
+	return use_fps_timeline;
+}
+
+void AnimationTimelineEdit::set_use_fps_snap(bool p_use_fps) {
+	use_fps_snap = p_use_fps;
+}
+
+bool AnimationTimelineEdit::is_using_fps_snap() const {
+	return use_fps_snap;
 }
 
 void AnimationTimelineEdit::set_hscroll(HScrollBar *p_hscroll) {
@@ -1990,10 +2009,15 @@ AnimationTimelineEdit::AnimationTimelineEdit() {
 	expander->set_h_size_flags(SIZE_EXPAND_FILL);
 	expander->set_mouse_filter(MOUSE_FILTER_IGNORE);
 	len_hb->add_child(expander);
-	time_icon = memnew(TextureRect);
-	time_icon->set_v_size_flags(SIZE_SHRINK_CENTER);
-	time_icon->set_tooltip_text(TTR("Animation length (seconds)"));
-	len_hb->add_child(time_icon);
+	time_gauge = memnew(OptionButton);
+	time_gauge->set_v_size_flags(SIZE_SHRINK_CENTER);
+	time_gauge->set_tooltip_text(TTR("Animation length"));
+	time_gauge->set_clip_text(true);
+	time_gauge->add_item(TTR("Seconds"));
+	time_gauge->add_item(TTR("FPS"));
+	time_gauge->connect(SceneStringName(item_selected), callable_mp(this, &AnimationTimelineEdit::_timeline_mode_changed));
+	time_gauge->set_custom_minimum_size(Vector2(70 * EDSCALE, 0));
+	len_hb->add_child(time_gauge);
 	length = memnew(EditorSpinSlider);
 	length->set_min(SECOND_DECIMAL);
 	length->set_max(36000);
@@ -2020,6 +2044,8 @@ AnimationTimelineEdit::AnimationTimelineEdit() {
 	panner->set_scroll_zoom_factor(SCROLL_ZOOM_FACTOR_IN);
 	panner->set_callbacks(callable_mp(this, &AnimationTimelineEdit::_pan_callback), callable_mp(this, &AnimationTimelineEdit::_zoom_callback));
 	panner->set_pan_axis(ViewPanner::PAN_AXIS_HORIZONTAL);
+
+	time_gauge->select(0);
 
 	set_layout_direction(Control::LAYOUT_DIRECTION_LTR);
 }
@@ -3873,7 +3899,8 @@ bool AnimationTrackEditor::has_keying() const {
 
 Dictionary AnimationTrackEditor::get_state() const {
 	Dictionary state;
-	state["fps_mode"] = timeline->is_using_fps();
+	state["fps_mode_snap"] = timeline->is_using_fps_snap();
+	state["fps_mode_timeline"] = timeline->is_using_fps_timeline();
 	state["zoom"] = zoom->get_value();
 	state["offset"] = timeline->get_value();
 	state["v_scroll"] = scroll->get_v_scroll_bar()->get_value();
@@ -3881,8 +3908,8 @@ Dictionary AnimationTrackEditor::get_state() const {
 }
 
 void AnimationTrackEditor::set_state(const Dictionary &p_state) {
-	if (p_state.has("fps_mode")) {
-		bool fps_mode = p_state["fps_mode"];
+	if (p_state.has("fps_mode_snap")) {
+		bool fps_mode = p_state["fps_mode_snap"];
 		if (fps_mode) {
 			snap_mode->select(1);
 		} else {
@@ -3890,8 +3917,20 @@ void AnimationTrackEditor::set_state(const Dictionary &p_state) {
 		}
 		_snap_mode_changed(snap_mode->get_selected());
 	} else {
-		snap_mode->select(0);
+		snap_mode->select(1);
 		_snap_mode_changed(snap_mode->get_selected());
+	}
+	if (p_state.has("fps_mode_timeline")) {
+		bool fps_mode = p_state["fps_mode_timeline"];
+		if (fps_mode) {
+			timeline->time_gauge->select(1);
+		} else {
+			timeline->time_gauge->select(0);
+		}
+		timeline->_timeline_mode_changed(timeline->time_gauge->get_selected());
+	} else {
+		timeline->time_gauge->select(0);
+		timeline->_timeline_mode_changed(timeline->time_gauge->get_selected());
 	}
 	if (p_state.has("zoom")) {
 		zoom->set_value(p_state["zoom"]);
@@ -5023,12 +5062,8 @@ void AnimationTrackEditor::_animation_changed() {
 
 void AnimationTrackEditor::_snap_mode_changed(int p_mode) {
 	bool use_fps = p_mode == 1;
-	timeline->set_use_fps(use_fps);
-	if (key_edit) {
-		key_edit->set_use_fps(use_fps);
-	}
-	marker_edit->set_use_fps(use_fps);
 	// To ensure that the conversion results are consistent between serialization and load, the value is snapped with 0.0625 to be a rational number when FPS mode is used.
+	timeline->set_use_fps_snap(use_fps);
 	step->set_step(use_fps ? FPS_STEP_FRACTION : SECOND_DECIMAL);
 	_update_step_spinbox();
 }
@@ -5039,7 +5074,7 @@ void AnimationTrackEditor::_update_step_spinbox() {
 	}
 	step->set_block_signals(true);
 
-	if (timeline->is_using_fps()) {
+	if (timeline->is_using_fps_snap()) {
 		if (animation->get_step() == 0.0) {
 			step->set_value(0.0);
 		} else {
@@ -5158,11 +5193,10 @@ void AnimationTrackEditor::_update_step(double p_new_step) {
 	EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
 	undo_redo->create_action(TTR("Change Animation Step"));
 	double step_value = p_new_step;
-	if (timeline->is_using_fps()) {
+	if (timeline->is_using_fps_snap()) {
 		if (step_value != 0.0) {
-			// step_value must also be less than or equal to 1000 to ensure that no error accumulates due to interactions with retrieving values from inner range.
+			// Step_value must also be less than or equal to 1000 to ensure that no error accumulates due to interactions with retrieving values from inner range.
 			step_value = 1.0 / MIN(1000.0, p_new_step);
-			;
 		}
 		timeline->queue_redraw();
 	}
@@ -5696,7 +5730,7 @@ void AnimationTrackEditor::_update_key_edit() {
 		key_edit->animation = animation;
 		key_edit->animation_read_only = read_only;
 		key_edit->track = selection.front()->key().track;
-		key_edit->use_fps = timeline->is_using_fps();
+		key_edit->use_fps = timeline->is_using_fps_timeline();
 		key_edit->editor = this;
 
 		int key_id = selection.front()->key().key;
@@ -5743,7 +5777,7 @@ void AnimationTrackEditor::_update_key_edit() {
 		multi_key_edit->key_ofs_map = key_ofs_map;
 		multi_key_edit->base_map = base_map;
 		multi_key_edit->hint = _find_hint_for_track(first_track, base_map[first_track]);
-		multi_key_edit->use_fps = timeline->is_using_fps();
+		multi_key_edit->use_fps = timeline->is_using_fps_timeline();
 		multi_key_edit->root_path = root;
 
 		EditorNode::get_singleton()->push_item(multi_key_edit);
@@ -7318,13 +7352,10 @@ void AnimationTrackEditor::_update_snap_unit() {
 		return; // Avoid zero div.
 	}
 
-	if (timeline->is_using_fps()) {
+	if (timeline->is_using_fps_snap()) {
 		snap_unit = 1.0 / step->get_value();
 	} else {
-		double integer;
-		double fraction = Math::modf(step->get_value(), &integer);
-		fraction = 1.0 / Math::round(1.0 / fraction);
-		snap_unit = integer + fraction;
+		snap_unit = step->get_value();
 	}
 }
 
@@ -7900,6 +7931,8 @@ AnimationTrackEditor::AnimationTrackEditor() {
 	track_copy_select->set_hide_root(true);
 	track_copy_vbox->add_child(track_copy_select);
 	track_copy_dialog->connect(SceneStringName(confirmed), callable_mp(this, &AnimationTrackEditor::_edit_menu_pressed).bind(EDIT_COPY_TRACKS_CONFIRM));
+
+	snap_mode->select(1);
 }
 
 AnimationTrackEditor::~AnimationTrackEditor() {
@@ -8170,7 +8203,7 @@ void AnimationMarkerEdit::_update_key_edit() {
 		key_edit->animation = animation;
 		key_edit->animation_read_only = read_only;
 		key_edit->marker_name = *selection.begin();
-		key_edit->use_fps = timeline->is_using_fps();
+		key_edit->use_fps = timeline->is_using_fps_timeline();
 		key_edit->marker_edit = this;
 
 		EditorNode::get_singleton()->push_item(key_edit);
@@ -8702,6 +8735,7 @@ void AnimationMarkerEdit::update_play_position() {
 }
 
 void AnimationMarkerEdit::set_use_fps(bool p_use_fps) {
+	timeline->set_use_fps_snap(p_use_fps);
 	if (key_edit) {
 		key_edit->use_fps = p_use_fps;
 		key_edit->notify_property_list_changed();
