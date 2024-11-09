@@ -9,6 +9,7 @@ namespace Satsuma {
                                Config const &_config)
         : bimcf_(_bimcf)
         , method_(_config.method)
+        , orig_bimcf_edge_(mcf_.g, lemon::INVALID)
     {
         static_assert(std::numeric_limits<MCF::CostScalar>::max() >= (1LL<<63)); // for 32-bit ints, adjust costmul
         static_assert(std::is_signed_v<MCF::CostScalar>);
@@ -159,48 +160,55 @@ namespace Satsuma {
               }
             }
         }
-
     }
 
-BiMCFResult BiMCF_to_MCF::translate_solution(const MCFResult &mcf_result) const
-{
-    auto sol = std::make_unique<BiMCF::Solution>(bimcf_.g, 0);
+    BiMCFResult BiMCF_to_MCF::translate_solution(const MCFResult &mcf_result) const
+    {
+        auto sol = std::make_unique<BiMCF::Solution>(bimcf_.g, 0);
 
-    const auto &mcf_sol = *mcf_result.solution;
-
-    // translate solution back:
-    BiMCF::CostScalar cost = 0;
-    for (auto arc: mcf_.g.arcs()) {
-        auto e = orig_bimcf_edge_[arc];
-        auto val = mcf_sol[arc];
-        if (method_ == Method::FullSymmetric) {
-          assert((val & 1) == 0); // TODO: could already halve here, I suppose
+        if (!mcf_result.solution) {
+            std::cerr << "Error: MCFResult solution is null" << std::endl;
+            return {.solution = nullptr, .cost = 0, .max_flow = 0};
         }
-        (*sol)[e] += val;
-        cost += bimcf_.cost[e] * val;
-    }
-    BiMCF::FlowScalar max_flow = 0;
-    for (auto e: bimcf_.g.edges()) {
-        auto &val = (*sol)[e];
-        if (method_ == Method::FullSymmetric) {
-            assert((val & 1) == 0);
-            if (val & 1) {
-                std::cerr << "Sum is odd, can't process odd values" << std::endl;
+        const auto &mcf_sol = *mcf_result.solution;
+
+        // translate solution back:
+        BiMCF::CostScalar cost = 0;
+        for (auto arc: mcf_.g.arcs()) {
+            if (orig_bimcf_edge_[arc] == lemon::INVALID) {
+                std::cerr << "Error: arc not found in orig_bimcf_edge_" << std::endl;
+                return {.solution = nullptr, .cost = 0, .max_flow = 0};
             }
-            val /= 2;
+            auto e = orig_bimcf_edge_[arc];
+            auto val = mcf_sol[arc];
+            if (method_ == Method::FullSymmetric) {
+              assert((val & 1) == 0); // TODO: could already halve here, I suppose
+            }
+            (*sol)[e] += val;
+            cost += bimcf_.cost[e] * val;
         }
-        if (val > max_flow) {
-            max_flow = val;
+        BiMCF::FlowScalar max_flow = 0;
+        for (auto e: bimcf_.g.edges()) {
+            auto &val = (*sol)[e];
+            if (method_ == Method::FullSymmetric) {
+                assert((val & 1) == 0);
+                if (val & 1) {
+                    std::cerr << "Sum is odd, can't process odd values" << std::endl;
+                }
+                val /= 2;
+            }
+            if (val > max_flow) {
+                max_flow = val;
+            }
         }
-    }
-    if (method_ == Method::FullSymmetric
-            || method_ == Method::NotEven) {
-        cost *= .5;
-    }
-    return {.solution = std::move(sol),
-            .cost = cost,
-            .max_flow = max_flow};
+        if (method_ == Method::FullSymmetric
+                || method_ == Method::NotEven) {
+            cost *= .5;
+        }
+        return {.solution = std::move(sol),
+                .cost = cost,
+                .max_flow = max_flow};
 
-}
+    }
 
 } // namespace Satsuma
