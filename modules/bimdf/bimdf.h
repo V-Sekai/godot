@@ -34,6 +34,9 @@
 #include "core/object/object.h"
 #include "core/object/ref_counted.h"
 
+#include "thirdparty/libsatsuma/src/libsatsuma/Problems/BiMDF.hh"
+#include <map>
+
 class BIMDF : public RefCounted {
 	GDCLASS(BIMDF, RefCounted);
 

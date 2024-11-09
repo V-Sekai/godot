@@ -30,10 +30,25 @@
 
 #include "bimdf.h"
 
+#include "thirdparty/libsatsuma/src/libsatsuma/Extra/Highlevel.hh"
 #include <libTimekeeper/StopWatchPrinting.hh>
-#include <libsatsuma/Extra/Highlevel.hh>
 #include <libsatsuma/Problems/BiMDF.hh>
 #include <map>
+
+std::string format_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges) {
+	std::ostringstream buffer;
+	buffer << "Total cost: " << result.cost << "\n";
+	for (const auto &[name, edge] : edges) {
+		buffer << "Flow on " << name << ": " << (*result.solution)[edge] << "\n";
+	}
+	buffer << result.stopwatch << std::endl;
+	return buffer.str();
+}
+
+void print_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges) {
+	std::string output = format_solution(result, edges);
+	print_line(output.c_str());
+}
 
 void BIMDF::solve() {
 	using BiMDF = Satsuma::BiMDF;
@@ -64,16 +79,8 @@ void BIMDF::solve() {
 		.double_cover = Satsuma::BiMDFDoubleCoverConfig(),
 		.matching_solver = Satsuma::MatchingSolver::Lemon,
 	};
-	auto result = Satsuma::solve_bimdf(bimdf, config);
-	std::ostringstream buffer;
-
-	buffer << "Total cost: " << result.cost << "\n";
-	for (const auto &[name, edge] : edges) {
-		buffer << "Flow on " << name << ": " << (*result.solution)[edge] << "\n";
-	}
-	buffer << result.stopwatch << std::endl;
-	std::string output = buffer.str();
-	print_line(output.c_str());
+	Satsuma::BiMDFFullResult result = Satsuma::solve_bimdf(bimdf, config);
+	print_solution(result, edges);
 }
 
 // https://developers.google.com/optimization/flow/mincostflow
