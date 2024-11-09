@@ -28,8 +28,19 @@ module_env.Prepend(CPPPATH=[
     'thirdparty/libsatsuma/src/libsatsuma/Solvers',
     '#modules/bimdf'
 ])
+
+if env.msvc:
+    module_env.Append(CXXFLAGS=['/EHsc'])
+else:
+    module_env.Append(CXXFLAGS=['-fexceptions'])
+
 env_thirdparty = module_env.Clone()
 env_thirdparty.disable_warnings()
+
+if env.msvc:
+    env_thirdparty.Append(CXXFLAGS=['/EHsc'])
+else:
+    env_thirdparty.Append(CXXFLAGS=['-fexceptions'])
 
 own_sources += ["register_types.cpp"]
 
