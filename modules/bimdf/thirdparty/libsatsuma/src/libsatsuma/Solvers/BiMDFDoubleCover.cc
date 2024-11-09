@@ -10,10 +10,6 @@
 #include <libsatsuma/Reductions/BiMDF_Simplification.hh>
 #include <libsatsuma/Exceptions.hh>
 
-#if SATSUMA_HAVE_GUROBI
-#  include <libsatsuma/Solvers/BiMCFGurobi.hh> // just for testing
-#endif
-
 namespace Satsuma {
 
 

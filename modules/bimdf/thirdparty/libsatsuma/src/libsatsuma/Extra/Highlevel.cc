@@ -20,10 +20,6 @@
 #include <string>
 #include <iostream>
 
-#if SATSUMA_HAVE_GUROBI
-#  include <libsatsuma/Solvers/BiMCFGurobi.hh> // just for testing
-#endif
-
 namespace Satsuma {
 
 BiMDFMatchingResult solve_bimdf_matching(const BiMDF &bimdf, const BiMDFSolverConfig &_config)

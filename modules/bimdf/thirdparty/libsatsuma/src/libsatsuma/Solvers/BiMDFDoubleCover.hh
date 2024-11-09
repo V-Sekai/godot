@@ -8,9 +8,6 @@
 #include <libsatsuma/Reductions/BiMDF_to_BiMCF.hh>
 #include <libsatsuma/Reductions/BiMCF_to_MCF.hh>
 #include <libsatsuma/Reductions/BiMCF_to_BMatching.hh>
-#if SATSUMA_HAVE_GUROBI
-#include <libsatsuma/Config/Gurobi.hh>
-#endif
 #include <libTimekeeper/StopWatch.hh>
 
 namespace Satsuma {
