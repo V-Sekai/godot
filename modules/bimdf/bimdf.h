@@ -31,22 +31,42 @@
 #ifndef BIMDF_H
 #define BIMDF_H
 
-#include "core/object/object.h"
+#include "bimdf.h"
+
+#include <libTimekeeper/StopWatchPrinting.hh>
+#include <libsatsuma/Extra/Highlevel.hh>
+#include <libsatsuma/Problems/BiMDF.hh>
+#include <map>
+#include <sstream>
+#include <string>
+#include <vector>
+
 #include "core/object/ref_counted.h"
 
-#include "thirdparty/libsatsuma/src/libsatsuma/Problems/BiMDF.hh"
-#include <map>
-
-class BIMDF : public RefCounted {
-	GDCLASS(BIMDF, RefCounted);
-
-protected:
-	static void _bind_methods() {
-		ClassDB::bind_method(D_METHOD("solve"), &BIMDF::solve);
-	}
+class MinimumDeviationFlowState : public RefCounted {
+	GDCLASS(MinimumDeviationFlowState, RefCounted);
 
 public:
-	void solve();
+	Satsuma::BiMDF bimdf;
+	std::map<std::string, Satsuma::BiMDF::Edge> edges;
+	std::vector<Satsuma::BiMDF::Node> nodes;
+};
+
+class MinimumDeviationFlow : public RefCounted {
+	GDCLASS(MinimumDeviationFlow, RefCounted);
+	static void print_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges);
+	static std::string format_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges);
+
+protected:
+	static void _bind_methods();
+
+public:
+	static int add_node(Ref<MinimumDeviationFlowState> state);
+	static void add_edge_abs(Ref<MinimumDeviationFlowState> state, int u, int v, double target, double weight, int lower, int upper, bool u_head, bool v_head);
+	static void add_edge_quad(Ref<MinimumDeviationFlowState> state, int u, int v, double target, double weight, int lower, int upper, bool u_head, bool v_head);
+	static void add_edge_zero(Ref<MinimumDeviationFlowState> state, int u, int v, int lower, int upper, bool u_head, bool v_head);
+	static void solve(Ref<MinimumDeviationFlowState> state);
+	MinimumDeviationFlow();
 };
 
 #endif // BIMDF_H

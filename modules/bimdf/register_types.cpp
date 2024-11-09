@@ -38,7 +38,8 @@ void initialize_bimdf_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	GDREGISTER_CLASS(BIMDF);
+	GDREGISTER_CLASS(MinimumDeviationFlowState);
+	GDREGISTER_CLASS(MinimumDeviationFlow);
 }
 
 void uninitialize_bimdf_module(ModuleInitializationLevel p_level) {

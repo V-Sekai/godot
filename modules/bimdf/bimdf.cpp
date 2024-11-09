@@ -29,113 +29,102 @@
 /**************************************************************************/
 
 #include "bimdf.h"
+#include "core/error/error_macros.h"
 
-#include "thirdparty/libsatsuma/src/libsatsuma/Extra/Highlevel.hh"
+#include <cstdint>
 #include <libTimekeeper/StopWatchPrinting.hh>
+#include <libsatsuma/Extra/Highlevel.hh>
 #include <libsatsuma/Problems/BiMDF.hh>
-#include <map>
 
-std::string format_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges) {
-	std::ostringstream buffer;
-	buffer << "Total cost: " << result.cost << "\n";
-	for (const auto &[name, edge] : edges) {
-		buffer << "Flow on " << name << ": " << (*result.solution)[edge] << "\n";
-	}
-	buffer << result.stopwatch << std::endl;
-	return buffer.str();
+void MinimumDeviationFlow::_bind_methods() {
+	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_node", "state"), &MinimumDeviationFlow::add_node);
+	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_edge_abs", "state", "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_abs);
+	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_edge_quad", "state", "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_quad);
+	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_edge_zero", "state", "u", "v", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_zero);
+	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("solve", "state"), &MinimumDeviationFlow::solve);
 }
 
-void print_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges) {
-	std::string output = format_solution(result, edges);
-	print_line(output.c_str());
+int MinimumDeviationFlow::add_node(Ref<MinimumDeviationFlowState> p_state) {
+	ERR_FAIL_COND_V_MSG(p_state.is_null(), -1, "State is null. Cannot add node.");
+	p_state->nodes.push_back(p_state->bimdf.add_node());
+	return p_state->nodes.size() - 1;
 }
 
-void BIMDF::solve() {
-	using BiMDF = Satsuma::BiMDF;
-	BiMDF bimdf;
-	std::map<std::string, BiMDF::Edge> edges;
-
-	auto x = bimdf.add_node(); // boundary
-	auto a = bimdf.add_node();
-	auto b = bimdf.add_node();
-	auto c = bimdf.add_node();
-
+void MinimumDeviationFlow::add_edge_abs(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
+	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with absolute deviation.");
+	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
+	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
 	using Abs = Satsuma::CostFunction::AbsDeviation;
-	using Quad = Satsuma::CostFunction::QuadDeviation;
-	using Zero = Satsuma::CostFunction::Zero;
-	edges["x_x"] = bimdf.add_edge({
-			.u = x,
-			.v = x,
-			.u_head = false,
-			.v_head = false,
-			.cost_function = Zero{},
-	});
-	edges["x_a"] = bimdf.add_edge({ .u = x, .v = a, .u_head = true, .v_head = true, .cost_function = Quad{ .target = 4, .weight = 1 }, .lower = 1 });
-	edges["a_b"] = bimdf.add_edge({ .u = a, .v = b, .u_head = false, .v_head = false, .cost_function = Abs{ .target = .7, .weight = 1 }, .lower = 0 });
-	edges["a_c"] = bimdf.add_edge({ .u = a, .v = c, .u_head = false, .v_head = false, .cost_function = Abs{ .target = .4, .weight = 1 }, .lower = 0 });
-	edges["b_c"] = bimdf.add_edge({ .u = b, .v = c, .u_head = true, .v_head = true, .cost_function = Abs{ .target = .2, .weight = 1 }, .lower = 0 });
+	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
+			.v = p_state->nodes[p_v],
+			.u_head = p_u_head,
+			.v_head = p_v_head,
+			.cost_function = Abs{ .target = p_target, .weight = p_weight },
+			.lower = static_cast<int>(p_lower),
+			.upper = static_cast<int>(p_upper) });
+	p_state->edges[std::to_string(p_u) + "_" + std::to_string(p_v)] = edge;
+}
 
-	auto config = Satsuma::BiMDFSolverConfig{
+void MinimumDeviationFlow::add_edge_quad(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
+	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with quadratic deviation.");
+	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
+	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
+	using Quad = Satsuma::CostFunction::QuadDeviation;
+	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
+			.v = p_state->nodes[p_v],
+			.u_head = p_u_head,
+			.v_head = p_v_head,
+			.cost_function = Quad{ .target = p_target, .weight = p_weight },
+			.lower = static_cast<int>(p_lower),
+			.upper = static_cast<int>(p_upper) });
+	p_state->edges[std::to_string(p_u) + "_" + std::to_string(p_v)] = edge;
+}
+
+void MinimumDeviationFlow::add_edge_zero(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
+	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with zero deviation.");
+	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
+	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
+	using Zero = Satsuma::CostFunction::Zero;
+	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
+			.v = p_state->nodes[p_v],
+			.u_head = p_u_head,
+			.v_head = p_v_head,
+			.cost_function = Zero{},
+			.lower = static_cast<int>(p_lower),
+			.upper = static_cast<int>(p_upper) });
+	p_state->edges[std::to_string(p_u) + "_" + std::to_string(p_v)] = edge;
+}
+
+void MinimumDeviationFlow::solve(Ref<MinimumDeviationFlowState> p_state) {
+	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot solve BIMDF.");
+	Satsuma::BiMDFSolverConfig config = Satsuma::BiMDFSolverConfig{
 		.double_cover = Satsuma::BiMDFDoubleCoverConfig(),
 		.matching_solver = Satsuma::MatchingSolver::Lemon,
 	};
-	Satsuma::BiMDFFullResult result = Satsuma::solve_bimdf(bimdf, config);
-	print_solution(result, edges);
+	try {
+		Satsuma::BiMDFFullResult result = Satsuma::solve_bimdf(p_state->bimdf, config);
+		print_solution(result, p_state->edges);
+	} catch (const std::exception &e) {
+		print_line(e.what());
+	}
 }
 
-// https://developers.google.com/optimization/flow/mincostflow
+void MinimumDeviationFlow::print_solution(const Satsuma::BiMDFFullResult &p_result, const std::map<std::string, Satsuma::BiMDF::Edge> &p_edges) {
+	std::string output = format_solution(p_result, p_edges);
+	print_line(output.c_str());
+}
 
-// Minimum Cost Flows
+std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult &p_result, const std::map<std::string, Satsuma::BiMDF::Edge> &p_edges) {
+	std::ostringstream buffer;
+	buffer << "Total cost: " << p_result.cost << "\n";
+	for (const std::pair<const std::string, Satsuma::BiMDF::Edge> &entry : p_edges) {
+		const std::string &name = entry.first;
+		const Satsuma::BiMDF::Edge &edge = entry.second;
+		buffer << "Flow on " << name << ": " << (*p_result.solution)[edge] << "\n";
+	}
+	buffer << p_result.stopwatch << std::endl;
+	return buffer.str();
+}
 
-// Closely related to the max flow problem is the minimum cost (min cost) flow problem, in which each arc in the graph has a unit cost for transporting material across it. The problem is to find a flow with the least total cost.
-
-// The min cost flow problem also has special nodes, called supply nodes or demand nodes, which are similar to the source and sink in the max flow problem. Material is transported from supply nodes to demand nodes.
-
-//     At a supply node, a positive amount — the supply — is added to the flow. A supply could represent production at that node, for example.
-//     At a demand node, a negative amount — the demand — is taken away from the flow. A demand could represent consumption at that node, for example.
-
-// For convenience, we'll assume that all nodes, other than supply or demand nodes, have zero supply (and demand).
-
-// For the min cost flow problem, we have the following flow conservation rule, which takes the supplies and demands into account:
-// Note: At each node, the total flow leading out of the node minus the total flow leading in to the node equals the supply (or demand) at that node.
-
-// The graph below shows a min cost flow problem. The arcs are labeled with pairs of numbers: the first number is the capacity and the second number is the cost. The numbers in parentheses next to the nodes represent supplies or demands. Node 0 is a supply node with supply 20, while nodes 3 and 4 are demand nodes, with demands -5 and -15, respectively.
-
-// network cost flow graph
-// Import the libraries
-
-// import numpy as np
-
-// from ortools.graph.python import min_cost_flow
-
-// Declare the solver
-
-// # Instantiate a SimpleMinCostFlow solver.
-// smcf = min_cost_flow.SimpleMinCostFlow()
-
-// Define the data
-
-// # Define four parallel arrays: sources, destinations, capacities,
-// # and unit costs between each pair. For instance, the arc from node 0
-// # to node 1 has a capacity of 15.
-// start_nodes = np.array([0, 0, 1, 1, 1, 2, 2, 3, 4])
-// end_nodes = np.array([1, 2, 2, 3, 4, 3, 4, 4, 2])
-// capacities = np.array([15, 8, 20, 4, 10, 15, 4, 20, 5])
-// unit_costs = np.array([4, 4, 2, 2, 6, 1, 3, 2, 3])
-
-// # Define an array of supplies at each node.
-// supplies = [20, 0, 0, -5, -15]
-
-// Add the arcs
-
-// For each start node and end node, we create an arc from start node to end node with the given capacity and unit cost, using the method AddArcWithCapacityAndUnitCost.
-
-// The solver's SetNodeSupply method creates a vector of supplies for the nodes.
-
-// # Add arcs, capacities and costs in bulk using numpy.
-// all_arcs = smcf.add_arcs_with_capacity_and_unit_cost(
-//     start_nodes, end_nodes, capacities, unit_costs
-// )
-
-// # Add supply for each nodes.
-// smcf.set_nodes_supplies(np.arange(0, len(supplies)), supplies)
+MinimumDeviationFlow::MinimumDeviationFlow() {
+}
