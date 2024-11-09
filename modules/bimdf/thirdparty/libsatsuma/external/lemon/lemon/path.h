@@ -27,7 +27,6 @@
 #include <vector>
 #include <algorithm>
 
-#include <lemon/error.h>
 #include <lemon/core.h>
 #include <lemon/concepts/path.h>
 #include <lemon/bits/stl_iterators.h>

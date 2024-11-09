@@ -355,18 +355,10 @@ namespace lemon {
     // It notifies all the registed observers about an item added to
     // the container.
     void add(const Item& item) {
-      typename Observers::reverse_iterator it;
-      try {
+        typename Observers::reverse_iterator it;
         for (it = _observers.rbegin(); it != _observers.rend(); ++it) {
-          (*it)->add(item);
+            (*it)->add(item);
         }
-      } catch (...) {
-        typename Observers::iterator jt;
-        for (jt = it.base(); jt != _observers.end(); ++jt) {
-          (*jt)->erase(item);
-        }
-        throw;
-      }
     }
 
     // \brief Notifies all the registed observers about more item added to
@@ -375,18 +367,10 @@ namespace lemon {
     // It notifies all the registed observers about more item added to
     // the container.
     void add(const std::vector<Item>& items) {
-      typename Observers::reverse_iterator it;
-      try {
+        typename Observers::reverse_iterator it;
         for (it = _observers.rbegin(); it != _observers.rend(); ++it) {
-          (*it)->add(items);
+            (*it)->add(items);
         }
-      } catch (...) {
-        typename Observers::iterator jt;
-        for (jt = it.base(); jt != _observers.end(); ++jt) {
-          (*jt)->erase(items);
-        }
-        throw;
-      }
     }
 
     // \brief Notifies all the registed observers about an item erased from
@@ -394,18 +378,12 @@ namespace lemon {
     //
     // It notifies all the registed observers about an item erased from
     // the container.
-    void erase(const Item& item) throw() {
-      typename Observers::iterator it = _observers.begin();
-      while (it != _observers.end()) {
-        try {
-          (*it)->erase(item);
-          ++it;
-        } catch (const ImmediateDetach&) {
-          (*it)->_index = _observers.end();
-          (*it)->_notifier = 0;
-          it = _observers.erase(it);
+    void erase(const Item& item) {
+        typename Observers::iterator it = _observers.begin();
+        while (it != _observers.end()) {
+            (*it)->erase(item);
+            ++it;
         }
-      }
     }
 
     // \brief Notifies all the registed observers about more item erased
@@ -414,17 +392,10 @@ namespace lemon {
     // It notifies all the registed observers about more item erased from
     // the container.
     void erase(const std::vector<Item>& items) {
-      typename Observers::iterator it = _observers.begin();
-      while (it != _observers.end()) {
-        try {
-          (*it)->erase(items);
-          ++it;
-        } catch (const ImmediateDetach&) {
-          (*it)->_index = _observers.end();
-          (*it)->_notifier = 0;
-          it = _observers.erase(it);
+        for (auto it = _observers.begin(); it != _observers.end();) {
+            (*it)->erase(items);
+            ++it;
         }
-      }
     }
 
     // \brief Notifies all the registed observers about the container is
@@ -433,18 +404,22 @@ namespace lemon {
     // Notifies all the registed observers about the container is built
     // from an empty container.
     void build() {
-      typename Observers::reverse_iterator it;
-      try {
+        typename Observers::reverse_iterator it;
+        bool success = true;
+
         for (it = _observers.rbegin(); it != _observers.rend(); ++it) {
-          (*it)->build();
+            if (!(*it)->build()) {
+                success = false;
+                break;
+            }
         }
-      } catch (...) {
-        typename Observers::iterator jt;
-        for (jt = it.base(); jt != _observers.end(); ++jt) {
-          (*jt)->clear();
+
+        if (!success) {
+            typename Observers::iterator jt;
+            for (jt = it.base(); jt != _observers.end(); ++jt) {
+                (*jt)->clear();
+            }
         }
-        throw;
-      }
     }
 
     // \brief Notifies all the registed observers about all items are
@@ -452,18 +427,15 @@ namespace lemon {
     //
     // Notifies all the registed observers about all items are erased
     // from the container.
-    void clear() {
-      typename Observers::iterator it = _observers.begin();
-      while (it != _observers.end()) {
-        try {
-          (*it)->clear();
-          ++it;
-        } catch (const ImmediateDetach&) {
-          (*it)->_index = _observers.end();
-          (*it)->_notifier = 0;
-          it = _observers.erase(it);
+    bool clear() {
+        typename Observers::iterator it = _observers.begin();
+        while (it != _observers.end()) {
+            (*it)->clear();
+            (*it)->_index = _observers.end();
+            (*it)->_notifier = nullptr;
+            it = _observers.erase(it);
         }
-      }
+        return true;
     }
   };
 
