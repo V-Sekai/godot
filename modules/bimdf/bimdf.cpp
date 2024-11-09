@@ -49,11 +49,10 @@ int MinimumDeviationFlow::add_node(Ref<MinimumDeviationFlowState> p_state) {
 	p_state->nodes.push_back(p_state->bimdf.add_node());
 	return p_state->nodes.size() - 1;
 }
-
 void MinimumDeviationFlow::add_edge_abs(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
 	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with absolute deviation.");
-	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
 	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
+	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
 	using Abs = Satsuma::CostFunction::AbsDeviation;
 	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
 			.v = p_state->nodes[p_v],
@@ -67,8 +66,8 @@ void MinimumDeviationFlow::add_edge_abs(Ref<MinimumDeviationFlowState> p_state, 
 
 void MinimumDeviationFlow::add_edge_quad(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
 	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with quadratic deviation.");
-	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
 	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
+	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
 	using Quad = Satsuma::CostFunction::QuadDeviation;
 	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
 			.v = p_state->nodes[p_v],
@@ -82,8 +81,8 @@ void MinimumDeviationFlow::add_edge_quad(Ref<MinimumDeviationFlowState> p_state,
 
 void MinimumDeviationFlow::add_edge_zero(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
 	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with zero deviation.");
-	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
 	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
+	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
 	using Zero = Satsuma::CostFunction::Zero;
 	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
 			.v = p_state->nodes[p_v],
