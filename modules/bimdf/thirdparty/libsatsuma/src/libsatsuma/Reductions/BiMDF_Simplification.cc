@@ -90,8 +90,7 @@ BiMDF_Simplification::BiMDF_Simplification(const BiMDF &_orig)
 
                     cur_e = other_a;
                     if(edge_added[cur_e]) {
-                        std::cerr << "Error: found edge twice" << std::endl;
-                        return {lemon::INVALID, false};
+                        throw std::runtime_error("this should not happen, found edge twice");
                     }
                     edge_added[cur_e] = true;
                     break; // disable for debug
@@ -103,35 +102,33 @@ BiMDF_Simplification::BiMDF_Simplification(const BiMDF &_orig)
     };
 
     for (const auto e: _orig.g.edges()) {
-        if (edge_added[e]) {
-            continue;
-        }
+        if (edge_added[e]) continue;
         if (!collapse_edge[e]) {
-            BiMDF::EdgeInfo edge_info = _orig.get_edge_info(e);
-            edge_info.u = simp_node[edge_info.u];
-            edge_info.v = simp_node[edge_info.v];
-            simp_edge_[e] = lemon::INVALID;
+            BiMDF::EdgeInfo ei = _orig.get_edge_info(e);
+            ei.u = simp_node[ei.u];
+            ei.v = simp_node[ei.v];
+            simp_edge_[e] = simp_.add_edge(ei);
+        } else {
             chain.clear();
             chain_costs.clear();
             chain.push_back(e);
             auto [u, u_head] = extend_chain(e, _orig.g.u(e));
             auto [v, v_head] = extend_chain(e, _orig.g.v(e));
-            auto new_ei = BiMDF::EdgeInfo{
+            auto ei = BiMDF::EdgeInfo{
                     .u = simp_node[u], .v = simp_node[v],
                     .u_head = u_head, .v_head = v_head};
-            if (new_ei.u == lemon::INVALID || new_ei.v == lemon::INVALID) {
-                std::cerr << "Error: something wrong with extend_chain, end node not in new problem" << std::endl;
-                continue;
+            if (ei.u == lemon::INVALID || ei.v == lemon::INVALID) {
+                throw std::runtime_error("something wrong with extend_chain, end node not in new problem");
             }
-            new_ei.lower = _orig.lower[e];
-            new_ei.upper = _orig.upper[e];
+            ei.lower = _orig.lower[e];
+            ei.upper = _orig.upper[e];
             for (const auto chain_e: chain) {
-                new_ei.lower = std::max(new_ei.lower, _orig.lower[chain_e]);
-                new_ei.upper = std::min(new_ei.upper, _orig.upper[chain_e]);
+                ei.lower = std::max(ei.lower, _orig.lower[chain_e]);
+                ei.upper = std::min(ei.upper, _orig.upper[chain_e]);
                 chain_costs.push_back(_orig.cost_function[chain_e]);
             }
-            new_ei.cost_function = CostFunction::Sum(chain_costs.begin(), chain_costs.end());
-            auto simp_e  = simp_.add_edge(new_ei);
+            ei.cost_function = CostFunction::Sum(chain_costs.begin(), chain_costs.end());
+            auto simp_e  = simp_.add_edge(ei);
             for (const auto chain_e: chain) {
                 simp_edge_[chain_e] = simp_e;
             }
@@ -180,8 +177,7 @@ BiMDFResult BiMDF_ConnectedComponents::translate_solutions(
             std::vector<BiMDFResult> const&_sols) const
 {
     if (_sols.size() != n_cc_) {
-        std::cerr << "Error: solution vector must be the same size as number of bimdfs!" << std::endl;
-        return {.solution = nullptr, .cost = 0.0};
+        throw std::out_of_range("solution vector must be the same size as number of bimdfs!");
     }
     double total_cost = 0.;
     for (const auto &res: _sols) {

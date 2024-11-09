@@ -39,7 +39,10 @@ find_best_adjustment(BiMDF const&_bimdf, BiMDF::Edge e, BiMDF::TargetScalar init
         }
     }
     if (best_guess == guess) {
-        return {guess, 0.0};
+        throw InternalError("Could not find adjustment for DC; probably upper=lower, not handled yet. lower = " 
+                + std::to_string(lower)
+                + ", upper = " + std::to_string(upper)
+                + ", guess = " + std::to_string(guess));
     }
     assert(best_guess != guess); // bounds too tight
     return {best_guess, best_cost};
@@ -82,20 +85,23 @@ EveningResult round_to_even(const BiMDF &bimdf)
     };
 }
 
+
+
 EveningResult TJoinBasedRounding::solve()
 {
     const auto &g = bimdf_.g;
     auto guessp = std::make_unique<BiMDF::Guess>(g);
     auto &guess = *guessp;
 
+
     for (const auto e: g.edges())
     {
+        //assert(bimdf_.upper[e] == BiMDF::inf());
         if (bimdf_.upper[e] <= bimdf_.lower[e]) {
-            // Avoid throwing exceptions, handle the error gracefully
-            std::cerr << "Warning: BiMDF has arc with upper <= lower, skipping arc." << std::endl;
-            continue;
+            throw std::runtime_error("BiMDF has arc with upper<= lower, please remove.");
         }
-
+        // TODO: we might round towards an odd bound, which is later rounded towards guess! is this a problem?
+        // TODO: use find_best_adjustment
         auto lower = bimdf_.lower[e];
         auto upper = bimdf_.upper[e];
         auto opti = std::llround(bimdf_.guess(e));
@@ -119,7 +125,14 @@ EveningResult TJoinBasedRounding::solve()
                 adjusted_guess_[e] = x;
             }
         }
+#if 0
+        // TODO: try idea: lower cost if guess-lower is odd, we'd like to fix this
+        if (std::abs(guess[e] - bimdf_.lower[e]) & 1) {
+            cost[e] -= bimdf_.weight[e];
+        }
+#endif
 
+        // apply flow:
         rhs_[g.u(e)] += bimdf_.u_head[e] ? rounded : -rounded;
         rhs_[g.v(e)] += bimdf_.v_head[e] ? rounded : -rounded;
     }
@@ -143,9 +156,33 @@ EveningResult TJoinBasedRounding::solve()
         }
     }
 
+
     if (verbosity_ >= 2) {
         std::cerr << "performed " << n_adjustments << " adjustments for even rhs" << std::endl;
     }
+
+#if 0 // rhs is not touched, need to recompute it for this chjeck:
+    for (const auto n: g.nodes()) {
+        assert((rhs_[n] & 1) == 0);
+    }
+#endif
+
+#if 0
+    // adjust `lower` such that `target-lower` is even
+    size_t n_lower_changes = 0;
+    for (const auto e: g.edges())
+    {
+        auto diff = guess[e] - result.lower[e];
+        if (diff & 1) {
+            ++result.lower[e];
+            ++n_lower_changes;
+        }
+    }
+
+    if (verbosity > 0) {
+        std::cerr << "incremented " << n_lower_changes << " lower bounds for even guess-lower" << std::endl;
+    }
+#endif
 
     return { .guess = std::move(guessp),
              .cost = cost,

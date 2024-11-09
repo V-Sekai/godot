@@ -24,6 +24,7 @@
 ///\brief ListDigraph and ListGraph classes.
 
 #include <lemon/core.h>
+#include <lemon/error.h>
 #include <lemon/bits/graph_extender.h>
 
 #include <vector>
@@ -677,34 +678,31 @@ namespace lemon {
       void addNode(const Node& node) {
         added_nodes.push_front(node);
       }
-      bool eraseNode(const Node& node) {
-          std::list<Node>::iterator it =
-            std::find(added_nodes.begin(), added_nodes.end(), node);
-          if (it == added_nodes.end()) {
-              clear();
-              arc_observer_proxy.detach();
-              return false;
-          } else {
-              added_nodes.erase(it);
-              return true;
-          }
+      void eraseNode(const Node& node) {
+        std::list<Node>::iterator it =
+          std::find(added_nodes.begin(), added_nodes.end(), node);
+        if (it == added_nodes.end()) {
+          clear();
+          arc_observer_proxy.detach();
+          throw NodeNotifier::ImmediateDetach();
+        } else {
+          added_nodes.erase(it);
+        }
       }
 
       void addArc(const Arc& arc) {
         added_arcs.push_front(arc);
       }
-      bool eraseArc(const Arc& arc) {
-          std::list<Arc>::iterator it =
-            std::find(added_arcs.begin(), added_arcs.end(), arc);
-
-          if (it == added_arcs.end()) {
-              clear();
-              node_observer_proxy.detach();
-              return false;
-          } else {
-              added_arcs.erase(it);
-              return true;
-          }
+      void eraseArc(const Arc& arc) {
+        std::list<Arc>::iterator it =
+          std::find(added_arcs.begin(), added_arcs.end(), arc);
+        if (it == added_arcs.end()) {
+          clear();
+          node_observer_proxy.detach();
+          throw ArcNotifier::ImmediateDetach();
+        } else {
+          added_arcs.erase(it);
+        }
       }
 
       void attach(ListDigraph &_digraph) {
@@ -1492,33 +1490,31 @@ namespace lemon {
       void addNode(const Node& node) {
         added_nodes.push_front(node);
       }
-
-      bool eraseNode(const Node& node) {
-          std::list<Node>::iterator it =
-            std::find(added_nodes.begin(), added_nodes.end(), node);
-          if (it == added_nodes.end()) {
-              clear();
-              edge_observer_proxy.detach();
-              return false;
-          } else {
-              added_nodes.erase(it);
-              return true;
-          }
+      void eraseNode(const Node& node) {
+        std::list<Node>::iterator it =
+          std::find(added_nodes.begin(), added_nodes.end(), node);
+        if (it == added_nodes.end()) {
+          clear();
+          edge_observer_proxy.detach();
+          throw NodeNotifier::ImmediateDetach();
+        } else {
+          added_nodes.erase(it);
+        }
       }
 
       void addEdge(const Edge& edge) {
         added_edges.push_front(edge);
       }
-      bool eraseEdge(const Edge& edge) {
-          std::list<Edge>::iterator it = std::find(added_edges.begin(), added_edges.end(), edge);
-          if (it != added_edges.end()) {
-              added_edges.erase(it);
-              return true;
-          } else {
-              clear();
-              node_observer_proxy.detach();
-              return false;
-          }
+      void eraseEdge(const Edge& edge) {
+        std::list<Edge>::iterator it =
+          std::find(added_edges.begin(), added_edges.end(), edge);
+        if (it == added_edges.end()) {
+          clear();
+          node_observer_proxy.detach();
+          throw EdgeNotifier::ImmediateDetach();
+        } else {
+          added_edges.erase(it);
+        }
       }
 
       void attach(ListGraph &_graph) {
@@ -2401,32 +2397,31 @@ namespace lemon {
       void addNode(const Node& node) {
         added_nodes.push_front(node);
       }
-      bool eraseNode(const Node& node) {
-          std::list<Node>::iterator it =
-            std::find(added_nodes.begin(), added_nodes.end(), node);
-          if (it == added_nodes.end()) {
-              clear();
-              edge_observer_proxy.detach();
-              return false;
-          } else {
-              added_nodes.erase(it);
-              return true;
-          }
+      void eraseNode(const Node& node) {
+        std::list<Node>::iterator it =
+          std::find(added_nodes.begin(), added_nodes.end(), node);
+        if (it == added_nodes.end()) {
+          clear();
+          edge_observer_proxy.detach();
+          throw NodeNotifier::ImmediateDetach();
+        } else {
+          added_nodes.erase(it);
+        }
       }
 
       void addEdge(const Edge& edge) {
         added_edges.push_front(edge);
       }
-      bool eraseEdge(const Edge& edge) {
-          std::list<Edge>::iterator it = std::find(added_edges.begin(), added_edges.end(), edge);
-          if (it == added_edges.end()) {
-              clear();
-              node_observer_proxy.detach();
-              return false;
-          } else {
-              added_edges.erase(it);
-              return true;
-          }
+      void eraseEdge(const Edge& edge) {
+        std::list<Edge>::iterator it =
+          std::find(added_edges.begin(), added_edges.end(), edge);
+        if (it == added_edges.end()) {
+          clear();
+          node_observer_proxy.detach();
+          throw EdgeNotifier::ImmediateDetach();
+        } else {
+          added_edges.erase(it);
+        }
       }
 
       void attach(ListBpGraph &_graph) {

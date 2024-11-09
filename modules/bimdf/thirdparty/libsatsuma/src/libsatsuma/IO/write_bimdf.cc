@@ -5,7 +5,7 @@
 
 namespace Satsuma {
 
-static std::ostream& write_cost(std::ostream &s,
+static  std::ostream& write_cost(std::ostream &s,
         CostFunction::Function const &cost_func)
 {
     if (std::holds_alternative<CostFunction::Zero>(cost_func)) {
@@ -19,8 +19,8 @@ static std::ostream& write_cost(std::ostream &s,
             << " " << cost_sf->weight
             << " " << cost_sf->eps;
     } else if (std::holds_alternative<CostFunction::VirtualObjective>(cost_func)) {
-        s.setstate(std::ios_base::failbit);
-        return s;
+        // TODO: if we ever need this, have user supply custom serializer
+        throw std::runtime_error("Satsuma::write_cost: Saving virtual cost functions is not supported.");
     } else if (auto cost_sum = std::get_if<CostFunction::Sum>(&cost_func)) {
         s << "+ " << cost_sum->size() << " ";
         for (const auto &f: *cost_sum) {
@@ -28,17 +28,16 @@ static std::ostream& write_cost(std::ostream &s,
             s << " ";
         }
     } else {
-        s.setstate(std::ios_base::failbit);
-        return s;
+        throw std::runtime_error("Satsuma::write_cost: cost function type not handled.");
     }
     return s;
 }
 
-bool write_bimdf(BiMDF const&_bimdf, std::string const &filename)
+void write_bimdf(BiMDF const&_bimdf, std::string const &filename)
 {
     std::ofstream s(filename);
     if (!s.good()) {
-        return false;
+        throw std::runtime_error("Satsuma::write_bimdf: cannot open file for writing.");
     }
     s << std::hexfloat;
     s << "# libSatsuma BiMDF file\n";
@@ -61,11 +60,11 @@ bool write_bimdf(BiMDF const&_bimdf, std::string const &filename)
           << " " << (_bimdf.v_head[e] ? "1" : "0")
           << " " << _bimdf.lower[e]
           << " " << _bimdf.upper[e]
+          //<< " " << (_bimdf.upper[e] == _bimdf.inf() ? "inf" : std::to_string(_bimdf.upper[e]))
           << " ";
         write_cost(s, _bimdf.cost_function[e]);
         s << "\n";
     }
-    return true;
 }
 
 } // namespace Satsuma

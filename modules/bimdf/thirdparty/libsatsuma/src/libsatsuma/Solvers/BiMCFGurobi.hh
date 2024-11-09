@@ -2,8 +2,10 @@
 //  SPDX-License-Identifier: MIT
 #pragma once
 
-#include <libsatsuma/Problems/BiMDF.hh>
+#include <libsatsuma/Problems/BiMCF.hh>
 
 namespace Satsuma {
-void write_bimdf(BiMDF const&_bimdf, std::string const &filename);
+
+BiMCFResult solve_bimcf_gurobi(BiMCF const &bimdf, BiMCF::Guess *x0 = nullptr);
+
 } // namespace Satsuma

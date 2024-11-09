@@ -19,11 +19,11 @@
 #ifndef LEMON_ASSERT_H
 #define LEMON_ASSERT_H
 
-#include <iostream>
-
 /// \ingroup exceptions
 /// \file
 /// \brief Extended assertion handling
+
+#include <lemon/error.h>
 
 namespace lemon {
 

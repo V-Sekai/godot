@@ -6,7 +6,6 @@
 
 #include <libTimekeeper/Duration.hh>
 #include <chrono>
-using std::chrono::duration_cast;
 
 #ifdef NOMINMAX
 #  include <Windows.h>
