@@ -12,17 +12,15 @@
 #include <libsatsuma/Solvers/Matching.hh>
 #include <libsatsuma/Solvers/MCF.hh>
 #include <libsatsuma/Exceptions.hh>
+#include <lemon/maps.h>
+#include <stdexcept>
 
 #include "lemon/maps.h"
 
 #include <string>
-
-#if SATSUMA_HAVE_GUROBI
-#  include <libsatsuma/Solvers/BiMCFGurobi.hh> // just for testing
-#endif
+#include <iostream>
 
 namespace Satsuma {
-
 
 BiMDFMatchingResult solve_bimdf_matching(const BiMDF &bimdf, const BiMDFSolverConfig &_config)
 {
@@ -102,9 +100,6 @@ BiMDFMatchingResult solve_bimdf_matching(const BiMDF &bimdf, const BiMDFSolverCo
         std::cout << "maximal edge change in refinement: " << max_change << std::endl;
     }
 
-    if (!bimdf.is_valid(*sol)) {
-        throw InternalError("refinement result infeasible.");
-    }
     auto cost = bimdf.cost(*sol);
 
     auto sw_result = Timekeeper::HierarchicalStopWatchResult{sw_root};
@@ -122,7 +117,7 @@ BiMDFMatchingResult solve_bimdf_matching(const BiMDF &bimdf, const BiMDFSolverCo
             .stopwatch = sw_result};
 }
 
-BiMDFFullResult solve_bimdf(const BiMDF &_bimdf, const BiMDFSolverConfig &_config) {
+Satsuma::BiMDFFullResult solve_bimdf(const Satsuma::BiMDF &_bimdf, const Satsuma::BiMDFSolverConfig &_config) {
     Timekeeper::HierarchicalStopWatch sw("solve_bimdf");
     Timekeeper::HierarchicalStopWatch sw_cc("cc", sw);
     Timekeeper::HierarchicalStopWatch sw_simp("simplification", sw);
@@ -133,17 +128,17 @@ BiMDFFullResult solve_bimdf(const BiMDF &_bimdf, const BiMDFSolverConfig &_confi
     sw_cc.stop();
     size_t n_cc = cc.num_components();
 
-    std::vector<BiMDFResult> sols;
+    std::vector<Satsuma::BiMDFResult> sols;
     std::vector<Timekeeper::HierarchicalStopWatchResult> sw_results;
-    std::vector<BiMDFperConnectedComponentInfo> cc_info;
+    std::vector<Satsuma::BiMDFperConnectedComponentInfo> cc_info;
 
     sols.reserve(n_cc);
     sw_results.reserve(n_cc);
     cc_info.reserve(n_cc);
 
     // Iterate over each connected component
-	for (BiMDF *it = cc.bimdfs().first; it != cc.bimdfs().second; ++it) {
-		const BiMDF &sub_bimdf = *it;
+	for (Satsuma::BiMDF *it = cc.bimdfs().first; it != cc.bimdfs().second; ++it) {
+		const Satsuma::BiMDF &sub_bimdf = *it;
 		sw_simp.resume();
 
         // Simplify and solve the matching problem for each sub-BiMDF
@@ -163,14 +158,14 @@ BiMDFFullResult solve_bimdf(const BiMDF &_bimdf, const BiMDFSolverConfig &_confi
         }
 
         sw_simp.resume();
-		BiMDFResult bimdf_result = simp.translate_solution(simp_sol.result);
+		Satsuma::BiMDFResult bimdf_result = simp.translate_solution(simp_sol.result);
 		sw_simp.stop();
 
         sols.push_back(std::move(bimdf_result));
 	}
 
 	sw_cc.resume();
-	BiMDFResult bimdf_sol = cc.translate_solutions(sols);
+	Satsuma::BiMDFResult bimdf_sol = cc.translate_solutions(sols);
 	sw_cc.stop();
 
     if (_config.verbosity >= 1) {

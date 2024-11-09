@@ -30,7 +30,8 @@ OrientedBiMCF::OrientedBiMCF(BiMCF const &_bimcf, Orientation const &ori)
                 << ", ori u " << ori[bimcf_.g.u(e)]
                 << ", ori v " << ori[bimcf_.g.v(e)]
                 << std::endl;
-            throw std::runtime_error("Invalid Orientation for arc " + std::to_string(i));
+            std::cerr << "Warning: Invalid Orientation for arc " << i << std::endl;
+            continue;
         }
         auto src = v_head ? bimcf_.g.u(e) : bimcf_.g.v(e);
         auto dst = u_head ? bimcf_.g.u(e) : bimcf_.g.v(e);

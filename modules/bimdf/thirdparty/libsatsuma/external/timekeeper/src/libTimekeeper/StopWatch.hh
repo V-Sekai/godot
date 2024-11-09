@@ -26,7 +26,7 @@ public:
   }
 
   [[nodiscard]]
-  Duration elapsed() {
+  Timekeeper::Duration elapsed() {
     auto [user_end, system_end] = detail::user_system_now();
     auto wall_dur = std::chrono::duration_cast<Duration::Dur>(WallClock::now() - wall_start_);
     auto user_dur = user_end - user_start_;

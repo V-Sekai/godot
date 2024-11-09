@@ -9,7 +9,6 @@ namespace detail {
 class not_orientable_error : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
-
 template<typename GraphT>
 class OrientVisitor : public lemon::DfsVisitor<GraphT>
 {
@@ -20,6 +19,7 @@ public:
             Orientation &_ori)
         : bg_(_bg)
         , ori_{_ori}
+        , not_orientable_{false}
     {}
     void discover(Arc const &a)
     {
@@ -53,11 +53,16 @@ public:
 #endif
         bool is_bidir = (bg_.u_head[a] == bg_.v_head[a]);
         if ((ori_[tgt] ^ ori_[src]) != is_bidir) {
-            // TODO: there should be a better way to abort.
+            // Mark as not orientable instead of throwing an exception.
+            not_orientable_ = true;
+#if 0
             std::cout << " exam ";
             debug_print(a);
-            throw not_orientable_error("");
+#endif
         };
+    }
+    bool is_not_orientable() const {
+        return not_orientable_;
     }
 private:
     void debug_print(Arc const &a)
@@ -77,6 +82,7 @@ private:
     }
     BidirectedGraph const& bg_;
     Orientation &ori_;
+    bool not_orientable_;
 };
 } // namespace detail
 
@@ -87,9 +93,8 @@ std::unique_ptr<Orientation> try_orient(BidirectedGraph const &bg)
     auto &g = bg.g;
     auto vis = detail::OrientVisitor<BidirectedGraph::GraphT>{bg, *ori};
     auto dfs = lemon::DfsVisit<BidirectedGraph::GraphT, decltype(vis)>(bg.g, vis);
-    try {
-        dfs.run();
-    } catch (detail::not_orientable_error const&) {
+    dfs.run();
+    if (vis.is_not_orientable()) {
         return {};
     }
     return ori;

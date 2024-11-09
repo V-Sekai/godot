@@ -5,5 +5,5 @@
 #include <libsatsuma/Problems/BiMDF.hh>
 
 namespace Satsuma {
-void write_bimdf(BiMDF const&_bimdf, std::string const &filename);
+bool write_bimdf(BiMDF const&_bimdf, std::string const &filename);
 } // namespace Satsuma

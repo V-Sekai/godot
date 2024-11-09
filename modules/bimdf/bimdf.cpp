@@ -34,6 +34,7 @@
 #include <libsatsuma/Extra/Highlevel.hh>
 #include <libsatsuma/Problems/BiMDF.hh>
 #include <map>
+#include <sstream>
 
 void BIMDF::solve() {
 	using BiMDF = Satsuma::BiMDF;
