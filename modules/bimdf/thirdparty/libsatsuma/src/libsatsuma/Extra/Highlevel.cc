@@ -17,10 +17,6 @@
 
 #include <string>
 
-#if SATSUMA_HAVE_GUROBI
-#  include <libsatsuma/Solvers/BiMCFGurobi.hh> // just for testing
-#endif
-
 namespace Satsuma {
 
 
