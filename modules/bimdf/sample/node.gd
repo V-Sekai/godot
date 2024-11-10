@@ -16,3 +16,4 @@ func solve():
 	bimdf.add_edge_abs(a, c, 0.4, 1, 0, 2, false, false)
 	bimdf.add_edge_abs(b, c, 0.2, 1, 0, 2, true, true)
 	bimdf.solve()
+	bimdf.clear()
