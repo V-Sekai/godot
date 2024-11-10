@@ -72,6 +72,7 @@ class MinimumDeviationFlow : public RefCounted {
 	const  HashMap<String, bool> &get_edge_v_heads() const;
 	void print_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges);
 	std::string format_solution(const Satsuma::BiMDFFullResult &result, const std::map<std::string, Satsuma::BiMDF::Edge> &edges);
+	void print_graph() const;
 
 protected:
 	static void _bind_methods();

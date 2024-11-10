@@ -42,13 +42,13 @@ void MinimumDeviationFlow::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("solve"), &MinimumDeviationFlow::solve);
 	ClassDB::bind_method(D_METHOD("clear"), &MinimumDeviationFlow::clear);
 }
-
 void MinimumDeviationFlow::solve() {
 	Satsuma::BiMDFSolverConfig config = Satsuma::BiMDFSolverConfig{
 		.double_cover = Satsuma::BiMDFDoubleCoverConfig(),
 		.matching_solver = Satsuma::MatchingSolver::Lemon,
 	};
 	try {
+		print_graph();
 		Satsuma::BiMDFFullResult result = Satsuma::solve_bimdf(bimdf, config);
 		print_solution(result, edges);
 	} catch (const std::exception &e) {
@@ -61,13 +61,42 @@ void MinimumDeviationFlow::print_solution(const Satsuma::BiMDFFullResult &p_resu
 	print_line(output.c_str());
 }
 
+void MinimumDeviationFlow::print_graph() const {
+	std::ostringstream buffer;
+	buffer << "graph TD\n";
+	for (const auto &entry : edge_nodes) {
+		const String &edge_key = entry.key;
+		int u = entry.value.first;
+		int v = entry.value.second;
+		int capacity = edge_uppers[edge_key];
+		double target = edge_targets[edge_key];
+		double weight = edge_weights[edge_key];
+		bool u_head = edge_u_heads[edge_key];
+		bool v_head = edge_v_heads[edge_key];
+		std::string u_name = node_names[u].utf8().get_data();
+		std::string v_name = node_names[v].utf8().get_data();
+		std::replace(u_name.begin(), u_name.end(), ' ', '_');
+		std::replace(v_name.begin(), v_name.end(), ' ', '_');
+		if (u_head && !v_head) {
+			buffer << "    " << u_name << " -->|" << edge_key.utf8().get_data() << " capacity: " << capacity << " target: " << target << " weight: " << weight << "| " << v_name << "\n";
+		} else if (!u_head && v_head) {
+			buffer << "    " << v_name << " -->|" << edge_key.utf8().get_data() << " capacity: " << capacity << " target: " << target << " weight: " << weight << "| " << u_name << "\n";
+		} else if (u_head && v_head) {
+			buffer << "    " << u_name << " <-->|" << edge_key.utf8().get_data() << " capacity: " << capacity << " target: " << target << " weight: " << weight << "| " << v_name << "\n";
+		} else {
+			buffer << "    " << u_name << " ---|" << edge_key.utf8().get_data() << " capacity: " << capacity << " target: " << target << " weight: " << weight << "| " << v_name << "\n";
+		}
+	}
+	buffer << "--------------------\n";
+	print_line(buffer.str().c_str());
+}
+
 std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult &p_result, const std::map<std::string, Satsuma::BiMDF::Edge> &p_edges) {
 	std::ostringstream buffer;
 	buffer << "====================\n";
 	buffer << "Solution Summary\n";
 	buffer << "====================\n";
 	buffer << "Total cost: " << p_result.cost << "\n\n";
-	buffer << "Edge Flows:\n";
 	buffer << "--------------------\n";
 	for (const auto &entry : p_edges) {
 		const std::string &name = entry.first;
@@ -77,8 +106,11 @@ std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult
 		buffer << "  Lower bound: " << edge_lowers[godot_name] << "\n";
 		buffer << "  Upper bound: " << edge_uppers[godot_name] << "\n";
 		buffer << "  Weight: " << edge_weights[godot_name] << "\n";
-		buffer << "  Parent node: " << node_names[edge_nodes[godot_name].first].utf8().get_data() << "\n";
+		buffer << "  Target: " << edge_targets[godot_name] << "\n";
+		buffer << "  Current node: " << node_names[edge_nodes[godot_name].first].utf8().get_data() << "\n";
 		buffer << "  Next node: " << node_names[edge_nodes[godot_name].second].utf8().get_data() << "\n";
+		buffer << "  U head: " << edge_u_heads[godot_name] << "\n";
+		buffer << "  V head: " << edge_v_heads[godot_name] << "\n";
 		buffer << "--------------------\n";
 	}
 	buffer << "\nStopwatch:\n";
@@ -90,7 +122,23 @@ std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult
 		int v = entry.value.second;
 		double flow = (*p_result.solution)[edges[edge_key.utf8().get_data()]];
 		int capacity = edge_uppers[edge_key];
-		buffer << "    " << node_names[u].utf8().get_data() << " -->|" << edge_key.utf8().get_data() << " " << flow << "/" << capacity << "| " << node_names[v].utf8().get_data() << "\n";
+		double target = edge_targets[edge_key];
+		double weight = edge_weights[edge_key];
+		bool u_head = edge_u_heads[edge_key];
+		bool v_head = edge_v_heads[edge_key];
+		std::string u_name = node_names[u].utf8().get_data();
+		std::string v_name = node_names[v].utf8().get_data();
+		std::replace(u_name.begin(), u_name.end(), ' ', '_');
+		std::replace(v_name.begin(), v_name.end(), ' ', '_');
+		if (u_head && !v_head) {
+			buffer << "    " << u_name << " -->|" << edge_key.utf8().get_data() << " " << flow << "/" << capacity << " target: " << target << " weight: " << weight << "| " << v_name << "\n";
+		} else if (!u_head && v_head) {
+			buffer << "    " << v_name << " -->|" << edge_key.utf8().get_data() << " " << flow << "/" << capacity << " target: " << target << " weight: " << weight << "| " << u_name << "\n";
+		} else if (u_head && v_head) {
+			buffer << "    " << u_name << " <-->|" << edge_key.utf8().get_data() << " " << flow << "/" << capacity << " target: " << target << " weight: " << weight << "| " << v_name << "\n";
+		} else {
+			buffer << "    " << u_name << " ---|" << edge_key.utf8().get_data() << " " << flow << "/" << capacity << " target: " << target << " weight: " << weight << "| " << v_name << "\n";
+		}
 	}
 	buffer << p_result.stopwatch << "\n";
 	buffer << "====================\n";
@@ -103,6 +151,7 @@ int MinimumDeviationFlow::add_node(const String &name) {
 	node_names[node_index] = name;
 	return node_index;
 }
+
 void MinimumDeviationFlow::add_edge_abs(int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
 	using Abs = Satsuma::CostFunction::AbsDeviation;
 	Satsuma::BiMDF::Edge edge = bimdf.add_edge({ .u = nodes[p_u],

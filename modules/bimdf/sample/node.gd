@@ -4,44 +4,34 @@ func _ready() -> void:
 	solve()
 	
 func solve():
-	# Suppose that a taxi firm has one taxi (the agent) available, and one customer (the task) wishing to be picked up as soon as possible. The firm prides itself on speedy pickups, so for the taxi the "cost" of picking up the customer will depend on the time taken for the taxi to reach the pickup point. This is a balanced assignment problem. Its solution is whichever combination of taxi and customer results in the least total cost.
-	
-	var taxis = ["Taxi1"]
-	var customers = ["Customer1"]
-	var travel_times = [
-		[10]  # Taxi1
-	]
+	var start_nodes = [0, 0, 1, 1, 2, 2]
+	var end_nodes = [1, 2, 3, 4, 3, 4]
+	var capacities = [1, 1, 1, 1, 1, 1]
+	var costs = [0, 0, 10, 0, 30, 0]
 
-	var taxi_nodes = []
-	var customer_nodes = []
+	var source = 0
+	var sink = 5
+	var tasks = 2
+	var supplies = [tasks, 0, 0, 0, 0, -tasks]
+	var job_names = ["Engineer", "Designer"]
+	var student_names = ["Alice", "Bob"]
 
 	var mdf = MinimumDeviationFlow.new()
 
-	for taxi in taxis:
-		taxi_nodes.append(mdf.add_node(taxi))
+	mdf.add_node("Source")
 
-	for customer in customers:
-		customer_nodes.append(mdf.add_node(customer))
+	for i in range(len(job_names)):
+		mdf.add_node(job_names[i])
 
-	var source = mdf.add_node("source")
-	var sink = mdf.add_node("sink")
+	for i in range(len(student_names)):
+		mdf.add_node(student_names[i])
 
-	var cost = 0
-	var capacity = 1
-	var lower_bound = 0
-	var upper_bound = 1
-	var u_tail = false
-	var v_tail = false
+	mdf.add_node("Sink")
 
-	for taxi_node in taxi_nodes:
-		mdf.add_edge_abs(source, taxi_node, cost, capacity, lower_bound, upper_bound, u_tail, v_tail)
+	for i in range(len(start_nodes)):
+		mdf.add_edge_abs(start_nodes[i], end_nodes[i], costs[i], 1.0, 0, capacities[i], true, false)
 
-	for customer_node in customer_nodes:
-		mdf.add_edge_abs(customer_node, sink, cost, capacity, lower_bound, upper_bound, u_tail, v_tail)
-
-	cost = travel_times[0][0] if travel_times[0][0] != 0 else 0
-	u_tail = true
-	v_tail = true
-	mdf.add_edge_abs(taxi_nodes[0], customer_nodes[0], cost, capacity, lower_bound, upper_bound, u_tail, v_tail)
+	mdf.add_edge_abs(3, sink, 0, 1.0, 0, 1, true, false)
+	mdf.add_edge_abs(4, sink, 0, 1.0, 0, 1, true, false)
 
 	mdf.solve()
