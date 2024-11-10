@@ -35,12 +35,14 @@
 #include <libsatsuma/Problems/BiMDF.hh>
 
 void MinimumDeviationFlow::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("add_node", "name"), &MinimumDeviationFlow::add_node);
+	ClassDB::bind_method(D_METHOD("add_node", "name", "supply"), &MinimumDeviationFlow::add_node);
 	ClassDB::bind_method(D_METHOD("add_edge_abs", "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_abs);
 	ClassDB::bind_method(D_METHOD("add_edge_quad",  "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_quad);
 	ClassDB::bind_method(D_METHOD("add_edge_zero", "u", "v", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_zero);
 	ClassDB::bind_method(D_METHOD("solve"), &MinimumDeviationFlow::solve);
 	ClassDB::bind_method(D_METHOD("clear"), &MinimumDeviationFlow::clear);
+	ClassDB::bind_method(D_METHOD("get_node_index", "name"), &MinimumDeviationFlow::get_node_index);
+	
 }
 
 void MinimumDeviationFlow::solve() {
@@ -69,7 +71,7 @@ void MinimumDeviationFlow::print_graph() const {
 		const String &edge_key = entry.key;
 		int u = entry.value.first;
 		int v = entry.value.second;
-		int capacity = edge_uppers[edge_key];
+		int capacity = MAX(edge_lowers[edge_key], edge_uppers[edge_key]);
 		double target = edge_targets[edge_key];
 		double weight = edge_weights[edge_key];
 		bool u_head = edge_u_heads[edge_key];
@@ -122,7 +124,7 @@ std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult
 		int u = entry.value.first;
 		int v = entry.value.second;
 		double flow = (*p_result.solution)[edges[edge_key.utf8().get_data()]];
-		int capacity = edge_uppers[edge_key];
+		int capacity = MAX(edge_lowers[edge_key], edge_uppers[edge_key]);
 		double target = edge_targets[edge_key];
 		double weight = edge_weights[edge_key];
 		bool u_head = edge_u_heads[edge_key];
@@ -146,8 +148,8 @@ std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult
 	return buffer.str();
 }
 
-int MinimumDeviationFlow::add_node(const String &name) {
-	nodes.push_back(bimdf.add_node());
+int MinimumDeviationFlow::add_node(const String &name, int supply) {
+	nodes.push_back(bimdf.add_node(supply));
 	int node_index = nodes.size() - 1;
 	node_names[node_index] = name;
 	return node_index;
@@ -208,6 +210,15 @@ void MinimumDeviationFlow::add_edge_zero(int p_u, int p_v, bool p_u_head, bool p
 			.u_head = p_u_head,
 			.v_head = p_v_head,
 			.cost_function = Zero{}, });
+}
+
+int MinimumDeviationFlow::get_node_index(const String &name) const {
+	for (const auto &entry : node_names) {
+		if (entry.value == name) {
+			return entry.key;
+		}
+	}
+	return -1; // Node not found
 }
 
 const std::map<std::string, Satsuma::BiMDF::Edge> &MinimumDeviationFlow::get_edges() const {

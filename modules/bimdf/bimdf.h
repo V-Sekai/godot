@@ -79,7 +79,8 @@ protected:
 
 public:
 	void clear();
-	int add_node(const String &name);
+	int add_node(const String &name, int supply);
+	int get_node_index(const String &name) const;
 	void add_edge_abs(int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head);
 	void add_edge_quad(int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head);
 	void add_edge_zero(int p_u, int p_v, bool p_u_head, bool p_v_head);
