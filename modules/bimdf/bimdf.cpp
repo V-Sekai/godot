@@ -90,7 +90,7 @@ std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult
 		int v = entry.value.second;
 		double flow = (*p_result.solution)[edges[edge_key.utf8().get_data()]];
 		int capacity = edge_uppers[edge_key];
-		buffer << "    " << node_names[u].utf8().get_data() << " -->|" << edge_key.utf8().get_data() << " (" << flow << "/" << capacity << ")| " << node_names[v].utf8().get_data() << "\n";
+		buffer << "    " << node_names[u].utf8().get_data() << " -->|" << edge_key.utf8().get_data() << " " << flow << "/" << capacity << "| " << node_names[v].utf8().get_data() << "\n";
 	}
 	buffer << p_result.stopwatch << "\n";
 	buffer << "====================\n";
