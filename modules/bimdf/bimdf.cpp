@@ -29,80 +29,28 @@
 /**************************************************************************/
 
 #include "bimdf.h"
-#include "core/error/error_macros.h"
 
-#include <cstdint>
 #include <libTimekeeper/StopWatchPrinting.hh>
 #include <libsatsuma/Extra/Highlevel.hh>
 #include <libsatsuma/Problems/BiMDF.hh>
 
 void MinimumDeviationFlow::_bind_methods() {
-	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_node", "state"), &MinimumDeviationFlow::add_node);
-	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_edge_abs", "state", "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_abs);
-	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_edge_quad", "state", "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_quad);
-	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("add_edge_zero", "state", "u", "v", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_zero);
-	ClassDB::bind_static_method("MinimumDeviationFlow", D_METHOD("solve", "state"), &MinimumDeviationFlow::solve);
+	ClassDB::bind_method(D_METHOD("add_node", "name"), &MinimumDeviationFlow::add_node);
+	ClassDB::bind_method(D_METHOD("add_edge_abs", "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_abs);
+	ClassDB::bind_method(D_METHOD("add_edge_quad",  "u", "v", "target", "weight", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_quad);
+	ClassDB::bind_method(D_METHOD("add_edge_zero", "u", "v", "lower", "upper", "u_head", "v_head"), &MinimumDeviationFlow::add_edge_zero);
+	ClassDB::bind_method(D_METHOD("solve"), &MinimumDeviationFlow::solve);
+	ClassDB::bind_method(D_METHOD("clear"), &MinimumDeviationFlow::clear);
 }
 
-int MinimumDeviationFlow::add_node(Ref<MinimumDeviationFlowState> p_state) {
-	ERR_FAIL_COND_V_MSG(p_state.is_null(), -1, "State is null. Cannot add node.");
-	p_state->nodes.push_back(p_state->bimdf.add_node());
-	return p_state->nodes.size() - 1;
-}
-void MinimumDeviationFlow::add_edge_abs(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
-	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with absolute deviation.");
-	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
-	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
-	using Abs = Satsuma::CostFunction::AbsDeviation;
-	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
-			.v = p_state->nodes[p_v],
-			.u_head = p_u_head,
-			.v_head = p_v_head,
-			.cost_function = Abs{ .target = p_target, .weight = p_weight },
-			.lower = static_cast<int>(p_lower),
-			.upper = static_cast<int>(p_upper) });
-	p_state->edges[std::to_string(p_u) + "_" + std::to_string(p_v)] = edge;
-}
-
-void MinimumDeviationFlow::add_edge_quad(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
-	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with quadratic deviation.");
-	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
-	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
-	using Quad = Satsuma::CostFunction::QuadDeviation;
-	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
-			.v = p_state->nodes[p_v],
-			.u_head = p_u_head,
-			.v_head = p_v_head,
-			.cost_function = Quad{ .target = p_target, .weight = p_weight },
-			.lower = static_cast<int>(p_lower),
-			.upper = static_cast<int>(p_upper) });
-	p_state->edges[std::to_string(p_u) + "_" + std::to_string(p_v)] = edge;
-}
-
-void MinimumDeviationFlow::add_edge_zero(Ref<MinimumDeviationFlowState> p_state, int p_u, int p_v, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
-	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot add edge with zero deviation.");
-	ERR_FAIL_COND_MSG(p_lower < 0, "Invalid bounds: Lower bound cannot be negative.");
-	ERR_FAIL_COND_MSG(p_lower >= p_upper, "Invalid bounds: Lower bound cannot be greater than or equal to upper bound.");
-	using Zero = Satsuma::CostFunction::Zero;
-	Satsuma::BiMDF::Edge edge = p_state->bimdf.add_edge({ .u = p_state->nodes[p_u],
-			.v = p_state->nodes[p_v],
-			.u_head = p_u_head,
-			.v_head = p_v_head,
-			.cost_function = Zero{},
-			.lower = static_cast<int>(p_lower),
-			.upper = static_cast<int>(p_upper) });
-	p_state->edges[std::to_string(p_u) + "_" + std::to_string(p_v)] = edge;
-}
-
-void MinimumDeviationFlow::solve(Ref<MinimumDeviationFlowState> p_state) {
-	ERR_FAIL_COND_MSG(p_state.is_null(), "State is null. Cannot solve BIMDF.");
+void MinimumDeviationFlow::solve() {
 	Satsuma::BiMDFSolverConfig config = Satsuma::BiMDFSolverConfig{
 		.double_cover = Satsuma::BiMDFDoubleCoverConfig(),
 		.matching_solver = Satsuma::MatchingSolver::Lemon,
 	};
 	try {
-		Satsuma::BiMDFFullResult result = Satsuma::solve_bimdf(p_state->bimdf, config);
-		print_solution(result, p_state->edges);
+		Satsuma::BiMDFFullResult result = Satsuma::solve_bimdf(bimdf, config);
+		print_solution(result, edges);
 	} catch (const std::exception &e) {
 		print_line(e.what());
 	}
@@ -115,15 +63,143 @@ void MinimumDeviationFlow::print_solution(const Satsuma::BiMDFFullResult &p_resu
 
 std::string MinimumDeviationFlow::format_solution(const Satsuma::BiMDFFullResult &p_result, const std::map<std::string, Satsuma::BiMDF::Edge> &p_edges) {
 	std::ostringstream buffer;
-	buffer << "Total cost: " << p_result.cost << "\n";
-	for (const std::pair<const std::string, Satsuma::BiMDF::Edge> &entry : p_edges) {
+	buffer << "====================\n";
+	buffer << "Solution Summary\n";
+	buffer << "====================\n";
+	buffer << "Total cost: " << p_result.cost << "\n\n";
+	buffer << "Edge Flows:\n";
+	buffer << "--------------------\n";
+	for (const auto &entry : p_edges) {
 		const std::string &name = entry.first;
-		const Satsuma::BiMDF::Edge &edge = entry.second;
-		buffer << "Flow on " << name << ": " << (*p_result.solution)[edge] << "\n";
+		String godot_name = String(name.c_str());
+		buffer << "Edge " << name << ":\n";
+		buffer << "  Flow: " << (*p_result.solution)[entry.second] << "\n";
+		buffer << "  Lower bound: " << edge_lowers[godot_name] << "\n";
+		buffer << "  Upper bound: " << edge_uppers[godot_name] << "\n";
+		buffer << "  Weight: " << edge_weights[godot_name] << "\n";
+		buffer << "  Parent node: " << node_names[edge_nodes[godot_name].first].utf8().get_data() << "\n";
+		buffer << "  Next node: " << node_names[edge_nodes[godot_name].second].utf8().get_data() << "\n";
+		buffer << "--------------------\n";
 	}
-	buffer << p_result.stopwatch << std::endl;
+	buffer << "\nStopwatch:\n";
+	buffer << "--------------------\n";
+	buffer << "graph TD\n";
+	for (const auto &entry : edge_nodes) {
+		const String &edge_key = entry.key;
+		int u = entry.value.first;
+		int v = entry.value.second;
+		double flow = (*p_result.solution)[edges[edge_key.utf8().get_data()]];
+		buffer << "    " << node_names[u].utf8().get_data() << " -->|" << edge_key.utf8().get_data() << " (" << flow << ")| " << node_names[v].utf8().get_data() << "\n";
+	}
+	buffer << p_result.stopwatch << "\n";
+	buffer << "====================\n";
 	return buffer.str();
 }
 
-MinimumDeviationFlow::MinimumDeviationFlow() {
+int MinimumDeviationFlow::add_node(const String &name) {
+	nodes.push_back(bimdf.add_node());
+	int node_index = nodes.size() - 1;
+	node_names[node_index] = name;
+	return node_index;
+}
+void MinimumDeviationFlow::add_edge_abs(int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
+	using Abs = Satsuma::CostFunction::AbsDeviation;
+	Satsuma::BiMDF::Edge edge = bimdf.add_edge({ .u = nodes[p_u],
+			.v = nodes[p_v],
+			.u_head = p_u_head,
+			.v_head = p_v_head,
+			.cost_function = Abs{ .target = p_target, .weight = p_weight },
+			.lower = static_cast<int>(p_lower),
+			.upper = static_cast<int>(p_upper) });
+	String edge_key = node_names[p_u] + "_" + node_names[p_v];
+	edges[edge_key.utf8().get_data()] = edge;
+	edge_nodes[edge_key] = { p_u, p_v };
+	edge_targets[edge_key] = p_target;
+	edge_weights[edge_key] = p_weight;
+	edge_lowers[edge_key] = p_lower;
+	edge_uppers[edge_key] = p_upper;
+	edge_u_heads[edge_key] = p_u_head;
+	edge_v_heads[edge_key] = p_v_head;
+}
+
+void MinimumDeviationFlow::add_edge_quad(int p_u, int p_v, double p_target, double p_weight, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
+	using Quad = Satsuma::CostFunction::QuadDeviation;
+	Satsuma::BiMDF::Edge edge = bimdf.add_edge({ .u = nodes[p_u],
+			.v = nodes[p_v],
+			.u_head = p_u_head,
+			.v_head = p_v_head,
+			.cost_function = Quad{ .target = p_target, .weight = p_weight },
+			.lower = static_cast<int>(p_lower),
+			.upper = static_cast<int>(p_upper) });
+	String edge_key = node_names[p_u] + "_" + node_names[p_v];
+	edges[edge_key.utf8().get_data()] = edge;
+	edge_nodes[edge_key] = { p_u, p_v };
+	edge_targets[edge_key] = p_target;
+	edge_weights[edge_key] = p_weight;
+	edge_lowers[edge_key] = p_lower;
+	edge_uppers[edge_key] = p_upper;
+	edge_u_heads[edge_key] = p_u_head;
+	edge_v_heads[edge_key] = p_v_head;
+}
+
+void MinimumDeviationFlow::add_edge_zero(int p_u, int p_v, int p_lower, int p_upper, bool p_u_head, bool p_v_head) {
+	using Zero = Satsuma::CostFunction::Zero;
+	Satsuma::BiMDF::Edge edge = bimdf.add_edge({ .u = nodes[p_u],
+			.v = nodes[p_v],
+			.u_head = p_u_head,
+			.v_head = p_v_head,
+			.cost_function = Zero{},
+			.lower = static_cast<int>(p_lower),
+			.upper = static_cast<int>(p_upper) });
+	String edge_key = node_names[p_u] + "_" + node_names[p_v];
+	edges[edge_key.utf8().get_data()] = edge;
+	edge_nodes[edge_key] = { p_u, p_v };
+	edge_lowers[edge_key] = p_lower;
+	edge_uppers[edge_key] = p_upper;
+	edge_u_heads[edge_key] = p_u_head;
+	edge_v_heads[edge_key] = p_v_head;
+}
+
+const std::map<std::string, Satsuma::BiMDF::Edge> &MinimumDeviationFlow::get_edges() const {
+	return edges;
+}
+const std::vector<Satsuma::BiMDF::Node> &MinimumDeviationFlow::get_nodes() const {
+	return nodes;
+}
+const  HashMap<int, String> &MinimumDeviationFlow::get_node_names() const {
+	return node_names;
+}
+const  HashMap<String, Pair<int, int>> &MinimumDeviationFlow::get_edge_nodes() const {
+	return edge_nodes;
+}
+const  HashMap<String, double> &MinimumDeviationFlow::get_edge_targets() const {
+	return edge_targets;
+}
+const  HashMap<String, double> &MinimumDeviationFlow::get_edge_weights() const {
+	return edge_weights;
+}
+const  HashMap<String, int> &MinimumDeviationFlow::get_edge_lowers() const {
+	return edge_lowers;
+}
+const  HashMap<String, int> &MinimumDeviationFlow::get_edge_uppers() const {
+	return edge_uppers;
+}
+const  HashMap<String, bool> &MinimumDeviationFlow::get_edge_u_heads() const {
+	return edge_u_heads;
+}
+const  HashMap<String, bool> &MinimumDeviationFlow::get_edge_v_heads() const {
+	return edge_v_heads;
+}
+
+void MinimumDeviationFlow::clear() {
+	node_names.clear();
+	edge_nodes.clear();
+	edge_targets.clear();
+	edge_weights.clear();
+	edge_lowers.clear();
+	edge_uppers.clear();
+	edge_u_heads.clear();
+	edge_v_heads.clear();
+	edges.clear();
+	nodes.clear();
 }
