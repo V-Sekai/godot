@@ -32,6 +32,10 @@
 
 #include "mm_query.h"
 
+#ifdef TOOLS_ENABLED
+#include "editor/plugins/animation_tree_editor_plugin.h"
+#endif
+
 #include "scene/resources/animation_library.h"
 
 // Only play the matched animation if the matched time position
@@ -161,10 +165,15 @@ String MMAnimationNode::get_caption() const {
 }
 
 void MMAnimationNode::_validate_property(PropertyInfo& p_property) const {
+#ifdef TOOLS_ENABLED
     if (p_property.name != "library") {
         return;
     }
-    AnimationTree* tree = get_animation_tree();
+
+    if (!AnimationTreeEditor::get_singleton()) {
+        return;
+    }
+    AnimationTree* tree = AnimationTreeEditor::get_singleton()->get_animation_tree();
     if (!tree) {
         return;
     }
@@ -186,6 +195,7 @@ void MMAnimationNode::_validate_property(PropertyInfo& p_property) const {
     }
     p_property.hint = PROPERTY_HINT_ENUM;
     p_property.hint_string = animations;
+#endif
 }
 
 void MMAnimationNode::_bind_methods() {
