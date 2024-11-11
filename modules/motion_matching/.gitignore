@@ -1,0 +1,32 @@
+.sconsign.dblite
+
+bin
+
+*.os
+
+*.obj
+
+*.dll
+*.exp
+*.lib
+*.ilk
+*.pdb
+*.so
+*.universal
+*.dylib
+*.wasm
+*.plist
+*.enabled
+*.tmp
+*.TMP
+
+.vscode
+.cache
+
+compile_commands.json
+
+# Ignored demos
+demo_*/
+
+# Python
+__pycache__
