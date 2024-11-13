@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NodeTimeInfoRC" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="delta" type="float" setter="set_delta" getter="get_delta" default="0.0">
+		</member>
+		<member name="is_infinity" type="bool" setter="set_is_infinity" getter="get_is_infinity" default="false">
+		</member>
+		<member name="length" type="float" setter="set_length" getter="get_length" default="0.0">
+		</member>
+		<member name="loop_mode" type="int" setter="set_loop_mode" getter="get_loop_mode" enum="Animation.LoopMode" default="0">
+		</member>
+		<member name="position" type="float" setter="set_position" getter="get_position" default="0.0">
+		</member>
+		<member name="will_end" type="bool" setter="set_will_end" getter="get_will_end" default="false">
+		</member>
+	</members>
+</class>
