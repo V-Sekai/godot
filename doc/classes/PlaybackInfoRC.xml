@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlaybackInfoRC" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="delta" type="float" setter="set_delta" getter="get_delta" default="0.0">
+		</member>
+		<member name="end" type="float" setter="set_end" getter="get_end" default="0.0">
+		</member>
+		<member name="is_external_seeking" type="bool" setter="set_is_external_seeking" getter="get_is_external_seeking" default="false">
+		</member>
+		<member name="looped_flag" type="int" setter="set_looped_flag" getter="get_looped_flag" enum="Animation.LoopedFlag" default="0">
+		</member>
+		<member name="seeked" type="bool" setter="set_seeked" getter="get_seeked" default="false">
+		</member>
+		<member name="start" type="float" setter="set_start" getter="get_start" default="0.0">
+		</member>
+		<member name="time" type="float" setter="set_time" getter="get_time" default="0.0">
+		</member>
+		<member name="weight" type="float" setter="set_weight" getter="get_weight" default="0.0">
+		</member>
+	</members>
+</class>

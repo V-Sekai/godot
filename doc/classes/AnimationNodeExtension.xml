@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="AnimationNodeExtension" inherits="AnimationRootNode" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_process" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="playback_info" type="PlaybackInfoRC" />
+			<param index="1" name="node_time_info" type="NodeTimeInfoRC" />
+			<param index="2" name="test_only" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="get_process_tree" qualifiers="const">
+			<return type="AnimationTree" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
