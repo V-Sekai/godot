@@ -40,7 +40,6 @@
 #include "math/ik_node_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/3d/skeleton_modifier_3d.h"
-#include "scene/main/scene_tree.h"
 
 class ManyBoneIK3DState;
 class ManyBoneIK3D : public SkeletonModifier3D {
