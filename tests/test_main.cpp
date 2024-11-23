@@ -176,6 +176,7 @@
 #include "tests/scene/test_path_3d.h"
 #include "tests/scene/test_path_follow_3d.h"
 #include "tests/scene/test_primitives.h"
+#include "tests/scene/test_resource_loader.h"
 #include "tests/scene/test_skeleton_3d.h"
 #include "tests/scene/test_sky.h"
 #endif // _3D_DISABLED
