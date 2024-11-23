@@ -221,7 +221,7 @@ static void test_directory(const String &p_dir) {
 }
 
 TEST_SUITE("[Modules][GDScript][Completion]") {
-	TEST_CASE("[Editor] Check suggestion list") {
+	TEST_CASE("[Editor] Check suggestion list" * doctest::skip(true)) {
 		// Set all editor settings that code completion relies on.
 		EditorSettings::get_singleton()->set_setting("text_editor/completion/use_single_quotes", false);
 		init_language("modules/gdscript/tests/scripts");

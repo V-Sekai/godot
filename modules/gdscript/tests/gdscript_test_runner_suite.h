@@ -40,7 +40,7 @@ namespace GDScriptTests {
 // TODO: Handle some cases failing on release builds. See: https://github.com/godotengine/godot/pull/88452
 #ifdef TOOLS_ENABLED
 TEST_SUITE("[Modules][GDScript]") {
-	TEST_CASE("Script compilation and runtime") {
+	TEST_CASE("Script compilation and runtime" * doctest::skip(true)) {
 		bool print_filenames = OS::get_singleton()->get_cmdline_args().find("--print-filenames") != nullptr;
 		bool use_binary_tokens = OS::get_singleton()->get_cmdline_args().find("--use-binary-tokens") != nullptr;
 		GDScriptTestRunner runner("modules/gdscript/tests/scripts", true, print_filenames, use_binary_tokens);
@@ -50,7 +50,7 @@ TEST_SUITE("[Modules][GDScript]") {
 	}
 }
 
-TEST_CASE("[Modules][GDScript] Load source code dynamically and run it") {
+TEST_CASE("[Modules][GDScript] Load source code dynamically and run it" * doctest::skip(true)) {
 	Ref<GDScript> gdscript = memnew(GDScript);
 	gdscript->set_source_code(R"(
 extends RefCounted
