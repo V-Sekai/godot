@@ -34,6 +34,7 @@
 #include "core/io/dir_access.h"
 #include "core/io/missing_resource.h"
 #include "core/object/script_language.h"
+#include "core/variant/dictionary.h"
 
 void ResourceLoaderText::_printerr() {
 	ERR_PRINT(vformat("%s:%d - Parse Error: %s.", res_path, lines, error_text));
@@ -140,6 +141,7 @@ Error ResourceLoaderText::_parse_ext_resource(VariantParser::Stream *p_stream, R
 
 		String path = ext_resources[id].path;
 		String type = ext_resources[id].type;
+
 		Ref<ResourceLoader::LoadToken> &load_token = ext_resources[id].load_token;
 
 		if (load_token.is_valid()) { // If not valid, it's OK since then we know this load accepts broken dependencies.
@@ -398,7 +400,6 @@ Ref<PackedScene> ResourceLoaderText::_parse_node_tag(VariantParser::ResourcePars
 		}
 	}
 }
-
 Error ResourceLoaderText::load() {
 	if (error != OK) {
 		return error;
@@ -461,9 +462,24 @@ Error ResourceLoaderText::load() {
 			path = remaps[path];
 		}
 
-		ext_resources[id].path = path;
-		ext_resources[id].type = type;
-		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external);
+		// Added whitelist check.
+		if (!using_whitelist || external_path_whitelist.has(path)) {
+			ext_resources[id].load_token = ResourceLoader::_load_start(
+					path,
+					type,
+					use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT,
+					cache_mode_for_external,
+					false,
+					using_whitelist,
+					external_path_whitelist,
+					type_whitelist);
+		} else {
+			error = ERR_FILE_CANT_OPEN;
+			error_text = "External resource path is not in the whitelist: " + path;
+			_printerr();
+			return error;
+		}
+
 		if (ext_resources[id].load_token.is_null()) {
 			if (ResourceLoader::get_abort_on_missing_resources()) {
 				error = ERR_FILE_CORRUPT;
@@ -513,8 +529,6 @@ Error ResourceLoaderText::load() {
 
 		String path = local_path + "::" + id;
 
-		//bool exists=ResourceCache::has(path);
-
 		Ref<Resource> res;
 		bool do_assign = false;
 
@@ -530,40 +544,50 @@ Error ResourceLoaderText::load() {
 
 		MissingResource *missing_resource = nullptr;
 
-		if (res.is_null()) { //not reuse
-			Ref<Resource> cache = ResourceCache::get_ref(path);
-			if (cache_mode != ResourceFormatLoader::CACHE_MODE_IGNORE && cache.is_valid()) { //only if it doesn't exist
-				//cached, do not assign
-				res = cache;
-			} else {
-				//create
+		if (!using_whitelist || external_path_whitelist.has(path)) {
+			if (res.is_null()) { //not reuse
+				Ref<Resource> cache = ResourceCache::get_ref(path);
+				if (cache_mode != ResourceFormatLoader::CACHE_MODE_IGNORE && cache.is_valid()) { //only if it doesn't exist
+					//cached, do not assign
+					res = cache;
+				} else {
+					//create
 
-				Object *obj = ClassDB::instantiate(type);
-				if (!obj) {
-					if (ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
-						missing_resource = memnew(MissingResource);
-						missing_resource->set_original_class(type);
-						missing_resource->set_recording_properties(true);
-						obj = missing_resource;
-					} else {
-						error_text = vformat("Can't create sub resource of type '%s'", type);
+					Object *obj = nullptr;
+					if (!using_whitelist || type_whitelist.has(type)) {
+						obj = ClassDB::instantiate(type);
+					}
+					if (!obj) {
+						if (ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
+							missing_resource = memnew(MissingResource);
+							missing_resource->set_original_class(type);
+							missing_resource->set_recording_properties(true);
+							obj = missing_resource;
+						} else {
+							error_text = vformat("Can't create sub resource of type '%s'", type);
+							_printerr();
+							error = ERR_FILE_CORRUPT;
+							return error;
+						}
+					}
+
+					Resource *r = Object::cast_to<Resource>(obj);
+					if (!r) {
+						error_text = vformat("Can't create sub resource of type '%s' as it's not a resource type", type);
 						_printerr();
 						error = ERR_FILE_CORRUPT;
 						return error;
 					}
-				}
 
-				Resource *r = Object::cast_to<Resource>(obj);
-				if (!r) {
-					error_text = vformat("Can't create sub resource of type '%s' as it's not a resource type", type);
-					_printerr();
-					error = ERR_FILE_CORRUPT;
-					return error;
+					res = Ref<Resource>(r);
+					do_assign = true;
 				}
-
-				res = Ref<Resource>(r);
-				do_assign = true;
 			}
+		} else {
+			error = ERR_FILE_CANT_OPEN;
+			error_text = "Sub resource path is not in the whitelist: " + path;
+			_printerr();
+			return error;
 		}
 
 		resource_current++;
@@ -684,7 +708,10 @@ Error ResourceLoaderText::load() {
 			}
 
 			if (resource.is_null()) {
-				Object *obj = ClassDB::instantiate(res_type);
+				Object *obj = nullptr;
+				if (!using_whitelist || type_whitelist.has(res_type)) {
+					obj = ClassDB::instantiate(res_type);
+				}
 				if (!obj) {
 					if (ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
 						missing_resource = memnew(MissingResource);
@@ -1409,6 +1436,7 @@ Ref<Resource> ResourceFormatLoaderText::load(const String &p_path, const String 
 	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
 	loader.progress = r_progress;
 	loader.res_path = loader.local_path;
+	loader.using_whitelist = false;
 	loader.open(f);
 	err = loader.load();
 	if (r_error) {
@@ -1419,6 +1447,40 @@ Ref<Resource> ResourceFormatLoaderText::load(const String &p_path, const String 
 	} else {
 		return Ref<Resource>();
 	}
+}
+
+Ref<Resource> ResourceFormatLoaderText::load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+	if (r_error) {
+		*r_error = ERR_FILE_CANT_OPEN;
+	}
+
+	Error err;
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ, &err);
+
+	ERR_FAIL_COND_V_MSG(err != OK, Ref<Resource>(), "Cannot open file '" + p_path + "'.");
+
+	ResourceLoaderText loader;
+	loader.cache_mode = p_cache_mode;
+	loader.use_sub_threads = p_use_sub_threads;
+	loader.progress = r_progress;
+	String path = !p_original_path.is_empty() ? p_original_path : p_path;
+	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
+	loader.res_path = loader.local_path;
+	loader.using_whitelist = true;
+	loader.external_path_whitelist = p_external_path_whitelist;
+	loader.type_whitelist = p_type_whitelist;
+	loader.open(f);
+
+	err = loader.load();
+
+	if (r_error) {
+		*r_error = err;
+	}
+
+	if (err) {
+		return Ref<Resource>();
+	}
+	return loader.resource;
 }
 
 void ResourceFormatLoaderText::get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const {
