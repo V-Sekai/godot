@@ -113,6 +113,7 @@
 #include "tests/core/templates/test_vset.h"
 #include "tests/core/test_crypto.h"
 #include "tests/core/test_hashing_context.h"
+#include "tests/core/io/test_resource_loader_error_handling.h"
 #include "tests/core/test_time.h"
 #include "tests/core/threads/test_worker_thread_pool.h"
 #include "tests/core/variant/test_array.h"

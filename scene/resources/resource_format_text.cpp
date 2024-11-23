@@ -154,6 +154,9 @@ Error ResourceLoaderText::_parse_ext_resource(VariantParser::Stream *p_stream, R
 						err = error;
 					} else {
 						ResourceLoader::notify_dependency_error(local_path, path, type);
+						// Even if abort_on_missing_resources is false, we should still return an error
+						// to indicate the resource is invalid
+						err = ERR_FILE_MISSING_DEPENDENCIES;
 					}
 				}
 			} else {
@@ -423,6 +426,8 @@ Error ResourceLoaderText::load() {
 		return error;
 	}
 
+	bool has_missing_dependencies = false;
+
 	while (true) {
 		if (next_tag.name != "ext_resource") {
 			break;
@@ -484,6 +489,7 @@ Error ResourceLoaderText::load() {
 		ext_resources[id].type = type;
 		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external);
 		if (ext_resources[id].load_token.is_null()) {
+			has_missing_dependencies = true;
 			if (ResourceLoader::get_abort_on_missing_resources()) {
 				error = ERR_FILE_CORRUPT;
 				error_text = "[ext_resource] referenced non-existent resource at: " + path;
@@ -665,17 +671,22 @@ Error ResourceLoaderText::load() {
 					if (set_valid) {
 						res->set(assign, value);
 					}
-				}
-				//it's assignment
-			} else if (!next_tag.name.is_empty()) {
-				error = OK;
-				break;
-			} else {
-				error = ERR_FILE_CORRUPT;
-				error_text = "Premature end of file while parsing [sub_resource]";
-				_printerr();
+			}
+			//it's assignment
+		} else if (!next_tag.name.is_empty()) {
+			if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+				error = ERR_FILE_MISSING_DEPENDENCIES;
+				resource = Ref<Resource>(); // Clear resource before returning error
 				return error;
 			}
+			error = OK;
+			break;
+		} else {
+			error = ERR_FILE_CORRUPT;
+			error_text = "Premature end of file while parsing [sub_resource]";
+			_printerr();
+			return error;
+		}
 		}
 
 		if (missing_resource) {
@@ -751,6 +762,11 @@ Error ResourceLoaderText::load() {
 					return error;
 				}
 				// EOF, Done parsing.
+				if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+					error = ERR_FILE_MISSING_DEPENDENCIES;
+					resource = Ref<Resource>(); // Clear resource before returning error
+					return error;
+				}
 				error = OK;
 				if (cache_mode != ResourceFormatLoader::CACHE_MODE_IGNORE) {
 					if (!ResourceCache::has(res_path)) {
@@ -831,6 +847,12 @@ Error ResourceLoaderText::load() {
 			resource->set_meta(META_MISSING_RESOURCES, missing_resource_properties);
 		}
 
+		if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+			error = ERR_FILE_MISSING_DEPENDENCIES;
+			resource = Ref<Resource>(); // Clear resource before returning error
+			return error;
+		}
+
 		error = OK;
 
 		return error;
@@ -849,6 +871,12 @@ Error ResourceLoaderText::load() {
 		Ref<PackedScene> packed_scene = _parse_node_tag(rp);
 
 		if (packed_scene.is_null()) {
+			return error;
+		}
+
+		if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+			error = ERR_FILE_MISSING_DEPENDENCIES;
+			resource = Ref<Resource>(); // Clear resource before returning error
 			return error;
 		}
 
@@ -1441,6 +1469,7 @@ Ref<Resource> ResourceFormatLoaderText::load(const String &p_path, const String 
 		return Ref<Resource>();
 	}
 }
+
 
 void ResourceFormatLoaderText::get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const {
 	if (p_type.is_empty()) {

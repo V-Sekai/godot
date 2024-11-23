@@ -311,9 +311,16 @@ Ref<Resource> ResourceLoader::_load(const String &p_path, const String &p_origin
 			continue;
 		}
 		found = true;
-		res = loader[i]->load(p_path, original_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
-		if (res.is_valid()) {
+		res = loader[i]->load(p_path, !p_original_path.is_empty() ? p_original_path : p_path, r_error, p_use_sub_threads, r_progress, p_cache_mode);
+		// Only return the resource if it's valid AND there's no error
+		// Even if a resource is returned (e.g., from cache), if there's an error
+		// (like missing dependencies), we should not return it
+		if (res.is_valid() && (!r_error || *r_error == OK)) {
 			break;
+		}
+		// If there's an error, clear the resource and continue to next loader
+		if (r_error && *r_error != OK) {
+			res = Ref<Resource>();
 		}
 	}
 
@@ -321,9 +328,16 @@ Ref<Resource> ResourceLoader::_load(const String &p_path, const String &p_origin
 	res_ref_overrides.erase(load_nesting);
 	load_nesting--;
 
-	if (res.is_valid()) {
+	// Only return the resource if it's valid AND there's no error
+	// Even if a resource is returned (e.g., from cache), if there's an error
+	// (like missing dependencies), we should not return it
+	if (res.is_valid() && (!r_error || *r_error == OK)) {
 		return res;
 	} else {
+		if (res.is_valid()) {
+			// Resource is valid but there's an error, clear it
+			res = Ref<Resource>();
+		}
 		print_verbose(vformat("Failed loading resource: %s", p_path));
 	}
 
@@ -393,14 +407,27 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 	const String &remapped_path = _path_remap(load_task.local_path, &xl_remapped);
 
 	Error load_err = OK;
-	Ref<Resource> res = _load(remapped_path, remapped_path != load_task.local_path ? load_task.local_path : String(), load_task.type_hint, load_task.cache_mode, &load_err, load_task.use_sub_threads, &load_task.progress);
+	Ref<Resource> res = _load(remapped_path,
+			remapped_path != load_task.local_path ? load_task.local_path : String(),
+			load_task.type_hint,
+			load_task.cache_mode,
+			&load_err,
+			load_task.use_sub_threads,
+			&load_task.progress);
+
 	if (MessageQueue::get_singleton() != MessageQueue::get_main_singleton()) {
 		MessageQueue::get_singleton()->flush();
 	}
 
 	thread_load_mutex.lock();
 
-	load_task.resource = res;
+	// Only set the resource if there's no error
+	// If there's an error, the resource should be null to prevent invalid resource usage
+	if (load_err == OK) {
+		load_task.resource = res;
+	} else {
+		load_task.resource = Ref<Resource>(); // Clear resource on error
+	}
 
 	load_task.progress = 1.0; // It was fully loaded at this point, so force progress to 1.0.
 	load_task.error = load_err;
@@ -418,7 +445,9 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 	bool ignoring = load_task.cache_mode == ResourceFormatLoader::CACHE_MODE_IGNORE || load_task.cache_mode == ResourceFormatLoader::CACHE_MODE_IGNORE_DEEP;
 	bool replacing = load_task.cache_mode == ResourceFormatLoader::CACHE_MODE_REPLACE || load_task.cache_mode == ResourceFormatLoader::CACHE_MODE_REPLACE_DEEP;
 	bool unlock_pending = true;
-	if (load_task.resource.is_valid()) {
+	// Only process resource if there's no error
+	// If there's an error, the resource should be null and we shouldn't process it
+	if (load_task.resource.is_valid() && load_task.error == OK) {
 		// From now on, no critical section needed as no one will write to the task anymore.
 		// Moreover, the mutex being unlocked is a requirement if some of the calls below
 		// that set the resource up invoke code that in turn requests resource loading.
@@ -448,6 +477,7 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 			if (pending_unlock) {
 				ResourceCache::lock.unlock();
 			}
+
 		} else {
 			load_task.resource->set_path_cache(load_task.local_path);
 		}
@@ -469,17 +499,21 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 			_loaded_callback(load_task.resource, load_task.local_path);
 		}
 	} else if (!ignoring) {
-		Ref<Resource> existing = ResourceCache::get_ref(load_task.local_path);
-		if (existing.is_valid()) {
-			load_task.resource = existing;
-			load_task.status = THREAD_LOAD_LOADED;
-			load_task.progress = 1.0;
+		// If there's an error, don't try to get a cached resource
+		// This prevents returning invalid cached resources when there's an error
+		if (load_task.error == OK) {
+			Ref<Resource> existing = ResourceCache::get_ref(load_task.local_path);
+			if (existing.is_valid()) {
+				load_task.resource = existing;
+				load_task.status = THREAD_LOAD_LOADED;
+				load_task.progress = 1.0;
 
-			thread_load_mutex.unlock();
-			unlock_pending = false;
+				thread_load_mutex.unlock();
+				unlock_pending = false;
 
-			if (_loaded_callback) {
-				_loaded_callback(load_task.resource, load_task.local_path);
+				if (_loaded_callback) {
+					_loaded_callback(load_task.resource, load_task.local_path);
+				}
 			}
 		}
 	}
@@ -497,6 +531,23 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 			memdelete(own_mq_override);
 		}
 		DEV_ASSERT(load_paths_stack.is_empty());
+	}
+
+	// Final safety check: If there's an error, ensure resource is null
+	// This prevents cached resources from being returned when there's an error
+	// even if they were assigned earlier in the function
+	// Also remove the resource from cache if it was added there
+	if (load_task.error != OK) {
+		if (load_task.resource.is_valid()) {
+			// Remove from cache if it was added (set_path adds to cache)
+			MutexLock cache_lock(ResourceCache::lock);
+			if (ResourceCache::resources.has(load_task.local_path) &&
+					ResourceCache::resources[load_task.local_path] == load_task.resource.ptr()) {
+				ResourceCache::resources.erase(load_task.local_path);
+				load_task.resource->set_path_cache(String());
+			}
+		}
+		load_task.resource = Ref<Resource>();
 	}
 
 	curr_load_task = curr_load_task_backup;
@@ -543,6 +594,23 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		*r_error = OK;
 	}
 
+	// Check if the resource being loaded is already in cache
+	// Only return cached resource if cache mode allows it (CACHE_MODE_REUSE)
+	// For CACHE_MODE_REPLACE or CACHE_MODE_IGNORE, we need to reload/ignore cache
+	{
+		MutexLock thread_load_lock(thread_load_mutex);
+		if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE && ResourceCache::has(p_path)) {
+			Ref<Resource> cached_res = ResourceCache::get_ref(p_path);
+			if (cached_res.is_valid()) {
+				// Resource is in cache and cache mode allows reuse, return it directly
+				if (r_error) {
+					*r_error = OK;
+				}
+				return cached_res;
+			}
+		}
+	}
+
 	LoadThreadMode thread_mode = LOAD_THREAD_FROM_CURRENT;
 	if (WorkerThreadPool::get_singleton()->get_caller_task_id() != WorkerThreadPool::INVALID_TASK_ID) {
 		// If user is initiating a single-threaded load from a WorkerThreadPool task,
@@ -551,7 +619,7 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		// cyclic load detection and awaiting.
 		thread_mode = LOAD_THREAD_SPAWN_SINGLE;
 	}
-	Ref<LoadToken> load_token = _load_start(p_path, p_type_hint, thread_mode, p_cache_mode);
+	Ref<LoadToken> load_token = _load_start(p_path, p_type_hint, thread_mode, p_cache_mode, false);
 	if (load_token.is_null()) {
 		if (r_error) {
 			*r_error = FAILED;
@@ -871,6 +939,16 @@ Ref<Resource> ResourceLoader::_load_complete_inner(LoadToken &p_load_token, Erro
 		}
 
 		load_task_ptr = &load_task;
+	}
+
+	// If there was an error during loading, don't return the resource even if it's valid
+	// This prevents returning resources in invalid states (e.g., PackedScene with missing dependencies)
+	// Check error before temp_unlock() to avoid mutex state issues
+	if (load_task_ptr->error != OK) {
+		if (r_error) {
+			*r_error = load_task_ptr->error;
+		}
+		return Ref<Resource>();
 	}
 
 	p_thread_load_lock.temp_unlock();
@@ -1200,6 +1278,7 @@ bool ResourceLoader::should_create_uid_file(const String &p_path) {
 	}
 	return false;
 }
+
 
 String ResourceLoader::_path_remap(const String &p_path, bool *r_translation_remapped) {
 	String new_path = p_path;

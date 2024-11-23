@@ -431,7 +431,6 @@ Error ResourceLoaderBinary::parse_variant(Variant &r_v) {
 					}
 
 					Ref<Resource> res = ResourceLoader::load(path, exttype, cache_mode_for_external);
-
 					if (res.is_null()) {
 						WARN_PRINT(vformat("Couldn't load resource: %s.", path));
 					}
@@ -683,6 +682,8 @@ Error ResourceLoaderBinary::load() {
 		return error;
 	}
 
+	bool has_missing_dependencies = false;
+
 	for (int i = 0; i < external_resources.size(); i++) {
 		String path = external_resources[i].path;
 
@@ -697,11 +698,14 @@ Error ResourceLoaderBinary::load() {
 
 		external_resources.write[i].path = path; //remap happens here, not on load because on load it can actually be used for filesystem dock resource remap
 		external_resources.write[i].load_token = ResourceLoader::_load_start(path, external_resources[i].type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external);
+
 		if (external_resources[i].load_token.is_null()) {
+			has_missing_dependencies = true;
 			if (!ResourceLoader::get_abort_on_missing_resources()) {
 				ResourceLoader::notify_dependency_error(local_path, path, external_resources[i].type);
 			} else {
 				error = ERR_FILE_MISSING_DEPENDENCIES;
+				resource = Ref<Resource>(); // Clear resource before returning error
 				ERR_FAIL_V_MSG(error, vformat("Can't load dependency: '%s'.", path));
 			}
 		}
@@ -820,6 +824,7 @@ Error ResourceLoaderBinary::load() {
 
 			if (name == StringName()) {
 				error = ERR_FILE_CORRUPT;
+				resource = Ref<Resource>(); // Clear resource before returning error
 				ERR_FAIL_V(ERR_FILE_CORRUPT);
 			}
 
@@ -827,6 +832,7 @@ Error ResourceLoaderBinary::load() {
 
 			error = parse_variant(value);
 			if (error) {
+				resource = Ref<Resource>(); // Clear resource before returning error
 				return error;
 			}
 
@@ -889,14 +895,28 @@ Error ResourceLoaderBinary::load() {
 			*progress = (i + 1) / float(internal_resources.size());
 		}
 
-		resource_cache.push_back(res);
-
 		if (main) {
 			f.unref();
+			if (has_missing_dependencies) {
+				// Even if abort_on_missing_resources is false, we should not return OK
+				// when dependencies are missing, as the resource is invalid
+				// Clear both res and resource to ensure cached resources are not used
+				res = Ref<Resource>();
+				resource = Ref<Resource>();
+				error = ERR_FILE_MISSING_DEPENDENCIES;
+				return error;
+			}
 			resource = res;
 			resource->set_as_translation_remapped(translation_remapped);
 			error = OK;
 			return OK;
+		}
+
+		// Only push to resource_cache if dependencies are valid
+		// This prevents cached resources from being used when dependencies are missing
+		// Note: For main resources, we return early above, so this only applies to non-main resources
+		if (!has_missing_dependencies) {
+			resource_cache.push_back(res);
 		}
 	}
 
@@ -1254,6 +1274,7 @@ Ref<Resource> ResourceFormatLoaderBinary::load(const String &p_path, const Strin
 	}
 	return loader.resource;
 }
+
 
 void ResourceFormatLoaderBinary::get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const {
 	if (p_type.is_empty()) {

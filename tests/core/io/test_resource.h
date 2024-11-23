@@ -38,6 +38,7 @@
 #include "thirdparty/doctest/doctest.h"
 
 #include "tests/test_macros.h"
+#include "tests/test_utils.h"
 
 #include <functional>
 
@@ -627,4 +628,5 @@ TEST_CASE("[Resource] Breaking circular references on save") {
 	// Break circular reference to avoid memory leak
 	resource_c->remove_meta("next");
 }
+
 } // namespace TestResource
