@@ -32,7 +32,6 @@
 #include "core/templates/local_vector.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_node.h"
-#include "editor/many_bone_ik_shader.h"
 #include "editor/plugins/node_3d_editor_gizmos.h"
 #include "editor/plugins/node_3d_editor_plugin.h"
 #include "scene/3d/mesh_instance_3d.h"
@@ -43,6 +42,7 @@
 #include "../src/ik_kusudama_3d.h"
 #include "../src/many_bone_ik_3d.h"
 #include "many_bone_ik_3d_gizmo_plugin.h"
+#include "many_bone_ik_shader.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_node.h"

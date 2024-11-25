@@ -28,12 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MANY_BONE_IK_REGISTER_TYPES_H
-#define MANY_BONE_IK_REGISTER_TYPES_H
+#ifndef CONSTRAINT_IK_REGISTER_TYPES_H
+#define CONSTRAINT_IK_REGISTER_TYPES_H
 
 #include "modules/register_module_types.h"
 
 void initialize_constraint_ik_module(ModuleInitializationLevel p_level);
 void uninitialize_constraint_ik_module(ModuleInitializationLevel p_level);
 
-#endif // MANY_BONE_IK_REGISTER_TYPES_H
+#endif // CONSTRAINT_IK_REGISTER_TYPES_H
