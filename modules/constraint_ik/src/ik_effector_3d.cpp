@@ -33,27 +33,27 @@
 #include "core/typedefs.h"
 #include "ik_bone_3d.h"
 
-Ref<IKBone3D> IKEffector3D::get_ik_bone_3d() const {
+Ref<IKConstraintBone3D> IKConstraintEffector3D::get_ik_bone_3d() const {
 	return for_bone;
 }
 
-bool IKEffector3D::is_following_translation_only() const {
+bool IKConstraintEffector3D::is_following_translation_only() const {
 	return Math::is_zero_approx(direction_priorities.length_squared());
 }
 
-void IKEffector3D::set_direction_priorities(Vector3 p_direction_priorities) {
+void IKConstraintEffector3D::set_direction_priorities(Vector3 p_direction_priorities) {
 	direction_priorities = p_direction_priorities;
 }
 
-Vector3 IKEffector3D::get_direction_priorities() const {
+Vector3 IKConstraintEffector3D::get_direction_priorities() const {
 	return direction_priorities;
 }
 
-Transform3D IKEffector3D::get_target_global_transform() const {
+Transform3D IKConstraintEffector3D::get_target_global_transform() const {
 	return target_relative_to_skeleton_origin;
 }
 
-int32_t IKEffector3D::update_effector_target_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKBone3D> p_for_bone, const Vector<double> *p_weights) const {
+int32_t IKConstraintEffector3D::update_effector_target_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKConstraintBone3D> p_for_bone, const Vector<double> *p_weights) const {
 	ERR_FAIL_COND_V(p_index == -1, -1);
 	ERR_FAIL_NULL_V(p_headings, -1);
 	ERR_FAIL_COND_V(p_for_bone.is_null(), -1);
@@ -81,7 +81,7 @@ int32_t IKEffector3D::update_effector_target_headings(PackedVector3Array *p_head
 	return index;
 }
 
-int32_t IKEffector3D::update_effector_tip_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKBone3D> p_for_bone) const {
+int32_t IKConstraintEffector3D::update_effector_tip_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKConstraintBone3D> p_for_bone) const {
 	ERR_FAIL_COND_V(p_index == -1, -1);
 	ERR_FAIL_NULL_V(p_headings, -1);
 	ERR_FAIL_COND_V(p_for_bone.is_null(), -1);
@@ -114,32 +114,32 @@ int32_t IKEffector3D::update_effector_tip_headings(PackedVector3Array *p_heading
 	return index;
 }
 
-void IKEffector3D::_bind_methods() {
+void IKConstraintEffector3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_motion_propagation_factor", "amount"),
-			&IKEffector3D::set_motion_propagation_factor);
+			&IKConstraintEffector3D::set_motion_propagation_factor);
 	ClassDB::bind_method(D_METHOD("get_motion_propagation_factor"),
-			&IKEffector3D::get_motion_propagation_factor);
+			&IKConstraintEffector3D::get_motion_propagation_factor);
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "motion_propagation_factor"), "set_motion_propagation_factor", "get_motion_propagation_factor");
 }
 
-void IKEffector3D::set_weight(real_t p_weight) {
+void IKConstraintEffector3D::set_weight(real_t p_weight) {
 	weight = p_weight;
 }
 
-real_t IKEffector3D::get_weight() const {
+real_t IKConstraintEffector3D::get_weight() const {
 	return weight;
 }
 
-IKEffector3D::IKEffector3D(const Ref<IKBone3D> &p_current_bone) {
+IKConstraintEffector3D::IKConstraintEffector3D(const Ref<IKConstraintBone3D> &p_current_bone) {
 	ERR_FAIL_COND(p_current_bone.is_null());
 	for_bone = p_current_bone;
 }
 
-void IKEffector3D::set_motion_propagation_factor(float p_motion_propagation_factor) {
+void IKConstraintEffector3D::set_motion_propagation_factor(float p_motion_propagation_factor) {
 	motion_propagation_factor = CLAMP(p_motion_propagation_factor, 0.0, 1.0);
 }
 
-float IKEffector3D::get_motion_propagation_factor() const {
+float IKConstraintEffector3D::get_motion_propagation_factor() const {
 	return motion_propagation_factor;
 }

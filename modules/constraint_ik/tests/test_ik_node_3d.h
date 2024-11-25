@@ -31,13 +31,12 @@
 #ifndef TEST_IK_NODE_3D_H
 #define TEST_IK_NODE_3D_H
 
-#include "modules/many_bone_ik/src/math/ik_node_3d.h"
 #include "tests/test_macros.h"
 
-namespace TestIKNode3D {
+namespace TestIKConstraintNode3D {
 
-TEST_CASE("[Modules][IKNode3D] Transform operations") {
-	Ref<IKNode3D> node;
+TEST_CASE("[Modules][IKConstraintNode3D] Transform operations") {
+	Ref<IKConstraintNode3D> node;
 	node.instantiate();
 
 	// Test set_transform and get_transform
@@ -53,8 +52,8 @@ TEST_CASE("[Modules][IKNode3D] Transform operations") {
 	CHECK(node->get_global_transform() == gt);
 }
 
-TEST_CASE("[Modules][IKNode3D] Scale operations") {
-	Ref<IKNode3D> node;
+TEST_CASE("[Modules][IKConstraintNode3D] Scale operations") {
+	Ref<IKConstraintNode3D> node;
 	node.instantiate();
 
 	// Test set_disable_scale and is_scale_disabled
@@ -62,10 +61,10 @@ TEST_CASE("[Modules][IKNode3D] Scale operations") {
 	CHECK(node->is_scale_disabled());
 }
 
-TEST_CASE("[Modules][IKNode3D] Parent operations") {
-	Ref<IKNode3D> node;
+TEST_CASE("[Modules][IKConstraintNode3D] Parent operations") {
+	Ref<IKConstraintNode3D> node;
 	node.instantiate();
-	Ref<IKNode3D> parent;
+	Ref<IKConstraintNode3D> parent;
 	parent.instantiate();
 
 	// Test set_parent and get_parent
@@ -73,8 +72,8 @@ TEST_CASE("[Modules][IKNode3D] Parent operations") {
 	CHECK(node->get_parent() == parent);
 }
 
-TEST_CASE("[Modules][IKNode3D] Coordinate transformations") {
-	Ref<IKNode3D> node;
+TEST_CASE("[Modules][IKConstraintNode3D] Coordinate transformations") {
+	Ref<IKConstraintNode3D> node;
 	node.instantiate();
 
 	// Test to_local and to_global
@@ -83,15 +82,15 @@ TEST_CASE("[Modules][IKNode3D] Coordinate transformations") {
 	CHECK(node->to_global(local) == global);
 }
 
-TEST_CASE("[Modules][IKNode3D] Test local transform calculation") {
-	Ref<IKNode3D> node;
+TEST_CASE("[Modules][IKConstraintNode3D] Test local transform calculation") {
+	Ref<IKConstraintNode3D> node;
 	node.instantiate();
 
 	Transform3D node_transform;
 	node_transform.origin = Vector3(1.0, 2.0, 3.0); // Translation by (1, 2, 3)
 	node->set_global_transform(node_transform);
 
-	Ref<IKNode3D> parent_node;
+	Ref<IKConstraintNode3D> parent_node;
 	parent_node.instantiate();
 
 	Transform3D parent_transform;
@@ -104,6 +103,6 @@ TEST_CASE("[Modules][IKNode3D] Test local transform calculation") {
 
 	CHECK(node->get_transform() == expected_local_transform);
 }
-} // namespace TestIKNode3D
+} // namespace TestIKConstraintNode3D
 
 #endif // TEST_IK_NODE_3D_H

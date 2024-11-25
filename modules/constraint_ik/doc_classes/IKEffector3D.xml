@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="IKEffector3D" inherits="Resource" experimental="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="IKConstraintEffector3D" inherits="Resource" experimental="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 		A class representing a 3D effector in an Inverse Kinematics system.
 	</brief_description>
 	<description>
-		The IKEffector3D class represents an effector in a 3D Inverse Kinematics (IK) system. An effector is the end point of a chain of bones, and its position is used to calculate the rotations of all preceding bones in the IK chain. This class provides methods for getting and setting the target node of the effector.
+		The IKConstraintEffector3D class represents an effector in a 3D Inverse Kinematics (IK) system. An effector is the end point of a chain of bones, and its position is used to calculate the rotations of all preceding bones in the IK chain. This class provides methods for getting and setting the target node of the effector.
 	</description>
 	<tutorials>
 	</tutorials>

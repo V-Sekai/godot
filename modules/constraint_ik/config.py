@@ -9,13 +9,13 @@ def configure(env):
 def get_doc_classes():
     return [
         "ConstraintIK3D",
-        "IKBone3D",
-        "IKEffector3D",
+        "IKConstraintBone3D",
+        "IKConstraintEffector3D",
         "IKBoneSegment3D",
         "IKEffectorTemplate3D",
         "IKKusudama3D",
         "IKRay3D",
-        "IKNode3D",
+        "IKConstraintNode3D",
         "IKLimitCone3D",
     ]
 

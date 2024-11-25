@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="IKBone3D" inherits="Resource" experimental="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="IKConstraintBone3D" inherits="Resource" experimental="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 		A class representing a 3D bone in an Inverse Kinematics system.
 	</brief_description>
 	<description>
-		The IKBone3D class represents a 3D bone in an Inverse Kinematics (IK) system. It provides methods to get and set constraints, pins, and check if the bone is pinned.
+		The IKConstraintBone3D class represents a 3D bone in an Inverse Kinematics (IK) system. It provides methods to get and set constraints, pins, and check if the bone is pinned.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -16,21 +16,21 @@
 			</description>
 		</method>
 		<method name="get_constraint_orientation_transform">
-			<return type="IKNode3D" />
+			<return type="IKConstraintNode3D" />
 			<description>
-				Returns the IKNode3D object representing the orientation transform of the constraint.
+				Returns the IKConstraintNode3D object representing the orientation transform of the constraint.
 			</description>
 		</method>
 		<method name="get_constraint_twist_transform">
-			<return type="IKNode3D" />
+			<return type="IKConstraintNode3D" />
 			<description>
-				Returns the IKNode3D object representing the twist transform of the constraint.
+				Returns the IKConstraintNode3D object representing the twist transform of the constraint.
 			</description>
 		</method>
 		<method name="get_pin" qualifiers="const">
-			<return type="IKEffector3D" />
+			<return type="IKConstraintEffector3D" />
 			<description>
-				Returns the IKEffector3D object representing the pin of the bone.
+				Returns the IKConstraintEffector3D object representing the pin of the bone.
 			</description>
 		</method>
 		<method name="is_pinned" qualifiers="const">
@@ -41,9 +41,9 @@
 		</method>
 		<method name="set_pin">
 			<return type="void" />
-			<param index="0" name="pin" type="IKEffector3D" />
+			<param index="0" name="pin" type="IKConstraintEffector3D" />
 			<description>
-				Sets the IKEffector3D object representing the pin of the bone.
+				Sets the IKConstraintEffector3D object representing the pin of the bone.
 			</description>
 		</method>
 	</methods>

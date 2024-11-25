@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="IKNode3D" inherits="RefCounted" experimental="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="IKConstraintNode3D" inherits="RefCounted" experimental="" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 		A 3D node used for inverse kinematics calculations.
 	</brief_description>
 	<description>
-		The IKNode3D class provides a node that can be used in an inverse kinematics chain. It includes methods for getting and setting the global and local transforms of the node, as well as disabling scaling and converting between local and global coordinates.
+		The IKConstraintNode3D class provides a node that can be used in an inverse kinematics chain. It includes methods for getting and setting the global and local transforms of the node, as well as disabling scaling and converting between local and global coordinates.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -16,7 +16,7 @@
 			</description>
 		</method>
 		<method name="get_parent" qualifiers="const">
-			<return type="IKNode3D" />
+			<return type="IKConstraintNode3D" />
 			<description>
 				Returns the parent of this node.
 			</description>
@@ -57,7 +57,7 @@
 		</method>
 		<method name="set_parent">
 			<return type="void" />
-			<param index="0" name="p_parent" type="IKNode3D" />
+			<param index="0" name="p_parent" type="IKConstraintNode3D" />
 			<description>
 				Sets the parent of this node.
 			</description>

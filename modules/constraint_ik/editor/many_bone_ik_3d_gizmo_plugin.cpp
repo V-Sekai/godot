@@ -87,11 +87,11 @@ void ConstraintIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 
 		Color current_bone_color = (current_bone_idx == selected) ? selected_bone_color : bone_color;
 
-		for (const Ref<IKBoneSegment3D> &segmented_skeleton : many_bone_ik->get_segmented_skeletons()) {
+		for (const Ref<IKConstraintBoneSegment3D> &segmented_skeleton : many_bone_ik->get_segmented_skeletons()) {
 			if (segmented_skeleton.is_null()) {
 				continue;
 			}
-			Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(current_bone_idx);
+			Ref<IKConstraintBone3D> ik_bone = segmented_skeleton->get_ik_bone(current_bone_idx);
 			if (ik_bone.is_null() || ik_bone->get_constraint().is_null()) {
 				continue;
 			}
@@ -114,7 +114,7 @@ void ConstraintIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 	}
 }
 
-void ConstraintIK3DGizmoPlugin::create_gizmo_mesh(BoneId current_bone_idx, Ref<IKBone3D> ik_bone, EditorNode3DGizmo *p_gizmo, Color current_bone_color, Skeleton3D *many_bone_ik_skeleton, ConstraintIK3D *p_many_bone_ik) {
+void ConstraintIK3DGizmoPlugin::create_gizmo_mesh(BoneId current_bone_idx, Ref<IKConstraintBone3D> ik_bone, EditorNode3DGizmo *p_gizmo, Color current_bone_color, Skeleton3D *many_bone_ik_skeleton, ConstraintIK3D *p_many_bone_ik) {
 	Ref<IKKusudama3D> ik_kusudama = ik_bone->get_constraint();
 	if (ik_kusudama.is_null()) {
 		return;

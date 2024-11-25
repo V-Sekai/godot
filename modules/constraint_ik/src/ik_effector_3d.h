@@ -37,14 +37,14 @@
 #define MIN_SCALE 0.1
 
 class ConstraintIK3D;
-class IKBone3D;
+class IKConstraintBone3D;
 
-class IKEffector3D : public Resource {
-	GDCLASS(IKEffector3D, Resource);
-	friend class IKBone3D;
+class IKConstraintEffector3D : public Resource {
+	GDCLASS(IKConstraintEffector3D, Resource);
+	friend class IKConstraintBone3D;
 	friend class IKBoneSegment3D;
 
-	Ref<IKBone3D> for_bone;
+	Ref<IKConstraintBone3D> for_bone;
 	bool use_target_node_rotation = true;
 	NodePath target_node_path;
 	ObjectID target_node_cache;
@@ -66,7 +66,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	IKEffector3D() = default;
+	IKConstraintEffector3D() = default;
 	void set_weight(real_t p_weight);
 	real_t get_weight() const;
 	void set_direction_priorities(Vector3 p_direction_priorities);
@@ -75,11 +75,11 @@ public:
 	float get_motion_propagation_factor() const;
 	void set_motion_propagation_factor(float p_motion_propagation_factor);
 	Transform3D get_target_global_transform() const;
-	Ref<IKBone3D> get_ik_bone_3d() const;
+	Ref<IKConstraintBone3D> get_ik_bone_3d() const;
 	bool is_following_translation_only() const;
-	int32_t update_effector_target_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKBone3D> p_for_bone, const Vector<double> *p_weights) const;
-	int32_t update_effector_tip_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKBone3D> p_for_bone) const;
-	IKEffector3D(const Ref<IKBone3D> &p_current_bone);
+	int32_t update_effector_target_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKConstraintBone3D> p_for_bone, const Vector<double> *p_weights) const;
+	int32_t update_effector_tip_headings(PackedVector3Array *p_headings, int32_t p_index, Ref<IKConstraintBone3D> p_for_bone) const;
+	IKConstraintEffector3D(const Ref<IKConstraintBone3D> &p_current_bone);
 };
 
 #endif // IK_EFFECTOR_3D_H

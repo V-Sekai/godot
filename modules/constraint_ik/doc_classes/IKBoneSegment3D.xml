@@ -10,10 +10,10 @@
 	</tutorials>
 	<methods>
 		<method name="get_ik_bone" qualifiers="const">
-			<return type="IKBone3D" />
+			<return type="IKConstraintBone3D" />
 			<param index="0" name="bone" type="int" />
 			<description>
-				Returns the IKBone3D object associated with the given bone index.
+				Returns the IKConstraintBone3D object associated with the given bone index.
 			</description>
 		</method>
 		<method name="is_pinned" qualifiers="const">
