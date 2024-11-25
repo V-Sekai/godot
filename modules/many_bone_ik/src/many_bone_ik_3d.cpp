@@ -232,9 +232,8 @@ bool ManyBoneIK3D::_set(const StringName &p_name, const Variant &p_value) {
 }
 
 void ManyBoneIK3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_constraint_name_at_index", "index", "name"), &ManyBoneIK3D::set_constraint_name_at_index);
 	ClassDB::bind_method(D_METHOD("set_total_effector_count", "count"), &ManyBoneIK3D::set_pin_count);
-	ClassDB::bind_method(D_METHOD("remove_constraint_at_index", "index"), &ManyBoneIK3D::remove_pin_at_index);
+	ClassDB::bind_method(D_METHOD("remove_pin_at_index", "index"), &ManyBoneIK3D::remove_pin_at_index);
 	ClassDB::bind_method(D_METHOD("set_dirty"), &ManyBoneIK3D::set_dirty);
 	ClassDB::bind_method(D_METHOD("set_pin_motion_propagation_factor", "index", "falloff"), &ManyBoneIK3D::set_pin_motion_propagation_factor);
 	ClassDB::bind_method(D_METHOD("get_pin_motion_propagation_factor", "index"), &ManyBoneIK3D::get_pin_motion_propagation_factor);
@@ -306,12 +305,6 @@ StringName ManyBoneIK3D::get_pin_bone_name(int32_t p_effector_index) const {
 	ERR_FAIL_INDEX_V(p_effector_index, pins.size(), "");
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
 	return effector_template->get_name();
-}
-
-void ManyBoneIK3D::set_constraint_name_at_index(int32_t p_index, String p_name) {
-	ERR_FAIL_INDEX(p_index, constraint_names.size());
-	constraint_names.write[p_index] = p_name;
-	set_dirty();
 }
 
 Vector<Ref<IKBoneSegment3D>> ManyBoneIK3D::get_segmented_skeletons() {
@@ -429,19 +422,6 @@ void ManyBoneIK3D::set_pin_direction_priorities(int32_t p_pin_index, const Vecto
 
 void ManyBoneIK3D::set_dirty() {
 	is_dirty = true;
-}
-
-void ManyBoneIK3D::remove_pin_at_index(int32_t p_index) {
-	ERR_FAIL_INDEX(p_index, constraint_count);
-
-	constraint_names.remove_at(p_index);
-	kusudama_open_cone_count.remove_at(p_index);
-	kusudama_open_cones.remove_at(p_index);
-	joint_twist.remove_at(p_index);
-
-	constraint_count--;
-
-	set_dirty();
 }
 
 void ManyBoneIK3D::_set_bone_count(int32_t p_count) {
