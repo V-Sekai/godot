@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_NODE_3D_H
-#define IK_NODE_3D_H
+#ifndef IK_CONSTRAINT_NODE_3D_H
+#define IK_CONSTRAINT_NODE_3D_H
 
 #include "core/object/ref_counted.h"
 #include "core/templates/list.h"

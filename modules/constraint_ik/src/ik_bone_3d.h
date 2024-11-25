@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_BONE_3D_H
-#define IK_BONE_3D_H
+#ifndef IK_CONSTRAINT_BONE_3D_H
+#define IK_CONSTRAINT_BONE_3D_H
 
 #include "ik_effector_template_3d.h"
 #include "ik_kusudama_3d.h"
@@ -119,4 +119,4 @@ public:
 	Vector3 calculate_weighted_direction(const TypedArray<IKLimitCone3D> &p_cones, float p_total_radius_sum) const;
 };
 
-#endif // IK_BONE_3D_H
+#endif // IK_CONSTRAINT_BONE_3D_H

@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_KUSUDAMA_3D_H
-#define IK_KUSUDAMA_3D_H
+#ifndef IK_CONSTRAINT_KUSUDAMA_3D_H
+#define IK_CONSTRAINT_KUSUDAMA_3D_H
 
 #include "ik_bone_3d.h"
 #include "ik_bone_segment_3d.h"
@@ -45,6 +45,7 @@
 
 class IKConstraintBone3D;
 class IKLimitCone3D;
+class IKConstraintNode3D;
 class IKKusudama3D : public Resource {
 	GDCLASS(IKKusudama3D, Resource);
 

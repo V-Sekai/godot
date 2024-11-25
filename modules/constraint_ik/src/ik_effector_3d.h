@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_EFFECTOR_3D_H
-#define IK_EFFECTOR_3D_H
+#ifndef IK_CONSTRAINT_EFFECTOR_3D_H
+#define IK_CONSTRAINT_EFFECTOR_3D_H
 
 #include "core/object/ref_counted.h"
 #include "scene/3d/skeleton_3d.h"
@@ -82,4 +82,4 @@ public:
 	IKConstraintEffector3D(const Ref<IKConstraintBone3D> &p_current_bone);
 };
 
-#endif // IK_EFFECTOR_3D_H
+#endif // IK_CONSTRAINT_EFFECTOR_3D_H

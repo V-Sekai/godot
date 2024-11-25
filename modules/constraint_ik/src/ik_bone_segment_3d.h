@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_BONE_SEGMENT_3D_H
-#define IK_BONE_SEGMENT_3D_H
+#ifndef IK_CONSTRAINT_BONE_SEGMENT_3D_H
+#define IK_CONSTRAINT_BONE_SEGMENT_3D_H
 
 #include "ik_bone_3d.h"
 #include "ik_effector_3d.h"
@@ -102,4 +102,4 @@ public:
 	~IKConstraintBoneSegment3D() {}
 };
 
-#endif // IK_BONE_SEGMENT_3D_H
+#endif // IK_CONSTRAINT_BONE_SEGMENT_3D_H

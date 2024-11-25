@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_EFFECTOR_TEMPLATE_3D_H
-#define IK_EFFECTOR_TEMPLATE_3D_H
+#ifndef IK_CONSTRAINT_EFFECTOR_TEMPLATE_3D_H
+#define IK_CONSTRAINT_EFFECTOR_TEMPLATE_3D_H
 
 #include "core/io/resource.h"
 #include "core/string/node_path.h"
@@ -59,4 +59,4 @@ public:
 	IKConstraintEffectorTemplate3D();
 };
 
-#endif // IK_EFFECTOR_TEMPLATE_3D_H
+#endif // IK_CONSTRAINT_EFFECTOR_TEMPLATE_3D_H
