@@ -32,8 +32,6 @@
 #define IK_BONE_3D_H
 
 #include "ik_effector_template_3d.h"
-#include "ik_kusudama_3d.h"
-#include "ik_open_cone_3d.h"
 #include "math/ik_node_3d.h"
 
 #include "core/io/resource.h"
@@ -60,7 +58,6 @@ class IKBone3D : public Resource {
 	Vector<float> cos_half_returnfulness_dampened;
 	Vector<float> half_returnfulness_dampened;
 	double stiffness = 0.0;
-	Ref<IKKusudama3D> constraint;
 	// In the space of the local parent bone transform.
 	// The origin is the origin of the bone direction transform
 	// Can be independent and should be calculated
@@ -81,8 +78,6 @@ public:
 	void set_half_returnfullness_dampened(const Vector<float> &p_value);
 	void set_stiffness(double p_stiffness);
 	double get_stiffness() const;
-	bool is_axially_constrained();
-	bool is_orientationally_constrained();
 	Transform3D get_bone_direction_global_pose() const;
 	Ref<IKNode3D> get_bone_direction_transform();
 	void set_bone_direction_transform(Ref<IKNode3D> p_bone_direction);
@@ -91,8 +86,6 @@ public:
 	Ref<IKNode3D> get_constraint_orientation_transform();
 	Ref<IKNode3D> get_constraint_twist_transform();
 	void update_default_constraint_transform();
-	void add_constraint(Ref<IKKusudama3D> p_constraint);
-	Ref<IKKusudama3D> get_constraint() const;
 	void set_bone_id(BoneId p_bone_id, Skeleton3D *p_skeleton = nullptr);
 	BoneId get_bone_id() const;
 	void set_parent(const Ref<IKBone3D> &p_parent);
@@ -115,8 +108,6 @@ public:
 	void set_cos_half_dampen(float p_cos_half_dampen);
 	Transform3D get_parent_bone_aligned_transform();
 	Transform3D get_set_constraint_twist_transform() const;
-	float calculate_total_radius_sum(const TypedArray<IKLimitCone3D> &p_cones) const;
-	Vector3 calculate_weighted_direction(const TypedArray<IKLimitCone3D> &p_cones, float p_total_radius_sum) const;
 };
 
 #endif // IK_BONE_3D_H
