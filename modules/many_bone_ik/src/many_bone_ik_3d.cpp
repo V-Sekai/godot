@@ -204,7 +204,7 @@ bool ManyBoneIK3D::_set(const StringName &p_name, const Variant &p_value) {
 		int index = name.get_slicec('/', 1).to_int();
 		String what = name.get_slicec('/', 2);
 		if (index >= pins.size()) {
-			set_pin_count(constraint_count);
+			set_pin_count(pin_count);
 		}
 		if (what == "bone_name") {
 			set_pin_bone_name(index, p_value);
@@ -233,7 +233,6 @@ bool ManyBoneIK3D::_set(const StringName &p_name, const Variant &p_value) {
 
 void ManyBoneIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_total_effector_count", "count"), &ManyBoneIK3D::set_pin_count);
-	ClassDB::bind_method(D_METHOD("remove_pin_at_index", "index"), &ManyBoneIK3D::remove_pin_at_index);
 	ClassDB::bind_method(D_METHOD("set_dirty"), &ManyBoneIK3D::set_dirty);
 	ClassDB::bind_method(D_METHOD("set_pin_motion_propagation_factor", "index", "falloff"), &ManyBoneIK3D::set_pin_motion_propagation_factor);
 	ClassDB::bind_method(D_METHOD("get_pin_motion_propagation_factor", "index"), &ManyBoneIK3D::get_pin_motion_propagation_factor);
@@ -284,9 +283,9 @@ void ManyBoneIK3D::set_pin_motion_propagation_factor(int32_t p_effector_index, c
 }
 
 int32_t ManyBoneIK3D::find_pin_id(StringName p_bone_name) {
-	for (int32_t constraint_i = 0; constraint_i < constraint_count; constraint_i++) {
-		if (constraint_names[constraint_i] == p_bone_name) {
-			return constraint_i;
+	for (int32_t pin_i = 0; pin_i < pin_count; pin_i++) {
+		if (constraint_names[pin_i] == p_bone_name) {
+			return pin_i;
 		}
 	}
 	return -1;

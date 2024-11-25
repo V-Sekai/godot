@@ -48,7 +48,7 @@ class ManyBoneIK3D : public SkeletonModifier3D {
 
 	NodePath skeleton_path;
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
-	int32_t constraint_count = 0, pin_count = 0, bone_count = 0;
+	int32_t pin_count = 0, bone_count = 0;
 	Vector<StringName> constraint_names;
 	Vector<Ref<IKEffectorTemplate3D>> pins;
 	Vector<Ref<IKBone3D>> bone_list;
@@ -101,7 +101,6 @@ public:
 	void queue_print_skeleton();
 	int32_t get_pin_count() const;
 	void set_pin_count(int32_t p_pin_count);
-	void remove_pin_at_index(int32_t p_index);
 	void set_pin_bone_name(int32_t p_pin_index, const String &p_bone);
 	StringName get_pin_bone_name(int32_t p_effector_index) const;
 	void set_pin_node_path(int32_t p_effector_index, NodePath p_node_path);

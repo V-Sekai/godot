@@ -31,8 +31,6 @@
 #ifndef IK_EFFECTOR_3D_H
 #define IK_EFFECTOR_3D_H
 
-#include "math/ik_node_3d.h"
-
 #include "core/object/ref_counted.h"
 #include "scene/3d/skeleton_3d.h"
 
