@@ -41,10 +41,6 @@
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 
-Vector<Ref<IKEffectorTemplate3D>> ConstraintIK3D::_get_bone_effectors() const {
-	return pins;
-}
-
 void ConstraintIK3D::_update_ik_bones_transform() {
 	for (int32_t bone_i = bone_list.size(); bone_i-- > 0;) {
 		Ref<IKBone3D> bone = bone_list[bone_i];
@@ -711,6 +707,24 @@ void ConstraintIK3D::_bone_list_changed() {
 	segmented_skeletons.clear();
 	for (BoneId root_bone_index : roots) {
 		String parentless_bone = skeleton->get_bone_name(root_bone_index);
+		Vector<Ref<IKEffectorTemplate3D>> pins;
+		Array bone_queue;
+		bone_queue.push_back(root_bone_index);
+
+		while (!bone_queue.is_empty()) {
+			BoneId current_bone = bone_queue.front();
+			bone_queue.pop_front();
+			Vector<BoneId> children = skeleton->get_bone_children(current_bone);
+			for (BoneId child_bone : children) {
+				bone_queue.push_back(child_bone);
+			}
+			Ref<IKEffectorTemplate3D> effector = memnew(IKEffectorTemplate3D);
+			effector->set_root_bone(skeleton->get_bone_name(root_bone_index));
+			effector->set_motion_propagation_factor(1.0f);
+			effector->set_weight(1.0f);
+			effector->set_direction_priorities(Vector3(0.2f, 0.0f, 0.2f));
+			pins.push_back(effector);
+		}
 		Ref<IKBoneSegment3D> segmented_skeleton = Ref<IKBoneSegment3D>(memnew(IKBoneSegment3D(skeleton, parentless_bone, pins, this, nullptr, root_bone_index, -1, stabilize_passes)));
 		ik_origin.instantiate();
 		segmented_skeleton->get_root()->get_ik_transform()->set_parent(ik_origin);

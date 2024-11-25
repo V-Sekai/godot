@@ -49,7 +49,6 @@ class ConstraintIK3D : public SkeletonModifier3D {
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
 	int32_t constraint_count = 0, pin_count = 0, bone_count = 0;
 	Vector<StringName> constraint_names;
-	Vector<Ref<IKEffectorTemplate3D>> pins;
 	Vector<Ref<IKBone3D>> bone_list;
 	Vector<Vector2> joint_twist;
 	Vector<float> bone_damp;
@@ -68,7 +67,6 @@ class ConstraintIK3D : public SkeletonModifier3D {
 	void _on_timer_timeout();
 	void _update_ik_bones_transform();
 	void _update_skeleton_bones_transform();
-	Vector<Ref<IKEffectorTemplate3D>> _get_bone_effectors() const;
 	void set_constraint_name_at_index(int32_t p_index, String p_name);
 	void _set_constraint_count(int32_t p_count);
 	void _set_bone_count(int32_t p_count);

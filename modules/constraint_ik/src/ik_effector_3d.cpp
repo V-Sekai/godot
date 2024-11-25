@@ -32,14 +32,6 @@
 
 #include "core/typedefs.h"
 #include "ik_bone_3d.h"
-#include "many_bone_ik_3d.h"
-#include "math/ik_node_3d.h"
-#include "scene/3d/node_3d.h"
-
-#ifdef TOOLS_ENABLED
-#include "editor/editor_data.h"
-#include "editor/editor_node.h"
-#endif
 
 Ref<IKBone3D> IKEffector3D::get_ik_bone_3d() const {
 	return for_bone;
