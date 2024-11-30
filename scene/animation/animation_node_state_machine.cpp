@@ -1781,6 +1781,18 @@ void AnimationNodeStateMachine::_animation_node_removed(const ObjectID &p_oid, c
 	AnimationRootNode::_animation_node_removed(p_oid, p_node);
 }
 
+PackedStringArray AnimationNodeStateMachine::_get_node_list_bind() const {
+	List<StringName> node_names;
+	get_node_list(&node_names);
+
+	PackedStringArray string_array;
+	for (const StringName &E : node_names) {
+		string_array.append(E);
+	}
+
+	return string_array;
+}
+
 #ifdef TOOLS_ENABLED
 void AnimationNodeStateMachine::get_argument_options(const StringName &p_function, int p_idx, List<String> *r_options) const {
 	const String pf = p_function;
@@ -1807,6 +1819,7 @@ void AnimationNodeStateMachine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("rename_node", "name", "new_name"), &AnimationNodeStateMachine::rename_node);
 	ClassDB::bind_method(D_METHOD("has_node", "name"), &AnimationNodeStateMachine::has_node);
 	ClassDB::bind_method(D_METHOD("get_node_name", "node"), &AnimationNodeStateMachine::get_node_name);
+	ClassDB::bind_method(D_METHOD("get_node_list"), &AnimationNodeStateMachine::_get_node_list_bind);
 
 	ClassDB::bind_method(D_METHOD("set_node_position", "name", "position"), &AnimationNodeStateMachine::set_node_position);
 	ClassDB::bind_method(D_METHOD("get_node_position", "name"), &AnimationNodeStateMachine::get_node_position);

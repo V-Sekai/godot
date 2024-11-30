@@ -1652,7 +1652,7 @@ AnimationNode::NodeTimeInfo AnimationNodeBlendTree::_process(const AnimationMixe
 	return _blend_node(output, "output", this, pi, FILTER_IGNORE, true, p_test_only, nullptr);
 }
 
-void AnimationNodeBlendTree::get_node_list(List<StringName> *r_list) {
+void AnimationNodeBlendTree::get_node_list(List<StringName> *r_list) const {
 	for (const KeyValue<StringName, Node> &E : nodes) {
 		r_list->push_back(E.key);
 	}
@@ -1772,6 +1772,18 @@ void AnimationNodeBlendTree::_animation_node_removed(const ObjectID &p_oid, cons
 	AnimationRootNode::_animation_node_removed(p_oid, p_node);
 }
 
+PackedStringArray AnimationNodeBlendTree::_get_node_list_bind() const {
+	List<StringName> node_names;
+	get_node_list(&node_names);
+
+	PackedStringArray string_array;
+	for (const StringName &E : node_names) {
+		string_array.append(E);
+	}
+
+	return string_array;
+}
+
 void AnimationNodeBlendTree::reset_state() {
 	graph_offset = Vector2();
 	nodes.clear();
@@ -1818,6 +1830,8 @@ void AnimationNodeBlendTree::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_graph_offset", "offset"), &AnimationNodeBlendTree::set_graph_offset);
 	ClassDB::bind_method(D_METHOD("get_graph_offset"), &AnimationNodeBlendTree::get_graph_offset);
+
+	ClassDB::bind_method(D_METHOD("get_node_list"), &AnimationNodeBlendTree::_get_node_list_bind);
 
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "graph_offset", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_graph_offset", "get_graph_offset");
 
