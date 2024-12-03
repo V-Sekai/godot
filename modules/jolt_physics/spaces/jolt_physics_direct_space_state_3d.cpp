@@ -475,7 +475,7 @@ bool JoltPhysicsDirectSpaceState3D::intersect_ray(const RayParameters &p_paramet
 
 	space->try_optimize();
 
-	const JoltQueryFilter3D query_filter(*this, p_parameters.collision_mask, p_parameters.collide_with_bodies, p_parameters.collide_with_areas, p_parameters.pick_ray);
+	const JoltQueryFilter3D query_filter(*this, p_parameters.collision_mask, p_parameters.collide_with_bodies, p_parameters.collide_with_areas, p_parameters.exclude, p_parameters.pick_ray);
 
 	const JPH::RVec3 from = to_jolt_r(p_parameters.from);
 	const JPH::RVec3 to = to_jolt_r(p_parameters.to);
@@ -544,7 +544,6 @@ int JoltPhysicsDirectSpaceState3D::intersect_point(const PointParameters &p_para
 	space->try_optimize();
 
 	const JoltQueryFilter3D query_filter(*this, p_parameters.collision_mask, p_parameters.collide_with_bodies, p_parameters.collide_with_areas, p_parameters.exclude);
-
 	JoltQueryCollectorAnyMulti<JPH::CollidePointCollector, 32> collector(p_result_max);
 	space->get_narrow_phase_query().CollidePoint(to_jolt_r(p_parameters.position), collector, query_filter, query_filter, query_filter);
 
