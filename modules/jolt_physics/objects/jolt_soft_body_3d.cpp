@@ -119,9 +119,11 @@ void JoltSoftBody3D::_add_to_space() {
 	jolt_settings->mMaxLinearVelocity = JoltProjectSettings::get_max_linear_velocity();
 
 	const JPH::BodyID new_jolt_id = space->add_soft_body(*this, *jolt_settings);
-	if (!new_jolt_id.IsInvalid()) {
-		jolt_id = new_jolt_id;
+	if (new_jolt_id.IsInvalid()) {
+		return;
 	}
+
+	jolt_id = new_jolt_id;
 
 	delete jolt_settings;
 	jolt_settings = nullptr;

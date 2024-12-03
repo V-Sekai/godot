@@ -82,9 +82,11 @@ void JoltArea3D::_add_to_space() {
 	jolt_settings->SetShape(build_shape());
 
 	const JPH::BodyID new_jolt_id = space->add_rigid_body(*this, *jolt_settings);
-	if (!new_jolt_id.IsInvalid()) {
-		jolt_id = new_jolt_id;
+	if (new_jolt_id.IsInvalid()) {
+		return;
 	}
+
+	jolt_id = new_jolt_id;
 
 	delete jolt_settings;
 	jolt_settings = nullptr;
