@@ -83,94 +83,76 @@ void JoltProjectSettings::register_settings() {
 }
 
 int JoltProjectSettings::get_simulation_velocity_steps() {
-	static const int value = GLOBAL_GET("physics/jolt_physics_3d/simulation/velocity_steps");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/velocity_steps");
 }
 
 int JoltProjectSettings::get_simulation_position_steps() {
-	static const int value = GLOBAL_GET("physics/jolt_physics_3d/simulation/position_steps");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/position_steps");
 }
 
 bool JoltProjectSettings::use_enhanced_internal_edge_removal_for_bodies() {
-	static const bool value = GLOBAL_GET("physics/jolt_physics_3d/simulation/use_enhanced_internal_edge_removal");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/use_enhanced_internal_edge_removal");
 }
 
 bool JoltProjectSettings::areas_detect_static_bodies() {
-	static const bool value = GLOBAL_GET("physics/jolt_physics_3d/simulation/areas_detect_static_bodies");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/areas_detect_static_bodies");
 }
 
 bool JoltProjectSettings::should_generate_all_kinematic_contacts() {
-	static const bool value = GLOBAL_GET("physics/jolt_physics_3d/simulation/generate_all_kinematic_contacts");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/generate_all_kinematic_contacts");
 }
 
 float JoltProjectSettings::get_penetration_slop() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/penetration_slop");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/penetration_slop");
 }
 
 float JoltProjectSettings::get_speculative_contact_distance() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/speculative_contact_distance");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/speculative_contact_distance");
 }
 
 float JoltProjectSettings::get_baumgarte_stabilization_factor() {
-	static const float value = (float)GLOBAL_GET("physics/jolt_physics_3d/simulation/baumgarte_stabilization_factor");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/baumgarte_stabilization_factor");
 }
 
 float JoltProjectSettings::get_soft_body_point_radius() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/soft_body_point_radius");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/soft_body_point_radius");
 }
 
 float JoltProjectSettings::get_bounce_velocity_threshold() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/bounce_velocity_threshold");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/bounce_velocity_threshold");
 }
 
 bool JoltProjectSettings::is_sleep_allowed() {
-	static const bool value = GLOBAL_GET("physics/jolt_physics_3d/simulation/allow_sleep");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/allow_sleep");
 }
 
 float JoltProjectSettings::get_sleep_velocity_threshold() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/sleep_velocity_threshold");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/sleep_velocity_threshold");
 }
 
 float JoltProjectSettings::get_sleep_time_threshold() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/sleep_time_threshold");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/sleep_time_threshold");
 }
 
 float JoltProjectSettings::get_ccd_movement_threshold() {
-	static const float value = (float)GLOBAL_GET("physics/jolt_physics_3d/simulation/continuous_cd_movement_threshold");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/continuous_cd_movement_threshold");
 }
 
 float JoltProjectSettings::get_ccd_max_penetration() {
-	static const float value = (float)GLOBAL_GET("physics/jolt_physics_3d/simulation/continuous_cd_max_penetration");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/continuous_cd_max_penetration");
 }
 
 bool JoltProjectSettings::is_body_pair_contact_cache_enabled() {
-	static const bool value = GLOBAL_GET("physics/jolt_physics_3d/simulation/body_pair_contact_cache_enabled");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/simulation/body_pair_contact_cache_enabled");
 }
 
 float JoltProjectSettings::get_body_pair_cache_distance_sq() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/body_pair_contact_cache_distance_threshold");
-	static const float squared_value = value * value;
-	return squared_value;
+	const float value = GLOBAL_GET("physics/jolt_physics_3d/simulation/body_pair_contact_cache_distance_threshold");
+	return value * value;
 }
 
 float JoltProjectSettings::get_body_pair_cache_angle_cos_div2() {
-	static const float value = Math::cos((float)GLOBAL_GET("physics/jolt_physics_3d/simulation/body_pair_contact_cache_angle_threshold") / 2.0f);
-	return value;
+	return Math::cos((float)GLOBAL_GET("physics/jolt_physics_3d/simulation/body_pair_contact_cache_angle_threshold") / 2.0f);
 }
 
 bool JoltProjectSettings::use_enhanced_internal_edge_removal_for_queries() {
@@ -194,7 +176,7 @@ int JoltProjectSettings::get_motion_query_recovery_iterations() {
 }
 
 float JoltProjectSettings::get_motion_query_recovery_amount() {
-	static const float value = (float)GLOBAL_GET("physics/jolt_physics_3d/motion_queries/recovery_amount");
+	static const float value = GLOBAL_GET("physics/jolt_physics_3d/motion_queries/recovery_amount");
 	return value;
 }
 
@@ -209,46 +191,37 @@ float JoltProjectSettings::get_active_edge_threshold() {
 }
 
 bool JoltProjectSettings::use_joint_world_node_a() {
-	static const bool value = (int)GLOBAL_GET("physics/jolt_physics_3d/joints/world_node") == JOLT_JOINT_WORLD_NODE_A;
-	return value;
+	return (int)GLOBAL_GET("physics/jolt_physics_3d/joints/world_node") == JOLT_JOINT_WORLD_NODE_A;
 }
 
 int JoltProjectSettings::get_temp_memory_mib() {
-	static const int value = GLOBAL_GET("physics/jolt_physics_3d/limits/temporary_memory_buffer_size");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/limits/temporary_memory_buffer_size");
 }
 
 int64_t JoltProjectSettings::get_temp_memory_b() {
-	static const int64_t value = get_temp_memory_mib() * 1024 * 1024;
-	return value;
+	return get_temp_memory_mib() * 1024 * 1024;
 }
 
 float JoltProjectSettings::get_world_boundary_shape_size() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/limits/world_boundary_shape_size");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/limits/world_boundary_shape_size");
 }
 
 float JoltProjectSettings::get_max_linear_velocity() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/limits/max_linear_velocity");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/limits/max_linear_velocity");
 }
 
 float JoltProjectSettings::get_max_angular_velocity() {
-	static const float value = GLOBAL_GET("physics/jolt_physics_3d/limits/max_angular_velocity");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/limits/max_angular_velocity");
 }
 
 int JoltProjectSettings::get_max_bodies() {
-	static const int value = GLOBAL_GET("physics/jolt_physics_3d/limits/max_bodies");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/limits/max_bodies");
 }
 
 int JoltProjectSettings::get_max_pairs() {
-	static const int value = GLOBAL_GET("physics/jolt_physics_3d/limits/max_body_pairs");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/limits/max_body_pairs");
 }
 
 int JoltProjectSettings::get_max_contact_constraints() {
-	static const int value = GLOBAL_GET("physics/jolt_physics_3d/limits/max_contact_constraints");
-	return value;
+	return GLOBAL_GET("physics/jolt_physics_3d/limits/max_contact_constraints");
 }
