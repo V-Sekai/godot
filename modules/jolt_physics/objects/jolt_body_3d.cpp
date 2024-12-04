@@ -1193,40 +1193,30 @@ void JoltBody3D::call_queries(JPH::Body &p_jolt_body) {
 	}
 
 	if (custom_integration_callback.is_valid()) {
-		if (custom_integration_userdata.get_type() != Variant::NIL) {
-			static thread_local Array arguments = []() {
-				Array array;
-				array.resize(2);
-				return array;
-			}();
+		const Variant direct_state_variant = get_direct_state();
+		const Variant *args[2] = { &direct_state_variant, &custom_integration_userdata };
+		const int argc = custom_integration_userdata.get_type() != Variant::NIL ? 2 : 1;
 
-			arguments[0] = get_direct_state();
-			arguments[1] = custom_integration_userdata;
+		Callable::CallError ce;
+		Variant ret;
+		custom_integration_callback.callp(args, argc, ret, ce);
 
-			custom_integration_callback.callv(arguments);
-		} else {
-			static thread_local Array arguments = []() {
-				Array array;
-				array.resize(1);
-				return array;
-			}();
-
-			arguments[0] = get_direct_state();
-
-			custom_integration_callback.callv(arguments);
+		if (unlikely(ce.error != Callable::CallError::CALL_OK)) {
+			ERR_PRINT_ONCE(vformat("Failed to call force integration callback for '%s'. It returned the following error: '%s'.", to_string(), Variant::get_callable_error_text(custom_integration_callback, args, argc, ce)));
 		}
 	}
 
 	if (state_sync_callback.is_valid()) {
-		static thread_local Array arguments = []() {
-			Array array;
-			array.resize(1);
-			return array;
-		}();
+		const Variant direct_state_variant = get_direct_state();
+		const Variant *args[1] = { &direct_state_variant };
 
-		arguments[0] = get_direct_state();
+		Callable::CallError ce;
+		Variant ret;
+		state_sync_callback.callp(args, 1, ret, ce);
 
-		state_sync_callback.callv(arguments);
+		if (unlikely(ce.error != Callable::CallError::CALL_OK)) {
+			ERR_PRINT_ONCE(vformat("Failed to call state synchronization callback for '%s'. It returned the following error: '%s'.", to_string(), Variant::get_callable_error_text(state_sync_callback, args, 1, ce)));
+		}
 	}
 
 	sync_state = false;

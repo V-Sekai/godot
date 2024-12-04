@@ -150,19 +150,20 @@ void JoltArea3D::_flush_events(OverlapsById &p_objects, const Callable &p_callba
 void JoltArea3D::_report_event(const Callable &p_callback, PhysicsServer3D::AreaBodyStatus p_status, const RID &p_other_rid, ObjectID p_other_instance_id, int p_other_shape_index, int p_self_shape_index) const {
 	ERR_FAIL_COND(!p_callback.is_valid());
 
-	static thread_local Array arguments = []() {
-		Array array;
-		array.resize(5);
-		return array;
-	}();
+	const Variant arg1 = p_status;
+	const Variant arg2 = p_other_rid;
+	const Variant arg3 = p_other_instance_id;
+	const Variant arg4 = p_other_shape_index;
+	const Variant arg5 = p_self_shape_index;
+	const Variant *args[5] = { &arg1, &arg2, &arg3, &arg4, &arg5 };
 
-	arguments[0] = p_status;
-	arguments[1] = p_other_rid;
-	arguments[2] = p_other_instance_id;
-	arguments[3] = p_other_shape_index;
-	arguments[4] = p_self_shape_index;
+	Callable::CallError ce;
+	Variant ret;
+	p_callback.callp(args, 5, ret, ce);
 
-	p_callback.callv(arguments);
+	if (unlikely(ce.error != Callable::CallError::CALL_OK)) {
+		ERR_PRINT_ONCE(vformat("Failed to call area monitor callback for '%s'. It returned the following error: '%s'.", to_string(), Variant::get_callable_error_text(p_callback, args, 5, ce)));
+	}
 }
 
 void JoltArea3D::_notify_body_entered(const JPH::BodyID &p_body_id) {
