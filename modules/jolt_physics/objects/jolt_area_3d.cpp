@@ -188,19 +188,24 @@ void JoltArea3D::_notify_body_exited(const JPH::BodyID &p_body_id) {
 }
 
 void JoltArea3D::_force_bodies_entered() {
-	for (auto &[id, body] : bodies_by_id) {
-		for (const auto &[id_pair, index_pair] : body.shape_pairs) {
-			body.pending_removed.erase(index_pair);
-			body.pending_added.push_back(index_pair);
+	for (KeyValue<JPH::BodyID, Overlap> &E : bodies_by_id) {
+		Overlap &body = E.value;
+
+		for (const KeyValue<ShapeIDPair, ShapeIndexPair> &P : body.shape_pairs) {
+			body.pending_removed.erase(P.value);
+			body.pending_added.push_back(P.value);
 		}
 	}
 }
 
 void JoltArea3D::_force_bodies_exited(bool p_remove) {
-	for (auto &[id, body] : bodies_by_id) {
-		for (const auto &[id_pair, index_pair] : body.shape_pairs) {
-			body.pending_added.erase(index_pair);
-			body.pending_removed.push_back(index_pair);
+	for (KeyValue<JPH::BodyID, Overlap> &E : bodies_by_id) {
+		const JPH::BodyID &id = E.key;
+		Overlap &body = E.value;
+
+		for (const KeyValue<ShapeIDPair, ShapeIndexPair> &P : body.shape_pairs) {
+			body.pending_added.erase(P.value);
+			body.pending_removed.push_back(P.value);
 		}
 
 		if (p_remove) {
@@ -211,19 +216,23 @@ void JoltArea3D::_force_bodies_exited(bool p_remove) {
 }
 
 void JoltArea3D::_force_areas_entered() {
-	for (auto &[id, area] : areas_by_id) {
-		for (const auto &[id_pair, index_pair] : area.shape_pairs) {
-			area.pending_removed.erase(index_pair);
-			area.pending_added.push_back(index_pair);
+	for (KeyValue<JPH::BodyID, Overlap> &E : areas_by_id) {
+		Overlap &area = E.value;
+
+		for (const KeyValue<ShapeIDPair, ShapeIndexPair> &P : area.shape_pairs) {
+			area.pending_removed.erase(P.value);
+			area.pending_added.push_back(P.value);
 		}
 	}
 }
 
 void JoltArea3D::_force_areas_exited(bool p_remove) {
-	for (auto &[id, area] : areas_by_id) {
-		for (const auto &[id_pair, index_pair] : area.shape_pairs) {
-			area.pending_added.erase(index_pair);
-			area.pending_removed.push_back(index_pair);
+	for (KeyValue<JPH::BodyID, Overlap> &E : areas_by_id) {
+		Overlap &area = E.value;
+
+		for (const KeyValue<ShapeIDPair, ShapeIndexPair> &P : area.shape_pairs) {
+			area.pending_added.erase(P.value);
+			area.pending_removed.push_back(P.value);
 		}
 
 		if (p_remove) {
@@ -619,9 +628,9 @@ void JoltArea3D::body_exited(const JPH::BodyID &p_body_id, bool p_notify) {
 		return;
 	}
 
-	for (auto &[id_pair, index_pair] : overlap->shape_pairs) {
-		overlap->pending_added.erase(index_pair);
-		overlap->pending_removed.push_back(index_pair);
+	for (KeyValue<ShapeIDPair, ShapeIndexPair> &E : overlap->shape_pairs) {
+		overlap->pending_added.erase(E.value);
+		overlap->pending_removed.push_back(E.value);
 	}
 
 	overlap->shape_pairs.clear();
@@ -641,9 +650,9 @@ void JoltArea3D::area_exited(const JPH::BodyID &p_body_id) {
 		return;
 	}
 
-	for (const auto &[id_pair, index_pair] : overlap->shape_pairs) {
-		overlap->pending_added.erase(index_pair);
-		overlap->pending_removed.push_back(index_pair);
+	for (const KeyValue<ShapeIDPair, ShapeIndexPair> &E : overlap->shape_pairs) {
+		overlap->pending_added.erase(E.value);
+		overlap->pending_removed.push_back(E.value);
 	}
 
 	overlap->shape_pairs.clear();

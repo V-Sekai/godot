@@ -77,8 +77,8 @@ void JoltShape3D::remove_self() {
 	// iterator would be invalidated from underneath us.
 	const HashMap<JoltShapedObject3D *, int> ref_counts_by_owner_copy = ref_counts_by_owner;
 
-	for (const auto &[owner, ref_count] : ref_counts_by_owner_copy) {
-		owner->remove_shape(this);
+	for (const KeyValue<JoltShapedObject3D *, int> &E : ref_counts_by_owner_copy) {
+		E.key->remove_shape(this);
 	}
 }
 
@@ -109,8 +109,8 @@ void JoltShape3D::destroy() {
 	jolt_ref = nullptr;
 	jolt_ref_mutex.unlock();
 
-	for (const auto &[owner, ref_count] : ref_counts_by_owner) {
-		owner->_shapes_changed();
+	for (const KeyValue<JoltShapedObject3D *, int> &E : ref_counts_by_owner) {
+		E.key->_shapes_changed();
 	}
 }
 

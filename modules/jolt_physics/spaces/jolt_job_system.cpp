@@ -183,9 +183,9 @@ void JoltJobSystem::flush_timings() {
 	if (engine_debugger->is_profiling(profiler_name)) {
 		Array timings;
 
-		for (auto &&[name, usec] : timings_by_job) {
-			timings.push_back(static_cast<const char *>(name));
-			timings.push_back(USEC_TO_SEC(usec));
+		for (const KeyValue<const void *, uint64_t> &E : timings_by_job) {
+			timings.push_back(static_cast<const char *>(E.key));
+			timings.push_back(USEC_TO_SEC(E.value));
 		}
 
 		timings.push_front("physics_3d");
@@ -193,8 +193,8 @@ void JoltJobSystem::flush_timings() {
 		engine_debugger->profiler_add_frame_data(profiler_name, timings);
 	}
 
-	for (auto &&[name, usec] : timings_by_job) {
-		usec = 0;
+	for (KeyValue<const void *, uint64_t> &E : timings_by_job) {
+		E.value = 0;
 	}
 }
 
