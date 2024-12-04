@@ -33,8 +33,6 @@
 #include "../jolt_project_settings.h"
 #include "../misc/jolt_type_conversions.h"
 
-#include "core/error/error_macros.h"
-
 #include "Jolt/Physics/Collision/Shape/PlaneShape.h"
 
 JPH::ShapeRefC JoltWorldBoundaryShape3D::_build() const {

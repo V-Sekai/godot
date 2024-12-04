@@ -35,9 +35,6 @@
 #include "../spaces/jolt_space_3d.h"
 #include "jolt_group_filter.h"
 
-#include "core/error/error_macros.h"
-#include "core/object/object.h"
-
 void JoltObject3D::_remove_from_space() {
 	if (unlikely(jolt_id.IsInvalid())) {
 		return;

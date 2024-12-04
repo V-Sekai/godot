@@ -33,8 +33,6 @@
 #include "../jolt_project_settings.h"
 
 #include "core/debugger/engine_debugger.h"
-#include "core/error/error_macros.h"
-#include "core/math/math_defs.h"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/os.h"
 #include "core/os/time.h"

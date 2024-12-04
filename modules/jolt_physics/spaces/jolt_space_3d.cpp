@@ -43,7 +43,6 @@
 #include "jolt_physics_direct_space_state_3d.h"
 #include "jolt_temp_allocator.h"
 
-#include "core/error/error_macros.h"
 #include "core/io/file_access.h"
 #include "core/os/time.h"
 #include "core/string/print_string.h"

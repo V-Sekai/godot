@@ -37,8 +37,6 @@
 #include "../objects/jolt_soft_body_3d.h"
 #include "jolt_space_3d.h"
 
-#include "core/error/error_macros.h"
-
 #include "Jolt/Physics/Collision/EstimateCollisionResponse.h"
 #include "Jolt/Physics/SoftBody/SoftBodyManifold.h"
 

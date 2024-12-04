@@ -32,8 +32,6 @@
 
 #include "../misc/jolt_type_conversions.h"
 
-#include "core/error/error_macros.h"
-
 #include "Jolt/Physics/Collision/Shape/SphereShape.h"
 
 JPH::ShapeRefC JoltSphereShape3D::_build() const {

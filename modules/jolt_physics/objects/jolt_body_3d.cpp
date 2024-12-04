@@ -41,8 +41,6 @@
 #include "jolt_physics_direct_body_state_3d.h"
 #include "jolt_soft_body_3d.h"
 
-#include "core/error/error_macros.h"
-
 namespace {
 
 template <typename TValue, typename TGetter>

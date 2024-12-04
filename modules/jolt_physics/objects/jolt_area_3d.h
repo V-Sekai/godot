@@ -33,8 +33,6 @@
 
 #include "jolt_shaped_object_3d.h"
 
-#include "core/templates/hashfuncs.h"
-#include "core/variant/callable.h"
 #include "servers/physics_server_3d.h"
 
 class JoltBody3D;

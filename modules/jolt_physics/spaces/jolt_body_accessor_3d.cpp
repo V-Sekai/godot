@@ -32,8 +32,6 @@
 
 #include "jolt_space_3d.h"
 
-#include "core/error/error_macros.h"
-
 namespace {
 
 template <class... TTypes>

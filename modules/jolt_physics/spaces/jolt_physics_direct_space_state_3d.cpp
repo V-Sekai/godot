@@ -43,8 +43,6 @@
 #include "jolt_query_filter_3d.h"
 #include "jolt_space_3d.h"
 
-#include "core/error/error_macros.h"
-
 #include "Jolt/Geometry/GJKClosestPoint.h"
 #include "Jolt/Physics/Body/Body.h"
 #include "Jolt/Physics/Body/BodyFilter.h"

@@ -33,8 +33,6 @@
 #include "../misc/jolt_type_conversions.h"
 #include "jolt_custom_ray_shape.h"
 
-#include "core/error/error_macros.h"
-
 JPH::ShapeRefC JoltSeparationRayShape3D::_build() const {
 	ERR_FAIL_COND_V_MSG(length <= 0.0f, nullptr, vformat("Failed to build Jolt Physics separation ray shape with %s. Its length must be greater than 0. This shape belongs to %s.", to_string(), _owners_to_string()));
 

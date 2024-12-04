@@ -33,8 +33,6 @@
 #include "jolt_globals.h"
 #include "jolt_physics_server_3d.h"
 #include "jolt_project_settings.h"
-#include "objects/jolt_physics_direct_body_state_3d.h"
-#include "spaces/jolt_physics_direct_space_state_3d.h"
 
 #include "servers/physics_server_3d_wrap_mt.h"
 

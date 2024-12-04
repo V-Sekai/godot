@@ -31,9 +31,6 @@
 #ifndef JOLT_JOINT_3D_H
 #define JOLT_JOINT_3D_H
 
-#include "core/math/transform_3d.h"
-#include "core/string/ustring.h"
-#include "core/templates/rid.h"
 #include "servers/physics_server_3d.h"
 
 #include "Jolt/Jolt.h"

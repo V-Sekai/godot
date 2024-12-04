@@ -35,8 +35,6 @@
 #include "jolt_physics_direct_space_state_3d.h"
 #include "jolt_space_3d.h"
 
-#include "core/error/error_macros.h"
-
 JoltQueryFilter3D::JoltQueryFilter3D(const JoltPhysicsDirectSpaceState3D &p_space_state, uint32_t p_collision_mask, bool p_collide_with_bodies, bool p_collide_with_areas, const HashSet<RID> &p_excluded, bool p_picking) :
 		space(p_space_state.get_space()),
 		excluded(p_excluded),

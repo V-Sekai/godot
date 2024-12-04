@@ -35,8 +35,6 @@
 #include "../shapes/jolt_shape_3d.h"
 #include "../spaces/jolt_space_3d.h"
 
-#include "core/error/error_macros.h"
-
 #include "Jolt/Physics/Collision/Shape/EmptyShape.h"
 #include "Jolt/Physics/Collision/Shape/StaticCompoundShape.h"
 

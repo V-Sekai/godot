@@ -32,8 +32,6 @@
 
 #include "../misc/jolt_type_conversions.h"
 
-#include "core/error/error_macros.h"
-
 #include "Jolt/Physics/Collision/Shape/CapsuleShape.h"
 
 JPH::ShapeRefC JoltCapsuleShape3D::_build() const {

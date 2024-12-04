@@ -31,11 +31,6 @@
 #ifndef JOLT_SHAPE_3D_H
 #define JOLT_SHAPE_3D_H
 
-#include "core/error/error_macros.h"
-#include "core/math/aabb.h"
-#include "core/os/mutex.h"
-#include "core/templates/hash_map.h"
-#include "core/variant/variant.h"
 #include "servers/physics_server_3d.h"
 
 #include "Jolt/Jolt.h"

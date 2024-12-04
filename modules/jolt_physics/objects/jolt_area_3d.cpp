@@ -39,8 +39,6 @@
 #include "jolt_group_filter.h"
 #include "jolt_soft_body_3d.h"
 
-#include "core/error/error_macros.h"
-
 namespace {
 
 constexpr double DEFAULT_WIND_FORCE_MAGNITUDE = 0.0;

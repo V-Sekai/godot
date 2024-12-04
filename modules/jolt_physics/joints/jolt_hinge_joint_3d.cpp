@@ -35,7 +35,6 @@
 #include "../spaces/jolt_space_3d.h"
 
 #include "core/config/engine.h"
-#include "core/error/error_macros.h"
 
 #include "Jolt/Physics/Constraints/FixedConstraint.h"
 #include "Jolt/Physics/Constraints/HingeConstraint.h"

@@ -31,8 +31,6 @@
 #include "jolt_project_settings.h"
 
 #include "core/config/project_settings.h"
-#include "core/error/error_macros.h"
-#include "core/math/math_funcs.h"
 
 namespace {
 

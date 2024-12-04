@@ -34,8 +34,6 @@
 #include "../spaces/jolt_space_3d.h"
 #include "jolt_body_3d.h"
 
-#include "core/error/error_macros.h"
-
 JoltPhysicsDirectBodyState3D::JoltPhysicsDirectBodyState3D(JoltBody3D *p_body) :
 		body(p_body) {
 }

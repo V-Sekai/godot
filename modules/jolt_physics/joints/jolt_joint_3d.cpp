@@ -35,8 +35,6 @@
 #include "../objects/jolt_body_3d.h"
 #include "../spaces/jolt_space_3d.h"
 
-#include "core/error/error_macros.h"
-
 namespace {
 
 constexpr int DEFAULT_SOLVER_PRIORITY = 1;

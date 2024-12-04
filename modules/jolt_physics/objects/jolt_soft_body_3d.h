@@ -33,7 +33,6 @@
 
 #include "jolt_object_3d.h"
 
-#include "core/variant/typed_array.h"
 #include "servers/physics_server_3d.h"
 
 #include "Jolt/Jolt.h"
