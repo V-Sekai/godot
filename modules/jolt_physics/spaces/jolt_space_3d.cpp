@@ -390,7 +390,15 @@ void JoltSpace3D::set_default_area(JoltArea3D *p_area) {
 
 JPH::BodyID JoltSpace3D::add_rigid_body(const JoltObject3D &p_object, const JPH::BodyCreationSettings &p_settings, bool p_sleeping) {
 	const JPH::BodyID body_id = get_body_iface().CreateAndAddBody(p_settings, p_sleeping ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
-	ERR_FAIL_COND_V_MSG(body_id.IsInvalid(), JPH::BodyID(), vformat("Failed to create underlying Jolt Physics body for '%s'. Consider increasing maximum number of bodies in project settings. Maximum number of bodies is currently set to %d.", p_object.to_string(), JoltProjectSettings::get_max_bodies()));
+
+	if (unlikely(body_id.IsInvalid())) {
+		ERR_PRINT_ONCE(vformat("Failed to create underlying Jolt Physics body for '%s'. "
+							   "Consider increasing maximum number of bodies in project settings. "
+							   "Maximum number of bodies is currently set to %d.",
+				p_object.to_string(), JoltProjectSettings::get_max_bodies()));
+
+		return JPH::BodyID();
+	}
 
 	bodies_added_since_optimizing += 1;
 
@@ -399,7 +407,15 @@ JPH::BodyID JoltSpace3D::add_rigid_body(const JoltObject3D &p_object, const JPH:
 
 JPH::BodyID JoltSpace3D::add_soft_body(const JoltObject3D &p_object, const JPH::SoftBodyCreationSettings &p_settings, bool p_sleeping) {
 	const JPH::BodyID body_id = get_body_iface().CreateAndAddSoftBody(p_settings, p_sleeping ? JPH::EActivation::DontActivate : JPH::EActivation::Activate);
-	ERR_FAIL_COND_V_MSG(body_id.IsInvalid(), JPH::BodyID(), vformat("Failed to create underlying Jolt Physics body for '%s'. Consider increasing maximum number of bodies in project settings. Maximum number of bodies is currently set to %d.", p_object.to_string(), JoltProjectSettings::get_max_bodies()));
+
+	if (unlikely(body_id.IsInvalid())) {
+		ERR_PRINT_ONCE(vformat("Failed to create underlying Jolt Physics body for '%s'. "
+							   "Consider increasing maximum number of bodies in project settings. "
+							   "Maximum number of bodies is currently set to %d.",
+				p_object.to_string(), JoltProjectSettings::get_max_bodies()));
+
+		return JPH::BodyID();
+	}
 
 	bodies_added_since_optimizing += 1;
 
