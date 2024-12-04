@@ -97,7 +97,7 @@ public:
 
 	virtual void CollideSoftBodyVertices(JPH::Mat44Arg p_center_of_mass_transform, JPH::Vec3Arg p_scale, const JPH::CollideSoftBodyVertexIterator &p_vertices, JPH::uint p_num_vertices, int p_colliding_shape_index) const override {}
 
-	virtual JPH::Shape::Stats GetStats() const override { return { sizeof(*this), 0 }; }
+	virtual JPH::Shape::Stats GetStats() const override { return JPH::Shape::Stats(sizeof(*this), 0); }
 
 	virtual float GetVolume() const override { return 0.0f; }
 

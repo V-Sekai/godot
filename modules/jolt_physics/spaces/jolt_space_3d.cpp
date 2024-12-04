@@ -341,7 +341,7 @@ void JoltSpace3D::map_from_object_layer(JPH::ObjectLayer p_object_layer, JPH::Br
 }
 
 JoltReadableBody3D JoltSpace3D::read_body(const JPH::BodyID &p_body_id) const {
-	return { *this, p_body_id };
+	return JoltReadableBody3D(*this, p_body_id);
 }
 
 JoltReadableBody3D JoltSpace3D::read_body(const JoltObject3D &p_object) const {
@@ -349,7 +349,7 @@ JoltReadableBody3D JoltSpace3D::read_body(const JoltObject3D &p_object) const {
 }
 
 JoltWritableBody3D JoltSpace3D::write_body(const JPH::BodyID &p_body_id) const {
-	return { *this, p_body_id };
+	return JoltWritableBody3D(*this, p_body_id);
 }
 
 JoltWritableBody3D JoltSpace3D::write_body(const JoltObject3D &p_object) const {
@@ -357,11 +357,11 @@ JoltWritableBody3D JoltSpace3D::write_body(const JoltObject3D &p_object) const {
 }
 
 JoltReadableBodies3D JoltSpace3D::read_bodies(const JPH::BodyID *p_body_ids, int p_body_count) const {
-	return { *this, p_body_ids, p_body_count };
+	return JoltReadableBodies3D(*this, p_body_ids, p_body_count);
 }
 
 JoltWritableBodies3D JoltSpace3D::write_bodies(const JPH::BodyID *p_body_ids, int p_body_count) const {
-	return { *this, p_body_ids, p_body_count };
+	return JoltWritableBodies3D(*this, p_body_ids, p_body_count);
 }
 
 JoltPhysicsDirectSpaceState3D *JoltSpace3D::get_direct_state() {

@@ -87,7 +87,7 @@ public:
 
 	virtual int GetTrianglesNext(GetTrianglesContext &p_context, int p_max_triangles_requested, JPH::Float3 *p_triangle_vertices, const JPH::PhysicsMaterial **p_materials = nullptr) const override { return mInnerShape->GetTrianglesNext(p_context, p_max_triangles_requested, p_triangle_vertices, p_materials); }
 
-	virtual Stats GetStats() const override { return { sizeof(*this), 0 }; }
+	virtual JPH::Shape::Stats GetStats() const override { return JPH::Shape::Stats(sizeof(*this), 0); }
 
 	virtual float GetVolume() const override { return mInnerShape->GetVolume(); }
 };

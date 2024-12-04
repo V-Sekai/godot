@@ -198,8 +198,7 @@ public:
 
 	JoltAccessibleBody3D<TAccessor, TBody> operator[](int p_index) const {
 		const JPH::BodyID &body_id = p_index < accessor.get_count() ? accessor.get_at(p_index) : JPH::BodyID();
-
-		return { accessor.get_space(), body_id };
+		return JoltAccessibleBody3D<TAccessor, TBody>(accessor.get_space(), body_id);
 	}
 };
 

@@ -191,13 +191,13 @@ JoltShapedObject3D::~JoltShapedObject3D() {
 
 Transform3D JoltShapedObject3D::get_transform_unscaled() const {
 	if (!in_space()) {
-		return { to_godot(jolt_settings->mRotation), to_godot(jolt_settings->mPosition) };
+		return Transform3D(to_godot(jolt_settings->mRotation), to_godot(jolt_settings->mPosition));
 	}
 
 	const JoltReadableBody3D body = space->read_body(jolt_id);
 	ERR_FAIL_COND_V(body.is_invalid(), Transform3D());
 
-	return { to_godot(body->GetRotation()), to_godot(body->GetPosition()) };
+	return Transform3D(to_godot(body->GetRotation()), to_godot(body->GetPosition()));
 }
 
 Transform3D JoltShapedObject3D::get_transform_scaled() const {

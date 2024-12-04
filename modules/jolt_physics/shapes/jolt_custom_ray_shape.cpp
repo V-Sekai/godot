@@ -49,7 +49,7 @@ public:
 
 	virtual JPH::Vec3 GetSupport(JPH::Vec3Arg p_direction) const override {
 		if (p_direction.GetZ() > 0.0f) {
-			return { 0.0f, 0.0f, length };
+			return JPH::Vec3(0.0f, 0.0f, length);
 		} else {
 			return JPH::Vec3::sZero();
 		}
@@ -198,7 +198,7 @@ void JoltCustomRayShape::register_type() {
 
 JPH::AABox JoltCustomRayShape::GetLocalBounds() const {
 	const float radius = GetInnerRadius();
-	return { JPH::Vec3(-radius, -radius, 0.0f), JPH::Vec3(radius, radius, length) };
+	return JPH::AABox(JPH::Vec3(-radius, -radius, 0.0f), JPH::Vec3(radius, radius, length));
 }
 
 float JoltCustomRayShape::GetInnerRadius() const {

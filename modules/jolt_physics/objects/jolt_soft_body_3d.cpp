@@ -398,7 +398,7 @@ bool JoltSoftBody3D::can_interact_with(const JoltArea3D &p_other) const {
 }
 
 Vector3 JoltSoftBody3D::get_velocity_at_position(const Vector3 &p_position) const {
-	return { 0.0f, 0.0f, 0.0f };
+	return Vector3();
 }
 
 void JoltSoftBody3D::set_mesh(const RID &p_mesh) {

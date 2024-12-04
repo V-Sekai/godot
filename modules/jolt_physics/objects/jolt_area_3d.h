@@ -220,7 +220,7 @@ public:
 	void call_queries(JPH::Body &p_jolt_body);
 
 	virtual bool has_custom_center_of_mass() const override { return false; }
-	virtual Vector3 get_center_of_mass_custom() const override { return { 0, 0, 0 }; }
+	virtual Vector3 get_center_of_mass_custom() const override { return Vector3(); }
 };
 
 #endif // JOLT_AREA_3D_H
