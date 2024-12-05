@@ -88,4 +88,5 @@ ignore-words-list = [
 	"textin",
 	"thirdparty",
 	"vai",
+	"streamin",
 ]
