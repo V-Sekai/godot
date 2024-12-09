@@ -34,7 +34,7 @@
 #include "ik_open_cone_3d.h"
 #include "math/ik_node_3d.h"
 
-void IKKusudama3D::_update_constraint(Ref<IKConstraintNode3D> p_limiting_axes) {
+void IKKusudama3D::_update_constraint(Ref<IKNode3D> p_limiting_axes) {
 	// Avoiding antipodal singularities by reorienting the axes.
 	Vector<Vector3> directions;
 
@@ -114,7 +114,7 @@ void IKKusudama3D::set_axial_limits(real_t min_angle, real_t in_range) {
 	twist_max_rot = Quaternion(z_axis, twist_max_vec);
 }
 
-void IKKusudama3D::set_snap_to_twist_limit(Ref<IKConstraintNode3D> p_bone_direction, Ref<IKConstraintNode3D> p_to_set, Ref<IKConstraintNode3D> p_constraint_axes, real_t p_dampening, real_t p_cos_half_dampen) {
+void IKKusudama3D::set_snap_to_twist_limit(Ref<IKNode3D> p_bone_direction, Ref<IKNode3D> p_to_set, Ref<IKNode3D> p_constraint_axes, real_t p_dampening, real_t p_cos_half_dampen) {
 	if (!is_axially_constrained()) {
 		return;
 	}
@@ -125,7 +125,7 @@ void IKKusudama3D::set_snap_to_twist_limit(Ref<IKConstraintNode3D> p_bone_direct
 	Basis align_rot = (global_twist_center.inverse() * global_transform_to_set.basis).orthonormalized();
 	Quaternion twist_rotation, swing_rotation; // Hold the ik transform's decomposed swing and twist away from global_twist_centers's global basis.
 	get_swing_twist(align_rot.get_rotation_quaternion(), Vector3(0, 1, 0), swing_rotation, twist_rotation);
-	twist_rotation = IKConstraintBoneSegment3D::clamp_to_cos_half_angle(twist_rotation, twist_half_range_half_cos);
+	twist_rotation = IKBoneSegment3D::clamp_to_cos_half_angle(twist_rotation, twist_half_range_half_cos);
 	Basis recomposition = (global_twist_center * (swing_rotation * twist_rotation)).orthonormalized();
 	Basis rotation = parent_global_inverse * recomposition;
 	p_to_set->set_transform(Transform3D(rotation, p_to_set->get_transform().origin));
@@ -232,7 +232,7 @@ TypedArray<IKLimitCone3D> IKKusudama3D::get_open_cones() const {
 	return cones;
 }
 
-Vector3 IKKusudama3D::local_point_on_path_sequence(Vector3 p_in_point, Ref<IKConstraintNode3D> p_limiting_axes) {
+Vector3 IKKusudama3D::local_point_on_path_sequence(Vector3 p_in_point, Ref<IKNode3D> p_limiting_axes) {
 	double closest_point_dot = 0;
 	Vector3 point = p_limiting_axes->get_transform().xform(p_in_point);
 	point.normalize();
@@ -344,7 +344,7 @@ void IKKusudama3D::set_open_cones(TypedArray<IKLimitCone3D> p_cones) {
 	}
 }
 
-void IKKusudama3D::snap_to_orientation_limit(Ref<IKConstraintNode3D> bone_direction, Ref<IKConstraintNode3D> to_set, Ref<IKConstraintNode3D> limiting_axes, real_t p_dampening, real_t p_cos_half_angle_dampen) {
+void IKKusudama3D::snap_to_orientation_limit(Ref<IKNode3D> bone_direction, Ref<IKNode3D> to_set, Ref<IKNode3D> limiting_axes, real_t p_dampening, real_t p_cos_half_angle_dampen) {
 	if (bone_direction.is_null()) {
 		return;
 	}

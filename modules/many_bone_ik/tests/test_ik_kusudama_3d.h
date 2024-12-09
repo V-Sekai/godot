@@ -30,7 +30,7 @@
 
 #ifndef TEST_IK_KUSUDAMA_3D_H
 #define TEST_IK_KUSUDAMA_3D_H
-#include "modules/constraint_ik/src/ik_kusudama_3d.h"
+#include "modules/many_bone_ik/src/ik_kusudama_3d.h"
 #include "tests/test_macros.h"
 
 namespace TestIKKusudama3D {
