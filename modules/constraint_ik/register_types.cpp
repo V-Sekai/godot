@@ -49,12 +49,12 @@ void initialize_constraint_ik_module(ModuleInitializationLevel p_level) {
 	}
 #endif
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
-		GDREGISTER_CLASS(IKEffectorTemplate3D);
+		GDREGISTER_CLASS(IKConstraintEffectorTemplate3D);
 		GDREGISTER_CLASS(ConstraintIK3D);
-		GDREGISTER_CLASS(IKBone3D);
-		GDREGISTER_CLASS(IKNode3D);
-		GDREGISTER_CLASS(IKEffector3D);
-		GDREGISTER_CLASS(IKBoneSegment3D);
+		GDREGISTER_CLASS(IKConstraintBone3D);
+		GDREGISTER_CLASS(IKConstraintNode3D);
+		GDREGISTER_CLASS(IKConstraintEffector3D);
+		GDREGISTER_CLASS(IKConstraintBoneSegment3D);
 		GDREGISTER_CLASS(IKKusudama3D);
 		GDREGISTER_CLASS(IKRay3D);
 		GDREGISTER_CLASS(IKLimitCone3D);

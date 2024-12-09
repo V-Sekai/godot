@@ -41,13 +41,9 @@
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 
-Vector<Ref<IKEffectorTemplate3D>> ConstraintIK3D::_get_bone_effectors() const {
-	return pins;
-}
-
 void ConstraintIK3D::_update_ik_bones_transform() {
 	for (int32_t bone_i = bone_list.size(); bone_i-- > 0;) {
-		Ref<IKBone3D> bone = bone_list[bone_i];
+		Ref<IKConstraintBone3D> bone = bone_list[bone_i];
 		if (bone.is_null()) {
 			continue;
 		}
@@ -57,7 +53,7 @@ void ConstraintIK3D::_update_ik_bones_transform() {
 
 void ConstraintIK3D::_update_skeleton_bones_transform() {
 	for (int32_t bone_i = bone_list.size(); bone_i-- > 0;) {
-		Ref<IKBone3D> bone = bone_list[bone_i];
+		Ref<IKConstraintBone3D> bone = bone_list[bone_i];
 		if (bone.is_null()) {
 			continue;
 		}
@@ -70,7 +66,7 @@ void ConstraintIK3D::_update_skeleton_bones_transform() {
 }
 
 void ConstraintIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
-	const Vector<Ref<IKBone3D>> ik_bones = get_bone_list();
+	const Vector<Ref<IKConstraintBone3D>> ik_bones = get_bone_list();
 	uint32_t constraint_usage = PROPERTY_USAGE_DEFAULT;
 	p_list->push_back(
 			PropertyInfo(Variant::INT, "constraint_count",
@@ -420,7 +416,7 @@ void ConstraintIK3D::set_constraint_name_at_index(int32_t p_index, String p_name
 	set_dirty();
 }
 
-Vector<Ref<IKBoneSegment3D>> ConstraintIK3D::get_segmented_skeletons() {
+Vector<Ref<IKConstraintBoneSegment3D>> ConstraintIK3D::get_segmented_skeletons() {
 	return segmented_skeletons;
 }
 
@@ -444,7 +440,7 @@ void ConstraintIK3D::_process_modification() {
 		_bone_list_changed();
 	}
 	if (bone_list.size()) {
-		Ref<IKNode3D> root_ik_bone = bone_list.write[0]->get_ik_transform();
+		Ref<IKConstraintNode3D> root_ik_bone = bone_list.write[0]->get_ik_transform();
 		if (root_ik_bone.is_null()) {
 			return;
 		}
@@ -460,7 +456,7 @@ void ConstraintIK3D::_process_modification() {
 		return;
 	}
 	for (int32_t i = 0; i < get_iterations_per_frame(); i++) {
-		for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
+		for (Ref<IKConstraintBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 			if (segmented_skeleton.is_null()) {
 				continue;
 			}
@@ -497,7 +493,7 @@ int32_t ConstraintIK3D::get_bone_count() const {
 	return bone_count;
 }
 
-Vector<Ref<IKBone3D>> ConstraintIK3D::get_bone_list() const {
+Vector<Ref<IKConstraintBone3D>> ConstraintIK3D::get_bone_list() const {
 	return bone_list;
 }
 
@@ -508,11 +504,11 @@ void ConstraintIK3D::set_direction_transform_of_bone(int32_t p_index, Transform3
 	}
 	String bone_name = constraint_names[p_index];
 	int32_t bone_index = get_skeleton()->find_bone(bone_name);
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
+	for (Ref<IKConstraintBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(bone_index);
+		Ref<IKConstraintBone3D> ik_bone = segmented_skeleton->get_ik_bone(bone_index);
 		if (ik_bone.is_null() || ik_bone->get_constraint().is_null()) {
 			continue;
 		}
@@ -531,11 +527,11 @@ Transform3D ConstraintIK3D::get_direction_transform_of_bone(int32_t p_index) con
 
 	String bone_name = constraint_names[p_index];
 	int32_t bone_index = get_skeleton()->find_bone(bone_name);
-	for (const Ref<IKBoneSegment3D> &segmented_skeleton : segmented_skeletons) {
+	for (const Ref<IKConstraintBoneSegment3D> &segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(bone_index);
+		Ref<IKConstraintBone3D> ik_bone = segmented_skeleton->get_ik_bone(bone_index);
 		if (ik_bone.is_null() || ik_bone->get_constraint().is_null()) {
 			continue;
 		}
@@ -553,11 +549,11 @@ Transform3D ConstraintIK3D::get_orientation_transform_of_constraint(int32_t p_in
 	if (!get_skeleton()) {
 		return Transform3D();
 	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
+	for (Ref<IKConstraintBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKConstraintBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -575,11 +571,11 @@ void ConstraintIK3D::set_orientation_transform_of_constraint(int32_t p_index, Tr
 	if (!get_skeleton()) {
 		return;
 	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
+	for (Ref<IKConstraintBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKConstraintBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -600,11 +596,11 @@ Transform3D ConstraintIK3D::get_twist_transform_of_constraint(int32_t p_index) c
 	if (!get_skeleton()) {
 		return Transform3D();
 	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
+	for (Ref<IKConstraintBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKConstraintBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -622,11 +618,11 @@ void ConstraintIK3D::set_twist_transform_of_constraint(int32_t p_index, Transfor
 	if (!get_skeleton()) {
 		return;
 	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
+	for (Ref<IKConstraintBoneSegment3D> segmented_skeleton : segmented_skeletons) {
 		if (segmented_skeleton.is_null()) {
 			continue;
 		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
+		Ref<IKConstraintBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
 		if (ik_bone.is_null()) {
 			continue;
 		}
@@ -686,7 +682,7 @@ Transform3D ConstraintIK3D::get_godot_skeleton_transform_inverse() {
 	return godot_skeleton_transform_inverse;
 }
 
-Ref<IKNode3D> ConstraintIK3D::get_godot_skeleton_transform() {
+Ref<IKConstraintNode3D> ConstraintIK3D::get_godot_skeleton_transform() {
 	return godot_skeleton_transform;
 }
 
@@ -711,11 +707,29 @@ void ConstraintIK3D::_bone_list_changed() {
 	segmented_skeletons.clear();
 	for (BoneId root_bone_index : roots) {
 		String parentless_bone = skeleton->get_bone_name(root_bone_index);
-		Ref<IKBoneSegment3D> segmented_skeleton = Ref<IKBoneSegment3D>(memnew(IKBoneSegment3D(skeleton, parentless_bone, pins, this, nullptr, root_bone_index, -1, stabilize_passes)));
+		Vector<Ref<IKConstraintEffectorTemplate3D>> pins;
+		Array bone_queue;
+		bone_queue.push_back(root_bone_index);
+
+		while (!bone_queue.is_empty()) {
+			BoneId current_bone = bone_queue.front();
+			bone_queue.pop_front();
+			Vector<BoneId> children = skeleton->get_bone_children(current_bone);
+			for (BoneId child_bone : children) {
+				bone_queue.push_back(child_bone);
+			}
+			Ref<IKConstraintEffectorTemplate3D> effector = memnew(IKConstraintEffectorTemplate3D);
+			effector->set_root_bone(skeleton->get_bone_name(root_bone_index));
+			effector->set_motion_propagation_factor(1.0f);
+			effector->set_weight(1.0f);
+			effector->set_direction_priorities(Vector3(0.2f, 0.0f, 0.2f));
+			pins.push_back(effector);
+		}
+		Ref<IKConstraintBoneSegment3D> segmented_skeleton = Ref<IKConstraintBoneSegment3D>(memnew(IKConstraintBoneSegment3D(skeleton, parentless_bone, pins, this, nullptr, root_bone_index, -1, stabilize_passes)));
 		ik_origin.instantiate();
 		segmented_skeleton->get_root()->get_ik_transform()->set_parent(ik_origin);
 		segmented_skeleton->generate_default_segments(pins, root_bone_index, -1, this);
-		Vector<Ref<IKBone3D>> new_bone_list;
+		Vector<Ref<IKConstraintBone3D>> new_bone_list;
 		segmented_skeleton->create_bone_list(new_bone_list, true);
 		bone_list.append_array(new_bone_list);
 		Vector<Vector<double>> weight_array;
@@ -724,13 +738,13 @@ void ConstraintIK3D::_bone_list_changed() {
 		segmented_skeletons.push_back(segmented_skeleton);
 	}
 	_update_ik_bones_transform();
-	for (Ref<IKBone3D> &ik_bone_3d : bone_list) {
+	for (Ref<IKConstraintBone3D> &ik_bone_3d : bone_list) {
 		ik_bone_3d->update_default_bone_direction_transform(skeleton);
 	}
 	for (int constraint_i = 0; constraint_i < constraint_count; ++constraint_i) {
 		String bone = constraint_names[constraint_i];
 		BoneId bone_id = skeleton->find_bone(bone);
-		for (Ref<IKBone3D> &ik_bone_3d : bone_list) {
+		for (Ref<IKConstraintBone3D> &ik_bone_3d : bone_list) {
 			if (ik_bone_3d->get_bone_id() != bone_id) {
 				continue;
 			}

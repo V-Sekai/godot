@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_KUSUDAMA_3D_H
-#define IK_KUSUDAMA_3D_H
+#ifndef IK_CONSTRAINT_KUSUDAMA_3D_H
+#define IK_CONSTRAINT_KUSUDAMA_3D_H
 
 #include "ik_bone_3d.h"
 #include "ik_bone_segment_3d.h"
@@ -43,8 +43,9 @@
 #include "core/variant/typed_array.h"
 #include "scene/3d/node_3d.h"
 
-class IKBone3D;
+class IKConstraintBone3D;
 class IKLimitCone3D;
+class IKConstraintNode3D;
 class IKKusudama3D : public Resource {
 	GDCLASS(IKKusudama3D, Resource);
 
@@ -88,7 +89,7 @@ public:
 
 	IKKusudama3D() {}
 
-	void _update_constraint(Ref<IKNode3D> p_limiting_axes);
+	void _update_constraint(Ref<IKConstraintNode3D> p_limiting_axes);
 
 	void update_tangent_radii();
 
@@ -122,7 +123,7 @@ public:
 	 *
 	 * @param to_set
 	 */
-	void snap_to_orientation_limit(Ref<IKNode3D> p_bone_direction, Ref<IKNode3D> p_to_set, Ref<IKNode3D> p_limiting_axes, real_t p_dampening, real_t p_cos_half_angle_dampen);
+	void snap_to_orientation_limit(Ref<IKConstraintNode3D> p_bone_direction, Ref<IKConstraintNode3D> p_to_set, Ref<IKConstraintNode3D> p_limiting_axes, real_t p_dampening, real_t p_cos_half_angle_dampen);
 
 	bool is_nan_vector(const Vector3 &vec);
 
@@ -145,7 +146,7 @@ public:
 	 * @param limiting_axes
 	 * @return radians of the twist required to snap bone into twist limits (0 if bone is already in twist limits)
 	 */
-	void set_snap_to_twist_limit(Ref<IKNode3D> p_bone_direction, Ref<IKNode3D> p_to_set, Ref<IKNode3D> p_limiting_axes, real_t p_dampening, real_t p_cos_half_dampen);
+	void set_snap_to_twist_limit(Ref<IKConstraintNode3D> p_bone_direction, Ref<IKConstraintNode3D> p_to_set, Ref<IKConstraintNode3D> p_limiting_axes, real_t p_dampening, real_t p_cos_half_dampen);
 
 	/**
 	 * Given a point (in local coordinates), checks to see if a ray can be extended from the Kusudama's
@@ -164,7 +165,7 @@ public:
 	 */
 	Vector3 get_local_point_in_limits(Vector3 in_point, Vector<double> *in_bounds);
 
-	Vector3 local_point_on_path_sequence(Vector3 in_point, Ref<IKNode3D> limiting_axes);
+	Vector3 local_point_on_path_sequence(Vector3 in_point, Ref<IKConstraintNode3D> limiting_axes);
 
 	/**
 	 * Add a IKLimitCone to the Kusudama.

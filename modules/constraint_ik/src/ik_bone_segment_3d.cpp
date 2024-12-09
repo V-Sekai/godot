@@ -36,31 +36,31 @@
 #include "many_bone_ik_3d.h"
 #include "scene/3d/skeleton_3d.h"
 
-Ref<IKBone3D> IKBoneSegment3D::get_root() const {
+Ref<IKConstraintBone3D> IKConstraintBoneSegment3D::get_root() const {
 	return root;
 }
 
-Ref<IKBone3D> IKBoneSegment3D::get_tip() const {
+Ref<IKConstraintBone3D> IKConstraintBoneSegment3D::get_tip() const {
 	return tip;
 }
 
-bool IKBoneSegment3D::is_pinned() const {
+bool IKConstraintBoneSegment3D::is_pinned() const {
 	ERR_FAIL_COND_V(tip.is_null(), false);
 	return tip->is_pinned();
 }
 
-Vector<Ref<IKBoneSegment3D>> IKBoneSegment3D::get_child_segments() const {
+Vector<Ref<IKConstraintBoneSegment3D>> IKConstraintBoneSegment3D::get_child_segments() const {
 	return child_segments;
 }
 
-void IKBoneSegment3D::create_bone_list(Vector<Ref<IKBone3D>> &p_list, bool p_recursive) const {
+void IKConstraintBoneSegment3D::create_bone_list(Vector<Ref<IKConstraintBone3D>> &p_list, bool p_recursive) const {
 	if (p_recursive) {
 		for (int32_t child_i = 0; child_i < child_segments.size(); child_i++) {
 			child_segments[child_i]->create_bone_list(p_list, p_recursive);
 		}
 	}
-	Ref<IKBone3D> current_bone = tip;
-	Vector<Ref<IKBone3D>> list;
+	Ref<IKConstraintBone3D> current_bone = tip;
+	Vector<Ref<IKConstraintBone3D>> list;
 	while (current_bone.is_valid()) {
 		list.push_back(current_bone);
 		if (current_bone == root) {
@@ -71,30 +71,30 @@ void IKBoneSegment3D::create_bone_list(Vector<Ref<IKBone3D>> &p_list, bool p_rec
 	p_list.append_array(list);
 }
 
-void IKBoneSegment3D::update_pinned_list(Vector<Vector<double>> &r_weights) {
+void IKConstraintBoneSegment3D::update_pinned_list(Vector<Vector<double>> &r_weights) {
 	for (int32_t chain_i = 0; chain_i < child_segments.size(); chain_i++) {
-		Ref<IKBoneSegment3D> chain = child_segments[chain_i];
+		Ref<IKConstraintBoneSegment3D> chain = child_segments[chain_i];
 		chain->update_pinned_list(r_weights);
 	}
 	if (is_pinned()) {
 		effector_list.push_back(tip->get_pin());
 	}
-	double motion_propagation_factor = is_pinned() ? tip->get_pin()->motion_propagation_factor : 1.0;
+	double motion_propagation_factor = is_pinned() ? tip->get_pin()->get_motion_propagation_factor() : 1.0;
 	if (motion_propagation_factor > 0.0) {
-		for (Ref<IKBoneSegment3D> child : child_segments) {
+		for (Ref<IKConstraintBoneSegment3D> child : child_segments) {
 			effector_list.append_array(child->effector_list);
 		}
 	}
 }
 
-void IKBoneSegment3D::_update_optimal_rotation(Ref<IKBone3D> p_for_bone, double p_damp, bool p_translate, bool p_constraint_mode, int32_t current_iteration, int32_t total_iterations) {
+void IKConstraintBoneSegment3D::_update_optimal_rotation(Ref<IKConstraintBone3D> p_for_bone, double p_damp, bool p_translate, bool p_constraint_mode, int32_t current_iteration, int32_t total_iterations) {
 	ERR_FAIL_COND(p_for_bone.is_null());
 	_update_target_headings(p_for_bone, &heading_weights, &target_headings);
 	_update_tip_headings(p_for_bone, &tip_headings);
 	_set_optimal_rotation(p_for_bone, &tip_headings, &target_headings, &heading_weights, p_damp, p_translate, p_constraint_mode);
 }
 
-Quaternion IKBoneSegment3D::clamp_to_cos_half_angle(Quaternion p_quat, double p_cos_half_angle) {
+Quaternion IKConstraintBoneSegment3D::clamp_to_cos_half_angle(Quaternion p_quat, double p_cos_half_angle) {
 	if (p_quat.w < 0.0) {
 		p_quat = p_quat * -1;
 	}
@@ -111,7 +111,7 @@ Quaternion IKBoneSegment3D::clamp_to_cos_half_angle(Quaternion p_quat, double p_
 	return p_quat;
 }
 
-float IKBoneSegment3D::_get_manual_msd(const PackedVector3Array &r_htip, const PackedVector3Array &r_htarget, const Vector<double> &p_weights) {
+float IKConstraintBoneSegment3D::_get_manual_msd(const PackedVector3Array &r_htip, const PackedVector3Array &r_htarget, const Vector<double> &p_weights) {
 	float manual_RMSD = 0.0f;
 	float w_sum = 0.0f;
 	for (int i = 0; i < r_htarget.size(); i++) {
@@ -126,7 +126,7 @@ float IKBoneSegment3D::_get_manual_msd(const PackedVector3Array &r_htip, const P
 	return manual_RMSD;
 }
 
-void IKBoneSegment3D::_set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVector3Array *r_htip, PackedVector3Array *r_htarget, Vector<double> *r_weights, float p_dampening, bool p_translate, bool p_constraint_mode, double current_iteration, double total_iterations) {
+void IKConstraintBoneSegment3D::_set_optimal_rotation(Ref<IKConstraintBone3D> p_for_bone, PackedVector3Array *r_htip, PackedVector3Array *r_htarget, Vector<double> *r_weights, float p_dampening, bool p_translate, bool p_constraint_mode, double current_iteration, double total_iterations) {
 	ERR_FAIL_COND(p_for_bone.is_null());
 	ERR_FAIL_NULL(r_htip);
 	ERR_FAIL_NULL(r_htarget);
@@ -180,13 +180,13 @@ void IKBoneSegment3D::_set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVect
 	}
 }
 
-void IKBoneSegment3D::_update_target_headings(Ref<IKBone3D> p_for_bone, Vector<double> *r_weights, PackedVector3Array *r_target_headings) {
+void IKConstraintBoneSegment3D::_update_target_headings(Ref<IKConstraintBone3D> p_for_bone, Vector<double> *r_weights, PackedVector3Array *r_target_headings) {
 	ERR_FAIL_COND(p_for_bone.is_null());
 	ERR_FAIL_NULL(r_weights);
 	ERR_FAIL_NULL(r_target_headings);
 	int32_t last_index = 0;
 	for (int32_t effector_i = 0; effector_i < effector_list.size(); effector_i++) {
-		Ref<IKEffector3D> effector = effector_list[effector_i];
+		Ref<IKConstraintEffector3D> effector = effector_list[effector_i];
 		if (effector.is_null()) {
 			continue;
 		}
@@ -194,12 +194,12 @@ void IKBoneSegment3D::_update_target_headings(Ref<IKBone3D> p_for_bone, Vector<d
 	}
 }
 
-void IKBoneSegment3D::_update_tip_headings(Ref<IKBone3D> p_for_bone, PackedVector3Array *r_heading_tip) {
+void IKConstraintBoneSegment3D::_update_tip_headings(Ref<IKConstraintBone3D> p_for_bone, PackedVector3Array *r_heading_tip) {
 	ERR_FAIL_NULL(r_heading_tip);
 	ERR_FAIL_COND(p_for_bone.is_null());
 	int32_t last_index = 0;
 	for (int32_t effector_i = 0; effector_i < effector_list.size(); effector_i++) {
-		Ref<IKEffector3D> effector = effector_list[effector_i];
+		Ref<IKConstraintEffector3D> effector = effector_list[effector_i];
 		if (effector.is_null()) {
 			continue;
 		}
@@ -207,8 +207,8 @@ void IKBoneSegment3D::_update_tip_headings(Ref<IKBone3D> p_for_bone, PackedVecto
 	}
 }
 
-void IKBoneSegment3D::segment_solver(const Vector<float> &p_damp, float p_default_damp, bool p_constraint_mode, int32_t p_current_iteration, int32_t p_total_iteration) {
-	for (Ref<IKBoneSegment3D> child : child_segments) {
+void IKConstraintBoneSegment3D::segment_solver(const Vector<float> &p_damp, float p_default_damp, bool p_constraint_mode, int32_t p_current_iteration, int32_t p_total_iteration) {
+	for (Ref<IKConstraintBoneSegment3D> child : child_segments) {
 		if (child.is_null()) {
 			continue;
 		}
@@ -224,8 +224,8 @@ void IKBoneSegment3D::segment_solver(const Vector<float> &p_damp, float p_defaul
 	_qcp_solver(p_damp, p_default_damp, is_translate, p_constraint_mode, p_current_iteration, p_total_iteration);
 }
 
-void IKBoneSegment3D::_qcp_solver(const Vector<float> &p_damp, float p_default_damp, bool p_translate, bool p_constraint_mode, int32_t p_current_iteration, int32_t p_total_iterations) {
-	for (Ref<IKBone3D> current_bone : bones) {
+void IKConstraintBoneSegment3D::_qcp_solver(const Vector<float> &p_damp, float p_default_damp, bool p_translate, bool p_constraint_mode, int32_t p_current_iteration, int32_t p_total_iterations) {
+	for (Ref<IKConstraintBone3D> current_bone : bones) {
 		float damp = p_default_damp;
 		bool is_valid_access = !(unlikely((p_damp.size()) < 0 || (current_bone->get_bone_id()) >= (p_damp.size())));
 		if (is_valid_access) {
@@ -239,21 +239,21 @@ void IKBoneSegment3D::_qcp_solver(const Vector<float> &p_damp, float p_default_d
 	}
 }
 
-void IKBoneSegment3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("is_pinned"), &IKBoneSegment3D::is_pinned);
-	ClassDB::bind_method(D_METHOD("get_ik_bone", "bone"), &IKBoneSegment3D::get_ik_bone);
+void IKConstraintBoneSegment3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("is_pinned"), &IKConstraintBoneSegment3D::is_pinned);
+	ClassDB::bind_method(D_METHOD("get_ik_bone", "bone"), &IKConstraintBoneSegment3D::get_ik_bone);
 }
 
-IKBoneSegment3D::IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, ConstraintIK3D *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent,
+IKConstraintBoneSegment3D::IKConstraintBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKConstraintEffectorTemplate3D>> &p_pins, ConstraintIK3D *p_many_bone_ik, const Ref<IKConstraintBoneSegment3D> &p_parent,
 		BoneId p_root, BoneId p_tip, int32_t p_stabilizing_pass_count) {
 	root = p_root;
 	tip = p_tip;
 	skeleton = p_skeleton;
-	root = Ref<IKBone3D>(memnew(IKBone3D(p_root_bone_name, p_skeleton, p_parent, p_pins, Math_PI, p_many_bone_ik)));
+	root = Ref<IKConstraintBone3D>(memnew(IKConstraintBone3D(p_root_bone_name, p_skeleton, p_parent, p_pins, Math_PI, p_many_bone_ik)));
 	if (p_parent.is_valid()) {
 		root_segment = p_parent->root_segment;
 	} else {
-		root_segment = Ref<IKBoneSegment3D>(this);
+		root_segment = Ref<IKConstraintBoneSegment3D>(this);
 	}
 	root_segment->bone_map[root->get_bone_id()] = root;
 	if (p_parent.is_valid()) {
@@ -263,24 +263,24 @@ IKBoneSegment3D::IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_
 	default_stabilizing_pass_count = p_stabilizing_pass_count;
 }
 
-void IKBoneSegment3D::_enable_pinned_descendants() {
+void IKConstraintBoneSegment3D::_enable_pinned_descendants() {
 	pinned_descendants = true;
 }
 
-bool IKBoneSegment3D::_has_pinned_descendants() {
+bool IKConstraintBoneSegment3D::_has_pinned_descendants() {
 	return pinned_descendants;
 }
 
-Ref<IKBone3D> IKBoneSegment3D::get_ik_bone(BoneId p_bone) const {
+Ref<IKConstraintBone3D> IKConstraintBoneSegment3D::get_ik_bone(BoneId p_bone) const {
 	if (!bone_map.has(p_bone)) {
-		return Ref<IKBone3D>();
+		return Ref<IKConstraintBone3D>();
 	}
 	return bone_map[p_bone];
 }
 
-void IKBoneSegment3D::create_headings_arrays() {
+void IKConstraintBoneSegment3D::create_headings_arrays() {
 	Vector<Vector<double>> penalty_array;
-	Vector<Ref<IKBone3D>> new_pinned_bones;
+	Vector<Ref<IKConstraintBone3D>> new_pinned_bones;
 	recursive_create_penalty_array(this, penalty_array, new_pinned_bones, 1.0);
 	pinned_bones.resize(new_pinned_bones.size());
 	int32_t total_headings = 0;
@@ -306,7 +306,7 @@ void IKBoneSegment3D::create_headings_arrays() {
 	}
 }
 
-void IKBoneSegment3D::recursive_create_penalty_array(Ref<IKBoneSegment3D> p_bone_segment, Vector<Vector<double>> &r_penalty_array, Vector<Ref<IKBone3D>> &r_pinned_bones, double p_falloff) {
+void IKConstraintBoneSegment3D::recursive_create_penalty_array(Ref<IKConstraintBoneSegment3D> p_bone_segment, Vector<Vector<double>> &r_penalty_array, Vector<Ref<IKConstraintBone3D>> &r_pinned_bones, double p_falloff) {
 	if (p_falloff <= 0.0) {
 		return;
 	}
@@ -314,8 +314,8 @@ void IKBoneSegment3D::recursive_create_penalty_array(Ref<IKBoneSegment3D> p_bone
 	double current_falloff = 1.0;
 
 	if (p_bone_segment->is_pinned()) {
-		Ref<IKBone3D> current_tip = p_bone_segment->get_tip();
-		Ref<IKEffector3D> pin = current_tip->get_pin();
+		Ref<IKConstraintBone3D> current_tip = p_bone_segment->get_tip();
+		Ref<IKConstraintEffector3D> pin = current_tip->get_pin();
 		double weight = pin->get_weight();
 		Vector<double> inner_weight_array;
 		inner_weight_array.push_back(weight * p_falloff);
@@ -337,20 +337,20 @@ void IKBoneSegment3D::recursive_create_penalty_array(Ref<IKBoneSegment3D> p_bone
 		current_falloff = pin->get_motion_propagation_factor();
 	}
 
-	for (Ref<IKBoneSegment3D> s : p_bone_segment->get_child_segments()) {
+	for (Ref<IKConstraintBoneSegment3D> s : p_bone_segment->get_child_segments()) {
 		recursive_create_penalty_array(s, r_penalty_array, r_pinned_bones, p_falloff * current_falloff);
 	}
 }
 
-void IKBoneSegment3D::recursive_create_headings_arrays_for(Ref<IKBoneSegment3D> p_bone_segment) {
+void IKConstraintBoneSegment3D::recursive_create_headings_arrays_for(Ref<IKConstraintBoneSegment3D> p_bone_segment) {
 	p_bone_segment->create_headings_arrays();
-	for (Ref<IKBoneSegment3D> segments : p_bone_segment->get_child_segments()) {
+	for (Ref<IKConstraintBoneSegment3D> segments : p_bone_segment->get_child_segments()) {
 		recursive_create_headings_arrays_for(segments);
 	}
 }
 
-void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, ConstraintIK3D *p_many_bone_ik) {
-	Ref<IKBone3D> current_tip = root;
+void IKConstraintBoneSegment3D::generate_default_segments(Vector<Ref<IKConstraintEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, ConstraintIK3D *p_many_bone_ik) {
+	Ref<IKConstraintBone3D> current_tip = root;
 	Vector<BoneId> children;
 
 	while (!_is_parent_of_tip(current_tip, p_tip_bone)) {
@@ -368,22 +368,22 @@ void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>
 	_finalize_segment(current_tip);
 }
 
-bool IKBoneSegment3D::_is_parent_of_tip(Ref<IKBone3D> p_current_tip, BoneId p_tip_bone) {
+bool IKConstraintBoneSegment3D::_is_parent_of_tip(Ref<IKConstraintBone3D> p_current_tip, BoneId p_tip_bone) {
 	return skeleton->get_bone_parent(p_current_tip->get_bone_id()) >= p_tip_bone && p_tip_bone != -1;
 }
 
-bool IKBoneSegment3D::_has_multiple_children_or_pinned(Vector<BoneId> &r_children, Ref<IKBone3D> p_current_tip) {
+bool IKConstraintBoneSegment3D::_has_multiple_children_or_pinned(Vector<BoneId> &r_children, Ref<IKConstraintBone3D> p_current_tip) {
 	return r_children.size() > 1 || p_current_tip->is_pinned();
 }
 
-void IKBoneSegment3D::_process_children(Vector<BoneId> &r_children, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &r_pins, BoneId p_root_bone, BoneId p_tip_bone, ConstraintIK3D *p_many_bone_ik) {
+void IKConstraintBoneSegment3D::_process_children(Vector<BoneId> &r_children, Ref<IKConstraintBone3D> p_current_tip, Vector<Ref<IKConstraintEffectorTemplate3D>> &r_pins, BoneId p_root_bone, BoneId p_tip_bone, ConstraintIK3D *p_many_bone_ik) {
 	tip = p_current_tip;
-	Ref<IKBoneSegment3D> parent(this);
+	Ref<IKConstraintBoneSegment3D> parent(this);
 
 	for (int32_t child_i = 0; child_i < r_children.size(); child_i++) {
 		BoneId child_bone = r_children[child_i];
 		String child_name = skeleton->get_bone_name(child_bone);
-		Ref<IKBoneSegment3D> child_segment = _create_child_segment(child_name, r_pins, p_root_bone, p_tip_bone, p_many_bone_ik, parent);
+		Ref<IKConstraintBoneSegment3D> child_segment = _create_child_segment(child_name, r_pins, p_root_bone, p_tip_bone, p_many_bone_ik, parent);
 
 		child_segment->generate_default_segments(r_pins, p_root_bone, p_tip_bone, p_many_bone_ik);
 
@@ -394,19 +394,19 @@ void IKBoneSegment3D::_process_children(Vector<BoneId> &r_children, Ref<IKBone3D
 	}
 }
 
-Ref<IKBoneSegment3D> IKBoneSegment3D::_create_child_segment(String &p_child_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, ConstraintIK3D *p_many_bone_ik, Ref<IKBoneSegment3D> &p_parent) {
-	return Ref<IKBoneSegment3D>(memnew(IKBoneSegment3D(skeleton, p_child_name, p_pins, p_many_bone_ik, p_parent, p_root_bone, p_tip_bone)));
+Ref<IKConstraintBoneSegment3D> IKConstraintBoneSegment3D::_create_child_segment(String &p_child_name, Vector<Ref<IKConstraintEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, ConstraintIK3D *p_many_bone_ik, Ref<IKConstraintBoneSegment3D> &p_parent) {
+	return Ref<IKConstraintBoneSegment3D>(memnew(IKConstraintBoneSegment3D(skeleton, p_child_name, p_pins, p_many_bone_ik, p_parent, p_root_bone, p_tip_bone)));
 }
 
-Ref<IKBone3D> IKBoneSegment3D::_create_next_bone(BoneId p_bone_id, Ref<IKBone3D> p_current_tip, Vector<Ref<IKEffectorTemplate3D>> &p_pins, ConstraintIK3D *p_many_bone_ik) {
+Ref<IKConstraintBone3D> IKConstraintBoneSegment3D::_create_next_bone(BoneId p_bone_id, Ref<IKConstraintBone3D> p_current_tip, Vector<Ref<IKConstraintEffectorTemplate3D>> &p_pins, ConstraintIK3D *p_many_bone_ik) {
 	String bone_name = skeleton->get_bone_name(p_bone_id);
-	Ref<IKBone3D> next_bone = Ref<IKBone3D>(memnew(IKBone3D(bone_name, skeleton, p_current_tip, p_pins, p_many_bone_ik->get_default_damp(), p_many_bone_ik)));
+	Ref<IKConstraintBone3D> next_bone = Ref<IKConstraintBone3D>(memnew(IKConstraintBone3D(bone_name, skeleton, p_current_tip, p_pins, p_many_bone_ik->get_default_damp(), p_many_bone_ik)));
 	root_segment->bone_map[p_bone_id] = next_bone;
 
 	return next_bone;
 }
 
-void IKBoneSegment3D::_finalize_segment(Ref<IKBone3D> p_current_tip) {
+void IKConstraintBoneSegment3D::_finalize_segment(Ref<IKConstraintBone3D> p_current_tip) {
 	tip = p_current_tip;
 
 	if (tip->is_pinned()) {

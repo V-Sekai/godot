@@ -28,14 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_EFFECTOR_TEMPLATE_3D_H
-#define IK_EFFECTOR_TEMPLATE_3D_H
+#ifndef IK_CONSTRAINT_EFFECTOR_TEMPLATE_3D_H
+#define IK_CONSTRAINT_EFFECTOR_TEMPLATE_3D_H
 
 #include "core/io/resource.h"
 #include "core/string/node_path.h"
 
-class IKEffectorTemplate3D : public Resource {
-	GDCLASS(IKEffectorTemplate3D, Resource);
+class IKConstraintEffectorTemplate3D : public Resource {
+	GDCLASS(IKConstraintEffectorTemplate3D, Resource);
 
 	StringName root_bone;
 	NodePath target_node;
@@ -56,7 +56,7 @@ public:
 	Vector3 get_direction_priorities() const { return priority_direction; }
 	void set_direction_priorities(Vector3 p_priority_direction) { priority_direction = p_priority_direction; }
 
-	IKEffectorTemplate3D();
+	IKConstraintEffectorTemplate3D();
 };
 
-#endif // IK_EFFECTOR_TEMPLATE_3D_H
+#endif // IK_CONSTRAINT_EFFECTOR_TEMPLATE_3D_H

@@ -30,10 +30,10 @@
 
 #include "ik_node_3d.h"
 
-void IKNode3D::_propagate_transform_changed() {
-	Vector<Ref<IKNode3D>> to_remove;
+void IKConstraintNode3D::_propagate_transform_changed() {
+	Vector<Ref<IKConstraintNode3D>> to_remove;
 
-	for (Ref<IKNode3D> transform : children) {
+	for (Ref<IKConstraintNode3D> transform : children) {
 		if (transform.is_null()) {
 			to_remove.push_back(transform);
 		} else {
@@ -41,23 +41,23 @@ void IKNode3D::_propagate_transform_changed() {
 		}
 	}
 
-	for (Ref<IKNode3D> transform : to_remove) {
+	for (Ref<IKConstraintNode3D> transform : to_remove) {
 		children.erase(transform);
 	}
 
 	dirty |= DIRTY_GLOBAL;
 }
 
-void IKNode3D::_update_local_transform() const {
+void IKConstraintNode3D::_update_local_transform() const {
 	local_transform.basis = rotation.scaled(scale);
 	dirty &= ~DIRTY_LOCAL;
 }
 
-void IKNode3D::rotate_local_with_global(const Basis &p_basis, bool p_propagate) {
+void IKConstraintNode3D::rotate_local_with_global(const Basis &p_basis, bool p_propagate) {
 	if (parent.get_ref().is_null()) {
 		return;
 	}
-	Ref<IKNode3D> parent_ik_node = parent.get_ref();
+	Ref<IKConstraintNode3D> parent_ik_node = parent.get_ref();
 	const Basis &new_rot = parent_ik_node->get_global_transform().basis;
 	local_transform.basis = new_rot.inverse() * p_basis * new_rot * local_transform.basis;
 	dirty |= DIRTY_GLOBAL;
@@ -66,7 +66,7 @@ void IKNode3D::rotate_local_with_global(const Basis &p_basis, bool p_propagate) 
 	}
 }
 
-void IKNode3D::set_transform(const Transform3D &p_transform) {
+void IKConstraintNode3D::set_transform(const Transform3D &p_transform) {
 	if (local_transform != p_transform) {
 		local_transform = p_transform;
 		dirty |= DIRTY_VECTORS;
@@ -74,15 +74,15 @@ void IKNode3D::set_transform(const Transform3D &p_transform) {
 	}
 }
 
-void IKNode3D::set_global_transform(const Transform3D &p_transform) {
-	Ref<IKNode3D> ik_node = parent.get_ref();
+void IKConstraintNode3D::set_global_transform(const Transform3D &p_transform) {
+	Ref<IKConstraintNode3D> ik_node = parent.get_ref();
 	Transform3D xform = ik_node.is_valid() ? ik_node->get_global_transform().affine_inverse() * p_transform : p_transform;
 	local_transform = xform;
 	dirty |= DIRTY_VECTORS;
 	_propagate_transform_changed();
 }
 
-Transform3D IKNode3D::get_transform() const {
+Transform3D IKConstraintNode3D::get_transform() const {
 	if (dirty & DIRTY_LOCAL) {
 		_update_local_transform();
 	}
@@ -90,12 +90,12 @@ Transform3D IKNode3D::get_transform() const {
 	return local_transform;
 }
 
-Transform3D IKNode3D::get_global_transform() const {
+Transform3D IKConstraintNode3D::get_global_transform() const {
 	if (dirty & DIRTY_GLOBAL) {
 		if (dirty & DIRTY_LOCAL) {
 			_update_local_transform();
 		}
-		Ref<IKNode3D> ik_node = parent.get_ref();
+		Ref<IKConstraintNode3D> ik_node = parent.get_ref();
 		if (ik_node.is_valid()) {
 			global_transform = ik_node->get_global_transform() * local_transform;
 		} else {
@@ -112,15 +112,15 @@ Transform3D IKNode3D::get_global_transform() const {
 	return global_transform;
 }
 
-void IKNode3D::set_disable_scale(bool p_enabled) {
+void IKConstraintNode3D::set_disable_scale(bool p_enabled) {
 	disable_scale = p_enabled;
 }
 
-bool IKNode3D::is_scale_disabled() const {
+bool IKConstraintNode3D::is_scale_disabled() const {
 	return disable_scale;
 }
 
-void IKNode3D::set_parent(Ref<IKNode3D> p_parent) {
+void IKConstraintNode3D::set_parent(Ref<IKConstraintNode3D> p_parent) {
 	if (p_parent.is_valid()) {
 		p_parent->children.erase(this);
 	}
@@ -131,29 +131,29 @@ void IKNode3D::set_parent(Ref<IKNode3D> p_parent) {
 	_propagate_transform_changed();
 }
 
-Ref<IKNode3D> IKNode3D::get_parent() const {
+Ref<IKConstraintNode3D> IKConstraintNode3D::get_parent() const {
 	return parent.get_ref();
 }
 
-Vector3 IKNode3D::to_local(const Vector3 &p_global) const {
+Vector3 IKConstraintNode3D::to_local(const Vector3 &p_global) const {
 	return get_global_transform().affine_inverse().xform(p_global);
 }
 
-Vector3 IKNode3D::to_global(const Vector3 &p_local) const {
+Vector3 IKConstraintNode3D::to_global(const Vector3 &p_local) const {
 	return get_global_transform().xform(p_local);
 }
 
-IKNode3D::~IKNode3D() {
+IKConstraintNode3D::~IKConstraintNode3D() {
 	cleanup();
 }
 
-void IKNode3D::_notification(int p_what) {
+void IKConstraintNode3D::_notification(int p_what) {
 	if (p_what == NOTIFICATION_PREDELETE) {
 		cleanup();
 	}
 }
-void IKNode3D::cleanup() {
-	for (Ref<IKNode3D> &child : children) {
-		child->set_parent(Ref<IKNode3D>());
+void IKConstraintNode3D::cleanup() {
+	for (Ref<IKConstraintNode3D> &child : children) {
+		child->set_parent(Ref<IKConstraintNode3D>());
 	}
 }

@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_BONE_3D_H
-#define IK_BONE_3D_H
+#ifndef IK_CONSTRAINT_BONE_3D_H
+#define IK_CONSTRAINT_BONE_3D_H
 
 #include "ik_effector_template_3d.h"
 #include "ik_kusudama_3d.h"
@@ -40,17 +40,17 @@
 #include "core/object/ref_counted.h"
 #include "scene/3d/skeleton_3d.h"
 
-class IKEffector3D;
+class IKConstraintEffector3D;
 class ConstraintIK3D;
-class IKBone3D;
+class IKConstraintBone3D;
 
-class IKBone3D : public Resource {
-	GDCLASS(IKBone3D, Resource);
+class IKConstraintBone3D : public Resource {
+	GDCLASS(IKConstraintBone3D, Resource);
 
 	BoneId bone_id = -1;
-	Ref<IKBone3D> parent;
-	Vector<Ref<IKBone3D>> children;
-	Ref<IKEffector3D> pin;
+	Ref<IKConstraintBone3D> parent;
+	Vector<Ref<IKConstraintBone3D>> children;
+	Ref<IKConstraintEffector3D> pin;
 
 	float default_dampening = Math_PI;
 	float dampening = get_parent().is_null() ? Math_PI : default_dampening;
@@ -66,10 +66,10 @@ class IKBone3D : public Resource {
 	// Can be independent and should be calculated
 	// to keep -y to be the opposite of its bone forward orientation
 	// To avoid singularity that is ambiguous.
-	Ref<IKNode3D> constraint_orientation_transform = Ref<IKNode3D>(memnew(IKNode3D()));
-	Ref<IKNode3D> constraint_twist_transform = Ref<IKNode3D>(memnew(IKNode3D()));
-	Ref<IKNode3D> godot_skeleton_aligned_transform = Ref<IKNode3D>(memnew(IKNode3D())); // The bone's actual transform.
-	Ref<IKNode3D> bone_direction_transform = Ref<IKNode3D>(memnew(IKNode3D())); // Physical direction of the bone. Calculate Y is the bone up.
+	Ref<IKConstraintNode3D> constraint_orientation_transform = Ref<IKConstraintNode3D>(memnew(IKConstraintNode3D()));
+	Ref<IKConstraintNode3D> constraint_twist_transform = Ref<IKConstraintNode3D>(memnew(IKConstraintNode3D()));
+	Ref<IKConstraintNode3D> godot_skeleton_aligned_transform = Ref<IKConstraintNode3D>(memnew(IKConstraintNode3D())); // The bone's actual transform.
+	Ref<IKConstraintNode3D> bone_direction_transform = Ref<IKConstraintNode3D>(memnew(IKConstraintNode3D())); // Physical direction of the bone. Calculate Y is the bone up.
 
 protected:
 	static void _bind_methods();
@@ -84,21 +84,21 @@ public:
 	bool is_axially_constrained();
 	bool is_orientationally_constrained();
 	Transform3D get_bone_direction_global_pose() const;
-	Ref<IKNode3D> get_bone_direction_transform();
-	void set_bone_direction_transform(Ref<IKNode3D> p_bone_direction);
+	Ref<IKConstraintNode3D> get_bone_direction_transform();
+	void set_bone_direction_transform(Ref<IKConstraintNode3D> p_bone_direction);
 	void update_default_bone_direction_transform(Skeleton3D *p_skeleton);
-	void set_constraint_orientation_transform(Ref<IKNode3D> p_transform);
-	Ref<IKNode3D> get_constraint_orientation_transform();
-	Ref<IKNode3D> get_constraint_twist_transform();
+	void set_constraint_orientation_transform(Ref<IKConstraintNode3D> p_transform);
+	Ref<IKConstraintNode3D> get_constraint_orientation_transform();
+	Ref<IKConstraintNode3D> get_constraint_twist_transform();
 	void update_default_constraint_transform();
 	void add_constraint(Ref<IKKusudama3D> p_constraint);
 	Ref<IKKusudama3D> get_constraint() const;
 	void set_bone_id(BoneId p_bone_id, Skeleton3D *p_skeleton = nullptr);
 	BoneId get_bone_id() const;
-	void set_parent(const Ref<IKBone3D> &p_parent);
-	Ref<IKBone3D> get_parent() const;
-	void set_pin(const Ref<IKEffector3D> &p_pin);
-	Ref<IKEffector3D> get_pin() const;
+	void set_parent(const Ref<IKConstraintBone3D> &p_parent);
+	Ref<IKConstraintBone3D> get_parent() const;
+	void set_pin(const Ref<IKConstraintEffector3D> &p_pin);
+	Ref<IKConstraintEffector3D> get_pin() const;
 	void set_global_pose(const Transform3D &p_transform);
 	Transform3D get_global_pose() const;
 	void set_pose(const Transform3D &p_transform);
@@ -107,10 +107,10 @@ public:
 	void set_skeleton_bone_pose(Skeleton3D *p_skeleton);
 	void create_pin();
 	bool is_pinned() const;
-	Ref<IKNode3D> get_ik_transform();
-	IKBone3D() {}
-	IKBone3D(StringName p_bone, Skeleton3D *p_skeleton, const Ref<IKBone3D> &p_parent, Vector<Ref<IKEffectorTemplate3D>> &p_pins, float p_default_dampening = Math_PI, ConstraintIK3D *p_many_bone_ik = nullptr);
-	~IKBone3D() {}
+	Ref<IKConstraintNode3D> get_ik_transform();
+	IKConstraintBone3D() {}
+	IKConstraintBone3D(StringName p_bone, Skeleton3D *p_skeleton, const Ref<IKConstraintBone3D> &p_parent, Vector<Ref<IKConstraintEffectorTemplate3D>> &p_pins, float p_default_dampening = Math_PI, ConstraintIK3D *p_many_bone_ik = nullptr);
+	~IKConstraintBone3D() {}
 	float get_cos_half_dampen() const;
 	void set_cos_half_dampen(float p_cos_half_dampen);
 	Transform3D get_parent_bone_aligned_transform();
@@ -119,4 +119,4 @@ public:
 	Vector3 calculate_weighted_direction(const TypedArray<IKLimitCone3D> &p_cones, float p_total_radius_sum) const;
 };
 
-#endif // IK_BONE_3D_H
+#endif // IK_CONSTRAINT_BONE_3D_H

@@ -33,31 +33,16 @@
 #include "src/ik_bone_3d.h"
 #include "src/ik_effector_3d.h"
 #include "src/ik_effector_template_3d.h"
-#include "src/ik_kusudama_3d.h"
 #include "src/many_bone_ik_3d.h"
-
-#ifdef TOOLS_ENABLED
-#include "editor/many_bone_ik_3d_gizmo_plugin.h"
-#endif
 
 void initialize_many_bone_ik_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-	}
-#ifdef TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		EditorPlugins::add_by_type<EditorPluginManyBoneIK>();
-	}
-#endif
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
 		GDREGISTER_CLASS(IKEffectorTemplate3D);
 		GDREGISTER_CLASS(ManyBoneIK3D);
 		GDREGISTER_CLASS(IKBone3D);
 		GDREGISTER_CLASS(IKNode3D);
 		GDREGISTER_CLASS(IKEffector3D);
 		GDREGISTER_CLASS(IKBoneSegment3D);
-		GDREGISTER_CLASS(IKKusudama3D);
-		GDREGISTER_CLASS(IKRay3D);
-		GDREGISTER_CLASS(IKLimitCone3D);
 	}
 }
 
