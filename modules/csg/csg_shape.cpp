@@ -335,13 +335,13 @@ static String _export_meshgl_as_json(const manifold::MeshGL64 &p_mesh) {
 }
 #endif // DEV_ENABLED
 
-static void _pack_manifold(
+static manifold::Manifold::Error _pack_manifold(
 		const CSGBrush *const p_mesh_merge,
 		manifold::Manifold &r_manifold,
 		HashMap<int32_t, Ref<Material>> &p_mesh_materials,
 		CSGShape3D *p_csg_shape) {
-	ERR_FAIL_NULL_MSG(p_mesh_merge, "p_mesh_merge is null");
-	ERR_FAIL_NULL_MSG(p_csg_shape, "p_shape is null");
+	ERR_FAIL_NULL_V_MSG(p_mesh_merge, manifold::Manifold::Error::InvalidConstruction, "p_mesh_merge is null");
+	ERR_FAIL_NULL_V_MSG(p_csg_shape, manifold::Manifold::Error::InvalidConstruction, "p_shape is null");
 	HashMap<uint32_t, Vector<CSGBrush::Face>> faces_by_material;
 	for (int face_i = 0; face_i < p_mesh_merge->faces.size(); face_i++) {
 		const CSGBrush::Face &face = p_mesh_merge->faces[face_i];
@@ -394,22 +394,14 @@ static void _pack_manifold(
 	// runIndex needs an explicit end value.
 	mesh.runIndex.push_back(mesh.triVerts.size());
 	mesh.tolerance = 2 * FLT_EPSILON;
-	ERR_FAIL_COND_MSG(mesh.vertProperties.size() % mesh.numProp != 0, "Invalid vertex properties size.");
+	ERR_FAIL_COND_V_MSG(mesh.vertProperties.size() % mesh.numProp != 0, manifold::Manifold::Error::PropertiesWrongLength, "Invalid vertex properties size.");
 	mesh.Merge();
 #ifdef DEV_ENABLED
 	print_verbose(_export_meshgl_as_json(mesh));
 #endif // DEV_ENABLED
 	r_manifold = manifold::Manifold(mesh);
 	manifold::Manifold::Error error = r_manifold.Status();
-	if (error == manifold::Manifold::Error::NoError) {
-		return;
-	}
-	if (p_csg_shape->get_owner()) {
-		NodePath path = p_csg_shape->get_owner()->get_path_to(p_csg_shape, true);
-		print_error(vformat("CSGShape3D manifold creation from mesh failed at %s: %s.", path, manifold_error_to_string(error)));
-	} else {
-		print_error(vformat("CSGShape3D manifold creation from mesh failed at .: %s.", manifold_error_to_string(error)));
-	}
+	return error;
 }
 
 struct ManifoldOperation {
@@ -442,7 +434,42 @@ CSGBrush *CSGShape3D::_get_brush() {
 	CSGBrush *n = _build_brush();
 	HashMap<int32_t, Ref<Material>> mesh_materials;
 	manifold::Manifold root_manifold;
-	_pack_manifold(n, root_manifold, mesh_materials, this);
+	manifold::Manifold::Error manifold_error = _pack_manifold(n, root_manifold, mesh_materials, this);
+	if (is_root_shape()) {
+		warnings.clear();
+		for (int i = 0; i < get_child_count(); i++) {
+			CSGShape3D *child = Object::cast_to<CSGShape3D>(get_child(i));
+			if (child) {
+				child->warnings.clear();
+			}
+		}
+	}
+	const String manifold_error_message_template = "%s: The CSGShape3D could not be created due to this error, resulting in an empty shape.";
+	const String manifold_info_message = "CSGShape3D empty shapes typically occurs because the mesh is not manifold. "
+										 "A manifold mesh forms a solid object without gaps, holes, or loose edges. "
+										 "For a mesh to be manifold, every edge of every triangle must contain the same two vertices (by index) as exactly one other triangle edge, "
+										 "and the start and end vertices must switch places between these two edges. The Godot Engine triangle vertices must appear in clockwise order "
+										 "when viewed from the outside of the manifold.";
+	if (manifold_error != manifold::Manifold::Error::NoError) {
+		String error_message = vformat(manifold_error_message_template, manifold_error_to_string(manifold_error));
+		if (!warnings.has(error_message)) {
+			warnings.push_back(error_message);
+		}
+		if (!warnings.has(manifold_info_message)) {
+			warnings.push_back(manifold_info_message);
+		}
+		for (int i = 0; i < get_child_count(); i++) {
+			CSGShape3D *child = Object::cast_to<CSGShape3D>(get_child(i));
+			if (child) {
+				if (!child->warnings.has(error_message)) {
+					child->warnings.push_back(error_message);
+				}
+				if (!child->warnings.has(manifold_info_message)) {
+					child->warnings.push_back(manifold_info_message);
+				}
+			}
+		}
+	}
 	manifold::OpType current_op = ManifoldOperation::convert_csg_op(get_operation());
 	std::vector<manifold::Manifold> manifolds;
 	manifolds.push_back(root_manifold);
@@ -458,7 +485,16 @@ CSGBrush *CSGShape3D::_get_brush() {
 		CSGBrush transformed_brush;
 		transformed_brush.copy_from(*child_brush, child->get_transform());
 		manifold::Manifold child_manifold;
-		_pack_manifold(&transformed_brush, child_manifold, mesh_materials, child);
+		manifold::Manifold::Error child_manifold_error = _pack_manifold(&transformed_brush, child_manifold, mesh_materials, child);
+		if (child_manifold_error != manifold::Manifold::Error::NoError) {
+			String error_message = vformat(manifold_error_message_template, manifold_error_to_string(child_manifold_error));
+			if (!child->warnings.has(error_message)) {
+				child->warnings.push_back(error_message);
+			}
+			if (!child->warnings.has(manifold_info_message)) {
+				child->warnings.push_back(manifold_info_message);
+			}
+		}
 		manifold::OpType child_operation = ManifoldOperation::convert_csg_op(child->get_operation());
 		if (child_operation != current_op) {
 			manifold::Manifold result = manifold::Manifold::BatchBoolean(manifolds, current_op);
@@ -941,6 +977,10 @@ Array CSGShape3D::get_meshes() const {
 	}
 
 	return Array();
+}
+
+PackedStringArray CSGShape3D::get_configuration_warnings() const {
+	return warnings;
 }
 
 void CSGShape3D::_bind_methods() {
