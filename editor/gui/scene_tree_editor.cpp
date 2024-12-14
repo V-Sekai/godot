@@ -719,6 +719,7 @@ bool SceneTreeEditor::_update_filter(TreeItem *p_parent, bool p_scroll_to_select
 		p_parent->set_visible(keep_for_children || selectable);
 	}
 
+	bool is_root = p_parent == tree->get_root();
 	if (selectable) {
 		Color custom_color = p_parent->get_meta(SNAME("custom_color"), Color(0, 0, 0, 0));
 		if (custom_color == Color(0, 0, 0, 0)) {
@@ -726,24 +727,49 @@ bool SceneTreeEditor::_update_filter(TreeItem *p_parent, bool p_scroll_to_select
 		} else {
 			p_parent->set_custom_color(0, custom_color);
 		}
+
 		p_parent->set_selectable(0, true);
 	} else if (keep_for_children) {
-		p_parent->set_custom_color(0, get_theme_color(SNAME("font_disabled_color"), EditorStringName(Editor)));
-		p_parent->set_selectable(0, false);
-		p_parent->deselect(0);
+		p_parent->set_visible(!hide_filtered_out_parents || is_root);
+
+		if (hide_filtered_out_parents && !is_root) {
+			TreeItem *filtered_parent = p_parent->get_parent();
+			while (filtered_parent) {
+				if (filtered_parent->is_selectable(0) && filtered_parent->is_visible()) {
+					break;
+				}
+				filtered_parent = filtered_parent->get_parent();
+			}
+
+			if (filtered_parent) {
+				for (Variant &item : p_parent->get_children()) {
+					TreeItem *ti = Object::cast_to<TreeItem>(item);
+					p_parent->remove_child(ti);
+					filtered_parent->add_child(ti);
+				}
+
+				return false;
+			}
+		} else {
+			p_parent->set_custom_color(0, get_theme_color(SNAME("font_disabled_color"), EditorStringName(Editor)));
+			p_parent->set_selectable(0, false);
+			p_parent->deselect(0);
+		}
+	}
+	if (is_root) {
+		tree->set_hide_root(hide_filtered_out_parents && !selectable);
 	}
 
 	if (editor_selection) {
 		Node *n = get_node(p_parent->get_metadata(0));
 		if (selectable) {
 			if (p_scroll_to_selected && n && editor_selection->is_selected(n)) {
-				tree->scroll_to_item(p_parent);
+				// Needs to be deferred to account for possible root visibility change.
+				callable_mp(tree, &Tree::scroll_to_item).call_deferred(p_parent, false);
 			}
-		} else {
-			if (n && p_parent->is_selected(0)) {
-				editor_selection->remove_node(n);
-				p_parent->deselect(0);
-			}
+		} else if (n && p_parent->is_selected(0)) {
+			editor_selection->remove_node(n);
+			p_parent->deselect(0);
 		}
 	}
 
@@ -1227,7 +1253,11 @@ void SceneTreeEditor::set_marked(Node *p_marked, bool p_selectable, bool p_child
 
 void SceneTreeEditor::set_filter(const String &p_filter) {
 	filter = p_filter;
-	_update_filter(nullptr, true);
+	if (hide_filtered_out_parents) {
+		_update_tree(true);
+	} else {
+		_update_filter(nullptr, true);
+	}
 }
 
 String SceneTreeEditor::get_filter() const {
@@ -1240,7 +1270,11 @@ String SceneTreeEditor::get_filter_term_warning() {
 
 void SceneTreeEditor::set_show_all_nodes(bool p_show_all_nodes) {
 	show_all_nodes = p_show_all_nodes;
-	_update_filter(nullptr, true);
+	if (hide_filtered_out_parents) {
+		_update_tree(true);
+	} else {
+		_update_filter(nullptr, true);
+	}
 }
 
 void SceneTreeEditor::set_as_scene_tree_dock() {
@@ -1573,6 +1607,14 @@ void SceneTreeEditor::set_auto_expand_selected(bool p_auto, bool p_update_settin
 		EditorSettings::get_singleton()->set("docks/scene_tree/auto_expand_to_selected", p_auto);
 	}
 	auto_expand_selected = p_auto;
+}
+
+void SceneTreeEditor::set_hide_filtered_out_parents(bool p_hide, bool p_update_settings) {
+	if (p_update_settings) {
+		EditorSettings::get_singleton()->set("docks/scene_tree/hide_filtered_out_parents", p_hide);
+	}
+	hide_filtered_out_parents = p_hide;
+	_update_tree(true);
 }
 
 void SceneTreeEditor::set_connect_to_script_mode(bool p_enable) {
