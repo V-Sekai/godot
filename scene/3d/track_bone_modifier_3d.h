@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  skeleton_modifier_3d.h                                                */
+/*  track_bone_modifier_3d.h                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,72 +28,44 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SKELETON_MODIFIER_3D_H
-#define SKELETON_MODIFIER_3D_H
+#ifndef TRACK_BONE_MODIFIER_3D_H
+#define TRACK_BONE_MODIFIER_3D_H
 
-#include "scene/3d/node_3d.h"
+#include "scene/3d/bone_constraint_3d.h"
+#include "scene/3d/look_at_modifier_3d.h"
 
-#include "scene/3d/skeleton_3d.h"
-
-class SkeletonModifier3D : public Node3D {
-	GDCLASS(SkeletonModifier3D, Node3D);
-
-	void rebind();
+class TrackBoneModifier3D : public BoneConstraint3D {
+	GDCLASS(TrackBoneModifier3D, BoneConstraint3D);
 
 public:
-	enum BoneAxis {
-		BONE_AXIS_PLUS_X,
-		BONE_AXIS_MINUS_X,
-		BONE_AXIS_PLUS_Y,
-		BONE_AXIS_MINUS_Y,
-		BONE_AXIS_PLUS_Z,
-		BONE_AXIS_MINUS_Z,
+	struct TrackBone3DSetting : public BoneConstraint3DSetting {
+		BoneAxis forward_axis = BONE_AXIS_PLUS_Y;
+		bool use_euler = false;
+		Vector3::Axis primary_rotation_axis = Vector3::AXIS_X;
+		bool use_secondary_rotation = true;
 	};
 
 protected:
-	bool active = true;
-	real_t influence = 1.0;
-
-	// Cache them for the performance reason since finding node with NodePath is slow.
-	ObjectID skeleton_id;
-
-	void _update_skeleton();
-	void _update_skeleton_path();
-	void _force_update_skeleton_skin();
-
-	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new);
-
+	bool _get(const StringName &p_path, Variant &r_ret) const;
+	bool _set(const StringName &p_path, const Variant &p_value);
+	virtual PackedStringArray get_configuration_warnings() const override;
 	void _validate_property(PropertyInfo &p_property) const;
-	void _notification(int p_what);
+	void _get_property_list(List<PropertyInfo> *p_list) const;
+
 	static void _bind_methods();
 
-	virtual void _set_active(bool p_active);
-
-	virtual void _process_modification();
-	GDVIRTUAL0(_process_modification);
+	virtual void _process_constraint(int p_index, Skeleton3D *p_skeleton, int p_apply_bone, int p_target_bone, float p_amount) override;
+	virtual void _validate_setting(int p_index) override;
 
 public:
-	virtual PackedStringArray get_configuration_warnings() const override;
-	virtual bool has_process() const { return false; } // Return true if modifier needs to modify bone pose without external animation such as physics, jiggle and etc.
-
-	void set_active(bool p_active);
-	bool is_active() const;
-
-	void set_influence(real_t p_influence);
-	real_t get_influence() const;
-
-	Skeleton3D *get_skeleton() const;
-
-	void process_modification();
-
-	// Utility APIs.
-	static Vector3 get_vector_from_bone_axis(BoneAxis p_axis);
-	static Vector3 get_vector_from_axis(Vector3::Axis p_axis);
-	static Vector3::Axis get_axis_from_bone_axis(BoneAxis p_axis);
-
-	SkeletonModifier3D();
+	void set_forward_axis(int p_index, BoneAxis p_axis);
+	BoneAxis get_forward_axis(int p_index) const;
+	void set_use_euler(int p_index, bool p_enabled);
+	bool is_using_euler(int p_index) const;
+	void set_primary_rotation_axis(int p_index, Vector3::Axis p_axis);
+	Vector3::Axis get_primary_rotation_axis(int p_index) const;
+	void set_use_secondary_rotation(int p_index, bool p_enabled);
+	bool is_using_secondary_rotation(int p_index) const;
 };
 
-VARIANT_ENUM_CAST(SkeletonModifier3D::BoneAxis);
-
-#endif // SKELETON_MODIFIER_3D_H
+#endif // TRACK_BONE_MODIFIER_3D_H
