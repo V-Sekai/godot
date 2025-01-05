@@ -234,7 +234,10 @@
 #include "scene/3d/audio_listener_3d.h"
 #include "scene/3d/audio_stream_player_3d.h"
 #include "scene/3d/bone_attachment_3d.h"
+#include "scene/3d/bone_constraint_3d.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/convert_transform_modifier_3d.h"
+#include "scene/3d/copy_transform_modifier_3d.h"
 #include "scene/3d/cpu_particles_3d.h"
 #include "scene/3d/decal.h"
 #include "scene/3d/fog_volume.h"
@@ -285,6 +288,7 @@
 #include "scene/3d/skeleton_modifier_3d.h"
 #include "scene/3d/soft_body_3d.h"
 #include "scene/3d/sprite_3d.h"
+#include "scene/3d/track_bone_modifier_3d.h"
 #include "scene/3d/visible_on_screen_notifier_3d.h"
 #include "scene/3d/voxel_gi.h"
 #include "scene/3d/world_environment.h"
@@ -599,6 +603,10 @@ void register_scene_types() {
 	GDREGISTER_CLASS(RootMotionView);
 	GDREGISTER_VIRTUAL_CLASS(SkeletonModifier3D);
 	GDREGISTER_CLASS(RetargetModifier3D);
+	GDREGISTER_VIRTUAL_CLASS(BoneConstraint3D);
+	GDREGISTER_CLASS(CopyTransformModifier3D);
+	GDREGISTER_CLASS(ConvertTransformModifier3D);
+	GDREGISTER_CLASS(TrackBoneModifier3D);
 
 	OS::get_singleton()->yield(); // may take time to init
 
