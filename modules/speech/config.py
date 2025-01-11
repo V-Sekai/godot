@@ -1,5 +1,5 @@
 def can_build(env, platform):
-    return platform != "web" and platform != "android"
+    return True
 
 
 def configure(env):
