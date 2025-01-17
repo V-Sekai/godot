@@ -33,6 +33,10 @@
 
 #include "core/variant/typed_array.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 bool contains_default(PackedVector3Array arr) {
 	for (int i = 0; i < arr.size(); i++) {
 		if (arr[i] == Vector3(0, 0, 0)) {
