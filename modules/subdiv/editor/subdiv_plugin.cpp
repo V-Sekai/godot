@@ -88,7 +88,7 @@ void GodotSubdivImporter::get_import_options(const String &p_path, List<ImportOp
 	r_options->push_back(option_2);
 }
 
-Error GodotSubdivImporter::import(const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
+Error GodotSubdivImporter::import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata) {
 	Ref<GLTFDocument> gltf = memnew(GLTFDocument);
 	Ref<GLTFState> gltf_state = memnew(GLTFState);
 	gltf->append_from_file(p_source_file, gltf_state, 0);
