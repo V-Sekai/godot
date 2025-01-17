@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-lbfgs.git
 	branch = main
-	commit = a0a669c4bf87381766903ccecf8bb21a3e20f098
-	parent = d40e8bf2b4bc3cb63c87a4dea2c3f5ffe7591c0d
+	commit = d180824044da5cc6cc831edfcbbee3f88ac709c7
+	parent = 66a8c486f9e525ad027248b1b170da7af7057df9
 	method = merge
 	cmdver = 0.4.9
