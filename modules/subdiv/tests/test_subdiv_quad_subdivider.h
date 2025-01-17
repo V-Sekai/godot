@@ -38,7 +38,6 @@
 #include "../src/resources/topology_data_mesh.hpp"
 #include "../src/subdivision/quad_subdivider.hpp"
 #include "subdiv_utility_methods.h"
-#include <cmath>
 
 Array create_subdivided_mesh() {
 	Vector<Vector3> vertices = {
