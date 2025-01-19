@@ -161,7 +161,6 @@ Node *MeshTextureAtlas::merge_meshes(Node *p_root) {
 		pack_options.blockAlign = true;
 		pack_options.rotateCharts = false;
 		pack_options.rotateChartsToAxis = false;
-		pack_options.resolution = 8 * 1024;
 		Vector<AtlasLookupTexel> atlas_lookup;
 		Error err = _generate_atlas(num_surfaces, uv_groups, atlas, mesh_items, material_cache, pack_options);
 		ERR_FAIL_COND_V(err != OK, root);
@@ -319,7 +318,7 @@ Error MeshTextureAtlas::_generate_atlas(const int32_t p_num_meshes, Vector<Vecto
 			xatlas::UvMeshDecl mesh_declaration;
 			mesh_declaration.vertexCount = PackedVector3Array(mesh[Mesh::ARRAY_VERTEX]).size();
 
-			PackedVector2Array original_data = PackedVector2Array(mesh[Mesh::ARRAY_TEX_UV2]);
+			PackedVector2Array original_data = PackedVector2Array(mesh[Mesh::ARRAY_TEX_UV]);
 
 			PackedFloat32Array float_data;
 			float_data.resize(original_data.size() * 2);
