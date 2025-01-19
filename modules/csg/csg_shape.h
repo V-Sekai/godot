@@ -203,7 +203,7 @@ class CSGPrimitive3D : public CSGShape3D {
 
 protected:
 	bool flip_faces;
-	CSGBrush *_create_brush_from_arrays(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uv, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials);
+	CSGBrush *_create_brush_from_arrays(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uv, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials, const Vector<Vector<int>> &p_bone_indices = Vector<Vector<int>>(), const Vector<Vector<float>> &p_bone_weights = Vector<Vector<float>>(), int p_num_bone_weights = 0);
 	static void _bind_methods();
 
 public:

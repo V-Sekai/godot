@@ -32,12 +32,15 @@
 
 // CSGBrush
 
-void CSGBrush::build_from_faces(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uvs, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials, const Vector<bool> &p_flip_faces) {
+void CSGBrush::build_from_faces(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uvs, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials, const Vector<bool> &p_flip_faces, const Vector<Vector<int>> &p_bone_indices, const Vector<Vector<float>> &p_bone_weights, int p_num_bone_weights) {
 	faces.clear();
 
 	int vc = p_vertices.size();
 
 	ERR_FAIL_COND((vc % 3) != 0);
+	ERR_FAIL_COND(p_num_bone_weights != 0 && p_num_bone_weights != 4 && p_num_bone_weights != 8);
+	ERR_FAIL_COND(p_bone_indices.size() != 0 && p_bone_indices.size() % (vc / 3) != 0);
+	ERR_FAIL_COND(p_bone_weights.size() != 0 && p_bone_weights.size() % (vc / 3) != 0);
 
 	const Vector3 *rv = p_vertices.ptr();
 	int uvc = p_uvs.size();
@@ -50,6 +53,10 @@ void CSGBrush::build_from_faces(const Vector<Vector3> &p_vertices, const Vector<
 	const bool *ri = p_flip_faces.ptr();
 
 	HashMap<Ref<Material>, int> material_map;
+	int bic = p_bone_indices.size();
+	const Vector<int> *rbi = p_bone_indices.ptr();
+	int bwc = p_bone_weights.size();
+	const Vector<float> *rbw = p_bone_weights.ptr();
 
 	faces.resize(p_vertices.size() / 3);
 
@@ -64,6 +71,24 @@ void CSGBrush::build_from_faces(const Vector<Vector3> &p_vertices, const Vector<
 			f.uvs[1] = ruv[i * 3 + 1];
 			f.uvs[2] = ruv[i * 3 + 2];
 		}
+
+		if (bic == vc) {
+			for (int j = 0; j < p_num_bone_weights; j++) {
+				f.bone_indices[0 * p_num_bone_weights + j] = rbi[i * 3 + 0][j];
+				f.bone_indices[1 * p_num_bone_weights + j] = rbi[i * 3 + 1][j];
+				f.bone_indices[2 * p_num_bone_weights + j] = rbi[i * 3 + 2][j];
+			}
+		}
+
+		if (bwc == vc) {
+			for (int j = 0; j < p_num_bone_weights; j++) {
+				f.bone_weights[0 * p_num_bone_weights + j] = rbw[i * 3 + 0][j];
+				f.bone_weights[1 * p_num_bone_weights + j] = rbw[i * 3 + 1][j];
+				f.bone_weights[2 * p_num_bone_weights + j] = rbw[i * 3 + 2][j];
+			}
+		}
+
+		f.num_bone_weights = p_num_bone_weights;
 
 		if (sc == vc / 3) {
 			f.smooth = rs[i];

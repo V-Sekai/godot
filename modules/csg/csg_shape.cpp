@@ -218,6 +218,23 @@ enum ManifoldProperty {
 	MANIFOLD_PROPERTY_SMOOTH_GROUP,
 	MANIFOLD_PROPERTY_UV_X_0,
 	MANIFOLD_PROPERTY_UV_Y_0,
+	MANIFOLD_PROPERTY_BONE_INDEX_0,
+	MANIFOLD_PROPERTY_BONE_INDEX_1,
+	MANIFOLD_PROPERTY_BONE_INDEX_2,
+	MANIFOLD_PROPERTY_BONE_INDEX_3,
+	MANIFOLD_PROPERTY_BONE_INDEX_4,
+	MANIFOLD_PROPERTY_BONE_INDEX_5,
+	MANIFOLD_PROPERTY_BONE_INDEX_6,
+	MANIFOLD_PROPERTY_BONE_INDEX_7,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_0,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_1,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_2,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_3,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_4,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_5,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_6,
+	MANIFOLD_PROPERTY_BONE_WEIGHT_7,
+	MANIFOLD_PROPERTY_NUM_BONE_WEIGHTS,
 	MANIFOLD_PROPERTY_MAX
 };
 
@@ -265,6 +282,11 @@ static void _unpack_manifold(
 				face.uvs[tri_order_i] = Vector2(
 						mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_UV_X_0],
 						mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_UV_Y_0]);
+				face.num_bone_weights = mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_NUM_BONE_WEIGHTS];
+				for (int j = 0; j < 8; j++) {
+					face.bone_indices[j] = mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_BONE_INDEX_0 + j];
+					face.bone_weights[j] = mesh.vertProperties[property_i * mesh.numProp + MANIFOLD_PROPERTY_BONE_WEIGHT_0 + j];
+				}
 			}
 			r_mesh_merge->faces.push_back(face);
 		}
@@ -392,6 +414,11 @@ static void _pack_manifold(
 				vert[MANIFOLD_PROPERTY_UV_Y_0] = face.uvs[i].y;
 				vert[MANIFOLD_PROPERTY_SMOOTH_GROUP] = face.smooth ? 1.0f : 0.0f;
 				vert[MANIFOLD_PROPERTY_INVERT] = face.invert ? 1.0f : 0.0f;
+				for (int j = 0; j < 8; j++) {
+					vert[MANIFOLD_PROPERTY_BONE_INDEX_0 + j] = j < face.num_bone_weights ? face.bone_indices[j] : 0;
+					vert[MANIFOLD_PROPERTY_BONE_WEIGHT_0 + j] = j < face.num_bone_weights ? face.bone_weights[j] : 0.0f;
+				}
+				vert[MANIFOLD_PROPERTY_NUM_BONE_WEIGHTS] = face.num_bone_weights;
 			}
 		}
 	}
@@ -693,12 +720,38 @@ void CSGShape3D::_update_shape() {
 		if (have_tangents) {
 			array[Mesh::ARRAY_TANGENT] = surfaces[i].tans;
 		}
+		int vertex_count = surfaces[i].vertices.size();
+		PackedInt32Array bone_indices_trimmed;
+		PackedFloat32Array bone_weights_trimmed;
+		int max_weights = 0;
+		for (int j = 0; j < n->faces.size(); j++) {
+			if (n->faces[j].num_bone_weights > max_weights) {
+				max_weights = n->faces[j].num_bone_weights;
+			}
+		}
+
+		bone_indices_trimmed.resize(vertex_count * max_weights);
+		bone_weights_trimmed.resize(vertex_count * max_weights);
+
+		int vertex_idx = 0;
+		if (max_weights) {
+			for (int face_idx = 0; face_idx < n->faces.size(); face_idx++) {
+				for (int j = 0; j < 3; j++) {
+					for (int w = 0; w < n->faces[face_idx].num_bone_weights; w++) {
+						bone_indices_trimmed.write[vertex_idx * max_weights + w] = n->faces[face_idx].bone_indices[w];
+						bone_weights_trimmed.write[vertex_idx * max_weights + w] = n->faces[face_idx].bone_weights[w];
+					}
+					vertex_idx++;
+				}
+			}
+			array[Mesh::ARRAY_BONES] = bone_indices_trimmed;
+			array[Mesh::ARRAY_WEIGHTS] = bone_weights_trimmed;
+		}
 
 		int idx = root_mesh->get_surface_count();
 		root_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, array);
 		root_mesh->surface_set_material(idx, surfaces[i].material);
 	}
-
 	set_base(root_mesh->get_rid());
 
 	_update_collision_faces();
@@ -1035,7 +1088,12 @@ CSGCombiner3D::CSGCombiner3D() {
 
 /////////////////////
 
-CSGBrush *CSGPrimitive3D::_create_brush_from_arrays(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uv, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials) {
+CSGBrush *CSGPrimitive3D::_create_brush_from_arrays(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uv, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials, const Vector<Vector<int>> &p_bone_indices, const Vector<Vector<float>> &p_bone_weights, int p_num_bone_weights) {
+	ERR_FAIL_COND_V((p_num_bone_weights != 0 && p_num_bone_weights != 4 && p_num_bone_weights != 8) ||
+					(p_num_bone_weights > 0 && (p_bone_indices.size() == 0 || p_bone_weights.size() == 0)),
+			memnew(CSGBrush));
+	ERR_FAIL_COND_V(p_bone_indices.size() != p_bone_weights.size(), memnew(CSGBrush));
+
 	CSGBrush *new_brush = memnew(CSGBrush);
 
 	Vector<bool> invert;
@@ -1047,7 +1105,7 @@ CSGBrush *CSGPrimitive3D::_create_brush_from_arrays(const Vector<Vector3> &p_ver
 			w[i] = flip_faces;
 		}
 	}
-	new_brush->build_from_faces(p_vertices, p_uv, p_smooth, p_materials, invert);
+	new_brush->build_from_faces(p_vertices, p_uv, p_smooth, p_materials, invert, p_bone_indices, p_bone_weights, p_num_bone_weights);
 
 	return new_brush;
 }
@@ -1089,6 +1147,9 @@ CSGBrush *CSGMesh3D::_build_brush() {
 	Vector<Ref<Material>> materials;
 	Vector<Vector2> uvs;
 	Ref<Material> base_material = get_material();
+	Vector<Vector<int>> bone_indices;
+	Vector<Vector<float>> bone_weights;
+	int num_bone_weights = 0;
 
 	for (int i = 0; i < mesh->get_surface_count(); i++) {
 		if (mesh->surface_get_primitive_type(i) != Mesh::PRIMITIVE_TRIANGLES) {
@@ -1121,12 +1182,21 @@ CSGBrush *CSGMesh3D::_build_brush() {
 			uvr = auvs.ptr();
 		}
 
-		Ref<Material> mat;
-		if (base_material.is_valid()) {
-			mat = base_material;
+		Vector<int> abone_indices = arrays[Mesh::ARRAY_BONES];
+		Vector<float> abone_weights = arrays[Mesh::ARRAY_WEIGHTS];
+		if (!abone_indices.is_empty() && !abone_weights.is_empty()) {
+			ERR_CONTINUE_MSG(abone_indices.size() != abone_weights.size(), "Bone indices and weights arrays must be the same size");
+			int vertex_count = avertices.size();
+			ERR_CONTINUE_MSG(abone_indices.size() % vertex_count != 0, "Bone data size must be a multiple of vertex count");
+			int weights_per_vertex = abone_indices.size() / vertex_count;
+			ERR_CONTINUE_MSG(weights_per_vertex != 0 && weights_per_vertex != 4 && weights_per_vertex != 8, "Must have either 4 or 8 bone weights per vertex");
+			num_bone_weights = weights_per_vertex;
 		} else {
-			mat = mesh->surface_get_material(i);
+			abone_indices.resize(0);
+			abone_weights.resize(0);
 		}
+
+		Ref<Material> mat = base_material.is_valid() ? base_material : mesh->surface_get_material(i);
 
 		Vector<int> aindices = arrays[Mesh::ARRAY_INDEX];
 		if (aindices.size()) {
@@ -1137,11 +1207,15 @@ CSGBrush *CSGMesh3D::_build_brush() {
 			smooth.resize((as + is) / 3);
 			materials.resize((as + is) / 3);
 			uvs.resize(as + is);
+			bone_indices.resize(as + is);
+			bone_weights.resize(as + is);
 
 			Vector3 *vw = vertices.ptrw();
 			bool *sw = smooth.ptrw();
 			Vector2 *uvw = uvs.ptrw();
 			Ref<Material> *mw = materials.ptrw();
+			Vector<int> *biw = bone_indices.ptrw();
+			Vector<float> *bww = bone_weights.ptrw();
 
 			const int *ir = aindices.ptr();
 
@@ -1149,8 +1223,10 @@ CSGBrush *CSGMesh3D::_build_brush() {
 				Vector3 vertex[3];
 				Vector3 normal[3];
 				Vector2 uv[3];
-
-				for (int k = 0; k < 3; k++) {
+				Vector<int> bone_idx[3];
+				Vector<float> bone_wt[3];
+				const int VERTEX_COUNT = 3;
+				for (int k = 0; k < VERTEX_COUNT; k++) {
 					int idx = ir[j + k];
 					vertex[k] = vr[idx];
 					if (nr) {
@@ -1159,47 +1235,13 @@ CSGBrush *CSGMesh3D::_build_brush() {
 					if (uvr) {
 						uv[k] = uvr[idx];
 					}
-				}
-
-				bool flat = normal[0].is_equal_approx(normal[1]) && normal[0].is_equal_approx(normal[2]);
-
-				vw[as + j + 0] = vertex[0];
-				vw[as + j + 1] = vertex[1];
-				vw[as + j + 2] = vertex[2];
-
-				uvw[as + j + 0] = uv[0];
-				uvw[as + j + 1] = uv[1];
-				uvw[as + j + 2] = uv[2];
-
-				sw[(as + j) / 3] = !flat;
-				mw[(as + j) / 3] = mat;
-			}
-		} else {
-			int as = vertices.size();
-			int is = avertices.size();
-
-			vertices.resize(as + is);
-			smooth.resize((as + is) / 3);
-			uvs.resize(as + is);
-			materials.resize((as + is) / 3);
-
-			Vector3 *vw = vertices.ptrw();
-			bool *sw = smooth.ptrw();
-			Vector2 *uvw = uvs.ptrw();
-			Ref<Material> *mw = materials.ptrw();
-
-			for (int j = 0; j < is; j += 3) {
-				Vector3 vertex[3];
-				Vector3 normal[3];
-				Vector2 uv[3];
-
-				for (int k = 0; k < 3; k++) {
-					vertex[k] = vr[j + k];
-					if (nr) {
-						normal[k] = nr[j + k];
-					}
-					if (uvr) {
-						uv[k] = uvr[j + k];
+					if (!abone_indices.is_empty() && !abone_weights.is_empty()) {
+						bone_idx[k].resize(num_bone_weights);
+						bone_wt[k].resize(num_bone_weights);
+						for (int b = 0; b < num_bone_weights; b++) {
+							bone_idx[k].write[b] = abone_indices[idx * num_bone_weights + b];
+							bone_wt[k].write[b] = abone_weights[idx * num_bone_weights + b];
+						}
 					}
 				}
 
@@ -1212,6 +1254,23 @@ CSGBrush *CSGMesh3D::_build_brush() {
 				uvw[as + j + 0] = uv[0];
 				uvw[as + j + 1] = uv[1];
 				uvw[as + j + 2] = uv[2];
+
+				biw[as + j + 0].resize(num_bone_weights);
+				biw[as + j + 1].resize(num_bone_weights);
+				biw[as + j + 2].resize(num_bone_weights);
+				bww[as + j + 0].resize(num_bone_weights);
+				bww[as + j + 1].resize(num_bone_weights);
+				bww[as + j + 2].resize(num_bone_weights);
+
+				for (int k = 0; k < num_bone_weights; k++) {
+					biw[as + j + 0].write[k] = bone_idx[0].size() > k ? bone_idx[0][k] : 0;
+					biw[as + j + 1].write[k] = bone_idx[1].size() > k ? bone_idx[1][k] : 0;
+					biw[as + j + 2].write[k] = bone_idx[2].size() > k ? bone_idx[2][k] : 0;
+
+					bww[as + j + 0].write[k] = bone_wt[0].size() > k ? bone_wt[0][k] : 0.0f;
+					bww[as + j + 1].write[k] = bone_wt[1].size() > k ? bone_wt[1][k] : 0.0f;
+					bww[as + j + 2].write[k] = bone_wt[2].size() > k ? bone_wt[2][k] : 0.0f;
+				}
 
 				sw[(as + j) / 3] = !flat;
 				mw[(as + j) / 3] = mat;
@@ -1223,7 +1282,7 @@ CSGBrush *CSGMesh3D::_build_brush() {
 		return memnew(CSGBrush);
 	}
 
-	return _create_brush_from_arrays(vertices, uvs, smooth, materials);
+	return _create_brush_from_arrays(vertices, uvs, smooth, materials, bone_indices, bone_weights, num_bone_weights);
 }
 
 void CSGMesh3D::_mesh_changed() {
