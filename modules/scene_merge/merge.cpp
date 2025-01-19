@@ -477,7 +477,7 @@ void MeshTextureAtlas::map_mesh_to_index_to_material(const Vector<MeshState> &p_
 	}
 	for (int32_t mesh_i = 0; mesh_i < p_mesh_items.size(); mesh_i++) {
 		Ref<ArrayMesh> array_mesh = p_mesh_items[mesh_i].mesh;
-		array_mesh->mesh_unwrap(Transform3D(), TEXEL_SIZE);
+		array_mesh->lightmap_unwrap(Transform3D(), TEXEL_SIZE, true);
 
 		for (int32_t j = 0; j < array_mesh->get_surface_count(); j++) {
 			Array mesh = array_mesh->surface_get_arrays(j);
