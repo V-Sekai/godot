@@ -2060,12 +2060,12 @@ struct ArrayMeshLightmapSurface {
 	uint64_t format = 0;
 };
 
-Error ArrayMesh::lightmap_unwrap(const Transform3D &p_base_transform, float p_texel_size) {
+Error ArrayMesh::lightmap_unwrap(const Transform3D &p_base_transform, float p_texel_size, bool p_unwrap_mesh) {
 	Vector<uint8_t> null_cache;
-	return lightmap_unwrap_cached(p_base_transform, p_texel_size, null_cache, null_cache, false);
+	return lightmap_unwrap_cached(p_base_transform, p_texel_size, null_cache, null_cache, false, p_unwrap_mesh);
 }
 
-Error ArrayMesh::lightmap_unwrap_cached(const Transform3D &p_base_transform, float p_texel_size, const Vector<uint8_t> &p_src_cache, Vector<uint8_t> &r_dst_cache, bool p_generate_cache) {
+Error ArrayMesh::lightmap_unwrap_cached(const Transform3D &p_base_transform, float p_texel_size, const Vector<uint8_t> &p_src_cache, Vector<uint8_t> &r_dst_cache, bool p_generate_cache, bool p_unwrap_mesh) {
 	ERR_FAIL_NULL_V(array_mesh_lightmap_unwrap_callback, ERR_UNCONFIGURED);
 	ERR_FAIL_COND_V_MSG(blend_shapes.size() != 0, ERR_UNAVAILABLE, "Can't unwrap mesh with blend shapes.");
 	ERR_FAIL_COND_V_MSG(p_texel_size <= 0.0f, ERR_PARAMETER_RANGE_ERROR, "Texel size must be greater than 0.");
@@ -2231,7 +2231,15 @@ Error ArrayMesh::lightmap_unwrap_cached(const Transform3D &p_base_transform, flo
 			}
 
 			Vector2 uv2(gen_uvs[gen_indices[i + j] * 2 + 0], gen_uvs[gen_indices[i + j] * 2 + 1]);
-			surfaces_tools[surface]->set_uv2(uv2);
+			if (lightmap_surfaces[surface].format & ARRAY_FORMAT_TEX_UV2) {
+				surfaces_tools[surface]->set_uv2(uv2);
+			} else if (lightmap_surfaces[surface].format & ARRAY_FORMAT_TEX_UV) {
+				if (!p_unwrap_mesh) {
+					surfaces_tools[surface]->set_uv2(uv2);
+				} else {
+					surfaces_tools[surface]->set_uv(uv2);
+				}
+			}
 
 			surfaces_tools[surface]->add_vertex(v.vertex);
 		}
@@ -2304,7 +2312,7 @@ void ArrayMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_outline", "margin"), &ArrayMesh::create_outline);
 	ClassDB::bind_method(D_METHOD("regen_normal_maps"), &ArrayMesh::regen_normal_maps);
 	ClassDB::set_method_flags(get_class_static(), _scs_create("regen_normal_maps"), METHOD_FLAGS_DEFAULT | METHOD_FLAG_EDITOR);
-	ClassDB::bind_method(D_METHOD("lightmap_unwrap", "transform", "texel_size"), &ArrayMesh::lightmap_unwrap);
+	ClassDB::bind_method(D_METHOD("lightmap_unwrap", "transform", "texel_size", "unwrap_mesh"), &ArrayMesh::lightmap_unwrap);
 	ClassDB::set_method_flags(get_class_static(), _scs_create("lightmap_unwrap"), METHOD_FLAGS_DEFAULT | METHOD_FLAG_EDITOR);
 	ClassDB::bind_method(D_METHOD("generate_triangle_mesh"), &ArrayMesh::generate_triangle_mesh);
 
