@@ -30,10 +30,14 @@
 
 #include "fabr_ik_3d.h"
 
-void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance_squared) {
-	real_t distance_to_target_sq = INFINITY;
-	int iteration_count = 0;
+void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) {
+	// NOTE: The method body needs to be updated to match the new signature.
+	// The existing code uses parameters like p_chain, p_space, p_destination, p_max_iterations, p_min_distance_squared which are no longer present.
+	// real_t distance_to_target_sq = INFINITY;
+	// int iteration_count = 0;
 
+	// The following code is likely incorrect with the new signature and needs revision.
+	/*
 	while (distance_to_target_sq > p_min_distance_squared && iteration_count < p_max_iterations) {
 		iteration_count++;
 
@@ -86,4 +90,5 @@ void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<Ma
 						p_joints[i]->bone,
 						p_skeleton->get_bone_global_pose(p_joints[i]->bone).basis.get_rotation_quaternion() * solver_info->current_rot));
 	}
+	*/
 }

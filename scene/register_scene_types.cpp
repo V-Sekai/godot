@@ -334,6 +334,7 @@
 #include "scene/resources/3d/convex_polygon_shape_3d.h"
 #include "scene/resources/3d/cylinder_shape_3d.h"
 #include "scene/resources/3d/height_map_shape_3d.h"
+#include "scene/resources/3d/ik_constraint_3d.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/3d/joint_limitation_3d.h"
 #include "scene/resources/3d/mesh_library.h"
@@ -710,6 +711,8 @@ void register_scene_types() {
 	GDREGISTER_CLASS(NavigationObstacle3D);
 	GDREGISTER_CLASS(NavigationLink3D);
 #endif // NAVIGATION_3D_DISABLED
+
+	GDREGISTER_CLASS(IKConstraint3D);
 
 	OS::get_singleton()->yield(); // may take time to init
 #endif // _3D_DISABLED

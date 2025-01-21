@@ -28,11 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef MANY_BONE_IK_3D_H
+#define MANY_BONE_IK_3D_H
 
 #include "scene/3d/skeleton_modifier_3d.h"
 
-#include "scene/resources/3d/joint_limitation_3d.h"
+#include "scene/resources/3d/ik_constraint_3d.h"
+#include "skeleton_modifier_3d.h"
 
 class ManyBoneIK3D : public SkeletonModifier3D {
 	GDCLASS(ManyBoneIK3D, SkeletonModifier3D);
@@ -61,8 +63,8 @@ public:
 		// Limitation for the twist.
 		real_t twist_limitation = Math_PI;
 		// Limitation for the swing.
-		Ref<JointLimitation3D> limitation;
-		Quaternion limitation_rotation_offset;
+		Ref<IKConstraint3D> constraint;
+		Quaternion constraint_rotation_offset;
 
 		// To process.
 		ManyBoneIK3DSolverInfo *solver_info = nullptr;
@@ -95,8 +97,8 @@ public:
 	};
 
 	struct TwistSwing {
-		Quaternion twist;
-		Quaternion swing;
+		real_t twist;
+		IKConstraint3D::Swing swing;
 	};
 
 protected:
@@ -112,10 +114,9 @@ protected:
 	static void _bind_methods();
 
 	virtual void _set_active(bool p_active) override;
-	virtual void _process_modification(double p_delta) override;
 	void _init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *p_setting);
 
-	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance_squared);
+	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance);
 
 	void _make_joints_dirty(int p_index);
 	void _make_all_joints_dirty();
@@ -144,6 +145,10 @@ public:
 
 	void set_target_node(int p_index, const NodePath &p_target_node);
 	NodePath get_target_node(int p_index) const;
+	void set_use_target_axis(int p_index, bool p_enabled);
+	bool is_using_target_axis(int p_index) const;
+	void set_target_axis(int p_index, BoneAxis p_axis);
+	BoneAxis get_target_axis(int p_index) const;
 
 	void set_max_iterations(int p_index, int p_max_iterations);
 	int get_max_iterations(int p_index) const;
@@ -162,21 +167,23 @@ public:
 
 	void set_joint_twist_limitation(int p_index, int p_joint, const real_t &p_angle);
 	real_t get_joint_twist_limitation(int p_index, int p_joint) const;
-	void set_joint_limitation(int p_index, int p_joint, const Ref<JointLimitation3D> &p_limitation);
-	Ref<JointLimitation3D> get_joint_limitation(int p_index, int p_joint) const;
-	void set_joint_limitation_rotation_offset(int p_index, int p_joint, const Quaternion &p_rotation_offset);
-	Quaternion get_joint_limitation_rotation_offset(int p_index, int p_joint) const;
+	void set_joint_constraint(int p_index, int p_joint, const Ref<IKConstraint3D> &p_constraint);
+	Ref<IKConstraint3D> get_joint_constraint(int p_index, int p_joint) const;
+	void set_joint_constraint_rotation_offset(int p_index, int p_joint, const Quaternion &p_rotation_offset);
+	Quaternion get_joint_constraint_rotation_offset(int p_index, int p_joint) const;
 
 	void set_joint_count(int p_index, int p_count);
 	int get_joint_count(int p_index) const;
 
 	// Helper.
 	static Quaternion get_local_pose_rotation(Skeleton3D *p_skeleton, int p_bone, const Quaternion &p_global_pose_rotation);
-	static TwistSwing decompose_rotation_to_twist_and_swing(const Vector3 &p_forward_axis, const Quaternion &p_rotation);
-	static Quaternion compose_rotation_from_twist_and_swing(const TwistSwing &p_twist_and_swing);
+	static TwistSwing decompose_rotation_to_twist_and_swing(const Quaternion &p_rest, const Quaternion &p_rotation);
+	static Quaternion compose_rotation_from_twist_and_swing(const Quaternion &p_rest, const TwistSwing &p_twist_and_swing);
 
 	// To process manually.
 	void reset();
 };
 
 VARIANT_ENUM_CAST(ManyBoneIK3D::BoneDirection);
+
+#endif // MANY_BONE_IK_3D_H

@@ -43,7 +43,7 @@ class JointLimitation3D : public Resource {
 	Vector<JointLimitation3DHole *> holes;
 
 public:
-	// TODO: coding which entry swing paramaters.
+	// TODO: coding which entry swing parameters.
 	struct Swing {
 		real_t foo;
 		real_t bar;

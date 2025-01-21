@@ -32,9 +32,20 @@
 
 #include "scene/3d/many_bone_ik_3d.h"
 
+#include "scene/3d/spring_bone_simulator_3d.h"
+
+class ManyBoneIK3D;
+
 class CCDIK3D : public ManyBoneIK3D {
 	GDCLASS(CCDIK3D, ManyBoneIK3D);
 
+public:
+	struct SolverInfoData {
+		Transform3D target_transform;
+		Transform3D moved_transform;
+	};
+	virtual Transform3D _solve(const Vector<Transform3D> &p_targets, const Vector<Transform3D> &p_moveds, bool p_translate);
+
 protected:
-	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance_squared) override;
+	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) override;
 };
