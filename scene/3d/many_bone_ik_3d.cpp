@@ -72,6 +72,8 @@ bool ManyBoneIK3D::_set(const StringName &p_path, const Variant &p_value) {
 				set_joint_bone_name(which, idx, p_value);
 			} else if (prop == "bone") {
 				set_joint_bone(which, idx, p_value);
+			} else if (prop == "twist_limitation") {
+				set_joint_twist_limitation(which, idx, p_value);
 			} else if (prop == "constraint") {
 				set_joint_constraint(which, idx, p_value);
 			} else if (prop == "constraint_rotation_offset") {
@@ -128,6 +130,8 @@ bool ManyBoneIK3D::_get(const StringName &p_path, Variant &r_ret) const {
 				r_ret = get_joint_bone_name(which, idx);
 			} else if (prop == "bone") {
 				r_ret = get_joint_bone(which, idx);
+			} else if (prop == "twist_limitation") {
+				r_ret = get_joint_twist_limitation(which, idx);
 			} else if (prop == "constraint") {
 				r_ret = get_joint_constraint(which, idx);
 			} else if (prop == "constraint_rotation_offset") {
@@ -168,6 +172,7 @@ void ManyBoneIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 			String joint_path = path + "joints/" + itos(j) + "/";
 			p_list->push_back(PropertyInfo(Variant::STRING, joint_path + "bone_name", PROPERTY_HINT_ENUM_SUGGESTION, enum_hint, PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY | PROPERTY_USAGE_STORAGE));
 			p_list->push_back(PropertyInfo(Variant::INT, joint_path + "bone", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_READ_ONLY));
+			p_list->push_back(PropertyInfo(Variant::FLOAT, joint_path + "twist_limitation", PROPERTY_HINT_RANGE, "0,180,0.01,radians_as_degrees"));
 			p_list->push_back(PropertyInfo(Variant::OBJECT, joint_path + "constraint", PROPERTY_HINT_RESOURCE_TYPE, "IKConstraint3D"));
 			p_list->push_back(PropertyInfo(Variant::QUATERNION, joint_path + "constraint_rotation_offset"));
 		}
@@ -428,6 +433,20 @@ int ManyBoneIK3D::get_joint_bone(int p_index, int p_joint) const {
 	return joints[p_joint]->bone;
 }
 
+void ManyBoneIK3D::set_joint_twist_limitation(int p_index, int p_joint, const real_t &p_angle) {
+	ERR_FAIL_INDEX(p_index, settings.size());
+	Vector<ManyBoneIK3DJointSetting *> &joints = settings[p_index]->joints;
+	ERR_FAIL_INDEX(p_joint, joints.size());
+	joints[p_joint]->twist_limitation = p_angle;
+}
+
+real_t ManyBoneIK3D::get_joint_twist_limitation(int p_index, int p_joint) const {
+	ERR_FAIL_INDEX_V(p_index, settings.size(), 0);
+	Vector<ManyBoneIK3DJointSetting *> joints = settings[p_index]->joints;
+	ERR_FAIL_INDEX_V(p_joint, joints.size(), 0);
+	return joints[p_joint]->twist_limitation;
+}
+
 void ManyBoneIK3D::set_joint_constraint(int p_index, int p_joint, const Ref<IKConstraint3D> &p_constraint) {
 	ERR_FAIL_INDEX(p_index, settings.size());
 	Vector<ManyBoneIK3DJointSetting *> &joints = settings[p_index]->joints;
@@ -516,6 +535,8 @@ void ManyBoneIK3D::_bind_methods() {
 	// Individual joints.
 	ClassDB::bind_method(D_METHOD("get_joint_bone_name", "index", "joint"), &ManyBoneIK3D::get_joint_bone_name);
 	ClassDB::bind_method(D_METHOD("get_joint_bone", "index", "joint"), &ManyBoneIK3D::get_joint_bone);
+	ClassDB::bind_method(D_METHOD("set_joint_twist_limitation", "index", "joint", "angle"), &ManyBoneIK3D::set_joint_twist_limitation);
+	ClassDB::bind_method(D_METHOD("get_joint_twist_limitation", "index", "joint"), &ManyBoneIK3D::get_joint_twist_limitation);
 	ClassDB::bind_method(D_METHOD("set_joint_constraint", "index", "joint", "constraint"), &ManyBoneIK3D::set_joint_constraint);
 	ClassDB::bind_method(D_METHOD("get_joint_constraint", "index", "joint"), &ManyBoneIK3D::get_joint_constraint);
 	ClassDB::bind_method(D_METHOD("set_joint_constraint_rotation_offset", "index", "joint", "constraint_rotation_offset"), &ManyBoneIK3D::set_joint_constraint_rotation_offset);
@@ -628,7 +649,7 @@ void ManyBoneIK3D::_init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *set
 			setting->joints[i]->solver_info->prev_tail = setting->joints[i]->solver_info->current_tail;
 			setting->joints[i]->solver_info->forward_vector = axis.normalized();
 			setting->joints[i]->solver_info->length = axis.length();
-			setting->joints[i]->solver_info->prev_rot = Quaternion(0, 0, 0, 1);
+			setting->joints[i]->solver_info->current_rot = Quaternion(0, 0, 0, 1);
 		} else if (setting->extend_end_bone && setting->end_bone_length > 0) {
 			Vector3 axis = get_end_bone_axis(setting->end_bone, setting->end_bone_direction);
 			if (axis.is_zero_approx()) {
@@ -639,7 +660,7 @@ void ManyBoneIK3D::_init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *set
 			setting->joints[i]->solver_info->length = setting->end_bone_length;
 			setting->joints[i]->solver_info->current_tail = setting->cached_space.xform(p_skeleton->get_bone_global_pose(setting->joints[i]->bone).xform(axis * setting->end_bone_length));
 			setting->joints[i]->solver_info->prev_tail = setting->joints[i]->solver_info->current_tail;
-			setting->joints[i]->solver_info->prev_rot = Quaternion(0, 0, 0, 1);
+			setting->joints[i]->solver_info->current_rot = Quaternion(0, 0, 0, 1);
 		}
 	}
 	setting->simulation_dirty = false;

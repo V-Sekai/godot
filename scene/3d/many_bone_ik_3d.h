@@ -53,7 +53,7 @@ public:
 		Vector3 prev_tail;
 		Vector3 current_tail;
 		Vector3 forward_vector;
-		Quaternion prev_rot;
+		Quaternion current_rot;
 		float length = 0.0;
 	};
 
@@ -61,6 +61,9 @@ public:
 		String bone_name;
 		int bone = -1;
 
+		// Limitation for the twist.
+		real_t twist_limitation = Math_PI;
+		// Limitation for the swing.
 		Ref<IKConstraint3D> constraint;
 		Quaternion constraint_rotation_offset;
 
@@ -151,6 +154,8 @@ public:
 	void set_joint_bone(int p_index, int p_joint, int p_bone);
 	int get_joint_bone(int p_index, int p_joint) const;
 
+	void set_joint_twist_limitation(int p_index, int p_joint, const real_t &p_angle);
+	real_t get_joint_twist_limitation(int p_index, int p_joint) const;
 	void set_joint_constraint(int p_index, int p_joint, const Ref<IKConstraint3D> &p_constraint);
 	Ref<IKConstraint3D> get_joint_constraint(int p_index, int p_joint) const;
 	void set_joint_constraint_rotation_offset(int p_index, int p_joint, const Quaternion &p_rotation_offset);
