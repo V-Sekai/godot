@@ -94,6 +94,11 @@ public:
 		Transform3D cached_space;
 	};
 
+	struct TwistSwing {
+		real_t twist;
+		IKConstraint3D::Swing swing;
+	};
+
 protected:
 	Vector<ManyBoneIK3DSetting *> settings;
 
@@ -110,7 +115,7 @@ protected:
 	virtual void _process_modification() override;
 	void _init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *p_setting);
 
-	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints);
+	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance);
 
 	void _make_joints_dirty(int p_index);
 	void _make_all_joints_dirty();
@@ -163,6 +168,11 @@ public:
 
 	void set_joint_count(int p_index, int p_count);
 	int get_joint_count(int p_index) const;
+
+	// Helper.
+	static Quaternion get_local_pose_rotation(Skeleton3D *p_skeleton, int p_bone, const Quaternion &p_global_pose_rotation);
+	static TwistSwing decompose_rotation_to_twist_and_swing(const Quaternion &p_rest, const Quaternion &p_rotation);
+	static Quaternion compose_rotation_from_twist_and_swing(const Quaternion &p_rest, const TwistSwing &p_twist_and_swing);
 
 	// To process manually.
 	void reset();

@@ -43,6 +43,13 @@ class IKConstraint3D : public Resource {
 
 	Vector<IKConstraint3DHole*> holes;
 
+public:
+	// TODO: coding which entry swing paramaters.
+	struct Swing {
+		real_t foo;
+		real_t bar;
+	};
+
 protected:
 	bool _get(const StringName &p_path, Variant &r_ret) const;
 	bool _set(const StringName &p_path, const Variant &p_value);
@@ -51,7 +58,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	Vector3 solve(const Vector3 &p_current, const Quaternion &p_rest);
+	Swing solve(const Quaternion &p_rest, const Swing &p_swing) const;
 
 	void set_axis(int p_hole, const Vector3 &p_axis);
 	Vector3 get_axis(int p_hole) const;

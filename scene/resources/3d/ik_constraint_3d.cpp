@@ -130,9 +130,9 @@ void IKConstraint3D::_bind_methods() {
 	ADD_ARRAY_COUNT("Holes", "hole_count", "set_hole_count", "get_hole_count", "holes/");
 }
 
-Vector3 IKConstraint3D::solve(const Vector3 &p_current, const Quaternion &p_rest) {
+IKConstraint3D::Swing IKConstraint3D::solve(const Quaternion &p_rest, const Swing &p_swing) const {
 	// TODO: Write constraint here.
-	return Vector3();
+	return Swing();
 }
 
 IKConstraint3D::IKConstraint3D() {

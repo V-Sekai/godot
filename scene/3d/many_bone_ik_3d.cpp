@@ -617,8 +617,30 @@ void ManyBoneIK3D::_process_modification() {
 	double delta = skeleton->get_modifier_callback_mode_process() == Skeleton3D::MODIFIER_CALLBACK_MODE_PROCESS_IDLE ? skeleton->get_process_delta_time() : skeleton->get_physics_process_delta_time();
 	for (int i = 0; i < settings.size(); i++) {
 		_init_joints(skeleton, settings[i]);
-		_process_joints(delta, skeleton, settings[i]->joints);
+		Node3D *target = Object::cast_to<Node3D>(get_node_or_null(settings[i]->target_node));
+		if (!target) {
+			return;
+		}
+		_process_joints(delta, skeleton, settings[i]->joints, settings[i]->cached_space, target->get_global_position(), settings[i]->max_iterations, settings[i]->min_distance);
 	}
+}
+
+Quaternion ManyBoneIK3D::get_local_pose_rotation(Skeleton3D *p_skeleton, int p_bone, const Quaternion &p_global_pose_rotation) {
+	int parent = p_skeleton->get_bone_parent(p_bone);
+	if (parent < 0) {
+		return p_global_pose_rotation;
+	}
+	return p_skeleton->get_bone_global_pose(parent).basis.orthonormalized().inverse() * p_global_pose_rotation;
+}
+
+// TODO: coding.
+ManyBoneIK3D::TwistSwing ManyBoneIK3D::decompose_rotation_to_twist_and_swing(const Quaternion &p_rest, const Quaternion &p_rotation) {
+	return TwistSwing();
+}
+
+// TODO: coding.
+Quaternion ManyBoneIK3D::compose_rotation_from_twist_and_swing(const Quaternion &p_rest, const TwistSwing &p_twist_and_swing) {
+	return Quaternion();
 }
 
 void ManyBoneIK3D::reset() {
@@ -666,7 +688,7 @@ void ManyBoneIK3D::_init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *set
 	setting->simulation_dirty = false;
 }
 
-void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints) {
+void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance) {
 	// Solve IK here in extended class. Show example for iterating parent to child below.
 	/*
 	for (int i = 0; i < p_joints.size(); i++) {

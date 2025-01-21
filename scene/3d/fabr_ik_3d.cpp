@@ -30,19 +30,54 @@
 
 #include "fabr_ik_3d.h"
 
-void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints) {
-	// Solve IK here in extended class. Show example for iterating parent to child below.
-	/*
-	for (int i = 0; i < p_joints.size(); i++) {
-		ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
-		if (!solver_info) {
-			continue; // Means not extended end bone.
+void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance) {
+	real_t distance_to_target = INFINITY;
+	int iteration_count = 0;
+
+	while (distance_to_target > p_min_distance && iteration_count < p_max_iterations) {
+		iteration_count++;
+
+		// Backwards.
+		for (int i = p_joints.size() - 1; i >= 0; i--) {
+			ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
+			if (!solver_info) {
+				continue; // Means not extended end bone.
+			}
+			Quaternion rotation_result = solver_info->current_rot;
+
+			// TODO: coding which move to target.
+			/*
+			rotation_result = XXXXX;
+			p_joints[i + i]->solver_info; // Maybe you needs to access next joint.
+			*/
+
+			// For constraint.
+			Transform3D rest = p_space * p_skeleton->get_bone_global_pose(p_joints[i]->bone) * Basis(p_joints[i]->constraint_rotation_offset);
+			Quaternion rest_rotation = rest.basis.get_rotation_quaternion();
+			bool rotation_modified = false;
+			TwistSwing ts = decompose_rotation_to_twist_and_swing(rest_rotation, rotation_result);
+			if (p_joints[i]->twist_limitation < Math_PI) {
+				// TODO: coding which limit twist.
+				/*
+				ts.twist = XXXXX;
+				*/
+				rotation_modified = true;
+			}
+			Ref<IKConstraint3D> constraint = p_joints[i]->constraint;
+			if (constraint.is_valid()) {
+				ts.swing = constraint->solve(rest_rotation, ts.swing);
+				rotation_modified = true;
+			}
+			if (rotation_modified) {
+				rotation_result = compose_rotation_from_twist_and_swing(rest_rotation, ts);
+			}
+			p_skeleton->set_bone_pose_rotation(p_joints[i]->bone, rotation_result);
 		}
-		Vector3 destination;
-		Ref<IKConstraint3D> constraint = p_joints[i]->constraint;
-		if (constraint.is_valid()) {
-			destination = constraint.solve(destination,  p_joints[i]->cached_space * p_skeleton->get_bone_global_pose(p_joints[i]->bone) * p_joints[i]->constraint_rotation_offset);
+
+		// Forwards.
+		for (int i = 0; i < p_joints.size(); i++) {
+			// TODO: coding which is similer to above backwards moving.
 		}
 	}
-	*/
+
 }

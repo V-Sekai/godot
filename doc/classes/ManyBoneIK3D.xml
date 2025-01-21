@@ -70,6 +70,13 @@
 			<description>
 			</description>
 		</method>
+		<method name="get_joint_twist_limitation" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<description>
+			</description>
+		</method>
 		<method name="get_max_iterations" qualifiers="const">
 			<return type="int" />
 			<param index="0" name="index" type="int" />
@@ -159,6 +166,14 @@
 			<param index="0" name="index" type="int" />
 			<param index="1" name="joint" type="int" />
 			<param index="2" name="constraint_rotation_offset" type="Quaternion" />
+			<description>
+			</description>
+		</method>
+		<method name="set_joint_twist_limitation">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<param index="2" name="angle" type="float" />
 			<description>
 			</description>
 		</method>
