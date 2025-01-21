@@ -235,8 +235,10 @@
 #include "scene/3d/audio_stream_player_3d.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/ccd_ik_3d.h"
 #include "scene/3d/cpu_particles_3d.h"
 #include "scene/3d/decal.h"
+#include "scene/3d/fabr_ik_3d.h"
 #include "scene/3d/fog_volume.h"
 #include "scene/3d/gpu_particles_3d.h"
 #include "scene/3d/gpu_particles_collision_3d.h"
@@ -246,6 +248,7 @@
 #include "scene/3d/lightmap_gi.h"
 #include "scene/3d/lightmap_probe.h"
 #include "scene/3d/look_at_modifier_3d.h"
+#include "scene/3d/many_bone_ik_3d.h"
 #include "scene/3d/marker_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/multimesh_instance_3d.h"
@@ -305,6 +308,7 @@
 #include "scene/resources/3d/cylinder_shape_3d.h"
 #include "scene/resources/3d/fog_material.h"
 #include "scene/resources/3d/height_map_shape_3d.h"
+#include "scene/resources/3d/ik_constraint_3d.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/3d/mesh_library.h"
 #include "scene/resources/3d/navigation_mesh_source_geometry_data_3d.h"
@@ -610,6 +614,9 @@ void register_scene_types() {
 	GDREGISTER_CLASS(SpringBoneCollisionSphere3D);
 	GDREGISTER_CLASS(SpringBoneCollisionCapsule3D);
 	GDREGISTER_CLASS(SpringBoneCollisionPlane3D);
+	GDREGISTER_VIRTUAL_CLASS(ManyBoneIK3D);
+	GDREGISTER_CLASS(FABRIK3D);
+	GDREGISTER_CLASS(CCDIK3D);
 
 	OS::get_singleton()->yield(); // may take time to init
 
@@ -660,6 +667,8 @@ void register_scene_types() {
 	GDREGISTER_CLASS(NavigationAgent3D);
 	GDREGISTER_CLASS(NavigationObstacle3D);
 	GDREGISTER_CLASS(NavigationLink3D);
+
+	GDREGISTER_CLASS(IKConstraint3D);
 
 	OS::get_singleton()->yield(); // may take time to init
 #endif // _3D_DISABLED
