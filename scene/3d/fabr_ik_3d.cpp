@@ -30,7 +30,7 @@
 
 #include "fabr_ik_3d.h"
 
-void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance) {
+void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) {
 	real_t distance_to_target = INFINITY;
 	int iteration_count = 0;
 

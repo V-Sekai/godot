@@ -30,7 +30,7 @@
 
 #include "ccd_ik_3d.h"
 
-void CCDIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance) {
+void CCDIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) {
 	// Solve IK here in extended class. Show example for iterating parent to child below.
 	/*
 	for (int i = 0; i < p_joints.size(); i++) {

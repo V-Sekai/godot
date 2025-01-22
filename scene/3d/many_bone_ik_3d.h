@@ -84,6 +84,8 @@ public:
 		float end_bone_length = 0.0;
 
 		NodePath target_node;
+		bool use_target_axis = false;
+		BoneAxis target_axis = BONE_AXIS_PLUS_Y;
 		int max_iterations = 4;
 		real_t min_distance = 0.01; // If distance between end joint and target is less than min_distance, finish iteration.
 
@@ -115,7 +117,7 @@ protected:
 	virtual void _process_modification() override;
 	void _init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *p_setting);
 
-	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance);
+	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance);
 
 	void _make_joints_dirty(int p_index);
 	void _make_all_joints_dirty();
@@ -144,6 +146,11 @@ public:
 
 	void set_target_node(int p_index, const NodePath &p_target_node);
 	NodePath get_target_node(int p_index) const;
+	void set_use_target_axis(int p_index, bool p_enabled);
+	bool is_using_target_axis(int p_index) const;
+	void set_target_axis(int p_index, BoneAxis p_axis);
+	BoneAxis get_target_axis(int p_index) const;
+
 	void set_max_iterations(int p_index, int p_max_iterations);
 	int get_max_iterations(int p_index) const;
 	void set_min_distance(int p_index, real_t p_min_distance);
