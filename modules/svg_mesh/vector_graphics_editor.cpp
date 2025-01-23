@@ -1117,11 +1117,11 @@ void VGEditor::_notification(int p_what) {
 
 		case NOTIFICATION_READY: {
 
-			tool_buttons[0]->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("ToolSelect", "EditorIcons"));
-			tool_buttons[1]->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("EditBezier", "EditorIcons"));
+			tool_buttons[0]->set_button_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("ToolSelect", "EditorIcons"));
+			tool_buttons[1]->set_button_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("EditBezier", "EditorIcons"));
 			// tool_buttons[2]->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("SphereShape", "EditorIcons"));
 
-			button_bake->set_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("MeshInstance2D", "EditorIcons"));
+			button_bake->set_button_icon(EditorNode::get_singleton()->get_gui_base()->get_theme_icon("MeshInstance2D", "EditorIcons"));
 
 			get_tree()->connect("node_removed", callable_mp(this, &VGEditor::_node_removed));
 

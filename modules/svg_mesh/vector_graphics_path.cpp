@@ -67,17 +67,17 @@ static tove::PaintRef to_tove_paint(Ref<VGPaint> p_paint) {
 			} else {
 				return tove::PaintRef();
 			}
-
 			Ref<Gradient> color_ramp = gradient->get_color_ramp();
 			if (!color_ramp.is_null()) {
-				const Vector<Gradient::Point> &p = color_ramp->get_points();
-				for (int i = 0; i < p.size(); i++) {
+				Vector<float> offsets = color_ramp->get_offsets();
+				Vector<Color> colors = color_ramp->get_colors();
+				for (int i = 0; i < offsets.size(); i++) {
 					tove_gradient->addColorStop(
-							p[i].offset,
-							p[i].color.r,
-							p[i].color.g,
-							p[i].color.b,
-							p[i].color.a);
+							offsets[i],
+							colors[i].r,
+							colors[i].g,
+							colors[i].b,
+							colors[i].a);
 				}
 			}
 
@@ -97,15 +97,18 @@ static Ref<VGPaint> from_tove_paint(const tove::PaintRef &p_paint) {
 
 			auto grad = std::dynamic_pointer_cast<tove::AbstractGradient>(p_paint);
 
-			Vector<Gradient::Point> points;
-			for (int i = 0; i < grad->getNumColorStops(); i++) {
-				Gradient::Point p;
-				ToveRGBA rgba;
-				p.offset = grad->getColorStop(i, rgba, 1.0f);
-				p.color = Color(rgba.r, rgba.g, rgba.b, rgba.a);
-				points.push_back(p);
+			if (!color_ramp.is_null()) {
+				Vector<float> offsets = color_ramp->get_offsets();
+				Vector<Color> colors = color_ramp->get_colors();
+				for (int i = 0; i < offsets.size(); i++) {
+					grad->addColorStop(
+							offsets[i],
+							colors[i].r,
+							colors[i].g,
+							colors[i].b,
+							colors[i].a);
+				}
 			}
-			color_ramp->set_points(points);
 
 			ToveGradientParameters params;
 			grad->getGradientParameters(params);
