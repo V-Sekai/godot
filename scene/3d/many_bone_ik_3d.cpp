@@ -318,6 +318,7 @@ int ManyBoneIK3D::get_end_bone(int p_index) const {
 void ManyBoneIK3D::set_extend_end_bone(int p_index, bool p_enabled) {
 	ERR_FAIL_INDEX(p_index, settings.size());
 	settings[p_index]->extend_end_bone = p_enabled;
+	settings[p_index]->simulation_dirty = true;
 	notify_property_list_changed();
 }
 
@@ -329,6 +330,7 @@ bool ManyBoneIK3D::is_end_bone_extended(int p_index) const {
 void ManyBoneIK3D::set_end_bone_direction(int p_index, BoneDirection p_bone_direction) {
 	ERR_FAIL_INDEX(p_index, settings.size());
 	settings[p_index]->end_bone_direction = p_bone_direction;
+	settings[p_index]->simulation_dirty = true;
 }
 
 ManyBoneIK3D::BoneDirection ManyBoneIK3D::get_end_bone_direction(int p_index) const {
@@ -339,6 +341,7 @@ ManyBoneIK3D::BoneDirection ManyBoneIK3D::get_end_bone_direction(int p_index) co
 void ManyBoneIK3D::set_end_bone_length(int p_index, float p_length) {
 	ERR_FAIL_INDEX(p_index, settings.size());
 	settings[p_index]->end_bone_length = p_length;
+	settings[p_index]->simulation_dirty = true;
 }
 
 float ManyBoneIK3D::get_end_bone_length(int p_index) const {
@@ -605,6 +608,8 @@ void ManyBoneIK3D::_make_all_joints_dirty() {
 }
 
 void ManyBoneIK3D::_update_joint_array(int p_index) {
+	settings[p_index]->simulation_dirty = true;
+
 	Skeleton3D *sk = get_skeleton();
 	int current_bone = settings[p_index]->end_bone;
 	int root_bone = settings[p_index]->root_bone;
@@ -671,13 +676,13 @@ void ManyBoneIK3D::_process_modification() {
 			if (settings[i]->joints.is_empty()) {
 				continue; // Abort.
 			}
-			Transform3D root_joint_transform = settings[i]->cached_space * skeleton->get_bone_global_pose(settings[i]->joints[0]->bone);
+			Transform3D root_joint_transform = skeleton->get_bone_global_pose(settings[i]->joints[0]->bone);
 			target_vector = target->get_global_position() - root_joint_transform.origin;
 			target_vector.normalize();
 			ERR_CONTINUE_MSG(target_vector.is_zero_approx(), "Target position must not be the same with root bone joint position.");
 		}
 
-		_process_joints(delta, skeleton, settings[i]->joints, settings[i]->cached_space, target->get_global_position(), target_vector, settings[i]->max_iterations, settings[i]->min_distance);
+		_process_joints(delta, skeleton, settings[i]->joints, settings[i]->chain, settings[i]->cached_space, target->get_global_position(), target_vector, settings[i]->max_iterations, settings[i]->min_distance);
 	}
 }
 
@@ -715,20 +720,16 @@ void ManyBoneIK3D::_init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *set
 	if (!setting->simulation_dirty) {
 		return;
 	}
+	setting->chain.clear();
+	bool extend_end_bone = setting->extend_end_bone && setting->end_bone_length > 0;
 	for (int i = 0; i < setting->joints.size(); i++) {
 		if (setting->joints[i]->solver_info) {
 			memdelete(setting->joints[i]->solver_info);
 			setting->joints[i]->solver_info = nullptr;
 		}
-		if (i < setting->joints.size() - 1) {
-			setting->joints[i]->solver_info = memnew(ManyBoneIK3DSolverInfo);
-			Vector3 axis = p_skeleton->get_bone_rest(setting->joints[i + 1]->bone).origin;
-			setting->joints[i]->solver_info->current_tail = setting->cached_space.xform(p_skeleton->get_bone_global_pose(setting->joints[i]->bone).xform(axis));
-			setting->joints[i]->solver_info->prev_tail = setting->joints[i]->solver_info->current_tail;
-			setting->joints[i]->solver_info->forward_vector = axis.normalized();
-			setting->joints[i]->solver_info->length = axis.length();
-			setting->joints[i]->solver_info->current_rot = Quaternion(0, 0, 0, 1);
-		} else if (setting->extend_end_bone && setting->end_bone_length > 0) {
+		setting->chain.push_back(p_skeleton->get_bone_global_pose(setting->joints[i]->bone).origin);
+		bool last = i == setting->joints.size() - 1;
+		if (last && extend_end_bone) {
 			Vector3 axis = get_end_bone_axis(setting->end_bone, setting->end_bone_direction);
 			if (axis.is_zero_approx()) {
 				continue;
@@ -736,15 +737,21 @@ void ManyBoneIK3D::_init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *set
 			setting->joints[i]->solver_info = memnew(ManyBoneIK3DSolverInfo);
 			setting->joints[i]->solver_info->forward_vector = axis;
 			setting->joints[i]->solver_info->length = setting->end_bone_length;
-			setting->joints[i]->solver_info->current_tail = setting->cached_space.xform(p_skeleton->get_bone_global_pose(setting->joints[i]->bone).xform(axis * setting->end_bone_length));
-			setting->joints[i]->solver_info->prev_tail = setting->joints[i]->solver_info->current_tail;
+			setting->joints[i]->solver_info->current_rot = Quaternion(0, 0, 0, 1);
+			setting->chain.push_back(p_skeleton->get_bone_global_pose(setting->joints[i]->bone).xform(axis * setting->end_bone_length));
+		} else if (!last) {
+			setting->joints[i]->solver_info = memnew(ManyBoneIK3DSolverInfo);
+			Vector3 axis = p_skeleton->get_bone_rest(setting->joints[i + 1]->bone).origin;
+			setting->joints[i]->solver_info->forward_vector = axis.normalized();
+			setting->joints[i]->solver_info->length = axis.length();
 			setting->joints[i]->solver_info->current_rot = Quaternion(0, 0, 0, 1);
 		}
 	}
+
 	setting->simulation_dirty = false;
 }
 
-void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) {
+void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) {
 	// Solve IK here in extended class. Show example for iterating parent to child below.
 	/*
 	for (int i = 0; i < p_joints.size(); i++) {

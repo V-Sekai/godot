@@ -50,10 +50,8 @@ public:
 	};
 
 	struct ManyBoneIK3DSolverInfo {
-		Vector3 prev_tail;
-		Vector3 current_tail;
-		Vector3 forward_vector;
 		Quaternion current_rot;
+		Vector3 forward_vector;
 		float length = 0.0;
 	};
 
@@ -90,6 +88,7 @@ public:
 		real_t min_distance = 0.01; // If distance between end joint and target is less than min_distance, finish iteration.
 
 		Vector<ManyBoneIK3DJointSetting *> joints;
+		Vector<Vector3> chain;
 
 		// To process.
 		bool simulation_dirty = false;
@@ -117,7 +116,7 @@ protected:
 	virtual void _process_modification() override;
 	void _init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *p_setting);
 
-	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance);
+	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance);
 
 	void _make_joints_dirty(int p_index);
 	void _make_all_joints_dirty();
