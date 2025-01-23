@@ -31,18 +31,77 @@
 #include "ccd_ik_3d.h"
 
 void CCDIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) {
-	// Solve IK here in extended class. Show example for iterating parent to child below.
-	/*
+	double min_distance_sq = p_min_distance * p_min_distance;
+	real_t distance_to_target_sq = INFINITY;
+	int iteration_count = 0;
+
+	// Quaternion destination_rotation = p_space.basis.get_rotation_quaternion() * p_skeleton->get_bone_global_pose(p_joints[p_joints.size() - 1]->bone).basis.get_rotation_quaternion();
+
+	while (distance_to_target_sq > min_distance_sq && iteration_count < p_max_iterations) {
+		iteration_count++;
+
+		// Backwards.
+		for (int i = p_joints.size() - 1; i >= 0; i--) {
+			bool first = true;
+			const int HEAD = i;
+			float weight = 1.0 / (p_joints.size() - i);
+			for (int j = p_joints.size() - 1; j >= i; j--) {
+				ManyBoneIK3DSolverInfo *solver_info = p_joints[j]->solver_info;
+				if (!solver_info) {
+					continue;
+				}
+				const int TAIL = j + 1;
+				Vector3 target = first ? p_destination : p_chain[TAIL];
+				Vector3 to_vec = target - p_chain[HEAD];
+				Vector3 head_to_tail = p_chain[TAIL] - p_chain[HEAD];
+				Quaternion to_rot = Quaternion(head_to_tail.normalized(), to_vec.normalized());
+				to_rot = Quaternion().slerp(to_rot, Math::pow(weight, (p_joints.size() - j))).normalized();
+				p_chain.write[TAIL] = p_chain[HEAD] + to_rot.xform(head_to_tail);
+
+				// For constraint.
+				/*
+				Vector3 current_head_to_tail = p_skeleton->get_bone_global_pose(p_joints[i]->bone).basis.get_rotation_quaternion().xform_inv(to_vec);
+				Quaternion rotation_result = solver_info->current_rot = Quaternion(-solver_info->forward_vector, current_head_to_tail);
+				Transform3D rest = p_skeleton->get_bone_global_pose(p_joints[i]->bone) * Basis(p_joints[i]->constraint_rotation_offset);
+				Quaternion rest_rotation = rest.basis.get_rotation_quaternion();
+				bool rotation_modified = false;
+				TwistSwing ts = decompose_rotation_to_twist_and_swing(rest_rotation, rotation_result);
+				if (p_joints[i]->twist_limitation < Math_PI) {
+					// TODO: coding which limit twist.
+					// ts.twist = XXXXX;
+					rotation_modified = true;
+				}
+				Ref<IKConstraint3D> constraint = p_joints[i]->constraint;
+				if (constraint.is_valid()) {
+					ts.swing = constraint->solve(rest_rotation, ts.swing);
+					rotation_modified = true;
+				}
+				if (rotation_modified) {
+					// TODO: coding which fix tail by constraintated rotation.
+					p_chain.write[TAIL] = compose_rotation_from_twist_and_swing(rest_rotation, ts).xform(-solver_info->forward_vector);
+				}
+				*/
+			}
+		}
+
+		distance_to_target_sq = p_chain[p_chain.size() - 1].distance_squared_to(p_destination);
+	}
+
 	for (int i = 0; i < p_joints.size(); i++) {
 		ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
 		if (!solver_info) {
-			continue; // Means not extended end bone.
+			continue;
 		}
-		Vector3 destination;
-		Ref<IKConstraint3D> constraint = p_joints[i]->constraint;
-		if (constraint.is_valid()) {
-			destination = constraint.solve(destination,  p_joints[i]->cached_space * p_skeleton->get_bone_global_pose(p_joints[i]->bone) * p_joints[i]->constraint_rotation_offset);
+		Vector3 current_head_to_tail = (p_chain[i + 1] - p_chain[i]).normalized();
+		current_head_to_tail = p_skeleton->get_bone_global_pose(p_joints[i]->bone).basis.get_rotation_quaternion().xform_inv(current_head_to_tail);
+		if (solver_info->forward_vector.dot(current_head_to_tail) > 1.0f - CMP_EPSILON) {
+			continue;
 		}
+		solver_info->current_rot = Quaternion(solver_info->forward_vector, current_head_to_tail);
+		p_skeleton->set_bone_pose_rotation(p_joints[i]->bone,
+			get_local_pose_rotation(
+				p_skeleton,
+				p_joints[i]->bone,
+				p_skeleton->get_bone_global_pose(p_joints[i]->bone).basis.get_rotation_quaternion() * solver_info->current_rot));
 	}
-	*/
 }
