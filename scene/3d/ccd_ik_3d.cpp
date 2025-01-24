@@ -41,22 +41,22 @@ void CCDIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<Man
 		iteration_count++;
 
 		// Backwards.
+		int end = -1;
 		for (int i = p_joints.size() - 1; i >= 0; i--) {
-			bool first = true;
+			ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
+			if (!solver_info) {
+				continue;
+			}
 			const int HEAD = i;
-			float weight = 1.0 / (p_joints.size() - i);
-			for (int j = p_joints.size() - 1; j >= i; j--) {
-				ManyBoneIK3DSolverInfo *solver_info = p_joints[j]->solver_info;
-				if (!solver_info) {
-					continue;
-				}
-				const int TAIL = j + 1;
-				Vector3 target = first ? p_destination : p_chain[TAIL];
-				Vector3 to_vec = target - p_chain[HEAD];
-				Vector3 head_to_tail = p_chain[TAIL] - p_chain[HEAD];
-				Quaternion to_rot = Quaternion(head_to_tail.normalized(), to_vec.normalized());
-				to_rot = Quaternion().slerp(to_rot, Math::pow(weight, (p_joints.size() - j))).normalized();
-				p_chain.write[TAIL] = p_chain[HEAD] + to_rot.xform(head_to_tail);
+			if (end == -1) {
+				end = i + 1;
+			}
+			Vector3 to_vec = p_destination - p_chain[HEAD];
+			Vector3 head_to_end = p_chain[end] - p_chain[HEAD];
+			Quaternion to_rot = Quaternion(head_to_end.normalized(), to_vec.normalized());
+			for (int j = p_chain.size() - 1; j > i; j--) {
+				Vector3 head_to_any_joint = p_chain[j] - p_chain[HEAD];
+				p_chain.write[j] = p_chain[HEAD] + to_rot.xform(head_to_any_joint);
 
 				// For constraint.
 				/*
@@ -77,8 +77,8 @@ void CCDIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<Man
 					rotation_modified = true;
 				}
 				if (rotation_modified) {
-					// TODO: coding which fix tail by constraintated rotation.
-					p_chain.write[TAIL] = compose_rotation_from_twist_and_swing(rest_rotation, ts).xform(-solver_info->forward_vector);
+					// TODO: coding which fix any joint by constraintated rotation.
+					p_chain.write[j] = compose_rotation_from_twist_and_swing(rest_rotation, ts).xform(-solver_info->forward_vector);
 				}
 				*/
 			}
