@@ -31,6 +31,7 @@
 #include "texture_loader_dds.h"
 
 #include "core/io/file_access.h"
+#include "core/io/file_access_memory.h"
 #include "scene/resources/image_texture.h"
 
 #define PF_FOURCC(s) ((uint32_t)(((s)[3] << 24U) | ((s)[2] << 16U) | ((s)[1] << 8U) | ((s)[0])))
@@ -542,33 +543,89 @@ static Ref<Image> _dds_load_layer(Ref<FileAccess> p_file, DDSFormat p_dds_format
 
 	return memnew(Image(p_width, p_height, p_mipmaps > 1, info.format, r_src_data));
 }
+static Vector<Ref<Image>> _dds_load_images(Ref<FileAccess> f, DDSFormat dds_format, uint32_t width, uint32_t height, uint32_t mipmaps, uint32_t pitch, uint32_t flags, uint32_t layer_count) {
+	Vector<uint8_t> src_data;
+	Vector<Ref<Image>> images;
+	images.resize(layer_count);
 
-Ref<Resource> ResourceFormatDDS::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
-	if (r_error) {
-		*r_error = ERR_CANT_OPEN;
+	for (uint32_t i = 0; i < layer_count; i++) {
+		images.write[i] = _dds_load_layer(f, dds_format, width, height, mipmaps, pitch, flags, src_data);
 	}
 
-	Error err;
-	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ, &err);
-	if (f.is_null()) {
-		return Ref<Resource>();
+	return images;
+}
+
+static Ref<Resource> _dds_create_texture(Vector<Ref<Image>> images, uint32_t dds_type, uint32_t width, uint32_t height, uint32_t layer_count, uint32_t mipmaps, Error *r_error) {
+	if ((dds_type & DDST_TYPE_MASK) == DDST_2D) {
+		if (dds_type & DDST_ARRAY) {
+			Ref<Texture2DArray> texture = memnew(Texture2DArray());
+			texture->create_from_images(images);
+
+			if (r_error) {
+				*r_error = OK;
+			}
+
+			return texture;
+
+		} else {
+			if (r_error) {
+				*r_error = OK;
+			}
+
+			return ImageTexture::create_from_image(images[0]);
+		}
+
+	} else if ((dds_type & DDST_TYPE_MASK) == DDST_CUBEMAP) {
+		ERR_FAIL_COND_V(layer_count % 6 != 0, Ref<Resource>());
+
+		if (dds_type & DDST_ARRAY) {
+			Ref<CubemapArray> texture = memnew(CubemapArray());
+			texture->create_from_images(images);
+
+			if (r_error) {
+				*r_error = OK;
+			}
+
+			return texture;
+
+		} else {
+			Ref<Cubemap> texture = memnew(Cubemap());
+			texture->create_from_images(images);
+
+			if (r_error) {
+				*r_error = OK;
+			}
+
+			return texture;
+		}
+
+	} else if ((dds_type & DDST_TYPE_MASK) == DDST_3D) {
+		Ref<ImageTexture3D> texture = memnew(ImageTexture3D());
+		texture->create(images[0]->get_format(), width, height, layer_count, mipmaps > 1, images);
+
+		if (r_error) {
+			*r_error = OK;
+		}
+
+		return texture;
 	}
 
-	Ref<FileAccess> fref(f);
-	if (r_error) {
-		*r_error = ERR_FILE_CORRUPT;
-	}
+	return Ref<Resource>();
+}
 
-	ERR_FAIL_COND_V_MSG(err != OK, Ref<Resource>(), vformat("Unable to open DDS texture file '%s'.", p_path));
+static Ref<Resource> _dds_create_texture_from_images(Vector<Ref<Image>> images, DDSFormat dds_format, uint32_t width, uint32_t height, uint32_t mipmaps, uint32_t pitch, uint32_t flags, uint32_t layer_count, uint32_t dds_type, Error *r_error) {
+	return _dds_create_texture(images, dds_type, width, height, layer_count, mipmaps, r_error);
+}
 
+static Vector<Ref<Image>> _dds_load_images_from_buffer(Ref<FileAccess> f, DDSFormat &dds_format, uint32_t &width, uint32_t &height, uint32_t &mipmaps, uint32_t &pitch, uint32_t &flags, uint32_t &layer_count, uint32_t &dds_type, const String &p_path = "") {
 	uint32_t magic = f->get_32();
 	uint32_t hsize = f->get_32();
-	uint32_t flags = f->get_32();
-	uint32_t height = f->get_32();
-	uint32_t width = f->get_32();
-	uint32_t pitch = f->get_32();
+	flags = f->get_32();
+	height = f->get_32();
+	width = f->get_32();
+	pitch = f->get_32();
 	uint32_t depth = f->get_32();
-	uint32_t mipmaps = f->get_32();
+	mipmaps = f->get_32();
 
 	// Skip reserved.
 	for (int i = 0; i < 11; i++) {
@@ -579,7 +636,7 @@ Ref<Resource> ResourceFormatDDS::load(const String &p_path, const String &p_orig
 	// We don't check DDSD_CAPS or DDSD_PIXELFORMAT, as they're mandatory when writing,
 	// but non-mandatory when reading (as some writers don't set them).
 	if (magic != DDS_MAGIC || hsize != 124) {
-		ERR_FAIL_V_MSG(Ref<Resource>(), vformat("Invalid or unsupported DDS texture file '%s'.", p_path));
+		ERR_FAIL_V_MSG(Vector<Ref<Image>>(), vformat("Invalid or unsupported DDS texture file '%s'.", p_path));
 	}
 
 	/* uint32_t format_size = */ f->get_32();
@@ -603,8 +660,8 @@ Ref<Resource> ResourceFormatDDS::load(const String &p_path, const String &p_orig
 		f->seek(128);
 	}
 
-	uint32_t layer_count = 1;
-	uint32_t dds_type = DDST_2D;
+	layer_count = 1;
+	dds_type = DDST_2D;
 
 	if (caps_2 & DDSC2_CUBEMAP) {
 		dds_type = DDST_CUBEMAP;
@@ -615,7 +672,7 @@ Ref<Resource> ResourceFormatDDS::load(const String &p_path, const String &p_orig
 		layer_count = depth;
 	}
 
-	DDSFormat dds_format = DDS_MAX;
+	dds_format = DDS_MAX;
 
 	if (format_flags & DDPF_FOURCC) {
 		// FourCC formats.
@@ -679,7 +736,7 @@ Ref<Resource> ResourceFormatDDS::load(const String &p_path, const String &p_orig
 			} break;
 
 			default: {
-				ERR_FAIL_V_MSG(Ref<Resource>(), vformat("Unrecognized or unsupported FourCC in DDS '%s'.", p_path));
+				ERR_FAIL_V_MSG(Vector<Ref<Image>>(), vformat("Unrecognized or unsupported FourCC in DDS '%s'.", p_path));
 			}
 		}
 
@@ -745,77 +802,44 @@ Ref<Resource> ResourceFormatDDS::load(const String &p_path, const String &p_orig
 
 	// No format detected, error.
 	if (dds_format == DDS_MAX) {
-		ERR_FAIL_V_MSG(Ref<Resource>(), vformat("Unrecognized or unsupported color layout in DDS '%s'.", p_path));
+		ERR_FAIL_V_MSG(Vector<Ref<Image>>(), vformat("Unrecognized or unsupported color layout in DDS '%s'.", p_path));
 	}
 
 	if (!(flags & DDSD_MIPMAPCOUNT)) {
 		mipmaps = 1;
 	}
 
-	Vector<uint8_t> src_data;
+	return _dds_load_images(f, dds_format, width, height, mipmaps, pitch, flags, layer_count);
+}
 
-	Vector<Ref<Image>> images;
-	images.resize(layer_count);
-
-	for (uint32_t i = 0; i < layer_count; i++) {
-		images.write[i] = _dds_load_layer(f, dds_format, width, height, mipmaps, pitch, flags, src_data);
+static Ref<Resource> _dds_load_from_buffer(Ref<FileAccess> f, Error *r_error, const String &p_path = "") {
+	if (r_error) {
+		*r_error = ERR_FILE_CORRUPT;
 	}
 
-	if ((dds_type & DDST_TYPE_MASK) == DDST_2D) {
-		if (dds_type & DDST_ARRAY) {
-			Ref<Texture2DArray> texture = memnew(Texture2DArray());
-			texture->create_from_images(images);
+	DDSFormat dds_format;
+	uint32_t width, height, mipmaps, pitch, flags, layer_count, dds_type;
 
-			if (r_error) {
-				*r_error = OK;
-			}
+	Vector<Ref<Image>> images = _dds_load_images_from_buffer(f, dds_format, width, height, mipmaps, pitch, flags, layer_count, dds_type, p_path);
+	return _dds_create_texture_from_images(images, dds_format, width, height, mipmaps, pitch, flags, layer_count, dds_type, r_error);
+}
 
-			return texture;
-
-		} else {
-			if (r_error) {
-				*r_error = OK;
-			}
-
-			return ImageTexture::create_from_image(images[0]);
-		}
-
-	} else if ((dds_type & DDST_TYPE_MASK) == DDST_CUBEMAP) {
-		ERR_FAIL_COND_V(layer_count % 6 != 0, Ref<Resource>());
-
-		if (dds_type & DDST_ARRAY) {
-			Ref<CubemapArray> texture = memnew(CubemapArray());
-			texture->create_from_images(images);
-
-			if (r_error) {
-				*r_error = OK;
-			}
-
-			return texture;
-
-		} else {
-			Ref<Cubemap> texture = memnew(Cubemap());
-			texture->create_from_images(images);
-
-			if (r_error) {
-				*r_error = OK;
-			}
-
-			return texture;
-		}
-
-	} else if ((dds_type & DDST_TYPE_MASK) == DDST_3D) {
-		Ref<ImageTexture3D> texture = memnew(ImageTexture3D());
-		texture->create(images[0]->get_format(), width, height, layer_count, mipmaps > 1, images);
-
-		if (r_error) {
-			*r_error = OK;
-		}
-
-		return texture;
+static Ref<Resource> _dds_load_from_file(const String &p_path, Error *r_error) {
+	if (r_error) {
+		*r_error = ERR_CANT_OPEN;
 	}
 
-	return Ref<Resource>();
+	Error err;
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ, &err);
+	if (f.is_null()) {
+		return Ref<Resource>();
+	}
+
+	return _dds_load_from_buffer(f, r_error, p_path);
+}
+
+Ref<Resource> ResourceFormatDDS::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+	return _dds_load_from_file(p_path, r_error);
 }
 
 void ResourceFormatDDS::get_recognized_extensions(List<String> *p_extensions) const {
@@ -831,4 +855,23 @@ String ResourceFormatDDS::get_resource_type(const String &p_path) const {
 		return "Texture";
 	}
 	return "";
+}
+
+Ref<Image> load_mem_dds(const uint8_t *p_dds, int p_size) {
+	Ref<FileAccessMemory> memfile;
+	memfile.instantiate();
+	Error open_memfile_error = memfile->open_custom(p_dds, p_size);
+	ERR_FAIL_COND_V_MSG(open_memfile_error, Ref<Image>(), "Could not create memfile for DDS image buffer.");
+
+	DDSFormat dds_format;
+	uint32_t width, height, mipmaps, pitch, flags, layer_count, dds_type;
+
+	Vector<Ref<Image>> images = _dds_load_images_from_buffer(memfile, dds_format, width, height, mipmaps, pitch, flags, layer_count, dds_type);
+	ERR_FAIL_COND_V_MSG(images.is_empty(), Ref<Image>(), "Failed to load DDS image.");
+
+	return images[0];
+}
+
+ResourceFormatDDS::ResourceFormatDDS() {
+	Image::_dds_mem_loader_func = load_mem_dds;
 }
