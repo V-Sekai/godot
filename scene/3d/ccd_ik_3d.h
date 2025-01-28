@@ -36,6 +36,16 @@
 class CCDIK3D : public ManyBoneIK3D {
 	GDCLASS(CCDIK3D, ManyBoneIK3D);
 
+	struct SolverInfoData {
+		Transform3D target_transform;
+		Transform3D moved_transform;
+	};
+
+	bool is_rootmost_bone(Skeleton3D *p_skeleton, BoneId p_root_bone, BoneId p_leaf_bone) const;
+
+public:
+	virtual Transform3D _solve(const Vector<Transform3D> &p_targets, const Vector<Transform3D> &p_moveds, bool p_translate);
+
 protected:
 	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) override;
 };

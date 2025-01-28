@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IK_CONSTRAINT_3D
-#define IK_CONSTRAINT_3D
+#ifndef IK_CONSTRAINT_3D_H
+#define IK_CONSTRAINT_3D_H
 
 #include "core/io/resource.h"
 
@@ -41,10 +41,10 @@ class IKConstraint3D : public Resource {
 		real_t radius_range = 0.1; // 0.0 = No hole, 1.0 = Hemisphere.
 	};
 
-	Vector<IKConstraint3DHole*> holes;
+	Vector<IKConstraint3DHole *> holes;
 
 public:
-	// TODO: coding which entry swing paramaters.
+	// TODO: coding which entry swing parameters.
 	struct Swing {
 		real_t foo;
 		real_t bar;
@@ -73,4 +73,4 @@ public:
 	virtual ~IKConstraint3D();
 };
 
-#endif // IK_CONSTRAINT_3D
+#endif // IK_CONSTRAINT_3D_H
