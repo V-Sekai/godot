@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_macos.h                               */
+/*  gdextension_function_loader.h                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,28 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef GDEXTENSION_FUNCTION_LOADER_H
+#define GDEXTENSION_FUNCTION_LOADER_H
 
-#ifdef VULKAN_ENABLED
+#include "core/extension/gdextension_loader.h"
+#include "core/os/shared_object.h"
+#include <functional>
 
-#include "drivers/vulkan/rendering_context_driver_vulkan.h"
+class GDExtension;
 
-#import <QuartzCore/CAMetalLayer.h>
+class GDExtensionFunctionLoader : public GDExtensionLoader {
+	friend class GDExtensionManager;
+	friend class GDExtension;
 
-class RenderingContextDriverVulkanMacOS : public RenderingContextDriverVulkan {
 private:
-	virtual const char *_get_platform_surface_extension() const override final;
-
-protected:
-	SurfaceID surface_create(const void *p_platform_data) override final;
+	String library_path;
+	GDExtensionInitializationFunction initialization_function = nullptr;
 
 public:
-	struct WindowPlatformData {
-		CAMetalLayer *const *layer_ptr;
-	};
+	Error open_library(const String &p_path) override;
+	Error initialize(GDExtensionInterfaceGetProcAddress p_get_proc_address, const Ref<GDExtension> &p_extension, GDExtensionInitialization *r_initialization) override;
+	void close_library() override;
+	bool is_library_open() const override;
+	bool has_library_changed() const override;
+	bool library_exists() const override;
 
-	RenderingContextDriverVulkanMacOS();
-	~RenderingContextDriverVulkanMacOS();
+	void set_initialization_function(GDExtensionInitializationFunction initialization_function);
 };
 
-#endif // VULKAN_ENABLED
+#endif // GDEXTENSION_FUNCTION_LOADER_H

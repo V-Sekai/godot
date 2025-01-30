@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_macos.mm                              */
+/*  rendering_native_surface_wayland.h                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,37 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "rendering_context_driver_vulkan_macos.h"
+#ifndef RENDERING_NATIVE_SURFACE_WAYLAND_H
+#define RENDERING_NATIVE_SURFACE_WAYLAND_H
 
-#ifdef VULKAN_ENABLED
+#include "core/variant/native_ptr.h"
+#include "servers/rendering/rendering_native_surface.h"
 
-#ifdef USE_VOLK
-#include <volk.h>
-#else
-#include <vulkan/vulkan_metal.h>
-#endif
+class RenderingNativeSurfaceWayland : public RenderingNativeSurface {
+	GDCLASS(RenderingNativeSurfaceWayland, RenderingNativeSurface);
 
-const char *RenderingContextDriverVulkanMacOS::_get_platform_surface_extension() const {
-	return VK_EXT_METAL_SURFACE_EXTENSION_NAME;
-}
+	static void _bind_methods();
 
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanMacOS::surface_create(const void *p_platform_data) {
-	const WindowPlatformData *wpd = (const WindowPlatformData *)(p_platform_data);
+	struct wl_display *display;
+	struct wl_surface *surface;
 
-	VkMetalSurfaceCreateInfoEXT create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-	create_info.pLayer = *wpd->layer_ptr;
+public:
+	static Ref<RenderingNativeSurfaceWayland> create_api(GDExtensionConstPtr<const void> p_display, GDExtensionConstPtr<const void> p_surface);
 
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	VkResult err = vkCreateMetalSurfaceEXT(instance_get(), &create_info, get_allocation_callbacks(VK_OBJECT_TYPE_SURFACE_KHR), &vk_surface);
-	ERR_FAIL_COND_V(err != VK_SUCCESS, SurfaceID());
+	static Ref<RenderingNativeSurfaceWayland> create(struct wl_display *p_display, wl_surface *p_surface);
 
-	Surface *surface = memnew(Surface);
-	surface->vk_surface = vk_surface;
-	return SurfaceID(surface);
-}
+	struct wl_display *get_display() const {
+		return display;
+	}
 
-RenderingContextDriverVulkanMacOS::RenderingContextDriverVulkanMacOS() {
-	// Does nothing.
-}
+	struct wl_surface *get_surface() const {
+		return surface;
+	}
 
-RenderingContextDriverVulkanMacOS::~RenderingContextDriverVulkanMacOS() {
-	// Does nothing.
-}
+	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
 
-#endif // VULKAN_ENABLED
+	RenderingNativeSurfaceWayland();
+	~RenderingNativeSurfaceWayland();
+};
+
+#endif // RENDERING_NATIVE_SURFACE_WAYLAND_H
