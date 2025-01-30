@@ -54,6 +54,8 @@ TEST_CASE("[SceneTree][ColorPicker]") {
 		SEND_GUI_MOUSE_MOTION_EVENT(pos_left, MouseButtonMask::NONE, Key::NONE);
 		CHECK(cp->get_pick_color().r > 0.5); // Issue GH-77773.
 	}
+	root->remove_child(cp);
+	memdelete(cp);
 }
 
 } // namespace TestColorPicker
