@@ -51,6 +51,7 @@ struct CSGBrush {
 
 	Vector<Face> faces;
 	Vector<Ref<Material>> materials;
+	bool lock_faces = false;
 
 	inline void _regen_face_aabbs() {
 		for (int i = 0; i < faces.size(); i++) {

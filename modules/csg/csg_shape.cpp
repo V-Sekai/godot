@@ -218,6 +218,7 @@ enum ManifoldProperty {
 	MANIFOLD_PROPERTY_SMOOTH_GROUP,
 	MANIFOLD_PROPERTY_UV_X_0,
 	MANIFOLD_PROPERTY_UV_Y_0,
+	MANIFOLD_PROPERTY_FACE_LOCK,
 	MANIFOLD_PROPERTY_MAX
 };
 
@@ -339,6 +340,38 @@ static String _export_meshgl_as_json(const manifold::MeshGL64 &p_mesh) {
 }
 #endif // DEV_ENABLED
 
+// Yes, Manifold removes extra triangles from coplanar faces. There are several ways to make them stay - probably the easiest is adding any kind of extra vertex property.
+//
+// TODO: Adding any kind of extra vertex property to lock the faces.
+
+// struct CSGBrush {
+// 	struct Face {
+// 		Vector3 vertices[3];
+// 		Vector2 uvs[3];
+// 		AABB aabb;
+// 		bool smooth = false;
+// 		bool invert = false;
+// 		int material = 0;
+// 	};
+
+// 	Vector<Face> faces;
+// 	Vector<Ref<Material>> materials;
+// 	bool lock_faces = false;
+
+// 	inline void _regen_face_aabbs() {
+// 		for (int i = 0; i < faces.size(); i++) {
+// 			faces.write[i].aabb = AABB();
+// 			faces.write[i].aabb.position = faces[i].vertices[0];
+// 			faces.write[i].aabb.expand_to(faces[i].vertices[1]);
+// 			faces.write[i].aabb.expand_to(faces[i].vertices[2]);
+// 		}
+// 	}
+
+// 	// Create a brush from faces.
+// 	void build_from_faces(const Vector<Vector3> &p_vertices, const Vector<Vector2> &p_uvs, const Vector<bool> &p_smooth, const Vector<Ref<Material>> &p_materials, const Vector<bool> &p_invert_faces);
+// 	void copy_from(const CSGBrush &p_brush, const Transform3D &p_xform);
+// };
+
 static void _pack_manifold(
 		const CSGBrush *const p_mesh_merge,
 		manifold::Manifold &r_manifold,
@@ -347,6 +380,7 @@ static void _pack_manifold(
 	ERR_FAIL_NULL_MSG(p_mesh_merge, "p_mesh_merge is null");
 	ERR_FAIL_NULL_MSG(p_csg_shape, "p_shape is null");
 	HashMap<uint32_t, Vector<CSGBrush::Face>> faces_by_material;
+	bool lock_faces = p_mesh_merge->lock_faces;
 	for (int face_i = 0; face_i < p_mesh_merge->faces.size(); face_i++) {
 		const CSGBrush::Face &face = p_mesh_merge->faces[face_i];
 		faces_by_material[face.material].push_back(face);
@@ -373,6 +407,7 @@ static void _pack_manifold(
 		}
 
 		p_mesh_materials.insert(reserved_id, material);
+		int face_i = 0;
 		for (const CSGBrush::Face &face : faces) {
 			for (int32_t tri_order_i = 0; tri_order_i < 3; tri_order_i++) {
 				constexpr int32_t order[3] = { 0, 2, 1 };
@@ -392,7 +427,13 @@ static void _pack_manifold(
 				vert[MANIFOLD_PROPERTY_UV_Y_0] = face.uvs[i].y;
 				vert[MANIFOLD_PROPERTY_SMOOTH_GROUP] = face.smooth ? 1.0f : 0.0f;
 				vert[MANIFOLD_PROPERTY_INVERT] = face.invert ? 1.0f : 0.0f;
+				if (lock_faces) {
+					vert[MANIFOLD_PROPERTY_FACE_LOCK] = material_id * face_i + face_i;
+				} else {
+					vert[MANIFOLD_PROPERTY_FACE_LOCK] = 0.0f;
+				}
 			}
+			face_i++;
 		}
 	}
 	// runIndex needs an explicit end value.
@@ -434,6 +475,9 @@ CSGBrush *CSGShape3D::_get_brush() {
 	}
 	brush = nullptr;
 	CSGBrush *n = _build_brush();
+	if (!n) {
+		n->lock_faces = lock_faces;
+	}
 	HashMap<int32_t, Ref<Material>> mesh_materials;
 	manifold::Manifold root_manifold;
 	_pack_manifold(n, root_manifold, mesh_materials, this);
@@ -448,6 +492,9 @@ CSGBrush *CSGShape3D::_get_brush() {
 		CSGBrush *child_brush = child->_get_brush();
 		if (!child_brush) {
 			continue;
+		}
+		if (!child_brush) {
+			child_brush->lock_faces = child->lock_faces;
 		}
 		CSGBrush transformed_brush;
 		transformed_brush.copy_from(*child_brush, child->get_transform());
@@ -996,6 +1043,10 @@ void CSGShape3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("bake_static_mesh"), &CSGShape3D::bake_static_mesh);
 	ClassDB::bind_method(D_METHOD("bake_collision_shape"), &CSGShape3D::bake_collision_shape);
 
+	ClassDB::bind_method(D_METHOD("set_lock_faces", "lock"), &CSGShape3D::set_lock_faces);
+	ClassDB::bind_method(D_METHOD("get_lock_faces"), &CSGShape3D::get_lock_faces);
+
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "lock_faces"), "set_lock_faces", "get_lock_faces");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "operation", PROPERTY_HINT_ENUM, "Union,Intersection,Subtraction"), "set_operation", "get_operation");
 #ifndef DISABLE_DEPRECATED
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "snap", PROPERTY_HINT_RANGE, "0.000001,1,0.000001,suffix:m", PROPERTY_USAGE_NONE), "set_snap", "get_snap");
@@ -2783,4 +2834,12 @@ CSGPolygon3D::CSGPolygon3D() {
 	path_u_distance = 1.0;
 	path_joined = false;
 	path = nullptr;
+}
+
+void CSGShape3D::set_lock_faces(bool p_lock) {
+	lock_faces = p_lock;
+}
+
+bool CSGShape3D::get_lock_faces() const {
+	return lock_faces;
 }

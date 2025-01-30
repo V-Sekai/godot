@@ -86,6 +86,9 @@
 		<member name="collision_priority" type="float" setter="set_collision_priority" getter="get_collision_priority" default="1.0">
 			The priority used to solve colliding when occurring penetration. Only effective if [member use_collision] is [code]true[/code]. The higher the priority is, the lower the penetration into the object will be. This can for example be used to prevent the player from breaking through the boundaries of a level.
 		</member>
+		<member name="lock_faces" type="bool" setter="set_lock_faces" getter="get_lock_faces" default="false">
+			Locks the faces of the CSG shape so they are lightly optimized.
+		</member>
 		<member name="operation" type="int" setter="set_operation" getter="get_operation" enum="CSGShape3D.Operation" default="0">
 			The operation that is performed on this shape. This is ignored for the first CSG child node as the operation is between this node and the previous child of this nodes parent.
 		</member>

@@ -76,6 +76,8 @@ private:
 
 	bool calculate_tangents = true;
 
+	bool lock_faces = false;
+
 	Ref<ArrayMesh> root_mesh;
 
 	struct Vector3Hasher {
@@ -133,6 +135,9 @@ protected:
 
 public:
 	Array get_meshes() const;
+
+	void set_lock_faces(bool p_lock);
+	bool get_lock_faces() const;
 
 	void set_operation(Operation p_operation);
 	Operation get_operation() const;
