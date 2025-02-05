@@ -45,6 +45,7 @@
 #include "modules/goal_task_planner/multigoal.h"
 #include "modules/goal_task_planner/plan.h"
 
+#ifdef TOOLS_ENABLED
 namespace TestLogistics {
 
 // This file is based on the logistics-domain examples included with HGNpyhop:
@@ -326,7 +327,7 @@ Variant method_move_between_city(Dictionary p_state, String p_object, String p_l
 void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_domain) {
 	ERR_FAIL_COND(p_planner.is_null());
 	ERR_FAIL_COND(p_the_domain.is_null());
-	p_planner->set_verbose(0);
+	p_planner->set_verbose(3);
 	p_state.clear();
 	TypedArray<Domain> domains;
 	domains.push_back(p_the_domain);
@@ -619,5 +620,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal" * doctest::skip(true)) {
 }
 
 } // namespace TestLogistics
+#endif // TOOLS_ENABLED
 
 #endif // TEST_LOGISTICS_H
