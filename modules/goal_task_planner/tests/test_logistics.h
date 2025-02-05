@@ -416,8 +416,10 @@ void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_dom
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] m_drive_truck") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	Array task;
@@ -429,7 +431,8 @@ TEST_CASE("[Modules][GoalTaskPlanner] m_drive_truck") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Fly plane") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
+	Ref<Plan> planner;
+	planner.instantiate();
 	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
@@ -442,8 +445,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Fly plane") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Load truck") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	Array task;
@@ -454,8 +459,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Load truck") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	Array task;
@@ -477,8 +484,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 
@@ -504,8 +513,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 3") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 
@@ -518,8 +529,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 3") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	Array task;
@@ -534,8 +547,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state;
 	before_each(state, planner, the_domain);
 	Array task;
@@ -590,7 +605,8 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal") {
 	truck_at["truck1"] = "location1";
 	goal_state["truck_at"] = truck_at;
 	goal_state["at"] = at;
-	Ref<Multigoal> multi_goal = Ref<Multigoal>(memnew(Multigoal("Multigoal", goal_state)));
+	Ref<Multigoal> multi_goal;
+	multi_goal.instantiate("Multigoal", goal_state);
 	Array task;
 	task.push_back(multi_goal);
 	Array plan = planner->find_plan(state, task);
