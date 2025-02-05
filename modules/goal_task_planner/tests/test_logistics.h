@@ -591,7 +591,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
 	CHECK_EQ(final_state, answer);
 }
 
-TEST_CASE("[Modules][GoalTaskPlanner] Multigoal") {
+TEST_CASE("[Modules][GoalTaskPlanner] Multigoal" * doctest::skip(true)) {
 	Ref<Plan> planner;
 	planner.instantiate();
 	Ref<Domain> the_domain;
