@@ -320,7 +320,7 @@ Dictionary Plan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p
 
 	for (int tries = 1; tries <= p_max_tries; tries++) {
 		if (verbose >= 1) {
-			print_line(vformat("run_lazy_lookahead: %sth call to find_plan:", tries, ordinals.get(tries, "")));
+			print_line(vformat("run_lazy_lookahead: %sth call to find_plan: %s", tries, ordinals.get(tries, "")));
 		}
 
 		Variant plan = find_plan(p_state, p_todo_list);
