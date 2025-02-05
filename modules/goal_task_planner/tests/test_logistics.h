@@ -577,8 +577,10 @@ TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Multigoal") {
-	Ref<Plan> planner = Ref<Plan>(memnew(Plan));
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<Plan> planner;
+	planner.instantiate();
+	Ref<Domain> the_domain;
+	the_domain.instantiate();
 	Dictionary state;
 	before_each(state, planner, the_domain);
 	Dictionary goal_state = state.duplicate(true);
