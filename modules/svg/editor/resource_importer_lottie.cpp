@@ -213,6 +213,7 @@ bool ResourceImporterLottie::get_option_visibility(const String &p_path, const S
 void ResourceImporterLottie::get_recognized_extensions(List<String> *p_extensions) const {
 	p_extensions->push_back("lottiejson");
 	p_extensions->push_back("lottie");
+	p_extensions->push_back("lot");
 }
 
 String ResourceImporterLottie::get_save_extension() const {
