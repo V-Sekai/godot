@@ -77,6 +77,7 @@ private:
 protected:
 	static void _bind_methods();
 	String _gen_unique_name(Ref<GLTFState> p_state, const String &p_name);
+	void _compute_node_heights(Ref<GLTFState> p_state);
 	static Vector<Ref<GLTFDocumentExtension>> all_document_extensions;
 	Vector<Ref<GLTFDocumentExtension>> document_extensions;
 
@@ -127,7 +128,6 @@ private:
 			const GLTFTextureIndex p_texture);
 	Error _parse_json(const String &p_path, Ref<GLTFState> p_state);
 	Error _parse_glb(Ref<FileAccess> p_file, Ref<GLTFState> p_state);
-	void _compute_node_heights(Ref<GLTFState> p_state);
 	Error _parse_buffers(Ref<GLTFState> p_state, const String &p_base_path);
 	Error _parse_buffer_views(Ref<GLTFState> p_state);
 	GLTFAccessor::GLTFAccessorType _get_accessor_type_from_str(const String &p_string);
