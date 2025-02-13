@@ -5,7 +5,7 @@ In Godot 3.x dictionaries were compared by reference and arrays were compared by
 
 For more information about the changes to Dictionaries and Arrays and how they affect GUT see [Godot 4 Changes](New-For-Godot-4).
 
-The `assert_eq` and `assert_ne` methods use Godot's default comparision logic, meaning arrays and dictionaries are compared by value.  Godot uses a hashing function to compare the values.  This is fast, but does not give you any insight into what is actually different when your tests fail.  GUT has some "deep" comparison methods that will show the differences in the two values.
+The `assert_eq` and `assert_ne` methods use Godot's default comparison logic, meaning arrays and dictionaries are compared by value.  Godot uses a hashing function to compare the values.  This is fast, but does not give you any insight into what is actually different when your tests fail.  GUT has some "deep" comparison methods that will show the differences in the two values.
 
 * `compare_deep`
 * `assert_eq_deep`

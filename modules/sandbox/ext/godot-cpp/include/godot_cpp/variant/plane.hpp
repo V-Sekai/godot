@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_PLANE_HPP
-#define GODOT_PLANE_HPP
+#ifndef PLANE_HPP
+#define PLANE_HPP
 
 #include <godot_cpp/classes/global_constants.hpp>
 #include <godot_cpp/variant/vector3.hpp>
@@ -138,4 +138,4 @@ bool Plane::operator!=(const Plane &p_plane) const {
 
 } // namespace godot
 
-#endif // GODOT_PLANE_HPP
+#endif // PLANE_HPP

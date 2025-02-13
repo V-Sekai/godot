@@ -1,30 +1,64 @@
-#pragma once
+/**************************************************************************/
+/*  threads.hpp                                                           */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef THREADS_HPP
+#define THREADS_HPP
+#include "machine.hpp"
 #include <cstdio>
 #include <unordered_map>
-#include "machine.hpp"
 
 namespace riscv {
 
-template <int W> struct MultiThreading;
-static const uint32_t PARENT_SETTID  = 0x00100000; /* set the TID in the parent */
+template <int W>
+struct MultiThreading;
+static const uint32_t PARENT_SETTID = 0x00100000; /* set the TID in the parent */
 static const uint32_t CHILD_CLEARTID = 0x00200000; /* clear the TID in the child */
-static const uint32_t CHILD_SETTID   = 0x01000000; /* set the TID in the child */
+static const uint32_t CHILD_SETTID = 0x01000000; /* set the TID in the child */
 
 //#define THREADS_DEBUG 1
 #ifdef THREADS_DEBUG
-#define THPRINT(machine, fmt, ...) \
-	{ char thrpbuf[1024]; machine.print(thrpbuf, \
-		snprintf(thrpbuf, sizeof(thrpbuf), fmt, ##__VA_ARGS__)); }
+#define THPRINT(machine, fmt, ...)                                       \
+	{                                                                    \
+		char thrpbuf[1024];                                              \
+		machine.print(thrpbuf,                                           \
+				snprintf(thrpbuf, sizeof(thrpbuf), fmt, ##__VA_ARGS__)); \
+	}
 #else
 #define THPRINT(fmt, ...) /* fmt */
 #endif
 
 template <int W>
-struct Thread
-{
+struct Thread {
 	using address_t = address_type<W>;
 
-	MultiThreading<W>& threading;
+	MultiThreading<W> &threading;
 	const int tid;
 	// For returning to this thread
 	Registers<W> stored_regs;
@@ -38,9 +72,9 @@ struct Thread
 	uint32_t block_word = 0;
 	uint32_t block_extra = 0;
 
-	Thread(MultiThreading<W>&, int tid, address_t tls,
-		address_t stack, address_t stkbase, address_t stksize);
-	Thread(MultiThreading<W>&, const Thread& other);
+	Thread(MultiThreading<W> &, int tid, address_t tls,
+			address_t stack, address_t stkbase, address_t stksize);
+	Thread(MultiThreading<W> &, const Thread &other);
 	bool exit(); // Returns false when we *cannot* continue
 	void suspend();
 	void suspend(address_t return_value);
@@ -51,47 +85,45 @@ struct Thread
 };
 
 template <int W>
-struct MultiThreading
-{
+struct MultiThreading {
 	using address_t = address_type<W>;
-	using thread_t  = Thread<W>;
+	using thread_t = Thread<W>;
 
-	thread_t* create(int flags, address_t ctid, address_t ptid,
-		address_t stack, address_t tls, address_t stkbase, address_t stksize);
-	int       get_tid() const noexcept { return m_current->tid; }
-	thread_t* get_thread();
-	thread_t* get_thread(int tid); /* or nullptr */
-	bool      preempt();
-	bool      suspend_and_yield(long result = 0);
-	bool      yield_to(int tid, bool store_retval = true);
-	void      erase_thread(int tid);
-	void      wakeup_next();
-	bool      block(address_t retval, uint32_t reason, uint32_t extra = 0);
-	void      unblock(int tid);
-	size_t    wakeup_blocked(size_t max, uint32_t reason, uint32_t mask = ~0U);
+	thread_t *create(int flags, address_t ctid, address_t ptid,
+			address_t stack, address_t tls, address_t stkbase, address_t stksize);
+	int get_tid() const noexcept { return m_current->tid; }
+	thread_t *get_thread();
+	thread_t *get_thread(int tid); /* or nullptr */
+	bool preempt();
+	bool suspend_and_yield(long result = 0);
+	bool yield_to(int tid, bool store_retval = true);
+	void erase_thread(int tid);
+	void wakeup_next();
+	bool block(address_t retval, uint32_t reason, uint32_t extra = 0);
+	void unblock(int tid);
+	size_t wakeup_blocked(size_t max, uint32_t reason, uint32_t mask = ~0U);
 	/* A suspended thread can at any time be resumed. */
-	auto&     suspended_threads() { return m_suspended; }
+	auto &suspended_threads() { return m_suspended; }
 	/* A blocked thread can only be resumed by unblocking it. */
-	auto&     blocked_threads() { return m_blocked; }
+	auto &blocked_threads() { return m_blocked; }
 
-	MultiThreading(Machine<W>&);
-	MultiThreading(Machine<W>&, const MultiThreading&);
-	Machine<W>& machine;
-	std::vector<thread_t*> m_blocked;
-	std::vector<thread_t*> m_suspended;
+	MultiThreading(Machine<W> &);
+	MultiThreading(Machine<W> &, const MultiThreading &);
+	Machine<W> &machine;
+	std::vector<thread_t *> m_blocked;
+	std::vector<thread_t *> m_suspended;
 	std::unordered_map<int, thread_t> m_threads;
-	unsigned   m_thread_counter = 0;
-	unsigned   m_max_threads = 50;
-	thread_t*  m_current = nullptr;
+	unsigned m_thread_counter = 0;
+	unsigned m_max_threads = 50;
+	thread_t *m_current = nullptr;
 };
 
 /** Implementation **/
 
 template <int W>
-inline MultiThreading<W>::MultiThreading(Machine<W>& mach)
-	: machine(mach)
-{
-	// Best guess for default stack boundries
+inline MultiThreading<W>::MultiThreading(Machine<W> &mach) :
+		machine(mach) {
+	// Best guess for default stack boundaries
 	const address_t base = 0x1000;
 	const address_t size = mach.memory.stack_initial() - base;
 	// Create the main thread
@@ -100,21 +132,20 @@ inline MultiThreading<W>::MultiThreading(Machine<W>& mach)
 }
 
 template <int W>
-inline MultiThreading<W>::MultiThreading(Machine<W>& mach, const MultiThreading<W>& other)
-	: machine(mach), m_thread_counter(other.m_thread_counter), m_max_threads(other.m_max_threads)
-{
-	for (const auto& it : other.m_threads) {
+inline MultiThreading<W>::MultiThreading(Machine<W> &mach, const MultiThreading<W> &other) :
+		machine(mach), m_thread_counter(other.m_thread_counter), m_max_threads(other.m_max_threads) {
+	for (const auto &it : other.m_threads) {
 		const int tid = it.first;
 		m_threads.try_emplace(tid, *this, it.second);
 	}
 	/* Copy each suspended by pointer lookup */
 	m_suspended.reserve(other.m_suspended.size());
-	for (const auto* t : other.m_suspended) {
+	for (const auto *t : other.m_suspended) {
 		m_suspended.push_back(get_thread(t->tid));
 	}
 	/* Copy each blocked by pointer lookup */
 	m_blocked.reserve(other.m_blocked.size());
-	for (const auto* t : other.m_blocked) {
+	for (const auto *t : other.m_blocked) {
 		m_blocked.push_back(get_thread(t->tid));
 	}
 	/* Copy current thread */
@@ -124,16 +155,15 @@ inline MultiThreading<W>::MultiThreading(Machine<W>& mach, const MultiThreading<
 }
 
 template <int W>
-inline void Thread<W>::resume()
-{
+inline void Thread<W>::resume() {
 	threading.m_current = this;
-	auto& m = threading.machine;
+	auto &m = threading.machine;
 	// restore registers
 	m.cpu.registers().copy_from(
-		Registers<W>::Options::NoVectors,
-		this->stored_regs);
+			Registers<W>::Options::NoVectors,
+			this->stored_regs);
 	THPRINT(threading.machine,
-		"Returning to tid=%d tls=0x%lX stack=0x%lX\n",
+			"Returning to tid=%d tls=0x%lX stack=0x%lX\n",
 			this->tid,
 			(long)this->stored_regs.get(REG_TP),
 			(long)this->stored_regs.get(REG_SP));
@@ -142,31 +172,28 @@ inline void Thread<W>::resume()
 }
 
 template <int W>
-inline void Thread<W>::suspend()
-{
+inline void Thread<W>::suspend() {
 	// copy all regs except vector lanes
 	this->stored_regs.copy_from(
-		Registers<W>::Options::NoVectors,
-		threading.machine.cpu.registers());
+			Registers<W>::Options::NoVectors,
+			threading.machine.cpu.registers());
 	// add to suspended (NB: can throw)
 	threading.m_suspended.push_back(this);
 }
 
 template <int W>
-inline void Thread<W>::suspend(address_t return_value)
-{
+inline void Thread<W>::suspend(address_t return_value) {
 	this->suspend();
 	// set the *future* return value for this thread
 	this->stored_regs.get(REG_ARG0) = return_value;
 }
 
 template <int W>
-inline void Thread<W>::block(uint32_t reason, uint32_t extra)
-{
+inline void Thread<W>::block(uint32_t reason, uint32_t extra) {
 	// copy all regs except vector lanes
 	this->stored_regs.copy_from(
-		Registers<W>::Options::NoVectors,
-		threading.machine.cpu.registers());
+			Registers<W>::Options::NoVectors,
+			threading.machine.cpu.registers());
 	this->block_word = reason;
 	this->block_extra = extra;
 	// add to blocked (NB: can throw)
@@ -174,86 +201,76 @@ inline void Thread<W>::block(uint32_t reason, uint32_t extra)
 }
 
 template <int W>
-inline void Thread<W>::block_return(address_t return_value, uint32_t reason, uint32_t extra)
-{
+inline void Thread<W>::block_return(address_t return_value, uint32_t reason, uint32_t extra) {
 	this->block(reason, extra);
 	// set the block reason as the next return value
 	this->stored_regs.get(REG_ARG0) = return_value;
 }
 
 template <int W>
-inline Thread<W>* MultiThreading<W>::get_thread()
-{
+inline Thread<W> *MultiThreading<W>::get_thread() {
 	return this->m_current;
 }
 
 template <int W>
-inline Thread<W>* MultiThreading<W>::get_thread(int tid)
-{
+inline Thread<W> *MultiThreading<W>::get_thread(int tid) {
 	auto it = m_threads.find(tid);
-	if (it == m_threads.end()) return nullptr;
+	if (it == m_threads.end())
+		return nullptr;
 	return &it->second;
 }
 
 template <int W>
-inline void MultiThreading<W>::wakeup_next()
-{
+inline void MultiThreading<W>::wakeup_next() {
 	// resume a waiting thread
 	if (!m_suspended.empty()) {
-		auto* next = m_suspended.front();
+		auto *next = m_suspended.front();
 		m_suspended.erase(m_suspended.begin());
 		// resume next thread
 		next->resume();
 	} else {
 		THPRINT(machine, "No more threads to resume. Fallback to tid=0 (*ERROR*)\n");
-		auto* next = get_thread(0);
+		auto *next = get_thread(0);
 		next->resume();
 	}
 }
 
 template <int W>
 inline Thread<W>::Thread(
-	MultiThreading<W>& mt, int ttid, address_t tls,
-	address_t stack, address_t stkbase, address_t stksize)
-	 : threading(mt), tid(ttid), stack_base(stkbase), stack_size(stksize)
-{
+		MultiThreading<W> &mt, int ttid, address_t tls,
+		address_t stack, address_t stkbase, address_t stksize) :
+		threading(mt), tid(ttid), stack_base(stkbase), stack_size(stksize) {
 	this->stored_regs.get(REG_TP) = tls;
 	this->stored_regs.get(REG_SP) = stack;
 }
 
 template <int W>
 inline Thread<W>::Thread(
-	MultiThreading<W>& mt, const Thread& other)
-	: threading(mt), tid(other.tid),
-	  stack_base(other.stack_base), stack_size(other.stack_size),
-	  clear_tid(other.clear_tid), block_word(other.block_word), block_extra(other.block_extra)
-{
+		MultiThreading<W> &mt, const Thread &other) :
+		threading(mt), tid(other.tid), stack_base(other.stack_base), stack_size(other.stack_size), clear_tid(other.clear_tid), block_word(other.block_word), block_extra(other.block_extra) {
 	stored_regs.copy_from(Registers<W>::Options::NoVectors, other.stored_regs);
 }
 
 template <int W>
-inline void Thread<W>::activate()
-{
+inline void Thread<W>::activate() {
 	threading.m_current = this;
-	auto& cpu = threading.machine.cpu;
+	auto &cpu = threading.machine.cpu;
 	cpu.reg(REG_TP) = this->stored_regs.get(REG_TP);
 	cpu.reg(REG_SP) = this->stored_regs.get(REG_SP);
 }
 
 template <int W>
-inline bool Thread<W>::exit()
-{
+inline bool Thread<W>::exit() {
 	const bool exiting_myself = (threading.get_thread() == this);
 	// Copy of reference to thread manager and thread ID
-	auto& thr = this->threading;
+	auto &thr = this->threading;
 	const int tid = this->tid;
 	// CLONE_CHILD_CLEARTID: set userspace TID value to zero
 	if (this->clear_tid) {
 		THPRINT(threading.machine,
-			"Clearing thread value for tid=%d at 0x%lX\n",
+				"Clearing thread value for tid=%d at 0x%lX\n",
 				this->tid, (long)this->clear_tid);
-		threading.machine.memory.
-			template write<address_type<W>> (this->clear_tid, 0);
+		threading.machine.memory.template write<address_type<W>>(this->clear_tid, 0);
 	}
 	// Delete this thread (except main thread)
 	if (tid != 0) {
@@ -271,23 +288,22 @@ inline bool Thread<W>::exit()
 }
 
 template <int W>
-inline Thread<W>* MultiThreading<W>::create(
-			int flags, address_t ctid, address_t ptid,
-			address_t stack, address_t tls, address_t stkbase, address_t stksize)
-{
+inline Thread<W> *MultiThreading<W>::create(
+		int flags, address_t ctid, address_t ptid,
+		address_t stack, address_t tls, address_t stkbase, address_t stksize) {
 	if (this->m_threads.size() >= this->m_max_threads)
 		throw MachineException(INVALID_PROGRAM, "Too many threads", this->m_max_threads);
 
 	const int tid = ++this->m_thread_counter;
 	auto it = m_threads.try_emplace(tid, *this, tid, tls, stack, stkbase, stksize);
-	auto* thread = &it.first->second;
+	auto *thread = &it.first->second;
 
 	// flag for write child TID
 	if (flags & CHILD_SETTID) {
-		machine.memory.template write<uint32_t> (ctid, thread->tid);
+		machine.memory.template write<uint32_t>(ctid, thread->tid);
 	}
 	if (flags & PARENT_SETTID) {
-		machine.memory.template write<uint32_t> (ptid, thread->tid);
+		machine.memory.template write<uint32_t>(ptid, thread->tid);
 	}
 	if (flags & CHILD_CLEARTID) {
 		thread->clear_tid = ctid;
@@ -297,9 +313,8 @@ inline Thread<W>* MultiThreading<W>::create(
 }
 
 template <int W>
-inline bool MultiThreading<W>::preempt()
-{
-	auto* thread = get_thread();
+inline bool MultiThreading<W>::preempt() {
+	auto *thread = get_thread();
 	if (m_suspended.empty()) {
 		return false;
 	}
@@ -309,9 +324,8 @@ inline bool MultiThreading<W>::preempt()
 }
 
 template <int W>
-inline bool MultiThreading<W>::suspend_and_yield(long result)
-{
-	auto* thread = get_thread();
+inline bool MultiThreading<W>::suspend_and_yield(long result) {
+	auto *thread = get_thread();
 	// don't go through the ardous yielding process when alone
 	if (m_suspended.empty()) {
 		// set the return value for sched_yield
@@ -326,9 +340,8 @@ inline bool MultiThreading<W>::suspend_and_yield(long result)
 }
 
 template <int W>
-inline bool MultiThreading<W>::block(address_t retval, uint32_t reason, uint32_t extra)
-{
-	auto* thread = get_thread();
+inline bool MultiThreading<W>::block(address_t retval, uint32_t reason, uint32_t extra) {
+	auto *thread = get_thread();
 	if (UNLIKELY(m_suspended.empty())) {
 		// TODO: Stop the machine here?
 		return false; // continue immediately?
@@ -341,17 +354,18 @@ inline bool MultiThreading<W>::block(address_t retval, uint32_t reason, uint32_t
 }
 
 template <int W>
-inline bool MultiThreading<W>::yield_to(int tid, bool store_retval)
-{
-	auto* thread = get_thread();
-	auto* next   = get_thread(tid);
+inline bool MultiThreading<W>::yield_to(int tid, bool store_retval) {
+	auto *thread = get_thread();
+	auto *next = get_thread(tid);
 	if (next == nullptr) {
-		if (store_retval) machine.cpu.reg(REG_ARG0) = -1;
+		if (store_retval)
+			machine.cpu.reg(REG_ARG0) = -1;
 		return false;
 	}
 	if (thread == next) {
 		// immediately returning back to caller
-		if (store_retval) machine.cpu.reg(REG_ARG0) = 0;
+		if (store_retval)
+			machine.cpu.reg(REG_ARG0) = 0;
 		return false;
 	}
 	// suspend current thread
@@ -372,50 +386,45 @@ inline bool MultiThreading<W>::yield_to(int tid, bool store_retval)
 }
 
 template <int W>
-inline void MultiThreading<W>::unblock(int tid)
-{
-	for (auto it = m_blocked.begin(); it != m_blocked.end(); )
-	{
-		if ((*it)->tid == tid)
-		{
+inline void MultiThreading<W>::unblock(int tid) {
+	for (auto it = m_blocked.begin(); it != m_blocked.end();) {
+		if ((*it)->tid == tid) {
 			// suspend current thread
 			get_thread()->suspend(0);
 			// resume this thread
 			(*it)->resume();
 			m_blocked.erase(it);
 			return;
-		}
-		else ++it;
+		} else
+			++it;
 	}
 	// given thread id was not blocked
 	machine.cpu.reg(REG_ARG0) = -1;
 }
 template <int W>
-inline size_t MultiThreading<W>::wakeup_blocked(size_t max, uint32_t reason, uint32_t mask)
-{
+inline size_t MultiThreading<W>::wakeup_blocked(size_t max, uint32_t reason, uint32_t mask) {
 	size_t awakened = 0;
-	for (auto it = m_blocked.begin(); it != m_blocked.end() && awakened < max; )
-	{
+	for (auto it = m_blocked.begin(); it != m_blocked.end() && awakened < max;) {
 		// compare against block reason
 		const auto bits = (*it)->block_extra;
-		if ((*it)->block_word == reason && (bits == 0 || (bits & mask) != 0))
-		{
+		if ((*it)->block_word == reason && (bits == 0 || (bits & mask) != 0)) {
 			// move to suspended
 			m_suspended.push_back(*it);
 			m_blocked.erase(it);
-			awakened ++;
-		}
-		else ++it;
+			awakened++;
+		} else
+			++it;
 	}
 	return awakened;
 }
 
 template <int W>
-inline void MultiThreading<W>::erase_thread(int tid)
-{
+inline void MultiThreading<W>::erase_thread(int tid) {
 	auto it = m_threads.find(tid);
 	assert(it != m_threads.end());
 	m_threads.erase(it);
 }
 
-} // riscv
+} //namespace riscv
+
+#endif // THREADS_HPP

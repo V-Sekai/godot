@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  execute.cpp                                                           */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "server.hpp"
 
 #include <libriscv/machine.hpp>
@@ -5,10 +35,10 @@
 using namespace httplib;
 
 // Avoid endless loops, code that takes too long and excessive memory usage
-static const uint64_t MAX_BINARY       = 32'000'000UL;
+static const uint64_t MAX_BINARY = 32'000'000UL;
 static const uint64_t MAX_INSTRUCTIONS = 36'000'000UL;
-static const uint64_t MAX_MEMORY       = 32UL * 1024 * 1024;
-static const size_t   NUM_SAMPLES      = 50;
+static const uint64_t MAX_MEMORY = 32UL * 1024 * 1024;
+static const size_t NUM_SAMPLES = 50;
 
 static const std::vector<std::string> env = {
 	"LC_CTYPE=C", "LC_ALL=C", "USER=groot"
@@ -18,11 +48,11 @@ extern uint64_t micros_now();
 extern uint64_t monotonic_micros_now();
 
 static void
-protected_execute(const Request& req, Response& res, const ContentReader& creader)
-{
+protected_execute(const Request &req, Response &res, const ContentReader &creader) {
 	std::vector<uint8_t> binary;
-	creader([&] (const char* data, size_t data_length) {
-		if (binary.size() + data_length > MAX_BINARY) return false;
+	creader([&](const char *data, size_t data_length) {
+		if (binary.size() + data_length > MAX_BINARY)
+			return false;
 		binary.insert(binary.end(), data, data + data_length);
 		return true;
 	});
@@ -32,12 +62,12 @@ protected_execute(const Request& req, Response& res, const ContentReader& creade
 	}
 
 	// go-time: create machine, execute code
-	const riscv::MachineOptions<riscv::RISCV64> options {
+	const riscv::MachineOptions<riscv::RISCV64> options{
 		.memory_max = MAX_MEMORY
 	};
-	riscv::Machine<riscv::RISCV64> machine { binary, options };
+	riscv::Machine<riscv::RISCV64> machine{ binary, options };
 
-	machine.setup_linux({"program"}, env);
+	machine.setup_linux({ "program" }, env);
 	machine.setup_linux_syscalls();
 	machine.setup_posix_threads();
 
@@ -53,53 +83,54 @@ protected_execute(const Request& req, Response& res, const ContentReader& creade
 	machine.set_userdata(&state);
 
 	machine.set_printer(
-	[] (auto& machine, const char* text, size_t len) {
-		auto* state = machine.template get_userdata<BenchmarkState>();
+			[](auto &machine, const char *text, size_t len) {
+				auto *state = machine.template get_userdata<BenchmarkState>();
 
-		state->output.append(text, len);
-	});
+				state->output.append(text, len);
+			});
 
 	// Stop (pause) the machine when he hit a trap/break instruction
 	machine.install_syscall_handler(riscv::SYSCALL_EBREAK,
-	[] (auto& machine) {
-		auto* state = machine.template get_userdata<BenchmarkState>();
-		const auto addr = machine.template sysarg<uint64_t>(0);
+			[](auto &machine) {
+				auto *state = machine.template get_userdata<BenchmarkState>();
+				const auto addr = machine.template sysarg<uint64_t>(0);
 
-		if (state->benchmark) throw std::runtime_error("Already benchmarking");
-		state->benchmark = true;
+				if (state->benchmark)
+					throw std::runtime_error("Already benchmarking");
+				state->benchmark = true;
 
-		auto pf = machine.get_printer();
-		machine.set_printer([] (auto&, const char*, size_t) {});
-		uint64_t ic = machine.instruction_counter();
+				auto pf = machine.get_printer();
+				machine.set_printer([](auto &, const char *, size_t) {});
+				uint64_t ic = machine.instruction_counter();
 
-		asm("" : : : "memory");
-		const uint64_t t0 = micros_now();
-		asm("" : : : "memory");
+				asm("" : : : "memory");
+				const uint64_t t0 = micros_now();
+				asm("" : : : "memory");
 
-		machine.preempt(~0ULL, addr);
+				machine.preempt(~0ULL, addr);
 
-		asm("" : : : "memory");
-		const uint64_t t1 = micros_now();
-		asm("" : : : "memory");
+				asm("" : : : "memory");
+				const uint64_t t1 = micros_now();
+				asm("" : : : "memory");
 
-		machine.set_printer(pf);
-		state->benchmark = false;
-		if (state->begin_ic == 0) {
-			state->begin_ic = machine.instruction_counter();
-			state->bench_time = t0;
-			state->bench_ic = machine.instruction_counter() - ic;
-			state->first = t1 - t0;
-		} else {
-			state->samples.push_back(t1 - t0);
-		}
-	});
+				machine.set_printer(pf);
+				state->benchmark = false;
+				if (state->begin_ic == 0) {
+					state->begin_ic = machine.instruction_counter();
+					state->bench_time = t0;
+					state->bench_ic = machine.instruction_counter() - ic;
+					state->first = t1 - t0;
+				} else {
+					state->samples.push_back(t1 - t0);
+				}
+			});
 
 	// Execute until we have hit a break
 	const uint64_t st0 = micros_now();
 	asm("" : : : "memory");
 	try {
 		machine.simulate(MAX_INSTRUCTIONS);
-	} catch (std::exception& e) {
+	} catch (std::exception &e) {
 		res.set_header("X-Exception", e.what());
 	}
 	asm("" : : : "memory");
@@ -111,12 +142,12 @@ protected_execute(const Request& req, Response& res, const ContentReader& creade
 	// Cache for 2 seconds (the benchmark results)
 	res.set_header("Cache-Control", "max-age=2");
 
-	auto& samples = state.samples;
+	auto &samples = state.samples;
 	if (!samples.empty()) {
 		std::sort(samples.begin(), samples.end());
 		const uint64_t lowest = samples[0];
 		const uint64_t median = samples[samples.size() / 2];
-		const uint64_t highest = samples[samples.size()-1];
+		const uint64_t highest = samples[samples.size() - 1];
 		res.set_header("X-Runtime-Samples", std::to_string(samples.size()));
 		res.set_header("X-Runtime-Lowest", std::to_string(lowest));
 		res.set_header("X-Runtime-Median", std::to_string(median));
@@ -140,11 +171,10 @@ protected_execute(const Request& req, Response& res, const ContentReader& creade
 	res.set_header("X-Exit-Code", std::to_string(exit_code));
 }
 
-void execute(const Request& req, Response& res, const ContentReader& creader)
-{
+void execute(const Request &req, Response &res, const ContentReader &creader) {
 	try {
 		protected_execute(req, res, creader);
-	} catch (std::exception& e) {
+	} catch (std::exception &e) {
 		res.status = 200;
 		res.set_header("X-Error", e.what());
 	}

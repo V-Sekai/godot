@@ -1,4 +1,4 @@
-### 
+###
 ### API for the Nim program
 ###
 proc fast_write(fd: int, text: cstring, tlen: int) {.importc}

@@ -15,7 +15,7 @@ A small collection of bug fixes and documentation.  GUT can now generate documen
 
 ## Features
 * added class_name to InputSender by @bitwes in https://github.com/bitwes/Gut/pull/651
-* add await in pre-run script, post-run scrpt, and should_skip_script. by @LowFire in https://github.com/bitwes/Gut/pull/671
+* add await in pre-run script, post-run script, and should_skip_script. by @LowFire in https://github.com/bitwes/Gut/pull/671
 * Doctools generation by @bitwes in https://github.com/bitwes/Gut/pull/672
 
 ## Bug Fixes
@@ -47,7 +47,7 @@ A small collection of bug fixes and documentation.  GUT can now generate documen
 var dbl = double(MyScript)
 stub(dbl.some_method).to_call(func(): print("Monkey Patched!"))
 ```
-* You can now use callables to `stub` insetad of passing the object and method name.  Binding arguments adds an implicit `when_passed` to the stub.  Less strings, less typing!
+* You can now use callables to `stub` instead of passing the object and method name.  Binding arguments adds an implicit `when_passed` to the stub.  Less strings, less typing!
 ```gdscript
 var dbl = double(MyScript)
 # same as stub(dbl, "some_method").to_return(111)
@@ -67,10 +67,10 @@ assert_true(await wait_for_signal(my_obj.my_singal, 2),
     'signal should emit before 2 seconds')
 ```
 * @mphe GUT now automatically enables the "Exclude Addons" option when running tests.  This means you don't have to keep enabling/disabling this option if GUT does not conform to your warning/error settings.
-* GUT disables warnings at key points in execution and then re-enables them.  This makes running GUT possible (or at least easier) with warning levels incompatable with GUT source code.  This also makes the ouput less noisy.
+* GUT disables warnings at key points in execution and then re-enables them.  This makes running GUT possible (or at least easier) with warning levels incompatible with GUT source code.  This also makes the output less noisy.
 * @plink-plonk-will Elapsed time is now included in the XML export.
 * __Issue__ #612 `InputSender` now sets the `button_mask` property for generated mouse motion events when mouse buttons have been pressed but not released prior to a motion event.
-* __Issue__ #598 Added the virtual method `should_skip_script` to `GutTest`.  If you impelement this method and return `true` or a `String`, then GUT will skip the script.  Skipped scripts are marked as "risky" in the final counts.  This can be useful when skipping scripts that should not be run under certiain circumstances such as:
+* __Issue__ #598 Added the virtual method `should_skip_script` to `GutTest`.  If you implement this method and return `true` or a `String`, then GUT will skip the script.  Skipped scripts are marked as "risky" in the final counts.  This can be useful when skipping scripts that should not be run under certain circumstances such as:
     * You are porting tests from 3.x to 4.x and you don't want to comment everything out.
     * Skipping tests that should not be run when in `headless` mode.
     ``` gdscript
@@ -130,7 +130,7 @@ assert_true(await wait_for_signal(my_obj.my_singal, 2),
 ## Bug Fixes
 * __Issue__ #479 source_code_pro.fnt was malformed, is now bienformed.
 * __Issue__ #549 @andrejp88 debug/gdscript/warnings/untyped_declaration as error would break GUT due to dynamic code generation.
-* __Issue__ #536 Theme refernces font instead of embedding it.
+* __Issue__ #536 Theme references font instead of embedding it.
 * __Issue__ #523 "got" values are printed with extra precision for float, Vector2, and Vector3 when using `assert_almost_eq`, `assert_almost_ne`, `assert_between` and `assert_not_between`.
 * __Issue__ #436 Doubled Scenes now retain export variable values that were set in the editor.
 * __Issue__ #547 The output_font_name and output_font_size for the GutPanel are now saved.
@@ -162,13 +162,13 @@ assert_true(await wait_for_signal(my_obj.my_singal, 2),
     * The default strategy has been changed back to `SCRIPT_ONLY` (a bug caused it to change).  Due to how the Godot Engine calls native methods, the overrides may not be called by the engine so spying and stubbing may not work in some scenarios.
     * Doubling now disables the Native Method Override warning/error when creating Doubles and Partial Doubles.  The warning/error is turned off and then restored to previous value after a Double or Partial Double has been loaded.
     * The doubling strategy `INCLUDE_SUPER` has been renamed to `INCLUDE_NATIVE`.
-    * If you have an invalid Double Strategy set via command line or gutconfig, the default will be used.  So if you are explicity setting it to the old `INCLUDE_SUPER`, it will use `SCRIPT_ONLY`.
+    * If you have an invalid Double Strategy set via command line or gutconfig, the default will be used.  So if you are explicitly setting it to the old `INCLUDE_SUPER`, it will use `SCRIPT_ONLY`.
     * You can now set the default double strategy in the GutPanel in the Editor.
 * Added `GutControl` to aid in running tests in a deployed game.  Instructions and sample code can be found [in the wiki](https://bitwes.github.io/GutWiki/Godot4/Running-On-Devices.html).
 * __Issue 485__ GUT prints a warning and ignores scripts that do not extend `GutTest`.
 * A lot of internal reworkings to simplify logging and info about test statuses.  The summary changed and the final line printed by GUT is now the highest severity status of the run (i.e. failed > pending/risky > passed).
 * __Issue 503__ Fixed issue where GUT would not find script object when doubling PackedScenes.
-* __Port PR 409__ GUT's simulate function can now check `is_processing` and `is_physics_processing` when running thier respective methods.
+* __Port PR 409__ GUT's simulate function can now check `is_processing` and `is_physics_processing` when running their respective methods.
 
 
 # 9.0.1

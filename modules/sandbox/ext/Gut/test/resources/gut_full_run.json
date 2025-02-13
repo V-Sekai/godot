@@ -199,7 +199,7 @@
       ],
       "orphans": 0,
       "passing": [
-       "[\"ab\"] expected to equal [\"ab\"]:  the defauts are a and b"
+       "[\"ab\"] expected to equal [\"ab\"]:  the defaults are a and b"
       ],
       "pending": [
 

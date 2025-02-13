@@ -1,40 +1,67 @@
+/**************************************************************************/
+/*  multiprocessing.cpp                                                   */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "multiprocessing.hpp"
 
-#include "machine.hpp"
 #include "internal_common.hpp"
+#include "machine.hpp"
 
 namespace riscv {
 
 template <int W>
-Multiprocessing<W>& Machine<W>::smp(unsigned workers)
-{
+Multiprocessing<W> &Machine<W>::smp(unsigned workers) {
 	if (UNLIKELY(m_smp == nullptr))
-		m_smp.reset(new Multiprocessing<W> (workers));
+		m_smp.reset(new Multiprocessing<W>(workers));
 	return *m_smp;
 }
 
 template <int W>
-bool Machine<W>::is_multiprocessing() const noexcept
-{
-	if (m_smp == nullptr) return false;
+bool Machine<W>::is_multiprocessing() const noexcept {
+	if (m_smp == nullptr)
+		return false;
 	return m_smp->is_multiprocessing();
 }
 
 #ifdef RISCV_MULTIPROCESS
 
 template <int W>
-Multiprocessing<W>::Multiprocessing(size_t workers)
-	: m_threadpool { workers }  {}
+Multiprocessing<W>::Multiprocessing(size_t workers) :
+		m_threadpool{ workers } {}
 
 template <int W>
-void Multiprocessing<W>::async_work(std::vector<std::function<void()>>&& wrk)
-{
+void Multiprocessing<W>::async_work(std::vector<std::function<void()>> &&wrk) {
 	m_threadpool.enqueue(std::move(wrk));
 	this->processing = true;
 }
 template <int W>
-typename Multiprocessing<W>::failure_bits_t Multiprocessing<W>::wait()
-{
+typename Multiprocessing<W>::failure_bits_t Multiprocessing<W>::wait() {
 	if (this->processing) {
 		m_threadpool.wait_until_empty();
 		m_threadpool.wait_until_nothing_in_flight();
@@ -45,8 +72,7 @@ typename Multiprocessing<W>::failure_bits_t Multiprocessing<W>::wait()
 
 template <int W>
 bool Machine<W>::multiprocess(unsigned num_cpus, uint64_t maxi,
-	address_t stack, address_t stksize, std::function<void(Machine&)> setup_cb)
-{
+		address_t stack, address_t stksize, std::function<void(Machine &)> setup_cb) {
 	if (UNLIKELY(is_multiprocessing()))
 		return false;
 
@@ -58,62 +84,60 @@ bool Machine<W>::multiprocess(unsigned num_cpus, uint64_t maxi,
 	std::vector<std::function<void()>> tasks;
 	tasks.reserve(num_cpus);
 
-	for (unsigned id = 1; id <= num_cpus; id++)
-	{
+	for (unsigned id = 1; id <= num_cpus; id++) {
 		// Fork variant
 		tasks.push_back(
-		[=, this] {
-			try {
-				// NOTE: minimal_fork causes a ton of contention. Avoid!
-				// NOTE: cannot use arena as it can fail to read the origin stack
-				Machine<W> fork { *this, { .use_memory_arena = false } };
+				[=, this] {
+					try {
+						// NOTE: minimal_fork causes a ton of contention. Avoid!
+						// NOTE: cannot use arena as it can fail to read the origin stack
+						Machine<W> fork{ *this, { .use_memory_arena = false } };
 
-				fork.set_userdata(this->get_userdata<void>());
-				fork.set_printer([] (const auto&, const char*, size_t) {});
-				//NOTE: fork.set_stdin(...) unnecessary due to default disallow.
-				fork.cpu.increment_pc(4); // Step over current ECALL
-				fork.cpu.reg(REG_ARG0) = id; // Return value
+						fork.set_userdata(this->get_userdata<void>());
+						fork.set_printer([](const auto &, const char *, size_t) {});
+						//NOTE: fork.set_stdin(...) unnecessary due to default disallow.
+						fork.cpu.increment_pc(4); // Step over current ECALL
+						fork.cpu.reg(REG_ARG0) = id; // Return value
 
-				// For most workloads, we will only need a copy-on-write handler
-				fork.memory.set_page_write_handler(
-				[=, this] (auto&, address_t pageno, Page& page)
-				{
-					if (pageno >= stackpage && pageno < stackendpage) {
-						page.make_writable();
-						return;
+						// For most workloads, we will only need a copy-on-write handler
+						fork.memory.set_page_write_handler(
+								[=, this](auto &, address_t pageno, Page &page) {
+									if (pageno >= stackpage && pageno < stackendpage) {
+										page.make_writable();
+										return;
+									}
+									// Release old page if non-owned
+									if (page.attr.non_owning && page.m_page.get() != nullptr)
+										page.m_page.release();
+
+									std::lock_guard<std::mutex> lk(this->m_smp->m_lock);
+									// Retrieve writable page in main VM
+									auto &master_page = this->memory.create_writable_pageno(pageno);
+									// Return back page with memory loaned from master VM
+									page.loan(master_page);
+								});
+						fork.memory.set_page_readf_handler(
+								[this](auto &, address_t pageno) -> const Page & {
+									std::lock_guard<std::mutex> lk(this->smp().m_lock);
+									return this->memory.get_pageno(pageno);
+								});
+						fork.memory.set_page_fault_handler(
+								[=, this](auto &mem, const address_t pageno, bool init) -> Page & {
+									if (pageno >= stackpage && pageno < stackendpage) {
+										return mem.create_writable_pageno(pageno, init);
+									}
+									std::lock_guard<std::mutex> lk(this->smp().m_lock);
+									return this->memory.create_writable_pageno(pageno, init);
+								});
+
+						if (setup_cb != nullptr)
+							setup_cb(fork);
+
+						fork.simulate<true>(maxi);
+					} catch (...) {
+						__sync_fetch_and_or(&smp().failures, 1u << id);
 					}
-					// Release old page if non-owned
-					if (page.attr.non_owning && page.m_page.get() != nullptr)
-						page.m_page.release();
-
-					std::lock_guard<std::mutex> lk(this->m_smp->m_lock);
-					// Retrieve writable page in main VM
-					auto& master_page = this->memory.create_writable_pageno(pageno);
-					// Return back page with memory loaned from master VM
-					page.loan(master_page);
 				});
-				fork.memory.set_page_readf_handler(
-				[this] (auto&, address_t pageno) -> const Page& {
-					std::lock_guard<std::mutex> lk(this->smp().m_lock);
-					return this->memory.get_pageno(pageno);
-				});
-				fork.memory.set_page_fault_handler(
-				[=, this] (auto& mem, const address_t pageno, bool init) -> Page& {
-					if (pageno >= stackpage && pageno < stackendpage) {
-						return mem.create_writable_pageno(pageno, init);
-					}
-					std::lock_guard<std::mutex> lk(this->smp().m_lock);
-					return this->memory.create_writable_pageno(pageno, init);
-				});
-
-				if (setup_cb != nullptr)
-					setup_cb(fork);
-
-				fork.simulate<true> (maxi);
-			} catch (...) {
-				__sync_fetch_and_or(&smp().failures, 1u << id);
-			}
-		});
 	} // foreach CPU
 
 	smp().async_work(std::move(tasks));
@@ -126,8 +150,7 @@ bool Machine<W>::multiprocess(unsigned num_cpus, uint64_t maxi,
 	return true;
 }
 template <int W>
-uint32_t Machine<W>::multiprocess_wait()
-{
+uint32_t Machine<W>::multiprocess_wait() {
 	return smp().wait();
 }
 
@@ -137,7 +160,7 @@ template <int W>
 Multiprocessing<W>::Multiprocessing(size_t) {}
 
 template <int W>
-bool Machine<W>::multiprocess(unsigned, uint64_t, address_t, address_t, std::function<void(Machine&)>) {
+bool Machine<W>::multiprocess(unsigned, uint64_t, address_t, address_t, std::function<void(Machine &)>) {
 	return false;
 }
 template <int W>
@@ -151,4 +174,4 @@ INSTANTIATE_64_IF_ENABLED(Machine);
 INSTANTIATE_64_IF_ENABLED(Multiprocessing);
 INSTANTIATE_128_IF_ENABLED(Machine);
 INSTANTIATE_128_IF_ENABLED(Multiprocessing);
-} // riscv
+} //namespace riscv

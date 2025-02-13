@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_MEMORY_HPP
-#define GODOT_MEMORY_HPP
+#ifndef MEMORY_HPP
+#define MEMORY_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -217,4 +217,4 @@ struct _GlobalNilClass {
 
 } // namespace godot
 
-#endif // GODOT_MEMORY_HPP
+#endif // MEMORY_HPP

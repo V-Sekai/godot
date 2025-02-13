@@ -6,7 +6,7 @@ class SuperButton:
 	func p(s1='', s2='', s3='', s4='', s5='', s6=''):
 		print(s1, s2, s3, s4, s5, s6)
 
-	func pevent(txt, event):
+	func prevent(txt, event):
 		return
 		print(txt, ':  ', event)
 		# if(event is InputEventMouse):
@@ -15,13 +15,13 @@ class SuperButton:
 		# 	print(txt, ':  ', event)
 
 	func _gui_input(event):
-		pevent('gui:      ', event)
+		prevent('gui:      ', event)
 
 	func _input(event):
-		pevent('input:     ', event)
+		prevent('input:     ', event)
 
 	func _unhandled_input(event):
-		pevent('unhandled:  ', event)
+		prevent('unhandled:  ', event)
 
 
 class DraggableButton:
@@ -37,7 +37,7 @@ class DraggableButton:
 			position += event.relative
 
 func should_skip_script():
-	return 'takes too long and these shouldnt even be here'
+	return 'takes too long and these shouldn't even be here'
 
 
 func _print_emitted_signals(thing):
@@ -189,4 +189,3 @@ func test_clicking_things_with_button_as_receiver():
 	assert_signal_not_emitted(btn, 'button_down')
 	assert_signal_not_emitted(btn, 'button_up')
 	assert_signal_not_emitted(btn, 'gui_input')
-

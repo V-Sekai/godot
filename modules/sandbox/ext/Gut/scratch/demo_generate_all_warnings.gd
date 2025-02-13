@@ -37,7 +37,7 @@ func get_files(path: String, prefix: String, suffix: String) -> Array[String]:
 	while fs_item != '':
 		full_path = path.path_join(fs_item)
 
-		#file_exists returns fasle for directories
+		#file_exists returns false for directories
 		if d.file_exists(full_path):
 			if fs_item.begins_with(prefix) and fs_item.ends_with(suffix):
 				files.append(full_path)
@@ -101,5 +101,3 @@ func _init() -> void:
 		print("This script must be run with -d flag or warnings/errors will not be displayed.")
 
 	quit()
-
-

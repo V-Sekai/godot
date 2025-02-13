@@ -1,21 +1,51 @@
+/**************************************************************************/
+/*  native.cpp                                                            */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <libriscv/machine.hpp>
 #include <libriscv/native_heap.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string& code,
-	const std::string& args = "-O2 -static", bool cpp = false);
+extern std::vector<uint8_t> build_and_load(const std::string &code,
+		const std::string &args = "-O2 -static", bool cpp = false);
 static const uint64_t MAX_INSTRUCTIONS = 10'000'000ul;
-static const std::string cwd {SRCDIR};
+static const std::string cwd{ SRCDIR };
 static bool is_zig() {
-	const char* rcc = getenv("RCC");
+	const char *rcc = getenv("RCC");
 	if (rcc == nullptr)
 		return false;
 	return std::string(rcc).find("zig") != std::string::npos;
 }
 using namespace riscv;
 
-static const int HEAP_SYSCALLS_BASE	  = 470;
+static const int HEAP_SYSCALLS_BASE = 470;
 static const int MEMORY_SYSCALLS_BASE = 475;
 static const int THREADS_SYSCALL_BASE = 490;
 
@@ -27,8 +57,7 @@ template <typename T>
 using ScopedCppVector = ScopedArenaObject<RISCV64, CppVector<T>>;
 
 template <int W>
-static void setup_native_system_calls(riscv::Machine<W>& machine)
-{
+static void setup_native_system_calls(riscv::Machine<W> &machine) {
 	// Syscall-backed heap
 	constexpr size_t heap_size = 65536;
 	auto heap = machine.memory.mmap_allocate(heap_size);
@@ -38,8 +67,7 @@ static void setup_native_system_calls(riscv::Machine<W>& machine)
 	machine.setup_native_threads(THREADS_SYSCALL_BASE);
 }
 
-TEST_CASE("Activate native helper syscalls", "[Native]")
-{
+TEST_CASE("Activate native helper syscalls", "[Native]") {
 	const auto binary = build_and_load(R"M(
 	#include <stdlib.h>
 	#include <stdio.h>
@@ -50,7 +78,7 @@ TEST_CASE("Activate native helper syscalls", "[Native]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary };
+	riscv::Machine<RISCV64> machine{ binary };
 	machine.setup_linux_syscalls();
 
 	setup_native_system_calls(machine);
@@ -58,12 +86,12 @@ TEST_CASE("Activate native helper syscalls", "[Native]")
 	// Allocate string on heap
 	static const std::string hello = "Hello World!";
 	auto addr = machine.arena().malloc(64);
-	machine.copy_to_guest(addr, hello.data(), hello.size()+1);
+	machine.copy_to_guest(addr, hello.data(), hello.size() + 1);
 
 	// Pass string address to guest as main argument
 	machine.setup_linux(
-		{"native", std::to_string(addr)},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "native", std::to_string(addr) },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	// Catch output from machine
 	struct State {
@@ -71,9 +99,9 @@ TEST_CASE("Activate native helper syscalls", "[Native]")
 	} state;
 
 	machine.set_userdata(&state);
-	machine.set_printer([] (const auto& m, const char* data, size_t size) {
-		auto* state = m.template get_userdata<State> ();
-		std::string text{data, data + size};
+	machine.set_printer([](const auto &m, const char *data, size_t size) {
+		auto *state = m.template get_userdata<State>();
+		std::string text{ data, data + size };
 		// musl writev:
 		state->output_is_hello_world = state->output_is_hello_world || (text == "Hello World!");
 		// glibc write:
@@ -87,8 +115,7 @@ TEST_CASE("Activate native helper syscalls", "[Native]")
 	REQUIRE(state.output_is_hello_world);
 }
 
-TEST_CASE("Use native helper syscalls", "[Native]")
-{
+TEST_CASE("Use native helper syscalls", "[Native]") {
 	const auto binary = build_and_load(R"M(
 	#include <include/native_libc.h>
 	#include <stdlib.h>
@@ -101,16 +128,17 @@ TEST_CASE("Use native helper syscalls", "[Native]")
 		printf("%s\n", hello);
 		free(hello);
 		return 666;
-	})M", "-O2 -static -I" + cwd);
+	})M",
+			"-O2 -static -I" + cwd);
 
-	riscv::Machine<RISCV64> machine { binary };
+	riscv::Machine<RISCV64> machine{ binary };
 
 	setup_native_system_calls(machine);
 
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"native"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "native" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	// Catch output from machine
 	struct State {
@@ -118,9 +146,9 @@ TEST_CASE("Use native helper syscalls", "[Native]")
 	} state;
 
 	machine.set_userdata(&state);
-	machine.set_printer([] (const auto& m, const char* data, size_t size) {
-		auto* state = m.template get_userdata<State> ();
-		std::string text{data, data + size};
+	machine.set_printer([](const auto &m, const char *data, size_t size) {
+		auto *state = m.template get_userdata<State>();
+		std::string text{ data, data + size };
 		// musl writev:
 		state->output_is_hello_world = state->output_is_hello_world || (text == "Hello World!");
 		// glibc write:
@@ -134,28 +162,28 @@ TEST_CASE("Use native helper syscalls", "[Native]")
 	REQUIRE(state.output_is_hello_world);
 }
 
-TEST_CASE("Free unknown causes exception", "[Native]")
-{
+TEST_CASE("Free unknown causes exception", "[Native]") {
 	const auto binary = build_and_load(R"M(
 	#include <include/native_libc.h>
 	int main()
 	{
 		free((void *)0x1234);
 		return 666;
-	})M", "-O2 -static -I" + cwd);
+	})M",
+			"-O2 -static -I" + cwd);
 
-	riscv::Machine<RISCV64> machine { binary };
+	riscv::Machine<RISCV64> machine{ binary };
 	setup_native_system_calls(machine);
 
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"native"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "native" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	bool error = false;
 	try {
 		machine.simulate(MAX_INSTRUCTIONS);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		// Libtcc does not forward the real exception (instead throws a generic SYSTEM_CALL_FAILED)
 		if constexpr (!libtcc_enabled)
 			REQUIRE(std::string(e.what()) == "Possible double-free for freed pointer");
@@ -164,8 +192,7 @@ TEST_CASE("Free unknown causes exception", "[Native]")
 	REQUIRE(error);
 }
 
-TEST_CASE("VM calls with std::string and std::vector", "[Native]")
-{
+TEST_CASE("VM calls with std::string and std::vector", "[Native]") {
 	if (is_zig()) // We don't support libc++ std::string yet
 		return;
 
@@ -228,14 +255,15 @@ TEST_CASE("VM calls with std::string and std::vector", "[Native]")
 
 	int main() {
 		return 666;
-	})M", "-O2 -static -x c " + cwd + "/include/native_libc.h -x c++ ", true);
+	})M",
+			"-O2 -static -x c " + cwd + "/include/native_libc.h -x c++ ", true);
 
-	riscv::Machine<RISCV64> machine { binary };
+	riscv::Machine<RISCV64> machine{ binary };
 	setup_native_system_calls(machine);
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	machine.simulate(MAX_INSTRUCTIONS);
 	REQUIRE(machine.return_value<int>() == 666);
@@ -262,7 +290,7 @@ TEST_CASE("VM calls with std::string and std::vector", "[Native]")
 
 		// Create a vector of strings using a specialization for std::string
 		ScopedCppVector<CppString> svec(machine,
-			std::vector<std::string>{ "Hello,", "World!", "This string is long :)" });
+				std::vector<std::string>{ "Hello,", "World!", "This string is long :)" });
 		REQUIRE(svec->size() == 3);
 
 		machine.vmcall("test", str, ivec, svec);
@@ -273,7 +301,7 @@ TEST_CASE("VM calls with std::string and std::vector", "[Native]")
 
 	// Check that the number of active allocations is the same as before the test
 	const unsigned allocs_now = machine.arena().allocation_counter() -
-		machine.arena().deallocation_counter();
+			machine.arena().deallocation_counter();
 	REQUIRE(allocs_now == allocs_before);
 
 	// Test the second function
@@ -283,7 +311,7 @@ TEST_CASE("VM calls with std::string and std::vector", "[Native]")
 		struct Data {
 			int a, b, c, d;
 		};
-		ScopedArenaObject<RISCV64, Data> data(machine, Data{1, 2, 3, 4});
+		ScopedArenaObject<RISCV64, Data> data(machine, Data{ 1, 2, 3, 4 });
 
 		machine.vmcall("test2", data);
 
@@ -295,21 +323,21 @@ TEST_CASE("VM calls with std::string and std::vector", "[Native]")
 	}
 
 	const unsigned allocs_after2 = machine.arena().allocation_counter() -
-		machine.arena().deallocation_counter();
+			machine.arena().deallocation_counter();
 	REQUIRE(allocs_after2 == allocs_before);
 
 	// Test the third function
 	for (int i = 0; i < 10; i++) {
 		ScopedCppVector<CppVector<int>> vec(machine);
-		vec->push_back(machine, std::vector<int>{1, 2, 3});
-		vec->push_back(machine, std::vector<int>{4, 5});
+		vec->push_back(machine, std::vector<int>{ 1, 2, 3 });
+		vec->push_back(machine, std::vector<int>{ 4, 5 });
 		REQUIRE(vec->size() == 2);
 		REQUIRE(vec->capacity() >= 2);
 		vec->clear(machine);
 		REQUIRE(vec->empty());
 		REQUIRE(vec->capacity() >= 2);
-		vec->push_back(machine, std::vector<int>{1, 2, 3});
-		vec->push_back(machine, std::vector<int>{4, 5});
+		vec->push_back(machine, std::vector<int>{ 1, 2, 3 });
+		vec->push_back(machine, std::vector<int>{ 4, 5 });
 		REQUIRE(vec->size() == 2);
 		// Using reserve increases the capacity, but not the size
 		vec->reserve(machine, 16);
@@ -338,7 +366,7 @@ TEST_CASE("VM calls with std::string and std::vector", "[Native]")
 		auto begin = vec->begin(machine);
 		auto end = vec->end(machine);
 		for (auto it = begin; it != end; ++it) {
-			auto& v = *it;
+			auto &v = *it;
 			for (size_t i = 0; i < v.size(); i++) {
 				count += v.at(machine, i);
 			}
@@ -347,6 +375,6 @@ TEST_CASE("VM calls with std::string and std::vector", "[Native]")
 	}
 
 	const unsigned allocs_after3 = machine.arena().allocation_counter() -
-		machine.arena().deallocation_counter();
+			machine.arena().deallocation_counter();
 	REQUIRE(allocs_after3 == allocs_before);
 }

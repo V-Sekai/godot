@@ -159,7 +159,7 @@ The Machine constructor has many options, and we will go through each one.
 - When forking a Machine into another, do not loan any pages, leaving the new fork blank. In order for the new machine to work, pages must now be loaned on-demand using callbacks. Default: false.
 
 > use_memory_arena
-- Pre-allocate all guest memory using mmap. All pages will be backed by the arena, making guest memory sequential and improving performance. 
+- Pre-allocate all guest memory using mmap. All pages will be backed by the arena, making guest memory sequential and improving performance.
 
 > use_shared_execute_segments
 - Share matching execute between all machines automatically. Thread-safe. Default: true.

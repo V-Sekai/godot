@@ -1,51 +1,78 @@
+/**************************************************************************/
+/*  hello_world.cpp                                                       */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include <cstdio>
 #include <cstring>
-#include <regex>
 #include <iostream>
+#include <regex>
 #include <stdexcept>
 //#include <unistd.h>
 //#include "type_name.hpp"
 extern "C" void _exit(int);
 
-inline auto rdcycle()
-{
+inline auto rdcycle() {
 	union {
 		uint64_t whole;
 		uint32_t word[2];
 	};
-	asm ("rdcycleh %0\n rdcycle %1\n" : "=r"(word[1]), "=r"(word[0]));
+	asm("rdcycleh %0\n rdcycle %1\n" : "=r"(word[1]), "=r"(word[0]));
 	return whole;
 }
-inline uint64_t rdtime()
-{
+inline uint64_t rdtime() {
 	union {
 		uint64_t whole;
 		uint32_t word[2];
 	};
-	asm ("rdtimeh %0\n rdtime %1\n" : "=r"(word[1]), "=r"(word[0]));
+	asm("rdtimeh %0\n rdtime %1\n" : "=r"(word[1]), "=r"(word[0]));
 	return whole;
 }
 
-int main()
-{
+int main() {
 	std::string s = "Some people, when confronted with a problem, think "
-        "\"I know, I'll use regular expressions.\" "
-        "Now they have two problems.";
+					"\"I know, I'll use regular expressions.\" "
+					"Now they have two problems.";
 
 	std::regex self_regex("REGULAR EXPRESSIONS",
-            std::regex_constants::ECMAScript | std::regex_constants::icase);
-    if (std::regex_search(s, self_regex)) {
+			std::regex_constants::ECMAScript | std::regex_constants::icase);
+	if (std::regex_search(s, self_regex)) {
 		std::cout << "Text contains the phrase 'regular expressions'\n";
-    }
+	}
 
 	std::regex word_regex("(\\w+)");
-    auto words_begin =
-        std::sregex_iterator(s.begin(), s.end(), word_regex);
-    auto words_end = std::sregex_iterator();
+	auto words_begin =
+			std::sregex_iterator(s.begin(), s.end(), word_regex);
+	auto words_end = std::sregex_iterator();
 
 	std::cout << "Found "
-              << std::distance(words_begin, words_end)
-              << " words\n";
+			  << std::distance(words_begin, words_end)
+			  << " words\n";
 
 	const int N = 6;
 	std::cout << "Words longer than " << N << " characters:\n";
@@ -65,12 +92,11 @@ int main()
 	const auto cycle0 = rdcycle();
 	try {
 		throw std::runtime_error("Hello Exceptions!");
-	}
-	catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		printf("Caught exception: %s\n", e.what());
 	}
 	const auto cycle1 = rdcycle();
-	printf("It took %llu instructions to throw, catch and print the exception\n", cycle1-cycle0);
+	printf("It took %llu instructions to throw, catch and print the exception\n", cycle1 - cycle0);
 
 	// if we don't return from main we can continue calling functions in the VM
 	// exit(int) will call destructors, which breaks the C runtime environment
@@ -80,9 +106,7 @@ int main()
 
 static std::vector<int> array;
 
-extern "C"
-int test(int arg1)
-{
+extern "C" int test(int arg1) {
 	printf("Test called with argument %d\n", arg1);
 	array.push_back(arg1);
 	for (const int val : array) {

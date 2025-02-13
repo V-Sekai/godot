@@ -191,4 +191,3 @@ func new_wired_test(gut_instance):
 # 	t.set_logger(logger)
 # 	return t
 # ----------------------------
-

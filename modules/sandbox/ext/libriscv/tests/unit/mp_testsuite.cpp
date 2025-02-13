@@ -1,46 +1,74 @@
+/**************************************************************************/
+/*  mp_testsuite.cpp                                                      */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <libriscv/machine.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string& code,
-	const std::string& args = "-O2 -static", bool cpp = false);
+extern std::vector<uint8_t> build_and_load(const std::string &code,
+		const std::string &args = "-O2 -static", bool cpp = false);
 static const uint64_t MAX_INSTRUCTIONS = 10'000'000ul;
-static const std::string cwd {SRCDIR};
+static const std::string cwd{ SRCDIR };
 using namespace riscv;
 static uint64_t stack_base = 0x0;
 static uint64_t stack_size = 1ul << 20;
 
-static void install_multiprocessing_syscalls()
-{
+static void install_multiprocessing_syscalls() {
 	Machine<RISCV64>::install_syscall_handler(1,
-	[] (Machine<RISCV64>& machine) {
-		auto [vcpus, stk, stksize] = machine.sysargs <unsigned, uint64_t, uint64_t> ();
-		if (stk != 0x0 && stksize != 0) {
-			// Use another stack
-			machine.multiprocess(vcpus, MAX_INSTRUCTIONS, (uint64_t)stk, (uint64_t)stksize);
-		} else {
-			// Use current thread
-			machine.multiprocess(vcpus, MAX_INSTRUCTIONS, stack_base, stack_size);
-		}
-		machine.set_result(0);
-	});
+			[](Machine<RISCV64> &machine) {
+				auto [vcpus, stk, stksize] = machine.sysargs<unsigned, uint64_t, uint64_t>();
+				if (stk != 0x0 && stksize != 0) {
+					// Use another stack
+					machine.multiprocess(vcpus, MAX_INSTRUCTIONS, (uint64_t)stk, (uint64_t)stksize);
+				} else {
+					// Use current thread
+					machine.multiprocess(vcpus, MAX_INSTRUCTIONS, stack_base, stack_size);
+				}
+				machine.set_result(0);
+			});
 	Machine<RISCV64>::install_syscall_handler(2,
-	[] (Machine<RISCV64>& machine) {
-		if (machine.cpu.cpu_id() == 0) {
-			machine.set_result(machine.multiprocess_wait());
-		} else {
-			machine.stop();
-		}
-	});
+			[](Machine<RISCV64> &machine) {
+				if (machine.cpu.cpu_id() == 0) {
+					machine.set_result(machine.multiprocess_wait());
+				} else {
+					machine.stop();
+				}
+			});
 	Machine<RISCV64>::install_syscall_handler(10,
-	[] (Machine<RISCV64>& machine) {
-		auto buffer = machine.sysarg<std::string>(0);
-		printf(">>> Guest says: %s\n", buffer.c_str());
-	});
+			[](Machine<RISCV64> &machine) {
+				auto buffer = machine.sysarg<std::string>(0);
+				printf(">>> Guest says: %s\n", buffer.c_str());
+			});
 }
 
-TEST_CASE("Singleprocessing dot-product", "[Compute]")
-{
+TEST_CASE("Singleprocessing dot-product", "[Compute]") {
 	const auto binary = build_and_load(R"M(
 	#include <cassert>
 	#include "mp_testsuite.hpp"
@@ -55,14 +83,15 @@ TEST_CASE("Singleprocessing dot-product", "[Compute]")
 		assert(mp_work.final_sum() == WORK_SIZE);
 		assert(mp_work.counter == 1);
 		return mp_work.final_sum();
-	})M", "-O0 -static -I" + cwd, true);
+	})M",
+			"-O0 -static -I" + cwd, true);
 
-	Machine<RISCV64> machine { binary };
+	Machine<RISCV64> machine{ binary };
 	machine.setup_linux_syscalls();
 	install_multiprocessing_syscalls();
 	machine.setup_linux(
-		{"singleprocessing"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=groot"});
+			{ "singleprocessing" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=groot" });
 
 	// Discover stack
 	stack_base = machine.memory.stack_initial() - stack_size;
@@ -73,8 +102,7 @@ TEST_CASE("Singleprocessing dot-product", "[Compute]")
 	REQUIRE(machine.return_value<long>() == 16384);
 }
 
-TEST_CASE("Multiprocessing (forked) dot-product", "[Compute]")
-{
+TEST_CASE("Multiprocessing (forked) dot-product", "[Compute]") {
 	const auto binary = build_and_load(R"M(
 	#include <cassert>
 	#include "mp_testsuite.hpp"
@@ -98,14 +126,15 @@ TEST_CASE("Multiprocessing (forked) dot-product", "[Compute]")
 		assert(mp_work.counter == MP_WORKERS);
 		assert(mp_work.final_sum() == WORK_SIZE);
 		return mp_work.final_sum();
-	})M", "-O0 -static -I" + cwd, true);
+	})M",
+			"-O0 -static -I" + cwd, true);
 
-	Machine<RISCV64> machine { binary };
+	Machine<RISCV64> machine{ binary };
 	machine.setup_linux_syscalls();
 	install_multiprocessing_syscalls();
 	machine.setup_linux(
-		{"multiprocessing"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=groot"});
+			{ "multiprocessing" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=groot" });
 
 	// Discover stack (XXX: Not ideal)
 	stack_base = machine.memory.stack_initial() - stack_size;
@@ -118,8 +147,7 @@ TEST_CASE("Multiprocessing (forked) dot-product", "[Compute]")
 	REQUIRE(machine.return_value<long>() == 16384);
 }
 
-TEST_CASE("Multiprocessing dot-product forever", "[Compute]")
-{
+TEST_CASE("Multiprocessing dot-product forever", "[Compute]") {
 	const auto binary = build_and_load(R"M(
 	#include <cassert>
 	#include "mp_testsuite.hpp"
@@ -143,14 +171,15 @@ TEST_CASE("Multiprocessing dot-product forever", "[Compute]")
 		assert(mp_work.final_sum() == 0);
 		assert(mp_work.counter == 0);
 		return mp_work.final_sum();
-	})M", "-O0 -static -I" + cwd, true);
+	})M",
+			"-O0 -static -I" + cwd, true);
 
-	Machine<RISCV64> machine { binary };
+	Machine<RISCV64> machine{ binary };
 	machine.setup_linux_syscalls();
 	install_multiprocessing_syscalls();
 	machine.setup_linux(
-		{"multiprocessing_forever"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=groot"});
+			{ "multiprocessing_forever" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=groot" });
 	// Run for at most X instructions before giving up
 	machine.simulate(MAX_INSTRUCTIONS);
 

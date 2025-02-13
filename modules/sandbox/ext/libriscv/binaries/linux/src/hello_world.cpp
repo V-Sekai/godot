@@ -1,35 +1,63 @@
+/**************************************************************************/
+/*  hello_world.cpp                                                       */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include <cassert>
 #include <cstdio>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-static inline std::vector<uint8_t> load_file(const std::string&);
+static inline std::vector<uint8_t> load_file(const std::string &);
 static void test_rtti();
 
 int testval = 0;
 
-__attribute__((constructor))
-void test_constructor() {
+__attribute__((constructor)) void test_constructor() {
 	static const char hello[] = "Hello, Global Constructor!\n";
 	printf("%s", hello);
 	testval = 22;
 }
 
 #include <exception>
-class IdioticException : public std::exception
-{
-    const char* oh_god;
+class IdioticException : public std::exception {
+	const char *oh_god;
+
 public:
-	IdioticException(const char* reason) : oh_god(reason) {}
-    const char* what() const noexcept override
-    {
-        return oh_god;
-    }
+	IdioticException(const char *reason) :
+			oh_god(reason) {}
+	const char *what() const noexcept override {
+		return oh_god;
+	}
 };
 
-void* thread_main(void*)
-{
+void *thread_main(void *) {
 	printf("Hello Multithreaded World!\n");
 	// leave thread temporarily
 	sched_yield();
@@ -38,15 +66,14 @@ void* thread_main(void*)
 	return NULL;
 }
 
-int main (int argc, char *argv[], char *envp[])
-{
+int main(int argc, char *argv[], char *envp[]) {
 	//printf("Hello World using puts()\n");
 	//printf("Hello World using printf(%d)\n", 123);
 	// heap test
-	auto b = std::unique_ptr<std::string> (new std::string(""));
+	auto b = std::unique_ptr<std::string>(new std::string(""));
 	assert(b != nullptr);
 	// copy into string
-	static const char* hello = "Hello %s World v%d.%d!\n";
+	static const char *hello = "Hello %s World v%d.%d!\n";
 	*b = hello;
 	assert(*b == hello);
 	// va_list & stdarg test
@@ -64,7 +91,7 @@ int main (int argc, char *argv[], char *envp[])
 	printf("* Arguments seem to be working!\n");
 	// environ tests
 	assert(*envp != nullptr);
-	for (char** env = envp; *env != 0; env++) {
+	for (char **env = envp; *env != 0; env++) {
 		printf("env: %s\n", *env);
 	}
 	printf("* Environment variables seem to be working!\n");
@@ -76,8 +103,7 @@ int main (int argc, char *argv[], char *envp[])
 	try {
 		throw IdioticException("Oh god!");
 		assert(0 && "Exception was not thrown!");
-	}
-	catch (std::exception& e) {
+	} catch (std::exception &e) {
 		printf("Error: %s\n", e.what());
 	}
 	// test pthreads support
@@ -87,24 +113,23 @@ int main (int argc, char *argv[], char *envp[])
 }
 
 #include <unistd.h>
-std::vector<uint8_t> load_file(const std::string& filename)
-{
-    size_t size = 0;
-    FILE* f = fopen(filename.c_str(), "rb");
-    if (f == NULL) throw std::runtime_error("Could not open file: " + filename);
+std::vector<uint8_t> load_file(const std::string &filename) {
+	size_t size = 0;
+	FILE *f = fopen(filename.c_str(), "rb");
+	if (f == NULL)
+		throw std::runtime_error("Could not open file: " + filename);
 
-    fseek(f, 0, SEEK_END);
-    size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+	fseek(f, 0, SEEK_END);
+	size = ftell(f);
+	fseek(f, 0, SEEK_SET);
 
-    std::vector<uint8_t> result(size);
-    if (size != fread(result.data(), 1, size, f))
-    {
-        fclose(f);
-        throw std::runtime_error("Error when reading from file: " + filename);
-    }
-    fclose(f);
-    return result;
+	std::vector<uint8_t> result(size);
+	if (size != fread(result.data(), 1, size, f)) {
+		fclose(f);
+		throw std::runtime_error("Error when reading from file: " + filename);
+	}
+	fclose(f);
+	return result;
 }
 
 struct A {
@@ -117,21 +142,20 @@ struct B : public A {
 };
 int A::A_called = 0, A::B_called = 0;
 
-void test_rtti()
-{
+void test_rtti() {
 	A a;
 	B b;
-	a.f();        // A::f()
-	b.f();        // B::f()
+	a.f(); // A::f()
+	b.f(); // B::f()
 
 	A *pA = &a;
 	A *pB = &b;
-	pA->f();      // A::f()
-	pB->f();      // B::f()
+	pA->f(); // A::f()
+	pB->f(); // B::f()
 
 	pA = &b;
 	// pB = &a;      // not allowed
-	pB = dynamic_cast<B*>(&a); // allowed but it returns NULL
+	pB = dynamic_cast<B *>(&a); // allowed but it returns NULL
 	assert(pB == nullptr);
 	assert(A::A_called == 2 && A::B_called == 2);
 }

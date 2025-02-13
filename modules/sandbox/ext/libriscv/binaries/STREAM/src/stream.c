@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  stream.c                                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 /*-----------------------------------------------------------------------*/
 /* Program: STREAM                                                       */
 /* Revision: $Id: stream.c,v 5.10 2013/01/17 16:01:06 mccalpin Exp mccalpin $ */
@@ -28,11 +58,11 @@
 /*         right to determine conformity with the Run Rules.             */
 /*     3b. Results based on modified source code or on runs not in       */
 /*         accordance with the STREAM Run Rules must be clearly          */
-/*         labelled whenever they are published.  Examples of            */
-/*         proper labelling include:                                     */
+/*         labeled whenever they are published.  Examples of            */
+/*         proper labeling include:                                     */
 /*           "tuned STREAM benchmark results"                            */
 /*           "based on a variant of the STREAM benchmark code"           */
-/*         Other comparable, clear, and reasonable labelling is          */
+/*         Other comparable, clear, and reasonable labeling is          */
 /*         acceptable.                                                   */
 /*     3c. Submission of results to the STREAM benchmark web site        */
 /*         is encouraged, but not required.                              */
@@ -40,12 +70,12 @@
 /*     program constitutes acceptance of these licensing restrictions.   */
 /*  5. Absolutely no warranty is expressed or implied.                   */
 /*-----------------------------------------------------------------------*/
-# include <stdio.h>
-# include <unistd.h>
-# include <math.h>
-# include <float.h>
-# include <limits.h>
-# include <stdint.h>
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
 
 /*-----------------------------------------------------------------------
  * INSTRUCTIONS:
@@ -107,12 +137,12 @@
  *         code using, for example, "-DNTIMES=7".
  */
 #ifdef NTIMES
-#if NTIMES<=1
-#   define NTIMES	10
+#if NTIMES <= 1
+#define NTIMES 10
 #endif
 #endif
 #ifndef NTIMES
-#   define NTIMES	10
+#define NTIMES 10
 #endif
 
 /*  Users are allowed to modify the "OFFSET" variable, which *may* change the
@@ -124,7 +154,7 @@
  *         code using, for example, "-DOFFSET=56".
  */
 #ifndef OFFSET
-#   define OFFSET	0
+#define OFFSET 0
 #endif
 
 /*
@@ -166,14 +196,14 @@
  *
  *-----------------------------------------------------------------------*/
 
-# define HLINE "-------------------------------------------------------------\n"
+#define HLINE "-------------------------------------------------------------\n"
 
-# ifndef MIN
-# define MIN(x,y) ((x)<(y)?(x):(y))
-# endif
-# ifndef MAX
-# define MAX(x,y) ((x)>(y)?(x):(y))
-# endif
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
 
 #ifndef STREAM_TYPE
 #define STREAM_TYPE double
@@ -181,21 +211,21 @@
 #define ALIGNED_STREAM __attribute__((aligned(32)))
 
 static STREAM_TYPE a[STREAM_ARRAY_SIZE + OFFSET] ALIGNED_STREAM,
-	b[STREAM_ARRAY_SIZE + OFFSET] ALIGNED_STREAM,
-	c[STREAM_ARRAY_SIZE + OFFSET] ALIGNED_STREAM;
+		b[STREAM_ARRAY_SIZE + OFFSET] ALIGNED_STREAM,
+		c[STREAM_ARRAY_SIZE + OFFSET] ALIGNED_STREAM;
 
-static double	avgtime[4] = {0}, maxtime[4] = {0},
-		mintime[4] = {FLT_MAX,FLT_MAX,FLT_MAX,FLT_MAX};
+static double avgtime[4] = { 0 }, maxtime[4] = { 0 },
+			  mintime[4] = { FLT_MAX, FLT_MAX, FLT_MAX, FLT_MAX };
 
-static char	*label[4] = {"Copy:      ", "Scale:     ",
-    "Add:       ", "Triad:     "};
+static char *label[4] = { "Copy:      ", "Scale:     ",
+	"Add:       ", "Triad:     " };
 
-static double	bytes[4] = {
-    2 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
-    2 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
-    3 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
-    3 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE
-    };
+static double bytes[4] = {
+	2 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
+	2 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
+	3 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE,
+	3 * sizeof(STREAM_TYPE) * STREAM_ARRAY_SIZE
+};
 
 extern double mysecond();
 extern void checkSTREAMresults();
@@ -206,391 +236,377 @@ inline void tuned_STREAM_Triad(STREAM_TYPE scalar);
 #ifdef _OPENMP
 extern int omp_get_num_threads();
 #endif
-int
-main()
-    {
-    int			quantum, checktick();
-    int			BytesPerWord;
-    int			k;
-    ssize_t		j;
-    STREAM_TYPE		scalar;
-    double		t, times[4][NTIMES];
+int main() {
+	int quantum, checktick();
+	int BytesPerWord;
+	int k;
+	ssize_t j;
+	STREAM_TYPE scalar;
+	double t, times[4][NTIMES];
 
-    /* --- SETUP --- determine precision and check timing --- */
+	/* --- SETUP --- determine precision and check timing --- */
 
-    printf(HLINE);
-    printf("STREAM version $Revision: 5.10 $\n");
-    printf(HLINE);
-    BytesPerWord = sizeof(STREAM_TYPE);
-    printf("This system uses %d bytes per array element.\n",
-	BytesPerWord);
+	printf(HLINE);
+	printf("STREAM version $Revision: 5.10 $\n");
+	printf(HLINE);
+	BytesPerWord = sizeof(STREAM_TYPE);
+	printf("This system uses %d bytes per array element.\n",
+			BytesPerWord);
 
-    printf(HLINE);
+	printf(HLINE);
 #ifdef N
-    printf("*****  WARNING: ******\n");
-    printf("      It appears that you set the preprocessor variable N when compiling this code.\n");
-    printf("      This version of the code uses the preprocesor variable STREAM_ARRAY_SIZE to control the array size\n");
-    printf("      Reverting to default value of STREAM_ARRAY_SIZE=%llu\n",(unsigned long long) STREAM_ARRAY_SIZE);
-    printf("*****  WARNING: ******\n");
+	printf("*****  WARNING: ******\n");
+	printf("      It appears that you set the preprocessor variable N when compiling this code.\n");
+	printf("      This version of the code uses the preprocessor variable STREAM_ARRAY_SIZE to control the array size\n");
+	printf("      Reverting to default value of STREAM_ARRAY_SIZE=%llu\n", (unsigned long long)STREAM_ARRAY_SIZE);
+	printf("*****  WARNING: ******\n");
 #endif
 
-    printf("Array size = %llu (elements), Offset = %d (elements)\n" , (unsigned long long) STREAM_ARRAY_SIZE, OFFSET);
-    printf("Memory per array = %.1f MiB (= %.1f GiB).\n",
-	BytesPerWord * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024.0),
-	BytesPerWord * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024.0/1024.0));
-    printf("Total memory required = %.1f MiB (= %.1f GiB).\n",
-	(3.0 * BytesPerWord) * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024.),
-	(3.0 * BytesPerWord) * ( (double) STREAM_ARRAY_SIZE / 1024.0/1024./1024.));
-    printf("Each kernel will be executed %d times.\n", NTIMES);
-    printf(" The *best* time for each kernel (excluding the first iteration)\n");
-    printf(" will be used to compute the reported bandwidth.\n");
+	printf("Array size = %llu (elements), Offset = %d (elements)\n", (unsigned long long)STREAM_ARRAY_SIZE, OFFSET);
+	printf("Memory per array = %.1f MiB (= %.1f GiB).\n",
+			BytesPerWord * ((double)STREAM_ARRAY_SIZE / 1024.0 / 1024.0),
+			BytesPerWord * ((double)STREAM_ARRAY_SIZE / 1024.0 / 1024.0 / 1024.0));
+	printf("Total memory required = %.1f MiB (= %.1f GiB).\n",
+			(3.0 * BytesPerWord) * ((double)STREAM_ARRAY_SIZE / 1024.0 / 1024.),
+			(3.0 * BytesPerWord) * ((double)STREAM_ARRAY_SIZE / 1024.0 / 1024. / 1024.));
+	printf("Each kernel will be executed %d times.\n", NTIMES);
+	printf(" The *best* time for each kernel (excluding the first iteration)\n");
+	printf(" will be used to compute the reported bandwidth.\n");
 
 #ifdef _OPENMP
-    printf(HLINE);
+	printf(HLINE);
 #pragma omp parallel
-    {
-#pragma omp master
 	{
-	    k = omp_get_num_threads();
-	    printf ("Number of Threads requested = %i\n",k);
-        }
-    }
+#pragma omp master
+		{
+			k = omp_get_num_threads();
+			printf("Number of Threads requested = %i\n", k);
+		}
+	}
 #endif
 
 #ifdef _OPENMP
 	k = 0;
 #pragma omp parallel
 #pragma omp atomic
-		k++;
-    printf ("Number of Threads counted = %i\n",k);
+	k++;
+	printf("Number of Threads counted = %i\n", k);
 #endif
 
-    /* Get initial value for system clock. */
-    for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-	    a[j] = 1.0;
-	    b[j] = 2.0;
-	    c[j] = 0.0;
+	/* Get initial value for system clock. */
+	for (j = 0; j < STREAM_ARRAY_SIZE; j++) {
+		a[j] = 1.0;
+		b[j] = 2.0;
+		c[j] = 0.0;
 	}
 
-    printf(HLINE);
+	printf(HLINE);
 
-    if  ( (quantum = checktick()) >= 1)
-	printf("Your clock granularity/precision appears to be "
-	    "%d microseconds.\n", quantum);
-    else {
-	printf("Your clock granularity appears to be "
-	    "less than one microsecond.\n");
-	quantum = 1;
-    }
+	if ((quantum = checktick()) >= 1)
+		printf("Your clock granularity/precision appears to be "
+			   "%d microseconds.\n",
+				quantum);
+	else {
+		printf("Your clock granularity appears to be "
+			   "less than one microsecond.\n");
+		quantum = 1;
+	}
 
-    t = mysecond();
-    for (j = 0; j < STREAM_ARRAY_SIZE; j++)
+	t = mysecond();
+	for (j = 0; j < STREAM_ARRAY_SIZE; j++)
 		a[j] = 2.0E0 * a[j];
-    t = 1.0E6 * (mysecond() - t);
+	t = 1.0E6 * (mysecond() - t);
 
-    printf("Each test below will take on the order"
-	" of %d microseconds.\n", (int) t  );
-    printf("   (= %d clock ticks)\n", (int) (t/quantum) );
-    printf("Increase the size of the arrays if this shows that\n");
-    printf("you are not getting at least 20 clock ticks per test.\n");
+	printf("Each test below will take on the order"
+		   " of %d microseconds.\n",
+			(int)t);
+	printf("   (= %d clock ticks)\n", (int)(t / quantum));
+	printf("Increase the size of the arrays if this shows that\n");
+	printf("you are not getting at least 20 clock ticks per test.\n");
 
-    printf(HLINE);
+	printf(HLINE);
 
-    printf("WARNING -- The above is only a rough guideline.\n");
-    printf("For best results, please be sure you know the\n");
-    printf("precision of your system timer.\n");
-    printf(HLINE);
+	printf("WARNING -- The above is only a rough guideline.\n");
+	printf("For best results, please be sure you know the\n");
+	printf("precision of your system timer.\n");
+	printf(HLINE);
 
-    /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
+	/*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
 
-    scalar = 3.0;
-    for (k=0; k<NTIMES; k++)
-	{
-	times[0][k] = mysecond();
+	scalar = 3.0;
+	for (k = 0; k < NTIMES; k++) {
+		times[0][k] = mysecond();
 #ifdef TUNED
-        tuned_STREAM_Copy();
+		tuned_STREAM_Copy();
 #else
 #pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    c[j] = a[j];
+		for (j = 0; j < STREAM_ARRAY_SIZE; j++)
+			c[j] = a[j];
 #endif
-	times[0][k] = mysecond() - times[0][k];
+		times[0][k] = mysecond() - times[0][k];
 
-	times[1][k] = mysecond();
+		times[1][k] = mysecond();
 #ifdef TUNED
-        tuned_STREAM_Scale(scalar);
+		tuned_STREAM_Scale(scalar);
 #else
 #pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    b[j] = scalar*c[j];
+		for (j = 0; j < STREAM_ARRAY_SIZE; j++)
+			b[j] = scalar * c[j];
 #endif
-	times[1][k] = mysecond() - times[1][k];
+		times[1][k] = mysecond() - times[1][k];
 
-	times[2][k] = mysecond();
+		times[2][k] = mysecond();
 #ifdef TUNED
-        tuned_STREAM_Add();
+		tuned_STREAM_Add();
 #else
 #pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    c[j] = a[j]+b[j];
+		for (j = 0; j < STREAM_ARRAY_SIZE; j++)
+			c[j] = a[j] + b[j];
 #endif
-	times[2][k] = mysecond() - times[2][k];
+		times[2][k] = mysecond() - times[2][k];
 
-	times[3][k] = mysecond();
+		times[3][k] = mysecond();
 #ifdef TUNED
-        tuned_STREAM_Triad(scalar);
+		tuned_STREAM_Triad(scalar);
 #else
 #pragma omp parallel for
-	for (j=0; j<STREAM_ARRAY_SIZE; j++)
-	    a[j] = b[j]+scalar*c[j];
+		for (j = 0; j < STREAM_ARRAY_SIZE; j++)
+			a[j] = b[j] + scalar * c[j];
 #endif
-	times[3][k] = mysecond() - times[3][k];
+		times[3][k] = mysecond() - times[3][k];
 	}
 
-    /*	--- SUMMARY --- */
+	/*	--- SUMMARY --- */
 
-    for (k=1; k<NTIMES; k++) /* note -- skip first iteration */
+	for (k = 1; k < NTIMES; k++) /* note -- skip first iteration */
 	{
-	for (j=0; j<4; j++)
-	    {
-	    avgtime[j] = avgtime[j] + times[j][k];
-	    mintime[j] = MIN(mintime[j], times[j][k]);
-	    maxtime[j] = MAX(maxtime[j], times[j][k]);
-	    }
+		for (j = 0; j < 4; j++) {
+			avgtime[j] = avgtime[j] + times[j][k];
+			mintime[j] = MIN(mintime[j], times[j][k]);
+			maxtime[j] = MAX(maxtime[j], times[j][k]);
+		}
 	}
 
-    printf("Function    Best Rate MB/s  Avg time     Min time     Max time\n");
-    for (j=0; j<4; j++) {
-		avgtime[j] = avgtime[j]/(double)(NTIMES-1);
+	printf("Function    Best Rate MB/s  Avg time     Min time     Max time\n");
+	for (j = 0; j < 4; j++) {
+		avgtime[j] = avgtime[j] / (double)(NTIMES - 1);
 
 		printf("%s%12.1f  %11.6f  %11.6f  %11.6f\n", label[j],
-	       1.0E-06 * bytes[j]/mintime[j],
-	       avgtime[j],
-	       mintime[j],
-	       maxtime[j]);
-    }
-    printf(HLINE);
+				1.0E-06 * bytes[j] / mintime[j],
+				avgtime[j],
+				mintime[j],
+				maxtime[j]);
+	}
+	printf(HLINE);
 
-    /* --- Check Results --- */
-    checkSTREAMresults();
-    printf(HLINE);
+	/* --- Check Results --- */
+	checkSTREAMresults();
+	printf(HLINE);
 
-    return 0;
+	return 0;
 }
 
-# define	M	20
+#define M 20
 
-int
-checktick()
-    {
-    int		i, minDelta, Delta;
-    double	t1, t2, timesfound[M];
+int checktick() {
+	int i, minDelta, Delta;
+	double t1, t2, timesfound[M];
 
-/*  Collect a sequence of M unique time values from the system. */
+	/*  Collect a sequence of M unique time values from the system. */
 
-    for (i = 0; i < M; i++) {
-	t1 = mysecond();
-	while( ((t2=mysecond()) - t1) < 1.0E-6 )
-	    ;
-	timesfound[i] = t1 = t2;
+	for (i = 0; i < M; i++) {
+		t1 = mysecond();
+		while (((t2 = mysecond()) - t1) < 1.0E-6)
+			;
+		timesfound[i] = t1 = t2;
 	}
 
-/*
- * Determine the minimum difference between these M values.
- * This result will be our estimate (in microseconds) for the
- * clock granularity.
- */
+	/*
+	 * Determine the minimum difference between these M values.
+	 * This result will be our estimate (in microseconds) for the
+	 * clock granularity.
+	 */
 
-    minDelta = 1000000;
-    for (i = 1; i < M; i++) {
-	Delta = (int)( 1.0E6 * (timesfound[i]-timesfound[i-1]));
-	minDelta = MIN(minDelta, MAX(Delta,0));
+	minDelta = 1000000;
+	for (i = 1; i < M; i++) {
+		Delta = (int)(1.0E6 * (timesfound[i] - timesfound[i - 1]));
+		minDelta = MIN(minDelta, MAX(Delta, 0));
 	}
 
-   return(minDelta);
-    }
-
-
+	return (minDelta);
+}
 
 /* A gettimeofday routine to give access to the wall
    clock timer on most UNIX-like systems.  */
 
-inline uint64_t rdtime()
-{
+inline uint64_t rdtime() {
 #if __SIZEOF_POINTER__ == 4
 	union {
 		uint64_t whole;
 		uint32_t word[2];
 	} u;
-	__asm__ volatile ("rdtimeh %0\n rdtime %1\n" : "=r"(u.word[1]), "=r"(u.word[0]));
+	__asm__ volatile("rdtimeh %0\n rdtime %1\n" : "=r"(u.word[1]), "=r"(u.word[0]));
 	return u.whole;
 #else
 	uint64_t whole;
-	__asm__ volatile ("rdtime %0\n" : "=r"(whole));
+	__asm__ volatile("rdtime %0\n" : "=r"(whole));
 	return whole;
 #endif
 }
 
-double mysecond()
-{
+double mysecond() {
 	return rdtime() * 1.e-6;
 }
 
 #ifndef abs
 #define abs(a) ((a) >= 0 ? (a) : -(a))
 #endif
-void checkSTREAMresults ()
-{
-	STREAM_TYPE aj,bj,cj,scalar;
-	STREAM_TYPE aSumErr,bSumErr,cSumErr;
-	STREAM_TYPE aAvgErr,bAvgErr,cAvgErr;
+void checkSTREAMresults() {
+	STREAM_TYPE aj, bj, cj, scalar;
+	STREAM_TYPE aSumErr, bSumErr, cSumErr;
+	STREAM_TYPE aAvgErr, bAvgErr, cAvgErr;
 	double epsilon;
-	ssize_t	j;
-	int	k,ierr,err;
+	ssize_t j;
+	int k, ierr, err;
 
-    /* reproduce initialization */
+	/* reproduce initialization */
 	aj = 1.0;
 	bj = 2.0;
 	cj = 0.0;
-    /* a[] is modified during timing check */
+	/* a[] is modified during timing check */
 	aj = 2.0E0 * aj;
-    /* now execute timing loop */
+	/* now execute timing loop */
 	scalar = 3.0;
-	for (k=0; k<NTIMES; k++)
-        {
-            cj = aj;
-            bj = scalar*cj;
-            cj = aj+bj;
-            aj = bj+scalar*cj;
-        }
+	for (k = 0; k < NTIMES; k++) {
+		cj = aj;
+		bj = scalar * cj;
+		cj = aj + bj;
+		aj = bj + scalar * cj;
+	}
 
-    /* accumulate deltas between observed and expected results */
+	/* accumulate deltas between observed and expected results */
 	aSumErr = 0.0;
 	bSumErr = 0.0;
 	cSumErr = 0.0;
-	for (j=0; j<STREAM_ARRAY_SIZE; j++) {
+	for (j = 0; j < STREAM_ARRAY_SIZE; j++) {
 		aSumErr += abs(a[j] - aj);
 		bSumErr += abs(b[j] - bj);
 		cSumErr += abs(c[j] - cj);
 		// if (j == 417) printf("Index 417: c[j]: %f, cj: %f\n",c[j],cj);	// MCCALPIN
 	}
-	aAvgErr = aSumErr / (STREAM_TYPE) STREAM_ARRAY_SIZE;
-	bAvgErr = bSumErr / (STREAM_TYPE) STREAM_ARRAY_SIZE;
-	cAvgErr = cSumErr / (STREAM_TYPE) STREAM_ARRAY_SIZE;
+	aAvgErr = aSumErr / (STREAM_TYPE)STREAM_ARRAY_SIZE;
+	bAvgErr = bSumErr / (STREAM_TYPE)STREAM_ARRAY_SIZE;
+	cAvgErr = cSumErr / (STREAM_TYPE)STREAM_ARRAY_SIZE;
 
 	if (sizeof(STREAM_TYPE) == 4) {
 		epsilon = 1.e-6;
-	}
-	else if (sizeof(STREAM_TYPE) == 8) {
+	} else if (sizeof(STREAM_TYPE) == 8) {
 		epsilon = 1.e-13;
-	}
-	else {
-		printf("WEIRD: sizeof(STREAM_TYPE) = %lu\n",sizeof(STREAM_TYPE));
+	} else {
+		printf("WEIRD: sizeof(STREAM_TYPE) = %lu\n", sizeof(STREAM_TYPE));
 		epsilon = 1.e-6;
 	}
 
 	err = 0;
-	if (abs(aAvgErr/aj) > epsilon) {
+	if (abs(aAvgErr / aj) > epsilon) {
 		err++;
-		printf ("Failed Validation on array a[], AvgRelAbsErr > epsilon (%e)\n",epsilon);
-		printf ("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n",aj,aAvgErr,abs(aAvgErr)/aj);
+		printf("Failed Validation on array a[], AvgRelAbsErr > epsilon (%e)\n", epsilon);
+		printf("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n", aj, aAvgErr, abs(aAvgErr) / aj);
 		ierr = 0;
-		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-			if (abs(a[j]/aj-1.0) > epsilon) {
+		for (j = 0; j < STREAM_ARRAY_SIZE; j++) {
+			if (abs(a[j] / aj - 1.0) > epsilon) {
 				ierr++;
 #ifdef VERBOSE
 				if (ierr < 10) {
 					printf("         array a: index: %ld, expected: %e, observed: %e, relative error: %e\n",
-						j,aj,a[j],abs((aj-a[j])/aAvgErr));
+							j, aj, a[j], abs((aj - a[j]) / aAvgErr));
 				}
 #endif
 			}
 		}
-		printf("     For array a[], %d errors were found.\n",ierr);
+		printf("     For array a[], %d errors were found.\n", ierr);
 	}
-	if (abs(bAvgErr/bj) > epsilon) {
+	if (abs(bAvgErr / bj) > epsilon) {
 		err++;
-		printf ("Failed Validation on array b[], AvgRelAbsErr > epsilon (%e)\n",epsilon);
-		printf ("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n",bj,bAvgErr,abs(bAvgErr)/bj);
-		printf ("     AvgRelAbsErr > Epsilon (%e)\n",epsilon);
+		printf("Failed Validation on array b[], AvgRelAbsErr > epsilon (%e)\n", epsilon);
+		printf("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n", bj, bAvgErr, abs(bAvgErr) / bj);
+		printf("     AvgRelAbsErr > Epsilon (%e)\n", epsilon);
 		ierr = 0;
-		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-			if (abs(b[j]/bj-1.0) > epsilon) {
+		for (j = 0; j < STREAM_ARRAY_SIZE; j++) {
+			if (abs(b[j] / bj - 1.0) > epsilon) {
 				ierr++;
 #ifdef VERBOSE
 				if (ierr < 10) {
 					printf("         array b: index: %ld, expected: %e, observed: %e, relative error: %e\n",
-						j,bj,b[j],abs((bj-b[j])/bAvgErr));
+							j, bj, b[j], abs((bj - b[j]) / bAvgErr));
 				}
 #endif
 			}
 		}
-		printf("     For array b[], %d errors were found.\n",ierr);
+		printf("     For array b[], %d errors were found.\n", ierr);
 	}
-	if (abs(cAvgErr/cj) > epsilon) {
+	if (abs(cAvgErr / cj) > epsilon) {
 		err++;
-		printf ("Failed Validation on array c[], AvgRelAbsErr > epsilon (%e)\n",epsilon);
-		printf ("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n",cj,cAvgErr,abs(cAvgErr)/cj);
-		printf ("     AvgRelAbsErr > Epsilon (%e)\n",epsilon);
+		printf("Failed Validation on array c[], AvgRelAbsErr > epsilon (%e)\n", epsilon);
+		printf("     Expected Value: %e, AvgAbsErr: %e, AvgRelAbsErr: %e\n", cj, cAvgErr, abs(cAvgErr) / cj);
+		printf("     AvgRelAbsErr > Epsilon (%e)\n", epsilon);
 		ierr = 0;
-		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
-			if (abs(c[j]/cj-1.0) > epsilon) {
+		for (j = 0; j < STREAM_ARRAY_SIZE; j++) {
+			if (abs(c[j] / cj - 1.0) > epsilon) {
 				ierr++;
 #ifdef VERBOSE
 				if (ierr < 10) {
 					printf("         array c: index: %ld, expected: %e, observed: %e, relative error: %e\n",
-						j,cj,c[j],abs((cj-c[j])/cAvgErr));
+							j, cj, c[j], abs((cj - c[j]) / cAvgErr));
 				}
 #endif
 			}
 		}
-		printf("     For array c[], %d errors were found.\n",ierr);
+		printf("     For array c[], %d errors were found.\n", ierr);
 	}
 	if (err == 0) {
-		printf ("Solution Validates: avg error less than %e on all three arrays\n",epsilon);
+		printf("Solution Validates: avg error less than %e on all three arrays\n", epsilon);
 	}
 #ifdef VERBOSE
-	printf ("Results Validation Verbose Results: \n");
-	printf ("    Expected a(1), b(1), c(1): %f %f %f \n",aj,bj,cj);
-	printf ("    Observed a(1), b(1), c(1): %f %f %f \n",a[1],b[1],c[1]);
-	printf ("    Rel Errors on a, b, c:     %e %e %e \n",abs(aAvgErr/aj),abs(bAvgErr/bj),abs(cAvgErr/cj));
+	printf("Results Validation Verbose Results: \n");
+	printf("    Expected a(1), b(1), c(1): %f %f %f \n", aj, bj, cj);
+	printf("    Observed a(1), b(1), c(1): %f %f %f \n", a[1], b[1], c[1]);
+	printf("    Rel Errors on a, b, c:     %e %e %e \n", abs(aAvgErr / aj), abs(bAvgErr / bj), abs(cAvgErr / cj));
 #endif
 }
 
-#define VLOAD(elem, vec) asm("vle32.v "#vec", %1" : : "r"(&elem), "m"(elem))
-#define VSTORE(elem, vec) asm("vse32.v "#vec", (%1)" : "=m"(elem) : "r"(&elem))
-#define FLOAD(reg, scalar) asm("fmv.s.x "#reg", %0" : : "r"(scalar) : #reg)
+#define VLOAD(elem, vec) asm("vle32.v " #vec ", %1" : : "r"(&elem), "m"(elem))
+#define VSTORE(elem, vec) asm("vse32.v " #vec ", (%1)" : "=m"(elem) : "r"(&elem))
+#define FLOAD(reg, scalar) asm("fmv.s.x " #reg ", %0" : : "r"(scalar) : #reg)
 #ifdef TUNED
 
-void tuned_STREAM_Copy()
-{
+void tuned_STREAM_Copy() {
 	ssize_t j;
-	for (j=0; j<STREAM_ARRAY_SIZE; j += 32) {
-		float* ap = &a[j];
-		float* cp = &c[j];
+	for (j = 0; j < STREAM_ARRAY_SIZE; j += 32) {
+		float *ap = &a[j];
+		float *cp = &c[j];
 
-		VLOAD(ap[ 0], v1);
-		VLOAD(ap[ 8], v2);
+		VLOAD(ap[0], v1);
+		VLOAD(ap[8], v2);
 		VLOAD(ap[16], v3);
 		VLOAD(ap[24], v4);
 
-		VSTORE(cp[ 0], v1);
-		VSTORE(cp[ 8], v2);
+		VSTORE(cp[0], v1);
+		VSTORE(cp[8], v2);
 		VSTORE(cp[16], v3);
 		VSTORE(cp[24], v4);
 	}
 }
 
-void tuned_STREAM_Scale(STREAM_TYPE scalar)
-{
+void tuned_STREAM_Scale(STREAM_TYPE scalar) {
 	FLOAD(fa0, scalar);
 	ssize_t j;
-	for (j=0; j<STREAM_ARRAY_SIZE; j += 32) {
-	    //b[j] = scalar*c[j];
+	for (j = 0; j < STREAM_ARRAY_SIZE; j += 32) {
+		//b[j] = scalar*c[j];
 
-		float* cp = &c[j];
-		VLOAD(cp[ 0], v1);
-		VLOAD(cp[ 8], v2);
+		float *cp = &c[j];
+		VLOAD(cp[0], v1);
+		VLOAD(cp[8], v2);
 		VLOAD(cp[16], v3);
 		VLOAD(cp[24], v4);
 
@@ -599,86 +615,84 @@ void tuned_STREAM_Scale(STREAM_TYPE scalar)
 		asm("vfmul.vf v3, v3, fa0");
 		asm("vfmul.vf v4, v4, fa0");
 
-		float* bp = &b[j];
-		VSTORE(bp[ 0], v1);
-		VSTORE(bp[ 8], v2);
+		float *bp = &b[j];
+		VSTORE(bp[0], v1);
+		VSTORE(bp[8], v2);
 		VSTORE(bp[16], v3);
 		VSTORE(bp[24], v4);
 	}
 }
 
-void tuned_STREAM_Add()
-{
+void tuned_STREAM_Add() {
 	ssize_t j;
-	for (j=0; j<STREAM_ARRAY_SIZE; j += 32) {
-		float* ap = &a[j];
-		float* bp = &b[j];
+	for (j = 0; j < STREAM_ARRAY_SIZE; j += 32) {
+		float *ap = &a[j];
+		float *bp = &b[j];
 
 		asm("vle32.v v1, %1"
-			:
-			: "r"(&ap[0]), "m"(ap[0]));
+				:
+				: "r"(&ap[0]), "m"(ap[0]));
 		asm("vle32.v v2, %1"
-			:
-			: "r"(&ap[8]), "m"(ap[8]));
+				:
+				: "r"(&ap[8]), "m"(ap[8]));
 		asm("vle32.v v3, %1"
-			:
-			: "r"(&ap[16]), "m"(ap[16]));
+				:
+				: "r"(&ap[16]), "m"(ap[16]));
 		asm("vle32.v v4, %1"
-			:
-			: "r"(&ap[24]), "m"(ap[24]));
+				:
+				: "r"(&ap[24]), "m"(ap[24]));
 		asm("vle32.v v5, %1"
-			:
-			: "r"(&bp[0]), "m"(bp[0]));
+				:
+				: "r"(&bp[0]), "m"(bp[0]));
 		asm("vle32.v v6, %1"
-			:
-			: "r"(&bp[8]), "m"(bp[8]));
+				:
+				: "r"(&bp[8]), "m"(bp[8]));
 		asm("vle32.v v7, %1"
-			:
-			: "r"(&bp[16]), "m"(bp[16]));
+				:
+				: "r"(&bp[16]), "m"(bp[16]));
 		asm("vle32.v v8, %1"
-			:
-			: "r"(&bp[24]), "m"(bp[24]));
+				:
+				: "r"(&bp[24]), "m"(bp[24]));
 
 		asm("vfadd.vv v1, v1, v5");
 		asm("vfadd.vv v2, v2, v6");
 		asm("vfadd.vv v3, v3, v7");
 		asm("vfadd.vv v4, v4, v8");
 
-		float* cp = &c[j];
+		float *cp = &c[j];
 		asm("vse32.v v1, (%1)"
-			: "=m"(cp[0])
-			: "r"(&cp[0]));
+				: "=m"(cp[0])
+				: "r"(&cp[0]));
 		asm("vse32.v v2, (%1)"
-			: "=m"(cp[8])
-			: "r"(&cp[8]));
+				: "=m"(cp[8])
+				: "r"(&cp[8]));
 		asm("vse32.v v3, (%1)"
-			: "=m"(cp[16])
-			: "r"(&cp[16]));
+				: "=m"(cp[16])
+				: "r"(&cp[16]));
 		asm("vse32.v v4, (%1)"
-			: "=m"(cp[24])
-			: "r"(&cp[24]));
+				: "=m"(cp[24])
+				: "r"(&cp[24]));
 	}
 }
 
-void tuned_STREAM_Triad(STREAM_TYPE scalar)
-{
+void tuned_STREAM_Triad(STREAM_TYPE scalar) {
 	FLOAD(fa0, scalar);
 	ssize_t j;
-	for (j=0; j<STREAM_ARRAY_SIZE; j += 32) {
-		float* bp = &b[j];
-		float* cp = &c[j];
+	for (j = 0; j < STREAM_ARRAY_SIZE; j += 32) {
+		float *bp = &b[j];
+		float *cp = &c[j];
 
-		VLOAD(cp[ 0], v5);
-		VLOAD(cp[ 8], v6);
+		VLOAD(cp[0], v5);
+		VLOAD(cp[8], v6);
 		VLOAD(cp[16], v7);
 		VLOAD(cp[24], v8);
 
-		VLOAD(bp[ 0], v1);
-		VLOAD(bp[ 8], v2);
+		VLOAD(bp[0], v1);
+		VLOAD(bp[8], v2);
 		VLOAD(bp[16], v3);
 		VLOAD(bp[24], v4);
 
-	    // a[j] = b[j]+scalar*c[j];
+		// a[j] = b[j]+scalar*c[j];
 		asm("vfmul.vf v5, v5, fa0\n"
 			"vfmul.vf v6, v6, fa0\n"
 			"vfmul.vf v7, v7, fa0\n"
@@ -689,9 +703,9 @@ void tuned_STREAM_Triad(STREAM_TYPE scalar)
 			"vfadd.vv v3, v3, v7\n"
 			"vfadd.vv v4, v4, v8\n");
 
-		float* ap = &a[j];
-		VSTORE(ap[ 0], v1);
-		VSTORE(ap[ 8], v2);
+		float *ap = &a[j];
+		VSTORE(ap[0], v1);
+		VSTORE(ap[8], v2);
 		VSTORE(ap[16], v3);
 		VSTORE(ap[24], v4);
 	}

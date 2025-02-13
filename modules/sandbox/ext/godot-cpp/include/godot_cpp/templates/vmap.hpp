@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_VMAP_HPP
-#define GODOT_VMAP_HPP
+#ifndef VMAP_HPP
+#define VMAP_HPP
 
 #include <godot_cpp/templates/cowdata.hpp>
 
@@ -201,4 +201,4 @@ public:
 
 } // namespace godot
 
-#endif // GODOT_VMAP_HPP
+#endif // VMAP_HPP

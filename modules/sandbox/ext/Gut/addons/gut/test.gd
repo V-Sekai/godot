@@ -206,7 +206,7 @@ func _fail_if_parameters_not_array(parameters):
 	return invalid
 
 
-# A bunch of common checkes used when validating a double/method pair.  If
+# A bunch of common checks used when validating a double/method pair.  If
 # everything is ok then an empty string is returned, otherwise the message
 # is returned.
 func _get_bad_double_or_method_message(inst, method_name, what_you_cant_do):
@@ -292,7 +292,7 @@ func _validate_singleton_name(singleton_name):
 		_lgr.error("double_singleton requires a Godot singleton name, you passed " + _str(singleton_name))
 		is_valid = false
 	# Sometimes they have underscores in front of them, sometimes they do not.
-	# The doubler is smart enought of ind the right thing, so this has to be
+	# The doubler is smart enough of ind the right thing, so this has to be
 	# that smart as well.
 	elif(!ClassDB.class_exists(singleton_name) and !ClassDB.class_exists('_' + singleton_name)):
 		var txt = str("The singleton [", singleton_name, "] could not be found.  ",
@@ -345,7 +345,7 @@ func _smart_double(thing, double_strat, partial):
 	return to_return
 
 
-# This is here to aid in the transition to the new doubling sytnax.  Once this
+# This is here to aid in the transition to the new doubling syntax.  Once this
 # has been established it could be removed.  We must keep the is_instance check
 # going forward though.
 func _are_double_parameters_valid(thing, p2, p3):
@@ -578,7 +578,7 @@ func get_call_parameters(object, method_name_or_index = -1, idx=-1):
 	return to_return
 
 
-## Returns the call count for a method with optional paramter matching.
+## Returns the call count for a method with optional parameter matching.
 ##
 ## Can be called with a Callable instead of an object, method_name, and
 ## parameters.  Bound arguments will be used to match call arguments.
@@ -668,7 +668,7 @@ func use_parameters(params):
 ## When used as the default for a test method parameter, it will cause the test
 ## to be run x times.
 ##
-## I Hacked this together to test a method that was occassionally failing due to
+## I Hacked this together to test a method that was occasionally failing due to
 ## timing issues.  I don't think it's a great idea, but you be the judge.  If
 ## you find a good use for it, let me know and I'll make it a legit member
 ## of the api.
@@ -730,8 +730,8 @@ func register_inner_classes(base_script):
 	gut.get_doubler().inner_class_registry.register(base_script)
 
 
-## Peforms a deep compare on both values, a CompareResult instnace is returned.
-## The optional max_differences paramter sets the max_differences to be displayed.
+## Performs a deep compare on both values, a CompareResult instance is returned.
+## The optional max_differences parameter sets the max_differences to be displayed.
 func compare_deep(v1, v2, max_differences=null):
 	var result = _compare.deep(v1, v2)
 	if(max_differences != null):
@@ -877,7 +877,7 @@ func _is_almost_eq(got, expected, error_interval) -> bool:
 
 	return(result)
 
-## assserts got > expected
+## asserts got > expected
 ## [codeblock]
 ##    var bigger = 5
 ##    var smaller = 0
@@ -1023,7 +1023,7 @@ func assert_between(got, expect_low, expect_high, text=""):
 ##    assert_not_between(-2, -2, 10)
 ##
 ##    # Failing
-##    assert_not_between(5, 0, 10, 'Five shouldnt be between 0 and 10')
+##    assert_not_between(5, 0, 10, 'Five shouldn't be between 0 and 10')
 ##    assert_not_between(0.25, -2.0, 4.0)
 ## [/codeblock]
 func assert_not_between(got, expect_low, expect_high, text=""):
@@ -1899,7 +1899,7 @@ func assert_readonly_property(obj, property_name, new_value, expected_value):
 	pending("this hasn't been implemented yet")
 
 
-## Assumes backing varible with be _<property_name>.  This will perform all the
+## Assumes backing variable with be _<property_name>.  This will perform all the
 ## asserts of assert_property.  Then this will set the value through the setter
 ## and check the backing variable value.  It will then reset throught the setter
 ## and set the backing variable and check the getter.

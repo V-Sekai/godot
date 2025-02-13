@@ -55,7 +55,7 @@ Benchmark between [binary translated libriscv vs LuaJIT](https://gist.github.com
 
 <details>
   <summary>Register vs stack machines (interpreted)</summary>
-  
+
   ### Benchmarks against other emulators
   RISC-V is a register machine architecture, which makes it very easy to reach good interpreter performance without needing a register allocator.
 

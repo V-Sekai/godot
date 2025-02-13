@@ -29,7 +29,7 @@ class ParsedMethod:
 		for i in range(_meta.args.size()):
 			var arg = _meta.args[i]
 			# Add a "default" property to the metadata so we don't have to do
-			# weird default paramter position math again.
+			# weird default parameter position math again.
 			if(i >= start_default):
 				arg['default'] = _meta.default_args[start_default - i]
 			else:
@@ -312,4 +312,3 @@ func parse(thing, inner_thing=null):
 				scripts[key] = parsed
 
 	return parsed
-

@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_GODOT_HPP
-#define GODOT_GODOT_HPP
+#ifndef GODOT_HPP
+#define GODOT_HPP
 
 #include <gdextension_interface.h>
 
@@ -266,4 +266,4 @@ public:
 
 } // namespace godot
 
-#endif // GODOT_GODOT_HPP
+#endif // GODOT_HPP

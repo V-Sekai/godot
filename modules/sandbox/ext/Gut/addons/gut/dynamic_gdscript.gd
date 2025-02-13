@@ -7,7 +7,7 @@ var _created_script_count = 0
 
 
 # Creates a loaded script from the passed in source.  This loaded script is
-# returned unless there is an error.  When an error occcurs the error number
+# returned unless there is an error.  When an error occurs the error number
 # is returned instead.
 func create_script_from_source(source, override_path=null):
 	_created_script_count += 1
@@ -30,4 +30,3 @@ func create_script_from_source(source, override_path=null):
 		DynamicScript = result
 
 	return DynamicScript
-

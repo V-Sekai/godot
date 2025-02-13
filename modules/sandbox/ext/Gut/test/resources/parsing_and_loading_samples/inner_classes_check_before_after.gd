@@ -1,5 +1,5 @@
 # ##############################################################################
-# These classes are used to verify that the befores and afters are being called
+# These classes are used to verify that the before and afters are being called
 # correctly with inner classes.
 # ##############################################################################
 extends "res://addons/gut/test.gd"

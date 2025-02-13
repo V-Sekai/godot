@@ -66,4 +66,3 @@ func run_test_in_gut(which):
 
 func print_source():
 	print(GutUtils.add_line_numbers(make_source()))
-

@@ -22,13 +22,13 @@ func _ready():
 func _post_ready_setup():
 	var gut = _gut_control.get_gut()
 	gut.start_run.connect(_on_gut_run_start)
-	
+
 	gut.start_script.connect(_on_gut_start_script)
 	gut.end_script.connect(_on_gut_end_script)
-	
+
 	gut.start_test.connect(_on_gut_start_test)
 	gut.end_test.connect(_on_gut_end_test)
-	
+
 	gut.end_run.connect(_on_gut_run_end)
 
 
@@ -57,7 +57,7 @@ func _on_gut_start_test(test_name):
 
 
 func _on_gut_end_test():
-	# get_test_named returns a TestCollector.gd/Test instance for the name 
+	# get_test_named returns a TestCollector.gd/Test instance for the name
 	# passed in.
 	var test_object = _current_script_object.get_test_named(_current_test_name)
 	var status = "failed"
@@ -65,10 +65,10 @@ func _on_gut_end_test():
 		status = "passed"
 	elif(test_object.pending):
 		status = "pending"
-		
+
 	print('    ', status)
 	_current_test_name = null
-	
+
 
 func _on_gut_run_end():
 	print('Tests Done')

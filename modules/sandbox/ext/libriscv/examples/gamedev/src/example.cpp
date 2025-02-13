@@ -1,11 +1,41 @@
+/**************************************************************************/
+/*  example.cpp                                                           */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "event.hpp"
-#include <chrono>
 #include <fmt/core.h>
+#include <chrono>
 #include <libriscv/rsp_server.hpp>
 #include <libriscv/rv32i_instr.hpp>
 using namespace riscv;
 template <unsigned SAMPLES = 2000>
-static void benchmark(std::string_view name, Script& script, std::function<void()> fn);
+static void benchmark(std::string_view name, Script &script, std::function<void()> fn);
 
 using CppString = GuestStdString<Script::MARCH>;
 template <typename T>
@@ -15,58 +45,52 @@ template <typename T>
 using ScopedCppVector = ScopedArenaObject<Script::MARCH, CppVector<T>>;
 
 // ScriptCallable is a function that can be requested from the script
-using ScriptCallable = std::function<void(Script&)>;
+using ScriptCallable = std::function<void(Script &)>;
 // A map of host functions that can be called from the script
-static std::array<ScriptCallable, 64> g_script_functions {};
-static void register_script_function(uint32_t number, ScriptCallable&& fn) {
+static std::array<ScriptCallable, 64> g_script_functions{};
+static void register_script_function(uint32_t number, ScriptCallable &&fn) {
 	g_script_functions.at(number) = std::move(fn);
 }
 
-void Script::setup_syscall_interface()
-{
+void Script::setup_syscall_interface() {
 	// ALTERNATIVE 1:
 	// A custom system call that executes a function based on an index
 	// The most common approach, but requires registers T0 and A7 to be used
 	Script::machine_t::install_syscall_handler(510,
-	[] (Script::machine_t& machine) {
-		Script& script = *machine.template get_userdata<Script>();
-		g_script_functions.at(machine.cpu.reg(riscv::REG_T0))(script);
-	});
+			[](Script::machine_t &machine) {
+				Script &script = *machine.template get_userdata<Script>();
+				g_script_functions.at(machine.cpu.reg(riscv::REG_T0))(script);
+			});
 
 	// ALTERNATIVE 2:
 	// A custom instruction that executes a function based on an index
 	// This variant is faster than a system call, and can use 8 integers as arguments
-    using namespace riscv;
-    static const Instruction<MARCH> unchecked_dyncall_instruction {
-        [](CPU<MARCH>& cpu, riscv::rv32i_instruction instr)
-        {
-            Script& script = *cpu.machine().template get_userdata<Script>();
-            g_script_functions[instr.Itype.imm](script);
-        },
-        [](char* buffer, size_t len, auto&, riscv::rv32i_instruction instr) -> int
-        {
-            return fmt::format_to_n(buffer, len,
-                "DYNCALL: 4-byte idx={:x} (inline, 0x{:X})",
-                uint32_t(instr.Itype.imm),
-                instr.whole
-            ).size;
-        }};
-    // Override the machines unimplemented instruction handling,
-    // in order to use the custom instruction for a given opcode.
-    CPU<MARCH>::on_unimplemented_instruction
-        = [](riscv::rv32i_instruction instr) -> const Instruction<MARCH>&
-    {
-        if (instr.opcode() == 0b1011011 && instr.Itype.rs1 == 0 && instr.Itype.rd == 0)
-        {
+	using namespace riscv;
+	static const Instruction<MARCH> unchecked_dyncall_instruction{
+		[](CPU<MARCH> &cpu, riscv::rv32i_instruction instr) {
+			Script &script = *cpu.machine().template get_userdata<Script>();
+			g_script_functions[instr.Itype.imm](script);
+		},
+		[](char *buffer, size_t len, auto &, riscv::rv32i_instruction instr) -> int {
+			return fmt::format_to_n(buffer, len,
+					"DYNCALL: 4-byte idx={:x} (inline, 0x{:X})",
+					uint32_t(instr.Itype.imm),
+					instr.whole)
+					.size;
+		}
+	};
+	// Override the machines unimplemented instruction handling,
+	// in order to use the custom instruction for a given opcode.
+	CPU<MARCH>::on_unimplemented_instruction = [](riscv::rv32i_instruction instr) -> const Instruction<MARCH> & {
+		if (instr.opcode() == 0b1011011 && instr.Itype.rs1 == 0 && instr.Itype.rd == 0) {
 			if (instr.Itype.imm < g_script_functions.size())
 				return unchecked_dyncall_instruction;
-        }
-        return CPU<MARCH>::get_unimplemented_instruction();
-    };
+		}
+		return CPU<MARCH>::get_unimplemented_instruction();
+	};
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
 	if (argc < 2) {
 		fmt::print("Usage: {} [program file] [arguments ...]\n", argv[0]);
 		return -1;
@@ -74,7 +98,7 @@ int main(int argc, char** argv)
 
 	// Register a custom function that can be called from the script
 	// This is the handler for dyncall1
-	register_script_function(1, [](Script& script) {
+	register_script_function(1, [](Script &script) {
 		auto [arg] = script.machine().sysargs<int>();
 
 		fmt::print("dyncall1 called with argument: 0x{:x}\n", arg);
@@ -82,7 +106,7 @@ int main(int argc, char** argv)
 		script.machine().set_result(42);
 	});
 	// This is the handler for dyncall2
-	register_script_function(2, [](Script& script) {
+	register_script_function(2, [](Script &script) {
 		// string_view consumes 2 arguments, the first is the pointer, the second is the length
 		// unlike std::string, which consumes only 1 argument (zero-terminated string pointer)
 		auto [view, str] = script.machine().sysargs<std::string_view, std::string>();
@@ -90,20 +114,20 @@ int main(int argc, char** argv)
 		fmt::print("dyncall2 called with arguments: '{}' and '{}'\n", view, str);
 	});
 	// This is the handler for dyncall_empty
-	register_script_function(3, [](Script&) {
+	register_script_function(3, [](Script &) {
 	});
 	// This is the handler for dyncall_data
-	register_script_function(4, [](Script& script) {
+	register_script_function(4, [](Script &script) {
 		struct MyData {
 			char buffer[32];
 		};
-		auto [data_span, data] = script.machine().sysargs<std::span<MyData>, const MyData*>();
+		auto [data_span, data] = script.machine().sysargs<std::span<MyData>, const MyData *>();
 
 		fmt::print("dyncall_data called with args: '{}' and '{}'\n", data_span[0].buffer, data->buffer);
 	});
 	// This is the handler for dyncall_string
-	register_script_function(5, [](Script& script) {
-		auto [str] = script.machine().sysargs<GuestStdString<Script::MARCH>*>();
+	register_script_function(5, [](Script &script) {
+		auto [str] = script.machine().sysargs<GuestStdString<Script::MARCH> *>();
 
 		fmt::print("dyncall_string called: {}\n", str->to_string(script.machine()));
 	});
@@ -159,12 +183,11 @@ int main(int argc, char** argv)
 
 	// For C++ programs we have some guest abstractions we can test
 	// like std::string and std::vector wrappers.
-	if (script.address_of("test6"))
-	{
+	if (script.address_of("test6")) {
 		// Define the test6 function, which has a std::string& argument in the guest,
 		// and a std::vector<int>& and std::vector<std::string>&. The stack is writable,
 		// so the guest can choose whether or not to use const references.
-		Event<void(ScopedCppString&, ScopedCppVector<int>&, ScopedCppVector<CppString>&)> test6(script, "test6");
+		Event<void(ScopedCppString &, ScopedCppVector<int> &, ScopedCppVector<CppString> &)> test6(script, "test6");
 
 		for (int i = 0; i < 1; i++) {
 			// Allocate a GuestStdString object with a string
@@ -173,7 +196,7 @@ int main(int argc, char** argv)
 			ScopedCppVector<int> ivec(script.machine(), std::vector<int>{ 1, 2, 3, 4, 5 });
 			// Allocate a vector of strings (using CppString)
 			ScopedCppVector<CppString> svec(script.machine(),
-				std::vector<std::string>{ "Hello,", "World!", "This string is long :)" });
+					std::vector<std::string>{ "Hello,", "World!", "This string is long :)" });
 
 			// Call the test6 function with all the objects
 			if (auto ret = test6(str, ivec, svec); !ret)
@@ -182,8 +205,7 @@ int main(int argc, char** argv)
 	}
 
 	// If GDB=1, start the RSP server for debugging
-	if (getenv("GDB"))
-	{
+	if (getenv("GDB")) {
 		// Setup the test6 function to be debugged from GDB
 		script.machine().setup_call();
 		script.machine().cpu.jump(script.machine().address_of("remote_debug_test"));
@@ -192,22 +214,20 @@ int main(int argc, char** argv)
 		riscv::RSP rsp(script.machine(), 2159);
 		if (auto client = rsp.accept(); client) {
 			fmt::print("GDB connected\n");
-			while (client->process_one());
+			while (client->process_one())
+				;
 			fmt::print("GDB session ended\n");
 		} else {
 			fmt::print("Failed to accept GDB connection. Waited too long?\n");
 		}
 	}
-
 }
 
 // A simple benchmarking function that subtracts the call overhead
 template <unsigned SAMPLES>
-void benchmark(std::string_view name, Script &script, std::function<void()> fn)
-{
+void benchmark(std::string_view name, Script &script, std::function<void()> fn) {
 	static unsigned overhead = 0;
-	if (overhead == 0)
-	{
+	if (overhead == 0) {
 		Event<void()> measure_overhead(script, "measure_overhead");
 		auto start = std::chrono::high_resolution_clock::now();
 		for (unsigned i = 0; i < SAMPLES; i++)
@@ -223,5 +243,5 @@ void benchmark(std::string_view name, Script &script, std::function<void()> fn)
 	auto end = std::chrono::high_resolution_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / SAMPLES;
 	fmt::print("Benchmark: {}  Elapsed time: {}ns\n",
-			   name, elapsed - overhead);
+			name, elapsed - overhead);
 }

@@ -1,6 +1,36 @@
+/**************************************************************************/
+/*  bytecode_impl.cpp                                                     */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 /**
  * Popular instructions
-*/
+ */
 
 #ifdef RISCV_EXT_COMPRESSED
 INSTRUCTION(RV32C_BC_ADDI, rv32c_addi) {
@@ -22,7 +52,7 @@ INSTRUCTION(RV32C_BC_SLLI, rv32c_slli) {
 INSTRUCTION(RV32I_BC_ADDI, rv32i_addi) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	REG(fi.get_rs1()) =
-		REG(fi.get_rs2()) + fi.signed_imm();
+			REG(fi.get_rs2()) + fi.signed_imm();
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_LI, rv32i_li) {
@@ -39,11 +69,10 @@ INSTRUCTION(RV32I_BC_MV, rv32i_mv) {
 INSTRUCTION(RV64I_BC_ADDIW, rv64i_addiw) {
 	if constexpr (W >= 8) {
 		VIEW_INSTR_AS(fi, FasterItype);
-		REG(fi.get_rs1()) = (int32_t)
-			((uint32_t)REG(fi.get_rs2()) + fi.signed_imm());
+		REG(fi.get_rs1()) = (int32_t)((uint32_t)REG(fi.get_rs2()) + fi.signed_imm());
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 #endif // RISCV_64I
 
@@ -67,7 +96,7 @@ INSTRUCTION(RV32I_BC_SLLI, rv32i_slli) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	// SLLI: Logical left-shift 5/6/7-bit immediate
 	REG(fi.get_rs1()) =
-		REG(fi.get_rs2()) << fi.unsigned_imm();
+			REG(fi.get_rs2()) << fi.unsigned_imm();
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_SLTI, rv32i_slti) {
@@ -135,8 +164,7 @@ INSTRUCTION(RV32C_BC_JMP, rv32c_jmp) {
 INSTRUCTION(RV32C_BC_JAL_ADDIW, rv32c_jal_addiw) {
 	if constexpr (W >= 8) { // C.ADDIW
 		VIEW_INSTR_AS(fi, FasterItype);
-		REG(fi.get_rs1()) = (int32_t)
-			((uint32_t)REG(fi.get_rs1()) + fi.signed_imm());
+		REG(fi.get_rs1()) = (int32_t)((uint32_t)REG(fi.get_rs1()) + fi.signed_imm());
 		NEXT_C_INSTR();
 	} else { // C.JAL
 		VIEW_INSTR_AS(fi, FasterItype);
@@ -148,7 +176,7 @@ INSTRUCTION(RV32C_BC_JR, rv32c_jr) {
 	VIEW_INSTR();
 	if constexpr (VERBOSE_JUMPS) {
 		fprintf(stderr, "C.JR from 0x%lX to 0x%lX\n",
-			long(pc), long(REG(instr.whole)));
+				long(pc), long(REG(instr.whole)));
 	}
 	pc = REG(instr.whole) & ~addr_t(1);
 	OVERFLOW_CHECKED_JUMP();
@@ -157,7 +185,7 @@ INSTRUCTION(RV32C_BC_JALR, rv32c_jalr) {
 	VIEW_INSTR();
 	if constexpr (VERBOSE_JUMPS) {
 		fprintf(stderr, "C.JALR from 0x%lX to 0x%lX\n",
-			long(pc), long(REG(instr.whole)));
+				long(pc), long(REG(instr.whole)));
 	}
 	REG(REG_RA) = pc + 2;
 	pc = REG(instr.whole) & ~addr_t(1);
@@ -165,8 +193,7 @@ INSTRUCTION(RV32C_BC_JALR, rv32c_jalr) {
 }
 #endif // RISCV_EXT_COMPRESSED
 
-INSTRUCTION(RV32I_BC_JAL, rv32i_jal)
-{
+INSTRUCTION(RV32I_BC_JAL, rv32i_jal) {
 	VIEW_INSTR_AS(fi, FasterJtype);
 	if constexpr (VERBOSE_JUMPS) {
 		printf("JAL PC 0x%lX => 0x%lX\n", (long)pc, (long)pc + fi.signed_imm());
@@ -232,17 +259,16 @@ INSTRUCTION(RV32I_BC_BGEU, rv32i_bgeu) {
 	NEXT_BLOCK(4, false);
 }
 
-
 INSTRUCTION(RV32I_BC_LDW, rv32i_ldw) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 	REG(fi.get_rs1()) =
-		(int32_t)CPU().memory().template read<uint32_t>(addr);
+			(int32_t)CPU().memory().template read<uint32_t>(addr);
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_STW, rv32i_stw) {
 	VIEW_INSTR_AS(fi, FasterItype);
-	const auto addr  = REG(fi.get_rs1()) + fi.signed_imm();
+	const auto addr = REG(fi.get_rs1()) + fi.signed_imm();
 	CPU().memory().template write<uint32_t>(addr, REG(fi.get_rs2()));
 	NEXT_INSTR();
 }
@@ -252,34 +278,34 @@ INSTRUCTION(RV32I_BC_LDD, rv32i_ldd) {
 		VIEW_INSTR_AS(fi, FasterItype);
 		const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 		REG(fi.get_rs1()) =
-			(int64_t)CPU().memory().template read<uint64_t>(addr);
+				(int64_t)CPU().memory().template read<uint64_t>(addr);
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV32I_BC_STD, rv32i_std) {
 	if constexpr (W >= 8) {
 		VIEW_INSTR_AS(fi, FasterItype);
-		const auto addr  = REG(fi.get_rs1()) + fi.signed_imm();
+		const auto addr = REG(fi.get_rs1()) + fi.signed_imm();
 		CPU().memory().template write<uint64_t>(addr, REG(fi.get_rs2()));
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 #endif // RISCV_64I
 
 INSTRUCTION(RV32F_BC_FLW, rv32i_flw) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	auto addr = REG(fi.rs2) + fi.signed_imm();
-	auto& dst = REGISTERS().getfl(fi.rs1);
-	dst.load_u32(CPU().memory().template read<uint32_t> (addr));
+	auto &dst = REGISTERS().getfl(fi.rs1);
+	dst.load_u32(CPU().memory().template read<uint32_t>(addr));
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32F_BC_FLD, rv32i_fld) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	auto addr = REG(fi.rs2) + fi.signed_imm();
-	auto& dst = REGISTERS().getfl(fi.rs1);
-	dst.load_u64(CPU().memory().template read<uint64_t> (addr));
+	auto &dst = REGISTERS().getfl(fi.rs1);
+	dst.load_u64(CPU().memory().template read<uint64_t>(addr));
 	NEXT_INSTR();
 }
 
@@ -289,10 +315,10 @@ INSTRUCTION(RV32C_BC_LDD, rv32c_ldd) {
 		VIEW_INSTR_AS(fi, FasterItype);
 		const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 		REG(fi.get_rs1()) =
-			(int64_t)CPU().memory().template read<uint64_t>(addr);
+				(int64_t)CPU().memory().template read<uint64_t>(addr);
 		NEXT_C_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV32C_BC_STD, rv32c_std) {
 	if constexpr (W >= 8) {
@@ -300,21 +326,18 @@ INSTRUCTION(RV32C_BC_STD, rv32c_std) {
 		const auto addr = REG(fi.get_rs1()) + fi.signed_imm();
 		CPU().memory().template write<uint64_t>(addr, REG(fi.get_rs2()));
 		NEXT_C_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 #endif // RISCV_EXT_COMPRESSED
 
-
-INSTRUCTION(RV32I_BC_AUIPC, rv32i_auipc)
-{
+INSTRUCTION(RV32I_BC_AUIPC, rv32i_auipc) {
 	VIEW_INSTR();
 	// AUIPC using re-constructed PC
 	REG(instr.Utype.rd) = (pc - DECODER().block_bytes()) + instr.Utype.upper_imm();
 	NEXT_INSTR();
 }
-INSTRUCTION(RV32I_BC_LUI, rv32i_lui)
-{
+INSTRUCTION(RV32I_BC_LUI, rv32i_lui) {
 	VIEW_INSTR();
 	REG(instr.Utype.rd) = instr.Utype.upper_imm();
 	NEXT_INSTR();
@@ -322,7 +345,7 @@ INSTRUCTION(RV32I_BC_LUI, rv32i_lui)
 
 #define OP_INSTR()                       \
 	VIEW_INSTR_AS(fi, FasterOpType);     \
-	auto& dst = REG(fi.get_rd());        \
+	auto &dst = REG(fi.get_rd());        \
 	const auto src1 = REG(fi.get_rs1()); \
 	const auto src2 = REG(fi.get_rs2());
 
@@ -394,7 +417,7 @@ INSTRUCTION(RV32I_BC_OP_SH3ADD, rv32i_op_sh3add) {
 }
 INSTRUCTION(RV32I_BC_OP_SRA, rv32i_op_sra) {
 	OP_INSTR();
-	dst = saddr_t(src1) >> (src2 & (XLEN-1));
+	dst = saddr_t(src1) >> (src2 & (XLEN - 1));
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_OP_ZEXT_H, rv32i_op_zext_h) {
@@ -410,50 +433,48 @@ INSTRUCTION(RV64I_BC_OP_ADDW, rv64i_op_addw) {
 		OP_INSTR();
 		dst = int32_t(uint32_t(src1) + uint32_t(src2));
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV64I_BC_OP_SUBW, rv64i_op_subw) {
 	if constexpr (W >= 8) {
 		OP_INSTR();
 		dst = int32_t(uint32_t(src1) - uint32_t(src2));
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV64I_BC_OP_MULW, rv64i_op_mulw) {
 	if constexpr (W >= 8) {
 		OP_INSTR();
 		dst = int32_t(int32_t(src1) * int32_t(src2));
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV64I_BC_OP_ADD_UW, rv64i_op_add_uw) {
 	if constexpr (W >= 8) {
 		OP_INSTR();
 		dst = uint32_t(src1) + src2;
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV64I_BC_SLLIW, rv64i_slliw) {
 	if constexpr (W >= 8) {
 		VIEW_INSTR_AS(fi, FasterItype);
-		REG(fi.get_rs1()) = (int32_t)
-			((uint32_t)REG(fi.get_rs2()) << fi.imm);
+		REG(fi.get_rs1()) = (int32_t)((uint32_t)REG(fi.get_rs2()) << fi.imm);
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV64I_BC_SRLIW, rv64i_srliw) {
 	if constexpr (W >= 8) {
 		VIEW_INSTR_AS(fi, FasterItype);
-		REG(fi.get_rs1()) = (int32_t)
-			((uint32_t)REG(fi.get_rs2()) >> fi.imm);
+		REG(fi.get_rs1()) = (int32_t)((uint32_t)REG(fi.get_rs2()) >> fi.imm);
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 #endif // RISCV_64I
 
@@ -471,44 +492,41 @@ INSTRUCTION(RV32I_BC_BSETI, rv32i_bseti) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	// BSETI: Bit-set immediate
 	REG(fi.get_rs1()) =
-		REG(fi.get_rs2()) | (addr_t(1) << fi.unsigned_imm());
+			REG(fi.get_rs2()) | (addr_t(1) << fi.unsigned_imm());
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_BEXTI, rv32i_bexti) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	// BEXTI: Single-bit Extract
 	REG(fi.get_rs1()) =
-		(REG(fi.get_rs2()) >> fi.unsigned_imm()) & 1;
+			(REG(fi.get_rs2()) >> fi.unsigned_imm()) & 1;
 	NEXT_INSTR();
 }
 
 INSTRUCTION(RV32F_BC_FSW, rv32i_fsw) {
 	VIEW_INSTR_AS(fi, FasterItype);
-	const auto& src = REGISTERS().getfl(fi.rs2);
+	const auto &src = REGISTERS().getfl(fi.rs2);
 	auto addr = REG(fi.rs1) + fi.signed_imm();
-	CPU().memory().template write<uint32_t> (addr, src.i32[0]);
+	CPU().memory().template write<uint32_t>(addr, src.i32[0]);
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32F_BC_FSD, rv32i_fsd) {
 	VIEW_INSTR_AS(fi, FasterItype);
-	const auto& src = REGISTERS().getfl(fi.rs2);
+	const auto &src = REGISTERS().getfl(fi.rs2);
 	auto addr = REG(fi.rs1) + fi.signed_imm();
-	CPU().memory().template write<uint64_t> (addr, src.i64);
+	CPU().memory().template write<uint64_t>(addr, src.i64);
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32F_BC_FADD, rv32f_fadd) {
 	VIEW_INSTR_AS(fi, FasterFloatType);
-	#define FLREGS() \
-		auto& dst = REGISTERS().getfl(fi.get_rd()); \
-		const auto& rs1 = REGISTERS().getfl(fi.get_rs1()); \
-		const auto& rs2 = REGISTERS().getfl(fi.get_rs2());
+#define FLREGS()                                       \
+	auto &dst = REGISTERS().getfl(fi.get_rd());        \
+	const auto &rs1 = REGISTERS().getfl(fi.get_rs1()); \
+	const auto &rs2 = REGISTERS().getfl(fi.get_rs2());
 	FLREGS();
-	if (fi.func == 0x0)
-	{ // float32
+	if (fi.func == 0x0) { // float32
 		dst.set_float(rs1.f32[0] + rs2.f32[0]);
-	}
-	else
-	{ // float64
+	} else { // float64
 		dst.f64 = rs1.f64 + rs2.f64;
 	}
 	NEXT_INSTR();
@@ -516,12 +534,9 @@ INSTRUCTION(RV32F_BC_FADD, rv32f_fadd) {
 INSTRUCTION(RV32F_BC_FSUB, rv32f_fsub) {
 	VIEW_INSTR_AS(fi, FasterFloatType);
 	FLREGS();
-	if (fi.func == 0x0)
-	{ // float32
+	if (fi.func == 0x0) { // float32
 		dst.set_float(rs1.f32[0] - rs2.f32[0]);
-	}
-	else
-	{ // float64
+	} else { // float64
 		dst.f64 = rs1.f64 - rs2.f64;
 	}
 	NEXT_INSTR();
@@ -529,12 +544,9 @@ INSTRUCTION(RV32F_BC_FSUB, rv32f_fsub) {
 INSTRUCTION(RV32F_BC_FMUL, rv32f_fmul) {
 	VIEW_INSTR_AS(fi, FasterFloatType);
 	FLREGS();
-	if (fi.func == 0x0)
-	{ // float32
+	if (fi.func == 0x0) { // float32
 		dst.set_float(rs1.f32[0] * rs2.f32[0]);
-	}
-	else
-	{ // float64
+	} else { // float64
 		dst.f64 = rs1.f64 * rs2.f64;
 	}
 	NEXT_INSTR();
@@ -542,23 +554,20 @@ INSTRUCTION(RV32F_BC_FMUL, rv32f_fmul) {
 INSTRUCTION(RV32F_BC_FDIV, rv32f_fdiv) {
 	VIEW_INSTR_AS(fi, FasterFloatType);
 	FLREGS();
-	if (fi.func == 0x0)
-	{ // float32
+	if (fi.func == 0x0) { // float32
 		dst.set_float(rs1.f32[0] / rs2.f32[0]);
-	}
-	else
-	{ // float64
+	} else { // float64
 		dst.f64 = rs1.f64 / rs2.f64;
 	}
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32F_BC_FMADD, rv32f_fmadd) {
 	VIEW_INSTR_AS(fi, rv32f_instruction);
-	#define FMAREGS() \
-		auto& dst = REGISTERS().getfl(fi.R4type.rd);  \
-		auto& rs1 = REGISTERS().getfl(fi.R4type.rs1); \
-		auto& rs2 = REGISTERS().getfl(fi.R4type.rs2); \
-		auto& rs3 = REGISTERS().getfl(fi.R4type.rs3);
+#define FMAREGS()                                 \
+	auto &dst = REGISTERS().getfl(fi.R4type.rd);  \
+	auto &rs1 = REGISTERS().getfl(fi.R4type.rs1); \
+	auto &rs2 = REGISTERS().getfl(fi.R4type.rs2); \
+	auto &rs3 = REGISTERS().getfl(fi.R4type.rs3);
 	FMAREGS();
 	if (fi.R4type.funct2 == 0x0) { // float32
 		dst.set_float(rs1.f32[0] * rs2.f32[0] + rs3.f32[0]);
@@ -568,9 +577,7 @@ INSTRUCTION(RV32F_BC_FMADD, rv32f_fmadd) {
 	NEXT_INSTR();
 }
 
-
-INSTRUCTION(RV32I_BC_FUNCTION, execute_decoded_function)
-{
+INSTRUCTION(RV32I_BC_FUNCTION, execute_decoded_function) {
 	//printf("Slowpath: 0x%X  (instr: 0x%X)\n", uint32_t(pc), DECODER().instr);
 	CPU().execute(DECODER().m_handler, DECODER().instr);
 	NEXT_INSTR();
@@ -593,7 +600,7 @@ INSTRUCTION(RV32I_BC_JALR, rv32i_jalr) {
 	}
 	if constexpr (VERBOSE_JUMPS) {
 		fprintf(stderr, "JALR x%d + %d => rd=%d   PC 0x%lX => 0x%lX\n",
-			fi.rs2, fi.signed_imm(), fi.rs1, long(pc), long(address));
+				fi.rs2, fi.signed_imm(), fi.rs1, long(pc), long(address));
 	}
 	static constexpr addr_t ALIGN_MASK = (compressed_enabled) ? 0x1 : 0x3;
 	pc = address & ~ALIGN_MASK;
@@ -606,26 +613,26 @@ INSTRUCTION(RV64I_BC_SRAIW, rv64i_sraiw) {
 		VIEW_INSTR_AS(fi, FasterItype);
 		//dst = (int32_t)src >> instr.Itype.shift_imm();
 		REG(fi.get_rs1()) =
-			(int32_t)REG(fi.get_rs2()) >> fi.imm;
+				(int32_t)REG(fi.get_rs2()) >> fi.imm;
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV64I_BC_OP_SH1ADD_UW, rv64i_op_sh1add_uw) {
 	if constexpr (W >= 8) {
 		OP_INSTR();
 		dst = src2 + (addr_t(uint32_t(src1)) << 1);
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 INSTRUCTION(RV64I_BC_OP_SH2ADD_UW, rv64i_op_sh2add_uw) {
 	if constexpr (W >= 8) {
 		OP_INSTR();
 		dst = src2 + (addr_t(uint32_t(src1)) << 2);
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 #endif // RISCV_64I
 
@@ -661,7 +668,7 @@ INSTRUCTION(RV32I_BC_OP_DIVU, rv32i_op_divu) {
 INSTRUCTION(RV32I_BC_OP_REM, rv32i_op_rem) {
 	OP_INSTR();
 	if (LIKELY(src2 != 0)) {
-		if constexpr(W == 4) {
+		if constexpr (W == 4) {
 			if (LIKELY(!(src1 == 2147483648 && src2 == 4294967295)))
 				dst = saddr_t(src1) % saddr_t(src2);
 		} else if constexpr (W == 8) {
@@ -687,28 +694,28 @@ INSTRUCTION(RV32I_BC_LDB, rv32i_ldb) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 	REG(fi.get_rs1()) =
-		int8_t(CPU().memory().template read<uint8_t>(addr));
+			int8_t(CPU().memory().template read<uint8_t>(addr));
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_LDBU, rv32i_ldbu) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 	REG(fi.get_rs1()) =
-		saddr_t(CPU().memory().template read<uint8_t>(addr));
+			saddr_t(CPU().memory().template read<uint8_t>(addr));
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_LDH, rv32i_ldh) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 	REG(fi.get_rs1()) =
-		int16_t(CPU().memory().template read<uint16_t>(addr));
+			int16_t(CPU().memory().template read<uint16_t>(addr));
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_LDHU, rv32i_ldhu) {
 	VIEW_INSTR_AS(fi, FasterItype);
 	const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 	REG(fi.get_rs1()) =
-		saddr_t(CPU().memory().template read<uint16_t>(addr));
+			saddr_t(CPU().memory().template read<uint16_t>(addr));
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32I_BC_STB, rv32i_stb) {
@@ -729,15 +736,14 @@ INSTRUCTION(RV32I_BC_LDWU, rv32i_ldwu) {
 		VIEW_INSTR_AS(fi, FasterItype);
 		const auto addr = REG(fi.get_rs2()) + fi.signed_imm();
 		REG(fi.get_rs1()) =
-			CPU().memory().template read<uint32_t>(addr);
+				CPU().memory().template read<uint32_t>(addr);
 		NEXT_INSTR();
-	}
-	else UNUSED_FUNCTION();
+	} else
+		UNUSED_FUNCTION();
 }
 #endif // RISCV_64I
 
-INSTRUCTION(RV32I_BC_NOP, rv32i_nop)
-{
+INSTRUCTION(RV32I_BC_NOP, rv32i_nop) {
 	NEXT_INSTR();
 }
 
@@ -776,21 +782,21 @@ INSTRUCTION(RV32C_BC_FUNCTION, rv32c_func) {
 #ifdef RISCV_EXT_VECTOR
 INSTRUCTION(RV32V_BC_VLE32, rv32v_vle32) {
 	VIEW_INSTR_AS(vi, FasterMove);
-	const auto& addr = REG(vi.rs1);
+	const auto &addr = REG(vi.rs1);
 	VECTORS().get(vi.rd) =
-		CPU().memory().template read<VectorLane> (addr);
+			CPU().memory().template read<VectorLane>(addr);
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32V_BC_VSE32, rv32v_vse32) {
 	VIEW_INSTR_AS(vi, FasterMove);
-	const auto& addr = REG(vi.rs1);
-	auto& value = VECTORS().get(vi.rd);
-	CPU().memory().template write<VectorLane> (addr, value);
+	const auto &addr = REG(vi.rs1);
+	auto &value = VECTORS().get(vi.rd);
+	CPU().memory().template write<VectorLane>(addr, value);
 	NEXT_INSTR();
 }
 INSTRUCTION(RV32V_BC_VFADD_VV, rv32v_vfadd_vv) {
 	VIEW_INSTR_AS(vi, FasterOpType);
-	auto& rvv = VECTORS();
+	auto &rvv = VECTORS();
 	for (size_t i = 0; i < rvv.f32(0).size(); i++) {
 		rvv.f32(vi.rd)[i] = rvv.f32(vi.rs1)[i] + rvv.f32(vi.rs2)[i];
 	}
@@ -798,7 +804,7 @@ INSTRUCTION(RV32V_BC_VFADD_VV, rv32v_vfadd_vv) {
 }
 INSTRUCTION(RV32V_BC_VFMUL_VF, rv32v_vfmul_vf) {
 	VIEW_INSTR_AS(vi, FasterOpType);
-	auto& rvv = VECTORS();
+	auto &rvv = VECTORS();
 	for (size_t i = 0; i < rvv.f32(0).size(); i++) {
 		rvv.f32(vi.rd)[i] = rvv.f32(vi.rs2)[i] * REGISTERS().getfl(vi.rs1).f32[0];
 	}
@@ -808,42 +814,42 @@ INSTRUCTION(RV32V_BC_VFMUL_VF, rv32v_vfmul_vf) {
 
 INSTRUCTION(RV32I_BC_LIVEPATCH, execute_livepatch) {
 	switch (DECODER().m_handler) {
-	case 0: { // Live-patch binary translation
+		case 0: { // Live-patch binary translation
 #ifdef RISCV_BINARY_TRANSLATION
-		// Special bytecode that does not read any decoder data
-		// 1. Wind back PC to the current decoder position
-		pc = pc - DECODER().block_bytes();
-#  ifdef DISPATCH_MODE_TAILCALL
-		// 2. Find the correct decoder pointer in the patched decoder cache
-		auto* patched = &exec->patched_decoder_cache()[pc / DecoderCache<W>::DIVISOR];
-		d = patched;
-#  else
-		// 2. Find the correct decoder pointer in the patched decoder cache
-		exec_decoder = exec->patched_decoder_cache();
-		decoder = &exec_decoder[pc / DecoderCache<W>::DIVISOR];
-#  endif
-		// 3. Execute the instruction
-		EXECUTE_CURRENT();
+			// Special bytecode that does not read any decoder data
+			// 1. Wind back PC to the current decoder position
+			pc = pc - DECODER().block_bytes();
+#ifdef DISPATCH_MODE_TAILCALL
+			// 2. Find the correct decoder pointer in the patched decoder cache
+			auto *patched = &exec->patched_decoder_cache()[pc / DecoderCache<W>::DIVISOR];
+			d = patched;
 #else
-		// Invalid handler
-		DECODER().set_bytecode(RV32I_BC_INVALID);
-		DECODER().set_invalid_handler();
+			// 2. Find the correct decoder pointer in the patched decoder cache
+			exec_decoder = exec->patched_decoder_cache();
+			decoder = &exec_decoder[pc / DecoderCache<W>::DIVISOR];
 #endif
-	}	break;
-	case 1: { // Live-patch JALR -> STOP
-		// Check if RA == memory exit address
-		if (RISCV_SPECSAFE(REG(REG_RA) == MACHINE().memory.exit_address())) {
-			// Hot-swap the bytecode to a STOP
-			DECODER().set_bytecode(RV32I_BC_STOP);
+			// 3. Execute the instruction
 			EXECUTE_CURRENT();
-		}
-		// Otherwise, leave the JALR instruction as is (NOTE: sets invalid handler)
-		DECODER().set_atomic_bytecode_and_handler(RV32I_BC_JALR, 0);
-	}	break;
-	default:
-		// Invalid handler
-		DECODER().set_bytecode(RV32I_BC_INVALID);
-		DECODER().set_invalid_handler();
+#else
+			// Invalid handler
+			DECODER().set_bytecode(RV32I_BC_INVALID);
+			DECODER().set_invalid_handler();
+#endif
+		} break;
+		case 1: { // Live-patch JALR -> STOP
+			// Check if RA == memory exit address
+			if (RISCV_SPECSAFE(REG(REG_RA) == MACHINE().memory.exit_address())) {
+				// Hot-swap the bytecode to a STOP
+				DECODER().set_bytecode(RV32I_BC_STOP);
+				EXECUTE_CURRENT();
+			}
+			// Otherwise, leave the JALR instruction as is (NOTE: sets invalid handler)
+			DECODER().set_atomic_bytecode_and_handler(RV32I_BC_JALR, 0);
+		} break;
+		default:
+			// Invalid handler
+			DECODER().set_bytecode(RV32I_BC_INVALID);
+			DECODER().set_invalid_handler();
 	}
 	EXECUTE_CURRENT();
 }

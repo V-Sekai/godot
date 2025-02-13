@@ -1,4 +1,4 @@
-extern crate alloc;
+extern create alloc;
 use alloc::alloc::Layout;
 use alloc::alloc::GlobalAlloc;
 use std::arch::asm;

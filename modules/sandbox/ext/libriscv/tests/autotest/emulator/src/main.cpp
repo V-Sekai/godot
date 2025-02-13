@@ -1,20 +1,49 @@
-#include <libriscv/machine.hpp>
-static inline std::vector<uint8_t> load_file(const std::string&);
+/**************************************************************************/
+/*  main.cpp                                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
-int main(int argc, const char** argv)
-{
+#include <libriscv/machine.hpp>
+static inline std::vector<uint8_t> load_file(const std::string &);
+
+int main(int argc, const char **argv) {
 	// load binary from file
 	const std::vector<uint8_t> binary = load_file(argv[1]);
 
 	using namespace riscv;
-	Machine<RISCV64> machine { binary };
+	Machine<RISCV64> machine{ binary };
 	// install a system call handler
 	Machine<RISCV64>::install_syscall_handler(93,
-	 [] (Machine<RISCV64>& machine) {
-		 const auto [code] = machine.sysargs <int> ();
-		 printf(">>> Program exited, exit code = %d\n", code);
-		 machine.stop();
-	 });
+			[](Machine<RISCV64> &machine) {
+				const auto [code] = machine.sysargs<int>();
+				printf(">>> Program exited, exit code = %d\n", code);
+				machine.stop();
+			});
 
 	// add program arguments on the stack
 	const std::vector<std::string> args = {
@@ -34,29 +63,28 @@ int main(int argc, const char** argv)
 	// instruction counter reaches the given limit (1M):
 	try {
 		machine.simulate(1'000'000);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Runtime exception: %s\n", e.what());
 	}
 }
 
-#include <stdexcept>
 #include <unistd.h>
-std::vector<uint8_t> load_file(const std::string& filename)
-{
-    size_t size = 0;
-    FILE* f = fopen(filename.c_str(), "rb");
-    if (f == NULL) throw std::runtime_error("Could not open file: " + filename);
+#include <stdexcept>
+std::vector<uint8_t> load_file(const std::string &filename) {
+	size_t size = 0;
+	FILE *f = fopen(filename.c_str(), "rb");
+	if (f == NULL)
+		throw std::runtime_error("Could not open file: " + filename);
 
-    fseek(f, 0, SEEK_END);
-    size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+	fseek(f, 0, SEEK_END);
+	size = ftell(f);
+	fseek(f, 0, SEEK_SET);
 
-    std::vector<uint8_t> result(size);
-    if (size != fread(result.data(), 1, size, f))
-    {
-        fclose(f);
-        throw std::runtime_error("Error when reading from file: " + filename);
-    }
-    fclose(f);
-    return result;
+	std::vector<uint8_t> result(size);
+	if (size != fread(result.data(), 1, size, f)) {
+		fclose(f);
+		throw std::runtime_error("Error when reading from file: " + filename);
+	}
+	fclose(f);
+	return result;
 }

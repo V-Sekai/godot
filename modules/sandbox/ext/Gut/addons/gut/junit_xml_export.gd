@@ -109,4 +109,3 @@ func write_file(gut, path):
 		GutUtils.get_logger().error(msg)
 
 	return f_result
-

@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  program.cpp                                                           */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "api.hpp"
 #include "dyncall.hpp"
 #include <cstdio>
@@ -7,20 +37,19 @@
 // A dynamic call for testing integer arguments and return values
 DEFINE_DYNCALL(1, dyncall1, int(int));
 // A dynamic call for testing string arguments
-DEFINE_DYNCALL(2, dyncall2, void(const char*, size_t, const char*));
+DEFINE_DYNCALL(2, dyncall2, void(const char *, size_t, const char *));
 // A dynamic call for benchmarking the overhead of dynamic calls
 DEFINE_DYNCALL(3, dyncall_empty, void());
 // A dynamic call that passes a view to complex data
 struct MyData {
 	char buffer[32];
 };
-DEFINE_DYNCALL(4, dyncall_data, void(const MyData*, size_t, const MyData&));
+DEFINE_DYNCALL(4, dyncall_data, void(const MyData *, size_t, const MyData &));
 // A dynamic call that takes and prints a string
-DEFINE_DYNCALL(5, dyncall_string, void(const std::string&));
+DEFINE_DYNCALL(5, dyncall_string, void(const std::string &));
 
 // Every instantiated program runs through main()
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
 	printf("Hello, World from a RISC-V virtual machine!\n");
 
 	// Call a function that was registered as a dynamic call
@@ -41,29 +70,26 @@ int main(int argc, char** argv)
 }
 
 // A PUBLIC() function can be called from the host using script.call("test1"), or an event.
-PUBLIC(int test1(int a, int b, int c, int d))
-{
+PUBLIC(int test1(int a, int b, int c, int d)) {
 	printf("test1(%d, %d, %d, %d)\n", a, b, c, d);
 	return a + b + c + d;
 }
 
 // This function tests that heap operations are optimized.
-PUBLIC(void test2())
-{
+PUBLIC(void test2()) {
 #ifdef __cpp_lib_smart_ptr_for_overwrite
 	auto x = std::make_unique_for_overwrite<char[]>(1024);
 #else
 	auto x = std::unique_ptr<char[]>(new char[1024]);
 #endif
-	__asm__("" :: "m"(x[0]) : "memory");
+	__asm__("" ::"m"(x[0]) : "memory");
 }
 
 // This shows that we can catch exceptions. We can't handle unhandled exceptions, outside of main().
-PUBLIC(void test3(const char* msg))
-{
+PUBLIC(void test3(const char *msg)) {
 	try {
 		throw std::runtime_error(msg);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		printf("Caught exception: %s\n", e.what());
 		fflush(stdout);
 	}
@@ -75,18 +101,16 @@ struct Data {
 	double i, j, k, l;
 	char buffer[32];
 };
-PUBLIC(void test4(const Data& data))
-{
+PUBLIC(void test4(const Data &data)) {
 	printf("Data: %d %d %d %d %f %f %f %f %f %f %f %f %s\n",
-		data.a, data.b, data.c, data.d,
-		data.e, data.f, data.g, data.h,
-		data.i, data.j, data.k, data.l,
-		data.buffer);
+			data.a, data.b, data.c, data.d,
+			data.e, data.f, data.g, data.h,
+			data.i, data.j, data.k, data.l,
+			data.buffer);
 	fflush(stdout);
 }
 
-PUBLIC(void test5())
-{
+PUBLIC(void test5()) {
 	std::vector<MyData> vec;
 	vec.push_back(MyData{ "Hello, World!" });
 	MyData data = { "Second data!" };
@@ -95,21 +119,19 @@ PUBLIC(void test5())
 }
 
 // This function is used to benchmark the overhead of dynamic calls.
-PUBLIC(void bench_dyncall_overhead())
-{
+PUBLIC(void bench_dyncall_overhead()) {
 	dyncall_empty();
 }
 
 // This function is used to test complex classes like std::string and std::vector.
-PUBLIC(void test6(const std::string& str,
-	const std::vector<int>& ints,
-	const std::vector<std::string>& strings))
-{
+PUBLIC(void test6(const std::string &str,
+		const std::vector<int> &ints,
+		const std::vector<std::string> &strings)) {
 	std::string result = "Hello, " + str + "! Integers:";
 	for (auto i : ints)
 		result += " " + std::to_string(i);
 	result += " Strings:";
-	for (const auto& s : strings)
+	for (const auto &s : strings)
 		result += " " + s;
 	dyncall_string(result);
 }

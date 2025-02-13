@@ -23,8 +23,8 @@ func _init():
     script.source_code = base_source
     # this is causing an error in 4.0 (does not halt execution, just prints it)
     # ERROR: Attempt to open script '' resulted in error 'File not found'.
-    # Everyting seems to work.  I suspect that the path is empty and it
-    # is throwing an erro that should not be thrown.  An issue has been
+    # Everything seems to work.  I suspect that the path is empty and it
+    # is throwing an error that should not be thrown.  An issue has been
     # created and marked as bug.
     var result = script.reload()
     var inst = script.new()

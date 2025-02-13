@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_WRAPPED_HPP
-#define GODOT_WRAPPED_HPP
+#ifndef WRAPPED_HPP
+#define WRAPPED_HPP
 
 #include <godot_cpp/core/memory.hpp>
 
@@ -515,4 +515,4 @@ private:
 #define GDVIRTUAL_IS_OVERRIDDEN(m_name) _gdvirtual_##m_name##_overridden()
 #define GDVIRTUAL_IS_OVERRIDDEN_PTR(m_obj, m_name) m_obj->_gdvirtual_##m_name##_overridden()
 
-#endif // GODOT_WRAPPED_HPP
+#endif // WRAPPED_HPP

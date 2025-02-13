@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_AABB_HPP
-#define GODOT_AABB_HPP
+#ifndef AABB_HPP
+#define AABB_HPP
 
 #include <godot_cpp/variant/plane.hpp>
 #include <godot_cpp/variant/vector3.hpp>
@@ -492,4 +492,4 @@ AABB AABB::quantized(real_t p_unit) const {
 
 } // namespace godot
 
-#endif // GODOT_AABB_HPP
+#endif // AABB_HPP

@@ -17,11 +17,11 @@ The GUT brains.
 Description
 -----------
 
-Most of this class is for internal use only.  Features that can be used are have descriptions and can be accessed through the :ref:`GutTest.gut<class_GutTest_property_gut>` variable in your test scripts (extends :ref:`GutTest<class_GutTest>`). The wiki page for this class contains only the usable features. 
+Most of this class is for internal use only.  Features that can be used are have descriptions and can be accessed through the :ref:`GutTest.gut<class_GutTest_property_gut>` variable in your test scripts (extends :ref:`GutTest<class_GutTest>`). The wiki page for this class contains only the usable features.
 
 
 
-GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__ 
+GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__
 
 
 

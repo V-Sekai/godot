@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  system_calls.cpp                                                      */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "../machine.hpp"
 
 #include "../internal_common.hpp"
@@ -5,9 +35,12 @@
 
 //#define SYSCALL_VERBOSE 1
 #ifdef SYSCALL_VERBOSE
-#define SYSPRINT(fmt, ...) \
-	{ char syspbuf[1024]; machine.print(syspbuf, \
-		snprintf(syspbuf, sizeof(syspbuf), fmt, ##__VA_ARGS__)); }
+#define SYSPRINT(fmt, ...)                                               \
+	{                                                                    \
+		char syspbuf[1024];                                              \
+		machine.print(syspbuf,                                           \
+				snprintf(syspbuf, sizeof(syspbuf), fmt, ##__VA_ARGS__)); \
+	}
 static constexpr bool verbose_syscalls = true;
 #else
 #define SYSPRINT(fmt, ...) /* fmt */
@@ -17,9 +50,9 @@ static constexpr bool verbose_syscalls = false;
 #include <fcntl.h>
 #include <signal.h>
 #undef sa_handler
-#include <unistd.h>
-#include <sys/mman.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <unistd.h>
 #if !defined(__OpenBSD__) && !defined(TARGET_OS_IPHONE)
 #include <sys/random.h>
 #endif
@@ -32,13 +65,13 @@ extern "C" int dup3(int oldfd, int newfd, int flags);
 #endif
 #include <sys/syscall.h>
 #ifndef EBADFD
-#define EBADFD EBADF  // OpenBSD, FreeBSD
+#define EBADFD EBADF // OpenBSD, FreeBSD
 #endif
-#define LINUX_SA_ONSTACK	0x08000000
+#define LINUX_SA_ONSTACK 0x08000000
 
 namespace riscv {
 template <int W>
-extern void add_socket_syscalls(Machine<W>&);
+extern void add_socket_syscalls(Machine<W> &);
 
 template <int W>
 struct guest_iovec {
@@ -48,7 +81,7 @@ struct guest_iovec {
 
 #if defined(__APPLE__)
 #include <mach/mach_time.h>
-static int get_time(int clkid, struct timespec* ts) {
+static int get_time(int clkid, struct timespec *ts) {
 	if (clkid == CLOCK_REALTIME) {
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
@@ -59,8 +92,8 @@ static int get_time(int clkid, struct timespec* ts) {
 		uint64_t time = mach_absolute_time();
 		mach_timebase_info_data_t timebase;
 		mach_timebase_info(&timebase);
-		double nsec = ((double)time * (double)timebase.numer)/((double)timebase.denom);
-		ts->tv_sec = nsec * 1e-9;  
+		double nsec = ((double)time * (double)timebase.numer) / ((double)timebase.denom);
+		ts->tv_sec = nsec * 1e-9;
 		ts->tv_nsec = nsec - (ts->tv_sec * 1e9);
 		return 0;
 	} else {
@@ -68,27 +101,25 @@ static int get_time(int clkid, struct timespec* ts) {
 	}
 }
 #else
-static int get_time(int clkid, struct timespec *ts)
-{
+static int get_time(int clkid, struct timespec *ts) {
 	return clock_gettime(clkid, ts);
 }
 #endif
 
 template <int W>
-static void syscall_stub_zero(Machine<W>& machine) {
+static void syscall_stub_zero(Machine<W> &machine) {
 	SYSPRINT("SYSCALL stubbed (zero): %d\n", (int)machine.cpu.reg(17));
 	machine.set_result(0);
 }
 
 template <int W>
-static void syscall_stub_nosys(Machine<W>& machine) {
+static void syscall_stub_nosys(Machine<W> &machine) {
 	SYSPRINT("SYSCALL stubbed (nosys): %d\n", (int)machine.cpu.reg(17));
 	machine.set_result(-ENOSYS);
 }
 
 template <int W>
-static void syscall_exit(Machine<W>& machine)
-{
+static void syscall_exit(Machine<W> &machine) {
 	// Stop sets the max instruction counter to zero, allowing most
 	// instruction loops to end. It is, however, not the only way
 	// to exit a program. Tighter integrations with the library should
@@ -97,21 +128,19 @@ static void syscall_exit(Machine<W>& machine)
 }
 
 template <int W>
-static void syscall_ebreak(riscv::Machine<W>& machine)
-{
-	printf("\n>>> EBREAK at %#lX\n", (long) machine.cpu.pc());
+static void syscall_ebreak(riscv::Machine<W> &machine) {
+	printf("\n>>> EBREAK at %#lX\n", (long)machine.cpu.pc());
 	throw MachineException(UNHANDLED_SYSCALL, "EBREAK instruction");
 }
 
 template <int W>
-static void syscall_sigaltstack(Machine<W>& machine)
-{
+static void syscall_sigaltstack(Machine<W> &machine) {
 	const auto ss = machine.sysarg(0);
 	const auto old_ss = machine.sysarg(1);
 	SYSPRINT("SYSCALL sigaltstack, tid=%d ss: 0x%lX old_ss: 0x%lX\n",
-		machine.gettid(), (long)ss, (long)old_ss);
+			machine.gettid(), (long)ss, (long)old_ss);
 
-	auto& stack = machine.signals().per_thread(machine.gettid()).stack;
+	auto &stack = machine.signals().per_thread(machine.gettid()).stack;
 
 	if (old_ss != 0x0) {
 		machine.copy_to_guest(old_ss, &stack, sizeof(stack));
@@ -120,56 +149,55 @@ static void syscall_sigaltstack(Machine<W>& machine)
 		machine.copy_from_guest(&stack, ss, sizeof(stack));
 
 		SYSPRINT("<<< sigaltstack sp: 0x%lX flags: 0x%X size: 0x%lX\n",
-			(long)stack.ss_sp, stack.ss_flags, (long)stack.ss_size);
+				(long)stack.ss_sp, stack.ss_flags, (long)stack.ss_size);
 	}
 
 	machine.set_result(0);
 }
 
 template <int W>
-static void syscall_sigaction(Machine<W>& machine)
-{
+static void syscall_sigaction(Machine<W> &machine) {
 	const int sig = machine.sysarg(0);
 	const auto action = machine.sysarg(1);
 	const auto old_action = machine.sysarg(2);
 	SYSPRINT("SYSCALL sigaction, signal: %d, action: 0x%lX old_action: 0x%lX\n",
-		sig, (long)action, (long)old_action);
-	if (sig == 0) return;
+			sig, (long)action, (long)old_action);
+	if (sig == 0)
+		return;
 
-	auto& sigact = machine.sigaction(sig);
+	auto &sigact = machine.sigaction(sig);
 
 	struct kernel_sigaction {
 		address_type<W> sa_handler;
 		address_type<W> sa_flags;
 		address_type<W> sa_mask;
-	} sa {};
+	} sa{};
 	if (old_action != 0x0) {
 		sa.sa_handler = sigact.handler & ~address_type<W>(0xF);
-		sa.sa_flags   = (sigact.altstack ? LINUX_SA_ONSTACK : 0x0);
-		sa.sa_mask    = sigact.mask;
+		sa.sa_flags = (sigact.altstack ? LINUX_SA_ONSTACK : 0x0);
+		sa.sa_mask = sigact.mask;
 		machine.copy_to_guest(old_action, &sa, sizeof(sa));
 	}
 	if (action != 0x0) {
 		machine.copy_from_guest(&sa, action, sizeof(sa));
-		sigact.handler  = sa.sa_handler;
+		sigact.handler = sa.sa_handler;
 		sigact.altstack = (sa.sa_flags & LINUX_SA_ONSTACK) != 0;
-		sigact.mask     = sa.sa_mask;
+		sigact.mask = sa.sa_mask;
 		SYSPRINT("<<< sigaction %d handler: 0x%lX altstack: %d\n",
-			sig, (long)sigact.handler, sigact.altstack);
+				sig, (long)sigact.handler, sigact.altstack);
 	}
 
 	machine.set_result(0);
 }
 
 template <int W>
-void syscall_getdents64(Machine<W>& machine)
-{
+void syscall_getdents64(Machine<W> &machine) {
 	const int fd = machine.template sysarg<int>(0);
 	const auto g_dirp = machine.sysarg(1);
 	const auto count = machine.template sysarg<int>(2);
 
 	SYSPRINT("SYSCALL getdents64, fd: %d, dirp: 0x%lX, count: %d\n",
-		fd, (long)g_dirp, count);
+			fd, (long)g_dirp, count);
 	(void)count;
 
 	if (machine.has_file_descriptors() && machine.fds().proxy_mode) {
@@ -178,13 +206,13 @@ void syscall_getdents64(Machine<W>& machine)
 
 		char buffer[4096];
 		const int res = syscall(SYS_getdents64, real_fd, buffer, sizeof(buffer));
-		if (res > 0)
-		{
+		if (res > 0) {
 			machine.copy_to_guest(g_dirp, buffer, res);
 		}
 		machine.set_result_or_error(res);
 #else
-		(void)fd; (void)g_dirp;
+		(void)fd;
+		(void)g_dirp;
 		machine.set_result(-ENOSYS);
 #endif
 	} else {
@@ -193,13 +221,12 @@ void syscall_getdents64(Machine<W>& machine)
 }
 
 template <int W>
-void syscall_lseek(Machine<W>& machine)
-{
-	const int fd      = machine.template sysarg<int>(0);
+void syscall_lseek(Machine<W> &machine) {
+	const int fd = machine.template sysarg<int>(0);
 	const auto offset = machine.sysarg(1);
-	const int whence  = machine.template sysarg<int>(2);
+	const int whence = machine.template sysarg<int>(2);
 	SYSPRINT("SYSCALL lseek, fd: %d, offset: 0x%lX, whence: %d\n",
-		fd, (long)offset, whence);
+			fd, (long)offset, whence);
 
 	if (machine.has_file_descriptors()) {
 		const int real_fd = machine.fds().get(fd);
@@ -214,13 +241,12 @@ void syscall_lseek(Machine<W>& machine)
 	}
 }
 template <int W>
-static void syscall_read(Machine<W>& machine)
-{
-	const int  vfd     = machine.template sysarg<int>(0);
+static void syscall_read(Machine<W> &machine) {
+	const int vfd = machine.template sysarg<int>(0);
 	const auto address = machine.sysarg(1);
-	const size_t len   = machine.sysarg(2);
+	const size_t len = machine.sysarg(2);
 	SYSPRINT("SYSCALL read, vfd: %d addr: 0x%lX, len: %zu\n",
-		vfd, (long)address, len);
+			vfd, (long)address, len);
 	// We have special stdin handling
 	if (vfd == 0) {
 		// Arbitrary maximum read length
@@ -229,7 +255,7 @@ static void syscall_read(Machine<W>& machine)
 			return;
 		}
 		// TODO: We can use gather buffers here to avoid the copy
-		auto buffer = std::unique_ptr<char[]> (new char[len]);
+		auto buffer = std::unique_ptr<char[]>(new char[len]);
 		long result = machine.stdin_read(buffer.get(), len);
 		if (result > 0) {
 			machine.copy_to_guest(address, buffer.get(), result);
@@ -241,35 +267,34 @@ static void syscall_read(Machine<W>& machine)
 
 		std::array<riscv::vBuffer, 512> buffers;
 		size_t cnt =
-			machine.memory.gather_writable_buffers_from_range(buffers.size(), buffers.data(), address, len);
+				machine.memory.gather_writable_buffers_from_range(buffers.size(), buffers.data(), address, len);
 		const ssize_t res =
-			readv(real_fd, (const iovec *)&buffers[0], cnt);
+				readv(real_fd, (const iovec *)&buffers[0], cnt);
 		machine.set_result_or_error(res);
 		SYSPRINT("SYSCALL read, fd: %d from vfd: %d = %ld\n",
-				 real_fd, vfd, (long)machine.return_value());
+				real_fd, vfd, (long)machine.return_value());
 	} else {
 		machine.set_result(-EBADF);
 		SYSPRINT("SYSCALL read, vfd: %d = -EBADF\n", vfd);
 	}
 }
 template <int W>
-static void syscall_pread64(Machine<W>& machine)
-{
-	const int  vfd     = machine.template sysarg<int>(0);
+static void syscall_pread64(Machine<W> &machine) {
+	const int vfd = machine.template sysarg<int>(0);
 	const auto address = machine.sysarg(1);
-	const size_t len   = machine.sysarg(2);
-	const auto offset  = machine.sysarg(3);
+	const size_t len = machine.sysarg(2);
+	const auto offset = machine.sysarg(3);
 	SYSPRINT("SYSCALL pread64, vfd: %d addr: 0x%lX, len: %zu, offset: %lu\n",
-		vfd, (long)address, len, (long)offset);
+			vfd, (long)address, len, (long)offset);
 	if (machine.has_file_descriptors()) {
 		const int real_fd = machine.fds().translate(vfd);
 
 		std::array<riscv::vBuffer, 512> buffers;
 		const size_t cnt =
-			machine.memory.gather_writable_buffers_from_range(buffers.size(), buffers.data(), address, len);
+				machine.memory.gather_writable_buffers_from_range(buffers.size(), buffers.data(), address, len);
 #if defined(__linux__) && !defined(__ANDROID__)
 		const ssize_t res =
-			preadv64(real_fd, (const iovec *)&buffers[0], cnt, offset);
+				preadv64(real_fd, (const iovec *)&buffers[0], cnt, offset);
 #elif defined(__wasm__)
 		const ssize_t res = -ENOSYS;
 #else
@@ -288,26 +313,25 @@ static void syscall_pread64(Machine<W>& machine)
 #endif
 		machine.set_result_or_error(res);
 		SYSPRINT("SYSCALL pread64, fd: %d from vfd: %d => %ld\n",
-				 real_fd, vfd, (long)machine.return_value());
+				real_fd, vfd, (long)machine.return_value());
 	} else {
 		machine.set_result(-EBADF);
 		SYSPRINT("SYSCALL pread64, vfd: %d => -EBADF\n", vfd);
 	}
 }
 template <int W>
-static void syscall_write(Machine<W>& machine)
-{
-	const int  vfd     = machine.template sysarg<int>(0);
+static void syscall_write(Machine<W> &machine) {
+	const int vfd = machine.template sysarg<int>(0);
 	const auto address = machine.sysarg(1);
-	const size_t len   = machine.sysarg(2);
+	const size_t len = machine.sysarg(2);
 	SYSPRINT("SYSCALL write, fd: %d addr: 0x%lX, len: %zu\n",
-		vfd, (long)address, len);
+			vfd, (long)address, len);
 	// Zero-copy retrieval of buffers
 	std::array<riscv::vBuffer, 64> buffers;
 
 	if (vfd == 1 || vfd == 2) {
 		size_t cnt =
-			machine.memory.gather_buffers_from_range(buffers.size(), buffers.data(), address, len);
+				machine.memory.gather_buffers_from_range(buffers.size(), buffers.data(), address, len);
 		for (size_t i = 0; i < cnt; i++) {
 			machine.print(buffers[i].ptr, buffers[i].len);
 		}
@@ -315,11 +339,11 @@ static void syscall_write(Machine<W>& machine)
 	} else if (machine.has_file_descriptors() && machine.fds().permit_write(vfd)) {
 		int real_fd = machine.fds().translate(vfd);
 		size_t cnt =
-			machine.memory.gather_buffers_from_range(buffers.size(), buffers.data(), address, len);
+				machine.memory.gather_buffers_from_range(buffers.size(), buffers.data(), address, len);
 		const ssize_t res =
-			writev(real_fd, (struct iovec *)&buffers[0], cnt);
+				writev(real_fd, (struct iovec *)&buffers[0], cnt);
 		SYSPRINT("SYSCALL write(real fd: %d iovec: %zu) = %ld\n",
-			real_fd, cnt, res);
+				real_fd, cnt, res);
 		machine.set_result_or_error(res);
 	} else {
 		machine.set_result(-EBADF);
@@ -327,11 +351,10 @@ static void syscall_write(Machine<W>& machine)
 }
 
 template <int W>
-static void syscall_readv(Machine<W>& machine)
-{
-	const int  vfd    = machine.template sysarg<int>(0);
-	const auto iov_g  = machine.sysarg(1);
-	const auto count  = machine.template sysarg<int>(2);
+static void syscall_readv(Machine<W> &machine) {
+	const int vfd = machine.template sysarg<int>(0);
+	const auto iov_g = machine.sysarg(1);
+	const auto count = machine.template sysarg<int>(2);
 	if (count < 1 || count > 128) {
 		machine.set_result(-EINVAL);
 		return;
@@ -360,22 +383,21 @@ static void syscall_readv(Machine<W>& machine)
 		for (int i = 0; i < count; i++) {
 			// The host buffers come directly from guest memory
 			vec_cnt += machine.memory.gather_writable_buffers_from_range(
-				buffers.size() - vec_cnt, &buffers[vec_cnt], g_vec[i].iov_base, g_vec[i].iov_len);
+					buffers.size() - vec_cnt, &buffers[vec_cnt], g_vec[i].iov_base, g_vec[i].iov_len);
 		}
 
 		const ssize_t res = readv(real_fd, (struct iovec *)&buffers[0], vec_cnt);
 		machine.set_result_or_error(res);
 	}
 	SYSPRINT("SYSCALL readv(vfd: %d iov: 0x%lX cnt: %d) = %ld\n",
-		vfd, (long)iov_g, count, (long)machine.return_value());
+			vfd, (long)iov_g, count, (long)machine.return_value());
 } // readv
 
 template <int W>
-static void syscall_writev(Machine<W>& machine)
-{
-	const int  vfd    = machine.template sysarg<int>(0);
-	const auto iov_g  = machine.sysarg(1);
-	const auto count  = machine.template sysarg<int>(2);
+static void syscall_writev(Machine<W> &machine) {
+	const int vfd = machine.template sysarg<int>(0);
+	const auto iov_g = machine.sysarg(1);
+	const auto count = machine.template sysarg<int>(2);
 	if constexpr (verbose_syscalls) {
 		printf("SYSCALL writev, iov: 0x%lX  cnt: %d\n", (long)iov_g, count);
 	}
@@ -401,14 +423,13 @@ static void syscall_writev(Machine<W>& machine)
 		std::array<riscv::vBuffer, 64> buffers;
 		size_t vec_cnt = 0;
 
-		for (int i = 0; i < count; i++)
-		{
-			auto& iov = vec.at(i);
-			auto src_g = (address_type<W>) iov.iov_base;
-			auto len_g = (size_t) iov.iov_len;
+		for (int i = 0; i < count; i++) {
+			auto &iov = vec.at(i);
+			auto src_g = (address_type<W>)iov.iov_base;
+			auto len_g = (size_t)iov.iov_len;
 
 			vec_cnt +=
-				machine.memory.gather_buffers_from_range(buffers.size() - vec_cnt, &buffers[vec_cnt], src_g, len_g);
+					machine.memory.gather_buffers_from_range(buffers.size() - vec_cnt, &buffers[vec_cnt], src_g, len_g);
 		}
 
 		ssize_t res = 0;
@@ -426,30 +447,28 @@ static void syscall_writev(Machine<W>& machine)
 	}
 	if constexpr (verbose_syscalls) {
 		printf("SYSCALL writev, vfd: %d real_fd: %d -> %ld\n",
-			vfd, real_fd, long(machine.return_value()));
+				vfd, real_fd, long(machine.return_value()));
 	}
 } // writev
 
 template <int W>
-static void syscall_openat(Machine<W>& machine)
-{
+static void syscall_openat(Machine<W> &machine) {
 	const int dir_fd = machine.template sysarg<int>(0);
 	const auto g_path = machine.sysarg(1);
-	const int flags  = machine.template sysarg<int>(2);
+	const int flags = machine.template sysarg<int>(2);
 	// We do it this way to prevent accessing memory out of bounds
 	std::string path = machine.memory.memstring(g_path);
 
 	SYSPRINT("SYSCALL openat, dir_fd: %d path: %s flags: %X\n",
-		dir_fd, path.c_str(), flags);
+			dir_fd, path.c_str(), flags);
 
 	if (machine.has_file_descriptors() && machine.fds().permit_filesystem) {
-
 		if (machine.fds().filter_open != nullptr) {
 			// filter_open() can modify the path
 			if (!machine.fds().filter_open(machine.template get_userdata<void>(), path)) {
 				machine.set_result(-EPERM);
 				SYSPRINT("SYSCALL openat(path: %s) => %d\n",
-					path.c_str(), machine.template return_value<int>());
+						path.c_str(), machine.template return_value<int>());
 				return;
 			}
 		}
@@ -462,7 +481,7 @@ static void syscall_openat(Machine<W>& machine)
 			machine.set_result(-errno);
 		}
 		SYSPRINT("SYSCALL openat(real_fd: %d) => %d\n",
-			real_fd, machine.template return_value<int>());
+				real_fd, machine.template return_value<int>());
 		return;
 	}
 
@@ -471,8 +490,7 @@ static void syscall_openat(Machine<W>& machine)
 }
 
 template <int W>
-static void syscall_close(riscv::Machine<W>& machine)
-{
+static void syscall_close(riscv::Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 
 	if (vfd >= 0 && vfd <= 2) {
@@ -488,12 +506,11 @@ static void syscall_close(riscv::Machine<W>& machine)
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL close(vfd: %d) => %d\n",
-		vfd, machine.template return_value<int>());
+			vfd, machine.template return_value<int>());
 }
 
 template <int W>
-static void syscall_dup(Machine<W>& machine)
-{
+static void syscall_dup(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	SYSPRINT("SYSCALL dup, fd: %d\n", vfd);
 
@@ -507,8 +524,7 @@ static void syscall_dup(Machine<W>& machine)
 }
 
 template <int W>
-static void syscall_dup3(Machine<W>& machine)
-{
+static void syscall_dup3(Machine<W> &machine) {
 	const int old_vfd = machine.template sysarg<int>(0);
 	const int new_vfd = machine.template sysarg<int>(1);
 	const int flags = machine.template sysarg<int>(2);
@@ -533,32 +549,31 @@ static void syscall_dup3(Machine<W>& machine)
 	}
 
 	SYSPRINT("SYSCALL dup3(old_vfd: %d, new_vfd: %d, flags: 0x%X) => %d\n",
-		old_vfd, new_vfd, flags, (int)machine.return_value());
+			old_vfd, new_vfd, flags, (int)machine.return_value());
 }
 
-int create_pipe(int* pipes, int flags) {
-	#if defined(__APPLE__)
-		// On macOS, we don't have pipe2, so we need to use pipe and then set the flags manually.
-		int res = pipe(pipes);
-		if (res == 0 && flags != 0) {
-			if (flags & O_CLOEXEC) {
-				fcntl(pipes[0], F_SETFD, FD_CLOEXEC);
-				fcntl(pipes[1], F_SETFD, FD_CLOEXEC);
-			}
-			if (flags & O_NONBLOCK) {
-				fcntl(pipes[0], F_SETFL, O_NONBLOCK);
-				fcntl(pipes[1], F_SETFL, O_NONBLOCK);
-			}
+int create_pipe(int *pipes, int flags) {
+#if defined(__APPLE__)
+	// On macOS, we don't have pipe2, so we need to use pipe and then set the flags manually.
+	int res = pipe(pipes);
+	if (res == 0 && flags != 0) {
+		if (flags & O_CLOEXEC) {
+			fcntl(pipes[0], F_SETFD, FD_CLOEXEC);
+			fcntl(pipes[1], F_SETFD, FD_CLOEXEC);
 		}
-		return res;
-	#else
-		return pipe2(pipes, flags);
-	#endif
+		if (flags & O_NONBLOCK) {
+			fcntl(pipes[0], F_SETFL, O_NONBLOCK);
+			fcntl(pipes[1], F_SETFL, O_NONBLOCK);
+		}
+	}
+	return res;
+#else
+	return pipe2(pipes, flags);
+#endif
 }
 
 template <int W>
-static void syscall_pipe2(Machine<W>& machine)
-{
+static void syscall_pipe2(Machine<W> &machine) {
 	const auto vfd_array = machine.sysarg(0);
 	const auto flags = machine.template sysarg<int>(1);
 
@@ -578,12 +593,11 @@ static void syscall_pipe2(Machine<W>& machine)
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL pipe2, fd array: 0x%lX flags: %d = %ld\n",
-		(long)vfd_array, flags, (long)machine.return_value());
+			(long)vfd_array, flags, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_fcntl(Machine<W>& machine)
-{
+static void syscall_fcntl(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	const auto cmd = machine.template sysarg<int>(1);
 	const auto arg1 = machine.sysarg(2);
@@ -599,12 +613,11 @@ static void syscall_fcntl(Machine<W>& machine)
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL fcntl, fd: %d (real_fd: %d)  cmd: 0x%X arg1: 0x%lX => %d\n",
-		vfd, real_fd, cmd, (long)arg1, (int)machine.return_value());
+			vfd, real_fd, cmd, (long)arg1, (int)machine.return_value());
 }
 
 template <int W>
-static void syscall_ioctl(Machine<W>& machine)
-{
+static void syscall_ioctl(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	const auto req = machine.template sysarg<uint64_t>(1);
 	const auto arg1 = machine.sysarg(2);
@@ -626,7 +639,7 @@ static void syscall_ioctl(Machine<W>& machine)
 #if __has_include(<termios.h>) && defined(TCGETS)
 		// Terminal control - ~unsandboxable, but we permit with proxy mode
 		if (machine.fds().proxy_mode && (req == TCGETS || req == TCSETS || req == TCSETSW || req == TCSETSF)) {
-			struct termios term {};
+			struct termios term{};
 			machine.copy_from_guest(&term, arg1, sizeof(term));
 			int res = ioctl(real_fd, req, &term);
 			if (req == TCGETS)
@@ -651,8 +664,7 @@ static void syscall_ioctl(Machine<W>& machine)
 }
 
 template <int W>
-void syscall_readlinkat(Machine<W>& machine)
-{
+void syscall_readlinkat(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	const auto g_path = machine.sysarg(1);
 	const auto g_buf = machine.sysarg(2);
@@ -661,7 +673,7 @@ void syscall_readlinkat(Machine<W>& machine)
 	const std::string original_path = machine.memory.memstring(g_path);
 
 	SYSPRINT("SYSCALL readlinkat, fd: %d path: %s buffer: 0x%lX size: %zu\n",
-		vfd, original_path.c_str(), (long)g_buf, (size_t)bufsize);
+			vfd, original_path.c_str(), (long)g_buf, (size_t)bufsize);
 
 	char buffer[512];
 	if (bufsize > sizeof(buffer)) {
@@ -670,7 +682,6 @@ void syscall_readlinkat(Machine<W>& machine)
 	}
 
 	if (machine.has_file_descriptors()) {
-
 		if (machine.fds().filter_readlink != nullptr) {
 			std::string path = original_path;
 			if (!machine.fds().filter_readlink(machine.template get_userdata<void>(), path)) {
@@ -698,30 +709,29 @@ void syscall_readlinkat(Machine<W>& machine)
 
 // The RISC-V stat structure is different from x86
 struct riscv_stat {
-	uint64_t st_dev;		/* Device.  */
-	uint64_t st_ino;		/* File serial number.  */
-	uint32_t st_mode;	/* File mode.  */
-	uint32_t st_nlink;	/* Link count.  */
-	uint32_t st_uid;		/* User ID of the file's owner.  */
-	uint32_t st_gid;		/* Group ID of the file's group. */
-	uint64_t st_rdev;	/* Device number, if device.  */
+	uint64_t st_dev; /* Device.  */
+	uint64_t st_ino; /* File serial number.  */
+	uint32_t st_mode; /* File mode.  */
+	uint32_t st_nlink; /* Link count.  */
+	uint32_t st_uid; /* User ID of the file's owner.  */
+	uint32_t st_gid; /* Group ID of the file's group. */
+	uint64_t st_rdev; /* Device number, if device.  */
 	uint64_t __pad1;
-	int64_t  st_size;	/* Size of file, in bytes.  */
-	int32_t  st_blksize;	/* Optimal block size for I/O.  */
-	int32_t  __pad2;
-	int64_t  st_blocks;	/* Number 512-byte blocks allocated. */
+	int64_t st_size; /* Size of file, in bytes.  */
+	int32_t st_blksize; /* Optimal block size for I/O.  */
+	int32_t __pad2;
+	int64_t st_blocks; /* Number 512-byte blocks allocated. */
 	// TODO: The following are all 32-bit on 32-bit RISC-V
-	int64_t  rv_atime;	/* Time of last access.  */
+	int64_t rv_atime; /* Time of last access.  */
 	uint64_t rv_atime_nsec;
-	int64_t  rv_mtime;	/* Time of last modification.  */
+	int64_t rv_mtime; /* Time of last modification.  */
 	uint64_t rv_mtime_nsec;
-	int64_t  rv_ctime;	/* Time of last status change.  */
+	int64_t rv_ctime; /* Time of last status change.  */
 	uint64_t rv_ctime_nsec;
 	uint32_t __unused4;
 	uint32_t __unused5;
 };
-inline void copy_stat_buffer(struct stat& st, struct riscv_stat& rst)
-{
+inline void copy_stat_buffer(struct stat &st, struct riscv_stat &rst) {
 	rst.st_dev = st.st_dev;
 	rst.st_ino = st.st_ino;
 	rst.st_mode = st.st_mode;
@@ -733,67 +743,63 @@ inline void copy_stat_buffer(struct stat& st, struct riscv_stat& rst)
 	rst.st_blksize = st.st_blksize;
 	rst.st_blocks = st.st_blocks;
 	rst.rv_atime = st.st_atime;
-	#ifdef __APPLE__
+#ifdef __APPLE__
 	rst.rv_atime_nsec = st.st_atimespec.tv_nsec;
-	#else
-	#ifdef __USE_MISC
+#else
+#ifdef __USE_MISC
 	rst.rv_atime_nsec = st.st_atim.tv_nsec;
-	#else
+#else
 	rst.rv_atime_nsec = 0; // or another appropriate value
-	#endif
-	#endif
+#endif
+#endif
 	rst.rv_mtime = st.st_mtime;
-	#ifdef __APPLE__
+#ifdef __APPLE__
 	rst.rv_mtime_nsec = st.st_mtimespec.tv_nsec;
-	#else
-	#ifdef __USE_MISC
+#else
+#ifdef __USE_MISC
 	rst.rv_mtime_nsec = st.st_mtim.tv_nsec;
-	#else
+#else
 	rst.rv_mtime_nsec = 0; // or another appropriate value
-	#endif
-	#endif
+#endif
+#endif
 	rst.rv_ctime = st.st_ctime;
-	#ifdef __APPLE__
+#ifdef __APPLE__
 	rst.rv_ctime_nsec = st.st_ctimespec.tv_nsec;
-	#else
-	#ifdef __USE_MISC
+#else
+#ifdef __USE_MISC
 	rst.rv_ctime_nsec = st.st_ctim.tv_nsec;
-	#else
+#else
 	rst.rv_ctime_nsec = 0; // or another appropriate value
-	#endif
-	#endif
+#endif
+#endif
 }
 
-
 template <int W>
-static void syscall_getcwd(Machine<W>& machine)
-{
+static void syscall_getcwd(Machine<W> &machine) {
 	const auto g_buf = machine.sysarg(0);
 	[[maybe_unused]] const auto size = machine.sysarg(1);
 
-	auto& cwd = machine.fds().cwd;
+	auto &cwd = machine.fds().cwd;
 	if (!cwd.empty()) {
-		machine.copy_to_guest(g_buf, cwd.c_str(), cwd.size()+1);
-		machine.set_result(cwd.size()+1);
+		machine.copy_to_guest(g_buf, cwd.c_str(), cwd.size() + 1);
+		machine.set_result(cwd.size() + 1);
 	} else {
 		machine.set_result(-1);
 	}
 	SYSPRINT("SYSCALL getcwd, buffer: 0x%lX size: %ld => %ld\n",
-		(long)g_buf, (long)size, (long)machine.return_value());
+			(long)g_buf, (long)size, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_fstatat(Machine<W>& machine)
-{
-	const auto vfd = machine.template sysarg<int> (0);
+static void syscall_fstatat(Machine<W> &machine) {
+	const auto vfd = machine.template sysarg<int>(0);
 	const auto g_path = machine.sysarg(1);
 	const auto g_buf = machine.sysarg(2);
-	const auto flags = machine.template sysarg<int> (3);
+	const auto flags = machine.template sysarg<int>(3);
 
 	std::string path = machine.memory.memstring(g_path);
 
 	if (machine.has_file_descriptors()) {
-
 		int real_fd = machine.fds().translate(vfd);
 
 		if (machine.fds().filter_stat != nullptr && !path.empty()) {
@@ -824,12 +830,11 @@ static void syscall_fstatat(Machine<W>& machine)
 }
 
 template <int W>
-static void syscall_faccessat(Machine<W>& machine)
-{
+static void syscall_faccessat(Machine<W> &machine) {
 	const auto fd = AT_FDCWD;
 	const auto g_path = machine.sysarg(1);
-	const auto mode   = machine.template sysarg<int>(2);
-	const auto flags  = machine.template sysarg<int>(3);
+	const auto mode = machine.template sysarg<int>(2);
+	const auto flags = machine.template sysarg<int>(3);
 
 	const auto path = machine.memory.memstring(g_path);
 
@@ -837,18 +842,16 @@ static void syscall_faccessat(Machine<W>& machine)
 			fd, path.c_str());
 
 	const int res =
-		faccessat(fd, path.c_str(), mode, flags);
+			faccessat(fd, path.c_str(), mode, flags);
 	machine.set_result_or_error(res);
 }
 
 template <int W>
-static void syscall_fstat(Machine<W>& machine)
-{
-	const auto vfd = machine.template sysarg<int> (0);
+static void syscall_fstat(Machine<W> &machine) {
+	const auto vfd = machine.template sysarg<int>(0);
 	const auto g_buf = machine.sysarg(1);
 
 	if (machine.has_file_descriptors()) {
-
 		const int real_fd = machine.fds().translate(vfd);
 
 		struct stat st;
@@ -866,12 +869,11 @@ static void syscall_fstat(Machine<W>& machine)
 	}
 
 	SYSPRINT("SYSCALL fstat, fd: %d buf: 0x%lX) => %d\n",
-			 vfd, (long)g_buf, (int)machine.return_value());
+			vfd, (long)g_buf, (int)machine.return_value());
 }
 
 template <int W>
-static void syscall_gettimeofday(Machine<W>& machine)
-{
+static void syscall_gettimeofday(Machine<W> &machine) {
 	const auto buffer = machine.sysarg(0);
 	SYSPRINT("SYSCALL gettimeofday, buffer: 0x%lX\n", (long)buffer);
 	struct timeval tv;
@@ -884,12 +886,11 @@ static void syscall_gettimeofday(Machine<W>& machine)
 	machine.set_result_or_error(res);
 }
 template <int W>
-static void syscall_clock_gettime(Machine<W>& machine)
-{
+static void syscall_clock_gettime(Machine<W> &machine) {
 	const auto clkid = machine.template sysarg<int>(0);
 	const auto buffer = machine.sysarg(1);
 	SYSPRINT("SYSCALL clock_gettime, clkid: %x buffer: 0x%lX\n",
-		clkid, (long)buffer);
+			clkid, (long)buffer);
 
 	struct timespec ts;
 	const int res = get_time(clkid, &ts);
@@ -897,7 +898,7 @@ static void syscall_clock_gettime(Machine<W>& machine)
 		if (!(machine.has_file_descriptors() && machine.fds().proxy_mode))
 			ts.tv_nsec &= ANTI_FINGERPRINTING_MASK_NANOS();
 		if constexpr (W == 4) {
-			int32_t ts32[2] = {(int) ts.tv_sec, (int) ts.tv_nsec};
+			int32_t ts32[2] = { (int)ts.tv_sec, (int)ts.tv_nsec };
 			machine.copy_to_guest(buffer, &ts32, sizeof(ts32));
 		} else {
 			machine.copy_to_guest(buffer, &ts, sizeof(ts));
@@ -906,12 +907,11 @@ static void syscall_clock_gettime(Machine<W>& machine)
 	machine.set_result_or_error(res);
 }
 template <int W>
-static void syscall_clock_gettime64(Machine<W>& machine)
-{
+static void syscall_clock_gettime64(Machine<W> &machine) {
 	const auto clkid = machine.template sysarg<int>(0);
 	const auto buffer = machine.sysarg(1);
 	SYSPRINT("SYSCALL clock_gettime64, clkid: %x buffer: 0x%lX\n",
-		clkid, (long)buffer);
+			clkid, (long)buffer);
 
 	struct timespec ts;
 	int res = get_time(clkid, &ts);
@@ -923,19 +923,18 @@ static void syscall_clock_gettime64(Machine<W>& machine)
 			int64_t tv_sec;
 			int64_t tv_nsec;
 		} kernel_ts;
-		kernel_ts.tv_sec  = ts.tv_sec;
+		kernel_ts.tv_sec = ts.tv_sec;
 		kernel_ts.tv_nsec = ts.tv_nsec;
 		machine.copy_to_guest(buffer, &kernel_ts, sizeof(kernel_ts));
 	}
 	machine.set_result_or_error(res);
 }
 template <int W>
-static void syscall_nanosleep(Machine<W>& machine)
-{
+static void syscall_nanosleep(Machine<W> &machine) {
 	const auto g_req = machine.sysarg(0);
 	const auto g_rem = machine.sysarg(1);
 	SYSPRINT("SYSCALL nanosleep, req: 0x%lX rem: 0x%lX\n",
-		(long)g_req, (long)g_rem);
+			(long)g_req, (long)g_rem);
 
 	struct timespec ts_req;
 	machine.copy_from_guest(&ts_req, g_req, sizeof(ts_req));
@@ -955,8 +954,7 @@ static void syscall_nanosleep(Machine<W>& machine)
 	machine.set_result_or_error(res);
 }
 template <int W>
-static void syscall_clock_nanosleep(Machine<W>& machine)
-{
+static void syscall_clock_nanosleep(Machine<W> &machine) {
 	const auto g_request = machine.sysarg(2);
 	const auto g_remain = machine.sysarg(3);
 
@@ -973,25 +971,24 @@ static void syscall_clock_nanosleep(Machine<W>& machine)
 	machine.set_result_or_error(res);
 
 	SYSPRINT("SYSCALL clock_nanosleep, req: 0x%lX rem: 0x%lX = %ld\n",
-		(long)g_request, (long)g_remain, (long)machine.return_value());
+			(long)g_request, (long)g_remain, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_uname(Machine<W>& machine)
-{
+static void syscall_uname(Machine<W> &machine) {
 	const auto buffer = machine.sysarg(0);
 	SYSPRINT("SYSCALL uname, buffer: 0x%lX\n", (long)buffer);
 	static constexpr int UTSLEN = 65;
 	struct {
-		char sysname [UTSLEN];
+		char sysname[UTSLEN];
 		char nodename[UTSLEN];
-		char release [UTSLEN];
-		char version [UTSLEN];
-		char machine [UTSLEN];
-		char domain  [UTSLEN];
+		char release[UTSLEN];
+		char version[UTSLEN];
+		char machine[UTSLEN];
+		char domain[UTSLEN];
 	} uts;
 	strcpy(uts.sysname, "RISC-V C++ Emulator");
-	strcpy(uts.nodename,"libriscv");
+	strcpy(uts.nodename, "libriscv");
 	strcpy(uts.release, "5.6.0");
 	strcpy(uts.version, "");
 	if constexpr (W == 4)
@@ -1000,15 +997,14 @@ static void syscall_uname(Machine<W>& machine)
 		strcpy(uts.machine, "rv64imafdc");
 	else
 		strcpy(uts.machine, "rv128imafdc");
-	strcpy(uts.domain,  "(none)");
+	strcpy(uts.domain, "(none)");
 
 	machine.copy_to_guest(buffer, &uts, sizeof(uts));
 	machine.set_result(0);
 }
 
 template <int W>
-static void syscall_capget(Machine<W>& machine)
-{
+static void syscall_capget(Machine<W> &machine) {
 	const auto header_ptr = machine.sysarg(0);
 	const auto data_ptr = machine.sysarg(1);
 
@@ -1049,12 +1045,11 @@ static void syscall_capget(Machine<W>& machine)
 	}
 
 	SYSPRINT("SYSCALL capget, header: 0x%lX, data: 0x%lX => %ld\n",
-			 (long)header_ptr, (long)data_ptr, (long)machine.return_value());
+			(long)header_ptr, (long)data_ptr, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_brk(Machine<W>& machine)
-{
+static void syscall_brk(Machine<W> &machine) {
 	auto new_end = machine.sysarg(0);
 	if (new_end > machine.memory.heap_address() + Memory<W>::BRK_MAX) {
 		new_end = machine.memory.heap_address() + Memory<W>::BRK_MAX;
@@ -1069,14 +1064,13 @@ static void syscall_brk(Machine<W>& machine)
 }
 
 #if defined(__APPLE__)
-	#include <Security/Security.h>
+#include <Security/Security.h>
 #endif
 
 template <int W>
-static void syscall_getrandom(Machine<W>& machine)
-{
+static void syscall_getrandom(Machine<W> &machine) {
 	const auto g_addr = machine.sysarg(0);
-	const auto g_len  = machine.sysarg(1);
+	const auto g_len = machine.sysarg(1);
 
 	char buffer[256];
 	if (g_len > sizeof(buffer)) {
@@ -1088,12 +1082,12 @@ static void syscall_getrandom(Machine<W>& machine)
 	const ssize_t result = need; // always success
 	arc4random_buf(buffer, need);
 #elif defined(__APPLE__)
-	#if TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE
 	const ssize_t result = need;
-	#else
+#else
 	const int sec_result = SecRandomCopyBytes(kSecRandomDefault, need, (uint8_t *)buffer);
 	const ssize_t result = (sec_result == errSecSuccess) ? need : -1;
-	#endif
+#endif
 #elif defined(__ANDROID__) || defined(__wasm__)
 	std::memset(buffer, 0x11, need);
 	const ssize_t result = need;
@@ -1109,22 +1103,21 @@ static void syscall_getrandom(Machine<W>& machine)
 
 	if constexpr (verbose_syscalls) {
 		printf("SYSCALL getrandom(addr=0x%lX, len=%ld) = %ld\n",
-			(long)g_addr, (long)g_len, (long)machine.return_value());
+				(long)g_addr, (long)g_len, (long)machine.return_value());
 	}
 }
 
 #if defined(__linux__) && !defined(__ANDROID__)
 template <int W>
-static void syscall_statx(Machine<W>& machine)
-{
+static void syscall_statx(Machine<W> &machine) {
 	machine.set_result(-ENOSYS);
 	return;
 
-	const int   dir_fd = machine.template sysarg<int> (0);
-	const auto  g_path = machine.sysarg(1);
-	const int    flags = machine.template sysarg<int> (2);
-	const auto    mask = machine.template sysarg<uint32_t> (3);
-	const auto  buffer = machine.sysarg(4);
+	const int dir_fd = machine.template sysarg<int>(0);
+	const auto g_path = machine.sysarg(1);
+	const int flags = machine.template sysarg<int>(2);
+	const auto mask = machine.template sysarg<uint32_t>(3);
+	const auto buffer = machine.sysarg(4);
 
 	const auto path = machine.memory.memstring(g_path);
 
@@ -1153,8 +1146,8 @@ static void syscall_statx(Machine<W>& machine)
 
 #include "syscalls_mman.cpp"
 
-#include "syscalls_select.cpp"
 #include "syscalls_poll.cpp"
+#include "syscalls_select.cpp"
 #ifdef __linux__
 #include "syscalls_epoll.cpp"
 #else
@@ -1162,8 +1155,7 @@ static void syscall_statx(Machine<W>& machine)
 #endif
 
 template <int W>
-void Machine<W>::setup_newlib_syscalls()
-{
+void Machine<W>::setup_newlib_syscalls() {
 	install_syscall_handler(57, syscall_stub_zero<W>); // close
 	install_syscall_handler(62, syscall_lseek<W>);
 	install_syscall_handler(63, syscall_read<W>);
@@ -1174,8 +1166,7 @@ void Machine<W>::setup_newlib_syscalls()
 	install_syscall_handler(214, syscall_brk<W>);
 }
 template <int W>
-void Machine<W>::setup_newlib_syscalls(bool filesystem)
-{
+void Machine<W>::setup_newlib_syscalls(bool filesystem) {
 	setup_newlib_syscalls();
 
 	if (filesystem)
@@ -1183,8 +1174,7 @@ void Machine<W>::setup_newlib_syscalls(bool filesystem)
 }
 
 template <int W>
-void Machine<W>::setup_linux_syscalls(bool filesystem, bool sockets)
-{
+void Machine<W>::setup_linux_syscalls(bool filesystem, bool sockets) {
 	install_syscall_handler(SYSCALL_EBREAK, syscall_ebreak<W>);
 
 	// getcwd
@@ -1239,34 +1229,33 @@ void Machine<W>::setup_linux_syscalls(bool filesystem, bool sockets)
 
 	// If no multi-threading has been initialized, we should install
 	// stub syscall handlers for some multi-threading functionality
-	if (!this->has_threads())
-	{
+	if (!this->has_threads()) {
 		// set_tid_address
 		install_syscall_handler(96, syscall_stub_zero<W>);
 		// set_robust_list
 		install_syscall_handler(99, syscall_stub_zero<W>);
 		// prlimit64
 		this->install_syscall_handler(261,
-		[] (Machine<W>& machine) {
-			const int resource = machine.template sysarg<int> (1);
-			const auto old_addr = machine.template sysarg<address_type<W>> (3);
-			struct {
-				address_type<W> cur = 0;
-				address_type<W> max = 0;
-			} lim;
-			constexpr int RISCV_RLIMIT_STACK = 3;
-			if (old_addr != 0) {
-				if (resource == RISCV_RLIMIT_STACK) {
-					lim.cur = 0x200000;
-					lim.max = 0x200000;
-				}
-				machine.copy_to_guest(old_addr, &lim, sizeof(lim));
-				machine.set_result(0);
-			} else {
-				machine.set_result(-EINVAL);
-			}
-			SYSPRINT("SYSCALL prlimit64(...) = %d\n", machine.return_value<int>());
-		});
+				[](Machine<W> &machine) {
+					const int resource = machine.template sysarg<int>(1);
+					const auto old_addr = machine.template sysarg<address_type<W>>(3);
+					struct {
+						address_type<W> cur = 0;
+						address_type<W> max = 0;
+					} lim;
+					constexpr int RISCV_RLIMIT_STACK = 3;
+					if (old_addr != 0) {
+						if (resource == RISCV_RLIMIT_STACK) {
+							lim.cur = 0x200000;
+							lim.max = 0x200000;
+						}
+						machine.copy_to_guest(old_addr, &lim, sizeof(lim));
+						machine.set_result(0);
+					} else {
+						machine.set_result(-EINVAL);
+					}
+					SYSPRINT("SYSCALL prlimit64(...) = %d\n", machine.return_value<int>());
+				});
 	}
 
 	// nanosleep
@@ -1282,23 +1271,23 @@ void Machine<W>::setup_linux_syscalls(bool filesystem, bool sockets)
 	install_syscall_handler(123, syscall_stub_nosys<W>);
 	// tkill
 	install_syscall_handler(130,
-	[] (Machine<W>& machine) {
-		const int tid = machine.template sysarg<int> (0);
-		const int sig = machine.template sysarg<int> (1);
-		SYSPRINT(">>> tkill on tid=%d signal=%d\n", tid, sig);
-		(void) tid;
-		// If the signal zero or unset, ignore it
-		if (sig == 0 || machine.sigaction(sig).is_unset()) {
-			return;
-		} else {
-			// Jump to signal handler and change to altstack, if set
-			machine.signals().enter(machine, sig);
-			SYSPRINT("<<< tkill signal=%d jumping to 0x%lX (sp=0x%lX)\n",
-				sig, (long)machine.cpu.pc(), (long)machine.cpu.reg(REG_SP));
-			return;
-		}
-		machine.stop();
-	});
+			[](Machine<W> &machine) {
+				const int tid = machine.template sysarg<int>(0);
+				const int sig = machine.template sysarg<int>(1);
+				SYSPRINT(">>> tkill on tid=%d signal=%d\n", tid, sig);
+				(void)tid;
+				// If the signal zero or unset, ignore it
+				if (sig == 0 || machine.sigaction(sig).is_unset()) {
+					return;
+				} else {
+					// Jump to signal handler and change to altstack, if set
+					machine.signals().enter(machine, sig);
+					SYSPRINT("<<< tkill signal=%d jumping to 0x%lX (sp=0x%lX)\n",
+							sig, (long)machine.cpu.pc(), (long)machine.cpu.reg(REG_SP));
+					return;
+				}
+				machine.stop();
+			});
 	// sigaltstack
 	install_syscall_handler(132, syscall_sigaltstack<W>);
 	// rt_sigaction
@@ -1367,9 +1356,9 @@ template void Machine<8>::setup_linux_syscalls(bool, bool);
 
 FileDescriptors::~FileDescriptors() {
 	// Close all the real FDs
-	for (const auto& it : translation) {
+	for (const auto &it : translation) {
 		::close(it.second);
 	}
 }
 
-} // riscv
+} //namespace riscv

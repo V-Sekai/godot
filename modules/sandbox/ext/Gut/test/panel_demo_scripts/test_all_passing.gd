@@ -39,4 +39,3 @@ func test_passing_12():
 
 func test_passing_13():
 	pass_test("this passes")
-

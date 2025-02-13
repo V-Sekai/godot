@@ -168,7 +168,7 @@ if(APPLE)
     find_library(FOUNDATION_FRAMEWORK Foundation)
     mark_as_advanced(SECURITY_FRAMEWORK FOUNDATION_FRAMEWORK)
 
-    target_link_libraries(riscv PUBLIC 
+    target_link_libraries(riscv PUBLIC
         "${SECURITY_FRAMEWORK}"
         "${FOUNDATION_FRAMEWORK}"
     )

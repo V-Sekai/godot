@@ -1,5 +1,35 @@
-#include "ext/lodepng/lodepng.h"
+/**************************************************************************/
+/*  png.hpp                                                               */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "ext/lodepng/lodepng.cpp"
+#include "ext/lodepng/lodepng.h"
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -9,7 +39,7 @@ inline constexpr uint32_t bgr24(uint32_t r, uint32_t g, uint32_t b) {
 	return r | (g << 8) | (b << 16) | (255 << 24);
 }
 
-static constexpr std::array<uint32_t, 16> color_mapping {
+static constexpr std::array<uint32_t, 16> color_mapping{
 	bgr24(66, 30, 15),
 	bgr24(25, 7, 26),
 	bgr24(9, 1, 47),
@@ -28,8 +58,7 @@ static constexpr std::array<uint32_t, 16> color_mapping {
 	bgr24(106, 52, 3),
 };
 
-auto encode(size_t W, size_t H, const uint8_t* data)
-{
+auto encode(size_t W, size_t H, const uint8_t *data) {
 	std::vector<uint8_t> png;
 
 #ifdef PNG_8BIT
@@ -37,20 +66,20 @@ auto encode(size_t W, size_t H, const uint8_t* data)
 	lodepng_state_init(&state);
 	for (const auto color : color_mapping) {
 		lodepng_palette_add(&state.info_raw,
-			(color >> 0)  & 0xFF,
-			(color >> 8)  & 0xFF,
-			(color >> 16) & 0xFF,
-			(color >> 24) & 0xFF);
+				(color >> 0) & 0xFF,
+				(color >> 8) & 0xFF,
+				(color >> 16) & 0xFF,
+				(color >> 24) & 0xFF);
 		lodepng_palette_add(&state.info_png.color,
-			(color >> 0)  & 0xFF,
-			(color >> 8)  & 0xFF,
-			(color >> 16) & 0xFF,
-			(color >> 24) & 0xFF);
+				(color >> 0) & 0xFF,
+				(color >> 8) & 0xFF,
+				(color >> 16) & 0xFF,
+				(color >> 24) & 0xFF);
 	}
 	state.info_png.color.colortype = LCT_PALETTE;
-	state.info_png.color.bitdepth  = 8;
+	state.info_png.color.bitdepth = 8;
 	state.info_raw.colortype = LCT_PALETTE;
-	state.info_raw.bitdepth  = 8;
+	state.info_raw.bitdepth = 8;
 	state.encoder.auto_convert = 0;
 	// 1: Disable LZ77 but still use Huffman
 	state.encoder.zlibsettings.btype = 2;

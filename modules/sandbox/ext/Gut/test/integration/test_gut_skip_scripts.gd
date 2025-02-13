@@ -80,7 +80,7 @@ func test_awaiting_before_should_skip_script():
 	await wait_for_signal(_gut.end_run, 3, "Should take exactly 1 second")
 	var summery = GutUtils.Summary.new()
 	var totals = summery.get_totals(_gut)
-	
+
 	assert_eq(totals.tests, 0, 'no tests should be ran')
 	assert_eq(totals.risky, 1, 'Should be marked as risky due to skip')
 

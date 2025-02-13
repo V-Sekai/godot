@@ -145,8 +145,3 @@ class TestMouseMotion:
 	func test_mouse_relative_sets_speed_when_last_motion_not_sent():
 		var event = InputFactory.mouse_relative_motion(Vector2(1, 1), null, Vector2(10, 10))
 		assert_eq(event.velocity, Vector2(10, 10))
-
-
-
-
-

@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_VECTOR3I_HPP
-#define GODOT_VECTOR3I_HPP
+#ifndef VECTOR3I_HPP
+#define VECTOR3I_HPP
 
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/core/math.hpp>
@@ -340,4 +340,4 @@ void Vector3i::zero() {
 
 } // namespace godot
 
-#endif // GODOT_VECTOR3I_HPP
+#endif // VECTOR3I_HPP

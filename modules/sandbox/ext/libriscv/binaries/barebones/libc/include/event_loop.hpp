@@ -1,3 +1,35 @@
+/**************************************************************************/
+/*  event_loop.hpp                                                        */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef EVENT_LOOP_HPP
+#define EVENT_LOOP_HPP
 #include "function.hpp"
 #include "ringbuffer.hpp"
 
@@ -9,21 +41,20 @@ struct Events {
 	bool in_use = false;
 
 	void consume_work();
-	bool add(const Work&);
+	bool add(const Work &);
 };
 
 template <size_t Capacity>
-inline void Events<Capacity>::consume_work()
-{
+inline void Events<Capacity>::consume_work() {
 	this->in_use = true;
-	while (const auto* wrk = ring.read()) {
+	while (const auto *wrk = ring.read()) {
 		(*wrk)();
 	}
 	this->in_use = false;
 }
 
 template <size_t Capacity>
-inline bool Events<Capacity>::add(const Work& work) {
+inline bool Events<Capacity>::add(const Work &work) {
 	if (in_use == false) {
 		return ring.write(work);
 	}
@@ -33,10 +64,10 @@ inline bool Events<Capacity>::add(const Work& work) {
 /**
  * SharedEvents is an events structure designed to be
  * shared between the host and the script.
-**/
-template <typename Argument = void*, size_t Capacity = 16>
+ **/
+template <typename Argument = void *, size_t Capacity = 16>
 struct SharedEvents {
-	using Callback = void(*)(Argument);
+	using Callback = void (*)(Argument);
 	struct Work {
 		Callback callback;
 		Argument argument;
@@ -52,11 +83,10 @@ struct SharedEvents {
 };
 
 template <typename Argument, size_t Capacity>
-inline void SharedEvents<Argument, Capacity>::consume_work()
-{
+inline void SharedEvents<Argument, Capacity>::consume_work() {
 	this->in_use = true;
 	try {
-		while (const auto* wrk = ring.read()) {
+		while (const auto *wrk = ring.read()) {
 			wrk->callback(wrk->argument);
 		}
 		this->in_use = false;
@@ -69,7 +99,7 @@ inline void SharedEvents<Argument, Capacity>::consume_work()
 template <typename Argument, size_t Capacity>
 inline bool SharedEvents<Argument, Capacity>::add(Callback cb, Argument arg) {
 	if (in_use == false) {
-		return ring.write({cb, arg});
+		return ring.write({ cb, arg });
 	}
 	return false;
 }
@@ -77,7 +107,9 @@ inline bool SharedEvents<Argument, Capacity>::add(Callback cb, Argument arg) {
 template <typename Argument, size_t Capacity>
 inline bool SharedEvents<Argument, Capacity>::host_add(uintptr_t cb, uintptr_t arg) {
 	if (in_use == false) {
-		return ring.write({(Callback&)cb, (Argument)arg});
+		return ring.write({ (Callback &)cb, (Argument)arg });
 	}
 	return false;
 }
+
+#endif // EVENT_LOOP_HPP

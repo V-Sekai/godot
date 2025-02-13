@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_VECTOR4_HPP
-#define GODOT_VECTOR4_HPP
+#ifndef VECTOR4_HPP
+#define VECTOR4_HPP
 
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/core/math.hpp>
@@ -320,4 +320,4 @@ _FORCE_INLINE_ Vector4 operator*(const int64_t p_scalar, const Vector4 &p_vec) {
 
 } // namespace godot
 
-#endif // GODOT_VECTOR4_HPP
+#endif // VECTOR4_HPP

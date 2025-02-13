@@ -1,15 +1,44 @@
+/**************************************************************************/
+/*  vmcall.cpp                                                            */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <libriscv/machine.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string& code,
-	const std::string& args = "-O2 -static", bool cpp = false);
+extern std::vector<uint8_t> build_and_load(const std::string &code,
+		const std::string &args = "-O2 -static", bool cpp = false);
 static const uint64_t MAX_MEMORY = 8ul << 20; /* 8MB */
 static const uint64_t MAX_INSTRUCTIONS = 10'000'000ul;
 using namespace riscv;
 
-TEST_CASE("VM function call", "[VMCall]")
-{
+TEST_CASE("VM function call", "[VMCall]") {
 	struct State {
 		bool output_is_hello_world = false;
 	} state;
@@ -24,18 +53,18 @@ TEST_CASE("VM function call", "[VMCall]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
 	// We need to install Linux system calls for maximum gucciness
 	machine.setup_linux_syscalls();
 	// We need to create a Linux environment for runtimes to work well
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	machine.set_userdata(&state);
-	machine.set_printer([] (const auto& m, const char* data, size_t size) {
-		auto* state = m.template get_userdata<State> ();
-		std::string text{data, data + size};
+	machine.set_printer([](const auto &m, const char *data, size_t size) {
+		auto *state = m.template get_userdata<State>();
+		std::string text{ data, data + size };
 		state->output_is_hello_world = (text == "Hello World!");
 	});
 	// Run for at most X instructions before giving up
@@ -54,8 +83,7 @@ TEST_CASE("VM function call", "[VMCall]")
 	REQUIRE(state.output_is_hello_world);
 }
 
-TEST_CASE("VM call return values", "[VMCall]")
-{
+TEST_CASE("VM call return values", "[VMCall]") {
 	const auto binary = build_and_load(R"M(
 	__attribute__((used, retain))
 	const char* hello() {
@@ -76,13 +104,13 @@ TEST_CASE("VM call return values", "[VMCall]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
 	// We need to install Linux system calls for maximum gucciness
 	machine.setup_linux_syscalls();
 	// We need to create a Linux environment for runtimes to work well
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	const auto hello_address = machine.address_of("hello");
 	REQUIRE(hello_address != 0x0);
@@ -111,14 +139,13 @@ TEST_CASE("VM call return values", "[VMCall]")
 	// This is probably fine as the stack starts at the end of a page,
 	// making this structure very likely sequential in memory.
 	// If it wasn't an exception would be thrown.
-	const auto* data_ptr = machine.return_value<Data*>();
+	const auto *data_ptr = machine.return_value<Data *>();
 	REQUIRE(data_ptr->val1 == 1);
 	REQUIRE(data_ptr->val2 == 2);
 	REQUIRE(data_ptr->f1 == 3.0f);
 }
 
-TEST_CASE("VM call enum values", "[VMCall]")
-{
+TEST_CASE("VM call enum values", "[VMCall]") {
 	const auto binary = build_and_load(R"M(
 	#include <assert.h>
 	int do_syscall(int value) {
@@ -138,11 +165,11 @@ TEST_CASE("VM call enum values", "[VMCall]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	// Test Enum values
 	enum class MyEnum : int {
@@ -151,18 +178,17 @@ TEST_CASE("VM call enum values", "[VMCall]")
 	};
 
 	machine.install_syscall_handler(0,
-	[] (auto& machine) {
-		auto [value] = machine.template sysargs <MyEnum> ();
-		REQUIRE(value == MyEnum::Hello);
-		machine.set_result(MyEnum::World);
-	});
+			[](auto &machine) {
+				auto [value] = machine.template sysargs<MyEnum>();
+				REQUIRE(value == MyEnum::Hello);
+				machine.set_result(MyEnum::World);
+			});
 
 	machine.vmcall("mycall", MyEnum::Hello);
 	REQUIRE(machine.return_value<MyEnum>() == MyEnum::World);
 }
 
-TEST_CASE("VM function call in fork", "[VMCall]")
-{
+TEST_CASE("VM function call in fork", "[VMCall]") {
 	// The global variable 'value' should get
 	// forked as value=1. We assert this, then
 	// we set value=0. New forks should continue
@@ -220,30 +246,29 @@ TEST_CASE("VM function call in fork", "[VMCall]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary, {
-		.memory_max = MAX_MEMORY,
-		.use_memory_arena = false,
-	} };
+	riscv::Machine<RISCV64> machine{ binary, {
+													 .memory_max = MAX_MEMORY,
+													 .use_memory_arena = false,
+											 } };
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	machine.simulate(MAX_INSTRUCTIONS);
 	REQUIRE(machine.return_value<int>() == 666);
 
 	// Test many forks
-	for (size_t i = 0; i < 10; i++)
-	{
-		riscv::Machine<RISCV64> fork { machine, {
+	for (size_t i = 0; i < 10; i++) {
+		riscv::Machine<RISCV64> fork{ machine, {
 #ifdef RISCV_BINARY_TRANSLATION
-			.use_memory_arena = false,
+													   .use_memory_arena = false,
 #endif
-		} };
+											   } };
 		REQUIRE(fork.memory.uses_flat_memory_arena() == false);
 
-		fork.set_printer([] (const auto&, const char* data, size_t size) {
-			std::string text{data, data + size};
+		fork.set_printer([](const auto &, const char *data, size_t size) {
+			std::string text{ data, data + size };
 			REQUIRE(text == "Hello World!");
 		});
 
@@ -260,7 +285,7 @@ TEST_CASE("VM function call in fork", "[VMCall]")
 		REQUIRE(res1 == 1);
 
 		std::string hello = "Hello";
-		const std::string& ref = hello;
+		const std::string &ref = hello;
 
 		res1 = fork.vmcall("str", ref);
 		REQUIRE(res1 == 1);
@@ -274,9 +299,9 @@ TEST_CASE("VM function call in fork", "[VMCall]")
 		REQUIRE(res2 == 2);
 
 		long intval = 456;
-		long& intref = intval;
+		long &intref = intval;
 
-		int res3 = fork.vmcall("ints", 123L, intref, (long&&)intref);
+		int res3 = fork.vmcall("ints", 123L, intref, (long &&)intref);
 		REQUIRE(res3 == 3);
 
 		int res4 = fork.vmcall("fps", 1.0f, 2.0);
@@ -289,8 +314,7 @@ TEST_CASE("VM function call in fork", "[VMCall]")
 	}
 }
 
-TEST_CASE("VM call and preemption", "[VMCall]")
-{
+TEST_CASE("VM call and preemption", "[VMCall]") {
 	struct State {
 		bool output_is_hello_world = false;
 	} state;
@@ -320,29 +344,29 @@ TEST_CASE("VM call and preemption", "[VMCall]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	machine.set_userdata(&state);
-	machine.set_printer([] (const auto& m, const char* data, size_t size) {
-		auto* state = m.template get_userdata<State> ();
-		std::string text{data, data + size};
+	machine.set_printer([](const auto &m, const char *data, size_t size) {
+		auto *state = m.template get_userdata<State>();
+		std::string text{ data, data + size };
 		state->output_is_hello_world = (text == "Hello World!");
 	});
 
 	machine.install_syscall_handler(500,
-	[] (auto& machine) {
-		auto [arg0] = machine.template sysargs <int> ();
-		REQUIRE(arg0 == 1234567);
+			[](auto &machine) {
+				auto [arg0] = machine.template sysargs<int>();
+				REQUIRE(arg0 == 1234567);
 
-		const auto func = machine.address_of("preempt");
-		REQUIRE(func != 0x0);
+				const auto func = machine.address_of("preempt");
+				REQUIRE(func != 0x0);
 
-		machine.preempt(15'000ull, func, strlen("Hello World!"));
-	});
+				machine.preempt(15'000ull, func, strlen("Hello World!"));
+			});
 
 	REQUIRE(!state.output_is_hello_world);
 
@@ -351,8 +375,7 @@ TEST_CASE("VM call and preemption", "[VMCall]")
 	REQUIRE(state.output_is_hello_world);
 	REQUIRE(machine.return_value<int>() == 666);
 
-	for (int i = 0; i < 10; i++)
-	{
+	for (int i = 0; i < 10; i++) {
 		state.output_is_hello_world = false;
 
 		const auto func = machine.address_of("start");
@@ -367,8 +390,7 @@ TEST_CASE("VM call and preemption", "[VMCall]")
 	}
 }
 
-TEST_CASE("VM call and STOP instruction", "[VMCall]")
-{
+TEST_CASE("VM call and STOP instruction", "[VMCall]") {
 	struct State {
 		bool output_is_hello_world = false;
 	} state;
@@ -408,30 +430,30 @@ TEST_CASE("VM call and STOP instruction", "[VMCall]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	machine.set_userdata(&state);
-	machine.set_printer([] (const auto& m, const char* data, size_t size) {
-		auto* state = m.template get_userdata<State> ();
-		std::string text{data, data + size};
+	machine.set_printer([](const auto &m, const char *data, size_t size) {
+		auto *state = m.template get_userdata<State>();
+		std::string text{ data, data + size };
 		state->output_is_hello_world = (text == "Hello World!");
 	});
 
 	machine.install_syscall_handler(500,
-	[] (auto& machine) {
-		auto [arg0] = machine.template sysargs <int> ();
-		REQUIRE(arg0 == 1234567);
+			[](auto &machine) {
+				auto [arg0] = machine.template sysargs<int>();
+				REQUIRE(arg0 == 1234567);
 
-		const auto func = machine.address_of("preempt");
-		REQUIRE(func != 0x0);
+				const auto func = machine.address_of("preempt");
+				REQUIRE(func != 0x0);
 
-		auto result = machine.preempt(15'000ull, func, strlen("Hello World!"));
-		REQUIRE(result == 777);
-	});
+				auto result = machine.preempt(15'000ull, func, strlen("Hello World!"));
+				REQUIRE(result == 777);
+			});
 
 	REQUIRE(!state.output_is_hello_world);
 
@@ -440,8 +462,7 @@ TEST_CASE("VM call and STOP instruction", "[VMCall]")
 	REQUIRE(state.output_is_hello_world);
 	REQUIRE(machine.return_value<int>() == 777);
 
-	for (int i = 0; i < 10; i++)
-	{
+	for (int i = 0; i < 10; i++) {
 		state.output_is_hello_world = false;
 
 		const auto func = machine.address_of("start");
@@ -456,8 +477,7 @@ TEST_CASE("VM call and STOP instruction", "[VMCall]")
 	}
 }
 
-TEST_CASE("VM call with arrays and vectors", "[VMCall]")
-{
+TEST_CASE("VM call with arrays and vectors", "[VMCall]") {
 	const auto binary = build_and_load(R"M(
 	__attribute__((used, retain))
 	int pass_iarray(const int* data, unsigned size) {
@@ -499,28 +519,28 @@ TEST_CASE("VM call with arrays and vectors", "[VMCall]")
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
 	machine.setup_linux_syscalls();
 	machine.setup_linux(
-		{"vmcall"},
-		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
+			{ "vmcall" },
+			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
 
 	machine.simulate(MAX_INSTRUCTIONS);
 	REQUIRE(machine.return_value<int>() == 666);
 
 	// Test passing an integer array
-	std::array<int, 3> iarray = {1, 2, 3};
+	std::array<int, 3> iarray = { 1, 2, 3 };
 	// The array is pushed on the stack, so it becomes a sequential pointer argument
 	int res1 = machine.vmcall("pass_iarray", iarray, iarray.size());
 	REQUIRE(res1 == 1);
 
 	// A const-reference to an array should also work
-	const std::array<int, 3>& array_ref = iarray;
+	const std::array<int, 3> &array_ref = iarray;
 	int res2 = machine.vmcall("pass_iarray", array_ref, array_ref.size());
 	REQUIRE(res2 == 1);
 
 	// Test passing a float array
-	std::array<float, 3> farray = {1.0f, 2.0f, 3.0f};
+	std::array<float, 3> farray = { 1.0f, 2.0f, 3.0f };
 	int res3 = machine.vmcall("pass_farray", farray, farray.size());
 	REQUIRE(res3 == 1);
 
@@ -531,16 +551,16 @@ TEST_CASE("VM call with arrays and vectors", "[VMCall]")
 		float f1;
 	};
 	std::vector<Data> vec = {
-		{1, 2, 3.0f},
-		{4, 5, 6.0f},
-		{7, 8, 9.0f},
+		{ 1, 2, 3.0f },
+		{ 4, 5, 6.0f },
+		{ 7, 8, 9.0f },
 	};
 	// The vector is pushed on the stack, so it becomes a sequential pointer argument
 	int res4 = machine.vmcall("pass_struct", vec, vec.size());
 	REQUIRE(res4 == 1);
 
 	// A const-reference to a vector should also work
-	const std::vector<Data>& vec_ref = vec;
+	const std::vector<Data> &vec_ref = vec;
 	int res5 = machine.vmcall("pass_struct", vec_ref, vec_ref.size());
 	REQUIRE(res5 == 1);
 }

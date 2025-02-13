@@ -194,4 +194,3 @@ func default_is_value(p_val=__gutdbl.default_val("default_is_value",0)):
                 return await super(p_val)
         else:
                 return __gutdbl.get_stubbed_return('default_is_value', [p_val])
-

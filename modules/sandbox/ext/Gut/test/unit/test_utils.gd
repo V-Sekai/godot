@@ -253,8 +253,3 @@ class TestGetEnumValue:
 	func test_does_not_round_floats():
 		var val = GutUtils.get_enum_value(2.9, TEST1, 9999)
 		assert_eq(val, 2)
-
-
-
-
-

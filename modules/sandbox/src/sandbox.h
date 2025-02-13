@@ -1,4 +1,35 @@
-#pragma once
+/**************************************************************************/
+/*  sandbox.h                                                             */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef SANDBOX_H
+#define SANDBOX_H
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/binder_common.hpp>
 #include <libriscv/machine.hpp>
@@ -56,7 +87,7 @@ public:
 		bool is_mutable_variant(const Variant &var) const;
 	};
 	struct LookupEntry {
-		String  name;
+		String name;
 		gaddr_t address;
 	};
 	struct ProfilingState {
@@ -524,7 +555,7 @@ private:
 	void reset_machine();
 	void set_program_data_internal(Ref<ELFScript> program);
 	bool load(const PackedByteArray *vbuf, const std::vector<std::string> *argv = nullptr);
-	static PackedStringArray get_public_functions(const machine_t&);
+	static PackedStringArray get_public_functions(const machine_t &);
 	void read_program_properties(bool editor) const;
 	void handle_exception(gaddr_t);
 	void handle_timeout(gaddr_t);
@@ -570,15 +601,14 @@ private:
 	// it will be called to check if access to a resource is allowed.
 	Callable m_just_in_time_allowed_resources;
 	// If a callable is set for allowed methods, it will be called when an object method
-	// call is attemped, to check if the method is allowed.
+	// call is attempted, to check if the method is allowed.
 	Callable m_just_in_time_allowed_methods;
 	// If a callable is set for allowed properties, it will be called when an object property
-	// access is attemped, to check if the property is allowed.
+	// access is attempted, to check if the property is allowed.
 	Callable m_just_in_time_allowed_properties;
 
 	// Redirections
 	Callable m_redirect_stdout;
-
 
 	Ref<ELFScript> m_program_data;
 	PackedByteArray m_program_bytes;
@@ -637,3 +667,5 @@ inline bool Sandbox::is_allowed_object(godot::Object *obj) const {
 		return m_just_in_time_allowed_objects.call(this, obj);
 	return false;
 }
+
+#endif // SANDBOX_H

@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_RECT2_HPP
-#define GODOT_RECT2_HPP
+#ifndef RECT2_HPP
+#define RECT2_HPP
 
 #include <godot_cpp/classes/global_constants.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -370,4 +370,4 @@ struct _NO_DISCARD_ Rect2 {
 
 } // namespace godot
 
-#endif // GODOT_RECT2_HPP
+#endif // RECT2_HPP

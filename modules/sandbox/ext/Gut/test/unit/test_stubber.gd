@@ -309,4 +309,3 @@ func test_draw_parameter_method_meta():
 	var meta = find_method_meta(ToStub.get_script_method_list(), 'default_value_method')
 	gr.stubber.stub_defaults_from_meta(ToStub, meta)
 	assert_eq(gr.stubber.get_default_value(ToStub, 'default_value_method', 0), 'a')
-

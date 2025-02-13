@@ -1,9 +1,39 @@
+/**************************************************************************/
+/*  compile.cpp                                                           */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "server.hpp"
 using namespace httplib;
 
-static int create_folder(const std::string& folder);
-static int python_sanitize_compile(const std::string& pbase, const std::string& pdir, const std::string& met);
-static int write_file(const std::string& file, const std::string& text);
+static int create_folder(const std::string &folder);
+static int python_sanitize_compile(const std::string &pbase, const std::string &pdir, const std::string &met);
+static int write_file(const std::string &file, const std::string &text);
 
 static std::string project_base() {
 	return "/tmp/programs";
@@ -15,8 +45,7 @@ static std::string project_path(const int id) {
 	return project_base() + "/program" + std::to_string(id);
 }
 
-void compile(const Request& req, Response& res)
-{
+void compile(const Request &req, Response &res) {
 	static size_t request_ID = 0;
 	const size_t program_id = request_ID++;
 	res.set_header("X-Program-Id", std::to_string(program_id));
@@ -26,7 +55,7 @@ void compile(const Request& req, Response& res)
 	if (req.has_param("method")) {
 		method = req.get_param_value("method");
 	}
-	// ... which can be overriden by X-Method header field
+	// ... which can be overridden by X-Method header field
 	if (req.has_header("X-Method")) {
 		method = req.get_header_value("X-Method");
 	}
@@ -72,13 +101,13 @@ void compile(const Request& req, Response& res)
 		load_file(progpath + "/status.txt", vec);
 		res.status = 200;
 		res.set_header("X-Error", "Compilation failed");
-		res.set_content((const char*) vec.data(), vec.size(), "text/plain");
+		res.set_content((const char *)vec.data(), vec.size(), "text/plain");
 		res.set_header("Cache-Control", "s-max-age=86400");
 		return;
 	}
 
 	// load binary and execute code
-	auto* binary = new std::vector<uint8_t> ();
+	auto *binary = new std::vector<uint8_t>();
 	load_file(progpath + "/binary", *binary);
 	res.set_header("X-Binary-Size", std::to_string(binary->size()));
 	if (binary->empty()) {
@@ -89,32 +118,30 @@ void compile(const Request& req, Response& res)
 	// indicate caching and send it
 	res.set_header("Cache-Control", "s-max-age=86400");
 	res.set_content_provider(
-		binary->size(), // Content length
-		[binary] (uint64_t offset, uint64_t length, DataSink &sink) {
-			const auto* d = (const char*) binary->data();
-			sink.write(&d[offset], length);
-		},
-		[binary] {
-			delete binary;
-		});
+			binary->size(), // Content length
+			[binary](uint64_t offset, uint64_t length, DataSink &sink) {
+				const auto *d = (const char *)binary->data();
+				sink.write(&d[offset], length);
+			},
+			[binary] {
+				delete binary;
+			});
 }
 
-int create_folder(const std::string& folder)
-{
+int create_folder(const std::string &folder) {
 	return mkdir(folder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
-int python_sanitize_compile(const std::string& pbase, const std::string& pdir, const std::string& method)
-{
+int python_sanitize_compile(const std::string &pbase, const std::string &pdir, const std::string &method) {
 	auto cmd = "/usr/bin/python3 sanitize.py " + pbase + " " + pdir + " " + method;
 	return system(cmd.c_str());
 }
 
-int write_file(const std::string& file, const std::string& text)
-{
-	FILE* fp = fopen(file.c_str(), "wb");
-	if (fp == nullptr) return -1;
-    fwrite(text.data(), text.size(), 1, fp);
-    fclose(fp);
+int write_file(const std::string &file, const std::string &text) {
+	FILE *fp = fopen(file.c_str(), "wb");
+	if (fp == nullptr)
+		return -1;
+	fwrite(text.data(), text.size(), 1, fp);
+	fclose(fp);
 	return 0;
 }

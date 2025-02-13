@@ -38,4 +38,3 @@ PS E:\libriscv\examples\msvc\out\build\x64-release> .\example.exe
 Runtime: 844.296ms  MI/s: 1516.06
 ```
 The fibonacci example is something I use to measure millions of instructions per second.
-

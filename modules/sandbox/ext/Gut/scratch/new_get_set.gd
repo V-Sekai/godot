@@ -66,4 +66,3 @@ func _init():
     na.read_only = 'wroten'
     print(na.read_only)
     quit()
-

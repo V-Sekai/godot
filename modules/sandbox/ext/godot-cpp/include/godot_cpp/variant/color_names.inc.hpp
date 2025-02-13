@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_COLOR_NAMES_INC_HPP
-#define GODOT_COLOR_NAMES_INC_HPP
+#ifndef COLOR_NAMES_INC_HPP
+#define COLOR_NAMES_INC_HPP
 
 namespace godot {
 
@@ -193,4 +193,4 @@ static NamedColor named_colors[] = {
 
 } // namespace godot
 
-#endif // GODOT_COLOR_NAMES_INC_HPP
+#endif // COLOR_NAMES_INC_HPP

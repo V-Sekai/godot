@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_OBJECT_ID_HPP
-#define GODOT_OBJECT_ID_HPP
+#ifndef OBJECT_ID_HPP
+#define OBJECT_ID_HPP
 
 #include <godot_cpp/core/defs.hpp>
 
@@ -59,4 +59,4 @@ public:
 
 } // namespace godot
 
-#endif // GODOT_OBJECT_ID_HPP
+#endif // OBJECT_ID_HPP

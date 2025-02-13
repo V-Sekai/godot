@@ -196,7 +196,7 @@ func _setup_options():
 						  "Example:  -diff current,all_warn")
 	opts.add('-dump', 'none', "Prints a dictionary of the warning values.")
 	opts.add('-print', 'none', "Print human readable warning values.")
-	opts.add('-apply', 'none', "Applys one of the Warning Level Names to the project settings.  You should restart after using this")
+	opts.add('-apply', 'none', "Applies one of the Warning Level Names to the project settings.  You should restart after using this")
 
 	return opts
 

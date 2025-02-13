@@ -14,29 +14,29 @@ This is the base class for your GUT test scripts.
 
 
 
-GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__ 
+GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__
 
 Simple Example
 
 ::
 
        extends GutTest
-    
+
        func before_all():
            gut.p("before_all called"
-    
+
        func before_each():
            gut.p("before_each called")
-    
+
        func after_each():
            gut.p("after_each called")
-    
+
        func after_all():
            gut.p("after_all called")
-    
+
        func test_assert_eq_letters():
            assert_eq("asdf", "asdf", "Should pass")
-    
+
        func test_assert_eq_number_not_equal():
            assert_eq(1, 2, "Should fail.  1 != 2")
 
@@ -584,7 +584,7 @@ Sets the double strategy for all tests in the script.  This should usually be do
 
 |void| **pause_before_teardown**\ (\ ) :ref:`🔗<class_GutTest_method_pause_before_teardown>`
 
-This method will cause Gut to pause before it moves on to the next test. This is useful for debugging, for instance if you want to investigate the screen or anything else after a test has finished executing. 
+This method will cause Gut to pause before it moves on to the next test. This is useful for debugging, for instance if you want to investigate the screen or anything else after a test has finished executing.
 
 Sometimes you get lazy, and you don't remove calls to ``pause_before_teardown`` after you are done with them.  You can tell GUT to ignore calls to to this method through the panel or the command line.  Setting this in your `.gutconfig.json` file is recommended for CI/CD Pipelines.
 
@@ -622,7 +622,7 @@ Sometimes you get lazy, and you don't remove calls to ``pause_before_teardown`` 
 
 |void| **watch_signals**\ (\ object\ ) :ref:`🔗<class_GutTest_method_watch_signals>`
 
-This must be called in order to make assertions based on signals being emitted.  \__Right now, this only supports signals that are emitted with 9 or less parameters.\_\_  This can be extended but nine seemed like enough for now. The Godot documentation suggests that the limit is four but in my testing I found you can pass more. 
+This must be called in order to make assertions based on signals being emitted.  \__Right now, this only supports signals that are emitted with 9 or less parameters.\_\_  This can be extended but nine seemed like enough for now. The Godot documentation suggests that the limit is four but in my testing I found you can pass more.
 
 This must be called in each test in which you want to make signal based assertions in.  You can call it multiple times with different objects. You should not call it multiple times with the same object in the same test. The objects that are watched are cleared after each test (specifically right before `teardown` is called).  Under the covers, Gut will connect to all the signals an object has and it will track each time they fire.  You can then use the following asserts and methods to verify things are acting correct.
 
@@ -655,13 +655,13 @@ If you need to inspect the parameters in order to make more complicate assertion
        class SignalObject:
            signal some_signal
            signal other_signal
-    
+
        func test_get_signal_parameters():
            var obj = SignalObject.new()
            watch_signals(obj)
            obj.some_signal.emit(1, 2, 3)
            obj.some_signal.emit('a', 'b', 'c')
-    
+
            # Passing
            # passes because get_signal_parameters returns the most recent emission
            # by default
@@ -671,7 +671,7 @@ If you need to inspect the parameters in order to make more complicate assertion
            assert_eq(get_signal_parameters(obj, 'other_signal'), null)
            # if the signal does not exist or isn't being watched null is returned
            assert_eq(get_signal_parameters(obj, 'signal_dne'), null)
-    
+
            # Failing
            assert_eq(get_signal_parameters(obj, 'some_signal'), [1, 2, 3])
            assert_eq(get_signal_parameters(obj, 'some_signal', 0), ['a', 'b', 'c'])
@@ -698,7 +698,7 @@ Get the parameters for a method call to a doubled object.  By default it will re
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **get_call_count**\ (\ object, method_name = null, parameters = null\ ) :ref:`🔗<class_GutTest_method_get_call_count>`
 
-Returns the call count for a method with optional paramter matching.  Can be called with a Callable instead of an object, method_name, and parameters.  Bound arguments will be used to match call arguments.
+Returns the call count for a method with optional parameter matching.  Can be called with a Callable instead of an object, method_name, and parameters.  Bound arguments will be used to match call arguments.
 
 .. rst-class:: classref-item-separator
 
@@ -736,11 +736,11 @@ Simulate a number of frames by calling '_process' and '_physics_process' (if the
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **use_parameters**\ (\ params\ ) :ref:`🔗<class_GutTest_method_use_parameters>`
 
-Use this as the default value for the first parameter to a test to create a parameterized test.  See also the ParameterFactory and Parameterized Tests. 
+Use this as the default value for the first parameter to a test to create a parameterized test.  See also the ParameterFactory and Parameterized Tests.
 
 
 
-\ **Example**\ 
+\ **Example**\
 
 ::
 
@@ -756,7 +756,7 @@ Use this as the default value for the first parameter to a test to create a para
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **run_x_times**\ (\ x\ ) :ref:`🔗<class_GutTest_method_run_x_times>`
 
-**Internal use only.** When used as the default for a test method parameter, it will cause the test to be run x times.  I Hacked this together to test a method that was occassionally failing due to timing issues.  I don't think it's a great idea, but you be the judge.  If you find a good use for it, let me know and I'll make it a legit member of the api.
+**Internal use only.** When used as the default for a test method parameter, it will cause the test to be run x times.  I Hacked this together to test a method that was occasionally failing due to timing issues.  I don't think it's a great idea, but you be the judge.  If you find a good use for it, let me know and I'll make it a legit member of the api.
 
 .. rst-class:: classref-item-separator
 
@@ -768,11 +768,11 @@ Use this as the default value for the first parameter to a test to create a para
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **skip_if_godot_version_lt**\ (\ expected\ ) :ref:`🔗<class_GutTest_method_skip_if_godot_version_lt>`
 
-Checks the passed in version string (x.x.x) against the engine version to see if the engine version is less than the expected version.  If it is then the test is mareked as passed (for a lack of anything better to do).  The result of the check is returned. 
+Checks the passed in version string (x.x.x) against the engine version to see if the engine version is less than the expected version.  If it is then the test is mareked as passed (for a lack of anything better to do).  The result of the check is returned.
 
 
 
-\ **Example**\ 
+\ **Example**\
 
 ::
 
@@ -789,11 +789,11 @@ Checks the passed in version string (x.x.x) against the engine version to see if
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **skip_if_godot_version_ne**\ (\ expected\ ) :ref:`🔗<class_GutTest_method_skip_if_godot_version_ne>`
 
-Checks if the passed in version matches the engine version.  The passed in version can contain just the major, major.minor or major.minor.path.  If the version is not the same then the test is marked as passed.  The result of the check is returned. 
+Checks if the passed in version matches the engine version.  The passed in version can contain just the major, major.minor or major.minor.path.  If the version is not the same then the test is marked as passed.  The result of the check is returned.
 
 
 
-\ **Example**\ 
+\ **Example**\
 
 ::
 
@@ -822,7 +822,7 @@ Registers all the inner classes in a script with the doubler.  This is required 
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **compare_deep**\ (\ v1, v2, max_differences = null\ ) :ref:`🔗<class_GutTest_method_compare_deep>`
 
-Peforms a deep compare on both values, a CompareResult instnace is returned. The optional max_differences paramter sets the max_differences to be displayed.
+Performs a deep compare on both values, a CompareResult instance is returned. The optional max_differences parameter sets the max_differences to be displayed.
 
 .. rst-class:: classref-item-separator
 
@@ -834,16 +834,16 @@ Peforms a deep compare on both values, a CompareResult instnace is returned. The
 
 |void| **assert_eq**\ (\ got, expected, text = ""\ ) :ref:`🔗<class_GutTest_method_assert_eq>`
 
-Asserts that the expected value equals the value got. assert got == expected and prints optional text.  See `Comparing-Things <../Comparing-Things.html>`__ for information about comparing dictionaries and arrays. 
+Asserts that the expected value equals the value got. assert got == expected and prints optional text.  See `Comparing-Things <../Comparing-Things.html>`__ for information about comparing dictionaries and arrays.
 
-See also: :ref:`assert_ne<class_GutTest_method_assert_ne>`, :ref:`assert_same<class_GutTest_method_assert_same>`, :ref:`assert_not_same<class_GutTest_method_assert_not_same>`\ 
+See also: :ref:`assert_ne<class_GutTest_method_assert_ne>`, :ref:`assert_same<class_GutTest_method_assert_same>`, :ref:`assert_not_same<class_GutTest_method_assert_not_same>`\
 
 ::
 
        var one = 1
        var node1 = Node.new()
        var node2 = node1
-    
+
        # Passing
        assert_eq(one, 1, 'one should equal one')
        assert_eq('racecar', 'racecar')
@@ -852,7 +852,7 @@ See also: :ref:`assert_ne<class_GutTest_method_assert_ne>`, :ref:`assert_same<cl
        var d1_pass = {'a':1}
        var d2_pass = d1_pass
        assert_eq(d1_pass, d2_pass)
-    
+
        # Failing
        assert_eq(1, 2) # FAIL
        assert_eq('hello', 'world')
@@ -870,20 +870,20 @@ See also: :ref:`assert_ne<class_GutTest_method_assert_ne>`, :ref:`assert_same<cl
 
 |void| **assert_ne**\ (\ got, not_expected, text = ""\ ) :ref:`🔗<class_GutTest_method_assert_ne>`
 
-asserts got != expected and prints optional text.  See `Comparing-Things <../Comparing-Things.html>`__ for information about comparing dictionaries and arrays. 
+asserts got != expected and prints optional text.  See `Comparing-Things <../Comparing-Things.html>`__ for information about comparing dictionaries and arrays.
 
-See also: :ref:`assert_eq<class_GutTest_method_assert_eq>`, :ref:`assert_same<class_GutTest_method_assert_same>`, :ref:`assert_not_same<class_GutTest_method_assert_not_same>`\ 
+See also: :ref:`assert_eq<class_GutTest_method_assert_eq>`, :ref:`assert_same<class_GutTest_method_assert_same>`, :ref:`assert_not_same<class_GutTest_method_assert_not_same>`\
 
 ::
 
        var two = 2
        var node1 = Node.new()
-    
+
        # Passing
        assert_ne(two, 1, 'Two should not equal one.')
        assert_ne('hello', 'world')
        assert_ne(self, node1)
-    
+
        # Failing
        assert_ne(two, 2)
        assert_ne('one', 'one')
@@ -899,7 +899,7 @@ See also: :ref:`assert_eq<class_GutTest_method_assert_eq>`, :ref:`assert_same<cl
 
 |void| **assert_almost_eq**\ (\ got, expected, error_interval, text = ""\ ) :ref:`🔗<class_GutTest_method_assert_almost_eq>`
 
-Asserts that ``got`` is within the range of ``expected`` +/- ``error_interval``. The upper and lower bounds are included in the check.  Verified to work with integers, floats, and Vector2.  Should work with anything that can be added/subtracted. 
+Asserts that ``got`` is within the range of ``expected`` +/- ``error_interval``. The upper and lower bounds are included in the check.  Verified to work with integers, floats, and Vector2.  Should work with anything that can be added/subtracted.
 
 ::
 
@@ -910,7 +910,7 @@ Asserts that ``got`` is within the range of ``expected`` +/- ``error_interval``.
        assert_almost_eq(.5, 1.0, .5, '.5 within range of 1 +/- .5')
        assert_almost_eq(Vector2(.5, 1.5), Vector2(1.0, 1.0), Vector2(.5, .5))
        assert_almost_eq(Vector2(.5, 1.5), Vector2(1.0, 1.0), Vector2(.25, .25))
-    
+
        # Failing
        assert_almost_eq(1, 3, 1, '1 outside range of 3 +/- 1')
        assert_almost_eq(2.6, 3.0, .2, '2.6 outside range of 3 +/- .2')
@@ -937,19 +937,19 @@ This is the inverse of :ref:`assert_almost_eq<class_GutTest_method_assert_almost
 
 |void| **assert_gt**\ (\ got, expected, text = ""\ ) :ref:`🔗<class_GutTest_method_assert_gt>`
 
-assserts got > expected
+asserts got > expected
 
 ::
 
        var bigger = 5
        var smaller = 0
-    
+
        # Passing
        assert_gt(bigger, smaller, 'Bigger should be greater than smaller')
        assert_gt('b', 'a')
        assert_gt('a', 'A')
        assert_gt(1.1, 1)
-    
+
        # Failing
        assert_gt('a', 'a')
        assert_gt(1.0, 1)
@@ -971,14 +971,14 @@ Asserts got is greater than or equal to expected.
 
        var bigger = 5
        var smaller = 0
-    
+
        # Passing
        assert_gte(bigger, smaller, 'Bigger should be greater than or equal to smaller')
        assert_gte('b', 'a')
        assert_gte('a', 'A')
        assert_gte(1.1, 1)
        assert_gte('a', 'a')
-    
+
        # Failing
        assert_gte(0.9, 1.0)
        assert_gte(smaller, bigger)
@@ -993,18 +993,18 @@ Asserts got is greater than or equal to expected.
 
 |void| **assert_lt**\ (\ got, expected, text = ""\ ) :ref:`🔗<class_GutTest_method_assert_lt>`
 
-Asserts ``got`` is less than ``expected``\ 
+Asserts ``got`` is less than ``expected``\
 
 ::
 
        var bigger = 5
        var smaller = 0
-    
+
        # Passing
        assert_lt(smaller, bigger, 'Smaller should be less than bigger')
        assert_lt('a', 'b')
        assert_lt(99, 100)
-    
+
        # Failing
        assert_lt('z', 'x')
        assert_lt(-5, -5)
@@ -1066,7 +1066,7 @@ got >= expect_low and <= expect_high
        assert_between(10, 0, 10)
        assert_between(0, 0, 10)
        assert_between(2.25, 2, 4.0)
-    
+
        # Failing
        assert_between('a', 'b', 'c')
        assert_between(1, 5, 10)
@@ -1093,9 +1093,9 @@ asserts that got <= expect_low or got >=  expect_high.
        assert_not_between('d', 'b', 'd')
        assert_not_between(10, 0, 10)
        assert_not_between(-2, -2, 10)
-    
+
        # Failing
-       assert_not_between(5, 0, 10, 'Five shouldnt be between 0 and 10')
+       assert_not_between(5, 0, 10, 'Five shouldn't be between 0 and 10')
        assert_not_between(0.25, -2.0, 4.0)
 
 .. rst-class:: classref-item-separator
@@ -1114,14 +1114,14 @@ Uses the 'has' method of the object passed in to determine if it contains the pa
 
        var an_array = [1, 2, 3, 'four', 'five']
        var a_hash = { 'one':1, 'two':2, '3':'three'}
-    
+
        # Passing
        assert_has(an_array, 'four') # PASS
        assert_has(an_array, 2) # PASS
        # the hash's has method checks indexes not values
        assert_has(a_hash, 'one') # PASS
        assert_has(a_hash, '3') # PASS
-    
+
        # Failing
        assert_has(an_array, 5) # FAIL
        assert_has(an_array, self) # FAIL
@@ -1156,15 +1156,15 @@ asserts a file exists at the specified path
 
        func before_each():
            gut.file_touch('user://some_test_file')
-    
+
        func after_each():
            gut.file_delete('user://some_test_file')
-    
+
        func test_assert_file_exists():
            # Passing
            assert_file_exists('res://addons/gut/gut.gd')
            assert_file_exists('user://some_test_file')
-    
+
            # Failing
            assert_file_exists('user://file_does_not.exist')
            assert_file_exists('res://some_dir/another_dir/file_does_not.exist')
@@ -1185,15 +1185,15 @@ asserts a file does not exist at the specified path
 
        func before_each():
            gut.file_touch('user://some_test_file')
-    
+
        func after_each():
            gut.file_delete('user://some_test_file')
-    
+
        func test_assert_file_does_not_exist():
            # Passing
            assert_file_does_not_exist('user://file_does_not.exist')
            assert_file_does_not_exist('res://some_dir/another_dir/file_does_not.exist')
-    
+
            # Failing
            assert_file_does_not_exist('res://addons/gut/gut.gd')
 
@@ -1213,14 +1213,14 @@ asserts the specified file is empty
 
        func before_each():
            gut.file_touch('user://some_test_file')
-    
+
        func after_each():
            gut.file_delete('user://some_test_file')
-    
+
        func test_assert_file_empty():
            # Passing
            assert_file_empty('user://some_test_file')
-    
+
            # Failing
            assert_file_empty('res://addons/gut/gut.gd')
 
@@ -1240,14 +1240,14 @@ Asserts the specified file is not empty
 
        func before_each():
            gut.file_touch('user://some_test_file')
-    
+
        func after_each():
            gut.file_delete('user://some_test_file')
-    
+
        func test_assert_file_not_empty():
            # Passing
            assert_file_not_empty('res://addons/gut/gut.gd') # PASS
-    
+
            # Failing
            assert_file_not_empty('user://some_test_file') # FAIL
 
@@ -1273,10 +1273,10 @@ Asserts that the passed in object has a method named ``method``.
 
 |void| **assert_accessors**\ (\ obj, property, default, set_to\ ) :ref:`🔗<class_GutTest_method_assert_accessors>`
 
-This is meant to make testing public get/set methods for a member variable.  This was originally created for early Godot 3.x setter and getter methods.  See :ref:`assert_property<class_GutTest_method_assert_property>` for verifying Godot 4.x accessors.  This makes multiple assertions to verify: 
+This is meant to make testing public get/set methods for a member variable.  This was originally created for early Godot 3.x setter and getter methods.  See :ref:`assert_property<class_GutTest_method_assert_property>` for verifying Godot 4.x accessors.  This makes multiple assertions to verify:
 
-* The object has a method called ``get_<PROPERTY_NAME>``\ 
-* The object has a method called ``set_<PROPERTY_NAME>``\ 
+* The object has a method called ``get_<PROPERTY_NAME>``\
+* The object has a method called ``set_<PROPERTY_NAME>``\
 * The method ``get_<PROPERTY_NAME>`` returns the expected default value when first called.
 * Once you set the property, the ``get_<PROPERTY_NAME>`` returns the new value.
 
@@ -1301,14 +1301,14 @@ Asserts that ``obj`` exports a property with the name ``property_name`` and a ty
            export var some_number = 5
            export(PackedScene) var some_scene
            var some_variable = 1
-    
+
        func test_assert_exports():
            var obj = ExportClass.new()
-    
+
            # Passing
            assert_exports(obj, "some_number", TYPE_INT)
            assert_exports(obj, "some_scene", TYPE_OBJECT)
-    
+
            # Failing
            assert_exports(obj, 'some_number', TYPE_VECTOR2)
            assert_exports(obj, 'some_scene', TYPE_AABB)
@@ -1330,22 +1330,22 @@ Asserts that `signaler_obj` is connected to `connect_to_obj` on signal `signal_n
 
        class Signaler:
            signal the_signal
-    
+
        class Connector:
            func connect_this():
                pass
            func  other_method():
                pass
-    
+
        func test_assert_connected():
            var signaler = Signaler.new()
            var connector  = Connector.new()
            signaler.connect('the_signal', connector, 'connect_this')
-    
+
            # Passing
            assert_connected(signaler, connector, 'the_signal')
            assert_connected(signaler, connector, 'the_signal', 'connect_this')
-    
+
            # Failing
            var foo = Connector.new()
            assert_connected(signaler,  connector, 'the_signal', 'other_method')
@@ -1362,7 +1362,7 @@ Asserts that `signaler_obj` is connected to `connect_to_obj` on signal `signal_n
 
 |void| **assert_not_connected**\ (\ signaler_obj, connect_to_obj, signal_name, method_name = ""\ ) :ref:`🔗<class_GutTest_method_assert_not_connected>`
 
-Asserts that an object is not connected to a signal on another object 
+Asserts that an object is not connected to a signal on another object
 
 This will fail with specific messages if the target object is connected to the specified signal on the source object.
 
@@ -1383,16 +1383,16 @@ Assert that the specified object emitted the named signal.  You must call :ref:`
        class SignalObject:
            signal some_signal
            signal other_signal
-    
+
        func test_assert_signal_emitted():
            var obj = SignalObject.new()
-    
+
            watch_signals(obj)
            obj.emit_signal('some_signal')
-    
+
            ## Passing
            assert_signal_emitted(obj, 'some_signal')
-    
+
            ## Failing
            # Fails with specific message that the object does not have the signal
            assert_signal_emitted(obj, 'signal_does_not_exist')
@@ -1418,16 +1418,16 @@ This works opposite of `assert_signal_emitted`.  This will fail if the object is
        class SignalObject:
            signal some_signal
            signal other_signal
-    
+
        func test_assert_signal_not_emitted():
            var obj = SignalObject.new()
-    
+
            watch_signals(obj)
            obj.emit_signal('some_signal')
-    
+
            # Passing
            assert_signal_not_emitted(obj, 'other_signal')
-    
+
            # Failing
            # Fails with specific message that the object does not have the signal
            assert_signal_not_emitted(obj, 'signal_does_not_exist')
@@ -1446,7 +1446,7 @@ This works opposite of `assert_signal_emitted`.  This will fail if the object is
 
 |void| **assert_signal_emitted_with_parameters**\ (\ object, signal_name, parameters, index = -1\ ) :ref:`🔗<class_GutTest_method_assert_signal_emitted_with_parameters>`
 
-Asserts that a signal was fired with the specified parameters.  The expected parameters should be passed in as an array.  An optional index can be passed when a signal has fired more than once.  The default is to retrieve the most recent emission of the signal. 
+Asserts that a signal was fired with the specified parameters.  The expected parameters should be passed in as an array.  An optional index can be passed when a signal has fired more than once.  The default is to retrieve the most recent emission of the signal.
 
 This will fail with specific messages if the object is not being watched or the object does not have the specified signal
 
@@ -1455,24 +1455,24 @@ This will fail with specific messages if the object is not being watched or the 
        class SignalObject:
            signal some_signal
            signal other_signal
-    
+
        func test_assert_signal_emitted_with_parameters():
            var obj = SignalObject.new()
-    
+
            watch_signals(obj)
            # emit the signal 3 times to illustrate how the index works in
            # assert_signal_emitted_with_parameters
            obj.emit_signal('some_signal', 1, 2, 3)
            obj.emit_signal('some_signal', 'a', 'b', 'c')
            obj.emit_signal('some_signal', 'one', 'two', 'three')
-    
+
            # Passing
            # Passes b/c the default parameters to check are the last emission of
            # the signal
            assert_signal_emitted_with_parameters(obj, 'some_signal', ['one', 'two', 'three'])
            # Passes because the parameters match the specified emission based on index.
            assert_signal_emitted_with_parameters(obj, 'some_signal', [1, 2, 3], 0)
-    
+
            # Failing
            # Fails with specific message that the object does not have the signal
            assert_signal_emitted_with_parameters(obj, 'signal_does_not_exist', [])
@@ -1500,25 +1500,25 @@ Asserts that a signal fired a specific number of times.
        class SignalObject:
            signal some_signal
            signal other_signal
-    
+
        func test_assert_signal_emit_count():
            var obj_a = SignalObject.new()
            var obj_b = SignalObject.new()
-    
+
            watch_signals(obj_a)
            watch_signals(obj_b)
            obj_a.emit_signal('some_signal')
            obj_a.emit_signal('some_signal')
-    
+
            obj_b.emit_signal('some_signal')
            obj_b.emit_signal('other_signal')
-    
+
            # Passing
            assert_signal_emit_count(obj_a, 'some_signal', 2)
            assert_signal_emit_count(obj_a, 'other_signal', 0)
-    
+
            assert_signal_emit_count(obj_b, 'other_signal', 1)
-    
+
            # Failing
            # Fails with specific message that the object does not have the signal
            assert_signal_emit_count(obj_a, 'signal_does_not_exist', 99)
@@ -1545,14 +1545,14 @@ Asserts the passed in object has a signal with the specified name.  It should be
        class SignalObject:
            signal some_signal
            signal other_signal
-    
+
        func test_assert_has_signal():
            var obj = SignalObject.new()
-    
+
            ## Passing
            assert_has_signal(obj, 'some_signal')
            assert_has_signal(obj, 'other_signal')
-    
+
            ## Failing
            assert_has_signal(obj, 'not_a real SIGNAL')
            assert_has_signal(obj, 'yea, this one doesnt exist either')
@@ -1583,11 +1583,11 @@ Asserts that ``object`` extends ``a_class``.  object must be an instance of an o
        # this passes.  It's not obvious w/o seeing the whole script
        # so I'm telling you.  You'll just have to trust me.
        assert_is(self, load('res://addons/gut/test.gd'))
-    
+
        var Gut = load('res://addons/gut/gut.gd')
        var a_gut = Gut.new()
        assert_is(a_gut, Gut)
-    
+
        # Failing
        assert_is(Node2D.new(), Node2D.new())
        assert_is(BaseClass.new(), SubClass)
@@ -1612,7 +1612,7 @@ Asserts that ``object`` is the the ``type`` specified.  ``type`` should be one o
        var c = Color(1, 1, 1, 1)
        gr.test.assert_typeof(c, TYPE_COLOR)
        assert_pass(gr.test)
-    
+
        # Failing
        gr.test.assert_typeof('some string', TYPE_INT)
        assert_fail(gr.test)
@@ -1647,7 +1647,7 @@ Assert that `text` contains `search`.  Can perform case insensitive search by pa
        assert_string_contains('abc 123', 'a')
        assert_string_contains('abc 123', 'BC', false)
        assert_string_contains('abc 123', '3')
-    
+
        # Failing
        assert_string_contains('abc 123', 'A')
        assert_string_contains('abc 123', 'BC')
@@ -1671,7 +1671,7 @@ Assert that text starts with search.  Can perform case insensitive check by pass
        assert_string_starts_with('abc 123', 'a')
        assert_string_starts_with('abc 123', 'ABC', false)
        assert_string_starts_with('abc 123', 'abc 123')
-    
+
        ## Failing
        assert_string_starts_with('abc 123', 'z')
        assert_string_starts_with('abc 123', 'ABC')
@@ -1687,7 +1687,7 @@ Assert that text starts with search.  Can perform case insensitive check by pass
 
 |void| **assert_string_ends_with**\ (\ text, search, match_case = true\ ) :ref:`🔗<class_GutTest_method_assert_string_ends_with>`
 
-Assert that ``text`` ends with ``search``.  Can perform case insensitive check by passing false for ``match_case``\ 
+Assert that ``text`` ends with ``search``.  Can perform case insensitive check by passing false for ``match_case``\
 
 ::
 
@@ -1695,7 +1695,7 @@ Assert that ``text`` ends with ``search``.  Can perform case insensitive check b
        assert_string_ends_with('abc 123', '123')
        assert_string_ends_with('abc 123', 'C 123', false)
        assert_string_ends_with('abc 123', 'abc 123')
-    
+
        ## Failing
        assert_string_ends_with('abc 123', '1234')
        assert_string_ends_with('abc 123', 'C 123')
@@ -1711,13 +1711,13 @@ Assert that ``text`` ends with ``search``.  Can perform case insensitive check b
 
 |void| **assert_called**\ (\ inst, method_name = null, parameters = null\ ) :ref:`🔗<class_GutTest_method_assert_called>`
 
-Assert that a method was called on an instance of a doubled class.  If parameters are supplied then the params passed in when called must match.  Can be called with a Callabe instead of specifying the object, method_name, and parameters.  The Callable's object must be a double.  Bound arguments will be used to match calls based on values passed to the method. 
+Assert that a method was called on an instance of a doubled class.  If parameters are supplied then the params passed in when called must match.  Can be called with a Callabe instead of specifying the object, method_name, and parameters.  The Callable's object must be a double.  Bound arguments will be used to match calls based on values passed to the method.
 
-See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__ 
+See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__
 
 
 
-\ **Examples**\ 
+\ **Examples**\
 
 ::
 
@@ -1738,13 +1738,13 @@ See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__
 
 |void| **assert_not_called**\ (\ inst, method_name = null, parameters = null\ ) :ref:`🔗<class_GutTest_method_assert_not_called>`
 
-Assert that a method was not called on an instance of a doubled class.  If parameters are specified then this will only fail if it finds a call that was sent matching parameters.  Can be called with a Callabe instead of specifying the object, method_name, and parameters.  The Callable's object must be a double.  Bound arguments will be used to match calls based on values passed to the method. 
+Assert that a method was not called on an instance of a doubled class.  If parameters are specified then this will only fail if it finds a call that was sent matching parameters.  Can be called with a Callabe instead of specifying the object, method_name, and parameters.  The Callable's object must be a double.  Bound arguments will be used to match calls based on values passed to the method.
 
-See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__ 
+See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__
 
 
 
-\ **Examples**\ 
+\ **Examples**\
 
 ::
 
@@ -1763,13 +1763,13 @@ See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__
 
 |void| **assert_called_count**\ (\ callable\: `Callable <https://docs.godotengine.org/en/stable/classes/class_callable.html>`_, expected_count\: `int <https://docs.godotengine.org/en/stable/classes/class_int.html>`_\ ) :ref:`🔗<class_GutTest_method_assert_called_count>`
 
-Asserts the the method of a double was called an expected number of times. If any arguments are bound to the callable then only calls with matching arguments will be counted. 
+Asserts the the method of a double was called an expected number of times. If any arguments are bound to the callable then only calls with matching arguments will be counted.
 
-See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__ 
+See also: `Doubles <../Doubles.html>`__, `Spies <../Spies.html>`__
 
 
 
-\ **Examples**\ 
+\ **Examples**\
 
 ::
 
@@ -1812,7 +1812,7 @@ Asserts the passed in value is not null.
 
 |void| **assert_freed**\ (\ obj, title = "something"\ ) :ref:`🔗<class_GutTest_method_assert_freed>`
 
-Asserts that the passed in object has been freed.  This assertion requires that  you pass in some text in the form of a title since, if the object is freed, we won't have anything to convert to a string to put in the output statement. 
+Asserts that the passed in object has been freed.  This assertion requires that  you pass in some text in the form of a title since, if the object is freed, we won't have anything to convert to a string to put in the output statement.
 
 \ **Note** that this currently does not detect if a node has been queued free.
 
@@ -1856,7 +1856,7 @@ This method will assert that no orphaned nodes have been introduced by the test 
 
 |void| **assert_property_with_backing_variable**\ (\ obj, property_name, default_value, new_value, backed_by_name = null\ ) :ref:`🔗<class_GutTest_method_assert_property_with_backing_variable>`
 
-Assumes backing varible with be \_<property_name>.  This will perform all the asserts of assert_property.  Then this will set the value through the setter and check the backing variable value.  It will then reset throught the setter and set the backing variable and check the getter.
+Assumes backing variable with be \_<property_name>.  This will perform all the asserts of assert_property.  Then this will set the value through the setter and check the backing variable value.  It will then reset throught the setter and set the backing variable and check the getter.
 
 .. rst-class:: classref-item-separator
 
@@ -1974,7 +1974,7 @@ Use with await to wait for the passed in callable to return true or a maximum am
 
 p3 can be the optional message or an amount of time to wait between tests. p4 is the optional message if you have specified an amount of time to wait between tests.
 
-Returns true if the callable returned true before the timeout, false if not. 
+Returns true if the callable returned true before the timeout, false if not.
 
 See `Awaiting <../Awaiting.html>`__
 

@@ -1,5 +1,5 @@
 # GUT has been ported to Godot 4.0
-GUT 9.0.0 is the first release to support Godot 4.  Going forward two versions will be maintainted until Godot 3.x becomes obsolete.  GUT versions >= 9.0.0 will work with Godot 4.  GUT versions < 9.0.0 (currently 7.4.2) will work with Godot 3.x.
+GUT 9.0.0 is the first release to support Godot 4.  Going forward two versions will be maintained until Godot 3.x becomes obsolete.  GUT versions >= 9.0.0 will work with Godot 4.  GUT versions < 9.0.0 (currently 7.4.2) will work with Godot 3.x.
 
 All issues related to the Godot 4 have the [Godot 4.0](https://github.com/bitwes/Gut/issues?q=is%3Aissue+is%3Aopen+label%3A%22Godot+4.0%22) tag.
 
@@ -11,7 +11,7 @@ These are changes to Godot that affect how GUT is used/implemented.  There is mo
 
 * `setget` has been replaced with a completely new syntax.  More info at [#380](/../../issues/380).  Examples of the new way and the new `assert_property` method below.
 * `connect` has been significantly altered.  The signal related asserts will likely change to use `Callable` parameters instead of strings.  It is possible to use strings, so this may remain in some form.  More info in [#383](/../../issues/383).
-* `yield` has been replaced with `await`.  `yield_to`, `yield_for`, and `yield_frames` have been deprecated, the new methods are `wait_seconds`, `wait_frams` and `wait_for_signal`.  There are exampels below and more info at [#382](/../../issues/382).
+* `yield` has been replaced with `await`.  `yield_to`, `yield_for`, and `yield_frames` have been deprecated, the new methods are `wait_seconds`, `wait_frams` and `wait_for_signal`.  There are examples below and more info at [#382](/../../issues/382).
 * Arrays are pass by reference now.
 * Dictionaries are compared by value now.
 * `File` and `Directory` have been replaced with `FileAccess` and `DirAccess`.
@@ -51,7 +51,7 @@ The shallow compare functionanlity has been removed since it no longer applies. 
 * `assert_eq_shallow`
 * `assert_ne_shallow`
 
-Final note: `assert_eq` does not use `assert_eq_deep` since `assert_eq_deep` compares each element of both arrays/dictionaries and provides detailed info about what is different.  This can be slow for large arrays/dictionaries.  Godot's `==` operator uses a hashing function which is much faster but does not provide information about what is different in each array/dictionary.  With `assert_eq`, `assert_eq_deep`, and `assert_same` (and their inverses) you have fine grained control over the type of comparision that is performed.
+Final note: `assert_eq` does not use `assert_eq_deep` since `assert_eq_deep` compares each element of both arrays/dictionaries and provides detailed info about what is different.  This can be slow for large arrays/dictionaries.  Godot's `==` operator uses a hashing function which is much faster but does not provide information about what is different in each array/dictionary.  With `assert_eq`, `assert_eq_deep`, and `assert_same` (and their inverses) you have fine grained control over the type of comparison that is performed.
 
 
 ## Doubling Changes
@@ -82,7 +82,7 @@ This approach was used to make tests cleaner and less susceptible to typos.  If 
 
 
 ## setget vs set: and get:
-In godot 4.0 `setget` has been replaced with `set(val):` and `get():` psuedo methods which make properties more concrete.  This is a welcome change, but comes with a few caveats.
+In godot 4.0 `setget` has been replaced with `set(val):` and `get():` pseudo methods which make properties more concrete.  This is a welcome change, but comes with a few caveats.
 
 Here's an example of usage:
 ```

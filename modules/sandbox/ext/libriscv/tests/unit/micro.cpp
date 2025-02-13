@@ -1,16 +1,45 @@
+/**************************************************************************/
+/*  micro.cpp                                                             */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include <libriscv/machine.hpp>
 #include <libriscv/debug.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string& code,
-	const std::string& args = "-O2 -static", bool cpp = false);
+#include <libriscv/machine.hpp>
+extern std::vector<uint8_t> build_and_load(const std::string &code,
+		const std::string &args = "-O2 -static", bool cpp = false);
 static constexpr uint32_t MAX_CYCLES = 5'000;
 static const std::vector<uint8_t> empty;
 using namespace riscv;
 
-TEST_CASE("Run exactly X instructions", "[Micro]")
-{
+TEST_CASE("Run exactly X instructions", "[Micro]") {
 	Machine<RISCV32> machine;
 
 	std::array<uint32_t, 3> my_program{
@@ -21,16 +50,12 @@ TEST_CASE("Run exactly X instructions", "[Micro]")
 
 	const uint32_t dst = 0x1000;
 	machine.copy_to_guest(dst, &my_program[0], sizeof(my_program));
-	machine.memory.set_page_attr(dst, riscv::Page::size(), {
-		.read = false,
-		.write = false,
-		.exec = true
-	});
+	machine.memory.set_page_attr(dst, riscv::Page::size(), { .read = false, .write = false, .exec = true });
 	machine.cpu.jump(dst);
 
 	// Step instruction by instruction using
 	// a debugger.
-	riscv::DebugMachine debugger{machine};
+	riscv::DebugMachine debugger{ machine };
 	debugger.verbose_instructions = true;
 
 	debugger.simulate(3);
@@ -60,29 +85,27 @@ TEST_CASE("Run exactly X instructions", "[Micro]")
 	REQUIRE(machine.cpu.reg(REG_ARG7) == 93);
 }
 
-TEST_CASE("Crashing payload #1", "[Micro]")
-{
+TEST_CASE("Crashing payload #1", "[Micro]") {
 	static constexpr uint32_t MAX_CYCLES = 5'000;
 
 	// Print-out from GDB
 	const char elf[] = "\177ELF\002\002\002\216\002\002\002\002\002\002\f\004\002\000\363\000z\003\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\a\000\000\000\000\000\000\000\004\000\000\000\000\000\000\000\000\000\256\377\377\377\373\377\377\000\000`\260\000\217\377P\377\377\377\377\377\377\017\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\377\002\002\002\002\002\000\374\376\375\377\f\377\377\327\000\000\000\000\000\366\000\000\000\000\000\000\000\000\000\000\000\374~EL\271\372\001\002\213\375\375\375\375\002\002\377\004\002\000\363\000\000\000\000\000\000\000\001\000\000\000\221\377d\000\374\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000~\000\000\000\000\000\000\000\000\374\257\000\000\377\001\000\000\000\000\000\000\020\000\000\000\000\000\000\000\000\370\377\377\b\001\020b\000>>>>>>>>>>>>\000\002\002\002\002\002\002\002\002\002\002\002\002\002\002\002\263\002\002\002\002\002\002\002\000\006\000\005\000\002\002\002\002\002\002\002\002\002\303\303\303\303\303\303\323\303\303\303\303\002\002\023\002\002\263E\000\002\002\002\361\361\361\361\361\361\361\361\361\361\361\361\361\361\361\361\361\361\361\361\002\002\002\002\002\002\002\231\231\231\231\000\000\377\377\377\377\377\377\377\f\377\377\f\370\231LF\002z\002\377\377\000\002\000\363\000\177ELF\200\000\000\000\000\000\000\000\002";
-	std::string_view bin { elf, sizeof(elf)-1 };
+	std::string_view bin{ elf, sizeof(elf) - 1 };
 
-	const MachineOptions<8> options {
+	const MachineOptions<8> options{
 		.allow_write_exec_segment = true,
 		.use_memory_arena = false
 	};
 	try {
-		Machine<8> machine { bin, options };
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+		Machine<8> machine{ bin, options };
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		machine.simulate(MAX_CYCLES);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		//printf(">>> Exception: %s\n", e.what());
 	}
 }
 
-TEST_CASE("Crashing payload #2", "[Micro]")
-{
+TEST_CASE("Crashing payload #2", "[Micro]") {
 	static const uint8_t crash[] = {
 		0x80, 0xbf, 0x25, 0x00, 0x35, 0x35, 0x35, 0x35, 0x35, 0x35, 0x35, 0x25,
 		0x10, 0x25, 0x00, 0x35, 0x35, 0x35, 0x35, 0x35, 0x35, 0x35, 0x35, 0x30,
@@ -97,19 +120,18 @@ TEST_CASE("Crashing payload #2", "[Micro]")
 	constexpr uint32_t S = 0x1000;
 	constexpr uint32_t V = 0x2000;
 
-	riscv::Machine<RISCV64> machine { empty };
+	riscv::Machine<RISCV64> machine{ empty };
 	bool exception_thrown = false;
-	try
-	{
-		machine.memory.set_page_attr(S, 0x1000, {.read = true, .write = true});
-		machine.memory.set_page_attr(V, 0x1000, {.read = true, .exec = true});
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+	try {
+		machine.memory.set_page_attr(S, 0x1000, { .read = true, .write = true });
+		machine.memory.set_page_attr(V, 0x1000, { .read = true, .exec = true });
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		machine.cpu.init_execute_area(crash, V, sizeof(crash));
 
 		machine.cpu.jump(V);
 
 		machine.simulate(MAX_CYCLES);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}
@@ -117,8 +139,7 @@ TEST_CASE("Crashing payload #2", "[Micro]")
 	REQUIRE(exception_thrown);
 }
 
-TEST_CASE("Crashing payload #3", "[Micro]")
-{
+TEST_CASE("Crashing payload #3", "[Micro]") {
 	static const uint8_t crash[] = {
 		0x17, 0x00, 0x17, 0x60, 0x60, 0x60, 0x60, 0xff, 0x60, 0x60, 0x60, 0x60,
 		0x60, 0x60, 0x1c, 0xff, 0xe3, 0xff, 0xff, 0xff
@@ -127,19 +148,18 @@ TEST_CASE("Crashing payload #3", "[Micro]")
 	constexpr uint32_t S = 0x1000;
 	constexpr uint32_t V = 0x2000;
 
-	riscv::Machine<RISCV64> machine { empty };
+	riscv::Machine<RISCV64> machine{ empty };
 	bool exception_thrown = false;
-	try
-	{
-		machine.memory.set_page_attr(S, 0x1000, {.read = true, .write = true});
-		machine.memory.set_page_attr(V, 0x1000, {.read = true, .exec = true});
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+	try {
+		machine.memory.set_page_attr(S, 0x1000, { .read = true, .write = true });
+		machine.memory.set_page_attr(V, 0x1000, { .read = true, .exec = true });
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		machine.cpu.init_execute_area(crash, V, sizeof(crash));
 
 		machine.cpu.jump(V);
 
 		machine.simulate(MAX_CYCLES);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}
@@ -147,8 +167,7 @@ TEST_CASE("Crashing payload #3", "[Micro]")
 	REQUIRE(exception_thrown);
 }
 
-TEST_CASE("Crashing payload #4", "[Micro]")
-{
+TEST_CASE("Crashing payload #4", "[Micro]") {
 	static const uint8_t crash[] = {
 		0xb7, 0xa1, 0x00, 0x10, 0x10, 0x2f, 0xa1, 0x00, 0x00, 0x40, 0x00, 0xa3,
 		0x00, 0xa1, 0x00, 0x10, 0x2f, 0xa1, 0x00, 0x10, 0xa3, 0x00, 0x10, 0x2f,
@@ -382,13 +401,12 @@ TEST_CASE("Crashing payload #4", "[Micro]")
 	// What happens:
 	// There is an end-of-block due to a limit at 0x21FA
 	// After this, PC is no longer incremented.
-	riscv::Machine<RISCV64> machine { empty, {.use_memory_arena = false} };
+	riscv::Machine<RISCV64> machine{ empty, { .use_memory_arena = false } };
 	bool exception_thrown = false;
-	try
-	{
-		machine.memory.set_page_attr(S, 0x1000, {.read = true, .write = true});
-		machine.memory.set_page_attr(V, 0x1000, {.read = true, .exec = true});
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+	try {
+		machine.memory.set_page_attr(S, 0x1000, { .read = true, .write = true });
+		machine.memory.set_page_attr(V, 0x1000, { .read = true, .exec = true });
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		machine.cpu.init_execute_area(crash, V, sizeof(crash));
 
 		machine.cpu.jump(V);
@@ -398,7 +416,7 @@ TEST_CASE("Crashing payload #4", "[Micro]")
 		//debugger.verbose_instructions = true;
 		//debugger.simulate(MAX_CYCLES);
 
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}
@@ -406,88 +424,81 @@ TEST_CASE("Crashing payload #4", "[Micro]")
 	REQUIRE(exception_thrown);
 }
 
-TEST_CASE("Crashing payload #5", "[Micro]")
-{
+TEST_CASE("Crashing payload #5", "[Micro]") {
 	// This type of crash starts at 0x100 and ends at 0x11A
 	static const char crash1[] =
-		"\177ELF\001AL\213\213\213\213\000\000\000\377\372\002\000\363\000\000\001\000F\000\001\000\000\000\000\000\000\000\001\000\000\000\000\000\000\001\000\000\004\004\000\001\000\004\000\000\000\000\063\000\002\000\363\000\364F5Fb\001\000\000\000\245\000\000\000\000\000\000\000\000\000\000\000\272\001\000\000\377\377~\377\243\333>\371\020\000\000\000.\000\000@\000\001\377\377\377\377\000\001\200\367\377\000\000\004\000\000\035\000\000\000\377\377\377\377\377\377\377\016\000\377.t\363\000\364F\306Fb\001\000\000\000\000\000\000\000L\000\027\000\000\000\000\000\000\000\002\364\000\363\000F\306FbF\000\000\000.\000\000@\000\005\b\000\000\000\000Fb\001\000\000\000\000\000\000\000L\000\227\000\334\000\000\000\000\000\003L\375\000\000\000\000\000\000,\000\002\000\363\000\000\001\000F\000\001\000\000`\000\000\000\000\000\000\001\000]\000\000\000\001\000\000\000\004\000\001\000\004\000\000\000\000\060\000\002\000\363\000\000\000\000\000\002\000\363\000\364F\306F\000b\000\377\000\000\000\000\000L\000\227\376\000\000\000\000\000\000\002\364\000\363\000F\306FbF\000\000\000.\000\000@\000\000\b\000\000\000(\000Fb\001\000\000\000\000\000\000\000L\000\227\000\334\000\000\000\000\000\003L\375\000\000\000\000\000\000,\000\002\000\363\000\000\001\000F\000\001\000\000`\000\000\000\000\000\001\000\000\000\000\000\000\001\000\000\000\004\000\001\000\004\000\000\000\000\060\000\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r1\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r\033\002\000\000\000\000\000\000\000\000.\000\000@\000\177ELF\177\001\000b\020\002\261\236\264EL\000!\000\267\267\267XXXXXXXXXXXXXXXXXXXXX\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\020\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\000\000\000.\000\000@\000\001\377\377\377\377\000\001\200\367\377\000\000\004\000\000\035\000\000\000\377\377\377\377\377\377\377\016\000\377.t\363\000\364F\306Fb\001\000\000\000\000\000\000\000L\000\027\000\000\000\000\000\000\000\002\364\000\363\000F\306FbF\000\363\000\364F5Fb\001\000\000\000\245\000\000\000\000\000\000\000\000\000\000\000\272\001\000\000\377\377~\377\243\333>\371\020\000\000\000.\000\000@\000\001\377\377\377\377\000\001\200\367\377\000\000\004\000\000\035\000\000\000\377\377\377\377\377\377\377\016\000\377.t\363\000\364F\306Fb\001\000\000\000\000\000\000\000L\000\000\000.\000\000@\000\005\b\000\000\000\000Fb\001\000\000\000\000\000\000\000L\000\227\000\334\000\000gggggggggL\000\027\000\000\000\000\000;\000\000\003\364\000\363\000F\306FbF\000\000\000.\000\000@\000\005\b\000\363\000\364F0F";
+			"\177ELF\001AL\213\213\213\213\000\000\000\377\372\002\000\363\000\000\001\000F\000\001\000\000\000\000\000\000\000\001\000\000\000\000\000\000\001\000\000\004\004\000\001\000\004\000\000\000\000\063\000\002\000\363\000\364F5Fb\001\000\000\000\245\000\000\000\000\000\000\000\000\000\000\000\272\001\000\000\377\377~\377\243\333>\371\020\000\000\000.\000\000@\000\001\377\377\377\377\000\001\200\367\377\000\000\004\000\000\035\000\000\000\377\377\377\377\377\377\377\016\000\377.t\363\000\364F\306Fb\001\000\000\000\000\000\000\000L\000\027\000\000\000\000\000\000\000\002\364\000\363\000F\306FbF\000\000\000.\000\000@\000\005\b\000\000\000\000Fb\001\000\000\000\000\000\000\000L\000\227\000\334\000\000\000\000\000\003L\375\000\000\000\000\000\000,\000\002\000\363\000\000\001\000F\000\001\000\000`\000\000\000\000\000\000\001\000]\000\000\000\001\000\000\000\004\000\001\000\004\000\000\000\000\060\000\002\000\363\000\000\000\000\000\002\000\363\000\364F\306F\000b\000\377\000\000\000\000\000L\000\227\376\000\000\000\000\000\000\002\364\000\363\000F\306FbF\000\000\000.\000\000@\000\000\b\000\000\000(\000Fb\001\000\000\000\000\000\000\000L\000\227\000\334\000\000\000\000\000\003L\375\000\000\000\000\000\000,\000\002\000\363\000\000\001\000F\000\001\000\000`\000\000\000\000\000\001\000\000\000\000\000\000\001\000\000\000\004\000\001\000\004\000\000\000\000\060\000\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r1\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r\033\002\000\000\000\000\000\000\000\000.\000\000@\000\177ELF\177\001\000b\020\002\261\236\264EL\000!\000\267\267\267XXXXXXXXXXXXXXXXXXXXX\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\020\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\363\000\000\000.\000\000@\000\001\377\377\377\377\000\001\200\367\377\000\000\004\000\000\035\000\000\000\377\377\377\377\377\377\377\016\000\377.t\363\000\364F\306Fb\001\000\000\000\000\000\000\000L\000\027\000\000\000\000\000\000\000\002\364\000\363\000F\306FbF\000\363\000\364F5Fb\001\000\000\000\245\000\000\000\000\000\000\000\000\000\000\000\272\001\000\000\377\377~\377\243\333>\371\020\000\000\000.\000\000@\000\001\377\377\377\377\000\001\200\367\377\000\000\004\000\000\035\000\000\000\377\377\377\377\377\377\377\016\000\377.t\363\000\364F\306Fb\001\000\000\000\000\000\000\000L\000\000\000.\000\000@\000\005\b\000\000\000\000Fb\001\000\000\000\000\000\000\000L\000\227\000\334\000\000gggggggggL\000\027\000\000\000\000\000;\000\000\003\364\000\363\000F\306FbF\000\000\000.\000\000@\000\005\b\000\363\000\364F0F";
 	static const char crash2[] =
-		"\177ELF\001\000\000\000\000\377\002\000\001\317\000`\003\000\363\000\000\000\002\000\000\001\000\000,\000\000\000 \000\000\000\000\317\000\000\000\000\001t\001\000\000\000\001\000\000\000D\000\000\000\000\000\000\000\326\000\000\000\000\000\000\000\a\a\a\006\002\000\000\000\a\a\a\377\377\000\000\377\002\000\001\317\000`\003\000\363\000\177E\272FL\000\000\000\000\000\000\000\001&\000\000\000\000\000\000\000\001\371\371\371\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\230\371\371\371\371\230\033\033\033\033;\000\000\000\000\000\000\000\326\000\000\000\000[\230\230\033\033\033\033\033\033\033\033\033\033\033\033\033\033\033\001\000\000\000\000\000\000\000\033\006\006\006\t\371\371\371\371\371\376\371\371\371\371[\371\317@`\002\000\363\244\000\000\000\000\000\001\020\000\000,\000\000\000 \000\000\000\000\317\000\000\377\200";
-	const MachineOptions<RISCV32> options {
+			"\177ELF\001\000\000\000\000\377\002\000\001\317\000`\003\000\363\000\000\000\002\000\000\001\000\000,\000\000\000 \000\000\000\000\317\000\000\000\000\001t\001\000\000\000\001\000\000\000D\000\000\000\000\000\000\000\326\000\000\000\000\000\000\000\a\a\a\006\002\000\000\000\a\a\a\377\377\000\000\377\002\000\001\317\000`\003\000\363\000\177E\272FL\000\000\000\000\000\000\000\001&\000\000\000\000\000\000\000\001\371\371\371\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\216\230\371\371\371\371\230\033\033\033\033;\000\000\000\000\000\000\000\326\000\000\000\000[\230\230\033\033\033\033\033\033\033\033\033\033\033\033\033\033\033\001\000\000\000\000\000\000\000\033\006\006\006\t\371\371\371\371\371\376\371\371\371\371[\371\317@`\002\000\363\244\000\000\000\000\000\001\020\000\000,\000\000\000 \000\000\000\000\317\000\000\377\200";
+	const MachineOptions<RISCV32> options{
 		.allow_write_exec_segment = true,
 		.use_memory_arena = false
 	};
 
 	bool exception_thrown = false;
-	try
-	{
-		riscv::Machine<RISCV32> machine { std::string_view(crash1, sizeof(crash1)), options };
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+	try {
+		riscv::Machine<RISCV32> machine{ std::string_view(crash1, sizeof(crash1)), options };
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		machine.simulate(MAX_CYCLES);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}
 	REQUIRE(exception_thrown);
 
 	exception_thrown = false;
-	try
-	{
-		riscv::Machine<RISCV32> machine { std::string_view(crash2, sizeof(crash2)), options };
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+	try {
+		riscv::Machine<RISCV32> machine{ std::string_view(crash2, sizeof(crash2)), options };
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		machine.simulate(MAX_CYCLES);
 
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}
 	REQUIRE(exception_thrown);
 }
 
-TEST_CASE("Crashing payload #6", "[Micro]")
-{
+TEST_CASE("Crashing payload #6", "[Micro]") {
 	static const char crash[] =
-		"\177ELF\001\001\001\001\001\001\003\367\001\001\001\001\002\000\363\000\000\000\242\000\370\377\002\001\000\000\000\000\000\001\000\000C\002\000\000\001\001\002u\n\000\363v\001\000\000\000\000\000\000\000\000\002\003\313EL\000\000\000\000\000\370\377\377\000\326\000\374\277\377\377~\001\006\000\000\000\000\000\000\000 \001\001\000\310\001\000\000\000\000\000\000\000\033\000\363\000\000\000\001\000\000\000\000\000\000\000\000\000\000\001\326\377\377\377\377\377\377\377\000u\001\000\000\000\000\001\000\000\000\377\002\001\002\000\363\372\000\001\000\000\000\377\377\377\375\377\377\377d\364\000\000\005\000,\000\001\000\000\070f\035\000 _\377\375\000\000\000\000\000\256\005\000\000\000\001\326\377\376\376\376\376\376\376\372u\001\b\000\000\000\000\000\000\000\377\372\001\002\000\363\000\002\001\000\000\000\377\377z\375\377\377\377d\000\000\000\001\000\000\377\fuT\000\370\357\377\b\326\001\377\377\363\000\000\000\000\000 G\r\000G\000\r\001\000\000\000\000\000\000\000\001\002\000\363\000\000\000\006\000\000\000\377\377\377\377\000\000\000\001\326\001\001\001\377\240\061\061\061\061\061\061\061\061\061\061\061\061\061\061\000\000\002@\000\000\001\251\373\v\377\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\000\000\000\000\001\000\000\000:\326!\001\001\002u\n\000\363v\001\000\000\000\000\000\000\000\000\002\003\313EL\000\000\000\000\000\370\377\377\000\326\000\374\277\377\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\021g\377Ob\000\000\000\000\r\002+\000\000\377\377\000\377\001\001\001\001\001\001\001\001\001\001\n\000\363\000\000\000\000\000\000\000TL\000\000K\374\001\001\326\001\001\001\001\001\001\001\002u\001\000\000\000\000\000\000\000\000\347\377\372\001\002\000\363\000\000\000\000\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\000\377\023\001\002\000\363\000\002\001\000\000\000\377\377\377\375\377\377\377d\000\000\000\001\000\177ELF\325\001\001\001\001\001\003\001\001\001\001";
-	const MachineOptions<RISCV32> options {
+			"\177ELF\001\001\001\001\001\001\003\367\001\001\001\001\002\000\363\000\000\000\242\000\370\377\002\001\000\000\000\000\000\001\000\000C\002\000\000\001\001\002u\n\000\363v\001\000\000\000\000\000\000\000\000\002\003\313EL\000\000\000\000\000\370\377\377\000\326\000\374\277\377\377~\001\006\000\000\000\000\000\000\000 \001\001\000\310\001\000\000\000\000\000\000\000\033\000\363\000\000\000\001\000\000\000\000\000\000\000\000\000\000\001\326\377\377\377\377\377\377\377\000u\001\000\000\000\000\001\000\000\000\377\002\001\002\000\363\372\000\001\000\000\000\377\377\377\375\377\377\377d\364\000\000\005\000,\000\001\000\000\070f\035\000 _\377\375\000\000\000\000\000\256\005\000\000\000\001\326\377\376\376\376\376\376\376\372u\001\b\000\000\000\000\000\000\000\377\372\001\002\000\363\000\002\001\000\000\000\377\377z\375\377\377\377d\000\000\000\001\000\000\377\fuT\000\370\357\377\b\326\001\377\377\363\000\000\000\000\000 G\r\000G\000\r\001\000\000\000\000\000\000\000\001\002\000\363\000\000\000\006\000\000\000\377\377\377\377\000\000\000\001\326\001\001\001\377\240\061\061\061\061\061\061\061\061\061\061\061\061\061\061\000\000\002@\000\000\001\251\373\v\377\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\000\000\000\000\001\000\000\000:\326!\001\001\002u\n\000\363v\001\000\000\000\000\000\000\000\000\002\003\313EL\000\000\000\000\000\370\377\377\000\326\000\374\277\377\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\061\021g\377Ob\000\000\000\000\r\002+\000\000\377\377\000\377\001\001\001\001\001\001\001\001\001\001\n\000\363\000\000\000\000\000\000\000TL\000\000K\374\001\001\326\001\001\001\001\001\001\001\002u\001\000\000\000\000\000\000\000\000\347\377\372\001\002\000\363\000\000\000\000\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\365\000\377\023\001\002\000\363\000\002\001\000\000\000\377\377\377\375\377\377\377d\000\000\000\001\000\177ELF\325\001\001\001\001\001\003\001\001\001\001";
+	const MachineOptions<RISCV32> options{
 		.allow_write_exec_segment = true,
 		.use_memory_arena = false
 	};
 
 	bool exception_thrown = false;
-	try
-	{
-		riscv::Machine<RISCV32> machine { std::string_view(crash, sizeof(crash)), options };
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+	try {
+		riscv::Machine<RISCV32> machine{ std::string_view(crash, sizeof(crash)), options };
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		//DebugMachine debugger { machine };
 		//debugger.simulate(MAX_CYCLES);
 		machine.simulate(MAX_CYCLES);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}
 	REQUIRE(exception_thrown);
 
 	exception_thrown = false;
-	try
-	{
-		riscv::Machine<RISCV32> machine { std::string_view(crash, sizeof(crash)), options };
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
+	try {
+		riscv::Machine<RISCV32> machine{ std::string_view(crash, sizeof(crash)), options };
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
 		machine.set_max_instructions(MAX_CYCLES);
 		machine.cpu.simulate_precise();
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}
 	REQUIRE(exception_thrown);
 
 	exception_thrown = false;
-	try
-	{
-		riscv::Machine<RISCV32> machine { std::string_view(crash, sizeof(crash)), options };
-		machine.on_unhandled_syscall = [] (auto&, size_t) {};
-		DebugMachine debugger { machine };
+	try {
+		riscv::Machine<RISCV32> machine{ std::string_view(crash, sizeof(crash)), options };
+		machine.on_unhandled_syscall = [](auto &, size_t) {};
+		DebugMachine debugger{ machine };
 		debugger.simulate(MAX_CYCLES);
-	} catch (const std::exception& e) {
+	} catch (const std::exception &e) {
 		fprintf(stderr, ">>> Exception: %s\n", e.what());
 		exception_thrown = true;
 	}

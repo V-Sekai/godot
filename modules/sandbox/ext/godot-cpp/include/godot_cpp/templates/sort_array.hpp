@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_SORT_ARRAY_HPP
-#define GODOT_SORT_ARRAY_HPP
+#ifndef SORT_ARRAY_HPP
+#define SORT_ARRAY_HPP
 
 #include <godot_cpp/core/error_macros.hpp>
 
@@ -320,4 +320,4 @@ public:
 
 } // namespace godot
 
-#endif // GODOT_SORT_ARRAY_HPP
+#endif // SORT_ARRAY_HPP

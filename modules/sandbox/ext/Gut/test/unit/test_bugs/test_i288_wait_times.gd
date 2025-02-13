@@ -3,7 +3,7 @@ extends GutTest
 # https://github.com/bitwes/Gut/issues/288
 #
 # This script ensures that the delay caused by rendering the "waiting...."
-# does not affect short yeilds.  It also has a test that can be watched to
+# does not affect short yields.  It also has a test that can be watched to
 # see the "waiting" animation.
 #
 # after_all performs the assert that makes sure everything is in working order.

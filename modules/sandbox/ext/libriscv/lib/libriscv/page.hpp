@@ -1,14 +1,44 @@
-#pragma once
+/**************************************************************************/
+/*  page.hpp                                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef PAGE_HPP
+#define PAGE_HPP
 #include "common.hpp"
 #include "types.hpp"
+#include <array>
 #include <cassert>
 #include <memory>
-#include <array>
 
 namespace riscv {
 
-struct PageAttributes
-{
+struct PageAttributes {
 	bool read = true;
 	bool write = true;
 	bool exec = false;
@@ -30,7 +60,7 @@ struct PageAttributes
 			return true;
 	}
 	bool is_default() const noexcept {
-		constexpr PageAttributes def {};
+		constexpr PageAttributes def{};
 		return this->read == def.read && this->write == def.write && this->exec == def.exec;
 	}
 	void apply_regular_attributes(PageAttributes other) {
@@ -44,8 +74,7 @@ struct PageData {
 	std::array<uint8_t, PageSize> buffer8;
 
 	template <typename T>
-	inline T& aligned_read(uint32_t offset) const
-	{
+	inline T &aligned_read(uint32_t offset) const {
 		if constexpr (memory_alignment_check) {
 			if (offset % sizeof(T))
 #if __cpp_exceptions
@@ -54,12 +83,11 @@ struct PageData {
 				std::abort();
 #endif
 		}
-		return *(T*) &buffer8[offset];
+		return *(T *)&buffer8[offset];
 	}
 
 	template <typename T>
-	inline void aligned_write(uint32_t offset, T value)
-	{
+	inline void aligned_write(uint32_t offset, T value) {
 		if constexpr (memory_alignment_check) {
 			if (offset % sizeof(T))
 #if __cpp_exceptions
@@ -68,55 +96,63 @@ struct PageData {
 				std::abort();
 #endif
 		}
-		*(T*) &buffer8[offset] = value;
+		*(T *)&buffer8[offset] = value;
 	}
 
-	PageData() noexcept : buffer8{} {}
-	PageData(const PageData& other) noexcept : buffer8{other.buffer8} {}
-	PageData(const std::array<uint8_t, PageSize>& data) noexcept : buffer8{data} {}
-	enum Initialization { INITIALIZED, UNINITIALIZED };
-	PageData(Initialization i) noexcept { if (i == INITIALIZED) buffer8 = {}; }
+	PageData() noexcept :
+			buffer8{} {}
+	PageData(const PageData &other) noexcept :
+			buffer8{ other.buffer8 } {}
+	PageData(const std::array<uint8_t, PageSize> &data) noexcept :
+			buffer8{ data } {}
+	enum Initialization { INITIALIZED,
+		UNINITIALIZED };
+	PageData(Initialization i) noexcept {
+		if (i == INITIALIZED)
+			buffer8 = {};
+	}
 };
 
-struct Page
-{
+struct Page {
 	static constexpr unsigned SIZE = PageSize;
 
-	using mmio_cb_t = std::function<void(Page&, uint32_t, int, int64_t)>;
+	using mmio_cb_t = std::function<void(Page &, uint32_t, int, int64_t)>;
 
 	// create a new blank page
-	Page() { m_page.reset(new PageData {}); };
+	Page() { m_page.reset(new PageData{}); };
 	// create a new possibly uninitialized page
-	Page(PageData::Initialization i) { m_page.reset(new PageData {i}); };
+	Page(PageData::Initialization i) { m_page.reset(new PageData{ i }); };
 	// copy another page (or data)
-	Page(const PageAttributes& a, const PageData& d = {})
-		: attr(a), m_page(new PageData{d}) { attr.non_owning = false; }
-	Page(Page&& other) noexcept
-		: attr(other.attr), m_page(std::move(other.m_page)) {}
-	Page& operator= (Page&& other) noexcept {
+	Page(const PageAttributes &a, const PageData &d = {}) :
+			attr(a), m_page(new PageData{ d }) { attr.non_owning = false; }
+	Page(Page &&other) noexcept
+			:
+			attr(other.attr), m_page(std::move(other.m_page)) {}
+	Page &operator=(Page &&other) noexcept {
 		attr = other.attr;
 		m_page = std::move(other.m_page);
 		return *this;
 	}
 	// create a page that doesn't own this memory
-	Page(const PageAttributes& a, PageData* data);
+	Page(const PageAttributes &a, PageData *data);
 	// don't try to free non-owned page memory
 	~Page() {
-		if (attr.non_owning) m_page.release();
+		if (attr.non_owning)
+			m_page.release();
 	}
 
-	PageData& page() noexcept { return *m_page; }
-	const PageData& page() const noexcept { return *m_page; }
+	PageData &page() noexcept { return *m_page; }
+	const PageData &page() const noexcept { return *m_page; }
 
 	std::string to_string() const;
 
-	uint8_t* data() noexcept {
+	uint8_t *data() noexcept {
 		return page().buffer8.data();
 	}
-	const uint8_t* data() const noexcept {
+	const uint8_t *data() const noexcept {
 		return page().buffer8.data();
 	}
-	void new_data(PageData* data, bool data_owned);
+	void new_data(PageData *data, bool data_owned);
 
 	static constexpr size_t size() noexcept {
 		return SIZE;
@@ -124,31 +160,29 @@ struct Page
 
 	bool is_cow_page() const noexcept { return this->data() == cow_page().data(); }
 
-	static const Page& cow_page() noexcept;
-	static const Page& guard_page() noexcept;
-	static const Page& host_page() noexcept;
+	static const Page &cow_page() noexcept;
+	static const Page &guard_page() noexcept;
+	static const Page &host_page() noexcept;
 
 	/* Transform a CoW-page to an owned writable page */
-	void make_writable()
-	{
-		if (m_page != nullptr)
-		{
-			auto* new_data = new PageData {*m_page};
-			if (attr.non_owning) m_page.release();
+	void make_writable() {
+		if (m_page != nullptr) {
+			auto *new_data = new PageData{ *m_page };
+			if (attr.non_owning)
+				m_page.release();
 			m_page.reset(new_data);
 		} else {
-			m_page.reset(new PageData {});
+			m_page.reset(new PageData{});
 		}
 		attr.write = true;
 		attr.is_cow = false;
 		attr.non_owning = false;
 	}
-	void write_to_another(PageData* other)
-	{
-		if (this->m_page != nullptr)
-		{
+	void write_to_another(PageData *other) {
+		if (this->m_page != nullptr) {
 			other->buffer8 = m_page->buffer8;
-			if (attr.non_owning) m_page.release();
+			if (attr.non_owning)
+				m_page.release();
 		}
 		m_page.reset(other);
 		attr.write = true;
@@ -159,7 +193,7 @@ struct Page
 	// Loan a page from somewhere else, that will not be
 	// deleted here. There is no ref-counting mechanism, and
 	// the memory is ultimately owned by the master page.
-	void loan(const Page& master_page) {
+	void loan(const Page &master_page) {
 		this->attr = master_page.attr;
 		this->attr.non_owning = true;
 		this->m_page.reset(master_page.m_page.get());
@@ -180,9 +214,8 @@ struct Page
 	mutable mmio_cb_t m_trap = nullptr;
 };
 
-inline Page::Page(const PageAttributes& a, PageData* data)
-	: attr(a)
-{
+inline Page::Page(const PageAttributes &a, PageData *data) :
+		attr(a) {
 	if (UNLIKELY(data == nullptr))
 #if __cpp_exceptions
 		throw MachineException(ILLEGAL_OPERATION, "Tried to create a page with no page data");
@@ -193,17 +226,15 @@ inline Page::Page(const PageAttributes& a, PageData* data)
 	m_page.reset(data);
 }
 
-inline void Page::new_data(PageData* data, bool data_owned)
-{
+inline void Page::new_data(PageData *data, bool data_owned) {
 	if (this->attr.non_owning)
 		this->m_page.release();
 	this->m_page.reset(data);
 	this->attr.non_owning = !data_owned;
 }
 
-inline void Page::trap(uint32_t offset, int mode, int64_t value) const
-{
-	this->m_trap((Page&) *this, offset, mode, value);
+inline void Page::trap(uint32_t offset, int mode, int64_t value) const {
+	this->m_trap((Page &)*this, offset, mode, value);
 }
 inline bool Page::set_trap(mmio_cb_t newtrap) const {
 	if constexpr (memory_traps_enabled) {
@@ -214,24 +245,29 @@ inline bool Page::set_trap(mmio_cb_t newtrap) const {
 		this->m_trap = newtrap;
 		return true;
 	} else {
-		(void) newtrap;
+		(void)newtrap;
 		return false;
 	}
 }
 
-inline std::string Page::to_string() const
-{
+inline std::string Page::to_string() const {
 	return "Readable: " + std::string(attr.read ? "[x]" : "[ ]") +
-		"  Writable: " + std::string(attr.write ? "[x]" : "[ ]") +
-		"  Executable: " + std::string(attr.exec ? "[x]" : "[ ]");
+			"  Writable: " + std::string(attr.write ? "[x]" : "[ ]") +
+			"  Executable: " + std::string(attr.exec ? "[x]" : "[ ]");
 }
 
 // Helper class for caching pages
-template <int W, typename T> struct CachedPage {
+template <int W, typename T>
+struct CachedPage {
 	address_type<W> pageno = (address_type<W>)-1;
-	T* page = nullptr;
+	T *page = nullptr;
 
-	void reset() { pageno = (address_type<W>)-1; page = nullptr; }
+	void reset() {
+		pageno = (address_type<W>)-1;
+		page = nullptr;
+	}
 };
 
-}
+} //namespace riscv
+
+#endif // PAGE_HPP

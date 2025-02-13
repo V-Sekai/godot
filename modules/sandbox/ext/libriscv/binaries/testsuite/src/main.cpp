@@ -1,22 +1,49 @@
+/**************************************************************************/
+/*  main.cpp                                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#include "floating-point.hpp"
+#include <errno.h>
 #include <cassert>
-#include <cstdio>
 #include <cfloat>
 #include <cmath>
-#include <errno.h>
-#include "floating-point.hpp"
+#include <cstdio>
 static constexpr double PI = std::atan(1.0) * 4.0;
 
 inline bool kinda32(float val, float expectation) {
-	return val >= expectation-FLT_EPSILON
-		&& val < expectation+FLT_EPSILON;
+	return val >= expectation - FLT_EPSILON && val < expectation + FLT_EPSILON;
 }
 inline bool kinda64(float val, double expectation) {
-	return val >= expectation-FLT_EPSILON
-		&& val < expectation+FLT_EPSILON;
+	return val >= expectation - FLT_EPSILON && val < expectation + FLT_EPSILON;
 }
 inline bool kinda(double val, double expectation) {
-	return val >= expectation-FLT_EPSILON
-		&& val < expectation+FLT_EPSILON;
+	return val >= expectation - FLT_EPSILON && val < expectation + FLT_EPSILON;
 }
 
 static struct {
@@ -25,25 +52,23 @@ static struct {
 	int sign = 1;
 } pi;
 
-static double compute_more_pi()
-{
-    pi.sum += pi.sign / (2.0 * pi.counter + 1.0);
-	pi.counter ++;
+static double compute_more_pi() {
+	pi.sum += pi.sign / (2.0 * pi.counter + 1.0);
+	pi.counter++;
 	pi.sign = -pi.sign;
-    return 4.0 * pi.sum;
+	return 4.0 * pi.sum;
 }
 
-int main()
-{
-	assert((int32_t) -44.0f == -44);
-	assert((int32_t) -44.0 == -44);
-	assert((uint32_t) 44.0f == 44);
-	assert((uint32_t) 44.0 == 44);
+int main() {
+	assert((int32_t)-44.0f == -44);
+	assert((int32_t)-44.0 == -44);
+	assert((uint32_t)44.0f == 44);
+	assert((uint32_t)44.0 == 44);
 	const float cf = 5.0;
-	const float* pf = &cf;
+	const float *pf = &cf;
 	assert(*pf == cf);
 	const double cd = 5.0;
-	const double* pd = &cd;
+	const double *pd = &cd;
 	assert(*pd == cd);
 
 	assert(test_fadd(1.0f, 1.0f) == 2.0f);
@@ -100,11 +125,11 @@ int main()
 	assert(test_cosf(0.0f) == 1.0f);
 	assert(test_tanf(0.0f) == 0.0f);
 
-	printf("sin(0.0pi) = %f\n", test_sinf(0.0*PI)); // ~0.0
-	printf("sin(0.5pi) = %f\n", test_sinf(0.5*PI)); // 1.0
-	printf("sin(1.0pi) = %f\n", test_sinf(1.0*PI)); // ~0.0
-	printf("sin(1.5pi) = %f\n", test_sinf(1.5*PI)); // -1.0
-	printf("sin(2.0pi) = %f\n", test_sinf(2.0*PI)); // ~0.0
+	printf("sin(0.0pi) = %f\n", test_sinf(0.0 * PI)); // ~0.0
+	printf("sin(0.5pi) = %f\n", test_sinf(0.5 * PI)); // 1.0
+	printf("sin(1.0pi) = %f\n", test_sinf(1.0 * PI)); // ~0.0
+	printf("sin(1.5pi) = %f\n", test_sinf(1.5 * PI)); // -1.0
+	printf("sin(2.0pi) = %f\n", test_sinf(2.0 * PI)); // ~0.0
 	//assert(kinda32(test_sinf(0.0), test_sinf(2.0*PI)));
 	assert(kinda32(test_sinf(PI), 0.0f));
 	assert(test_cosf(PI) == -1.0f);

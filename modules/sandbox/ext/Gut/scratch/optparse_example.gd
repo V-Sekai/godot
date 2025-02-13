@@ -42,7 +42,7 @@ the --hlp option.
 		quit(1)
 	elif(opts.get_value("--disabled")):
 		print("You have disabled it, so we will do nothing.")
-		print("Even though nothing is still soemthing and this")
+		print("Even though nothing is still something and this")
 		print("is clearly something...we shall nevertheless")
 		print("consider this nothing")
 		print("Quit this yourself")

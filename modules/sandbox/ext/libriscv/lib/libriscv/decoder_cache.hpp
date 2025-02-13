@@ -1,4 +1,35 @@
-#pragma once
+/**************************************************************************/
+/*  decoder_cache.hpp                                                     */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef DECODER_CACHE_HPP
+#define DECODER_CACHE_HPP
 #include "common.hpp"
 #include "types.hpp"
 #include <unordered_map>
@@ -10,11 +41,11 @@ template <int W>
 struct DecoderData {
 	using Handler = instruction_handler<W>;
 
-	uint8_t  m_bytecode;
-	uint8_t  m_handler;
+	uint8_t m_bytecode;
+	uint8_t m_handler;
 #ifdef RISCV_EXT_COMPRESSED
-	uint16_t idxend  : 8;
-	uint16_t icount  : 8;
+	uint16_t idxend : 8;
+	uint16_t icount : 8;
 #else
 	uint16_t idxend;
 #endif
@@ -46,7 +77,7 @@ struct DecoderData {
 	// Used by live-patching to set both bytecode and handler index.
 	void set_atomic_bytecode_and_handler(uint8_t bytecode, uint8_t handler_idx) noexcept {
 		// XXX: Assumes little-endian
-		*(uint16_t* )&m_bytecode = ( handler_idx << 8 ) | bytecode;
+		*(uint16_t *)&m_bytecode = (handler_idx << 8) | bytecode;
 	}
 
 	RISCV_ALWAYS_INLINE
@@ -62,22 +93,23 @@ struct DecoderData {
 #endif
 	}
 
-	bool operator==(const DecoderData<W>& other) const noexcept {
+	bool operator==(const DecoderData<W> &other) const noexcept {
 		return m_bytecode == other.m_bytecode &&
-			m_handler == other.m_handler &&
-			idxend == other.idxend &&
-			instr == other.instr;
+				m_handler == other.m_handler &&
+				idxend == other.idxend &&
+				instr == other.instr;
 	}
 
 	static size_t handler_index_for(Handler new_handler);
-	static Handler* get_handlers() noexcept {
+	static Handler *get_handlers() noexcept {
 		return &instr_handlers[0];
 	}
 
-	void atomic_overwrite(const DecoderData<W>& other) noexcept {
+	void atomic_overwrite(const DecoderData<W> &other) noexcept {
 		static_assert(sizeof(DecoderData<W>) == 8, "DecoderData size mismatch");
-		*(uint64_t*)this = *(uint64_t*)&other;
+		*(uint64_t *)this = *(uint64_t *)&other;
 	}
+
 private:
 	static inline std::array<Handler, 256> instr_handlers;
 	static inline std::size_t handler_count = 0;
@@ -85,20 +117,21 @@ private:
 };
 
 template <int W>
-struct DecoderCache
-{
+struct DecoderCache {
 	static constexpr size_t DIVISOR = (compressed_enabled) ? 2 : 4;
 	static constexpr unsigned SHIFT = (compressed_enabled) ? 1 : 2;
 
-	inline auto& get(size_t idx) noexcept {
+	inline auto &get(size_t idx) noexcept {
 		return cache[idx];
 	}
 
-	inline auto* get_base() noexcept {
+	inline auto *get_base() noexcept {
 		return &cache[0];
 	}
 
 	std::array<DecoderData<W>, PageSize / DIVISOR> cache;
 };
 
-}
+} //namespace riscv
+
+#endif // DECODER_CACHE_HPP

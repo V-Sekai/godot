@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_SAFE_REFCOUNT_HPP
-#define GODOT_SAFE_REFCOUNT_HPP
+#ifndef SAFE_REFCOUNT_HPP
+#define SAFE_REFCOUNT_HPP
 
 #if !defined(NO_THREADS)
 
@@ -332,4 +332,4 @@ public:
 
 } // namespace godot
 
-#endif // GODOT_SAFE_REFCOUNT_HPP
+#endif // SAFE_REFCOUNT_HPP

@@ -6,7 +6,7 @@ extends SceneTree
 # you check that an input was handled correctly.
 #
 # For all checks other than is_action_just_pressed and is_action_just_released,
-# yeilding before checking will also work.  The *just* methods require that you
+# yielding before checking will also work.  The *just* methods require that you
 # either disable accumulated input or flush the buffer so that checks fire
 # on the same frame.
 

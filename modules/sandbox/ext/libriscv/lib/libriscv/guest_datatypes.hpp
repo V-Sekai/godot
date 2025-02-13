@@ -1,4 +1,35 @@
-#pragma once
+/**************************************************************************/
+/*  guest_datatypes.hpp                                                   */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef GUEST_DATATYPES_HPP
+#define GUEST_DATATYPES_HPP
 #include "native_heap.hpp" // arena()
 
 namespace riscv {
@@ -11,8 +42,10 @@ struct GuestRef {
 
 	const gaddr_t ptr;
 
-	constexpr GuestRef() noexcept : ptr(0) {}
-	GuestRef(gaddr_t ptr) : ptr(ptr) {}
+	constexpr GuestRef() noexcept :
+			ptr(0) {}
+	GuestRef(gaddr_t ptr) :
+			ptr(ptr) {}
 
 	/// @brief Get the address of the reference.
 	/// @return The address of the reference.
@@ -22,12 +55,12 @@ struct GuestRef {
 	/// @return True if the reference is not null.
 	operator bool() const noexcept { return ptr == 0; }
 
-	const T& get(machine_t& machine) const noexcept {
+	const T &get(machine_t &machine) const noexcept {
 		// This function cannot silently fail, as it will
 		// throw an exception if the location is invalid or misaligned.
 		return *machine.memory.template memarray<T>(this->ptr, 1);
 	}
-	T& get(machine_t& machine) noexcept {
+	T &get(machine_t &machine) noexcept {
 		// This function cannot silently fail, as it will
 		// throw an exception if the location is invalid or misaligned.
 		return *machine.memory.template memarray<T>(this->ptr, 1);
@@ -48,17 +81,16 @@ struct GuestStdString {
 		gaddr_t capacity;
 	};
 
-	constexpr GuestStdString() noexcept : ptr(0), size(0), capacity(0) {}
-	GuestStdString(machine_t& machine, std::string_view str = "")
-		: ptr(0), size(0), capacity(0)
-	{
+	constexpr GuestStdString() noexcept :
+			ptr(0), size(0), capacity(0) {}
+	GuestStdString(machine_t &machine, std::string_view str = "") :
+			ptr(0), size(0), capacity(0) {
 		this->set_string(machine, 0, str);
 	}
 
 	bool empty() const noexcept { return size == 0; }
 
-	std::string to_string(machine_t& machine, std::size_t max_len = 16UL << 20) const
-	{
+	std::string to_string(machine_t &machine, std::size_t max_len = 16UL << 20) const {
 		if (this->size <= SSO)
 			return std::string(data, size);
 		else if (this->size > max_len)
@@ -68,8 +100,7 @@ struct GuestStdString {
 		return std::string(view.data(), view.size());
 	}
 
-	std::string_view to_view(machine_t& machine, std::size_t max_len = 16UL << 20) const
-	{
+	std::string_view to_view(machine_t &machine, std::size_t max_len = 16UL << 20) const {
 		if (this->size <= SSO)
 			return std::string_view(data, size);
 		else if (this->size > max_len)
@@ -78,39 +109,32 @@ struct GuestStdString {
 		return machine.memory.memview(ptr, size);
 	}
 
-	void set_string(machine_t& machine, gaddr_t self, const void* str, std::size_t len)
-	{
+	void set_string(machine_t &machine, gaddr_t self, const void *str, std::size_t len) {
 		this->free(machine);
 
-		if (len <= SSO)
-		{
+		if (len <= SSO) {
 			this->ptr = self + offsetof(GuestStdString, data);
 			this->size = len;
 			std::memcpy(this->data, str, len);
 			this->data[len] = '\0';
-		}
-		else
-		{
+		} else {
 			this->ptr = machine.arena().malloc(len);
 			this->size = len;
 			this->capacity = len;
 			machine.copy_to_guest(this->ptr, str, len);
 		}
 	}
-	void set_string(machine_t& machine, gaddr_t self, std::string_view str)
-	{
+	void set_string(machine_t &machine, gaddr_t self, std::string_view str) {
 		this->set_string(machine, self, str.data(), str.size());
 	}
 
-	void move(gaddr_t self)
-	{
+	void move(gaddr_t self) {
 		if (size <= SSO) {
 			this->ptr = self + offsetof(GuestStdString, data);
 		}
 	}
 
-	void free(machine_t& machine)
-	{
+	void free(machine_t &machine) {
 		if (size > SSO) {
 			machine.arena().free(ptr);
 		}
@@ -119,7 +143,8 @@ struct GuestStdString {
 	}
 };
 
-template <int W, typename T> struct GuestStdVector;
+template <int W, typename T>
+struct GuestStdVector;
 
 template <int W, typename T>
 struct is_guest_stdvector : std::false_type {};
@@ -137,11 +162,11 @@ struct GuestStdVector {
 	gaddr_t ptr_end;
 	gaddr_t ptr_capacity;
 
-	constexpr GuestStdVector() noexcept : ptr_begin(0), ptr_end(0), ptr_capacity(0) {}
+	constexpr GuestStdVector() noexcept :
+			ptr_begin(0), ptr_end(0), ptr_capacity(0) {}
 
-	GuestStdVector(machine_t& machine, std::size_t elements)
-		: ptr_begin(0), ptr_end(0), ptr_capacity(0)
-	{
+	GuestStdVector(machine_t &machine, std::size_t elements) :
+			ptr_begin(0), ptr_end(0), ptr_capacity(0) {
 		auto [array, self] = this->alloc(machine, elements);
 		(void)self;
 		for (std::size_t i = 0; i < elements; i++) {
@@ -151,9 +176,8 @@ struct GuestStdVector {
 		this->ptr_end = this->ptr_begin + elements * sizeof(T);
 	}
 
-	GuestStdVector(machine_t& machine, const std::vector<std::string>& vec)
-		: ptr_begin(0), ptr_end(0), ptr_capacity(0)
-	{
+	GuestStdVector(machine_t &machine, const std::vector<std::string> &vec) :
+			ptr_begin(0), ptr_end(0), ptr_capacity(0) {
 		static_assert(std::is_same_v<T, GuestStdString<W>>, "GuestStdVector<T> must be a vector of GuestStdString<W>");
 		if (vec.empty())
 			return;
@@ -162,27 +186,25 @@ struct GuestStdVector {
 		auto [array, self] = this->alloc(machine, vec.size());
 		(void)self;
 		for (std::size_t i = 0; i < vec.size(); i++) {
-			T* str = new (&array[i]) T(machine, vec[i]);
+			T *str = new (&array[i]) T(machine, vec[i]);
 			str->move(this->ptr_begin + i * sizeof(T));
 		}
 		// Set new end only after all elements are constructed
 		this->ptr_end = this->ptr_begin + vec.size() * sizeof(T);
 	}
-	GuestStdVector(machine_t& machine, const std::vector<T>& vec = {})
-		: ptr_begin(0), ptr_end(0), ptr_capacity(0)
-	{
+	GuestStdVector(machine_t &machine, const std::vector<T> &vec = {}) :
+			ptr_begin(0), ptr_end(0), ptr_capacity(0) {
 		if (!vec.empty())
 			this->assign(machine, vec);
 	}
 	template <typename... Args>
-	GuestStdVector(machine_t& machine, const std::array<T, sizeof...(Args)>& arr)
-		: GuestStdVector(machine, std::vector<T> {arr.begin(), arr.end()})
-	{
+	GuestStdVector(machine_t &machine, const std::array<T, sizeof...(Args)> &arr) :
+			GuestStdVector(machine, std::vector<T>{ arr.begin(), arr.end() }) {
 	}
 
-	GuestStdVector(GuestStdVector&& other) noexcept
-		: ptr_begin(other.ptr_begin), ptr_end(other.ptr_end), ptr_capacity(other.ptr_capacity)
-	{
+	GuestStdVector(GuestStdVector &&other) noexcept
+			:
+			ptr_begin(other.ptr_begin), ptr_end(other.ptr_end), ptr_capacity(other.ptr_capacity) {
 		other.ptr_begin = 0;
 		other.ptr_end = 0;
 		other.ptr_capacity = 0;
@@ -190,8 +212,8 @@ struct GuestStdVector {
 
 	// Copying is intentionally shallow/fast, in order to avoid copying/duplication
 	// Use the std::move if you need proper semantics
-	GuestStdVector(const GuestStdVector& other) = default;
-	GuestStdVector& operator=(const GuestStdVector& other) = default;
+	GuestStdVector(const GuestStdVector &other) = default;
+	GuestStdVector &operator=(const GuestStdVector &other) = default;
 
 	gaddr_t data() const noexcept { return ptr_begin; }
 
@@ -206,61 +228,61 @@ struct GuestStdVector {
 		return capacity_bytes() / sizeof(T);
 	}
 
-	T& at(machine_t& machine, std::size_t index, std::size_t max_bytes = 16UL << 20) {
+	T &at(machine_t &machine, std::size_t index, std::size_t max_bytes = 16UL << 20) {
 		if (index >= size())
 			throw std::out_of_range("Guest std::vector index out of range");
 		return as_array(machine, max_bytes)[index];
 	}
-	const T& at(machine_t& machine, std::size_t index, std::size_t max_bytes = 16UL << 20) const {
+	const T &at(machine_t &machine, std::size_t index, std::size_t max_bytes = 16UL << 20) const {
 		if (index >= size())
 			throw std::out_of_range("Guest std::vector index out of range");
 		return as_array(machine, max_bytes)[index];
 	}
 
-	void push_back(machine_t& machine, T&& value) {
+	void push_back(machine_t &machine, T &&value) {
 		if (size_bytes() >= capacity_bytes())
 			this->increase_capacity(machine);
-		T* array = machine.memory.template memarray<T>(this->data(), size() + 1);
+		T *array = machine.memory.template memarray<T>(this->data(), size() + 1);
 		new (&array[size()]) T(std::move(value));
 		this->ptr_end += sizeof(T);
 	}
-	void push_back(machine_t& machine, const T& value) {
+	void push_back(machine_t &machine, const T &value) {
 		if (size_bytes() >= capacity_bytes())
 			this->increase_capacity(machine);
-		T* array = machine.memory.template memarray<T>(this->data(), size() + 1);
+		T *array = machine.memory.template memarray<T>(this->data(), size() + 1);
 		new (&array[size()]) T(value);
 		this->ptr_end += sizeof(T);
 	}
 
 	// Specialization for std::string_view
-	void push_back(machine_t& machine, std::string_view value) {
+	void push_back(machine_t &machine, std::string_view value) {
 		static_assert(std::is_same_v<T, GuestStdString<W>>, "GuestStdVector: T must be a GuestStdString<W>");
 		this->push_back(machine, GuestStdString<W>(machine, value));
 	}
 	// Specialization for std::vector<U>
 	template <typename U>
-	void push_back(machine_t& machine, const std::vector<U>& value) {
+	void push_back(machine_t &machine, const std::vector<U> &value) {
 		static_assert(is_guest_stdvector<W, T>::value, "GuestStdVector: T must be a GuestStdVector itself");
 		this->push_back(machine, GuestStdVector<W, U>(machine, value));
 	}
 
-	void pop_back(machine_t& machine) {
+	void pop_back(machine_t &machine) {
 		if (size() == 0)
 			throw std::out_of_range("Guest std::vector is empty");
 		this->free_element(machine, size() - 1);
 		this->ptr_end -= sizeof(T);
 	}
 
-	void append(machine_t& machine, const T* values, std::size_t count) {
+	void append(machine_t &machine, const T *values, std::size_t count) {
 		if (size_bytes() + count * sizeof(T) > capacity_bytes())
 			this->reserve(machine, size() + count);
-		T* array = machine.memory.template memarray<T>(this->data(), size() + count);
+		T *array = machine.memory.template memarray<T>(this->data(), size() + count);
 		for (std::size_t i = 0; i < count; i++)
 			new (&array[size() + i]) T(values[i]);
 		this->ptr_end += count * sizeof(T);
 	}
 
-	void clear(machine_t& machine) {
+	void clear(machine_t &machine) {
 		for (std::size_t i = 0; i < size(); i++)
 			this->free_element(machine, i);
 		this->ptr_end = this->ptr_begin;
@@ -272,31 +294,31 @@ struct GuestStdVector {
 		return ptr_begin + index * sizeof(T);
 	}
 
-	T *as_array(const machine_t& machine, std::size_t max_bytes = 16UL << 20) {
+	T *as_array(const machine_t &machine, std::size_t max_bytes = 16UL << 20) {
 		if (size_bytes() > max_bytes)
 			throw std::runtime_error("Guest std::vector has size > max_bytes");
 		return machine.memory.template memarray<T>(data(), size());
 	}
-	const T *as_array(const machine_t& machine, std::size_t max_bytes = 16UL << 20) const {
+	const T *as_array(const machine_t &machine, std::size_t max_bytes = 16UL << 20) const {
 		if (size_bytes() > max_bytes)
 			throw std::runtime_error("Guest std::vector has size > max_bytes");
 		return machine.memory.template memarray<T>(data(), size());
 	}
 
 #if RISCV_SPAN_AVAILABLE
-	std::span<T> to_span(const machine_t& machine) {
+	std::span<T> to_span(const machine_t &machine) {
 		return std::span<T>(as_array(machine), size());
 	}
-	std::span<const T> to_span(const machine_t& machine) const {
+	std::span<const T> to_span(const machine_t &machine) const {
 		return std::span<const T>(as_array(machine), size());
 	}
 #endif
 
 	// Iterators
-	auto begin(machine_t& machine) { return as_array(machine); }
-	auto end(machine_t& machine) { return as_array(machine) + size(); }
+	auto begin(machine_t &machine) { return as_array(machine); }
+	auto end(machine_t &machine) { return as_array(machine) + size(); }
 
-	std::vector<T> to_vector(const machine_t& machine) const {
+	std::vector<T> to_vector(const machine_t &machine) const {
 		if (size_bytes() > capacity_bytes())
 			throw std::runtime_error("Guest std::vector has size > capacity");
 		// Copy the vector from guest memory
@@ -305,24 +327,21 @@ struct GuestStdVector {
 		return std::vector<T>(&array[0], &array[elements]);
 	}
 
-	void assign(machine_t& machine, const std::vector<T>& vec)
-	{
+	void assign(machine_t &machine, const std::vector<T> &vec) {
 		auto [array, self] = alloc(machine, vec.size());
 		(void)self;
 		std::copy(vec.begin(), vec.end(), array);
 		this->ptr_end = this->ptr_begin + vec.size() * sizeof(T);
 	}
 
-	void assign(machine_t& machine, const T* values, std::size_t count)
-	{
+	void assign(machine_t &machine, const T *values, std::size_t count) {
 		auto [array, self] = alloc(machine, count);
 		(void)self;
 		std::copy(values, values + count, array);
 		this->ptr_end = this->ptr_begin + count * sizeof(T);
 	}
 
-	void resize(machine_t& machine, std::size_t new_size)
-	{
+	void resize(machine_t &machine, std::size_t new_size) {
 		if (new_size < size()) {
 			for (std::size_t i = new_size; i < size(); i++)
 				this->free_element(machine, i);
@@ -330,15 +349,14 @@ struct GuestStdVector {
 		} else if (new_size > size()) {
 			if (new_size > capacity())
 				this->reserve(machine, new_size);
-			T* array = machine.memory.template memarray<T>(this->data(), new_size);
+			T *array = machine.memory.template memarray<T>(this->data(), new_size);
 			for (std::size_t i = size(); i < new_size; i++)
 				new (&array[i]) T();
 			this->ptr_end = this->ptr_begin + new_size * sizeof(T);
 		}
 	}
 
-	void reserve(machine_t& machine, std::size_t elements)
-	{
+	void reserve(machine_t &machine, std::size_t elements) {
 		if (elements <= capacity())
 			return;
 
@@ -354,13 +372,13 @@ struct GuestStdVector {
 		this->ptr_end = this->ptr_begin + old_vec.size() * sizeof(T);
 		// Adjust SSO if the vector contains std::string
 		if constexpr (std::is_same_v<T, GuestStdString<W>>) {
-			T* array = machine.memory.template memarray<T>(this->data(), size());
+			T *array = machine.memory.template memarray<T>(this->data(), size());
 			for (std::size_t i = 0; i < size(); i++)
 				array[i].move(this->ptr_begin + i * sizeof(T));
 		}
 	}
 
-	void free(machine_t& machine) {
+	void free(machine_t &machine) {
 		if (this->ptr_begin != 0) {
 			for (std::size_t i = 0; i < size(); i++)
 				this->free_element(machine, i);
@@ -375,11 +393,11 @@ struct GuestStdVector {
 	std::size_t capacity_bytes() const noexcept { return ptr_capacity - ptr_begin; }
 
 private:
-	void increase_capacity(machine_t& machine) {
+	void increase_capacity(machine_t &machine) {
 		this->reserve(machine, capacity() * 2 + 4);
 	}
 
-	std::tuple<T *, gaddr_t> alloc(machine_t& machine, std::size_t elements) {
+	std::tuple<T *, gaddr_t> alloc(machine_t &machine, std::size_t elements) {
 		this->free(machine);
 
 		this->ptr_begin = machine.arena().malloc(elements * sizeof(T));
@@ -388,7 +406,7 @@ private:
 		return { machine.memory.template memarray<T>(this->data(), elements), this->data() };
 	}
 
-	void free_element(machine_t& machine, std::size_t index) {
+	void free_element(machine_t &machine, std::size_t index) {
 		if constexpr (std::is_same_v<T, GuestStdString<W>> || is_guest_stdvector<W, T>::value) {
 			this->at(machine, index).free(machine);
 		} else {
@@ -403,9 +421,8 @@ struct ScopedArenaObject {
 	using machine_t = riscv::Machine<W>;
 
 	template <typename... Args>
-	ScopedArenaObject(machine_t& machine, Args&&... args)
-		: m_machine(&machine)
-	{
+	ScopedArenaObject(machine_t &machine, Args &&...args) :
+			m_machine(&machine) {
 		this->m_addr = m_machine->arena().malloc(sizeof(T));
 		if (this->m_addr == 0) {
 			throw std::bad_alloc();
@@ -419,7 +436,7 @@ struct ScopedArenaObject {
 			new (m_ptr) T(machine, std::forward<Args>(args)...);
 		} else {
 			// Construct the object in place (as if trivially constructible)
-			new (m_ptr) T{std::forward<Args>(args)...};
+			new (m_ptr) T{ std::forward<Args>(args)... };
 		}
 	}
 
@@ -428,14 +445,14 @@ struct ScopedArenaObject {
 		m_machine->arena().free(this->m_addr);
 	}
 
-	T& operator*() { return *m_ptr; }
-	T* operator->() { return m_ptr; }
+	T &operator*() { return *m_ptr; }
+	T *operator->() { return m_ptr; }
 
 	gaddr_t address() const { return m_addr; }
 
-	ScopedArenaObject& operator=(const ScopedArenaObject&) = delete;
+	ScopedArenaObject &operator=(const ScopedArenaObject &) = delete;
 
-	ScopedArenaObject& operator=(const T& other) {
+	ScopedArenaObject &operator=(const T &other) {
 		// It's not possible for m_addr to be 0 here, as it would have thrown in the constructor
 		this->free_standard_types();
 		this->allocate_if_null();
@@ -445,7 +462,7 @@ struct ScopedArenaObject {
 	}
 
 	// Special case for std::string
-	ScopedArenaObject& operator=(std::string_view other) {
+	ScopedArenaObject &operator=(std::string_view other) {
 		static_assert(std::is_same_v<T, GuestStdString<W>>, "ScopedArenaObject<T> must be a GuestStdString<W>");
 		this->allocate_if_null();
 		this->m_ptr->set_string(*m_machine, this->m_addr, other.data(), other.size());
@@ -454,14 +471,14 @@ struct ScopedArenaObject {
 
 	// Special case for std::vector
 	template <typename U>
-	ScopedArenaObject& operator=(const std::vector<U>& other) {
+	ScopedArenaObject &operator=(const std::vector<U> &other) {
 		static_assert(std::is_same_v<T, GuestStdVector<W, U>>, "ScopedArenaObject<T> must be a GuestStdVector<W, U>");
 		this->allocate_if_null();
 		this->m_ptr->assign(*m_machine, other);
 		return *this;
 	}
 
-	ScopedArenaObject& operator=(ScopedArenaObject&& other) {
+	ScopedArenaObject &operator=(ScopedArenaObject &&other) {
 		this->free_standard_types();
 		this->m_machine = other.m_machine;
 		this->m_addr = other.m_addr;
@@ -489,9 +506,9 @@ private:
 		}
 	}
 
-	T*      m_ptr  = nullptr;
+	T *m_ptr = nullptr;
 	gaddr_t m_addr = 0;
-	machine_t* m_machine;
+	machine_t *m_machine;
 };
 
 template <int W, typename T>
@@ -507,3 +524,5 @@ template <int W, typename T>
 struct is_scoped_guest_stdvector<W, ScopedArenaObject<W, GuestStdVector<W, T>>> : std::true_type {};
 
 } // namespace riscv
+
+#endif // GUEST_DATATYPES_HPP

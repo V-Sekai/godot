@@ -102,7 +102,7 @@ assert_eq(dbl_inst.some_method(), inst.some_method())
 ### to_call(callable)
 This will cause the double to call the method specified.  Any value returned from the `Callable` will be returned by the original method.
 
-The parameters passed to the original method will be sent to the `Callable.`  Be sure the parameters of the `Callable` are compatable with the parameters of the original method or a runtime error will occur.
+The parameters passed to the original method will be sent to the `Callable.`  Be sure the parameters of the `Callable` are compatible with the parameters of the original method or a runtime error will occur.
 
 Any parameters bound to the `Callable` will be passed __after__ the parameters sent to the original method.  Bound parameters will not be included when spying.
 

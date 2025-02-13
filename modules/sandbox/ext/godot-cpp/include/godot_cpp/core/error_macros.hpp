@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_ERROR_MACROS_HPP
-#define GODOT_ERROR_MACROS_HPP
+#ifndef ERROR_MACROS_HPP
+#define ERROR_MACROS_HPP
 
 #include <godot_cpp/core/defs.hpp>
 
@@ -803,4 +803,4 @@ void _err_flush_stdout();
 #define CHECK_METHOD_BIND(m_mb)
 #endif
 
-#endif // GODOT_ERROR_MACROS_HPP
+#endif // ERROR_MACROS_HPP
