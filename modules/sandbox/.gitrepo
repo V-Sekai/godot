@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/blazium-engine/godot-sandbox.git
+	branch = update-to-work-module
+	commit = 07b7009a8157d2bf059403e529ee6fb752e27eb3
+	parent = 1a0bf546772edc19837e96b5ac07a47a9f8a8b34
+	method = merge
+	cmdver = 0.4.9

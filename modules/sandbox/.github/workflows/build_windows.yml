@@ -1,0 +1,50 @@
+name: Build Windows
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: x86_32, precision: single}
+          - {arch: x86_32, precision: double}
+          - {arch: x86_64, precision: single}
+          - {arch: x86_64, precision: double}
+          - {arch: arm64, precision: single}
+          - {arch: arm64, precision: double}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: 🔗 GDExtension Build
+        uses: godotengine/godot-cpp-template/.github/actions/build@main
+        with:
+          platform: windows
+          arch: ${{ matrix.arch }}
+          build-target-type: template_release
+          float-precision: ${{ matrix.precision }}
+          godot-cpp-directory: ext/godot-cpp
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-sandbox-windows-${{ matrix.arch }}-${{ matrix.precision }}
+          path: |
+            ${{ github.workspace }}/bin/**/*.dll
+          if-no-files-found: error
+
+      - name: Upload Artifact Static
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-sandbox-windows-${{ matrix.arch }}-${{ matrix.precision }}
+          path: |
+            ${{ github.workspace }}/bin/**/*.a
+            ${{ github.workspace }}/ext/godot-cpp/**/*.a
+          if-no-files-found: error
