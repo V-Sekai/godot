@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use core::arch::asm;
 use core::ffi::c_char;
-use crate::godot::variant::Variant;
+use create::godot::variant::Variant;
 
 pub struct Node
 {

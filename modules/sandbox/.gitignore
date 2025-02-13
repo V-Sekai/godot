@@ -10,7 +10,8 @@ program/test
 *.o
 *.os
 *.elf
-bin/addons/godot_sandbox/bin/*
+!modules/sandbox/thirdparty/libriscv/examples/embed/fib.rv64.elf
+!modules/sandbox/thirdparty/libriscv/examples/noexcept/fib.rv64.elf
 
 # Ignore all CPP files in the bintr directory
 src/bintr/*.cpp

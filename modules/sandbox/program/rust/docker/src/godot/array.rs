@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use core::arch::asm;
-use crate::Variant;
-use crate::VariantType;
+use create::Variant;
+use create::VariantType;
 
 #[repr(C)]
 pub struct GodotArray {
