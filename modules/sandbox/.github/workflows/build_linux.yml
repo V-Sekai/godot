@@ -1,0 +1,53 @@
+name: Build Linux
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: x86_64, precision: single}
+          - {arch: x86_64, precision: double}
+
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+  
+      - name: Compiler Fix
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
+
+      - name: 🔗 GDExtension Build Single
+        uses: godotengine/godot-cpp-template/.github/actions/build@main
+        with:
+          platform: linux
+          arch: ${{ matrix.arch }}
+          build-target-type: template_release
+          float-precision: ${{ matrix.precision }}
+          godot-cpp-directory: ext/godot-cpp
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-sandbox-linux-${{ matrix.arch }}-${{ matrix.precision }}
+          path: |
+            ${{ github.workspace }}/bin/**/*.so
+          if-no-files-found: error  
+
+      - name: Upload Artifact Static
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-sandbox-linux-${{ matrix.arch }}-${{ matrix.precision }}
+          path: |
+            ${{ github.workspace }}/bin/**/*.a
+            ${{ github.workspace }}/ext/godot-cpp/**/*.a
+          if-no-files-found: error  
