@@ -46,11 +46,11 @@ os.system(
     + str(env["dev_build"])
 )
 
-match get_addon_platform():
-    case "macos":
-        base_path = f"#modules/sandbox/bin/addons/godot_sandbox/bin/libgodot_riscv.macos.{get_addon_target()}{dev_build_extension}.{env['arch']}.framework/"
-    case _:
-        base_path = "#modules/sandbox/bin/addons/godot_sandbox/bin"
+base_path = "#modules/sandbox/bin/addons/godot_sandbox/bin"
+
+platform = get_addon_platform()
+if platform == "macos":
+    base_path = f"#modules/sandbox/bin/addons/godot_sandbox/bin/libgodot_riscv.macos.{get_addon_target()}{dev_build_extension}.{env['arch']}.framework/"
 
 print(get_sufix())
 base_file = "libgodot_riscv{}".format(get_sufix())
