@@ -1,6 +1,37 @@
-#pragma once
-#include <cmath>
+/**************************************************************************/
+/*  color.hpp                                                             */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#ifndef COLOR_HPP
+#define COLOR_HPP
 #include "syscalls_fwd.hpp"
+#include <cmath>
 
 struct Color {
 	float r;
@@ -9,7 +40,7 @@ struct Color {
 	float a;
 
 	template <typename... Args>
-	Variant operator () (std::string_view method, Args&&... args);
+	Variant operator()(std::string_view method, Args &&...args);
 
 	METHOD(Color, blend);
 	METHOD(Color, clamp);
@@ -37,27 +68,31 @@ struct Color {
 	METHOD(int, to_rgba32);
 	METHOD(int, to_rgba64);
 
-	Color& operator += (const Color& other);
-	Color& operator -= (const Color& other);
-	Color& operator *= (const Color& other);
-	Color& operator /= (const Color& other);
+	Color &operator+=(const Color &other);
+	Color &operator-=(const Color &other);
+	Color &operator*=(const Color &other);
+	Color &operator/=(const Color &other);
 
-	Color& operator += (float other);
-	Color& operator -= (float other);
-	Color& operator *= (float other);
-	Color& operator /= (float other);
+	Color &operator+=(float other);
+	Color &operator-=(float other);
+	Color &operator*=(float other);
+	Color &operator/=(float other);
 
-	bool operator == (const Color& other) const {
+	bool operator==(const Color &other) const {
 		return __builtin_memcmp(this, &other, sizeof(Color)) == 0;
 	}
-	bool operator != (const Color& other) const {
+	bool operator!=(const Color &other) const {
 		return !(*this == other);
 	}
 
-	constexpr Color() : r(0), g(0), b(0), a(0) {}
-	constexpr Color(float val) : r(val), g(val), b(val), a(val) {}
-	constexpr Color(float r, float g, float b) : r(r), g(g), b(b), a(1) {}
-	constexpr Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
+	constexpr Color() :
+			r(0), g(0), b(0), a(0) {}
+	constexpr Color(float val) :
+			r(val), g(val), b(val), a(val) {}
+	constexpr Color(float r, float g, float b) :
+			r(r), g(g), b(b), a(1) {}
+	constexpr Color(float r, float g, float b, float a) :
+			r(r), g(g), b(b), a(a) {}
 	Color(std::string_view code);
 	Color(std::string_view code, float a);
 
@@ -209,54 +244,54 @@ struct Color {
 	static const Color YELLOW_GREEN;
 };
 
-inline constexpr auto operator + (const Color& a, float b) noexcept {
-	return Color{a.r + b, a.g + b, a.b + b, a.a + b};
+inline constexpr auto operator+(const Color &a, float b) noexcept {
+	return Color{ a.r + b, a.g + b, a.b + b, a.a + b };
 }
-inline constexpr auto operator - (const Color& a, float b) noexcept {
-	return Color{a.r - b, a.g - b, a.b - b, a.a - b};
+inline constexpr auto operator-(const Color &a, float b) noexcept {
+	return Color{ a.r - b, a.g - b, a.b - b, a.a - b };
 }
-inline constexpr auto operator * (const Color& a, float b) noexcept {
-	return Color{a.r * b, a.g * b, a.b * b, a.a * b};
+inline constexpr auto operator*(const Color &a, float b) noexcept {
+	return Color{ a.r * b, a.g * b, a.b * b, a.a * b };
 }
-inline constexpr auto operator / (const Color& a, float b) noexcept {
-	return Color{a.r / b, a.g / b, a.b / b, a.a / b};
-}
-
-inline constexpr auto operator + (const Color& a, const Color& b) noexcept {
-	return Color{a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a};
-}
-inline constexpr auto operator - (const Color& a, const Color& b) noexcept {
-	return Color{a.r - b.r, a.g - b.g, a.b - b.b, a.a - b.a};
-}
-inline constexpr auto operator * (const Color& a, const Color& b) noexcept {
-	return Color{a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a};
-}
-inline constexpr auto operator / (const Color& a, const Color& b) noexcept {
-	return Color{a.r / b.r, a.g / b.g, a.b / b.b, a.a / b.a};
+inline constexpr auto operator/(const Color &a, float b) noexcept {
+	return Color{ a.r / b, a.g / b, a.b / b, a.a / b };
 }
 
-inline Color& Color::operator += (const Color& other) {
+inline constexpr auto operator+(const Color &a, const Color &b) noexcept {
+	return Color{ a.r + b.r, a.g + b.g, a.b + b.b, a.a + b.a };
+}
+inline constexpr auto operator-(const Color &a, const Color &b) noexcept {
+	return Color{ a.r - b.r, a.g - b.g, a.b - b.b, a.a - b.a };
+}
+inline constexpr auto operator*(const Color &a, const Color &b) noexcept {
+	return Color{ a.r * b.r, a.g * b.g, a.b * b.b, a.a * b.a };
+}
+inline constexpr auto operator/(const Color &a, const Color &b) noexcept {
+	return Color{ a.r / b.r, a.g / b.g, a.b / b.b, a.a / b.a };
+}
+
+inline Color &Color::operator+=(const Color &other) {
 	r += other.r;
 	g += other.g;
 	b += other.b;
 	a += other.a;
 	return *this;
 }
-inline Color& Color::operator -= (const Color& other) {
+inline Color &Color::operator-=(const Color &other) {
 	r -= other.r;
 	g -= other.g;
 	b -= other.b;
 	a -= other.a;
 	return *this;
 }
-inline Color& Color::operator *= (const Color& other) {
+inline Color &Color::operator*=(const Color &other) {
 	r *= other.r;
 	g *= other.g;
 	b *= other.b;
 	a *= other.a;
 	return *this;
 }
-inline Color& Color::operator /= (const Color& other) {
+inline Color &Color::operator/=(const Color &other) {
 	r /= other.r;
 	g /= other.g;
 	b /= other.b;
@@ -264,28 +299,28 @@ inline Color& Color::operator /= (const Color& other) {
 	return *this;
 }
 
-inline Color& Color::operator += (float other) {
+inline Color &Color::operator+=(float other) {
 	r += other;
 	g += other;
 	b += other;
 	a += other;
 	return *this;
 }
-inline Color& Color::operator -= (float other) {
+inline Color &Color::operator-=(float other) {
 	r -= other;
 	g -= other;
 	b -= other;
 	a -= other;
 	return *this;
 }
-inline Color& Color::operator *= (float other) {
+inline Color &Color::operator*=(float other) {
 	r *= other;
 	g *= other;
 	b *= other;
 	a *= other;
 	return *this;
 }
-inline Color& Color::operator /= (float other) {
+inline Color &Color::operator/=(float other) {
 	r /= other;
 	g /= other;
 	b /= other;
@@ -439,3 +474,5 @@ inline constexpr Color const WHITE = Color(1, 1, 1, 1);
 inline constexpr Color const WHITE_SMOKE = Color(0.960784, 0.960784, 0.960784, 1);
 inline constexpr Color const YELLOW = Color(1, 1, 0, 1);
 inline constexpr Color const YELLOW_GREEN = Color(0.603922, 0.803922, 0.196078, 1);
+
+#endif // COLOR_HPP

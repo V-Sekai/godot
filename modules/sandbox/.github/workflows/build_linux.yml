@@ -19,7 +19,7 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0
-  
+
       - name: Compiler Fix
         shell: bash
         run: |
@@ -41,7 +41,7 @@ jobs:
           name: godot-sandbox-linux-${{ matrix.arch }}-${{ matrix.precision }}
           path: |
             ${{ github.workspace }}/bin/**/*.so
-          if-no-files-found: error  
+          if-no-files-found: error
 
       - name: Upload Artifact Static
         uses: actions/upload-artifact@v4
@@ -50,4 +50,4 @@ jobs:
           path: |
             ${{ github.workspace }}/bin/**/*.a
             ${{ github.workspace }}/ext/godot-cpp/**/*.a
-          if-no-files-found: error  
+          if-no-files-found: error
