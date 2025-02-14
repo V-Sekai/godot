@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef LOCAL_VECTOR_HPP
-#define LOCAL_VECTOR_HPP
+#ifndef GODOT_LOCAL_VECTOR_HPP
+#define GODOT_LOCAL_VECTOR_HPP
 
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/core/memory.hpp>
@@ -340,4 +340,4 @@ using TightLocalVector = LocalVector<T, U, force_trivial, true>;
 
 } // namespace godot
 
-#endif // LOCAL_VECTOR_HPP
+#endif // GODOT_LOCAL_VECTOR_HPP

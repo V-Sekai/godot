@@ -8,7 +8,7 @@ The wiki is generated from three types of files:
 
 
 ## Code Comment Features
-All features listed in [Godot's Documentation Comments](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_documentation_comments.html) are supported as well as some additional bbcode tags and annotations.  These additional tags will only work on the site and will appear unaltered when viewing documentation through the Editor.
+All features listed in [Godot's Documentation Comments](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_documentation_comments.html) are supported as well as some additional bbcode tags and annotations.  These additional tags will only work on the site and will appear unaltered when viewing documention through the Editor.
 
 * `[wiki][/wiki]` Creates a link to a wiki page.  Use page title between tags.  For example `[wiki]Creating-Tests[/wiki]`.  To link to a GUT class, prefix the `class_name` with `class_`:  `[wiki]class_GutTest[/wiki]`
 * `@ignore-uncommented`:  Place in the class description (not short description) to exclude all of the following that do not have document comments above them:

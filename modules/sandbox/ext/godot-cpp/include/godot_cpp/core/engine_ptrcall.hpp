@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef ENGINE_PTRCALL_HPP
-#define ENGINE_PTRCALL_HPP
+#ifndef GODOT_ENGINE_PTRCALL_HPP
+#define GODOT_ENGINE_PTRCALL_HPP
 
 #include <gdextension_interface.h>
 
@@ -94,4 +94,4 @@ void _call_utility_no_ret(const GDExtensionPtrUtilityFunction func, const Args &
 
 } // namespace godot
 
-#endif // ENGINE_PTRCALL_HPP
+#endif // GODOT_ENGINE_PTRCALL_HPP

@@ -115,3 +115,5 @@ func test_assert_count_reflects_pass_and_failures():
     t.add_pass('pass')
     t.add_fail('fail')
     assert_eq(t.assert_count, 3)
+
+

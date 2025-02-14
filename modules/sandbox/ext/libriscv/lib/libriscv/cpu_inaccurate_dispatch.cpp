@@ -1,38 +1,8 @@
-/**************************************************************************/
-/*  cpu_inaccurate_dispatch.cpp                                           */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
-#include "decoder_cache.hpp"
 #include "machine.hpp"
+#include "decoder_cache.hpp"
+#include "threaded_bytecodes.hpp"
 #include "rv32i_instr.hpp"
 #include "rvfd.hpp"
-#include "threaded_bytecodes.hpp"
 #ifdef RISCV_EXT_COMPRESSED
 #include "rvc.hpp"
 #endif
@@ -47,7 +17,8 @@
  * All dispatch modes share bytecode_impl.cpp
  **/
 
-namespace riscv {
+namespace riscv
+{
 #undef VIEW_INSTR
 #undef VIEW_INSTR_AS
 #undef NEXT_INSTR
@@ -82,13 +53,13 @@ namespace riscv {
 	pc += decoder->block_bytes();                              \
 	EXECUTE_INSTR();
 
-#define SAFE_INSTR_NEXT(len) \
-	pc += len;               \
+#define SAFE_INSTR_NEXT(len)                  \
+	pc += len;                                \
 	decoder += len >> DecoderCache<W>::SHIFT;
 
-#define NEXT_SEGMENT()                                     \
-	decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT]; \
-	pc += decoder->block_bytes();                          \
+#define NEXT_SEGMENT()                                       \
+	decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];   \
+	pc += decoder->block_bytes();                            \
 	EXECUTE_INSTR();
 
 #define PERFORM_BRANCH()                                                                                        \
@@ -104,50 +75,53 @@ namespace riscv {
 	else                                                          \
 		goto new_execute_segment;
 
-template <int W>
-DISPATCH_ATTR void CPU<W>::simulate_inaccurate(address_t pc) {
-	static constexpr uint32_t XLEN = W * 8;
-	using addr_t = address_type<W>;
-	using saddr_t = signed_address_type<W>;
+	template <int W>
+	DISPATCH_ATTR void CPU<W>::simulate_inaccurate(address_t pc)
+	{
+		static constexpr uint32_t XLEN = W * 8;
+		using addr_t = address_type<W>;
+		using saddr_t = signed_address_type<W>;
 
 #ifdef DISPATCH_MODE_THREADED
 #include "threaded_bytecode_array.hpp"
 #endif
 
-	machine().set_instruction_counter(0);
-	machine().set_max_instructions(UINT64_MAX);
+		machine().set_instruction_counter(0);
+		machine().set_max_instructions(UINT64_MAX);
 
-	DecodedExecuteSegment<W> *exec = this->m_exec;
-	address_t current_begin = exec->exec_begin();
-	address_t current_end = exec->exec_end();
+		DecodedExecuteSegment<W> *exec = this->m_exec;
+		address_t current_begin = exec->exec_begin();
+		address_t current_end = exec->exec_end();
 
-	DecoderData<W> *exec_decoder = exec->decoder_cache();
-	DecoderData<W> *decoder;
+		DecoderData<W> *exec_decoder = exec->decoder_cache();
+		DecoderData<W> *decoder;
 
-	// We need an execute segment matching current PC
-	if (UNLIKELY(!(pc >= current_begin && pc < current_end)))
-		goto new_execute_segment;
+		// We need an execute segment matching current PC
+		if (UNLIKELY(!(pc >= current_begin && pc < current_end)))
+			goto new_execute_segment;
 
 #ifdef RISCV_BINARY_TRANSLATION
-	// There's a very high chance that the (first) instruction is a translated function
-	decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
-	if (LIKELY(decoder->get_bytecode() == RV32I_BC_TRANSLATOR))
-		goto retry_translated_function;
+		// There's a very high chance that the (first) instruction is a translated function
+		decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
+		if (LIKELY(decoder->get_bytecode() == RV32I_BC_TRANSLATOR))
+			goto retry_translated_function;
 #endif
 
-continue_segment:
-	decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
+	continue_segment:
+		decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
 
-	pc += decoder->block_bytes();
+		pc += decoder->block_bytes();
 
 #ifdef DISPATCH_MODE_SWITCH_BASED
 
-	while (true) {
-		switch (decoder->get_bytecode()) {
+		while (true)
+		{
+			switch (decoder->get_bytecode())
+			{
 #define INSTRUCTION(bc, lbl) case bc:
 
 #else
-	goto *computed_opcode[decoder->get_bytecode()];
+		goto *computed_opcode[decoder->get_bytecode()];
 #define INSTRUCTION(bc, lbl) \
 	lbl:
 
@@ -160,129 +134,137 @@ continue_segment:
 #define VECTORS() registers().rvv()
 #define MACHINE() machine()
 
-			/** Instruction handlers **/
+				/** Instruction handlers **/
 
 #include "bytecode_impl.cpp"
 
-			INSTRUCTION(RV32I_BC_SYSTEM, rv32i_system) {
-				VIEW_INSTR();
-				// Make the current PC visible
-				REGISTERS().pc = pc;
-				// Invoke SYSTEM
-				MACHINE().system(instr);
-				// Check if we need to jump
-				if (UNLIKELY(pc != REGISTERS().pc)) {
-					pc = REGISTERS().pc;
-					goto check_jump;
-				}
-				// Overflow-check, next block
-				NEXT_BLOCK(4, true);
-			}
+INSTRUCTION(RV32I_BC_SYSTEM, rv32i_system)
+{
+	VIEW_INSTR();
+	// Make the current PC visible
+	REGISTERS().pc = pc;
+	// Invoke SYSTEM
+	MACHINE().system(instr);
+	// Check if we need to jump
+	if (UNLIKELY(pc != REGISTERS().pc))
+	{
+		pc = REGISTERS().pc;
+		goto check_jump;
+	}
+	// Overflow-check, next block
+	NEXT_BLOCK(4, true);
+}
 
 #ifdef RISCV_BINARY_TRANSLATION
-			INSTRUCTION(RV32I_BC_TRANSLATOR, translated_function) {
-			retry_translated_function:
-				// Invoke translated code
-				auto bintr_results =
-						exec->unchecked_mapping_at(decoder->instr)(*this, 0, 1, pc);
-				pc = REGISTERS().pc;
-				if (LIKELY(bintr_results.max_counter != 0 && (pc - current_begin < current_end - current_begin))) {
-					decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
-					if (decoder->get_bytecode() == RV32I_BC_TRANSLATOR) {
-						goto retry_translated_function;
-					}
+INSTRUCTION(RV32I_BC_TRANSLATOR, translated_function)
+{
+retry_translated_function:
+	// Invoke translated code
+	auto bintr_results =
+		exec->unchecked_mapping_at(decoder->instr)(*this, 0, 1, pc);
+	pc = REGISTERS().pc;
+	if (LIKELY(bintr_results.max_counter != 0 && (pc - current_begin < current_end - current_begin)))
+	{
+		decoder = &exec_decoder[pc >> DecoderCache<W>::SHIFT];
+		if (decoder->get_bytecode() == RV32I_BC_TRANSLATOR) {
+			goto retry_translated_function;
+		}
 #ifdef RISCV_DEBUG
-					if (exec->is_recording_slowpaths())
-						exec->insert_slowpath_address(pc);
+		if (exec->is_recording_slowpaths())
+			exec->insert_slowpath_address(pc);
 #endif
-					goto continue_segment;
-				} else if (bintr_results.max_counter == 0)
-					goto exit_check;
-				else
-					goto check_jump;
-			}
+		goto continue_segment;
+	} else if (bintr_results.max_counter == 0)
+		goto exit_check;
+	else
+		goto check_jump;
+}
 #endif // RISCV_BINARY_TRANSLATION
 
-			INSTRUCTION(RV32I_BC_SYSCALL, rv32i_syscall) {
-				// Make the current PC visible
-				REGISTERS().pc = pc;
-				// Invoke system call
-				MACHINE().system_call(REG(REG_ECALL));
-				if (MACHINE().stopped())
-					return;
-				else if (UNLIKELY(pc != REGISTERS().pc)) {
-					// System calls are always full-length instructions
-					if constexpr (VERBOSE_JUMPS) {
-						if (pc != REGISTERS().pc)
-							fprintf(stderr, "SYSCALL jump from 0x%lX to 0x%lX\n",
-									long(pc), long(REGISTERS().pc + 4));
-					}
-					pc = REGISTERS().pc + 4;
-					goto check_jump;
-				}
-				NEXT_BLOCK(4, false);
-			}
+INSTRUCTION(RV32I_BC_SYSCALL, rv32i_syscall)
+{
+	// Make the current PC visible
+	REGISTERS().pc = pc;
+	// Invoke system call
+	MACHINE().system_call(REG(REG_ECALL));
+	if (MACHINE().stopped())
+		return;
+	else if (UNLIKELY(pc != REGISTERS().pc))
+	{
+		// System calls are always full-length instructions
+		if constexpr (VERBOSE_JUMPS)
+		{
+			if (pc != REGISTERS().pc)
+				fprintf(stderr, "SYSCALL jump from 0x%lX to 0x%lX\n",
+						long(pc), long(REGISTERS().pc + 4));
+		}
+		pc = REGISTERS().pc + 4;
+		goto check_jump;
+	}
+	NEXT_BLOCK(4, false);
+}
 
-			INSTRUCTION(RV32I_BC_STOP, rv32i_stop) {
-				REGISTERS().pc = pc + 4;
-				return;
-			}
+INSTRUCTION(RV32I_BC_STOP, rv32i_stop)
+{
+	REGISTERS().pc = pc + 4;
+	return;
+}
 
 #ifdef DISPATCH_MODE_SWITCH_BASED
 			default:
 				goto execute_invalid;
-		} // switch case
-	} // while loop
+			} // switch case
+		} // while loop
 
 #endif
 
-check_jump:
-	if (LIKELY(pc - current_begin < current_end - current_begin))
+	check_jump:
+		if (LIKELY(pc - current_begin < current_end - current_begin))
+			goto continue_segment;
+
+		// Change to a new execute segment
+	new_execute_segment:
+	{
+		auto new_values = this->next_execute_segment(pc);
+		exec = new_values.exec;
+		pc = new_values.pc;
+		current_begin = exec->exec_begin();
+		current_end = exec->exec_end();
+		exec_decoder = exec->decoder_cache();
+	}
 		goto continue_segment;
 
-	// Change to a new execute segment
-new_execute_segment: {
-	auto new_values = this->next_execute_segment(pc);
-	exec = new_values.exec;
-	pc = new_values.pc;
-	current_begin = exec->exec_begin();
-	current_end = exec->exec_end();
-	exec_decoder = exec->decoder_cache();
-}
-	goto continue_segment;
-
 #ifdef RISCV_BINARY_TRANSLATION
-exit_check:
+	exit_check:
 #ifdef RISCV_LIBTCC
-	// We need to check if we have a current exception
-	if (UNLIKELY(CPU().has_current_exception()))
-		goto handle_rethrow_exception;
+		// We need to check if we have a current exception
+		if (UNLIKELY(CPU().has_current_exception()))
+			goto handle_rethrow_exception;
 #endif
-	return;
+		return;
 #endif
 
-execute_invalid:
-	// Calculate the current PC from the decoder pointer
-	pc = (decoder - exec_decoder) << DecoderCache<W>::SHIFT;
-	// Check if the instruction is still invalid
-	try {
-		if (decoder->instr == 0 && MACHINE().memory.template read<uint16_t>(pc) != 0) {
-			exec->set_stale(true);
-			goto new_execute_segment;
-		}
-	} catch (...) {
-	}
-	registers().pc = pc;
-	trigger_exception(ILLEGAL_OPCODE, decoder->instr);
+	execute_invalid:
+		// Calculate the current PC from the decoder pointer
+		pc = (decoder - exec_decoder) << DecoderCache<W>::SHIFT;
+		// Check if the instruction is still invalid
+		try {
+			if (decoder->instr == 0 && MACHINE().memory.template read<uint16_t>(pc) != 0) {
+				exec->set_stale(true);
+				goto new_execute_segment;
+			}
+		} catch (...) {}
+		registers().pc = pc;
+		trigger_exception(ILLEGAL_OPCODE, decoder->instr);
 
 #if defined(RISCV_BINARY_TRANSLATION) && defined(RISCV_LIBTCC)
-handle_rethrow_exception:
-	// We have an exception, so we need to rethrow it
-	const auto except = CPU().current_exception();
-	CPU().clear_current_exception();
-	std::rethrow_exception(except);
+	handle_rethrow_exception:
+		// We have an exception, so we need to rethrow it
+		const auto except = CPU().current_exception();
+		CPU().clear_current_exception();
+		std::rethrow_exception(except);
 #endif
 
-} // CPU::simulate_inaccurate()
+	} // CPU::simulate_inaccurate()
 
-} //namespace riscv
+} // riscv

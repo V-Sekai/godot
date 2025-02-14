@@ -49,7 +49,7 @@ func load_script():
 	var to_return = load(path)
 
 	if(inner_class_name != null and inner_class_name != ''):
-		# If we wanted to do inner classes in inner classes
+		# If we wanted to do inner classes in inner classses
 		# then this would have to become some kind of loop or recursive
 		# call to go all the way down the chain or this class would
 		# have to change to hold onto the loaded class instead of

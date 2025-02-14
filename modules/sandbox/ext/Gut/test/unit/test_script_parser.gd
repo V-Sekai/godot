@@ -255,3 +255,5 @@ class TestParsedMethod:
 		meta.name = ScriptParser.BLACKLIST[0]
 		var pm = ScriptParser.ParsedMethod.new(meta)
 		assert_false(pm.is_eligible_for_doubling())
+
+

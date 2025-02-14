@@ -1,4 +1,6 @@
-from typing import Dict, List
+
+from typing import Any, Dict, List, Optional, TextIO, Tuple, Union
+
 
 strings_l10n: Dict[str, str] = {}
 

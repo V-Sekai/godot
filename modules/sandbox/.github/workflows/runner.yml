@@ -42,7 +42,7 @@ jobs:
     uses: ./.github/workflows/build_godot.yml
   build_module:
     uses: ./.github/workflows/build_module.yml
-
+  
   docker_build:
     uses: ./.github/workflows/build_docker.yml
     if: github.ref == 'refs/heads/main'

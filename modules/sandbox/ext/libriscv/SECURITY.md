@@ -4,7 +4,7 @@ libriscv provides a safe sandbox that guests can not escape from, short of vulne
 
 libriscv provides termination guarantees and default resource limits - code should not be able to exhaust CPU or RAM resources on the system during initialization or execution. If blocking calls are used during system calls, use socket timeouts or timers + signals to cancel.
 
-libriscv can be loaded with any program from any untrusted source. Any program or combination of instructions that is able to violate the sandbox integrity, including high resource usage, is considered a vulnerability.
+libriscv can be loaded with any program from any untrusted source. Any program or combination of instructions that is able to violate the sandbox integrity, including high resource usage, is considered a vulnerabilty.
 
 # Safe Configuration
 

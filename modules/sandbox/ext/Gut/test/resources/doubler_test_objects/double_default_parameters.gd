@@ -48,3 +48,5 @@ func default_typed_enum(p1:SOME_VALUES = SOME_VALUES.VALUE_1):
 
 func no_defaults(p1, p2, p3):
 	pass
+
+

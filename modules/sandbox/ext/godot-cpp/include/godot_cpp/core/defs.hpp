@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DEFS_HPP
-#define DEFS_HPP
+#ifndef GODOT_DEFS_HPP
+#define GODOT_DEFS_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -135,4 +135,4 @@ struct BuildIndexSequence<0, Is...> : IndexSequence<Is...> {};
 // Consider it deprecated.
 using real_t = godot::real_t;
 
-#endif // DEFS_HPP
+#endif // GODOT_DEFS_HPP

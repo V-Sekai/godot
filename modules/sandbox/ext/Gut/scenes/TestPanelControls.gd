@@ -15,9 +15,11 @@ func _ready():
 	#_save_load.dlg_load.show_diretory_types = false
 	#_save_load.dlg_load.show_user = false
 	#_save_load.dlg_save.show_os = false
-
+	
 	_res_dir_enabled.enabled_button.visible = true
-
+	
 	_ctrls.pc_vbox.add_child(_save_load)
 	_ctrls.pc_vbox.add_child(_res_dir)
 	_ctrls.pc_vbox.add_child(_res_dir_enabled)
+
+	

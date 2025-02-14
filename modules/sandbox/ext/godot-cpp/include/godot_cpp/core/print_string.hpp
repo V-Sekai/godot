@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef PRINT_STRING_HPP
-#define PRINT_STRING_HPP
+#ifndef GODOT_PRINT_STRING_HPP
+#define GODOT_PRINT_STRING_HPP
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -70,4 +70,4 @@ bool is_print_verbose_enabled();
 
 } // namespace godot
 
-#endif // PRINT_STRING_HPP
+#endif // GODOT_PRINT_STRING_HPP

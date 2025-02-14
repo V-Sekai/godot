@@ -1,44 +1,16 @@
-/**************************************************************************/
-/*  mandelbrot.cpp                                                        */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <array>
 #include <cmath>
 
 #ifdef PNG_8BIT
 using png_array_type = uint8_t;
-inline void encode_color(png_array_type &px, int count, int max_count) {
+inline void encode_color(png_array_type& px, int count, int max_count)
+{
 	px = count & 15;
 }
 #else
 using png_array_type = uint32_t;
-inline void encode_color(png_array_type &px, int count, int max_count) {
+inline void encode_color(png_array_type& px, int count, int max_count)
+{
 	px = color_mapping[count & 15];
 }
 #endif
@@ -46,45 +18,49 @@ inline void encode_color(png_array_type &px, int count, int max_count) {
 // Function to draw mandelbrot set
 template <int DimX, int DimY, int MaxCount>
 std::array<png_array_type, DimX * DimY>
-fractal(double left, double top, double xside, double yside) {
-	std::array<png_array_type, DimX * DimY> bitmap{};
+fractal(double left, double top, double xside, double yside)
+{
+	std::array<png_array_type, DimX * DimY> bitmap {};
 
-	// setting up the xscale and yscale
-	const double xscale = xside / DimX;
-	const double yscale = yside / DimY;
+    // setting up the xscale and yscale
+    const double xscale = xside / DimX;
+    const double yscale = yside / DimY;
 
-	// scanning every point in that rectangular area.
-	// Each point represents a Complex number (x + yi).
-	// Iterate that complex number
-	for (int y = 0; y < DimY / 2; y++)
-		for (int x = 0; x < DimX; x++) {
-			double c_real = x * xscale + left;
-			double c_imag = y * yscale + top;
-			double z_real = 0;
-			double z_imag = 0;
-			int count = 0;
+    // scanning every point in that rectangular area.
+    // Each point represents a Complex number (x + yi).
+    // Iterate that complex number
+    for (int y = 0; y < DimY / 2; y++)
+    for (int x = 0; x < DimX; x++)
+    {
+        double c_real = x * xscale + left;
+        double c_imag = y * yscale + top;
+        double z_real = 0;
+        double z_imag = 0;
+        int count = 0;
 
-// Calculate whether c(c_real + c_imag) belongs
-// to the Mandelbrot set or not and draw a pixel
-// at coordinates (x, y) accordingly
-// If you reach the Maximum number of iterations
-// and If the distance from the origin is
-// greater than 2 exit the loop
-#pragma GCC unroll 4
-			while ((z_real * z_real + z_imag * z_imag < 4) && (count < MaxCount)) {
-				// Calculate Mandelbrot function
-				// z = z*z + c where z is a complex number
-				double tempx =
-						z_real * z_real - z_imag * z_imag + c_real;
-				z_imag = 2 * z_real * z_imag + c_imag;
-				z_real = tempx;
-				count++;
-			}
+        // Calculate whether c(c_real + c_imag) belongs
+        // to the Mandelbrot set or not and draw a pixel
+        // at coordinates (x, y) accordingly
+        // If you reach the Maximum number of iterations
+        // and If the distance from the origin is
+        // greater than 2 exit the loop
+		#pragma GCC unroll 4
+        while ((z_real * z_real + z_imag * z_imag < 4)
+			&& (count < MaxCount))
+        {
+            // Calculate Mandelbrot function
+            // z = z*z + c where z is a complex number
+			double tempx =
+            	z_real * z_real - z_imag * z_imag + c_real;
+            z_imag = 2 * z_real * z_imag + c_imag;
+            z_real = tempx;
+            count++;
+        }
 
-			encode_color(bitmap[x + y * DimX], count, MaxCount);
-		}
+		encode_color(bitmap[x + y * DimX], count, MaxCount);
+    }
 	for (int y = 0; y < DimY / 2; y++) {
-		memcpy(&bitmap[(DimY - 1 - y) * DimX], &bitmap[y * DimX], DimX * sizeof(png_array_type));
+		memcpy(&bitmap[(DimY-1 - y) * DimX], &bitmap[y * DimX], DimX * sizeof(png_array_type));
 	}
 	return bitmap;
 }

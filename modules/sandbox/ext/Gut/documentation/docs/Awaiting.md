@@ -31,7 +31,7 @@ await wait_secondes(.25, "waiting for a short period")
 wait_frames(frames, msg=''):
 ```
 
-This is just like `wait_seconds` but instead of counting seconds it counts frames.  Due to order of operations, this may wait +/- 1 frames, but shouldn't ever be 0.  This can be very useful if you use `call_deferred` in any of the objects under test, or need to wait a frame or two for `_process` to run.
+This is just like `wait_seconds` but instead of counting seconds it counts frames.  Due to order of operations, this may wait +/- 1 frames, but sholdn't ever be 0.  This can be very useful if you use `call_deferred` in any of the objects under test, or need to wait a frame or two for `_process` to run.
 
 The internal frame counter is incremented in `_process_physics`.
 
@@ -60,7 +60,7 @@ The optional `msg` parameter is logged so you know why test execution is paused.
 # or 5 seconds, whichever comes first.
 await wait_for_signal(my_object.my_signal, 5)
 assert_signal_emitted(my_object, 'my_signal', \
-                     'Maybe it did, maybe it didn't, but we still got here.')
+                     'Maybe it did, maybe it didnt, but we still got here.')
 
 # You can also use the return value directly in an assert
 assert_true(await wait_for_signal(my_object.my_signal, 2),
@@ -72,7 +72,7 @@ assert_true(await wait_for_signal(my_object.my_signal, 2),
 ``` gdscript
 wait_until(callable, max_wait, p3='', p4=''):
 ```
-This method takes a `Callable` predicate method that will be called every frame.  The wait will end when the `Callable` returns `true` or when `max_wait` seconds has expired.  This requires the method to explicitly return `true` and not a truthy value.
+This method takes a `Callable` predicate method that will be called every frame.  The wait will end when the `Callable` returns `true` or when `max_wait` seconds has expired.  This requires the method to explicity return `true` and not a truthy value.
 
 This will return `true` if the method returned `true` before the timeout, `false` if otherwise.  You can optionally specify an amount of time to wait between calling the `Callable`.
 

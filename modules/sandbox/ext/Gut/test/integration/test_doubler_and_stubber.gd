@@ -217,7 +217,7 @@ class TestDefaultParameters:
 	func test_partial_gets_deault_values():
 		var dbl = autofree(doubler.partial_double(DoubleDefaultParameters).new())
 		var result = dbl.return_passed()
-		assert_eq(result, 'ab', 'the defaults are a and b')
+		assert_eq(result, 'ab', 'the defauts are a and b')
 
 	func test_partial_gets_passed_values_and_defaults():
 		var dbl = autofree(doubler.partial_double(DoubleDefaultParameters).new())
@@ -295,3 +295,5 @@ class TestMonkeyPatching:
 		var elapsed = Time.get_ticks_msec() - before
 
 		assert_almost_eq(elapsed, 1000, 300) # yea, 300 is what you need.
+
+

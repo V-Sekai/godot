@@ -20,7 +20,7 @@ var assert_count = 0 :
 	get: return pass_texts.size() + fail_texts.size()
 	set(val): pass
 
-# Converted to property for backwards compatibility.  This now cannot be set
+# Converted to propety for backwards compatibility.  This now cannot be set
 # externally
 var pending = false :
 	get: return is_pending()
@@ -114,3 +114,5 @@ func to_s():
 	for i in range(pass_texts.size()):
 		to_return += str(pad, 'Pass:  ', pass_texts[i], "\n")
 	return to_return
+
+

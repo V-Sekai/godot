@@ -1,79 +1,53 @@
-/**************************************************************************/
-/*  custom.cpp                                                            */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "custom.hpp"
-#include <any>
 #include <libriscv/machine.hpp>
 #include <libriscv/rv32i_instr.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string &code,
-		const std::string &args = "-O2 -static", bool cpp = false);
+#include <any>
+#include "custom.hpp"
+extern std::vector<uint8_t> build_and_load(const std::string& code,
+	const std::string& args = "-O2 -static", bool cpp = false);
 static const uint64_t MAX_MEMORY = 8ul << 20; /* 8MB */
 static const uint64_t MAX_INSTRUCTIONS = 10'000'000ul;
-static const std::string cwd{ SRCDIR };
+static const std::string cwd {SRCDIR};
 using namespace riscv;
 
-struct InstructionState {
+struct InstructionState
+{
 	std::array<std::any, 8> args;
 };
 
 /** The new custom instruction **/
-static const Instruction<RISCV64> custom_instruction_handler{
-	[](CPU<RISCV64> &cpu, rv32i_instruction instr) {
+static const Instruction<RISCV64> custom_instruction_handler
+{
+	[] (CPU<RISCV64>& cpu, rv32i_instruction instr) {
 		printf("Hello custom instruction World!\n");
 		REQUIRE(instr.opcode() == 0b1011011);
 
-		auto *state = cpu.machine().get_userdata<InstructionState>();
+		auto* state = cpu.machine().get_userdata<InstructionState> ();
 		// Argument number
 		const unsigned idx = instr.Itype.rd & 7;
 		// Select type and retrieve value from argument registers
-		switch (instr.Itype.funct3) {
-			case 0x0: // Register value (64-bit unsigned)
-				state->args[idx] = cpu.reg(REG_ARG0 + idx);
-				break;
-			case 0x1: // 64-bit floating point
-				state->args[idx] = cpu.registers().getfl(REG_FA0 + idx).f64;
-				break;
-			default:
-				throw "Implement me";
+		switch (instr.Itype.funct3)
+		{
+		case 0x0: // Register value (64-bit unsigned)
+			state->args[idx] = cpu.reg(REG_ARG0 + idx);
+			break;
+		case 0x1: // 64-bit floating point
+			state->args[idx] = cpu.registers().getfl(REG_FA0 + idx).f64;
+			break;
+		default:
+			throw "Implement me";
 		}
 	},
-	[](char *buffer, size_t len, auto &, rv32i_instruction instr) {
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) {
 		return snprintf(buffer, len, "CUSTOM: 4-byte 0x%X (0x%X)",
-				instr.opcode(), instr.whole);
+						instr.opcode(), instr.whole);
 	}
 };
 
-TEST_CASE("Custom instruction", "[Custom]") {
+TEST_CASE("Custom instruction", "[Custom]")
+{
 	// Build a program that uses a custom instruction to
 	// select and identify a system call argument.
 	const auto binary = build_and_load(R"M(
@@ -93,7 +67,7 @@ int main()
 	// Install the handler for unimplemented instructions, allowing us to
 	// select our custom instruction for a reserved opcode.
 	CPU<RISCV64>::on_unimplemented_instruction =
-			[](rv32i_instruction instr) -> const Instruction<RISCV64> & {
+	[] (rv32i_instruction instr) -> const Instruction<RISCV64>& {
 		if (instr.opcode() == 0b1011011) {
 			return custom_instruction_handler;
 		}
@@ -103,26 +77,26 @@ int main()
 	// Install system call number 500 (used by our program above).
 	static bool syscall_was_called = false;
 	Machine<RISCV64>::install_syscall_handler(500,
-			[](Machine<RISCV64> &machine) {
-				auto *state = machine.get_userdata<InstructionState>();
+	[] (Machine<RISCV64>& machine) {
+		auto* state = machine.get_userdata<InstructionState> ();
 
-				REQUIRE(std::any_cast<double>(state->args[1]) == 1234.0);
-				REQUIRE(std::any_cast<uint64_t>(state->args[3]) == 0xDEADB33F);
-				syscall_was_called = true;
-			});
+		REQUIRE(std::any_cast<double>(state->args[1]) == 1234.0);
+		REQUIRE(std::any_cast<uint64_t>(state->args[3]) == 0xDEADB33F);
+		syscall_was_called = true;
+	});
 
 	InstructionState state;
 
 	// Normal (fastest) simulation
 	{
-		riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+		riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 		machine.set_userdata(&state);
 		// We need to install Linux system calls for maximum gucciness
 		machine.setup_linux_syscalls();
 		// We need to create a Linux environment for runtimes to work well
 		machine.setup_linux(
-				{ "custom_instruction" },
-				{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+			{"custom_instruction"},
+			{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 		// Run for at most X instructions before giving up
 		syscall_was_called = false;
 		machine.simulate(MAX_INSTRUCTIONS);
@@ -130,12 +104,12 @@ int main()
 	}
 	// Precise (step-by-step) simulation
 	{
-		riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+		riscv::Machine<RISCV64> machine{binary, { .memory_max = MAX_MEMORY }};
 		machine.set_userdata(&state);
 		machine.setup_linux_syscalls();
 		machine.setup_linux(
-				{ "custom_instruction" },
-				{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+			{"custom_instruction"},
+			{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 		// Verify step-by-step simulation
 		syscall_was_called = false;
 		machine.set_max_instructions(MAX_INSTRUCTIONS);
@@ -146,53 +120,57 @@ int main()
 
 #include <map>
 struct SystemFunctionHandler {
-	std::function<SystemArg(Machine<RISCV64> &, const SystemFunctionArgs &)> handler;
+	std::function<SystemArg(Machine<RISCV64>&, const SystemFunctionArgs&)> handler;
 	size_t arguments = 0;
 };
 static std::map<std::string, SystemFunctionHandler> sf_handlers;
 
-static void add_system_functions() {
+static void add_system_functions()
+{
 	sf_handlers["AddTwoFloats"].handler =
-			[](Machine<RISCV64> &, const SystemFunctionArgs &args) -> SystemArg {
-		// TODO: Check arguments
-		printf("AddTwoFloats: %f + %f = %f\n",
+		[] (Machine<RISCV64>&, const SystemFunctionArgs& args) -> SystemArg {
+			// TODO: Check arguments
+			printf("AddTwoFloats: %f + %f = %f\n",
 				args.arg[0].f32, args.arg[1].f32, args.arg[0].f32 + args.arg[1].f32);
-		return {
-			.f32 = args.arg[0].f32 + args.arg[1].f32,
-			.type = FLOAT_32,
+			return {
+				.f32 = args.arg[0].f32 + args.arg[1].f32,
+				.type = FLOAT_32,
+			};
 		};
-	};
 	sf_handlers["AddTwoFloats"].arguments = 2;
 
 	sf_handlers["Print"].handler =
-			[](Machine<RISCV64> &, const SystemFunctionArgs &args) -> SystemArg {
-		// TODO: Check arguments
-		std::string str{ args.arg[0].string };
-		printf("Print: %s\n", str.c_str());
-		REQUIRE(str == "Hello World!");
-		return {
-			.u32 = (unsigned)str.size(),
-			.type = UNSIGNED_INT,
+		[] (Machine<RISCV64>&, const SystemFunctionArgs& args) -> SystemArg {
+			// TODO: Check arguments
+			std::string str { args.arg[0].string };
+			printf("Print: %s\n", str.c_str());
+			REQUIRE(str == "Hello World!");
+			return {
+				.u32 = (unsigned)str.size(),
+				.type = UNSIGNED_INT,
+			};
 		};
-	};
 	sf_handlers["Print"].arguments = 1;
 }
 
-static SystemArg perform_system_function(Machine<RISCV64> &machine,
-		const std::string &name, size_t argc, SystemFunctionArgs &args) {
+static SystemArg perform_system_function(Machine<RISCV64>& machine,
+	const std::string& name, size_t argc, SystemFunctionArgs& args)
+{
 	printf("System function: %s\n", name.c_str());
 
 	auto it = sf_handlers.find(name);
-	if (it == sf_handlers.end()) {
+	if (it == sf_handlers.end())
+	{
 		fprintf(stderr, "Error: No such system function: %s\n", name.c_str());
 		return {
 			.u32 = ERROR_NO_SUCH_FUNCTION,
 			.type = ERROR,
 		};
 	}
-	auto &handler = it->second;
+	auto& handler = it->second;
 
-	if (argc < handler.arguments) {
+	if (argc < handler.arguments)
+	{
 		fprintf(stderr, "Error: Missing arguments to system function: %s\n", name.c_str());
 		return {
 			.u32 = ERROR_MISSING_ARGUMENTS,
@@ -203,13 +181,14 @@ static SystemArg perform_system_function(Machine<RISCV64> &machine,
 	// Zero-terminate all strings (set the last char to zero)
 	for (size_t i = 0; i < argc; i++) {
 		if (args.arg[i].type == STRING)
-			args.arg[i].string[STRING_BUFFER_SIZE - 1] = 0;
+			args.arg[i].string[STRING_BUFFER_SIZE-1] = 0;
 	}
 
 	return handler.handler(machine, args);
 }
 
-TEST_CASE("Take custom system arguments", "[Custom]") {
+TEST_CASE("Take custom system arguments", "[Custom]")
+{
 	const auto binary = build_and_load(R"M(
 	#include "custom.hpp"
 	#include <stdio.h>
@@ -280,39 +259,38 @@ TEST_CASE("Take custom system arguments", "[Custom]") {
 		system_function("Print", 1, &sfa, &result);
 
 		return 0x1234;
-	})M",
-			"-O2 -static -I" + cwd);
+	})M", "-O2 -static -I" + cwd);
 
-	Machine<RISCV64> machine{ binary };
+	Machine<RISCV64> machine{binary};
 	machine.setup_linux(
-			{ "myprogram" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"myprogram"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 	machine.setup_linux_syscalls();
 
 	// Add our system functions
 	add_system_functions();
 
 	Machine<RISCV64>::install_syscall_handler(500,
-			[](Machine<RISCV64> &machine) {
-				// Retrieve name (string), argument count (32-bit unsigned)
-				// and the whole SystemFunctionArgs structure.
-				auto [name, argc, args] =
-						machine.sysargs<std::string, unsigned, SystemFunctionArgs>();
-				// The address of the result
-				auto g_result = machine.sysarg(3);
-				// A little bounds-checking
-				const size_t count = std::min(argc, 4u);
-				auto result =
-						perform_system_function(machine, name, count, args);
-				machine.copy_to_guest(g_result, &result, sizeof(result));
-				machine.set_result(0);
-			});
+	[] (Machine<RISCV64>& machine) {
+		// Retrieve name (string), argument count (32-bit unsigned)
+		// and the whole SystemFunctionArgs structure.
+		auto [name, argc, args] =
+			machine.sysargs <std::string, unsigned, SystemFunctionArgs> ();
+		// The address of the result
+		auto g_result = machine.sysarg(3);
+		// A little bounds-checking
+		const size_t count = std::min(argc, 4u);
+		auto result =
+			perform_system_function(machine, name, count, args);
+		machine.copy_to_guest(g_result, &result, sizeof(result));
+		machine.set_result(0);
+	});
 
 	static bool found = false;
-	machine.set_printer([](const auto &, const char *data, size_t size) {
-		std::string text{ data, data + size };
+	machine.set_printer([] (const auto&, const char* data, size_t size) {
+		std::string text{data, data + size};
 		if (text == "32-bit floating-point: 96.000000" // musl
-				|| text == "32-bit floating-point: 96.000000\n") // glibc
+			|| text == "32-bit floating-point: 96.000000\n") // glibc
 			found = true;
 	});
 

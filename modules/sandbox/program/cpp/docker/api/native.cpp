@@ -1,33 +1,3 @@
-/**************************************************************************/
-/*  native.cpp                                                            */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include "syscalls.h"
 #include <array>
 #include <cstddef>
@@ -110,8 +80,8 @@ extern "C" void *__wrap_malloc(size_t size) {
 	register long syscall_id __asm__("a7") = SYSCALL_MALLOC;
 
 	asm volatile("ecall"
-			: "=m"(*(char(*)[size])ret), "=r"(ret)
-			: "r"(a0), "r"(syscall_id));
+				 : "=m"(*(char(*)[size])ret), "=r"(ret)
+				 : "r"(a0), "r"(syscall_id));
 	return ret;
 }
 extern "C" void __wrap_free(void *ptr) {
@@ -119,8 +89,8 @@ extern "C" void __wrap_free(void *ptr) {
 	register long syscall_id __asm__("a7") = SYSCALL_FREE;
 
 	asm volatile("ecall"
-			:
-			: "r"(a0), "r"(syscall_id));
+				 :
+				 : "r"(a0), "r"(syscall_id));
 }
 
 extern "C" void *__wrap_memset(void *vdest, const int ch, size_t size) {
@@ -130,8 +100,8 @@ extern "C" void *__wrap_memset(void *vdest, const int ch, size_t size) {
 	register long syscall_id __asm__("a7") = SYSCALL_MEMSET;
 
 	asm volatile("ecall"
-			: "=m"(*(char(*)[size])a0)
-			: "r"(a0), "r"(a1), "r"(a2), "r"(syscall_id));
+				 : "=m"(*(char(*)[size])a0)
+				 : "r"(a0), "r"(a1), "r"(a2), "r"(syscall_id));
 	return vdest;
 }
 extern "C" void *__wrap_memcpy(void *vdest, const void *vsrc, size_t size) {
@@ -141,9 +111,9 @@ extern "C" void *__wrap_memcpy(void *vdest, const void *vsrc, size_t size) {
 	register long syscall_id __asm__("a7") = SYSCALL_MEMCPY;
 
 	asm volatile("ecall"
-			: "=m"(*(char(*)[size])a0), "+r"(a0)
-			: "r"(a1), "m"(*(const char(*)[size])a1),
-			"r"(a2), "r"(syscall_id));
+				 : "=m"(*(char(*)[size])a0), "+r"(a0)
+				 : "r"(a1), "m"(*(const char(*)[size])a1),
+				 "r"(a2), "r"(syscall_id));
 	return vdest;
 }
 extern "C" void *__wrap_memmove(void *vdest, const void *vsrc, size_t size) {
@@ -155,8 +125,8 @@ extern "C" void *__wrap_memmove(void *vdest, const void *vsrc, size_t size) {
 	register long syscall_id __asm__("a7") = SYSCALL_MEMMOVE;
 
 	asm volatile("ecall"
-			: "=m"(*(char(*)[size])a0), "=m"(*(char(*)[size])a1)
-			: "r"(a0), "r"(a1), "r"(a2), "r"(syscall_id));
+				 : "=m"(*(char(*)[size])a0), "=m"(*(char(*)[size])a1)
+				 : "r"(a0), "r"(a1), "r"(a2), "r"(syscall_id));
 	return vdest;
 }
 extern "C" int __wrap_memcmp(const void *m1, const void *m2, size_t size) {
@@ -167,10 +137,10 @@ extern "C" int __wrap_memcmp(const void *m1, const void *m2, size_t size) {
 	register int a0_out __asm__("a0");
 
 	asm volatile("ecall"
-			: "=r"(a0_out)
-			: "r"(a0), "m"(*(const char(*)[size])a0),
-			"r"(a1), "m"(*(const char(*)[size])a1),
-			"r"(a2), "r"(syscall_id));
+				 : "=r"(a0_out)
+				 : "r"(a0), "m"(*(const char(*)[size])a0),
+				 "r"(a1), "m"(*(const char(*)[size])a1),
+				 "r"(a2), "r"(syscall_id));
 	return a0_out;
 }
 extern "C" size_t __wrap_strlen(const char *str) {
@@ -179,8 +149,8 @@ extern "C" size_t __wrap_strlen(const char *str) {
 	register long syscall_id __asm__("a7") = SYSCALL_STRLEN;
 
 	asm volatile("ecall"
-			: "=r"(a0_out)
-			: "r"(a0), "m"(*(const char(*)[4096])a0), "r"(syscall_id));
+				 : "=r"(a0_out)
+				 : "r"(a0), "m"(*(const char(*)[4096])a0), "r"(syscall_id));
 	return a0_out;
 }
 extern "C" int __wrap_strcmp(const char *str1, const char *str2) {
@@ -191,10 +161,10 @@ extern "C" int __wrap_strcmp(const char *str1, const char *str2) {
 	register long syscall_id __asm__("a7") = SYSCALL_STRCMP;
 
 	asm volatile("ecall"
-			: "=r"(a0_out)
-			: "r"(a0), "m"(*(const char(*)[4096])a0),
-			"r"(a1), "m"(*(const char(*)[4096])a1),
-			"r"(a2), "r"(syscall_id));
+				 : "=r"(a0_out)
+				 : "r"(a0), "m"(*(const char(*)[4096])a0),
+				 "r"(a1), "m"(*(const char(*)[4096])a1),
+				 "r"(a2), "r"(syscall_id));
 	return a0_out;
 }
 extern "C" int __wrap_strncmp(const char *str1, const char *str2, size_t maxlen) {
@@ -205,10 +175,10 @@ extern "C" int __wrap_strncmp(const char *str1, const char *str2, size_t maxlen)
 	register long syscall_id __asm__("a7") = SYSCALL_STRCMP;
 
 	asm volatile("ecall"
-			: "=r"(a0_out)
-			: "r"(a0), "m"(*(const char(*)[maxlen])a0),
-			"r"(a1), "m"(*(const char(*)[maxlen])a1),
-			"r"(a2), "r"(syscall_id));
+				 : "=r"(a0_out)
+				 : "r"(a0), "m"(*(const char(*)[maxlen])a0),
+				 "r"(a1), "m"(*(const char(*)[maxlen])a1),
+				 "r"(a2), "r"(syscall_id));
 	return a0_out;
 }
 
@@ -218,7 +188,7 @@ extern "C" void *memalign(size_t alignment, size_t size) {
 		return __wrap_malloc(size);
 	}
 
-	std::array<void *, 16> list;
+	std::array<void*, 16> list;
 	size_t i = 0;
 	void *result = nullptr;
 	for (i = 0; i < list.size(); i++) {
@@ -240,10 +210,12 @@ extern "C" void *memalign(size_t alignment, size_t size) {
 	}
 	return result;
 }
-extern "C" void *aligned_alloc(size_t alignment, size_t size) {
+extern "C"
+void *aligned_alloc(size_t alignment, size_t size) {
 	return memalign(alignment, size);
 }
-extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
+extern "C"
+int posix_memalign(void **memptr, size_t alignment, size_t size) {
 	void *result = memalign(alignment, size);
 	if (result) {
 		*memptr = result;
@@ -264,7 +236,7 @@ void operator delete(void *ptr) noexcept(true) {
 void operator delete[](void *ptr) noexcept(true) {
 	__wrap_free(ptr);
 }
-void *operator new(size_t size, size_t alignment) noexcept(false) {
+void *operator new (size_t size, size_t alignment) noexcept(false) {
 	return memalign(alignment, size);
 }
 void *operator new[](size_t size, size_t alignment) noexcept(false) {

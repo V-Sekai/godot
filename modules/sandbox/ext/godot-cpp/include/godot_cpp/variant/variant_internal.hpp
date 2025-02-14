@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef VARIANT_INTERNAL_HPP
-#define VARIANT_INTERNAL_HPP
+#ifndef GODOT_VARIANT_INTERNAL_HPP
+#define GODOT_VARIANT_INTERNAL_HPP
 
 #include <gdextension_interface.h>
 #include <godot_cpp/variant/variant.hpp>
@@ -506,4 +506,4 @@ struct VariantDefaultInitializer {
 
 } // namespace godot
 
-#endif // VARIANT_INTERNAL_HPP
+#endif // GODOT_VARIANT_INTERNAL_HPP

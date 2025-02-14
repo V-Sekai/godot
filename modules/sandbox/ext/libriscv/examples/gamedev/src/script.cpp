@@ -1,55 +1,26 @@
-/**************************************************************************/
-/*  script.cpp                                                            */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include "script.hpp"
 using gaddr_t = Script::gaddr_t;
 
-#include <fmt/core.h>
 #include <fstream> // Windows doesn't implement C getline()
+#include <fmt/core.h>
 #include <libriscv/native_heap.hpp>
-static std::vector<uint8_t> load_file(const std::string &filename);
-static const int HEAP_SYSCALLS_BASE = 490; // 490-494 (5)
+static std::vector<uint8_t> load_file(const std::string& filename);
+static const int HEAP_SYSCALLS_BASE	  = 490; // 490-494 (5)
 static const int MEMORY_SYSCALLS_BASE = 495; // 495-509 (15)
 static const std::vector<std::string> env = {
 	"LC_CTYPE=C", "LC_ALL=C", "USER=groot"
 };
 
 Script::Script(
-		std::shared_ptr<const std::vector<uint8_t>> binary, const std::string &name,
-		const std::string &filename, void *userptr) :
-		m_binary(binary),
-		m_userptr(userptr),
-		m_name(name),
-		m_filename(filename) {
+	std::shared_ptr<const std::vector<uint8_t>> binary, const std::string& name,
+	const std::string& filename, void* userptr)
+  : m_binary(binary),
+    m_userptr(userptr), m_name(name),
+	m_filename(filename)
+{
 	static bool init = false;
-	if (!init) {
+	if (!init)
+	{
 		init = true;
 		Script::setup_syscall_interface();
 	}
@@ -58,53 +29,67 @@ Script::Script(
 }
 
 Script::Script(
-		const std::string &name, const std::string &filename, void *userptr) :
-		Script(std::make_shared<const std::vector<uint8_t>>(load_file(filename)), name, filename, userptr) {}
+	const std::string& name, const std::string& filename, void* userptr)
+  : Script(std::make_shared<const std::vector<uint8_t>> (load_file(filename)), name, filename, userptr)
+{}
 
-Script Script::clone(const std::string &name, void *userptr) {
+Script Script::clone(const std::string& name, void* userptr)
+{
 	return Script(this->m_binary, name, this->m_filename, userptr);
 }
 
 Script::~Script() {}
 
-void Script::reset() {
+void Script::reset()
+{
 	// If the reset fails, this object is still valid:
 	// m_machine.reset() will not happen if new machine_t fails
-	try {
+	try
+	{
 		// Create a new machine based on m_binary */
-		riscv::MachineOptions<MARCH> options{
-			.memory_max = MAX_MEMORY,
-			.stack_size = STACK_SIZE,
+		riscv::MachineOptions<MARCH> options {
+			.memory_max		  = MAX_MEMORY,
+			.stack_size		  = STACK_SIZE,
 			.use_memory_arena = true,
 			.default_exit_function = "fast_exit",
 		};
-		m_machine = std::make_unique<machine_t>(*m_binary, options);
+		m_machine = std::make_unique<machine_t> (*m_binary, options);
 
 		// setup system calls and traps
 		this->machine_setup();
 		// setup program argv *after* setting new stack pointer
-		machine().setup_linux({ name() }, env);
-	} catch (std::exception &e) {
+		machine().setup_linux({name()}, env);
+	}
+	catch (std::exception& e)
+	{
 		fmt::print(">>> Exception during initialization: {}\n", e.what());
 		throw;
 	}
 }
 
-void Script::initialize() {
+void Script::initialize()
+{
 	// run through the initialization
-	try {
+	try
+	{
 		machine().simulate(MAX_BOOT_INSTR);
-	} catch (riscv::MachineTimeoutException &me) {
+	}
+	catch (riscv::MachineTimeoutException& me)
+	{
 		fmt::print(">>> Exception: Instruction limit reached on {}\n"
-				   "Instruction count: {}\n",
-				name(), machine().max_instructions());
+			"Instruction count: {}\n",
+			name(), machine().max_instructions());
 		throw;
-	} catch (riscv::MachineException &me) {
+	}
+	catch (riscv::MachineException& me)
+	{
 		fmt::print(">>> Machine exception {}: {}\n"
-				   " (data: 0x{:x})\n",
-				me.type(), me.what(), me.data());
+			" (data: 0x{:x})\n",
+			me.type(), me.what(), me.data());
 		throw;
-	} catch (std::exception &e) {
+	}
+	catch (std::exception& e)
+	{
 		fmt::print(">>> Exception: {}\n", e.what());
 		throw;
 	}
@@ -112,18 +97,21 @@ void Script::initialize() {
 	fmt::print(">>> {} initialized.\n", name());
 }
 
-void Script::machine_setup() {
+void Script::machine_setup()
+{
 	machine().set_userdata<Script>(this);
 	machine().set_printer((machine_t::printer_func)[](
-			const machine_t &, const char *p, size_t len) {
-		fmt::print("{}", std::string_view{ p, len });
+		const machine_t&, const char* p, size_t len) {
+		fmt::print("{}", std::string_view {p, len});
 	});
-	machine().on_unhandled_csr = [](machine_t &machine, int csr, int, int) {
-		auto &script = *machine.template get_userdata<Script>();
+	machine().on_unhandled_csr = [](machine_t& machine, int csr, int, int)
+	{
+		auto& script = *machine.template get_userdata<Script>();
 		fmt::print("{}: Unhandled CSR: {}\n", script.name(), csr);
 	};
-	machine().on_unhandled_syscall = [](machine_t &machine, size_t num) {
-		auto &script = *machine.get_userdata<Script>();
+	machine().on_unhandled_syscall = [](machine_t& machine, size_t num)
+	{
+		auto& script = *machine.get_userdata<Script>();
 		fmt::print("{}: Unhandled system call: {}\n", script.name(), num);
 	};
 	// Allocate heap area using mmap
@@ -137,63 +125,81 @@ void Script::machine_setup() {
 	machine().setup_native_memory(MEMORY_SYSCALLS_BASE);
 }
 
-void Script::could_not_find(std::string_view func) {
+void Script::could_not_find(std::string_view func)
+{
 	fmt::print("Script::call(): Could not find: '{}' in '{}'\n", func, name());
 }
 
-void Script::handle_exception(gaddr_t address) {
+void Script::handle_exception(gaddr_t address)
+{
 	auto callsite = machine().memory.lookup(address);
 	fmt::print("[{}] Exception when calling:\n  {} (0x{:x})\nBacktrace:\n",
-			name(), callsite.name, callsite.address);
+		name(), callsite.name, callsite.address);
 	this->print_backtrace(address);
 
-	try {
+	try
+	{
 		throw; // re-throw
-	} catch (const riscv::MachineTimeoutException &e) {
+	}
+	catch (const riscv::MachineTimeoutException& e)
+	{
 		this->handle_timeout(address);
 		return; // NOTE: might wanna stay
-	} catch (const riscv::MachineException &e) {
+	}
+	catch (const riscv::MachineException& e)
+	{
 		fmt::print("Exception: {} (data: 0x{:x})\n>>> {}\n>>> Machine registers:\n[PC\t0x{:x}] {}\n",
-				e.what(), e.data(), machine().cpu.current_instruction_to_string(),
-				machine().cpu.pc(), machine().cpu.registers().to_string());
-	} catch (const std::exception &e) {
+			e.what(), e.data(), machine().cpu.current_instruction_to_string(),
+			machine().cpu.pc(), machine().cpu.registers().to_string());
+	}
+	catch (const std::exception& e)
+	{
 		fmt::print("\nMessage: {}\n\n", e.what());
 	}
 	fmt::print("Program page: {}\n", machine().memory.get_page_info(machine().cpu.pc()));
 	fmt::print("Stack page: {}\n", machine().memory.get_page_info(machine().cpu.reg(2)));
 }
 
-void Script::handle_timeout(gaddr_t address) {
+void Script::handle_timeout(gaddr_t address)
+{
 	auto callsite = machine().memory.lookup(address);
 	fmt::print("Script::call: Max instructions reached when calling '{}' (0x{:x})\n",
-			callsite.name, callsite.address);
+		callsite.name, callsite.address);
 }
 
-void Script::max_depth_exceeded(gaddr_t address) {
+void Script::max_depth_exceeded(gaddr_t address)
+{
 	auto callsite = machine().memory.lookup(address);
 	fmt::print("Script::call(): Max call depth exceeded when calling '{}' (0x{:x})\n",
-			callsite.name, callsite.address);
+		callsite.name, callsite.address);
 }
 
-void Script::print_backtrace(const gaddr_t addr) {
+void Script::print_backtrace(const gaddr_t addr)
+{
 	machine().memory.print_backtrace(
-			[](std::string_view line) {
-				fmt::print("-> {}\n", line);
-			});
+		[](std::string_view line)
+		{
+			fmt::print("-> {}\n", line);
+		});
 	auto origin = machine().memory.lookup(addr);
 	fmt::print("-> [-] 0x{:x} + 0x{:x}: {}\n", origin.address, origin.offset, origin.name);
 }
 
-void Script::print(std::string_view text) {
-	if (this->m_last_newline) {
+void Script::print(std::string_view text)
+{
+	if (this->m_last_newline)
+	{
 		fmt::print("[{}] says: {}", name(), text);
-	} else {
+	}
+	else
+	{
 		fmt::print("{}", text);
 	}
 	this->m_last_newline = (text.back() == '\n');
 }
 
-gaddr_t Script::address_of(const std::string &name) const {
+gaddr_t Script::address_of(const std::string& name) const
+{
 	// We need to cache lookups because they are fairly expensive
 	// Dynamic executables usually have a hash lookup table for symbols,
 	// but no such thing for static executables. So, we compensate by
@@ -207,28 +213,33 @@ gaddr_t Script::address_of(const std::string &name) const {
 	return addr;
 }
 
-std::string Script::symbol_name(gaddr_t address) const {
+std::string Script::symbol_name(gaddr_t address) const
+{
 	auto callsite = machine().memory.lookup(address);
 	return callsite.name;
 }
 
-gaddr_t Script::guest_alloc(gaddr_t bytes) {
+gaddr_t Script::guest_alloc(gaddr_t bytes)
+{
 	return machine().arena().malloc(bytes);
 }
 
-gaddr_t Script::guest_alloc_sequential(gaddr_t bytes) {
+gaddr_t Script::guest_alloc_sequential(gaddr_t bytes)
+{
 	return machine().arena().seq_alloc_aligned(bytes, 8);
 }
 
-bool Script::guest_free(gaddr_t addr) {
+bool Script::guest_free(gaddr_t addr)
+{
 	return machine().arena().free(addr) == 0x0;
 }
 
 #include <unistd.h>
 
-std::vector<uint8_t> load_file(const std::string &filename) {
+std::vector<uint8_t> load_file(const std::string& filename)
+{
 	size_t size = 0;
-	FILE *f = fopen(filename.c_str(), "rb");
+	FILE* f		= fopen(filename.c_str(), "rb");
 	if (f == NULL)
 		throw std::runtime_error("Could not open file: " + filename);
 
@@ -237,7 +248,8 @@ std::vector<uint8_t> load_file(const std::string &filename) {
 	fseek(f, 0, SEEK_SET);
 
 	std::vector<uint8_t> result(size);
-	if (size != fread(result.data(), 1, size, f)) {
+	if (size != fread(result.data(), 1, size, f))
+	{
 		fclose(f);
 		throw std::runtime_error("Error when reading from file: " + filename);
 	}

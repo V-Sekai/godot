@@ -60,3 +60,4 @@ func set_max_to_display(max_to_display):
 	_max_to_display = max_to_display
 	if(_max_to_display == UNLIMITED):
 		_max_to_display = ABSOLUTE_MAX_DISPLAYED
+

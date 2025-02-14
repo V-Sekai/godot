@@ -1,10 +1,10 @@
-import xml.etree.ElementTree as ET
 from collections import OrderedDict
-from typing import Any, List, Optional, Tuple
+import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, Optional, TextIO, Tuple, Union
 
-import bitwes
-import logger as lgr
 from godot_consts import *
+import logger as lgr
+import bitwes
 
 
 class State:
@@ -16,6 +16,7 @@ class State:
 
         # Additional content and structure checks and validators.
         self.script_language_parity_check: ScriptLanguageParityCheck = ScriptLanguageParityCheck()
+
 
     def parse_class(self, class_root: ET.Element, filepath: str) -> None:
         # -bitwes: remove quotes from class names, these appear when the script
@@ -336,14 +337,16 @@ class DefinitionBase:
     # optionally replaces the annotation in the description with replace_text.
     def desc_annotation(self, ann_text, replace_text=None):
         exists = False
-        if self.description != None:
+        if(self.description != None):
             exists = ann_text in self.description
-            if exists and replace_text != None:
+            if(exists and replace_text != None):
                 self.description = self.description.replace(ann_text, replace_text)
         return exists
 
     def is_description_empty(self):
         return self.description is None or self.description.strip() == ""
+
+
 
 
 class PropertyDef(DefinitionBase):
@@ -419,6 +422,7 @@ class MethodDef(DefinitionBase):
         self.qualifiers = qualifiers
         self.internal = self.desc_annotation("@internal", "[b]Internal use only.[/b]")
         self.ignore = self.desc_annotation("@ignore", None)
+
 
 
 class ConstantDef(DefinitionBase):
@@ -512,23 +516,26 @@ class ClassDef(DefinitionBase):
 
         self.class_group = group_name
 
+
     def _strip_private_props(self):
         to_delete = []
         for key in self.properties.keys():
-            if key.startswith("_") and self.properties[key].is_description_empty():
+            if(key.startswith("_") and self.properties[key].is_description_empty()):
                 to_delete.append(key)
 
         for del_me in to_delete:
             del self.properties[del_me]
 
+
     def _strip_private_methods(self):
         to_delete = []
         for key in self.methods.keys():
-            if key.startswith("_") and self.methods[key][0].is_description_empty():
+            if(key.startswith("_") and self.methods[key][0].is_description_empty()):
                 to_delete.append(key)
 
         for del_me in to_delete:
             del self.methods[del_me]
+
 
     def strip_privates(self):
         self.ignore_uncommented = self.desc_annotation("@ignore-uncommented", "")

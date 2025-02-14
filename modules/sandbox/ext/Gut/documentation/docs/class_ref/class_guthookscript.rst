@@ -17,13 +17,13 @@ This script is the base for custom scripts to be used in pre and post run hooks.
 Description
 -----------
 
-GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__
+GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__ 
 
 
 
 Creating a hook script requires that you:
 
-- Inherit ``GutHookScript``\
+- Inherit ``GutHookScript``\ 
 
 - Implement a ``run()`` method
 

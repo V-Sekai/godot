@@ -2,7 +2,7 @@
 
 This example project shows how you can embed libriscv in your own CMake projects.
 
-We use FetchContent in order to retrieve the latest version of _libriscv_:
+We use FetchContent in order to retrive the latest version of _libriscv_:
 
 ```CMake
 include(FetchContent)

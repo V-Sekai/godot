@@ -1,42 +1,13 @@
-/**************************************************************************/
-/*  examples.cpp                                                          */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <libriscv/machine.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string &code,
-		const std::string &args = "-O2 -static", bool cpp = false);
+extern std::vector<uint8_t> build_and_load(const std::string& code,
+	const std::string& args = "-O2 -static", bool cpp = false);
 using namespace riscv;
 
-TEST_CASE("Main example", "[Examples]") {
+TEST_CASE("Main example", "[Examples]")
+{
 	const auto binary = build_and_load(R"M(
 	extern void exit(int);
 	int main() {
@@ -44,10 +15,10 @@ TEST_CASE("Main example", "[Examples]") {
 		return 123;
 	})M");
 
-	Machine<RISCV64> machine{ binary };
+	Machine<RISCV64> machine { binary };
 	machine.setup_linux(
-			{ "myprogram", "1st argument!", "2nd argument!" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"myprogram", "1st argument!", "2nd argument!"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 	machine.setup_linux_syscalls();
 
 	struct State {
@@ -57,17 +28,17 @@ TEST_CASE("Main example", "[Examples]") {
 
 	// exit and exit_group
 	Machine<RISCV64>::install_syscall_handler(94,
-			[](Machine<RISCV64> &machine) {
-				const auto [code] = machine.sysargs<int>();
+		[] (Machine<RISCV64>& machine) {
+			const auto [code] = machine.sysargs <int> ();
 
-				auto &state = *machine.get_userdata<State>();
-				state.code = code;
+			auto& state = *machine.get_userdata<State> ();
+			state.code = code;
 
-				machine.stop();
-			});
+			machine.stop();
+		});
 	// Newlib uses regular exit syscall (93)
 	Machine<RISCV64>::install_syscall_handler(93,
-			Machine<RISCV64>::syscall_handlers.at(94));
+		Machine<RISCV64>::syscall_handlers.at(94));
 
 	machine.simulate(5'000'000UL);
 
@@ -77,28 +48,29 @@ TEST_CASE("Main example", "[Examples]") {
 
 #include <libriscv/rv32i_instr.hpp>
 
-TEST_CASE("One instruction at a time", "[Examples]") {
+TEST_CASE("One instruction at a time", "[Examples]")
+{
 	const auto binary = build_and_load(R"M(
 	extern void exit(int);
 	int main() {
 		return 0x1234;
 	})M");
 
-	Machine<RISCV64> machine{ binary };
+	Machine<RISCV64> machine{binary};
 	machine.setup_linux(
-			{ "myprogram" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"myprogram"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 	machine.setup_linux_syscalls();
 
 	machine.set_max_instructions(1'000'000UL);
 
 	while (!machine.stopped()) {
-		auto &cpu = machine.cpu;
+		auto& cpu = machine.cpu;
 		// Read next instruction
 		auto instruction = cpu.read_next_instruction();
 		// Print the instruction to terminal
 		printf("%s\n",
-				cpu.to_string(instruction, cpu.decode(instruction)).c_str());
+			   cpu.to_string(instruction, cpu.decode(instruction)).c_str());
 		// Execute instruction directly
 		cpu.execute(instruction);
 		// Increment PC to next instruction, and increment instruction counter
@@ -109,16 +81,17 @@ TEST_CASE("One instruction at a time", "[Examples]") {
 	REQUIRE(machine.return_value() == 0x1234);
 }
 
-TEST_CASE("One instruction at a time with ilimit", "[Examples]") {
+TEST_CASE("One instruction at a time with ilimit", "[Examples]")
+{
 	const auto binary = build_and_load(R"M(
 	int main() {
 		return 0x1234;
 	})M");
 
-	Machine<RISCV64> machine{ binary };
+	Machine<RISCV64> machine{binary};
 	machine.setup_linux(
-			{ "myprogram" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"myprogram"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 	machine.setup_linux_syscalls();
 
 	do {
@@ -126,8 +99,9 @@ TEST_CASE("One instruction at a time with ilimit", "[Examples]") {
 		machine.reset_instruction_counter();
 		machine.set_max_instructions(1'000);
 
-		while (!machine.stopped()) {
-			auto &cpu = machine.cpu;
+		while (!machine.stopped())
+		{
+			auto& cpu = machine.cpu;
 			// Read next instruction
 			const auto instruction = cpu.read_next_instruction();
 			// Print the instruction to terminal
@@ -144,11 +118,12 @@ TEST_CASE("One instruction at a time with ilimit", "[Examples]") {
 	REQUIRE(machine.return_value() == 0x1234);
 }
 
-TEST_CASE("Build machine from empty", "[Examples]") {
+TEST_CASE("Build machine from empty", "[Examples]")
+{
 	Machine<RISCV32> machine;
 	machine.setup_minimal_syscalls();
 
-	std::vector<uint32_t> my_program{
+	std::vector<uint32_t> my_program {
 		0x29a00513, //        li      a0,666
 		0x05d00893, //        li      a7,93
 		0x00000073, //        ecall
@@ -167,7 +142,8 @@ TEST_CASE("Build machine from empty", "[Examples]") {
 	REQUIRE(machine.return_value() == 666);
 }
 
-TEST_CASE("Execute while doing other things", "[Examples]") {
+TEST_CASE("Execute while doing other things", "[Examples]")
+{
 	const auto binary = build_and_load(R"M(
 	__attribute__((used, retain))
 	long test() {
@@ -178,10 +154,10 @@ TEST_CASE("Execute while doing other things", "[Examples]") {
 		return 0x1234;
 	})M");
 
-	Machine<RISCV64> machine{ binary };
+	Machine<RISCV64> machine{binary};
 	machine.setup_linux(
-			{ "myprogram" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"myprogram"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 	machine.setup_linux_syscalls();
 
 	machine.simulate();

@@ -1,39 +1,9 @@
-/**************************************************************************/
-/*  heaptest.cpp                                                          */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <catch2/catch_test_macros.hpp>
 #include <libriscv/common.hpp>
 #include <libriscv/native_heap.hpp>
 #include <vector>
 static const uintptr_t BEGIN = 0x1000000;
-static const uintptr_t END = 0x2000000;
+static const uintptr_t END   = 0x2000000;
 #define IS_WITHIN(addr) (addr >= BEGIN && addr < END)
 #define HPRINT(fmt, ...) /* */
 
@@ -45,53 +15,58 @@ unsigned randUpto(unsigned max) {
 }
 
 struct Allocation {
-	uint64_t addr;
-	size_t size;
+	uint64_t  addr;
+	size_t    size;
 };
 
-static Allocation alloc_random(riscv::Arena &arena) {
+static Allocation alloc_random(riscv::Arena& arena)
+{
 	const size_t size = randInt(0, 8000);
 	const uintptr_t addr = arena.malloc(size);
 	REQUIRE(IS_WITHIN(addr));
-	const Allocation a{
+	const Allocation a {
 		.addr = addr, .size = arena.size(addr)
 	};
 	REQUIRE(a.size >= size);
 	return a;
 }
 
-static Allocation alloc_sequential(riscv::Arena &arena) {
-	const size_t size = randInt(0, 4096);
+static Allocation alloc_sequential(riscv::Arena& arena)
+{
+	const size_t size	 = randInt(0, 4096);
 	const uintptr_t addr = arena.seq_alloc_aligned(size, 8, false);
 	REQUIRE(IS_WITHIN(addr));
 	// In order for the memory to be sequential in both the
 	// host and the guest, it must be on the same page. We explicitly
 	// disable the flat read-write arena optimization for this test.
-	if (size > 0 && size < RISCV_PAGE_SIZE) {
+	if (size > 0 && size < RISCV_PAGE_SIZE)
+	{
 		const auto page1 = addr & ~(RISCV_PAGE_SIZE - 1);
-		const auto page2 = (addr + size - 1) & ~(RISCV_PAGE_SIZE - 1);
+		const auto page2 = (addr + size-1) & ~(RISCV_PAGE_SIZE - 1);
 		REQUIRE(page1 == page2);
 	}
-	const Allocation a{ .addr = addr, .size = arena.size(addr) };
+	const Allocation a {.addr = addr, .size = arena.size(addr)};
 	REQUIRE(a.size >= size);
 	return a;
 }
 
 static std::tuple<Allocation, size_t>
-realloc_random(riscv::Arena &arena, uint64_t addr) {
+realloc_random(riscv::Arena& arena, uint64_t addr)
+{
 	REQUIRE(IS_WITHIN(addr));
 	const size_t size = randInt(0, 8000);
 	auto [newaddr, len] = arena.realloc(addr, size);
 	REQUIRE(IS_WITHIN(newaddr));
-	const Allocation a{
+	const Allocation a {
 		.addr = newaddr, .size = arena.size(newaddr)
 	};
 	REQUIRE(a.size >= size);
-	return { a, size };
+	return {a, size};
 }
 
-TEST_CASE("Basic heap usage", "[Heap]") {
-	riscv::Arena arena{ BEGIN, END };
+TEST_CASE("Basic heap usage", "[Heap]")
+{
+	riscv::Arena arena {BEGIN, END};
 	std::vector<Allocation> allocs;
 
 	// General allocation test
@@ -102,27 +77,28 @@ TEST_CASE("Basic heap usage", "[Heap]") {
 
 	for (auto entry : allocs) {
 		REQUIRE(arena.size(entry.addr) == entry.size);
-		REQUIRE(arena.free(entry.addr) == 0);
+	  	REQUIRE(arena.free(entry.addr) == 0);
 	}
 	REQUIRE(arena.bytes_used() == 0);
 	REQUIRE(arena.bytes_free() == END - BEGIN);
 	allocs.clear();
 
 	// Randomized allocations
-	for (int i = 0; i < 10000; i++) {
+	for (int i = 0; i < 10000; i++)
+	{
 		const int A = randInt(2, 50);
 		for (int a = 0; a < A; a++) {
 			allocs.push_back(alloc_random(arena));
 			[[maybe_unused]] const auto alloc = allocs.back();
 			HPRINT("Alloc %lX size: %4zu,  arena size: %4zu\n",
-					alloc.addr, alloc.size, arena.size(alloc.addr));
+				alloc.addr, alloc.size, arena.size(alloc.addr));
 		}
 		const int B = std::min(randInt(2, allocs.size()), (int)allocs.size());
 		for (int b = 0; b < B; b++) {
-			auto &origin = allocs.at(b);
+			auto& origin = allocs.at(b);
 			const auto [alloc, size] = realloc_random(arena, origin.addr);
 			HPRINT("Realloc %lX size: %4zu, arena size: %4zu  (origin %lX oldsize %zu)\n",
-					alloc.addr, size, alloc.size, origin.addr, origin.size);
+				alloc.addr, size, alloc.size, origin.addr, origin.size);
 			if (alloc.addr == origin.addr) {
 				origin.size = alloc.size;
 				REQUIRE(arena.size(origin.addr) == origin.size);
@@ -142,9 +118,9 @@ TEST_CASE("Basic heap usage", "[Heap]") {
 			const auto alloc = allocs.at(idx);
 			allocs.erase(allocs.begin() + idx, allocs.begin() + idx + 1);
 			HPRINT("Free %lX size: %4zu, arena size: %4zu\n",
-					alloc.addr, alloc.size, arena.size(alloc.addr));
+				alloc.addr, alloc.size, arena.size(alloc.addr));
 			REQUIRE(arena.size(alloc.addr) == alloc.size);
-			REQUIRE(arena.free(alloc.addr) == 0);
+	  		REQUIRE(arena.free(alloc.addr) == 0);
 		}
 	}
 	// Verify all allocations still remaining
@@ -162,15 +138,16 @@ TEST_CASE("Basic heap usage", "[Heap]") {
 	allocs.clear();
 }
 
-TEST_CASE("Allocate too many chunks", "[Heap]") {
+TEST_CASE("Allocate too many chunks", "[Heap]")
+{
 	REQUIRE_THROWS([] {
-		riscv::Arena arena{ BEGIN, END };
+		riscv::Arena arena {BEGIN, END};
 		while (true)
 			arena.malloc(4);
 	}());
 
 	REQUIRE_THROWS([] {
-		riscv::Arena arena{ BEGIN, END };
+		riscv::Arena arena {BEGIN, END};
 		arena.set_max_chunks(0);
 		arena.malloc(4);
 	}());

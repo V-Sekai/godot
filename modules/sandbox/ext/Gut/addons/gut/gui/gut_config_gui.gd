@@ -4,7 +4,7 @@ var GutConfig = load('res://addons/gut/gut_config.gd')
 const DIRS_TO_LIST = 6
 
 var _base_container = null
-# All the various PanelControls indexed by their gut_config keys.
+# All the various PanelControls indexed by thier gut_config keys.
 var _cfg_ctrls = {}
 
 # specific titles that we need to do stuff with

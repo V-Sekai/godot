@@ -1,50 +1,21 @@
-/**************************************************************************/
-/*  protections.cpp                                                       */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <libriscv/machine.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string &code,
-		const std::string &args = "-O2 -static", bool cpp = false);
+extern std::vector<uint8_t> build_and_load(const std::string& code,
+	const std::string& args = "-O2 -static", bool cpp = false);
 using namespace riscv;
 static const std::vector<uint8_t> empty;
 static constexpr uint32_t V = 0x1000;
-static constexpr uint32_t VLEN = 16 * Page::size();
+static constexpr uint32_t VLEN = 16*Page::size();
 
-TEST_CASE("Basic page protections", "[Memory]") {
-	Machine<RISCV32> machine{ empty, { .use_memory_arena = false } };
+TEST_CASE("Basic page protections", "[Memory]")
+{
+	Machine<RISCV32> machine { empty, {.use_memory_arena = false} };
 
-	machine.memory.set_page_attr(V, VLEN, { .read = false, .write = true, .exec = false });
+	machine.memory.set_page_attr(V, VLEN, {.read = false, .write = true, .exec = false});
 	machine.memory.memset(V, 0, VLEN);
-	machine.memory.set_page_attr(V, VLEN, { .read = false, .write = false, .exec = true });
+	machine.memory.set_page_attr(V, VLEN, {.read = false, .write = false, .exec = true});
 
 	machine.cpu.jump(V);
 	REQUIRE(machine.cpu.pc() == V);
@@ -52,34 +23,30 @@ TEST_CASE("Basic page protections", "[Memory]") {
 	// illegal instruction in RISC-V.
 	REQUIRE_THROWS_WITH([&] {
 		machine.simulate(1);
-	}(),
-			Catch::Matchers::ContainsSubstring("Illegal opcode executed"));
+	}(), Catch::Matchers::ContainsSubstring("Illegal opcode executed"));
 
 	// V is not readable anymore
 	REQUIRE_THROWS_WITH([&] {
 		machine.memory.rvbuffer(V, VLEN);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 
 	REQUIRE_THROWS_WITH([&] {
 		machine.memory.memstring(V);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 
 	// V is not writable anymore
 	REQUIRE_THROWS_WITH([&] {
 		machine.memory.memset(V, 0, VLEN);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 
 	REQUIRE_THROWS_WITH([&] {
 		machine.memory.memcpy(V, "1234", 4);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 }
 
-TEST_CASE("Trigger guard pages", "[Memory]") {
-	Machine<RISCV32> machine{ empty };
+TEST_CASE("Trigger guard pages", "[Memory]")
+{
+	Machine<RISCV32> machine { empty };
 
 	machine.memory.install_shared_page(0, riscv::Page::guard_page());
 	machine.memory.install_shared_page(17, riscv::Page::guard_page());
@@ -89,48 +56,47 @@ TEST_CASE("Trigger guard pages", "[Memory]") {
 	REQUIRE_THROWS_WITH([&] {
 		machine.cpu.jump(V);
 		machine.simulate(1);
-	}(),
-			Catch::Matchers::ContainsSubstring("Execution space protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Execution space protection fault"));
 
 	// Guard pages are not writable
 	REQUIRE_THROWS_WITH([&] {
-		machine.memory.memset(V - 4, 0, 4);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+		machine.memory.memset(V-4, 0, 4);
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 	REQUIRE_THROWS_WITH([&] {
-		machine.memory.memset(V + 16 * Page::size(), 0, 4);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+		machine.memory.memset(V+16*Page::size(), 0, 4);
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 }
 
-TEST_CASE("Caches must be invalidated", "[Memory]") {
+TEST_CASE("Caches must be invalidated", "[Memory]")
+{
 	// Test not supported on flat read-write arena
 	if constexpr (riscv::flat_readwrite_arena)
 		return;
 
-	Machine<RISCV32> machine{ empty };
+	Machine<RISCV32> machine { empty };
 
 	// Force creation of writable pages
 	machine.memory.memset(V, 0, VLEN);
 	// Read data from page, causing cached read
-	REQUIRE(machine.memory.read<uint32_t>(V) == 0x0);
+	REQUIRE(machine.memory.read<uint32_t> (V) == 0x0);
 	// Make page completely unpresented
-	machine.memory.set_page_attr(V, Page::size(), { .read = false, .write = false, .exec = false });
+	machine.memory.set_page_attr(V, Page::size(), {.read = false, .write = false, .exec = false});
 	// We can still read from the page, because
 	// it is in the read cache.
-	REQUIRE(machine.memory.read<uint32_t>(V) == 0x0);
+	REQUIRE(machine.memory.read<uint32_t> (V) == 0x0);
 
 	// Invalidate the caches
 	machine.memory.invalidate_reset_cache();
 
 	// We can no longer read from the page
 	REQUIRE_THROWS_WITH([&] {
-		machine.memory.read<uint32_t>(V);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+		machine.memory.read<uint32_t> (V);
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 }
 
-TEST_CASE("Writes to read-only segment", "[Memory]") {
+
+TEST_CASE("Writes to read-only segment", "[Memory]")
+{
 	static const uint64_t MAX_MEMORY = 8ul << 20; /* 8MB */
 	static const uint64_t MAX_INSTRUCTIONS = 10'000'000ul;
 
@@ -153,24 +119,22 @@ TEST_CASE("Writes to read-only segment", "[Memory]") {
 		return *dst;
 	})M");
 
-	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 	// We need to install Linux system calls for maximum gucciness
 	machine.setup_linux_syscalls();
 	// We need to create a Linux environment for runtimes to work well
 	machine.setup_linux(
-			{ "rodata" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"rodata"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 
 	REQUIRE_THROWS_WITH([&] {
 		machine.memory.write<uint8_t>(machine.cpu.pc(), 0);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 
 	// Guard pages are not writable
 	REQUIRE_THROWS_WITH([&] {
 		machine.simulate(MAX_INSTRUCTIONS);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 
 	REQUIRE(machine.return_value<int>() != 666);
 
@@ -182,15 +146,13 @@ TEST_CASE("Writes to read-only segment", "[Memory]") {
 	// Reads amd writes to invalid locations
 	REQUIRE_THROWS_WITH([&] {
 		machine.vmcall<MAX_INSTRUCTIONS>(read_addr, 0);
-	}(),
-			Catch::Matchers::ContainsSubstring("Protection fault"));
+	}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 
 	machine.vmcall<MAX_INSTRUCTIONS>(read_addr, 0x1000);
 
 	for (uint64_t addr = machine.memory.start_address(); addr < machine.memory.initial_rodata_end(); addr += 0x1000) {
 		REQUIRE_THROWS_WITH([&] {
 			machine.vmcall<MAX_INSTRUCTIONS>(write_addr, addr);
-		}(),
-				Catch::Matchers::ContainsSubstring("Protection fault"));
+		}(), Catch::Matchers::ContainsSubstring("Protection fault"));
 	}
 }

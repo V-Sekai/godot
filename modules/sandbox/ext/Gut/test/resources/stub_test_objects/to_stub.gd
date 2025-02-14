@@ -30,3 +30,5 @@ func set_value(val):
 
 func default_value_method(p1='a'):
 	pass
+
+

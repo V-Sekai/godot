@@ -7,7 +7,7 @@ The wiki is hosted at https://gut.readthedocs.io.  The source for documentation 
 ## Contributing Code
 
 ### Checklist for PRs
-* Open PRs against `main` for Godot 4 issues, or the `godot_3x` branch for Godot 3 issues.
+* Open PRs against `main` for Godot 4 issues, or the `godot_3x` branc for Godot 3 issues.
 * PRs __must have unit tests__.  See sections below.
 * Include any wiki text in the PR.
   * Info about documentation changes can be found in `documentation/README.md`.

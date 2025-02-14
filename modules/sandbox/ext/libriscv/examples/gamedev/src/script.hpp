@@ -1,79 +1,48 @@
-/**************************************************************************/
-/*  script.hpp                                                            */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
-#ifndef SCRIPT_HPP
-#define SCRIPT_HPP
+#pragma once
 #include <any>
 #include <functional>
 #include <libriscv/machine.hpp>
 #include <optional>
 #include <stdexcept>
 #include <unordered_set>
-template <typename T>
-struct GuestObjects;
+template <typename T> struct GuestObjects;
 
-struct Script {
+struct Script
+{
 	static constexpr int MARCH = 8; // 64-bit RISC-V
 
 	/// @brief A virtual address inside a Script program
-	using gaddr_t = riscv::address_type<MARCH>;
-	using sgaddr_t = riscv::signed_address_type<MARCH>;
+	using gaddr_t		= riscv::address_type<MARCH>;
+	using sgaddr_t      = riscv::signed_address_type<MARCH>;
 	/// @brief A virtual machine running a program
-	using machine_t = riscv::Machine<MARCH>;
+	using machine_t		= riscv::Machine<MARCH>;
 
 	/// @brief The total physical memory of the program
-	static constexpr gaddr_t MAX_MEMORY = 1024 * 1024 * 16ull;
+	static constexpr gaddr_t MAX_MEMORY	= 1024 * 1024 * 16ull;
 	/// @brief A virtual memory area set aside for the initial stack
-	static constexpr gaddr_t STACK_SIZE = 1024 * 1024 * 2ull;
+	static constexpr gaddr_t STACK_SIZE	= 1024 * 1024 * 2ull;
 	/// @brief A virtual memory area set aside for the heap
-	static constexpr gaddr_t MAX_HEAP = 1024 * 1024 * 256ull;
+	static constexpr gaddr_t MAX_HEAP	= 1024 * 1024 * 256ull;
 	/// @brief The max number of instructions allowed during startup
 	static constexpr uint64_t MAX_BOOT_INSTR = 32'000'000ull;
 	/// @brief The max number of instructions allowed during calls
 	static constexpr uint64_t MAX_CALL_INSTR = 32'000'000ull;
 	/// @brief The max number of recursive calls into the Machine allowed
-	static constexpr uint8_t MAX_CALL_DEPTH = 8;
+	static constexpr uint8_t  MAX_CALL_DEPTH = 8;
 
 	/// @brief Make a function call into the script
 	/// @param func The function to call. Must be a visible symbol in the program.
 	/// @param args The arguments to pass to the function.
 	/// @return The optional integral return value.
 	template <typename... Args>
-	std::optional<Script::sgaddr_t> call(const std::string &func, Args &&...args);
+	std::optional<Script::sgaddr_t> call(const std::string& func, Args&&... args);
 
 	/// @brief Make a function call into the script
 	/// @param addr The functions direct address.
 	/// @param args The arguments to pass to the function.
 	/// @return The optional integral return value.
 	template <typename... Args>
-	std::optional<Script::sgaddr_t> call(gaddr_t addr, Args &&...args);
+	std::optional<Script::sgaddr_t> call(gaddr_t addr, Args&&... args);
 
 	/// @brief Make a preempted function call into the script, saving and
 	/// restoring the current execution state.
@@ -83,7 +52,7 @@ struct Script {
 	/// @param args The arguments to the function call.
 	/// @return The optional integral return value.
 	template <typename... Args>
-	std::optional<Script::sgaddr_t> preempt(const std::string &func, Args &&...args);
+	std::optional<Script::sgaddr_t> preempt(const std::string& func, Args&&... args);
 
 	/// @brief Make a preempted function call into the script, saving and
 	/// restoring the current execution state.
@@ -93,7 +62,7 @@ struct Script {
 	/// @param args The arguments to the function call.
 	/// @return The optional integral return value.
 	template <typename... Args>
-	std::optional<Script::sgaddr_t> preempt(gaddr_t addr, Args &&...args);
+	std::optional<Script::sgaddr_t> preempt(gaddr_t addr, Args&&... args);
 
 	/// @brief Resume execution of the script, until @param instruction_count has been reached,
 	/// then stop execution and return. This function can be used to drive long-running tasks
@@ -104,17 +73,17 @@ struct Script {
 	/// @brief Returns the pointer provided at instantiation of the Script instance.
 	/// @tparam T The real type of the user-provided pointer.
 	/// @return Returns the user-provided pointer.
-	template <typename T>
-	T *userptr() noexcept {
-		return (T *)m_userptr;
+	template <typename T> T* userptr() noexcept
+	{
+		return (T*)m_userptr;
 	}
 
 	/// @brief Returns the pointer provided at instantiation of the Script instance.
 	/// @tparam T The real type of the user-provided pointer.
 	/// @return Returns the user-provided pointer.
-	template <typename T>
-	const T *userptr() const noexcept {
-		return (const T *)m_userptr;
+	template <typename T> const T* userptr() const noexcept
+	{
+		return (const T*)m_userptr;
 	}
 
 	/// @brief Tries to find the name of a symbol at the given virtual address.
@@ -126,7 +95,7 @@ struct Script {
 	/// Uses an unordered_map to remember lookups in order to speed up future lookups.
 	/// @param name The name to find the virtual address for.
 	/// @return The virtual address of name, or 0x0 if not found.
-	gaddr_t address_of(const std::string &name) const;
+	gaddr_t address_of(const std::string& name) const;
 
 	/// @brief Retrieve current argument registers, specifying each type.
 	/// @tparam ...Args The types of arguments to retrieve.
@@ -136,40 +105,47 @@ struct Script {
 
 	/// @brief The virtual machine hosting the Scripts program.
 	/// @return The underlying virtual machine.
-	auto &machine() {
+	auto& machine()
+	{
 		return *m_machine;
 	}
 
 	/// @brief The virtual machine hosting the Scripts program.
 	/// @return The underlying virtual machine.
-	const auto &machine() const {
+	const auto& machine() const
+	{
 		return *m_machine;
 	}
 
 	/// @brief The name given to this Script instance during creation.
 	/// @return The name of this Script instance.
-	const auto &name() const noexcept {
+	const auto& name() const noexcept
+	{
 		return m_name;
 	}
 
 	/// @brief The filename passed to this Script instance during creation.
 	/// @return The filename of this Script instance.
-	const auto &filename() const noexcept {
+	const auto& filename() const noexcept
+	{
 		return m_filename;
 	}
 
 	void print(std::string_view text);
 	void print_backtrace(const gaddr_t addr);
 
-	void stdout_enable(bool e) noexcept {
+	void stdout_enable(bool e) noexcept
+	{
 		m_stdout = e;
 	}
 
-	bool stdout_enabled() const noexcept {
+	bool stdout_enabled() const noexcept
+	{
 		return m_stdout;
 	}
 
-	gaddr_t heap_area() const noexcept {
+	gaddr_t heap_area() const noexcept
+	{
 		return m_heap_area;
 	}
 
@@ -198,33 +174,32 @@ struct Script {
 	/// @tparam T The type of the allocated objects.
 	/// @param n The number of allocated objects in the array.
 	/// @return A wrapper managing the program-hosted objects. Can be moved.
-	template <typename T>
-	GuestObjects<T> guest_alloc(size_t n = 1);
+	template <typename T> GuestObjects<T> guest_alloc(size_t n = 1);
 
 	/// @brief Retrieve the fork of this script instance.
 	/// @return The fork of this instance.
-	Script &get_fork();
+	Script& get_fork();
 	/// @brief Retrieve an instance of a script by its program name.
 	/// @param  name The name of the script to find.
 	/// @return The script instance with the given name.
-	static Script &Find(const std::string &name);
+	static Script& Find(const std::string& name);
 
 	// Create new Script instance from file
 	Script(
-			const std::string &name, const std::string &filename,
-			void *userptr = nullptr);
+		const std::string& name, const std::string& filename,
+		void* userptr = nullptr);
 	// Create new Script instance from cloning another Script
-	Script clone(const std::string &name, void *userptr = nullptr);
+	Script clone(const std::string& name, void* userptr = nullptr);
 	~Script();
 
-private:
+  private:
 	// Create new Script instance from existing binary
 	Script(
-			std::shared_ptr<const std::vector<uint8_t>> binary, const std::string &name,
-			const std::string &filename, void *userptr = nullptr);
+		std::shared_ptr<const std::vector<uint8_t>> binary, const std::string& name,
+		const std::string& filename, void* userptr = nullptr);
 	/// @brief Create a thread-local fork of this script instance.
 	/// @return A new Script instance that is a fork of this instance.
-	Script &create_fork();
+	Script& create_fork();
 	static void setup_syscall_interface();
 	void reset(); // true if the reset was successful
 	void initialize();
@@ -236,13 +211,13 @@ private:
 
 	std::unique_ptr<machine_t> m_machine = nullptr;
 	std::shared_ptr<const std::vector<uint8_t>> m_binary;
-	void *m_userptr;
-	gaddr_t m_heap_area = 0;
+	void* m_userptr;
+	gaddr_t m_heap_area		   = 0;
 	std::string m_name;
 	std::string m_filename;
-	uint8_t m_call_depth = 0;
-	bool m_stdout = true;
-	bool m_last_newline = true;
+	uint8_t  m_call_depth   = 0;
+	bool m_stdout			= true;
+	bool m_last_newline		= true;
 	/// @brief Cached addresses for symbol lookups
 	/// This could probably be improved by doing it per-binary instead
 	/// of a separate cache per instance. But at least it's thread-safe.
@@ -250,79 +225,95 @@ private:
 };
 
 struct ScriptDepthMeter {
-	ScriptDepthMeter(uint8_t &val) :
-			m_val(++val) {}
-	~ScriptDepthMeter() { m_val--; }
+	ScriptDepthMeter(uint8_t& val) : m_val(++val) {}
+	~ScriptDepthMeter() { m_val --; }
 
 	uint8_t get() const noexcept { return m_val; }
 	bool is_one() const noexcept { return m_val == 1; }
 
 private:
-	uint8_t &m_val;
+	uint8_t& m_val;
 };
 
 template <typename... Args>
-inline std::optional<Script::sgaddr_t> Script::call(gaddr_t address, Args &&...args) {
+inline std::optional<Script::sgaddr_t> Script::call(gaddr_t address, Args&&... args)
+{
 	ScriptDepthMeter meter(this->m_call_depth);
-	try {
+	try
+	{
 		if (LIKELY(meter.is_one()))
-			return { machine().vmcall<MAX_CALL_INSTR>(
-					address, std::forward<Args>(args)...) };
+			return {machine().vmcall<MAX_CALL_INSTR>(
+				address, std::forward<Args>(args)...)};
 		else if (LIKELY(meter.get() < MAX_CALL_DEPTH))
-			return { machine().preempt(MAX_CALL_INSTR,
-					address, std::forward<Args>(args)...) };
+			return {machine().preempt(MAX_CALL_INSTR,
+				address, std::forward<Args>(args)...)};
 		else
 			this->max_depth_exceeded(address);
-	} catch (const std::exception &e) {
+	}
+	catch (const std::exception& e)
+	{
 		this->handle_exception(address);
 	}
 	return std::nullopt;
 }
 
 template <typename... Args>
-inline std::optional<Script::sgaddr_t> Script::call(const std::string &func, Args &&...args) {
+inline std::optional<Script::sgaddr_t> Script::call(const std::string& func, Args&&... args)
+{
 	const auto address = this->address_of(func.c_str());
-	if (UNLIKELY(address == 0x0)) {
+	if (UNLIKELY(address == 0x0))
+	{
 		this->could_not_find(func);
 		return std::nullopt;
 	}
-	return { this->call(address, std::forward<Args>(args)...) };
+	return {this->call(address, std::forward<Args>(args)...)};
 }
 
 template <typename... Args>
-inline std::optional<Script::sgaddr_t> Script::preempt(gaddr_t address, Args &&...args) {
-	try {
-		return { machine().preempt(
-				MAX_CALL_INSTR, address, std::forward<Args>(args)...) };
-	} catch (const std::exception &e) {
+inline std::optional<Script::sgaddr_t> Script::preempt(gaddr_t address, Args&&... args)
+{
+	try
+	{
+		return {machine().preempt(
+			MAX_CALL_INSTR, address, std::forward<Args>(args)...)};
+	}
+	catch (const std::exception& e)
+	{
 		this->handle_exception(address);
 	}
 	return std::nullopt;
 }
 
 template <typename... Args>
-inline std::optional<Script::sgaddr_t> Script::preempt(const std::string &func, Args &&...args) {
+inline std::optional<Script::sgaddr_t> Script::preempt(const std::string& func, Args&&... args)
+{
 	const auto address = this->address_of(func.c_str());
-	if (UNLIKELY(address == 0x0)) {
+	if (UNLIKELY(address == 0x0))
+	{
 		this->could_not_find(func);
 		return std::nullopt;
 	}
-	return { this->preempt(address, std::forward<Args>(args)...) };
+	return {this->preempt(address, std::forward<Args>(args)...)};
 }
 
-inline bool Script::resume(uint64_t cycles) {
-	try {
+inline bool Script::resume(uint64_t cycles)
+{
+	try
+	{
 		machine().resume<false>(cycles);
 		return true;
-	} catch (const std::exception &e) {
+	}
+	catch (const std::exception& e)
+	{
 		this->handle_exception(machine().cpu.pc());
 		return false;
 	}
 }
 
 template <typename... Args>
-inline auto Script::args() const {
-	return machine().sysargs<Args...>();
+inline auto Script::args() const
+{
+	return machine().sysargs<Args ...> ();
 }
 
 /**
@@ -345,71 +336,78 @@ inline auto Script::args() const {
  * heap allocations, and will need to be individually
  * initialized.
  **/
-template <typename T>
-struct GuestObjects {
-	T &at(size_t n) {
+template <typename T> struct GuestObjects
+{
+	T& at(size_t n)
+	{
 		if (n < m_count)
 			return m_object[n];
 		throw riscv::MachineException(
-				riscv::ILLEGAL_OPERATION, "at(): Object is out of range", n);
+			riscv::ILLEGAL_OPERATION, "at(): Object is out of range", n);
 	}
 
-	const T &at(size_t n) const {
+	const T& at(size_t n) const
+	{
 		if (n < m_count)
 			return m_object[n];
 		throw riscv::MachineException(
-				riscv::ILLEGAL_OPERATION, "at(): Object is out of range", n);
+			riscv::ILLEGAL_OPERATION, "at(): Object is out of range", n);
 	}
 
-	Script::gaddr_t address(size_t n) const {
+	Script::gaddr_t address(size_t n) const
+	{
 		if (n < m_count)
 			return m_address + sizeof(T) * n;
 		throw riscv::MachineException(
-				riscv::ILLEGAL_OPERATION, "address(): Object is out of range", n);
+			riscv::ILLEGAL_OPERATION, "address(): Object is out of range", n);
 	}
 
-	GuestObjects(Script &s, Script::gaddr_t a, T *o, size_t c) :
-			m_script(s), m_address(a), m_object(o), m_count(c) {
+	GuestObjects(Script& s, Script::gaddr_t a, T* o, size_t c)
+	  : m_script(s), m_address(a), m_object(o), m_count(c)
+	{
 	}
 
-	GuestObjects(GuestObjects &&other) :
-			m_script(other.m_script), m_address(other.m_address), m_object(other.m_object), m_count(other.m_count) {
+	GuestObjects(GuestObjects&& other)
+	  : m_script(other.m_script), m_address(other.m_address),
+		m_object(other.m_object), m_count(other.m_count)
+	{
 		other.m_address = 0x0;
-		other.m_count = 0u;
+		other.m_count	= 0u;
 	}
 
-	~GuestObjects() {
-		if (this->m_address != 0x0) {
+	~GuestObjects()
+	{
+		if (this->m_address != 0x0)
+		{
 			m_script.guest_free(this->m_address);
 			this->m_address = 0x0;
 		}
 	}
 
-	Script &m_script;
+	Script& m_script;
 	Script::gaddr_t m_address;
-	T *m_object;
+	T* m_object;
 	size_t m_count;
 };
 
-template <typename T>
-inline GuestObjects<T> Script::guest_alloc(size_t n) {
+template <typename T> inline GuestObjects<T> Script::guest_alloc(size_t n)
+{
 	// XXX: If n is too large, it will always overflow a page,
 	// and we will need another strategy in order to guarantee
 	// sequential memory.
 	auto addr = this->guest_alloc_sequential(sizeof(T) * n);
-	if (addr != 0x0) {
-		const auto pageno = machine().memory.page_number(addr);
+	if (addr != 0x0)
+	{
+		const auto pageno	= machine().memory.page_number(addr);
 		const size_t offset = addr & (riscv::Page::size() - 1);
 		// Lazily create zero-initialized page
-		auto &page = machine().memory.create_writable_pageno(pageno, true);
-		auto *object = (T *)&page.data()[offset];
+		auto& page	 = machine().memory.create_writable_pageno(pageno, true);
+		auto* object = (T*)&page.data()[offset];
 		// Default-initialize all objects
 		for (auto *o = object; o < object + n; o++)
 			new (o) T{};
 		// Note: this can fail and throw, but we don't care
-		return { *this, addr, object, n };
+		return {*this, addr, object, n};
 	}
 	throw std::runtime_error("Unable to allocate aligned sequential data");
 }
-
-#endif // SCRIPT_HPP

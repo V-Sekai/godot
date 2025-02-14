@@ -1,6 +1,6 @@
 # ##############################################################################
 #
-# This holds all the configuration values for GUT.  It can load and save values
+# This holds all the configuratoin values for GUT.  It can load and save values
 # to a json file.  It is also responsible for applying these settings to GUT.
 #
 # ##############################################################################

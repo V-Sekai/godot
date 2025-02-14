@@ -26,3 +26,5 @@ func test_it():
 		_test_gut, 'test_that_causes_error_passes_when_flag_not_set', 0)
 	_assert_fail_count_for_test(
 		_test_gut, 'test_that_causes_error_fails_when_flag_set', 1)
+
+

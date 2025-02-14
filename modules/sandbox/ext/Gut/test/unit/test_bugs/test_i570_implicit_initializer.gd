@@ -27,7 +27,7 @@ func test_double_foo_after_doubling_node_uses_foo():
 	var d = DoubleImplicitInitializer.new()
 	assert_not_null(d)
 	assert_is(d, DoubleImplicitInitializer,
-		'this fails because of the p_script->implicit_initializer error')
+		'this failes because of the p_script->implicit_initializer error')
 
 
 
@@ -42,4 +42,5 @@ func test_double_foo_after_doubling_node_uses_foo_again():
 	var d = DoubleImplicitInitializer.new()
 	assert_not_null(d)
 	assert_is(d, DoubleImplicitInitializer,
-		'this fails because of the p_script->implicit_initializer error')
+		'this failes because of the p_script->implicit_initializer error')
+

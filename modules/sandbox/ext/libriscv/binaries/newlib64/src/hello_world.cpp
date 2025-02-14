@@ -1,75 +1,49 @@
-/**************************************************************************/
-/*  hello_world.cpp                                                       */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
-#include <unistd.h>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
 #include <regex>
+#include <iostream>
 #include <stdexcept>
+#include <unistd.h>
 
-inline uint64_t rdcycle() {
+inline uint64_t rdcycle()
+{
 	uint64_t whole;
-	asm("rdcycle %0\n" : "=r"(whole));
+	asm ("rdcycle %0\n" : "=r"(whole));
 	return whole;
 }
-inline uint64_t rdtime() {
+inline uint64_t rdtime()
+{
 	uint64_t whole;
-	asm("rdtime %0\n" : "=r"(whole));
+	asm ("rdtime %0\n" : "=r"(whole));
 	return whole;
 }
-inline uint64_t rol(uint64_t val, unsigned shift) {
+inline uint64_t rol(uint64_t val, unsigned shift)
+{
 	uint64_t result;
 	asm("rol %0, %1, %2" : "=r"(result) : "r"(val), "r"(shift));
 	return result;
 }
 
-int main() {
+int main()
+{
 	std::string s = "Some people, when confronted with a problem, think "
-					"\"I know, I'll use regular expressions.\" "
-					"Now they have two problems.";
+        "\"I know, I'll use regular expressions.\" "
+        "Now they have two problems.";
 
 	std::regex self_regex("REGULAR EXPRESSIONS",
-			std::regex_constants::ECMAScript | std::regex_constants::icase);
-	if (std::regex_search(s, self_regex)) {
+            std::regex_constants::ECMAScript | std::regex_constants::icase);
+    if (std::regex_search(s, self_regex)) {
 		std::cout << "Text contains the phrase 'regular expressions'\n";
-	}
+    }
 
 	std::regex word_regex("(\\w+)");
-	auto words_begin =
-			std::sregex_iterator(s.begin(), s.end(), word_regex);
-	auto words_end = std::sregex_iterator();
+    auto words_begin =
+        std::sregex_iterator(s.begin(), s.end(), word_regex);
+    auto words_end = std::sregex_iterator();
 
 	std::cout << "Found "
-			  << std::distance(words_begin, words_end)
-			  << " words\n";
+              << std::distance(words_begin, words_end)
+              << " words\n";
 
 	const int N = 6;
 	std::cout << "Words longer than " << N << " characters:\n";
@@ -89,18 +63,21 @@ int main() {
 	try {
 		printf("Testing exception\n");
 		throw std::runtime_error("Hello Exceptions!");
-	} catch (const std::exception &e) {
+	}
+	catch (const std::exception& e) {
 		printf("Caught exception: %s\n", e.what());
 	}
 	const auto cycle1 = rdcycle();
-	printf("It took %lu instructions to throw, catch and print the exception\n", cycle1 - cycle0);
+	printf("It took %lu instructions to throw, catch and print the exception\n", cycle1-cycle0);
 
 	_exit(666);
 }
 
 static std::vector<int> array;
 
-extern "C" __attribute__((used, retain)) int test(int arg1, const char *arg2) {
+extern "C" __attribute__((used, retain))
+int test(int arg1, const char *arg2)
+{
 	printf("Test called with argument %d and string argument '%s'\n", arg1, arg2);
 	array.push_back(arg1);
 	for (const int val : array) {

@@ -26,7 +26,7 @@
 #   - Since this is intended to be used with the --no-docbase doctool option,
 #     any reference to a class it can't find is assumed to be a Godot class and
 #     links to the Godot docs (latest).  A message is printed on the first
-#     occurrence of each unknown class.
+#     occurance of each unknown class.
 #   - The DO NOT EDIT THIS warnings are altered to indicate this is GUT stuff.
 #   - Changed how missing description messages are generated in output and
 #     translation entries.  See no_description method.  Pretty simple.
@@ -48,7 +48,7 @@
 #     structure, but you should be able to read it and adapt.
 #
 #
-# Additional Doc Comment Annotations:
+# Additional Doc Comment Anotations:
 # NOTE:  These do not apply to in-engine documentation and the annotations
 #        will appear in the in-engine method descriptions.
 #
@@ -62,7 +62,7 @@
 #
 #   Methods:
 #   - @ignore - The method will not appear in generated documentation.
-#   - @internal -  This will cause the method to be listed separately (like
+#   - @internal -  This will cause the method to be listed seperately (like
 #     deprecated methods).  This is for methods that are public but aren't
 #     really supposed to be consumed by the general public.
 #
@@ -81,23 +81,27 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, TextIO, Tuple, Union
+from collections import OrderedDict
+from typing import Any, Dict, List, Optional, TextIO, Tuple, Union
 
 root_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../")
 sys.path.append(root_directory)  # Include the root directory
 
 # Import hardcoded version information from version.py
-import bitwes
+import godot_version as version # noqa: E402
 import doc_bbcode_to_rst as bb2rst
-import logger as lgr
 from godot_classes import *
 from godot_consts import *
+import logger as lgr
+import bitwes
 
 # $DOCS_URL/path/to/page.html(#fragment-tag)
 
 
 # Based on reStructuredText inline markup recognition rules
 # https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
+
+
 
 
 # ------------------
@@ -112,14 +116,17 @@ def no_description(name):
 
 def no_description_container(f, name):
     f.write(".. container:: contribute\n\n\t")
-    f.write(translate(no_description(name)) + "\n\n")
+    f.write(
+        translate(no_description(name))
+        + "\n\n"
+    )
 
 
 def make_inheritance_tree(f, class_def, state):
     # Ascendants
     if class_def.inherits:
         inherits = class_def.inherits.strip()
-        f.write(f"**{translate('Inherits:')}** ")
+        f.write(f'**{translate("Inherits:")}** ')
         first = True
         while inherits in state.classes:
             if not first:
@@ -135,7 +142,7 @@ def make_inheritance_tree(f, class_def, state):
                 break
         # If we didn't ever print anything then the class wasn't found so
         # we just use it and assume it is a Godot class (bitwes).
-        if first:
+        if(first):
             f.write(bitwes.make_type_link(class_def.inherits.strip()))
         f.write("\n\n")
 
@@ -146,7 +153,7 @@ def make_inheritance_tree(f, class_def, state):
             inherited.append(c.name)
 
     if len(inherited):
-        f.write(f"**{translate('Inherited By:')}** ")
+        f.write(f'**{translate("Inherited By:")}** ')
         for i, child in enumerate(inherited):
             if i > 0:
                 f.write(", ")
@@ -187,17 +194,17 @@ def make_method_table(f, class_def, state):
     ml = []
     dep = []
     internal = []
-    for key in sorted(class_def.methods.keys()):  # list by name
+    for key in sorted(class_def.methods.keys()): # list by name
         for m in class_def.methods[key]:
-            if class_def.ignore_uncommented and m.is_description_empty():
+            if(class_def.ignore_uncommented and m.is_description_empty()):
                 continue
 
             to_append = make_method_signature(class_def, m, "method", state)
-            if m.deprecated is not None:
+            if(m.deprecated is not None):
                 dep.append(("Deprecated", to_append[0], to_append[1]))
-            elif m.internal:
+            elif(m.internal):
                 internal.append(("Internal Use", to_append[0], to_append[1]))
-            elif not m.ignore:
+            elif(not m.ignore):
                 ml.append(to_append)
 
     f.write(".. rst-class:: classref-reftable-group\n\n")
@@ -216,11 +223,11 @@ def make_method_descriptions(f, class_def, state):
     index = 0
 
     for method_list in class_def.methods.values():
-        if class_def.ignore_uncommented and method_list[0].is_description_empty():
+        if(class_def.ignore_uncommented and method_list[0].is_description_empty()):
             continue
 
         for i, m in enumerate(method_list):
-            if m.ignore:
+            if(m.ignore):
                 continue
 
             if index != 0:
@@ -251,7 +258,7 @@ def make_method_descriptions(f, class_def, state):
             if m.description is not None and m.description.strip() != "":
                 f.write(f"{bb2rst.format_text_block(m.description.strip(), m, state)}\n\n")
             elif m.deprecated is None and m.experimental is None:
-                lgr.vprint(f"Missing method description {class_def.name}.{m.name}")
+                lgr.vprint(f'Missing method description {class_def.name}.{m.name}')
                 no_description_container(f, "method")
 
             index += 1
@@ -263,13 +270,15 @@ def make_property_table(f, class_def, state):
 
     ml = []
     for property_def in class_def.properties.values():
-        if property_def.ignore or class_def.ignore_uncommented and property_def.is_description_empty():
+        if(property_def.ignore or class_def.ignore_uncommented and property_def.is_description_empty()):
             continue
 
         type_rst = property_def.type_name.to_rst(state)
         default = property_def.default_value
         if default is not None and property_def.overrides:
-            ref = f":ref:`{property_def.overrides}<class_{property_def.overrides}_property_{property_def.name}>`"
+            ref = (
+                f":ref:`{property_def.overrides}<class_{property_def.overrides}_property_{property_def.name}>`"
+            )
             # Not using translate() for now as it breaks table formatting.
             ml.append((type_rst, property_def.name, f"{default} (overrides {ref})"))
         else:
@@ -287,11 +296,8 @@ def make_property_descriptions(f, class_def, state):
     index = 0
 
     for property_def in class_def.properties.values():
-        if (
-            property_def.overrides
-            or property_def.ignore
-            or (class_def.ignore_uncommented and property_def.is_description_empty())
-        ):
+        if property_def.overrides or property_def.ignore or \
+            (class_def.ignore_uncommented and property_def.is_description_empty()):
             continue
 
         if index != 0:
@@ -307,7 +313,9 @@ def make_property_descriptions(f, class_def, state):
         property_default = ""
         if property_def.default_value is not None:
             property_default = f" = {property_def.default_value}"
-        f.write(f"{property_def.type_name.to_rst(state)} **{property_def.name}**{property_default} {self_link}\n\n")
+        f.write(
+            f"{property_def.type_name.to_rst(state)} **{property_def.name}**{property_default} {self_link}\n\n"
+        )
 
         # Create property setter and getter records.
 
@@ -362,6 +370,7 @@ def make_constructor_descriptions(f, class_def, state):
 
     for method_list in class_def.constructors.values():
         for i, m in enumerate(method_list):
+
             if index != 0:
                 f.write(make_separator())
 
@@ -386,7 +395,10 @@ def make_constructor_descriptions(f, class_def, state):
                 f.write(f"{bb2rst.format_text_block(m.description.strip(), m, state)}\n\n")
             elif m.deprecated is None and m.experimental is None:
                 f.write(".. container:: contribute\n\n\t")
-                f.write(translate(no_description("constructor")) + "\n\n")
+                f.write(
+                    translate(no_description("constructor"))
+                    + "\n\n"
+                )
 
             index += 1
 
@@ -436,7 +448,10 @@ def make_operator_descriptions(f, class_def, state):
                 f.write(f"{bb2rst.format_text_block(m.description.strip(), m, state)}\n\n")
             elif m.deprecated is None and m.experimental is None:
                 f.write(".. container:: contribute\n\n\t")
-                f.write(translate(no_description("operator")) + "\n\n")
+                f.write(
+                    translate(no_description("operator"))
+                    + "\n\n"
+                )
 
             index += 1
 
@@ -486,7 +501,10 @@ def make_theme_property_descriptions(f, class_def, state):
             f.write(f"{bb2rst.format_text_block(theme_item_def.text.strip(), theme_item_def, state)}\n\n")
         elif theme_item_def.deprecated is None and theme_item_def.experimental is None:
             f.write(".. container:: contribute\n\n\t")
-            f.write(translate(no_description("property")) + "\n\n")
+            f.write(
+                translate(no_description("property"))
+                + "\n\n"
+            )
 
         index += 1
 
@@ -494,11 +512,11 @@ def make_theme_property_descriptions(f, class_def, state):
 def make_constant_descriptions(f, class_def, state):
     num_printed = 0
     for constant in class_def.constants.values():
-        if class_def.ignore_uncommented and constant.text.strip() == "":
+        if(class_def.ignore_uncommented and constant.text.strip() == ""):
             continue
 
         num_printed += 1
-        if num_printed == 1:
+        if(num_printed == 1):
             f.write(make_separator(True))
             f.write(".. rst-class:: classref-descriptions-group\n\n")
             f.write(make_heading("Constants", "-"))
@@ -527,10 +545,10 @@ def make_constant_descriptions(f, class_def, state):
 def make_signal_descriptions(f, class_def, state):
     index = 0
     for signal in class_def.signals.values():
-        if signal.ignore or (class_def.ignore_uncommented and signal.is_description_empty()):
+        if(signal.ignore or (class_def.ignore_uncommented and signal.is_description_empty())):
             continue
 
-        if index == 0:
+        if(index == 0):
             f.write(make_separator(True))
             f.write(".. rst-class:: classref-descriptions-group\n\n")
             f.write(make_heading("Signals", "-"))
@@ -555,7 +573,7 @@ def make_signal_descriptions(f, class_def, state):
         if signal.description is not None and signal.description.strip() != "":
             f.write(f"{bb2rst.format_text_block(signal.description.strip(), signal, state)}\n\n")
         elif signal.deprecated is None and signal.experimental is None:
-            pass  # no_description_container(f, "signal")
+            pass# no_description_container(f, "signal")
 
         index += 1
 
@@ -599,7 +617,10 @@ def make_enum_descriptions(f, class_def, state):
                 f.write(f"{bb2rst.format_text_block(value.text.strip(), value, state)}")
             elif value.deprecated is None and value.experimental is None:
                 f.write(".. container:: contribute\n\n\t")
-                f.write(translate(no_description("enum")) + "\n\n")
+                f.write(
+                    translate(no_description("enum"))
+                    + "\n\n"
+                )
 
             f.write("\n\n")
 
@@ -636,14 +657,17 @@ def make_annotation_descriptions(f, class_def, state):
                 f.write(f"{bb2rst.format_text_block(m.description.strip(), m, state)}\n\n")
             else:
                 f.write(".. container:: contribute\n\n\t")
-                f.write(translate(no_description("annotation")) + "\n\n")
+                f.write(
+                    translate(no_description("annotation"))
+                    + "\n\n"
+                )
 
             index += 1
-
-
 # ------------------
 # -------- END bitwes methods/vars --------
 # ------------------
+
+
 
 
 # Used to translate section headings and other hardcoded strings when required with
@@ -712,7 +736,6 @@ BASE_STRINGS = [
     "[b]Note:[/b] The returned array is [i]copied[/i] and any changes to it will not update the original property value. See [%s] for more details.",
 ]
 
-
 def translate(string: str) -> str:
     """Translate a string based on translations sourced from `doc/translations/*.po`
     for a language if defined via the --lang command line argument.
@@ -734,21 +757,22 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
     # bitwes --
     # shortcircuit when class has no description.
-    if (class_def.description is None or class_def.description.strip() == "") and (
-        class_def.brief_description is None or class_def.brief_description.strip() == ""
-    ):
+    if((class_def.description is None or class_def.description.strip() == "") and
+        (class_def.brief_description is None or class_def.brief_description.strip() == "")):
         lgr.vprint("SKIP", class_name, ".  No description.")
         return
 
     adjusted_class_name = class_name
 
     # converts '"path/to/script.gd"' to 'path_to_script'
-    if ".gd" in class_name.strip():
-        adjusted_class_name = class_name.lower().replace(".gd", "").replace(os.sep, "_")
+    if('.gd' in class_name.strip()):
+        adjusted_class_name = class_name.lower()\
+            .replace('.gd', "")\
+            .replace(os.sep, '_')
         # filename will be <output_dir>/class_path_to_script.rst
         filename = os.path.join(output_dir, f"class_{adjusted_class_name}.rst")
 
-    lgr.print_style("green", "Writing ", f"{class_name} -> {filename}")
+    lgr.print_style("green", "Writing ", f'{class_name} -> {filename}')
     # -- bitwes
 
     with open(
@@ -774,11 +798,11 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
 
         f.write(".. DO NOT EDIT THIS FILE!!!\n")
         f.write(".. Generated automatically from GUT Plugin sources.\n")
-        f.write(".. Generator: documentation/godot_make_rst.py.\n")
+        f.write(f".. Generator: documentation/godot_make_rst.py.\n")
 
         # Document reference id and header.
         f.write(f".. _class_{class_name}:\n\n")
-        f.write(make_heading(class_name.replace('"', ""), "=", False))
+        f.write(make_heading(class_name.replace('"', ''), "=", False))
 
         f.write(make_deprecated_experimental(class_def, state))
 
@@ -808,10 +832,13 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
         if len(class_def.operators) > 0:
             make_operator_table(f, class_def, state)
 
+
         if len(class_def.theme_items) > 0:
             make_theme_properties_table(f, class_def, state)
 
+
         ### DETAILED DESCRIPTIONS ###
+
 
         # Signal descriptions
         if len(class_def.signals) > 0:
@@ -837,7 +864,7 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
         if len(class_def.constructors) > 0:
             make_constructor_descriptions(f, class_def, state)
 
-        # Method descriptions
+        # Method descrptions
         if len(class_def.methods) > 0:
             make_method_descriptions(f, class_def, state)
 
@@ -889,7 +916,7 @@ def make_method_signature(
             out += "\\ "
 
         # hide variant datatype, too noisey for me (bitwes)
-        if arg.type_name.type_name == "Variant":
+        if(arg.type_name.type_name == "Variant"):
             out += f"{arg.name}"
         else:
             out += f"{arg.name}\\: {arg.type_name.to_rst(state)}"
@@ -964,9 +991,7 @@ def make_deprecated_experimental(item: DefinitionBase, state: State) -> str:
             default_message = translate(f"This {item.definition_name} may be changed or removed in future versions.")
             result += f"**{experimental_prefix}** {default_message}\n\n"
         else:
-            result += (
-                f"**{experimental_prefix}** {bb2rst.format_text_block(item.experimental.strip(), item, state)}\n\n"
-            )
+            result += f"**{experimental_prefix}** {bb2rst.format_text_block(item.experimental.strip(), item, state)}\n\n"
 
     return result
 
@@ -1053,10 +1078,10 @@ def make_rst_index(grouped_classes: Dict[str, List[str]], dry_run: bool, output_
                         continue
 
                     adjusted_class_name = f"class_{class_name.lower()}"
-                    if '.gd"' in adjusted_class_name.strip():
-                        adjusted_class_name = (
-                            adjusted_class_name.replace('.gd"', "").replace('"', "").replace(os.sep, "_")
-                        )
+                    if('.gd"' in adjusted_class_name.strip()):
+                        adjusted_class_name = adjusted_class_name.replace('.gd"', "")\
+                            .replace('"', "")\
+                            .replace(os.sep, '_')
 
                     f.write(f"    {adjusted_class_name}\n")
 
@@ -1064,7 +1089,6 @@ def make_rst_index(grouped_classes: Dict[str, List[str]], dry_run: bool, output_
 
 
 # Formatting helpers.
-
 
 def format_table(f: TextIO, data: List[Tuple[Optional[str], ...]], remove_empty_columns: bool = False) -> None:
     if len(data) == 0:
@@ -1102,7 +1126,7 @@ def format_table(f: TextIO, data: List[Tuple[Optional[str], ...]], remove_empty_
         for i, text in enumerate(row):
             if column_sizes[i] == 0 and remove_empty_columns:
                 continue
-            row_text += f" {(text or '').ljust(column_sizes[i])} |"
+            row_text += f' {(text or "").ljust(column_sizes[i])} |'
         row_text += "\n"
 
         f.write(f"   {row_text}")
@@ -1170,7 +1194,9 @@ def sanitize_operator_name(dirty_name: str, state: State) -> str:
 
 
 def load_translations(lang):
-    lang_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "translations", "{}.po".format(lang))
+    lang_file = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "..", "translations", "{}.po".format(lang)
+    )
     if os.path.exists(lang_file):
         try:
             import polib  # type: ignore
@@ -1236,6 +1262,7 @@ def new_state_from_xml_files(file_list):
         except Exception as e:
             lgr.print_error(f"{name}.xml: Exception while parsing class: {e}", state)
     return state
+
 
 
 def get_cmdline_args():
@@ -1316,14 +1343,9 @@ def main() -> None:
 
     if state.script_language_parity_check.hit_count > 0:
         if not args.verbose:
-            lgr.print_style(
-                "yellow",
-                f"{state.script_language_parity_check.hit_count} code samples failed parity check. Use --verbose to get more information.",
-            )
+            lgr.print_style("yellow", f'{state.script_language_parity_check.hit_count} code samples failed parity check. Use --verbose to get more information.')
         else:
-            lgr.print_style(
-                "yellow", f"{state.script_language_parity_check.hit_count} code samples failed parity check:"
-            )
+            lgr.print_style("yellow", f'{state.script_language_parity_check.hit_count} code samples failed parity check:')
 
             for class_name in state.script_language_parity_check.hit_map.keys():
                 class_hits = state.script_language_parity_check.hit_map[class_name]
@@ -1336,26 +1358,23 @@ def main() -> None:
     # Print out warnings and errors, or lack thereof, and exit with an appropriate code.
 
     if state.num_warnings >= 2:
-        lgr.print_style(
-            "yellow",
-            f"{state.num_warnings} warnings were found in the class reference XML. Please check the messages above.",
-        )
+        lgr.print_style("yellow", f'{state.num_warnings} warnings were found in the class reference XML. Please check the messages above.')
     elif state.num_warnings == 1:
-        lgr.print_style("yellow", "1 warning was found in the class reference XML. Please check the messages above.")
+        lgr.print_style("yellow", f'1 warning was found in the class reference XML. Please check the messages above.')
 
     if state.num_errors >= 2:
-        lgr.print_style(
-            "red", f"{state.num_errors} errors were found in the class reference XML. Please check the messages above."
-        )
+        lgr.print_style("red", f'{state.num_errors} errors were found in the class reference XML. Please check the messages above.')
     elif state.num_errors == 1:
-        lgr.print_style("red", "1 error was found in the class reference XML. Please check the messages above.")
+        lgr.print_style("red", f'1 error was found in the class reference XML. Please check the messages above.')
 
     if state.num_warnings == 0 and state.num_errors == 0:
-        lgr.print_style("green", "No warnings or errors found in the class reference XML.")
+        lgr.print_style("green", f'No warnings or errors found in the class reference XML.')
         if not args.dry_run:
             print(f"Wrote reStructuredText files for each class to: {args.output}")
     else:
         exit(1)
+
+
 
 
 if __name__ == "__main__":

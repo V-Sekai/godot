@@ -1,33 +1,3 @@
-/**************************************************************************/
-/*  socket_calls.cpp                                                      */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <libriscv/machine.hpp>
 
 //#define SOCKETCALL_VERBOSE 1
@@ -62,63 +32,66 @@ struct guest_iovec {
 	address_type<W> iov_len;
 };
 template <int W>
-struct guest_msghdr {
-	address_type<W> msg_name; /* Address to send to/receive from.  */
-	uint32_t msg_namelen; /* Length of address data.  */
+struct guest_msghdr
+{
+	address_type<W> msg_name;		/* Address to send to/receive from.  */
+	uint32_t        msg_namelen;	/* Length of address data.  */
 
-	address_type<W> msg_iov; /* Vector of data to send/receive into.  */
-	address_type<W> msg_iovlen; /* Number of elements in the vector.  */
+	address_type<W> msg_iov;		/* Vector of data to send/receive into.  */
+	address_type<W> msg_iovlen;		/* Number of elements in the vector.  */
 
-	address_type<W> msg_control; /* Ancillary data (eg BSD filedesc passing). */
-	address_type<W> msg_controllen; /* Ancillary data buffer length. */
-	int msg_flags; /* Flags on received message.  */
+	address_type<W> msg_control;	/* Ancillary data (eg BSD filedesc passing). */
+	address_type<W> msg_controllen;	/* Ancillary data buffer length. */
+	int             msg_flags;		/* Flags on received message.  */
 };
 
 #ifdef SOCKETCALL_VERBOSE
 template <int W>
-static void print_address(std::array<char, 128> buffer, address_type<W> addrlen) {
+static void print_address(std::array<char, 128> buffer, address_type<W> addrlen)
+{
 	if (addrlen < 12)
 		throw MachineException(INVALID_PROGRAM, "Socket address too small", addrlen);
 
 	char printbuf[INET6_ADDRSTRLEN];
-	auto *sin6 = (struct sockaddr_in6 *)buffer.data();
+	auto* sin6 = (struct sockaddr_in6 *)buffer.data();
 
 	switch (sin6->sin6_family) {
-		case AF_INET6:
-			inet_ntop(AF_INET6, &sin6->sin6_addr, printbuf, sizeof(printbuf));
-			printf("SYSCALL -- IPv6 address: %s\n", printbuf);
-			break;
-		case AF_INET: {
-			auto *sin4 = (struct sockaddr_in *)buffer.data();
-			inet_ntop(AF_INET, &sin4->sin_addr, printbuf, sizeof(printbuf));
-			printf("SYSCALL -- IPv4 address: %s\n", printbuf);
-			break;
-		}
-		case AF_UNIX: {
-			auto *sun = (struct sockaddr_un *)buffer.data();
-			printf("SYSCALL -- UNIX address: %s\n", sun->sun_path);
-			break;
-		}
+	case AF_INET6:
+		inet_ntop(AF_INET6, &sin6->sin6_addr, printbuf, sizeof(printbuf));
+		printf("SYSCALL -- IPv6 address: %s\n", printbuf);
+		break;
+	case AF_INET: {
+		auto* sin4 = (struct sockaddr_in *)buffer.data();
+		inet_ntop(AF_INET, &sin4->sin_addr, printbuf, sizeof(printbuf));
+		printf("SYSCALL -- IPv4 address: %s\n", printbuf);
+		break;
+	}
+	case AF_UNIX: {
+		auto* sun = (struct sockaddr_un *)buffer.data();
+		printf("SYSCALL -- UNIX address: %s\n", sun->sun_path);
+		break;
+	}
 #ifdef HAVE_LINUX_NETLINK
-		case AF_NETLINK: {
-			auto *snl = (struct sockaddr_nl *)buffer.data();
-			printf("SYSCALL -- NetLink port: %u\n", snl->nl_pid);
-			break;
-		}
+	case AF_NETLINK: {
+		auto* snl = (struct sockaddr_nl *)buffer.data();
+		printf("SYSCALL -- NetLink port: %u\n", snl->nl_pid);
+		break;
+	}
 #endif
 	}
 }
 #endif
 
 template <int W>
-static void syscall_socket(Machine<W> &machine) {
+static void syscall_socket(Machine<W>& machine)
+{
 	const auto [domain, type, proto] =
-			machine.template sysargs<int, int, int>();
+		machine.template sysargs<int, int, int> ();
 	int real_fd = -1;
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
 #ifdef WIN32
-		ws2::init();
+        ws2::init();
 #endif
 		real_fd = socket(domain, type, proto);
 		if (real_fd > 0) {
@@ -132,51 +105,34 @@ static void syscall_socket(Machine<W> &machine) {
 		machine.set_result(-EBADF);
 	}
 #ifdef SOCKETCALL_VERBOSE
-	const char *domname;
+	const char* domname;
 	switch (domain & 0xFF) {
-		case AF_UNIX:
-			domname = "Unix";
-			break;
-		case AF_INET:
-			domname = "IPv4";
-			break;
-		case AF_INET6:
-			domname = "IPv6";
-			break;
+		case AF_UNIX: domname = "Unix"; break;
+		case AF_INET: domname = "IPv4"; break;
+		case AF_INET6: domname = "IPv6"; break;
 #ifdef HAVE_LINUX_NETLINK
-		case AF_NETLINK:
-			domname = "Netlink";
-			break;
+		case AF_NETLINK: domname = "Netlink"; break;
 #endif
-		default:
-			domname = "unknown";
+		default: domname = "unknown";
 	}
-	const char *typname;
+	const char* typname;
 	switch (type & 0xFF) {
-		case SOCK_STREAM:
-			typname = "Stream";
-			break;
-		case SOCK_DGRAM:
-			typname = "Datagram";
-			break;
-		case SOCK_SEQPACKET:
-			typname = "Seq.packet";
-			break;
-		case SOCK_RAW:
-			typname = "Raw";
-			break;
-		default:
-			typname = "unknown";
+		case SOCK_STREAM: typname = "Stream"; break;
+		case SOCK_DGRAM: typname = "Datagram"; break;
+		case SOCK_SEQPACKET: typname = "Seq.packet"; break;
+		case SOCK_RAW: typname = "Raw"; break;
+		default: typname = "unknown";
 	}
 	SYSPRINT("SYSCALL socket, domain: %x (%s) type: %x (%s) proto: %x = %d (real fd: %d)\n",
-			domain, domname, type, typname, proto, (int)machine.return_value(), real_fd);
+		domain, domname, type, typname, proto, (int)machine.return_value(), real_fd);
 #endif
 }
 
 template <int W>
-static void syscall_bind(Machine<W> &machine) {
+static void syscall_bind(Machine<W>& machine)
+{
 	const auto [vfd, g_addr, addrlen] =
-			machine.template sysargs<int, address_type<W>, address_type<W>>();
+		machine.template sysargs<int, address_type<W>, address_type<W>> ();
 
 	alignas(16) std::array<char, 128> buffer;
 	if (addrlen > buffer.size()) {
@@ -185,12 +141,13 @@ static void syscall_bind(Machine<W> &machine) {
 	}
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		const auto real_fd = machine.fds().translate(vfd);
 		machine.copy_from_guest(buffer.data(), g_addr, addrlen);
 
-#ifdef SOCKETCALL_VERBOSE
+	#ifdef SOCKETCALL_VERBOSE
 		print_address<W>(buffer, addrlen);
-#endif
+	#endif
 
 		int res = bind(real_fd, (struct sockaddr *)buffer.data(), addrlen);
 		machine.set_result_or_error(res);
@@ -199,18 +156,20 @@ static void syscall_bind(Machine<W> &machine) {
 	}
 
 	SYSPRINT("SYSCALL bind, vfd: %d addr: 0x%lX len: 0x%lX = %d\n",
-			vfd, (long)g_addr, (long)addrlen, (int)machine.return_value());
+		vfd, (long)g_addr, (long)addrlen, (int)machine.return_value());
 }
 
 template <int W>
-static void syscall_listen(Machine<W> &machine) {
+static void syscall_listen(Machine<W>& machine)
+{
 	const auto [vfd, backlog] =
-			machine.template sysargs<int, int>();
+		machine.template sysargs<int, int> ();
 
 	SYSPRINT("SYSCALL listen, vfd: %d backlog: %d\n",
-			vfd, backlog);
+		vfd, backlog);
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		const auto real_fd = machine.fds().translate(vfd);
 
 		int res = listen(real_fd, backlog);
@@ -221,14 +180,16 @@ static void syscall_listen(Machine<W> &machine) {
 }
 
 template <int W>
-static void syscall_accept(Machine<W> &machine) {
+static void syscall_accept(Machine<W>& machine)
+{
 	const auto [vfd, g_addr, g_addrlen] =
-			machine.template sysargs<int, address_type<W>, address_type<W>>();
+		machine.template sysargs<int, address_type<W>, address_type<W>> ();
 
 	SYSPRINT("SYSCALL accept, vfd: %d addr: 0x%lX\n",
-			vfd, (long)g_addr);
+		vfd, (long)g_addr);
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		const auto real_fd = machine.fds().translate(vfd);
 		alignas(16) char buffer[128];
 		socklen_t addrlen = sizeof(buffer);
@@ -247,9 +208,10 @@ static void syscall_accept(Machine<W> &machine) {
 }
 
 template <int W>
-static void syscall_connect(Machine<W> &machine) {
+static void syscall_connect(Machine<W>& machine)
+{
 	const auto [vfd, g_addr, addrlen] =
-			machine.template sysargs<int, address_type<W>, address_type<W>>();
+		machine.template sysargs<int, address_type<W>, address_type<W>> ();
 	alignas(16) std::array<char, 128> buffer;
 
 	if (addrlen > buffer.size()) {
@@ -259,6 +221,7 @@ static void syscall_connect(Machine<W> &machine) {
 	int real_fd = -EBADF;
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		real_fd = machine.fds().translate(vfd);
 		machine.copy_from_guest(buffer.data(), g_addr, addrlen);
 
@@ -273,18 +236,20 @@ static void syscall_connect(Machine<W> &machine) {
 	}
 
 	SYSPRINT("SYSCALL connect, vfd: %d (real_fd: %d) addr: 0x%lX len: %zu = %ld\n",
-			vfd, real_fd, (long)g_addr, (size_t)addrlen, (long)machine.return_value());
+		vfd, real_fd, (long)g_addr, (size_t)addrlen, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_getsockname(Machine<W> &machine) {
+static void syscall_getsockname(Machine<W>& machine)
+{
 	const auto [vfd, g_addr, g_addrlen] =
-			machine.template sysargs<int, address_type<W>, address_type<W>>();
+		machine.template sysargs<int, address_type<W>, address_type<W>> ();
 
-	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+	if (machine.has_file_descriptors() && machine.fds().permit_sockets)
+	{
 		const auto real_fd = machine.fds().translate(vfd);
 
-		struct sockaddr addr{};
+		struct sockaddr addr {};
 		socklen_t addrlen = 0;
 		int res = getsockname(real_fd, &addr, &addrlen);
 		if (res == 0) {
@@ -297,18 +262,20 @@ static void syscall_getsockname(Machine<W> &machine) {
 	}
 
 	SYSPRINT("SYSCALL getsockname, fd: %d addr: 0x%lX len: 0x%lX = %ld\n",
-			vfd, (long)g_addr, (long)g_addrlen, (long)machine.return_value());
+		vfd, (long)g_addr, (long)g_addrlen, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_getpeername(Machine<W> &machine) {
+static void syscall_getpeername(Machine<W>& machine)
+{
 	const auto [vfd, g_addr, g_addrlen] =
-			machine.template sysargs<int, address_type<W>, address_type<W>>();
+		machine.template sysargs<int, address_type<W>, address_type<W>> ();
 
-	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+	if (machine.has_file_descriptors() && machine.fds().permit_sockets)
+	{
 		const auto real_fd = machine.fds().translate(vfd);
 
-		struct sockaddr addr{};
+		struct sockaddr addr {};
 		socklen_t addrlen = 0;
 		int res = getpeername(real_fd, &addr, &addrlen);
 
@@ -322,15 +289,16 @@ static void syscall_getpeername(Machine<W> &machine) {
 	}
 
 	SYSPRINT("SYSCALL getpeername, fd: %d addr: 0x%lX len: 0x%lX = %ld\n",
-			vfd, (long)g_addr, (long)g_addrlen, (long)machine.return_value());
+		vfd, (long)g_addr, (long)g_addrlen, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_sendto(Machine<W> &machine) {
+static void syscall_sendto(Machine<W>& machine)
+{
 	// ssize_t sendto(int vfd, const void *buf, size_t len, int flags,
 	//		   const struct sockaddr *dest_addr, socklen_t addrlen);
 	const auto [vfd, g_buf, buflen, flags, g_dest_addr, dest_addrlen] =
-			machine.template sysargs<int, address_type<W>, address_type<W>, int, address_type<W>, unsigned>();
+		machine.template sysargs<int, address_type<W>, address_type<W>, int, address_type<W>, unsigned>();
 	int real_fd = -1;
 
 	if (dest_addrlen > 128) {
@@ -341,15 +309,16 @@ static void syscall_sendto(Machine<W> &machine) {
 	machine.copy_from_guest(dest_addr, g_dest_addr, dest_addrlen);
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		real_fd = machine.fds().translate(vfd);
 
 #ifdef __linux__
 		// Gather up to 1MB of pages we can read into
 		std::array<riscv::vBuffer, 256> buffers;
 		const size_t buffer_cnt =
-				machine.memory.gather_buffers_from_range(buffers.size(), buffers.data(), g_buf, buflen);
+			machine.memory.gather_buffers_from_range(buffers.size(), buffers.data(), g_buf, buflen);
 
-		const struct msghdr hdr{
+		const struct msghdr hdr {
 			.msg_name = dest_addr,
 			.msg_namelen = static_cast<socklen_t>(dest_addrlen),
 			.msg_iov = (struct iovec *)buffers.data(),
@@ -370,28 +339,30 @@ static void syscall_sendto(Machine<W> &machine) {
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL sendto, fd: %d (real fd: %d) len: %ld flags: %#x = %ld\n",
-			vfd, real_fd, (long)buflen, flags, (long)machine.return_value());
+			 vfd, real_fd, (long)buflen, flags, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_recvfrom(Machine<W> &machine) {
+static void syscall_recvfrom(Machine<W>& machine)
+{
 	// ssize_t recvfrom(int vfd, void *buf, size_t len, int flags,
 	// 					struct sockaddr *src_addr, socklen_t *addrlen);
 	const auto [vfd, g_buf, buflen, flags, g_src_addr, g_addrlen] =
-			machine.template sysargs<int, address_type<W>, address_type<W>, int, address_type<W>, address_type<W>>();
+		machine.template sysargs<int, address_type<W>, address_type<W>, int, address_type<W>, address_type<W>>();
 	int real_fd = -1;
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		real_fd = machine.fds().translate(vfd);
 
 #ifdef __linux__
 		// Gather up to 1MB of pages we can read into
 		std::array<riscv::vBuffer, 256> buffers;
 		const size_t buffer_cnt =
-				machine.memory.gather_writable_buffers_from_range(buffers.size(), buffers.data(), g_buf, buflen);
+			machine.memory.gather_writable_buffers_from_range(buffers.size(), buffers.data(), g_buf, buflen);
 
 		alignas(16) char dest_addr[128];
-		struct msghdr hdr{
+		struct msghdr hdr {
 			.msg_name = dest_addr,
 			.msg_namelen = sizeof(dest_addr),
 			.msg_iov = (struct iovec *)buffers.data(),
@@ -400,9 +371,9 @@ static void syscall_recvfrom(Machine<W> &machine) {
 			.msg_controllen = 0,
 			.msg_flags = 0,
 		};
-#if 0
+	#if 0
 		printf("recvfrom(buffers: %zu, total: %zu)\n", buffer_cnt, size_t(buflen));
-#endif
+	#endif
 
 		const ssize_t res = recvmsg(real_fd, &hdr, flags);
 		if (res >= 0) {
@@ -421,17 +392,19 @@ static void syscall_recvfrom(Machine<W> &machine) {
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL recvfrom, fd: %d (real fd: %d) len: %ld flags: %#x = %ld\n",
-			vfd, real_fd, (long)buflen, flags, (long)machine.return_value());
+			 vfd, real_fd, (long)buflen, flags, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_recvmsg(Machine<W> &machine) {
+static void syscall_recvmsg(Machine<W>& machine)
+{
 	// ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
 	const auto [vfd, g_msg, flags] =
-			machine.template sysargs<int, address_type<W>, int>();
+		machine.template sysargs<int, address_type<W>, int>();
 	int real_fd = -1;
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		real_fd = machine.fds().translate(vfd);
 
 #ifdef __linux__
@@ -452,15 +425,15 @@ static void syscall_recvmsg(Machine<W> &machine) {
 			const address_type<W> g_buf = g_iov[i].iov_base;
 			const address_type<W> g_len = g_iov[i].iov_len;
 			vec_cnt +=
-					machine.memory.gather_writable_buffers_from_range(buffers.size() - vec_cnt, &buffers[vec_cnt], g_buf, g_len);
+				machine.memory.gather_writable_buffers_from_range(buffers.size() - vec_cnt, &buffers[vec_cnt], g_buf, g_len);
 			total += g_len;
 		}
-#if 0
+	#if 0
 		printf("recvmsg(buffers: %u, total: %zu)\n", vec_cnt, total);
-#endif
+	#endif
 
 		alignas(16) char dest_addr[128];
-		struct msghdr hdr{
+		struct msghdr hdr {
 			.msg_name = dest_addr,
 			.msg_namelen = sizeof(dest_addr),
 			.msg_iov = (struct iovec *)buffers.data(),
@@ -487,17 +460,19 @@ static void syscall_recvmsg(Machine<W> &machine) {
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL recvmsg, fd: %d (real fd: %d) msg: 0x%lX flags: %#x = %ld\n",
-			vfd, real_fd, (long)g_msg, flags, (long)machine.return_value());
+			 vfd, real_fd, (long)g_msg, flags, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_sendmmsg(Machine<W> &machine) {
+static void syscall_sendmmsg(Machine<W>& machine)
+{
 	// ssize_t sendmmsg(int vfd, struct mmsghdr *msgvec, unsigned int vlen, int flags);
 	const auto [vfd, g_msgvec, veclen, flags] =
-			machine.template sysargs<int, address_type<W>, unsigned, int>();
+		machine.template sysargs<int, address_type<W>, unsigned, int>();
 	int real_fd = -1;
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		real_fd = machine.fds().translate(vfd);
 
 #ifdef __linux__
@@ -510,8 +485,9 @@ static void syscall_sendmmsg(Machine<W> &machine) {
 		machine.copy_from_guest(&msgvec[0], g_msgvec, veclen * sizeof(msgvec[0]));
 
 		ssize_t finalcnt = 0;
-		for (size_t i = 0; i < veclen; i++) {
-			auto &entry = msgvec[i].msg_hdr;
+		for (size_t i = 0; i < veclen; i++)
+		{
+			auto& entry = msgvec[i].msg_hdr;
 			std::array<guest_iovec<W>, 128> g_iov;
 
 			if (entry.msg_iovlen > g_iov.size()) {
@@ -527,16 +503,16 @@ static void syscall_sendmmsg(Machine<W> &machine) {
 				const address_type<W> g_buf = g_iov[i].iov_base;
 				const address_type<W> g_len = g_iov[i].iov_len;
 				vec_cnt +=
-						machine.memory.gather_buffers_from_range(buffers.size() - vec_cnt, &buffers[vec_cnt], g_buf, g_len);
+					machine.memory.gather_buffers_from_range(buffers.size() - vec_cnt, &buffers[vec_cnt], g_buf, g_len);
 				total_bytes += g_len;
 			}
 
-#ifdef SOCKETCALL_VERBOSE
+		#ifdef SOCKETCALL_VERBOSE
 			printf("SYSCALL -- Vec %zu: Buffers: %u  msg_name=%p namelen: %u\n",
-					i, vec_cnt, entry.msg_name, entry.msg_namelen);
-#endif
+				i, vec_cnt, entry.msg_name, entry.msg_namelen);
+		#endif
 
-			const struct msghdr hdr{
+			const struct msghdr hdr {
 				.msg_name = nullptr,
 				.msg_namelen = 0,
 				.msg_iov = (struct iovec *)buffers.data(),
@@ -569,13 +545,14 @@ static void syscall_sendmmsg(Machine<W> &machine) {
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL sendmmsg, fd: %d (real fd: %d) msgvec: 0x%lX flags: %#x = %ld\n",
-			vfd, real_fd, (long)g_msgvec, flags, (long)machine.return_value());
+			 vfd, real_fd, (long)g_msgvec, flags, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_setsockopt(Machine<W> &machine) {
+static void syscall_setsockopt(Machine<W>& machine)
+{
 	const auto [vfd, level, optname, g_opt, optlen] =
-			machine.template sysargs<int, int, int, address_type<W>, unsigned>();
+		machine.template sysargs<int, int, int, address_type<W>, unsigned> ();
 
 	if (optlen > 128) {
 		machine.set_result(-ENOMEM);
@@ -583,6 +560,7 @@ static void syscall_setsockopt(Machine<W> &machine) {
 	}
 
 	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+
 		const auto real_fd = machine.fds().translate(vfd);
 		alignas(8) char buffer[128];
 		machine.copy_from_guest(buffer, g_opt, optlen);
@@ -593,16 +571,18 @@ static void syscall_setsockopt(Machine<W> &machine) {
 		machine.set_result(-EBADF);
 	}
 	SYSPRINT("SYSCALL setsockopt, fd: %d level: %x optname: %#x len: %u = %ld\n",
-			vfd, level, optname, optlen, (long)machine.return_value());
+		vfd, level, optname, optlen, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_getsockopt(Machine<W> &machine) {
+static void syscall_getsockopt(Machine<W>& machine)
+{
 	const auto [vfd, level, optname, g_opt, g_optlen] =
-			machine.template sysargs<int, int, int, address_type<W>, address_type<W>>();
+		machine.template sysargs<int, int, int, address_type<W>, address_type<W>> ();
 	socklen_t optlen = 0;
 
-	if (machine.has_file_descriptors() && machine.fds().permit_sockets) {
+	if (machine.has_file_descriptors() && machine.fds().permit_sockets)
+	{
 		const auto real_fd = machine.fds().translate(vfd);
 
 		alignas(8) char buffer[128];
@@ -618,11 +598,12 @@ static void syscall_getsockopt(Machine<W> &machine) {
 	}
 
 	SYSPRINT("SYSCALL getsockopt, fd: %d level: %x optname: %#x len: %ld/%ld = %ld\n",
-			vfd, level, optname, (long)optlen, (long)g_optlen, (long)machine.return_value());
+			 vfd, level, optname, (long)optlen, (long)g_optlen, (long)machine.return_value());
 }
 
 template <int W>
-void add_socket_syscalls(Machine<W> &machine) {
+void add_socket_syscalls(Machine<W>& machine)
+{
 	machine.install_syscall_handler(198, syscall_socket<W>);
 	machine.install_syscall_handler(200, syscall_bind<W>);
 	machine.install_syscall_handler(201, syscall_listen<W>);
@@ -639,10 +620,10 @@ void add_socket_syscalls(Machine<W> &machine) {
 }
 
 #ifdef RISCV_32I
-template void add_socket_syscalls<4>(Machine<4> &);
+template void add_socket_syscalls<4>(Machine<4>&);
 #endif
 #ifdef RISCV_64I
-template void add_socket_syscalls<8>(Machine<8> &);
+template void add_socket_syscalls<8>(Machine<8>&);
 #endif
 
-} //namespace riscv
+} // riscv

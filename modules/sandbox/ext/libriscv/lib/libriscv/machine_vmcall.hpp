@@ -1,36 +1,7 @@
-/**************************************************************************/
-/*  machine_vmcall.hpp                                                    */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 template <int W>
-template <typename... Args>
-constexpr inline void Machine<W>::setup_call(Args &&...args) {
+template <typename... Args> constexpr
+inline void Machine<W>::setup_call(Args&&... args)
+{
 	cpu.reg(REG_RA) = memory.exit_address();
 	[[maybe_unused]] int iarg = REG_ARG0;
 	[[maybe_unused]] int farg = REG_FA0;
@@ -39,15 +10,17 @@ constexpr inline void Machine<W>::setup_call(Args &&...args) {
 			cpu.reg(iarg++) = args;
 			if constexpr (sizeof(Args) > W) // upper 32-bits for 64-bit integers
 				cpu.reg(iarg++) = args >> 32;
-		} else if constexpr (is_stdstring<remove_cvref<Args>>::value)
-			cpu.reg(iarg++) = stack_push(args.data(), args.size() + 1);
+		}
+		else if constexpr (is_stdstring<remove_cvref<Args>>::value)
+			cpu.reg(iarg++) = stack_push(args.data(), args.size()+1);
 		else if constexpr (is_string<Args>::value)
-			cpu.reg(iarg++) = stack_push(args, strlen(args) + 1);
+			cpu.reg(iarg++) = stack_push(args, strlen(args)+1);
 #ifdef __cpp_exceptions
 		else if constexpr (std::is_same_v<GuestStdString<W>, remove_cvref<Args>>) {
 			args.move(cpu.reg(REG_SP) - sizeof(Args)); // SSO-adjustment
 			cpu.reg(iarg++) = stack_push(&args, sizeof(Args));
-		} else if constexpr (is_scoped_guest_object<W, remove_cvref<Args>>::value) {
+		}
+		else if constexpr (is_scoped_guest_object<W, remove_cvref<Args>>::value) {
 			cpu.reg(iarg++) = args.address();
 		}
 #endif
@@ -63,14 +36,14 @@ constexpr inline void Machine<W>::setup_call(Args &&...args) {
 			cpu.reg(iarg++) = stack_push(&args, sizeof(args));
 		else
 			static_assert(always_false<decltype(args)>, "Unknown type");
-	}(),
-			...);
+	}(), ...);
 	cpu.reg(REG_SP) &= ~address_t(0xF);
 }
 
 template <int W>
-template <uint64_t MAXI, bool Throw, typename... Args>
-constexpr inline address_type<W> Machine<W>::vmcall(address_t pc, Args &&...args) {
+template <uint64_t MAXI, bool Throw, typename... Args> constexpr
+inline address_type<W> Machine<W>::vmcall(address_t pc, Args&&... args)
+{
 	// reset the stack pointer to an initial location (deliberately)
 	this->cpu.reset_stack_pointer();
 	// setup calling convention
@@ -87,15 +60,17 @@ constexpr inline address_type<W> Machine<W>::vmcall(address_t pc, Args &&...args
 }
 
 template <int W>
-template <uint64_t MAXI, bool Throw, typename... Args>
-constexpr inline address_type<W> Machine<W>::vmcall(const char *funcname, Args &&...args) {
+template <uint64_t MAXI, bool Throw, typename... Args> constexpr
+inline address_type<W> Machine<W>::vmcall(const char* funcname, Args&&... args)
+{
 	address_t call_addr = memory.resolve_address(funcname);
 	return vmcall<MAXI, Throw>(call_addr, std::forward<Args>(args)...);
 }
 
 template <int W>
-template <bool Throw, bool StoreRegs, typename... Args>
-inline address_type<W> Machine<W>::preempt(uint64_t max_instr, address_t call_addr, Args &&...args) {
+template <bool Throw, bool StoreRegs, typename... Args> inline
+address_type<W> Machine<W>::preempt(uint64_t max_instr, address_t call_addr, Args&&... args)
+{
 	Registers<W> regs;
 	if constexpr (StoreRegs) {
 		regs = cpu.registers();
@@ -109,8 +84,9 @@ inline address_type<W> Machine<W>::preempt(uint64_t max_instr, address_t call_ad
 }
 
 template <int W>
-template <bool Throw, bool StoreRegs, typename... Args>
-inline address_type<W> Machine<W>::preempt(uint64_t max_instr, const char *funcname, Args &&...args) {
+template <bool Throw, bool StoreRegs, typename... Args> inline
+address_type<W> Machine<W>::preempt(uint64_t max_instr, const char* funcname, Args&&... args)
+{
 	address_t call_addr = memory.resolve_address(funcname);
 	return preempt<Throw, StoreRegs>(max_instr, call_addr, std::forward<Args>(args)...);
 }

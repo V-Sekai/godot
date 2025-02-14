@@ -8,3 +8,4 @@ func test_fail():
 
 func test_pending():
 	pending('this has text')
+

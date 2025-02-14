@@ -168,7 +168,7 @@ class MouseDraw:
 #
 # ##############################################################################
 ## Local reference to the GutInputFactory static class
-const INPUT_WARN = 'If using Input as a receiver it will not respond to *_down events until a *_up event is received.  Call the appropriate *_up event or use hold_for(...) to automatically release after some duration.'
+const INPUT_WARN = 'If using Input as a reciever it will not respond to *_down events until a *_up event is recieved.  Call the appropriate *_up event or use hold_for(...) to automatically release after some duration.'
 
 var _lgr = GutUtils.get_logger()
 var _receivers = []
@@ -633,7 +633,7 @@ func hold_for(duration):
 # ##############################################################################
 # Description
 # -----------
-# This class sends input to one or more receivers.  The receivers' _input,
+# This class sends input to one or more recievers.  The receivers' _input,
 # _unhandled_input, and _gui_input are called sending InputEvent* events.
 # InputEvents can be sent via the helper methods or a custom made InputEvent
 # can be sent via send_event(...)

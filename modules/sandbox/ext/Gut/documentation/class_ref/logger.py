@@ -1,5 +1,4 @@
 import sys
-
 from godot_consts import *
 
 verbose_enabled = True
@@ -7,7 +6,6 @@ debug_enabled = True
 should_color = True
 
 STYLES: Dict[str, str] = {}
-
 
 def set_should_color(should):
     global should_color
@@ -38,19 +36,19 @@ def set_should_color(should):
 
 
 def print_error(error: str, state=None) -> None:
-    print(f"{STYLES['red']}{STYLES['bold']}ERROR:{STYLES['regular']} {error}{STYLES['reset']}")
-    if state != None:
+    print(f'{STYLES["red"]}{STYLES["bold"]}ERROR:{STYLES["regular"]} {error}{STYLES["reset"]}')
+    if(state != None):
         state.num_errors += 1
 
 
 def print_warning(warning: str, state=None) -> None:
-    print(f"{STYLES['yellow']}{STYLES['bold']}WARNING:{STYLES['regular']} {warning}{STYLES['reset']}")
-    if state != None:
+    print(f'{STYLES["yellow"]}{STYLES["bold"]}WARNING:{STYLES["regular"]} {warning}{STYLES["reset"]}')
+    if(state != None):
         state.num_warnings += 1
 
 
 def print_style(sname: str, text: str, plain_text="") -> None:
-    print(f"{STYLES[sname]}{text}{STYLES['reset']}{plain_text}")
+    print(f'{STYLES[sname]}{text}{STYLES["reset"]}{plain_text}')
 
 
 def _print_arg(sname, prefix, arg):
@@ -61,10 +59,11 @@ def _print_arg(sname, prefix, arg):
 
 
 def vprint(*arg) -> None:
-    if verbose_enabled:
+    if(verbose_enabled):
         _print_arg("bold", "[Info]  ", arg)
 
 
 def dbg(*arg) -> None:
-    if debug_enabled:
+    if(debug_enabled):
         _print_arg("bold", "[Debug]  ", arg)
+

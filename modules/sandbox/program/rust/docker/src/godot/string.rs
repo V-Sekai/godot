@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use super::syscalls::*;
-use create::Variant;
-use create::VariantType;
+use crate::Variant;
+use crate::VariantType;
 
 #[repr(C)]
 pub struct GodotString {

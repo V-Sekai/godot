@@ -356,7 +356,7 @@ static func is_freed(obj):
 
 
 # ------------------------------------------------------------------------------
-# Pretty self explanatory.
+# Pretty self explanitory.
 # ------------------------------------------------------------------------------
 static func is_not_freed(obj):
 	return !is_freed(obj)
@@ -591,3 +591,4 @@ static func get_display_size():
 # THE SOFTWARE.
 #
 # ##############################################################################
+

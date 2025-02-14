@@ -1,96 +1,70 @@
-/**************************************************************************/
-/*  rvf_instr.cpp                                                         */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
-#include "instr_helpers.hpp"
 #include "rvfd.hpp"
+#include "instr_helpers.hpp"
 #include <cmath>
 
-namespace riscv {
-// RISC-V Canonical NaNs
-static constexpr uint32_t CANONICAL_NAN_F32 = 0x7fc00000;
-static constexpr uint64_t CANONICAL_NAN_F64 = 0x7ff8000000000000;
+namespace riscv
+{
+	// RISC-V Canonical NaNs
+	static constexpr uint32_t CANONICAL_NAN_F32 = 0x7fc00000;
+	static constexpr uint64_t CANONICAL_NAN_F64 = 0x7ff8000000000000;
 
-template <typename T>
-static bool is_signaling_nan(T t) {
-	if constexpr (sizeof(T) == 4)
-		return (*(uint32_t *)&t & 0x7fa00000) == 0x7f800000;
-	else
-		return (*(uint64_t *)&t & 0x7ffe000000000000) == 0x7ff0000000000000;
-}
+	template <typename T>
+	static bool is_signaling_nan(T t) {
+		if constexpr (sizeof(T) == 4)
+			return (*(uint32_t*)&t & 0x7fa00000) == 0x7f800000;
+		else
+			return (*(uint64_t*)&t & 0x7ffe000000000000) == 0x7ff0000000000000;
+	}
 
 #ifdef RISCV_FCSR
-template <int W, typename T>
-static void fsflags(CPU<W> &cpu, long double exact, T &inexact) {
-	if constexpr (fcsr_emulation) {
-		auto &fcsr = cpu.registers().fcsr();
-		fcsr.fflags = 0;
-		if (std::isnan(exact) || std::isnan(inexact)) {
-			fcsr.fflags |= 16;
-			// Canonical NaN
-			if constexpr (sizeof(T) == 4)
-				*(int32_t *)&inexact = CANONICAL_NAN_F32;
-			else
-				*(int64_t *)&inexact = CANONICAL_NAN_F64;
-		} else {
-			if (exact != inexact)
-				fcsr.fflags |= 1;
+	template <int W, typename T>
+	static void fsflags(CPU<W>& cpu, long double exact, T& inexact) {
+		if constexpr (fcsr_emulation) {
+			auto& fcsr = cpu.registers().fcsr();
+			fcsr.fflags = 0;
+			if (std::isnan(exact) || std::isnan(inexact)) {
+				fcsr.fflags |= 16;
+				// Canonical NaN
+				if constexpr (sizeof(T) == 4)
+					*(int32_t *)&inexact = CANONICAL_NAN_F32;
+				else
+					*(int64_t *)&inexact = CANONICAL_NAN_F64;
+			} else {
+				if (exact != inexact) fcsr.fflags |= 1;
+			}
 		}
 	}
-}
 #else
 #define fsflags(c, e, i) /**/
 #endif
-template <bool Signaling, int W, typename T, typename R>
-static void feqflags(CPU<W> &cpu, T a, T b, R &dst) {
-	if constexpr (fcsr_emulation) {
-		auto &fcsr = cpu.registers().fcsr();
-		fcsr.fflags = 0;
-		if (std::isnan(a) || std::isnan(b)) {
-			// All operations return 0 when either operand is NaN
-			dst = 0;
-		}
-		if constexpr (Signaling) {
-			if (std::isnan(a) || std::isnan(b))
-				fcsr.fflags |= 16;
-		} else { // Quiet
-			if (is_signaling_nan(a) || is_signaling_nan(b))
-				fcsr.fflags |= 16;
+	template <bool Signaling, int W, typename T, typename R>
+	static void feqflags(CPU<W>& cpu, T a, T b, R& dst) {
+		if constexpr (fcsr_emulation) {
+			auto& fcsr = cpu.registers().fcsr();
+			fcsr.fflags = 0;
+			if (std::isnan(a) || std::isnan(b)) {
+				// All operations return 0 when either operand is NaN
+				dst = 0;
+			}
+			if constexpr (Signaling) {
+				if (std::isnan(a) || std::isnan(b))
+					fcsr.fflags |= 16;
+			} else { // Quiet
+				if (is_signaling_nan(a) || is_signaling_nan(b))
+					fcsr.fflags |= 16;
+			}
 		}
 	}
-}
 
-FLOAT_INSTR(FLW, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FLW,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto addr = cpu.reg(fi.Itype.rs1) + fi.Itype.signed_imm();
 		auto& dst = cpu.registers().getfl(fi.Itype.rd);
-		dst.load_u32(cpu.machine().memory.template read<uint32_t> (addr)); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		dst.load_u32(cpu.machine().memory.template read<uint32_t> (addr));
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 8> insn {
 			"???", "FLH", "FLW", "FLD", "FLQ", "???", "???", "???"
@@ -99,18 +73,26 @@ FLOAT_INSTR(FLW, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 						insn[fi.Itype.funct3],
 						RISCV::flpname(fi.Itype.rd),
 						RISCV::regname(fi.Stype.rs1),
-						fi.Itype.signed_imm()); });
-FLOAT_INSTR(FLD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+						fi.Itype.signed_imm());
+	});
+	FLOAT_INSTR(FLD,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto addr = cpu.reg(fi.Itype.rs1) + fi.Itype.signed_imm();
 		auto& dst = cpu.registers().getfl(fi.Itype.rd);
-		dst.load_u64(cpu.machine().memory.template read<uint64_t> (addr)); }, DECODED_FLOAT(FLW).printer);
+		dst.load_u64(cpu.machine().memory.template read<uint64_t> (addr));
+	}, DECODED_FLOAT(FLW).printer);
 
-FLOAT_INSTR(FSW, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FSW,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		const auto& src = cpu.registers().getfl(fi.Stype.rs2);
 		auto addr = cpu.reg(fi.Stype.rs1) + fi.Stype.signed_imm();
-		cpu.machine().memory.template write<uint32_t> (addr, src.i32[0]); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.machine().memory.template write<uint32_t> (addr, src.i32[0]);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 8> insn {
 			"???", "FSH", "FSW", "FSD", "FSQ", "???", "???", "???"
@@ -119,14 +101,20 @@ FLOAT_INSTR(FSW, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 						insn[fi.Stype.funct3],
 						RISCV::regname(fi.Stype.rs1),
 						fi.Stype.signed_imm(),
-						RISCV::flpname(fi.Stype.rs2)); });
-FLOAT_INSTR(FSD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+						RISCV::flpname(fi.Stype.rs2));
+	});
+	FLOAT_INSTR(FSD,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		const auto& src = cpu.registers().getfl(fi.Stype.rs2);
 		auto addr = cpu.reg(fi.Stype.rs1) + fi.Stype.signed_imm();
-		cpu.machine().memory.template write<uint64_t> (addr, src.i64); }, DECODED_FLOAT(FSW).printer);
+		cpu.machine().memory.template write<uint64_t> (addr, src.i64);
+	}, DECODED_FLOAT(FSW).printer);
 
-FLOAT_INSTR(FMADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FMADD,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -140,7 +128,9 @@ FLOAT_INSTR(FMADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)rs1.f64 * (long double)rs2.f64 + (long double)rs3.f64, dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FMADD.S", "FMADD.D", "???", "FMADD.Q"
@@ -149,9 +139,12 @@ FLOAT_INSTR(FMADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
 						RISCV::flpname(fi.R4type.rs3),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FMSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FMSUB,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -165,7 +158,9 @@ FLOAT_INSTR(FMSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)rs1.f64 * (long double)rs2.f64 - (long double)rs3.f64, dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FMSUB.S", "FMSUB.D", "???", "FMSUB.Q"
@@ -174,9 +169,12 @@ FLOAT_INSTR(FMSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
 						RISCV::flpname(fi.R4type.rs3),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FNMADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FNMADD,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -190,7 +188,9 @@ FLOAT_INSTR(FNMADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)-rs1.f64 * (long double)rs2.f64 - (long double)rs3.f64, dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FMADD.S", "FMADD.D", "???", "FMADD.Q"
@@ -198,9 +198,12 @@ FLOAT_INSTR(FNMADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 		return snprintf(buffer, len, "%s %s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FNMSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FNMSUB,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -214,7 +217,9 @@ FLOAT_INSTR(FNMSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)-rs1.f64 * (long double)rs2.f64 + (long double)rs3.f64, dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FNMSUB.S", "FNMSUB.D", "???", "FNMSUB.Q"
@@ -224,9 +229,12 @@ FLOAT_INSTR(FNMSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
 						RISCV::flpname(fi.R4type.rs3),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FADD,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -239,7 +247,9 @@ FLOAT_INSTR(FADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)(rs1.f64) + (long double)(rs2.f64), dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FADD.S", "FADD.D", "???", "FADD.Q"
@@ -247,9 +257,12 @@ FLOAT_INSTR(FADD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 		return snprintf(buffer, len, "%s %s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FSUB,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -262,7 +275,9 @@ FLOAT_INSTR(FSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)(rs1.f64) - (long double)(rs2.f64), dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FSUB.S", "FSUB.D", "???", "FSUB.Q"
@@ -270,9 +285,12 @@ FLOAT_INSTR(FSUB, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 		return snprintf(buffer, len, "%s %s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FMUL, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FMUL,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -285,7 +303,9 @@ FLOAT_INSTR(FMUL, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)(rs1.f64) * (long double)(rs2.f64), dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FMUL.S", "FMUL.D", "???", "FMUL.Q"
@@ -293,9 +313,12 @@ FLOAT_INSTR(FMUL, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 		return snprintf(buffer, len, "%s %s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FDIV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FDIV,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -308,7 +331,9 @@ FLOAT_INSTR(FDIV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			fsflags(cpu, (long double)(rs1.f64) / (long double)(rs2.f64), dst.f64);
 		} else {
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FDIV.S", "FDIV.D", "???", "FDIV.Q"
@@ -316,9 +341,12 @@ FLOAT_INSTR(FDIV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 		return snprintf(buffer, len, "%s %s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FSQRT, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FSQRT,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
@@ -333,16 +361,21 @@ FLOAT_INSTR(FSQRT, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			break;
 		default:
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FSQRT.S", "FSQRT.D", "???", "FSQRT.Q"
 		};
 		return snprintf(buffer, len, "%s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FMIN_FMAX, [](auto &cpu, rv32i_instruction instr) RVINSTR_COLDATTR {
+	FLOAT_INSTR(FMIN_FMAX,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_COLDATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
 		auto& rs2 = cpu.registers().getfl(fi.R4type.rs2);
@@ -398,7 +431,9 @@ FLOAT_INSTR(FMIN_FMAX, [](auto &cpu, rv32i_instruction instr) RVINSTR_COLDATTR {
 				cpu.registers().fcsr().fflags = 16;
 			else
 				cpu.registers().fcsr().fflags = 0;
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 8> insn {
 			"FMIN", "FMAX", "???", "???", "???", "???", "???", "???"
@@ -408,9 +443,12 @@ FLOAT_INSTR(FMIN_FMAX, [](auto &cpu, rv32i_instruction instr) RVINSTR_COLDATTR {
 						RISCV::flpsize(fi.R4type.funct2),
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::regname(fi.R4type.rd)); });
+						RISCV::regname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FEQ_FLT_FLE, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FEQ_FLT_FLE,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
 		auto& rs2 = cpu.registers().getfl(fi.R4type.rs2);
@@ -418,7 +456,7 @@ FLOAT_INSTR(FEQ_FLT_FLE, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 
 		switch (fi.R4type.funct3 | (fi.R4type.funct2 << 4))
 		{
-		case 0x0: // FILE.S
+		case 0x0: // FLE.S
 			dst = (rs1.f32[0] <= rs2.f32[0]) ? 1 : 0;
 			feqflags<true>(cpu, rs1.f32[0], rs2.f32[0], dst);
 			break;
@@ -430,7 +468,7 @@ FLOAT_INSTR(FEQ_FLT_FLE, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			dst = (rs1.f32[0] == rs2.f32[0]) ? 1 : 0;
 			feqflags<false>(cpu, rs1.f32[0], rs2.f32[0], dst);
 			break;
-		case 0x10: // FILE.D
+		case 0x10: // FLE.D
 			dst = (rs1.f64 <= rs2.f64) ? 1 : 0;
 			feqflags<true>(cpu, rs1.f64, rs2.f64, dst);
 			break;
@@ -444,19 +482,24 @@ FLOAT_INSTR(FEQ_FLT_FLE, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			break;
 		default:
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> insn {
-			"FILE", "FLT", "FEQ", "F???"
+			"FLE", "FLT", "FEQ", "F???"
 		};
 		return snprintf(buffer, len, "%s.%c %s %s, %s",
 						insn[fi.R4type.funct3],
 						RISCV::flpsize(fi.R4type.funct2),
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::regname(fi.R4type.rd)); });
+						RISCV::regname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FCVT_SD_DS, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FCVT_SD_DS,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
@@ -469,16 +512,21 @@ FLOAT_INSTR(FCVT_SD_DS, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			break;
 		default:
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FCVT.S.D", "FCVT.D.S", "???", "???"
 		};
 		return snprintf(buffer, len, "%s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FCVT_W_SD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FCVT_W_SD,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
 		auto& dst = cpu.reg(fi.R4type.rd);
@@ -505,16 +553,21 @@ FLOAT_INSTR(FCVT_W_SD, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 				return;
 			}
 		}
-		cpu.trigger_exception(ILLEGAL_OPERATION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(ILLEGAL_OPERATION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FCVT.W.S", "FCVT.W.D", "???", "FCVT.W.Q"
 		};
 		return snprintf(buffer, len, "%s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
-						RISCV::regname(fi.R4type.rd)); });
+						RISCV::regname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FCVT_SD_W, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FCVT_SD_W,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.reg(fi.R4type.rs1);
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
@@ -541,16 +594,21 @@ FLOAT_INSTR(FCVT_SD_W, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 				return;
 			}
 		}
-		cpu.trigger_exception(ILLEGAL_OPERATION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(ILLEGAL_OPERATION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FCVT.S.W", "FCVT.D.W", "???", "FCVT.Q.W"
 		};
 		return snprintf(buffer, len, "%s %s, %s", f2[fi.R4type.funct2],
 						RISCV::regname(fi.R4type.rs1),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FSGNJ_NX, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FSGNJ_NX,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
 		auto& rs2 = cpu.registers().getfl(fi.R4type.rs2);
@@ -594,7 +652,9 @@ FLOAT_INSTR(FSGNJ_NX, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			break;
 		default:
 			cpu.trigger_exception(ILLEGAL_OPERATION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 
 		if (fi.R4type.rs1 == fi.R4type.rs2) {
@@ -611,10 +671,12 @@ FLOAT_INSTR(FSGNJ_NX, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 						RISCV::flpsize(fi.R4type.funct2),
 						RISCV::flpname(fi.R4type.rs1),
 						RISCV::flpname(fi.R4type.rs2),
-						RISCV::flpname(fi.R4type.rd)); });
+						RISCV::flpname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FCLASS, // 1110 f3 = 0x1
-		[](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FCLASS, // 1110 f3 = 0x1
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.reg(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -662,17 +724,21 @@ FLOAT_INSTR(FCLASS, // 1110 f3 = 0x1
 				dst |= 3U << 8;
 			return;
 		}
-		cpu.trigger_exception(ILLEGAL_OPERATION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(ILLEGAL_OPERATION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FCLASS.S", "FCLASS.D", "???", "FCLASS.Q"
 		};
 		return snprintf(buffer, len, "%s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
-						RISCV::regname(fi.R4type.rd)); });
+						RISCV::regname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FMV_X_W, // 1110 f3 = 0x0
-		[](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FMV_X_W, // 1110 f3 = 0x0
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& dst = cpu.reg(fi.R4type.rd);
 		auto& rs1 = cpu.registers().getfl(fi.R4type.rs1);
@@ -691,17 +757,21 @@ FLOAT_INSTR(FMV_X_W, // 1110 f3 = 0x0
 			}
 			break;
 		}
-		cpu.trigger_exception(ILLEGAL_OPERATION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(ILLEGAL_OPERATION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FMV.X.W", "FMV.X.D", "???", "FMV.X.Q"
 		};
 		return snprintf(buffer, len, "%s %s, %s", f2[fi.R4type.funct2],
 						RISCV::flpname(fi.R4type.rs1),
-						RISCV::regname(fi.R4type.rd)); });
+						RISCV::regname(fi.R4type.rd));
+	});
 
-FLOAT_INSTR(FMV_W_X, // 1111
-		[](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	FLOAT_INSTR(FMV_W_X, // 1111
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32f_instruction fi { instr };
 		auto& rs1 = cpu.reg(fi.R4type.rs1);
 		auto& dst = cpu.registers().getfl(fi.R4type.rd);
@@ -716,12 +786,15 @@ FLOAT_INSTR(FMV_W_X, // 1111
 			}
 			break;
 		}
-		cpu.trigger_exception(ILLEGAL_OPERATION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(ILLEGAL_OPERATION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32f_instruction fi { instr };
 		static const std::array<const char*, 4> f2 {
 			"FMV.W.X", "FMV.D.X", "???", "FMV.Q.X"
 		};
 		return snprintf(buffer, len, "%s %s, %s", f2[fi.R4type.funct2],
 						RISCV::regname(fi.R4type.rs1),
-						RISCV::flpname(fi.R4type.rd)); });
-} //namespace riscv
+						RISCV::flpname(fi.R4type.rd));
+	});
+}

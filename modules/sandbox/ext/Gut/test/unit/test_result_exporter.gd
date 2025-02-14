@@ -229,3 +229,4 @@ func test_write_file_creates_file():
 	var result = re.write_json_file(_test_gut, fname)
 	assert_file_not_empty(fname)
 	gut.file_delete(fname)
+

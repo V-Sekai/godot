@@ -11,7 +11,7 @@ Then, download the latest embedded RISC-V packages from https://github.com/xpack
 
 As I was writing this, I had extracted `xpack-riscv-none-embed-gcc-12.1.0-2` to my home folder, and it contains embedded RISC-V GCC 12.1.0, so I `set(GCC_VERSION 12.1.0)` in `micro_toolchain.cmake` in the same directory as this README. That allowed me to build the Clang variants.
 
-The newlib variants require the RISC-V GNU toolchain from https://github.com/riscv-collab/riscv-gnu-toolchain. The README on their repository explains all the necessary details. Just make sure to build for Newlib. Preferably rv64g and rv32g respectively, for performance reasons.
+The newlib variants require the RISC-V GNU toolchain from https://github.com/riscv-collab/riscv-gnu-toolchain. The README on their repository explains all the necessary details. Just make sure to build for Newlib. Preferrably rv64g and rv32g respectively, for performance reasons.
 
 ## Accelerated runtimes
 
@@ -27,4 +27,4 @@ A minimal 32-bit tiny libc build with MINIMAL, LTO and GCSECTIONS enabled yields
 
 A minimal 64-bit Newlib build with MINIMAL, LTO and GCSECTIONS enabled yields a _112kB binary_ that uses 196kB memory.
 
-Both executables have been stripped. The reason for the difference in memory use is likely that newlib puts more things in .rodata which is heavily optimized in the emulator. Most rodata pages reuse the binary instead of duplicating the data, and it doesn't count towards the memory usage for various reasons. rodata is shared between all forks of the machine, and it makes sense to not count memory that is only required for the main VM.
+Both executables have been stripped. The reason for the difference in memory use is likely that newlib puts more things in .rodata which is heavily optimized in the emulator. Most rodata pages re-use the binary instead of duplicating the data, and it doesn't count towards the memory usage for various reasons. rodata is shared between all forks of the machine, and it makes sense to not count memory that is only required for the main VM.

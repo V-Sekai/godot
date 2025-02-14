@@ -1,39 +1,9 @@
-/**************************************************************************/
-/*  system_calls.cpp                                                      */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <libriscv/machine.hpp>
 
-#include <io.h>
+#include <libriscv/threads.hpp>
 #include <chrono>
 #include <cstdint>
-#include <libriscv/threads.hpp>
+#include <io.h>
 
 typedef std::make_signed_t<size_t> ssize_t;
 #ifndef PATH_MAX
@@ -42,54 +12,51 @@ static constexpr size_t PATH_MAX = 512;
 
 //#define SYSCALL_VERBOSE 1
 #ifdef SYSCALL_VERBOSE
-#define SYSPRINT(fmt, ...)                                               \
-	{                                                                    \
-		char syspbuf[1024];                                              \
-		machine.print(syspbuf,                                           \
-				snprintf(syspbuf, sizeof(syspbuf), fmt, ##__VA_ARGS__)); \
-	}
+#define SYSPRINT(fmt, ...) \
+	{ char syspbuf[1024]; machine.print(syspbuf, \
+		snprintf(syspbuf, sizeof(syspbuf), fmt, ##__VA_ARGS__)); }
 static constexpr bool verbose_syscalls = true;
 #else
 #define SYSPRINT(fmt, ...) /* fmt */
 static constexpr bool verbose_syscalls = false;
 #endif
 
-#include <sys/stat.h>
 #include <winsock2.h>
+#include <sys/stat.h>
 
-#define SA_ONSTACK 0x08000000
+#define SA_ONSTACK	0x08000000
 
 namespace riscv {
-template <int W>
+template<int W>
 void add_socket_syscalls(Machine<W> &);
 
-template <int W>
+template<int W>
 struct guest_iovec {
 	address_type<W> iov_base;
 	address_type<W> iov_len;
 };
 
-template <int W>
+template<int W>
 static void syscall_stub_zero(Machine<W> &machine) {
-	SYSPRINT("SYSCALL stubbed (zero): %d\n", (int)machine.cpu.reg(17));
+	SYSPRINT("SYSCALL stubbed (zero): %d\n", (int) machine.cpu.reg(17));
 	machine.set_result(0);
 }
 
-template <int W>
+template<int W>
 static void syscall_stub_nosys(Machine<W> &machine) {
-	SYSPRINT("SYSCALL stubbed (nosys): %d\n", (int)machine.cpu.reg(17));
+	SYSPRINT("SYSCALL stubbed (nosys): %d\n", (int) machine.cpu.reg(17));
 	machine.set_result(-ENOSYS);
 }
 
-template <int W>
+template<int W>
 static void syscall_exit(Machine<W> &machine) {
 	// Stop sets the max instruction counter to zero, making the instruction loop end.
 	machine.stop();
 }
 
-template <int W>
+template<int W>
 static void syscall_ebreak(riscv::Machine<W> &machine) {
-	printf("\n>>> EBREAK at %#lX\n", (long)machine.cpu.pc());
+	printf("\n>>> EBREAK at %#lX\n", (long) machine.cpu.pc());
 #ifdef RISCV_DEBUG
 	machine.print_and_pause();
 #else
@@ -97,12 +64,12 @@ static void syscall_ebreak(riscv::Machine<W> &machine) {
 #endif
 }
 
-template <int W>
+template<int W>
 static void syscall_sigaltstack(Machine<W> &machine) {
 	const auto ss = machine.sysarg(0);
 	const auto old_ss = machine.sysarg(1);
 	SYSPRINT("SYSCALL sigaltstack, tid=%d ss: 0x%lX old_ss: 0x%lX\n",
-			machine.gettid(), (long)ss, (long)old_ss);
+			 machine.gettid(), (long) ss, (long) old_ss);
 
 	auto &stack = machine.signals().per_thread(machine.gettid()).stack;
 
@@ -113,23 +80,22 @@ static void syscall_sigaltstack(Machine<W> &machine) {
 		machine.copy_from_guest(&stack, ss, sizeof(stack));
 
 		SYSPRINT("<<< sigaltstack sp: 0x%lX flags: 0x%X size: 0x%lX\n",
-				(long)stack.ss_sp, stack.ss_flags, (long)stack.ss_size);
+				 (long) stack.ss_sp, stack.ss_flags, (long) stack.ss_size);
 	}
 
 	machine.set_result(0);
 }
 
-template <int W>
+template<int W>
 static void syscall_sigaction(Machine<W> &machine) {
 	const int sig = machine.sysarg(0);
 	const auto action = machine.sysarg(1);
 	const auto old_action = machine.sysarg(2);
 	SYSPRINT("SYSCALL sigaction, signal: %d, action: 0x%lX old_action: 0x%lX\n",
-			sig, (long)action, (long)old_action);
-	if (sig == 0)
-		return;
+			 sig, (long) action, (long) old_action);
+	if (sig == 0) return;
 
-	auto &sigact = machine.sigaction(sig);
+	auto& sigact = machine.sigaction(sig);
 
 	struct kernel_sigaction {
 		address_type<W> sa_handler;
@@ -148,19 +114,19 @@ static void syscall_sigaction(Machine<W> &machine) {
 		sigact.altstack = (sa.sa_flags & SA_ONSTACK) != 0;
 		sigact.mask = sa.sa_mask;
 		SYSPRINT("<<< sigaction %d handler: 0x%lX altstack: %d\n",
-				sig, (long)sigact.handler, sigact.altstack);
+			sig, (long)sigact.handler, sigact.altstack);
 	}
 
 	machine.set_result(0);
 }
 
-template <int W>
+template<int W>
 void syscall_lseek(Machine<W> &machine) {
 	const int fd = machine.template sysarg<int>(0);
 	const auto offset = machine.template sysarg<int64_t>(1);
 	const int whence = machine.template sysarg<int>(2);
 	SYSPRINT("SYSCALL lseek, fd: %d, offset: 0x%lX, whence: %d\n",
-			fd, (long)offset, whence);
+			 fd, (long) offset, whence);
 
 	const auto real_fd = machine.fds().get(fd);
 	if (machine.fds().is_socket(fd)) {
@@ -175,12 +141,12 @@ void syscall_lseek(Machine<W> &machine) {
 	}
 }
 
-template <int W>
+template<int W>
 static void syscall_read(Machine<W> &machine) {
 	const int fd = machine.template sysarg<int>(0);
 	const auto address = machine.sysarg(1);
 	const size_t len = machine.sysarg(2);
-	SYSPRINT("SYSCALL read, addr: 0x%lX, len: %zu\n", (long)address, len);
+	SYSPRINT("SYSCALL read, addr: 0x%lX, len: %zu\n", (long) address, len);
 	// We have special stdin handling
 	if (fd == 0) {
 		// Arbitrary maximum read length
@@ -211,8 +177,7 @@ static void syscall_read(Machine<W> &machine) {
 				res = _read(real_fd, buffers[i].ptr, buffers[i].len);
 			if (res >= 0) {
 				bytes += res;
-				if ((size_t)res < buffers[i].len)
-					break;
+				if ((size_t) res < buffers[i].len) break;
 			} else {
 				machine.set_result_or_error(res);
 				return;
@@ -224,13 +189,13 @@ static void syscall_read(Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 static void syscall_write(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	const auto address = machine.sysarg(1);
 	const size_t len = machine.sysarg(2);
 	SYSPRINT("SYSCALL write, fd: %d addr: 0x%lX, len: %zu\n",
-			vfd, (long)address, len);
+			 vfd, (long) address, len);
 	// We only accept standard output pipes, for now :)
 	if (vfd == 1 || vfd == 2) {
 		// Zero-copy retrieval of buffers (16 fragments)
@@ -264,8 +229,7 @@ static void syscall_write(Machine<W> &machine) {
 			if (res >= 0) {
 				bytes += res;
 				// Detect partial writes
-				if ((size_t)res < buffers[i].len)
-					break;
+				if ((size_t) res < buffers[i].len) break;
 			} else {
 				// Detect write errors
 				machine.set_result_or_error(res);
@@ -278,7 +242,7 @@ static void syscall_write(Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 static void syscall_writev(Machine<W> &machine) {
 	const int fd = machine.template sysarg<int>(0);
 	const auto iov_g = machine.sysarg(1);
@@ -298,9 +262,9 @@ static void syscall_writev(Machine<W> &machine) {
 		machine.memory.memcpy_out(vec.data(), iov_g, size);
 
 		ssize_t res = 0;
-		for (const auto &iov : vec) {
-			auto src_g = (address_type<W>)iov.iov_base;
-			auto len_g = (size_t)iov.iov_len;
+		for (const auto &iov: vec) {
+			auto src_g = (address_type<W>) iov.iov_base;
+			auto len_g = (size_t) iov.iov_len;
 			/* Zero-copy retrieval of buffers */
 			riscv::vBuffer buffers[4];
 			size_t cnt =
@@ -316,7 +280,7 @@ static void syscall_writev(Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 static void syscall_openat(Machine<W> &machine) {
 	const int dir_fd = machine.template sysarg<int>(0);
 	const auto g_path = machine.sysarg(1);
@@ -325,9 +289,10 @@ static void syscall_openat(Machine<W> &machine) {
 	std::string path = machine.memory.memstring(g_path);
 
 	SYSPRINT("SYSCALL openat, dir_fd: %d path: %s flags: %X\n",
-			dir_fd, path.c_str(), flags);
+			 dir_fd, path.c_str(), flags);
 
 	if (machine.has_file_descriptors() && machine.fds().permit_filesystem) {
+
 		if (machine.fds().filter_open != nullptr) {
 			if (!machine.fds().filter_open(machine.template get_userdata<void>(), path)) {
 				machine.set_result(-EPERM);
@@ -352,7 +317,7 @@ static void syscall_openat(Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 static void syscall_close(riscv::Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	if constexpr (verbose_syscalls) {
@@ -378,7 +343,7 @@ static void syscall_close(riscv::Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 static void syscall_dup(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	SYSPRINT("SYSCALL dup, fd: %d\n", vfd);
@@ -387,7 +352,7 @@ static void syscall_dup(Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 static void syscall_fcntl(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	const auto cmd = machine.template sysarg<int>(1);
@@ -397,6 +362,7 @@ static void syscall_fcntl(Machine<W> &machine) {
 	SYSPRINT("SYSCALL fcntl, fd: %d  cmd: 0x%X\n", vfd, cmd);
 
 	if (machine.has_file_descriptors()) {
+
 		// Emulate fcntl for stdin/stdout/stderr
 		if (vfd == 0 || vfd == 1 || vfd == 2) {
 			machine.set_result(0);
@@ -417,7 +383,7 @@ static void syscall_fcntl(Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 static void syscall_ioctl(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	const auto req = machine.template sysarg<uint64_t>(1);
@@ -450,7 +416,7 @@ static void syscall_ioctl(Machine<W> &machine) {
 	machine.set_result(-EBADF);
 }
 
-template <int W>
+template<int W>
 void syscall_readlinkat(Machine<W> &machine) {
 	const int vfd = machine.template sysarg<int>(0);
 	const auto g_path = machine.sysarg(1);
@@ -460,7 +426,7 @@ void syscall_readlinkat(Machine<W> &machine) {
 	const std::string original_path = machine.memory.memstring(g_path);
 
 	SYSPRINT("SYSCALL readlinkat, fd: %d path: %s buffer: 0x%lX size: %zu\n",
-			vfd, original_path.c_str(), (long)g_buf, (size_t)bufsize);
+			 vfd, original_path.c_str(), (long) g_buf, (size_t) bufsize);
 
 	char buffer[16384];
 	if (bufsize > sizeof(buffer)) {
@@ -469,6 +435,7 @@ void syscall_readlinkat(Machine<W> &machine) {
 	}
 
 	if (machine.has_file_descriptors()) {
+
 		if (machine.fds().filter_readlink != nullptr) {
 			std::string path = original_path;
 			if (!machine.fds().filter_readlink(machine.template get_userdata<void>(), path)) {
@@ -500,23 +467,23 @@ void syscall_readlinkat(Machine<W> &machine) {
 
 // The RISC-V stat structure is different from x86
 struct riscv_stat {
-	uint64_t st_dev; /* Device.  */
-	uint64_t st_ino; /* File serial number.  */
-	uint32_t st_mode; /* File mode.  */
-	uint32_t st_nlink; /* Link count.  */
-	uint32_t st_uid; /* User ID of the file's owner.  */
-	uint32_t st_gid; /* Group ID of the file's group. */
-	uint64_t st_rdev; /* Device number, if device.  */
+	uint64_t st_dev;        /* Device.  */
+	uint64_t st_ino;        /* File serial number.  */
+	uint32_t st_mode;    /* File mode.  */
+	uint32_t st_nlink;    /* Link count.  */
+	uint32_t st_uid;        /* User ID of the file's owner.  */
+	uint32_t st_gid;        /* Group ID of the file's group. */
+	uint64_t st_rdev;    /* Device number, if device.  */
 	uint64_t __pad1;
-	int64_t st_size; /* Size of file, in bytes.  */
-	int32_t st_blksize; /* Optimal block size for I/O.  */
+	int64_t st_size;    /* Size of file, in bytes.  */
+	int32_t st_blksize;    /* Optimal block size for I/O.  */
 	int32_t __pad2;
-	int64_t st_blocks; /* Number 512-byte blocks allocated. */
-	int64_t rv_atime; /* Time of last access.  */
+	int64_t st_blocks;    /* Number 512-byte blocks allocated. */
+	int64_t rv_atime;    /* Time of last access.  */
 	uint64_t rv_atime_nsec;
-	int64_t rv_mtime; /* Time of last modification.  */
+	int64_t rv_mtime;    /* Time of last modification.  */
 	uint64_t rv_mtime_nsec;
-	int64_t rv_ctime; /* Time of last status change.  */
+	int64_t rv_ctime;    /* Time of last status change.  */
 	uint64_t rv_ctime_nsec;
 	uint32_t __unused4;
 	uint32_t __unused5;
@@ -541,7 +508,7 @@ inline void copy_stat_buffer(struct stat &st, struct riscv_stat &rst) {
 	rst.rv_ctime_nsec = 0;
 }
 
-template <int W>
+template<int W>
 static void syscall_fstatat(Machine<W> &machine) {
 	const auto vfd = machine.template sysarg<int>(0);
 	const auto g_path = machine.sysarg(1);
@@ -553,9 +520,10 @@ static void syscall_fstatat(Machine<W> &machine) {
 	path[sizeof(path) - 1] = 0;
 
 	SYSPRINT("SYSCALL fstatat, fd: %d path: %s buf: 0x%lX flags: %#x)\n",
-			vfd, path, (long)g_buf, flags);
+			 vfd, path, (long) g_buf, flags);
 
 	if (machine.has_file_descriptors()) {
+
 		if (vfd == 0 || vfd == 1 || vfd == 2) {
 			// Emulate stat for stdin/stdout/stderr
 			struct riscv_stat rst;
@@ -598,15 +566,16 @@ static void syscall_fstatat(Machine<W> &machine) {
 	machine.set_result(-ENOSYS);
 }
 
-template <int W>
+template<int W>
 static void syscall_fstat(Machine<W> &machine) {
 	const auto vfd = machine.template sysarg<int>(0);
 	const auto g_buf = machine.sysarg(1);
 
 	SYSPRINT("SYSCALL fstat, fd: %d buf: 0x%lX)\n",
-			vfd, (long)g_buf);
+			 vfd, (long) g_buf);
 
 	if (machine.has_file_descriptors()) {
+
 		auto real_fd = machine.fds().translate(vfd);
 
 		struct stat st;
@@ -623,7 +592,7 @@ static void syscall_fstat(Machine<W> &machine) {
 	machine.set_result(-ENOSYS);
 }
 
-template <int W>
+template<int W>
 static void syscall_statx(Machine<W> &machine) {
 	const int dir_fd = machine.template sysarg<int>(0);
 	const auto g_path = machine.sysarg(1);
@@ -636,7 +605,7 @@ static void syscall_statx(Machine<W> &machine) {
 	path[sizeof(path) - 1] = 0;
 
 	SYSPRINT("SYSCALL statx, fd: %d path: %s flags: %x buf: 0x%lX)\n",
-			dir_fd, path, flags, (long)buffer);
+			 dir_fd, path, flags, (long) buffer);
 
 	if (machine.has_file_descriptors()) {
 		if (machine.fds().filter_stat != nullptr) {
@@ -662,18 +631,18 @@ static void syscall_statx(Machine<W> &machine) {
 	machine.set_result(-ENOSYS);
 }
 
-template <int W>
+template<int W>
 static void syscall_gettimeofday(Machine<W> &machine) {
 	const auto buffer = machine.sysarg(0);
-	SYSPRINT("SYSCALL gettimeofday, buffer: 0x%lX\n", (long)buffer);
+	SYSPRINT("SYSCALL gettimeofday, buffer: 0x%lX\n", (long) buffer);
 	auto tp = std::chrono::system_clock::now();
 	auto secs = std::chrono::time_point_cast<std::chrono::seconds>(tp);
 	auto us = std::chrono::time_point_cast<std::chrono::microseconds>(tp) -
-			time_point_cast<std::chrono::microseconds>(secs);
+		time_point_cast<std::chrono::microseconds>(secs);
 	struct timeval tv =
-			timeval{ long(secs.time_since_epoch().count()), long(us.count()) };
+		timeval{ long(secs.time_since_epoch().count()), long(us.count()) };
 	if constexpr (W == 4) {
-		int32_t timeval32[2] = { (int)tv.tv_sec, (int)tv.tv_usec };
+		int32_t timeval32[2] = {(int) tv.tv_sec, (int) tv.tv_usec};
 		machine.copy_to_guest(buffer, timeval32, sizeof(timeval32));
 	} else {
 		machine.copy_to_guest(buffer, &tv, sizeof(tv));
@@ -681,23 +650,23 @@ static void syscall_gettimeofday(Machine<W> &machine) {
 	machine.set_result_or_error(0);
 }
 
-template <int W>
-static void syscall_clock_gettime(Machine<W> &machine) {
+template<int W>
+static void syscall_clock_gettime(Machine<W>& machine) {
 	const auto clkid = machine.template sysarg<int>(0);
 	const auto buffer = machine.sysarg(1);
 	SYSPRINT("SYSCALL clock_gettime, clkid: %x buffer: 0x%lX\n",
-			clkid, (long)buffer);
+			 clkid, (long) buffer);
 
 	auto tp = std::chrono::system_clock::now();
 	auto secs = std::chrono::time_point_cast<std::chrono::seconds>(tp);
 	auto ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(tp) -
-			time_point_cast<std::chrono::nanoseconds>(secs);
+		time_point_cast<std::chrono::nanoseconds>(secs);
 	struct timespec ts =
-			timespec{ secs.time_since_epoch().count(), long(ns.count()) };
+		timespec{ secs.time_since_epoch().count(), long(ns.count()) };
 	(void)clkid;
 
 	if constexpr (W == 4) {
-		int32_t ts32[2] = { (int)ts.tv_sec, (int)ts.tv_nsec };
+		int32_t ts32[2] = {(int) ts.tv_sec, (int) ts.tv_nsec};
 		machine.copy_to_guest(buffer, &ts32, sizeof(ts32));
 	} else {
 		machine.copy_to_guest(buffer, &ts, sizeof(ts));
@@ -705,29 +674,29 @@ static void syscall_clock_gettime(Machine<W> &machine) {
 
 	machine.set_result_or_error(0);
 }
-template <int W>
-static void syscall_clock_gettime64(Machine<W> &machine) {
+template<int W>
+static void syscall_clock_gettime64(Machine<W>& machine) {
 	const auto clkid = machine.template sysarg<int>(0);
 	const auto buffer = machine.sysarg(1);
 	SYSPRINT("SYSCALL clock_gettime64, clkid: %x buffer: 0x%lX\n",
-			clkid, (long)buffer);
+			 clkid, (long) buffer);
 
 	auto tp = std::chrono::system_clock::now();
 	auto secs = std::chrono::time_point_cast<std::chrono::seconds>(tp);
 	auto ms = std::chrono::time_point_cast<std::chrono::milliseconds>(tp) -
-			time_point_cast<std::chrono::milliseconds>(secs);
+		time_point_cast<std::chrono::milliseconds>(secs);
 	struct timespec ts =
-			timespec{ secs.time_since_epoch().count(), long(ms.count()) };
+		timespec{ secs.time_since_epoch().count(), long(ms.count()) };
 	(void)clkid;
 
 	machine.copy_to_guest(buffer, &ts, sizeof(ts));
 	machine.set_result_or_error(0);
 }
 
-template <int W>
+template<int W>
 static void syscall_uname(Machine<W> &machine) {
 	const auto buffer = machine.sysarg(0);
-	SYSPRINT("SYSCALL uname, buffer: 0x%lX\n", (long)buffer);
+	SYSPRINT("SYSCALL uname, buffer: 0x%lX\n", (long) buffer);
 	static constexpr int UTSLEN = 65;
 	struct {
 		char sysname[UTSLEN];
@@ -754,7 +723,8 @@ static void syscall_uname(Machine<W> &machine) {
 }
 
 template <int W>
-static void syscall_capget(Machine<W> &machine) {
+static void syscall_capget(Machine<W>& machine)
+{
 	const auto header_ptr = machine.sysarg(0);
 	const auto data_ptr = machine.sysarg(1);
 
@@ -795,10 +765,10 @@ static void syscall_capget(Machine<W> &machine) {
 	}
 
 	SYSPRINT("SYSCALL capget, header: 0x%lX, data: 0x%lX => %ld\n",
-			(long)header_ptr, (long)data_ptr, (long)machine.return_value());
+			 (long)header_ptr, (long)data_ptr, (long)machine.return_value());
 }
 
-template <int W>
+template<int W>
 static void syscall_brk(Machine<W> &machine) {
 	auto new_end = machine.sysarg(0);
 	if (new_end > machine.memory.heap_address() + Memory<W>::BRK_MAX) {
@@ -808,13 +778,14 @@ static void syscall_brk(Machine<W> &machine) {
 	}
 
 	if constexpr (verbose_syscalls) {
-		printf("SYSCALL brk, new_end: 0x%lX\n", (long)new_end);
+		printf("SYSCALL brk, new_end: 0x%lX\n", (long) new_end);
 	}
 	machine.set_result(new_end);
 }
 
 template <int W>
-static void syscall_pipe2(Machine<W> &machine) {
+static void syscall_pipe2(Machine<W>& machine)
+{
 	const auto vfd_array = machine.sysarg(0);
 	const auto flags = machine.template sysarg<int>(1);
 
@@ -828,18 +799,19 @@ static void syscall_pipe2(Machine<W> &machine) {
 		machine.set_result(-1);
 	}
 	SYSPRINT("SYSCALL pipe2, fd array: 0x%lX flags: %d = %ld\n",
-			(long)vfd_array, flags, (long)machine.return_value());
+		(long)vfd_array, flags, (long)machine.return_value());
 }
 
 template <int W>
-static void syscall_getrandom(Machine<W> &machine) {
+static void syscall_getrandom(Machine<W>& machine)
+{
 	machine.set_result(-ENOSYS);
 }
 
 #include "../linux/syscalls_mman.cpp"
 #include "epoll.cpp"
 
-template <int W>
+template<int W>
 void Machine<W>::setup_minimal_syscalls() {
 	install_syscall_handler(SYSCALL_EBREAK, syscall_ebreak<W>);
 	install_syscall_handler(62, syscall_lseek<W>);
@@ -848,19 +820,19 @@ void Machine<W>::setup_minimal_syscalls() {
 	install_syscall_handler(93, syscall_exit<W>);
 }
 
-template <int W>
+template<int W>
 void Machine<W>::setup_newlib_syscalls() {
 	setup_minimal_syscalls();
 	install_syscall_handler(169, syscall_gettimeofday<W>);
 	install_syscall_handler(214, syscall_brk<W>);
 	add_mman_syscalls<W>();
 }
-template <int W>
+template<int W>
 void Machine<W>::setup_newlib_syscalls(bool) {
 	setup_newlib_syscalls();
 }
 
-template <int W>
+template<int W>
 void Machine<W>::setup_linux_syscalls(bool filesystem, bool sockets) {
 	this->setup_minimal_syscalls();
 
@@ -965,7 +937,7 @@ template void Machine<8>::setup_linux_syscalls(bool, bool);
 
 FileDescriptors::~FileDescriptors() {
 	// Close all the real FDs
-	for (const auto &it : translation) {
+	for (const auto &it: translation) {
 		if (is_socket(it.first)) {
 			closesocket(it.second);
 		} else {
@@ -974,4 +946,4 @@ FileDescriptors::~FileDescriptors() {
 	}
 }
 
-} //namespace riscv
+} // riscv

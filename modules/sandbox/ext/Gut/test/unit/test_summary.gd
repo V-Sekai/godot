@@ -12,3 +12,5 @@ func test_can_make_one():
 func test_can_make_one_with_a_test_colletor():
 	var s = Summary.new(autofree(new_gut()))
 	assert_not_null(s)
+
+

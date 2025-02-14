@@ -1,35 +1,5 @@
-/**************************************************************************/
-/*  hello_world.cpp                                                       */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
-#include <cassert>
 #include <include/libc.hpp>
+#include <cassert>
 #include <memory>
 #include <string>
 
@@ -38,26 +8,29 @@
 int testval = 0;
 
 extern "C"
-		__attribute__((constructor)) void
-		test_constructor() {
+__attribute__((constructor))
+void test_constructor() {
 	static const char hello[] = "Hello, Global Constructor!\n";
-	sys_write(hello, sizeof(hello) - 1);
+	sys_write(hello, sizeof(hello)-1);
 	testval = 22;
 }
 
-struct testdata {
-	int depth = 0;
+struct testdata
+{
+	int depth     = 0;
 	const int max_depth = 20;
 	std::vector<microthread::Thread_ptr> threads;
 };
 static testdata tdata;
 
-static long recursive_function(testdata *data) {
+static long recursive_function(testdata* data)
+{
 	data->depth++;
 	printf("%d: Thread depth %d / %d\n",
 			microthread::gettid(), data->depth, data->max_depth);
 
-	if (data->depth < data->max_depth) {
+	if (data->depth < data->max_depth)
+	{
 		auto thread = microthread::create(recursive_function, data);
 		if (thread == nullptr) {
 			printf("Failed to create thread!\n");
@@ -75,54 +48,53 @@ static long recursive_function(testdata *data) {
 	return 0;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
 	printf("Arguments: %d\n", argc);
 	for (int i = 0; i < argc; i++) {
 		printf("Arg %d: %s\n", i, argv[i]);
 	}
 	printf("Note: If you see only garbage here, activate the native-heap "
-		   "system calls in the emulator.\n");
-	static const char *hello = "Hello %s World v%d.%d!\n";
+			"system calls in the emulator.\n");
+	static const char* hello = "Hello %s World v%d.%d!\n";
 	assert(testval == 22);
 	// Heap test
 	{
-		auto b = std::make_unique<char[]>(64);
+		auto b = std::make_unique<char[]> (64);
 		assert(b != nullptr);
 		// copy into string
 		strcpy(b.get(), hello);
 		// va_list & stdarg test
 		int len = printf(b.get(), "RISC-V", 1, 0);
-		assert(len > 0);
-		(void)len;
+		assert(len > 0); (void) len;
 	}
 
 	printf("Main thread tid=%d\n", microthread::gettid());
 
 	auto thread = microthread::create(
-			[](int a, int b, int c) -> long {
-				printf("Hello from microthread tid=%d!\n"
-					   "a = %d, b = %d, c = %d\n",
-						microthread::gettid(), a, b, c);
-				auto t2 = microthread::create([]() -> long {
-					printf("Second thread tid=%d, yielding directly to tid=1!\n",
-							microthread::gettid());
-					int ret = microthread::yield_to(1);
-					printf("Second thread back from yielding, returned %d\n", ret);
-					microthread::exit(222);
-				});
-				printf("I'm back in the first microthread now! Yielding back.\n");
-				int ret = microthread::yield_to(2);
-				// get return value from second thread
-				long rv = microthread::join(t2);
+		[] (int a, int b, int c) -> long {
+			printf("Hello from microthread tid=%d!\n"
+					"a = %d, b = %d, c = %d\n",
+					microthread::gettid(), a, b, c);
+			auto t2 = microthread::create([] () -> long {
+				printf("Second thread tid=%d, yielding directly to tid=1!\n",
+						microthread::gettid());
+				int ret = microthread::yield_to(1);
+				printf("Second thread back from yielding, returned %d\n", ret);
+				microthread::exit(222);
+			});
+			printf("I'm back in the first microthread now! Yielding back.\n");
+			int ret = microthread::yield_to(2);
+			// get return value from second thread
+			long rv = microthread::join(t2);
 
-				printf("yield=%d, Starting recursive nightmare!\n", ret);
-				recursive_function(&tdata);
-				for (auto &thread : tdata.threads) {
-					microthread::join(thread);
-				}
-				return rv;
-			},
-			111, 222, 333);
+			printf("yield=%d, Starting recursive nightmare!\n", ret);
+			recursive_function(&tdata);
+			for (auto& thread : tdata.threads) {
+				microthread::join(thread);
+			}
+			return rv;
+		}, 111, 222, 333);
 	printf("back in thread 0, joining microthread\n");
 	long retval = microthread::join(thread);
 	printf("microthread returned %ld\n", retval);

@@ -33,7 +33,7 @@ func _enter_tree():
 	# The shortcut button wouldn't work right until load_shortcuts is called., but
 	# the delay gave you 3 seconds to click it before they were loaded.  This
 	# await came with the conversion to 4 and probably isn't needed anymore.
-	# I'm leaving it here because I don't know why it showed up to begin with
+	# I'm leaving it here becuase I don't know why it showed up to begin with
 	# and if it's needed, it will be pretty hard to debug without seeing this.
 	#
 	# This should be deleted after the next release or two if not needed.

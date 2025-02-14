@@ -1,66 +1,37 @@
-/**************************************************************************/
-/*  syscalls_poll.cpp                                                     */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #if defined(__APPLE__)
-#include <time.h>
-struct timespec {
-	time_t tv_sec; /* seconds */
-	long tv_nsec; /* nanoseconds */
-};
+    #include <time.h>
+    struct timespec {
+        time_t   tv_sec;  /* seconds */
+        long     tv_nsec; /* nanoseconds */
+    };
 #else
-#include <sys/time.h>
+    #include <sys/time.h>
 #endif
 
 #include <poll.h>
 
 int poll_with_timeout(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout_ts) {
-#if defined(__APPLE__)
-	// On macOS, we don't have ppoll, so we need to use poll and then handle the timeout manually.
-	int timeout_ms;
-	if (timeout_ts != NULL) {
-		timeout_ms = timeout_ts->tv_sec * 1000 + timeout_ts->tv_nsec / 1000000;
-	} else {
-		timeout_ms = -1;
-	}
-	return poll(fds, nfds, timeout_ms);
-#else
-	return ppoll(fds, nfds, timeout_ts, NULL);
-#endif
+    #if defined(__APPLE__)
+        // On macOS, we don't have ppoll, so we need to use poll and then handle the timeout manually.
+        int timeout_ms;
+        if (timeout_ts != NULL) {
+            timeout_ms = timeout_ts->tv_sec * 1000 + timeout_ts->tv_nsec / 1000000;
+        } else {
+            timeout_ms = -1;
+        }
+        return poll(fds, nfds, timeout_ms);
+    #else
+        return ppoll(fds, nfds, timeout_ts, NULL);
+    #endif
 }
 
 // int ppoll(struct pollfd *fds, nfds_t nfds,
 //        const struct timespec *timeout_ts, const sigset_t *sigmask);
 template <int W>
-static void syscall_ppoll(Machine<W> &machine) {
+static void syscall_ppoll(Machine<W>& machine)
+{
 	const auto g_fds = machine.sysarg(0);
-	const auto nfds = machine.template sysarg<unsigned>(1);
+	const auto nfds  = machine.template sysarg<unsigned>(1);
 	const auto g_ts = machine.sysarg(2);
 
 	struct timespec ts;
@@ -84,7 +55,7 @@ static void syscall_ppoll(Machine<W> &machine) {
 			linux_fds[i].fd = machine.fds().translate(fds[i].fd);
 		}
 
-		const int res = poll_with_timeout(linux_fds.data(), nfds, &ts);
+	    const int res = poll_with_timeout(linux_fds.data(), nfds, &ts);
 		// The ppoll system call modifies TS
 		//clock_gettime(CLOCK_MONOTONIC, &ts);
 		//machine.copy_to_guest(g_ts, &ts, sizeof(ts));
@@ -104,13 +75,10 @@ static void syscall_ppoll(Machine<W> &machine) {
 #if defined(SYSCALL_VERBOSE)
 	const auto res = (long)machine.return_value();
 	const char *info;
-	if (res < 0)
-		info = "error";
-	else if (res == 0)
-		info = "timeout";
-	else
-		info = "good";
+	if (res < 0) info = "error";
+	else if (res == 0) info = "timeout";
+	else info = "good";
 	printf("SYSCALL ppoll, nfds: %u = %ld (%s)\n",
-			nfds, res, info);
+		   nfds, res, info);
 #endif
 }

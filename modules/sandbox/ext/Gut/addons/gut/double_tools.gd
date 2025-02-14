@@ -71,7 +71,7 @@ func default_val(method_name, p_index, default_val=NO_DEFAULT_VALUE):
 func vararg_warning():
 	if(gut != null):
 		gut.get_logger().warn(
-			"This method contains a vararg argument and the parameter count was not stubbed.  " + \
+			"This method contains a vararg argument and the paramter count was not stubbed.  " + \
 			"GUT adds extra parameters to this method which should fill most needs.  " + \
 			"It is recommended that you stub param_count for this object's class to ensure " + \
 			"that there are not any parameter count mismatch errors.")

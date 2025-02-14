@@ -86,7 +86,7 @@ func _open_script_in_editor(path, line_number):
 
 # starts at beginning of text edit and searches for each search term, moving
 # through the text as it goes; ensuring that, when done, it found the first
-# occurrence of the last srting that happend after the first occurrence of
+# occurance of the last srting that happend after the first occurance of
 # each string before it.  (Generic way of searching for a method name in an
 # inner class that may have be a duplicate of a method name in a different
 # inner class)

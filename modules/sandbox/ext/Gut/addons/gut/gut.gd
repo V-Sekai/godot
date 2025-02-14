@@ -132,8 +132,8 @@ var junit_xml_timestamp = false :
 	get: return _junit_xml_timestamp
 	set(val): _junit_xml_timestamp = val
 
-# The minimum amount of time GUT will wait before pausing for 1 frame to allow
-# the screen to paint.  GUT checks after each test to see if enough time has
+# The minimum amout of time GUT will wait before pausing for 1 frame to allow
+# the screen to paint.  GUT checkes after each test to see if enough time has
 # passed.
 var paint_after = .1:
 	get: return paint_after
@@ -146,7 +146,7 @@ var unit_test_name = _unit_test_name :
 	set(val): _unit_test_name = val
 
 var _parameter_handler = null
-# This is populated by test.gd each time a parameterized test is encountered
+# This is populated by test.gd each time a paramterized test is encountered
 # for the first time.
 # FOR INTERNAL USE ONLY
 var parameter_handler = _parameter_handler :
@@ -274,7 +274,7 @@ func _init():
 
 	update_loggers()
 
-# Public for tests that set the logger.  This makes it much easier to propagate
+# Public for tests that set the logger.  This makes it much easier to propigate
 # test loggers.
 func update_loggers():
 	_doubler.set_logger(_lgr)
@@ -517,7 +517,7 @@ func _setup_script(test_script, collected_script):
 			"of a few reasons why you would want to use _ready but I won't list ",
 			"them here because I think they are bad ideas.  I know they are bad ",
 			"ideas because I did them.  Hence the warning.  This message is ",
-			"intentionally long so that it bothers you and you change your ways.\n\n",
+			"intentially long so that it bothers you and you change your ways.\n\n",
 			"Thank you for using GUT."))
 
 
@@ -788,7 +788,7 @@ func _test_the_scripts(indexes=[]):
 
 				end_test.emit()
 
-				# After each test, check to see if we should wait a frame to
+				# After each test, check to see if we shoudl wait a frame to
 				# paint based on how much time has elapsed since we last 'painted'
 				if(paint_after > 0.0):
 					var now = Time.get_ticks_msec()
@@ -882,11 +882,11 @@ func _pending(text=''):
 
 
 # ------------------------------------------------------------------------------
-# Extracts the line number from current stacktrace by matching the test case name
+# Extracts the line number from curren stacktrace by matching the test case name
 # ------------------------------------------------------------------------------
 func _extract_line_number(current_test):
 	var line_number = -1
-	# if stack trace available than extract the test case line number
+	# if stack trace available than extraxt the test case line number
 	var stackTrace = get_stack()
 	if(stackTrace!=null):
 		for index in stackTrace.size():

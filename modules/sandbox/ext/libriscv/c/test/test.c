@@ -1,33 +1,3 @@
-/**************************************************************************/
-/*  test.c                                                                */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <libriscv.h>
 
 #include <inttypes.h>
@@ -39,17 +9,20 @@ static struct timespec time_now();
 static int64_t nanodiff(struct timespec start_time, struct timespec end_time);
 static char *read_file(const char *filename, size_t *len);
 
-static void error_callback(void *opaque, int type, const char *msg, long data) {
+static void error_callback(void *opaque, int type, const char *msg, long data)
+{
 	fprintf(stderr, "Error: %s (data: 0x%lX)\n", msg, data);
 }
 
-static void stdout_callback(void *opaque, const char *msg, unsigned len) {
+static void stdout_callback(void *opaque, const char *msg, unsigned len)
+{
 	printf("[libriscv] stdout: %.*s", (int)len, msg);
 }
 
-static void my_exit(RISCVMachine *m) {
+static void my_exit(RISCVMachine *m)
+{
 	RISCVRegisters *regs = libriscv_get_registers(m);
-#define REG_A0 10
+	#define REG_A0   10
 
 	printf("Exit called! Status=%ld\n", regs->r[REG_A0]);
 	libriscv_stop(m);
@@ -57,13 +30,14 @@ static void my_exit(RISCVMachine *m) {
 
 static void make_vm_function_call(RISCVMachine *m, const char *function);
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 	if (argc < 2) {
 		fprintf(stderr, "Usage: %s [RISC-V elf file]\n", argv[0]);
 		exit(1);
 	}
 
-	size_t size = 0;
+    size_t size = 0;
 	char *buffer = read_file(argv[1], &size);
 
 	/* Create guest program arguments from argv[2...] */
@@ -109,10 +83,11 @@ int main(int argc, char **argv) {
 	const int64_t nanos = nanodiff(start_time, end_time);
 
 	printf(">>> Program exited, exit code = %" PRId64 " (0x%" PRIX64 ")\n",
-			retval, (uint64_t)retval);
+		retval, (uint64_t)retval);
 	printf("Instructions executed: %" PRIu64 "  Runtime: %.3fms  Insn/s: %.0fmi/s\n",
-			icount, nanos / 1e6,
-			icount / (nanos * 1e-3));
+		icount, nanos/1e6,
+		icount / (nanos * 1e-3));
+
 
 	make_vm_function_call(m, "test");
 	make_vm_function_call(m, "test");
@@ -124,7 +99,8 @@ int main(int argc, char **argv) {
 /**
  * Make a VM function call into the program, step by step!
  **/
-void make_vm_function_call(RISCVMachine *m, const char *function) {
+void make_vm_function_call(RISCVMachine *m, const char *function)
+{
 	/* Find the address of a function from the ELF symbol table */
 	const uint64_t vaddr = libriscv_address_of(m, function);
 	/* Only make the function call if "test" is a visible symbol */
@@ -133,7 +109,7 @@ void make_vm_function_call(RISCVMachine *m, const char *function) {
 
 	/* Begin a VM function call */
 	printf("\n*** Starting a VM function call to %s at 0x%lX\n",
-			function, (long)vaddr);
+		function, (long)vaddr);
 
 	if (libriscv_setup_vmcall(m, vaddr) == 0) {
 		/**
@@ -143,7 +119,7 @@ void make_vm_function_call(RISCVMachine *m, const char *function) {
 		 * In order for the program to read the string, it needs to be
 		 * copied into the programs virtual memory. The easiest way to
 		 * do that is to push it on the stack.
-		 **/
+		**/
 		RISCVRegisters *regs = libriscv_get_registers(m);
 		/* Place an integer in the first argument (a0) register */
 		LIBRISCV_ARG_REGISTER(regs, 0) = 123;
@@ -156,38 +132,42 @@ void make_vm_function_call(RISCVMachine *m, const char *function) {
 		libriscv_run(m, 1000000000ull);
 
 		printf("*** VM function call return value: %ld\n",
-				libriscv_return_value(m));
+			libriscv_return_value(m));
 	} else {
 		fprintf(stderr,
-				"Could not jump to function at 0x%lX\n", (long)vaddr);
+			"Could not jump to function at 0x%lX\n", (long)vaddr);
 	}
 }
 
-struct timespec time_now() {
+struct timespec time_now()
+{
 	struct timespec t;
 	clock_gettime(CLOCK_MONOTONIC, &t);
 	return t;
 }
-int64_t nanodiff(struct timespec start_time, struct timespec end_time) {
+int64_t nanodiff(struct timespec start_time, struct timespec end_time)
+{
 	return (end_time.tv_sec - start_time.tv_sec) * (int64_t)1e9 + (end_time.tv_nsec - start_time.tv_nsec);
 }
-char *read_file(const char *filename, size_t *size) {
-	FILE *f = fopen(filename, "rb");
-	if (f == NULL) {
+char *read_file(const char *filename, size_t *size)
+{
+    FILE* f = fopen(filename, "rb");
+    if (f == NULL) {
 		fprintf(stderr, "Could not open file: %s\n", filename);
 		exit(1);
 	}
 
-	fseek(f, 0, SEEK_END);
-	*size = ftell(f);
-	fseek(f, 0, SEEK_SET);
+    fseek(f, 0, SEEK_END);
+    *size = ftell(f);
+    fseek(f, 0, SEEK_SET);
 
 	char *buffer = malloc(*size);
-	if (*size != fread(buffer, 1, *size, f)) {
-		fclose(f);
+    if (*size != fread(buffer, 1, *size, f))
+    {
+        fclose(f);
 		fprintf(stderr, "Could not read file: %s\n", filename);
 		exit(1);
-	}
-	fclose(f);
+    }
+    fclose(f);
 	return buffer;
 }

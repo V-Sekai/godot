@@ -11,7 +11,7 @@ This folder contains a small subproject that enables using libriscv to run RISC-
 
 ```sh
 bash build.sh
-$ ./rvlinux ../tests/unit/elf/zig-riscv64-hello-world
+$ ./rvlinux ../tests/unit/elf/zig-riscv64-hello-world 
 Hello, world!
 >>> Program exited, exit code = 0 (0x0)
 Instructions executed: 6980  Runtime: 0.033ms  Insn/s: 214mi/s
@@ -103,7 +103,7 @@ $ ./build.sh --help
 For debugging instructions one by one, use `--debug`:
 
 ```
-$ ./rvlinux --debug ../tests/unit/elf/newlib-rv32gb-hello-world
+$ ./rvlinux --debug ../tests/unit/elf/newlib-rv32gb-hello-world 
 
 *
 * Entered main() @ 0x10670
@@ -111,14 +111,14 @@ $ ./rvlinux --debug ../tests/unit/elf/newlib-rv32gb-hello-world
 
 >>> Breakpoint 	[00010670] E9010113 ADDI SP, SP-368 (0x11A1E80)
 
-[RA	000113D8] [SP	011A1E80] [GP	000A09F0] [TP	00000000]
-[LR	7F7F7FFF] [TMP1	00000002] [TMP2	FFFFFFFF] [SR0	00000000] [SR1	00000000]
-[A0	00000001] [A1	011A1E84] [A2	00000000] [A3	0000003E] [A4	FF0A0000]
-[A5	00011360] [A6	00000020] [A7	000A1E4C] [SR2	00000000] [SR3	00000000]
-[SR4	00000000] [SR5	00000000] [SR6	00000000] [SR7	00000000] [SR8	00000000]
-[SR9	00000000] [SR10	00000000] [SR11	00000000] [TMP3	00000000] [TMP4	00000000]
+[RA	000113D8] [SP	011A1E80] [GP	000A09F0] [TP	00000000] 
+[LR	7F7F7FFF] [TMP1	00000002] [TMP2	FFFFFFFF] [SR0	00000000] [SR1	00000000] 
+[A0	00000001] [A1	011A1E84] [A2	00000000] [A3	0000003E] [A4	FF0A0000] 
+[A5	00011360] [A6	00000020] [A7	000A1E4C] [SR2	00000000] [SR3	00000000] 
+[SR4	00000000] [SR5	00000000] [SR6	00000000] [SR7	00000000] [SR8	00000000] 
+[SR9	00000000] [SR10	00000000] [SR11	00000000] [TMP3	00000000] [TMP4	00000000] 
 [TMP5	00000000] [TMP6	00000000] [MEM PAGES          148]
-Enter = cont, help, quit:
+Enter = cont, help, quit: 
 ```
 
 Will let you step through the program instruction by instruction. By default it stops just after entering `main()`, if the function is found. If you want to prevent that, there is the `--from-start` option.
@@ -126,7 +126,7 @@ Will let you step through the program instruction by instruction. By default it 
 For remote debugging with GDB, use `--gdb`:
 
 ```
-$ ./rvlinux --gdb ../tests/unit/elf/newlib-rv32gb-hello-world
+$ ./rvlinux --gdb ../tests/unit/elf/newlib-rv32gb-hello-world 
 GDB server is listening on localhost:2159
 
 ...

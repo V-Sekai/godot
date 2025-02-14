@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef PROPERTY_INFO_HPP
-#define PROPERTY_INFO_HPP
+#ifndef GODOT_PROPERTY_INFO_HPP
+#define GODOT_PROPERTY_INFO_HPP
 
 #include <godot_cpp/core/defs.hpp>
 
@@ -129,4 +129,4 @@ struct PropertyInfo {
 
 } // namespace godot
 
-#endif // PROPERTY_INFO_HPP
+#endif // GODOT_PROPERTY_INFO_HPP

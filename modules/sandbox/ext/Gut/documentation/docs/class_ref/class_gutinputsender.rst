@@ -21,9 +21,9 @@ Description
 
 
 
-GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__\
+GUT Wiki:  `https://gut.readthedocs.io <https://gut.readthedocs.io>`__\ 
 
-See `Mocking-Input <../Mocking-Input.html>`__ for examples.
+See `Mocking-Input <../Mocking-Input.html>`__ for examples. 
 
 
 
@@ -39,15 +39,15 @@ This class can be used to send ``InputEvent*`` events to various objects.  It al
 
 
 
-And much much more.
+And much much more. 
 
 
 
-As of 9.3.1 you can use ``GutInputSender`` instead of ``InputSender``.  It's the same thing, but ``GutInputSender`` is a ``class_name`` so you may have less warnings and auto-complete will work.
+As of 9.3.1 you can use ``GutInputSender`` instead of ``InputSender``.  It's the same thing, but ``GutInputSender`` is a ``class_name`` so you may have less warnings and auto-complete will work. 
 
 
 
-\ **Warning**\
+\ **Warning**\ 
 
 If you move the Godot window to a different monitor while tests are running it can cause input tests to fail.  `This issue <https://github.com/bitwes/Gut/issues/643>`__ has more details.
 
@@ -165,7 +165,7 @@ Constants
 
 .. rst-class:: classref-constant
 
-**INPUT_WARN** = ``"If using Input as a receiver it will not respond to *_down events until a *_up event is received.  Call the appropriate *_up event or use hold_for(...) to automatically release after some duration."`` :ref:`🔗<class_GutInputSender_constant_INPUT_WARN>`
+**INPUT_WARN** = ``"If using Input as a reciever it will not respond to *_down events until a *_up event is recieved.  Call the appropriate *_up event or use hold_for(...) to automatically release after some duration."`` :ref:`🔗<class_GutInputSender_constant_INPUT_WARN>`
 
 Local reference to the GutInputFactory static class
 
@@ -339,7 +339,7 @@ Adds a delay between the last input queue item added and any queue item added ne
 
 |void| **clear**\ (\ ) :ref:`🔗<class_GutInputSender_method_clear>`
 
-Clears the input queue and any state such as the last event sent and any pressed actions/buttons.  Does not clear the list of receivers.
+Clears the input queue and any state such as the last event sent and any pressed actions/buttons.  Does not clear the list of receivers. 
 
 
 
@@ -535,7 +535,7 @@ Create your own event and use this to send it to all receivers.
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **release_all**\ (\ ) :ref:`🔗<class_GutInputSender_method_release_all>`
 
-Releases all `InputEventKey <https://docs.godotengine.org/en/stable/classes/class_inputeventkey.html>`_, `InputEventAction <https://docs.godotengine.org/en/stable/classes/class_inputeventaction.html>`_, and `InputEventMouseButton <https://docs.godotengine.org/en/stable/classes/class_inputeventmousebutton.html>`_ events that have passed through this instance.  These events could have been generated via the various ``_down`` methods or passed to :ref:`send_event<class_GutInputSender_method_send_event>`.
+Releases all `InputEventKey <https://docs.godotengine.org/en/stable/classes/class_inputeventkey.html>`_, `InputEventAction <https://docs.godotengine.org/en/stable/classes/class_inputeventaction.html>`_, and `InputEventMouseButton <https://docs.godotengine.org/en/stable/classes/class_inputeventmousebutton.html>`_ events that have passed through this instance.  These events could have been generated via the various ``_down`` methods or passed to :ref:`send_event<class_GutInputSender_method_send_event>`. 
 
 
 
@@ -575,7 +575,7 @@ Same as :ref:`wait<class_GutInputSender_method_wait>` but only accepts a number 
 
 `Variant <https://docs.godotengine.org/en/stable/classes/class_variant.html>`_ **hold_for**\ (\ duration\ ) :ref:`🔗<class_GutInputSender_method_hold_for>`
 
-This is a special :ref:`wait<class_GutInputSender_method_wait>` that will emit the previous input queue item with ``pressed = false`` after a delay.  If you pass a number then it will wait that many seconds.  You can also use the `"4f"` format to wait a specific number of frames.
+This is a special :ref:`wait<class_GutInputSender_method_wait>` that will emit the previous input queue item with ``pressed = false`` after a delay.  If you pass a number then it will wait that many seconds.  You can also use the `"4f"` format to wait a specific number of frames. 
 
 
 

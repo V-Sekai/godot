@@ -167,7 +167,7 @@ func test_assert_not_between():
 	assert_not_between(-2, -2, 10) # PASS
 
 	gut.p('-- failing --')
-	assert_not_between(5, 0, 10, 'Five shouldn't be between 0 and 10') # FAIL
+	assert_not_between(5, 0, 10, 'Five shouldnt be between 0 and 10') # FAIL
 	assert_not_between(0.25, -2.0, 4.0) # FAIL
 
 
@@ -768,3 +768,5 @@ func test_assert_setget():
 
 	# assert_setget(HealthBar, 'label') # FAIL => setter or getter has to be specified
 	# assert_setget(HealthBar, 'label', true) # FAIL => setter does not exist
+
+

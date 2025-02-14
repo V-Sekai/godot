@@ -1,50 +1,21 @@
-/**************************************************************************/
-/*  basic.cpp                                                             */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <libriscv/machine.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string &code,
-		const std::string &args = "-O2 -static", bool cpp = false);
+extern std::vector<uint8_t> build_and_load(const std::string& code,
+	const std::string& args = "-O2 -static", bool cpp = false);
 static const uint64_t MAX_MEMORY = 8ul << 20; /* 8MB */
 static const uint64_t MAX_INSTRUCTIONS = 10'000'000ul;
 using namespace riscv;
 static bool is_zig() {
-	const char *rcc = getenv("RCC");
+	const char* rcc = getenv("RCC");
 	if (rcc == nullptr)
 		return false;
 	return std::string(rcc).find("zig") != std::string::npos;
 }
 
-TEST_CASE("Instantiate machine", "[Instantiate]") {
+TEST_CASE("Instantiate machine", "[Instantiate]")
+{
 	REQUIRE(RISCV_VERSION_MAJOR >= 1);
 	REQUIRE(RISCV_VERSION_MINOR >= 10);
 
@@ -52,7 +23,7 @@ TEST_CASE("Instantiate machine", "[Instantiate]") {
 	int main() {
 		return 666;
 	})M");
-	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 
 	// The stack is mmap allocated
 	REQUIRE(machine.memory.stack_initial() > machine.memory.mmap_start());
@@ -64,7 +35,8 @@ TEST_CASE("Instantiate machine", "[Instantiate]") {
 	REQUIRE(machine.cpu.current_execute_segment().is_within(machine.memory.start_address()));
 }
 
-TEST_CASE("Execute minimal machine", "[Minimal]") {
+TEST_CASE("Execute minimal machine", "[Minimal]")
+{
 	if (is_zig())
 		return;
 
@@ -76,16 +48,16 @@ TEST_CASE("Execute minimal machine", "[Minimal]") {
 	"	li a7, 1\n"
 	"	ecall\n"
 	"	nop\n");
-	)M",
-			"-static -ffreestanding -nostartfiles");
-	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+	)M", "-static -ffreestanding -nostartfiles");
+	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 	machine.install_syscall_handler(1,
-			[](auto &machine) { machine.stop(); });
+		[] (auto& machine) { machine.stop(); });
 	machine.simulate(10);
 	REQUIRE(machine.return_value<int>() == 666);
 }
 
-TEST_CASE("Execution timeout", "[Minimal]") {
+TEST_CASE("Execution timeout", "[Minimal]")
+{
 	if (is_zig())
 		return;
 
@@ -95,17 +67,16 @@ TEST_CASE("Execution timeout", "[Minimal]") {
 	"_start:\n"
 	"	j _start\n"
 	"	nop\n");
-	)M",
-			"-static -ffreestanding -nostartfiles");
-	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+	)M", "-static -ffreestanding -nostartfiles");
+	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 	// Simulate 250k instructions before giving up
 	REQUIRE_THROWS_WITH([&] {
 		machine.simulate(250'000);
-	}(),
-			Catch::Matchers::ContainsSubstring("limit reached"));
+	}(), Catch::Matchers::ContainsSubstring("limit reached"));
 }
 
-TEST_CASE("Verify program arguments and environment", "[Runtime]") {
+TEST_CASE("Verify program arguments and environment", "[Runtime]")
+{
 	const auto binary = build_and_load(R"M(
 	#include <string.h>
 	extern char* getenv(const char *);
@@ -121,13 +92,13 @@ TEST_CASE("Verify program arguments and environment", "[Runtime]") {
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 	// We need to install Linux system calls for maximum gucciness
 	machine.setup_linux_syscalls(true, true);
 	// We need to create a Linux environment for runtimes to work well
 	machine.setup_linux(
-			{ "program", "this is a test" },
-			{ "LC_TYPE=C", "LC_ALL=C", "SOMETHING=something" });
+		{"program", "this is a test"},
+		{"LC_TYPE=C", "LC_ALL=C", "SOMETHING=something"});
 
 	// Run for at most X instructions before giving up
 	machine.simulate(MAX_INSTRUCTIONS);
@@ -135,7 +106,8 @@ TEST_CASE("Verify program arguments and environment", "[Runtime]") {
 	REQUIRE(machine.return_value<int>() == 666);
 }
 
-TEST_CASE("Catch output from write system call", "[Output]") {
+TEST_CASE("Catch output from write system call", "[Output]")
+{
 	struct State {
 		bool output_is_hello_world = false;
 	} state;
@@ -146,18 +118,18 @@ TEST_CASE("Catch output from write system call", "[Output]") {
 		return 666;
 	})M");
 
-	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 	// We need to install Linux system calls for maximum gucciness
 	machine.setup_linux_syscalls(false, false);
 	// We need to create a Linux environment for runtimes to work well
 	machine.setup_linux(
-			{ "basic" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"basic"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 
 	machine.set_userdata(&state);
-	machine.set_printer([](const auto &m, const char *data, size_t size) {
-		auto *state = m.template get_userdata<State>();
-		std::string text{ data, data + size };
+	machine.set_printer([] (const auto& m, const char* data, size_t size) {
+		auto* state = m.template get_userdata<State> ();
+		std::string text{data, data + size};
 		state->output_is_hello_world = (text == "Hello World!");
 	});
 	// Run for at most X instructions before giving up
@@ -170,7 +142,8 @@ TEST_CASE("Catch output from write system call", "[Output]") {
 	REQUIRE(state.output_is_hello_world);
 }
 
-TEST_CASE("Calculate fib(50)", "[Compute]") {
+TEST_CASE("Calculate fib(50)", "[Compute]")
+{
 	const auto binary = build_and_load(R"M(
 	#include <stdlib.h>
 	long fib(long n, long acc, long prev)
@@ -185,20 +158,21 @@ TEST_CASE("Calculate fib(50)", "[Compute]") {
 		return fib(n, 0, 1);
 	})M");
 
-	riscv::Machine<RISCV64> machine{ binary, { .memory_max = MAX_MEMORY } };
+	riscv::Machine<RISCV64> machine { binary, { .memory_max = MAX_MEMORY } };
 	// We need to install Linux system calls for maximum gucciness
 	machine.setup_linux_syscalls(false, false);
 	// We need to create a Linux environment for runtimes to work well
 	machine.setup_linux(
-			{ "basic", "50" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"basic", "50"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 	// Run for at most X instructions before giving up
 	machine.simulate(MAX_INSTRUCTIONS);
 
 	REQUIRE(machine.return_value<long>() == -298632863);
 }
 
-TEST_CASE("Count using EBREAK", "[Compute]") {
+TEST_CASE("Count using EBREAK", "[Compute]")
+{
 	const auto binary = build_and_load(R"M(
 	#include <stdlib.h>
 	long fib(long n, long acc, long prev)
@@ -214,11 +188,11 @@ TEST_CASE("Count using EBREAK", "[Compute]") {
 		return fib(n, 0, 1);
 	})M");
 
-	riscv::Machine<RISCV64> machine{ binary };
+	riscv::Machine<RISCV64> machine { binary };
 	machine.setup_linux_syscalls(false, false);
 	machine.setup_linux(
-			{ "basic", "50" },
-			{ "LC_TYPE=C", "LC_ALL=C", "USER=root" });
+		{"basic", "50"},
+		{"LC_TYPE=C", "LC_ALL=C", "USER=root"});
 
 	// Count the number of times EBREAK occurs
 	static struct {
@@ -226,14 +200,14 @@ TEST_CASE("Count using EBREAK", "[Compute]") {
 	} counter;
 
 	machine.install_syscall_handler(RISCV_SYSCALL_EBREAK_NR,
-			[](auto &machine) {
-				counter.value += 1;
-				// EBREAK cannot (currently) stop because it is not
-				// treated like a regular system call. Although we
-				// can still throw an exception in order to end.
-				if (counter.value == 25)
-					machine.stop();
-			});
+	[] (auto& machine) {
+		counter.value += 1;
+		// EBREAK cannot (currently) stop because it is not
+		// treated like a regular system call. Although we
+		// can still throw an exception in order to end.
+		if (counter.value == 25)
+			machine.stop();
+	});
 
 	machine.simulate();
 

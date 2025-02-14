@@ -246,7 +246,7 @@ class TestPartialDoubleMethod:
 		inst.set_value(10)
 		assert_eq(inst.get_value(), 10)
 
-	# TODO this test is temperamental.  It has something to do with the loading
+	# TODO this test is tempramental.  It has something to do with the loading
 	# of the doubles I think.  Should be fixed.
 	func test_partial_double_scene():
 		var inst = _test.partial_double(DoubleMeScene).instantiate()

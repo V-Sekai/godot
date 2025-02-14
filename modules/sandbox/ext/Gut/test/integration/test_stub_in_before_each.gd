@@ -8,3 +8,5 @@ func before_each():
 func test_that_it_is_stubbed():
 	var inst = double(DoubleMe).new()
 	assert_eq(inst.get_value(), 999)
+
+

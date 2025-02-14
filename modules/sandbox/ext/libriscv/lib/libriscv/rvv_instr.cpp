@@ -1,82 +1,68 @@
-/**************************************************************************/
-/*  rvv_instr.cpp                                                         */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
-#include "instr_helpers.hpp"
 #include "rvv.hpp"
+#include "instr_helpers.hpp"
 
-namespace riscv {
-static const char *VOPNAMES[3][64] = {
-	{ "VADD", "???", "VSUB", "VRSUB", "VMINU", "VMIN", "VMAXU", "VMAX", "???", "VAND", "FOR", "VXOR", "VRGATHER", "???", "VSLIDEUP", "VSLIDEDOWN",
-			"VADC", "VMADC", "VSBC", "VMSBC", "???", "???", "???", "VMERGE", "???", "???", "???", "???", "???", "???", "???", "???"
-																															  "VSADDU",
-			"VSADD", "VSSUBU", "VSSUB", "???", "VSLL", "???", "VSMUL", "VSRL", "VSRA", "VSSRL", "VSSRA", "VNSLR", "VNSRA", "VNCLIPU", "VNCLIP",
-			"VWREDSUMU", "VWREDSUM", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???" },
-	{ "VREDSUM", "VREDAND", "VREDOR", "VREDXOR", "VREDMINU", "VREDMIN", "VREDMAXU", "VREDMAX", "VAADDU", "VAADD", "VASUBU", "VASUB", "???", "???", "VSLIDE1UP", "VSLIDE1DOWN",
-			"???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???"
-																															"VDIVU",
-			"VDIV", "VREMU", "VREM", "VMULHU", "VMUL", "VMULHSU", "VMULH", "???", "VMADD", "???", "VNMSUB", "???", "VMACC", "VNMSAC",
-			"VWADDU", "VWADD", "VWSUBU", "VWSUB", "VWADDU.W", "VWADD.W", "VWSUBU.W", "VWSUB.W", "VWMULU", "???", "VWMULSU", "VWMUL", "VWMACCU", "VWMACC", "VWMACCUS", "VWMACCSU" },
-	{ "VFADD", "VFREDUSUM", "VFSUB", "VFREDOSUM", "VFMIN", "VFREDMIN", "VFMAX", "VFREDMAX", "VFSGNJ", "VFSGNJ.N", "VFSGNJ.X", "???", "???", "???", "VFSLIDE1UP", "VFSLIDE1DOWN",
-			"VWFUNARY0", "???", "VFUNARY0", "VFUNARY1", "???", "???", "???", "VFMERGE", "VMFEQ", "MVFLE", "???", "VMFLT", "VMFNE", "VMFGT", "???", "VMFGE",
-			"VFDIV", "VFRDIV", "???", "???", "VFMUL", "???", "???", "VFRSUB", "VFMADD", "VFNMADD", "VFMSUB", "VFNMSUB", "VFMACC", "VFNMACC", "VFMSAC", "VFNMSAC",
-			"VFWADD", "VFWREDUSUM", "VFWSUB", "VFWREDOSUM", "VFWADD.W", "???", "VFWSUB.W", "???", "VFWMUL", "???", "???", "???", "VFWMACC", "VFWNMACC", "VFWMSAC", "VFWNMSAC" },
-};
+namespace riscv
+{
+	static const char *VOPNAMES[3][64] = {
+		{"VADD", "???", "VSUB", "VRSUB", "VMINU", "VMIN", "VMAXU", "VMAX", "???", "VAND", "VOR", "VXOR", "VRGATHER", "???", "VSLIDEUP", "VSLIDEDOWN",
+		 "VADC", "VMADC", "VSBC", "VMSBC", "???", "???", "???", "VMERGE", "???", "???", "???", "???", "???", "???", "???", "???"
+		 "VSADDU", "VSADD", "VSSUBU", "VSSUB", "???", "VSLL", "???", "VSMUL", "VSRL", "VSRA", "VSSRL", "VSSRA", "VNSLR", "VNSRA", "VNCLIPU", "VNCLIP",
+		 "VWREDSUMU", "VWREDSUM", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???"},
+		{"VREDSUM", "VREDAND", "VREDOR", "VREDXOR", "VREDMINU", "VREDMIN", "VREDMAXU", "VREDMAX", "VAADDU", "VAADD", "VASUBU", "VASUB", "???", "???", "VSLIDE1UP", "VSLIDE1DOWN",
+		 "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???", "???"
+		 "VDIVU", "VDIV", "VREMU", "VREM", "VMULHU", "VMUL", "VMULHSU", "VMULH", "???", "VMADD", "???", "VNMSUB", "???", "VMACC", "VNMSAC",
+		  "VWADDU", "VWADD", "VWSUBU", "VWSUB", "VWADDU.W", "VWADD.W", "VWSUBU.W", "VWSUB.W", "VWMULU", "???", "VWMULSU", "VWMUL", "VWMACCU", "VWMACC", "VWMACCUS", "VWMACCSU"},
+		{"VFADD", "VFREDUSUM", "VFSUB", "VFREDOSUM", "VFMIN", "VFREDMIN", "VFMAX", "VFREDMAX", "VFSGNJ", "VFSGNJ.N", "VFSGNJ.X", "???", "???", "???", "VFSLIDE1UP", "VFSLIDE1DOWN",
+		 "VWFUNARY0", "???", "VFUNARY0", "VFUNARY1", "???", "???", "???", "VFMERGE", "VMFEQ", "MVFLE", "???", "VMFLT", "VMFNE", "VMFGT", "???", "VMFGE",
+		 "VFDIV", "VFRDIV", "???", "???", "VFMUL", "???", "???", "VFRSUB", "VFMADD", "VFNMADD", "VFMSUB", "VFNMSUB", "VFMACC", "VFNMACC", "VFMSAC", "VFNMSAC",
+		 "VFWADD", "VFWREDUSUM", "VFWSUB", "VFWREDOSUM", "VFWADD.W", "???", "VFWSUB.W", "???", "VFWMUL", "???", "???", "???", "VFWMACC", "VFWNMACC", "VFWMSAC", "VFWNMSAC"},
+		};
 
-VECTOR_INSTR(VSETVLI, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VSETVLI,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
-		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VSETVLI %s, %s, 0x%X",
 						RISCV::regname(vi.VLI.rd),
 						RISCV::regname(vi.VLI.rs1),
-						vi.VLI.zimm); });
+						vi.VLI.zimm);
+	});
 
-VECTOR_INSTR(VSETIVLI, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VSETIVLI,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
-		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VSETIVLI %s, 0x%X, 0x%X",
 						RISCV::regname(vi.IVLI.rd),
 						vi.IVLI.uimm,
-						vi.IVLI.zimm); });
+						vi.IVLI.zimm);
+	});
 
-VECTOR_INSTR(VSETVL, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VSETVL,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
-		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VSETVL %s, %s, %s",
 						RISCV::regname(vi.VSETVL.rd),
 						RISCV::regname(vi.VSETVL.rs1),
-						RISCV::regname(vi.VSETVL.rs2)); });
+						RISCV::regname(vi.VSETVL.rs2));
+	});
 
-VECTOR_INSTR(VLE32, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VLE32,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
 		const auto addr = cpu.reg(vi.VLS.rs1);
 		if (riscv::force_align_memory || addr % VectorLane::size() == 0) {
@@ -84,14 +70,19 @@ VECTOR_INSTR(VLE32, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			rvv.get(vi.VLS.vd) = cpu.machine().memory.template read<VectorLane> (addr);
 		} else {
 			cpu.trigger_exception(INVALID_ALIGNMENT, addr);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VLE32.V %s, %s, %s",
 						RISCV::vecname(vi.VLS.vd),
 						RISCV::regname(vi.VLS.rs1),
-						RISCV::regname(vi.VLS.rs2)); });
+						RISCV::regname(vi.VLS.rs2));
+	});
 
-VECTOR_INSTR(VSE32, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VSE32,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
 		const auto addr = cpu.reg(vi.VLS.rs1);
 		if (riscv::force_align_memory || addr % VectorLane::size() == 0) {
@@ -99,14 +90,19 @@ VECTOR_INSTR(VSE32, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			cpu.machine().memory.template write<VectorLane> (addr, rvv.get(vi.VLS.vd));
 		} else {
 			cpu.trigger_exception(INVALID_ALIGNMENT, addr);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VSE32.V %s, %s, %s",
 						RISCV::vecname(vi.VLS.vd),
 						RISCV::regname(vi.VLS.rs1),
-						RISCV::regname(vi.VLS.rs2)); });
+						RISCV::regname(vi.VLS.rs2));
+	});
 
-VECTOR_INSTR(VOPI_VV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VOPI_VV,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
 		auto& rvv = cpu.registers().rvv();
 		switch (vi.OPVV.funct6) {
@@ -125,7 +121,7 @@ VECTOR_INSTR(VOPI_VV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 				rvv.u32(vi.OPVV.vd)[i] = rvv.u32(vi.OPVV.vs1)[i] & rvv.u32(vi.OPVV.vs2)[i];
 			}
 			break;
-		case 0b001010: // FOR
+		case 0b001010: // VOR
 			for (size_t i = 0; i < rvv.u32(0).size(); i++) {
 				rvv.u32(vi.OPVV.vd)[i] = rvv.u32(vi.OPVV.vs1)[i] | rvv.u32(vi.OPVV.vs2)[i];
 			}
@@ -143,15 +139,20 @@ VECTOR_INSTR(VOPI_VV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			break;
 		default:
 			cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
-		} }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		}
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "%s %s, %s, %s",
 						VOPNAMES[0][vi.OPVV.funct6],
 						RISCV::vecname(vi.VLS.vd),
 						RISCV::regname(vi.VLS.rs1),
-						RISCV::regname(vi.VLS.rs2)); });
+						RISCV::regname(vi.VLS.rs2));
+	});
 
-VECTOR_INSTR(VOPF_VV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VOPF_VV,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
 		auto& rvv = cpu.registers().rvv();
 		switch (vi.OPVV.funct6) {
@@ -194,24 +195,34 @@ VECTOR_INSTR(VOPF_VV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			}
 			return;
 		}
-		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "%s.VV %s, %s, %s",
 						VOPNAMES[2][vi.OPVV.funct6],
 						RISCV::vecname(vi.OPVV.vd),
 						RISCV::vecname(vi.OPVV.vs1),
-						RISCV::vecname(vi.OPVV.vs2)); });
+						RISCV::vecname(vi.OPVV.vs2));
+	});
 
-VECTOR_INSTR(VOPM_VV, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VOPM_VV,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
-		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VOPM.VV %s, %s, %s",
 						RISCV::vecname(vi.VLS.vd),
 						RISCV::regname(vi.VLS.rs1),
-						RISCV::regname(vi.VLS.rs2)); });
+						RISCV::regname(vi.VLS.rs2));
+	});
 
-VECTOR_INSTR(VOPI_VI, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VOPI_VI,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
 		auto& rvv = cpu.registers().rvv();
 		const uint32_t scalar = vi.OPVI.imm;
@@ -224,15 +235,20 @@ VECTOR_INSTR(VOPI_VI, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 				return;
 			}
 		}
-		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VOPI.VI %s %s, %s, %s",
 						VOPNAMES[0][vi.OPVI.funct6],
 						RISCV::vecname(vi.VLS.vd),
 						RISCV::regname(vi.VLS.rs1),
-						RISCV::regname(vi.VLS.rs2)); });
+						RISCV::regname(vi.VLS.rs2));
+	});
 
-VECTOR_INSTR(VOPF_VF, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
+	VECTOR_INSTR(VOPF_VF,
+	[] (auto& cpu, rv32i_instruction instr) RVINSTR_ATTR
+	{
 		const rv32v_instruction vi { instr };
 		auto& rvv = cpu.registers().rvv();
 		const float scalar = cpu.registers().getfl(vi.OPVV.vs1).f32[0];
@@ -269,10 +285,13 @@ VECTOR_INSTR(VOPF_VF, [](auto &cpu, rv32i_instruction instr) RVINSTR_ATTR {
 			}
 			return;
 		}
-		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION); }, [](char *buffer, size_t len, auto &, rv32i_instruction instr) RVPRINTR_ATTR {
+		cpu.trigger_exception(UNIMPLEMENTED_INSTRUCTION);
+	},
+	[] (char* buffer, size_t len, auto&, rv32i_instruction instr) RVPRINTR_ATTR {
 		const rv32v_instruction vi { instr };
 		return snprintf(buffer, len, "VOPF.VF %s, %s, %s",
 						RISCV::vecname(vi.VLS.vd),
 						RISCV::regname(vi.VLS.rs1),
-						RISCV::regname(vi.VLS.rs2)); });
-} //namespace riscv
+						RISCV::regname(vi.VLS.rs2));
+	});
+} // riscv

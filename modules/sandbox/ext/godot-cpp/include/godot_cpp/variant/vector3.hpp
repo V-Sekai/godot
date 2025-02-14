@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef VECTOR3_HPP
-#define VECTOR3_HPP
+#ifndef GODOT_VECTOR3_HPP
+#define GODOT_VECTOR3_HPP
 
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/core/math.hpp>
@@ -538,4 +538,4 @@ Vector3 Vector3::reflect(const Vector3 &p_normal) const {
 
 } // namespace godot
 
-#endif // VECTOR3_HPP
+#endif // GODOT_VECTOR3_HPP

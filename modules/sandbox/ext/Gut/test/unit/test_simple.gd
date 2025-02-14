@@ -55,3 +55,4 @@ func test_assert_true():
 # 	watch_signals(dbl_me)
 # 	dbl_me.emit_signal('signal_signal')
 # 	assert_signal_emitted(dbl_me, 'signal_signal')
+

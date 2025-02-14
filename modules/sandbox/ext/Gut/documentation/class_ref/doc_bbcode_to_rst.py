@@ -1,11 +1,9 @@
+from typing import Any, Dict, List, Optional, TextIO, Tuple, Union
 import re
-from typing import List, Tuple, Union
-
-import bitwes
-import logger as lgr
 from godot_classes import *
 from godot_consts import *
-
+import logger as lgr
+import bitwes
 
 def print_error(text, state):
     lgr.print_error(text, state)
@@ -18,18 +16,7 @@ def print_warning(text, state):
 MARKUP_ALLOWED_PRECEDENT = " -:/'\"<([{"
 MARKUP_ALLOWED_SUBSEQUENT = " -.,:;!?\\/'\")]}>"
 GODOT_DOCS_PATTERN = re.compile(r"^\$DOCS_URL/(.*)\.html(#.*)?$")
-RESERVED_FORMATTING_TAGS = [
-    "i",
-    "b",
-    "u",
-    "lb",
-    "rb",
-    "code",
-    "kbd",
-    "center",
-    "url",
-    "br",
-]
+RESERVED_FORMATTING_TAGS = ["i", "b", "u", "lb", "rb", "code", "kbd", "center", "url", "br",]
 RESERVED_LAYOUT_TAGS = ["codeblocks"]
 RESERVED_CODEBLOCK_TAGS = ["codeblock", "gdscript", "csharp"]
 RESERVED_CROSSLINK_TAGS = [
@@ -45,7 +32,6 @@ RESERVED_CROSSLINK_TAGS = [
     "param",
 ]
 
-
 class TagState:
     def __init__(self, raw: str, name: str, arguments: str, closing: bool) -> None:
         self.raw = raw
@@ -53,6 +39,8 @@ class TagState:
         self.name = name
         self.arguments = arguments
         self.closing = closing
+
+
 
 
 def make_link(url: str, title: str) -> str:
@@ -760,12 +748,12 @@ def format_text_block(
                     break
                 link_title = text[endq_pos + 1 : endurl_pos]
                 if url_target == "":
-                    url_target = f"../{link_title}.html"
+                    url_target = f'../{link_title}.html'
 
                 tag_text = make_link(url_target, link_title)
 
                 pre_text = text[:pos]
-                post_text = text[endurl_pos + 7 :]  # +7 instead +6 bc wiki has one more character than url
+                post_text = text[endurl_pos + 7 :] # +7 instead +6 bc wiki has one more character than url
 
                 if pre_text and pre_text[-1] not in MARKUP_ALLOWED_PRECEDENT:
                     pre_text += "\\ "
@@ -782,6 +770,7 @@ def format_text_block(
             elif tag_state.name == "rb":
                 tag_text = "\\]"
 
+
             elif tag_state.name == "kbd":
                 tag_text = "`"
                 if tag_state.closing:
@@ -791,6 +780,7 @@ def format_text_block(
                     tag_text = ":kbd:" + tag_text
                     tag_depth += 1
                     escape_pre = True
+
 
             # Invalid syntax.
             else:

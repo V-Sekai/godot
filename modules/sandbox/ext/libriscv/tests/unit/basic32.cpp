@@ -1,59 +1,31 @@
-/**************************************************************************/
-/*  basic32.cpp                                                           */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <libriscv/machine.hpp>
-extern std::vector<uint8_t> build_and_load(const std::string &code,
-		const std::string &args = "-O2 -static", bool cpp = false);
+extern std::vector<uint8_t> build_and_load(const std::string& code,
+	const std::string& args = "-O2 -static", bool cpp = false);
 static const uint64_t MAX_INSTRUCTIONS = 10'000'000ul;
 using namespace riscv;
 static bool is_zig() {
-	const char *rcc = getenv("RCC");
+	const char* rcc = getenv("RCC");
 	if (rcc == nullptr)
 		return false;
 	return std::string(rcc).find("zig") != std::string::npos;
 }
 
-TEST_CASE("Instantiate 32-bit machine using 64-bit ELF", "[Instantiate]") {
+TEST_CASE("Instantiate 32-bit machine using 64-bit ELF", "[Instantiate]")
+{
 	REQUIRE_THROWS([] {
 		const auto binary = build_and_load(R"M(
 		int main() {
 			return 666;
 		})M");
-		riscv::Machine<RISCV32> machine{ binary };
+		riscv::Machine<RISCV32> machine { binary };
 	}());
 }
 
-TEST_CASE("Validate custom 32-bit ELF", "[Instantiate]") {
+TEST_CASE("Validate custom 32-bit ELF", "[Instantiate]")
+{
 	if (is_zig())
 		return;
 
@@ -66,24 +38,24 @@ TEST_CASE("Validate custom 32-bit ELF", "[Instantiate]") {
 	"	ecall\n"
 	"	nop\n"
 	"   wfi\n");
-	)M",
-			"-static -march=rv32g -mabi=ilp32d -nostdlib");
+	)M", "-static -march=rv32g -mabi=ilp32d -nostdlib");
 
-	riscv::Machine<RISCV32> machine{ binary };
+	riscv::Machine<RISCV32> machine { binary };
 
 	machine.install_syscall_handler(1,
-			[](auto &machine) { machine.stop(); });
+		[] (auto& machine) { machine.stop(); });
 	machine.simulate(10);
 	REQUIRE(machine.return_value() == 0xDEADBEEF);
 }
 
-TEST_CASE("Validate 32-bit fib()", "[Compute]") {
+TEST_CASE("Validate 32-bit fib()", "[Compute]")
+{
 	if (is_zig())
 		return;
 
-	// 64-bit arguments require two registers
-	// and consumes 2 return registers (A0, A1).
-	const auto binary = build_and_load(R"M(
+    // 64-bit arguments require two registers
+    // and consumes 2 return registers (A0, A1).
+    const auto binary = build_and_load(R"M(
     #define u64 long long
 
 	u64 fib(u64 n, u64 acc, u64 prev)
@@ -104,13 +76,12 @@ TEST_CASE("Validate 32-bit fib()", "[Compute]") {
 	"	li a7, 1\n"
 	"	ecall\n"
 	"   wfi\n");
-	)M",
-			"-static -march=rv32g -mabi=ilp32d -nostdlib");
+	)M", "-static -march=rv32g -mabi=ilp32d -nostdlib");
 
-	riscv::Machine<RISCV32> machine{ binary };
+    riscv::Machine<RISCV32> machine { binary };
 
 	machine.install_syscall_handler(1,
-			[](auto &machine) { machine.stop(); });
+		[] (auto& machine) { machine.stop(); });
 	machine.simulate(MAX_INSTRUCTIONS);
 	REQUIRE(machine.return_value<uint64_t>() == 12586269025L);
 }

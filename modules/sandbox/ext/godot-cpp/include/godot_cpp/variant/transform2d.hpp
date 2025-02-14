@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TRANSFORM2D_HPP
-#define TRANSFORM2D_HPP
+#ifndef GODOT_TRANSFORM2D_HPP
+#define GODOT_TRANSFORM2D_HPP
 
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/rect2.hpp>
@@ -248,4 +248,4 @@ PackedVector2Array Transform2D::xform_inv(const PackedVector2Array &p_array) con
 
 } // namespace godot
 
-#endif // TRANSFORM2D_HPP
+#endif // GODOT_TRANSFORM2D_HPP

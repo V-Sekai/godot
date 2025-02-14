@@ -27,3 +27,4 @@ class TestClassTwo:
 
 	func test_pending_with_text():
 		pending('this has text')
+
