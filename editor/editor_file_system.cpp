@@ -3547,7 +3547,58 @@ bool EditorFileSystem::_scan_extensions() {
 
 	_scan_extensions_dir(d, extensions);
 
-	return GDExtensionManager::get_singleton()->ensure_extensions_loaded(extensions);
+	//verify against loaded extensions
+
+	Vector<String> extensions_added;
+	Vector<String> extensions_removed;
+
+	for (const String &E : extensions) {
+		if (!GDExtensionManager::get_singleton()->is_extension_loaded(E)) {
+			extensions_added.push_back(E);
+		}
+	}
+
+	Vector<String> loaded_extensions = GDExtensionManager::get_singleton()->get_loaded_extensions();
+	for (int i = 0; i < loaded_extensions.size(); i++) {
+		if (!extensions.has(loaded_extensions[i])) {
+			// The extension may not have a .gdextension file.
+			const Ref<GDExtension> extension = GDExtensionManager::get_singleton()->get_extension(loaded_extensions[i]);
+			if (!extension->get_loader()->library_exists()) {
+				extensions_removed.push_back(loaded_extensions[i]);
+			}
+		}
+	}
+
+	String extension_list_config_file = GDExtension::get_extension_list_config_file();
+	if (extensions.size()) {
+		if (extensions_added.size() || extensions_removed.size()) { //extensions were added or removed
+			Ref<FileAccess> f = FileAccess::open(extension_list_config_file, FileAccess::WRITE);
+			for (const String &E : extensions) {
+				f->store_line(E);
+			}
+		}
+	} else {
+		if (loaded_extensions.size() || FileAccess::exists(extension_list_config_file)) { //extensions were removed
+			Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_RESOURCES);
+			da->remove(extension_list_config_file);
+		}
+	}
+
+	bool needs_restart = false;
+	for (int i = 0; i < extensions_added.size(); i++) {
+		GDExtensionManager::LoadStatus st = GDExtensionManager::get_singleton()->load_extension(extensions_added[i]);
+		if (st == GDExtensionManager::LOAD_STATUS_NEEDS_RESTART) {
+			needs_restart = true;
+		}
+	}
+	for (int i = 0; i < extensions_removed.size(); i++) {
+		GDExtensionManager::LoadStatus st = GDExtensionManager::get_singleton()->unload_extension(extensions_removed[i]);
+		if (st == GDExtensionManager::LOAD_STATUS_NEEDS_RESTART) {
+			needs_restart = true;
+		}
+	}
+
+	return needs_restart;
 }
 
 void EditorFileSystem::_bind_methods() {
