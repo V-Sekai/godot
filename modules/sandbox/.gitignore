@@ -10,8 +10,8 @@ program/test
 *.o
 *.os
 *.elf
-!modules/sandbox/ext/libriscv/examples/embed/fib.rv64.elf
-!modules/sandbox/ext/libriscv/examples/noexcept/fib.rv64.elf
+!modules/sandbox/thirdparty/libriscv/examples/embed/fib.rv64.elf
+!modules/sandbox/thirdparty/libriscv/examples/noexcept/fib.rv64.elf
 
 # Ignore all CPP files in the bintr directory
 src/bintr/*.cpp

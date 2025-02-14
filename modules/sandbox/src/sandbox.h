@@ -1,9 +1,13 @@
 #pragma once
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/binder_common.hpp>
+
+#include <libriscv/memory.hpp>
+
 #include <libriscv/machine.hpp>
 #include <optional>
-
+#include <unordered_set>
+		
 using namespace godot;
 #define RISCV_ARCH riscv::RISCV64
 using gaddr_t = riscv::address_type<RISCV_ARCH>;

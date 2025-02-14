@@ -2,6 +2,8 @@
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <libriscv/memory.hpp>
+
 Array Sandbox::get_general_registers() const {
 	Array ret;
 	for (int i = 0; i < 32; i++) {

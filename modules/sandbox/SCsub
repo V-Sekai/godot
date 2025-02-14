@@ -46,7 +46,7 @@ env.Append(LIBS=[base_file])
 env.Append(LIBPATH=[base_path])
 
 # Godot-cpp
-base_path = "#modules/sandbox/ext/godot-cpp/bin"
+base_path = "#modules/sandbox/thirdparty/godot-cpp/bin"
 base_file = "libgodot-cpp{}".format(get_sufix())
 
 env.Append(LIBS=[base_file])

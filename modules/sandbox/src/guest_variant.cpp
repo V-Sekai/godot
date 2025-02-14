@@ -1,7 +1,9 @@
 #include "guest_datatypes.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
+
 #include <libriscv/util/crc32.hpp>
+#include <libriscv/memory.hpp>
 
 namespace riscv {
 extern godot::Object *get_object_from_address(const Sandbox &emu, uint64_t addr);

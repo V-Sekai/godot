@@ -12,6 +12,7 @@
 #if RISCV_SPAN_AVAILABLE
 #include <span>
 #endif
+#include "rva.hpp"
 
 namespace riscv
 {
