@@ -54,3 +54,4 @@ public:
 };
 
 #endif // VULKAN_ENABLED
+#endif // __APPLE__
