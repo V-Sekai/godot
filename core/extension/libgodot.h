@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef LIBGODOT_H
-#define LIBGODOT_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,5 +64,3 @@ void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // LIBGODOT_H

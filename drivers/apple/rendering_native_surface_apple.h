@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_NATIVE_SURFACE_APPLE_H
-#define RENDERING_NATIVE_SURFACE_APPLE_H
+#pragma once
 
 #include "core/variant/native_ptr.h"
 #include "servers/rendering/rendering_native_surface.h"
@@ -58,5 +57,3 @@ private:
 
 	void *layer = nullptr;
 };
-
-#endif // RENDERING_NATIVE_SURFACE_APPLE_H

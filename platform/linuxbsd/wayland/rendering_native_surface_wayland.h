@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_NATIVE_SURFACE_WAYLAND_H
-#define RENDERING_NATIVE_SURFACE_WAYLAND_H
+#pragma once
 
 #include "core/variant/native_ptr.h"
 #include "servers/rendering/rendering_native_surface.h"
@@ -60,5 +59,3 @@ public:
 	RenderingNativeSurfaceWayland();
 	~RenderingNativeSurfaceWayland();
 };
-
-#endif // RENDERING_NATIVE_SURFACE_WAYLAND_H
