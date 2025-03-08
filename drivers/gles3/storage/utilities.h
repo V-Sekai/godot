@@ -40,10 +40,10 @@
 class FramebufferBinding {
 public:
 	FramebufferBinding(GLenum p_target) :
-			FramebufferBinding(p_target, 0, false) {};
+			FramebufferBinding(p_target, 0, false) {}
 
 	FramebufferBinding(GLenum p_target, GLuint p_framebuffer) :
-			FramebufferBinding(p_target, p_framebuffer, true) {};
+			FramebufferBinding(p_target, p_framebuffer, true) {}
 
 	FramebufferBinding(GLenum p_target, GLuint p_framebuffer, bool p_bind) {
 		target = p_target;

@@ -28,12 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef WINDOWS_API_H
-#define WINDOWS_API_H
+#pragma once
 
 void register_core_windows_api();
 void unregister_core_windows_api();
 void register_windows_api();
 void unregister_windows_api();
-
-#endif // WINDOWS_API_H

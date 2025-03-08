@@ -28,12 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef LINUXBSD_API_H
-#define LINUXBSD_API_H
+#pragma once
 
 void register_core_linuxbsd_api();
 void unregister_core_linuxbsd_api();
 void register_linuxbsd_api();
 void unregister_linuxbsd_api();
-
-#endif // LINUXBSD_API_H

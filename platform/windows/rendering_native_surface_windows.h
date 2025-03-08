@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_NATIVE_SURFACE_WINDOWS_H
-#define RENDERING_NATIVE_SURFACE_WINDOWS_H
+#pragma once
 
 #include "core/variant/native_ptr.h"
 #include "servers/rendering/rendering_native_surface.h"
@@ -72,5 +71,3 @@ public:
 	RenderingNativeSurfaceWindows();
 	~RenderingNativeSurfaceWindows();
 };
-
-#endif // RENDERING_NATIVE_SURFACE_WINDOWS_H
