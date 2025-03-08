@@ -65,6 +65,5 @@ public:
 	void stop();
 };
 
-#endif // VULKAN_ENABLED
 
 #endif // RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
