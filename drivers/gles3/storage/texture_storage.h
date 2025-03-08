@@ -705,6 +705,10 @@ public:
 	void bind_framebuffer(GLuint framebuffer) {
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	}
+	
+	void bind_framebuffer_system() {
+		glBindFramebuffer(GL_FRAMEBUFFER, GLES3::TextureStorage::system_fbo);
+	}
 
 	String get_framebuffer_error(GLenum p_status);
 };
