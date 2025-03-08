@@ -63,4 +63,3 @@ public:
 	bool iteration();
 	void stop();
 };
-
