@@ -79,7 +79,7 @@ if env["windows_subsystem"] == "gui":
     res_wrap_obj = env_wrap.RES(res_wrap_target, res_wrap_file)
     env_wrap.Depends(res_wrap_obj, "#core/version_generated.gen.h")
     # Build console wrapper app.
-    if env["windows_subsystem"] == "gui":
+    if env["windows_subsystem"] == "gui" and env["library_type"] == "executable":
         env_wrap = env.Clone()
         res_wrap_file = "godot_res_wrap.rc"
         res_wrap_target = "godot_res_wrap" + env["OBJSUFFIX"]
