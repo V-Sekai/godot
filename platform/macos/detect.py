@@ -226,7 +226,8 @@ def configure(env: "SConsEnvironment"):
     env.Append(LIBS=["pthread", "z"])
 
     if env["opengl3"]:
-        env.Append(CPPDEFINES=["GLES3_ENABLED"])
+        if env["platform"] not in ["ios", "macos"]:
+            env.Append(CPPDEFINES=["GLES3_ENABLED"])
         if env["angle_libs"] != "":
             env.AppendUnique(CPPDEFINES=["EGL_STATIC"])
             env.Append(LINKFLAGS=["-L" + env["angle_libs"]])

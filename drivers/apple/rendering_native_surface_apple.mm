@@ -52,7 +52,7 @@ struct WindowData {
 #if defined(IOS_ENABLED)
 	CAEAGLLayer *layer;
 #endif
-#if defined(MACOS_ENABLED)
+#if defined(MACOS_ENABLED) && defined(GLES3_ENABLED)
 	CAOpenGLLayer *layer;
 #endif
 };
