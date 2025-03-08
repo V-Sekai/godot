@@ -55,5 +55,4 @@ public:
 };
 
 #endif // VULKAN_ENABLED
-
-#endif // RENDERING_CONTEXT_DRIVER_VULKAN_IOS_H
+#endif // __APPLE__
