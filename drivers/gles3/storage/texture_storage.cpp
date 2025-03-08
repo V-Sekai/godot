@@ -2091,6 +2091,8 @@ AABB TextureStorage::decal_get_aabb(RID p_decal) const {
 
 /* RENDER TARGET API */
 
+GLuint TextureStorage::system_fbo = 0;
+
 void TextureStorage::_update_render_target(RenderTarget *rt) {
 	// do not allocate a render target with no size
 	if (rt->size.x <= 0 || rt->size.y <= 0) {
