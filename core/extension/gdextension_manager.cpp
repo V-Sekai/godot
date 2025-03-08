@@ -30,7 +30,6 @@
 
 #include "gdextension_manager.h"
 
-#include "core/extension/gdextension_compat_hashes.h"
 #include "core/extension/gdextension_function_loader.h"
 #include "core/extension/gdextension_library_loader.h"
 #include "core/extension/gdextension_special_compat_hashes.h"

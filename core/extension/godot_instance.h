@@ -64,6 +64,3 @@ public:
 	bool iteration();
 	void stop();
 };
-
-
-#endif // RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
