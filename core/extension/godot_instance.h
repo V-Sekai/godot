@@ -64,4 +64,3 @@ public:
 	void stop();
 };
 
-#endif // VULKAN_ENABLED
