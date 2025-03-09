@@ -36,9 +36,6 @@
 #endif
 
 void register_core_windows_api() {
-#ifdef WINDOWS_ENABLED
-	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceWindows);
-#endif
 }
 
 void unregister_core_windows_api() {

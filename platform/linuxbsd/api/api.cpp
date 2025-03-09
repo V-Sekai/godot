@@ -30,28 +30,7 @@
 
 #include "api.h"
 
-#ifdef LINUXBSD_ENABLED
-#include "core/object/class_db.h"
-
-#ifdef WAYLAND_ENABLED
-#include "platform/linuxbsd/wayland/rendering_native_surface_wayland.h"
-#endif
-
-#ifdef X11_ENABLED
-#include "platform/linuxbsd/x11/rendering_native_surface_x11.h"
-#endif
-
-#endif
-
 void register_core_linuxbsd_api() {
-#ifdef LINUXBSD_ENABLED
-#ifdef WAYLAND_ENABLED
-	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceWayland);
-#endif
-#ifdef X11_ENABLED
-	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceX11);
-#endif
-#endif
 }
 
 void unregister_core_linuxbsd_api() {
