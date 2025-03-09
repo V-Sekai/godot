@@ -28,8 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
-#define RENDERING_CONTEXT_DRIVER_VULKAN_MACOS_H
+#ifndef GODOT_INSTANCE_H
+#define GODOT_INSTANCE_H
 
 #include "core/extension/gdextension_interface.h"
 #include "core/object/class_db.h"
@@ -64,3 +64,5 @@ public:
 	bool iteration();
 	void stop();
 };
+
+#endif // GODOT_INSTANCE_H
