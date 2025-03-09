@@ -30,7 +30,7 @@
 			<return type="void" />
 			<param index="0" name="point" type="LassoPoint" />
 			<description>
-				Lasso stores the score on each point, so you don't need to recalc for any point.
+				Lasso stores the score on each point, so you don't need to recalculate for any point.
 			</description>
 		</method>
 		<method name="calc_top_redirecting_power">
@@ -51,12 +51,14 @@
 			<param index="3" name="snap_increase_amount" type="float" />
 			<param index="4" name="snap_lock" type="bool" />
 			<description>
+				Calculates the top two points with the highest snapping power based on the source transform. Applies power increases to the current_snap if not locked, returning an array of the best candidates for selection refinement.
 			</description>
 		</method>
 		<method name="remove_point">
 			<return type="void" />
 			<param index="0" name="point" type="LassoPoint" />
 			<description>
+				Removes the specified LassoPoint from the database, stopping it from influencing Voronoi hitboxes and selection calculations.
 			</description>
 		</method>
 	</methods>
