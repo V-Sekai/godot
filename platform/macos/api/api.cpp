@@ -30,13 +30,6 @@
 
 #include "api.h"
 
-#ifdef MACOS_ENABLED
-#include "core/object/class_db.h"
-
-#include "drivers/apple/rendering_native_surface_apple.h"
-
-#endif
-
 void register_core_macos_api() {
 }
 
