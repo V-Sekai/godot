@@ -2275,12 +2275,12 @@
 			- macOS: [code]NSOpenGLContext*[/code] for the window (native GL), or [code]EGLContext[/code] for the window (ANGLE).
 			- Android: [code]EGLContext[/code] for the window.
 		</constant>
-		<constant name="EGL_DISPLAY" value="4" enum="HandleType">
+		<constant name="EGL_DISPLAY" value="5" enum="HandleType">
 			- Windows: [code]EGLDisplay[/code] for the window (ANGLE).
 			- macOS: [code]EGLDisplay[/code] for the window (ANGLE).
 			- Linux (Wayland): [code]EGLDisplay[/code] for the window.
 		</constant>
-		<constant name="EGL_CONFIG" value="5" enum="HandleType">
+		<constant name="EGL_CONFIG" value="6" enum="HandleType">
 			- Windows: [code]EGLConfig[/code] for the window (ANGLE).
 			- macOS: [code]EGLConfig[/code] for the window (ANGLE).
 			- Linux (Wayland): [code]EGLConfig[/code] for the window.
