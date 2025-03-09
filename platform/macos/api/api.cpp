@@ -38,9 +38,6 @@
 #endif
 
 void register_core_macos_api() {
-#ifdef MACOS_ENABLED
-	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceApple);
-#endif
 }
 
 void unregister_core_macos_api() {

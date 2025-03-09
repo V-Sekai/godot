@@ -43,8 +43,6 @@ static Ref<ImageLoaderPNG> image_loader_png;
 static Ref<ResourceSaverPNG> resource_saver_png;
 
 void register_core_driver_types() {
-	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurface)
-
 	image_loader_png.instantiate();
 	ImageLoader::add_image_format_loader(image_loader_png);
 
