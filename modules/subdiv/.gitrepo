@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-subdiv.git
+	branch = main
+	commit = 9b0c7e36c52ee931b95e406bb345009f073eed17
+	parent = e2d9f70a6e1ecaba5fa1a36a5c5c8689a0da10b0
+	method = merge
+	cmdver = 0.4.9
