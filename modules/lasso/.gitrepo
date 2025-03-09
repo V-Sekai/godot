@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/lasso.git
+	branch = main
+	commit = afa87b26b0b376f07798349791439e51b634aa42
+	parent = 988695df6aab27e26cab776026bdbbd7af0c0949
+	method = merge
+	cmdver = 0.4.9
