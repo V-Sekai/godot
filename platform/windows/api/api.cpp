@@ -30,11 +30,6 @@
 
 #include "api.h"
 
-#ifdef WINDOWS_ENABLED
-#include "core/object/class_db.h"
-#include "platform/windows/rendering_native_surface_windows.h"
-#endif
-
 void register_core_windows_api() {
 }
 
