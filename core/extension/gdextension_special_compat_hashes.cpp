@@ -751,7 +751,7 @@ void GDExtensionSpecialCompatHashes::initialize() {
 		{ "canvas_item_add_multimesh", 1541595251, 2131855138 },
 		{ "canvas_item_add_animation_slice", 4107531031, 2646834499 },
 		{ "canvas_item_set_canvas_group_mode", 41973386, 3973586316 },
-		{ "set_boot_image", 2244367877, 3759744527 },
+		{ "set_boot_image", 2244367877, 4241564265 },
 #ifdef REAL_T_IS_DOUBLE
 		{ "viewport_attach_to_screen", 1410474027, 2248302004 },
 		{ "canvas_item_set_custom_rect", 2180266943, 1134449082 },
