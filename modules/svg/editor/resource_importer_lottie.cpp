@@ -90,7 +90,7 @@ Ref<Image> lottie_to_sprite_sheet(Ref<JSON> p_json, float p_begin, float p_end, 
 		lottie_str = JSON::stringify(p_json->get_data(), "", false);
 	}
 
-	res = picture->load(lottie_str.utf8(), lottie_str.utf8().size(), "lottie");
+	res = picture->load(lottie_str.utf8().get_data(), lottie_str.utf8().size(), true);
 	ERR_FAIL_COND_V_MSG(res != tvg::Result::Success, Ref<Image>(), "Failed to load Lottie.");
 
 	float origin_width, origin_height;
