@@ -315,9 +315,11 @@ static void _buildLayer(jerry_value_t context, float frameNo, LottieLayer* layer
     //marker.nearestKey(t)
     //marker.numKeys
 
-    auto name = jerry_string_sz(layer->name);
-    jerry_object_set_sz(context, EXP_NAME, name);
-    jerry_value_free(name);
+    if (layer->name) {
+        auto name = jerry_string_sz(layer->name);
+        jerry_object_set_sz(context, EXP_NAME, name);
+        jerry_value_free(name);
+    }
 
     auto toComp = jerry_function_external(_toComp);
     jerry_object_set_sz(context, "toComp", toComp);
@@ -484,7 +486,7 @@ static jerry_value_t _linear(const jerry_call_info_t* info, const jerry_value_t 
 static jerry_value_t _ease(const jerry_call_info_t* info, const jerry_value_t args[], const jerry_length_t argsCnt)
 {
     auto t = (float) jerry_value_as_number(args[0]);
-    t = (t < 0.5) ? (4 * t * t * t) : (1.0f - pow(-2.0f * t + 2.0f, 3) * 0.5f);
+    t = (t < 0.5f) ? (4 * t * t * t) : (1.0f - powf(-2.0f * t + 2.0f, 3) * 0.5f);
     return _interp(t, args, jerry_value_as_uint32(argsCnt));
 }
 
@@ -501,7 +503,7 @@ static jerry_value_t _easeIn(const jerry_call_info_t* info, const jerry_value_t 
 static jerry_value_t _easeOut(const jerry_call_info_t* info, const jerry_value_t args[], const jerry_length_t argsCnt)
 {
     auto t = (float) jerry_value_as_number(args[0]);
-    t = 1.0f - pow(1.0f - t, 3);
+    t = 1.0f - powf(1.0f - t, 3);
     return _interp(t, args, jerry_value_as_uint32(argsCnt));
 }
 
@@ -1276,9 +1278,11 @@ void LottieExpressions::buildComp(LottieComposition* comp, float frameNo, Lottie
     //bgColor
     //pixelAspect
 
-    auto name = jerry_string((jerry_char_t*)comp->name, strlen(comp->name), JERRY_ENCODING_UTF8);
-    jerry_object_set_sz(thisComp, EXP_NAME, name);
-    jerry_value_free(name);
+    if (comp->name) {
+        auto name = jerry_string((jerry_char_t*)comp->name, strlen(comp->name), JERRY_ENCODING_UTF8);
+        jerry_object_set_sz(thisComp, EXP_NAME, name);
+        jerry_value_free(name);
+    }
 }
 
 
