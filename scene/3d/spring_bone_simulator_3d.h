@@ -176,6 +176,7 @@ protected:
 	void _notification(int p_what);
 
 	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
+	virtual void _validate_bone_names() override;
 
 	static void _bind_methods();
 
