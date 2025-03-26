@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-goal-task-planner.git
+	branch = main
+	commit = e187f414ff4e01c251610490df60a5ed14e851a3
+	parent = 257640da13b809b07dd480104749c27427dd7e82
+	method = merge
+	cmdver = 0.4.9
