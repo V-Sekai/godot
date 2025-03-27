@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef LASSO_H
-#define LASSO_H
+#pragma once
 #ifndef _3D_DISABLED
 
 #include "core/object/object.h"
@@ -91,4 +90,3 @@ public:
 };
 
 #endif
-#endif // LASSO_H
