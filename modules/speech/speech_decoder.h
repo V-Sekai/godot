@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SPEECH_DECODER_H
-#define SPEECH_DECODER_H
+#pragma once
 
 #include "core/object/ref_counted.h"
 
@@ -51,5 +50,3 @@ public:
 			const int p_pcm_output_buffer_size,
 			const int p_buffer_frame_count);
 };
-
-#endif // SPEECH_DECODER_H
