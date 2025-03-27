@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef FBX_DOCUMENT_EXTENSION_CONVERT_IMPORTER_MESH_H
-#define FBX_DOCUMENT_EXTENSION_CONVERT_IMPORTER_MESH_H
+#pragma once
 
 #include "modules/gltf/extensions/gltf_document_extension.h"
 #include "modules/gltf/gltf_defines.h"
@@ -43,5 +42,3 @@ protected:
 public:
 	Error import_post(Ref<GLTFState> p_state, Node *p_root) override;
 };
-
-#endif // FBX_DOCUMENT_EXTENSION_CONVERT_IMPORTER_MESH_H
