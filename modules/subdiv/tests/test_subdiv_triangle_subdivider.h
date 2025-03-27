@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TEST_SUBDIV_TRIANGLE_SUBDIVIDER_H
-#define TEST_SUBDIV_TRIANGLE_SUBDIVIDER_H
+#pragma once
 
 #include "tests/test_macros.h"
 
@@ -64,5 +63,3 @@
 // 	CHECK(result_vertex_array.size() != 0);
 // 	CHECK(result_index_array.size() % 3 == 0);
 // }
-
-#endif // TEST_SUBDIV_TRIANGLE_SUBDIVIDER_H

@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SUBDIV_CONVERTER_H
-#define SUBDIV_CONVERTER_H
+#pragma once
 
 #include "core/object/ref_counted.h"
 
@@ -56,5 +55,3 @@ public:
 
 	SubdivConverter();
 };
-
-#endif // SUBDIV_CONVERTER_H

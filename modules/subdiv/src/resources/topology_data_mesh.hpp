@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TOPOLOGY_DATA_MESH_HPP
-#define TOPOLOGY_DATA_MESH_HPP
+#pragma once
 
 #include "core/io/resource.h"
 #include "scene/resources/material.h"
@@ -134,4 +133,3 @@ public:
 };
 
 VARIANT_ENUM_CAST(TopologyDataMesh::ArrayType);
-#endif // TOPOLOGY_DATA_MESH_HPP

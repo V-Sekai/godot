@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SUBDIVISION_BAKER_HPP
-#define SUBDIVISION_BAKER_HPP
+#pragma once
 
 #include "core/object/ref_counted.h"
 #include "scene/resources/3d/importer_mesh.h"
@@ -51,5 +50,3 @@ public:
 	SubdivisionBaker();
 	~SubdivisionBaker();
 };
-
-#endif // SUBDIVISION_BAKER_HPP

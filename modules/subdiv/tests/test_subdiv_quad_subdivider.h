@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TEST_SUBDIV_QUAD_SUBDIVIDER_H
-#define TEST_SUBDIV_QUAD_SUBDIVIDER_H
+#pragma once
 
 #include "core/io/resource_loader.h"
 #include "scene/resources/material.h"
@@ -211,5 +210,3 @@ TEST_CASE("[Subdiv] compare with subdivided") {
 // 	PackedInt32Array expected_index_array = create_packed_int32_array(expected_index_arr, 6);
 // 	CHECK_EQ(expected_index_array, result_index_array);
 // }
-
-#endif // TEST_SUBDIV_QUAD_SUBDIVIDER_H

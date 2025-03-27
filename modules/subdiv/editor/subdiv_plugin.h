@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SUBDIV_PLUGIN_H
-#define SUBDIV_PLUGIN_H
+#pragma once
 
 #include "editor/import/editor_import_plugin.h"
 #include "editor/plugins/editor_plugin.h"
@@ -75,5 +74,3 @@ public:
 	virtual Error import(ResourceUID::ID p_source_id, const String &p_source_file, const String &p_save_path, const HashMap<StringName, Variant> &p_options, List<String> *r_platform_variants, List<String> *r_gen_files, Variant *r_metadata = nullptr) override;
 	GodotSubdivImporter();
 };
-
-#endif // SUBDIV_PLUGIN_H

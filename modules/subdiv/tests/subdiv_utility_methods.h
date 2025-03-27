@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SUBDIV_UTILITY_METHODS_H
-#define SUBDIV_UTILITY_METHODS_H
+#pragma once
 
 #include "core/variant/typed_array.h"
 
@@ -66,5 +65,3 @@ PackedInt32Array create_packed_int32_array(int32_t arr[], int size) {
 	}
 	return packed_array;
 }
-
-#endif // SUBDIV_UTILITY_METHODS_H

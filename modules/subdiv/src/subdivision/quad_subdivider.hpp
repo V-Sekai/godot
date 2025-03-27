@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef QUAD_SUBDIVIDER_HPP
-#define QUAD_SUBDIVIDER_HPP
+#pragma once
 
 #include "core/object/ref_counted.h"
 
@@ -50,5 +49,3 @@ protected:
 	virtual int32_t _get_vertices_per_face_count() const override;
 	virtual Array _get_direct_triangle_arrays() const override;
 };
-
-#endif // QUAD_SUBDIVIDER_HPP

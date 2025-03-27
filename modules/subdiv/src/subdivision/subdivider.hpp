@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef SUBDIVIDER_HPP
-#define SUBDIVIDER_HPP
+#pragma once
 
 #include "core/object/ref_counted.h"
 
@@ -92,5 +91,3 @@ public:
 	Subdivider();
 	~Subdivider();
 };
-
-#endif // SUBDIVIDER_HPP
