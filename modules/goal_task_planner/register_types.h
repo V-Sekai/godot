@@ -28,12 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GOAL_TASK_PLANNER_REGISTER_TYPES_H
-#define GOAL_TASK_PLANNER_REGISTER_TYPES_H
+#pragma once
 
 #include "modules/register_module_types.h"
 
 void initialize_goal_task_planner_module(ModuleInitializationLevel p_level);
 void uninitialize_goal_task_planner_module(ModuleInitializationLevel p_level);
-
-#endif // GOAL_TASK_PLANNER_REGISTER_TYPES_H

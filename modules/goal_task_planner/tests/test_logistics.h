@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TEST_LOGISTICS_H
-#define TEST_LOGISTICS_H
+#pragma once
 
 // SPDX-FileCopyrightText: 2021 University of Maryland
 // SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -621,5 +620,3 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal" * doctest::skip(true)) {
 
 } // namespace TestLogistics
 #endif // TOOLS_ENABLED
-
-#endif // TEST_LOGISTICS_H

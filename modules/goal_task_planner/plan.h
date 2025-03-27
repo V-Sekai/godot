@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef PLAN_H
-#define PLAN_H
+#pragma once
 
 // SPDX-FileCopyrightText: 2021 University of Maryland
 // SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -81,5 +80,3 @@ public:
 protected:
 	static void _bind_methods();
 };
-
-#endif // PLAN_H
