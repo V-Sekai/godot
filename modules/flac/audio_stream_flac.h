@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef AUDIO_STREAM_FLAC_H
-#define AUDIO_STREAM_FLAC_H
+#pragma once
 
 #include "core/io/resource_loader.h"
 #include "scene/resources/texture.h"
@@ -131,5 +130,3 @@ public:
 	AudioStreamFLAC();
 	virtual ~AudioStreamFLAC();
 };
-
-#endif
