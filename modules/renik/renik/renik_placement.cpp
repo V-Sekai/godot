@@ -354,7 +354,6 @@ void RenIKPlacement::loop_foot(Transform3D &r_step, Transform3D &r_stand,
 		}
 		case LOOP_LIFT: {
 			float step_distance = r_step.origin.distance_to(p_ground_position) / p_leg_length;
-			Transform3D lean_offset;
 			float tip_toe_angle = step_distance * p_gait.tip_toe_distance_scalar +
 					horizontal_scaling * p_gait.tip_toe_speed_scalar;
 			tip_toe_angle = tip_toe_angle > p_gait.tip_toe_angle_max
