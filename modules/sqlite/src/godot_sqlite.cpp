@@ -84,7 +84,9 @@ Array fast_parse_row(sqlite3_stmt *stmt) {
 
 SQLiteQuery::SQLiteQuery() {}
 
-SQLiteQuery::~SQLiteQuery() { finalize(); }
+SQLiteQuery::~SQLiteQuery() {
+	finalize();
+}
 
 void SQLiteQuery::init(SQLite *p_db, const String &p_query) {
 	db = p_db;
@@ -92,7 +94,9 @@ void SQLiteQuery::init(SQLite *p_db, const String &p_query) {
 	stmt = nullptr;
 }
 
-bool SQLiteQuery::is_ready() const { return stmt != nullptr; }
+bool SQLiteQuery::is_ready() const {
+	return stmt != nullptr;
+}
 
 String SQLiteQuery::get_last_error_message() const {
 	ERR_FAIL_COND_V(db == nullptr, "Database is undefined.");

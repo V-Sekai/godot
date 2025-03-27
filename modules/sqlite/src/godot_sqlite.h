@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GODOT_SQLITE_H
-#define GODOT_SQLITE_H
+#pragma once
 
 #include "core/object/ref_counted.h"
 #include "core/templates/local_vector.h"
@@ -103,4 +102,3 @@ public:
 
 	String get_last_error_message() const;
 };
-#endif // GODOT_SQLITE_H
