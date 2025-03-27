@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENIK_PLACEMENT_H
-#define RENIK_PLACEMENT_H
+#pragma once
 
 #include "servers/physics_server_3d.h"
 #include <core/config/engine.h>
@@ -307,5 +306,3 @@ private:
 	int get_loop_state(float p_loop_state_scaling, float p_loop_progress,
 			float &r_loop_state_progress, Gait p_gait);
 };
-
-#endif // RENIK_PLACEMENT_H

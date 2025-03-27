@@ -883,20 +883,25 @@ bool RenIKPlacement::is_balanced(Transform3D p_left, Transform3D p_right) {
 			   // and the right are on the same side of the center
 }
 
-void RenIKPlacement::set_falling(bool p_falling) { fall_override = p_falling; }
+void RenIKPlacement::set_falling(bool p_falling) {
+	fall_override = p_falling;
+}
 
 void RenIKPlacement::set_collision_mask(uint32_t p_mask) {
 	collision_mask = p_mask;
 }
 
-uint32_t RenIKPlacement::get_collision_mask() const { return collision_mask; }
+uint32_t RenIKPlacement::get_collision_mask() const {
+	return collision_mask;
+}
 
 void RenIKPlacement::set_collision_mask_bit(int p_bit, bool p_value) {
 	uint32_t mask = get_collision_mask();
-	if (p_value)
+	if (p_value) {
 		mask |= 1 << p_bit;
-	else
+	} else {
 		mask &= ~(1 << p_bit);
+	}
 	set_collision_mask(mask);
 }
 

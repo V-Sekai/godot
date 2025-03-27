@@ -1394,9 +1394,13 @@ void RenIK::enable_solve_ik_every_frame(bool automatically_update_ik) {
 	set_process_internal(automatically_update_ik);
 }
 
-void RenIK::enable_hip_placement(bool enabled) { hip_placement = enabled; }
+void RenIK::enable_hip_placement(bool enabled) {
+	hip_placement = enabled;
+}
 
-void RenIK::enable_foot_placement(bool enabled) { foot_placement = enabled; }
+void RenIK::enable_foot_placement(bool enabled) {
+	foot_placement = enabled;
+}
 
 void RenIK::update_ik() {
 	// Saracen: since the foot placement is updated in the physics frame,
@@ -1990,7 +1994,9 @@ Vector<BoneId> RenIK::calculate_bone_chain(BoneId root, BoneId leaf) {
 	return chain;
 }
 
-bool RenIK::get_live_preview() { return live_preview; }
+bool RenIK::get_live_preview() {
+	return live_preview;
+}
 void RenIK::set_live_preview(bool p_enable) {
 	live_preview = p_enable;
 }
@@ -2338,30 +2344,42 @@ void RenIK::set_upper_leg_right_bone(BoneId p_bone) {
 			: Vector3();
 }
 
-int64_t RenIK::get_hip_bone() { return hip; }
-int64_t RenIK::get_head_bone() { return head; }
-int64_t RenIK::get_hand_left_bone() { return limb_arm_left->get_leaf_bone(); }
+int64_t RenIK::get_hip_bone() {
+	return hip;
+}
+int64_t RenIK::get_head_bone() {
+	return head;
+}
+int64_t RenIK::get_hand_left_bone() {
+	return limb_arm_left->get_leaf_bone();
+}
 int64_t RenIK::get_lower_arm_left_bone() {
 	return limb_arm_left->get_lower_bone();
 }
 int64_t RenIK::get_upper_arm_left_bone() {
 	return limb_arm_left->get_upper_bone();
 }
-int64_t RenIK::get_hand_right_bone() { return limb_arm_right->get_leaf_bone(); }
+int64_t RenIK::get_hand_right_bone() {
+	return limb_arm_right->get_leaf_bone();
+}
 int64_t RenIK::get_lower_arm_right_bone() {
 	return limb_arm_right->get_lower_bone();
 }
 int64_t RenIK::get_upper_arm_right_bone() {
 	return limb_arm_right->get_upper_bone();
 }
-int64_t RenIK::get_foot_left_bone() { return limb_leg_left->get_leaf_bone(); }
+int64_t RenIK::get_foot_left_bone() {
+	return limb_leg_left->get_leaf_bone();
+}
 int64_t RenIK::get_lower_leg_left_bone() {
 	return limb_leg_left->get_lower_bone();
 }
 int64_t RenIK::get_upper_leg_left_bone() {
 	return limb_leg_left->get_upper_bone();
 }
-int64_t RenIK::get_foot_right_bone() { return limb_leg_right->get_leaf_bone(); }
+int64_t RenIK::get_foot_right_bone() {
+	return limb_leg_right->get_leaf_bone();
+}
 int64_t RenIK::get_lower_leg_right_bone() {
 	return limb_leg_right->get_lower_bone();
 }
@@ -2478,7 +2496,9 @@ String RenIK::get_upper_leg_right_bone_name() {
 	return l_upper_right_leg_bone_name;
 }
 
-NodePath RenIK::get_head_target_path() { return head_target_path; }
+NodePath RenIK::get_head_target_path() {
+	return head_target_path;
+}
 void RenIK::set_head_target_path(NodePath p_path) {
 	head_target_path = p_path;
 	if (is_inside_tree()) {
@@ -2489,7 +2509,9 @@ void RenIK::set_head_target_path(NodePath p_path) {
 	}
 }
 
-NodePath RenIK::get_hand_left_target_path() { return hand_left_target_path; }
+NodePath RenIK::get_hand_left_target_path() {
+	return hand_left_target_path;
+}
 
 void RenIK::set_hand_left_target_path(NodePath p_path) {
 	hand_left_target_path = p_path;
@@ -2501,7 +2523,9 @@ void RenIK::set_hand_left_target_path(NodePath p_path) {
 	}
 }
 
-NodePath RenIK::get_hand_right_target_path() { return hand_right_target_path; }
+NodePath RenIK::get_hand_right_target_path() {
+	return hand_right_target_path;
+}
 
 void RenIK::set_hand_right_target_path(NodePath p_path) {
 	hand_right_target_path = p_path;
@@ -2513,7 +2537,9 @@ void RenIK::set_hand_right_target_path(NodePath p_path) {
 	}
 }
 
-NodePath RenIK::get_hip_target_path() { return hip_target_path; }
+NodePath RenIK::get_hip_target_path() {
+	return hip_target_path;
+}
 
 void RenIK::set_hip_target_path(NodePath p_path) {
 	hip_target_path = p_path;
@@ -2525,7 +2551,9 @@ void RenIK::set_hip_target_path(NodePath p_path) {
 	}
 }
 
-NodePath RenIK::get_foot_left_target_path() { return foot_left_target_path; }
+NodePath RenIK::get_foot_left_target_path() {
+	return foot_left_target_path;
+}
 
 void RenIK::set_foot_left_target_path(NodePath p_path) {
 	foot_left_target_path = p_path;
@@ -2537,7 +2565,9 @@ void RenIK::set_foot_left_target_path(NodePath p_path) {
 	}
 }
 
-NodePath RenIK::get_foot_right_target_path() { return foot_right_target_path; }
+NodePath RenIK::get_foot_right_target_path() {
+	return foot_right_target_path;
+}
 
 void RenIK::set_foot_right_target_path(NodePath p_path) {
 	foot_right_target_path = p_path;
@@ -2704,7 +2734,9 @@ void RenIK::set_leg_target_rotation_influence(float influence) {
 	limb_leg_right->target_rotation_influence = influence / 100.0;
 }
 
-Vector3 RenIK::get_spine_curve() { return spine_chain->chain_curve_direction; }
+Vector3 RenIK::get_spine_curve() {
+	return spine_chain->chain_curve_direction;
+}
 void RenIK::set_spine_curve(Vector3 direction) {
 	spine_chain->chain_curve_direction = direction;
 }
@@ -2720,7 +2752,9 @@ float RenIK::get_lower_spine_stiffness() {
 void RenIK::set_lower_spine_stiffness(float influence) {
 	spine_chain->set_root_stiffness(skeleton, influence / 100.0);
 }
-float RenIK::get_spine_twist() { return spine_chain->get_twist() * 100.0; }
+float RenIK::get_spine_twist() {
+	return spine_chain->get_twist() * 100.0;
+}
 void RenIK::set_spine_twist(float influence) {
 	spine_chain->set_twist(skeleton, influence / 100.0);
 }
@@ -2731,7 +2765,9 @@ void RenIK::set_spine_twist_start(float influence) {
 	spine_chain->set_twist_start(skeleton, influence / 100.0);
 }
 
-float RenIK::get_shoulder_influence() { return shoulder_influence * 100.0; }
+float RenIK::get_shoulder_influence() {
+	return shoulder_influence * 100.0;
+}
 void RenIK::set_shoulder_influence(float influence) {
 	shoulder_influence = influence / 100;
 }
@@ -2767,7 +2803,9 @@ void RenIK::set_shoulder_pole_offset(Vector3 euler) {
 }
 
 // Placement
-void RenIK::set_falling(bool p_value) { placement.set_falling(p_value); }
+void RenIK::set_falling(bool p_value) {
+	placement.set_falling(p_value);
+}
 
 void RenIK::set_collision_mask(uint32_t p_mask) {
 	placement.set_collision_mask(p_mask);

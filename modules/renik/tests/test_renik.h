@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TEST_RENIK_H
-#define TEST_RENIK_H
+#pragma once
 
 #include "core/math/basis.h"
 #include "tests/test_macros.h"
@@ -83,5 +82,3 @@ TEST_CASE("[Modules][RENIK] math") {
 }
 
 } // namespace TestRenIK
-
-#endif // TEST_RENIK_H
