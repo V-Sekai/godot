@@ -1078,6 +1078,7 @@ void OS_MacOS_NSApp::start_main() {
 			ret = Main::start();
 		}
 		if (ret == EXIT_SUCCESS) {
+			godot_init_profiler();
 			if (main_loop) {
 				@autoreleasepool {
 					main_loop->initialize();
@@ -1194,6 +1195,7 @@ void OS_MacOS_Headless::run() {
 	}
 
 	if (ret == EXIT_SUCCESS && main_loop) {
+		godot_init_profiler();
 		@autoreleasepool {
 			main_loop->initialize();
 		}
@@ -1254,6 +1256,8 @@ void OS_MacOS_Embedded::run() {
 	}
 
 	if (ds && ret == EXIT_SUCCESS && main_loop) {
+		godot_init_profiler();
+		
 		@autoreleasepool {
 			main_loop->initialize();
 		}
