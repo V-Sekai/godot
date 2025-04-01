@@ -32,6 +32,7 @@
 
 #include "core/io/certs_compressed.gen.h"
 #include "core/io/dir_access.h"
+#include "core/profiling.h"
 #ifdef SDL_ENABLED
 #include "drivers/sdl/joypad_sdl.h"
 #endif
@@ -968,6 +969,8 @@ String OS_LinuxBSD::get_system_dir(SystemDir p_dir, bool p_shared_storage) const
 }
 
 void OS_LinuxBSD::run() {
+	GodotProfileFrameMark;
+	GodotProfileZone("OS_LinuxBSD::run");
 	if (!main_loop) {
 		return;
 	}

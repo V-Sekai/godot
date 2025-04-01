@@ -36,11 +36,15 @@
 
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
+<<<<<<< HEAD
 #include "modules/modules_enabled.gen.h"
 
 #ifdef MODULE_GLSLANG_ENABLED
 #include "modules/glslang/shader_compile.h"
 #endif
+=======
+#include "core/profiling.h"
+>>>>>>> b8641431d5 (Add some important profiling hooks.)
 
 #define FORCE_SEPARATE_PRESENT_QUEUE 0
 #define PRINT_FRAMEBUFFER_FORMAT 0
@@ -6283,12 +6287,16 @@ String RenderingDevice::get_device_pipeline_cache_uuid() const {
 void RenderingDevice::swap_buffers(bool p_present) {
 	ERR_RENDER_THREAD_GUARD();
 
+	GodotProfileZoneGroupedFirst(_profile_zone, "_end_frame");
 	_end_frame();
+
+	GodotProfileZoneGrouped(_profile_zone, "_execute_frame");
 	_execute_frame(p_present);
 
 	// Advance to the next frame and begin recording again.
 	frames->set_frame_index((frames->get_frame_index() + 1) % frames->get_number_of_frames());
 
+	GodotProfileZoneGrouped(_profile_zone, "_begin_frame");
 	_begin_frame(true);
 }
 
@@ -6416,28 +6424,35 @@ uint64_t RenderingDevice::get_memory_usage(MemoryType p_type) const {
 }
 
 void RenderingDevice::_begin_frame(bool p_presented) {
+	GodotProfileZoneGroupedFirst(_profile_zone, "_stall_for_frame");
 	// Before writing to this frame, wait for it to be finished.
 	_stall_for_frame(frames->get_frame_index());
 
 	if (command_pool_reset_enabled) {
+		GodotProfileZoneGrouped(_profile_zone, "driver->command_pool_reset");	
 		bool reset = driver->command_pool_reset(frames->get_current_frame().command_pool);
 		ERR_FAIL_COND(!reset);
 	}
 
 	if (p_presented) {
+		GodotProfileZoneGrouped(_profile_zone, "update_perf_report");
 		update_perf_report();
 		driver->linear_uniform_set_pools_reset(frames->get_frame_index());
 	}
 
 	// Begin recording on the frame's command buffers.
+	GodotProfileZoneGrouped(_profile_zone, "driver->begin_segment");
 	driver->begin_segment(frames->get_frame_index(), frames->get_frames_drawn());
 	frames->increment_frames_drawn();
+	GodotProfileZoneGrouped(_profile_zone, "driver->command_buffer_begin");
 	driver->command_buffer_begin(frames->get_current_frame().command_buffer);
 
 	// Reset the graph.
+	GodotProfileZoneGrouped(_profile_zone, "draw_graph.begin");
 	draw_graph.begin();
 
 	// Erase pending resources.
+	GodotProfileZoneGrouped(_profile_zone, "_free_pending_resources");
 	_free_pending_resources(frames->get_frame_index());
 
 	// Advance staging buffers if used.
@@ -6474,11 +6489,16 @@ void RenderingDevice::_end_frame() {
 
 	// The command buffer must be copied into a stack variable as the driver workarounds can change the command buffer in use.
 	RDD::CommandBufferID command_buffer = frames->get_current_frame().command_buffer;
+	GodotProfileZoneGroupedFirst(_profile_zone, "_submit_transfer_workers");
 	_submit_transfer_workers(command_buffer);
+	GodotProfileZoneGrouped(_profile_zone, "_submit_transfer_barriers");
 	_submit_transfer_barriers(command_buffer);
 
+	GodotProfileZoneGrouped(_profile_zone, "draw_graph.end");
 	draw_graph.end(RENDER_GRAPH_REORDER, RENDER_GRAPH_FULL_BARRIERS, command_buffer, frames->get_current_frame().command_buffer_pool);
+	GodotProfileZoneGrouped(_profile_zone, "driver->command_buffer_end");
 	driver->command_buffer_end(command_buffer);
+	GodotProfileZoneGrouped(_profile_zone, "driver->end_segment");
 	driver->end_segment();
 }
 
@@ -6571,11 +6591,13 @@ void RenderingDevice::_stall_for_frame(uint32_t p_frame) {
 	thread_local PackedByteArray packed_byte_array;
 
 	if (frames->get_frame(p_frame).fence_signaled) {
+		GodotProfileZoneGroupedFirst(_profile_zone, "driver->fence_wait");
 		frames->frame_wait(p_frame);
 		frames->get_frame(p_frame).fence_signaled = false;
 
 		// Flush any pending requests for asynchronous buffer downloads.
 		if (!frames->get_frame(p_frame).download_buffer_get_data_requests.is_empty()) {
+			GodotProfileZoneGrouped(_profile_zone, "flush asynchronous buffer downloads");
 			for (uint32_t i = 0; i < frames->get_frame(p_frame).download_buffer_get_data_requests.size(); i++) {
 				const BufferGetDataRequest &request = frames->get_frame(p_frame).download_buffer_get_data_requests[i];
 				packed_byte_array.resize(request.size);
@@ -6600,6 +6622,7 @@ void RenderingDevice::_stall_for_frame(uint32_t p_frame) {
 
 		// Flush any pending requests for asynchronous texture downloads.
 		if (!frames->get_frame(p_frame).download_texture_get_data_requests.is_empty()) {
+			GodotProfileZoneGrouped(_profile_zone, "flush asynchronous texture downloads");
 			uint32_t pitch_step = driver->api_trait_get(RDD::API_TRAIT_TEXTURE_DATA_ROW_PITCH_STEP);
 			for (uint32_t i = 0; i < frames->get_frame(p_frame).download_texture_get_data_requests.size(); i++) {
 				const TextureGetDataRequest &request = frames->get_frame(p_frame).download_texture_get_data_requests[i];
@@ -6647,6 +6670,7 @@ void RenderingDevice::_stall_for_frame(uint32_t p_frame) {
 				request.callback.call(packed_byte_array);
 			}
 
+			GodotProfileZoneGrouped(_profile_zone, "clear buffers");
 			frames->get_frame(p_frame).download_texture_staging_buffers.clear();
 			frames->get_frame(p_frame).download_buffer_texture_copy_regions.clear();
 			frames->get_frame(p_frame).download_texture_mipmap_offsets.clear();
