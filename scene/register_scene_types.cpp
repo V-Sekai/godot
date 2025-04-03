@@ -212,8 +212,10 @@
 #include "scene/3d/audio_stream_player_3d.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/ccd_ik_3d.h"
 #include "scene/3d/cpu_particles_3d.h"
 #include "scene/3d/decal.h"
+#include "scene/3d/fabr_ik_3d.h"
 #include "scene/3d/fog_volume.h"
 #include "scene/3d/gpu_particles_3d.h"
 #include "scene/3d/gpu_particles_collision_3d.h"
@@ -223,6 +225,7 @@
 #include "scene/3d/lightmap_gi.h"
 #include "scene/3d/lightmap_probe.h"
 #include "scene/3d/look_at_modifier_3d.h"
+#include "scene/3d/many_bone_ik_3d.h"
 #include "scene/3d/marker_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/multimesh_instance_3d.h"
@@ -331,6 +334,11 @@
 #include "scene/resources/3d/convex_polygon_shape_3d.h"
 #include "scene/resources/3d/cylinder_shape_3d.h"
 #include "scene/resources/3d/height_map_shape_3d.h"
+#include "scene/resources/3d/importer_mesh.h"
+#include "scene/resources/3d/joint_limitation_3d.h"
+#include "scene/resources/3d/mesh_library.h"
+#include "scene/resources/3d/navigation_mesh_source_geometry_data_3d.h"
+#include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/3d/separation_ray_shape_3d.h"
 #include "scene/resources/3d/sphere_shape_3d.h"
 #include "scene/resources/3d/world_boundary_shape_3d.h"
@@ -634,7 +642,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(RootMotionView);
 	GDREGISTER_VIRTUAL_CLASS(SkeletonModifier3D);
 	GDREGISTER_CLASS(RetargetModifier3D);
-
+	GDREGISTER_VIRTUAL_CLASS(JointLimitation3D);
 	OS::get_singleton()->yield(); // may take time to init
 
 #ifndef PHYSICS_3D_DISABLED
@@ -643,6 +651,9 @@ void register_scene_types() {
 	GDREGISTER_CLASS(SpringBoneCollisionSphere3D);
 	GDREGISTER_CLASS(SpringBoneCollisionCapsule3D);
 	GDREGISTER_CLASS(SpringBoneCollisionPlane3D);
+	GDREGISTER_VIRTUAL_CLASS(ManyBoneIK3D);
+	GDREGISTER_CLASS(FABRIK3D);
+	GDREGISTER_CLASS(CCDIK3D);
 
 	GDREGISTER_ABSTRACT_CLASS(CollisionObject3D);
 	GDREGISTER_ABSTRACT_CLASS(PhysicsBody3D);
