@@ -52,7 +52,7 @@ Ref<JSON> read_lottie_json(const String &p_path) {
 		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to open dotLottie: %s.", error_names[err]));
 		String manifest_str;
 		PackedByteArray manifest_data = zip_reader->read_file("manifest.json", true);
-		err = manifest_str.parse_utf8(reinterpret_cast<const char *>(manifest_data.ptr()), manifest_data.size());
+		err = manifest_str.append_utf8(reinterpret_cast<const char *>(manifest_data.ptr()), manifest_data.size());
 		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to parse dotLottie manifest: %s.", error_names[err]));
 		Ref<JSON> manifest;
 		manifest.instantiate();
@@ -70,7 +70,7 @@ Ref<JSON> read_lottie_json(const String &p_path) {
 		ERR_FAIL_COND_V_MSG(anim_file.is_empty(), nullptr, "Animations in dotLottie manifest don't exist.");
 		PackedByteArray lottie_data = zip_reader->read_file(anim_file, true);
 		lottie_str.clear();
-		err = lottie_str.parse_utf8(reinterpret_cast<const char *>(lottie_data.ptr()), lottie_data.size());
+		err = lottie_str.append_utf8(reinterpret_cast<const char *>(lottie_data.ptr()), lottie_data.size());
 		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to parse lottie animation %s: %s.", anim_file, error_names[err]));
 		err = lottie_json->parse(lottie_str, true);
 		ERR_FAIL_COND_V_MSG(err != OK, nullptr, vformat("Failed to parse lottie animation %s: %s.", anim_file, error_names[err]));
