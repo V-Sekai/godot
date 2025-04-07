@@ -81,6 +81,13 @@ class DisplayServerEmbedded : public DisplayServer {
 	WindowID current_window = INVALID_WINDOW_ID;
 #endif
 
+	Point2i mouse_position;
+	BitField<MouseButtonMask> mouse_button_state;
+
+	static inline Callable screen_get_dpi_callback;
+	static inline Callable screen_get_size_callback;
+	static inline Callable screen_get_scale_callback;
+
 	DisplayServerEmbedded(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, DisplayServer::VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, Error &r_error);
 	~DisplayServerEmbedded();
 
@@ -93,6 +100,9 @@ public:
 	static DisplayServerEmbedded *get_singleton();
 
 	static void set_native_surface(Ref<RenderingNativeSurface> p_native_handle);
+	static void set_screen_get_dpi_callback(Callable p_callback);
+	static void set_screen_get_size_callback(Callable p_callback);
+	static void set_screen_get_scale_callback(Callable p_callback);
 
 	static void register_embedded_driver();
 	static DisplayServer *create_func(const String &p_rendering_driver, WindowMode p_mode, DisplayServer::VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, int64_t p_parent_window, Error &r_error);
@@ -135,6 +145,7 @@ public:
 	virtual int get_primary_screen() const override;
 	virtual Point2i screen_get_position(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	virtual Size2i screen_get_size(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
+	virtual float screen_get_scale(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	virtual Rect2i screen_get_usable_rect(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	virtual int screen_get_dpi(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;
 	virtual float screen_get_refresh_rate(int p_screen = SCREEN_OF_MAIN_WINDOW) const override;

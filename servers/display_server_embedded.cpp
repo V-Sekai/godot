@@ -50,9 +50,24 @@ void DisplayServerEmbedded::set_native_surface(Ref<RenderingNativeSurface> p_nat
 	native_surface = p_native_surface;
 }
 
+void DisplayServerEmbedded::set_screen_get_dpi_callback(Callable p_callback) {
+	screen_get_dpi_callback = p_callback;
+}
+
+void DisplayServerEmbedded::set_screen_get_size_callback(Callable p_callback) {
+	screen_get_size_callback = p_callback;
+}
+
+void DisplayServerEmbedded::set_screen_get_scale_callback(Callable p_callback) {
+	screen_get_scale_callback = p_callback;
+}
+
 void DisplayServerEmbedded::_bind_methods() {
 	ClassDB::bind_static_method("DisplayServerEmbedded", D_METHOD("set_native_surface", "native_surface"), &DisplayServerEmbedded::set_native_surface);
 	ClassDB::bind_static_method("DisplayServerEmbedded", D_METHOD("get_singleton"), &DisplayServerEmbedded::get_singleton);
+	ClassDB::bind_static_method("DisplayServerEmbedded", D_METHOD("set_screen_get_dpi_callback", "callback"), &DisplayServerEmbedded::set_screen_get_dpi_callback);
+	ClassDB::bind_static_method("DisplayServerEmbedded", D_METHOD("set_screen_get_size_callback", "callback"), &DisplayServerEmbedded::set_screen_get_size_callback);
+	ClassDB::bind_static_method("DisplayServerEmbedded", D_METHOD("set_screen_get_scale_callback", "callback"), &DisplayServerEmbedded::set_screen_get_scale_callback);
 	ClassDB::bind_method(D_METHOD("resize_window", "size", "id"), &DisplayServerEmbedded::resize_window);
 	ClassDB::bind_method(D_METHOD("set_content_scale", "content_scale"), &DisplayServerEmbedded::set_content_scale);
 	ClassDB::bind_method(D_METHOD("touch_press", "idx", "x", "y", "pressed", "double_click", "window"), &DisplayServerEmbedded::touch_press);
@@ -343,7 +358,17 @@ Point2i DisplayServerEmbedded::screen_get_position(int p_screen) const {
 }
 
 Size2i DisplayServerEmbedded::screen_get_size(int p_screen) const {
+	if (screen_get_size_callback.is_valid()) {
+		return screen_get_size_callback.call(p_screen);
+	}
 	return window_get_size(MAIN_WINDOW_ID);
+}
+
+float DisplayServerEmbedded::screen_get_scale(int p_screen) const {
+	if (screen_get_scale_callback.is_valid()) {
+		return screen_get_scale_callback.call(p_screen);
+	}
+	return DisplayServer::screen_get_scale(p_screen);
 }
 
 Rect2i DisplayServerEmbedded::screen_get_usable_rect(int p_screen) const {
@@ -351,6 +376,9 @@ Rect2i DisplayServerEmbedded::screen_get_usable_rect(int p_screen) const {
 }
 
 int DisplayServerEmbedded::screen_get_dpi(int p_screen) const {
+	if (screen_get_dpi_callback.is_valid()) {
+		return screen_get_dpi_callback.call(p_screen);
+	}
 	return 96;
 }
 
