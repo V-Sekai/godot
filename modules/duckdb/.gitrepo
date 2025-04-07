@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai-fire/godot-duckdb-module.git
+	branch = main
+	commit = ad0b314c54b2d645b2d797613e411a3fb9505303
+	parent = a210fe6dbd27cc01bffacb0ce2816e0cf303af5e
+	method = merge
+	cmdver = 0.4.9

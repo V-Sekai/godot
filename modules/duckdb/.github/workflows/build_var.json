@@ -1,0 +1,98 @@
+{
+    "targets": [
+        "template_debug",
+        "template_release"
+    ],
+    "jobs": [
+        {
+            "name": "MacOS (universal)",
+            "os": "macos-latest",
+            "platform": "macos",
+            "artifact-extension": "framework",
+            "flags": "arch=universal",
+            "skip": false,
+            "cache-name": "macos-universal",
+            "duckdb-url-name": "libduckdb-osx-universal",
+            "duckdb-lib-name": "libduckdb.dylib"            
+        },
+        {
+            "name": "Windows (x86_64, MSVC)",
+            "os": "windows-latest",
+            "platform": "windows",
+            "artifact-extension": "dll",
+            "additional-python-packages": "pywin32",
+            "cache-name": "win-x86_64-msvc",
+            "skip": true,
+            "duckdb-url-name": "libduckdb-windows-amd64",
+            "duckdb-lib-name": "duckdb"         
+        },
+        {
+            "name": "Windows (x86_64, MinGW)",
+            "os": "windows-latest",
+            "platform": "windows",
+            "artifact-extension": "dll",
+            "skip": false,
+            "flags": "use_mingw=yes",
+            "cache-name": "win-x86_64-mingw",
+            "duckdb-url-name": "libduckdb-windows-amd64",
+            "duckdb-lib-name": "duckdb"
+        },
+        {
+            "name": "Ubuntu (x86_64)",
+            "os": "ubuntu-20.04",
+            "arch": "x86_64",
+            "platform": "linux",
+            "artifact-extension": "so",
+            "skip": false,
+            "cache-name": "linux-x86_64",
+            "duckdb-url-name": "libduckdb-linux-amd64",
+            "duckdb-lib-name": "libduckdb.so"            
+        },
+        {
+            "name": "Ubuntu (arm64)",
+            "os": "ubuntu-20.04",
+            "platform": "linux",
+            "arch": "arm64",
+            "artifact-extension": "so",
+            "skip": true,
+            "cache-name": "linux-arm64",
+            "duckdb-url-name": "libduckdb-linux-aarch64",
+            "duckdb-lib-name": "libduckdb.so"            
+        },        
+        {
+            "name": "Android (x86_64)",
+            "os": "ubuntu-20.04",
+            "platform": "android",
+            "artifact-extension": "so",
+            "flags": "arch=x86_64",
+            "skip": true,
+            "cache-name": "android-x86_64"
+        },
+        {
+            "name": "Android (arm64)",
+            "os": "ubuntu-20.04",
+            "platform": "android",
+            "artifact-extension": "so",
+            "flags": "arch=arm64",
+            "skip": true,
+            "cache-name": "android-arm64"
+        },
+        {
+            "name": "iOS (arm64)",
+            "os": "macos-11",
+            "platform": "ios",
+            "artifact-extension": "dylib",
+            "flags": "arch=arm64",
+            "skip": true,
+            "cache-name": "ios-arm64"
+        },
+        {
+            "name": "Web (wasm32)",
+            "os": "ubuntu-20.04",
+            "platform": "web",
+            "skip": true,
+            "artifact-extension": "wasm",
+            "cache-name": "web-wasm32"
+        }        
+    ]
+}

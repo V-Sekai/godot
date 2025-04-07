@@ -1,0 +1,266 @@
+name: 🌈 All Builds
+on:
+  push:
+    paths:
+      - "src/**"
+      - ".github/**"
+      - "godot-cpp/**"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# Global Settings
+env:
+  PROJECT_FOLDER: .
+  TARGET_PATH: demo/addons/godot-duckdb/bin/
+  TARGET_NAME: libgdduckdb
+  VAR_PATH: .github/workflows/build_var.json
+  SCONS_CACHE: ${{ github.workspace }}/.scons-cache/
+  EM_VERSION: 3.1.39
+  EM_CACHE_FOLDER: "emsdk-cache"
+  DUCKDB_BASE_URL: https://github.com/duckdb/duckdb/releases/download/v1.2.1/
+
+jobs:
+  matrix:
+    name: Generate build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-json: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        shell: pwsh
+        # Use a small PowerShell script to generate the build matrix
+        run: "& .github/workflows/create-build-matrix.ps1"
+
+  build:
+    needs: [ matrix ]
+    name: ${{ matrix.name }} - ${{ matrix.target == 'template_debug' && 'Debug' || 'Release' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: 
+        include: ${{ fromJson(needs.matrix.outputs.matrix-json) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+
+      - name: Restore Godot build cache
+        uses: ./godot-cpp/.github/actions/godot-cache-restore
+        with:
+          cache-name: ${{ matrix.cache-name }}-${{ matrix.target }}
+        continue-on-error: true
+
+      # Use python 3.x release (works cross platform; best to keep self contained in it's own step)
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v5
+        with:
+          # Semantic version range syntax or exact version of a Python version
+          python-version: '3.x'
+          # Optional - x64 or x86 architecture, defaults to x64
+          architecture: 'x64'
+
+      - name: Android dependencies
+        if: ${{ matrix.platform == 'android' }}
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r23c
+          link-to-sdk: true
+
+      - name: Web dependencies
+        if: ${{ matrix.platform == 'web' }}
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EM_VERSION }}
+          actions-cache-folder: ${{ env.EM_CACHE_FOLDER }}-${{ matrix.target }}
+
+      # Setup scons, print python version and scons version info, so if anything is broken it won't run the build.
+      - name: Configuring Python packages
+        run: |
+          python -c "import sys; print(sys.version)"
+          python -m pip install scons ${{ matrix.additional-python-packages }}
+          python --version
+          scons --version
+
+      - name: List files for debugging
+        run: |
+          ls -R
+
+      - name: Windows Compilation
+        if: runner.os == 'Windows'
+        run: |
+          curl -OL ${{ env.DUCKDB_BASE_URL }}${{ matrix.duckdb-url-name }}.zip
+          unzip ${{ matrix.duckdb-url-name }}.zip -d ${{ matrix.duckdb-url-name }}
+
+          if(-Not (Test-Path -Path ${{ env.PROJECT_FOLDER }}\${{ env.TARGET_PATH }}))
+          {
+            mkdir ${{ env.PROJECT_FOLDER }}\${{ env.TARGET_PATH }}
+          }
+          
+          cd ${{ env.PROJECT_FOLDER }}
+          cp ${{ matrix.duckdb-url-name }}\${{ matrix.duckdb-lib-name }}.dll C:\Windows\System32\          
+          cp ${{ matrix.duckdb-url-name }}\${{ matrix.duckdb-lib-name }}.dll ${{ env.TARGET_PATH }}\${{ matrix.duckdb-lib-name }}.dll
+          cp ${{ matrix.duckdb-url-name }}\${{ matrix.duckdb-lib-name }}.lib ${{ env.TARGET_PATH }}\${{ matrix.duckdb-lib-name }}.lib          
+          ls -R
+          scons platform=${{ matrix.platform }} target=${{ matrix.target }} target_path=${{ env.TARGET_PATH }} duckdb_lib_path=${{ matrix.duckdb-url-name }} duckdb_lib_name=duckdb target_name=${{ env.TARGET_NAME }} -j6 ${{ matrix.flags }}
+
+      - name: Not Windows Compilation
+        if: runner.os != 'Windows'
+        run: |
+          curl -OL ${{ env.DUCKDB_BASE_URL }}${{ matrix.duckdb-url-name }}.zip
+          unzip ${{ matrix.duckdb-url-name }}.zip -d ${{ matrix.duckdb-url-name }}
+        
+          mkdir -v -p ${{ env.PROJECT_FOLDER }}/${{ env.TARGET_PATH }}
+          cd ${{ env.PROJECT_FOLDER }}
+          ls -R
+          scons platform=${{ matrix.platform }} target=${{ matrix.target }} target_path=${{ env.TARGET_PATH }} duckdb_lib_path=${{ matrix.duckdb-url-name }} duckdb_lib_name=${{ matrix.duckdb-lib-name }} target_name=${{ env.TARGET_NAME }} -j6 ${{ matrix.flags }}
+
+      - name: Copy DuckDB binaries (linux)
+        if: ${{ matrix.platform == 'linux' }}
+        run: |
+          cp ${{ matrix.duckdb-url-name }}/${{ matrix.duckdb-lib-name }} ${{ env.TARGET_PATH }}/${{ matrix.duckdb-lib-name }}
+          cp ${{ matrix.duckdb-url-name }}/libduckdb_static.a ${{ env.TARGET_PATH }}/libduckdb_static.a
+          ls -R ./${{ env.TARGET_PATH }}
+
+      - name: Copy DuckDB binaries and fix link (MacOS)
+        if: ${{ matrix.platform == 'macos' }}
+        run: |
+          cp ./src/duckdb/libduckdb.dylib ./${{ env.TARGET_PATH }}/libduckdb.dylib
+          install_name_tool -change @rpath/libduckdb.dylib @loader_path/../libduckdb.dylib ./${{ env.TARGET_PATH }}${{ env.TARGET_NAME }}.${{ matrix.platform }}.${{ matrix.target }}.framework/${{ env.TARGET_NAME }}.${{ matrix.platform }}.${{ matrix.target }}
+          ls -R ./${{ env.TARGET_PATH }}
+          otool -L ./${{ env.TARGET_PATH }}${{ env.TARGET_NAME }}.${{ matrix.platform }}.${{ matrix.target }}.framework/${{ env.TARGET_NAME }}.${{ matrix.platform }}.${{ matrix.target }}
+
+      # - name: Copy DuckDB binaries (linux)
+      #   if: ${{ matrix.platform == 'linux' }}
+      #   run: |
+      #     cp ./src/duckdb/libduckdb.so ./${{ env.TARGET_PATH }}/libduckdb.so
+      #     ls -R ./${{ env.TARGET_PATH }}
+      #     ldd ./${{ env.TARGET_PATH }}${{ env.TARGET_NAME }}.${{ matrix.platform }}.${{ matrix.target }}.so
+      # - name: Copy DuckDB binaries and fix link (Not MacOS)
+      #   if: ${{ matrix.platform != 'macos' }}
+      #   run: |
+      #     cp ./src/duckdb/libduckdb.dylib ./${{ env.TARGET_PATH }}/libduckdb.dylib
+      #     install_name_tool -change @rpath/libduckdb.dylib @loader_path/../libduckdb.dylib ./${{ env.TARGET_PATH }}${{ env.TARGET_NAME }}${{ env.suffix }}${{ env.SHLIBSUFFIX }}
+      #     ls -R ./${{ env.TARGET_PATH }}          
+      #     otool -L ./${{ env.TARGET_PATH }}${{ env.TARGET_NAME }}${{ env.suffix }}${{ env.SHLIBSUFFIX }}        
+
+      - name: Save Godot build cache
+        uses: ./godot-cpp/.github/actions/godot-cache-save
+        with:
+          cache-name: ${{ matrix.cache-name }}-${{ matrix.target }}
+
+      - name: Upload Artifact
+        env:
+          ARTIFACT_FOLDER: ${{ env.PROJECT_FOLDER }}/${{ env.TARGET_PATH }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ matrix.platform }}-${{ matrix.target }}
+          path: ${{ env.ARTIFACT_FOLDER }}
+          if-no-files-found: error
+
+  release:
+    name: Release
+    runs-on: "ubuntu-20.04"
+    needs: [ build ]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+
+      - name: Download Artifacts
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Copy Artifacts to bin/-folder
+        run: |
+          mkdir -v -p ${{ env.PROJECT_FOLDER }}/${{ env.TARGET_PATH }}
+          cd ${{ env.PROJECT_FOLDER }}
+
+          cp -rf ${{steps.download.outputs.download-path}}/artifact-macos-template_debug/* ${{ env.TARGET_PATH }}
+          cp -rf ${{steps.download.outputs.download-path}}/artifact-macos-template_release/* ${{ env.TARGET_PATH }}
+          cp -rf ${{steps.download.outputs.download-path}}/artifact-windows-template_debug/* ${{ env.TARGET_PATH }}
+          cp -rf ${{steps.download.outputs.download-path}}/artifact-windows-template_release/* ${{ env.TARGET_PATH }}
+          cp -rf ${{steps.download.outputs.download-path}}/artifact-linux-template_debug/* ${{ env.TARGET_PATH }}
+          cp -rf ${{steps.download.outputs.download-path}}/artifact-linux-template_release/* ${{ env.TARGET_PATH }}          
+
+          zip -r demo.zip demo/
+          cd ${{ env.TARGET_PATH }}/..
+          zip -r bin.zip bin/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: ${{ env.PROJECT_FOLDER }}/.github/workflows/release_template.md
+          files: |
+            ${{ env.PROJECT_FOLDER }}/demo.zip
+            ${{ env.PROJECT_FOLDER }}/${{ env.TARGET_PATH }}/../bin.zip
+          draft: true
+          prerelease: true
+
+  prepare-assetlib-branch:
+    name: Prepare AssetLib Branch
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    if: startsWith(github.ref, 'refs/tags/v') && contains(github.ref, 'godot-4.4')
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all tags and branches
+
+
+      - name: Find latest assetlib branch
+        id: find_branch
+        run: |
+          LATEST_ASSETLIB_BRANCH=$(git branch -r --list "origin/assetlib*" | sort -r | head -n 1)
+          LATEST_ASSETLIB_BRANCH=${LATEST_ASSETLIB_BRANCH#origin/}
+          echo "Latest assetlib branch is $LATEST_ASSETLIB_BRANCH"
+          echo "LATEST_ASSETLIB_BRANCH=${LATEST_ASSETLIB_BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Create and checkout new branch
+        id: new_branch
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          NEW_BRANCH_NAME="assetlib-${TAG_NAME}"
+          git checkout -b $NEW_BRANCH_NAME ${{ steps.find_branch.outputs.LATEST_ASSETLIB_BRANCH }}
+          echo "NEW_BRANCH_NAME=${NEW_BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Download Artifacts
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts          
+
+      - name: Clear bin directory
+        run: |
+          rm -r ./addons/godot-duckdb/bin/*
+
+      - name: Copy artifacts to bin directory
+        run: |
+          cp -rf ./artifacts/artifact-macos-template_debug/* ./addons/godot-duckdb/bin/
+          cp -rf ./artifacts/artifact-macos-template_release/* ./addons/godot-duckdb/bin/
+          cp -rf ./artifacts/artifact-windows-template_debug/* ./addons/godot-duckdb/bin/
+          cp -rf ./artifacts/artifact-windows-template_release/* ./addons/godot-duckdb/bin/
+          cp -rf ./artifacts/artifact-linux-template_debug/* ./addons/godot-duckdb/bin/
+          cp -rf ./artifacts/artifact-linux-template_release/* ./addons/godot-duckdb/bin/          
+
+      - name: Commit changes and push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add ./addons/godot-duckdb/bin/
+          git commit -m "Update to latest binaries"
+          git push origin ${{ steps.new_branch.outputs.NEW_BRANCH_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
