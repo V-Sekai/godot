@@ -20,7 +20,7 @@ export_presets.cfg
 data_*/
 mono_crash.*.json
 
-# SCons 
+# SCons
 scons_stats.json
 
 # Custom
