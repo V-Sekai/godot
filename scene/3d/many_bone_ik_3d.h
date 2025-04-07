@@ -95,8 +95,8 @@ public:
 	};
 
 	struct TwistSwing {
-		real_t twist;
-		JointLimitation3D::Swing swing;
+		Quaternion twist;
+		Quaternion swing;
 	};
 
 protected:
@@ -115,7 +115,7 @@ protected:
 	virtual void _process_modification(double p_delta) override;
 	void _init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *p_setting);
 
-	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance);
+	virtual void _process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance_squared);
 
 	void _make_joints_dirty(int p_index);
 	void _make_all_joints_dirty();
@@ -144,10 +144,6 @@ public:
 
 	void set_target_node(int p_index, const NodePath &p_target_node);
 	NodePath get_target_node(int p_index) const;
-	void set_use_target_axis(int p_index, bool p_enabled);
-	bool is_using_target_axis(int p_index) const;
-	void set_target_axis(int p_index, BoneAxis p_axis);
-	BoneAxis get_target_axis(int p_index) const;
 
 	void set_max_iterations(int p_index, int p_max_iterations);
 	int get_max_iterations(int p_index) const;
@@ -176,8 +172,8 @@ public:
 
 	// Helper.
 	static Quaternion get_local_pose_rotation(Skeleton3D *p_skeleton, int p_bone, const Quaternion &p_global_pose_rotation);
-	static TwistSwing decompose_rotation_to_twist_and_swing(const Quaternion &p_rest, const Quaternion &p_rotation);
-	static Quaternion compose_rotation_from_twist_and_swing(const Quaternion &p_rest, const TwistSwing &p_twist_and_swing);
+	static TwistSwing decompose_rotation_to_twist_and_swing(const Vector3 &p_forward_axis, const Quaternion &p_rotation);
+	static Quaternion compose_rotation_from_twist_and_swing(const TwistSwing &p_twist_and_swing);
 
 	// To process manually.
 	void reset();

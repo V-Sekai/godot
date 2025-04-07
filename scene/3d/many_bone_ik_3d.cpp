@@ -59,10 +59,6 @@ bool ManyBoneIK3D::_set(const StringName &p_path, const Variant &p_value) {
 			set_extend_end_bone(which, p_value);
 		} else if (what == "target_node") {
 			set_target_node(which, p_value);
-		} else if (what == "use_target_axis") {
-			set_use_target_axis(which, p_value);
-		} else if (what == "target_axis") {
-			set_target_axis(which, static_cast<BoneAxis>((int)p_value));
 		} else if (what == "max_iterations") {
 			set_max_iterations(which, p_value);
 		} else if (what == "min_distance") {
@@ -121,10 +117,6 @@ bool ManyBoneIK3D::_get(const StringName &p_path, Variant &r_ret) const {
 			r_ret = is_end_bone_extended(which);
 		} else if (what == "target_node") {
 			r_ret = get_target_node(which);
-		} else if (what == "use_target_axis") {
-			r_ret = is_using_target_axis(which);
-		} else if (what == "target_axis") {
-			r_ret = (int)get_target_axis(which);
 		} else if (what == "max_iterations") {
 			r_ret = get_max_iterations(which);
 		} else if (what == "min_distance") {
@@ -172,8 +164,6 @@ void ManyBoneIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 		p_list->push_back(PropertyInfo(Variant::FLOAT, path + "end_bone/length", PROPERTY_HINT_RANGE, "0,1,0.001,or_greater,suffix:m"));
 
 		p_list->push_back(PropertyInfo(Variant::NODE_PATH, path + "target_node"));
-		p_list->push_back(PropertyInfo(Variant::BOOL, path + "use_target_axis"));
-		p_list->push_back(PropertyInfo(Variant::INT, path + "target_axis", PROPERTY_HINT_ENUM, "+X,-X,+Y,-Y,+Z,-Z"));
 		p_list->push_back(PropertyInfo(Variant::INT, path + "max_iterations", PROPERTY_HINT_RANGE, "0,100,1"));
 		p_list->push_back(PropertyInfo(Variant::FLOAT, path + "min_distance", PROPERTY_HINT_RANGE, "0,1,0.001,or_greater,suffix:m"));
 
@@ -200,14 +190,6 @@ void ManyBoneIK3D::_validate_property(PropertyInfo &p_property) const {
 
 		// Extended end bone option.
 		if (split[2] == "end_bone" && !is_end_bone_extended(which) && split.size() > 3) {
-			p_property.usage = PROPERTY_USAGE_NONE;
-		}
-
-		// Target axis option.
-		if ((split[2] == "use_target_axis") && get_target_node(which).is_empty()) {
-			p_property.usage = PROPERTY_USAGE_NONE;
-		}
-		if (split[2] == "target_axis" && (get_target_node(which).is_empty() || !is_using_target_axis(which))) {
 			p_property.usage = PROPERTY_USAGE_NONE;
 		}
 
@@ -372,27 +354,6 @@ void ManyBoneIK3D::set_target_node(int p_index, const NodePath &p_node_path) {
 NodePath ManyBoneIK3D::get_target_node(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, settings.size(), NodePath());
 	return settings[p_index]->target_node;
-}
-
-void ManyBoneIK3D::set_use_target_axis(int p_index, bool p_enabled) {
-	ERR_FAIL_INDEX(p_index, settings.size());
-	settings[p_index]->use_target_axis = p_enabled;
-	notify_property_list_changed();
-}
-
-bool ManyBoneIK3D::is_using_target_axis(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, settings.size(), false);
-	return settings[p_index]->use_target_axis;
-}
-
-void ManyBoneIK3D::set_target_axis(int p_index, BoneAxis p_axis) {
-	ERR_FAIL_INDEX(p_index, settings.size());
-	settings[p_index]->target_axis = p_axis;
-}
-
-SkeletonModifier3D::BoneAxis ManyBoneIK3D::get_target_axis(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, settings.size(), BONE_AXIS_PLUS_Y);
-	return settings[p_index]->target_axis;
 }
 
 void ManyBoneIK3D::set_max_iterations(int p_index, int p_max_iterations) {
@@ -662,26 +623,13 @@ void ManyBoneIK3D::_process_modification(double p_delta) {
 	for (int i = 0; i < settings.size(); i++) {
 		_init_joints(skeleton, settings[i]);
 		Node3D *target = Object::cast_to<Node3D>(get_node_or_null(settings[i]->target_node));
-		if (!target) {
-			return;
+		if (!target || settings[i]->joints.is_empty()) {
+			continue; // Abort.
 		}
-		Vector3 target_vector;
-		if (settings[i]->use_target_axis) {
-			int axis = (int)settings[i]->target_axis;
-			target_vector = target->get_global_basis().get_column(axis / 2) * (axis % 2 == 0 ? 1 : -1);
-			target_vector.normalize();
-			ERR_CONTINUE_MSG(target_vector.is_zero_approx(), "Target axis must not be zero.");
-		} else {
-			if (settings[i]->joints.is_empty()) {
-				continue; // Abort.
-			}
-			Transform3D root_joint_transform = skeleton->get_bone_global_pose(settings[i]->joints[0]->bone);
-			target_vector = target->get_global_position() - root_joint_transform.origin;
-			target_vector.normalize();
-			ERR_CONTINUE_MSG(target_vector.is_zero_approx(), "Target position must not be the same with root bone joint position.");
-		}
-
-		_process_joints(p_delta, skeleton, settings[i]->joints, settings[i]->chain, settings[i]->cached_space, target->get_global_position(), target_vector, settings[i]->max_iterations, settings[i]->min_distance);
+		Transform3D root_joint_transform = skeleton->get_global_transform() * skeleton->get_bone_global_pose(settings[i]->joints[0]->bone);
+		Vector3 destination = skeleton->get_global_basis().xform_inv(target->get_global_position() - root_joint_transform.origin);
+		real_t min_distance_sq = settings[i]->min_distance * settings[i]->min_distance;
+		_process_joints(p_delta, skeleton, settings[i]->joints, settings[i]->chain, settings[i]->cached_space, destination, settings[i]->max_iterations, min_distance_sq);
 	}
 }
 
@@ -693,14 +641,28 @@ Quaternion ManyBoneIK3D::get_local_pose_rotation(Skeleton3D *p_skeleton, int p_b
 	return p_skeleton->get_bone_global_pose(parent).basis.orthonormalized().inverse() * p_global_pose_rotation;
 }
 
-// TODO: coding.
-ManyBoneIK3D::TwistSwing ManyBoneIK3D::decompose_rotation_to_twist_and_swing(const Quaternion &p_rest, const Quaternion &p_rotation) {
-	return TwistSwing();
+ManyBoneIK3D::TwistSwing ManyBoneIK3D::decompose_rotation_to_twist_and_swing(const Vector3 &p_forward_axis, const Quaternion &p_rotation) {
+	TwistSwing ts;
+	Vector3 twist_axis = p_forward_axis.normalized();
+
+	Vector3 rot_axis = p_rotation.get_axis();
+
+	Vector3 projection = twist_axis * rot_axis.dot(twist_axis);
+	if (projection.length_squared() < CMP_EPSILON) {
+		ts.swing = p_rotation;
+		ts.twist = Quaternion(); // Identity.
+		return ts;
+	}
+
+	real_t angle = p_rotation.get_angle() * rot_axis.normalized().dot(twist_axis);
+	ts.twist = Quaternion(twist_axis, angle);
+	ts.swing = p_rotation * ts.twist.inverse();
+
+	return ts;
 }
 
-// TODO: coding.
-Quaternion ManyBoneIK3D::compose_rotation_from_twist_and_swing(const Quaternion &p_rest, const TwistSwing &p_twist_and_swing) {
-	return Quaternion();
+Quaternion ManyBoneIK3D::compose_rotation_from_twist_and_swing(const TwistSwing &p_twist_and_swing) {
+	return p_twist_and_swing.swing * p_twist_and_swing.twist;
 }
 
 void ManyBoneIK3D::reset() {
@@ -750,19 +712,6 @@ void ManyBoneIK3D::_init_joints(Skeleton3D *p_skeleton, ManyBoneIK3DSetting *set
 	setting->simulation_dirty = false;
 }
 
-void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, const Vector3 &p_target_vector, int p_max_iterations, real_t p_min_distance) {
-	// Solve IK here in extended class. Show example for iterating parent to child below.
-	/*
-	for (int i = 0; i < p_joints.size(); i++) {
-		ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
-		if (!solver_info) {
-			continue; // Means not extended end bone.
-		}
-		Vector3 destination;
-		Ref<JointLimitation3D> limitation = p_joints[i]->limitation;
-		if (limitation.is_valid()) {
-			destination = limitation.solve(destination,  p_joints[i]->cached_space * p_skeleton->get_bone_global_pose(p_joints[i]->bone) * p_joints[i]->limitation_rotation_offset);
-		}
-	}
-	*/
+void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Transform3D &p_space, const Vector3 &p_destination, int p_max_iterations, real_t p_min_distance_squared) {
+	//
 }
