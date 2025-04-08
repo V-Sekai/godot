@@ -20,11 +20,16 @@ env_duckdb.Append(
 module_obj = []
 
 env_duckdb.add_source_files(module_obj, "*.cpp")
-env_duckdb.add_source_files(module_obj, "thirdparty/duckdb/*.cpp")
 
-if env.msvc:
-    env.Append(CXXFLAGS=["/EHsc"])
+thirdparty_obj = []
+env_thirdparty = env_duckdb.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(thirdparty_obj, "thirdparty/duckdb/*.cpp")
+env.modules_sources += thirdparty_obj
+
+if env_thirdparty.msvc:
+    env_thirdparty.Append(CXXFLAGS=["/EHsc"])
 else:
-    env_duckdb.Append(CCFLAGS=["-fexceptions"])
+    env_thirdparty.Append(CCFLAGS=["-fexceptions"])
 
 env.modules_sources += module_obj
