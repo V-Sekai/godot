@@ -12,10 +12,7 @@ env_duckdb.Append(
     ]
 )
 
-env_duckdb.Append(
-    CPPDEFINES=[
-    ]
-)
+env_duckdb.Append(CPPDEFINES=[])
 
 module_obj = []
 
