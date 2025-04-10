@@ -30,6 +30,7 @@
 
 #include "core/extension/godot_instance.h"
 #include "core/extension/libgodot.h"
+#include "core/io/libgodot_logger.h"
 #include "main/main.h"
 
 #import "os_ios.h"
@@ -56,7 +57,7 @@ public:
 
 static GodotInstanceCallbacksIOS callbacks;
 
-extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, InvokeCallbackFunction p_async_func, ExecutorData p_async_data, InvokeCallbackFunction p_sync_func, ExecutorData p_sync_data, void *p_platform_data) {
+extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, InvokeCallbackFunction p_async_func, ExecutorData p_async_data, InvokeCallbackFunction p_sync_func, ExecutorData p_sync_data, LogCallbackFunction p_log_func, LogCallbackData p_log_data) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
 
 	TaskExecutor *executor = nullptr;
@@ -64,8 +65,13 @@ extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance(int p_ar
 		executor = new TaskExecutor(p_async_func, p_async_data, p_sync_func, p_sync_data);
 	}
 
-	std::function<void()> init = [executor, p_argv, p_argc, p_init_func]() {
-		os = new OS_IOS();
+	std::function<void()> init = [executor, p_argv, p_argc, p_init_func, p_log_func, p_log_data]() {
+		OS_IOS *os = new OS_IOS();
+		if (p_log_func != nullptr && p_log_data != nullptr) {
+			LibGodotLogger *logger = memnew(LibGodotLogger);
+			logger->set_callback_function(p_log_func, p_log_data);
+			os->add_logger(logger);
+		}
 
 		Error err = Main::setup(p_argv[0], p_argc - 1, &p_argv[1], false);
 		if (err != OK) {
@@ -76,6 +82,7 @@ extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance(int p_ar
 		if (!instance->initialize(p_init_func, &callbacks)) {
 			memdelete(instance);
 			instance = nullptr;
+			os->print("GodotInstance initialization error occurred");
 			return;
 		}
 
