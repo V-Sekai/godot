@@ -81,9 +81,9 @@ void FABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, Vector<Ma
 		current_head_to_tail = p_skeleton->get_bone_global_pose(p_joints[i]->bone).basis.get_rotation_quaternion().xform_inv(current_head_to_tail);
 		solver_info->current_rot = get_from_to_rotation(solver_info->forward_vector, current_head_to_tail, solver_info->current_rot);
 		p_skeleton->set_bone_pose_rotation(p_joints[i]->bone,
-			get_local_pose_rotation(
-				p_skeleton,
-				p_joints[i]->bone,
-				p_skeleton->get_bone_global_pose(p_joints[i]->bone).basis.get_rotation_quaternion() * solver_info->current_rot));
+				get_local_pose_rotation(
+						p_skeleton,
+						p_joints[i]->bone,
+						p_skeleton->get_bone_global_pose(p_joints[i]->bone).basis.get_rotation_quaternion() * solver_info->current_rot));
 	}
 }
