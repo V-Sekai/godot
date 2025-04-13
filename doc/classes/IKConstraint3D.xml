@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="JointLimitation3D" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="clear_holes">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="get_axis" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="hole" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_radius_range" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="hole" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_axis">
+			<return type="void" />
+			<param index="0" name="hole" type="int" />
+			<param index="1" name="axis" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="set_radius_range">
+			<return type="void" />
+			<param index="0" name="hole" type="int" />
+			<param index="1" name="range" type="float" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="hole_count" type="int" setter="set_hole_count" getter="get_hole_count" default="0">
+		</member>
+	</members>
+</class>
