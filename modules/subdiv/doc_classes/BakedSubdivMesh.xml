@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="BakedSubdivMesh" inherits="ArrayMesh" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="data_mesh" type="TopologyDataMesh" setter="sedata_mesh" getter="gedata_mesh">
+		</member>
+		<member name="subdiv_level" type="int" setter="set_subdiv_level" getter="get_subdiv_level" default="0">
+		</member>
+	</members>
+</class>
