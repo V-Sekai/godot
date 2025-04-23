@@ -1,0 +1,63 @@
+build-all:
+    @just build-onetbb
+    @just build-opensubdiv
+    @just build-usd
+
+# curl -L https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.9.0.zip --output oneTBB-2021.9.0.zip
+# unzip oneTBB-2021.9.0.zip && mv oneTBB-2021.9.0/ oneTBB
+build-onetbb:
+    #!/usr/bin/env bash
+    export BUILD_ROOT=$(pwd)
+    rm -rf $BUILD_ROOT/thirdparty/oneTBB/build
+    mkdir -p $BUILD_ROOT/thirdparty/oneTBB/build
+    cd $BUILD_ROOT/thirdparty/oneTBB/build
+    cmake $BUILD_ROOT/thirdparty/oneTBB -DTBB_TEST=OFF -DTBB_STRICT=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -GNinja -DCMAKE_INSTALL_PREFIX=$BUILD_ROOT/thirdparty/install
+    cmake --build $BUILD_ROOT/thirdparty/oneTBB/build --config Release --target install
+
+# curl -L https://github.com/PixarAnimationStudios/OpenSubdiv/archive/v3_6_0.zip --output OpenSubdiv.3.6.0.zip
+# unzip OpenSubdiv.3.6.0.zip && mv OpenSubdiv-3_6_0/ OpenSubdiv
+build-opensubdiv:
+    #!/usr/bin/env bash
+    export BUILD_ROOT=$(pwd)
+    cd $BUILD_ROOT/thirdparty/OpenSubdiv
+    rm -rf build
+    mkdir -p build && cd build
+
+    cmake $BUILD_ROOT/thirdparty/OpenSubdiv -DNO_OPENGL=ON -DNO_EXAMPLES=ON -DNO_TUTORIALS=ON \
+    -DNO_REGRESSION=ON -DNO_DOC=ON -DNO_OMP=ON -DNO_CUDA=ON \
+    -DNO_OPENCL=ON -DNO_DX=ON -DNO_TESTS=ON -DNO_GLEW=ON \
+    -DNO_GLFW=ON -DNO_PTEX=ON -DNO_TBB=ON \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$BUILD_ROOT/thirdparty/install -GNinja
+
+    cmake --build $BUILD_ROOT/thirdparty/OpenSubdiv/build --config Release --target install
+
+
+# git clone https://github.com/PixarAnimationStudios/USD.git -b v23.11 ${USD_SOURCE_DIR}
+# cd ${USD_SOURCE_DIR}
+build-usd:
+    #!/usr/bin/env bash
+    export BUILD_ROOT=$(pwd)
+    rm -rf $BUILD_ROOT/thirdparty/usd/build
+    mkdir -p $BUILD_ROOT/thirdparty/usd/build && cd $BUILD_ROOT/thirdparty/usd/build
+    cmake $BUILD_ROOT/thirdparty/usd \
+        -DCMAKE_INSTALL_PREFIX=$BUILD_ROOT/thirdparty/install \
+        -DPXR_ENABLE_PYTHON_SUPPORT=OFF \
+        -DPXR_BUILD_TESTS=OFF \
+        -DPXR_BUILD_EXAMPLES=OFF \
+        -DPXR_BUILD_TUTORIALS=OFF \
+        -DPXR_BUILD_USD_TOOLS=OFF \
+        -DPXR_BUILD_IMAGING=ON \
+        -DPXR_BUILD_USD_IMAGING=ON \
+        -DPXR_BUILD_USDVIEW=OFF \
+        -DPXR_ENABLE_MATERIALX_SUPPORT=OFF \
+        -DPXR_ENABLE_HDF5_SUPPORT=OFF \
+        -DPXR_ENABLE_OPENVDB_SUPPORT=OFF \
+        -DPXR_ENABLE_OSL_SUPPORT=OFF \
+        -DPXR_ENABLE_PTEX_SUPPORT=OFF \
+        -DPXR_ENABLE_NAMESPACES=ON \
+        -DPXR_MONOLITHIC_INSTALL=ON \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DCMAKE_PREFIX_PATH=$BUILD_ROOT/thirdparty/install \
+        -DTBB_ROOT=$BUILD_ROOT/thirdparty/install \
+        -DCMAKE_BUILD_TYPE=Release
+    cmake --build $BUILD_ROOT/thirdparty/usd/build --config Release -j8 --target install

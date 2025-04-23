@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+import os
+
+Import("env")
+Import("env_modules")
+
+env_usd = env_modules.Clone()
+
+env.Prepend(CPPEXTPATH=["thirdparty/install/include"])
+env.Prepend(LIBPATH=["#modules/openusd/thirdparty/install/lib"])
+env.Prepend(LIBS=[
+    "libtbb.dylib",
+    "libtbbmalloc.dylib",
+    "libtbbmalloc_proxy.dylib",
+    "libusd_usd.a",
+    "libusd_usdGeom.a",
+    "libusd_usdImaging.a",
+    "libusd_usdImagingGL.a",
+    "libusd_hd.a",
+    "libusd_hdSt.a",
+    "libusd_hdx.a",
+    "libusd_gf.a",
+    "libusd_sdf.a",
+    "libusd_tf.a",
+    "libusd_vt.a",
+    "libusd_ar.a",
+    "libusd_kind.a",
+    "libusd_pcp.a",
+    "libusd_plug.a",
+    "libusd_work.a",
+    "libusd_usdShade.a",
+    "libusd_usdLux.a",
+    "libusd_usdSkel.a",
+    "libusd_usdUtils.a",
+    "libusd_arch.a",
+    "libusd_garch.a",
+    "libusd_hio.a",
+    "libusd_ndr.a",
+    "libusd_sdr.a",
+    "libusd_trace.a"
+])
+
+module_obj = []
+
+env_usd.add_source_files(module_obj, "*.cpp")
+env.modules_sources += module_obj
