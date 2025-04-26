@@ -374,7 +374,7 @@ void Tf_PyPostProcessModule()
     } catch (error_already_set const &) {
         string name = extract<string>(module.attr("__name__"));
         TF_WARN("Error occurred postprocessing module %s!", name.c_str());
-        TfPyERR_PRINTor();
+        TfPyPrintError();
     }
 }
 

@@ -58,7 +58,7 @@ def PrintCommandOutput(output):
     if verbosity >= 3:
         sys.stdout.write(output)
 
-def ERR_PRINTor(error):
+def PrintError(error):
     if verbosity >= 3 and sys.exc_info()[1] is not None:
         import traceback
         traceback.print_exc()
@@ -2408,7 +2408,7 @@ class InstallContext:
 try:
     context = InstallContext(args)
 except Exception as e:
-    ERR_PRINTor(str(e))
+    PrintError(str(e))
     sys.exit(1)
 
 verbosity = args.verbosity
@@ -2482,12 +2482,12 @@ if (Linux() or MacOS() or not context.buildZlib) and ZLIB in requiredDependencie
 # Error out if user is building monolithic library on windows with draco plugin
 # enabled. This currently results in missing symbols.
 if context.buildDraco and context.buildMonolithic and Windows():
-    ERR_PRINTor("Draco plugin can not be enabled for monolithic build on Windows")
+    PrintError("Draco plugin can not be enabled for monolithic build on Windows")
     sys.exit(1)
 
 # The versions of Embree we currently support do not support oneTBB.
 if context.buildOneTBB and context.buildEmbree:
-    ERR_PRINTor("Embree support cannot be enabled when building against oneTBB")
+    PrintError("Embree support cannot be enabled when building against oneTBB")
     sys.exit(1)
 
 # Windows ARM64 requires oneTBB. Since oneTBB is a non-standard option for the
@@ -2495,12 +2495,12 @@ if context.buildOneTBB and context.buildEmbree:
 # require the user to explicitly specify --onetbb instead of silently switching
 # to oneTBB for them.
 if Windows() and GetWindowsHostArch() == "ARM64" and not context.buildOneTBB:
-    ERR_PRINTor("Windows ARM64 builds require oneTBB. Enable via the --onetbb argument")
+    PrintError("Windows ARM64 builds require oneTBB. Enable via the --onetbb argument")
     sys.exit(1)
 
 # Error out if user enables Vulkan support but env var VULKAN_SDK is not set.
 if context.enableVulkan and not 'VULKAN_SDK' in os.environ:
-    ERR_PRINTor("Vulkan support cannot be enabled when VULKAN_SDK environment "
+    PrintError("Vulkan support cannot be enabled when VULKAN_SDK environment "
                "variable is not set")
     sys.exit(1)
 
@@ -2508,31 +2508,31 @@ if context.enableVulkan and not 'VULKAN_SDK' in os.environ:
 # supported for embedded build targets.
 if MacOSTargetEmbedded(context):
     if "--tests" in sys.argv:
-        ERR_PRINTor("Cannot build tests for embedded build targets")
+        PrintError("Cannot build tests for embedded build targets")
         sys.exit(1)
     if "--python" in sys.argv:
-        ERR_PRINTor("Cannot build python components for embedded build targets")
+        PrintError("Cannot build python components for embedded build targets")
         sys.exit(1)
     if "--examples" in sys.argv:
-        ERR_PRINTor("Cannot build examples for embedded build targets")
+        PrintError("Cannot build examples for embedded build targets")
         sys.exit(1)
     if "--tutorials" in sys.argv:
-        ERR_PRINTor("Cannot build tutorials for embedded build targets")
+        PrintError("Cannot build tutorials for embedded build targets")
         sys.exit(1)
     if "--tools" in sys.argv:
-        ERR_PRINTor("Cannot build tools for embedded build targets")
+        PrintError("Cannot build tools for embedded build targets")
         sys.exit(1)
     if "--openimageio" in sys.argv:
-        ERR_PRINTor("Cannot build openimageio for embedded build targets")
+        PrintError("Cannot build openimageio for embedded build targets")
         sys.exit(1)
     if "--opencolorio" in sys.argv:
-        ERR_PRINTor("Cannot build opencolorio for embedded build targets")
+        PrintError("Cannot build opencolorio for embedded build targets")
         sys.exit(1)
     if "--openvdb" in sys.argv:
-        ERR_PRINTor("Cannot build openvdb for embedded build targets")
+        PrintError("Cannot build openvdb for embedded build targets")
         sys.exit(1)
     if "--vulkan" in sys.argv:
-        ERR_PRINTor("Cannot build vulkan for embedded build targets")
+        PrintError("Cannot build vulkan for embedded build targets")
         sys.exit(1)
 
 # Error out if user explicitly specified building usdview without required
@@ -2541,10 +2541,10 @@ if MacOSTargetEmbedded(context):
 # for instance.
 if "--usdview" in sys.argv:
     if not context.buildUsdImaging:
-        ERR_PRINTor("Cannot build usdview when usdImaging is disabled.")
+        PrintError("Cannot build usdview when usdImaging is disabled.")
         sys.exit(1)
     if not context.buildPython:
-        ERR_PRINTor("Cannot build usdview when Python support is disabled.")
+        PrintError("Cannot build usdview when Python support is disabled.")
         sys.exit(1)
 
 dependenciesToBuild = []
@@ -2558,13 +2558,13 @@ if (not which("g++") and
     not which("clang") and
     not GetXcodeDeveloperDirectory() and
     not GetVisualStudioCompilerAndVersion()):
-    ERR_PRINTor("C++ compiler not found -- please install a compiler")
+    PrintError("C++ compiler not found -- please install a compiler")
     sys.exit(1)
 
 # Error out if a 64bit version of python interpreter is not being used
 isPython64Bit = (ctypes.sizeof(ctypes.c_voidp) == 8)
 if not isPython64Bit:
-    ERR_PRINTor("64bit python not found -- please install it and adjust your"
+    PrintError("64bit python not found -- please install it and adjust your"
                "PATH")
     sys.exit(1)
 
@@ -2579,29 +2579,29 @@ if which("cmake"):
 
     cmake_version = GetCMakeVersion()
     if not cmake_version:
-        ERR_PRINTor("Failed to determine CMake version")
+        PrintError("Failed to determine CMake version")
         sys.exit(1)
 
     if cmake_version < cmake_required_version:
         def _JoinVersion(v):
             return ".".join(str(n) for n in v)
-        ERR_PRINTor("CMake version {req} or later required to build USD, "
+        PrintError("CMake version {req} or later required to build USD, "
                    "but version found was {found}".format(
                        req=_JoinVersion(cmake_required_version),
                        found=_JoinVersion(cmake_version)))
         sys.exit(1)
 else:
-    ERR_PRINTor("CMake not found -- please install it and adjust your PATH")
+    PrintError("CMake not found -- please install it and adjust your PATH")
     sys.exit(1)
 
 if context.buildDocs:
     if not which("doxygen"):
-        ERR_PRINTor("doxygen not found -- please install it and adjust your PATH")
+        PrintError("doxygen not found -- please install it and adjust your PATH")
         sys.exit(1)
 
 if context.buildHtmlDocs:
     if not which("dot"):
-        ERR_PRINTor("dot not found -- please install graphviz and adjust your "
+        PrintError("dot not found -- please install graphviz and adjust your "
                    "PATH")
         sys.exit(1)
 
@@ -2609,10 +2609,10 @@ if context.buildHtmlDocs:
 # build Python docs
 if context.buildPythonDocs:
     if not context.buildDocs:
-        ERR_PRINTor("Cannot build Python docs when doxygen docs are disabled.")
+        PrintError("Cannot build Python docs when doxygen docs are disabled.")
         sys.exit(1)
     if not context.buildPython:
-        ERR_PRINTor("Cannot build Python docs when Python support is disabled.")
+        PrintError("Cannot build Python docs when Python support is disabled.")
         sys.exit(1)        
 
 if PYSIDE in requiredDependencies:
@@ -2628,7 +2628,7 @@ if PYSIDE in requiredDependencies:
     pyside2Uic = ["pyside2-uic"]
     found_pyside2Uic = any([which(p) for p in pyside2Uic])
     if not given_pysideUic and not found_pyside2Uic and not found_pyside6Uic:
-        ERR_PRINTor("PySide's user interface compiler was not found -- please"
+        PrintError("PySide's user interface compiler was not found -- please"
                    " install PySide2 or PySide6 and adjust your PATH. (Note"
                    " that this program may be named {0} depending on your"
                    " platform)"
@@ -2637,18 +2637,18 @@ if PYSIDE in requiredDependencies:
 
 if context.buildMayapyTests:
     if not context.buildPython:
-        ERR_PRINTor("--mayapy-tests requires --python")
+        PrintError("--mayapy-tests requires --python")
         sys.exit(1)
     if not context.buildTests:
-        ERR_PRINTor("--mayapy-tests requires --tests")
+        PrintError("--mayapy-tests requires --tests")
         sys.exit(1)
     if not context.mayapyLocation:
-        ERR_PRINTor("--mayapy-tests requires --mayapy-location")
+        PrintError("--mayapy-tests requires --mayapy-location")
         sys.exit(1)
 
 if context.buildAnimXTests:
     if not context.buildTests:
-        ERR_PRINTor("--animx-tests requires --tests")
+        PrintError("--animx-tests requires --tests")
         sys.exit(1)
 
 # Summarize
@@ -2789,7 +2789,7 @@ for dir in [context.usdInstDir, context.instDir, context.srcDir,
         else:
             os.makedirs(dir)
     except Exception as e:
-        ERR_PRINTor("Could not write to directory {dir}. Change permissions "
+        PrintError("Could not write to directory {dir}. Change permissions "
                    "or choose a different location to install to."
                    .format(dir=dir))
         sys.exit(1)
@@ -2802,7 +2802,7 @@ try:
                       buildArgs=context.GetBuildArguments(dep),
                       force=context.ForceBuildDependency(dep))
 except Exception as e:
-    ERR_PRINTor(str(e))
+    PrintError(str(e))
     sys.exit(1)
 
 # Done. Print out a final status message.

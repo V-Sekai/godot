@@ -29,7 +29,6 @@ build-opensubdiv:
     -DNO_OPENCL=ON -DNO_DX=ON -DNO_TESTS=ON -DNO_GLEW=ON \
     -DNO_GLFW=ON -DNO_PTEX=ON -DNO_TBB=ON \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$BUILD_ROOT/thirdparty/install -GNinja
-
     cmake --build $BUILD_ROOT/thirdparty/OpenSubdiv/build --config Release --target install
 
 
@@ -38,6 +37,7 @@ build-opensubdiv:
 build-usd:
     #!/usr/bin/env bash
     export BUILD_ROOT=$(pwd)
+    export USD_INSTALL_DIR=$(pwd)/install
     rm -rf $BUILD_ROOT/thirdparty/usd/build
     mkdir -p $BUILD_ROOT/thirdparty/usd/build && cd $BUILD_ROOT/thirdparty/usd/build
     cmake $BUILD_ROOT/thirdparty/usd \

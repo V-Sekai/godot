@@ -118,7 +118,7 @@ TF_API bool TfPyIsNone(pxr_boost::python::object const &obj);
 TF_API bool TfPyIsNone(pxr_boost::python::handle<> const &obj);
 
 // Helper for \c TfPyObject().
-TF_API void Tf_PyObjectError(bool ERR_PRINTor);
+TF_API void Tf_PyObjectError(bool printError);
 
 /// Return a python object for the given C++ object, loading the appropriate
 /// wrapper code if necessary. Spams users if complainOnFailure is true and
@@ -402,7 +402,7 @@ bool TfPyEvaluateAndExtract(const std::string & expr, T * t)
 /// If the error is a KeyboardInterrupt then this does nothing.  Call this
 /// function only when the error indicator is set.
 TF_API
-void TfPyERR_PRINTor();
+void TfPyPrintError();
 
 PXR_NAMESPACE_CLOSE_SCOPE
 

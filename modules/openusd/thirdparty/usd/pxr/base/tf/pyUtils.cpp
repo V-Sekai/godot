@@ -98,7 +98,7 @@ void Tf_PyLoadScriptModule(std::string const &moduleName)
         if (!result) {
             // CODE_COVERAGE_OFF
             TF_WARN("Import failed for module '%s'!", moduleName.c_str());
-            TfPyERR_PRINTor();
+            TfPyPrintError();
             // CODE_COVERAGE_ON
         }
     } else {
@@ -376,7 +376,7 @@ bool Tf_PyEvaluateWithErrorCheck(
 }
 
 void
-TfPyERR_PRINTor()
+TfPyPrintError()
 {
     if (!PyErr_ExceptionMatches(PyExc_KeyboardInterrupt)) {
         PyErr_Print();
@@ -384,7 +384,7 @@ TfPyERR_PRINTor()
 }
 
 void
-Tf_PyObjectError(bool ERR_PRINTor)
+Tf_PyObjectError(bool printError)
 {
     // Silently pass these exceptions through.
     if (PyErr_ExceptionMatches(PyExc_SystemExit) ||
@@ -393,7 +393,7 @@ Tf_PyObjectError(bool ERR_PRINTor)
     }
 
     // Report and clear.
-    if (ERR_PRINTor) {
+    if (printError) {
         PyErr_Print();
     }
     else {

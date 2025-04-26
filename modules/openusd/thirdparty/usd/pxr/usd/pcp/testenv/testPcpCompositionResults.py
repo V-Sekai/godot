@@ -67,18 +67,18 @@ def CleanTestRunPaths(msg):
     cwd = os.getcwd().replace('\\', '/') + '/'
     return re.compile(re.escape(cwd), re.IGNORECASE).sub('', msg)
 
-def ERR_PRINTorMessage(errorFile, msg):
+def PrintErrorMessage(errorFile, msg):
     if errorFile:
         print(CleanTestRunPaths(msg), file=errorFile)
     else:
         print(CleanTestRunPaths(msg), file=sys.stderr)
 
-def ERR_PRINTors(errorFile, errors):
+def PrintErrors(errorFile, errors):
     global hadError
     hadError = True
     for err in errors:
-        ERR_PRINTorMessage(errorFile, str(err))
-    ERR_PRINTorMessage(errorFile, '')
+        PrintErrorMessage(errorFile, str(err))
+    PrintErrorMessage(errorFile, '')
 
 
 # Load the session layer, if any.
@@ -129,9 +129,9 @@ for layerPath in args.layer:
     print('')
 
     if len(layerStackData.localErrors) > 0:
-        ERR_PRINTorMessage(errorFile, '-'*72)
-        ERR_PRINTorMessage(errorFile, 'Errors while computing Layer Stack\n')
-        ERR_PRINTors(errorFile, layerStackData.localErrors)
+        PrintErrorMessage(errorFile, '-'*72)
+        PrintErrorMessage(errorFile, 'Errors while computing Layer Stack\n')
+        PrintErrors(errorFile, layerStackData.localErrors)
 
     if args.layerStackOnly:
         sys.exit(0)
@@ -314,10 +314,10 @@ for layerPath in args.layer:
             
         # Print out errors encountered while composing this prim.
         if len(errors) > 0:
-            ERR_PRINTorMessage(errorFile, '-'*72)
-            ERR_PRINTorMessage(errorFile, 
+            PrintErrorMessage(errorFile, '-'*72)
+            PrintErrorMessage(errorFile, 
                               'Errors while composing <%s>\n' % (primPath))
-            ERR_PRINTors(errorFile, errors)
+            PrintErrors(errorFile, errors)
 
         print('')
 
