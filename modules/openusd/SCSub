@@ -7,7 +7,7 @@ Import("env_modules")
 
 env_usd = env_modules.Clone()
 
-env.Prepend(CPPEXTPATH=["thirdparty/install/include", "thirdparty/opensubdiv/opensubdiv"])
+env.Prepend(CPPEXTPATH=["thirdparty/install/include"])
 env.Prepend(LIBPATH=["#modules/openusd/thirdparty/install/lib"])
 env.Prepend(LIBS=[
     "libtbb.dylib",

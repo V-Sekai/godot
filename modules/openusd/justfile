@@ -1,7 +1,4 @@
-build-all:
-    @just build-onetbb
-    @just build-opensubdiv
-    @just build-usd
+build-all: build-onetbb build-opensubdiv build-usd
 
 # curl -L https://github.com/oneapi-src/oneTBB/archive/refs/tags/v2021.9.0.zip --output oneTBB-2021.9.0.zip
 # unzip oneTBB-2021.9.0.zip && mv oneTBB-2021.9.0/ oneTBB
@@ -37,13 +34,14 @@ build-opensubdiv:
 build-usd:
     #!/usr/bin/env bash
     export BUILD_ROOT=$(pwd)
-    export USD_INSTALL_DIR=$(pwd)/install
     rm -rf $BUILD_ROOT/thirdparty/usd/build
     mkdir -p $BUILD_ROOT/thirdparty/usd/build && cd $BUILD_ROOT/thirdparty/usd/build
     cmake $BUILD_ROOT/thirdparty/usd \
         -DCMAKE_INSTALL_PREFIX=$BUILD_ROOT/thirdparty/install \
         -DPXR_ENABLE_PYTHON_SUPPORT=OFF \
         -DPXR_BUILD_TESTS=OFF \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DPXR_BUILD_MONOLITHIC=ON \
         -DPXR_BUILD_EXAMPLES=OFF \
         -DPXR_BUILD_TUTORIALS=OFF \
         -DPXR_BUILD_USD_TOOLS=OFF \
@@ -60,5 +58,6 @@ build-usd:
         -DBUILD_SHARED_LIBS=OFF \
         -DCMAKE_PREFIX_PATH=$BUILD_ROOT/thirdparty/install \
         -DTBB_ROOT=$BUILD_ROOT/thirdparty/install \
+        -DOPENSUBDIV_ROOT=$BUILD_ROOT/thirdparty/install \
         -DCMAKE_BUILD_TYPE=Release
     cmake --build $BUILD_ROOT/thirdparty/usd/build --config Release -j8 --target install
