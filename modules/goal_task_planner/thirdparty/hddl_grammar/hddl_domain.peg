@@ -1,0 +1,141 @@
+%% PackCC grammar for HDDL (Hierarchical Domain Definition Language)
+%% Based on common PDDL/HDDL structures, addressing reported errors.
+
+%%whitespace <- [ \t\r\n]+  % Define whitespace characters globally
+%%comment    <- ';' (![\r\n] .)* [\r\n]? % Define comment syntax globally
+
+% --- Basic lexical elements ---
+% Note: SKIP is implicitly handled by %%whitespace and %%comment directives now.
+IDENT      <- [a-zA-Z_][a-zA-Z0-9_\-]*
+VAR        <- '?' IDENT
+NUMBER     <- '-'? [0-9]+ ('.' [0-9]+)?
+
+% --- S-expressions ---
+sexpr      <- '(' expr+ ')'
+expr       <- atomic_expr / sexpr % Order matters: check atomic first
+atomic_expr <- IDENT / VAR / NUMBER
+
+% --- Top-level structure: Domain or Problem ---
+hddl       <- (domain / problem) EOT % EOT ensures whole input is parsed
+EOT        <- !. % End of Text
+
+% --- Domain Definition ---
+domain       <- '(' 'define' '(' 'domain' IDENT ')' domain_body* ')'
+domain_body  <- requirements / types / constants / predicates / functions / task / action / method / derived
+
+% --- Problem Definition ---
+problem      <- '(' 'define' '(' 'problem' IDENT ')' problem_body* ')'
+problem_body <- domain_ref / objects / init / goal / htn / metric
+
+% --- Common Sections ---
+domain_ref   <- '(' ':domain' IDENT ')'
+requirements <- '(' ':requirements' requirement_key+ ')'
+requirement_key <- ':' IDENT % More flexible than listing all keywords
+
+% Typed Lists (common pattern: item+ - type)
+% PackCC doesn't directly support parameterized rules like <item>.
+% We need to define specific versions for IDENT and VAR.
+typed_ident_list <- (IDENT+ '-' IDENT)* IDENT*
+typed_var_list   <- (VAR+ '-' IDENT)* VAR*
+
+types        <- '(' ':types' typed_ident_list ')'
+constants    <- '(' ':constants' typed_ident_list ')'
+objects      <- '(' ':objects' typed_ident_list ')'
+
+predicates   <- '(' ':predicates' predicate_def+ ')'
+predicate_def <- '(' IDENT typed_var_list ')'
+
+functions    <- '(' ':functions' function_def+ ')'
+function_def <- '(' atomic_function_skeleton '-' 'number' ')' % Assuming numeric functions for now
+atomic_function_skeleton <- IDENT typed_var_list
+
+% --- Task Definition ---
+task         <- '(' ':task' IDENT task_body* ')'
+task_body    <- task_parameters / task_precondition % Define alternatives clearly
+
+task_parameters <- ':parameters' '(' typed_var_list ')'
+task_precondition <- ':precondition' goal_description % Tasks might have preconditions
+
+% --- Action Definition ---
+action       <- '(' ':action' IDENT action_body* ')'
+action_body  <- parameters / precondition / effect % Simplified for now
+
+parameters   <- ':parameters' '(' typed_var_list ')'
+precondition <- ':precondition' goal_description
+effect       <- ':effect' effect_description
+
+% --- Method Definition ---
+method       <- '(' ':method' IDENT method_body* ')' % Method name is IDENT
+method_body  <- parameters / method_task / subtasks_def / ordering / constraints
+
+method_task  <- ':task' atomic_formula_term % Reference the task this method decomposes
+subtasks_def <- ':subtasks' subtask_list
+ordering     <- ':ordering' ordering_constraints
+constraints  <- ':constraints' goal_description % Method constraints often use goal syntax
+
+% --- Derived Predicates (Example Structure) ---
+derived      <- '(' ':derived' predicate_def goal_description ')'
+
+% --- Goal Description (Recursive) ---
+goal         <- '(' ':goal' goal_description ')'
+goal_description <- atomic_formula_term / logical_goal / quantified_goal % Order matters
+
+logical_goal <- '(' ('and' / 'or') goal_description* ')' /
+                '(' 'not' goal_description ')' /
+                '(' 'imply' goal_description goal_description ')'
+
+quantified_goal <- '(' ('forall' / 'exists') '(' typed_var_list ')' goal_description ')'
+
+% --- Effect Description (Recursive) ---
+effect_description <- atomic_effect / logical_effect / quantified_effect / conditional_effect
+
+atomic_effect <- atomic_formula_term / % Positive literal
+                 '(' 'not' atomic_formula_term ')' / % Negative literal
+                 '(' assignment_op fluent_term expr ')' % Assignment
+
+assignment_op <- 'assign' / 'increase' / 'decrease' / 'scale-up' / 'scale-down'
+
+fluent_term <- atomic_formula_term % Can be predicate or function term
+
+logical_effect <- '(' 'and' effect_description* ')' % Only 'and' is typical for effects
+
+quantified_effect <- '(' 'forall' '(' typed_var_list ')' effect_description ')'
+
+conditional_effect <- '(' 'when' goal_description effect_description ')'
+
+% --- Atomic Formulas and Terms ---
+% Need separate rules because PackCC doesn't support parameterized rules
+atomic_formula_term <- '(' IDENT term* ')'
+atomic_formula_ident <- '(' IDENT IDENT* ')' % For init where only constants are allowed
+
+term         <- VAR / IDENT % Problem constants or variables
+
+% --- Initial State ---
+init         <- '(' ':init' init_literal* ')'
+init_literal <- atomic_formula_ident / % Ground predicate
+                '(' '=' atomic_formula_ident NUMBER ')' % Function value
+
+% --- HTN Definition in Problem ---
+htn          <- '(' ':htn' htn_body* ')'
+htn_body     <- ':tasks' subtask_list /
+                ':ordering' ordering_constraints /
+                ':constraints' goal_description % HTN constraints often use goal syntax
+
+% --- Subtasks and Ordering ---
+subtask_list <- '(' ('ordered' / 'unordered')? subtask_def+ ')' % Allow optional ordered/unordered keyword
+subtask_def  <- IDENT atomic_formula_term % Subtask ID and task goal, e.g., (t1 (task params))
+
+ordering_constraints <- '(' '<' IDENT IDENT ')'+ % e.g., (< t1 t2) (< t2 t3)
+
+% --- Metric (Optional) ---
+metric       <- '(' ':metric' 'minimize' metric_expr ')'
+metric_expr  <- IDENT / NUMBER / % Simple cost or total-time
+                '(' ('+' / '-' / '*' / '/') metric_expr+ ')' /
+                '(' IDENT IDENT* ')' % Function call like (total-cost)
+
+% --- Durative Actions / Timed Initial Literals (Add if needed) ---
+% duration <- ':duration' ...
+% timed_literal <- '(at' ...
+% timed_effect <- '(at' ...
+% timed_condition <- '(at start' / '(at end' / '(over all' ...
+
