@@ -39,8 +39,33 @@ install/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
+!thirdparty/onetbb/doc/Makefile
+!doc/Makefile
 *.cmake
+!thirdparty/onetbb/cmake/android/device_environment_cleanup.cmake
+!thirdparty/onetbb/cmake/android/environment.cmake
+!thirdparty/onetbb/cmake/android/test_launcher.cmake
+!thirdparty/onetbb/cmake/compilers/AppleClang.cmake
+!thirdparty/onetbb/cmake/compilers/Clang.cmake
+!thirdparty/onetbb/cmake/compilers/GNU.cmake
+!thirdparty/onetbb/cmake/compilers/Intel.cmake
+!thirdparty/onetbb/cmake/compilers/IntelLLVM.cmake
+!thirdparty/onetbb/cmake/compilers/MSVC.cmake
+!thirdparty/onetbb/cmake/compilers/QCC.cmake
+!thirdparty/onetbb/cmake/config_generation.cmake
+!thirdparty/onetbb/cmake/hwloc_detection.cmake
+!thirdparty/onetbb/cmake/memcheck.cmake
+!thirdparty/onetbb/cmake/packaging.cmake
+!thirdparty/onetbb/cmake/python/test_launcher.cmake
+!thirdparty/onetbb/cmake/sanitize.cmake
+!thirdparty/onetbb/cmake/scripts/cmake_gen_github_configs.cmake
+!thirdparty/onetbb/cmake/test_spec.cmake
+!thirdparty/onetbb/cmake/toolchains/mips.cmake
+!thirdparty/onetbb/cmake/utils.cmake
+!thirdparty/onetbb/cmake/vars_utils.cmake
+!thirdparty/onetbb/examples/common/cmake/common.cmake
+!thirdparty/onetbb/examples/common/cmake/modules/FindTBB.cmake
+!thirdparty/onetbb/integration/cmake/generate_vars.cmake
 !CMakeLists.txt
 
 # IDE related
@@ -78,6 +103,9 @@ __pycache__/
 *.so
 .Python
 env/
+!thirdparty/onetbb/integration/linux/env/
+!thirdparty/onetbb/integration/mac/env/
+!thirdparty/onetbb/integration/windows/env/
 build/
 develop-eggs/
 dist/
