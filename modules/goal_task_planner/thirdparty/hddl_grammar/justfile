@@ -1,3 +1,0 @@
-packcc:
-    packcc --lines hddl_domain.peg
-    packcc --lines hddl_problem.peg
