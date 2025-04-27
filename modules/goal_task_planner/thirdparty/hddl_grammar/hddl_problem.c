@@ -10,6 +10,8 @@
 
 #include "hddl_problem.h"
 
+#define PCC_OPTION_LINES_ENABLED
+
 #if !defined __has_attribute || defined _MSC_VER
 #define __attribute__(x)
 #endif
@@ -1095,6 +1097,7 @@ void pcc_destroy(pcc_context_t *ctx) {
     pcc_context__destroy(ctx);
 }
 
+#line 1 "hddl_problem.peg"
 PackCC grammar for HDDL 2.1 Problem Files
 
 %%whitespace <- [ \t\r\n]+  % Define whitespace characters globally

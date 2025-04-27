@@ -10,6 +10,8 @@
 
 #include "hddl_domain.h"
 
+#define PCC_OPTION_LINES_ENABLED
+
 #if !defined __has_attribute || defined _MSC_VER
 #define __attribute__(x)
 #endif
@@ -1095,6 +1097,7 @@ void pcc_destroy(pcc_context_t *ctx) {
     pcc_context__destroy(ctx);
 }
 
+#line 1 "hddl_domain.peg"
 PackCC grammar for HDDL (Hierarchical Domain Definition Language)
 %% Based on common PDDL/HDDL structures, addressing reported errors.
 
