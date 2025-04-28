@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+
+Import("env")
+
+module_env = env.Clone()
+module_env.Append(CPPDEFINES=["_USE_MATH_DEFINES"])
+module_env.add_source_files(env.modules_sources, "src/import/*.cpp")
+module_env.add_source_files(env.modules_sources, "src/nodes/*.cpp")
+module_env.add_source_files(env.modules_sources, "src/resources/*.cpp")
+module_env.add_source_files(env.modules_sources, "src/subdivision/*.cpp")
+
+thirdparty_dir = "thirdparty/opensubdiv/"
+thirdparty_sources = [
+    "far/error.cpp",
+    "far/topologyDescriptor.cpp",
+    "far/topologyRefiner.cpp",
+    "far/topologyRefinerFactory.cpp",
+    "sdc/crease.cpp",
+    "sdc/typeTraits.cpp",
+    "vtr/fvarLevel.cpp",
+    "vtr/fvarRefinement.cpp",
+    "vtr/level.cpp",
+    "vtr/quadRefinement.cpp",
+    "vtr/refinement.cpp",
+    "vtr/sparseSelector.cpp",
+    "vtr/triRefinement.cpp",
+]
+thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
+
+env_thirdparty = module_env.Clone()
+env_thirdparty.disable_warnings()
+env_thirdparty.add_source_files(env.modules_sources, thirdparty_sources)
+
+module_env.add_source_files(env.modules_sources, "*.cpp")
+
+if env.editor_build:
+    module_env.add_source_files(env.modules_sources, "editor/*.cpp")
