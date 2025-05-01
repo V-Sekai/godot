@@ -108,8 +108,11 @@ bool GodotInstance::is_started() {
 }
 
 bool GodotInstance::iteration() {
+	callbacks->before_iteration(this);
 	DisplayServer::get_singleton()->process_events();
-	return Main::iteration();
+	bool exit = Main::iteration();
+	callbacks->after_iteration(this, exit);
+	return exit;
 }
 
 void GodotInstance::stop() {

@@ -57,6 +57,10 @@ public:
 	void resume(GodotInstance *p_instance) override {
 		p_instance->focus_in();
 	}
+	void before_iteration(GodotInstance *p_instance) override {
+	}
+	void after_iteration(GodotInstance *p_instance, bool exit) override {
+	}
 };
 
 static GodotInstanceCallbacksIOS callbacks;
