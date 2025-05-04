@@ -14,6 +14,7 @@ def get_doc_classes():
         "PlannerMultigoal",
         "PlannerDomain",
         "PlannerPlan",
+        "PlannerState",
     ]
 
 

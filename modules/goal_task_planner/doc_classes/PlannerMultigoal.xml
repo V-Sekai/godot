@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="PlannerMultigoal" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		A [PlannerMultigoal] represents multiple goals to be achieved in a [Plan] and [Domain].
+		A [PlannerMultigoal] represents multiple goals to be achieved in a [PlannerPlan] and [PlannerDomain].
 	</brief_description>
 	<description>
-		The [PlannerMultigoal] represents a set of goals that a [Plan] needs to be achieved and provides methods for managing the state variables associated with these goals.
+		The [PlannerMultigoal] represents a set of goals that a [PlannerPlan] needs to be achieved and provides methods for managing the state variables associated with these goals.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -33,19 +33,19 @@
 			<param index="3" name="depth" type="int" />
 			<param index="4" name="verbose" type="int" />
 			<description>
-				Verifies if a [Multigoal] has been achieved given the current state, method, multi-goal, depth, and verbosity level.
+				Verifies if a [PlannerMultigoal] has been achieved given the current state, method, multi-goal, depth, and verbosity level.
 			</description>
 		</method>
 		<method name="state_variables">
 			<return type="Array" />
 			<description>
-				Returns an array of state variables associated with the [Multigoal].
+				Returns an array of state variables associated with the [PlannerMultigoal].
 			</description>
 		</method>
 	</methods>
 	<members>
 		<member name="state" type="Dictionary" setter="set_state" getter="get_state" default="{}">
-			The current state of the [Multigoal], represented as a [Dictionary] of state variables.
+			The current state of the [PlannerMultigoal], represented as a [Dictionary] of state variables.
 		</member>
 	</members>
 </class>

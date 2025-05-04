@@ -37,6 +37,7 @@
 #include "domain.h"
 #include "multigoal.h"
 #include "plan.h"
+#include "planner_state.h"
 
 void initialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
@@ -45,6 +46,7 @@ void initialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
 	ClassDB::register_class<PlannerDomain>();
 	ClassDB::register_class<PlannerMultigoal>();
 	ClassDB::register_class<PlannerPlan>();
+	ClassDB::register_class<PlannerState>();
 }
 
 void uninitialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
