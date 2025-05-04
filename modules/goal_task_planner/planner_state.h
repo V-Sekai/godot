@@ -14,11 +14,11 @@ protected:
 	static void _bind_methods();
 
 public:
-	Variant get_value(const String &p_predicate, const String &p_subject) const;
-	void set_value(const String &p_predicate, const String &p_subject, Variant p_object);
-	Array get_value_property_list() const;
-	bool has_value_variable(const String &p_variable) const;
-	bool has_value(const String &p_variable, const String &p_arguments) const;
+	Variant get_object(const String &p_predicate, const String &p_subject) const;
+	void set_object(const String &p_predicate, const String &p_subject, Variant p_object);
+	Array get_subject_property_list() const;
+	bool has_subject_variable(const String &p_variable) const;
+	bool has_subject(const String &p_predicate, const String &p_subject) const;
 
 	PlannerState() {}
 	~PlannerState() {}
