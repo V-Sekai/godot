@@ -181,7 +181,7 @@ Ref<Resource> ResourceFormatImporter::load_internal(const String &p_path, Error 
 		}
 	}
 
-	Ref<Resource> res = ResourceLoader::_load(pat.path, p_path, pat.type, p_cache_mode, r_error, p_use_sub_threads, r_progress);
+	Ref<Resource> res = ResourceLoader::_load(pat.path, p_path, pat.type, p_cache_mode, false, Dictionary(), Dictionary(), r_error, p_use_sub_threads, r_progress);
 
 #ifdef TOOLS_ENABLED
 	if (res.is_valid()) {
