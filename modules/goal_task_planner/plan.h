@@ -39,13 +39,13 @@
 
 #include "modules/goal_task_planner/multigoal.h"
 
-class Domain;
-class Plan : public Resource {
-	GDCLASS(Plan, Resource);
+class PlannerDomain;
+class PlannerPlan : public Resource {
+	GDCLASS(PlannerPlan, Resource);
 
 	int verbose = 0;
-	TypedArray<Domain> domains;
-	Ref<Domain> current_domain;
+	TypedArray<PlannerDomain> domains;
+	Ref<PlannerDomain> current_domain;
 
 	// If verify_goals is True, then whenever the planner uses a method m to refine
 	// unigoal or multigoal, it will insert a "verification" task into the
@@ -62,16 +62,16 @@ class Plan : public Resource {
 	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
 	Variant _apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth);
 	Variant _refine_task_and_continue(const Dictionary p_state, const Array p_first_task, const Array p_todo_list, const Array p_plan, const int p_depth);
-	Variant _refine_multigoal_and_continue(const Dictionary p_state, const Ref<Multigoal> p_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
+	Variant _refine_multigoal_and_continue(const Dictionary p_state, const Ref<PlannerMultigoal> p_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
 	Variant _refine_unigoal_and_continue(const Dictionary p_state, const Array p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
 
 public:
 	int get_verbose() const;
 	void set_verbose(int p_level);
-	TypedArray<Domain> get_domains() const;
-	void set_domains(TypedArray<Domain> p_domain);
-	Ref<Domain> get_current_domain() const;
-	void set_current_domain(Ref<Domain> p_current_domain) { current_domain = p_current_domain; }
+	TypedArray<PlannerDomain> get_domains() const;
+	void set_domains(TypedArray<PlannerDomain> p_domain);
+	Ref<PlannerDomain> get_current_domain() const;
+	void set_current_domain(Ref<PlannerDomain> p_current_domain) { current_domain = p_current_domain; }
 	void set_verify_goals(bool p_value);
 	bool get_verify_goals() const;
 	Variant find_plan(Dictionary p_state, Array p_todo_list);

@@ -323,12 +323,12 @@ Variant method_move_between_city(Dictionary p_state, String p_object, String p_l
 	return false;
 }
 
-void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_domain) {
+void before_each(Dictionary &p_state, Ref<PlannerPlan> p_planner, Ref<PlannerDomain> p_the_domain) {
 	ERR_FAIL_COND(p_planner.is_null());
 	ERR_FAIL_COND(p_the_domain.is_null());
-	p_planner->set_verbose(3);
+	p_planner->set_verbose(0);
 	p_state.clear();
-	TypedArray<Domain> domains;
+	TypedArray<PlannerDomain> domains;
 	domains.push_back(p_the_domain);
 	p_planner->set_domains(domains);
 
@@ -416,9 +416,9 @@ void before_each(Dictionary &p_state, Ref<Plan> p_planner, Ref<Domain> p_the_dom
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] m_drive_truck") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
@@ -431,9 +431,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] m_drive_truck") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Fly plane") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain = Ref<Domain>(memnew(Domain));
+	Ref<PlannerDomain> the_domain = Ref<PlannerDomain>(memnew(PlannerDomain));
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
 	Array task;
@@ -445,9 +445,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] Fly plane") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Load truck") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
@@ -459,9 +459,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] Load truck") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
@@ -484,9 +484,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 1") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
@@ -513,9 +513,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 2") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 3") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
@@ -529,9 +529,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 3") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state1;
 	before_each(state1, planner, the_domain);
@@ -547,9 +547,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] Move Goal 4") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state;
 	before_each(state, planner, the_domain);
@@ -592,9 +592,9 @@ TEST_CASE("[Modules][GoalTaskPlanner] run_lazy_lookahead") {
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Multigoal" * doctest::skip(true)) {
-	Ref<Plan> planner;
+	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	Ref<Domain> the_domain;
+	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
 	Dictionary state;
 	before_each(state, planner, the_domain);
@@ -605,7 +605,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal" * doctest::skip(true)) {
 	truck_at["truck1"] = "location1";
 	goal_state["truck_at"] = truck_at;
 	goal_state["at"] = at;
-	Ref<Multigoal> multi_goal;
+	Ref<PlannerMultigoal> multi_goal;
 	multi_goal.instantiate("Multigoal", goal_state);
 	Array task;
 	task.push_back(multi_goal);

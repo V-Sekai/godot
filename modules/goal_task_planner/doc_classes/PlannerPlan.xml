@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="Plan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="PlannerPlan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 		Manages and executes tasks within a specified domain.
 	</brief_description>
@@ -36,10 +36,10 @@
 		</method>
 	</methods>
 	<members>
-		<member name="current_domain" type="Domain" setter="set_current_domain" getter="get_current_domain">
+		<member name="current_domain" type="PlannerDomain" setter="set_current_domain" getter="get_current_domain">
 			The active [Domain] in which the [Plan] is operating.
 		</member>
-		<member name="domains" type="Domain[]" setter="set_domains" getter="get_domains" default="[]">
+		<member name="domains" type="PlannerDomain[]" setter="set_domains" getter="get_domains" default="[]">
 			The collection of [Domain]s available to the [Plan].
 		</member>
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">

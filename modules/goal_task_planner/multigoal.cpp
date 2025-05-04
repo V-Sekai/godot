@@ -30,34 +30,34 @@
 
 #include "multigoal.h"
 
-void Multigoal::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_state"), &Multigoal::get_state);
-	ClassDB::bind_method(D_METHOD("set_state", "value"), &Multigoal::set_state);
+void PlannerMultigoal::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_state"), &PlannerMultigoal::get_state);
+	ClassDB::bind_method(D_METHOD("set_state", "value"), &PlannerMultigoal::set_state);
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "state"), "set_state", "get_state");
-	ClassDB::bind_method(D_METHOD("state_variables"), &Multigoal::state_variables);
-	ClassDB::bind_static_method("Multigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal"), &Multigoal::method_goals_not_achieved);
-	ClassDB::bind_static_method("Multigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal", "depth", "verbose"), &Multigoal::method_verify_multigoal);
-	ClassDB::bind_static_method("Multigoal", D_METHOD("method_split_multigoal", "state", "multigoal"), &Multigoal::method_split_multigoal);
+	ClassDB::bind_method(D_METHOD("state_variables"), &PlannerMultigoal::state_variables);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal"), &PlannerMultigoal::method_goals_not_achieved);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal", "depth", "verbose"), &PlannerMultigoal::method_verify_multigoal);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_split_multigoal", "state", "multigoal"), &PlannerMultigoal::method_split_multigoal);
 }
 
-Dictionary Multigoal::get_state() const {
+Dictionary PlannerMultigoal::get_state() const {
 	return state;
 }
 
-void Multigoal::set_state(Dictionary p_value) {
+void PlannerMultigoal::set_state(Dictionary p_value) {
 	state = p_value;
 }
 
-Multigoal::Multigoal(String p_multigoal_name, Dictionary p_state_variables) {
+PlannerMultigoal::PlannerMultigoal(String p_multigoal_name, Dictionary p_state_variables) {
 	set_name(p_multigoal_name);
 	state = p_state_variables;
 }
 
-Array Multigoal::state_variables() {
+Array PlannerMultigoal::state_variables() {
 	return state.keys();
 }
 
-Array Multigoal::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal) {
+Array PlannerMultigoal::method_split_multigoal(Dictionary p_state, Ref<PlannerMultigoal> p_multigoal) {
 	Dictionary goal_state = method_goals_not_achieved(p_state, p_multigoal);
 	Array goal_list;
 	for (Variant state_variable_name : goal_state.keys()) {
@@ -115,7 +115,7 @@ Array Multigoal::method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_mul
 	}
 	return goal_list;
 }
-Variant Multigoal::method_verify_multigoal(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int p_verbose) {
+Variant PlannerMultigoal::method_verify_multigoal(Dictionary p_state, String p_method, Ref<PlannerMultigoal> p_multigoal, int p_depth, int p_verbose) {
 	if (p_multigoal.is_null()) {
 		return false;
 	}
@@ -132,7 +132,7 @@ Variant Multigoal::method_verify_multigoal(Dictionary p_state, String p_method, 
 	}
 	return Array();
 }
-Dictionary Multigoal::method_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal) {
+Dictionary PlannerMultigoal::method_goals_not_achieved(Dictionary p_state, Ref<PlannerMultigoal> p_multigoal) {
 	bool is_multigoal_null = p_multigoal.is_null();
 	if (is_multigoal_null) {
 		return p_state;

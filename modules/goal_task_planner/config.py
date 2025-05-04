@@ -11,9 +11,9 @@ def configure(env):
 
 def get_doc_classes():
     return [
-        "Multigoal",
-        "Domain",
-        "Plan",
+        "PlannerMultigoal",
+        "PlannerDomain",
+        "PlannerPlan",
     ]
 
 

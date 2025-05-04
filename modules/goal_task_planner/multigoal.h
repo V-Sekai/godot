@@ -39,21 +39,21 @@
 
 #include "domain.h"
 
-class Multigoal : public Resource {
-	GDCLASS(Multigoal, Resource);
+class PlannerMultigoal : public Resource {
+	GDCLASS(PlannerMultigoal, Resource);
 
 private:
 	Dictionary state;
 
 public:
-	Multigoal(String p_multigoal_name = "", Dictionary p_state_variables = Dictionary());
+	PlannerMultigoal(String p_multigoal_name = "", Dictionary p_state_variables = Dictionary());
 	Dictionary get_state() const;
 	void set_state(Dictionary p_value);
 	Array state_variables();
 
-	static Array method_split_multigoal(Dictionary p_state, Ref<Multigoal> p_multigoal);
-	static Variant method_verify_multigoal(Dictionary p_state, String p_method, Ref<Multigoal> p_multigoal, int p_depth, int p_verbose);
-	static Dictionary method_goals_not_achieved(Dictionary p_state, Ref<Multigoal> p_multigoal);
+	static Array method_split_multigoal(Dictionary p_state, Ref<PlannerMultigoal> p_multigoal);
+	static Variant method_verify_multigoal(Dictionary p_state, String p_method, Ref<PlannerMultigoal> p_multigoal, int p_depth, int p_verbose);
+	static Dictionary method_goals_not_achieved(Dictionary p_state, Ref<PlannerMultigoal> p_multigoal);
 
 protected:
 	static void _bind_methods();

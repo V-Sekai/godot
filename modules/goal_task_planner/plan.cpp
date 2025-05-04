@@ -36,27 +36,27 @@
 #include "modules/goal_task_planner/domain.h"
 #include "modules/goal_task_planner/multigoal.h"
 
-int Plan::get_verbose() const {
+int PlannerPlan::get_verbose() const {
 	return verbose;
 }
 
-TypedArray<Domain> Plan::get_domains() const {
+TypedArray<PlannerDomain> PlannerPlan::get_domains() const {
 	return domains;
 }
 
-Ref<Domain> Plan::get_current_domain() const {
+Ref<PlannerDomain> PlannerPlan::get_current_domain() const {
 	return current_domain;
 }
 
-void Plan::set_verbose(int p_verbose) {
+void PlannerPlan::set_verbose(int p_verbose) {
 	verbose = p_verbose;
 }
 
-void Plan::set_domains(TypedArray<Domain> p_domain) {
+void PlannerPlan::set_domains(TypedArray<PlannerDomain> p_domain) {
 	domains = p_domain;
 }
 
-Variant Plan::_apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth) {
+Variant PlannerPlan::_apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth) {
 	Callable action = current_domain->get_actions()[p_first_task[0]];
 
 	if (verbose >= 2) {
@@ -97,7 +97,7 @@ Variant Plan::_apply_action_and_continue(Dictionary p_state, Array p_first_task,
 	return false;
 }
 
-Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const Array p_plan, const int p_depth) {
+Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const Array p_plan, const int p_depth) {
 	Array relevant = current_domain->get_task_methods()[p_task1[0]];
 	if (verbose >= 3) {
 		print_line("Depth: " + itos(p_depth) + ", Task " + _item_to_string(p_task1) + ", Todo List " + _item_to_string(p_todo_list) + ", Plan " + _item_to_string(p_plan));
@@ -139,7 +139,7 @@ Variant Plan::_refine_task_and_continue(const Dictionary p_state, const Array p_
 	return false;
 }
 
-Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref<Multigoal> p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth) {
+Variant PlannerPlan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref<PlannerMultigoal> p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth) {
 	if (verbose >= 3) {
 		print_line("Depth: " + itos(p_depth) + ", Multigoal: " + p_first_goal->get_name() + ": " + _item_to_string(p_first_goal));
 	}
@@ -191,7 +191,7 @@ Variant Plan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref
 	return false;
 }
 
-Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array p_goal1, const Array p_todo_list, const Array p_plan, const int p_depth) {
+Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, const Array p_goal1, const Array p_todo_list, const Array p_plan, const int p_depth) {
 	if (verbose >= 3) {
 		String goals_list = vformat("Depth: %d, Goals: %s", p_depth, _item_to_string(p_goal1));
 	}
@@ -255,7 +255,7 @@ Variant Plan::_refine_unigoal_and_continue(const Dictionary p_state, const Array
 	return false;
 }
 
-Variant Plan::find_plan(Dictionary p_state, Array p_todo_list) {
+Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	if (verbose >= 1) {
 		print_line("verbose=" + itos(verbose) + ":");
 		print_line("    state = " + _item_to_string(p_state) + "\n    todo_list = " + _item_to_string(p_todo_list));
@@ -270,7 +270,7 @@ Variant Plan::find_plan(Dictionary p_state, Array p_todo_list) {
 	return result;
 }
 
-Variant Plan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth) {
+Variant PlannerPlan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth) {
 	if (verbose >= 2) {
 		print_line("Depth: " + itos(p_depth) + ", Todo List: " + _item_to_string(p_todo_list));
 	}
@@ -283,7 +283,7 @@ Variant Plan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, in
 	}
 	Variant todo_item = p_todo_list.front();
 	p_todo_list = p_todo_list.slice(1);
-	if (Object::cast_to<Multigoal>(todo_item)) {
+	if (Object::cast_to<PlannerMultigoal>(todo_item)) {
 		return _refine_multigoal_and_continue(p_state, todo_item, p_todo_list, p_plan, p_depth);
 	} else if (todo_item.is_array()) {
 		Array item = todo_item;
@@ -302,11 +302,11 @@ Variant Plan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, in
 	return false;
 }
 
-String Plan::_item_to_string(Variant p_item) {
+String PlannerPlan::_item_to_string(Variant p_item) {
 	return String(p_item);
 }
 
-Dictionary Plan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries) {
+Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries) {
 	if (verbose >= 1) {
 		print_line(vformat("run_lazy_lookahead: verbose = %s, max_tries = %s", verbose, p_max_tries));
 		print_line(vformat("Initial state: %s", p_state.keys()));
@@ -385,7 +385,7 @@ Dictionary Plan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p
 	return p_state;
 }
 
-Variant Plan::_apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments) {
+Variant PlannerPlan::_apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments) {
 	if (verbose >= 3) {
 		print_line(vformat("_apply_task_and_continue %s, args = %s", p_command.get_method(), _item_to_string(p_arguments)));
 	}
@@ -407,31 +407,31 @@ Variant Plan::_apply_task_and_continue(Dictionary p_state, Callable p_command, A
 	return next_state;
 }
 
-void Plan::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_verify_goals"), &Plan::get_verify_goals);
-	ClassDB::bind_method(D_METHOD("set_verify_goals", "value"), &Plan::set_verify_goals);
+void PlannerPlan::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_verify_goals"), &PlannerPlan::get_verify_goals);
+	ClassDB::bind_method(D_METHOD("set_verify_goals", "value"), &PlannerPlan::set_verify_goals);
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "verify_goals"), "set_verify_goals", "get_verify_goals");
 
-	ClassDB::bind_method(D_METHOD("get_verbose"), &Plan::get_verbose);
-	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &Plan::set_verbose);
+	ClassDB::bind_method(D_METHOD("get_verbose"), &PlannerPlan::get_verbose);
+	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &PlannerPlan::set_verbose);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
 
-	ClassDB::bind_method(D_METHOD("get_domains"), &Plan::get_domains);
-	ClassDB::bind_method(D_METHOD("set_domains", "domain"), &Plan::set_domains);
+	ClassDB::bind_method(D_METHOD("get_domains"), &PlannerPlan::get_domains);
+	ClassDB::bind_method(D_METHOD("set_domains", "domain"), &PlannerPlan::set_domains);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "domains", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_domains", "get_domains");
 
-	ClassDB::bind_method(D_METHOD("get_current_domain"), &Plan::get_current_domain);
-	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &Plan::set_current_domain);
+	ClassDB::bind_method(D_METHOD("get_current_domain"), &PlannerPlan::get_current_domain);
+	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &PlannerPlan::set_current_domain);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "current_domain", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_current_domain", "get_current_domain");
 
-	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &Plan::find_plan);
-	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &Plan::run_lazy_lookahead, DEFVAL(10));
+	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &PlannerPlan::find_plan);
+	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &PlannerPlan::run_lazy_lookahead, DEFVAL(10));
 }
 
-bool Plan::get_verify_goals() const {
+bool PlannerPlan::get_verify_goals() const {
 	return verify_goals;
 }
 
-void Plan::set_verify_goals(bool p_value) {
+void PlannerPlan::set_verify_goals(bool p_value) {
 	verify_goals = p_value;
 }
