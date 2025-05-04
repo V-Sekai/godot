@@ -272,8 +272,10 @@ Vector3 SkeletonModifier3D::snap_vector_to_plane(const Vector3 &p_plane_normal, 
 	if (Math::is_zero_approx(p_plane_normal.length_squared())) {
 		return p_vector;
 	}
+	double length = p_vector.length();
+	Vector3 normalized_vec = p_vector.normalized();
 	Vector3 normal = p_plane_normal.normalized();
-	return p_vector - normal * (p_vector.dot(normal));
+	return (normalized_vec - normal * (normalized_vec.dot(normal))) * length;
 }
 
 SkeletonModifier3D::SkeletonModifier3D() {
