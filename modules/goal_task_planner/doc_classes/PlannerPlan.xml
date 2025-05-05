@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerPlan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Manages and executes tasks within a specified domain.
+	</brief_description>
+	<description>
+		The [PlannerPlan] class provides methods for declaring actions, goals, [PlannerMultigoal], and tasks. It also facilitates the process of finding and executing plans to achieve those goals within a specific [PlannerDomain].
+		[PlannerPlan] represents a totally-ordered version of Goal-Task-Network (GTN) planning. However, it does not support sharing and task insertion, and it is not a temporal planner.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="find_plan">
+			<return type="Variant" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<description>
+				Determines a [PlannerPlan] to accomplish the todo list from the provided state.
+				                The todo list is an array of goals, [PlannerMultigoal], tasks, and actions.
+				                A goal is defined as one predicate-subject-object triple.
+				                A [PlannerMultigoal] is a state [Dictionary] of predicate-subject-object triples.
+				                Tasks can accept any number of arguments but only return either false or a series of goals, [PlannerMultigoal], tasks, and actions.
+				                Actions can accept any number of arguments but only return the state of predicate-subject-object triples.
+				The return value is a [Variant], which means it could be of any type. In this case, it returns either false or an array of actions.
+			</description>
+		</method>
+		<method name="run_lazy_lookahead">
+			<return type="Dictionary" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<param index="2" name="max_tries" type="int" default="10" />
+			<description>
+				Initiates a lazy lookahead search to determine a [PlannerPlan], attempting up to max_tries times.
+				The return value is the resulting state.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="current_domain" type="PlannerDomain" setter="set_current_domain" getter="get_current_domain">
+			The active [PlannerDomain] in which the [PlannerPlan] is operating.
+		</member>
+		<member name="domains" type="PlannerDomain[]" setter="set_domains" getter="get_domains" default="[]">
+			The collection of [PlannerDomain]s available to the [PlannerPlan].
+		</member>
+		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
+			The verbosity level of the [PlannerPlan]'s output. This is useful for debugging and understanding the plan's execution. Level 0 is off, levels 1 to 3 show increasing verbosity with 3 being the maximum.
+		</member>
+		<member name="verify_goals" type="bool" setter="set_verify_goals" getter="get_verify_goals" default="true">
+			Enables or disables the verification of the state to confirm if the goals are met.
+		</member>
+	</members>
+</class>
