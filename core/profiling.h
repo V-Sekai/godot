@@ -65,65 +65,30 @@ void godot_init_profiler();
 #include <perfetto.h>
 
 PERFETTO_DEFINE_CATEGORIES(
-		perfetto::Category("general")
-				.SetDescription("All events"), );
+		perfetto::Category("godot")
+				.SetDescription("All Godot Events"), );
 
 // See PERFETTO_INTERNAL_SCOPED_EVENT_FINALIZER
 struct PerfettoGroupedEventEnder {
-	size_t category_idx;
-	bool is_dynamic_category;
-
-	template <size_t NC>
-	_FORCE_INLINE_ explicit PerfettoGroupedEventEnder(const char (&category)[NC]) :
-			category_idx(PERFETTO_GET_CATEGORY_INDEX(category)),
-			is_dynamic_category(::PERFETTO_TRACK_EVENT_NAMESPACE::internal::IsDynamicCategory(category)) {
-	}
-
 	_FORCE_INLINE_ void _end_now() {
-		// See TRACE_EVENT_END (perfetto v49.0)
-		// The macro needed to be expanded so that we can pass category_idx and is_dynamic_category
-		//  as dynamic values. The macro expects constexpr literals, which we do not have at this point.
-		// When perfetto is updated, the internals may change, and this code may have to be revisited.
-		::perfetto::internal::ValidateEventNameType<decltype(nullptr)>();
-		namespace tns = PERFETTO_TRACK_EVENT_NAMESPACE;
-		if (is_dynamic_category) {
-			tns::TrackEvent::CallIfEnabled([&](uint32_t instances) PERFETTO_NO_THREAD_SAFETY_ANALYSIS {
-				tns::TrackEvent::TraceForCategory(instances, this->category_idx,
-						::perfetto::internal::DecayEventNameType(nullptr),
-						::perfetto::protos::pbzero::TrackEvent::TYPE_SLICE_END);
-			});
-		} else {
-			tns::TrackEvent::CallIfCategoryEnabled(this->category_idx,
-					[&](uint32_t instances) PERFETTO_NO_THREAD_SAFETY_ANALYSIS {
-						tns::TrackEvent::TraceForCategory(
-								instances, this->category_idx,
-								::perfetto::internal::DecayEventNameType(nullptr),
-								::perfetto::protos::pbzero::TrackEvent::TYPE_SLICE_END);
-					});
-		}
+		TRACE_EVENT_END("godot");
 	}
 
 	_FORCE_INLINE_ ~PerfettoGroupedEventEnder() {
 		_end_now();
 	}
-
-	template <size_t NC>
-	_FORCE_INLINE_ void change(const char (&category)[NC]) {
-		_end_now();
-		this->category_idx = PERFETTO_GET_CATEGORY_INDEX(category);
-		this->is_dynamic_category = ::PERFETTO_TRACK_EVENT_NAMESPACE::internal::IsDynamicCategory(category);
-	}
 };
 
 #define GodotProfileFrameMark // TODO
-#define GodotProfileZone(m_zone_name) TRACE_EVENT("general", m_zone_name);
+#define GodotProfileZone(m_zone_name) TRACE_EVENT("godot", m_zone_name);
 #define GodotProfileZoneGroupedFirst(m_group_name, m_zone_name) \
-	TRACE_EVENT_BEGIN("general", m_zone_name);                  \
-	PerfettoGroupedEventEnder __godot_perfetto_zone_##m_group_name("general")
+	TRACE_EVENT_BEGIN("godot", m_zone_name);                  \
+	PerfettoGroupedEventEnder __godot_perfetto_zone_##m_group_name
 #define GodotProfileZoneGroupedEndEarly(m_group_name, m_zone_name) __godot_perfetto_zone_##m_group_name.~PerfettoGroupedEventEnder()
 #define GodotProfileZoneGrouped(m_group_name, m_zone_name) \
-	TRACE_EVENT_BEGIN("general", m_zone_name);             \
-	__godot_perfetto_zone_##m_group_name.change("general")
+    __godot_perfetto_zone_##m_group_name._end_now();     \
+	TRACE_EVENT_BEGIN("godot", m_zone_name);
+	
 
 void godot_init_profiler();
 
