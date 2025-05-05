@@ -235,6 +235,9 @@ public:
 	virtual CursorShape cursor_get_shape() const override;
 	virtual void cursor_set_shape(CursorShape p_shape) override;
 	void delete_host_interface();
+
+	virtual void pre_draw_viewport(RID p_render_target) override;
+	virtual void post_draw_viewport(RID p_render_target) override;
 };
 
 #endif // DISPLAY_SERVER_EMBEDDED_H

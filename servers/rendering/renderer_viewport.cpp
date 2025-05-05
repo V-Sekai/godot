@@ -828,6 +828,7 @@ void RendererViewport::draw_viewports(bool p_swap_buffers) {
 		RENDER_TIMESTAMP("> Render Viewport " + itos(i));
 
 		RSG::texture_storage->render_target_set_as_unused(vp->render_target);
+		DisplayServer::get_singleton()->pre_draw_viewport(vp->render_target);
 #ifndef XR_DISABLED
 		if (vp->use_xr && xr_interface.is_valid()) {
 			// Inform XR interface we're about to render its viewport,
@@ -907,6 +908,8 @@ void RendererViewport::draw_viewports(bool p_swap_buffers) {
 				}
 			}
 		}
+
+		DisplayServer::get_singleton()->post_draw_viewport(vp->render_target);
 
 		if (vp->update_mode == RS::VIEWPORT_UPDATE_ONCE) {
 			vp->update_mode = RS::VIEWPORT_UPDATE_DISABLED;

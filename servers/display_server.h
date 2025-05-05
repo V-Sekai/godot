@@ -764,6 +764,9 @@ public:
 	// necessary for GL focus, may be able to use one of the existing functions for this, not sure yet
 	virtual void gl_window_make_current(DisplayServer::WindowID p_window_id);
 
+	virtual void pre_draw_viewport(RID p_render_target) {}
+	virtual void post_draw_viewport(RID p_render_target) {}
+
 	virtual Point2i ime_get_selection() const;
 	virtual String ime_get_text() const;
 

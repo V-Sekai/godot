@@ -742,3 +742,31 @@ void DisplayServerEmbedded::cursor_set_shape(CursorShape p_shape) {
 void DisplayServerEmbedded::delete_host_interface() {
 	host_interface = nullptr;
 }
+
+void DisplayServerEmbedded::pre_draw_viewport(RID p_render_target) {
+#if defined(GLES3_ENABLED)
+	GLES3::TextureStorage *texture_storage = GLES3::TextureStorage::get_singleton();
+	if (texture_storage == nullptr) {
+		return;
+	}
+#if defined(EGL_STATIC)
+	if (gl_manager) {
+		texture_storage->render_target_set_reattach_textures(p_render_target, true);
+	}
+#endif
+#endif
+}
+
+void DisplayServerEmbedded::post_draw_viewport(RID p_render_target) {
+#if defined(GLES3_ENABLED)
+	GLES3::TextureStorage *texture_storage = GLES3::TextureStorage::get_singleton();
+	if (texture_storage == nullptr) {
+		return;
+	}
+#if defined(EGL_STATIC)
+	if (gl_manager) {
+		texture_storage->render_target_set_reattach_textures(p_render_target, false);
+	}
+#endif
+#endif
+}
