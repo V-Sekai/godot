@@ -656,6 +656,10 @@ String OS::get_temp_dir() const {
 	return ::OS::get_singleton()->get_temp_path();
 }
 
+String OS::get_resource_dir() const {
+	return ::OS::get_singleton()->get_resource_dir();
+}
+
 bool OS::is_debug_build() const {
 #ifdef DEBUG_ENABLED
 	return true;
@@ -824,6 +828,7 @@ void OS::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_data_dir"), &OS::get_data_dir);
 	ClassDB::bind_method(D_METHOD("get_cache_dir"), &OS::get_cache_dir);
 	ClassDB::bind_method(D_METHOD("get_temp_dir"), &OS::get_temp_dir);
+	ClassDB::bind_method(D_METHOD("get_resource_dir"), &OS::get_resource_dir);
 	ClassDB::bind_method(D_METHOD("get_unique_id"), &OS::get_unique_id);
 
 	ClassDB::bind_method(D_METHOD("get_keycode_string", "code"), &OS::get_keycode_string);
