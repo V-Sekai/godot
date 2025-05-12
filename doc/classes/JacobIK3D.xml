@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="JacobIK3D" inherits="ManyBoneIK3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Pseudo inverse Jacobian matrix based inverse kinematics solver.
+	</brief_description>
+	<description>
+		[JacobIK3D] calculates rotations for all joints simultaneously, producing natural and smooth movements. It is particularly suited for realistic animations, such as humans or biological creatures.
+		[b]Note:[/b] It converges more slowly than other IK solvers, leading to gentler and less immediate tracking of targets.
+	</description>
+	<tutorials>
+	</tutorials>
+</class>

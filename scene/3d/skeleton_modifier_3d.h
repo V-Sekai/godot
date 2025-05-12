@@ -99,7 +99,10 @@ public:
 	static Vector3 limit_length(const Vector3 &p_origin, const Vector3 &p_destination, float p_length);
 	static Quaternion get_local_pose_rotation(Skeleton3D *p_skeleton, int p_bone, const Quaternion &p_global_pose_rotation);
 	static Quaternion get_from_to_rotation(const Vector3 &p_from, const Vector3 &p_to, const Quaternion &p_prev_rot);
+	static Quaternion get_from_to_rotation_by_axis(const Vector3 &p_from, const Vector3 &p_to, const Vector3 &p_axis);
+	static Quaternion get_swing(const Quaternion &p_rotation, const Vector3 &p_axis);
 	static Vector3 snap_vector_to_plane(const Vector3 &p_plane_normal, const Vector3 &p_vector);
+	static Vector3 rotate_toward(const Vector3 &p_from, const Vector3 &p_to, real_t p_angle_limit);
 
 #ifdef TOOLS_ENABLED
 	virtual bool is_processed_on_saving() const { return false; }
