@@ -66,13 +66,13 @@
 - (void)stopRenderDisplayLayer {
 }
 
-- (void)setupContext:(GLESContext *)context withSurface:(Ref<RenderingNativeSurface> *)surface {
+- (void)setupContext:(GLManager *)context withSurface:(Ref<RenderingNativeSurface> *)surface {
 }
 
 @end
 
 @implementation GDTOpenGLLayer {
-	GLESContext *gles_context;
+	GLManager *gl_manager;
 	Ref<RenderingNativeSurface> native_surface;
 }
 
@@ -88,26 +88,26 @@
 }
 
 - (void)layoutDisplayLayer {
-	gles_context->resized(DisplayServer::MAIN_WINDOW_ID);
+	gl_manager->window_resize(DisplayServer::MAIN_WINDOW_ID, 0, 0);
 }
 
 - (void)startRenderDisplayLayer {
-	gles_context->begin_rendering(DisplayServer::MAIN_WINDOW_ID);
+	gl_manager->window_make_current(DisplayServer::MAIN_WINDOW_ID);
 }
 
 - (void)stopRenderDisplayLayer {
-	gles_context->end_rendering(DisplayServer::MAIN_WINDOW_ID);
+	gl_manager->swap_buffers();
 }
 
 - (void)dealloc {
-	gles_context->destroy_framebuffer(DisplayServer::MAIN_WINDOW_ID);
+	gl_manager->window_destroy(DisplayServer::MAIN_WINDOW_ID);
 }
 
-- (void)setupContext:(GLESContext *)context withSurface:(Ref<RenderingNativeSurface> *)surface {
-	gles_context = context;
+- (void)setupContext:(GLManager *)context withSurface:(Ref<RenderingNativeSurface> *)surface {
+	gl_manager = context;
 	native_surface = *surface;
-	gles_context->initialize();
-	gles_context->create_framebuffer(DisplayServer::MAIN_WINDOW_ID, native_surface);
+	gl_manager->initialize();
+	gl_manager->window_create(DisplayServer::MAIN_WINDOW_ID, native_surface, 0, 0);
 }
 
 @end

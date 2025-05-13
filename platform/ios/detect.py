@@ -31,6 +31,7 @@ def get_opts():
         (("apple_target_triple", "ios_triple"), "Triple for the corresponding target Apple platform toolchain", ""),
         BoolVariable(("simulator", "ios_simulator"), "Build for Simulator", False),
         BoolVariable("generate_bundle", "Generate an APP bundle after building iOS/macOS binaries", False),
+        ("angle_libs", "Path to the ANGLE static libraries", ""),
     ]
 
 
@@ -179,3 +180,16 @@ def configure(env: "SConsEnvironment"):
                 "$IOS_SDK_PATH/System/Library/Frameworks/OpenGLES.framework/Headers",
             ]
         )
+        extra_suffix = ""
+        if env["simulator"]:
+            extra_suffix = ".simulator"
+
+        if env["angle_libs"] != "":
+            print("-lANGLE.ios." + env["arch"])
+            env.Append(CPPDEFINES=["EGL_ENABLED"])
+            env.AppendUnique(CPPDEFINES=["EGL_STATIC"])
+            env.Append(LINKFLAGS=["-L" + env["angle_libs"]])
+            env.Append(LINKFLAGS=["-lANGLE.ios." + env["arch"] + extra_suffix])
+            env.Append(LINKFLAGS=["-lEGL.ios." + env["arch"] + extra_suffix])
+            env.Append(LINKFLAGS=["-lGLES.ios." + env["arch"] + extra_suffix])
+            env.Prepend(CPPPATH=["#thirdparty/angle/include"])

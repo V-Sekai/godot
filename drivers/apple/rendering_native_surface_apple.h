@@ -46,7 +46,9 @@ public:
 	uint64_t get_layer();
 
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
-	GLESContext *create_gles_context() override;
+	GLManager *create_gl_manager(const String &p_driver_name) override;
+
+	void *get_native_id() const override;
 
 	RenderingNativeSurfaceApple();
 	~RenderingNativeSurfaceApple();

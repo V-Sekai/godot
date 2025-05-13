@@ -31,7 +31,7 @@
 #include "rendering_native_surface_apple.h"
 #include "drivers/gles3/storage/texture_storage.h"
 #include "drivers/metal/rendering_context_driver_metal.h"
-#include "servers/rendering/gles_context.h"
+#include "servers/rendering/gl_manager.h"
 
 #import "rendering_context_driver_vulkan_apple.h"
 
@@ -43,6 +43,10 @@
 #import <OpenGLES/EAGLDrawable.h>
 #import <OpenGLES/ES1/gl.h>
 #import <OpenGLES/ES1/glext.h>
+#endif
+
+#if defined(EGL_STATIC)
+#include "drivers/egl/gl_manager_embedded_angle.h"
 #endif
 
 struct WindowData {
@@ -58,22 +62,32 @@ struct WindowData {
 #endif
 };
 
-class GLESContextApple : public GLESContext {
-public:
-	virtual void initialize() override;
-	virtual bool create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) override;
-	virtual void resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) override;
-	virtual void begin_rendering(DisplayServer::WindowID p_id) override;
-	virtual void end_rendering(DisplayServer::WindowID p_id) override;
-	virtual bool destroy_framebuffer(DisplayServer::WindowID p_id) override;
-	virtual void deinitialize() override;
-	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const override;
+class GLManagerApple : public GLManager {
+	DisplayServer::WindowID current_window = -1;
 
-	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const { return -1; }
-	virtual int get_color_texture(DisplayServer::WindowID p_id) const override { return 0; }
+public:
+	virtual Error initialize(void *p_native_display = nullptr) override;
+	virtual Error open_display(void *p_native_display = nullptr) override { return OK; }
+	virtual Error window_create(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) override;
+	virtual void window_resize(DisplayServer::WindowID p_id, int p_width, int p_height) override;
+	virtual void window_make_current(DisplayServer::WindowID p_id) override;
+	virtual void release_current() override {}
+	virtual void swap_buffers() override;
+	virtual void window_destroy(DisplayServer::WindowID p_id) override;
+	void deinitialize();
+
+	virtual void set_use_vsync(bool p_use) override {}
+	virtual bool is_using_vsync() const override { return false; }
+
+	virtual int window_get_render_target(DisplayServer::WindowID p_window_id) const override;
+	virtual int window_get_color_texture(DisplayServer::WindowID p_id) const override { return 0; }
+
+	virtual ~GLManagerApple() {
+		deinitialize();
+	}
 
 protected:
-	bool create_framebuffer(DisplayServer::WindowID p_id, void *p_layer);
+	Error create_framebuffer(DisplayServer::WindowID p_id, void *p_layer);
 
 private:
 	HashMap<DisplayServer::WindowID, WindowData> windows;
@@ -82,48 +96,45 @@ private:
 #endif
 };
 
-void GLESContextApple::initialize() {
+Error GLManagerApple::initialize(void *p_native_display) {
 #if defined(IOS_ENABLED)
 	// Create GL ES 3 context
 	if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility" && context == nullptr) {
 		context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
-		NSLog(@"Setting up an OpenGL ES 3.0 context.");
-		if (!context) {
-			NSLog(@"Failed to create OpenGL ES 3.0 context!");
-			return;
-		}
+		ERR_FAIL_COND_V_MSG(!context, FAILED, "Failed to create OpenGL ES 3.0 context!");
 	}
 
 	if (![EAGLContext setCurrentContext:context]) {
-		NSLog(@"Failed to set EAGLContext!");
-		return;
+		ERR_FAIL_V_MSG(FAILED, "Unable to set current EAGLContext");
 	}
 #endif
+	return OK;
 }
 
-void GLESContextApple::resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) {
+void GLManagerApple::window_resize(DisplayServer::WindowID p_id, int p_width, int p_height) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
 	[EAGLContext setCurrentContext:context];
 	CAEAGLLayer *layer = gles_data.layer;
-	destroy_framebuffer(p_id);
+	window_destroy(p_id);
 	create_framebuffer(p_id, (__bridge void *)layer);
 #endif
 }
 
-void GLESContextApple::begin_rendering(DisplayServer::WindowID p_id) {
+void GLManagerApple::window_make_current(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
 	[EAGLContext setCurrentContext:context];
 	glBindFramebufferOES(GL_FRAMEBUFFER_OES, gles_data.viewFramebuffer);
+	current_window = p_id;
 #endif
 }
 
-void GLESContextApple::end_rendering(DisplayServer::WindowID p_id) {
-	ERR_FAIL_COND(!windows.has(p_id));
-	WindowData &gles_data = windows[p_id];
+void GLManagerApple::swap_buffers() {
+	ERR_FAIL_COND(!windows.has(current_window));
+	WindowData &gles_data = windows[current_window];
 #if defined(IOS_ENABLED)
 	[EAGLContext setCurrentContext:context];
 	glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer);
@@ -138,7 +149,7 @@ void GLESContextApple::end_rendering(DisplayServer::WindowID p_id) {
 #endif
 }
 
-void GLESContextApple::deinitialize() {
+void GLManagerApple::deinitialize() {
 #if defined(IOS_ENABLED)
 	if ([EAGLContext currentContext] == context) {
 		[EAGLContext setCurrentContext:nil];
@@ -150,23 +161,22 @@ void GLESContextApple::deinitialize() {
 #endif
 }
 
-bool GLESContextApple::create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) {
+Error GLManagerApple::window_create(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) {
 #if defined(IOS_ENABLED)
 	CAEAGLLayer *layer = nullptr;
 	Ref<RenderingNativeSurfaceApple> apple_surface = Object::cast_to<RenderingNativeSurfaceApple>(*p_native_surface);
 	if (apple_surface.is_valid()) {
 		layer = (__bridge CAEAGLLayer *)(void *)apple_surface->get_layer();
 	}
-	if (layer == nullptr) {
-		return false;
-	}
+	ERR_FAIL_COND_V_MSG(layer == nullptr, ERR_CANT_CREATE, "Unable to create GL window");
+
 	return create_framebuffer(p_id, (__bridge void *)layer);
 #else
-	return false;
+	return FAILED;
 #endif
 }
 
-bool GLESContextApple::create_framebuffer(DisplayServer::WindowID p_id, void *p_layer) {
+Error GLManagerApple::create_framebuffer(DisplayServer::WindowID p_id, void *p_layer) {
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
 	[EAGLContext setCurrentContext:context];
@@ -193,18 +203,18 @@ bool GLESContextApple::create_framebuffer(DisplayServer::WindowID p_id, void *p_
 
 	if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES) {
 		NSLog(@"failed to make complete framebuffer object %x", glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
-		return false;
+		return FAILED;
 	}
 
-	return true;
+	return OK;
 #else
-	return false;
+	return FAILED;
 #endif
 }
 
 // Clean up any buffers we have allocated.
-bool GLESContextApple::destroy_framebuffer(DisplayServer::WindowID p_id) {
-	ERR_FAIL_COND_V(!windows.has(p_id), false);
+void GLManagerApple::window_destroy(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
 	[EAGLContext setCurrentContext:context];
@@ -217,16 +227,11 @@ bool GLESContextApple::destroy_framebuffer(DisplayServer::WindowID p_id) {
 		glDeleteRenderbuffersOES(1, &gles_data.depthRenderbuffer);
 		gles_data.depthRenderbuffer = 0;
 	}
-
-	windows.erase(p_id);
-	return true;
-#else
-	windows.erase(p_id);
-	return false;
 #endif
+	windows.erase(p_id);
 }
 
-uint64_t GLESContextApple::get_fbo(DisplayServer::WindowID p_id) const {
+int GLManagerApple::window_get_render_target(DisplayServer::WindowID p_id) const {
 	ERR_FAIL_COND_V(!windows.has(p_id), 0);
 	const WindowData &gles_data = windows[p_id];
 	return gles_data.viewFramebuffer;
@@ -253,6 +258,10 @@ uint64_t RenderingNativeSurfaceApple::get_layer() {
 	return (uint64_t)layer;
 }
 
+void *RenderingNativeSurfaceApple::get_native_id() const {
+	return (void *)layer;
+}
+
 RenderingContextDriver *RenderingNativeSurfaceApple::create_rendering_context(const String &p_rendering_driver) {
 #if defined(VULKAN_ENABLED)
 	if (p_rendering_driver == "vulkan") {
@@ -269,12 +278,18 @@ RenderingContextDriver *RenderingNativeSurfaceApple::create_rendering_context(co
 	return nullptr;
 }
 
-GLESContext *RenderingNativeSurfaceApple::create_gles_context() {
+GLManager *RenderingNativeSurfaceApple::create_gl_manager(const String &p_driver_name) {
 #if defined(GLES3_ENABLED)
-	return memnew(GLESContextApple);
-#else
-	return nullptr;
+#if defined(EGL_STATIC)
+	if (p_driver_name == "opengl3_angle") {
+		return memnew(GLManagerANGLE_Embedded);
+	}
 #endif
+	if (p_driver_name == "opengl3") {
+		return memnew(GLManagerApple);
+	}
+#endif
+	return nullptr;
 }
 
 RenderingNativeSurfaceApple::RenderingNativeSurfaceApple() {

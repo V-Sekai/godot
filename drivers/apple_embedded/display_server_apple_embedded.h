@@ -65,7 +65,7 @@ class DisplayServerAppleEmbedded : public DisplayServer {
 	RenderingDevice *rendering_device = nullptr;
 #endif
 #if defined(GLES3_ENABLED)
-	GLESContext *gles_context = nullptr;
+	GLManager *gl_manager = nullptr;
 #endif
 	NativeMenu *native_menu = nullptr;
 

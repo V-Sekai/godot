@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_native_surface.h                                            */
+/*  gl_manager_embedded_angle.cpp                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,32 +28,43 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_NATIVE_SURFACE_H
-#define RENDERING_NATIVE_SURFACE_H
+#include "gl_manager_embedded_angle.h"
 
-#include "core/object/class_db.h"
-#include "core/object/ref_counted.h"
+#if defined(GLES3_ENABLED) && defined(EGL_STATIC)
 
-class RenderingContextDriver;
-class GLManager;
+#include <stdio.h>
+#include <stdlib.h>
 
-class RenderingNativeSurface : public RefCounted {
-	GDCLASS(RenderingNativeSurface, RefCounted);
+#include <EGL/eglext_angle.h>
 
-	static void _bind_methods();
+const char *GLManagerANGLE_Embedded::_get_platform_extension_name() const {
+	return "EGL_ANGLE_platform_angle";
+}
 
-public:
-	RenderingNativeSurface();
-	~RenderingNativeSurface();
+EGLenum GLManagerANGLE_Embedded::_get_platform_extension_enum() const {
+	return EGL_PLATFORM_ANGLE_ANGLE;
+}
 
-	// TODO: Don't have this in the base interface.
-	virtual void setup_external_swapchain_callbacks();
+Vector<EGLAttrib> GLManagerANGLE_Embedded::_get_platform_display_attributes() const {
+	Vector<EGLAttrib> ret;
+	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_ANGLE);
+	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE);
+	ret.push_back(EGL_NONE);
 
-	virtual RenderingContextDriver *create_rendering_context(const String &p_driver_name) = 0;
+	return ret;
+}
 
-	virtual GLManager *create_gl_manager(const String &p_driver_name) { return nullptr; }
+EGLenum GLManagerANGLE_Embedded::_get_platform_api_enum() const {
+	return EGL_OPENGL_ES_API;
+}
 
-	virtual void *get_native_id() const = 0;
-};
+Vector<EGLint> GLManagerANGLE_Embedded::_get_platform_context_attribs() const {
+	Vector<EGLint> ret;
+	ret.push_back(EGL_CONTEXT_CLIENT_VERSION);
+	ret.push_back(3);
+	ret.push_back(EGL_NONE);
 
-#endif // RENDERING_NATIVE_SURFACE_H
+	return ret;
+}
+
+#endif // GLES3_ENABLED

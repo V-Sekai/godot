@@ -42,7 +42,7 @@
 #if defined(GLES3_ENABLED)
 #include "drivers/gles3/rasterizer_gles3.h"
 
-class GLESContext;
+#include "servers/rendering/gl_manager.h"
 #endif // GLES3_ENABLED
 
 class DisplayServerEmbedded : public DisplayServer {
@@ -55,7 +55,7 @@ class DisplayServerEmbedded : public DisplayServer {
 	RenderingDevice *rendering_device = nullptr;
 #endif
 #if defined(GLES3_ENABLED)
-	GLESContext *gles_context = nullptr;
+	GLManager *gl_manager = nullptr;
 #endif
 	NativeMenu *native_menu = nullptr;
 
@@ -78,6 +78,7 @@ class DisplayServerEmbedded : public DisplayServer {
 
 	static Ref<RenderingNativeSurface> native_surface;
 	HashMap<WindowID, Ref<RenderingNativeSurface>> window_surfaces;
+	HashMap<Ref<RenderingNativeSurface>, WindowID> surface_to_window_id;
 	HashMap<WindowID, Size2i> window_sizes;
 
 #if defined(GLES3_ENABLED)

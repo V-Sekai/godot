@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  gles_context.h                                                        */
+/*  gl_manager_embedded_angle.h                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,29 +28,32 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef GLES_CONTEXT_H
-#define GLES_CONTEXT_H
+#ifndef GL_MANAGER_EMBEDDED_ANGLE_H
+#define GL_MANAGER_EMBEDDED_ANGLE_H
 
-#include "core/object/class_db.h"
-#include "core/object/ref_counted.h"
+#if defined(GLES3_ENABLED) && defined(EGL_STATIC)
+
+#include "core/error/error_list.h"
+#include "core/os/os.h"
+#include "core/templates/local_vector.h"
+#include "drivers/egl/egl_manager.h"
 #include "servers/display_server.h"
-#include "servers/rendering/rendering_native_surface.h"
 
-class GLESContext {
+class GLManagerANGLE_Embedded : public EGLManager {
+private:
+	virtual const char *_get_platform_extension_name() const override;
+	virtual EGLenum _get_platform_extension_enum() const override;
+	virtual EGLenum _get_platform_api_enum() const override;
+	virtual Vector<EGLAttrib> _get_platform_display_attributes() const override;
+	virtual Vector<EGLint> _get_platform_context_attribs() const override;
+
 public:
-	virtual void initialize() = 0;
-	virtual bool create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) = 0;
-	virtual void resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) = 0;
-	virtual void begin_rendering(DisplayServer::WindowID p_id) = 0;
-	virtual void end_rendering(DisplayServer::WindowID p_id) = 0;
-	virtual bool destroy_framebuffer(DisplayServer::WindowID p_id) = 0;
-	virtual void deinitialize() = 0;
-	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const = 0;
-	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const = 0;
-	virtual int get_color_texture(DisplayServer::WindowID p_id) const = 0;
+	void window_resize(DisplayServer::WindowID p_window_id, int p_width, int p_height) override {}
 
-	GLESContext() {};
-	virtual ~GLESContext() {};
+	GLManagerANGLE_Embedded() {}
+	~GLManagerANGLE_Embedded() {}
 };
 
-#endif // GLES_CONTEXT_H
+#endif // GLES3_ENABLED
+
+#endif // GL_MANAGER_EMBEDDED_ANGLE_H

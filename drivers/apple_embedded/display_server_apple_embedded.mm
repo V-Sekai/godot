@@ -162,9 +162,9 @@ DisplayServerAppleEmbedded::DisplayServerAppleEmbedded(const String &p_rendering
 		}
 
 		apple_surface = RenderingNativeSurfaceApple::create((__bridge void *)layer);
-		gles_context = apple_surface->create_gles_context();
+		gl_manager = apple_surface->create_gl_manager(rendering_driver);
 		Ref<RenderingNativeSurface> native_surface = Ref<RenderingNativeSurface>(Object::cast_to<RenderingNativeSurface>(apple_surface.ptr()));
-		[layer setupContext:gles_context withSurface:&native_surface];
+		[layer setupContext:gl_manager withSurface:&native_surface];
 
 		RasterizerGLES3::make_current(false);
 		has_made_render_compositor_current = true;
@@ -563,7 +563,7 @@ int64_t DisplayServerAppleEmbedded::window_get_native_handle(HandleType p_handle
 #if defined(GLES3_ENABLED)
 		case OPENGL_FBO: {
 			if (rendering_driver == "opengl3") {
-				return (int64_t)gles_context->get_fbo(DisplayServer::MAIN_WINDOW_ID);
+				return (int64_t)gl_manager->window_get_render_target(DisplayServer::MAIN_WINDOW_ID);
 			}
 			return 0;
 		}

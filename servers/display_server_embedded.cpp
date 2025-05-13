@@ -32,7 +32,7 @@
 
 #include "core/config/project_settings.h"
 #include "core/io/file_access_pack.h"
-#include "servers/rendering/gles_context.h"
+#include "servers/rendering/gl_manager.h"
 
 #ifdef RD_ENABLED
 #if defined(VULKAN_ENABLED)
@@ -117,11 +117,13 @@ DisplayServerEmbedded::DisplayServerEmbedded(const String &p_rendering_driver, W
 #endif
 
 #if defined(GLES3_ENABLED)
-	if (rendering_driver == "opengl3") {
-		gles_context = native_surface->create_gles_context();
-	}
-	if (gles_context) {
-		gles_context->initialize();
+	if (rendering_driver.contains("opengl3")) {
+		gl_manager = native_surface->create_gl_manager(rendering_driver);
+
+		if (gl_manager->initialize() != OK || gl_manager->open_display(nullptr) != OK) {
+			memdelete(gl_manager);
+			gl_manager = nullptr;
+		}
 		if (create_native_window(native_surface) != MAIN_WINDOW_ID) {
 			ERR_PRINT(vformat("Failed to create %s window.", rendering_driver));
 			r_error = ERR_UNAVAILABLE;
@@ -156,10 +158,9 @@ DisplayServerEmbedded::~DisplayServerEmbedded() {
 #endif
 
 #if defined(GLES3_ENABLED)
-	if (gles_context) {
-		gles_context->deinitialize();
-		memdelete(gles_context);
-		gles_context = nullptr;
+	if (gl_manager) {
+		memdelete(gl_manager);
+		gl_manager = nullptr;
 	}
 #endif
 	// Release native surface
@@ -455,6 +456,7 @@ DisplayServer::WindowID DisplayServerEmbedded::get_window_at_screen_position(con
 DisplayServer::WindowID DisplayServerEmbedded::create_native_window(Ref<RenderingNativeSurface> p_native_surface) {
 	WindowID window_id = window_id_counter++;
 	window_surfaces[window_id] = p_native_surface;
+	surface_to_window_id[p_native_surface] = window_id;
 
 #if defined(RD_ENABLED)
 	if (rendering_context) {
@@ -471,9 +473,11 @@ DisplayServer::WindowID DisplayServerEmbedded::create_native_window(Ref<Renderin
 #endif
 
 #if defined(GLES3_ENABLED)
-	if (gles_context) {
-		gles_context->create_framebuffer(window_id, p_native_surface);
-		gles_context->begin_rendering(window_id);
+	if (gl_manager) {
+		if (gl_manager->window_create(window_id, p_native_surface, 0, 0) != OK) {
+			ERR_FAIL_V_MSG(INVALID_WINDOW_ID, "GL manager failed to create window");
+		}
+		gl_manager->window_make_current(window_id);
 		RasterizerGLES3::make_current(false);
 		return window_id;
 	}
@@ -497,11 +501,12 @@ void DisplayServerEmbedded::delete_native_window(DisplayServer::WindowID p_id) {
 #endif
 
 #if defined(GLES3_ENABLED)
-	if (gles_context) {
-		gles_context->destroy_framebuffer(p_id);
+	if (gl_manager) {
+		gl_manager->window_destroy(p_id);
 	}
 #endif
 
+	surface_to_window_id.erase(window_surfaces[p_id]);
 	window_surfaces.erase(p_id);
 }
 
@@ -509,14 +514,14 @@ int64_t DisplayServerEmbedded::window_get_native_handle(HandleType p_handle_type
 	switch (p_handle_type) {
 #if defined(GLES3_ENABLED)
 		case OPENGL_FBO: {
-			if (gles_context) {
-				return gles_context->get_fbo(p_window);
+			if (gl_manager) {
+				return gl_manager->window_get_render_target(p_window);
 			}
 			return 0;
 		}
 		case WINDOW_HANDLE: {
-			if (gles_context) {
-				return (int64_t)gles_context->get_color_texture(p_window);
+			if (gl_manager) {
+				return (int64_t)gl_manager->window_get_color_texture(p_window);
 			}
 			return 0;
 		}
@@ -660,8 +665,8 @@ void DisplayServerEmbedded::resize_window(Size2i p_size, WindowID p_id) {
 #endif
 
 #if defined(GLES3_ENABLED)
-	if (gles_context) {
-		gles_context->resized(p_id, size.x, size.y);
+	if (gl_manager) {
+		gl_manager->window_resize(p_id, p_size.width, p_size.height);
 	}
 #endif
 
@@ -683,16 +688,16 @@ DisplayServer::VSyncMode DisplayServerEmbedded::window_get_vsync_mode(WindowID p
 
 void DisplayServerEmbedded::swap_buffers() {
 #if defined(GLES3_ENABLED)
-	if (gles_context) {
-		gles_context->end_rendering(current_window);
+	if (gl_manager) {
+		gl_manager->swap_buffers();
 	}
 #endif
 }
 
 uint64_t DisplayServerEmbedded::get_native_window_id(WindowID p_id) const {
 #if defined(GLES3_ENABLED)
-	if (gles_context) {
-		return gles_context->get_fbo(p_id);
+	if (gl_manager) {
+		return gl_manager->window_get_render_target(p_id);
 	}
 #endif
 	return 0;
@@ -703,18 +708,14 @@ bool DisplayServerEmbedded::is_rendering_flipped() const {
 }
 
 DisplayServer::WindowID DisplayServerEmbedded::get_native_surface_window_id(Ref<RenderingNativeSurface> p_native_surface) const {
-#if defined(GLES3_ENABLED)
-	if (gles_context) {
-		return gles_context->get_window(p_native_surface);
-	}
-#endif
-	return DisplayServer::INVALID_WINDOW_ID;
+	ERR_FAIL_COND_V(!surface_to_window_id.has(p_native_surface), DisplayServer::INVALID_WINDOW_ID);
+	return surface_to_window_id[p_native_surface];
 }
 
 void DisplayServerEmbedded::gl_window_make_current(DisplayServer::WindowID p_window_id) {
 #if defined(GLES3_ENABLED)
-	if (gles_context) {
-		gles_context->begin_rendering(p_window_id);
+	if (gl_manager) {
+		gl_manager->window_make_current(p_window_id);
 	}
 	current_window = p_window_id;
 #endif

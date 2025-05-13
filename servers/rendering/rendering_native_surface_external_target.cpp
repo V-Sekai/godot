@@ -51,32 +51,39 @@ struct WindowData {
 #endif
 };
 
-class GLESContextExternal : public GLESContext {
+class GLManagerExternal : public GLManager {
 public:
 	void set_surface(Ref<RenderingNativeSurfaceExternalTarget> p_surface);
 #ifdef GLES3_ENABLED
 	void set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address);
 #endif
-	virtual void initialize() override;
-	virtual bool create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) override;
-	virtual void resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) override;
-	virtual void begin_rendering(DisplayServer::WindowID p_id) override;
-	virtual void end_rendering(DisplayServer::WindowID p_id) override;
-	virtual bool destroy_framebuffer(DisplayServer::WindowID p_id) override;
-	virtual void deinitialize() override;
-	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const override;
-	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const override;
-	virtual int get_color_texture(DisplayServer::WindowID p_id) const override;
+	virtual Error initialize(void *p_native_display = nullptr) override;
+	virtual Error open_display(void *p_native_display = nullptr) override { return OK; }
+	Error window_create(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) override;
+	virtual void window_resize(DisplayServer::WindowID p_id, int p_width, int p_height) override;
+	virtual void window_make_current(DisplayServer::WindowID p_id) override;
+	virtual void release_current() override {}
+	virtual void swap_buffers() override;
+	virtual void window_destroy(DisplayServer::WindowID p_id) override;
+	void deinitialize();
+	virtual int window_get_render_target(DisplayServer::WindowID p_id) const override;
+	virtual int window_get_color_texture(DisplayServer::WindowID p_id) const override;
 
-	GLESContextExternal() {};
-	~GLESContextExternal() {};
+	virtual void set_use_vsync(bool p_use) override {}
+	virtual bool is_using_vsync() const override { return false; }
+
+	GLManagerExternal() {};
+	~GLManagerExternal() {
+		deinitialize();
+	};
 
 private:
 	Ref<RenderingNativeSurfaceExternalTarget> surface;
 	HashMap<DisplayServer::WindowID, WindowData> windows;
 	HashMap<DisplayServer::WindowID, Ref<RenderingNativeSurface>> window_surface_map;
 	HashMap<Ref<RenderingNativeSurface>, DisplayServer::WindowID> surface_window_map;
-#ifdef GLES3_ENABLED
+	DisplayServer::WindowID current_window = -1;
+#if defined(GLES3_ENABLED)
 	Callable make_current;
     Callable done_current;
 #ifdef GLAD_ENABLED
@@ -85,12 +92,12 @@ private:
 #endif
 };
 
-void GLESContextExternal::set_surface(Ref<RenderingNativeSurfaceExternalTarget> p_surface) {
+void GLManagerExternal::set_surface(Ref<RenderingNativeSurfaceExternalTarget> p_surface) {
 	surface = p_surface;
 }
 
 #ifdef GLES3_ENABLED
-void GLESContextExternal::set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address) {
+void GLManagerExternal::set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address) {
 	make_current = p_make_current;
 	done_current = p_done_current;
 #ifdef GLAD_ENABLED
@@ -99,7 +106,7 @@ void GLESContextExternal::set_opengl_callbacks(Callable p_make_current, Callable
 }
 #endif
 
-void GLESContextExternal::initialize() {
+Error GLManagerExternal::initialize(void *p_native_display) {
 #ifdef GLES3_ENABLED
 #ifdef GLAD_ENABLED
 	RasterizerGLES3::preloadGL(get_proc_address);
@@ -107,13 +114,14 @@ void GLESContextExternal::initialize() {
 
 	make_current.call();
 #endif
+	return OK;
 }
 
-bool GLESContextExternal::create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) {
+Error GLManagerExternal::window_create(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) {
 	Ref<RenderingNativeSurfaceExternalTarget> external_surface = Object::cast_to<RenderingNativeSurfaceExternalTarget>(*p_native_surface);
 	if (!external_surface.is_valid()) {
 		ERR_PRINT("Given surface is not RenderingNativeSurfaceExternalTarget.");
-		return false;
+		return FAILED;
 	}
 
 #if defined(GLES3_ENABLED)
@@ -144,37 +152,38 @@ bool GLESContextExternal::create_framebuffer(DisplayServer::WindowID p_id, Ref<R
 	// Check if framebuffer has been created successfully.
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		ERR_PRINT(vformat("failed to make complete framebuffer object: code %d", glCheckFramebufferStatus(GL_FRAMEBUFFER)));
-		return false;
+		return FAILED;
 	}
 
 	surface_window_map[external_surface] = p_id;
 	window_surface_map[p_id] = external_surface;
 #endif
-	return true;
+	return OK;
 }
 
-void GLESContextExternal::resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) {
+void GLManagerExternal::window_resize(DisplayServer::WindowID p_id, int p_width, int p_height) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData& gles_data = windows[p_id];
 #if defined(GLES3_ENABLED)
 	make_current.call();
-	destroy_framebuffer(p_id);
+	window_destroy(p_id);
 	surface->resize(Size2i(p_width, p_height));
-	create_framebuffer(p_id, surface);
+	window_create(p_id, surface, p_width, p_height);
 #endif
 }
 
-void GLESContextExternal::begin_rendering(DisplayServer::WindowID p_id) {
+void GLManagerExternal::window_make_current(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData& gles_data = windows[p_id];
 #if defined(GLES3_ENABLED)
 	make_current.call();
 	glBindFramebuffer(GL_FRAMEBUFFER, gles_data.viewFramebuffer);
+	current_window = p_id;
 #endif
 }
 
-void GLESContextExternal::end_rendering(DisplayServer::WindowID p_id) {
-	ERR_FAIL_COND(!windows.has(p_id));
+void GLManagerExternal::swap_buffers() {
+	ERR_FAIL_COND(!windows.has(current_window));
 #if defined(GLES3_ENABLED)
 	make_current.call();
 #ifdef DEBUG_ENABLED
@@ -186,8 +195,8 @@ void GLESContextExternal::end_rendering(DisplayServer::WindowID p_id) {
 #endif
 }
 
-bool GLESContextExternal::destroy_framebuffer(DisplayServer::WindowID p_id) {
-	ERR_FAIL_COND_V(!windows.has(p_id), false);
+void GLManagerExternal::window_destroy(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData& gles_data = windows[p_id];
 #if defined(GLES3_ENABLED)
 	make_current.call();
@@ -206,22 +215,17 @@ bool GLESContextExternal::destroy_framebuffer(DisplayServer::WindowID p_id) {
 	Ref<RenderingNativeSurfaceExternalTarget> external_surface = window_surface_map[p_id];
 	surface_window_map.erase(external_surface);
 	window_surface_map.erase(p_id);
-
-	windows.erase(p_id);
-	return true;
-#else
-	windows.erase(p_id);
-	return false;
 #endif
+	windows.erase(p_id);
 }
 
-void GLESContextExternal::deinitialize() {
+void GLManagerExternal::deinitialize() {
 #if defined(GLES3_ENABLED)
 	done_current.call();
 #endif
 }
 
-uint64_t GLESContextExternal::get_fbo(DisplayServer::WindowID p_id) const {
+int GLManagerExternal::window_get_render_target(DisplayServer::WindowID p_id) const {
 	ERR_FAIL_COND_V(!windows.has(p_id), 0);
 	const WindowData& gles_data = windows[p_id];
 #if defined(GLES3_ENABLED)
@@ -231,18 +235,13 @@ uint64_t GLESContextExternal::get_fbo(DisplayServer::WindowID p_id) const {
 #endif
 }
 
-DisplayServer::WindowID GLESContextExternal::get_window(Ref<RenderingNativeSurface> p_native_surface) const {
-	ERR_FAIL_COND_V(!surface_window_map.has(p_native_surface), DisplayServer::INVALID_WINDOW_ID);
-	return surface_window_map[p_native_surface];
-}
-
-int GLESContextExternal::get_color_texture(DisplayServer::WindowID p_id) const {
-	ERR_FAIL_COND_V(!windows.has(p_id), 0);
+int GLManagerExternal::window_get_color_texture(DisplayServer::WindowID p_id) const {
+	ERR_FAIL_COND_V(!windows.has(p_id), -1);
 	const WindowData& gles_data = windows[p_id];
 #if defined(GLES3_ENABLED)
 	return gles_data.colorTexture;
 #else
-	return 0;
+	return -1;
 #endif
 }
 
@@ -407,12 +406,12 @@ void RenderingNativeSurfaceExternalTarget::set_opengl_callbacks(Callable p_make_
 }
 #endif
 
-GLESContext *RenderingNativeSurfaceExternalTarget::create_gles_context() {
+GLManager *RenderingNativeSurfaceExternalTarget::create_gl_manager(const String &p_driver_name) {
 #if defined(GLES3_ENABLED)
-	GLESContextExternal *gles_context = memnew(GLESContextExternal);
-	gles_context->set_surface(Ref<RenderingNativeSurfaceExternalTarget>(this));
-	gles_context->set_opengl_callbacks(make_current, done_current, get_proc_address);
-	return (GLESContext *)gles_context;
+	GLManagerExternal *gl_manager = memnew(GLManagerExternal);
+	gl_manager->set_surface(Ref<RenderingNativeSurfaceExternalTarget>(this));
+	gl_manager->set_opengl_callbacks(make_current, done_current, get_proc_address);
+	return (GLManager *)gl_manager;
 #else
 	return nullptr;
 #endif

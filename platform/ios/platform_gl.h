@@ -35,3 +35,7 @@
 #endif
 
 #include <ES3/gl.h>
+#ifdef EGL_STATIC
+#include "thirdparty/angle/include/EGL/egl.h"
+#include "thirdparty/angle/include/EGL/eglext.h"
+#endif

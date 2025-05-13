@@ -54,6 +54,14 @@ Ref<RenderingNativeSurfaceVulkan> RenderingNativeSurfaceVulkan::create(VkSurface
 
 #endif
 
+void *RenderingNativeSurfaceVulkan::get_native_id() const {
+#if defined(VULKAN_ENABLED)
+	return (void *)vulkan_surface;
+#else
+	return nullptr;
+#endif
+}
+
 RenderingContextDriver *RenderingNativeSurfaceVulkan::create_rendering_context(const String &p_driver_name) {
 #if defined(VULKAN_ENABLED)
 	if (p_driver_name == "vulkan") {

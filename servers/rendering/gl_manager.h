@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_native_surface.h                                            */
+/*  gl_manager.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,32 +28,38 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef RENDERING_NATIVE_SURFACE_H
-#define RENDERING_NATIVE_SURFACE_H
+#ifndef GL_MANAGER_H
+#define GL_MANAGER_H
 
-#include "core/object/class_db.h"
-#include "core/object/ref_counted.h"
+#if defined(GLES3_ENABLED)
+// These must come first to avoid windows.h mess.
+#include "platform_gl.h"
+#endif
 
-class RenderingContextDriver;
-class GLManager;
+#include "core/error/error_macros.h"
+#include "servers/display_server.h"
+#include "servers/rendering/rendering_native_surface.h"
 
-class RenderingNativeSurface : public RefCounted {
-	GDCLASS(RenderingNativeSurface, RefCounted);
-
-	static void _bind_methods();
-
+class GLManager {
 public:
-	RenderingNativeSurface();
-	~RenderingNativeSurface();
+	virtual Error open_display(void *p_display) = 0;
+	virtual Error window_create(DisplayServer::WindowID p_window_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) = 0;
+	virtual void window_resize(DisplayServer::WindowID p_window_id, int p_width, int p_height) = 0;
+	virtual void window_destroy(DisplayServer::WindowID p_window_id) = 0;
+	virtual int window_get_render_target(DisplayServer::WindowID p_window_id) const = 0;
+	virtual int window_get_color_texture(DisplayServer::WindowID p_id) const = 0;
+	virtual void release_current() = 0;
+	virtual void swap_buffers() = 0;
 
-	// TODO: Don't have this in the base interface.
-	virtual void setup_external_swapchain_callbacks();
+	virtual void window_make_current(DisplayServer::WindowID p_window_id) = 0;
 
-	virtual RenderingContextDriver *create_rendering_context(const String &p_driver_name) = 0;
+	virtual void set_use_vsync(bool p_use) = 0;
+	virtual bool is_using_vsync() const = 0;
 
-	virtual GLManager *create_gl_manager(const String &p_driver_name) { return nullptr; }
+	virtual Error initialize(void *p_native_display = nullptr) = 0;
 
-	virtual void *get_native_id() const = 0;
+	GLManager() {}
+	virtual ~GLManager() {}
 };
 
-#endif // RENDERING_NATIVE_SURFACE_H
+#endif // GL_MANAGER_H

@@ -37,9 +37,9 @@
 #include "drivers/gles3/rasterizer_gles3.h"
 #include "drivers/vulkan/rendering_context_driver_vulkan.h"
 #include "servers/display_server.h"
-#include "servers/rendering/gles_context.h"
+#include "servers/rendering/gl_manager.h"
 
-class GLESContextExternal;
+class GLManagerExternal;
 
 class RenderingNativeSurfaceExternalTarget : public RenderingNativeSurface {    // Defines both Vulkan and OpenGL behavior.
     GDCLASS(RenderingNativeSurfaceExternalTarget, RenderingNativeSurface);
@@ -100,8 +100,10 @@ public:
 #ifdef GLES3_ENABLED
     void set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address);
 #endif
-    GLESContext *create_gles_context() override;
+    virtual GLManager *create_gl_manager(const String &p_driver_name) override;
     uint32_t get_frame_texture(DisplayServer::WindowID p_window_id) const;
+
+    virtual void *get_native_id() const override { return nullptr; }
 
     RenderingNativeSurfaceExternalTarget() {};
     RenderingNativeSurfaceExternalTarget(String p_rendering_driver, int p_width, int p_height);
