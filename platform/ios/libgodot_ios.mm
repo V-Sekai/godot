@@ -35,17 +35,15 @@
 
 #import "os_ios.h"
 
-static OS_IOS *os = nullptr;
-
 static GodotInstance *instance = nullptr;
 
 class GodotInstanceCallbacksIOS : public GodotInstanceCallbacks {
 public:
 	void focus_out(GodotInstance *p_instance) override {
-		os->on_focus_out();
+		OS_IOS::get_singleton()->on_focus_out();
 	}
 	void focus_in(GodotInstance *p_instance) override {
-		os->on_focus_in();
+		OS_IOS::get_singleton()->on_focus_in();
 	}
 	void pause(GodotInstance *p_instance) override {
 		p_instance->focus_out();
@@ -107,6 +105,7 @@ void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
 			memdelete(godot_instance);
 			instance = nullptr;
 			Main::cleanup();
+			delete OS_IOS::get_singleton();
 		};
 
 		TaskExecutor *executor = instance->get_executor();
