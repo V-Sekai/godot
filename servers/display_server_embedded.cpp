@@ -182,6 +182,9 @@ Vector<String> DisplayServerEmbedded::get_rendering_drivers_func() {
 #endif
 #if defined(GLES3_ENABLED)
 	drivers.push_back("opengl3");
+#if defined(EGL_STATIC)
+	drivers.push_back("opengl3_angle");
+#endif
 #endif
 
 	return drivers;
