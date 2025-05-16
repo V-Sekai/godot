@@ -122,7 +122,7 @@ void SpeechProcessor::_mix_audio(const Vector2 *p_capture_buffer, const Vector2 
 		_resample_audio_buffer(
 				mono_reference_real_array.ptr(), // Pointer to source buffer
 				RECORD_MIX_FRAMES, // Size of source buffer * sizeof(float)
-				AudioServer::get_singleton()->get_mix_rate(), // Source sample rate
+				AudioServer::get_singleton()->get_input_mix_rate(), // Source sample rate
 				SPEECH_SETTING_VOICE_SAMPLE_RATE, // Target sample rate
 				reference_real_array.ptrw() +
 						static_cast<size_t>(capture_real_array_offset));
@@ -214,7 +214,7 @@ void SpeechProcessor::start() {
 		return;
 	}
 	if (AudioDriver::get_singleton()) {
-		mix_rate = AudioDriver::get_singleton()->get_mix_rate();
+		mix_rate = AudioDriver::get_singleton()->get_input_mix_rate();
 	}
 	audio_input_stream_player->play();
 	audio_effect_capture->clear_buffer();
