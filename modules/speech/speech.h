@@ -43,37 +43,8 @@
 
 #include "servers/audio/effects/audio_stream_generator.h"
 #include "speech_processor.h"
-#include "one_euro_filter.h" // Ensure this is included as speech.cpp uses it via this header
-
-class PlaybackStats : public RefCounted {
-	GDCLASS(PlaybackStats, RefCounted);
-
-protected:
-	static void _bind_methods();
-
-public:
-	int64_t playback_ring_current_size = 0;
-	int64_t playback_ring_max_size = 0;
-	int64_t playback_ring_size_sum = 0;
-	double playback_get_frames = 0.0;
-	int64_t playback_pushed_calls = 0;
-	int64_t playback_discarded_calls = 0;
-	int64_t playback_push_buffer_calls = 0;
-	int64_t playback_blank_push_calls = 0;
-	double playback_position = 0.0;
-	double playback_skips = 0.0;
-
-	double jitter_buffer_size_sum = 0.0;
-	int64_t jitter_buffer_calls = 0;
-	int64_t jitter_buffer_max_size = 0;
-	int64_t jitter_buffer_current_size = 0;
-
-	int64_t playback_ring_buffer_length = 0;
-	int64_t buffer_frame_count = 0;
-	Dictionary get_playback_stats();
-
-	Vector<double> jitter_buffer_size_history;
-};
+#include "one_euro_filter.h"
+#include "playback_stats.h"
 
 class Speech : public Node {
 	GDCLASS(Speech, Node);
