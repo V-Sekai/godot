@@ -396,9 +396,7 @@ bool Speech::end_recording() {
 	} else {
 		result = false;
 	}
-	if (has_method("clear_all_player_audio")) {
-		call("clear_all_player_audio");
-	}
+	clear_all_player_audio();
 	return result;
 }
 
@@ -674,15 +672,14 @@ void Speech::clear_all_player_audio() {
 		if (!elem.has("audio_stream_player")) {
 			continue;
 		}
-		Dictionary dict = player_audio[key];
-		Node *node = cast_to<Node>(dict["audio_stream_player"]);
+		Node *node = cast_to<Node>(elem["audio_stream_player"]);
 		if (!node) {
 			continue;
 		}
 		node->queue_free();
 	}
 
-	player_audio = Dictionary();
+	player_audio.clear();
 }
 
 void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decoder, Node *p_audio_stream_player, Array p_jitter_buffer, Ref<PlaybackStats> p_playback_stats, Dictionary p_player_dict, double p_process_delta_time) {
