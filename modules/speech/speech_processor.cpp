@@ -127,28 +127,22 @@ void SpeechProcessor::_mix_audio(const Vector2 *p_capture_buffer) {
 								static_cast<size_t>(capture_real_array_offset));
 		capture_real_array_offset = 0;
 		const float *capture_real_array_read_ptr = capture_real_array.ptr();
-		double_t sum = 0;
 		while (capture_real_array_offset < resampled_frame_count - SPEECH_SETTING_BUFFER_FRAME_COUNT) {
-			sum = 0.0;
 
 			for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
 				float frame_float = capture_real_array_read_ptr[static_cast<size_t>(capture_real_array_offset) + i];
-				sum += fabsf(frame_float);
 				int16_t val = static_cast<int16_t>(CLAMP(frame_float * 32767.0f, -32768.0f, 32767.0f));
 				memcpy(mix_byte_array.ptrw() + i * sizeof(int16_t), &val, sizeof(int16_t));
 			}
 
 			Dictionary voice_data_packet;
 			voice_data_packet["buffer"] = mix_byte_array; // mix_byte_array now contains the processed (resampled) microphone audio
-			float average = (float)sum / (float)SPEECH_SETTING_BUFFER_FRAME_COUNT;
-			voice_data_packet["loudness"] = average;
 
 			emit_signal("speech_processed", voice_data_packet);
 
 			if (speech_processed) {
 				SpeechInput speech_input;
 				speech_input.pcm_byte_array = &mix_byte_array;
-				speech_input.volume = average;
 
 				speech_processed(&speech_input);
 			}
