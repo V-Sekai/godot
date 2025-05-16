@@ -190,7 +190,6 @@ private:
 public:
 	struct SpeechInput {
 		PackedByteArray *pcm_byte_array = nullptr;
-		float volume = 0.0;
 	};
 
 	struct CompressedSpeechBuffer {
