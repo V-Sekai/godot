@@ -65,6 +65,12 @@ public:
 
 	void configure(double p_new_min_cutoff, double p_new_beta);
 
+	void set_min_cutoff_frequency(double p_val);
+	double get_min_cutoff_frequency() const;
+
+	void set_beta_value(double p_val);
+	double get_beta_value() const;
+
 	void reset();
 
 	double apply(double p_value, double p_delta_time);

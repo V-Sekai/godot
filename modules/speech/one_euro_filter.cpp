@@ -5,8 +5,13 @@ void OneEuroFilter::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("reset"), &OneEuroFilter::reset);
 	ClassDB::bind_method(D_METHOD("apply", "value", "delta_time"), &OneEuroFilter::apply);
 
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_cutoff_freq"), "set_min_cutoff_freq_via_configure", "get_min_cutoff_freq"); // Requires setter/getter
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "beta_val"), "set_beta_via_configure", "get_beta_val");
+	ClassDB::bind_method(D_METHOD("set_min_cutoff_frequency", "value"), &OneEuroFilter::set_min_cutoff_frequency);
+	ClassDB::bind_method(D_METHOD("get_min_cutoff_frequency"), &OneEuroFilter::get_min_cutoff_frequency);
+	ClassDB::bind_method(D_METHOD("set_beta_value", "value"), &OneEuroFilter::set_beta_value);
+	ClassDB::bind_method(D_METHOD("get_beta_value"), &OneEuroFilter::get_beta_value);
+
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_cutoff_freq"), "set_min_cutoff_frequency", "get_min_cutoff_frequency");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "beta_val"), "set_beta_value", "get_beta_value");
 }
 
 void OneEuroFilter::_clear_filters() {
@@ -93,4 +98,39 @@ void OneEuroFilter::configure(double p_new_min_cutoff, double p_new_beta) {
 	if (!initialized) {
 		_initialize_filters();
 	}
+}
+
+void OneEuroFilter::set_min_cutoff_frequency(double p_val) {
+	min_cutoff_freq = p_val;
+	// d_cutoff_freq is often kept in sync with min_cutoff_freq in OneEuroFilter implementations
+	// If you want them to be independently configurable, you'll need a separate setter for d_cutoff_freq.
+	d_cutoff_freq = p_val; 
+	if (min_cutoff_freq < CMP_EPSILON) {
+		min_cutoff_freq = CMP_EPSILON;
+	}
+	if (d_cutoff_freq < CMP_EPSILON) {
+		d_cutoff_freq = CMP_EPSILON;
+	}
+	// It's good practice to reset filters if parameters change significantly
+	if (initialized) {
+		x_lpf->reset();
+		dx_lpf->reset();
+	}
+}
+
+double OneEuroFilter::get_min_cutoff_frequency() const {
+	return min_cutoff_freq;
+}
+
+void OneEuroFilter::set_beta_value(double p_val) {
+	beta_val = p_val;
+	// It's good practice to reset filters if parameters change significantly
+	if (initialized) {
+		// x_lpf->reset(); // Beta primarily affects dx_lpf's influence on x_lpf's cutoff
+		dx_lpf->reset(); // Resetting dx_lpf might be sufficient or desired
+	}
+}
+
+double OneEuroFilter::get_beta_value() const {
+	return beta_val;
 }
