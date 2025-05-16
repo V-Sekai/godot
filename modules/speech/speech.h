@@ -43,6 +43,7 @@
 
 #include "servers/audio/effects/audio_stream_generator.h"
 #include "speech_processor.h"
+#include "one_euro_filter.h" // Ensure this is included as speech.cpp uses it via this header
 
 class PlaybackStats : public RefCounted {
 	GDCLASS(PlaybackStats, RefCounted);
@@ -131,6 +132,31 @@ private:
 	Dictionary player_audio;
 	int nearest_shift(int p_number);
 
+protected:
+	static void _bind_methods();
+
+	int get_skipped_audio_packets();
+
+	void clear_skipped_audio_packets();
+
+	virtual PackedVector2Array
+	decompress_buffer(Ref<SpeechDecoder> p_speech_decoder,
+			PackedByteArray p_read_byte_array, const int p_read_size,
+			PackedVector2Array p_write_vec2_array);
+	// Copies all the input buffers to the output buffers
+	// Returns the amount of buffers
+	Array copy_and_clear_buffers();
+	Ref<SpeechDecoder> get_speech_decoder();
+	bool start_recording();
+	bool end_recording();
+	void _notification(int p_what);
+	void set_streaming_bus(const String &p_name);
+	void set_error_cancellation_bus(const String &p_name);
+	bool set_audio_input_stream_player(Node *p_audio_stream);
+	Dictionary get_stats();
+	Speech();
+	~Speech();
+
 public:
 	int get_jitter_buffer_speedup() const;
 	void set_jitter_buffer_speedup(int p_jitter_buffer_speedup);
@@ -158,32 +184,6 @@ public:
 	void set_player_audio(Dictionary val);
 	int calc_playback_ring_buffer_length(Ref<AudioStreamGenerator> audio_stream_generator);
 
-protected:
-	static void _bind_methods();
-
-	int get_skipped_audio_packets();
-
-	void clear_skipped_audio_packets();
-
-	virtual PackedVector2Array
-	decompress_buffer(Ref<SpeechDecoder> p_speech_decoder,
-			PackedByteArray p_read_byte_array, const int p_read_size,
-			PackedVector2Array p_write_vec2_array);
-	// Copies all the input buffers to the output buffers
-	// Returns the amount of buffers
-	Array copy_and_clear_buffers();
-	Ref<SpeechDecoder> get_speech_decoder();
-	bool start_recording();
-	bool end_recording();
-	void _notification(int p_what);
-	void set_streaming_bus(const String &p_name);
-	void set_error_cancellation_bus(const String &p_name);
-	bool set_audio_input_stream_player(Node *p_audio_stream);
-	Dictionary get_stats();
-	Speech();
-	~Speech();
-
-public:
 	void add_player_audio(int p_player_id, Node *p_audio_stream_player);
 	void vc_debug_print(String p_str) const;
 	void vc_debug_printerr(String p_str) const;
@@ -191,5 +191,5 @@ public:
 	Dictionary get_playback_stats(Dictionary speech_stat_dict);
 	void remove_player_audio(int p_player_id);
 	void clear_all_player_audio();
-	void attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decoder, Node *p_audio_stream_player, Array p_jitter_buffer, Ref<PlaybackStats> p_playback_stats, Dictionary p_player_dict);
+	void attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decoder, Node *p_audio_stream_player, Array p_jitter_buffer, Ref<PlaybackStats> p_playback_stats, Dictionary p_player_dict, double p_process_delta_time);
 };

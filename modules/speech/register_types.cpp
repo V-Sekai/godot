@@ -31,8 +31,9 @@
 #include "register_types.h"
 
 #include "core/object/class_db.h"
-#include "speech.h"
 
+#include "one_euro_filter.h"
+#include "speech.h"
 #include "speech_decoder.h"
 #include "speech_processor.h"
 
@@ -57,6 +58,7 @@ void initialize_speech_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(SpeechProcessor);
 	GDREGISTER_CLASS(SpeechDecoder);
 	GDREGISTER_CLASS(Speech);
+	GDREGISTER_CLASS(OneEuroFilter);
 }
 
 void uninitialize_speech_module(ModuleInitializationLevel p_level) {

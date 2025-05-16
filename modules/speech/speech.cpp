@@ -31,6 +31,8 @@
 #include "scene/2d/audio_stream_player_2d.h"
 #include "scene/3d/audio_stream_player_3d.h"
 
+#include "core/math/math_funcs.h" // For Math::absf
+
 #include "speech.h"
 #include "speech_processor.h"
 
@@ -302,7 +304,7 @@ void Speech::_bind_methods() {
 			&Speech::remove_player_audio);
 	ClassDB::bind_method(D_METHOD("clear_all_player_audio"),
 			&Speech::clear_all_player_audio);
-	ClassDB::bind_method(D_METHOD("attempt_to_feed_stream", "skip_count", "decoder", "audio_stream_player", "jitter_buffer", "playback_stats", "player_dict"),
+	ClassDB::bind_method(D_METHOD("attempt_to_feed_stream", "skip_count", "decoder", "audio_stream_player", "jitter_buffer", "playback_stats", "player_dict", "process_delta_time"),
 			&Speech::attempt_to_feed_stream);
 	ClassDB::bind_method(D_METHOD("set_error_cancellation_bus", "name"),
 			&Speech::set_error_cancellation_bus);
@@ -435,6 +437,7 @@ void Speech::_notification(int p_what) {
 			break;
 		}
 		case NOTIFICATION_INTERNAL_PROCESS: {
+			double delta = get_process_delta_time();
 			Array keys = player_audio.keys();
 			for (int32_t i = 0; i < keys.size(); i++) {
 				Variant key = keys[i];
@@ -464,7 +467,8 @@ void Speech::_notification(int p_what) {
 						audio_stream_player,
 						jitter_buffer,
 						playback_stats,
-						elem);
+						elem,
+						delta); // Pass delta time
 				Dictionary dict = player_audio[key];
 				dict["packets_received_this_frame"] = 0;
 				player_audio[key] = dict;
@@ -543,7 +547,16 @@ void Speech::add_player_audio(int p_player_id, Node *p_audio_stream_player) {
 			dict["speech_decoder"] = speech_decoder;
 			dict["playback_stats"] = pstats;
 			dict["playback_start_time"] = 0;
-			dict["playback_prev_time"] = -1;
+			dict["playback_prev_time"] = -1.0; // Ensure this is double
+			// Each player gets its own OneEuroFilter for jitter buffer size smoothing
+			Ref<OneEuroFilter> player_jitter_filter;
+			player_jitter_filter.instantiate();
+			// Configure with estimated good defaults. These might need tuning.
+			// min_cutoff: Lower values smooth more but add delay.
+			// beta: Higher values make the filter react faster to changes in jitter.
+			player_jitter_filter->configure(1.0, 0.007); // Default values, adjust as needed
+			dict["jitter_filter"] = player_jitter_filter;
+
 			player_audio[p_player_id] = dict;
 		} else {
 			print_error(vformat("Attempted to duplicate player_audio entry (%s)!", p_player_id));
@@ -684,7 +697,7 @@ void Speech::clear_all_player_audio() {
 	player_audio = Dictionary();
 }
 
-void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decoder, Node *p_audio_stream_player, Array p_jitter_buffer, Ref<PlaybackStats> p_playback_stats, Dictionary p_player_dict) {
+void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decoder, Node *p_audio_stream_player, Array p_jitter_buffer, Ref<PlaybackStats> p_playback_stats, Dictionary p_player_dict, double p_process_delta_time) {
 	if (!p_audio_stream_player) {
 		return;
 	}
@@ -703,7 +716,7 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 		return;
 	}
 	if (int64_t(p_player_dict["playback_last_skips"]) != playback->get_skips()) {
-		p_player_dict["playback_prev_time"] = double(p_player_dict["playback_prev_time"]) - SpeechProcessor::SPEECH_SETTING_MILLISECONDS_PER_PACKET;
+		p_player_dict["playback_prev_time"] = double(p_player_dict["playback_prev_time"]) - static_cast<double>(SpeechProcessor::SPEECH_SETTING_MILLISECONDS_PER_PACKET);
 		p_player_dict["playback_last_skips"] = playback->get_skips();
 	}
 	int64_t to_fill = playback->get_frames_available();
@@ -758,17 +771,37 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 		}
 		p_playback_stats->playback_skips = 1.0 * double(playback->get_skips());
 	}
-	if (p_playback_stats.is_valid()) {
-		p_playback_stats->jitter_buffer_size_sum += p_jitter_buffer.size();
-		p_playback_stats->jitter_buffer_calls += 1;
-		p_playback_stats->jitter_buffer_max_size = p_jitter_buffer.size() ? p_jitter_buffer.size() > p_playback_stats->jitter_buffer_max_size : p_playback_stats->jitter_buffer_max_size;
-		p_playback_stats->jitter_buffer_current_size = p_jitter_buffer.size();
+
+	float current_jitter_buffer_size = p_jitter_buffer.size();
+	Ref<OneEuroFilter> player_jitter_filter = p_player_dict["jitter_filter"];
+	double filtered_jitter_buffer_size = current_jitter_buffer_size;
+	if (player_jitter_filter.is_valid()) {
+		filtered_jitter_buffer_size = player_jitter_filter->apply(current_jitter_buffer_size, p_process_delta_time);
 	}
-	// Speed up or slow down the audio stream to mitigate skipping
-	if (p_jitter_buffer.size() > JITTER_BUFFER_SPEEDUP) {
-		p_audio_stream_player->set_physics_process(STREAM_SPEEDUP_PITCH);
-	} else if (p_jitter_buffer.size() < JITTER_BUFFER_SLOWDOWN) {
+
+	if (p_playback_stats.is_valid()) {
+		p_playback_stats->jitter_buffer_size_sum += filtered_jitter_buffer_size;
+		p_playback_stats->jitter_buffer_calls += 1;
+		// Max and current size stats should probably still reflect the actual buffer, not the filtered one, 
+		// or be reported separately if the filtered value is more important for analysis.
+		// For now, using actual size for max and current, and filtered for sum/mean.
+		p_playback_stats->jitter_buffer_max_size = p_jitter_buffer.size() ? (p_jitter_buffer.size() > p_playback_stats->jitter_buffer_max_size ? p_jitter_buffer.size() : p_playback_stats->jitter_buffer_max_size) : p_playback_stats->jitter_buffer_max_size;
+		p_playback_stats->jitter_buffer_current_size = p_jitter_buffer.size(); 
+	}
+
+	// Use the filtered jitter buffer size for decisions
+	// The thresholds JITTER_BUFFER_SPEEDUP and JITTER_BUFFER_SLOWDOWN might need adjustment
+	// now that we are using a smoothed value.
+	if (filtered_jitter_buffer_size > JITTER_BUFFER_SPEEDUP) {
+		p_audio_stream_player->call("set_pitch_scale", STREAM_SPEEDUP_PITCH);
+	} else if (filtered_jitter_buffer_size < JITTER_BUFFER_SLOWDOWN) {
 		p_audio_stream_player->call("set_pitch_scale", STREAM_STANDARD_PITCH);
+	} else {
+		// If within desired range, ensure standard pitch
+		float current_pitch_scale = p_audio_stream_player->call("get_pitch_scale");
+		if (Math::abs(current_pitch_scale - STREAM_STANDARD_PITCH) > 0.01f) {
+			p_audio_stream_player->call("set_pitch_scale", STREAM_STANDARD_PITCH);
+		}
 	}
 }
 
