@@ -70,8 +70,6 @@ Speech::InputPacket *Speech::get_next_valid_input_packet() {
 
 			input_audio_buffer_array[i - 1].buffer_size =
 					input_audio_buffer_array[i].buffer_size;
-			input_audio_buffer_array[i - 1].loudness =
-					input_audio_buffer_array[i].loudness;
 		}
 		skipped_audio_packets++;
 		return &input_audio_buffer_array[MAX_AUDIO_BUFFER_ARRAY_SIZE - 1];
@@ -107,7 +105,6 @@ void Speech::speech_processed(SpeechProcessor::SpeechInput *p_mic_input) {
 				compressed_buffer_input.compressed_byte_array->ptr(), size);
 
 		input_packet->buffer_size = size;
-		input_packet->loudness = p_mic_input->volume;
 	}
 }
 
@@ -366,7 +363,6 @@ Array Speech::copy_and_clear_buffers() {
 
 		dict["byte_array"] = input_audio_buffer_array[i].compressed_byte_array.slice(0, input_audio_buffer_array[i].buffer_size);
 		dict["buffer_size"] = input_audio_buffer_array[i].buffer_size;
-		dict["loudness"] = input_audio_buffer_array[i].loudness;
 
 		output_array[i] = dict;
 	}

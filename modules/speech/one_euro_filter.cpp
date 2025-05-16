@@ -40,8 +40,8 @@ void OneEuroFilter::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_beta_value", "value"), &OneEuroFilter::set_beta_value);
 	ClassDB::bind_method(D_METHOD("get_beta_value"), &OneEuroFilter::get_beta_value);
 
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_cutoff_freq"), "set_min_cutoff_frequency", "get_min_cutoff_frequency");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "beta_val"), "set_beta_value", "get_beta_value");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_cutoff_frequency"), "set_min_cutoff_frequency", "get_min_cutoff_frequency");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "beta_value"), "set_beta_value", "get_beta_value");
 }
 
 void OneEuroFilter::_clear_filters() {
