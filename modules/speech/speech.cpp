@@ -788,13 +788,6 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 		// For now, using actual size for max and current, and filtered for sum/mean.
 		p_playback_stats->jitter_buffer_max_size = p_jitter_buffer.size() ? (p_jitter_buffer.size() > p_playback_stats->jitter_buffer_max_size ? p_jitter_buffer.size() : p_playback_stats->jitter_buffer_max_size) : p_playback_stats->jitter_buffer_max_size;
 		p_playback_stats->jitter_buffer_current_size = p_jitter_buffer.size();
-
-		// Add/Update history for sparkline
-		const int SPARKLINE_MAX_HISTORY = 20; // Define max history size
-		p_playback_stats->jitter_buffer_size_history.push_back(static_cast<float>(p_jitter_buffer.size()));
-		if (p_playback_stats->jitter_buffer_size_history.size() > SPARKLINE_MAX_HISTORY) {
-			p_playback_stats->jitter_buffer_size_history.remove_at(0);
-		}
 	}
 
 	// Use the filtered jitter buffer size for decisions
@@ -835,44 +828,6 @@ Dictionary PlaybackStats::get_playback_stats() {
 	}
 	dict["jitter_buffer_calls"] = jitter_buffer_calls;
 	dict["playback_position_s"] = playback_position;
-
-	String jitter_sparkline_str = "";
-	if (!jitter_buffer_size_history.is_empty()) {
-		double min_val = jitter_buffer_size_history[0];
-		double max_val = jitter_buffer_size_history[0];
-		for (int i = 1; i < jitter_buffer_size_history.size(); ++i) {
-			if (jitter_buffer_size_history[i] < min_val) {
-				min_val = jitter_buffer_size_history[i];
-			}
-			if (jitter_buffer_size_history[i] > max_val) {
-				max_val = jitter_buffer_size_history[i];
-			}
-		}
-
-		const char *spark_chars[] = { " ", "▂", "▃", "▄", "▅", "▆", "▇", "█" }; // 8 levels
-		int num_spark_chars = 8;
-
-		if (Math::is_equal_approx(max_val, min_val)) {
-			const char *char_to_use;
-			if (Math::is_equal_approx(min_val, 0.0)) {
-				char_to_use = spark_chars[0]; // All zeros, use space
-			} else {
-				char_to_use = spark_chars[1]; // Constant non-zero, use smallest bar "▂"
-			}
-			for (int i = 0; i < jitter_buffer_size_history.size(); ++i) {
-				jitter_sparkline_str += char_to_use;
-			}
-		} else {
-			for (int i = 0; i < jitter_buffer_size_history.size(); ++i) {
-				double normalized_val = (jitter_buffer_size_history[i] - min_val) / (max_val - min_val);
-				int char_index = CLAMP(static_cast<int>(normalized_val * (num_spark_chars - 1) + 0.5f), 0, num_spark_chars - 1); // +0.5f for rounding
-				jitter_sparkline_str += spark_chars[char_index];
-			}
-		}
-	} else {
-		jitter_sparkline_str = "N/A";
-	}
-	dict["jitter_buffer_size_sparkline"] = jitter_sparkline_str;
 
 	dict["playback_get_percent"] = 0;
 	dict["playback_discard_percent"] = 0;
