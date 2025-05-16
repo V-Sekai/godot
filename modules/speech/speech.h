@@ -68,6 +68,7 @@ class Speech : public Node {
 	int current_input_size = 0;
 	PackedByteArray compression_output_byte_array;
 	InputPacket input_audio_buffer_array[MAX_AUDIO_BUFFER_ARRAY_SIZE];
+
 private:
 	// Assigns the memory to the fixed audio buffer arrays
 	void preallocate_buffers();

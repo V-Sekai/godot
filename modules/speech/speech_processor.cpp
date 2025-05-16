@@ -128,7 +128,6 @@ void SpeechProcessor::_mix_audio(const Vector2 *p_capture_buffer) {
 		capture_real_array_offset = 0;
 		const float *capture_real_array_read_ptr = capture_real_array.ptr();
 		while (capture_real_array_offset < resampled_frame_count - SPEECH_SETTING_BUFFER_FRAME_COUNT) {
-
 			for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
 				float frame_float = capture_real_array_read_ptr[static_cast<size_t>(capture_real_array_offset) + i];
 				int16_t val = static_cast<int16_t>(CLAMP(frame_float * 32767.0f, -32768.0f, 32767.0f));
