@@ -41,10 +41,10 @@
 #include "scene/main/node.h"
 #include "servers/audio_server.h"
 
-#include "servers/audio/effects/audio_stream_generator.h"
-#include "speech_processor.h"
 #include "one_euro_filter.h"
 #include "playback_stats.h"
+#include "servers/audio/effects/audio_stream_generator.h"
+#include "speech_processor.h"
 
 class Speech : public Node {
 	GDCLASS(Speech, Node);
@@ -124,7 +124,6 @@ protected:
 	bool end_recording();
 	void _notification(int p_what);
 	void set_streaming_bus(const String &p_name);
-	void set_error_cancellation_bus(const String &p_name);
 	bool set_audio_input_stream_player(Node *p_audio_stream);
 	Dictionary get_stats();
 	Speech();

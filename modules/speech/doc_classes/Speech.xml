@@ -102,12 +102,6 @@
 			<description>
 			</description>
 		</method>
-		<method name="set_error_cancellation_bus">
-			<return type="void" />
-			<param index="0" name="name" type="String" />
-			<description>
-			</description>
-		</method>
 		<method name="set_streaming_bus">
 			<return type="void" />
 			<param index="0" name="bus" type="String" />

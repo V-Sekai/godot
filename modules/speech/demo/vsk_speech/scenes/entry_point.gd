@@ -3,7 +3,6 @@ extends Node
 const lobby_scene_const = preload("lobby.tscn")
 const PACKET_TICK_TIMESLICE = 10
 const MIC_BUS_NAME = "Mic"
-const AEC_BUS_NAME = "Master"
 var lobby_scene : Node = null
 var debug_output : Label = null
 @onready var godot_speech : Node = get_node("GodotSpeech")
@@ -216,6 +215,5 @@ func _ready() -> void:
 	var microphone_stream : AudioStreamPlayer = get_node("MicrophoneStreamAudio")
 	godot_speech.set_audio_input_stream_player(microphone_stream)
 	godot_speech.set_streaming_bus(MIC_BUS_NAME)
-	godot_speech.set_error_cancellation_bus(AEC_BUS_NAME)
 	setup_connections()
 	set_process(true)

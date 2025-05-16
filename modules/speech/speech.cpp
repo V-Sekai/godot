@@ -306,8 +306,6 @@ void Speech::_bind_methods() {
 			&Speech::clear_all_player_audio);
 	ClassDB::bind_method(D_METHOD("attempt_to_feed_stream", "skip_count", "decoder", "audio_stream_player", "jitter_buffer", "playback_stats", "player_dict", "process_delta_time"),
 			&Speech::attempt_to_feed_stream);
-	ClassDB::bind_method(D_METHOD("set_error_cancellation_bus", "name"),
-			&Speech::set_error_cancellation_bus);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "BUFFER_DELAY_THRESHOLD"), "set_buffer_delay_threshold",
 			"get_buffer_delay_threshold");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "STREAM_STANDARD_PITCH"), "set_stream_standard_pitch",
@@ -485,12 +483,6 @@ void Speech::_notification(int p_what) {
 void Speech::set_streaming_bus(const String &p_name) {
 	if (speech_processor) {
 		speech_processor->set_streaming_bus(p_name);
-	}
-}
-
-void Speech::set_error_cancellation_bus(const String &p_name) {
-	if (speech_processor) {
-		speech_processor->set_error_cancellation_bus(p_name);
 	}
 }
 
@@ -791,11 +783,11 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 	if (p_playback_stats.is_valid()) {
 		p_playback_stats->jitter_buffer_size_sum += filtered_jitter_buffer_size;
 		p_playback_stats->jitter_buffer_calls += 1;
-		// Max and current size stats should probably still reflect the actual buffer, not the filtered one, 
+		// Max and current size stats should probably still reflect the actual buffer, not the filtered one,
 		// or be reported separately if the filtered value is more important for analysis.
 		// For now, using actual size for max and current, and filtered for sum/mean.
 		p_playback_stats->jitter_buffer_max_size = p_jitter_buffer.size() ? (p_jitter_buffer.size() > p_playback_stats->jitter_buffer_max_size ? p_jitter_buffer.size() : p_playback_stats->jitter_buffer_max_size) : p_playback_stats->jitter_buffer_max_size;
-		p_playback_stats->jitter_buffer_current_size = p_jitter_buffer.size(); 
+		p_playback_stats->jitter_buffer_current_size = p_jitter_buffer.size();
 
 		// Add/Update history for sparkline
 		const int SPARKLINE_MAX_HISTORY = 20; // Define max history size
@@ -857,7 +849,7 @@ Dictionary PlaybackStats::get_playback_stats() {
 			}
 		}
 
-		const char *spark_chars[] = {" ", "▂", "▃", "▄", "▅", "▆", "▇", "█"}; // 8 levels
+		const char *spark_chars[] = { " ", "▂", "▃", "▄", "▅", "▆", "▇", "█" }; // 8 levels
 		int num_spark_chars = 8;
 
 		if (Math::is_equal_approx(max_val, min_val)) {
