@@ -63,13 +63,11 @@ class Speech : public Node {
 	struct InputPacket {
 		PackedByteArray compressed_byte_array;
 		int buffer_size = 0;
-		float loudness = 0.0;
 	};
 
 	int current_input_size = 0;
 	PackedByteArray compression_output_byte_array;
 	InputPacket input_audio_buffer_array[MAX_AUDIO_BUFFER_ARRAY_SIZE];
-	//
 private:
 	// Assigns the memory to the fixed audio buffer arrays
 	void preallocate_buffers();
