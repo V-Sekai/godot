@@ -1,0 +1,96 @@
+#include "one_euro_filter.h"
+
+void OneEuroFilter::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("configure", "new_min_cutoff", "new_beta"), &OneEuroFilter::configure);
+	ClassDB::bind_method(D_METHOD("reset"), &OneEuroFilter::reset);
+	ClassDB::bind_method(D_METHOD("apply", "value", "delta_time"), &OneEuroFilter::apply);
+
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_cutoff_freq"), "set_min_cutoff_freq_via_configure", "get_min_cutoff_freq"); // Requires setter/getter
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "beta_val"), "set_beta_via_configure", "get_beta_val");
+}
+
+void OneEuroFilter::_clear_filters() {
+	if (x_lpf) {
+		memdelete(x_lpf);
+		x_lpf = nullptr;
+	}
+	if (dx_lpf) {
+		memdelete(dx_lpf);
+		dx_lpf = nullptr;
+	}
+}
+
+void OneEuroFilter::_initialize_filters() {
+	_clear_filters();
+
+	x_lpf = memnew(LowPassFilter);
+	dx_lpf = memnew(LowPassFilter);
+	initialized = true;
+}
+
+double OneEuroFilter::_compute_alpha(double p_rate, double p_cutoff_f) const {
+	if (p_rate < CMP_EPSILON) {
+		return 0.0f;
+	}
+	if (p_cutoff_f < CMP_EPSILON) {
+		return 0.0f;
+	}
+
+	double tau = 1.0f / (2.0f * Math::PI * p_cutoff_f);
+	double te = 1.0f / p_rate;
+	return 1.0f / (1.0f + tau / te);
+}
+
+double OneEuroFilter::apply(double p_value, double p_delta_time) {
+	ERR_FAIL_COND_V_MSG(!initialized || !x_lpf || !dx_lpf, p_value, "OneEuroFilter not properly initialized.");
+
+	if (p_delta_time < CMP_EPSILON) {
+		return x_lpf->last_value;
+	}
+
+	double rate = 1.0f / p_delta_time;
+
+	double dx = (p_value - x_lpf->last_value) * rate;
+
+	double edx = dx_lpf->filter(dx, _compute_alpha(rate, d_cutoff_freq));
+
+	double current_x_cutoff = min_cutoff_freq + beta_val * Math::abs(edx);
+	if (current_x_cutoff < CMP_EPSILON) {
+		current_x_cutoff = CMP_EPSILON;
+	}
+
+	return x_lpf->filter(p_value, _compute_alpha(rate, current_x_cutoff));
+}
+
+void OneEuroFilter::reset() {
+	if (x_lpf) {
+		x_lpf->reset();
+	}
+	if (dx_lpf) {
+		dx_lpf->reset();
+	}
+}
+
+void OneEuroFilter::configure(double p_new_min_cutoff, double p_new_beta) {
+	min_cutoff_freq = p_new_min_cutoff;
+	beta_val = p_new_beta;
+	d_cutoff_freq = p_new_min_cutoff;
+
+	if (min_cutoff_freq < CMP_EPSILON) {
+		min_cutoff_freq = CMP_EPSILON;
+	}
+	if (d_cutoff_freq < CMP_EPSILON) {
+		d_cutoff_freq = CMP_EPSILON;
+	}
+
+	if (x_lpf) {
+		x_lpf->reset();
+	}
+	if (dx_lpf) {
+		dx_lpf->reset();
+	}
+
+	if (!initialized) {
+		_initialize_filters();
+	}
+}
