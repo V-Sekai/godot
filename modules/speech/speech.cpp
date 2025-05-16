@@ -366,7 +366,7 @@ Array Speech::copy_and_clear_buffers() {
 	for (int i = 0; i < current_input_size; i++) {
 		Dictionary dict;
 
-		dict["byte_array"] = input_audio_buffer_array[i].compressed_byte_array;
+		dict["byte_array"] = input_audio_buffer_array[i].compressed_byte_array.slice(0, input_audio_buffer_array[i].buffer_size);
 		dict["buffer_size"] = input_audio_buffer_array[i].buffer_size;
 		dict["loudness"] = input_audio_buffer_array[i].loudness;
 
@@ -861,8 +861,14 @@ Dictionary PlaybackStats::get_playback_stats() {
 		int num_spark_chars = 8;
 
 		if (Math::is_equal_approx(max_val, min_val)) {
+			const char *char_to_use;
+			if (Math::is_equal_approx(min_val, 0.0)) {
+				char_to_use = spark_chars[0]; // All zeros, use space
+			} else {
+				char_to_use = spark_chars[1]; // Constant non-zero, use smallest bar "▂"
+			}
 			for (int i = 0; i < jitter_buffer_size_history.size(); ++i) {
-				jitter_sparkline_str += spark_chars[0];
+				jitter_sparkline_str += char_to_use;
 			}
 		} else {
 			for (int i = 0; i < jitter_buffer_size_history.size(); ++i) {
