@@ -740,36 +740,45 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 	}
 
 	for (int32_t _i = 0; _i < required_packets; _i++) {
-		Dictionary packet = p_jitter_buffer.pop_front();
-		bool packet_pushed = false;
-		bool push_result = false;
-		PackedByteArray buffer = packet["packet"];
-		uncompressed_audio = decompress_buffer(p_decoder, buffer, buffer.size(), uncompressed_audio);
-		if (uncompressed_audio.size()) {
-			if (uncompressed_audio.size() == SpeechProcessor::SPEECH_SETTING_BUFFER_FRAME_COUNT) {
-				push_result = playback->push_buffer(uncompressed_audio);
+		Dictionary packet_from_jitter_buffer = p_jitter_buffer.pop_front();
+		bool was_real_audio_pushed = false;
+		bool final_push_result = false;
+
+		if (bool(packet_from_jitter_buffer["valid"])) {
+			PackedByteArray compressed_data = packet_from_jitter_buffer["packet"];
+			if (compressed_data.size() > 0) {
+				uncompressed_audio = decompress_buffer(p_decoder, compressed_data, compressed_data.size(), uncompressed_audio);
+				if (uncompressed_audio.size() == SpeechProcessor::SPEECH_SETTING_BUFFER_FRAME_COUNT) {
+					final_push_result = playback->push_buffer(uncompressed_audio);
+					if (final_push_result) {
+						was_real_audio_pushed = true;
+					}
+				}
 			}
 		}
-		packet_pushed = true;
-		if (!packet_pushed) {
-			push_result = playback->push_buffer(blank_packet);
+
+		if (!was_real_audio_pushed) {
+			final_push_result = playback->push_buffer(blank_packet);
 		}
+
 		if (p_playback_stats.is_null()) {
 			continue;
 		}
 		p_playback_stats->playback_ring_current_size = playback_ring_buffer_length - playback->get_frames_available();
-		p_playback_stats->playback_ring_max_size = p_playback_stats->playback_ring_current_size ? p_playback_stats->playback_ring_current_size > p_playback_stats->playback_ring_max_size : p_playback_stats->playback_ring_max_size;
-		p_playback_stats->playback_ring_size_sum += 1.0 * p_playback_stats->playback_ring_current_size;
+		p_playback_stats->playback_ring_max_size = MAX(p_playback_stats->playback_ring_max_size, p_playback_stats->playback_ring_current_size);
+		p_playback_stats->playback_ring_size_sum += double(p_playback_stats->playback_ring_current_size);
 		p_playback_stats->playback_push_buffer_calls += 1;
-		if (!packet_pushed) {
+
+		if (!was_real_audio_pushed) {
 			p_playback_stats->playback_blank_push_calls += 1;
 		}
-		if (push_result) {
+
+		if (final_push_result) {
 			p_playback_stats->playback_pushed_calls += 1;
 		} else {
 			p_playback_stats->playback_discarded_calls += 1;
 		}
-		p_playback_stats->playback_skips = 1.0 * double(playback->get_skips());
+		p_playback_stats->playback_skips = double(playback->get_skips());
 	}
 
 	float current_jitter_buffer_size = p_jitter_buffer.size();
