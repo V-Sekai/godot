@@ -581,7 +581,7 @@ void Speech::on_received_audio_packet(int p_peer_id, int p_sequence_id, PackedBy
 		int local_peer_id = get_tree()->get_multiplayer()->get_unique_id();
 		int immediate_sender_id = get_tree()->get_multiplayer()->get_remote_sender_id(); // Who called this RPC on me
 
-		 // Standard echo prevention: if a client (not server) receives its own packet relayed by another peer.
+		// Standard echo prevention: if a client (not server) receives its own packet relayed by another peer.
 		// Server (peer_id 1) should process all packets.
 		// Clients should not process packets they originally sent.
 		if (local_peer_id != 1 && p_peer_id == local_peer_id) {
@@ -596,7 +596,6 @@ void Speech::on_received_audio_packet(int p_peer_id, int p_sequence_id, PackedBy
 		// Depending on requirements, you might allow local processing or enforce multiplayer.
 		// For now, if not in MP, the checks are skipped and packet is processed.
 	}
-
 
 	packets_received_this_frame++;
 
