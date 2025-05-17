@@ -359,6 +359,61 @@ void SpeechProcessor::_notification(int p_what) {
 	}
 }
 
+void SpeechProcessor::test_process_mono_audio_frames(const PackedFloat32Array &p_mono_frames, uint32_t p_input_sample_rate) {
+	// Ensure libresample_state is initialized (it should be by the constructor)
+	if (!libresample_state) {
+		ERR_PRINT_ONCE("SpeechProcessor::test_process_mono_audio_frames - libresample_state is not initialized!");
+		return;
+	}
+
+	// Buffer to hold resampled audio data.
+	double ratio = (double)SPEECH_SETTING_VOICE_SAMPLE_RATE / (double)p_input_sample_rate;
+	uint32_t resampled_buffer_max_frames = static_cast<uint32_t>(p_mono_frames.size() * ratio) + 16; // Add some padding
+	PackedFloat32Array resampled_audio_frames;
+	resampled_audio_frames.resize(resampled_buffer_max_frames);
+	resampled_audio_frames.fill(0.0f);
+
+	uint32_t resampled_frame_count = _resample_audio_buffer(
+			p_mono_frames.ptr(),
+			p_mono_frames.size(),
+			p_input_sample_rate,
+			SPEECH_SETTING_VOICE_SAMPLE_RATE,
+			resampled_audio_frames.ptrw());
+
+	if (resampled_frame_count == 0 && p_mono_frames.size() > 0) {
+		ERR_PRINT_ONCE("SpeechProcessor::test_process_mono_audio_frames - Resampling produced 0 frames from non-empty input.");
+		return;
+	}
+
+	PackedByteArray test_mix_byte_array;
+	test_mix_byte_array.resize(SPEECH_SETTING_PCM_BUFFER_SIZE);
+	test_mix_byte_array.fill(0);
+
+	uint32_t current_offset = 0;
+	const float *resampled_audio_read_ptr = resampled_audio_frames.ptr();
+
+	while (current_offset + SPEECH_SETTING_BUFFER_FRAME_COUNT <= resampled_frame_count) {
+		for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
+			float frame_float = resampled_audio_read_ptr[current_offset + i];
+			int16_t val = static_cast<int16_t>(CLAMP(frame_float * 32767.0f, -32768.0f, 32767.0f));
+			memcpy(test_mix_byte_array.ptrw() + i * sizeof(int16_t), &val, sizeof(int16_t));
+		}
+
+		Dictionary voice_data_packet;
+		voice_data_packet["buffer"] = test_mix_byte_array;
+
+		emit_signal(SNAME("speech_processed"), voice_data_packet);
+
+		if (speech_processed) {
+			SpeechInput speech_input;
+			speech_input.pcm_byte_array = &test_mix_byte_array;
+			speech_processed(&speech_input);
+		}
+
+		current_offset += SPEECH_SETTING_BUFFER_FRAME_COUNT;
+	}
+}
+
 Dictionary SpeechProcessor::get_stats() const {
 	Dictionary stats;
 	stats["capture_discarded_s"] = 0;
