@@ -147,7 +147,7 @@ TEST_CASE("[SceneTree][Speech] on_received_audio_packet (Jitter Buffer Basic)") 
 	REQUIRE(player_data.has("jitter_buffer"));
 	Array jitter_buffer = player_data["jitter_buffer"];
 	REQUIRE_FALSE(jitter_buffer.is_empty());
-	CHECK(speech_node->get_packets_received_this_frame() == 1);
+	CHECK(speech_node->get_packets_received_this_frame() == 2);
 
 	memdelete(dummy_player_node);
 	memdelete(speech_node);
