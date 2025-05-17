@@ -203,6 +203,8 @@ public:
 		speech_processed = callback;
 	}
 
+	void test_process_mono_audio_frames(const PackedFloat32Array &p_mono_frames, uint32_t p_input_sample_rate);
+
 	uint32_t _resample_audio_buffer(const float *p_src,
 			const uint32_t p_src_frame_count,
 			const uint32_t p_src_samplerate,

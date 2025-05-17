@@ -107,10 +107,9 @@ private:
 protected:
 	static void _bind_methods();
 
+public:
 	int get_skipped_audio_packets();
-
 	void clear_skipped_audio_packets();
-
 	virtual PackedVector2Array
 	decompress_buffer(Ref<SpeechDecoder> p_speech_decoder,
 			PackedByteArray p_read_byte_array, const int p_read_size,
@@ -118,17 +117,15 @@ protected:
 	// Copies all the input buffers to the output buffers
 	// Returns the amount of buffers
 	Array copy_and_clear_buffers();
-	Ref<SpeechDecoder> get_speech_decoder();
 	bool start_recording();
 	bool end_recording();
 	void _notification(int p_what);
 	void set_streaming_bus(const String &p_name);
 	bool set_audio_input_stream_player(Node *p_audio_stream);
-	Dictionary get_stats();
 	Speech();
 	~Speech();
-
-public:
+	Ref<SpeechDecoder> get_speech_decoder();
+	Dictionary get_stats();
 	int get_jitter_buffer_speedup() const;
 	void set_jitter_buffer_speedup(int p_jitter_buffer_speedup);
 	int get_jitter_buffer_slowdown() const;

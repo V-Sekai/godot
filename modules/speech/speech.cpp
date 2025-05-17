@@ -511,7 +511,9 @@ void Speech::add_player_audio(int p_player_id, Node *p_audio_stream_player) {
 		if (!player_audio.has(p_player_id)) {
 			Ref<AudioStreamGenerator> new_generator;
 			new_generator.instantiate();
-			new_generator->set_mix_rate(AudioServer::get_singleton()->get_input_mix_rate());
+			if (AudioServer::get_singleton()) {
+				new_generator->set_mix_rate(AudioServer::get_singleton()->get_input_mix_rate());
+			}
 			new_generator->set_buffer_length(BUFFER_DELAY_THRESHOLD);
 			playback_ring_buffer_length = calc_playback_ring_buffer_length(new_generator);
 			p_audio_stream_player->call("set_stream", new_generator);
@@ -804,7 +806,11 @@ Dictionary PlaybackStats::get_playback_stats() {
 	double playback_discarded_frames = playback_discarded_calls * (buffer_frame_count * 1.0);
 	Dictionary dict;
 	dict["mixer_sample_rate"] = SpeechProcessor::SPEECH_SETTING_VOICE_PACKET_SAMPLE_RATE;
-	dict["godot_mixer_input_sample_rate"] = AudioServer::get_singleton()->get_input_mix_rate();
+	if (AudioServer::get_singleton()) {
+		dict["godot_mixer_input_sample_rate"] = AudioServer::get_singleton()->get_input_mix_rate();
+	} else {
+		dict["godot_mixer_input_sample_rate"] = 0;
+	}
 	dict["playback_ring_limit_s"] = playback_ring_buffer_length / double(SpeechProcessor::SPEECH_SETTING_VOICE_PACKET_SAMPLE_RATE);
 	dict["playback_ring_current_size_s"] = playback_ring_current_size / double(SpeechProcessor::SPEECH_SETTING_VOICE_PACKET_SAMPLE_RATE);
 	dict["playback_ring_max_size_s"] = playback_ring_max_size / double(SpeechProcessor::SPEECH_SETTING_VOICE_PACKET_SAMPLE_RATE);
