@@ -223,7 +223,7 @@ func _process(p_delta) -> void:
 	# Copy stats for the local player if they exist
 	if stat_dict.has(local_network_id):
 		filtered_stats[local_network_id] = stat_dict[local_network_id]
-	
+
 	filtered_stats["local_network_id"] = local_network_id
 
 	var json : JSON = JSON.new()
