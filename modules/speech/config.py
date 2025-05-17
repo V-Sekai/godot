@@ -12,7 +12,6 @@ def get_doc_classes():
         "SpeechDecoder",
         "SpeechProcessor",
         "PlaybackStats",
-        "OneEuroFilter",
     ]
 
 

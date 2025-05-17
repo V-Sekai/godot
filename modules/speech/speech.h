@@ -41,7 +41,6 @@
 #include "scene/main/node.h"
 #include "servers/audio_server.h"
 
-#include "one_euro_filter.h"
 #include "playback_stats.h"
 #include "servers/audio/effects/audio_stream_generator.h"
 #include "speech_processor.h"
