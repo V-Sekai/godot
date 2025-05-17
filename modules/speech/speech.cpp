@@ -545,14 +545,6 @@ void Speech::add_player_audio(int p_player_id, Node *p_audio_stream_player) {
 			dict["playback_stats"] = pstats;
 			dict["playback_start_time"] = 0;
 			dict["playback_prev_time"] = -1.0; // Ensure this is double
-			// Each player gets its own OneEuroFilter for jitter buffer size smoothing
-			Ref<OneEuroFilter> player_jitter_filter;
-			player_jitter_filter.instantiate();
-			// Configure with estimated good defaults. These might need tuning.
-			// min_cutoff: Lower values smooth more but add delay.
-			// beta: Higher values make the filter react faster to changes in jitter.
-			player_jitter_filter->configure(1.0, 0.007); // Default values, adjust as needed
-			dict["jitter_filter"] = player_jitter_filter;
 
 			player_audio[p_player_id] = dict;
 		} else {
@@ -803,38 +795,6 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 			p_playback_stats->playback_discarded_calls += 1;
 		}
 		p_playback_stats->playback_skips = double(playback->get_skips());
-	}
-
-	float current_jitter_buffer_size = p_jitter_buffer.size();
-	Ref<OneEuroFilter> player_jitter_filter = p_player_dict["jitter_filter"];
-	double filtered_jitter_buffer_size = current_jitter_buffer_size;
-	if (player_jitter_filter.is_valid()) {
-		filtered_jitter_buffer_size = player_jitter_filter->apply(current_jitter_buffer_size, p_process_delta_time);
-	}
-
-	if (p_playback_stats.is_valid()) {
-		p_playback_stats->jitter_buffer_size_sum += filtered_jitter_buffer_size;
-		p_playback_stats->jitter_buffer_calls += 1;
-		// Max and current size stats should probably still reflect the actual buffer, not the filtered one,
-		// or be reported separately if the filtered value is more important for analysis.
-		// For now, using actual size for max and current, and filtered for sum/mean.
-		p_playback_stats->jitter_buffer_max_size = p_jitter_buffer.size() ? (p_jitter_buffer.size() > p_playback_stats->jitter_buffer_max_size ? p_jitter_buffer.size() : p_playback_stats->jitter_buffer_max_size) : p_playback_stats->jitter_buffer_max_size;
-		p_playback_stats->jitter_buffer_current_size = p_jitter_buffer.size();
-	}
-
-	// Use the filtered jitter buffer size for decisions
-	// The thresholds JITTER_BUFFER_SPEEDUP and JITTER_BUFFER_SLOWDOWN might need adjustment
-	// now that we are using a smoothed value.
-	if (filtered_jitter_buffer_size > JITTER_BUFFER_SPEEDUP) {
-		p_audio_stream_player->call("set_pitch_scale", STREAM_SPEEDUP_PITCH);
-	} else if (filtered_jitter_buffer_size < JITTER_BUFFER_SLOWDOWN) {
-		p_audio_stream_player->call("set_pitch_scale", STREAM_STANDARD_PITCH);
-	} else {
-		// If within desired range, ensure standard pitch
-		float current_pitch_scale = p_audio_stream_player->call("get_pitch_scale");
-		if (Math::abs(current_pitch_scale - STREAM_STANDARD_PITCH) > 0.01f) {
-			p_audio_stream_player->call("set_pitch_scale", STREAM_STANDARD_PITCH);
-		}
 	}
 }
 

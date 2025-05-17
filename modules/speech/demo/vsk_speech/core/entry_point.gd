@@ -86,11 +86,6 @@ func _on_connection_success() -> void:
 	if network_layer.is_active_player():
 		started()
 
-	# If this peer is a client (not the server), set playback_own_voice_from_server_mix to false.
-	if godot_speech and get_tree().get_multiplayer().is_server() == false:
-		godot_speech.playback_own_voice_from_server_mix = false
-		print("Client joined: playback_own_voice_from_server_mix set to false")
-
 	if lobby_scene:
 		lobby_scene.on_connection_success()
 		lobby_scene.refresh_lobby(network_layer.get_full_player_list())
