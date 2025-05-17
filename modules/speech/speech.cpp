@@ -799,6 +799,16 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 			p_audio_stream_player->call("set_pitch_scale", STREAM_STANDARD_PITCH);
 		}
 	}
+
+	if (p_playback_stats.is_valid()) {
+		double current_jitter_buffer_actual_size = static_cast<double>(p_jitter_buffer.size());
+		p_playback_stats->jitter_buffer_size_history.push_back(current_jitter_buffer_actual_size);
+
+		const int MAX_JITTER_HISTORY_SIZE = 200;
+		while (p_playback_stats->jitter_buffer_size_history.size() > MAX_JITTER_HISTORY_SIZE) {
+			p_playback_stats->jitter_buffer_size_history.remove_at(0);
+		}
+	}
 }
 
 Dictionary PlaybackStats::get_playback_stats() {
@@ -844,6 +854,7 @@ Dictionary PlaybackStats::get_playback_stats() {
 		dict["playback_blank_percent"] = 100.0 * playback_blank_push_calls / playback_push_buffer_calls;
 	}
 	dict["playback_skips"] = floor(playback_skips);
+	dict["jitter_buffer_size_history"] = jitter_buffer_size_history;
 	return dict;
 }
 
