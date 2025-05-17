@@ -133,8 +133,6 @@
 		</member>
 		<member name="packets_received_this_frame" type="int" setter="set_packets_received_this_frame" getter="get_packets_received_this_frame" default="0">
 		</member>
-		<member name="playback_own_voice_from_server_mix" type="bool" setter="set_playback_own_voice_from_server_mix" getter="get_playback_own_voice_from_server_mix" default="true">
-		</member>
 		<member name="playback_ring_buffer_length" type="int" setter="set_playback_ring_buffer_length" getter="get_playback_ring_buffer_length" default="0">
 		</member>
 		<member name="player_audio" type="Dictionary" setter="set_player_audio" getter="get_player_audio">
