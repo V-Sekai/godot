@@ -148,44 +148,44 @@ TEST_CASE("[SceneTree][SpeechProcessor] Set Audio Input Stream Player (Error Han
 }
 
 TEST_CASE("[SpeechProcessor] Test Direct Audio Processing via test_process_mono_audio_frames") {
-    SpeechProcessor *processor = memnew(SpeechProcessor);
-    REQUIRE(processor != nullptr);
+	SpeechProcessor *processor = memnew(SpeechProcessor);
+	REQUIRE(processor != nullptr);
 
-    PackedFloat32Array mono_input_frames;
-    const uint32_t input_sample_rate = 16000;
-    const float duration_seconds = 0.1f;
-    const int num_input_frames = static_cast<int>(input_sample_rate * duration_seconds);
-    mono_input_frames.resize(num_input_frames);
-    for (int i = 0; i < num_input_frames; ++i) {
-        mono_input_frames.write[i] = Math::sin(2.0 * Math::PI * 440.0 * static_cast<double>(i) / input_sample_rate) * 0.5f; // A4 note
-    }
+	PackedFloat32Array mono_input_frames;
+	const uint32_t input_sample_rate = 16000;
+	const float duration_seconds = 0.1f;
+	const int num_input_frames = static_cast<int>(input_sample_rate * duration_seconds);
+	mono_input_frames.resize(num_input_frames);
+	for (int i = 0; i < num_input_frames; ++i) {
+		mono_input_frames.write[i] = Math::sin(2.0 * Math::PI * 440.0 * static_cast<double>(i) / input_sample_rate) * 0.5f; // A4 note
+	}
 
-    Vector<PackedByteArray> received_packets; 
+	Vector<PackedByteArray> received_packets;
 
-    processor->register_speech_processed([&](SpeechProcessor::SpeechInput *p_input) {
-        REQUIRE(p_input != nullptr);
-        REQUIRE(p_input->pcm_byte_array != nullptr);
-        received_packets.push_back(*p_input->pcm_byte_array);
-    });
+	processor->register_speech_processed([&](SpeechProcessor::SpeechInput *p_input) {
+		REQUIRE(p_input != nullptr);
+		REQUIRE(p_input->pcm_byte_array != nullptr);
+		received_packets.push_back(*p_input->pcm_byte_array);
+	});
 
-    processor->test_process_mono_audio_frames(mono_input_frames, input_sample_rate);
+	processor->test_process_mono_audio_frames(mono_input_frames, input_sample_rate);
 
-    float expected_total_resampled_frames = static_cast<float>(num_input_frames) * (static_cast<float>(SpeechProcessor::SPEECH_SETTING_VOICE_SAMPLE_RATE) / input_sample_rate);
-    int expected_num_packets = static_cast<int>(Math::floor(expected_total_resampled_frames / static_cast<float>(SpeechProcessor::SPEECH_SETTING_BUFFER_FRAME_COUNT)));
+	float expected_total_resampled_frames = static_cast<float>(num_input_frames) * (static_cast<float>(SpeechProcessor::SPEECH_SETTING_VOICE_SAMPLE_RATE) / input_sample_rate);
+	int expected_num_packets = static_cast<int>(Math::floor(expected_total_resampled_frames / static_cast<float>(SpeechProcessor::SPEECH_SETTING_BUFFER_FRAME_COUNT)));
 
-    bool is_packet_count_acceptable = Math::abs((int)received_packets.size() - expected_num_packets) <= 1;
-    CHECK_MESSAGE(is_packet_count_acceptable,
-                  vformat("Expected around %d packets (+/-1), but received %d.", expected_num_packets, received_packets.size()));
+	bool is_packet_count_acceptable = Math::abs((int)received_packets.size() - expected_num_packets) <= 1;
+	CHECK_MESSAGE(is_packet_count_acceptable,
+			vformat("Expected around %d packets (+/-1), but received %d.", expected_num_packets, received_packets.size()));
 
-    if (!received_packets.is_empty()) {
-        for (const PackedByteArray &packet : received_packets) {
-            CHECK(packet.size() == SpeechProcessor::SPEECH_SETTING_PCM_BUFFER_SIZE);
-        }
-    } else if (expected_num_packets > 0) {
-        FAIL_CHECK(vformat("Expected %d packets, but received none.", expected_num_packets));
-    }
+	if (!received_packets.is_empty()) {
+		for (const PackedByteArray &packet : received_packets) {
+			CHECK(packet.size() == SpeechProcessor::SPEECH_SETTING_PCM_BUFFER_SIZE);
+		}
+	} else if (expected_num_packets > 0) {
+		FAIL_CHECK(vformat("Expected %d packets, but received none.", expected_num_packets));
+	}
 
-    memdelete(processor);
+	memdelete(processor);
 }
 
 } // namespace TestSpeechProcessor

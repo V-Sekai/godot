@@ -32,7 +32,7 @@
 
 #include "../one_euro_filter.h"
 #include "core/math/math_funcs.h"
-#include "core/object/ref_counted.h" 
+#include "core/object/ref_counted.h"
 #include "tests/test_macros.h"
 
 namespace TestOneEuroFilter {
