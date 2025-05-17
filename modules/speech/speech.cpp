@@ -36,6 +36,9 @@
 #include "speech.h"
 #include "speech_processor.h"
 
+// For MultiplayerAPI access
+#include "scene/main/multiplayer_api.h"
+
 void Speech::preallocate_buffers() {
 	input_byte_array.resize(SpeechProcessor::SPEECH_SETTING_PCM_BUFFER_SIZE);
 	input_byte_array.fill(0);
@@ -106,6 +109,14 @@ void Speech::speech_processed(SpeechProcessor::SpeechInput *p_mic_input) {
 
 		input_packet->buffer_size = size;
 	}
+}
+
+bool Speech::get_playback_own_voice_from_server_mix() const {
+	return playback_own_voice_from_server_mix;
+}
+
+void Speech::set_playback_own_voice_from_server_mix(bool p_enable) {
+	playback_own_voice_from_server_mix = p_enable;
 }
 
 int Speech::get_jitter_buffer_speedup() const {
@@ -303,6 +314,11 @@ void Speech::_bind_methods() {
 			&Speech::clear_all_player_audio);
 	ClassDB::bind_method(D_METHOD("attempt_to_feed_stream", "skip_count", "decoder", "audio_stream_player", "jitter_buffer", "playback_stats", "player_dict", "process_delta_time"),
 			&Speech::attempt_to_feed_stream);
+
+	ClassDB::bind_method(D_METHOD("get_playback_own_voice_from_server_mix"), &Speech::get_playback_own_voice_from_server_mix);
+	ClassDB::bind_method(D_METHOD("set_playback_own_voice_from_server_mix", "enable"), &Speech::set_playback_own_voice_from_server_mix);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "playback_own_voice_from_server_mix"), "set_playback_own_voice_from_server_mix", "get_playback_own_voice_from_server_mix");
+
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "BUFFER_DELAY_THRESHOLD"), "set_buffer_delay_threshold",
 			"get_buffer_delay_threshold");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "STREAM_STANDARD_PITCH"), "set_stream_standard_pitch",
@@ -380,24 +396,32 @@ Ref<SpeechDecoder> Speech::get_speech_decoder() {
 }
 
 bool Speech::start_recording() {
-	if (speech_processor) {
-		speech_processor->start();
-		skipped_audio_packets = 0;
-		return true;
+	if (!speech_processor) {
+		speech_processor = memnew(SpeechProcessor);
+		setup_connections();
+	}
+	// Ensure player is set if speech_processor was just created or not set before
+	if (!speech_processor->set_audio_input_stream_player(get_node_or_null(NodePath("AudioStreamPlayer")))) {
+		// Attempt to find a default AudioStreamPlayer if not explicitly set.
+		// This part might need adjustment based on how AudioStreamPlayer is typically associated.
+		// For now, assuming it might have been set via set_audio_input_stream_player earlier.
 	}
 
+	if (speech_processor) {
+		speech_processor->start();
+		local_is_recording = true; // Set flag
+		return true;
+	}
+	local_is_recording = false; // Ensure flag is false if start fails
 	return false;
 }
 
 bool Speech::end_recording() {
-	bool result = true;
 	if (speech_processor) {
 		speech_processor->stop();
-	} else {
-		result = false;
 	}
-	clear_all_player_audio();
-	return result;
+	local_is_recording = false; // Clear flag
+	return true;
 }
 
 void Speech::_notification(int p_what) {
@@ -566,13 +590,53 @@ void Speech::vc_debug_printerr(String p_str) const {
 	print_error(p_str);
 }
 
-void Speech::on_received_audio_packet(int p_peer_id, int p_sequence_id, PackedByteArray p_packet) {
-	vc_debug_print(
-			vformat("Received_audio_packet: peer_id: {%s} sequence_id: {%s}", itos(p_peer_id), itos(p_sequence_id)));
-	if (!player_audio.has(p_peer_id)) {
-		return;
+void Speech::on_received_audio_packet(int p_original_speaker_id, int p_sequence_id, PackedByteArray p_packet) {
+	if (get_tree() && get_tree()->get_multiplayer().is_valid() && get_tree()->get_multiplayer()->has_multiplayer_peer()) {
+		int local_peer_id = get_tree()->get_multiplayer()->get_unique_id();
+		int immediate_sender_id = get_tree()->get_multiplayer()->get_remote_sender_id(); // Who called this RPC on me
+
+		// Case 1: Echo prevention for own individual stream.
+		// If the original uploader of the audio is myself.
+		if (p_original_speaker_id == local_peer_id) {
+			if (DEBUG) {
+				vc_debug_print("Speech: Client (ID: " + itos(local_peer_id) + ") ignoring its own relayed audio stream (original speaker: " + itos(p_original_speaker_id) + ", immediate sender: " + itos(immediate_sender_id) + ").");
+			}
+			return;
+		}
+
+		// Case 2: Preventing phase cancellation with local sidetone when server sends a mix.
+		// Assumes server's peer ID is 1 and it uses its own ID as p_original_speaker_id for mixes.
+		const int server_peer_id = 1;
+		if (immediate_sender_id == server_peer_id && // Packet is from the server
+			p_original_speaker_id == server_peer_id &&   // And the "original speaker" is marked as the server (implies it's a mix)
+			!playback_own_voice_from_server_mix &&    // Configured to not play own voice from server mix
+			local_is_recording) {                     // Currently recording (my voice is likely in the mix)
+			if (DEBUG) {
+				vc_debug_print("Speech: Client (ID: " + itos(local_peer_id) + ") ignoring server mix (original speaker/server: " + itos(p_original_speaker_id) + ", immediate sender: " + itos(immediate_sender_id) + ") to prevent phase cancellation with local sidetone.");
+			}
+			return;
+		}
+	} else if (DEBUG && !(get_tree() && get_tree()->get_multiplayer().is_valid() && get_tree()->get_multiplayer()->has_multiplayer_peer())) {
+		// Log if not in a typical multiplayer setup but packet received, for debugging non-standard uses.
+		// vc_debug_print("Speech: on_received_audio_packet called outside of a fully configured multiplayer context. Processing locally.");
+		// Depending on requirements, you might allow local processing or enforce multiplayer.
+		// For now, if not in MP, the checks are skipped and packet is processed.
 	}
-	Dictionary elem = player_audio[p_peer_id];
+
+
+	packets_received_this_frame++;
+
+	if (!player_audio.has(p_original_speaker_id)) {
+		if (DEBUG) {
+			vc_debug_printerr("Speech: Received audio packet from unknown player_id: " + itos(p_original_speaker_id) + ". Player audio entry might need to be created.");
+			// TODO: Consider how to handle adding new players dynamically if necessary,
+			// or if this should strictly be an error.
+			// For now, if no entry, we can't process further for that player.
+		}
+		return; // Cannot process if no player audio setup for this ID.
+	}
+
+	Dictionary elem = player_audio[p_original_speaker_id];
 	// Detects if no audio packets have been received from this player yet.
 	if (int64_t(elem["sequence_id"]) == -1) {
 		elem["sequence_id"] = p_sequence_id - 1;
@@ -624,7 +688,7 @@ void Speech::on_received_audio_packet(int p_peer_id, int p_sequence_id, PackedBy
 		}
 	}
 	elem["jitter_buffer"] = jitter_buffer;
-	player_audio[p_peer_id] = elem;
+	player_audio[p_original_speaker_id] = elem;
 }
 
 Dictionary Speech::get_playback_stats(Dictionary speech_stat_dict) {
@@ -799,16 +863,6 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 			p_audio_stream_player->call("set_pitch_scale", STREAM_STANDARD_PITCH);
 		}
 	}
-
-	if (p_playback_stats.is_valid()) {
-		double current_jitter_buffer_actual_size = static_cast<double>(p_jitter_buffer.size());
-		p_playback_stats->jitter_buffer_size_history.push_back(current_jitter_buffer_actual_size);
-
-		const int MAX_JITTER_HISTORY_SIZE = 200;
-		while (p_playback_stats->jitter_buffer_size_history.size() > MAX_JITTER_HISTORY_SIZE) {
-			p_playback_stats->jitter_buffer_size_history.remove_at(0);
-		}
-	}
 }
 
 Dictionary PlaybackStats::get_playback_stats() {
@@ -854,7 +908,6 @@ Dictionary PlaybackStats::get_playback_stats() {
 		dict["playback_blank_percent"] = 100.0 * playback_blank_push_calls / playback_push_buffer_calls;
 	}
 	dict["playback_skips"] = floor(playback_skips);
-	dict["jitter_buffer_size_history"] = jitter_buffer_size_history;
 	return dict;
 }
 

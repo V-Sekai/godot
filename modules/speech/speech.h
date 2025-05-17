@@ -60,6 +60,9 @@ class Speech : public Node {
 
 	SpeechProcessor *speech_processor = nullptr;
 
+	bool local_is_recording = false; 
+	bool playback_own_voice_from_server_mix = true; 
+
 	struct InputPacket {
 		PackedByteArray compressed_byte_array;
 		int buffer_size = 0;
@@ -126,6 +129,10 @@ public:
 	~Speech();
 	Ref<SpeechDecoder> get_speech_decoder();
 	Dictionary get_stats();
+
+	bool get_playback_own_voice_from_server_mix() const; 
+	void set_playback_own_voice_from_server_mix(bool p_enable); 
+
 	int get_jitter_buffer_speedup() const;
 	void set_jitter_buffer_speedup(int p_jitter_buffer_speedup);
 	int get_jitter_buffer_slowdown() const;
