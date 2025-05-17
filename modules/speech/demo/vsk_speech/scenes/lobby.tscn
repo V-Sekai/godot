@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://d0iiss7ddmto5"]
 
-[ext_resource type="Script" uid="uid://ja0d0f1lh7i7" path="res://vsk_speech/scenes/lobby.gd" id="1_wxin1"]
+[ext_resource type="Script" uid="uid://ja0d0f1lh7i7" path="res://vsk_speech/core/lobby.gd" id="1_wxin1"]
 
 [node name="SpeechLobby" type="Control"]
 layout_mode = 3
@@ -139,13 +139,14 @@ size_flags_horizontal = 2
 size_flags_vertical = 0
 theme_override_colors/font_color = Color(0.820312, 0.291595, 0.291595, 1)
 
-[node name="debug_output" type="Label" parent="."]
+[node name="debug_output" type="RichTextLabel" parent="."]
 layout_mode = 0
 anchor_right = 0.446
 anchor_bottom = 1.0
 offset_top = 160.0
 offset_right = 311.296
-theme_override_font_sizes/font_size = 16
+fit_content = true
+scroll_following = true
 metadata/_edit_layout_mode = 1
 metadata/_edit_use_custom_anchors = true
 

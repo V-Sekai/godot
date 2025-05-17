@@ -1,10 +1,10 @@
 extends Node
 
-const lobby_scene_const = preload("lobby.tscn")
+const lobby_scene_const = preload("../scenes/lobby.tscn")
 const PACKET_TICK_TIMESLICE = 10
 const MIC_BUS_NAME = "Mic"
 var lobby_scene : Node = null
-var debug_output : Label = null
+var debug_output : RichTextLabel = null
 @onready var godot_speech : Node = get_node("GodotSpeech")
 var is_connected : bool = false
 var audio_players : Dictionary
@@ -85,6 +85,12 @@ func confirm_connection() -> void:
 func _on_connection_success() -> void:
 	if network_layer.is_active_player():
 		started()
+
+	# If this peer is a client (not the server), set playback_own_voice_from_server_mix to false.
+	if godot_speech and get_tree().get_multiplayer().is_server() == false:
+		godot_speech.playback_own_voice_from_server_mix = false
+		print("Client joined: playback_own_voice_from_server_mix set to false")
+
 	if lobby_scene:
 		lobby_scene.on_connection_success()
 		lobby_scene.refresh_lobby(network_layer.get_full_player_list())
@@ -203,8 +209,25 @@ func _process(p_delta) -> void:
 		index += 1
 	var speech_stat_dict : Dictionary = godot_speech.get_stats()
 	var stat_dict : Dictionary = godot_speech.get_playback_stats(speech_stat_dict)
+
+	var local_network_id : int = 1 # Default to 1 (server) if not in multiplayer
+	if get_tree().get_multiplayer().has_multiplayer_peer():
+		local_network_id = get_tree().get_multiplayer().get_unique_id()
+
+	var filtered_stats : Dictionary = {}
+	# Copy general stats (non-integer keys)
+	for key in stat_dict:
+		if typeof(key) != TYPE_INT:
+			filtered_stats[key] = stat_dict[key]
+
+	# Copy stats for the local player if they exist
+	if stat_dict.has(local_network_id):
+		filtered_stats[local_network_id] = stat_dict[local_network_id]
+	
+	filtered_stats["local_network_id"] = local_network_id
+
 	var json : JSON = JSON.new()
-	debug_output.set_text(json.stringify(stat_dict, "\t"))
+	debug_output.set_text(json.stringify(filtered_stats, "\t"))
 
 
 func _ready() -> void:

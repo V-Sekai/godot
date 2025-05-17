@@ -145,7 +145,6 @@ func join_game(ip : String, port : int, new_player_name : String) -> void:
 		get_tree().get_multiplayer().multiplayer_peer = host
 		host.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
 
-
 func get_player_list() -> Array:
 	return players.values()
 

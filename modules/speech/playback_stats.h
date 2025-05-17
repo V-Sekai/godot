@@ -56,6 +56,4 @@ public:
 	int64_t playback_ring_buffer_length = 0;
 	int64_t buffer_frame_count = 0;
 	Dictionary get_playback_stats();
-
-	Vector<double> jitter_buffer_size_history;
 };

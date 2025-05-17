@@ -24,7 +24,7 @@ mix_rate=48000
 
 [autoload]
 
-network_layer="*res://vsk_speech/scenes/network_layer.gd"
+network_layer="*res://vsk_speech/core/network_layer.gd"
 
 [editor_plugins]
 

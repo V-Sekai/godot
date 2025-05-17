@@ -69,7 +69,6 @@ TEST_CASE("[SceneTree][PlaybackStats] Initialization and Getters") {
 	CHECK(stats->jitter_buffer_current_size == 0);
 	CHECK(stats->playback_ring_buffer_length == 0);
 	CHECK(stats->buffer_frame_count == 0);
-	REQUIRE(stats->jitter_buffer_size_history.is_empty());
 	if (temp_root_window) {
 		tree->queue_delete(temp_root_window);
 	}
@@ -83,14 +82,10 @@ TEST_CASE("[SceneTree][PlaybackStats] Stats Modification and Retrieval") {
 	stats->playback_ring_current_size = 100;
 	stats->jitter_buffer_max_size = 5;
 	stats->playback_skips = 10.5;
-	stats->jitter_buffer_size_history.push_back(1.0);
-	stats->jitter_buffer_size_history.push_back(2.0);
 
 	CHECK(stats->playback_ring_current_size == 100);
 	CHECK(stats->jitter_buffer_max_size == 5);
 	CHECK(Math::is_equal_approx(stats->playback_skips, 10.5));
-	REQUIRE(stats->jitter_buffer_size_history.size() == 2);
-	CHECK(Math::is_equal_approx(stats->jitter_buffer_size_history[0], 1.0));
 }
 
 } // namespace TestPlaybackStats
