@@ -33,24 +33,24 @@
 #include "../playback_stats.h"
 #include "core/object/ref_counted.h"
 #include "core/variant/dictionary.h"
-#include "tests/test_macros.h"
 #include "scene/main/scene_tree.h" // Added for SceneTree
-#include "scene/main/window.h"     // Added for Window (root of SceneTree)
+#include "scene/main/window.h" // Added for Window (root of SceneTree)
+#include "tests/test_macros.h"
 
 namespace TestPlaybackStats {
 
 TEST_CASE("[SceneTree][PlaybackStats] Initialization and Getters") {
-    SceneTree *tree = SceneTree::get_singleton();
-    Window *original_root_window = tree->get_root();
-    Window *temp_root_window = nullptr;
+	SceneTree *tree = SceneTree::get_singleton();
+	Window *original_root_window = tree->get_root();
+	Window *temp_root_window = nullptr;
 
-    if (!original_root_window) {
-        temp_root_window = memnew(Window);
-        tree->add_current_scene(temp_root_window);
-    }
+	if (!original_root_window) {
+		temp_root_window = memnew(Window);
+		tree->add_current_scene(temp_root_window);
+	}
 
 	Ref<PlaybackStats> stats;
-    stats.instantiate();
+	stats.instantiate();
 	REQUIRE(stats.is_valid());
 
 	CHECK(stats->playback_ring_current_size == 0);
@@ -70,14 +70,14 @@ TEST_CASE("[SceneTree][PlaybackStats] Initialization and Getters") {
 	CHECK(stats->playback_ring_buffer_length == 0);
 	CHECK(stats->buffer_frame_count == 0);
 	REQUIRE(stats->jitter_buffer_size_history.is_empty());
-    if (temp_root_window) {
-        tree->queue_delete(temp_root_window);
-    }
+	if (temp_root_window) {
+		tree->queue_delete(temp_root_window);
+	}
 }
 
 TEST_CASE("[SceneTree][PlaybackStats] Stats Modification and Retrieval") {
 	Ref<PlaybackStats> stats;
-    stats.instantiate();
+	stats.instantiate();
 	REQUIRE(stats.is_valid());
 
 	stats->playback_ring_current_size = 100;

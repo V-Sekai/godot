@@ -128,30 +128,30 @@ TEST_CASE("[SceneTree][Speech] Player Audio Management") {
 	memdelete(speech_node);
 }
 
-// TEST_CASE("[SceneTree][Speech] on_received_audio_packet (Jitter Buffer Basic)") {
-// 	Speech *speech_node = memnew(Speech);
-// 	Node *dummy_player_node = memnew(Node);
-// 	speech_node->add_player_audio(123, dummy_player_node);
+TEST_CASE("[SceneTree][Speech] on_received_audio_packet (Jitter Buffer Basic)") {
+	Speech *speech_node = memnew(Speech);
+	AudioStreamPlayer3D *dummy_player_node = memnew(AudioStreamPlayer3D);
+	speech_node->add_player_audio(123, dummy_player_node);
 
-// 	PackedByteArray packet_data;
-// 	packet_data.resize(30);
-// 	for (int i = 0; i < packet_data.size(); ++i) {
-// 		packet_data.write[i] = i;
-// 	}
+	PackedByteArray packet_data;
+	packet_data.resize(30);
+	for (int i = 0; i < packet_data.size(); ++i) {
+		packet_data.write[i] = static_cast<uint8_t>(i);
+	}
 
-// 	speech_node->on_received_audio_packet(123, 1, packet_data);
+	speech_node->on_received_audio_packet(123, 1, packet_data);
 
-// 	Dictionary player_audio = speech_node->get_player_audio();
-// 	REQUIRE(player_audio.has(123));
-// 	Dictionary player_data = player_audio[123];
-// 	REQUIRE(player_data.has("jitter_buffer"));
-// 	Array jitter_buffer = player_data["jitter_buffer"];
-// 	REQUIRE_FALSE(jitter_buffer.is_empty());
-// 	CHECK(speech_node->get_packets_received_this_frame() == 1);
+	Dictionary player_audio = speech_node->get_player_audio();
+	REQUIRE(player_audio.has(123));
+	Dictionary player_data = player_audio[123];
+	REQUIRE(player_data.has("jitter_buffer"));
+	Array jitter_buffer = player_data["jitter_buffer"];
+	REQUIRE_FALSE(jitter_buffer.is_empty());
+	CHECK(speech_node->get_packets_received_this_frame() == 1);
 
-// 	memdelete(dummy_player_node);
-// 	memdelete(speech_node);
-// }
+	memdelete(dummy_player_node);
+	memdelete(speech_node);
+}
 
 TEST_CASE("[SceneTree][Speech] copy_and_clear_buffers (Basic Call)") {
 	Speech *speech_node = memnew(Speech);

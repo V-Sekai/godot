@@ -398,18 +398,31 @@ void SpeechProcessor::test_process_mono_audio_frames(const PackedFloat32Array &p
 			int16_t val = static_cast<int16_t>(CLAMP(frame_float * 32767.0f, -32768.0f, 32767.0f));
 			memcpy(test_mix_byte_array.ptrw() + i * sizeof(int16_t), &val, sizeof(int16_t));
 		}
+		bool is_voice_packet = false;
+		const int16_t *pcm_ptr = reinterpret_cast<const int16_t *>(test_mix_byte_array.ptr());
+		int64_t energy_sum = 0;
+		for (int64_t i = 0; i < SPEECH_SETTING_BUFFER_FRAME_COUNT; i++) {
+			energy_sum += Math::abs(pcm_ptr[i]);
+		}
+		double average_energy = static_cast<double>(energy_sum) / static_cast<double>(SPEECH_SETTING_BUFFER_FRAME_COUNT);
+		const double SILENCE_THRESHOLD = 100.0; // FIXME: 2025-05-17 This threshold may need tuning.
 
-		Dictionary voice_data_packet;
-		voice_data_packet["buffer"] = test_mix_byte_array;
-
-		emit_signal(SNAME("speech_processed"), voice_data_packet);
-
-		if (speech_processed) {
-			SpeechInput speech_input;
-			speech_input.pcm_byte_array = &test_mix_byte_array;
-			speech_processed(&speech_input);
+		if (average_energy > SILENCE_THRESHOLD) {
+			is_voice_packet = true;
 		}
 
+		if (is_voice_packet) {
+			Dictionary voice_data_packet;
+			voice_data_packet["buffer"] = test_mix_byte_array;
+
+			emit_signal(SNAME("speech_processed"), voice_data_packet);
+
+			if (speech_processed) {
+				SpeechInput speech_input;
+				speech_input.pcm_byte_array = &test_mix_byte_array;
+				speech_processed(&speech_input);
+			}
+		}
 		current_offset += SPEECH_SETTING_BUFFER_FRAME_COUNT;
 	}
 }
