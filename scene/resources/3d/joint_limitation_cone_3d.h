@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  spring_bone_collision_3d.h                                            */
+/*  joint_limitation_cone_3d.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,43 +30,19 @@
 
 #pragma once
 
-#include "scene/3d/skeleton_3d.h"
+#include "scene/resources/3d/joint_limitation_3d.h"
 
-class SpringBoneCollision3D : public Node3D {
-	GDCLASS(SpringBoneCollision3D, Node3D);
+class JointLimitationCone3D : public JointLimitation3D {
+	GDCLASS(JointLimitationCone3D, JointLimitation3D);
 
-	String bone_name;
-	int bone = -1;
-
-	Vector3 position_offset;
-	Quaternion rotation_offset;
-
-	void _validate_bone_name();
+	real_t radius_range = 0.25;
 
 protected:
-	PackedStringArray get_configuration_warnings() const override;
-
-	void _validate_property(PropertyInfo &p_property) const;
-	void _notification(int p_what);
 	static void _bind_methods();
 
-	virtual Vector3 _collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
+	virtual Vector3 _solve(const Vector3 &p_direction) const override;
 
 public:
-	Skeleton3D *get_skeleton() const;
-
-	void set_bone_name(const String &p_name);
-	String get_bone_name() const;
-	void set_bone(int p_bone);
-	int get_bone() const;
-
-	void set_position_offset(const Vector3 &p_offset);
-	Vector3 get_position_offset() const;
-	void set_rotation_offset(const Quaternion &p_offset);
-	Quaternion get_rotation_offset() const;
-
-	void sync_pose();
-	Transform3D get_transform_from_skeleton(const Transform3D &p_center) const;
-
-	Vector3 collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
+	void set_radius_range(real_t p_radius_range);
+	real_t get_radius_range() const;
 };

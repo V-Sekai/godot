@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  spring_bone_collision_3d.h                                            */
+/*  joint_limitation_3d.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,43 +30,18 @@
 
 #pragma once
 
-#include "scene/3d/skeleton_3d.h"
+#include "core/io/resource.h"
 
-class SpringBoneCollision3D : public Node3D {
-	GDCLASS(SpringBoneCollision3D, Node3D);
-
-	String bone_name;
-	int bone = -1;
-
-	Vector3 position_offset;
-	Quaternion rotation_offset;
-
-	void _validate_bone_name();
+class JointLimitation3D : public Resource {
+	GDCLASS(JointLimitation3D, Resource);
 
 protected:
-	PackedStringArray get_configuration_warnings() const override;
+	// Define temporary space based on rest and forward vector.
+	virtual Quaternion _make_space(const Vector3 &p_local_forward_vector) const;
 
-	void _validate_property(PropertyInfo &p_property) const;
-	void _notification(int p_what);
-	static void _bind_methods();
-
-	virtual Vector3 _collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
+	// Directions are normalized vector from Vector(0, 0, 0). Space is defined by _make_space(), must return normalized vector.
+	virtual Vector3 _solve(const Vector3 &p_direction) const;
 
 public:
-	Skeleton3D *get_skeleton() const;
-
-	void set_bone_name(const String &p_name);
-	String get_bone_name() const;
-	void set_bone(int p_bone);
-	int get_bone() const;
-
-	void set_position_offset(const Vector3 &p_offset);
-	Vector3 get_position_offset() const;
-	void set_rotation_offset(const Quaternion &p_offset);
-	Quaternion get_rotation_offset() const;
-
-	void sync_pose();
-	Transform3D get_transform_from_skeleton(const Transform3D &p_center) const;
-
-	Vector3 collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
+	Vector3 solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_current_vector) const;
 };

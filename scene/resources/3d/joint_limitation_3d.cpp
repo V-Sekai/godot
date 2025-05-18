@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  spring_bone_collision_3d.h                                            */
+/*  joint_limitation_3d.cpp                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,45 +28,23 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "joint_limitation_3d.h"
+#include "scene/3d/skeleton_modifier_3d.h"
 
-#include "scene/3d/skeleton_3d.h"
+Quaternion JointLimitation3D::_make_space(const Vector3 &p_local_forward_vector) const {
+	// The default is to interpret the forward vector as the +Y axis.
+	Vector3 axis_y = p_local_forward_vector.normalized();
+	Vector3 axis_z = axis_y.get_any_perpendicular();
+	Vector3 axis_x = axis_y.cross(axis_z);
+	return Basis(axis_x, axis_y, axis_z).get_rotation_quaternion();
+}
 
-class SpringBoneCollision3D : public Node3D {
-	GDCLASS(SpringBoneCollision3D, Node3D);
+Vector3 JointLimitation3D::_solve(const Vector3 &p_direction) const {
+	return p_direction;
+}
 
-	String bone_name;
-	int bone = -1;
-
-	Vector3 position_offset;
-	Quaternion rotation_offset;
-
-	void _validate_bone_name();
-
-protected:
-	PackedStringArray get_configuration_warnings() const override;
-
-	void _validate_property(PropertyInfo &p_property) const;
-	void _notification(int p_what);
-	static void _bind_methods();
-
-	virtual Vector3 _collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
-
-public:
-	Skeleton3D *get_skeleton() const;
-
-	void set_bone_name(const String &p_name);
-	String get_bone_name() const;
-	void set_bone(int p_bone);
-	int get_bone() const;
-
-	void set_position_offset(const Vector3 &p_offset);
-	Vector3 get_position_offset() const;
-	void set_rotation_offset(const Quaternion &p_offset);
-	Quaternion get_rotation_offset() const;
-
-	void sync_pose();
-	Transform3D get_transform_from_skeleton(const Transform3D &p_center) const;
-
-	Vector3 collide(const Transform3D &p_center, float p_bone_radius, float p_bone_length, const Vector3 &p_current) const;
-};
+Vector3 JointLimitation3D::solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_current_vector) const {
+	Quaternion space = _make_space(p_local_forward_vector);
+	Vector3 dir = p_local_current_vector.normalized();
+	return space.xform(_solve(space.xform_inv(dir)));
+}
