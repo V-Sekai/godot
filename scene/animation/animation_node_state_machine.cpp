@@ -81,7 +81,10 @@ void AnimationNodeStateMachineTransition::set_advance_expression(const String &p
 		expression.instantiate();
 	}
 
-	expression->parse(advance_expression_stripped);
+	PackedStringArray input_names;
+	input_names.append("delta");
+	input_names.append("playback");
+	expression->parse(advance_expression_stripped, input_names);
 }
 
 String AnimationNodeStateMachineTransition::get_advance_expression() const {
@@ -1114,7 +1117,13 @@ bool AnimationNodeStateMachinePlayback::_check_advance_condition(const Ref<Anima
 
 		if (expression_base) {
 			Ref<Expression> exp = transition->expression;
-			bool ret = exp->execute(Array(), expression_base, false, Engine::get_singleton()->is_editor_hint()); // Avoids allowing the user to crash the system with an expression by only allowing const calls.
+			Array input_array;
+			input_array.resize(2);
+
+			input_array.set(0, p_delta);
+			input_array.set(1, this);
+
+			bool ret = exp->execute(input_array, expression_base, false, Engine::get_singleton()->is_editor_hint()); // Avoids allowing the user to crash the system with an expression by only allowing const calls.
 			if (exp->has_execute_failed() || !ret) {
 				return false;
 			}
