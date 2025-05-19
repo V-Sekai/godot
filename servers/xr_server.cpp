@@ -194,7 +194,7 @@ void XRServer::center_on_hmd(RotationMode p_rotation_mode, bool p_keep_height) {
 	Transform3D new_reference_frame = primary_interface->get_camera_transform();
 
 	// remove our tilt
-	if (p_rotation_mode == 1) {
+	if (p_rotation_mode == RESET_BUT_KEEP_TILT) {
 		// take the Y out of our Z
 		new_reference_frame.basis.set_column(2, Vector3(new_reference_frame.basis.rows[0][2], 0.0, new_reference_frame.basis.rows[2][2]).normalized());
 
@@ -203,7 +203,7 @@ void XRServer::center_on_hmd(RotationMode p_rotation_mode, bool p_keep_height) {
 
 		// and X is our cross reference
 		new_reference_frame.basis.set_column(0, new_reference_frame.basis.get_column(1).cross(new_reference_frame.basis.get_column(2)).normalized());
-	} else if (p_rotation_mode == 2) {
+	} else if (p_rotation_mode == DONT_RESET_ROTATION) {
 		// remove our rotation, we're only interesting in centering on position
 		new_reference_frame.basis = Basis();
 	}
