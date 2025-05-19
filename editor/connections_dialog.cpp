@@ -1206,8 +1206,12 @@ void ConnectionsDock::_go_to_method(TreeItem &p_item) {
 		return;
 	}
 
-	if (scr.is_valid() && ScriptEditor::get_singleton()->script_goto_method(scr, cd.method)) {
-		EditorNode::get_editor_main_screen()->select(EditorMainScreen::EDITOR_SCRIPT);
+	// Recursively check inherited scripts until we find a matching named method for this connection.
+	while (scr.is_valid()) {
+		if (ScriptEditor::get_singleton()->script_goto_method(scr, cd.method)) {
+			EditorNode::get_editor_main_screen()->select(EditorMainScreen::EDITOR_SCRIPT);
+		}
+		scr = scr->get_base_script();
 	}
 }
 
