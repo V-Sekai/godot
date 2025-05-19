@@ -731,6 +731,9 @@ void Skeleton3DEditor::drop_data_fw(const Point2 &p_point, const Variant &p_data
 
 	TreeItem *target = (p_point == Vector2(Math::INF, Math::INF)) ? joint_tree->get_selected() : joint_tree->get_item_at_position(p_point);
 	TreeItem *selected = Object::cast_to<TreeItem>(Dictionary(p_data)["node"]);
+	if (!target || !selected) {
+		return;
+	}
 
 	const BoneId target_boneidx = String(target->get_metadata(0)).get_slicec('/', 1).to_int();
 	const BoneId selected_boneidx = String(selected->get_metadata(0)).get_slicec('/', 1).to_int();
