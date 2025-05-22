@@ -46,6 +46,8 @@ public:
 	virtual bool destroy_framebuffer(DisplayServer::WindowID p_id) = 0;
 	virtual void deinitialize() = 0;
 	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const = 0;
+
+	virtual ~GLESContext() {}
 };
 
 #endif // GLES_CONTEXT_H

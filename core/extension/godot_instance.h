@@ -52,6 +52,8 @@ public:
 	virtual void focus_in(GodotInstance *p_instance) {}
 	virtual void pause(GodotInstance *p_instance) {}
 	virtual void resume(GodotInstance *p_instance) {}
+
+	virtual ~GodotInstanceCallbacks() {}
 };
 
 class TaskExecutor {
