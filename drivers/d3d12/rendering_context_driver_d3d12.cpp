@@ -35,6 +35,7 @@
 #include "core/string/ustring.h"
 #include "core/templates/local_vector.h"
 #include "core/version.h"
+#include "platform/windows/rendering_native_surface_windows.h"
 #include "servers/rendering/rendering_device.h"
 
 #if defined(__GNUC__) && !defined(__clang__)

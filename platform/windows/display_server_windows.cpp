@@ -32,6 +32,7 @@
 
 #include "drop_target_windows.h"
 #include "os_windows.h"
+#include "rendering_native_surface_windows.h"
 #include "wgl_detect_version.h"
 
 #include "core/config/project_settings.h"
