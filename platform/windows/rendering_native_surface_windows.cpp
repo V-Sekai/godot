@@ -39,7 +39,7 @@ void RenderingNativeSurfaceWindows::_bind_methods() {
 	ClassDB::bind_static_method("RenderingNativeSurfaceWindows", D_METHOD("create", "hwnd", "instance"), &RenderingNativeSurfaceWindows::create_api);
 }
 
-Ref<RenderingNativeSurfaceWindows> RenderingNativeSurfaceWindows::create(GDExtensionConstPtr<const void> p_window, GDExtensionConstPtr<const void> p_instance) {
+Ref<RenderingNativeSurfaceWindows> RenderingNativeSurfaceWindows::create_api(GDExtensionConstPtr<const void> p_window, GDExtensionConstPtr<const void> p_instance) {
 	return RenderingNativeSurfaceWindows::create((HWND)p_window.operator const void *(), (HINSTANCE)p_instance.operator const void *());
 }
 
