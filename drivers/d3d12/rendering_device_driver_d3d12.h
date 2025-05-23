@@ -64,10 +64,7 @@
 
 #include <wrl/client.h>
 
-#if defined(_MSC_VER) && defined(MemoryBarrier)
-// Annoying define from winnt.h. Reintroduced by some of the headers above.
-#undef MemoryBarrier
-#endif
+#undef MemoryBarrier // override from Windows SDK, clashes with RenderingDeviceDriver::MemoryBarrier
 
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop

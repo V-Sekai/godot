@@ -91,7 +91,7 @@ static_assert(__cplusplus >= 201703L);
 #undef Error
 #undef OK
 #undef CONNECT_DEFERRED // override from Windows SDK, clashes with Object enum
-#undef MemoryBarrier
+#undef MemoryBarrier // override from Windows SDK, clashes with RenderingDeviceDriver::MemoryBarrier
 #undef MONO_FONT
 #endif
 

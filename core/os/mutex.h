@@ -37,6 +37,7 @@
 #define MINGW_STDTHREAD_REDUNDANCY_WARNING
 #include "thirdparty/mingw-std-threads/mingw.mutex.h"
 #define THREADING_NAMESPACE mingw_stdthread
+#undef MemoryBarrier // override from Windows SDK, clashes with RenderingDeviceDriver::MemoryBarrier
 #else
 #include <mutex>
 #define THREADING_NAMESPACE std

@@ -59,6 +59,8 @@
 #include <windows.h>
 #include <windowsx.h>
 
+#undef MemoryBarrier // override from Windows SDK, clashes with RenderingDeviceDriver::MemoryBarrier
+
 #ifdef DEBUG_ENABLED
 // forward error messages to OutputDebugString
 #define WINDOWS_DEBUG_OUTPUT_ENABLED
