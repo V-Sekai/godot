@@ -6279,7 +6279,7 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 			if (rendering_context->window_create(id, windows_surface) != OK) {
 				ERR_PRINT(vformat("Failed to create %s window.", rendering_driver));
 				memdelete(rendering_context);
-				memdelete(windows_surface);
+				windows_surface = nullptr;
 				rendering_context = nullptr;
 				windows.erase(id);
 				return INVALID_WINDOW_ID;
@@ -6288,7 +6288,7 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 			rendering_context->window_set_size(id, real_client_rect.right - real_client_rect.left, real_client_rect.bottom - real_client_rect.top);
 			rendering_context->window_set_vsync_mode(id, p_vsync_mode);
 			wd.context_created = true;
-			memdelete(windows_surface);
+			windows_surface = nullptr;
 		}
 #endif
 
