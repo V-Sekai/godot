@@ -45,8 +45,8 @@ Ref<RenderingNativeSurfaceWindows> RenderingNativeSurfaceWindows::create_api(GDE
 
 Ref<RenderingNativeSurfaceWindows> RenderingNativeSurfaceWindows::create(HWND p_window, HINSTANCE p_instance) {
 	Ref<RenderingNativeSurfaceWindows> result = memnew(RenderingNativeSurfaceWindows);
-	result->window(p_window);
-	result->instance(p_instance);
+	result->window = p_window;
+	result->instance = p_instance;
 	return result;
 }
 
