@@ -33,6 +33,7 @@
 #include "java_godot_io_wrapper.h"
 #include "java_godot_wrapper.h"
 #include "os_android.h"
+#include "rendering_native_surface_android.h"
 #include "tts_android.h"
 
 #include "core/config/project_settings.h"
