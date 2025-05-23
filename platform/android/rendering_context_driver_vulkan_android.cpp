@@ -54,7 +54,7 @@ RenderingContextDriver::SurfaceID RenderingContextDriverVulkanAndroid::surface_c
 
 	Ref<RenderingNativeSurfaceVulkan> vulkan_surface = RenderingNativeSurfaceVulkan::create(vk_surface);
 	RenderingContextDriver::SurfaceID result = RenderingContextDriverVulkan::surface_create(vulkan_surface);
-	memdelete(vulkan_surface);
+	vulkan_surface = nullptr;
 	return result;
 }
 
