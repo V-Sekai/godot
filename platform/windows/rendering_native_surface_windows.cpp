@@ -50,7 +50,7 @@ Ref<RenderingNativeSurfaceWindows> RenderingNativeSurfaceWindows::create(HWND p_
 	return result;
 }
 
-RenderingContextDriver *RenderingNativeSurfaceWayland::create_rendering_context(const String &p_driver_name) {
+RenderingContextDriver *RenderingNativeSurfaceWindows::create_rendering_context(const String &p_driver_name) {
 #if defined(VULKAN_ENABLED)
 	if (p_driver_name == "vulkan") {
 		return memnew(RenderingContextDriverVulkanWindows);
