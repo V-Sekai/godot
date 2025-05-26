@@ -91,7 +91,7 @@ Variant PlannerPlan::_apply_action_and_continue(Dictionary p_state, Array p_firs
 		if (verbose >= 2) {
 			Array action_info = p_first_task.slice(1);
 			action_info.insert(0, action.get_method());
-			print_line("Recursive call: Not applicable action: " + _item_to_string(action_info));
+			ERR_PRINT("Recursive call: Not applicable action: " + _item_to_string(action_info));
 		}
 	}
 	return false;
@@ -127,13 +127,13 @@ Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const A
 			}
 		} else {
 			if (verbose >= 3) {
-				print_line("Not applicable");
+				ERR_PRINT("Not applicable");
 			}
 		}
 	}
 
 	if (verbose >= 2) {
-		print_line("Recursive call: Failed to accomplish task: " + _item_to_string(p_task1));
+		ERR_PRINT("Recursive call: Failed to achieve task: " + _item_to_string(p_task1));
 	}
 
 	return false;
@@ -185,7 +185,7 @@ Variant PlannerPlan::_refine_multigoal_and_continue(const Dictionary p_state, co
 	}
 
 	if (verbose >= 2) {
-		print_line("Recursive call: Failed to achieve multigoal: " + _item_to_string(p_first_goal));
+		ERR_PRINT("Recursive call: Failed to achieve multigoal: " + _item_to_string(p_first_goal));
 	}
 
 	return false;
@@ -243,13 +243,13 @@ Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, cons
 			}
 		} else {
 			if (verbose >= 3) {
-				print_line("Not applicable.");
+				ERR_PRINT("Not applicable");
 			}
 		}
 	}
 
 	if (verbose >= 2) {
-		print_line("Recursive call: Failed to achieve goal: " + _item_to_string(p_goal1));
+		ERR_PRINT(vformat("Recursive call: Failed to achieve goal: %s", _item_to_string(p_goal1)));
 	}
 
 	return false;
@@ -326,7 +326,7 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 		Variant plan = find_plan(p_state, p_todo_list);
 		if (plan == Variant(false)) {
 			if (verbose >= 1) {
-				print_line("run_lazy_lookahead: find_plan has failed");
+				ERR_PRINT(vformat("run_lazy_lookahead: find_plan has failed after %s calls.", tries));
 			}
 			return p_state;
 		}
@@ -363,7 +363,7 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 					p_state = new_state;
 				} else {
 					if (verbose >= 1) {
-						print_line(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
+						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
 					}
 					break;
 				}
@@ -376,7 +376,7 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 	}
 
 	if (verbose >= 1) {
-		print_line("run_lazy_lookahead: Too many tries, giving up.");
+		ERR_PRINT("run_lazy_lookahead: Too many tries, giving up.");
 	}
 	if (verbose >= 2) {
 		print_line(vformat("run_lazy_lookahead: final state %s", p_state));
