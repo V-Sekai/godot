@@ -57,18 +57,4 @@
 			</description>
 		</method>
 	</methods>
-	<members>
-		<member name="actions" type="Dictionary" setter="set_actions" getter="get_actions" default="{}">
-			A [Dictionary] mapping action names (String) to [Callable]s. The functions referenced by these [Callable]s should take read-only arguments and return a new [Dictionary] state.
-		</member>
-		<member name="multigoal_methods" type="Callable[]" setter="set_multigoal_methods" getter="get_multigoal_methods" default="[Callable()]">
-			An [Array] of [Callable]s. The functions referenced by these [Callable]s are used to decompose [PlannerMultigoal]s, should take read-only arguments, and return a [Variant] (false or [Array] of sub-steps).
-		</member>
-		<member name="tasks" type="Dictionary" setter="set_task_methods" getter="get_task_methods" default="{ &quot;_verify_g&quot;: [Callable()], &quot;_verify_mg&quot;: [Callable()] }">
-			A [Dictionary] mapping task names (String) to [Array]s of [Callable]s. The functions referenced by these [Callable]s accomplish tasks, should take read-only arguments, and return a [Variant] (false or [Array] of sub-steps).
-		</member>
-		<member name="unigoal_methods" type="Dictionary" setter="set_unigoal_methods" getter="get_unigoal_methods" default="{}">
-			A [Dictionary] mapping unigoal names (typically state variable names, String) to [Array]s of [Callable]s. The functions referenced by these [Callable]s achieve unigoals, should take read-only arguments, and return a [Variant] (false or [Array] of sub-steps).
-		</member>
-	</members>
 </class>
