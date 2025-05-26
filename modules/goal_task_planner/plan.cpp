@@ -57,7 +57,7 @@ void PlannerPlan::set_domains(TypedArray<PlannerDomain> p_domain) {
 }
 
 Variant PlannerPlan::_apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth) {
-	Callable action = current_domain->get_actions()[p_first_task[0]];
+	Callable action = current_domain->action_dictionary[p_first_task[0]];
 
 	if (verbose >= 2) {
 		Array action_info = p_first_task.slice(1);
@@ -98,7 +98,7 @@ Variant PlannerPlan::_apply_action_and_continue(Dictionary p_state, Array p_firs
 }
 
 Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const Array p_plan, const int p_depth) {
-	Array relevant = current_domain->get_task_methods()[p_task1[0]];
+	Array relevant = current_domain->task_method_dictionary[p_task1[0]];
 	if (verbose >= 3) {
 		print_line("Depth: " + itos(p_depth) + ", Task " + _item_to_string(p_task1) + ", Todo List " + _item_to_string(p_todo_list) + ", Plan " + _item_to_string(p_plan));
 	}
@@ -144,7 +144,7 @@ Variant PlannerPlan::_refine_multigoal_and_continue(const Dictionary p_state, co
 		print_line("Depth: " + itos(p_depth) + ", Multigoal: " + p_first_goal->get_name() + ": " + _item_to_string(p_first_goal));
 	}
 
-	Array relevant = current_domain->get_multigoal_methods();
+	Array relevant = current_domain->multigoal_method_list;
 
 	if (verbose >= 3) {
 		Array string_array;
@@ -209,7 +209,7 @@ Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, cons
 		return _seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
 	}
 
-	Array relevant = current_domain->get_unigoal_methods()[state_variable_name];
+	Array relevant = current_domain->unigoal_method_dictionary[state_variable_name];
 	if (verbose >= 3) {
 		print_line("Methods: " + _item_to_string(relevant));
 	}
@@ -287,9 +287,9 @@ Variant PlannerPlan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_p
 		return _refine_multigoal_and_continue(p_state, todo_item, p_todo_list, p_plan, p_depth);
 	} else if (todo_item.is_array()) {
 		Array item = todo_item;
-		Dictionary actions = current_domain->get_actions();
-		Dictionary tasks = current_domain->get_task_methods();
-		Dictionary unigoals = current_domain->get_unigoal_methods();
+		Dictionary actions = current_domain->action_dictionary;
+		Dictionary tasks = current_domain->task_method_dictionary;
+		Dictionary unigoals = current_domain->unigoal_method_dictionary;
 		Variant item_name = item.front();
 		if (actions.has(item_name)) {
 			return _apply_action_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
@@ -345,7 +345,7 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 			Array action_list = plan;
 			for (int i = 0; i < action_list.size(); i++) {
 				Array action = action_list[i];
-				Callable action_name = current_domain->get_actions()[action[0]];
+				Callable action_name = current_domain->action_dictionary[action[0]];
 				if (verbose >= 1) {
 					String action_arguments;
 					Array actions = action.slice(1, action.size());
