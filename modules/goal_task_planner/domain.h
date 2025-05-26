@@ -41,6 +41,7 @@
 class PlannerPlan;
 class PlannerDomain : public Resource {
 	GDCLASS(PlannerDomain, Resource);
+	friend PlannerPlan;
 
 private:
 	Dictionary action_dictionary;
@@ -50,16 +51,7 @@ private:
 
 public:
 	PlannerDomain();
-	void set_actions(Dictionary p_value) { action_dictionary = p_value; }
-	void set_task_methods(Dictionary p_value) { task_method_dictionary = p_value; }
-	void set_unigoal_methods(Dictionary p_value) { unigoal_method_dictionary = p_value; }
-	void set_multigoal_methods(TypedArray<Callable> p_value) { multigoal_method_list = p_value; }
-
-	Dictionary get_actions() const { return action_dictionary; }
-	Dictionary get_task_methods() const { return task_method_dictionary; }
-	Dictionary get_unigoal_methods() const { return unigoal_method_dictionary; }
-	TypedArray<Callable> get_multigoal_methods() const { return multigoal_method_list; }
-
+	
 public:
 	void add_actions(TypedArray<Callable> p_actions);
 	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
