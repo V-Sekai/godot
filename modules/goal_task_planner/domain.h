@@ -51,7 +51,7 @@ private:
 
 public:
 	PlannerDomain();
-	
+
 public:
 	void add_actions(TypedArray<Callable> p_actions);
 	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
