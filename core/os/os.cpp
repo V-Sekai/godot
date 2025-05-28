@@ -454,6 +454,12 @@ bool OS::has_feature(const String &p_feature) {
 		return _writing_movie;
 	}
 
+#ifdef LIBGODOT_ENABLED
+	if (p_feature == "libgodot") {
+		return true;
+	}
+#endif
+
 #ifdef DEBUG_ENABLED
 	if (p_feature == "debug") {
 		return true;
