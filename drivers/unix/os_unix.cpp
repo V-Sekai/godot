@@ -411,10 +411,11 @@ Dictionary OS_Unix::get_memory_info() const {
 #if defined(__APPLE__)
 	int pagesize = 0;
 	size_t len = sizeof(pagesize);
+	#ifndef IOS_ENABLED
 	if (sysctlbyname("vm.pagesize", &pagesize, &len, nullptr, 0) < 0) {
 		ERR_PRINT(vformat("Could not get vm.pagesize, error code: %d - %s", errno, strerror(errno)));
 	}
-
+	#endif
 	int64_t phy_mem = 0;
 	len = sizeof(phy_mem);
 	if (sysctlbyname("hw.memsize", &phy_mem, &len, nullptr, 0) < 0) {
@@ -428,9 +429,11 @@ Dictionary OS_Unix::get_memory_info() const {
 	}
 	struct xsw_usage swap_used;
 	len = sizeof(swap_used);
+	#ifndef IOS_ENABLED
 	if (sysctlbyname("vm.swapusage", &swap_used, &len, nullptr, 0) < 0) {
 		ERR_PRINT(vformat("Could not get vm.swapusage, error code: %d - %s", errno, strerror(errno)));
 	}
+	#endif
 
 	if (phy_mem != 0) {
 		meminfo["physical"] = phy_mem;
