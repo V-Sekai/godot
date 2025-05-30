@@ -1882,7 +1882,7 @@ HashMap<BoneId, Basis> RenIK::solve_trig_ik_redux(Ref<RenIKLimb> limb,
 				RenIKHelper::vector_rejection(localLowerVector, normalizedTargetVector);
 		float jointRollAmount = (leafRejection.angle_to(lowerRejection)) *
 				limb->target_rotation_influence;
-		jointRollAmount *= abs(
+		jointRollAmount *= Math::abs(
 				localLeafVector.cross(localLowerVector).dot(normalizedTargetVector));
 		if (leafRejection.cross(lowerRejection).dot(normalizedTargetVector) > 0) {
 			jointRollAmount *= -1;
