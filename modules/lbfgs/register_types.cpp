@@ -30,11 +30,13 @@
 
 #include "register_types.h"
 
-#include "thirdparty/lbfgsbpp.h"
+#include "lbfgsb_capsule_fitter_solver.h"
+#include "lbfgsbpp.h"
 
 void initialize_lbfgs_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_CLASS(LBFGSBSolver);
+		GDREGISTER_CLASS(LBFGSBCapsuleFitterSolver);
 	}
 }
 

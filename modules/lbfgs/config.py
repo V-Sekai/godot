@@ -7,7 +7,7 @@ def configure(env):
 
 
 def get_doc_classes():
-    return ["LBFGSBSolver"]
+    return ["LBFGSBSolver", "LBFGSBCapsuleFitterSolver"]
 
 
 def get_doc_path():

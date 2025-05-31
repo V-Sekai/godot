@@ -28,39 +28,40 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef LBFGSBPP_H
-#define LBFGSBPP_H
+#pragma once
 
 #include "core/error/error_macros.h"
 #include "core/object/gdvirtual.gen.inc"
 #include "core/object/ref_counted.h"
 #include "core/object/script_language.h"
 
-#include "../thirdparty/LBFGSpp/include/LBFGSB.h"
 #include "scene/3d/node_3d.h"
-#include "thirdparty/eigen/Eigen/Core"
 
-#include <functional>
-#include <iostream>
+class LBFGSBSolver : public Node3D {
+	GDCLASS(LBFGSBSolver, Node3D);
 
-class LBFGSBSolver : public RefCounted {
-	GDCLASS(LBFGSBSolver, RefCounted);
+private:
+	double epsilon;
+	int max_iterations;
+
+	struct PImpl;
+	PImpl *pimpl = nullptr;
 
 protected:
 	static void _bind_methods();
-	GDVIRTUAL2R(double, _call_operator, const TypedArray<double> &, TypedArray<double>);
+	GDVIRTUAL2R(double, _call_operator, const PackedFloat64Array &, PackedFloat64Array);
 
-	std::function<double(const Eigen::VectorXd &p_x, Eigen::VectorXd &r_grad)> operator_pointer;
-
-	static Eigen::VectorXd godot_to_eigen(const TypedArray<double> &p_array);
-	static TypedArray<double> eigen_to_godot(const Eigen::VectorXd &p_vector);
-	double operator_call(const TypedArray<double> &p_x, TypedArray<double> &r_grad);
-	double native_operator(const Eigen::VectorXd &r_x, Eigen::VectorXd &r_grad);
 public:
 	LBFGSBSolver();
-	double call_operator(const TypedArray<double> &p_x, TypedArray<double> &r_grad);
-	Array minimize(const TypedArray<double> &p_x,
-			const double &p_fx, const TypedArray<double> &p_lower_bound, const TypedArray<double> &p_upper_bound);
-};
+	~LBFGSBSolver();
 
-#endif // LBFGSBPP_H
+	void set_epsilon(double p_epsilon);
+	double get_epsilon() const;
+
+	void set_max_iterations(int p_iterations);
+	int get_max_iterations() const;
+
+	virtual double call_operator(const PackedFloat64Array &p_x, PackedFloat64Array &r_grad);
+	Array minimize(const PackedFloat64Array &p_x,
+			const double &p_fx, const PackedFloat64Array &p_lower_bound, const PackedFloat64Array &p_upper_bound);
+};
