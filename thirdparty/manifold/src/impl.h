@@ -161,7 +161,8 @@ struct Manifold::Impl {
     const auto runEnd = meshGL.triVerts.size();
     if (runIndex.empty()) {
       runIndex = {0, static_cast<I>(runEnd)};
-    } else if (runIndex.size() == meshGL.runOriginalID.size()) {
+    } else if (runIndex.size() == meshGL.runOriginalID.size() ||
+               (meshGL.runOriginalID.empty() && runIndex.size() == 1)) {
       runIndex.push_back(runEnd);
     }
 
