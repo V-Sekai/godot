@@ -915,7 +915,7 @@ if env.msvc and not methods.using_clang(env):  # MSVC
 else:  # GCC, Clang
     common_warnings = []
     if methods.using_gcc(env):
-        common_warnings += ["-Wshadow", "-Wno-misleading-indentation"]
+        common_warnings += ["-Wshadow", "-Wno-misleading-indentation", "-Wno-permissive"]
         if cc_version_major < 11:
             # Regression in GCC 9/10, spams so much in our variadic templates
             # that we need to outright disable it.
@@ -926,7 +926,7 @@ else:  # GCC, Clang
         if cc_version_major >= 11:
             common_warnings += ["-Wenum-conversion"]
     elif methods.using_clang(env) or methods.using_emcc(env):
-        common_warnings += ["-Wshadow-field-in-constructor", "-Wshadow-uncaptured-local"]
+        common_warnings += ["-Wshadow-field-in-constructor", "-Wshadow-uncaptured-local", "-Wno-permissive"]
         # We often implement `operator<` for structs of pointers as a requirement
         # for putting them in `Set` or `Map`. We don't mind about unreliable ordering.
         common_warnings += ["-Wno-ordered-compare-function-pointers"]
