@@ -253,7 +253,7 @@ Dictionary SQLite::parse_row(sqlite3_stmt *stmt, int result_type) {
 				PackedByteArray arr;
 				int size = sqlite3_column_bytes(stmt, i);
 				arr.resize(size);
-				memcpy((void *)arr.ptr(), sqlite3_column_blob(stmt, i), size);
+				memcpy(arr.ptrw(), sqlite3_column_blob(stmt, i), size);
 				value = Variant(arr);
 				break;
 			}
@@ -277,7 +277,8 @@ Dictionary SQLite::parse_row(sqlite3_stmt *stmt, int result_type) {
 }
 
 String SQLite::get_last_error_message() const {
-	return sqlite3_errmsg(get_handler());
+	sqlite3 *handler = get_handler();
+	return handler ? sqlite3_errmsg(handler) : "Database not initialized";
 }
 
 SQLite::~SQLite() {
@@ -426,6 +427,7 @@ Variant SQLiteQuery::execute(const Array p_args) {
 	}
 
 	ERR_FAIL_NULL_V(stmt, Variant());
+	ERR_FAIL_NULL_V(db, Variant()); // Added null check for db
 
 	if (!SQLite::bind_args(stmt, p_args)) {
 		ERR_FAIL_V_MSG(Variant(),
