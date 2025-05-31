@@ -133,8 +133,8 @@ TEST_CASE("[SceneTree][SpeechProcessor] _16_pcm_mono_to_real_stereo Conversion")
 	REQUIRE(stereo_output_buffer.size() == frame_count);
 	for (int i = 0; i < frame_count; ++i) {
 		float expected_float_val = static_cast<float>(pcm_ptr[i]) / 32768.0f;
-		CHECK_MESSAGE(Math::is_equal_approx(stereo_output_buffer[i].x, expected_float_val), vformat("Mono to stereo L channel mismatch at index %s", itos(i)));
-		CHECK_MESSAGE(Math::is_equal_approx(stereo_output_buffer[i].y, expected_float_val), vformat("Mono to stereo R channel mismatch at index %s", itos(i)));
+		CHECK_MESSAGE(Math::is_equal_approx(static_cast<float>(stereo_output_buffer[i].x), expected_float_val), vformat("Mono to stereo L channel mismatch at index %s", itos(i)));
+		CHECK_MESSAGE(Math::is_equal_approx(static_cast<float>(stereo_output_buffer[i].y), expected_float_val), vformat("Mono to stereo R channel mismatch at index %s", itos(i)));
 	}
 }
 
