@@ -37,8 +37,8 @@ class RenderingShaderContainer : public RefCounted {
 	GDSOFTCLASS(RenderingShaderContainer, RefCounted);
 
 public:
-	static const uint32_t MAGIC_NUMBER;
-	static const uint32_t VERSION;
+	static uint32_t get_magic_number() { return 0x43535247; }
+	static uint32_t get_version() { return 2; }
 
 protected:
 	struct ContainerHeader {
