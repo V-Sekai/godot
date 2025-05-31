@@ -7,6 +7,6 @@
 	remote = https://github.com/V-Sekai/godot-vsk-sqlite.git
 	branch = main
 	commit = f017af811de0e4566eddb830e7b07d9cd997ceef
-	parent = bdbfd825691d2c88350b6f61876fa6255eacf8fa
+	parent = b89c47bb8511433440e5e547afe4459ca3383090
 	method = merge
 	cmdver = 0.4.9
