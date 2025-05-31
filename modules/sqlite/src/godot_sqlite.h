@@ -72,7 +72,7 @@ private:
 	spmemvfs_db_t spmemvfs_db{};
 	bool memory_read = false;
 
-	::LocalVector<WeakRef *, uint32_t, true> queries;
+	::LocalVector<WeakRef *> queries;
 
 	sqlite3_stmt *prepare(const char *statement);
 	Array fetch_rows(const String &query, const Array &args, int result_type = RESULT_BOTH);
