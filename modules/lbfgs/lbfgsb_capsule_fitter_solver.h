@@ -145,7 +145,7 @@ public: // Moved struct and static methods here for testability
 			const Vector3 &p_cap_a,
 			const Vector3 &p_cap_b,
 			double p_cap_radius);
-	
+
 	static Basis outer_product(const Vector3 &p_v1, const Vector3 &p_v2);
 
 private:

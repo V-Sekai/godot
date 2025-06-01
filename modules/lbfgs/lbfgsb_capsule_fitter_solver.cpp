@@ -30,15 +30,15 @@
 
 #include "lbfgsb_capsule_fitter_solver.h"
 
-#include "core/object/class_db.h"
-#include "core/object/object.h"
 #include "core/math/basis.h"
 #include "core/math/geometry_3d.h" // For Geometry3D::get_closest_point_to_segment
 #include "core/math/quaternion.h"
+#include "core/object/class_db.h"
+#include "core/object/object.h"
 
 #include "core/variant/variant.h"
-#include "thirdparty/eigen/Eigen/Core"
 #include "thirdparty/LBFGSpp/include/LBFGSB.h"
+#include "thirdparty/eigen/Eigen/Core"
 
 LBFGSBCapsuleFitterSolver::LBFGSBCapsuleFitterSolver() {
 }
@@ -317,7 +317,7 @@ double LBFGSBCapsuleFitterSolver::call_operator(const PackedFloat64Array &p_x, P
 					if (k_param < 3) { // Derivative w.r.t. rot_vec component k_param
 						Basis dR_drot_k = LBFGSBCapsuleFitterSolver::d_basis_d_rot_comp(rot_vec, k_param);
 						dA_dparam_k = dR_drot_k.xform(_orientation_opt_initial_half_axis) * -1.0; // dA = -dR*h
-						dB_dparam_k = dR_drot_k.xform(_orientation_opt_initial_half_axis);       // dB =  dR*h
+						dB_dparam_k = dR_drot_k.xform(_orientation_opt_initial_half_axis); // dB =  dR*h
 					} else { // Derivative w.r.t. translation component (k_param - 3)
 						Vector3 dTrans_dparam_k;
 						dTrans_dparam_k[k_param - 3] = 1.0;
@@ -544,8 +544,8 @@ Vector<Vector3> LBFGSBCapsuleFitterSolver::_generate_canonical_capsule_points(co
 			// We want points on a hemisphere, so y_fib should range from 0 (equator) to 1 (pole).
 			// Let's map i to this range for the local z-coordinate of the hemisphere.
 			double z_local_on_unit_sphere = (double)i / (num_cap_points_per_hemisphere); // Ranges from 0 to almost 1
-            // This z_local_on_unit_sphere is cos(phi), where phi is polar angle from cap_normal_direction.
-            // phi ranges from PI/2 (equator) down to 0 (pole).
+			// This z_local_on_unit_sphere is cos(phi), where phi is polar angle from cap_normal_direction.
+			// phi ranges from PI/2 (equator) down to 0 (pole).
 
 			double radius_at_this_z_local = Math::sqrt(1.0 - z_local_on_unit_sphere * z_local_on_unit_sphere);
 			double theta_fib = golden_angle * i; // Azimuthal angle
@@ -625,7 +625,7 @@ std::pair<Vector3, Vector3> LBFGSBCapsuleFitterSolver::get_closest_point_and_nor
 			if (axis_vec.length_squared() > CMP_EPSILON * CMP_EPSILON) {
 				normal_on_surface = axis_vec.get_any_perpendicular().normalized();
 			} else { // Should not happen if logic is correct, but as a fallback for P_i on axis of a zero-length axis capsule (sphere center)
-				normal_on_surface = Vector3(1,0,0);
+				normal_on_surface = Vector3(1, 0, 0);
 			}
 		}
 	} else {
@@ -664,15 +664,15 @@ Basis LBFGSBCapsuleFitterSolver::d_basis_d_rot_comp(const Vector3 &p_rot_vec, in
 	if (theta < 1e-6) { // Threshold for very small angle. For exactly zero, R=I.
 		// For phi -> 0, dR/dphi_k -> [e_k]_x
 		Basis e_k_x;
-		e_k_x.set_column(0, e_k.cross(Vector3(1,0,0)));
-		e_k_x.set_column(1, e_k.cross(Vector3(0,1,0)));
-		e_k_x.set_column(2, e_k.cross(Vector3(0,0,1)));
+		e_k_x.set_column(0, e_k.cross(Vector3(1, 0, 0)));
+		e_k_x.set_column(1, e_k.cross(Vector3(0, 1, 0)));
+		e_k_x.set_column(2, e_k.cross(Vector3(0, 0, 1)));
 		// Correction: Basis().set_skew_symmetric(v) or v.skew()
 		// Basis stores columns. Skew symmetric matrix [v]_x has columns v x e1, v x e2, v x e3
 		// For [e_k]_x, columns are e_k x e1, e_k x e2, e_k x e3
-		Vector3 c0 = e_k.cross(Vector3(1,0,0)); // e_k x i
-		Vector3 c1 = e_k.cross(Vector3(0,1,0)); // e_k x j
-		Vector3 c2 = e_k.cross(Vector3(0,0,1)); // e_k x k
+		Vector3 c0 = e_k.cross(Vector3(1, 0, 0)); // e_k x i
+		Vector3 c1 = e_k.cross(Vector3(0, 1, 0)); // e_k x j
+		Vector3 c2 = e_k.cross(Vector3(0, 0, 1)); // e_k x k
 		return Basis(c0, c1, c2);
 	}
 
@@ -683,8 +683,8 @@ Basis LBFGSBCapsuleFitterSolver::d_basis_d_rot_comp(const Vector3 &p_rot_vec, in
 	double A_coeff, B_coeff;
 	// Using a slightly larger threshold for Taylor expansion for stability, as used in previous numerical version.
 	if (theta < 1e-2) {
-		A_coeff = 0.5 - theta_sq / 24.0;         // (1 - cos_theta) / theta_sq
-		B_coeff = 1.0 - theta_sq / 6.0;          // sin_theta / theta
+		A_coeff = 0.5 - theta_sq / 24.0; // (1 - cos_theta) / theta_sq
+		B_coeff = 1.0 - theta_sq / 6.0; // sin_theta / theta
 	} else {
 		A_coeff = (1.0 - cos_theta) / theta_sq;
 		B_coeff = sin_theta / theta;
@@ -695,22 +695,22 @@ Basis LBFGSBCapsuleFitterSolver::d_basis_d_rot_comp(const Vector3 &p_rot_vec, in
 	double phi_k_val = p_rot_vec[p_comp_idx];
 
 	Basis phi_x; // Skew symmetric matrix for p_rot_vec
-	phi_x.set_column(0, p_rot_vec.cross(Vector3(1,0,0)));
-	phi_x.set_column(1, p_rot_vec.cross(Vector3(0,1,0)));
-	phi_x.set_column(2, p_rot_vec.cross(Vector3(0,0,1)));
+	phi_x.set_column(0, p_rot_vec.cross(Vector3(1, 0, 0)));
+	phi_x.set_column(1, p_rot_vec.cross(Vector3(0, 1, 0)));
+	phi_x.set_column(2, p_rot_vec.cross(Vector3(0, 0, 1)));
 
 	Basis e_k_x; // Skew symmetric matrix for e_k
-	e_k_x.set_column(0, e_k.cross(Vector3(1,0,0)));
-	e_k_x.set_column(1, e_k.cross(Vector3(0,1,0)));
-	e_k_x.set_column(2, e_k.cross(Vector3(0,0,1)));
-	
+	e_k_x.set_column(0, e_k.cross(Vector3(1, 0, 0)));
+	e_k_x.set_column(1, e_k.cross(Vector3(0, 1, 0)));
+	e_k_x.set_column(2, e_k.cross(Vector3(0, 0, 1)));
+
 	Basis I; // Identity
 	Vector3 I_minus_R_ek = e_k - R.xform(e_k); // (I-R)e_k
 
 	Basis I_minus_R_ek_x; // Skew symmetric matrix for (I-R)e_k
-	I_minus_R_ek_x.set_column(0, I_minus_R_ek.cross(Vector3(1,0,0)));
-	I_minus_R_ek_x.set_column(1, I_minus_R_ek.cross(Vector3(0,1,0)));
-	I_minus_R_ek_x.set_column(2, I_minus_R_ek.cross(Vector3(0,0,1)));
+	I_minus_R_ek_x.set_column(0, I_minus_R_ek.cross(Vector3(1, 0, 0)));
+	I_minus_R_ek_x.set_column(1, I_minus_R_ek.cross(Vector3(0, 1, 0)));
+	I_minus_R_ek_x.set_column(2, I_minus_R_ek.cross(Vector3(0, 0, 1)));
 
 	Basis term1 = (phi_x * phi_k_val + I_minus_R_ek_x * R) * A_coeff;
 	Basis term2 = (e_k_x * R) * B_coeff;
@@ -769,7 +769,7 @@ LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSol
 	// Q_cap is the closest point on the *segment* AB to P
 	// This logic is implicitly handled by get_closest_point_and_normal_on_capsule_surface determining Q (closest_point_on_axis)
 	// We need to know where Q lies relative to A and B to pick the formula.
-	
+
 	Vector3 Q; // Closest point on axis segment AB to P
 	double t_param; // Parameter along segment, t_param in [0,1] if on segment
 	// Re-evaluate Q and t_param based on Geometry3D logic for clarity here
@@ -786,7 +786,7 @@ LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSol
 			Q = A + t_param * axis; // Projects to Cylinder body
 		}
 	}
-	
+
 	Vector3 P_minus_Q = P - Q;
 	// If P_minus_Q is zero, it means P is on the axis segment.
 	// This was checked earlier by (P - Q_on_line).length_squared() for the infinite line.
@@ -800,7 +800,9 @@ LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSol
 	if (h_sq < CMP_EPSILON * CMP_EPSILON || t_param <= 0.0) { // Sphere case (A=B) or Cap A (Q=A)
 		// Derivatives for Cap A (Q = A)
 		// N = normalize(P-A), C = A + r*N
-		if ((P - A).length_squared() < CMP_EPSILON * CMP_EPSILON) { return derivs; } // P at cap center A
+		if ((P - A).length_squared() < CMP_EPSILON * CMP_EPSILON) {
+			return derivs;
+		} // P at cap center A
 		Basis dNdA = d_vec_normalized_d_vec(P - A) * -1.0; // d(normalize(P-X))/dX = -d_normalize_dvec(P-X)
 		derivs.dN_dA = dNdA;
 		derivs.dC_dA = I + dNdA * r;
@@ -811,7 +813,9 @@ LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSol
 	} else if (t_param >= 1.0) { // Cap B (Q=B)
 		// Derivatives for Cap B (Q = B)
 		// N = normalize(P-B), C = B + r*N
-		if ((P - B).length_squared() < CMP_EPSILON * CMP_EPSILON) { return derivs; } // P at cap center B
+		if ((P - B).length_squared() < CMP_EPSILON * CMP_EPSILON) {
+			return derivs;
+		} // P at cap center B
 		Basis dNdB = d_vec_normalized_d_vec(P - B) * -1.0;
 		derivs.dN_dB = dNdB;
 		derivs.dC_dB = I + dNdB * r;
@@ -823,7 +827,7 @@ LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSol
 		// Q = A*(1-t) + B*t, where t = dot(P-A, B-A) / dot(B-A, B-A)
 		// N = normalize(P-Q)
 		// C = Q + r*N
-		
+
 		// Gradient of t with respect to A and B (these are row vectors / 1x3 Jacobians)
 		// grad_A t = ( (B-A) x ( (P-A) x (B-A) ) ) / ||B-A||^4
 		// grad_B t = ( (B-A) x ( (P-B) x (B-A) ) ) / ||B-A||^4
@@ -836,10 +840,12 @@ LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSol
 		// dQ/dA = (1-t)I - outer_product(axis, grad_t_wrt_A_vec)
 		// dQ/dB = tI   + outer_product(axis, grad_t_wrt_B_vec)
 		Basis dQdA = I * (1.0 - t_param) - outer_product(axis, grad_t_wrt_A_vec);
-		Basis dQdB = I * t_param         + outer_product(axis, grad_t_wrt_B_vec);
+		Basis dQdB = I * t_param + outer_product(axis, grad_t_wrt_B_vec);
 
-		if (P_minus_Q.length_squared() < CMP_EPSILON * CMP_EPSILON) { return derivs; } // P on axis segment (already checked but good to be safe)
-		
+		if (P_minus_Q.length_squared() < CMP_EPSILON * CMP_EPSILON) {
+			return derivs;
+		} // P on axis segment (already checked but good to be safe)
+
 		Basis d_norm_P_minus_Q = d_vec_normalized_d_vec(P_minus_Q);
 
 		// dN/dA = d(normalize(P-Q))/d(P-Q) * d(P-Q)/dA = d_norm_P_minus_Q * (-dQdA)

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_lbfgsb_capsule_fitter_solver->h                                   */
+/*  test_lbfgsb_capsule_fitter_solver.h                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -44,8 +44,8 @@ namespace TestLBFGSBCapsuleFitterSolver {
 
 static bool vector3_is_equal_approx(const Vector3 &v1, const Vector3 &v2, double epsilon = CMP_EPSILON) {
 	return Math::is_equal_approx(real_t(v1.x), real_t(v2.x), real_t(epsilon)) &&
-		   Math::is_equal_approx(real_t(v1.y), real_t(v2.y), real_t(epsilon)) &&
-		   Math::is_equal_approx(real_t(v1.z), real_t(v2.z), real_t(epsilon));
+			Math::is_equal_approx(real_t(v1.y), real_t(v2.y), real_t(epsilon)) &&
+			Math::is_equal_approx(real_t(v1.z), real_t(v2.z), real_t(epsilon));
 }
 
 static Ref<ArrayMesh> create_cylinder_points_mesh(float r, float h, int num_points_circle, int num_height_steps) {
@@ -232,7 +232,7 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Spher
 	solver->set_surface_index(0);
 
 	// Initial capsule: radius 0.5, height 1.0 (to roughly match a sphere of radius 1)
-	solver->set_radius(0.5); 
+	solver->set_radius(0.5);
 	solver->set_height(1.0); // Height of capsule axis part
 	solver->set_axis_point_a(Vector3(0, -0.5, 0.1)); // Slightly offset
 	solver->set_axis_point_b(Vector3(0, 0.5, 0.1));
@@ -282,7 +282,7 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for BoxMe
 
 	// Initial capsule: radius 0.25, height 1.8 (to roughly fit the longest dimension)
 	solver->set_radius(0.25);
-	solver->set_height(1.8); 
+	solver->set_height(1.8);
 	solver->set_axis_point_a(Vector3(0.1, -0.9, 0)); // Initial guess along Y
 	solver->set_axis_point_b(Vector3(0.1, 0.9, 0));
 
@@ -309,10 +309,10 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for BoxMe
 		CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, expected_center, 0.15), "BoxMesh: Optimized capsule center should be very close to the box's center.");
 
 		// Check if the capsule aligned with one of the box's principal axes (X, Y, or Z)
-		bool aligned_with_y = Math::abs(optimized_direction.dot(Vector3(0,1,0))) > 0.95; // Box is tallest along Y
+		bool aligned_with_y = Math::abs(optimized_direction.dot(Vector3(0, 1, 0))) > 0.95; // Box is tallest along Y
 		// bool aligned_with_x = Math::abs(optimized_direction.dot(Vector3(1,0,0))) > 0.95;
 		// bool aligned_with_z = Math::abs(optimized_direction.dot(Vector3(0,0,1))) > 0.95;
-		MESSAGE("BoxMesh Optimized Direction: ", optimized_direction, " (Dot Y: ", optimized_direction.dot(Vector3(0,1,0)), ")");
+		MESSAGE("BoxMesh Optimized Direction: ", optimized_direction, " (Dot Y: ", optimized_direction.dot(Vector3(0, 1, 0)), ")");
 		CHECK_MESSAGE(aligned_with_y, "BoxMesh: Optimized capsule should align with the box's longest (Y) axis.");
 		CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.8).epsilon(0.1), "BoxMesh: Optimized axis length should remain close to initial 1.8.");
 	}

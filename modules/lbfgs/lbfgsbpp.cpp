@@ -30,9 +30,9 @@
 
 #include "lbfgsbpp.h"
 
-#include "thirdparty/eigen/Eigen/Core"
 #include "thirdparty/LBFGSpp/include/LBFGSB.h"
 #include "thirdparty/LBFGSpp/include/LBFGSpp/Param.h"
+#include "thirdparty/eigen/Eigen/Core"
 
 #include <functional>
 #include <limits>
@@ -69,7 +69,8 @@ struct LBFGSBSolver::PImpl {
 	LBFGSpp::LBFGSBSolver<double> solver;
 	std::function<double(const Eigen::VectorXd &, Eigen::VectorXd &)> native_eval_func;
 
-	PImpl() : solver(param) {}
+	PImpl() :
+			solver(param) {}
 };
 
 static double static_native_operator_wrapper(LBFGSBSolver *solver_instance, const Eigen::VectorXd &r_x, Eigen::VectorXd &r_gradient) {
