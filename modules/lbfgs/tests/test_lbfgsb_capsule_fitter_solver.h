@@ -174,7 +174,18 @@ static Ref<ArrayMesh> create_cylinder_points_mesh(float p_radius, float p_height
 	mesh_arrays[Mesh::ARRAY_NORMAL] = normals;
 	mesh_arrays[Mesh::ARRAY_INDEX] = indices;
 
-	array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, mesh_arrays);
+	uint32_t fmt = 0;
+	if (!vertices.is_empty()) {
+		fmt |= Mesh::ARRAY_FORMAT_VERTEX;
+	}
+	if (!normals.is_empty()) {
+		fmt |= Mesh::ARRAY_FORMAT_NORMAL;
+	}
+	if (!indices.is_empty()) {
+		fmt |= Mesh::ARRAY_FORMAT_INDEX;
+	}
+
+	array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, mesh_arrays, Array(), Dictionary(), fmt);
 	return array_mesh;
 }
 
@@ -218,7 +229,6 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleRadiusSolver] Optimize Radius for a Sphere")
 	Ref<ArrayMesh> sphere_mesh = create_sphere_test_mesh(Vector3(1, 1, 1), 2.0, 16); // Sphere centered at (1,1,1) with radius 2.0
 	radius_solver->set_source_mesh(sphere_mesh);
 	radius_solver->set_surface_index(0);
-	// Initial capsule guess: degenerate axis at sphere center, incorrect radius.
 	radius_solver->add_capsule_instance(Vector3(1, 1, 1), Vector3(1, 1, 1), 0.5);
 
 	Dictionary result = radius_solver->optimize_radius(0);
@@ -235,6 +245,8 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleRadiusSolver] Optimize Radius for a Sphere")
 			double optimized_r = result["optimized_radius"];
 			String msg_opt_radius_val = String("Optimized radius (Sphere): ") + String::num(optimized_r);
 			WARN_MESSAGE(true, msg_opt_radius_val.utf8().get_data());
+			String msg_before_check_sphere_radius = String("CHECK: optimized_r (") + String::num(optimized_r) + String(") vs Approx(2.0)");
+			WARN_MESSAGE(true, msg_before_check_sphere_radius.utf8().get_data());
 			CHECK(optimized_r == doctest::Approx(2.0).epsilon(0.15)); // Allow some tolerance
 		}
 	}
@@ -251,7 +263,6 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleAxisSolver] Optimize Axes for a Cylinder") {
 	axis_solver->set_source_mesh(cylinder_mesh);
 	axis_solver->set_surface_index(0);
 
-	// Initial capsule guess: slightly off-center, with the correct radius.
 	Vector3 initial_a = Vector3(0.1, -cylinder_height / 2.0 + 0.2, 0.1);
 	Vector3 initial_b = Vector3(-0.1, cylinder_height / 2.0 - 0.2, -0.1);
 	double initial_radius = cylinder_radius;
@@ -276,20 +287,40 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleAxisSolver] Optimize Axes for a Cylinder") {
 			String msg_opt_axis_b = String("Optimized axis_b (Cylinder): ") + opt_b.operator String();
 			WARN_MESSAGE(true, msg_opt_axis_b.utf8().get_data());
 
+			String msg_before_check_opt_ax = String("CHECK: opt_a.x (") + String::num(opt_a.x) + String(") vs Approx(0.0)");
+			WARN_MESSAGE(true, msg_before_check_opt_ax.utf8().get_data());
 			CHECK(opt_a.x == doctest::Approx(0.0).epsilon(0.15));
+			String msg_before_check_opt_az = String("CHECK: opt_a.z (") + String::num(opt_a.z) + String(") vs Approx(0.0)");
+			WARN_MESSAGE(true, msg_before_check_opt_az.utf8().get_data());
 			CHECK(opt_a.z == doctest::Approx(0.0).epsilon(0.15));
 			bool a_is_bottom = std::abs(opt_a.y - (-cylinder_height / 2.0)) < std::abs(opt_a.y - (cylinder_height / 2.0));
 
 			if (a_is_bottom) {
+				String msg_before_check_opt_ay_bottom = String("CHECK: opt_a.y (") + String::num(opt_a.y) + String(") vs Approx(") + String::num(-cylinder_height / 2.0) + String(")");
+				WARN_MESSAGE(true, msg_before_check_opt_ay_bottom.utf8().get_data());
 				CHECK(opt_a.y == doctest::Approx(-cylinder_height / 2.0).epsilon(0.25));
+				String msg_before_check_opt_by_top = String("CHECK: opt_b.y (") + String::num(opt_b.y) + String(") vs Approx(") + String::num(cylinder_height / 2.0) + String(")");
+				WARN_MESSAGE(true, msg_before_check_opt_by_top.utf8().get_data());
 				CHECK(opt_b.y == doctest::Approx(cylinder_height / 2.0).epsilon(0.25));
 			} else {
+				String msg_before_check_opt_ay_top = String("CHECK: opt_a.y (") + String::num(opt_a.y) + String(") vs Approx(") + String::num(cylinder_height / 2.0) + String(")");
+				WARN_MESSAGE(true, msg_before_check_opt_ay_top.utf8().get_data());
 				CHECK(opt_a.y == doctest::Approx(cylinder_height / 2.0).epsilon(0.25));
+				String msg_before_check_opt_by_bottom = String("CHECK: opt_b.y (") + String::num(opt_b.y) + String(") vs Approx(") + String::num(-cylinder_height / 2.0) + String(")");
+				WARN_MESSAGE(true, msg_before_check_opt_by_bottom.utf8().get_data());
 				CHECK(opt_b.y == doctest::Approx(-cylinder_height / 2.0).epsilon(0.25));
 			}
+			String msg_before_check_opt_bx = String("CHECK: opt_b.x (") + String::num(opt_b.x) + String(") vs Approx(0.0)");
+			WARN_MESSAGE(true, msg_before_check_opt_bx.utf8().get_data());
 			CHECK(opt_b.x == doctest::Approx(0.0).epsilon(0.15));
+			String msg_before_check_opt_bz = String("CHECK: opt_b.z (") + String::num(opt_b.z) + String(") vs Approx(0.0)");
+			WARN_MESSAGE(true, msg_before_check_opt_bz.utf8().get_data());
 			CHECK(opt_b.z == doctest::Approx(0.0).epsilon(0.15));
-			CHECK(double(result["optimized_radius"]) == doctest::Approx(initial_radius));
+			
+			double current_optimized_radius = result.has("optimized_radius") ? double(result["optimized_radius"]) : -1.0; // Default if not found
+			String msg_before_check_cyl_radius = String("CHECK: optimized_radius (") + String::num(current_optimized_radius) + String(") vs Approx(initial_radius:") + String::num(initial_radius) + String(")");
+			WARN_MESSAGE(true, msg_before_check_cyl_radius.utf8().get_data());
+			CHECK(current_optimized_radius == doctest::Approx(initial_radius));
 		}
 	}
 

@@ -564,93 +564,127 @@ LBFGSBCapsuleFitterSolverBase::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitte
 		const Vector3 &p_cap_b,
 		double p_cap_radius) {
 	CapsuleSurfacePointDerivatives derivatives;
-	derivatives.is_valid = true; // Assume valid unless specific failure
-	Vector3 V = p_cap_b - p_cap_a; // Axis vector V from A to B
+	derivatives.is_valid = true;
+	derivatives.d_sd_d_radius = -1.0; // sd = dist - R, so d(sd)/dR = -1
+
+	// Initialize dC_dA and dC_dB to zero as they are not currently used by the objective function.
+	// If an orientation penalty or other terms were to use them, their calculation would be needed here.
+	derivatives.dC_dA.set_zero();
+	derivatives.dC_dB.set_zero();
+
+	Vector3 V = p_cap_b - p_cap_a; // Axis vector from A to B
 	double len_sq_V = V.length_squared();
 	const double EPSILON_SQ = 1e-9; // For squared length checks (e.g., 1e-4 or 1e-5 actual length)
 	const double EPSILON_DIST = 1e-7; // For distance checks (e.g., point on axis, point at cap center)
-	Basis id_matrix; // Identity matrix
 
 	// Case 1: Degenerate capsule (essentially a sphere centered at p_cap_a)
 	if (len_sq_V < EPSILON_SQ) {
 		Vector3 U_pa = p_mesh_vertex - p_cap_a; // Vector from p_cap_a to p_mesh_vertex
 		double dist_U_pa = U_pa.length();
+
 		if (dist_U_pa < EPSILON_DIST) { // p_mesh_vertex is at the center of the sphere
-			derivatives.is_valid = false; // Normal and derivatives are ill-defined
+			derivatives.is_valid = false;
+			derivatives.signed_distance = -p_cap_radius; // Point is at the center, deep inside
+			derivatives.normal_on_surface = Vector3(0, 1, 0); // Arbitrary valid normal
+			derivatives.d_sd_d_axis_a.zero();
+			derivatives.d_sd_d_axis_b.zero();
 			return derivatives;
 		}
-		derivatives.normal_on_surface = U_pa / dist_U_pa; // U_pa.normalized()
-		// C = A + R * normalize(P-A)
-		// dC/dA = I + R * d(normalize(P-A))/dA = I - R * d_normalize(P-A)
-		derivatives.dC_dA = id_matrix - d_vec_normalized_d_vec(U_pa) * p_cap_radius;
-		derivatives.dC_dB.set_zero(); // p_cap_b has no distinct influence
+		derivatives.normal_on_surface = U_pa / dist_U_pa; // Normal points from center to mesh_vertex
+		derivatives.signed_distance = dist_U_pa - p_cap_radius;
+		derivatives.d_sd_d_axis_a = -derivatives.normal_on_surface; // Moving A in direction of normal decreases distance
+		derivatives.d_sd_d_axis_b.zero(); // B is effectively coincident with A
 		return derivatives;
 	}
 
-	// Parameter t for projection of (p_mesh_vertex - p_cap_a) onto V
+	// Parameter t_param for projection of (p_mesh_vertex - p_cap_a) onto V
 	Vector3 U_va = p_mesh_vertex - p_cap_a; // Vector from p_cap_a to p_mesh_vertex
-	double t = U_va.dot(V) / len_sq_V;
+	double t_param = U_va.dot(V) / len_sq_V;
 
-	Vector3 P_axis; // Closest point on the infinite line defined by A and B
+	Vector3 P_axis; // Closest point on the infinite line defined by A and B to p_mesh_vertex
 
 	// Case 2: Closest point is on one of the spherical end caps
-	if (t < 0.0) { // Closest to p_cap_a (spherical cap at A)
+	if (t_param <= 0.0) { // Closest to p_cap_a (spherical cap at A)
 		P_axis = p_cap_a;
-		Vector3 U_pa_cap = p_mesh_vertex - P_axis; // p_mesh_vertex - p_cap_a
-		double dist_U_pa_cap = U_pa_cap.length();
+		Vector3 U_cap_center_P = p_mesh_vertex - P_axis; // Vector from cap center (A) to p_mesh_vertex
+		double dist_U_cap_center_P = U_cap_center_P.length();
 
-		if (dist_U_pa_cap < EPSILON_DIST) { // p_mesh_vertex is at the center of cap A
+		if (dist_U_cap_center_P < EPSILON_DIST) { // p_mesh_vertex is at the center of cap A
 			derivatives.is_valid = false;
+			derivatives.signed_distance = -p_cap_radius;
+			// Normal along axis, pointing away from B if possible, else arbitrary
+			derivatives.normal_on_surface = (p_cap_a - p_cap_b).normalized();
+			if (derivatives.normal_on_surface.is_zero_approx()) {
+				derivatives.normal_on_surface = Vector3(0, 1, 0); // Fallback
+			}
+			derivatives.d_sd_d_axis_a.zero();
+			derivatives.d_sd_d_axis_b.zero();
 			return derivatives;
 		}
-		derivatives.normal_on_surface = U_pa_cap / dist_U_pa_cap;
-		// C = A + R * normalize(P-A)
-		derivatives.dC_dA = id_matrix - d_vec_normalized_d_vec(U_pa_cap) * p_cap_radius;
-		derivatives.dC_dB.set_zero();
-	} else if (t > 1.0) { // Closest to p_cap_b (spherical cap at B)
+		derivatives.normal_on_surface = U_cap_center_P / dist_U_cap_center_P;
+		derivatives.signed_distance = dist_U_cap_center_P - p_cap_radius;
+		derivatives.d_sd_d_axis_a = -derivatives.normal_on_surface;
+		derivatives.d_sd_d_axis_b.zero();
+
+	} else if (t_param >= 1.0) { // Closest to p_cap_b (spherical cap at B)
 		P_axis = p_cap_b;
-		Vector3 U_pb_cap = p_mesh_vertex - P_axis; // p_mesh_vertex - p_cap_b
-		double dist_U_pb_cap = U_pb_cap.length();
+		Vector3 U_cap_center_P = p_mesh_vertex - P_axis; // Vector from cap center (B) to p_mesh_vertex
+		double dist_U_cap_center_P = U_cap_center_P.length();
 
-		if (dist_U_pb_cap < EPSILON_DIST) { // p_mesh_vertex is at the center of cap B
+		if (dist_U_cap_center_P < EPSILON_DIST) { // p_mesh_vertex is at the center of cap B
 			derivatives.is_valid = false;
+			derivatives.signed_distance = -p_cap_radius;
+			// Normal along axis, pointing away from A if possible, else arbitrary
+			derivatives.normal_on_surface = (p_cap_b - p_cap_a).normalized();
+			if (derivatives.normal_on_surface.is_zero_approx()) {
+				derivatives.normal_on_surface = Vector3(0, 1, 0); // Fallback
+			}
+			derivatives.d_sd_d_axis_a.zero();
+			derivatives.d_sd_d_axis_b.zero();
 			return derivatives;
 		}
-		derivatives.normal_on_surface = U_pb_cap / dist_U_pb_cap;
-		derivatives.dC_dA.set_zero();
-		// C = B + R * normalize(P-B)
-		derivatives.dC_dB = id_matrix - d_vec_normalized_d_vec(U_pb_cap) * p_cap_radius;
+		derivatives.normal_on_surface = U_cap_center_P / dist_U_cap_center_P;
+		derivatives.signed_distance = dist_U_cap_center_P - p_cap_radius;
+		derivatives.d_sd_d_axis_a.zero();
+		derivatives.d_sd_d_axis_b = -derivatives.normal_on_surface;
 	} else {
 		// Case 3: Closest point is on the cylindrical wall
-		P_axis = p_cap_a + t * V;
-		Vector3 N_raw = p_mesh_vertex - P_axis; // Vector from P_axis to p_mesh_vertex
-		double dist_N_raw = N_raw.length();
+		P_axis = p_cap_a + t_param * V;
+		Vector3 N_cyl_wall = p_mesh_vertex - P_axis; // Vector from P_axis to p_mesh_vertex (normal to axis)
+		double dist_N_cyl_wall = N_cyl_wall.length();
 
-		if (dist_N_raw < EPSILON_DIST) { // p_mesh_vertex is on the capsule axis segment
-			derivatives.is_valid = false; // Normal and derivatives are ill-defined
+		if (dist_N_cyl_wall < EPSILON_DIST) { // p_mesh_vertex is on the capsule axis segment
+			derivatives.is_valid = false;
+			derivatives.signed_distance = -p_cap_radius; // Point is on the axis, deep inside
+			// Normal is ill-defined, pick one perpendicular to V
+			derivatives.normal_on_surface = V.get_any_perpendicular().normalized();
+			if (derivatives.normal_on_surface.is_zero_approx()) { // Should not happen if V is not zero
+				derivatives.normal_on_surface = Vector3(0, 1, 0); // Absolute fallback
+			}
+			derivatives.d_sd_d_axis_a.zero();
+			derivatives.d_sd_d_axis_b.zero();
 			return derivatives;
 		}
-		derivatives.normal_on_surface = N_raw / dist_N_raw;
+		derivatives.normal_on_surface = N_cyl_wall / dist_N_cyl_wall;
+		derivatives.signed_distance = dist_N_cyl_wall - p_cap_radius;
 
-		// Factor matrix: (I - R * d_normalize(N_raw))
-		Basis factor_matrix = id_matrix - d_vec_normalized_d_vec(N_raw) * p_cap_radius;
+		// Derivatives for cylinder wall:
+		// P_axis = A + t_param * (B-A)
+		// dt/dA_vec = (-(U_va+V)*len_sq_V + 2*dot(U_va,V)*V) / (len_sq_V^2)
+		// dt/dB_vec = (  U_va   *len_sq_V - 2*dot(U_va,V)*V) / (len_sq_V^2)
+		// where U_va = p_mesh_vertex - p_cap_a
+		// V = p_cap_b - p_cap_a
 
-		// Gradient of t w.r.t. p_cap_a and p_cap_b
-		// dt/dA = (-(U_va+V)*len_sq_V + 2*dot(U_va,V)*V) / (len_sq_V^2)
-		// dt/dB = ( U_va*len_sq_V - 2*dot(U_va,V)*V) / (len_sq_V^2)
-		Vector3 grad_t_dA_num = (-(U_va + V) * len_sq_V) + (2.0 * U_va.dot(V) * V);
-		Vector3 grad_t_dA = grad_t_dA_num / (len_sq_V * len_sq_V); // Denominator is (len_sq_V)^2
+		// Avoid division by zero if len_sq_V is extremely small (though handled by degenerate case)
+		double inv_len_sq_V_sq = (len_sq_V > EPSILON_SQ) ? (1.0 / (len_sq_V * len_sq_V)) : 0.0;
 
-		Vector3 grad_t_dB_num = (U_va * len_sq_V) - (2.0 * U_va.dot(V) * V);
-		Vector3 grad_t_dB = grad_t_dB_num / (len_sq_V * len_sq_V);
+		Vector3 grad_t_dA_vec = (-(U_va + V) * len_sq_V + 2.0 * U_va.dot(V) * V) * inv_len_sq_V_sq;
+		Vector3 grad_t_dB_vec = (U_va * len_sq_V - 2.0 * U_va.dot(V) * V) * inv_len_sq_V_sq;
 
-		// dP_axis/dA = (1-t)I + outer_product(V, grad_t_dA)
-		Basis dP_axis_dA_matrix = (id_matrix * (1.0 - t)) + outer_product(V, grad_t_dA);
-		derivatives.dC_dA = factor_matrix * dP_axis_dA_matrix;
-
-		// dP_axis/dB = t*I + outer_product(V, grad_t_dB)
-		Basis dP_axis_dB_matrix = (id_matrix * t) + outer_product(V, grad_t_dB);
-		derivatives.dC_dB = factor_matrix * dP_axis_dB_matrix;
+		// d(sd)/dA = -(1-t_param)*normal - dot(normal,V)*grad_t_dA_vec
+		// d(sd)/dB = -t_param*normal    - dot(normal,V)*grad_t_dB_vec
+		derivatives.d_sd_d_axis_a = -(1.0 - t_param) * derivatives.normal_on_surface - (derivatives.normal_on_surface.dot(V)) * grad_t_dA_vec;
+		derivatives.d_sd_d_axis_b = -t_param * derivatives.normal_on_surface - (derivatives.normal_on_surface.dot(V)) * grad_t_dB_vec;
 	}
 	return derivatives;
 }
