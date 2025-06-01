@@ -32,27 +32,24 @@
 
 #include "../lbfgsb_capsule_fitter_solver.h"
 
+#include "core/io/json.h" // For JSON::stringify
+#include "core/math/math_funcs.h" // For Math::TAU
 #include "core/math/vector3.h"
 #include "core/variant/dictionary.h"
-#include "core/io/json.h" // For JSON::stringify
 #include "scene/resources/mesh.h" // Should include SphereMesh and ImporterMesh
-#include "core/math/math_funcs.h" // For Math::TAU
 
 #include "tests/test_macros.h"
 
 namespace TestLBFGSBCapsuleFitterSolver {
 
-// Helper function to create a simple sphere mesh by manual generation
-// Ensures it returns a Ref<ImporterMesh> with a triangulated surface.
-static Ref<ImporterMesh> create_sphere_test_mesh(const Vector3 &p_center, real_t p_radius, int p_quality = 16) {
+static Ref<ArrayMesh> create_sphere_test_mesh(const Vector3 &p_center, real_t p_radius, int p_quality = 16) {
 	PackedVector3Array vertices;
 	PackedVector3Array normals;
 	PackedInt32Array indices;
 
-	int segments = MAX(3, p_quality);      // Radial segments
+	int segments = MAX(3, p_quality); // Radial segments
 	int rings = MAX(2, p_quality / 2); // Height segments
 
-	// Generate vertices and normals
 	for (int i = 0; i <= rings; ++i) {
 		real_t v_angle = Math::PI * (real_t)i / rings; // Angle from Y+ axis
 		real_t y = p_radius * Math::cos(v_angle);
@@ -68,7 +65,6 @@ static Ref<ImporterMesh> create_sphere_test_mesh(const Vector3 &p_center, real_t
 		}
 	}
 
-	// Generate indices for triangles
 	for (int i = 0; i < rings; ++i) {
 		for (int j = 0; j < segments; ++j) {
 			int first = (i * (segments + 1)) + j;
@@ -84,21 +80,32 @@ static Ref<ImporterMesh> create_sphere_test_mesh(const Vector3 &p_center, real_t
 		}
 	}
 
-	Ref<ImporterMesh> importer_mesh;
-	importer_mesh.instantiate();
+	Ref<ArrayMesh> array_mesh;
+	array_mesh.instantiate();
 	Array mesh_arrays;
 	mesh_arrays.resize(Mesh::ARRAY_MAX);
 	mesh_arrays[Mesh::ARRAY_VERTEX] = vertices;
 	mesh_arrays[Mesh::ARRAY_NORMAL] = normals;
 	mesh_arrays[Mesh::ARRAY_INDEX] = indices;
 
-	importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_arrays);
-	return importer_mesh;
+	uint32_t fmt = 0;
+	if (!vertices.is_empty()) {
+		fmt |= Mesh::ARRAY_FORMAT_VERTEX;
+	}
+	if (!normals.is_empty()) {
+		fmt |= Mesh::ARRAY_FORMAT_NORMAL;
+	}
+	if (!indices.is_empty()) {
+		fmt |= Mesh::ARRAY_FORMAT_INDEX;
+	}
+
+	array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, mesh_arrays, Array(), Dictionary(), fmt);
+	return array_mesh;
 }
 
 // Helper function to create a triangulated cylinder mesh.
-// Returns Ref<ImporterMesh>.
-static Ref<ImporterMesh> create_cylinder_points_mesh(float p_radius, float p_height, int p_radial_segments = 16, int p_height_segments = 1, bool p_caps = true) {
+// Returns Ref<ArrayMesh>.
+static Ref<ArrayMesh> create_cylinder_points_mesh(float p_radius, float p_height, int p_radial_segments = 16, int p_height_segments = 1, bool p_caps = true) {
 	PackedVector3Array vertices;
 	PackedVector3Array normals;
 	PackedInt32Array indices;
@@ -159,21 +166,21 @@ static Ref<ImporterMesh> create_cylinder_points_mesh(float p_radius, float p_hei
 		}
 	}
 
-	Ref<ImporterMesh> importer_mesh;
-	importer_mesh.instantiate();
+	Ref<ArrayMesh> array_mesh;
+	array_mesh.instantiate();
 	Array mesh_arrays;
 	mesh_arrays.resize(Mesh::ARRAY_MAX);
 	mesh_arrays[Mesh::ARRAY_VERTEX] = vertices;
 	mesh_arrays[Mesh::ARRAY_NORMAL] = normals;
 	mesh_arrays[Mesh::ARRAY_INDEX] = indices;
 
-	importer_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, mesh_arrays);
-	return importer_mesh;
+	array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, mesh_arrays);
+	return array_mesh;
 }
 
-TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Instantiation and Basic Setup") {
+TEST_CASE("[SceneTree][SceneTree][LBFGSBCapsuleFitterSolver] Instantiation and Basic Setup") {
 	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
-	Ref<ImporterMesh> mesh = create_sphere_test_mesh(Vector3(0, 0, 0), 1.0);
+	Ref<ArrayMesh> mesh = create_sphere_test_mesh(Vector3(0, 0, 0), 1.0);
 	solver->set_source_mesh(mesh);
 	REQUIRE(solver->get_source_mesh() == mesh);
 	solver->set_surface_index(0);
@@ -182,9 +189,9 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Instantiation and Basic Setup"
 	REQUIRE(solver->get_huber_delta() == doctest::Approx(0.1));
 }
 
-TEST_CASE("[LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters - Zero Capsules") {
+TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters - Zero Capsules") {
 	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
-	Ref<ImporterMesh> mesh = create_sphere_test_mesh(Vector3(1, 1, 1), 0.5);
+	Ref<ArrayMesh> mesh = create_sphere_test_mesh(Vector3(1, 1, 1), 0.5);
 	solver->set_source_mesh(mesh);
 	solver->set_surface_index(0);
 
@@ -204,50 +211,44 @@ TEST_CASE("[LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters - Zero Ca
 	CHECK(int(result["iterations"]) == 0);
 }
 
-TEST_CASE("[LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters - Single Capsule Fit to Sphere") {
+TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters - Single Capsule Fit to Sphere") {
 	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
-
 	Vector3 mesh_center = Vector3(2, 3, 4);
 	double mesh_radius = 0.75;
-	Ref<ImporterMesh> mesh = create_sphere_test_mesh(mesh_center, mesh_radius);
+	Ref<ArrayMesh> mesh = create_sphere_test_mesh(mesh_center, mesh_radius);
 	solver->set_source_mesh(mesh);
 	solver->set_surface_index(0);
-
 	solver->clear_capsule_instances();
-	// Initial guess slightly off-center and different radius
 	solver->add_capsule_instance(mesh_center + Vector3(0.1, -0.1, 0.1), mesh_center + Vector3(0.2, -0.2, 0.2), mesh_radius * 0.5);
 	REQUIRE(solver->get_num_capsule_instances() == 1);
-
 	Dictionary result = solver->optimize_all_capsule_parameters();
-
 	INFO("Solver result (single capsule): ", JSON::stringify(result));
 	CHECK_FALSE(result.has("error"));
 	REQUIRE(result.has("optimized_capsules_results"));
-	Array capsule_results = result["optimized_capsules_results"];
-	REQUIRE(capsule_results.size() == 1);
-
-	Dictionary capsule_data = capsule_results[0];
-	REQUIRE(capsule_data.has("optimized_radius"));
-	REQUIRE(capsule_data.has("optimized_axis_a"));
-	REQUIRE(capsule_data.has("optimized_axis_b"));
-
-	double optimized_radius = capsule_data["optimized_radius"];
-	Vector3 optimized_axis_a = capsule_data["optimized_axis_a"];
-	Vector3 optimized_axis_b = capsule_data["optimized_axis_b"];
-
-	CHECK(optimized_radius == doctest::Approx(mesh_radius).epsilon(0.15)); // Allow some tolerance
-
-	Vector3 optimized_center = (optimized_axis_a + optimized_axis_b) / 2.0;
-	CHECK(optimized_center.distance_to(mesh_center) == doctest::Approx(0.0).epsilon(0.15));
-
-	double optimized_height = optimized_axis_a.distance_to(optimized_axis_b);
-	CHECK(optimized_height == doctest::Approx(0.0).epsilon(0.2)); // For a sphere, height should be minimal
+	Array capsule_results = result.get("optimized_capsules_results", Array());
+	CHECK(capsule_results.size() == 1);
+	if (capsule_results.size() == 1) {
+		Dictionary capsule_data = capsule_results[0]; // Access is now conditional
+		REQUIRE(capsule_data.has("optimized_radius"));
+		REQUIRE(capsule_data.has("optimized_axis_a"));
+		REQUIRE(capsule_data.has("optimized_axis_b"));
+		double optimized_radius = capsule_data["optimized_radius"];
+		Vector3 optimized_axis_a = capsule_data["optimized_axis_a"];
+		Vector3 optimized_axis_b = capsule_data["optimized_axis_b"];
+		CHECK(optimized_radius == doctest::Approx(mesh_radius).epsilon(0.15)); // Allow some tolerance
+		Vector3 optimized_center = (optimized_axis_a + optimized_axis_b) / 2.0;
+		CHECK(optimized_center.distance_to(mesh_center) == doctest::Approx(0.0).epsilon(0.15));
+		double optimized_height = optimized_axis_a.distance_to(optimized_axis_b);
+		CHECK(optimized_height == doctest::Approx(0.0).epsilon(0.2)); // For a sphere, height should be minimal
+	} else {
+		FAIL_CHECK("Optimized capsule results size was expected to be 1, but got " << capsule_results.size() << ".");
+	}
 }
 
 TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Parameters for Multiple Capsules Simultaneously") {
 	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
 
-	Ref<ImporterMesh> mesh = create_sphere_test_mesh(Vector3(0, 0, 0), 1.0); // Simple sphere target
+	Ref<ArrayMesh> mesh = create_sphere_test_mesh(Vector3(0, 0, 0), 1.0); // Simple sphere target
 	solver->set_source_mesh(mesh);
 	solver->set_surface_index(0);
 

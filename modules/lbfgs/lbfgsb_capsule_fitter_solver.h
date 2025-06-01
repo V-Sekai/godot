@@ -64,7 +64,7 @@ public: // Made public for direct access in test, or provide getters
 private:
 	Vector<CapsuleInstance> m_capsules; // Stores all capsules for multi-fit
 
-	Ref<ImporterMesh> source_mesh;
+	Ref<Mesh> source_mesh;
 	int surface_index = 0;
 	Dictionary last_fit_result;
 
@@ -83,7 +83,6 @@ private:
 	};
 	OptimizationMode _current_optimization_mode = OPT_MODE_MULTI_ALL_PARAMS;
 
-	// Helper function for closest point and its normal
 	std::pair<Vector3, Vector3> _get_closest_point_and_normal_on_capsule_surface(
 			const Vector3 &p_mesh_vertex,
 			const Vector3 &p_cap_a,
@@ -98,8 +97,8 @@ public:
 	LBFGSBCapsuleFitterSolver();
 	~LBFGSBCapsuleFitterSolver();
 
-	void set_source_mesh(const Ref<ImporterMesh> &p_mesh);
-	Ref<ImporterMesh> get_source_mesh() const;
+	void set_source_mesh(const Ref<Mesh> &p_mesh);
+	Ref<Mesh> get_source_mesh() const;
 
 	void set_surface_index(int p_index);
 	int get_surface_index() const;
@@ -147,5 +146,18 @@ public: // Moved struct and static methods here for testability
 
 private:
 	static Basis _compute_rotation_matrix_from_rot_vec(const Vector3 &p_rot_vec);
-	PackedVector3Array _generate_canonical_capsule_points(const Vector3 &p_cap_a, const Vector3 &p_cap_b, double p_cap_radius, int p_cylinder_rings, int p_radial_segments) const;
+	Array _generate_canonical_capsule_mesh_arrays(const Vector3 &p_cap_a, const Vector3 &p_cap_b, double p_cap_radius, int p_radial_segments, int p_rings, bool p_closed) const;
+
+	// Helper methods for pre-optimization validation and data preparation
+	bool _validate_pre_optimization_conditions(Dictionary &r_result_dict);
+	bool _prepare_objective_data(Dictionary &r_result_dict);
+
+	// Helper methods for optimize_all_capsule_parameters
+	void _initialize_optimization_parameters(PackedFloat64Array &r_local_x_initial, PackedFloat64Array &r_local_lower_bounds, PackedFloat64Array &r_local_upper_bounds) const;
+	// _execute_lbfgsb_optimization runs the core L-BFGS-B solver.
+	// It populates r_result_dict with "iterations", "final_fx", "optimized_params", and potentially "error" or "solver_error_message".
+	// Returns true if solver ran and produced a structurally valid result (even if that result is an error message from the solver itself), false for pre-solver errors.
+	bool _execute_lbfgsb_optimization(const PackedFloat64Array &p_initial_x, const PackedFloat64Array &p_lower_bounds, const PackedFloat64Array &p_upper_bounds, Dictionary &r_result_dict);
+	void _process_optimization_result(const PackedFloat64Array &p_optimized_params, int p_num_total_params, Dictionary &r_actual_result_dict);
+	Ref<ArrayMesh> _generate_result_mesh_with_capsules() const;
 };

@@ -35,10 +35,11 @@
 #include "core/object/ref_counted.h"
 #include "core/object/script_language.h"
 
+#include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
 
-class LBFGSBSolver : public Node3D {
-	GDCLASS(LBFGSBSolver, Node3D);
+class LBFGSBSolver : public MeshInstance3D {
+	GDCLASS(LBFGSBSolver, MeshInstance3D);
 
 private:
 	double epsilon;
