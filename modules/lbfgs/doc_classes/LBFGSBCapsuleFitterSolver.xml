@@ -43,6 +43,8 @@
 		<member name="height" type="float" setter="set_height" getter="get_height" default="0.5">
 			The height of the capsule, defined as the distance between [member axis_point_a] and [member axis_point_b]. Setting this value will adjust the positions of [member axis_point_a] and [member axis_point_b] while keeping their center and orientation.
 		</member>
+		<member name="huber_delta" type="float" setter="set_huber_delta" getter="get_huber_delta" default="0.1">
+		</member>
 		<member name="last_fit_result" type="Dictionary" setter="" getter="get_last_fit_result" default="{}">
 			A read-only [Dictionary] containing the results of the last fitting operation performed by [method execute_fit].
 			On success, it typically includes "optimized_radius" (the final calculated radius), "final_fx" (the final value of the objective function, indicating the quality of the fit), and "height" (the height of the capsule at the time of fitting).
