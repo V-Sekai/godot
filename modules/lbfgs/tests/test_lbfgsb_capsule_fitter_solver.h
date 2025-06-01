@@ -42,7 +42,6 @@
 
 namespace TestLBFGSBCapsuleFitterSolver {
 
-// Helper function for approximate Vector3 comparison
 static bool vector3_is_equal_approx(const Vector3 &v1, const Vector3 &v2, double epsilon = CMP_EPSILON) {
 	return Math::is_equal_approx(real_t(v1.x), real_t(v2.x), real_t(epsilon)) &&
 		   Math::is_equal_approx(real_t(v1.y), real_t(v2.y), real_t(epsilon)) &&
@@ -139,8 +138,8 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Radius for Fixed Axis
 
 	INFO("Radius optimization result: ", result);
 	CHECK_MESSAGE(!result.is_empty(), "Optimization result should not be empty.");
-	REQUIRE_MESSAGE(result.has("final_fx"), "Result should contain 'final_fx'.");
-	REQUIRE_MESSAGE(result.has("optimized_radius"), "Result should contain 'optimized_radius'.");
+	CHECK_MESSAGE(result.has("final_fx"), "Result should contain 'final_fx'.");
+	CHECK_MESSAGE(result.has("optimized_radius"), "Result should contain 'optimized_radius'.");
 
 	double optimized_radius = result["optimized_radius"];
 	MESSAGE("Optimized radius: ", optimized_radius);
@@ -175,9 +174,9 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Fixed
 
 	INFO("Orientation optimization result: ", result);
 	CHECK_MESSAGE(!result.is_empty(), "Optimization result should not be empty.");
-	REQUIRE_MESSAGE(result.has("final_fx"), "Result should contain 'final_fx'.");
-	REQUIRE_MESSAGE(result.has("optimized_axis_a"), "Result should contain 'optimized_axis_a'.");
-	REQUIRE_MESSAGE(result.has("optimized_axis_b"), "Result should contain 'optimized_axis_b'.");
+	CHECK_MESSAGE(result.has("final_fx"), "Result should contain 'final_fx'.");
+	CHECK_MESSAGE(result.has("optimized_axis_a"), "Result should contain 'optimized_axis_a'.");
+	CHECK_MESSAGE(result.has("optimized_axis_b"), "Result should contain 'optimized_axis_b'.");
 
 	Vector3 optimized_a = result["optimized_axis_a"];
 	Vector3 optimized_b = result["optimized_axis_b"];
@@ -216,4 +215,109 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Fixed
 
 	memdelete(solver);
 }
+
+TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for SphereMesh") {
+	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
+
+	Ref<SphereMesh> sphere_mesh = memnew(SphereMesh);
+	sphere_mesh->set_radius(1.0f);
+	sphere_mesh->set_height(2.0f); // Standard sphere height
+	sphere_mesh->set_radial_segments(16);
+	sphere_mesh->set_rings(8);
+
+	Ref<ArrayMesh> array_mesh = memnew(ArrayMesh);
+	array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, sphere_mesh->get_mesh_arrays());
+
+	solver->set_source_mesh(array_mesh);
+	solver->set_surface_index(0);
+
+	// Initial capsule: radius 0.5, height 1.0 (to roughly match a sphere of radius 1)
+	solver->set_radius(0.5); 
+	solver->set_height(1.0); // Height of capsule axis part
+	solver->set_axis_point_a(Vector3(0, -0.5, 0.1)); // Slightly offset
+	solver->set_axis_point_b(Vector3(0, 0.5, 0.1));
+
+	solver->set_huber_delta(0.1);
+	solver->set_max_iterations(200);
+	solver->set_epsilon(1e-6);
+
+	Dictionary result = solver->optimize_orientation_for_fixed_size();
+
+	INFO("SphereMesh Orientation optimization result: ", result);
+	CHECK_MESSAGE(!result.is_empty(), "SphereMesh: Optimization result should not be empty.");
+	CHECK_MESSAGE(result.has("final_fx"), "SphereMesh: Result should contain 'final_fx'.");
+	CHECK_MESSAGE(result.has("optimized_axis_a"), "SphereMesh: Result should contain 'optimized_axis_a'.");
+	CHECK_MESSAGE(result.has("optimized_axis_b"), "SphereMesh: Result should contain 'optimized_axis_b'.");
+
+	if (!result.is_empty() && result.has("optimized_axis_a") && result.has("optimized_axis_b")) {
+		Vector3 optimized_a = result["optimized_axis_a"];
+		Vector3 optimized_b = result["optimized_axis_b"];
+		Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
+		Vector3 expected_center = Vector3(0, 0, 0); // Sphere is centered at origin
+
+		MESSAGE("SphereMesh Optimized Center: ", optimized_center, " Expected Center: ", expected_center);
+		// For a sphere, the center should be very close to the sphere's center.
+		CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, expected_center, 0.1), "SphereMesh: Optimized capsule center should be very close to the sphere's center.");
+
+		// For a sphere, the length of the axis (optimized_b - optimized_a) should be small if it tries to become spherical.
+		// However, we are optimizing for a fixed size capsule. The capsule height is 1.0.
+		MESSAGE("SphereMesh Optimized Axis Length: ", (optimized_b - optimized_a).length());
+		CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.0).epsilon(0.05), "SphereMesh: Optimized axis length should remain close to initial 1.0.");
+	}
+
+	memdelete(solver);
+}
+
+TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for BoxMesh") {
+	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
+
+	Ref<BoxMesh> box_mesh = memnew(BoxMesh);
+	box_mesh->set_size(Vector3(1, 2, 0.5)); // A non-uniform box
+
+	Ref<ArrayMesh> array_mesh_box = memnew(ArrayMesh);
+	array_mesh_box->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, box_mesh->get_mesh_arrays());
+
+	solver->set_source_mesh(array_mesh_box);
+	solver->set_surface_index(0);
+
+	// Initial capsule: radius 0.25, height 1.8 (to roughly fit the longest dimension)
+	solver->set_radius(0.25);
+	solver->set_height(1.8); 
+	solver->set_axis_point_a(Vector3(0.1, -0.9, 0)); // Initial guess along Y
+	solver->set_axis_point_b(Vector3(0.1, 0.9, 0));
+
+	solver->set_huber_delta(0.1);
+	solver->set_max_iterations(300);
+	solver->set_epsilon(1e-6);
+
+	Dictionary result = solver->optimize_orientation_for_fixed_size();
+
+	INFO("BoxMesh Orientation optimization result: ", result);
+	CHECK_MESSAGE(!result.is_empty(), "BoxMesh: Optimization result should not be empty.");
+	CHECK_MESSAGE(result.has("final_fx"), "BoxMesh: Result should contain 'final_fx'.");
+	CHECK_MESSAGE(result.has("optimized_axis_a"), "BoxMesh: Result should contain 'optimized_axis_a'.");
+	CHECK_MESSAGE(result.has("optimized_axis_b"), "BoxMesh: Result should contain 'optimized_axis_b'.");
+
+	if (!result.is_empty() && result.has("optimized_axis_a") && result.has("optimized_axis_b")) {
+		Vector3 optimized_a = result["optimized_axis_a"];
+		Vector3 optimized_b = result["optimized_axis_b"];
+		Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
+		Vector3 optimized_direction = (optimized_b - optimized_a).normalized();
+		Vector3 expected_center = Vector3(0, 0, 0); // Box is centered at origin
+
+		MESSAGE("BoxMesh Optimized Center: ", optimized_center, " Expected Center: ", expected_center);
+		CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, expected_center, 0.15), "BoxMesh: Optimized capsule center should be very close to the box's center.");
+
+		// Check if the capsule aligned with one of the box's principal axes (X, Y, or Z)
+		bool aligned_with_y = Math::abs(optimized_direction.dot(Vector3(0,1,0))) > 0.95; // Box is tallest along Y
+		// bool aligned_with_x = Math::abs(optimized_direction.dot(Vector3(1,0,0))) > 0.95;
+		// bool aligned_with_z = Math::abs(optimized_direction.dot(Vector3(0,0,1))) > 0.95;
+		MESSAGE("BoxMesh Optimized Direction: ", optimized_direction, " (Dot Y: ", optimized_direction.dot(Vector3(0,1,0)), ")");
+		CHECK_MESSAGE(aligned_with_y, "BoxMesh: Optimized capsule should align with the box's longest (Y) axis.");
+		CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.8).epsilon(0.1), "BoxMesh: Optimized axis length should remain close to initial 1.8.");
+	}
+
+	memdelete(solver);
+}
+
 } // namespace TestLBFGSBCapsuleFitterSolver
