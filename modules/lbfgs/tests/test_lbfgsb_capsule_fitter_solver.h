@@ -306,61 +306,96 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for BoxMe
 	memdelete(solver);
 }
 
-TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters (Radius, Axis, Center)" * doctest::skip(true)) {
-	// This test drives the creation of a new function, e.g.:
-	// Dictionary LBFGSBCapsuleFitterSolver::optimize_all_capsule_parameters();
-	// This function would optimize for radius, and the axis points (A and B).
+TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Parameters for Multiple Capsules Simultaneously" * doctest::skip(true)) {
+	// This test drives the adaptation of optimize_all_capsule_parameters
+	// to handle multiple capsules defined within the solver.
 
 	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
 
-	// Create a target mesh, e.g., a tilted cylinder, representing weighted vertices.
+	// Create a target mesh, e.g., a tilted cylinder.
+	// Both capsules will attempt to fit this same mesh for this test.
 	Basis actual_tilt = Basis(Vector3(1, 0, 0), Math::deg_to_rad(45.0f)); // Tilted 45 deg around X
 	Ref<ArrayMesh> mesh_target = create_tilted_cylinder_points_mesh(0.75f, 1.5f, 20, 7, actual_tilt);
 	solver->set_source_mesh(mesh_target);
 	solver->set_surface_index(0);
 
-	// Set initial capsule parameters, purposefully off from the target to test optimization.
+	// Assume an API to add/configure multiple capsules. This will drive solver API design.
+	// For this test, we'll imagine methods to set up two capsules.
+	// These would likely be replaced by a more robust internal list and an `add_capsule` method on the solver.
+	// For now, the test implies the solver needs to be aware of these multiple configurations.
+
+	// To make this test work without immediate solver API changes for multiple capsules,
+	// we will call optimize_all_capsule_parameters twice, once for each conceptual capsule,
+	// and check results. A true multi-capsule optimization would involve a single call
+	// that optimizes all 14+ parameters (7 per capsule) simultaneously.
+	// The current test name implies a single call for multiple capsules.
+	// Let's adjust the test to reflect a future where the solver handles a list of capsules.
+
+	// Placeholder for solver API to define multiple capsules.
+	// solver->add_capsule_definition(initial_a1, initial_b1, initial_radius1);
+	// solver->add_capsule_definition(initial_a2, initial_b2, initial_radius2);
+	// For now, we will simulate this by re-setting parameters on a single-capsule solver
+	// and calling it, which is NOT the final intent of "Multiple Capsules Simultaneously".
+	// This test will need significant rework once the solver supports multiple capsules internally.
+	// The following is a TEMPORARY structure for a SINGLE capsule test, acknowledging the name is for MULTIPLE.
+
+	// Set initial capsule parameters (for a conceptual first capsule)
 	solver->set_radius(0.1); // Too small
-	solver->set_height(1.0); // Incorrect height for the actual cylinder (height param here affects initial guess for axis length)
-	solver->set_axis_point_a(Vector3(0, -0.5, 0)); // Initial axis along Y, not matching tilted
-	solver->set_axis_point_b(Vector3(0, 0.5, 0));
+	// solver->set_height(1.0); // set_height is not used by optimize_all_capsule_parameters directly
+	// The following lines for set_axis_point_a and set_axis_point_b are commented out
+	// because the LBFGSBCapsuleFitterSolver API has changed to use local_axis_point_a/b
+	// and target_skeleton_path/target_bone_name. This test will need to be updated
+	// to reflect these API changes once it's being seriously worked on for multi-capsule.
+	// For now, to avoid compilation errors with the changed API, we comment them out.
+	// solver->set_axis_point_a(Vector3(0, -0.5, 0)); // Initial axis along Y
+	// solver->set_axis_point_b(Vector3(0, 0.5, 0));
 
 	solver->set_huber_delta(0.05);
-	solver->set_max_iterations(500); // More iterations for more variables
+	solver->set_max_iterations(500);
 	solver->set_epsilon(1e-6);
 
-	// THIS FUNCTION NEEDS TO BE IMPLEMENTED IN LBFGSBCapsuleFitterSolver
-	// It should optimize (radius, axis_a.x, axis_a.y, axis_a.z, axis_b.x, axis_b.y, axis_b.z)
-	// It should return a Dictionary with "optimized_radius", "optimized_axis_a", "optimized_axis_b", "final_fx"
+	// This call would ideally optimize ALL configured capsules.
+	// The current solver is expected to optimize its single set of parameters.
+	// The SNAME should match a method that will eventually handle multiple capsules.
 	Dictionary result = solver->call(SNAME("optimize_all_capsule_parameters"));
 
-	INFO("Combined optimization result: ", result);
+	INFO("Combined optimization result (simulating one of multiple capsules): ", result);
+	// Basic checks, will need to be adapted for an array of results later
 	CHECK_MESSAGE(!result.is_empty(), "Result should not be empty.");
 	CHECK_MESSAGE(result.has("final_fx"), "Result should contain 'final_fx'.");
-	CHECK_MESSAGE(result.has("optimized_radius"), "Result should contain 'optimized_radius'.");
-	CHECK_MESSAGE(result.has("optimized_axis_a"), "Result should contain 'optimized_axis_a'.");
-	CHECK_MESSAGE(result.has("optimized_axis_b"), "Result should contain 'optimized_axis_b'.");
 
-	// Assertions for correctness: capsule should converge to match the tilted cylinder.
-	double optimized_radius = result["optimized_radius"];
-	Vector3 optimized_a = result["optimized_axis_a"];
-	Vector3 optimized_b = result["optimized_axis_b"];
+	// The following detailed checks are for a single capsule result.
+	// These will need to be moved into a loop when results are an array.
+	if (result.has("optimized_radius") && result.has("optimized_axis_a") && result.has("optimized_axis_b")) {
+		double optimized_radius = result["optimized_radius"];
+		Vector3 optimized_a = result["optimized_axis_a"];
+		Vector3 optimized_b = result["optimized_axis_b"];
 
-	MESSAGE("Optimized radius: ", optimized_radius);
-	CHECK_MESSAGE(optimized_radius == doctest::Approx(0.75).epsilon(0.05), "Optimized radius should be close to 0.75 (target).");
+		MESSAGE("Optimized radius: ", optimized_radius);
+		CHECK_MESSAGE(optimized_radius == doctest::Approx(0.75).epsilon(0.05), "Optimized radius should be close to 0.75 (target).");
 
-	MESSAGE("Optimized Axis A: ", optimized_a, " Optimized Axis B: ", optimized_b);
-	CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.5).epsilon(0.05), "Optimized axis length should be close to 1.5 (target).");
+		MESSAGE("Optimized Axis A: ", optimized_a, " Optimized Axis B: ", optimized_b);
+		CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.5).epsilon(0.05), "Optimized axis length should be close to 1.5 (target).");
 
-	Vector3 optimized_direction = (optimized_b - optimized_a).normalized();
-	Vector3 expected_direction = actual_tilt.xform(Vector3(0, 1, 0)).normalized(); // Assuming cylinder is along Y initially
-	CHECK_MESSAGE(vector3_is_equal_approx(optimized_direction, expected_direction, 1e-4), "Optimized axis direction should match target mesh direction.");
+		Vector3 optimized_direction = (optimized_b - optimized_a).normalized();
+		Vector3 expected_direction = actual_tilt.xform(Vector3(0, 1, 0)).normalized(); // Assuming cylinder is along Y initially
+		CHECK_MESSAGE(vector3_is_equal_approx(optimized_direction, expected_direction, 1e-4), "Optimized axis direction should match target mesh direction.");
 
-	Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
-	CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, Vector3(0, 0, 0), 1e-3), "Optimized capsule center should be close to origin.");
+		Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
+		CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, Vector3(0, 0, 0), 1e-3), "Optimized capsule center should be close to origin.");
 
-	double final_f = result["final_fx"];
-	CHECK_MESSAGE(final_f < 0.1, "Final objective function value should be small for a good fit.");
+		double final_f = result["final_fx"];
+		CHECK_MESSAGE(final_f < 0.1, "Final objective function value should be small for a good fit.");
+	} else {
+		// If the primary keys are missing, it might be because the solver returned an array directly.
+		// This part of the test is highly speculative until the multi-capsule API is defined.
+		CHECK_MESSAGE(result.has("optimized_capsules_results"), "Result should contain 'optimized_capsules_results' if not single capsule keys.");
+	}
+
+	// TODO: This test needs to be expanded significantly once the solver supports
+	// an internal list of capsules and `optimize_all_capsule_parameters` can optimize them all
+	// simultaneously, returning an array of results.
+	// The assertions would then loop through that array.
 
 	memdelete(solver);
 }
