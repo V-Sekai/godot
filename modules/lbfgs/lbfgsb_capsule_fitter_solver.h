@@ -34,25 +34,42 @@
 #include "core/math/vector3.h"
 #include "core/variant/dictionary.h"
 #include "lbfgsbpp.h"
+#include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/mesh.h"
 
 class LBFGSBCapsuleFitterSolver : public LBFGSBSolver {
 	GDCLASS(LBFGSBCapsuleFitterSolver, LBFGSBSolver);
 
+public: // Made public for direct access in test, or provide getters
+	struct CapsuleInstance {
+		Vector3 initial_axis_a;
+		Vector3 initial_axis_b;
+		double initial_radius = 0.1;
+
+		Vector3 optimized_axis_a;
+		Vector3 optimized_axis_b;
+		double optimized_radius = 0.1;
+
+		CapsuleInstance(const Vector3 &p_initial_axis_a, const Vector3 &p_initial_axis_b, double p_initial_radius) :
+				initial_axis_a(p_initial_axis_a),
+				initial_axis_b(p_initial_axis_b),
+				initial_radius(p_initial_radius),
+				optimized_radius(p_initial_radius) {}
+
+		CapsuleInstance() :
+				initial_radius(0.1),
+				optimized_radius(0.1) {}
+	};
+
 private:
-	Ref<Mesh> source_mesh;
+	Vector<CapsuleInstance> m_capsules; // Stores all capsules for multi-fit
+
+	Ref<ImporterMesh> source_mesh;
 	int surface_index = 0;
-	Vector3 axis_point_a = Vector3(0, -0.25, 0);
-	Vector3 axis_point_b = Vector3(0, 0.25, 0);
-	double radius = 0.1;
 	Dictionary last_fit_result;
 
 	PackedVector3Array current_cloud_points_for_objective;
 	PackedVector3Array current_cloud_normals_for_objective; // Added for normals
-
-	// For orientation optimization
-	Vector3 _orientation_opt_initial_half_axis; // Stores half_axis = (B-A)/2 in initial capsule frame
-	double _orientation_opt_fixed_radius = 0.5;
 
 	// Configurable thresholds and penalty for orientation optimization
 	double orientation_distance_threshold = 0.1;
@@ -62,10 +79,9 @@ private:
 	double huber_delta = 0.1; // Delta parameter for Huber loss
 
 	enum OptimizationMode {
-		OPT_MODE_RADIUS,
-		OPT_MODE_ORIENTATION
+		OPT_MODE_MULTI_ALL_PARAMS // Mode for optimizing all parameters of all capsules in m_capsules
 	};
-	OptimizationMode _current_optimization_mode = OPT_MODE_RADIUS;
+	OptimizationMode _current_optimization_mode = OPT_MODE_MULTI_ALL_PARAMS;
 
 	// Helper function for closest point and its normal
 	std::pair<Vector3, Vector3> _get_closest_point_and_normal_on_capsule_surface(
@@ -82,25 +98,17 @@ public:
 	LBFGSBCapsuleFitterSolver();
 	~LBFGSBCapsuleFitterSolver();
 
-	void set_source_mesh(const Ref<Mesh> &p_mesh);
-	Ref<Mesh> get_source_mesh() const;
+	void set_source_mesh(const Ref<ImporterMesh> &p_mesh);
+	Ref<ImporterMesh> get_source_mesh() const;
 
 	void set_surface_index(int p_index);
 	int get_surface_index() const;
 
-	// FIXME: Replace these methods with offsets from the bone
-	void set_axis_point_a(const Vector3 &p_point);
-	Vector3 get_axis_point_a() const;
-
-	// FIXME: Replace these methods with offsets from the bone
-	void set_axis_point_b(const Vector3 &p_point);
-	Vector3 get_axis_point_b() const;
-
-	void set_radius(double p_radius);
-	double get_radius() const;
-
-	void set_height(double p_height);
-	double get_height() const;
+	// Methods for managing multiple capsules
+	void add_capsule_instance(const Vector3 &p_initial_axis_a_world, const Vector3 &p_initial_axis_b_world, double p_initial_radius);
+	void clear_capsule_instances();
+	int get_num_capsule_instances() const;
+	Dictionary get_capsule_instance_data(int p_idx) const; // For inspecting capsule data, useful for tests
 
 	void set_orientation_distance_threshold(double p_threshold);
 	double get_orientation_distance_threshold() const;
@@ -116,26 +124,15 @@ public:
 
 	Dictionary get_last_fit_result() const;
 
-	void execute_fit();
-	void execute_orientation_fit();
-
-	Dictionary optimize_radius_for_fixed_axis();
-	Dictionary optimize_orientation_for_fixed_size();
+	Dictionary optimize_all_capsule_parameters(); // Declaration for the multi-capsule optimization method
 
 public: // Moved struct and static methods here for testability
 	struct CapsuleSurfacePointDerivatives {
 		Basis dC_dA; // Jacobian of closest point C w.r.t. endpoint A
 		Basis dC_dB; // Jacobian of closest point C w.r.t. endpoint B
-		Basis dN_dA; // Jacobian of capsule normal N w.r.t. endpoint A
-		Basis dN_dB; // Jacobian of capsule normal N w.r.t. endpoint B
+		Vector3 normal_on_surface; // Added to store the normal itself, useful for d_dist_d_radius
 		bool is_valid = false; // Flag to indicate if derivatives are valid (e.g. point not on axis for normal derivative)
 	};
-
-	static std::pair<Vector3, Vector3> get_closest_point_and_normal_on_capsule_surface(
-			const Vector3 &p_mesh_vertex,
-			const Vector3 &p_cap_a,
-			const Vector3 &p_cap_b,
-			double p_cap_radius);
 
 	static Basis d_vec_normalized_d_vec(const Vector3 &p_vec);
 	static Basis d_basis_d_rot_comp(const Vector3 &p_rot_vec, int p_comp_idx);

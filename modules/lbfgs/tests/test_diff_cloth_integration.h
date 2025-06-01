@@ -34,20 +34,15 @@
 #include "../lbfgsb_capsule_fitter_solver.h"
 #include "core/variant/dictionary.h"
 #include "scene/resources/mesh.h"
-#include "test_lbfgsb_capsule_fitter_solver.h"
+#include "test_lbfgsb_capsule_fitter_solver.h" // For create_cylinder_points_mesh
 #include "tests/test_macros.h"
-
-// Assuming TestLBFGSBCapsuleFitterSolver namespace contains helper functions
-namespace TestLBFGSBCapsuleFitterSolver {
-// Forward declare or include necessary helper functions if they are not public in LBFGSBCapsuleFitterSolver tests
-// For example: static Ref<ArrayMesh> create_cylinder_points_mesh(float r, float h, int num_points_circle, int num_height_steps);
-}
 
 namespace TestDiffClothIntegration {
 
 TEST_CASE("[SceneTree][DiffClothIntegration] Optimize Cloth Draping via External Tool" * doctest::skip(true)) {
 	DiffClothIntegration *integrator = memnew(DiffClothIntegration);
 
+	// Use the helper function from the correct namespace
 	Ref<ArrayMesh> dummy_char_cage_mesh = TestLBFGSBCapsuleFitterSolver::create_cylinder_points_mesh(0.5f, 1.5f, 10, 3);
 	Ref<ArrayMesh> dummy_input_cloth_mesh = TestLBFGSBCapsuleFitterSolver::create_cylinder_points_mesh(0.8f, 2.0f, 10, 5);
 
