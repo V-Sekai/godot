@@ -30,10 +30,13 @@
 
 #pragma once
 
+#include "../diff_cloth_integration.h"
 #include "../lbfgsb_capsule_fitter_solver.h"
+#include "../skeleton_retargeting_solver.h"
 #include "core/math/basis.h"
 #include "core/math/vector3.h"
 #include "core/variant/dictionary.h"
+#include "scene/3d/skeleton_3d.h"
 #include "scene/main/scene_tree.h"
 #include "scene/resources/mesh.h"
 
@@ -63,7 +66,7 @@ static Ref<ArrayMesh> create_cylinder_points_mesh(float r, float h, int num_poin
 		if (num_height_steps > 1) {
 			current_h += (h * i / (float)(num_height_steps - 1));
 		} else if (num_height_steps == 1) {
-			current_h = 0; // Single slice at mid-height if h is non-zero, or at 0.
+			current_h = 0;
 		}
 
 		for (int j = 0; j < num_points_circle; ++j) {
@@ -158,17 +161,14 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Fixed
 	solver->set_source_mesh(mesh);
 	solver->set_surface_index(0);
 
-	// Set initial capsule pose slightly off from the mesh's actual pose
-	// Mesh is tilted around Z by 30 deg, centered at origin. Radius 0.5, Height 2.0.
-	// Initial capsule: radius 0.5, height 2.0, axis along Y, centered at (0.1, -0.1, 0.1) to test translation.
 	solver->set_radius(0.5);
-	solver->set_height(2.0); // This will set _orientation_opt_initial_half_axis correctly if called before optimize_orientation
-	solver->set_axis_point_a(Vector3(0.1, -1.0 - 0.1, 0.1)); // Offset center
+	solver->set_height(2.0);
+	solver->set_axis_point_a(Vector3(0.1, -1.0 - 0.1, 0.1));
 	solver->set_axis_point_b(Vector3(0.1, 1.0 - 0.1, 0.1));
 
-	solver->set_huber_delta(0.05); // Adjust Huber delta for potentially smaller errors
+	solver->set_huber_delta(0.05);
 	solver->set_max_iterations(300);
-	solver->set_epsilon(DBL_EPSILON); // Tightened solver epsilon for better positional accuracy
+	solver->set_epsilon(DBL_EPSILON);
 
 	Dictionary result = solver->optimize_orientation_for_fixed_size();
 
@@ -188,7 +188,7 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Fixed
 	Vector3 optimized_direction = (optimized_b - optimized_a).normalized();
 	Vector3 expected_direction = tilt_basis.xform(Vector3(0, 1, 0)).normalized();
 	Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
-	Vector3 expected_center = Vector3(0, 0, 0); // Mesh is centered at origin
+	Vector3 expected_center = Vector3(0, 0, 0);
 
 	MESSAGE("Optimized Direction: ", optimized_direction, " Expected Direction (approx): ", expected_direction);
 	CHECK_MESSAGE(vector3_is_equal_approx(optimized_direction, expected_direction, 1e-5), "Optimized axis direction should be very close to the tilted mesh's direction.");
@@ -197,15 +197,9 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Fixed
 	CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, expected_center, 3e-3), "Optimized capsule center should be very close to the mesh's center.");
 
 	double final_f = result["final_fx"];
-	// The final_fx is now a sum of Huber losses, which can be small but not necessarily < 1e-2 for a good fit.
-	// We rely more on geometric checks (direction, center, length).
-	// Check if it's a valid, non-negative number, and perhaps within a broader range if needed.
 	CHECK_MESSAGE(final_f >= 0, "Final objective function value should be non-negative.");
-	// Example: Check if it's less than a loose upper bound, e.g. number of points * huber_delta^2
-	// For 16*5 = 80 points, 80 * 0.05^2 = 80 * 0.0025 = 0.2
 	CHECK_MESSAGE(final_f < 0.5, "Final objective function value should be reasonably small.");
 
-	// Check number of iterations if available
 	if (result.has("iterations")) {
 		int iterations = result["iterations"];
 		MESSAGE("Solver iterations: ", iterations);
@@ -221,7 +215,7 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Spher
 
 	Ref<SphereMesh> sphere_mesh = memnew(SphereMesh);
 	sphere_mesh->set_radius(1.0f);
-	sphere_mesh->set_height(2.0f); // Standard sphere height
+	sphere_mesh->set_height(2.0f);
 	sphere_mesh->set_radial_segments(16);
 	sphere_mesh->set_rings(8);
 
@@ -231,10 +225,9 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Spher
 	solver->set_source_mesh(array_mesh);
 	solver->set_surface_index(0);
 
-	// Initial capsule: radius 0.5, height 1.0 (to roughly match a sphere of radius 1)
 	solver->set_radius(0.5);
-	solver->set_height(1.0); // Height of capsule axis part
-	solver->set_axis_point_a(Vector3(0, -0.5, 0.1)); // Slightly offset
+	solver->set_height(1.0);
+	solver->set_axis_point_a(Vector3(0, -0.5, 0.1));
 	solver->set_axis_point_b(Vector3(0, 0.5, 0.1));
 
 	solver->set_huber_delta(0.1);
@@ -253,14 +246,11 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for Spher
 		Vector3 optimized_a = result["optimized_axis_a"];
 		Vector3 optimized_b = result["optimized_axis_b"];
 		Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
-		Vector3 expected_center = Vector3(0, 0, 0); // Sphere is centered at origin
+		Vector3 expected_center = Vector3(0, 0, 0);
 
 		MESSAGE("SphereMesh Optimized Center: ", optimized_center, " Expected Center: ", expected_center);
-		// For a sphere, the center should be very close to the sphere's center.
 		CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, expected_center, 0.1), "SphereMesh: Optimized capsule center should be very close to the sphere's center.");
 
-		// For a sphere, the length of the axis (optimized_b - optimized_a) should be small if it tries to become spherical.
-		// However, we are optimizing for a fixed size capsule. The capsule height is 1.0.
 		MESSAGE("SphereMesh Optimized Axis Length: ", (optimized_b - optimized_a).length());
 		CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.0).epsilon(0.05), "SphereMesh: Optimized axis length should remain close to initial 1.0.");
 	}
@@ -272,7 +262,7 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for BoxMe
 	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
 
 	Ref<BoxMesh> box_mesh = memnew(BoxMesh);
-	box_mesh->set_size(Vector3(1, 2, 0.5)); // A non-uniform box
+	box_mesh->set_size(Vector3(1, 2, 0.5));
 
 	Ref<ArrayMesh> array_mesh_box = memnew(ArrayMesh);
 	array_mesh_box->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, box_mesh->get_mesh_arrays());
@@ -280,10 +270,9 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for BoxMe
 	solver->set_source_mesh(array_mesh_box);
 	solver->set_surface_index(0);
 
-	// Initial capsule: radius 0.25, height 1.8 (to roughly fit the longest dimension)
 	solver->set_radius(0.25);
 	solver->set_height(1.8);
-	solver->set_axis_point_a(Vector3(0.1, -0.9, 0)); // Initial guess along Y
+	solver->set_axis_point_a(Vector3(0.1, -0.9, 0));
 	solver->set_axis_point_b(Vector3(0.1, 0.9, 0));
 
 	solver->set_huber_delta(0.1);
@@ -303,19 +292,75 @@ TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Orientation for BoxMe
 		Vector3 optimized_b = result["optimized_axis_b"];
 		Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
 		Vector3 optimized_direction = (optimized_b - optimized_a).normalized();
-		Vector3 expected_center = Vector3(0, 0, 0); // Box is centered at origin
+		Vector3 expected_center = Vector3(0, 0, 0);
 
 		MESSAGE("BoxMesh Optimized Center: ", optimized_center, " Expected Center: ", expected_center);
 		CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, expected_center, 0.15), "BoxMesh: Optimized capsule center should be very close to the box's center.");
 
-		// Check if the capsule aligned with one of the box's principal axes (X, Y, or Z)
-		bool aligned_with_y = Math::abs(optimized_direction.dot(Vector3(0, 1, 0))) > 0.95; // Box is tallest along Y
-		// bool aligned_with_x = Math::abs(optimized_direction.dot(Vector3(1,0,0))) > 0.95;
-		// bool aligned_with_z = Math::abs(optimized_direction.dot(Vector3(0,0,1))) > 0.95;
+		bool aligned_with_y = Math::abs(optimized_direction.dot(Vector3(0, 1, 0))) > 0.95;
 		MESSAGE("BoxMesh Optimized Direction: ", optimized_direction, " (Dot Y: ", optimized_direction.dot(Vector3(0, 1, 0)), ")");
 		CHECK_MESSAGE(aligned_with_y, "BoxMesh: Optimized capsule should align with the box's longest (Y) axis.");
 		CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.8).epsilon(0.1), "BoxMesh: Optimized axis length should remain close to initial 1.8.");
 	}
+
+	memdelete(solver);
+}
+
+TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters (Radius, Axis, Center)" * doctest::skip(true)) {
+	// This test drives the creation of a new function, e.g.:
+	// Dictionary LBFGSBCapsuleFitterSolver::optimize_all_capsule_parameters();
+	// This function would optimize for radius, and the axis points (A and B).
+
+	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
+
+	// Create a target mesh, e.g., a tilted cylinder, representing weighted vertices.
+	Basis actual_tilt = Basis(Vector3(1, 0, 0), Math::deg_to_rad(45.0f)); // Tilted 45 deg around X
+	Ref<ArrayMesh> mesh_target = create_tilted_cylinder_points_mesh(0.75f, 1.5f, 20, 7, actual_tilt);
+	solver->set_source_mesh(mesh_target);
+	solver->set_surface_index(0);
+
+	// Set initial capsule parameters, purposefully off from the target to test optimization.
+	solver->set_radius(0.1); // Too small
+	solver->set_height(1.0); // Incorrect height for the actual cylinder (height param here affects initial guess for axis length)
+	solver->set_axis_point_a(Vector3(0, -0.5, 0)); // Initial axis along Y, not matching tilted
+	solver->set_axis_point_b(Vector3(0, 0.5, 0));
+
+	solver->set_huber_delta(0.05);
+	solver->set_max_iterations(500); // More iterations for more variables
+	solver->set_epsilon(1e-6);
+
+	// THIS FUNCTION NEEDS TO BE IMPLEMENTED IN LBFGSBCapsuleFitterSolver
+	// It should optimize (radius, axis_a.x, axis_a.y, axis_a.z, axis_b.x, axis_b.y, axis_b.z)
+	// It should return a Dictionary with "optimized_radius", "optimized_axis_a", "optimized_axis_b", "final_fx"
+	Dictionary result = solver->call(SNAME("optimize_all_capsule_parameters"));
+
+	INFO("Combined optimization result: ", result);
+	CHECK_MESSAGE(!result.is_empty(), "Result should not be empty.");
+	CHECK_MESSAGE(result.has("final_fx"), "Result should contain 'final_fx'.");
+	CHECK_MESSAGE(result.has("optimized_radius"), "Result should contain 'optimized_radius'.");
+	CHECK_MESSAGE(result.has("optimized_axis_a"), "Result should contain 'optimized_axis_a'.");
+	CHECK_MESSAGE(result.has("optimized_axis_b"), "Result should contain 'optimized_axis_b'.");
+
+	// Assertions for correctness: capsule should converge to match the tilted cylinder.
+	double optimized_radius = result["optimized_radius"];
+	Vector3 optimized_a = result["optimized_axis_a"];
+	Vector3 optimized_b = result["optimized_axis_b"];
+
+	MESSAGE("Optimized radius: ", optimized_radius);
+	CHECK_MESSAGE(optimized_radius == doctest::Approx(0.75).epsilon(0.05), "Optimized radius should be close to 0.75 (target).");
+
+	MESSAGE("Optimized Axis A: ", optimized_a, " Optimized Axis B: ", optimized_b);
+	CHECK_MESSAGE((optimized_b - optimized_a).length() == doctest::Approx(1.5).epsilon(0.05), "Optimized axis length should be close to 1.5 (target).");
+
+	Vector3 optimized_direction = (optimized_b - optimized_a).normalized();
+	Vector3 expected_direction = actual_tilt.xform(Vector3(0, 1, 0)).normalized(); // Assuming cylinder is along Y initially
+	CHECK_MESSAGE(vector3_is_equal_approx(optimized_direction, expected_direction, 1e-4), "Optimized axis direction should match target mesh direction.");
+
+	Vector3 optimized_center = (optimized_a + optimized_b) / 2.0;
+	CHECK_MESSAGE(vector3_is_equal_approx(optimized_center, Vector3(0, 0, 0), 1e-3), "Optimized capsule center should be close to origin.");
+
+	double final_f = result["final_fx"];
+	CHECK_MESSAGE(final_f < 0.1, "Final objective function value should be small for a good fit.");
 
 	memdelete(solver);
 }
