@@ -90,7 +90,6 @@ void LBFGSBCapsuleFitterSolver::_bind_methods() {
 
 void LBFGSBCapsuleFitterSolver::set_source_mesh(const Ref<Mesh> &p_mesh) {
 	source_mesh = p_mesh;
-	notify_property_list_changed();
 }
 
 Ref<Mesh> LBFGSBCapsuleFitterSolver::get_source_mesh() const {
@@ -107,7 +106,6 @@ int LBFGSBCapsuleFitterSolver::get_surface_index() const {
 
 void LBFGSBCapsuleFitterSolver::set_axis_point_a(const Vector3 &p_point) {
 	axis_point_a = p_point;
-	notify_property_list_changed();
 }
 
 Vector3 LBFGSBCapsuleFitterSolver::get_axis_point_a() const {
@@ -116,7 +114,6 @@ Vector3 LBFGSBCapsuleFitterSolver::get_axis_point_a() const {
 
 void LBFGSBCapsuleFitterSolver::set_axis_point_b(const Vector3 &p_point) {
 	axis_point_b = p_point;
-	notify_property_list_changed();
 }
 
 Vector3 LBFGSBCapsuleFitterSolver::get_axis_point_b() const {
@@ -151,7 +148,6 @@ void LBFGSBCapsuleFitterSolver::set_height(double p_height) {
 
 	axis_point_a = center - dir * (actual_height * 0.5);
 	axis_point_b = center + dir * (actual_height * 0.5);
-	notify_property_list_changed();
 }
 
 double LBFGSBCapsuleFitterSolver::get_height() const {
@@ -172,7 +168,6 @@ void LBFGSBCapsuleFitterSolver::execute_fit() {
 		last_fit_result = Dictionary();
 		last_fit_result["error"] = "Source mesh is not set.";
 	}
-	notify_property_list_changed();
 }
 
 void LBFGSBCapsuleFitterSolver::execute_orientation_fit() {
@@ -181,7 +176,6 @@ void LBFGSBCapsuleFitterSolver::execute_orientation_fit() {
 	} else {
 		last_fit_result = Dictionary();
 		last_fit_result["error"] = "Source mesh is not set.";
-		notify_property_list_changed();
 	}
 }
 
@@ -343,6 +337,7 @@ double LBFGSBCapsuleFitterSolver::call_operator(const PackedFloat64Array &p_x, P
 
 Dictionary LBFGSBCapsuleFitterSolver::optimize_radius_for_fixed_axis() {
 	Dictionary result;
+	_current_optimization_mode = OPT_MODE_RADIUS;
 
 	if (source_mesh.is_null()) {
 		result["error"] = "Input mesh is null.";
@@ -397,6 +392,7 @@ Dictionary LBFGSBCapsuleFitterSolver::optimize_radius_for_fixed_axis() {
 }
 
 Dictionary LBFGSBCapsuleFitterSolver::optimize_orientation_for_fixed_size() {
+	_current_optimization_mode = OPT_MODE_ORIENTATION;
 	Dictionary result;
 
 	// Ensure the source mesh and its vertex data are available.
