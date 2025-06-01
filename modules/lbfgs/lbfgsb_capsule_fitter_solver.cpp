@@ -32,119 +32,121 @@
 #include "core/io/json.h" // For stringifying results if debugging
 #include "core/math/geometry_3d.h" // For Geometry3D::get_closest_points_between_segments if needed, though custom logic is used.
 
-void LBFGSBCapsuleFitterSolver::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_source_mesh", "p_mesh"), &LBFGSBCapsuleFitterSolver::set_source_mesh);
-	ClassDB::bind_method(D_METHOD("get_source_mesh"), &LBFGSBCapsuleFitterSolver::get_source_mesh);
+// --- LBFGSBCapsuleFitterSolverBase Implementation ---
+
+void LBFGSBCapsuleFitterSolverBase::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_source_mesh", "p_mesh"), &LBFGSBCapsuleFitterSolverBase::set_source_mesh);
+	ClassDB::bind_method(D_METHOD("get_source_mesh"), &LBFGSBCapsuleFitterSolverBase::get_source_mesh);
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "source_mesh", PROPERTY_HINT_RESOURCE_TYPE, "Mesh"), "set_source_mesh", "get_source_mesh");
 
-	ClassDB::bind_method(D_METHOD("set_surface_index", "p_index"), &LBFGSBCapsuleFitterSolver::set_surface_index);
-	ClassDB::bind_method(D_METHOD("get_surface_index"), &LBFGSBCapsuleFitterSolver::get_surface_index);
+	ClassDB::bind_method(D_METHOD("set_surface_index", "p_index"), &LBFGSBCapsuleFitterSolverBase::set_surface_index);
+	ClassDB::bind_method(D_METHOD("get_surface_index"), &LBFGSBCapsuleFitterSolverBase::get_surface_index);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "surface_index"), "set_surface_index", "get_surface_index");
 
-	ClassDB::bind_method(D_METHOD("set_orientation_distance_threshold", "p_threshold"), &LBFGSBCapsuleFitterSolver::set_orientation_distance_threshold);
-	ClassDB::bind_method(D_METHOD("get_orientation_distance_threshold"), &LBFGSBCapsuleFitterSolver::get_orientation_distance_threshold);
+	ClassDB::bind_method(D_METHOD("set_orientation_distance_threshold", "p_threshold"), &LBFGSBCapsuleFitterSolverBase::set_orientation_distance_threshold);
+	ClassDB::bind_method(D_METHOD("get_orientation_distance_threshold"), &LBFGSBCapsuleFitterSolverBase::get_orientation_distance_threshold);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "orientation_distance_threshold"), "set_orientation_distance_threshold", "get_orientation_distance_threshold");
 
-	ClassDB::bind_method(D_METHOD("set_orientation_angle_threshold_rad", "p_threshold_rad"), &LBFGSBCapsuleFitterSolver::set_orientation_angle_threshold_rad);
-	ClassDB::bind_method(D_METHOD("get_orientation_angle_threshold_rad"), &LBFGSBCapsuleFitterSolver::get_orientation_angle_threshold_rad);
+	ClassDB::bind_method(D_METHOD("set_orientation_angle_threshold_rad", "p_threshold_rad"), &LBFGSBCapsuleFitterSolverBase::set_orientation_angle_threshold_rad);
+	ClassDB::bind_method(D_METHOD("get_orientation_angle_threshold_rad"), &LBFGSBCapsuleFitterSolverBase::get_orientation_angle_threshold_rad);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "orientation_angle_threshold_rad"), "set_orientation_angle_threshold_rad", "get_orientation_angle_threshold_rad");
 
-	ClassDB::bind_method(D_METHOD("set_orientation_penalty_factor", "p_factor"), &LBFGSBCapsuleFitterSolver::set_orientation_penalty_factor);
-	ClassDB::bind_method(D_METHOD("get_orientation_penalty_factor"), &LBFGSBCapsuleFitterSolver::get_orientation_penalty_factor);
+	ClassDB::bind_method(D_METHOD("set_orientation_penalty_factor", "p_factor"), &LBFGSBCapsuleFitterSolverBase::set_orientation_penalty_factor);
+	ClassDB::bind_method(D_METHOD("get_orientation_penalty_factor"), &LBFGSBCapsuleFitterSolverBase::get_orientation_penalty_factor);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "orientation_penalty_factor"), "set_orientation_penalty_factor", "get_orientation_penalty_factor");
 
-	ClassDB::bind_method(D_METHOD("set_huber_delta", "p_delta"), &LBFGSBCapsuleFitterSolver::set_huber_delta);
-	ClassDB::bind_method(D_METHOD("get_huber_delta"), &LBFGSBCapsuleFitterSolver::get_huber_delta);
+	ClassDB::bind_method(D_METHOD("set_huber_delta", "p_delta"), &LBFGSBCapsuleFitterSolverBase::set_huber_delta);
+	ClassDB::bind_method(D_METHOD("get_huber_delta"), &LBFGSBCapsuleFitterSolverBase::get_huber_delta);
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "huber_delta"), "set_huber_delta", "get_huber_delta");
 
-	ClassDB::bind_method(D_METHOD("get_last_fit_result"), &LBFGSBCapsuleFitterSolver::get_last_fit_result);
+	ClassDB::bind_method(D_METHOD("get_last_fit_result"), &LBFGSBCapsuleFitterSolverBase::get_last_fit_result);
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "last_fit_result", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY), "", "get_last_fit_result");
 
-	ClassDB::bind_method(D_METHOD("optimize_all_capsule_parameters"), &LBFGSBCapsuleFitterSolver::optimize_all_capsule_parameters);
+	// Note: optimize_capsule_radius and optimize_capsule_axes are bound in their respective derived classes.
 
-	ClassDB::bind_method(D_METHOD("add_capsule_instance", "initial_axis_a", "initial_axis_b", "initial_radius"), &LBFGSBCapsuleFitterSolver::add_capsule_instance);
-	ClassDB::bind_method(D_METHOD("clear_capsule_instances"), &LBFGSBCapsuleFitterSolver::clear_capsule_instances);
-	ClassDB::bind_method(D_METHOD("get_num_capsule_instances"), &LBFGSBCapsuleFitterSolver::get_num_capsule_instances);
-	ClassDB::bind_method(D_METHOD("get_capsule_instance_data", "p_idx"), &LBFGSBCapsuleFitterSolver::get_capsule_instance_data);
+	ClassDB::bind_method(D_METHOD("add_capsule_instance", "initial_axis_a", "initial_axis_b", "initial_radius"), &LBFGSBCapsuleFitterSolverBase::add_capsule_instance);
+	ClassDB::bind_method(D_METHOD("clear_capsule_instances"), &LBFGSBCapsuleFitterSolverBase::clear_capsule_instances);
+	ClassDB::bind_method(D_METHOD("get_num_capsule_instances"), &LBFGSBCapsuleFitterSolverBase::get_num_capsule_instances);
+	ClassDB::bind_method(D_METHOD("get_capsule_instance_data", "p_idx"), &LBFGSBCapsuleFitterSolverBase::get_capsule_instance_data);
 }
 
-LBFGSBCapsuleFitterSolver::LBFGSBCapsuleFitterSolver() {
+LBFGSBCapsuleFitterSolverBase::LBFGSBCapsuleFitterSolverBase() {
 	// Default constructor
 }
 
-LBFGSBCapsuleFitterSolver::~LBFGSBCapsuleFitterSolver() {
+LBFGSBCapsuleFitterSolverBase::~LBFGSBCapsuleFitterSolverBase() {
 	// Destructor
 }
 
-void LBFGSBCapsuleFitterSolver::set_source_mesh(const Ref<Mesh> &p_mesh) {
+void LBFGSBCapsuleFitterSolverBase::set_source_mesh(const Ref<Mesh> &p_mesh) {
 	last_fit_result.clear();
-	m_capsules.clear(); // Clear capsules when a new mesh is set.
+	capsules.clear(); // Clear capsules when a new mesh is set.
 	source_mesh = p_mesh; // Store the original user-provided mesh.
 	current_cloud_points_for_objective.clear(); // Clear derived data.
 	current_cloud_normals_for_objective.clear(); // Clear derived data.
 }
 
-Ref<Mesh> LBFGSBCapsuleFitterSolver::get_source_mesh() const {
+Ref<Mesh> LBFGSBCapsuleFitterSolverBase::get_source_mesh() const {
 	return source_mesh;
 }
 
-void LBFGSBCapsuleFitterSolver::set_surface_index(int p_index) {
+void LBFGSBCapsuleFitterSolverBase::set_surface_index(int p_index) {
 	surface_index = p_index;
 }
 
-int LBFGSBCapsuleFitterSolver::get_surface_index() const {
+int LBFGSBCapsuleFitterSolverBase::get_surface_index() const {
 	return surface_index;
 }
 
-void LBFGSBCapsuleFitterSolver::set_orientation_distance_threshold(double p_threshold) {
+void LBFGSBCapsuleFitterSolverBase::set_orientation_distance_threshold(double p_threshold) {
 	orientation_distance_threshold = p_threshold;
 }
-double LBFGSBCapsuleFitterSolver::get_orientation_distance_threshold() const {
+double LBFGSBCapsuleFitterSolverBase::get_orientation_distance_threshold() const {
 	return orientation_distance_threshold;
 }
 
-void LBFGSBCapsuleFitterSolver::set_orientation_angle_threshold_rad(double p_threshold_rad) {
+void LBFGSBCapsuleFitterSolverBase::set_orientation_angle_threshold_rad(double p_threshold_rad) {
 	orientation_angle_threshold_rad = p_threshold_rad;
 }
-double LBFGSBCapsuleFitterSolver::get_orientation_angle_threshold_rad() const {
+double LBFGSBCapsuleFitterSolverBase::get_orientation_angle_threshold_rad() const {
 	return orientation_angle_threshold_rad;
 }
 
-void LBFGSBCapsuleFitterSolver::set_orientation_penalty_factor(double p_factor) {
+void LBFGSBCapsuleFitterSolverBase::set_orientation_penalty_factor(double p_factor) {
 	orientation_penalty_factor = p_factor;
 }
-double LBFGSBCapsuleFitterSolver::get_orientation_penalty_factor() const {
+double LBFGSBCapsuleFitterSolverBase::get_orientation_penalty_factor() const {
 	return orientation_penalty_factor;
 }
 
-void LBFGSBCapsuleFitterSolver::set_huber_delta(double p_delta) {
+void LBFGSBCapsuleFitterSolverBase::set_huber_delta(double p_delta) {
 	huber_delta = p_delta;
 }
-double LBFGSBCapsuleFitterSolver::get_huber_delta() const {
+double LBFGSBCapsuleFitterSolverBase::get_huber_delta() const {
 	return huber_delta;
 }
 
-Dictionary LBFGSBCapsuleFitterSolver::get_last_fit_result() const {
+Dictionary LBFGSBCapsuleFitterSolverBase::get_last_fit_result() const {
 	return last_fit_result;
 }
 
-void LBFGSBCapsuleFitterSolver::add_capsule_instance(const Vector3 &p_initial_axis_a, const Vector3 &p_initial_axis_b, double p_initial_radius) {
+void LBFGSBCapsuleFitterSolverBase::add_capsule_instance(const Vector3 &p_initial_axis_a, const Vector3 &p_initial_axis_b, double p_initial_radius) {
 	CapsuleInstance instance(p_initial_axis_a, p_initial_axis_b, p_initial_radius);
-	m_capsules.push_back(instance);
+	capsules.push_back(instance);
 }
 
-void LBFGSBCapsuleFitterSolver::clear_capsule_instances() {
-	m_capsules.clear();
+void LBFGSBCapsuleFitterSolverBase::clear_capsule_instances() {
+	capsules.clear();
 }
 
-int LBFGSBCapsuleFitterSolver::get_num_capsule_instances() const {
-	return m_capsules.size();
+int LBFGSBCapsuleFitterSolverBase::get_num_capsule_instances() const {
+	return capsules.size();
 }
 
-Dictionary LBFGSBCapsuleFitterSolver::get_capsule_instance_data(int p_idx) const {
+Dictionary LBFGSBCapsuleFitterSolverBase::get_capsule_instance_data(int p_idx) const {
 	Dictionary data;
-	ERR_FAIL_INDEX_V_MSG(p_idx, m_capsules.size(), data, "Capsule index out of bounds.");
-	const CapsuleInstance &instance = m_capsules[p_idx];
+	ERR_FAIL_INDEX_V_MSG(p_idx, capsules.size(), data, "Capsule index out of bounds.");
+	const CapsuleInstance &instance = capsules[p_idx];
 	data["initial_axis_a"] = instance.initial_axis_a;
 	data["initial_axis_b"] = instance.initial_axis_b;
 	data["initial_radius"] = instance.initial_radius;
@@ -154,69 +156,89 @@ Dictionary LBFGSBCapsuleFitterSolver::get_capsule_instance_data(int p_idx) const
 	return data;
 }
 
-// Helper method to initialize optimization parameters
-void LBFGSBCapsuleFitterSolver::_initialize_optimization_parameters(PackedFloat64Array &r_local_x_initial, PackedFloat64Array &r_local_lower_bounds, PackedFloat64Array &r_local_upper_bounds) const {
-	int num_total_params = m_capsules.size() * 7;
-	r_local_x_initial.resize(num_total_params);
-	r_local_lower_bounds.resize(num_total_params);
-	r_local_upper_bounds.resize(num_total_params);
+// New helper method: Initialize parameters for the current optimization mode and capsule
+void LBFGSBCapsuleFitterSolverBase::_initialize_parameters_for_current_mode(
+		PackedFloat64Array &r_x_initial,
+		PackedFloat64Array &r_lower_bounds,
+		PackedFloat64Array &r_upper_bounds) const {
+	ERR_FAIL_INDEX_MSG(_current_capsule_idx_for_opt, capsules.size(), "Current capsule index out of bounds.");
+	const CapsuleInstance &current_capsule = capsules[_current_capsule_idx_for_opt];
+	AABB mesh_aabb;
+	if (source_mesh.is_valid() && source_mesh->get_surface_count() > surface_index && surface_index >= 0) {
+		mesh_aabb = source_mesh->get_aabb();
+	} else {
+		// Default AABB if mesh is not available or surface_index is invalid.
+		// This situation should ideally be caught by _validate_pre_optimization_conditions.
+		WARN_PRINT_ONCE("Mesh or surface not fully available for bounds calculation; using default AABB.");
+		mesh_aabb = AABB(Vector3(-10, -10, -10), Vector3(20, 20, 20));
+	}
 
-	for (int i = 0; i < m_capsules.size(); ++i) {
-		const CapsuleInstance &capsule = m_capsules[i];
-		int offset = i * 7;
+	// Define a small epsilon for bounds to avoid issues with parameters being exactly on bounds.
+	const double bound_epsilon = 1e-6;
+	// Define a practical maximum for radius and coordinate values.
+	const double practical_max_coord = 1000.0; // Adjust as needed.
+	const double practical_min_coord = -1000.0; // Adjust as needed.
 
-		r_local_x_initial.write[offset + 0] = capsule.initial_radius;
-		r_local_lower_bounds.write[offset + 0] = 0.001; // Min radius
-		r_local_upper_bounds.write[offset + 0] = MAXFLOAT;
-
-		r_local_x_initial.write[offset + 1] = capsule.initial_axis_a.x;
-		r_local_x_initial.write[offset + 2] = capsule.initial_axis_a.y;
-		r_local_x_initial.write[offset + 3] = capsule.initial_axis_a.z;
-		for (int j = 0; j < 3; ++j) {
-			r_local_lower_bounds.write[offset + 1 + j] = -MAXFLOAT;
-			r_local_upper_bounds.write[offset + 1 + j] = MAXFLOAT;
-		}
-
-		r_local_x_initial.write[offset + 4] = capsule.initial_axis_b.x;
-		r_local_x_initial.write[offset + 5] = capsule.initial_axis_b.y;
-		r_local_x_initial.write[offset + 6] = capsule.initial_axis_b.z;
-		for (int j = 0; j < 3; ++j) {
-			r_local_lower_bounds.write[offset + 4 + j] = -MAXFLOAT;
-			r_local_upper_bounds.write[offset + 4 + j] = MAXFLOAT;
-		}
+	switch (_current_optimization_mode) {
+		case OPT_MODE_RADIUS:
+			r_x_initial.resize(1);
+			r_x_initial.write[0] = current_capsule.optimized_radius;
+			r_lower_bounds.resize(1);
+			r_lower_bounds.write[0] = 0.01; // Minimum radius
+			r_upper_bounds.resize(1);
+			r_upper_bounds.write[0] = MIN(MAX(mesh_aabb.get_longest_axis_size(), 2.0) * 2.0, practical_max_coord);
+			break;
+		case OPT_MODE_AXIS_A:
+			r_x_initial.resize(3);
+			r_x_initial.write[0] = current_capsule.optimized_axis_a.x;
+			r_x_initial.write[1] = current_capsule.optimized_axis_a.y;
+			r_x_initial.write[2] = current_capsule.optimized_axis_a.z;
+			r_lower_bounds.resize(3);
+			r_upper_bounds.resize(3);
+			for (int i = 0; i < 3; ++i) {
+				r_lower_bounds.write[i] = MIN(mesh_aabb.position[i] - mesh_aabb.size[i] * 0.5, practical_min_coord + bound_epsilon);
+				r_upper_bounds.write[i] = MAX(mesh_aabb.position[i] + mesh_aabb.size[i] * 1.5, practical_max_coord - bound_epsilon);
+			}
+			break;
+		case OPT_MODE_AXIS_B:
+			r_x_initial.resize(3);
+			r_x_initial.write[0] = current_capsule.optimized_axis_b.x;
+			r_x_initial.write[1] = current_capsule.optimized_axis_b.y;
+			r_x_initial.write[2] = current_capsule.optimized_axis_b.z;
+			r_lower_bounds.resize(3);
+			r_upper_bounds.resize(3);
+			for (int i = 0; i < 3; ++i) {
+				r_lower_bounds.write[i] = MIN(mesh_aabb.position[i] - mesh_aabb.size[i] * 0.5, practical_min_coord + bound_epsilon);
+				r_upper_bounds.write[i] = MAX(mesh_aabb.position[i] + mesh_aabb.size[i] * 1.5, practical_max_coord - bound_epsilon);
+			}
+			break;
 	}
 }
 
-// Helper method to process optimization results
-void LBFGSBCapsuleFitterSolver::_process_optimization_result(const PackedFloat64Array &p_optimized_params, int p_num_total_params, Dictionary &r_actual_result_dict) {
-	if (p_optimized_params.size() != p_num_total_params) {
-		r_actual_result_dict["error"] = "Optimized params size mismatch. Expected " + itos(p_num_total_params) + ", got " + itos(p_optimized_params.size()) + ".";
-		r_actual_result_dict["optimized_capsules_results"] = Array();
-		return; // Return void
+// New helper method: Update the current capsule's optimized parameters from the solver's output
+void LBFGSBCapsuleFitterSolverBase::_update_capsule_from_optimized_params(
+		const PackedFloat64Array &p_optimized_params) {
+	ERR_FAIL_INDEX_MSG(_current_capsule_idx_for_opt, capsules.size(), "Current capsule index out of bounds for update.");
+	CapsuleInstance &current_capsule = capsules.write[_current_capsule_idx_for_opt];
+
+	switch (_current_optimization_mode) {
+		case OPT_MODE_RADIUS:
+			ERR_FAIL_COND_MSG(p_optimized_params.size() != 1, "Optimized params size mismatch for radius update.");
+			current_capsule.optimized_radius = MAX(0.01, p_optimized_params[0]); // Ensure radius stays positive
+			break;
+		case OPT_MODE_AXIS_A:
+			ERR_FAIL_COND_MSG(p_optimized_params.size() != 3, "Optimized params size mismatch for axis A update.");
+			current_capsule.optimized_axis_a = Vector3(p_optimized_params[0], p_optimized_params[1], p_optimized_params[2]);
+			break;
+		case OPT_MODE_AXIS_B:
+			ERR_FAIL_COND_MSG(p_optimized_params.size() != 3, "Optimized params size mismatch for axis B update.");
+			current_capsule.optimized_axis_b = Vector3(p_optimized_params[0], p_optimized_params[1], p_optimized_params[2]);
+			break;
 	}
-
-	Array optimized_capsules_results_array;
-	for (int i = 0; i < m_capsules.size(); ++i) {
-		CapsuleInstance &capsule = m_capsules.write[i];
-		int offset = i * 7;
-		ERR_FAIL_COND_MSG(offset + 6 >= p_optimized_params.size(), "Offset calculation error during capsule result processing.");
-
-		capsule.optimized_radius = p_optimized_params[offset + 0];
-		capsule.optimized_axis_a = Vector3(p_optimized_params[offset + 1], p_optimized_params[offset + 2], p_optimized_params[offset + 3]);
-		capsule.optimized_axis_b = Vector3(p_optimized_params[offset + 4], p_optimized_params[offset + 5], p_optimized_params[offset + 6]);
-
-		Dictionary capsule_result_dict;
-		capsule_result_dict["optimized_radius"] = capsule.optimized_radius;
-		capsule_result_dict["optimized_axis_a"] = capsule.optimized_axis_a;
-		capsule_result_dict["optimized_axis_b"] = capsule.optimized_axis_b;
-		optimized_capsules_results_array.push_back(capsule_result_dict);
-	}
-	r_actual_result_dict["optimized_capsules_results"] = optimized_capsules_results_array;
-	// No return here, it's void
 }
 
 // Helper method to generate the result mesh with capsules
-Ref<ArrayMesh> LBFGSBCapsuleFitterSolver::_generate_result_mesh_with_capsules() const {
+Ref<ArrayMesh> LBFGSBCapsuleFitterSolverBase::_generate_result_mesh_with_capsules() const {
 	Ref<ArrayMesh> combined_mesh;
 	combined_mesh.instantiate();
 
@@ -244,8 +266,8 @@ Ref<ArrayMesh> LBFGSBCapsuleFitterSolver::_generate_result_mesh_with_capsules() 
 	}
 
 	// 2. Generate and add meshes for each optimized capsule
-	for (int i = 0; i < m_capsules.size(); ++i) {
-		const CapsuleInstance &capsule = m_capsules[i];
+	for (int i = 0; i < capsules.size(); ++i) {
+		const CapsuleInstance &capsule = capsules[i];
 		Array capsule_geom_arrays = _generate_canonical_capsule_mesh_arrays(capsule.optimized_axis_a, capsule.optimized_axis_b, capsule.optimized_radius, 8, 16, true); // Example params
 
 		if (!capsule_geom_arrays.is_empty() && capsule_geom_arrays.size() == 3) {
@@ -265,7 +287,7 @@ Ref<ArrayMesh> LBFGSBCapsuleFitterSolver::_generate_result_mesh_with_capsules() 
 }
 
 // Helper method for pre-optimization validation
-bool LBFGSBCapsuleFitterSolver::_validate_pre_optimization_conditions(Dictionary &r_result_dict) {
+bool LBFGSBCapsuleFitterSolverBase::_validate_pre_optimization_conditions(Dictionary &r_result_dict) {
 	if (!source_mesh.is_valid()) {
 		r_result_dict["error"] = "Internal source ArrayMesh is not set or invalid. Call set_source_mesh() first with a valid mesh.";
 		r_result_dict["optimized_capsules_results"] = Array();
@@ -274,12 +296,12 @@ bool LBFGSBCapsuleFitterSolver::_validate_pre_optimization_conditions(Dictionary
 
 	if (surface_index < 0 || surface_index >= source_mesh->get_surface_count()) {
 		r_result_dict["error"] = "Invalid surface_index " + itos(surface_index) +
-							 ". Internal ArrayMesh has " + itos(source_mesh->get_surface_count()) + " surfaces.";
+				". Internal ArrayMesh has " + itos(source_mesh->get_surface_count()) + " surfaces.";
 		r_result_dict["optimized_capsules_results"] = Array();
 		return false;
 	}
 
-	if (m_capsules.is_empty()) {
+	if (capsules.is_empty()) {
 		r_result_dict["message"] = "No capsule instances defined. Nothing to optimize.";
 		r_result_dict["optimized_capsules_results"] = Array();
 		r_result_dict["final_fx"] = 0.0;
@@ -290,7 +312,7 @@ bool LBFGSBCapsuleFitterSolver::_validate_pre_optimization_conditions(Dictionary
 }
 
 // Helper method to prepare data for the objective function
-bool LBFGSBCapsuleFitterSolver::_prepare_objective_data(Dictionary &r_result_dict) {
+bool LBFGSBCapsuleFitterSolverBase::_prepare_objective_data(Dictionary &r_result_dict) {
 	Array surface_arrays = source_mesh->surface_get_arrays(surface_index);
 	if (surface_arrays.is_empty() || surface_arrays[Mesh::ARRAY_VERTEX].is_null() || (surface_arrays[Mesh::ARRAY_VERTEX].get_type() == Variant::PACKED_VECTOR3_ARRAY && PackedVector3Array(surface_arrays[Mesh::ARRAY_VERTEX]).is_empty())) {
 		r_result_dict["error"] = "Internal source ArrayMesh surface arrays are empty or missing vertex data for surface index " + itos(surface_index) + ".";
@@ -313,9 +335,7 @@ bool LBFGSBCapsuleFitterSolver::_prepare_objective_data(Dictionary &r_result_dic
 	return true;
 }
 
-// Helper method to execute the L-BFGS-B optimization
-bool LBFGSBCapsuleFitterSolver::_execute_lbfgsb_optimization(const PackedFloat64Array &p_initial_x, const PackedFloat64Array &p_lower_bounds, const PackedFloat64Array &p_upper_bounds, Dictionary &r_result_dict) {
-	_current_optimization_mode = OPT_MODE_MULTI_ALL_PARAMS;
+bool LBFGSBCapsuleFitterSolverBase::_execute_lbfgsb_optimization(const PackedFloat64Array &p_initial_x, const PackedFloat64Array &p_lower_bounds, const PackedFloat64Array &p_upper_bounds, Dictionary &r_result_dict) {
 	PackedFloat64Array dummy_gradient_array;
 	double initial_fx = 0.0;
 	if (p_initial_x.size() > 0) { // Avoid calling operator if no params (e.g. zero capsules, though handled earlier)
@@ -343,165 +363,153 @@ bool LBFGSBCapsuleFitterSolver::_execute_lbfgsb_optimization(const PackedFloat64
 	return true; // Solver ran and returned a structurally valid result
 }
 
-Dictionary LBFGSBCapsuleFitterSolver::optimize_all_capsule_parameters() {
-	last_fit_result.clear();
-	current_cloud_points_for_objective.clear();
-	current_cloud_normals_for_objective.clear();
+double LBFGSBCapsuleFitterSolverBase::call_operator(const PackedFloat64Array &p_x, PackedFloat64Array &r_grad) {
+	ERR_FAIL_COND_V_MSG(current_cloud_points_for_objective.is_empty(), 1e18, "Mesh points not prepared for objective function calculation."); // Return large error
+	ERR_FAIL_INDEX_V_MSG(_current_capsule_idx_for_opt, capsules.size(), 1e18, "Current capsule index out of bounds for call_operator.");
 
-	if (!_validate_pre_optimization_conditions(last_fit_result)) {
-		return last_fit_result;
-	}
+	// Get the base parameters from the current state of the capsule being optimized.
+	// These are the 'fixed' parameters for this specific sub-problem.
+	const CapsuleInstance &base_capsule_for_opt = capsules[_current_capsule_idx_for_opt];
+	Vector3 temp_axis_a = base_capsule_for_opt.optimized_axis_a;
+	Vector3 temp_axis_b = base_capsule_for_opt.optimized_axis_b;
+	double temp_radius = base_capsule_for_opt.optimized_radius;
 
-	if (!_prepare_objective_data(last_fit_result)) {
-		return last_fit_result;
-	}
+	double *r_grad_ptr = r_grad.ptrw(); // Get writable pointer
 
-	int num_total_params = m_capsules.size() * 7;
-	PackedFloat64Array local_x_initial;
-	PackedFloat64Array local_lower_bounds;
-	PackedFloat64Array local_upper_bounds;
-
-	_initialize_optimization_parameters(local_x_initial, local_lower_bounds, local_upper_bounds);
-
-	Dictionary optimization_run_result_dict; // Temporary dict for _execute_lbfgsb_optimization
-	if (!_execute_lbfgsb_optimization(local_x_initial, local_lower_bounds, local_upper_bounds, optimization_run_result_dict)) {
-		last_fit_result.merge(optimization_run_result_dict); // Merge any error info
-		return last_fit_result;
-	}
-
-	// Merge the successful execution results into last_fit_result
-	last_fit_result.merge(optimization_run_result_dict);
-
-	// Process the optimized parameters from the dictionary
-	PackedFloat64Array optimized_params = last_fit_result["optimized_params"];
-	_process_optimization_result(optimized_params, num_total_params, last_fit_result);
-
-	// Check for errors from _process_optimization_result (e.g., param size mismatch)
-	if (last_fit_result.has("error")) {
-		return last_fit_result;
-	}
-
-	last_fit_result["result_mesh_with_capsules"] = _generate_result_mesh_with_capsules();
-
-	return last_fit_result;
-}
-
-double LBFGSBCapsuleFitterSolver::call_operator(const PackedFloat64Array &p_x, PackedFloat64Array &r_grad) {
-	if (r_grad.size() != p_x.size()) {
-		r_grad.resize(p_x.size());
-	}
-	for (int i = 0; i < r_grad.size(); ++i) {
-		r_grad.write[i] = 0.0;
-	}
-
-	if (_current_optimization_mode != OPT_MODE_MULTI_ALL_PARAMS) {
-		ERR_FAIL_V_MSG(0.0, "call_operator called with unexpected optimization mode.");
-	}
-
-	if (m_capsules.is_empty()) {
-		return 0.0;
-	}
-
-	int expected_params = m_capsules.size() * 7;
-	ERR_FAIL_COND_V_MSG(p_x.size() != expected_params, 0.0, "Parameter vector size mismatch in call_operator.");
-
-	double total_fx = 0.0;
-
-	if (current_cloud_points_for_objective.is_empty()) {
-		return 0.0;
-	}
-
-	const double MIN_RADIUS_GEOM = 1e-5; // Minimum radius for geometry functions to prevent division by zero or instability.
-	const double MIN_RADIUS_PENALTY_THRESHOLD = 1e-4; // Penalize if radius is below this.
-	const double RADIUS_PENALTY_COEFF = 1e12;
-
-	const double AXIS_DIST_SQ_PENALTY_THRESHOLD = 1e-8; // Squared distance threshold (e.g., 1e-4 actual distance).
-	const double AXIS_PENALTY_COEFF = 1e10;
-
-	for (int cap_idx = 0; cap_idx < m_capsules.size(); ++cap_idx) {
-		int offset = cap_idx * 7;
-
-		double current_radius = p_x[offset + 0];
-		Vector3 current_axis_a = Vector3(p_x[offset + 1], p_x[offset + 2], p_x[offset + 3]);
-		Vector3 current_axis_b = Vector3(p_x[offset + 4], p_x[offset + 5], p_x[offset + 6]);
-
-		// Penalty for very small or non-positive radius (quadratic)
-		if (current_radius < MIN_RADIUS_PENALTY_THRESHOLD) {
-			double radius_diff = MIN_RADIUS_PENALTY_THRESHOLD - current_radius;
-			total_fx += RADIUS_PENALTY_COEFF * radius_diff * radius_diff;
-			r_grad.write[offset + 0] += RADIUS_PENALTY_COEFF * 2.0 * radius_diff * (-1.0);
-		}
-
-		// Penalty for coincident/very close axis points (quadratic)
-		Vector3 axis_vec = current_axis_b - current_axis_a;
-		double axis_dist_sq = axis_vec.length_squared();
-		if (axis_dist_sq < AXIS_DIST_SQ_PENALTY_THRESHOLD) {
-			double dist_sq_diff = AXIS_DIST_SQ_PENALTY_THRESHOLD - axis_dist_sq;
-			total_fx += AXIS_PENALTY_COEFF * dist_sq_diff * dist_sq_diff;
-			double common_grad_term = 2.0 * AXIS_PENALTY_COEFF * dist_sq_diff * (-1.0); // d/dx (Threshold - x)^2 = 2*(Threshold-x)*(-1) * (dx/dparam)
-
-			// d(axis_dist_sq)/d(axis_a.coord) = -2 * axis_vec.coord
-			// d(axis_dist_sq)/d(axis_b.coord) =  2 * axis_vec.coord
-			r_grad.write[offset + 1] += common_grad_term * (-2.0 * axis_vec.x);
-			r_grad.write[offset + 2] += common_grad_term * (-2.0 * axis_vec.y);
-			r_grad.write[offset + 3] += common_grad_term * (-2.0 * axis_vec.z);
-			r_grad.write[offset + 4] += common_grad_term * (2.0 * axis_vec.x);
-			r_grad.write[offset + 5] += common_grad_term * (2.0 * axis_vec.y);
-			r_grad.write[offset + 6] += common_grad_term * (2.0 * axis_vec.z);
-		}
-
-		double capsule_fx_contribution = 0.0;
-		double effective_radius_for_geom = MAX(current_radius, MIN_RADIUS_GEOM);
-
-		for (int i = 0; i < current_cloud_points_for_objective.size(); ++i) {
-			Vector3 mesh_vertex = current_cloud_points_for_objective[i];
-			std::pair<Vector3, Vector3> closest_pair = _get_closest_point_and_normal_on_capsule_surface(
-					mesh_vertex, current_axis_a, current_axis_b, effective_radius_for_geom);
-			Vector3 closest_point_on_capsule = closest_pair.first;
-
-			Vector3 diff_vec = mesh_vertex - closest_point_on_capsule;
-			double distance = diff_vec.length();
-
-			double huber_loss_val;
-			double d_huber_loss_d_distance;
-			if (Math::abs(distance) <= huber_delta) {
-				huber_loss_val = 0.5 * distance * distance;
-				d_huber_loss_d_distance = distance;
-			} else {
-				huber_loss_val = huber_delta * (Math::abs(distance) - 0.5 * huber_delta);
-				d_huber_loss_d_distance = huber_delta * SIGN(distance);
+	// Override the specific parameter(s) being optimized in this call from p_x.
+	switch (_current_optimization_mode) {
+		case OPT_MODE_RADIUS:
+			ERR_FAIL_COND_V_MSG(p_x.size() != 1, 1e18, "Parameter vector p_x size mismatch for OPT_MODE_RADIUS.");
+			temp_radius = p_x[0];
+			r_grad.resize(1);
+			r_grad_ptr = r_grad.ptrw(); // Re-acquire pointer after resize
+			r_grad_ptr[0] = 0.0;
+			break;
+		case OPT_MODE_AXIS_A:
+			ERR_FAIL_COND_V_MSG(p_x.size() != 3, 1e18, "Parameter vector p_x size mismatch for OPT_MODE_AXIS_A.");
+			temp_axis_a = Vector3(p_x[0], p_x[1], p_x[2]);
+			r_grad.resize(3);
+			r_grad_ptr = r_grad.ptrw(); // Re-acquire pointer after resize
+			for (int i = 0; i < 3; ++i) {
+				r_grad_ptr[i] = 0.0;
 			}
-			capsule_fx_contribution += huber_loss_val;
-
-			if (distance > 1e-9) {
-				Vector3 d_dist_d_closest_point_normalized = -diff_vec.normalized();
-
-				CapsuleSurfacePointDerivatives derivatives = get_capsule_surface_derivatives(
-						mesh_vertex, current_axis_a, current_axis_b, effective_radius_for_geom);
-
-				if (derivatives.is_valid) {
-					double d_dist_d_radius = d_dist_d_closest_point_normalized.dot(derivatives.normal_on_surface);
-					r_grad.write[offset + 0] += d_huber_loss_d_distance * d_dist_d_radius;
-
-					Vector3 d_dist_d_axis_a_comps = derivatives.dC_dA.transposed().xform(d_dist_d_closest_point_normalized);
-					r_grad.write[offset + 1] += d_huber_loss_d_distance * d_dist_d_axis_a_comps.x;
-					r_grad.write[offset + 2] += d_huber_loss_d_distance * d_dist_d_axis_a_comps.y;
-					r_grad.write[offset + 3] += d_huber_loss_d_distance * d_dist_d_axis_a_comps.z;
-
-					Vector3 d_dist_d_axis_b_comps = derivatives.dC_dB.transposed().xform(d_dist_d_closest_point_normalized);
-					r_grad.write[offset + 4] += d_huber_loss_d_distance * d_dist_d_axis_b_comps.x;
-					r_grad.write[offset + 5] += d_huber_loss_d_distance * d_dist_d_axis_b_comps.y;
-					r_grad.write[offset + 6] += d_huber_loss_d_distance * d_dist_d_axis_b_comps.z;
-				}
+			break;
+		case OPT_MODE_AXIS_B:
+			ERR_FAIL_COND_V_MSG(p_x.size() != 3, 1e18, "Parameter vector p_x size mismatch for OPT_MODE_AXIS_B.");
+			temp_axis_b = Vector3(p_x[0], p_x[1], p_x[2]);
+			r_grad.resize(3);
+			r_grad_ptr = r_grad.ptrw(); // Re-acquire pointer after resize
+			for (int i = 0; i < 3; ++i) {
+				r_grad_ptr[i] = 0.0;
 			}
-		}
-		total_fx += capsule_fx_contribution;
+			break;
+		default:
+			ERR_FAIL_V_MSG(1e18, "Unknown optimization mode in call_operator.");
 	}
-	return total_fx;
+
+	// Critical check: Ensure radius is positive to avoid NaNs and errors in geometric calculations.
+	if (temp_radius <= 1e-3) { // Use a small epsilon for safety.
+		// Penalize non-positive or very small radius heavily.
+		// The gradient should strongly push the radius to become larger.
+		if (_current_optimization_mode == OPT_MODE_RADIUS) {
+			// If optimizing radius, make its gradient strongly negative (to increase radius).
+			r_grad_ptr[0] = -1e6 * (1e-3 - temp_radius); // Gradient proportional to how much it's below threshold.
+		}
+		// For other modes, if radius is bad, the whole configuration is bad.
+		return 1e12 + (1e-3 - temp_radius) * 1e9; // Return a very large error value.
+	}
+	// Prevent capsule inversion or zero height
+	if ((temp_axis_a - temp_axis_b).length_squared() < 1e-6 && (temp_radius < 1e-2)) { // If it's basically a tiny sphere at a point
+		// This configuration is degenerate. Penalize.
+		double penalty = 1e10;
+		if (_current_optimization_mode == OPT_MODE_AXIS_A) {
+			// Push A away from B. If A = p_x, then d_penalty / d_ax = some_vector_pointing_away_from_B
+			Vector3 dir = (temp_axis_a - temp_axis_b).normalized();
+			if (dir.is_zero_approx()) {
+				dir = Vector3(1, 0, 0); // arbitrary direction if coincident
+			}
+			r_grad_ptr[0] += dir.x * 1e4;
+			r_grad_ptr[1] += dir.y * 1e4;
+			r_grad_ptr[2] += dir.z * 1e4;
+		} else if (_current_optimization_mode == OPT_MODE_AXIS_B) {
+			Vector3 dir = (temp_axis_b - temp_axis_a).normalized();
+			if (dir.is_zero_approx()) {
+				dir = Vector3(1, 0, 0);
+			}
+			r_grad_ptr[0] += dir.x * 1e4;
+			r_grad_ptr[1] += dir.y * 1e4;
+			r_grad_ptr[2] += dir.z * 1e4;
+		} else if (_current_optimization_mode == OPT_MODE_RADIUS) {
+			r_grad_ptr[0] -= 1e4; // Penalize small radius in this state
+		}
+		return penalty;
+	}
+
+	double total_objective_value = 0.0;
+	// Accumulators for gradients, specific to the parameter(s) being optimized in this call.
+	double grad_radius_accumulator = 0.0;
+	Vector3 grad_axis_a_accumulator;
+	Vector3 grad_axis_b_accumulator;
+
+	// Iterate over all points in the source mesh surface.
+	for (int i = 0; i < current_cloud_points_for_objective.size(); ++i) {
+		Vector3 mesh_vertex = current_cloud_points_for_objective[i];
+		// Vector3 mesh_normal = current_cloud_normals_for_objective[i]; // Available if needed for orientation penalty.
+
+		// Calculate signed distance and its derivatives w.r.t. all 7 params of the *current* capsule.
+		CapsuleSurfacePointDerivatives derivatives = get_capsule_surface_derivatives(
+				mesh_vertex, temp_axis_a, temp_axis_b, temp_radius);
+
+		double signed_dist = derivatives.signed_distance;
+		double loss_value_for_point;
+		double d_loss_d_signed_dist; // Derivative of the loss w.r.t. signed_distance.
+
+		// Huber loss for robustness against outliers.
+		if (Math::abs(signed_dist) <= huber_delta) {
+			loss_value_for_point = 0.5 * signed_dist * signed_dist;
+			d_loss_d_signed_dist = signed_dist;
+		} else {
+			loss_value_for_point = huber_delta * (Math::abs(signed_dist) - 0.5 * huber_delta);
+			d_loss_d_signed_dist = huber_delta * (signed_dist > 0 ? 1.0 : -1.0); // Sign of signed_dist.
+		}
+		total_objective_value += loss_value_for_point;
+
+		// Accumulate gradients using the chain rule:
+		// d_loss_d_param = (d_loss_d_signed_dist) * (d_signed_dist_d_param)
+		grad_radius_accumulator += d_loss_d_signed_dist * derivatives.d_sd_d_radius;
+		grad_axis_a_accumulator += d_loss_d_signed_dist * derivatives.d_sd_d_axis_a;
+		grad_axis_b_accumulator += d_loss_d_signed_dist * derivatives.d_sd_d_axis_b;
+
+		// --- Optional: Orientation Penalty (if configured and relevant) ---
+		// This was part of the original thought but needs careful integration with sequential optimization.
+		// If get_capsule_surface_derivatives also computes orientation_penalty and its derivatives:
+		// total_objective_value += derivatives.orientation_penalty * orientation_penalty_factor;
+		// grad_radius_accumulator += derivatives.d_orientation_penalty_d_radius * orientation_penalty_factor;
+		// grad_axis_a_accumulator += derivatives.d_orientation_penalty_d_axis_a * orientation_penalty_factor;
+		// grad_axis_b_accumulator += derivatives.d_orientation_penalty_d_axis_b * orientation_penalty_factor;
+	}
+
+	// Assign the accumulated gradients to r_grad based on the current optimization mode.
+	switch (_current_optimization_mode) {
+		case OPT_MODE_RADIUS:
+			r_grad_ptr[0] = grad_radius_accumulator;
+			break;
+		case OPT_MODE_AXIS_A:
+			r_grad_ptr[0] = grad_axis_a_accumulator.x;
+			r_grad_ptr[1] = grad_axis_a_accumulator.y;
+			r_grad_ptr[2] = grad_axis_a_accumulator.z;
+			break;
+		case OPT_MODE_AXIS_B:
+			r_grad_ptr[0] = grad_axis_b_accumulator.x;
+			r_grad_ptr[1] = grad_axis_b_accumulator.y;
+			r_grad_ptr[2] = grad_axis_b_accumulator.z;
+			break;
+	}
+	return total_objective_value;
 }
 
 // Implementation for _get_closest_point_and_normal_on_capsule_surface
-std::pair<Vector3, Vector3> LBFGSBCapsuleFitterSolver::_get_closest_point_and_normal_on_capsule_surface(
+std::pair<Vector3, Vector3> LBFGSBCapsuleFitterSolverBase::_get_closest_point_and_normal_on_capsule_surface(
 		const Vector3 &p_mesh_vertex,
 		const Vector3 &p_cap_a,
 		const Vector3 &p_cap_b,
@@ -550,7 +558,7 @@ std::pair<Vector3, Vector3> LBFGSBCapsuleFitterSolver::_get_closest_point_and_no
 	return { closest_point_on_surface, normal_on_surface };
 }
 
-LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSolver::get_capsule_surface_derivatives(
+LBFGSBCapsuleFitterSolverBase::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSolverBase::get_capsule_surface_derivatives(
 		const Vector3 &p_mesh_vertex,
 		const Vector3 &p_cap_a,
 		const Vector3 &p_cap_b,
@@ -648,7 +656,7 @@ LBFGSBCapsuleFitterSolver::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitterSol
 }
 
 // Static helper: Jacobian of vector normalization: d( vec.normalized() ) / d(vec)
-Basis LBFGSBCapsuleFitterSolver::d_vec_normalized_d_vec(const Vector3 &p_vec) {
+Basis LBFGSBCapsuleFitterSolverBase::d_vec_normalized_d_vec(const Vector3 &p_vec) {
 	double len = p_vec.length();
 	if (len < 1e-9) { // Avoid division by zero; derivative is undefined/infinite
 		return Basis(); // Return zero matrix or handle as error
@@ -663,7 +671,7 @@ Basis LBFGSBCapsuleFitterSolver::d_vec_normalized_d_vec(const Vector3 &p_vec) {
 }
 
 // Static helper: Outer product of two vectors v1 (col) and v2 (row) -> v1 * v2^T
-Basis LBFGSBCapsuleFitterSolver::outer_product(const Vector3 &p_v1, const Vector3 &p_v2) {
+Basis LBFGSBCapsuleFitterSolverBase::outer_product(const Vector3 &p_v1, const Vector3 &p_v2) {
 	// Resulting basis has columns: (p_v1 * p_v2.x), (p_v1 * p_v2.y), (p_v1 * p_v2.z)
 	return Basis(
 			p_v1 * p_v2.x,
@@ -671,7 +679,7 @@ Basis LBFGSBCapsuleFitterSolver::outer_product(const Vector3 &p_v1, const Vector
 			p_v1 * p_v2.z);
 }
 
-Basis LBFGSBCapsuleFitterSolver::_compute_rotation_matrix_from_rot_vec(const Vector3 &p_rot_vec) {
+Basis LBFGSBCapsuleFitterSolverBase::_compute_rotation_matrix_from_rot_vec(const Vector3 &p_rot_vec) {
 	real_t angle = p_rot_vec.length();
 	if (angle < CMP_EPSILON) {
 		return Basis(); // Identity
@@ -680,7 +688,7 @@ Basis LBFGSBCapsuleFitterSolver::_compute_rotation_matrix_from_rot_vec(const Vec
 	return Basis(axis, angle);
 }
 
-Array LBFGSBCapsuleFitterSolver::_generate_canonical_capsule_mesh_arrays(const Vector3 &p_cap_a, const Vector3 &p_cap_b, double p_cap_radius, int p_radial_segments, int p_rings, bool p_closed) const {
+Array LBFGSBCapsuleFitterSolverBase::_generate_canonical_capsule_mesh_arrays(const Vector3 &p_cap_a, const Vector3 &p_cap_b, double p_cap_radius, int p_radial_segments, int p_rings, bool p_closed) const {
 	PackedVector3Array vertices;
 	PackedVector3Array normals;
 	PackedInt32Array indices;
@@ -837,4 +845,162 @@ Array LBFGSBCapsuleFitterSolver::_generate_canonical_capsule_mesh_arrays(const V
 	mesh_arrays[1] = normals;
 	mesh_arrays[2] = indices;
 	return mesh_arrays;
+}
+
+// --- LBFGSBCapsuleRadiusSolver Implementation ---
+
+void LBFGSBCapsuleRadiusSolver::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("optimize_radius", "capsule_index"), &LBFGSBCapsuleRadiusSolver::optimize_radius);
+}
+
+LBFGSBCapsuleRadiusSolver::LBFGSBCapsuleRadiusSolver() {}
+LBFGSBCapsuleRadiusSolver::~LBFGSBCapsuleRadiusSolver() {}
+
+Dictionary LBFGSBCapsuleRadiusSolver::optimize_radius(int p_capsule_idx) {
+	Dictionary result_dict;
+	_current_capsule_idx_for_opt = p_capsule_idx;
+	_current_optimization_mode = OPT_MODE_RADIUS;
+
+	if (!_validate_pre_optimization_conditions(result_dict)) {
+		last_fit_result = result_dict;
+		return result_dict;
+	}
+	ERR_FAIL_INDEX_V_MSG(p_capsule_idx, capsules.size(), result_dict, "Capsule index out of bounds.");
+
+	if (!_prepare_objective_data(result_dict)) {
+		last_fit_result = result_dict;
+		return result_dict;
+	}
+
+	PackedFloat64Array x_initial_for_mode;
+	PackedFloat64Array lower_bounds_for_mode;
+	PackedFloat64Array upper_bounds_for_mode;
+	_initialize_parameters_for_current_mode(x_initial_for_mode, lower_bounds_for_mode, upper_bounds_for_mode);
+
+	Dictionary optimization_run_result_dict;
+	bool success_optimization_run = _execute_lbfgsb_optimization(x_initial_for_mode, lower_bounds_for_mode, upper_bounds_for_mode, optimization_run_result_dict);
+
+	if (success_optimization_run && !optimization_run_result_dict.has("error") && !optimization_run_result_dict.has("solver_error_message")) {
+		PackedFloat64Array optimized_params_from_solver = optimization_run_result_dict["optimized_params"];
+		_update_capsule_from_optimized_params(optimized_params_from_solver);
+
+		result_dict["message"] = "Radius optimization completed for capsule " + itos(p_capsule_idx) + ".";
+		result_dict["iterations"] = optimization_run_result_dict["iterations"];
+		result_dict["final_fx"] = optimization_run_result_dict["final_fx"];
+		result_dict["optimized_radius"] = capsules[p_capsule_idx].optimized_radius;
+		result_dict["optimized_axis_a"] = capsules[p_capsule_idx].optimized_axis_a;
+		result_dict["optimized_axis_b"] = capsules[p_capsule_idx].optimized_axis_b;
+	} else {
+		String error_msg = "Radius optimization failed for capsule " + itos(p_capsule_idx) + ".";
+		if (optimization_run_result_dict.has("error")) {
+			error_msg += " Solver error: " + String(optimization_run_result_dict["error"]);
+		} else if (optimization_run_result_dict.has("solver_error_message")) {
+			error_msg += " Solver message: " + String(optimization_run_result_dict["solver_error_message"]);
+		}
+		result_dict["error"] = error_msg;
+		if (optimization_run_result_dict.has("iterations")) {
+			result_dict["iterations"] = optimization_run_result_dict["iterations"];
+		}
+		if (optimization_run_result_dict.has("final_fx")) {
+			result_dict["final_fx"] = optimization_run_result_dict["final_fx"];
+		}
+	}
+
+	last_fit_result = result_dict;
+	return result_dict;
+}
+
+// --- LBFGSBCapsuleAxisSolver Implementation ---
+
+void LBFGSBCapsuleAxisSolver::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("optimize_axes", "capsule_index"), &LBFGSBCapsuleAxisSolver::optimize_axes);
+}
+
+LBFGSBCapsuleAxisSolver::LBFGSBCapsuleAxisSolver() {}
+LBFGSBCapsuleAxisSolver::~LBFGSBCapsuleAxisSolver() {}
+
+Dictionary LBFGSBCapsuleAxisSolver::optimize_axes(int p_capsule_idx) {
+	Dictionary result_dict;
+	_current_capsule_idx_for_opt = p_capsule_idx;
+
+	if (!_validate_pre_optimization_conditions(result_dict)) {
+		last_fit_result = result_dict;
+		return result_dict;
+	}
+	ERR_FAIL_INDEX_V_MSG(p_capsule_idx, capsules.size(), result_dict, "Capsule index out of bounds.");
+
+	if (!_prepare_objective_data(result_dict)) {
+		last_fit_result = result_dict;
+		return result_dict;
+	}
+
+	int total_iterations = 0;
+	double final_fx_axis_b = 0.0;
+
+	// --- Optimize Axis A ---
+	_current_optimization_mode = OPT_MODE_AXIS_A;
+	PackedFloat64Array x_initial_axis_a;
+	PackedFloat64Array lower_bounds_axis_a;
+	PackedFloat64Array upper_bounds_axis_a;
+	_initialize_parameters_for_current_mode(x_initial_axis_a, lower_bounds_axis_a, upper_bounds_axis_a);
+
+	Dictionary axis_a_opt_result_dict;
+	bool success_axis_a = _execute_lbfgsb_optimization(x_initial_axis_a, lower_bounds_axis_a, upper_bounds_axis_a, axis_a_opt_result_dict);
+
+	if (success_axis_a && !axis_a_opt_result_dict.has("error") && !axis_a_opt_result_dict.has("solver_error_message")) {
+		PackedFloat64Array optimized_params_axis_a = axis_a_opt_result_dict["optimized_params"];
+		_update_capsule_from_optimized_params(optimized_params_axis_a);
+		total_iterations += int(axis_a_opt_result_dict.get("iterations", 0));
+	} else {
+		String error_msg = "Axis A optimization failed for capsule " + itos(p_capsule_idx) + ".";
+		if (axis_a_opt_result_dict.has("error")) {
+			error_msg += " Solver error: " + String(axis_a_opt_result_dict["error"]);
+		} else if (axis_a_opt_result_dict.has("solver_error_message")) {
+			error_msg += " Solver message: " + String(axis_a_opt_result_dict["solver_error_message"]);
+		}
+		result_dict["error"] = error_msg;
+		last_fit_result = result_dict;
+		return result_dict; // Early exit on failure
+	}
+
+	// --- Optimize Axis B ---
+	_current_optimization_mode = OPT_MODE_AXIS_B;
+	PackedFloat64Array x_initial_axis_b;
+	PackedFloat64Array lower_bounds_axis_b;
+	PackedFloat64Array upper_bounds_axis_b;
+	_initialize_parameters_for_current_mode(x_initial_axis_b, lower_bounds_axis_b, upper_bounds_axis_b);
+
+	Dictionary axis_b_opt_result_dict;
+	bool success_axis_b = _execute_lbfgsb_optimization(x_initial_axis_b, lower_bounds_axis_b, upper_bounds_axis_b, axis_b_opt_result_dict);
+
+	if (success_axis_b && !axis_b_opt_result_dict.has("error") && !axis_b_opt_result_dict.has("solver_error_message")) {
+		PackedFloat64Array optimized_params_axis_b = axis_b_opt_result_dict["optimized_params"];
+		_update_capsule_from_optimized_params(optimized_params_axis_b);
+		total_iterations += int(axis_b_opt_result_dict.get("iterations", 0));
+		final_fx_axis_b = double(axis_b_opt_result_dict.get("final_fx", 0.0));
+
+		result_dict["message"] = "Axes optimization completed for capsule " + itos(p_capsule_idx) + ".";
+		result_dict["iterations"] = total_iterations;
+		result_dict["final_fx"] = final_fx_axis_b;
+		result_dict["optimized_radius"] = capsules[p_capsule_idx].optimized_radius;
+		result_dict["optimized_axis_a"] = capsules[p_capsule_idx].optimized_axis_a;
+		result_dict["optimized_axis_b"] = capsules[p_capsule_idx].optimized_axis_b;
+	} else {
+		String error_msg = "Axis B optimization failed for capsule " + itos(p_capsule_idx) + ".";
+		if (axis_b_opt_result_dict.has("error")) {
+			error_msg += " Solver error: " + String(axis_b_opt_result_dict["error"]);
+		} else if (axis_b_opt_result_dict.has("solver_error_message")) {
+			error_msg += " Solver message: " + String(axis_b_opt_result_dict["solver_error_message"]);
+		}
+		result_dict["error"] = error_msg;
+		if (axis_b_opt_result_dict.has("iterations")) {
+			result_dict["iterations"] = total_iterations + int(axis_b_opt_result_dict.get("iterations", 0));
+		}
+		if (axis_b_opt_result_dict.has("final_fx")) {
+			result_dict["final_fx"] = axis_b_opt_result_dict["final_fx"];
+		}
+	}
+
+	last_fit_result = result_dict;
+	return result_dict;
 }

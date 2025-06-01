@@ -36,7 +36,9 @@
 void initialize_lbfgs_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_CLASS(LBFGSBSolver);
-		GDREGISTER_CLASS(LBFGSBCapsuleFitterSolver);
+		GDREGISTER_CLASS(LBFGSBCapsuleFitterSolverBase);
+		GDREGISTER_CLASS(LBFGSBCapsuleRadiusSolver);
+		GDREGISTER_CLASS(LBFGSBCapsuleAxisSolver);
 	}
 }
 

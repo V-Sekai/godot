@@ -178,116 +178,122 @@ static Ref<ArrayMesh> create_cylinder_points_mesh(float p_radius, float p_height
 	return array_mesh;
 }
 
-TEST_CASE("[SceneTree][SceneTree][LBFGSBCapsuleFitterSolver] Instantiation and Basic Setup") {
-	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
-	Ref<ArrayMesh> mesh = create_sphere_test_mesh(Vector3(0, 0, 0), 1.0);
-	solver->set_source_mesh(mesh);
-	REQUIRE(solver->get_source_mesh() == mesh);
-	solver->set_surface_index(0);
-	REQUIRE(solver->get_surface_index() == 0);
-	solver->set_huber_delta(0.1);
-	REQUIRE(solver->get_huber_delta() == doctest::Approx(0.1));
-}
+TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolverBase] Basic Setters and Getters") {
+	Ref<ArrayMesh> mesh = create_sphere_test_mesh(Vector3(0, 0, 0), 1.0, 8);
+	LBFGSBCapsuleRadiusSolver *solver = memnew(LBFGSBCapsuleRadiusSolver);
 
-TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters - Zero Capsules") {
-	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
-	Ref<ArrayMesh> mesh = create_sphere_test_mesh(Vector3(1, 1, 1), 0.5);
-	solver->set_source_mesh(mesh);
-	solver->set_surface_index(0);
-
-	solver->clear_capsule_instances();
-	REQUIRE(solver->get_num_capsule_instances() == 0);
-
-	Dictionary result = solver->optimize_all_capsule_parameters();
-
-	CHECK_FALSE(result.has("error"));
-	REQUIRE(result.has("message"));
-	CHECK(String(result["message"]).contains("No capsule instances defined"));
-	REQUIRE(result.has("optimized_capsules_results"));
-	CHECK(Array(result["optimized_capsules_results"]).is_empty());
-	REQUIRE(result.has("final_fx"));
-	CHECK(double(result["final_fx"]) == doctest::Approx(0.0));
-	REQUIRE(result.has("iterations"));
-	CHECK(int(result["iterations"]) == 0);
-}
-
-TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize All Capsule Parameters - Single Capsule Fit to Sphere") {
-	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
-	Vector3 mesh_center = Vector3(2, 3, 4);
-	double mesh_radius = 0.75;
-	Ref<ArrayMesh> mesh = create_sphere_test_mesh(mesh_center, mesh_radius);
-	solver->set_source_mesh(mesh);
-	solver->set_surface_index(0);
-	solver->clear_capsule_instances();
-	solver->add_capsule_instance(mesh_center + Vector3(0.1, -0.1, 0.1), mesh_center + Vector3(0.2, -0.2, 0.2), mesh_radius * 0.5);
-	REQUIRE(solver->get_num_capsule_instances() == 1);
-	Dictionary result = solver->optimize_all_capsule_parameters();
-	INFO("Solver result (single capsule): ", JSON::stringify(result));
-	CHECK_FALSE(result.has("error"));
-	REQUIRE(result.has("optimized_capsules_results"));
-	Array capsule_results = result.get("optimized_capsules_results", Array());
-	CHECK(capsule_results.size() == 1);
-	if (capsule_results.size() == 1) {
-		Dictionary capsule_data = capsule_results[0]; // Access is now conditional
-		REQUIRE(capsule_data.has("optimized_radius"));
-		REQUIRE(capsule_data.has("optimized_axis_a"));
-		REQUIRE(capsule_data.has("optimized_axis_b"));
-		double optimized_radius = capsule_data["optimized_radius"];
-		Vector3 optimized_axis_a = capsule_data["optimized_axis_a"];
-		Vector3 optimized_axis_b = capsule_data["optimized_axis_b"];
-		CHECK(optimized_radius == doctest::Approx(mesh_radius).epsilon(0.15)); // Allow some tolerance
-		Vector3 optimized_center = (optimized_axis_a + optimized_axis_b) / 2.0;
-		CHECK(optimized_center.distance_to(mesh_center) == doctest::Approx(0.0).epsilon(0.15));
-		double optimized_height = optimized_axis_a.distance_to(optimized_axis_b);
-		CHECK(optimized_height == doctest::Approx(0.0).epsilon(0.2)); // For a sphere, height should be minimal
-	} else {
-		FAIL_CHECK("Optimized capsule results size was expected to be 1, but got " << capsule_results.size() << ".");
-	}
-}
-
-TEST_CASE("[SceneTree][LBFGSBCapsuleFitterSolver] Optimize Parameters for Multiple Capsules Simultaneously") {
-	LBFGSBCapsuleFitterSolver *solver = memnew(LBFGSBCapsuleFitterSolver);
-
-	Ref<ArrayMesh> mesh = create_sphere_test_mesh(Vector3(0, 0, 0), 1.0); // Simple sphere target
-	solver->set_source_mesh(mesh);
-	solver->set_surface_index(0);
-
-	solver->clear_capsule_instances();
-	solver->add_capsule_instance(Vector3(-0.5, 0.1, 0), Vector3(0.5, -0.1, 0), 0.2); // Capsule 1 - initial guess
-	solver->add_capsule_instance(Vector3(0.1, -0.5, 0), Vector3(-0.1, 0.5, 0), 0.25); // Capsule 2 - another initial guess
-	REQUIRE(solver->get_num_capsule_instances() == 2);
-
-	Dictionary result = solver->optimize_all_capsule_parameters();
-	INFO("Solver result (multi-capsule): ", JSON::stringify(result));
-
-	CHECK_FALSE(result.has("error"));
-	REQUIRE(result.has("optimized_capsules_results"));
-	Array capsule_results_array = result["optimized_capsules_results"];
-	REQUIRE(capsule_results_array.size() == 2);
-
-	for (int i = 0; i < capsule_results_array.size(); ++i) {
-		Dictionary capsule_data = capsule_results_array[i];
-		REQUIRE(capsule_data.has("optimized_radius"));
-		REQUIRE(capsule_data.has("optimized_axis_a"));
-		REQUIRE(capsule_data.has("optimized_axis_b"));
-
-		double opt_radius = capsule_data["optimized_radius"];
-		Vector3 opt_axis_a = capsule_data["optimized_axis_a"];
-		Vector3 opt_axis_b = capsule_data["optimized_axis_b"];
-
-		CHECK_FALSE(Math::is_nan(opt_radius));
-		CHECK_FALSE(!opt_axis_a.is_finite());
-		CHECK_FALSE(!opt_axis_b.is_finite());
-		CHECK(opt_radius > 0.0);
+	SUBCASE("Source Mesh and Basic Parameters") {
+		solver->set_source_mesh(mesh);
+		CHECK(solver->get_source_mesh() == mesh);
+		solver->set_surface_index(0);
+		CHECK(solver->get_surface_index() == 0);
+		solver->set_huber_delta(0.15);
+		CHECK(solver->get_huber_delta() == doctest::Approx(0.15));
+		solver->set_orientation_distance_threshold(0.2);
+		CHECK(solver->get_orientation_distance_threshold() == doctest::Approx(0.2));
+		solver->set_orientation_angle_threshold_rad(0.5);
+		CHECK(solver->get_orientation_angle_threshold_rad() == doctest::Approx(0.5));
+		solver->set_orientation_penalty_factor(1.5);
+		CHECK(solver->get_orientation_penalty_factor() == doctest::Approx(1.5));
 	}
 
-	Dictionary cap0_internal = solver->get_capsule_instance_data(0);
-	REQUIRE(cap0_internal.has("optimized_radius"));
-	CHECK(double(cap0_internal["optimized_radius"]) > 0.0);
+	SUBCASE("Capsule Instance Management") {
+		CHECK(solver->get_num_capsule_instances() == 0);
+		solver->add_capsule_instance(Vector3(0, 0, -0.5), Vector3(0, 0, 0.5), 0.2);
+		CHECK(solver->get_num_capsule_instances() == 1);
+		Dictionary capsule_data = solver->get_capsule_instance_data(0);
+		CHECK(Vector3(capsule_data["initial_axis_a"]) == Vector3(0, 0, -0.5));
+		CHECK(Vector3(capsule_data["initial_axis_b"]) == Vector3(0, 0, 0.5));
+		CHECK(double(capsule_data["initial_radius"]) == doctest::Approx(0.2));
+		solver->clear_capsule_instances();
+		CHECK(solver->get_num_capsule_instances() == 0);
+	}
 
-	Dictionary cap1_internal = solver->get_capsule_instance_data(1);
-	REQUIRE(cap1_internal.has("optimized_radius"));
-	CHECK(double(cap1_internal["optimized_radius"]) > 0.0);
+	memdelete(solver);
+}
+
+TEST_CASE("[SceneTree][LBFGSBCapsuleRadiusSolver] Optimize Radius for a Sphere") {
+	LBFGSBCapsuleRadiusSolver *radius_solver = memnew(LBFGSBCapsuleRadiusSolver);
+
+	Ref<ArrayMesh> sphere_mesh = create_sphere_test_mesh(Vector3(1, 1, 1), 2.0, 16); // Sphere centered at (1,1,1) with radius 2.0
+	radius_solver->set_source_mesh(sphere_mesh);
+	radius_solver->set_surface_index(0);
+	// Initial capsule guess: degenerate axis at sphere center, incorrect radius.
+	radius_solver->add_capsule_instance(Vector3(1, 1, 1), Vector3(1, 1, 1), 0.5);
+
+	Dictionary result = radius_solver->optimize_radius(0);
+
+	String msg_radius_result = String("Radius optimization result (Sphere): ") + JSON::stringify(result, "\t");
+	WARN_MESSAGE(true, msg_radius_result.utf8().get_data());
+
+	String msg_check_error_radius = String("Optimization should not produce an error. Error: ") + (result.has("error") ? String(result["error"]) : String("N/A"));
+	CHECK_MESSAGE(!result.has("error"), msg_check_error_radius.utf8().get_data());
+	if (!result.has("error")) {
+		String msg_check_has_radius = String("Result should contain optimized_radius");
+		CHECK_MESSAGE(result.has("optimized_radius"), msg_check_has_radius.utf8().get_data());
+		if (result.has("optimized_radius")) {
+			double optimized_r = result["optimized_radius"];
+			String msg_opt_radius_val = String("Optimized radius (Sphere): ") + String::num(optimized_r);
+			WARN_MESSAGE(true, msg_opt_radius_val.utf8().get_data());
+			CHECK(optimized_r == doctest::Approx(2.0).epsilon(0.15)); // Allow some tolerance
+		}
+	}
+
+	memdelete(radius_solver);
+}
+
+TEST_CASE("[SceneTree][LBFGSBCapsuleAxisSolver] Optimize Axes for a Cylinder") {
+	LBFGSBCapsuleAxisSolver *axis_solver = memnew(LBFGSBCapsuleAxisSolver);
+
+	float cylinder_radius = 0.5f;
+	float cylinder_height = 3.0f;
+	Ref<ArrayMesh> cylinder_mesh = create_cylinder_points_mesh(cylinder_radius, cylinder_height, 16, 4);
+	axis_solver->set_source_mesh(cylinder_mesh);
+	axis_solver->set_surface_index(0);
+
+	// Initial capsule guess: slightly off-center, with the correct radius.
+	Vector3 initial_a = Vector3(0.1, -cylinder_height / 2.0 + 0.2, 0.1);
+	Vector3 initial_b = Vector3(-0.1, cylinder_height / 2.0 - 0.2, -0.1);
+	double initial_radius = cylinder_radius;
+	axis_solver->add_capsule_instance(initial_a, initial_b, initial_radius);
+
+	Dictionary result = axis_solver->optimize_axes(0);
+
+	String msg_axes_result = String("Axes optimization result (Cylinder): ") + JSON::stringify(result, "\t");
+	WARN_MESSAGE(true, msg_axes_result.utf8().get_data());
+
+	String msg_check_error_axes = String("Optimization should not produce an error. Error: ") + (result.has("error") ? String(result["error"]) : String("N/A"));
+	CHECK_MESSAGE(!result.has("error"), msg_check_error_axes.utf8().get_data());
+	if (!result.has("error")) {
+		String msg_check_has_axes = String("Result should contain optimized_axis_a and optimized_axis_b");
+		bool has_axes = result.has("optimized_axis_a") && result.has("optimized_axis_b");
+		CHECK_MESSAGE(has_axes, msg_check_has_axes.utf8().get_data());
+		if (result.has("optimized_axis_a") && result.has("optimized_axis_b")) {
+			Vector3 opt_a = Vector3(result["optimized_axis_a"]);
+			Vector3 opt_b = Vector3(result["optimized_axis_b"]);
+			String msg_opt_axis_a = String("Optimized axis_a (Cylinder): ") + opt_a.operator String();
+			WARN_MESSAGE(true, msg_opt_axis_a.utf8().get_data());
+			String msg_opt_axis_b = String("Optimized axis_b (Cylinder): ") + opt_b.operator String();
+			WARN_MESSAGE(true, msg_opt_axis_b.utf8().get_data());
+
+			CHECK(opt_a.x == doctest::Approx(0.0).epsilon(0.15));
+			CHECK(opt_a.z == doctest::Approx(0.0).epsilon(0.15));
+			bool a_is_bottom = std::abs(opt_a.y - (-cylinder_height / 2.0)) < std::abs(opt_a.y - (cylinder_height / 2.0));
+
+			if (a_is_bottom) {
+				CHECK(opt_a.y == doctest::Approx(-cylinder_height / 2.0).epsilon(0.25));
+				CHECK(opt_b.y == doctest::Approx(cylinder_height / 2.0).epsilon(0.25));
+			} else {
+				CHECK(opt_a.y == doctest::Approx(cylinder_height / 2.0).epsilon(0.25));
+				CHECK(opt_b.y == doctest::Approx(-cylinder_height / 2.0).epsilon(0.25));
+			}
+			CHECK(opt_b.x == doctest::Approx(0.0).epsilon(0.15));
+			CHECK(opt_b.z == doctest::Approx(0.0).epsilon(0.15));
+			CHECK(double(result["optimized_radius"]) == doctest::Approx(initial_radius));
+		}
+	}
+
+	memdelete(axis_solver);
 }
 
 } // namespace TestLBFGSBCapsuleFitterSolver
