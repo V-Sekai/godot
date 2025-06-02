@@ -14,6 +14,16 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="execute_fit">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="execute_orientation_fit">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
 		<method name="optimize_orientation_for_fixed_size">
 			<return type="Dictionary" />
 			<description>
@@ -35,10 +45,6 @@
 		</member>
 		<member name="axis_point_b" type="Vector3" setter="set_axis_point_b" getter="get_axis_point_b" default="Vector3(0, 0.25, 0)">
 			The ending point of the capsule's central axis. This point, along with [member axis_point_a], defines the orientation and length of the capsule's core segment.
-		</member>
-		<member name="fit_capsule_orientation" type="void" setter="" getter="execute_orientation_fit" default="null">
-		</member>
-		<member name="fit_capsule_radius" type="void" setter="" getter="execute_fit" default="null">
 		</member>
 		<member name="height" type="float" setter="set_height" getter="get_height" default="0.5">
 			The height of the capsule, defined as the distance between [member axis_point_a] and [member axis_point_b]. Setting this value will adjust the positions of [member axis_point_a] and [member axis_point_b] while keeping their center and orientation.

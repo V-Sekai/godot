@@ -75,10 +75,7 @@ void LBFGSBCapsuleFitterSolver::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "last_fit_result", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_READ_ONLY | PROPERTY_USAGE_EDITOR), "", "get_last_fit_result");
 
 	ClassDB::bind_method(D_METHOD("execute_fit"), &LBFGSBCapsuleFitterSolver::execute_fit);
-	ADD_PROPERTY(PropertyInfo(Variant::NIL, "fit_capsule_radius", PROPERTY_HINT_TOOL_BUTTON, "Fit Radius", PROPERTY_USAGE_EDITOR), "", "execute_fit");
-
 	ClassDB::bind_method(D_METHOD("execute_orientation_fit"), &LBFGSBCapsuleFitterSolver::execute_orientation_fit);
-	ADD_PROPERTY(PropertyInfo(Variant::NIL, "fit_capsule_orientation", PROPERTY_HINT_TOOL_BUTTON, "Fit Orientation", PROPERTY_USAGE_EDITOR), "", "execute_orientation_fit");
 
 	ClassDB::bind_method(D_METHOD("optimize_radius_for_fixed_axis"), &LBFGSBCapsuleFitterSolver::optimize_radius_for_fixed_axis);
 	ClassDB::bind_method(D_METHOD("optimize_orientation_for_fixed_size"), &LBFGSBCapsuleFitterSolver::optimize_orientation_for_fixed_size);
