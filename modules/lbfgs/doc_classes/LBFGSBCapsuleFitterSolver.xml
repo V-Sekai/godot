@@ -32,7 +32,7 @@
 		<method name="optimize_radius_for_fixed_axis">
 			<return type="Dictionary" />
 			<description>
-				Optimizes the capsule radius based on the current settings of [member source_mesh], [member surface_index], [member axis_point_a], [member axis_point_b], and [member initial_radius].
+				Optimizes the capsule radius based on the current settings of [member source_mesh], [member surface_index], [member axis_point_a], [member axis_point_b].
 				This method directly performs the optimization using an internal objective function that considers the distance of mesh vertices to the capsule surface.
 				Returns a [Dictionary] containing the "optimized_radius" and "final_fx" (final objective function value), or an "error" key if the fitting fails or inputs are invalid.
 				This is the primary fitting logic called by [method execute_fit].
