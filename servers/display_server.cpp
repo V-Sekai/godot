@@ -1343,8 +1343,8 @@ bool DisplayServer::is_rendering_device_supported() {
 
 	Error err;
 
-#ifdef WINDOWS_ENABLED
-	// On some NVIDIA drivers combining OpenGL and RenderingDevice can result in crash, offload the check to the subprocess.
+#if defined(WINDOWS_ENABLED) || defined(LINUXBSD_ENABLED) && !defined(LIBGODOT_ENABLED)
+	// On some drivers combining OpenGL and RenderingDevice can result in crash, offload the check to the subprocess.
 	List<String> arguments;
 	arguments.push_back("--test-rd-support");
 
