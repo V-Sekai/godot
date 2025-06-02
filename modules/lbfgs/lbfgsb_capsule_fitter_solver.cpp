@@ -503,59 +503,40 @@ Vector<Vector3> LBFGSBCapsuleFitterSolver::_generate_canonical_capsule_points(co
 
 	Vector3 axis_vec = p_cap_b - p_cap_a;
 	double axis_length = axis_vec.length();
-	Vector3 axis_dir = (axis_length > CMP_EPSILON) ? axis_vec / axis_length : Vector3(0, 1, 0); // Default to Y axis if length is zero
+	Vector3 axis_dir = (axis_length > CMP_EPSILON) ? axis_vec / axis_length : Vector3(0, 1, 0);
 
-	// Basis for circular cross-sections for the cylinder part
-	// Aligns local Z with axis_dir, so circles are in XY plane of this basis.
 	Basis cylinder_basis = Basis::looking_at(axis_dir);
 
-	// Cylinder points
 	for (int i = 0; i <= p_cylinder_rings; ++i) {
-		double t_cyl = (p_cylinder_rings > 0) ? (double)i / p_cylinder_rings : 0.5; // Avoid division by zero, place in middle if no rings
+		double t_cyl = (p_cylinder_rings > 0) ? (double)i / p_cylinder_rings : 0.5;
 		Vector3 current_axis_point = p_cap_a + axis_vec * t_cyl;
 		for (int j = 0; j < p_radial_segments; ++j) {
 			double angle = (p_radial_segments > 0) ? (double)j / p_radial_segments * Math::TAU : 0.0;
-			// Points on XY plane, then transformed by cylinder_basis
 			Vector3 radial_offset = Vector3(Math::cos(angle) * p_cap_radius, Math::sin(angle) * p_cap_radius, 0);
 			points.push_back(current_axis_point + cylinder_basis.xform(radial_offset));
 		}
 	}
 
-	// Hemispherical cap points using Fibonacci lattice for more uniform distribution
-	// Number of points for each cap (can be tuned)
-	// Ensure num_cap_points_per_hemisphere is at least 1 to avoid issues with loop bounds or division by zero.
 	int num_cap_points_per_hemisphere = MAX(1, p_radial_segments * MAX(1, p_cylinder_rings / 2 + 1));
 	double golden_angle = Math::PI * (3.0 - Math::sqrt(5.0));
 
-	for (int cap_idx = 0; cap_idx < 2; ++cap_idx) { // 0 for cap_a, 1 for cap_b
+	for (int cap_idx = 0; cap_idx < 2; ++cap_idx) {
 		Vector3 cap_center = (cap_idx == 0) ? p_cap_a : p_cap_b;
 		Vector3 cap_normal_direction = (cap_idx == 0) ? -axis_dir : axis_dir;
-		// Basis for the cap: local Z along cap_normal_direction.
 		Basis cap_orientation_basis = Basis::looking_at(cap_normal_direction);
 
-		// Add the pole point itself for each cap
 		points.push_back(cap_center + cap_normal_direction * p_cap_radius);
 
-		// Generate points on the hemisphere surface (excluding the already added pole)
-		// The loop should go up to num_cap_points_per_hemisphere - 1 if pole is separate
-		// or ensure z_local doesn't reach 1 if pole is part of this loop.
 		for (int i = 0; i < num_cap_points_per_hemisphere; ++i) {
-			// y_fib corresponds to the z coordinate in a unit sphere if its axis is along Y.
-			// We want points on a hemisphere, so y_fib should range from 0 (equator) to 1 (pole).
-			// Let's map i to this range for the local z-coordinate of the hemisphere.
-			double z_local_on_unit_sphere = (double)i / (num_cap_points_per_hemisphere); // Ranges from 0 to almost 1
-			// This z_local_on_unit_sphere is cos(phi), where phi is polar angle from cap_normal_direction.
-			// phi ranges from PI/2 (equator) down to 0 (pole).
-
+			double z_local_on_unit_sphere = (double)i / (num_cap_points_per_hemisphere);
 			double radius_at_this_z_local = Math::sqrt(1.0 - z_local_on_unit_sphere * z_local_on_unit_sphere);
-			double theta_fib = golden_angle * i; // Azimuthal angle
+			double theta_fib = golden_angle * i;
 
 			Vector3 p_local_hemisphere;
 			p_local_hemisphere.x = Math::cos(theta_fib) * radius_at_this_z_local;
 			p_local_hemisphere.y = Math::sin(theta_fib) * radius_at_this_z_local;
-			p_local_hemisphere.z = z_local_on_unit_sphere; // This is along the hemisphere's local Z axis (which is cap_normal_direction)
+			p_local_hemisphere.z = z_local_on_unit_sphere;
 
-			// Scale by radius and transform by cap_orientation_basis and add to cap_center
 			points.push_back(cap_center + cap_orientation_basis.xform(p_local_hemisphere * p_cap_radius));
 		}
 	}
