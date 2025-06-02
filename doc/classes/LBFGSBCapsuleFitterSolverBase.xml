@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LBFGSBCapsuleFitterSolverBase" inherits="LBFGSBSolver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_capsule_instance">
+			<return type="void" />
+			<param index="0" name="initial_axis_a" type="Vector3" />
+			<param index="1" name="initial_axis_b" type="Vector3" />
+			<param index="2" name="initial_radius" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="clear_capsule_instances">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="get_capsule_instance_data" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="p_idx" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_num_capsule_instances" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="huber_delta" type="float" setter="set_huber_delta" getter="get_huber_delta" default="0.1">
+		</member>
+		<member name="last_fit_result" type="Dictionary" setter="" getter="get_last_fit_result">
+		</member>
+		<member name="orientation_angle_threshold_rad" type="float" setter="set_orientation_angle_threshold_rad" getter="get_orientation_angle_threshold_rad" default="0.7853982">
+		</member>
+		<member name="orientation_distance_threshold" type="float" setter="set_orientation_distance_threshold" getter="get_orientation_distance_threshold" default="0.1">
+		</member>
+		<member name="orientation_penalty_factor" type="float" setter="set_orientation_penalty_factor" getter="get_orientation_penalty_factor" default="1.0">
+		</member>
+		<member name="source_mesh" type="Mesh" setter="set_source_mesh" getter="get_source_mesh">
+		</member>
+		<member name="surface_index" type="int" setter="set_surface_index" getter="get_surface_index" default="0">
+		</member>
+	</members>
+</class>

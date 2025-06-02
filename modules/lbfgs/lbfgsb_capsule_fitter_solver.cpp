@@ -29,8 +29,8 @@
 /**************************************************************************/
 
 #include "lbfgsb_capsule_fitter_solver.h"
-#include "core/io/json.h" // For stringifying results if debugging
 #include "core/math/geometry_3d.h" // For Geometry3D::get_closest_points_between_segments if needed, though custom logic is used.
+#include "core/typedefs.h"
 
 // --- LBFGSBCapsuleFitterSolverBase Implementation ---
 
@@ -364,147 +364,144 @@ bool LBFGSBCapsuleFitterSolverBase::_execute_lbfgsb_optimization(const PackedFlo
 }
 
 double LBFGSBCapsuleFitterSolverBase::call_operator(const PackedFloat64Array &p_x, PackedFloat64Array &r_grad) {
-	ERR_FAIL_COND_V_MSG(current_cloud_points_for_objective.is_empty(), 1e18, "Mesh points not prepared for objective function calculation."); // Return large error
+	// Initial checks that apply to all modes
+	ERR_FAIL_COND_V_MSG(current_cloud_points_for_objective.is_empty(), 1e18, "Mesh points not prepared for objective function calculation.");
 	ERR_FAIL_INDEX_V_MSG(_current_capsule_idx_for_opt, capsules.size(), 1e18, "Current capsule index out of bounds for call_operator.");
 
-	// Get the base parameters from the current state of the capsule being optimized.
-	// These are the 'fixed' parameters for this specific sub-problem.
 	const CapsuleInstance &base_capsule_for_opt = capsules[_current_capsule_idx_for_opt];
 	Vector3 temp_axis_a = base_capsule_for_opt.optimized_axis_a;
 	Vector3 temp_axis_b = base_capsule_for_opt.optimized_axis_b;
 	double temp_radius = base_capsule_for_opt.optimized_radius;
 
-	double *r_grad_ptr = r_grad.ptrw(); // Get writable pointer
+	r_grad.fill(0.0); // Initialize gradient to zero for all modes
+	double total_objective_value = 0.0;
 
-	// Override the specific parameter(s) being optimized in this call from p_x.
 	switch (_current_optimization_mode) {
-		case OPT_MODE_RADIUS:
-			ERR_FAIL_COND_V_MSG(p_x.size() != 1, 1e18, "Parameter vector p_x size mismatch for OPT_MODE_RADIUS.");
-			temp_radius = p_x[0];
-			r_grad.resize(1);
-			r_grad_ptr = r_grad.ptrw(); // Re-acquire pointer after resize
-			r_grad_ptr[0] = 0.0;
-			break;
-		case OPT_MODE_AXIS_A:
-			ERR_FAIL_COND_V_MSG(p_x.size() != 3, 1e18, "Parameter vector p_x size mismatch for OPT_MODE_AXIS_A.");
+		case OPT_MODE_RADIUS: {
+			ERR_FAIL_COND_V_MSG(p_x.size() != 1, std::numeric_limits<double>::quiet_NaN(), "Radius optimization expects 1 parameter.");
+			temp_radius = p_x[0]; // Radius being optimized
+
+			if (temp_radius < 1e-4) {
+				total_objective_value = std::numeric_limits<double>::max() / 2.0; // Large penalty for near-zero or negative radius
+				// Ensure gradient points towards increasing radius if it's too small.
+				r_grad.write[0] = -std::numeric_limits<double>::max() / (2.0 * (temp_radius + 1e-5));
+				return total_objective_value;
+			}
+
+			// Use fixed axes from the base capsule for radius optimization
+			Vector3 actual_axis_a = base_capsule_for_opt.optimized_axis_a;
+			Vector3 actual_axis_b = base_capsule_for_opt.optimized_axis_b;
+
+			for (int i = 0; i < current_cloud_points_for_objective.size(); ++i) {
+				Vector3 p = current_cloud_points_for_objective[i];
+				Vector3 closest_point_on_line_segment = Geometry3D::get_closest_point_to_segment(p, actual_axis_a, actual_axis_b);
+
+				double dist_to_axis = p.distance_to(closest_point_on_line_segment);
+				double a = dist_to_axis - temp_radius; // 'a' is the error term (dist_to_axis - radius)
+
+				double huber_loss_term;
+				double dL_da; // Derivative of Huber loss L_delta(a) w.r.t. a
+
+				if (Math::abs(a) <= huber_delta) {
+					huber_loss_term = 0.5 * a * a;
+					dL_da = a;
+				} else {
+					huber_loss_term = huber_delta * (Math::abs(a) - 0.5 * huber_delta);
+					dL_da = huber_delta * SIGN(a);
+				}
+				total_objective_value += huber_loss_term;
+				r_grad.write[0] += dL_da * (-1.0); // Derivative of 'a' w.r.t. temp_radius is -1
+			}
+		} break;
+		case OPT_MODE_AXIS_A: {
+			ERR_FAIL_COND_V_MSG(p_x.size() != 3, std::numeric_limits<double>::quiet_NaN(), "Axis A optimization expects 3 parameters.");
 			temp_axis_a = Vector3(p_x[0], p_x[1], p_x[2]);
-			r_grad.resize(3);
-			r_grad_ptr = r_grad.ptrw(); // Re-acquire pointer after resize
-			for (int i = 0; i < 3; ++i) {
-				r_grad_ptr[i] = 0.0;
+			// temp_axis_b and temp_radius are from base_capsule_for_opt
+			Vector3 grad_axis_a_accumulator;
+			for (int i = 0; i < current_cloud_points_for_objective.size(); ++i) {
+				Vector3 mesh_vertex = current_cloud_points_for_objective[i];
+				CapsuleSurfacePointDerivatives derivatives = get_capsule_surface_derivatives(
+						mesh_vertex, temp_axis_a, temp_axis_b, temp_radius);
+				double signed_dist = derivatives.signed_distance;
+				Vector3 d_sd_d_a = derivatives.d_sd_d_axis_a;
+				double loss_value_for_point;
+				double d_loss_d_signed_dist;
+				if (Math::abs(signed_dist) <= huber_delta) {
+					loss_value_for_point = 0.5 * signed_dist * signed_dist;
+					d_loss_d_signed_dist = signed_dist;
+				} else {
+					loss_value_for_point = huber_delta * (Math::abs(signed_dist) - 0.5 * huber_delta);
+					d_loss_d_signed_dist = huber_delta * SIGN(signed_dist);
+				}
+				total_objective_value += loss_value_for_point;
+				grad_axis_a_accumulator += d_loss_d_signed_dist * d_sd_d_a;
 			}
-			break;
-		case OPT_MODE_AXIS_B:
-			ERR_FAIL_COND_V_MSG(p_x.size() != 3, 1e18, "Parameter vector p_x size mismatch for OPT_MODE_AXIS_B.");
+			if (!std::isfinite(grad_axis_a_accumulator.x)) {
+				grad_axis_a_accumulator.x = 0.0;
+			}
+			if (!std::isfinite(grad_axis_a_accumulator.y)) {
+				grad_axis_a_accumulator.y = 0.0;
+			}
+			if (!std::isfinite(grad_axis_a_accumulator.z)) {
+				grad_axis_a_accumulator.z = 0.0;
+			}
+			r_grad.write[0] = grad_axis_a_accumulator.x;
+			r_grad.write[1] = grad_axis_a_accumulator.y;
+			r_grad.write[2] = grad_axis_a_accumulator.z;
+		} break;
+		case OPT_MODE_AXIS_B: {
+			ERR_FAIL_COND_V_MSG(p_x.size() != 3, std::numeric_limits<double>::quiet_NaN(), "Axis B optimization expects 3 parameters.");
 			temp_axis_b = Vector3(p_x[0], p_x[1], p_x[2]);
-			r_grad.resize(3);
-			r_grad_ptr = r_grad.ptrw(); // Re-acquire pointer after resize
-			for (int i = 0; i < 3; ++i) {
-				r_grad_ptr[i] = 0.0;
+			// temp_axis_a and temp_radius are from base_capsule_for_opt
+			Vector3 grad_axis_b_accumulator;
+			for (int i = 0; i < current_cloud_points_for_objective.size(); ++i) {
+				Vector3 mesh_vertex = current_cloud_points_for_objective[i];
+				CapsuleSurfacePointDerivatives derivatives = get_capsule_surface_derivatives(
+						mesh_vertex, temp_axis_a, temp_axis_b, temp_radius);
+				double signed_dist = derivatives.signed_distance;
+				Vector3 d_sd_d_b = derivatives.d_sd_d_axis_b;
+				double loss_value_for_point;
+				double d_loss_d_signed_dist;
+				if (Math::abs(signed_dist) <= huber_delta) {
+					loss_value_for_point = 0.5 * signed_dist * signed_dist;
+					d_loss_d_signed_dist = signed_dist;
+				} else {
+					loss_value_for_point = huber_delta * (Math::abs(signed_dist) - 0.5 * huber_delta);
+					d_loss_d_signed_dist = huber_delta * SIGN(signed_dist);
+				}
+				total_objective_value += loss_value_for_point;
+				grad_axis_b_accumulator += d_loss_d_signed_dist * d_sd_d_b;
 			}
-			break;
+			if (!std::isfinite(grad_axis_b_accumulator.x)) {
+				grad_axis_b_accumulator.x = 0.0;
+			}
+			if (!std::isfinite(grad_axis_b_accumulator.y)) {
+				grad_axis_b_accumulator.y = 0.0;
+			}
+			if (!std::isfinite(grad_axis_b_accumulator.z)) {
+				grad_axis_b_accumulator.z = 0.0;
+			}
+			r_grad.write[0] = grad_axis_b_accumulator.x;
+			r_grad.write[1] = grad_axis_b_accumulator.y;
+			r_grad.write[2] = grad_axis_b_accumulator.z;
+		} break;
 		default:
 			ERR_FAIL_V_MSG(1e18, "Unknown optimization mode in call_operator.");
 	}
 
-	// Critical check: Ensure radius is positive to avoid NaNs and errors in geometric calculations.
-	if (temp_radius <= 1e-3) { // Use a small epsilon for safety.
-		// Penalize non-positive or very small radius heavily.
-		// The gradient should strongly push the radius to become larger.
-		if (_current_optimization_mode == OPT_MODE_RADIUS) {
-			// If optimizing radius, make its gradient strongly negative (to increase radius).
-			r_grad_ptr[0] = -1e6 * (1e-3 - temp_radius); // Gradient proportional to how much it's below threshold.
+	if (!std::isfinite(total_objective_value)) {
+		total_objective_value = 1e20;
+	}
+
+	// Final gradient NaN checks are done within mode blocks for AXIS_A/B
+	// For RADIUS mode, r_grad[0] is already set, and penalty return handles extreme cases.
+	// If radius penalty was not triggered, ensure grad is finite.
+	if (_current_optimization_mode == OPT_MODE_RADIUS) {
+		if (!std::isfinite(r_grad[0])) {
+			r_grad.write[0] = 0.0;
 		}
-		// For other modes, if radius is bad, the whole configuration is bad.
-		return 1e12 + (1e-3 - temp_radius) * 1e9; // Return a very large error value.
-	}
-	// Prevent capsule inversion or zero height
-	if ((temp_axis_a - temp_axis_b).length_squared() < 1e-6 && (temp_radius < 1e-2)) { // If it's basically a tiny sphere at a point
-		// This configuration is degenerate. Penalize.
-		double penalty = 1e10;
-		if (_current_optimization_mode == OPT_MODE_AXIS_A) {
-			// Push A away from B. If A = p_x, then d_penalty / d_ax = some_vector_pointing_away_from_B
-			Vector3 dir = (temp_axis_a - temp_axis_b).normalized();
-			if (dir.is_zero_approx()) {
-				dir = Vector3(1, 0, 0); // arbitrary direction if coincident
-			}
-			r_grad_ptr[0] += dir.x * 1e4;
-			r_grad_ptr[1] += dir.y * 1e4;
-			r_grad_ptr[2] += dir.z * 1e4;
-		} else if (_current_optimization_mode == OPT_MODE_AXIS_B) {
-			Vector3 dir = (temp_axis_b - temp_axis_a).normalized();
-			if (dir.is_zero_approx()) {
-				dir = Vector3(1, 0, 0);
-			}
-			r_grad_ptr[0] += dir.x * 1e4;
-			r_grad_ptr[1] += dir.y * 1e4;
-			r_grad_ptr[2] += dir.z * 1e4;
-		} else if (_current_optimization_mode == OPT_MODE_RADIUS) {
-			r_grad_ptr[0] -= 1e4; // Penalize small radius in this state
-		}
-		return penalty;
 	}
 
-	double total_objective_value = 0.0;
-	// Accumulators for gradients, specific to the parameter(s) being optimized in this call.
-	double grad_radius_accumulator = 0.0;
-	Vector3 grad_axis_a_accumulator;
-	Vector3 grad_axis_b_accumulator;
-
-	// Iterate over all points in the source mesh surface.
-	for (int i = 0; i < current_cloud_points_for_objective.size(); ++i) {
-		Vector3 mesh_vertex = current_cloud_points_for_objective[i];
-		// Vector3 mesh_normal = current_cloud_normals_for_objective[i]; // Available if needed for orientation penalty.
-
-		// Calculate signed distance and its derivatives w.r.t. all 7 params of the *current* capsule.
-		CapsuleSurfacePointDerivatives derivatives = get_capsule_surface_derivatives(
-				mesh_vertex, temp_axis_a, temp_axis_b, temp_radius);
-
-		double signed_dist = derivatives.signed_distance;
-		double loss_value_for_point;
-		double d_loss_d_signed_dist; // Derivative of the loss w.r.t. signed_distance.
-
-		// Huber loss for robustness against outliers.
-		if (Math::abs(signed_dist) <= huber_delta) {
-			loss_value_for_point = 0.5 * signed_dist * signed_dist;
-			d_loss_d_signed_dist = signed_dist;
-		} else {
-			loss_value_for_point = huber_delta * (Math::abs(signed_dist) - 0.5 * huber_delta);
-			d_loss_d_signed_dist = huber_delta * (signed_dist > 0 ? 1.0 : -1.0); // Sign of signed_dist.
-		}
-		total_objective_value += loss_value_for_point;
-
-		// Accumulate gradients using the chain rule:
-		// d_loss_d_param = (d_loss_d_signed_dist) * (d_signed_dist_d_param)
-		grad_radius_accumulator += d_loss_d_signed_dist * derivatives.d_sd_d_radius;
-		grad_axis_a_accumulator += d_loss_d_signed_dist * derivatives.d_sd_d_axis_a;
-		grad_axis_b_accumulator += d_loss_d_signed_dist * derivatives.d_sd_d_axis_b;
-
-		// --- Optional: Orientation Penalty (if configured and relevant) ---
-		// This was part of the original thought but needs careful integration with sequential optimization.
-		// If get_capsule_surface_derivatives also computes orientation_penalty and its derivatives:
-		// total_objective_value += derivatives.orientation_penalty * orientation_penalty_factor;
-		// grad_radius_accumulator += derivatives.d_orientation_penalty_d_radius * orientation_penalty_factor;
-		// grad_axis_a_accumulator += derivatives.d_orientation_penalty_d_axis_a * orientation_penalty_factor;
-		// grad_axis_b_accumulator += derivatives.d_orientation_penalty_d_axis_b * orientation_penalty_factor;
-	}
-
-	// Assign the accumulated gradients to r_grad based on the current optimization mode.
-	switch (_current_optimization_mode) {
-		case OPT_MODE_RADIUS:
-			r_grad_ptr[0] = grad_radius_accumulator;
-			break;
-		case OPT_MODE_AXIS_A:
-			r_grad_ptr[0] = grad_axis_a_accumulator.x;
-			r_grad_ptr[1] = grad_axis_a_accumulator.y;
-			r_grad_ptr[2] = grad_axis_a_accumulator.z;
-			break;
-		case OPT_MODE_AXIS_B:
-			r_grad_ptr[0] = grad_axis_b_accumulator.x;
-			r_grad_ptr[1] = grad_axis_b_accumulator.y;
-			r_grad_ptr[2] = grad_axis_b_accumulator.z;
-			break;
-	}
 	return total_objective_value;
 }
 
@@ -669,22 +666,25 @@ LBFGSBCapsuleFitterSolverBase::CapsuleSurfacePointDerivatives LBFGSBCapsuleFitte
 		derivatives.signed_distance = dist_N_cyl_wall - p_cap_radius;
 
 		// Derivatives for cylinder wall:
-		// P_axis = A + t_param * (B-A)
-		// dt/dA_vec = (-(U_va+V)*len_sq_V + 2*dot(U_va,V)*V) / (len_sq_V^2)
-		// dt/dB_vec = (  U_va   *len_sq_V - 2*dot(U_va,V)*V) / (len_sq_V^2)
-		// where U_va = p_mesh_vertex - p_cap_a
-		// V = p_cap_b - p_cap_a
-
 		// Avoid division by zero if len_sq_V is extremely small (though handled by degenerate case)
-		double inv_len_sq_V_sq = (len_sq_V > EPSILON_SQ) ? (1.0 / (len_sq_V * len_sq_V)) : 0.0;
+		double inv_len_sq_V = (len_sq_V > EPSILON_SQ) ? (1.0 / len_sq_V) : 0.0; // If len_sq_V is EPSILON_SQ, inv_len_sq_V can be large.
+		double inv_len_sq_V_sq = inv_len_sq_V * inv_len_sq_V;
 
 		Vector3 grad_t_dA_vec = (-(U_va + V) * len_sq_V + 2.0 * U_va.dot(V) * V) * inv_len_sq_V_sq;
 		Vector3 grad_t_dB_vec = (U_va * len_sq_V - 2.0 * U_va.dot(V) * V) * inv_len_sq_V_sq;
 
-		// d(sd)/dA = -(1-t_param)*normal - dot(normal,V)*grad_t_dA_vec
-		// d(sd)/dB = -t_param*normal    - dot(normal,V)*grad_t_dB_vec
 		derivatives.d_sd_d_axis_a = -(1.0 - t_param) * derivatives.normal_on_surface - (derivatives.normal_on_surface.dot(V)) * grad_t_dA_vec;
 		derivatives.d_sd_d_axis_b = -t_param * derivatives.normal_on_surface - (derivatives.normal_on_surface.dot(V)) * grad_t_dB_vec;
+
+		// Clamp the calculated derivatives to prevent excessively large values
+		const double MAX_DERIV_COMPONENT_MAGNITUDE = 1e6;
+		derivatives.d_sd_d_axis_a.x = CLAMP(derivatives.d_sd_d_axis_a.x, -MAX_DERIV_COMPONENT_MAGNITUDE, MAX_DERIV_COMPONENT_MAGNITUDE);
+		derivatives.d_sd_d_axis_a.y = CLAMP(derivatives.d_sd_d_axis_a.y, -MAX_DERIV_COMPONENT_MAGNITUDE, MAX_DERIV_COMPONENT_MAGNITUDE);
+		derivatives.d_sd_d_axis_a.z = CLAMP(derivatives.d_sd_d_axis_a.z, -MAX_DERIV_COMPONENT_MAGNITUDE, MAX_DERIV_COMPONENT_MAGNITUDE);
+
+		derivatives.d_sd_d_axis_b.x = CLAMP(derivatives.d_sd_d_axis_b.x, -MAX_DERIV_COMPONENT_MAGNITUDE, MAX_DERIV_COMPONENT_MAGNITUDE);
+		derivatives.d_sd_d_axis_b.y = CLAMP(derivatives.d_sd_d_axis_b.y, -MAX_DERIV_COMPONENT_MAGNITUDE, MAX_DERIV_COMPONENT_MAGNITUDE);
+		derivatives.d_sd_d_axis_b.z = CLAMP(derivatives.d_sd_d_axis_b.z, -MAX_DERIV_COMPONENT_MAGNITUDE, MAX_DERIV_COMPONENT_MAGNITUDE);
 	}
 	return derivatives;
 }
