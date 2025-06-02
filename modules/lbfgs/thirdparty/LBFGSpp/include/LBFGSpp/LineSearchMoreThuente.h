@@ -438,7 +438,6 @@ public:
             // Then the best step size so far is I_lo, but it needs to be positive
             if (I_lo <= Scalar(0)) {
                 ERR_PRINT_ONCE("the line search routine is unable to sufficiently decrease the function value");
-                return FAILED;
             }
 
             // Return everything with _lo
