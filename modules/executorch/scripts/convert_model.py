@@ -4,19 +4,21 @@ Convert a simple PyTorch model to ExecuTorch format
 This script demonstrates the conversion pipeline for the simple linear regression model
 """
 
-import torch
-import torch.nn as nn
 import os
 import sys
 
+import torch
+import torch.nn as nn
+
 try:
-    from torch.export import export
     from executorch.exir import to_edge
     from executorch.exir.backend.backend_api import to_backend
+    from torch.export import export
 except ImportError:
     print("ExecuTorch not installed. Please install it first:")
     print("pip install executorch torchvision")
     sys.exit(1)
+
 
 class SimpleLinearModel(nn.Module):
     """Simple linear regression model for demonstration"""
@@ -27,6 +29,7 @@ class SimpleLinearModel(nn.Module):
 
     def forward(self, x):
         return self.linear(x)
+
 
 def create_and_train_model():
     """Create and minimally train a simple model"""
@@ -57,6 +60,7 @@ def create_and_train_model():
 
     model.eval()
     return model
+
 
 def convert_to_executorch(model, output_path="simple_linear.pte"):
     """Convert PyTorch model to ExecuTorch format"""
@@ -102,6 +106,7 @@ def convert_to_executorch(model, output_path="simple_linear.pte"):
         print(f"Conversion failed: {e}")
         return False
 
+
 def main():
     """Main conversion pipeline"""
     print("PyTorch to ExecuTorch Conversion Script")
@@ -125,6 +130,7 @@ def main():
     else:
         print("\n❌ Conversion failed!")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

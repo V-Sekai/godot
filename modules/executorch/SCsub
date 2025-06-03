@@ -4,17 +4,12 @@
 SCons build file for ExecuTorch Godot module
 """
 
-Import('env')
+Import("env")
 
 module_env = env.Clone()
 
 # Add module source files
-source_files = [
-    "executorch_runtime.cpp",
-    "executorch_model.cpp",
-    "mcp_server_internal.cpp",
-    "register_types.cpp"
-]
+source_files = ["executorch_runtime.cpp", "executorch_model.cpp", "mcp_server_internal.cpp", "register_types.cpp"]
 
 # Add include paths
 module_env.Append(CPPPATH=["."])

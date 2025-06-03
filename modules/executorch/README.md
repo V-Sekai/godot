@@ -156,7 +156,7 @@ ExecuTorchRuntime (exposed to GDScript)
 Compared to GDExtension, the C++ module approach provides:
 
 - **Native Integration**: Direct access to Godot's core APIs
-- **Better Performance**: No marshalling overhead between GDScript and C++
+- **Better Performance**: No marshaling overhead between GDScript and C++
 - **Simplified Distribution**: Built directly into the engine binary
 - **Easier Debugging**: Full access to Godot's debugging infrastructure
 - **Reduced Dependencies**: No external .so/.dll files needed
