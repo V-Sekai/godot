@@ -1,0 +1,44 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+#-   repo: https://github.com/asottile/reorder_python_imports
+#    rev: v2.2.0
+#    hooks:
+#    -   id: reorder-python-imports
+
+        #-   repo: https://github.com/psf/black
+        #j.rev: 20.8b1
+        #j.hooks:
+        #j.-   id: black
+
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.9
+    hooks:
+    -   id: flake8
+        exclude: python/tosa
+        args: [--max-line-length=88, --extend-ignore=E203]
+
+-   repo: https://github.com/psf/black
+    rev: 20.8b1
+    hooks:
+    -   id: black
+        exclude: python/tosa
+
+-   repo: local
+    hooks:
+    -   id: regenerate-headers
+        name: regenerate-headers
+        language: system
+        entry: ./regenerate_headers.sh
+        pass_filenames: false
+        always_run: true
+
+-   repo: local
+    hooks:
+    -   id: clang-format
+        name: clang-format
+        exclude: tosa_generated.h|build|third_party
+        language: system
+        entry: clang-format
+        types: ["c++"]
+        args: ["-i"]

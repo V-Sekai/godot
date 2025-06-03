@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://git.gitlab.arm.com/tosa/tosa-serialization.git
+	branch = experimental/tf28_compat
+	commit = 62c1e95dc2f438e027f94e1dd2f486631489b189
+	parent = b856b03a8dad8d810c1bc2dcc87f157c1c1b1980
+	method = merge
+	cmdver = 0.4.9

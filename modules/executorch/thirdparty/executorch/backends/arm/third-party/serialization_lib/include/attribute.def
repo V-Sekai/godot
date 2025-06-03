@@ -1,0 +1,106 @@
+
+// Copyright (c) 2020-2021, ARM Limited.
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//         http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
+
+/*
+  Syntax:
+    DEF_ATTRIBUTE(ATTRIBUTE_NAME, NUM_ARGS_IN_ATTRIBUTES, ARG0_TYPE, ARG0_SCALAR_OR_VECTOR, ARGS0_NAME, ...)
+
+  Description:
+    ATTRIBUTE_NAME: corresponding attribute name, must match corresponding "table XXXAttribute" in tosa.fbs
+    NUM_ARGS_IN_ATTRIBUTES: number of arguments in this attribute
+    ARG0_TYPE: data type of arg0 in attribute
+    ARG0_SCALAR_OR_VECTOR: is arg0 a scalar(S) or a vector(V)
+    ARG0_NAME: name of arg0
+    ...: variadic variables for more arguments, depending on NUM_ARGS_IN_ATTRIBUTES
+*/
+
+DEF_ATTRIBUTE(Pool, 3,
+              int32_t, V, padding,
+              int32_t, V, kernel,
+              int32_t, V, stride)
+
+DEF_ATTRIBUTE(Conv, 3,
+              int32_t, V, padding,
+              int32_t, V, stride,
+              int32_t, V, dilation)
+
+DEF_ATTRIBUTE(TransposeConv, 4,
+              int32_t, V, outpad,
+              int32_t, V, stride,
+              int32_t, V, dilation,
+              int32_t, V, output_shape)
+
+DEF_ATTRIBUTE(Pad, 3,
+              int32_t, V, padding,
+              int32_t, S, pad_const_int,
+              float, S, pad_const_fp)
+
+DEF_ATTRIBUTE(Axis, 1,
+              int32_t, S, axis)
+
+DEF_ATTRIBUTE(Reshape, 1,
+              int32_t, V, shape)
+
+DEF_ATTRIBUTE(Slice, 2,
+              int32_t, V, begin,
+              int32_t, V, size)
+
+DEF_ATTRIBUTE(Tile, 1,
+              int32_t, V, multiples)
+
+DEF_ATTRIBUTE(Resize, 7,
+              int32_t, V, output_size,
+              int32_t, V, stride,
+              int32_t, V, offset,
+              int32_t, S, shift,
+              float, V, stride_fp,
+              float, V, offset_fp,
+              ResizeMode, S, mode)
+
+DEF_ATTRIBUTE(Clamp, 4,
+              int32_t, S, min_int,
+              int32_t, S, max_int,
+              float, S, min_fp,
+              float, S, max_fp)
+
+DEF_ATTRIBUTE(Rescale, 7,
+              int32_t, S, input_zp,
+              int32_t, S, output_zp,
+              int32_t, V, multiplier,
+              int32_t, V, shift,
+              bool, S, scale32,
+              bool, S, double_round,
+              bool, S, per_channel)
+
+DEF_ATTRIBUTE(Mul, 1,
+              int32_t, S, shift)
+
+DEF_ATTRIBUTE(ArithmeticRightShift, 1,
+              bool, S, round)
+
+DEF_ATTRIBUTE(CondIf, 2,
+              string, S, then_branch,
+              string, S, else_branch)
+
+DEF_ATTRIBUTE(WhileLoop, 2,
+              string, S, cond_branch,
+              string, S, body_branch)
+
+DEF_ATTRIBUTE(Transpose, 1,
+              int32_t, V, perm)
+
+DEF_ATTRIBUTE(Table, 1,
+              int32_t, V, table)
+
