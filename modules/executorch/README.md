@@ -26,34 +26,58 @@
 This project is currently in **early development** and is **NOT ready for
 production use**.
 
-A native C++ module for Godot Engine that provides ExecuTorch machine learning
-inference capabilities with built-in MCP (Model Context Protocol) support.
+**⚠️ IMPORTANT: NOTHING CURRENTLY WORKS ⚠️**
+
+This is a **concept/prototype** module intended to integrate ExecuTorch machine learning
+inference capabilities into Godot Engine with built-in MCP (Model Context Protocol) support.
 
 **Current Status:**
 
-- 🔴 **API is unstable** and subject to breaking changes
-- 🔴 **Limited testing** - may contain bugs and memory leaks
-- 🔴 **Incomplete features** - many planned features are not implemented
+- 🔴 **Nothing is implemented** - this is concept documentation only
+- 🔴 **API is completely unstable** and subject to breaking changes
+- 🔴 **No working code** - placeholder implementations only
+- 🔴 **No testing** - may not even compile
 - 🔴 **No official releases** - use at your own risk
-- 🔴 **Documentation may be outdated** or incorrect
+- 🔴 **Documentation describes planned features** that don't exist yet
+
+**Planned Features (NOT IMPLEMENTED):**
+- ExecuTorchRuntime class for model loading and inference
+- Built-in MCP (Model Context Protocol) server
+- GDScript integration with native performance
+- Cross-platform model execution
+- Performance monitoring and benchmarking
+- Linear regression and other model type support
 
 **Do not use this in:**
 
 - Production games or applications
 - Commercial projects
 - Critical systems
+- Any project expecting working functionality
 
-**This is for experimentation and development only!**
+**This is for experimentation, planning, and development reference only!**
 
 ## Overview
 
-This module integrates directly into Godot Engine as a C++ module (not a
-GDExtension), providing seamless access to ExecuTorch models from within Godot
-projects.
+This documentation describes a **planned concept** for a module that would integrate directly into Godot Engine as a C++ module (not a GDExtension). **None of this functionality currently exists.**
 
 ## Installation
 
-## Usage in Godot
+**NOT IMPLEMENTED** - Installation instructions are placeholders for the planned implementation.
+
+## Development
+
+The `scripts/` directory contains Python tools for model preparation and testing:
+
+- `convert_model.py` - Converts PyTorch models to ExecuTorch format
+- `run.py` - Tests converted models
+- `justfile` - Build automation commands
+
+Use `just all` to install dependencies, convert models, and run tests.
+
+## Planned Usage Examples (NOT IMPLEMENTED)
+
+The following code examples show how the module **would** work if implemented:
 
 ### Basic Setup
 
@@ -134,26 +158,26 @@ func benchmark_model():
     print("Last inference time: ", runtime.get_last_inference_time(), "ms")
 ```
 
-## Module Architecture
+## Planned Module Architecture (NOT IMPLEMENTED)
 
-### Core Components
+### Planned Core Components
 
-- **ExecuTorchRuntime**: Main interface class exposed to GDScript
+- **ExecuTorchRuntime**: Main interface class that would be exposed to GDScript
 - **ExecuTorchModel**: Internal model wrapper and inference engine
 - **MCPServerInternal**: Built-in Model Context Protocol server
 - **register_types**: Godot module registration and lifecycle
 
-### Class Hierarchy
+### Planned Class Hierarchy
 
 ```
-ExecuTorchRuntime (exposed to GDScript)
+ExecuTorchRuntime (would be exposed to GDScript)
 ├── ExecuTorchModel (internal model handling)
 └── MCPServerInternal (MCP protocol implementation)
 ```
 
-## Module Integration Benefits
+## Planned Module Integration Benefits
 
-Compared to GDExtension, the C++ module approach provides:
+If implemented, the C++ module approach would provide:
 
 - **Native Integration**: Direct access to Godot's core APIs
 - **Better Performance**: No marshaling overhead between GDScript and C++
@@ -161,7 +185,7 @@ Compared to GDExtension, the C++ module approach provides:
 - **Easier Debugging**: Full access to Godot's debugging infrastructure
 - **Reduced Dependencies**: No external .so/.dll files needed
 
-## Development
+## Planned Development Workflow (NOT IMPLEMENTED)
 
 ### Testing the Module
 

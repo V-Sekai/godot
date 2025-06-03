@@ -1,17 +1,20 @@
+import os
+from typing import List
+
 import torch
 import torch.nn as nn
 from executorch.runtime import Runtime
-from typing import List
-import os
+
 
 # Simple Linear Regression Model (same as in export.py)
 class LinearRegressionModel(nn.Module):
     def __init__(self, input_size=4, output_size=1):
         super(LinearRegressionModel, self).__init__()
         self.linear = nn.Linear(input_size, output_size)
-    
+
     def forward(self, x):
         return self.linear(x)
+
 
 runtime = Runtime.get()
 
