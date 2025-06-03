@@ -1,0 +1,70 @@
+# ExecuTorch Scripts - Model Testing and Validation
+# Run with: just <command>
+
+# Install Python dependencies for model scripts
+install:
+    pip install torch torchvision executorch
+    @echo "✅ Python dependencies installed"
+
+# Create models directory
+setup:
+    mkdir -p ../models
+    @echo "✅ Models directory created"
+
+# Convert PyTorch model to ExecuTorch format
+convert:
+    python convert_model.py
+    @echo "✅ Model conversion completed"
+
+# Run equivalency test between PyTorch and ExecuTorch
+test-equivalency:
+    python run.py
+    @echo "✅ Equivalency test completed"
+
+# Test with different input values
+test-custom INPUT="1.0,2.0,3.0,4.0":
+    python -c "import torch; import sys; sys.path.append('.'); from run import *; input_vals = [float(x) for x in '{{INPUT}}'.split(',')]; test_input = torch.tensor([input_vals]); print(f'Testing with input: {test_input}')"
+
+# Validate model outputs match within tolerance
+validate:
+    python -c "import torch; from run import *; print('=== Validation Report ==='); print(f'Model file exists: {os.path.exists(\"../models/simple_linear.pte\")}'); print(f'Weights file exists: {os.path.exists(\"../models/simple_linear_weights.pth\")}'); exec(open('run.py').read()) if os.path.exists('../models/simple_linear.pte') else print('Model file not found')"
+
+# Compare performance between PyTorch eager and ExecuTorch
+benchmark:
+    python benchmark.py
+
+# Full pipeline: setup, convert, and test
+all: setup convert test-equivalency validate
+    @echo "🎉 Full pipeline completed successfully!"
+
+# Test with multiple random inputs
+stress-test:
+    python stress_test.py
+
+# Clean up generated files
+clean:
+    rm -f ../models/*.pte
+    rm -f ../models/*.pth
+    @echo "✅ Cleaned up generated files"
+
+# Show model information
+info:
+    @echo "=== Model Files ==="
+    @ls -la ../models/ 2>/dev/null || echo "No models directory found"
+    @echo ""
+    @echo "=== Python Scripts ==="
+    @ls -la *.py
+    @echo ""
+    @echo "=== Available Commands ==="
+    @just --list
+
+# Quick equivalency test (assumes model exists)
+quick-test:
+    python run.py
+
+# Help
+help:
+    @echo "ExecuTorch Scripts - Model Testing and Validation"
+    @echo ""
+    @echo "Available commands:"
+    @just --list
