@@ -28,20 +28,19 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef MCP_SERVER_H
-#define MCP_SERVER_H
+#pragma once
 
-#include "scene/main/node.h"
 #include "core/string/ustring.h"
+#include "scene/main/node.h"
 
-class MCPServer : public Node {
-	GDCLASS(MCPServer, Node);
+class ModelContextProtocolServer : public Node {
+	GDCLASS(ModelContextProtocolServer, Node);
 
 private:
 	bool server_running;
 	int port;
 	String server_name;
-	
+
 	// MCP protocol state
 	Dictionary capabilities;
 	Array tools;
@@ -51,8 +50,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	MCPServer();
-	~MCPServer();
+	ModelContextProtocolServer();
+	~ModelContextProtocolServer();
 
 	// Node overrides
 	void _ready();
@@ -62,23 +61,21 @@ public:
 	void start_server(int p_port = 8080);
 	void stop_server();
 	bool is_server_running() const;
-	
+
 	// MCP Protocol methods
 	void initialize_mcp();
 	void add_tool(const String &name, const String &description, const Dictionary &schema);
 	void add_resource(const String &uri, const String &name, const String &description);
 	Dictionary handle_request(const Dictionary &request);
-	
+
 	// Property setters/getters
 	void set_port(int p_port);
 	int get_port() const;
 	void set_server_name(const String &p_name);
 	String get_server_name() const;
-	
+
 	// Signal callbacks
 	void _on_client_connected();
 	void _on_client_disconnected();
 	void _on_message_received(const Dictionary &message);
 };
-
-#endif // MCP_SERVER_H

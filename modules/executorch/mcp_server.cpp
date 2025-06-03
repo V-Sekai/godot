@@ -31,46 +31,46 @@
 #include "mcp_server.h"
 #include "core/object/class_db.h"
 
-MCPServer::MCPServer() {
+ModelContextProtocolServer::ModelContextProtocolServer() {
 	server_running = false;
 	port = 8080;
 	server_name = "Godot MCP Server";
-	
+
 	// Initialize MCP capabilities
 	capabilities = Dictionary();
 	tools = Array();
 	resources = Array();
-	
+
 	initialize_mcp();
 }
 
-MCPServer::~MCPServer() {
+ModelContextProtocolServer::~ModelContextProtocolServer() {
 	if (server_running) {
 		stop_server();
 	}
 }
 
-void MCPServer::_bind_methods() {
+void ModelContextProtocolServer::_bind_methods() {
 	// Property bindings
-	ClassDB::bind_method(D_METHOD("set_port", "port"), &MCPServer::set_port);
-	ClassDB::bind_method(D_METHOD("get_port"), &MCPServer::get_port);
-	ClassDB::bind_method(D_METHOD("set_server_name", "name"), &MCPServer::set_server_name);
-	ClassDB::bind_method(D_METHOD("get_server_name"), &MCPServer::get_server_name);
-	
+	ClassDB::bind_method(D_METHOD("set_port", "port"), &ModelContextProtocolServer::set_port);
+	ClassDB::bind_method(D_METHOD("get_port"), &ModelContextProtocolServer::get_port);
+	ClassDB::bind_method(D_METHOD("set_server_name", "name"), &ModelContextProtocolServer::set_server_name);
+	ClassDB::bind_method(D_METHOD("get_server_name"), &ModelContextProtocolServer::get_server_name);
+
 	// Server control methods
-	ClassDB::bind_method(D_METHOD("start_server", "port"), &MCPServer::start_server, DEFVAL(8080));
-	ClassDB::bind_method(D_METHOD("stop_server"), &MCPServer::stop_server);
-	ClassDB::bind_method(D_METHOD("is_server_running"), &MCPServer::is_server_running);
-	
+	ClassDB::bind_method(D_METHOD("start_server", "port"), &ModelContextProtocolServer::start_server, DEFVAL(8080));
+	ClassDB::bind_method(D_METHOD("stop_server"), &ModelContextProtocolServer::stop_server);
+	ClassDB::bind_method(D_METHOD("is_server_running"), &ModelContextProtocolServer::is_server_running);
+
 	// MCP protocol methods
-	ClassDB::bind_method(D_METHOD("add_tool", "name", "description", "schema"), &MCPServer::add_tool);
-	ClassDB::bind_method(D_METHOD("add_resource", "uri", "name", "description"), &MCPServer::add_resource);
-	ClassDB::bind_method(D_METHOD("handle_request", "request"), &MCPServer::handle_request);
-	
+	ClassDB::bind_method(D_METHOD("add_tool", "name", "description", "schema"), &ModelContextProtocolServer::add_tool);
+	ClassDB::bind_method(D_METHOD("add_resource", "uri", "name", "description"), &ModelContextProtocolServer::add_resource);
+	ClassDB::bind_method(D_METHOD("handle_request", "request"), &ModelContextProtocolServer::handle_request);
+
 	// Properties
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "port"), "set_port", "get_port");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "server_name"), "set_server_name", "get_server_name");
-	
+
 	// Signals
 	ADD_SIGNAL(MethodInfo("client_connected"));
 	ADD_SIGNAL(MethodInfo("client_disconnected"));
@@ -78,92 +78,92 @@ void MCPServer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("tool_called", PropertyInfo(Variant::STRING, "tool_name"), PropertyInfo(Variant::DICTIONARY, "arguments")));
 }
 
-void MCPServer::_ready() {
+void ModelContextProtocolServer::_ready() {
 	print_line("MCP Server node ready");
 }
 
-void MCPServer::_exit_tree() {
+void ModelContextProtocolServer::_exit_tree() {
 	if (server_running) {
 		stop_server();
 	}
 }
 
-void MCPServer::start_server(int p_port) {
+void ModelContextProtocolServer::start_server(int p_port) {
 	if (server_running) {
 		print_line("MCP Server already running");
 		return;
 	}
-	
+
 	port = p_port;
 	server_running = true;
-	
+
 	print_line("MCP Server started on port " + String::num(port));
 	// TODO: Implement actual server socket creation and listening
 }
 
-void MCPServer::stop_server() {
+void ModelContextProtocolServer::stop_server() {
 	if (!server_running) {
 		return;
 	}
-	
+
 	server_running = false;
 	print_line("MCP Server stopped");
 	// TODO: Implement actual server shutdown
 }
 
-bool MCPServer::is_server_running() const {
+bool ModelContextProtocolServer::is_server_running() const {
 	return server_running;
 }
 
-void MCPServer::initialize_mcp() {
+void ModelContextProtocolServer::initialize_mcp() {
 	// Initialize MCP protocol capabilities
 	capabilities[String("tools")] = Dictionary();
 	capabilities[String("resources")] = Dictionary();
 	capabilities[String("prompts")] = Dictionary();
 	capabilities[String("logging")] = Dictionary();
-	
+
 	print_line("MCP Server initialized with default capabilities");
 }
 
-void MCPServer::add_tool(const String &name, const String &description, const Dictionary &schema) {
+void ModelContextProtocolServer::add_tool(const String &name, const String &description, const Dictionary &schema) {
 	Dictionary tool;
 	tool[String("name")] = name;
 	tool[String("description")] = description;
 	tool[String("inputSchema")] = schema;
-	
+
 	tools.append(tool);
 	print_line("Added MCP tool: " + name);
 }
 
-void MCPServer::add_resource(const String &uri, const String &name, const String &description) {
+void ModelContextProtocolServer::add_resource(const String &uri, const String &name, const String &description) {
 	Dictionary resource;
 	resource[String("uri")] = uri;
 	resource[String("name")] = name;
 	resource[String("description")] = description;
-	
+
 	resources.append(resource);
 	print_line("Added MCP resource: " + name);
 }
 
-Dictionary MCPServer::handle_request(const Dictionary &request) {
+Dictionary ModelContextProtocolServer::handle_request(const Dictionary &request) {
 	Dictionary response;
-	
+
 	if (!request.has("method")) {
 		response[String("error")] = "Missing method in request";
 		return response;
 	}
-	
+
 	String method = request["method"];
-	
+
 	if (method == "initialize") {
 		Dictionary result;
 		result[String("capabilities")] = capabilities;
-		
+
 		Dictionary server_info;
 		server_info[String("name")] = server_name;
 		server_info[String("version")] = "1.0.0";
 		result[String("serverInfo")] = server_info;
-		
+
 		response[String("result")] = result;
 	} else if (method == "tools/list") {
 		Dictionary result;
@@ -176,34 +176,34 @@ Dictionary MCPServer::handle_request(const Dictionary &request) {
 	} else {
 		response[String("error")] = "Unknown method: " + method;
 	}
-	
+
 	return response;
 }
 
-void MCPServer::set_port(int p_port) {
+void ModelContextProtocolServer::set_port(int p_port) {
 	port = p_port;
 }
 
-int MCPServer::get_port() const {
+int ModelContextProtocolServer::get_port() const {
 	return port;
 }
 
-void MCPServer::set_server_name(const String &p_name) {
+void ModelContextProtocolServer::set_server_name(const String &p_name) {
 	server_name = p_name;
 }
 
-String MCPServer::get_server_name() const {
+String ModelContextProtocolServer::get_server_name() const {
 	return server_name;
 }
 
-void MCPServer::_on_client_connected() {
+void ModelContextProtocolServer::_on_client_connected() {
 	emit_signal("client_connected");
 }
 
-void MCPServer::_on_client_disconnected() {
+void ModelContextProtocolServer::_on_client_disconnected() {
 	emit_signal("client_disconnected");
 }
 
-void MCPServer::_on_message_received(const Dictionary &message) {
+void ModelContextProtocolServer::_on_message_received(const Dictionary &message) {
 	emit_signal("message_received", message);
 }
