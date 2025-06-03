@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "../src/executorch_resource.h"
+#include "../executorch_resource.h"
 
 #include "tests/test_macros.h"
 
