@@ -34,7 +34,7 @@
 
 void initialize_executorch_module() {
 	// Register the MCP Server node
-	ClassDB::register_class<MCPServer>();
+	ClassDB::register_class<ModelContextProtocolServer>();
 
 	print_line("ExecuTorch module with MCP Server initialized");
 }
