@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://git.gitlab.arm.com/artificial-intelligence/ethos-u/ethos-u-core-driver.git
+	branch = main
+	commit = 60b4fbf76af8bff11c316588e77b7d626ab65e75
+	parent = 7ec785aef8442fcf4da36c1ef69367d554ecd670
+	method = merge
+	cmdver = 0.4.9
