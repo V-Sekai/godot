@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  executorch_node.h                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,21 +28,53 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "core/object/class_db.h"
-#include "executorch_node.h"
-#include "mcp_server.h"
+#ifndef EXECUTORCH_NODE_H
+#define EXECUTORCH_NODE_H
 
-void initialize_executorch_module() {
-	// Register the MCP Server node
-	ClassDB::register_class<MCPServer>();
+#include "scene/main/node.h"
+#include "core/string/ustring.h"
+#include "executorch_inference.h"
+#include <memory>
 
-	// Register the ExecuTorch Node
-	ClassDB::register_class<ExecuTorchNode>();
+class ExecuTorchNode : public Node {
+	GDCLASS(ExecuTorchNode, Node);
 
-	print_line("ExecuTorch module with MCP Server and ExecuTorch Node initialized");
-}
+private:
+	std::unique_ptr<ExecuTorchInference> inference_;
+	String model_path;
+	bool auto_load;
 
-void uninitialize_executorch_module() {
-	print_line("ExecuTorch module uninitialized");
-}
+protected:
+	static void _bind_methods();
+
+public:
+	ExecuTorchNode();
+	~ExecuTorchNode();
+
+	// Node overrides
+	void _ready();
+	void _exit_tree();
+
+	// Model management
+	bool load_model(const String &path);
+	void unload_model();
+	bool is_model_loaded() const;
+
+	// Inference
+	PackedFloat32Array predict(const PackedFloat32Array &input);
+	Dictionary predict_named(const Dictionary &inputs);
+
+	// Properties
+	void set_model_path(const String &path);
+	String get_model_path() const;
+	void set_auto_load(bool enable);
+	bool get_auto_load() const;
+
+	// Model info
+	PackedStringArray get_input_names() const;
+	PackedStringArray get_output_names() const;
+	PackedInt64Array get_input_shape(const String &name) const;
+	PackedInt64Array get_output_shape(const String &name) const;
+};
+
+#endif // EXECUTORCH_NODE_H

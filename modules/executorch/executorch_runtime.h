@@ -30,66 +30,50 @@
 
 #pragma once
 
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
+#include <cstddef> // for size_t
 
-// Forward declarations
-class ExecuTorchModel;
-class MCPServerInternal;
-
-// Simplified types for standalone compilation
-using String = std::string;
-using Dictionary = std::map<std::string, std::vector<float>>;
-using Array = std::vector<float>;
-using PackedByteArray = std::vector<uint8_t>;
+enum class ExecuTorchDevice {
+	CPU,
+	CUDA,
+	METAL,
+	VULKAN
+};
 
 class ExecuTorchRuntime {
 private:
-	std::shared_ptr<ExecuTorchModel> model_;
-	std::unique_ptr<MCPServerInternal> mcp_server_;
 	bool is_initialized_;
-	String model_path_;
-
-	// Performance metrics
-	double last_inference_time_ms_;
-	int total_inferences_;
+	ExecuTorchDevice device_;
+	size_t memory_pool_size_;
+	int num_threads_;
 
 public:
 	ExecuTorchRuntime();
-	virtual ~ExecuTorchRuntime();
+	~ExecuTorchRuntime();
 
-	// Core model management
-	bool load_model_from_pck(const String &pck_path);
-	bool load_model_from_file(const String &file_path);
-	void unload_model();
-	bool is_model_loaded() const;
-
-	// Inference methods
-	Dictionary run_inference(const Dictionary &inputs);
-	Array run_inference_array(const Array &input_data);
-
-	// Performance and diagnostics
-	double get_last_inference_time() const;
-	int get_total_inferences() const;
-	void reset_performance_stats();
+	// Runtime management
+	bool initialize();
+	void shutdown();
+	bool is_initialized() const { return is_initialized_; }
 
 	// Configuration
-	void set_optimization_level(int level);
-	void enable_profiling(bool enable);
-	void set_memory_limit(int64_t bytes);
+	void set_device(ExecuTorchDevice device) { device_ = device; }
+	ExecuTorchDevice get_device() const { return device_; }
+	void set_memory_pool_size(size_t size) { memory_pool_size_ = size; }
+	size_t get_memory_pool_size() const { return memory_pool_size_; }
+	void set_num_threads(int threads) { num_threads_ = threads; }
+	int get_num_threads() const { return num_threads_; }
 
-	// MCP tools interface
-	std::vector<String> list_mcp_tools() const;
-	Dictionary call_mcp_tool(const String &tool_name, const Dictionary &params);
-	Dictionary get_model_info() const;
-	Dictionary health_check() const;
+	// Memory management
+	void *allocate_memory(size_t size);
+	void deallocate_memory(void *ptr);
+	void clear_memory_pool();
+
+	// Performance monitoring
+	double get_last_inference_time() const;
+	size_t get_memory_usage() const;
 
 private:
-	// Internal helpers
-	bool _load_model_from_buffer(const PackedByteArray &model_data);
-	void _update_performance_stats(double inference_time);
-	Dictionary _convert_cpp_result(const std::map<std::string, std::vector<float>> &cpp_result);
-	std::map<std::string, std::vector<float>> _convert_godot_inputs(const Dictionary &godot_inputs);
+	bool _initialize_device();
+	bool _setup_memory_pool();
+	bool _configure_threading();
 };

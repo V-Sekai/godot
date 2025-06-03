@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  executorch_inference.cpp                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,21 +28,65 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "core/object/class_db.h"
-#include "executorch_node.h"
-#include "mcp_server.h"
+#include "executorch_inference.h"
+#include "executorch_runtime.h"
+#include <iostream>
 
-void initialize_executorch_module() {
-	// Register the MCP Server node
-	ClassDB::register_class<MCPServer>();
-
-	// Register the ExecuTorch Node
-	ClassDB::register_class<ExecuTorchNode>();
-
-	print_line("ExecuTorch module with MCP Server and ExecuTorch Node initialized");
+ExecuTorchInference::ExecuTorchInference(bool auto_manage) : auto_manage_runtime_(auto_manage) {
+    if (auto_manage_runtime_) {
+        runtime_ = std::make_unique<ExecuTorchRuntime>();
+    }
+    model_ = std::make_unique<ExecuTorchModel>();
 }
 
-void uninitialize_executorch_module() {
-	print_line("ExecuTorch module uninitialized");
+ExecuTorchInference::~ExecuTorchInference() {
+    // Unique pointers will automatically clean up
+}
+
+bool ExecuTorchInference::load_model(const std::string &file_path) {
+    if (!model_) {
+        std::cerr << "Model not initialized" << std::endl;
+        return false;
+    }
+    
+    // Initialize runtime if we're managing it
+    if (auto_manage_runtime_ && runtime_) {
+        if (!runtime_->initialize()) {
+            std::cerr << "Failed to initialize ExecuTorch runtime" << std::endl;
+            return false;
+        }
+    }
+    
+    // Load the model
+    bool success = model_->load_from_file(file_path);
+    if (!success) {
+        std::cerr << "Failed to load model from: " << file_path << std::endl;
+        return false;
+    }
+    
+    std::cout << "Successfully loaded model: " << file_path << std::endl;
+    return true;
+}
+
+std::vector<float> ExecuTorchInference::predict(const std::vector<float> &input) {
+    if (!model_ || !model_->is_loaded()) {
+        std::cerr << "Model not loaded" << std::endl;
+        return {};
+    }
+    
+    // Use the single input forward method for simplicity
+    return model_->forward_single(input);
+}
+
+void ExecuTorchInference::set_runtime(ExecuTorchRuntime* external_runtime) {
+    if (auto_manage_runtime_) {
+        // Release our managed runtime
+        runtime_.reset();
+        auto_manage_runtime_ = false;
+    }
+    
+    // Note: We're not storing the external runtime pointer here
+    // In a real implementation, you'd need to modify ExecuTorchModel 
+    // to accept and use the external runtime
+    std::cout << "External runtime set (implementation pending)" << std::endl;
 }
