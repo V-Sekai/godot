@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/gflags/gflags.git
+	branch = master
+	commit = 52e94563eba1968783864942fedf6e87e3c611f4
+	parent = 4628ef0612e508f3c59c402a627fb079f675a992
+	method = merge
+	cmdver = 0.4.9
