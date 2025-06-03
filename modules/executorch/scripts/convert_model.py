@@ -59,6 +59,11 @@ def create_and_train_model():
             print(f"Epoch {epoch + 1}, Loss: {loss.item():.4f}")
 
     model.eval()
+    
+    # Save the trained model weights
+    torch.save(model.state_dict(), "models/simple_linear_weights.pth")
+    print("Model weights saved to models/simple_linear_weights.pth")
+    
     return model
 
 
