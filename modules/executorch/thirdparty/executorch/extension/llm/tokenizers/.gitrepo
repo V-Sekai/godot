@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/pytorch-labs/tokenizers.git
+	branch = main
+	commit = fc5962cd9e08019c5df6667eba3377e7d76441f7
+	parent = 051fe8e0adc30d36ef782acb610b0490cfb7f48e
+	method = merge
+	cmdver = 0.4.9
