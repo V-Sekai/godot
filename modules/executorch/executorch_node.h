@@ -28,12 +28,11 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EXECUTORCH_NODE_H
-#define EXECUTORCH_NODE_H
+#pragma once
 
-#include "scene/main/node.h"
 #include "core/string/ustring.h"
 #include "executorch_inference.h"
+#include "scene/main/node.h"
 #include <memory>
 
 class ExecuTorchNode : public Node {
@@ -76,5 +75,3 @@ public:
 	PackedInt64Array get_input_shape(const String &name) const;
 	PackedInt64Array get_output_shape(const String &name) const;
 };
-
-#endif // EXECUTORCH_NODE_H
