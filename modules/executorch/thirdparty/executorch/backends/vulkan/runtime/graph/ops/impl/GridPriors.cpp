@@ -55,7 +55,7 @@ void add_grid_priors_node(
       graph.create_local_wg_size(out),
       // Inputs and Outputs
       {
-          {out, vkapi::kWrite},
+          {out, vkapi::MemoryAccessType::WRITE},
       },
       // Shader params buffers
       {
@@ -63,14 +63,10 @@ void add_grid_priors_node(
           t_out->sizes_ubo(),
           graph.create_params_buffer(param),
       },
-      // Push Constants
-      {},
       // Specialization Constants
       {},
-      // Resize Args
-      {in},
-      // Resizing Logic
-      resize_grid_priors_node));
+      resize_grid_priors_node,
+      {in}));
 }
 
 void grid_priors(ComputeGraph& graph, const std::vector<ValueRef>& args) {

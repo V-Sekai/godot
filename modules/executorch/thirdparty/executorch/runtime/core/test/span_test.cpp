@@ -7,6 +7,7 @@
  */
 
 #include <executorch/runtime/core/span.h>
+#include <span>
 
 #include <gtest/gtest.h>
 

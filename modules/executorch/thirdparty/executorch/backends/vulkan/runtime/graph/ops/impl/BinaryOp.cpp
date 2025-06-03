@@ -84,20 +84,19 @@ void add_binary_op_texture_node(
       graph.create_global_wg_size(out),
       graph.create_local_wg_size(out),
       // Inputs and Outputs
-      {{out, vkapi::kWrite}, {{arg1, arg2}, vkapi::kRead}},
+      {{out, vkapi::MemoryAccessType::WRITE},
+       {{arg1, arg2}, vkapi::MemoryAccessType::READ}},
       // Shader params buffers
       {},
-      // Push Constants
+      // Specialization Constants
+      {t_out->hashed_layout(), t_in1->hashed_layout(), t_in2->hashed_layout()},
+      // Resizing Logic
+      resize_binary_op_node,
+      {},
       {{graph.sizes_pc_of(out),
         graph.sizes_pc_of(arg1),
         graph.sizes_pc_of(arg2),
-        PushConstantDataInfo(&binary_ops_params, sizeof(binary_ops_params))}},
-      // Specialization Constants
-      {t_out->hashed_layout(), t_in1->hashed_layout(), t_in2->hashed_layout()},
-      // Resize Args
-      {},
-      // Resizing Logic
-      resize_binary_op_node));
+        PushConstantDataInfo(&binary_ops_params, sizeof(binary_ops_params))}}));
 }
 
 void add_binary_op_buffer_node(
@@ -128,10 +127,17 @@ void add_binary_op_buffer_node(
       graph.create_global_wg_size(out),
       graph.create_local_wg_size(out),
       // Inputs and Outputs
-      {{out, vkapi::kWrite}, {{in1, in2}, vkapi::kRead}},
+      {{out, vkapi::MemoryAccessType::WRITE},
+       {{in1, in2}, vkapi::MemoryAccessType::READ}},
       // Shader params buffers
       {},
-      // Push Constants
+      // Specialization Constants
+      {graph.packed_dim_of(out),
+       graph.packed_dim_of(in1),
+       graph.packed_dim_of(in2)},
+      // Resizing Logic
+      resize_binary_op_node,
+      {},
       {{
           graph.sizes_pc_of(in1),
           graph.sizes_pc_of(in2),
@@ -140,15 +146,7 @@ void add_binary_op_buffer_node(
           graph.strides_pc_of(in2),
           graph.numel_pc_of(out),
           PushConstantDataInfo(&alpha_val, sizeof(float)),
-      }},
-      // Specialization Constants
-      {graph.packed_dim_of(out),
-       graph.packed_dim_of(in1),
-       graph.packed_dim_of(in2)},
-      // Resize Args
-      {},
-      // Resizing Logic
-      resize_binary_op_node));
+      }}));
 }
 
 void add_binary_op_node(

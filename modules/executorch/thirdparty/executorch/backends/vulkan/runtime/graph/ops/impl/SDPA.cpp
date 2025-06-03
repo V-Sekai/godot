@@ -59,14 +59,11 @@ void add_kv_cache_update_node(
       {{cache, vkapi::kWrite}, {projected, vkapi::kRead}},
       // Shader param buffers
       param_ubos,
-      // Push Constants
-      {},
       // Specialization Constants
       {},
-      // Resize Args
-      {},
       // Resizing Logic
-      nullptr));
+      nullptr,
+      {}));
 }
 
 void add_attn_weight_scale_and_mask_node(
@@ -116,14 +113,11 @@ void add_attn_weight_scale_and_mask_node(
       {{attn_weight, vkapi::kReadWrite}},
       // Shader param buffers
       param_ubos,
-      // Push Constants
-      {},
       // Specialization Constants
       {},
-      // Resize Args
-      {},
       // Resizing Logic
-      nullptr));
+      nullptr,
+      {}));
 }
 
 std::vector<int64_t> get_cache_slice_sizes(

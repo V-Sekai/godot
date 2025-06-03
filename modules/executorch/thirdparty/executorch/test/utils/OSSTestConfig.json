@@ -45,6 +45,7 @@
     {
         "directory": "extension/pytree/test",
         "sources": [
+            "function_ref_test.cpp",
             "test_pytree.cpp"
         ]
     },
@@ -95,15 +96,14 @@
     {
         "directory": "runtime/core/test",
         "sources": [
-            "array_ref_test.cpp",
+            "span_test.cpp",
             "error_handling_test.cpp",
-            "evalue_test.cpp",
             "event_tracer_test.cpp",
             "freeable_buffer_test.cpp",
-            "function_ref_test.cpp",
-            "hierarchical_allocator_test.cpp",
+            "array_ref_test.cpp",
             "memory_allocator_test.cpp",
-            "span_test.cpp"
+            "hierarchical_allocator_test.cpp",
+            "evalue_test.cpp"
         ]
     },
     {

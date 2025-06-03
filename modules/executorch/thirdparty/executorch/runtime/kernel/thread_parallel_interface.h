@@ -13,7 +13,6 @@
 
 #include <c10/util/irange.h>
 #include <executorch/runtime/core/error.h>
-#include <executorch/runtime/core/function_ref.h>
 #include <executorch/runtime/platform/assert.h>
 
 namespace executorch {
@@ -70,7 +69,7 @@ bool parallel_for(
     const int64_t begin,
     const int64_t end,
     const int64_t grain_size,
-    runtime::FunctionRef<void(int64_t, int64_t)> f);
+    const std::function<void(int64_t, int64_t)>& f);
 
 int64_t get_thread_num();
 

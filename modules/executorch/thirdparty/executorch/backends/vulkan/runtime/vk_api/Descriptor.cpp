@@ -154,7 +154,6 @@ DescriptorSet& DescriptorSet::bind(
 
 VkDescriptorSet DescriptorSet::get_bind_handle() const {
   std::vector<VkWriteDescriptorSet> write_descriptor_sets;
-  write_descriptor_sets.reserve(bindings_.size());
 
   for (const ResourceBinding& binding : bindings_) {
     VkWriteDescriptorSet write{
@@ -186,7 +185,9 @@ VkDescriptorSet DescriptorSet::get_bind_handle() const {
       0u,
       nullptr);
 
-  return handle_;
+  VkDescriptorSet ret = handle_;
+
+  return ret;
 }
 
 void DescriptorSet::add_binding(const ResourceBinding& binding) {

@@ -13,7 +13,7 @@ namespace native {
 
 using executorch::aten::ScalarType;
 using executorch::aten::Tensor;
-using executorch::ET_RUNTIME_NAMESPACE::KernelRuntimeContext;
+using executorch::runtime::KernelRuntimeContext;
 
 namespace {
 void check_preconditions(const Tensor& in, Tensor& out) {

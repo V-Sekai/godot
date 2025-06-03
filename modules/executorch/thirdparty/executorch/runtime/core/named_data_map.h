@@ -22,7 +22,8 @@
 #include <executorch/runtime/platform/compiler.h>
 
 namespace executorch {
-namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
+
 /**
  * Interface to access and retrieve data via name.
  * See executorch/extension/flat_tensor/ for an example.
@@ -36,8 +37,8 @@ class ET_EXPERIMENTAL NamedDataMap {
    * @param key The name of the tensor.
    * @return Result containing TensorLayout with tensor metadata.
    */
-  ET_NODISCARD virtual Result<const TensorLayout> get_metadata(
-      const char* key) const = 0;
+  ET_NODISCARD virtual Result<const executorch::runtime::TensorLayout>
+  get_metadata(const char* key) const = 0;
   /**
    * Get data by key.
    *
@@ -77,7 +78,7 @@ class ET_EXPERIMENTAL NamedDataMap {
   ET_NODISCARD virtual Result<const char*> get_key(size_t index) const = 0;
 };
 
-} // namespace ET_RUNTIME_NAMESPACE
+} // namespace runtime
 } // namespace executorch
 
 #ifdef __GNUC__

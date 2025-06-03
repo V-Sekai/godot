@@ -3,21 +3,18 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-
-from typing import Tuple
+import unittest
 
 import torch
 from executorch.backends.arm._passes.convert_to_clamp import ConvertToClampPass
 
 from executorch.backends.arm.test import common
-from executorch.backends.arm.test.tester.test_pipeline import PassPipeline
+from executorch.backends.arm.test.tester.arm_tester import ArmTester
 
-input_t = Tuple[torch.Tensor]  # Input x
+from executorch.backends.xnnpack.test.tester.tester import RunPasses
 
 
 class HardTanh(torch.nn.Module):
-    test_data = {"rand": (torch.rand(1, 64, 64, 3),)}
-
     def __init__(self):
         super().__init__()
 
@@ -26,10 +23,11 @@ class HardTanh(torch.nn.Module):
     def forward(self, x):
         return self.hardtanh(x)
 
+    def get_inputs(self):
+        return (torch.rand(1, 64, 64, 3),)
+
 
 class ReLU(torch.nn.Module):
-    test_data = {"rand": (torch.rand(1, 64, 64, 3),)}
-
     def __init__(self):
         super().__init__()
 
@@ -38,55 +36,45 @@ class ReLU(torch.nn.Module):
     def forward(self, x):
         return self.relu(x)
 
-
-"""
-Tests the ConvertToClampPass which converts hardtanh.default and relu.default to clamp.default
-"""
+    def get_inputs(self):
+        return (torch.rand(1, 64, 64, 3),)
 
 
-@common.parametrize("test_data", HardTanh.test_data)
-def test_tosa_MI_hardtahn(test_data: input_t):
-    module = HardTanh()
-    op_checks_before_pass = {
-        "executorch_exir_dialects_edge__ops_aten_hardtanh_default": 1,
-    }
-    op_checks_after_pass = {
-        "executorch_exir_dialects_edge__ops_aten_clamp_default": 1,
-    }
-    op_checks_not_after_pass = [
-        "executorch_exir_dialects_edge__ops_aten_hardtanh_default",
-    ]
-    pipeline = PassPipeline[input_t](
-        module,
-        test_data,
-        quantize=False,
-        ops_before_pass=op_checks_before_pass,
-        ops_after_pass=op_checks_after_pass,
-        ops_not_after_pass=op_checks_not_after_pass,
-        pass_list=[ConvertToClampPass],
-    )
-    pipeline.run()
+class TestConvertToClampPass(unittest.TestCase):
+    """
+    Tests the ConvertToClampPass which converts hardtanh.default and relu.default to clamp.default
+    """
 
+    def test_tosa_MI_hardtahn(self):
+        module = HardTanh()
+        test_pass_stage = RunPasses([ConvertToClampPass])
+        (
+            ArmTester(
+                module,
+                example_inputs=module.get_inputs(),
+                compile_spec=common.get_tosa_compile_spec("TOSA-0.80+MI"),
+            )
+            .export()
+            .to_edge()
+            .check(["executorch_exir_dialects_edge__ops_aten_hardtanh_default"])
+            .run_passes(test_pass_stage)
+            .check(["executorch_exir_dialects_edge__ops_aten_clamp_default"])
+            .check_not(["executorch_exir_dialects_edge__ops_aten_hardtanh_default"])
+        )
 
-@common.parametrize("test_data", ReLU.test_data)
-def test_tosa_MI_relu(test_data: input_t):
-    module = ReLU()
-    op_checks_before_pass = {
-        "executorch_exir_dialects_edge__ops_aten_relu_default": 1,
-    }
-    op_checks_after_pass = {
-        "executorch_exir_dialects_edge__ops_aten_clamp_default": 1,
-    }
-    op_checks_not_after_pass = [
-        "executorch_exir_dialects_edge__ops_aten_relu_default",
-    ]
-    pipeline = PassPipeline[input_t](
-        module,
-        test_data,
-        quantize=False,
-        ops_before_pass=op_checks_before_pass,
-        ops_after_pass=op_checks_after_pass,
-        ops_not_after_pass=op_checks_not_after_pass,
-        pass_list=[ConvertToClampPass],
-    )
-    pipeline.run()
+    def test_tosa_MI_relu(self):
+        module = ReLU()
+        test_pass_stage = RunPasses([ConvertToClampPass])
+        (
+            ArmTester(
+                module,
+                example_inputs=module.get_inputs(),
+                compile_spec=common.get_tosa_compile_spec("TOSA-0.80+MI"),
+            )
+            .export()
+            .to_edge()
+            .check(["executorch_exir_dialects_edge__ops_aten_relu_default"])
+            .run_passes(test_pass_stage)
+            .check(["executorch_exir_dialects_edge__ops_aten_clamp_default"])
+            .check_not(["executorch_exir_dialects_edge__ops_aten_relu_default"])
+        )

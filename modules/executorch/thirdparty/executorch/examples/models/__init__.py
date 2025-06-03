@@ -44,8 +44,7 @@ class Model(str, Enum):
 
 class Backend(str, Enum):
     XnnpackQuantizationDelegation = "xnnpack-quantization-delegation"
-    CoreMlExportOnly = "coreml"
-    CoreMlExportAndTest = "coreml-test"  # AOT export + test with runner
+    CoreMlTest = "coreml-test"
 
     def __str__(self) -> str:
         return self.value

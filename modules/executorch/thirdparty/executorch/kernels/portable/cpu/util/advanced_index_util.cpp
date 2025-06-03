@@ -28,8 +28,7 @@ bool check_indices_dtypes(TensorOptList indices) {
       ET_CHECK_OR_RETURN_FALSE(
           ix_type == ScalarType::Long || ix_type == ScalarType::Int ||
               ix_type == ScalarType::Byte || ix_type == ScalarType::Bool,
-          "Index tensors should be Long, Int, Byte or Bool; got %d",
-          static_cast<int>(ix_type));
+          "Index tensors should be Long, Int, Byte or Bool");
     }
   }
   return true;
@@ -296,19 +295,11 @@ bool get_index_out_target_size(
 
   ET_CHECK_OR_RETURN_FALSE(
       static_cast<ssize_t>(num_null_indices + num_indexed_dims) <= in.dim(),
-      "Indexing too many dimensions; num_null_indices = %zu, num_indexed_dims = %zu, in.dim() = %" ET_PRI_TENSOR_DIM,
-      num_null_indices,
-      num_indexed_dims,
-      in.dim());
+      "Indexing too many dimensions");
 
   ET_CHECK_OR_RETURN_FALSE(
       in.dim() + broadcast_ndim - num_indexed_dims <= kTensorDimensionLimit,
-      "Out tensor would exceed number of allowed dimensions; in.dim() = %" ET_PRI_TENSOR_DIM
-      ", broadcast_ndim = %zu, num_indexed_dims = %zu, kTensorDimensionLimit = %zu",
-      in.dim(),
-      broadcast_ndim,
-      num_indexed_dims,
-      kTensorDimensionLimit);
+      "Out tensor would exceed number of allowed dimensions");
 
   (*out_ndim) = in.dim() + broadcast_ndim - num_indexed_dims;
 

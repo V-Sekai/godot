@@ -7,10 +7,7 @@
 import unittest
 
 import torch
-from executorch.examples.models.llama.llama_transformer import (
-    construct_transformer,
-    Transformer,
-)
+from executorch.examples.models.llama.llama_transformer import Transformer
 from executorch.examples.models.llama.model_args import ModelArgs
 from executorch.examples.models.llama.source_transformation.pre_quantization import (
     sanitize_checkpoint_from_pre_quantization,
@@ -42,7 +39,7 @@ class PreQuantizationTests(unittest.TestCase):
             vocab_size=32000,
         )
 
-        model = construct_transformer(model_args)
+        model = Transformer(model_args)
 
         return model
 

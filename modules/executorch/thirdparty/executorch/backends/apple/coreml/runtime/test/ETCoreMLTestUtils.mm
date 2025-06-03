@@ -250,14 +250,16 @@ ETCoreMLAsset * _Nullable make_asset(NSURL *url,
     if (!inMemoryFS) {
         ETCoreMLLogErrorAndSetNSError(error,
                                       ETCoreMLErrorCorruptedModel,
-                                      "Model data is corrupted.");
+                                      "%@: Model data is corrupted.",
+                                      NSStringFromClass(ETCoreMLTestUtils.class));
         return NO;
     }
     
     if (!extract_model_metadata(*inMemoryFS, metadata) || !metadata.is_valid()) {
         ETCoreMLLogErrorAndSetNSError(error,
                                       ETCoreMLErrorCorruptedMetadata,
-                                      "Model metadata is corrupted.");
+                                      "%@: Model metadata is corrupted.",
+                                      NSStringFromClass(ETCoreMLTestUtils.class));
         return NO;
     }
     
@@ -267,7 +269,8 @@ ETCoreMLAsset * _Nullable make_asset(NSURL *url,
     if (![fileManager createDirectoryAtURL:modelURL withIntermediateDirectories:NO attributes:@{} error:error]) {
         ETCoreMLLogErrorAndSetNSError(error,
                                       ETCoreMLErrorModelSaveFailed,
-                                      "Failed to create directory when saving model with name = %@.",
+                                      "%@: Failed to create directory when saving model with name = %@.",
+                                      NSStringFromClass(ETCoreMLTestUtils.class),
                                       modelURL.lastPathComponent);
         return NO;
     }

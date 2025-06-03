@@ -15,9 +15,8 @@ def define_common_targets(is_fbcode = False):
         visibility = [
             "//executorch/...",
         ],
-        deps = [
-            "//executorch/codegen:gen_lib",
-        ] + select({
+        external_deps = ["torchgen"],
+        deps = select({
             "DEFAULT": [],
             "ovr_config//os:linux": [] if runtime.is_oss else ["//executorch/codegen/tools/fb:selective_build"],  # TODO(larryliu0820) :selective_build doesn't build in OSS yet
         }),
@@ -180,7 +179,7 @@ def define_common_targets(is_fbcode = False):
             srcs = ["test/test_gen_oplist_real_model.py"],
             base_module = "",
             resources = {
-                "//executorch/test/models:exported_programs[ModuleAddMul.pte]": "test/ModuleAddMul.pte",
+                "//executorch/test/models:exported_programs[ModuleLinear.pte]": "test/ModuleLinear.pte",
             },
             visibility = [
                 "//executorch/...",

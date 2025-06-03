@@ -25,7 +25,7 @@ Tensor& op_replication_pad1d_out(
     const Tensor& input,
     ArrayRef<int64_t> padding,
     Tensor& out) {
-  executorch::ET_RUNTIME_NAMESPACE::KernelRuntimeContext context{};
+  executorch::runtime::KernelRuntimeContext context{};
   return torch::executor::aten::replication_pad1d_outf(
       context, input, padding, out);
 }

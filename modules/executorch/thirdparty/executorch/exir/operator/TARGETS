@@ -32,8 +32,6 @@ python_library(
     ],
     deps = [
         "//caffe2/torchgen:torchgen",
-        "//pytorch/ao:torchao",
-        "//caffe2:torch",
     ],
 )
 

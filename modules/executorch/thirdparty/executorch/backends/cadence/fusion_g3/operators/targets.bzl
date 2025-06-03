@@ -40,7 +40,6 @@ OPERATORS = [
     "rsqrt",
     "sigmoid",
     "sqrt",
-    "hardtanh",
     "tanh",
     "transpose_copy",
     "where",

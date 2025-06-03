@@ -1,4 +1,5 @@
-# Copyright 2024-2025 Arm Limited and/or its affiliates.
+# Copyright 2024 Arm Limited and/or its affiliates.
+# All rights reserved.
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
@@ -6,10 +7,8 @@
 # pyre-unsafe
 
 import torch.fx
-from executorch.backends.arm._passes.arm_pass_utils import (
-    create_node,
-    get_first_fake_tensor,
-)
+from executorch.backends.arm._passes.arm_pass_utils import create_node
+from executorch.backends.arm.tosa_mapping import extract_tensor_meta
 from executorch.exir.dialects._ops import ops as exir_ops
 from executorch.exir.pass_base import ExportPass, PassResult
 
@@ -35,7 +34,7 @@ class ConvertSplitToSlicePass(ExportPass):
             split_node = node
             input_node = split_node.all_input_nodes[0]
             output_nodes = split_node.users.copy()
-            shape = get_first_fake_tensor(input_node).shape
+            _, shape, _ = extract_tensor_meta(input_node.meta)
             rank = len(shape)
             split_lengths = split_node.args[1]
             dim = split_node.args[2] if len(split_node.args) > 2 else 0

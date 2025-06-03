@@ -18,7 +18,7 @@ public interface ModelRunnerCallback {
 
   void onTokenGenerated(String token);
 
-  void onStats(String stats);
+  void onStats(String token);
 
   void onGenerationStopped();
 }

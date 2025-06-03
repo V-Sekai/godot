@@ -6,6 +6,7 @@
 # pyre-unsafe
 
 import logging
+import os
 from typing import Callable, List, Optional, Sequence, Tuple
 
 import torch
@@ -32,6 +33,11 @@ from torch.fx.passes.operator_support import OperatorSupportBase
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+TOSA_DBG_VERBOSE = os.environ.get("TOSA_DBG_VERBOSE") == "1"
+if TOSA_DBG_VERBOSE:
+    logging.basicConfig(level=logging.INFO)
+    logger.setLevel(logging.INFO)
 
 
 def is_quant_node(node: torch.fx.node.Node) -> bool:
@@ -96,9 +102,7 @@ class TOSAPartitioner(Partitioner):
 
             # De-tag outmost q-nodes upwards and dq-nodes downwards.
             # De-tag if at least one input/ output is not part of partition.
-            for node in exported_program.graph_module.graph.nodes:
-                if not is_partitioned(node):
-                    continue
+            for node in partition.nodes:
                 if is_quant_node(node):
                     for input in node.all_input_nodes:
                         if not is_partitioned(input):
@@ -172,7 +176,6 @@ class TOSAPartitioner(Partitioner):
 
         ops_to_not_decompose = [
             torch.ops.aten.linear.default,
-            torch.ops.aten.upsample_bilinear2d.vec,
             torch.ops.aten.upsample_nearest2d.vec,
             torch.ops.aten.eye.default,
             torch.ops.aten.linspace.default,

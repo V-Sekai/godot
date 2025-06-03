@@ -94,19 +94,16 @@ void add_arange_node(
       graph.create_global_wg_size(out),
       graph.create_local_wg_size(out),
       // Inputs and Outputs
-      {{out, vkapi::kWrite}},
+      {{out, vkapi::MemoryAccessType::WRITE}},
       // Shader params buffers
       {t_out->sizes_ubo(),
        graph.create_params_buffer(start_val),
        graph.create_params_buffer(step_val)},
-      // Push Constants
-      {},
       // Specialization Constants
       {},
-      // Resize Args
-      {start, end, step},
       // Resizing Logic
-      resize_arange_node));
+      resize_arange_node,
+      {start, end, step}));
 }
 
 void arange(ComputeGraph& graph, const std::vector<ValueRef>& args) {

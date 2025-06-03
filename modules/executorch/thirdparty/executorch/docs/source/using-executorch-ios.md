@@ -11,7 +11,8 @@ The ExecuTorch Runtime for iOS and macOS is distributed as a collection of prebu
 * `backend_mps` - MPS backend
 * `backend_xnnpack` - XNNPACK backend
 * `kernels_custom` - Custom kernels for LLMs
-* `kernels_optimized` - Accelerated generic CPU kernels
+* `kernels_optimized` - Optimized kernels
+* `kernels_portable` - Portable kernels (naive implementation used as a reference)
 * `kernels_quantized` - Quantized kernels
 
 Link your binary with the ExecuTorch runtime and any backends or kernels used by the exported ML model. It is recommended to link the core runtime to the components that use ExecuTorch directly, and link kernels and backends against the main app target.
@@ -24,7 +25,7 @@ The prebuilt ExecuTorch runtime, backend, and kernels are available as a [Swift 
 
 #### Xcode
 
-In Xcode, go to `File > Add Package Dependencies`. Paste the URL of the [ExecuTorch repo](https://github.com/pytorch/executorch) into the search bar and select it. Make sure to change the branch name to the desired ExecuTorch version in format "swiftpm-<version>", (e.g. "swiftpm-0.6.0"), or a branch name in format "swiftpm-<version>.<year_month_date>" (e.g. "swiftpm-0.7.0-20250401") for a [nightly build](https://ossci-ios.s3.amazonaws.com/list.html) on a specific date.
+In Xcode, go to `File > Add Package Dependencies`. Paste the URL of the [ExecuTorch repo](https://github.com/pytorch/executorch) into the search bar and select it. Make sure to change the branch name to the desired ExecuTorch version in format "swiftpm-<version>", (e.g. "swiftpm-0.6.0"), or a branch name in format "swiftpm-<version>.<year_month_date>" (e.g. "swiftpm-0.6.0-20250501") for a nightly build on a specific date.
 
 ![](_static/img/swiftpm_xcode1.png)
 
@@ -34,8 +35,8 @@ Then select which ExecuTorch framework should link against which target.
 
 Click the screenshot below to watch the *demo video* on how to add the package and run a simple ExecuTorch model on iOS.
 
-<a href="_static/img/swiftpm_xcode.mp4">
-  <img src="_static/img/swiftpm_xcode.png" width="800" alt="Integrating and Running ExecuTorch on Apple Platforms">
+<a href="https://pytorch.org/executorch/0.6/_static/img/swiftpm_xcode.mp4">
+  <img src="https://pytorch.org/executorch/0.6/_static/img/swiftpm_xcode.png" width="800" alt="Integrating and Running ExecuTorch on Apple Platforms">
 </a>
 
 #### CLI
@@ -50,7 +51,7 @@ let package = Package(
   name: "YourPackageName",
   platforms: [
     .iOS(.v17),
-    .macOS(.v12),
+    .macOS(.v10_15),
   ],
   products: [
     .library(name: "YourPackageName", targets: ["YourTargetName"]),
@@ -65,7 +66,7 @@ let package = Package(
       dependencies: [
         .product(name: "executorch", package: "executorch"),
         .product(name: "backend_xnnpack", package: "executorch"),
-        .product(name: "kernels_optimized", package: "executorch"),
+        .product(name: "kernels_portable", package: "executorch"),
         // Add other backends and kernels as needed.
       ]),
   ]
@@ -96,7 +97,7 @@ xcode-select --install
 2. Clone ExecuTorch:
 
 ```bash
-git clone -b viable/strict https://github.com/pytorch/executorch.git --depth 1 --recurse-submodules --shallow-submodules && cd executorch
+git clone -b release/0.6 https://github.com/pytorch/executorch.git --depth 1 --recurse-submodules --shallow-submodules && cd executorch
 ```
 
 3. Set up [Python](https://www.python.org/downloads/macos/) 3.10+ and activate a virtual environment:
@@ -112,6 +113,9 @@ python3 -m venv .venv && source .venv/bin/activate && pip install --upgrade pip
 
 # CoreML-only requirements:
 ./backends/apple/coreml/scripts/install_requirements.sh
+
+# MPS-only requirements:
+./backends/apple/mps/install_requirements.sh
 ```
 
 5. Install [CMake](https://cmake.org):
@@ -131,7 +135,7 @@ sudo /Applications/CMake.app/Contents/bin/cmake-gui --install
 For example, the following command will build the ExecuTorch Runtime along with all available kernels and backends for the Apple platform in both Release and Debug modes:
 
 ```bash
-./scripts/build_apple_frameworks.sh
+./scripts/build_apple_frameworks.sh --Release --Debug --coreml --mps --xnnpack --custom --optimized --portable --quantized
 ```
 
 After the build finishes successfully, the resulting frameworks can be found in the `cmake-out` directory.

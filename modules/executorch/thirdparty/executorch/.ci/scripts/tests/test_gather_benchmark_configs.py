@@ -53,11 +53,11 @@ class TestGatehrBenchmarkConfigs(unittest.TestCase):
                 "mv3": [
                     self.gather_benchmark_configs.DisabledConfig(
                         config_name="disabled_config1",
-                        github_issue="https://github.com/org/repo/issues/123",  # @lint-ignore
+                        github_issue="https://github.com/org/repo/issues/123",
                     ),
                     self.gather_benchmark_configs.DisabledConfig(
                         config_name="disabled_config2",
-                        github_issue="https://github.com/org/repo/issues/124",  # @lint-ignore
+                        github_issue="https://github.com/org/repo/issues/124",
                     ),
                 ]
             },
@@ -84,9 +84,7 @@ class TestGatehrBenchmarkConfigs(unittest.TestCase):
             self.assertIn("enabled_config2", result)
 
     def test_disabled_configs_have_github_links(self):
-        github_issue_regex = re.compile(
-            r"https://github\.com/.+/.+/issues/\d+"  # @lint-ignore
-        )
+        github_issue_regex = re.compile(r"https://github\.com/.+/.+/issues/\d+")
 
         for (
             model_name,

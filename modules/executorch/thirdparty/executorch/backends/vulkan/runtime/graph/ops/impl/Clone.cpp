@@ -50,11 +50,7 @@ void add_clone_node(
       {{out, vkapi::kWrite}, {in, vkapi::kRead}},
       // Parameter Buffers
       {t_out->logical_limits_ubo()},
-      // Push Constants
-      {},
       // Specialization Constants
-      {},
-      // Resize Args
       {},
       // Resizing Logic
       resize_clone_node));
@@ -78,12 +74,8 @@ void add_image_to_buffer_node(
       {{buffer, vkapi::kWrite}, {image, vkapi::kRead}},
       // Parameter Buffers
       {graph.sizes_ubo(image), graph.strides_ubo(buffer)},
-      // Push Constants
-      {},
       // Specialization Constants
       {graph.hashed_layout_of(image)},
-      // Resize Args
-      {},
       // Resizing Logic
       resize_clone_node));
 }
@@ -105,13 +97,9 @@ void add_buffer_to_image_node(
       // Input and Outputs
       {{image, vkapi::kWrite}, {buffer, vkapi::kRead}},
       // Parameter Buffers
-      {},
-      // Push Constants
-      {graph.sizes_pc_of(image), graph.strides_pc_of(buffer)},
+      {graph.sizes_ubo(image), graph.strides_ubo(buffer)},
       // Specialization Constants
       {graph.hashed_layout_of(image)},
-      // Resize Args
-      {},
       // Resizing Logic
       resize_clone_node));
 }

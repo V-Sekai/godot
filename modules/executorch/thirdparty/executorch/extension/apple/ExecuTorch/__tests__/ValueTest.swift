@@ -6,7 +6,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import ExecuTorch
+@testable import ExecuTorch
+
 import XCTest
 
 class ValueTest: XCTestCase {

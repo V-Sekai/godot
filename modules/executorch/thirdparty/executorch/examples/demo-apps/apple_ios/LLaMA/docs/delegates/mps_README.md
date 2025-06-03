@@ -9,7 +9,7 @@ More specifically, it covers:
 ## Prerequisites
 * [Xcode 15](https://developer.apple.com/xcode)
 * [iOS 18 SDK](https://developer.apple.com/ios)
-* Set up your ExecuTorch repo and environment if you haven’t done so by following the [Setting up ExecuTorch](https://pytorch.org/executorch/main/using-executorch-building-from-source) to set up the repo and dev environment:
+* Set up your ExecuTorch repo and environment if you haven’t done so by following the [Setting up ExecuTorch](https://pytorch.org/executorch/stable/getting-started-setup) to set up the repo and dev environment:
 
 ## Setup ExecuTorch
 In this section, we will need to set up the ExecuTorch repo first with Conda environment management. Make sure you have Conda available in your system (or follow the instructions to install it [here](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)). The commands below are running on Linux (CentOS).
@@ -17,7 +17,7 @@ In this section, we will need to set up the ExecuTorch repo first with Conda env
 Checkout ExecuTorch repo and sync submodules
 
 ```
-git clone -b viable/strict https://github.com/pytorch/executorch.git && cd executorch
+git clone -b release/0.6 https://github.com/pytorch/executorch.git && cd executorch
 ```
 
 Create either a Python virtual environment:
@@ -36,6 +36,7 @@ Install dependencies
 
 ```
 ./install_executorch.sh
+./backends/apple/mps/install_requirements.sh
 ```
 
 ## Prepare Models
@@ -78,13 +79,13 @@ sudo /Applications/CMake.app/Contents/bin/cmake-gui --install
 The prebuilt ExecuTorch runtime, backend, and kernels are available as a Swift PM package.
 
 ### Xcode
-Open the project in Xcode.In Xcode, go to `File > Add Package Dependencies`. Paste the URL of the ExecuTorch repo into the search bar and select it. Make sure to change the branch name to the desired ExecuTorch version, e.g., “swiftpm-0.6.0”, or a branch name in format "swiftpm-<version>.<year_month_date>" (e.g. "swiftpm-0.7.0-20250401") for a nightly build on a specific date.
+Open the project in Xcode.In Xcode, go to `File > Add Package Dependencies`. Paste the URL of the ExecuTorch repo into the search bar and select it. Make sure to change the branch name to the desired ExecuTorch version, e.g., “swiftpm-0.6.0”, or a branch name in format "swiftpm-<version>.<year_month_date>" (e.g. "swiftpm-0.6.0-20250501") for a nightly build on a specific date.
 
 Link your binary with the ExecuTorch runtime and any backends or kernels used by the exported ML model. It is recommended to link the core runtime to the components that use ExecuTorch directly, and link kernels and backends against the main app target.
 
 Note: To access logs, link against the Debug build of the ExecuTorch runtime, i.e., the executorch_debug framework. For optimal performance, always link against the Release version of the deliverables (those without the _debug suffix), which have all logging overhead removed.
 
-For more details integrating and Running ExecuTorch on Apple Platforms, checkout this [link](https://pytorch.org/executorch/main/using-executorch-ios).
+For more details integrating and Running ExecuTorch on Apple Platforms, checkout this [link](https://pytorch.org/executorch/0.6/using-executorch-ios.html).
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/pytorch/executorch/refs/heads/main/docs/source/_static/img/ios_demo_app_swift_pm.png" alt="iOS LLaMA App Swift PM" style="width:600px">

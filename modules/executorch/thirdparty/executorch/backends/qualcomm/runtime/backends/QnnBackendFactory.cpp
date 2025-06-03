@@ -7,7 +7,6 @@
  */
 #include <executorch/backends/qualcomm/runtime/Logging.h>
 #include <executorch/backends/qualcomm/runtime/backends/QnnBackendFactory.h>
-#include <executorch/backends/qualcomm/runtime/backends/QnnDlcManager.h>
 namespace executorch {
 namespace backends {
 namespace qnn {
@@ -18,8 +17,7 @@ std::unique_ptr<BackendConfigParameters> QnnBackendFactory::Create(
     const QnnImplementation& implementation,
     QnnLogger* logger,
     const QnnExecuTorchContextBinary& qnn_context_blob,
-    const QnnExecuTorchOptions* options,
-    QnnDlcManager* qnn_dlc_manager) {
+    const QnnExecuTorchOptions* options) {
   auto backend_params = std::make_unique<BackendConfigParameters>();
 
   switch (options->backend_options()->backend_type()) {
@@ -62,15 +60,15 @@ std::unique_ptr<BackendConfigParameters> QnnBackendFactory::Create(
           implementation, logger, options->soc_info(), htp_options);
 
       backend_params->qnn_backend_cache_ptr_ =
-          std::make_unique<HtpBackendCache>(qnn_context_blob);
+          std::make_unique<HtpBackendCache>(
+              qnn_context_blob, options->graph_name()->str());
 
       backend_params->qnn_context_ptr_ = std::make_unique<HtpContext>(
           implementation,
           backend_params->qnn_backend_ptr_.get(),
           backend_params->qnn_device_ptr_.get(),
           backend_params->qnn_backend_cache_ptr_.get(),
-          htp_options,
-          qnn_dlc_manager);
+          htp_options);
 
       backend_params->qnn_graph_ptr_ = std::make_unique<HtpGraph>(
           implementation,
@@ -80,9 +78,7 @@ std::unique_ptr<BackendConfigParameters> QnnBackendFactory::Create(
           options->soc_info(),
           htp_options);
       backend_params->qnn_mem_manager_ptr_ = std::make_unique<QnnMemManager>(
-          implementation,
-          backend_params->qnn_context_ptr_.get(),
-          options->log_level());
+          implementation, backend_params->qnn_context_ptr_.get());
       backend_params->backend_init_state_ = BackendInitializeState::INITIALIZED;
     } break;
     case QnnExecuTorchBackendType::kGpuBackend:
@@ -92,7 +88,8 @@ std::unique_ptr<BackendConfigParameters> QnnBackendFactory::Create(
       return nullptr;
   }
 
-  if (backend_params->qnn_backend_ptr_->VerifyQNNSDKVersion() == Error::Ok) {
+  if (backend_params->qnn_backend_ptr_->VerifyQNNSDKVersion(
+          options->backend_options()->backend_type()) == Error::Ok) {
     return backend_params;
   }
 

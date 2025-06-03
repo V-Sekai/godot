@@ -3,7 +3,7 @@ This example demonstrates how to run [Deepseek R1 Distill Llama 8B](https://hugg
 
 # Instructions
 ## Step 1: Setup
-1. Follow the [tutorial](https://pytorch.org/executorch/main/getting-started-setup) to set up ExecuTorch. For installation run `./install_executorch.sh`
+1. Follow the [tutorial](https://pytorch.org/executorch/0.6/getting-started-setup) to set up ExecuTorch. For installation run `./install_executorch.sh`
 
 2. Run the installation step for Llama specific requirements
 ```
@@ -17,7 +17,7 @@ pip install -U "huggingface_hub[cli]"
 huggingface-cli download deepseek-ai/DeepSeek-R1-Distill-Llama-8B --local-dir /target_dir/DeepSeek-R1-Distill-Llama-8B --local-dir-use-symlinks False
 ```
 
-2. Download the [tokenizer.model](https://huggingface.co/meta-llama/Llama-3.1-8B/tree/main/original) from the Llama3.1 repo which will be needed later on when running the model using the runtime.
+2. Download the [tokenizer.model](https://huggingface.co/meta-llama/Llama-3.1-8B/blob/main/original/tokenizer.model) from the Llama3.1 repo which will be needed later on when running the model using the runtime.
 
 3. Convert the model to pth file.
 ```
@@ -48,13 +48,16 @@ print("saving checkpoint")
 torch.save(sd, "/tmp/deepseek-ai/DeepSeek-R1-Distill-Llama-8B/checkpoint.pth")
 ```
 
-4. Download and save the [params.json](https://huggingface.co/meta-llama/Llama-3.1-8B/tree/main/original) file.
+4. Download and save the params.json file
+```
+wget https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct/blob/main/original/params.json -o /tmp/params.json
+```
 
 5. Generate a PTE file for use with the Llama runner.
 ```
 python -m examples.models.llama.export_llama \
     --checkpoint /tmp/deepseek-ai/DeepSeek-R1-Distill-Llama-8B/checkpoint.pth \
-	-p params.json \
+	-p /tmp/params.json \
 	-kv \
 	--use_sdpa_with_kv_cache \
 	-X \

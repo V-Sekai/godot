@@ -8,13 +8,15 @@ import logging
 import re
 from functools import partial
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from executorch.extension.llm.export.builder import DType
+
+from sentencepiece import SentencePieceProcessor
 
 
 try:
@@ -39,7 +41,7 @@ def quantize(  # noqa C901
     checkpoint_dtype: Optional[DType] = None,
     checkpoint_path: Optional[Path] = None,
     # following arguments only available when setting int4 or gptq quantization.
-    group_size: Optional[int] = None,
+    group_size: Optional[int] = 128,
     # following arguments are only used for GPTQ
     calibration_tasks: Optional[list] = None,
     calibration_limit: Optional[int] = None,
@@ -55,7 +57,7 @@ def quantize(  # noqa C901
 
     Args:
         model: The model to quantize.
-        qmode: The quantization mode, e.g. int8, 8da4w.
+        qmode: The quantization mode, e.g. int8, 8da4w, 8da4w-gptq.
         computation_dtype: The dtype that ops are performed in (the resulting dtype of dequantization).
             Also the dtype of the rest of the non-quantized compoents of the model.
         checkpoint_dtype: The dtype of the checkpoint, this arg exists since it is more accurate to
@@ -105,24 +107,14 @@ def quantize(  # noqa C901
             print("quantized model:", model)
         return model
     elif qmode.startswith("torchao:8da"):
-        # Check for required args
-        if group_size is None:
-            raise Exception(
-                "For torchao:8daxw quantization, group size must be specified."
-            )
-
         pattern = r"torchao:8da(\d+)w"
         matches = re.findall(pattern, qmode)
         assert len(matches) == 1, f"Expected 1 match for pattern but got {len(matches)}"
         bitwidth = int(matches[0][0])
 
-        from torchao.dtypes import PackedLinearInt8DynamicActivationIntxWeightLayout
-        from torchao.quantization.granularity import PerAxis, PerGroup
-        from torchao.quantization.quant_api import (
-            Int8DynamicActivationIntxWeightConfig,
-            MappingType,
-            quantize_,
-        )
+        from torchao.experimental.quant_api import Int8DynamicActivationIntxWeightConfig
+        from torchao.quantization.granularity import PerGroup, PerRow
+        from torchao.quantization.quant_api import quantize_
         from torchao.utils import unwrap_tensor_subclass
 
         with torch.no_grad():
@@ -132,11 +124,8 @@ def quantize(  # noqa C901
                 model,
                 Int8DynamicActivationIntxWeightConfig(
                     weight_dtype=getattr(torch, f"int{bitwidth}"),
-                    weight_granularity=(
-                        PerAxis(0) if group_size == 0 else PerGroup(group_size)
-                    ),
-                    weight_mapping_type=MappingType.SYMMETRIC,
-                    layout=PackedLinearInt8DynamicActivationIntxWeightLayout(),
+                    granularity=(PerRow() if group_size == 0 else PerGroup(group_size)),
+                    has_weight_zeros=False,
                 ),
             )
             model = unwrap_tensor_subclass(model)
@@ -144,9 +133,9 @@ def quantize(  # noqa C901
             print("quantized model:", model)
         return model
     elif qmode == "8da4w":
+        # Check for required args
         if group_size is None:
-            # TODO: Default value for group size for 8da4w. Need this here for refactor, will clean this up.
-            group_size = 128
+            raise Exception("For 8da4w quantization, group size must be specified.")
 
         from torchao.quantization import int8_dynamic_activation_int4_weight, quantize_
         from torchao.utils import unwrap_tensor_subclass
@@ -159,11 +148,74 @@ def quantize(  # noqa C901
         if verbose:
             print("quantized model:", model)
         return model
+    elif qmode == "8da4w-gptq":
+        # Check for required args
+        required_args: Optional[Any] = [
+            group_size,
+            calibration_limit,
+            calibration_seq_length,
+        ]
+        if any(arg is None for arg in required_args):
+            raise Exception(
+                "For 8da4w-gptq quantization, group size, calibration limit and calibration sequence length must be specified."
+            )
+        if calibration_tasks is None:
+            calibration_tasks = ["wikitext"]
+
+        try:
+            # torchao 0.3+
+            from torchao._eval import InputRecorder  # pyre-fixme[21]
+        except ImportError:
+            from torchao.quantization.GPTQ import InputRecorder  # pyre-ignore
+
+        from torchao.quantization.quant_api import Int8DynActInt4WeightGPTQQuantizer
+
+        if tokenizer_path is None:
+            assert checkpoint_path is not None, "checkpoint_path must be specified"
+            tokenizer_path = checkpoint_path.parent / "tokenizer.model"
+        assert tokenizer_path.is_file(), tokenizer_path
+        tokenizer = SentencePieceProcessor(  # pyre-ignore[28]
+            model_file=str(tokenizer_path)
+        )
+
+        inputs = (
+            InputRecorder(  # pyre-fixme[16]
+                tokenizer,
+                calibration_seq_length,
+                None,  # input_prep_func
+                pad_calibration_inputs,
+                model.vocab_size,
+            )
+            .record_inputs(
+                calibration_tasks,
+                calibration_limit,
+            )
+            .get_inputs()
+        )
+
+        gptq_quantizer = Int8DynActInt4WeightGPTQQuantizer(
+            blocksize,
+            percdamp,
+            group_size,
+        )  # TODO: separate computation and checkpoint dtype for GPTQ.
+        model = gptq_quantizer.quantize(model, inputs)
+        return model
     elif qmode == "vulkan_4w":
         from executorch.backends.vulkan._passes import VkInt4WeightOnlyQuantizer
 
         q_group_size = 256 if group_size is None else group_size
         model = VkInt4WeightOnlyQuantizer(groupsize=q_group_size).quantize(model)
+
+        # Apply additional quantizer for linear layers that aren't lowered to Vulkan
+        # at the moment
+        from torchao.quantization.quant_api import Int8DynActInt4WeightQuantizer
+
+        # 1. Quantize in checkpoint dtype.
+        model = Int8DynActInt4WeightQuantizer(
+            precision=checkpoint_torch_dtype, groupsize=q_group_size
+        ).quantize(model)
+        # 2. Set the computation dtype (what weights/acts dequantize to).
+        model = set_8da4w_computation_dtype(model, computation_torch_dtype)
 
         return model
     else:
@@ -730,58 +782,50 @@ class QuantizedGroupEmbedding(torch.nn.Module):
 ############################ Source Transform Start #######################
 
 
-def get_quant_embedding_transform(
-    embedding_quantize: str,
-    use_shared_embedding: bool = False,
-    dtype_override: Optional[DType] = None,
-):
-    if embedding_quantize.startswith("torchao:"):
+def get_quant_embedding_transform(args, dtype_override: Optional[DType] = None):
+    if args.embedding_quantize.startswith("torchao:"):
         from torchao.experimental.quant_api import (
             EmbeddingQuantizer,
             SharedEmbeddingQuantizer,
         )
-        from torchao.quantization.granularity import PerAxis, PerGroup
-        from torchao.quantization.quant_api import MappingType
+        from torchao.quantization.granularity import PerGroup, PerRow
 
-        quant_args = embedding_quantize.split(":")[1].split(",")
+        quant_args = args.embedding_quantize.split(":")[1].split(",")
         if len(quant_args) == 2:
             bitwidth, group_size = quant_args
-            is_asymmetric = True
+            has_weight_zeros = True
         else:
-            bitwidth, group_size, is_asymmetric = quant_args
+            bitwidth, group_size, has_weight_zeros = quant_args
 
         if group_size in ["none", "None", "0"]:
             group_size = 0
 
         group_size = int(group_size)
         bitwidth = int(bitwidth)
-        is_asymmetric = bool(is_asymmetric)
+        has_weight_zeros = bool(has_weight_zeros)
         weight_dtype = getattr(torch, f"int{bitwidth}")
-        granularity = PerAxis(0) if group_size == 0 else PerGroup(group_size)
-        mapping_type = (
-            MappingType.ASYMMETRIC if is_asymmetric else MappingType.SYMMETRIC
-        )
+        granularity = PerRow() if group_size == 0 else PerGroup(group_size)
 
         def _torchao_embedding_quantizer(model):
             with torch.no_grad():
-                if not use_shared_embedding:
+                if not args.use_shared_embedding:
                     EmbeddingQuantizer(
                         weight_dtype=weight_dtype,
                         granularity=granularity,
-                        mapping_type=mapping_type,
+                        has_weight_zeros=has_weight_zeros,
                         use_fallback=False,
                     ).quantize(model)
                 else:
                     SharedEmbeddingQuantizer(
                         weight_dtype=weight_dtype,
                         granularity=granularity,
-                        mapping_type=mapping_type,
+                        has_weight_zeros=has_weight_zeros,
                     ).quantize(model)
             return model
 
         return _torchao_embedding_quantizer
 
-    bitwidth, group_size = embedding_quantize.split(",")
+    bitwidth, group_size = args.embedding_quantize.split(",")
     if group_size == "none" or group_size == "None" or group_size == "0":
         group_size = None
     else:
@@ -798,27 +842,34 @@ def get_quant_embedding_transform(
 
 
 def get_quant_weight_transform(
-    quantization_mode: str,
-    group_size: Optional[int] = None,
+    args,
     computation_dtype: Optional[DType] = None,
     checkpoint_dtype: Optional[DType] = None,
-    checkpoint_path: Optional[Path] = None,
-    tokenizer_path: Optional[Path] = None,
-    calibration_tasks: Optional[list] = None,
-    calibration_limit: Optional[int] = None,
-    calibration_seq_length: Optional[int] = None,
 ):
+    # If these optional args are None, don't provide them to quantize().
+    quant_args_str = [
+        "group_size",
+        "calibration_tasks",
+        "calibration_limit",
+        "calibration_seq_length",
+    ]
+    arg_dict = vars(args)
+    quant_args = {
+        param: val
+        for param in quant_args_str
+        if (val := arg_dict.get(param)) is not None
+    }
+
     return partial(
         quantize,
-        qmode=quantization_mode,
+        **quant_args,
+        qmode=args.quantization_mode,
         computation_dtype=computation_dtype,
         checkpoint_dtype=checkpoint_dtype,
-        checkpoint_path=(Path(path) if (path := checkpoint_path) is not None else None),
-        group_size=group_size,
-        calibration_tasks=calibration_tasks,
-        calibration_limit=calibration_limit,
-        calibration_seq_length=calibration_seq_length,
-        tokenizer_path=(Path(path) if (path := tokenizer_path) is not None else None),
+        checkpoint_path=(Path(path) if (path := args.checkpoint) is not None else None),
+        tokenizer_path=(
+            Path(path) if (path := args.tokenizer_path) is not None else None
+        ),
     )
 
 

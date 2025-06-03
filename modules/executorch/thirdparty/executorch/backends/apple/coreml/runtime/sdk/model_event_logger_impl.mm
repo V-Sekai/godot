@@ -9,13 +9,11 @@
 
 #import "ETCoreMLModelStructurePath.h"
 #import "ETCoreMLOperationProfilingInfo.h"
-#import "objc_array_util.h"
-#import "MLMultiArray_Copy.h"
-
 #import <executorch/runtime/core/event_tracer.h>
-
+#import "objc_array_util.h"
 #import <mach/mach_time.h>
 #import <numeric>
+#import "MLMultiArray_Copy.h"
 
 namespace {
 

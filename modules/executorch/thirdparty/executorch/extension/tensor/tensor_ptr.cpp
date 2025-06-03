@@ -188,7 +188,7 @@ TensorPtr clone_tensor_ptr(const executorch::aten::Tensor& tensor) {
 runtime::Error resize_tensor_ptr(
     TensorPtr& tensor,
     const std::vector<executorch::aten::SizesType>& sizes) {
-  return ET_RUNTIME_NAMESPACE::resize_tensor(
+  return runtime::resize_tensor(
       *tensor,
       executorch::aten::ArrayRef<executorch::aten::SizesType>(
           sizes.data(), sizes.size()));

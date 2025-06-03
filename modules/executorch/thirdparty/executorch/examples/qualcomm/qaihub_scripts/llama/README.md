@@ -11,15 +11,15 @@ Note that the pre-compiled context binaries could not be futher fine-tuned for o
 
 ### Instructions
 #### Step 1: Setup
-1. Follow the [tutorial](https://pytorch.org/executorch/main/getting-started-setup) to set up ExecuTorch.
-2. Follow the [tutorial](https://pytorch.org/executorch/main/backends-qualcomm) to build Qualcomm AI Engine Direct Backend.
+1. Follow the [tutorial](https://pytorch.org/executorch/0.6/getting-started-setup) to set up ExecuTorch.
+2. Follow the [tutorial](https://pytorch.org/executorch/0.6/backends-qualcomm) to build Qualcomm AI Engine Direct Backend.
 
 #### Step2: Prepare Model
 1. Create account for https://aihub.qualcomm.com/
 2. Follow instructions in https://huggingface.co/qualcomm/Llama-v2-7B-Chat to export context binaries (will take some time to finish)
 
 ```bash
-# tokenizer.model: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/tree/main
+# tokenizer.model: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/blob/main/tokenizer.model
 # tokenizer.bin:
 python -m examples.models.llama.tokenizer.tokenizer -t tokenizer.model -o tokenizer.bin
 ```
@@ -39,8 +39,8 @@ Note that the pre-compiled context binaries could not be futher fine-tuned for o
 
 ### Instructions
 #### Step 1: Setup
-1. Follow the [tutorial](https://pytorch.org/executorch/main/getting-started-setup) to set up ExecuTorch.
-2. Follow the [tutorial](https://pytorch.org/executorch/main/backends-qualcomm) to build Qualcomm AI Engine Direct Backend.
+1. Follow the [tutorial](https://pytorch.org/executorch/0.6/getting-started-setup) to set up ExecuTorch.
+2. Follow the [tutorial](https://pytorch.org/executorch/0.6/backends-qualcomm) to build Qualcomm AI Engine Direct Backend.
 
 #### Step2: Prepare Model
 1. Create account for https://aihub.qualcomm.com/

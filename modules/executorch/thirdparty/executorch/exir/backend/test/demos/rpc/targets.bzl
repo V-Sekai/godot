@@ -40,7 +40,6 @@ def define_common_targets():
         ],
         visibility = [
             "//executorch/exir/backend/test/...",
-            "//executorch/runtime/executor/test/...",
         ],
         deps = [
             ":executor_backend",

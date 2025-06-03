@@ -55,16 +55,16 @@ with open("mv2_coreml.pte", "wb") as file:
 
 ### Partitioner API
 
-The CoreML partitioner API allows for configuration of the model delegation to CoreML. Passing an `CoreMLPartitioner` instance with no additional parameters will run as much of the model as possible on the CoreML backend with default settings. This is the most common use-case. For advanced use cases, the partitioner exposes the following options via the [constructor](https://github.com/pytorch/executorch/blob/14ff52ff89a89c074fc6c14d3f01683677783dcd/backends/apple/coreml/partition/coreml_partitioner.py#L60):
+The CoreML partitioner API allows for configuration of the model delegation to CoreML. Passing an `CoreMLPartitioner` instance with no additional parameters will run as much of the model as possible on the CoreML backend with default settings. This is the most common use-case. For advanced use cases, the partitioner exposes the following options via the [constructor](https://github.com/pytorch/executorch/blob/release/0.6/backends/apple/coreml/partition/coreml_partitioner.py#L60):
 
 
- - `skip_ops_for_coreml_delegation`: Allows you to skip ops for delegation by CoreML.  By default, all ops that CoreML supports will be delegated.  See [here](https://github.com/pytorch/executorch/blob/14ff52ff89a89c074fc6c14d3f01683677783dcd/backends/apple/coreml/test/test_coreml_partitioner.py#L42) for an example of skipping an op for delegation.
+ - `skip_ops_for_coreml_delegation`: Allows you to skip ops for delegation by CoreML.  By default, all ops that CoreML supports will be delegated.  See [here](https://github.com/pytorch/executorch/blob/release/0.6/backends/apple/coreml/test/test_coreml_partitioner.py#L42) for an example of skipping an op for delegation.
 - `compile_specs`: A list of CompileSpec for the CoreML backend.  These control low-level details of CoreML delegation, such as the compute unit (CPU, GPU, ANE), the iOS deployment target, and the compute precision (FP16, FP32).  These are discussed more below.
 - `take_over_mutable_buffer`: A boolean that indicates whether PyTorch mutable buffers in stateful models should be converted to [CoreML MLState](https://developer.apple.com/documentation/coreml/mlstate).  If set to false, mutable buffers in the PyTorch graph are converted to graph inputs and outputs to the CoreML lowered module under the hood.  Generally setting take_over_mutable_buffer to true will result in better performance, but using MLState requires iOS >= 18.0, macOS >= 15.0, and XCode >= 16.0.
 
 #### CoreML CompileSpec
 
-A list of CompileSpec is constructed with [CoreMLBackend.generate_compile_specs](https://github.com/pytorch/executorch/blob/14ff52ff89a89c074fc6c14d3f01683677783dcd/backends/apple/coreml/compiler/coreml_preprocess.py#L210).  Below are the available options:
+A list of CompileSpec is constructed with [CoreMLBackend.generate_compile_specs](https://github.com/pytorch/executorch/blob/release/0.6/backends/apple/coreml/compiler/coreml_preprocess.py#L210).  Below are the available options:
 - `compute_unit`: this controls the compute units (CPU, GPU, ANE) that are used by CoreML.  The default value is coremltools.ComputeUnit.ALL.  The available options from coremltools are:
     - coremltools.ComputeUnit.ALL (uses the CPU, GPU, and ANE)
     - coremltools.ComputeUnit.CPU_ONLY (uses the CPU only)
@@ -72,7 +72,7 @@ A list of CompileSpec is constructed with [CoreMLBackend.generate_compile_specs]
     - coremltools.ComputeUnit.CPU_AND_NE (uses both the CPU and ANE, but not the GPU)
 - `minimum_deployment_target`: The minimum iOS deployment target (e.g., coremltools.target.iOS18).  The default value is coremltools.target.iOS15.
 - `compute_precision`: The compute precision used by CoreML (coremltools.precision.FLOAT16, coremltools.precision.FLOAT32).  The default value is coremltools.precision.FLOAT16.  Note that the compute precision is applied no matter what dtype is specified in the exported PyTorch model.  For example, an FP32 PyTorch model will be converted to FP16 when delegating to the CoreML backend by default.  Also note that the ANE only supports FP16 precision.
-- `model_type`: Whether the model should be compiled to the CoreML [mlmodelc format](https://developer.apple.com/documentation/coreml/downloading-and-compiling-a-model-on-the-user-s-device) during .pte creation ([CoreMLBackend.MODEL_TYPE.COMPILED_MODEL](https://github.com/pytorch/executorch/blob/14ff52ff89a89c074fc6c14d3f01683677783dcd/backends/apple/coreml/compiler/coreml_preprocess.py#L71)), or whether it should be compiled to mlmodelc on device ([CoreMLBackend.MODEL_TYPE.MODEL](https://github.com/pytorch/executorch/blob/14ff52ff89a89c074fc6c14d3f01683677783dcd/backends/apple/coreml/compiler/coreml_preprocess.py#L70)).  Using CoreMLBackend.MODEL_TYPE.COMPILED_MODEL and doing compilation ahead of time should improve the first time on-device model load time.
+- `model_type`: Whether the model should be compiled to the CoreML [mlmodelc format](https://developer.apple.com/documentation/coreml/downloading-and-compiling-a-model-on-the-user-s-device) during .pte creation ([CoreMLBackend.MODEL_TYPE.COMPILED_MODEL](https://github.com/pytorch/executorch/blob/release/0.6/backends/apple/coreml/compiler/coreml_preprocess.py#L71)), or whether it should be compiled to mlmodelc on device ([CoreMLBackend.MODEL_TYPE.MODEL](https://github.com/pytorch/executorch/blob/release/0.6/backends/apple/coreml/compiler/coreml_preprocess.py#L70)).  Using CoreMLBackend.MODEL_TYPE.COMPILED_MODEL and doing compilation ahead of time should improve the first time on-device model load time.
 
 ### Testing the Model
 
@@ -104,7 +104,7 @@ import torchvision.models as models
 from torchvision.models.mobilenetv2 import MobileNet_V2_Weights
 from executorch.backends.apple.coreml.quantizer import CoreMLQuantizer
 from executorch.backends.apple.coreml.partition import CoreMLPartitioner
-from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
+from torch.ao.quantization.quantize_pt2e import convert_pt2e, prepare_pt2e
 from executorch.exir import to_edge_transform_and_lower
 from executorch.backends.apple.coreml.compiler import CoreMLBackend
 
@@ -192,9 +192,3 @@ python examples/apple/coreml/scripts/extract_coreml_models.py -m /path/to/model.
 ```
 
 Note that if the ExecuTorch model has graph breaks, there may be multiple extracted *.mlpackage files.
-
-## Common issues and what to do
-
-During lowering to the CoreML backend, you might see an error like: "ValueError: In op, of type [X], named [Y], the named input [Z] must have the same data type as the named input x. However, [Z] has dtype fp32 whereas x has dtype fp16."
-
-This happens because the model is in FP16, but CoreML interprets some of the arguments as FP32, which leads to a type mismatch.  The solution is to keep the PyTorch model in FP32.  Note that the model will be still be converted to FP16 during lowering to CoreML unless specified otherwise in the compute_precision [CoreML CompileSpec](#coreml-compilespec).  Also see the [related issue in coremltools](https://github.com/apple/coremltools/issues/2480).

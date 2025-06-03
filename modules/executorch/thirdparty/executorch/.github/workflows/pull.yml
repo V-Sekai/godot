@@ -15,7 +15,7 @@ concurrency:
 jobs:
   test-setup-linux-gcc:
     name: test-setup-linux-gcc
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -24,7 +24,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-gcc9
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -40,7 +40,7 @@ jobs:
 
   test-models-linux-basic:
     name: test-models-linux-basic
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -66,7 +66,7 @@ jobs:
     with:
       runner: ${{ matrix.runner }}
       docker-image: ${{ matrix.docker-image }}
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -84,7 +84,7 @@ jobs:
 
   test-models-linux:
     name: test-models-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -119,7 +119,7 @@ jobs:
     with:
       runner: ${{ matrix.runner }}
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -138,7 +138,7 @@ jobs:
   test-llama-runner-linux:
     # Test Both linux x86 and linux aarch64
     name: test-llama-runner-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -165,7 +165,7 @@ jobs:
     with:
       runner: ${{ matrix.runner }}
       docker-image: ${{ matrix.docker-image }}
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 900
       script: |
@@ -188,7 +188,7 @@ jobs:
 
   test-llama-runner-linux-android:
     name: test-llama-runner-linux-android
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -197,7 +197,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12-android
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -213,7 +213,7 @@ jobs:
 
   test-custom-ops-linux:
     name: test-custom-ops-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -222,7 +222,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -237,7 +237,7 @@ jobs:
 
   test-selective-build-linux:
     name: test-selective-build-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -246,7 +246,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -261,7 +261,7 @@ jobs:
 
   test-llava-runner-linux:
     name: test-llava-runner-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -270,7 +270,7 @@ jobs:
     with:
       runner: linux.24xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -292,7 +292,7 @@ jobs:
 
   test-moshi-linux:
     name: test-moshi-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -301,7 +301,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -322,7 +322,7 @@ jobs:
 
   test-quantized-aot-lib-linux:
     name: test-quantized-aot-lib-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -331,7 +331,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -343,9 +343,37 @@ jobs:
         PYTHON_EXECUTABLE=python bash .ci/scripts/setup-linux.sh --build-tool "${BUILD_TOOL}"
         PYTHON_EXECUTABLE=python bash examples/xnnpack/quantization/test_quantize.sh "${BUILD_TOOL}" mv2
 
+  test-pybind-build-linux:
+    name: test-pybind-build-linux
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+    with:
+      runner: linux.2xlarge
+      docker-image: executorch-ubuntu-22.04-clang12
+      submodules: 'true'
+      ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      timeout: 90
+      script: |
+        # The generic Linux job chooses to use base env, not the one setup by the image
+        CONDA_ENV=$(conda env list --json | jq -r ".envs | .[-1]")
+        conda activate "${CONDA_ENV}"
+
+        # build module for executorch.extension.pybindings.portable_lib
+        BUILD_TOOL="cmake"
+        PYTHON_EXECUTABLE=python \
+        CMAKE_ARGS="-DEXECUTORCH_BUILD_PYBIND=ON -DEXECUTORCH_BUILD_XNNPACK=ON" \
+        bash .ci/scripts/setup-linux.sh --build-tool "${BUILD_TOOL}"
+
+        # see if we can import the module successfully
+        python -c "from executorch.extension.pybindings import portable_lib; print('success!')"
+
   test-binary-size-linux-gcc:
     name: test-binary-size-linux-gcc
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -354,7 +382,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-gcc9
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -371,7 +399,7 @@ jobs:
         size=${arr[4]}
         # threshold=48120 on devserver with gcc11.4
         # todo(lfq): update once binary size is below 50kb.
-        threshold="51408"
+        threshold="51504"
         if [[ "$size" -le "$threshold" ]]; then
           echo "Success $size <= $threshold"
         else
@@ -381,7 +409,7 @@ jobs:
 
   test-binary-size-linux:
     name: test-binary-size-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -390,7 +418,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -406,7 +434,9 @@ jobs:
         output=$(ls -la cmake-out/test/size_test)
         arr=($output)
         size=${arr[4]}
-        threshold="47560"
+        # threshold=48120 on devserver with gcc11.4
+        # todo(lfq): update once binary size is below 50kb.
+        threshold="51784"
         if [[ "$size" -le "$threshold" ]]; then
           echo "Success $size <= $threshold"
         else
@@ -451,42 +481,41 @@ jobs:
       build-tool: buck2
       docker-image: executorch-ubuntu-22.04-clang12
 
-  unittest-arm-backend-with-no-fvp:
-    name: unittest-arm-backend-with-no-fvp
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+  unittest-arm:
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
-    strategy:
-      matrix:
-        include:
-          - test_arm_baremetal: test_pytest_ops
-          - test_arm_baremetal: test_pytest_models
-      fail-fast: false
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-arm-sdk
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
+        set -eux
+
         # The generic Linux job chooses to use base env, not the one setup by the image
         CONDA_ENV=$(conda env list --json | jq -r ".envs | .[-1]")
         conda activate "${CONDA_ENV}"
 
-        source .ci/scripts/utils.sh
-        install_executorch "--use-pt-pinned-commit"
+        BUILD_TOOL="cmake"
 
+        # Setup MacOS dependencies as there is no Docker support on MacOS atm
+        PYTHON_EXECUTABLE=python \
+        CMAKE_ARGS="-DEXECUTORCH_BUILD_PYBIND=ON" \
+        EXECUTORCH_BUILD_ARM_BAREMETAL=ON \
+        .ci/scripts/setup-linux.sh --build-tool "${BUILD_TOOL}"
+
+        # Install Arm dependencies
         .ci/scripts/setup-arm-baremetal-tools.sh
 
-        ARM_TEST=${{ matrix.test_arm_baremetal }}
-
-        # Test test_arm_baremetal.sh with test
-        backends/arm/test/test_arm_baremetal.sh "${ARM_TEST}"
+        # Run pytest without simulator
+        backends/arm/test/test_arm_baremetal.sh test_pytest
 
   test-llama-runner-qnn-linux:
     name: test-llama-runner-qnn-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -499,7 +528,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-qnn-sdk
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 900
       script: |
@@ -525,7 +554,7 @@ jobs:
 
   test-static-llama-qnn-linux:
     name: test-static-llama-qnn-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -534,7 +563,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-qnn-sdk
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 180
       script: |
@@ -544,6 +573,7 @@ jobs:
 
         BUILD_TOOL="cmake"
 
+        ./install_requirements.sh --use-pt-pinned-commit
         PYTHON_EXECUTABLE=python bash .ci/scripts/setup-qnn-deps.sh
         PYTHON_EXECUTABLE=python bash .ci/scripts/build-qnn-sdk.sh
 
@@ -558,7 +588,7 @@ jobs:
 
   test-qnn-models-linux:
     name: test-qnn-models-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -567,7 +597,7 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-qnn-sdk
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 180
       script: |
@@ -580,7 +610,7 @@ jobs:
 
   test-phi-3-mini-runner-linux:
     name: test-phi-3-mini-runner-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -589,7 +619,7 @@ jobs:
     with:
       runner: linux.24xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -607,7 +637,7 @@ jobs:
 
   test-eval_llama-wikitext-linux:
     name: test-eval_llama-wikitext-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -616,7 +646,7 @@ jobs:
     with:
       runner: linux.24xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -634,7 +664,7 @@ jobs:
 
   test-eval_llama-mmlu-linux:
     name: test-eval_llama-mmlu-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -643,7 +673,7 @@ jobs:
     with:
       runner: linux.24xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -661,7 +691,7 @@ jobs:
 
   test-llama_runner_eager-linux:
     name: test-llama_runner_eager-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -670,7 +700,7 @@ jobs:
     with:
       runner: linux.24xlarge
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -688,7 +718,7 @@ jobs:
 
   test-mediatek-models-linux:
     name: test-mediatek-models-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -697,7 +727,7 @@ jobs:
     with:
       runner: linux.24xlarge
       docker-image: executorch-ubuntu-22.04-mediatek-sdk
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       script: |
@@ -706,25 +736,3 @@ jobs:
         conda activate "${CONDA_ENV}"
 
         # placeholder for mediatek to add more tests
-
-  test-openvino-linux:
-    name: test-openvino-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
-    permissions:
-      id-token: write
-      contents: read
-    strategy:
-      fail-fast: false
-    with:
-      runner: linux.2xlarge
-      docker-image: executorch-ubuntu-22.04-gcc9
-      submodules: 'recursive'
-      ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      timeout: 90
-      script: |
-        # The generic Linux job chooses to use base env, not the one setup by the image
-        CONDA_ENV=$(conda env list --json | jq -r ".envs | .[-1]")
-        conda activate "${CONDA_ENV}"
-
-        PYTHON_EXECUTABLE=python bash .ci/scripts/setup-openvino.sh
-        PYTHON_EXECUTABLE=python bash .ci/scripts/test_openvino.sh

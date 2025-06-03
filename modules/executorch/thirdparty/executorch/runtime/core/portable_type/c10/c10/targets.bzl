@@ -25,9 +25,6 @@ def define_common_targets():
             "util/Half-inl.h",
             "util/TypeSafeSignMath.h",
             "util/bit_cast.h",
-            "util/complex.h",
-            "util/complex_math.h",
-            "util/complex_utils.h",
             "util/floating_point_utils.h",
             "util/irange.h",
         ],
@@ -39,7 +36,6 @@ def define_common_targets():
         ]),
         visibility = [
             "//executorch/...",
-            "@EXECUTORCH_CLIENTS",
         ],
         deps = select({
             "DEFAULT": [],
@@ -53,11 +49,11 @@ def define_common_targets():
     runtime.cxx_library(
         name = "aten_headers_for_executorch",
         srcs = [],
-        visibility = ["//executorch/kernels/optimized/...", "@EXECUTORCH_CLIENTS"],
+        visibility = ["//executorch/kernels/optimized/..."],
         exported_deps = select({
             "DEFAULT": [],
             "ovr_config//cpu:arm64": [
-                "fbsource//third-party/sleef:sleef",
+                "fbsource//third-party/sleef:sleef_arm",
             ] if not runtime.is_oss else [],
             # fbsource//third-party/sleef:sleef currently fails to
             # link with missing symbols, hence the fbcode-specific dep below.
@@ -77,7 +73,6 @@ def define_common_targets():
             # -Wmacro-redefined, and we only care about getting
             # reasonable vectorization and Sleef support.
             "-DCPU_CAPABILITY_AVX2",
-            "-DET_USE_PYTORCH_HEADERS",
             "-DHAVE_AVX2_CPU_DEFINITION",
             "-DSTANDALONE_TORCH_HEADER",
         ] + get_sleef_preprocessor_flags(),
@@ -91,5 +86,5 @@ def define_common_targets():
             # linker failure.
             "ovr_config//cpu:arm64": get_sleef_preprocessor_flags(),
             "DEFAULT": [],
-        }) + ["-DSTANDALONE_TORCH_HEADER"] + ([] if runtime.is_oss else ["-DET_USE_PYTORCH_HEADERS"]),
+        }) + ["-DSTANDALONE_TORCH_HEADER"],
     )

@@ -5,6 +5,7 @@
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
  */
+#include <dlfcn.h>
 #include <executorch/backends/qualcomm/runtime/backends/QnnImplementation.h>
 
 #include "QnnInterface.h"
@@ -13,6 +14,11 @@ namespace backends {
 namespace qnn {
 
 using executorch::runtime::Error;
+
+template <typename Fn>
+Fn loadQnnFunction(void* handle, const char* function_name) {
+  return reinterpret_cast<Fn>(dlsym(handle, function_name)); // NOLINT
+}
 
 Error QnnImplementation::InitBackend(
     void* const lib_handle,

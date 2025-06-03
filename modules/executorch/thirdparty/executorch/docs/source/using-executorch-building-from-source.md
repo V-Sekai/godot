@@ -29,10 +29,10 @@ Windows (x86_64)
   - Otherwise, Python's built-in virtual environment manager `python venv` is a good alternative.
 * `g++` version 7 or higher, `clang++` version 5 or higher, or another
   C++17-compatible toolchain.
-* `python` version 3.10-3.12
+* `python` version 3.10-3.12 
 
 Note that the cross-compilable core runtime code supports a wider range of
-toolchains, down to C++17. See the [Runtime Overview](runtime-overview.md) for
+toolchains, down to C++17. See the [Runtime Overview](./runtime-overview.md) for
 portability details.
 
 ## Environment Setup
@@ -41,7 +41,7 @@ portability details.
 
    ```bash
    # Clone the ExecuTorch repo from GitHub
-   git clone -b viable/strict https://github.com/pytorch/executorch.git && cd executorch
+   git clone -b release/0.6 https://github.com/pytorch/executorch.git && cd executorch
    ```
 
 ### Create a Virtual Environment
@@ -64,15 +64,25 @@ Or alternatively, [install conda on your machine](https://conda.io/projects/cond
    ./install_executorch.sh
    ```
 
-   Not all backends are built into the pip wheel by default. You can link these missing/experimental backends by turning on the corresponding cmake flag. For example, to include the MPS backend:
+   Use the [`--pybind` flag](https://github.com/pytorch/executorch/blob/release/0.6/install_executorch.sh#L26-L29) to install with pybindings and dependencies for other backends.
+   ```bash
+   ./install_executorch.sh --pybind <coreml | mps | xnnpack>
 
-  ```bash
-  CMAKE_ARGS="-DEXECUTORCH_BUILD_MPS=ON" ./install_executorch.sh
-  ```
+   # Example: pybindings with CoreML *only*
+   ./install_executorch.sh --pybind coreml
+
+   # Example: pybinds with CoreML *and* XNNPACK
+   ./install_executorch.sh --pybind coreml xnnpack
+   ```
+
+   By default, `./install_executorch.sh` command installs pybindings for XNNPACK. To disable any pybindings altogether:
+   ```bash
+   ./install_executorch.sh --pybind off
+   ```
 
    For development mode, run the command with `--editable`, which allows us to modify Python source code and see changes reflected immediately.
    ```bash
-   ./install_executorch.sh --editable
+   ./install_executorch.sh --editable [--pybind xnnpack]
 
    # Or you can directly do the following if dependencies are already installed
    # either via a previous invocation of `./install_executorch.sh` or by explicitly installing requirements via `./install_requirements.sh` first.
@@ -154,10 +164,10 @@ The release build offers optimizations intended to improve performance and reduc
 To further optimize the release build for size, use both:
 ```bash
 -DCMAKE_BUILD_TYPE=Release \
--DEXECUTORCH_OPTIMIZE_SIZE=ON
+-DOPTIMIZE_SIZE=ON
 ```
 
-See [CMakeLists.txt](https://github.com/pytorch/executorch/blob/main/CMakeLists.txt)
+See [CMakeLists.txt](https://github.com/pytorch/executorch/blob/release/0.6/CMakeLists.txt)
 
 ### Build the runtime components
 
@@ -178,17 +188,14 @@ cmake --build cmake-out -j9
 
 ## Use an example binary `executor_runner` to execute a .pte file
 
-First, generate a .pte file, either by exporting an example model or following
-the instructions in [Model Export and Lowering](using-executorch-export.md).
+First, generate an `add.pte` or other ExecuTorch program file using the
+instructions as described in
+[Preparing a Model](getting-started.md#preparing-the-model).
 
-To generate a simple model file, run the following command from the ExecuTorch directory. It
-will create a file named "add.pte" in the current directory.
-```
-python -m examples.portable.scripts.export --model_name="add"
-```
 Then, pass it to the command line tool:
+
 ```bash
-./cmake-out/executor_runner --model_path add.pte
+./cmake-out/executor_runner --model_path path/to/model.pte
 ```
 
 You should see the message "Model executed successfully" followed
@@ -250,7 +257,7 @@ sh scripts/build_android_library.sh
 ```
 
 This script will build the AAR, which contains the Java API and its corresponding JNI library. Please see
-[this documentation](using-executorch-android.md#using-aar-file) for usage.
+[this documentation](./using-executorch-android#using-aar-file) for usage.
 
 ### iOS
 
@@ -286,4 +293,4 @@ You have successfully cross-compiled `executor_runner` binary to iOS and Android
 
 * [Selective build](kernel-library-selective-build.md) to build the runtime that links to only kernels used by the program, which can provide significant binary size savings.
 * Tutorials on building [Android](https://github.com/pytorch-labs/executorch-examples/tree/main/dl3/android/DeepLabV3Demo#executorch-android-demo-app) and [iOS](https://github.com/pytorch-labs/executorch-examples/tree/main/mv3/apple/ExecuTorchDemo) demo apps.
-* Tutorials on deploying applications to embedded devices such as [ARM Cortex-M/Ethos-U](backends-arm-ethos-u.md) and [XTensa HiFi DSP](backends-cadence.md).
+* Tutorials on deploying applications to embedded devices such as [ARM Cortex-M/Ethos-U](backends-arm-ethos-u.md) and [XTensa HiFi DSP](./backends-cadence.md).

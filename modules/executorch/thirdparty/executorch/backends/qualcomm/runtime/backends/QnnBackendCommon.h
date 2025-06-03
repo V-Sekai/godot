@@ -17,8 +17,6 @@
 #include "QnnBackend.h"
 #include "QnnCommon.h"
 #include "QnnTypes.h"
-#include "Saver/QnnSaverCommon.h"
-
 namespace executorch {
 namespace backends {
 namespace qnn {
@@ -47,7 +45,8 @@ class QnnBackend {
     return handle_;
   }
 
-  executorch::runtime::Error VerifyQNNSDKVersion();
+  executorch::runtime::Error VerifyQNNSDKVersion(
+      const QnnExecuTorchBackendType backend_id);
 
  protected:
   virtual Qnn_Version_t GetExpectedBackendVersion() const = 0;

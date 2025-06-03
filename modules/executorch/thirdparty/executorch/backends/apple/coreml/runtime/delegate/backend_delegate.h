@@ -7,8 +7,7 @@
 
 #pragma once
 
-#include "model_logging_options.h"
-
+#include <model_logging_options.h>
 #include <system_error>
 #include <unordered_map>
 #include <vector>

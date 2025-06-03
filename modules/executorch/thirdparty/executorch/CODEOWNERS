@@ -15,6 +15,10 @@
 /backends/vulkan @SS-JIA
 /backends/xnnpack @digantdesai @mcr229
 
+/build @GregoryComer @kirklandsign
+
+/codegen @larryliu0820 @lucylq
+
 /devtools @tarun292 @Gasoonjia
 
 /docs @mergennachin
@@ -36,6 +40,7 @@
 
 /exir/backend @cccclai @kimishpatel @JacobSzwejbka @tarun292
 /exir @JacobSzwejbka @tarun292 @larryliu0820
+
 
 /extension/android @kirklandsign
 /extension/android_test @kirklandsign
@@ -78,11 +83,3 @@
 /test @larryliu0820 @kirklandsign
 
 /util @tarun292
-
-# Build System -----------------------------------------------------------------
-
-CMakeLists.txt @jathu @larryliu0820 @kirklandsign
-CMakePresets.json @jathu @larryliu0820 @kirklandsign
-
-/codegen @larryliu0820 @lucylq
-/tools/cmake @jathu @larryliu0820 @kirklandsign

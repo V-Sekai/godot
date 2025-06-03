@@ -156,38 +156,6 @@ ComputeGraph::~ComputeGraph() {
   context_->flush();
 }
 
-std::vector<int64_t> ComputeGraph::extract_int_or_symint_list(
-    const ValueRef idx) {
-  const Value& val = values_.at(idx);
-  std::vector<int64_t> result;
-
-  if (val.isIntList()) {
-    // If it's an IntList, return a copy of the list
-    return val.toConstIntList();
-  } else if (val.isValueList()) {
-    // If it's a ValueList, extract each element as an Int or SymInt
-    const std::vector<ValueRef>& value_list = val.toConstValueList();
-    result.reserve(value_list.size());
-
-    for (const ValueRef& ref : value_list) {
-      const Value& element = values_.at(ref);
-      if (element.isInt()) {
-        result.push_back(element.toInt());
-      } else if (element.isSymInt()) {
-        result.push_back(read_symint(ref));
-      } else {
-        VK_THROW(
-            "ValueList element is neither Int nor SymInt, but has type ",
-            element.type());
-      }
-    }
-    return result;
-  }
-
-  VK_THROW(
-      "Cannot extract int or symint list from Value with type ", val.type());
-}
-
 utils::StorageType ComputeGraph::suggested_storage_type() {
   if (config_.enable_storage_type_override) {
     return config_.storage_type_override;
@@ -209,11 +177,6 @@ utils::GPUMemoryLayout ComputeGraph::suggested_memory_layout(
     return utils::kWidthPacked;
   }
   return utils::kChannelsPacked;
-}
-
-bool ComputeGraph::device_name_contains(const char* substr) {
-  return context_->adapter_ptr()->device_name().find(substr) !=
-      std::string::npos;
 }
 
 void ComputeGraph::check_no_active_value_ptrs() {
@@ -492,22 +455,12 @@ vkapi::BufferBindInfo ComputeGraph::get_or_create_int_param_buffer(
     const ValueRef idx) {
   if (values_.at(idx).isInt()) {
     const int32_t val = extract_scalar<int32_t>(idx);
-    return create_params_buffer(val);
+    create_params_buffer(val);
   } else if (values_.at(idx).isSymInt()) {
     SymIntPtr symint = get_symint(idx);
     return vkapi::BufferBindInfo(symint->gpu_buffer.buffer());
   }
   VK_THROW("Cannot create a int param buffer for the given value");
-}
-
-vkapi::BufferBindInfo ComputeGraph::get_or_create_int_param_buffer(
-    const ValueRef idx,
-    const int32_t default_val) {
-  if (values_.at(idx).isNone()) {
-    return create_params_buffer(default_val);
-  } else {
-    return get_or_create_int_param_buffer(idx);
-  }
 }
 
 void ComputeGraph::set_symint(const ValueRef idx, const int32_t val) {
@@ -654,11 +607,6 @@ void ComputeGraph::prepare() {
   if (config_.enable_querypool) {
     context_->initialize_querypool();
   }
-
-  for (SharedObject& shared_object : shared_objects_) {
-    shared_object.allocate(this);
-    shared_object.bind_users(this);
-  }
 }
 
 void ComputeGraph::encode_prepack() {
@@ -672,7 +620,6 @@ void ComputeGraph::prepack() const {
   vkapi::VulkanFence fence = context_->fences().get_fence();
   context_->submit_cmd_to_gpu(fence.get_submit_handle(), /*final_use = */ true);
   fence.wait();
-  context_->fences().return_fence(fence);
 
   context_->flush();
 }
@@ -683,17 +630,20 @@ void ComputeGraph::encode_execute() {
 
   context_->cmd_reset_querypool();
 
+  for (SharedObject& shared_object : shared_objects_) {
+    shared_object.allocate(this);
+    shared_object.bind_users(this);
+  }
+
   for (std::unique_ptr<ExecuteNode>& node : execute_nodes_) {
     node->encode(this);
   }
 }
 
-void ComputeGraph::execute() {
+void ComputeGraph::execute() const {
   vkapi::VulkanFence fence = context_->fences().get_fence();
   context_->submit_cmd_to_gpu(fence.get_submit_handle());
   fence.wait();
-  context_->fences().return_fence(fence);
-  execute_count_++;
 }
 
 void ComputeGraph::resize_input(
@@ -703,17 +653,10 @@ void ComputeGraph::resize_input(
   get_tensor(io_val.value)->virtual_resize(new_sizes);
 }
 
-void ComputeGraph::virtual_resize(
-    const ValueRef idx,
-    const std::vector<int64_t>& new_sizes) {
-  get_tensor(idx)->virtual_resize(new_sizes);
-}
-
 void ComputeGraph::propagate_resize() {
   for (std::unique_ptr<ExecuteNode>& node : execute_nodes_) {
     node->trigger_resize(this);
   }
-  encode_execute();
 }
 
 } // namespace vkcompute

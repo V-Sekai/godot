@@ -43,9 +43,9 @@ function(et_cxx_test target_name)
   if(NOT TARGET GTest::gtest)
     find_package(GTest)
   endif()
-  # Includes gtest, gmock, executorch_core by default
+  # Includes gtest, gmock, executorch by default
   target_link_libraries(
-    ${target_name} GTest::gtest GTest::gtest_main GTest::gmock executorch_core
+    ${target_name} GTest::gtest GTest::gtest_main GTest::gmock executorch
     ${ET_CXX_TEST_EXTRA_LIBS}
   )
 

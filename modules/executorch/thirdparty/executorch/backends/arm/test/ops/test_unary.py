@@ -3,6 +3,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+
 from typing import Tuple
 
 import torch
@@ -45,51 +46,51 @@ ramp = torch.arange(-16, 16, 0.2)
 
 
 test_data = {
-    "ceil_zeros": lambda: (
+    "ceil_zeros": (
         Ceil(),
         zeros,
     ),
-    "floor_zeros": lambda: (
+    "floor_zeros": (
         Floor(),
         zeros,
     ),
-    "ceil_ones": lambda: (
+    "ceil_ones": (
         Ceil(),
         ones,
     ),
-    "floor_ones": lambda: (
+    "floor_ones": (
         Floor(),
         ones,
     ),
-    "ceil_rand": lambda: (
+    "ceil_rand": (
         Ceil(),
         rand,
     ),
-    "floor_rand": lambda: (
+    "floor_rand": (
         Floor(),
         rand,
     ),
-    "ceil_randn_pos": lambda: (
+    "ceil_randn_pos": (
         Ceil(),
         randn_pos,
     ),
-    "floor_randn_pos": lambda: (
+    "floor_randn_pos": (
         Floor(),
         randn_pos,
     ),
-    "ceil_randn_neg": lambda: (
+    "ceil_randn_neg": (
         Ceil(),
         randn_neg,
     ),
-    "floor_randn_neg": lambda: (
+    "floor_randn_neg": (
         Floor(),
         randn_neg,
     ),
-    "ceil_ramp": lambda: (
+    "ceil_ramp": (
         Ceil(),
         ramp,
     ),
-    "floor_ramp": lambda: (
+    "floor_ramp": (
         Floor(),
         ramp,
     ),
@@ -98,53 +99,55 @@ test_data = {
 
 @common.parametrize("test_data", test_data)
 def test_unary_tosa_MI(test_data: input_t1):
-    module, test_data = test_data()
+    module = test_data[0]
     pipeline = TosaPipelineMI[input_t1](
-        module,
-        (test_data,),
-        module.aten_op,
-        module.exir_op,
+        module, (test_data[1],), module.aten_op, module.exir_op
     )
     pipeline.run()
 
 
 @common.parametrize("test_data", test_data)
 def test_unary_tosa_BI(test_data: input_t1):
-    module, test_data = test_data()
+    module = test_data[0]
     pipeline = TosaPipelineBI[input_t1](
-        module,
-        (test_data,),
-        module.aten_op,
-        module.exir_op,
-        atol=0.06,
-        rtol=0.01,
+        module, (test_data[1],), module.aten_op, module.exir_op
     )
     pipeline.run()
 
 
 @common.parametrize("test_data", test_data)
-@common.XfailIfNoCorstone300
 def test_unary_u55_BI(test_data: input_t1):
-    module, test_data = test_data()
+    module = test_data[0]
     pipeline = EthosU55PipelineBI[input_t1](
-        module,
-        (test_data,),
-        module.aten_op,
-        module.exir_op,
-        run_on_fvp=True,
+        module, (test_data[1],), module.aten_op, module.exir_op, run_on_fvp=False
     )
     pipeline.run()
 
 
 @common.parametrize("test_data", test_data)
-@common.XfailIfNoCorstone320
 def test_unary_u85_BI(test_data: input_t1):
-    module, test_data = test_data()
+    module = test_data[0]
     pipeline = EthosU85PipelineBI[input_t1](
-        module,
-        (test_data,),
-        module.aten_op,
-        module.exir_op,
-        run_on_fvp=True,
+        module, (test_data[1],), module.aten_op, module.exir_op, run_on_fvp=False
+    )
+    pipeline.run()
+
+
+@common.parametrize("test_data", test_data)
+@common.SkipIfNoCorstone300
+def test_unary_u55_BI_on_fvp(test_data: input_t1):
+    module = test_data[0]
+    pipeline = EthosU55PipelineBI[input_t1](
+        module, (test_data[1],), module.aten_op, module.exir_op, run_on_fvp=True
+    )
+    pipeline.run()
+
+
+@common.parametrize("test_data", test_data)
+@common.SkipIfNoCorstone320
+def test_unary_u85_BI_on_fvp(test_data: input_t1):
+    module = test_data[0]
+    pipeline = EthosU85PipelineBI[input_t1](
+        module, (test_data[1],), module.aten_op, module.exir_op, run_on_fvp=True
     )
     pipeline.run()

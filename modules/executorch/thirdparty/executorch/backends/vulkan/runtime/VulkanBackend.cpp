@@ -152,7 +152,7 @@ class GraphBuilder {
   VkGraphPtr flatbuffer_;
   const uint8_t* constant_data_;
 
-  std::vector<ValueRef> ref_mapping_;
+  std::unordered_map<uint32_t, ValueRef> ref_mapping_;
 
  public:
   explicit GraphBuilder(
@@ -164,20 +164,22 @@ class GraphBuilder {
         constant_data_(constant_data),
         ref_mapping_() {}
 
-  void resize(uint32_t size) {
-    ref_mapping_.resize(size, INT32_MAX);
-  }
-
   bool fb_id_exists(const uint32_t fb_id) {
-    return fb_id < ref_mapping_.size() && ref_mapping_[fb_id] != INT32_MAX;
+    const std::unordered_map<uint32_t, ValueRef>::iterator found_ref =
+        ref_mapping_.find(fb_id);
+
+    return found_ref != ref_mapping_.end();
   }
 
   ValueRef get_fb_id_valueref(const uint32_t fb_id) {
+    const std::unordered_map<uint32_t, ValueRef>::iterator found_ref =
+        ref_mapping_.find(fb_id);
+
     ET_CHECK_MSG(
-        fb_id_exists(fb_id),
+        found_ref != ref_mapping_.end(),
         "Trying to extract a value that hasn't yet been added to the graph.");
 
-    return ref_mapping_[fb_id];
+    return found_ref->second;
   }
 
   void add_tensor_to_graph(const uint32_t fb_id, VkTensorPtr tensor_fb) {
@@ -313,9 +315,6 @@ class GraphBuilder {
   }
 
   void build_graph() {
-    // Resize the mapping to the number of values in the flatbuffer
-    resize(flatbuffer_->values()->size());
-
     // First, add all values to the graph
     for (uint32_t fb_id = 0; fb_id < flatbuffer_->values()->size(); ++fb_id) {
       VkValuePtr value = flatbuffer_->values()->Get(fb_id);
@@ -339,10 +338,12 @@ class GraphBuilder {
       std::string op_name = op_call->name()->str();
       ET_CHECK_MSG(VK_HAS_OP(op_name), "Missing operator: %s", op_name.c_str());
 
+      const std::vector<int> arg_fb_ids(
+          op_call->args()->cbegin(), op_call->args()->cend());
+
       std::vector<ValueRef> args;
-      args.reserve(op_call->args()->size());
-      for (const auto arg_fb_id : *op_call->args()) {
-        args.push_back(get_fb_id_valueref(static_cast<int>(arg_fb_id)));
+      for (const int arg_fb_id : arg_fb_ids) {
+        args.push_back(get_fb_id_valueref(arg_fb_id));
       }
 
       auto vkFn = VK_GET_OP_FN(op_name);
@@ -490,7 +491,8 @@ class VulkanBackend final : public ::executorch::runtime::BackendInterface {
 
     VkGraphPtr flatbuffer_graph = vkgraph::GetVkGraph(flatbuffer_data);
 
-    GraphBuilder builder(compute_graph, flatbuffer_graph, constant_data);
+    GraphBuilder builder =
+        GraphBuilder(compute_graph, flatbuffer_graph, constant_data);
 
     builder.build_graph();
 
@@ -499,8 +501,6 @@ class VulkanBackend final : public ::executorch::runtime::BackendInterface {
     compute_graph->encode_prepack();
     compute_graph->prepack();
 
-    // TODO(ssjia): remove this once we can batch compile compute pipelines
-    // during prepare().
     compute_graph->encode_execute();
 
     return Error::Ok;
@@ -569,14 +569,9 @@ class VulkanBackend final : public ::executorch::runtime::BackendInterface {
       }
     }
 
-    // propagate_resize() will re-encode the command buffer so that push
-    // constants are updated and DynamicDispatchNode can update the compute
-    // shader, global workgroup size, and local workgroup size to perform the
-    // model inference.
     if (should_propagate_resize) {
       compute_graph->propagate_resize();
     }
-
     compute_graph->execute();
 
     for (size_t i = 0; i < compute_graph->outputs().size(); i++) {

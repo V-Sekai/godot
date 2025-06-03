@@ -98,21 +98,19 @@ void add_max_pool2d_node(
       global_size,
       local_size,
       // Inputs and Outputs
-      {{{out_val->at(0), out_val->at(1)}, vkapi::kWrite}, {in, vkapi::kRead}},
+      {{{out_val->at(0), out_val->at(1)}, vkapi::MemoryAccessType::WRITE},
+       {in, vkapi::MemoryAccessType::READ}},
       // Shader params buffers
       {
           t_out->logical_limits_ubo(),
           t_in->sizes_ubo(),
           graph.create_params_buffer(kernel_params),
       },
-      // Push Constants
-      {},
       // Specialization Constants
       {},
-      // Resize Args
-      {kernel_size, stride, padding, dilation, ceil_mode},
       // Resizing Logic
-      resize_pool2d_node));
+      resize_pool2d_node,
+      {kernel_size, stride, padding, dilation, ceil_mode}));
 }
 
 void max_pool2d(ComputeGraph& graph, const std::vector<ValueRef>& args) {
@@ -173,24 +171,22 @@ void add_avg_pool2d_node(
       global_size,
       local_size,
       // Inputs and Outputs
-      {{out, vkapi::kWrite}, {in, vkapi::kRead}},
+      {{out, vkapi::MemoryAccessType::WRITE},
+       {in, vkapi::MemoryAccessType::READ}},
       // Shader params buffers
       {t_out->logical_limits_ubo(),
        t_in->sizes_ubo(),
        graph.create_params_buffer(kernel_params),
        graph.create_params_buffer(divisor_params)},
-      // Push Constants
-      {},
       // Specialization Constants
       {},
-      // Resize Args
+      // Resizing Logic
+      resize_pool2d_node,
       {kernel_size,
        stride,
        padding,
        /*dilation= */ kDummyValueRef,
-       ceil_mode},
-      // Resizing Logic
-      resize_pool2d_node));
+       ceil_mode}));
 }
 
 void avg_pool2d(ComputeGraph& graph, const std::vector<ValueRef>& args) {

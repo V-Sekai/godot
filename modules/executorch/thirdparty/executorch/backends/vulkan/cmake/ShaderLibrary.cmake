@@ -29,11 +29,9 @@ if(ANDROID)
     message(FATAL_ERROR "ANDROID_NDK not set")
   endif()
 
-  if(NOT GLSLC_PATH)
-    set(GLSLC_PATH
-        "${ANDROID_NDK}/shader-tools/${ANDROID_NDK_HOST_SYSTEM_NAME}/glslc"
-    )
-  endif()
+  set(GLSLC_PATH
+      "${ANDROID_NDK}/shader-tools/${ANDROID_NDK_HOST_SYSTEM_NAME}/glslc"
+  )
 else()
   find_program(GLSLC_PATH glslc PATHS $ENV{PATH})
 
@@ -47,20 +45,16 @@ include(${EXECUTORCH_ROOT}/tools/cmake/Utils.cmake)
 
 function(gen_vulkan_shader_lib_cpp shaders_path)
   set(VULKAN_SHADERGEN_ENV "")
-  set(VULKAN_SHADERGEN_OUT_PATH ${CMAKE_BINARY_DIR}/vulkan_compute_shaders)
+  set(VULKAN_SHADERGEN_OUT_PATH ${CMAKE_BINARY_DIR}/${ARGV1})
 
-  add_custom_command(
-    COMMENT "Generating Vulkan Compute Shaders"
-    OUTPUT ${VULKAN_SHADERGEN_OUT_PATH}/spv.cpp
+  execute_process(
     COMMAND
       "${PYTHON_EXECUTABLE}"
       ${EXECUTORCH_ROOT}/backends/vulkan/runtime/gen_vulkan_spv.py --glsl-path
       ${shaders_path} --output-path ${VULKAN_SHADERGEN_OUT_PATH}
-      --glslc-path=${GLSLC_PATH}
-      --tmp-dir-path=${VULKAN_SHADERGEN_OUT_PATH}/shader_cache/ --env
-      ${VULKAN_GEN_ARG_ENV} --optimize
-    DEPENDS ${shaders_path}/*
-            ${EXECUTORCH_ROOT}/backends/vulkan/runtime/gen_vulkan_spv.py
+      --glslc-path=${GLSLC_PATH} --tmp-dir-path=${VULKAN_SHADERGEN_OUT_PATH}/shader_cache/
+      --env ${VULKAN_GEN_ARG_ENV}
+    RESULT_VARIABLE error_code
   )
 
   set(generated_spv_cpp
@@ -91,6 +85,13 @@ endfunction()
 macro(vulkan_shader_library shaders_path library_name)
   set(VULKAN_SHADERGEN_ENV "")
   set(VULKAN_SHADERGEN_OUT_PATH ${CMAKE_BINARY_DIR}/${library_name})
+
+  # execute_process( COMMAND "${PYTHON_EXECUTABLE}"
+  # ${EXECUTORCH_ROOT}/backends/vulkan/runtime/gen_vulkan_spv.py --glsl-path
+  # ${shaders_path} --output-path ${VULKAN_SHADERGEN_OUT_PATH}
+  # --glslc-path=${GLSLC_PATH} --tmp-dir-path=${VULKAN_SHADERGEN_OUT_PATH} --env
+  # ${VULKAN_GEN_ARG_ENV} RESULT_VARIABLE error_code ) set(ENV{PYTHONPATH}
+  # ${PYTHONPATH})
 
   set(generated_spv_cpp ${VULKAN_SHADERGEN_OUT_PATH}/spv.cpp)
 

@@ -14,30 +14,23 @@
 #include <executorch/backends/qualcomm/runtime/backends/QnnDeviceCommon.h>
 
 #include <memory>
-
 namespace executorch {
 namespace backends {
 namespace qnn {
-
-class QnnDlcManager;
-
 class QnnContext {
  public:
   explicit QnnContext(
       const QnnImplementation& implementation,
       QnnBackend* backend,
       QnnDevice* device,
-      QnnBackendCache* cache,
-      QnnDlcManager* qnn_dlc_manager)
+      QnnBackendCache* cache)
       : handle_(nullptr),
         implementation_(implementation),
         backend_(backend),
         device_(device),
-        cache_(cache),
-        qnn_dlc_manager_(qnn_dlc_manager) {}
+        cache_(cache) {}
 
   virtual ~QnnContext();
-
   executorch::runtime::Error Configure();
 
   Qnn_ContextHandle_t GetHandle() const {
@@ -60,7 +53,7 @@ class QnnContext {
     return cache_->GetCacheState();
   };
 
-  virtual executorch::runtime::Error GetContextBinary(
+  executorch::runtime::Error GetContextBinary(
       QnnExecuTorchContextBinary& qnn_executorch_context_binary);
 
  protected:
@@ -79,7 +72,6 @@ class QnnContext {
   QnnDevice* device_;
   QnnBackendCache* cache_;
   QnnContextCustomProtocol qnn_context_custom_protocol_;
-  QnnDlcManager* qnn_dlc_manager_;
 };
 } // namespace qnn
 } // namespace backends

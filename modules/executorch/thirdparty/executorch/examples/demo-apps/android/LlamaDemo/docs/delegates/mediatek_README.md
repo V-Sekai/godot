@@ -24,7 +24,7 @@ In this section, we will need to set up the ExecuTorch repo first with Conda env
 Checkout ExecuTorch repo and sync submodules
 
 ```
-git clone -b viable/strict https://github.com/pytorch/executorch.git && cd executorch
+git clone -b release/0.6 https://github.com/pytorch/executorch.git && cd executorch
 ```
 
 Create either a Python virtual environment:
@@ -65,7 +65,7 @@ export ANDROID_ABIS=arm64-v8a
 MTK currently supports Llama 3 exporting.
 
 ### Set up Environment
-1. Follow the ExecuTorch set-up environment instructions found on the [Getting Started](https://pytorch.org/executorch/main/getting-started-setup.html) page
+1. Follow the ExecuTorch set-up environment instructions found on the [Getting Started](https://pytorch.org/executorch/stable/getting-started-setup.html) page
 2. Set-up MTK AoT environment
 ```
 // Ensure that you are inside executorch/examples/mediatek directory

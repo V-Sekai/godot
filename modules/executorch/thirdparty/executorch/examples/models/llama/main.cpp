@@ -4,7 +4,6 @@
  *
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree.
- * @lint-ignore-every CLANGTIDY facebook-hte-Deprecated
  */
 
 #include <gflags/gflags.h>
@@ -20,8 +19,6 @@ DEFINE_string(
     model_path,
     "llama2.pte",
     "Model serialized in flatbuffer format.");
-
-DEFINE_string(data_path, "", "Data file for the model.");
 
 DEFINE_string(tokenizer_path, "tokenizer.bin", "Tokenizer stuff.");
 
@@ -52,16 +49,11 @@ int32_t main(int32_t argc, char** argv) {
   // and users can create their own DataLoaders to load from arbitrary sources.
   const char* model_path = FLAGS_model_path.c_str();
 
-  std::optional<std::string> data_path = std::nullopt;
-  if (!FLAGS_data_path.empty()) {
-    data_path = FLAGS_data_path.c_str();
-  }
-
   const char* tokenizer_path = FLAGS_tokenizer_path.c_str();
 
   const char* prompt = FLAGS_prompt.c_str();
 
-  float temperature = FLAGS_temperature;
+  double temperature = FLAGS_temperature;
 
   int32_t seq_len = FLAGS_seq_len;
 
@@ -81,16 +73,13 @@ int32_t main(int32_t argc, char** argv) {
   }
 #endif
   // create llama runner
-  std::unique_ptr<example::Runner> runner =
-      example::Runner::create(model_path, tokenizer_path, data_path);
+  example::Runner runner(model_path, tokenizer_path, temperature);
 
   if (warmup) {
-    runner->warmup(prompt, /*max_new_tokens=*/seq_len);
+    runner.warmup(prompt, seq_len);
   }
   // generate
-  executorch::extension::llm::GenerationConfig config{
-      .seq_len = seq_len, .temperature = temperature};
-  runner->generate(prompt, config);
+  runner.generate(prompt, seq_len);
 
   return 0;
 }

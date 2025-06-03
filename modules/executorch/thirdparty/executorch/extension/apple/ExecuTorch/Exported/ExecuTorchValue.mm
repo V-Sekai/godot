@@ -57,15 +57,6 @@
   return self;
 }
 
-- (instancetype)copy {
-  return [self copyWithZone:nil];
-}
-
-- (instancetype)copyWithZone:(nullable NSZone *)zone {
-  return [[ExecuTorchValue allocWithZone:zone] initWithTag:_tag
-                                                     value:[_value copyWithZone:zone]];
-}
-
 - (ExecuTorchValueTag)tag {
   return _tag;
 }
@@ -97,11 +88,6 @@
   return [(ExecuTorchScalarValue)_value doubleValue];
 }
 
-- (ExecuTorchFloatValue)floatValue {
-  ET_CHECK(self.isFloat);
-  return [(ExecuTorchScalarValue)_value floatValue];
-}
-
 - (BOOL)isNone {
   return _tag == ExecuTorchValueTagNone;
 }
@@ -129,11 +115,6 @@
 }
 
 - (BOOL)isDouble {
-  return _tag == ExecuTorchValueTagDouble;
-}
-
-- (BOOL)isFloat {
-  // EValue does not have a separate tag for float.
   return _tag == ExecuTorchValueTagDouble;
 }
 

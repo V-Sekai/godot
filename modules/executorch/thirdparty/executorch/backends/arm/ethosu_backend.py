@@ -23,6 +23,7 @@ from torch.export.exported_program import ExportedProgram
 
 # debug functionality
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 @final
@@ -35,16 +36,19 @@ class EthosUBackend(BackendDetails):
 
     @staticmethod
     def _compile_tosa_flatbuffer(
-        tosa_flatbuffer: bytes, compile_spec: List[CompileSpec]
+        tosa_flatbuffer: bytes, compile_spec: list[CompileSpec]
     ) -> bytes:
         """
         Static helper method to do the compilation of the TOSA flatbuffer
         representation to a target specific binary stream.
         """
         compile_flags = []
+        input_order = []
         for spec in compile_spec:
             if spec.key == "compile_flags":
                 compile_flags.append(spec.value.decode())
+            if spec.key == "input_order":
+                input_order = list(map(int, spec.value.decode().split(",")))
 
         if len(compile_flags) == 0:
             # Not testing for compile_flags correctness here, just that they are
@@ -57,6 +61,7 @@ class EthosUBackend(BackendDetails):
         binary = vela_compile(
             tosa_flatbuffer,
             compile_flags,
+            input_order,
             verbose=logger.getEffectiveLevel() == logging.INFO,
         )
         return binary

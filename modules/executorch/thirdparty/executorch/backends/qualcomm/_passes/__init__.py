@@ -4,64 +4,51 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from .annotate_adaptive_avg_pool1d import AnnotateAdaptiveAvgPool1D
+from .annotate_decomposed import AnnotateDecomposed
 from .annotate_quant_attrs import AnnotateQuantAttrs
-from .annotate_stack import AnnotateStack
-from .annotate_unbind import AnnotateUnbind
+from .constant_i64_to_i32 import ConstantI64toI32
 from .convert_bmm_to_matmul import ConvertBmmToMatmul
 from .convert_conv1d_to_conv2d import ConvertConv1dToConv2d
-from .convert_square_to_pow import ConvertSquareToPow
-from .convert_upsample_bicubic2d import ConvertUpsampleBicubicWithBilinear
+from .convert_to_linear import ConvertToLinear
 from .decompose_any import DecomposeAny
-from .decompose_cdist import DecomposeCDist
 from .decompose_einsum import DecomposeEinsum
 from .decompose_expm1 import DecomposeExpM1
 from .decompose_linalg_vector_norm import DecomposeLinalgVectorNorm
-from .decompose_roll import DecomposeRoll
 from .decompose_silu import DecomposeSilu
 from .expand_broadcast_tensor_shape import ExpandBroadcastTensorShape
-from .fixed_linear_keep_dim import FixedLinearKeepDim
 from .fold_qdq import FoldQDQ
-from .fuse_consecutive_cast import FuseConsecutiveCast
 from .fuse_consecutive_transpose import FuseConsecutiveTranspose
-from .i64_to_i32 import I64toI32
 from .insert_io_qdq import InsertIOQDQ
 from .insert_requantize import InsertRequantize
 from .layout_transform import LayoutTransform
 from .lift_constant_scalar_operands import LiftConstantScalarOperands
 from .recompose_pixel_unshuffle import RecomposePixelUnshuffle
+from .recompose_prelu import RecomposePReLU
 from .recompose_rms_norm import RecomposeRmsNorm
 from .reduce_dynamic_range import ReduceDynamicRange
-from .remove_0d_tensor import Remove0DTensor
 from .remove_redundancy import RemoveRedundancy
 from .replace_arange_args import ReplaceArangeArgs
 from .replace_index_put_input import ReplaceIndexPutInput
 from .replace_inf_values import ReplaceInfValues
-from .tag_quant_io import TagQuantIO
+from .tensor_i64_to_i32 import TensorI64toI32
 
 
 __all__ = [
-    AnnotateAdaptiveAvgPool1D,
+    AnnotateDecomposed,
     AnnotateQuantAttrs,
-    AnnotateStack,
-    AnnotateUnbind,
+    ConstantI64toI32,
     ConvertBmmToMatmul,
     ConvertConv1dToConv2d,
-    ConvertSquareToPow,
-    ConvertUpsampleBicubicWithBilinear,
+    RecomposePReLU,
+    ConvertToLinear,
     DecomposeAny,
-    DecomposeCDist,
     DecomposeEinsum,
     DecomposeExpM1,
     DecomposeLinalgVectorNorm,
-    DecomposeRoll,
     DecomposeSilu,
     ExpandBroadcastTensorShape,
-    FixedLinearKeepDim,
     FoldQDQ,
-    FuseConsecutiveCast,
     FuseConsecutiveTranspose,
-    I64toI32,
     InsertIOQDQ,
     InsertRequantize,
     LayoutTransform,
@@ -69,10 +56,9 @@ __all__ = [
     RecomposePixelUnshuffle,
     RecomposeRmsNorm,
     ReduceDynamicRange,
-    Remove0DTensor,
     RemoveRedundancy,
     ReplaceArangeArgs,
     ReplaceIndexPutInput,
     ReplaceInfValues,
-    TagQuantIO,
+    TensorI64toI32,
 ]

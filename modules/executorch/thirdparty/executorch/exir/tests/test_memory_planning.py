@@ -8,6 +8,7 @@
 
 import itertools
 import unittest
+from functools import partial
 from typing import Any, Callable, List, Optional, Tuple, Type
 
 import executorch.exir as exir
@@ -19,8 +20,8 @@ from executorch.exir.memory_planning import (
     filter_nodes,
     get_node_tensor_specs,
     greedy,
+    memory_planning_algorithm_suite,
     MemoryAlgoResult,
-    MemoryPlanningAlgorithmSuite,
     naive,
     Verifier,
 )
@@ -241,7 +242,6 @@ def maketest(
     use_functionalization: bool = True,
     alloc_graph_input: bool = True,
     alloc_graph_output: bool = True,
-    alloc_mutable_buffer: bool = True,
     has_unused_graph_input: bool = False,
 ) -> Callable[..., None]:
     # parameterized.expand is not compatible with maketest. I'll just loop thru
@@ -269,7 +269,7 @@ def maketest(
                 .exported_program()
                 .graph_module
             )
-            mem_algo = MemoryPlanningAlgorithmSuite(algo_list=[algo])
+            mem_algo = partial(memory_planning_algorithm_suite, algo_list=[algo])
             graph_module = PassManager(
                 passes=[
                     SpecPropPass(),
@@ -283,17 +283,10 @@ def maketest(
             )(graph_module).graph_module
 
             self.verify_reuse(
-                graph_module,
-                expect_reuse,
-                alloc_graph_input,
-                alloc_graph_output,
-                alloc_mutable_buffer,
+                graph_module, expect_reuse, alloc_graph_input, alloc_graph_output
             )
             self.verify_graph_input_output(
-                graph_module,
-                alloc_graph_input,
-                alloc_graph_output,
-                alloc_mutable_buffer,
+                graph_module, alloc_graph_input, alloc_graph_output
             )
 
             self.verify_overlap_placeholders(has_unused_graph_input, graph_module)
@@ -314,7 +307,6 @@ class TestMemoryPlanning(unittest.TestCase):
         expect_reuse: bool,
         alloc_graph_input: bool,
         alloc_graph_output: bool,
-        alloc_mutable_buffer: bool,
     ) -> None:
         r"""
         Do sanity check and verify tensor storage reuse.
@@ -330,7 +322,6 @@ class TestMemoryPlanning(unittest.TestCase):
             graph_module,
             alloc_graph_input=alloc_graph_input,
             alloc_graph_output=alloc_graph_output,
-            alloc_mutable_buffers=alloc_mutable_buffer,
         ).verify_storage_reuse()
 
         print(f"num_reuse_pairs is {num_reuse_pairs}")
@@ -344,10 +335,9 @@ class TestMemoryPlanning(unittest.TestCase):
         graph_module: torch.fx.GraphModule,
         alloc_graph_input: bool,
         alloc_graph_output: bool,
-        alloc_mutable_buffers: bool,
     ) -> None:
         Verifier(
-            graph_module, alloc_graph_input, alloc_graph_output, alloc_mutable_buffers
+            graph_module, alloc_graph_input, alloc_graph_output
         ).verify_graph_input_output()
 
     def verify_overlap_placeholders(
@@ -415,16 +405,13 @@ class TestMemoryPlanning(unittest.TestCase):
     )
 
     def test_graph_input_output(self) -> None:
-        for (
-            alloc_graph_input,
-            alloc_graph_output,
-            alloc_mutable_buffers,
-        ) in itertools.product([True, False], [True, False], [True, False]):
+        for alloc_graph_input, alloc_graph_output in itertools.product(
+            [True, False], [True, False]
+        ):
             case = maketest(
                 ModelWithDifferentTensorSizes,
                 alloc_graph_input=alloc_graph_input,
                 alloc_graph_output=alloc_graph_output,
-                alloc_mutable_buffer=alloc_mutable_buffers,
             )
             case(self)
 
@@ -510,6 +497,7 @@ class TestMisc(unittest.TestCase):
         )
         return quantized_model
 
+    # pyre-ignore
     @parameterized.expand(
         [
             (
@@ -526,7 +514,7 @@ class TestMisc(unittest.TestCase):
     )
     def test_multiple_pools(
         self,
-        algo: Callable[..., MemoryAlgoResult],
+        algo: Callable[..., List[int]],
         expected_allocs: List[Tuple[int, int]],
         expected_bufsizes: List[int],
     ) -> None:
@@ -534,7 +522,7 @@ class TestMisc(unittest.TestCase):
             export(MultiplePoolsToyModel(), (torch.ones(1),), strict=True)
         )
 
-        mem_algo = MemoryPlanningAlgorithmSuite(algo_list=[algo])
+        mem_algo = partial(memory_planning_algorithm_suite, algo_list=[algo])
         edge_program.to_executorch(
             exir.ExecutorchBackendConfig(
                 memory_planning_pass=CustomPoolMemoryPlanningPass(
@@ -549,7 +537,6 @@ class TestMisc(unittest.TestCase):
             graph_module,
             alloc_graph_input=True,
             alloc_graph_output=True,
-            alloc_mutable_buffers=True,
         )
         verifier.verify_storage_reuse()
         verifier.verify_graph_input_output()

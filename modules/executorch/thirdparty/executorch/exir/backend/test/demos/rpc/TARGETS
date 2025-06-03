@@ -11,7 +11,6 @@ runtime.python_library(
     ],
     visibility = [
         "//executorch/exir/backend/test/...",
-        "//executorch/test/...",
     ],
     deps = [
         "//caffe2:torch",

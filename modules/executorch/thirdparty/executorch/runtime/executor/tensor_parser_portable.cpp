@@ -18,13 +18,13 @@
 #include <executorch/schema/program_generated.h>
 
 namespace executorch {
-namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
 namespace deserialization {
 
 using executorch::runtime::Span;
-using ::torch::executor::ScalarType;
-using ::torch::executor::Tensor;
-using ::torch::executor::TensorImpl;
+using torch::executor::ScalarType;
+using torch::executor::Tensor;
+using torch::executor::TensorImpl;
 
 Result<Tensor> parseTensor(
     const Program* program,
@@ -176,5 +176,5 @@ Result<Tensor> parseTensor(
 }
 
 } // namespace deserialization
-} // namespace ET_RUNTIME_NAMESPACE
+} // namespace runtime
 } // namespace executorch

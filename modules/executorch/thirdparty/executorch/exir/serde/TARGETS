@@ -12,6 +12,7 @@ python_library(
         "schema_check.py",
         "serialize.py",
         "union.py",
+        "upgrade.py",
     ],
     deps = [
         "fbsource//third-party/pypi/sympy:sympy",

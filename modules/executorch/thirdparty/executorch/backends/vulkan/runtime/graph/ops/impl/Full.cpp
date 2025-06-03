@@ -50,17 +50,14 @@ void add_full_node(
       graph.create_global_wg_size(out),
       graph.create_local_wg_size(out),
       // Inputs and Outputs
-      {{out, vkapi::kWrite}},
+      {{out, vkapi::MemoryAccessType::WRITE}},
       // Shader params buffers
       {t_out->sizes_ubo(), graph.create_params_buffer(fill_value_val)},
-      // Push Constants
-      {},
       // Specialization Constants
       {SV(t_out->packed_dim())},
-      // Resize Args
-      {size_or_in},
       // Resizing Logic
-      resize_full_node));
+      resize_full_node,
+      {size_or_in}));
 }
 
 void full(ComputeGraph& graph, const std::vector<ValueRef>& args) {

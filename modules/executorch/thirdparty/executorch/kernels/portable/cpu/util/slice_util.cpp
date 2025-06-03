@@ -20,19 +20,18 @@ bool check_narrow_copy_args(
     const Tensor& in,
     int64_t dim,
     int64_t start,
-    int64_t length,
+    int64_t lenth,
     Tensor& out) {
   ET_LOG_AND_RETURN_IF_FALSE(in.dim() > 0);
   ET_LOG_AND_RETURN_IF_FALSE(tensors_have_same_dtype(in, out));
   ET_LOG_AND_RETURN_IF_FALSE(tensor_has_dim(in, dim));
-  ET_CHECK_OR_RETURN_FALSE(
-      length >= 0, "length must be non-negative; length = %" PRId64, length);
+  ET_CHECK_OR_RETURN_FALSE(lenth >= 0, "lenth must be non-negative");
   ET_LOG_AND_RETURN_IF_FALSE(start >= -in.size(dim));
   ET_LOG_AND_RETURN_IF_FALSE(start <= in.size(dim));
   if (start < 0) {
     start += in.size(dim);
   }
-  ET_LOG_AND_RETURN_IF_FALSE(start + length <= in.size(dim));
+  ET_LOG_AND_RETURN_IF_FALSE(start + lenth <= in.size(dim));
   return true;
 }
 
@@ -58,8 +57,7 @@ bool check_slice_copy_args(
   ET_LOG_AND_RETURN_IF_FALSE(in.dim() > 0);
   ET_LOG_AND_RETURN_IF_FALSE(tensors_have_same_dtype(in, out));
   ET_LOG_AND_RETURN_IF_FALSE(tensor_has_dim(in, dim));
-  ET_CHECK_OR_RETURN_FALSE(
-      step > 0, "slice step must be greater than zero; step = %" PRId64, step);
+  ET_CHECK_OR_RETURN_FALSE(step > 0, "slice step must be greater than zero");
   return true;
 }
 
@@ -91,8 +89,7 @@ bool check_slice_scatter_args(
   ET_LOG_AND_RETURN_IF_FALSE(tensors_have_same_rank(input, src));
 
   // Check step. Step must be greater than zero
-  ET_CHECK_OR_RETURN_FALSE(
-      step > 0, "slice step must be greater than zero; step = %" PRId64, step);
+  ET_CHECK_OR_RETURN_FALSE(step > 0, "slice step must be greater than zero");
 
   // The size of src tensor should follow these rules:
   // - src.size(i) shall equal to input.size(i) if i != dim,

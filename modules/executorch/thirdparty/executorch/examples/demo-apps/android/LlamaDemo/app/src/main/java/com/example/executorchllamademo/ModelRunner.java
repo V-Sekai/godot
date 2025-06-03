@@ -13,8 +13,6 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import androidx.annotation.NonNull;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.pytorch.executorch.extension.llm.LlmCallback;
 import org.pytorch.executorch.extension.llm.LlmModule;
 
@@ -71,16 +69,7 @@ public class ModelRunner implements LlmCallback {
   }
 
   @Override
-  public void onStats(String stats) {
-    float tps = 0;
-    try {
-      JSONObject jsonObject = new JSONObject(stats);
-      int numGeneratedTokens = jsonObject.getInt("generated_tokens");
-      int inferenceEndMs = jsonObject.getInt("inference_end_ms");
-      int promptEvalEndMs = jsonObject.getInt("prompt_eval_end_ms");
-      tps = (float) numGeneratedTokens / (inferenceEndMs - promptEvalEndMs) * 1000;
-    } catch (JSONException e) {
-    }
+  public void onStats(float tps) {
     mCallback.onStats("tokens/second: " + tps);
   }
 }

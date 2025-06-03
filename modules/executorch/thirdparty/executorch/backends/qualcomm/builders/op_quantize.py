@@ -52,7 +52,7 @@ class QuantizeOpBase(NodeVisitor):
         quant_output_tensors = [output_tensor_wrapper]
 
         quant_op = PyQnnWrapper.PyQnnOpWrapper(
-            node.name,
+            node.target.__name__,
             QNN_OP_PACKAGE_NAME_QTI_AISW,
             OpQuantize.op_name,
         )

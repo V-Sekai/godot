@@ -22,7 +22,7 @@ class ComputeGraph;
 /*
  * Represents a single shader execution op in a ML model.
  */
-class DispatchNode : public ExecuteNode {
+class DispatchNode final : public ExecuteNode {
   friend class ComputeGraph;
 
  public:
@@ -33,28 +33,22 @@ class DispatchNode : public ExecuteNode {
       const utils::uvec3& local_workgroup_size,
       const std::vector<ArgGroup>& args,
       const vkapi::ParamsBindList& params,
-      const std::vector<PushConstantDataInfo>& push_constants = {},
       const vkapi::SpecVarList& spec_vars = {},
+      const ResizeFunction& resize_fn = nullptr,
       const std::vector<ValueRef>& resize_args = {},
-      const ResizeFunction& resize_fn = nullptr);
+      const std::vector<PushConstantDataInfo>& push_constants = {});
 
   ~DispatchNode() override = default;
 
   void encode(ComputeGraph* graph) override;
 
  protected:
-  vkapi::ShaderInfo shader_;
-  utils::uvec3 global_workgroup_size_;
-  utils::WorkgroupSize local_workgroup_size_;
+  const vkapi::ShaderInfo shader_;
+  const utils::uvec3 global_workgroup_size_;
+  const utils::WorkgroupSize local_workgroup_size_;
   const vkapi::ParamsBindList params_;
   const vkapi::SpecVarList spec_vars_;
   const std::vector<PushConstantDataInfo> push_constants_;
-
-  // For push constants
-  std::array<uint8_t, kMaxPushConstantSize> push_constants_data_{};
-  uint32_t push_constants_offset_ = 0;
-
-  void write_push_constant_data();
 
  public:
   operator bool() const {

@@ -45,7 +45,7 @@ class DequantizeOpBase(NodeVisitor):
         dequant_output_tensors = [output_tensor_wrapper]
 
         dequant_op = PyQnnWrapper.PyQnnOpWrapper(
-            node.name,
+            node.target.__name__,
             QNN_OP_PACKAGE_NAME_QTI_AISW,
             OpDequantize.op_name,
         )
