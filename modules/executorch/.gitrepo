@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-executorch.git
 	branch = main
-	commit = f80e9e33ae98addd8a78dc48fb91ca5214d56244
-	parent = 7d054a313155854499f8981f6527b5d877663075
+	commit = 51e3f3c12fdef00788af6b9556f513e5a4ac11dc
+	parent = 81a59d2464091dba58237e94e0b7c9957dd56cda
 	method = merge
 	cmdver = 0.4.9
