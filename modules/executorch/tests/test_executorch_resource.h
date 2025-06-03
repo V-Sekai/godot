@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_executorch_resource.cpp                                          */
+/*  test_executorch_resource.h                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -27,6 +27,8 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
+
+#pragma once
 
 #include "../src/executorch_resource.h"
 #include "doctest.h"

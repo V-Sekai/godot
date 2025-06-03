@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  mcp_server.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,17 +28,57 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "core/object/class_db.h"
-#include "mcp_server.h"
+#ifndef MCP_SERVER_H
+#define MCP_SERVER_H
 
-void initialize_executorch_module() {
-	// Register the MCP Server node
-	ClassDB::register_class<MCPServer>();
+#include "scene/main/node.h"
+#include "core/string/ustring.h"
 
-	print_line("ExecuTorch module with MCP Server initialized");
-}
+class MCPServer : public Node {
+	GDCLASS(MCPServer, Node);
 
-void uninitialize_executorch_module() {
-	print_line("ExecuTorch module uninitialized");
-}
+private:
+	bool server_running;
+	int port;
+	String server_name;
+	
+	// MCP protocol state
+	Dictionary capabilities;
+	Array tools;
+	Array resources;
+
+protected:
+	static void _bind_methods();
+
+public:
+	MCPServer();
+	~MCPServer();
+
+	// Node overrides
+	void _ready();
+	void _exit_tree();
+
+	// MCP Server functionality
+	void start_server(int p_port = 8080);
+	void stop_server();
+	bool is_server_running() const;
+	
+	// MCP Protocol methods
+	void initialize_mcp();
+	void add_tool(const String &name, const String &description, const Dictionary &schema);
+	void add_resource(const String &uri, const String &name, const String &description);
+	Dictionary handle_request(const Dictionary &request);
+	
+	// Property setters/getters
+	void set_port(int p_port);
+	int get_port() const;
+	void set_server_name(const String &p_name);
+	String get_server_name() const;
+	
+	// Signal callbacks
+	void _on_client_connected();
+	void _on_client_disconnected();
+	void _on_message_received(const Dictionary &message);
+};
+
+#endif // MCP_SERVER_H

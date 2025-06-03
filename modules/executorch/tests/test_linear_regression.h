@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_linear_regression_doctest.cpp                                    */
+/*  test_linear_regression.h                                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -27,6 +27,8 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
+
+#pragma once
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "../executorch_model.h"
