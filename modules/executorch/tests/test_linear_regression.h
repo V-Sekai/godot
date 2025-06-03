@@ -34,7 +34,8 @@
 #include "../executorch_model.h"
 #include "../executorch_runtime.h"
 #include "../mcp_server_internal.h"
-#include "doctest.h"
+
+#include "tests/test_macros.h"
 
 /**
  * Comprehensive doctest suite for ExecuTorch Godot Module
