@@ -10,7 +10,7 @@ import UIKit
 
 enum MessageType {
   case prompted
-  case llamagenerated  // TODO: change this to to something more general, like "textgenerated".
+  case llamagenerated
   case llavagenerated
   case info
 }

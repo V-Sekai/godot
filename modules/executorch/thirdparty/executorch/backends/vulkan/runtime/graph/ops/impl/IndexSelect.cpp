@@ -46,16 +46,9 @@ void add_index_select_channel_node(
       VK_KERNEL_FROM_STR(kernel_name),
       graph.create_global_wg_size(out),
       graph.create_local_wg_size(out),
-      {{out, vkapi::kWrite}, {{in, idx}, vkapi::kRead}},
-      {t_out->sizes_ubo(), t_in->sizes_ubo()},
-      // Push Constants
-      {},
-      // Specialization Constants
-      {},
-      // Resize Args
-      {},
-      // Resizing Logic
-      nullptr));
+      {{out, vkapi::MemoryAccessType::WRITE},
+       {{in, idx}, vkapi::MemoryAccessType::READ}},
+      {t_out->sizes_ubo(), t_in->sizes_ubo()}));
 }
 
 struct IndexSelectParams final {
@@ -102,16 +95,9 @@ void add_index_select_node(
       VK_KERNEL_FROM_STR(kernel_name),
       graph.create_global_wg_size(out),
       graph.create_local_wg_size(out),
-      {{out, vkapi::kWrite}, {{in, idx}, vkapi::kRead}},
-      {t_out->sizes_ubo(), graph.create_params_buffer(params)},
-      // Push Constants
-      {},
-      // Specialization Constants
-      {},
-      // Resize Args
-      {},
-      // Resizing Logic
-      nullptr));
+      {{out, vkapi::MemoryAccessType::WRITE},
+       {{in, idx}, vkapi::MemoryAccessType::READ}},
+      {t_out->sizes_ubo(), graph.create_params_buffer(params)}));
 }
 
 int64_t get_dim_idx(ComputeGraph& graph, ValueRef in, ValueRef dim_ref) {

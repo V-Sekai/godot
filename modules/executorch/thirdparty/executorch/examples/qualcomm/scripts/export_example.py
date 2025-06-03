@@ -3,20 +3,22 @@ import argparse
 import copy
 
 import torch
+from executorch.backends.qualcomm.partition.qnn_partitioner import QnnPartitioner
 from executorch.backends.qualcomm.quantizer.quantizer import QnnQuantizer
 from executorch.backends.qualcomm.serialization.qc_schema import QcomChipset
 from executorch.backends.qualcomm.utils.utils import (
+    capture_program,
     generate_htp_compiler_spec,
     generate_qnn_executorch_compiler_spec,
-    to_edge_transform_and_lower_to_qnn,
 )
 from executorch.devtools import generate_etrecord
 from executorch.examples.models import MODEL_NAME_TO_MODEL
 from executorch.examples.models.model_factory import EagerModelFactory
+from executorch.exir.backend.backend_api import to_backend, validation_disabled
 from executorch.exir.capture._config import ExecutorchBackendConfig
 from executorch.extension.export_util.utils import save_pte_program
 
-from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
+from torch.ao.quantization.quantize_pt2e import convert_pt2e, prepare_pt2e
 
 
 def main() -> None:
@@ -66,20 +68,27 @@ def main() -> None:
     # Get the quantized model
     m = convert_pt2e(m)
 
-    # Capture program for edge IR and delegate to QNN backend
+    # Capture program for edge IR
+    edge_program = capture_program(m, example_inputs)
+
+    # this is needed for the ETRecord as lowering modifies the graph in-place
+    edge_copy = copy.deepcopy(edge_program)
+
+    # Delegate to QNN backend
     backend_options = generate_htp_compiler_spec(
         use_fp16=False,
     )
-    compile_spec = generate_qnn_executorch_compiler_spec(
-        soc_model=QcomChipset.SM8550,
-        backend_options=backend_options,
+    qnn_partitioner = QnnPartitioner(
+        generate_qnn_executorch_compiler_spec(
+            soc_model=QcomChipset.SM8550,
+            backend_options=backend_options,
+        )
     )
-    delegated_program = to_edge_transform_and_lower_to_qnn(
-        m, example_inputs, compile_spec
-    )
-
-    # this is needed for the ETRecord as lowering modifies the graph in-place
-    edge_copy = copy.deepcopy(delegated_program)
+    with validation_disabled():
+        delegated_program = edge_program
+        delegated_program.exported_program = to_backend(
+            edge_program.exported_program, qnn_partitioner
+        )
 
     executorch_program = delegated_program.to_executorch(
         config=ExecutorchBackendConfig(extract_delegate_segments=False)

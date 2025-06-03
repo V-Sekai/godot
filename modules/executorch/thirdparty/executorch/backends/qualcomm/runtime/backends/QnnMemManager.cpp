@@ -47,12 +47,9 @@ Error QnnMemManager::RegisterIonMem(
   }
   tensor_wrapper->SetMemHandle(handle);
   registered_map_.insert({handle, mem_ptr});
-  if (log_level_ >= QnnExecuTorchLogLevel::kLogLevelInfo) {
-    QNN_EXECUTORCH_LOG_INFO(
-        "Tensor %s is successfully registered to ION shared memory.",
-        tensor_wrapper->GetName().c_str());
-  }
-
+  QNN_EXECUTORCH_LOG_INFO(
+      "Tensor %s is successfully registered to ION shared memory.",
+      tensor_wrapper->GetName().c_str());
   return Error::Ok;
 }
 
@@ -95,11 +92,9 @@ Error QnnMemManager::RegisterCustomMem(
   }
   tensor_wrapper->SetMemHandle(handle);
   registered_map_.insert({handle, mem_ptr});
-  if (log_level_ >= QnnExecuTorchLogLevel::kLogLevelInfo) {
-    QNN_EXECUTORCH_LOG_INFO(
-        "Tensor %s is successfully registered to custom shared memory.",
-        tensor_wrapper->GetName().c_str());
-  }
+  QNN_EXECUTORCH_LOG_INFO(
+      "Tensor %s is successfully registered to custom shared memory.",
+      tensor_wrapper->GetName().c_str());
   return Error::Ok;
 }
 

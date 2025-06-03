@@ -59,6 +59,7 @@ class EfficientSam(nn.Module):
             "pixel_std", torch.Tensor(pixel_std).view(1, 3, 1, 1), False
         )
 
+    @torch.jit.export
     def predict_masks(
         self,
         image_embeddings: torch.Tensor,
@@ -173,6 +174,7 @@ class EfficientSam(nn.Module):
             dim=-1,
         )
 
+    @torch.jit.export
     def get_image_embeddings(self, batched_images) -> torch.Tensor:
         """
         Predicts masks end-to-end from provided images and prompts.

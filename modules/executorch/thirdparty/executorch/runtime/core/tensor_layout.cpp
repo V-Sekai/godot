@@ -13,7 +13,7 @@
 #include <executorch/runtime/core/tensor_layout.h>
 
 namespace executorch {
-namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
 
 namespace {
 Result<size_t> calculate_nbytes(
@@ -51,5 +51,5 @@ Result<const TensorLayout> TensorLayout::create(
   }
   return TensorLayout(sizes, dim_order, scalar_type, nbytes.get());
 }
-} // namespace ET_RUNTIME_NAMESPACE
+} // namespace runtime
 } // namespace executorch

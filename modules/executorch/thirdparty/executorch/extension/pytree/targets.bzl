@@ -11,9 +11,6 @@ def define_common_targets():
         name = "pytree",
         srcs = [],
         exported_headers = ["pytree.h", "function_ref.h"],
-        exported_deps = [
-            "//executorch/runtime/core:core",
-        ],
         visibility = [
             "//executorch/...",
             "@EXECUTORCH_CLIENTS",

@@ -47,13 +47,11 @@ constexpr bitwise_fn<T> get_bitwise_fn() {
 
 template <typename T, const char* op_name>
 struct BitwiseFnForOp {
-  static constexpr auto get_value() {
-    return get_bitwise_fn<T, op_name>();
-  }
-  static_assert(get_value() != nullptr, "unknown op_name!");
+  static constexpr auto value = get_bitwise_fn<T, op_name>();
+  static_assert(value != nullptr, "unknown op_name!");
 };
 
-template <template <typename> class BitOp, const char* op_name>
+template <const char* op_name>
 Tensor& bitwise_tensor_out(
     RuntimeContext& ctx,
     const Tensor& a,
@@ -82,24 +80,21 @@ Tensor& bitwise_tensor_out(
 
   ET_SWITCH_INT_TYPES_AND(
       Bool, compute_type, ctx, op_name, CTYPE_COMPUTE, [&]() {
-        utils::apply_bitensor_elementwise_fn<
-            CTYPE_COMPUTE,
-            op_name,
-            utils::SupportedTensorDtypes::REALHBBF16>(
-            // TODO: rewrite this to be vectorization-capable.
-            BitOp<CTYPE_COMPUTE>(),
+        utils::apply_bitensor_elementwise_fn<CTYPE_COMPUTE, op_name>(
+            BitwiseFnForOp<CTYPE_COMPUTE, op_name>::value,
             ctx,
             a,
             utils::SupportedTensorDtypes::INTB,
             b,
             utils::SupportedTensorDtypes::INTB,
-            out);
+            out,
+            utils::SupportedTensorDtypes::REALHBBF16);
       });
 
   return out;
 }
 
-template <template <typename> class BitOp, const char* op_name>
+template <const char* op_name>
 Tensor& bitwise_scalar_out(
     RuntimeContext& ctx,
     const Tensor& a,
@@ -126,18 +121,16 @@ Tensor& bitwise_scalar_out(
   ET_SWITCH_INT_TYPES_AND(
       Bool, compute_type, ctx, op_name, CTYPE_COMPUTE, [&]() {
         const CTYPE_COMPUTE val_b = utils::scalar_to<CTYPE_COMPUTE>(b);
-        utils::apply_unitensor_elementwise_fn<
-            CTYPE_COMPUTE,
-            op_name,
-            utils::SupportedTensorDtypes::REALHBBF16>(
+        utils::apply_unitensor_elementwise_fn<CTYPE_COMPUTE, op_name>(
             [val_b](const CTYPE_COMPUTE val_a) {
-              // TODO: rewrite this to be vectorization-capable.
-              return BitOp<CTYPE_COMPUTE>()(val_a, val_b);
+              return BitwiseFnForOp<CTYPE_COMPUTE, op_name>::value(
+                  val_a, val_b);
             },
             ctx,
             a,
             utils::SupportedTensorDtypes::INTB,
-            out);
+            out,
+            utils::SupportedTensorDtypes::REALHBBF16);
       });
 
   return out;

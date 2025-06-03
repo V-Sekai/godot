@@ -5,10 +5,8 @@
 //
 // Please refer to the license found in the LICENSE file in the root directory of the source tree.
 
-#import "ETCoreMLModelCompiler.h"
-
-#import "ETCoreMLLogging.h"
-
+#import <ETCoreMLModelCompiler.h>
+#import <ETCoreMLLogging.h>
 #import <TargetConditionals.h>
 
 @implementation ETCoreMLModelCompiler
@@ -22,7 +20,8 @@
     (void)error;
     ETCoreMLLogErrorAndSetNSError(error,
                                   ETCoreMLErrorModelCompilationNotSupported,
-                                  "Model compilation is not supported on the target, please make sure to export a compiled model.");
+                                  "%@: Model compilation is not supported on the target, please make sure to export a compiled model.",
+                                  NSStringFromClass(ETCoreMLModelCompiler.class));
     return nil;
 #else
     __block NSError *localError = nil;
@@ -38,10 +37,11 @@
 
         long status = dispatch_semaphore_wait(sema, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(maxWaitTimeInSeconds * NSEC_PER_SEC)));
         if (status != 0) {
-            ETCoreMLLogErrorAndSetNSError(error, 
-                                          ETCoreMLErrorCompilationFailed,
-                                          "Failed to compile model in %f seconds.", 
-                                          maxWaitTimeInSeconds);
+            ETCoreMLLogErrorAndSetNSError(error,
+                                        ETCoreMLErrorCompilationFailed,
+                                        "%@: Failed to compile model in %f seconds.",
+                                        NSStringFromClass(ETCoreMLModelCompiler.class),
+                                        maxWaitTimeInSeconds);
             return nil;
         }
     } else {
@@ -50,9 +50,10 @@
 
     if (localError) {
         ETCoreMLLogErrorAndSetNSError(error,
-                                      ETCoreMLErrorCompilationFailed,
-                                      "Failed to compile model, error = %@.",
-                                      localError);
+                                    ETCoreMLErrorCompilationFailed,
+                                    "%@: Failed to compile model, error: %@",
+                                    NSStringFromClass(ETCoreMLModelCompiler.class),
+                                    localError);
         return nil;
     } else {
         return result;

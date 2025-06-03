@@ -85,19 +85,18 @@ void add_permute_node(
       VK_KERNEL_FROM_STR(kernel_name),
       graph.create_global_wg_size(out),
       graph.create_local_wg_size(out),
-      {{out, vkapi::kWrite}, {in, vkapi::kRead}},
+      {{out, vkapi::MemoryAccessType::WRITE},
+       {in, vkapi::MemoryAccessType::READ}},
       {},
-      // Push Constants
+      // Specialization Constants
+      spec_vars,
+      // Resizing Logic
+      nullptr,
+      {},
       {{graph.logical_limits_pc_of(out),
         graph.sizes_pc_of(in),
         PushConstantDataInfo(&out_dims, sizeof(out_dims)),
-        PushConstantDataInfo(&channel_info, sizeof(channel_info))}},
-      // Specialization Constants
-      spec_vars,
-      // Resize Args
-      {},
-      // Resizing Logic
-      nullptr));
+        PushConstantDataInfo(&channel_info, sizeof(channel_info))}}));
 }
 
 void add_permute_node(

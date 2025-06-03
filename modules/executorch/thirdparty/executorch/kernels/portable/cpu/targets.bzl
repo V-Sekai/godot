@@ -46,11 +46,7 @@ def define_common_targets():
         ],
         srcs = [],
         exported_headers = ["vec_ops.h"],
-        visibility = [
-            "//executorch/kernels/portable/...",
-            "//executorch/kernels/quantized/...",
-            "@EXECUTORCH_CLIENTS",
-        ],
+        visibility = ["//executorch/kernels/portable/cpu/...", "//executorch/kernels/quantized/..."],
     )
 
     # Only for use by targets in this directory. Defines constants like M_PI
@@ -62,7 +58,7 @@ def define_common_targets():
             "math_constants.h",
         ],
         visibility = [
-            "//executorch/kernels/portable/...", "@EXECUTORCH_CLIENTS",
+            "//executorch/kernels/portable/cpu/...",
         ],
     )
 

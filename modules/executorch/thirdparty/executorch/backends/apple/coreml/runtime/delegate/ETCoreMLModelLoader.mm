@@ -5,15 +5,14 @@
 //
 // Please refer to the license found in the LICENSE file in the root directory of the source tree.
 
-#import "ETCoreMLModelLoader.h"
-
-#import "asset.h"
-#import "ETCoreMLAsset.h"
-#import "ETCoreMLAssetManager.h"
-#import "ETCoreMLDefaultModelExecutor.h"
-#import "ETCoreMLLogging.h"
-#import "ETCoreMLModel.h"
-#import "model_metadata.h"
+#import <ETCoreMLAsset.h>
+#import <ETCoreMLAssetManager.h>
+#import <ETCoreMLDefaultModelExecutor.h>
+#import <ETCoreMLLogging.h>
+#import <ETCoreMLModel.h>
+#import <ETCoreMLModelLoader.h>
+#import <asset.h>
+#import <model_metadata.h>
 
 using namespace executorchcoreml;
 
@@ -65,7 +64,8 @@ namespace {
     
     if (localError) {
         ETCoreMLLogError(localError,
-                         "Failed to load model from compiled asset with identifier = %@",
+                         "%@: Failed to load model from compiled asset with identifier = %@",
+                         NSStringFromClass(ETCoreMLModelLoader.class),
                          identifier);
     }
     

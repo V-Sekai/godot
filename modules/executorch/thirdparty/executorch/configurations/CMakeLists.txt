@@ -18,6 +18,10 @@ endif()
 
 include(${EXECUTORCH_ROOT}/tools/cmake/Utils.cmake)
 
+if(NOT PYTHON_EXECUTABLE)
+  resolve_python_executable()
+endif()
+
 set(_common_compile_options -Wno-deprecated-declarations)
 
 include(${EXECUTORCH_ROOT}/tools/cmake/Utils.cmake)
@@ -55,7 +59,7 @@ if(EXECUTORCH_BUILD_KERNELS_OPTIMIZED)
     optimized_kernels
     ${_optimized_native_cpu_ops_lib_portable_kernels_lib}
     DEPS
-    executorch_core
+    executorch
   )
 
   install(TARGETS optimized_native_cpu_ops_lib DESTINATION lib)

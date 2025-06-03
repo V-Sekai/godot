@@ -101,9 +101,6 @@ class QnnInterface {
   bool IsLoaded() const {
     return qnn_interface_ != nullptr;
   }
-  const QNN_INTERFACE_VER_TYPE& GetInterfaceVer() const {
-    return qnn_interface_->QNN_INTERFACE_VER_NAME;
-  }
 
  private:
   // --------- QnnInterface ---------

@@ -30,7 +30,7 @@
  */
 
 namespace executorch {
-namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
 namespace internal {
 
 /**
@@ -305,7 +305,7 @@ inline void event_tracer_set_bundled_input_index(
 }
 
 } // namespace internal
-} // namespace ET_RUNTIME_NAMESPACE
+} // namespace runtime
 } // namespace executorch
 
 namespace torch {
@@ -313,27 +313,18 @@ namespace executor {
 namespace internal {
 // TODO(T197294990): Remove these deprecated aliases once all users have moved
 // to the new `::executorch` namespaces.
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    event_tracer_begin_profiling_event;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    event_tracer_create_event_block;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    event_tracer_end_profiling_event;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::event_tracer_log_evalue;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    event_tracer_log_evalue_output;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    event_tracer_set_bundled_input_index;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    event_tracer_track_allocation;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    event_tracer_track_allocator;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    EventTracerProfileInstructionScope;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::
-    EventTracerProfileMethodScope;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::EventTracerProfileOpScope;
-using ::executorch::ET_RUNTIME_NAMESPACE::internal::EventTracerProfileScope;
+using ::executorch::runtime::internal::event_tracer_begin_profiling_event;
+using ::executorch::runtime::internal::event_tracer_create_event_block;
+using ::executorch::runtime::internal::event_tracer_end_profiling_event;
+using ::executorch::runtime::internal::event_tracer_log_evalue;
+using ::executorch::runtime::internal::event_tracer_log_evalue_output;
+using ::executorch::runtime::internal::event_tracer_set_bundled_input_index;
+using ::executorch::runtime::internal::event_tracer_track_allocation;
+using ::executorch::runtime::internal::event_tracer_track_allocator;
+using ::executorch::runtime::internal::EventTracerProfileInstructionScope;
+using ::executorch::runtime::internal::EventTracerProfileMethodScope;
+using ::executorch::runtime::internal::EventTracerProfileOpScope;
+using ::executorch::runtime::internal::EventTracerProfileScope;
 
 } // namespace internal
 } // namespace executor

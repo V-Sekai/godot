@@ -102,7 +102,7 @@ Tensor& _empty_dim_order_out(
     IntArrayRef size,
     OptionalIntArrayRef dim_order,
     Tensor& out) {
-  KernelRuntimeContext ctx{};
+  executorch::runtime::KernelRuntimeContext ctx{};
   return _empty_dim_order_out(ctx, size, dim_order, out);
 }
 

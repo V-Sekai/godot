@@ -1,14 +1,13 @@
 Thank you for your interest in contributing to ExecuTorch! We want to make
 it easy to contribute to this project.
 
-
 ## Dev Install
 
 Set up your environment by following the instructions at
-https://pytorch.org/executorch/main/getting-started-setup to clone
+https://pytorch.org/executorch/0.6/getting-started-setup.html to clone
 the repo and install the necessary requirements.
 
-Refer to this [document](docs/source/using-executorch-building-from-source.md) to build ExecuTorch from source.
+Refer to this [document](https://pytorch.org/executorch/0.6/using-executorch-building-from-source.html) to build ExecuTorch from source.
 
 ### Dev Setup for Android
 For Android, please refer to the [Android documentation](docs/source/using-executorch-android.md).
@@ -30,7 +29,6 @@ executorch
 │   ├── <a href="backends/cadence">cadence</a> - Cadence-specific backends. See <a href="docs/source/backends-cadence.md">doc</a>.
 │   ├── <a href="backends/example">example</a> - Example backend implementations.
 │   ├── <a href="backends/mediatek">mediatek</a> - MediaTek-specific backends. See <a href="docs/source/backends-mediatek.md">doc</a>.
-│   ├── <a href="backends/openvino">openvino</a> - OpenVINO backend for Intel hardware.
 │   ├── <a href="backends/qualcomm">qualcomm</a> - Qualcomm-specific backends. See <a href="docs/source/backends-qualcomm.md">doc</a>.
 │   ├── <a href="backends/transforms">transforms</a> - Transformations for backend optimization.
 │   ├── <a href="backends/vulkan">vulkan</a> - Vulkan backend for cross-platform GPU support. See <a href="docs/source/backends-vulkan.md">doc</a>.
@@ -40,16 +38,16 @@ executorch
 ├── <a href="devtools">devtools</a> - Model profiling, debugging, and inspection. Please refer to the <a href="docs/source/devtools-overview.md">tools documentation</a> for more information.
 │   ├── <a href="devtools/bundled_program">bundled_program</a> - a tool for validating ExecuTorch model. See <a href="docs/source/bundled-io.md">doc</a>.
 │   ├── <a href="devtools/etdump">etdump</a> - ETDump - a format for saving profiling and debugging data from runtime. See <a href="docs/source/etdump.md">doc</a>.
-│   ├── <a href="devtools/etrecord">etrecord</a> - ETRecord - AOT debug artifact for ExecuTorch. See <a href="https://pytorch.org/executorch/main/etrecord">doc</a>.
-│   ├── <a href="devtools/inspector">inspector</a> - Python API to inspect ETDump and ETRecord. See <a href="https://pytorch.org/executorch/main/model-inspector">doc</a>.
+│   ├── <a href="devtools/etrecord">etrecord</a> - ETRecord - AOT debug artifact for ExecuTorch. See <a href="https://pytorch.org/executorch/0.6/etrecord.html">doc</a>.
+│   ├── <a href="devtools/inspector">inspector</a> - Python API to inspect ETDump and ETRecord. See <a href="https://pytorch.org/executorch/0.6/model-inspector.html">doc</a>.
 │   └── <a href="devtools/visualization">visualization</a> - Visualization tools for representing model structure and performance metrics.
 ├── <a href="docs">docs</a> - Static docs tooling and documentation source files.
 ├── <a href="examples">examples</a> - Examples of various user flows, such as model export, delegates, and runtime execution.
-├── <a href="exir">exir</a> - Ahead-of-time library: model capture and lowering APIs. EXport Intermediate Representation (EXIR) is a format for representing the result of <a href="https://pytorch.org/docs/stable/export.html">torch.export</a>. This directory contains utilities and passes for lowering the EXIR graphs into different <a href="docs/source/ir-exir.md">dialects</a> and eventually suitable to run on target hardware.
+├── <a href="exir">exir</a> - Ahead-of-time library: model capture and lowering APIs. EXport Intermediate Representation (EXIR) is a format for representing the result of <a href="https://pytorch.org/docs/stable/export.html">torch.export</a>. This directory contains utilities and passes for lowering the EXIR graphs into different <a href="/docs/source/ir-exir.md">dialects</a> and eventually suitable to run on target hardware.
 │   ├── <a href="exir/_serialize">_serialize</a> - Serialize final export artifact.
 │   ├── <a href="exir/backend">backend</a> - Backend delegate ahead of time APIs.
 │   ├── <a href="exir/capture">capture</a> - Program capture.
-│   ├── <a href="exir/dialects">dialects</a> - Op sets for various dialects in the export process. Please refer to the <a href="docs/source/ir-exir.md">EXIR spec</a> and the <a href="docs/source/compiler-backend-dialect.md">backend dialect</a> doc for more details.
+│   ├── <a href="exir/dialects">dialects</a> - Op sets for various dialects in the export process. Please refer to the <a href="/docs/source/ir-exir.md">EXIR spec</a> and the <a href="/docs/source/compiler-backend-dialect.md">backend dialect</a> doc for more details.
 │   ├── <a href="exir/emit">emit</a> - Conversion from ExportedProgram to ExecuTorch execution instructions.
 │   ├── <a href="exir/operator">operator</a> - Operator node manipulation utilities.
 │   ├── <a href="exir/passes">passes</a> - Built-in compiler passes.
@@ -57,8 +55,8 @@ executorch
 │   ├── <a href="exir/serde">serde</a> - Graph module serialization/deserialization.
 │   ├── <a href="exir/verification">verification</a> - IR verification.
 ├── <a href="extension">extension</a> - Extensions built on top of the runtime.
-│   ├── <a href="extension/android">android</a> - ExecuTorch wrappers for Android apps. Please refer to the <a href="docs/source/using-executorch-android.md">Android documentation</a> and <a href="https://pytorch.org/executorch/main/javadoc">Javadoc</a> for more information.
-│   ├── <a href="extension/apple">apple</a> - ExecuTorch wrappers for iOS apps. Please refer to the <a href="docs/source/using-executorch-ios.md">iOS documentation</a> on how to integrate into Apple platform</a> for more information.
+│   ├── <a href="extension/android">android</a> - ExecuTorch wrappers for Android apps. Please refer to the <a href="docs/source/using-executorch-android.md">Android documentation</a> and <a href="https://pytorch.org/executorch/0.6/javadoc/">Javadoc</a> for more information.
+│   ├── <a href="extension/apple">apple</a> - ExecuTorch wrappers for iOS apps. Please refer to the <a href="docs/source/using-executorch-ios.md">iOS documentation</a> and <a href="https://pytorch.org/executorch/stable/apple-runtime.html">how to integrate into Apple platform</a> for more information.
 │   ├── <a href="extension/aten_util">aten_util</a> - Converts to and from PyTorch ATen types.
 │   ├── <a href="extension/data_loader">data_loader</a> - 1st party data loader implementations.
 │   ├── <a href="extension/evalue_util">evalue_util</a> - Helpers for working with EValue objects.
@@ -68,10 +66,10 @@ executorch
 │   ├── <a href="extension/memory_allocator">memory_allocator</a> - 1st party memory allocator implementations.
 │   ├── <a href="extension/module">module</a> - A simplified C++ wrapper for the runtime. An abstraction that deserializes and executes an ExecuTorch artifact (.pte file). Refer to the <a href="docs/source/extension-module.md">module documentation</a> for more information.
 │   ├── <a href="extension/parallel">parallel</a> - C++ threadpool integration.
-│   ├── <a href="extension/pybindings">pybindings</a> - Python API for executorch runtime. This is powering up the <a href="docs/source/runtime-python-api-reference.rst">runtime Python API</a> for ExecuTorch.
+│   ├── <a href="extension/pybindings">pybindings</a> - Python API for executorch runtime. This is powering up the <a href="https://pytorch.org/executorch/0.6/runtime-python-api-reference.html">runtime Python API</a> for ExecuTorch.
 │   ├── <a href="extension/pytree">pytree</a> - C++ and Python flattening and unflattening lib for pytrees.
 │   ├── <a href="extension/runner_util">runner_util</a> - Helpers for writing C++ PTE-execution tools.
-│   ├── <a href="extension/tensor">tensor</a> - Tensor maker and <code>TensorPtr</code>, details in <a href="docs/source/extension-tensor.md">this documentation</a>. For how to use <code>TensorPtr</code> and <code>Module</code>, please refer to the <a href="docs/source/using-executorch-cpp.md">"Using ExecuTorch with C++"</a> doc.
+│   ├── <a href="extension/tensor">tensor</a> - Tensor maker and <code>TensorPtr</code>, details in <a href="/docs/source/extension-tensor.md">this documentation</a>. For how to use <code>TensorPtr</code> and <code>Module</code>, please refer to the <a href="/docs/source/using-executorch-cpp.md">"Using ExecuTorch with C++"</a> doc.
 │   ├── <a href="extension/testing_util">testing_util</a> - Helpers for writing C++ tests.
 │   ├── <a href="extension/threadpool">threadpool</a> - Threadpool.
 │   └── <a href="extension/training">training</a> - Experimental libraries for on-device training.
@@ -85,7 +83,7 @@ executorch
 ├── <a href="runtime">runtime</a> - Core C++ runtime. These components are used to execute the ExecuTorch program. Please refer to the <a href="docs/source/runtime-overview.md">runtime documentation</a> for more information.
 │   ├── <a href="runtime/backend">backend</a> - Backend delegate runtime APIs.
 │   ├── <a href="runtime/core">core</a> - Core structures used across all levels of the runtime. Basic components such as <code>Tensor</code>, <code>EValue</code>, <code>Error</code> and <code>Result</code> etc.
-│   ├── <a href="runtime/executor">executor</a> - Model loading, initialization, and execution. Runtime components that execute the ExecuTorch program, such as <code>Program</code>, <code>Method</code>. Refer to the <a href="https://pytorch.org/executorch/main/executorch-runtime-api-reference">runtime API documentation</a> for more information.
+│   ├── <a href="runtime/executor">executor</a> - Model loading, initialization, and execution. Runtime components that execute the ExecuTorch program, such as <code>Program</code>, <code>Method</code>. Refer to the <a href="https://pytorch.org/executorch/0.6/executorch-runtime-api-reference.html">runtime API documentation</a> for more information.
 │   ├── <a href="runtime/kernel">kernel</a> - Kernel registration and management.
 │   └── <a href="runtime/platform">platform</a> - Layer between architecture specific code and portable C++.
 ├── <a href="schema">schema</a> - ExecuTorch PTE file format flatbuffer schemas.
@@ -102,19 +100,19 @@ executorch
 ## Contributing workflow
 We actively welcome your pull requests (PRs).
 
-If you're completely new to open-source projects, GitHub, or ExecuTorch, please see our [New Contributor Guide](docs/source/new-contributor-guide.md) for a step-by-step walkthrough on making your first contribution. Otherwise, read on.
+If you're completely new to open-source projects, GitHub, or ExecuTorch, please see our [New Contributor Guide](./docs/source/new-contributor-guide.md) for a step-by-step walkthrough on making your first contribution. Otherwise, read on.
 
 1. [Claim an issue](#claiming-issues), if present, before starting work. If an
    issue doesn't cover the work you plan to do, consider creating one to provide
    context about it, and to build consensus about the scope and solution.
-1. Create your new branch from `main` in your forked repo, with a name
-   describing the work you're completing; e.g., `add-feature-x`.
+1. Create your new branch from `0.6` in your forked repo, with a name
+   describing the work you're completing; e.g. `add-feature-x`.
 1. If you've added code that should be tested, add tests. Ensure all tests pass.
    See the [testing section](#testing) for more information.
 1. If you've changed APIs or added a new tool or feature, [update the
    documentation](#updating-documentation).
 1. If you added an experimental API or deprecated an existing API, follow the
-   [API Life Cycle and Deprecation Policy](docs/source/api-life-cycle.md).
+   [API Life Cycle and Deprecation Policy](/docs/source/api-life-cycle.md).
 1. Make sure your code follows the [style guides](#coding-style) and passes the
    [lint checks](#lintrunner).
 1. If you haven't already, complete the [Contributor License Agreement ("CLA")](#contributor-license-agreement-cla).
@@ -245,7 +243,7 @@ modifications to the Google C++ style guide.
 
 ### C++ Portability Guidelines
 
-See also [Portable C++ Programming](docs/source/portable-cpp-programming.md)
+See also [Portable C++ Programming](/docs/source/portable-cpp-programming.md)
 for detailed advice.
 
 #### C++ language version
@@ -325,8 +323,8 @@ the code you're modifying and find an author who has more context. Ask them
 for their help in the PR comments.
 
 ### Continuous Integration
-See https://hud.pytorch.org/hud/pytorch/executorch/main for the current state of
-the CI (continuous integration) jobs. If `main` is broken, consider rebasing
+See https://hud.pytorch.org/hud/pytorch/executorch/0.6 for the current state of
+the CI (continuous integration) jobs. If `0.6` is broken, consider rebasing
 your PR onto the `viable/strict` branch, which points to the most recent
 all-green commit.
 
@@ -352,14 +350,14 @@ website preview based on your changes.
 
 ## Pull Requests
 This repo uses Github pull requests (PRs) to stage and review code before
-merging it into the `main` branch. See the [Github
+merging it into the `0.6` branch. See the [Github
 docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 for basics.
 
 1. Push your branch to your fork of `pytorch/executorch`. Most people do not
   have permission to push a branch directory to the upstream repo.
 1. Create your PR
-   - Use the `main` branch as the base.
+   - Use the `0.6` branch as the base.
    - Give the PR a clear and descriptive title. It will become the title of the
      merged commit, so it needs to be useful in the output of `git log`.
      - Bad title: "Fix a bug"
@@ -407,20 +405,29 @@ for basics.
      reviewers. A member of the ExecuTorch repo will find someone to review it.
 1. Address and discuss comments left by reviewers
    - If the reviewers have requests or questions, follow up with them.
-   - The goal of the reviewer is to ensure that the code in the `main` branch of
+   - The goal of the reviewer is to ensure that the code in the `0.6` branch of
      the repo is consistent, maintainable, and of high quality.
-1. Once the PR has been approved, you can merge it yourself
-     by clicking the "Squash and merge" button once it is
-     green and all CI signals are passing.
+1. Once the PR has been approved,
+   - If you have the "write permission" in this repo, you can merge it yourself
+     by clicking the "Squash and merge" button once it is green and all CI
+     signals are passing.
+   - If you don't have "write permission" in this repo, the reviewer will take
+     care of the PR. The reviewer may import the PR into Meta's internal system
+     to validate it against internal CI.
+   - If the PR is approved but not merged within 5 business days, please comment
+     on the PR to ask about its status.
+   - Note that if the `0.6` [CI](#continuous-integration) jobs are broken, we
+     will only merge PRs that fix the broken jobs until all critical jobs are
+     fixed.
 
 &nbsp;
 
 ## For Backend Delegate Authors
 
-- Use [this](docs/source/backend-delegates-integration.md) guide when
+- Use [this](/docs/source/backend-delegates-integration.md) guide when
   integrating your delegate with ExecuTorch.
-- Refer to [this](docs/source/backend-delegates-dependencies.md) set of
-  guidelines when including a third-party dependency for your delegate.
+- Refer to [this](/docs/source/backend-delegates-dependencies.md) set of
+  guidelines when including a third-party depenency for your delegate.
 
 &nbsp;
 

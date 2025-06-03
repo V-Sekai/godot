@@ -32,8 +32,7 @@ namespace extension {
 /**
  * A NamedDataMap implementation for FlatTensor-serialized data.
  */
-class FlatTensorDataMap final
-    : public executorch::ET_RUNTIME_NAMESPACE::NamedDataMap {
+class FlatTensorDataMap final : public executorch::runtime::NamedDataMap {
  public:
   /**
    * Creates a new DataMap that wraps FlatTensor data.
@@ -52,8 +51,7 @@ class FlatTensorDataMap final
    * @return Error::NotFound if the key is not present.
    */
   ET_NODISCARD
-  executorch::runtime::Result<
-      const executorch::ET_RUNTIME_NAMESPACE::TensorLayout>
+  executorch::runtime::Result<const executorch::runtime::TensorLayout>
   get_metadata(const char* key) const override;
 
   /**

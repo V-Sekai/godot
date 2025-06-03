@@ -8,8 +8,6 @@
 
 from typing import final, List
 
-from executorch.exir import ExecutorchBackendConfig
-
 from executorch.exir.backend.backend_details import (
     BackendDetails,
     ExportedProgram,
@@ -26,14 +24,10 @@ class ExecutorBackend(BackendDetails):
         edge_program: ExportedProgram,
         compile_specs: List[CompileSpec],
     ) -> PreprocessResult:
-        config = ExecutorchBackendConfig()
-        for spec in compile_specs:
-            if spec.key == "external_constants":
-                config.external_constants = True
         return PreprocessResult(
             processed_bytes=EdgeProgramManager(
                 edge_programs=edge_program,
             )
-            .to_executorch(config)
+            .to_executorch()
             .buffer,
         )

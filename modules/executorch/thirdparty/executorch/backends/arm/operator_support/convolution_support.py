@@ -11,8 +11,7 @@ from executorch.backends.arm.operator_support.tosa_supported_operators import (
     register_tosa_support_check,
     SupportedTOSAOperatorCheck,
 )
-from executorch.backends.arm.tosa_specification import TosaSpecification
-
+from executorch.backends.arm.tosa_specification import Tosa_0_80, TosaSpecification
 from executorch.exir.dialects._ops import ops as exir_ops
 
 
@@ -23,8 +22,6 @@ class ConvolutionSupported(SupportedTOSAOperatorCheck):
     tosa_specs = [
         TosaSpecification.create_from_string("TOSA-0.80+BI"),
         TosaSpecification.create_from_string("TOSA-0.80+MI"),
-        TosaSpecification.create_from_string("TOSA-1.0+INT"),
-        TosaSpecification.create_from_string("TOSA-1.0+FP"),
     ]
 
     def is_node_tosa_supported(self, node: fx.Node, tosa_spec: TosaSpecification):
@@ -43,10 +40,10 @@ class ConvolutionSupported(SupportedTOSAOperatorCheck):
                 return False
 
         # Hardware specific constraints
-        if tosa_spec.is_U55_subset:
-            return self._is_node_supported_u55(node)
-        else:
+        if not (isinstance(tosa_spec, Tosa_0_80) and tosa_spec.is_U55_subset):
             return True
+        else:
+            return self._is_node_supported_u55(node)
 
     def _is_node_supported_u55(self, node: fx.Node):
         """Hardware constraints for Ethos-U-55 case, Vela 4.2.0 (25.02 release)"""

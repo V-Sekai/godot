@@ -16,14 +16,14 @@ concurrency:
 
 jobs:
   lintrunner:
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-linter
-      submodules: 'recursive'
+      submodules: 'true'
       fetch-depth: 0
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
@@ -64,13 +64,8 @@ jobs:
 
         exit $RC
 
-  link-check:
-    uses: ./.github/workflows/_link_check.yml
-    with:
-      ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-
   android-java-format:
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read

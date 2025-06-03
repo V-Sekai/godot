@@ -1,3 +1,0 @@
-['cfg(all())']
-version = ">=5.0"
-extra_srcs = ["src/version"]

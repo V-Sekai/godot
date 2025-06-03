@@ -6,15 +6,13 @@
 // Please refer to the license found in the LICENSE file in the root directory of the source tree.
 
 
-#import "backend_delegate.h"
-
-#import "ETCoreMLAssetManager.h"
-#import "ETCoreMLLogging.h"
-#import "ETCoreMLModel.h"
-#import "ETCoreMLModelManager.h"
-#import "ETCoreMLStrings.h"
-#import "model_event_logger.h"
-#import "multiarray.h"
+#import <ETCoreMLAssetManager.h>
+#import <ETCoreMLModel.h>
+#import <ETCoreMLModelManager.h>
+#import <ETCoreMLStrings.h>
+#import <backend_delegate.h>
+#import <model_event_logger.h>
+#import <multiarray.h>
 
 namespace  {
 using namespace executorchcoreml;
@@ -284,9 +282,6 @@ public:
         ModelHandle *modelHandle = [model_manager_ loadModelFromAOTData:data
                                                           configuration:configuration
                                                                   error:&localError];
-        if (localError != nil) {
-            ETCoreMLLogError(localError, "Model init failed");
-        }
         return modelHandle;
     }
     
@@ -295,16 +290,13 @@ public:
                  const ModelLoggingOptions& logging_options,
                  ModelEventLogger *event_logger,
                  std::error_code& ec) const noexcept override {
-        NSError *localError = nil;
+        NSError *error = nil;
         if (![model_manager_ executeModelWithHandle:handle
                                             argsVec:args
                                      loggingOptions:logging_options
                                         eventLogger:event_logger
-                                              error:&localError]) {
-            if (localError != nil) {
-                ETCoreMLLogError(localError, "Model execution failed");
-                ec = static_cast<ErrorCode>(localError.code);
-            }                                    
+                                              error:&error]) {
+            ec = static_cast<ErrorCode>(error.code);
             return false;
         }
         

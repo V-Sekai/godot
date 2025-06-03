@@ -16,7 +16,7 @@ In this section, we will need to set up the ExecuTorch repo first with Conda env
 Checkout ExecuTorch repo and sync submodules
 
 ```
-git clone -b viable/strict https://github.com/pytorch/executorch.git && cd executorch
+git clone -b release/0.6 https://github.com/pytorch/executorch.git && cd executorch
 ```
 
 Create either a Python virtual environment:
@@ -73,7 +73,7 @@ python -m examples.models.llama.export_llama --model "llama3_2" --checkpoint <pa
 ```
 For convenience, an [exported ExecuTorch bf16 model](https://huggingface.co/executorch-community/Llama-3.2-1B-ET/blob/main/llama3_2-1B.pte) is available on Hugging Face. The export was created using [this detailed recipe notebook](https://huggingface.co/executorch-community/Llama-3.2-1B-ET/blob/main/ExportRecipe_1B.ipynb).
 
-For more detail using Llama 3.2 lightweight models including prompt template, please go to our official [website](https://www.llama.com/docs/model-cards-and-prompt-formats/llama3_2/#-llama-3.2-lightweight-models-(1b/3b)-).
+For more detail using Llama 3.2 lightweight models including prompt template, please go to our official [website](https://www.llama.com/docs/model-cards-and-prompt-formats/llama3_2#-llama-3.2-lightweight-models-(1b/3b)-).
 
 ### For Llama 3.1 and Llama 2 models
 
@@ -85,7 +85,7 @@ python -m examples.models.llama.export_llama --checkpoint <path-to-your-checkpoi
 ### For LLaVA model
 * For the Llava 1.5 model, you can get it from Huggingface [here](https://huggingface.co/llava-hf/llava-1.5-7b-hf).
 * Run `examples/models/llava/install_requirements.sh` to install dependencies.
-* Run the following command to generate llava.pte, tokenizer.bin and download an image basketball.jpg.
+* Run the following command to generate llava.pte, tokenizer.bin and an image tensor (serialized in TorchScript) image.pt.
 
 ```
 python -m executorch.examples.models.llava.export_llava --pte-name llava.pte --with-artifacts
@@ -120,8 +120,9 @@ While we recommended using the latest prebuilt package pre-configured with the X
 
 Go to Project Navigator, click on LLaMA. `Project --> LLaMA --> Package Dependencies`, and update the package dependencies to any of the available options below:
 
-- Branch --> swiftpm-0.7.0.20250401 (amend to match the latest nightly build)
+- Branch --> swiftpm-0.6.0.20250501 (amend to match the latest nightly build)
 - Branch --> swiftpm-0.6.0
+- Branch --> swiftpm-0.5.0
 
 ### 2.2 Manually build the package locally and link them
 
@@ -134,11 +135,11 @@ BUCK2_RELEASE_DATE="2024-12-16"
 BUCK2_ARCHIVE="buck2-aarch64-apple-darwin.zst"
 BUCK2=".venv/bin/buck2"
 
-curl -LO "https://github.com/facebook/buck2/releases/download/${BUCK2_RELEASE_DATE}/${BUCK2_ARCHIVE}"
+curl -LO "https://github.com/facebook/buck2/releases/download/$BUCK2_RELEASE_DATE/$BUCK2_ARCHIVE"
 zstd -cdq "$BUCK2_ARCHIVE" > "$BUCK2" && chmod +x "$BUCK2"
 rm "$BUCK2_ARCHIVE"
 
-./scripts/build_apple_frameworks.sh
+./scripts/build_apple_frameworks.sh --buck2="$(realpath $BUCK2)" --coreml --custom --mps --optimized --portable --quantized --xnnpack
 ```
 
  After the build finishes successfully, the resulting frameworks can be found in the `cmake-out` directory. Copy them to your project and link them against your targets.
@@ -163,7 +164,7 @@ If you cannot add the package into your app target (it's greyed out), it might h
 
 
 
- More details on integrating and Running ExecuTorch on Apple Platforms, check out the detailed guide [here](https://pytorch.org/executorch/main/using-executorch-ios#local-build).
+ More details on integrating and Running ExecuTorch on Apple Platforms, check out the detailed guide [here](https://pytorch.org/executorch/0.6/using-executorch-ios#local-build).
 
 ### 3. Configure Build Schemes
 
@@ -175,7 +176,7 @@ Navigate to `Product --> Scheme --> Edit Scheme --> Info --> Build Configuration
 
 We recommend that you only use the Debug build scheme during development, where you might need to access additional logs. Debug build has logging overhead and will impact inferencing performance, while release build has compiler optimizations enabled and all logging overhead removed.
 
-For more details integrating and Running ExecuTorch on Apple Platforms or building the package locally, checkout this [link](https://pytorch.org/executorch/main/using-executorch-ios).
+For more details integrating and Running ExecuTorch on Apple Platforms or building the package locally, checkout this [link](https://pytorch.org/executorch/0.6/using-executorch-ios).
 
 ### 4. Build and Run the project
 

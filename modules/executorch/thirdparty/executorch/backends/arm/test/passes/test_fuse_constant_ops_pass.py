@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import operator
+import unittest
 from typing import Tuple
 
 import torch
@@ -12,7 +13,10 @@ from executorch.backends.arm._passes.fuse_constant_ops_pass import (
     FuseConstantArgsPass,
 )
 from executorch.backends.arm.test import common
-from executorch.backends.arm.test.tester.test_pipeline import PassPipeline
+from executorch.backends.arm.test.tester.test_pipeline import (
+    PassPipeline,
+    TosaPipelineBI,
+)
 
 input_t = Tuple[torch.Tensor]  # Input x
 
@@ -94,11 +98,11 @@ modules = {
 
 
 @common.parametrize("module", modules)
-def test_fuse_const_ops_tosa_MI(module: torch.nn.Module):
+def test_fuse_const_ops_tosa_MI(module):
     pipeline = PassPipeline[input_t](
         module=module,
         test_data=(torch.rand(1),),
-        quantize=False,
+        tosa_version="TOSA-0.80+MI",
         ops_before_pass=module.ops_before_pass,
         ops_after_pass=module.ops_after_pass,
         ops_not_after_pass=module.ops_not_after_pass,
@@ -107,14 +111,10 @@ def test_fuse_const_ops_tosa_MI(module: torch.nn.Module):
     pipeline.run()
 
 
+@unittest.skip("Test failing on internal CI")
 @common.parametrize("module", modules)
-def test_fuse_const_ops_tosa_BI(module: torch.nn.Module):
-    pipeline = PassPipeline[input_t](
-        module,
-        (torch.rand(10, 10),),
-        quantize=True,
-        ops_before_pass=module.ops_before_pass,
-        ops_after_pass=module.ops_after_pass,
-        passes_with_exported_program=[ComputeConstantOpsAOT, FuseConstantArgsPass],
+def test_fuse_const_ops_tosa_BI(module):
+    pipeline = TosaPipelineBI[input_t](
+        module, (torch.rand(10, 10),), [], [], use_to_edge_transform_and_lower=True
     )
     pipeline.run()

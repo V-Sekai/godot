@@ -15,7 +15,7 @@
 #include <executorch/runtime/platform/system.h>
 
 namespace executorch {
-namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
 
 namespace {
 
@@ -258,5 +258,5 @@ Span<const Kernel> get_registered_kernels() {
   return {registered_kernels, num_registered_kernels};
 }
 
-} // namespace ET_RUNTIME_NAMESPACE
+} // namespace runtime
 } // namespace executorch

@@ -39,7 +39,7 @@ jobs:
 
   test-models-linux:
     name: test-models-linux
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -50,7 +50,7 @@ jobs:
     with:
       runner: ${{ matrix.runner }}
       docker-image: executorch-ubuntu-22.04-clang12
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: ${{ matrix.timeout }}
       script: |

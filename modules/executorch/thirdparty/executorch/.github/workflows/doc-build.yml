@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -27,7 +27,7 @@ jobs:
       job-name: Build doc
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12-android
-      submodules: 'recursive'
+      submodules: 'true'
       repository: pytorch/executorch
       upload-artifact: docs
       timeout: 90
@@ -93,7 +93,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     with:
       repository: pytorch/executorch
       download-artifact: docs

@@ -158,6 +158,7 @@ void gemm_transa_(
   }
 }
 
+#ifdef __aarch64__
 namespace internal {
 float bf16_dot_with_fp32_arith(const torch::executor::BFloat16* vec1, const torch::executor::BFloat16* vec2, int64_t len);
 } // namespace internal
@@ -203,6 +204,7 @@ inline void gemm_transa_<torch::executor::BFloat16, torch::executor::BFloat16>(
     }
   });
 }
+#endif
 
 // clang-format on
 

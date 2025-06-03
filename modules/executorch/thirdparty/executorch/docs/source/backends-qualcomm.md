@@ -14,9 +14,9 @@ Qualcomm AI Engine Direct is also referred to as QNN in the source and documenta
 :::
 :::{grid-item-card}  Tutorials we recommend you complete before this:
 :class-card: card-prerequisites
-* [Introduction to ExecuTorch](intro-how-it-works.md)
-* [Getting Started](getting-started.md)
-* [Building ExecuTorch with CMake](using-executorch-building-from-source.md)
+* [Introduction to ExecuTorch](./intro-how-it-works.md)
+* [Getting Started](./getting-started.md)
+* [Building ExecuTorch with CMake](./using-executorch-building-from-source.md)
 :::
 ::::
 
@@ -143,7 +143,8 @@ cmake .. \
   -DEXECUTORCH_BUILD_EXTENSION_MODULE=ON \
   -DEXECUTORCH_BUILD_EXTENSION_TENSOR=ON \
   -DEXECUTORCH_ENABLE_EVENT_TRACER=ON \
-  -DPYTHON_EXECUTABLE=python3
+  -DPYTHON_EXECUTABLE=python3 \
+  -DEXECUTORCH_SEPARATE_FLATCC_HOST_PROJECT=OFF
 
 # nproc is used to detect the number of available CPU.
 # If it is not applicable, please feel free to use the number you want.
@@ -181,7 +182,7 @@ cmake .. \
     -DPYTHON_EXECUTABLE=python3 \
     -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI='arm64-v8a' \
-    -DANDROID_PLATFORM=android-30
+    -DANDROID_NATIVE_API_LEVEL=23
 
 # nproc is used to detect the number of available CPU.
 # If it is not applicable, please feel free to use the number you want.
@@ -190,7 +191,7 @@ cmake --build $PWD --target install -j$(nproc)
 cmake ../examples/qualcomm \
     -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI='arm64-v8a' \
-    -DANDROID_PLATFORM=android-30 \
+    -DANDROID_NATIVE_API_LEVEL=23 \
     -DCMAKE_PREFIX_PATH="$PWD/lib/cmake/ExecuTorch;$PWD/third-party/gflags;" \
     -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH \
     -DPYTHON_EXECUTABLE=python3 \

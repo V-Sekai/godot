@@ -1,4 +1,0 @@
-Performant Kernels
-==================
-
-TBA

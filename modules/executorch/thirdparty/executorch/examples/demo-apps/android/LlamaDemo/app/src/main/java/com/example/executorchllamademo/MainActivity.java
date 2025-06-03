@@ -42,7 +42,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -50,14 +49,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.pytorch.executorch.extension.llm.LlmCallback;
 import org.pytorch.executorch.extension.llm.LlmModule;
 
 public class MainActivity extends AppCompatActivity implements Runnable, LlmCallback {
   private EditText mEditTextMessage;
-  private ImageButton mThinkModeButton;
   private ImageButton mSendButton;
   private ImageButton mGalleryButton;
   private ImageButton mCameraButton;
@@ -79,7 +75,6 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
   private SettingsFields mCurrentSettingsFields;
   private Handler mMemoryUpdateHandler;
   private Runnable memoryUpdater;
-  private boolean mThinkMode = false;
   private int promptID = 0;
   private long startPos = 0;
   private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = 2;
@@ -90,7 +85,6 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
     if (result.equals(PromptFormat.getStopToken(mCurrentSettingsFields.getModelType()))) {
       return;
     }
-    result = PromptFormat.replaceSpecialToken(mCurrentSettingsFields.getModelType(), result);
     if (result.equals("\n\n") || result.equals("\n")) {
       if (!mResultMessage.getText().isEmpty()) {
         mResultMessage.appendText(result);
@@ -103,20 +97,10 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
   }
 
   @Override
-  public void onStats(String stats) {
+  public void onStats(float tps) {
     runOnUiThread(
         () -> {
           if (mResultMessage != null) {
-            float tps = 0;
-            try {
-              JSONObject jsonObject = new JSONObject(stats);
-              int numGeneratedTokens = jsonObject.getInt("generated_tokens");
-              int inferenceEndMs = jsonObject.getInt("inference_end_ms");
-              int promptEvalEndMs = jsonObject.getInt("prompt_eval_end_ms");
-              tps = (float) numGeneratedTokens / (inferenceEndMs - promptEvalEndMs) * 1000;
-            } catch (JSONException e) {
-              Log.e("LLM", "Error parsing JSON: " + e.getMessage());
-            }
             mResultMessage.setTokensPerSecond(tps);
             mMessageAdapter.notifyDataSetChanged();
           }
@@ -256,7 +240,6 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
       finish();
     }
 
-    mThinkModeButton = requireViewById(R.id.thinkModeButton);
     mEditTextMessage = requireViewById(R.id.editTextMessage);
     mSendButton = requireViewById(R.id.sendButton);
     mSendButton.setEnabled(false);
@@ -274,28 +257,6 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
         view -> {
           Intent myIntent = new Intent(MainActivity.this, SettingsActivity.class);
           MainActivity.this.startActivity(myIntent);
-        });
-
-    mThinkModeButton.setOnClickListener(
-        view -> {
-          if (mThinkMode) {
-            mThinkMode = false;
-            mThinkModeButton.setImageDrawable(
-                ResourcesCompat.getDrawable(
-                    getResources(), R.drawable.baseline_lightbulb_24, null));
-          } else {
-            mThinkMode = true;
-            mThinkModeButton.setImageDrawable(
-                ResourcesCompat.getDrawable(getResources(), R.drawable.blue_lightbulb_24, null));
-          }
-          runOnUiThread(
-              () -> {
-                String thinkingModeText = mThinkMode ? "on" : "off";
-                mMessageAdapter.add(
-                    new Message(
-                        "Thinking mode is " + thinkingModeText, false, MessageType.SYSTEM, 0));
-                mMessageAdapter.notifyDataSetChanged();
-              });
         });
 
     mCurrentSettingsFields = new SettingsFields();
@@ -693,10 +654,7 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
         prevPromptID = currentPromptID;
       }
       if (conversation.getIsSent()) {
-        format =
-            format
-                .replace(PromptFormat.USER_PLACEHOLDER, conversation.getText())
-                .replace(PromptFormat.THINKING_MODE_PLACEHOLDER, "");
+        format = format.replace(PromptFormat.USER_PLACEHOLDER, conversation.getText());
       } else {
         format = format.replace(PromptFormat.ASSISTANT_PLACEHOLDER, conversation.getText());
       }
@@ -708,12 +666,12 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
 
   private String getTotalFormattedPrompt(String conversationHistory, String rawPrompt) {
     if (conversationHistory.isEmpty()) {
-      return mCurrentSettingsFields.getFormattedSystemAndUserPrompt(rawPrompt, mThinkMode);
+      return mCurrentSettingsFields.getFormattedSystemAndUserPrompt(rawPrompt);
     }
 
     return mCurrentSettingsFields.getFormattedSystemPrompt()
         + conversationHistory
-        + mCurrentSettingsFields.getFormattedUserPrompt(rawPrompt, mThinkMode);
+        + mCurrentSettingsFields.getFormattedUserPrompt(rawPrompt);
   }
 
   private void onModelRunStarted() {
@@ -742,8 +700,7 @@ public class MainActivity extends AppCompatActivity implements Runnable, LlmCall
           if (ModelUtils.getModelCategory(
                   mCurrentSettingsFields.getModelType(), mCurrentSettingsFields.getBackendType())
               == ModelUtils.VISION_MODEL) {
-            finalPrompt =
-                mCurrentSettingsFields.getFormattedSystemAndUserPrompt(rawPrompt, mThinkMode);
+            finalPrompt = mCurrentSettingsFields.getFormattedSystemAndUserPrompt(rawPrompt);
           } else {
             finalPrompt = getTotalFormattedPrompt(getConversationHistory(), rawPrompt);
           }

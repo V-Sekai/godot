@@ -155,7 +155,7 @@ jobs:
 
   export-models:
     name: export-models
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -167,7 +167,7 @@ jobs:
     with:
       runner: linux.2xlarge.memory
       docker-image: executorch-ubuntu-22.04-qnn-sdk
-      submodules: 'recursive'
+      submodules: 'true'
       timeout: 60
       upload-artifact: android-models
       upload-artifact-to-s3: true
@@ -337,7 +337,7 @@ jobs:
 
   build-benchmark-app:
     name: build-benchmark-app
-    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@main
+    uses: pytorch/test-infra/.github/workflows/linux_job_v2.yml@release/2.7
     permissions:
       id-token: write
       contents: read
@@ -345,17 +345,13 @@ jobs:
     with:
       runner: linux.2xlarge
       docker-image: executorch-ubuntu-22.04-clang12-android
-      submodules: 'recursive'
+      submodules: 'true'
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       timeout: 90
       upload-artifact: android-apps
       upload-artifact-to-s3: true
       script: |
         set -eux
-
-        # Use sccache for NDK compiler as well
-        export CMAKE_CXX_COMPILER_LAUNCHER=sccache
-        export CMAKE_C_COMPILER_LAUNCHER=sccache
 
         # The generic Linux job chooses to use base env, not the one setup by the image
         CONDA_ENV=$(conda env list --json | jq -r ".envs | .[-1]")
@@ -367,7 +363,7 @@ jobs:
         PYTHON_EXECUTABLE=python bash .ci/scripts/build-qnn-sdk.sh
 
         mkdir -p aar-out
-        PYTHON_EXECUTABLE=python ANDROID_ABIS="arm64-v8a" BUILD_AAR_DIR=aar-out EXECUTORCH_BUILD_QNN=ON QNN_SDK_ROOT=/tmp/qnn/2.28.0.241029 EXECUTORCH_ANDROID_PROFILING=ON bash scripts/build_android_library.sh
+        PYTHON_EXECUTABLE=python ANDROID_ABIS="arm64-v8a" BUILD_AAR_DIR=aar-out EXECUTORCH_BUILD_QNN=ON QNN_SDK_ROOT=/tmp/qnn/2.28.0.241029 bash scripts/build_android_library.sh
         mkdir -p extension/benchmark/android/benchmark/app/libs
         cp aar-out/executorch.aar extension/benchmark/android/benchmark/app/libs
         pushd extension/benchmark/android/benchmark
@@ -385,7 +381,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    uses: pytorch/test-infra/.github/workflows/mobile_job.yml@main
+    uses: pytorch/test-infra/.github/workflows/mobile_job.yml@release/2.7
     needs:
       - set-parameters
       - prepare-test-specs
@@ -396,7 +392,7 @@ jobs:
       fail-fast: false
     with:
       # Due to scheduling a job may be pushed beyond the default 60m threshold
-      timeout: 240
+      timeout: 120
       device-type: android
       runner: linux.2xlarge
       test-infra-ref: ''
@@ -431,7 +427,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Setup conda
-        uses: pytorch/test-infra/.github/actions/setup-miniconda@main
+        uses: pytorch/test-infra/.github/actions/setup-miniconda@release/2.7
         with:
           python-version: '3.10'
 
@@ -489,7 +485,7 @@ jobs:
           done
 
       - name: Upload the benchmark results (v3)
-        uses: pytorch/test-infra/.github/actions/upload-benchmark-results@main
+        uses: pytorch/test-infra/.github/actions/upload-benchmark-results@release/2.7
         with:
           benchmark-results-dir: benchmark-results/v3
           dry-run: false

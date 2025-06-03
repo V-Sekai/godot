@@ -93,14 +93,11 @@ void add_reduce_node(
       {{out, vkapi::kWrite}, {in, vkapi::kRead}},
       // Shader params buffers
       {graph.logical_limits_ubo(in), graph.sizes_ubo(in)},
-      // Push Constants
-      {},
       // Specialization Constants
       {graph.packed_dim_of(out), reduce_dim, group_dim},
-      // Resize Args
-      {dim},
       // Resizing Logic
-      resize_reduce_node));
+      resize_reduce_node,
+      {dim}));
 }
 
 #define DEFINE_REDUCE_FN(op_name, out_arg_idx)                           \

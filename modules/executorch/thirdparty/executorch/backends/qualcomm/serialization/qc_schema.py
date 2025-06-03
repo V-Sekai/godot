@@ -10,7 +10,6 @@ Please refer to executorch/backends/qualcomm/serialization/schema.fbs for the sc
 
 from dataclasses import dataclass, field
 from enum import IntEnum, unique
-from typing import List
 
 
 @dataclass
@@ -149,7 +148,7 @@ class QnnExecuTorchBackendOptions:
 class QnnExecuTorchOptions:
     soc_info: SocInfo
     backend_options: QnnExecuTorchBackendOptions
-    graph_name: List[str] = field(default_factory=lambda: ["forward"])
+    graph_name: str = ""
     library_path: str = ""
     log_level: QnnExecuTorchLogLevel = QnnExecuTorchLogLevel.kLogOff
     online_prepare: bool = False
@@ -157,5 +156,4 @@ class QnnExecuTorchOptions:
     profile_level: QnnExecuTorchProfileLevel = QnnExecuTorchProfileLevel.kProfileOff
     shared_buffer: bool = False
     is_from_context_binary: bool = False
-    saver: bool = False
-    saver_output_dir: str = "saver_output"
+    multiple_graphs: bool = False

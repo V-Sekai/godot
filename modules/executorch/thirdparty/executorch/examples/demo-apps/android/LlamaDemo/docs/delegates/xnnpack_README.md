@@ -24,7 +24,7 @@ In this section, we will need to set up the ExecuTorch repo first with Conda env
 Checkout ExecuTorch repo and sync submodules
 
 ```
-git clone -b viable/strict https://github.com/pytorch/executorch.git && cd executorch
+git clone -b release/0.6 https://github.com/pytorch/executorch.git && cd executorch
 ```
 
 Create either a Python virtual environment:
@@ -113,7 +113,7 @@ python -m pytorch_tokenizers.tools.llama2c.convert -t tokenizer.model -o tokeniz
 ### For LLaVA model
 * For the Llava 1.5 model, you can get it from Huggingface [here](https://huggingface.co/llava-hf/llava-1.5-7b-hf).
 * Run `examples/models/llava/install_requirements.sh` to install dependencies.
-* Run the following command to generate llava.pte, tokenizer.bin and download an image basketball.jpg.
+* Run the following command to generate llava.pte, tokenizer.bin and an image tensor (serialized in TorchScript) image.pt.
 
 ```
 python -m executorch.examples.models.llava.export_llava --pte-name llava.pte --with-artifacts
@@ -172,7 +172,7 @@ This is running the shell script which configures the required core ExecuTorch, 
 ```
 bash examples/demo-apps/android/LlamaDemo/download_prebuilt_lib.sh
 ```
-The prebuilt AAR library contains the Java library and the JNI binding for Module.java and ExecuTorch native library, including core ExecuTorch runtime libraries, XNNPACK backend, Portable kernels, Optimized kernels, and Quantized kernels. It comes with two ABI variants, arm64-v8a and x86_64.
+The prebuilt AAR library contains the Java library and the JNI binding for NativePeer.java and ExecuTorch native library, including core ExecuTorch runtime libraries, XNNPACK backend, Portable kernels, Optimized kernels, and Quantized kernels. It comes with two ABI variants, arm64-v8a and x86_64.
 If you need to use other dependencies (like tokenizer), please build from the local machine option.
 
 ## Run the Android Demo App
@@ -183,7 +183,6 @@ If you need to use other dependencies (like tokenizer), please build from the lo
 ### Alternative 2: Command line
 Without Android Studio UI, we can run gradle directly to build the app. We need to set up the Android SDK path and invoke gradle.
 ```
-export ANDROID_SDK=<path_to_android_sdk_home>
 export ANDROID_HOME=<path_to_android_sdk_home>
 pushd examples/demo-apps/android/LlamaDemo
 ./gradlew :app:installDebug

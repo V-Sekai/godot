@@ -11,28 +11,26 @@ from executorch.backends.arm._passes.fold_qdq_with_annotated_qparams_pass import
     FoldAndAnnotateQParamsPass,
 )
 from executorch.backends.arm._passes.insert_table_ops import InsertTableOpsPass
-from executorch.backends.arm.test import common
 from executorch.backends.arm.test.tester.test_pipeline import PassPipeline
 
 input_t = Tuple[torch.Tensor]  # Input x
 
 
 class Sigmoid(torch.nn.Module):
-    test_data = {
-        "rand": (torch.rand(4),),
-    }
 
     def forward(self, x: torch.Tensor):
         return x.sigmoid()
 
+    def get_inputs(self) -> input_t:
+        return (torch.rand(4),)
 
-@common.parametrize("test_data", Sigmoid.test_data)
-def test_insert_table_tosa_BI(test_data: input_t):
+
+def test_insert_table_tosa_BI():
     module = Sigmoid()
     pipeline = PassPipeline[input_t](
         module,
-        test_data,
-        quantize=True,
+        module.get_inputs(),
+        tosa_version="TOSA-0.80+BI",
         ops_before_pass={},
         ops_after_pass={
             "executorch_exir_dialects_edge__ops_quantized_decomposed_quantize_per_tensor_default": 1,

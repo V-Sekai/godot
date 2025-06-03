@@ -16,10 +16,11 @@
 #include <executorch/schema/program_generated.h>
 
 namespace executorch {
-namespace ET_RUNTIME_NAMESPACE {
+namespace runtime {
 namespace deserialization {
 
 using executorch::aten::ScalarType;
+using executorch::runtime::TensorLayout;
 // Provides access to private Program methods.
 class TensorParser final {
  public:
@@ -255,5 +256,5 @@ ET_NODISCARD Result<void*> getTensorDataPtr(
 }
 
 } // namespace deserialization
-} // namespace ET_RUNTIME_NAMESPACE
+} // namespace runtime
 } // namespace executorch

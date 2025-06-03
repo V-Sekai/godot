@@ -4,8 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 
 # pyre-unsafe
-from typing import Any, List
+from typing import List
 
+import serializer.tosa_serializer as ts  # type: ignore
 import torch
 
 from executorch.backends.arm._passes.fold_qdq_with_annotated_qparams_pass import (
@@ -16,23 +17,13 @@ from executorch.backends.arm.operators.node_visitor import (
     NodeVisitor,
     register_node_visitor,
 )
-from executorch.backends.arm.operators.operator_validation_utils import (
-    adjust_pooling_pad_if_needed,
-    validate_num_inputs,
-    validate_same_dtype,
-)
 from executorch.backends.arm.tosa_mapping import TosaArg
-from executorch.backends.arm.tosa_specification import TosaSpecification
+from serializer.tosa_serializer import TosaOp
 
 
 @register_node_visitor
-class MaxPool2dVisitor_0_80(NodeVisitor):
+class MaxPool2dVisitor(NodeVisitor):
     target = "aten.max_pool2d.default"
-
-    tosa_specs = [
-        TosaSpecification.create_from_string("TOSA-0.80+BI"),
-        TosaSpecification.create_from_string("TOSA-0.80+MI"),
-    ]
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -40,14 +31,10 @@ class MaxPool2dVisitor_0_80(NodeVisitor):
     def define_node(
         self,
         node: torch.fx.Node,
-        tosa_graph: Any,
+        tosa_graph: ts.TosaSerializer,
         inputs: List[TosaArg],
         output: TosaArg,
     ) -> None:
-        import tosa_tools.v0_80.serializer.tosa_serializer as ts  # type: ignore
-
-        validate_num_inputs(self.target, inputs, [3, 4])
-        validate_same_dtype(self.target, [inputs[0], output])
 
         input_tensor = inputs[0]
         kernel_size = inputs[1].special
@@ -63,20 +50,6 @@ class MaxPool2dVisitor_0_80(NodeVisitor):
             ]
         except IndexError:
             pad_size_list = [0, 0, 0, 0]
-
-        # Adjust the padding as necessary
-        pad_size_list[1] = adjust_pooling_pad_if_needed(
-            input_tensor.shape[2],
-            kernel_size[0],
-            stride[0],
-            pad_size_list[1],
-        )
-        pad_size_list[3] = adjust_pooling_pad_if_needed(
-            input_tensor.shape[3],
-            kernel_size[1],
-            stride[1],
-            pad_size_list[3],
-        )
 
         accumulator_type = output.dtype
 
@@ -102,74 +75,7 @@ class MaxPool2dVisitor_0_80(NodeVisitor):
         )
 
         tosa_graph.addOperator(
-            ts.TosaOp.Op().MAX_POOL2D,
-            [input_tensor.name],
-            [output.name],
-            attr,
-        )
-
-
-@register_node_visitor
-class MaxPool2dVisitor(NodeVisitor):
-    target = "aten.max_pool2d.default"
-
-    tosa_specs = [
-        TosaSpecification.create_from_string("TOSA-1.0+INT"),
-        TosaSpecification.create_from_string("TOSA-1.0+FP"),
-    ]
-
-    def __init__(self, *args):
-        super().__init__(*args)
-
-    def define_node(
-        self,
-        node: torch.fx.Node,
-        tosa_graph: Any,
-        inputs: List[TosaArg],
-        output: TosaArg,
-    ) -> None:
-
-        import serializer.tosa_serializer as ts  # type: ignore
-
-        validate_num_inputs(self.target, inputs, [3, 4])
-        validate_same_dtype(self.target, [inputs[0], output])
-
-        input_tensor = inputs[0]
-        kernel_size = inputs[1].special
-        stride = inputs[2].special
-
-        try:
-            pad_size_list = inputs[3].special
-            pad_size_list = [
-                pad_size_list[0],
-                pad_size_list[0],
-                pad_size_list[1],
-                pad_size_list[1],
-            ]
-        except IndexError:
-            pad_size_list = [0, 0, 0, 0]
-
-        # Adjust the padding as necessary
-        pad_size_list[1] = adjust_pooling_pad_if_needed(
-            input_tensor.shape[2],
-            kernel_size[0],
-            stride[0],
-            pad_size_list[1],
-        )
-        pad_size_list[3] = adjust_pooling_pad_if_needed(
-            input_tensor.shape[3],
-            kernel_size[1],
-            stride[1],
-            pad_size_list[3],
-        )
-
-        attr = ts.TosaSerializerAttribute()
-        attr.MaxPool2dAttribute(
-            kernel=kernel_size, stride=stride, pad=pad_size_list, nan_mode=1
-        )
-
-        tosa_graph.addOperator(
-            ts.TosaOp.Op().MAX_POOL2D,
+            TosaOp.Op().MAX_POOL2D,
             [input_tensor.name],
             [output.name],
             attr,

@@ -22,6 +22,7 @@ from executorch.exir.schema import DelegateCall, Program
 from executorch.extension.pybindings.portable_lib import (  # @manual
     _load_for_executorch_from_buffer,
 )
+from hypothesis import given, settings, strategies as st
 from torch.export import export
 
 
@@ -64,6 +65,7 @@ class TestBackendAPI(unittest.TestCase):
             .executorch_program
         )
 
+    @settings(deadline=500000)
     def test_emit_lowered_backend_module_end_to_end(self):
         class SinModule(torch.nn.Module):
             def __init__(self):
@@ -107,7 +109,11 @@ class TestBackendAPI(unittest.TestCase):
             torch.allclose(model_outputs[0], expected_res, atol=1e-03, rtol=1e-03)
         )
 
-    def test_emit_lowered_backend_module(self):
+    @given(
+        unlift=st.booleans(),  # verify both lifted and unlifted graph
+    )
+    @settings(deadline=500000)
+    def test_emit_lowered_backend_module(self, unlift):
         module_list = [
             models.Emformer(),
             models.Repeat(),
@@ -160,7 +166,11 @@ class TestBackendAPI(unittest.TestCase):
             _ = lowered_model.buffer()
             self.validate_lowered_module_program(program)
 
-    def test_emit_nested_lowered_backend_module(self):
+    @given(
+        unlift=st.booleans(),  # verify both lifted and unlifted graph
+    )
+    @settings(deadline=500000)
+    def test_emit_nested_lowered_backend_module(self, unlift):
         module_list = [
             models.Emformer(),
             models.Repeat(),

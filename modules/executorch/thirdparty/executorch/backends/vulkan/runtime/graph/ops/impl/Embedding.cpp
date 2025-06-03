@@ -58,16 +58,9 @@ void add_embedding_node(
       {
           t_out->sizes_ubo(),
       },
-      // Push Constants
-      {},
-      // Specialization Constants
       {t_out->hashed_layout(),
        t_in->hashed_layout(),
-       t_weight->hashed_layout()},
-      // Resize Args
-      {},
-      // Resizing Logic
-      nullptr));
+       t_weight->hashed_layout()}));
 }
 
 void embedding(ComputeGraph& graph, const std::vector<ValueRef>& args) {

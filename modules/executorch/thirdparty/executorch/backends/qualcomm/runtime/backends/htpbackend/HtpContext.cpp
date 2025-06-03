@@ -10,6 +10,7 @@
 #include <executorch/backends/qualcomm/runtime/backends/htpbackend/HtpContext.h>
 
 #include "HTP/QnnHtpCommon.h"
+#include "Saver/QnnSaverCommon.h"
 
 namespace executorch {
 namespace backends {

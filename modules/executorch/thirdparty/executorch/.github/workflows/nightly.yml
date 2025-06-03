@@ -21,7 +21,7 @@ jobs:
     environment: ${{ (github.event_name == 'schedule') && 'update-commit-hash' || '' }}
     steps:
       - name: update-pytorch-commit-hash
-        uses: pytorch/test-infra/.github/actions/update-commit-hash@main
+        uses: pytorch/test-infra/.github/actions/update-commit-hash@release/2.7
         if: ${{ github.event_name == 'schedule' }}
         with:
           repo-name: pytorch
@@ -30,9 +30,3 @@ jobs:
           test-infra-ref: main
           updatebot-token: ${{ secrets.UPDATEBOT_TOKEN }}
           pytorchbot-token: ${{ secrets.GH_PYTORCHBOT_TOKEN }}
-
-  link-check:
-    needs: update-pytorch-commit-hash
-    uses: ./.github/workflows/_link_check.yml
-    with:
-      ref: ${{ github.sha }}

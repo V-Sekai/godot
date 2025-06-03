@@ -14,6 +14,7 @@
 
 #define TILE_SIZE_X ${TILE_SIZE_X}
 #define TILE_SIZE_Y ${TILE_SIZE_Y}
+#define LOCAL_WG_SIZE 64
 
 #define op(X, A, B) ${OPERATOR}
 
@@ -28,8 +29,12 @@ ${layout_declare_tensor(3, "r", "t_bias", DTYPE, "texture2d")}
 
 layout(push_constant) uniform restrict Block {
   ivec4 out_limits;
+  ivec4 in_sizes;
+  ivec2 kernel_size;
   ivec2 stride;
   ivec2 padding;
+  ivec2 dilation;
+  ivec2 overlay_region;
   int in_group_size;
   int dummy_padding;
   float out_min;
@@ -38,7 +43,10 @@ layout(push_constant) uniform restrict Block {
 
 layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z_id = 2) in;
 
-#extension GL_EXT_control_flow_attributes : require
+// For performance improvement, reduce register usage by caching positions in shared memory.
+// Offset index by 1 every 16 points to avoid bank access conflict.
+#define offset_pos_index(index) (index + ((index) >> 4))
+shared ivec3 pos_shared[offset_pos_index(LOCAL_WG_SIZE * TILE_SIZE_X * TILE_SIZE_Y)];
 
 /*
  * Computes a 2D pointwise convolution of an NxN output tile. Calculating an
@@ -46,18 +54,14 @@ layout(local_size_x_id = 0, local_size_y_id = 1, local_size_z_id = 2) in;
  * size is only 1x1, making it easier to re-use loaded texels from t_kernel.
  */
 void main() {
-  const int out_limits_scaled[2] =
-    {(out_limits.x + (TILE_SIZE_X - 1)) / TILE_SIZE_X,
-     (out_limits.y + (TILE_SIZE_Y - 1)) / TILE_SIZE_Y};
+  const ivec2 out_limits_scaled = (out_limits.xy + ivec2(TILE_SIZE_X - 1, TILE_SIZE_Y - 1)) / ivec2(TILE_SIZE_X, TILE_SIZE_Y);
+  const uint shared_mem_stride = LOCAL_WG_SIZE;
 
-  const int div_by_x = int(gl_GlobalInvocationID.x / out_limits_scaled[0]);
-  const int out_pos[3] = {int(gl_GlobalInvocationID.x % out_limits_scaled[0]), div_by_x, int(gl_GlobalInvocationID.y)};
-
-  // If the top left position is out of bounds, then this invocation will have
-  // no work to do.
-  if (out_pos[1] >= out_limits_scaled[1] || out_pos[2] >= out_limits.z) {
-    return;
-  }
+  const uint div_by_x = gl_GlobalInvocationID.x / out_limits_scaled.x;
+  const ivec3 gpos = ivec3(
+    gl_GlobalInvocationID.x % out_limits_scaled.x,
+    div_by_x % out_limits_scaled.y,
+    div_by_x / out_limits_scaled.y);
 
   // Output position for TILE_SIZE = 2
   // +--------+--------+
@@ -65,36 +69,33 @@ void main() {
   // +--------+--------+
   // | pos[2] | pos[3] |
   // +--------+--------+
-  int pos[TILE_SIZE_X * TILE_SIZE_Y * 2];
+  ivec2 pos[TILE_SIZE_X * TILE_SIZE_Y];
   for (int y = 0, i = 0; y < TILE_SIZE_Y; ++y) {
     for (int x = 0; x < TILE_SIZE_X; ++x) {
-      pos[i * 2] = out_pos[0] * TILE_SIZE_X + x;
-      pos[i * 2 + 1] = out_pos[1] * TILE_SIZE_Y + y;
+      pos[i] = ivec2(gpos.x * TILE_SIZE_X + x, gpos.y * TILE_SIZE_Y + y);
+      pos_shared[offset_pos_index((shared_mem_stride * i) + gl_LocalInvocationIndex)] = ivec3(pos[i], gpos.z);
       i++;
     }
+  }
+
+  // If the top left position is out of bounds, then this invocation will have
+  // no work to do.
+  if (gpos.z >= out_limits.z) {
+    return;
   }
 
   // Compute the index of the input texture that needs to be loaded for each
   // output position. Note that negative indices can be produced indicating that
   // the top-left element is in a region added by padding.
-  int ipos[TILE_SIZE_X * TILE_SIZE_Y * 2];
+  ivec2 ipos[TILE_SIZE_X * TILE_SIZE_Y];
   for (int i = 0; i < TILE_SIZE_X * TILE_SIZE_Y; ++i) {
-    ipos[i * 2] = pos[i * 2] * stride.x - padding.x;
-    ipos[i * 2 + 1] = pos[i * 2 + 1] * stride.y - padding.y;
+    ipos[i] = pos[i] * stride - padding;
   }
 
-  // Final output array where each element is a tensor value.
-  // Tuple of consecutive 4 elements represents a single output texel.
-  float sum[TILE_SIZE_X * TILE_SIZE_Y * 4];
-
-  const vec4 bias = texelFetch(t_bias, ivec2(out_pos[2], 0), 0);
-
-  // Initialize the output array with the bias value
-  for (int i = 0; i < TILE_SIZE_X * TILE_SIZE_Y * 4; i += 4) {
-    sum[i] = bias.x;
-    sum[i + 1] = bias.y;
-    sum[i + 2] = bias.z;
-    sum[i + 3] = bias.w;
+  vec4 sum[TILE_SIZE_X * TILE_SIZE_Y];
+  sum[0] = texelFetch(t_bias, ivec2(gpos.z, 0), 0);
+  for (int i = 1; i < TILE_SIZE_X * TILE_SIZE_Y; ++i) {
+    sum[i] = sum[0];
   }
 
   int z4 = 0;
@@ -103,26 +104,14 @@ void main() {
     // During prepacking, the weight tensor has been permuted so that the
     // channel (IC) dim is along the x-axis, and the batch (OC) dim is along
     // the z-axis.
-    float kernel_values[4 * 4]; // 4 channels, 4 elements per channel
+    const vec4 ktex_0 = texelFetchOffset(t_kernel, ivec2(z, gpos.z), 0, ivec2(0, 0));
+    const vec4 ktex_1 = texelFetchOffset(t_kernel, ivec2(z, gpos.z), 0, ivec2(1, 0));
+    const vec4 ktex_2 = texelFetchOffset(t_kernel, ivec2(z, gpos.z), 0, ivec2(2, 0));
+    const vec4 ktex_3 = texelFetchOffset(t_kernel, ivec2(z, gpos.z), 0, ivec2(3, 0));
 
-    // Load kernel values from texels to array
-    [[unroll]] for (int i = 0; i < 4; ++i) {
-      const vec4 k_tex = texelFetch(t_kernel, ivec2(z + i, out_pos[2]), 0);
-      kernel_values[i * 4 + 0] = k_tex.x;
-      kernel_values[i * 4 + 1] = k_tex.y;
-      kernel_values[i * 4 + 2] = k_tex.z;
-      kernel_values[i * 4 + 3] = k_tex.w;
-    }
-
+#pragma unroll
     for (int i = 0; i < TILE_SIZE_X * TILE_SIZE_Y; ++i) {
-      const vec4 in_tex = texelFetch(t_in, ivec3(ipos[i * 2], ipos[i * 2 + 1], z4), 0);
-      // Load the input texel into an array
-      float tex_values[4];
-      tex_values[0] = in_tex.x;
-      tex_values[1] = in_tex.y;
-      tex_values[2] = in_tex.z;
-      tex_values[3] = in_tex.w;
-
+      const vec4 in_tex = texelFetch(t_in, ivec3(ipos[i], z4), 0);
       // For 2x2 tile size algorithm works as follows.
       // To explain the calculations below, the contents of one in_tex and the
       // group of 4 texels loaded from t_kernel are shown:
@@ -156,19 +145,18 @@ void main() {
       //
       //  which is what is expressed in the following calculations. This is done
       //  for each output position.
-      for (int j = 0; j < 4; ++j) {
-        sum[i * 4 + j] = tex_values[0] * kernel_values[0 + j] + sum[i * 4 + j];
-        sum[i * 4 + j] = tex_values[1] * kernel_values[4 + j] + sum[i * 4 + j];
-        sum[i * 4 + j] = tex_values[2] * kernel_values[8 + j] + sum[i * 4 + j];
-        sum[i * 4 + j] = tex_values[3] * kernel_values[12 + j] + sum[i * 4 + j];
-      }
+      sum[i] = fma(in_tex.xxxx, ktex_0, sum[i]);
+      sum[i] = fma(in_tex.yyyy, ktex_1, sum[i]);
+      sum[i] = fma(in_tex.zzzz, ktex_2, sum[i]);
+      sum[i] = fma(in_tex.wwww, ktex_3, sum[i]);
     }
   }
 
   for (int i = 0; i < TILE_SIZE_X * TILE_SIZE_Y; ++i) {
-    const ivec3 pos_l = ivec3(pos[i * 2], pos[i * 2 + 1], out_pos[2]);
-    if (all(lessThan(pos_l, out_limits.xyz))) {
-      imageStore(t_out, pos_l, op(vec4(sum[i * 4], sum[i * 4 + 1], sum[i * 4 + 2], sum[i * 4 + 3]), out_min, out_max));
+    const uint index = (shared_mem_stride * i) + gl_LocalInvocationIndex;
+    const ivec3 pos = pos_shared[offset_pos_index(index)];
+    if (all(lessThan(pos, out_limits.xyz))) {
+      imageStore(t_out, pos, op(sum[i], out_min, out_max));
     }
   }
 }

@@ -17,9 +17,9 @@ from executorch.exir.backend.canonical_partitioners.duplicate_dequant_node_pass 
     DuplicateDequantNodePass,
 )
 from executorch.exir.delegate import executorch_call_delegate
-from torch.export import export
 
-from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
+from torch.ao.quantization.quantize_pt2e import convert_pt2e, prepare_pt2e
+from torch.export import export
 
 from torchvision.models.quantization import mobilenet_v2
 
@@ -46,9 +46,7 @@ class TestExampleDelegate(unittest.TestCase):
         )
 
         m = model.eval()
-        m = torch.export.export_for_training(
-            m, copy.deepcopy(example_inputs), strict=True
-        ).module()
+        m = torch.export.export_for_training(m, copy.deepcopy(example_inputs)).module()
         # print("original model:", m)
         quantizer = ExampleQuantizer()
         # quantizer = XNNPACKQuantizer()
@@ -84,9 +82,7 @@ class TestExampleDelegate(unittest.TestCase):
         )
 
         m = model.eval()
-        m = torch.export.export_for_training(
-            m, copy.deepcopy(example_inputs), strict=True
-        ).module()
+        m = torch.export.export_for_training(m, copy.deepcopy(example_inputs)).module()
         quantizer = ExampleQuantizer()
 
         m = prepare_pt2e(m, quantizer)

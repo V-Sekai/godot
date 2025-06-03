@@ -12,7 +12,6 @@
 #import <executorch/examples/models/llama/runner/runner.h>
 #import <executorch/examples/models/llava/runner/llava_runner.h>
 
-using executorch::extension::llm::GenerationConfig;
 using executorch::extension::llm::Image;
 using executorch::runtime::Error;
 
@@ -31,7 +30,7 @@ NSErrorDomain const LLaVARunnerErrorDomain = @"LLaVARunnerErrorDomain";
   self = [super init];
   if (self) {
     [ExecuTorchLog.sharedLog addSink:self];
-    _runner = example::Runner::create(
+    _runner = std::make_unique<example::Runner>(
         modelPath.UTF8String, tokenizerPath.UTF8String);
   }
   return self;
@@ -62,11 +61,8 @@ NSErrorDomain const LLaVARunnerErrorDomain = @"LLaVARunnerErrorDomain";
        sequenceLength:(NSInteger)seq_len
     withTokenCallback:(nullable void (^)(NSString*))callback
                 error:(NSError**)error {
-  const GenerationConfig config{
-    .seq_len = static_cast<int32_t>(seq_len)
-  };
   const auto status = _runner->generate(
-      prompt.UTF8String, config, [callback](const std::string& token) {
+      prompt.UTF8String, seq_len, [callback](const std::string& token) {
         callback(@(token.c_str()));
       });
   if (status != Error::Ok) {

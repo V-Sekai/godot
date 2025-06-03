@@ -15,9 +15,6 @@
 namespace executorch {
 namespace extension {
 
-using ::executorch::ET_RUNTIME_NAMESPACE::Method;
-using ::executorch::ET_RUNTIME_NAMESPACE::TensorInfo;
-
 /**
  * RAII helper that frees a set of buffers when destroyed. Movable.
  */
@@ -83,7 +80,7 @@ struct PrepareInputTensorsOptions {
  * @returns An error on failure.
  */
 executorch::runtime::Result<BufferCleanup> prepare_input_tensors(
-    Method& method,
+    executorch::runtime::Method& method,
     PrepareInputTensorsOptions options = {});
 
 namespace internal {
@@ -92,8 +89,8 @@ namespace internal {
  * fills it with ones, and sets the input at `input_index`.
  */
 executorch::runtime::Error fill_and_set_input(
-    Method& method,
-    TensorInfo& tensor_meta,
+    executorch::runtime::Method& method,
+    executorch::runtime::TensorInfo& tensor_meta,
     size_t input_index,
     void* data_ptr);
 } // namespace internal

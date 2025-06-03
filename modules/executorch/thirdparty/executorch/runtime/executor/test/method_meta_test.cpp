@@ -26,34 +26,26 @@ using torch::executor::util::FileDataLoader;
 
 class MethodMetaTest : public ::testing::Test {
  protected:
-  void load_program(const char* path, const char* module_name) {
-    // Create a loader for the serialized program.
+  void SetUp() override {
+    // Create a loader for the serialized ModuleAdd program.
+    const char* path = std::getenv("ET_MODULE_ADD_PATH");
     Result<FileDataLoader> loader = FileDataLoader::from(path);
     ASSERT_EQ(loader.error(), Error::Ok);
-    loaders_.insert(
-        {module_name,
-         std::make_unique<FileDataLoader>(std::move(loader.get()))});
+    loader_ = std::make_unique<FileDataLoader>(std::move(loader.get()));
 
     // Use it to load the program.
     Result<Program> program = Program::load(
-        loaders_[module_name].get(),
-        Program::Verification::InternalConsistency);
+        loader_.get(), Program::Verification::InternalConsistency);
     ASSERT_EQ(program.error(), Error::Ok);
-    programs_.insert(
-        {module_name, std::make_unique<Program>(std::move(program.get()))});
-  }
-
-  void SetUp() override {
-    load_program(std::getenv("ET_MODULE_ADD_PATH"), "add");
-    load_program(std::getenv("ET_MODULE_STATEFUL_PATH"), "stateful");
+    program_ = std::make_unique<Program>(std::move(program.get()));
   }
 
  private:
   // Must outlive program_, but tests shouldn't need to touch it.
-  std::unordered_map<std::string, std::unique_ptr<FileDataLoader>> loaders_;
+  std::unique_ptr<FileDataLoader> loader_;
 
  protected:
-  std::unordered_map<std::string, std::unique_ptr<Program>> programs_;
+  std::unique_ptr<Program> program_;
 };
 
 namespace {
@@ -75,7 +67,7 @@ void check_tensor(const TensorInfo& tensor_info) {
 } // namespace
 
 TEST_F(MethodMetaTest, MethodMetaApi) {
-  Result<MethodMeta> method_meta = programs_["add"]->method_meta("forward");
+  Result<MethodMeta> method_meta = program_->method_meta("forward");
   ASSERT_EQ(method_meta.error(), Error::Ok);
 
   // Appropriate amount of inputs
@@ -105,12 +97,11 @@ TEST_F(MethodMetaTest, MethodMetaApi) {
 
   // Missing method fails
   EXPECT_EQ(
-      programs_["add"]->method_meta("not_a_method").error(),
-      Error::InvalidArgument);
+      program_->method_meta("not_a_method").error(), Error::InvalidArgument);
 }
 
 TEST_F(MethodMetaTest, TensorInfoApi) {
-  Result<MethodMeta> method_meta = programs_["add"]->method_meta("forward");
+  Result<MethodMeta> method_meta = program_->method_meta("forward");
   ASSERT_EQ(method_meta.error(), Error::Ok);
 
   // Input 1
@@ -146,20 +137,4 @@ TEST_F(MethodMetaTest, TensorInfoApi) {
   EXPECT_EQ(method_meta->output_tensor_meta(3).error(), Error::InvalidArgument);
   EXPECT_EQ(
       method_meta->output_tensor_meta(-1).error(), Error::InvalidArgument);
-}
-
-TEST_F(MethodMetaTest, MethodMetaAttribute) {
-  Result<MethodMeta> method_meta =
-      programs_["stateful"]->method_meta("forward");
-  ASSERT_EQ(method_meta.error(), Error::Ok);
-
-  ASSERT_EQ(method_meta->num_attributes(), 1);
-  auto state = method_meta->attribute_tensor_meta(0);
-  ASSERT_TRUE(state.ok());
-
-  ASSERT_EQ(state->name(), "state");
-  ASSERT_FALSE(state->is_memory_planned());
-
-  auto bad_access = method_meta->attribute_tensor_meta(1);
-  ASSERT_EQ(bad_access.error(), Error::InvalidArgument);
 }

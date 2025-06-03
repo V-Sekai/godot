@@ -154,12 +154,6 @@ TEST_P(FileDataLoaderTest, FromMissingFileFails) {
   EXPECT_NE(fdl.error(), Error::Ok);
 }
 
-TEST_P(FileDataLoaderTest, FromEmptyFilePathFails) {
-  // Nullptr should fail
-  Result<FileDataLoader> fdl = FileDataLoader::from(nullptr);
-  EXPECT_NE(fdl.error(), Error::Ok);
-}
-
 TEST_P(FileDataLoaderTest, BadAlignmentFails) {
   // Create a temp file; contents don't matter.
   uint8_t data[256] = {};
