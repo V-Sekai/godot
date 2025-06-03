@@ -37,6 +37,8 @@
 /**
  * Comprehensive doctest suite for ExecuTorch Godot Module
  * Tests linear regression functionality: y = 2x + 3
+ *
+ * https://openstax.org/books/introductory-statistics-2e/pages/12-3-the-regression-equation
  */
 
 TEST_CASE("ExecuTorchModel Basic Functionality") {
