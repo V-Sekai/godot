@@ -31,7 +31,8 @@
 #pragma once
 
 #include "../src/executorch_resource.h"
-#include "doctest.h"
+
+#include "tests/test_macros.h"
 
 TEST_SUITE("ExecuTorchResource Tests") {
 	TEST_CASE("ExecuTorchResource - Basic Creation and Lifecycle") {
