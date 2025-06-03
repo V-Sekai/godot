@@ -1,0 +1,8 @@
+---
+# Prettier configuration for Markdown
+printWidth: 80
+proseWrap: always # Wrap prose for readability
+overrides:
+    - files: '*.md'
+      options:
+          parser: markdown
