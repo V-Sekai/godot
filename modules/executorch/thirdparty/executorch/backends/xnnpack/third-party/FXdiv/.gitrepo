@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/Maratyszcza/FXdiv.git
+	branch = master
+	commit = 63058eff77e11aa15bf531df5dd34395ec3017c8
+	parent = 3f61ab930d6aadfb4ea95fbc9e8b031bd1bc2ee6
+	method = merge
+	cmdver = 0.4.9
