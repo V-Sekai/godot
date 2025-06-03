@@ -8,7 +8,7 @@ install:
 
 # Create models directory
 setup:
-    mkdir -p ../models
+    mkdir -p models
     @echo "✅ Models directory created"
 
 # Convert PyTorch model to ExecuTorch format
@@ -23,11 +23,11 @@ test-equivalency:
 
 # Test with different input values
 test-custom INPUT="1.0,2.0,3.0,4.0":
-    python -c "import torch; import sys; sys.path.append('.'); from run import *; input_vals = [float(x) for x in '{{INPUT}}'.split(',')]; test_input = torch.tensor([input_vals]); print(f'Testing with input: {test_input}')"
+    python test_custom.py {{INPUT}}
 
 # Validate model outputs match within tolerance
 validate:
-    python -c "import torch; from run import *; print('=== Validation Report ==='); print(f'Model file exists: {os.path.exists(\"../models/simple_linear.pte\")}'); print(f'Weights file exists: {os.path.exists(\"../models/simple_linear_weights.pth\")}'); exec(open('run.py').read()) if os.path.exists('../models/simple_linear.pte') else print('Model file not found')"
+    python validate.py
 
 # Compare performance between PyTorch eager and ExecuTorch
 benchmark:
@@ -43,14 +43,14 @@ stress-test:
 
 # Clean up generated files
 clean:
-    rm -f ../models/*.pte
-    rm -f ../models/*.pth
+    rm -f models/*.pte
+    rm -f models/*.pth
     @echo "✅ Cleaned up generated files"
 
 # Show model information
 info:
     @echo "=== Model Files ==="
-    @ls -la ../models/ 2>/dev/null || echo "No models directory found"
+    @ls -la models/ 2>/dev/null || echo "No models directory found"
     @echo ""
     @echo "=== Python Scripts ==="
     @ls -la *.py
