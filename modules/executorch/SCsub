@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+
+"""
+SCons build file for ExecuTorch Godot module
+"""
+
+Import('env')
+
+module_env = env.Clone()
+
+# Add module source files
+source_files = [
+    "executorch_runtime.cpp",
+    "executorch_model.cpp",
+    "mcp_server_internal.cpp",
+    "register_types.cpp"
+]
+
+# Add include paths
+module_env.Append(CPPPATH=["."])
+
+# Add any additional flags for this module
+if env["platform"] == "linuxbsd":
+    module_env.Append(CPPFLAGS=["-std=c++17"])
+elif env["platform"] == "windows":
+    module_env.Append(CPPFLAGS=["/std:c++17"])
+elif env["platform"] == "osx":
+    module_env.Append(CPPFLAGS=["-std=c++17"])
+
+# Create the module library
+module_env.add_source_files(env.modules_sources, source_files)

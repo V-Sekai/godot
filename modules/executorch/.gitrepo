@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-executorch.git
+	branch = main
+	commit = f36cb735074571bc30132a9c652ea519027e9fa8
+	parent = 64b09905c7b2877f8aef99d8b63e73e5d31acfb9
+	method = merge
+	cmdver = 0.4.9
