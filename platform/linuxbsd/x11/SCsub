@@ -30,10 +30,12 @@ if env["vulkan"]:
 if env["opengl3"]:
     env.Append(CPPDEFINES=["GLAD_GLX_NO_X11"])
     source_files.append(
-        [base + "gl_manager_x11_egl.cpp",
-         base + "gl_manager_x11.cpp",
-         base + "detect_prime_x11.cpp",
-         "#thirdparty/glad/glx.c"]
+        [
+            base + "gl_manager_x11_egl.cpp",
+            base + "gl_manager_x11.cpp",
+            base + "detect_prime_x11.cpp",
+            "#thirdparty/glad/glx.c",
+        ]
     )
 
 Return("source_files")
