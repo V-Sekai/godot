@@ -13,25 +13,25 @@ setup:
 
 # Convert PyTorch model to ExecuTorch format
 convert:
-    python3 convert_model.py
-    @echo "✅ Model conversion completed"
+    python3 stress_test.py --mode single
+    @echo "✅ Model conversion and test completed"
 
 # Run equivalency test between PyTorch and ExecuTorch
 test-equivalency:
-    python3 run.py
+    python3 stress_test.py --mode single
     @echo "✅ Equivalency test completed"
 
 # Test with different input values
 test-custom INPUT="1.0,2.0,3.0,4.0":
-    python3 test_custom.py {{INPUT}}
+    python3 stress_test.py --mode custom --input {{INPUT}}
 
 # Validate model outputs match within tolerance
 validate:
-    python3 validate.py
+    python3 stress_test.py --mode validate
 
 # Compare performance between PyTorch eager and ExecuTorch
 benchmark:
-    python3 benchmark.py
+    python3 stress_test.py --mode benchmark
 
 # Full pipeline: setup, convert, and test
 all: setup convert test-equivalency validate
@@ -39,7 +39,8 @@ all: setup convert test-equivalency validate
 
 # Test with multiple random inputs
 stress-test:
-    python3 stress_test.py
+    python3 stress_test.py --mode stress
+    @echo "✅ Stress test completed"
 
 # Clean up generated files
 clean:
@@ -60,7 +61,7 @@ info:
 
 # Quick equivalency test (assumes model exists)
 quick-test:
-    python3 run.py
+    python3 stress_test.py --mode single
 
 # Help
 help:
