@@ -48,6 +48,12 @@ inference capabilities into Godot Engine with built-in MCP (Model Context Protoc
 - Performance monitoring and benchmarking
 - Linear regression and other model type support
 
+**TODO - Build System Integration:**
+- 🔧 **Compile ExecuTorch separately** and use its compilation database (`compile_commands.json`) to figure out how to properly build with SCons
+- 🔧 **Extract build flags and dependencies** from ExecuTorch's CMake configuration
+- 🔧 **Port CMake settings to SCons** for proper Godot module integration
+- 🔧 **Handle third-party dependencies** (XNNPACK, etc.) in Godot's build system
+
 **Do not use this in:**
 
 - Production games or applications
