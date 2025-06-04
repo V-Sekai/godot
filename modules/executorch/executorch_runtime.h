@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include <cstddef> // for size_t
+#include <cstddef>
 
 enum class ExecuTorchDevice {
 	CPU,
@@ -50,12 +50,10 @@ public:
 	ExecuTorchRuntime();
 	~ExecuTorchRuntime();
 
-	// Runtime management
 	bool initialize();
 	void shutdown();
 	bool is_initialized() const { return is_initialized_; }
 
-	// Configuration
 	void set_device(ExecuTorchDevice device) { device_ = device; }
 	ExecuTorchDevice get_device() const { return device_; }
 	void set_memory_pool_size(size_t size) { memory_pool_size_ = size; }
@@ -63,12 +61,10 @@ public:
 	void set_num_threads(int threads) { num_threads_ = threads; }
 	int get_num_threads() const { return num_threads_; }
 
-	// Memory management
 	void *allocate_memory(size_t size);
 	void deallocate_memory(void *ptr);
 	void clear_memory_pool();
 
-	// Performance monitoring
 	double get_last_inference_time() const;
 	size_t get_memory_usage() const;
 

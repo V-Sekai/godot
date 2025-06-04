@@ -30,22 +30,11 @@
 
 #pragma once
 
-// Simplified standalone version for compilation
+#include "core/object/ref_counted.h"
 #include <cstdint>
-#include <map>
 #include <memory>
-#include <string>
 #include <vector>
 
-// Mock types for standalone compilation
-using String = std::string;
-using PackedByteArray = std::vector<uint8_t>;
-using Array = std::vector<std::string>;
-using Dictionary = std::map<std::string, std::vector<float>>;
-enum Error { OK = 0,
-	FAILED = 1 };
-
-// Forward declarations for ExecuTorch
 class ExecuTorchModule;
 class ExecuTorchMemoryManager;
 
@@ -56,7 +45,7 @@ class ExecuTorchMemoryManager;
  * - High-level: Simple forward() method using ExecuTorch Module class
  * - Low-level: Direct memory management and placement control
  */
-class ExecuTorchResource {
+class ExecuTorchResource : public RefCounted {
 public:
 	enum MemoryPolicy {
 		MEMORY_POLICY_AUTO, // Automatic memory management
@@ -154,6 +143,7 @@ class ExecuTorchModule {
 private:
 	bool is_loaded_;
 	String file_path_;
+	PackedByteArray buffer_data_;
 	void *native_module_; // Actual ExecuTorch Module pointer
 
 public:
@@ -186,17 +176,14 @@ public:
 	ExecuTorchMemoryManager();
 	~ExecuTorchMemoryManager();
 
-	// Memory configuration
 	Error configure_static_memory(size_t pool_size);
 	Error configure_dynamic_memory();
 	Error configure_custom_allocator(void *allocator);
 
-	// Memory monitoring
 	Dictionary get_memory_stats() const;
 	size_t get_allocated_bytes() const;
 	size_t get_available_bytes() const;
 
-	// Memory operations
 	void *allocate(size_t size, size_t alignment = 16);
 	void deallocate(void *ptr);
 	void reset();

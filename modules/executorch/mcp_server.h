@@ -41,7 +41,6 @@ private:
 	int port;
 	String server_name;
 
-	// MCP protocol state
 	Dictionary capabilities;
 	Array tools;
 	Array resources;
@@ -57,24 +56,20 @@ public:
 	void _ready();
 	void _exit_tree();
 
-	// MCP Server functionality
 	void start_server(int p_port = 8080);
 	void stop_server();
 	bool is_server_running() const;
 
-	// MCP Protocol methods
 	void initialize_mcp();
 	void add_tool(const String &name, const String &description, const Dictionary &schema);
 	void add_resource(const String &uri, const String &name, const String &description);
 	Dictionary handle_request(const Dictionary &request);
 
-	// Property setters/getters
 	void set_port(int p_port);
 	int get_port() const;
 	void set_server_name(const String &p_name);
 	String get_server_name() const;
 
-	// Signal callbacks
 	void _on_client_connected();
 	void _on_client_disconnected();
 	void _on_message_received(const Dictionary &message);

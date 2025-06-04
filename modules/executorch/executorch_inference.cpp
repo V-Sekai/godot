@@ -30,53 +30,62 @@
 
 #include "executorch_inference.h"
 #include "executorch_runtime.h"
-#include <iostream>
 
 ExecuTorchInference::ExecuTorchInference(bool auto_manage) :
 		auto_manage_runtime_(auto_manage) {
 	if (auto_manage_runtime_) {
 		runtime_ = std::make_unique<ExecuTorchRuntime>();
 	}
-	model_ = std::make_unique<ExecuTorchModel>();
+	model_ = Ref<ExecuTorchResource>();
 }
 
 ExecuTorchInference::~ExecuTorchInference() {
-	// Unique pointers will automatically clean up
 }
 
 bool ExecuTorchInference::load_model(const std::string &file_path) {
-	if (!model_) {
-		std::cerr << "Model not initialized" << std::endl;
-		return false;
-	}
-
-	// Initialize runtime if we're managing it
 	if (auto_manage_runtime_ && runtime_) {
 		if (!runtime_->initialize()) {
-			std::cerr << "Failed to initialize ExecuTorch runtime" << std::endl;
+			print_error("Failed to initialize ExecuTorch runtime");
 			return false;
 		}
 	}
 
-	// Load the model
-	bool success = model_->load_from_file(file_path);
+	model_ = Ref<ExecuTorchResource>(memnew(ExecuTorchResource));
+	bool success = model_->load_from_file(String(file_path.c_str()));
 	if (!success) {
-		std::cerr << "Failed to load model from: " << file_path << std::endl;
+		print_error("Failed to load model from: " + String(file_path.c_str()));
+		model_ = Ref<ExecuTorchResource>();
 		return false;
 	}
 
-	std::cout << "Successfully loaded model: " << file_path << std::endl;
+	print_line("Successfully loaded model: " + String(file_path.c_str()));
 	return true;
 }
 
-std::vector<float> ExecuTorchInference::predict(const std::vector<float> &input) {
-	if (!model_ || !model_->is_loaded()) {
-		std::cerr << "Model not loaded" << std::endl;
-		return {};
+PackedFloat32Array ExecuTorchInference::predict(const PackedFloat32Array &input) {
+	if (!model_.is_valid() || !model_->is_loaded()) {
+		print_error("Model not loaded");
+		return PackedFloat32Array();
 	}
 
-	// Use the single input forward method for simplicity
-	return model_->forward_single(input);
+	// Convert PackedFloat32Array to std::vector<float>
+	std::vector<float> input_vec;
+	input_vec.reserve(input.size());
+	for (int i = 0; i < input.size(); i++) {
+		input_vec.push_back(input[i]);
+	}
+
+	// Use the resource's forward method (check what methods are available)
+	Dictionary inputs;
+	inputs["input"] = input; // Pass the original PackedFloat32Array
+	Dictionary outputs = model_->forward(inputs);
+
+	// Extract the output (assuming single output named "output")
+	if (outputs.has("output")) {
+		return outputs["output"];
+	}
+
+	return PackedFloat32Array();
 }
 
 void ExecuTorchInference::set_runtime(ExecuTorchRuntime *external_runtime) {
@@ -87,7 +96,7 @@ void ExecuTorchInference::set_runtime(ExecuTorchRuntime *external_runtime) {
 	}
 
 	// Note: We're not storing the external runtime pointer here
-	// In a real implementation, you'd need to modify ExecuTorchModel
+	// In a real implementation, you'd need to modify ExecuTorchResource
 	// to accept and use the external runtime
-	std::cout << "External runtime set (implementation pending)" << std::endl;
+	print_line("External runtime set (implementation pending)");
 }

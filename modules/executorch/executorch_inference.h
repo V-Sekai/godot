@@ -30,29 +30,27 @@
 
 #pragma once
 
-#include "executorch_model.h"
+#include "core/object/ref_counted.h"
+#include "core/variant/variant.h"
+#include "executorch_resource.h"
 #include "executorch_runtime.h"
 #include <memory>
 
-// Convenience wrapper for simple inference use cases
 class ExecuTorchInference {
 private:
 	std::unique_ptr<ExecuTorchRuntime> runtime_;
-	std::unique_ptr<ExecuTorchModel> model_;
+	Ref<ExecuTorchResource> model_;
 	bool auto_manage_runtime_;
 
 public:
 	ExecuTorchInference(bool auto_manage = true);
 	~ExecuTorchInference();
 
-	// Simple API for quick setup
 	bool load_model(const std::string &file_path);
-	std::vector<float> predict(const std::vector<float> &input);
+	PackedFloat32Array predict(const PackedFloat32Array &input);
 
-	// Advanced API for when you need more control
 	ExecuTorchRuntime *get_runtime() { return runtime_.get(); }
-	ExecuTorchModel *get_model() { return model_.get(); }
+	Ref<ExecuTorchResource> get_model() { return model_; }
 
-	// Allow using external runtime (for sharing between models)
 	void set_runtime(ExecuTorchRuntime *external_runtime);
 };
