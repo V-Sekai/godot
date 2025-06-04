@@ -316,7 +316,7 @@ std::vector<void *> ExecuTorchResource::_convert_dictionary_to_tensors(const Dic
 
 	// In real implementation, this would convert Godot types to ExecuTorch tensors
 	Array keys = inputs.keys();
-	for (int i = 0; i < keys.size(); i++) {
+	for (int64_t i = 0; i < keys.size(); i++) {
 		tensors.push_back(nullptr); // Placeholder
 	}
 
@@ -376,7 +376,7 @@ Dictionary ExecuTorchModule::forward(const Dictionary &inputs) {
 
 	// Mock linear regression: y = 2x + 3
 	Array keys = inputs.keys();
-	for (int i = 0; i < keys.size(); i++) {
+	for (int64_t i = 0; i < keys.size(); i++) {
 		Variant input_values = inputs[keys[i]];
 		if (input_values.get_type() == Variant::PACKED_FLOAT32_ARRAY) {
 			PackedFloat32Array input_array = input_values;

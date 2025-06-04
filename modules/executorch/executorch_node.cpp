@@ -125,7 +125,7 @@ PackedFloat32Array ExecuTorchNode::predict(const PackedFloat32Array &input) {
 	// Convert PackedFloat32Array to std::vector<float>
 	Vector<float> input_vec;
 	input_vec.resize(input.size());
-	for (int i = 0; i < input.size(); i++) {
+	for (int64_t i = 0; i < input.size(); i++) {
 		input_vec.push_back(input[i]);
 	}
 
@@ -135,7 +135,7 @@ PackedFloat32Array ExecuTorchNode::predict(const PackedFloat32Array &input) {
 	// Convert back to PackedFloat32Array
 	PackedFloat32Array output;
 	output.resize(result.size());
-	for (size_t i = 0; i < result.size(); i++) {
+	for (int64_t i = 0; i < result.size(); i++) {
 		output.write[i] = result[i];
 	}
 
