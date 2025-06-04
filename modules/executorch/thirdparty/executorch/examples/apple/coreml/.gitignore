@@ -11,6 +11,7 @@ cmake-out/
 *.perspectivev3
 *.xcuserstate
 project.xcworkspace/
+!executor_runner/coreml_executor_runner.xcodeproj/project.xcworkspace/
 xcuserdata
 
 executor_runner/include/

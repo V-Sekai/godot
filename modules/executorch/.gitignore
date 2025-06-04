@@ -1,0 +1,82 @@
+# ExecuTorch Module .gitignore
+# This file handles ignoring patterns specific to the executorch module
+
+# Build artifacts (ignore these)
+build/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.obj
+*.pdb
+
+# CMake generated files (ignore these)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Python cache (ignore these)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+
+# IDE files (ignore these)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files (ignore these)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation build (ignore these)
+docs/_build/
+docs/build/
+
+# Coverage reports (ignore these)
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Logs (ignore these)
+*.log
+logs/
+
+# Temporary files (ignore these)
+*.tmp
+*.temp
+
+# Archive files (ignore these)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# OVERRIDE ALL GITIGNORE PATTERNS - Force include ExecuTorch source code
+# This section overrides any parent or submodule .gitignore patterns
+
+# Force include ALL directories and files under thirdparty/executorch/
+!thirdparty/
+!thirdparty/**
+!thirdparty/executorch/
+!thirdparty/executorch/**
+
+# But still ignore actual build outputs where they exist
+thirdparty/executorch/**/build-*/
+thirdparty/executorch/**/cmake-out/
+thirdparty/executorch/**/dist/
