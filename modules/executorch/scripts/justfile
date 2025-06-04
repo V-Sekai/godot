@@ -1,10 +1,10 @@
 # ExecuTorch Scripts - Model Testing and Validation
 # Run with: just <command>
 
-# Install Python dependencies for model scripts
+# Install python3 dependencies for model scripts
 install:
-    pip install torch torchvision executorch
-    @echo "✅ Python dependencies installed"
+    pip3 install torch torchvision executorch
+    @echo "✅ python3 dependencies installed"
 
 # Create models directory
 setup:
@@ -13,25 +13,25 @@ setup:
 
 # Convert PyTorch model to ExecuTorch format
 convert:
-    python convert_model.py
+    python3 convert_model.py
     @echo "✅ Model conversion completed"
 
 # Run equivalency test between PyTorch and ExecuTorch
 test-equivalency:
-    python run.py
+    python3 run.py
     @echo "✅ Equivalency test completed"
 
 # Test with different input values
 test-custom INPUT="1.0,2.0,3.0,4.0":
-    python test_custom.py {{INPUT}}
+    python3 test_custom.py {{INPUT}}
 
 # Validate model outputs match within tolerance
 validate:
-    python validate.py
+    python3 validate.py
 
 # Compare performance between PyTorch eager and ExecuTorch
 benchmark:
-    python benchmark.py
+    python3 benchmark.py
 
 # Full pipeline: setup, convert, and test
 all: setup convert test-equivalency validate
@@ -39,7 +39,7 @@ all: setup convert test-equivalency validate
 
 # Test with multiple random inputs
 stress-test:
-    python stress_test.py
+    python3 stress_test.py
 
 # Clean up generated files
 clean:
@@ -52,7 +52,7 @@ info:
     @echo "=== Model Files ==="
     @ls -la models/ 2>/dev/null || echo "No models directory found"
     @echo ""
-    @echo "=== Python Scripts ==="
+    @echo "=== python3 Scripts ==="
     @ls -la *.py
     @echo ""
     @echo "=== Available Commands ==="
@@ -60,7 +60,7 @@ info:
 
 # Quick equivalency test (assumes model exists)
 quick-test:
-    python run.py
+    python3 run.py
 
 # Help
 help:

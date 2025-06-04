@@ -22,7 +22,7 @@ runtime = Runtime.get()
 torch.manual_seed(42)
 input_tensor: torch.Tensor = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
 
-program = runtime.load_program("model_xnnpack.pte")
+program = runtime.load_program("models/simple_linear.pte")
 method = program.load_method("forward")
 output: List[torch.Tensor] = method.execute([input_tensor])
 print("Run successfully via executorch")
@@ -31,7 +31,7 @@ print("Run successfully via executorch")
 eager_reference_model = LinearRegressionModel(input_size=4, output_size=1).eval()
 
 # Load the same trained weights
-weights_path = "../../models/simple_linear_weights.pth"
+weights_path = "models/simple_linear_weights.pth"
 if os.path.exists(weights_path):
     eager_reference_model.load_state_dict(torch.load(weights_path, weights_only=True))
     print(f"Loaded trained weights from {weights_path}")
