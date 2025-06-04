@@ -37,12 +37,10 @@ def create_and_train_model():
 
     model = SimpleLinearModel()
 
-    # Generate some dummy training data
     torch.manual_seed(42)
     X = torch.randn(100, 4)
     y = X.sum(dim=1, keepdim=True) + 0.1 * torch.randn(100, 1)
 
-    # Simple training loop
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     criterion = nn.MSELoss()
 
@@ -71,35 +69,28 @@ def convert_to_executorch(model, output_path="simple_linear.pte"):
     """Convert PyTorch model to ExecuTorch format"""
     print("Converting model to ExecuTorch format...")
 
-    # Define example input
     example_input = torch.randn(1, 4)
 
     try:
-        # Export the model
         print("Exporting model...")
         exported_program = export(model, (example_input,))
 
-        # Convert to Edge IR
         print("Converting to Edge IR...")
         edge_program = to_edge(exported_program)
 
-        # Convert to ExecuTorch format
         print("Converting to ExecuTorch format...")
         executorch_program = edge_program.to_executorch()
 
-        # Save to file
         print(f"Saving to {output_path}...")
         with open(output_path, "wb") as f:
             f.write(executorch_program.buffer)
 
         print(f"Model successfully converted and saved to {output_path}")
 
-        # Print model info
         print("\n=== Model Information ===")
         print(f"File size: {os.path.getsize(output_path)} bytes")
         print(f"Input shape: {list(example_input.shape)}")
 
-        # Test the original model
         with torch.no_grad():
             test_input = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
             output = model(test_input)
@@ -117,14 +108,11 @@ def main():
     print("PyTorch to ExecuTorch Conversion Script")
     print("=" * 40)
 
-    # Create output directory
     os.makedirs("models", exist_ok=True)
     output_path = "models/simple_linear.pte"
 
-    # Create and train model
     model = create_and_train_model()
 
-    # Convert to ExecuTorch
     success = convert_to_executorch(model, output_path)
 
     if success:
