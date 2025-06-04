@@ -33,16 +33,16 @@
 #include "executorch_node.h"
 #include "mcp_server.h"
 
-void initialize_executorch_module() {
-	// Register the MCP Server node
-	ClassDB::register_class<MCPServer>();
-
-	// Register the ExecuTorch Node
+void initialize_executorch_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
+	ClassDB::register_class<ModelContextProtocolServer>();
 	ClassDB::register_class<ExecuTorchNode>();
-
-	print_line("ExecuTorch module with MCP Server and ExecuTorch Node initialized");
 }
 
-void uninitialize_executorch_module() {
-	print_line("ExecuTorch module uninitialized");
+void uninitialize_executorch_module(ModuleInitializationLevel p_level) {
+	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
+		return;
+	}
 }
