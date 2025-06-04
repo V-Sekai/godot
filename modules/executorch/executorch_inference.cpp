@@ -71,7 +71,7 @@ PackedFloat32Array ExecuTorchInference::predict(const PackedFloat32Array &input)
 	// Convert PackedFloat32Array to std::vector<float>
 	std::vector<float> input_vec;
 	input_vec.reserve(input.size());
-	for (int i = 0; i < input.size(); i++) {
+	for (int64_t i = 0; i < input.size(); i++) {
 		input_vec.push_back(input[i]);
 	}
 
