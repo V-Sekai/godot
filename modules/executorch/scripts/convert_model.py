@@ -4,15 +4,9 @@ Convert a simple PyTorch model to ExecuTorch format
 This script demonstrates the conversion pipeline for the simple linear regression model
 """
 
-import os
 import sys
-from common_utils import (
-    SimpleLinearModel, 
-    ModelTrainer, 
-    ExecuTorchConverter, 
-    setup_directories,
-    get_model_path
-)
+
+from common_utils import ExecuTorchConverter, ModelTrainer, SimpleLinearModel, get_model_path, setup_directories
 
 
 def create_and_train_model():
@@ -21,10 +15,10 @@ def create_and_train_model():
 
     model = SimpleLinearModel()
     trainer = ModelTrainer(model)
-    
+
     # Train the model
     trained_model = trainer.train(num_epochs=100, verbose=True)
-    
+
     # Save the trained weights
     weights_path = get_model_path("simple_linear_weights.pth")
     trainer.save_weights(weights_path)
@@ -36,7 +30,7 @@ def convert_to_executorch(model, output_path="simple_linear.pte"):
     """Convert PyTorch model to ExecuTorch format"""
     converter = ExecuTorchConverter()
     example_input = model.get_example_input()
-    
+
     return converter.convert_model(model, example_input, output_path, verbose=True)
 
 

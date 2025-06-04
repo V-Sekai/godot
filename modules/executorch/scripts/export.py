@@ -4,12 +4,13 @@ Export a simple PyTorch model to ExecuTorch format with XNNPACK backend
 """
 
 import os
-from common_utils import SimpleLinearModel, ModelTrainer, get_model_path
+
+from common_utils import ModelTrainer, SimpleLinearModel, get_model_path
 
 try:
+    import torch
     from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
     from executorch.exir import to_edge_transform_and_lower
-    import torch
 except ImportError:
     print("ExecuTorch or PyTorch not installed. Please install them first:")
     print("pip install torch executorch")
@@ -37,8 +38,7 @@ def main():
     # Export with XNNPACK optimization
     try:
         et_program = to_edge_transform_and_lower(
-            torch.export.export(model, sample_inputs), 
-            partitioner=[XnnpackPartitioner()]
+            torch.export.export(model, sample_inputs), partitioner=[XnnpackPartitioner()]
         ).to_executorch()
 
         output_path = get_model_path("model_mv2_xnnpack.pte")

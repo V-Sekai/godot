@@ -39,11 +39,11 @@ private:
 	// Linear regression parameters: y = slope * x + intercept
 	double slope;
 	double intercept;
-	
+
 	// Performance tracking
 	mutable int64_t total_inferences_count;
 	mutable double last_inference_time_ms;
-	
+
 	// MCP integration
 	Dictionary mcp_tools;
 	Dictionary model_info_cache;
@@ -60,17 +60,17 @@ public:
 	double get_slope() const;
 	void set_intercept(double p_intercept);
 	double get_intercept() const;
-	
+
 	// Override inference methods
 	Dictionary run_inference(const Dictionary &inputs);
 	PackedFloat32Array predict(const PackedFloat32Array &input) override;
-	
+
 	// MCP tools interface
 	Array list_mcp_tools() const;
 	Dictionary get_model_info() const;
 	Dictionary health_check() const;
 	Dictionary call_mcp_tool(const String &tool_name, const Dictionary &arguments);
-	
+
 	// Performance monitoring
 	void reset_performance_stats();
 	int64_t get_total_inferences() const;

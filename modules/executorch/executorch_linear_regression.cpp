@@ -100,7 +100,7 @@ Dictionary ExecuTorchLinearRegression::run_inference(const Dictionary &inputs) {
 	}
 
 	Variant input_var = inputs["input_0"];
-	
+
 	// Handle different input formats
 	double input_value = 0.0;
 	if (input_var.get_type() == Variant::PACKED_FLOAT32_ARRAY) {
@@ -143,13 +143,13 @@ PackedFloat32Array ExecuTorchLinearRegression::predict(const PackedFloat32Array 
 
 	Dictionary inputs;
 	inputs["input_0"] = input;
-	
+
 	Dictionary result = run_inference(inputs);
-	
+
 	if (result.has("output_0")) {
 		return result["output_0"];
 	}
-	
+
 	return PackedFloat32Array();
 }
 
@@ -248,11 +248,11 @@ void ExecuTorchLinearRegression::_initialize_mcp_tools() {
 Dictionary ExecuTorchLinearRegression::_run_linear_regression(double input_value) const {
 	Dictionary result;
 	double output_value = slope * input_value + intercept;
-	
+
 	PackedFloat32Array output_array;
 	output_array.push_back(output_value);
 	result["output_0"] = output_array;
-	
+
 	return result;
 }
 

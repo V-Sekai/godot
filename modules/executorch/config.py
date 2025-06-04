@@ -12,7 +12,7 @@ def get_doc_classes():
     """Return documentation classes."""
     return [
         "ExecuTorchRuntime",
-        "ExecuTorchResource", 
+        "ExecuTorchResource",
         "ExecuTorchNode",
         "ExecuTorchLinearRegression",
         "ExecuTorchModule",
