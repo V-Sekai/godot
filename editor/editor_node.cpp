@@ -1482,7 +1482,8 @@ void EditorNode::_reload_modified_scenes() {
 			_remove_edited_scene(false);
 
 			if (current_idx == i) {
-				editor_data.apply_changes_in_editors();
+				// Unsure if this is a good idea, waiting for feedback from Godot team, disabling for now
+				// editor_data.apply_changes_in_editors();
 				_save_editor_states(editor_data.get_scene_path(i), i);
 			}
 
