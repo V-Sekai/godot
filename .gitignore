@@ -264,6 +264,30 @@ bld/
 !thirdparty/**/arm/
 !thirdparty/**/arm64/
 
+# ExecuTorch module exceptions - override broad patterns for legitimate source code
+!modules/executorch/thirdparty/executorch/backends/arm/
+!modules/executorch/thirdparty/executorch/backends/arm/**
+!modules/executorch/thirdparty/executorch/backends/xnnpack/third-party/cpuinfo-wrappers/x86/
+!modules/executorch/thirdparty/executorch/backends/xnnpack/third-party/cpuinfo-wrappers/x86/**
+!modules/executorch/thirdparty/executorch/data/bin/
+!modules/executorch/thirdparty/executorch/data/bin/**
+!modules/executorch/thirdparty/executorch/scripts/release/
+!modules/executorch/thirdparty/executorch/scripts/release/**
+!modules/executorch/thirdparty/executorch/examples/arm/
+!modules/executorch/thirdparty/executorch/examples/arm/**
+!modules/executorch/thirdparty/executorch/examples/apple/
+!modules/executorch/thirdparty/executorch/examples/apple/**
+!modules/executorch/thirdparty/executorch/examples/demo-apps/
+!modules/executorch/thirdparty/executorch/examples/demo-apps/**
+!modules/executorch/thirdparty/executorch/examples/devtools/
+!modules/executorch/thirdparty/executorch/examples/devtools/**
+!modules/executorch/thirdparty/executorch/shim_et/xplat/executorch/build/
+!modules/executorch/thirdparty/executorch/shim_et/xplat/executorch/build/**
+
+# But still ignore actual build outputs and Xcode workspaces in ExecuTorch
+modules/executorch/thirdparty/executorch/**/*.xcworkspace/
+modules/executorch/thirdparty/executorch/**/project.xcworkspace/
+
 thirdparty/swappy-frame-pacing/arm64-v8a/abi.json
 thirdparty/swappy-frame-pacing/armeabi-v7a/abi.json
 thirdparty/swappy-frame-pacing/x86/abi.json

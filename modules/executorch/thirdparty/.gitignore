@@ -1,46 +1,42 @@
 # Third-party ExecuTorch .gitignore
 # This file specifically handles the executorch thirdparty submodule
 
-# Keep the source code but ignore build artifacts and examples
-# that are caught by the main Godot .gitignore patterns
+# Override the submodule's .gitignore patterns for source code we want to keep
+# The executorch submodule has broad patterns that ignore legitimate source files
 
-# Override main gitignore for these specific paths we want to keep
-!executorch/examples/arm/
-!executorch/examples/apple/
-!executorch/examples/demo-apps/
-!executorch/examples/devtools/
-!executorch/data/bin/
-!executorch/scripts/release/
-!executorch/shim_et/xplat/executorch/build/
+# Keep Xcode workspace source files (override *.xcworkspace/ pattern)
+!executorch/backends/apple/coreml/runtime/workspace/
+!executorch/backends/apple/coreml/runtime/workspace/**
+!executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcworkspace/
+!executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcworkspace/**
+!executorch/examples/demo-apps/react-native/rnllama/ios/rnllama.xcworkspace/
+!executorch/examples/demo-apps/react-native/rnllama/ios/rnllama.xcworkspace/**
 
-# But still ignore actual build outputs within these directories
+# Keep project workspace files
+!executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcodeproj/project.xcworkspace/
+!executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcodeproj/project.xcworkspace/**
+
+# Keep specific files that should be versioned
+!executorch/**/*.cpp
+!executorch/**/*.h
+!executorch/**/*.hpp
+!executorch/**/*.c
+!executorch/**/*.cc
+!executorch/**/*.cxx
+!executorch/**/*.py
+!executorch/**/*.cmake
+!executorch/**/*.txt
+!executorch/**/*.md
+!executorch/**/*.yml
+!executorch/**/*.yaml
+!executorch/**/*.json
+!executorch/**/*.sh
+!executorch/**/*.bzl
+!executorch/**/*.plist
+!executorch/**/*.pbxproj
+
+# Still ignore actual build outputs
 **/build/
 **/cmake-out/
 **/dist/
-**/.xcworkspace/
-**/*.xcworkspace/
-**/project.xcworkspace/
-
-# Model files and binaries that should not be committed
-**/*.pte
-**/*.model
-**/*.bin
-**/*.pt
-
-# Keep source files and configuration
-!**/*.cpp
-!**/*.h
-!**/*.hpp
-!**/*.c
-!**/*.cc
-!**/*.cxx
-!**/*.py
-!**/*.cmake
-!**/*.txt
-!**/*.md
-!**/*.yml
-!**/*.yaml
-!**/*.json
-!**/*.sh
-!**/*.bzl
-!**/*.plist
+**/.DS_Store

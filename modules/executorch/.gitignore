@@ -59,13 +59,7 @@ Thumbs.db
 
 # ExecuTorch specific
 models/
-examples/
 benchmark_results/
-
-# Third-party build outputs (but keep source)
-thirdparty/executorch/build/
-thirdparty/executorch/cmake-out/
-thirdparty/executorch/dist/
 
 # Documentation build
 docs/_build/
@@ -95,3 +89,50 @@ logs/
 scripts/models/
 scripts/temp/
 scripts/output/
+
+# IMPORTANT: Force include specific paths that might be ignored by submodule .gitignore
+# These override any patterns in thirdparty/executorch/.gitignore
+
+# Keep Xcode workspace configuration files (source, not build artifacts)
+!thirdparty/executorch/backends/apple/coreml/runtime/workspace/executorchcoreml.xcworkspace/
+!thirdparty/executorch/backends/apple/coreml/runtime/workspace/executorchcoreml.xcworkspace/contents.xcworkspacedata
+!thirdparty/executorch/backends/apple/coreml/runtime/workspace/executorchcoreml.xcworkspace/xcshareddata/
+!thirdparty/executorch/backends/apple/coreml/runtime/workspace/executorchcoreml.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+!thirdparty/executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcworkspace/
+!thirdparty/executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcworkspace/contents.xcworkspacedata
+!thirdparty/executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcworkspace/xcshareddata/
+!thirdparty/executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+!thirdparty/executorch/examples/demo-apps/react-native/rnllama/ios/rnllama.xcworkspace/
+!thirdparty/executorch/examples/demo-apps/react-native/rnllama/ios/rnllama.xcworkspace/contents.xcworkspacedata
+!thirdparty/executorch/examples/demo-apps/react-native/rnllama/ios/rnllama.xcworkspace/xcshareddata/
+!thirdparty/executorch/examples/demo-apps/react-native/rnllama/ios/rnllama.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+!thirdparty/executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcodeproj/project.xcworkspace/
+!thirdparty/executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcodeproj/project.xcworkspace/xcshareddata/
+!thirdparty/executorch/examples/apple/coreml/executor_runner/coreml_executor_runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# Keep all source files regardless of submodule patterns
+!thirdparty/executorch/**/*.cpp
+!thirdparty/executorch/**/*.h
+!thirdparty/executorch/**/*.hpp
+!thirdparty/executorch/**/*.c
+!thirdparty/executorch/**/*.cc
+!thirdparty/executorch/**/*.cxx
+!thirdparty/executorch/**/*.py
+!thirdparty/executorch/**/*.cmake
+!thirdparty/executorch/**/*.txt
+!thirdparty/executorch/**/*.md
+!thirdparty/executorch/**/*.yml
+!thirdparty/executorch/**/*.yaml
+!thirdparty/executorch/**/*.json
+!thirdparty/executorch/**/*.sh
+!thirdparty/executorch/**/*.bzl
+!thirdparty/executorch/**/*.plist
+!thirdparty/executorch/**/*.pbxproj
+
+# Still ignore actual build outputs
+thirdparty/executorch/**/build-*/
+thirdparty/executorch/**/cmake-out/
+thirdparty/executorch/**/dist/
