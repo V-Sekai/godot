@@ -1,0 +1,97 @@
+# ExecuTorch Module .gitignore
+# This file handles ignoring patterns specific to the executorch module
+
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.obj
+*.pdb
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+
+# Model files (large binaries)
+*.pte
+*.model
+*.bin
+*.pt
+*.onnx
+*.safetensors
+
+# Test artifacts
+test_output/
+temp/
+tmp/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ExecuTorch specific
+models/
+examples/
+benchmark_results/
+
+# Third-party build outputs (but keep source)
+thirdparty/executorch/build/
+thirdparty/executorch/cmake-out/
+thirdparty/executorch/dist/
+
+# Documentation build
+docs/_build/
+docs/build/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Script generated files
+scripts/models/
+scripts/temp/
+scripts/output/

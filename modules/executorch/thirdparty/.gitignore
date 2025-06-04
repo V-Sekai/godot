@@ -1,0 +1,46 @@
+# Third-party ExecuTorch .gitignore
+# This file specifically handles the executorch thirdparty submodule
+
+# Keep the source code but ignore build artifacts and examples
+# that are caught by the main Godot .gitignore patterns
+
+# Override main gitignore for these specific paths we want to keep
+!executorch/examples/arm/
+!executorch/examples/apple/
+!executorch/examples/demo-apps/
+!executorch/examples/devtools/
+!executorch/data/bin/
+!executorch/scripts/release/
+!executorch/shim_et/xplat/executorch/build/
+
+# But still ignore actual build outputs within these directories
+**/build/
+**/cmake-out/
+**/dist/
+**/.xcworkspace/
+**/*.xcworkspace/
+**/project.xcworkspace/
+
+# Model files and binaries that should not be committed
+**/*.pte
+**/*.model
+**/*.bin
+**/*.pt
+
+# Keep source files and configuration
+!**/*.cpp
+!**/*.h
+!**/*.hpp
+!**/*.c
+!**/*.cc
+!**/*.cxx
+!**/*.py
+!**/*.cmake
+!**/*.txt
+!**/*.md
+!**/*.yml
+!**/*.yaml
+!**/*.json
+!**/*.sh
+!**/*.bzl
+!**/*.plist
