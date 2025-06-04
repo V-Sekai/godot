@@ -11,35 +11,57 @@ import torch
 from executorch.runtime import Runtime
 
 
-# Model definition
-class SimpleModel(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.linear = torch.nn.Linear(4, 1)
+#!/usr/bin/env python3
+"""
+Unified script for PyTorch to ExecuTorch conversion and validation
+"""
 
-    def forward(self, x):
-        return self.linear(x)
+import argparse
+import os
+import time
+
+import numpy as np
+import torch
+from common_utils import (
+    SimpleLinearModel,
+    ModelTrainer,
+    ModelValidator,
+    ExecuTorchConverter,
+    setup_directories,
+    get_model_path,
+    load_executorch_runtime
+)
 
 
 def setup_model():
     """Setup and export the model"""
     print("=== Setting up model ===")
 
-    model = SimpleModel()
-    example_input = torch.randn(1, 4)
+    setup_directories()
+    model_path = get_model_path("model.pte")
 
-    from executorch.exir import to_edge
+    # Create model
+    model = SimpleLinearModel()
+    trainer = ModelTrainer(model)
+    
+    # Load existing weights or train new model
+    weights_path = get_model_path("stress_test_weights.pth")
+    if not trainer.load_weights(weights_path):
+        print("Training new model...")
+        trainer.train(num_epochs=100, verbose=False)
+        trainer.save_weights(weights_path)
 
-    edge_program = to_edge(torch.export.export(model, (example_input,)))
+    # Convert to ExecuTorch if needed
+    if not os.path.exists(model_path):
+        converter = ExecuTorchConverter()
+        success = converter.convert_model(model, model.get_example_input(), model_path, verbose=False)
+        if not success:
+            raise RuntimeError("Failed to convert model")
 
-    executorch_program = edge_program.to_executorch()
-
-    with open("models/model.pte", "wb") as f:
-        f.write(executorch_program.buffer)
-
-    runtime = Runtime.get()
-    program = runtime.load_program("models/model.pte")
-    method = program.load_method("forward")
+    # Load ExecuTorch runtime
+    runtime, program, method = load_executorch_runtime(model_path)
+    if method is None:
+        raise RuntimeError("Failed to load ExecuTorch runtime")
 
     print("✅ Model setup complete")
     return model, method
@@ -49,22 +71,14 @@ def run_single_test(model, method):
     """Run a single test with fixed input"""
     print("=== Running Single Test ===")
 
-    # Test input
-    test_input = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
+    validator = ModelValidator()
+    test_input = model.get_test_input()
 
     # Run both models
     pytorch_out = model(test_input)
     executorch_out = method.execute([test_input])[0]
 
-    print(f"PyTorch output: {pytorch_out}")
-    print(f"ExecuTorch output: {executorch_out}")
-
-    # Check equivalency
-    diff = torch.abs(pytorch_out - executorch_out).max().item()
-    match = torch.allclose(pytorch_out, executorch_out, rtol=1e-3, atol=1e-5)
-
-    print(f"Difference: {diff:.6f}")
-    print(f"Match: {match}")
+    match = validator.compare_outputs(pytorch_out, executorch_out)
 
     if match:
         print("✅ Single test passed")
@@ -78,10 +92,10 @@ def stress_test_equivalency(model, method):
     """Test equivalency with multiple random inputs"""
     print("=== Stress Test with Random Inputs ===")
 
+    validator = ModelValidator()
     torch.manual_seed(123)
     num_tests = 10
     passed = 0
-    failed = 0
 
     for i in range(num_tests):
         # Generate random input
@@ -92,24 +106,22 @@ def stress_test_equivalency(model, method):
         executorch_out = method.execute([test_input])[0]
 
         # Check equivalency
+        match = validator.compare_outputs(pytorch_out, executorch_out, verbose=False)
         diff = torch.abs(pytorch_out - executorch_out).max().item()
-        match = torch.allclose(pytorch_out, executorch_out, rtol=1e-3, atol=1e-5)
 
         status = "✅ PASS" if match else "❌ FAIL"
         print(f"Test {i + 1:2d}: diff={diff:.6f}, match={match} {status}")
 
         if match:
             passed += 1
-        else:
-            failed += 1
 
     print("\n=== Summary ===")
     print(f"Total tests: {num_tests}")
     print(f"Passed: {passed}")
-    print(f"Failed: {failed}")
+    print(f"Failed: {num_tests - passed}")
     print(f"Success rate: {100 * passed / num_tests:.1f}%")
 
-    if failed == 0:
+    if passed == num_tests:
         print("🎉 All tests passed! Models are equivalent.")
     else:
         print("⚠️ Some tests failed. Check model consistency.")
@@ -163,34 +175,8 @@ def validate_outputs(model, method, tolerance=1e-5):
     """Validate that outputs match within tolerance"""
     print("=== Output Validation ===")
 
-    test_cases = [
-        torch.tensor([[1.0, 2.0, 3.0, 4.0]]),
-        torch.tensor([[0.0, 0.0, 0.0, 0.0]]),
-        torch.tensor([[-1.0, -2.0, -3.0, -4.0]]),
-        torch.randn(1, 4),
-        torch.randn(1, 4) * 10,
-    ]
-
-    all_passed = True
-    for i, test_input in enumerate(test_cases):
-        pytorch_out = model(test_input)
-        executorch_out = method.execute([test_input])[0]
-
-        diff = torch.abs(pytorch_out - executorch_out).max().item()
-        match = diff < tolerance
-
-        status = "✅ PASS" if match else "❌ FAIL"
-        print(f"Test case {i + 1}: diff={diff:.8f} {status}")
-
-        if not match:
-            all_passed = False
-
-    if all_passed:
-        print("🎉 All validation tests passed!")
-    else:
-        print("❌ Some validation tests failed!")
-
-    return all_passed
+    validator = ModelValidator(tolerance=tolerance)
+    return validator.validate_equivalency(model, method, verbose=True)
 
 
 def test_custom_input(model, method, input_values):
@@ -211,15 +197,9 @@ def test_custom_input(model, method, input_values):
         pytorch_out = model(test_input)
         executorch_out = method.execute([test_input])[0]
 
-        print(f"PyTorch output: {pytorch_out.item():.6f}")
-        print(f"ExecuTorch output: {executorch_out.item():.6f}")
-
-        # Check equivalency
-        diff = torch.abs(pytorch_out - executorch_out).max().item()
-        match = torch.allclose(pytorch_out, executorch_out, rtol=1e-3, atol=1e-5)
-
-        print(f"Difference: {diff:.8f}")
-        print(f"Match: {match}")
+        # Use validator for comparison
+        validator = ModelValidator()
+        match = validator.compare_outputs(pytorch_out, executorch_out)
 
         if match:
             print("✅ Custom test passed")
