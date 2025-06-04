@@ -30,8 +30,8 @@
 
 #include "register_types.h"
 #include "core/object/class_db.h"
-#include "executorch_node.h"
 #include "executorch_linear_regression.h"
+#include "executorch_node.h"
 #include "mcp_server.h"
 
 void initialize_executorch_module(ModuleInitializationLevel p_level) {

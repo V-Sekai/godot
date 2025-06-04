@@ -37,7 +37,7 @@
 
 namespace TestExecuTorchResource {
 
-	TEST_SUITE("[SceneTree][ExecuTorch] ExecuTorchResource Tests") {
+TEST_SUITE("[SceneTree][ExecuTorch] ExecuTorchResource Tests") {
 	TEST_CASE("ExecuTorchResource - Basic Creation and Lifecycle") {
 		SUBCASE("Resource Creation") {
 			Ref<ExecuTorchResource> resource;
@@ -319,7 +319,7 @@ namespace TestExecuTorchResource {
 		SUBCASE("Memory Allocation and Deallocation") {
 			ExecuTorchMemoryManager *memory_manager = memnew(ExecuTorchMemoryManager);
 			Error config_result = memory_manager->configure_static_memory(1024);
-			
+
 			if (config_result == OK) {
 				void *ptr = memory_manager->allocate(64, 16);
 				CHECK(ptr != nullptr);
@@ -414,6 +414,5 @@ namespace TestExecuTorchResource {
 			CHECK(resource->get_last_inference_time() >= 0.0);
 		}
 	}
-
 }
-}
+} //namespace TestExecuTorchResource

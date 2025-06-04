@@ -5,7 +5,7 @@ Common utilities and shared code for ExecuTorch model conversion and testing
 
 import os
 import sys
-from typing import Tuple, Optional
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -50,7 +50,7 @@ class ModelTrainer:
     def train(self, num_epochs: int = 100, verbose: bool = True) -> nn.Module:
         """Train the model with synthetic data"""
         X, y = self.create_synthetic_data()
-        
+
         optimizer = torch.optim.SGD(self.model.parameters(), lr=self.learning_rate)
         criterion = nn.MSELoss()
 
@@ -104,8 +104,9 @@ class ExecuTorchConverter:
             print("pip install executorch torchvision")
             sys.exit(1)
 
-    def convert_model(self, model: nn.Module, example_input: torch.Tensor, 
-                     output_path: str, verbose: bool = True) -> bool:
+    def convert_model(
+        self, model: nn.Module, example_input: torch.Tensor, output_path: str, verbose: bool = True
+    ) -> bool:
         """Convert PyTorch model to ExecuTorch format"""
         try:
             from executorch.exir import to_edge
@@ -146,8 +147,7 @@ class ExecuTorchConverter:
             print(f"Conversion failed: {e}")
             return False
 
-    def _print_model_info(self, model: nn.Module, example_input: torch.Tensor, 
-                         output_path: str) -> None:
+    def _print_model_info(self, model: nn.Module, example_input: torch.Tensor, output_path: str) -> None:
         """Print information about the converted model"""
         print("\n=== Model Information ===")
         print(f"File size: {os.path.getsize(output_path)} bytes")
@@ -156,11 +156,11 @@ class ExecuTorchConverter:
         # Test inference
         model.eval()
         with torch.no_grad():
-            if hasattr(model, 'get_test_input'):
+            if hasattr(model, "get_test_input"):
                 test_input = model.get_test_input()
             else:
                 test_input = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
-            
+
             output = model(test_input)
             print(f"Test inference (PyTorch): {output.item():.4f}")
 
@@ -171,8 +171,7 @@ class ModelValidator:
     def __init__(self, tolerance: float = 1e-5):
         self.tolerance = tolerance
 
-    def compare_outputs(self, pytorch_out: torch.Tensor, executorch_out: torch.Tensor, 
-                       verbose: bool = True) -> bool:
+    def compare_outputs(self, pytorch_out: torch.Tensor, executorch_out: torch.Tensor, verbose: bool = True) -> bool:
         """Compare outputs from PyTorch and ExecuTorch models"""
         diff = torch.abs(pytorch_out - executorch_out).max().item()
         match = torch.allclose(pytorch_out, executorch_out, rtol=1e-3, atol=1e-5)
@@ -185,8 +184,9 @@ class ModelValidator:
 
         return match
 
-    def validate_equivalency(self, pytorch_model: nn.Module, executorch_method, 
-                           test_inputs: list = None, verbose: bool = True) -> bool:
+    def validate_equivalency(
+        self, pytorch_model: nn.Module, executorch_method, test_inputs: list = None, verbose: bool = True
+    ) -> bool:
         """Validate equivalency between PyTorch and ExecuTorch models"""
         if test_inputs is None:
             test_inputs = [
@@ -238,11 +238,11 @@ def load_executorch_runtime(model_path: str):
     """Load ExecuTorch runtime and method"""
     try:
         from executorch.runtime import Runtime
-        
+
         runtime = Runtime.get()
         program = runtime.load_program(model_path)
         method = program.load_method("forward")
-        
+
         return runtime, program, method
     except ImportError:
         print("ExecuTorch runtime not available")

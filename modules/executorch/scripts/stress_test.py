@@ -8,28 +8,22 @@ import time
 
 import numpy as np
 import torch
-from executorch.runtime import Runtime
-
 
 #!/usr/bin/env python3
 """
 Unified script for PyTorch to ExecuTorch conversion and validation
 """
 
-import argparse
 import os
-import time
 
-import numpy as np
-import torch
 from common_utils import (
-    SimpleLinearModel,
+    ExecuTorchConverter,
     ModelTrainer,
     ModelValidator,
-    ExecuTorchConverter,
-    setup_directories,
+    SimpleLinearModel,
     get_model_path,
-    load_executorch_runtime
+    load_executorch_runtime,
+    setup_directories,
 )
 
 
@@ -43,7 +37,7 @@ def setup_model():
     # Create model
     model = SimpleLinearModel()
     trainer = ModelTrainer(model)
-    
+
     # Load existing weights or train new model
     weights_path = get_model_path("stress_test_weights.pth")
     if not trainer.load_weights(weights_path):

@@ -4,13 +4,13 @@ Simple training script using common utilities
 """
 
 from common_utils import (
-    SimpleLinearModel,
-    ModelTrainer,
     ExecuTorchConverter,
+    ModelTrainer,
     ModelValidator,
-    setup_directories,
+    SimpleLinearModel,
     get_model_path,
-    load_executorch_runtime
+    load_executorch_runtime,
+    setup_directories,
 )
 
 
@@ -26,7 +26,7 @@ def main():
     print("\n1. Creating and training model...")
     model = SimpleLinearModel(input_size=4, output_size=1)
     trainer = ModelTrainer(model, learning_rate=0.01)
-    
+
     trained_model = trainer.train(num_epochs=50, verbose=True)
     weights_path = get_model_path("demo_weights.pth")
     trainer.save_weights(weights_path)
@@ -35,14 +35,9 @@ def main():
     print("\n2. Converting to ExecuTorch...")
     converter = ExecuTorchConverter()
     model_path = get_model_path("demo_model.pte")
-    
-    success = converter.convert_model(
-        trained_model, 
-        trained_model.get_example_input(), 
-        model_path, 
-        verbose=True
-    )
-    
+
+    success = converter.convert_model(trained_model, trained_model.get_example_input(), model_path, verbose=True)
+
     if not success:
         print("❌ Conversion failed!")
         return
@@ -50,7 +45,7 @@ def main():
     # 3. Load and validate
     print("\n3. Loading ExecuTorch runtime and validating...")
     runtime, program, method = load_executorch_runtime(model_path)
-    
+
     if method is None:
         print("❌ Failed to load ExecuTorch runtime!")
         return
@@ -58,14 +53,14 @@ def main():
     # 4. Validate equivalency
     validator = ModelValidator(tolerance=1e-5)
     all_passed = validator.validate_equivalency(trained_model, method, verbose=True)
-    
+
     if all_passed:
         print("\n🎉 Demo completed successfully!")
         print("✅ Model trained, converted, and validated")
     else:
         print("\n⚠️ Demo completed with validation errors")
 
-    print(f"\nFiles created:")
+    print("\nFiles created:")
     print(f"  - Model weights: {weights_path}")
     print(f"  - ExecuTorch model: {model_path}")
 
