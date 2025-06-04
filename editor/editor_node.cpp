@@ -4160,6 +4160,7 @@ void EditorNode::_remove_edited_scene(bool p_change_tab) {
 	// When scene gets closed no node is edited anymore, so make sure the editors are notified before nodes are freed.
 	hide_unused_editors(SceneTreeDock::get_singleton());
 	SceneTreeDock::get_singleton()->clear_previous_node_selection();
+	hide_unused_editors(NodeDock::get_singleton());
 
 	int new_index = editor_data.get_edited_scene();
 	int old_index = new_index;
