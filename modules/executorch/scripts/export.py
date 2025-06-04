@@ -1,36 +1,56 @@
+#!/usr/bin/env python3
+"""
+Export a simple PyTorch model to ExecuTorch format with XNNPACK backend
+"""
+
 import os
+from common_utils import SimpleLinearModel, ModelTrainer, get_model_path
 
-import torch
-import torch.nn as nn
-from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
-from executorch.exir import to_edge_transform_and_lower
-
-
-# Simple Linear Regression Model
-class LinearRegressionModel(nn.Module):
-    def __init__(self, input_size=4, output_size=1):
-        super(LinearRegressionModel, self).__init__()
-        self.linear = nn.Linear(input_size, output_size)
-
-    def forward(self, x):
-        return self.linear(x)
+try:
+    from executorch.backends.xnnpack.partition.xnnpack_partitioner import XnnpackPartitioner
+    from executorch.exir import to_edge_transform_and_lower
+    import torch
+except ImportError:
+    print("ExecuTorch or PyTorch not installed. Please install them first:")
+    print("pip install torch executorch")
+    exit(1)
 
 
-model = LinearRegressionModel(input_size=4, output_size=1).eval()
+def main():
+    """Export model with XNNPACK backend optimization"""
+    print("Exporting model with XNNPACK backend...")
 
-# Load trained weights if available
-weights_path = "../../models/simple_linear_weights.pth"
-if os.path.exists(weights_path):
-    model.load_state_dict(torch.load(weights_path, weights_only=True))
-    print(f"Loaded trained weights from {weights_path}")
-else:
-    print("Warning: Using random weights. Run convert_model.py first to get trained weights.")
+    # Create and train model
+    model = SimpleLinearModel(input_size=4, output_size=1).eval()
+    trainer = ModelTrainer(model)
 
-sample_inputs = (torch.randn(1, 4),)
+    # Load trained weights if available
+    weights_path = get_model_path("simple_linear_weights.pth")
+    if not trainer.load_weights(weights_path):
+        print("Training new model...")
+        trainer.train(num_epochs=100, verbose=True)
+        trainer.save_weights(weights_path)
 
-et_program = to_edge_transform_and_lower(
-    torch.export.export(model, sample_inputs), partitioner=[XnnpackPartitioner()]
-).to_executorch()
+    # Generate sample input
+    sample_inputs = (model.get_example_input(),)
 
-with open("model_mv2_xnnpack.pte", "wb") as f:
-    f.write(et_program.buffer)
+    # Export with XNNPACK optimization
+    try:
+        et_program = to_edge_transform_and_lower(
+            torch.export.export(model, sample_inputs), 
+            partitioner=[XnnpackPartitioner()]
+        ).to_executorch()
+
+        output_path = get_model_path("model_mv2_xnnpack.pte")
+        with open(output_path, "wb") as f:
+            f.write(et_program.buffer)
+
+        print(f"✅ Model exported successfully to {output_path}")
+        print(f"File size: {os.path.getsize(output_path)} bytes")
+
+    except Exception as e:
+        print(f"❌ Export failed: {e}")
+
+
+if __name__ == "__main__":
+    main()
