@@ -12,6 +12,8 @@ arm_test/
 buck-out/
 buck2-bin/
 build/
+!shim_et/xplat/executorch/build/
+!shim_et/xplat/executorch/build/*.bzl
 cmake-android-out/
 cmake-ios-out/
 cmake-out*
@@ -23,8 +25,16 @@ pip-out/
 
 # Any exported models and profiling outputs
 *.bin
+!examples/devtools/scripts/etrecord.bin
 *.model
+!extension/llm/tokenizer/test/resources/test_tiktoken_invalid_base64.model
+!extension/llm/tokenizer/test/resources/test_tiktoken_invalid_rank.model
+!extension/llm/tokenizer/test/resources/test_tiktoken_no_space.model
 *.pte
+!extension/apple/ExecuTorch/__tests__/resources/add.pte
+!extension/module/test/resources/add.pte
+!extension/module/test/resources/linear.pte
+!test/models/deprecated/ModuleLinear-no-constant-segment.pte
 !test_bpe_tokenizer.bin
 !test_tiktoken_tokenizer.model
 
@@ -39,4 +49,7 @@ xcuserdata/
 .build/
 .swiftpm/
 *.xcworkspace/
+!backends/apple/coreml/runtime/workspace/executorchcoreml.xcworkspace/
+!examples/apple/coreml/executor_runner/coreml_executor_runner.xcworkspace/
+!examples/demo-apps/react-native/rnllama/ios/rnllama.xcworkspace/
 *.xcframework/
