@@ -37,14 +37,15 @@
 
 namespace TestLinearRegression {
 
-TEST_SUITE("Linear Regression Tests") {
+TEST_SUITE("[SceneTree][ExecuTorch] Linear Regression Tests") {
 	TEST_CASE("ExecuTorchLinearRegression - Basic Creation") {
 		SUBCASE("Instance Creation") {
-			auto regression = std::make_unique<ExecuTorchLinearRegression>();
+			ExecuTorchLinearRegression *regression = memnew(ExecuTorchLinearRegression);
 			CHECK(regression != nullptr);
 			CHECK(regression->get_slope() == 2.0);
 			CHECK(regression->get_intercept() == 3.0);
 			INFO("ExecuTorchLinearRegression created with default parameters");
+			memdelete(regression);
 		}
 	}
 } // TEST_SUITE

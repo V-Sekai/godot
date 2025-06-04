@@ -32,14 +32,16 @@
 
 #include "../executorch_resource.h"
 
+#include "core/os/memory.h"
 #include "tests/test_macros.h"
 
 namespace TestExecuTorchResource {
 
-TEST_SUITE("ExecuTorchResource Tests") {
+	TEST_SUITE("[SceneTree][ExecuTorch] ExecuTorchResource Tests") {
 	TEST_CASE("ExecuTorchResource - Basic Creation and Lifecycle") {
 		SUBCASE("Resource Creation") {
-			auto resource = std::make_unique<ExecuTorchResource>();
+			Ref<ExecuTorchResource> resource;
+			resource.instantiate();
 			CHECK(resource != nullptr);
 			CHECK_FALSE(resource->is_loaded());
 			CHECK(resource->get_model_size() == 0);
@@ -47,7 +49,8 @@ TEST_SUITE("ExecuTorchResource Tests") {
 		}
 
 		SUBCASE("Resource Clear") {
-			auto resource = std::make_unique<ExecuTorchResource>();
+			Ref<ExecuTorchResource> resource;
+			resource.instantiate();
 			resource->clear();
 			CHECK_FALSE(resource->is_loaded());
 			CHECK(resource->get_total_inferences() == 0);
@@ -56,7 +59,8 @@ TEST_SUITE("ExecuTorchResource Tests") {
 	}
 
 	TEST_CASE("ExecuTorchResource - Model Data Management") {
-		auto resource = std::make_unique<ExecuTorchResource>();
+		Ref<ExecuTorchResource> resource;
+		resource.instantiate();
 
 		SUBCASE("Set Model Data") {
 			PackedByteArray test_data = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -82,7 +86,8 @@ TEST_SUITE("ExecuTorchResource Tests") {
 	}
 
 	TEST_CASE("ExecuTorchResource - Memory Management Configuration") {
-		auto resource = std::make_unique<ExecuTorchResource>();
+		Ref<ExecuTorchResource> resource;
+		resource.instantiate();
 
 		SUBCASE("Auto Memory Policy") {
 			Error result = resource->configure_memory(ExecuTorchResource::MEMORY_POLICY_AUTO);
@@ -111,7 +116,8 @@ TEST_SUITE("ExecuTorchResource Tests") {
 	}
 
 	TEST_CASE("ExecuTorchResource - Optimization Configuration") {
-		auto resource = std::make_unique<ExecuTorchResource>();
+		Ref<ExecuTorchResource> resource;
+		resource.instantiate();
 
 		SUBCASE("Optimization Levels") {
 			CHECK(resource->set_optimization_level(ExecuTorchResource::OPTIMIZATION_NONE) == OK);
@@ -128,9 +134,9 @@ TEST_SUITE("ExecuTorchResource Tests") {
 	}
 
 	TEST_CASE("ExecuTorchResource - Linear Regression Model Test") {
-		auto resource = std::make_unique<ExecuTorchResource>();
+		Ref<ExecuTorchResource> resource;
+		resource.instantiate();
 
-		// Create a mock .pte file for testing
 		PackedByteArray mock_model_data;
 		mock_model_data.resize(256);
 		mock_model_data.fill(0x42);
@@ -163,7 +169,6 @@ TEST_SUITE("ExecuTorchResource Tests") {
 			String model_name = resource->get_model_name();
 			String model_version = resource->get_model_version();
 
-			// These may be empty if model is not loaded, but should not crash
 			CHECK(model_name.length() >= 0);
 			CHECK(model_version.length() >= 0);
 
@@ -172,7 +177,8 @@ TEST_SUITE("ExecuTorchResource Tests") {
 	}
 
 	TEST_CASE("ExecuTorchResource - File Operations") {
-		auto resource = std::make_unique<ExecuTorchResource>();
+		Ref<ExecuTorchResource> resource;
+		resource.instantiate();
 
 		SUBCASE("Load Non-existent File") {
 			Error result = resource->load_from_file("non_existent_file.pte");
@@ -182,7 +188,6 @@ TEST_SUITE("ExecuTorchResource Tests") {
 		}
 
 		SUBCASE("Save and Load Cycle") {
-			// Create test data
 			PackedByteArray test_data = {
 				0x50, 0x54, 0x45, 0x00, // Mock PTE header
 				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -191,12 +196,10 @@ TEST_SUITE("ExecuTorchResource Tests") {
 
 			resource->set_model_data(test_data);
 
-			// Save to temporary file
 			String temp_file = "/tmp/test_model.pte";
 			Error save_result = resource->save_to_file(temp_file);
 
 			if (save_result == OK) {
-				// Create new resource and load
 				auto new_resource = std::make_unique<ExecuTorchResource>();
 				Error load_result = new_resource->load_from_file(temp_file);
 
@@ -205,11 +208,6 @@ TEST_SUITE("ExecuTorchResource Tests") {
 					INFO("Save and load cycle completed successfully");
 				} else {
 					INFO("Load failed (expected in mock implementation)");
-				}
-
-				// Clean up (if file was created successfully)
-				if (save_result == OK) {
-					std::remove(temp_file.utf8().get_data());
 				}
 			} else {
 				INFO("Save failed (may be expected depending on environment)");
@@ -228,7 +226,6 @@ TEST_SUITE("ExecuTorchResource Tests") {
 		SUBCASE("Load from Buffer") {
 			auto module = std::make_unique<ExecuTorchModule>();
 
-			// Create mock .pte data (needs to be at least 16 bytes)
 			PackedByteArray mock_data;
 			mock_data.resize(32);
 			mock_data.fill(0x42);
@@ -276,24 +273,24 @@ TEST_SUITE("ExecuTorchResource Tests") {
 		}
 
 		SUBCASE("Method Names") {
-			auto module = std::make_unique<ExecuTorchModule>();
-
+			ExecuTorchModule *module = memnew(ExecuTorchModule);
 			Array methods = module->get_method_names();
 			CHECK(methods.size() > 0);
 			INFO("Method names retrieved");
+			memdelete(module);
 		}
 	}
 
 	TEST_CASE("ExecuTorchMemoryManager - Low-Level Memory Control") {
 		SUBCASE("Memory Manager Creation") {
-			auto memory_manager = std::make_unique<ExecuTorchMemoryManager>();
+			ExecuTorchMemoryManager *memory_manager = memnew(ExecuTorchMemoryManager);
 			CHECK(memory_manager != nullptr);
 			INFO("Memory manager created successfully");
+			memdelete(memory_manager);
 		}
 
 		SUBCASE("Static Memory Configuration") {
-			auto memory_manager = std::make_unique<ExecuTorchMemoryManager>();
-
+			ExecuTorchMemoryManager *memory_manager = memnew(ExecuTorchMemoryManager);
 			size_t pool_size = 1024 * 1024; // 1MB
 			Error result = memory_manager->configure_static_memory(pool_size);
 			CHECK(result == OK);
@@ -303,11 +300,11 @@ TEST_SUITE("ExecuTorchResource Tests") {
 			CHECK(stats.has("is_static"));
 
 			INFO("Static memory configured with 1MB pool");
+			memdelete(memory_manager);
 		}
 
 		SUBCASE("Dynamic Memory Configuration") {
-			auto memory_manager = std::make_unique<ExecuTorchMemoryManager>();
-
+			ExecuTorchMemoryManager *memory_manager = memnew(ExecuTorchMemoryManager);
 			Error result = memory_manager->configure_dynamic_memory();
 			CHECK(result == OK);
 
@@ -316,10 +313,11 @@ TEST_SUITE("ExecuTorchResource Tests") {
 			CHECK(is_static.operator bool() == false); // Should be false for dynamic
 
 			INFO("Dynamic memory configured");
+			memdelete(memory_manager);
 		}
 
 		SUBCASE("Memory Allocation and Deallocation") {
-			auto memory_manager = std::make_unique<ExecuTorchMemoryManager>();
+			ExecuTorchMemoryManager *memory_manager = memnew(ExecuTorchMemoryManager);
 			Error config_result = memory_manager->configure_static_memory(1024);
 			
 			if (config_result == OK) {
@@ -331,10 +329,11 @@ TEST_SUITE("ExecuTorchResource Tests") {
 			} else {
 				INFO("Memory configuration failed, skipping allocation test");
 			}
+			memdelete(memory_manager);
 		}
 
 		SUBCASE("Memory Statistics") {
-			auto memory_manager = std::make_unique<ExecuTorchMemoryManager>();
+			ExecuTorchMemoryManager *memory_manager = memnew(ExecuTorchMemoryManager);
 			memory_manager->configure_static_memory(2048);
 
 			size_t allocated = memory_manager->get_allocated_bytes();
@@ -345,19 +344,19 @@ TEST_SUITE("ExecuTorchResource Tests") {
 			CHECK(available >= 0);
 
 			INFO("Memory statistics working correctly");
+			memdelete(memory_manager);
 		}
 	}
 
 	TEST_CASE("ExecuTorchResource - Complete Linear Regression Pipeline") {
-		auto resource = std::make_unique<ExecuTorchResource>();
+		Ref<ExecuTorchResource> resource;
+		resource.instantiate();
 
 		SUBCASE("End-to-End Linear Regression Test") {
-			// Configure resource
 			resource->configure_memory(ExecuTorchResource::MEMORY_POLICY_AUTO);
 			resource->set_optimization_level(ExecuTorchResource::OPTIMIZATION_BASIC);
 			resource->enable_profiling(true);
 
-			// Set mock model data
 			PackedByteArray model_data;
 			model_data.resize(64);
 			model_data.fill(0x42);
@@ -411,11 +410,10 @@ TEST_SUITE("ExecuTorchResource Tests") {
 			snprintf(info_buffer, sizeof(info_buffer), "Passed %d/%zu test cases", passed_tests, test_cases.size());
 			INFO(info_buffer);
 
-			// Performance check
 			CHECK(resource->get_total_inferences() >= 0);
 			CHECK(resource->get_last_inference_time() >= 0.0);
 		}
 	}
 
-} // TEST_SUITE
+}
 }
