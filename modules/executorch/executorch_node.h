@@ -45,14 +45,11 @@ private:
 
 protected:
 	static void _bind_methods();
+	void _notification(int p_what);
 
 public:
 	ExecuTorchNode();
 	~ExecuTorchNode();
-
-	// Node overrides
-	void _ready();
-	void _exit_tree();
 
 	// Model management
 	bool load_model(const String &path);

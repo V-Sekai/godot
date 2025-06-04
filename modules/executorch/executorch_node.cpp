@@ -40,6 +40,21 @@ ExecuTorchNode::~ExecuTorchNode() {
 	// Unique pointer will automatically clean up
 }
 
+void ExecuTorchNode::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_READY: {
+			if (auto_load && !model_path.is_empty()) {
+				load_model(model_path);
+			}
+		} break;
+		case NOTIFICATION_EXIT_TREE: {
+			if (inference_) {
+				unload_model();
+			}
+		} break;
+	}
+}
+
 void ExecuTorchNode::_bind_methods() {
 	// Model management
 	ClassDB::bind_method(D_METHOD("load_model", "path"), &ExecuTorchNode::load_model);
@@ -70,18 +85,6 @@ void ExecuTorchNode::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("model_loaded"));
 	ADD_SIGNAL(MethodInfo("model_unloaded"));
 	ADD_SIGNAL(MethodInfo("inference_completed", PropertyInfo(Variant::PACKED_FLOAT32_ARRAY, "result")));
-}
-
-void ExecuTorchNode::_ready() {
-	if (auto_load && !model_path.is_empty()) {
-		load_model(model_path);
-	}
-}
-
-void ExecuTorchNode::_exit_tree() {
-	if (inference_) {
-		unload_model();
-	}
 }
 
 bool ExecuTorchNode::load_model(const String &path) {

@@ -47,14 +47,11 @@ private:
 
 protected:
 	static void _bind_methods();
+	void _notification(int p_what);
 
 public:
 	ModelContextProtocolServer();
 	~ModelContextProtocolServer();
-
-	// Node overrides
-	void _ready();
-	void _exit_tree();
 
 	void start_server(int p_port = 8080);
 	void stop_server();
