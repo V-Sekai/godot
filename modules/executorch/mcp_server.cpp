@@ -50,6 +50,16 @@ ModelContextProtocolServer::~ModelContextProtocolServer() {
 	}
 }
 
+void ModelContextProtocolServer::_notification(int p_what) {
+	switch (p_what) {
+		case NOTIFICATION_EXIT_TREE: {
+			if (server_running) {
+				stop_server();
+			}
+		} break;
+	}
+}
+
 void ModelContextProtocolServer::_bind_methods() {
 	// Property bindings
 	ClassDB::bind_method(D_METHOD("set_port", "port"), &ModelContextProtocolServer::set_port);
@@ -76,16 +86,6 @@ void ModelContextProtocolServer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("client_disconnected"));
 	ADD_SIGNAL(MethodInfo("message_received", PropertyInfo(Variant::DICTIONARY, "message")));
 	ADD_SIGNAL(MethodInfo("tool_called", PropertyInfo(Variant::STRING, "tool_name"), PropertyInfo(Variant::DICTIONARY, "arguments")));
-}
-
-void ModelContextProtocolServer::_ready() {
-	print_line("MCP Server node ready");
-}
-
-void ModelContextProtocolServer::_exit_tree() {
-	if (server_running) {
-		stop_server();
-	}
 }
 
 void ModelContextProtocolServer::start_server(int p_port) {
