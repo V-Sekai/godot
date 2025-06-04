@@ -113,7 +113,7 @@ void ExecuTorchNode::unload_model() {
 }
 
 bool ExecuTorchNode::is_model_loaded() const {
-	return inference_ && inference_->get_model() && inference_->get_model()->is_loaded();
+	return inference_ && inference_->get_model().is_valid() && inference_->get_model()->is_loaded();
 }
 
 PackedFloat32Array ExecuTorchNode::predict(const PackedFloat32Array &input) {
@@ -123,14 +123,14 @@ PackedFloat32Array ExecuTorchNode::predict(const PackedFloat32Array &input) {
 	}
 
 	// Convert PackedFloat32Array to std::vector<float>
-	std::vector<float> input_vec;
-	input_vec.reserve(input.size());
+	Vector<float> input_vec;
+	input_vec.resize(input.size());
 	for (int i = 0; i < input.size(); i++) {
 		input_vec.push_back(input[i]);
 	}
 
 	// Run inference
-	std::vector<float> result = inference_->predict(input_vec);
+	Vector<float> result = inference_->predict(input_vec);
 
 	// Convert back to PackedFloat32Array
 	PackedFloat32Array output;
