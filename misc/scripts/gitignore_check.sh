@@ -1,5 +1,4 @@
 set -uo pipefail
-shopt -s globstar
 
 echo -e ".gitignore validation..."
 
@@ -13,8 +12,10 @@ echo -e ".gitignore validation..."
 
 # ignorecase for the sake of Windows users.
 
-output=$(git -c core.ignorecase=true check-ignore --verbose --no-index **/* | \
-    awk -F ':' '{ if ($3 !~ /^!/) print $0 }')
+# Use find instead of globstar for better macOS compatibility
+output=$(find . -type f -not -path './.git/*' -print0 | \
+    xargs -0 git -c core.ignorecase=true check-ignore --verbose --no-index 2>/dev/null | \
+    awk -F ':' '{ if ($3 !~ /^!/) print $0 }' || true)
 
 # Then we take this result and return success if it's empty.
 if [ -z "$output" ]; then
