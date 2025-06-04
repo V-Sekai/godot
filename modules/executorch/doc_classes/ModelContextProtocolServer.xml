@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ModelContextProtocolServer" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_resource">
+			<return type="void" />
+			<param index="0" name="uri" type="String" />
+			<param index="1" name="name" type="String" />
+			<param index="2" name="description" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="add_tool">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="description" type="String" />
+			<param index="2" name="schema" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="handle_request">
+			<return type="Dictionary" />
+			<param index="0" name="request" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="is_server_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="start_server">
+			<return type="void" />
+			<param index="0" name="port" type="int" default="8080" />
+			<description>
+			</description>
+		</method>
+		<method name="stop_server">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="port" type="int" setter="set_port" getter="get_port" default="8080">
+		</member>
+		<member name="server_name" type="String" setter="set_server_name" getter="get_server_name" default="&quot;Godot MCP Server&quot;">
+		</member>
+	</members>
+	<signals>
+		<signal name="client_connected">
+			<description>
+			</description>
+		</signal>
+		<signal name="client_disconnected">
+			<description>
+			</description>
+		</signal>
+		<signal name="message_received">
+			<param index="0" name="message" type="Dictionary" />
+			<description>
+			</description>
+		</signal>
+		<signal name="tool_called">
+			<param index="0" name="tool_name" type="String" />
+			<param index="1" name="arguments" type="Dictionary" />
+			<description>
+			</description>
+		</signal>
+	</signals>
+</class>

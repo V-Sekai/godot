@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  executorch_node.h                                                     */
+/*  executorch_linear_regression.h                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,48 +30,54 @@
 
 #pragma once
 
-#include "core/string/ustring.h"
-#include "executorch_inference.h"
-#include "scene/main/node.h"
-#include <memory>
+#include "executorch_node.h"
 
-class ExecuTorchNode : public Node {
-	GDCLASS(ExecuTorchNode, Node);
+class ExecuTorchLinearRegression : public ExecuTorchNode {
+	GDCLASS(ExecuTorchLinearRegression, ExecuTorchNode);
 
 private:
-	std::unique_ptr<ExecuTorchInference> inference_;
-	String model_path;
-	bool auto_load;
+	// Linear regression parameters: y = slope * x + intercept
+	double slope;
+	double intercept;
+	
+	// Performance tracking
+	mutable int64_t total_inferences_count;
+	mutable double last_inference_time_ms;
+	
+	// MCP integration
+	Dictionary mcp_tools;
+	Dictionary model_info_cache;
 
 protected:
 	static void _bind_methods();
 
 public:
-	ExecuTorchNode();
-	~ExecuTorchNode();
+	ExecuTorchLinearRegression();
+	~ExecuTorchLinearRegression();
 
-	// Node overrides
-	void _ready();
-	void _exit_tree();
+	// Linear regression specific methods
+	void set_slope(double p_slope);
+	double get_slope() const;
+	void set_intercept(double p_intercept);
+	double get_intercept() const;
+	
+	// Override inference methods
+	Dictionary run_inference(const Dictionary &inputs);
+	PackedFloat32Array predict(const PackedFloat32Array &input) override;
+	
+	// MCP tools interface
+	Array list_mcp_tools() const;
+	Dictionary get_model_info() const;
+	Dictionary health_check() const;
+	Dictionary call_mcp_tool(const String &tool_name, const Dictionary &arguments);
+	
+	// Performance monitoring
+	void reset_performance_stats();
+	int64_t get_total_inferences() const;
+	double get_last_inference_time() const;
 
-	// Model management
-	bool load_model(const String &path);
-	void unload_model();
-	bool is_model_loaded() const;
-
-	// Inference
-	virtual PackedFloat32Array predict(const PackedFloat32Array &input);
-	Dictionary predict_named(const Dictionary &inputs);
-
-	// Properties
-	void set_model_path(const String &path);
-	String get_model_path() const;
-	void set_auto_load(bool enable);
-	bool get_auto_load() const;
-
-	// Model info
-	PackedStringArray get_input_names() const;
-	PackedStringArray get_output_names() const;
-	PackedInt64Array get_input_shape(const String &name) const;
-	PackedInt64Array get_output_shape(const String &name) const;
+private:
+	void _initialize_mcp_tools();
+	Dictionary _run_linear_regression(double input_value) const;
+	void _update_performance_stats(double inference_time) const;
 };

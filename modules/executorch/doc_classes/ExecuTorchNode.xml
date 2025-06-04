@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ExecuTorchNode" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_input_names" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+			</description>
+		</method>
+		<method name="get_input_shape" qualifiers="const">
+			<return type="PackedInt64Array" />
+			<param index="0" name="name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_output_names" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+			</description>
+		</method>
+		<method name="get_output_shape" qualifiers="const">
+			<return type="PackedInt64Array" />
+			<param index="0" name="name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="is_model_loaded" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="load_model">
+			<return type="bool" />
+			<param index="0" name="path" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="predict">
+			<return type="PackedFloat32Array" />
+			<param index="0" name="input" type="PackedFloat32Array" />
+			<description>
+			</description>
+		</method>
+		<method name="predict_named">
+			<return type="Dictionary" />
+			<param index="0" name="inputs" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="unload_model">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="auto_load" type="bool" setter="set_auto_load" getter="get_auto_load" default="false">
+		</member>
+		<member name="model_path" type="String" setter="set_model_path" getter="get_model_path" default="&quot;&quot;">
+		</member>
+	</members>
+	<signals>
+		<signal name="inference_completed">
+			<param index="0" name="result" type="PackedFloat32Array" />
+			<description>
+			</description>
+		</signal>
+		<signal name="model_loaded">
+			<description>
+			</description>
+		</signal>
+		<signal name="model_unloaded">
+			<description>
+			</description>
+		</signal>
+	</signals>
+</class>
