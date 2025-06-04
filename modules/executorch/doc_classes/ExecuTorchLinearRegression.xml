@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ExecuTorchLinearRegression" inherits="ExecuTorchNode" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="call_mcp_tool">
+			<return type="Dictionary" />
+			<param index="0" name="tool_name" type="String" />
+			<param index="1" name="arguments" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="get_last_inference_time" qualifiers="const">
+			<return type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="get_model_info" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="get_total_inferences" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="health_check" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="list_mcp_tools" qualifiers="const">
+			<return type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="reset_performance_stats">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="run_inference">
+			<return type="Dictionary" />
+			<param index="0" name="inputs" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="intercept" type="float" setter="set_intercept" getter="get_intercept" default="3.0">
+		</member>
+		<member name="slope" type="float" setter="set_slope" getter="get_slope" default="2.0">
+		</member>
+	</members>
+</class>

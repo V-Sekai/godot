@@ -12,6 +12,12 @@ def get_doc_classes():
     """Return documentation classes."""
     return [
         "ExecuTorchRuntime",
+        "ExecuTorchResource", 
+        "ExecuTorchNode",
+        "ExecuTorchLinearRegression",
+        "ExecuTorchModule",
+        "ExecuTorchMemoryManager",
+        "ModelContextProtocolServer",
     ]
 
 
