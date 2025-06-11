@@ -299,10 +299,6 @@ void BoneConstraint3D::_validate_bone_names() {
 }
 
 void BoneConstraint3D::_process_modification(double p_delta) {
-	if (!is_inside_tree()) {
-		return;
-	}
-
 	Skeleton3D *skeleton = get_skeleton();
 	if (!skeleton) {
 		return;
