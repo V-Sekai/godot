@@ -50,7 +50,10 @@ void register_web_api() {
 }
 
 void unregister_web_api() {
-	memdelete(javascript_bridge_singleton);
+	if (javascript_bridge_singleton) {
+		memdelete(javascript_bridge_singleton);
+		javascript_bridge_singleton = nullptr;
+	}
 }
 
 JavaScriptBridge *JavaScriptBridge::singleton = nullptr;

@@ -722,7 +722,7 @@ void PhysicalSkyMaterial::_bind_methods() {
 }
 
 void PhysicalSkyMaterial::cleanup_shader() {
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 2; i++) {
 		if (shader_cache[i].is_valid()) {
 			RS::get_singleton()->free(shader_cache[i]);
 		}
