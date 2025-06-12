@@ -147,7 +147,9 @@ OS_AppleEmbedded::OS_AppleEmbedded() {
 	loggers.push_back(memnew(OsLogLogger(NSBundle.mainBundle.bundleIdentifier.UTF8String)));
 	_set_logger(memnew(CompositeLogger(loggers)));
 
+#ifdef COREAUDIO_ENABLED
 	AudioDriverManager::add_driver(&audio_driver);
+#endif
 }
 
 OS_AppleEmbedded::~OS_AppleEmbedded() {}
@@ -682,7 +684,9 @@ void OS_AppleEmbedded::on_focus_out() {
 		[GDTAppDelegateService.viewController.godotView stopRendering];
 #endif
 
+#ifdef COREAUDIO_ENABLED
 		audio_driver.stop();
+#endif
 	}
 }
 
@@ -704,7 +708,9 @@ void OS_AppleEmbedded::on_focus_in() {
 		[GDTAppDelegateService.viewController.godotView startRendering];
 #endif
 
+#ifdef COREAUDIO_ENABLED
 		audio_driver.start();
+#endif
 	}
 }
 
