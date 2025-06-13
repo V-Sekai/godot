@@ -28,6 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#if !defined(IOS_SIMULATOR)
+
 #import "metal_fx.h"
 
 #import "../storage_rd/render_scene_buffers_rd.h"

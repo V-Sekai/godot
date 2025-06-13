@@ -928,6 +928,15 @@ void sky() {
 		material_storage->material_set_shader(sky_scene_state.fog_material, sky_scene_state.fog_shader);
 
 		Vector<RD::Uniform> uniforms;
+#if defined(METAL_ENABLED) && defined(IOS_SIMULATOR)
+		{
+			RD::Uniform u;
+			u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
+			u.binding = 0;
+			u.append_id(texture_storage->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_BLACK));
+			uniforms.push_back(u);
+		}
+#else
 		{
 			RD::Uniform u;
 			u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;
@@ -935,6 +944,7 @@ void sky() {
 			u.append_id(texture_storage->texture_rd_get_default(RendererRD::TextureStorage::DEFAULT_RD_TEXTURE_CUBEMAP_BLACK));
 			uniforms.push_back(u);
 		}
+#endif
 		{
 			RD::Uniform u;
 			u.uniform_type = RD::UNIFORM_TYPE_TEXTURE;

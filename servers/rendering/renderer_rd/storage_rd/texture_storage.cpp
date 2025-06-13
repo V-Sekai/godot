@@ -195,6 +195,7 @@ TextureStorage::TextureStorage() {
 		}
 	}
 
+#if !defined(METAL_ENABLED) || !defined(IOS_SIMULATOR)
 	{ //create default black cubemap array
 
 		RD::TextureFormat tformat;
@@ -306,6 +307,7 @@ TextureStorage::TextureStorage() {
 			default_rd_textures[DEFAULT_RD_TEXTURE_CUBEMAP_WHITE] = RD::get_singleton()->texture_create(tformat, RD::TextureView(), vpv);
 		}
 	}
+#endif
 
 	{ //create default 3D
 

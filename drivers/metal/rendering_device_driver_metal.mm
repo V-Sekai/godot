@@ -2952,6 +2952,7 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 		print_verbose("- Metal multiview not supported");
 	}
 
+#if !defined(IOS_SIMULATOR)
 	// The Metal renderer requires Apple4 family. This is 2017 era A11 chips and newer.
 	if (device_properties->features.highestFamily < MTLGPUFamilyApple4) {
 		String error_string = vformat("Your Apple GPU does not support the following features, which are required to use Metal-based renderers in Godot:\n\n");
@@ -2968,6 +2969,7 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 
 		return ERR_CANT_CREATE;
 	}
+#endif
 
 	return OK;
 }
