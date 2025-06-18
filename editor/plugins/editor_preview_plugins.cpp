@@ -341,6 +341,7 @@ Ref<Texture2D> EditorPackedScenePreviewPlugin::generate_from_path(const String &
 	}
 
 	Node *p_scene = pack->instantiate(); // The instantiated preview scene
+	ERR_FAIL_COND_V(!p_scene, Ref<Texture2D>());
 
 	// Prohibit Viewport class as root when generating thumbnails
 	if (Object::cast_to<Viewport>(p_scene)) {
