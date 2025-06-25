@@ -184,7 +184,11 @@ static const MTLTextureType TEXTURE_TYPE[RD::TEXTURE_TYPE_MAX] = {
 	MTLTextureTypeCube,
 	MTLTextureType1DArray,
 	MTLTextureType2DArray,
+#if defined(IOS_SIMULATOR)
+	MTLTextureType2DArray,
+#else
 	MTLTextureTypeCubeArray,
+#endif
 };
 
 RenderingDeviceDriverMetal::Result<bool> RenderingDeviceDriverMetal::is_valid_linear(TextureFormat const &p_format) const {
@@ -225,7 +229,11 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 			p_format.texture_type == TEXTURE_TYPE_2D_ARRAY) {
 		desc.arrayLength = p_format.array_layers;
 	} else if (p_format.texture_type == TEXTURE_TYPE_CUBE_ARRAY) {
+#if defined(IOS_SIMULATOR)
+		desc.arrayLength = p_format.array_layers;
+#else
 		desc.arrayLength = p_format.array_layers / 6;
+#endif
 	}
 
 	// TODO(sgc): Evaluate lossy texture support (perhaps as a project option?)

@@ -482,15 +482,6 @@ public:
 	static TextureStorage *get_singleton();
 
 	_FORCE_INLINE_ RID texture_rd_get_default(DefaultRDTexture p_texture) {
-
-#if defined(METAL_ENABLED) && defined(IOS_SIMULATOR)
-		if (unlikely(p_texture == DEFAULT_RD_TEXTURE_CUBEMAP_ARRAY_BLACK
-					|| p_texture == DEFAULT_RD_TEXTURE_CUBEMAP_ARRAY_WHITE
-					|| p_texture == DEFAULT_RD_TEXTURE_CUBEMAP_BLACK
-					|| p_texture == DEFAULT_RD_TEXTURE_CUBEMAP_WHITE)) {
-			ERR_FAIL_V_MSG(RID(), "Cubemap default textures not supported on IOS Simulator with Metal.");
-		}
-#endif
 		return default_rd_textures[p_texture];
 	}
 
