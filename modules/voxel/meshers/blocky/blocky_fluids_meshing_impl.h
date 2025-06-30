@@ -307,9 +307,9 @@ bool generate_fluid_model(
 						// We don't test the current voxel, we know it's not covered
 						if (i != 4) {
 							const uint32_t anloc = nloc + y_jump_size;
-							const uint32_t and = type_buffer[anloc];
-							if (and!= AIR_ID && library.has_model(and)) {
-								const BakedModel &anm = library.models[and];
+							const uint32_t neighbor_id = type_buffer[anloc];
+							if (neighbor_id != AIR_ID && library.has_model(neighbor_id)) {
+								const BakedModel &anm = library.models[neighbor_id];
 								if (anm.fluid_index == voxel.fluid_index) {
 									covered_neighbors |= (1 << i);
 								}
