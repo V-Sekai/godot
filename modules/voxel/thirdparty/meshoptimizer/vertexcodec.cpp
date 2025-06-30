@@ -726,9 +726,6 @@ static void wasmMoveMask(v128_t mask, unsigned char& mask0, unsigned char& mask1
 SIMD_TARGET
 static const unsigned char* decodeBytesGroupSimd(const unsigned char* data, unsigned char* buffer, int bitslog2)
 {
-	unsigned char byte, enc, encv;
-	const unsigned char* data_var;
-
 	switch (bitslog2)
 	{
 	case 0:
