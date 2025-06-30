@@ -1,0 +1,63 @@
+use_parent_methods: true
+add_to_tree: true
+#test_one_class_multiple_times: true
+
+custom_classes:
+FastNoise2
+VoxelBlockSerializer
+VoxelBlockyLibrary
+VoxelBlockyModel
+VoxelBoxMover
+VoxelBuffer
+VoxelColorPalette
+VoxelDataBlockEnterInfo
+VoxelEngine
+VoxelGenerator
+VoxelGeneratorFlat
+VoxelGeneratorGraph
+VoxelGeneratorHeightmap
+VoxelGeneratorImage
+VoxelGeneratorNoise
+VoxelGeneratorNoise2D
+VoxelGeneratorScript
+VoxelGeneratorWaves
+VoxelInstanceComponent
+VoxelInstanceGenerator
+VoxelInstanceLibrary
+VoxelInstanceLibraryItem
+VoxelInstanceLibraryMultiMeshItem
+VoxelInstanceLibrarySceneItem
+VoxelInstancer
+VoxelLodTerrain
+VoxelMeshSDF
+VoxelMesher
+VoxelMesherBlocky
+VoxelMesherCubes
+VoxelMesherDMC
+VoxelMesherTransvoxel
+VoxelModifier
+VoxelModifierMesh
+VoxelModifierSphere
+VoxelNode
+VoxelRaycastResult
+VoxelSaveCompletionTracker
+VoxelStream
+VoxelStreamRegionFiles
+VoxelStreamSQLite
+VoxelStreamScript
+VoxelTerrain
+VoxelTool
+VoxelToolBuffer
+VoxelToolLodTerrain
+VoxelToolTerrain
+VoxelViewer
+VoxelVoxLoader
+ZN_FastNoiseLite
+ZN_FastNoiseLiteGradient
+ZN_ThreadedTask
+
+function_exceptions_append:
+update_generator # https://github.com/Zylann/godot_voxel/issues/466
+_set_data # https://github.com/Zylann/godot_voxel/issues/463
+debug_measure_microseconds_per_voxel # Slow function
+debug_print_sdf_top_down # Slow and spams hundreads of things

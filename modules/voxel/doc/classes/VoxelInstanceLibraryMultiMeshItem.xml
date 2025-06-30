@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelInstanceLibraryMultiMeshItem" inherits="VoxelInstanceLibraryItem" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Instancer model using [MultiMesh] to render.
+	</brief_description>
+	<description>
+		This model is suited for rendering very large amounts of simple instances, such as grass and rocks.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_on_instance_removed" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="instancer" type="VoxelInstancer" />
+			<param index="1" name="transform" type="Transform3D" />
+			<description>
+				This method will be called if you set [member removal_behavior] to [constant REMOVAL_BEHAVIOR_CALLBACK].
+				Note: this method can be called from within the removal of a node that is child of [VoxelInstancer]. In this context, Godot will prevent you from adding new child nodes. You can workaround that by using [method Object.call_deferred]. See also [method VoxelInstancerRigidBody.queue_free_and_notify_instancer].
+			</description>
+		</method>
+		<method name="get_collider_group_names" qualifiers="const">
+			<return type="StringName[]" />
+			<description>
+				Gets the list of group names that are added to collider nodes.
+			</description>
+		</method>
+		<method name="get_mesh" qualifiers="const">
+			<return type="Mesh" />
+			<param index="0" name="mesh_lod_index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_collider_group_names">
+			<return type="void" />
+			<param index="0" name="names" type="StringName[]" />
+			<description>
+				Sets the list of group names that will be added to collider nodes generated for each instance.
+			</description>
+		</method>
+		<method name="set_mesh">
+			<return type="void" />
+			<param index="0" name="mesh" type="Mesh" />
+			<param index="1" name="mesh_lod_index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="setup_from_template">
+			<return type="void" />
+			<param index="0" name="node" type="Node" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="_mesh_lod_distance_ratios" type="PackedFloat32Array" setter="_set_mesh_lod_distance_ratios" getter="_get_mesh_lod_distance_ratios" default="PackedFloat32Array(0.2, 0.35, 0.6, 1)">
+		</member>
+		<member name="cast_shadow" type="int" setter="set_cast_shadows_setting" getter="get_cast_shadows_setting" enum="RenderingServer.ShadowCastingSetting" default="1">
+		</member>
+		<member name="collision_distance" type="float" setter="set_collision_distance" getter="get_collision_distance" default="-1.0">
+			When greater than 0 and colliders are configured, hints the distance below which colliders may be created. This allows to reduce the amount of colliders while keeping a high view distance for visuals. 
+			When negative, colliders will be created at all distances.
+			Note: the instancer creates/removes colliders on a per-chunk basis, so this distance is compared against the distance to chunks, and not individual instances.
+		</member>
+		<member name="collision_layer" type="int" setter="set_collision_layer" getter="get_collision_layer" default="1">
+		</member>
+		<member name="collision_mask" type="int" setter="set_collision_mask" getter="get_collision_mask" default="1">
+		</member>
+		<member name="collision_shapes" type="Array" setter="set_collision_shapes" getter="get_collision_shapes" default="[]">
+			Alternating list of [CollisionShape] and [Transform3D]. Shape comes first, followed by its local transform relative to the instance. Setting up collision shapes in the editor may require using a scene instead.
+		</member>
+		<member name="gi_mode" type="int" setter="set_gi_mode" getter="get_gi_mode" enum="GeometryInstance3D.GIMode" default="1">
+		</member>
+		<member name="hide_beyond_max_lod" type="bool" setter="set_hide_beyond_max_lod" getter="get_hide_beyond_max_lod" default="false">
+		</member>
+		<member name="material_override" type="Material" setter="set_material_override" getter="get_material_override">
+		</member>
+		<member name="mesh" type="Mesh" setter="_set_mesh_lod0" getter="_get_mesh_lod0">
+		</member>
+		<member name="mesh_lod0_distance_ratio" type="float" setter="_set_mesh_lod0_distance_ratio" getter="_get_mesh_lod0_distance_ratio" default="0.2">
+		</member>
+		<member name="mesh_lod1" type="Mesh" setter="_set_mesh_lod1" getter="_get_mesh_lod1">
+		</member>
+		<member name="mesh_lod1_distance_ratio" type="float" setter="_set_mesh_lod1_distance_ratio" getter="_get_mesh_lod1_distance_ratio" default="0.35">
+		</member>
+		<member name="mesh_lod2" type="Mesh" setter="_set_mesh_lod2" getter="_get_mesh_lod2">
+		</member>
+		<member name="mesh_lod2_distance_ratio" type="float" setter="_set_mesh_lod2_distance_ratio" getter="_get_mesh_lod2_distance_ratio" default="0.6">
+		</member>
+		<member name="mesh_lod3" type="Mesh" setter="_set_mesh_lod3" getter="_get_mesh_lod3">
+		</member>
+		<member name="mesh_lod3_distance_ratio" type="float" setter="_set_mesh_lod3_distance_ratio" getter="_get_mesh_lod3_distance_ratio" default="1.0">
+		</member>
+		<member name="removal_behavior" type="int" setter="set_removal_behavior" getter="get_removal_behavior" enum="VoxelInstanceLibraryMultiMeshItem.RemovalBehavior" default="0">
+			Specifies what should happen when instances get removed. This is useful if they should turn into more complex objects with animation or logic in them.
+		</member>
+		<member name="removal_scene" type="PackedScene" setter="set_removal_scene" getter="get_removal_scene">
+			Scene that will be used if [member removal_behavior] is set to [constant REMOVAL_BEHAVIOR_INSTANTIATE].
+		</member>
+		<member name="render_layer" type="int" setter="set_render_layer" getter="get_render_layer" default="1">
+		</member>
+		<member name="scene" type="PackedScene" setter="set_scene" getter="get_scene">
+			Scene that will be used as configuration instead of manual properties. It should have a specific node structure to be supported. See [url]https://voxel-tools.readthedocs.io/en/latest/instancing/#setting-up-a-multimesh-item-from-a-scene[/url]
+		</member>
+	</members>
+	<constants>
+		<constant name="MAX_MESH_LODS" value="4">
+		</constant>
+		<constant name="REMOVAL_BEHAVIOR_NONE" value="0" enum="RemovalBehavior">
+			No extra logic will run when instances are removed.
+		</constant>
+		<constant name="REMOVAL_BEHAVIOR_INSTANTIATE" value="1" enum="RemovalBehavior">
+			Instantiates the [member removal_scene] for each instance getting removed. The scene must have a root derived from [Node3D], and will be given the same transform as the instance before being added to the scene tree. It will be added under the [VoxelInstancer] node.
+		</constant>
+		<constant name="REMOVAL_BEHAVIOR_CALLBACK" value="2" enum="RemovalBehavior">
+			Calls [method _on_instance_removed] when an instance gets removed. You should attach a script to the item in order to implement this.
+			Note: every resource can have a [member Object.script]. But in the editor, Godot currently doesn't show you that property if the resource appears in a sub-inspector. To workaround that, right-click the property in which the resource is, and choose "Edit". That will open the item in a full inspector. An alternative is to save your item as a file, and then edit it from the file browser.
+		</constant>
+	</constants>
+</class>

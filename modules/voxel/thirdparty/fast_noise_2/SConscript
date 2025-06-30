@@ -1,0 +1,149 @@
+# -*- coding: utf-8 -*-
+
+Import("env")
+Import("env_voxel")
+
+
+if env["lto"]:
+    # TODO Auburn warned about issues with LTO and static builds of FastNoise2
+    # Need to either produce an error, fallback on Scalar, or turn off support entirely?
+    pass
+
+#env_voxel.Append(CPPPATH=["thirdparty/fast_noise_2/include"])
+env_voxel.Append(CPPPATH=["include"])
+env_voxel.Append(CPPDEFINES=["VOXEL_ENABLE_FAST_NOISE_2"])
+env_voxel.Append(CPPDEFINES=["FASTNOISE_STATIC_LIB"])
+
+fn2_sources_common = [
+    "src/FastNoise/Metadata.cpp",
+    "src/FastNoise/FastNoise_C.cpp",
+    "src/FastNoise/SmartNode.cpp",
+
+    "src/FastSIMD/FastSIMD.cpp"
+]
+fn2_sources_scalar = [
+    "src/FastSIMD/FastSIMD_Level_Scalar.cpp"
+]
+fn2_sources_sse3 = [
+    "src/FastSIMD/FastSIMD_Level_SSE3.cpp"
+]
+fn2_sources_ssse3 = [
+    "src/FastSIMD/FastSIMD_Level_SSSE3.cpp"
+]
+fn2_sources_sse2 = [
+    "src/FastSIMD/FastSIMD_Level_SSE2.cpp"
+]
+fn2_sources_sse41 = [
+    "src/FastSIMD/FastSIMD_Level_SSE41.cpp"
+]
+fn2_sources_sse42 = [
+    "src/FastSIMD/FastSIMD_Level_SSE42.cpp"
+]
+fn2_sources_avx2 = [
+    "src/FastSIMD/FastSIMD_Level_AVX2.cpp"
+]
+fn2_sources_avx512 = [
+    "src/FastSIMD/FastSIMD_Level_AVX512.cpp"
+]
+fn2_sources_arm = [
+    "src/FastSIMD/FastSIMD_Level_NEON.cpp"
+]
+
+env_fn2 = env_voxel.Clone()
+# In case we need common options for FastNoise2 we can add them here
+
+# Note: when compiling with clang-cl on Windows, `env.msvc` is still True because clang-cl behaves like an MSVC 
+# frontend. However, Clang is more picky and generates more warnings, so we use Clang options anyways.
+if env.msvc and not env["use_llvm"]:
+    # Avoid a compiler bug in VS 2022 (doesn't occur in VS 2019).
+    # Check for existence because it was added in Godot 4.4 and currently we also support 4.3
+    # https://github.com/Zylann/godot/commit/807904d9515e9d2aaf16f6260945a6632689f1b9
+    if '/permissive-' in env_fn2['CCFLAGS']:
+        env_fn2['CCFLAGS'].remove('/permissive-')
+    # In some places, integral constants are multiplied but cause overflow (ex: Simplex.inl(432) in 0.10.0-alpha).
+    # This is usually expected by the devs though.
+    env_fn2.Append(CXXFLAGS=["/wd4307"])
+
+else:
+    # We compile with `-Wall`, but FastNoise2 does not, so a lot of pedantic things show up treated as errors
+    env_fn2.Append(CXXFLAGS=["-Wno-parentheses"])
+    # This one might be legitimate in SmartNode.cpp but we assume the devs got the `memset` right
+    env_fn2.Append(CXXFLAGS=["-Wno-class-memaccess"]) 
+    # Since may 2023 Godot build scripts warn heavily against variable name shadowing.
+    # Example: Metadata.h NameDesc constructor, prevents from building because treated as error.
+    # TODO This doesn't work because for some reason `-Wshadow` FOLLOWS this parameter in the command line, as if Godot
+    # adds it AFTER parsing this SCons file...
+    # env_fn2.Append(CXXFLAGS=["-Wno-shadow"])
+    # if '-Wshadow' in env_fn2['CXXFLAGS']:
+    #     env_fn2['CXXFLAGS'].remove('-Wshadow')
+
+env_fn2.disable_warnings()
+env_fn2_scalar = env_fn2.Clone()
+env_fn2_sse2 = env_fn2.Clone()
+env_fn2_sse3 = env_fn2.Clone()
+env_fn2_ssse3 = env_fn2.Clone()
+env_fn2_sse41 = env_fn2.Clone()
+env_fn2_sse42 = env_fn2.Clone()
+env_fn2_avx2 = env_fn2.Clone()
+env_fn2_avx512 = env_fn2.Clone()
+env_fn2_arm = env_fn2.Clone()
+# TODO NEON?
+
+# Note: when compiling with clang-cl on Windows, `env.msvc` is still True because clang-cl behaves like an MSVC 
+# frontend. However, Clang is more picky about architecture, so we have to specify each option, which MSVC doesnt have.
+# Since Clang still allows to pass `-`style arguments, might as well use the non-MSVC path...
+if env.msvc and not env["use_llvm"]:
+    if env["arch"] == "x86_32":
+        # MSVC/64 warns:
+        # ignoring unknown option "/arch:SSE2" as 64 bit already has SSE2 built in
+        env_fn2_scalar.Append(CCFLAGS=["/arch:SSE"])
+        env_fn2_sse2.Append(CCFLAGS=["/arch:SSE2"])
+        env_fn2_sse3.Append(CCFLAGS=["/arch:SSE2"])
+        env_fn2_ssse3.Append(CCFLAGS=["/arch:SSE2"])
+        env_fn2_sse41.Append(CCFLAGS=["/arch:SSE2"])
+        env_fn2_sse42.Append(CCFLAGS=["/arch:SSE2"])
+
+    env_fn2_avx2.Append(CCFLAGS=["/arch:AVX2"])
+    env_fn2_avx512.Append(CCFLAGS=["/arch:AVX512"])
+
+else: # Clang, GCC, AppleClang, Clang-Cl
+    # TODO The Cmake build script still has a big `if(MSVC)` in that section.
+    # what does it mean?
+
+    if env["arch"] == "x86_32":
+        env_fn2_scalar.Append(CCFLAGS=["-msse"])
+        env_fn2_sse2.Append(CCFLAGS=["-msse2"])
+
+    env_fn2_sse3.Append(CCFLAGS=["-msse3"])
+    env_fn2_ssse3.Append(CCFLAGS=["-mssse3"])
+    env_fn2_sse41.Append(CCFLAGS=["-msse4.1"])
+    env_fn2_sse42.Append(CCFLAGS=["-msse4.2"])
+    env_fn2_avx2.Append(CCFLAGS=["-mavx2", "-mfma"])
+    env_fn2_avx512.Append(CCFLAGS=["-mavx512f", "-mavx512dq", "-mfma"])
+
+    # TODO This was in the old FastNoiseSIMD repo from Tinmanjuggernaut. Is it still needed?
+    # if (env["target"] == "release"):
+    # 	# gcc 9.2.1 won"t compile x64 with -O3
+    # 	env_thirdparty_avx512.Append(CCFLAGS=["-mavx512f", "-O2"])
+    # else:
+    # 	env_thirdparty_avx512.Append(CCFLAGS=["-mavx512f"])
+
+env_fn2.add_source_files(env.modules_sources, fn2_sources_common)
+env_fn2_scalar.add_source_files(env.modules_sources, fn2_sources_scalar)
+env_fn2_sse2.add_source_files(env.modules_sources, fn2_sources_sse2)
+env_fn2_sse3.add_source_files(env.modules_sources, fn2_sources_sse3)
+env_fn2_ssse3.add_source_files(env.modules_sources, fn2_sources_ssse3)
+env_fn2_sse41.add_source_files(env.modules_sources, fn2_sources_sse41)
+env_fn2_sse42.add_source_files(env.modules_sources, fn2_sources_sse42)
+
+# if env["platform"] == "android":
+#     # Both Android and IOS have ARM chips, but only android build tools have necessary headers
+#     env_fn2_arm.add_source_files(env.modules_sources, fn2_sources_arm)
+
+# elif env["platform"] in ["windows", "linuxbsd", "osx"]:
+#     # AVX is supported on desktop only
+#     env_fn2_avx2.add_source_files(env.modules_sources, fn2_sources_avx2)
+#     env_fn2_avx512.add_source_files(env.modules_sources, fn2_sources_avx512)
+
+env_fn2_avx2.add_source_files(env.modules_sources, fn2_sources_avx2)
+env_fn2_avx512.add_source_files(env.modules_sources, fn2_sources_avx512)

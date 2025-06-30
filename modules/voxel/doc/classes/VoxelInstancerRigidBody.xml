@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelInstancerRigidBody" inherits="RigidBody3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Collision node generated for every collidable multimesh instance created by [VoxelInstancer].
+	</brief_description>
+	<description>
+		Instances generated from [VoxelInstanceLibraryMultiMeshItem] don't use nodes to render. However, they can be given collision, in the form of body nodes using this class.
+		Calling [code]queue_free()[/code] on an instance of this node will also unregister the instance from [VoxelInstancer].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_library_item_id" qualifiers="const">
+			<return type="int" />
+			<description>
+				Gets the ID of the item in the instancer's [VoxelInstanceLibrary] that was used to create the instance having this collider.
+			</description>
+		</method>
+		<method name="queue_free_and_notify_instancer">
+			<return type="void" />
+			<description>
+				Alternative to [code]queue_free[/code] in case you don't want to use [code]call_deferred[/code] to add nodes under [VoxelInstancer] from [method VoxelInstanceLibraryMultiMeshItem._on_instance_removed].
+			</description>
+		</method>
+	</methods>
+</class>

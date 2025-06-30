@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelRaycastResult" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Result of a raycast performed with [method VoxelTool.raycast]
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="distance" type="float" setter="" getter="get_distance" default="0.0">
+			Distance between the origin of the ray and the surface of the cube representing the hit voxel.
+		</member>
+		<member name="normal" type="Vector3" setter="" getter="get_normal" default="Vector3(0, 0, 0)">
+			Unit vector pointing away from the surface that was hit.
+			This is only available if [VoxelTool] was configured to compute normals. See [method VoxelTool.set_raycast_normal_enabled].
+			With blocky voxels, this normal will be based on collision boxes rather than the mesh.
+		</member>
+		<member name="position" type="Vector3i" setter="" getter="get_position" default="Vector3i(0, 0, 0)">
+			Integer position of the voxel that was hit. In a blocky game, this would be the position of the voxel to interact with.
+		</member>
+		<member name="previous_position" type="Vector3i" setter="" getter="get_previous_position" default="Vector3i(0, 0, 0)">
+			Integer position of the previous voxel along the ray before the final hit. In a blocky game, this would be the position of the voxel to place on top of the pointed one.
+		</member>
+	</members>
+</class>

@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/Zylann/godot_voxel.git
+	branch = master
+	commit = c52a1da402714019cb8b225f6f599f2922371fea
+	parent = e1b4101e3460dd9c6ba0b7f8d88e9751b8383f5b
+	method = merge
+	cmdver = 0.4.9

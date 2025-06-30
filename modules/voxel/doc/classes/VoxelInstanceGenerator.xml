@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VoxelInstanceGenerator" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Decides where to spawn instances on top of a voxel surface.
+	</brief_description>
+	<description>
+		Generates the necessary information to spawn instances on top of a voxel surface. This may be used by a [VoxelInstancer].
+		Note: to generate voxels, see [VoxelGenerator].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_voxel_texture_filter_mask" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_voxel_texture_filter_mask">
+			<return type="void" />
+			<param index="0" name="mask" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="density" type="float" setter="set_density" getter="get_density" default="0.1">
+			Controls how many instances are generated. Might give different results depending on the type of emission chosen.
+		</member>
+		<member name="emit_mode" type="int" setter="set_emit_mode" getter="get_emit_mode" enum="VoxelInstanceGenerator.EmitMode" default="0">
+			In which way instances are primarily emitted.
+		</member>
+		<member name="jitter" type="float" setter="set_jitter" getter="get_jitter" default="1.0">
+			Controls randomness of spawning position when [member emit_mode] is set to [constant EMIT_ONE_PER_TRIANGLE].
+		</member>
+		<member name="max_height" type="float" setter="set_max_height" getter="get_max_height" default="3.4028235e+38">
+			Instances will not be created above this height.
+			This also depends on the chosen [member VoxelInstancer.up_mode].
+		</member>
+		<member name="max_scale" type="float" setter="set_max_scale" getter="get_max_scale" default="1.0">
+			Minimum scale instances will be randomized with.
+		</member>
+		<member name="max_slope_degrees" type="float" setter="set_max_slope_degrees" getter="get_max_slope_degrees" default="180.0">
+			Instances will not spawn if the ground has a slope higher than this angle.
+			This also depends on the chosen [member VoxelInstancer.up_mode].
+		</member>
+		<member name="min_height" type="float" setter="set_min_height" getter="get_min_height" default="1.1754944e-38">
+			Instances will not be created below this height. This also depends on the chosen [member VoxelInstancer.up_mode].
+		</member>
+		<member name="min_scale" type="float" setter="set_min_scale" getter="get_min_scale" default="1.0">
+			Maximum scale instances will be randomized with.
+		</member>
+		<member name="min_slope_degrees" type="float" setter="set_min_slope_degrees" getter="get_min_slope_degrees" default="0.0">
+			Instances will not spawn if the ground has a slope lower than this angle.
+			This also depends on the chosen [member VoxelInstancer.up_mode].
+		</member>
+		<member name="noise" type="Noise" setter="set_noise" getter="get_noise">
+			Noise used to filter out spawned instances, so that they may spawn in patterns described by the noise.
+		</member>
+		<member name="noise_dimension" type="int" setter="set_noise_dimension" getter="get_noise_dimension" enum="VoxelInstanceGenerator.Dimension" default="1">
+			Which dimension should be used when evaluating [member noise] and [member noise_graph].
+		</member>
+		<member name="noise_graph" type="VoxelGraphFunction" setter="set_noise_graph" getter="get_noise_graph">
+			Graph function used to filter out spawned instances, similar to [member noise], but allows more custom noise computations.
+			The graph must have 2 inputs (X and Z) if [member noise_dimension] is 2D, and 3 inputs (X, Y and Z) if 3D. There must be one SDF output.
+		</member>
+		<member name="noise_on_scale" type="float" setter="set_noise_on_scale" getter="get_noise_on_scale" default="0.0">
+			How much [member noise] also affects the scale of instances.
+		</member>
+		<member name="offset_along_normal" type="float" setter="set_offset_along_normal" getter="get_offset_along_normal" default="0.0">
+			Offsets spawned instances along the normal of the ground.
+			The normal depends on [member VoxelInstancer.up_mode] and is also affected by [member vertical_alignment].
+		</member>
+		<member name="random_rotation" type="bool" setter="set_random_rotation" getter="get_random_rotation" default="true">
+			When enbabled, instances will be given a random rotation. If not, they will use a consistent rotation depending on the ground slope.
+		</member>
+		<member name="random_vertical_flip" type="bool" setter="set_random_vertical_flip" getter="get_random_vertical_flip" default="false">
+			When enabled, instances will randomly be flipped upside down. This can be useful with small rocks to create illusion of more variety.
+		</member>
+		<member name="scale_distribution" type="int" setter="set_scale_distribution" getter="get_scale_distribution" enum="VoxelInstanceGenerator.Distribution" default="1">
+			Sets how random scales are distributed.
+		</member>
+		<member name="snap_to_generator_sdf_enabled" type="bool" setter="set_snap_to_generator_sdf_enabled" getter="get_snap_to_generator_sdf_enabled" default="false">
+			Enables snapping to generator SDF. The generator's SDF values will be queried to move instances along their normal to be closerr to ground. Can help reduce the occurrence of "floating" or "buried" instances when moving close to them. This requires the terrain's generator to support series generation. Side-effects: instances might become floating or buried when seen from far away; spawning might become less even.
+		</member>
+		<member name="snap_to_generator_sdf_sample_count" type="int" setter="set_snap_to_generator_sdf_sample_count" getter="get_snap_to_generator_sdf_sample_count" default="2">
+			How many samples per instance will be taken from the generator in order to approach the snapping position. More samples increases precision, but is more expensive.
+		</member>
+		<member name="snap_to_generator_sdf_search_distance" type="float" setter="set_snap_to_generator_sdf_search_distance" getter="get_snap_to_generator_sdf_search_distance" default="1.0">
+			Distance up and down across which snapping will search for ground location.
+		</member>
+		<member name="triangle_area_threshold" type="float" setter="set_triangle_area_threshold" getter="get_triangle_area_threshold" default="0.0">
+			If set greater than zero, triangles of the ground with an area lower than this threshold will be ignored.
+			Some meshing algorithms can often produce thin or small triangles that can affect distribution quality of spawned instances. If this happens, use this property to filter them out.
+			Note: this property is relative to LOD0. The generator will scale it when spawning instances on meshes of different LOD index.
+		</member>
+		<member name="vertical_alignment" type="float" setter="set_vertical_alignment" getter="get_vertical_alignment" default="1.0">
+			Sets how much instances will align with the ground.
+			If 0, they will completely align with the ground.
+			If 1, they will completely align with whichever direction is considered "up".
+			This depends on [member VoxelInstancer.up_mode].
+		</member>
+		<member name="voxel_texture_filter_array" type="PackedInt32Array" setter="set_voxel_texture_filter_array" getter="get_voxel_texture_filter_array" default="PackedInt32Array(0)">
+			Specifies which voxel texture indices on top of which instances may spawn.
+			This only works when [member voxel_texture_filter_enabled] is enabled, and [VoxelMesherTransvoxel] is used with [member VoxelMesherTransvoxel.texturing_mode] set to [constant VoxelMesherTransvoxel.TEXTURES_BLEND_4_OVER_16].
+		</member>
+		<member name="voxel_texture_filter_enabled" type="bool" setter="set_voxel_texture_filter_enabled" getter="is_voxel_texture_filter_enabled" default="false">
+			When true, enables filtering of instances based on voxel texture indices. See [member voxel_texture_filter_array].
+		</member>
+	</members>
+	<constants>
+		<constant name="EMIT_FROM_VERTICES" value="0" enum="EmitMode">
+			Use vertices of the mesh to spawn instances. This is the fasted option, but can produce noticeable patterns.
+		</constant>
+		<constant name="EMIT_FROM_FACES_FAST" value="1" enum="EmitMode">
+			Uses faces of the mesh to spawn instances. It is a balanced option with some shortcuts taken, without causing too noticeable patterns.
+		</constant>
+		<constant name="EMIT_FROM_FACES" value="2" enum="EmitMode">
+			Uses faces of the mesh to spawn instances. This is the slowest option, but should produce no noticeable patterns.
+		</constant>
+		<constant name="EMIT_ONE_PER_TRIANGLE" value="3" enum="EmitMode">
+			Uses faces of the mesh to spawn instances (where faces are triangles). Only one instance is spawned per triangle. By default, it spawns in the middle of triangles. Randomness can be added to this position with [member jitter].
+		</constant>
+		<constant name="EMIT_MODE_COUNT" value="4" enum="EmitMode">
+		</constant>
+		<constant name="DISTRIBUTION_LINEAR" value="0" enum="Distribution">
+			Uniform distribution.
+		</constant>
+		<constant name="DISTRIBUTION_QUADRATIC" value="1" enum="Distribution">
+			Distribution with more small items, and fewer big ones.
+		</constant>
+		<constant name="DISTRIBUTION_CUBIC" value="2" enum="Distribution">
+			Distribution with even more small items, and even fewer big ones.
+		</constant>
+		<constant name="DISTRIBUTION_QUINTIC" value="3" enum="Distribution">
+		</constant>
+		<constant name="DISTRIBUTION_COUNT" value="4" enum="Distribution">
+		</constant>
+		<constant name="DIMENSION_2D" value="0" enum="Dimension">
+		</constant>
+		<constant name="DIMENSION_3D" value="1" enum="Dimension">
+		</constant>
+		<constant name="DIMENSION_COUNT" value="2" enum="Dimension">
+		</constant>
+	</constants>
+</class>
