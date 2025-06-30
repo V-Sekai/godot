@@ -91,7 +91,7 @@ struct NodeType {
 		DefaultValueFactory default_value_func;
 		Variant::Type type;
 		String class_name;
-		uint32_t index = -1;
+		uint32_t index = UINT32_MAX;
 		bool has_range = false;
 		bool multiline = false;
 		bool hidden = false;
