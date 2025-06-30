@@ -80,6 +80,13 @@ Span<const transvoxel::CellInfo> VoxelMesherTransvoxel::get_cell_info_from_curre
 }
 
 void VoxelMesherTransvoxel::load_static_resources() {
+	// Check if RenderingServer is available (not in headless mode)
+	if (RenderingServer::get_singleton() == nullptr) {
+		// In headless mode, we don't need to create actual shader resources
+		// The voxel module can still function for data processing without GPU resources
+		return;
+	}
+
 	Ref<Shader> shader;
 	shader.instantiate();
 	shader->set_code(g_transvoxel_minimal_shader);
