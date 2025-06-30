@@ -294,16 +294,15 @@ static const unsigned char* decodeBytesGroup(const unsigned char* data, unsigned
 #define READ() byte = *data++
 #define NEXT(bits) enc = byte >> (8 - bits), byte <<= bits, encv = *data_var, *buffer++ = (enc == (1 << bits) - 1) ? encv : enc, data_var += (enc == (1 << bits) - 1)
 
-	unsigned char byte, enc, encv;
-	const unsigned char* data_var;
-
 	switch (bitslog2)
 	{
 	case 0:
 		memset(buffer, 0, kByteGroupSize);
 		return data;
 	case 1:
-		data_var = data + 4;
+	{
+		unsigned char byte, enc, encv;
+		const unsigned char* data_var = data + 4;
 
 		// 4 groups with 4 2-bit values in each byte
 		READ(), NEXT(2), NEXT(2), NEXT(2), NEXT(2);
@@ -312,8 +311,11 @@ static const unsigned char* decodeBytesGroup(const unsigned char* data, unsigned
 		READ(), NEXT(2), NEXT(2), NEXT(2), NEXT(2);
 
 		return data_var;
+	}
 	case 2:
-		data_var = data + 8;
+	{
+		unsigned char byte, enc, encv;
+		const unsigned char* data_var = data + 8;
 
 		// 8 groups with 2 4-bit values in each byte
 		READ(), NEXT(4), NEXT(4);
@@ -326,6 +328,7 @@ static const unsigned char* decodeBytesGroup(const unsigned char* data, unsigned
 		READ(), NEXT(4), NEXT(4);
 
 		return data_var;
+	}
 	case 3:
 		memcpy(buffer, data, kByteGroupSize);
 		return data + kByteGroupSize;
@@ -753,7 +756,7 @@ static const unsigned char* decodeBytesGroupSimd(const unsigned char* data, unsi
 
 		v128_t shuf = decodeShuffleMask(mask0, mask1);
 
-		v128_t result = wasm_v128_bitselect(wasm_v8x16_swizzle(rest, shuf), sel, mask);
+		v128_t result = wasm_v128_bitselect(wasm_i8x16_swizzle(rest, shuf), sel, mask);
 
 		wasm_v128_store(buffer, result);
 
@@ -775,7 +778,7 @@ static const unsigned char* decodeBytesGroupSimd(const unsigned char* data, unsi
 
 		v128_t shuf = decodeShuffleMask(mask0, mask1);
 
-		v128_t result = wasm_v128_bitselect(wasm_v8x16_swizzle(rest, shuf), sel, mask);
+		v128_t result = wasm_v128_bitselect(wasm_i8x16_swizzle(rest, shuf), sel, mask);
 
 		wasm_v128_store(buffer, result);
 
@@ -1195,4 +1198,3 @@ MESHOPTIMIZER_ZYLANN_NAMESPACE_END
 #undef SIMD_WASM
 #undef SIMD_FALLBACK
 #undef SIMD_TARGET
-
