@@ -155,6 +155,11 @@ public:
 
 		_update_sorting();
 
+		// Handle edge cases for safety
+		if (points.size() == 1) {
+			return points[0].color;
+		}
+
 		// Binary search.
 		int low = 0;
 		int high = points.size() - 1;
@@ -163,11 +168,18 @@ public:
 #ifdef DEBUG_ENABLED
 		if (low > high) {
 			ERR_PRINT("low > high, this may be a bug");
+			return Color(0, 0, 0, 1);
 		}
 #endif
 
 		while (low <= high) {
 			middle = (low + high) / 2;
+			// Add bounds check for safety
+			if (middle < 0 || middle >= (int)points.size()) {
+				ERR_PRINT("Invalid middle index in gradient binary search");
+				return Color(0, 0, 0, 1);
+			}
+
 			const Point &point = points[middle];
 			if (point.offset > p_offset) {
 				high = middle - 1; //search low end of array
@@ -179,7 +191,7 @@ public:
 		}
 
 		// Return sampled value.
-		if (points[middle].offset > p_offset) {
+		if (middle >= 0 && middle < (int)points.size() && points[middle].offset > p_offset) {
 			middle--;
 		}
 		int first = middle;
@@ -190,9 +202,23 @@ public:
 		if (first < 0) {
 			return points[0].color;
 		}
+
+		// Additional safety check
+		if (first >= (int)points.size() || second >= (int)points.size()) {
+			ERR_PRINT("Invalid indices in gradient interpolation");
+			return Color(0, 0, 0, 1);
+		}
+
 		const Point &point1 = points[first];
 		const Point &point2 = points[second];
-		float weight = (p_offset - point1.offset) / (point2.offset - point1.offset);
+
+		// Prevent division by zero
+		float offset_diff = point2.offset - point1.offset;
+		if (Math::is_zero_approx(offset_diff)) {
+			return point1.color;
+		}
+
+		float weight = (p_offset - point1.offset) / offset_diff;
 
 		switch (interpolation_mode) {
 			case GRADIENT_INTERPOLATE_CONSTANT: {
@@ -215,6 +241,13 @@ public:
 				if (p0 < 0) {
 					p0 = first;
 				}
+
+				// Additional bounds check for cubic interpolation
+				if (p0 >= (int)points.size() || p3 >= (int)points.size()) {
+					ERR_PRINT("Invalid indices in gradient cubic interpolation");
+					return point1.color;
+				}
+
 				const Point &point0 = points[p0];
 				const Point &point3 = points[p3];
 
