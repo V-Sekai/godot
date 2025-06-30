@@ -73,7 +73,7 @@ If enabled, this voxel culls the faces of its neighbors. Disabling can be useful
 
 ### [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)<span id="i_lod_skirts_enabled"></span> **lod_skirts_enabled** = true
 
-If enabled and the terrain has LODs, this model will produce skirts when located at the edge of a chunk. This is intented to hide "cracks" between chunks of different LOD.
+If enabled and the terrain has LODs, this model will produce skirts when located at the edge of a chunk. This is intended to hide "cracks" between chunks of different LOD.
 
 You may turn this off if the model is transparent, as the skirt would become visible from behind other surfaces.
 

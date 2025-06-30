@@ -8,7 +8,7 @@ It can spawn two different kinds of objects:
 - **Multimesh instances**. They can be extremely numerous, and can optionally have collision.
 - **Scene instances**. They use regular scenes, however it is much slower so should be tuned to low numbers.
 
-This system is primarily intented at natural spawning: grass, rocks, trees and other kinds of semi-random foliage. It is not suited for complex man-made structures like houses or villages, although scene instances can be used in some cases, if the available features suit your game.
+This system is primarily intended at natural spawning: grass, rocks, trees and other kinds of semi-random foliage. It is not suited for complex man-made structures like houses or villages, although scene instances can be used in some cases, if the available features suit your game.
 
 
 VoxelInstanceLibrary

@@ -1298,7 +1298,7 @@ void generate_mesh_sdf_hull(
 			const Vector3f aabb_min_g = inv_gts_scale * (aabb_min - grid_to_space.translation);
 			const Vector3f aabb_max_g = inv_gts_scale * (aabb_max - grid_to_space.translation);
 
-			// The distance field will be accurate about `pad` cells around those interecting triangles.
+			// The distance field will be accurate about `pad` cells around those intersecting triangles.
 			// Beyond that, it will be an approximation, and outside bounding boxes, it will be unset.
 			const Box3i tbox = Box3i::from_min_max(to_vec3i(math::floor(aabb_min_g)), to_vec3i(math::ceil(aabb_max_g)))
 									   .padded(pad)

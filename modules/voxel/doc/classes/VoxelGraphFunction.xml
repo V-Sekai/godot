@@ -241,7 +241,7 @@
 			<param index="0" name="node_id" type="int" />
 			<param index="1" name="enabled" type="bool" />
 			<description>
-				Sets wether a node input with no inbound connection will automatically create a default connection when the graph is compiled.
+				Sets whether a node input with no inbound connection will automatically create a default connection when the graph is compiled.
 				This is only available on specific nodes (for example, 2D or 3D noise defaults to XYZ inputs). On other nodes, it has no effect.
 			</description>
 		</method>

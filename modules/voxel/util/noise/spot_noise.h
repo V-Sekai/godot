@@ -42,7 +42,7 @@ namespace zylann::SpotNoise {
 // This implementation should be mostly self-contained and usable in GLSL too.
 
 // Spot noise divides space into a grid, where each cell contains a "spot" at a random location. A distance is computed
-// to return wether or not we are inside the spot. Unlike common cellular noise, "spot noise" does not lookup neighbor
+// to return whether or not we are inside the spot. Unlike common cellular noise, "spot noise" does not lookup neighbor
 // cells, so maximum jitter will cut-off the spots. However, the use case of or generation makes the spots very sparse,
 // so we can afford reducing jitter just enough. Not having to lookup neighbors makes the algorithm faster. There will
 // be axis-aligned planes in which no spots can ever be found, but it's usually not an issue and can be masked with some

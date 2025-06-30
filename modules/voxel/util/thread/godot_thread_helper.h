@@ -42,7 +42,7 @@
 namespace zylann {
 
 // Proxy-object to run a C-style callback using GDExtension threads.
-// This class isn't intented to be exposed.
+// This class isn't intended to be exposed.
 //
 // It is recommended to use Godot threads instead of vanilla std::thread,
 // because Godot sets up additional stuff in `Thread` (like script debugging and platform-specific stuff to set

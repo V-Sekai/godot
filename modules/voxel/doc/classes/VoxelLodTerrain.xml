@@ -331,7 +331,7 @@
 			Enables GPU detail normalmaps generation, which can speed it up. This is only valid for generators that support it. Vulkan is required.
 		</member>
 		<member name="run_stream_in_editor" type="bool" setter="set_run_stream_in_editor" getter="is_stream_running_in_editor" default="true">
-			Sets wether the [member generator] and the [member stream] will run in the editor. This setting may turn on automatically if either contain a script, as multithreading can clash with script reloading in unexpected ways.
+			Sets whether the [member generator] and the [member stream] will run in the editor. This setting may turn on automatically if either contain a script, as multithreading can clash with script reloading in unexpected ways.
 		</member>
 		<member name="secondary_lod_distance" type="float" setter="set_secondary_lod_distance" getter="get_secondary_lod_distance" default="48.0">
 			Controls the size of each LOD above LOD 0, in voxels relative to those LODs (voxels of LOD N are twice as big than LOD N-1). Higher values allow to see further away before detail are decimated, but is more expensive.

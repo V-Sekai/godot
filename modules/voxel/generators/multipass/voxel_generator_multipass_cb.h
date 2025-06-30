@@ -49,7 +49,7 @@ namespace voxel {
 // TODO Prevent shared usage on more than one terrain, or find a way to support it
 // TODO Prevent usage on VoxelLodTerrain, or make it return empty blocks
 
-// Generator runing multiple inter-dependent passes.
+// Generator running multiple inter-dependent passes.
 // It is useful to generates small and medium-sized structures on terrain such as trees.
 // Contrary to most other generators, it holds a state (cache) requiring it to be aware of terrain viewers.
 // It is also internally column-based (CB), so it can work on vertical stacks of blocks instead of single blocks at a

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <class name="ZN_SpotNoise" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
-		Specialization of cellular noise intented for cheap "or patch" generation or deterministic point scattering.
+		Specialization of cellular noise intended for cheap "or patch" generation or deterministic point scattering.
 	</brief_description>
 	<description>
 		Divides space into a grid where each cell contains a circular "spot". Noise evaluation returns 1 when the position is inside a spot, 0 otherwise.

@@ -75,7 +75,7 @@
 			If enabled, this voxel culls the faces of its neighbors. Disabling can be useful for denser transparent voxels, such as foliage.
 		</member>
 		<member name="lod_skirts_enabled" type="bool" setter="set_lod_skirts_enabled" getter="get_lod_skirts_enabled" default="true">
-			If enabled and the terrain has LODs, this model will produce skirts when located at the edge of a chunk. This is intented to hide "cracks" between chunks of different LOD.
+			If enabled and the terrain has LODs, this model will produce skirts when located at the edge of a chunk. This is intended to hide "cracks" between chunks of different LOD.
 			You may turn this off if the model is transparent, as the skirt would become visible from behind other surfaces.
 		</member>
 		<member name="random_tickable" type="bool" setter="set_random_tickable" getter="is_random_tickable" default="false">

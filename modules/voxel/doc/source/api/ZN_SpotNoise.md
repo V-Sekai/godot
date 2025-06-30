@@ -2,7 +2,7 @@
 
 Inherits: [Resource](https://docs.godotengine.org/en/stable/classes/class_resource.html)
 
-Specialization of cellular noise intented for cheap "or patch" generation or deterministic point scattering.
+Specialization of cellular noise intended for cheap "or patch" generation or deterministic point scattering.
 
 ## Description:
 

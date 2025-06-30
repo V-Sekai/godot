@@ -6,7 +6,7 @@ Keeps data into memory rather than writing it on disk.
 
 ## Description:
 
-This stream is mainly intented for testing purposes. It shouldn't be used as a proper saving system.
+This stream is mainly intended for testing purposes. It shouldn't be used as a proper saving system.
 
 ## Properties:
 

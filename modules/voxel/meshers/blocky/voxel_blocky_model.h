@@ -198,7 +198,7 @@ protected:
 
 private:
 	// If two neighboring voxels are supposed to occlude their shared face,
-	// this index decides wether or not it should happen. Equal indexes culls the face, different indexes doesn't.
+	// this index decides whether or not it should happen. Equal indexes culls the face, different indexes doesn't.
 	uint8_t _transparency_index = 0;
 	// If enabled, this voxel culls the faces of its neighbors. Disabling
 	// can be useful for denser transparent voxels, such as foliage.

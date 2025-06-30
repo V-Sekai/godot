@@ -1385,7 +1385,7 @@ void VoxelInstancer::on_mesh_block_exit(Vector3i render_grid_position, unsigned 
 		for (data_grid_pos.y = data_min_pos.y; data_grid_pos.y < data_max_pos.y; ++data_grid_pos.y) {
 			for (data_grid_pos.x = data_min_pos.x; data_grid_pos.x < data_max_pos.x; ++data_grid_pos.x) {
 				// If we loaded data there but it was never used, we'll unload it either way.
-				// Note, this data is what we loaded initially, it doesnt contain modifications.
+				// Note, this data is what we loaded initially, it does not contain modifications.
 				lod.edited_data_blocks.erase(data_grid_pos);
 
 				auto modified_block_it = lod.modified_blocks.find(data_grid_pos);

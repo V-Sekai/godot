@@ -87,7 +87,7 @@ jobs:
       # Setup dependencies (Python, SCons, Android SDK...)
       - name: Setup godot-cpp
         # uses: ${{env.GODOT_CPP_PATH}}/.github/actions/setup-godot-cpp
-        # Unfortunately Github doesnt support variables in that path so we have to hardcode it
+        # Unfortunately Github does not support variables in that path so we have to hardcode it
         uses: ./thirdparty/godot-cpp/.github/actions/setup-godot-cpp
         with:
           platform: ${{ matrix.target.platform }}

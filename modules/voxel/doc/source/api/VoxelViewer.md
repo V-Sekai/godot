@@ -36,7 +36,7 @@ Return                                                                | Signatur
 
 ### [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)<span id="i_enabled_in_editor"></span> **enabled_in_editor** = false
 
-Sets whether this viewer will cause loading to occur in the editor. This is mainly intented for testing purposes.
+Sets whether this viewer will cause loading to occur in the editor. This is mainly intended for testing purposes.
 
 Note that streaming in editor can also be turned off on terrains.
 

@@ -150,7 +150,7 @@ jobs:
       # Reproducer options
       # timeout -v 3600 - protection from timeout(should not happen anyway)
       # arguments - should be same like in normal fuzzer run(without xvfb-run and scene)
-      # 60_50 - timeouts, 60 means 60s for single run, if this time exceed, that means that current scene timeouts, 50 means 50 minutes for all checking, if reproducer cannot find problem within this time, then returned is 0 status, because problem probably happens not regulary due e.g. big amount of checked functions
+      # 60_50 - timeouts, 60 means 60s for single run, if this time exceed, that means that current scene timeouts, 50 means 50 minutes for all checking, if reproducer cannot find problem within this time, then returned is 0 status, because problem probably happens not regularly due e.g. big amount of checked functions
 
       # HEADLESS
       - name: Run fuzzer Headless

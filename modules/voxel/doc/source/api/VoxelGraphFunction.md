@@ -303,7 +303,7 @@ Sets the value an input of a node will have when it is left unconnected. The inp
 
 ### [void](#)<span id="i_set_node_default_inputs_autoconnect"></span> **set_node_default_inputs_autoconnect**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) node_id, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled )
 
-Sets wether a node input with no inbound connection will automatically create a default connection when the graph is compiled.
+Sets whether a node input with no inbound connection will automatically create a default connection when the graph is compiled.
 
 This is only available on specific nodes (for example, 2D or 3D noise defaults to XYZ inputs). On other nodes, it has no effect.
 

@@ -305,7 +305,7 @@ void ThreadedTaskRunner::thread_func(ThreadData &data) {
 				// More than one serial task can be in the list of tasks the current thread picks up,
 				// so we update the boolean after picking them all.
 				// This must be the only place it can be set to `true`, and is guarded by mutex.
-				if (_is_serial_task_running == false) { // Only an optimization, this doesnt actually do thread-safety
+				if (_is_serial_task_running == false) { // Only an optimization, this does not actually do thread-safety
 					for (unsigned int i = 0; i < tasks.size(); ++i) {
 						if (tasks[i].is_serial) {
 							// Write to member var so all threads can check this

@@ -86,7 +86,7 @@ public:
 			// Item already exists, assign it
 			it->value = value;
 		} else {
-			// Item doesnt exist, insert it
+			// Item does not exist, insert it
 			it = _items.insert(it, Pair{ key, value });
 		}
 		return it->value;
@@ -304,7 +304,7 @@ public:
 			// Item already exists, assign it
 			it->value = std::move(value);
 		} else {
-			// Item doesnt exist, insert it
+			// Item does not exist, insert it
 			it = _items.insert(it, std::move(Pair(key, std::move(value))));
 		}
 		return it->value;

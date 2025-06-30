@@ -117,7 +117,7 @@ Current Issues
 
 ### Endianness
 
-The format is intented to use little-endian, however the implementation of the engine does not fully guarantee this.
+The format is intended to use little-endian, however the implementation of the engine does not fully guarantee this.
 
 Godot's `encode_variant` doesn't seem to care about endianness across architectures, so it's possible it becomes a problem in the future and gets changed to a custom format.
 The implementation of block channels with depth greater than 8-bit currently doesn't consider this either. This might be refined in a later iteration.

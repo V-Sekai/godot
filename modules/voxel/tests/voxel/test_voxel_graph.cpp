@@ -602,7 +602,7 @@ void test_voxel_graph_generator_texturing() {
 			}
 		};
 
-		// Putting state on the stack because the debugger doesnt let me access it
+		// Putting state on the stack because the debugger does not let me access it
 		// const pg::Runtime::State &state = VoxelGeneratorGraph::get_last_state_from_current_thread();
 
 		// Try first without optimization
@@ -2111,7 +2111,7 @@ void test_voxel_graph_many_weight_outputs() {
 		}
 	}
 
-	// This used to crash/fail because the generator tried to compute spare indices when it doesnt actually make sense
+	// This used to crash/fail because the generator tried to compute spare indices when it does not actually make sense
 	// to do so when we have more than 4
 	const CompilationResult result = generator->compile(false);
 	ZN_TEST_ASSERT(result.success);

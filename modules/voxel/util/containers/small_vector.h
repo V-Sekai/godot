@@ -46,7 +46,7 @@ namespace zylann {
 template <typename T, unsigned int N>
 class SmallVector {
 public:
-	// Initially added for natvis, for some reason (T*) doesnt work
+	// Initially added for natvis, for some reason (T*) does not work
 	using ValueType = T;
 
 	// TODO Bunch of features not supported, not needed for now.

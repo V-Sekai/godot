@@ -189,8 +189,8 @@ private:
 	float _b_debug_measure_microseconds_per_voxel(bool singular);
 #ifdef TOOLS_ENABLED
 	// This exists because some custom editors will edit an internal object instead of the resource itself
-	// (here the "main function" object). And because Godot determines wether or not a resource should be saved based on
-	// UndoRedo, if the containing resource doesn't appear in UndoRedo actions, it will consider the resource hasn't
+	// (here the "main function" object). And because Godot determines whether or not a resource should be saved based
+	// on UndoRedo, if the containing resource doesn't appear in UndoRedo actions, it will consider the resource hasn't
 	// changed and won't save it... so we call a dummy function first, just to make Godot understand that...
 	void _b_dummy_function() {}
 #endif

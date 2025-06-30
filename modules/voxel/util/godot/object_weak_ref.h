@@ -37,7 +37,7 @@ namespace zylann::godot {
 // Holds a weak reference to a Godot object.
 // Mainly useful to reference scene tree nodes more safely, because their ownership model is harder to handle with
 // pointers, compared to RefCounted objects.
-// It is not intented for use with RefCounted objects.
+// It is not intended for use with RefCounted objects.
 // Warning: if the object can be destroyed by a different thread, this won't be safe to use.
 template <typename T>
 class ObjectWeakRef {
