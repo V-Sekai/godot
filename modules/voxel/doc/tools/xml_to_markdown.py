@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from time import gmtime, strftime
 
 import bbcode_to_markdown
-import markdown
+import markdown  # type: ignore
 
 
 class ClassDoc:
@@ -296,6 +296,71 @@ def get_godot_enum_url(class_name, member_name):
     return get_godot_class_url(class_name) + "#enum-" + class_name.lower() + "-" + member_name.lower()
 
 
+def make_default_value(value, type_name, classes_by_name):
+    if "." in type_name:
+        parts = type_name.split(".")
+        class_name = parts[0]
+        klass = classes_by_name.get(class_name, None)
+        if klass is None:
+            return value
+        en = klass.find_enum(parts[1])
+        if en is None:
+            return value
+        item = en.find_item_from_value(value)
+        if item is None:
+            return value
+        return item.name + " (" + value + ")"
+    return value
+
+
+def make_parameter_list(parameters, module_class_names, current_class_name, classes_by_name):
+    s = "("
+    param_index = 0
+    for param in parameters:
+        if param_index > 0:
+            s += ","
+        param_index += 1
+        # Create a temporary formatter for type conversion
+        fmt = ClassFormatter(current_class_name, module_class_names, classes_by_name, "")
+        s += " " + fmt.make_type(param.type) + " " + param.name
+        if param.default_value is not None:
+            s += "=" + make_default_value(param.default_value, param.type, classes_by_name)
+    s += " )"
+    return s
+
+
+def make_constants(constants, module_class_names, current_class_name):
+    s = ""
+    for constant in constants:
+        s += "- "
+        s += make_custom_internal_anchor(constant.name)
+        s += "**" + constant.name + "** = **" + constant.value + "**"
+
+        desc = ""
+        if constant.is_deprecated:
+            desc += "*This constant is deprecated."
+            if constant.deprecated_message != "":
+                desc += " "
+                desc += constant.deprecated_message
+            desc += "*"
+
+        text = constant.description.strip()
+        if text != "" or desc != "":
+            if desc != "":
+                desc += " "
+            # Create a temporary formatter for text conversion
+            fmt = ClassFormatter(current_class_name, module_class_names, {}, "")
+            desc += fmt.make_text_single_line(constant.description)
+
+        if desc != "":
+            s += " --- "
+            s += desc
+
+        s += "\n"
+
+    return s
+
+
 class ClassFormatter:
     def __init__(self, current_class_name, module_class_names, classes_by_name, links_prefix):
         self.current_class_name = current_class_name  # Can be empty
@@ -392,55 +457,6 @@ class ClassFormatter:
         link_text = class_name + "." + member_name
         return markdown.make_link(link_text, link)
 
-    # constants: Array[ConstantDoc]
-    def make_constants(self, constants):
-        s = ""
-        for constant in constants:
-            s += "- "
-
-            # In Godot docs, both constants and enum items can be referred using `[constant ClassName.ENUM_ITEM]` instead
-            # of using the `enum` tag.
-            s += make_custom_internal_anchor(constant.name)
-
-            s += "**" + constant.name + "** = **" + constant.value + "**"
-
-            desc = ""
-
-            if constant.is_deprecated:
-                desc += "*This constant is deprecated."
-                if constant.deprecated_message != "":
-                    desc += " "
-                    desc += constant.deprecated_message
-                desc += "*"
-
-            text = constant.description.strip()
-            if text != "" or desc != "":
-                if desc != "":
-                    desc += " "
-                desc += self.make_text_single_line(constant.description)
-
-            if desc != "":
-                s += " --- "
-                s += desc
-
-            s += "\n"
-
-        return s
-
-    # params: Array[ParameterDoc]
-    def make_parameter_list(self, params):
-        s = "("
-        param_index = 0
-        for param in params:
-            if param_index > 0:
-                s += ","
-            param_index += 1
-            s += " " + self.make_type(param.type) + " " + param.name
-            if param.default_value is not None:
-                s += "=" + self.make_default_value(param.default_value, param.type)
-        s += " )"
-        return s
-
     def make_referred_enum_value(self, value, enum_type):
         parts = enum_type.split(".")
         class_name = parts[0]
@@ -458,11 +474,6 @@ class ClassFormatter:
             # ?
             return value
         return item.name + " (" + value + ")"
-
-    def make_default_value(self, value, type_name):
-        if "." in type_name:
-            return self.make_referred_enum_value(value, type_name)
-        return value
 
 
 def make_custom_internal_link(name):

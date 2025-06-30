@@ -4,7 +4,7 @@
 import textwrap
 
 import bbcode
-import markdown
+import markdown  # type: ignore
 
 # Utilities to convert Godot's documentation BBCode into Markdown
 
@@ -17,7 +17,7 @@ def _extract_member_and_class(symbol, current_class_name):
     else:
         if current_class_name is None:
             raise Exception(
-                bb_node.name + " BBCode was used without class name, but there is no current class in this context."
+                symbol + " BBCode was used without class name, but there is no current class in this context."
             )
         class_name = current_class_name
         member_name = symbol
@@ -64,7 +64,7 @@ def format_doc_bbcodes_for_markdown(text, multiline, fmt):
                         lines2.append("\n")
                 node_text = "".join(lines2)
 
-            if url != None:
+            if url is not None:
                 if url == "TEXT":
                     url = node_text
                 out += markdown.make_link(node_text, url)

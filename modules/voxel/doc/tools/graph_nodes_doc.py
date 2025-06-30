@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import bbcode
-import markdown
+import markdown  # type: ignore
 import xml_to_markdown
 
 
@@ -269,8 +269,8 @@ if __name__ == "__main__":
         f.write(cpp)
 
     # Generate Markdown
-    formatter = xml_to_markdown.ClassFormatter("", module_class_names, {}, "api/")
     module_class_names = get_module_class_names(Path(xml_classes_dirpath))
+    formatter = xml_to_markdown.ClassFormatter("", module_class_names, {}, "api/")
     md = write_markdown_listing_from_nodes(nodes, formatter)
     with open(md_fpath, "w") as f:
         f.write("# VoxelGeneratorGraph nodes\n\n")
