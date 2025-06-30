@@ -6,6 +6,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
+[assembly: SuppressMessage("Naming", "CA1712:Do not prefix enum values with the name of the enum type", Justification = "Generated from C++ code with established naming conventions", Scope = "type", Target = "~T:Godot.VoxelBuffer.Depth")]
+
 namespace Godot.Bridge;
 
 #nullable enable
