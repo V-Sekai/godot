@@ -288,7 +288,7 @@ static unsigned char* encodeVertexBlock(unsigned char* data, unsigned char* data
 	return data;
 }
 
-#if defined(SIMD_FALLBACK) || (!defined(SIMD_SSE) && !defined(SIMD_NEON) && !defined(SIMD_AVX))
+#if defined(SIMD_FALLBACK) || (!defined(SIMD_SSE) && !defined(SIMD_NEON) && !defined(SIMD_AVX) && !defined(SIMD_WASM))
 static const unsigned char* decodeBytesGroup(const unsigned char* data, unsigned char* buffer, int bitslog2)
 {
 #define READ() byte = *data++
