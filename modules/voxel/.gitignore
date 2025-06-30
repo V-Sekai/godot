@@ -17,3 +17,6 @@
 shaders/dev/.godot/
 *.gen.glsl
 *.gen.h
+
+# Un-ignore nuget.config (overrides *.config from root .gitignore)
+!nuget.config
