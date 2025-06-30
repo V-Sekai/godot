@@ -682,7 +682,7 @@ void VoxelInstanceLibraryMultiMeshItem::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_get_mesh_lod3"), &Self::_b_get_mesh_lod3);
 
 	ClassDB::bind_method(D_METHOD("_get_mesh_lod_distance_ratios"), &Self::_b_get_mesh_lod_distance_ratios);
-	ClassDB::bind_method(D_METHOD("_set_mesh_lod_distance_ratios"), &Self::_b_set_mesh_lod_distance_ratios);
+	ClassDB::bind_method(D_METHOD("_set_mesh_lod_distance_ratios", "ratios"), &Self::_b_set_mesh_lod_distance_ratios);
 
 	ClassDB::bind_method(D_METHOD("_get_mesh_lod0_distance_ratio"), &Self::_b_get_mesh_lod0_distance_ratio);
 	ClassDB::bind_method(D_METHOD("_get_mesh_lod1_distance_ratio"), &Self::_b_get_mesh_lod1_distance_ratio);

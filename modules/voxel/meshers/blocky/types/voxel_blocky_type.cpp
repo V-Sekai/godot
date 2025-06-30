@@ -823,7 +823,7 @@ void VoxelBlockyType::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_rotation_attribute"), &VoxelBlockyType::get_rotation_attribute);
 
-	ClassDB::bind_method(D_METHOD("set_variant_model"), &VoxelBlockyType::_b_set_variant_model);
+	ClassDB::bind_method(D_METHOD("set_variant_model", "key", "model"), &VoxelBlockyType::_b_set_variant_model);
 
 	ClassDB::bind_method(D_METHOD("_get_variant_models_data"), &VoxelBlockyType::_b_get_variant_models_data);
 	ClassDB::bind_method(D_METHOD("_set_variant_models_data", "data"), &VoxelBlockyType::_b_set_variant_models_data);

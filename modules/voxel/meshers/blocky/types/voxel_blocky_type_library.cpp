@@ -851,7 +851,7 @@ void VoxelBlockyTypeLibrary::_bind_methods() {
 	using Self = VoxelBlockyTypeLibrary;
 
 	ClassDB::bind_method(D_METHOD("get_types"), &Self::_b_get_types);
-	ClassDB::bind_method(D_METHOD("set_types"), &Self::_b_set_types);
+	ClassDB::bind_method(D_METHOD("set_types", "types"), &Self::_b_set_types);
 
 	ClassDB::bind_method(D_METHOD("get_model_index_default", "type_name"), &Self::get_model_index_default);
 	ClassDB::bind_method(

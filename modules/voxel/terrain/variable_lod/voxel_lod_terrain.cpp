@@ -3776,7 +3776,7 @@ void VoxelLodTerrain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_view_distance", "distance_in_voxels"), &Self::set_view_distance);
 	ClassDB::bind_method(D_METHOD("get_view_distance"), &Self::get_view_distance);
 
-	ClassDB::bind_method(D_METHOD("set_voxel_bounds"), &Self::_b_set_voxel_bounds);
+	ClassDB::bind_method(D_METHOD("set_voxel_bounds", "aabb"), &Self::_b_set_voxel_bounds);
 	ClassDB::bind_method(D_METHOD("get_voxel_bounds"), &Self::_b_get_voxel_bounds);
 
 	// Collisions
@@ -3825,7 +3825,7 @@ void VoxelLodTerrain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_voxel_tool"), &Self::get_voxel_tool);
 	ClassDB::bind_method(D_METHOD("save_modified_blocks"), &Self::_b_save_modified_blocks);
 
-	ClassDB::bind_method(D_METHOD("set_run_stream_in_editor"), &Self::set_run_stream_in_editor);
+	ClassDB::bind_method(D_METHOD("set_run_stream_in_editor", "enable"), &Self::set_run_stream_in_editor);
 	ClassDB::bind_method(D_METHOD("is_stream_running_in_editor"), &Self::is_stream_running_in_editor);
 
 	ClassDB::bind_method(D_METHOD("is_area_meshed", "area_in_voxels", "lod_index"), &Self::_b_is_area_meshed);
@@ -3880,12 +3880,12 @@ void VoxelLodTerrain::_bind_methods() {
 	// Advanced
 
 	ClassDB::bind_method(D_METHOD("get_mesh_block_size"), &Self::get_mesh_block_size);
-	ClassDB::bind_method(D_METHOD("set_mesh_block_size"), &Self::set_mesh_block_size);
+	ClassDB::bind_method(D_METHOD("set_mesh_block_size", "size"), &Self::set_mesh_block_size);
 
 	ClassDB::bind_method(D_METHOD("get_data_block_size"), &Self::get_data_block_size);
 	ClassDB::bind_method(D_METHOD("get_data_block_region_extent"), &Self::get_data_block_region_extent);
 
-	ClassDB::bind_method(D_METHOD("set_full_load_mode_enabled"), &Self::set_full_load_mode_enabled);
+	ClassDB::bind_method(D_METHOD("set_full_load_mode_enabled", "enabled"), &Self::set_full_load_mode_enabled);
 	ClassDB::bind_method(D_METHOD("is_full_load_mode_enabled"), &Self::is_full_load_mode_enabled);
 
 	ClassDB::bind_method(D_METHOD("set_threaded_update_enabled", "enabled"), &Self::set_threaded_update_enabled);

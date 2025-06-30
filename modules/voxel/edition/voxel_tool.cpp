@@ -749,18 +749,20 @@ void VoxelTool::_bind_methods() {
 	ClassDB::bind_static_method(VoxelTool::get_class_static(), D_METHOD("color_to_u16", "color"), &_b_color_to_u16);
 	ClassDB::bind_static_method(VoxelTool::get_class_static(), D_METHOD("color_to_u32", "color"), &_b_color_to_u32);
 	ClassDB::bind_static_method(
-			VoxelTool::get_class_static(), D_METHOD("vec4i_to_u16_indices"), &_b_vec4i_to_u16_indices
+			VoxelTool::get_class_static(), D_METHOD("vec4i_to_u16_indices", "indices"), &_b_vec4i_to_u16_indices
 	);
 	ClassDB::bind_static_method(
-			VoxelTool::get_class_static(), D_METHOD("color_to_u16_weights"), &_b_color_to_u16_weights
+			VoxelTool::get_class_static(), D_METHOD("color_to_u16_weights", "weights"), &_b_color_to_u16_weights
 	);
 	ClassDB::bind_static_method(
-			VoxelTool::get_class_static(), D_METHOD("u16_indices_to_vec4i"), &_b_u16_indices_to_vec4i
+			VoxelTool::get_class_static(), D_METHOD("u16_indices_to_vec4i", "encoded_indices"), &_b_u16_indices_to_vec4i
 	);
 	ClassDB::bind_static_method(
-			VoxelTool::get_class_static(), D_METHOD("u16_weights_to_color"), &_b_u16_weights_to_color
+			VoxelTool::get_class_static(), D_METHOD("u16_weights_to_color", "encoded_weights"), &_b_u16_weights_to_color
 	);
-	ClassDB::bind_static_method(VoxelTool::get_class_static(), D_METHOD("normalize_color"), &_b_normalize_color);
+	ClassDB::bind_static_method(
+			VoxelTool::get_class_static(), D_METHOD("normalize_color", "color"), &_b_normalize_color
+	);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "value"), "set_value", "get_value");
 	ADD_PROPERTY(
