@@ -30,7 +30,7 @@ jobs:
             precision: single
             executable_name: godot.windows.editor.x86_64.exe
             tracy: no
-          
+
           - name: 4.4.1 Profiling Editor
             target: editor
             precision: single
@@ -151,4 +151,3 @@ jobs:
         with:
           name: ${{matrix.executable_name}}
           path: bin/${{matrix.executable_name}}
-

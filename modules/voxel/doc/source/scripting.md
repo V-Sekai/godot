@@ -73,7 +73,7 @@ const channel : int = VoxelBuffer.CHANNEL_TYPE
 
 func _get_used_channels_mask() -> int:
     return 1 << channel
- 
+
 func _generate_block(buffer : VoxelBuffer, origin : Vector3i, lod : int) -> void:
 	if lod != 0:
         return
@@ -96,7 +96,7 @@ func _ready():
 	terrain.generator = MyGenerator.new()
 ```
 
-Make sure to have a `VoxelViewer` node in the scene under the camera. You may also want to move it up, look down, and add a `DirectionalLight3D` and `WorldEnvironment` (otherwise everything will look grey).
+Make sure to have a `VoxelViewer` node in the scene under the camera. You may also want to move it up, look down, and add a `DirectionalLight3D` and `WorldEnvironment` (otherwise everything will look gray).
 
 ![Custom stream](images/custom-stream.jpg)
 
@@ -116,7 +116,7 @@ func _generate_block(out_buffer : VoxelBuffer, origin_in_voxels : Vector3i, lod 
 	# We'll have to iterate every 3D voxel in the block this time
 	for rz in out_buffer.get_size().z:
 		for rx in out_buffer.get_size().x:
-			# The following part only depends on `x` and `z`, 
+			# The following part only depends on `x` and `z`,
 			# so moving it out of the innermost loop optimizes things a little.
 
             # Get voxel world position.
@@ -166,7 +166,7 @@ func _generate_block(...):
         _dictionary[key] = x
     else:
         x = _dictionary[key]
-    
+
     _dictionary_mutex.unlock()
 
     # ...
@@ -195,8 +195,6 @@ Custom stream
 Making a custom stream works similarly to a custom generator.
 
 You have to extend the class `VoxelStreamScript` and override the methods `_load_block` and `_save_block`.
-See 
+See
 
 TODO Script example of a custom stream
-
-

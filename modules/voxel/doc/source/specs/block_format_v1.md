@@ -108,4 +108,4 @@ A block can't be deserialized without external information, the format must be k
 
 This format doesn't have a header with version tag, which may be problematic if it changes.
 
-User versionning might also be considered as a second layer: if the game needs to replace some metadata with new ones, or swap voxel IDs around due to a change in the game, it is desirable to expose a hook to migrate old versions. 
+User versioning might also be considered as a second layer: if the game needs to replace some metadata with new ones, or swap voxel IDs around due to a change in the game, it is desirable to expose a hook to migrate old versions.

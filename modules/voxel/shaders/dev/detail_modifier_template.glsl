@@ -7,36 +7,41 @@
 
 // This shader may be dispatched multiple times for each source of voxel data that we may combine for a given chunk.
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
-layout (set = 0, binding = 0, std430) restrict readonly buffer PositionBuffer {
+layout(set = 0, binding = 0, std430) restrict readonly buffer PositionBuffer {
 	// X, Y, Z is hit position
 	// W is integer triangle index
 	vec4 values[];
-} u_positions;
+}
+u_positions;
 
-layout (set = 0, binding = 1, std430) restrict readonly buffer DetailParams {
+layout(set = 0, binding = 1, std430) restrict readonly buffer DetailParams {
 	int tile_size_pixels;
 	float pixel_world_step;
-} u_detail_params;
+}
+u_detail_params;
 
-layout (set = 0, binding = 2, std430) restrict readonly buffer InSDBuffer {
+layout(set = 0, binding = 2, std430) restrict readonly buffer InSDBuffer {
 	// 4 values per index
 	float values[];
-} u_in_sd;
+}
+u_in_sd;
 
-layout (set = 0, binding = 3, std430) restrict writeonly buffer OutSDBuffer {
+layout(set = 0, binding = 3, std430) restrict writeonly buffer OutSDBuffer {
 	// 4 values per index
 	float values[];
-} u_out_sd;
+}
+u_out_sd;
 
 // Parameters common to all modifiers
-layout (set = 0, binding = 4, std430) restrict readonly buffer BaseModifierParams {
+layout(set = 0, binding = 4, std430) restrict readonly buffer BaseModifierParams {
 	mat4 world_to_model;
 	int operation;
 	float smoothness;
 	float sd_scale;
-} u_base_modifier_params;
+}
+u_base_modifier_params;
 
 // <PLACEHOLDER>
 float get_sd(vec3 pos) {
@@ -59,8 +64,7 @@ void main() {
 	const ivec2 pixel_pos_in_tile = ivec2(gl_GlobalInvocationID.xy);
 	const int tile_index = int(gl_GlobalInvocationID.z);
 
-	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_detail_params.tile_size_pixels 
-		+ tile_index * u_detail_params.tile_size_pixels * u_detail_params.tile_size_pixels;
+	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_detail_params.tile_size_pixels + tile_index * u_detail_params.tile_size_pixels * u_detail_params.tile_size_pixels;
 
 	if (u_positions.values[index].w == -1.0) {
 		return;

@@ -3,7 +3,7 @@ Changelog
 
 This is a high-level list of features, changes and fixes that have been made over time.
 
-At the moment, this module doesn't have a distinct release schedule, so this changelog follows Godot's version numbers and binary releases. Almost each version mentionned here should have an associated Git branch (for THIS repo, not Godot's) containing features at the time of the version. Backports aren't done so far.
+At the moment, this module doesn't have a distinct release schedule, so this changelog follows Godot's version numbers and binary releases. Almost each version mentioned here should have an associated Git branch (for THIS repo, not Godot's) containing features at the time of the version. Backports aren't done so far.
 
 I try to minimize breaking changes, but there are usually a few in each release which I list in detail, so watch out for that section.
 
@@ -11,7 +11,7 @@ I try to minimize breaking changes, but there are usually a few in each release 
 Dev 1.4.2
 -------------
 
-Primarily developped with Godot 4.4.1+
+Primarily developed with Godot 4.4.1+
 
 - `VoxelBuffer`: added functions to rotate/mirror contents
 - `VoxelEngine`: added function to manually change thread count (thanks to wildlachs)
@@ -19,31 +19,31 @@ Primarily developped with Godot 4.4.1+
 - `VoxelGeneratorHeightmap`: added `offset` property
 - `VoxelGraphFunction`: Editor: preview nodes should now work
 - `VoxelInstanceLibraryItem`: Exposed `floating_sdf_*` parameters to tune how floating instances are detected after digging ground around them.
-- `VoxelInstanceLibraryMultiMeshItem`: 
+- `VoxelInstanceLibraryMultiMeshItem`:
     - Added `removal_behavior` property to trigger something when instances get removed
     - Added `collision_distance` to only create colliders when below a certain distance to chunks
 - `VoxelInstanceGenerator`: Added an option to snap instances based on the voxel generator SDF (only available with `VoxelGeneratorGraph`).
-- `VoxelInstancer`: 
+- `VoxelInstancer`:
     - Added `remove_instances_in_sphere`
     - Added fading system so a shader can be used to fade instances as they load in and out
 - `VoxelMesherBlocky`: added tint mode to modulate voxel colors using the `COLOR` channel.
 - `VoxelMesherTransvoxel`: added `Single` texturing mode, which uses only one byte per voxel to store a texture index. `VoxelGeneratorGraph` was also updated to include this mode.
 - `VoxelTool`: added `do_mesh` to replace `stamp_sdf`. Supported on terrains only.
-- `FastNoise2`: 
-    - Exposed `CELLULAR_VALUE` noise type 
+- `FastNoise2`:
+    - Exposed `CELLULAR_VALUE` noise type
     - Exposed properties to choose cell indices used in distance/value calculations
 - Build system: added options to turn off features when doing custom builds
 - Introduced `VoxelFormat` to allow overriding default channel depths (was required to use the new `Single` voxel textures mode)
 
 - Fixes
-    - `VoxelBlockyTypeLibrary`: 
+    - `VoxelBlockyTypeLibrary`:
         - fixed crash when setting `types` to empty array
         - fixed incorrect loading of the ID map when a type has more than two attributes
-    - `VoxelInstancer`: 
+    - `VoxelInstancer`:
         - Fixed instance removal failing randomly after at least one chunk gets unloaded
         - Fixed instances getting generated when digging down or building up in *already meshed* chunks that had no geometry before, when using `VoxelLodTerrain`
         - Fixed transition meshes should not be used as spawning surfaces, they caused density bias and position bias at chunk borders
-    - `VoxelGeneratorGraph`: 
+    - `VoxelGeneratorGraph`:
         - Editor: fixed error sometimes printing after closing the graph editor
         - Editor: fixed error spam `Invalid param name` after editing a graph (in some yet unknown situations)
         - Editor: fixed node dialog didn't auto-select the first item when searching
@@ -52,7 +52,7 @@ Primarily developped with Godot 4.4.1+
     - `VoxelMesherBlocky`: Fixed crash when invalid model IDs are present at chunk borders with `VoxelLodTerrain`
     - `VoxelMesherTransvoxel`: Fixed some incorrect geometry changes near positive LOD borders, notably when voxel textures are used. Edge cases remain but can be fixed with a shader hack for now.
     - `VoxelStreamRegionFiles`: GDExtension: fixed error creating directories
-    - `VoxelStreamSQLite`: 
+    - `VoxelStreamSQLite`:
         - `preferred_coordinate_format` was incorrectly exposed (fixed thanks to @beicause)
         - Replaced error spam with a single warning when the stream has no path configured, notably when assigning a new stream in the editor
     - `VoxelTool`:
@@ -75,7 +75,7 @@ Primarily developped with Godot 4.4.1+
 - Fixes
     - Fixed leak when GPU is enabled for voxel generation or detail normalmap rendering, which could lead to a crash after a while
     - Terrains no longer interpolate unnecessarily when physics interpolation is enabled (terrain is static so it is not supported for now).
-    - `VoxelGeneratorGraph`: 
+    - `VoxelGeneratorGraph`:
         - Fixed `Curve` node was incorrect when used on the GPU.
         - Fixed single-voxel queries not working with blocky voxels (notably fixes raycast in VoxelLodTerrain)
         - Editor: auto-connects stopped working when copying a node having some (like noise; workaround was to reload the graph)
@@ -85,7 +85,7 @@ Primarily developped with Godot 4.4.1+
 1.4 - 03/03/2025 - tag `v1.4`
 ------------------------------
 
-Primarily developped with Godot 4.4.
+Primarily developed with Godot 4.4.
 
 - `VoxelBlockyModel`: Added option to turn off "LOD skirts" when used with `VoxelLodTerrain`, which may be useful with transparent models
 - `VoxelBlockyModelCube`: Added support for mesh rotation like `VoxelBlockyMesh` (prior to that, rotation buttons in the editor only swapped tiles around)
@@ -102,7 +102,7 @@ Primarily developped with Godot 4.4.
 - Fixes
     - Fixed potential deadlock when using detail rendering and various editing features (thanks to lenesxy, issue #693)
     - `VoxelInstanceLibrary`: Editor: reworked the way items are exposed as a Blender-style list. Now removing an item while the library is open as a sub-inspector is no longer problematic
-    - `VoxelInstancer`: 
+    - `VoxelInstancer`:
         - Fixed persistent instances reloading with wrong positions (in the air, underground...) when mesh block size is set to 32
         - Editor: fixed `!is_inside_world()` errors when editing a `VoxelBlockyLibrary` after deleting a `VoxelInstancer` that was using it
     - `VoxelLodTerrain`:
@@ -110,17 +110,17 @@ Primarily developped with Godot 4.4.
         - Fixed blocks were saved with incorrect LOD index when they get unloaded using Clipbox, leading to holes and mismatched terrain (#691)
         - Fixed incorrect loading of chunks near terrain borders when viewers are far away from bounds, when using the Clipbox streaming system
     - `VoxelStreamSQLite`: fixed connection leaks (thanks to lenesxy, issue #713)
-    - `VoxelTerrain`: 
+    - `VoxelTerrain`:
         - Edits and copies across fixed bounds no longer behave as if terrain generates beyond (was causing "walls" to appear).
         - Viewers with collision-only should no longer cause visual meshes to appear
-    - `VoxelGeneratorGraph`: 
+    - `VoxelGeneratorGraph`:
         - Fixed wrong values when using `OutputWeight` with optimized execution map enabled, when weights are determined to be locally constant
         - Fixed occasional holes in terrain when using `FastNoise3D` nodes with the `OpenSimplex2S` noise type
         - Fixed shader generation error when using the `Distance3D` node (vec2 instead of vec3, thanks to scwich)
         - Fixed crash when assigning an empty image to the `Image` node
     - `VoxelMesherTransvoxel`: revert texturing logic that attempted to prevent air voxels from contributing, but was lowering quality. It is now optional as an experimental property.
     - `VoxelStreamSQLite`: Fixed "empty size" errors when loading areas with edited `VoxelInstancer` data
-    - `VoxelTool`: `raycast`: when using blocky voxels, the returned `distance_along_ray` now accounts for non-cube voxels 
+    - `VoxelTool`: `raycast`: when using blocky voxels, the returned `distance_along_ray` now accounts for non-cube voxels
     - `VoxelVoxLoader`: Fixed loading `.vox` files saved with versions of MagicaVoxel following 0.99.7
     - `.vox` scene importer: disabled threaded import to workaround the editor freezing when saving meshes
 
@@ -134,7 +134,7 @@ Primarily developped with Godot 4.4.
 1.3 - 17/08/2024 - branch `1.3` - tag `v1.3.0`
 ----------------------------------------------
 
-Primarily developped with Godot 4.3.
+Primarily developed with Godot 4.3.
 
 - Added project setting `voxel/ownership_checks` to turn off sanity checks done by certain virtual functions that pass an object (such as `_generate_block`). Relevant for C#, where the garbage collection model prevents such checks from working properly.
 - `VoxelBuffer`: Added several functions to do arithmetic operations on all voxels
@@ -153,7 +153,7 @@ Primarily developped with Godot 4.3.
     - `VoxelBlockyModelMesh`: Fixed materials present directly in the mesh resource were not applied (only overrides in the model or on the terrain were applied)
     - `VoxelBlockyType`: Fixed configuration warning about missing variants when there is a base model specified
     - `VoxelGeneratorGraph`: Fixed crash when using the `Image` node with a non-square image
-    - `VoxelStreamSQLite`: 
+    - `VoxelStreamSQLite`:
         - Fixed `set_key_cache_enabled(true)` caused nothing to load
         - Fixed slow loading when the database path contains `res://` or `user://`
         - Fixed crash if the database has an invalid path and `flush()` is called after `set_key_cache_enabled(true)`
@@ -162,7 +162,7 @@ Primarily developped with Godot 4.3.
         - Fixed error spam in the editor when instancing the node without a terrain parent
     - `VoxelInstanceLibrary`: Fixed `Assertion failed: "p_id < 0 || p_id >= MAX_ID" is false` when removing items from a VoxelInstanceLibrary
     - `VoxelMeshSDF`: Fixed error in the editor when trying to visualize the last slice (which turns out to be off by 1)
-    - `VoxelModifierMesh`: 
+    - `VoxelModifierMesh`:
         - Fixed setting `isolevel` had no effect
         - Fixed missing configuration warning when parenting under `VoxelTerrain` (only `VoxelLodTerrain` is supported)
 
@@ -181,7 +181,7 @@ Primarily developped with Godot 4.3.
 1.2 - 20/04/2024 - branch `1.2` - tag `v1.2.0`
 ------------------------------------------------
 
-Primarily developped with Godot 4.2.
+Primarily developed with Godot 4.2.
 
 - Added `ZN_SpotNoise`, exposing the same algorithm as the `SpotNoise2D` and `SpotNoise3D` nodes of graph generators
 - Saving with `save_all_modified_blocks` now automatically flushes eventual caches implemented by `VoxelStream` upon completion
@@ -223,7 +223,7 @@ Primarily developped with Godot 4.2.
     - `VoxelBlockyModel`: Fixed `material_override_*` properties all acting like the same material
     - `VoxelBlockyTypeLibrary`: Fixed a crash when saving a library with a null type entry (thanks to ArchLinus)
     - `VoxelBoxMover`: Fixed performance slowdown when `VoxelBlockyLibrary` contains a lot of models.
-    - `VoxelGeneratorGraph`: 
+    - `VoxelGeneratorGraph`:
         - Fixed ambiguous voxel texture indices produced by `OutputSingleTexture` caused painting to fail in some situations
         - Fixed default input values of output nodes were always 0 when using GPU generation
         - Fixed crash when using 16 weight output nodes (which is the maximum)
@@ -234,7 +234,7 @@ Primarily developped with Godot 4.2.
     - `VoxelInstanceLibraryMultimeshItem`: fixed error when using "Update From Scene" and trying to undo/redo it
     - `VoxelStreamSQLite`: fixed crash when using `set_key_cache_enabled(true)`
     - `VoxelTool`: fixed `paste` wrongly printing an error despite working fine
-    - `VoxelToolLodTerrain`: 
+    - `VoxelToolLodTerrain`:
         - `do_point` and `set_voxel` were not always updating meshes near chunk borders, leaving holes
         - `get_voxel` would always return 0 in indices and weight channels if the area was never edited, data streaming is on and the generator is a `VoxelGeneratorGraph` producing single-texture information
         - `copy` would return incorrect buffers when used on non-edited areas when data streaming is on and a generator is assigned
@@ -256,7 +256,7 @@ Primarily developped with Godot 4.2.
 1.1 - 29/12/2023 - branch `1.1` - tag `v1.1.0`
 -----------------------------------------------
 
-Primarily developped with Godot 4.1
+Primarily developed with Godot 4.1
 
 - General
     - Added shadow casting setting to both terrain types
@@ -264,12 +264,12 @@ Primarily developped with Godot 4.1
     - Added support for block generation on the GPU (only available with generators that support both CPU and GPU, for now `VoxelGeneratorGraph` only).
     - Updated FastNoise2 to 0.10.0-alpha
     - Started an experimental type system for the blocky voxels workflow. However it is not fully functional, its API may change in the future or have parts removed.
-    - Added experimental `VoxelAStarGrid3D` for grid-based pathfinding on blocky voxels 
+    - Added experimental `VoxelAStarGrid3D` for grid-based pathfinding on blocky voxels
     - Added experimental `VoxelGeneratorMultipassCB` to implement column-based generation in multiple passes that works across chunks
     - Added `render_layers_mask` property to `VoxelTerrain` and `VoxelLodTerrain`
     - Voxel engine processing no longer stops when the SceneTree is paused
     - `VoxelGeneratorGraph`:
-        - Added `Spots2D` and `Spots3D` nodes, optimized for generating "ore patches"
+        - Added `Spots2D` and `Spots3D` nodes, optimized for generating "or patches"
         - Added shader support for `FastNoiseGradient2D` and `FastNoiseGradient3D` nodes
         - Added bilinear filter option to the `Image` node
         - Editor: reworked context menu to add nodes, similar to VisualShader. Now has search bar, tree view and node descriptions.
@@ -333,7 +333,7 @@ Primarily developped with Godot 4.1
         - Fixed crash when hiding the node in the editor
         - Fixed crash when closing the scene while an instancer node is selected
         - Fixed instances were not cleared when using the "Re-generate" menu in the editor when terrain shape changed
-    - `VoxelInstanceLibrary`: 
+    - `VoxelInstanceLibrary`:
         - Fixed `find_item_by_name` was not finding items
         - Fixed newly added items in the editor rendering badly by default when the terrain doesn't have LOD. For now they always default to LOD 0 instead of LOD 2.
     - `VoxelTerrain`: Fixed crash when the terrain tries to update while it has no mesher assigned
@@ -342,7 +342,7 @@ Primarily developped with Godot 4.1
     - `VoxelMesherTransvoxel`: Removed rare degenerate/microscopic triangles, which caused errors with Jolt Physics. However, doing those checks makes meshing about 15% slower (untextured).
     - `VoxelStreamRegionFiles`: Fixed `block_size_po2` wasn't working correctly
     - `VoxelToolTerrain`: Fixed terrain was not marked as modified when setting voxel metadata
-    - `VoxelToolLodTerrain`: 
+    - `VoxelToolLodTerrain`:
         - Fixed `stamp_sdf` wasn't working due to an error when providing a baked mesh
         - Fixed `set_voxel` was creating artifacts
         - Fixed `separate_floating_chunks` was creating artifacts
@@ -447,7 +447,7 @@ Godot 4 is required from this version.
         - fix errors when removing scene instances
         - fix position issues when scene instances are saved
         - fix position issues when instances are saved while mesh block size is set to 32
-    - `VoxelLodTerrain`:    
+    - `VoxelLodTerrain`:
         - fix `lod_fade_duration` property was not accepting decimal numbers
         - Cracks no longer appear at seams when LOD fading is enabled
     - `VoxelMesherCubes`:
@@ -542,7 +542,7 @@ This branch is the last supporting Godot 3
     - `VoxelMesherTransvoxel`:
         - optimized hot path, making it about 20% faster
         - added option to simplify meshes using MeshOptimizer
-    - `VoxelToolLodTerrain`: 
+    - `VoxelToolLodTerrain`:
         - added `copy` function
         - added `get_voxel_f_interpolated` function, useful to obtain interpolated SDF
         - added a function to separate floating chunks as rigid-bodies in a specified region
@@ -579,7 +579,7 @@ This branch is the last supporting Godot 3
     - `VoxelTool` channel no longer defaults to 7 when using `get_voxel_tool` from a terrain with a stream assigned. Instead it picks first used channel of the mesher (fallback order is mesher, then generator, then stream).
     - `VoxelInstancer`:
         - fixed error when node visibility changes
-        - fixed no instances generated when density is 1 in vertex emission mode 
+        - fixed no instances generated when density is 1 in vertex emission mode
     - `VoxelInstanceLibraryItem`: fixed collision shapes setup in editor not being saved
     - `VoxelInstanceLibrarySceneItem`: fixed associated scene not being saved
     - `VoxelTerrain`: fixed materials shown under the wrong inspector category
@@ -642,10 +642,10 @@ This branch is the last supporting Godot 3
     - `VoxelStream` is no longer the base for script-based streams, use `VoxelStreamScript` instead
     - Generators and streams have been split. Streams are more dedicated to files and use a single background thread. Generators are dedicated to generation and can be used by more than one background thread. Terrains have one property for each.
     - The meshing system no longer "guesses" how voxels will look like. Instead it uses the mesher assigned to the terrain.
-    - SDF and TYPE channels have different default depth, so if you relied on 8-bit depth, you may have to explicitely set that format in your generator, to avoid mismatch with existing savegames
+    - SDF and TYPE channels have different default depth, so if you relied on 8-bit depth, you may have to explicitly set that format in your generator, to avoid mismatch with existing savegames
     - The block serialization format has changed, and migration is not implemented, so old saves using it cannot be used. See documentation for more information.
-    - Terrains no longer auto-save when they are destroyed while having a `stream` assigned. You have to call `save_modified_blocks()` explicitely before doing that.
-    - `VoxelLodTerrain.lod_split_scale` has been replaced with `lod_distance` for clarity. It is the distance from the viewer where the first LOD level may extend. 
+    - Terrains no longer auto-save when they are destroyed while having a `stream` assigned. You have to call `save_modified_blocks()` explicitly before doing that.
+    - `VoxelLodTerrain.lod_split_scale` has been replaced with `lod_distance` for clarity. It is the distance from the viewer where the first LOD level may extend.
 
 - Fixes
     - C# should be able to properly implement generator/stream functions
@@ -661,7 +661,7 @@ This branch is the last supporting Godot 3
     - Added per-voxel and per-block metadata, which are saved by file streams along with voxel data
     - `StringName` is now used when possible to call script functions, to reduce overhead
     - Exposed block serializer to allow encoding voxels for network or files from script
-    - Added terrain methods to trigger saves explicitely
+    - Added terrain methods to trigger saves explicitly
     - The module only prints debug logs if the engine is in verbose mode
     - `VoxelTerrain` now emit signals when blocks are loaded and unloaded
 
@@ -735,4 +735,3 @@ Initial reference version.
 ...
 
 - 01/05/2016 - Creation of the module, using Godot 3.0 beta
-

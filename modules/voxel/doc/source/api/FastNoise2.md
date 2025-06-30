@@ -4,7 +4,7 @@ Inherits: [Resource](https://docs.godotengine.org/en/stable/classes/class_resour
 
 Wrapper for the [FastNoise2](https://github.com/Auburn/FastNoise2) library.
 
-## Description: 
+## Description:
 
 Generates coherent noise with support for SIMD processing, which can speed up generation significantly compared to scalar implementations like [FastNoiseLite](https://docs.godotengine.org/en/stable/classes/class_fastnoiselite.html).
 
@@ -14,49 +14,49 @@ The current integration uses FastNoise2 version 0.10.0-alpha. If you use encoded
 
 After changing properties, you must call [update_generator](FastNoise2.md#i_update_generator) for the internal graph to be rebuilt and changes to take effect.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                        | Name                                                         | Default                         
+Type                                                                        | Name                                                         | Default
 --------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------
-[CellularDistanceFunction](FastNoise2.md#enumerations)                      | [cellular_distance_function](#i_cellular_distance_function)  | CELLULAR_DISTANCE_EUCLIDEAN (0) 
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [cellular_jitter](#i_cellular_jitter)                        | 1.0                             
-[CellularReturnType](FastNoise2.md#enumerations)                            | [cellular_return_type](#i_cellular_return_type)              | CELLULAR_RETURN_INDEX_0 (0)     
-[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [encoded_node_tree](#i_encoded_node_tree)                    | ""                              
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [fractal_gain](#i_fractal_gain)                              | 0.5                             
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [fractal_lacunarity](#i_fractal_lacunarity)                  | 2.0                             
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [fractal_octaves](#i_fractal_octaves)                        | 3                               
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [fractal_ping_pong_strength](#i_fractal_ping_pong_strength)  | 2.0                             
-[FractalType](FastNoise2.md#enumerations)                                   | [fractal_type](#i_fractal_type)                              | FRACTAL_NONE (0)                
-[NoiseType](FastNoise2.md#enumerations)                                     | [noise_type](#i_noise_type)                                  | TYPE_OPEN_SIMPLEX_2 (0)         
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [period](#i_period)                                          | 64.0                            
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [remap_enabled](#i_remap_enabled)                            | false                           
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_input_max](#i_remap_input_max)                        | 1.0                             
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_input_min](#i_remap_input_min)                        | -1.0                            
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_output_max](#i_remap_output_max)                      | 1.0                             
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_output_min](#i_remap_output_min)                      | -1.0                            
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [seed](#i_seed)                                              | 1337                            
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [terrace_enabled](#i_terrace_enabled)                        | false                           
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [terrace_multiplier](#i_terrace_multiplier)                  | 1.0                             
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [terrace_smoothness](#i_terrace_smoothness)                  | 0.0                             
+[CellularDistanceFunction](FastNoise2.md#enumerations)                      | [cellular_distance_function](#i_cellular_distance_function)  | CELLULAR_DISTANCE_EUCLIDEAN (0)
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [cellular_jitter](#i_cellular_jitter)                        | 1.0
+[CellularReturnType](FastNoise2.md#enumerations)                            | [cellular_return_type](#i_cellular_return_type)              | CELLULAR_RETURN_INDEX_0 (0)
+[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [encoded_node_tree](#i_encoded_node_tree)                    | ""
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [fractal_gain](#i_fractal_gain)                              | 0.5
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [fractal_lacunarity](#i_fractal_lacunarity)                  | 2.0
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [fractal_octaves](#i_fractal_octaves)                        | 3
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [fractal_ping_pong_strength](#i_fractal_ping_pong_strength)  | 2.0
+[FractalType](FastNoise2.md#enumerations)                                   | [fractal_type](#i_fractal_type)                              | FRACTAL_NONE (0)
+[NoiseType](FastNoise2.md#enumerations)                                     | [noise_type](#i_noise_type)                                  | TYPE_OPEN_SIMPLEX_2 (0)
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [period](#i_period)                                          | 64.0
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [remap_enabled](#i_remap_enabled)                            | false
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_input_max](#i_remap_input_max)                        | 1.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_input_min](#i_remap_input_min)                        | -1.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_output_max](#i_remap_output_max)                      | 1.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [remap_output_min](#i_remap_output_min)                      | -1.0
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [seed](#i_seed)                                              | 1337
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [terrace_enabled](#i_terrace_enabled)                        | false
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [terrace_multiplier](#i_terrace_multiplier)                  | 1.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [terrace_smoothness](#i_terrace_smoothness)                  | 0.0
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                      | Signature                                                                                                                                                                                                     
+Return                                                                      | Signature
 --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-[void](#)                                                                   | [generate_image](#i_generate_image) ( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) image, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) tileable ) const 
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [get_noise_2d_single](#i_get_noise_2d_single) ( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) pos ) const                                                                      
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [get_noise_3d_single](#i_get_noise_3d_single) ( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) pos ) const                                                                      
-[SIMDLevel](FastNoise2.md#enumerations)                                     | [get_simd_level](#i_get_simd_level) ( ) const                                                                                                                                                                 
-[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [get_simd_level_name](#i_get_simd_level_name) ( [SIMDLevel](FastNoise2.md#enumerations) level ) static                                                                                                        
-[void](#)                                                                   | [update_generator](#i_update_generator) ( )                                                                                                                                                                   
+[void](#)                                                                   | [generate_image](#i_generate_image) ( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) image, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) tileable ) const
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [get_noise_2d_single](#i_get_noise_2d_single) ( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) pos ) const
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [get_noise_3d_single](#i_get_noise_3d_single) ( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) pos ) const
+[SIMDLevel](FastNoise2.md#enumerations)                                     | [get_simd_level](#i_get_simd_level) ( ) const
+[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [get_simd_level_name](#i_get_simd_level_name) ( [SIMDLevel](FastNoise2.md#enumerations) level ) static
+[void](#)                                                                   | [update_generator](#i_update_generator) ( )
 <p></p>
 
-## Enumerations: 
+## Enumerations:
 
-enum **NoiseType**: 
+enum **NoiseType**:
 
 - <span id="i_TYPE_OPEN_SIMPLEX_2"></span>**TYPE_OPEN_SIMPLEX_2** = **0**
 - <span id="i_TYPE_SIMPLEX"></span>**TYPE_SIMPLEX** = **1**
@@ -65,14 +65,14 @@ enum **NoiseType**:
 - <span id="i_TYPE_CELLULAR"></span>**TYPE_CELLULAR** = **4**
 - <span id="i_TYPE_ENCODED_NODE_TREE"></span>**TYPE_ENCODED_NODE_TREE** = **5**
 
-enum **FractalType**: 
+enum **FractalType**:
 
 - <span id="i_FRACTAL_NONE"></span>**FRACTAL_NONE** = **0**
 - <span id="i_FRACTAL_FBM"></span>**FRACTAL_FBM** = **1**
 - <span id="i_FRACTAL_RIDGED"></span>**FRACTAL_RIDGED** = **2**
 - <span id="i_FRACTAL_PING_PONG"></span>**FRACTAL_PING_PONG** = **3**
 
-enum **CellularDistanceFunction**: 
+enum **CellularDistanceFunction**:
 
 - <span id="i_CELLULAR_DISTANCE_EUCLIDEAN"></span>**CELLULAR_DISTANCE_EUCLIDEAN** = **0**
 - <span id="i_CELLULAR_DISTANCE_EUCLIDEAN_SQ"></span>**CELLULAR_DISTANCE_EUCLIDEAN_SQ** = **1**
@@ -80,7 +80,7 @@ enum **CellularDistanceFunction**:
 - <span id="i_CELLULAR_DISTANCE_HYBRID"></span>**CELLULAR_DISTANCE_HYBRID** = **3**
 - <span id="i_CELLULAR_DISTANCE_MAX_AXIS"></span>**CELLULAR_DISTANCE_MAX_AXIS** = **4**
 
-enum **CellularReturnType**: 
+enum **CellularReturnType**:
 
 - <span id="i_CELLULAR_RETURN_INDEX_0"></span>**CELLULAR_RETURN_INDEX_0** = **0**
 - <span id="i_CELLULAR_RETURN_INDEX_0_ADD_1"></span>**CELLULAR_RETURN_INDEX_0_ADD_1** = **1**
@@ -88,7 +88,7 @@ enum **CellularReturnType**:
 - <span id="i_CELLULAR_RETURN_INDEX_0_MUL_1"></span>**CELLULAR_RETURN_INDEX_0_MUL_1** = **3**
 - <span id="i_CELLULAR_RETURN_INDEX_0_DIV_1"></span>**CELLULAR_RETURN_INDEX_0_DIV_1** = **4**
 
-enum **SIMDLevel**: 
+enum **SIMDLevel**:
 
 - <span id="i_SIMD_NULL"></span>**SIMD_NULL** = **0** --- Undefined level.
 - <span id="i_SIMD_SCALAR"></span>**SIMD_SCALAR** = **1** --- Single numbers. Slowest level.
@@ -188,31 +188,31 @@ enum **SIMDLevel**:
 
 ## Method Descriptions
 
-### [void](#)<span id="i_generate_image"></span> **generate_image**( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) image, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) tileable ) 
+### [void](#)<span id="i_generate_image"></span> **generate_image**( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) image, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) tileable )
 
-Fills a greyscale image with noise values.
+Fills a grayscale image with noise values.
 
-### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_get_noise_2d_single"></span> **get_noise_2d_single**( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) pos ) 
+### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_get_noise_2d_single"></span> **get_noise_2d_single**( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) pos )
 
 Generates a single value of 2D noise.
 
 Note that generating values one by one will not benefit from SIMD performance as much as generating multiple values at once.
 
-### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_get_noise_3d_single"></span> **get_noise_3d_single**( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) pos ) 
+### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_get_noise_3d_single"></span> **get_noise_3d_single**( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) pos )
 
 Generates a single value of 3D noise.
 
 Note that generating values one by one will not benefit from SIMD performance as much as generating multiple values at once.
 
-### [SIMDLevel](FastNoise2.md#enumerations)<span id="i_get_simd_level"></span> **get_simd_level**( ) 
+### [SIMDLevel](FastNoise2.md#enumerations)<span id="i_get_simd_level"></span> **get_simd_level**( )
 
 Gets which SIMD level was detected by the library. This gives an indication of performance on the current CPU, as different models can have different SIMD instructions available.
 
-### [String](https://docs.godotengine.org/en/stable/classes/class_string.html)<span id="i_get_simd_level_name"></span> **get_simd_level_name**( [SIMDLevel](FastNoise2.md#enumerations) level ) 
+### [String](https://docs.godotengine.org/en/stable/classes/class_string.html)<span id="i_get_simd_level_name"></span> **get_simd_level_name**( [SIMDLevel](FastNoise2.md#enumerations) level )
 
 Gets the name of SIMD level.
 
-### [void](#)<span id="i_update_generator"></span> **update_generator**( ) 
+### [void](#)<span id="i_update_generator"></span> **update_generator**( )
 
 This method must be called after you change properties, so they can take effect.
 

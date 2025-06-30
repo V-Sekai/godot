@@ -1,14 +1,14 @@
 #!/usr/bin/python3
-# coding: utf-8 
+# coding: utf-8
 
-import xml.etree.ElementTree as ET
 import sys
 import textwrap
-import bbcode
-import bbcode_to_markdown
-import xml_to_markdown
-import markdown
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
+import bbcode
+import markdown
+import xml_to_markdown
 
 
 class GNode:
@@ -50,38 +50,38 @@ def parse_nodes_xml(src_fpath):
 
     nodes = []
 
-    nodes_xml = root.findall('node')
+    nodes_xml = root.findall("node")
 
     for node_xml in nodes_xml:
         node = GNode()
-        
-        node.name = node_xml.attrib['name']
 
-        if 'category' in node_xml.attrib:
-            node.category = node_xml.attrib['category']
+        node.name = node_xml.attrib["name"]
 
-        inputs_xml = node_xml.findall('input')
+        if "category" in node_xml.attrib:
+            node.category = node_xml.attrib["category"]
+
+        inputs_xml = node_xml.findall("input")
         for input_xml in inputs_xml:
             input = GInput()
-            input.name = input_xml.attrib['name']
-            input.default_value = input_xml.attrib['default_value']
+            input.name = input_xml.attrib["name"]
+            input.default_value = input_xml.attrib["default_value"]
             node.inputs.append(input)
 
-        outputs_xml = node_xml.findall('output')
+        outputs_xml = node_xml.findall("output")
         for output_xml in outputs_xml:
             output = GOutput()
-            output.name = output_xml.attrib['name']
+            output.name = output_xml.attrib["name"]
             node.outputs.append(output)
 
-        params_xml = node_xml.findall('parameter')
+        params_xml = node_xml.findall("parameter")
         for param_xml in params_xml:
             param = GParameter()
-            param.name = param_xml.attrib['name']
-            param.type = param_xml.attrib['type']
-            param.default_value = param_xml.attrib['default_value']
+            param.name = param_xml.attrib["name"]
+            param.type = param_xml.attrib["type"]
+            param.default_value = param_xml.attrib["default_value"]
             node.parameters.append(param)
 
-        desc_xml = node_xml.find('description')
+        desc_xml = node_xml.find("description")
         node.description = desc_xml.text
 
         nodes.append(node)
@@ -103,7 +103,7 @@ def get_nodes_by_category_dict(nodes_list):
             nodes_per_category[category_name] = []
 
         nodes_per_category[category_name].append(node)
-    
+
     return nodes_per_category
 
 
@@ -129,7 +129,7 @@ def write_markdown_table_from_nodes(nodes, formatter):
     return out
 
 
-def strip_leading_and_trailing_empty_lines(text, newline = '\n'):
+def strip_leading_and_trailing_empty_lines(text, newline="\n"):
     lines = text.splitlines()
 
     # Remove leading empty lines
@@ -157,17 +157,17 @@ def write_markdown_listing_from_nodes(nodes, formatter):
             out += "### " + node.name + "\n\n"
 
             if len(node.inputs) > 0:
-                out += "Inputs: " + ", ".join(['`' + port.name + '`' for port in node.inputs]) + "\n"
+                out += "Inputs: " + ", ".join(["`" + port.name + "`" for port in node.inputs]) + "\n"
             if len(node.outputs) > 0:
-                out += "Outputs: " + ", ".join(['`' + port.name + '`' for port in node.outputs]) + "\n"
+                out += "Outputs: " + ", ".join(["`" + port.name + "`" for port in node.outputs]) + "\n"
             if len(node.parameters) > 0:
-                out += "Parameters: " + ", ".join(['`' + param.name + '`' for param in node.parameters]) + "\n"
-            
+                out += "Parameters: " + ", ".join(["`" + param.name + "`" for param in node.parameters]) + "\n"
+
             out += "\n"
             desc = strip_leading_and_trailing_empty_lines(node.description)
             out += formatter.make_text(desc)
             out += "\n\n"
-    
+
     return out
 
 
@@ -180,17 +180,17 @@ def format_doc_bbcodes_to_cpp(text):
             out += bb_node.text
 
         elif isinstance(bb_node, bbcode.NodeTag):
-            if bb_node.name == 'codeblock':
+            if bb_node.name == "codeblock":
                 if bb_node.is_opening():
                     out += "[code]"
                 else:
                     out += "[/code]"
 
-            elif bb_node.name == 'graph_node':
-                out += '[code]' + bb_node.get_first_option_key() + '[/code]'
-            
+            elif bb_node.name == "graph_node":
+                out += "[code]" + bb_node.get_first_option_key() + "[/code]"
+
             else:
-                # Class lookup: assuming name convention, 
+                # Class lookup: assuming name convention,
                 # otherwise we need a complete list of classes and it's a bit cumbersome to obtain
                 if bb_node.name[0].isupper():
                     out += "[url={0}]{0}[/url]".format(bb_node.name)
@@ -208,9 +208,9 @@ def format_text_for_cpp(text):
 
     text = strip_leading_and_trailing_empty_lines(text, "\\n")
     text = format_doc_bbcodes_to_cpp(text)
-    
+
     text = text.replace('"', '\\"')
-    text = text.replace('\\[', '[')
+    text = text.replace("\\[", "[")
 
     return text
 
@@ -221,18 +221,18 @@ def write_cpp_from_nodes(nodes):
     out += "// <GENERATED>\n"
     out += "// clang-format off\n"
     out += "namespace GraphNodesDocData {\n\n"
-    
+
     out += "struct Node {\n"
     out += "    const char *name;\n"
     out += "    const char *category;\n"
     out += "    const char *description;\n"
     out += "};\n\n"
-    
+
     out += "static const unsigned int COUNT = " + str(len(nodes)) + ";\n"
     out += "static const Node g_data[COUNT] = {\n"
 
     for node in nodes:
-        out += "    {{\"{0}\", \"{1}\", \"{2}\"}},\n".format(node.name, node.category, format_text_for_cpp(node.description))
+        out += '    {{"{0}", "{1}", "{2}"}},\n'.format(node.name, node.category, format_text_for_cpp(node.description))
 
     out += "};\n\n"
 
@@ -249,7 +249,7 @@ def get_module_class_names(xml_classes_dir):
     class_names = []
     for xml_file in xml_files:
         class_names.append(xml_file.stem)
-    
+
     return class_names
 
 
@@ -267,14 +267,16 @@ if __name__ == "__main__":
     cpp = write_cpp_from_nodes(nodes)
     with open(cpp_fpath, "w") as f:
         f.write(cpp)
-    
+
     # Generate Markdown
-    formatter = xml_to_markdown.ClassFormatter('', module_class_names, {}, 'api/')
+    formatter = xml_to_markdown.ClassFormatter("", module_class_names, {}, "api/")
     module_class_names = get_module_class_names(Path(xml_classes_dirpath))
     md = write_markdown_listing_from_nodes(nodes, formatter)
     with open(md_fpath, "w") as f:
         f.write("# VoxelGeneratorGraph nodes\n\n")
-        f.write(formatter.make_text(
-            "This page lists all nodes that can be used in [VoxelGeneratorGraph] and [VoxelGraphFunction].\n\n"))
+        f.write(
+            formatter.make_text(
+                "This page lists all nodes that can be used in [VoxelGeneratorGraph] and [VoxelGraphFunction].\n\n"
+            )
+        )
         f.write(md)
-

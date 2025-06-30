@@ -1,5 +1,34 @@
-#ifndef VOXEL_GRAPH_NODE_TYPE_DB_H
-#define VOXEL_GRAPH_NODE_TYPE_DB_H
+/**************************************************************************/
+/*  node_type_db.h                                                        */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
 
 #include "../../util/containers/std_unordered_map.h"
 #include "../../util/containers/std_vector.h"
@@ -35,7 +64,7 @@ struct NodeType {
 		// Only relevant for inputs.
 		float default_value;
 		// Which connection will be automatically made if the input port is not connected and no fixed value has been
-		// explicitely specified. Only relevant for inputs.
+		// explicitly specified. Only relevant for inputs.
 		VoxelGraphFunction::AutoConnect auto_connect = VoxelGraphFunction::AUTO_CONNECT_NONE;
 		// If true, a buffer will be provided as input even if values were determined constant.
 		// If false, no buffer will provided, and instead the value will be available in Buffer::constant_value.
@@ -143,5 +172,3 @@ VoxelGraphFunction::Port make_port_from_io_node(const ProgramGraph::Node &node, 
 bool is_node_matching_port(const ProgramGraph::Node &node, const VoxelGraphFunction::Port &port);
 
 } // namespace zylann::voxel::pg
-
-#endif // VOXEL_GRAPH_NODE_TYPE_DB_H

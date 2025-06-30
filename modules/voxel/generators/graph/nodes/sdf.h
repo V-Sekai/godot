@@ -1,3 +1,35 @@
+/**************************************************************************/
+/*  sdf.h                                                                 */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
+
 #include "../../../util/math/sdf.h"
 #include "../../../util/profiling.h"
 #include "../node_type_db.h"
@@ -98,7 +130,7 @@ void register_sdf_nodes(Span<NodeType> types) {
 		t.inputs.push_back(NodeType::Port("x", 0.f, VoxelGraphFunction::AUTO_CONNECT_X));
 		t.inputs.push_back(NodeType::Port("y", 0.f, VoxelGraphFunction::AUTO_CONNECT_Y));
 		t.inputs.push_back(NodeType::Port("z", 0.f, VoxelGraphFunction::AUTO_CONNECT_Z));
-		// Having radius as param allows to connect it to a singe Constant node, which can also be used elsewhere
+		// Having radius as param allows to connect it to a single Constant node, which can also be used elsewhere
 		t.inputs.push_back(NodeType::Port("radius", 1.f, VoxelGraphFunction::AUTO_CONNECT_NONE, false));
 		t.outputs.push_back(NodeType::Port("sdf"));
 		t.process_buffer_func = [](Runtime::ProcessBufferContext &ctx) {
@@ -411,7 +443,7 @@ void register_sdf_nodes(Span<NodeType> types) {
 
 		// Matches an enum in editor code `VoxelGraphEditorNodePreview`
 		NodeType::Param mode_param("mode", Variant::INT, 0);
-		mode_param.enum_items.push_back("Greyscale");
+		mode_param.enum_items.push_back("Grayscale");
 		mode_param.enum_items.push_back("SDF");
 		t.params.push_back(mode_param);
 

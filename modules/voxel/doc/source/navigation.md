@@ -17,7 +17,7 @@ You can implement your own logic this way, or you can use [VoxelAStarGrid3D](api
 Waypoint-based pathfinding
 ----------------------------
 
-You can use Godot's `AStar3D` class to dyamically/progressively scatter loose waypoints through the world using a script, and connect them up. Doing raycasts or shape casts can help determining if a location is walkable or not. Agents may then complete this information by steering based on their immediate surroundings.
+You can use Godot's `AStar3D` class to dynamically/progressively scatter loose waypoints through the world using a script, and connect them up. Doing raycasts or shape casts can help determining if a location is walkable or not. Agents may then complete this information by steering based on their immediate surroundings.
 This might be one of the cheapest options, though it is probably less accurate depending on how it's implemented.
 
 
@@ -34,6 +34,6 @@ On top of this, Godot's navigation system has limitations that make it difficult
 It is also hard to support planets because it assumes the world is flat.
 
 The `navigation` branch of the module attempts to implement a dynamic navmesh system, however it has performance issues and isn't ready for production.
-At time of writing, it is not actively developped (subject to change, eventually). You may check it out and tweak it for your needs if you want to use it.
+At time of writing, it is not actively developed (subject to change, eventually). You may check it out and tweak it for your needs if you want to use it.
 
 See also [issue 610](https://github.com/Zylann/godot_voxel/issues/610).

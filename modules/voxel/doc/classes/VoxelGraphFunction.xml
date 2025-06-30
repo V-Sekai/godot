@@ -4,8 +4,8 @@
 		Graph for generating or processing series of 3D values.
 	</brief_description>
 	<description>
-		Contains a graph that can be used to process series of values, such as voxel positions (when used as main function of a generator), or to be re-used into other graphs (like a sub-graph).
-		Currently this class only stores a graph, it cannot run actual processing on its own. It is usually embedded into another resource which then makes use of the graph in a specific way. 
+		Contains a graph that can be used to process series of values, such as voxel positions (when used as main function of a generator), or to be reused into other graphs (like a sub-graph).
+		Currently this class only stores a graph, it cannot run actual processing on its own. It is usually embedded into another resource which then makes use of the graph in a specific way.
 		To generate voxels with it, see [VoxelGeneratorGraph].
 		Nodes can be connected together from their outputs to the inputs of next nodes. Unconnected inputs can have default values or default implicit connections.
 		Nodes can also have "parameters" which are constants setup per node.

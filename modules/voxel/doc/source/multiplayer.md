@@ -12,7 +12,7 @@ Multiplayer in a voxel game can be implemented with lots of different details. N
 
 This is a new iteration over the previous method, based on the same principle, but integrating it to the engine with some speed improvements.
 
-The server will be authoritative, and the client just receives information from it. Client and server will need a 
+The server will be authoritative, and the client just receives information from it. Client and server will need a
 different setup.
 
 This will rely on Godot's high-level multiplayer API, using RPCs. It is important for a client or server to be setup before the terrain starts processing. This can be done before adding the game world to the tree, or initializing multiplayer in `_ready`.
@@ -69,7 +69,7 @@ There is no support for now, but it is planned.
 Protocol notes
 ---------------
 
-RPCs in Godot use UDP (reliable or unreliable), so sending large amounts of voxels to clients could have limited speed. Instead, it would be an option to use TCP to send blocks instead, as well as large edits. Small edits or deterministic edits with ligthweight info could keep using reliable UDP. Problem: you would have to use two ports, one for UDP, one for TCP. So maybe it is a better idea to keep using reliable UDP.
+RPCs in Godot use UDP (reliable or unreliable), so sending large amounts of voxels to clients could have limited speed. Instead, it would be an option to use TCP to send blocks instead, as well as large edits. Small edits or deterministic edits with lightweight info could keep using reliable UDP. Problem: you would have to use two ports, one for UDP, one for TCP. So maybe it is a better idea to keep using reliable UDP.
 
 Note: Minecraft's network protocol is entirely built on top of TCP.
 
@@ -77,6 +77,6 @@ Note: Minecraft's network protocol is entirely built on top of TCP.
 Other points to explore
 ---------------------------
 
-- Block caching and versionning: save blocks client-side so the server doesn't have to send them again next time if they didn't change
+- Block caching and versioning: save blocks client-side so the server doesn't have to send them again next time if they didn't change
 - Client-requesting alternative model: having the client actively request blocks with custom code instead of passively receiving them from the server
 - Block diffing: if it is acceptable for clients to know the world seed, instead of expecting clients to cache data (which requires the server to know what the client knows), store a diff map in voxel data server-side, 1-bit per voxel. Then if less than 30% of a block has changed, send only the difference and let the client fill the gaps.

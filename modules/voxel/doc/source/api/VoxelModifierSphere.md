@@ -4,12 +4,12 @@ Inherits: [VoxelModifier](VoxelModifier.md)
 
 Voxel modifier that uses sphere shape.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                 | Default 
+Type                                                                      | Name                 | Default
 ------------------------------------------------------------------------- | -------------------- | --------
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [radius](#i_radius)  | 10.0    
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [radius](#i_radius)  | 10.0
 <p></p>
 
 ## Property Descriptions

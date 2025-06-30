@@ -31,7 +31,6 @@ if (
     or file_contents.find("Aborted (core dumped)") != -1
     or file_contents.find("(core dumped)") != -1
     or file_contents.find("Aborted") != -1
-
 ):
     print("FATAL ERROR: Godot has been crashed.")
     sys.exit(52)
@@ -75,7 +74,7 @@ if file_contents.find("cannot be represented in type") != -1 or file_contents.fi
     print(
         'ERROR: Found pointer which not point at valid object (search for "cannot be represented in type" or "is outside the range" in CI log)'
     )
-    #sys.exit(57)
+    # sys.exit(57)
 
 # Some functions like memcpy doesn't expect that its argument is null pointer.
 # This may later be cause of bugs or crashes.
@@ -85,14 +84,14 @@ if file_contents.find("null pointer passed as argument") != -1:
     print(
         'ERROR: Found null pointer passed as argument to function which not expect it (search for "null pointer passed as argument" in CI log)'
     )
-    #sys.exit(58)
+    # sys.exit(58)
 
-# Casting or pointer moving caused that code trying to violate alignement rules
+# Casting or pointer moving caused that code trying to violate alignment rules
 # Example - https://github.com/godotengine/godot/issues/31203#issue-478487290
 
 if file_contents.find("misaligned address") != -1:
     print('ERROR: Found usage of misaligned pointer (search for "misaligned address" in CI log)')
-    #sys.exit(59)
+    # sys.exit(59)
 
 # For now Godot leaks a lot of rendering stuff so for now we just show info
 # about it and this needs to be re-enabled after fixing this memory leaks.
@@ -102,7 +101,7 @@ if file_contents.find("misaligned address") != -1:
 
 if file_contents.find("were leaked") != -1 or file_contents.find("were never freed") != -1:
     print('WARNING: Memory leak was found (search for "were leaked" or "were never freed" in CI log)')
-    #sys.exit(60)
+    # sys.exit(60)
 
 # Usually error about trying to free invalid ID is caused by removing wrong object
 # Example - https://github.com/godotengine/godot/issues/49623#issue-921610423
@@ -111,18 +110,18 @@ if file_contents.find("were leaked") != -1 or file_contents.find("were never fre
 
 if file_contents.find("Attempted to free invalid ID") != -1:
     print('WARNING: Trying to free invalid object (search for "Attempted to free invalid ID" in CI log)')
-    #sys.exit(61)
+    # sys.exit(61)
 
 if file_contents.find("Killed") != -1:
-    print('ERROR: CI was killed due one of possible bugs')
+    print("ERROR: CI was killed due one of possible bugs")
     sys.exit(62)
 
 if file_contents.find("timeout: sending signal") != -1:
-    print('ERROR: timeout of command')
+    print("ERROR: timeout of command")
     sys.exit(63)
 
 if exists("CRASH_FOUND"):
-    print('ERROR: Reproducer found crash')
+    print("ERROR: Reproducer found crash")
     sys.exit(91)
 
 

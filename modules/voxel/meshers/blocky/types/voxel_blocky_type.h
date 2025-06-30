@@ -1,5 +1,34 @@
-#ifndef VOXEL_BLOCKY_TYPE_H
-#define VOXEL_BLOCKY_TYPE_H
+/**************************************************************************/
+/*  voxel_blocky_type.h                                                   */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
 
 #include "../../../util/containers/std_vector.h"
 #include "../../../util/godot/classes/resource.h"
@@ -124,7 +153,7 @@ private:
 	StdVector<Ref<VoxelBlockyAttribute>> _attributes;
 
 	// TODO Automatic rotation isn't always possible.
-	// For example, if a 3-axis block is asymetric and needs to always point down in its Y axis configuration, there is
+	// For example, if a 3-axis block is asymmetric and needs to always point down in its Y axis configuration, there is
 	// no way to choose that (other than wasting a 6-dir attribute)
 
 	// If true, rotation attributes will not require the user to specify models for each rotation. They will be
@@ -136,7 +165,7 @@ private:
 		Ref<VoxelBlockyModel> model;
 	};
 
-	// This only contains variants explicitely defined by the user in the editor. Not all runtime variants are here.
+	// This only contains variants explicitly defined by the user in the editor. Not all runtime variants are here.
 	// Can also contain variants that have no relation to any attribute, but these are not saved. They remain in memory
 	// to allow the user to go back and forth between configurations in the editor as they make changes.
 	// Saved variants are determined from the combination of current valid attributes.
@@ -148,5 +177,3 @@ private:
 String to_string(const VoxelBlockyType::VariantKey &key);
 
 } // namespace zylann::voxel
-
-#endif // VOXEL_BLOCKY_TYPE_H

@@ -20,8 +20,8 @@ class Instrument:
 
     def __init__(self):
         # Default mode.
-        # Most of the time we want to instrument whole functions. Code style conveniently puts opening brace at the end 
-        # of the signature, so we can just append it there by default. This is also a better option in case the 
+        # Most of the time we want to instrument whole functions. Code style conveniently puts opening brace at the end
+        # of the signature, so we can just append it there by default. This is also a better option in case the
         # function has a preprocessor directive at its beginning.
         self.mode = self.MODE_APPEND
         # self.regex = ""
@@ -41,19 +41,19 @@ class Settings:
     def __init__(self):
         self.files = {}
         # Long include path so we don't have to modify Godot's core build script
-        self.header_include = "#include \"thirdparty/tracy/public/tracy/Tracy.hpp\""
+        self.header_include = '#include "thirdparty/tracy/public/tracy/Tracy.hpp"'
         self.profiling_scope = "ZoneScoped;"
-    
+
     def load_from_file(self, settings_fpath):
-        with open(settings_fpath, 'r', encoding='UTF-8') as settings_file:
+        with open(settings_fpath, "r", encoding="UTF-8") as settings_file:
             settings_json_data = json.load(settings_file)
-        
-        files_data = settings_json_data['files']
+
+        files_data = settings_json_data["files"]
 
         for fpath, file_data in files_data.items():
             if fpath in self.files:
                 raise Exception("Duplicate file?")
-            
+
             fti = FileToInstrument()
             self.files[fpath] = fti
 
@@ -69,25 +69,25 @@ class Settings:
 
                     elif type(instrument_data) == dict:
                         # Explicit mode
-                        instrument.match_text = instrument_data['match_text']
-                        mode_str = instrument_data['mode']
+                        instrument.match_text = instrument_data["match_text"]
+                        mode_str = instrument_data["mode"]
 
-                        if 'allow_multiple' in instrument_data:
-                            instrument.allow_multiple = instrument_data['allow_multiple']
-                        
-                        if 'markup' in instrument_data:
-                            instrument.markup = instrument_data['markup']
+                        if "allow_multiple" in instrument_data:
+                            instrument.allow_multiple = instrument_data["allow_multiple"]
 
-                        if mode_str == 'prepend':
+                        if "markup" in instrument_data:
+                            instrument.markup = instrument_data["markup"]
+
+                        if mode_str == "prepend":
                             instrument.mode = Instrument.MODE_PREPEND
 
-                        elif mode_str == 'append':
+                        elif mode_str == "append":
                             instrument.mode = Instrument.MODE_APPEND
 
-                        elif mode_str == 'wrap':
+                        elif mode_str == "wrap":
                             instrument.mode = Instrument.MODE_WRAP
 
-                        elif mode_str == 'prepend_next_line':
+                        elif mode_str == "prepend_next_line":
                             instrument.mode = Instrument.MODE_PREPEND_NEXT_LINE
 
                         else:
@@ -127,16 +127,16 @@ def apply_instrument(instrument, lines, start_line_index, settings, fpath):
                 valid = False
                 break
             matched_line_indices.append(line_index)
-    
+
     if not valid:
         return False
-    
+
     if len(matched_line_indices) == 0:
         print("ERROR: instrument could not find a match.")
         print("    In file: {}".format(fpath))
         print("    Pattern: {}".format(instrument.match_text))
         return False
-    
+
     if instrument.markup != "":
         markup = instrument.markup
     else:
@@ -149,7 +149,7 @@ def apply_instrument(instrument, lines, start_line_index, settings, fpath):
         if instrument.mode == Instrument.MODE_PREPEND:
             line = lines[matched_line_index]
             lstripped_line = line.lstrip()
-            indentation = line[:len(line) - len(lstripped_line)]
+            indentation = line[: len(line) - len(lstripped_line)]
             lines[matched_line_index] = "{}{} {}".format(indentation, markup, lstripped_line)
 
         elif instrument.mode == Instrument.MODE_APPEND:
@@ -160,16 +160,16 @@ def apply_instrument(instrument, lines, start_line_index, settings, fpath):
         elif instrument.mode == Instrument.MODE_PREPEND_NEXT_LINE:
             line = lines[matched_line_index + 1]
             lstripped_line = line.lstrip()
-            indentation = line[:len(line) - len(lstripped_line)]
+            indentation = line[: len(line) - len(lstripped_line)]
             lines[matched_line_index + 1] = "{}{} {}".format(indentation, markup, lstripped_line)
-        
+
         elif instrument.mode == Instrument.MODE_WRAP:
             line = lines[matched_line_index]
             lstripped_line = line.lstrip()
-            indentation = line[:len(line) - len(lstripped_line)]
+            indentation = line[: len(line) - len(lstripped_line)]
             # Use rstrip to remove the original newline because we have to add a brace after it
             lines[matched_line_index] = "{}{{ {} {} }}\n".format(indentation, markup, lstripped_line.rstrip())
-    
+
     return True
 
 
@@ -188,37 +188,37 @@ def run(root_dir, settings_fpath):
         # Read file
         lines = []
         try:
-            with open(fpath, 'r', encoding='UTF-8') as f:
+            with open(fpath, "r", encoding="UTF-8") as f:
                 for line in f:
                     lines.append(line)
-        except OSError as ex:
+        except OSError:
             print("ERROR: cannot open file {}".format(fpath))
             error_count += 1
             continue
 
         # Insert header include
 
-        line_index = find_first_line_beginning_with(lines, '#')
+        line_index = find_first_line_beginning_with(lines, "#")
 
         if line_index == -1:
             print("ERROR: cannot find beginning of #includes in {}".format(fpath))
             error_count += 1
             continue
-        
-        # TODO Find a way to re-use an empty line so line numbers are not affected
-        lines.insert(line_index, settings.header_include + '\n')
+
+        # TODO Find a way to reuse an empty line so line numbers are not affected
+        lines.insert(line_index, settings.header_include + "\n")
         start_line_index = line_index + 1
 
         # Insert instrumentations
         for instrument in fti.instruments:
             if not apply_instrument(instrument, lines, start_line_index, settings, fpath):
                 error_count += 1
-        
+
         if error_count == 0:
             # Write file
-            with open(fpath, 'w', encoding='UTF-8', newline='\n') as f:
+            with open(fpath, "w", encoding="UTF-8", newline="\n") as f:
                 f.writelines(lines)
-    
+
     print("Done with", error_count, "errors")
     return error_count
 
@@ -227,25 +227,25 @@ def main():
     args = sys.argv[1:]
 
     if len(args) != 4:
-        print("\nUsage: ", sys.argv[0], "-d \"source dir\" -c \"config path\"")
+        print("\nUsage: ", sys.argv[0], '-d "source dir" -c "config path"')
         print()
         print("\t-d -> Specifies the directory in which the source code to instrument is located")
         print("\t-c -> Specifies the JSON configuration file containing which instrumentations to do")
         return
-    
+
     source_dir = "."
     config_path = "instruments.json"
 
     i = 0
     while i < len(args):
-        if args[i] == '-d':
+        if args[i] == "-d":
             i += 1
             config_path = args[i]
-        
-        elif args[i] == '-c':
+
+        elif args[i] == "-c":
             i += 1
             config_path = args[i]
-        
+
         i += 1
 
     error_count = run(source_dir, config_path)
@@ -258,4 +258,3 @@ if __name__ == "__main__":
     code = main()
     # Signaling errors like this allows our CI to pick them up and cancel jobs
     sys.exit(code)
-

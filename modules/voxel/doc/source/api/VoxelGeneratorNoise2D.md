@@ -4,14 +4,14 @@ Inherits: [VoxelGeneratorHeightmap](VoxelGeneratorHeightmap.md)
 
 Voxel generator producing noise-based heightmap terrain.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                             | Default 
+Type                                                                      | Name                             | Default
 ------------------------------------------------------------------------- | -------------------------------- | --------
-[Curve](https://docs.godotengine.org/en/stable/classes/class_curve.html)  | [curve](#i_curve)                |         
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [height_range](#i_height_range)  | 200.0   
-[Noise](https://docs.godotengine.org/en/stable/classes/class_noise.html)  | [noise](#i_noise)                |         
+[Curve](https://docs.godotengine.org/en/stable/classes/class_curve.html)  | [curve](#i_curve)                |
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [height_range](#i_height_range)  | 200.0
+[Noise](https://docs.godotengine.org/en/stable/classes/class_noise.html)  | [noise](#i_noise)                |
 <p></p>
 
 ## Property Descriptions

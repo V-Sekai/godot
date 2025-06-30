@@ -121,7 +121,7 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 # PenaltyBreakTemplateDeclaration: 10
 # PenaltyExcessCharacter: 1000000
 
-# Original was 60. I increased it after adding `AlignAfterOpenBracket: BlockIndent` and disabling binpacking of 
+# Original was 60. I increased it after adding `AlignAfterOpenBracket: BlockIndent` and disabling binpacking of
 # arguments, because for some reason return types sometimes ended up on their own line, not sure why.
 PenaltyReturnTypeOnItsOwnLine: 600
 

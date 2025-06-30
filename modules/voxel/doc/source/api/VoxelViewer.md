@@ -6,30 +6,30 @@ Attach this as a child node of characters, so the voxel world will know where to
 
 If no viewer is present in the world, nothing will generate.
 
-## Description: 
+## Description:
 
 The voxel world uses the position and options of all the [VoxelViewer](VoxelViewer.md) nodes to determine where to load blocks, and prioritize updates. For example, a voxel placed 100 units away from a player will have much lower priority than the modifications that player is doing when digging in front of them.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                                                                       | Default 
+Type                                                                      | Name                                                                       | Default
 ------------------------------------------------------------------------- | -------------------------------------------------------------------------- | --------
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [enabled_in_editor](#i_enabled_in_editor)                                  | false   
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [requires_collisions](#i_requires_collisions)                              | true    
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [requires_data_block_notifications](#i_requires_data_block_notifications)  | false   
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [requires_visuals](#i_requires_visuals)                                    | true    
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [view_distance](#i_view_distance)                                          | 128     
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [view_distance_vertical_ratio](#i_view_distance_vertical_ratio)            | 1.0     
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [enabled_in_editor](#i_enabled_in_editor)                                  | false
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [requires_collisions](#i_requires_collisions)                              | true
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [requires_data_block_notifications](#i_requires_data_block_notifications)  | false
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [requires_visuals](#i_requires_visuals)                                    | true
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [view_distance](#i_view_distance)                                          | 128
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [view_distance_vertical_ratio](#i_view_distance_vertical_ratio)            | 1.0
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                | Signature                                                                                                                  
+Return                                                                | Signature
 --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)  | [get_network_peer_id](#i_get_network_peer_id) ( ) const                                                                    
-[void](#)                                                             | [set_network_peer_id](#i_set_network_peer_id) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) id )  
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)  | [get_network_peer_id](#i_get_network_peer_id) ( ) const
+[void](#)                                                             | [set_network_peer_id](#i_set_network_peer_id) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) id )
 <p></p>
 
 ## Property Descriptions
@@ -62,11 +62,11 @@ Modifies vertical view distance to be a ratio of the [view_distance](VoxelViewer
 
 ## Method Descriptions
 
-### [int](https://docs.godotengine.org/en/stable/classes/class_int.html)<span id="i_get_network_peer_id"></span> **get_network_peer_id**( ) 
+### [int](https://docs.godotengine.org/en/stable/classes/class_int.html)<span id="i_get_network_peer_id"></span> **get_network_peer_id**( )
 
 *(This method has no documentation)*
 
-### [void](#)<span id="i_set_network_peer_id"></span> **set_network_peer_id**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) id ) 
+### [void](#)<span id="i_set_network_peer_id"></span> **set_network_peer_id**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) id )
 
 *(This method has no documentation)*
 

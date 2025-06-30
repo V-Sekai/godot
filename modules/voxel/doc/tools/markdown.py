@@ -1,8 +1,9 @@
 #!/usr/bin/python3
-# coding: utf-8 
+# coding: utf-8
 
 # Utilities to write Markdown docs.
 # No reference to XML stuff here.
+
 
 def make_link(text, url):
     return "[" + text + "](" + url + ")"
@@ -19,7 +20,7 @@ def make_table(table):
         for i, text in enumerate(row):
             column_widths[i] = max(len(text), column_widths[i])
     column_widths = [w + 1 for w in column_widths]
-    #total_width = sum(column_widths) + len(column_widths) + 1
+    # total_width = sum(column_widths) + len(column_widths) + 1
     s = "\n"
     for row_index, row in enumerate(table):
         for column_index, text in enumerate(row):

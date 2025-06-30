@@ -32,7 +32,7 @@ After tweaking noise and other values, we obtain those famous worms, but there a
 - The caves are still flat, they don't go up or down
 - They go on endlessly, there are no dead-ends
 
-We can fix the first problem by adding an extra layer of 2D noise to the Y coordinate so it can perturb the caves vertically. Re-using the ground surface noise with an extra multiplier can prove effective sometimes, so we avoid computing extra noise.
+We can fix the first problem by adding an extra layer of 2D noise to the Y coordinate so it can perturb the caves vertically. Reusing the ground surface noise with an extra multiplier can prove effective sometimes, so we avoid computing extra noise.
 
 ![Caves perturb](images/caves_perturb.webp)
 
@@ -161,9 +161,9 @@ var voxel_tool := out_buffer.get_voxel_tool()
 for tree in trees:
     var lower_corner_pos := tree.instance_position - tree.trunk_base_position
     var tree_aabb := AABB(lower_corner_pos, tree.voxels.get_size() + Vector3(1,1,1))
-    
+
     if tree_aabb.intersects(block_aabb):
-        voxel_tool.paste_masked(lower_corner_pos, tree.voxels, 
+        voxel_tool.paste_masked(lower_corner_pos, tree.voxels,
             # Which channel we want to paste
             1 << VoxelBuffer.CHANNEL_TYPE,
             # Masking 0, since 0 is considered air
@@ -208,6 +208,3 @@ This approach is also used in Voronoi noise (also known as cellular noise in Fas
 Of course this method has its limitations: if our terrain is more than just a heightmap, includes floating islands, complex carvings or 3D noise structures, it can make the process of finding altitude more complicated. At worse, generating neighbor columns of voxels or entire blocks would become necessary just to find the highest voxel, which would make it too slow.
 
 To counter this, you can check [multipass generators](generators.md#multi-pass-generation-with-voxelgeneratormultipasscb).
-
-
-

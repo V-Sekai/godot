@@ -44,7 +44,7 @@ It is kinda blocky. Now, we might indeed want this result (see section about sha
 voxel = distance(origin, position) - radius
 ```
 
-This is the signed distance of a sphere. Here shown normalized, so voxels close to `0` are grey:
+This is the signed distance of a sphere. Here shown normalized, so voxels close to `0` are gray:
 
 ![True SDF](images/sdf_example_true.webp)
 
@@ -130,7 +130,7 @@ float get_transvoxel_secondary_factor(int idata) {
 	// If the vertex lies on one or more sides, and at least one side has no low-resolution neighbor,
 	// don't move the vertex.
 	t *= float((vertex_border_mask & ~transition_mask) == 0);
-	
+
 	return t;
 }
 
@@ -186,7 +186,7 @@ It is also possible to choose a different texture for the 3 axes.
 
 Here's a shader that supports two materials, such as grass on the top and rock on the sides, each with triplanar mapped albedo, normal and AO maps, then blended together based on if their normal faces the upward direction or the sides.
 
-You can find a working example in the [demo](https://github.com/Zylann/voxelgame), or see the [shader](https://github.com/Zylann/voxelgame/blob/godot4/project/smooth_terrain/transvoxel_terrain.gdshader) itself (triplanar functions defined here https://github.com/Zylann/voxelgame/blob/godot4/project/smooth_terrain/shaders/triplanar.gdshaderinc). 
+You can find a working example in the [demo](https://github.com/Zylann/voxelgame), or see the [shader](https://github.com/Zylann/voxelgame/blob/godot4/project/smooth_terrain/transvoxel_terrain.gdshader) itself (triplanar functions defined here https://github.com/Zylann/voxelgame/blob/godot4/project/smooth_terrain/shaders/triplanar.gdshaderinc).
 
 In the shader parameters, add your two albedo maps, and optionally normal, and AO maps. Then play with the `AB Mix 1` and `AB Mix 2` sliders to adjust how the top and sides blend together. The other settings should be self explanatory. The screenshot below also has a little bit of fog and far DOF added.
 
@@ -210,7 +210,7 @@ Voxel texturing can be split in 2 parts:
 
 #### Single
 
-The simplest format is to give every voxel a 8-bit index telling what texture they have. This allows to choose whithin a pool of 256 possible textures. This is usually way more than enough for smooth terrains. This format cannot represent gradients, so painting has no falloff.
+The simplest format is to give every voxel a 8-bit index telling what texture they have. This allows to choose within a pool of 256 possible textures. This is usually way more than enough for smooth terrains. This format cannot represent gradients, so painting has no falloff.
 
 This data is stored in the [INDICES](api/VoxelBuffer.md#i_CHANNEL_INDICES) channel, using a depth of 8-bits.
 
@@ -258,7 +258,7 @@ voxel_tool.set_texture_opacity = 1.0
 voxel_tool.do_sphere(hit_position, radius)
 ```
 
-It is possible to set mixel values directly with `VoxelTool.set_voxel` but it is up to you to pack them properly. 
+It is possible to set mixel values directly with `VoxelTool.set_voxel` but it is up to you to pack them properly.
 
 You may use `VoxelTool` helper functions to encode/decode these values:
 
@@ -282,7 +282,7 @@ The mesher will include texturing information in the `CUSTOM1` attribute of vert
 - `CUSTOM1.x` will contain 4 indices, encoded as 4 bytes, which can be obtained by reinterpreting the float number as an integer and using bit-shifting operators.
 - `CUSTOM1.y` will contain 4 weights, again encoded as 4 bytes.
 
-Each index tells which texture needs to be used, and each weight respectively tells how much of that texture should be blended. It is essentially the same as a classic color splatmap, except textures can vary, which allows for more than 4 possibe textures.
+Each index tells which texture needs to be used, and each weight respectively tells how much of that texture should be blended. It is essentially the same as a classic color splatmap, except textures can vary, which allows for more than 4 possible textures.
 One minor downside is that you cannot blend more than 4 textures per voxel, so if this happens, it might cause artifacts. But in practice, it is assumed this case is so infrequent it can be ignored.
 
 
@@ -351,7 +351,7 @@ void fragment() {
 	float uv_scale = 0.5;
 
 	// Sample the 4 blending textures, all with triplanar mapping.
-	// We can re-use the same triplanar blending factors for all of them so separating that part
+	// We can reuse the same triplanar blending factors for all of them so separating that part
 	// of the function improves performance a little.
 	vec3 blending = get_triplanar_blend(v_normal);
 	vec3 col0 = texture_array_triplanar(u_texture_array, v_pos * uv_scale, blending, v_indices.x).rgb;
@@ -365,10 +365,10 @@ void fragment() {
 	weights /= (weights.x + weights.y + weights.z + weights.w + 0.00001);
 
 	// Calculate albedo
-	vec3 col = 
-		col0 * weights.r + 
-		col1 * weights.g + 
-		col2 * weights.b + 
+	vec3 col =
+		col0 * weights.r +
+		col1 * weights.g +
+		col2 * weights.b +
 		col3 * weights.a;
 
 	ALBEDO = col;
@@ -439,7 +439,7 @@ Parameter name                          | Type         | Description
 `u_voxel_block_size`                    | `int`        | Size of the cubic block of voxels that the mesh represents, in voxels.
 `u_voxel_virtual_texture_fade`          | `float`      | When LOD fading is enabled, this will be a value between 0 and 1 for how much to mix in detail textures such as `u_voxel_normalmap_atlas`. They take time to update so this allows them to appear smoothly. The value is 1 if fading is not enabled, or 0 if the mesh has no detail textures.
 `u_voxel_virtual_texture_offset_scale`  | `vec4`       | Used in LOD terrains where normalmaps are enabled. Contains a transformation to apply when sampling `u_voxel_cell_lookup` and `u_voxel_normalmap_atlas`. `x`, `y` and `z` contain an offset, and `w` contain a scale. This is relevant when textures for the current mesh aren't ready yet, so it falls back on a parent LOD: parent meshes are larger, so we need to sample a sub-region.
-`u_transition_mask`                     | `int`        | When using `VoxelMesherTransvoxel`, this is a bitmask storing informations about neighboring meshes of different levels of detail. If one of the 6 sides of the mesh has a lower-resolution neighbor, the corresponding bit will be `1`. Side indices are in order `-X`, `X`, `-Y`, `Y`, `-Z`, `Z` and are stored in the first byte. Layout: `00000000 00000000 00000000 00xxyyzz`. See [smooth stitches in vertex shaders](#smooth-stitches-in-vertex-shader).
+`u_transition_mask`                     | `int`        | When using `VoxelMesherTransvoxel`, this is a bitmask storing information about neighboring meshes of different levels of detail. If one of the 6 sides of the mesh has a lower-resolution neighbor, the corresponding bit will be `1`. Side indices are in order `-X`, `X`, `-Y`, `Y`, `-Z`, `Z` and are stored in the first byte. Layout: `00000000 00000000 00000000 00xxyyzz`. See [smooth stitches in vertex shaders](#smooth-stitches-in-vertex-shader).
 `u_voxel_lod_info`                      | `int`        | Will be assigned to a combination of the LOD index of the block and the total number of LODs. Layout: `000000 000000 cccccccc iiiiiiii` where `c` is LOD count and `i` is LOD index. Mainly intented for debugging.
 
 
@@ -450,7 +450,7 @@ Level of detail (LOD)
 
 ### Description
 
-LOD (Level Of Detail) is a technique used to change the amount of geometry dymamically, such that meshes close to the viewer have high definition, while meshes far from the viewer are simplified down. This aims at improving performance.
+LOD (Level Of Detail) is a technique used to change the amount of geometry dynamically, such that meshes close to the viewer have high definition, while meshes far from the viewer are simplified down. This aims at improving performance.
 
 ![LOD example](images/lod_example.webp)
 
@@ -601,7 +601,7 @@ Despite improving detail at lower cost than geometry, detail rendering is signif
 - Use a simplified version of the `VoxelGenerator`. It is possible to override the generator that will be used to compute normalmaps, with `VoxelLodTerrain.set_normalmap_generator_override`. A typical use case is when the generator can produce caves. Caves don't have enough impact on surface visuals, so they could be ignored beyond a certain LOD level.
 - Use SIMD noise. Noise is often the biggest bottleneck. In general, SIMD noise such as `FastNoise2` will perform better.
 
-#### Shader 
+#### Shader
 
 Rendering these normals requires special shader code in your terrain material.
 
@@ -610,7 +610,7 @@ Rendering these normals requires special shader code in your terrain material.
 
 // TODO Godot is not binding integer samplers properly.
 // See https://github.com/godotengine/godot/issues/57841
-// TODO Workaround using float texelFetch doesnt't work either...
+// TODO Workaround using float texelFetch doesn't work either...
 // See https://github.com/godotengine/godot/issues/31732
 //uniform usampler2D u_voxel_cell_lookup;
 uniform sampler2D u_voxel_cell_lookup : filter_nearest;
@@ -648,12 +648,12 @@ vec3 get_voxel_normal_model() {
 	float cell_size = u_voxel_cell_size;
 	int block_size = u_voxel_block_size;
 	int normalmap_tile_size = u_voxel_virtual_texture_tile_size;
-	
+
 	vec3 cell_posf = vertex_pos_model / cell_size;
 	cell_posf = cell_posf * u_voxel_virtual_texture_offset_scale.w + u_voxel_virtual_texture_offset_scale.xyz;
 	ivec3 cell_pos = ivec3(floor(cell_posf));
 	vec3 cell_fract = fract(cell_posf);
-	
+
 	int cell_index = cell_pos.x + cell_pos.y * block_size + cell_pos.z * block_size * block_size;
 	int lookup_sqri = int(ceil(sqrt(float(block_size * block_size * block_size))));
 	ivec2 lookup_pos = ivec2(cell_index % lookup_sqri, cell_index / lookup_sqri);
@@ -663,7 +663,7 @@ vec3 get_voxel_normal_model() {
 	ivec2 lookup_value = ivec2(round(lookup_valuef * 255.0));
 	int tile_index = lookup_value.r | ((lookup_value.g & 0x3f) << 8);
 	int tile_direction = lookup_value.g >> 6;
-	
+
 	vec3 tile_texcoord = vec3(0.0, 0.0, float(tile_index));
 	// TODO Could do it non-branching with weighted addition
 	switch(tile_direction) {

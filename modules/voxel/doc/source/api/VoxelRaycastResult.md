@@ -4,15 +4,15 @@ Inherits: [RefCounted](https://docs.godotengine.org/en/stable/classes/class_refc
 
 Result of a raycast performed with [VoxelTool.raycast](VoxelTool.md#i_raycast)
 
-## Properties: 
+## Properties:
 
 
-Type                                                                            | Name                                       | Default           
+Type                                                                            | Name                                       | Default
 ------------------------------------------------------------------------------- | ------------------------------------------ | ------------------
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [distance](#i_distance)                    | 0.0               
-[Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)    | [normal](#i_normal)                        | Vector3(0, 0, 0)  
-[Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html)  | [position](#i_position)                    | Vector3i(0, 0, 0) 
-[Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html)  | [previous_position](#i_previous_position)  | Vector3i(0, 0, 0) 
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [distance](#i_distance)                    | 0.0
+[Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)    | [normal](#i_normal)                        | Vector3(0, 0, 0)
+[Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html)  | [position](#i_position)                    | Vector3i(0, 0, 0)
+[Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html)  | [previous_position](#i_previous_position)  | Vector3i(0, 0, 0)
 <p></p>
 
 ## Property Descriptions

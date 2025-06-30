@@ -11,4 +11,3 @@ jobs:
     with:
       godot-cpp-branch: master
       # float-precisions: [single, double]
-

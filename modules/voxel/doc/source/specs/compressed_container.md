@@ -26,4 +26,3 @@ Compressed data starts with one byte. Depending on its value, what follows is di
 
 !!! note
     Depending on the type of data, knowing its decompressed size may be important when parsing the it later.
-

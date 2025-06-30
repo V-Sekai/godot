@@ -4,16 +4,16 @@ Inherits: [VoxelBlockyModel](VoxelBlockyModel.md)
 
 Model representing a specific state of a fluid.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                  | Name               | Default 
+Type                                                                  | Name               | Default
 --------------------------------------------------------------------- | ------------------ | --------
-[VoxelBlockyFluid](VoxelBlockyFluid.md)                               | [fluid](#i_fluid)  |         
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)  | [level](#i_level)  | 0       
+[VoxelBlockyFluid](VoxelBlockyFluid.md)                               | [fluid](#i_fluid)  |
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)  | [level](#i_level)  | 0
 <p></p>
 
-## Constants: 
+## Constants:
 
 - <span id="i_MAX_LEVELS"></span>**MAX_LEVELS** = **256** --- Maximum amount of supported fluid levels.
 

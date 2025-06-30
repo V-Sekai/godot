@@ -4,7 +4,7 @@ Inherits: [VoxelGenerator](VoxelGenerator.md)
 
 Graph-based voxel generator.
 
-## Description: 
+## Description:
 
 Generates voxel data from a graph of per-voxel operations.
 
@@ -14,44 +14,44 @@ It can be used with SDF-based smooth terrain, and also blocky terrains.
 
 Warning: methods to modify the graph should only be called from the main thread.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                                                           | Default                 
+Type                                                                      | Name                                                           | Default
 ------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [debug_block_clipping](#i_debug_block_clipping)                | false                   
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [sdf_clip_threshold](#i_sdf_clip_threshold)                    | 1.5                     
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [subdivision_size](#i_subdivision_size)                        | 16                      
-[TextureMode](VoxelGeneratorGraph.md#enumerations)                        | [texture_mode](#i_texture_mode)                                | TEXTURE_MODE_MIXEL4 (0) 
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [use_optimized_execution_map](#i_use_optimized_execution_map)  | true                    
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [use_subdivision](#i_use_subdivision)                          | true                    
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [use_xz_caching](#i_use_xz_caching)                            | true                    
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [debug_block_clipping](#i_debug_block_clipping)                | false
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [sdf_clip_threshold](#i_sdf_clip_threshold)                    | 1.5
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [subdivision_size](#i_subdivision_size)                        | 16
+[TextureMode](VoxelGeneratorGraph.md#enumerations)                        | [texture_mode](#i_texture_mode)                                | TEXTURE_MODE_MIXEL4 (0)
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [use_optimized_execution_map](#i_use_optimized_execution_map)  | true
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [use_subdivision](#i_use_subdivision)                          | true
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [use_xz_caching](#i_use_xz_caching)                            | true
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                              | Signature                                                                                                                                                                                                                                                                                                                                                                               
+Return                                                                              | Signature
 ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-[void](#)                                                                           | [bake_sphere_bumpmap](#i_bake_sphere_bumpmap) ( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_min, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_max )  
-[void](#)                                                                           | [bake_sphere_normalmap](#i_bake_sphere_normalmap) ( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) strength )                                                                               
-[void](#)                                                                           | [clear](#i_clear) ( )                                                                                                                                                                                                                                                                                                                                                                   
-[Dictionary](https://docs.godotengine.org/en/stable/classes/class_dictionary.html)  | [compile](#i_compile) ( )                                                                                                                                                                                                                                                                                                                                                               
-[Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)        | [debug_analyze_range](#i_debug_analyze_range) ( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) min_pos, [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) max_pos ) const                                                                                                                                                      
-[void](#)                                                                           | [debug_load_waves_preset](#i_debug_load_waves_preset) ( )                                                                                                                                                                                                                                                                                                                               
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)            | [debug_measure_microseconds_per_voxel](#i_debug_measure_microseconds_per_voxel) ( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) use_singular_queries )                                                                                                                                                                                                         
-[VoxelGraphFunction](VoxelGraphFunction.md)                                         | [get_main_function](#i_get_main_function) ( ) const                                                                                                                                                                                                                                                                                                                                     
+[void](#)                                                                           | [bake_sphere_bumpmap](#i_bake_sphere_bumpmap) ( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_min, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_max )
+[void](#)                                                                           | [bake_sphere_normalmap](#i_bake_sphere_normalmap) ( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) strength )
+[void](#)                                                                           | [clear](#i_clear) ( )
+[Dictionary](https://docs.godotengine.org/en/stable/classes/class_dictionary.html)  | [compile](#i_compile) ( )
+[Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)        | [debug_analyze_range](#i_debug_analyze_range) ( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) min_pos, [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) max_pos ) const
+[void](#)                                                                           | [debug_load_waves_preset](#i_debug_load_waves_preset) ( )
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)            | [debug_measure_microseconds_per_voxel](#i_debug_measure_microseconds_per_voxel) ( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) use_singular_queries )
+[VoxelGraphFunction](VoxelGraphFunction.md)                                         | [get_main_function](#i_get_main_function) ( ) const
 <p></p>
 
-## Signals: 
+## Signals:
 
-### node_name_changed( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) node_id ) 
+### node_name_changed( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) node_id )
 
 *(This signal has no documentation)*
 
-## Enumerations: 
+## Enumerations:
 
-enum **TextureMode**: 
+enum **TextureMode**:
 
 - <span id="i_TEXTURE_MODE_MIXEL4"></span>**TEXTURE_MODE_MIXEL4** = **0** --- Writes texture data into [VoxelBuffer.CHANNEL_INDICES](VoxelBuffer.md#i_CHANNEL_INDICES) as 4 packed 4-bit indices and into [VoxelBuffer.CHANNEL_WEIGHTS](VoxelBuffer.md#i_CHANNEL_WEIGHTS) as 4 packed 4-bit weights. See [VoxelMesherTransvoxel](VoxelMesherTransvoxel.md) and docs about smooth voxels to see how this data is used.
 - <span id="i_TEXTURE_MODE_SINGLE"></span>**TEXTURE_MODE_SINGLE** = **1** --- Writes texture data into [VoxelBuffer.CHANNEL_INDICES](VoxelBuffer.md#i_CHANNEL_INDICES) as one 8-bit value per voxel. If you want to use this mode, make sure your voxels have the appropriate format (see [VoxelFormat](VoxelFormat.md))
@@ -69,7 +69,7 @@ When generating SDF blocks for a terrain, if the range analysis of a block is be
 
 ### [int](https://docs.godotengine.org/en/stable/classes/class_int.html)<span id="i_subdivision_size"></span> **subdivision_size** = 16
 
-When generating SDF blocks for a terrain, and if block size is divisible by this value, range analysis will operate on such subdivision. This allows to optimize away more precise areas. However, it may not be set too small otherwise overhead will outweight the benefits.
+When generating SDF blocks for a terrain, and if block size is divisible by this value, range analysis will operate on such subdivision. This allows to optimize away more precise areas. However, it may not be set too small otherwise overhead will outweigh the benefits.
 
 ### [TextureMode](VoxelGeneratorGraph.md#enumerations)<span id="i_texture_mode"></span> **texture_mode** = TEXTURE_MODE_MIXEL4 (0)
 
@@ -89,7 +89,7 @@ If enabled, the generator will run only once branches of the graph that only dep
 
 ## Method Descriptions
 
-### [void](#)<span id="i_bake_sphere_bumpmap"></span> **bake_sphere_bumpmap**( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_min, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_max ) 
+### [void](#)<span id="i_bake_sphere_bumpmap"></span> **bake_sphere_bumpmap**( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_min, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) sdf_max )
 
 Bakes a spherical bumpmap (or heightmap) using SDF output produced by the generator, if any. The bumpmap uses a panorama projection.
 
@@ -97,7 +97,7 @@ Bakes a spherical bumpmap (or heightmap) using SDF output produced by the genera
 
 `strength`: strength of produced normals, may default to 1.0.
 
-### [void](#)<span id="i_bake_sphere_normalmap"></span> **bake_sphere_normalmap**( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) strength ) 
+### [void](#)<span id="i_bake_sphere_normalmap"></span> **bake_sphere_normalmap**( [Image](https://docs.godotengine.org/en/stable/classes/class_image.html) im, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) ref_radius, [float](https://docs.godotengine.org/en/stable/classes/class_float.html) strength )
 
 Bakes a spherical normalmap using SDF output produced by the generator, if any. The normalmap uses a panorama projection. It is assumed the generator produces a spherical shape (like a planet). Such normalmap can be used to add more detail to distant views of a terrain using this generator.
 
@@ -107,11 +107,11 @@ Bakes a spherical normalmap using SDF output produced by the generator, if any. 
 
 Note: an alternative is to use distance normals feature with [VoxelLodTerrain](VoxelLodTerrain.md).
 
-### [void](#)<span id="i_clear"></span> **clear**( ) 
+### [void](#)<span id="i_clear"></span> **clear**( )
 
 Erases all nodes and connections from the graph.
 
-### [Dictionary](https://docs.godotengine.org/en/stable/classes/class_dictionary.html)<span id="i_compile"></span> **compile**( ) 
+### [Dictionary](https://docs.godotengine.org/en/stable/classes/class_dictionary.html)<span id="i_compile"></span> **compile**( )
 
 Compiles the graph so it can be used to generate blocks.
 
@@ -133,19 +133,19 @@ If it fails, the returned result may contain a message and the ID of a graph nod
 ```
 The node ID will be -1 if the error is not about a particular node.
 
-### [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)<span id="i_debug_analyze_range"></span> **debug_analyze_range**( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) min_pos, [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) max_pos ) 
+### [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)<span id="i_debug_analyze_range"></span> **debug_analyze_range**( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) min_pos, [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) max_pos )
 
 *(This method has no documentation)*
 
-### [void](#)<span id="i_debug_load_waves_preset"></span> **debug_load_waves_preset**( ) 
+### [void](#)<span id="i_debug_load_waves_preset"></span> **debug_load_waves_preset**( )
 
 *(This method has no documentation)*
 
-### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_debug_measure_microseconds_per_voxel"></span> **debug_measure_microseconds_per_voxel**( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) use_singular_queries ) 
+### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_debug_measure_microseconds_per_voxel"></span> **debug_measure_microseconds_per_voxel**( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) use_singular_queries )
 
 *(This method has no documentation)*
 
-### [VoxelGraphFunction](VoxelGraphFunction.md)<span id="i_get_main_function"></span> **get_main_function**( ) 
+### [VoxelGraphFunction](VoxelGraphFunction.md)<span id="i_get_main_function"></span> **get_main_function**( )
 
 Gets the graph used for generation.
 

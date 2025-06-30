@@ -13,7 +13,7 @@ Voxel data used by this mesher may be stored in the following channel: `VoxelBuf
 
 ### Creating voxel models
 
-The mesher has a `library` property of type `VoxelBlockyLibraryBase`. This is a resource containing a list of all the models you want to use in order to build a voxel mesh: grass, dirt, wood, leaves, water, shrubs, stairs, door parts etc. You can create a new library in place, or make one saved to a file if you want to re-use it in several places. You can also create it from code.
+The mesher has a `library` property of type `VoxelBlockyLibraryBase`. This is a resource containing a list of all the models you want to use in order to build a voxel mesh: grass, dirt, wood, leaves, water, shrubs, stairs, door parts etc. You can create a new library in place, or make one saved to a file if you want to reuse it in several places. You can also create it from code.
 
 There are two kinds of libraries that can be used:
 
@@ -35,7 +35,7 @@ With default 16-bit voxel data, you can create up to 65,536 models.
 
 There are several kinds of models. A simple one is `VoxelBlockyModelCube`, which renders a cube with specific textures on its sides.
 
-With `VoxelMesherBlocky`, using texture atlases is recommended to allow re-using materials and reduce the number of draw calls. You can create a texture containing all the tiles your voxels can use. For example, here is one from the [blocky game](https://github.com/Zylann/voxelgame/tree/master/project/blocky_game) demo:
+With `VoxelMesherBlocky`, using texture atlases is recommended to allow reusing materials and reduce the number of draw calls. You can create a texture containing all the tiles your voxels can use. For example, here is one from the [blocky game](https://github.com/Zylann/voxelgame/tree/master/project/blocky_game) demo:
 
 ![Atlas used in the blocky game demo](images/blocky_game_atlas.webp)
 
@@ -55,10 +55,10 @@ Make sure to assign its `albedo_texture` to your texture. You may also check the
 
 ![Material for blocky terrain](images/material_blocky_game.webp)
 
-Each model can use different materials with different textures, but keep in mind the more you re-use materials, the better. It reduces the number of draw calls and makes rendering faster.
+Each model can use different materials with different textures, but keep in mind the more you reuse materials, the better. It reduces the number of draw calls and makes rendering faster.
 
 Note, there are several levels at which materials get applied, each one overriding the other:
-- Materials present on meshes are the default (if you use meshes explicitely)
+- Materials present on meshes are the default (if you use meshes explicitly)
 - Materials specified on `VoxelBlockyModel` will override mesh materials
 - The material specified on `VoxelTerrain` will override all library materials
 
@@ -79,7 +79,7 @@ Meshes can have any shape you want, however there are a few constraints to respe
 ![Blender screenshot for face lining up with cube side](images/blender_face_cube_side.webp)
 
 The best format to use to export your meshes is OBJ. Godot imports this format by default as a mesh resource. Other formats are not suitable because Godot imports them as scenes, and `VoxelBlockyModelMesh` resources require meshes, not scenes.
-You can choose to export materials from here too, but it is recommended to do it in Godot because it allows you to re-use them.
+You can choose to export materials from here too, but it is recommended to do it in Godot because it allows you to reuse them.
 
 !!! note
 	A second material can be used in each model. This is useful if a given mesh needs both transparent and opaque parts. This works as usual, by having a mesh with two surfaces. However, face culling will still use properties of the model regardless. For example, if a model has opaque sides and is transparent in the middle, it may be defined as a non-transparent block, so when placed next to other opaque blocks, geometry of its sides will be culled. See [Transparency](#transparency) section for more info.
@@ -103,7 +103,7 @@ This is a procedural model, so less data is precomputed and is instead calculate
 
 Fluid models works a bit differently than regular models. First you have to create a [VoxelBlockyFluid](api/VoxelBlockyFluid.md) resource, and save it as a `.tres` file.
 
-Then, in your library, create a [VoxelBlockyModelFluid](api/VoxelBlockyModelFluid.md) for every level your fluid has, setting their `fluid` and `level` properties accordingly. It may be convenient for each level to have consecutive IDs, but it is not required. 
+Then, in your library, create a [VoxelBlockyModelFluid](api/VoxelBlockyModelFluid.md) for every level your fluid has, setting their `fluid` and `level` properties accordingly. It may be convenient for each level to have consecutive IDs, but it is not required.
 It is important that you share the same fluid on the `fluid` property (which is easier if the fluid resource is a file). This way, the mesher will recognize each model as part of the same fluid.
 
 To avoid issues with side culling, make sure fluid models also have a `transparency_index` higher than solid blocks.
@@ -146,12 +146,12 @@ TODO Example scene
 - The maximum number of levels is limited (see [VoxelBlockyModelFluid](api/VoxelBlockyModelFluid.md) API)
 - The maximum number of fluids is limited (see [VoxelBlockyLibraryBase](api/VoxelBlockyLibraryBase.md) API)
 - Normals of the top side of fluid voxels remain the same as if it was flat. Only corner positions are displaced. As a result, shading of the top won't change with slope. This is currently not implemented for performance reasons, until a fast method is found (note: Minecraft seems to have done the same choice).
-- Currently no backfaces are generated. In Minecraft, water actually has both backfaces and front faces, which are culled differently in certain edge cases. Currently the engine doesn't differenciate the two. A workaround people often try is to disable backface culling entirely in the water material, but that might lead to other issues. For more details, see [issue 621](https://github.com/Zylann/godot_voxel/issues/621)
+- Currently no backfaces are generated. In Minecraft, water actually has both backfaces and front faces, which are culled differently in certain edge cases. Currently the engine doesn't differentiate the two. A workaround people often try is to disable backface culling entirely in the water material, but that might lead to other issues. For more details, see [issue 621](https://github.com/Zylann/godot_voxel/issues/621)
 
 
 ### Usage of voxel model IDs
 
-Voxel IDs defined in a `VoxelBlockyLibrary` are like tiles in a tilemap: for simple games, they can directly correspond to a type of block. However, you may want to avoid treating them directly this way over time. Instead, you may define your own list of block types, and each type can correspond to one, or multiple `VoxelBlockyModel` IDs. 
+Voxel IDs defined in a `VoxelBlockyLibrary` are like tiles in a tilemap: for simple games, they can directly correspond to a type of block. However, you may want to avoid treating them directly this way over time. Instead, you may define your own list of block types, and each type can correspond to one, or multiple `VoxelBlockyModel` IDs.
 
 Examples from Minecraft:
 
@@ -160,7 +160,7 @@ Examples from Minecraft:
 - One door is actually made of 2 voxels. Its top, and bottom. There could be even more if we consider opened and closed doors.
 - One rail can correspond to many different voxels: straight rails, slopes, and turns. They are all rails, but in different sub-configurations.
 
-Managing the correspondance between your "game's block" IDs and voxel IDs is up to you.
+Managing the correspondence between your "game's block" IDs and voxel IDs is up to you.
 
 ### Rotating models
 
@@ -322,7 +322,7 @@ var model_id := library.get_model_index_default(&"leaves")
 `VoxelMesherCubes`
 ------------------
 
-This mesher exclusively generates cubes with spefific colors.
+This mesher exclusively generates cubes with specific colors.
 
 TODO
 

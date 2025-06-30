@@ -1,3 +1,35 @@
+/**************************************************************************/
+/*  blocky_fluids_meshing_impl.h                                          */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
+
 // Only include this in the mesher to define it once.
 // It is only in a separate header because I wanted to split things out.
 
@@ -197,7 +229,7 @@ bool generate_fluid_model(
 	// Fluids have only one material
 	static constexpr unsigned int surface_index = 0;
 
-	// We re-use the same memory per thread for each meshed fluid voxel
+	// We reuse the same memory per thread for each meshed fluid voxel
 	// TODO Candidate for TempAllocator
 	FixedArray<FixedArray<BakedModel::SideSurface, MAX_SURFACES>, Cube::SIDE_COUNT> &fluid_sides =
 			get_tls_fluid_sides_surfaces();
@@ -275,9 +307,9 @@ bool generate_fluid_model(
 						// We don't test the current voxel, we know it's not covered
 						if (i != 4) {
 							const uint32_t anloc = nloc + y_jump_size;
-							const uint32_t anid = type_buffer[anloc];
-							if (anid != AIR_ID && library.has_model(anid)) {
-								const BakedModel &anm = library.models[anid];
+							const uint32_t and = type_buffer[anloc];
+							if (and!= AIR_ID && library.has_model(and)) {
+								const BakedModel &anm = library.models[and];
 								if (anm.fluid_index == voxel.fluid_index) {
 									covered_neighbors |= (1 << i);
 								}

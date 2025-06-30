@@ -198,7 +198,7 @@
 	<node name="Function" category="Misc">
 		<parameter name="_function" type="Object" default_value="null"/>
 		<description>
-			Runs a custom function, like a re-usable sub-graph. The first parameter (parameter 0) of this node is a reference to a [VoxelGraphFunction]. Further parameters (starting from 1) are those exposed by the function.
+			Runs a custom function, like a reusable sub-graph. The first parameter (parameter 0) of this node is a reference to a [VoxelGraphFunction]. Further parameters (starting from 1) are those exposed by the function.
 		</description>
 	</node>
 	<node name="Image" category="Mapping">
@@ -446,7 +446,7 @@
 		<output name="out"/>
 		<parameter name="threshold" type="float" default_value="0"/>
 		<description>
-			If [code]t[/code] is lower than [code]threshold[/code], returns [code]a[/code]. Otherwise, returns [code]b[/code]. 
+			If [code]t[/code] is lower than [code]threshold[/code], returns [code]a[/code]. Otherwise, returns [code]b[/code].
 		</description>
 	</node>
 	<node name="Sin" category="Math">
@@ -474,7 +474,7 @@
 		<parameter name="cell_size" type="float" default_value="32"/>
 		<parameter name="jitter" type="float" default_value="0.9"/>
 		<description>
-			Cellular noise optimized for "ore patch" generation: divides space into a 2D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
+			Cellular noise optimized for "or patch" generation: divides space into a 2D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
 		</description>
 	</node>
 	<node name="Spots3D" category="Noise">
@@ -487,7 +487,7 @@
 		<parameter name="cell_size" type="float" default_value="32"/>
 		<parameter name="jitter" type="float" default_value="0.9"/>
 		<description>
-			Cellular noise optimized for "ore patch" generation: divides space into a 3D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
+			Cellular noise optimized for "or patch" generation: divides space into a 3D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
 		</description>
 	</node>
 	<node name="Sqrt" category="Math">

@@ -1,5 +1,5 @@
 {
-    "//can't add these due to circular call to overriden new() in thread_local init": {
+    "//can't add these due to circular call to overridden new() in thread_local init": {
         "core/os/memory.cpp": [
             "void *Memory::alloc_static(",
             "void *Memory::realloc_static(",

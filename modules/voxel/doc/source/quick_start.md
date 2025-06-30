@@ -33,7 +33,7 @@ Before each example, you may do the following:
 ### Blocky heightmap terrain using `VoxelTerrain`
 
 1) Add a `VoxelTerrain` node, and adjust the following settings in the inspector:
-	
+
 1.1) Under the `materials` section, create a new `StandardMaterial3D` in the first slot. Click that material, and in the "Vertex Color" category, enable "Use as Albedo" (`vertex_color_as_albedo`). This will give the blocks better shading.
 
 1.2) Click on the `Generator` property: create a new `VoxelGeneratorNoise2D`. Then click on it and set its `Channel` parameter to `TYPE`. Also make sure the `noise` property is assigned to a noise resource.
@@ -46,7 +46,7 @@ Before each example, you may do the following:
 
 3) Add a `VoxelViewer` node under the camera. When the game runs, this node will tell the voxel engine where to generate voxels, as the camera moves around.
 
-4) Make sure your scene contains an environment and a light, so you can see the terrain in-game (by default the default lighting you see in editor will not apply in game, leaving everything unlit and grey). 
+4) Make sure your scene contains an environment and a light, so you can see the terrain in-game (by default the default lighting you see in editor will not apply in game, leaving everything unlit and gray).
 
 ![Screenshot of the preview environment menu](images/add_environment_to_scene.webp)
 
@@ -54,7 +54,7 @@ Before each example, you may do the following:
 
 ![Screenshot of blocky terrain from the quick start guide](images/quickstart_blocky_terrain_result.webp)
 
-You can modify the shape of the terrain by changing noise parameters under the generator. 
+You can modify the shape of the terrain by changing noise parameters under the generator.
 
 `VoxelMesherBlocky` allows to specify way more than just white cubes: you can define multiple models, with varying textures, materials and shapes, in order to compose a world like you would see in Minecraft for example.
 
@@ -73,13 +73,13 @@ You can modify the shape of the terrain by changing noise parameters under the g
 
 4) Add a `VoxelViewer` node under the camera. When the game runs, this node will tell the voxel engine where to generate voxels, as the camera moves around.
 
-5) Make sure your scene contains an environment and a light, so you can see the terrain in-game (by default the default lighting you see in editor will not apply in game, leaving everything unlit and grey). 
+5) Make sure your scene contains an environment and a light, so you can see the terrain in-game (by default the default lighting you see in editor will not apply in game, leaving everything unlit and gray).
 
 6) Play the scene: you should see the terrain appear!
 
 ![Screenshot of smooth terrain from the quick start guide](images/quickstart_smooth_lod_terrain_result.webp)
 
-You can modify the shape of the terrain by changing noise parameters under the generator. 
+You can modify the shape of the terrain by changing noise parameters under the generator.
 
 Painting textures from voxel data is possible, but it's also common to use procedural texturing using a shader.
 
@@ -95,13 +95,12 @@ Here are some reasons why you might not need it:
 
 - "I need destructible models": voxels in this module are "blobby" or "blocky", they can't represent every possible shape. If you need something precise, you could try more specialized alternatives like CSG nodes or precomputed destruction.
 
-- "I need a terrain with overhangs and caves": do you need it to be editable by players? If not, then you can model the terrain in any 3D modeller and optimize it up-front. You can mix heightmaps + 3D models. You might rely on voxels to make the authoring process easier, but in the exported game you will only need the meshes and static colliders.
+- "I need a terrain with overhangs and caves": do you need it to be editable by players? If not, then you can model the terrain in any 3D modeler and optimize it up-front. You can mix heightmaps + 3D models. You might rely on voxels to make the authoring process easier, but in the exported game you will only need the meshes and static colliders.
 
 - "I need to make a planet": you can make more efficient planets by stitching 6 spherified heightmaps together. Take a cube where each face is a heightmap, then puff that cube to turn it into a sphere.
 
 - "I want to make Minecraft but different and with my own blocks": Minecraft is a lot more than voxels. While the module can replicate basic functionalities, it is more general/low-level than this at the moment, so it doesn't provide a lot of features found in Minecraft out of the box. Alternatively, you could create a mod with [Minetest](https://www.minetest.net/), which is a more specialized engine.
 
-- "I want super small voxels like Teardown or John Lin's sandbox": these games use a very different tech than this module uses. They raytrace voxels in real-time. This module instead uses a classic polygon-based approach. While you could in theory make terrain that looks like that, it won't perform well. 
+- "I want super small voxels like Teardown or John Lin's sandbox": these games use a very different tech than this module uses. They raytrace voxels in real-time. This module instead uses a classic polygon-based approach. While you could in theory make terrain that looks like that, it won't perform well.
 
 - "GridMap sucks": how large do you want your grid to be? How complex are your models? This module's blocky mesher is geared towards very large grids with simple geometry, so it has its own restrictions.
-

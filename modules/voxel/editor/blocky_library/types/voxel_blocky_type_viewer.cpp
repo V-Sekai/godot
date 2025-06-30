@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_blocky_type_viewer.cpp                                          */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_blocky_type_viewer.h"
 #include "../../../constants/voxel_string_names.h"
 #include "../../../util/godot/classes/label.h"
@@ -25,22 +55,26 @@ VoxelBlockyTypeViewer::VoxelBlockyTypeViewer() {
 void VoxelBlockyTypeViewer::set_combination_selector(VoxelBlockyTypeAttributeCombinationSelector *selector) {
 	// Supposed to be setup only once.
 	ZN_ASSERT_RETURN(_combination_selector == nullptr);
-	selector->connect(VoxelBlockyTypeAttributeCombinationSelector::SIGNAL_COMBINATION_CHANGED,
-			callable_mp(this, &VoxelBlockyTypeViewer::_on_combination_changed));
+	selector->connect(
+			VoxelBlockyTypeAttributeCombinationSelector::SIGNAL_COMBINATION_CHANGED,
+			callable_mp(this, &VoxelBlockyTypeViewer::_on_combination_changed)
+	);
 	_combination_selector = selector;
 }
 
 void VoxelBlockyTypeViewer::set_type(Ref<VoxelBlockyType> type) {
 	if (_type.is_valid()) {
 		_type->disconnect(
-				VoxelStringNames::get_singleton().changed, callable_mp(this, &VoxelBlockyTypeViewer::_on_type_changed));
+				VoxelStringNames::get_singleton().changed, callable_mp(this, &VoxelBlockyTypeViewer::_on_type_changed)
+		);
 	}
 
 	_type = type;
 
 	if (_type.is_valid()) {
 		_type->connect(
-				VoxelStringNames::get_singleton().changed, callable_mp(this, &VoxelBlockyTypeViewer::_on_type_changed));
+				VoxelStringNames::get_singleton().changed, callable_mp(this, &VoxelBlockyTypeViewer::_on_type_changed)
+		);
 	}
 
 	update_model();

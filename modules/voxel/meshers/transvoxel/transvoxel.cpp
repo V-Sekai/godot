@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  transvoxel.cpp                                                        */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "transvoxel.h"
 #include "../../constants/cube_tables.h"
 #include "../../storage/mixel4.h"
@@ -363,7 +393,7 @@ void build_regular_mesh(
 					const float sample1 = cell_samples_sdf[v1]; // called d1 in the paper
 
 #ifdef DEBUG_ENABLED
-					// TODO Zero-division is not mentionned in the paper?? (never happens tho)
+					// TODO Zero-division is not mentioned in the paper?? (never happens tho)
 					ZN_ASSERT_RETURN(sample1 != sample0);
 					ZN_ASSERT_RETURN(sample1 != 0 || sample0 != 0);
 #endif
@@ -390,7 +420,7 @@ void build_regular_mesh(
 						const uint8_t reuse_dir = (edge_code_high >> 4) & 0xf;
 						const uint8_t reuse_vertex_index = edge_code_high & 0xf;
 
-						// TODO Some re-use opportunities are missed on negative sides of the block,
+						// TODO Some reuse opportunities are missed on negative sides of the block,
 						// but I don't really know how to fix it...
 						// You can check by "shaking" every vertex randomly in a shader based on its index,
 						// you will see vertices touching the -X, -Y or -Z sides of the block aren't connected
@@ -483,11 +513,11 @@ void build_regular_mesh(
 						// It's not a common case so it shouldn't be too bad
 						// (unless you do a lot of grid-aligned shapes?).
 
-						// What do we do if the vertex we would re-use is on a cell that had no triangulation?
+						// What do we do if the vertex we would reuse is on a cell that had no triangulation?
 						// The previous cell might have had all corners of the same sign, except one being 0.
 						// Forcing `present=false` seems to fix cases of holes that would be caused by that.
 						// Resetting the cache before processing each deck also works, but is slightly slower.
-						// Otherwise the code would try to re-use a vertex that hasn't been written as re-usable,
+						// Otherwise the code would try to reuse a vertex that hasn't been written as reusable,
 						// so it picks up some garbage from earlier decks.
 #ifdef VOXEL_TRANSVOXEL_REUSE_VERTEX_ON_COINCIDENT_CASES
 						// A 3-bit direction code leading to the proper cell can easily be obtained by
@@ -760,7 +790,7 @@ void build_transition_mesh(
 	// const unsigned int n011 = n010 + n001;
 	// const unsigned int n111 = n100 + n010 + n001;
 
-	// Using temporay locals otherwise clang-format makes it hard to read
+	// Using temporary locals otherwise clang-format makes it hard to read
 	const Vector3i ftb_000 = face_to_block(0, 0, 0, direction, block_size_with_padding);
 	const Vector3i ftb_x00 = face_to_block(1, 0, 0, direction, block_size_with_padding);
 	const Vector3i ftb_0y0 = face_to_block(0, 1, 0, direction, block_size_with_padding);
@@ -927,7 +957,7 @@ void build_transition_mesh(
 
 				const float sample_a = cell_samples[index_vertex_a]; // d0 and d1 in the paper
 				const float sample_b = cell_samples[index_vertex_b];
-				// TODO Zero-division is not mentionned in the paper??
+				// TODO Zero-division is not mentioned in the paper??
 				ZN_ASSERT_RETURN(sample_a != sample_b);
 				ZN_ASSERT_RETURN(sample_a != 0 || sample_b != 0);
 
@@ -1010,7 +1040,7 @@ void build_transition_mesh(
 						material_processor.on_vertex(index_vertex_a, index_vertex_b, t1);
 
 						if (reuse_direction & 0x8) {
-							// The vertex can be re-used later
+							// The vertex can be reused later
 							ReuseTransitionCell &r = cache.get_reuse_cell_2d(fx, fy);
 							r.vertices[vertex_index_to_reuse_or_create] = cell_vertex_indices[vertex_index];
 						}
@@ -1063,7 +1093,7 @@ void build_transition_mesh(
 
 						material_processor.on_vertex(index_vertex_a, index_vertex_b, 1.f - t);
 
-						// We are on a corner so the vertex will be re-usable later
+						// We are on a corner so the vertex will be reusable later
 						ReuseTransitionCell &r = cache.get_reuse_cell_2d(fx, fy);
 						r.vertices[vertex_index_to_reuse_or_create] = cell_vertex_indices[vertex_index];
 					}
@@ -1116,7 +1146,7 @@ Span<const T> get_or_decompress_channel(const VoxelBuffer &voxels, StdVector<T> 
 // (8-bit, scaled SDF, or slow gradients).
 // This causes two symptoms:
 // - Degenerate triangles. Potentially bad for systems using the mesh later (MeshOptimizer, physics)
-// - Glitched triangles. Wrong vertices get re-used.
+// - Glitched triangles. Wrong vertices get reused.
 //   Needs closer investigation to know why, maybe related to case selection
 //
 // See also https://github.com/zeux/meshoptimizer/issues/312
@@ -1473,7 +1503,7 @@ void build_transition_mesh(
 			} else {
 				// From this point we know SDF is not uniform so it has an allocated buffer,
 				// but it might have uniform indices or weights so we need to ensure there is a backing buffer.
-				// TODO Is it worth doing conditionnals instead during meshing?
+				// TODO Is it worth doing conditionals instead during meshing?
 				indices_data = materials::mixel4::get_texture_indices_data(
 						voxels, VoxelBuffer::CHANNEL_INDICES, default_texture_indices_data
 				);

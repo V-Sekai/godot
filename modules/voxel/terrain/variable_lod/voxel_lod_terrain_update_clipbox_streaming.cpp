@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_lod_terrain_update_clipbox_streaming.cpp                        */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_lod_terrain_update_clipbox_streaming.h"
 #include "../../util/containers/std_unordered_set.h"
 #include "../../util/math/conv.h"
@@ -469,9 +499,9 @@ void unreference_data_block_from_loading_lists(
 		loading_blocks.erase(loading_block_it);
 
 		// Also remove from blocks about to be added to the loading queue
-		VoxelLodTerrainUpdateData::BlockLocation bloc{ bpos, static_cast<uint8_t>(lod_index) };
+		VoxelLodTerrainUpdateData::BlockLocation block{ bpos, static_cast<uint8_t>(lod_index) };
 		for (size_t i = 0; i < data_blocks_to_load.size(); ++i) {
-			if (data_blocks_to_load[i].loc == bloc) {
+			if (data_blocks_to_load[i].loc == block) {
 				data_blocks_to_load[i] = data_blocks_to_load.back();
 				data_blocks_to_load.pop_back();
 				// We don't touch the cancellation token since tasks haven't been spawned yet for
@@ -623,7 +653,7 @@ void process_data_blocks_sliding_box(
 			// highlight why it was there.
 			// Was originally added in 17c6b1f557c5abc447cb62c200afcff1298fadff
 			// Perhaps that's in case there was updates pending in the list before we get here, so there needs to be
-			// some way of cancelling them? But with clipbox logic and multiple viewers, that no longer works
+			// some way of canceling them? But with clipbox logic and multiple viewers, that no longer works
 #if 0
 			// TODO Why do we do this here? Sounds like it should be done in the mesh clipbox logic
 			{
@@ -1255,23 +1285,23 @@ void process_loaded_data_blocks_trigger_meshing(
 
 	const int data_to_mesh_shift = mesh_block_size_po2 - data.get_block_size_po2();
 
-	for (VoxelLodTerrainUpdateData::BlockLocation bloc : tls_loaded_blocks) {
+	for (VoxelLodTerrainUpdateData::BlockLocation block : tls_loaded_blocks) {
 		// ZN_PROFILE_SCOPE_NAMED("Block");
 		// Multiple mesh blocks may be interested because of neighbor dependencies.
 
 		// We could group loaded blocks by LOD so we could compute a few things less times?
-		const int lod_data_block_size_po2 = data.get_block_size_po2() + bloc.lod;
+		const int lod_data_block_size_po2 = data.get_block_size_po2() + block.lod;
 		const Box3i bounds_in_data_blocks =
 				Box3i(bounds_in_voxels.position >> lod_data_block_size_po2,
 					  bounds_in_voxels.size >> lod_data_block_size_po2);
 
 		const Box3i data_neighboring =
-				Box3i(bloc.position - Vector3i(1, 1, 1), Vector3i(3, 3, 3)).clipped(bounds_in_data_blocks);
+				Box3i(block.position - Vector3i(1, 1, 1), Vector3i(3, 3, 3)).clipped(bounds_in_data_blocks);
 
-		StdUnorderedSet<Vector3i> &checked_mesh_blocks = checked_mesh_blocks_per_lod[bloc.lod];
-		VoxelLodTerrainUpdateData::Lod &lod = state.lods[bloc.lod];
+		StdUnorderedSet<Vector3i> &checked_mesh_blocks = checked_mesh_blocks_per_lod[block.lod];
+		VoxelLodTerrainUpdateData::Lod &lod = state.lods[block.lod];
 
-		const unsigned int lod_index = bloc.lod;
+		const unsigned int lod_index = block.lod;
 
 		data_neighboring.for_each_cell([data_to_mesh_shift,
 										&checked_mesh_blocks,

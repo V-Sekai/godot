@@ -4,19 +4,19 @@ Inherits: [VoxelBlockyModel](VoxelBlockyModel.md)
 
 Generates a model based on a custom mesh.
 
-## Description: 
+## Description:
 
 [VoxelMesherBlocky](VoxelMesherBlocky.md) does not require models to be cubes. Ultimately, model visuals are all meshes. This is the most versatile option to make a model. The workflow is to make these models in a 3D editor such as Blender, making sure they are confined in a box going from (0,0) to (1,1). Textures are assigned with classic UV-mapping.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                                                       | Default 
+Type                                                                      | Name                                                       | Default
 ------------------------------------------------------------------------- | ---------------------------------------------------------- | --------
-[Mesh](https://docs.godotengine.org/en/stable/classes/class_mesh.html)    | [mesh](#i_mesh)                                            |         
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [mesh_ortho_rotation_index](#i_mesh_ortho_rotation_index)  | 0       
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [side_cutout_enabled](#i_side_cutout_enabled)              | false   
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [side_vertex_tolerance](#i_side_vertex_tolerance)          | 0.001   
+[Mesh](https://docs.godotengine.org/en/stable/classes/class_mesh.html)    | [mesh](#i_mesh)                                            |
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [mesh_ortho_rotation_index](#i_mesh_ortho_rotation_index)  | 0
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [side_cutout_enabled](#i_side_cutout_enabled)              | false
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [side_vertex_tolerance](#i_side_vertex_tolerance)          | 0.001
 <p></p>
 
 ## Property Descriptions

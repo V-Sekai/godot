@@ -4,14 +4,14 @@ Inherits: [VoxelGenerator](VoxelGenerator.md)
 
 Voxel generator producing an infinite flat ground.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                         | Default         
+Type                                                                      | Name                         | Default
 ------------------------------------------------------------------------- | ---------------------------- | ----------------
-[ChannelId](VoxelBuffer.md#enumerations)                                  | [channel](#i_channel)        | CHANNEL_SDF (1) 
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [height](#i_height)          | 0.0             
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [voxel_type](#i_voxel_type)  | 1               
+[ChannelId](VoxelBuffer.md#enumerations)                                  | [channel](#i_channel)        | CHANNEL_SDF (1)
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [height](#i_height)          | 0.0
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [voxel_type](#i_voxel_type)  | 1
 <p></p>
 
 ## Property Descriptions

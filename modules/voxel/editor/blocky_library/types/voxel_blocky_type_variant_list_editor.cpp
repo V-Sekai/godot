@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_blocky_type_variant_list_editor.cpp                             */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_blocky_type_variant_list_editor.h"
 #include "../../../constants/voxel_string_names.h"
 #include "../../../util/godot/classes/color_rect.h"
@@ -24,15 +54,19 @@ VoxelBlockyTypeVariantListEditor::VoxelBlockyTypeVariantListEditor() {
 
 void VoxelBlockyTypeVariantListEditor::set_type(Ref<VoxelBlockyType> type) {
 	if (_type.is_valid()) {
-		_type->disconnect(VoxelStringNames::get_singleton().changed,
-				callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_type_changed));
+		_type->disconnect(
+				VoxelStringNames::get_singleton().changed,
+				callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_type_changed)
+		);
 	}
 
 	_type = type;
 
 	if (_type.is_valid()) {
-		_type->connect(VoxelStringNames::get_singleton().changed,
-				callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_type_changed));
+		_type->connect(
+				VoxelStringNames::get_singleton().changed,
+				callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_type_changed)
+		);
 	}
 
 	update_list();
@@ -89,10 +123,13 @@ void VoxelBlockyTypeVariantListEditor::update_list() {
 		// buttons to (hopefully) come back where they were
 		ed.resource_picker->set_edited_resource(model);
 		ed.resource_picker->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-		ed.resource_picker->connect("resource_changed",
-				callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_model_changed).bind(editor_index));
 		ed.resource_picker->connect(
-				"resource_selected", callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_model_picker_selected));
+				"resource_changed",
+				callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_model_changed).bind(editor_index)
+		);
+		ed.resource_picker->connect(
+				"resource_selected", callable_mp(this, &VoxelBlockyTypeVariantListEditor::_on_model_picker_selected)
+		);
 
 		container.add_child(ed.key_label);
 		container.add_child(ed.resource_picker);

@@ -1,5 +1,34 @@
-#ifndef ZN_SPATIAL_LOCK_3D_H
-#define ZN_SPATIAL_LOCK_3D_H
+/**************************************************************************/
+/*  spatial_lock_3d.h                                                     */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
 
 #include "../containers/std_vector.h"
 #include "../math/box_bounds_3i.h"
@@ -48,11 +77,14 @@ public:
 	bool try_lock_read(const BoxBounds3i &box) {
 		_boxes_mutex.lock();
 		if (can_lock_for_read(box)) {
-			_boxes.push_back(Box{ box, MODE_READ,
+			_boxes.push_back(
+					Box{ box,
+						 MODE_READ,
 #ifdef ZN_SPATIAL_LOCK_3D_CHECKS
-					Thread::get_caller_id()
+						 Thread::get_caller_id()
 #endif
-			});
+					}
+			);
 			_boxes_mutex.unlock();
 			return true;
 		} else {
@@ -74,11 +106,14 @@ public:
 	bool try_lock_write(const BoxBounds3i &box) {
 		_boxes_mutex.lock();
 		if (can_lock_for_write(box)) {
-			_boxes.push_back(Box{ box, MODE_WRITE,
+			_boxes.push_back(
+					Box{ box,
+						 MODE_WRITE,
 #ifdef ZN_SPATIAL_LOCK_3D_CHECKS
-					Thread::get_caller_id()
+						 Thread::get_caller_id()
 #endif
-			});
+					}
+			);
 			_boxes_mutex.unlock();
 			return true;
 		} else {
@@ -144,8 +179,9 @@ private:
 			//   This is a deadlock.
 			// Note: this is not true if threads only lock for reading, but if we didn't ever write we'd not use locks.
 			// Note: this is also not true if threads use `try_lock` instead!
-			ZN_ASSERT_RETURN_V_MSG(existing_box.thread_id != thread_id, false,
-					"Locking two areas from the same threads is not allowed");
+			ZN_ASSERT_RETURN_V_MSG(
+					existing_box.thread_id != thread_id, false, "Locking two areas from the same threads is not allowed"
+			);
 #endif
 			if (existing_box.bounds.intersects(box) && existing_box.mode == MODE_WRITE) {
 				return false;
@@ -164,8 +200,9 @@ private:
 			const Box &existing_box = _boxes[i];
 
 #ifdef ZN_SPATIAL_LOCK_3D_CHECKS
-			ZN_ASSERT_RETURN_V_MSG(existing_box.thread_id != thread_id, false,
-					"Locking two areas from the same threads is not allowed");
+			ZN_ASSERT_RETURN_V_MSG(
+					existing_box.thread_id != thread_id, false, "Locking two areas from the same threads is not allowed"
+			);
 #endif
 			if (existing_box.bounds.intersects(box)) {
 				return false;
@@ -193,11 +230,9 @@ private:
 	// So we lock it even in `try_*` methods. The long-period locking states are the boxes themselves.
 	// Also it is not a recursive mutex for performance. Do not lock it again once you successfully locked it.
 	mutable ShortLock _boxes_mutex;
-	// This semaphore is waited for when a lock fails. It is posted everytime a box is unlocked, so any thread
+	// This semaphore is waited for when a lock fails. It is posted every time a box is unlocked, so any thread
 	// waiting for it may retry locking their box.
 	Semaphore _semaphore;
 };
 
 } // namespace zylann
-
-#endif // ZN_SPATIAL_LOCK_3D_H

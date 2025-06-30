@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  noise_tests.cpp                                                       */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "../../util/godot/classes/image.h"
 #include "../../util/godot/core/array.h"
 #include "../../util/godot/core/print_string.h"
@@ -229,8 +259,11 @@ void test_noise(String name, int tests, F2 noise_func_2d, F3 noise_func_3d) {
 
 void test_fnl_noise(fast_noise_lite::FastNoiseLite &fnl, String name, int tests) {
 	test_noise(
-			name, tests, [&fnl](double x, double y) { return fnl.GetNoise(x, y); },
-			[&fnl](double x, double y, double z) { return fnl.GetNoise(x, y, z); });
+			name,
+			tests,
+			[&fnl](double x, double y) { return fnl.GetNoise(x, y); },
+			[&fnl](double x, double y, double z) { return fnl.GetNoise(x, y, z); }
+	);
 }
 
 void test_noises() {
@@ -282,7 +315,8 @@ void test_noises() {
 	for (int cell_distance_function = 0; cell_distance_function < 4; ++cell_distance_function) {
 		for (int cell_return_type = 0; cell_return_type < 7; ++cell_return_type) {
 			fn.SetCellularDistanceFunction(
-					static_cast<fast_noise_lite::FastNoiseLite::CellularDistanceFunction>(cell_distance_function));
+					static_cast<fast_noise_lite::FastNoiseLite::CellularDistanceFunction>(cell_distance_function)
+			);
 			fn.SetCellularReturnType(static_cast<fast_noise_lite::FastNoiseLite::CellularReturnType>(cell_return_type));
 
 			const char *cell_distance_function_name = cell_distance_function_names[cell_distance_function];

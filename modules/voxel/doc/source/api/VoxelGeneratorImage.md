@@ -4,20 +4,20 @@ Inherits: [VoxelGeneratorHeightmap](VoxelGeneratorHeightmap.md)
 
 Voxel generator producing a heightmap-based shape using an image.
 
-## Description: 
+## Description:
 
 Uses the red channel of an image to generate a heightmap, such that the top left corner is centered on the world origin. The image will repeat if terrain generates beyond its size.
 
 Note: values in the image are read using `get_pixel` and are assumed to be between 0 and 1 (normalized). These values will be transformed by [VoxelGeneratorHeightmap.height_start](VoxelGeneratorHeightmap.md#i_height_start) and [VoxelGeneratorHeightmap.height_range](VoxelGeneratorHeightmap.md#i_height_range).
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                             | Default 
+Type                                                                      | Name                             | Default
 ------------------------------------------------------------------------- | -------------------------------- | --------
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [blur_enabled](#i_blur_enabled)  | false   
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [height_range](#i_height_range)  | 200.0   
-[Image](https://docs.godotengine.org/en/stable/classes/class_image.html)  | [image](#i_image)                |         
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)    | [blur_enabled](#i_blur_enabled)  | false
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [height_range](#i_height_range)  | 200.0
+[Image](https://docs.godotengine.org/en/stable/classes/class_image.html)  | [image](#i_image)                |
 <p></p>
 
 ## Property Descriptions

@@ -54,8 +54,8 @@ jobs:
             # TODO Had to turn off warning as errors, even though it worked in the past.
             # Downgrading warnings to `all` or `moderate` did not fix it.
             # Something in Godot 4.2, or in the version of GCC in the buildroot, has changed causing this to happen:
-            # drivers/gles3/storage/texture_storage.cpp:1513:31: error: 'void* memset(void*, int, size_t)' 
-            #     specified bound between 18446744065119617024 and 18446744073709551612 exceeds maximum object size 
+            # drivers/gles3/storage/texture_storage.cpp:1513:31: error: 'void* memset(void*, int, size_t)'
+            #     specified bound between 18446744065119617024 and 18446744073709551612 exceeds maximum object size
             #     [-Werror=stringop-overflow=]
             #     memset(v_offsets, 0, sizeof(int) * base_size);
             #     ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -185,9 +185,9 @@ jobs:
       # We should always be explicit with our flags usage here since it's gonna be sure to always set those flags
       - name: Compilation
         env:
-          # `SCONS_CACHE` and `SCONS_CACHE_LIMIT` became deprecated since 
+          # `SCONS_CACHE` and `SCONS_CACHE_LIMIT` became deprecated since
           # https://github.com/godotengine/godot/commit/0e4a4e3c4d602691ce1b4fc6a721c5c637ead57f
-          # However since we are also building versions preceding that change, 
+          # However since we are also building versions preceding that change,
           # we have to keep them in addition to the new parameters
           SCONS_CACHE: ${{github.workspace}}/.scons_cache/
           # The new way uses a different unit.
@@ -203,4 +203,3 @@ jobs:
         with:
           name: ${{matrix.executable_name}}
           path: bin/${{matrix.executable_name}}
-

@@ -4,7 +4,6 @@
 # To build as a module, see `SCsub`.
 
 import os
-import sys
 
 import common
 import voxel_version
@@ -37,12 +36,12 @@ def configure_warnings(env):
             "/wd4714",  # C4714 (function marked as __forceinline not inlined)
             "/wd4820",  # C4820 (padding added after construct)
         ]
-        
+
         env.Append(CXXFLAGS=["/W3"])
         # C4458 is like -Wshadow. Part of /W4 but let's apply it for the default /W3 too.
         env.AppendUnique(CXXFLAGS=["/w34458"] + disabled_warnings)
-    
-    else: # GCC, Clang
+
+    else:  # GCC, Clang
         common_warnings = []
 
         if is_using_gcc(env):
@@ -59,12 +58,13 @@ def configure_warnings(env):
         # if env["werror"]:
         #     env.AppendUnique(CXXFLAGS=["-Werror"])
 
+
 voxel_version.generate_version_header(False)
 
 # TODO Enhancement: not sure how to provide this as a SCons option since we get our environment *by running GodotCpp*...
-#env_vars.Add(PathVariable("godot_cpp_path", "Path to the GodotCpp library source code", None, PathVariable.PathIsDir))
+# env_vars.Add(PathVariable("godot_cpp_path", "Path to the GodotCpp library source code", None, PathVariable.PathIsDir))
 # TODO GDX: Have GodotCpp in thirdparty/ eventually
-godot_cpp_path = os.environ.get("GODOT_CPP_PATH", "D:/PROJETS/INFO/GODOT/Engine/godot_cpp_fork")
+godot_cpp_path = os.environ.get("GODOT_CPP_PATH", "D:/PROJECTS/INFO/GODOT/Engine/godot_cpp_fork")
 
 # Dependency on GodotCpp.
 # Use the same cross-platform configurations.
@@ -79,17 +79,19 @@ env = SConscript(godot_cpp_path + "/SConstruct")
 
 common.register_scons_options(env, True)
 
-env.Append(CPPDEFINES=[
-	# Tell engine-agnostic code we are using Godot Engine as an extension
-	"ZN_GODOT_EXTENSION"
-])
+env.Append(
+    CPPDEFINES=[
+        # Tell engine-agnostic code we are using Godot Engine as an extension
+        "ZN_GODOT_EXTENSION"
+    ]
+)
 
 # We don't enable warnings on thirdparty libs
 thirdparty_env = env.Clone()
 
 configure_warnings(env)
 
-is_editor_build = (env["target"] == "editor")
+is_editor_build = env["target"] == "editor"
 
 sources = common.get_sources(env, is_editor_build)
 
@@ -100,24 +102,20 @@ if env["voxel_sqlite"]:
     # But doing this requires specific code from Godot's build system, and no idea what code to use with GodotCpp...
     # Ideally I'd like to use the same code for both targets.
     # FastNoise2 has the same problem!
-    sources += [
-        "thirdparty/sqlite/sqlite3.c"
-    ]
+    sources += ["thirdparty/sqlite/sqlite3.c"]
 
 sources += [
-	"util/thread/godot_thread_helper.cpp",
+    "util/thread/godot_thread_helper.cpp",
 ]
 
 sources += [
-	# GodotCpp doesn't come with RandomPCG.
-	thirdparty_env.SharedObject("util/godot/core/pcg.cpp"),
-	thirdparty_env.SharedObject("util/godot/core/random_pcg.cpp")
+    # GodotCpp doesn't come with RandomPCG.
+    thirdparty_env.SharedObject("util/godot/core/pcg.cpp"),
+    thirdparty_env.SharedObject("util/godot/core/random_pcg.cpp"),
 ]
 
 if is_editor_build:
-    sources += [
-        "util/godot/editor_scale.cpp"
-    ]
+    sources += ["util/godot/editor_scale.cpp"]
 
     try:
         doc_data = env.GodotCPPDocData("doc_data.gen.cpp", source=Glob("doc/classes/*.xml"))
@@ -128,24 +126,11 @@ if is_editor_build:
 
 if env["platform"] == "macos":
     library = env.SharedLibrary(
-        "{}/{}{}.framework/{}{}".format(
-            BIN_FOLDER,
-            LIB_NAME,
-            env['suffix'],
-            LIB_NAME,
-            env['suffix']
-        ),
-        source = sources
+        "{}/{}{}.framework/{}{}".format(BIN_FOLDER, LIB_NAME, env["suffix"], LIB_NAME, env["suffix"]), source=sources
     )
 else:
     library = env.SharedLibrary(
-        "{}/{}{}{}".format(
-            BIN_FOLDER,
-            LIB_NAME,
-            env["suffix"],
-            env["SHLIBSUFFIX"]
-        ),
-        source = sources
+        "{}/{}{}{}".format(BIN_FOLDER, LIB_NAME, env["suffix"], env["SHLIBSUFFIX"]), source=sources
     )
 
 Default(library)

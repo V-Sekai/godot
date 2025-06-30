@@ -1,5 +1,34 @@
-#ifndef VOXEL_MESH_SDF_H
-#define VOXEL_MESH_SDF_H
+/**************************************************************************/
+/*  mesh_sdf.h                                                            */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
 
 #include "../storage/voxel_buffer.h"
 #include "../util/containers/span.h"
@@ -96,7 +125,7 @@ void partition_triangles(
 );
 
 // For each chunk, finds which other non-empty chunks are close to it. The amount of subvidisions should be carefully
-// chosen: too low will cause less triangles to be skipped, too high will make partitionning slower.
+// chosen: too low will cause less triangles to be skipped, too high will make partitioning slower.
 // This is necessary for functions using ChunkGrid.
 void compute_near_chunks(ChunkGrid &chunk_grid);
 
@@ -111,7 +140,7 @@ void generate_mesh_sdf_naive(
 		const Vector3f max_pos
 );
 
-// Compute the SDF faster by partitionning triangles, while retaining the same accuracy as if all triangles
+// Compute the SDF faster by partitioning triangles, while retaining the same accuracy as if all triangles
 // were checked. With Suzanne mesh subdivided once with 3900 triangles and `subdiv = 32`, it's about 8 times fasterthan
 // checking every triangle on every cell.
 void generate_mesh_sdf_partitioned(
@@ -182,5 +211,3 @@ void generate_mesh_sdf_approx_floodfill(
 );
 
 } // namespace zylann::voxel::mesh_sdf
-
-#endif // VOXEL_MESH_SDF_H

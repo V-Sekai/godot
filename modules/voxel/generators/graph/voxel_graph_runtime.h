@@ -1,5 +1,34 @@
-#ifndef VOXEL_GRAPH_RUNTIME_H
-#define VOXEL_GRAPH_RUNTIME_H
+/**************************************************************************/
+/*  voxel_graph_runtime.h                                                 */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
 
 #include "../../util/containers/fixed_array.h"
 #include "../../util/containers/span.h"
@@ -55,7 +84,7 @@ public:
 	struct Buffer {
 		// Access to buffer data associated with this port. Must contain at least `size` values.
 		// This data is not owned by the port. Multiple ports can use the same buffer.
-		// TODO Consider wrapping this in debug mode. It is one of the rare cases I didnt do it.
+		// TODO Consider wrapping this in debug mode. It is one of the rare cases I didn't do it.
 		// I spent an hour debugging memory corruption which originated from an overrun while accessing this data.
 		float *data = nullptr;
 		// This size is not the allocated count, it's an available count below capacity.
@@ -75,7 +104,7 @@ public:
 		uint16_t buffer_data_index;
 	};
 
-	// Contains a list of adresses to the operations to execute for a given query.
+	// Contains a list of addresses to the operations to execute for a given query.
 	// If no local optimization is done, this can remain the same for any position lists.
 	// If local optimization is used, it may be recomputed before each query.
 	struct ExecutionMap {
@@ -90,7 +119,7 @@ public:
 		// Stores node IDs referring to the user-facing graph.
 		// Each index corresponds to operation indices.
 		// The same node can appear twice, because sometimes a user-facing node compiles as multiple nodes.
-		// It can also include some nodes not explicitely present in the user graph (like auto-inputs).
+		// It can also include some nodes not explicitly present in the user graph (like auto-inputs).
 		StdVector<uint32_t> debug_nodes;
 
 		// Every operation before this index in the `operations` list will only depend on inputs tagged as "outer
@@ -117,7 +146,7 @@ public:
 	};
 
 	// Contains the data the program will modify while it runs.
-	// The same state can be re-used with multiple programs, but it should be prepared before doing that.
+	// The same state can be reused with multiple programs, but it should be prepared before doing that.
 	class State {
 	public:
 		~State() {
@@ -209,7 +238,7 @@ public:
 
 	// Call this before you use a state with generation functions.
 	// You need to call it once, until you want to use a different graph, buffer size or buffer count.
-	// If none of these change, you can keep re-using it.
+	// If none of these change, you can keep reusing it.
 	void prepare_state(State &state, unsigned int buffer_size, bool with_profiling) const;
 
 	// Convenience for set generation with only one value
@@ -520,7 +549,7 @@ private:
 		// Maximum amount of buffers this program will need to do a full run.
 		// Buffers are needed to hold values of arguments and outputs for each operation.
 		unsigned int buffer_count = 0;
-		// Maximum amount of buffer datas this program will need to do a full run.
+		// Maximum amount of buffer data this program will need to do a full run.
 		unsigned int buffer_data_count = 0;
 
 		// Associates a port from the expanded graph to its corresponding address within the compiled program.
@@ -563,5 +592,3 @@ private:
 };
 
 } // namespace zylann::voxel::pg
-
-#endif // VOXEL_GRAPH_RUNTIME_H

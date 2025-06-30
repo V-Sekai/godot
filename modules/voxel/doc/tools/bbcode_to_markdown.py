@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-# coding: utf-8 
+# coding: utf-8
 
 import textwrap
+
 import bbcode
 import markdown
 
@@ -9,14 +10,15 @@ import markdown
 
 
 def _extract_member_and_class(symbol, current_class_name):
-    member_dot_index = symbol.find('.')
+    member_dot_index = symbol.find(".")
     if member_dot_index != -1:
-        class_name = symbol[0 : member_dot_index]
-        member_name = symbol[member_dot_index + 1:]
+        class_name = symbol[0:member_dot_index]
+        member_name = symbol[member_dot_index + 1 :]
     else:
         if current_class_name is None:
-            raise Exception(bb_node.name + \
-                " BBCode was used without class name, but there is no current class in this context.")
+            raise Exception(
+                bb_node.name + " BBCode was used without class name, but there is no current class in this context."
+            )
         class_name = current_class_name
         member_name = symbol
     return class_name, member_name
@@ -45,10 +47,10 @@ def format_doc_bbcodes_for_markdown(text, multiline, fmt):
                 if in_codeblock:
                     # So far that's for displaying a list of things in descriptions that are shown in a table,
                     # so let's remove newlines and use commas.
-                    node_text = ' ' + ', '.join(node_text.strip().splitlines())
+                    node_text = " " + ", ".join(node_text.strip().splitlines())
                 else:
                     # Prevent unwanted empty spaces in case the node's text contains empty lines.
-                    node_text = ' '.join(without_empty_lines(node_text.splitlines()))
+                    node_text = " ".join(without_empty_lines(node_text.splitlines()))
 
             elif not in_codeblock:
                 # Godot's BBCode docs don't have an explicit way to define paragraphs.
@@ -58,10 +60,10 @@ def format_doc_bbcodes_for_markdown(text, multiline, fmt):
                 lines2 = []
                 for line in lines:
                     lines2.append(line)
-                    if line.strip() != "" and '\n' in line:
-                        lines2.append('\n')
-                node_text = ''.join(lines2)
-            
+                    if line.strip() != "" and "\n" in line:
+                        lines2.append("\n")
+                node_text = "".join(lines2)
+
             if url != None:
                 if url == "TEXT":
                     url = node_text
@@ -72,60 +74,60 @@ def format_doc_bbcodes_for_markdown(text, multiline, fmt):
                 out += node_text
 
         elif isinstance(bb_node, bbcode.NodeTag):
-            if bb_node.name == 'codeblock':
+            if bb_node.name == "codeblock":
                 if multiline:
-                    # Can't tell which language it is. Godot actually introduced a [codeblocks] tag which can contain 
+                    # Can't tell which language it is. Godot actually introduced a [codeblocks] tag which can contain
                     # a block for every script language Godot supports.
-                    out += '```'
+                    out += "```"
                 else:
-                    out += '`'
+                    out += "`"
                 in_codeblock = bb_node.is_opening()
 
             # Specific to voxel module
-            elif bb_node.name == 'graph_node':
+            elif bb_node.name == "graph_node":
                 out += "`{0}`".format(bb_node.get_first_option_key())
-            
-            elif bb_node.name == 'code':
-                out += '`'
+
+            elif bb_node.name == "code":
+                out += "`"
                 in_code = bb_node.is_opening()
 
-            elif bb_node.name == 'url':
+            elif bb_node.name == "url":
                 if bb_node.is_opening():
                     if bb_node.value == "":
                         url = "TEXT"
                     else:
                         url = bb_node.value
-            
-            elif bb_node.name == 'member':
+
+            elif bb_node.name == "member":
                 class_name, member_name = _extract_member_and_class(bb_node.get_first_option_key(), current_class_name)
                 out += fmt.make_property_link(class_name, member_name)
 
-            elif bb_node.name == 'method':
+            elif bb_node.name == "method":
                 class_name, member_name = _extract_member_and_class(bb_node.get_first_option_key(), current_class_name)
                 out += fmt.make_method_link(class_name, member_name)
 
-            elif bb_node.name == 'enum':
+            elif bb_node.name == "enum":
                 class_name, member_name = _extract_member_and_class(bb_node.get_first_option_key(), current_class_name)
                 out += fmt.make_enum_link(class_name, member_name)
 
-            elif bb_node.name == 'signal':
+            elif bb_node.name == "signal":
                 class_name, member_name = _extract_member_and_class(bb_node.get_first_option_key(), current_class_name)
                 out += fmt.make_signal_link(class_name, member_name)
 
-            elif bb_node.name == 'constant':
+            elif bb_node.name == "constant":
                 class_name, member_name = _extract_member_and_class(bb_node.get_first_option_key(), current_class_name)
                 out += fmt.make_constant_link(class_name, member_name)
 
-            elif bb_node.name == 'i':
+            elif bb_node.name == "i":
                 # Simple emphasis, usually italic
-                out += '*'
+                out += "*"
 
             elif in_code:
                 # Code can contain stuff that looks like unknown BBCodes.
                 out += bb_node.to_string()
 
             else:
-                # Class lookup: assuming name convention, 
+                # Class lookup: assuming name convention,
                 # otherwise we need a complete list of classes and it's a bit cumbersome to obtain
                 if bb_node.name[0].isupper():
                     out += fmt.make_type(bb_node.name)
@@ -146,7 +148,7 @@ def format_text_for_table(text, formatter):
         lines[i] = lines[i].strip()
 
     # Newlines aren't supported, but what to replace them with depends on BBCode
-    text = '\n'.join(lines)
+    text = "\n".join(lines)
 
     text = format_doc_bbcodes_for_markdown(text, False, formatter)
 
@@ -161,4 +163,3 @@ def format_text(text, formatter):
     # Note: we don't use Markdown's indentation syntax (which would break if it begins the text).
     md = md.strip()
     return md
-

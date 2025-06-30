@@ -5,37 +5,42 @@
 // The normal's direction is then clamped based on triangles associated with each value.
 // Then results are encoded in an output image.
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
-layout (set = 0, binding = 0, std430) restrict readonly buffer SDBuffer {
+layout(set = 0, binding = 0, std430) restrict readonly buffer SDBuffer {
 	// 4 values per index
 	float values[];
-} u_in_sd;
+}
+u_in_sd;
 
-layout (set = 0, binding = 1, std430) restrict readonly buffer MeshVertices {
+layout(set = 0, binding = 1, std430) restrict readonly buffer MeshVertices {
 	vec3 data[];
-} u_vertices;
+}
+u_vertices;
 
-layout (set = 0, binding = 2, std430) restrict readonly buffer MeshIndices {
+layout(set = 0, binding = 2, std430) restrict readonly buffer MeshIndices {
 	int data[];
-} u_indices;
+}
+u_indices;
 
-layout (set = 0, binding = 3, std430) restrict readonly buffer HitBuffer {
+layout(set = 0, binding = 3, std430) restrict readonly buffer HitBuffer {
 	// X, Y, Z is hit position (UNUSED)
 	// W is integer triangle index
 	vec4 positions[];
-} u_hits;
+}
+u_hits;
 
-layout (set = 0, binding = 4, std430) restrict readonly buffer Params {
+layout(set = 0, binding = 4, std430) restrict readonly buffer Params {
 	int tile_size_pixels;
 	int tiles_x;
 	// cos(max_deviation_angle)
 	float max_deviation_cosine;
 	// sin(max_deviation_angle)
 	float max_deviation_sine;
-} u_params;
+}
+u_params;
 
-layout (set = 0, binding = 5, rgba8ui) writeonly uniform uimage2D u_target_image;
+layout(set = 0, binding = 5, rgba8ui) writeonly uniform uimage2D u_target_image;
 
 vec3 get_triangle_normal(vec3 v0, vec3 v1, vec3 v2) {
 	vec3 e1 = v1 - v0;
@@ -82,12 +87,10 @@ void main() {
 	const ivec2 pixel_pos_in_tile = ivec2(gl_GlobalInvocationID.xy);
 	const int tile_index = int(gl_GlobalInvocationID.z);
 
-	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_params.tile_size_pixels 
-		+ tile_index * u_params.tile_size_pixels * u_params.tile_size_pixels;
+	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_params.tile_size_pixels + tile_index * u_params.tile_size_pixels * u_params.tile_size_pixels;
 
-	const ivec2 pixel_pos = 
-		ivec2(tile_index % u_params.tiles_x, tile_index / u_params.tiles_x)
-		* u_params.tile_size_pixels + pixel_pos_in_tile;
+	const ivec2 pixel_pos =
+			ivec2(tile_index % u_params.tiles_x, tile_index / u_params.tiles_x) * u_params.tile_size_pixels + pixel_pos_in_tile;
 
 	const int tri_index = int(u_hits.positions[index].w);
 	if (tri_index == -1) {
@@ -125,9 +128,9 @@ void main() {
 			normal = tri_normal;
 		} else {
 			const vec3 axis = normalize(cross(tri_normal, normal));
-			normal = rotate_vec3_cs(tri_normal, axis, 
-				u_params.max_deviation_cosine, 
-				u_params.max_deviation_sine);
+			normal = rotate_vec3_cs(tri_normal, axis,
+					u_params.max_deviation_cosine,
+					u_params.max_deviation_sine);
 		}
 	}
 

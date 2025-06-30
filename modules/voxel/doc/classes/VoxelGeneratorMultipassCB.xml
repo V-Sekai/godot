@@ -26,7 +26,7 @@
 			<param index="1" name="pass_index" type="int" />
 			<description>
 				Called once per pass for every column of blocks.
-				The passed [code]voxel_tool[/code] must be used to get information about the area to generate, and fill/edit this area with voxels. Important: do not keep this object in a member variable for later re-use. You can only use it in the current call to this method.
+				The passed [code]voxel_tool[/code] must be used to get information about the area to generate, and fill/edit this area with voxels. Important: do not keep this object in a member variable for later reuse. You can only use it in the current call to this method.
 				You may use [code]pass_index[/code] to do something different in each pass. For example, 0 could be base ground with Perlin noise, 1 could plant trees and other structures.
 			</description>
 		</method>

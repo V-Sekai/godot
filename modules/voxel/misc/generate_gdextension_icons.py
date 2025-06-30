@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # coding: utf-8
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 
 def get_icons(repo_dir):
@@ -14,7 +14,7 @@ def get_icons(repo_dir):
 def generate_icon_entries(gdextension_config_path, icons):
     icon_lines = []
     for icon in icons:
-        line = icon.stem + " = \"./editor/icons/" + icon.name + "\"\n"
+        line = icon.stem + ' = "./editor/icons/' + icon.name + '"\n'
         icon_lines.append(line)
 
     with open(gdextension_config_path, "r") as f:
@@ -31,7 +31,7 @@ def generate_icon_entries(gdextension_config_path, icons):
                 in_generated_section = False
             else:
                 continue
-        
+
         dst_lines.append(line)
 
         if "<generated-icons>" in line:
@@ -39,8 +39,8 @@ def generate_icon_entries(gdextension_config_path, icons):
             dst_lines += icon_lines
             dst_lines.append("")
             in_generated_section = True
-    
-    with open(gdextension_config_path, "w", newline='\n') as f:
+
+    with open(gdextension_config_path, "w", newline="\n") as f:
         f.writelines(dst_lines)
 
 

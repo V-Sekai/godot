@@ -62,5 +62,3 @@ implicit-integer-sign-change:thirdparty/vulkan/vk_mem_alloc.h
 implicit-unsigned-integer-truncation:thirdparty/zlib/trees.c
 implicit-signed-integer-truncation:thirdparty/zlib/trees.c
 implicit-integer-sign-change:thirdparty/zlib/trees.c
-
-

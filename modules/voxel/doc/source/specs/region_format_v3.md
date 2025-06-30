@@ -122,7 +122,7 @@ The header starts with some metadata describing the size of the volume and the f
 A color palette can be optionally provided. If `palette_hint` is set to `0xff` (`255`), it must be followed by 256 8-bit RGBA values. If `palette_hint` is `0x00` (`0`), then no palette data will follow. Other values are invalid at the moment.
 
 `blocks` is a sequence of 32-bit integers, located at the end of the header. Each integer represents information about where a block is in the file, and how big its serialized data is. The count of that sequence is the number of blocks a region can contain, and remains constant for a given region size. The index of elements in that sequence is calculated from 3D block positions, in ZXY order. The index for a block can be obtained with the formula `y + block_size * (x + block_size * z)`.
-Each integer contains two informations:
+Each integer contains two information:
 - The first byte is the number of sectors the block is spanning. Obtained as `n & 0xff`.
 - The 3 other bytes are the index to the first sector. Obtained as `n >> 8`.
 
@@ -170,6 +170,6 @@ The rest of this spec is not affected by this and assumes we use little-endian, 
 
 ### Versioning
 
-The region format should be thought of a container for instances of the block format. The former has a version number, but the latter doesn't, which is hard to manage. We may introduce separate versionning, which will cause older saves to become incompatible.
+The region format should be thought of a container for instances of the block format. The former has a version number, but the latter doesn't, which is hard to manage. We may introduce separate versioning, which will cause older saves to become incompatible.
 
-User versionning may also be added as a third layer: if the game needs to replace some metadata with new ones, or swap voxel IDs around due to a change in the game, it is desirable to expose a hook to migrate old versions.
+User versioning may also be added as a third layer: if the game needs to replace some metadata with new ones, or swap voxel IDs around due to a change in the game, it is desirable to expose a hook to migrate old versions.

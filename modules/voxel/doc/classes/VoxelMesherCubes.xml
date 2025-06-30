@@ -4,7 +4,7 @@
 		Generates a cubic voxels mesh from colors.
 	</brief_description>
 	<description>
-		Builds meshes representing cubic voxels, based on color values stored in the [constant VoxelBuffer.CHANNEL_COLOR] channel. 
+		Builds meshes representing cubic voxels, based on color values stored in the [constant VoxelBuffer.CHANNEL_COLOR] channel.
 		Colors will usually be stored in the [code]COLOR[/code] vertex attribute and may require a material with vertex colors enabled, or a custom shader.
 	</description>
 	<tutorials>
@@ -66,7 +66,7 @@
 		<constant name="COLOR_SHADER_PALETTE" value="2" enum="ColorMode">
 			Voxel values will be directly written as such in the mesh, instead of colors.
 			They are written in the red component of the [code]COLOR[/code], leaving red and blue to zero. Note, it will be normalized to 0..1 in shader, so if you need the integer value back you may use [code]int(COLOR.r * 255.0)[/code].
-			The alpha component will be set to the transparency of the corresponding color in [member palette] (a palette resource is still needed to differenciate transparent parts; RGB values are not used).
+			The alpha component will be set to the transparency of the corresponding color in [member palette] (a palette resource is still needed to differentiate transparent parts; RGB values are not used).
 			You are expected to use a [ShaderMaterial] to read vertex data and choose the actual color with a custom shader. [StandardMaterial] will not work with this mode.
 		</constant>
 	</constants>

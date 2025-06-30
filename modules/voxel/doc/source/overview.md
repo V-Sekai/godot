@@ -30,7 +30,7 @@ Generating voxels
 
 Voxels span 3 dimensions, so contrary to images, storing them can take up way more memory as volumes get bigger. This is why it important to think about procedural sources of voxels, because they don't cost any memory and can be accessed at any resolution.
 
-This task is implemented by resources deriving [VoxelGenerator](api/VoxelGenerator.md). Their goal is to generate voxel data, either at a specific point in space, or in a whole defined volume. There are endless possible recipes to generate models, terrains or planets, which we won't detail in this section. 
+This task is implemented by resources deriving [VoxelGenerator](api/VoxelGenerator.md). Their goal is to generate voxel data, either at a specific point in space, or in a whole defined volume. There are endless possible recipes to generate models, terrains or planets, which we won't detail in this section.
 
 Types of generators include:
 
@@ -130,5 +130,3 @@ The collision is built along with the mesh. So any blocks that have already been
 You can also turn on the collision wire mesh for debugging. In the editor, look under the Debug menu for `Visible Collision Shapes`.
 
 ![Collision shapes](images/debug-collision-shapes.gif)
-
-

@@ -4,15 +4,15 @@ Inherits: [VoxelGenerator](VoxelGenerator.md)
 
 Voxel generator producing overhanging shapes using 3D noise.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                                      | Name                             | Default         
+Type                                                                                      | Name                             | Default
 ----------------------------------------------------------------------------------------- | -------------------------------- | ----------------
-[ChannelId](VoxelBuffer.md#enumerations)                                                  | [channel](#i_channel)            | CHANNEL_SDF (1) 
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)                  | [height_range](#i_height_range)  | 200.0           
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)                  | [height_start](#i_height_start)  | -100.0          
-[FastNoiseLite](https://docs.godotengine.org/en/stable/classes/class_fastnoiselite.html)  | [noise](#i_noise)                |                 
+[ChannelId](VoxelBuffer.md#enumerations)                                                  | [channel](#i_channel)            | CHANNEL_SDF (1)
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)                  | [height_range](#i_height_range)  | 200.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)                  | [height_start](#i_height_start)  | -100.0
+[FastNoiseLite](https://docs.godotengine.org/en/stable/classes/class_fastnoiselite.html)  | [noise](#i_noise)                |
 <p></p>
 
 ## Property Descriptions

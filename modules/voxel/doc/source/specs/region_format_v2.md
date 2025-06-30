@@ -6,8 +6,8 @@ Region format v2
 
 Version: 2
 
-Regions allows to save large 3D voxel volumes in a format suitable for frequent streaming in all directions.  
-This format is inspired by https://www.seedofandromeda.com/blogs/1-creating-a-region-file-system-for-a-voxel-game  
+Regions allows to save large 3D voxel volumes in a format suitable for frequent streaming in all directions.
+This format is inspired by https://www.seedofandromeda.com/blogs/1-creating-a-region-file-system-for-a-voxel-game
 It is implemented by `VoxelStreamRegionFiles`, which can be found in https://github.com/Zylann/godot_voxel/blob/master/streams/voxel_stream_region_files.cpp
 
 
@@ -94,7 +94,7 @@ It starts with four 8-bit characters: `VXR_`, followed by one byte representing 
 ### Header
 
 The header is a sequence of 32-bit integers. Each integer represents information about where a block is in the file, and how big it is. The count of that sequence is the number of blocks a region can contain, and is the same in all regions. The index of elements in that sequence is calculated from 3D block positions, in ZXY order. The index for a block can be obtained with the formula `y + block_size * (x + block_size * z)`.
-Each integer contains two informations:
+Each integer contains two information:
 - The first byte is the number of sectors the block is spanning. Obtained as `n & 0xff`.
 - The 3 other bytes are the index to the first sector. Obtained as `n >> 8`.
 
@@ -103,7 +103,7 @@ Each integer contains two informations:
 The rest of the file is occupied by sectors.
 Sectors are fixed-size chunks of data. Their size is determined from the meta file described earlier.
 Blocks are stored in those sectors. A block can span one or more sectors.
-The file is partitionned in this way to allow frequently writing blocks of variable size without having to often shift consecutive contents.
+The file is partitioned in this way to allow frequently writing blocks of variable size without having to often shift consecutive contents.
 
 When we need to load a block, the address where block information starts will be the following:
 ```
@@ -142,6 +142,6 @@ The rest of this spec is not affected by this and assumes we use little-endian, 
 
 ### Versioning
 
-The region format should be thought of a container for instances of the block format. The former has a version number, but the latter doesn't, which is hard to manage. We may introduce separate versionning, which will cause older saves to become incompatible.
+The region format should be thought of a container for instances of the block format. The former has a version number, but the latter doesn't, which is hard to manage. We may introduce separate versioning, which will cause older saves to become incompatible.
 
-User versionning may also be added as a third layer: if the game needs to replace some metadata with new ones, or swap voxel IDs around due to a change in the game, it is desirable to expose a hook to migrate old versions.
+User versioning may also be added as a third layer: if the game needs to replace some metadata with new ones, or swap voxel IDs around due to a change in the game, it is desirable to expose a hook to migrate old versions.

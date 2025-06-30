@@ -153,7 +153,7 @@ struct fnl_state
     /**
      * The octave weighting for all none Domaain Warp fractal types.
      * @remark Default: 0.0
-     * @remark 
+     * @remark
      */
     float weighted_strength;
 
@@ -215,7 +215,7 @@ struct fnl_state
 
 /**
  * 2D warps the input position using current domain warp settings.
- * 
+ *
  * Example usage with fnlGetNoise2D:
  * ```
  * fnlDomainWarp2D(state, x, y);
@@ -226,7 +226,7 @@ struct fnl_state
 
 /**
  * 3D warps the input position using current domain warp settings.
- * 
+ *
  * Example usage with fnlGetNoise3D:
  * ```
  * fnlDomainWarp3D(state, x, y, z);
@@ -239,7 +239,7 @@ struct fnl_state
 
 // Constants
 
-const float GRADIENTS_2D[] = 
+const float GRADIENTS_2D[] =
 {
     0.130526192220052f, 0.99144486137381f, 0.38268343236509f, 0.923879532511287f, 0.608761429008721f, 0.793353340291235f, 0.793353340291235f, 0.608761429008721f,
     0.923879532511287f, 0.38268343236509f, 0.99144486137381f, 0.130526192220051f, 0.99144486137381f, -0.130526192220051f, 0.923879532511287f, -0.38268343236509f,
@@ -275,7 +275,7 @@ const float GRADIENTS_2D[] =
     -0.38268343236509f, -0.923879532511287f, -0.923879532511287f, -0.38268343236509f, -0.923879532511287f, 0.38268343236509f, -0.38268343236509f, 0.923879532511287f
 };
 
-const float RAND_VECS_2D[] = 
+const float RAND_VECS_2D[] =
 {
     -0.2700222198f, -0.9628540911f, 0.3863092627f, -0.9223693152f, 0.04444859006f, -0.999011673f, -0.5992523158f, -0.8005602176f, -0.7819280288f, 0.6233687174f, 0.9464672271f, 0.3227999196f, -0.6514146797f, -0.7587218957f, 0.9378472289f, 0.347048376f,
     -0.8497875957f, -0.5271252623f, -0.879042592f, 0.4767432447f, -0.892300288f, -0.4514423508f, -0.379844434f, -0.9250503802f, -0.9951650832f, 0.0982163789f, 0.7724397808f, -0.6350880136f, 0.7573283322f, -0.6530343002f, -0.9928004525f, -0.119780055f,
@@ -311,7 +311,7 @@ const float RAND_VECS_2D[] =
     0.01426758847f, -0.9998982128f, -0.6734383991f, 0.7392433447f, 0.639412098f, -0.7688642071f, 0.9211571421f, 0.3891908523f, -0.146637214f, -0.9891903394f, -0.782318098f, 0.6228791163f, -0.5039610839f, -0.8637263605f, -0.7743120191f, -0.6328039957f
 };
 
-const float GRADIENTS_3D[] = 
+const float GRADIENTS_3D[] =
 {
     0.0, 1.0, 1.0, 0.0,  0.0,-1.0, 1.0, 0.0,  0.0, 1.0,-1.0, 0.0,  0.0,-1.0,-1.0, 0.0,
     1.0, 0.0, 1.0, 0.0, -1.0, 0.0, 1.0, 0.0,  1.0, 0.0,-1.0, 0.0, -1.0, 0.0,-1.0, 0.0,
@@ -331,7 +331,7 @@ const float GRADIENTS_3D[] =
     1.0, 1.0, 0.0, 0.0,  0.0,-1.0, 1.0, 0.0, -1.0, 1.0, 0.0, 0.0,  0.0,-1.0,-1.0, 0.0
 };
 
-const float RAND_VECS_3D[] = 
+const float RAND_VECS_3D[] =
 {
     -0.7292736885f, -0.6618439697f, 0.1735581948f, 0.0, 0.790292081f, -0.5480887466f, -0.2739291014f, 0.0, 0.7217578935f, 0.6226212466f, -0.3023380997f, 0.0, 0.565683137f, -0.8208298145f, -0.0790000257f, 0.0, 0.760049034f, -0.5555979497f, -0.3370999617f, 0.0, 0.3713945616f, 0.5011264475f, 0.7816254623f, 0.0, -0.1277062463f, -0.4254438999f, -0.8959289049f, 0.0, -0.2881560924f, -0.5815838982f, 0.7607405838f, 0.0,
     0.5849561111f, -0.662820239f, -0.4674352136f, 0.0, 0.3307171178f, 0.0391653737f, 0.94291689f, 0.0, 0.8712121778f, -0.4113374369f, -0.2679381538f, 0.0, 0.580981015f, 0.7021915846f, 0.4115677815f, 0.0, 0.503756873f, 0.6330056931f, -0.5878203852f, 0.0, 0.4493712205f, 0.601390195f, 0.6606022552f, 0.0, -0.6878403724f, 0.09018890807f, -0.7202371714f, 0.0, -0.5958956522f, -0.6469350577f, 0.475797649f, 0.0,
@@ -945,7 +945,7 @@ float _fnlSingleOpenSimplex23D(int seed, float /*FNLfloat*/ x, float /*FNLfloat*
 
     float value = 0.0;
     float a = (0.6f - x0 * x0) - (y0 * y0 + z0 * z0);
-	
+
     for (int l = 0; ; l++)
     {
         if (a > 0.0)
@@ -1126,7 +1126,7 @@ float _fnlSingleOpenSimplex2S3D(int seed, float /*FNLfloat*/ x, float /*FNLfloat
         }
     }
 
-    bool skipD = false;
+    bool skipped = false;
     float aA = zAFlipMask0 + a0;
     if (aA > 0.0)
     {
@@ -1156,7 +1156,7 @@ float _fnlSingleOpenSimplex2S3D(int seed, float /*FNLfloat*/ x, float /*FNLfloat
             float zC = float(zNMask | 1) + z1;
             value += (aC * aC) * (aC * aC) * _fnlGradCoord3D(seed2,
                                                              i + PRIME_X, j + PRIME_Y, k + (zNMask & (PRIME_Z << 1)), xC, yC, zC);
-            skipD = true;
+            skipped = true;
         }
     }
 
@@ -1186,7 +1186,7 @@ float _fnlSingleOpenSimplex2S3D(int seed, float /*FNLfloat*/ x, float /*FNLfloat
         }
     }
 
-    if (!skipD)
+    if (!skipped)
     {
         float aD = xAFlipMask1 + yAFlipMask1 + a1;
         if (aD > 0.0)

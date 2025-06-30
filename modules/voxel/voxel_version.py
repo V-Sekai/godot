@@ -1,4 +1,3 @@
-
 # Version information for the voxel project.
 # TODO Could not name the file just "version.py" because otherwise `import version` imports the wrong one from Godot...
 
@@ -20,7 +19,7 @@ def generate_version_header(is_module):
         "patch": PATCH,
         "status": STATUS,
         "edition": "Module" if is_module else "GDExtension",
-        "git_hash": git_hash
+        "git_hash": git_hash,
     }
 
     f = open("constants/version.gen.h", "w")
@@ -38,7 +37,8 @@ def generate_version_header(is_module):
 #define VOXEL_VERSION_GIT_HASH "{git_hash}"
 
 #endif // VOXEL_VERSION_GENERATED_GEN_H
-""".format(**info))
+""".format(**info)
+    )
 
     f.close()
 
@@ -81,5 +81,5 @@ def get_git_commit_hash():
                         break
         else:
             githash = head
-    
+
     return githash

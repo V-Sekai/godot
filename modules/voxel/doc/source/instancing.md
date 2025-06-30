@@ -32,7 +32,7 @@ Items created this way come with a default setup, so you should be able to see s
 
 ### Block LOD
 
-The range at which items spawn is based on the LOD system of the voxel terrain itself, either on high-resolution chunks, or low-resolution ones. This is configured in the `lod_index` property of [VoxelInstanceLibraryItem](api/VoxelInstanceLibraryItem.md). For example, choosing `0` will make the item spawn on chunks of LOD0 at closest range, and fade quickly in the distance. Higher indexes will spawn on bigger chunks covering a larger range. 
+The range at which items spawn is based on the LOD system of the voxel terrain itself, either on high-resolution chunks, or low-resolution ones. This is configured in the `lod_index` property of [VoxelInstanceLibraryItem](api/VoxelInstanceLibraryItem.md). For example, choosing `0` will make the item spawn on chunks of LOD0 at closest range, and fade quickly in the distance. Higher indexes will spawn on bigger chunks covering a larger range.
 
 ![Screenshot showing the effect of lod_index on the range of instances](images/instances_lod_index.webp)
 
@@ -65,10 +65,10 @@ Without snapping:
 
 With snapping:
 
-![Screenshot of instances spawned from LOD2 an viewed at LOD0, with snapping on, resulting in better positionning](images/instance_gen_sdf_affining_on.webp)
+![Screenshot of instances spawned from LOD2 an viewed at LOD0, with snapping on, resulting in better positioning](images/instance_gen_sdf_affining_on.webp)
 
 This option queries the `VoxelGenerator` at floating point positions to approximate where the surface is, assuming the mesh-based position was a good starting point.
-The generator can only return SDF values, which roughly tells how "close" each 3D point is from the surface. With at least 2 nearby samples or more, we can interpolate to snap positions closer to that surface. So this is not an accurate snapping, but it can improve positionning significantly.
+The generator can only return SDF values, which roughly tells how "close" each 3D point is from the surface. With at least 2 nearby samples or more, we can interpolate to snap positions closer to that surface. So this is not an accurate snapping, but it can improve positioning significantly.
 
 Limitations:
 

@@ -12,7 +12,7 @@
 		<member name="dip_when_flowing_down" type="bool" is_experimental="true" setter="set_dip_when_flowing_down" getter="get_dip_when_flowing_down" default="false">
 			When enabled, if all following conditions are met for a given fluid voxel:
 			- It doesn't have maximum level
-			- It isn't covered by another voxel of the same fluid type 
+			- It isn't covered by another voxel of the same fluid type
 			- It can flow downwards (below is air or fluid of the same type)
 			Then the shape of the voxel will change to be "pushed" downwards, creating steeper slopes. Note, this also means the voxel will look as if it has minimum level in some situations. However, in practice these cases don't occur often. You may decide whether to use this option depending on how your fluid simulates.
 		</member>

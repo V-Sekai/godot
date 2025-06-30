@@ -6,18 +6,18 @@ Inherited by: [VoxelLodTerrain](VoxelLodTerrain.md), [VoxelTerrain](VoxelTerrain
 
 Base class for voxel volumes.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                                                                                               | Name                                         | Default 
+Type                                                                                                                                               | Name                                         | Default
 -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | --------
-[ShadowCastingSetting](https://docs.godotengine.org/en/stable/classes/class_geometryinstance3d.html#enum-geometryinstance3d-shadowcastingsetting)  | [cast_shadow](#i_cast_shadow)                | 1       
-[VoxelFormat](VoxelFormat.md)                                                                                                                      | [format](#i_format)                          |         
-[VoxelGenerator](VoxelGenerator.md)                                                                                                                | [generator](#i_generator)                    |         
-[GIMode](https://docs.godotengine.org/en/stable/classes/class_geometryinstance3d.html#enum-geometryinstance3d-gimode)                              | [gi_mode](#i_gi_mode)                        | 0       
-[VoxelMesher](VoxelMesher.md)                                                                                                                      | [mesher](#i_mesher)                          |         
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)                                                                               | [render_layers_mask](#i_render_layers_mask)  | 1       
-[VoxelStream](VoxelStream.md)                                                                                                                      | [stream](#i_stream)                          |         
+[ShadowCastingSetting](https://docs.godotengine.org/en/stable/classes/class_geometryinstance3d.html#enum-geometryinstance3d-shadowcastingsetting)  | [cast_shadow](#i_cast_shadow)                | 1
+[VoxelFormat](VoxelFormat.md)                                                                                                                      | [format](#i_format)                          |
+[VoxelGenerator](VoxelGenerator.md)                                                                                                                | [generator](#i_generator)                    |
+[GIMode](https://docs.godotengine.org/en/stable/classes/class_geometryinstance3d.html#enum-geometryinstance3d-gimode)                              | [gi_mode](#i_gi_mode)                        | 0
+[VoxelMesher](VoxelMesher.md)                                                                                                                      | [mesher](#i_mesher)                          |
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)                                                                               | [render_layers_mask](#i_render_layers_mask)  | 1
+[VoxelStream](VoxelStream.md)                                                                                                                      | [stream](#i_stream)                          |
 <p></p>
 
 ## Property Descriptions

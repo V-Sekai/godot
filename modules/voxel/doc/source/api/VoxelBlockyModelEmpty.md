@@ -2,9 +2,9 @@
 
 Inherits: [VoxelBlockyModel](VoxelBlockyModel.md)
 
-Explicitely represents an empty model.
+Explicitly represents an empty model.
 
-## Description: 
+## Description:
 
 This can be used for the default air model (at index 0), but may also be useful if you want to define a model that has no visuals, but still has collision or other attributes different than air.
 

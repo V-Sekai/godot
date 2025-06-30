@@ -178,7 +178,7 @@ A special `Relay` node exists to organize long connections between nodes. They d
 
 ### Preview nodes
 
-It is possible to preview the output of nodes with the `SdfPreview` node. This node will display a slice of the 3D data as a greyscale image, or a colored image depending on its settings. This is useful to check if a branch is outputting expected values.
+It is possible to preview the output of nodes with the `SdfPreview` node. This node will display a slice of the 3D data as a grayscale image, or a colored image depending on its settings. This is useful to check if a branch is outputting expected values.
 
 !!! note
     - Preview nodes will only work if the output they are connected to is also connected to an actual output of the graph.
@@ -198,7 +198,7 @@ Pan & zoom locations can be reset to defaults by using the menu `Debug -> Previe
 
 ![Screenshot of a preview node showing the output of a sphere node, zoomed in](images/graph_preview_node_sphere_pan_and_zoom.webp)
 
-Previews show black and white based on a specific range defined in their properties. By default, -1 is black, 1 is white (so 0 is actually grey). You can change that range by selecting the preview node and using the inspector.
+Previews show black and white based on a specific range defined in their properties. By default, -1 is black, 1 is white (so 0 is actually gray). You can change that range by selecting the preview node and using the inspector.
 
 ![Screenshot of a selected preview node and its min/max properties in the inspector](images/graph_preview_node_min_max_inspector.webp)
 
@@ -216,7 +216,7 @@ With a sphere, gradients are quite regular, which is usually best. But when usin
 ![Screenshot of a preview node in SDF mode showing noise gradients](images/graph_preview_node_noise_sdf.webp)
 
 Noise is a lot more inconsistent. However, most of the time, this isn't a big deal. It depends on what operations you do with the terrain.
-If the "speed" of gradients varies too sharply, especially near the surface, it can be the cause of precision loss or blockyness in generated meshes. It can also be a problem when approximating the surface solely from SDF voxels or using sphere tracing. 
+If the "speed" of gradients varies too sharply, especially near the surface, it can be the cause of precision loss or blockyness in generated meshes. It can also be a problem when approximating the surface solely from SDF voxels or using sphere tracing.
 
 ### Scripting
 
@@ -244,17 +244,17 @@ Example of additive `do_sphere` recreated with a graph:
 
 ![Additive sphere brush graph](images/graph_sphere_brush.webp)
 
-A more complex flattening brush, which both subtracts matter in a sphere and adds matter in a hemisphere to form a ledge (here defaulting to a radius of 30 for better preview, but making unit-sized brushes may be easier to re-use):
+A more complex flattening brush, which both subtracts matter in a sphere and adds matter in a hemisphere to form a ledge (here defaulting to a radius of 30 for better preview, but making unit-sized brushes may be easier to reuse):
 
 ![Dual flattening brush](images/graph_flatten_brush.webp)
 
 One more detail to consider, is how big the original brush is. Usually voxel generators have no particular bounds, but it matters here because it will be used locally. For example if your make a spherical brush, you might use a `SdfSphere` node with radius `1`. Then, your original size will be `(2,2,2)`. You can then transform that brush (scale, rotate...) when using `do_graph` at the desired position.
 
 
-Re-usable graphs with `VoxelGraphFunction`
+Reusable graphs with `VoxelGraphFunction`
 --------------------------------------------
 
-`VoxelGraphFunction` allows to create graphs that can be used inside other graphs. This is a convenient way to re-use and share graphs.
+`VoxelGraphFunction` allows to create graphs that can be used inside other graphs. This is a convenient way to reuse and share graphs.
 
 ### Creating a function
 
@@ -399,7 +399,7 @@ a b b b b b b b a
 a a a a a a a a a
 ```
 
-The generator does not do all this work from scratch everytime it needs to generate a column.
+The generator does not do all this work from scratch every time it needs to generate a column.
 Since columns will have to be re-accessed many times, they are cached in an internal map. Columns get unloaded when far enough from any viewer. This map can be previewed in the editor, when the terrain is present in the edited scene:
 
 ![Screenshot of the inspector showing the generator, in which the cache of columns is shown](images/multipass_cache_viewer.webp)
@@ -429,7 +429,7 @@ In this case:
 - Column height is limited for practical reasons. Multipass cubic chunks were experimented with during development of `VoxelGeneratorMultipassCB`, and they were significantly more expensive, and harder to work with in some cases, because of the inability to access a full vertical section (which would have to be infinite).
 - The reachable distance outside the main column is limited. It can be increased, but it gets expensive quickly. If you need to reach further to place very big structures spanning dozens of chunks across, you might have to think of a different approach. For example, generating a "blueprint" up-front (or deterministically), and rasterizing parts of it progressively when they intersect the column.
 - The same instance of generator cannot be shared between multiple terrains. If you need the same generator on two terrains, make a copy.
-- Implementation isn't ideal. `VoxelTerrain` is very generic and works with infinite cubic chunks, while this generator needed different constraints to work well. As a result, there is some overhead that could be avoided if the terrain was entirely rewritten and dedicated to this kind of column structure. It wasn't done because it would become less configurable, break compatibility and take time to develop. 
+- Implementation isn't ideal. `VoxelTerrain` is very generic and works with infinite cubic chunks, while this generator needed different constraints to work well. As a result, there is some overhead that could be avoided if the terrain was entirely rewritten and dedicated to this kind of column structure. It wasn't done because it would become less configurable, break compatibility and take time to develop.
 - Currently, the column cache isn't saved, contrary to what was described in [issue 545](https://github.com/Zylann/godot_voxel/issues/545). So if the game restarts, some columns and their neighbors can be asked to generate again if blocks weren't saved in a `VoxelStream`. This can be mitigated by saving generated blocks with `VoxelStream.save_generator_output`. In general, don't expect `VoxelGenerator` to be called only once for a given chunk, because it might be called again in corner cases. Generators should be deterministic and not have race conditions.
 
 

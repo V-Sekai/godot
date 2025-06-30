@@ -6,23 +6,26 @@
 // This is similar to a modifier except there is no operation applied.
 // Values are generated as a base, so the shader is simpler.
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
-layout (set = 0, binding = 0, std430) restrict readonly buffer PositionBuffer {
+layout(set = 0, binding = 0, std430) restrict readonly buffer PositionBuffer {
 	// X, Y, Z is hit position
 	// W is integer triangle index
 	vec4 values[];
-} u_positions;
+}
+u_positions;
 
-layout (set = 0, binding = 1, std430) restrict readonly buffer Params {
+layout(set = 0, binding = 1, std430) restrict readonly buffer Params {
 	int tile_size_pixels;
 	float pixel_world_step;
-} u_params;
+}
+u_params;
 
-layout (set = 0, binding = 2, std430) restrict writeonly buffer OutSDBuffer {
+layout(set = 0, binding = 2, std430) restrict writeonly buffer OutSDBuffer {
 	// 4 values per index
 	float values[];
-} u_out_sd;
+}
+u_out_sd;
 
 // <PLACEHOLDER>
 float get_sd(vec3 pos) {
@@ -34,8 +37,7 @@ void main() {
 	const ivec2 pixel_pos_in_tile = ivec2(gl_GlobalInvocationID.xy);
 	const int tile_index = int(gl_GlobalInvocationID.z);
 
-	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_params.tile_size_pixels 
-		+ tile_index * u_params.tile_size_pixels * u_params.tile_size_pixels;
+	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_params.tile_size_pixels + tile_index * u_params.tile_size_pixels * u_params.tile_size_pixels;
 
 	if (u_positions.values[index].w == -1.0) {
 		return;

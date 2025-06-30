@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_instancer.cpp                                                   */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "../../constants/voxel_string_names.h"
 #include "../../edition/voxel_tool.h"
 #include "../../engine/buffered_task_scheduler.h"
@@ -2026,7 +2056,7 @@ SaveBlockDataTask *VoxelInstancer::save_block(
 	if (cache_while_saving) {
 		Lod &lod_mutable = _lods[lod_index];
 		// Keep data in memory in case it quickly gets reloaded
-		// TODO Making a pre-emptive copy isn't very efficient, we could keep a shared_ptr instead?
+		// TODO Making a preemptive copy isn't very efficient, we could keep a shared_ptr instead?
 		UniquePtr<InstanceBlockData> saving_cache = make_unique_instance<InstanceBlockData>();
 		block_data->copy_to(*saving_cache);
 		if (lod_mutable.quick_reload_cache == nullptr) {

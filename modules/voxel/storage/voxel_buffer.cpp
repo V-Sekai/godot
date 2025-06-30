@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_buffer.cpp                                                      */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_buffer.h"
 #include "../constants/voxel_constants.h"
 #include "../util/containers/container_funcs.h"
@@ -58,8 +88,8 @@ inline void free_channel_data(uint8_t *data, uint32_t size, VoxelBuffer::Allocat
 // 	return value;
 // }
 
-static_assert(sizeof(uint32_t) == sizeof(float), "uint32_t and float cannot be marshalled back and forth");
-static_assert(sizeof(uint64_t) == sizeof(double), "uint64_t and double cannot be marshalled back and forth");
+static_assert(sizeof(uint32_t) == sizeof(float), "uint32_t and float cannot be marshaled back and forth");
+static_assert(sizeof(uint64_t) == sizeof(double), "uint64_t and double cannot be marshaled back and forth");
 
 union MarshallFloat {
 	float f;
@@ -242,7 +272,7 @@ void VoxelBuffer::create(unsigned int sx, unsigned int sy, unsigned int sz, cons
 	ZN_ASSERT_RETURN(sx <= MAX_SIZE && sy <= MAX_SIZE && sz <= MAX_SIZE);
 
 	// Always clear everything even if size doesn't change, because at least we want to start from default.
-	// If one day we really want some hypothetic performance trying to re-use previously allocated data,
+	// If one day we really want some hypothetic performance trying to reuse previously allocated data,
 	// we could add a `create_no_reset` method.
 	clear(new_format);
 

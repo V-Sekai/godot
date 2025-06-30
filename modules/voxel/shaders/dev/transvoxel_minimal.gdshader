@@ -15,7 +15,7 @@ float get_transvoxel_secondary_factor(int idata) {
 	// If the vertex lies on one or more sides, and at least one side has no low-resolution neighbor,
 	// don't move the vertex.
 	t *= float((vertex_border_mask & ~transition_mask) == 0);
-	
+
 	// Debugging
 	//t *= 0.5 + 0.5 * sin(TIME * 4.0);
 	//t *= 2.0;

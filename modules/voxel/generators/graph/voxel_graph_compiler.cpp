@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_graph_compiler.cpp                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_graph_compiler.h"
 #include "../../util/containers/container_funcs.h"
 #include "../../util/containers/std_unordered_map.h"
@@ -548,7 +578,7 @@ void merge_node(ProgramGraph &graph, uint32_t node1_id, uint32_t node2_id, Graph
 
 // Finds nodes with equivalent parameters and equivalent ancestors, so they can be merged into a single branch.
 // This should be done preferably after expanding expressions and macros.
-// Automating this allows to create macros that use similar operations without loosing performance due to repetition.
+// Automating this allows to create macros that use similar operations without losing performance due to repetition.
 // For example, a SphereHeightNoise macro will want to normalize (X,Y,Z). Other branches may want to do this too,
 // so we should share that operation, but it's harder to do so with self-contained branches. So it's easier if that
 // can be delegated to an automated process.
@@ -1772,8 +1802,8 @@ CompilationResult Runtime::compile_preprocessed_graph(
 		// Add outputs
 		for (size_t j = 0; j < type.outputs.size(); ++j) {
 			// Note, outputs of output nodes could be pinned, however since they are given a fake user, their lifespan
-			// is undeterminate and will never be re-used by memory allocation. This is better than pinning, because the
-			// buffer can be re-used several times before stopping at the output, while pinned buffers are always unique
+			// is undeterminate and will never be reused by memory allocation. This is better than pinning, because the
+			// buffer can be reused several times before stopping at the output, while pinned buffers are always unique
 			// to their locations.
 			const uint16_t a = mem.add_var();
 
@@ -1865,7 +1895,7 @@ CompilationResult Runtime::compile_preprocessed_graph(
 
 	// Pin buffers from the outer group that are read by operations of the inner group.
 	// Buffer data coming from the outer group must be pinned if it is read by the inner group,
-	// because it is re-used across multiple executions.
+	// because it is reused across multiple executions.
 	{
 		Span<BufferSpec> buffer_specs = to_span(program.buffer_specs);
 
@@ -1902,7 +1932,7 @@ CompilationResult Runtime::compile_preprocessed_graph(
 		}
 	}
 
-	// Assign buffer datas
+	// Assign buffer data
 	{
 		struct DataHelper {
 			StdVector<uint16_t> free_indices;
@@ -1910,21 +1940,21 @@ CompilationResult Runtime::compile_preprocessed_graph(
 				uint16_t usages;
 				bool pinned;
 			};
-			StdVector<Data> datas;
+			StdVector<Data> data;
 
 			uint16_t allocate(uint16_t users, bool pinned) {
 				ZN_ASSERT(users > 0);
-				// Note, pinned buffers must have unique data, so we may not re-use a previous buffer for them
+				// Note, pinned buffers must have unique data, so we may not reuse a previous buffer for them
 				if (free_indices.size() == 0 || pinned) {
-					const uint16_t i = datas.size();
-					datas.push_back(Data{ users, pinned });
+					const uint16_t i = data.size();
+					data.push_back(Data{ users, pinned });
 					return i;
 				} else {
 					const uint16_t i = free_indices[free_indices.size() - 1];
 					free_indices.pop_back();
-					ZN_ASSERT(i < datas.size());
-					Data &d = datas[i];
-					// Must not re-use a pinned buffer
+					ZN_ASSERT(i < data.size());
+					Data &d = data[i];
+					// Must not reuse a pinned buffer
 					ZN_ASSERT(!d.pinned);
 					d.usages = users;
 					return i;
@@ -1932,8 +1962,8 @@ CompilationResult Runtime::compile_preprocessed_graph(
 			}
 
 			void unref(uint16_t i) {
-				ZN_ASSERT(i < datas.size());
-				Data &d = datas[i];
+				ZN_ASSERT(i < data.size());
+				Data &d = data[i];
 				ZN_ASSERT(!d.pinned);
 				ZN_ASSERT(d.usages > 0);
 				--d.usages;
@@ -1946,7 +1976,7 @@ CompilationResult Runtime::compile_preprocessed_graph(
 		DataHelper data_helper;
 
 		if (debug) {
-			// In debug, there is no buffer data re-use optimization
+			// In debug, there is no buffer data reuse optimization
 			for (BufferSpec &buffer_spec : program.buffer_specs) {
 				if (!buffer_spec.is_binding) {
 					// Hardcode all uses to 1 in DataHelper, we are not going to track them at all.
@@ -1966,7 +1996,7 @@ CompilationResult Runtime::compile_preprocessed_graph(
 				}
 			}
 
-			// Allocate re-usable buffers.
+			// Allocate reusable buffers.
 			// Run through every node in execution order, allocating buffers when they are needed using pooling logic,
 			// so we can precompute which buffers will actually be needed in total, ahead of running the generator.
 			// This results in less memory usage than giving every buffer unique data.
@@ -2009,7 +2039,7 @@ CompilationResult Runtime::compile_preprocessed_graph(
 					data_helper.unref(throwaway_data_index);
 				}
 
-				// Release references on input datas, so they can be re-used by later operations
+				// Release references on input data, so they can be reused by later operations
 				for (const ProgramGraph::Port &input : node.inputs) {
 					if (input.connections.size() == 0) {
 						continue;
@@ -2020,7 +2050,7 @@ CompilationResult Runtime::compile_preprocessed_graph(
 					const BufferSpec &buffer_spec = buffer_specs[address_it->second];
 
 					// Bindings are user-provided.
-					// Pinned buffers are never re-used.
+					// Pinned buffers are never reused.
 					if (buffer_spec.is_binding || buffer_spec.is_pinned) {
 						continue;
 					}
@@ -2030,7 +2060,7 @@ CompilationResult Runtime::compile_preprocessed_graph(
 			}
 		}
 
-		program.buffer_data_count = data_helper.datas.size();
+		program.buffer_data_count = data_helper.data.size();
 	}
 
 	ZN_PRINT_VERBOSE(

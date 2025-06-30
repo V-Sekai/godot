@@ -4,13 +4,13 @@ Inherits: [VoxelModifier](VoxelModifier.md)
 
 Voxel modifier that uses [VoxelMeshSDF](VoxelMeshSDF.md).
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                     | Default 
+Type                                                                      | Name                     | Default
 ------------------------------------------------------------------------- | ------------------------ | --------
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [isolevel](#i_isolevel)  | 0.0     
-[VoxelMeshSDF](VoxelMeshSDF.md)                                           | [mesh_sdf](#i_mesh_sdf)  |         
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [isolevel](#i_isolevel)  | 0.0
+[VoxelMeshSDF](VoxelMeshSDF.md)                                           | [mesh_sdf](#i_mesh_sdf)  |
 <p></p>
 
 ## Property Descriptions

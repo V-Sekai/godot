@@ -17,7 +17,7 @@
 			<param index="0" name="image" type="Image" />
 			<param index="1" name="tileable" type="bool" />
 			<description>
-				Fills a greyscale image with noise values.
+				Fills a grayscale image with noise values.
 			</description>
 		</method>
 		<method name="get_noise_2d_single" qualifiers="const">

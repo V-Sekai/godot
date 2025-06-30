@@ -4,16 +4,16 @@ Inherits: [VoxelInstanceLibraryItem](VoxelInstanceLibraryItem.md)
 
 Instancer model using scenes.
 
-## Description: 
+## Description:
 
 This model will spawn scene instances, which may be suited for sparse and complex elements.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                                  | Name               | Default 
+Type                                                                                  | Name               | Default
 ------------------------------------------------------------------------------------- | ------------------ | --------
-[PackedScene](https://docs.godotengine.org/en/stable/classes/class_packedscene.html)  | [scene](#i_scene)  |         
+[PackedScene](https://docs.godotengine.org/en/stable/classes/class_packedscene.html)  | [scene](#i_scene)  |
 <p></p>
 
 ## Property Descriptions

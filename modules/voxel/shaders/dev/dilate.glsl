@@ -5,13 +5,13 @@
 // Assumes the input image is tiled: dilation will not interact across tiles.
 // One run of this shader will dilate by 1 pixel.
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 // We must use alternating images because each iteration reads neighbor pixels
-layout (set = 0, binding = 0, rgba8ui) restrict readonly uniform uimage2D u_src_image;
-layout (set = 0, binding = 1, rgba8ui) restrict writeonly uniform uimage2D u_dst_image;
+layout(set = 0, binding = 0, rgba8ui) restrict readonly uniform uimage2D u_src_image;
+layout(set = 0, binding = 1, rgba8ui) restrict writeonly uniform uimage2D u_dst_image;
 
-layout (set = 0, binding = 2) uniform Params {
+layout(set = 0, binding = 2) uniform Params {
 	int u_tile_size;
 };
 
@@ -33,12 +33,12 @@ void main() {
 	const ivec2 p10 = pixel_pos + ivec2(0, -1);
 	const ivec2 p12 = pixel_pos + ivec2(0, 1);
 
-	ivec4 col_sum = ivec4(0,0,0,0);
+	ivec4 col_sum = ivec4(0, 0, 0, 0);
 	int count = 0;
 
 	const ivec4 col01 = ivec4(imageLoad(u_src_image, p01));
 	// Don't sample pixels of different tiles than the current one.
-	// This also takes care of image borders, but we must do it more explicitely for negative borders
+	// This also takes care of image borders, but we must do it more explicitly for negative borders
 	// because of how division works
 	if (col01 != nocol && pixel_pos.x != 0 && (pixel_pos.x - 1) / u_tile_size == pixel_pos.x / u_tile_size) {
 		col_sum += col01;

@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_generator_graph.cpp                                             */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_generator_graph.h"
 #include "../../constants/voxel_string_names.h"
 #include "../../storage/mixel4.h"
@@ -967,14 +997,14 @@ VoxelGenerator::Result VoxelGeneratorGraph::generate_block(VoxelGenerator::Voxel
 	// Relying on the block's uniform channels would bring up false positives due to LOD aliasing.
 	const bool all_sdf_is_uniform = all_sdf_is_air || all_sdf_is_matter;
 	if (all_sdf_is_uniform) {
-		// TODO If voxel texure weights are used, octree compression might be a bit more complicated.
+		// TODO If voxel texture weights are used, octree compression might be a bit more complicated.
 		// For now we only look at SDF but if texture weights are used and the player digs a bit inside terrain,
 		// they will find it's all default weights.
 		// Possible workarounds:
 		// - Only do it for air
 		// - Also take indices and weights into account, but may lead to way less compression, or none, for stuff
 		// that
-		//   essentially isnt showing up until dug out
+		//   essentially isn't showing up until dug out
 		// - Invoke generator to produce LOD0 blocks somehow, but main thread could stall
 		result.max_lod_hint = true;
 	}
@@ -1414,7 +1444,7 @@ void VoxelGeneratorGraph::generate_series(
 	}
 
 	{
-		// The implementation cannot guarantee constness at compile time, but it should not modifiy the data either way
+		// The implementation cannot guarantee constness at compile time, but it should not modify the data either way
 		float *ptr_x = const_cast<float *>(positions_x.data());
 		float *ptr_y = const_cast<float *>(positions_y.data());
 		float *ptr_z = const_cast<float *>(positions_z.data());
@@ -1463,7 +1493,7 @@ inline Vector3 get_3d_pos_from_panorama_uv(Vector2 uv) {
 }
 
 // Subdivides a rectangle in square chunks and runs a function on each of them.
-// The ref is important to allow re-using functors.
+// The ref is important to allow reusing functors.
 template <typename F>
 inline void for_chunks_2d(int w, int h, int chunk_size, F &f) {
 	const int chunks_x = w / chunk_size;
@@ -2208,14 +2238,14 @@ void VoxelGeneratorGraph::get_configuration_warnings(PackedStringArray &out_warn
 		_main_function->get_configuration_warnings(out_warnings);
 
 		if (_main_function->get_nodes_count() == 0) {
-			// Making a `String` explicitely because in GDExtension `get_class_static` is a `const char*`
+			// Making a `String` explicitly because in GDExtension `get_class_static` is a `const char*`
 			out_warnings.append(String(VoxelGeneratorGraph::get_class_static()) + " is empty.");
 			return;
 		}
 	}
 
 	if (!is_good()) {
-		// Making a `String` explicitely because in GDExtension `get_class_static` is a `const char*`
+		// Making a `String` explicitly because in GDExtension `get_class_static` is a `const char*`
 		out_warnings.append(String(VoxelGeneratorGraph::get_class_static()) + " contains errors.");
 		return;
 	}

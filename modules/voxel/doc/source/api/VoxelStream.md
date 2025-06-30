@@ -6,29 +6,29 @@ Inherited by: [VoxelStreamMemory](VoxelStreamMemory.md), [VoxelStreamRegionFiles
 
 Implements loading and saving voxel blocks, mainly using files.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                    | Name                                               | Default 
+Type                                                                    | Name                                               | Default
 ----------------------------------------------------------------------- | -------------------------------------------------- | --------
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)  | [save_generator_output](#i_save_generator_output)  | false   
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)  | [save_generator_output](#i_save_generator_output)  | false
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                        | Signature                                                                                                                                                                                                                                                            
+Return                                                                        | Signature
 ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-[void](#)                                                                     | [flush](#i_flush) ( )                                                                                                                                                                                                                                                
-[Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)  | [get_block_size](#i_get_block_size) ( ) const                                                                                                                                                                                                                        
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)          | [get_used_channels_mask](#i_get_used_channels_mask) ( ) const                                                                                                                                                                                                        
-[ResultCode](VoxelStream.md#enumerations)                                     | [load_voxel_block](#i_load_voxel_block) ( [VoxelBuffer](VoxelBuffer.md) out_buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index )  
-[void](#)                                                                     | [save_voxel_block](#i_save_voxel_block) ( [VoxelBuffer](VoxelBuffer.md) buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index )      
+[void](#)                                                                     | [flush](#i_flush) ( )
+[Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)  | [get_block_size](#i_get_block_size) ( ) const
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)          | [get_used_channels_mask](#i_get_used_channels_mask) ( ) const
+[ResultCode](VoxelStream.md#enumerations)                                     | [load_voxel_block](#i_load_voxel_block) ( [VoxelBuffer](VoxelBuffer.md) out_buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index )
+[void](#)                                                                     | [save_voxel_block](#i_save_voxel_block) ( [VoxelBuffer](VoxelBuffer.md) buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index )
 <p></p>
 
-## Enumerations: 
+## Enumerations:
 
-enum **ResultCode**: 
+enum **ResultCode**:
 
 - <span id="i_RESULT_ERROR"></span>**RESULT_ERROR** = **0** --- An error occurred when loading the block. The request will be aborted.
 - <span id="i_RESULT_BLOCK_FOUND"></span>**RESULT_BLOCK_FOUND** = **2** --- The block was found.
@@ -43,7 +43,7 @@ When this is enabled, if a block cannot be found in the stream and it gets gener
 
 ## Method Descriptions
 
-### [void](#)<span id="i_flush"></span> **flush**( ) 
+### [void](#)<span id="i_flush"></span> **flush**( )
 
 Forces cached data to be saved to the filesystem. Some streams might use a cache to improve performance of frequent I/Os.
 
@@ -51,21 +51,21 @@ This should not be called frequently if performance is a concern. May be used if
 
 Note that terrains save asynchronously, so flushing might not always fulfill your goal if saving tasks are still queued and haven't called into [VoxelStream](VoxelStream.md) yet. See [VoxelTerrain.save_modified_blocks](VoxelTerrain.md#i_save_modified_blocks) or [VoxelLodTerrain.save_modified_blocks](VoxelLodTerrain.md#i_save_modified_blocks).
 
-### [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)<span id="i_get_block_size"></span> **get_block_size**( ) 
+### [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)<span id="i_get_block_size"></span> **get_block_size**( )
 
 *(This method has no documentation)*
 
-### [int](https://docs.godotengine.org/en/stable/classes/class_int.html)<span id="i_get_used_channels_mask"></span> **get_used_channels_mask**( ) 
+### [int](https://docs.godotengine.org/en/stable/classes/class_int.html)<span id="i_get_used_channels_mask"></span> **get_used_channels_mask**( )
 
 *(This method has no documentation)*
 
-### [ResultCode](VoxelStream.md#enumerations)<span id="i_load_voxel_block"></span> **load_voxel_block**( [VoxelBuffer](VoxelBuffer.md) out_buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index ) 
+### [ResultCode](VoxelStream.md#enumerations)<span id="i_load_voxel_block"></span> **load_voxel_block**( [VoxelBuffer](VoxelBuffer.md) out_buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index )
 
 `out_buffer`: Block of voxels to load. Must be a pre-created instance (not null).
 
 `block_position`: Position of the block in block coordinates within the specified LOD.
 
-### [void](#)<span id="i_save_voxel_block"></span> **save_voxel_block**( [VoxelBuffer](VoxelBuffer.md) buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index ) 
+### [void](#)<span id="i_save_voxel_block"></span> **save_voxel_block**( [VoxelBuffer](VoxelBuffer.md) buffer, [Vector3i](https://docs.godotengine.org/en/stable/classes/class_vector3i.html) block_position, [int](https://docs.godotengine.org/en/stable/classes/class_int.html) lod_index )
 
 `buffer`: Block of voxels to save. It is strongly recommended to not keep a reference to that data afterward, because streams are allowed to cache it, and saved data must represent either snapshots (copies) or last references to the data after the volume they belonged to is destroyed.
 

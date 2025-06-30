@@ -4,17 +4,17 @@ Inherits: [Resource](https://docs.godotengine.org/en/stable/classes/class_resour
 
 Properties of a blocky fluid.
 
-## Description: 
+## Description:
 
 Common properties of a specific fluid. It may be shared between multiple blocky models, each representing a level/state of the fluid.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                            | Name                                               | Default 
+Type                                                                            | Name                                               | Default
 ------------------------------------------------------------------------------- | -------------------------------------------------- | --------
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)          | [dip_when_flowing_down](#i_dip_when_flowing_down)  | false   
-[Material](https://docs.godotengine.org/en/stable/classes/class_material.html)  | [material](#i_material)                            |         
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)          | [dip_when_flowing_down](#i_dip_when_flowing_down)  | false
+[Material](https://docs.godotengine.org/en/stable/classes/class_material.html)  | [material](#i_material)                            |
 <p></p>
 
 ## Property Descriptions
@@ -25,7 +25,7 @@ When enabled, if all following conditions are met for a given fluid voxel:
 
 - It doesn't have maximum level
 
-- It isn't covered by another voxel of the same fluid type 
+- It isn't covered by another voxel of the same fluid type
 
 - It can flow downwards (below is air or fluid of the same type)
 

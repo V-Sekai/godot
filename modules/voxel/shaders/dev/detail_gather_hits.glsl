@@ -8,24 +8,27 @@
 // Hit positions and triangle indices will be used to evaluate voxel data at these positions,
 // which will in turn be used to bake a texture.
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
-layout (set = 0, binding = 0, std430) restrict readonly buffer MeshVertices {
+layout(set = 0, binding = 0, std430) restrict readonly buffer MeshVertices {
 	vec3 data[];
-} u_vertices;
+}
+u_vertices;
 
-layout (set = 0, binding = 1, std430) restrict readonly buffer MeshIndices {
+layout(set = 0, binding = 1, std430) restrict readonly buffer MeshIndices {
 	int data[];
-} u_indices;
+}
+u_indices;
 
-layout (set = 0, binding = 2, std430) restrict readonly buffer CellTris {
+layout(set = 0, binding = 2, std430) restrict readonly buffer CellTris {
 	// List of triangle indices.
 	// Grouped in chunks corresponding to triangles within a tile.
 	// Each chunk can have up to 5 triangle indices.
 	int data[];
-} u_cell_tris;
+}
+u_cell_tris;
 
-layout (set = 0, binding = 3, std430) restrict readonly buffer AtlasInfo {
+layout(set = 0, binding = 3, std430) restrict readonly buffer AtlasInfo {
 	// [tile index] => cell info
 	// X:
 	// Packed 8-bit coordinates of the cell.
@@ -36,21 +39,24 @@ layout (set = 0, binding = 3, std430) restrict readonly buffer AtlasInfo {
 	// c: 2-bit projection direction (0:X, 1:Y, 2:Z)
 	// Global invocation X and Y tell which pixel we are in.
 	ivec2 data[];
-} u_tile_data;
+}
+u_tile_data;
 
-layout (set = 0, binding = 4, std430) restrict readonly buffer Params {
+layout(set = 0, binding = 4, std430) restrict readonly buffer Params {
 	vec3 block_origin_world;
 	// How big is a pixel of the atlas in world space
 	float pixel_world_step;
 	int tile_size_pixels;
-} u_params;
+}
+u_params;
 
-layout (set = 0, binding = 5, std430) restrict writeonly buffer HitBuffer {
+layout(set = 0, binding = 5, std430) restrict writeonly buffer HitBuffer {
 	// X, Y, Z is hit position
 	// W is integer triangle index
 	// Index is `pixel_pos_in_tile.x + pixel_pos_in_tile.y * tile_resolution + tile_index * (tile_resolution ^ 2)`
 	vec4 positions[];
-} u_hits;
+}
+u_hits;
 
 const int TRI_NO_INTERSECTION = 0;
 const int TRI_PARALLEL = 1;
@@ -116,12 +122,11 @@ void main() {
 	const int tri_info_begin = tile_data.y >> 8;
 	const int projection = tile_data.y & 0x3;
 
-	const int packed_cell_pos = tile_data.x;//u_tile_cell_positions.data[tile_index];
+	const int packed_cell_pos = tile_data.x; //u_tile_cell_positions.data[tile_index];
 	const vec3 cell_pos_cells = vec3(
-		packed_cell_pos & 0xff,
-		(packed_cell_pos >> 8) & 0xff,
-		(packed_cell_pos >> 16) & 0xff
-	);
+			packed_cell_pos & 0xff,
+			(packed_cell_pos >> 8) & 0xff,
+			(packed_cell_pos >> 16) & 0xff);
 	const float cell_size_world = u_params.pixel_world_step * float(u_params.tile_size_pixels);
 	const vec3 cell_origin_mesh = cell_size_world * cell_pos_cells;
 
@@ -131,9 +136,7 @@ void main() {
 	const vec3 dy = vec3(0.0, float(projection == 0 || projection == 2), float(projection == 1));
 
 	const vec2 pos_in_tile = u_params.pixel_world_step * vec2(pixel_pos_in_tile);
-	const vec3 ray_origin_mesh = cell_origin_mesh
-		 - 1.01 * ray_dir * cell_size_world
-		 + pos_in_tile.x * dx + pos_in_tile.y * dy;
+	const vec3 ray_origin_mesh = cell_origin_mesh - 1.01 * ray_dir * cell_size_world + pos_in_tile.x * dx + pos_in_tile.y * dy;
 
 	// Find closest hit triangle
 	const float no_hit_distance = 999999.0;
@@ -142,7 +145,7 @@ void main() {
 	for (int i = 0; i < tri_count; ++i) {
 		const int tri_index = u_cell_tris.data[tri_info_begin + i];
 		const int ii0 = tri_index * 3;
-		
+
 		const int i0 = u_indices.data[ii0];
 		const int i1 = u_indices.data[ii0 + 1];
 		const int i2 = u_indices.data[ii0 + 2];
@@ -160,8 +163,7 @@ void main() {
 		}
 	}
 
-	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_params.tile_size_pixels 
-		+ tile_index * u_params.tile_size_pixels * u_params.tile_size_pixels;
+	const int index = pixel_pos_in_tile.x + pixel_pos_in_tile.y * u_params.tile_size_pixels + tile_index * u_params.tile_size_pixels * u_params.tile_size_pixels;
 
 	if (nearest_hit_tri_index != -1) {
 		const vec3 hit_pos_world = ray_origin_mesh + ray_dir * nearest_hit_distance + u_params.block_origin_world;

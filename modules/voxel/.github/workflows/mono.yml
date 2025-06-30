@@ -33,7 +33,7 @@ jobs:
           path: modules/voxel
 
       # TODO That package no longer works, seems to have become more complicated on Godot's repo.
-      #      But why was it needed actually? Now in Godot's repo, installing newer mesa has the title "Linux 
+      #      But why was it needed actually? Now in Godot's repo, installing newer mesa has the title "Linux
       #      dependencies for tests", and we are not going to run tests.
       # - name: Install dependencies
       #   run: |
@@ -113,7 +113,7 @@ jobs:
           path: modules/voxel
 
       # TODO That package no longer works, seems to have become more complicated on Godot's repo.
-      #      But why was it needed actually? Now in Godot's repo, installing newer mesa has the title "Linux 
+      #      But why was it needed actually? Now in Godot's repo, installing newer mesa has the title "Linux
       #      dependencies for tests", and we are not going to run tests.
       # - name: Install dependencies
       #   run: |
@@ -248,7 +248,7 @@ jobs:
           python ./modules/mono/build_scripts/build_assemblies.py --godot-output-dir=./bin
 
       # Compile with explicit flags.
-      # `PYTHONIOENCODING` was needed due to certain characters the Godot build system might print (such as '∞'), 
+      # `PYTHONIOENCODING` was needed due to certain characters the Godot build system might print (such as '∞'),
       # otherwise it makes the job fail with an encoding error.
       - name: Compilation
         env:

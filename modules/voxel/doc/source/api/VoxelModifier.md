@@ -6,7 +6,7 @@ Inherited by: [VoxelModifierMesh](VoxelModifierMesh.md), [VoxelModifierSphere](V
 
 Base class for voxel modifiers.
 
-## Description: 
+## Description:
 
 Modifiers are meant to be as an extension to terrain's generator that non-destructively affect limited volume. Stacks with other modifiers. Runtime edits from [VoxelTool](VoxelTool.md) override modifier values.
 
@@ -14,18 +14,18 @@ Note 1: Only works with [VoxelLodTerrain](VoxelLodTerrain.md).
 
 Note 2: Only works with smooth terrain (SDF).
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                         | Default           
+Type                                                                      | Name                         | Default
 ------------------------------------------------------------------------- | ---------------------------- | ------------------
-[Operation](VoxelModifier.md#enumerations)                                | [operation](#i_operation)    | OPERATION_ADD (0) 
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [smoothness](#i_smoothness)  | 0.0               
+[Operation](VoxelModifier.md#enumerations)                                | [operation](#i_operation)    | OPERATION_ADD (0)
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [smoothness](#i_smoothness)  | 0.0
 <p></p>
 
-## Enumerations: 
+## Enumerations:
 
-enum **Operation**: 
+enum **Operation**:
 
 - <span id="i_OPERATION_ADD"></span>**OPERATION_ADD** = **0** --- Performs SDF union.
 - <span id="i_OPERATION_REMOVE"></span>**OPERATION_REMOVE** = **1** --- Performs SDF subtraction.
@@ -39,7 +39,7 @@ An operation that the modifier performs on the terrain or on the other modifiers
 
 ### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_smoothness"></span> **smoothness** = 0.0
 
-Increasing this value makes the shape "merge" with its surroundings across a more or less large distance. 
+Increasing this value makes the shape "merge" with its surroundings across a more or less large distance.
 
 Note, it assumes the base generator produces consistent gradients. This is not always the case. Notably, it is a common optimization for generators to avoid calculating gradients beyond a certain distance from surfaces. If smoothness is too large, or if the generator's cutoff distance is too low, it can lead to gaps in the resulting mesh, usually at chunk boundaries.
 

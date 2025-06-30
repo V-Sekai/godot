@@ -3,11 +3,12 @@
 
 // <SNIPPET>
 
-layout (set = 0, binding = 5) restrict readonly buffer ShapeParams {
+layout(set = 0, binding = 5) restrict readonly buffer ShapeParams {
 	// Center not necessary, transform is applied in common shader code
 	//vec3 center;
 	float radius;
-} u_shape_params;
+}
+u_shape_params;
 
 float get_sd(vec3 pos) {
 	return length(pos) - u_shape_params.radius;
@@ -16,4 +17,3 @@ float get_sd(vec3 pos) {
 // </SNIPPET>
 
 void main() {}
-

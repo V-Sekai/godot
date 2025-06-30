@@ -61,7 +61,7 @@ Depending on `meta.coordinate_format`, that column is interpreted differently:
 - `0`: 64-bit little-endian integer packing the coordinates and LOD index of the block. XYZ are 16-bit signed integers, and LOD is a 8-bit unsigned integer: `0LXXYYZZ`. This was the default format in v0.
 - `1`: 64-bit little-endian integer packing the coordinates and LOD index of the block. XYZ are 19-bit signed integers, and LOD is a 7-bit unsigned integer: `lllllllx xxxxxxxx xxxxxxxx xxyyyyyy yyyyyyyy yyyyyzzz zzzzzzzz zzzzzzzz` (where the most significant bits are on the left).
 - `2`: Comma-separated coordinates in base 10, stored in plain text, without spaces.
-- `3`: 80-bit blob packing the coordinates and LOD index. XYZ are 25-bit signed integers, and LOD is a 5-bit unsigned integer. 
+- `3`: 80-bit blob packing the coordinates and LOD index. XYZ are 25-bit signed integers, and LOD is a 5-bit unsigned integer.
 
 Format `3` can be represented this way:
 ```
@@ -86,4 +86,3 @@ Contains general info about which channel formats should be expected in the volu
 
 !!! warning
     Currently this table is actually not used, because the engine still needs work to manage formats in general. For now the database accepts blocks of any formats since they are standalone since version 3, but ideally they must be consistent.
-

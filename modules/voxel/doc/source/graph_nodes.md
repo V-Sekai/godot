@@ -162,7 +162,7 @@ Inputs: `a`, `b`, `t`
 Outputs: `out`
 Parameters: `threshold`
 
-If `t` is lower than `threshold`, returns `a`. Otherwise, returns `b`. 
+If `t` is lower than `threshold`, returns `a`. Otherwise, returns `b`.
 
 ### Sin
 
@@ -221,7 +221,7 @@ Outputs a constant number.
 
 Parameters: `_function`
 
-Runs a custom function, like a re-usable sub-graph. The first parameter (parameter 0) of this node is a reference to a [VoxelGraphFunction](api/VoxelGraphFunction.md). Further parameters (starting from 1) are those exposed by the function.
+Runs a custom function, like a reusable sub-graph. The first parameter (parameter 0) of this node is a reference to a [VoxelGraphFunction](api/VoxelGraphFunction.md). Further parameters (starting from 1) are those exposed by the function.
 
 ### Relay
 
@@ -304,7 +304,7 @@ Inputs: `x`, `y`, `spot_radius`
 Outputs: `out`
 Parameters: `seed`, `cell_size`, `jitter`
 
-Cellular noise optimized for "ore patch" generation: divides space into a 2D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. `jitter` more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
+Cellular noise optimized for "or patch" generation: divides space into a 2D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. `jitter` more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
 
 ### Spots3D
 
@@ -312,7 +312,7 @@ Inputs: `x`, `y`, `z`, `spot_radius`
 Outputs: `out`
 Parameters: `seed`, `cell_size`, `jitter`
 
-Cellular noise optimized for "ore patch" generation: divides space into a 3D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. `jitter` more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
+Cellular noise optimized for "or patch" generation: divides space into a 3D grid where each cell contains a circular "spot". Returns 1 when the position is inside the spot, 0 otherwise. `jitter` more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node.
 
 ## Ops
 
@@ -464,4 +464,3 @@ Inputs: `x`, `y`, `z`
 Outputs: `nx`, `ny`, `nz`, `len`
 
 Returns the normalized coordinates of the given `(x, y, z)` 3D vector, such that the length of the output vector is 1.
-

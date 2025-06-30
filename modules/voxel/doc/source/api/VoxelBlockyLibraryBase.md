@@ -6,28 +6,28 @@ Inherited by: [VoxelBlockyLibrary](VoxelBlockyLibrary.md), [VoxelBlockyTypeLibra
 
 Contains a list of models that can be used by [VoxelMesherBlocky](VoxelMesherBlocky.md).
 
-## Description: 
+## Description:
 
 Models used by [VoxelMesherBlocky](VoxelMesherBlocky.md) must be baked before they can be used efficiently at runtime. The way this process happens depends on the implementation of this class. It can be a simple list of models, or a list of high-level types generating variant models. Check child classes for more information.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                    | Name                               | Default 
+Type                                                                    | Name                               | Default
 ----------------------------------------------------------------------- | ---------------------------------- | --------
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)  | [bake_tangents](#i_bake_tangents)  | true    
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)  | [bake_tangents](#i_bake_tangents)  | true
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                              | Signature                                   
+Return                                                                              | Signature
 ----------------------------------------------------------------------------------- | --------------------------------------------
-[void](#)                                                                           | [bake](#i_bake) ( )                         
-[Material[]](https://docs.godotengine.org/en/stable/classes/class_material[].html)  | [get_materials](#i_get_materials) ( ) const 
+[void](#)                                                                           | [bake](#i_bake) ( )
+[Material[]](https://docs.godotengine.org/en/stable/classes/class_material[].html)  | [get_materials](#i_get_materials) ( ) const
 <p></p>
 
-## Constants: 
+## Constants:
 
 - <span id="i_MAX_MODELS"></span>**MAX_MODELS** = **65536**
 - <span id="i_MAX_MATERIALS"></span>**MAX_MATERIALS** = **65536**
@@ -40,11 +40,11 @@ Enable this option if you need normal mapping on your voxels. If you don't need 
 
 ## Method Descriptions
 
-### [void](#)<span id="i_bake"></span> **bake**( ) 
+### [void](#)<span id="i_bake"></span> **bake**( )
 
 Bakes the library. The data of models is optimized in order to combine them more efficiently when generating voxel meshes.
 
-### [Material[]](https://docs.godotengine.org/en/stable/classes/class_material[].html)<span id="i_get_materials"></span> **get_materials**( ) 
+### [Material[]](https://docs.godotengine.org/en/stable/classes/class_material[].html)<span id="i_get_materials"></span> **get_materials**( )
 
 Gets a list of all distinct materials found in all models of the library.
 

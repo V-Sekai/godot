@@ -87,7 +87,7 @@
 				Creates a 3D texture from the SDF channel.
 				If [code]output_format[/code] is a 8-bit pixel format, the texture will contain normalized signed distances, where 0.5 is the isolevel, 0 is the furthest away under surface, and 1 is the furthest away above surface.
 				Only 16-bit SDF channel is supported.
-				Only [constant Image.FORMAT_R8] and [constant Image.FORMAT_L8] output formats are suported.
+				Only [constant Image.FORMAT_R8] and [constant Image.FORMAT_L8] output formats are supported.
 				Note: when sampling this texture in a shader, you need to swizzle 3D coordinates with [code].yxz[/code]. This is how voxels are internally stored, and this function does not change this convention.
 			</description>
 		</method>

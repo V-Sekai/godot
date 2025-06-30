@@ -6,43 +6,43 @@ Inherited by: [VoxelBlockyModelCube](VoxelBlockyModelCube.md), [VoxelBlockyModel
 
 Model stored in [VoxelBlockyLibrary](VoxelBlockyLibrary.md) and used by [VoxelMesherBlocky](VoxelMesherBlocky.md).
 
-## Description: 
+## Description:
 
 Represents a model to be used for voxels of a specific TYPE value. Such models must be contained within a [VoxelBlockyLibrary](VoxelBlockyLibrary.md) to be used with [VoxelTerrain](VoxelTerrain.md) or directly with a [VoxelMesherBlocky](VoxelMesherBlocky.md).
 
 A model can be setup in various ways, see child classes.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                        | Name                                         | Default           
+Type                                                                        | Name                                         | Default
 --------------------------------------------------------------------------- | -------------------------------------------- | ------------------
-[AABB[]](https://docs.godotengine.org/en/stable/classes/class_aabb[].html)  | [collision_aabbs](#i_collision_aabbs)        | []                
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [collision_mask](#i_collision_mask)          | 1                 
-[Color](https://docs.godotengine.org/en/stable/classes/class_color.html)    | [color](#i_color)                            | Color(1, 1, 1, 1) 
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [culls_neighbors](#i_culls_neighbors)        | true              
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [lod_skirts_enabled](#i_lod_skirts_enabled)  | true              
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [random_tickable](#i_random_tickable)        | false             
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [transparency_index](#i_transparency_index)  | 0                 
+[AABB[]](https://docs.godotengine.org/en/stable/classes/class_aabb[].html)  | [collision_aabbs](#i_collision_aabbs)        | []
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [collision_mask](#i_collision_mask)          | 1
+[Color](https://docs.godotengine.org/en/stable/classes/class_color.html)    | [color](#i_color)                            | Color(1, 1, 1, 1)
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [culls_neighbors](#i_culls_neighbors)        | true
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [lod_skirts_enabled](#i_lod_skirts_enabled)  | true
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [random_tickable](#i_random_tickable)        | false
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [transparency_index](#i_transparency_index)  | 0
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                          | Signature                                                                                                                                                                                                                           
+Return                                                                          | Signature
 ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-[Material](https://docs.godotengine.org/en/stable/classes/class_material.html)  | [get_material_override](#i_get_material_override) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index ) const                                                                                              
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)            | [get_mesh_ortho_rotation_index](#i_get_mesh_ortho_rotation_index) ( ) const                                                                                                                                                         
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)          | [is_mesh_collision_enabled](#i_is_mesh_collision_enabled) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index ) const                                                                              
-[void](#)                                                                       | [rotate_90](#i_rotate_90) ( [Axis](https://docs.godotengine.org/en/stable/classes/class_vector3i.html#enum-vector3i-axis) axis, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) clockwise )                  
-[void](#)                                                                       | [set_material_override](#i_set_material_override) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index, [Material](https://docs.godotengine.org/en/stable/classes/class_material.html) material )           
-[void](#)                                                                       | [set_mesh_collision_enabled](#i_set_mesh_collision_enabled) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled )  
-[void](#)                                                                       | [set_mesh_ortho_rotation_index](#i_set_mesh_ortho_rotation_index) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) i )                                                                                        
+[Material](https://docs.godotengine.org/en/stable/classes/class_material.html)  | [get_material_override](#i_get_material_override) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index ) const
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)            | [get_mesh_ortho_rotation_index](#i_get_mesh_ortho_rotation_index) ( ) const
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)          | [is_mesh_collision_enabled](#i_is_mesh_collision_enabled) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index ) const
+[void](#)                                                                       | [rotate_90](#i_rotate_90) ( [Axis](https://docs.godotengine.org/en/stable/classes/class_vector3i.html#enum-vector3i-axis) axis, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) clockwise )
+[void](#)                                                                       | [set_material_override](#i_set_material_override) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index, [Material](https://docs.godotengine.org/en/stable/classes/class_material.html) material )
+[void](#)                                                                       | [set_mesh_collision_enabled](#i_set_mesh_collision_enabled) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled )
+[void](#)                                                                       | [set_mesh_ortho_rotation_index](#i_set_mesh_ortho_rotation_index) ( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) i )
 <p></p>
 
-## Enumerations: 
+## Enumerations:
 
-enum **Side**: 
+enum **Side**:
 
 - <span id="i_SIDE_NEGATIVE_X"></span>**SIDE_NEGATIVE_X** = **1**
 - <span id="i_SIDE_POSITIVE_X"></span>**SIDE_POSITIVE_X** = **0**
@@ -89,31 +89,31 @@ If the neighbor voxel at a given side has a transparency index lower or equal to
 
 ## Method Descriptions
 
-### [Material](https://docs.godotengine.org/en/stable/classes/class_material.html)<span id="i_get_material_override"></span> **get_material_override**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index ) 
+### [Material](https://docs.godotengine.org/en/stable/classes/class_material.html)<span id="i_get_material_override"></span> **get_material_override**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index )
 
 Gets the material override for a specific surface of the model.
 
-### [int](https://docs.godotengine.org/en/stable/classes/class_int.html)<span id="i_get_mesh_ortho_rotation_index"></span> **get_mesh_ortho_rotation_index**( ) 
+### [int](https://docs.godotengine.org/en/stable/classes/class_int.html)<span id="i_get_mesh_ortho_rotation_index"></span> **get_mesh_ortho_rotation_index**( )
 
 Gets the 90-degree rotation ID that will be applied to the model when the library is baked.
 
-### [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)<span id="i_is_mesh_collision_enabled"></span> **is_mesh_collision_enabled**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index ) 
+### [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)<span id="i_is_mesh_collision_enabled"></span> **is_mesh_collision_enabled**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index )
 
 Tells if a specific surface produces mesh-based collisions.
 
-### [void](#)<span id="i_rotate_90"></span> **rotate_90**( [Axis](https://docs.godotengine.org/en/stable/classes/class_vector3i.html#enum-vector3i-axis) axis, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) clockwise ) 
+### [void](#)<span id="i_rotate_90"></span> **rotate_90**( [Axis](https://docs.godotengine.org/en/stable/classes/class_vector3i.html#enum-vector3i-axis) axis, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) clockwise )
 
 *(This method has no documentation)*
 
-### [void](#)<span id="i_set_material_override"></span> **set_material_override**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index, [Material](https://docs.godotengine.org/en/stable/classes/class_material.html) material ) 
+### [void](#)<span id="i_set_material_override"></span> **set_material_override**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) index, [Material](https://docs.godotengine.org/en/stable/classes/class_material.html) material )
 
 Sets a material override for a specific surface of the model. It allows to use the same mesh on multiple models, but using different materials on each.
 
-### [void](#)<span id="i_set_mesh_collision_enabled"></span> **set_mesh_collision_enabled**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled ) 
+### [void](#)<span id="i_set_mesh_collision_enabled"></span> **set_mesh_collision_enabled**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) surface_index, [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled )
 
 Enables or disables mesh-based collision on a specific surface. It allows a model to have solid parts and others where players can pass through.
 
-### [void](#)<span id="i_set_mesh_ortho_rotation_index"></span> **set_mesh_ortho_rotation_index**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) i ) 
+### [void](#)<span id="i_set_mesh_ortho_rotation_index"></span> **set_mesh_ortho_rotation_index**( [int](https://docs.godotengine.org/en/stable/classes/class_int.html) i )
 
 Gets the 90-degree rotation ID that will be applied to the model when the library is baked. This is a number representing one of 24 possible 90-degree rotations. You can also use [rotate_90](VoxelBlockyModel.md#i_rotate_90).
 

@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_lod_terrain.cpp                                                 */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_lod_terrain.h"
 #include "../../constants/voxel_string_names.h"
 #include "../../edition/voxel_tool_lod_terrain.h"
@@ -91,7 +121,7 @@ void copy_vlt_block_params(ShaderMaterial &src, ShaderMaterial &dst) {
 void VoxelLodTerrain::ApplyMeshUpdateTask::run(TimeSpreadTaskContext &ctx) {
 	if (!VoxelEngine::get_singleton().is_volume_valid(volume_id)) {
 		// The node can have been destroyed while this task was still pending
-		ZN_PRINT_VERBOSE("Cancelling ApplyMeshUpdateTask, volume_id is invalid");
+		ZN_PRINT_VERBOSE("Canceling ApplyMeshUpdateTask, volume_id is invalid");
 		return;
 	}
 
@@ -1294,7 +1324,7 @@ void VoxelLodTerrain::process(float delta) {
 
 		if (_threaded_update_enabled) {
 			// Schedule task at the end, so it is less likely to have contention with other logic than if it was done at
-			// the beginnning of `_process`
+			// the beginning of `_process`
 			VoxelEngine::get_singleton().push_async_task(task);
 
 		} else {
@@ -1508,7 +1538,7 @@ void VoxelLodTerrain::apply_main_thread_update_tasks() {
 								item.progress = 1.f;
 							}
 
-							// TODO Do we actually have to instantiate a material? We could just re-use the one from the
+							// TODO Do we actually have to instantiate a material? We could just reuse the one from the
 							// block, since it gets removed and no change occurs in that material (contrary to
 							// transition mask changes)
 							item.shader_material = _shader_material_pool.allocate();
@@ -1576,7 +1606,7 @@ void VoxelLodTerrain::apply_main_thread_update_tasks() {
 			if (block->visual_active) {
 				Ref<ShaderMaterial> shader_material = block->get_shader_material();
 
-				// TODO Don't fade if the transition mask actually didnt change
+				// TODO Don't fade if the transition mask actually didn't change
 				// This can happen if multiple updates occur and then cancel out
 
 				// Fade stitching transitions to avoid cracks.

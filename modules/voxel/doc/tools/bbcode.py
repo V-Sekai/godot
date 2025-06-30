@@ -21,7 +21,7 @@ class NodeTag:
         out = ""
         out += "["
         if self.closing:
-            out += '/'
+            out += "/"
         out += self.name
         if self.value != "":
             out += "=" + self.value
@@ -31,10 +31,10 @@ class NodeTag:
                 out += "=" + value
         out += "]"
         return out
-    
+
     def is_opening(self):
         return not self.closing
-    
+
     def get_first_option_key(self):
         for key in self.options:
             return key
@@ -47,7 +47,7 @@ def find_next_unescaped_bracket(text, from_pos):
         pos = text.find("[", pos)
         if pos == -1:
             return -1
-        if pos > 0 and text[pos - 1] == '\\':
+        if pos > 0 and text[pos - 1] == "\\":
             pos += 1
             continue
         return pos
@@ -55,14 +55,14 @@ def find_next_unescaped_bracket(text, from_pos):
 
 
 def is_name_start(c):
-    return c.isalpha() or c == '_'
+    return c.isalpha() or c == "_"
 
 
 def is_name_part(c):
-    return c.isalnum() or c == '_' or c == '.'
+    return c.isalnum() or c == "_" or c == "."
 
 
-def parse_name(text, begin_pos): # -> name
+def parse_name(text, begin_pos):  # -> name
     pos = begin_pos
     name = ""
     while pos < len(text):
@@ -71,25 +71,25 @@ def parse_name(text, begin_pos): # -> name
             pos += 1
             continue
         break
-    return text[begin_pos : pos]
+    return text[begin_pos:pos]
 
 
-def parse_tag_option_value(text, begin_pos): # -> value
+def parse_tag_option_value(text, begin_pos):  # -> value
     pos = begin_pos
     while pos < len(text):
         c = text[pos]
-        if c == ']':
+        if c == "]":
             break
-        if c == ' ':
+        if c == " ":
             break
         pos += 1
-    return text[begin_pos : pos]
+    return text[begin_pos:pos]
 
 
-def parse_tag_option(text, begin_pos): # -> name?, value?, pos
+def parse_tag_option(text, begin_pos):  # -> name?, value?, pos
     if not is_name_start(text[begin_pos]):
         return None, None, begin_pos
-    
+
     pos = begin_pos
 
     name = parse_name(text, pos)
@@ -97,22 +97,22 @@ def parse_tag_option(text, begin_pos): # -> name?, value?, pos
 
     if pos >= len(text):
         return None, None, pos
-    
+
     value = ""
 
     c = text[pos]
-    if c == '=':
+    if c == "=":
         pos += 1
         if pos >= len(text):
             return None, None, pos
         value = parse_tag_option_value(text, pos)
         pos += len(value)
-    
+
     return name, value, pos
 
 
-def parse_tag(text, pos, nodes): # -> success, end_pos
-    if text[pos] == '/':
+def parse_tag(text, pos, nodes):  # -> success, end_pos
+    if text[pos] == "/":
         # End tag
         pos += 1
         if pos >= len(text):
@@ -123,7 +123,7 @@ def parse_tag(text, pos, nodes): # -> success, end_pos
         pos += len(tag.name)
         if pos >= len(text):
             return False, pos
-        if text[pos] != ']':
+        if text[pos] != "]":
             return False, pos
         nodes.append(tag)
         pos += 1
@@ -133,7 +133,7 @@ def parse_tag(text, pos, nodes): # -> success, end_pos
     key, value, pos = parse_tag_option(text, pos)
     if key is None:
         return False, pos + 1
-    
+
     tag = NodeTag()
     tag.name = key
     tag.value = value
@@ -141,10 +141,10 @@ def parse_tag(text, pos, nodes): # -> success, end_pos
     while pos < len(text):
         c = text[pos]
 
-        if c == ' ':
+        if c == " ":
             pos += 1
             continue
-        
+
         if is_name_start(c):
             key, value, pos = parse_tag_option(text, pos)
             if key is None:
@@ -153,36 +153,36 @@ def parse_tag(text, pos, nodes): # -> success, end_pos
             tag.options[key] = value
             continue
 
-        if c == ']':
+        if c == "]":
             nodes.append(tag)
             return True, pos + 1
-        
+
         raise Exception("Unexpected character '" + c + "'")
-    
+
     return False, pos
 
 
 def unescape_text(text):
-    return text.replace("\\[", '[')
+    return text.replace("\\[", "[")
 
 
-def parse_text(text, begin_pos, nodes): # -> pos
+def parse_text(text, begin_pos, nodes):  # -> pos
     pos = begin_pos
 
-    while (pos < len(text)):
+    while pos < len(text):
         open_bracket_pos = find_next_unescaped_bracket(text, pos)
 
         if open_bracket_pos != -1:
             if open_bracket_pos > pos:
-                nodes.append(NodeText(unescape_text(text[pos : open_bracket_pos])))
+                nodes.append(NodeText(unescape_text(text[pos:open_bracket_pos])))
 
             success, end_pos = parse_tag(text, open_bracket_pos + 1, nodes)
             pos = end_pos
             if not success:
                 # print("ERROR, parse_tag didn't succeed")
                 # Append failed tag as text
-                nodes.append(NodeText(text[open_bracket_pos : end_pos]))
-        
+                nodes.append(NodeText(text[open_bracket_pos:end_pos]))
+
         else:
             # No remaining tags
             nodes.append(NodeText(unescape_text(text[pos:])))
@@ -192,7 +192,7 @@ def parse_text(text, begin_pos, nodes): # -> pos
 
 
 # Parses text into a list of nodes, which can either be text or tags.
-def parse(text): # -> nodes
+def parse(text):  # -> nodes
     nodes = []
     parse_text(text, 0, nodes)
     return nodes
@@ -234,4 +234,3 @@ if __name__ == "__main__":
     # print("Equals: ", bb == text)
     # print(bb)
     # print(text)
-

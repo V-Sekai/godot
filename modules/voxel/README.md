@@ -71,8 +71,8 @@ Eerrikki
 ```
 TheConceptBoy
 Chris Bolton (yochrisbolton)
-Gamerfiend (Snowminx) 
-greenlion (Justin Swanhart) 
+Gamerfiend (Snowminx)
+greenlion (Justin Swanhart)
 segfault-god (jp.owo.Manda)
 RonanZe
 Phyronnaz
@@ -90,7 +90,7 @@ jbbieber1127 (John Bieber)
 ### Supporters
 
 ```
-rcorre (Ryan Roden-Corrent) 
+rcorre (Ryan Roden-Corrent)
 duchainer (Raphaël Duchaîne)
 MadMartian
 stackdump (stackdump.eth)
@@ -108,5 +108,3 @@ ddel-rio (Daniel del Río Román)
 Cyberphinx
 Mia (Tigxette)
 ```
-
-

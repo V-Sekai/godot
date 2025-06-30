@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  rendering_device.cpp                                                  */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "rendering_device.h"
 #include "../../dstack.h"
 #include "../../profiling.h"
@@ -55,8 +85,11 @@ RID shader_create_from_spirv(RenderingDevice &rd, RDShaderSPIRV &p_spirv, String
 		RenderingDevice::ShaderStage stage = RenderingDevice::ShaderStage(i);
 
 		String error = p_spirv.get_stage_compile_error(stage);
-		ERR_FAIL_COND_V_MSG(!error.is_empty(), RID(),
-				"Can't create a shader from an errored bytecode. Check errors in source bytecode.");
+		ERR_FAIL_COND_V_MSG(
+				!error.is_empty(),
+				RID(),
+				"Can't create a shader from an errored bytecode. Check errors in source bytecode."
+		);
 
 		PackedByteArray bytecode = p_spirv.get_stage_bytecode(stage);
 		if (bytecode.is_empty()) {
@@ -81,8 +114,12 @@ RID shader_create_from_spirv(RenderingDevice &rd, RDShaderSPIRV &p_spirv, String
 #endif
 }
 
-RID texture_create(RenderingDevice &rd, RDTextureFormat &p_format, RDTextureView &p_view,
-		const TypedArray<PackedByteArray> &p_data) {
+RID texture_create(
+		RenderingDevice &rd,
+		RDTextureFormat &p_format,
+		RDTextureView &p_view,
+		const TypedArray<PackedByteArray> &p_data
+) {
 #if defined(ZN_GODOT)
 	// This is a partial re-implementation of `RenderingDevice::_texture_create` because it's private
 
@@ -165,7 +202,12 @@ RID sampler_create(RenderingDevice &rd, const RDSamplerState &sampler_state) {
 }
 
 Error update_storage_buffer(
-		RenderingDevice &rd, RID rid, unsigned int offset, unsigned int size, const PackedByteArray &pba) {
+		RenderingDevice &rd,
+		RID rid,
+		unsigned int offset,
+		unsigned int size,
+		const PackedByteArray &pba
+) {
 #if GODOT_VERSION_MAJOR == 4 && GODOT_VERSION_MINOR <= 2
 
 	// Godot versions up to 4.2 required to pass barrier options.

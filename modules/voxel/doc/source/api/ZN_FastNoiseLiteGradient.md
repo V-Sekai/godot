@@ -4,52 +4,52 @@ Inherits: [Resource](https://docs.godotengine.org/en/stable/classes/class_resour
 
 Generates coherent and fractal noise gradients using the [FastNoiseLite](https://github.com/Auburn/FastNoiseLite) library.
 
-## Description: 
+## Description:
 
 This is an alternate implementation of [FastNoiseLite](https://docs.godotengine.org/en/stable/classes/class_fastnoiselite.html), because Godot's integration does not expose methods to access gradients directly.
 
 These algorithms are specialized to generate vectors to perturb positions, and can be faster than calculating 2 or 3 times a regular noise.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                      | Name                                         | Default              
+Type                                                                      | Name                                         | Default
 ------------------------------------------------------------------------- | -------------------------------------------- | ---------------------
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [amplitude](#i_amplitude)                    | 30.0                 
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [fractal_gain](#i_fractal_gain)              | 0.5                  
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [fractal_lacunarity](#i_fractal_lacunarity)  | 2.0                  
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [fractal_octaves](#i_fractal_octaves)        | 3                    
-[FractalType](ZN_FastNoiseLiteGradient.md#enumerations)                   | [fractal_type](#i_fractal_type)              | FRACTAL_NONE (0)     
-[NoiseType](ZN_FastNoiseLiteGradient.md#enumerations)                     | [noise_type](#i_noise_type)                  | TYPE_VALUE (2)       
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [period](#i_period)                          | 64.0                 
-[RotationType3D](ZN_FastNoiseLiteGradient.md#enumerations)                | [rotation_type_3d](#i_rotation_type_3d)      | ROTATION_3D_NONE (0) 
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [seed](#i_seed)                              | 0                    
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [amplitude](#i_amplitude)                    | 30.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [fractal_gain](#i_fractal_gain)              | 0.5
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [fractal_lacunarity](#i_fractal_lacunarity)  | 2.0
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [fractal_octaves](#i_fractal_octaves)        | 3
+[FractalType](ZN_FastNoiseLiteGradient.md#enumerations)                   | [fractal_type](#i_fractal_type)              | FRACTAL_NONE (0)
+[NoiseType](ZN_FastNoiseLiteGradient.md#enumerations)                     | [noise_type](#i_noise_type)                  | TYPE_VALUE (2)
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)  | [period](#i_period)                          | 64.0
+[RotationType3D](ZN_FastNoiseLiteGradient.md#enumerations)                | [rotation_type_3d](#i_rotation_type_3d)      | ROTATION_3D_NONE (0)
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)      | [seed](#i_seed)                              | 0
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                        | Signature                                                                                                        
+Return                                                                        | Signature
 ----------------------------------------------------------------------------- | -----------------------------------------------------------------------------------------------------------------
-[Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)  | [warp_2d](#i_warp_2d) ( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) position )  
-[Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)  | [warp_3d](#i_warp_3d) ( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) position )  
+[Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)  | [warp_2d](#i_warp_2d) ( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) position )
+[Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)  | [warp_3d](#i_warp_3d) ( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) position )
 <p></p>
 
-## Enumerations: 
+## Enumerations:
 
-enum **NoiseType**: 
+enum **NoiseType**:
 
 - <span id="i_TYPE_OPEN_SIMPLEX_2"></span>**TYPE_OPEN_SIMPLEX_2** = **0**
 - <span id="i_TYPE_OPEN_SIMPLEX_2_REDUCED"></span>**TYPE_OPEN_SIMPLEX_2_REDUCED** = **1**
 - <span id="i_TYPE_VALUE"></span>**TYPE_VALUE** = **2**
 
-enum **FractalType**: 
+enum **FractalType**:
 
 - <span id="i_FRACTAL_NONE"></span>**FRACTAL_NONE** = **0**
 - <span id="i_FRACTAL_DOMAIN_WARP_PROGRESSIVE"></span>**FRACTAL_DOMAIN_WARP_PROGRESSIVE** = **1**
 - <span id="i_FRACTAL_DOMAIN_WARP_INDEPENDENT"></span>**FRACTAL_DOMAIN_WARP_INDEPENDENT** = **2**
 
-enum **RotationType3D**: 
+enum **RotationType3D**:
 
 - <span id="i_ROTATION_3D_NONE"></span>**ROTATION_3D_NONE** = **0**
 - <span id="i_ROTATION_3D_IMPROVE_XY_PLANES"></span>**ROTATION_3D_IMPROVE_XY_PLANES** = **1**
@@ -96,11 +96,11 @@ enum **RotationType3D**:
 
 ## Method Descriptions
 
-### [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)<span id="i_warp_2d"></span> **warp_2d**( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) position ) 
+### [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html)<span id="i_warp_2d"></span> **warp_2d**( [Vector2](https://docs.godotengine.org/en/stable/classes/class_vector2.html) position )
 
 *(This method has no documentation)*
 
-### [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)<span id="i_warp_3d"></span> **warp_3d**( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) position ) 
+### [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html)<span id="i_warp_3d"></span> **warp_3d**( [Vector3](https://docs.godotengine.org/en/stable/classes/class_vector3.html) position )
 
 *(This method has no documentation)*
 

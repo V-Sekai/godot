@@ -144,7 +144,7 @@ jobs:
 
       # 960 seconds - Hard timeout time, controlled by OS/timeout app
       # 600 seconds - Timeout controlled by Fuzzer app(certain functions may freeze Godot, so this is not reliable method, so using also method from above with little bigger timeout value)
-      # FunctionsExectuor.tscn - Scene which tests almost all function of choosen classes
+      # FunctionsExectuor.tscn - Scene which tests almost all function of chosen classes
       # UBSAN_OPTIONS - suppress false positives from thirdparty Godot libraries
 
       # Reproducer options

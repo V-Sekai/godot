@@ -24,9 +24,9 @@
 			<param index="0" name="from_position" type="Vector3i" />
 			<param index="1" name="to_position" type="Vector3i" />
 			<description>
-				Calculates a path starting from a voxel position to a target voxel position. 
-				Those positions should be air voxels just above ground with enough room for agents to fit in. 
-				The returned path will be a series of contiguous voxel positions to walk through in order to get to the destination. 
+				Calculates a path starting from a voxel position to a target voxel position.
+				Those positions should be air voxels just above ground with enough room for agents to fit in.
+				The returned path will be a series of contiguous voxel positions to walk through in order to get to the destination.
 				If no path is found, or if either start or destination position is outside of the search area, an empty array will be returned.
 				You may also use [method set_region] to specify the search area.
 			</description>

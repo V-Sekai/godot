@@ -4,27 +4,27 @@ Inherits: [VoxelStream](VoxelStream.md)
 
 Saves voxel data into a single SQLite database file.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                        | Name                                                           | Default                          
+Type                                                                        | Name                                                           | Default
 --------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------
-[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [database_path](#i_database_path)                              | ""                               
-[CoordinateFormat](VoxelStreamSQLite.md#enumerations)                       | [preferred_coordinate_format](#i_preferred_coordinate_format)  | COORDINATE_FORMAT_STRING_CSD (2) 
+[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [database_path](#i_database_path)                              | ""
+[CoordinateFormat](VoxelStreamSQLite.md#enumerations)                       | [preferred_coordinate_format](#i_preferred_coordinate_format)  | COORDINATE_FORMAT_STRING_CSD (2)
 <p></p>
 
-## Methods: 
+## Methods:
 
 
-Return                                                                  | Signature                                                                                                                             
+Return                                                                  | Signature
 ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)  | [is_key_cache_enabled](#i_is_key_cache_enabled) ( ) const                                                                             
-[void](#)                                                               | [set_key_cache_enabled](#i_set_key_cache_enabled) ( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled )  
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)  | [is_key_cache_enabled](#i_is_key_cache_enabled) ( ) const
+[void](#)                                                               | [set_key_cache_enabled](#i_set_key_cache_enabled) ( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled )
 <p></p>
 
-## Enumerations: 
+## Enumerations:
 
-enum **CoordinateFormat**: 
+enum **CoordinateFormat**:
 
 - <span id="i_COORDINATE_FORMAT_INT64_X16_Y16_Z16_L16"></span>**COORDINATE_FORMAT_INT64_X16_Y16_Z16_L16** = **0** --- Coordinates are stored in a 64-bit integer key, where X, Y, Z and LOD are 16-bit signed integers.
 - <span id="i_COORDINATE_FORMAT_INT64_X19_Y19_Z19_L7"></span>**COORDINATE_FORMAT_INT64_X19_Y19_Z19_L7** = **1** --- Coordinates are stored in a 64-bit integer key, where X, Y and Z are 19-bit signed integers, and LOD is a 7-bit unsigned integer.
@@ -45,11 +45,11 @@ Sets which block coordinate format will be used when creating new databases. Thi
 
 ## Method Descriptions
 
-### [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)<span id="i_is_key_cache_enabled"></span> **is_key_cache_enabled**( ) 
+### [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)<span id="i_is_key_cache_enabled"></span> **is_key_cache_enabled**( )
 
 *(This method has no documentation)*
 
-### [void](#)<span id="i_set_key_cache_enabled"></span> **set_key_cache_enabled**( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled ) 
+### [void](#)<span id="i_set_key_cache_enabled"></span> **set_key_cache_enabled**( [bool](https://docs.godotengine.org/en/stable/classes/class_bool.html) enabled )
 
 Enables caching keys of the database to speed up loading queries in terrains that only save sparse edited blocks. This won't provide any benefit if your terrain saves all its blocks (for example if the output of the generator is saved).
 

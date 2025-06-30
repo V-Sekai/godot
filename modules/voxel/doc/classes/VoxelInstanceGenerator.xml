@@ -71,7 +71,7 @@
 			The normal depends on [member VoxelInstancer.up_mode] and is also affected by [member vertical_alignment].
 		</member>
 		<member name="random_rotation" type="bool" setter="set_random_rotation" getter="get_random_rotation" default="true">
-			When enbabled, instances will be given a random rotation. If not, they will use a consistent rotation depending on the ground slope.
+			When enabled, instances will be given a random rotation. If not, they will use a consistent rotation depending on the ground slope.
 		</member>
 		<member name="random_vertical_flip" type="bool" setter="set_random_vertical_flip" getter="get_random_vertical_flip" default="false">
 			When enabled, instances will randomly be flipped upside down. This can be useful with small rocks to create illusion of more variety.

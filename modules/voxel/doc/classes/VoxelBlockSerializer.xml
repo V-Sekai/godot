@@ -19,9 +19,9 @@
 		VoxelBlockSerializer.deserialize_from_byte_array(data, voxels, true)
 		[/codeblock]
 
-		To store into a file by re-using a StreamPeerBuffer:
+		To store into a file by reusing a StreamPeerBuffer:
 		[codeblock]
-		# Note, buffer can be re-used if you do this often
+		# Note, buffer can be reused if you do this often
 		var stream_peer_buffer := StreamPeerBuffer.new()
 		var written_size = VoxelBlockSerializer.serialize_to_stream_peer(stream_peer_buffer, voxels, true)
 		file.store_32(written_size)

@@ -1,20 +1,22 @@
 #[compute]
 #version 450
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
-layout (set = 0, binding = 0, std430) restrict readonly buffer Params {
+layout(set = 0, binding = 0, std430) restrict readonly buffer Params {
 	vec3 origin_in_voxels;
 	float voxel_size;
 	ivec3 block_size;
 	int buffer_offset;
-} u_params;
+}
+u_params;
 
 // Contains all outputs, each laid out in contiguous chunks of the same size.
 // It must be indexed starting from `u_params.buffer_offset`.
-layout (set = 0, binding = 1, std430) restrict writeonly buffer OutBuffer {
+layout(set = 0, binding = 1, std430) restrict writeonly buffer OutBuffer {
 	float values[];
-} u_out;
+}
+u_out;
 
 // <PLACEHOLDER>
 
@@ -47,7 +49,7 @@ void main() {
 	// float sd = get_sd(wpos);
 	// u_out_sd.values[out_index] = sd;
 
-// <PLACEHOLDER>
+	// <PLACEHOLDER>
 	generate(wpos, u_out.values[out_index], u_out.values[out_index + volume]);
-// </PLACEHOLDER>
+	// </PLACEHOLDER>
 }

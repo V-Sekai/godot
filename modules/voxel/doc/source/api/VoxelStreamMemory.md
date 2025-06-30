@@ -4,16 +4,16 @@ Inherits: [VoxelStream](VoxelStream.md)
 
 Keeps data into memory rather than writing it on disk.
 
-## Description: 
+## Description:
 
 This stream is mainly intented for testing purposes. It shouldn't be used as a proper saving system.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                  | Name                                                             | Default 
+Type                                                                  | Name                                                             | Default
 --------------------------------------------------------------------- | ---------------------------------------------------------------- | --------
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)  | [artificial_save_latency_usec](#i_artificial_save_latency_usec)  | 0       
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)  | [artificial_save_latency_usec](#i_artificial_save_latency_usec)  | 0
 <p></p>
 
 ## Property Descriptions

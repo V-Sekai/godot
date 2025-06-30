@@ -1,3 +1,35 @@
+/**************************************************************************/
+/*  graph_nodes_doc_data.h                                                */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
+
 // <GENERATED>
 // clang-format off
 namespace GraphNodesDocData {
@@ -31,7 +63,7 @@ static const Node g_data[COUNT] = {
     {"FastNoiseGradient3D", "Noise", "Warps 3D coordinates [code](x, y, z)[/code] using a noise gradient from the FastNoiseLite library. The [code]noise[/code] parameter is specified with an instance of the [url=FastNoiseLiteGradient]FastNoiseLiteGradient[/url] resource."},
     {"Floor", "Math", "Returns the result of [code]floor(x)[/code], the nearest integer that is equal or lower to [code]x[/code]."},
     {"Fract", "Math", "Returns the decimal part of [code]x[/code]. The result is always positive regardless of sign."},
-    {"Function", "Misc", "Runs a custom function, like a re-usable sub-graph. The first parameter (parameter 0) of this node is a reference to a [url=VoxelGraphFunction]VoxelGraphFunction[/url]. Further parameters (starting from 1) are those exposed by the function."},
+    {"Function", "Misc", "Runs a custom function, like a reusable sub-graph. The first parameter (parameter 0) of this node is a reference to a [url=VoxelGraphFunction]VoxelGraphFunction[/url]. Further parameters (starting from 1) are those exposed by the function."},
     {"Image", "Mapping", "Returns the value of the red channel of an image at coordinates [code](x, y)[/code], where [code]x[/code] and [code]y[/code] are in pixels and the return value is in the range `[0..1]` (or more if the image has an HDR format). If coordinates are outside the image, they will be wrapped around. No filtering is performed. The image must have an uncompressed format."},
     {"InputSDF", "Input", "Outputs the existing signed distance at the current voxel. This may only be used in specific situations, such as using the graph as a procedural brush."},
     {"InputX", "Input", "Outputs the X coordinate of the current voxel."},
@@ -63,8 +95,8 @@ static const Node g_data[COUNT] = {
     {"Select", "Math", "If [code]t[/code] is lower than [code]threshold[/code], returns [code]a[/code]. Otherwise, returns [code]b[/code]. "},
     {"Sin", "Math", "Returns the result of [code]sin(x)[/code]"},
     {"Smoothstep", "Math", "Returns the result of smoothly interpolating the value of [code]x[/code] between [code]0[/code] and [code]1[/code], based on the where [code]x[/code] lies with respect to the edges [code]egde0[/code] and [code]edge1[/code]. The return value is [code]0[/code] if [code]x <= edge0[/code], and [code]1[/code] if [code]x >= edge1[/code]. If [code]x[/code] lies between [code]edge0[/code] and [code]edge1[/code], the returned value follows an S-shaped curve that maps [code]x[/code] between [code]0[/code] and [code]1[/code]. This S-shaped curve is the cubic Hermite interpolator, given by [code]f(y) = 3*y^2 - 2*y^3[/code] where [code]y = (x-edge0) / (edge1-edge0)[/code]."},
-    {"Spots2D", "Noise", "Cellular noise optimized for \"ore patch\" generation: divides space into a 2D grid where each cell contains a circular \"spot\". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node."},
-    {"Spots3D", "Noise", "Cellular noise optimized for \"ore patch\" generation: divides space into a 3D grid where each cell contains a circular \"spot\". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node."},
+    {"Spots2D", "Noise", "Cellular noise optimized for \"or patch\" generation: divides space into a 2D grid where each cell contains a circular \"spot\". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node."},
+    {"Spots3D", "Noise", "Cellular noise optimized for \"or patch\" generation: divides space into a 3D grid where each cell contains a circular \"spot\". Returns 1 when the position is inside the spot, 0 otherwise. [code]jitter[/code] more or less randomizes the position of the spot inside each cell. Limitation: high jitter can make spots clip with cell borders. This is intentional. If you need more generic cellular noise, use another node."},
     {"Sqrt", "Math", "Returns the square root of [code]x[/code].\nNote: unlike classic square root, if [code]x[/code] is negative, this function returns [code]0[/code] instead of [code]NaN[/code]."},
     {"Stepify", "Math", "Snaps [code]x[/code] to a given step, similar to GDScript's function [code]stepify[/code]."},
     {"Subtract", "Ops", "Returns the result of [code]a - b[/code]"},

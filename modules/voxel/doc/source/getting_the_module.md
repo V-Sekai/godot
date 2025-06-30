@@ -3,7 +3,7 @@ Getting Voxel Tools
 
 This project exists in two editions:
 
-- [Module](#module): bundled as a custom build of Godot Engine and custom export templates. This is the primary way it was developped for a long time.
+- [Module](#module): bundled as a custom build of Godot Engine and custom export templates. This is the primary way it was developed for a long time.
 - [GDExtension](#gdextension): a native add-on that can be added to your project, and will work with an official build of Godot (4.4.1 or later). This is more recent so it had less testing so far.
 
 Each one comes with its own advantages and drawbacks, but generally offer the same functionality.
@@ -63,7 +63,7 @@ See [Building as a module](module_development.md#building)
 
 ### Exporting
 
-!!! note 
+!!! note
 	You will need this section if you want to export your game into an executable.
 
 #### Supported platforms
@@ -82,7 +82,7 @@ In Godot Engine, exporting your game as an executable for a target platform requ
 
 If you only download the Godot Editor with the module, it will allow you to develop and test your game, but if you export without any other setup, Godot will attempt to use a vanilla template, which won't have the module. Therefore, it will fail to open some scenes.
 
-As mentionned in earlier sections, you can get pre-built templates for some platforms and configurations.
+As mentioned in earlier sections, you can get pre-built templates for some platforms and configurations.
 
 If there is no pre-built template available for your platform, you may build it yourself. This is the same as building Godot with the module, only with different options. See the [Godot Documentation](https://docs.godotengine.org/en/latest/development/compiling/index.html) for more details, under the "building export templates" category of the platform you target.
 
@@ -192,7 +192,7 @@ In theory, C++ extensions could provide a strongly-typed API since they have fun
 So the only way to interact from C# with classes defined by an extension is to use the following:
 
 - Calling methods: [call](https://docs.godotengine.org/en/stable/classes/class_object.html#class-object-method-call)
-- Getting or setting properties: [get](https://docs.godotengine.org/en/stable/classes/class_object.html#class-object-method-get) and [set](https://docs.godotengine.org/en/stable/classes/class_object.html#class-object-method-set) 
+- Getting or setting properties: [get](https://docs.godotengine.org/en/stable/classes/class_object.html#class-object-method-get) and [set](https://docs.godotengine.org/en/stable/classes/class_object.html#class-object-method-set)
 - Creating new instances: [ClassDB.instantiate](https://docs.godotengine.org/en/stable/classes/class_classdb.html#class-classdb-method-instantiate).
 
 ```cs

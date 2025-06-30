@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_graph_runtime.cpp                                               */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_graph_runtime.h"
 #include "../../util/containers/container_funcs.h"
 #include "../../util/godot/core/string.h"
@@ -76,7 +106,7 @@ const Runtime::ExecutionMap &Runtime::get_default_execution_map() const {
 	return _program.default_execution_map;
 }
 
-// Generates a list of adresses for the operations to execute,
+// Generates a list of addresses for the operations to execute,
 // skipping those that are deemed constant by the last range analysis.
 // If a non-constant operation only contributes to a constant one, it will also be skipped.
 // This has the effect of optimizing locally at runtime without relying on explicit conditionals.
@@ -102,7 +132,7 @@ void Runtime::generate_optimized_execution_map(
 	// 	return;
 	// }
 
-	// This function will run a lot of times so better re-use the same vector
+	// This function will run a lot of times so better reuse the same vector
 	static thread_local StdVector<uint16_t> to_process;
 	to_process.clear();
 
@@ -218,9 +248,9 @@ void Runtime::generate_optimized_execution_map(
 						// If this interval is not a single value then the node should not have been skippable
 						ZN_ASSERT(range.is_single_value());
 						const float v = range.min;
-						// When we re-use buffer data in multiple nodes, this optimization cannot work reliably
+						// When we reuse buffer data in multiple nodes, this optimization cannot work reliably
 						// if we were to fill constant data here. It is possible that the data pointer
-						// is written to by another operation that re-uses it prior to the skippable node.
+						// is written to by another operation that reuses it prior to the skippable node.
 						// This will overwrite the values we were expecting.
 						// To avoid this problem defer the filling to run just before the first node reading the buffer.
 						// The reason we do it is to avoid having to rewrite operations for every
@@ -278,7 +308,7 @@ void Runtime::prepare_state(State &state, unsigned int buffer_size, bool with_pr
 
 	const unsigned int old_buffer_data_count = state.buffer_datas.size();
 	if (state.buffer_datas.size() < _program.buffer_data_count) {
-		// Create more buffer datas.
+		// Create more buffer data.
 		state.buffer_datas.resize(_program.buffer_data_count);
 		for (unsigned int i = old_buffer_data_count; i < state.buffer_datas.size(); ++i) {
 			BufferData &bd = state.buffer_datas[i];
@@ -290,7 +320,7 @@ void Runtime::prepare_state(State &state, unsigned int buffer_size, bool with_pr
 	}
 
 	if (state.buffer_size < buffer_size) {
-		// Make existing buffer datas larger.
+		// Make existing buffer data larger.
 		for (unsigned int i = 0; i < old_buffer_data_count; ++i) {
 			BufferData &bd = state.buffer_datas[i];
 			ZN_ASSERT(bd.data != nullptr);
@@ -300,7 +330,7 @@ void Runtime::prepare_state(State &state, unsigned int buffer_size, bool with_pr
 				bd.capacity = buffer_size;
 			}
 		}
-		// TODO Not sure if worth keeping capacity at state level. Buffer datas can have varying capacities depending on
+		// TODO Not sure if worth keeping capacity at state level. Buffer data can have varying capacities depending on
 		// which multiple graphs were prepared before.
 		state.buffer_capacity = buffer_size;
 	}

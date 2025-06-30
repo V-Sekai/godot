@@ -1,3 +1,35 @@
+/**************************************************************************/
+/*  fast_noise_lite_shader.h                                              */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
+
 // Generated file
 
 // clang-format off
@@ -1130,7 +1162,7 @@ const char *g_fast_noise_lite_shader[] = {
 "        }\n",
 "    }\n",
 "\n",
-"    bool skipD = false;\n",
+"    bool skipped = false;\n",
 "    float aA = zAFlipMask0 + a0;\n",
 "    if (aA > 0.0)\n",
 "    {\n",
@@ -1160,7 +1192,7 @@ const char *g_fast_noise_lite_shader[] = {
 "            float zC = float(zNMask | 1) + z1;\n",
 "            value += (aC * aC) * (aC * aC) * _fnlGradCoord3D(seed2,\n",
 "                                                             i + PRIME_X, j + PRIME_Y, k + (zNMask & (PRIME_Z << 1)), xC, yC, zC);\n",
-"            skipD = true;\n",
+"            skipped = true;\n",
 "        }\n",
 "    }\n",
 "\n",
@@ -1190,7 +1222,7 @@ const char *g_fast_noise_lite_shader[] = {
 "        }\n",
 "    }\n",
 "\n",
-"    if (!skipD)\n",
+"    if (!skipped)\n",
 "    {\n",
 "        float aD = xAFlipMask1 + yAFlipMask1 + a1;\n",
 "        if (aD > 0.0)\n",

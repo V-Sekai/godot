@@ -1,28 +1,31 @@
 #[compute]
 #version 450
 
-layout (local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
-layout (set = 0, binding = 0, std430) restrict readonly buffer Params {
+layout(set = 0, binding = 0, std430) restrict readonly buffer Params {
 	vec3 origin_in_voxels;
 	float voxel_size;
 	ivec3 block_size;
 	int buffer_offset;
-} u_params;
+}
+u_params;
 
 // SDF is modified in-place
-layout (set = 0, binding = 1, std430) restrict buffer InSDBuffer {
+layout(set = 0, binding = 1, std430) restrict buffer InSDBuffer {
 	float values[];
-} u_inout_sd;
+}
+u_inout_sd;
 
 // Parameters common to all modifiers.
 // Keeping the same binding number as other shader types, to simplify usage in C++
-layout (set = 0, binding = 4, std430) restrict readonly buffer BaseModifierParams {
+layout(set = 0, binding = 4, std430) restrict readonly buffer BaseModifierParams {
 	mat4 world_to_model;
 	int operation;
 	float smoothness;
 	float sd_scale;
-} u_base_modifier_params;
+}
+u_base_modifier_params;
 
 // <PLACEHOLDER>
 float get_sd(vec3 pos) {

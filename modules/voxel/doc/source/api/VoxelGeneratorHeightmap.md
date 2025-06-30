@@ -6,16 +6,16 @@ Inherited by: [VoxelGeneratorImage](VoxelGeneratorImage.md), [VoxelGeneratorNois
 
 Base class for several basic height-based generators.
 
-## Properties: 
+## Properties:
 
 
-Type                                                                            | Name                             | Default         
+Type                                                                            | Name                             | Default
 ------------------------------------------------------------------------------- | -------------------------------- | ----------------
-[ChannelId](VoxelBuffer.md#enumerations)                                        | [channel](#i_channel)            | CHANNEL_SDF (1) 
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [height_range](#i_height_range)  | 30.0            
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [height_start](#i_height_start)  | -50.0           
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [iso_scale](#i_iso_scale)        | 1.0             
-[Vector2i](https://docs.godotengine.org/en/stable/classes/class_vector2i.html)  | [offset](#i_offset)              | Vector2i(0, 0)  
+[ChannelId](VoxelBuffer.md#enumerations)                                        | [channel](#i_channel)            | CHANNEL_SDF (1)
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [height_range](#i_height_range)  | 30.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [height_start](#i_height_start)  | -50.0
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)        | [iso_scale](#i_iso_scale)        | 1.0
+[Vector2i](https://docs.godotengine.org/en/stable/classes/class_vector2i.html)  | [offset](#i_offset)              | Vector2i(0, 0)
 <p></p>
 
 ## Property Descriptions
@@ -26,7 +26,7 @@ Channel where voxels will be generated. If set to [VoxelBuffer.CHANNEL_SDF](Voxe
 
 ### [float](https://docs.godotengine.org/en/stable/classes/class_float.html)<span id="i_height_range"></span> **height_range** = 30.0
 
-Maximum distance between the lowest and highest surface points that can generate. 
+Maximum distance between the lowest and highest surface points that can generate.
 
 NOTE: due to a bug in Godot's documentation tool, the default value shown here is not 30.0, but 200.0. This seems to be because one of the subclasses, `VoxelGeneratorWaves`, has a different default value, chosen for better practical results. This property also appears in some subclasses now, despite being defined in the base class.
 

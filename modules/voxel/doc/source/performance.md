@@ -119,7 +119,7 @@ Similar to rendering 16x16x16 or 32x32x32 blocks, the voxel engine uses "mesh" c
 
 Moving terrain remains possible, but do not expect physics to work correctly on the surface while moving it.
 
-#### Tunnelling 
+#### Tunnelling
 
 Mesh colliders used by terrain have no "thickness". An object can sit undisturbed outside or inside of it, contrary to convex colliders which usually have a "depenetration force" pushing objects away from their inside. This makes mesh colliders more prone to "tunneling": if an object goes too fast, or is too small relative to its velocity, it can pass through the ground.
 
@@ -130,7 +130,7 @@ Mesh colliders used by terrain have no "thickness". An object can sit undisturbe
 
 #### Shape creation is very slow
 
-Similar to rendering, the voxel engine has to convert voxels into meshes ("meshing"), and does this with our own prioritised pool of threads.
+Similar to rendering, the voxel engine has to convert voxels into meshes ("meshing"), and does this with our own prioritized pool of threads.
 It will use those meshes as colliders. Creating a collider from a mesh is actually much more expensive than meshing itself (about 3 to 5 times), because it involves creating an acceleration structure to speed up collision detection (BVH, octree...).
 
 Unfortunately, Godot does not offer a reliable way to safely create these shapes *including their acceleration structure* from within out meshing threads. So instead, we had to defer it all to the main thread, and spread it over multiple frames. This slows down terrain loading tremendously (compared to disabling collisions).
@@ -214,7 +214,7 @@ This matters for scripters.
 
 If you use `VoxelTool`, all locking mechanisms are handled for you automatically. However, you must be aware that it doesn't come for free: if you want to access voxels randomly and modify them randomly, you will pretty much get the worst overhead. If you want to access a well-defined region and you know where to read, and where to write ahead of time, then optimizing becomes possible.
 
-For example, *on a terrain node*, `VoxelTool.get_voxel` or `set_voxel` are the simplest, yet the slowest way to modify voxels. This is not only because of locking, but also because the engine has to go all the way through several data structures to access the voxel. This is perfectly fine for small isolated edits, like the player digging or building piece by piece. 
+For example, *on a terrain node*, `VoxelTool.get_voxel` or `set_voxel` are the simplest, yet the slowest way to modify voxels. This is not only because of locking, but also because the engine has to go all the way through several data structures to access the voxel. This is perfectly fine for small isolated edits, like the player digging or building piece by piece.
 
 This is what happen when you change a single voxel in a terrain (as of 17/06/2023. May also vary depending on the operation and terrain configuration):
 
@@ -255,7 +255,7 @@ So instead, outputs of each node are associated small buffers for a subset of th
 
 ![Graph to operations schema](images/voxel_graph_operation_list.webp)
 
-Finally, the generator executes the list, node by node, and each node computes a bunch of voxels at once instead of just one. This ensures that the CPU is almost exclusively used for the operations themselves, providing performance similar to C++, while graph traversal becomes neglibible. It also offers the opportunity to use [SIMD](https://en.wikipedia.org/wiki/SIMD) very easily, which can be even faster than if the code was written in plain C++.
+Finally, the generator executes the list, node by node, and each node computes a bunch of voxels at once instead of just one. This ensures that the CPU is almost exclusively used for the operations themselves, providing performance similar to C++, while graph traversal becomes negligible. It also offers the opportunity to use [SIMD](https://en.wikipedia.org/wiki/SIMD) very easily, which can be even faster than if the code was written in plain C++.
 
 Buffer processing is mostly an internal detail so there are no particular settings on the scripting API.
 
@@ -263,9 +263,9 @@ Buffer processing is mostly an internal detail so there are no particular settin
 
 Before processing voxels in a specific region of space (a box), the generator first runs a [range analysis](https://en.wikipedia.org/wiki/Interval_arithmetic) pass. Each node has an alternative implementation using intervals, with the sole purpose of estimating the range of values it will output in the area. It's like a broad-phase before the heavy work.
 
-It is possible to inspect results of this pass in the editor by enabling it with the `Analyse range` button. The analysis will focus on the box specified in the dialog, which will appear as a yellow wireframe in the 3D viewport.
+It is possible to inspect results of this pass in the editor by enabling it with the `Analyze range` button. The analysis will focus on the box specified in the dialog, which will appear as a yellow wireframe in the 3D viewport.
 
-![Analyse range editor screenshot](images/range_analysis_dialog.webp)
+![Analyze range editor screenshot](images/range_analysis_dialog.webp)
 
 You can also hover the output label of any node to see what range was calculated for it:
 
@@ -315,7 +315,7 @@ So each biome then only computes its own branch when far away enough from the bl
 
 ![Ignored biome range debug](images/biomes_optimization.png)
 
-Thanks again to range analysis, the generator is able to detect this locally, and *dynamically skips whole branches of nodes* if they are found to not affect the final result. Therefore, it is not required to add conditionals for this use case, it's done automatically. You can visualize this by turning on the analysis tool, which will grey out nodes that are ignored in the specified area.
+Thanks again to range analysis, the generator is able to detect this locally, and *dynamically skips whole branches of nodes* if they are found to not affect the final result. Therefore, it is not required to add conditionals for this use case, it's done automatically. You can visualize this by turning on the analysis tool, which will gray out nodes that are ignored in the specified area.
 
 Internally, the generator parses the graph locally (using a faster data structure since the graph is compiled) to obtain an alternative list of operations. This list is currently nicknamed an `execution map`, because it maps the full list of operations to a reduced one.
 
@@ -324,7 +324,7 @@ Internally, the generator parses the graph locally (using a faster data structur
 This setting can be toggled in the inspector.
 
 !!! note
-    This feature may be more or less precise depending on the range of values parts of the graph are producing. So it is possible that two different graphs providing the same result can run at different speeds. For this reason, analysing ranges can prove useful to understand why parts of the graph are still computed.
+    This feature may be more or less precise depending on the range of values parts of the graph are producing. So it is possible that two different graphs providing the same result can run at different speeds. For this reason, analyzing ranges can prove useful to understand why parts of the graph are still computed.
 
 
 ### Subdivision
@@ -361,13 +361,12 @@ for z in size_z:
 This way, the 2D noise is only computed once for each column of voxels along Y, which speeds up generation a lot.
 
 In Voxel Graphs, the same optimization occurs. When the list of operations is computed, they are put in two groups: `XZ` and `XZY`. All operations that only depend on X and Z are put into the `XZ` group, and others go into the `XZY` group.
-When generating a block of voxels, the `XZ` group is executed once for the first slice of voxels, and the `XZY` group is executed for every slice, re-using results from the `XZ` group.
+When generating a block of voxels, the `XZ` group is executed once for the first slice of voxels, and the `XZY` group is executed for every slice, reusing results from the `XZ` group.
 
 This optimization only applies on both X and Z axes. It can be toggled in the inspector.
 
 
 ### Buffer reduction
 
-The graph attempts to use as few temporary buffers as possible. For example, if you have 10 nodes processing before the output, it won't necessarily allocate 10 unique buffers to store intermediary outputs. Instead, buffers will be re-used for multiple nodes, if that doesn't change the result. Buffers are assigned ahead-of-time, when the graph is compiled. It saves memory, and might improve performance because less data has to be loaded into CPU cache.
+The graph attempts to use as few temporary buffers as possible. For example, if you have 10 nodes processing before the output, it won't necessarily allocate 10 unique buffers to store intermediary outputs. Instead, buffers will be reused for multiple nodes, if that doesn't change the result. Buffers are assigned ahead-of-time, when the graph is compiled. It saves memory, and might improve performance because less data has to be loaded into CPU cache.
 This feature is disabled when the graph is compiled in debug mode, as it allows inspecting the state of each output.
-

@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  voxel_instancer_editor_plugin.cpp                                     */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "voxel_instancer_editor_plugin.h"
 #include "../../terrain/instancing/voxel_instancer.h"
 #include "../../util/godot/classes/menu_button.h"
@@ -39,7 +69,8 @@ void VoxelInstancerEditorPlugin::init() {
 		}
 	}
 	menu_button->get_popup()->connect(
-			"id_pressed", callable_mp(this, &VoxelInstancerEditorPlugin::_on_menu_item_selected));
+			"id_pressed", callable_mp(this, &VoxelInstancerEditorPlugin::_on_menu_item_selected)
+	);
 	menu_button->hide();
 	add_control_to_container(CONTAINER_SPATIAL_EDITOR_MENU, menu_button);
 	_menu_button = menu_button;
@@ -147,7 +178,7 @@ VoxelInstancer *VoxelInstancerEditorPlugin::get_instancer() {
 		return nullptr;
 	}
 	VoxelInstancer *instancer = Object::cast_to<VoxelInstancer>(obj);
-	// We don't expect Godot to re-use the same ObjectID for different objects
+	// We don't expect Godot to reuse the same ObjectID for different objects
 	ERR_FAIL_COND_V(instancer == nullptr, nullptr);
 	return instancer;
 }

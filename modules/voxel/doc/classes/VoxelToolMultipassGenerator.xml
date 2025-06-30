@@ -8,7 +8,7 @@
 		Depending on context, it is also possible to edit voxels some distance away from the main area.
 		The difference between "main" and "total" areas, is that the "main" area is where you should generate stuff, while the "total area" is only available in case what you generate needs to overlap outside of the main area.
 
-		Instances of this class are temporary and not thread-safe. They must never be re-used or stored in a member variable.
+		Instances of this class are temporary and not thread-safe. They must never be reused or stored in a member variable.
 	</description>
 	<tutorials>
 	</tutorials>

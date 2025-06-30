@@ -1,3 +1,33 @@
+/**************************************************************************/
+/*  render_detail_texture_gpu_task.cpp                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "render_detail_texture_gpu_task.h"
 #include "../../util/dstack.h"
 #include "../../util/godot/classes/rd_sampler_state.h"
@@ -509,7 +539,7 @@ void RenderDetailTextureGPUTask::prepare(GPUTaskContext &ctx) {
 		const unsigned int local_group_size_z = 1;
 		rd.compute_list_dispatch(
 				compute_list_id,
-				// Had to cast explicitely because even though both arguments are unsigned, MSVC is too dumb to
+				// Had to cast explicitly because even though both arguments are unsigned, MSVC is too dumb to
 				// realize it can just use the unsigned version of this function. Also, if both are uint16_t, it
 				// somehow decides to use the SIGNED version.
 				math::ceildiv(static_cast<unsigned int>(texture_width), local_group_size_x),
@@ -574,7 +604,7 @@ PackedByteArray RenderDetailTextureGPUTask::collect_texture_and_cleanup(
 		ZN_PROFILE_SCOPE_NAMED("Cleanup");
 
 		// Godot "auto-frees" uniform sets when their dependencies get freed.
-		// But sometimes it doesn't, and can't guess that it should (like when re-using resources).
+		// But sometimes it doesn't, and can't guess that it should (like when reusing resources).
 		// So we have to manually check what we should or should not free.
 		// See https://github.com/godotengine/godot/issues/103073
 		// Instead of adding more debug checks, we can actually free uniform sets first,

@@ -6,17 +6,17 @@ Inherited by: [VoxelInstanceLibraryMultiMeshItem](VoxelInstanceLibraryMultiMeshI
 
 Settings for a model that can be used by [VoxelInstancer](VoxelInstancer.md)
 
-## Properties: 
+## Properties:
 
 
-Type                                                                        | Name                                                                     | Default 
+Type                                                                        | Name                                                                     | Default
 --------------------------------------------------------------------------- | ------------------------------------------------------------------------ | --------
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [floating_sdf_offset_along_normal](#i_floating_sdf_offset_along_normal)  | -0.1    
-[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [floating_sdf_threshold](#i_floating_sdf_threshold)                      | 0.0     
-[VoxelInstanceGenerator](VoxelInstanceGenerator.md)                         | [generator](#i_generator)                                                |         
-[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [lod_index](#i_lod_index)                                                | 0       
-[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [name](#i_name)                                                          | ""      
-[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [persistent](#i_persistent)                                              | false   
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [floating_sdf_offset_along_normal](#i_floating_sdf_offset_along_normal)  | -0.1
+[float](https://docs.godotengine.org/en/stable/classes/class_float.html)    | [floating_sdf_threshold](#i_floating_sdf_threshold)                      | 0.0
+[VoxelInstanceGenerator](VoxelInstanceGenerator.md)                         | [generator](#i_generator)                                                |
+[int](https://docs.godotengine.org/en/stable/classes/class_int.html)        | [lod_index](#i_lod_index)                                                | 0
+[String](https://docs.godotengine.org/en/stable/classes/class_string.html)  | [name](#i_name)                                                          | ""
+[bool](https://docs.godotengine.org/en/stable/classes/class_bool.html)      | [persistent](#i_persistent)                                              | false
 <p></p>
 
 ## Property Descriptions

@@ -42,4 +42,3 @@ There are no tools to edit voxel volumes destructively in the Godot Editor yet. 
 It is possible to use non-destructive [modifiers](generators.md#modifiers), but they are limited.
 
 Terrains can be fully edited in-game using scripts and [VoxelTool](scripting.md). It is also possible to create a script editor plugin to implement edition in a similar manner.
-
