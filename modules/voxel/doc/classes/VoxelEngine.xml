@@ -96,13 +96,6 @@
 				Gets the major (x), minor (y) and patch (z) version numbers of the voxel engine as a single vector. May be useful for comparisons.
 			</description>
 		</method>
-		<method name="run_tests">
-			<return type="void" />
-			<param index="0" name="options" type="Dictionary" />
-			<description>
-				Runs internal unit tests. This function is only available if the voxel engine is compiled with `voxel_tests=true`.
-			</description>
-		</method>
 		<method name="set_thread_count">
 			<return type="void" />
 			<param index="0" name="count" type="int" />

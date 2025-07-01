@@ -20,7 +20,7 @@
 		</method>
 		<method name="color_to_u16_weights" qualifiers="static">
 			<return type="int" />
-			<param index="0" name="_unnamed_arg0" type="Color" />
+			<param index="0" name="weights" type="Color" />
 			<description>
 				Encodes normalized 4-float color into 16-bit integer data, for use with the WEIGHTS channel.
 			</description>
@@ -134,7 +134,7 @@
 		</method>
 		<method name="normalize_color" qualifiers="static">
 			<return type="Color" />
-			<param index="0" name="_unnamed_arg0" type="Color" />
+			<param index="0" name="color" type="Color" />
 			<description>
 				A helper method to set the sum of channels of the `Color` to 1.
 			</description>
@@ -243,21 +243,21 @@
 		</method>
 		<method name="u16_indices_to_vec4i" qualifiers="static">
 			<return type="Vector4i" />
-			<param index="0" name="_unnamed_arg0" type="int" />
+			<param index="0" name="encoded_indices" type="int" />
 			<description>
 				Decodes raw voxel integer data from the INDICES channel into a 4-integer vector.
 			</description>
 		</method>
 		<method name="u16_weights_to_color" qualifiers="static">
 			<return type="Color" />
-			<param index="0" name="_unnamed_arg0" type="int" />
+			<param index="0" name="encoded_weights" type="int" />
 			<description>
 				Decodes raw voxel integer data from the WEIGHTS channel into a normalized 4-float color.
 			</description>
 		</method>
 		<method name="vec4i_to_u16_indices" qualifiers="static">
 			<return type="int" />
-			<param index="0" name="_unnamed_arg0" type="Vector4i" />
+			<param index="0" name="indices" type="Vector4i" />
 			<description>
 				Encodes a 4-integer vector into 16-bit integer voxel data, for use in the INDICES channel.
 			</description>

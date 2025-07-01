@@ -444,7 +444,7 @@ void initialize_voxel_module(ModuleInitializationLevel p_level) {
 		VoxelEngine::create_singleton(config.inner);
 
 		zylann::voxel::godot::VoxelEngine::create_singleton();
-		zylann::godot::add_singleton("VoxelEngine", zylann::voxel::godot::VoxelEngine::get_singleton());
+		zylann::godot::add_singleton("VoxelEngineServer", zylann::voxel::godot::VoxelEngine::get_singleton());
 
 		VoxelMetadataFactory::get_singleton().add_constructor_by_type<zylann::voxel::godot::VoxelMetadataVariant>(
 				zylann::voxel::godot::METADATA_TYPE_VARIANT

@@ -3406,6 +3406,16 @@
 		<member name="threading/worker_pool/max_threads" type="int" setter="" getter="" default="-1">
 			Maximum number of threads to be used by [WorkerThreadPool]. Value of [code]-1[/code] means [code]1[/code] on Web, or a number of [i]logical[/i] CPU cores available on other platforms (see [method OS.get_processor_count]).
 		</member>
+		<member name="voxel/ownership_checks" type="bool" setter="" getter="" default="true">
+		</member>
+		<member name="voxel/threads/count/margin_below_max" type="int" setter="" getter="" default="1">
+		</member>
+		<member name="voxel/threads/count/minimum" type="int" setter="" getter="" default="1">
+		</member>
+		<member name="voxel/threads/count/ratio_over_max" type="float" setter="" getter="" default="0.5">
+		</member>
+		<member name="voxel/threads/main/time_budget_ms" type="int" setter="" getter="" default="8">
+		</member>
 		<member name="xr/openxr/binding_modifiers/analog_threshold" type="bool" setter="" getter="" default="false">
 			If [code]true[/code], enables the analog threshold binding modifier if supported by the XR runtime.
 		</member>
