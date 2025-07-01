@@ -48,6 +48,7 @@ jobs:
               precision=double
               use_asan=yes
               use_ubsan=yes
+              use_static_cpp=false
               linker=mold
             bin: ./bin/godot.linuxbsd.editor.dev.double.x86_64.san
             proj-test: true
