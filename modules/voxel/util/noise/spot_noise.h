@@ -53,23 +53,36 @@ typedef Vector3i ivec3;
 typedef Vector2f vec2;
 typedef Vector3f vec3;
 
-const int PRIME_X = 501125321;
-const int PRIME_Y = 1136930381;
-const int PRIME_Z = 1720413743;
+const unsigned int PRIME_X = 501125321U;
+const unsigned int PRIME_Y = 1136930381U;
+const unsigned int PRIME_Z = 1720413743U;
+
+// GCC raises warnings when integer overflows occur, which are needed for hashing here.
+// Same fix as in Godot e41e2a110373a251cd0664f077ada6f344e5c8fd
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waggressive-loop-optimizations"
+#pragma GCC diagnostic ignored "-Woverflow"
+#endif
 
 // Derived from FastNoiseLite's cellular noise.
 inline int hash2(Vector2i p, int seed) {
-	int hash = seed ^ (p.x * PRIME_X) ^ (p.y * PRIME_Y);
-	hash *= 0x27d4eb2d;
-	return hash;
+	unsigned int hash = (unsigned int)seed ^ ((unsigned int)p.x * PRIME_X) ^ ((unsigned int)p.y * PRIME_Y);
+	hash *= 0x27d4eb2dU;
+	return (int)hash;
 }
 
 // Derived from FastNoiseLite's cellular noise.
 inline int hash3(ivec3 p, int seed) {
-	int hash = seed ^ (p.x * PRIME_X) ^ (p.y * PRIME_Y) ^ (p.z * PRIME_Z);
-	hash *= 0x27d4eb2d;
-	return hash;
+	unsigned int hash = (unsigned int)seed ^ ((unsigned int)p.x * PRIME_X) ^ ((unsigned int)p.y * PRIME_Y) ^
+			((unsigned int)p.z * PRIME_Z);
+	hash *= 0x27d4eb2dU;
+	return (int)hash;
 }
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 // Standalone grid hash functions could be used in the future. Commenting for now cuz they are not used, yet
 

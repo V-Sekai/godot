@@ -494,25 +494,25 @@ public:
     }
 
     // Hashing
-    static const int PrimeX = 501125321;
-    static const int PrimeY = 1136930381;
-    static const int PrimeZ = 1720413743;
+    static const unsigned int PrimeX = 501125321U;
+    static const unsigned int PrimeY = 1136930381U;
+    static const unsigned int PrimeZ = 1720413743U;
 
     static int Hash(int seed, int xPrimed, int yPrimed)
     {
-        int hash = seed ^ xPrimed ^ yPrimed;
+        unsigned int hash = (unsigned int)seed ^ (unsigned int)xPrimed ^ (unsigned int)yPrimed;
 
-        hash *= 0x27d4eb2d;
-        return hash;
+        hash *= 0x27d4eb2dU;
+        return (int)hash;
     }
 
 
     static int Hash(int seed, int xPrimed, int yPrimed, int zPrimed)
     {
-        int hash = seed ^ xPrimed ^ yPrimed ^ zPrimed;
+        unsigned int hash = (unsigned int)seed ^ (unsigned int)xPrimed ^ (unsigned int)yPrimed ^ (unsigned int)zPrimed;
 
-        hash *= 0x27d4eb2d;
-        return hash;
+        hash *= 0x27d4eb2dU;
+        return (int)hash;
     }
 
 
