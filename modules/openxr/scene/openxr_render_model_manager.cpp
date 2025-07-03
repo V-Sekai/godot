@@ -147,7 +147,9 @@ void OpenXRRenderModelManager::_notification(int p_what) {
 	}
 
 	OpenXRRenderModelExtension *render_model_extension = OpenXRRenderModelExtension::get_singleton();
-	ERR_FAIL_NULL(render_model_extension);
+	if (!render_model_extension) {
+		return;
+	}
 	if (!render_model_extension->is_active()) {
 		return;
 	}
