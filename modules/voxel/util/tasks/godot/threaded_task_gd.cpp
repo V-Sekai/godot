@@ -48,6 +48,8 @@ public:
 	void apply_result() override {
 		// Not exposed. Scripters may prefer to use a `completed` signal instead.
 		ref->mark_completed();
+		// Clear the reference to break potential circular reference and allow proper cleanup
+		ref.unref();
 	}
 
 	TaskPriority get_priority() override {
