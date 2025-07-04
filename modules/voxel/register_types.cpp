@@ -605,7 +605,7 @@ void uninitialize_voxel_module(ModuleInitializationLevel p_level) {
 	using namespace voxel;
 
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		zylann::godot::remove_singleton("VoxelEngine");
+		zylann::godot::remove_singleton("VoxelEngineServer");
 
 		// At this point, the GDScript module has nullified GDScriptLanguage::singleton!!
 		// That means it's impossible to free scripts still referenced by VoxelEngine. And that can happen, because
