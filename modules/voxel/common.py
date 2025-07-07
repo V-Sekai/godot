@@ -16,7 +16,7 @@ def register_scons_options(env, is_extension):
     env_vars.Add(BoolVariable("voxel_modifiers", "Build with experimental modifiers support", True))
     env_vars.Add(BoolVariable("voxel_sqlite", "Build with SQLite save stream support", True))
     env_vars.Add(BoolVariable("voxel_instancer", "Build with VoxelInstancer support", True))
-    env_vars.Add(BoolVariable("voxel_gpu", "Build with GPU compute support", False))
+    env_vars.Add(BoolVariable("voxel_gpu", "Build with GPU compute support", True))
     env_vars.Add(BoolVariable("voxel_basic_generators", "Build with basic/example generators", True))
     env_vars.Add(BoolVariable("voxel_mesh_sdf", "Build with mesh voxelization support", True))
     env_vars.Add(BoolVariable("voxel_vox", "Build with support for loading .vox files", True))
