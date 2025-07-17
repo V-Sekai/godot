@@ -1,0 +1,156 @@
+[gd_scene load_steps=2 format=3 uid="uid://d0iiss7ddmto5"]
+
+[ext_resource type="Script" uid="uid://ja0d0f1lh7i7" path="res://vsk_speech/core/lobby.gd" id="1_wxin1"]
+
+[node name="SpeechLobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+script = ExtResource("1_wxin1")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.576471, 0.25098, 0.231373, 1)
+
+[node name="label" type="Label" parent="."]
+layout_mode = 0
+offset_right = 1024.0
+offset_bottom = 40.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.843137, 0.882353, 0.909804, 1)
+text = "Lobby"
+horizontal_alignment = 1
+
+[node name="players" type="HBoxContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 768.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+metadata/_edit_layout_mode = 1
+
+[node name="list" type="ItemList" parent="players"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+metadata/_edit_group_ = true
+metadata/_edit_lock_ = true
+
+[node name="connect" type="VFlowContainer" parent="."]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 16.0
+offset_top = -236.0
+offset_right = -624.0
+offset_bottom = -172.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+metadata/_edit_use_custom_anchors = false
+metadata/_edit_layout_mode = 1
+
+[node name="name_label" type="Label" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 0
+text = "Name:"
+
+[node name="name" type="LineEdit" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+text = "Player"
+expand_to_text_length = true
+clear_button_enabled = true
+
+[node name="ip_label" type="Label" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 0
+text = "IP:"
+
+[node name="ip" type="LineEdit" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+text = "127.0.0.1"
+expand_to_text_length = true
+clear_button_enabled = true
+
+[node name="port_label" type="Label" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 0
+text = "Port:"
+
+[node name="port" type="SpinBox" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+max_value = 99999.0
+value = 10567.0
+
+[node name="host" type="Button" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+text = "Host"
+
+[node name="join" type="Button" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+text = "Join"
+
+[node name="mic_mute" type="CheckButton" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+disabled = true
+button_pressed = true
+text = "Mic Mute"
+
+[node name="playback_mute" type="CheckButton" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 2
+disabled = true
+text = "Playback Mute
+"
+
+[node name="error_label" type="Label" parent="connect"]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 0
+theme_override_colors/font_color = Color(0.820312, 0.291595, 0.291595, 1)
+
+[node name="debug_output" type="RichTextLabel" parent="."]
+layout_mode = 0
+anchor_right = 0.446
+anchor_bottom = 1.0
+offset_top = 160.0
+offset_right = 311.296
+fit_content = true
+scroll_following = true
+metadata/_edit_layout_mode = 1
+metadata/_edit_use_custom_anchors = true
+
+[connection signal="pressed" from="connect/host" to="." method="_on_host_pressed"]
+[connection signal="pressed" from="connect/join" to="." method="_on_join_pressed"]
+[connection signal="toggled" from="connect/mic_mute" to="." method="_on_mic_mute_pressed"]
+[connection signal="toggled" from="connect/playback_mute" to="." method="_on_playback_mute_pressed"]
