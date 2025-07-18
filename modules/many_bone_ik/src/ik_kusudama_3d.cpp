@@ -33,6 +33,9 @@
 #include "core/math/quaternion.h"
 #include "ik_open_cone_3d.h"
 #include "math/ik_node_3d.h"
+#include "math/interval_math.h"
+
+using namespace IntervalMath;
 
 void IKKusudama3D::_update_constraint(Ref<IKNode3D> p_limiting_axes) {
 	// Avoiding antipodal singularities by reorienting the axes.
@@ -54,7 +57,12 @@ void IKKusudama3D::_update_constraint(Ref<IKNode3D> p_limiting_axes) {
 			Vector3 axis = this_to_next.get_axis();
 			double angle = this_to_next.get_angle() / 2.0;
 
-			Vector3 half_angle = this_control_point.rotated(axis, angle);
+			Vector3 half_angle;
+			if (Math::is_zero_approx(axis.length_squared())) {
+				half_angle = this_control_point;
+			} else {
+				half_angle = this_control_point.rotated(axis, angle);
+			}
 			half_angle *= this_to_next.get_angle();
 			half_angle.normalize();
 
@@ -144,23 +152,24 @@ void IKKusudama3D::get_swing_twist(
 #ifdef MATH_CHECKS
 	ERR_FAIL_COND_MSG(!p_rotation.is_normalized(), "The quaternion must be normalized.");
 #endif
-	if (Math::is_zero_approx(p_axis.length_squared())) {
+
+	// Handle zero-length axis case
+	if (p_axis.length_squared() < CMP_EPSILON2) {
 		r_swing = Quaternion();
 		r_twist = Quaternion();
 		return;
 	}
-	p_axis.normalize();
-	Quaternion rotation = p_rotation;
-	if (rotation.w < real_t(0.0)) {
-		rotation *= -1;
-	}
-	Vector3 p = p_axis * (rotation.x * p_axis.x + rotation.y * p_axis.y + rotation.z * p_axis.z);
-	r_twist = Quaternion(p.x, p.y, p.z, rotation.w).normalized();
-	real_t d = Vector3(r_twist.x, r_twist.y, r_twist.z).dot(p_axis);
-	if (d < real_t(0.0)) {
-		r_twist *= real_t(-1.0);
-	}
-	r_swing = (rotation * r_twist.inverse()).normalized();
+
+	// Use interval arithmetic for robust swing-twist decomposition
+	IntervalQuaternion rotation_interval(p_rotation);
+	Interval3D axis_interval(p_axis);
+
+	IntervalQuaternion swing_interval, twist_interval;
+	safe_swing_twist_decomposition(rotation_interval, axis_interval, swing_interval, twist_interval);
+
+	// Convert back to regular quaternions
+	r_swing = swing_interval.to_quaternion();
+	r_twist = twist_interval.to_quaternion();
 }
 
 void IKKusudama3D::add_open_cone(
@@ -398,7 +407,7 @@ Quaternion IKKusudama3D::clamp_to_quadrance_angle(Quaternion p_rotation, double 
 	ERR_FAIL_COND_V_MSG(!p_rotation.is_normalized(), Quaternion(), "The quaternion must be normalized.");
 #endif
 	Quaternion rotation = p_rotation;
-	double newCoeff = 1.0 - (p_cos_half_angle * abs(p_cos_half_angle));
+	double newCoeff = 1.0 - (p_cos_half_angle * Math::abs(p_cos_half_angle));
 	double currentCoeff = rotation.x * rotation.x + rotation.y * rotation.y + rotation.z * rotation.z;
 	if (newCoeff >= currentCoeff) {
 		return rotation;
@@ -421,13 +430,20 @@ void IKKusudama3D::clear_open_cones() {
 }
 
 Quaternion IKKusudama3D::get_quaternion_axis_angle(const Vector3 &p_axis, real_t p_angle) {
-	real_t d = p_axis.length_squared();
-	if (d == 0) {
-		return Quaternion();
-	} else {
-		real_t sin_angle = Math::sin(p_angle * 0.5f);
-		real_t cos_angle = Math::cos(p_angle * 0.5f);
-		real_t s = sin_angle / d;
-		return Quaternion(p_axis.x * s, p_axis.y * s, p_axis.z * s, cos_angle);
+	// Handle zero-length axis case
+	if (p_axis.length_squared() < CMP_EPSILON2) {
+		return Quaternion(); // Return identity quaternion
 	}
+
+	// Handle very small angle case
+	if (Math::abs(p_angle) < CMP_EPSILON) {
+		return Quaternion(); // Return identity quaternion
+	}
+
+	// Use interval arithmetic for robust quaternion creation
+	Interval3D axis_interval(p_axis);
+	Interval angle_interval(p_angle);
+
+	IntervalQuaternion result_interval = safe_quaternion_from_axis_angle(axis_interval, angle_interval);
+	return result_interval.to_quaternion();
 }
