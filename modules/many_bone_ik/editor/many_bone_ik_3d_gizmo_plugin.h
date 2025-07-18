@@ -34,8 +34,8 @@
 #include "../src/many_bone_ik_3d.h"
 
 #include "editor/inspector/editor_inspector.h"
-#include "editor/settings/editor_settings.h"
 #include "editor/scene/3d/skeleton_3d_editor_plugin.h"
+#include "editor/settings/editor_settings.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
