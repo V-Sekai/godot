@@ -217,7 +217,7 @@ TEST_CASE("[Modules][ManyBoneIK][IKKusudama3D] Singularity - Clamp To Quadrance 
 
 	// Test with identity quaternion
 	Quaternion identity = Quaternion();
-	double cos_half_angle = Math::cos(Math::PI / 8);
+	real_t cos_half_angle = real_t(Math::cos(Math::PI / 8));
 	Quaternion clamped_identity = IKKusudama3D::clamp_to_quadrance_angle(identity, cos_half_angle);
 	check_quaternion_valid(clamped_identity, "clamped identity quaternion");
 
