@@ -351,17 +351,17 @@ Vector3 IKKusudama3D::_solve(const Vector3 &p_direction) const {
 	if (!is_enabled() || !is_orientationally_constrained()) {
 		return p_direction;
 	}
-	
+
 	// Use the existing sophisticated constraint solving algorithm
 	Vector<double> bounds;
 	bounds.resize(2);
 	bounds.write[0] = -1.0; // Initialize as out of bounds
 	bounds.write[1] = 0.0;
-	
+
 	// Cast away const for the existing method (this is safe as we're not modifying the object state)
 	IKKusudama3D *mutable_this = const_cast<IKKusudama3D *>(this);
 	Vector3 constrained = mutable_this->get_local_point_in_limits(p_direction, &bounds);
-	
+
 	// Ensure the result is normalized
 	return constrained.normalized();
 }
