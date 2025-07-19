@@ -82,7 +82,7 @@ class IKKusudama3D : public JointLimitation3D {
 
 protected:
 	static void _bind_methods();
-	
+
 	// JointLimitation3D interface implementation
 	virtual Vector3 _solve(const Vector3 &p_direction) const override;
 

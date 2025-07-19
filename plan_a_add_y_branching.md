@@ -1,18 +1,22 @@
 # Plan A: Add Y-Branching Support to Base ManyBoneIK3D
 
 ## Goal
+
 Enhance base ManyBoneIK3D with Y-branching capabilities by adapting EWBIK3D's proven working implementation. This enables CCDIK3D to gain Y-branching automatically while preserving existing API and preparing for Plan B simplification.
 
 ## Overview
+
 This plan adapts EWBIK3D's working `IKBoneSegment3D::generate_default_segments()` algorithm to the base ManyBoneIK3D class. We use EWBIK3D as our **reference implementation** since it already successfully handles complex Y-branching, pin detection, and skeleton decomposition. The goal is to make CCDIK3D work with Y-branching scenarios, validating our approach before proceeding with Plan B.
 
 ## Reference Implementation
+
 **Source**: `modules/many_bone_ik/src/ik_bone_segment_3d.cpp`
-- `generate_default_segments()` - Complete skeleton decomposition algorithm
-- `_has_multiple_children_or_pinned()` - Pin and branching detection
-- `_process_children()` - Recursive segment creation
-- `_is_parent_of_tip()` - Hierarchy analysis
-- `_finalize_segment()` - Boundary handling
+
+-   `generate_default_segments()` - Complete skeleton decomposition algorithm
+-   `_has_multiple_children_or_pinned()` - Pin and branching detection
+-   `_process_children()` - Recursive segment creation
+-   `_is_parent_of_tip()` - Hierarchy analysis
+-   `_finalize_segment()` - Boundary handling
 
 **Key Insight**: EWBIK3D breaks the entire skeleton into non-overlapping linear bone chains at natural boundaries (pins, branches, end bones). We adapt this proven approach to work with ManyBoneIK3D's settings system.
 
@@ -23,9 +27,10 @@ This plan adapts EWBIK3D's working `IKBoneSegment3D::generate_default_segments()
 ### A1.1 Study Reference Implementation
 
 **Source Algorithm**: `IKBoneSegment3D::generate_default_segments()`
+
 ```cpp
-void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>> &p_pins, 
-                                               BoneId p_root_bone, BoneId p_tip_bone, 
+void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>> &p_pins,
+                                               BoneId p_root_bone, BoneId p_tip_bone,
                                                EWBIK3D *p_many_bone_ik) {
     Ref<IKBone3D> current_tip = root;
     Vector<BoneId> children;
@@ -47,6 +52,7 @@ void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>
 ```
 
 **Key Insights from Working Implementation:**
+
 1. **Pin-Aware Traversal**: Algorithm considers pin locations when determining segment boundaries
 2. **Branching Detection**: `_has_multiple_children_or_pinned()` combines branching + pin logic
 3. **Recursive Processing**: `_process_children()` creates child segments for each branch
@@ -55,10 +61,12 @@ void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>
 ### A1.2 Adapt Algorithm to Base ManyBoneIK3D
 
 **Files to modify:**
-- `scene/3d/many_bone_ik_3d.h`
-- `scene/3d/many_bone_ik_3d.cpp`
+
+-   `scene/3d/many_bone_ik_3d.h`
+-   `scene/3d/many_bone_ik_3d.cpp`
 
 **Add to base ManyBoneIK3D:**
+
 ```cpp
 class ManyBoneIK3D {
 private:
@@ -69,7 +77,7 @@ private:
         NodePath target_node;
         bool is_active;
     };
-    
+
     struct LinearChain {
         int root_bone_id;
         int end_bone_id;
@@ -77,26 +85,26 @@ private:
         NodePath target_node;
         bool has_pin;
     };
-    
+
     Vector<PinInfo> detected_pins;
     Vector<LinearChain> generated_chains;
     bool skeleton_analysis_dirty = true;
-    
+
     // Core algorithm adapted from EWBIK3D
     void _analyze_skeleton_with_pins();
     void _generate_linear_chains_from_pins();
     bool _is_parent_of_tip(int current_bone, int tip_bone);
     bool _has_multiple_children_or_pinned(const Vector<int> &children, int current_bone);
-    void _process_children_branches(const Vector<int> &children, int current_bone, 
+    void _process_children_branches(const Vector<int> &children, int current_bone,
                                    const Vector<PinInfo> &pins);
     void _create_chain_from_segment(int root_bone, int end_bone, NodePath target);
-    
+
 public:
     // Simple interface that triggers sophisticated analysis
     void add_target(const String &end_bone_name, NodePath target_node);
     void auto_generate_optimal_settings();
     void clear_generated_settings();
-    
+
     // Analysis results
     Vector<LinearChain> get_generated_chains() const { return generated_chains; }
     bool needs_skeleton_analysis() const { return skeleton_analysis_dirty; }
@@ -106,13 +114,14 @@ public:
 ### A1.3 Implement Core Algorithm Adaptation
 
 **Pin Detection (adapted from EWBIK3D):**
+
 ```cpp
 void ManyBoneIK3D::_analyze_skeleton_with_pins() {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return;
-    
+
     detected_pins.clear();
-    
+
     // Detect pins from target nodes (similar to EWBIK3D's pin system)
     for (int i = 0; i < settings.size(); i++) {
         if (!settings[i]->target_node.is_empty() && settings[i]->end_bone >= 0) {
@@ -124,7 +133,7 @@ void ManyBoneIK3D::_analyze_skeleton_with_pins() {
             detected_pins.push_back(pin);
         }
     }
-    
+
     skeleton_analysis_dirty = false;
 }
 
@@ -133,67 +142,68 @@ bool ManyBoneIK3D::_has_multiple_children_or_pinned(const Vector<int> &children,
     if (children.size() > 1) {
         return true; // Multiple children = branching point
     }
-    
+
     // Check if current bone has a pin (like EWBIK3D's pin detection)
     for (const PinInfo &pin : detected_pins) {
         if (pin.bone_id == current_bone && pin.is_active) {
             return true; // Pinned bone = segment boundary
         }
     }
-    
+
     return false;
 }
 ```
 
 **Chain Generation (adapted from generate_default_segments):**
+
 ```cpp
 void ManyBoneIK3D::_generate_linear_chains_from_pins() {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return;
-    
+
     generated_chains.clear();
-    
+
     // For each pin, generate optimal linear chain (like EWBIK3D)
     for (const PinInfo &pin : detected_pins) {
         LinearChain chain;
         chain.end_bone_id = pin.bone_id;
         chain.target_node = pin.target_node;
         chain.has_pin = true;
-        
+
         // Find optimal root using EWBIK3D-style traversal
         chain.root_bone_id = _find_optimal_root_for_pin(pin);
-        
+
         // Build bone chain from root to end
         _build_bone_chain(chain);
-        
+
         generated_chains.push_back(chain);
     }
-    
+
     // Handle overlaps and optimize (like EWBIK3D's segment processing)
     _optimize_chains_for_non_overlap();
 }
 
 int ManyBoneIK3D::_find_optimal_root_for_pin(const PinInfo &pin) {
     Skeleton3D *skeleton = get_skeleton();
-    
+
     int current_bone = pin.bone_id;
     Vector<int> candidates;
-    
+
     // Traverse up skeleton (similar to EWBIK3D's parent traversal)
     while (current_bone >= 0) {
         Vector<int> children = skeleton->get_bone_children(current_bone);
-        
+
         // Check for natural boundaries (adapted from EWBIK3D logic)
         if (_has_multiple_children_or_pinned(children, current_bone)) {
             candidates.push_back(current_bone);
         }
-        
+
         current_bone = skeleton->get_bone_parent(current_bone);
-        
+
         // Limit chain length (prevent overly long chains)
         if (candidates.size() >= 5) break;
     }
-    
+
     // Return optimal root (prefer shared roots for Y-branching)
     return _select_optimal_root_from_candidates(candidates);
 }
@@ -202,16 +212,17 @@ int ManyBoneIK3D::_find_optimal_root_for_pin(const PinInfo &pin) {
 ### A1.2 Add Y-Branching Detection to Base Class
 
 **Implementation details:**
+
 ```cpp
 void ManyBoneIK3D::analyze_skeleton_branching() {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return;
-    
+
     // Clear previous analysis
     branching_map.clear();
     shared_segments.clear();
     has_branching = false;
-    
+
     // Build map of bone_id -> settings that use it as root
     for (int i = 0; i < settings.size(); i++) {
         int root_bone = settings[i]->root_bone;
@@ -222,7 +233,7 @@ void ManyBoneIK3D::analyze_skeleton_branching() {
             branching_map[root_bone].push_back(i);
         }
     }
-    
+
     // Detect Y-branching (multiple settings sharing same root)
     for (const KeyValue<int, Vector<int>> &pair : branching_map) {
         if (pair.value.size() > 1) {
@@ -236,13 +247,13 @@ void ManyBoneIK3D::_create_shared_segment(int root_bone, const Vector<int> &sett
     SharedSegment segment;
     segment.root_bone_id = root_bone;
     segment.setting_indices = setting_indices;
-    
+
     // Find common parent bones for all chains in this segment
     _build_shared_bone_chain(segment);
-    
+
     // Identify branch points
     _identify_branch_points(segment);
-    
+
     shared_segments.push_back(segment);
 }
 ```
@@ -250,9 +261,10 @@ void ManyBoneIK3D::_create_shared_segment(int root_bone, const Vector<int> &sett
 ### A1.3 Skeleton Topology Analysis
 
 **Key algorithms to implement:**
-- **Shared bone detection**: Find bones that are parents to multiple end bones
-- **Branch point identification**: Detect where chains diverge
-- **Optimal solving order**: Determine sequence for coordinated solving
+
+-   **Shared bone detection**: Find bones that are parents to multiple end bones
+-   **Branch point identification**: Detect where chains diverge
+-   **Optimal solving order**: Determine sequence for coordinated solving
 
 ---
 
@@ -261,16 +273,17 @@ void ManyBoneIK3D::_create_shared_segment(int root_bone, const Vector<int> &sett
 ### A2.1 Auto-Generate Non-Overlapping Settings
 
 **Core Implementation (adapted from EWBIK3D's segment boundaries):**
+
 ```cpp
 void ManyBoneIK3D::auto_generate_optimal_settings() {
     if (!needs_skeleton_analysis()) return;
-    
+
     // Step 1: Analyze skeleton with current targets (like EWBIK3D)
     _analyze_skeleton_with_pins();
-    
+
     // Step 2: Generate optimal non-overlapping chains
     _generate_linear_chains_from_pins();
-    
+
     // Step 3: Replace current settings with generated chains
     _apply_generated_chains_to_settings();
 }
@@ -278,18 +291,18 @@ void ManyBoneIK3D::auto_generate_optimal_settings() {
 void ManyBoneIK3D::_apply_generated_chains_to_settings() {
     // Clear existing settings
     clear_settings();
-    
+
     // Create new settings from generated chains (each chain = one setting)
     set_setting_count(generated_chains.size());
-    
+
     for (int i = 0; i < generated_chains.size(); i++) {
         const LinearChain &chain = generated_chains[i];
-        
+
         // Each generated chain becomes one linear setting
         set_root_bone(i, chain.root_bone_id);
         set_end_bone(i, chain.end_bone_id);
         set_target_node(i, chain.target_node);
-        
+
         // Auto-populate joints for this chain
         _populate_joints_for_chain(i, chain);
     }
@@ -298,10 +311,10 @@ void ManyBoneIK3D::_apply_generated_chains_to_settings() {
 void ManyBoneIK3D::_optimize_chains_for_non_overlap() {
     // Ensure no bone appears in multiple chains (like EWBIK3D segments)
     HashMap<int, int> bone_to_chain;
-    
+
     for (int chain_idx = 0; chain_idx < generated_chains.size(); chain_idx++) {
         LinearChain &chain = generated_chains.write[chain_idx];
-        
+
         // Check each bone in this chain
         for (int bone_id : chain.bone_chain) {
             if (bone_to_chain.has(bone_id)) {
@@ -315,50 +328,51 @@ void ManyBoneIK3D::_optimize_chains_for_non_overlap() {
 }
 ```
 
-### A2.2 Enhanced _process_modification() with Linear Chain Contract
+### A2.2 Enhanced \_process_modification() with Linear Chain Contract
 
 **Preserve existing solver contract:**
+
 ```cpp
 void ManyBoneIK3D::_process_modification(double p_delta) {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return;
-    
+
     // Auto-generate optimal settings if needed
     if (skeleton_analysis_dirty) {
         auto_generate_optimal_settings();
     }
-    
+
     min_distance_squared = min_distance * min_distance;
-    
+
     // Process each setting as independent linear chain (unchanged contract)
     for (int i = 0; i < settings.size(); i++) {
         ManyBoneIK3DSetting *setting = settings[i];
         if (!setting) continue;
-        
+
         // Initialize joints for this linear chain
         _init_joints(skeleton, setting);
-        
+
         // Get target position
         Node3D *target = Object::cast_to<Node3D>(get_node_or_null(setting->target_node));
         if (!target) continue;
-        
+
         Vector3 destination = target->get_global_position();
-        
+
         // Solve this linear chain (existing contract preserved)
         _process_joints(p_delta, skeleton, setting, setting->joints, setting->chain, destination);
     }
 }
 
-void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton, 
-                                  ManyBoneIK3DSetting *p_setting, 
-                                  Vector<ManyBoneIK3DJointSetting *> &p_joints, 
-                                  Vector<Vector3> &p_chain, 
+void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton,
+                                  ManyBoneIK3DSetting *p_setting,
+                                  Vector<ManyBoneIK3DJointSetting *> &p_joints,
+                                  Vector<Vector3> &p_chain,
                                   const Vector3 &p_destination) {
     // Existing implementation unchanged - each setting is one linear chain
     for (int iteration = 0; iteration < max_iterations; iteration++) {
         // Call solver with single linear chain (contract preserved)
         _solve_iteration(p_delta, p_skeleton, p_setting, p_joints, p_chain, p_destination);
-        
+
         // Check convergence for this chain
         if (p_chain.size() > 0) {
             real_t distance_squared = p_chain[p_chain.size() - 1].distance_squared_to(p_destination);
@@ -373,13 +387,14 @@ void ManyBoneIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton,
 ### A2.3 Solver Contract Preservation
 
 **Key principle: Each solver call handles exactly one linear chain**
+
 ```cpp
 // UNCHANGED: Solvers still receive single linear chains
-virtual void _solve_iteration(double p_delta, 
-                             Skeleton3D *p_skeleton, 
+virtual void _solve_iteration(double p_delta,
+                             Skeleton3D *p_skeleton,
                              ManyBoneIK3DSetting *p_setting,     // ONE linear chain
-                             Vector<ManyBoneIK3DJointSetting *> &p_joints, 
-                             Vector<Vector3> &p_chain, 
+                             Vector<ManyBoneIK3DJointSetting *> &p_joints,
+                             Vector<Vector3> &p_chain,
                              const Vector3 &p_destination);      // ONE target
 
 // CCDIK3D implementation unchanged:
@@ -390,16 +405,17 @@ void CCDIK3D::_solve_iteration(...) {
 
 // EWBIK3D implementation unchanged:
 void EWBIK3D::_solve_iteration(...) {
-    // Solve single linear chain with EWBIK algorithm  
+    // Solve single linear chain with EWBIK algorithm
     // No changes needed - still receives one chain, one target
 }
 ```
 
 **Y-branching achieved through multiple coordinated linear chains:**
-- Base class generates optimal non-overlapping chains
-- Each chain becomes one setting with one target
-- Solvers process each chain independently
-- Coordination happens through optimal chain generation, not solver modification
+
+-   Base class generates optimal non-overlapping chains
+-   Each chain becomes one setting with one target
+-   Solvers process each chain independently
+-   Coordination happens through optimal chain generation, not solver modification
 
 ---
 
@@ -408,6 +424,7 @@ void EWBIK3D::_solve_iteration(...) {
 ### A3.1 Auto-Generation Helpers
 
 **Add convenience methods:**
+
 ```cpp
 class ManyBoneIK3D {
 public:
@@ -416,7 +433,7 @@ public:
     void auto_generate_settings_from_targets(const Vector<NodePath> &targets);
     Vector<String> find_optimal_root_bones(const Vector<String> &end_bone_names);
     void optimize_settings_for_branching();
-    
+
     // Analysis and validation
     bool validate_branching_configuration();
     Vector<String> get_branching_warnings();
@@ -425,17 +442,18 @@ public:
 ```
 
 **Implementation:**
+
 ```cpp
 void ManyBoneIK3D::add_target(NodePath target_node, const String &end_bone_name) {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return;
-    
+
     int end_bone = skeleton->find_bone(end_bone_name);
     if (end_bone < 0) return;
-    
+
     // Find optimal root bone for this target
     String optimal_root = _find_optimal_root_for_end_bone(end_bone_name);
-    
+
     // Create new setting
     int new_idx = settings.size();
     set_setting_count(new_idx + 1);
@@ -447,41 +465,41 @@ void ManyBoneIK3D::add_target(NodePath target_node, const String &end_bone_name)
 String ManyBoneIK3D::_find_optimal_root_for_end_bone(const String &end_bone_name) {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return "";
-    
+
     int end_bone = skeleton->find_bone(end_bone_name);
     if (end_bone < 0) return "";
-    
+
     // Traverse up skeleton to find good root candidates
     // Prefer bones that are:
     // 1. Not too close to end bone (need some chain length)
     // 2. Natural branching points (spine, pelvis, etc.)
     // 3. Shared with other existing chains (for Y-branching)
-    
+
     Vector<int> candidates;
     int current = skeleton->get_bone_parent(end_bone);
     int chain_length = 0;
-    
+
     while (current >= 0 && chain_length < 10) { // Max chain length
         candidates.push_back(current);
-        
+
         // Check if this bone is already used as root (good for Y-branching)
         for (int i = 0; i < settings.size(); i++) {
             if (settings[i]->root_bone == current) {
                 return skeleton->get_bone_name(current); // Prefer shared roots
             }
         }
-        
+
         current = skeleton->get_bone_parent(current);
         chain_length++;
     }
-    
+
     // Return a reasonable root (not too close, not too far)
     if (candidates.size() >= 3) {
         return skeleton->get_bone_name(candidates[2]); // 3 bones up
     } else if (!candidates.is_empty()) {
         return skeleton->get_bone_name(candidates[0]);
     }
-    
+
     return "";
 }
 ```
@@ -489,6 +507,7 @@ String ManyBoneIK3D::_find_optimal_root_for_end_bone(const String &end_bone_name
 ### A3.2 Pin-Style Property Support
 
 **Add alternative property interface:**
+
 ```cpp
 // Enhanced property system supporting both styles:
 // Traditional: settings/0/root_bone_name, settings/0/end_bone_name
@@ -496,24 +515,24 @@ String ManyBoneIK3D::_find_optimal_root_for_end_bone(const String &end_bone_name
 
 bool ManyBoneIK3D::_set(const StringName &p_path, const Variant &p_value) {
     String path = p_path;
-    
+
     // Handle pin-style properties
     if (path.begins_with("pins/")) {
         return _handle_pin_property(path, p_value);
     }
-    
+
     // Handle existing settings properties
     if (path.begins_with("settings/")) {
         return _handle_setting_property(path, p_value);
     }
-    
+
     return false;
 }
 
 bool ManyBoneIK3D::_handle_pin_property(const String &path, const Variant &p_value) {
     int pin_idx = path.get_slicec('/', 1).to_int();
     String prop = path.get_slicec('/', 2);
-    
+
     if (prop == "bone_name") {
         // Auto-create setting for this pin
         String end_bone_name = p_value;
@@ -528,7 +547,7 @@ bool ManyBoneIK3D::_handle_pin_property(const String &path, const Variant &p_val
             return true;
         }
     }
-    
+
     return false;
 }
 ```
@@ -536,30 +555,31 @@ bool ManyBoneIK3D::_handle_pin_property(const String &path, const Variant &p_val
 ### A3.3 Enhanced Property Validation
 
 **Add validation and warnings:**
+
 ```cpp
 Vector<String> ManyBoneIK3D::get_branching_warnings() {
     Vector<String> warnings;
-    
+
     analyze_skeleton_branching();
-    
+
     // Check for suboptimal configurations
     for (const SharedSegment &segment : shared_segments) {
         if (segment.setting_indices.size() > 4) {
-            warnings.push_back("Segment with root '" + 
-                get_skeleton()->get_bone_name(segment.root_bone_id) + 
-                "' has many branches (" + itos(segment.setting_indices.size()) + 
+            warnings.push_back("Segment with root '" +
+                get_skeleton()->get_bone_name(segment.root_bone_id) +
+                "' has many branches (" + itos(segment.setting_indices.size()) +
                 "). Consider splitting into multiple segments.");
         }
-        
+
         // Check for very short chains
         for (int setting_idx : segment.setting_indices) {
             if (_get_chain_length(setting_idx) < 2) {
-                warnings.push_back("Setting " + itos(setting_idx) + 
+                warnings.push_back("Setting " + itos(setting_idx) +
                     " has very short chain. Consider different root bone.");
             }
         }
     }
-    
+
     return warnings;
 }
 ```
@@ -571,12 +591,14 @@ Vector<String> ManyBoneIK3D::get_branching_warnings() {
 ### A4.1 CCDIK3D Automatic Enhancement
 
 **Zero changes required to CCDIK3D:**
-- CCDIK3D automatically gains Y-branching when multiple settings share root bones
-- Base class coordination handles the complexity
-- CCDIK3D's `_solve_iteration()` continues to work on linear chains
-- Example: CCDIK3D can now solve both arms reaching different targets simultaneously
+
+-   CCDIK3D automatically gains Y-branching when multiple settings share root bones
+-   Base class coordination handles the complexity
+-   CCDIK3D's `_solve_iteration()` continues to work on linear chains
+-   Example: CCDIK3D can now solve both arms reaching different targets simultaneously
 
 **Testing scenarios:**
+
 ```cpp
 // Test case: CCDIK3D with Y-branching
 ccdik.set_setting_count(2);
@@ -593,46 +615,52 @@ ccdik.set_target_node(1, NodePath("target_R"));
 ### A4.2 Enhanced Base Class Capabilities
 
 **All future IK solvers gain:**
-- Automatic Y-branching detection and coordination
-- Rich skeleton analysis capabilities
-- Optimal solving coordination for shared parent bones
-- Enhanced property system with validation
+
+-   Automatic Y-branching detection and coordination
+-   Rich skeleton analysis capabilities
+-   Optimal solving coordination for shared parent bones
+-   Enhanced property system with validation
 
 ### A4.3 Backward Compatibility
 
 **Guaranteed compatibility:**
-- Existing single-chain setups work unchanged
-- Y-branching only activates when multiple settings share root bones
-- No breaking changes to current API
-- Performance impact minimal for non-branching cases
+
+-   Existing single-chain setups work unchanged
+-   Y-branching only activates when multiple settings share root bones
+-   No breaking changes to current API
+-   Performance impact minimal for non-branching cases
 
 ---
 
 ## Implementation Checklist
 
 ### Phase A1: Skeleton Analysis
-- [ ] Extract `IKBoneSegment3D` algorithms to base class
-- [ ] Add Y-branching detection structures
-- [ ] Implement skeleton topology analysis
-- [ ] Add shared bone detection logic
+
+-   [ ] Extract `IKBoneSegment3D` algorithms to base class
+-   [ ] Add Y-branching detection structures
+-   [ ] Implement skeleton topology analysis
+-   [ ] Add shared bone detection logic
 
 ### Phase A2: Coordination Framework
-- [ ] Implement shared segment solving
-- [ ] Enhance `_process_modification()` with branching support
-- [ ] Add multi-target iteration support
-- [ ] Preserve solver contract compatibility
+
+-   [ ] Implement shared segment solving
+-   [ ] Enhance `_process_modification()` with branching support
+-   [ ] Add multi-target iteration support
+-   [ ] Preserve solver contract compatibility
 
 ### Phase A3: Property System
-- [ ] Add auto-generation helper methods
-- [ ] Implement pin-style property support
-- [ ] Add validation and warning system
-- [ ] Create optimization suggestions
+
+-   [ ] Add auto-generation helper methods
+-   [ ] Implement pin-style property support
+-   [ ] Add validation and warning system
+-   [ ] Create optimization suggestions
 
 ### Phase A4: Testing and Validation
-- [ ] Test CCDIK3D with Y-branching scenarios
-- [ ] Verify backward compatibility
-- [ ] Performance testing for non-branching cases
-- [ ] Integration testing with complex skeletons
+
+-   [ ] Test CCDIK3D with Y-branching scenarios
+-   [ ] Verify backward compatibility
+-   [ ] Performance testing for non-branching cases
+-   [ ] Integration testing with complex skeletons
 
 ## Success Criteria
 
