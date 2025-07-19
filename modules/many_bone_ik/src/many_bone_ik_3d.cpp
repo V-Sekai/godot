@@ -43,35 +43,41 @@
 #include "scene/main/scene_tree.h"
 
 void EWBIK3D::set_pin_count(int32_t p_value) {
+	ERR_FAIL_COND_MSG(p_value < 0, "Pin count cannot be negative");
+	
 	int32_t old_count = pins.size();
 	pin_count = p_value;
 	pins.resize(p_value);
-	for (int32_t pin_i = p_value; pin_i-- > old_count;) {
+	
+	// Initialize new pins (correct loop direction)
+	for (int32_t pin_i = old_count; pin_i < p_value; pin_i++) {
 		pins.write[pin_i].instantiate();
 	}
 
-	Skeleton3D *skeleton = get_skeleton();
-	ERR_FAIL_NULL(skeleton);
-
-	Vector<int32_t> roots = skeleton->get_parentless_bones();
-	if (!get_pin_count()) {
-		int pin_index = 0;
-		for (int root_i = 0; root_i < roots.size(); root_i++) {
-			int root_bone_index = roots[root_i];
-			String root_bone_name = skeleton->get_bone_name(root_bone_index);
-			set_pin_count(get_pin_count() + 1);
-			set_pin_bone_name(pin_index, root_bone_name);
-			pin_index++;
-
-			if (skeleton->get_bone_children(root_bone_index).size() > 0) {
-				int first_child_index = skeleton->get_bone_children(root_bone_index)[0];
-				String first_child_name = skeleton->get_bone_name(first_child_index);
-				set_pin_count(get_pin_count() + 1);
-				set_pin_bone_name(pin_index, first_child_name);
+	// Auto-populate pins when starting from empty (fixed condition)
+	if (old_count == 0 && p_value > 0) {
+		Skeleton3D *skeleton = get_skeleton();
+		if (skeleton) {
+			Vector<int32_t> roots = skeleton->get_parentless_bones();
+			int pin_index = 0;
+			
+			for (int root_i = 0; root_i < roots.size() && pin_index < p_value; root_i++) {
+				int root_bone_index = roots[root_i];
+				String root_bone_name = skeleton->get_bone_name(root_bone_index);
+				set_pin_bone_name(pin_index, root_bone_name);
 				pin_index++;
+
+				// Add first child if available and we have space
+				if (pin_index < p_value && skeleton->get_bone_children(root_bone_index).size() > 0) {
+					int first_child_index = skeleton->get_bone_children(root_bone_index)[0];
+					String first_child_name = skeleton->get_bone_name(first_child_index);
+					set_pin_bone_name(pin_index, first_child_name);
+					pin_index++;
+				}
 			}
 		}
 	}
+	
 	set_dirty();
 	notify_property_list_changed();
 }
@@ -328,7 +334,7 @@ bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 		int index = name.get_slicec('/', 1).to_int();
 		String what = name.get_slicec('/', 2);
 		if (index >= pins.size()) {
-			set_pin_count(constraint_count);
+			set_pin_count(index + 1);
 		}
 		if (what == "bone_name") {
 			set_pin_bone_name(index, p_value);
@@ -351,7 +357,7 @@ bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 		String what = name.get_slicec('/', 2);
 		String begins = "constraints/" + itos(index) + "/kusudama_open_cone/";
 		if (index >= constraint_names.size()) {
-			_set_constraint_count(constraint_count);
+			_set_constraint_count(index + 1);
 		}
 		if (what == "bone_name") {
 			set_constraint_name_at_index(index, p_value);
@@ -473,19 +479,26 @@ void EWBIK3D::set_pin_motion_propagation_factor(int32_t p_effector_index, const 
 }
 
 void EWBIK3D::_set_constraint_count(int32_t p_count) {
+	ERR_FAIL_COND_MSG(p_count < 0, "Constraint count cannot be negative");
+	
 	int32_t old_count = constraint_names.size();
 	constraint_count = p_count;
+	
+	// Resize all constraint-related arrays
 	constraint_names.resize(p_count);
 	joint_twist.resize(p_count);
 	kusudama_open_cone_count.resize(p_count);
 	kusudama_open_cones.resize(p_count);
-	for (int32_t constraint_i = p_count; constraint_i-- > old_count;) {
+	
+	// Initialize new constraints (correct loop direction)
+	for (int32_t constraint_i = old_count; constraint_i < p_count; constraint_i++) {
 		constraint_names.write[constraint_i] = String();
-		kusudama_open_cone_count.write[constraint_i] = 0;
+		kusudama_open_cone_count.write[constraint_i] = 1; // Start with 1 cone
 		kusudama_open_cones.write[constraint_i].resize(1);
-		kusudama_open_cones.write[constraint_i].write[0] = Vector4(0, 1, 0, 0.01745f);
-		joint_twist.write[constraint_i] = Vector2(0, 0.01745f);
+		kusudama_open_cones.write[constraint_i].write[0] = Vector4(0, 1, 0, 0.01745f); // Default cone
+		joint_twist.write[constraint_i] = Vector2(0, 0.01745f); // Small default twist range
 	}
+	
 	set_dirty();
 	notify_property_list_changed();
 }
@@ -1111,10 +1124,20 @@ void EWBIK3D::_bone_list_changed() {
 			ik_bone_3d->add_constraint(constraint);
 			constraint->_update_constraint(ik_bone_3d->get_constraint_twist_transform());
 			
-			// Phase 3.2: Create JointLimitation3D mapping for base class compatibility
-			// TODO: In a full implementation, create JointLimitation3D objects that
-			// represent the kusudama constraints in base class terms
-			// For now, we maintain the EWBIK3D constraint system as primary
+			// Phase 7: Direct IKKusudama3D integration with base class joint system
+			// Use the existing sophisticated IKKusudama3D directly as JointLimitation3D
+			
+			// Apply the IKKusudama3D constraint directly to the corresponding base class joint
+			// Find the setting index that corresponds to this constraint
+			for (int setting_i = 0; setting_i < get_setting_count(); setting_i++) {
+				String setting_bone = get_joint_bone_name(setting_i, 0);
+				if (setting_bone == bone) {
+					// Use the existing IKKusudama3D constraint directly
+					// Since IKKusudama3D now inherits from JointLimitation3D, we can use it directly
+					ManyBoneIK3D::set_joint_limitation(setting_i, 0, constraint);
+					break;
+				}
+			}
 			
 			break;
 		}
