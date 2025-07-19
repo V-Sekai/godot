@@ -38,11 +38,11 @@
 #include "ik_effector_template_3d.h"
 #include "math/ik_node_3d.h"
 #include "scene/3d/skeleton_3d.h"
-#include "scene/3d/skeleton_modifier_3d.h"
+#include "scene/3d/many_bone_ik_3d.h"
 
 class ManyBoneIK3DState;
-class EWBIK3D : public SkeletonModifier3D {
-	GDCLASS(EWBIK3D, SkeletonModifier3D);
+class EWBIK3D : public ManyBoneIK3D {
+	GDCLASS(EWBIK3D, ManyBoneIK3D);
 
 	bool is_constraint_mode = false;
 	NodePath skeleton_path;
@@ -56,7 +56,6 @@ class EWBIK3D : public SkeletonModifier3D {
 	Vector<Vector<Vector4>> kusudama_open_cones;
 	Vector<int> kusudama_open_cone_count;
 	float MAX_KUSUDAMA_OPEN_CONES = 10;
-	int32_t iterations_per_frame = 15;
 	float default_damp = Math::deg_to_rad(5.0f);
 	Ref<IKNode3D> godot_skeleton_transform;
 	Transform3D godot_skeleton_transform_inverse;
@@ -85,6 +84,7 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	static void _bind_methods();
 	virtual void _process_modification(double p_delta) override;
+	virtual void _solve_iteration(double p_delta, Skeleton3D *p_skeleton, ManyBoneIK3DSetting *p_setting, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination) override;
 	void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
 
 public:
@@ -120,7 +120,7 @@ public:
 	real_t get_pin_weight(int32_t p_pin_index) const;
 	void set_pin_direction_priorities(int32_t p_pin_index, const Vector3 &p_priority_direction);
 	Vector3 get_pin_direction_priorities(int32_t p_pin_index) const;
-	NodePath get_pin_target_node_path(int32_t p_pin_index);
+	NodePath get_pin_target_node_path(int32_t p_pin_index) const;
 	void set_pin_motion_propagation_factor(int32_t p_effector_index, const float p_motion_propagation_factor);
 	float get_pin_motion_propagation_factor(int32_t p_effector_index) const;
 	real_t get_default_damp() const;
@@ -147,6 +147,28 @@ public:
 	void set_kusudama_open_cone_count(int32_t p_constraint_index, int32_t p_count);
 	void set_kusudama_open_cone_center(int32_t p_constraint_index, int32_t p_index, Vector3 p_center);
 	void set_kusudama_open_cone_radius(int32_t p_constraint_index, int32_t p_index, float p_radius);
+	
+	// Base class API compatibility methods
+	// Setting Management Methods
+	void set_setting_count(int p_count);
+	int get_setting_count() const;
+	void set_root_bone_name(int p_index, const String &p_bone_name);
+	String get_root_bone_name(int p_index) const;
+	void set_end_bone_name(int p_index, const String &p_bone_name);
+	String get_end_bone_name(int p_index) const;
+	void set_target_node(int p_index, const NodePath &p_target_node);
+	NodePath get_target_node(int p_index) const;
+	
+	// Joint Management Methods
+	void set_joint_count(int p_index, int p_count);
+	int get_joint_count(int p_index) const;
+	void set_joint_bone_name(int p_index, int p_joint, const String &p_bone_name);
+	String get_joint_bone_name(int p_index, int p_joint) const;
+	void set_joint_rotation_axis(int p_index, int p_joint, ManyBoneIK3D::RotationAxis p_axis);
+	ManyBoneIK3D::RotationAxis get_joint_rotation_axis(int p_index, int p_joint) const;
+	void set_joint_rotation_axis_vector(int p_index, int p_joint, Vector3 p_vector);
+	Vector3 get_joint_rotation_axis_vector(int p_index, int p_joint) const;
+	
 	EWBIK3D();
 	~EWBIK3D();
 	void set_dirty();
