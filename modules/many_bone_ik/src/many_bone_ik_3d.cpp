@@ -91,7 +91,7 @@ void EWBIK3D::set_pin_target_node_path(int32_t p_pin_index, const NodePath &p_ta
 	set_dirty();
 }
 
-NodePath EWBIK3D::get_pin_target_node_path(int32_t p_pin_index) const {
+NodePath EWBIK3D::get_pin_target_node_path(int32_t p_pin_index) {
 	ERR_FAIL_INDEX_V(p_pin_index, pins.size(), NodePath());
 	const Ref<IKEffectorTemplate3D> effector_template = pins[p_pin_index];
 	return effector_template->get_target_node();
@@ -137,24 +137,17 @@ void EWBIK3D::_update_skeleton_bones_transform() {
 }
 
 void EWBIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
-	// First, get base class properties to avoid duplicates
-	// Note: Base class properties (max_iterations, min_distance, angular_delta_limit) 
-	// are automatically handled by the inheritance system
-	
-	// Add EWBIK3D-specific property groups
 	const Vector<Ref<IKBone3D>> ik_bones = get_bone_list();
 	RBSet<StringName> existing_pins;
 	for (int32_t pin_i = 0; pin_i < get_pin_count(); pin_i++) {
 		const String bone_name = get_pin_bone_name(pin_i);
 		existing_pins.insert(bone_name);
 	}
-	
-	// EWBIK3D-specific properties group
 	const uint32_t pin_usage = PROPERTY_USAGE_DEFAULT;
 	p_list->push_back(
 			PropertyInfo(Variant::INT, "pin_count",
 					PROPERTY_HINT_RANGE, "0,65536,or_greater", pin_usage | PROPERTY_USAGE_ARRAY | PROPERTY_USAGE_READ_ONLY,
-					"EWBIK3D Pins,pins/"));
+					"Pins,pins/"));
 	for (int pin_i = 0; pin_i < get_pin_count(); pin_i++) {
 		PropertyInfo effector_name;
 		effector_name.type = Variant::STRING_NAME;
@@ -452,7 +445,7 @@ void EWBIK3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "stabilization_passes"), "set_stabilization_passes", "get_stabilization_passes");
 }
 
-EWBIK3D::EWBIK3D() : ManyBoneIK3D() {
+EWBIK3D::EWBIK3D() {
 }
 
 EWBIK3D::~EWBIK3D() {
@@ -638,11 +631,11 @@ Vector<Ref<IKBoneSegment3D>> EWBIK3D::get_segmented_skeletons() {
 }
 
 float EWBIK3D::get_iterations_per_frame() const {
-	return get_max_iterations();
+	return iterations_per_frame;
 }
 
 void EWBIK3D::set_iterations_per_frame(const float &p_iterations_per_frame) {
-	set_max_iterations(static_cast<int>(p_iterations_per_frame));
+	iterations_per_frame = p_iterations_per_frame;
 }
 
 void EWBIK3D::set_pin_node_path(int32_t p_effector_index, NodePath p_node_path) {
@@ -662,7 +655,6 @@ NodePath EWBIK3D::get_pin_node_path(int32_t p_effector_index) const {
 }
 
 void EWBIK3D::_process_modification(double p_delta) {
-	// Initialize EWBIK3D-specific data structures if needed
 	if (!get_skeleton()) {
 		return;
 	}
@@ -683,48 +675,21 @@ void EWBIK3D::_process_modification(double p_delta) {
 		godot_skeleton_transform->set_transform(skeleton->get_transform());
 		godot_skeleton_transform_inverse = skeleton->get_transform().affine_inverse();
 	}
-	
-	// Call base class implementation which will handle iteration framework
-	// and call our _solve_iteration() override for the actual solving
-	ManyBoneIK3D::_process_modification(p_delta);
-	
-	// Update skeleton bones after base class processing
-	_update_skeleton_bones_transform();
-}
-
-void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ManyBoneIK3DSetting *p_setting, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination) {
-	// EWBIK3D's specialized constraint-based solving algorithm
-	// This integrates EWBIK3D's kusudama constraints with the base class framework
-	
-	// For now, use a simplified approach that leverages EWBIK3D's existing segmented_skeletons
-	// TODO: Full integration with base class data structures
-	
-	if (!is_enabled() || !is_visible()) {
+	if (!is_enabled()) {
 		return;
 	}
-	
-	// Use EWBIK3D's existing constraint-based solving for this iteration
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
-		if (segmented_skeleton.is_null()) {
-			continue;
-		}
-		// Use the current iteration index (we'll need to track this)
-		// For now, use a single iteration per call
-		segmented_skeleton->segment_solver(bone_damp, get_default_damp(), get_constraint_mode(), 0, 1);
+	if (!is_visible()) {
+		return;
 	}
-	
-	// Update the base class chain coordinates based on EWBIK3D results
-	// This ensures the base class framework stays synchronized
-	if (p_chain.size() > 0 && bone_list.size() > 0) {
-		// Update chain coordinates from EWBIK3D bone positions
-		// This is a simplified mapping - full integration will be more sophisticated
-		for (int i = 0; i < MIN(p_chain.size(), bone_list.size()); i++) {
-			if (bone_list[i].is_valid() && bone_list[i]->get_ik_transform().is_valid()) {
-				Vector3 bone_pos = bone_list[i]->get_ik_transform()->get_global_transform().origin;
-				p_setting->update_chain_coordinate(p_skeleton, i, bone_pos, false);
+	for (int32_t i = 0; i < get_iterations_per_frame(); i++) {
+		for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
+			if (segmented_skeleton.is_null()) {
+				continue;
 			}
+			segmented_skeleton->segment_solver(bone_damp, get_default_damp(), get_constraint_mode(), i, get_iterations_per_frame());
 		}
 	}
+	_update_skeleton_bones_transform();
 }
 
 real_t EWBIK3D::get_pin_weight(int32_t p_pin_index) const {
@@ -1034,11 +999,6 @@ void EWBIK3D::_bone_list_changed() {
 	}
 	bone_list.clear();
 	segmented_skeletons.clear();
-	
-	// Phase 3.2: Constraint Integration - Create base class settings and sync with EWBIK3D
-	// Clear existing base class settings and rebuild them from EWBIK3D data
-	ManyBoneIK3D::clear_settings();
-	
 	for (BoneId root_bone_index : roots) {
 		String parentless_bone = skeleton->get_bone_name(root_bone_index);
 		Ref<IKBoneSegment3D> segmented_skeleton = Ref<IKBoneSegment3D>(memnew(IKBoneSegment3D(skeleton, parentless_bone, pins, this, nullptr, root_bone_index, -1, stabilize_passes)));
@@ -1057,31 +1017,6 @@ void EWBIK3D::_bone_list_changed() {
 	for (Ref<IKBone3D> &ik_bone_3d : bone_list) {
 		ik_bone_3d->update_default_bone_direction_transform(skeleton);
 	}
-	
-	// Phase 3.2: Create base class settings from EWBIK3D pins
-	// This ensures bidirectional synchronization between pin and setting systems
-	int current_pin_count = get_pin_count();
-	if (current_pin_count > 0) {
-		ManyBoneIK3D::set_setting_count(current_pin_count);
-		for (int pin_i = 0; pin_i < current_pin_count; pin_i++) {
-			// Map pin to base class setting
-			String pin_bone = get_pin_bone_name(pin_i);
-			NodePath target_node = get_pin_target_node_path(pin_i);
-			
-			ManyBoneIK3D::set_root_bone_name(pin_i, pin_bone);
-			ManyBoneIK3D::set_target_node(pin_i, target_node);
-			
-			// Set end bone from constraint system if available
-			if (pin_i < get_constraint_count()) {
-				String constraint_bone = get_constraint_name(pin_i);
-				if (!constraint_bone.is_empty()) {
-					ManyBoneIK3D::set_end_bone_name(pin_i, constraint_bone);
-				}
-			}
-		}
-	}
-	
-	// Phase 3.2: Apply EWBIK3D constraints and create JointLimitation3D mappings
 	for (int constraint_i = 0; constraint_i < constraint_count; ++constraint_i) {
 		String bone = constraint_names[constraint_i];
 		BoneId bone_id = skeleton->find_bone(bone);
@@ -1110,12 +1045,6 @@ void EWBIK3D::_bone_list_changed() {
 			constraint->set_axial_limits(axial_limit.x, axial_limit.y);
 			ik_bone_3d->add_constraint(constraint);
 			constraint->_update_constraint(ik_bone_3d->get_constraint_twist_transform());
-			
-			// Phase 3.2: Create JointLimitation3D mapping for base class compatibility
-			// TODO: In a full implementation, create JointLimitation3D objects that
-			// represent the kusudama constraints in base class terms
-			// For now, we maintain the EWBIK3D constraint system as primary
-			
 			break;
 		}
 	}
@@ -1148,140 +1077,4 @@ void EWBIK3D::set_pin_bone_name(int32_t p_pin_index, const String &p_bone) {
 	}
 	effector_template->set_name(p_bone);
 	set_dirty();
-}
-
-// Base class API compatibility methods implementation
-// These methods provide a compatibility layer between the base class API and EWBIK3D's pin/constraint system
-
-// Setting Management Methods - Map to EWBIK3D pins
-void EWBIK3D::set_setting_count(int p_count) {
-	// Map base class settings to EWBIK3D pins with bidirectional synchronization
-	set_pin_count(p_count);
-	
-	// Ensure we have corresponding constraints for advanced features
-	if (get_constraint_count() < p_count) {
-		_set_constraint_count(p_count);
-	}
-	
-	// Synchronize with base class settings if they exist
-	// This ensures both systems stay coordinated
-	if (p_count > 0) {
-		// Update base class setting count to match
-		ManyBoneIK3D::set_setting_count(p_count);
-	}
-}
-
-int EWBIK3D::get_setting_count() const {
-	// Return pin count as setting count for bidirectional compatibility
-	return get_pin_count();
-}
-
-void EWBIK3D::set_root_bone_name(int p_index, const String &p_bone_name) {
-	// Map to pin bone name
-	ERR_FAIL_INDEX(p_index, get_pin_count());
-	set_pin_bone_name(p_index, p_bone_name);
-}
-
-String EWBIK3D::get_root_bone_name(int p_index) const {
-	// Map from pin bone name
-	ERR_FAIL_INDEX_V(p_index, get_pin_count(), String());
-	return get_pin_bone_name(p_index);
-}
-
-void EWBIK3D::set_end_bone_name(int p_index, const String &p_bone_name) {
-	// For EWBIK3D, end bone is typically determined by the constraint system
-	// This is a simplified mapping - in a full implementation, this might
-	// need to coordinate with the constraint system
-	ERR_FAIL_INDEX(p_index, get_pin_count());
-	// For now, we'll store this as a constraint if it doesn't exist
-	if (p_index < get_constraint_count()) {
-		set_constraint_name_at_index(p_index, p_bone_name);
-	}
-}
-
-String EWBIK3D::get_end_bone_name(int p_index) const {
-	// Map from constraint system
-	ERR_FAIL_INDEX_V(p_index, get_pin_count(), String());
-	if (p_index < get_constraint_count()) {
-		return get_constraint_name(p_index);
-	}
-	return String();
-}
-
-void EWBIK3D::set_target_node(int p_index, const NodePath &p_target_node) {
-	// Map to pin target node
-	ERR_FAIL_INDEX(p_index, get_pin_count());
-	set_pin_target_node_path(p_index, p_target_node);
-}
-
-NodePath EWBIK3D::get_target_node(int p_index) const {
-	// Map from pin target node
-	ERR_FAIL_INDEX_V(p_index, get_pin_count(), NodePath());
-	return get_pin_target_node_path(p_index);
-}
-
-// Joint Management Methods - Map to EWBIK3D constraints
-void EWBIK3D::set_joint_count(int p_index, int p_count) {
-	// For EWBIK3D, joint count is managed through the constraint system
-	// This is a simplified implementation
-	ERR_FAIL_INDEX(p_index, get_pin_count());
-	// Ensure we have enough constraints for this setting
-	if (get_constraint_count() <= p_index) {
-		_set_constraint_count(p_index + 1);
-	}
-}
-
-int EWBIK3D::get_joint_count(int p_index) const {
-	// Return 1 for each constraint (simplified mapping)
-	ERR_FAIL_INDEX_V(p_index, get_pin_count(), 0);
-	return (p_index < get_constraint_count()) ? 1 : 0;
-}
-
-void EWBIK3D::set_joint_bone_name(int p_index, int p_joint, const String &p_bone_name) {
-	// Map to constraint bone name
-	ERR_FAIL_INDEX(p_index, get_pin_count());
-	ERR_FAIL_INDEX(p_joint, 1); // Simplified: only support one joint per setting
-	if (p_index < get_constraint_count()) {
-		set_constraint_name_at_index(p_index, p_bone_name);
-	}
-}
-
-String EWBIK3D::get_joint_bone_name(int p_index, int p_joint) const {
-	// Map from constraint bone name
-	ERR_FAIL_INDEX_V(p_index, get_pin_count(), String());
-	ERR_FAIL_INDEX_V(p_joint, 1, String()); // Simplified: only support one joint per setting
-	if (p_index < get_constraint_count()) {
-		return get_constraint_name(p_index);
-	}
-	return String();
-}
-
-void EWBIK3D::set_joint_rotation_axis(int p_index, int p_joint, ManyBoneIK3D::RotationAxis p_axis) {
-	// EWBIK3D uses kusudama constraints instead of simple rotation axis limits
-	// This is a placeholder implementation - full integration would map
-	// rotation axis constraints to kusudama cone configurations
-	ERR_FAIL_INDEX(p_index, get_pin_count());
-	ERR_FAIL_INDEX(p_joint, 1);
-	// For now, this is a no-op since EWBIK3D uses more sophisticated constraint system
-}
-
-ManyBoneIK3D::RotationAxis EWBIK3D::get_joint_rotation_axis(int p_index, int p_joint) const {
-	// Return ALL axis as default since EWBIK3D uses kusudama constraints
-	ERR_FAIL_INDEX_V(p_index, get_pin_count(), ManyBoneIK3D::ROTATION_AXIS_ALL);
-	ERR_FAIL_INDEX_V(p_joint, 1, ManyBoneIK3D::ROTATION_AXIS_ALL);
-	return ManyBoneIK3D::ROTATION_AXIS_ALL;
-}
-
-void EWBIK3D::set_joint_rotation_axis_vector(int p_index, int p_joint, Vector3 p_vector) {
-	// EWBIK3D uses kusudama constraints - this is a placeholder
-	ERR_FAIL_INDEX(p_index, get_pin_count());
-	ERR_FAIL_INDEX(p_joint, 1);
-	// For now, this is a no-op since EWBIK3D uses more sophisticated constraint system
-}
-
-Vector3 EWBIK3D::get_joint_rotation_axis_vector(int p_index, int p_joint) const {
-	// Return default vector
-	ERR_FAIL_INDEX_V(p_index, get_pin_count(), Vector3(1, 0, 0));
-	ERR_FAIL_INDEX_V(p_joint, 1, Vector3(1, 0, 0));
-	return Vector3(1, 0, 0);
 }
