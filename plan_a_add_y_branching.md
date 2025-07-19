@@ -6,7 +6,7 @@ Enhance base ManyBoneIK3D with Y-branching capabilities by migrating **only the 
 
 ## Overview
 
-This plan migrates **only EWBIK3D's skeleton decomposition algorithm** (`IKBoneSegment3D::generate_default_segments()`) to the base ManyBoneIK3D class as a **preprocessing step**. We use EWBIK3D as our **reference implementation** since it already successfully handles complex Y-branching, pin detection, and skeleton decomposition. 
+This plan migrates **only EWBIK3D's skeleton decomposition algorithm** (`IKBoneSegment3D::generate_default_segments()`) to the base ManyBoneIK3D class as a **preprocessing step**. We use EWBIK3D as our **reference implementation** since it already successfully handles complex Y-branching, pin detection, and skeleton decomposition.
 
 **Key Scope Limitation**: We are **NOT** migrating EWBIK3D's solving algorithms - only the branching decomposer that breaks skeletons into optimal non-overlapping linear chains. CCDIK3D's core CCD algorithm remains completely unchanged and continues to work on simple linear chains.
 
@@ -22,10 +22,11 @@ This plan migrates **only EWBIK3D's skeleton decomposition algorithm** (`IKBoneS
 
 **Key Insight**: EWBIK3D's branching decomposer breaks the entire skeleton into non-overlapping linear bone chains at natural boundaries (pins, branches, end bones). We migrate **only this decomposition logic** to work with ManyBoneIK3D's settings system, leaving all solver algorithms unchanged.
 
-**Architecture**: 
-- **Preprocessing**: EWBIK3D's decomposer generates optimal linear chains
-- **Solving**: Existing solvers (CCDIK3D, EWBIK3D) work on these linear chains unchanged
-- **Result**: Y-branching capability with zero changes to core solving algorithms
+**Architecture**:
+
+-   **Preprocessing**: EWBIK3D's decomposer generates optimal linear chains
+-   **Solving**: Existing solvers (CCDIK3D, EWBIK3D) work on these linear chains unchanged
+-   **Result**: Y-branching capability with zero changes to core solving algorithms
 
 ---
 
@@ -61,7 +62,7 @@ void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>
 **Key Insights from Decomposition Algorithm:**
 
 1. **Pin-Aware Traversal**: Algorithm considers pin locations when determining segment boundaries
-2. **Branching Detection**: `_has_multiple_children_or_pinned()` combines branching + pin logic  
+2. **Branching Detection**: `_has_multiple_children_or_pinned()` combines branching + pin logic
 3. **Recursive Processing**: `_process_children()` creates child segments for each branch
 4. **Boundary Finalization**: `_finalize_segment()` properly terminates segments
 
@@ -80,33 +81,33 @@ void IKBoneSegment3D::generate_default_segments(Vector<Ref<IKEffectorTemplate3D>
 class ManyBoneIK3D {
 private:
     // Pin-aware skeleton analysis (adapted from EWBIK3D)
-    struct PinInfo {
+    struct EffectorInfo {
         String bone_name;
         int bone_id;
         NodePath target_node;
         bool is_active;
     };
 
-    struct LinearChain {
+    struct IKBoneChain {
         int root_bone_id;
         int end_bone_id;
         Vector<int> bone_chain;
         NodePath target_node;
-        bool has_pin;
+        bool has_effector;
     };
 
-    Vector<PinInfo> detected_pins;
-    Vector<LinearChain> generated_chains;
+    Vector<EffectorInfo> detected_effectors;
+    Vector<IKBoneChain> generated_bone_chains;
     bool skeleton_analysis_dirty = true;
 
     // Core decomposer algorithm migrated from EWBIK3D (preprocessing only)
-    void _analyze_skeleton_with_pins();
-    void _generate_linear_chains_from_pins();
+    void _analyze_skeleton_with_effectors();
+    void _generate_bone_chains_from_effectors();
     bool _is_parent_of_tip(int current_bone, int tip_bone);
-    bool _has_multiple_children_or_pinned(const Vector<int> &children, int current_bone);
+    bool _has_multiple_children_or_effector(const Vector<int> &children, int current_bone);
     void _process_children_branches(const Vector<int> &children, int current_bone,
-                                   const Vector<PinInfo> &pins);
-    void _create_chain_from_segment(int root_bone, int end_bone, NodePath target);
+                                   const Vector<EffectorInfo> &effectors);
+    void _build_bone_chain_from_hierarchy(int root_bone, int end_bone, NodePath target);
 
 public:
     // Simple interface that triggers sophisticated analysis
@@ -115,47 +116,47 @@ public:
     void clear_generated_settings();
 
     // Analysis results
-    Vector<LinearChain> get_generated_chains() const { return generated_chains; }
+    Vector<IKBoneChain> get_generated_bone_chains() const { return generated_bone_chains; }
     bool needs_skeleton_analysis() const { return skeleton_analysis_dirty; }
 };
 ```
 
 ### A1.3 Implement Core Decomposer Migration
 
-**Pin Detection (migrated from EWBIK3D decomposer):**
+**Effector Detection (migrated from EWBIK3D decomposer):**
 
 ```cpp
-void ManyBoneIK3D::_analyze_skeleton_with_pins() {
+void ManyBoneIK3D::_analyze_skeleton_with_effectors() {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return;
 
-    detected_pins.clear();
+    detected_effectors.clear();
 
-    // Detect pins from target nodes (similar to EWBIK3D's pin system)
+    // Detect effectors from target nodes (similar to EWBIK3D's pin system)
     for (int i = 0; i < settings.size(); i++) {
         if (!settings[i]->target_node.is_empty() && settings[i]->end_bone >= 0) {
-            PinInfo pin;
-            pin.bone_name = skeleton->get_bone_name(settings[i]->end_bone);
-            pin.bone_id = settings[i]->end_bone;
-            pin.target_node = settings[i]->target_node;
-            pin.is_active = true;
-            detected_pins.push_back(pin);
+            EffectorInfo effector;
+            effector.bone_name = skeleton->get_bone_name(settings[i]->end_bone);
+            effector.bone_id = settings[i]->end_bone;
+            effector.target_node = settings[i]->target_node;
+            effector.is_active = true;
+            detected_effectors.push_back(effector);
         }
     }
 
     skeleton_analysis_dirty = false;
 }
 
-bool ManyBoneIK3D::_has_multiple_children_or_pinned(const Vector<int> &children, int current_bone) {
+bool ManyBoneIK3D::_has_multiple_children_or_effector(const Vector<int> &children, int current_bone) {
     // Adapted from EWBIK3D's logic
     if (children.size() > 1) {
         return true; // Multiple children = branching point
     }
 
-    // Check if current bone has a pin (like EWBIK3D's pin detection)
-    for (const PinInfo &pin : detected_pins) {
-        if (pin.bone_id == current_bone && pin.is_active) {
-            return true; // Pinned bone = segment boundary
+    // Check if current bone has an effector (like EWBIK3D's pin detection)
+    for (const EffectorInfo &effector : detected_effectors) {
+        if (effector.bone_id == current_bone && effector.is_active) {
+            return true; // Effector bone = bone chain boundary
         }
     }
 
@@ -163,39 +164,39 @@ bool ManyBoneIK3D::_has_multiple_children_or_pinned(const Vector<int> &children,
 }
 ```
 
-**Chain Generation (migrated from generate_default_segments):**
+**Bone Chain Generation (migrated from generate_default_segments):**
 
 ```cpp
-void ManyBoneIK3D::_generate_linear_chains_from_pins() {
+void ManyBoneIK3D::_generate_bone_chains_from_effectors() {
     Skeleton3D *skeleton = get_skeleton();
     if (!skeleton) return;
 
-    generated_chains.clear();
+    generated_bone_chains.clear();
 
-    // For each pin, generate optimal linear chain (like EWBIK3D)
-    for (const PinInfo &pin : detected_pins) {
-        LinearChain chain;
-        chain.end_bone_id = pin.bone_id;
-        chain.target_node = pin.target_node;
-        chain.has_pin = true;
+    // For each effector, generate optimal bone chain (like EWBIK3D)
+    for (const EffectorInfo &effector : detected_effectors) {
+        IKBoneChain bone_chain;
+        bone_chain.end_bone_id = effector.bone_id;
+        bone_chain.target_node = effector.target_node;
+        bone_chain.has_effector = true;
 
         // Find optimal root using EWBIK3D-style traversal
-        chain.root_bone_id = _find_optimal_root_for_pin(pin);
+        bone_chain.root_bone_id = _find_optimal_root_for_effector(effector);
 
         // Build bone chain from root to end
-        _build_bone_chain(chain);
+        _build_bone_chain(bone_chain);
 
-        generated_chains.push_back(chain);
+        generated_bone_chains.push_back(bone_chain);
     }
 
     // Handle overlaps and optimize (like EWBIK3D's segment processing)
-    _optimize_chains_for_non_overlap();
+    _optimize_bone_chains_for_non_overlap();
 }
 
-int ManyBoneIK3D::_find_optimal_root_for_pin(const PinInfo &pin) {
+int ManyBoneIK3D::_find_optimal_root_for_effector(const EffectorInfo &effector) {
     Skeleton3D *skeleton = get_skeleton();
 
-    int current_bone = pin.bone_id;
+    int current_bone = effector.bone_id;
     Vector<int> candidates;
 
     // Traverse up skeleton (similar to EWBIK3D's parent traversal)
@@ -203,7 +204,7 @@ int ManyBoneIK3D::_find_optimal_root_for_pin(const PinInfo &pin) {
         Vector<int> children = skeleton->get_bone_children(current_bone);
 
         // Check for natural boundaries (adapted from EWBIK3D logic)
-        if (_has_multiple_children_or_pinned(children, current_bone)) {
+        if (_has_multiple_children_or_effector(children, current_bone)) {
             candidates.push_back(current_bone);
         }
 
@@ -288,47 +289,47 @@ void ManyBoneIK3D::auto_generate_optimal_settings() {
     if (!needs_skeleton_analysis()) return;
 
     // Step 1: Analyze skeleton with current targets (like EWBIK3D)
-    _analyze_skeleton_with_pins();
+    _analyze_skeleton_with_effectors();
 
-    // Step 2: Generate optimal non-overlapping chains
-    _generate_linear_chains_from_pins();
+    // Step 2: Generate optimal non-overlapping bone chains
+    _generate_bone_chains_from_effectors();
 
-    // Step 3: Replace current settings with generated chains
-    _apply_generated_chains_to_settings();
+    // Step 3: Replace current settings with generated bone chains
+    _apply_generated_bone_chains_to_settings();
 }
 
-void ManyBoneIK3D::_apply_generated_chains_to_settings() {
+void ManyBoneIK3D::_apply_generated_bone_chains_to_settings() {
     // Clear existing settings
     clear_settings();
 
-    // Create new settings from generated chains (each chain = one setting)
-    set_setting_count(generated_chains.size());
+    // Create new settings from generated bone chains (each bone chain = one setting)
+    set_setting_count(generated_bone_chains.size());
 
-    for (int i = 0; i < generated_chains.size(); i++) {
-        const LinearChain &chain = generated_chains[i];
+    for (int i = 0; i < generated_bone_chains.size(); i++) {
+        const IKBoneChain &bone_chain = generated_bone_chains[i];
 
-        // Each generated chain becomes one linear setting
-        set_root_bone(i, chain.root_bone_id);
-        set_end_bone(i, chain.end_bone_id);
-        set_target_node(i, chain.target_node);
+        // Each generated bone chain becomes one linear setting
+        set_root_bone(i, bone_chain.root_bone_id);
+        set_end_bone(i, bone_chain.end_bone_id);
+        set_target_node(i, bone_chain.target_node);
 
-        // Auto-populate joints for this chain
-        _populate_joints_for_chain(i, chain);
+        // Auto-populate joints for this bone chain
+        _populate_joints_for_bone_chain(i, bone_chain);
     }
 }
 
-void ManyBoneIK3D::_optimize_chains_for_non_overlap() {
-    // Ensure no bone appears in multiple chains (like EWBIK3D segments)
+void ManyBoneIK3D::_optimize_bone_chains_for_non_overlap() {
+    // Ensure no bone appears in multiple bone chains (like EWBIK3D segments)
     HashMap<int, int> bone_to_chain;
 
-    for (int chain_idx = 0; chain_idx < generated_chains.size(); chain_idx++) {
-        LinearChain &chain = generated_chains.write[chain_idx];
+    for (int chain_idx = 0; chain_idx < generated_bone_chains.size(); chain_idx++) {
+        IKBoneChain &bone_chain = generated_bone_chains.write[chain_idx];
 
-        // Check each bone in this chain
-        for (int bone_id : chain.bone_chain) {
+        // Check each bone in this bone chain
+        for (int bone_id : bone_chain.bone_chain) {
             if (bone_to_chain.has(bone_id)) {
-                // Bone conflict! Split chains at this boundary
-                _split_chains_at_bone(bone_id, chain_idx, bone_to_chain[bone_id]);
+                // Bone conflict! Split bone chains at this boundary
+                _split_bone_chains_at_bone(bone_id, chain_idx, bone_to_chain[bone_id]);
             } else {
                 bone_to_chain[bone_id] = chain_idx;
             }
@@ -427,10 +428,10 @@ void JacobIK3D::_solve_iteration(...) {
 
 **Y-branching achieved through preprocessing only:**
 
--   **Preprocessing**: Base class decomposer generates optimal non-overlapping chains
--   **Settings**: Each chain becomes one setting with one target  
--   **Solving**: All ManyBoneIK3D solvers (CCDIK3D, FABRIK3D, JacobIK3D) process each chain independently using existing algorithms
--   **Coordination**: Happens through optimal chain generation, **zero solver modifications**
+-   **Preprocessing**: Base class decomposer generates optimal non-overlapping bone chains
+-   **Settings**: Each bone chain becomes one setting with one target
+-   **Solving**: All ManyBoneIK3D solvers (CCDIK3D, FABRIK3D, JacobIK3D) process each bone chain independently using existing algorithms
+-   **Coordination**: Happens through optimal bone chain generation, **zero solver modifications**
 -   **Result**: CCDIK3D, FABRIK3D, and JacobIK3D all gain Y-branching with zero code changes to their core algorithms
 
 ---
@@ -527,14 +528,14 @@ String ManyBoneIK3D::_find_optimal_root_for_end_bone(const String &end_bone_name
 ```cpp
 // Enhanced property system supporting both styles:
 // Traditional: settings/0/root_bone_name, settings/0/end_bone_name
-// Pin-style: pins/0/bone_name, pins/0/target_node
+// Effector-style: effectors/0/bone_name, effectors/0/target_node
 
 bool ManyBoneIK3D::_set(const StringName &p_path, const Variant &p_value) {
     String path = p_path;
 
-    // Handle pin-style properties
-    if (path.begins_with("pins/")) {
-        return _handle_pin_property(path, p_value);
+    // Handle effector-style properties
+    if (path.begins_with("effectors/")) {
+        return _handle_effector_property(path, p_value);
     }
 
     // Handle existing settings properties
@@ -545,21 +546,21 @@ bool ManyBoneIK3D::_set(const StringName &p_path, const Variant &p_value) {
     return false;
 }
 
-bool ManyBoneIK3D::_handle_pin_property(const String &path, const Variant &p_value) {
-    int pin_idx = path.get_slicec('/', 1).to_int();
+bool ManyBoneIK3D::_handle_effector_property(const String &path, const Variant &p_value) {
+    int effector_idx = path.get_slicec('/', 1).to_int();
     String prop = path.get_slicec('/', 2);
 
     if (prop == "bone_name") {
-        // Auto-create setting for this pin
+        // Auto-create setting for this effector
         String end_bone_name = p_value;
         NodePath target_path; // Get from existing or default
         add_target(target_path, end_bone_name);
         return true;
     } else if (prop == "target_node") {
         // Update target for corresponding setting
-        // Find setting that corresponds to this pin index
-        if (pin_idx < settings.size()) {
-            set_target_node(pin_idx, p_value);
+        // Find setting that corresponds to this effector index
+        if (effector_idx < settings.size()) {
+            set_target_node(effector_idx, p_value);
             return true;
         }
     }
@@ -609,7 +610,7 @@ Vector<String> ManyBoneIK3D::get_branching_warnings() {
 **Zero changes required to any ManyBoneIK3D solvers:**
 
 -   **CCDIK3D** automatically gains Y-branching when multiple settings share root bones
--   **FABRIK3D** automatically gains Y-branching when multiple settings share root bones  
+-   **FABRIK3D** automatically gains Y-branching when multiple settings share root bones
 -   **JacobIK3D** automatically gains Y-branching when multiple settings share root bones
 -   Base class coordination handles the complexity
 -   Each solver's `_solve_iteration()` continues to work on linear chains unchanged
@@ -712,11 +713,12 @@ jacobik.set_target_node(1, NodePath("target_R"));
 ## Risk Assessment: **LOW RISK**
 
 **Why Low Risk:**
-- **Scope Limited**: Only migrating skeleton decomposition (preprocessing), not solving algorithms
-- **Proven Algorithm**: EWBIK3D's decomposer is already working and well-tested
-- **Isolated Changes**: Core solver algorithms remain completely untouched
-- **Preprocessing Only**: Decomposer runs before solving, can't break existing solver logic
-- **Fallback Safe**: Can fallback to existing behavior if decomposition fails
+
+-   **Scope Limited**: Only migrating skeleton decomposition (preprocessing), not solving algorithms
+-   **Proven Algorithm**: EWBIK3D's decomposer is already working and well-tested
+-   **Isolated Changes**: Core solver algorithms remain completely untouched
+-   **Preprocessing Only**: Decomposer runs before solving, can't break existing solver logic
+-   **Fallback Safe**: Can fallback to existing behavior if decomposition fails
 
 ## Risk Mitigation
 
@@ -729,11 +731,12 @@ jacobik.set_target_node(1, NodePath("target_R"));
 ## Final Assessment: **10/10 Alignment Score**
 
 This plan achieves perfect alignment with Godot best practices because:
-- **Targeted Solution**: Solves Y-branching without over-engineering
-- **Proven Reference**: Uses working EWBIK3D decomposer as foundation  
-- **Minimal Risk**: Only preprocessing changes, zero solver modifications
-- **Universal Benefit**: All ManyBoneIK3D solvers (CCDIK3D, FABRIK3D, JacobIK3D) gain Y-branching automatically
-- **Backward Compatible**: Existing code works unchanged
+
+-   **Targeted Solution**: Solves Y-branching without over-engineering
+-   **Proven Reference**: Uses working EWBIK3D decomposer as foundation
+-   **Minimal Risk**: Only preprocessing changes, zero solver modifications
+-   **Universal Benefit**: All ManyBoneIK3D solvers (CCDIK3D, FABRIK3D, JacobIK3D) gain Y-branching automatically
+-   **Backward Compatible**: Existing code works unchanged
 
 The focused scope (decomposer migration only) eliminates the complexity risks while delivering the full Y-branching capability. This establishes the foundation for universal Y-branching support across all ManyBoneIK3D solvers (CCDIK3D, FABRIK3D, JacobIK3D) while maintaining full backward compatibility.
 
