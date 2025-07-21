@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="JointLimitationKusudama3D" inherits="JointLimitation3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		A Kusudama joint limitation that constrains bone orientation using multiple cones connected by tangent paths.
+	</brief_description>
+	<description>
+		JointLimitationKusudama3D represents a spherical constraint region using multiple sequence cones that are automatically connected by smooth tangent paths. The term "Kusudama" originates from Japanese papercraft models made by sewing or gluing pyramidal units through a common vertex, which this constraint visually resembles.
+		[b]How Kusudamas Work:[/b]
+		Each cone is defined by a center direction (Vector3) and a radius (half-angle in radians). The constraint allows bone orientations within any of these cones. Additionally, adjacent cones in the sequence are automatically connected by tangent paths, creating a smooth transition region between cones. The inside of tangent circles is forbidden, while the region outside both tangent circles (between the cones) forms the allowed path.
+		[b]Important:[/b] Cones form a linear sequence, not a closed loop. The last cone in the array does not automatically connect back to the first cone. To create a closed constraint region, you must explicitly add a final cone that connects back to the first, or arrange your cones so the last one naturally connects to the first.
+		[b]Constraint Solving Process:[/b]
+		1. First, the solver checks if the bone direction is within any sequence cone. If so, the orientation is allowed.
+		2. If not, it checks if the bone direction is within the tangent path regions between adjacent cones.
+		3. If the bone is outside all allowed regions, it is constrained to the nearest boundary point.
+		[b]Axial (Twist) Constraints:[/b]
+		By default, kusudamas only constrain the swing (direction) of the bone. To also constrain twist (axial rotation), enable [member axially_constrained] and set [member min_axial_angle] and [member range_angle]. The twist constraint uses a swing-twist decomposition, where the constraint axis should point as far away as possible from the constraint's allowable region for best results.
+		[b]Tangent Cone Calculation:[/b]
+		The tangent cones connecting adjacent sequence cones are automatically calculated. The tangent cone radius is determined by the formula: [code](π - (θa + θb)) / 2[/code], where θa and θb are the apex angles of the two sequence cones being connected. This ensures smooth transitions between cones while maintaining the constraint boundaries.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_cone_center" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the center direction vector of the cone at the specified index. This vector points in the direction the cone opens and should be normalized.
+			</description>
+		</method>
+		<method name="get_cone_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of cones in this kusudama constraint.
+			</description>
+		</method>
+		<method name="get_cone_radius" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the radius (half-angle in radians) of the cone at the specified index. This determines how wide the cone opens.
+			</description>
+		</method>
+		<method name="set_axial_limits">
+			<return type="void" />
+			<param index="0" name="min_angle" type="float" />
+			<param index="1" name="range_angle" type="float" />
+			<description>
+				Sets both the minimum axial angle and range angle for twist constraints in a single call. Both angles are in radians.
+			</description>
+		</method>
+		<method name="set_cone_center">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="center" type="Vector3" />
+			<description>
+				Sets the center direction vector of the cone at the specified index. The vector will be normalized automatically. This defines the direction in which the cone opens.
+			</description>
+		</method>
+		<method name="set_cone_count">
+			<return type="void" />
+			<param index="0" name="count" type="int" />
+			<description>
+				Sets the number of cones. If increasing the count, new cones are added with default values (center at +Y axis, radius of 0.785398 radians). If decreasing, excess cones are removed.
+			</description>
+		</method>
+		<method name="set_cone_radius">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="radius" type="float" />
+			<description>
+				Sets the radius (half-angle in radians) of the cone at the specified index. Larger values create wider cones, allowing more freedom in that direction.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="axially_constrained" type="bool" setter="set_axially_constrained" getter="is_axially_constrained" default="false">
+			If [code]true[/code], twist (axial rotation) constraints are applied. The bone's rotation around its forward axis will be constrained to the range defined by [member min_axial_angle] and [member range_angle]. By default, kusudamas only constrain swing (direction), not twist.
+		</member>
+		<member name="min_axial_angle" type="float" setter="set_min_axial_angle" getter="get_min_axial_angle" default="0.0">
+			The minimum axial angle (in radians) for twist constraints. The twist constraint range extends from this angle to this angle plus [member range_angle]. This property is displayed in degrees in the inspector but stored internally as radians.
+		</member>
+		<member name="cones" type="PackedVector4Array" setter="set_cones" getter="get_cones" default="PackedVector4Array(0, 1, 0, 0.7853982)">
+			Array of cones defining the allowed swing (directional) regions. Each Vector4 contains (x, y, z, radius) where (x, y, z) is the normalized center direction vector pointing in the direction the cone opens, and radius is the half-angle in radians. Adjacent cones in the array sequence are automatically connected by tangent paths, creating smooth transitions between allowed regions. Note that cones form a linear sequence - the last cone does not automatically connect back to the first cone. The default value represents a single cone opening along the +Y axis with a 45-degree half-angle.
+		</member>
+		<member name="orientationally_constrained" type="bool" setter="set_orientationally_constrained" getter="is_orientationally_constrained" default="true">
+			If [code]true[/code], swing (directional) constraints are applied. The bone's direction will be constrained to the union of all cones and their connecting tangent paths. When [code]false[/code], only twist constraints (if enabled) are applied, allowing free directional movement.
+		</member>
+		<member name="range_angle" type="float" setter="set_range_angle" getter="get_range_angle" default="6.2831855">
+			The range angle (in radians) for twist constraints. Together with [member min_axial_angle], this defines the allowed twist rotation range. A value of [constant @GDScript.TAU] (2π ≈ 6.2831855) allows full 360-degree rotation. This property is displayed in degrees in the inspector but stored internally as radians.
+		</member>
+	</members>
+</class>

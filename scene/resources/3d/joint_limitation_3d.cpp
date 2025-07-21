@@ -52,10 +52,17 @@ Vector3 JointLimitation3D::_solve(const Vector3 &p_direction) const {
 	return p_direction;
 }
 
-Vector3 JointLimitation3D::solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector) const {
+Vector3 JointLimitation3D::solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector, const Quaternion &p_rotation, Quaternion *r_constrained_rotation) const {
 	Quaternion space = make_space(p_local_forward_vector, p_local_right_vector, p_rotation_offset);
 	Vector3 dir = p_local_current_vector.normalized();
-	return space.xform(_solve(space.xform_inv(dir)));
+	Vector3 constrained_dir = space.xform(_solve(space.xform_inv(dir)));
+
+	// If rotation output is requested, return rotation unchanged (no twist constraints by default)
+	if (r_constrained_rotation) {
+		*r_constrained_rotation = p_rotation;
+	}
+
+	return constrained_dir;
 }
 
 #ifdef TOOLS_ENABLED
