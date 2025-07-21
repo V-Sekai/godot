@@ -65,6 +65,13 @@
 #include "tests/core/io/test_udp_server.h"
 #include "tests/core/io/test_uds_server.h"
 #include "tests/core/io/test_xml_parser.h"
+#include "tests/core/math/qcp/test_qcp_advanced.h"
+#include "tests/core/math/qcp/test_qcp_basic.h"
+#include "tests/core/math/qcp/test_qcp_edge_cases.h"
+#include "tests/core/math/qcp/test_qcp_fixtures.h"
+#include "tests/core/math/qcp/test_qcp_helpers.h"
+#include "tests/core/math/qcp/test_qcp_input_validation.h"
+#include "tests/core/math/qcp/test_qcp_validation.h"
 #include "tests/core/math/test_aabb.h"
 #include "tests/core/math/test_astar.h"
 #include "tests/core/math/test_basis.h"
@@ -179,6 +186,7 @@
 #ifdef MODULE_GLTF_ENABLED
 #include "tests/scene/test_gltf_document.h"
 #endif
+#include "tests/scene/test_ewbik_3d_.h"
 #include "tests/scene/test_path_3d.h"
 #include "tests/scene/test_path_follow_3d.h"
 #include "tests/scene/test_primitives.h"
