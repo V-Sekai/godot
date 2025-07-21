@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ManyBoneIK3DState" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_default_damp" qualifiers="const">
+			<return type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="get_effector_templates" qualifiers="const">
+			<return type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="get_iterations_per_frame" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_original_bone_poses" qualifiers="const">
+			<return type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="get_stabilization_passes" qualifiers="const">
+			<return type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_default_damp">
+			<return type="void" />
+			<param index="0" name="damp" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="set_effector_templates">
+			<return type="void" />
+			<param index="0" name="templates" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="set_iterations_per_frame">
+			<return type="void" />
+			<param index="0" name="iterations" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_original_bone_poses">
+			<return type="void" />
+			<param index="0" name="poses" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="set_stabilization_passes">
+			<return type="void" />
+			<param index="0" name="passes" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
