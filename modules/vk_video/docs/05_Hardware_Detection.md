@@ -1,6 +1,7 @@
 # Hardware Detection and Capability Management
 
 ## Brief Description
+
 Comprehensive hardware detection system for Vulkan Video capabilities, driver compatibility validation, and graceful fallback mechanisms for AV1 video acceleration.
 
 ## Core Detection System
@@ -520,6 +521,7 @@ String VulkanVideoCapabilities::get_fallback_recommendation() const {
 ## Usage Examples
 
 ### Basic Capability Detection
+
 ```cpp
 // Check hardware support
 VulkanVideoCapabilities *caps = VulkanVideoCapabilities::get_singleton();
@@ -538,6 +540,7 @@ if (caps->is_av1_decode_supported()) {
 ```
 
 ### Validation and Configuration
+
 ```cpp
 // Validate and configure video session
 VideoSessionCreateInfo session_info;

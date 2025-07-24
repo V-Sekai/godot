@@ -3,14 +3,16 @@
 > **🎯 TARGET IMPLEMENTATION**: This document describes the **required target architecture** for AV1 video support using Vulkan Video extensions.
 >
 > **✅ CURRENT STATUS (January 2025)**:
-> - VideoStreamMKV: MKV/WebM container parsing with Opus audio support
-> - OneEuroFilter: Audio-video synchronization filtering
-> - Basic module infrastructure and registration
+>
+> -   VideoStreamMKV: MKV/WebM container parsing with Opus audio support
+> -   OneEuroFilter: Audio-video synchronization filtering
+> -   Basic module infrastructure and registration
 >
 > **🎯 REQUIRED IMPLEMENTATION**:
-> - Vulkan Video API integration (VK_KHR_video_decode_av1, VK_KHR_video_encode_av1)
-> - AV1 hardware decoding/encoding pipeline
-> - Advanced resource management and DPB handling
+>
+> -   Vulkan Video API integration (VK_KHR_video_decode_av1, VK_KHR_video_encode_av1)
+> -   AV1 hardware decoding/encoding pipeline
+> -   Advanced resource management and DPB handling
 >
 > **❌ NOT PLANNED**: H.264, H.265 support removed from scope per requirements
 >
@@ -52,11 +54,11 @@ An analysis of the `VideoStreamTheora` implementation reveals a purely CPU-bound
 
 This pipeline suffers from several critical limitations that motivate the need for a modern, hardware-accelerated solution:
 
-- **Outdated Codec:** Ogg Theora is an old and inefficient codec compared to modern standards like AV1, resulting in larger file sizes for comparable quality.
-- **CPU Bottleneck:** Decoding is performed entirely on the CPU. For high-resolution video (e.g., 1080p or 4K), this can consume significant CPU resources, leading to performance degradation, stuttering, and increased power consumption, especially on mobile devices.
+-   **Outdated Codec:** Ogg Theora is an old and inefficient codec compared to modern standards like AV1, resulting in larger file sizes for comparable quality.
+-   **CPU Bottleneck:** Decoding is performed entirely on the CPU. For high-resolution video (e.g., 1080p or 4K), this can consume significant CPU resources, leading to performance degradation, stuttering, and increased power consumption, especially on mobile devices.
 
-- **Inefficient Data Path:** The constant transfer of decoded frames from system memory to VRAM consumes significant bus bandwidth, which could otherwise be used for other rendering tasks.
-- **Limited Functionality:** The current implementation lacks essential features like seeking (`stream_position` has no effect), a long-standing issue noted by the community.
+-   **Inefficient Data Path:** The constant transfer of decoded frames from system memory to VRAM consumes significant bus bandwidth, which could otherwise be used for other rendering tasks.
+-   **Limited Functionality:** The current implementation lacks essential features like seeking (`stream_position` has no effect), a long-standing issue noted by the community.
 
 This existing structure, however, provides a valuable template. The separation of concerns between the `VideoStreamPlayer` (UI/control), `VideoStream` (resource), and a `VideoStreamPlayback` object (stateful playback instance) is a sound design.
 
@@ -122,19 +124,19 @@ The framework introduces dedicated queue families for video operations, identifi
 
 The API is built around several key object types that manage the state of a video stream:
 
-- **`VkVideoSessionKHR`**: This object represents the context for a single video stream. It is a stateful object that maintains persistent data required for decoding or encoding a sequence of pictures, most notably the state of the Decoded Picture Buffer (DPB).
+-   **`VkVideoSessionKHR`**: This object represents the context for a single video stream. It is a stateful object that maintains persistent data required for decoding or encoding a sequence of pictures, most notably the state of the Decoded Picture Buffer (DPB).
 
-- **`VkVideoSessionParametersKHR`**: This object is designed to store and manage codec-specific header information, such as the AV1 Sequence Header or H.264 Sequence Parameter Sets (SPS). By parsing this data once and storing it in a parameters object, the application avoids redundant processing on every frame and allows the driver to perform implementation-specific optimizations.
+-   **`VkVideoSessionParametersKHR`**: This object is designed to store and manage codec-specific header information, such as the AV1 Sequence Header or H.264 Sequence Parameter Sets (SPS). By parsing this data once and storing it in a parameters object, the application avoids redundant processing on every frame and allows the driver to perform implementation-specific optimizations.
 
-- **Decoded Picture Buffer (DPB) Management**: Modern video codecs rely heavily on inter-frame prediction, where previously decoded frames are used as references to decode subsequent frames. The DPB is the set of these reference pictures. In Vulkan Video, the application is fully responsible for managing the DPB. This involves allocating a set of `VkImage` resources to serve as DPB slots and explicitly telling the driver which slot to decode into and which slots to use as references for each frame.
+-   **Decoded Picture Buffer (DPB) Management**: Modern video codecs rely heavily on inter-frame prediction, where previously decoded frames are used as references to decode subsequent frames. The DPB is the set of these reference pictures. In Vulkan Video, the application is fully responsible for managing the DPB. This involves allocating a set of `VkImage` resources to serve as DPB slots and explicitly telling the driver which slot to decode into and which slots to use as references for each frame.
 
 #### AV1-Specific Extensions
 
 The core, codec-agnostic framework is augmented by codec-specific extensions. For this implementation, two are critical:
 
-- **`VK_KHR_video_decode_av1`**: This extension provides the necessary structures and enumerations for AV1 decoding.
+-   **`VK_KHR_video_decode_av1`**: This extension provides the necessary structures and enumerations for AV1 decoding.
 
-- **`VK_KHR_video_encode_av1`**: This extension provides the corresponding definitions for AV1 encoding.
+-   **`VK_KHR_video_encode_av1`**: This extension provides the corresponding definitions for AV1 encoding.
 
 These extensions define Vulkan structures, such as `VkVideoDecodeAV1PictureInfoKHR` and `VkVideoEncodeAV1PictureInfoKHR`, whose members map directly to the syntax elements defined in the official AV1 bitstream specification. This design choice places the responsibility of parsing the bitstream on the application. Our module will need to read the AV1 file, extract the sequence and frame headers, populate these Vulkan structures, and pass them to the driver. The driver does not contain a full bitstream parser; it expects to receive the already-parsed syntax elements.
 
@@ -168,8 +170,6 @@ Provides per-picture parameters for an AV1 encode operation
 
 Records a video encode operation into a command buffer
 
-
-
 #### The Command Structure
 
 All video operations are recorded into a `VkCommandBuffer`, just like graphics or compute work. These operations must be enclosed within a "video coding scope," which is initiated by `vkCmdBeginVideoCodingKHR` and terminated by `vkCmdEndVideoCodingKHR`. Within this scope, one or more `vkCmdDecodeVideoKHR` or `vkCmdEncodeVideoKHR` commands are recorded to perform the actual work. This structure allows the driver to manage the state of the video session across multiple decode/encode operations within a single command buffer submission.
@@ -182,42 +182,42 @@ The architectural foundations of Godot and Vulkan Video dictate a clear implemen
 
 While Godot's GDExtension system is powerful for creating add-ons and integrating third-party libraries, a feature as performance-critical and deeply integrated as hardware-accelerated video processing warrants a native C++ module compiled directly into the engine.
 
-- **Performance and Zero-Copy Pipelines:** The primary advantage of a core module is direct, unfettered access to the engine's internal `RenderingDevice` API. This is the only way to achieve a true zero-copy pipeline, a scenario where a video frame is decoded by the GPU into a
+-   **Performance and Zero-Copy Pipelines:** The primary advantage of a core module is direct, unfettered access to the engine's internal `RenderingDevice` API. This is the only way to achieve a true zero-copy pipeline, a scenario where a video frame is decoded by the GPU into a
 
 `VkImage` which is then used directly as a texture by the rendering pipeline, without ever being copied back to system memory. A GDExtension operates at a higher level of abstraction and would either be unable to access these low-level resources directly or would require complex and fragile workarounds, likely incurring a performance penalty that would negate the benefits of hardware acceleration.
 
-- **Deep Engine Integration:** A native module can integrate more cleanly with other core engine systems. For instance, modifying Godot's Movie Maker to use our hardware encoder for real-time video capture is far more direct and robust from within the engine's source code. Similarly, exposing the decoded video frames as a standard texture resource that can be seamlessly used by the engine's material and shader systems is most effectively achieved at the core level.
+-   **Deep Engine Integration:** A native module can integrate more cleanly with other core engine systems. For instance, modifying Godot's Movie Maker to use our hardware encoder for real-time video capture is far more direct and robust from within the engine's source code. Similarly, exposing the decoded video frames as a standard texture resource that can be seamlessly used by the engine's material and shader systems is most effectively achieved at the core level.
 
-- **Maintainability and Stability:** While GDExtensions offer modularity, they can also introduce versioning and dependency challenges. A fundamental capability like video playback benefits from being part of the core engine's continuous integration and testing pipeline. This ensures long-term stability and compatibility across engine versions. The Godot project has past experience with the maintenance burden of complex, dependency-heavy modules, such as the WebM module which was eventually removed in part due to these challenges. Given that compiling the engine from source is a well-documented and standard procedure for core contributors and advanced users, building the AV1 support directly into the engine is the most sustainable path.
+-   **Maintainability and Stability:** While GDExtensions offer modularity, they can also introduce versioning and dependency challenges. A fundamental capability like video playback benefits from being part of the core engine's continuous integration and testing pipeline. This ensures long-term stability and compatibility across engine versions. The Godot project has past experience with the maintenance burden of complex, dependency-heavy modules, such as the WebM module which was eventually removed in part due to these challenges. Given that compiling the engine from source is a well-documented and standard procedure for core contributors and advanced users, building the AV1 support directly into the engine is the most sustainable path.
 
 ### 2.2. Designing `VideoStreamAV1` and `VideoStreamPlaybackAV1`
 
 Following the established pattern of the `VideoStreamTheora` implementation, our module will be centered around two primary classes.
 
-- **`VideoStreamAV1` (Resource):**
+-   **`VideoStreamAV1` (Resource):**
 
-  - This class will inherit from `VideoStream` and be registered as a new `Resource` type within the engine. Its primary role is to represent the AV1 video file asset.
-  - **Responsibilities:**
+    -   This class will inherit from `VideoStream` and be registered as a new `Resource` type within the engine. Its primary role is to represent the AV1 video file asset.
+    -   **Responsibilities:**
 
-    - Store the file path to the MKV/WebM container file (`.mkv`, `.webm`). **Note: Only MKV/WebM containers are supported, not raw .av1 files or other containers like .mp4**.
-    - On load, it will be responsible for opening the file and using a lightweight demuxer/parser to extract essential stream-level metadata, most importantly the AV1 Sequence Header. This header data will be cached within the resource.
-    - When playback is requested by a `VideoStreamPlayer`, it will instantiate and return a `VideoStreamPlaybackAV1` object, passing the file handle and cached header information to it.
+        -   Store the file path to the MKV/WebM container file (`.mkv`, `.webm`). **Note: Only MKV/WebM containers are supported, not raw .av1 files or other containers like .mp4**.
+        -   On load, it will be responsible for opening the file and using a lightweight demuxer/parser to extract essential stream-level metadata, most importantly the AV1 Sequence Header. This header data will be cached within the resource.
+        -   When playback is requested by a `VideoStreamPlayer`, it will instantiate and return a `VideoStreamPlaybackAV1` object, passing the file handle and cached header information to it.
 
-- **`VideoStreamPlaybackAV1` (Playback State):**
+-   **`VideoStreamPlaybackAV1` (Playback State):**
 
-  - This class will inherit from `VideoStreamPlayback`. It is the stateful workhorse of the implementation, managing the entire lifecycle of a Vulkan Video session for a single playback instance.
-  - **Member Variables:**
+    -   This class will inherit from `VideoStreamPlayback`. It is the stateful workhorse of the implementation, managing the entire lifecycle of a Vulkan Video session for a single playback instance.
+    -   **Member Variables:**
 
-    - It will hold Godot's abstract Resource IDs (`RID`s) for all GPU resources, which are created and managed via the `RenderingDevice`. These will include RIDs for the video session, the session parameters object, the `VkImage` array used for the DPB, the `VkBuffer` for the input bitstream, the final output texture, and the necessary synchronization primitives (semaphores).
-    - It will also manage the state of the DPB, tracking which slots contain valid reference frames.
+        -   It will hold Godot's abstract Resource IDs (`RID`s) for all GPU resources, which are created and managed via the `RenderingDevice`. These will include RIDs for the video session, the session parameters object, the `VkImage` array used for the DPB, the `VkBuffer` for the input bitstream, the final output texture, and the necessary synchronization primitives (semaphores).
+        -   It will also manage the state of the DPB, tracking which slots contain valid reference frames.
 
-  - **Virtual Function Overrides:** It will provide concrete implementations for the key virtual functions inherited from its parent class:
+    -   **Virtual Function Overrides:** It will provide concrete implementations for the key virtual functions inherited from its parent class:
 
-    - `_play()`: This method will be called to begin playback. It will trigger the initialization of all necessary Vulkan video resources through the `RenderingDevice`.
-    - `_stop()`: This method will release all GPU resources associated with the playback session.
-    - `_update(delta)`: This is the main processing loop, called once per frame by the `VideoStreamPlayer`. It will be responsible for reading the next chunk of compressed data from the file, uploading it to the bitstream buffer, submitting a decode command to the video queue, and managing the queue of decoded frames for presentation.
-    - `get_texture()`: This crucial method will return a `Texture2D` `RID` that points to the most recently decoded and ready-to-display video frame, which resides entirely in VRAM.
-    - `get_playback_position()`: It will return the current presentation timestamp of the video, enabling synchronization with other engine events.
+        -   `_play()`: This method will be called to begin playback. It will trigger the initialization of all necessary Vulkan video resources through the `RenderingDevice`.
+        -   `_stop()`: This method will release all GPU resources associated with the playback session.
+        -   `_update(delta)`: This is the main processing loop, called once per frame by the `VideoStreamPlayer`. It will be responsible for reading the next chunk of compressed data from the file, uploading it to the bitstream buffer, submitting a decode command to the video queue, and managing the queue of decoded frames for presentation.
+        -   `get_texture()`: This crucial method will return a `Texture2D` `RID` that points to the most recently decoded and ready-to-display video frame, which resides entirely in VRAM.
+        -   `get_playback_position()`: It will return the current presentation timestamp of the video, enabling synchronization with other engine events.
 
 ### 2.3. Extending Godot's `RenderingDevice` API
 
@@ -229,18 +229,18 @@ This architectural decision has profound long-term benefits that extend beyond t
 
 This approach establishes a generic, extensible hardware video framework at the core of Godot's rendering abstraction. When the time comes to add support for other hardware-accelerated codecs like H.265 or VP9, the `RenderingDevice` API will not need to be changed again. Developers will simply need to implement new `VideoStream` classes (`VideoStreamH265`, etc.) that populate the generic structures with the appropriate H.265-specific data. This significantly reduces the effort required to support future codecs and ensures the engine's rendering layer remains clean and adaptable.
 
-- **Proposed New `RenderingDevice` Functions:**
+-   **Proposed New `RenderingDevice` Functions:**
 
-  - `RID video_session_create(video_profile)`: Creates a video session for a given profile.
-  - `void video_session_destroy(RID session)`
-  - `RID video_session_parameters_create(RID session)`: Creates a parameters object for a session.
-  - `void video_session_parameters_destroy(RID params)`
-  - `bool video_session_parameters_update(RID params, parameters_info)`: Adds new header info (e.g., PPS/SPS) to the parameters object.
-  - `void video_session_bind_memory(RID session,...)`
-  - `void video_cmd_begin_coding(CommandBufferID cmd_buffer, begin_info)`
-  - `void video_cmd_decode_frame(CommandBufferID cmd_buffer, decode_info)`
-  - `void video_cmd_encode_frame(CommandBufferID cmd_buffer, encode_info)`
-  - `void video_cmd_end_coding(CommandBufferID cmd_buffer, end_info)`
+    -   `RID video_session_create(video_profile)`: Creates a video session for a given profile.
+    -   `void video_session_destroy(RID session)`
+    -   `RID video_session_parameters_create(RID session)`: Creates a parameters object for a session.
+    -   `void video_session_parameters_destroy(RID params)`
+    -   `bool video_session_parameters_update(RID params, parameters_info)`: Adds new header info (e.g., PPS/SPS) to the parameters object.
+    -   `void video_session_bind_memory(RID session,...)`
+    -   `void video_cmd_begin_coding(CommandBufferID cmd_buffer, begin_info)`
+    -   `void video_cmd_decode_frame(CommandBufferID cmd_buffer, decode_info)`
+    -   `void video_cmd_encode_frame(CommandBufferID cmd_buffer, encode_info)`
+    -   `void video_cmd_end_coding(CommandBufferID cmd_buffer, end_info)`
 
 This set of functions provides a complete, abstract interface for video processing, cleanly encapsulating all Vulkan-specific logic within the Vulkan driver where it belongs.
 
@@ -252,49 +252,49 @@ This section provides a granular, step-by-step walkthrough of the decoding proce
 
 Before any decoding can occur, the implementation must rigorously verify that the user's hardware and drivers are capable of AV1 video decoding via Vulkan. This process is a non-negotiable first step to ensure stability and provide clear feedback in cases of incompatibility.
 
-- **Querying for Extension and Queue Support:** The process begins within the `VideoStreamAV1` resource's initialization logic. It must query the active `RenderingDevice` to determine if the necessary Vulkan extensions are supported by the physical device. The critical extensions are `VK_KHR_video_queue`, `VK_KHR_video_decode_queue`, and the codec-specific `VK_KHR_video_decode_av1`. Concurrently, it must query the available queue families to find one that reports the
+-   **Querying for Extension and Queue Support:** The process begins within the `VideoStreamAV1` resource's initialization logic. It must query the active `RenderingDevice` to determine if the necessary Vulkan extensions are supported by the physical device. The critical extensions are `VK_KHR_video_queue`, `VK_KHR_video_decode_queue`, and the codec-specific `VK_KHR_video_decode_av1`. Concurrently, it must query the available queue families to find one that reports the
 
 `VK_QUEUE_VIDEO_DECODE_BIT_KHR` capability flag. The presence of a dedicated video decode queue is the fundamental prerequisite for hardware-accelerated playback.
 
-- **Profile and Capability Checks:** If the required extensions and queue family are present, the next step is to check for support of the specific AV1 profile being requested. This is accomplished by calling `vkGetPhysicalDeviceVideoCapabilitiesKHR`. The call is made with a `VkVideoProfileInfoKHR` structure that specifies the codec operation (`VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR`), chroma subsampling, and bit depth. Crucially, this structure must have a `VkVideoDecodeAV1ProfileInfoKHR` structure chained to its `pNext` member, which specifies the exact AV1 profile (e.g., `STD_VIDEO_AV1_PROFILE_MAIN`). The results of this query provide vital information, such as the maximum supported AV1 level and resolution, which can be used to validate if the video file is playable on the current hardware. If any of these checks fail, the
+-   **Profile and Capability Checks:** If the required extensions and queue family are present, the next step is to check for support of the specific AV1 profile being requested. This is accomplished by calling `vkGetPhysicalDeviceVideoCapabilitiesKHR`. The call is made with a `VkVideoProfileInfoKHR` structure that specifies the codec operation (`VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR`), chroma subsampling, and bit depth. Crucially, this structure must have a `VkVideoDecodeAV1ProfileInfoKHR` structure chained to its `pNext` member, which specifies the exact AV1 profile (e.g., `STD_VIDEO_AV1_PROFILE_MAIN`). The results of this query provide vital information, such as the maximum supported AV1 level and resolution, which can be used to validate if the video file is playable on the current hardware. If any of these checks fail, the
 
-- `VideoStreamAV1` resource should be marked as invalid, preventing any attempt at playback and logging a descriptive error to the console.
+-   `VideoStreamAV1` resource should be marked as invalid, preventing any attempt at playback and logging a descriptive error to the console.
 
 ### 3.2. Resource Management and the Decode Loop
 
 Once capabilities are verified, the `VideoStreamPlaybackAV1` object takes over to manage the GPU resources and execute the frame-by-frame decode loop.
 
-- **Session and Resource Creation:** Upon the `_play()` call, the playback object will use the newly extended `RenderingDevice` API to create the core Vulkan Video objects. This includes a `VkVideoSessionKHR` to manage the stream's state and a `VkVideoSessionParametersKHR`. The parameters object is immediately populated with the AV1 Sequence Header data that was parsed and cached by the `VideoStreamAV1` resource.
+-   **Session and Resource Creation:** Upon the `_play()` call, the playback object will use the newly extended `RenderingDevice` API to create the core Vulkan Video objects. This includes a `VkVideoSessionKHR` to manage the stream's state and a `VkVideoSessionParametersKHR`. The parameters object is immediately populated with the AV1 Sequence Header data that was parsed and cached by the `VideoStreamAV1` resource.
 
-- **Memory Allocation:** Several key GPU resources are allocated:
+-   **Memory Allocation:** Several key GPU resources are allocated:
 
-  - **Decoded Picture Buffer (DPB):** A `VkImage` is created with the `VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR` flag. This image will be an array texture (`VkImageViewType` of `VK_IMAGE_VIEW_TYPE_2D_ARRAY`), with the number of layers determined by the codec's requirements for reference frames (typically `max_ref_frames + 1` to accommodate the current frame being decoded plus all potential references).
+    -   **Decoded Picture Buffer (DPB):** A `VkImage` is created with the `VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR` flag. This image will be an array texture (`VkImageViewType` of `VK_IMAGE_VIEW_TYPE_2D_ARRAY`), with the number of layers determined by the codec's requirements for reference frames (typically `max_ref_frames + 1` to accommodate the current frame being decoded plus all potential references).
 
-- - **Bitstream Buffer:** A `VkBuffer` is created with the `VK_BUFFER_USAGE_VIDEO_DECODE_SRC_BIT_KHR` flag. This buffer will serve as the source for compressed AV1 frame data uploaded from the CPU.
-  - **Output Textures:** One or more `VkImage` resources are created to hold the final, display-ready frames. These will have usage flags like `VK_IMAGE_USAGE_SAMPLED_BIT` and `VK_IMAGE_USAGE_TRANSFER_DST_BIT`, as they will be the destination of a color conversion pass and sampled by shaders.
-- **The `_update()` Loop:** This method forms the core of the playback logic and is executed on each engine frame.
+-   -   **Bitstream Buffer:** A `VkBuffer` is created with the `VK_BUFFER_USAGE_VIDEO_DECODE_SRC_BIT_KHR` flag. This buffer will serve as the source for compressed AV1 frame data uploaded from the CPU.
+    -   **Output Textures:** One or more `VkImage` resources are created to hold the final, display-ready frames. These will have usage flags like `VK_IMAGE_USAGE_SAMPLED_BIT` and `VK_IMAGE_USAGE_TRANSFER_DST_BIT`, as they will be the destination of a color conversion pass and sampled by shaders.
+-   **The `_update()` Loop:** This method forms the core of the playback logic and is executed on each engine frame.
 
-  1.  **Data Loading:** The next compressed AV1 frame (a temporal unit) is read from the video file into a buffer in system memory.
-  2.  **Bitstream Upload:** The compressed data is copied from the system memory buffer to the GPU's bitstream `VkBuffer`.
-  3.  **Command Recording:** A new command buffer is recorded for submission to the video decode queue.
-  4.  **Begin Coding Scope:** The command recording starts with `vkCmdBeginVideoCodingKHR`. This command binds the video session and parameters, and crucially, it is passed an array of `VkVideoReferenceSlotInfoKHR` structures. This array maps the DPB's `VkImage` array layers to the logical DPB slot indices, informing the driver about the current state of available reference pictures.
+    1.  **Data Loading:** The next compressed AV1 frame (a temporal unit) is read from the video file into a buffer in system memory.
+    2.  **Bitstream Upload:** The compressed data is copied from the system memory buffer to the GPU's bitstream `VkBuffer`.
+    3.  **Command Recording:** A new command buffer is recorded for submission to the video decode queue.
+    4.  **Begin Coding Scope:** The command recording starts with `vkCmdBeginVideoCodingKHR`. This command binds the video session and parameters, and crucially, it is passed an array of `VkVideoReferenceSlotInfoKHR` structures. This array maps the DPB's `VkImage` array layers to the logical DPB slot indices, informing the driver about the current state of available reference pictures.
 
-- **Decode Command:** The `vkCmdDecodeVideoKHR` command is recorded. This command is the heart of the operation. It is provided with a pointer to the bitstream buffer, the destination slot in the DPB for the newly decoded picture, and information about which DPB slots should be used as references for this specific frame.
+-   **Decode Command:** The `vkCmdDecodeVideoKHR` command is recorded. This command is the heart of the operation. It is provided with a pointer to the bitstream buffer, the destination slot in the DPB for the newly decoded picture, and information about which DPB slots should be used as references for this specific frame.
 
-- 2.  **End Coding Scope:** The video operations are concluded with `vkCmdEndVideoCodingKHR`.
-  3.  **Queue Submission:** The completed command buffer is submitted to the video decode queue. This submission is configured to signal a `VkSemaphore` upon completion, which is essential for synchronization.
+-   2.  **End Coding Scope:** The video operations are concluded with `vkCmdEndVideoCodingKHR`.
+    3.  **Queue Submission:** The completed command buffer is submitted to the video decode queue. This submission is configured to signal a `VkSemaphore` upon completion, which is essential for synchronization.
 
 ### 3.3. Synchronization: From Video Queue to Graphics Queue
 
 The most complex aspect of the pipeline is ensuring correct synchronization between the asynchronous video and graphics queues. The video queue produces a decoded frame in a `VkImage`, and the graphics queue must consume this frame as a texture for rendering. Failure to synchronize these operations will lead to race conditions, resulting in severe visual artifacts, validation errors, or GPU crashes.
 
-- **Semaphore-Based Synchronization:** The solution lies in using Vulkan's GPU-GPU synchronization primitives, specifically `VkSemaphore`.
+-   **Semaphore-Based Synchronization:** The solution lies in using Vulkan's GPU-GPU synchronization primitives, specifically `VkSemaphore`.
 
-  1.  When the decode command buffer is submitted to the video queue via `vkQueueSubmit`, the submission info is configured to signal a specific semaphore (e.g., `VideoDecodeCompleteSemaphore`) once all commands in the buffer have finished executing.
-  2.  The main rendering command buffer, which will be submitted to the graphics queue, is configured to _wait_ on this same `VideoDecodeCompleteSemaphore`. The wait is specified with a pipeline stage mask (e.g., `VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT`), ensuring that the graphics pipeline will not proceed to any stage that might sample the video texture until the semaphore is signaled.
-  3.  This creates an explicit dependency on the GPU timeline: the graphics queue will physically stall until the video queue signals that the decode operation is complete, guaranteeing that the texture data is valid and ready to be read.
+    1.  When the decode command buffer is submitted to the video queue via `vkQueueSubmit`, the submission info is configured to signal a specific semaphore (e.g., `VideoDecodeCompleteSemaphore`) once all commands in the buffer have finished executing.
+    2.  The main rendering command buffer, which will be submitted to the graphics queue, is configured to _wait_ on this same `VideoDecodeCompleteSemaphore`. The wait is specified with a pipeline stage mask (e.g., `VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT`), ensuring that the graphics pipeline will not proceed to any stage that might sample the video texture until the semaphore is signaled.
+    3.  This creates an explicit dependency on the GPU timeline: the graphics queue will physically stall until the video queue signals that the decode operation is complete, guaranteeing that the texture data is valid and ready to be read.
 
-- **Image Layout Transitions:** `VkImage` resources in Vulkan have an explicit layout that defines how the image's memory is organized and what operations can be performed on it. A pipeline barrier (`vkCmdPipelineBarrier`) must be used to transition the DPB image from its initial layout to `VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR` before decoding, and then from that layout to `VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL` after decoding is complete so it can be sampled by a shader. This transition barrier must be recorded in the graphics command buffer _after_ the semaphore wait but _before_ any draw call that uses the video texture.
+-   **Image Layout Transitions:** `VkImage` resources in Vulkan have an explicit layout that defines how the image's memory is organized and what operations can be performed on it. A pipeline barrier (`vkCmdPipelineBarrier`) must be used to transition the DPB image from its initial layout to `VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR` before decoding, and then from that layout to `VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL` after decoding is complete so it can be sampled by a shader. This transition barrier must be recorded in the graphics command buffer _after_ the semaphore wait but _before_ any draw call that uses the video texture.
 
 A simple, single-buffered implementation where the CPU submits a decode job and then the graphics queue waits on it would lead to significant performance issues. If the GPU is still processing frame N when the CPU is ready to submit frame N+1, the CPU would be forced to wait for the GPU to finish, creating a pipeline stall and causing visible stutter. A robust implementation must therefore use a multi-buffered (double- or triple-buffered) scheme for its resources. This involves creating a pool of bitstream buffers, output textures, and synchronization primitives (fences and semaphores). On frame N, resource set `N % pool_size` is used. This decouples the CPU from the GPU, allowing the CPU to record commands for frame N+1 while the GPU is still busy processing frame N. By the time the CPU loops back to using the first resource set, the GPU work associated with its previous use will have long since completed, thus preventing stalls and ensuring smooth, parallel execution.
 
@@ -306,30 +306,30 @@ The encoding pipeline is conceptually the reverse of decoding: it takes uncompre
 
 The input to a hardware video encoder must be a `VkImage` in a format the encoder understands, typically a YCbCr (YUV) format.
 
-- **Acquiring the Source Image:** The source frame can originate from various points within Godot's rendering pipeline:
+-   **Acquiring the Source Image:** The source frame can originate from various points within Godot's rendering pipeline:
 
-  - **`SubViewport` Output:** A `SubViewport` node renders a scene to an off-screen texture. The underlying `VkImage` of this texture can be used as the encoder's input, allowing for the capture of specific game elements, secondary cameras, or UI scenes.
-  - **Main Swapchain Image:** For capturing exactly what the player sees, a copy of the main window's swapchain image can be made using a transfer command (`vkCmdBlitImage` or `vkCmdCopyImage`). This provides the final, post-processed frame as input.
+    -   **`SubViewport` Output:** A `SubViewport` node renders a scene to an off-screen texture. The underlying `VkImage` of this texture can be used as the encoder's input, allowing for the capture of specific game elements, secondary cameras, or UI scenes.
+    -   **Main Swapchain Image:** For capturing exactly what the player sees, a copy of the main window's swapchain image can be made using a transfer command (`vkCmdBlitImage` or `vkCmdCopyImage`). This provides the final, post-processed frame as input.
 
-- **Mandatory Color Space Conversion:** Godot, like most game engines, renders in an RGB or RGBA color space. However, hardware video encoders operate natively on YCbCr color formats for compression efficiency. Therefore, a mandatory pre-processing step is required to convert the source RGB `VkImage` to a YCbCr `VkImage`. This conversion should be performed on the GPU using a dedicated compute shader or a simple graphics pipeline pass (drawing a full-screen quad). This keeps the entire pipeline on the GPU, avoiding a costly round-trip to the CPU for a software-based color conversion.
+-   **Mandatory Color Space Conversion:** Godot, like most game engines, renders in an RGB or RGBA color space. However, hardware video encoders operate natively on YCbCr color formats for compression efficiency. Therefore, a mandatory pre-processing step is required to convert the source RGB `VkImage` to a YCbCr `VkImage`. This conversion should be performed on the GPU using a dedicated compute shader or a simple graphics pipeline pass (drawing a full-screen quad). This keeps the entire pipeline on the GPU, avoiding a costly round-trip to the CPU for a software-based color conversion.
 
 ### 4.2. The Zero-Copy Encode Loop
 
 The encoding loop leverages the asynchronous video encode queue to offload the computationally expensive compression work from the CPU and rendering pipeline.
 
-- **Initialization:** The process begins by verifying hardware support for `VK_KHR_video_encode_av1` and querying for specific encoding capabilities, such as supported rate control modes and quality levels. An encoder-specific
+-   **Initialization:** The process begins by verifying hardware support for `VK_KHR_video_encode_av1` and querying for specific encoding capabilities, such as supported rate control modes and quality levels. An encoder-specific
 
-- `VkVideoSessionKHR` and `VkVideoSessionParametersKHR` are created via the `RenderingDevice`.
-- **The `_encode_frame()` Loop:** This function would be called for each frame to be encoded.
+-   `VkVideoSessionKHR` and `VkVideoSessionParametersKHR` are created via the `RenderingDevice`.
+-   **The `_encode_frame()` Loop:** This function would be called for each frame to be encoded.
 
-  1.  **Acquire and Convert Source:** The source `VkImage` is obtained from the renderer and the GPU-side color space conversion is executed. A pipeline barrier must be used to ensure the conversion is complete before the encoder accesses the resulting YCbCr image.
-  2.  **Command Recording:** Commands are recorded for the video encode queue.
-  3.  **Begin Coding Scope:** `vkCmdBeginVideoCodingKHR` is called, binding the encode session.
-  4.  **Encode Command:** `vkCmdEncodeVideoKHR` is recorded. This command takes the YCbCr `VkImage` as its source input and a `VkBuffer` as the destination for the compressed bitstream output. Similar to decoding, this command also requires reference frames from a DPB to perform inter-frame prediction.
+    1.  **Acquire and Convert Source:** The source `VkImage` is obtained from the renderer and the GPU-side color space conversion is executed. A pipeline barrier must be used to ensure the conversion is complete before the encoder accesses the resulting YCbCr image.
+    2.  **Command Recording:** Commands are recorded for the video encode queue.
+    3.  **Begin Coding Scope:** `vkCmdBeginVideoCodingKHR` is called, binding the encode session.
+    4.  **Encode Command:** `vkCmdEncodeVideoKHR` is recorded. This command takes the YCbCr `VkImage` as its source input and a `VkBuffer` as the destination for the compressed bitstream output. Similar to decoding, this command also requires reference frames from a DPB to perform inter-frame prediction.
 
-- 2.  **End Coding Scope:** `vkCmdEndVideoCodingKHR` concludes the video operations.
-  3.  **Queue Submission:** The command buffer is submitted to the encode queue. The submission is paired with a `VkFence`, which will be signaled by the GPU upon completion.
-  4.  **Bitstream Retrieval:** The CPU can then wait on this `VkFence`. Once signaled, it is safe to map the destination `VkBuffer`, read back the compressed AV1 data, and write it to a file or network stream.
+-   2.  **End Coding Scope:** `vkCmdEndVideoCodingKHR` concludes the video operations.
+    3.  **Queue Submission:** The command buffer is submitted to the encode queue. The submission is paired with a `VkFence`, which will be signaled by the GPU upon completion.
+    4.  **Bitstream Retrieval:** The CPU can then wait on this `VkFence`. Once signaled, it is safe to map the destination `VkBuffer`, read back the compressed AV1 data, and write it to a file or network stream.
 
 A crucial aspect of an efficient encoding pipeline is the management of reference frames. The AV1 codec uses previously encoded frames to predict future ones. The `vkCmdEncodeVideoKHR` command can optionally output a "reconstructed picture," which is a `VkImage` representing what the frame looks like _after_ being compressed and then immediately decompressed by the hardware. This reconstructed picture, not the original pristine input frame, must be used as the reference for encoding the next frame. This ensures that the encoder and a future decoder will be working from the identical set of reference frames, preventing visual artifacts and drift. This creates a feedback loop entirely on the GPU—the output of one encode operation becomes the input for the next—which is the cornerstone of a high-performance, high-quality hardware encoding pipeline.
 
@@ -347,11 +347,11 @@ Implementing a production-ready video processing pipeline involves solving sever
 
 Video processing is memory-intensive, requiring large, contiguous allocations for resources like the DPB image array and bitstream buffers. A naive approach of calling `vkAllocateMemory` for each individual resource is unviable in a real-world application.
 
-- **The Problem:** Vulkan drivers impose a limit on the total number of active memory allocations, typically 4096, as specified by `VkPhysicalDeviceLimits::maxMemoryAllocationCount`. Furthermore, frequent allocations and deallocations at the driver level are slow operations that can cause significant stuttering and lead to memory fragmentation, where enough total memory is free but no single contiguous block is large enough to satisfy a new request.
+-   **The Problem:** Vulkan drivers impose a limit on the total number of active memory allocations, typically 4096, as specified by `VkPhysicalDeviceLimits::maxMemoryAllocationCount`. Furthermore, frequent allocations and deallocations at the driver level are slow operations that can cause significant stuttering and lead to memory fragmentation, where enough total memory is free but no single contiguous block is large enough to satisfy a new request.
 
-- **Solution: Sub-allocation:** The universally accepted best practice in Vulkan is to adopt a sub-allocation strategy. The application should allocate a few very large
-- `VkDeviceMemory` blocks (e.g., 128MB or 256MB) at startup and then manage this memory manually. When a new resource (like a buffer or image) is needed, a chunk is partitioned from one of these large blocks. This approach keeps the number of driver-level allocations low and gives the application full control over memory layout, reducing fragmentation. Libraries like the Vulkan Memory Allocator (VMA) are designed for this purpose, but for a self-contained engine module, a simpler linear or pool allocator can be implemented.
-- **Memory Types and Aliasing:** Careful selection of memory types is crucial for performance. Resources that are exclusively accessed by the GPU, such as the DPB images, should be allocated from `VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT` memory for the fastest access. Buffers used to upload data from the CPU to the GPU (staging buffers) should be allocated from memory that is
+-   **Solution: Sub-allocation:** The universally accepted best practice in Vulkan is to adopt a sub-allocation strategy. The application should allocate a few very large
+-   `VkDeviceMemory` blocks (e.g., 128MB or 256MB) at startup and then manage this memory manually. When a new resource (like a buffer or image) is needed, a chunk is partitioned from one of these large blocks. This approach keeps the number of driver-level allocations low and gives the application full control over memory layout, reducing fragmentation. Libraries like the Vulkan Memory Allocator (VMA) are designed for this purpose, but for a self-contained engine module, a simpler linear or pool allocator can be implemented.
+-   **Memory Types and Aliasing:** Careful selection of memory types is crucial for performance. Resources that are exclusively accessed by the GPU, such as the DPB images, should be allocated from `VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT` memory for the fastest access. Buffers used to upload data from the CPU to the GPU (staging buffers) should be allocated from memory that is
 
 `VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT`. For transient resources, such as an intermediate texture used for color space conversion that is only needed for a brief part of the frame, memory aliasing can be employed. This technique binds multiple different resources to the same piece of device memory at different times, significantly reducing the overall memory footprint.
 
@@ -359,14 +359,14 @@ Video processing is memory-intensive, requiring large, contiguous allocations fo
 
 Perhaps the most perceptible failure in a video playback system is incorrect audio-video synchronization, commonly known as a "lip-sync" error. This issue arises from the fundamentally different and variable latencies of audio and video processing pipelines.
 
-- **The "Lip-Sync" Problem:** Audio is typically decoded on the CPU with low and highly predictable latency. In contrast, hardware video decoding latency is variable. It depends on the type of frame being decoded (I-frames are self-contained and fast, while P- and B-frames depend on other frames and are more complex), the current load on the GPU's video engine, and other system factors. If an application simply plays the audio packet that corresponds to the video frame it has just submitted for decoding, the audio will almost invariably be heard before the corresponding image appears on screen, as video processing takes longer. Human perception is highly sensitive to audio leading video, making this a critical issue to solve.
+-   **The "Lip-Sync" Problem:** Audio is typically decoded on the CPU with low and highly predictable latency. In contrast, hardware video decoding latency is variable. It depends on the type of frame being decoded (I-frames are self-contained and fast, while P- and B-frames depend on other frames and are more complex), the current load on the GPU's video engine, and other system factors. If an application simply plays the audio packet that corresponds to the video frame it has just submitted for decoding, the audio will almost invariably be heard before the corresponding image appears on screen, as video processing takes longer. Human perception is highly sensitive to audio leading video, making this a critical issue to solve.
 
-- **Solution: Presentation Timestamp (PTS) Driven Playback:** The correct solution is to decouple the audio and video pipelines and synchronize them based on timestamps.
+-   **Solution: Presentation Timestamp (PTS) Driven Playback:** The correct solution is to decouple the audio and video pipelines and synchronize them based on timestamps.
 
-  1.  **Timestamp Extraction:** During the initial parsing of the video file (demuxing), both the compressed data for each packet and its associated Presentation Timestamp (PTS) must be extracted. The PTS is a metadata value that indicates the exact time at which a frame should be displayed.
-  2.  **Audio as the Master Clock:** The audio playback system (Godot's `AudioServer` and `AudioStreamPlayer`) should be treated as the master clock. Its playback position provides a reliable, constantly advancing timeline.
-  3.  **Video as the Slave with a Frame Buffer:** The video decoding pipeline should operate asynchronously, decoding frames ahead of when they are needed for display. The resulting decoded textures, along with their PTS values, are stored in a small queue (a buffer of ready frames).
-  4.  **Synchronization Logic:** In the main game loop (`_process`), the application's logic compares the current playback time of the master audio clock to the PTS of the frames in the ready-frame queue. It then selects and displays the video frame whose PTS is closest to, but not later than, the current audio time. If the video decoding falls behind, frames are skipped. If it gets too far ahead, it waits. This master-slave clocking mechanism is the standard industry approach to ensure that video playback remains perfectly synchronized to the audio, providing a smooth and natural viewing experience.
+    1.  **Timestamp Extraction:** During the initial parsing of the video file (demuxing), both the compressed data for each packet and its associated Presentation Timestamp (PTS) must be extracted. The PTS is a metadata value that indicates the exact time at which a frame should be displayed.
+    2.  **Audio as the Master Clock:** The audio playback system (Godot's `AudioServer` and `AudioStreamPlayer`) should be treated as the master clock. Its playback position provides a reliable, constantly advancing timeline.
+    3.  **Video as the Slave with a Frame Buffer:** The video decoding pipeline should operate asynchronously, decoding frames ahead of when they are needed for display. The resulting decoded textures, along with their PTS values, are stored in a small queue (a buffer of ready frames).
+    4.  **Synchronization Logic:** In the main game loop (`_process`), the application's logic compares the current playback time of the master audio clock to the PTS of the frames in the ready-frame queue. It then selects and displays the video frame whose PTS is closest to, but not later than, the current audio time. If the video decoding falls behind, frames are skipped. If it gets too far ahead, it waits. This master-slave clocking mechanism is the standard industry approach to ensure that video playback remains perfectly synchronized to the audio, providing a smooth and natural viewing experience.
 
 ### 5.3. Managing the Driver and Platform Ecosystem
 
@@ -408,21 +408,24 @@ The architectural blueprint outlined in this report provides a robust and mainta
 ### 6.2. Scope Limitations and Future Development
 
 **Current Scope Restriction**: This implementation is **intentionally limited to AV1 codec within MKV/WebM containers only**. This focused approach enables:
-- Faster initial development and testing
-- Leveraging existing `modules/mkv` infrastructure
-- Reduced complexity and maintenance burden
-- Clear integration boundaries
+
+-   Faster initial development and testing
+-   Leveraging existing `modules/mkv` infrastructure
+-   Reduced complexity and maintenance burden
+-   Clear integration boundaries
 
 **Integration with modules/mkv**: The vk_video module will work exclusively with the existing `modules/mkv` module:
-- `modules/mkv` handles container parsing, audio decoding, and file I/O
-- `modules/vk_video` handles only AV1 video frame decoding via Vulkan Video
-- No support for other containers (MP4, AVI) or codecs (H.264, H.265, VP9) in initial implementation
+
+-   `modules/mkv` handles container parsing, audio decoding, and file I/O
+-   `modules/vk_video` handles only AV1 video frame decoding via Vulkan Video
+-   No support for other containers (MP4, AVI) or codecs (H.264, H.265, VP9) in initial implementation
 
 **Future Expansion Possibilities**: While the proposed `RenderingDevice` extension is designed generically, expanding beyond AV1-in-MKV would require:
-- Additional demuxer modules for other containers
-- New VideoStream classes for other codecs
-- Significant additional development and testing effort
-- **These expansions are explicitly out of scope for the initial implementation**
-- **Advanced Encoder Controls:** This report outlines a baseline encoder suitable for high-quality, real-time capture. Future work could expose more of the advanced features available in the `VK_KHR_video_encode_av1` extension. This includes providing users with fine-grained control over rate control modes (Constant Bitrate, Variable Bitrate), quality-versus-performance tuning levels, and the use of quantization maps to allocate more bits to specific regions of a frame. These features would elevate the module from a simple capture tool to a professional-grade in-engine encoder.
 
-- **Upstreaming to Godot Core:** The ultimate objective of this work should be to refine, test, and contribute this module to the official Godot Engine repository. Integrating this functionality directly into the engine would provide all Godot users with a powerful, out-of-the-box solution for modern video playback and capture, solidifying Godot's position as a feature-complete, professional-grade game engine.
+-   Additional demuxer modules for other containers
+-   New VideoStream classes for other codecs
+-   Significant additional development and testing effort
+-   **These expansions are explicitly out of scope for the initial implementation**
+-   **Advanced Encoder Controls:** This report outlines a baseline encoder suitable for high-quality, real-time capture. Future work could expose more of the advanced features available in the `VK_KHR_video_encode_av1` extension. This includes providing users with fine-grained control over rate control modes (Constant Bitrate, Variable Bitrate), quality-versus-performance tuning levels, and the use of quantization maps to allocate more bits to specific regions of a frame. These features would elevate the module from a simple capture tool to a professional-grade in-engine encoder.
+
+-   **Upstreaming to Godot Core:** The ultimate objective of this work should be to refine, test, and contribute this module to the official Godot Engine repository. Integrating this functionality directly into the engine would provide all Godot users with a powerful, out-of-the-box solution for modern video playback and capture, solidifying Godot's position as a feature-complete, professional-grade game engine.

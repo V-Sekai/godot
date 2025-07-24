@@ -83,6 +83,7 @@ class LowPassFilter:
 **Location**: `modules/vk_video/sync/one_euro_filter.h` and `modules/vk_video/sync/one_euro_filter.cpp`
 
 **Class Structure**:
+
 ```cpp
 class OneEuroFilter : public RefCounted {
     GDCLASS(OneEuroFilter, RefCounted);
@@ -121,19 +122,22 @@ protected:
 ```
 
 **Key Features**:
-- ✅ Full Godot integration with GDCLASS and property binding
-- ✅ Comprehensive TDD test suite (6 test cases, 8 assertions)
-- ✅ Proper initialization handling for first-time filtering
-- ✅ Thread-safe design for real-time audio-video synchronization
-- ✅ Registered with Godot's class system for GDScript access
+
+-   ✅ Full Godot integration with GDCLASS and property binding
+-   ✅ Comprehensive TDD test suite (6 test cases, 8 assertions)
+-   ✅ Proper initialization handling for first-time filtering
+-   ✅ Thread-safe design for real-time audio-video synchronization
+-   ✅ Registered with Godot's class system for GDScript access
 
 **Test Results**:
+
 ```
 [doctest] test cases: 6 | 6 passed | 0 failed
 [doctest] assertions: 8 | 8 passed | 0 failed
 ```
 
 **Usage in VK Video Module**:
+
 ```cpp
 // Create filter for audio-video synchronization
 Ref<OneEuroFilter> av_sync_filter;
@@ -152,31 +156,35 @@ double corrected_video_time = audio_clock + filtered_delta;
 ### Key Parameters
 
 #### min_cutoff (Minimum Cutoff Frequency)
-- **Purpose**: Controls baseline jitter reduction
-- **Range**: 0.1 - 10.0 Hz
-- **Effect**: Lower values = more smoothing, higher latency
-- **Typical Values**:
-  - Audio sync: 0.1 - 1.0 Hz
-  - Video timing: 0.5 - 2.0 Hz
-  - Real-time applications: 1.0 - 5.0 Hz
+
+-   **Purpose**: Controls baseline jitter reduction
+-   **Range**: 0.1 - 10.0 Hz
+-   **Effect**: Lower values = more smoothing, higher latency
+-   **Typical Values**:
+    -   Audio sync: 0.1 - 1.0 Hz
+    -   Video timing: 0.5 - 2.0 Hz
+    -   Real-time applications: 1.0 - 5.0 Hz
 
 #### beta (Speed Coefficient)
-- **Purpose**: Controls lag reduction when signal changes rapidly
-- **Range**: 0.0 - 50.0
-- **Effect**: Higher values = less lag during rapid changes
-- **Typical Values**:
-  - Conservative: 1.0 - 5.0
-  - Balanced: 5.0 - 15.0
-  - Aggressive: 15.0 - 30.0
+
+-   **Purpose**: Controls lag reduction when signal changes rapidly
+-   **Range**: 0.0 - 50.0
+-   **Effect**: Higher values = less lag during rapid changes
+-   **Typical Values**:
+    -   Conservative: 1.0 - 5.0
+    -   Balanced: 5.0 - 15.0
+    -   Aggressive: 15.0 - 30.0
 
 #### d_cutoff (Derivative Cutoff)
-- **Purpose**: Smooths velocity calculations
-- **Range**: Usually same as min_cutoff
-- **Effect**: Affects responsiveness to signal changes
+
+-   **Purpose**: Smooths velocity calculations
+-   **Range**: Usually same as min_cutoff
+-   **Effect**: Affects responsiveness to signal changes
 
 ### Tuning Guidelines
 
 #### For Audio-Video Synchronization
+
 ```gdscript
 # Conservative (high quality, some latency)
 var filter = OneEuroFilter.new({
@@ -198,6 +206,7 @@ var filter = OneEuroFilter.new({
 ```
 
 #### Rhythm Game Settings (from conductor.gd)
+
 ```gdscript
 @export var allowed_jitter: float = 0.1    # min_cutoff
 @export var lag_reduction: float = 5       # beta
@@ -206,6 +215,7 @@ var filter = OneEuroFilter.new({
 ## Usage Patterns
 
 ### Basic Filtering
+
 ```gdscript
 var filter = OneEuroFilter.new({"cutoff": 0.1, "beta": 5.0})
 
@@ -216,6 +226,7 @@ func _process(delta):
 ```
 
 ### Audio-Video Sync Application
+
 ```gdscript
 var av_sync_filter = OneEuroFilter.new({"cutoff": 0.1, "beta": 5.0})
 var audio_clock = 0.0
@@ -228,6 +239,7 @@ func _physics_process(delta):
 ```
 
 ### Adaptive Parameter Adjustment
+
 ```gdscript
 func adjust_filter_parameters(sync_quality: float):
     if sync_quality < 0.8:
@@ -243,23 +255,27 @@ func adjust_filter_parameters(sync_quality: float):
 ## Performance Characteristics
 
 ### Computational Complexity
-- **Time Complexity**: O(1) per filter operation
-- **Memory Usage**: Minimal (2 float values per filter)
-- **CPU Impact**: Very low, suitable for real-time applications
+
+-   **Time Complexity**: O(1) per filter operation
+-   **Memory Usage**: Minimal (2 float values per filter)
+-   **CPU Impact**: Very low, suitable for real-time applications
 
 ### Latency Analysis
-- **Group Delay**: Approximately 1/(2π × effective_cutoff)
-- **Typical Latency**: 10-50ms depending on parameters
-- **Trade-off**: Lower cutoff = more smoothing but higher latency
+
+-   **Group Delay**: Approximately 1/(2π × effective_cutoff)
+-   **Typical Latency**: 10-50ms depending on parameters
+-   **Trade-off**: Lower cutoff = more smoothing but higher latency
 
 ### Stability
-- **Numerical Stability**: Excellent for typical parameter ranges
-- **Edge Cases**: Handle division by zero in delta_time
-- **Reset Behavior**: Clean startup after reset() call
+
+-   **Numerical Stability**: Excellent for typical parameter ranges
+-   **Edge Cases**: Handle division by zero in delta_time
+-   **Reset Behavior**: Clean startup after reset() call
 
 ## Integration Considerations
 
 ### Initialization
+
 ```cpp
 // Initialize with appropriate parameters for use case
 OneEuroFilter timing_filter(0.1, 5.0);  // Conservative settings
@@ -267,6 +283,7 @@ OneEuroFilter position_filter(1.0, 15.0); // Responsive settings
 ```
 
 ### Error Handling
+
 ```cpp
 double filter_with_validation(double value, double delta) {
     if (delta <= 0.0) {
@@ -277,13 +294,16 @@ double filter_with_validation(double value, double delta) {
 ```
 
 ### Thread Safety
+
 The OneEuroFilter is not inherently thread-safe. For multi-threaded applications:
-- Use separate filter instances per thread
-- Or protect with appropriate synchronization primitives
+
+-   Use separate filter instances per thread
+-   Or protect with appropriate synchronization primitives
 
 ## Testing and Validation
 
 ### Unit Tests
+
 ```gdscript
 func test_filter_stability():
     var filter = OneEuroFilter.new({"cutoff": 1.0, "beta": 5.0})
@@ -298,6 +318,7 @@ func test_filter_stability():
 ```
 
 ### Performance Benchmarks
+
 ```gdscript
 func benchmark_filter_performance():
     var filter = OneEuroFilter.new({"cutoff": 0.1, "beta": 5.0})
@@ -312,6 +333,6 @@ func benchmark_filter_performance():
 
 ## References
 
-- [Original 1€ Filter Paper](https://gery.casiez.net/1euro/) - Casiez, G., Roussel, N. and Vogel, D.
-- [Interactive Demo](https://gery.casiez.net/1euro/InteractiveDemo/) - Parameter visualization
-- [Godot XR Kit](https://github.com/patrykkalinowski/godot-xr-kit) - GDScript implementation source
+-   [Original 1€ Filter Paper](https://gery.casiez.net/1euro/) - Casiez, G., Roussel, N. and Vogel, D.
+-   [Interactive Demo](https://gery.casiez.net/1euro/InteractiveDemo/) - Parameter visualization
+-   [Godot XR Kit](https://github.com/patrykkalinowski/godot-xr-kit) - GDScript implementation source

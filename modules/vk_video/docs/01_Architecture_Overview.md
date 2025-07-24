@@ -1,23 +1,27 @@
 # VK Video Module - Architecture Overview
 
 ## Brief Description
+
 Hardware-accelerated AV1 video decoding in Godot using Vulkan Video extensions, with current MKV container support and OneEuroFilter-based audio-video synchronization.
 
 ## Implementation Status
 
 ### ✅ Currently Implemented
-- **VideoStreamMKV**: MKV/WebM container parsing with Opus audio support
-- **OneEuroFilter**: Audio-video synchronization filtering for jitter reduction
-- **Basic Infrastructure**: Module registration and resource management foundation
+
+-   **VideoStreamMKV**: MKV/WebM container parsing with Opus audio support
+-   **OneEuroFilter**: Audio-video synchronization filtering for jitter reduction
+-   **Basic Infrastructure**: Module registration and resource management foundation
 
 ### 🎯 Target Implementation (Required)
-- **Vulkan Video API**: Hardware-accelerated video decoding using VK_KHR_video_* extensions
-- **AV1 Codec Support**: Full AV1 hardware decode/encode capabilities
-- **Advanced Resource Management**: DPB management, memory pools, command buffer optimization
+
+-   **Vulkan Video API**: Hardware-accelerated video decoding using VK*KHR_video*\* extensions
+-   **AV1 Codec Support**: Full AV1 hardware decode/encode capabilities
+-   **Advanced Resource Management**: DPB management, memory pools, command buffer optimization
 
 ### ❌ Not Planned
-- **H.264 Support**: Removed from scope
-- **H.265 Support**: Removed from scope
+
+-   **H.264 Support**: Removed from scope
+-   **H.265 Support**: Removed from scope
 
 ## System Architecture
 
@@ -84,14 +88,16 @@ Hardware-accelerated AV1 video decoding in Godot using Vulkan Video extensions, 
 The vk_video module will include AV1 encoding capabilities:
 
 #### Target AV1 Encoding Features
-- **AV1-only support**: Focus on modern AV1 codec for optimal quality/compression
-- **Multi-threaded encoding**: Parallel encoding operations for performance
-- **Rate control**: CBR, VBR, and CQP rate control modes
-- **YCbCr input support**: Direct encoding from YCbCr content
-- **Bit depth support**: 8, 10, and 12-bit AV1 encoding
-- **Hardware acceleration**: GPU-accelerated AV1 encoding with software fallback
+
+-   **AV1-only support**: Focus on modern AV1 codec for optimal quality/compression
+-   **Multi-threaded encoding**: Parallel encoding operations for performance
+-   **Rate control**: CBR, VBR, and CQP rate control modes
+-   **YCbCr input support**: Direct encoding from YCbCr content
+-   **Bit depth support**: 8, 10, and 12-bit AV1 encoding
+-   **Hardware acceleration**: GPU-accelerated AV1 encoding with software fallback
 
 #### Target AV1 Encoding Architecture
+
 ```cpp
 // AV1-focused encoding pipeline
 class VulkanVideoAV1Encoder {
@@ -111,6 +117,7 @@ private:
 ### FFmpeg Interop Architecture
 
 #### Container and Format Support
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  FFmpeg Integration Layer                                   │
@@ -139,20 +146,22 @@ private:
 ```
 
 #### YCbCr Format Support Matrix
-| Format | Planes | Subsampling | Bit Depth | Hardware | Alpha |
-|--------|--------|-------------|-----------|----------|-------|
-| NV12   | 2      | 4:2:0       | 8-bit     | ✅       | ❌    |
-| NV21   | 2      | 4:2:0       | 8-bit     | ✅       | ❌    |
-| I420   | 3      | 4:2:0       | 8-bit     | ✅       | ❌    |
-| P010   | 2      | 4:2:0       | 10-bit    | ✅       | ❌    |
-| P012   | 2      | 4:2:0       | 12-bit    | ✅       | ❌    |
-| P016   | 2      | 4:2:0       | 16-bit    | ✅       | ❌    |
-| YUVA420P | 4    | 4:2:0       | 8-bit     | ❌       | ✅    |
-| RGBA   | 1      | 4:4:4       | 8-bit     | ✅       | ✅    |
+
+| Format   | Planes | Subsampling | Bit Depth | Hardware | Alpha |
+| -------- | ------ | ----------- | --------- | -------- | ----- |
+| NV12     | 2      | 4:2:0       | 8-bit     | ✅       | ❌    |
+| NV21     | 2      | 4:2:0       | 8-bit     | ✅       | ❌    |
+| I420     | 3      | 4:2:0       | 8-bit     | ✅       | ❌    |
+| P010     | 2      | 4:2:0       | 10-bit    | ✅       | ❌    |
+| P012     | 2      | 4:2:0       | 12-bit    | ✅       | ❌    |
+| P016     | 2      | 4:2:0       | 16-bit    | ✅       | ❌    |
+| YUVA420P | 4      | 4:2:0       | 8-bit     | ❌       | ✅    |
+| RGBA     | 1      | 4:4:4       | 8-bit     | ✅       | ✅    |
 
 ### Alpha Channel Handling Strategy
 
 #### Current Limitations
+
 ```cpp
 // Alpha channel limitations in current implementation
 class VulkanFilterYuvCompute {
@@ -166,6 +175,7 @@ class VulkanFilterYuvCompute {
 ```
 
 #### Fallback Strategy for Alpha Content
+
 ```cpp
 // Alpha-enabled content handling
 class VideoStreamPlayback {
@@ -187,6 +197,7 @@ class VideoStreamPlayback {
 ### Class Hierarchy
 
 #### Current Implementation (Phase 1)
+
 ```cpp
 // Currently Implemented Resource Classes
 VideoStream (base)
@@ -196,7 +207,7 @@ VideoStream (base)
     ├── audio_decoder: Ref<OpusVorbisDecoder>
     └── duration: double
 
-// Currently Implemented Playback Classes  
+// Currently Implemented Playback Classes
 VideoStreamPlayback (base)
 └── VideoStreamPlaybackMKV ✅ IMPLEMENTED
     ├── mkv_parser: Ref<SimpleWebMDemuxer>
@@ -213,6 +224,7 @@ OneEuroFilter ✅ IMPLEMENTED
 ```
 
 #### Target Implementation (Phase 2 - AV1)
+
 ```cpp
 // Target AV1 Resource Classes
 VideoStream (base)
@@ -249,6 +261,7 @@ AudioVideoSynchronizer 🎯 TARGET (extends current OneEuroFilter)
 ### Integration Points
 
 #### 1. RenderingDevice Integration
+
 ```cpp
 // New methods added to RenderingDevice class
 class RenderingDevice {
@@ -269,6 +282,7 @@ public:
 ```
 
 #### 2. VideoStreamPlayer Integration
+
 ```cpp
 // Existing VideoStreamPlayer automatically supports new format
 VideoStreamPlayer player;
@@ -278,6 +292,7 @@ player.play(); // Hardware decode automatically used if available
 ```
 
 #### 3. Movie Maker Integration
+
 ```cpp
 // Hardware encoding for Movie Maker
 class MovieMakerAV1Backend {
@@ -291,6 +306,7 @@ public:
 ### Data Flow
 
 #### Current MKV Pipeline (Phase 1)
+
 ```
 1. File Loading
    VideoStreamMKV::load_file() → Parse MKV headers → Extract metadata
@@ -306,6 +322,7 @@ public:
 ```
 
 #### Target AV1 Pipeline (Phase 2)
+
 ```
 1. File Loading
    VideoStreamAV1::load_file() → Parse AV1 headers → Cache sequence info
@@ -321,6 +338,7 @@ public:
 ```
 
 #### Target AV1 Encode Pipeline (Phase 2)
+
 ```
 1. Source Preparation
    MovieMaker::capture_frame() → YCbCr conversion → AV1 format validation
@@ -336,6 +354,7 @@ public:
 ```
 
 #### FFmpeg Interop Pipeline
+
 ```
 1. Container Demuxing
    FFmpeg::avformat_open_input() → Extract video/audio streams → Parse metadata
@@ -352,6 +371,7 @@ public:
 ```
 
 #### Resource Management
+
 ```
 1. DPB Management
    VideoMemoryPool → Allocate image array → Track reference frames
@@ -366,6 +386,7 @@ public:
 ### Error Handling Strategy
 
 #### Hardware Detection
+
 ```cpp
 // Capability detection with graceful fallback
 bool VideoStreamAV1::is_hardware_supported() {
@@ -379,6 +400,7 @@ bool VideoStreamAV1::is_hardware_supported() {
 ```
 
 #### Fallback Mechanisms
+
 ```cpp
 // Automatic fallback to software decode
 Ref<VideoStreamPlayback> VideoStreamAV1::instantiate_playback() {
@@ -394,40 +416,46 @@ Ref<VideoStreamPlayback> VideoStreamAV1::instantiate_playback() {
 ### Performance Considerations
 
 #### Memory Management
-- Pre-allocated DPB image arrays
-- Pooled bitstream buffers
-- Command buffer reuse
-- Zero-copy texture sharing
+
+-   Pre-allocated DPB image arrays
+-   Pooled bitstream buffers
+-   Command buffer reuse
+-   Zero-copy texture sharing
 
 #### Threading Strategy
-- Decode operations on video queue
-- Graphics operations on graphics queue
-- Audio processing on audio thread
-- Synchronization via timeline semaphores
+
+-   Decode operations on video queue
+-   Graphics operations on graphics queue
+-   Audio processing on audio thread
+-   Synchronization via timeline semaphores
 
 #### Quality Scaling
-- Adaptive resolution based on performance
-- Dynamic bitrate adjustment
-- Frame dropping for real-time playback
+
+-   Adaptive resolution based on performance
+-   Dynamic bitrate adjustment
+-   Frame dropping for real-time playback
 
 ### Testing Integration Points
 
 #### Unit Tests
-- Hardware capability detection
-- Resource allocation/deallocation
-- Command buffer recording
-- Error condition handling
+
+-   Hardware capability detection
+-   Resource allocation/deallocation
+-   Command buffer recording
+-   Error condition handling
 
 #### Integration Tests
-- End-to-end playback scenarios
-- Audio-video synchronization
-- Memory leak detection
-- Performance benchmarking
+
+-   End-to-end playback scenarios
+-   Audio-video synchronization
+-   Memory leak detection
+-   Performance benchmarking
 
 #### Validation Tests
-- Vulkan Video specification compliance
-- Cross-platform compatibility
-- Driver version compatibility
-- Stress testing with multiple streams
+
+-   Vulkan Video specification compliance
+-   Cross-platform compatibility
+-   Driver version compatibility
+-   Stress testing with multiple streams
 
 This architecture provides a solid foundation for hardware-accelerated video in Godot while maintaining compatibility with existing systems.

@@ -15,16 +15,19 @@ For understanding the mathematical foundation, start with [OneEuroFilter](audio_
 ## Documentation Structure
 
 ### Core Implementation
-- **[OneEuroFilter](audio_video_sync/one_euro_filter.md)** - Mathematical foundation and implementation details of the core filtering algorithm
-- **[Conductor Implementation](audio_video_sync/conductor_implementation.md)** - Real-world usage analysis from the rhythm game conductor system
-- **[Timing Algorithms](audio_video_sync/timing_algorithms.md)** - Core timing calculation methods and clock management
+
+-   **[OneEuroFilter](audio_video_sync/one_euro_filter.md)** - Mathematical foundation and implementation details of the core filtering algorithm
+-   **[Conductor Implementation](audio_video_sync/conductor_implementation.md)** - Real-world usage analysis from the rhythm game conductor system
+-   **[Timing Algorithms](audio_video_sync/timing_algorithms.md)** - Core timing calculation methods and clock management
 
 ### Synchronization Strategies
-- **[Synchronization Strategies](audio_video_sync/synchronization_strategies.md)** - Different approaches, trade-offs, and platform-specific optimizations
-- **[Performance Tuning](audio_video_sync/performance_tuning.md)** - Parameter optimization, monitoring, and debugging guidelines
+
+-   **[Synchronization Strategies](audio_video_sync/synchronization_strategies.md)** - Different approaches, trade-offs, and platform-specific optimizations
+-   **[Performance Tuning](audio_video_sync/performance_tuning.md)** - Parameter optimization, monitoring, and debugging guidelines
 
 ### Implementation Guide
-- **[Implementation Guide](audio_video_sync/implementation_guide.md)** - Step-by-step integration instructions with complete code examples
+
+-   **[Implementation Guide](audio_video_sync/implementation_guide.md)** - Step-by-step integration instructions with complete code examples
 
 ## Key Concepts
 
@@ -42,10 +45,11 @@ class OneEuroFilter {
 ```
 
 **Benefits:**
-- **Jitter Reduction**: Smooths timing inconsistencies between audio and video
-- **Low Latency**: Maintains responsive synchronization with minimal delay
-- **Adaptive Filtering**: Automatically adjusts to different playback conditions
-- **Proven Reliability**: Based on real-world rhythm game timing requirements
+
+-   **Jitter Reduction**: Smooths timing inconsistencies between audio and video
+-   **Low Latency**: Maintains responsive synchronization with minimal delay
+-   **Adaptive Filtering**: Automatically adjusts to different playback conditions
+-   **Proven Reliability**: Based on real-world rhythm game timing requirements
 
 ### Dual Clock System
 
@@ -69,6 +73,7 @@ double corrected_video_time = audio_clock + filtered_delta;
 The synchronization system integrates with VK Video at several levels:
 
 #### VideoStreamPlaybackAV1
+
 ```cpp
 class VideoStreamPlaybackAV1 {
     Ref<AVSynchronizer> av_synchronizer;
@@ -88,6 +93,7 @@ class VideoStreamPlaybackAV1 {
 ## Configuration Guidelines
 
 ### Standard Video Playback
+
 ```cpp
 // Balanced quality and latency
 OneEuroFilter filter(0.1, 5.0);  // cutoff=0.1Hz, beta=5.0
@@ -95,6 +101,7 @@ sync_threshold = 40.0;           // 40ms tolerance
 ```
 
 ### Music Videos / Rhythm Games
+
 ```cpp
 // Prioritize audio synchronization
 OneEuroFilter filter(0.05, 3.0); // More smoothing
@@ -102,6 +109,7 @@ sync_threshold = 20.0;           // Tighter tolerance
 ```
 
 ### Interactive / Gaming
+
 ```cpp
 // Minimize latency
 OneEuroFilter filter(0.8, 20.0); // Responsive filtering
@@ -111,36 +119,42 @@ sync_threshold = 15.0;           // Very tight tolerance
 ## Performance Characteristics
 
 ### Computational Efficiency
-- **Time Complexity**: O(1) per filter operation
-- **Memory Usage**: Minimal (2 float values per filter)
-- **CPU Impact**: <0.1% on modern hardware
-- **Latency**: 10-50ms depending on parameters
+
+-   **Time Complexity**: O(1) per filter operation
+-   **Memory Usage**: Minimal (2 float values per filter)
+-   **CPU Impact**: <0.1% on modern hardware
+-   **Latency**: 10-50ms depending on parameters
 
 ### Quality Metrics
-- **Sync Accuracy**: <5ms average error with proper tuning
-- **Stability**: Excellent across different content types
-- **Adaptability**: Automatic adjustment to playback conditions
+
+-   **Sync Accuracy**: <5ms average error with proper tuning
+-   **Stability**: Excellent across different content types
+-   **Adaptability**: Automatic adjustment to playback conditions
 
 ## Platform Support
 
 ### Desktop Systems
-- High refresh rate displays (120Hz, 144Hz+)
-- Variable refresh rate (G-Sync, FreeSync)
-- Multiple audio output devices
+
+-   High refresh rate displays (120Hz, 144Hz+)
+-   Variable refresh rate (G-Sync, FreeSync)
+-   Multiple audio output devices
 
 ### Mobile Devices
-- Power-aware parameter adjustment
-- Thermal throttling compensation
-- Battery optimization modes
+
+-   Power-aware parameter adjustment
+-   Thermal throttling compensation
+-   Battery optimization modes
 
 ### Web Platforms
-- Browser timing API integration
-- WebAssembly performance optimization
-- Network streaming adaptations
+
+-   Browser timing API integration
+-   WebAssembly performance optimization
+-   Network streaming adaptations
 
 ## Testing and Validation
 
 ### Unit Tests
+
 ```gdscript
 func test_filter_stability():
     var filter = OneEuroFilter.new({"cutoff": 1.0, "beta": 5.0})
@@ -152,21 +166,24 @@ func test_sync_quality():
 ```
 
 ### Performance Benchmarks
-- Filter performance: >10,000 operations/ms
-- Sync accuracy: <5ms average error
-- Memory usage: <1KB per stream
+
+-   Filter performance: >10,000 operations/ms
+-   Sync accuracy: <5ms average error
+-   Memory usage: <1KB per stream
 
 ## Migration from Legacy System
 
 The new OneEuroFilter-based system replaces the previous timestamp-based approach:
 
 ### Legacy System (Deprecated)
+
 ```cpp
 // Old approach - simple threshold-based
 bool should_present = abs(video_pts - audio_clock) < threshold;
 ```
 
 ### New OneEuroFilter System
+
 ```cpp
 // New approach - filtered delta with adaptive parameters
 double filtered_delta = filter.filter(video_pts - audio_clock, delta_time);
@@ -174,21 +191,22 @@ bool should_present = abs(filtered_delta) < adaptive_threshold;
 ```
 
 ### Migration Benefits
-- **50% reduction** in sync error variance
-- **30% improvement** in perceived sync quality
-- **Automatic adaptation** to different content types
-- **Better platform compatibility**
+
+-   **50% reduction** in sync error variance
+-   **30% improvement** in perceived sync quality
+-   **Automatic adaptation** to different content types
+-   **Better platform compatibility**
 
 ## References
 
-- [1€ Filter Paper](https://gery.casiez.net/1euro/) - Original research and mathematical foundation
-- [Godot XR Kit Implementation](https://github.com/patrykkalinowski/godot-xr-kit) - Source of the GDScript implementation
-- Rhythm Game Conductor - Real-world timing system demonstrating the approach
+-   [1€ Filter Paper](https://gery.casiez.net/1euro/) - Original research and mathematical foundation
+-   [Godot XR Kit Implementation](https://github.com/patrykkalinowski/godot-xr-kit) - Source of the GDScript implementation
+-   Rhythm Game Conductor - Real-world timing system demonstrating the approach
 
 ## See Also
 
-- [Architecture Overview](01_Architecture_Overview.md) - Overall VK Video module design
-- [VideoStream Classes](03_VideoStream_Classes.md) - Video playback implementation
-- [Testing Strategy](08_Testing_Strategy.md) - Comprehensive testing approach
+-   [Architecture Overview](01_Architecture_Overview.md) - Overall VK Video module design
+-   [VideoStream Classes](03_VideoStream_Classes.md) - Video playback implementation
+-   [Testing Strategy](08_Testing_Strategy.md) - Comprehensive testing approach
 
 For detailed implementation guidance, parameter tuning, and troubleshooting, refer to the specialized documents in the [audio_video_sync](audio_video_sync/) directory.

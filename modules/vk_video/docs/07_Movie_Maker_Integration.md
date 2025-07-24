@@ -1,6 +1,7 @@
 # Movie Maker Integration with Hardware Encoding
 
 ## Brief Description
+
 Integration of AV1 hardware encoding with Godot's Movie Maker system using Vulkan Video encode capabilities for high-performance video capture and export.
 
 ## Movie Maker Backend Architecture
@@ -507,6 +508,7 @@ Dictionary get_av1_movie_maker_config() {
 ## Usage Examples
 
 ### Basic Movie Maker Setup
+
 ```gdscript
 # Configure Movie Maker for AV1 encoding
 var movie_maker = MovieMaker.new()
@@ -534,6 +536,7 @@ movie_maker.start_recording("output.av1")
 ```
 
 ### Advanced Configuration
+
 ```gdscript
 # High-quality 4K encoding
 var hq_settings = {
@@ -562,6 +565,7 @@ print("Encoding speed: ", stats["fps"], " fps")
 ```
 
 ### Capability Detection
+
 ```gdscript
 # Check encoding capabilities
 var caps = MovieMakerAV1Backend.get_encoding_capabilities()

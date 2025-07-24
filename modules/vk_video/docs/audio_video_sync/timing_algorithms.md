@@ -9,22 +9,25 @@ This document details the core timing calculation methods used in audio-video sy
 ### Timestamp Types
 
 #### Presentation Timestamp (PTS)
-- **Definition**: When a frame should be displayed relative to stream start
-- **Source**: Video container/codec metadata
-- **Characteristics**: Accurate but can be jittery due to decode timing variations
-- **Usage**: Primary timing reference for frame presentation decisions
+
+-   **Definition**: When a frame should be displayed relative to stream start
+-   **Source**: Video container/codec metadata
+-   **Characteristics**: Accurate but can be jittery due to decode timing variations
+-   **Usage**: Primary timing reference for frame presentation decisions
 
 #### Decode Timestamp (DTS)
-- **Definition**: When a frame should be decoded
-- **Source**: Video container/codec metadata
-- **Characteristics**: Usually earlier than PTS for B-frames
-- **Usage**: Decode scheduling and buffer management
+
+-   **Definition**: When a frame should be decoded
+-   **Source**: Video container/codec metadata
+-   **Characteristics**: Usually earlier than PTS for B-frames
+-   **Usage**: Decode scheduling and buffer management
 
 #### System Clock Time
-- **Definition**: High-resolution system timer
-- **Source**: Operating system (Time.get_ticks_usec() in Godot)
-- **Characteristics**: Stable and monotonic, but can drift from media clocks
-- **Usage**: Provides stable timing base for filtering
+
+-   **Definition**: High-resolution system timer
+-   **Source**: Operating system (Time.get_ticks_usec() in Godot)
+-   **Characteristics**: Stable and monotonic, but can drift from media clocks
+-   **Usage**: Provides stable timing base for filtering
 
 ## Dual Clock Architecture
 
@@ -52,6 +55,7 @@ private:
 ### Clock Update Methods
 
 #### PTS Clock Update
+
 ```cpp
 void update_pts_clock(const FrameInfo& frame) {
     // Raw PTS time with latency compensation
@@ -65,6 +69,7 @@ void update_pts_clock(const FrameInfo& frame) {
 ```
 
 #### System Clock Update
+
 ```cpp
 void update_system_clock() {
     double current_time = get_high_resolution_time();
@@ -76,6 +81,7 @@ void update_system_clock() {
 ```
 
 #### Audio Clock Update
+
 ```cpp
 void update_audio_clock() {
     // Get audio playback position with compensation

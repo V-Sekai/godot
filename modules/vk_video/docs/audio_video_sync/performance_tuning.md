@@ -9,10 +9,11 @@ This document provides guidelines for optimizing OneEuroFilter parameters and mo
 ### Understanding Filter Parameters
 
 #### min_cutoff (Minimum Cutoff Frequency)
-- **Physical Meaning**: Baseline smoothing strength
-- **Units**: Hertz (Hz)
-- **Effect**: Lower values = more smoothing, higher latency
-- **Tuning Range**: 0.01 - 10.0 Hz
+
+-   **Physical Meaning**: Baseline smoothing strength
+-   **Units**: Hertz (Hz)
+-   **Effect**: Lower values = more smoothing, higher latency
+-   **Tuning Range**: 0.01 - 10.0 Hz
 
 ```cpp
 // Parameter effects visualization
@@ -24,10 +25,11 @@ void demonstrate_cutoff_effects() {
 ```
 
 #### beta (Speed Coefficient)
-- **Physical Meaning**: Responsiveness to rapid changes
-- **Units**: Dimensionless
-- **Effect**: Higher values = less lag during rapid signal changes
-- **Tuning Range**: 0.0 - 50.0
+
+-   **Physical Meaning**: Responsiveness to rapid changes
+-   **Units**: Dimensionless
+-   **Effect**: Higher values = less lag during rapid signal changes
+-   **Tuning Range**: 0.0 - 50.0
 
 ```cpp
 // Beta parameter comparison
@@ -41,6 +43,7 @@ void demonstrate_beta_effects() {
 ### Systematic Parameter Tuning
 
 #### Step 1: Baseline Measurement
+
 ```cpp
 struct BaselineMetrics {
     double avg_sync_error = 0.0;
@@ -72,6 +75,7 @@ BaselineMetrics measure_baseline(OneEuroFilter& filter,
 ```
 
 #### Step 2: Parameter Sweep
+
 ```cpp
 struct TuningResult {
     double min_cutoff;
@@ -111,6 +115,7 @@ double calculate_quality_score(const BaselineMetrics& metrics) {
 ```
 
 #### Step 3: Validation Testing
+
 ```cpp
 bool validate_parameters(double min_cutoff, double beta,
                         const std::vector<TestScenario>& scenarios) {
@@ -133,6 +138,7 @@ bool validate_parameters(double min_cutoff, double beta,
 ### Application-Specific Tuning
 
 #### Standard Video Playback
+
 ```cpp
 struct VideoPlaybackTuning {
     static constexpr double min_cutoff = 0.1;   // 100ms smoothing window
@@ -151,6 +157,7 @@ struct VideoPlaybackTuning {
 ```
 
 #### Music Video / Rhythm Games
+
 ```cpp
 struct MusicVideoTuning {
     static constexpr double min_cutoff = 0.05;  // More smoothing for stability
@@ -169,6 +176,7 @@ struct MusicVideoTuning {
 ```
 
 #### Interactive/Gaming Applications
+
 ```cpp
 struct InteractiveTuning {
     static constexpr double min_cutoff = 0.8;   // Minimal smoothing

@@ -11,12 +11,14 @@ This document outlines different approaches to audio-video synchronization, thei
 The audio master approach treats audio timing as authoritative, with video synchronized to match.
 
 #### Advantages
-- **Perceptually Optimal**: Audio timing discontinuities are more noticeable than video
-- **Stable Reference**: Audio hardware provides consistent timing
-- **Proven Approach**: Used successfully in the rhythm game conductor
-- **Natural Buffering**: Audio systems typically have built-in buffering
+
+-   **Perceptually Optimal**: Audio timing discontinuities are more noticeable than video
+-   **Stable Reference**: Audio hardware provides consistent timing
+-   **Proven Approach**: Used successfully in the rhythm game conductor
+-   **Natural Buffering**: Audio systems typically have built-in buffering
 
 #### Implementation
+
 ```cpp
 class AudioMasterSync {
 private:
@@ -47,26 +49,30 @@ public:
 ```
 
 #### Use Cases
-- Standard video playback
-- Music videos and rhythm games
-- Applications where audio quality is critical
-- Real-time streaming
+
+-   Standard video playback
+-   Music videos and rhythm games
+-   Applications where audio quality is critical
+-   Real-time streaming
 
 ### Video Master Clock
 
 Video timing drives synchronization, with audio adjusted to match.
 
 #### Advantages
-- **Visual Smoothness**: Ensures consistent frame presentation
-- **Predictable Timing**: Video frame rates are typically constant
-- **Lower Video Latency**: Direct video timing without filtering delays
+
+-   **Visual Smoothness**: Ensures consistent frame presentation
+-   **Predictable Timing**: Video frame rates are typically constant
+-   **Lower Video Latency**: Direct video timing without filtering delays
 
 #### Disadvantages
-- **Audio Artifacts**: May cause audio dropouts or pitch changes
-- **Complex Audio Adjustment**: Requires sophisticated audio resampling
-- **Perceptual Issues**: Audio timing errors are more noticeable
+
+-   **Audio Artifacts**: May cause audio dropouts or pitch changes
+-   **Complex Audio Adjustment**: Requires sophisticated audio resampling
+-   **Perceptual Issues**: Audio timing errors are more noticeable
 
 #### Implementation
+
 ```cpp
 class VideoMasterSync {
 private:
@@ -96,20 +102,23 @@ private:
 ```
 
 #### Use Cases
-- Video editing applications
-- Frame-accurate playback requirements
-- Applications where visual smoothness is paramount
+
+-   Video editing applications
+-   Frame-accurate playback requirements
+-   Applications where visual smoothness is paramount
 
 ### External Master Clock
 
 An external timing source (system clock, network time, etc.) drives synchronization.
 
 #### Advantages
-- **Consistent Reference**: Independent of media stream variations
-- **Multi-Stream Sync**: Can synchronize multiple streams to common reference
-- **Network Synchronization**: Suitable for distributed playback
+
+-   **Consistent Reference**: Independent of media stream variations
+-   **Multi-Stream Sync**: Can synchronize multiple streams to common reference
+-   **Network Synchronization**: Suitable for distributed playback
 
 #### Implementation
+
 ```cpp
 class ExternalMasterSync {
 private:
@@ -134,9 +143,10 @@ public:
 ```
 
 #### Use Cases
-- Multi-room audio/video systems
-- Network streaming with multiple clients
-- Professional broadcast applications
+
+-   Multi-room audio/video systems
+-   Network streaming with multiple clients
+-   Professional broadcast applications
 
 ## Adaptive Synchronization
 
@@ -533,14 +543,14 @@ public:
 
 ### Use Case Matrix
 
-| Use Case | Recommended Strategy | Filter Parameters | Notes |
-|----------|---------------------|-------------------|-------|
-| Standard Video | Audio Master | cutoff=0.1, beta=5.0 | Balanced quality/latency |
-| Music Videos | Audio Master | cutoff=0.05, beta=3.0 | Prioritize audio sync |
-| Gaming/Interactive | Video Master | cutoff=0.5, beta=15.0 | Low latency critical |
-| Streaming | Adaptive | Dynamic | Handle network variations |
-| Mobile | Power-Aware | Thermal-dependent | Battery optimization |
-| High Refresh | High-Performance | cutoff=2.0, beta=20.0 | Responsive for 120Hz+ |
+| Use Case           | Recommended Strategy | Filter Parameters     | Notes                     |
+| ------------------ | -------------------- | --------------------- | ------------------------- |
+| Standard Video     | Audio Master         | cutoff=0.1, beta=5.0  | Balanced quality/latency  |
+| Music Videos       | Audio Master         | cutoff=0.05, beta=3.0 | Prioritize audio sync     |
+| Gaming/Interactive | Video Master         | cutoff=0.5, beta=15.0 | Low latency critical      |
+| Streaming          | Adaptive             | Dynamic               | Handle network variations |
+| Mobile             | Power-Aware          | Thermal-dependent     | Battery optimization      |
+| High Refresh       | High-Performance     | cutoff=2.0, beta=20.0 | Responsive for 120Hz+     |
 
 ### Performance Considerations
 

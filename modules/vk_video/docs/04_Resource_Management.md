@@ -1,6 +1,7 @@
 # Resource Management for Vulkan Video
 
 ## Brief Description
+
 Comprehensive resource management system for Vulkan Video operations including DPB management, memory pools, command buffers, and synchronization primitives.
 
 ## Core Resource Manager
@@ -522,6 +523,7 @@ void ResourceGarbageCollector::_cleanup_resource(const PendingResource &p_resour
 ## Usage Examples
 
 ### Basic Resource Management
+
 ```cpp
 // Initialize resource manager
 Ref<VulkanVideoResourceManager> resource_manager = memnew(VulkanVideoResourceManager);
@@ -543,6 +545,7 @@ resource_manager->release_bitstream_buffer(bitstream_buffer);
 ```
 
 ### Advanced Memory Management
+
 ```cpp
 // Configure memory pools
 Ref<VideoMemoryPool> memory_pool = memnew(VideoMemoryPool);

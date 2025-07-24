@@ -54,9 +54,10 @@ func play() -> void:
 ```
 
 **Key Insights:**
-- Filter parameters are exposed as user-configurable exports
-- Start time calculation includes multiple latency compensations
-- Audio processing delays are pre-calculated and cached
+
+-   Filter parameters are exposed as user-configurable exports
+-   Start time calculation includes multiple latency compensations
+-   Audio processing delays are pre-calculated and cached
 
 ### Audio Clock Calculation
 
@@ -81,9 +82,10 @@ func _process(_delta: float) -> void:
 ```
 
 **Key Insights:**
-- Robust handling of platform-specific timing bugs
-- Multiple compensation factors applied to audio timing
-- System time scaled by playback rate for variable speed support
+
+-   Robust handling of platform-specific timing bugs
+-   Multiple compensation factors applied to audio timing
+-   System time scaled by playback rate for variable speed support
 
 ### OneEuroFilter Application
 
@@ -101,9 +103,10 @@ func _physics_process(delta: float) -> void:
 ```
 
 **Key Insights:**
-- Filtering applied to the difference, not absolute times
-- Runs at physics rate (60 Hz) for consistent filter behavior
-- Final time calculation combines both clock sources
+
+-   Filtering applied to the difference, not absolute times
+-   Runs at physics rate (60 Hz) for consistent filter behavior
+-   Final time calculation combines both clock sources
 
 ### Public API Design
 
@@ -119,9 +122,10 @@ func get_current_beat_raw() -> float:
 ```
 
 **Key Insights:**
-- Provides both filtered and raw timing for different use cases
-- Beat-based API abstracts timing complexity from game logic
-- Raw timing available for debugging and comparison
+
+-   Provides both filtered and raw timing for different use cases
+-   Beat-based API abstracts timing complexity from game logic
+-   Raw timing available for debugging and comparison
 
 ## Adaptation for Video Synchronization
 
@@ -241,6 +245,7 @@ if last_mix > 1000:
 ```
 
 **Video Adaptation:**
+
 ```cpp
 double get_frame_decode_time() {
     double decode_time = get_last_decode_duration();
@@ -264,6 +269,7 @@ double get_frame_decode_time() {
 ```
 
 **Video Adaptation:**
+
 ```cpp
 void set_paused(bool paused) {
     if (paused != is_paused) {
@@ -293,6 +299,7 @@ From conductor (commented debug code):
 ```
 
 **Video Adaptation:**
+
 ```cpp
 void debug_sync_quality() {
     double corrected_time = get_corrected_video_time();
@@ -316,9 +323,10 @@ func _physics_process(delta: float) -> void:
 ```
 
 **Video Adaptation:**
-- Run sync updates at consistent rate (60 Hz or display refresh rate)
-- Separate from variable frame decode rate
-- Ensures filter receives consistent delta times
+
+-   Run sync updates at consistent rate (60 Hz or display refresh rate)
+-   Separate from variable frame decode rate
+-   Ensures filter receives consistent delta times
 
 ### Memory and CPU Impact
 
@@ -329,9 +337,10 @@ var _filtered_audio_system_delta: float = 0
 ```
 
 **Benefits:**
-- Very low memory footprint
-- O(1) computational complexity
-- Suitable for real-time video processing
+
+-   Very low memory footprint
+-   O(1) computational complexity
+-   Suitable for real-time video processing
 
 ## Integration Checklist
 
