@@ -28,9 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "vulkan_video_context.h"
-
 #ifdef VULKAN_ENABLED
+
+#include "vulkan_video_context.h"
 
 #include "core/error/error_macros.h"
 #include "core/object/class_db.h"

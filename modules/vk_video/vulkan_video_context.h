@@ -30,14 +30,13 @@
 
 #pragma once
 
+#ifdef VULKAN_ENABLED
+
 #include "core/object/ref_counted.h"
 #include "core/templates/hash_map.h"
 #include "core/templates/vector.h"
+#include "drivers/vulkan/rendering_device_driver_vulkan.h"
 #include "rendering_device_video_extensions.h"
-
-#ifdef VULKAN_ENABLED
-#include "drivers/vulkan/rendering_context_driver_vulkan.h"
-#include "drivers/vulkan/godot_vulkan.h"
 
 // Vulkan Video extension function pointers
 struct VulkanVideoFunctions {
@@ -51,16 +50,16 @@ struct VulkanVideoFunctions {
 	PFN_vkUpdateVideoSessionParametersKHR vkUpdateVideoSessionParametersKHR = nullptr;
 	PFN_vkGetVideoSessionMemoryRequirementsKHR vkGetVideoSessionMemoryRequirementsKHR = nullptr;
 	PFN_vkBindVideoSessionMemoryKHR vkBindVideoSessionMemoryKHR = nullptr;
-	
+
 	// Video decode functions
 	PFN_vkCmdBeginVideoCodingKHR vkCmdBeginVideoCodingKHR = nullptr;
 	PFN_vkCmdEndVideoCodingKHR vkCmdEndVideoCodingKHR = nullptr;
 	PFN_vkCmdControlVideoCodingKHR vkCmdControlVideoCodingKHR = nullptr;
 	PFN_vkCmdDecodeVideoKHR vkCmdDecodeVideoKHR = nullptr;
-	
+
 	// Video encode functions (for future use)
 	PFN_vkCmdEncodeVideoKHR vkCmdEncodeVideoKHR = nullptr;
-	
+
 	bool is_loaded = false;
 };
 
@@ -69,22 +68,22 @@ struct VulkanVideoHardwareInfo {
 	bool video_queue_supported = false;
 	bool decode_queue_supported = false;
 	bool encode_queue_supported = false;
-	
+
 	// Queue family indices
 	uint32_t video_queue_family = VK_QUEUE_FAMILY_IGNORED;
 	uint32_t decode_queue_family = VK_QUEUE_FAMILY_IGNORED;
 	uint32_t encode_queue_family = VK_QUEUE_FAMILY_IGNORED;
-	
+
 	// Supported codecs
 	Vector<VkVideoCodecOperationFlagBitsKHR> supported_decode_codecs;
 	Vector<VkVideoCodecOperationFlagBitsKHR> supported_encode_codecs;
-	
+
 	// Device limits
 	uint32_t max_coded_extent_width = 0;
 	uint32_t max_coded_extent_height = 0;
 	uint32_t max_dpb_slots = 0;
 	uint32_t max_active_reference_pictures = 0;
-	
+
 	// Memory requirements
 	VkDeviceSize video_session_memory_size = 0;
 	uint32_t video_session_memory_type_bits = 0;
@@ -133,15 +132,15 @@ private:
 	VkPhysicalDevice physical_device = VK_NULL_HANDLE;
 	VkQueue video_queue = VK_NULL_HANDLE;
 	VkCommandPool video_command_pool = VK_NULL_HANDLE;
-	
+
 	VulkanVideoFunctions video_functions;
 	VulkanVideoHardwareInfo hardware_info;
-	
+
 	// Resource tracking
 	HashMap<RID, VulkanVideoSession> video_sessions;
 	HashMap<RID, VulkanVideoImage> video_images;
 	HashMap<RID, VulkanVideoBuffer> video_buffers;
-	
+
 	bool initialized = false;
 
 protected:
@@ -159,40 +158,40 @@ public:
 	// Extension loading
 	bool load_video_extensions();
 	bool check_video_support();
-	
+
 	// Hardware detection
 	bool detect_video_hardware();
 	VulkanVideoHardwareInfo get_hardware_info() const { return hardware_info; }
-	
+
 	// Capability queries
 	bool is_codec_supported(VideoCodecProfile p_profile, VideoOperationType p_operation) const;
 	Dictionary get_video_capabilities(VideoCodecProfile p_profile, VideoOperationType p_operation) const;
 	Array get_supported_profiles() const;
-	
+
 	// Video session management
 	RID create_video_session(const Dictionary &p_create_info);
 	void destroy_video_session(RID p_session_rid);
 	bool is_video_session_valid(RID p_session_rid) const;
-	
+
 	RID create_video_session_parameters(const Dictionary &p_create_info);
 	void destroy_video_session_parameters(RID p_parameters_rid);
-	
+
 	// Video resource creation
 	RID create_video_image(const Dictionary &p_create_info);
 	void destroy_video_image(RID p_image_rid);
-	
+
 	RID create_video_buffer(const Dictionary &p_create_info);
 	void destroy_video_buffer(RID p_buffer_rid);
-	
+
 	// Video operations
 	bool begin_video_coding(VkCommandBuffer p_cmd_buffer, RID p_session_rid);
 	bool end_video_coding(VkCommandBuffer p_cmd_buffer);
 	bool decode_video_frame(VkCommandBuffer p_cmd_buffer, const Dictionary &p_decode_info);
-	
+
 	// Memory management
 	bool update_video_buffer(RID p_buffer_rid, uint64_t p_offset, const Vector<uint8_t> &p_data);
 	Vector<uint8_t> get_video_buffer_data(RID p_buffer_rid, uint64_t p_offset = 0, uint64_t p_size = 0);
-	
+
 	// Utility functions
 	VkFormat get_vulkan_format(RD::DataFormat p_format) const;
 	RD::DataFormat get_rd_format(VkFormat p_format) const;
@@ -204,13 +203,13 @@ private:
 	bool _find_video_queue_families();
 	bool _create_video_command_pool();
 	bool _query_video_capabilities();
-	
+
 	// Resource management helpers
 	RID _generate_video_rid();
 	bool _allocate_video_session_memory(VulkanVideoSession &p_session);
 	bool _allocate_video_image_memory(VulkanVideoImage &p_image);
 	bool _allocate_video_buffer_memory(VulkanVideoBuffer &p_buffer);
-	
+
 	// Cleanup helpers
 	void _cleanup_video_sessions();
 	void _cleanup_video_images();

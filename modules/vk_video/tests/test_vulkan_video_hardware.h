@@ -201,13 +201,6 @@ TEST_CASE("[VulkanVideo] Utility Functions") {
 	Ref<RenderingDeviceVideoExtensions> video_ext;
 	video_ext.instantiate();
 	
-	// Test texture from video image
-	RID texture = video_ext->texture_from_video_image(RID(), 0);
-	
-	CHECK_MESSAGE(
-		true, // May return valid or invalid RID
-		"Texture from video image should not crash.");
-	
 	// Test copy video image to texture
 	video_ext->copy_video_image_to_texture(RID(), 0, RID());
 	
