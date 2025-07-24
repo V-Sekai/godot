@@ -252,6 +252,9 @@ void VideoStreamPlaybackTheora::video_write(th_ycbcr_buffer yuv) {
 	img.instantiate(region.size.x, region.size.y, false, Image::FORMAT_RGBA8, frame_data); //zero copy image creation
 
 	texture->update(img); // Zero-copy send to rendering server.
+	
+	// Queue frame for synchronized playback using base class
+	queue_video_frame(texture, current_frame_time, 0);
 }
 
 void VideoStreamPlaybackTheora::clear() {
@@ -485,14 +488,13 @@ void VideoStreamPlaybackTheora::set_file(const String &p_file) {
 }
 
 double VideoStreamPlaybackTheora::get_time() const {
-	// FIXME: AudioServer output latency was fixed in af9bb0e, previously it used to
-	// systematically return 0. Now that it gives a proper latency, it broke this
-	// code where the delay compensation likely never really worked.
-	return time - /* AudioServer::get_singleton()->get_output_latency() - */ delay_compensation;
+	// Use base class playback position which handles synchronization
+	return get_playback_position();
 }
 
 Ref<Texture2D> VideoStreamPlaybackTheora::get_texture() const {
-	return texture;
+	// Use base class synchronized texture access
+	return get_synchronized_texture();
 }
 
 void VideoStreamPlaybackTheora::update(double p_delta) {
@@ -503,8 +505,6 @@ void VideoStreamPlaybackTheora::update(double p_delta) {
 	if (!playing || paused) {
 		return;
 	}
-
-	time += p_delta;
 
 	double comp_time = get_time();
 	bool audio_ready = false;
@@ -618,8 +618,6 @@ void VideoStreamPlaybackTheora::play() {
 	}
 
 	playing = true;
-	delay_compensation = GLOBAL_GET("audio/video/video_delay_compensation_ms");
-	delay_compensation /= 1000.0;
 }
 
 void VideoStreamPlaybackTheora::stop() {
@@ -682,8 +680,6 @@ void VideoStreamPlaybackTheora::seek(double p_time) {
 	}
 	file->seek(seek_pos);
 	ogg_sync_reset(&oy);
-
-	time = p_time;
 
 	double last_audio_time = 0;
 	double last_video_time = 0;
