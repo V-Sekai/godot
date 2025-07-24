@@ -1,8 +1,5 @@
 def can_build(env, platform):
-    if platform in ["macos"]:
-        return True
-
-    return False
+    return True
 
 
 def configure(env):

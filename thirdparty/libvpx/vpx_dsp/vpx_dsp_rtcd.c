@@ -12,4 +12,9 @@
 #include "./vpx_dsp_rtcd.h"
 #include "vpx_ports/vpx_once.h"
 
+static void setup_rtcd_internal(void) {
+    // Since CONFIG_RUNTIME_CPU_DETECT is 0, we don't need to do anything here
+    // All function pointers are already set to their C implementations
+}
+
 void vpx_dsp_rtcd(void) { once(setup_rtcd_internal); }
