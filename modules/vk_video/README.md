@@ -43,9 +43,9 @@ modules/vk_video/
 - ❌ `video_stream_av1.cpp/.h` (main classes)
 - ❌ Any functional C++ code
 
-## Integration with modules/mkv
+## Integration with modules/mkv (No FFmpeg Required)
 
-The design leverages the existing MKV module:
+The design leverages the existing MKV module's **libsimplewebm-based** container parsing:
 
 ```
 ┌─────────────────┐    ┌──────────────────┐
@@ -53,18 +53,22 @@ The design leverages the existing MKV module:
 │                 │    │                  │
 │ ✅ Container    │◄──►│ ❌ AV1 Decoding  │
 │    parsing      │    │    (planned)     │
-│ ✅ Audio decode │    │ ❌ Vulkan Video  │
+│    (libsimple   │    │ ❌ Vulkan Video  │
+│     webm)       │    │    (planned)     │
+│ ✅ Audio decode │    │ ❌ GPU textures  │
 │ ✅ Metadata     │    │    (planned)     │
-│ ❌ Video decode │    │ ❌ GPU textures  │
-│    (placeholder)│    │    (planned)     │
+│ ❌ Video decode │    │                  │
+│    (placeholder)│    │                  │
 └─────────────────┘    └──────────────────┘
 ```
 
-**Current mkv capabilities:**
-- ✅ Parses MKV/WebM containers
+**Current mkv capabilities (FFmpeg-free):**
+- ✅ Parses MKV/WebM containers via **libsimplewebm** (lightweight, no FFmpeg)
 - ✅ Extracts video metadata (width, height, duration)  
 - ✅ Decodes audio streams (Opus and uncompressed audio)
 - ❌ **Does NOT decode video** - provides black placeholder textures
+
+**No FFmpeg dependency**: The vk_video module will use the existing mkv module's container parsing, which is based on libsimplewebm rather than FFmpeg, keeping dependencies minimal.
 
 ## Hardware Requirements (When Implemented)
 
