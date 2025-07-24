@@ -117,11 +117,11 @@ WebMDemuxer::VIDEO_CODEC WebMDemuxer::getVideoCodec() const
 }
 int WebMDemuxer::getWidth() const
 {
-	return m_videoTrack->GetWidth();
+	return m_videoTrack ? m_videoTrack->GetWidth() : 0;
 }
 int WebMDemuxer::getHeight() const
 {
-	return m_videoTrack->GetHeight();
+	return m_videoTrack ? m_videoTrack->GetHeight() : 0;
 }
 
 WebMDemuxer::AUDIO_CODEC WebMDemuxer::getAudioCodec() const
@@ -130,24 +130,31 @@ WebMDemuxer::AUDIO_CODEC WebMDemuxer::getAudioCodec() const
 }
 const unsigned char *WebMDemuxer::getAudioExtradata(size_t &size) const
 {
-	return m_audioTrack->GetCodecPrivate(size);
+	if (m_audioTrack) {
+		return m_audioTrack->GetCodecPrivate(size);
+	}
+	size = 0;
+	return nullptr;
 }
 double WebMDemuxer::getSampleRate() const
 {
-	return m_audioTrack->GetSamplingRate();
+	return m_audioTrack ? m_audioTrack->GetSamplingRate() : 0.0;
 }
 int WebMDemuxer::getChannels() const
 {
-	return m_audioTrack->GetChannels();
+	return m_audioTrack ? m_audioTrack->GetChannels() : 0;
 }
 int WebMDemuxer::getAudioDepth() const
 {
-	return m_audioTrack->GetBitDepth();
+	return m_audioTrack ? m_audioTrack->GetBitDepth() : 0;
 }
 
 float WebMDemuxer::seek(float p_time){
 
 	if(p_time < 0)
+		return 0.0f;
+
+	if (!m_videoTrack)
 		return 0.0f;
 
 	m_seekTime = p_time;
@@ -205,7 +212,7 @@ bool WebMDemuxer::readFrame(WebMFrame *videoFrame, WebMFrame *audioFrame)
 		}
 		else if (!m_block || m_blockFrameIndex == m_block->GetFrameCount() || notSupportedTrackNumber(videoTrackNumber, audioTrackNumber))
 		{		
-			if(m_isSeek)
+			if(m_isSeek && m_videoTrack)
 			{
 				m_videoTrack->Seek(m_seekTime * 1e9, m_blockEntry);
 				m_cluster = m_blockEntry->GetCluster();

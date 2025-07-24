@@ -93,19 +93,31 @@ bool VideoStreamPlaybackMKV::open_file(const String &p_file) {
 	file_name = p_file;
 	webm = memnew(WebMDemuxer(new MkvReader(file_name), 0, audio_track));
 	if (webm->isOpen()) {
-		// Store video metadata for external handling
-		video_width = webm->getWidth();
-		video_height = webm->getHeight();
+		// Store video metadata for external handling - with null checks
+		if (webm->getVideoCodec() != WebMDemuxer::NO_VIDEO) {
+			video_width = webm->getWidth();
+			video_height = webm->getHeight();
+		} else {
+			// No video track or unsupported video codec - use default dimensions
+			video_width = 640;
+			video_height = 480;
+			print_verbose("VideoStreamMKV: No supported video track found, using default dimensions");
+		}
 		video_duration = webm->getLength();
 
 		// Only handle audio decoding
-		audio = memnew(OpusVorbisDecoder(*webm));
-		if (audio->isOpen()) {
-			audio_frame = memnew(WebMFrame);
-			pcm = (float *)memalloc(sizeof(float) * audio->getBufferSamples() * webm->getChannels());
+		if (webm->getAudioCodec() != WebMDemuxer::NO_AUDIO) {
+			audio = memnew(OpusVorbisDecoder(*webm));
+			if (audio->isOpen()) {
+				audio_frame = memnew(WebMFrame);
+				pcm = (float *)memalloc(sizeof(float) * audio->getBufferSamples() * webm->getChannels());
+			} else {
+				memdelete(audio);
+				audio = nullptr;
+				print_verbose("VideoStreamMKV: Failed to open audio decoder");
+			}
 		} else {
-			memdelete(audio);
-			audio = nullptr;
+			print_verbose("VideoStreamMKV: No supported audio track found");
 		}
 
 		// Create a placeholder texture for video metadata

@@ -279,4 +279,21 @@ ResourceFormatLoader
 - Improved resource management with proper cleanup
 - Enhanced error handling and graceful degradation
 
+### Critical Bug Fixes
+- **Fixed MKV Parser Crash**: Added null pointer checks in WebMDemuxer for missing video tracks
+- **Robust Error Handling**: VideoStreamMKV now handles files without supported video codecs gracefully
+- **Audio-Only Support**: MKV files with only audio tracks (or unsupported video codecs) now work correctly
+
+## Current Implementation Challenges
+
+### Container vs. Codec Mismatch
+- **libsimplewebm limitation**: Only supports VP8/VP9 video codecs, not AV1
+- **AV1 in MKV**: Requires different demuxer or codec detection approach
+- **vk_video_samples**: Uses FFmpeg for demuxing, which supports AV1 in MKV containers
+
+### Path Forward for AV1+MKV+Opus
+1. **Option A**: Extend libsimplewebm to support AV1 codec detection
+2. **Option B**: Use vk_video_samples' FFmpeg-based demuxer approach
+3. **Option C**: Implement separate AV1 bitstream parser for raw AV1 files
+
 The module provides a solid foundation for hardware-accelerated AV1 video playback in Godot Engine, with a clear implementation path and comprehensive documentation. The focus has shifted from framework design to concrete implementation of hardware video decoding capabilities.
