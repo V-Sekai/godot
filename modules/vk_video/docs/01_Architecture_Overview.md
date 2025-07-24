@@ -9,7 +9,7 @@ Hardware-accelerated AV1 video decoding in Godot using Vulkan Video extensions, 
 ### ✅ Currently Implemented
 
 -   **VideoStreamMKV**: MKV/WebM container parsing with Opus audio support
--   **OneEuroFilter**: Audio-video synchronization filtering for jitter reduction
+-   **OneEuroFilter**: Audio-video synchronization filtering for jitter reduction (MIGRATED TO CORE)
 -   **Basic Infrastructure**: Module registration and resource management foundation
 
 ### 🎯 Target Implementation (Required)

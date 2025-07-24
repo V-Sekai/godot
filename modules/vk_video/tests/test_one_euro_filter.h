@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "modules/vk_video/sync/one_euro_filter.h"
+#include "scene/resources/one_euro_filter.h"
 
 #include "tests/test_macros.h"
 

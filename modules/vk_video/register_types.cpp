@@ -31,7 +31,6 @@
 #include "register_types.h"
 
 #include "core/object/class_db.h"
-#include "sync/one_euro_filter.h"
 #include "video_stream_mkv.h"
 
 static Ref<ResourceFormatLoaderMKV> resource_loader_mkv;
@@ -44,7 +43,6 @@ void initialize_vk_video_module(ModuleInitializationLevel p_level) {
 	resource_loader_mkv.instantiate();
 	ResourceLoader::add_resource_format_loader(resource_loader_mkv, true);
 
-	GDREGISTER_CLASS(OneEuroFilter);
 	GDREGISTER_CLASS(VideoStreamMKV);
 }
 

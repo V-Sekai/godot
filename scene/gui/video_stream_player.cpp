@@ -173,15 +173,25 @@ void VideoStreamPlayer::_notification(int p_notification) {
 		} break;
 
 		case NOTIFICATION_DRAW: {
-			if (texture.is_null()) {
+			Ref<Texture2D> current_texture = texture;
+			
+			// Use synchronized texture if available
+			if (playback.is_valid() && playback->get_use_synchronization()) {
+				Ref<Texture2D> sync_texture = playback->get_synchronized_texture();
+				if (sync_texture.is_valid()) {
+					current_texture = sync_texture;
+				}
+			}
+			
+			if (current_texture.is_null()) {
 				return;
 			}
-			if (texture->get_width() == 0) {
+			if (current_texture->get_width() == 0) {
 				return;
 			}
 
 			Size2 s = expand ? get_size() : texture_size;
-			draw_texture_rect(texture, Rect2(Point2(), s), false);
+			draw_texture_rect(current_texture, Rect2(Point2(), s), false);
 		} break;
 
 		case NOTIFICATION_SUSPENDED:
