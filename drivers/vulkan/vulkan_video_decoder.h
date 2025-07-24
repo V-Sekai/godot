@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  vulkan_video_decoder.h                                               */
+/*  vulkan_video_decoder.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -32,9 +32,9 @@
 
 #ifdef VULKAN_ENABLED
 
-#include "drivers/vulkan/godot_vulkan.h"
 #include "core/templates/hash_map.h"
 #include "core/templates/local_vector.h"
+#include "drivers/vulkan/godot_vulkan.h"
 #include "servers/rendering/rendering_device_driver.h"
 
 class RenderingDeviceDriverVulkan;
@@ -85,13 +85,13 @@ public:
 
 private:
 	RenderingDeviceDriverVulkan *driver = nullptr;
-	
+
 	// Video sessions by ID
 	HashMap<uint32_t, VideoSessionInfo> video_sessions;
 	HashMap<uint32_t, VideoImage> dpb_images;
 	HashMap<uint32_t, VideoImage> output_images;
 	HashMap<uint32_t, VideoBuffer> video_buffers;
-	
+
 	uint32_t next_session_id = 1;
 	uint32_t next_image_id = 1;
 	uint32_t next_buffer_id = 1;
@@ -137,8 +137,8 @@ public:
 	// Decode operations
 	bool begin_video_coding(VkCommandBuffer p_cmd_buffer, uint32_t p_session_id);
 	bool end_video_coding(VkCommandBuffer p_cmd_buffer);
-	bool decode_frame(VkCommandBuffer p_cmd_buffer, uint32_t p_session_id, uint32_t p_bitstream_buffer_id, 
-					  uint32_t p_output_image_id, const Vector<uint32_t> &p_reference_images = Vector<uint32_t>());
+	bool decode_frame(VkCommandBuffer p_cmd_buffer, uint32_t p_session_id, uint32_t p_bitstream_buffer_id,
+			uint32_t p_output_image_id, const Vector<uint32_t> &p_reference_images = Vector<uint32_t>());
 
 	// YCbCr conversion support
 	VkSamplerYcbcrConversion create_ycbcr_conversion(VkFormat p_format);

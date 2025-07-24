@@ -1263,23 +1263,23 @@ Error RenderingDeviceDriverVulkan::_initialize_device(const LocalVector<VkDevice
 void RenderingDeviceDriverVulkan::_detect_video_queue_families() {
 	uint32_t queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
-	
+
 	Vector<VkQueueFamilyProperties> queue_families_props;
 	queue_families_props.resize(queue_family_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_props.ptrw());
-	
+
 	for (uint32_t i = 0; i < queue_family_count; i++) {
 		// Check for video decode support
 		if (queue_families_props[i].queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) {
 			video_decode_queue_family = i;
 			print_verbose("Vulkan Video: Found video decode queue family: " + itos(i));
-			
+
 			// Get the video decode queue
 			vkGetDeviceQueue(vk_device, i, 0, &video_decode_queue);
 			break;
 		}
 	}
-	
+
 	if (video_decode_queue_family == UINT32_MAX) {
 		print_verbose("Vulkan Video: No video decode queue family found, hardware decode unavailable");
 	}

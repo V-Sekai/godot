@@ -97,7 +97,7 @@ bool VideoStreamPlaybackMKV::open_file(const String &p_file) {
 		if (webm->getVideoCodec() != WebMDemuxer::NO_VIDEO) {
 			video_width = webm->getWidth();
 			video_height = webm->getHeight();
-			
+
 			// Map WebMDemuxer codec types to our enum
 			switch (webm->getVideoCodec()) {
 				case WebMDemuxer::VIDEO_VP8:

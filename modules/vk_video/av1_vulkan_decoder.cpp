@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  av1_vulkan_decoder.cpp                                               */
+/*  av1_vulkan_decoder.cpp                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -32,8 +32,8 @@
 
 #include "core/error/error_macros.h"
 #include "core/os/os.h"
-#include "servers/rendering_server.h"
 #include "rendering_device_video_extensions.h"
+#include "servers/rendering_server.h"
 
 // libsimplewebm
 #include <WebMDemuxer.hpp>
@@ -104,7 +104,7 @@ bool AV1VulkanDecoder::check_hardware_support() {
 	// Check AV1 decode capabilities
 	Dictionary caps = video_ext->get_video_capabilities(VIDEO_CODEC_PROFILE_AV1_MAIN, VIDEO_OPERATION_DECODE);
 	bool decode_supported = caps.get("decode_supported", false);
-	
+
 	if (!decode_supported) {
 		WARN_PRINT("AV1 hardware decode not supported on this device");
 		hardware_support_available = false;
@@ -222,7 +222,7 @@ Ref<Texture2D> AV1VulkanDecoder::get_current_frame() const {
 	if (current_frame_texture.is_valid()) {
 		return current_frame_texture;
 	}
-	
+
 	// Return placeholder if no frame available
 	return create_placeholder_texture();
 }
@@ -329,19 +329,28 @@ Ref<ImageTexture> AV1VulkanDecoder::_create_texture_from_decoded_frame() {
 	video_ext.instantiate();
 	video_ext->initialize(rendering_device);
 
-	// Get texture from video image (layer 0 for current frame)
-	RID texture_rid = video_ext->texture_from_video_image(_output_image, 0);
-	ERR_FAIL_COND_V(!texture_rid.is_valid(), Ref<ImageTexture>());
+	// Convert YCbCr video image to RGB texture using proper YCbCr sampler
+	RID rgb_texture = video_ext->convert_ycbcr_to_rgb(_output_image, frame_width, frame_height);
+	ERR_FAIL_COND_V(!rgb_texture.is_valid(), Ref<ImageTexture>());
 
 	// Create ImageTexture wrapper
 	Ref<ImageTexture> texture;
 	texture.instantiate();
 
-	// For now, create a placeholder image until we have proper texture conversion
-	// TODO: Implement proper YUV to RGB conversion and texture creation
+	// Get the RGB data from the converted texture
+	Vector<uint8_t> rgb_data = rendering_device->texture_get_data(rgb_texture, 0);
+	if (rgb_data.size() > 0) {
+		// Create Image from RGB data
+		Ref<Image> image = Image::create_from_data(frame_width, frame_height, false, Image::FORMAT_RGBA8, rgb_data);
+		if (image.is_valid()) {
+			texture->set_image(image);
+			return texture;
+		}
+	}
+
+	// Fallback to placeholder if conversion failed
 	Ref<Image> placeholder_image = Image::create_empty(frame_width, frame_height, false, Image::FORMAT_RGB8);
 	placeholder_image->fill(Color(0.5, 0.5, 0.5)); // Gray placeholder
-
 	texture->set_image(placeholder_image);
 	return texture;
 }

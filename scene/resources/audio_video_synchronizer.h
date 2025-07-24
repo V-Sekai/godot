@@ -39,9 +39,9 @@ class AudioVideoSynchronizer : public RefCounted {
 
 public:
 	enum SyncMode {
-		SYNC_MODE_AUDIO_MASTER,  // Audio is master clock (default)
-		SYNC_MODE_VIDEO_MASTER,  // Video is master clock
-		SYNC_MODE_EXTERNAL       // External clock source
+		SYNC_MODE_AUDIO_MASTER, // Audio is master clock (default)
+		SYNC_MODE_VIDEO_MASTER, // Video is master clock
+		SYNC_MODE_EXTERNAL // External clock source
 	};
 
 private:
@@ -57,26 +57,26 @@ private:
 	double master_clock_time = 0.0;
 	double video_clock_time = 0.0;
 	double audio_clock_time = 0.0;
-	
+
 	// Frame management
 	Vector<FrameInfo> frame_queue;
 	int max_queue_size = 3;
 	int current_frame_index = -1;
-	
+
 	// Timing filters
 	Ref<OneEuroFilter> timing_filter;
 	bool use_timing_filter = true;
-	
+
 	// Synchronization parameters
 	double sync_threshold = 0.040; // 40ms threshold for sync correction
 	double max_frame_drop_threshold = 0.100; // 100ms threshold for dropping frames
 	double max_frame_repeat_threshold = 0.020; // 20ms threshold for repeating frames
-	
+
 	// Statistics
 	uint64_t frames_dropped = 0;
 	uint64_t frames_repeated = 0;
 	double average_sync_error = 0.0;
-	
+
 	// Internal methods
 	void _cleanup_old_frames();
 	int _find_best_frame_for_time(double target_time) const;
@@ -92,35 +92,35 @@ public:
 	// Configuration
 	void set_sync_mode(SyncMode p_mode);
 	SyncMode get_sync_mode() const;
-	
+
 	void set_max_queue_size(int p_size);
 	int get_max_queue_size() const;
-	
+
 	void set_use_timing_filter(bool p_enable);
 	bool get_use_timing_filter() const;
-	
+
 	void set_sync_threshold(double p_threshold);
 	double get_sync_threshold() const;
-	
+
 	// Clock management
 	void update_master_clock(double p_time);
 	void update_audio_clock(double p_time);
 	void update_video_clock(double p_time);
-	
+
 	double get_master_clock_time() const;
 	double get_sync_error() const;
-	
+
 	// Frame management
 	void queue_video_frame(const Ref<Texture2D> &p_texture, double p_presentation_time, uint64_t p_frame_number = 0);
 	Ref<Texture2D> get_current_frame();
 	void clear_frame_queue();
-	
+
 	// Statistics
 	uint64_t get_frames_dropped() const { return frames_dropped; }
 	uint64_t get_frames_repeated() const { return frames_repeated; }
 	double get_average_sync_error() const { return average_sync_error; }
 	int get_queued_frame_count() const { return frame_queue.size(); }
-	
+
 	// Reset
 	void reset();
 };

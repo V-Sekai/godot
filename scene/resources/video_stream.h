@@ -43,7 +43,7 @@ protected:
 	AudioMixCallback mix_callback = nullptr;
 	void *mix_udata = nullptr;
 	mutable int _channel_count = 0; // Used only to assist with bounds checking in mix_audio.
-	
+
 	// Audio-Video Synchronization
 	Ref<AudioVideoSynchronizer> av_synchronizer;
 	bool use_synchronization = true;
@@ -90,7 +90,7 @@ public:
 	virtual void set_mix_callback(AudioMixCallback p_callback, void *p_userdata);
 	virtual int get_channels() const;
 	virtual int get_mix_rate() const;
-	
+
 	// Audio-Video Synchronization
 	virtual void set_use_synchronization(bool p_enable);
 	virtual bool get_use_synchronization() const;

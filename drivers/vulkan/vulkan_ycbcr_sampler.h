@@ -1,7 +1,7 @@
 /**************************************************************************/
-/*  vulkan_ycbcr_sampler.h                                               */
+/*  vulkan_ycbcr_sampler.h                                                */
 /**************************************************************************/
-/*                         This file is part of:                         */
+/*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
 /*                        https://godotengine.org                         */
 /**************************************************************************/
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef VULKAN_YCBCR_SAMPLER_H
-#define VULKAN_YCBCR_SAMPLER_H
+#pragma once
 
 #include "core/error/error_macros.h"
 #include "core/templates/local_vector.h"
@@ -42,20 +41,20 @@
 class VulkanYCbCrSampler {
 public:
 	enum ColorSpace {
-		COLOR_SPACE_REC_709,    // ITU-R BT.709 (HDTV)
-		COLOR_SPACE_REC_601,    // ITU-R BT.601 (SDTV)
-		COLOR_SPACE_REC_2020,   // ITU-R BT.2020 (UHDTV)
-		COLOR_SPACE_SMPTE_240M  // SMPTE-240M
+		COLOR_SPACE_REC_709, // ITU-R BT.709 (HDTV)
+		COLOR_SPACE_REC_601, // ITU-R BT.601 (SDTV)
+		COLOR_SPACE_REC_2020, // ITU-R BT.2020 (UHDTV)
+		COLOR_SPACE_SMPTE_240M // SMPTE-240M
 	};
 
 	enum ColorRange {
-		COLOR_RANGE_NARROW,     // Limited range (16-235 for Y, 16-240 for Cb/Cr)
-		COLOR_RANGE_FULL        // Full range (0-255)
+		COLOR_RANGE_NARROW, // Limited range (16-235 for Y, 16-240 for Cb/Cr)
+		COLOR_RANGE_FULL // Full range (0-255)
 	};
 
 	enum ChromaLocation {
-		CHROMA_LOCATION_COSITED_EVEN,  // Chroma samples are co-sited with even luma samples
-		CHROMA_LOCATION_MIDPOINT       // Chroma samples are located at the midpoint between luma samples
+		CHROMA_LOCATION_COSITED_EVEN, // Chroma samples are co-sited with even luma samples
+		CHROMA_LOCATION_MIDPOINT // Chroma samples are located at the midpoint between luma samples
 	};
 
 	struct YCbCrSamplerCreateInfo {
@@ -117,5 +116,3 @@ public:
 };
 
 #endif // VULKAN_ENABLED
-
-#endif // VULKAN_YCBCR_SAMPLER_H

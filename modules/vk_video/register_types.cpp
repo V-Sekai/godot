@@ -31,9 +31,9 @@
 #include "register_types.h"
 
 #include "core/object/class_db.h"
-#include "video_stream_mkv.h"
-#include "video_stream_av1.h"
 #include "rendering_device_video_extensions.h"
+#include "video_stream_av1.h"
+#include "video_stream_mkv.h"
 
 #ifdef VULKAN_ENABLED
 #include "drivers/vulkan/vulkan_video_context.h"
@@ -59,7 +59,6 @@ void initialize_vk_video_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(VideoStreamAV1);
 	GDREGISTER_CLASS(VideoStreamPlaybackAV1);
 	GDREGISTER_CLASS(RenderingDeviceVideoExtensions);
-
 }
 
 void uninitialize_vk_video_module(ModuleInitializationLevel p_level) {
@@ -69,7 +68,7 @@ void uninitialize_vk_video_module(ModuleInitializationLevel p_level) {
 
 	ResourceLoader::remove_resource_format_loader(resource_loader_mkv);
 	resource_loader_mkv.unref();
-	
+
 	ResourceLoader::remove_resource_format_loader(resource_loader_av1);
 	resource_loader_av1.unref();
 }

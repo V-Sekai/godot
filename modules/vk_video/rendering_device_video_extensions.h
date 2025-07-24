@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_device_video_extensions.h                                  */
+/*  rendering_device_video_extensions.h                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -81,7 +81,7 @@ class RenderingDeviceVideoExtensions : public RefCounted {
 
 private:
 	RenderingDevice *rd = nullptr;
-	
+
 #ifdef VULKAN_ENABLED
 	VulkanVideoDecoder *video_decoder = nullptr;
 	VulkanYCbCrSampler *ycbcr_sampler = nullptr;
@@ -104,14 +104,14 @@ public:
 	// Video session management
 	RID video_session_create(const Dictionary &p_create_info);
 	void video_session_destroy(RID p_video_session);
-	
+
 	RID video_session_parameters_create(const Dictionary &p_create_info);
 	void video_session_parameters_destroy(RID p_video_session_parameters);
 
 	// Video resource creation
 	RID video_image_create(const Dictionary &p_create_info);
 	void video_image_destroy(RID p_video_image);
-	
+
 	RID video_buffer_create(const Dictionary &p_create_info);
 	void video_buffer_destroy(RID p_video_buffer);
 
@@ -123,6 +123,7 @@ public:
 	// Utility functions
 	RID texture_from_video_image(RID p_video_image, uint32_t p_layer = 0);
 	void copy_video_image_to_texture(RID p_video_image, uint32_t p_src_layer, RID p_dst_texture);
+	RID convert_ycbcr_to_rgb(RID p_ycbcr_texture, uint32_t p_width, uint32_t p_height);
 
 	// Memory management
 	void video_buffer_update(RID p_video_buffer, uint64_t p_offset, const Vector<uint8_t> &p_data);

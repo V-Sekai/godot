@@ -44,11 +44,11 @@ class VideoStreamPlaybackMKV : public VideoStreamPlayback {
 
 public:
 	enum VideoCodecType {
-		VIDEO_CODEC_NONE,        // No video track found
+		VIDEO_CODEC_NONE, // No video track found
 		VIDEO_CODEC_UNSUPPORTED, // Video track found but codec not supported
-		VIDEO_CODEC_VP8,         // VP8 video (software decode only)
-		VIDEO_CODEC_VP9,         // VP9 video (software decode only) 
-		VIDEO_CODEC_AV1          // AV1 video (hardware decode capable)
+		VIDEO_CODEC_VP8, // VP8 video (software decode only)
+		VIDEO_CODEC_VP9, // VP9 video (software decode only)
+		VIDEO_CODEC_AV1 // AV1 video (hardware decode capable)
 	};
 
 private:

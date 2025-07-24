@@ -252,7 +252,7 @@ void VideoStreamPlaybackTheora::video_write(th_ycbcr_buffer yuv) {
 	img.instantiate(region.size.x, region.size.y, false, Image::FORMAT_RGBA8, frame_data); //zero copy image creation
 
 	texture->update(img); // Zero-copy send to rendering server.
-	
+
 	// Queue frame for synchronized playback using base class
 	queue_video_frame(texture, current_frame_time, 0);
 }

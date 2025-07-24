@@ -119,7 +119,7 @@ Ref<Texture2D> AudioVideoSynchronizer::get_current_frame() {
 	}
 
 	double target_time = master_clock_time;
-	
+
 	// Apply timing filter if enabled
 	if (use_timing_filter && timing_filter.is_valid()) {
 		static double last_time = 0.0;
@@ -131,7 +131,7 @@ Ref<Texture2D> AudioVideoSynchronizer::get_current_frame() {
 	}
 
 	int best_frame_index = _find_best_frame_for_time(target_time);
-	
+
 	if (best_frame_index == -1) {
 		// No suitable frame found
 		return Ref<Texture2D>();
@@ -152,7 +152,7 @@ Ref<Texture2D> AudioVideoSynchronizer::get_current_frame() {
 	// Mark frame as displayed and return texture
 	frame_queue.write[best_frame_index].displayed = true;
 	current_frame_index = best_frame_index;
-	
+
 	return frame_queue[best_frame_index].texture;
 }
 
@@ -165,13 +165,13 @@ void AudioVideoSynchronizer::reset() {
 	master_clock_time = 0.0;
 	video_clock_time = 0.0;
 	audio_clock_time = 0.0;
-	
+
 	clear_frame_queue();
-	
+
 	frames_dropped = 0;
 	frames_repeated = 0;
 	average_sync_error = 0.0;
-	
+
 	if (timing_filter.is_valid()) {
 		timing_filter->reset();
 	}
@@ -190,8 +190,8 @@ void AudioVideoSynchronizer::_cleanup_old_frames() {
 
 	// Remove old displayed frames
 	for (int i = frame_queue.size() - 1; i >= 0; i--) {
-		if (frame_queue[i].displayed && 
-			frame_queue[i].presentation_time < master_clock_time - sync_threshold) {
+		if (frame_queue[i].displayed &&
+				frame_queue[i].presentation_time < master_clock_time - sync_threshold) {
 			frame_queue.remove_at(i);
 			if (current_frame_index >= i) {
 				current_frame_index--;
@@ -232,32 +232,32 @@ void AudioVideoSynchronizer::_update_sync_statistics(double sync_error) {
 void AudioVideoSynchronizer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_sync_mode", "mode"), &AudioVideoSynchronizer::set_sync_mode);
 	ClassDB::bind_method(D_METHOD("get_sync_mode"), &AudioVideoSynchronizer::get_sync_mode);
-	
+
 	ClassDB::bind_method(D_METHOD("set_max_queue_size", "size"), &AudioVideoSynchronizer::set_max_queue_size);
 	ClassDB::bind_method(D_METHOD("get_max_queue_size"), &AudioVideoSynchronizer::get_max_queue_size);
-	
+
 	ClassDB::bind_method(D_METHOD("set_use_timing_filter", "enable"), &AudioVideoSynchronizer::set_use_timing_filter);
 	ClassDB::bind_method(D_METHOD("get_use_timing_filter"), &AudioVideoSynchronizer::get_use_timing_filter);
-	
+
 	ClassDB::bind_method(D_METHOD("set_sync_threshold", "threshold"), &AudioVideoSynchronizer::set_sync_threshold);
 	ClassDB::bind_method(D_METHOD("get_sync_threshold"), &AudioVideoSynchronizer::get_sync_threshold);
-	
+
 	ClassDB::bind_method(D_METHOD("update_master_clock", "time"), &AudioVideoSynchronizer::update_master_clock);
 	ClassDB::bind_method(D_METHOD("update_audio_clock", "time"), &AudioVideoSynchronizer::update_audio_clock);
 	ClassDB::bind_method(D_METHOD("update_video_clock", "time"), &AudioVideoSynchronizer::update_video_clock);
-	
+
 	ClassDB::bind_method(D_METHOD("get_master_clock_time"), &AudioVideoSynchronizer::get_master_clock_time);
 	ClassDB::bind_method(D_METHOD("get_sync_error"), &AudioVideoSynchronizer::get_sync_error);
-	
+
 	ClassDB::bind_method(D_METHOD("queue_video_frame", "texture", "presentation_time", "frame_number"), &AudioVideoSynchronizer::queue_video_frame, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("get_current_frame"), &AudioVideoSynchronizer::get_current_frame);
 	ClassDB::bind_method(D_METHOD("clear_frame_queue"), &AudioVideoSynchronizer::clear_frame_queue);
-	
+
 	ClassDB::bind_method(D_METHOD("get_frames_dropped"), &AudioVideoSynchronizer::get_frames_dropped);
 	ClassDB::bind_method(D_METHOD("get_frames_repeated"), &AudioVideoSynchronizer::get_frames_repeated);
 	ClassDB::bind_method(D_METHOD("get_average_sync_error"), &AudioVideoSynchronizer::get_average_sync_error);
 	ClassDB::bind_method(D_METHOD("get_queued_frame_count"), &AudioVideoSynchronizer::get_queued_frame_count);
-	
+
 	ClassDB::bind_method(D_METHOD("reset"), &AudioVideoSynchronizer::reset);
 
 	BIND_ENUM_CONSTANT(SYNC_MODE_AUDIO_MASTER);

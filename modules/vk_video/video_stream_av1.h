@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  video_stream_av1.h                                                   */
+/*  video_stream_av1.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -122,7 +122,7 @@ private:
 	RID dpb_image_array;
 	RID bitstream_buffer;
 	RID output_texture;
-	
+
 	// DPB management
 	struct DPBSlot {
 		bool in_use = false;
@@ -191,7 +191,7 @@ public:
 	// Hardware capability queries
 	static bool is_hardware_supported();
 	static Dictionary get_hardware_capabilities();
-	
+
 	// AV1-specific getters
 	Dictionary get_sequence_header() const;
 	bool is_hardware_decode_active() const { return hardware_decode_available; }

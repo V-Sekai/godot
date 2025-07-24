@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  video_stream_av1.cpp                                                 */
+/*  video_stream_av1.cpp                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,13 +30,14 @@
 
 #include "video_stream_av1.h"
 
+#include "av1_vulkan_decoder.h"
 #include "core/config/project_settings.h"
 #include "core/error/error_macros.h"
 #include "core/io/file_access.h"
 #include "core/os/os.h"
+#include "rendering_device_video_extensions.h"
 #include "servers/audio_server.h"
 #include "servers/rendering_server.h"
-#include "av1_vulkan_decoder.h"
 
 // libsimplewebm
 #include <OpusVorbisDecoder.hpp>
@@ -61,7 +62,7 @@ VideoStreamPlaybackAV1::VideoStreamPlaybackAV1() {
 	get_av_synchronizer()->set_sync_mode(AudioVideoSynchronizer::SYNC_MODE_AUDIO_MASTER);
 	get_av_synchronizer()->set_use_timing_filter(true);
 	get_av_synchronizer()->set_sync_threshold(0.040); // 40ms threshold
-	
+
 	// Initialize DPB slots
 	dpb_slots.resize(8); // AV1 supports up to 8 reference frames
 	for (int i = 0; i < dpb_slots.size(); i++) {
@@ -75,7 +76,7 @@ VideoStreamPlaybackAV1::~VideoStreamPlaybackAV1() {
 
 void VideoStreamPlaybackAV1::delete_pointers() {
 	_cleanup_hardware_resources();
-	
+
 	if (pcm) {
 		memfree(pcm);
 		pcm = nullptr;
@@ -99,14 +100,14 @@ void VideoStreamPlaybackAV1::delete_pointers() {
 
 bool VideoStreamPlaybackAV1::open_file(const String &p_file) {
 	file_name = p_file;
-	
+
 	// Open MKV/WebM container
 	Ref<FileAccess> f = FileAccess::open(p_file, FileAccess::READ);
 	if (f.is_null()) {
 		ERR_PRINT("Cannot open file: " + p_file);
 		return false;
 	}
-	
+
 	// Use the same MkvReader pattern as VideoStreamMKV
 	class MkvReader : public mkvparser::IMkvReader {
 	public:
@@ -152,7 +153,7 @@ bool VideoStreamPlaybackAV1::open_file(const String &p_file) {
 		delete_pointers();
 		return false;
 	}
-	
+
 	// Initialize audio decoder
 	audio = memnew(OpusVorbisDecoder(*webm));
 	if (audio->isOpen()) {
@@ -162,7 +163,7 @@ bool VideoStreamPlaybackAV1::open_file(const String &p_file) {
 		memdelete(audio);
 		audio = nullptr;
 	}
-	
+
 	// Parse AV1 sequence header from the first video packet
 	WebMFrame video_frame;
 	if (webm->readFrame(&video_frame, nullptr)) {
@@ -175,7 +176,7 @@ bool VideoStreamPlaybackAV1::open_file(const String &p_file) {
 		}
 		webm->seek(0.0); // Reset to beginning
 	}
-	
+
 	// Check hardware capabilities
 	Dictionary caps_dict = get_hardware_capabilities();
 	capabilities.hardware_decode_supported = caps_dict.get("hardware_decode_supported", false);
@@ -183,23 +184,23 @@ bool VideoStreamPlaybackAV1::open_file(const String &p_file) {
 	capabilities.max_height = caps_dict.get("max_height", 0);
 	capabilities.max_dpb_slots = caps_dict.get("max_dpb_slots", 0);
 	capabilities.max_level = caps_dict.get("max_level", 0);
-	
+
 	hardware_decode_available = capabilities.hardware_decode_supported &&
-								sequence_header.max_frame_width <= capabilities.max_width &&
-								sequence_header.max_frame_height <= capabilities.max_height;
-	
+			sequence_header.max_frame_width <= capabilities.max_width &&
+			sequence_header.max_frame_height <= capabilities.max_height;
+
 	if (hardware_decode_available) {
 		if (!_initialize_hardware_decoder()) {
 			WARN_PRINT("Hardware AV1 decoder initialization failed, falling back to software");
 			hardware_decode_available = false;
 		}
 	}
-	
+
 	if (!hardware_decode_available) {
 		WARN_PRINT("AV1 hardware decoding not available, software fallback not implemented yet");
 		// TODO: Initialize software decoder fallback
 	}
-	
+
 	return true;
 }
 
@@ -209,12 +210,12 @@ bool VideoStreamPlaybackAV1::_parse_sequence_header(const uint8_t *data, size_t 
 	if (size < 8) {
 		return false;
 	}
-	
+
 	// Look for sequence header OBU
 	for (size_t i = 0; i < size - 4; i++) {
 		uint8_t obu_header = data[i];
 		uint8_t obu_type = (obu_header >> 3) & 0xF;
-		
+
 		if (obu_type == AV1_OBU_SEQUENCE_HEADER) {
 			// Parse basic sequence header fields
 			// This is a simplified parser - real implementation would be more complex
@@ -226,7 +227,7 @@ bool VideoStreamPlaybackAV1::_parse_sequence_header(const uint8_t *data, size_t 
 			return true;
 		}
 	}
-	
+
 	return false;
 }
 
@@ -236,12 +237,12 @@ bool VideoStreamPlaybackAV1::_parse_frame_header(const uint8_t *data, size_t siz
 	if (size < 4) {
 		return false;
 	}
-	
+
 	// Look for frame header OBU
 	for (size_t i = 0; i < size - 4; i++) {
 		uint8_t obu_header = data[i];
 		uint8_t obu_type = (obu_header >> 3) & 0xF;
-		
+
 		if (obu_type == AV1_OBU_FRAME_HEADER || obu_type == AV1_OBU_FRAME) {
 			// Parse basic frame header fields
 			header.frame_type = data[i + 2] & 0x3;
@@ -252,35 +253,35 @@ bool VideoStreamPlaybackAV1::_parse_frame_header(const uint8_t *data, size_t siz
 			return true;
 		}
 	}
-	
+
 	return false;
 }
 
 bool VideoStreamPlaybackAV1::_initialize_hardware_decoder() {
 	// Create AV1 Vulkan decoder instance
 	av1_decoder.instantiate();
-	
+
 	// Initialize with frame dimensions from sequence header
 	int width = sequence_header.max_frame_width;
 	int height = sequence_header.max_frame_height;
-	
+
 	if (width <= 0 || height <= 0) {
-		width = 1920;  // Default fallback
+		width = 1920; // Default fallback
 		height = 1080;
 	}
-	
+
 	if (!av1_decoder->initialize(width, height)) {
 		ERR_PRINT("Failed to initialize AV1 Vulkan decoder");
 		av1_decoder.unref();
 		return false;
 	}
-	
+
 	if (!av1_decoder->is_hardware_supported()) {
 		WARN_PRINT("AV1 hardware decoding not supported on this device");
 		av1_decoder.unref();
 		return false;
 	}
-	
+
 	print_line("AV1 Vulkan decoder initialized successfully");
 	return true;
 }
@@ -290,12 +291,12 @@ void VideoStreamPlaybackAV1::_cleanup_hardware_resources() {
 	if (!rd) {
 		return;
 	}
-	
+
 	// TODO: Cleanup video resources
 	// rd->video_session_destroy(video_session);
 	// rd->video_session_parameters_destroy(video_session_parameters);
 	// etc.
-	
+
 	video_session = RID();
 	video_session_parameters = RID();
 	dpb_image_array = RID();
@@ -306,42 +307,42 @@ void VideoStreamPlaybackAV1::_cleanup_hardware_resources() {
 bool VideoStreamPlaybackAV1::_decode_frame_hardware(const uint8_t *bitstream_data, size_t bitstream_size, const AV1FrameHeader &header) {
 	ERR_FAIL_COND_V(!av1_decoder.is_valid(), false);
 	ERR_FAIL_COND_V(!av1_decoder->is_initialized(), false);
-	
+
 	// Create WebMFrame wrapper for the AV1VulkanDecoder
 	WebMFrame frame;
-	frame.buffer = const_cast<unsigned char*>(bitstream_data);
+	frame.buffer = const_cast<unsigned char *>(bitstream_data);
 	frame.bufferSize = bitstream_size;
 	frame.time = header.presentation_time;
 	frame.key = header.keyframe;
-	
+
 	// Decode the frame using the Vulkan decoder
 	bool decode_success = av1_decoder->decode_frame(frame);
-	
+
 	if (decode_success) {
 		// Get the decoded frame texture
 		Ref<Texture2D> decoded_texture = av1_decoder->get_current_frame();
-		
+
 		if (decoded_texture.is_valid()) {
 			// Queue the frame for presentation
 			QueuedFrame queued_frame;
 			queued_frame.texture = decoded_texture;
 			queued_frame.presentation_time = header.presentation_time;
 			queued_frame.frame_number = header.frame_number;
-			
+
 			// Use base class synchronization
 			queue_video_frame(decoded_texture, header.presentation_time, header.frame_number);
-			
+
 			return true;
 		}
 	}
-	
+
 	return false;
 }
 
 bool VideoStreamPlaybackAV1::_decode_frame_software(const uint8_t *bitstream_data, size_t bitstream_size, const AV1FrameHeader &header) {
 	// TODO: Implement software AV1 decoding fallback
 	// This could use libaom or dav1d library
-	
+
 	WARN_PRINT("Software frame decoding not yet implemented");
 	return false;
 }
@@ -352,7 +353,7 @@ int VideoStreamPlaybackAV1::_find_free_dpb_slot() {
 			return i;
 		}
 	}
-	
+
 	// If no free slots, find oldest frame
 	int oldest_slot = 0;
 	uint64_t oldest_frame = dpb_slots[0].frame_number;
@@ -362,7 +363,7 @@ int VideoStreamPlaybackAV1::_find_free_dpb_slot() {
 			oldest_slot = i;
 		}
 	}
-	
+
 	return oldest_slot;
 }
 
@@ -374,7 +375,7 @@ void VideoStreamPlaybackAV1::_update_dpb_references(const AV1FrameHeader &header
 			dpb_slots.write[i].in_use = false;
 		}
 	}
-	
+
 	// Mark current slot as in use
 	int slot = _find_free_dpb_slot();
 	dpb_slots.write[slot].in_use = true;
@@ -391,7 +392,7 @@ Ref<Texture2D> VideoStreamPlaybackAV1::_get_frame_for_time(double target_time) {
 void VideoStreamPlaybackAV1::_cleanup_old_frames(double current_time) {
 	// Remove frames that are too old
 	const double max_age = 1.0; // 1 second
-	
+
 	for (int i = frame_queue.size() - 1; i >= 0; i--) {
 		if (current_time - frame_queue[i].presentation_time > max_age) {
 			frame_queue.remove_at(i);
@@ -403,10 +404,10 @@ void VideoStreamPlaybackAV1::play() {
 	if (!webm || !audio) {
 		return;
 	}
-	
+
 	playing = true;
 	paused = false;
-	
+
 	// Base class handles synchronization reset automatically
 }
 
@@ -415,13 +416,13 @@ void VideoStreamPlaybackAV1::stop() {
 	paused = false;
 	time = 0.0;
 	video_pos = 0.0;
-	
+
 	if (webm) {
 		webm->seek(0.0);
 	}
-	
+
 	frame_queue.clear();
-	
+
 	// Base class handles synchronization clearing automatically
 }
 
@@ -452,12 +453,12 @@ void VideoStreamPlaybackAV1::seek(double p_time) {
 	if (!webm) {
 		return;
 	}
-	
+
 	time = webm->seek(p_time);
 	video_pos = time;
-	
+
 	frame_queue.clear();
-	
+
 	// Base class handles synchronization clearing automatically
 }
 
@@ -474,12 +475,12 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
 	if (!playing || paused || !webm) {
 		return;
 	}
-	
+
 	time += p_delta;
-	
+
 	// Update audio-video synchronization clocks using base class methods
 	update_video_clock(video_pos);
-	
+
 	bool audio_buffer_full = false;
 
 	if (samples_offset > -1) {
@@ -514,30 +515,30 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
 			if (_parse_frame_header(video_frame.buffer, video_frame.bufferSize, frame_header)) {
 				frame_header.presentation_time = video_frame.time;
 				frame_header.frame_number = frames_decoded;
-				
+
 				bool decode_success = false;
 				if (hardware_decode_available) {
 					decode_success = _decode_frame_hardware(video_frame.buffer, video_frame.bufferSize, frame_header);
 				} else {
 					decode_success = _decode_frame_software(video_frame.buffer, video_frame.bufferSize, frame_header);
 				}
-				
+
 				if (decode_success) {
 					frames_decoded++;
 					_update_dpb_references(frame_header);
-					
+
 					// TODO: Create texture from decoded frame and queue it
 					// For now, create a placeholder
 					Ref<ImageTexture> placeholder_texture;
 					placeholder_texture.instantiate();
-					
+
 					// Use base class synchronization
 					queue_video_frame(placeholder_texture, frame_header.presentation_time, frame_header.frame_number);
 				} else {
 					frames_dropped++;
 				}
 			}
-			
+
 			video_pos = video_frame.time;
 		}
 
@@ -558,7 +559,7 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
 	if (webm && webm->isEOS()) {
 		stop();
 	}
-	
+
 	// Cleanup old frames
 	_cleanup_old_frames(time);
 }
@@ -566,7 +567,7 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
 void VideoStreamPlaybackAV1::set_mix_callback(AudioMixCallback p_callback, void *p_userdata) {
 	mix_callback = p_callback;
 	mix_udata = p_userdata;
-	
+
 	if (audio && p_callback) {
 		if (!pcm) {
 			pcm = (float *)memalloc(sizeof(float) * 1024 * get_channels());
@@ -666,7 +667,7 @@ Dictionary VideoStreamAV1::get_sequence_header() const {
 
 bool VideoStreamAV1::load_file(const String &p_path) {
 	file = p_path;
-	
+
 	// Parse sequence header for validation
 	Ref<VideoStreamPlaybackAV1> temp_playback;
 	temp_playback.instantiate();
@@ -682,7 +683,7 @@ bool VideoStreamAV1::load_file(const String &p_path) {
 		sequence_header_valid = true;
 		return true;
 	}
-	
+
 	return false;
 }
 
@@ -691,17 +692,20 @@ bool VideoStreamAV1::is_hardware_supported() {
 	if (!rd) {
 		return false;
 	}
-	
-	// TODO: Query RenderingDevice for Vulkan Video support
-	// This would check for VK_KHR_video_decode_av1 extension
-	// For now, return false until RenderingDevice extensions are implemented
-	return false;
+
+	// Use RenderingDeviceVideoExtensions to check for Vulkan Video support
+	Ref<RenderingDeviceVideoExtensions> video_ext;
+	video_ext.instantiate();
+	video_ext->initialize(rd);
+
+	return video_ext->is_video_supported();
 }
 
 Dictionary VideoStreamAV1::get_hardware_capabilities() {
 	Dictionary caps;
-	
-	if (!is_hardware_supported()) {
+
+	RenderingDevice *rd = RenderingServer::get_singleton()->get_rendering_device();
+	if (!rd) {
 		caps["hardware_decode_supported"] = false;
 		caps["hardware_encode_supported"] = false;
 		caps["max_width"] = 0;
@@ -711,20 +715,27 @@ Dictionary VideoStreamAV1::get_hardware_capabilities() {
 		caps["supported_profiles"] = Array();
 		return caps;
 	}
-	
-	// TODO: Query actual hardware capabilities from RenderingDevice
-	// This would call Vulkan Video capability queries
-	caps["hardware_decode_supported"] = false; // Until implemented
-	caps["hardware_encode_supported"] = false;
-	caps["max_width"] = 3840;
-	caps["max_height"] = 2160;
-	caps["max_dpb_slots"] = 8;
-	caps["max_level"] = 31; // Level 6.3
-	
-	Array profiles;
-	profiles.push_back(0); // Main profile
-	caps["supported_profiles"] = profiles;
-	
+
+	// Use RenderingDeviceVideoExtensions to query actual hardware capabilities
+	Ref<RenderingDeviceVideoExtensions> video_ext;
+	video_ext.instantiate();
+	video_ext->initialize(rd);
+
+	if (video_ext->is_video_supported()) {
+		// Query AV1 Main profile capabilities
+		caps = video_ext->get_video_capabilities(
+				VIDEO_CODEC_PROFILE_AV1_MAIN,
+				VIDEO_OPERATION_DECODE);
+	} else {
+		caps["hardware_decode_supported"] = false;
+		caps["hardware_encode_supported"] = false;
+		caps["max_width"] = 0;
+		caps["max_height"] = 0;
+		caps["max_dpb_slots"] = 0;
+		caps["max_level"] = 0;
+		caps["supported_profiles"] = Array();
+	}
+
 	return caps;
 }
 
@@ -733,14 +744,14 @@ Dictionary VideoStreamAV1::get_hardware_capabilities() {
 Ref<Resource> ResourceFormatLoaderAV1::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
 	Ref<VideoStreamAV1> stream;
 	stream.instantiate();
-	
+
 	if (stream->load_file(p_path)) {
 		if (r_error) {
 			*r_error = OK;
 		}
 		return stream;
 	}
-	
+
 	if (r_error) {
 		*r_error = ERR_FILE_CANT_OPEN;
 	}

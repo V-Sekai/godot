@@ -34,7 +34,7 @@
 
 void VideoStreamPlayback::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mix_audio", "num_frames", "buffer", "offset"), &VideoStreamPlayback::mix_audio, DEFVAL(PackedFloat32Array()), DEFVAL(0));
-	
+
 	// Audio-Video Synchronization
 	ClassDB::bind_method(D_METHOD("set_use_synchronization", "enable"), &VideoStreamPlayback::set_use_synchronization);
 	ClassDB::bind_method(D_METHOD("get_use_synchronization"), &VideoStreamPlayback::get_use_synchronization);
@@ -43,7 +43,7 @@ void VideoStreamPlayback::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("update_video_clock", "time"), &VideoStreamPlayback::update_video_clock);
 	ClassDB::bind_method(D_METHOD("queue_video_frame", "texture", "presentation_time", "frame_number"), &VideoStreamPlayback::queue_video_frame, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("get_synchronized_texture"), &VideoStreamPlayback::get_synchronized_texture);
-	
+
 	GDVIRTUAL_BIND(_stop);
 	GDVIRTUAL_BIND(_play);
 	GDVIRTUAL_BIND(_is_playing);

@@ -174,7 +174,7 @@ void VideoStreamPlayer::_notification(int p_notification) {
 
 		case NOTIFICATION_DRAW: {
 			Ref<Texture2D> current_texture = texture;
-			
+
 			// Use synchronized texture if available
 			if (playback.is_valid() && playback->get_use_synchronization()) {
 				Ref<Texture2D> sync_texture = playback->get_synchronized_texture();
@@ -182,7 +182,7 @@ void VideoStreamPlayer::_notification(int p_notification) {
 					current_texture = sync_texture;
 				}
 			}
-			
+
 			if (current_texture.is_null()) {
 				return;
 			}
