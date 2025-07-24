@@ -35,7 +35,8 @@
 #include "servers/rendering/rendering_device_driver.h"
 
 #ifdef VULKAN_ENABLED
-class VulkanVideoContext;
+class VulkanVideoDecoder;
+class VulkanYCbCrSampler;
 #endif
 
 // Video codec profiles
@@ -82,7 +83,8 @@ private:
 	RenderingDevice *rd = nullptr;
 	
 #ifdef VULKAN_ENABLED
-	VulkanVideoContext *video_context = nullptr;
+	VulkanVideoDecoder *video_decoder = nullptr;
+	VulkanYCbCrSampler *ycbcr_sampler = nullptr;
 #endif
 
 protected:

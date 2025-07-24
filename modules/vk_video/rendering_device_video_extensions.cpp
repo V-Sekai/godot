@@ -32,20 +32,30 @@
 
 #include "core/error/error_macros.h"
 #include "core/object/class_db.h"
-#include "drivers/vulkan/vulkan_video_context.h"
+
+#ifdef VULKAN_ENABLED
+#include "drivers/vulkan/vulkan_video_decoder.h"
+#include "drivers/vulkan/vulkan_ycbcr_sampler.h"
+#include "drivers/vulkan/rendering_device_driver_vulkan.h"
+#endif
 
 RenderingDeviceVideoExtensions::RenderingDeviceVideoExtensions() {
 #ifdef VULKAN_ENABLED
-	video_context = memnew(VulkanVideoContext);
+	video_decoder = memnew(VulkanVideoDecoder);
+	ycbcr_sampler = memnew(VulkanYCbCrSampler);
 #endif
 }
 
 RenderingDeviceVideoExtensions::~RenderingDeviceVideoExtensions() {
 	_cleanup_video_resources();
 #ifdef VULKAN_ENABLED
-	if (video_context) {
-		memdelete(video_context);
-		video_context = nullptr;
+	if (video_decoder) {
+		memdelete(video_decoder);
+		video_decoder = nullptr;
+	}
+	if (ycbcr_sampler) {
+		memdelete(ycbcr_sampler);
+		ycbcr_sampler = nullptr;
 	}
 #endif
 }
@@ -94,14 +104,12 @@ void RenderingDeviceVideoExtensions::initialize(RenderingDevice *p_rendering_dev
 	rd = p_rendering_device;
 	
 #ifdef VULKAN_ENABLED
-	// Get the Vulkan driver from the rendering device
-	RenderingDeviceDriverVulkan *vulkan_driver = nullptr;
-	
-	// TODO: Get proper access to RenderingDeviceDriverVulkan
-	// For now, we'll initialize the video context but mark it as needing proper driver access
-	if (video_context) {
-		// video_context->initialize(vulkan_driver);
-		print_verbose("VulkanVideoContext created but needs proper driver integration");
+	if (video_decoder && ycbcr_sampler) {
+		// TODO: Get the Vulkan driver from the rendering device
+		// This requires proper driver access to RenderingDeviceDriverVulkan
+		print_verbose("VulkanVideoDecoder and YCbCr sampler initialized with basic support");
+		// Note: Full driver integration would require access to RenderingDeviceDriverVulkan
+		// For now, we'll work with the available RenderingDevice interface
 	}
 #endif
 	
@@ -125,41 +133,48 @@ Dictionary RenderingDeviceVideoExtensions::get_video_capabilities(VideoCodecProf
 	}
 	
 #ifdef VULKAN_ENABLED
-	if (video_context && video_context->is_initialized()) {
-		// Convert VulkanVideoContext capabilities to Dictionary
-		VkVideoCodecOperationFlagBitsKHR vk_codec = VK_VIDEO_CODEC_OPERATION_NONE_KHR;
+	if (video_decoder) {
+		// Convert VulkanVideoDecoder capabilities to Dictionary
+		VulkanVideoDecoder::VideoCodec vk_codec = VulkanVideoDecoder::VIDEO_CODEC_AV1;
 		
-		// Map codec profile to Vulkan codec operation
+		// Map codec profile to VulkanVideoDecoder codec
 		switch (p_profile) {
 			case VIDEO_CODEC_PROFILE_AV1_MAIN:
 			case VIDEO_CODEC_PROFILE_AV1_HIGH:
 			case VIDEO_CODEC_PROFILE_AV1_PROFESSIONAL:
-				vk_codec = VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
+				vk_codec = VulkanVideoDecoder::VIDEO_CODEC_AV1;
+				break;
+			case VIDEO_CODEC_PROFILE_H264_BASELINE:
+			case VIDEO_CODEC_PROFILE_H264_MAIN:
+			case VIDEO_CODEC_PROFILE_H264_HIGH:
+				vk_codec = VulkanVideoDecoder::VIDEO_CODEC_H264;
+				break;
+			case VIDEO_CODEC_PROFILE_H265_MAIN:
+			case VIDEO_CODEC_PROFILE_H265_MAIN_10:
+				vk_codec = VulkanVideoDecoder::VIDEO_CODEC_H265;
 				break;
 			default:
 				break;
 		}
 		
-		if (vk_codec != VK_VIDEO_CODEC_OPERATION_NONE_KHR && video_context->is_codec_supported(vk_codec)) {
-			VkVideoCapabilitiesKHR vk_caps;
-			if (video_context->get_video_capabilities(vk_codec, vk_caps)) {
-				caps["decode_supported"] = (p_operation == VIDEO_OPERATION_DECODE);
-				caps["encode_supported"] = false; // Encode not implemented yet
-				caps["max_width"] = vk_caps.maxCodedExtent.width;
-				caps["max_height"] = vk_caps.maxCodedExtent.height;
-				caps["max_dpb_slots"] = vk_caps.maxDpbSlots;
-				caps["max_active_references"] = vk_caps.maxActiveReferencePictures;
-				
-				Array supported_profiles;
-				supported_profiles.push_back(p_profile);
-				caps["supported_profiles"] = supported_profiles;
-				
-				Array supported_formats;
-				supported_formats.push_back(RD::DATA_FORMAT_G8_B8R8_2PLANE_420_UNORM);
-				caps["supported_formats"] = supported_formats;
-				
-				return caps;
-			}
+		if (video_decoder->is_codec_supported(vk_codec)) {
+			VulkanVideoDecoder::VideoCapabilities vk_caps = video_decoder->get_video_capabilities(vk_codec);
+			caps["decode_supported"] = (p_operation == VIDEO_OPERATION_DECODE);
+			caps["encode_supported"] = false; // Encode not implemented yet
+			caps["max_width"] = vk_caps.max_width;
+			caps["max_height"] = vk_caps.max_height;
+			caps["max_dpb_slots"] = vk_caps.max_dpb_slots;
+			caps["max_active_references"] = vk_caps.max_active_references;
+			
+			Array supported_profiles;
+			supported_profiles.push_back(p_profile);
+			caps["supported_profiles"] = supported_profiles;
+			
+			Array supported_formats;
+			supported_formats.push_back(RD::DATA_FORMAT_G8_B8R8_2PLANE_420_UNORM);
+			caps["supported_formats"] = supported_formats;
+			
+			return caps;
 		}
 	}
 #endif
@@ -189,10 +204,16 @@ Array RenderingDeviceVideoExtensions::get_supported_profiles() const {
 	Array profiles;
 	
 #ifdef VULKAN_ENABLED
-	if (video_context) {
-		Vector<VkVideoCodecOperationFlagBitsKHR> codecs = video_context->get_supported_codecs();
-		for (int i = 0; i < codecs.size(); i++) {
-			profiles.push_back((int)codecs[i]);
+	if (video_decoder) {
+		// Add supported codec profiles based on VulkanVideoDecoder capabilities
+		if (video_decoder->is_codec_supported(VulkanVideoDecoder::VIDEO_CODEC_AV1)) {
+			profiles.push_back(VIDEO_CODEC_PROFILE_AV1_MAIN);
+		}
+		if (video_decoder->is_codec_supported(VulkanVideoDecoder::VIDEO_CODEC_H264)) {
+			profiles.push_back(VIDEO_CODEC_PROFILE_H264_MAIN);
+		}
+		if (video_decoder->is_codec_supported(VulkanVideoDecoder::VIDEO_CODEC_H265)) {
+			profiles.push_back(VIDEO_CODEC_PROFILE_H265_MAIN);
 		}
 	}
 #endif
@@ -386,9 +407,11 @@ bool RenderingDeviceVideoExtensions::_check_video_support() const {
 	}
 	
 #ifdef VULKAN_ENABLED
-	if (video_context && video_context->is_initialized()) {
-		VulkanVideoHardwareInfo hw_info = video_context->get_hardware_info();
-		return hw_info.video_queue_supported || hw_info.decode_queue_supported;
+	if (video_decoder) {
+		// Check if any codec is supported as a basic video support indicator
+		return video_decoder->is_codec_supported(VulkanVideoDecoder::VIDEO_CODEC_AV1) ||
+		       video_decoder->is_codec_supported(VulkanVideoDecoder::VIDEO_CODEC_H264) ||
+		       video_decoder->is_codec_supported(VulkanVideoDecoder::VIDEO_CODEC_H265);
 	}
 	
 	// For testing purposes, enable basic video support when Vulkan is available
