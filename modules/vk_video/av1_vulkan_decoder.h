@@ -84,6 +84,10 @@ private:
 	RID _get_bitstream_buffer() const;
 	RID _get_output_image() const;
 
+	// Decode command recording and submission
+	bool _record_decode_commands(const WebMFrame &frame);
+	bool _submit_decode_commands();
+
 	// Private member variables for resource tracking
 	RID _bitstream_buffer;
 	RID _output_image;

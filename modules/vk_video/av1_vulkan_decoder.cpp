@@ -32,11 +32,18 @@
 
 #include "core/error/error_macros.h"
 #include "core/os/os.h"
-#include "rendering_device_video_extensions.h"
 #include "servers/rendering_server.h"
+#include "rendering_device_video_extensions.h"
+#include "vulkan_video_session.h"
+#include "vulkan_video_memory.h"
+#include "vulkan_ycbcr_sampler.h"
 
 // libsimplewebm
 #include <WebMDemuxer.hpp>
+
+#ifdef VULKAN_ENABLED
+#include "drivers/vulkan/rendering_device_driver_vulkan.h"
+#endif
 
 AV1VulkanDecoder::AV1VulkanDecoder() {
 }
@@ -83,38 +90,36 @@ bool AV1VulkanDecoder::initialize(int width, int height) {
 bool AV1VulkanDecoder::check_hardware_support() {
 	ERR_FAIL_NULL_V(rendering_device, false);
 
-	// Create video extensions instance
+#ifdef VULKAN_ENABLED
+	// Create video extensions instance to check support
 	Ref<RenderingDeviceVideoExtensions> video_ext;
 	video_ext.instantiate();
 	video_ext->initialize(rendering_device);
 
 	// Check if video is supported
 	if (!video_ext->is_video_supported()) {
-		WARN_PRINT("Vulkan Video extensions not supported");
+		WARN_PRINT("Vulkan Video extensions not supported on this device");
+		hardware_support_available = false;
 		return false;
 	}
 
 	// Check AV1 decode capabilities
 	Dictionary caps = video_ext->get_video_capabilities(VIDEO_CODEC_PROFILE_AV1_MAIN, VIDEO_OPERATION_DECODE);
-	hardware_support_available = caps.get("decode_supported", false);
-
-	if (hardware_support_available) {
-		print_line("AV1 hardware decode support detected");
-		
-		// Check if frame dimensions are supported
-		uint32_t max_width = caps.get("max_width", 0);
-		uint32_t max_height = caps.get("max_height", 0);
-		
-		if (frame_width > (int)max_width || frame_height > (int)max_height) {
-			WARN_PRINT(vformat("Frame dimensions %dx%d exceed hardware limits %dx%d", 
-					   frame_width, frame_height, max_width, max_height));
-			hardware_support_available = false;
-		}
-	} else {
-		WARN_PRINT("AV1 hardware decode not supported");
+	bool decode_supported = caps.get("decode_supported", false);
+	
+	if (!decode_supported) {
+		WARN_PRINT("AV1 hardware decode not supported on this device");
+		hardware_support_available = false;
+		return false;
 	}
 
-	return hardware_support_available;
+	hardware_support_available = true;
+	print_line("AV1 hardware decode support detected");
+	return true;
+#else
+	hardware_support_available = false;
+	return false;
+#endif
 }
 
 bool AV1VulkanDecoder::create_video_session() {
@@ -197,23 +202,17 @@ bool AV1VulkanDecoder::decode_frame(const WebMFrame &frame) {
 		return false;
 	}
 
-	// Prepare decode info
-	Dictionary decode_info;
-	decode_info["video_session"] = video_session;
-	decode_info["video_session_parameters"] = video_session_parameters;
-	decode_info["bitstream_buffer"] = _get_bitstream_buffer();
-	decode_info["output_image"] = _get_output_image();
-	decode_info["frame_width"] = frame_width;
-	decode_info["frame_height"] = frame_height;
-	decode_info["is_keyframe"] = frame.key;
-	decode_info["presentation_time"] = frame.time;
+	// Record decode commands
+	if (!_record_decode_commands(frame)) {
+		ERR_PRINT("Failed to record decode commands");
+		return false;
+	}
 
-	// Decode frame
-	video_ext->video_decode_frame(decode_info);
-
-	// Submit and wait for completion
-	video_ext->video_queue_submit();
-	video_ext->video_queue_wait_idle();
+	// Submit decode commands and wait for completion
+	if (!_submit_decode_commands()) {
+		ERR_PRINT("Failed to submit decode commands");
+		return false;
+	}
 
 	// Create texture from decoded frame
 	current_frame_texture = _create_texture_from_decoded_frame();
@@ -379,4 +378,48 @@ RID AV1VulkanDecoder::_get_bitstream_buffer() const {
 
 RID AV1VulkanDecoder::_get_output_image() const {
 	return _output_image;
+}
+
+bool AV1VulkanDecoder::_record_decode_commands(const WebMFrame &frame) {
+	ERR_FAIL_COND_V(!video_session.is_valid(), false);
+	ERR_FAIL_COND_V(!video_session_parameters.is_valid(), false);
+	ERR_FAIL_COND_V(!_bitstream_buffer.is_valid(), false);
+	ERR_FAIL_COND_V(!_output_image.is_valid(), false);
+
+	// Create video extensions instance
+	Ref<RenderingDeviceVideoExtensions> video_ext;
+	video_ext.instantiate();
+	video_ext->initialize(rendering_device);
+
+	// Prepare decode info
+	Dictionary decode_info;
+	decode_info["video_session"] = video_session;
+	decode_info["video_session_parameters"] = video_session_parameters;
+	decode_info["bitstream_buffer"] = _bitstream_buffer;
+	decode_info["output_image"] = _output_image;
+	decode_info["frame_width"] = frame_width;
+	decode_info["frame_height"] = frame_height;
+	decode_info["is_keyframe"] = frame.key;
+	decode_info["presentation_time"] = frame.time;
+	decode_info["bitstream_size"] = (uint64_t)frame.bufferSize;
+
+	// Record decode command
+	video_ext->video_decode_frame(decode_info);
+
+	return true;
+}
+
+bool AV1VulkanDecoder::_submit_decode_commands() {
+	// Create video extensions instance
+	Ref<RenderingDeviceVideoExtensions> video_ext;
+	video_ext.instantiate();
+	video_ext->initialize(rendering_device);
+
+	// Submit decode commands to video queue
+	video_ext->video_queue_submit();
+
+	// Wait for decode completion
+	video_ext->video_queue_wait_idle();
+
+	return true;
 }
