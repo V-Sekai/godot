@@ -1,6 +1,10 @@
-[Google Gemini](https://gemini.google.com/app/01b67e81b550186c)
-
 # In-Core Integration of Hardware-Accelerated AV1 Encoding and Decoding in Godot Engine via Vulkan Video
+
+> **⚠️ IMPLEMENTATION STATUS**: This document describes the planned architecture for AV1 video support. **NO IMPLEMENTATION EXISTS YET** - this is documentation-only as of January 2025.
+> 
+> **🔒 SCOPE LIMITATION**: The vk_video module is intentionally limited to **AV1 codec within MKV/WebM containers only**. This restriction enables focused development and leverages the existing `modules/mkv` infrastructure.
+> 
+> **📋 See [Current State and Limitations](00_Current_State_and_Limitations.md) for implementation status and roadmap.**
 
 ## Section 1: Foundational Architectures
 
@@ -185,7 +189,7 @@ Following the established pattern of the `VideoStreamTheora` implementation, our
   - This class will inherit from `VideoStream` and be registered as a new `Resource` type within the engine. Its primary role is to represent the AV1 video file asset.
   - **Responsibilities:**
 
-    - Store the file path to the `.av1` or container file (e.g., `.mkv`, `.mp4`).
+    - Store the file path to the MKV/WebM container file (`.mkv`, `.webm`). **Note: Only MKV/WebM containers are supported, not raw .av1 files or other containers like .mp4**.
     - On load, it will be responsible for opening the file and using a lightweight demuxer/parser to extract essential stream-level metadata, most importantly the AV1 Sequence Header. This header data will be cached within the resource.
     - When playback is requested by a `VideoStreamPlayer`, it will instantiate and return a `VideoStreamPlaybackAV1` object, passing the file handle and cached header information to it.
 
@@ -391,11 +395,24 @@ The architectural blueprint outlined in this report provides a robust and mainta
 3.  **Stateful Playback Objects:** Encapsulating the complexity of the Vulkan Video API within dedicated `VideoStreamPlaybackAV1` classes provides a clean interface to the rest of the engine and properly manages the stateful nature of video streams.
 4.  **Asynchronous, Timestamp-Driven Pipeline:** A multi-buffered pipeline that uses presentation timestamps to synchronize video to a master audio clock is the definitive solution for achieving robust, stutter-free playback.
 
-### 6.2. Recommendations for Future Development
+### 6.2. Scope Limitations and Future Development
 
-With this foundational framework in place, several avenues for future enhancement become possible.
+**Current Scope Restriction**: This implementation is **intentionally limited to AV1 codec within MKV/WebM containers only**. This focused approach enables:
+- Faster initial development and testing
+- Leveraging existing `modules/mkv` infrastructure
+- Reduced complexity and maintenance burden
+- Clear integration boundaries
 
-- **Expanding Codec Support:** The most significant benefit of the proposed `RenderingDevice` extension is its generic design. Adding support for other Vulkan-accelerated codecs, such as H.265, H.264, and VP9, would not require further modifications to the core `RenderingDevice` API. It would simply be a matter of implementing new `VideoStream` and `VideoStreamPlayback` classes that provide the correct codec-specific structures to the existing abstract functions. This dramatically lowers the barrier to entry for supporting a full suite of modern video formats.
+**Integration with modules/mkv**: The vk_video module will work exclusively with the existing `modules/mkv` module:
+- `modules/mkv` handles container parsing, audio decoding, and file I/O
+- `modules/vk_video` handles only AV1 video frame decoding via Vulkan Video
+- No support for other containers (MP4, AVI) or codecs (H.264, H.265, VP9) in initial implementation
+
+**Future Expansion Possibilities**: While the proposed `RenderingDevice` extension is designed generically, expanding beyond AV1-in-MKV would require:
+- Additional demuxer modules for other containers
+- New VideoStream classes for other codecs
+- Significant additional development and testing effort
+- **These expansions are explicitly out of scope for the initial implementation**
 - **Advanced Encoder Controls:** This report outlines a baseline encoder suitable for high-quality, real-time capture. Future work could expose more of the advanced features available in the `VK_KHR_video_encode_av1` extension. This includes providing users with fine-grained control over rate control modes (Constant Bitrate, Variable Bitrate), quality-versus-performance tuning levels, and the use of quantization maps to allocate more bits to specific regions of a frame. These features would elevate the module from a simple capture tool to a professional-grade in-engine encoder.
 
 - **Upstreaming to Godot Core:** The ultimate objective of this work should be to refine, test, and contribute this module to the official Godot Engine repository. Integrating this functionality directly into the engine would provide all Godot users with a powerful, out-of-the-box solution for modern video playback and capture, solidifying Godot's position as a feature-complete, professional-grade game engine.
