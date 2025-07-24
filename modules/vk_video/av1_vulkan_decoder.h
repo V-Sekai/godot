@@ -75,5 +75,17 @@ private:
 	bool check_hardware_support();
 	bool create_video_session();
 	bool create_session_parameters();
-	Ref<ImageTexture> create_placeholder_texture();
+	Ref<ImageTexture> create_placeholder_texture() const;
+
+	// Internal resource management
+	bool _create_bitstream_buffer(size_t size);
+	bool _create_output_image();
+	Ref<ImageTexture> _create_texture_from_decoded_frame();
+	RID _get_bitstream_buffer() const;
+	RID _get_output_image() const;
+
+	// Private member variables for resource tracking
+	RID _bitstream_buffer;
+	RID _output_image;
+	size_t _bitstream_buffer_size = 0;
 };

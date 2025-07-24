@@ -37,6 +37,7 @@
 #include "servers/audio_server.h"
 #include "servers/rendering_server.h"
 #include "scene/resources/audio_video_synchronizer.h"
+#include "av1_vulkan_decoder.h"
 
 // libsimplewebm
 #include <OpusVorbisDecoder.hpp>
@@ -258,20 +259,32 @@ bool VideoStreamPlaybackAV1::_parse_frame_header(const uint8_t *data, size_t siz
 }
 
 bool VideoStreamPlaybackAV1::_initialize_hardware_decoder() {
-	RenderingDevice *rd = RenderingServer::get_singleton()->get_rendering_device();
-	if (!rd) {
+	// Create AV1 Vulkan decoder instance
+	av1_decoder.instantiate();
+	
+	// Initialize with frame dimensions from sequence header
+	int width = sequence_header.max_frame_width;
+	int height = sequence_header.max_frame_height;
+	
+	if (width <= 0 || height <= 0) {
+		width = 1920;  // Default fallback
+		height = 1080;
+	}
+	
+	if (!av1_decoder->initialize(width, height)) {
+		ERR_PRINT("Failed to initialize AV1 Vulkan decoder");
+		av1_decoder.unref();
 		return false;
 	}
 	
-	// TODO: Implement RenderingDevice video extensions
-	// This would call new methods like:
-	// video_session = rd->video_session_create(video_profile);
-	// video_session_parameters = rd->video_session_parameters_create(video_session);
-	// dpb_image_array = rd->video_image_create(dpb_create_info);
-	// bitstream_buffer = rd->video_buffer_create(bitstream_create_info);
+	if (!av1_decoder->is_hardware_supported()) {
+		WARN_PRINT("AV1 hardware decoding not supported on this device");
+		av1_decoder.unref();
+		return false;
+	}
 	
-	WARN_PRINT("Hardware decoder initialization not yet implemented - RenderingDevice extensions needed");
-	return false;
+	print_line("AV1 Vulkan decoder initialized successfully");
+	return true;
 }
 
 void VideoStreamPlaybackAV1::_cleanup_hardware_resources() {
@@ -293,14 +306,40 @@ void VideoStreamPlaybackAV1::_cleanup_hardware_resources() {
 }
 
 bool VideoStreamPlaybackAV1::_decode_frame_hardware(const uint8_t *bitstream_data, size_t bitstream_size, const AV1FrameHeader &header) {
-	// TODO: Implement hardware decoding using RenderingDevice video extensions
-	// This would involve:
-	// 1. Upload bitstream data to GPU buffer
-	// 2. Record video decode commands
-	// 3. Submit to video queue
-	// 4. Wait for completion and get decoded frame
+	ERR_FAIL_COND_V(!av1_decoder.is_valid(), false);
+	ERR_FAIL_COND_V(!av1_decoder->is_initialized(), false);
 	
-	WARN_PRINT("Hardware frame decoding not yet implemented");
+	// Create WebMFrame wrapper for the AV1VulkanDecoder
+	WebMFrame frame;
+	frame.buffer = const_cast<unsigned char*>(bitstream_data);
+	frame.bufferSize = bitstream_size;
+	frame.time = header.presentation_time;
+	frame.key = header.keyframe;
+	
+	// Decode the frame using the Vulkan decoder
+	bool decode_success = av1_decoder->decode_frame(frame);
+	
+	if (decode_success) {
+		// Get the decoded frame texture
+		Ref<Texture2D> decoded_texture = av1_decoder->get_current_frame();
+		
+		if (decoded_texture.is_valid()) {
+			// Queue the frame for presentation
+			QueuedFrame queued_frame;
+			queued_frame.texture = decoded_texture;
+			queued_frame.presentation_time = header.presentation_time;
+			queued_frame.frame_number = header.frame_number;
+			
+			if (use_synchronization && av_synchronizer.is_valid()) {
+				av_synchronizer->queue_video_frame(decoded_texture, header.presentation_time, header.frame_number);
+			} else {
+				frame_queue.push_back(queued_frame);
+			}
+			
+			return true;
+		}
+	}
+	
 	return false;
 }
 
