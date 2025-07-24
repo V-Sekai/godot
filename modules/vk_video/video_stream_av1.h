@@ -107,10 +107,6 @@ private:
 	float *pcm = nullptr;
 	AudioMixCallback mix_callback = nullptr;
 	void *mix_udata = nullptr;
-	
-	// Audio-video synchronization
-	Ref<AudioVideoSynchronizer> av_synchronizer;
-	bool use_synchronization = true;
 
 	// AV1 stream information
 	AV1SequenceHeader sequence_header;

@@ -26,307 +26,192 @@ Phase 5 implements hardware-accelerated AV1 video decoding using Vulkan Video ex
 
 ### Key Technologies
 
-- **VK_KHR_video_queue**: Core video processing queue support
-- **VK_KHR_video_decode_queue**: Video decode operations
-- **VK_KHR_video_decode_av1**: AV1 codec-specific decode support
-- **VK_KHR_sampler_ycbcr_conversion**: Hardware YCbCr→RGB conversion
-- **VK_KHR_video_maintenance1**: Enhanced video features and bug fixes
+-   **VK_KHR_video_queue**: Core video processing queue support
+-   **VK_KHR_video_decode_queue**: Video decode operations
+-   **VK_KHR_video_decode_av1**: AV1 codec-specific decode support
+-   **VK_KHR_sampler_ycbcr_conversion**: Hardware YCbCr→RGB conversion
+-   **VK_KHR_video_maintenance1**: Enhanced video features and bug fixes
+
+## Implementation Status
+
+| Phase | Status           | Description                                                              |
+| ----- | ---------------- | ------------------------------------------------------------------------ |
+| 5A    | ✅ **COMPLETED** | Vulkan Video Foundation - Extensions, function pointers, queue detection |
+| 5B    | ⏳ **PLANNED**   | Video Session Management - Capabilities query, session creation          |
+| 5C    | ⏳ **PLANNED**   | Video Memory Management - DPB allocation, memory binding                 |
+| 5D    | ⏳ **PLANNED**   | YCbCr Color Conversion - Hardware color space conversion                 |
+| 5E    | ⏳ **PLANNED**   | Performance & Polish - Optimization and error handling                   |
 
 ## Implementation Phases
 
-### Phase 5A: Vulkan Video Foundation (3-4 days)
+### Phase 5A: Vulkan Video Foundation ✅ **COMPLETED**
 
 **Priority: CRITICAL** - All subsequent phases depend on this foundation.
 
-#### Step 1: Extension Registration
+This phase has been **fully implemented** in the Vulkan driver with the following components:
 
-```cpp
-// In RenderingDeviceDriverVulkan::_initialize_device_extensions()
-void RenderingDeviceDriverVulkan::_register_video_extensions() {
-    // Core video extensions
-    _register_requested_device_extension("VK_KHR_video_queue", false);
-    _register_requested_device_extension("VK_KHR_video_decode_queue", false);
-    
-    // AV1 decode support
-    _register_requested_device_extension("VK_KHR_video_decode_av1", false);
-    
-    // YCbCr conversion support (needed for Phase 5D)
-    _register_requested_device_extension("VK_KHR_sampler_ycbcr_conversion", false);
-    
-    // Video maintenance extensions
-    _register_requested_device_extension("VK_KHR_video_maintenance1", false);
-    
-    // Log extension availability
-    if (is_device_extension_enabled("VK_KHR_video_decode_av1")) {
-        print_verbose("Vulkan Video: AV1 hardware decode available");
-    } else {
-        print_verbose("Vulkan Video: AV1 hardware decode not available, will use software fallback");
-    }
-}
-```
+#### ✅ Extension Registration
 
-#### Step 2: Function Pointer Loading
+-   Video extensions registered in `RenderingDeviceDriverVulkan::_initialize_device_extensions()`
+-   Includes VK_KHR_video_queue, VK_KHR_video_decode_queue, VK_KHR_video_decode_av1
+-   Extension availability logging for debugging
 
-```cpp
-// Add to DeviceFunctions struct in rendering_device_driver_vulkan.h
-struct DeviceFunctions {
-    // Existing functions...
-    
-    // Video capabilities
-    PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR GetPhysicalDeviceVideoCapabilitiesKHR = nullptr;
-    PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR GetPhysicalDeviceVideoFormatPropertiesKHR = nullptr;
-    
-    // Video session management
-    PFN_vkCreateVideoSessionKHR CreateVideoSessionKHR = nullptr;
-    PFN_vkDestroyVideoSessionKHR DestroyVideoSessionKHR = nullptr;
-    PFN_vkCreateVideoSessionParametersKHR CreateVideoSessionParametersKHR = nullptr;
-    PFN_vkDestroyVideoSessionParametersKHR DestroyVideoSessionParametersKHR = nullptr;
-    PFN_vkUpdateVideoSessionParametersKHR UpdateVideoSessionParametersKHR = nullptr;
-    
-    // Video memory management
-    PFN_vkGetVideoSessionMemoryRequirementsKHR GetVideoSessionMemoryRequirementsKHR = nullptr;
-    PFN_vkBindVideoSessionMemoryKHR BindVideoSessionMemoryKHR = nullptr;
-    
-    // Video decode commands
-    PFN_vkCmdDecodeVideoKHR CmdDecodeVideoKHR = nullptr;
-    PFN_vkCmdBeginVideoCodingKHR CmdBeginVideoCodingKHR = nullptr;
-    PFN_vkCmdEndVideoCodingKHR CmdEndVideoCodingKHR = nullptr;
-    PFN_vkCmdControlVideoCodingKHR CmdControlVideoCodingKHR = nullptr;
-    
-    // YCbCr conversion functions
-    PFN_vkCreateSamplerYcbcrConversionKHR CreateSamplerYcbcrConversionKHR = nullptr;
-    PFN_vkDestroySamplerYcbcrConversionKHR DestroySamplerYcbcrConversionKHR = nullptr;
-};
+#### ✅ Function Pointer Loading
 
-// Load in _initialize_device()
-void RenderingDeviceDriverVulkan::_load_video_functions() {
-    // Video capabilities
-    device_functions.GetPhysicalDeviceVideoCapabilitiesKHR = 
-        (PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR)vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceVideoCapabilitiesKHR");
-    device_functions.GetPhysicalDeviceVideoFormatPropertiesKHR = 
-        (PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR)vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceVideoFormatPropertiesKHR");
-    
-    // Video session management
-    device_functions.CreateVideoSessionKHR = 
-        (PFN_vkCreateVideoSessionKHR)vkGetDeviceProcAddr(vk_device, "vkCreateVideoSessionKHR");
-    device_functions.DestroyVideoSessionKHR = 
-        (PFN_vkDestroyVideoSessionKHR)vkGetDeviceProcAddr(vk_device, "vkDestroyVideoSessionKHR");
-    device_functions.CreateVideoSessionParametersKHR = 
-        (PFN_vkCreateVideoSessionParametersKHR)vkGetDeviceProcAddr(vk_device, "vkCreateVideoSessionParametersKHR");
-    device_functions.DestroyVideoSessionParametersKHR = 
-        (PFN_vkDestroyVideoSessionParametersKHR)vkGetDeviceProcAddr(vk_device, "vkDestroyVideoSessionParametersKHR");
-    device_functions.UpdateVideoSessionParametersKHR = 
-        (PFN_vkUpdateVideoSessionParametersKHR)vkGetDeviceProcAddr(vk_device, "vkUpdateVideoSessionParametersKHR");
-    
-    // Video memory management
-    device_functions.GetVideoSessionMemoryRequirementsKHR = 
-        (PFN_vkGetVideoSessionMemoryRequirementsKHR)vkGetDeviceProcAddr(vk_device, "vkGetVideoSessionMemoryRequirementsKHR");
-    device_functions.BindVideoSessionMemoryKHR = 
-        (PFN_vkBindVideoSessionMemoryKHR)vkGetDeviceProcAddr(vk_device, "vkBindVideoSessionMemoryKHR");
-    
-    // Video decode commands
-    device_functions.CmdDecodeVideoKHR = 
-        (PFN_vkCmdDecodeVideoKHR)vkGetDeviceProcAddr(vk_device, "vkCmdDecodeVideoKHR");
-    device_functions.CmdBeginVideoCodingKHR = 
-        (PFN_vkCmdBeginVideoCodingKHR)vkGetDeviceProcAddr(vk_device, "vkCmdBeginVideoCodingKHR");
-    device_functions.CmdEndVideoCodingKHR = 
-        (PFN_vkCmdEndVideoCodingKHR)vkGetDeviceProcAddr(vk_device, "vkCmdEndVideoCodingKHR");
-    device_functions.CmdControlVideoCodingKHR = 
-        (PFN_vkCmdControlVideoCodingKHR)vkGetDeviceProcAddr(vk_device, "vkCmdControlVideoCodingKHR");
-    
-    // YCbCr conversion
-    device_functions.CreateSamplerYcbcrConversionKHR = 
-        (PFN_vkCreateSamplerYcbcrConversionKHR)vkGetDeviceProcAddr(vk_device, "vkCreateSamplerYcbcrConversionKHR");
-    device_functions.DestroySamplerYcbcrConversionKHR = 
-        (PFN_vkDestroySamplerYcbcrConversionKHR)vkGetDeviceProcAddr(vk_device, "vkDestroySamplerYcbcrConversionKHR");
-    
-    // Validate critical functions
-    ERR_FAIL_COND_MSG(!device_functions.CreateVideoSessionKHR, "Failed to load vkCreateVideoSessionKHR");
-    ERR_FAIL_COND_MSG(!device_functions.CmdDecodeVideoKHR, "Failed to load vkCmdDecodeVideoKHR");
-}
-```
+-   All Vulkan Video function pointers loaded in `DeviceFunctions` struct
+-   Includes video capabilities, session management, memory management, and decode commands
+-   YCbCr conversion function pointers for color space conversion
 
-#### Step 3: Video Queue Family Detection
+#### ✅ Video Queue Family Detection
 
-```cpp
-// Add to RenderingDeviceDriverVulkan class
-uint32_t video_decode_queue_family = UINT32_MAX;
-VkQueue video_decode_queue = VK_NULL_HANDLE;
+-   Queue family detection implemented in `_detect_video_queue_families()`
+-   Searches for VK_QUEUE_VIDEO_DECODE_BIT_KHR support
+-   Graceful fallback when hardware decode unavailable
 
-// In _initialize_device()
-void RenderingDeviceDriverVulkan::_detect_video_queue_families() {
-    uint32_t queue_family_count = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
-    
-    Vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families.ptrw());
-    
-    for (uint32_t i = 0; i < queue_family_count; i++) {
-        // Check for video decode support
-        if (queue_families[i].queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) {
-            video_decode_queue_family = i;
-            print_verbose("Vulkan Video: Found video decode queue family: " + itos(i));
-            
-            // Get the video decode queue
-            vkGetDeviceQueue(vk_device, i, 0, &video_decode_queue);
-            break;
-        }
-    }
-    
-    if (video_decode_queue_family == UINT32_MAX) {
-        print_verbose("Vulkan Video: No video decode queue family found, hardware decode unavailable");
-    }
-}
-```
+#### ✅ Video Resource Types
 
-#### Step 4: Video Resource Types
+-   Video resource structures defined in Vulkan driver header
+-   VideoSessionInfo and VideoBufferInfo structures
+-   Integration with VersatileResource template system
 
-```cpp
-// Add to rendering_device_driver_vulkan.h
-struct VideoSessionInfo {
-    VkVideoSessionKHR vk_video_session = VK_NULL_HANDLE;
-    VkVideoSessionParametersKHR vk_parameters = VK_NULL_HANDLE;
-    VkVideoProfileInfoKHR profile_info = {};
-    VkVideoDecodeAV1ProfileInfoKHR av1_profile_info = {};
-    uint32_t dpb_slot_count = 0;
-    VkFormat decode_output_format = VK_FORMAT_UNDEFINED;
-    VkFormat dpb_format = VK_FORMAT_UNDEFINED;
-    VkExtent2D max_coded_extent = {};
-    Vector<VkDeviceMemory> session_memory;
-};
+**Implementation Files:**
 
-struct VideoImageInfo {
-    VkImage vk_image = VK_NULL_HANDLE;
-    VkImageView vk_image_view = VK_NULL_HANDLE;
-    VkDeviceMemory vk_memory = VK_NULL_HANDLE;
-    VkFormat format = VK_FORMAT_UNDEFINED;
-    VkImageUsageFlags usage = 0;
-    uint32_t width = 0;
-    uint32_t height = 0;
-    uint32_t array_layers = 1;
-    bool is_video_decode_output = false;
-    bool is_video_dpb = false;
-};
+-   `drivers/vulkan/rendering_device_driver_vulkan.h` - Video structures and function pointers
+-   `drivers/vulkan/rendering_device_driver_vulkan.cpp` - Extension registration and initialization
 
-struct YCbCrSamplerInfo {
-    VkSamplerYcbcrConversion vk_conversion = VK_NULL_HANDLE;
-    VkSampler vk_sampler = VK_NULL_HANDLE;
-    VkFormat format = VK_FORMAT_UNDEFINED;
-    VkSamplerYcbcrModelConversion model = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709;
-    VkSamplerYcbcrRange range = VK_SAMPLER_YCBCR_RANGE_ITU_NARROW;
-    VkChromaLocation x_chroma_offset = VK_CHROMA_LOCATION_COSITED_EVEN;
-    VkChromaLocation y_chroma_offset = VK_CHROMA_LOCATION_COSITED_EVEN;
-};
+---
 
-// Add to VersatileResource template
-using VersatileResource = VersatileResourceTemplate<
-    BufferInfo,
-    TextureInfo,
-    VertexFormatInfo,
-    ShaderInfo,
-    UniformSetInfo,
-    RenderPassInfo,
-    CommandBufferInfo,
-    VideoSessionInfo,    // NEW
-    VideoImageInfo,      // NEW
-    YCbCrSamplerInfo     // NEW
->;
-```
-
-### Phase 5B: Video Session Management (2-3 days)
+### Phase 5B: Video Session Management ⏳ **PLANNED**
 
 **Depends on: Phase 5A complete**
 
-#### Step 1: Video Capabilities Query
+This phase will implement video session creation and management for AV1 decode operations.
 
-```cpp
-// Add to RenderingDeviceDriverVulkan
-bool RenderingDeviceDriverVulkan::_query_av1_decode_capabilities(
-    VkVideoCapabilitiesKHR *video_caps,
-    VkVideoDecodeCapabilitiesKHR *decode_caps,
-    VkVideoDecodeAV1CapabilitiesKHR *av1_caps) {
-    
-    // Setup AV1 profile
-    VkVideoDecodeAV1ProfileInfoKHR av1_profile = {};
-    av1_profile.sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR;
-    av1_profile.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
-    av1_profile.filmGrainSupport = VK_FALSE; // Start without film grain
-    
-    VkVideoProfileInfoKHR profile_info = {};
-    profile_info.sType = VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR;
-    profile_info.pNext = &av1_profile;
-    profile_info.videoCodecOperation = VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
-    profile_info.chromaSubsampling = VK_VIDEO_CHROMA_SUBSAMPLING_420_BIT_KHR;
-    profile_info.lumaBitDepth = VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
-    profile_info.chromaBitDepth = VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR;
-    
-    // Query capabilities
-    av1_caps->sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR;
-    av1_caps->pNext = nullptr;
-    
-    decode_caps->sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_CAPABILITIES_KHR;
-    decode_caps->pNext = av1_caps;
-    
-    video_caps->sType = VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR;
-    video_caps->pNext = decode_caps;
-    
-    VkResult result = device_functions.GetPhysicalDeviceVideoCapabilitiesKHR(
-        physical_device, &profile_info, video_caps);
-    
-    if (result != VK_SUCCESS) {
-        print_verbose("Vulkan Video: Failed to query AV1 decode capabilities");
-        return false;
-    }
-    
-    // Log capabilities
-    print_verbose(vformat("Vulkan Video AV1 Capabilities:"));
-    print_verbose(vformat("  Max coded extent: %dx%d", video_caps->maxCodedExtent.width, video_caps->maxCodedExtent.height));
-    print_verbose(vformat("  Max DPB slots: %d", video_caps->maxDpbSlots));
-    print_verbose(vformat("  Max active references: %d", video_caps->maxActiveReferencePictures));
-    print_verbose(vformat("  Max level: %d", av1_caps->maxLevel));
-    
-    return true;
-}
-```
+#### Key Components:
 
-#### Step 2: Video Session Creation
+-   **Video Capabilities Query**: Query hardware AV1 decode capabilities and limits
+-   **Video Session Creation**: Create Vulkan video sessions with proper AV1 profile configuration
+-   **Session Parameter Management**: Handle video session parameters and updates
+-   **Validation**: Validate requested parameters against hardware capabilities
 
-```cpp
-// Add to RenderingDevice API
-enum VideoCodec {
-    VIDEO_CODEC_AV1,
-    VIDEO_CODEC_H264,
-    VIDEO_CODEC_H265
-};
+**Implementation Files:**
 
-struct VideoSessionCreateInfo {
-    VideoCodec codec = VIDEO_CODEC_AV1;
-    uint32_t max_width = 1920;
-    uint32_t max_height = 1080;
-    VkFormat output_format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM; // NV12
-    VkFormat dpb_format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
-    uint32_t max_dpb_slots = 8;
-    uint32_t max_active_references = 7;
-    bool enable_film_grain = false;
-};
+-   `modules/vk_video/vulkan_video_session.h` - Video session management interface
+-   `modules/vk_video/vulkan_video_session.cpp` - Session creation and capabilities query
+-   Updates to `rendering_device_video_extensions.h` for RenderingDevice API
 
-// Implementation in RenderingDeviceDriverVulkan
-VideoSessionID RenderingDeviceDriverVulkan::video_session_create(const VideoSessionCreateInfo &p_info) {
-    ERR_FAIL_COND_V(video_decode_queue_family == UINT32_MAX, VideoSessionID());
-    
-        video_material->set_shader_parameter("video_texture", ycbcr_texture);
-        video_material->set_shader_parameter("ycbcr_sampler", ycbcr_sampler);
-    }
-}
-```
+---
 
-### **Phase 5E: Performance & Polish (1-2 days)**
+### Phase 5C: Video Memory Management ⏳ **PLANNED**
+
+**Depends on: Phase 5B complete**
+
+This phase will implement memory allocation and binding for video sessions and DPB (Decoded Picture Buffer) management.
+
+#### Step 1: Video Session Memory Requirements
+
+#### Step 2: DPB (Decoded Picture Buffer) Management
+
+### Phase 5D: YCbCr Color Conversion ⏳ **PLANNED**
+
+**Depends on: Phase 5C complete**
+
+This phase implements hardware YCbCr to RGB color space conversion using Vulkan's sampler YCbCr conversion.
+
+#### Step 1: YCbCr Sampler Creation
+
+#### Step 2: Video Decode Output Integration
+
+### Phase 5E: Performance & Polish ⏳ **PLANNED**
 
 **Depends on: All previous phases complete**
 
-#### Final Integration and Optimization
+This phase focuses on optimization, error handling, and final integration polish.
 
--   Memory pooling for video textures
--   Frame timing synchronization
--   Error handling and fallbacks
--   Performance profiling and tuning
+#### Step 1: Memory Pooling and Optimization
+
+#### Step 2: Error Handling and Fallback
+
+#### Step 3: Performance Monitoring and Debugging
+
+#### Step 4: Integration Testing and Validation
+
+## Next Steps and Roadmap
+
+### Immediate Next Steps (Phase 5B Implementation)
+
+1. **Implement Video Session Management**
+
+    - Add `_query_av1_decode_capabilities()` method
+    - Implement `video_session_create()` API
+    - Add video session parameter management
+    - Test with basic AV1 streams
+
+2. **Add RenderingDevice API Extensions**
+    - Define `VideoSessionID` and related types
+    - Add video session creation/destruction methods
+    - Integrate with existing resource management
+
+### Medium-term Goals (Phases 5C-5D)
+
+3. **Complete Memory Management**
+
+    - Implement video session memory binding
+    - Add DPB (Decoded Picture Buffer) management
+    - Optimize memory allocation patterns
+
+4. **Implement YCbCr Conversion**
+    - Add YCbCr sampler creation
+    - Integrate with Godot's material system
+    - Test color space conversion accuracy
+
+### Long-term Integration (Phase 5E)
+
+5. **Performance Optimization**
+
+    - Implement texture pooling
+    - Add performance monitoring
+    - Optimize decode pipeline
+
+6. **Error Handling and Fallback**
+    - Comprehensive error handling
+    - Software decode fallback
+    - Debugging and validation tools
+
+## Testing and Validation
+
+### Hardware Requirements
+
+-   **GPU**: Modern GPU with Vulkan Video support (NVIDIA RTX 40xx series, AMD RDNA3, Intel Arc)
+-   **Driver**: Latest graphics drivers with Vulkan Video extensions
+-   **OS**: Windows 10/11, Linux with recent kernel
+
+### Test Cases
+
+1. **Extension Detection**: Verify video extensions are properly detected
+2. **Queue Family Discovery**: Confirm video decode queues are found
+3. **Session Creation**: Test video session creation with various parameters
+4. **Memory Binding**: Validate video session memory allocation
+5. **Basic Decode**: Test simple AV1 frame decode operation
+6. **Color Conversion**: Verify YCbCr to RGB conversion accuracy
+7. **Performance**: Measure decode performance vs. software fallback
+
+### Debug Output
+
+Enable verbose logging to monitor video decode operations:
+
+```
+Vulkan Video: AV1 hardware decode available
+Vulkan Video: Found video decode queue family: 2
+Vulkan Video AV1 Capabilities:
+  Max coded extent: 8192x8192
+  Max DPB slots: 8
+  Max active references: 7
+  Max level: 23
+```
+
+## Conclusion
+
+Phase 5A has been **successfully completed** with all foundation components implemented in the Vulkan driver. The remaining phases (5B-5E) provide a clear roadmap for completing hardware-accelerated AV1 video decoding in Godot.
+
+The implementation follows Vulkan Video best practices and integrates seamlessly with Godot's existing rendering architecture. Once complete, this will provide significant performance improvements for AV1 video playback on supported hardware.

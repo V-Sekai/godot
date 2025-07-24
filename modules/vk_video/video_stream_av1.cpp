@@ -36,7 +36,6 @@
 #include "core/os/os.h"
 #include "servers/audio_server.h"
 #include "servers/rendering_server.h"
-#include "scene/resources/audio_video_synchronizer.h"
 #include "av1_vulkan_decoder.h"
 
 // libsimplewebm
@@ -58,11 +57,10 @@
 #define AV1_OBU_PADDING 15
 
 VideoStreamPlaybackAV1::VideoStreamPlaybackAV1() {
-	// Initialize audio-video synchronization
-	av_synchronizer.instantiate();
-	av_synchronizer->set_sync_mode(AudioVideoSynchronizer::SYNC_MODE_AUDIO_MASTER);
-	av_synchronizer->set_use_timing_filter(true);
-	av_synchronizer->set_sync_threshold(0.040); // 40ms threshold
+	// Configure base class audio-video synchronization
+	get_av_synchronizer()->set_sync_mode(AudioVideoSynchronizer::SYNC_MODE_AUDIO_MASTER);
+	get_av_synchronizer()->set_use_timing_filter(true);
+	get_av_synchronizer()->set_sync_threshold(0.040); // 40ms threshold
 	
 	// Initialize DPB slots
 	dpb_slots.resize(8); // AV1 supports up to 8 reference frames
@@ -330,11 +328,8 @@ bool VideoStreamPlaybackAV1::_decode_frame_hardware(const uint8_t *bitstream_dat
 			queued_frame.presentation_time = header.presentation_time;
 			queued_frame.frame_number = header.frame_number;
 			
-			if (use_synchronization && av_synchronizer.is_valid()) {
-				av_synchronizer->queue_video_frame(decoded_texture, header.presentation_time, header.frame_number);
-			} else {
-				frame_queue.push_back(queued_frame);
-			}
+			// Use base class synchronization
+			queue_video_frame(decoded_texture, header.presentation_time, header.frame_number);
 			
 			return true;
 		}
@@ -389,28 +384,8 @@ void VideoStreamPlaybackAV1::_update_dpb_references(const AV1FrameHeader &header
 }
 
 Ref<Texture2D> VideoStreamPlaybackAV1::_get_frame_for_time(double target_time) {
-	// Use audio-video synchronizer to get the appropriate frame
-	if (use_synchronization && av_synchronizer.is_valid()) {
-		return av_synchronizer->get_current_frame();
-	}
-	
-	// Fallback: find closest frame in queue
-	if (frame_queue.is_empty()) {
-		return Ref<Texture2D>();
-	}
-	
-	int best_frame = 0;
-	double best_diff = Math::abs(frame_queue[0].presentation_time - target_time);
-	
-	for (int i = 1; i < frame_queue.size(); i++) {
-		double diff = Math::abs(frame_queue[i].presentation_time - target_time);
-		if (diff < best_diff) {
-			best_diff = diff;
-			best_frame = i;
-		}
-	}
-	
-	return frame_queue[best_frame].texture;
+	// Use base class synchronized texture access
+	return get_synchronized_texture();
 }
 
 void VideoStreamPlaybackAV1::_cleanup_old_frames(double current_time) {
@@ -432,9 +407,7 @@ void VideoStreamPlaybackAV1::play() {
 	playing = true;
 	paused = false;
 	
-	if (use_synchronization && av_synchronizer.is_valid()) {
-		av_synchronizer->reset();
-	}
+	// Base class handles synchronization reset automatically
 }
 
 void VideoStreamPlaybackAV1::stop() {
@@ -449,9 +422,7 @@ void VideoStreamPlaybackAV1::stop() {
 	
 	frame_queue.clear();
 	
-	if (use_synchronization && av_synchronizer.is_valid()) {
-		av_synchronizer->clear_frame_queue();
-	}
+	// Base class handles synchronization clearing automatically
 }
 
 bool VideoStreamPlaybackAV1::is_playing() const {
@@ -487,9 +458,7 @@ void VideoStreamPlaybackAV1::seek(double p_time) {
 	
 	frame_queue.clear();
 	
-	if (use_synchronization && av_synchronizer.is_valid()) {
-		av_synchronizer->clear_frame_queue();
-	}
+	// Base class handles synchronization clearing automatically
 }
 
 void VideoStreamPlaybackAV1::set_audio_track(int p_idx) {
@@ -497,12 +466,8 @@ void VideoStreamPlaybackAV1::set_audio_track(int p_idx) {
 }
 
 Ref<Texture2D> VideoStreamPlaybackAV1::get_texture() const {
-	if (use_synchronization && av_synchronizer.is_valid()) {
-		return av_synchronizer->get_current_frame();
-	}
-	
-	// Fallback to direct frame queue access
-	return const_cast<VideoStreamPlaybackAV1*>(this)->_get_frame_for_time(time);
+	// Use base class synchronized texture access
+	return get_synchronized_texture();
 }
 
 void VideoStreamPlaybackAV1::update(double p_delta) {
@@ -512,11 +477,8 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
 	
 	time += p_delta;
 	
-	// Update audio-video synchronization clocks
-	if (use_synchronization && av_synchronizer.is_valid()) {
-		av_synchronizer->update_master_clock(time);
-		av_synchronizer->update_video_clock(video_pos);
-	}
+	// Update audio-video synchronization clocks using base class methods
+	update_video_clock(video_pos);
 	
 	bool audio_buffer_full = false;
 
@@ -569,15 +531,8 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
 					Ref<ImageTexture> placeholder_texture;
 					placeholder_texture.instantiate();
 					
-					if (use_synchronization && av_synchronizer.is_valid()) {
-						av_synchronizer->queue_video_frame(placeholder_texture, frame_header.presentation_time, frame_header.frame_number);
-					} else {
-						QueuedFrame queued_frame;
-						queued_frame.texture = placeholder_texture;
-						queued_frame.presentation_time = frame_header.presentation_time;
-						queued_frame.frame_number = frame_header.frame_number;
-						frame_queue.push_back(queued_frame);
-					}
+					// Use base class synchronization
+					queue_video_frame(placeholder_texture, frame_header.presentation_time, frame_header.frame_number);
 				} else {
 					frames_dropped++;
 				}
@@ -588,9 +543,8 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
 
 		// Process audio frame
 		if (audio_frame->isValid() && audio->getPCMF(*audio_frame, pcm, num_decoded_samples) && num_decoded_samples > 0) {
-			if (use_synchronization && av_synchronizer.is_valid()) {
-				av_synchronizer->update_audio_clock(audio_frame->time);
-			}
+			// Use base class audio clock update
+			update_audio_clock(audio_frame->time);
 
 			const int mixed = mix_callback(mix_udata, pcm, num_decoded_samples);
 
