@@ -33,23 +33,12 @@
 #include "video_stream_theora.h"
 
 #ifdef TOOLS_ENABLED
-#include "core/config/project_settings.h"
-#include "editor/editor_node.h"
 #include "editor/movie_writer_ogv.h"
-#include "editor/resource_importer_video.h"
 #endif
 
 static Ref<ResourceFormatLoaderTheora> resource_loader_theora;
 #ifdef TOOLS_ENABLED
 static MovieWriterOGV *writer_ogv = nullptr;
-#endif
-
-#ifdef TOOLS_ENABLED
-static void _editor_init() {
-	Ref<ResourceImporterVideo> video_importer;
-	video_importer.instantiate();
-	ResourceFormatImporter::get_singleton()->add_importer(video_importer);
-}
 #endif
 
 void initialize_theora_module(ModuleInitializationLevel p_level) {
@@ -71,16 +60,6 @@ void initialize_theora_module(ModuleInitializationLevel p_level) {
 		default:
 			break;
 	}
-
-#ifdef TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		GLOBAL_DEF_RST_BASIC("filesystem/import/ffmpeg/enabled", true);
-		if (GLOBAL_GET_CACHED(bool, "filesystem/import/ffmpeg/enabled")) {
-			GDREGISTER_CLASS(ResourceImporterVideo);
-			EditorNode::add_init_callback(_editor_init);
-		}
-	}
-#endif
 }
 
 void uninitialize_theora_module(ModuleInitializationLevel p_level) {

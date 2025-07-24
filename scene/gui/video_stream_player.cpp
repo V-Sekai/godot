@@ -261,9 +261,7 @@ bool VideoStreamPlayer::has_loop() const {
 }
 
 void VideoStreamPlayer::set_stream(const Ref<VideoStream> &p_stream) {
-	if (is_inside_tree() && !playback.is_null()) {
-		playback->stop();
-	}
+	stop();
 
 	// Make sure to handle stream changes seamlessly, e.g. when done via
 	// translation remapping.
@@ -354,7 +352,6 @@ bool VideoStreamPlayer::_stop() {
 	}
 
 	playback->stop();
-	playback->seek(0);
 	resampler.flush();
 	set_process_internal(false);
 

@@ -624,6 +624,7 @@ void VideoStreamPlaybackTheora::play() {
 
 void VideoStreamPlaybackTheora::stop() {
 	playing = false;
+	seek(0);
 }
 
 bool VideoStreamPlaybackTheora::is_playing() const {
