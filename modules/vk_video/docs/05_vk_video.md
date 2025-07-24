@@ -538,37 +538,6 @@ public:
 };
 ```
 
-### **Code Examples for Implementation**
-
-#### **YCbCr to RGB Conversion Shader (GLSL)**
-```glsl
-#version 450
-
-layout(local_size_x = 16, local_size_y = 16) in;
-
-layout(set = 0, binding = 0) uniform sampler2D ycbcr_texture;
-layout(set = 0, binding = 1, rgba8) uniform writeonly image2D rgb_output;
-
-void main() {
-    ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
-
-    // Sample YCbCr data
-    vec3 ycbcr = texture(ycbcr_texture, vec2(coord) / textureSize(ycbcr_texture, 0)).rgb;
-
-    // Convert YCbCr to RGB (ITU-R BT.709)
-    mat3 conversion_matrix = mat3(
-        1.0,  0.0,      1.5748,
-        1.0, -0.1873, -0.4681,
-        1.0,  1.8556,   0.0
-    );
-
-    vec3 rgb = conversion_matrix * (ycbcr - vec3(0.0625, 0.5, 0.5));
-    rgb = clamp(rgb, 0.0, 1.0);
-
-    imageStore(rgb_output, coord, vec4(rgb, 1.0));
-}
-```
-
 #### **Integration with RenderingDevice**
 ```cpp
 // Example implementation for texture conversion
