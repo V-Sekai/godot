@@ -41,22 +41,22 @@ class OneEuroFilter : public RefCounted {
 private:
     struct LowPassFilter {
         double last_value = 0.0;
-        
+
         double filter(double value, double alpha) {
             double result = alpha * value + (1.0 - alpha) * last_value;
             last_value = result;
             return result;
         }
-        
+
         void reset() { last_value = 0.0; }
     };
-    
+
     double min_cutoff;
     double beta;
     double d_cutoff;
     LowPassFilter x_filter;
     LowPassFilter dx_filter;
-    
+
     double calculate_alpha(double rate, double cutoff) const {
         double tau = 1.0 / (2.0 * Math_PI * cutoff);
         double te = 1.0 / rate;
@@ -68,11 +68,11 @@ protected:
 
 public:
     OneEuroFilter(double p_min_cutoff = 0.1, double p_beta = 5.0);
-    
+
     double filter(double value, double delta_time);
     void reset();
     void update_parameters(double p_min_cutoff, double p_beta);
-    
+
     double get_min_cutoff() const { return min_cutoff; }
     double get_beta() const { return beta; }
 };
@@ -86,7 +86,7 @@ public:
 // File: modules/vk_video/sync/one_euro_filter.cpp
 #include "one_euro_filter.h"
 
-OneEuroFilter::OneEuroFilter(double p_min_cutoff, double p_beta) 
+OneEuroFilter::OneEuroFilter(double p_min_cutoff, double p_beta)
     : min_cutoff(p_min_cutoff), beta(p_beta), d_cutoff(p_min_cutoff) {
 }
 
@@ -94,13 +94,13 @@ double OneEuroFilter::filter(double value, double delta_time) {
     if (delta_time <= 0.0) {
         return value;  // Skip filtering for invalid delta
     }
-    
+
     double rate = 1.0 / delta_time;
     double dx = (value - x_filter.last_value) * rate;
-    
+
     double edx = dx_filter.filter(dx, calculate_alpha(rate, d_cutoff));
     double cutoff = min_cutoff + beta * Math::abs(edx);
-    
+
     return x_filter.filter(value, calculate_alpha(rate, cutoff));
 }
 
@@ -146,7 +146,7 @@ public:
         uint64_t frame_number = 0;
         bool keyframe = false;
     };
-    
+
     struct SyncMetrics {
         double avg_error = 0.0;
         double max_error = 0.0;
@@ -161,21 +161,21 @@ private:
     double video_pts_clock = 0.0;
     double system_clock = 0.0;
     double playback_start_time = 0.0;
-    
+
     // OneEuroFilter for delta smoothing
     Ref<OneEuroFilter> av_sync_filter;
     double filtered_av_delta = 0.0;
-    
+
     // Latency compensation
     double cached_audio_latency = 0.0;
     double cached_display_latency = 0.0;
     double cached_decode_latency = 0.0;
-    
+
     // Synchronization parameters
     double sync_threshold = 0.04;  // 40ms
     double drop_threshold = 0.1;   // 100ms
     double duplicate_threshold = 0.02;  // 20ms
-    
+
     // Performance metrics
     SyncMetrics current_metrics;
     bool is_playing = false;
@@ -185,30 +185,30 @@ protected:
 
 public:
     AVSynchronizer();
-    
+
     // Initialization
     void initialize(double p_sync_threshold = 0.04);
     void start_playback();
     void stop_playback();
     void reset();
-    
+
     // Clock updates (call from main thread)
     void update_audio_clock();
     void update_video_clock(const FrameInfo& frame);
     void update_system_clock();
-    
+
     // Synchronization (call from physics thread for consistent timing)
     void update_synchronization(double delta_time);
-    
+
     // Frame presentation decisions
     bool should_present_frame(const FrameInfo& frame);
     bool should_drop_frame(const FrameInfo& frame);
     bool should_duplicate_frame();
-    
+
     // Configuration
     void set_sync_threshold(double threshold);
     void set_filter_parameters(double min_cutoff, double beta);
-    
+
     // Metrics and debugging
     Dictionary get_sync_metrics() const;
     double get_corrected_video_time() const;
@@ -245,11 +245,11 @@ void AVSynchronizer::initialize(double p_sync_threshold) {
 void AVSynchronizer::start_playback() {
     playback_start_time = get_high_resolution_time();
     is_playing = true;
-    
+
     // Reset filter state for clean startup
     av_sync_filter->reset();
     filtered_av_delta = 0.0;
-    
+
     // Reset metrics
     current_metrics = SyncMetrics{};
 }
@@ -263,21 +263,21 @@ void AVSynchronizer::reset() {
     video_pts_clock = 0.0;
     system_clock = 0.0;
     filtered_av_delta = 0.0;
-    
+
     if (av_sync_filter.is_valid()) {
         av_sync_filter->reset();
     }
-    
+
     current_metrics = SyncMetrics{};
 }
 
 void AVSynchronizer::update_audio_clock() {
     if (!is_playing) return;
-    
+
     // Get audio playback position with latency compensation
     // This mimics the conductor implementation
     audio_clock = AudioServer::get_singleton()->get_playback_position() - cached_audio_latency;
-    
+
     // Add inter-frame smoothing
     double time_since_mix = AudioServer::get_singleton()->get_time_since_last_mix();
     if (time_since_mix < 1.0) {  // Sanity check for web platform bug
@@ -287,66 +287,66 @@ void AVSynchronizer::update_audio_clock() {
 
 void AVSynchronizer::update_video_clock(const FrameInfo& frame) {
     if (!is_playing) return;
-    
+
     // Update PTS-based clock with latency compensation
     video_pts_clock = frame.pts - cached_decode_latency - cached_display_latency;
 }
 
 void AVSynchronizer::update_system_clock() {
     if (!is_playing) return;
-    
+
     system_clock = get_high_resolution_time() - playback_start_time;
 }
 
 void AVSynchronizer::update_synchronization(double delta_time) {
     if (!is_playing) return;
-    
+
     // Apply OneEuroFilter to the audio-video delta (key insight from conductor)
     double av_delta = video_pts_clock - audio_clock;
     filtered_av_delta = av_sync_filter->filter(av_delta, delta_time);
-    
+
     // Update performance metrics
     update_sync_metrics(av_delta, false, false);
 }
 
 bool AVSynchronizer::should_present_frame(const FrameInfo& frame) {
     if (!is_playing) return false;
-    
+
     double corrected_video_time = get_corrected_video_time();
     double frame_time = frame.pts - cached_decode_latency - cached_display_latency;
     double time_diff = frame_time - corrected_video_time;
-    
+
     return Math::abs(time_diff) <= sync_threshold;
 }
 
 bool AVSynchronizer::should_drop_frame(const FrameInfo& frame) {
     if (!is_playing) return false;
-    
+
     double corrected_video_time = get_corrected_video_time();
     double frame_time = frame.pts - cached_decode_latency - cached_display_latency;
     double time_diff = frame_time - corrected_video_time;
-    
+
     // Drop if frame is too late
     bool should_drop = time_diff < -drop_threshold;
-    
+
     if (should_drop) {
         current_metrics.frames_dropped++;
     }
-    
+
     return should_drop;
 }
 
 bool AVSynchronizer::should_duplicate_frame() {
     if (!is_playing) return false;
-    
+
     // Check if we need to show current frame longer
     double time_since_last = system_clock - video_pts_clock;
     bool should_duplicate = time_since_last > duplicate_threshold;
-    
+
     if (should_duplicate) {
         current_metrics.frames_duplicated++;
     }
-    
+
     return should_duplicate;
 }
 
@@ -361,10 +361,10 @@ double AVSynchronizer::get_av_sync_offset() const {
 
 void AVSynchronizer::update_latency_cache() {
     cached_audio_latency = AudioServer::get_singleton()->get_output_latency();
-    
+
     // Platform-specific display latency estimation
     cached_display_latency = 16.67 / 1000.0;  // Assume 1 frame at 60Hz
-    
+
     // Decode latency will be estimated during playback
     cached_decode_latency = 10.0 / 1000.0;  // 10ms initial estimate
 }
@@ -372,14 +372,14 @@ void AVSynchronizer::update_latency_cache() {
 void AVSynchronizer::update_sync_metrics(double av_error, bool frame_dropped, bool frame_duplicated) {
     // Update running average
     current_metrics.avg_error = current_metrics.avg_error * 0.95 + Math::abs(av_error) * 0.05;
-    
+
     // Track maximum error
     current_metrics.max_error = MAX(current_metrics.max_error * 0.99, Math::abs(av_error));
-    
+
     // Calculate sync quality (0.0 = poor, 1.0 = perfect)
     double normalized_error = current_metrics.avg_error / sync_threshold;
     current_metrics.sync_quality = MAX(0.0, 1.0 - normalized_error);
-    
+
     // Update frame counters
     if (frame_dropped) current_metrics.frames_dropped++;
     if (frame_duplicated) current_metrics.frames_duplicated++;
@@ -405,12 +405,12 @@ void AVSynchronizer::_bind_methods() {
     ClassDB::bind_method(D_METHOD("start_playback"), &AVSynchronizer::start_playback);
     ClassDB::bind_method(D_METHOD("stop_playback"), &AVSynchronizer::stop_playback);
     ClassDB::bind_method(D_METHOD("reset"), &AVSynchronizer::reset);
-    
+
     ClassDB::bind_method(D_METHOD("update_synchronization", "delta_time"), &AVSynchronizer::update_synchronization);
     ClassDB::bind_method(D_METHOD("get_sync_metrics"), &AVSynchronizer::get_sync_metrics);
     ClassDB::bind_method(D_METHOD("get_corrected_video_time"), &AVSynchronizer::get_corrected_video_time);
     ClassDB::bind_method(D_METHOD("get_av_sync_offset"), &AVSynchronizer::get_av_sync_offset);
-    
+
     ClassDB::bind_method(D_METHOD("set_sync_threshold", "threshold"), &AVSynchronizer::set_sync_threshold);
     ClassDB::bind_method(D_METHOD("set_filter_parameters", "min_cutoff", "beta"), &AVSynchronizer::set_filter_parameters);
 }
@@ -426,7 +426,7 @@ class VideoStreamPlaybackAV1 : public VideoStreamPlayback {
 private:
     // Add synchronization components
     Ref<AVSynchronizer> av_synchronizer;
-    
+
     // Timing update management
     double last_sync_update_time = 0.0;
     static constexpr double SYNC_UPDATE_INTERVAL = 1.0 / 60.0;  // 60 Hz
@@ -437,7 +437,7 @@ public:
     virtual void stop() override;
     virtual void update(double p_delta) override;
     virtual Ref<Texture2D> get_texture() const override;
-    
+
     // New synchronization methods
     void initialize_synchronization();
     bool should_present_current_frame();
@@ -452,7 +452,7 @@ public:
 
 void VideoStreamPlaybackAV1::play() {
     // Existing play logic...
-    
+
     // Initialize synchronization
     initialize_synchronization();
     av_synchronizer->start_playback();
@@ -462,7 +462,7 @@ void VideoStreamPlaybackAV1::stop() {
     if (av_synchronizer.is_valid()) {
         av_synchronizer->stop_playback();
     }
-    
+
     // Existing stop logic...
 }
 
@@ -470,7 +470,7 @@ void VideoStreamPlaybackAV1::initialize_synchronization() {
     if (!av_synchronizer.is_valid()) {
         av_synchronizer.instantiate();
         av_synchronizer->initialize();
-        
+
         // Configure for video playback (balanced settings)
         av_synchronizer->set_filter_parameters(0.1, 5.0);
         av_synchronizer->set_sync_threshold(0.04);  // 40ms threshold
@@ -479,12 +479,12 @@ void VideoStreamPlaybackAV1::initialize_synchronization() {
 
 void VideoStreamPlaybackAV1::update(double p_delta) {
     // Existing update logic...
-    
+
     if (av_synchronizer.is_valid() && is_playing()) {
         // Update clocks at main thread rate
         av_synchronizer->update_audio_clock();
         av_synchronizer->update_system_clock();
-        
+
         // Update video clock when new frame is decoded
         if (has_new_frame()) {
             AVSynchronizer::FrameInfo frame_info;
@@ -492,10 +492,10 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
             frame_info.dts = get_current_frame_dts();
             frame_info.frame_number = get_current_frame_number();
             frame_info.keyframe = is_current_frame_keyframe();
-            
+
             av_synchronizer->update_video_clock(frame_info);
         }
-        
+
         // Update synchronization at consistent rate
         double current_time = Time::get_singleton()->get_ticks_usec() / 1000000.0;
         if (current_time - last_sync_update_time >= SYNC_UPDATE_INTERVAL) {
@@ -511,7 +511,7 @@ Ref<Texture2D> VideoStreamPlaybackAV1::get_texture() const {
         // Return previous frame or null if timing isn't right
         return get_previous_texture();
     }
-    
+
     // Existing texture retrieval logic...
     return current_texture;
 }
@@ -520,19 +520,19 @@ bool VideoStreamPlaybackAV1::should_present_current_frame() {
     if (!av_synchronizer.is_valid()) {
         return true;  // Fallback to always present
     }
-    
+
     AVSynchronizer::FrameInfo frame_info;
     frame_info.pts = get_current_frame_pts();
     frame_info.dts = get_current_frame_dts();
     frame_info.frame_number = get_current_frame_number();
     frame_info.keyframe = is_current_frame_keyframe();
-    
+
     // Check if frame should be dropped
     if (av_synchronizer->should_drop_frame(frame_info)) {
         advance_to_next_frame();  // Skip this frame
         return false;
     }
-    
+
     // Check if frame should be presented
     return av_synchronizer->should_present_frame(frame_info);
 }
@@ -541,11 +541,11 @@ Dictionary VideoStreamPlaybackAV1::get_sync_debug_info() {
     if (!av_synchronizer.is_valid()) {
         return Dictionary();
     }
-    
+
     Dictionary debug_info = av_synchronizer->get_sync_metrics();
     debug_info["corrected_video_time"] = av_synchronizer->get_corrected_video_time();
     debug_info["av_sync_offset_ms"] = av_synchronizer->get_av_sync_offset() * 1000.0;
-    
+
     return debug_info;
 }
 ```
@@ -587,11 +587,11 @@ void initialize_vk_video_module(ModuleInitializationLevel p_level) {
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
-    
+
     // Register synchronization classes
     GDREGISTER_CLASS(OneEuroFilter);
     GDREGISTER_CLASS(AVSynchronizer);
-    
+
     // Register video classes
     GDREGISTER_CLASS(VideoStreamAV1);
     GDREGISTER_CLASS(VideoStreamPlaybackAV1);
@@ -615,32 +615,32 @@ extends Node
 func test_basic_synchronization():
     var av_sync = AVSynchronizer.new()
     av_sync.initialize(0.04)  # 40ms threshold
-    
+
     # Test filter parameters
     av_sync.set_filter_parameters(0.1, 5.0)
-    
+
     # Simulate playback
     av_sync.start_playback()
-    
+
     # Test synchronization update
     for i in range(60):  # 1 second at 60fps
         av_sync.update_synchronization(1.0/60.0)
-        
+
         var metrics = av_sync.get_sync_metrics()
         print("Frame %d: Sync Quality = %.2f" % [i, metrics.sync_quality])
-    
+
     av_sync.stop_playback()
 
 func test_video_playback():
     var video_stream = VideoStreamAV1.new()
     video_stream.file = "res://test_video.av1"
-    
+
     var video_player = VideoStreamPlayer.new()
     video_player.stream = video_stream
     add_child(video_player)
-    
+
     video_player.play()
-    
+
     # Monitor sync quality
     var timer = Timer.new()
     timer.wait_time = 1.0
@@ -664,17 +664,17 @@ extends Node
 func benchmark_filter_performance():
     var filter = OneEuroFilter.new()
     filter.update_parameters(0.1, 5.0)
-    
+
     var start_time = Time.get_ticks_usec()
     var iterations = 10000
-    
+
     for i in range(iterations):
         var test_value = sin(i * 0.1) + randf_range(-0.1, 0.1)  # Noisy sine wave
         filter.filter(test_value, 1.0/60.0)
-    
+
     var end_time = Time.get_ticks_usec()
     var total_time = (end_time - start_time) / 1000.0  # Convert to milliseconds
-    
+
     print("Filter Performance:")
     print("  Iterations: %d" % iterations)
     print("  Total Time: %.2f ms" % total_time)
@@ -695,11 +695,11 @@ void register_vk_video_settings() {
     GLOBAL_DEF("video/av_sync/sync_threshold_ms", 40.0);
     GLOBAL_DEF("video/av_sync/drop_threshold_ms", 100.0);
     GLOBAL_DEF("video/av_sync/adaptive_tuning", true);
-    
+
     // Performance Settings
     GLOBAL_DEF("video/av_sync/update_frequency", 60.0);
     GLOBAL_DEF("video/av_sync/enable_metrics", false);
-    
+
     // Platform-specific defaults
     #ifdef MOBILE_ENABLED
     GLOBAL_DEF("video/av_sync/power_aware", true);
@@ -740,10 +740,10 @@ func configure_av_sync_for_gaming():
 // Enable debug output for troubleshooting
 void AVSynchronizer::enable_debug_output(bool enabled) {
     debug_output_enabled = enabled;
-    
+
     if (enabled) {
         print_line("AV Sync Debug Output Enabled");
-        print_line("Filter Parameters: cutoff=%.3f, beta=%.1f", 
+        print_line("Filter Parameters: cutoff=%.3f, beta=%.1f",
                   av_sync_filter->get_min_cutoff(), av_sync_filter->get_beta());
         print_line("Sync Threshold: %.1f ms", sync_threshold * 1000.0);
     }

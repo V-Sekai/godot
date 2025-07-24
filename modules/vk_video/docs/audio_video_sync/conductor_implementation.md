@@ -40,10 +40,10 @@ func play() -> void:
         "beta": lag_reduction,       # 5.0 default
     }
     _filter = OneEuroFilter.new(filter_args)
-    
+
     player.play()
     _is_playing = true
-    
+
     # Capture precise start time with compensation
     _song_time_begin = (
         Time.get_ticks_usec() / 1000000.0
@@ -66,7 +66,7 @@ func _process(_delta: float) -> void:
     var last_mix := AudioServer.get_time_since_last_mix()
     if last_mix > 1000:
         last_mix = 0
-    
+
     # Calculate audio-based time (jittery but accurate)
     _song_time_audio = (
         player.get_playback_position()
@@ -74,7 +74,7 @@ func _process(_delta: float) -> void:
         + last_mix                         # Inter-frame smoothing
         - _cached_output_latency           # Hardware compensation
     )
-    
+
     # Calculate system-based time (stable but can drift)
     _song_time_system = (Time.get_ticks_usec() / 1000000.0) - _song_time_begin
     _song_time_system *= player.pitch_scale
@@ -91,11 +91,11 @@ func _process(_delta: float) -> void:
 func _physics_process(delta: float) -> void:
     if not _is_playing:
         return
-    
+
     # Filter the DELTA between clocks, not the absolute values
     var audio_system_delta := _song_time_audio - _song_time_system
     _filtered_audio_system_delta = _filter.filter(audio_system_delta, delta)
-    
+
     # Final time combines system stability with audio accuracy
     # var song_time := _song_time_system + _filtered_audio_system_delta
 ```
@@ -134,11 +134,11 @@ private:
     double video_time_pts = 0.0;        // From video timestamps (like audio_time)
     double video_time_system = 0.0;     // System clock based (like system_time)
     double video_time_begin = 0.0;      // Playback start reference
-    
+
     // OneEuroFilter for delta smoothing
     OneEuroFilter av_sync_filter;
     double filtered_av_delta = 0.0;
-    
+
     // Cached latency values
     double cached_display_latency = 0.0;
     double cached_decode_latency = 0.0;
@@ -147,11 +147,11 @@ public:
     void initialize_playback() {
         // Initialize filter with video-appropriate parameters
         av_sync_filter = OneEuroFilter(0.1, 5.0);  // Conservative settings
-        
+
         // Cache display pipeline latency
         cached_display_latency = get_display_latency();
         cached_decode_latency = estimate_decode_latency();
-        
+
         // Set reference time with compensation
         video_time_begin = get_system_time() + cached_display_latency;
     }
@@ -164,10 +164,10 @@ public:
 void update_video_timing(double delta_time) {
     // Calculate PTS-based time (accurate but jittery)
     double video_time_pts = current_frame.pts - cached_decode_latency;
-    
+
     // Calculate system-based time (stable)
     video_time_system = get_system_time() - video_time_begin;
-    
+
     // Apply OneEuroFilter to the delta
     double pts_system_delta = video_time_pts - video_time_system;
     filtered_av_delta = av_sync_filter.filter(pts_system_delta, delta_time);
@@ -184,11 +184,11 @@ double get_corrected_video_time() {
 bool should_present_frame(const FrameInfo& frame) {
     double corrected_video_time = get_corrected_video_time();
     double audio_time = get_audio_clock();
-    
+
     // Calculate presentation timing
     double frame_presentation_time = frame.pts - cached_decode_latency;
     double av_delta = frame_presentation_time - audio_time;
-    
+
     // Use threshold for presentation decision
     return abs(av_delta) <= sync_threshold;
 }
@@ -202,7 +202,7 @@ bool should_present_frame(const FrameInfo& frame) {
 // Conservative (high quality, some latency)
 OneEuroFilter video_sync_filter(0.1, 5.0);
 
-// Balanced (good quality, moderate latency)  
+// Balanced (good quality, moderate latency)
 OneEuroFilter video_sync_filter(0.3, 8.0);
 
 // Responsive (lower quality, minimal latency)
@@ -244,12 +244,12 @@ if last_mix > 1000:
 ```cpp
 double get_frame_decode_time() {
     double decode_time = get_last_decode_duration();
-    
+
     // Handle platform-specific timing anomalies
     if (decode_time > 1.0) {  // Unreasonably long decode time
         decode_time = estimated_decode_time;
     }
-    
+
     return decode_time;
 }
 ```
@@ -273,7 +273,7 @@ void set_paused(bool paused) {
             // Adjust reference time to account for pause duration
             double pause_duration = get_system_time() - pause_time;
             video_time_begin += pause_duration;
-            
+
             // Reset filter to avoid artifacts
             av_sync_filter.reset();
         }
@@ -298,7 +298,7 @@ void debug_sync_quality() {
     double corrected_time = get_corrected_video_time();
     double raw_pts_time = current_frame.pts;
     double error_ms = abs(corrected_time - raw_pts_time) * 1000.0;
-    
+
     print_line(vformat("A/V Sync Error: %+.1f ms", error_ms));
     print_line(vformat("Filter Delta: %+.1f ms", filtered_av_delta * 1000.0));
 }

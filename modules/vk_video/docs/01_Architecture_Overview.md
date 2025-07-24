@@ -128,7 +128,7 @@ class VulkanFilterYuvCompute {
     // ❌ No native YCbCrA (4-component) support
     // ❌ Alpha channels hardcoded to 1.0 in conversions
     // ❌ Limited to 3-plane maximum in current implementation
-    
+
     // Current alpha handling in YCbCr to RGBA conversion:
     vec4 rgba = vec4(rgb, 1.0); // Alpha always set to fully opaque
 };
@@ -142,7 +142,7 @@ class VideoStreamPlayback {
         // Check if format includes alpha channel
         return format_has_alpha(format) && !hardware_supports_alpha(format);
     }
-    
+
     Ref<VideoStreamPlayback> create_playback() {
         if (requires_alpha_fallback(stream_format)) {
             // Use FFmpeg software path for alpha content

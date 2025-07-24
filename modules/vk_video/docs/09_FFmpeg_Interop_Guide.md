@@ -57,19 +57,19 @@ public:
         if (avformat_open_input(&format_ctx, file_path.utf8().get_data(), nullptr, nullptr) < 0) {
             return ERR_FILE_CANT_OPEN;
         }
-        
+
         // Find stream information
         if (avformat_find_stream_info(format_ctx, nullptr) < 0) {
             return ERR_FILE_CORRUPT;
         }
-        
+
         // Locate video and audio streams
         video_stream_index = find_best_stream(AVMEDIA_TYPE_VIDEO);
         audio_stream_index = find_best_stream(AVMEDIA_TYPE_AUDIO);
-        
+
         return OK;
     }
-    
+
     Error read_packet(AVPacket* packet) {
         return av_read_frame(format_ctx, packet) >= 0 ? OK : ERR_FILE_EOF;
     }
@@ -89,19 +89,19 @@ enum class YCbCrFormat {
     NV21,           // 2-plane, 4:2:0, 8-bit (swapped UV)
     I420,           // 3-plane, 4:2:0, 8-bit
     YV12,           // 3-plane, 4:2:0, 8-bit (swapped UV)
-    
+
     // 10-bit formats
     P010,           // 2-plane, 4:2:0, 10-bit MSB
     P210,           // 2-plane, 4:2:2, 10-bit MSB
-    
+
     // 12-bit formats
     P012,           // 2-plane, 4:2:0, 12-bit MSB
     P212,           // 2-plane, 4:2:2, 12-bit MSB
-    
+
     // 16-bit formats
     P016,           // 2-plane, 4:2:0, 16-bit
     P216,           // 2-plane, 4:2:2, 16-bit
-    
+
     // RGBA (for compatibility)
     RGBA8,          // 1-plane, 4:4:4, 8-bit with alpha
 };
@@ -117,15 +117,15 @@ public:
         if (requires_bit_depth_conversion(input.format, target_format)) {
             return convert_bit_depth(input, target_format, output);
         }
-        
+
         if (requires_plane_conversion(input.format, target_format)) {
             return convert_plane_layout(input, target_format, output);
         }
-        
+
         // Direct copy if formats are compatible
         return copy_frame(input, output);
     }
-    
+
 private:
     Error convert_bit_depth(const YCbCrFrame& input, YCbCrFormat target_format, YCbCrFrame& output) {
         // Use VulkanFilterYuvCompute for hardware conversion
@@ -145,7 +145,7 @@ private:
             &sampler_info,
             filter
         );
-        
+
         return filter->process_frame(input, output);
     }
 };
@@ -172,7 +172,7 @@ void GenHandleChromaPosition(std::stringstream& shaderStr,
         shaderStr << "    bool processChroma = true;\n";
         return;
     }
-    
+
     // Generate condition for subsampled formats
     shaderStr << "    bool processChroma = ";
     if (chromaHorzRatio > 1) {
@@ -198,16 +198,16 @@ void GenHandleChromaPosition(std::stringstream& shaderStr,
 class VulkanFilterYuvCompute {
     // Limited to 3-plane maximum (Y, Cb, Cr)
     static constexpr uint32_t MAX_PLANES = 3;
-    
+
     // Alpha hardcoded in YCbCr to RGBA conversion
     void InitYCBCR2RGBA() {
         shaderStr << "vec4 rgba = vec4(rgb, 1.0);\n";  // Alpha = 1.0 (opaque)
     }
-    
+
     // No YCbCrA format support
-    VkImageAspectFlags supported_aspects = 
+    VkImageAspectFlags supported_aspects =
         VK_IMAGE_ASPECT_PLANE_0_BIT |  // Y plane
-        VK_IMAGE_ASPECT_PLANE_1_BIT |  // Cb/CbCr plane  
+        VK_IMAGE_ASPECT_PLANE_1_BIT |  // Cb/CbCr plane
         VK_IMAGE_ASPECT_PLANE_2_BIT;   // Cr plane (no alpha plane)
 };
 ```
@@ -229,7 +229,7 @@ public:
                 return false;
         }
     }
-    
+
     Error process_alpha_content(const AVFrame* frame, RID& output_texture) {
         // Use FFmpeg software conversion for alpha content
         SwsContext* sws_ctx = sws_getContext(
@@ -237,29 +237,29 @@ public:
             frame->width, frame->height, AV_PIX_FMT_RGBA,
             SWS_BILINEAR, nullptr, nullptr, nullptr
         );
-        
+
         if (!sws_ctx) {
             return ERR_CANT_CREATE;
         }
-        
+
         // Convert to RGBA with preserved alpha
         AVFrame* rgba_frame = av_frame_alloc();
         rgba_frame->format = AV_PIX_FMT_RGBA;
         rgba_frame->width = frame->width;
         rgba_frame->height = frame->height;
-        
+
         if (av_frame_get_buffer(rgba_frame, 32) < 0) {
             av_frame_free(&rgba_frame);
             sws_freeContext(sws_ctx);
             return ERR_OUT_OF_MEMORY;
         }
-        
+
         sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height,
                   rgba_frame->data, rgba_frame->linesize);
-        
+
         // Upload to GPU texture
         output_texture = upload_rgba_to_texture(rgba_frame);
-        
+
         av_frame_free(&rgba_frame);
         sws_freeContext(sws_ctx);
         return OK;
@@ -290,37 +290,37 @@ public:
         VULKAN_HYBRID,      // Hardware decode + software conversion
         FFMPEG_SOFTWARE     // Full software processing
     };
-    
+
     ProcessingPath select_path(const VideoStreamInfo& stream_info) {
         // Check hardware capabilities
         if (!has_vulkan_video_support()) {
             return ProcessingPath::FFMPEG_SOFTWARE;
         }
-        
+
         // Check codec support
         if (!is_codec_supported_hardware(stream_info.codec)) {
             return ProcessingPath::FFMPEG_SOFTWARE;
         }
-        
+
         // Check format support
         if (requires_alpha_fallback(stream_info.pixel_format)) {
             return ProcessingPath::FFMPEG_SOFTWARE;
         }
-        
+
         // Check performance thresholds
         if (stream_info.width * stream_info.height > get_hardware_threshold()) {
             return ProcessingPath::VULKAN_HYBRID;
         }
-        
+
         return ProcessingPath::VULKAN_HARDWARE;
     }
-    
+
 private:
     bool has_vulkan_video_support() {
         RenderingDevice* rd = RenderingDevice::get_singleton();
         return rd && rd->has_feature(RenderingDevice::FEATURE_VULKAN_VIDEO);
     }
-    
+
     bool is_codec_supported_hardware(VideoCodec codec) {
         switch (codec) {
             case VideoCodec::H264:
@@ -343,39 +343,39 @@ class PerformanceMonitor {
 public:
     void update_performance_metrics(ProcessingPath path, double frame_time) {
         performance_history[path].push_back(frame_time);
-        
+
         // Keep only recent samples
         if (performance_history[path].size() > MAX_SAMPLES) {
             performance_history[path].pop_front();
         }
-        
+
         // Check if we should switch paths
         if (should_switch_path(path)) {
             recommend_path_switch(path);
         }
     }
-    
+
 private:
     bool should_switch_path(ProcessingPath current_path) {
         double avg_time = calculate_average_time(current_path);
-        
+
         // Switch to software if hardware is too slow
         if (current_path == ProcessingPath::VULKAN_HARDWARE && avg_time > HARDWARE_THRESHOLD) {
             return true;
         }
-        
+
         // Switch back to hardware if software was temporary
         if (current_path == ProcessingPath::FFMPEG_SOFTWARE && avg_time < SOFTWARE_THRESHOLD) {
             return true;
         }
-        
+
         return false;
     }
-    
+
     static constexpr double HARDWARE_THRESHOLD = 16.67; // 60 FPS target
     static constexpr double SOFTWARE_THRESHOLD = 33.33; // 30 FPS minimum
     static constexpr size_t MAX_SAMPLES = 60;
-    
+
     std::map<ProcessingPath, std::deque<double>> performance_history;
 };
 ```
@@ -391,13 +391,13 @@ public:
         // Open container with FFmpeg
         Error err = demuxer.open_container(file_path);
         if (err != OK) return err;
-        
+
         // Analyze stream format
         VideoStreamInfo stream_info = demuxer.get_video_stream_info();
-        
+
         // Select processing path
         ProcessingPath path = path_selector.select_path(stream_info);
-        
+
         // Initialize appropriate decoder
         switch (path) {
             case ProcessingPath::VULKAN_HARDWARE:
@@ -407,15 +407,15 @@ public:
             case ProcessingPath::FFMPEG_SOFTWARE:
                 return initialize_software_decoder(stream_info);
         }
-        
+
         return ERR_CANT_CREATE;
     }
-    
+
     Error decode_frame(RID& output_texture) {
         AVPacket packet;
         Error err = demuxer.read_packet(&packet);
         if (err != OK) return err;
-        
+
         switch (current_path) {
             case ProcessingPath::VULKAN_HARDWARE:
                 return vulkan_decoder.decode_frame(&packet, output_texture);
@@ -425,12 +425,12 @@ public:
                 return ERR_UNAVAILABLE;
         }
     }
-    
+
 private:
     FFmpegDemuxer demuxer;
     VideoPathSelector path_selector;
     ProcessingPath current_path;
-    
+
     VulkanVideoDecoder vulkan_decoder;
     FFmpegSoftwareDecoder software_decoder;
 };
@@ -445,44 +445,44 @@ public:
         // Initialize FFmpeg muxer
         avformat_alloc_output_context2(&format_ctx, nullptr, nullptr, output_path.utf8().get_data());
         if (!format_ctx) return ERR_CANT_CREATE;
-        
+
         // Add video stream
         video_stream = avformat_new_stream(format_ctx, nullptr);
         if (!video_stream) return ERR_CANT_CREATE;
-        
+
         // Configure codec parameters
         video_stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
         video_stream->codecpar->codec_id = get_codec_id(settings.codec);
         video_stream->codecpar->width = settings.width;
         video_stream->codecpar->height = settings.height;
         video_stream->codecpar->format = get_pixel_format(settings.format);
-        
+
         // Initialize Vulkan encoder
         return vulkan_encoder.initialize(settings);
     }
-    
+
     Error encode_frame(RID source_texture) {
         // Convert texture to YCbCr if needed
         YCbCrFrame ycbcr_frame;
         Error err = convert_texture_to_ycbcr(source_texture, ycbcr_frame);
         if (err != OK) return err;
-        
+
         // Encode with Vulkan
         BitstreamBuffer encoded_data;
         err = vulkan_encoder.encode_frame(ycbcr_frame, encoded_data);
         if (err != OK) return err;
-        
+
         // Package into AVPacket
         AVPacket packet;
         av_init_packet(&packet);
         packet.data = encoded_data.data;
         packet.size = encoded_data.size;
         packet.stream_index = video_stream->index;
-        
+
         // Write to container
         return av_interleaved_write_frame(format_ctx, &packet) >= 0 ? OK : ERR_FILE_CANT_WRITE;
     }
-    
+
 private:
     AVFormatContext* format_ctx = nullptr;
     AVStream* video_stream = nullptr;
@@ -507,7 +507,7 @@ Error try_hardware_decode_with_fallback(const VideoStreamInfo& info, RID& output
     if (err == OK) {
         return OK;
     }
-    
+
     // Log hardware failure and try software
     print_line("Hardware decode failed, falling back to software: " + error_string(err));
     return try_software_decode(info, output);
@@ -531,7 +531,7 @@ public:
                 break;
         }
     }
-    
+
 private:
     void configure_vulkan_pools() {
         // Pre-allocate GPU buffers for zero-copy operations

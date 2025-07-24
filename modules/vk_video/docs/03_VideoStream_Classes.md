@@ -895,10 +895,10 @@ Error VideoStreamPlaybackH264::_decode_next_frame() {
     decode_info.src_buffer_offset = 0;
     decode_info.src_buffer_range = frame_data.size;
     decode_info.dst_picture_resource = resource_manager->get_picture_resource(output_slot);
-    
+
     // Set reference frames for H.264
     decode_info.reference_slots = reference_frames;
-    
+
     rd->video_cmd_decode_frame(cmd_buffer, decode_info);
 
     rd->video_cmd_end_coding(cmd_buffer);
@@ -1057,7 +1057,7 @@ Error VideoStreamPlaybackH265::_initialize_hardware_decode() {
     // Create DPB image array
     VideoImageCreateInfo dpb_info;
     dpb_info.image_type = VK_IMAGE_TYPE_2D;
-    dpb_info.format = (sps.bit_depth_luma_minus8 == 0) ? 
+    dpb_info.format = (sps.bit_depth_luma_minus8 == 0) ?
                       VK_FORMAT_G8_B8R8_2PLANE_420_UNORM :  // 8-bit
                       VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16; // 10-bit
     dpb_info.extent = {session_info.max_coded_extent_width, session_info.max_coded_extent_height, 1};
@@ -1112,10 +1112,10 @@ Error VideoStreamPlaybackH265::_decode_next_frame() {
     decode_info.src_buffer_offset = 0;
     decode_info.src_buffer_range = frame_data.size;
     decode_info.dst_picture_resource = resource_manager->get_picture_resource(output_slot);
-    
+
     // Set reference frames for H.265
     decode_info.reference_slots = reference_frames;
-    
+
     rd->video_cmd_decode_frame(cmd_buffer, decode_info);
 
     rd->video_cmd_end_coding(cmd_buffer);
@@ -1185,9 +1185,9 @@ Ref<Resource> ResourceFormatLoaderVKVideo::load(const String &p_path, const Stri
                                                Error *r_error, bool p_use_sub_threads,
                                                float *r_progress, CacheMode p_cache_mode) {
     String extension = p_path.get_extension().to_lower();
-    
+
     // Determine codec from file extension and content
-    if (extension == "av1" || extension == "ivf" || 
+    if (extension == "av1" || extension == "ivf" ||
         (extension == "webm" && _is_av1_webm(p_path))) {
         Ref<VideoStreamAV1> stream = memnew(VideoStreamAV1);
         stream->set_file(p_path);
@@ -1222,7 +1222,7 @@ Ref<Resource> ResourceFormatLoaderVKVideo::load(const String &p_path, const Stri
             return stream;
         }
     }
-    
+
     if (r_error) *r_error = ERR_FILE_UNRECOGNIZED;
     return Ref<Resource>();
 }
@@ -1231,15 +1231,15 @@ void ResourceFormatLoaderVKVideo::get_recognized_extensions(List<String> *p_exte
     // AV1 formats
     p_extensions->push_back("av1");
     p_extensions->push_back("ivf");
-    
+
     // H.264 formats
     p_extensions->push_back("h264");
     p_extensions->push_back("264");
-    
+
     // H.265 formats
     p_extensions->push_back("h265");
     p_extensions->push_back("hevc");
-    
+
     // Container formats (codec detection required)
     p_extensions->push_back("mp4");
     p_extensions->push_back("mkv");
@@ -1253,7 +1253,7 @@ bool ResourceFormatLoaderVKVideo::handles_type(const String &p_type) const {
 
 String ResourceFormatLoaderVKVideo::get_resource_type(const String &p_path) const {
     String extension = p_path.get_extension().to_lower();
-    
+
     if (extension == "av1" || extension == "ivf" ||
         (extension == "webm" && _is_av1_webm(p_path))) {
         return "VideoStreamAV1";
@@ -1271,7 +1271,7 @@ String ResourceFormatLoaderVKVideo::get_resource_type(const String &p_path) cons
             return "VideoStreamH264";
         }
     }
-    
+
     return "";
 }
 

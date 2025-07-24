@@ -59,17 +59,17 @@ func alpha(rate: float, cutoff: float) -> float:
 func filter(value: float, delta: float) -> float:
     var rate: float = 1.0 / delta
     var dx: float = (value - x_filter.last_value) * rate
-    
+
     var edx: float = dx_filter.filter(dx, alpha(rate, d_cutoff))
     var cutoff: float = min_cutoff + beta * abs(edx)
     return x_filter.filter(value, alpha(rate, cutoff))
 
 class LowPassFilter:
     var last_value: float
-    
+
     func _init() -> void:
         last_value = 0
-    
+
     func filter(value: float, alpha: float) -> float:
         var result := alpha * value + (1 - alpha) * last_value
         last_value = result
@@ -85,20 +85,20 @@ class OneEuroFilter {
 private:
     struct LowPassFilter {
         double last_value = 0.0;
-        
+
         double filter(double value, double alpha) {
             double result = alpha * value + (1.0 - alpha) * last_value;
             last_value = result;
             return result;
         }
     };
-    
+
     double min_cutoff;
     double beta;
     double d_cutoff;
     LowPassFilter x_filter;
     LowPassFilter dx_filter;
-    
+
     double calculate_alpha(double rate, double cutoff) {
         double tau = 1.0 / (2.0 * Math_PI * cutoff);
         double te = 1.0 / rate;
@@ -106,19 +106,19 @@ private:
     }
 
 public:
-    OneEuroFilter(double p_min_cutoff, double p_beta) 
+    OneEuroFilter(double p_min_cutoff, double p_beta)
         : min_cutoff(p_min_cutoff), beta(p_beta), d_cutoff(p_min_cutoff) {}
-    
+
     double filter(double value, double delta_time) {
         double rate = 1.0 / delta_time;
         double dx = (value - x_filter.last_value) * rate;
-        
+
         double edx = dx_filter.filter(dx, calculate_alpha(rate, d_cutoff));
         double cutoff = min_cutoff + beta * Math::abs(edx);
-        
+
         return x_filter.filter(value, calculate_alpha(rate, cutoff));
     }
-    
+
     void reset() {
         x_filter.last_value = 0.0;
         dx_filter.last_value = 0.0;
@@ -268,11 +268,11 @@ func test_filter_stability():
     var filter = OneEuroFilter.new({"cutoff": 1.0, "beta": 5.0})
     var constant_input = 10.0
     var delta = 1.0/60.0  # 60 FPS
-    
+
     # After sufficient iterations, output should converge to input
     for i in range(300):  # 5 seconds at 60 FPS
         var output = filter.filter(constant_input, delta)
-    
+
     assert(abs(output - constant_input) < 0.01)
 ```
 
@@ -281,10 +281,10 @@ func test_filter_stability():
 func benchmark_filter_performance():
     var filter = OneEuroFilter.new({"cutoff": 0.1, "beta": 5.0})
     var start_time = Time.get_ticks_usec()
-    
+
     for i in range(10000):
         filter.filter(randf() * 100.0, 1.0/60.0)
-    
+
     var end_time = Time.get_ticks_usec()
     print("10k operations took: ", (end_time - start_time), " microseconds")
 ```
