@@ -116,8 +116,6 @@ This phase has **basic infrastructure** implemented but requires completion of c
 
 **Implementation Files:**
 
--   `drivers/vulkan/vulkan_video_context.h` - Video session management interface
--   `drivers/vulkan/vulkan_video_context.cpp` - Partial implementation with placeholders
 -   `modules/vk_video/rendering_device_video_extensions.h` - High-level API interface
 
 ---

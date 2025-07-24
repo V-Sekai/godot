@@ -35,10 +35,6 @@
 #include "video_stream_av1.h"
 #include "video_stream_mkv.h"
 
-#ifdef VULKAN_ENABLED
-#include "drivers/vulkan/vulkan_video_context.h"
-#endif
-
 static Ref<ResourceFormatLoaderMKV> resource_loader_mkv;
 static Ref<ResourceFormatLoaderAV1> resource_loader_av1;
 
