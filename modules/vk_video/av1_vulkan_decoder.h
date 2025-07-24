@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  av1_vulkan_decoder.h                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,52 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#pragma once
 
-#include "core/object/class_db.h"
-#include "sync/one_euro_filter.h"
-#include "video_stream_mkv.h"
+#include "core/object/ref_counted.h"
+#include "scene/resources/image_texture.h"
+#include "servers/rendering/rendering_device.h"
 
-static Ref<ResourceFormatLoaderMKV> resource_loader_mkv;
+class WebMFrame;
 
-void initialize_vk_video_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
+class AV1VulkanDecoder : public RefCounted {
+	GDCLASS(AV1VulkanDecoder, RefCounted);
 
-	resource_loader_mkv.instantiate();
-	ResourceLoader::add_resource_format_loader(resource_loader_mkv, true);
+private:
+	RenderingDevice *rendering_device = nullptr;
+	bool hardware_support_available = false;
+	bool initialized = false;
+	
+	// Video session and parameters
+	RID video_session;
+	RID video_session_parameters;
+	
+	// Frame dimensions
+	int frame_width = 0;
+	int frame_height = 0;
+	
+	// Decoded frame texture
+	Ref<ImageTexture> current_frame_texture;
 
-	GDREGISTER_CLASS(OneEuroFilter);
-	GDREGISTER_CLASS(VideoStreamMKV);
-}
+public:
+	AV1VulkanDecoder();
+	virtual ~AV1VulkanDecoder();
 
-void uninitialize_vk_video_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
+	// Initialization and capability detection
+	bool initialize(int width, int height);
+	bool is_hardware_supported() const { return hardware_support_available; }
+	bool is_initialized() const { return initialized; }
+	
+	// Frame decoding
+	bool decode_frame(const WebMFrame &frame);
+	Ref<Texture2D> get_current_frame() const;
+	
+	// Cleanup
+	void cleanup();
 
-	ResourceLoader::remove_resource_format_loader(resource_loader_mkv);
-	resource_loader_mkv.unref();
-}
+private:
+	bool check_hardware_support();
+	bool create_video_session();
+	bool create_session_parameters();
+	Ref<ImageTexture> create_placeholder_texture();
+};

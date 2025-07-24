@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  one_euro_filter.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,31 +28,49 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#pragma once
 
-#include "core/object/class_db.h"
-#include "sync/one_euro_filter.h"
-#include "video_stream_mkv.h"
+#include "core/math/math_funcs.h"
+#include "core/object/ref_counted.h"
 
-static Ref<ResourceFormatLoaderMKV> resource_loader_mkv;
+class OneEuroFilter : public RefCounted {
+	GDCLASS(OneEuroFilter, RefCounted);
 
-void initialize_vk_video_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
+private:
+	struct LowPassFilter {
+		double last_value = 0.0;
+
+		double filter(double value, double alpha) {
+			double result = alpha * value + (1.0 - alpha) * last_value;
+			last_value = result;
+			return result;
+		}
+
+		void reset() { last_value = 0.0; }
+	};
+
+	double min_cutoff;
+	double beta;
+	double d_cutoff;
+	LowPassFilter x_filter;
+	LowPassFilter dx_filter;
+
+	double calculate_alpha(double rate, double cutoff) const {
+		double tau = 1.0 / (2.0 * Math::PI * cutoff);
+		double te = 1.0 / rate;
+		return 1.0 / (1.0 + tau / te);
 	}
 
-	resource_loader_mkv.instantiate();
-	ResourceLoader::add_resource_format_loader(resource_loader_mkv, true);
+protected:
+	static void _bind_methods();
 
-	GDREGISTER_CLASS(OneEuroFilter);
-	GDREGISTER_CLASS(VideoStreamMKV);
-}
+public:
+	OneEuroFilter(double p_min_cutoff = 0.1, double p_beta = 5.0);
 
-void uninitialize_vk_video_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
+	double filter(double value, double delta_time);
+	void reset();
+	void update_parameters(double p_min_cutoff, double p_beta);
 
-	ResourceLoader::remove_resource_format_loader(resource_loader_mkv);
-	resource_loader_mkv.unref();
-}
+	double get_min_cutoff() const { return min_cutoff; }
+	double get_beta() const { return beta; }
+};

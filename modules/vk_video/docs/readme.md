@@ -6,11 +6,14 @@
 
 -   ✅ Comprehensive documentation and architectural planning
 -   ✅ Reference implementations (vk_video_samples thirdparty)
--   ❌ **NO ACTUAL GODOT IMPLEMENTATION CODE**
--   ❌ No build system integration (SCsub, config.py, register_types.cpp)
--   ❌ No VideoStreamAV1 or VideoStreamPlaybackAV1 classes
+-   ✅ **WORKING VideoStreamMKV implementation**
+-   ✅ Build system integration (SCsub, config.py, register_types.cpp)
+-   ✅ VideoStreamMKV and VideoStreamPlaybackMKV classes
+-   ✅ MKV/WebM container parsing (via embedded libsimplewebm)
+-   ✅ Opus audio decoding (via embedded libopus)
+-   ❌ **Vulkan Video AV1 decoding** (currently uses placeholder textures)
 
-**The module currently exists as a planning and documentation repository only.**
+**The module provides working MKV container + Opus audio playback, but needs Vulkan Video integration for actual AV1 video decoding.**
 
 ## Design Limitation: AV1-in-MKV Only
 
@@ -81,30 +84,33 @@ The design calls for tight integration between vk_video and mkv modules:
 
 ## Implementation Roadmap
 
-### Phase 1: Core Infrastructure (Not Started)
+### Phase 1: Core Infrastructure (✅ COMPLETED)
 
--   [ ] Create basic module structure (SCsub, config.py, register_types.cpp)
--   [ ] Extend RenderingDevice API for Vulkan Video operations
--   [ ] Implement hardware capability detection
+-   [x] Create basic module structure (SCsub, config.py, register_types.cpp)
+-   [x] VideoStreamMKV and VideoStreamPlaybackMKV classes
+-   [x] MKV/WebM container parsing integration
+-   [x] Opus audio decoding integration
+-   [ ] **REMAINING**: Vulkan Video API integration for AV1 decoding
 
-### Phase 2: Basic AV1 Decoding (Not Started)
+### Phase 2: Vulkan Video AV1 Decoding (🚧 IN PROGRESS)
 
--   [ ] Create VideoStreamAV1 and VideoStreamPlaybackAV1 classes
--   [ ] Integrate with modules/mkv for container parsing
--   [ ] Implement basic decode pipeline
+-   [x] Basic VideoStreamMKV framework (placeholder textures)
+-   [ ] **NEXT**: Hardware capability detection for AV1 decode support
+-   [ ] **NEXT**: VkVideoSession creation for AV1 decoding
+-   [ ] **NEXT**: AV1 bitstream parsing and GPU submission
+-   [ ] **NEXT**: Replace placeholder textures with decoded frames
 
 ### Phase 3: Advanced Features (Not Started)
 
 -   [ ] Multi-buffered decode pipeline
--   [ ] Audio-video synchronization
--   [ ] Seeking support
--   [ ] Error handling and fallbacks
+-   [ ] Enhanced audio-video synchronization
+-   [ ] Optimized seeking support
+-   [ ] Comprehensive error handling and fallbacks
 
 ### Phase 4: Encoding Support (Not Started)
 
 -   [ ] AV1 encoding pipeline
 -   [ ] Movie Maker integration
--   [ ] Real-time capture capabilities
 
 ## Comparison with Other Modules
 
@@ -112,9 +118,9 @@ The design calls for tight integration between vk_video and mkv modules:
 | ------------ | --------- | ----------- | ------------------- | ----------------------- |
 | **theora**   | OGG       | Theora      | Vorbis              | ✅ Complete (CPU-based) |
 | **mkv**      | MKV/WebM  | None        | Opus/Uncompressed   | ✅ Audio only           |
-| **vk_video** | MKV/WebM  | AV1         | Opus/Uncompressed\* | ❌ **Not implemented**  |
+| **vk_video** | MKV/WebM  | AV1*        | Opus                | 🚧 **Partial** (Audio + Container working, AV1 placeholder) |
 
-\*Audio handled by mkv module
+\*AV1 decoding currently shows placeholder textures - Vulkan Video integration needed
 
 ## Future Considerations
 
@@ -144,12 +150,15 @@ The vk_video module will require:
 
 ## Development Status
 
-**Current Priority**: The vk_video module requires complete implementation from scratch. The existing documentation provides excellent architectural guidance, but no functional code exists.
+**Current Priority**: The vk_video module has a solid foundation with working MKV container parsing and Opus audio decoding. The remaining work is implementing Vulkan Video API integration for AV1 hardware decoding.
 
 **Next Steps**:
 
-1. Create basic module infrastructure
-2. Implement RenderingDevice extensions
-3. Begin basic AV1 decode pipeline development
+1. **Add AV1 hardware detection** - Check for VK_KHR_video_decode_av1 support
+2. **Implement Vulkan Video context** - Create VkVideoSession for AV1 decoding  
+3. **Add AV1 bitstream parsing** - Extract decode parameters from MKV frames
+4. **Replace placeholder textures** - Connect decoded GPU frames to Godot textures
 
-**Timeline**: Implementation is a significant undertaking requiring expertise in Vulkan Video API, AV1 codec specifications, and Godot engine internals.
+**Current State**: The module provides a working foundation for MKV+Opus playback with placeholder video. Adding Vulkan Video integration will complete the AV1 hardware decoding functionality.
+
+**Timeline**: With the existing foundation, implementing Vulkan Video AV1 decoding is a focused effort requiring expertise in Vulkan Video API and AV1 codec specifications.

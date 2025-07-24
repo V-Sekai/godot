@@ -58,7 +58,7 @@ private:
     LowPassFilter dx_filter;
 
     double calculate_alpha(double rate, double cutoff) const {
-        double tau = 1.0 / (2.0 * Math_PI * cutoff);
+        double tau = 1.0 / (2.0 * Math::PI * cutoff);
         double te = 1.0 / rate;
         return 1.0 / (1.0 + tau / te);
     }
