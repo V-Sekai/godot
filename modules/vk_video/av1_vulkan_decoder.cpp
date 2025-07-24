@@ -34,15 +34,13 @@
 #include "core/os/os.h"
 #include "servers/rendering_server.h"
 #include "rendering_device_video_extensions.h"
-#include "vulkan_video_session.h"
-#include "vulkan_video_memory.h"
-#include "vulkan_ycbcr_sampler.h"
 
 // libsimplewebm
 #include <WebMDemuxer.hpp>
 
 #ifdef VULKAN_ENABLED
 #include "drivers/vulkan/rendering_device_driver_vulkan.h"
+#include "drivers/vulkan/vulkan_video_decoder.h"
 #endif
 
 AV1VulkanDecoder::AV1VulkanDecoder() {

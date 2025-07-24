@@ -32,36 +32,12 @@
 
 #ifdef VULKAN_ENABLED
 
-#include "core/object/ref_counted.h"
+#include "drivers/vulkan/godot_vulkan.h"
 #include "core/templates/hash_map.h"
 #include "core/templates/vector.h"
-#include "drivers/vulkan/rendering_device_driver_vulkan.h"
-#include "rendering_device_video_extensions.h"
+#include "servers/rendering/rendering_device.h"
 
-// Vulkan Video extension function pointers
-struct VulkanVideoFunctions {
-	// Core video functions
-	PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR vkGetPhysicalDeviceVideoCapabilitiesKHR = nullptr;
-	PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR vkGetPhysicalDeviceVideoFormatPropertiesKHR = nullptr;
-	PFN_vkCreateVideoSessionKHR vkCreateVideoSessionKHR = nullptr;
-	PFN_vkDestroyVideoSessionKHR vkDestroyVideoSessionKHR = nullptr;
-	PFN_vkCreateVideoSessionParametersKHR vkCreateVideoSessionParametersKHR = nullptr;
-	PFN_vkDestroyVideoSessionParametersKHR vkDestroyVideoSessionParametersKHR = nullptr;
-	PFN_vkUpdateVideoSessionParametersKHR vkUpdateVideoSessionParametersKHR = nullptr;
-	PFN_vkGetVideoSessionMemoryRequirementsKHR vkGetVideoSessionMemoryRequirementsKHR = nullptr;
-	PFN_vkBindVideoSessionMemoryKHR vkBindVideoSessionMemoryKHR = nullptr;
-
-	// Video decode functions
-	PFN_vkCmdBeginVideoCodingKHR vkCmdBeginVideoCodingKHR = nullptr;
-	PFN_vkCmdEndVideoCodingKHR vkCmdEndVideoCodingKHR = nullptr;
-	PFN_vkCmdControlVideoCodingKHR vkCmdControlVideoCodingKHR = nullptr;
-	PFN_vkCmdDecodeVideoKHR vkCmdDecodeVideoKHR = nullptr;
-
-	// Video encode functions (for future use)
-	PFN_vkCmdEncodeVideoKHR vkCmdEncodeVideoKHR = nullptr;
-
-	bool is_loaded = false;
-};
+class RenderingDeviceDriverVulkan;
 
 // Hardware capability information
 struct VulkanVideoHardwareInfo {
@@ -94,8 +70,7 @@ struct VulkanVideoSession {
 	VkVideoSessionKHR session = VK_NULL_HANDLE;
 	VkVideoSessionParametersKHR parameters = VK_NULL_HANDLE;
 	VkDeviceMemory memory = VK_NULL_HANDLE;
-	VideoCodecProfile codec_profile = VIDEO_CODEC_PROFILE_AV1_MAIN;
-	VideoOperationType operation_type = VIDEO_OPERATION_DECODE;
+	VkVideoCodecOperationFlagBitsKHR codec_operation = VK_VIDEO_CODEC_OPERATION_NONE_KHR;
 	uint32_t max_width = 0;
 	uint32_t max_height = 0;
 	uint32_t max_dpb_slots = 0;
@@ -123,89 +98,80 @@ struct VulkanVideoBuffer {
 	bool is_valid = false;
 };
 
-class VulkanVideoContext : public RefCounted {
-	GDCLASS(VulkanVideoContext, RefCounted);
-
+class VulkanVideoContext {
 private:
-	RenderingContextDriverVulkan *context_driver = nullptr;
+	RenderingDeviceDriverVulkan *driver = nullptr;
 	VkDevice device = VK_NULL_HANDLE;
 	VkPhysicalDevice physical_device = VK_NULL_HANDLE;
 	VkQueue video_queue = VK_NULL_HANDLE;
 	VkCommandPool video_command_pool = VK_NULL_HANDLE;
 
-	VulkanVideoFunctions video_functions;
 	VulkanVideoHardwareInfo hardware_info;
 
 	// Resource tracking
-	HashMap<RID, VulkanVideoSession> video_sessions;
-	HashMap<RID, VulkanVideoImage> video_images;
-	HashMap<RID, VulkanVideoBuffer> video_buffers;
+	HashMap<uint32_t, VulkanVideoSession> video_sessions;
+	HashMap<uint32_t, VulkanVideoImage> video_images;
+	HashMap<uint32_t, VulkanVideoBuffer> video_buffers;
+
+	uint32_t next_session_id = 1;
+	uint32_t next_image_id = 1;
+	uint32_t next_buffer_id = 1;
 
 	bool initialized = false;
-
-protected:
-	static void _bind_methods();
 
 public:
 	VulkanVideoContext();
 	virtual ~VulkanVideoContext();
 
 	// Initialization
-	bool initialize(RenderingContextDriverVulkan *p_context_driver);
+	bool initialize(RenderingDeviceDriverVulkan *p_driver);
 	void cleanup();
 	bool is_initialized() const { return initialized; }
-
-	// Extension loading
-	bool load_video_extensions();
-	bool check_video_support();
 
 	// Hardware detection
 	bool detect_video_hardware();
 	VulkanVideoHardwareInfo get_hardware_info() const { return hardware_info; }
 
 	// Capability queries
-	bool is_codec_supported(VideoCodecProfile p_profile, VideoOperationType p_operation) const;
-	Dictionary get_video_capabilities(VideoCodecProfile p_profile, VideoOperationType p_operation) const;
-	Array get_supported_profiles() const;
+	bool is_codec_supported(VkVideoCodecOperationFlagBitsKHR p_codec_operation) const;
+	bool get_video_capabilities(VkVideoCodecOperationFlagBitsKHR p_codec_operation, VkVideoCapabilitiesKHR &r_capabilities) const;
+	Vector<VkVideoCodecOperationFlagBitsKHR> get_supported_codecs() const;
 
 	// Video session management
-	RID create_video_session(const Dictionary &p_create_info);
-	void destroy_video_session(RID p_session_rid);
-	bool is_video_session_valid(RID p_session_rid) const;
+	uint32_t create_video_session(VkVideoCodecOperationFlagBitsKHR p_codec_operation, uint32_t p_width, uint32_t p_height, uint32_t p_dpb_slots = 8);
+	void destroy_video_session(uint32_t p_session_id);
+	bool is_video_session_valid(uint32_t p_session_id) const;
 
-	RID create_video_session_parameters(const Dictionary &p_create_info);
-	void destroy_video_session_parameters(RID p_parameters_rid);
+	uint32_t create_video_session_parameters(uint32_t p_session_id);
+	void destroy_video_session_parameters(uint32_t p_session_id);
 
 	// Video resource creation
-	RID create_video_image(const Dictionary &p_create_info);
-	void destroy_video_image(RID p_image_rid);
+	uint32_t create_video_image(uint32_t p_session_id, VkFormat p_format, VkImageUsageFlags p_usage);
+	void destroy_video_image(uint32_t p_image_id);
 
-	RID create_video_buffer(const Dictionary &p_create_info);
-	void destroy_video_buffer(RID p_buffer_rid);
+	uint32_t create_video_buffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage);
+	void destroy_video_buffer(uint32_t p_buffer_id);
 
 	// Video operations
-	bool begin_video_coding(VkCommandBuffer p_cmd_buffer, RID p_session_rid);
+	bool begin_video_coding(VkCommandBuffer p_cmd_buffer, uint32_t p_session_id);
 	bool end_video_coding(VkCommandBuffer p_cmd_buffer);
-	bool decode_video_frame(VkCommandBuffer p_cmd_buffer, const Dictionary &p_decode_info);
+	bool decode_video_frame(VkCommandBuffer p_cmd_buffer, uint32_t p_session_id, uint32_t p_bitstream_buffer_id, uint32_t p_output_image_id);
 
 	// Memory management
-	bool update_video_buffer(RID p_buffer_rid, uint64_t p_offset, const Vector<uint8_t> &p_data);
-	Vector<uint8_t> get_video_buffer_data(RID p_buffer_rid, uint64_t p_offset = 0, uint64_t p_size = 0);
+	bool update_video_buffer(uint32_t p_buffer_id, uint64_t p_offset, const Vector<uint8_t> &p_data);
+	Vector<uint8_t> get_video_buffer_data(uint32_t p_buffer_id, uint64_t p_offset = 0, uint64_t p_size = 0);
 
 	// Utility functions
-	VkFormat get_vulkan_format(RD::DataFormat p_format) const;
-	RD::DataFormat get_rd_format(VkFormat p_format) const;
-	VkVideoCodecOperationFlagBitsKHR get_vulkan_codec_operation(VideoCodecProfile p_profile, VideoOperationType p_operation) const;
+	VkFormat get_vulkan_format_from_rd(RD::DataFormat p_format) const;
+	RD::DataFormat get_rd_format_from_vulkan(VkFormat p_format) const;
 
 private:
 	// Internal helpers
-	bool _load_video_function_pointers();
 	bool _find_video_queue_families();
 	bool _create_video_command_pool();
 	bool _query_video_capabilities();
 
 	// Resource management helpers
-	RID _generate_video_rid();
 	bool _allocate_video_session_memory(VulkanVideoSession &p_session);
 	bool _allocate_video_image_memory(VulkanVideoImage &p_image);
 	bool _allocate_video_buffer_memory(VulkanVideoBuffer &p_buffer);

@@ -32,16 +32,22 @@
 
 #include "core/error/error_macros.h"
 #include "core/object/class_db.h"
-#include "vulkan_video_context.h"
+#include "drivers/vulkan/vulkan_video_context.h"
 
 RenderingDeviceVideoExtensions::RenderingDeviceVideoExtensions() {
 #ifdef VULKAN_ENABLED
-	video_context.instantiate();
+	video_context = memnew(VulkanVideoContext);
 #endif
 }
 
 RenderingDeviceVideoExtensions::~RenderingDeviceVideoExtensions() {
 	_cleanup_video_resources();
+#ifdef VULKAN_ENABLED
+	if (video_context) {
+		memdelete(video_context);
+		video_context = nullptr;
+	}
+#endif
 }
 
 void RenderingDeviceVideoExtensions::_bind_methods() {
@@ -90,7 +96,7 @@ void RenderingDeviceVideoExtensions::initialize(RenderingDevice *p_rendering_dev
 #ifdef VULKAN_ENABLED
 	// Try to get the Vulkan context driver
 	// This is a simplified approach - in a full implementation we'd need proper access
-	if (video_context.is_valid()) {
+	if (video_context) {
 		// For now, we'll mark video as not supported until we have proper device access
 		WARN_PRINT("Vulkan Video context initialization requires proper device access");
 	}
@@ -116,7 +122,7 @@ Dictionary RenderingDeviceVideoExtensions::get_video_capabilities(VideoCodecProf
 	}
 	
 #ifdef VULKAN_ENABLED
-	if (video_context.is_valid() && video_context->is_initialized()) {
+	if (video_context && video_context->is_initialized()) {
 		// TODO: Convert VideoCapabilities struct to Dictionary
 		// For now, return empty Dictionary until VulkanVideoContext is updated
 	}
@@ -147,8 +153,11 @@ Array RenderingDeviceVideoExtensions::get_supported_profiles() const {
 	Array profiles;
 	
 #ifdef VULKAN_ENABLED
-	if (video_context.is_valid()) {
-		profiles = video_context->get_supported_profiles();
+	if (video_context) {
+		Vector<VkVideoCodecOperationFlagBitsKHR> codecs = video_context->get_supported_codecs();
+		for (int i = 0; i < codecs.size(); i++) {
+			profiles.push_back((int)codecs[i]);
+		}
 	}
 #endif
 	
@@ -341,8 +350,9 @@ bool RenderingDeviceVideoExtensions::_check_video_support() const {
 	}
 	
 #ifdef VULKAN_ENABLED
-	if (video_context.is_valid() && video_context->is_initialized()) {
-		return video_context->check_video_support();
+	if (video_context && video_context->is_initialized()) {
+		VulkanVideoHardwareInfo hw_info = video_context->get_hardware_info();
+		return hw_info.video_queue_supported || hw_info.decode_queue_supported;
 	}
 	
 	// For testing purposes, enable basic video support when Vulkan is available

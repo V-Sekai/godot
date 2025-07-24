@@ -172,6 +172,9 @@ class RenderingDeviceDriverVulkan : public RenderingDeviceDriver {
 #endif
 	DeviceFunctions device_functions;
 
+	// Video decoder instance
+	class VulkanVideoDecoder *video_decoder = nullptr;
+
 	void _register_requested_device_extension(const CharString &p_extension_name, bool p_required);
 	Error _initialize_device_extensions();
 	Error _check_device_features();
@@ -705,6 +708,25 @@ public:
 	virtual const RenderingShaderContainerFormat &get_shader_container_format() const override final;
 
 	virtual bool is_composite_alpha_supported(CommandQueueID p_queue) const override final;
+
+	// Video access methods for vk_video module
+	VkDevice get_vk_device() const { return vk_device; }
+	VkPhysicalDevice get_vk_physical_device() const { return physical_device; }
+	const DeviceFunctions &get_device_functions() const { return device_functions; }
+	uint32_t get_video_decode_queue_family() const { return video_decode_queue_family; }
+	VkQueue get_video_decode_queue() const { return video_decode_queue; }
+
+	// Video decoder API
+	bool video_decoder_is_supported();
+	uint32_t video_decoder_create_session(uint32_t p_codec, uint32_t p_width, uint32_t p_height, uint32_t p_dpb_slots = 8);
+	void video_decoder_destroy_session(uint32_t p_session_id);
+	uint32_t video_decoder_create_output_image(uint32_t p_session_id, uint32_t p_format);
+	uint32_t video_decoder_create_bitstream_buffer(uint64_t p_size);
+	bool video_decoder_update_buffer(uint32_t p_buffer_id, const Vector<uint8_t> &p_data);
+	bool video_decoder_decode_frame(uint32_t p_session_id, uint32_t p_buffer_id, uint32_t p_output_image_id);
+	void video_decoder_destroy_image(uint32_t p_image_id);
+	void video_decoder_destroy_buffer(uint32_t p_buffer_id);
+	uint64_t video_decoder_get_image_handle(uint32_t p_image_id);
 
 private:
 	/*********************/

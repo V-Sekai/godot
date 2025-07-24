@@ -36,7 +36,7 @@
 #include "rendering_device_video_extensions.h"
 
 #ifdef VULKAN_ENABLED
-#include "vulkan_video_context.h"
+#include "drivers/vulkan/vulkan_video_context.h"
 #endif
 
 static Ref<ResourceFormatLoaderMKV> resource_loader_mkv;
@@ -59,9 +59,6 @@ void initialize_vk_video_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(VideoStreamAV1);
 	GDREGISTER_CLASS(VideoStreamPlaybackAV1);
 	GDREGISTER_CLASS(RenderingDeviceVideoExtensions);
-#ifdef VULKAN_ENABLED
-	GDREGISTER_CLASS(VulkanVideoContext);
-#endif
 
 }
 

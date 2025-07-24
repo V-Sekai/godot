@@ -82,7 +82,7 @@ private:
 	RenderingDevice *rd = nullptr;
 	
 #ifdef VULKAN_ENABLED
-	Ref<VulkanVideoContext> video_context;
+	VulkanVideoContext *video_context = nullptr;
 #endif
 
 protected:

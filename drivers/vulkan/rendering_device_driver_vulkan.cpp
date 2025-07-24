@@ -33,6 +33,7 @@
 #include "core/config/project_settings.h"
 #include "core/io/marshalls.h"
 #include "vulkan_hooks.h"
+#include "vulkan_video_decoder.h"
 
 #if RENDERING_SHADER_CONTAINER_VULKAN_SMOLV
 #include "thirdparty/misc/smolv.h"
