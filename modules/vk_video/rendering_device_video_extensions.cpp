@@ -116,9 +116,14 @@ void RenderingDeviceVideoExtensions::initialize(RenderingDevice *p_rendering_dev
 			// Create YCbCr sampler
 			if (!ycbcr_sampler) {
 				ycbcr_sampler = memnew(VulkanYCbCrSampler);
-				// Note: VulkanYCbCrSampler initialization would need proper VkDevice access
-				// For now, we'll mark it as available for basic functionality
-				print_verbose("VulkanYCbCrSampler created successfully");
+				// Initialize with the Vulkan device from the driver
+				if (ycbcr_sampler->initialize(vulkan_driver->get_vk_device())) {
+					print_verbose("VulkanYCbCrSampler initialized successfully");
+				} else {
+					WARN_PRINT("Failed to initialize VulkanYCbCrSampler");
+					memdelete(ycbcr_sampler);
+					ycbcr_sampler = nullptr;
+				}
 			}
 			
 			print_verbose("Vulkan Video extensions initialized successfully");
