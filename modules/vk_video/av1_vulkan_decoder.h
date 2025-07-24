@@ -43,15 +43,15 @@ private:
 	RenderingDevice *rendering_device = nullptr;
 	bool hardware_support_available = false;
 	bool initialized = false;
-	
+
 	// Video session and parameters
 	RID video_session;
 	RID video_session_parameters;
-	
+
 	// Frame dimensions
 	int frame_width = 0;
 	int frame_height = 0;
-	
+
 	// Decoded frame texture
 	Ref<ImageTexture> current_frame_texture;
 
@@ -63,11 +63,11 @@ public:
 	bool initialize(int width, int height);
 	bool is_hardware_supported() const { return hardware_support_available; }
 	bool is_initialized() const { return initialized; }
-	
+
 	// Frame decoding
 	bool decode_frame(const WebMFrame &frame);
 	Ref<Texture2D> get_current_frame() const;
-	
+
 	// Cleanup
 	void cleanup();
 

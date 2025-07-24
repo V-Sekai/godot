@@ -1,7 +1,7 @@
 # VK_Video Module - Hardware-Accelerated AV1 Video Processing
 
 > **⚠️ CURRENT STATUS: DOCUMENTATION ONLY**
-> 
+>
 > This module currently contains **NO IMPLEMENTATION** - only comprehensive documentation and architectural planning for hardware-accelerated AV1 video processing via Vulkan Video API.
 
 ## Scope and Limitations
@@ -9,7 +9,7 @@
 **Intentionally Limited to:**
 - **Video Codec**: AV1 only
 - **Audio Codecs**: Opus and uncompressed audio only
-- **Container**: MKV/WebM only  
+- **Container**: MKV/WebM only
 - **Architecture**: Self-contained with embedded thirdparty dependencies
 
 **NOT Supported:**
@@ -95,7 +95,7 @@ The vk_video module is **completely self-contained** with all dependencies in `t
 - [ ] Extend RenderingDevice API for Vulkan Video
 - [ ] Hardware capability detection
 
-### Phase 2: Basic AV1 Decoding ❌ Not Started  
+### Phase 2: Basic AV1 Decoding ❌ Not Started
 - [ ] VideoStreamAV1 and VideoStreamPlaybackAV1 classes
 - [ ] Integration with embedded libsimplewebm and libopus
 - [ ] Basic decode pipeline implementation

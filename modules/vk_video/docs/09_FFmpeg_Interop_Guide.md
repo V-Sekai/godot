@@ -1,9 +1,9 @@
 # FFmpeg Interop Guide - DEPRECATED
 
 > **⚠️ DEPRECATED**: This document is **no longer applicable** to the vk_video module design.
-> 
+>
 > **Current Approach**: The vk_video module is **self-contained** with embedded thirdparty dependencies, **NOT FFmpeg**.
-> 
+>
 > **Scope**: AV1-in-MKV-with-Opus only, hardware-only decoding via Vulkan Video API.
 
 ## Why No FFmpeg?
@@ -133,12 +133,12 @@ public:
     Ref<VideoStreamPlayback> instantiate_playback() override {
         Ref<VideoStreamPlaybackAV1> playback;
         playback.instantiate();
-        
+
         // Pass embedded components
         playback->set_demuxer(&mkv_demuxer);
         playback->set_audio_decoder(&opus_decoder);
         playback->set_video_decoder(&vulkan_av1_decoder);
-        
+
         return playback;
     }
 

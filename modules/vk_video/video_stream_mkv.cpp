@@ -113,12 +113,12 @@ bool VideoStreamPlaybackMKV::open_file(const String &p_file) {
 		placeholder_data.resize(video_width * video_height * 4);
 		// Fill with black pixels
 		for (int i = 0; i < placeholder_data.size(); i += 4) {
-			placeholder_data.write[i] = 0;     // R
+			placeholder_data.write[i] = 0; // R
 			placeholder_data.write[i + 1] = 0; // G
 			placeholder_data.write[i + 2] = 0; // B
 			placeholder_data.write[i + 3] = 255; // A
 		}
-		
+
 		Ref<Image> img = Image::create_from_data(video_width, video_height, false, Image::FORMAT_RGBA8, placeholder_data);
 		placeholder_texture = memnew(ImageTexture);
 		placeholder_texture->set_image(img);
@@ -224,11 +224,11 @@ void VideoStreamPlaybackMKV::update(double p_delta) {
 	}
 
 	const bool hasAudio = (audio && mix_callback);
-	
+
 	// Only process audio frames - video frames are handled externally
 	if (hasAudio && !audio_buffer_full) {
 		WebMFrame video_frame; // Dummy frame for demuxer
-		
+
 		if (!webm->readFrame(&video_frame, audio_frame)) {
 			// Can't demux, EOS?
 			if (webm->isEOS()) {

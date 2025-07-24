@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  one_euro_filter.cpp                                                  */
+/*  one_euro_filter.cpp                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,8 +30,8 @@
 
 #include "one_euro_filter.h"
 
-OneEuroFilter::OneEuroFilter(double p_min_cutoff, double p_beta)
-		: min_cutoff(p_min_cutoff), beta(p_beta), d_cutoff(p_min_cutoff) {
+OneEuroFilter::OneEuroFilter(double p_min_cutoff, double p_beta) :
+		min_cutoff(p_min_cutoff), beta(p_beta), d_cutoff(p_min_cutoff) {
 }
 
 double OneEuroFilter::filter(double value, double delta_time) {
