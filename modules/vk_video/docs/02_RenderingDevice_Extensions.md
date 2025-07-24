@@ -1,7 +1,24 @@
 # RenderingDevice Extensions for Vulkan Video
 
 ## Brief Description
-Extension of Godot's RenderingDevice class to support Vulkan Video operations for hardware-accelerated video decode and encode.
+Extension of Godot's RenderingDevice class to support Vulkan Video operations for hardware-accelerated AV1 video decode and encode.
+
+## Implementation Status
+
+### 🎯 Target Implementation (Required)
+- **Generic Vulkan Video API**: Codec-agnostic RenderingDevice extensions
+- **AV1 Integration**: Primary target for VK_KHR_video_decode_av1 and VK_KHR_video_encode_av1
+- **Resource Management**: Video session, DPB, and memory management
+- **Command Recording**: Video decode/encode command buffer integration
+
+### ✅ Design Principles
+- **Backend Abstraction**: Maintains Godot's cross-platform rendering architecture
+- **Generic Framework**: Extensible design for future codec support
+- **AV1 Focus**: Initial implementation targets AV1 codec exclusively
+
+### ❌ Not Planned
+- **H.264/H.265 Support**: Removed from scope per requirements
+- **Software Fallback**: Hardware-only approach via Vulkan Video
 
 ## API Extensions
 

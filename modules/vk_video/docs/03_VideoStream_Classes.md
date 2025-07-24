@@ -1,7 +1,24 @@
 # VideoStream Classes Implementation
 
 ## Brief Description
-Implementation of VideoStreamAV1, VideoStreamH264, VideoStreamH265, and their corresponding playback classes following Godot's video streaming architecture with hardware acceleration support for AV1, H.264, and H.265 codecs.
+Implementation of VideoStreamMKV (current) and VideoStreamAV1 (target) classes following Godot's video streaming architecture, with current MKV container support and target hardware-accelerated AV1 decoding.
+
+## Implementation Status
+
+### ✅ Currently Implemented
+- **VideoStreamMKV**: MKV/WebM container parsing with Opus audio support
+- **VideoStreamPlaybackMKV**: Basic playback with audio-video synchronization using OneEuroFilter
+- **Resource format loader**: Handles .mkv and .webm file extensions
+
+### 🎯 Target Implementation (Required)
+- **VideoStreamAV1**: Hardware-accelerated AV1 video decoding using Vulkan Video
+- **VideoStreamPlaybackAV1**: Full AV1 decode pipeline with DPB management
+- **Advanced synchronization**: Enhanced audio-video sync with frame queuing
+
+### ❌ Not Planned
+- **VideoStreamH264**: Removed from scope per requirements
+- **VideoStreamH265**: Removed from scope per requirements
+- **Software fallback**: Hardware-only approach via Vulkan Video
 
 ## Class Documentation
 

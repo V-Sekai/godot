@@ -1,79 +1,110 @@
 # VK Video Module - Architecture Overview
 
 ## Brief Description
-High-level system architecture for Vulkan Video-based hardware acceleration supporting H.264, H.265, and AV1 codecs with both decode and encode capabilities, FFmpeg interop, and YCbCr processing in Godot Engine.
+Hardware-accelerated AV1 video decoding in Godot using Vulkan Video extensions, with current MKV container support and OneEuroFilter-based audio-video synchronization.
+
+## Implementation Status
+
+### ✅ Currently Implemented
+- **VideoStreamMKV**: MKV/WebM container parsing with Opus audio support
+- **OneEuroFilter**: Audio-video synchronization filtering for jitter reduction
+- **Basic Infrastructure**: Module registration and resource management foundation
+
+### 🎯 Target Implementation (Required)
+- **Vulkan Video API**: Hardware-accelerated video decoding using VK_KHR_video_* extensions
+- **AV1 Codec Support**: Full AV1 hardware decode/encode capabilities
+- **Advanced Resource Management**: DPB management, memory pools, command buffer optimization
+
+### ❌ Not Planned
+- **H.264 Support**: Removed from scope
+- **H.265 Support**: Removed from scope
 
 ## System Architecture
 
-### Core Components
+### Current Architecture (Phase 1)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Godot Engine Core                        │
 ├─────────────────────────────────────────────────────────────┤
 │  VideoStreamPlayer (Control)                               │
-│  ├── VideoStreamH264 (Resource)                            │
-│  ├── VideoStreamH265 (Resource)                            │
-│  ├── VideoStreamAV1 (Resource)                             │
-│  ├── VideoStreamPlaybackH264 (Playback State)              │
-│  ├── VideoStreamPlaybackH265 (Playback State)              │
-│  └── VideoStreamPlaybackAV1 (Playback State)               │
+│  └── VideoStreamMKV (Resource) ✅ IMPLEMENTED              │
+│      └── VideoStreamPlaybackMKV (Playback State)           │
 ├─────────────────────────────────────────────────────────────┤
-│  RenderingDevice Extensions                                 │
+│  MKV Container Support                                      │
+│  ├── libsimplewebm (MKV/WebM parsing)                      │
+│  ├── OpusVorbisDecoder (Audio decoding)                    │
+│  └── OneEuroFilter (Audio-video sync) ✅ IMPLEMENTED       │
+├─────────────────────────────────────────────────────────────┤
+│  Basic Infrastructure                                       │
+│  ├── Module registration                                    │
+│  ├── Resource format loader                                │
+│  └── Class binding system                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Target Architecture (Phase 2 - AV1 Focus)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Godot Engine Core                        │
+├─────────────────────────────────────────────────────────────┤
+│  VideoStreamPlayer (Control)                               │
+│  ├── VideoStreamMKV (Resource) ✅ CURRENT                  │
+│  └── VideoStreamAV1 (Resource) 🎯 TARGET                   │
+│      └── VideoStreamPlaybackAV1 (Playback State)           │
+├─────────────────────────────────────────────────────────────┤
+│  RenderingDevice Extensions (Target)                        │
 │  ├── video_session_create()                                │
 │  ├── video_cmd_decode_frame()                              │
 │  ├── video_cmd_encode_frame()                              │
 │  └── video_image_create()                                  │
 ├─────────────────────────────────────────────────────────────┤
-│  Vulkan Video Implementation                                │
+│  Vulkan Video Implementation (Target)                       │
 │  ├── VulkanVideoResourceManager                            │
 │  ├── VulkanFilterYuvCompute (YCbCr Processing)             │
-│  ├── H264BitstreamParser                                   │
-│  ├── H265BitstreamParser                                   │
 │  ├── AV1BitstreamParser                                    │
-│  └── AudioVideoSynchronizer (OneEuroFilter)                │
+│  └── AudioVideoSynchronizer (OneEuroFilter) ✅ CURRENT     │
 ├─────────────────────────────────────────────────────────────┤
-│  FFmpeg Interop Layer                                      │
-│  ├── Container Demuxing (.mp4, .mkv, .mov)                 │
-│  ├── YCbCr Format Conversion                               │
-│  ├── Software Fallback Processing                          │
-│  └── Alpha Channel Handling                                │
+│  Container Support                                          │
+│  ├── MKV/WebM (libsimplewebm) ✅ CURRENT                   │
+│  ├── MP4/MOV (Future AV1 containers)                       │
+│  └── IVF (AV1 elementary streams)                          │
 ├─────────────────────────────────────────────────────────────┤
-│  Vulkan Driver Layer                                       │
-│  ├── VK_KHR_video_decode_h264                              │
-│  ├── VK_KHR_video_decode_h265                              │
+│  Vulkan Driver Layer (Target)                              │
+│  ├── VK_KHR_video_queue                                    │
+│  ├── VK_KHR_video_decode_queue                             │
 │  ├── VK_KHR_video_decode_av1                               │
-│  ├── VK_KHR_video_encode_h264                              │
-│  ├── VK_KHR_video_encode_h265                              │
 │  └── VK_KHR_video_encode_av1                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Vulkan Video Encoding Support
+### Vulkan Video AV1 Encoding Support (Target Implementation)
 
-The vk_video module includes comprehensive encoding capabilities through integration with vk_video_samples:
+The vk_video module will include AV1 encoding capabilities:
 
-#### Supported Encoding Features
-- **Multi-codec support**: H.264, H.265 (HEVC), and AV1 encoding
+#### Target AV1 Encoding Features
+- **AV1-only support**: Focus on modern AV1 codec for optimal quality/compression
 - **Multi-threaded encoding**: Parallel encoding operations for performance
 - **Rate control**: CBR, VBR, and CQP rate control modes
 - **YCbCr input support**: Direct encoding from YCbCr content
-- **Bit depth support**: 8, 10, 12, and 16-bit encoding
-- **Hardware acceleration**: GPU-accelerated encoding with CPU fallback
+- **Bit depth support**: 8, 10, and 12-bit AV1 encoding
+- **Hardware acceleration**: GPU-accelerated AV1 encoding with software fallback
 
-#### Encoding Architecture
+#### Target AV1 Encoding Architecture
 ```cpp
-// Encoding pipeline components
-class VulkanVideoEncoder {
+// AV1-focused encoding pipeline
+class VulkanVideoAV1Encoder {
 public:
-    Error initialize(const EncoderSettings& settings);
-    Error encode_frame(const YCbCrFrame& input, BitstreamBuffer& output);
+    Error initialize(const AV1EncoderSettings& settings);
+    Error encode_frame(const YCbCrFrame& input, AV1BitstreamBuffer& output);
     Error finalize();
 
 private:
-    VkVideoSessionKHR encode_session;
+    VkVideoSessionKHR av1_encode_session;
     VulkanFilterYuvCompute yuv_processor;
-    RateController rate_controller;
+    AV1RateController rate_controller;
+    AV1SequenceHeader sequence_header;
 };
 ```
 
@@ -155,50 +186,63 @@ class VideoStreamPlayback {
 
 ### Class Hierarchy
 
+#### Current Implementation (Phase 1)
 ```cpp
-// Resource Classes
+// Currently Implemented Resource Classes
 VideoStream (base)
-├── VideoStreamH264
-│   ├── file_path: String
-│   ├── sps: H264SequenceParameterSet
-│   └── hardware_caps: VideoCapabilities
-├── VideoStreamH265
-│   ├── file_path: String
-│   ├── sps: H265SequenceParameterSet
-│   ├── pps: H265PictureParameterSet
-│   └── hardware_caps: VideoCapabilities
-└── VideoStreamAV1
+└── VideoStreamMKV ✅ IMPLEMENTED
+    ├── file_path: String
+    ├── mkv_metadata: Dictionary
+    ├── audio_decoder: Ref<OpusVorbisDecoder>
+    └── duration: double
+
+// Currently Implemented Playback Classes  
+VideoStreamPlayback (base)
+└── VideoStreamPlaybackMKV ✅ IMPLEMENTED
+    ├── mkv_parser: Ref<SimpleWebMDemuxer>
+    ├── audio_stream: Ref<AudioStreamGenerator>
+    ├── av_sync: Ref<OneEuroFilter>
+    └── current_frame_texture: RID (placeholder)
+
+// Currently Implemented Support Classes
+OneEuroFilter ✅ IMPLEMENTED
+├── min_cutoff: double
+├── beta: double
+├── dcutoff: double
+└── filter_state: FilterState
+```
+
+#### Target Implementation (Phase 2 - AV1)
+```cpp
+// Target AV1 Resource Classes
+VideoStream (base)
+├── VideoStreamMKV ✅ CURRENT
+└── VideoStreamAV1 🎯 TARGET
     ├── file_path: String
     ├── sequence_header: AV1SequenceHeader
-    └── hardware_caps: VideoCapabilities
+    ├── hardware_caps: AV1VideoCapabilities
+    └── container_format: ContainerFormat
 
-// Playback Classes
+// Target AV1 Playback Classes
 VideoStreamPlayback (base)
-├── VideoStreamPlaybackH264
-│   ├── video_session: RID
-│   ├── resource_manager: Ref<VulkanVideoResourceManager>
-│   ├── av_sync: Ref<AudioVideoSynchronizer>
-│   └── reference_frames: Vector<RID>
-├── VideoStreamPlaybackH265
-│   ├── video_session: RID
-│   ├── resource_manager: Ref<VulkanVideoResourceManager>
-│   ├── av_sync: Ref<AudioVideoSynchronizer>
-│   ├── reference_frames: Vector<RID>
-│   └── tiles_enabled: bool
-└── VideoStreamPlaybackAV1
+├── VideoStreamPlaybackMKV ✅ CURRENT
+└── VideoStreamPlaybackAV1 🎯 TARGET
     ├── video_session: RID
     ├── resource_manager: Ref<VulkanVideoResourceManager>
-    └── av_sync: Ref<AudioVideoSynchronizer>
+    ├── av_sync: Ref<AudioVideoSynchronizer>
+    ├── reference_frames: Vector<RID>
+    └── av1_decoder: Ref<AV1BitstreamParser>
 
-// Support Classes
-VulkanVideoResourceManager
+// Target Support Classes
+VulkanVideoResourceManager 🎯 TARGET
 ├── dpb_pool: VideoMemoryPool
 ├── bitstream_pool: BitstreamBufferPool
 └── command_manager: VideoCommandManager
 
-AudioVideoSynchronizer
-├── av_sync_filter: OneEuroFilter
-├── audio_clock_filter: OneEuroFilter
+AudioVideoSynchronizer 🎯 TARGET (extends current OneEuroFilter)
+├── av_sync_filter: OneEuroFilter ✅ CURRENT
+├── audio_clock_filter: OneEuroFilter ✅ CURRENT
+├── video_queue: FrameQueue
 └── sync_strategy: SyncStrategy
 ```
 
@@ -246,34 +290,49 @@ public:
 
 ### Data Flow
 
-#### Decode Pipeline
+#### Current MKV Pipeline (Phase 1)
 ```
 1. File Loading
-   VideoStreamAV1::load_file() → Parse headers → Cache sequence info
+   VideoStreamMKV::load_file() → Parse MKV headers → Extract metadata
 
 2. Playback Initialization
-   VideoStreamPlaybackAV1::play() → Create video session → Allocate DPB
+   VideoStreamPlaybackMKV::play() → Initialize demuxer → Setup audio decoder
+
+3. Frame Processing Loop
+   update() → Demux MKV packets → Decode Opus audio → Generate placeholder video
+
+4. Audio-Video Synchronization
+   OneEuroFilter → Smooth timing jitter → Maintain sync between audio/video
+```
+
+#### Target AV1 Pipeline (Phase 2)
+```
+1. File Loading
+   VideoStreamAV1::load_file() → Parse AV1 headers → Cache sequence info
+
+2. Playback Initialization
+   VideoStreamPlaybackAV1::play() → Create Vulkan video session → Allocate DPB
 
 3. Frame Decode Loop
-   update() → Parse bitstream → Submit decode → Present frame
+   update() → Parse AV1 bitstream → Submit hardware decode → Present frame
 
-4. Synchronization
-   AudioVideoSynchronizer → Match timestamps → Queue frames
+4. Advanced Synchronization
+   AudioVideoSynchronizer → OneEuroFilter-based timing → Queue management
 ```
 
-#### Encode Pipeline
+#### Target AV1 Encode Pipeline (Phase 2)
 ```
 1. Source Preparation
-   MovieMaker::capture_frame() → YCbCr conversion → Format validation
+   MovieMaker::capture_frame() → YCbCr conversion → AV1 format validation
 
 2. Encoding Initialization
-   VulkanVideoEncoder::initialize() → Create encode session → Allocate buffers
+   VulkanVideoAV1Encoder::initialize() → Create encode session → Allocate buffers
 
 3. Frame Encode Loop
-   encode_frame() → YCbCr processing → Hardware encode → Bitstream output
+   encode_frame() → YCbCr processing → AV1 hardware encode → Bitstream output
 
 4. Synchronization with OneEuroFilter
-   Conductor::process_audio_video_sync() → OneEuroFilter → Timing adjustment
+   AudioVideoSynchronizer → OneEuroFilter → Timing adjustment
 ```
 
 #### FFmpeg Interop Pipeline

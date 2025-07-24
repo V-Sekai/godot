@@ -1,12 +1,20 @@
 # In-Core Integration of Hardware-Accelerated AV1 Encoding and Decoding in Godot Engine via Vulkan Video
 
-> **⚠️ IMPLEMENTATION STATUS**: This document describes the planned architecture for AV1 video support. **PARTIAL IMPLEMENTATION** exists as of January 2025:
-> - ✅ **IMPLEMENTED**: VideoStreamMKV classes, MKV container parsing, Opus audio, OneEuroFilter synchronization
-> - ❌ **NOT IMPLEMENTED**: Vulkan Video API integration, actual AV1 hardware decoding
+> **🎯 TARGET IMPLEMENTATION**: This document describes the **required target architecture** for AV1 video support using Vulkan Video extensions.
 >
-> **🔒 SCOPE LIMITATION**: The vk_video module is intentionally limited to **AV1 codec within MKV/WebM containers only**. This restriction enables focused development and leverages the existing `modules/mkv` infrastructure.
+> **✅ CURRENT STATUS (January 2025)**:
+> - VideoStreamMKV: MKV/WebM container parsing with Opus audio support
+> - OneEuroFilter: Audio-video synchronization filtering
+> - Basic module infrastructure and registration
 >
-> **📋 See [Current State and Limitations](readme.md) for detailed implementation status and roadmap.**
+> **🎯 REQUIRED IMPLEMENTATION**:
+> - Vulkan Video API integration (VK_KHR_video_decode_av1, VK_KHR_video_encode_av1)
+> - AV1 hardware decoding/encoding pipeline
+> - Advanced resource management and DPB handling
+>
+> **❌ NOT PLANNED**: H.264, H.265 support removed from scope per requirements
+>
+> **🔒 SCOPE**: AV1 codec only, with MKV/WebM container support leveraging existing infrastructure.
 
 ## Section 1: Foundational Architectures
 
