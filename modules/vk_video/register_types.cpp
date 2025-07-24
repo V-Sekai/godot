@@ -32,18 +32,37 @@
 
 #include "core/object/class_db.h"
 #include "video_stream_mkv.h"
+#include "video_stream_av1.h"
+#include "rendering_device_video_extensions.h"
+
+#ifdef VULKAN_ENABLED
+#include "vulkan_video_context.h"
+#endif
 
 static Ref<ResourceFormatLoaderMKV> resource_loader_mkv;
+static Ref<ResourceFormatLoaderAV1> resource_loader_av1;
 
 void initialize_vk_video_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
 
+	// Register MKV support
 	resource_loader_mkv.instantiate();
 	ResourceLoader::add_resource_format_loader(resource_loader_mkv, true);
 
+	// Register AV1 support
+	resource_loader_av1.instantiate();
+	ResourceLoader::add_resource_format_loader(resource_loader_av1, true);
+
 	GDREGISTER_CLASS(VideoStreamMKV);
+	GDREGISTER_CLASS(VideoStreamAV1);
+	GDREGISTER_CLASS(VideoStreamPlaybackAV1);
+	GDREGISTER_CLASS(RenderingDeviceVideoExtensions);
+#ifdef VULKAN_ENABLED
+	GDREGISTER_CLASS(VulkanVideoContext);
+#endif
+
 }
 
 void uninitialize_vk_video_module(ModuleInitializationLevel p_level) {
@@ -53,4 +72,7 @@ void uninitialize_vk_video_module(ModuleInitializationLevel p_level) {
 
 	ResourceLoader::remove_resource_format_loader(resource_loader_mkv);
 	resource_loader_mkv.unref();
+	
+	ResourceLoader::remove_resource_format_loader(resource_loader_av1);
+	resource_loader_av1.unref();
 }
