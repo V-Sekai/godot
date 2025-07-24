@@ -1,0 +1,142 @@
+name: "vk_video_samples native build"
+run-name: Native build by ${{ github.actor }}
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+env:
+  REPO_NAME: vk_video_samples
+  BUILD_JOBS: 16
+
+jobs:
+  vk_video_samples-linux:
+    strategy:
+      matrix:
+        platform: [linux-x86_64, linux-x86_64-ffmpeg, linux-x86]
+    runs-on: ubuntu-22.04
+
+    env:
+      TERM: dumb
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set i386 environment variables
+        if: matrix.platform == 'linux-x86'
+        run: |
+          echo "CC=cc -m32" >> $GITHUB_ENV
+          echo "CXX=c++ -m32" >> $GITHUB_ENV
+          echo "ASM=as --32" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig/" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install --assume-yes --no-install-recommends valgrind python3-pip ninja-build
+          sudo apt install cmake
+          sudo apt install libx11-dev libwayland-dev
+          sudo apt install libavformat-dev
+          sudo apt install libxrandr-dev
+          sudo apt install libvulkan-dev
+
+      - name: Install FFmpeg
+        if: matrix.platform == 'linux-x86_64-ffmpeg'
+        run: |
+          sudo apt install --assume-yes libavformat-dev
+
+      - name: Install i386 dependencies
+        if: matrix.platform == 'linux-x86'
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt update
+          sudo apt install gcc-multilib g++-multilib libc6-dbg:i386
+          # hack to avoid that zlib x64 gets picked up
+          sudo apt remove --assume-yes zlib1g-dev
+          sudo apt install libx11-dev:i386 libwayland-dev:i386
+          sudo apt install libavformat-dev:i386
+          sudo apt install libxrandr-dev:i386
+          sudo apt install libvulkan-dev:i386
+
+      - name: Build debug
+        shell: bash
+        run: |
+          mkdir BUILD_DEBUG
+          cd BUILD_DEBUG
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          cmake --build . --parallel $BUILD_JOBS --config Debug
+
+      - name: Build release
+        shell: bash
+        run: |
+          mkdir BUILD_RELEASE
+          cd BUILD_RELEASE
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build . --parallel $BUILD_JOBS --config Release
+
+  vk_video_samples-win:
+    strategy:
+      matrix:
+        platform: [windows-x64]
+    runs-on: windows-latest
+
+    steps:
+      - name: Set up X86 MSVC environment
+        if: matrix.platform == 'windows-x86'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: "x86"
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          choco install --yes zip
+
+      - name: Install python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install FFmpeg
+        run: |
+          # Define the custom installation location
+          $currentDir = pwd
+          $finalDestination = "$currentDir\vk_video_decoder\bin\libs\ffmpeg\win64"
+          echo $finalDestination
+
+          # Create the directory
+          New-Item -ItemType Directory -Force -Path $finalDestination
+
+          # Download FFmpeg static build
+          Invoke-WebRequest -Uri https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip -OutFile ffmpeg.zip
+
+          # Extract FFmpeg to the tmp location
+          $tempExtractPath = "$currentDir\temp\extracted"
+
+          # Extract the entire archive to a temporary folder
+          Expand-Archive -Path ffmpeg.zip -DestinationPath $tempExtractPath -Force
+          Get-ChildItem -Path $tempExtractPath\ffmpeg-master-latest-win64-gpl-shared
+
+          # Get the contents of the first folder in the archive
+          Get-ChildItem -Path $tempExtractPath\ffmpeg-master-latest-win64-gpl-shared | Where-Object { $_.PSIsContainer } | Copy-Item -Destination $finalDestination -Force -Recurse
+          echo "$finalDestination\bin" | Out-File -Encoding ASCII -Append $env:GITHUB_PATH
+
+      - name: Build Debug
+        run: |
+          mkdir BUILD_DEBUG
+          cd BUILD_DEBUG
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          cmake --build . --parallel $BUILD_JOBS --config Debug
+
+      - name: Build Release
+        run: |
+            mkdir BUILD_RELEASE
+            cd BUILD_RELEASE
+            cmake -DCMAKE_BUILD_TYPE=Release ..
+            cmake --build . --parallel $BUILD_JOBS --config Release

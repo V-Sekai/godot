@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot_vk_video.git
+	branch = main
+	commit = 088893e7e6e6e2f4861dabdd1b46356dad517f52
+	parent = e0603aeda3ce0e15c5843f5202172a56f3ff5534
+	method = merge
+	cmdver = 0.4.9

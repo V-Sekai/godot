@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai-fire/vk_video_samples.git
+	branch = main
+	commit = 18b2661bcccf3dc13f7dbda89b7fb0b2e27b8c00
+	parent = 7c47d25c46603d6673f8a33fcd45af512ccad22c
+	method = merge
+	cmdver = 0.4.9
