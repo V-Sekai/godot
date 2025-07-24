@@ -57,9 +57,6 @@ jobs:
 
       - name: Extract pre-built AccessKit
         run: unzip -o accesskit-c-0.16.0/accesskit_c.zip
-        
-      - name: Install YASM
-        run: brew install yasm
 
       - name: Setup Vulkan SDK
         id: vulkan-sdk

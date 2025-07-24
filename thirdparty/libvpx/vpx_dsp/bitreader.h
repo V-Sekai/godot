@@ -8,10 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef VPX_DSP_BITREADER_H_
-#define VPX_DSP_BITREADER_H_
+#ifndef VPX_VPX_DSP_BITREADER_H_
+#define VPX_VPX_DSP_BITREADER_H_
 
 #include <stddef.h>
+#include <stdio.h>
 #include <limits.h>
 
 #include "./vpx_config.h"
@@ -19,6 +20,9 @@
 #include "vpx/vp8dx.h"
 #include "vpx/vpx_integer.h"
 #include "vpx_dsp/prob.h"
+#if CONFIG_BITSTREAM_DEBUG
+#include "vpx_util/vpx_debug_util.h"
+#endif  // CONFIG_BITSTREAM_DEBUG
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,11 +49,8 @@ typedef struct {
   uint8_t clear_buffer[sizeof(BD_VALUE) + 1];
 } vpx_reader;
 
-int vpx_reader_init(vpx_reader *r,
-                    const uint8_t *buffer,
-                    size_t size,
-                    vpx_decrypt_cb decrypt_cb,
-                    void *decrypt_state);
+int vpx_reader_init(vpx_reader *r, const uint8_t *buffer, size_t size,
+                    vpx_decrypt_cb decrypt_cb, void *decrypt_state);
 
 void vpx_reader_fill(vpx_reader *r);
 
@@ -81,8 +82,7 @@ static INLINE int vpx_read(vpx_reader *r, int prob) {
   unsigned int range;
   unsigned int split = (r->range * prob + (256 - prob)) >> CHAR_BIT;
 
-  if (r->count < 0)
-    vpx_reader_fill(r);
+  if (r->count < 0) vpx_reader_fill(r);
 
   value = r->value;
   count = r->count;
@@ -98,7 +98,7 @@ static INLINE int vpx_read(vpx_reader *r, int prob) {
   }
 
   {
-    register int shift = vpx_norm[range];
+    const unsigned char shift = vpx_norm[(unsigned char)range];
     range <<= shift;
     value <<= shift;
     count -= shift;
@@ -106,6 +106,31 @@ static INLINE int vpx_read(vpx_reader *r, int prob) {
   r->value = value;
   r->count = count;
   r->range = range;
+
+#if CONFIG_BITSTREAM_DEBUG
+  {
+    const int queue_r = bitstream_queue_get_read();
+    const int frame_idx = bitstream_queue_get_frame_read();
+    int ref_result, ref_prob;
+    bitstream_queue_pop(&ref_result, &ref_prob);
+    if ((int)bit != ref_result) {
+      fprintf(stderr,
+              "\n *** [bit] result error, frame_idx_r %d bit %d ref_result %d "
+              "queue_r %d\n",
+              frame_idx, bit, ref_result, queue_r);
+
+      assert(0);
+    }
+    if (prob != ref_prob) {
+      fprintf(stderr,
+              "\n *** [bit] prob error, frame_idx_r %d prob %d ref_prob %d "
+              "queue_r %d\n",
+              frame_idx, prob, ref_prob, queue_r);
+
+      assert(0);
+    }
+  }
+#endif
 
   return bit;
 }
@@ -117,8 +142,7 @@ static INLINE int vpx_read_bit(vpx_reader *r) {
 static INLINE int vpx_read_literal(vpx_reader *r, int bits) {
   int literal = 0, bit;
 
-  for (bit = bits - 1; bit >= 0; bit--)
-    literal |= vpx_read_bit(r) << bit;
+  for (bit = bits - 1; bit >= 0; bit--) literal |= vpx_read_bit(r) << bit;
 
   return literal;
 }
@@ -127,8 +151,7 @@ static INLINE int vpx_read_tree(vpx_reader *r, const vpx_tree_index *tree,
                                 const vpx_prob *probs) {
   vpx_tree_index i = 0;
 
-  while ((i = tree[i + vpx_read(r, probs[i >> 1])]) > 0)
-    continue;
+  while ((i = tree[i + vpx_read(r, probs[i >> 1])]) > 0) continue;
 
   return -i;
 }
@@ -137,4 +160,4 @@ static INLINE int vpx_read_tree(vpx_reader *r, const vpx_tree_index *tree,
 }  // extern "C"
 #endif
 
-#endif  // VPX_DSP_BITREADER_H_
+#endif  // VPX_VPX_DSP_BITREADER_H_

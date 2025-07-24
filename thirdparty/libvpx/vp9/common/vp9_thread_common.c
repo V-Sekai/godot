@@ -8,9 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+#include <assert.h>
+#include <limits.h>
 #include "./vpx_config.h"
 #include "vpx_dsp/vpx_dsp_common.h"
 #include "vpx_mem/vpx_mem.h"
+#include "vpx_util/vpx_pthread.h"
 #include "vp9/common/vp9_entropymode.h"
 #include "vp9/common/vp9_thread_common.h"
 #include "vp9/common/vp9_reconinter.h"
@@ -29,8 +32,7 @@ static INLINE void mutex_lock(pthread_mutex_t *const mutex) {
     }
   }
 
-  if (!locked)
-    pthread_mutex_lock(mutex);
+  if (!locked) pthread_mutex_lock(mutex);
 }
 #endif  // CONFIG_MULTITHREAD
 
@@ -39,11 +41,11 @@ static INLINE void sync_read(VP9LfSync *const lf_sync, int r, int c) {
   const int nsync = lf_sync->sync_range;
 
   if (r && !(c & (nsync - 1))) {
-    pthread_mutex_t *const mutex = &lf_sync->mutex_[r - 1];
+    pthread_mutex_t *const mutex = &lf_sync->mutex[r - 1];
     mutex_lock(mutex);
 
     while (c > lf_sync->cur_sb_col[r - 1] - nsync) {
-      pthread_cond_wait(&lf_sync->cond_[r - 1], mutex);
+      pthread_cond_wait(&lf_sync->cond[r - 1], mutex);
     }
     pthread_mutex_unlock(mutex);
   }
@@ -64,19 +66,18 @@ static INLINE void sync_write(VP9LfSync *const lf_sync, int r, int c,
 
   if (c < sb_cols - 1) {
     cur = c;
-    if (c % nsync)
-      sig = 0;
+    if (c % nsync) sig = 0;
   } else {
     cur = sb_cols + nsync;
   }
 
   if (sig) {
-    mutex_lock(&lf_sync->mutex_[r]);
+    mutex_lock(&lf_sync->mutex[r]);
 
     lf_sync->cur_sb_col[r] = cur;
 
-    pthread_cond_signal(&lf_sync->cond_[r]);
-    pthread_mutex_unlock(&lf_sync->mutex_[r]);
+    pthread_cond_signal(&lf_sync->cond[r]);
+    pthread_mutex_unlock(&lf_sync->mutex[r]);
   }
 #else
   (void)lf_sync;
@@ -87,14 +88,13 @@ static INLINE void sync_write(VP9LfSync *const lf_sync, int r, int c,
 }
 
 // Implement row loopfiltering for each thread.
-static INLINE
-void thread_loop_filter_rows(const YV12_BUFFER_CONFIG *const frame_buffer,
-                             VP9_COMMON *const cm,
-                             struct macroblockd_plane planes[MAX_MB_PLANE],
-                             int start, int stop, int y_only,
-                             VP9LfSync *const lf_sync) {
+static INLINE void thread_loop_filter_rows(
+    const YV12_BUFFER_CONFIG *const frame_buffer, VP9_COMMON *const cm,
+    struct macroblockd_plane planes[MAX_MB_PLANE], int start, int stop,
+    int y_only, VP9LfSync *const lf_sync) {
   const int num_planes = y_only ? 1 : MAX_MB_PLANE;
   const int sb_cols = mi_cols_aligned_to_sb(cm->mi_cols) >> MI_BLOCK_SIZE_LOG2;
+  const int num_active_workers = lf_sync->num_active_workers;
   int mi_row, mi_col;
   enum lf_path path;
   if (y_only)
@@ -106,8 +106,10 @@ void thread_loop_filter_rows(const YV12_BUFFER_CONFIG *const frame_buffer,
   else
     path = LF_PATH_SLOW;
 
+  assert(num_active_workers > 0);
+
   for (mi_row = start; mi_row < stop;
-       mi_row += lf_sync->num_workers * MI_BLOCK_SIZE) {
+       mi_row += num_active_workers * MI_BLOCK_SIZE) {
     MODE_INFO **const mi = cm->mi_grid_visible + mi_row * cm->mi_stride;
     LOOP_FILTER_MASK *lfm = get_lfm(&cm->lf, mi_row, 0);
 
@@ -144,16 +146,16 @@ void thread_loop_filter_rows(const YV12_BUFFER_CONFIG *const frame_buffer,
 }
 
 // Row-based multi-threaded loopfilter hook
-static int loop_filter_row_worker(VP9LfSync *const lf_sync,
-                                  LFWorkerData *const lf_data) {
+static int loop_filter_row_worker(void *arg1, void *arg2) {
+  VP9LfSync *const lf_sync = (VP9LfSync *)arg1;
+  LFWorkerData *const lf_data = (LFWorkerData *)arg2;
   thread_loop_filter_rows(lf_data->frame_buffer, lf_data->cm, lf_data->planes,
                           lf_data->start, lf_data->stop, lf_data->y_only,
                           lf_sync);
   return 1;
 }
 
-static void loop_filter_rows_mt(YV12_BUFFER_CONFIG *frame,
-                                VP9_COMMON *cm,
+static void loop_filter_rows_mt(YV12_BUFFER_CONFIG *frame, VP9_COMMON *cm,
                                 struct macroblockd_plane planes[MAX_MB_PLANE],
                                 int start, int stop, int y_only,
                                 VPxWorker *workers, int nworkers,
@@ -161,10 +163,12 @@ static void loop_filter_rows_mt(YV12_BUFFER_CONFIG *frame,
   const VPxWorkerInterface *const winterface = vpx_get_worker_interface();
   // Number of superblock rows and cols
   const int sb_rows = mi_cols_aligned_to_sb(cm->mi_rows) >> MI_BLOCK_SIZE_LOG2;
-  // Decoder may allocate more threads than number of tiles based on user's
-  // input.
-  const int tile_cols = 1 << cm->log2_tile_cols;
-  const int num_workers = VPXMIN(nworkers, tile_cols);
+  const int num_tile_cols = 1 << cm->log2_tile_cols;
+  // Limit the number of workers to prevent changes in frame dimensions from
+  // causing incorrect sync calculations when sb_rows < threads/tile_cols.
+  // Further restrict them by the number of tile columns should the user
+  // request more as this implementation doesn't scale well beyond that.
+  const int num_workers = VPXMIN(nworkers, VPXMIN(num_tile_cols, sb_rows));
   int i;
 
   if (!lf_sync->sync_range || sb_rows != lf_sync->rows ||
@@ -172,6 +176,7 @@ static void loop_filter_rows_mt(YV12_BUFFER_CONFIG *frame,
     vp9_loop_filter_dealloc(lf_sync);
     vp9_loop_filter_alloc(lf_sync, cm, sb_rows, cm->width, num_workers);
   }
+  lf_sync->num_active_workers = num_workers;
 
   // Initialize cur_sb_col to -1 for all SB rows.
   memset(lf_sync->cur_sb_col, -1, sizeof(*lf_sync->cur_sb_col) * sb_rows);
@@ -188,7 +193,7 @@ static void loop_filter_rows_mt(YV12_BUFFER_CONFIG *frame,
     VPxWorker *const worker = &workers[i];
     LFWorkerData *const lf_data = &lf_sync->lfdata[i];
 
-    worker->hook = (VPxWorkerHook)loop_filter_row_worker;
+    worker->hook = loop_filter_row_worker;
     worker->data1 = lf_sync;
     worker->data2 = lf_data;
 
@@ -212,13 +217,11 @@ static void loop_filter_rows_mt(YV12_BUFFER_CONFIG *frame,
   }
 }
 
-void vp9_loop_filter_frame_mt(YV12_BUFFER_CONFIG *frame,
-                              VP9_COMMON *cm,
+void vp9_loop_filter_frame_mt(YV12_BUFFER_CONFIG *frame, VP9_COMMON *cm,
                               struct macroblockd_plane planes[MAX_MB_PLANE],
-                              int frame_filter_level,
-                              int y_only, int partial_frame,
-                              VPxWorker *workers, int num_workers,
-                              VP9LfSync *lf_sync) {
+                              int frame_filter_level, int y_only,
+                              int partial_frame, VPxWorker *workers,
+                              int num_workers, VP9LfSync *lf_sync) {
   int start_mi_row, end_mi_row, mi_rows_to_filter;
 
   if (!frame_filter_level) return;
@@ -233,8 +236,30 @@ void vp9_loop_filter_frame_mt(YV12_BUFFER_CONFIG *frame,
   end_mi_row = start_mi_row + mi_rows_to_filter;
   vp9_loop_filter_frame_init(cm, frame_filter_level);
 
-  loop_filter_rows_mt(frame, cm, planes, start_mi_row, end_mi_row,
-                      y_only, workers, num_workers, lf_sync);
+  loop_filter_rows_mt(frame, cm, planes, start_mi_row, end_mi_row, y_only,
+                      workers, num_workers, lf_sync);
+}
+
+void vp9_lpf_mt_init(VP9LfSync *lf_sync, VP9_COMMON *cm, int frame_filter_level,
+                     int num_workers) {
+  const int sb_rows = mi_cols_aligned_to_sb(cm->mi_rows) >> MI_BLOCK_SIZE_LOG2;
+
+  if (!frame_filter_level) return;
+
+  if (!lf_sync->sync_range || sb_rows != lf_sync->rows ||
+      num_workers > lf_sync->num_workers) {
+    vp9_loop_filter_dealloc(lf_sync);
+    vp9_loop_filter_alloc(lf_sync, cm, sb_rows, cm->width, num_workers);
+  }
+
+  // Initialize cur_sb_col to -1 for all SB rows.
+  memset(lf_sync->cur_sb_col, -1, sizeof(*lf_sync->cur_sb_col) * sb_rows);
+
+  lf_sync->corrupted = 0;
+
+  memset(lf_sync->num_tiles_done, 0,
+         sizeof(*lf_sync->num_tiles_done) * sb_rows);
+  cm->lf_row = 0;
 }
 
 // Set up nsync by width.
@@ -259,30 +284,56 @@ void vp9_loop_filter_alloc(VP9LfSync *lf_sync, VP9_COMMON *cm, int rows,
   {
     int i;
 
-    CHECK_MEM_ERROR(cm, lf_sync->mutex_,
-                    vpx_malloc(sizeof(*lf_sync->mutex_) * rows));
-    if (lf_sync->mutex_) {
+    CHECK_MEM_ERROR(&cm->error, lf_sync->mutex,
+                    vpx_malloc(sizeof(*lf_sync->mutex) * rows));
+    if (lf_sync->mutex) {
       for (i = 0; i < rows; ++i) {
-        pthread_mutex_init(&lf_sync->mutex_[i], NULL);
+        pthread_mutex_init(&lf_sync->mutex[i], NULL);
       }
     }
 
-    CHECK_MEM_ERROR(cm, lf_sync->cond_,
-                    vpx_malloc(sizeof(*lf_sync->cond_) * rows));
-    if (lf_sync->cond_) {
+    CHECK_MEM_ERROR(&cm->error, lf_sync->cond,
+                    vpx_malloc(sizeof(*lf_sync->cond) * rows));
+    if (lf_sync->cond) {
       for (i = 0; i < rows; ++i) {
-        pthread_cond_init(&lf_sync->cond_[i], NULL);
+        pthread_cond_init(&lf_sync->cond[i], NULL);
+      }
+    }
+
+    CHECK_MEM_ERROR(&cm->error, lf_sync->lf_mutex,
+                    vpx_malloc(sizeof(*lf_sync->lf_mutex)));
+    pthread_mutex_init(lf_sync->lf_mutex, NULL);
+
+    CHECK_MEM_ERROR(&cm->error, lf_sync->recon_done_mutex,
+                    vpx_malloc(sizeof(*lf_sync->recon_done_mutex) * rows));
+    if (lf_sync->recon_done_mutex) {
+      for (i = 0; i < rows; ++i) {
+        pthread_mutex_init(&lf_sync->recon_done_mutex[i], NULL);
+      }
+    }
+
+    CHECK_MEM_ERROR(&cm->error, lf_sync->recon_done_cond,
+                    vpx_malloc(sizeof(*lf_sync->recon_done_cond) * rows));
+    if (lf_sync->recon_done_cond) {
+      for (i = 0; i < rows; ++i) {
+        pthread_cond_init(&lf_sync->recon_done_cond[i], NULL);
       }
     }
   }
 #endif  // CONFIG_MULTITHREAD
 
-  CHECK_MEM_ERROR(cm, lf_sync->lfdata,
+  CHECK_MEM_ERROR(&cm->error, lf_sync->lfdata,
                   vpx_malloc(num_workers * sizeof(*lf_sync->lfdata)));
   lf_sync->num_workers = num_workers;
+  lf_sync->num_active_workers = lf_sync->num_workers;
 
-  CHECK_MEM_ERROR(cm, lf_sync->cur_sb_col,
+  CHECK_MEM_ERROR(&cm->error, lf_sync->cur_sb_col,
                   vpx_malloc(sizeof(*lf_sync->cur_sb_col) * rows));
+
+  CHECK_MEM_ERROR(&cm->error, lf_sync->num_tiles_done,
+                  vpx_malloc(sizeof(*lf_sync->num_tiles_done) *
+                                 mi_cols_aligned_to_sb(cm->mi_rows) >>
+                             MI_BLOCK_SIZE_LOG2));
 
   // Set up nsync.
   lf_sync->sync_range = get_sync_range(width);
@@ -290,29 +341,148 @@ void vp9_loop_filter_alloc(VP9LfSync *lf_sync, VP9_COMMON *cm, int rows,
 
 // Deallocate lf synchronization related mutex and data
 void vp9_loop_filter_dealloc(VP9LfSync *lf_sync) {
-  if (lf_sync != NULL) {
-#if CONFIG_MULTITHREAD
-    int i;
+  assert(lf_sync != NULL);
 
-    if (lf_sync->mutex_ != NULL) {
-      for (i = 0; i < lf_sync->rows; ++i) {
-        pthread_mutex_destroy(&lf_sync->mutex_[i]);
-      }
-      vpx_free(lf_sync->mutex_);
+#if CONFIG_MULTITHREAD
+  if (lf_sync->mutex != NULL) {
+    int i;
+    for (i = 0; i < lf_sync->rows; ++i) {
+      pthread_mutex_destroy(&lf_sync->mutex[i]);
     }
-    if (lf_sync->cond_ != NULL) {
-      for (i = 0; i < lf_sync->rows; ++i) {
-        pthread_cond_destroy(&lf_sync->cond_[i]);
-      }
-      vpx_free(lf_sync->cond_);
-    }
-#endif  // CONFIG_MULTITHREAD
-    vpx_free(lf_sync->lfdata);
-    vpx_free(lf_sync->cur_sb_col);
-    // clear the structure as the source of this call may be a resize in which
-    // case this call will be followed by an _alloc() which may fail.
-    vp9_zero(*lf_sync);
+    vpx_free(lf_sync->mutex);
   }
+  if (lf_sync->cond != NULL) {
+    int i;
+    for (i = 0; i < lf_sync->rows; ++i) {
+      pthread_cond_destroy(&lf_sync->cond[i]);
+    }
+    vpx_free(lf_sync->cond);
+  }
+  if (lf_sync->recon_done_mutex != NULL) {
+    int i;
+    for (i = 0; i < lf_sync->rows; ++i) {
+      pthread_mutex_destroy(&lf_sync->recon_done_mutex[i]);
+    }
+    vpx_free(lf_sync->recon_done_mutex);
+  }
+
+  if (lf_sync->lf_mutex != NULL) {
+    pthread_mutex_destroy(lf_sync->lf_mutex);
+    vpx_free(lf_sync->lf_mutex);
+  }
+  if (lf_sync->recon_done_cond != NULL) {
+    int i;
+    for (i = 0; i < lf_sync->rows; ++i) {
+      pthread_cond_destroy(&lf_sync->recon_done_cond[i]);
+    }
+    vpx_free(lf_sync->recon_done_cond);
+  }
+#endif  // CONFIG_MULTITHREAD
+
+  vpx_free(lf_sync->lfdata);
+  vpx_free(lf_sync->cur_sb_col);
+  vpx_free(lf_sync->num_tiles_done);
+  // clear the structure as the source of this call may be a resize in which
+  // case this call will be followed by an _alloc() which may fail.
+  vp9_zero(*lf_sync);
+}
+
+static int get_next_row(VP9_COMMON *cm, VP9LfSync *lf_sync) {
+  int return_val = -1;
+  const int max_rows = cm->mi_rows;
+
+#if CONFIG_MULTITHREAD
+  int cur_row;
+  const int tile_cols = 1 << cm->log2_tile_cols;
+
+  pthread_mutex_lock(lf_sync->lf_mutex);
+  if (cm->lf_row < max_rows) {
+    cur_row = cm->lf_row >> MI_BLOCK_SIZE_LOG2;
+    return_val = cm->lf_row;
+    cm->lf_row += MI_BLOCK_SIZE;
+    if (cm->lf_row < max_rows) {
+      /* If this is not the last row, make sure the next row is also decoded.
+       * This is because the intra predict has to happen before loop filter */
+      cur_row += 1;
+    }
+  }
+  pthread_mutex_unlock(lf_sync->lf_mutex);
+
+  if (return_val == -1) return return_val;
+
+  pthread_mutex_lock(&lf_sync->recon_done_mutex[cur_row]);
+  if (lf_sync->num_tiles_done[cur_row] < tile_cols) {
+    pthread_cond_wait(&lf_sync->recon_done_cond[cur_row],
+                      &lf_sync->recon_done_mutex[cur_row]);
+  }
+  pthread_mutex_unlock(&lf_sync->recon_done_mutex[cur_row]);
+  pthread_mutex_lock(lf_sync->lf_mutex);
+  if (lf_sync->corrupted) {
+    int row = return_val >> MI_BLOCK_SIZE_LOG2;
+    pthread_mutex_lock(&lf_sync->mutex[row]);
+    lf_sync->cur_sb_col[row] = INT_MAX;
+    pthread_cond_signal(&lf_sync->cond[row]);
+    pthread_mutex_unlock(&lf_sync->mutex[row]);
+    return_val = -1;
+  }
+  pthread_mutex_unlock(lf_sync->lf_mutex);
+#else
+  (void)lf_sync;
+  if (cm->lf_row < max_rows) {
+    return_val = cm->lf_row;
+    cm->lf_row += MI_BLOCK_SIZE;
+  }
+#endif  // CONFIG_MULTITHREAD
+
+  return return_val;
+}
+
+void vp9_loopfilter_rows(LFWorkerData *lf_data, VP9LfSync *lf_sync) {
+  int mi_row;
+  VP9_COMMON *cm = lf_data->cm;
+
+  while ((mi_row = get_next_row(cm, lf_sync)) != -1 && mi_row < cm->mi_rows) {
+    lf_data->start = mi_row;
+    lf_data->stop = mi_row + MI_BLOCK_SIZE;
+
+    thread_loop_filter_rows(lf_data->frame_buffer, lf_data->cm, lf_data->planes,
+                            lf_data->start, lf_data->stop, lf_data->y_only,
+                            lf_sync);
+  }
+}
+
+void vp9_set_row(VP9LfSync *lf_sync, int num_tiles, int row, int is_last_row,
+                 int corrupted) {
+#if CONFIG_MULTITHREAD
+  pthread_mutex_lock(lf_sync->lf_mutex);
+  lf_sync->corrupted |= corrupted;
+  pthread_mutex_unlock(lf_sync->lf_mutex);
+  pthread_mutex_lock(&lf_sync->recon_done_mutex[row]);
+  lf_sync->num_tiles_done[row] += 1;
+  if (num_tiles == lf_sync->num_tiles_done[row]) {
+    if (is_last_row) {
+      /* The last 2 rows wait on the last row to be done.
+       * So, we have to broadcast the signal in this case.
+       */
+      pthread_cond_broadcast(&lf_sync->recon_done_cond[row]);
+    } else {
+      pthread_cond_signal(&lf_sync->recon_done_cond[row]);
+    }
+  }
+  pthread_mutex_unlock(&lf_sync->recon_done_mutex[row]);
+#else
+  (void)lf_sync;
+  (void)num_tiles;
+  (void)row;
+  (void)is_last_row;
+  (void)corrupted;
+#endif  // CONFIG_MULTITHREAD
+}
+
+void vp9_loopfilter_job(LFWorkerData *lf_data, VP9LfSync *lf_sync) {
+  thread_loop_filter_rows(lf_data->frame_buffer, lf_data->cm, lf_data->planes,
+                          lf_data->start, lf_data->stop, lf_data->y_only,
+                          lf_sync);
 }
 
 // Accumulate frame counts.
@@ -342,8 +512,7 @@ void vp9_accumulate_frame_counts(FRAME_COUNTS *accum,
               accum->eob_branch[i][j][k][l][m] +=
                   counts->eob_branch[i][j][k][l][m];
               for (n = 0; n < UNCONSTRAINED_NODES + 1; n++)
-                accum->coef[i][j][k][l][m][n] +=
-                    counts->coef[i][j][k][l][m][n];
+                accum->coef[i][j][k][l][m][n] += counts->coef[i][j][k][l][m][n];
             }
   } else {
     for (i = 0; i < TX_SIZES; i++)
@@ -353,11 +522,11 @@ void vp9_accumulate_frame_counts(FRAME_COUNTS *accum,
             for (m = 0; m < COEFF_CONTEXTS; m++)
               accum->eob_branch[i][j][k][l][m] +=
                   counts->eob_branch[i][j][k][l][m];
-                // In the encoder, coef is only updated at frame
-                // level, so not need to accumulate it here.
-                // for (n = 0; n < UNCONSTRAINED_NODES + 1; n++)
-                //   accum->coef[i][j][k][l][m][n] +=
-                //       counts->coef[i][j][k][l][m][n];
+    // In the encoder, coef is only updated at frame
+    // level, so not need to accumulate it here.
+    // for (n = 0; n < UNCONSTRAINED_NODES + 1; n++)
+    //   accum->coef[i][j][k][l][m][n] +=
+    //       counts->coef[i][j][k][l][m][n];
   }
 
   for (i = 0; i < SWITCHABLE_FILTER_CONTEXTS; i++)
@@ -373,17 +542,15 @@ void vp9_accumulate_frame_counts(FRAME_COUNTS *accum,
       accum->intra_inter[i][j] += counts->intra_inter[i][j];
 
   for (i = 0; i < COMP_INTER_CONTEXTS; i++)
-    for (j = 0; j < 2; j++)
-      accum->comp_inter[i][j] += counts->comp_inter[i][j];
+    for (j = 0; j < 2; j++) accum->comp_inter[i][j] += counts->comp_inter[i][j];
 
   for (i = 0; i < REF_CONTEXTS; i++)
     for (j = 0; j < 2; j++)
       for (k = 0; k < 2; k++)
-      accum->single_ref[i][j][k] += counts->single_ref[i][j][k];
+        accum->single_ref[i][j][k] += counts->single_ref[i][j][k];
 
   for (i = 0; i < REF_CONTEXTS; i++)
-    for (j = 0; j < 2; j++)
-      accum->comp_ref[i][j] += counts->comp_ref[i][j];
+    for (j = 0; j < 2; j++) accum->comp_ref[i][j] += counts->comp_ref[i][j];
 
   for (i = 0; i < TX_SIZE_CONTEXTS; i++) {
     for (j = 0; j < TX_SIZES; j++)
@@ -400,11 +567,9 @@ void vp9_accumulate_frame_counts(FRAME_COUNTS *accum,
     accum->tx.tx_totals[i] += counts->tx.tx_totals[i];
 
   for (i = 0; i < SKIP_CONTEXTS; i++)
-    for (j = 0; j < 2; j++)
-      accum->skip[i][j] += counts->skip[i][j];
+    for (j = 0; j < 2; j++) accum->skip[i][j] += counts->skip[i][j];
 
-  for (i = 0; i < MV_JOINTS; i++)
-    accum->mv.joints[i] += counts->mv.joints[i];
+  for (i = 0; i < MV_JOINTS; i++) accum->mv.joints[i] += counts->mv.joints[i];
 
   for (k = 0; k < 2; k++) {
     nmv_component_counts *const comps = &accum->mv.comps[k];
@@ -416,8 +581,7 @@ void vp9_accumulate_frame_counts(FRAME_COUNTS *accum,
       comps->hp[i] += comps_t->hp[i];
     }
 
-    for (i = 0; i < MV_CLASSES; i++)
-      comps->classes[i] += comps_t->classes[i];
+    for (i = 0; i < MV_CLASSES; i++) comps->classes[i] += comps_t->classes[i];
 
     for (i = 0; i < CLASS0_SIZE; i++) {
       comps->class0[i] += comps_t->class0[i];
@@ -426,10 +590,8 @@ void vp9_accumulate_frame_counts(FRAME_COUNTS *accum,
     }
 
     for (i = 0; i < MV_OFFSET_BITS; i++)
-      for (j = 0; j < 2; j++)
-        comps->bits[i][j] += comps_t->bits[i][j];
+      for (j = 0; j < 2; j++) comps->bits[i][j] += comps_t->bits[i][j];
 
-    for (i = 0; i < MV_FP_SIZE; i++)
-      comps->fp[i] += comps_t->fp[i];
+    for (i = 0; i < MV_FP_SIZE; i++) comps->fp[i] += comps_t->fp[i];
   }
 }

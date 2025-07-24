@@ -8,7 +8,6 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
 /*!\file
  * \brief Describes the decoder algorithm interface for algorithm
  *        implementations.
@@ -28,24 +27,28 @@
  *     </pre>
  *
  * An application instantiates a specific decoder instance by using
- * vpx_codec_init() and a pointer to the algorithm's interface structure:
+ * vpx_codec_dec_init() and a pointer to the algorithm's interface structure:
  *     <pre>
  *     my_app.c:
  *       extern vpx_codec_iface_t my_codec;
  *       {
  *           vpx_codec_ctx_t algo;
- *           res = vpx_codec_init(&algo, &my_codec);
+ *           int threads = 4;
+ *           vpx_codec_dec_cfg_t cfg = { threads, 0, 0 };
+ *           res = vpx_codec_dec_init(&algo, &my_codec, &cfg, 0);
  *       }
  *     </pre>
  *
  * Once initialized, the instance is manged using other functions from
  * the vpx_codec_* family.
  */
-#ifndef VPX_INTERNAL_VPX_CODEC_INTERNAL_H_
-#define VPX_INTERNAL_VPX_CODEC_INTERNAL_H_
+#ifndef VPX_VPX_INTERNAL_VPX_CODEC_INTERNAL_H_
+#define VPX_VPX_INTERNAL_VPX_CODEC_INTERNAL_H_
 #include "../vpx_decoder.h"
 #include "../vpx_encoder.h"
 #include <stdarg.h>
+
+#include "vpx_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,13 +64,13 @@ extern "C" {
  */
 #define VPX_CODEC_INTERNAL_ABI_VERSION (5) /**<\hideinitializer*/
 
-typedef struct vpx_codec_alg_priv  vpx_codec_alg_priv_t;
+typedef struct vpx_codec_alg_priv vpx_codec_alg_priv_t;
 typedef struct vpx_codec_priv_enc_mr_cfg vpx_codec_priv_enc_mr_cfg_t;
 
 /*!\brief init function pointer prototype
  *
  * Performs algorithm-specific initialization of the decoder context. This
- * function is called by the generic vpx_codec_init() wrapper function, so
+ * function is called by vpx_codec_dec_init() and vpx_codec_enc_init(), so
  * plugins implementing this interface may trust the input parameters to be
  * properly initialized.
  *
@@ -77,8 +80,8 @@ typedef struct vpx_codec_priv_enc_mr_cfg vpx_codec_priv_enc_mr_cfg_t;
  * \retval #VPX_CODEC_MEM_ERROR
  *     Memory operation failed.
  */
-typedef vpx_codec_err_t (*vpx_codec_init_fn_t)(vpx_codec_ctx_t *ctx,
-                                               vpx_codec_priv_enc_mr_cfg_t *data);
+typedef vpx_codec_err_t (*vpx_codec_init_fn_t)(
+    vpx_codec_ctx_t *ctx, vpx_codec_priv_enc_mr_cfg_t *data);
 
 /*!\brief destroy function pointer prototype
  *
@@ -112,8 +115,8 @@ typedef vpx_codec_err_t (*vpx_codec_destroy_fn_t)(vpx_codec_alg_priv_t *ctx);
  * \retval #VPX_CODEC_OK
  *     Bitstream is parsable and stream information updated
  */
-typedef vpx_codec_err_t (*vpx_codec_peek_si_fn_t)(const uint8_t         *data,
-                                                  unsigned int           data_sz,
+typedef vpx_codec_err_t (*vpx_codec_peek_si_fn_t)(const uint8_t *data,
+                                                  unsigned int data_sz,
                                                   vpx_codec_stream_info_t *si);
 
 /*!\brief Return information about the current stream.
@@ -129,7 +132,7 @@ typedef vpx_codec_err_t (*vpx_codec_peek_si_fn_t)(const uint8_t         *data,
  * \retval #VPX_CODEC_OK
  *     Bitstream is parsable and stream information updated
  */
-typedef vpx_codec_err_t (*vpx_codec_get_si_fn_t)(vpx_codec_alg_priv_t    *ctx,
+typedef vpx_codec_err_t (*vpx_codec_get_si_fn_t)(vpx_codec_alg_priv_t *ctx,
                                                  vpx_codec_stream_info_t *si);
 
 /*!\brief control function pointer prototype
@@ -176,16 +179,15 @@ typedef const struct vpx_codec_ctrl_fn_map {
 /*!\brief decode data function pointer prototype
  *
  * Processes a buffer of coded data. If the processing results in a new
- * decoded frame becoming available, #VPX_CODEC_CB_PUT_SLICE and
- * #VPX_CODEC_CB_PUT_FRAME events are generated as appropriate. This
- * function is called by the generic vpx_codec_decode() wrapper function,
- * so plugins implementing this interface may trust the input parameters
- * to be properly initialized.
+ * decoded frame becoming available, put_slice and put_frame callbacks
+ * are invoked as appropriate. This function is called by the generic
+ * vpx_codec_decode() wrapper function, so plugins implementing this
+ * interface may trust the input parameters to be properly initialized.
  *
  * \param[in] ctx          Pointer to this instance's context
  * \param[in] data         Pointer to this block of new coded data. If
- *                         NULL, a #VPX_CODEC_CB_PUT_FRAME event is posted
- *                         for the previously decoded frame.
+ *                         NULL, the put_frame callback is invoked for
+ *                         the previously decoded frame.
  * \param[in] data_sz      Size of the coded data, in bytes.
  *
  * \return Returns #VPX_CODEC_OK if the coded data was processed completely
@@ -193,11 +195,10 @@ typedef const struct vpx_codec_ctrl_fn_map {
  *         see the descriptions of the other error codes in ::vpx_codec_err_t
  *         for recoverability capabilities.
  */
-typedef vpx_codec_err_t (*vpx_codec_decode_fn_t)(vpx_codec_alg_priv_t  *ctx,
-                                                 const uint8_t         *data,
-                                                 unsigned int     data_sz,
-                                                 void        *user_priv,
-                                                 long         deadline);
+typedef vpx_codec_err_t (*vpx_codec_decode_fn_t)(vpx_codec_alg_priv_t *ctx,
+                                                 const uint8_t *data,
+                                                 unsigned int data_sz,
+                                                 void *user_priv);
 
 /*!\brief Decoded frames iterator
  *
@@ -206,7 +207,8 @@ typedef vpx_codec_err_t (*vpx_codec_decode_fn_t)(vpx_codec_alg_priv_t  *ctx,
  * complete when this function returns NULL.
  *
  * The list of available frames becomes valid upon completion of the
- * vpx_codec_decode call, and remains valid until the next call to vpx_codec_decode.
+ * vpx_codec_decode call, and remains valid until the next call to
+ * vpx_codec_decode.
  *
  * \param[in]     ctx      Pointer to this instance's context
  * \param[in out] iter     Iterator storage, initialized to NULL
@@ -215,7 +217,7 @@ typedef vpx_codec_err_t (*vpx_codec_decode_fn_t)(vpx_codec_alg_priv_t  *ctx,
  *         produced will always be in PTS (presentation time stamp) order.
  */
 typedef vpx_image_t *(*vpx_codec_get_frame_fn_t)(vpx_codec_alg_priv_t *ctx,
-                                                 vpx_codec_iter_t     *iter);
+                                                 vpx_codec_iter_t *iter);
 
 /*!\brief Pass in external frame buffers for the decoder to use.
  *
@@ -244,32 +246,28 @@ typedef vpx_image_t *(*vpx_codec_get_frame_fn_t)(vpx_codec_alg_priv_t *ctx,
  * buffers.
  */
 typedef vpx_codec_err_t (*vpx_codec_set_fb_fn_t)(
-    vpx_codec_alg_priv_t *ctx,
-    vpx_get_frame_buffer_cb_fn_t cb_get,
+    vpx_codec_alg_priv_t *ctx, vpx_get_frame_buffer_cb_fn_t cb_get,
     vpx_release_frame_buffer_cb_fn_t cb_release, void *cb_priv);
 
+typedef vpx_codec_err_t (*vpx_codec_encode_fn_t)(vpx_codec_alg_priv_t *ctx,
+                                                 const vpx_image_t *img,
+                                                 vpx_codec_pts_t pts,
+                                                 unsigned long duration,
+                                                 vpx_enc_frame_flags_t flags,
+                                                 vpx_enc_deadline_t deadline);
+typedef const vpx_codec_cx_pkt_t *(*vpx_codec_get_cx_data_fn_t)(
+    vpx_codec_alg_priv_t *ctx, vpx_codec_iter_t *iter);
 
-typedef vpx_codec_err_t (*vpx_codec_encode_fn_t)(vpx_codec_alg_priv_t  *ctx,
-                                                 const vpx_image_t     *img,
-                                                 vpx_codec_pts_t        pts,
-                                                 unsigned long          duration,
-                                                 vpx_enc_frame_flags_t  flags,
-                                                 unsigned long          deadline);
-typedef const vpx_codec_cx_pkt_t *(*vpx_codec_get_cx_data_fn_t)(vpx_codec_alg_priv_t *ctx,
-                                                                vpx_codec_iter_t     *iter);
+typedef vpx_codec_err_t (*vpx_codec_enc_config_set_fn_t)(
+    vpx_codec_alg_priv_t *ctx, const vpx_codec_enc_cfg_t *cfg);
+typedef vpx_fixed_buf_t *(*vpx_codec_get_global_headers_fn_t)(
+    vpx_codec_alg_priv_t *ctx);
 
-typedef vpx_codec_err_t
-(*vpx_codec_enc_config_set_fn_t)(vpx_codec_alg_priv_t       *ctx,
-                                 const vpx_codec_enc_cfg_t  *cfg);
-typedef vpx_fixed_buf_t *
-(*vpx_codec_get_global_headers_fn_t)(vpx_codec_alg_priv_t   *ctx);
+typedef vpx_image_t *(*vpx_codec_get_preview_frame_fn_t)(
+    vpx_codec_alg_priv_t *ctx);
 
-typedef vpx_image_t *
-(*vpx_codec_get_preview_frame_fn_t)(vpx_codec_alg_priv_t   *ctx);
-
-typedef vpx_codec_err_t
-(*vpx_codec_enc_mr_get_mem_loc_fn_t)(const vpx_codec_enc_cfg_t     *cfg,
-                                     void **mem_loc);
+typedef vpx_codec_err_t (*vpx_codec_enc_mr_get_mem_loc_fn_t)(
+    const vpx_codec_enc_cfg_t *cfg, void **mem_loc);
 
 /*!\brief usage configuration mapping
  *
@@ -282,49 +280,55 @@ typedef vpx_codec_err_t
  *
  */
 typedef const struct vpx_codec_enc_cfg_map {
-  int                 usage;
+  int usage;
   vpx_codec_enc_cfg_t cfg;
 } vpx_codec_enc_cfg_map_t;
 
-/*!\brief Decoder algorithm interface interface
+/*!\brief Decoder algorithm interface
  *
  * All decoders \ref MUST expose a variable of this type.
  */
 struct vpx_codec_iface {
-  const char               *name;        /**< Identification String  */
-  int                       abi_version; /**< Implemented ABI version */
-  vpx_codec_caps_t          caps;    /**< Decoder capabilities */
-  vpx_codec_init_fn_t       init;    /**< \copydoc ::vpx_codec_init_fn_t */
-  vpx_codec_destroy_fn_t    destroy;     /**< \copydoc ::vpx_codec_destroy_fn_t */
-  vpx_codec_ctrl_fn_map_t  *ctrl_maps;   /**< \copydoc ::vpx_codec_ctrl_fn_map_t */
+  const char *name;                   /**< Identification String  */
+  int abi_version;                    /**< Implemented ABI version */
+  vpx_codec_caps_t caps;              /**< Decoder capabilities */
+  vpx_codec_init_fn_t init;           /**< \copydoc ::vpx_codec_init_fn_t */
+  vpx_codec_destroy_fn_t destroy;     /**< \copydoc ::vpx_codec_destroy_fn_t */
+  vpx_codec_ctrl_fn_map_t *ctrl_maps; /**< \copydoc ::vpx_codec_ctrl_fn_map_t */
   struct vpx_codec_dec_iface {
-    vpx_codec_peek_si_fn_t    peek_si;     /**< \copydoc ::vpx_codec_peek_si_fn_t */
-    vpx_codec_get_si_fn_t     get_si;      /**< \copydoc ::vpx_codec_get_si_fn_t */
-    vpx_codec_decode_fn_t     decode;      /**< \copydoc ::vpx_codec_decode_fn_t */
-    vpx_codec_get_frame_fn_t  get_frame;   /**< \copydoc ::vpx_codec_get_frame_fn_t */
-    vpx_codec_set_fb_fn_t     set_fb_fn;   /**< \copydoc ::vpx_codec_set_fb_fn_t */
+    vpx_codec_peek_si_fn_t peek_si; /**< \copydoc ::vpx_codec_peek_si_fn_t */
+    vpx_codec_get_si_fn_t get_si;   /**< \copydoc ::vpx_codec_get_si_fn_t */
+    vpx_codec_decode_fn_t decode;   /**< \copydoc ::vpx_codec_decode_fn_t */
+    vpx_codec_get_frame_fn_t
+        get_frame;                   /**< \copydoc ::vpx_codec_get_frame_fn_t */
+    vpx_codec_set_fb_fn_t set_fb_fn; /**< \copydoc ::vpx_codec_set_fb_fn_t */
   } dec;
   struct vpx_codec_enc_iface {
-    int                                cfg_map_count;
-    vpx_codec_enc_cfg_map_t           *cfg_maps;      /**< \copydoc ::vpx_codec_enc_cfg_map_t */
-    vpx_codec_encode_fn_t              encode;        /**< \copydoc ::vpx_codec_encode_fn_t */
-    vpx_codec_get_cx_data_fn_t         get_cx_data;   /**< \copydoc ::vpx_codec_get_cx_data_fn_t */
-    vpx_codec_enc_config_set_fn_t      cfg_set;       /**< \copydoc ::vpx_codec_enc_config_set_fn_t */
-    vpx_codec_get_global_headers_fn_t  get_glob_hdrs; /**< \copydoc ::vpx_codec_get_global_headers_fn_t */
-    vpx_codec_get_preview_frame_fn_t   get_preview;   /**< \copydoc ::vpx_codec_get_preview_frame_fn_t */
-    vpx_codec_enc_mr_get_mem_loc_fn_t  mr_get_mem_loc;   /**< \copydoc ::vpx_codec_enc_mr_get_mem_loc_fn_t */
+    int cfg_map_count;
+    vpx_codec_enc_cfg_map_t
+        *cfg_maps;                /**< \copydoc ::vpx_codec_enc_cfg_map_t */
+    vpx_codec_encode_fn_t encode; /**< \copydoc ::vpx_codec_encode_fn_t */
+    vpx_codec_get_cx_data_fn_t
+        get_cx_data; /**< \copydoc ::vpx_codec_get_cx_data_fn_t */
+    vpx_codec_enc_config_set_fn_t
+        cfg_set; /**< \copydoc ::vpx_codec_enc_config_set_fn_t */
+    vpx_codec_get_global_headers_fn_t
+        get_glob_hdrs; /**< \copydoc ::vpx_codec_get_global_headers_fn_t */
+    vpx_codec_get_preview_frame_fn_t
+        get_preview; /**< \copydoc ::vpx_codec_get_preview_frame_fn_t */
+    vpx_codec_enc_mr_get_mem_loc_fn_t
+        mr_get_mem_loc; /**< \copydoc ::vpx_codec_enc_mr_get_mem_loc_fn_t */
   } enc;
 };
 
 /*!\brief Callback function pointer / user data pair storage */
 typedef struct vpx_codec_priv_cb_pair {
   union {
-    vpx_codec_put_frame_cb_fn_t    put_frame;
-    vpx_codec_put_slice_cb_fn_t    put_slice;
+    vpx_codec_put_frame_cb_fn_t put_frame;
+    vpx_codec_put_slice_cb_fn_t put_slice;
   } u;
-  void                            *user_priv;
+  void *user_priv;
 } vpx_codec_priv_cb_pair_t;
-
 
 /*!\brief Instance private storage
  *
@@ -335,39 +339,38 @@ typedef struct vpx_codec_priv_cb_pair {
  * and the pointer cast to the proper type.
  */
 struct vpx_codec_priv {
-  const char                     *err_detail;
-  vpx_codec_flags_t               init_flags;
+  const char *err_detail;
+  vpx_codec_flags_t init_flags;
   struct {
-    vpx_codec_priv_cb_pair_t    put_frame_cb;
-    vpx_codec_priv_cb_pair_t    put_slice_cb;
+    vpx_codec_priv_cb_pair_t put_frame_cb;
+    vpx_codec_priv_cb_pair_t put_slice_cb;
   } dec;
   struct {
-    vpx_fixed_buf_t             cx_data_dst_buf;
-    unsigned int                cx_data_pad_before;
-    unsigned int                cx_data_pad_after;
-    vpx_codec_cx_pkt_t          cx_data_pkt;
-    unsigned int                total_encoders;
+    vpx_fixed_buf_t cx_data_dst_buf;
+    unsigned int cx_data_pad_before;
+    unsigned int cx_data_pad_after;
+    vpx_codec_cx_pkt_t cx_data_pkt;
+    unsigned int total_encoders;
   } enc;
 };
 
 /*
  * Multi-resolution encoding internal configuration
  */
-struct vpx_codec_priv_enc_mr_cfg
-{
-    unsigned int           mr_total_resolutions;
-    unsigned int           mr_encoder_id;
-    struct vpx_rational    mr_down_sampling_factor;
-    void*                  mr_low_res_mode_info;
+struct vpx_codec_priv_enc_mr_cfg {
+  unsigned int mr_total_resolutions;
+  unsigned int mr_encoder_id;
+  struct vpx_rational mr_down_sampling_factor;
+  void *mr_low_res_mode_info;
 };
 
 #undef VPX_CTRL_USE_TYPE
 #define VPX_CTRL_USE_TYPE(id, typ) \
-  static VPX_INLINE typ id##__value(va_list args) {return va_arg(args, typ);}
+  static VPX_INLINE typ id##__value(va_list args) { return va_arg(args, typ); }
 
 #undef VPX_CTRL_USE_TYPE_DEPRECATED
 #define VPX_CTRL_USE_TYPE_DEPRECATED(id, typ) \
-  static VPX_INLINE typ id##__value(va_list args) {return va_arg(args, typ);}
+  static VPX_INLINE typ id##__value(va_list args) { return va_arg(args, typ); }
 
 #define CAST(id, arg) id##__value(arg)
 
@@ -380,10 +383,9 @@ struct vpx_codec_priv_enc_mr_cfg
  * the same name as the struct, less the _algo suffix. The CODEC_INTERFACE
  * macro is provided to define this getter function automatically.
  */
-#define CODEC_INTERFACE(id)\
-  vpx_codec_iface_t* id(void) { return &id##_algo; }\
-  vpx_codec_iface_t  id##_algo
-
+#define CODEC_INTERFACE(id)                          \
+  vpx_codec_iface_t *id(void) { return &id##_algo; } \
+  vpx_codec_iface_t id##_algo
 
 /* Internal Utility Functions
  *
@@ -391,39 +393,61 @@ struct vpx_codec_priv_enc_mr_cfg
  * utilities for manipulating vpx_codec_* data structures.
  */
 struct vpx_codec_pkt_list {
-  unsigned int            cnt;
-  unsigned int            max;
+  unsigned int cnt;
+  unsigned int max;
   struct vpx_codec_cx_pkt pkts[1];
 };
 
-#define vpx_codec_pkt_list_decl(n)\
-  union {struct vpx_codec_pkt_list head;\
-    struct {struct vpx_codec_pkt_list head;\
-      struct vpx_codec_cx_pkt    pkts[n];} alloc;}
+#define vpx_codec_pkt_list_decl(n)     \
+  union {                              \
+    struct vpx_codec_pkt_list head;    \
+    struct {                           \
+      struct vpx_codec_pkt_list head;  \
+      struct vpx_codec_cx_pkt pkts[n]; \
+    } alloc;                           \
+  }
 
-#define vpx_codec_pkt_list_init(m)\
-  (m)->alloc.head.cnt = 0,\
-                        (m)->alloc.head.max = sizeof((m)->alloc.pkts) / sizeof((m)->alloc.pkts[0])
+#define vpx_codec_pkt_list_init(m) \
+  (m)->alloc.head.cnt = 0,         \
+  (m)->alloc.head.max = sizeof((m)->alloc.pkts) / sizeof((m)->alloc.pkts[0])
 
-int
-vpx_codec_pkt_list_add(struct vpx_codec_pkt_list *,
-                       const struct vpx_codec_cx_pkt *);
+int vpx_codec_pkt_list_add(struct vpx_codec_pkt_list *,
+                           const struct vpx_codec_cx_pkt *);
 
-const vpx_codec_cx_pkt_t *
-vpx_codec_pkt_list_get(struct vpx_codec_pkt_list *list,
-                       vpx_codec_iter_t           *iter);
-
+const vpx_codec_cx_pkt_t *vpx_codec_pkt_list_get(
+    struct vpx_codec_pkt_list *list, vpx_codec_iter_t *iter);
 
 #include <stdio.h>
 #include <setjmp.h>
 
 struct vpx_internal_error_info {
-  vpx_codec_err_t  error_code;
-  int              has_detail;
-  char             detail[80];
-  int              setjmp;
-  jmp_buf          jmp;
+  vpx_codec_err_t error_code;
+  int has_detail;
+  char detail[80];
+  int setjmp;
+  jmp_buf jmp;
 };
+
+#if CONFIG_DEBUG
+#define CHECK_MEM_ERROR(error, lval, expr)                                  \
+  do {                                                                      \
+    assert((error)->setjmp);                                                \
+    (lval) = (expr);                                                        \
+    if (!(lval))                                                            \
+      vpx_internal_error(error, VPX_CODEC_MEM_ERROR,                        \
+                         "Failed to allocate " #lval " at %s:%d", __FILE__, \
+                         __LINE__);                                         \
+  } while (0)
+#else
+#define CHECK_MEM_ERROR(error, lval, expr)             \
+  do {                                                 \
+    assert((error)->setjmp);                           \
+    (lval) = (expr);                                   \
+    if (!(lval))                                       \
+      vpx_internal_error(error, VPX_CODEC_MEM_ERROR,   \
+                         "Failed to allocate " #lval); \
+  } while (0)
+#endif
 
 #define CLANG_ANALYZER_NORETURN
 #if defined(__has_feature)
@@ -433,13 +457,24 @@ struct vpx_internal_error_info {
 #endif
 #endif
 
+// Tells the compiler to perform `printf` format string checking if the
+// compiler supports it; see the 'format' attribute in
+// <https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html>.
+#define LIBVPX_FORMAT_PRINTF(string_index, first_to_check)
+#if defined(__has_attribute)
+#if __has_attribute(format)
+#undef LIBVPX_FORMAT_PRINTF
+#define LIBVPX_FORMAT_PRINTF(string_index, first_to_check) \
+  __attribute__((__format__(__printf__, string_index, first_to_check)))
+#endif
+#endif
+
 void vpx_internal_error(struct vpx_internal_error_info *info,
-                        vpx_codec_err_t                 error,
-                        const char                     *fmt,
-                        ...) CLANG_ANALYZER_NORETURN;
+                        vpx_codec_err_t error, const char *fmt, ...)
+    LIBVPX_FORMAT_PRINTF(3, 4) CLANG_ANALYZER_NORETURN;
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif  // VPX_INTERNAL_VPX_CODEC_INTERNAL_H_
+#endif  // VPX_VPX_INTERNAL_VPX_CODEC_INTERNAL_H_

@@ -28,12 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef WEBM_REGISTER_TYPES_H
-#define WEBM_REGISTER_TYPES_H
+#pragma once
 
 #include "modules/register_module_types.h"
 
 void initialize_webm_module(ModuleInitializationLevel p_level);
 void uninitialize_webm_module(ModuleInitializationLevel p_level);
-
-#endif // WEBM_REGISTER_TYPES_H

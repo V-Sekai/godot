@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef VP9_COMMON_VP9_ENTROPYMODE_H_
-#define VP9_COMMON_VP9_ENTROPYMODE_H_
+#ifndef VPX_VP9_COMMON_VP9_ENTROPYMODE_H_
+#define VPX_VP9_COMMON_VP9_ENTROPYMODE_H_
 
 #include "vp9/common/vp9_entropy.h"
 #include "vp9/common/vp9_entropymv.h"
@@ -24,7 +24,7 @@ extern "C" {
 
 #define TX_SIZE_CONTEXTS 2
 
-#define INTER_OFFSET(mode) ((mode) - NEARESTMV)
+#define INTER_OFFSET(mode) ((mode)-NEARESTMV)
 
 struct VP9Common;
 
@@ -64,8 +64,8 @@ typedef struct FRAME_COUNTS {
   unsigned int uv_mode[INTRA_MODES][INTRA_MODES];
   unsigned int partition[PARTITION_CONTEXTS][PARTITION_TYPES];
   vp9_coeff_count_model coef[TX_SIZES][PLANE_TYPES];
-  unsigned int eob_branch[TX_SIZES][PLANE_TYPES][REF_TYPES]
-                         [COEF_BANDS][COEFF_CONTEXTS];
+  unsigned int eob_branch[TX_SIZES][PLANE_TYPES][REF_TYPES][COEF_BANDS]
+                         [COEFF_CONTEXTS];
   unsigned int switchable_interp[SWITCHABLE_FILTER_CONTEXTS]
                                 [SWITCHABLE_FILTERS];
   unsigned int inter_mode[INTER_MODE_CONTEXTS][INTER_MODES];
@@ -86,8 +86,8 @@ extern const vpx_prob vp9_kf_partition_probs[PARTITION_CONTEXTS]
 extern const vpx_tree_index vp9_intra_mode_tree[TREE_SIZE(INTRA_MODES)];
 extern const vpx_tree_index vp9_inter_mode_tree[TREE_SIZE(INTER_MODES)];
 extern const vpx_tree_index vp9_partition_tree[TREE_SIZE(PARTITION_TYPES)];
-extern const vpx_tree_index vp9_switchable_interp_tree
-                                [TREE_SIZE(SWITCHABLE_FILTERS)];
+extern const vpx_tree_index
+    vp9_switchable_interp_tree[TREE_SIZE(SWITCHABLE_FILTERS)];
 
 void vp9_setup_past_independence(struct VP9Common *cm);
 
@@ -104,4 +104,4 @@ void tx_counts_to_branch_counts_8x8(const unsigned int *tx_count_8x8p,
 }  // extern "C"
 #endif
 
-#endif  // VP9_COMMON_VP9_ENTROPYMODE_H_
+#endif  // VPX_VP9_COMMON_VP9_ENTROPYMODE_H_
