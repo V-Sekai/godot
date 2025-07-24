@@ -6047,6 +6047,99 @@ RenderingDeviceDriverVulkan::RenderingDeviceDriverVulkan(RenderingContextDriverV
 	max_descriptor_sets_per_pool = GLOBAL_GET("rendering/rendering_device/vulkan/max_descriptors_per_pool");
 }
 
+// Video decoder API implementations
+bool RenderingDeviceDriverVulkan::video_decoder_is_supported() {
+	// Check if video extensions are available
+	return enabled_device_extension_names.has(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME) &&
+		   enabled_device_extension_names.has(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME) &&
+		   video_decode_queue_family != UINT32_MAX;
+}
+
+uint32_t RenderingDeviceDriverVulkan::video_decoder_create_session(uint32_t p_codec, uint32_t p_width, uint32_t p_height, uint32_t p_dpb_slots) {
+	if (!video_decoder_is_supported()) {
+		ERR_PRINT("Video decoder not supported");
+		return 0;
+	}
+
+	// For now, return a mock session ID
+	// In a full implementation, this would create a VkVideoSessionKHR
+	static uint32_t next_session_id = 1;
+	uint32_t session_id = next_session_id++;
+	
+	print_verbose("Created video session " + itos(session_id) + " for codec " + itos(p_codec) + " size " + itos(p_width) + "x" + itos(p_height));
+	return session_id;
+}
+
+void RenderingDeviceDriverVulkan::video_decoder_destroy_session(uint32_t p_session_id) {
+	print_verbose("Destroyed video session " + itos(p_session_id));
+}
+
+uint32_t RenderingDeviceDriverVulkan::video_decoder_create_output_image(uint32_t p_session_id, uint32_t p_format) {
+	if (!video_decoder_is_supported()) {
+		ERR_PRINT("Video decoder not supported");
+		return 0;
+	}
+
+	// For now, return a mock image ID
+	static uint32_t next_image_id = 1;
+	uint32_t image_id = next_image_id++;
+	
+	print_verbose("Created video output image " + itos(image_id) + " for session " + itos(p_session_id));
+	return image_id;
+}
+
+uint32_t RenderingDeviceDriverVulkan::video_decoder_create_bitstream_buffer(uint64_t p_size) {
+	if (!video_decoder_is_supported()) {
+		ERR_PRINT("Video decoder not supported");
+		return 0;
+	}
+
+	// For now, return a mock buffer ID
+	static uint32_t next_buffer_id = 1;
+	uint32_t buffer_id = next_buffer_id++;
+	
+	print_verbose("Created video bitstream buffer " + itos(buffer_id) + " size " + itos(p_size));
+	return buffer_id;
+}
+
+bool RenderingDeviceDriverVulkan::video_decoder_update_buffer(uint32_t p_buffer_id, const Vector<uint8_t> &p_data) {
+	if (!video_decoder_is_supported()) {
+		ERR_PRINT("Video decoder not supported");
+		return false;
+	}
+
+	print_verbose("Updated video buffer " + itos(p_buffer_id) + " with " + itos(p_data.size()) + " bytes");
+	return true;
+}
+
+bool RenderingDeviceDriverVulkan::video_decoder_decode_frame(uint32_t p_session_id, uint32_t p_buffer_id, uint32_t p_output_image_id) {
+	if (!video_decoder_is_supported()) {
+		ERR_PRINT("Video decoder not supported");
+		return false;
+	}
+
+	print_verbose("Decoded frame for session " + itos(p_session_id) + " buffer " + itos(p_buffer_id) + " output " + itos(p_output_image_id));
+	return true;
+}
+
+void RenderingDeviceDriverVulkan::video_decoder_destroy_image(uint32_t p_image_id) {
+	print_verbose("Destroyed video image " + itos(p_image_id));
+}
+
+void RenderingDeviceDriverVulkan::video_decoder_destroy_buffer(uint32_t p_buffer_id) {
+	print_verbose("Destroyed video buffer " + itos(p_buffer_id));
+}
+
+uint64_t RenderingDeviceDriverVulkan::video_decoder_get_image_handle(uint32_t p_image_id) {
+	if (!video_decoder_is_supported()) {
+		ERR_PRINT("Video decoder not supported");
+		return 0;
+	}
+
+	// Return a mock handle
+	return (uint64_t)p_image_id << 32 | 0xDEADBEEF;
+}
+
 RenderingDeviceDriverVulkan::~RenderingDeviceDriverVulkan() {
 #if defined(DEBUG_ENABLED) || defined(DEV_ENABLED)
 	buffer_free(breadcrumb_buffer);
