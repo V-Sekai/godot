@@ -37,10 +37,10 @@ Phase 5 implements hardware-accelerated AV1 video decoding using Vulkan Video ex
 | Phase | Status           | Description                                                              |
 | ----- | ---------------- | ------------------------------------------------------------------------ |
 | 5A    | ✅ **COMPLETED** | Vulkan Video Foundation - Extensions, function pointers, queue detection |
-| 5B    | ✅ **COMPLETED** | Video Session Management - Capabilities query, session creation          |
-| 5C    | ✅ **COMPLETED** | Video Memory Management - DPB allocation, memory binding                 |
-| 5D    | ✅ **COMPLETED** | YCbCr Color Conversion - Hardware color space conversion                 |
-| 5E    | 🔄 **IN PROGRESS** | Integration & Polish - Decoder integration, testing, optimization       |
+| 5B    | 🔄 **PARTIAL**   | Video Session Management - Basic structure, needs full implementation    |
+| 5C    | 🔄 **PARTIAL**   | Video Memory Management - Structures defined, allocation incomplete      |
+| 5D    | 🔄 **PARTIAL**   | YCbCr Color Conversion - Framework exists, integration incomplete        |
+| 5E    | 🔄 **IN PROGRESS** | Integration & Polish - High-level API exists, backend incomplete        |
 
 ## Implementation Phases
 
@@ -81,129 +81,127 @@ This phase has been **fully implemented** in the Vulkan driver with the followin
 
 ---
 
-### Phase 5B: Video Session Management ✅ **COMPLETED**
+### Phase 5B: Video Session Management 🔄 **PARTIAL**
 
 **Depends on: Phase 5A complete**
 
-This phase has been **fully implemented** with comprehensive video session management for AV1, H.264, and H.265 decode operations.
+This phase has **basic infrastructure** implemented but requires completion of core functionality.
 
 #### ✅ Video Capabilities Query
 
--   `VulkanVideoSession::query_video_capabilities()` implemented
--   Supports AV1, H.264, and H.265 codec capability queries
--   Validates hardware limits (max resolution, DPB slots, reference frames)
--   Detailed capability logging for debugging
+-   Basic capability detection in `VulkanVideoContext::detect_video_hardware()`
+-   AV1 decode capability query implemented
+-   Hardware limits detection (max resolution, DPB slots, reference frames)
+-   Codec support validation
 
-#### ✅ Video Session Creation
+#### 🔄 Video Session Creation **NEEDS COMPLETION**
 
--   `VulkanVideoSession::create_video_session()` fully implemented
--   Supports multiple codec profiles (AV1 Main, H.264 Baseline/Main/High, H.265 Main/Main10)
--   Configurable parameters: resolution, DPB slots, reference frames, film grain
--   Automatic parameter validation against hardware capabilities
+-   `VulkanVideoContext::create_video_session()` - **PLACEHOLDER IMPLEMENTATION**
+-   Session structure defined but VkVideoSessionKHR creation incomplete
+-   Memory requirements query not implemented
+-   Session parameter creation incomplete
 
-#### ✅ Session Parameter Management
+#### 🔄 Session Parameter Management **NEEDS COMPLETION**
 
--   Video session parameter creation and management
--   Memory requirements query and binding
--   Automatic cleanup and resource management
--   Support for session parameter updates
+-   `create_video_session_parameters()` - **PLACEHOLDER IMPLEMENTATION**
+-   VkVideoSessionParametersKHR creation not implemented
+-   Memory binding incomplete
+-   Resource cleanup partially implemented
 
-#### ✅ Multi-Codec Support
+#### ✅ Multi-Codec Support Framework
 
--   AV1: Main profile with optional film grain support
--   H.264: Baseline, Main, and High profiles
--   H.265: Main and Main 10-bit profiles
--   Extensible architecture for future codec support
+-   AV1: Profile detection implemented
+-   H.264/H.265: Framework exists but needs implementation
+-   Extensible architecture in place
 
 **Implementation Files:**
 
--   `modules/vk_video/vulkan_video_session.h` - Complete video session management interface
--   `modules/vk_video/vulkan_video_session.cpp` - Full session creation and capabilities implementation
--   Integration with `rendering_device_video_extensions.h` for RenderingDevice API
+-   `drivers/vulkan/vulkan_video_context.h` - Video session management interface
+-   `drivers/vulkan/vulkan_video_context.cpp` - Partial implementation with placeholders
+-   `modules/vk_video/rendering_device_video_extensions.h` - High-level API interface
 
 ---
 
-### Phase 5C: Video Memory Management ✅ **COMPLETED**
+### Phase 5C: Video Memory Management 🔄 **PARTIAL**
 
 **Depends on: Phase 5B complete**
 
-This phase has been **fully implemented** with comprehensive video memory management for decode operations.
+This phase has **basic structures** defined but requires implementation of memory allocation and management.
 
-#### ✅ Video Session Memory Requirements
+#### 🔄 Video Session Memory Requirements **NEEDS COMPLETION**
 
--   `VulkanVideoSession::_bind_video_session_memory()` implemented
--   Automatic memory requirements query using `GetVideoSessionMemoryRequirementsKHR`
--   Memory type selection with device-local preference
--   Proper memory binding with `BindVideoSessionMemoryKHR`
+-   `_allocate_video_session_memory()` - **PLACEHOLDER IMPLEMENTATION**
+-   Memory requirements query not implemented
+-   Memory type selection incomplete
+-   Memory binding not implemented
 
-#### ✅ DPB (Decoded Picture Buffer) Management
+#### 🔄 DPB (Decoded Picture Buffer) Management **NEEDS COMPLETION**
 
--   `VulkanVideoMemory` class provides complete DPB management
--   `create_dpb_images()` - Creates DPB image pool with configurable slot count
--   `acquire_dpb_slot()` / `release_dpb_slot()` - Dynamic slot allocation
--   Support for reference frame tracking and management
--   Automatic cleanup and resource deallocation
+-   `VulkanVideoImage` structure defined
+-   `create_video_image()` - **PLACEHOLDER IMPLEMENTATION**
+-   Image memory allocation incomplete
+-   Reference frame tracking not implemented
 
-#### ✅ Video Output Images
+#### 🔄 Video Output Images **NEEDS COMPLETION**
 
--   Multi-buffered output image management for smooth playback
--   `create_output_images()` - Creates output image pool
--   `get_current_output_image()` / `advance_output_image()` - Frame cycling
--   Support for various YCbCr formats (NV12, YUV420P)
+-   Basic image creation framework exists
+-   Multi-buffered output management not implemented
+-   YCbCr format support framework in place
+-   Image view creation incomplete
 
-#### ✅ Video Buffer Management
+#### 🔄 Video Buffer Management **NEEDS COMPLETION**
 
--   `create_video_buffer()` - Bitstream buffer allocation
--   Memory mapping support for CPU access
--   Configurable buffer usage flags
--   Efficient memory allocation with proper alignment
+-   `VulkanVideoBuffer` structure defined
+-   `create_video_buffer()` - **PLACEHOLDER IMPLEMENTATION**
+-   Memory mapping not implemented
+-   Buffer allocation incomplete
 
 **Implementation Files:**
 
--   `modules/vk_video/vulkan_video_memory.h` - Complete video memory management interface
--   `modules/vk_video/vulkan_video_memory.cpp` - Full DPB and buffer management implementation
+-   `drivers/vulkan/vulkan_video_context.h` - Video memory structures defined
+-   `drivers/vulkan/vulkan_video_context.cpp` - Placeholder implementations
 
-### Phase 5D: YCbCr Color Conversion ✅ **COMPLETED**
+### Phase 5D: YCbCr Color Conversion 🔄 **PARTIAL**
 
 **Depends on: Phase 5C complete**
 
-This phase has been **fully implemented** with comprehensive YCbCr to RGB color space conversion using Vulkan's sampler YCbCr conversion.
+This phase has **framework components** implemented but requires integration with the decode pipeline.
 
 **✅ COMPILATION STATUS: All Vulkan Video components compile successfully and integrate cleanly with Godot's build system.**
 
-#### ✅ YCbCr Sampler Creation
+#### ✅ YCbCr Framework
 
--   `VulkanYCbCrSampler` class provides complete YCbCr conversion management
--   `create_ycbcr_sampler()` - Creates YCbCr conversion samplers
--   Support for multiple color spaces: Rec.709 (HDTV), Rec.601 (SDTV), Rec.2020 (UHDTV), SMPTE-240M
--   Configurable color ranges: Narrow (16-235) and Full (0-255)
--   Chroma location handling: Co-sited even and midpoint positioning
+-   `VulkanYCbCrSampler` class exists in `drivers/vulkan/`
+-   Format conversion utilities implemented
+-   Support for multiple color spaces framework
+-   Color range handling structure in place
 
-#### ✅ Video Format Support
+#### 🔄 Video Format Support **NEEDS INTEGRATION**
 
--   NV12 format support with `create_nv12_sampler()`
--   YUV420P format support with `create_yuv420p_sampler()`
--   Automatic format validation and compatibility checking
--   Extensible architecture for additional YCbCr formats
+-   Format detection implemented in `VulkanVideoContext`
+-   NV12/YUV420P format support framework exists
+-   Integration with video decode output incomplete
+-   Sampler creation needs connection to decode pipeline
 
-#### ✅ Hardware Color Space Conversion
+#### 🔄 Hardware Color Space Conversion **NEEDS COMPLETION**
 
--   Automatic YCbCr to RGB conversion in hardware
--   Configurable chroma filtering (linear/nearest)
--   Support for explicit reconstruction control
--   Optimal performance with GPU-accelerated conversion
+-   Basic conversion framework exists
+-   Integration with video images incomplete
+-   Texture output pipeline not connected
+-   Performance optimization pending
 
-#### ✅ Integration Features
+#### ✅ Integration Framework
 
--   Function pointer loading for YCbCr conversion extensions
--   Proper resource cleanup and management
--   Detailed format and capability reporting
--   Integration with video decode output pipeline
+-   Function pointer loading implemented in Vulkan driver
+-   Resource cleanup structure in place
+-   Format reporting implemented
+-   Driver integration foundation complete
 
 **Implementation Files:**
 
--   `modules/vk_video/vulkan_ycbcr_sampler.h` - Complete YCbCr conversion interface
--   `modules/vk_video/vulkan_ycbcr_sampler.cpp` - Full YCbCr sampler implementation
+-   `drivers/vulkan/vulkan_ycbcr_sampler.h` - YCbCr conversion interface
+-   `drivers/vulkan/vulkan_ycbcr_sampler.cpp` - YCbCr sampler implementation
+-   `drivers/vulkan/vulkan_video_context.cpp` - Format conversion utilities
 
 ### Phase 5E: Integration & Polish 🔄 **IN PROGRESS**
 
@@ -236,39 +234,39 @@ The main blocker for Phase 5E completion is that `VulkanVideoContext` cannot acc
 
 **CURRENT STATUS UPDATE (January 2025):**
 
-**✅ MAJOR PROGRESS: Core Vulkan Video Infrastructure Moved to drivers/vulkan**
-- `VulkanVideoDecoder` class fully implemented in `drivers/vulkan/vulkan_video_decoder.{h,cpp}`
-- Complete video session management, memory allocation, and decode operations
-- Integration with `RenderingDeviceDriverVulkan` for device access and function pointers
-- Support for AV1, H.264, and H.265 codecs with proper capability detection
+**✅ INFRASTRUCTURE FOUNDATION: Core Vulkan Video Components in Place**
+- `VulkanVideoContext` class implemented in `drivers/vulkan/vulkan_video_context.{h,cpp}`
+- Basic hardware detection and capability query implemented
+- Integration with `RenderingDeviceDriverVulkan` for device access established
+- `RenderingDeviceVideoExtensions` provides high-level API interface
 
-**✅ COMPLETED: Code Organization and Migration**
-- Successfully moved all Vulkan-specific code from `modules/vk_video/` to `drivers/vulkan/`
-- All core Vulkan Video infrastructure now properly located in the driver layer
-- Module now focuses on high-level video stream classes and integration
+**✅ COMPLETED: Code Organization and Build System**
+- Vulkan Video infrastructure properly located in `drivers/vulkan/` layer
+- Module focuses on high-level video stream classes and API
 - **✅ BUILD STATUS**: All components compile successfully with Godot's build system
+- Clean separation between driver code and module code established
 
-**Step 1: Code Organization ✅ COMPLETED**
--   ✅ **COMPLETED**: Core `VulkanVideoDecoder` moved to `drivers/vulkan/`
--   ✅ **COMPLETED**: `VulkanVideoContext` moved to `drivers/vulkan/` with proper driver integration
--   ✅ **COMPLETED**: `VulkanYCbCrSampler` moved to `drivers/vulkan/`
--   ✅ **COMPLETED**: Updated include paths and dependencies after migration
--   ✅ **COMPLETED**: Clean separation between driver code and module code established
--   ✅ **COMPLETED**: Fixed compilation issues and pointer access patterns
--   ✅ **COMPLETED**: Successful build verification
+**🔄 CURRENT IMPLEMENTATION GAPS:**
 
-**Step 2: Complete Integration Pipeline**
--   ✅ **COMPLETED**: Video session creation and memory management
--   ✅ **COMPLETED**: DPB and output image management
--   🔄 **TODO**: Complete `AV1VulkanDecoder::decode_frame()` implementation
--   🔄 **TODO**: Integrate YCbCr to RGB conversion pipeline
--   🔄 **TODO**: Add proper error handling and fallback mechanisms
+**Step 1: Complete Core VulkanVideoContext Implementation**
+-   ✅ **COMPLETED**: Basic initialization and hardware detection
+-   ✅ **COMPLETED**: Driver integration and function pointer access
+-   🔄 **INCOMPLETE**: Video session creation (`create_video_session()` is placeholder)
+-   🔄 **INCOMPLETE**: Memory allocation (`_allocate_video_session_memory()` not implemented)
+-   🔄 **INCOMPLETE**: Video image and buffer creation (placeholder implementations)
+-   🔄 **INCOMPLETE**: Decode command recording (`decode_video_frame()` not implemented)
 
-**Step 3: High-Level Module Integration**
--   ✅ **COMPLETED**: `VideoStreamAV1` and `VideoStreamMKV` classes
--   🔄 **TODO**: Connect video streams to Vulkan decoder backend
--   🔄 **TODO**: Implement texture output for rendering pipeline
--   🔄 **TODO**: Add performance monitoring and optimization
+**Step 2: Fix Module-Driver Integration**
+-   ✅ **COMPLETED**: `RenderingDeviceVideoExtensions` API structure
+-   🔄 **INCOMPLETE**: Proper VulkanVideoContext initialization from module
+-   🔄 **INCOMPLETE**: Replace placeholder implementations with actual driver calls
+-   🔄 **INCOMPLETE**: Error handling and capability validation
+
+**Step 3: Complete AV1VulkanDecoder Integration**
+-   ✅ **COMPLETED**: High-level decoder interface (`AV1VulkanDecoder`)
+-   🔄 **INCOMPLETE**: Connection to backend VulkanVideoContext
+-   🔄 **INCOMPLETE**: Actual frame decoding implementation
+-   🔄 **INCOMPLETE**: Texture output and ImageTexture conversion
 
 **Step 4: Testing and Validation**
 -   🔄 **TODO**: End-to-end testing with real AV1 video files

@@ -231,18 +231,65 @@ uint32_t VulkanVideoContext::create_video_session(VkVideoCodecOperationFlagBitsK
 	ERR_FAIL_COND_V(!initialized, 0);
 	ERR_FAIL_COND_V(!is_codec_supported(p_codec_operation), 0);
 	
-	// TODO: Implement full video session creation
-	WARN_PRINT("VulkanVideoContext: Video session creation not yet fully implemented");
-	
 	uint32_t session_id = next_session_id++;
 	VulkanVideoSession session;
 	session.codec_operation = p_codec_operation;
 	session.max_width = p_width;
 	session.max_height = p_height;
 	session.max_dpb_slots = p_dpb_slots;
-	session.is_valid = false; // Mark as invalid until fully implemented
 	
+	// Create video profile info
+	VkVideoProfileInfoKHR profile_info = {};
+	profile_info.sType = VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR;
+	profile_info.videoCodecOperation = p_codec_operation;
+	
+	VkVideoDecodeAV1ProfileInfoKHR av1_profile = {};
+	if (p_codec_operation == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
+		av1_profile.sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR;
+		av1_profile.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN;
+		profile_info.pNext = &av1_profile;
+	}
+	
+	// Create video session
+	VkVideoSessionCreateInfoKHR session_create_info = {};
+	session_create_info.sType = VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR;
+	session_create_info.queueFamilyIndex = hardware_info.video_queue_family;
+	session_create_info.flags = 0;
+	session_create_info.pVideoProfile = &profile_info;
+	session_create_info.pictureFormat = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM; // NV12 format
+	session_create_info.maxCodedExtent = { p_width, p_height };
+	session_create_info.referencePictureFormat = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+	session_create_info.maxDpbSlots = p_dpb_slots;
+	session_create_info.maxActiveReferencePictures = p_dpb_slots - 1;
+	session_create_info.pStdHeaderVersion = nullptr; // Will be set by driver
+	
+	VkResult result = VK_ERROR_UNKNOWN;
+	if (driver->get_device_functions().CreateVideoSessionKHR) {
+		result = driver->get_device_functions().CreateVideoSessionKHR(
+			device, &session_create_info, nullptr, &session.session);
+	}
+	
+	if (result != VK_SUCCESS) {
+		ERR_PRINT("Failed to create video session: " + String::num_int64(result));
+		return 0;
+	}
+	
+	// Allocate and bind memory for the video session
+	if (!_allocate_video_session_memory(session)) {
+		ERR_PRINT("Failed to allocate video session memory");
+		if (driver->get_device_functions().DestroyVideoSessionKHR) {
+			driver->get_device_functions().DestroyVideoSessionKHR(device, session.session, nullptr);
+		}
+		return 0;
+	}
+	
+	session.is_valid = true;
 	video_sessions[session_id] = session;
+	
+	print_verbose("VulkanVideoContext: Created video session " + String::num_uint64(session_id) + 
+		" for codec " + String::num_int64(p_codec_operation) + 
+		" size " + String::num_uint64(p_width) + "x" + String::num_uint64(p_height));
+	
 	return session_id;
 }
 
@@ -319,12 +366,61 @@ void VulkanVideoContext::destroy_video_image(uint32_t p_image_id) {
 }
 
 uint32_t VulkanVideoContext::create_video_buffer(VkDeviceSize p_size, VkBufferUsageFlags p_usage) {
-	WARN_PRINT("VulkanVideoContext: Video buffer creation not yet implemented");
-	return 0;
+	ERR_FAIL_COND_V(!initialized, 0);
+	ERR_FAIL_COND_V(p_size == 0, 0);
+	
+	uint32_t buffer_id = next_buffer_id++;
+	VulkanVideoBuffer buffer;
+	buffer.size = p_size;
+	
+	// Create buffer
+	VkBufferCreateInfo buffer_info = {};
+	buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	buffer_info.size = p_size;
+	buffer_info.usage = p_usage | VK_BUFFER_USAGE_VIDEO_DECODE_SRC_BIT_KHR;
+	buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	
+	VkResult result = vkCreateBuffer(device, &buffer_info, nullptr, &buffer.buffer);
+	if (result != VK_SUCCESS) {
+		ERR_PRINT("Failed to create video buffer: " + String::num_int64(result));
+		return 0;
+	}
+	
+	// Allocate and bind memory
+	if (!_allocate_video_buffer_memory(buffer)) {
+		ERR_PRINT("Failed to allocate video buffer memory");
+		vkDestroyBuffer(device, buffer.buffer, nullptr);
+		return 0;
+	}
+	
+	buffer.is_valid = true;
+	video_buffers[buffer_id] = buffer;
+	
+	print_verbose("VulkanVideoContext: Created video buffer " + String::num_uint64(buffer_id) + 
+		" with size " + String::num_uint64(p_size) + " bytes");
+	
+	return buffer_id;
 }
 
 void VulkanVideoContext::destroy_video_buffer(uint32_t p_buffer_id) {
-	WARN_PRINT("VulkanVideoContext: Video buffer destruction not yet implemented");
+	ERR_FAIL_COND(!initialized);
+	
+	if (video_buffers.has(p_buffer_id)) {
+		VulkanVideoBuffer &buffer = video_buffers[p_buffer_id];
+		
+		if (buffer.mapped_data != nullptr) {
+			vkUnmapMemory(device, buffer.memory);
+		}
+		if (buffer.buffer != VK_NULL_HANDLE) {
+			vkDestroyBuffer(device, buffer.buffer, nullptr);
+		}
+		if (buffer.memory != VK_NULL_HANDLE) {
+			vkFreeMemory(device, buffer.memory, nullptr);
+		}
+		
+		video_buffers.erase(p_buffer_id);
+		print_verbose("VulkanVideoContext: Destroyed video buffer " + String::num_uint64(p_buffer_id));
+	}
 }
 
 bool VulkanVideoContext::begin_video_coding(VkCommandBuffer p_cmd_buffer, uint32_t p_session_id) {
@@ -343,13 +439,74 @@ bool VulkanVideoContext::decode_video_frame(VkCommandBuffer p_cmd_buffer, uint32
 }
 
 bool VulkanVideoContext::update_video_buffer(uint32_t p_buffer_id, uint64_t p_offset, const Vector<uint8_t> &p_data) {
-	WARN_PRINT("VulkanVideoContext: Video buffer update not yet implemented");
-	return false;
+	ERR_FAIL_COND_V(!initialized, false);
+	ERR_FAIL_COND_V(!video_buffers.has(p_buffer_id), false);
+	ERR_FAIL_COND_V(p_data.is_empty(), false);
+	
+	VulkanVideoBuffer &buffer = video_buffers[p_buffer_id];
+	ERR_FAIL_COND_V(!buffer.is_valid, false);
+	ERR_FAIL_COND_V(p_offset + p_data.size() > buffer.size, false);
+	
+	// Map memory if not already mapped
+	if (buffer.mapped_data == nullptr) {
+		VkResult result = vkMapMemory(device, buffer.memory, 0, buffer.size, 0, &buffer.mapped_data);
+		if (result != VK_SUCCESS) {
+			ERR_PRINT("Failed to map video buffer memory: " + String::num_int64(result));
+			return false;
+		}
+	}
+	
+	// Copy data
+	memcpy(static_cast<uint8_t*>(buffer.mapped_data) + p_offset, p_data.ptr(), p_data.size());
+	
+	// Flush memory if not coherent
+	VkMappedMemoryRange range = {};
+	range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	range.memory = buffer.memory;
+	range.offset = p_offset;
+	range.size = p_data.size();
+	vkFlushMappedMemoryRanges(device, 1, &range);
+	
+	return true;
 }
 
 Vector<uint8_t> VulkanVideoContext::get_video_buffer_data(uint32_t p_buffer_id, uint64_t p_offset, uint64_t p_size) {
-	WARN_PRINT("VulkanVideoContext: Video buffer data retrieval not yet implemented");
-	return Vector<uint8_t>();
+	ERR_FAIL_COND_V(!initialized, Vector<uint8_t>());
+	ERR_FAIL_COND_V(!video_buffers.has(p_buffer_id), Vector<uint8_t>());
+	
+	VulkanVideoBuffer &buffer = video_buffers[p_buffer_id];
+	ERR_FAIL_COND_V(!buffer.is_valid, Vector<uint8_t>());
+	
+	// If size is 0, read from offset to end of buffer
+	if (p_size == 0) {
+		p_size = buffer.size - p_offset;
+	}
+	
+	ERR_FAIL_COND_V(p_offset + p_size > buffer.size, Vector<uint8_t>());
+	
+	// Map memory if not already mapped
+	if (buffer.mapped_data == nullptr) {
+		VkResult result = vkMapMemory(device, buffer.memory, 0, buffer.size, 0, &buffer.mapped_data);
+		if (result != VK_SUCCESS) {
+			ERR_PRINT("Failed to map video buffer memory: " + String::num_int64(result));
+			return Vector<uint8_t>();
+		}
+	}
+	
+	// Invalidate memory range to ensure we read latest data
+	VkMappedMemoryRange range = {};
+	range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	range.memory = buffer.memory;
+	range.offset = p_offset;
+	range.size = p_size;
+	vkInvalidateMappedMemoryRanges(device, 1, &range);
+	
+	// Copy data
+	Vector<uint8_t> data;
+	data.resize(p_size);
+	memcpy(data.ptrw(), static_cast<uint8_t*>(buffer.mapped_data) + p_offset, p_size);
+	
+	return data;
 }
 
 // Cleanup helpers
@@ -402,8 +559,118 @@ void VulkanVideoContext::_cleanup_video_buffers() {
 }
 
 bool VulkanVideoContext::_allocate_video_session_memory(VulkanVideoSession &p_session) {
-	// TODO: Implement video session memory allocation
-	return false;
+	ERR_FAIL_COND_V(p_session.session == VK_NULL_HANDLE, false);
+	
+	// Query memory requirements for the video session
+	uint32_t memory_requirements_count = 0;
+	VkResult result = VK_ERROR_UNKNOWN;
+	
+	if (driver->get_device_functions().GetVideoSessionMemoryRequirementsKHR) {
+		result = driver->get_device_functions().GetVideoSessionMemoryRequirementsKHR(
+			device, p_session.session, &memory_requirements_count, nullptr);
+		
+		if (result != VK_SUCCESS || memory_requirements_count == 0) {
+			ERR_PRINT("Failed to query video session memory requirements count: " + String::num_int64(result));
+			return false;
+		}
+	} else {
+		ERR_PRINT("GetVideoSessionMemoryRequirementsKHR function not available");
+		return false;
+	}
+	
+	Vector<VkVideoSessionMemoryRequirementsKHR> memory_requirements;
+	memory_requirements.resize(memory_requirements_count);
+	
+	for (uint32_t i = 0; i < memory_requirements_count; i++) {
+		memory_requirements.ptrw()[i].sType = VK_STRUCTURE_TYPE_VIDEO_SESSION_MEMORY_REQUIREMENTS_KHR;
+		memory_requirements.ptrw()[i].pNext = nullptr;
+	}
+	
+	result = driver->get_device_functions().GetVideoSessionMemoryRequirementsKHR(
+		device, p_session.session, &memory_requirements_count, memory_requirements.ptrw());
+	
+	if (result != VK_SUCCESS) {
+		ERR_PRINT("Failed to query video session memory requirements: " + String::num_int64(result));
+		return false;
+	}
+	
+	// For simplicity, we'll allocate one memory object for the largest requirement
+	// In a production implementation, you might want to allocate separate memory objects
+	VkDeviceSize max_size = 0;
+	uint32_t memory_type_bits = 0;
+	
+	for (uint32_t i = 0; i < memory_requirements_count; i++) {
+		const VkVideoSessionMemoryRequirementsKHR &req = memory_requirements[i];
+		if (req.memoryRequirements.size > max_size) {
+			max_size = req.memoryRequirements.size;
+			memory_type_bits = req.memoryRequirements.memoryTypeBits;
+		}
+	}
+	
+	// Find suitable memory type
+	VkPhysicalDeviceMemoryProperties memory_properties;
+	vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+	
+	uint32_t memory_type_index = UINT32_MAX;
+	for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+		if ((memory_type_bits & (1 << i)) && 
+			(memory_properties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+			memory_type_index = i;
+			break;
+		}
+	}
+	
+	if (memory_type_index == UINT32_MAX) {
+		ERR_PRINT("Failed to find suitable memory type for video session");
+		return false;
+	}
+	
+	// Allocate memory
+	VkMemoryAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.allocationSize = max_size;
+	alloc_info.memoryTypeIndex = memory_type_index;
+	
+	result = vkAllocateMemory(device, &alloc_info, nullptr, &p_session.memory);
+	if (result != VK_SUCCESS) {
+		ERR_PRINT("Failed to allocate video session memory: " + String::num_int64(result));
+		return false;
+	}
+	
+	// Bind memory to video session
+	Vector<VkBindVideoSessionMemoryInfoKHR> bind_infos;
+	bind_infos.resize(memory_requirements_count);
+	
+	for (uint32_t i = 0; i < memory_requirements_count; i++) {
+		bind_infos.ptrw()[i].sType = VK_STRUCTURE_TYPE_BIND_VIDEO_SESSION_MEMORY_INFO_KHR;
+		bind_infos.ptrw()[i].pNext = nullptr;
+		bind_infos.ptrw()[i].memoryBindIndex = memory_requirements[i].memoryBindIndex;
+		bind_infos.ptrw()[i].memory = p_session.memory;
+		bind_infos.ptrw()[i].memoryOffset = 0; // Using single allocation
+		bind_infos.ptrw()[i].memorySize = memory_requirements[i].memoryRequirements.size;
+	}
+	
+	if (driver->get_device_functions().BindVideoSessionMemoryKHR) {
+		result = driver->get_device_functions().BindVideoSessionMemoryKHR(
+			device, p_session.session, memory_requirements_count, bind_infos.ptr());
+		
+		if (result != VK_SUCCESS) {
+			ERR_PRINT("Failed to bind video session memory: " + String::num_int64(result));
+			vkFreeMemory(device, p_session.memory, nullptr);
+			p_session.memory = VK_NULL_HANDLE;
+			return false;
+		}
+	} else {
+		ERR_PRINT("BindVideoSessionMemoryKHR function not available");
+		vkFreeMemory(device, p_session.memory, nullptr);
+		p_session.memory = VK_NULL_HANDLE;
+		return false;
+	}
+	
+	print_verbose("VulkanVideoContext: Allocated and bound " + String::num_uint64(max_size) + 
+		" bytes of memory for video session");
+	
+	return true;
 }
 
 bool VulkanVideoContext::_allocate_video_image_memory(VulkanVideoImage &p_image) {
@@ -412,8 +679,69 @@ bool VulkanVideoContext::_allocate_video_image_memory(VulkanVideoImage &p_image)
 }
 
 bool VulkanVideoContext::_allocate_video_buffer_memory(VulkanVideoBuffer &p_buffer) {
-	// TODO: Implement video buffer memory allocation
-	return false;
+	ERR_FAIL_COND_V(p_buffer.buffer == VK_NULL_HANDLE, false);
+	
+	// Get memory requirements for the buffer
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements(device, p_buffer.buffer, &memory_requirements);
+	
+	// Find suitable memory type (prefer host visible for CPU access)
+	VkPhysicalDeviceMemoryProperties memory_properties;
+	vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+	
+	uint32_t memory_type_index = UINT32_MAX;
+	VkMemoryPropertyFlags preferred_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	
+	// First try to find host visible + coherent memory
+	for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+		if ((memory_requirements.memoryTypeBits & (1 << i)) && 
+			(memory_properties.memoryTypes[i].propertyFlags & preferred_flags) == preferred_flags) {
+			memory_type_index = i;
+			break;
+		}
+	}
+	
+	// Fallback to just host visible
+	if (memory_type_index == UINT32_MAX) {
+		for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++) {
+			if ((memory_requirements.memoryTypeBits & (1 << i)) && 
+				(memory_properties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+				memory_type_index = i;
+				break;
+			}
+		}
+	}
+	
+	if (memory_type_index == UINT32_MAX) {
+		ERR_PRINT("Failed to find suitable memory type for video buffer");
+		return false;
+	}
+	
+	// Allocate memory
+	VkMemoryAllocateInfo alloc_info = {};
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.allocationSize = memory_requirements.size;
+	alloc_info.memoryTypeIndex = memory_type_index;
+	
+	VkResult result = vkAllocateMemory(device, &alloc_info, nullptr, &p_buffer.memory);
+	if (result != VK_SUCCESS) {
+		ERR_PRINT("Failed to allocate video buffer memory: " + String::num_int64(result));
+		return false;
+	}
+	
+	// Bind memory to buffer
+	result = vkBindBufferMemory(device, p_buffer.buffer, p_buffer.memory, 0);
+	if (result != VK_SUCCESS) {
+		ERR_PRINT("Failed to bind video buffer memory: " + String::num_int64(result));
+		vkFreeMemory(device, p_buffer.memory, nullptr);
+		p_buffer.memory = VK_NULL_HANDLE;
+		return false;
+	}
+	
+	print_verbose("VulkanVideoContext: Allocated " + String::num_uint64(memory_requirements.size) + 
+		" bytes of memory for video buffer");
+	
+	return true;
 }
 
 #endif // VULKAN_ENABLED
