@@ -108,6 +108,31 @@ class RenderingDeviceDriverVulkan : public RenderingDeviceDriver {
 
 		// Debug device fault.
 		PFN_vkGetDeviceFaultInfoEXT GetDeviceFaultInfoEXT = nullptr;
+
+		// Video capabilities
+		PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR GetPhysicalDeviceVideoCapabilitiesKHR = nullptr;
+		PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR GetPhysicalDeviceVideoFormatPropertiesKHR = nullptr;
+
+		// Video session management
+		PFN_vkCreateVideoSessionKHR CreateVideoSessionKHR = nullptr;
+		PFN_vkDestroyVideoSessionKHR DestroyVideoSessionKHR = nullptr;
+		PFN_vkCreateVideoSessionParametersKHR CreateVideoSessionParametersKHR = nullptr;
+		PFN_vkDestroyVideoSessionParametersKHR DestroyVideoSessionParametersKHR = nullptr;
+		PFN_vkUpdateVideoSessionParametersKHR UpdateVideoSessionParametersKHR = nullptr;
+
+		// Video memory management
+		PFN_vkGetVideoSessionMemoryRequirementsKHR GetVideoSessionMemoryRequirementsKHR = nullptr;
+		PFN_vkBindVideoSessionMemoryKHR BindVideoSessionMemoryKHR = nullptr;
+
+		// Video decode commands
+		PFN_vkCmdDecodeVideoKHR CmdDecodeVideoKHR = nullptr;
+		PFN_vkCmdBeginVideoCodingKHR CmdBeginVideoCodingKHR = nullptr;
+		PFN_vkCmdEndVideoCodingKHR CmdEndVideoCodingKHR = nullptr;
+		PFN_vkCmdControlVideoCodingKHR CmdControlVideoCodingKHR = nullptr;
+
+		// YCbCr conversion functions
+		PFN_vkCreateSamplerYcbcrConversionKHR CreateSamplerYcbcrConversionKHR = nullptr;
+		PFN_vkDestroySamplerYcbcrConversionKHR DestroySamplerYcbcrConversionKHR = nullptr;
 	};
 	// Debug marker extensions.
 	VkDebugReportObjectTypeEXT _convert_to_debug_report_objectType(VkObjectType p_object_type);
@@ -124,6 +149,8 @@ class RenderingDeviceDriverVulkan : public RenderingDeviceDriver {
 	HashSet<CharString> enabled_device_extension_names;
 	TightLocalVector<TightLocalVector<Queue>> queue_families;
 	TightLocalVector<VkQueueFamilyProperties> queue_family_properties;
+	uint32_t video_decode_queue_family = UINT32_MAX;
+	VkQueue video_decode_queue = VK_NULL_HANDLE;
 	RDD::Capabilities device_capabilities;
 	SubgroupCapabilities subgroup_capabilities;
 	MultiviewCapabilities multiview_capabilities;
@@ -152,6 +179,7 @@ class RenderingDeviceDriverVulkan : public RenderingDeviceDriver {
 	void _choose_vrs_capabilities();
 	Error _add_queue_create_info(LocalVector<VkDeviceQueueCreateInfo> &r_queue_create_info);
 	Error _initialize_device(const LocalVector<VkDeviceQueueCreateInfo> &p_queue_create_info);
+	void _detect_video_queue_families();
 	Error _initialize_allocator();
 	Error _initialize_pipeline_cache();
 	VkResult _create_render_pass(VkDevice p_device, const VkRenderPassCreateInfo2 *p_create_info, const VkAllocationCallbacks *p_allocator, VkRenderPass *p_render_pass);
@@ -683,6 +711,25 @@ private:
 	/**** BOOKKEEPING ****/
 	/*********************/
 
+	// Video resource structures
+	struct VideoSessionInfo {
+		VkVideoSessionKHR vk_video_session = VK_NULL_HANDLE;
+		VkVideoSessionParametersKHR vk_session_parameters = VK_NULL_HANDLE;
+		VkVideoProfileInfoKHR profile_info = {};
+		VkVideoDecodeCapabilitiesKHR decode_capabilities = {};
+		LocalVector<VkDeviceMemory> bound_memory;
+		uint32_t width = 0;
+		uint32_t height = 0;
+		bool is_av1 = false;
+	};
+
+	struct VideoBufferInfo {
+		VkBuffer vk_buffer = VK_NULL_HANDLE;
+		VmaAllocation allocation = nullptr;
+		uint64_t size = 0;
+		void *mapped_ptr = nullptr;
+	};
+
 	using VersatileResource = VersatileResourceTemplate<
 			BufferInfo,
 			TextureInfo,
@@ -690,7 +737,8 @@ private:
 			ShaderInfo,
 			UniformSetInfo,
 			RenderPassInfo,
-			CommandBufferInfo>;
+			CommandBufferInfo,
+			VideoSessionInfo>;
 	PagedAllocator<VersatileResource, true> resources_allocator;
 
 	/******************/

@@ -535,6 +535,12 @@ Error RenderingDeviceDriverVulkan::_initialize_device_extensions() {
 	_register_requested_device_extension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, false);
 	_register_requested_device_extension(VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME, false);
 
+	// Video extensions for hardware-accelerated decoding
+	_register_requested_device_extension(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME, false);
+	_register_requested_device_extension(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME, false);
+	_register_requested_device_extension(VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME, false);
+	_register_requested_device_extension(VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME, false);
+
 	// We don't actually use this extension, but some runtime components on some platforms
 	// can and will fill the validation layers with useless info otherwise if not enabled.
 	_register_requested_device_extension(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, false);
@@ -1216,9 +1222,66 @@ Error RenderingDeviceDriverVulkan::_initialize_device(const LocalVector<VkDevice
 		if (device_fault_support) {
 			device_functions.GetDeviceFaultInfoEXT = (PFN_vkGetDeviceFaultInfoEXT)functions.GetDeviceProcAddr(vk_device, "vkGetDeviceFaultInfoEXT");
 		}
+
+		// Video extensions function pointers
+		if (enabled_device_extension_names.has(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME)) {
+			device_functions.GetPhysicalDeviceVideoCapabilitiesKHR = (PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR)vkGetInstanceProcAddr(context_driver->instance_get(), "vkGetPhysicalDeviceVideoCapabilitiesKHR");
+			device_functions.GetPhysicalDeviceVideoFormatPropertiesKHR = (PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR)vkGetInstanceProcAddr(context_driver->instance_get(), "vkGetPhysicalDeviceVideoFormatPropertiesKHR");
+			device_functions.CreateVideoSessionKHR = (PFN_vkCreateVideoSessionKHR)functions.GetDeviceProcAddr(vk_device, "vkCreateVideoSessionKHR");
+			device_functions.DestroyVideoSessionKHR = (PFN_vkDestroyVideoSessionKHR)functions.GetDeviceProcAddr(vk_device, "vkDestroyVideoSessionKHR");
+			device_functions.CreateVideoSessionParametersKHR = (PFN_vkCreateVideoSessionParametersKHR)functions.GetDeviceProcAddr(vk_device, "vkCreateVideoSessionParametersKHR");
+			device_functions.DestroyVideoSessionParametersKHR = (PFN_vkDestroyVideoSessionParametersKHR)functions.GetDeviceProcAddr(vk_device, "vkDestroyVideoSessionParametersKHR");
+			device_functions.UpdateVideoSessionParametersKHR = (PFN_vkUpdateVideoSessionParametersKHR)functions.GetDeviceProcAddr(vk_device, "vkUpdateVideoSessionParametersKHR");
+			device_functions.GetVideoSessionMemoryRequirementsKHR = (PFN_vkGetVideoSessionMemoryRequirementsKHR)functions.GetDeviceProcAddr(vk_device, "vkGetVideoSessionMemoryRequirementsKHR");
+			device_functions.BindVideoSessionMemoryKHR = (PFN_vkBindVideoSessionMemoryKHR)functions.GetDeviceProcAddr(vk_device, "vkBindVideoSessionMemoryKHR");
+		}
+
+		if (enabled_device_extension_names.has(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME)) {
+			device_functions.CmdDecodeVideoKHR = (PFN_vkCmdDecodeVideoKHR)functions.GetDeviceProcAddr(vk_device, "vkCmdDecodeVideoKHR");
+			device_functions.CmdBeginVideoCodingKHR = (PFN_vkCmdBeginVideoCodingKHR)functions.GetDeviceProcAddr(vk_device, "vkCmdBeginVideoCodingKHR");
+			device_functions.CmdEndVideoCodingKHR = (PFN_vkCmdEndVideoCodingKHR)functions.GetDeviceProcAddr(vk_device, "vkCmdEndVideoCodingKHR");
+			device_functions.CmdControlVideoCodingKHR = (PFN_vkCmdControlVideoCodingKHR)functions.GetDeviceProcAddr(vk_device, "vkCmdControlVideoCodingKHR");
+		}
+
+		if (enabled_device_extension_names.has(VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME)) {
+			device_functions.CreateSamplerYcbcrConversionKHR = (PFN_vkCreateSamplerYcbcrConversionKHR)functions.GetDeviceProcAddr(vk_device, "vkCreateSamplerYcbcrConversionKHR");
+			device_functions.DestroySamplerYcbcrConversionKHR = (PFN_vkDestroySamplerYcbcrConversionKHR)functions.GetDeviceProcAddr(vk_device, "vkDestroySamplerYcbcrConversionKHR");
+		}
+
+		// Log video extension availability
+		if (enabled_device_extension_names.has(VK_KHR_VIDEO_DECODE_AV1_EXTENSION_NAME)) {
+			print_verbose("Vulkan Video: AV1 hardware decode available");
+		} else {
+			print_verbose("Vulkan Video: AV1 hardware decode not available, will use software fallback");
+		}
 	}
 
 	return OK;
+}
+
+void RenderingDeviceDriverVulkan::_detect_video_queue_families() {
+	uint32_t queue_family_count = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+	
+	Vector<VkQueueFamilyProperties> queue_families_props;
+	queue_families_props.resize(queue_family_count);
+	vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_props.ptrw());
+	
+	for (uint32_t i = 0; i < queue_family_count; i++) {
+		// Check for video decode support
+		if (queue_families_props[i].queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) {
+			video_decode_queue_family = i;
+			print_verbose("Vulkan Video: Found video decode queue family: " + itos(i));
+			
+			// Get the video decode queue
+			vkGetDeviceQueue(vk_device, i, 0, &video_decode_queue);
+			break;
+		}
+	}
+	
+	if (video_decode_queue_family == UINT32_MAX) {
+		print_verbose("Vulkan Video: No video decode queue family found, hardware decode unavailable");
+	}
 }
 
 Error RenderingDeviceDriverVulkan::_initialize_allocator() {
@@ -1537,6 +1600,11 @@ Error RenderingDeviceDriverVulkan::initialize(uint32_t p_device_index, uint32_t 
 
 	err = _initialize_device(queue_create_info);
 	ERR_FAIL_COND_V(err != OK, err);
+
+	// Detect video queue families after device initialization
+	if (enabled_device_extension_names.has(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME)) {
+		_detect_video_queue_families();
+	}
 
 	err = _initialize_allocator();
 	ERR_FAIL_COND_V(err != OK, err);
