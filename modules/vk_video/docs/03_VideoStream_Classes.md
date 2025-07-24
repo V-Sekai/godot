@@ -14,14 +14,14 @@ Implementation of VideoStreamAV1 and VideoStreamPlaybackAV1 classes following Go
         [VideoStream] resource for AV1 videos with hardware acceleration.
     </brief_description>
     <description>
-        [VideoStream] resource handling AV1 video format with [code].av1[/code], [code].ivf[/code], and [code].webm[/code] extensions. 
+        [VideoStream] resource handling AV1 video format with [code].av1[/code], [code].ivf[/code], and [code].webm[/code] extensions.
         The AV1 codec is decoded using Vulkan Video hardware acceleration when available, with automatic fallback to software decoding.
-        
+
         Hardware acceleration requires:
         - Vulkan 1.3+ with VK_KHR_video_decode_av1 extension
         - Compatible GPU drivers (NVIDIA RTX 30/40 series, AMD RDNA2+, Intel Arc)
         - Sufficient VRAM for decoded picture buffer (DPB)
-        
+
         [b]Note:[/b] Hardware decoding performance varies by GPU vendor and driver version.
     </description>
     <tutorials>
@@ -40,7 +40,7 @@ Implementation of VideoStreamAV1 and VideoStreamPlaybackAV1 classes following Go
             <description>
                 Returns a dictionary containing hardware decoding capabilities:
                 [code]max_width[/code]: Maximum supported video width
-                [code]max_height[/code]: Maximum supported video height  
+                [code]max_height[/code]: Maximum supported video height
                 [code]max_dpb_slots[/code]: Maximum decoded picture buffer slots
                 [code]supported_profiles[/code]: Array of supported AV1 profiles
                 [code]supported_levels[/code]: Array of supported AV1 levels
@@ -86,15 +86,15 @@ private:
     String file_path;
     AV1SequenceHeader sequence_header;
     bool sequence_header_parsed = false;
-    
+
     // Hardware capability cache
     mutable bool hardware_caps_cached = false;
     mutable VideoCapabilities hardware_caps;
-    
+
     // Configuration
     bool force_software_decode = false;
     int max_decode_threads = 0;
-    
+
     // Internal methods
     Error _parse_sequence_header();
     void _cache_hardware_capabilities() const;
@@ -105,16 +105,16 @@ protected:
 public:
     VideoStreamAV1();
     virtual ~VideoStreamAV1();
-    
+
     // VideoStream interface
     virtual Ref<VideoStreamPlayback> instantiate_playback() override;
     virtual void set_file(const String &p_file) override;
-    
+
     // AV1-specific methods
     bool is_hardware_supported() const;
     Dictionary get_hardware_capabilities() const;
     Dictionary get_sequence_info() const;
-    
+
     // Configuration
     void set_force_software_decode(bool p_force);
     bool get_force_software_decode() const;
@@ -127,12 +127,12 @@ void VideoStreamAV1::_bind_methods() {
     ClassDB::bind_method(D_METHOD("is_hardware_supported"), &VideoStreamAV1::is_hardware_supported);
     ClassDB::bind_method(D_METHOD("get_hardware_capabilities"), &VideoStreamAV1::get_hardware_capabilities);
     ClassDB::bind_method(D_METHOD("get_sequence_info"), &VideoStreamAV1::get_sequence_info);
-    
+
     ClassDB::bind_method(D_METHOD("set_force_software_decode", "force"), &VideoStreamAV1::set_force_software_decode);
     ClassDB::bind_method(D_METHOD("get_force_software_decode"), &VideoStreamAV1::get_force_software_decode);
     ClassDB::bind_method(D_METHOD("set_max_decode_threads", "threads"), &VideoStreamAV1::set_max_decode_threads);
     ClassDB::bind_method(D_METHOD("get_max_decode_threads"), &VideoStreamAV1::get_max_decode_threads);
-    
+
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "force_software_decode"), "set_force_software_decode", "get_force_software_decode");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "max_decode_threads", PROPERTY_HINT_RANGE, "0,16"), "set_max_decode_threads", "get_max_decode_threads");
 }
@@ -142,18 +142,18 @@ bool VideoStreamAV1::is_hardware_supported() const {
     if (!sequence_header_parsed) {
         return false;
     }
-    
+
     if (force_software_decode) {
         return false;
     }
-    
+
     RenderingDevice *rd = RenderingDevice::get_singleton();
     if (!rd || !rd->has_feature(RenderingDevice::FEATURE_VULKAN_VIDEO)) {
         return false;
     }
-    
+
     _cache_hardware_capabilities();
-    return hardware_caps.codec_supported && 
+    return hardware_caps.codec_supported &&
            hardware_caps.supports_profile(sequence_header.profile) &&
            hardware_caps.supports_resolution(sequence_header.max_width, sequence_header.max_height);
 }
@@ -190,12 +190,12 @@ private:
     RID video_session_parameters;
     RID dpb_image_array;
     RID output_texture;
-    
+
     // Resource management
     Ref<VulkanVideoResourceManager> resource_manager;
     Ref<AV1BitstreamParser> bitstream_parser;
     Ref<AudioVideoSynchronizer> av_sync;
-    
+
     // Playback state
     String file_path;
     Ref<FileAccess> file;
@@ -204,7 +204,7 @@ private:
     bool paused = false;
     double time = 0.0;
     double stream_length = 0.0;
-    
+
     // Frame management
     struct DecodedFrame {
         RID texture;
@@ -213,12 +213,12 @@ private:
     };
     Queue<DecodedFrame> frame_queue;
     uint32_t max_queued_frames = 3;
-    
+
     // Audio state
     Vector<float> audio_buffer;
     int audio_ptr_start = 0;
     int audio_ptr_end = 0;
-    
+
     // Internal methods
     Error _initialize_hardware_decode();
     Error _decode_next_frame();
@@ -231,7 +231,7 @@ protected:
 public:
     VideoStreamPlaybackAV1();
     virtual ~VideoStreamPlaybackAV1();
-    
+
     // VideoStreamPlayback interface
     virtual void play() override;
     virtual void stop() override;
@@ -246,7 +246,7 @@ public:
     virtual void update(double p_delta) override;
     virtual int get_channels() const override;
     virtual int get_mix_rate() const override;
-    
+
     // AV1-specific methods
     void set_file(const String &p_file);
     void set_hardware_decode(bool p_enable);
@@ -258,7 +258,7 @@ void VideoStreamPlaybackAV1::play() {
     if (file_path.is_empty()) {
         return;
     }
-    
+
     if (!playing) {
         Error err = _initialize_hardware_decode();
         if (err != OK) {
@@ -266,7 +266,7 @@ void VideoStreamPlaybackAV1::play() {
             return;
         }
     }
-    
+
     playing = true;
     paused = false;
     time = 0.0;
@@ -276,9 +276,9 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
     if (!playing || paused) {
         return;
     }
-    
+
     time += p_delta;
-    
+
     // Decode frames as needed
     while (frame_queue.size() < max_queued_frames) {
         Error err = _decode_next_frame();
@@ -290,12 +290,12 @@ void VideoStreamPlaybackAV1::update(double p_delta) {
             break;
         }
     }
-    
+
     // Update audio-video synchronization
     if (av_sync.is_valid()) {
         av_sync->update_master_clock(time);
     }
-    
+
     // Send audio data
     _send_audio();
 }
@@ -312,17 +312,17 @@ Error VideoStreamPlaybackAV1::_initialize_hardware_decode() {
     if (!hardware_decode) {
         return ERR_UNAVAILABLE;
     }
-    
+
     RenderingDevice *rd = RenderingDevice::get_singleton();
     ERR_FAIL_NULL_V(rd, ERR_UNAVAILABLE);
-    
+
     // Parse file and get sequence header
     bitstream_parser = memnew(AV1BitstreamParser);
     Error err = bitstream_parser->open_file(file_path);
     ERR_FAIL_COND_V(err != OK, err);
-    
+
     AV1SequenceHeader seq_header = bitstream_parser->get_sequence_header();
-    
+
     // Create video session
     VideoSessionCreateInfo session_info;
     session_info.codec_operation = VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
@@ -330,10 +330,10 @@ Error VideoStreamPlaybackAV1::_initialize_hardware_decode() {
     session_info.max_coded_extent_height = seq_header.max_height;
     session_info.max_dpb_slots = 8; // AV1 requires up to 8 reference frames
     session_info.max_active_reference_pictures = 7;
-    
+
     video_session = rd->video_session_create(session_info);
     ERR_FAIL_COND_V(!video_session.is_valid(), ERR_CANT_CREATE);
-    
+
     // Create DPB image array
     VideoImageCreateInfo dpb_info;
     dpb_info.image_type = VK_IMAGE_TYPE_2D;
@@ -341,19 +341,19 @@ Error VideoStreamPlaybackAV1::_initialize_hardware_decode() {
     dpb_info.extent = {seq_header.max_width, seq_header.max_height, 1};
     dpb_info.array_layers = session_info.max_dpb_slots;
     dpb_info.usage = VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR | VK_IMAGE_USAGE_SAMPLED_BIT;
-    
+
     dpb_image_array = rd->video_image_create(dpb_info);
     ERR_FAIL_COND_V(!dpb_image_array.is_valid(), ERR_CANT_CREATE);
-    
+
     // Initialize resource manager
     resource_manager = memnew(VulkanVideoResourceManager);
     err = resource_manager->initialize(video_session, dpb_image_array);
     ERR_FAIL_COND_V(err != OK, err);
-    
+
     // Initialize audio-video synchronizer
     av_sync = memnew(AudioVideoSynchronizer);
     av_sync->initialize(seq_header.frame_rate);
-    
+
     return OK;
 }
 
@@ -361,51 +361,51 @@ Error VideoStreamPlaybackAV1::_initialize_hardware_decode() {
 Error VideoStreamPlaybackAV1::_decode_next_frame() {
     ERR_FAIL_NULL_V(bitstream_parser, ERR_UNCONFIGURED);
     ERR_FAIL_NULL_V(resource_manager, ERR_UNCONFIGURED);
-    
+
     // Parse next frame from bitstream
     AV1FrameData frame_data;
     Error err = bitstream_parser->parse_next_frame(frame_data);
     if (err != OK) {
         return err;
     }
-    
+
     // Get decode resources
     RID bitstream_buffer = resource_manager->acquire_bitstream_buffer(frame_data.size);
     RID output_slot = resource_manager->acquire_dpb_slot();
-    
+
     // Upload bitstream data
     RenderingDevice *rd = RenderingDevice::get_singleton();
     rd->buffer_update(bitstream_buffer, 0, frame_data.size, frame_data.data);
-    
+
     // Record decode commands
     RDD::CommandBufferID cmd_buffer = resource_manager->begin_decode_commands();
-    
+
     VideoCodingBeginInfo coding_begin;
     coding_begin.video_session = video_session;
     coding_begin.video_session_parameters = video_session_parameters;
     rd->video_cmd_begin_coding(cmd_buffer, coding_begin);
-    
+
     VideoDecodeInfo decode_info;
     decode_info.src_buffer = bitstream_buffer;
     decode_info.src_buffer_offset = 0;
     decode_info.src_buffer_range = frame_data.size;
     decode_info.dst_picture_resource = resource_manager->get_picture_resource(output_slot);
     rd->video_cmd_decode_frame(cmd_buffer, decode_info);
-    
+
     rd->video_cmd_end_coding(cmd_buffer);
-    
+
     // Submit and wait for completion
     resource_manager->submit_decode_commands(cmd_buffer);
-    
+
     // Queue decoded frame
     DecodedFrame decoded_frame;
     decoded_frame.texture = resource_manager->get_output_texture(output_slot);
     decoded_frame.timestamp = frame_data.timestamp;
     decoded_frame.frame_number = frame_data.frame_number;
-    
+
     frame_queue.push(decoded_frame);
     av_sync->queue_decoded_frame(decoded_frame.texture, decoded_frame.timestamp);
-    
+
     return OK;
 }
 ```
@@ -416,24 +416,24 @@ Error VideoStreamPlaybackAV1::_decode_next_frame() {
 // Resource loader for AV1 files
 class ResourceFormatLoaderAV1 : public ResourceFormatLoader {
 public:
-    virtual Ref<Resource> load(const String &p_path, const String &p_original_path = "", 
-                              Error *r_error = nullptr, bool p_use_sub_threads = false, 
+    virtual Ref<Resource> load(const String &p_path, const String &p_original_path = "",
+                              Error *r_error = nullptr, bool p_use_sub_threads = false,
                               float *r_progress = nullptr, CacheMode p_cache_mode = CACHE_MODE_REUSE) override;
     virtual void get_recognized_extensions(List<String> *p_extensions) const override;
     virtual bool handles_type(const String &p_type) const override;
     virtual String get_resource_type(const String &p_path) const override;
 };
 
-Ref<Resource> ResourceFormatLoaderAV1::load(const String &p_path, const String &p_original_path, 
-                                           Error *r_error, bool p_use_sub_threads, 
+Ref<Resource> ResourceFormatLoaderAV1::load(const String &p_path, const String &p_original_path,
+                                           Error *r_error, bool p_use_sub_threads,
                                            float *r_progress, CacheMode p_cache_mode) {
     Ref<VideoStreamAV1> stream = memnew(VideoStreamAV1);
     stream->set_file(p_path);
-    
+
     if (r_error) {
         *r_error = OK;
     }
-    
+
     return stream;
 }
 
@@ -449,7 +449,7 @@ bool ResourceFormatLoaderAV1::handles_type(const String &p_type) const {
 
 String ResourceFormatLoaderAV1::get_resource_type(const String &p_path) const {
     String extension = p_path.get_extension().to_lower();
-    if (extension == "av1" || extension == "ivf" || 
+    if (extension == "av1" || extension == "ivf" ||
         (extension == "webm" && _is_av1_webm(p_path))) {
         return "VideoStreamAV1";
     }
@@ -489,7 +489,7 @@ video_stream.force_software_decode = true
 video_stream.max_decode_threads = 4
 
 var sequence_info = video_stream.get_sequence_info()
-print("Video info: ", sequence_info.width, "x", sequence_info.height, 
+print("Video info: ", sequence_info.width, "x", sequence_info.height,
       " @ ", sequence_info.frame_rate, "fps")
 print("Profile: ", sequence_info.profile, " Level: ", sequence_info.level)
 ```

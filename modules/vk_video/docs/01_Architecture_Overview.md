@@ -40,7 +40,7 @@ VideoStream (base)
     ├── sequence_header: AV1SequenceHeader
     └── hardware_caps: VideoCapabilities
 
-// Playback Classes  
+// Playback Classes
 VideoStreamPlayback (base)
 └── VideoStreamPlaybackAV1
     ├── video_session: RID
@@ -64,12 +64,12 @@ public:
     // Video session management
     RID video_session_create(const VideoSessionCreateInfo& info);
     void video_session_destroy(RID session);
-    
+
     // Video command recording
     void video_cmd_begin_coding(CommandBufferID cmd, const VideoCodingBeginInfo& info);
     void video_cmd_decode_frame(CommandBufferID cmd, const VideoDecodeInfo& info);
     void video_cmd_end_coding(CommandBufferID cmd);
-    
+
     // Video resource creation
     RID video_image_create(const VideoImageCreateInfo& info);
     RID video_buffer_create(const VideoBufferCreateInfo& info);
@@ -103,12 +103,12 @@ public:
 1. File Loading
    VideoStreamAV1::load_file() → Parse headers → Cache sequence info
 
-2. Playback Initialization  
+2. Playback Initialization
    VideoStreamPlaybackAV1::play() → Create video session → Allocate DPB
 
 3. Frame Decode Loop
    update() → Parse bitstream → Submit decode → Present frame
-   
+
 4. Synchronization
    AudioVideoSynchronizer → Match timestamps → Queue frames
 ```
@@ -118,7 +118,7 @@ public:
 1. DPB Management
    VideoMemoryPool → Allocate image array → Track reference frames
 
-2. Command Buffer Management  
+2. Command Buffer Management
    VideoCommandManager → Pool command buffers → Synchronize execution
 
 3. Memory Synchronization
@@ -134,7 +134,7 @@ bool VideoStreamAV1::is_hardware_supported() {
     if (!RenderingDevice::get_singleton()->has_feature(FEATURE_VULKAN_VIDEO)) {
         return false;
     }
-    
+
     VideoCapabilities caps = get_av1_decode_capabilities();
     return caps.supports_profile(sequence_header.profile);
 }
@@ -163,7 +163,7 @@ Ref<VideoStreamPlayback> VideoStreamAV1::instantiate_playback() {
 
 #### Threading Strategy
 - Decode operations on video queue
-- Graphics operations on graphics queue  
+- Graphics operations on graphics queue
 - Audio processing on audio thread
 - Synchronization via timeline semaphores
 
@@ -180,7 +180,7 @@ Ref<VideoStreamPlayback> VideoStreamAV1::instantiate_playback() {
 - Command buffer recording
 - Error condition handling
 
-#### Integration Tests  
+#### Integration Tests
 - End-to-end playback scenarios
 - Audio-video synchronization
 - Memory leak detection

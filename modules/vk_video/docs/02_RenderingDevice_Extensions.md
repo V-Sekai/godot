@@ -27,7 +27,7 @@ public:
     RID video_session_create(const VideoSessionCreateInfo& p_info);
     void video_session_destroy(RID p_session);
     bool video_session_is_valid(RID p_session) const;
-    
+
     // Video session parameters (for codec headers)
     RID video_session_parameters_create(RID p_session, const VideoSessionParametersInfo& p_info);
     void video_session_parameters_update(RID p_params, const VideoParametersUpdateInfo& p_info);
@@ -63,9 +63,9 @@ public:
     void video_cmd_decode_frame(CommandBufferID p_cmd_buffer, const VideoDecodeInfo& p_info);
     void video_cmd_encode_frame(CommandBufferID p_cmd_buffer, const VideoEncodeInfo& p_info);
     void video_cmd_end_coding(CommandBufferID p_cmd_buffer);
-    
+
     // Video memory barriers
-    void video_cmd_pipeline_barrier(CommandBufferID p_cmd_buffer, 
+    void video_cmd_pipeline_barrier(CommandBufferID p_cmd_buffer,
                                    const Vector<VideoImageMemoryBarrier>& p_image_barriers);
 };
 ```
@@ -85,7 +85,7 @@ struct VideoImageCreateInfo {
     VkVideoProfileListInfoKHR video_profile_list;
 };
 
-// Video buffer creation info  
+// Video buffer creation info
 struct VideoBufferCreateInfo {
     VkDeviceSize size;
     VkBufferUsageFlags usage;
@@ -98,11 +98,11 @@ public:
     // Video-specific resource creation
     RID video_image_create(const VideoImageCreateInfo& p_info);
     RID video_buffer_create(const VideoBufferCreateInfo& p_info);
-    
+
     // Video capability queries
     VideoCapabilities video_get_decode_capabilities(VkVideoCodecOperationFlagBitsKHR p_codec);
     VideoCapabilities video_get_encode_capabilities(VkVideoCodecOperationFlagBitsKHR p_codec);
-    bool video_format_supported(VkFormat p_format, VkImageUsageFlags p_usage, 
+    bool video_format_supported(VkFormat p_format, VkImageUsageFlags p_usage,
                                 VkVideoProfileListInfoKHR p_profile_list);
 };
 ```
@@ -127,7 +127,7 @@ struct VideoSession {
 // Video session creation
 RID RenderingDevice::video_session_create(const VideoSessionCreateInfo& p_info) {
     VideoSession session;
-    
+
     // Create Vulkan video session
     VkVideoSessionCreateInfoKHR create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_VIDEO_SESSION_CREATE_INFO_KHR;
@@ -139,13 +139,13 @@ RID RenderingDevice::video_session_create(const VideoSessionCreateInfo& p_info) 
     create_info.referencePictureFormat = p_info.reference_format.imageViewBinding.format;
     create_info.maxDpbSlots = p_info.max_dpb_slots;
     create_info.maxActiveReferencePictures = p_info.max_active_reference_pictures;
-    
+
     VkResult result = vkCreateVideoSessionKHR(device, &create_info, nullptr, &session.vk_session);
     ERR_FAIL_COND_V(result != VK_SUCCESS, RID());
-    
+
     // Allocate and bind memory
     _video_session_allocate_memory(session);
-    
+
     return video_session_owner.make_rid(session);
 }
 ```
@@ -154,17 +154,17 @@ RID RenderingDevice::video_session_create(const VideoSessionCreateInfo& p_info) 
 
 ```cpp
 // Video command recording implementation
-void RenderingDevice::video_cmd_begin_coding(CommandBufferID p_cmd_buffer, 
+void RenderingDevice::video_cmd_begin_coding(CommandBufferID p_cmd_buffer,
                                             const VideoCodingBeginInfo& p_info) {
     VideoSession* session = video_session_owner.get_or_null(p_info.video_session);
     ERR_FAIL_NULL(session);
-    
+
     VkVideoBeginCodingInfoKHR begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_VIDEO_BEGIN_CODING_INFO_KHR;
     begin_info.videoSession = session->vk_session;
     begin_info.videoSessionParameters = VK_NULL_HANDLE; // Set if parameters provided
     begin_info.referenceSlotCount = p_info.reference_slot_info.size();
-    
+
     // Convert reference slot info
     Vector<VkVideoReferenceSlotInfoKHR> reference_slots;
     for (const auto& slot_info : p_info.reference_slot_info) {
@@ -175,24 +175,24 @@ void RenderingDevice::video_cmd_begin_coding(CommandBufferID p_cmd_buffer,
         reference_slots.push_back(slot);
     }
     begin_info.pReferenceSlots = reference_slots.ptr();
-    
+
     vkCmdBeginVideoCodingKHR(p_cmd_buffer, &begin_info);
 }
 
-void RenderingDevice::video_cmd_decode_frame(CommandBufferID p_cmd_buffer, 
+void RenderingDevice::video_cmd_decode_frame(CommandBufferID p_cmd_buffer,
                                            const VideoDecodeInfo& p_info) {
     VkVideoDecodeInfoKHR decode_info = {};
     decode_info.sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_INFO_KHR;
-    
+
     // Set up source buffer info
     decode_info.src.sType = VK_STRUCTURE_TYPE_VIDEO_INLINE_QUERY_INFO_KHR;
     decode_info.src.buffer = _get_buffer_from_rid(p_info.src_buffer);
     decode_info.src.offset = p_info.src_buffer_offset;
     decode_info.src.range = p_info.src_buffer_range;
-    
+
     // Set up destination picture resource
     decode_info.dstPictureResource = p_info.dst_picture_resource;
-    
+
     // Set up reference pictures
     Vector<VkVideoReferenceSlotInfoKHR> reference_slots;
     for (const auto& ref_info : p_info.reference_slot_info) {
@@ -204,7 +204,7 @@ void RenderingDevice::video_cmd_decode_frame(CommandBufferID p_cmd_buffer,
     }
     decode_info.referenceSlotCount = reference_slots.size();
     decode_info.pReferenceSlots = reference_slots.ptr();
-    
+
     vkCmdDecodeVideoKHR(p_cmd_buffer, &decode_info);
 }
 ```
@@ -226,18 +226,18 @@ RID RenderingDevice::video_image_create(const VideoImageCreateInfo& p_info) {
     create_info.usage = p_info.usage;
     create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    
+
     VkImage vk_image;
     VkResult result = vkCreateImage(device, &create_info, nullptr, &vk_image);
     ERR_FAIL_COND_V(result != VK_SUCCESS, RID());
-    
+
     // Allocate and bind memory
     VkMemoryRequirements mem_requirements;
     vkGetImageMemoryRequirements(device, vk_image, &mem_requirements);
-    
+
     VkDeviceMemory image_memory = _allocate_video_memory(mem_requirements);
     vkBindImageMemory(device, vk_image, image_memory, 0);
-    
+
     // Create texture object
     Texture texture;
     texture.driver_id = vk_image;
@@ -249,7 +249,7 @@ RID RenderingDevice::video_image_create(const VideoImageCreateInfo& p_info) {
     texture.layers = p_info.array_layers;
     texture.mipmaps = p_info.mip_levels;
     texture.usage_flags = _convert_usage_flags(p_info.usage);
-    
+
     return texture_owner.make_rid(texture);
 }
 ```
@@ -283,7 +283,7 @@ uint64_t RenderingDevice::get_memory_usage(MemoryType p_type) const {
         case MEMORY_VIDEO:
             return video_session_memory + video_image_memory + video_buffer_memory;
         default:
-            return texture_memory + buffer_memory + video_session_memory + 
+            return texture_memory + buffer_memory + video_session_memory +
                    video_image_memory + video_buffer_memory;
     }
 }
@@ -297,12 +297,12 @@ uint64_t RenderingDevice::get_memory_usage(MemoryType p_type) const {
 // Validate video capabilities before session creation
 Error RenderingDevice::_validate_video_session_create_info(const VideoSessionCreateInfo& p_info) {
     VideoCapabilities caps = video_get_decode_capabilities(p_info.codec_operation);
-    
+
     ERR_FAIL_COND_V(!caps.codec_supported, ERR_UNAVAILABLE);
     ERR_FAIL_COND_V(p_info.max_coded_extent_width > caps.max_coded_extent.width, ERR_INVALID_PARAMETER);
     ERR_FAIL_COND_V(p_info.max_coded_extent_height > caps.max_coded_extent.height, ERR_INVALID_PARAMETER);
     ERR_FAIL_COND_V(p_info.max_dpb_slots > caps.max_dpb_slots, ERR_INVALID_PARAMETER);
-    
+
     return OK;
 }
 ```
@@ -315,11 +315,11 @@ void RenderingDevice::_free_video_session(VideoSession* p_session) {
     if (p_session->vk_session != VK_NULL_HANDLE) {
         vkDestroyVideoSessionKHR(device, p_session->vk_session, nullptr);
     }
-    
+
     for (VkDeviceMemory memory : p_session->bound_memory) {
         vkFreeMemory(device, memory, nullptr);
     }
-    
+
     p_session->bound_memory.clear();
 }
 ```
