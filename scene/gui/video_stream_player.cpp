@@ -163,6 +163,7 @@ void VideoStreamPlayer::_notification(int p_notification) {
 
 			if (!playback->is_playing()) {
 				resampler.flush();
+				playback->seek(0);
 				if (loop) {
 					play();
 					return;
@@ -344,18 +345,26 @@ void VideoStreamPlayer::play() {
 	}
 }
 
-void VideoStreamPlayer::stop() {
+bool VideoStreamPlayer::_stop() {
 	if (!is_inside_tree()) {
-		return;
+		return false;
 	}
 	if (playback.is_null()) {
-		return;
+		return false;
 	}
 
 	playback->stop();
 	playback->seek(0);
 	resampler.flush();
 	set_process_internal(false);
+
+	return true;
+}
+
+void VideoStreamPlayer::stop() {
+	if (_stop()) {
+		playback->seek(0);
+	}
 }
 
 bool VideoStreamPlayer::is_playing() const {
