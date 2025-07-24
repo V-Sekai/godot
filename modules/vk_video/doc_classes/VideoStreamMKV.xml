@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VideoStreamMKV" inherits="VideoStream" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Hardware-accelerated MKV video stream resource with AV1 decoding using Vulkan Video API.
+	</brief_description>
+	<description>
+		[VideoStreamMKV] is a specialized video stream resource for playing AV1-encoded video files in MKV/WebM containers with Opus audio. This implementation uses the Vulkan Video API for hardware-accelerated AV1 decoding, providing high-performance video playback on compatible GPUs.
+
+		The module is self-contained with embedded libsimplewebm for container parsing and libopus for audio decoding, eliminating external dependencies.
+
+		[b]Hardware Requirements:[/b]
+		- GPU with AV1 hardware decoding support (NVIDIA RTX 30+, AMD RX 6000+, Intel Arc)
+		- Recent drivers with Vulkan Video extensions
+		- Vulkan Video API extensions: VK_KHR_video_queue, VK_KHR_video_decode_av1
+
+		[b]Supported Formats:[/b]
+		- Video: AV1 codec only (hardware-accelerated)
+		- Audio: Opus only
+		- Container: MKV and WebM only
+
+		[b]Note:[/b] This is a hardware-focused implementation optimized for AV1 content. For broader codec support with software fallback, consider using other video stream classes.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+	</methods>
+	<members>
+	</members>
+</class>

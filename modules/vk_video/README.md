@@ -10,7 +10,7 @@
 - **Video Codec**: AV1 only
 - **Audio Codecs**: Opus and uncompressed audio only
 - **Container**: MKV/WebM only  
-- **Integration**: Works with existing `modules/mkv` for container parsing
+- **Architecture**: Self-contained with embedded thirdparty dependencies
 
 **NOT Supported:**
 - Other video codecs (H.264, H.265, VP9, etc.)
@@ -30,7 +30,9 @@ modules/vk_video/
 │   ├── 01_Architecture_Overview.md
 │   ├── 02_RenderingDevice_Extensions.md
 │   └── ...                         # Additional planning docs
-├── thirdparty/                     # Reference implementations
+├── thirdparty/                     # Self-contained dependencies
+│   ├── libsimplewebm/              # MKV/WebM container parsing (planned)
+│   ├── libopus/                    # Opus audio decoding (planned)
 │   └── vk_video_samples/           # NVIDIA Vulkan Video samples
 ├── LICENSE
 └── README.md                       # This file
@@ -41,34 +43,40 @@ modules/vk_video/
 - ❌ `config.py` (module configuration)
 - ❌ `register_types.cpp/.h` (Godot registration)
 - ❌ `video_stream_av1.cpp/.h` (main classes)
+- ❌ `thirdparty/libsimplewebm/` (container parsing library)
+- ❌ `thirdparty/libopus/` (audio decoding library)
 - ❌ Any functional C++ code
 
-## Integration with modules/mkv (No FFmpeg Required)
+## Self-Contained Architecture (No External Dependencies)
 
-The design leverages the existing MKV module's **libsimplewebm-based** container parsing:
+The vk_video module is **completely self-contained** with all dependencies in `thirdparty/`:
 
 ```
-┌─────────────────┐    ┌──────────────────┐
-│   modules/mkv   │    │  modules/vk_video │
-│                 │    │                  │
-│ ✅ Container    │◄──►│ ❌ AV1 Decoding  │
-│    parsing      │    │    (planned)     │
-│    (libsimple   │    │ ❌ Vulkan Video  │
-│     webm)       │    │    (planned)     │
-│ ✅ Audio decode │    │ ❌ GPU textures  │
-│ ✅ Metadata     │    │    (planned)     │
-│ ❌ Video decode │    │                  │
-│    (placeholder)│    │                  │
-└─────────────────┘    └──────────────────┘
+┌──────────────────────────────────────────┐
+│           modules/vk_video               │
+│                                          │
+│ ┌─────────────────┐ ┌─────────────────┐  │
+│ │   thirdparty/   │ │  Core Module    │  │
+│ │                 │ │                 │  │
+│ │ ✅ libsimplewebm│ │ ❌ AV1 Decoding │  │
+│ │    (container   │ │    (planned)    │  │
+│ │     parsing)    │ │                 │  │
+│ │ ✅ libopus      │ │ ❌ Vulkan Video │  │
+│ │    (audio       │ │    (planned)    │  │
+│ │     decoding)   │ │                 │  │
+│ │                 │ │ ❌ GPU textures │  │
+│ │                 │ │    (planned)    │  │
+│ └─────────────────┘ └─────────────────┘  │
+└──────────────────────────────────────────┘
 ```
 
-**Current mkv capabilities (FFmpeg-free):**
-- ✅ Parses MKV/WebM containers via **libsimplewebm** (lightweight, no FFmpeg)
-- ✅ Extracts video metadata (width, height, duration)  
-- ✅ Decodes audio streams (Opus and uncompressed audio)
-- ❌ **Does NOT decode video** - provides black placeholder textures
+**Self-contained capabilities:**
+- ✅ **libsimplewebm**: Lightweight MKV/WebM container parsing (no FFmpeg)
+- ✅ **libopus**: Opus audio decoding
+- ✅ **Uncompressed audio**: PCM/WAV audio support
+- ❌ **AV1 video decoding**: Hardware-accelerated via Vulkan Video (planned)
 
-**No FFmpeg dependency**: The vk_video module will use the existing mkv module's container parsing, which is based on libsimplewebm rather than FFmpeg, keeping dependencies minimal.
+**No external module dependencies**: The vk_video module includes all necessary third-party libraries in its own `thirdparty/` directory, making it completely independent.
 
 ## Hardware Requirements (When Implemented)
 
@@ -89,7 +97,7 @@ The design leverages the existing MKV module's **libsimplewebm-based** container
 
 ### Phase 2: Basic AV1 Decoding ❌ Not Started  
 - [ ] VideoStreamAV1 and VideoStreamPlaybackAV1 classes
-- [ ] Integration with modules/mkv demuxer
+- [ ] Integration with embedded libsimplewebm and libopus
 - [ ] Basic decode pipeline implementation
 
 ### Phase 3: Advanced Features ❌ Not Started
