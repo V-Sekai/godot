@@ -83,7 +83,7 @@ private:
 	RenderingDevice *rd = nullptr;
 
 #ifdef VULKAN_ENABLED
-	VulkanVideoDecoder *video_decoder = nullptr;
+	class RenderingDeviceDriverVulkan *vulkan_driver = nullptr;
 	VulkanYCbCrSampler *ycbcr_sampler = nullptr;
 #endif
 
