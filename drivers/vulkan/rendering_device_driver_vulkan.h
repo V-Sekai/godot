@@ -247,6 +247,13 @@ public:
 			VmaAllocation handle = nullptr;
 			VmaAllocationInfo info = {};
 		} allocation; // All 0/null if just a view.
+		
+		struct {
+			VkSamplerYcbcrConversion conversion = VK_NULL_HANDLE;
+			VkSampler sampler = VK_NULL_HANDLE;
+			bool owns_sampler = false;
+		} ycbcr; // All null/false if not a YCbCr texture.
+		
 #ifdef DEBUG_ENABLED
 		bool created_from_extension = false;
 		bool transient = false;
@@ -267,6 +274,9 @@ public:
 	virtual void texture_unmap(TextureID p_texture) override final;
 	virtual BitField<TextureUsageBits> texture_get_usages_supported_by_format(DataFormat p_format, bool p_cpu_readable) override final;
 	virtual bool texture_can_make_shared_with_format(TextureID p_texture, DataFormat p_format, bool &r_raw_reinterpretation) override final;
+
+	// Bridge method for video extensions to associate YCbCr sampler with texture
+	bool texture_set_ycbcr_sampler(TextureID p_texture, VkSamplerYcbcrConversion p_conversion, VkSampler p_sampler);
 
 	/*****************/
 	/**** SAMPLER ****/

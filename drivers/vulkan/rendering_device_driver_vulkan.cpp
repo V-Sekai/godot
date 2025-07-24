@@ -2222,6 +2222,17 @@ RDD::TextureID RenderingDeviceDriverVulkan::texture_create_shared_from_slice(Tex
 
 void RenderingDeviceDriverVulkan::texture_free(TextureID p_texture) {
 	TextureInfo *tex_info = (TextureInfo *)p_texture.id;
+	
+	// Clean up YCbCr sampler if this texture owns one
+	if (tex_info->ycbcr.owns_sampler && tex_info->ycbcr.conversion != VK_NULL_HANDLE) {
+		if (device_functions.DestroySamplerYcbcrConversionKHR) {
+			device_functions.DestroySamplerYcbcrConversionKHR(vk_device, tex_info->ycbcr.conversion, VKC::get_allocation_callbacks(VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION));
+		}
+		if (tex_info->ycbcr.sampler != VK_NULL_HANDLE) {
+			vkDestroySampler(vk_device, tex_info->ycbcr.sampler, VKC::get_allocation_callbacks(VK_OBJECT_TYPE_SAMPLER));
+		}
+	}
+	
 	vkDestroyImageView(vk_device, tex_info->vk_view, VKC::get_allocation_callbacks(VK_OBJECT_TYPE_IMAGE_VIEW));
 	if (tex_info->allocation.handle) {
 		if (!Engine::get_singleton()->is_extra_gpu_memory_tracking_enabled()) {
@@ -2348,6 +2359,18 @@ BitField<RDD::TextureUsageBits> RenderingDeviceDriverVulkan::texture_get_usages_
 
 bool RenderingDeviceDriverVulkan::texture_can_make_shared_with_format(TextureID p_texture, DataFormat p_format, bool &r_raw_reinterpretation) {
 	r_raw_reinterpretation = false;
+	return true;
+}
+
+bool RenderingDeviceDriverVulkan::texture_set_ycbcr_sampler(TextureID p_texture, VkSamplerYcbcrConversion p_conversion, VkSampler p_sampler) {
+	TextureInfo *tex_info = (TextureInfo *)p_texture.id;
+	ERR_FAIL_COND_V(!tex_info, false);
+	
+	// Store the YCbCr conversion and sampler handles
+	tex_info->ycbcr.conversion = p_conversion;
+	tex_info->ycbcr.sampler = p_sampler;
+	tex_info->ycbcr.owns_sampler = true;
+	
 	return true;
 }
 
