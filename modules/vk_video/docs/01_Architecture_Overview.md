@@ -1,7 +1,7 @@
 # VK Video Module - Architecture Overview
 
 ## Brief Description
-High-level system architecture for Vulkan Video-based AV1 hardware acceleration in Godot Engine.
+High-level system architecture for Vulkan Video-based hardware acceleration supporting H.264, H.265, and AV1 codecs in Godot Engine.
 
 ## System Architecture
 
@@ -12,7 +12,11 @@ High-level system architecture for Vulkan Video-based AV1 hardware acceleration 
 │                    Godot Engine Core                        │
 ├─────────────────────────────────────────────────────────────┤
 │  VideoStreamPlayer (Control)                               │
+│  ├── VideoStreamH264 (Resource)                            │
+│  ├── VideoStreamH265 (Resource)                            │
 │  ├── VideoStreamAV1 (Resource)                             │
+│  ├── VideoStreamPlaybackH264 (Playback State)              │
+│  ├── VideoStreamPlaybackH265 (Playback State)              │
 │  └── VideoStreamPlaybackAV1 (Playback State)               │
 ├─────────────────────────────────────────────────────────────┤
 │  RenderingDevice Extensions                                 │
@@ -22,10 +26,14 @@ High-level system architecture for Vulkan Video-based AV1 hardware acceleration 
 ├─────────────────────────────────────────────────────────────┤
 │  Vulkan Video Implementation                                │
 │  ├── VulkanVideoResourceManager                            │
+│  ├── H264BitstreamParser                                   │
+│  ├── H265BitstreamParser                                   │
 │  ├── AV1BitstreamParser                                    │
-│  └── AudioVideoSynchronizer                                │
+│  └── AudioVideoSynchronizer (OneEuroFilter)                │
 ├─────────────────────────────────────────────────────────────┤
 │  Vulkan Driver Layer                                       │
+│  ├── VK_KHR_video_decode_h264                              │
+│  ├── VK_KHR_video_decode_h265                              │
 │  └── VK_KHR_video_decode_av1                               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -35,6 +43,15 @@ High-level system architecture for Vulkan Video-based AV1 hardware acceleration 
 ```cpp
 // Resource Classes
 VideoStream (base)
+├── VideoStreamH264
+│   ├── file_path: String
+│   ├── sps: H264SequenceParameterSet
+│   └── hardware_caps: VideoCapabilities
+├── VideoStreamH265
+│   ├── file_path: String
+│   ├── sps: H265SequenceParameterSet
+│   ├── pps: H265PictureParameterSet
+│   └── hardware_caps: VideoCapabilities
 └── VideoStreamAV1
     ├── file_path: String
     ├── sequence_header: AV1SequenceHeader
@@ -42,16 +59,32 @@ VideoStream (base)
 
 // Playback Classes
 VideoStreamPlayback (base)
+├── VideoStreamPlaybackH264
+│   ├── video_session: RID
+│   ├── resource_manager: Ref<VulkanVideoResourceManager>
+│   ├── av_sync: Ref<AudioVideoSynchronizer>
+│   └── reference_frames: Vector<RID>
+├── VideoStreamPlaybackH265
+│   ├── video_session: RID
+│   ├── resource_manager: Ref<VulkanVideoResourceManager>
+│   ├── av_sync: Ref<AudioVideoSynchronizer>
+│   ├── reference_frames: Vector<RID>
+│   └── tiles_enabled: bool
 └── VideoStreamPlaybackAV1
     ├── video_session: RID
     ├── resource_manager: Ref<VulkanVideoResourceManager>
-    └── av_sync: AudioVideoSynchronizer
+    └── av_sync: Ref<AudioVideoSynchronizer>
 
 // Support Classes
 VulkanVideoResourceManager
 ├── dpb_pool: VideoMemoryPool
 ├── bitstream_pool: BitstreamBufferPool
 └── command_manager: VideoCommandManager
+
+AudioVideoSynchronizer
+├── av_sync_filter: OneEuroFilter
+├── audio_clock_filter: OneEuroFilter
+└── sync_strategy: SyncStrategy
 ```
 
 ### Integration Points
@@ -192,17 +225,4 @@ Ref<VideoStreamPlayback> VideoStreamAV1::instantiate_playback() {
 - Driver version compatibility
 - Stress testing with multiple streams
 
-### Future Extensions
-
-#### Additional Codecs
-- H.264/H.265 support using same architecture
-- VP9 hardware decode
-- Extensible codec registration system
-
-#### Advanced Features
-- HDR video support
-- Variable refresh rate synchronization
-- Multi-stream decode
-- Real-time streaming integration
-
-This architecture provides a solid foundation for hardware-accelerated video in Godot while maintaining compatibility with existing systems and allowing for future expansion.
+This architecture provides a solid foundation for hardware-accelerated video in Godot while maintaining compatibility with existing systems.

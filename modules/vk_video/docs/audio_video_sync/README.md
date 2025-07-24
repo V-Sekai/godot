@@ -4,6 +4,8 @@
 
 This directory contains detailed documentation for audio-video synchronization in the VK Video module, with a focus on the OneEuroFilter implementation derived from the rhythm game example.
 
+**Status Update (July 2025)**: Following the recent FFmpeg integration merge (commit 89f1c70), the VK Video module now operates alongside enhanced video importing capabilities, providing a complete pipeline from import to hardware-accelerated playback.
+
 ## Quick Start
 
 The VK Video module uses a proven OneEuroFilter-based approach for audio-video synchronization, originally implemented in the rhythm game conductor system. This approach provides:
@@ -12,6 +14,7 @@ The VK Video module uses a proven OneEuroFilter-based approach for audio-video s
 - **Low Latency**: Maintains responsive synchronization with minimal delay
 - **Adaptive Filtering**: Automatically adjusts to different playback conditions
 - **Proven Reliability**: Based on real-world rhythm game timing requirements
+- **FFmpeg Compatibility**: Works seamlessly with content imported via the new FFmpeg pipeline
 
 ## Document Index
 
@@ -26,6 +29,7 @@ The VK Video module uses a proven OneEuroFilter-based approach for audio-video s
 
 ### Implementation Guide
 - **[Implementation Guide](implementation_guide.md)** - Step-by-step integration instructions
+
 
 ## Key Concepts
 
@@ -70,6 +74,13 @@ bool should_present_frame(double current_time) {
 }
 ```
 
+### FFmpeg Integration Benefits
+The recent FFmpeg integration provides additional opportunities for synchronization optimization:
+- **Metadata Extraction**: Frame rate and timing information for parameter tuning
+- **Quality Settings**: Import-time quality controls that affect sync requirements
+- **Format Support**: Unified sync approach across MP4, WebM, AV1, and other formats
+- **Cross-module Compatibility**: Consistent timing behavior between Theora and VK Video modules
+
 ## Getting Started
 
 1. **Read [OneEuroFilter](one_euro_filter.md)** to understand the mathematical foundation
@@ -82,3 +93,4 @@ bool should_present_frame(double current_time) {
 - [1€ Filter Paper](https://gery.casiez.net/1euro/) - Original research and mathematical foundation
 - [Godot XR Kit Implementation](https://github.com/patrykkalinowski/godot-xr-kit) - Source of the GDScript implementation
 - Rhythm Game Conductor - Real-world timing system demonstrating the approach
+- [FFmpeg Integration](../../theora/editor/resource_importer_video.cpp) - Recent video importing enhancements
