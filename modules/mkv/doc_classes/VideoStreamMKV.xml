@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VideoStreamMKV" inherits="VideoStream" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		[VideoStream] resource for MKV container files with audio-only playback.
+	</brief_description>
+	<description>
+		[VideoStreamMKV] is a specialized [VideoStream] resource that handles MKV container files. This implementation focuses on container parsing and audio playback only. Video decoding is handled externally, making it suitable for integration with hardware video decoders or the VK Video module.
+		
+		This resource can extract audio tracks (Opus/Vorbis) from MKV files while providing metadata about video tracks for external handling. It's designed to work in conjunction with external video rendering systems.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+	</methods>
+	<members>
+	</members>
+</class>
