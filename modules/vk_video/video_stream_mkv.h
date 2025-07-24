@@ -42,6 +42,16 @@ class OpusVorbisDecoder;
 class VideoStreamPlaybackMKV : public VideoStreamPlayback {
 	GDCLASS(VideoStreamPlaybackMKV, VideoStreamPlayback);
 
+public:
+	enum VideoCodecType {
+		VIDEO_CODEC_NONE,        // No video track found
+		VIDEO_CODEC_UNSUPPORTED, // Video track found but codec not supported
+		VIDEO_CODEC_VP8,         // VP8 video (software decode only)
+		VIDEO_CODEC_VP9,         // VP9 video (software decode only) 
+		VIDEO_CODEC_AV1          // AV1 video (hardware decode capable)
+	};
+
+private:
 	String file_name;
 	int audio_track = 0;
 
@@ -61,6 +71,7 @@ class VideoStreamPlaybackMKV : public VideoStreamPlayback {
 	// MKV container provides metadata but no video decoding
 	int video_width = 0, video_height = 0;
 	double video_duration = 0.0;
+	VideoCodecType video_codec_type = VIDEO_CODEC_NONE;
 	Ref<ImageTexture> placeholder_texture = memnew(ImageTexture);
 
 	float *pcm = nullptr;
@@ -96,6 +107,9 @@ public:
 	// MKV-specific methods for external video handling
 	int get_video_width() const { return video_width; }
 	int get_video_height() const { return video_height; }
+	VideoCodecType get_video_codec_type() const { return video_codec_type; }
+	bool has_av1_video_track() const { return video_codec_type == VIDEO_CODEC_AV1; }
+	bool is_hardware_decode_capable() const { return video_codec_type == VIDEO_CODEC_AV1; }
 	WebMDemuxer *get_demuxer() const { return webm; }
 
 private:

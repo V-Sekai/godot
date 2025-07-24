@@ -65,7 +65,8 @@ public:
 	{
 		NO_VIDEO,
 		VIDEO_VP8,
-		VIDEO_VP9
+		VIDEO_VP9,
+		VIDEO_AV1
 	};
 	enum AUDIO_CODEC
 	{

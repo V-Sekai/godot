@@ -97,11 +97,32 @@ bool VideoStreamPlaybackMKV::open_file(const String &p_file) {
 		if (webm->getVideoCodec() != WebMDemuxer::NO_VIDEO) {
 			video_width = webm->getWidth();
 			video_height = webm->getHeight();
+			
+			// Map WebMDemuxer codec types to our enum
+			switch (webm->getVideoCodec()) {
+				case WebMDemuxer::VIDEO_VP8:
+					video_codec_type = VIDEO_CODEC_VP8;
+					print_verbose("VideoStreamMKV: Found VP8 video track - software decoding only");
+					break;
+				case WebMDemuxer::VIDEO_VP9:
+					video_codec_type = VIDEO_CODEC_VP9;
+					print_verbose("VideoStreamMKV: Found VP9 video track - software decoding only");
+					break;
+				case WebMDemuxer::VIDEO_AV1:
+					video_codec_type = VIDEO_CODEC_AV1;
+					print_verbose("VideoStreamMKV: Found AV1 video track - hardware decoding available");
+					break;
+				default:
+					video_codec_type = VIDEO_CODEC_UNSUPPORTED;
+					print_verbose("VideoStreamMKV: Found unsupported video codec");
+					break;
+			}
 		} else {
 			// No video track or unsupported video codec - use default dimensions
 			video_width = 640;
 			video_height = 480;
-			print_verbose("VideoStreamMKV: No supported video track found, using default dimensions");
+			video_codec_type = VIDEO_CODEC_NONE;
+			print_verbose("VideoStreamMKV: No video track found, using default dimensions");
 		}
 		video_duration = webm->getLength();
 

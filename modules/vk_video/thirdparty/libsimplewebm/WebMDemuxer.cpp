@@ -79,6 +79,8 @@ WebMDemuxer::WebMDemuxer(mkvparser::IMkvReader *reader, int videoTrack, int audi
 					m_vCodec = VIDEO_VP8;
 				else if (!strcmp(codecId, "V_VP9"))
 					m_vCodec = VIDEO_VP9;
+				else if (!strcmp(codecId, "V_AV01"))
+					m_vCodec = VIDEO_AV1;
 				if (m_vCodec != NO_VIDEO)
 					m_videoTrack = static_cast<const mkvparser::VideoTrack *>(track);
 				++currVideoTrack;

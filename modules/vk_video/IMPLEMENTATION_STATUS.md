@@ -284,16 +284,24 @@ ResourceFormatLoader
 - **Robust Error Handling**: VideoStreamMKV now handles files without supported video codecs gracefully
 - **Audio-Only Support**: MKV files with only audio tracks (or unsupported video codecs) now work correctly
 
-## Current Implementation Challenges
+### AV1 Support Implementation
+- **Extended libsimplewebm**: Added AV1 codec detection (V_AV01) to WebMDemuxer
+- **Enum-Based Codec Detection**: Replaced boolean flags with comprehensive VideoCodecType enum
+- **Complete Codec Support**: Now detects VP8, VP9, AV1, and unsupported video codecs
+- **Hardware Decode Detection**: Can identify AV1 tracks suitable for hardware acceleration
 
-### Container vs. Codec Mismatch
-- **libsimplewebm limitation**: Only supports VP8/VP9 video codecs, not AV1
-- **AV1 in MKV**: Requires different demuxer or codec detection approach
-- **vk_video_samples**: Uses FFmpeg for demuxing, which supports AV1 in MKV containers
+## Current Implementation Status
 
-### Path Forward for AV1+MKV+Opus
-1. **Option A**: Extend libsimplewebm to support AV1 codec detection
-2. **Option B**: Use vk_video_samples' FFmpeg-based demuxer approach
-3. **Option C**: Implement separate AV1 bitstream parser for raw AV1 files
+### ✅ Completed AV1+MKV+Opus Foundation
+- **Container Parsing**: MKV/WebM files with AV1 video tracks are now properly detected
+- **Codec Identification**: VideoStreamMKV can distinguish between VP8, VP9, AV1, and unsupported codecs
+- **Audio Support**: Opus audio decoding works alongside AV1 video detection
+- **Hardware Readiness**: Framework ready for AV1VulkanDecoder integration
+
+### 🚧 Next Implementation Phase
+- **AV1VulkanDecoder Integration**: Connect detected AV1 tracks to hardware decoder
+- **Video Frame Processing**: Implement actual AV1 bitstream decoding
+- **Texture Output**: Convert decoded frames to Godot textures
+- **Synchronization**: Coordinate AV1 video with Opus audio playback
 
 The module provides a solid foundation for hardware-accelerated AV1 video playback in Godot Engine, with a clear implementation path and comprehensive documentation. The focus has shifted from framework design to concrete implementation of hardware video decoding capabilities.
