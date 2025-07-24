@@ -1,6 +1,7 @@
 # FFmpeg Interop Guide
 
 ## Overview
+
 Comprehensive guide for FFmpeg integration with the vk_video module, covering container demuxing, YCbCr processing, format conversion, and fallback strategies for alpha-enabled content.
 
 ## FFmpeg Integration Architecture
@@ -39,15 +40,17 @@ Comprehensive guide for FFmpeg integration with the vk_video module, covering co
 ## Supported Container Formats
 
 ### Primary Container Support
-| Container | Extension | Demuxing | Muxing | Hardware Path | Notes |
-|-----------|-----------|----------|--------|---------------|-------|
-| MP4       | .mp4      | ✅       | ✅     | ✅            | Primary format |
-| MOV       | .mov      | ✅       | ✅     | ✅            | QuickTime format |
+
+| Container | Extension | Demuxing | Muxing | Hardware Path | Notes              |
+| --------- | --------- | -------- | ------ | ------------- | ------------------ |
+| MP4       | .mp4      | ✅       | ✅     | ✅            | Primary format     |
+| MOV       | .mov      | ✅       | ✅     | ✅            | QuickTime format   |
 | MKV       | .mkv      | ✅       | ✅     | ✅            | Matroska container |
-| WebM      | .webm     | ✅       | ✅     | ✅            | Web-optimized |
-| AVI       | .avi      | ✅       | ❌     | ⚠️            | Legacy support |
+| WebM      | .webm     | ✅       | ✅     | ✅            | Web-optimized      |
+| AVI       | .avi      | ✅       | ❌     | ⚠️            | Legacy support     |
 
 ### FFmpeg Integration Code
+
 ```cpp
 // Container demuxing with FFmpeg
 class FFmpegDemuxer {
@@ -81,6 +84,7 @@ public:
 ### Supported YCbCr Formats
 
 #### Hardware-Accelerated Formats
+
 ```cpp
 // VulkanFilterYuvCompute supported formats
 enum class YCbCrFormat {
@@ -108,6 +112,7 @@ enum class YCbCrFormat {
 ```
 
 #### Format Conversion Pipeline
+
 ```cpp
 // YCbCr format conversion with VulkanFilterYuvCompute
 class YCbCrProcessor {
@@ -154,14 +159,16 @@ private:
 ### Chroma Subsampling Support
 
 #### Subsampling Formats
-| Format | Horizontal | Vertical | Description | Hardware Support |
-|--------|------------|----------|-------------|------------------|
-| 4:4:4  | 1:1        | 1:1      | No subsampling | ✅ |
-| 4:2:2  | 2:1        | 1:1      | Horizontal subsampling | ✅ |
-| 4:2:0  | 2:1        | 2:1      | Both directions | ✅ |
-| 4:1:1  | 4:1        | 1:1      | Heavy horizontal | ⚠️ |
+
+| Format | Horizontal | Vertical | Description            | Hardware Support |
+| ------ | ---------- | -------- | ---------------------- | ---------------- |
+| 4:4:4  | 1:1        | 1:1      | No subsampling         | ✅               |
+| 4:2:2  | 2:1        | 1:1      | Horizontal subsampling | ✅               |
+| 4:2:0  | 2:1        | 2:1      | Both directions        | ✅               |
+| 4:1:1  | 4:1        | 1:1      | Heavy horizontal       | ⚠️               |
 
 #### Subsampling Conversion Code
+
 ```cpp
 // Chroma subsampling handling in shaders
 void GenHandleChromaPosition(std::stringstream& shaderStr,
@@ -193,6 +200,7 @@ void GenHandleChromaPosition(std::stringstream& shaderStr,
 ### Current Alpha Support Status
 
 #### ❌ Hardware Limitations
+
 ```cpp
 // Current VulkanFilterYuvCompute limitations
 class VulkanFilterYuvCompute {
@@ -213,6 +221,7 @@ class VulkanFilterYuvCompute {
 ```
 
 #### ✅ Software Fallback for Alpha
+
 ```cpp
 // Alpha-enabled format detection and fallback
 class AlphaFormatHandler {
@@ -268,19 +277,21 @@ public:
 ```
 
 ### Alpha Format Support Matrix
-| Format | Planes | Alpha Support | Hardware Path | Software Path | Notes |
-|--------|--------|---------------|---------------|---------------|-------|
-| YUVA420P | 4 | ✅ | ❌ | ✅ | Requires FFmpeg fallback |
-| YUVA422P | 4 | ✅ | ❌ | ✅ | Requires FFmpeg fallback |
-| YUVA444P | 4 | ✅ | ❌ | ✅ | Requires FFmpeg fallback |
-| RGBA | 1 | ✅ | ✅ | ✅ | Native support |
-| BGRA | 1 | ✅ | ✅ | ✅ | Native support |
-| NV12 | 2 | ❌ | ✅ | ✅ | No alpha channel |
-| I420 | 3 | ❌ | ✅ | ✅ | No alpha channel |
+
+| Format   | Planes | Alpha Support | Hardware Path | Software Path | Notes                    |
+| -------- | ------ | ------------- | ------------- | ------------- | ------------------------ |
+| YUVA420P | 4      | ✅            | ❌            | ✅            | Requires FFmpeg fallback |
+| YUVA422P | 4      | ✅            | ❌            | ✅            | Requires FFmpeg fallback |
+| YUVA444P | 4      | ✅            | ❌            | ✅            | Requires FFmpeg fallback |
+| RGBA     | 1      | ✅            | ✅            | ✅            | Native support           |
+| BGRA     | 1      | ✅            | ✅            | ✅            | Native support           |
+| NV12     | 2      | ❌            | ✅            | ✅            | No alpha channel         |
+| I420     | 3      | ❌            | ✅            | ✅            | No alpha channel         |
 
 ## Hardware/Software Decision Engine
 
 ### Decision Matrix
+
 ```cpp
 // Automatic path selection based on format and capabilities
 class VideoPathSelector {
@@ -337,6 +348,7 @@ private:
 ```
 
 ### Performance Monitoring
+
 ```cpp
 // Performance-based path switching
 class PerformanceMonitor {
@@ -383,6 +395,7 @@ private:
 ## Integration Examples
 
 ### Basic Video Playback with FFmpeg
+
 ```cpp
 // Complete video playback pipeline
 class VideoPlayer {
@@ -437,6 +450,7 @@ private:
 ```
 
 ### Movie Maker Encoding with FFmpeg
+
 ```cpp
 // Hardware encoding with FFmpeg muxing
 class MovieMakerFFmpeg {
@@ -493,12 +507,14 @@ private:
 ## Best Practices
 
 ### Format Selection Guidelines
+
 1. **Use hardware path for standard formats**: NV12, I420, P010 for best performance
 2. **Fallback to software for alpha content**: YUVA420P, RGBA with alpha
 3. **Monitor performance**: Switch paths based on real-time metrics
 4. **Validate format support**: Check hardware capabilities before initialization
 
 ### Error Handling
+
 ```cpp
 // Robust error handling with fallback
 Error try_hardware_decode_with_fallback(const VideoStreamInfo& info, RID& output) {
@@ -515,6 +531,7 @@ Error try_hardware_decode_with_fallback(const VideoStreamInfo& info, RID& output
 ```
 
 ### Memory Management
+
 ```cpp
 // Efficient memory handling for both paths
 class VideoMemoryManager {
