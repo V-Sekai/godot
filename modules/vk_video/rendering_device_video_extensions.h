@@ -31,60 +31,42 @@
 #pragma once
 
 #include "core/object/ref_counted.h"
-#include "servers/rendering/rendering_device.h"
-#include "servers/rendering/rendering_device_driver.h"
+#include "core/io/image.h"
+#include "core/variant/variant.h"
 
 #ifdef VULKAN_ENABLED
-class VulkanVideoDecoder;
-class VulkanYCbCrSampler;
+#ifndef VK_NO_PROTOTYPES
+#define VK_NO_PROTOTYPES
+#endif
+#include <vulkan/vulkan.h>
+
+// Forward declarations
+class RenderingDeviceDriverVulkan;
+class RenderingDevice;
+class VulkanDeviceContext;
+class VulkanVideoProcessor;
+
+// Template forward declaration for smart pointer
+template<class T>
+class VkSharedBaseObj;
 #endif
 
-// Video codec profiles
-enum VideoCodecProfile {
-	VIDEO_CODEC_PROFILE_H264_BASELINE = 0,
-	VIDEO_CODEC_PROFILE_H264_MAIN = 1,
-	VIDEO_CODEC_PROFILE_H264_HIGH = 2,
-	VIDEO_CODEC_PROFILE_H265_MAIN = 10,
-	VIDEO_CODEC_PROFILE_H265_MAIN_10 = 11,
-	VIDEO_CODEC_PROFILE_AV1_MAIN = 20,
-	VIDEO_CODEC_PROFILE_AV1_HIGH = 21,
-	VIDEO_CODEC_PROFILE_AV1_PROFESSIONAL = 22,
-};
-
-// Video operation types
-enum VideoOperationType {
+// Constants for video codec profiles and operations
+enum {
+	VIDEO_CODEC_PROFILE_AV1_MAIN = 0,
 	VIDEO_OPERATION_DECODE = 0,
-	VIDEO_OPERATION_ENCODE = 1,
+	VIDEO_OPERATION_ENCODE = 1
 };
 
-VARIANT_ENUM_CAST(VideoCodecProfile);
-VARIANT_ENUM_CAST(VideoOperationType);
-
-// Note: Using Dictionary for configuration to avoid Godot binding issues
-// Dictionary keys are documented in the implementation
-
-// Video capability query results
-struct VideoCapabilities {
-	bool decode_supported = false;
-	bool encode_supported = false;
-	uint32_t max_width = 0;
-	uint32_t max_height = 0;
-	uint32_t max_dpb_slots = 0;
-	uint32_t max_active_references = 0;
-	Vector<VideoCodecProfile> supported_profiles;
-	Vector<RD::DataFormat> supported_formats;
-};
-
-// Extension class for RenderingDevice to add video functionality
+// Extension class for RenderingDevice to add video decoding functionality
 class RenderingDeviceVideoExtensions : public RefCounted {
 	GDCLASS(RenderingDeviceVideoExtensions, RefCounted);
 
 private:
-	RenderingDevice *rd = nullptr;
-
 #ifdef VULKAN_ENABLED
-	class RenderingDeviceDriverVulkan *vulkan_driver = nullptr;
-	VulkanYCbCrSampler *ycbcr_sampler = nullptr;
+	RenderingDeviceDriverVulkan *vulkan_driver = nullptr;
+	VkSharedBaseObj<VulkanDeviceContext> *device_context = nullptr;
+	bool initialized = false;
 #endif
 
 protected:
@@ -94,45 +76,28 @@ public:
 	RenderingDeviceVideoExtensions();
 	virtual ~RenderingDeviceVideoExtensions();
 
-	void initialize(RenderingDevice *p_rendering_device);
+	// Initialize the video extensions with a RenderingDevice
+	Error initialize(RenderingDevice *p_rendering_device);
 
-	// Video capability queries
+	// Check if video decoding is supported
 	bool is_video_supported() const;
-	Dictionary get_video_capabilities(VideoCodecProfile p_profile, VideoOperationType p_operation) const;
-	Array get_supported_profiles() const;
 
-	// Video session management
-	RID video_session_create(const Dictionary &p_create_info);
-	void video_session_destroy(RID p_video_session);
+	// Get video capabilities for a specific codec and operation
+	Dictionary get_video_capabilities(int p_codec_profile, int p_operation) const;
 
-	RID video_session_parameters_create(const Dictionary &p_create_info);
-	void video_session_parameters_destroy(RID p_video_session_parameters);
+	// Create a VulkanDeviceContext that bridges with Godot's Vulkan driver
+	VkSharedBaseObj<VulkanDeviceContext> *get_device_context() const;
 
-	// Video resource creation
-	RID video_image_create(const Dictionary &p_create_info);
-	void video_image_destroy(RID p_video_image);
-
-	RID video_buffer_create(const Dictionary &p_create_info);
-	void video_buffer_destroy(RID p_video_buffer);
-
-	// Video operations
-	void video_decode_frame(const Dictionary &p_decode_info);
-	void video_queue_submit();
-	void video_queue_wait_idle();
-
-	// Utility functions
-	RID texture_from_video_image(RID p_video_image, uint32_t p_layer = 0);
-	void copy_video_image_to_texture(RID p_video_image, uint32_t p_src_layer, RID p_dst_texture);
-	RID convert_ycbcr_to_rgb(RID p_ycbcr_texture, uint32_t p_width, uint32_t p_height);
-
-	// Memory management
-	void video_buffer_update(RID p_video_buffer, uint64_t p_offset, const Vector<uint8_t> &p_data);
-	Vector<uint8_t> video_buffer_get_data(RID p_video_buffer, uint64_t p_offset = 0, uint64_t p_size = 0);
+#ifdef VULKAN_ENABLED
+	// Internal methods for video decoder integration
+	VkDevice get_vk_device() const;
+	VkPhysicalDevice get_vk_physical_device() const;
+	VkInstance get_vk_instance() const;
+	uint32_t get_video_decode_queue_family() const;
+	VkQueue get_video_decode_queue() const;
+#endif
 
 private:
-	// Internal implementation details
-	bool _check_video_support() const;
-	bool _check_codec_support(VideoCodecProfile p_profile, VideoOperationType p_operation) const;
-	void _initialize_video_queues();
-	void _cleanup_video_resources();
+	bool _initialize_device_context();
+	void _cleanup_device_context();
 };

@@ -30,14 +30,15 @@
 
 #include "video_stream_av1.h"
 
-#include "av1_vulkan_decoder.h"
 #include "core/config/project_settings.h"
 #include "core/error/error_macros.h"
 #include "core/io/file_access.h"
 #include "core/os/os.h"
+#include "mkv_demuxer_interface.h"
 #include "rendering_device_video_extensions.h"
 #include "servers/audio_server.h"
 #include "servers/rendering_server.h"
+#include "vulkan_video_core.h"
 
 // libsimplewebm
 #include <OpusVorbisDecoder.hpp>
@@ -258,31 +259,47 @@ bool VideoStreamPlaybackAV1::_parse_frame_header(const uint8_t *data, size_t siz
 }
 
 bool VideoStreamPlaybackAV1::_initialize_hardware_decoder() {
-	// Create AV1 Vulkan decoder instance
-	av1_decoder.instantiate();
+	// Create Vulkan Video core instance
+	vulkan_video_core.instantiate();
 
-	// Initialize with frame dimensions from sequence header
-	int width = sequence_header.max_frame_width;
-	int height = sequence_header.max_frame_height;
-
-	if (width <= 0 || height <= 0) {
-		width = 1920; // Default fallback
-		height = 1080;
-	}
-
-	if (!av1_decoder->initialize(width, height)) {
-		ERR_PRINT("Failed to initialize AV1 Vulkan decoder");
-		av1_decoder.unref();
+	// Get rendering device
+	RenderingDevice *rd = RenderingServer::get_singleton()->get_rendering_device();
+	if (!rd) {
+		ERR_PRINT("No rendering device available for hardware video decoding");
 		return false;
 	}
 
-	if (!av1_decoder->is_hardware_supported()) {
+	// Configure decoder for AV1
+	VideoDecoderConfig config;
+	config.codec_operation = VIDEO_CODEC_OPERATION_DECODE_AV1;
+	config.codec_profile = VK_VIDEO_CODEC_PROFILE_AV1_MAIN;
+	config.initial_width = sequence_header.max_frame_width > 0 ? sequence_header.max_frame_width : 1920;
+	config.initial_height = sequence_header.max_frame_height > 0 ? sequence_header.max_frame_height : 1080;
+	config.initial_bitdepth = sequence_header.bit_depth;
+
+	// Initialize the core
+	Error err = vulkan_video_core->initialize(rd, config);
+	if (err != OK) {
+		ERR_PRINT("Failed to initialize Vulkan Video core");
+		vulkan_video_core.unref();
+		return false;
+	}
+
+	if (!vulkan_video_core->is_hardware_supported()) {
 		WARN_PRINT("AV1 hardware decoding not supported on this device");
-		av1_decoder.unref();
+		vulkan_video_core.unref();
 		return false;
 	}
 
-	print_line("AV1 Vulkan decoder initialized successfully");
+	// Create video session
+	err = vulkan_video_core->create_video_session(config.initial_width, config.initial_height);
+	if (err != OK) {
+		ERR_PRINT("Failed to create video session");
+		vulkan_video_core.unref();
+		return false;
+	}
+
+	print_line("Vulkan Video core initialized successfully for AV1");
 	return true;
 }
 
@@ -305,35 +322,40 @@ void VideoStreamPlaybackAV1::_cleanup_hardware_resources() {
 }
 
 bool VideoStreamPlaybackAV1::_decode_frame_hardware(const uint8_t *bitstream_data, size_t bitstream_size, const AV1FrameHeader &header) {
-	ERR_FAIL_COND_V(!av1_decoder.is_valid(), false);
-	ERR_FAIL_COND_V(!av1_decoder->is_initialized(), false);
+	ERR_FAIL_COND_V(!vulkan_video_core.is_valid(), false);
+	ERR_FAIL_COND_V(!vulkan_video_core->is_initialized(), false);
 
-	// Create WebMFrame wrapper for the AV1VulkanDecoder
-	WebMFrame frame;
-	frame.buffer = const_cast<unsigned char *>(bitstream_data);
-	frame.bufferSize = bitstream_size;
-	frame.time = header.presentation_time;
-	frame.key = header.keyframe;
+	// Create frame info for Vulkan Video
+	VideoFrameInfo frame_info;
+	frame_info.frame_number = header.frame_number;
+	frame_info.presentation_time = header.presentation_time;
+	frame_info.keyframe = header.keyframe;
+	frame_info.show_frame = header.show_frame;
+	frame_info.width = header.frame_width;
+	frame_info.height = header.frame_height;
 
-	// Decode the frame using the Vulkan decoder
-	bool decode_success = av1_decoder->decode_frame(frame);
+	// Decode the frame using Vulkan Video
+	Error err = vulkan_video_core->decode_frame(bitstream_data, bitstream_size, frame_info);
 
-	if (decode_success) {
-		// Get the decoded frame texture
-		Ref<Texture2D> decoded_texture = av1_decoder->get_current_frame();
+	if (err == OK) {
+		// Get the decoded frame texture (placeholder for now)
+		// In a full implementation, this would get the actual decoded texture
+		// RID decoded_image = vulkan_video_core->get_decoded_image(frame_info.dpb_slot);
+		
+		// For now, create a placeholder texture
+		Ref<ImageTexture> placeholder_texture;
+		placeholder_texture.instantiate();
 
-		if (decoded_texture.is_valid()) {
-			// Queue the frame for presentation
-			QueuedFrame queued_frame;
-			queued_frame.texture = decoded_texture;
-			queued_frame.presentation_time = header.presentation_time;
-			queued_frame.frame_number = header.frame_number;
+		// Queue the frame for presentation
+		QueuedFrame queued_frame;
+		queued_frame.texture = placeholder_texture;
+		queued_frame.presentation_time = header.presentation_time;
+		queued_frame.frame_number = header.frame_number;
 
-			// Use base class synchronization
-			queue_video_frame(decoded_texture, header.presentation_time, header.frame_number);
+		// Use base class synchronization
+		queue_video_frame(placeholder_texture, header.presentation_time, header.frame_number);
 
-			return true;
-		}
+		return true;
 	}
 
 	return false;

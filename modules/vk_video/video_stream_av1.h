@@ -40,7 +40,7 @@
 class WebMDemuxer;
 class OpusVorbisDecoder;
 class WebMFrame;
-class AV1VulkanDecoder;
+class VulkanVideoCore;
 
 // AV1 sequence header structure
 struct AV1SequenceHeader {
@@ -114,7 +114,7 @@ private:
 	bool hardware_decode_available = false;
 
 	// Hardware decoder
-	Ref<AV1VulkanDecoder> av1_decoder;
+	Ref<VulkanVideoCore> vulkan_video_core;
 
 	// Vulkan Video resources (RIDs for abstraction)
 	RID video_session;

@@ -21,6 +21,18 @@ thirdparty_sources = [thirdparty_dir + file for file in thirdparty_sources]
 
 env_vk_video.Prepend(CPPPATH=[thirdparty_dir, thirdparty_dir + "libwebm/"])
 
+# VkCodecUtils sources - removed to eliminate complex dependencies
+# Using simplified extracted components instead
+vk_codec_utils_sources = []
+
+# Vulkan Video defines
+env_vk_video.Append(CPPDEFINES=["VK_NO_PROTOTYPES"])
+if env["vulkan"]:
+    env_vk_video.Append(CPPDEFINES=["VULKAN_ENABLED"])
+
+# Add VkCodecUtils sources to thirdparty
+thirdparty_sources.extend(vk_codec_utils_sources)
+
 if env["builtin_opus"]:
     env_vk_video.Prepend(CPPPATH=["#modules/vk_video/thirdparty/libopus"])
     SConscript("opus/SCsub")
@@ -59,7 +71,18 @@ env.modules_sources += thirdparty_obj
 
 module_obj = []
 
-env_vk_video.add_source_files(module_obj, "*.cpp")
+# Add specific source files, excluding problematic ones
+godot_sources = [
+    "register_types.cpp",
+    "rendering_device_video_extensions.cpp", 
+    "video_stream_av1.cpp",
+    "video_stream_mkv.cpp",
+    "vulkan_video_core.cpp",
+]
+
+for source in godot_sources:
+    env_vk_video.add_source_files(module_obj, source)
+
 env.modules_sources += module_obj
 
 # Needed to force rebuilding the module files when the thirdparty library is updated.

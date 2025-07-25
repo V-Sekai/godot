@@ -30,360 +30,81 @@
 
 #include "video_stream_mkv.h"
 
-#include "core/config/project_settings.h"
-#include "core/error/error_macros.h"
 #include "core/io/file_access.h"
-#include "core/os/os.h"
-#include "servers/audio_server.h"
-
-// libsimplewebm
-#include <OpusVorbisDecoder.hpp>
-#include <WebMDemuxer.hpp>
-
-// libwebm
-#include <mkvparser/mkvparser.h>
-
-class MkvReader : public mkvparser::IMkvReader {
-public:
-	MkvReader(const String &p_file) {
-		file = FileAccess::open(p_file, FileAccess::READ);
-
-		ERR_FAIL_COND_MSG(file.is_null(), "Failed loading resource: '" + p_file + "'.");
-	}
-	~MkvReader() {
-	}
-
-	virtual int Read(long long pos, long len, unsigned char *buf) {
-		if (file.is_valid()) {
-			if (file->get_position() != (uint64_t)pos) {
-				file->seek(pos);
-			}
-			if (file->get_buffer(buf, len) == (uint64_t)len) {
-				return 0;
-			}
-		}
-		return -1;
-	}
-
-	virtual int Length(long long *total, long long *available) {
-		if (file.is_valid()) {
-			const uint64_t len = file->get_length();
-			if (total) {
-				*total = len;
-			}
-			if (available) {
-				*available = len;
-			}
-			return 0;
-		}
-		return -1;
-	}
-
-private:
-	Ref<FileAccess> file;
-};
-
-VideoStreamPlaybackMKV::VideoStreamPlaybackMKV() {}
-
-VideoStreamPlaybackMKV::~VideoStreamPlaybackMKV() {
-	delete_pointers();
-}
-
-bool VideoStreamPlaybackMKV::open_file(const String &p_file) {
-	file_name = p_file;
-	webm = memnew(WebMDemuxer(new MkvReader(file_name), 0, audio_track));
-	if (webm->isOpen()) {
-		// Store video metadata for external handling - with null checks
-		if (webm->getVideoCodec() != WebMDemuxer::NO_VIDEO) {
-			video_width = webm->getWidth();
-			video_height = webm->getHeight();
-
-			// Map WebMDemuxer codec types to our enum
-			switch (webm->getVideoCodec()) {
-				case WebMDemuxer::VIDEO_VP8:
-					video_codec_type = VIDEO_CODEC_VP8;
-					print_verbose("VideoStreamMKV: Found VP8 video track - software decoding only");
-					break;
-				case WebMDemuxer::VIDEO_VP9:
-					video_codec_type = VIDEO_CODEC_VP9;
-					print_verbose("VideoStreamMKV: Found VP9 video track - software decoding only");
-					break;
-				case WebMDemuxer::VIDEO_AV1:
-					video_codec_type = VIDEO_CODEC_AV1;
-					print_verbose("VideoStreamMKV: Found AV1 video track - hardware decoding available");
-					break;
-				default:
-					video_codec_type = VIDEO_CODEC_UNSUPPORTED;
-					print_verbose("VideoStreamMKV: Found unsupported video codec");
-					break;
-			}
-		} else {
-			// No video track or unsupported video codec - use default dimensions
-			video_width = 640;
-			video_height = 480;
-			video_codec_type = VIDEO_CODEC_NONE;
-			print_verbose("VideoStreamMKV: No video track found, using default dimensions");
-		}
-		video_duration = webm->getLength();
-
-		// Only handle audio decoding
-		if (webm->getAudioCodec() != WebMDemuxer::NO_AUDIO) {
-			audio = memnew(OpusVorbisDecoder(*webm));
-			if (audio->isOpen()) {
-				audio_frame = memnew(WebMFrame);
-				pcm = (float *)memalloc(sizeof(float) * audio->getBufferSamples() * webm->getChannels());
-			} else {
-				memdelete(audio);
-				audio = nullptr;
-				print_verbose("VideoStreamMKV: Failed to open audio decoder");
-			}
-		} else {
-			print_verbose("VideoStreamMKV: No supported audio track found");
-		}
-
-		// Create a placeholder texture for video metadata
-		Vector<uint8_t> placeholder_data;
-		placeholder_data.resize(video_width * video_height * 4);
-		// Fill with black pixels
-		for (int i = 0; i < placeholder_data.size(); i += 4) {
-			placeholder_data.write[i] = 0; // R
-			placeholder_data.write[i + 1] = 0; // G
-			placeholder_data.write[i + 2] = 0; // B
-			placeholder_data.write[i + 3] = 255; // A
-		}
-
-		Ref<Image> img = Image::create_from_data(video_width, video_height, false, Image::FORMAT_RGBA8, placeholder_data);
-		placeholder_texture = memnew(ImageTexture);
-		placeholder_texture->set_image(img);
-
-		return true;
-	}
-	memdelete(webm);
-	webm = nullptr;
-	return false;
-}
-
-void VideoStreamPlaybackMKV::stop() {
-	if (playing) {
-		delete_pointers();
-
-		pcm = nullptr;
-		audio_frame = nullptr;
-		audio = nullptr;
-
-		open_file(file_name); // This should not fail here.
-
-		num_decoded_samples = 0;
-		samples_offset = -1;
-		video_pos = 0.0;
-	}
-	playing = false;
-	time = 0;
-}
-
-void VideoStreamPlaybackMKV::play() {
-	if (!playing) {
-		time = 0;
-	} else {
-		stop();
-	}
-	playing = true;
-	delay_compensation = GLOBAL_GET("audio/video/video_delay_compensation_ms");
-	delay_compensation /= 1000.0;
-}
-
-bool VideoStreamPlaybackMKV::is_playing() const {
-	return playing;
-}
-
-void VideoStreamPlaybackMKV::set_paused(bool p_paused) {
-	paused = p_paused;
-}
-
-bool VideoStreamPlaybackMKV::is_paused() const {
-	return paused;
-}
-
-double VideoStreamPlaybackMKV::get_length() const {
-	if (webm) {
-		return webm->getLength();
-	}
-	return 0.0f;
-}
-
-double VideoStreamPlaybackMKV::get_playback_position() const {
-	return video_pos;
-}
-
-void VideoStreamPlaybackMKV::seek(double p_time) {
-	if (!webm) {
-		return;
-	}
-	time = webm->seek(p_time);
-	video_pos = time;
-}
-
-void VideoStreamPlaybackMKV::set_audio_track(int p_idx) {
-	audio_track = p_idx;
-}
-
-Ref<Texture2D> VideoStreamPlaybackMKV::get_texture() const {
-	return placeholder_texture;
-}
-
-void VideoStreamPlaybackMKV::update(double p_delta) {
-	if ((!playing || paused) || !webm) {
-		return;
-	}
-
-	time += p_delta;
-
-	if (time < video_pos) {
-		return;
-	}
-
-	bool audio_buffer_full = false;
-
-	if (samples_offset > -1) {
-		//Mix remaining samples
-		const int to_read = num_decoded_samples - samples_offset;
-		const int mixed = mix_callback(mix_udata, pcm + samples_offset * webm->getChannels(), to_read);
-		if (mixed != to_read) {
-			samples_offset += mixed;
-			audio_buffer_full = true;
-		} else {
-			samples_offset = -1;
-		}
-	}
-
-	const bool hasAudio = (audio && mix_callback);
-
-	// Only process audio frames - video frames are handled externally
-	if (hasAudio && !audio_buffer_full) {
-		WebMFrame video_frame; // Dummy frame for demuxer
-
-		if (!webm->readFrame(&video_frame, audio_frame)) {
-			// Can't demux, EOS?
-			if (webm->isEOS()) {
-				stop();
-			}
-			return;
-		}
-
-		if (audio_frame->isValid() && audio->getPCMF(*audio_frame, pcm, num_decoded_samples) && num_decoded_samples > 0) {
-			const int mixed = mix_callback(mix_udata, pcm, num_decoded_samples);
-
-			if (mixed != num_decoded_samples) {
-				samples_offset = mixed;
-				audio_buffer_full = true;
-			}
-		}
-
-		// Update video position based on audio frame timing
-		if (audio_frame->isValid()) {
-			video_pos = audio_frame->time;
-		}
-	}
-
-	if (webm && webm->isEOS()) {
-		stop();
-	}
-}
-
-void VideoStreamPlaybackMKV::set_mix_callback(VideoStreamPlayback::AudioMixCallback p_callback, void *p_userdata) {
-	mix_callback = p_callback;
-	mix_udata = p_userdata;
-}
-
-int VideoStreamPlaybackMKV::get_channels() const {
-	if (audio) {
-		return webm->getChannels();
-	}
-	return 0;
-}
-
-int VideoStreamPlaybackMKV::get_mix_rate() const {
-	if (audio) {
-		return webm->getSampleRate();
-	}
-	return 0;
-}
-
-void VideoStreamPlaybackMKV::delete_pointers() {
-	if (pcm) {
-		memfree(pcm);
-		pcm = nullptr;
-	}
-
-	if (audio_frame) {
-		memdelete(audio_frame);
-		audio_frame = nullptr;
-	}
-
-	if (audio) {
-		memdelete(audio);
-		audio = nullptr;
-	}
-
-	if (webm) {
-		memdelete(webm);
-		webm = nullptr;
-	}
-}
-
-VideoStreamMKV::VideoStreamMKV() {}
-
-Ref<VideoStreamPlayback> VideoStreamMKV::instantiate_playback() {
-	Ref<VideoStreamPlaybackMKV> pb = memnew(VideoStreamPlaybackMKV);
-	pb->set_audio_track(audio_track);
-	if (pb->open_file(file)) {
-		return pb;
-	}
-	return nullptr;
-}
+#include "video_stream_av1.h"
 
 void VideoStreamMKV::_bind_methods() {
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "file", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_INTERNAL), "set_file", "get_file");
+	ClassDB::bind_method(D_METHOD("set_file", "file"), &VideoStreamMKV::set_file);
+	ClassDB::bind_method(D_METHOD("get_file"), &VideoStreamMKV::get_file);
+	ClassDB::bind_method(D_METHOD("set_data", "data"), &VideoStreamMKV::set_data);
+	ClassDB::bind_method(D_METHOD("get_data"), &VideoStreamMKV::get_data);
+
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "file", PROPERTY_HINT_FILE, "*.mkv,*.webm"), "set_file", "get_file");
+	ADD_PROPERTY(PropertyInfo(Variant::PACKED_BYTE_ARRAY, "data"), "set_data", "get_data");
 }
 
-void VideoStreamMKV::set_audio_track(int p_track) {
-	audio_track = p_track;
+VideoStreamMKV::VideoStreamMKV() {
 }
+
+VideoStreamMKV::~VideoStreamMKV() {
+}
+
+Ref<VideoStreamPlayback> VideoStreamMKV::instantiate_playback() {
+	Ref<VideoStreamPlaybackAV1> playback;
+	playback.instantiate();
+	
+	if (!file_path.is_empty()) {
+		playback->open_file(file_path);
+	}
+	// Note: data-based playback not yet implemented in VideoStreamPlaybackAV1
+	
+	return playback;
+}
+
+void VideoStreamMKV::set_file(const String &p_file) {
+	file_path = p_file;
+	data.clear();
+}
+
+String VideoStreamMKV::get_file() const {
+	return file_path;
+}
+
+void VideoStreamMKV::set_data(const PackedByteArray &p_data) {
+	data = p_data;
+	file_path = "";
+}
+
+PackedByteArray VideoStreamMKV::get_data() const {
+	return data;
+}
+
+// ResourceFormatLoaderMKV implementation
 
 Ref<Resource> ResourceFormatLoaderMKV::load(const String &p_path, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
-	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
-	if (f.is_null()) {
-		if (r_error) {
-			*r_error = ERR_CANT_OPEN;
-		}
-		return Ref<Resource>();
-	}
-
-	VideoStreamMKV *stream = memnew(VideoStreamMKV);
+	Ref<VideoStreamMKV> stream;
+	stream.instantiate();
 	stream->set_file(p_path);
-
-	Ref<VideoStreamMKV> mkv_stream = Ref<VideoStreamMKV>(stream);
-
+	
 	if (r_error) {
 		*r_error = OK;
 	}
-
-	f->flush();
-	return mkv_stream;
+	
+	return stream;
 }
 
 void ResourceFormatLoaderMKV::get_recognized_extensions(List<String> *p_extensions) const {
 	p_extensions->push_back("mkv");
-	p_extensions->push_back("webm"); // WebM is a subset of MKV
+	p_extensions->push_back("webm");
 }
 
 bool ResourceFormatLoaderMKV::handles_type(const String &p_type) const {
-	return ClassDB::is_parent_class(p_type, "VideoStream");
+	return p_type == "VideoStreamMKV" || p_type == "VideoStream";
 }
 
 String ResourceFormatLoaderMKV::get_resource_type(const String &p_path) const {
-	String el = p_path.get_extension().to_lower();
-	if (el == "mkv" || el == "webm") {
+	String extension = p_path.get_extension().to_lower();
+	if (extension == "mkv" || extension == "webm") {
 		return "VideoStreamMKV";
 	}
 	return "";

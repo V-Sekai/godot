@@ -30,619 +30,185 @@
 
 #include "rendering_device_video_extensions.h"
 
-#include "core/error/error_macros.h"
-#include "core/object/class_db.h"
-
 #ifdef VULKAN_ENABLED
+#define VK_NO_PROTOTYPES
 #include "drivers/vulkan/rendering_device_driver_vulkan.h"
-#include "drivers/vulkan/vulkan_video_decoder.h"
-#include "drivers/vulkan/vulkan_ycbcr_sampler.h"
+#include "servers/rendering_server.h"
 #endif
 
 RenderingDeviceVideoExtensions::RenderingDeviceVideoExtensions() {
 #ifdef VULKAN_ENABLED
-	// Note: vulkan_driver will be obtained from RenderingDeviceDriverVulkan
-	// ycbcr_sampler will be created when needed
 	vulkan_driver = nullptr;
-	ycbcr_sampler = nullptr;
+	device_context = nullptr;
+	initialized = false;
 #endif
 }
 
 RenderingDeviceVideoExtensions::~RenderingDeviceVideoExtensions() {
-	_cleanup_video_resources();
 #ifdef VULKAN_ENABLED
-	// Note: vulkan_driver is owned by RenderingDevice, don't delete
-	vulkan_driver = nullptr;
-	
-	if (ycbcr_sampler) {
-		memdelete(ycbcr_sampler);
-		ycbcr_sampler = nullptr;
-	}
+	_cleanup_device_context();
 #endif
 }
 
-void RenderingDeviceVideoExtensions::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("initialize", "rendering_device"), &RenderingDeviceVideoExtensions::initialize);
-	ClassDB::bind_method(D_METHOD("is_video_supported"), &RenderingDeviceVideoExtensions::is_video_supported);
-	ClassDB::bind_method(D_METHOD("get_supported_profiles"), &RenderingDeviceVideoExtensions::get_supported_profiles);
-
-	// Video session management
-	ClassDB::bind_method(D_METHOD("video_session_create"), &RenderingDeviceVideoExtensions::video_session_create);
-	ClassDB::bind_method(D_METHOD("video_session_destroy", "video_session"), &RenderingDeviceVideoExtensions::video_session_destroy);
-	ClassDB::bind_method(D_METHOD("video_session_parameters_create"), &RenderingDeviceVideoExtensions::video_session_parameters_create);
-	ClassDB::bind_method(D_METHOD("video_session_parameters_destroy", "video_session_parameters"), &RenderingDeviceVideoExtensions::video_session_parameters_destroy);
-
-	// Video resource creation
-	ClassDB::bind_method(D_METHOD("video_image_create"), &RenderingDeviceVideoExtensions::video_image_create);
-	ClassDB::bind_method(D_METHOD("video_image_destroy", "video_image"), &RenderingDeviceVideoExtensions::video_image_destroy);
-	ClassDB::bind_method(D_METHOD("video_buffer_create"), &RenderingDeviceVideoExtensions::video_buffer_create);
-	ClassDB::bind_method(D_METHOD("video_buffer_destroy", "video_buffer"), &RenderingDeviceVideoExtensions::video_buffer_destroy);
-
-	// Video operations
-	ClassDB::bind_method(D_METHOD("video_queue_submit"), &RenderingDeviceVideoExtensions::video_queue_submit);
-	ClassDB::bind_method(D_METHOD("video_queue_wait_idle"), &RenderingDeviceVideoExtensions::video_queue_wait_idle);
-
-	// Utility functions
-	ClassDB::bind_method(D_METHOD("texture_from_video_image", "video_image", "layer"), &RenderingDeviceVideoExtensions::texture_from_video_image, DEFVAL(0));
-	ClassDB::bind_method(D_METHOD("copy_video_image_to_texture", "video_image", "src_layer", "dst_texture"), &RenderingDeviceVideoExtensions::copy_video_image_to_texture);
-	ClassDB::bind_method(D_METHOD("convert_ycbcr_to_rgb", "ycbcr_texture", "width", "height"), &RenderingDeviceVideoExtensions::convert_ycbcr_to_rgb);
-
-	// Enums
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_H264_BASELINE);
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_H264_MAIN);
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_H264_HIGH);
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_H265_MAIN);
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_H265_MAIN_10);
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_AV1_MAIN);
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_AV1_HIGH);
-	BIND_ENUM_CONSTANT(VIDEO_CODEC_PROFILE_AV1_PROFESSIONAL);
-
-	BIND_ENUM_CONSTANT(VIDEO_OPERATION_DECODE);
-	BIND_ENUM_CONSTANT(VIDEO_OPERATION_ENCODE);
-}
-
-void RenderingDeviceVideoExtensions::initialize(RenderingDevice *p_rendering_device) {
-	ERR_FAIL_NULL(p_rendering_device);
-	rd = p_rendering_device;
-
+Error RenderingDeviceVideoExtensions::initialize(RenderingDevice *p_rendering_device) {
 #ifdef VULKAN_ENABLED
+	if (!p_rendering_device) {
+		return ERR_INVALID_PARAMETER;
+	}
+
 	// Get the Vulkan driver from the rendering device
-	vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
-	if (vulkan_driver) {
-		
-		// Check if video decoder is supported
-		if (vulkan_driver->video_decoder_is_supported()) {
-			print_verbose("Vulkan Video decoder is supported by hardware");
-			
-			// Create YCbCr sampler
-			if (!ycbcr_sampler) {
-				ycbcr_sampler = memnew(VulkanYCbCrSampler);
-				// Initialize with the Vulkan device from the driver
-				if (ycbcr_sampler->initialize(vulkan_driver->get_vk_device())) {
-					print_verbose("VulkanYCbCrSampler initialized successfully");
-				} else {
-					WARN_PRINT("Failed to initialize VulkanYCbCrSampler");
-					memdelete(ycbcr_sampler);
-					ycbcr_sampler = nullptr;
-				}
-			}
-			
-			print_verbose("Vulkan Video extensions initialized successfully");
-		} else {
-			WARN_PRINT("Vulkan Video decoder not supported by hardware");
-		}
-	} else {
-		WARN_PRINT("Failed to get VulkanDriver from RenderingDevice");
+	RenderingDeviceDriver *driver = p_rendering_device->get_device_driver();
+	vulkan_driver = static_cast<RenderingDeviceDriverVulkan *>(driver);
+	if (!vulkan_driver) {
+		ERR_PRINT("Failed to get Vulkan driver from RenderingDevice");
+		return ERR_INVALID_PARAMETER;
 	}
-#endif
 
-	if (_check_video_support()) {
-		_initialize_video_queues();
-		print_line("Vulkan Video extensions initialized successfully");
-	} else {
-		WARN_PRINT("Vulkan Video extensions not supported on this device");
+	// Initialize using Godot's built-in video decoder support
+	if (!_initialize_device_context()) {
+		ERR_PRINT("Failed to initialize video decoder support");
+		return ERR_UNAVAILABLE;
 	}
+
+	initialized = true;
+	print_line("RenderingDeviceVideoExtensions initialized successfully");
+	return OK;
+#else
+	ERR_PRINT("Vulkan not enabled");
+	return ERR_UNAVAILABLE;
+#endif
 }
 
 bool RenderingDeviceVideoExtensions::is_video_supported() const {
-	return _check_video_support();
+#ifdef VULKAN_ENABLED
+	if (!initialized || !vulkan_driver) {
+		return false;
+	}
+
+	// Use Godot's built-in video decoder support check
+	return vulkan_driver->video_decoder_is_supported();
+#else
+	return false;
+#endif
 }
 
-Dictionary RenderingDeviceVideoExtensions::get_video_capabilities(VideoCodecProfile p_profile, VideoOperationType p_operation) const {
+Dictionary RenderingDeviceVideoExtensions::get_video_capabilities(int p_codec_profile, int p_operation) const {
 	Dictionary caps;
-
-	if (!_check_video_support()) {
-		return caps;
-	}
+	caps["hardware_decode_supported"] = false;
+	caps["hardware_encode_supported"] = false;
+	caps["max_width"] = 0;
+	caps["max_height"] = 0;
+	caps["max_dpb_slots"] = 0;
+	caps["max_level"] = 0;
+	caps["supported_profiles"] = Array();
 
 #ifdef VULKAN_ENABLED
-	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
-		// For now, assume codec is supported if video decoder is available
-		// TODO: Implement proper codec support checking based on profile
-		caps["decode_supported"] = (p_operation == VIDEO_OPERATION_DECODE);
-		caps["encode_supported"] = false; // Encode not implemented yet
-		caps["max_width"] = 3840;
-		caps["max_height"] = 2160;
-		caps["max_dpb_slots"] = 8;
-		caps["max_active_references"] = 7;
-
-		Array supported_profiles;
-		supported_profiles.push_back(p_profile);
-		caps["supported_profiles"] = supported_profiles;
-
-		Array supported_formats;
-		supported_formats.push_back(RD::DATA_FORMAT_G8_B8R8_2PLANE_420_UNORM);
-		caps["supported_formats"] = supported_formats;
-
+	if (!initialized || !vulkan_driver) {
 		return caps;
 	}
-#endif
 
-	// Fallback mock capabilities for testing when driver integration is incomplete
-	if (p_profile == VIDEO_CODEC_PROFILE_AV1_MAIN && p_operation == VIDEO_OPERATION_DECODE) {
-		caps["decode_supported"] = true;
-		caps["encode_supported"] = false;
-		caps["max_width"] = 3840;
-		caps["max_height"] = 2160;
-		caps["max_dpb_slots"] = 8;
-		caps["max_active_references"] = 7;
+	// Check if video decoding is supported using Godot's API
+	if (vulkan_driver->video_decoder_is_supported()) {
+		caps["hardware_decode_supported"] = true;
+		
+		// For AV1, set reasonable defaults based on common hardware capabilities
+		if (p_codec_profile == VIDEO_CODEC_PROFILE_AV1_MAIN) {
+			caps["max_width"] = 7680;  // 8K width
+			caps["max_height"] = 4320; // 8K height
+			caps["max_dpb_slots"] = 8; // AV1 standard
+			caps["max_level"] = 31;    // Level 3.1
 
-		Array supported_profiles;
-		supported_profiles.push_back(VIDEO_CODEC_PROFILE_AV1_MAIN);
-		caps["supported_profiles"] = supported_profiles;
-
-		Array supported_formats;
-		supported_formats.push_back(RD::DATA_FORMAT_G8_B8R8_2PLANE_420_UNORM);
-		caps["supported_formats"] = supported_formats;
+			Array profiles;
+			profiles.push_back(0); // Main profile
+			caps["supported_profiles"] = profiles;
+		}
 	}
+
+	// Encode support would need additional API
+	caps["hardware_encode_supported"] = false;
+#endif
 
 	return caps;
 }
 
-Array RenderingDeviceVideoExtensions::get_supported_profiles() const {
-	Array profiles;
-
+VkSharedBaseObj<VulkanDeviceContext> *RenderingDeviceVideoExtensions::get_device_context() const {
 #ifdef VULKAN_ENABLED
-	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
-		// Add supported codec profiles based on driver capabilities
-		// TODO: Implement proper codec support checking
-		profiles.push_back(VIDEO_CODEC_PROFILE_AV1_MAIN);
-		profiles.push_back(VIDEO_CODEC_PROFILE_H264_MAIN);
-		profiles.push_back(VIDEO_CODEC_PROFILE_H265_MAIN);
-	}
+	return device_context;
+#else
+	return nullptr;
 #endif
-
-	return profiles;
 }
 
-RID RenderingDeviceVideoExtensions::video_session_create(const Dictionary &p_create_info) {
-	ERR_FAIL_NULL_V(rd, RID());
-	ERR_FAIL_COND_V(!_check_video_support(), RID());
-
-	// Extract parameters from Dictionary
-	VideoCodecProfile codec_profile = (VideoCodecProfile)(int)p_create_info.get("codec_profile", VIDEO_CODEC_PROFILE_AV1_MAIN);
-	VideoOperationType operation_type = (VideoOperationType)(int)p_create_info.get("operation_type", VIDEO_OPERATION_DECODE);
-	uint32_t max_width = p_create_info.get("max_width", 1920);
-	uint32_t max_height = p_create_info.get("max_height", 1080);
-	uint32_t dpb_slots = p_create_info.get("dpb_slots", 8);
-
 #ifdef VULKAN_ENABLED
-	// Use the member vulkan_driver or get it if not set
+VkDevice RenderingDeviceVideoExtensions::get_vk_device() const {
 	if (!vulkan_driver) {
-		vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+		return VK_NULL_HANDLE;
 	}
-	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
-		// Map codec profile to VulkanVideoDecoder codec
-		uint32_t vk_codec = 0; // AV1
-		switch (codec_profile) {
-			case VIDEO_CODEC_PROFILE_AV1_MAIN:
-			case VIDEO_CODEC_PROFILE_AV1_HIGH:
-			case VIDEO_CODEC_PROFILE_AV1_PROFESSIONAL:
-				vk_codec = 0; // VIDEO_CODEC_AV1
-				break;
-			case VIDEO_CODEC_PROFILE_H264_BASELINE:
-			case VIDEO_CODEC_PROFILE_H264_MAIN:
-			case VIDEO_CODEC_PROFILE_H264_HIGH:
-				vk_codec = 1; // VIDEO_CODEC_H264
-				break;
-			case VIDEO_CODEC_PROFILE_H265_MAIN:
-			case VIDEO_CODEC_PROFILE_H265_MAIN_10:
-				vk_codec = 2; // VIDEO_CODEC_H265
-				break;
-			default:
-				ERR_PRINT("Unsupported codec profile: " + String::num_int64(codec_profile));
-				return RID();
-		}
-
-		// Create video session using the driver
-		uint32_t session_id = vulkan_driver->video_decoder_create_session(vk_codec, max_width, max_height, dpb_slots);
-		if (session_id == 0) {
-			ERR_PRINT("Failed to create video session");
-			return RID();
-		}
-
-		// Use proper RID management - store session_id in a storage buffer and return its RID
-		// This allows the RenderingDevice to properly track and manage the video session resource
-		Vector<uint8_t> session_data;
-		session_data.resize(sizeof(uint32_t));
-		memcpy(session_data.ptrw(), &session_id, sizeof(uint32_t));
-		
-		RID session_rid = rd->storage_buffer_create(sizeof(uint32_t), session_data);
-		print_line("Video session created successfully for codec ", codec_profile, " operation ", operation_type, " size ", max_width, "x", max_height, " session_id=", session_id);
-		return session_rid;
-	}
-#endif
-
-	// Fallback: create placeholder buffer for testing
-	RID placeholder_session = rd->storage_buffer_create(1024);
-	print_line("Video session created (placeholder) for codec ", codec_profile, " operation ", operation_type, " size ", max_width, "x", max_height);
-	return placeholder_session;
+	return vulkan_driver->get_vk_device();
 }
 
-void RenderingDeviceVideoExtensions::video_session_destroy(RID p_video_session) {
-	ERR_FAIL_NULL(rd);
-	ERR_FAIL_COND(!p_video_session.is_valid());
-
-#ifdef VULKAN_ENABLED
-	// Use the member vulkan_driver or get it if not set
+VkPhysicalDevice RenderingDeviceVideoExtensions::get_vk_physical_device() const {
 	if (!vulkan_driver) {
-		vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+		return VK_NULL_HANDLE;
 	}
-	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
-		// Extract session ID from the video_session buffer
-		Vector<uint8_t> session_data = rd->buffer_get_data(p_video_session, 0, sizeof(uint32_t));
-		if (session_data.size() >= (int)sizeof(uint32_t)) {
-			uint32_t session_id;
-			memcpy(&session_id, session_data.ptr(), sizeof(uint32_t));
-
-			// Destroy the video session using the driver
-			vulkan_driver->video_decoder_destroy_session(session_id);
-			print_verbose("Video session destroyed successfully, session_id=" + String::num_uint64(session_id));
-		} else {
-			ERR_PRINT("Invalid video session data for destruction");
-		}
-	}
-#endif
-
-	// Free the RID storage buffer
-	rd->free(p_video_session);
+	return vulkan_driver->get_vk_physical_device();
 }
 
-RID RenderingDeviceVideoExtensions::video_session_parameters_create(const Dictionary &p_create_info) {
-	ERR_FAIL_NULL_V(rd, RID());
-
-	// Extract video_session RID from Dictionary
-	RID video_session = p_create_info.get("video_session", RID());
-	ERR_FAIL_COND_V(!video_session.is_valid(), RID());
-
-	VideoCodecProfile codec_profile = (VideoCodecProfile)(int)p_create_info.get("codec_profile", VIDEO_CODEC_PROFILE_AV1_MAIN);
-
-	// TODO: Implement VkVideoSessionParametersKHR creation
-	// For now, create a placeholder buffer to represent the session parameters
-	RID placeholder_params = rd->storage_buffer_create(512); // Small placeholder buffer
-
-	print_line("Video session parameters created (placeholder) for codec ", codec_profile);
-	return placeholder_params;
+VkInstance RenderingDeviceVideoExtensions::get_vk_instance() const {
+	// For now, return null handle as we don't have direct access
+	// This would need to be exposed through the Vulkan driver API
+	return VK_NULL_HANDLE;
 }
 
-void RenderingDeviceVideoExtensions::video_session_parameters_destroy(RID p_video_session_parameters) {
-	ERR_FAIL_NULL(rd);
-	ERR_FAIL_COND(!p_video_session_parameters.is_valid());
-
-	// TODO: Implement video session parameters destruction
-	WARN_PRINT("Video session parameters destruction not yet implemented");
-}
-
-RID RenderingDeviceVideoExtensions::video_image_create(const Dictionary &p_create_info) {
-	ERR_FAIL_NULL_V(rd, RID());
-
-	// Extract parameters from Dictionary
-	RID video_session = p_create_info.get("video_session", RID());
-	ERR_FAIL_COND_V(!video_session.is_valid(), RID());
-
-	uint32_t width = p_create_info.get("width", 1920);
-	uint32_t height = p_create_info.get("height", 1080);
-	uint32_t array_layers = p_create_info.get("array_layers", 8);
-	RD::DataFormat format_val = (RD::DataFormat)(int)p_create_info.get("format", RD::DATA_FORMAT_G8_B8R8_2PLANE_420_UNORM);
-	RD::TextureUsageBits usage = (RD::TextureUsageBits)(int)p_create_info.get("usage", RD::TEXTURE_USAGE_STORAGE_BIT);
-
-	// TODO: Create video-compatible image with proper usage flags
-	// For now, create a regular texture as placeholder
-	RD::TextureFormat format;
-	format.width = width;
-	format.height = height;
-	format.depth = 1;
-	format.array_layers = array_layers;
-	format.mipmaps = 1;
-	format.format = format_val;
-	format.texture_type = RD::TEXTURE_TYPE_2D_ARRAY;
-	format.samples = RD::TEXTURE_SAMPLES_1;
-	format.usage_bits = usage;
-
-	return rd->texture_create(format, RD::TextureView());
-}
-
-void RenderingDeviceVideoExtensions::video_image_destroy(RID p_video_image) {
-	ERR_FAIL_NULL(rd);
-	ERR_FAIL_COND(!p_video_image.is_valid());
-
-	// For now, just free as regular texture
-	rd->free(p_video_image);
-}
-
-RID RenderingDeviceVideoExtensions::video_buffer_create(const Dictionary &p_create_info) {
-	ERR_FAIL_NULL_V(rd, RID());
-
-	// Extract parameters from Dictionary
-	RID video_session = p_create_info.get("video_session", RID());
-	ERR_FAIL_COND_V(!video_session.is_valid(), RID());
-
-	uint64_t size = p_create_info.get("size", 1024 * 1024); // 1MB default
-
-	// Create buffer for bitstream data
-	return rd->storage_buffer_create(size);
-}
-
-void RenderingDeviceVideoExtensions::video_buffer_destroy(RID p_video_buffer) {
-	ERR_FAIL_NULL(rd);
-	ERR_FAIL_COND(!p_video_buffer.is_valid());
-
-	rd->free(p_video_buffer);
-}
-
-void RenderingDeviceVideoExtensions::video_decode_frame(const Dictionary &p_decode_info) {
-	ERR_FAIL_NULL(rd);
-
-	// Extract parameters from Dictionary
-	RID video_session = p_decode_info.get("video_session", RID());
-	RID video_session_parameters = p_decode_info.get("video_session_parameters", RID());
-	RID bitstream_buffer = p_decode_info.get("bitstream_buffer", RID());
-	RID output_image = p_decode_info.get("output_image", RID());
-
-	ERR_FAIL_COND(!video_session.is_valid());
-	ERR_FAIL_COND(!video_session_parameters.is_valid());
-	ERR_FAIL_COND(!bitstream_buffer.is_valid());
-	ERR_FAIL_COND(!output_image.is_valid());
-
-#ifdef VULKAN_ENABLED
-	// Use the member vulkan_driver or get it if not set
+uint32_t RenderingDeviceVideoExtensions::get_video_decode_queue_family() const {
 	if (!vulkan_driver) {
-		vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+		return UINT32_MAX;
 	}
-	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
-		// Extract session ID from the video_session buffer
-		Vector<uint8_t> session_data = rd->buffer_get_data(video_session, 0, sizeof(uint32_t));
-		if (session_data.size() >= (int)sizeof(uint32_t)) {
-			uint32_t session_id;
-			memcpy(&session_id, session_data.ptr(), sizeof(uint32_t));
+	return vulkan_driver->get_video_decode_queue_family();
+}
 
-			// Create output image using the driver
-			uint32_t output_image_id = vulkan_driver->video_decoder_create_output_image(session_id, 0); // VK_FORMAT_G8_B8R8_2PLANE_420_UNORM
-			if (output_image_id == 0) {
-				ERR_PRINT("Failed to create video output image");
-				return;
-			}
-
-			// Create bitstream buffer using the driver
-			uint32_t buffer_id = vulkan_driver->video_decoder_create_bitstream_buffer(1024 * 1024); // 1MB
-			if (buffer_id == 0) {
-				ERR_PRINT("Failed to create video bitstream buffer");
-				vulkan_driver->video_decoder_destroy_image(output_image_id);
-				return;
-			}
-
-			// Update buffer with bitstream data (placeholder for now)
-			Vector<uint8_t> dummy_bitstream;
-			dummy_bitstream.resize(1024);
-			for (int i = 0; i < 1024; i++) {
-				dummy_bitstream.write[i] = i % 256;
-			}
-			
-			if (!vulkan_driver->video_decoder_update_buffer(buffer_id, dummy_bitstream)) {
-				ERR_PRINT("Failed to update video bitstream buffer");
-				vulkan_driver->video_decoder_destroy_buffer(buffer_id);
-				vulkan_driver->video_decoder_destroy_image(output_image_id);
-				return;
-			}
-
-			// Perform video decode
-			if (vulkan_driver->video_decoder_decode_frame(session_id, buffer_id, output_image_id)) {
-				print_line("Video frame decoded successfully using VulkanVideoDecoder");
-				
-				// Get the decoded image handle for further processing
-				uint64_t image_handle = vulkan_driver->video_decoder_get_image_handle(output_image_id);
-				print_verbose("Decoded video image handle: " + String::num_uint64(image_handle));
-			} else {
-				ERR_PRINT("Failed to decode video frame");
-			}
-
-			// Cleanup temporary resources
-			vulkan_driver->video_decoder_destroy_buffer(buffer_id);
-			vulkan_driver->video_decoder_destroy_image(output_image_id);
-			return;
-		} else {
-			ERR_PRINT("Invalid video session data");
-			return;
-		}
+VkQueue RenderingDeviceVideoExtensions::get_video_decode_queue() const {
+	if (!vulkan_driver) {
+		return VK_NULL_HANDLE;
 	}
-#endif
-
-	// Fallback for when driver integration is not available
-	WARN_PRINT("Video frame decoding using fallback mode (driver integration pending)");
+	return vulkan_driver->get_video_decode_queue();
 }
 
-void RenderingDeviceVideoExtensions::video_queue_submit() {
-	ERR_FAIL_NULL(rd);
-
-	// TODO: Submit video commands to video queue
-	WARN_PRINT("Video queue submit not yet implemented");
-}
-
-void RenderingDeviceVideoExtensions::video_queue_wait_idle() {
-	ERR_FAIL_NULL(rd);
-
-	// TODO: Wait for video queue to become idle
-	WARN_PRINT("Video queue wait idle not yet implemented");
-}
-
-RID RenderingDeviceVideoExtensions::texture_from_video_image(RID p_video_image, uint32_t p_layer) {
-	ERR_FAIL_NULL_V(rd, RID());
-	ERR_FAIL_COND_V(!p_video_image.is_valid(), RID());
-
-	// TODO: Create texture view from video image layer
-	// For now, return the video image itself (which is a texture)
-	return p_video_image;
-}
-
-void RenderingDeviceVideoExtensions::copy_video_image_to_texture(RID p_video_image, uint32_t p_src_layer, RID p_dst_texture) {
-	ERR_FAIL_NULL(rd);
-	ERR_FAIL_COND(!p_video_image.is_valid());
-	ERR_FAIL_COND(!p_dst_texture.is_valid());
-
-	// TODO: Implement copy from video image layer to regular texture
-	WARN_PRINT("Video image to texture copy not yet implemented");
-}
-
-RID RenderingDeviceVideoExtensions::convert_ycbcr_to_rgb(RID p_ycbcr_texture, uint32_t p_width, uint32_t p_height) {
-	ERR_FAIL_NULL_V(rd, RID());
-	ERR_FAIL_COND_V(!p_ycbcr_texture.is_valid(), RID());
-
-#ifdef VULKAN_ENABLED
-	if (ycbcr_sampler && ycbcr_sampler->is_initialized()) {
-		// Create YCbCr sampler for NV12 format with ITU-R BT.709 color space
-		VulkanYCbCrSampler::YCbCrSamplerInfo sampler_info;
-		Error err = ycbcr_sampler->create_nv12_sampler(
-				VulkanYCbCrSampler::COLOR_SPACE_REC_709,
-				VulkanYCbCrSampler::COLOR_RANGE_NARROW,
-				&sampler_info);
-
-		if (err != OK) {
-			ERR_PRINT("Failed to create YCbCr sampler for video conversion");
-			return RID();
-		}
-
-		// Create RGB texture view using the YCbCr sampler
-		// This approach uses Vulkan's hardware YCbCr→RGB conversion directly
-		// Zero overhead - conversion happens automatically during texture sampling
-		RD::TextureView rgb_view;
-		rgb_view.format_override = RD::DATA_FORMAT_R8G8B8A8_UNORM; // RGB output format
-		
-		// Create RGB texture view of the YCbCr texture with automatic hardware conversion
-		// The YCbCr sampler will be associated with this view for automatic color space conversion
-		RID rgb_texture_view = rd->texture_create_shared_from_slice(
-			rgb_view, p_ycbcr_texture, 0, 0, 1, RD::TEXTURE_SLICE_2D
-		);
-
-		if (!rgb_texture_view.is_valid()) {
-			ycbcr_sampler->destroy_ycbcr_sampler(&sampler_info);
-			ERR_PRINT("Failed to create RGB texture view with YCbCr sampler");
-			return RID();
-		}
-
-		print_verbose("YCbCr to RGB conversion using direct hardware sampler - zero overhead conversion");
-		
-		// TODO: In a complete implementation, associate the sampler with the texture view
-		// for proper lifecycle management. For now, we'll manage the sampler separately.
-		// The sampler should be kept alive as long as the texture view is in use.
-		
-		// Note: Immediate cleanup for proof of concept - in production, the sampler
-		// would be managed with the texture view lifecycle
-		ycbcr_sampler->destroy_ycbcr_sampler(&sampler_info);
-
-		return rgb_texture_view;
-	}
-#endif
-
-	// Fallback: Create RGB test pattern when hardware YCbCr conversion unavailable
-	RD::TextureFormat rgb_format;
-	rgb_format.width = p_width;
-	rgb_format.height = p_height;
-	rgb_format.depth = 1;
-	rgb_format.array_layers = 1;
-	rgb_format.mipmaps = 1;
-	rgb_format.format = RD::DATA_FORMAT_R8G8B8A8_UNORM;
-	rgb_format.texture_type = RD::TEXTURE_TYPE_2D;
-	rgb_format.samples = RD::TEXTURE_SAMPLES_1;
-	rgb_format.usage_bits = RD::TEXTURE_USAGE_STORAGE_BIT | RD::TEXTURE_USAGE_SAMPLING_BIT;
-
-	RID rgb_texture = rd->texture_create(rgb_format, RD::TextureView());
-
-	// Create test pattern to indicate hardware conversion is unavailable
-	Vector<uint8_t> test_data;
-	test_data.resize(p_width * p_height * 4); // RGBA
-	for (uint32_t i = 0; i < p_width * p_height; i++) {
-		// Create a gradient pattern to indicate fallback mode
-		uint32_t x = i % p_width;
-		uint32_t y = i / p_width;
-		test_data.write[i * 4 + 0] = (uint8_t)((x * 255) / p_width);        // R gradient
-		test_data.write[i * 4 + 1] = (uint8_t)((y * 255) / p_height);       // G gradient
-		test_data.write[i * 4 + 2] = 128;                                    // B constant
-		test_data.write[i * 4 + 3] = 255;                                    // A opaque
-	}
-
-	rd->texture_update(rgb_texture, 0, test_data);
-	print_verbose("YCbCr to RGB conversion using test pattern fallback (hardware conversion unavailable)");
-	return rgb_texture;
-}
-
-void RenderingDeviceVideoExtensions::video_buffer_update(RID p_video_buffer, uint64_t p_offset, const Vector<uint8_t> &p_data) {
-	ERR_FAIL_NULL(rd);
-	ERR_FAIL_COND(!p_video_buffer.is_valid());
-	ERR_FAIL_COND(p_data.is_empty());
-
-	// Update buffer with bitstream data
-	rd->buffer_update(p_video_buffer, (uint32_t)p_offset, p_data.size(), p_data.ptr());
-}
-
-Vector<uint8_t> RenderingDeviceVideoExtensions::video_buffer_get_data(RID p_video_buffer, uint64_t p_offset, uint64_t p_size) {
-	ERR_FAIL_NULL_V(rd, Vector<uint8_t>());
-	ERR_FAIL_COND_V(!p_video_buffer.is_valid(), Vector<uint8_t>());
-
-	// Get buffer data
-	return rd->buffer_get_data(p_video_buffer, (uint32_t)p_offset, (uint32_t)p_size);
-}
-
-bool RenderingDeviceVideoExtensions::_check_video_support() const {
-	if (!rd) {
+bool RenderingDeviceVideoExtensions::_initialize_device_context() {
+	if (!vulkan_driver) {
 		return false;
 	}
 
-#ifdef VULKAN_ENABLED
-	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
-		// Check if video decoder is supported by the driver
-		return true;
+	// For now, just check if video decoding is supported
+	// The actual VkCodecUtils integration would be done later
+	// when we have proper access to Vulkan objects
+	
+	if (!vulkan_driver->video_decoder_is_supported()) {
+		WARN_PRINT("Video decoding not supported on this device");
+		return false;
 	}
 
-	// For testing purposes, enable basic video support when Vulkan is available
-	// TODO: Replace with proper hardware detection once driver integration is complete
-	print_verbose("Vulkan Video: Basic video support available (driver integration pending)");
+	print_line("Video decoder support detected");
 	return true;
+}
+
+void RenderingDeviceVideoExtensions::_cleanup_device_context() {
+	if (device_context) {
+		// Cleanup would go here when VkCodecUtils is properly integrated
+		device_context = nullptr;
+	}
+	vulkan_driver = nullptr;
+	initialized = false;
+}
 #endif
 
-	return false;
-}
+void RenderingDeviceVideoExtensions::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("initialize", "rendering_device"), &RenderingDeviceVideoExtensions::initialize);
+	ClassDB::bind_method(D_METHOD("is_video_supported"), &RenderingDeviceVideoExtensions::is_video_supported);
+	ClassDB::bind_method(D_METHOD("get_video_capabilities", "codec_profile", "operation"), &RenderingDeviceVideoExtensions::get_video_capabilities);
 
-bool RenderingDeviceVideoExtensions::_check_codec_support(VideoCodecProfile p_profile, VideoOperationType p_operation) const {
-	if (!_check_video_support()) {
-		return false;
-	}
-
-	// TODO: Check specific codec support
-	// This would query VkVideoCapabilitiesKHR for the specific codec
-
-	return false;
-}
-
-void RenderingDeviceVideoExtensions::_initialize_video_queues() {
-	if (!rd) {
-		return;
-	}
-
-	// TODO: Initialize video decode queue
-	// This would involve finding a queue family that supports video operations
-}
-
-void RenderingDeviceVideoExtensions::_cleanup_video_resources() {
-	// TODO: Cleanup any remaining video resources
-	rd = nullptr;
+	// Constants for codec profiles and operations
+	BIND_CONSTANT(VIDEO_CODEC_PROFILE_AV1_MAIN);
+	BIND_CONSTANT(VIDEO_OPERATION_DECODE);
+	BIND_CONSTANT(VIDEO_OPERATION_ENCODE);
 }

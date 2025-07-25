@@ -16,6 +16,10 @@
 
 #include "VkCodecUtils/Helpers.h"
 
+#if defined(VK_USE_PLATFORM_ANDROID_KHR) || defined(VK_PLATFORM_IS_UNIX)
+#include <unistd.h>
+#endif
+
 using namespace vk;
 
 NativeHandle::NativeHandle (void) :
