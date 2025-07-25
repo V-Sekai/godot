@@ -107,10 +107,8 @@ void RenderingDeviceVideoExtensions::initialize(RenderingDevice *p_rendering_dev
 
 #ifdef VULKAN_ENABLED
 	// Get the Vulkan driver from the rendering device
-	RenderingDeviceDriverVulkan *vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+	vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
 	if (vulkan_driver) {
-		// Store reference to the vulkan driver
-		this->vulkan_driver = vulkan_driver;
 		
 		// Check if video decoder is supported
 		if (vulkan_driver->video_decoder_is_supported()) {
@@ -229,8 +227,10 @@ RID RenderingDeviceVideoExtensions::video_session_create(const Dictionary &p_cre
 	uint32_t dpb_slots = p_create_info.get("dpb_slots", 8);
 
 #ifdef VULKAN_ENABLED
-	// Get the Vulkan driver
-	RenderingDeviceDriverVulkan *vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+	// Use the member vulkan_driver or get it if not set
+	if (!vulkan_driver) {
+		vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+	}
 	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
 		// Map codec profile to VulkanVideoDecoder codec
 		uint32_t vk_codec = 0; // AV1
@@ -261,7 +261,8 @@ RID RenderingDeviceVideoExtensions::video_session_create(const Dictionary &p_cre
 			return RID();
 		}
 
-		// Create a storage buffer to hold the session ID for RID management
+		// Use proper RID management - store session_id in a storage buffer and return its RID
+		// This allows the RenderingDevice to properly track and manage the video session resource
 		Vector<uint8_t> session_data;
 		session_data.resize(sizeof(uint32_t));
 		memcpy(session_data.ptrw(), &session_id, sizeof(uint32_t));
@@ -282,8 +283,29 @@ void RenderingDeviceVideoExtensions::video_session_destroy(RID p_video_session) 
 	ERR_FAIL_NULL(rd);
 	ERR_FAIL_COND(!p_video_session.is_valid());
 
-	// TODO: Implement video session destruction
-	WARN_PRINT("Video session destruction not yet implemented");
+#ifdef VULKAN_ENABLED
+	// Use the member vulkan_driver or get it if not set
+	if (!vulkan_driver) {
+		vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+	}
+	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
+		// Extract session ID from the video_session buffer
+		Vector<uint8_t> session_data = rd->buffer_get_data(p_video_session, 0, sizeof(uint32_t));
+		if (session_data.size() >= (int)sizeof(uint32_t)) {
+			uint32_t session_id;
+			memcpy(&session_id, session_data.ptr(), sizeof(uint32_t));
+
+			// Destroy the video session using the driver
+			vulkan_driver->video_decoder_destroy_session(session_id);
+			print_verbose("Video session destroyed successfully, session_id=" + String::num_uint64(session_id));
+		} else {
+			ERR_PRINT("Invalid video session data for destruction");
+		}
+	}
+#endif
+
+	// Free the RID storage buffer
+	rd->free(p_video_session);
 }
 
 RID RenderingDeviceVideoExtensions::video_session_parameters_create(const Dictionary &p_create_info) {
@@ -383,12 +405,14 @@ void RenderingDeviceVideoExtensions::video_decode_frame(const Dictionary &p_deco
 	ERR_FAIL_COND(!output_image.is_valid());
 
 #ifdef VULKAN_ENABLED
-	// Get the Vulkan driver
-	RenderingDeviceDriverVulkan *vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+	// Use the member vulkan_driver or get it if not set
+	if (!vulkan_driver) {
+		vulkan_driver = static_cast<RenderingDeviceDriverVulkan*>(rd->get_device_driver());
+	}
 	if (vulkan_driver && vulkan_driver->video_decoder_is_supported()) {
 		// Extract session ID from the video_session buffer
 		Vector<uint8_t> session_data = rd->buffer_get_data(video_session, 0, sizeof(uint32_t));
-		if (session_data.size() >= sizeof(uint32_t)) {
+		if (session_data.size() >= (int)sizeof(uint32_t)) {
 			uint32_t session_id;
 			memcpy(&session_id, session_data.ptr(), sizeof(uint32_t));
 
