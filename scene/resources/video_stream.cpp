@@ -34,6 +34,16 @@
 
 void VideoStreamPlayback::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mix_audio", "num_frames", "buffer", "offset"), &VideoStreamPlayback::mix_audio, DEFVAL(PackedFloat32Array()), DEFVAL(0));
+
+	// Audio-Video Synchronization
+	ClassDB::bind_method(D_METHOD("set_use_synchronization", "enable"), &VideoStreamPlayback::set_use_synchronization);
+	ClassDB::bind_method(D_METHOD("get_use_synchronization"), &VideoStreamPlayback::get_use_synchronization);
+	ClassDB::bind_method(D_METHOD("get_av_synchronizer"), &VideoStreamPlayback::get_av_synchronizer);
+	ClassDB::bind_method(D_METHOD("update_audio_clock", "time"), &VideoStreamPlayback::update_audio_clock);
+	ClassDB::bind_method(D_METHOD("update_video_clock", "time"), &VideoStreamPlayback::update_video_clock);
+	ClassDB::bind_method(D_METHOD("queue_video_frame", "texture", "presentation_time", "frame_number"), &VideoStreamPlayback::queue_video_frame, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("get_synchronized_texture"), &VideoStreamPlayback::get_synchronized_texture);
+
 	GDVIRTUAL_BIND(_stop);
 	GDVIRTUAL_BIND(_play);
 	GDVIRTUAL_BIND(_is_playing);
@@ -50,6 +60,7 @@ void VideoStreamPlayback::_bind_methods() {
 }
 
 VideoStreamPlayback::VideoStreamPlayback() {
+	av_synchronizer.instantiate();
 }
 
 VideoStreamPlayback::~VideoStreamPlayback() {
@@ -151,6 +162,47 @@ int VideoStreamPlayback::mix_audio(int num_frames, PackedFloat32Array buffer, in
 	ERR_FAIL_INDEX_V(offset, buffer.size(), -1);
 	ERR_FAIL_INDEX_V((_channel_count < 1 ? 1 : _channel_count) * num_frames - 1, buffer.size() - offset, -1);
 	return mix_callback(mix_udata, buffer.ptr() + offset, num_frames);
+}
+
+// Audio-Video Synchronization methods
+void VideoStreamPlayback::set_use_synchronization(bool p_enable) {
+	use_synchronization = p_enable;
+	if (!p_enable && av_synchronizer.is_valid()) {
+		av_synchronizer->reset();
+	}
+}
+
+bool VideoStreamPlayback::get_use_synchronization() const {
+	return use_synchronization;
+}
+
+Ref<AudioVideoSynchronizer> VideoStreamPlayback::get_av_synchronizer() const {
+	return av_synchronizer;
+}
+
+void VideoStreamPlayback::update_audio_clock(double p_time) {
+	if (use_synchronization && av_synchronizer.is_valid()) {
+		av_synchronizer->update_audio_clock(p_time);
+	}
+}
+
+void VideoStreamPlayback::update_video_clock(double p_time) {
+	if (use_synchronization && av_synchronizer.is_valid()) {
+		av_synchronizer->update_video_clock(p_time);
+	}
+}
+
+void VideoStreamPlayback::queue_video_frame(const Ref<Texture2D> &p_texture, double p_presentation_time, uint64_t p_frame_number) {
+	if (use_synchronization && av_synchronizer.is_valid()) {
+		av_synchronizer->queue_video_frame(p_texture, p_presentation_time, p_frame_number);
+	}
+}
+
+Ref<Texture2D> VideoStreamPlayback::get_synchronized_texture() const {
+	if (use_synchronization && av_synchronizer.is_valid()) {
+		return av_synchronizer->get_current_frame();
+	}
+	return get_texture(); // Fallback to direct texture access
 }
 
 /* --- NOTE VideoStream starts here. ----- */
