@@ -31,12 +31,21 @@
 #include "sample_grabber_callback.h"
 #include "core/string/print_string.h"
 #include "video_stream_wmf.h"
+#include "video_stream_playback_wmf.h"
 #include <mfapi.h>
 #include <minwindef.h>
 #include <shlwapi.h>
 #include <cassert>
 #include <cstdio>
 #include <new>
+
+// Undefine Windows macros that conflict with Godot
+#ifdef CONNECT_DEFERRED
+#undef CONNECT_DEFERRED
+#endif
+#ifdef CONNECT_ONESHOT
+#undef CONNECT_ONESHOT
+#endif
 
 #define CHECK_HR(func)                                                         \
 	if (SUCCEEDED(hr)) {                                                       \

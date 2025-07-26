@@ -32,147 +32,72 @@
 
 #include "core/io/resource_loader.h"
 #include "core/os/mutex.h"
-#include "scene/resources/image_texture.h"
 #include "scene/resources/video_stream.h"
+#include "wmf_container_decoder.h"
 
-#include <deque>
-
-class SampleGrabberCallback;
-class AudioSampleGrabberCallback;
-struct IMFMediaSession;
-struct IMFMediaSource;
-struct IMFTopology;
-struct IMFPresentationClock;
-
-struct FrameData {
-	int64_t sample_time = 0;
-	Vector<uint8_t> data;
-};
-
-struct AudioData {
-	int64_t sample_time = 0;
-	Vector<float> data;
-};
-
-class VideoStreamPlaybackWMF : public VideoStreamPlayback {
-	GDCLASS(VideoStreamPlaybackWMF, VideoStreamPlayback);
-
-	IMFMediaSession *media_session;
-	IMFMediaSource *media_source;
-	IMFTopology *topology;
-	IMFPresentationClock *presentation_clock;
-	SampleGrabberCallback *sample_grabber_callback;
-	AudioSampleGrabberCallback *audio_sample_grabber_callback;
-
-	Vector<FrameData> cache_frames;
-	int read_frame_idx = 0;
-	int write_frame_idx = 0;
-
-	Vector<AudioData> audio_cache_frames;
-	int audio_read_frame_idx = 0;
-	int audio_write_frame_idx = 0;
-
-	Vector<uint8_t> frame_data;
-	Ref<ImageTexture> texture;
-	Mutex mtx;
-	Mutex audio_mtx;
-
-	bool is_video_playing = false;
-	bool is_video_paused = false;
-	bool is_video_seekable = false;
-
-	double time = 0.0;
-	double next_frame_time = 0.0;
-	double current_frame_time = -1.0;
-	bool frame_ready = false;
-
-	int id = 0;
-
-	AudioMixCallback mix_callback = nullptr;
-	void *mix_udata = nullptr;
-
-	// Audio properties
-	int audio_channels = 0;
-	int audio_sample_rate = 0;
-	Vector<float> audio_buffer;
-	int audio_buffer_pos = 0;
-
-	void shutdown_stream();
-
-public:
-	struct StreamInfo {
-		Point2i size;
-		float fps = 0.0f;
-		float duration = 0.0f;
-	};
-	StreamInfo stream_info;
-
-	virtual void play() override;
-	virtual void stop() override;
-	virtual bool is_playing() const override;
-
-	virtual void set_paused(bool p_paused) override;
-	virtual bool is_paused() const override;
-
-	virtual double get_length() const override;
-	virtual String get_stream_name() const;
-
-	virtual int get_loop_count() const;
-
-	virtual double get_playback_position() const override;
-	virtual void seek(double p_time) override;
-
-	void set_file(const String &p_file);
-
-	virtual Ref<Texture2D> get_texture() const override;
-	virtual void update(double p_delta) override;
-
-	virtual void set_mix_callback(AudioMixCallback p_callback, void *p_userdata) override;
-	virtual int get_channels() const override;
-	virtual int get_mix_rate() const override;
-
-	virtual void set_audio_track(int p_idx) override;
-
-	FrameData *get_next_writable_frame();
-	void write_frame_done();
-	void present();
-
-	int64_t next_sample_time();
-
-	// Audio methods
-	bool send_audio();
-	void add_audio_data(int64_t sample_time, const Vector<float> &audio_data);
-	AudioData *get_next_writable_audio_frame();
-	void write_audio_frame_done();
-	void set_audio_format(int sample_rate, int channels);
-
-	VideoStreamPlaybackWMF();
-	~VideoStreamPlaybackWMF();
-};
+class WMFVideoDecoder;
+class WMFAudioDecoder;
+class VideoStreamPlaybackWMF;
+class AudioStreamWMF;
 
 class VideoStreamWMF : public VideoStream {
 	GDCLASS(VideoStreamWMF, VideoStream);
 
-	String file;
-	int audio_track = 0;
+private:
+	WMFContainerDecoder *container_decoder = nullptr;
+	WMFVideoDecoder *video_decoder = nullptr;
+	WMFAudioDecoder *audio_decoder = nullptr;
+	Ref<AudioStreamWMF> audio_stream;
+	
+	// Container information
+	Vector<int> video_streams;
+	Vector<int> audio_streams;
+	int selected_video_stream = -1;
+	int selected_audio_stream = -1;
+	
+	bool is_initialized = false;
+	Mutex container_mutex;
+	String file_path;
+	
+	void cleanup();
+	Error initialize_container();
 
 protected:
 	static void _bind_methods();
 
 public:
-	Ref<VideoStreamPlayback> instantiate_playback() override {
-		Ref<VideoStreamPlaybackWMF> pb = memnew(VideoStreamPlaybackWMF);
-		pb->set_audio_track(audio_track);
-		pb->set_file(file);
-		return pb;
-	}
+	// VideoStream interface
+	virtual Ref<VideoStreamPlayback> instantiate_playback() override;
+	
+	// File operations
+	void set_file(const String &p_file);
+	String get_file() const { return file_path; }
+	
+	// Stream information
+	int get_video_stream_count() const;
+	int get_audio_stream_count() const;
+	Vector<int> get_video_streams() const { return video_streams; }
+	Vector<int> get_audio_streams() const { return audio_streams; }
+	
+	// Stream selection
+	void set_video_stream(int p_stream_index);
+	void set_audio_stream(int p_stream_index);
+	int get_selected_video_stream() const { return selected_video_stream; }
+	int get_selected_audio_stream() const { return selected_audio_stream; }
+	
+	// Decoder access (for playback classes)
+	WMFVideoDecoder* get_video_decoder() const { return video_decoder; }
+	WMFAudioDecoder* get_audio_decoder() const { return audio_decoder; }
+	WMFContainerDecoder* get_container_decoder() const { return container_decoder; }
+	Ref<AudioStreamWMF> get_audio_stream() const { return audio_stream; }
+	
+	// Container operations
+	Error seek_container(double time_seconds);
+	double get_duration() const;
+	bool is_container_valid() const { return is_initialized && container_decoder && container_decoder->is_valid(); }
 
-	void set_file(const String &p_file) { file = p_file; }
-	String get_file() const { return file; }
-
-	void set_audio_track(int p_track) override { audio_track = p_track; }
-
-	VideoStreamWMF() { audio_track = 0; }
+	VideoStreamWMF();
+	~VideoStreamWMF();
 };
 
 class ResourceFormatLoaderWMF : public ResourceFormatLoader {

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  audio_sample_grabber_callback.h                                       */
+/*  wmf_container_decoder.h                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,67 +30,96 @@
 
 #pragma once
 
+#include "core/error/error_list.h"
 #include "core/os/mutex.h"
+#include "core/string/ustring.h"
 #include "core/templates/vector.h"
-#include "servers/audio_server.h"
+
 #include <mfapi.h>
 #include <mfidl.h>
 
-class VideoStreamPlaybackWMF;
-
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+// Undefine Windows macros that conflict with Godot
+#ifdef CONNECT_DEFERRED
+#undef CONNECT_DEFERRED
+#endif
+#ifdef CONNECT_ONESHOT
+#undef CONNECT_ONESHOT
 #endif
 
-class AudioSampleGrabberCallback : public IMFSampleGrabberSinkCallback {
-private:
-	long m_cRef;
-	VideoStreamPlaybackWMF *playback;
+struct IMFMediaSource;
+struct IMFPresentationDescriptor;
+struct IMFStreamDescriptor;
 
-	int input_sample_rate = 0;
-	int input_channels = 0;
-	int output_sample_rate = 0; // Will be set from AudioServer
-	int output_channels = 2; // Stereo
-
-	Vector<float> resample_buffer;
-	double resample_ratio = 1.0;
-
-public:
-	AudioSampleGrabberCallback(VideoStreamPlaybackWMF *playback, Mutex &mtx);
-	virtual ~AudioSampleGrabberCallback();
-
-	static HRESULT CreateInstance(AudioSampleGrabberCallback **ppCB, VideoStreamPlaybackWMF *playback, Mutex &mtx);
-
-	// IUnknown methods
-	STDMETHODIMP QueryInterface(REFIID riid, void **ppv) override;
-	STDMETHODIMP_(ULONG)
-	AddRef() override;
-	STDMETHODIMP_(ULONG)
-	Release() override;
-
-	// IMFClockStateSink methods
-	STDMETHODIMP OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset) override;
-	STDMETHODIMP OnClockStop(MFTIME hnsSystemTime) override;
-	STDMETHODIMP OnClockPause(MFTIME hnsSystemTime) override;
-	STDMETHODIMP OnClockRestart(MFTIME hnsSystemTime) override;
-	STDMETHODIMP OnClockSetRate(MFTIME hnsSystemTime, float flRate) override;
-
-	// IMFSampleGrabberSinkCallback methods
-	STDMETHODIMP OnSetPresentationClock(IMFPresentationClock *pClock) override;
-	STDMETHODIMP OnProcessSample(REFGUID guidMajorMediaType, DWORD dwSampleFlags,
-			LONGLONG llSampleTime, LONGLONG llSampleDuration, const BYTE *pSampleBuffer,
-			DWORD dwSampleSize) override;
-	STDMETHODIMP OnShutdown() override;
-
-	void set_audio_format(int sample_rate, int channels);
-	void set_output_format(int sample_rate, int channels);
-
-private:
-	void resample_audio(const float *input, int input_samples, Vector<float> &output);
-	void convert_to_float(const BYTE *input, DWORD input_size, Vector<float> &output);
+struct MediaPacket {
+	int64_t timestamp = 0;
+	int64_t duration = 0;
+	Vector<uint8_t> data;
+	bool is_keyframe = false;
 };
 
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+struct StreamInfo {
+	DWORD stream_index = 0;
+	GUID major_type;
+	GUID sub_type;
+	
+	// Video specific
+	int width = 0;
+	int height = 0;
+	float fps = 0.0f;
+	
+	// Audio specific
+	int sample_rate = 0;
+	int channels = 0;
+	int bits_per_sample = 0;
+	
+	// Common
+	float duration = 0.0f;
+	bool selected = false;
+};
+
+class WMFContainerDecoder {
+private:
+	IMFMediaSource *media_source = nullptr;
+	IMFPresentationDescriptor *presentation_descriptor = nullptr;
+	
+	Vector<StreamInfo> stream_infos;
+	Mutex container_mutex;
+	
+	bool is_initialized = false;
+	String file_path;
+	
+	HRESULT create_media_source(const String &p_file);
+	HRESULT analyze_streams();
+	void cleanup();
+
+public:
+	WMFContainerDecoder();
+	~WMFContainerDecoder();
+	
+	// Container operations
+	Error open_file(const String &p_file);
+	void close();
+	
+	// Stream information
+	int get_stream_count() const;
+	StreamInfo get_stream_info(int stream_index) const;
+	Vector<int> get_video_streams() const;
+	Vector<int> get_audio_streams() const;
+	
+	// Stream selection
+	Error select_stream(int stream_index, bool selected = true);
+	bool is_stream_selected(int stream_index) const;
+	
+	// Container-level seeking
+	Error seek_to_time(double time_seconds);
+	double get_duration() const;
+	
+	// Raw data access for decoders
+	IMFMediaSource* get_media_source() const { return media_source; }
+	IMFPresentationDescriptor* get_presentation_descriptor() const { return presentation_descriptor; }
+	IMFStreamDescriptor* get_stream_descriptor(int stream_index) const;
+	
+	// Utility
+	bool is_valid() const { return is_initialized && media_source != nullptr; }
+	String get_file_path() const { return file_path; }
+};

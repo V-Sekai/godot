@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  sample_grabber_callback.h                                             */
+/*  audio_stream_playback_wmf.h                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,59 +30,77 @@
 
 #pragma once
 
-#include "core/io/resource_loader.h"
+#include "servers/audio/audio_stream.h"
+#include "wmf_audio_decoder.h"
 #include "core/os/mutex.h"
-#include "scene/resources/video_stream.h"
-#include <mfidl.h>
+#include "scene/resources/audio_video_synchronizer.h"
 
-class VideoStreamPlaybackWMF;
+class AudioStreamPlaybackWMF : public AudioStreamPlayback {
+	GDCLASS(AudioStreamPlaybackWMF, AudioStreamPlayback);
 
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#endif
-
-class SampleGrabberCallback : public IMFSampleGrabberSinkCallback {
-	long m_cRef;
-	VideoStreamPlaybackWMF *playback;
-	int width;
-	int height;
-
-	IMFTransform *m_pColorTransform = nullptr;
+private:
+	WMFAudioDecoder *audio_decoder = nullptr;
+	Ref<AudioVideoSynchronizer> synchronizer;
+	
+	bool playing_state = false;
+	bool paused_state = false;
+	double playback_position = 0.0;
+	
+	// Audio mixing
+	Vector<float> mix_buffer;
+	int mix_rate = 44100;
+	int channels = 2;
+	
+	Mutex audio_mutex;
 
 public:
-	SampleGrabberCallback(VideoStreamPlaybackWMF *playback, Mutex &mtx);
-	static HRESULT CreateInstance(SampleGrabberCallback **ppCB, VideoStreamPlaybackWMF *playback, Mutex &mtx);
-	virtual ~SampleGrabberCallback();
-
-	// IUnknown methods
-	STDMETHODIMP QueryInterface(REFIID iid, void **ppv);
-	STDMETHODIMP_(ULONG)
-	AddRef();
-	STDMETHODIMP_(ULONG)
-	Release();
-
-	// IMFClockStateSink methods
-	STDMETHODIMP OnClockStart(MFTIME hnsSystemTime, LONGLONG llClockStartOffset);
-	STDMETHODIMP OnClockStop(MFTIME hnsSystemTime);
-	STDMETHODIMP OnClockPause(MFTIME hnsSystemTime);
-	STDMETHODIMP OnClockRestart(MFTIME hnsSystemTime);
-	STDMETHODIMP OnClockSetRate(MFTIME hnsSystemTime, float flRate);
-
-	// IMFSampleGrabberSinkCallback methods
-	STDMETHODIMP OnSetPresentationClock(IMFPresentationClock *pClock);
-	STDMETHODIMP OnProcessSample(REFGUID guidMajorMediaType, DWORD dwSampleFlags,
-			LONGLONG llSampleTime, LONGLONG llSampleDuration, const BYTE *pSampleBuffer,
-			DWORD dwSampleSize);
-	STDMETHODIMP OnShutdown();
-
-	HRESULT CreateMediaSample(DWORD cbData, IMFSample **ppSample);
-
-	// custom methods
-	void set_frame_size(int w, int h);
-	void set_color_transform(IMFTransform *mft) { m_pColorTransform = mft; }
+	AudioStreamPlaybackWMF();
+	~AudioStreamPlaybackWMF();
+	
+	// AudioStreamPlayback interface
+	virtual void start(double p_from_pos = 0.0) override;
+	virtual void stop() override;
+	virtual bool is_playing() const override;
+	
+	virtual int get_loop_count() const override;
+	virtual double get_playback_position() const override;
+	virtual void seek(double p_time) override;
+	
+	virtual int mix(AudioFrame *p_buffer, float p_rate_scale, int p_frames) override;
+	
+	// WMF specific
+	void set_audio_decoder(WMFAudioDecoder *p_decoder);
+	void set_paused(bool p_paused);
+	bool is_paused() const { return paused_state; }
+	
+	// Synchronizer integration
+	void set_synchronizer(const Ref<AudioVideoSynchronizer> &p_synchronizer);
+	Ref<AudioVideoSynchronizer> get_synchronizer() const;
 };
 
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+class AudioStreamWMF : public AudioStream {
+	GDCLASS(AudioStreamWMF, AudioStream);
+
+private:
+	WMFAudioDecoder *audio_decoder = nullptr;
+	double length = 0.0;
+	Ref<AudioVideoSynchronizer> shared_synchronizer;
+
+protected:
+	static void _bind_methods();
+
+public:
+	// AudioStream interface
+	virtual Ref<AudioStreamPlayback> instantiate_playback() override;
+	virtual String get_stream_name() const override;
+	virtual double get_length() const override;
+	virtual bool is_monophonic() const override { return false; }
+	
+	// WMF specific
+	void set_audio_decoder(WMFAudioDecoder *p_decoder);
+	void set_length(double p_length) { length = p_length; }
+	void set_shared_synchronizer(const Ref<AudioVideoSynchronizer> &p_synchronizer) { shared_synchronizer = p_synchronizer; }
+
+	AudioStreamWMF();
+	~AudioStreamWMF();
+};
