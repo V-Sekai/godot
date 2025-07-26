@@ -31,9 +31,12 @@
 #pragma once
 
 #include "servers/audio/audio_stream.h"
-#include "wmf_audio_decoder.h"
 #include "core/os/mutex.h"
 #include "scene/resources/audio_video_synchronizer.h"
+
+// Forward declarations
+class WMFAudioDecoder;
+class AudioVideoSynchronizer;
 
 class AudioStreamPlaybackWMF : public AudioStreamPlayback {
 	GDCLASS(AudioStreamPlaybackWMF, AudioStreamPlayback);
@@ -99,7 +102,7 @@ public:
 	// WMF specific
 	void set_audio_decoder(WMFAudioDecoder *p_decoder);
 	void set_length(double p_length) { length = p_length; }
-	void set_shared_synchronizer(const Ref<AudioVideoSynchronizer> &p_synchronizer) { shared_synchronizer = p_synchronizer; }
+	void set_synchronizer(const Ref<AudioVideoSynchronizer> &p_synchronizer) { shared_synchronizer = p_synchronizer; }
 
 	AudioStreamWMF();
 	~AudioStreamWMF();

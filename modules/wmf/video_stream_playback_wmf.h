@@ -31,7 +31,6 @@
 #pragma once
 
 #include "scene/resources/video_stream.h"
-#include "wmf_video_decoder.h"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/mutex.h"
 #include "scene/resources/image_texture.h"
@@ -40,6 +39,9 @@
 #include <atomic>
 #include <deque>
 
+// Forward declarations
+class WMFVideoDecoder;
+class WMFAudioDecoder;
 class SampleGrabberCallback;
 
 struct FrameData {
@@ -132,7 +134,7 @@ public:
 
 	// WMF specific
 	void set_video_decoder(WMFVideoDecoder *p_decoder);
-	void set_audio_decoder(class WMFAudioDecoder *p_decoder);
+	void set_audio_decoder(WMFAudioDecoder *p_decoder);
 	void set_file(const String &p_file);
 
 	// Synchronizer integration

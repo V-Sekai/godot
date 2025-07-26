@@ -33,13 +33,259 @@
 #include "core/io/resource_loader.h"
 #include "core/os/mutex.h"
 #include "scene/resources/video_stream.h"
-#include "wmf_container_decoder.h"
 
+#include <mfapi.h>
+#include <mfidl.h>
+
+// Undefine Windows macros that conflict with Godot
+#ifdef CONNECT_DEFERRED
+#undef CONNECT_DEFERRED
+#endif
+#ifdef CONNECT_ONESHOT
+#undef CONNECT_ONESHOT
+#endif
+
+#define CHECK_HR(func)                                                           \
+	if (SUCCEEDED(hr)) {                                                         \
+		hr = (func);                                                             \
+		if (FAILED(hr)) {                                                        \
+			print_line("WMF function failed, HRESULT: " + itos(hr)); \
+		}                                                                        \
+	}
+
+#define SafeRelease(p)      \
+	{                       \
+		if (p) {            \
+			(p)->Release(); \
+			(p) = nullptr;  \
+		}                   \
+	}
+
+// Forward declarations
 class WMFVideoDecoder;
 class WMFAudioDecoder;
-class VideoStreamPlaybackWMF;
+class WMFContainerDecoder;
+class AudioVideoSynchronizer;
 class AudioStreamWMF;
+class SampleGrabberCallback;
 
+struct StreamInfo {
+	DWORD stream_index = 0;
+	GUID major_type;
+	GUID sub_type;
+	
+	// Video specific
+	int width = 0;
+	int height = 0;
+	float fps = 0.0f;
+	
+	// Audio specific
+	int sample_rate = 0;
+	int channels = 0;
+	int bits_per_sample = 0;
+	
+	// Common
+	float duration = 0.0f;
+	bool selected = false;
+};
+
+struct VideoFrame {
+	Vector<uint8_t> data;
+	int64_t timestamp = 0;
+	int width = 0;
+	int height = 0;
+	
+	VideoFrame() {
+		data.clear();
+		timestamp = 0;
+		width = 0;
+		height = 0;
+	}
+};
+
+struct WMFAudioSample {
+	Vector<float> data;
+	int64_t timestamp = 0;
+	int channels = 0;
+	int sample_rate = 0;
+	
+	WMFAudioSample() {
+		data.clear();
+		timestamp = 0;
+		channels = 0;
+		sample_rate = 0;
+	}
+};
+
+// WMF Container Decoder Class
+class WMFContainerDecoder {
+private:
+	IMFMediaSource *media_source = nullptr;
+	IMFPresentationDescriptor *presentation_descriptor = nullptr;
+	
+	Vector<StreamInfo> stream_infos;
+	Mutex container_mutex;
+	
+	bool is_initialized = false;
+	String file_path;
+	
+	HRESULT create_media_source(const String &p_file);
+	HRESULT analyze_streams();
+	void cleanup();
+
+public:
+	WMFContainerDecoder();
+	~WMFContainerDecoder();
+	
+	// Container operations
+	Error load_file(const String &p_file);
+	void close();
+	
+	// Stream information
+	int get_stream_count() const;
+	StreamInfo get_stream_info(int stream_index) const;
+	Vector<int> get_video_streams() const;
+	Vector<int> get_audio_streams() const;
+	
+	// Stream selection
+	Error select_stream(int stream_index, bool selected = true);
+	bool is_stream_selected(int stream_index) const;
+	
+	// Container-level seeking
+	Error seek_to_time(double time_seconds);
+	double get_duration() const;
+	
+	// Raw data access for decoders
+	IMFMediaSource* get_media_source() const { return media_source; }
+	IMFPresentationDescriptor* get_presentation_descriptor() const { return presentation_descriptor; }
+	IMFStreamDescriptor* get_stream_descriptor(int stream_index) const;
+	
+	// Utility
+	bool is_valid() const { return is_initialized && media_source != nullptr; }
+	String get_file_path() const { return file_path; }
+};
+
+// WMF Video Decoder Class
+class WMFVideoDecoder {
+private:
+	WMFContainerDecoder *container_decoder = nullptr;
+	int video_stream_index = -1;
+	
+	// Video properties
+	int video_width = 0;
+	int video_height = 0;
+	float video_fps = 0.0f;
+	
+	// WMF objects
+	IMFMediaSession *media_session = nullptr;
+	IMFTopology *topology = nullptr;
+	IMFPresentationClock *presentation_clock = nullptr;
+	SampleGrabberCallback *sample_grabber_callback = nullptr;
+	
+	// Frame buffer
+	Vector<VideoFrame> frame_buffer;
+	int read_frame_idx = 0;
+	int write_frame_idx = 0;
+	mutable Mutex video_mutex;
+	
+	// State
+	bool is_initialized = false;
+	bool is_playing = false;
+	bool is_paused = false;
+	
+	HRESULT create_video_topology();
+	HRESULT create_video_topology_internal(IMFMediaSource *media_source);
+	HRESULT create_sample_grabber_sink(IMFActivate **sink_activate);
+	void cleanup();
+
+public:
+	WMFVideoDecoder();
+	~WMFVideoDecoder();
+	
+	// Initialization
+	Error initialize(WMFContainerDecoder *p_container, int p_video_stream_index);
+	void shutdown();
+	
+	// Playback control
+	Error start_decoding();
+	Error stop_decoding();
+	Error pause_decoding(bool p_paused);
+	Error seek_to_time(double time_seconds);
+	
+	// Frame access
+	bool has_frame_available() const;
+	VideoFrame get_next_frame();
+	VideoFrame *get_next_writable_frame();
+	void write_frame_done();
+	
+	// Properties
+	int get_width() const { return video_width; }
+	int get_height() const { return video_height; }
+	float get_fps() const { return video_fps; }
+	bool is_valid() const { return is_initialized; }
+	
+	// Utility
+	double get_frame_time(int64_t timestamp) const;
+};
+
+// WMF Audio Decoder Class
+class WMFAudioDecoder {
+private:
+	WMFContainerDecoder *container_decoder = nullptr;
+	int audio_stream_index = -1;
+	
+	// Audio properties
+	int audio_channels = 0;
+	int audio_sample_rate = 0;
+	int audio_bits_per_sample = 0;
+	
+	// WMF objects
+	IMFMediaSession *media_session = nullptr;
+	IMFTopology *topology = nullptr;
+	IMFPresentationClock *presentation_clock = nullptr;
+	
+	// Audio buffer
+	Vector<WMFAudioSample> sample_buffer;
+	int read_sample_idx = 0;
+	int write_sample_idx = 0;
+	mutable Mutex audio_mutex;
+	
+	// State
+	bool is_initialized = false;
+	bool is_playing = false;
+	bool is_paused = false;
+	
+	HRESULT create_audio_topology();
+	void cleanup();
+
+public:
+	WMFAudioDecoder();
+	~WMFAudioDecoder();
+	
+	// Initialization
+	Error initialize(WMFContainerDecoder *p_container, int p_audio_stream_index);
+	void shutdown();
+	
+	// Playback control
+	Error start_decoding();
+	Error stop_decoding();
+	Error pause_decoding(bool p_paused);
+	Error seek_to_time(double time_seconds);
+	
+	// Sample access
+	bool has_sample_available() const;
+	WMFAudioSample get_next_sample();
+	WMFAudioSample *get_next_writable_sample();
+	void write_sample_done();
+	
+	// Properties
+	int get_channels() const { return audio_channels; }
+	int get_sample_rate() const { return audio_sample_rate; }
+	int get_bits_per_sample() const { return audio_bits_per_sample; }
+	bool is_valid() const { return is_initialized; }
+};
+
+// Main Video Stream Class
 class VideoStreamWMF : public VideoStream {
 	GDCLASS(VideoStreamWMF, VideoStream);
 

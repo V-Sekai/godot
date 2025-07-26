@@ -31,7 +31,6 @@
 #include "video_stream_playback_wmf.h"
 
 #include "core/string/print_string.h"
-#include "wmf_audio_decoder.h"
 #include "audio_stream_playback_wmf.h"
 
 VideoStreamPlaybackWMF::VideoStreamPlaybackWMF() {
@@ -191,9 +190,6 @@ void VideoStreamPlaybackWMF::update(double p_delta) {
 	// Use frame-rate aware time advancement
 	double frame_duration = 1.0 / stream_info.fps;
 	time += p_delta;
-	
-	// Ensure we don't advance too far ahead of available frames
-	double max_advance_time = time + (frame_duration * 2.0); // Allow 2 frames ahead
 	
 	// Process decoded frames with proper timing
 	_process_decode_queue();

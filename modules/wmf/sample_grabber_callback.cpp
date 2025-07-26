@@ -47,13 +47,7 @@
 #undef CONNECT_ONESHOT
 #endif
 
-#define CHECK_HR(func)                                                         \
-	if (SUCCEEDED(hr)) {                                                       \
-		hr = (func);                                                           \
-		if (FAILED(hr)) {                                                      \
-			print_line(vformat("%s failed, return:", __FUNCTION__, itos(hr))); \
-		}                                                                      \
-	}
+
 
 SampleGrabberCallback::SampleGrabberCallback(VideoStreamPlaybackWMF *p_playback, Mutex &p_mtx) :
 		m_cRef(1), playback(p_playback) {
