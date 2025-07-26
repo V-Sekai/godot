@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include "scene/resources/audio_video_synchronizer.h"
 #include "scene/resources/texture.h"
 
 class VideoStreamPlayback : public Resource {
@@ -42,6 +43,10 @@ protected:
 	AudioMixCallback mix_callback = nullptr;
 	void *mix_udata = nullptr;
 	mutable int _channel_count = 0; // Used only to assist with bounds checking in mix_audio.
+
+	// Audio-Video Synchronization
+	Ref<AudioVideoSynchronizer> av_synchronizer;
+	bool use_synchronization = true;
 
 	static void _bind_methods();
 	GDVIRTUAL0(_stop);
@@ -85,6 +90,15 @@ public:
 	virtual void set_mix_callback(AudioMixCallback p_callback, void *p_userdata);
 	virtual int get_channels() const;
 	virtual int get_mix_rate() const;
+
+	// Audio-Video Synchronization
+	virtual void set_use_synchronization(bool p_enable);
+	virtual bool get_use_synchronization() const;
+	virtual Ref<AudioVideoSynchronizer> get_av_synchronizer() const;
+	virtual void update_audio_clock(double p_time);
+	virtual void update_video_clock(double p_time);
+	virtual void queue_video_frame(const Ref<Texture2D> &p_texture, double p_presentation_time, uint64_t p_frame_number = 0);
+	virtual Ref<Texture2D> get_synchronized_texture() const;
 };
 
 class VideoStream : public Resource {

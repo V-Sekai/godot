@@ -163,6 +163,7 @@ void VideoStreamPlayer::_notification(int p_notification) {
 
 			if (!playback->is_playing()) {
 				resampler.flush();
+				playback->seek(0);
 				if (loop) {
 					play();
 					return;
@@ -172,15 +173,25 @@ void VideoStreamPlayer::_notification(int p_notification) {
 		} break;
 
 		case NOTIFICATION_DRAW: {
-			if (texture.is_null()) {
+			Ref<Texture2D> current_texture = texture;
+
+			// Use synchronized texture if available
+			if (playback.is_valid() && playback->get_use_synchronization()) {
+				Ref<Texture2D> sync_texture = playback->get_synchronized_texture();
+				if (sync_texture.is_valid()) {
+					current_texture = sync_texture;
+				}
+			}
+
+			if (current_texture.is_null()) {
 				return;
 			}
-			if (texture->get_width() == 0) {
+			if (current_texture->get_width() == 0) {
 				return;
 			}
 
 			Size2 s = expand ? get_size() : texture_size;
-			draw_texture_rect(texture, Rect2(Point2(), s), false);
+			draw_texture_rect(current_texture, Rect2(Point2(), s), false);
 		} break;
 
 		case NOTIFICATION_SUSPENDED:
@@ -342,17 +353,25 @@ void VideoStreamPlayer::play() {
 	}
 }
 
-void VideoStreamPlayer::stop() {
+bool VideoStreamPlayer::_stop() {
 	if (!is_inside_tree()) {
-		return;
+		return false;
 	}
 	if (playback.is_null()) {
-		return;
+		return false;
 	}
 
 	playback->stop();
 	resampler.flush();
 	set_process_internal(false);
+
+	return true;
+}
+
+void VideoStreamPlayer::stop() {
+	if (_stop()) {
+		playback->seek(0);
+	}
 }
 
 bool VideoStreamPlayer::is_playing() const {

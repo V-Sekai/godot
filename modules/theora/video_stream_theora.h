@@ -100,10 +100,8 @@ class VideoStreamPlaybackTheora : public VideoStreamPlayback {
 	bool video_done = false;
 	bool audio_done = false;
 
-	double time = 0;
 	double next_frame_time = 0;
 	double current_frame_time = 0;
-	double delay_compensation = 0;
 
 	Ref<ImageTexture> texture;
 
