@@ -36,6 +36,7 @@
 #include "core/io/file_access.h"
 #include "core/object/object.h"
 #include "sample_grabber_callback.h"
+#include "audio_sample_grabber_callback.h"
 #include "scene/resources/image_texture.h"
 #include "servers/audio_server.h"
 #include <mfapi.h>
@@ -192,8 +193,26 @@ HRESULT CreateSampleGrabber(UINT width, UINT height, SampleGrabberCallback *pSam
 	return hr;
 }
 
+HRESULT CreateAudioSampleGrabber(UINT32 sample_rate, UINT32 channels, AudioSampleGrabberCallback *pAudioSampleGrabber, IMFActivate **pSinkActivate) {
+	HRESULT hr = S_OK;
+	IMFMediaType *pType = NULL;
+
+	CHECK_HR(MFCreateMediaType(&pType));
+	CHECK_HR(pType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Audio));
+	CHECK_HR(pType->SetGUID(MF_MT_SUBTYPE, MFAudioFormat_PCM));
+	CHECK_HR(pType->SetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, sample_rate));
+	CHECK_HR(pType->SetUINT32(MF_MT_AUDIO_NUM_CHANNELS, channels));
+	CHECK_HR(pType->SetUINT32(MF_MT_AUDIO_BITS_PER_SAMPLE, 16));
+	CHECK_HR(pType->SetUINT32(MF_MT_AUDIO_BLOCK_ALIGNMENT, channels * 2)); // 2 bytes per sample for 16-bit
+	CHECK_HR(pType->SetUINT32(MF_MT_AUDIO_AVG_BYTES_PER_SECOND, sample_rate * channels * 2));
+	CHECK_HR(MFCreateSampleGrabberSinkActivate(pType, pAudioSampleGrabber, pSinkActivate));
+
+	SafeRelease(pType);
+	return hr;
+}
+
 // Create the topology.
-HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGrabber, IMFTopology **ppTopo, VideoStreamPlaybackWMF::StreamInfo *info) {
+HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGrabber, AudioSampleGrabberCallback *pAudioSampleGrabber, IMFTopology **ppTopo, VideoStreamPlaybackWMF::StreamInfo *info, VideoStreamPlaybackWMF *playback) {
 	IMFTopology *pTopology = NULL;
 	IMFPresentationDescriptor *pPD = NULL;
 	IMFStreamDescriptor *pSD = NULL;
@@ -214,6 +233,39 @@ HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGr
 
 	print_line(itos(cStreams) + " streams");
 
+	// First pass: Select all streams we want to use
+	for (DWORD i = 0; i < cStreams; i++) {
+		BOOL bSelected = FALSE;
+		GUID majorType;
+		IMFStreamDescriptor *pTempSD = NULL;
+		IMFMediaTypeHandler *pTempHandler = NULL;
+
+		CHECK_HR(pPD->GetStreamDescriptorByIndex(i, &bSelected, &pTempSD));
+		CHECK_HR(pTempSD->GetMediaTypeHandler(&pTempHandler));
+		CHECK_HR(pTempHandler->GetMajorType(&majorType));
+
+		String type_name = "Unknown";
+		if (majorType == MFMediaType_Video) {
+			type_name = "Video";
+		} else if (majorType == MFMediaType_Audio) {
+			type_name = "Audio";
+		}
+
+		print_line("Stream " + itos(i) + " initial check: Selected=" + itos(bSelected) + ", Type=" + type_name);
+
+		if (majorType == MFMediaType_Video || majorType == MFMediaType_Audio) {
+			if (!bSelected) {
+				print_line("Selecting stream " + itos(i) + " (" + type_name + ")");
+				CHECK_HR(pPD->SelectStream(i));
+			} else {
+				print_line("Stream " + itos(i) + " (" + type_name + ") already selected");
+			}
+		}
+
+		SafeRelease(pTempSD);
+		SafeRelease(pTempHandler);
+	}
+
 	for (DWORD i = 0; i < cStreams; i++) {
 		BOOL bSelected = FALSE;
 		GUID majorType;
@@ -221,6 +273,8 @@ HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGr
 		CHECK_HR(pPD->GetStreamDescriptorByIndex(i, &bSelected, &pSD));
 		CHECK_HR(pSD->GetMediaTypeHandler(&pHandler));
 		CHECK_HR(pHandler->GetMajorType(&majorType));
+
+		print_line("Stream " + itos(i) + ": Selected=" + itos(bSelected) + ", Type=" + (majorType == MFMediaType_Video ? "Video" : majorType == MFMediaType_Audio ? "Audio" : "Other"));
 
 		if (majorType == MFMediaType_Video && bSelected) {
 			print_line("Video Stream");
@@ -258,13 +312,39 @@ HRESULT CreateTopology(IMFMediaSource *pSource, SampleGrabberCallback *pSampleGr
 			pPD->GetUINT64(MF_PD_DURATION, &duration);
 			info->duration = duration / 10000000.f;
 			print_line("Duration: " + rtos(info->duration) + " secs");
-
-			break;
 		} else if (majorType == MFMediaType_Audio && bSelected) {
-			CHECK_HR(MFCreateAudioRendererActivate(&audioActivate));
+			print_line("Audio Stream");
+
+			// Get audio format information
+			IMFMediaType *pAudioType = NULL;
+			CHECK_HR(pHandler->GetMediaTypeByIndex(0, &pAudioType));
+			
+			UINT32 sample_rate = 0, channels = 0;
+			pAudioType->GetUINT32(MF_MT_AUDIO_SAMPLES_PER_SECOND, &sample_rate);
+			pAudioType->GetUINT32(MF_MT_AUDIO_NUM_CHANNELS, &channels);
+			
+			print_line("Audio format: " + itos(sample_rate) + "Hz, " + itos(channels) + " channels");
+			
+			// Set audio format in the callback
+			if (pAudioSampleGrabber) {
+				pAudioSampleGrabber->set_audio_format(sample_rate, channels);
+			}
+
+			// Set audio format in the playback instance
+			if (playback) {
+				playback->set_audio_format(sample_rate, channels);
+			}
+
+			// Create audio sample grabber instead of audio renderer
+			IMFActivate *pAudioSinkActivate = NULL;
+			CHECK_HR(CreateAudioSampleGrabber(sample_rate, channels, pAudioSampleGrabber, &pAudioSinkActivate));
+			
 			CHECK_HR(AddSourceNode(pTopology, pSource, pPD, pSD, &inputNodeAudio));
-			CHECK_HR(AddOutputNode(pTopology, audioActivate, 0, &outputNodeAudio));
+			CHECK_HR(AddOutputNode(pTopology, pAudioSinkActivate, 0, &outputNodeAudio));
 			CHECK_HR(inputNodeAudio->ConnectOutput(0, outputNodeAudio, 0));
+			
+			SafeRelease(pAudioType);
+			SafeRelease(pAudioSinkActivate);
 		} else {
 			print_line("Stream deselected");
 			CHECK_HR(pPD->DeselectStream(i));
@@ -457,7 +537,8 @@ void VideoStreamPlaybackWMF::set_file(const String &p_file) {
 	CHECK_HR(MFCreateMediaSession(nullptr, &media_session));
 
 	CHECK_HR(SampleGrabberCallback::CreateInstance(&sample_grabber_callback, this, mtx));
-	CHECK_HR(CreateTopology(media_source, sample_grabber_callback, &topology, &stream_info));
+	CHECK_HR(AudioSampleGrabberCallback::CreateInstance(&audio_sample_grabber_callback, this, audio_mtx));
+	CHECK_HR(CreateTopology(media_source, sample_grabber_callback, audio_sample_grabber_callback, &topology, &stream_info, this));
 
 	CHECK_HR(media_session->SetTopology(0, topology));
 
@@ -533,6 +614,19 @@ void VideoStreamPlaybackWMF::update(double p_delta) {
 			}
 		}
 		SafeRelease(event);
+
+		// Process audio frames
+		bool audio_ready = false;
+		while (!audio_ready) {
+			if (!send_audio()) {
+				audio_ready = true;
+				break;
+			}
+			// If we successfully sent audio, check if there's more
+			if (audio_read_frame_idx == audio_write_frame_idx) {
+				audio_ready = true; // No more audio data
+			}
+		}
 
 		// Check if we have frames available and if it's time to display the next frame
 		if (read_frame_idx != write_frame_idx) {
@@ -623,6 +717,39 @@ int64_t VideoStreamPlaybackWMF::next_sample_time() {
 	return sample_time;
 }
 
+bool VideoStreamPlaybackWMF::send_audio() {
+	if (audio_read_frame_idx == audio_write_frame_idx) {
+		return true; // No audio data available
+	}
+
+	audio_mtx.lock();
+	AudioData &audio_frame = audio_cache_frames.write[audio_read_frame_idx];
+	audio_mtx.unlock();
+
+	if (mix_callback && !audio_frame.data.is_empty()) {
+		int frames = audio_frame.data.size() / audio_channels;
+		if (frames > 0) {
+			int mixed = mix_callback(mix_udata, audio_frame.data.ptr(), frames);
+			if (mixed == frames) {
+				// All audio was consumed, advance to next frame
+				audio_mtx.lock();
+				audio_read_frame_idx = (audio_read_frame_idx + 1) % audio_cache_frames.size();
+				audio_mtx.unlock();
+				return true;
+			} else {
+				// Not all audio was consumed, keep this frame for next time
+				return false;
+			}
+		}
+	}
+
+	// No mix callback or empty data, just advance
+	audio_mtx.lock();
+	audio_read_frame_idx = (audio_read_frame_idx + 1) % audio_cache_frames.size();
+	audio_mtx.unlock();
+	return true;
+}
+
 void VideoStreamPlaybackWMF::add_audio_data(int64_t sample_time, const Vector<float> &audio_data) {
 	MutexLock lock(audio_mtx);
 
@@ -631,15 +758,6 @@ void VideoStreamPlaybackWMF::add_audio_data(int64_t sample_time, const Vector<fl
 	audio_frame->data = audio_data;
 
 	write_audio_frame_done();
-
-	// Call mix callback if available
-	if (mix_callback && !audio_data.is_empty()) {
-		// Convert to the format expected by Godot's audio system
-		int frames = audio_data.size() / audio_channels;
-		if (frames > 0) {
-			mix_callback(mix_udata, audio_data.ptr(), frames);
-		}
-	}
 }
 
 AudioData *VideoStreamPlaybackWMF::get_next_writable_audio_frame() {
@@ -656,6 +774,12 @@ void VideoStreamPlaybackWMF::write_audio_frame_done() {
 	}
 
 	audio_write_frame_idx = next_write_frame_idx;
+}
+
+void VideoStreamPlaybackWMF::set_audio_format(int sample_rate, int channels) {
+	audio_sample_rate = sample_rate;
+	audio_channels = channels;
+	print_line("Audio format set: " + itos(sample_rate) + "Hz, " + itos(channels) + " channels");
 }
 
 static int counter = 0;

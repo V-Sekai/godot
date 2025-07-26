@@ -140,9 +140,11 @@ public:
 	int64_t next_sample_time();
 
 	// Audio methods
+	bool send_audio();
 	void add_audio_data(int64_t sample_time, const Vector<float> &audio_data);
 	AudioData *get_next_writable_audio_frame();
 	void write_audio_frame_done();
+	void set_audio_format(int sample_rate, int channels);
 
 	VideoStreamPlaybackWMF();
 	~VideoStreamPlaybackWMF();
