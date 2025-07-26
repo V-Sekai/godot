@@ -127,8 +127,18 @@ class CapsuleMesh : public PrimitiveMesh {
 	GDCLASS(CapsuleMesh, PrimitiveMesh);
 
 private:
+	// Legacy single-radius fields are kept for backwards compatibility.
+	// Internally, CapsuleMesh now supports tapered capsules via radius_top and radius_bottom.
+	// When scripts call set_radius/get_radius they will set/get both radii to preserve behavior.
 	float radius = 0.5;
 	float height = 2.0;
+
+	// New tapered capsule fields.
+	// Use radius_top == radius_bottom to represent the classic capsule.
+	float radius_top = 0.5;
+	float radius_bottom = 0.5;
+	float mid_height = 1.0; // distance between the two sphere centers along Y
+
 	int radial_segments = 64;
 	int rings = 8;
 
@@ -139,13 +149,27 @@ protected:
 	virtual void _update_lightmap_size() override;
 
 public:
-	static void create_mesh_array(Array &p_arr, float radius, float height, int radial_segments = 64, int rings = 8, bool p_add_uv2 = false, const float p_uv2_padding = 1.0);
+	// Classic (non-tapered) mesh generator kept for API compatibility.
+	static void create_mesh_array(Array &p_arr, float radius, float height, const int radial_segments = 64, const int rings = 8, bool p_add_uv2 = false, const float p_uv2_padding = 1.0);
+
+	// Tapered mesh generator (delegates to tapered implementation).
+	static void create_mesh_array(Array &p_arr, float radius_top, float radius_bottom, float mid_height, const int radial_segments = 64, const int rings = 8, bool p_add_uv2 = false, const float p_uv2_padding = 1.0);
 
 	void set_radius(const float p_radius);
 	float get_radius() const;
 
 	void set_height(const float p_height);
 	float get_height() const;
+
+	// Tapered capsule API
+	void set_radius_top(const float p_radius_top);
+	float get_radius_top() const;
+
+	void set_radius_bottom(const float p_radius_bottom);
+	float get_radius_bottom() const;
+
+	void set_mid_height(const float p_mid_height);
+	float get_mid_height() const;
 
 	void set_radial_segments(const int p_segments);
 	int get_radial_segments() const;

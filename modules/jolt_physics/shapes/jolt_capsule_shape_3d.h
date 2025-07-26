@@ -33,8 +33,14 @@
 #include "jolt_shape_3d.h"
 
 class JoltCapsuleShape3D final : public JoltShape3D {
+	// Legacy (kept for compatibility)
 	float height = 0.0f;
 	float radius = 0.0f;
+
+	// Tapered representation (primary storage)
+	float radius_top = 0.0f;
+	float radius_bottom = 0.0f;
+	float mid_height = 0.0f;
 
 	virtual JPH::ShapeRefC _build() const override;
 
@@ -42,6 +48,8 @@ public:
 	virtual ShapeType get_type() const override { return ShapeType::SHAPE_CAPSULE; }
 	virtual bool is_convex() const override { return true; }
 
+	// Returns Dictionary { "height", "radius" } for classic capsule,
+	// or PackedFloat32/64Array / Vector of 3 floats for tapered (radius_top, radius_bottom, mid_height).
 	virtual Variant get_data() const override;
 	virtual void set_data(const Variant &p_data) override;
 

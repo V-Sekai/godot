@@ -99,6 +99,13 @@ RID JoltPhysicsServer3D::capsule_shape_create() {
 	return rid;
 }
 
+RID JoltPhysicsServer3D::tapered_capsule_shape_create() {
+	JoltShape3D *shape = memnew(JoltCapsuleShape3D);
+	RID rid = shape_owner.make_rid(shape);
+	shape->set_rid(rid);
+	return rid;
+}
+
 RID JoltPhysicsServer3D::cylinder_shape_create() {
 	JoltShape3D *shape = memnew(JoltCylinderShape3D);
 	RID rid = shape_owner.make_rid(shape);

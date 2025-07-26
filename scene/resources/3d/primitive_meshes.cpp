@@ -404,7 +404,12 @@ void CapsuleMesh::_create_mesh_array(Array &p_arr) const {
 	bool _add_uv2 = get_add_uv2();
 	float _uv2_padding = get_uv2_padding() * texel_size;
 
-	create_mesh_array(p_arr, radius, height, radial_segments, rings, _add_uv2, _uv2_padding);
+	// Use tapered generator when radii differ, preserve legacy behavior otherwise.
+	if (Math::is_equal_approx(radius_top, radius_bottom)) {
+		create_mesh_array(p_arr, radius, height, radial_segments, rings, _add_uv2, _uv2_padding);
+	} else {
+		create_mesh_array(p_arr, radius_top, radius_bottom, mid_height, radial_segments, rings, _add_uv2, _uv2_padding);
+	}
 }
 
 void CapsuleMesh::create_mesh_array(Array &p_arr, const float radius, const float height, const int radial_segments, const int rings, bool p_add_uv2, const float p_uv2_padding) {
@@ -581,6 +586,209 @@ void CapsuleMesh::create_mesh_array(Array &p_arr, const float radius, const floa
 			uvs.push_back(Vector2(u, twothirds + v * onethird));
 			if (p_add_uv2) {
 				uv2s.push_back(Vector2(u * radial_h, radial_v + height_v + v * radial_v));
+			}
+			point++;
+
+			if (i > 0 && j > 0) {
+				indices.push_back(prevrow + i - 1);
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i - 1);
+
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i);
+				indices.push_back(thisrow + i - 1);
+			}
+		}
+
+		prevrow = thisrow;
+		thisrow = point;
+	}
+
+	p_arr[RS::ARRAY_VERTEX] = Vector<Vector3>(points);
+	p_arr[RS::ARRAY_NORMAL] = Vector<Vector3>(normals);
+	p_arr[RS::ARRAY_TANGENT] = Vector<float>(tangents);
+	p_arr[RS::ARRAY_TEX_UV] = Vector<Vector2>(uvs);
+	if (p_add_uv2) {
+		p_arr[RS::ARRAY_TEX_UV2] = Vector<Vector2>(uv2s);
+	}
+	p_arr[RS::ARRAY_INDEX] = Vector<int>(indices);
+}
+
+/* Tapered capsule mesh generator
+   Merged from scene/resources/3d/tapered_capsule_mesh.cpp to provide tapered geometry
+   for CapsuleMesh while preserving the legacy generator above.
+*/
+void CapsuleMesh::create_mesh_array(Array &p_arr, float p_radius_top, float p_radius_bottom, float p_mid_height, const int p_radial_segments, const int p_rings, bool p_add_uv2, const float p_uv2_padding) {
+	int i, j, prevrow, thisrow, point;
+	float x, y, z, u, v, w;
+
+	// Use LocalVector for operations and copy to Vector at the end to save the cost of CoW semantics which aren't
+	// needed here and are very expensive in such a hot loop. Use reserve to avoid repeated memory allocations.
+	int num_points = (p_rings + 2) * (p_radial_segments + 1) * 2 + (p_rings + 2) * (p_radial_segments + 1);
+	LocalVector<Vector3> points;
+	points.reserve(num_points);
+	LocalVector<Vector3> normals;
+	normals.reserve(num_points);
+	LocalVector<float> tangents;
+	tangents.reserve(num_points * 4);
+	LocalVector<Vector2> uvs;
+	uvs.reserve(num_points);
+	LocalVector<Vector2> uv2s;
+	if (p_add_uv2) {
+		uv2s.reserve(num_points);
+	}
+	LocalVector<int> indices;
+	indices.reserve((p_rings + 1) * (p_radial_segments) * 6 * 2 + (p_rings + 1) * (p_radial_segments) * 6);
+	point = 0;
+
+#define ADD_TANGENT(m_x, m_y, m_z, m_d) \
+	tangents.push_back(m_x);            \
+	tangents.push_back(m_y);            \
+	tangents.push_back(m_z);            \
+	tangents.push_back(m_d);
+
+	// Calculate UV2 parameters
+	float total_height = p_mid_height + p_radius_top + p_radius_bottom;
+	float total_vertical_length = total_height + p_uv2_padding;
+
+	float uv2_v_top = p_radius_top / total_vertical_length;
+	float uv2_v_cylinder = p_mid_height / total_vertical_length;
+	float uv2_v_bottom = p_radius_bottom / total_vertical_length;
+
+	float max_circumference = MAX(p_radius_top, p_radius_bottom) * Math::TAU;
+	float uv2_h_scale = max_circumference / (max_circumference + p_uv2_padding);
+
+	/* top hemisphere */
+	thisrow = 0;
+	prevrow = 0;
+	for (j = 0; j <= (p_rings + 1); j++) {
+		v = j;
+		v /= (p_rings + 1);
+		if (j == (p_rings + 1)) {
+			w = 1.0;
+			y = 0.0;
+		} else {
+			w = Math::sin(0.5 * Math::PI * v);
+			y = Math::cos(0.5 * Math::PI * v);
+		}
+
+		for (i = 0; i <= p_radial_segments; i++) {
+			u = i;
+			u /= p_radial_segments;
+
+			if (i == p_radial_segments) {
+				x = 0.0;
+				z = 1.0;
+			} else {
+				x = -Math::sin(u * Math::TAU);
+				z = Math::cos(u * Math::TAU);
+			}
+
+			Vector3 p = Vector3(x * w, y, -z * w);
+			points.push_back(p * p_radius_top + Vector3(0.0, total_height * 0.5 - p_radius_top, 0.0));
+			normals.push_back(p);
+			ADD_TANGENT(-z, 0.0, -x, 1.0)
+			uvs.push_back(Vector2(u, v * 0.5)); // UV for top hemisphere
+			if (p_add_uv2) {
+				uv2s.push_back(Vector2(u * uv2_h_scale, v * uv2_v_top));
+			}
+			point++;
+
+			if (i > 0 && j > 0) {
+				indices.push_back(prevrow + i - 1);
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i - 1);
+
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i);
+				indices.push_back(thisrow + i - 1);
+			}
+		}
+
+		prevrow = thisrow;
+		thisrow = point;
+	}
+
+	/* cylinder */
+	thisrow = point;
+	prevrow = point - (p_radial_segments + 1); // Start from the last row of the top hemisphere
+	for (j = 0; j <= (p_rings + 1); j++) { // Use rings for cylinder segments too for consistency
+		v = j;
+		v /= (p_rings + 1);
+
+		float current_radius = p_radius_top + (p_radius_bottom - p_radius_top) * v;
+		y = (total_height * 0.5 - p_radius_top) - (p_mid_height * v);
+
+		for (i = 0; i <= p_radial_segments; i++) {
+			u = i;
+			u /= p_radial_segments;
+
+			if (i == p_radial_segments) {
+				x = 0.0;
+				z = 1.0;
+			} else {
+				x = -Math::sin(u * Math::TAU);
+				z = Math::cos(u * Math::TAU);
+			}
+
+			Vector3 p = Vector3(x * current_radius, y, -z * current_radius);
+			points.push_back(p);
+			normals.push_back(Vector3(x, 0.0, -z).normalized()); // Normal points outwards
+			ADD_TANGENT(-z, 0.0, -x, 1.0)
+			uvs.push_back(Vector2(u, 0.5 + v * 0.5)); // UV for cylinder
+			if (p_add_uv2) {
+				uv2s.push_back(Vector2(u * uv2_h_scale, uv2_v_top + v * uv2_v_cylinder));
+			}
+			point++;
+
+			if (i > 0 && j > 0) {
+				indices.push_back(prevrow + i - 1);
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i - 1);
+
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i);
+				indices.push_back(thisrow + i - 1);
+			}
+		}
+
+		prevrow = thisrow;
+		thisrow = point;
+	}
+
+	/* bottom hemisphere */
+	thisrow = point;
+	prevrow = point - (p_radial_segments + 1); // Start from the last row of the cylinder
+	for (j = 0; j <= (p_rings + 1); j++) {
+		v = j;
+		v /= (p_rings + 1);
+		if (j == (p_rings + 1)) {
+			w = 0.0;
+			y = -1.0;
+		} else {
+			w = Math::cos(0.5 * Math::PI * v);
+			y = -Math::sin(0.5 * Math::PI * v);
+		}
+
+		for (i = 0; i <= p_radial_segments; i++) {
+			u = i;
+			u /= p_radial_segments;
+
+			if (i == p_radial_segments) {
+				x = 0.0;
+				z = 1.0;
+			} else {
+				x = -Math::sin(u * Math::TAU);
+				z = Math::cos(u * Math::TAU);
+			}
+
+			Vector3 p = Vector3(x * w, y, -z * w);
+			points.push_back(p * p_radius_bottom + Vector3(0.0, -total_height * 0.5 + p_radius_bottom, 0.0));
+			normals.push_back(p);
+			ADD_TANGENT(-z, 0.0, -x, 1.0)
+			uvs.push_back(Vector2(u, 0.5 + v * 0.5)); // UV for bottom hemisphere (can reuse cylinder UV space)
+			if (p_add_uv2) {
+				uv2s.push_back(Vector2(u * uv2_h_scale, uv2_v_top + uv2_v_cylinder + v * uv2_v_bottom));
 			}
 			point++;
 
