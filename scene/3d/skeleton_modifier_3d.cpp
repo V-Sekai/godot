@@ -246,7 +246,7 @@ Quaternion SkeletonModifier3D::get_local_pose_rotation(Skeleton3D *p_skeleton, i
 	if (parent < 0) {
 		return p_global_pose_rotation;
 	}
-	return p_skeleton->get_bone_global_pose(parent).basis.orthonormalized().inverse() * p_global_pose_rotation;
+	return (p_skeleton->get_bone_global_pose(parent).basis.get_rotation_quaternion().inverse() * p_global_pose_rotation).normalized();
 }
 
 Quaternion SkeletonModifier3D::get_from_to_rotation(const Vector3 &p_from, const Vector3 &p_to, const Quaternion &p_prev_rot) {
@@ -262,6 +262,47 @@ Quaternion SkeletonModifier3D::get_from_to_rotation(const Vector3 &p_from, const
 		angle = 0.0;
 	}
 	return Quaternion(axis.normalized(), angle);
+}
+
+Quaternion SkeletonModifier3D::get_from_to_rotation_by_axis(const Vector3 &p_from, const Vector3 &p_to, const Vector3 &p_axis) {
+	const double ALMOST_ONE = 1.0 - CMP_EPSILON;
+	double dot = p_from.dot(p_to);
+	if (dot > ALMOST_ONE) {
+		return Quaternion();
+	}
+	if (dot < -ALMOST_ONE) {
+		return Quaternion(p_axis, Math::PI);
+	}
+	double angle = p_from.angle_to(p_to);
+	Vector3 cross = p_from.cross(p_to);
+	if (std::signbit(cross.dot(p_axis))) {
+		angle = -angle;
+	}
+	return Quaternion(p_axis, angle);
+}
+
+Quaternion SkeletonModifier3D::get_swing(const Quaternion &p_rotation, const Vector3 &p_axis) {
+	if (p_axis.is_zero_approx()) {
+		return p_rotation;
+	}
+	Quaternion rot = p_rotation;
+	if (!rot.is_normalized()) {
+		rot.normalize();
+	}
+	Vector3 axis = p_axis.normalized();
+	const Vector3 v(rot.x, rot.y, rot.z);
+	const real_t proj_len = v.dot(axis);
+	const Vector3 twist_vec = axis * proj_len;
+	Quaternion twist(twist_vec.x, twist_vec.y, twist_vec.z, rot.w);
+	if (!twist.is_normalized()) {
+		if (Math::is_zero_approx(twist.length_squared())) {
+			return rot;
+		}
+		twist.normalize();
+	}
+	Quaternion swing = rot * twist.inverse();
+	swing.normalize();
+	return swing;
 }
 
 Vector3 SkeletonModifier3D::snap_vector_to_plane(const Vector3 &p_plane_normal, const Vector3 &p_vector) {
