@@ -41,6 +41,7 @@
 #include "scene/main/node.h"
 #include "servers/audio_server.h"
 
+#include "one_euro_filter.h"
 #include "playback_stats.h"
 #include "servers/audio/effects/audio_stream_generator.h"
 #include "speech_processor.h"
@@ -101,6 +102,10 @@ private:
 
 	PackedVector2Array blank_packet;
 	Dictionary player_audio;
+	
+	// OneEuroFilter instances for timing synchronization per peer
+	Dictionary timing_filters; // Maps peer_id -> OneEuroFilter instance
+	
 	int nearest_shift(int p_number);
 
 protected:
@@ -160,4 +165,9 @@ public:
 	void remove_player_audio(int p_player_id);
 	void clear_all_player_audio();
 	void attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decoder, Node *p_audio_stream_player, Array p_jitter_buffer, Ref<PlaybackStats> p_playback_stats, Dictionary p_player_dict, double p_process_delta_time);
+	
+	// OneEuroFilter management methods
+	OneEuroFilter* get_or_create_timing_filter(int p_peer_id);
+	void remove_timing_filter(int p_peer_id);
+	void clear_all_timing_filters();
 };

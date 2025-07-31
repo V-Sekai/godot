@@ -35,6 +35,7 @@
 #include "speech.h"
 #include "speech_decoder.h"
 #include "speech_processor.h"
+#include "voice_chat.h"
 
 extern "C"
 #ifdef __GNUC__
@@ -57,6 +58,7 @@ void initialize_speech_module(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(SpeechProcessor);
 	GDREGISTER_CLASS(SpeechDecoder);
 	GDREGISTER_CLASS(Speech);
+	GDREGISTER_CLASS(VoiceChat);
 }
 
 void uninitialize_speech_module(ModuleInitializationLevel p_level) {

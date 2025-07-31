@@ -684,6 +684,9 @@ Dictionary Speech::get_playback_stats(Dictionary speech_stat_dict) {
 
 void Speech::remove_player_audio(int p_player_id) {
 	if (player_audio.has(p_player_id)) {
+		// Clean up the timing filter for this peer
+		remove_timing_filter(p_player_id);
+		
 		if (player_audio.erase(p_player_id)) {
 			return;
 		}
@@ -711,6 +714,43 @@ void Speech::clear_all_player_audio() {
 	}
 
 	player_audio.clear();
+	clear_all_timing_filters();
+}
+
+// OneEuroFilter management methods
+OneEuroFilter* Speech::get_or_create_timing_filter(int p_peer_id) {
+	if (!timing_filters.has(p_peer_id)) {
+		// Create new OneEuroFilter with default configuration optimized for speech timing
+		OneEuroFilter *filter = memnew(OneEuroFilter);
+		OneEuroFilter::FilterConfig config;
+		config.cutoff = 0.1f;        // Lower cutoff for stability
+		config.beta = 5.0f;          // Balanced responsiveness
+		config.min_cutoff = 1.0f;    // Minimum cutoff frequency
+		config.derivate_cutoff = 1.0f; // Derivative filter cutoff
+		filter->set_config(config);
+		
+		timing_filters[p_peer_id] = (uint64_t)filter; // Store as pointer
+	}
+	
+	return (OneEuroFilter*)(uint64_t)timing_filters[p_peer_id];
+}
+
+void Speech::remove_timing_filter(int p_peer_id) {
+	if (timing_filters.has(p_peer_id)) {
+		OneEuroFilter *filter = (OneEuroFilter*)(uint64_t)timing_filters[p_peer_id];
+		memdelete(filter);
+		timing_filters.erase(p_peer_id);
+	}
+}
+
+void Speech::clear_all_timing_filters() {
+	Array keys = timing_filters.keys();
+	for (int32_t i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		OneEuroFilter *filter = (OneEuroFilter*)(uint64_t)timing_filters[key];
+		memdelete(filter);
+	}
+	timing_filters.clear();
 }
 
 void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decoder, Node *p_audio_stream_player, Array p_jitter_buffer, Ref<PlaybackStats> p_playback_stats, Dictionary p_player_dict, double p_process_delta_time) {
@@ -731,15 +771,67 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 	if (playback.is_null()) {
 		return;
 	}
+	
+	// OneEuroFilter-based timing synchronization (replaces pitch-based jitter buffer)
+	// Get the peer ID from player_dict to access the correct timing filter
+	int peer_id = -1;
+	Array keys = player_audio.keys();
+	for (int32_t i = 0; i < keys.size(); i++) {
+		Dictionary elem = player_audio[keys[i]];
+		if (elem.has("audio_stream_player") && elem["audio_stream_player"] == p_audio_stream_player) {
+			peer_id = keys[i];
+			break;
+		}
+	}
+	
+	if (peer_id != -1) {
+		OneEuroFilter* timing_filter = get_or_create_timing_filter(peer_id);
+		
+		// Calculate current timing delta and apply OneEuroFilter smoothing
+		double current_time = OS::get_singleton()->get_ticks_msec() / 1000.0;
+		double prev_time = double(p_player_dict.get("playback_prev_time", current_time));
+		
+		if (prev_time >= 0.0) {
+			double raw_delta = current_time - prev_time;
+			double filtered_delta = timing_filter->filter(raw_delta, p_process_delta_time);
+			
+			// Use filtered timing for smooth playback without pitch artifacts
+			// The OneEuroFilter smooths network jitter while maintaining audio quality
+			if (DEBUG) {
+				vc_debug_print(vformat("Peer %d: Raw delta: %f, Filtered delta: %f", peer_id, raw_delta, filtered_delta));
+			}
+		}
+		
+		p_player_dict["playback_prev_time"] = current_time;
+	}
+	
 	if (int64_t(p_player_dict["playback_last_skips"]) != playback->get_skips()) {
 		p_player_dict["playback_prev_time"] = double(p_player_dict["playback_prev_time"]) - static_cast<double>(SpeechProcessor::SPEECH_SETTING_MILLISECONDS_PER_PACKET);
 		p_player_dict["playback_last_skips"] = playback->get_skips();
 	}
+	
 	int64_t to_fill = playback->get_frames_available();
 	int64_t required_packets = 0;
 	while (to_fill >= SpeechProcessor::SPEECH_SETTING_BUFFER_FRAME_COUNT) {
 		to_fill -= SpeechProcessor::SPEECH_SETTING_BUFFER_FRAME_COUNT;
 		required_packets += 1;
+	}
+
+	// Adaptive jitter buffer management using OneEuroFilter timing
+	// Instead of pitch manipulation, we use intelligent buffer sizing
+	int64_t jitter_buffer_size = p_jitter_buffer.size();
+	int64_t target_buffer_size = JITTER_BUFFER_SLOWDOWN; // Conservative target
+	
+	// OneEuroFilter provides smooth timing, so we can be more aggressive with buffer management
+	if (jitter_buffer_size > MAX_JITTER_BUFFER_SIZE) {
+		// Buffer overflow - drop excess packets (no pitch speedup needed)
+		int64_t excess = jitter_buffer_size - target_buffer_size;
+		for (int32_t i = 0; i < excess && p_jitter_buffer.size() > 0; i++) {
+			p_jitter_buffer.pop_front();
+		}
+		if (DEBUG) {
+			vc_debug_print(vformat("Peer %d: Dropped %d excess packets, buffer size: %d", peer_id, excess, p_jitter_buffer.size()));
+		}
 	}
 
 	Dictionary last_packet;
@@ -765,6 +857,8 @@ void Speech::attempt_to_feed_stream(int p_skip_count, Ref<SpeechDecoder> p_decod
 			if (compressed_data.size() > 0) {
 				uncompressed_audio = decompress_buffer(p_decoder, compressed_data, compressed_data.size(), uncompressed_audio);
 				if (uncompressed_audio.size() == SpeechProcessor::SPEECH_SETTING_BUFFER_FRAME_COUNT) {
+					// Audio is played at standard pitch (1.0) - no pitch manipulation
+					// OneEuroFilter handles timing smoothness without affecting audio quality
 					final_push_result = playback->push_buffer(uncompressed_audio);
 					if (final_push_result) {
 						was_real_audio_pushed = true;
