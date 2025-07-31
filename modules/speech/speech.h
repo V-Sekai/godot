@@ -88,8 +88,6 @@ private:
 
 private:
 	float BUFFER_DELAY_THRESHOLD = 0.1;
-	float STREAM_STANDARD_PITCH = 1.0;
-	float STREAM_SPEEDUP_PITCH = 1.5;
 	int MAX_JITTER_BUFFER_SIZE = 16;
 	int JITTER_BUFFER_SPEEDUP = 12;
 	int JITTER_BUFFER_SLOWDOWN = 6;
@@ -135,14 +133,10 @@ public:
 	void set_jitter_buffer_speedup(int p_jitter_buffer_speedup);
 	int get_jitter_buffer_slowdown() const;
 	void set_jitter_buffer_slowdown(int p_jitter_buffer_slowdown);
-	float get_stream_speedup_pitch() const;
-	void set_stream_speedup_pitch(float p_stream_speedup_pitch);
 	int get_max_jitter_buffer_size() const;
 	void set_max_jitter_buffer_size(int p_max_jitter_buffer_size);
 	float get_buffer_delay_threshold() const;
 	void set_buffer_delay_threshold(float p_buffer_delay_threshold);
-	float get_stream_standard_pitch() const;
-	void set_stream_standard_pitch(float p_stream_standard_pitch);
 	bool get_debug() const;
 	void set_debug(bool val);
 	PackedVector2Array get_uncompressed_audio() const;

@@ -127,13 +127,6 @@ void Speech::set_jitter_buffer_slowdown(int p_jitter_buffer_slowdown) {
 	JITTER_BUFFER_SLOWDOWN = p_jitter_buffer_slowdown;
 }
 
-float Speech::get_stream_speedup_pitch() const {
-	return STREAM_SPEEDUP_PITCH;
-}
-
-void Speech::set_stream_speedup_pitch(float p_stream_speedup_pitch) {
-	STREAM_SPEEDUP_PITCH = p_stream_speedup_pitch;
-}
 
 int Speech::get_max_jitter_buffer_size() const {
 	return MAX_JITTER_BUFFER_SIZE;
@@ -151,13 +144,6 @@ void Speech::set_buffer_delay_threshold(float p_buffer_delay_threshold) {
 	BUFFER_DELAY_THRESHOLD = p_buffer_delay_threshold;
 }
 
-float Speech::get_stream_standard_pitch() const {
-	return STREAM_STANDARD_PITCH;
-}
-
-void Speech::set_stream_standard_pitch(float p_stream_standard_pitch) {
-	STREAM_STANDARD_PITCH = p_stream_standard_pitch;
-}
 
 bool Speech::get_debug() const {
 	return DEBUG;
@@ -248,14 +234,6 @@ void Speech::_bind_methods() {
 			&Speech::set_buffer_delay_threshold);
 	ClassDB::bind_method(D_METHOD("get_buffer_delay_threshold"),
 			&Speech::get_buffer_delay_threshold);
-	ClassDB::bind_method(D_METHOD("get_stream_standard_pitch"),
-			&Speech::get_stream_standard_pitch);
-	ClassDB::bind_method(D_METHOD("set_stream_standard_pitch", "stream_standard_pitch"),
-			&Speech::set_stream_standard_pitch);
-	ClassDB::bind_method(D_METHOD("get_stream_speedup_pitch"),
-			&Speech::get_stream_standard_pitch);
-	ClassDB::bind_method(D_METHOD("set_stream_speedup_pitch", "stream_speedup_pitch"),
-			&Speech::set_stream_standard_pitch);
 	ClassDB::bind_method(D_METHOD("get_max_jitter_buffer_size"),
 			&Speech::get_max_jitter_buffer_size);
 	ClassDB::bind_method(D_METHOD("set_max_jitter_buffer_size", "max_jitter_buffer_size"),
@@ -309,15 +287,11 @@ void Speech::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "BUFFER_DELAY_THRESHOLD"), "set_buffer_delay_threshold",
 			"get_buffer_delay_threshold");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "STREAM_STANDARD_PITCH"), "set_stream_standard_pitch",
-			"get_stream_standard_pitch");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "MAX_JITTER_BUFFER_SIZE"), "set_max_jitter_buffer_size",
 			"get_max_jitter_buffer_size");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "STREAM_SPEEDUP_PITCH"), "set_stream_speedup_pitch",
-			"get_stream_speedup_pitch");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "JITTER_BUFFER_SLOWDOWN"), "set_jitter_buffer_slowdown",
 			"get_jitter_buffer_slowdown");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "JITTER_BUFFER_SPEEDUP"), "set_jitter_buffer_speedup",
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "JITTER_BUFFER_SPEEDUP"), "set_jitter_buffer_speedup",
 			"get_jitter_buffer_speedup");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "DEBUG"), "set_debug",
 			"get_debug");

@@ -30,14 +30,16 @@
 
 #pragma once
 
+#include "core/object/class_db.h"
 #include "core/variant/array.h"
 #include "core/variant/dictionary.h"
+#include "core/variant/packed_array.h"
 #include "scene/main/node.h"
 
 #include "speech.h"
 #include "speech_processor.h"
 #include "speech_decoder.h"
-#include "mock_audio_device.h"
+#include "servers/audio/effects/audio_stream_generator.h"
 
 /**
  * VoiceChat - Unified API for V-Sekai VOIP
@@ -61,8 +63,8 @@ private:
 	float voice_volume;
 	bool voice_filter_enabled;
 	
-	// Testing infrastructure
-	MockAudioDevice *mock_device;
+	// Testing infrastructure using Godot's native AudioStreamGenerator
+	Ref<AudioStreamGenerator> test_audio_generator;
 	bool testing_mode;
 
 protected:
@@ -87,17 +89,18 @@ public:
 	void set_voice_filter_enabled(bool enabled);
 	bool get_voice_filter_enabled() const;
 
-	// Testing Interface - Direct frame injection for synthetic testing
+	// Testing Interface - Direct frame injection for synthetic testing using AudioStreamGenerator
 	void inject_audio_frames(PackedVector2Array frames);
 	PackedVector2Array get_processed_frames();
 	
-	// Enable/disable testing mode with MockAudioDevice
+	// Enable/disable testing mode with AudioStreamGenerator
 	void set_testing_mode(bool enabled);
 	bool get_testing_mode() const;
 	
-	// Generate synthetic test audio
-	PackedVector2Array generate_test_audio(MockAudioDevice::TestAudioType type, float duration);
-	void set_network_simulation(MockAudioDevice::NetworkTest condition);
+	// Generate synthetic test audio using Godot's proven patterns
+	PackedVector2Array generate_sine_wave(float frequency, float duration);
+	PackedVector2Array generate_test_audio(float frequency, float duration, bool stereo = false);
+	void set_network_simulation_delay(float delay_ms);
 
 	// Status and Statistics
 	Dictionary get_connection_stats();

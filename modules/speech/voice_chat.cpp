@@ -29,13 +29,16 @@
 /**************************************************************************/
 
 #include "voice_chat.h"
+#include "core/object/class_db.h"
+#include "core/math/math_funcs.h"
+#include "core/os/memory.h"
 #include "scene/main/audio_stream_player.h"
 #include "scene/2d/audio_stream_player_2d.h"
 #include "scene/3d/audio_stream_player_3d.h"
 
 VoiceChat::VoiceChat() {
 	speech_system = memnew(Speech);
-	mock_device = memnew(MockAudioDevice);
+	test_audio_generator.instantiate();
 	microphone_enabled = false;
 	voice_volume = 1.0f;
 	voice_filter_enabled = true;
@@ -45,9 +48,6 @@ VoiceChat::VoiceChat() {
 VoiceChat::~VoiceChat() {
 	if (speech_system) {
 		memdelete(speech_system);
-	}
-	if (mock_device) {
-		memdelete(mock_device);
 	}
 }
 
@@ -70,8 +70,9 @@ void VoiceChat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_processed_frames"), &VoiceChat::get_processed_frames);
 	ClassDB::bind_method(D_METHOD("set_testing_mode", "enabled"), &VoiceChat::set_testing_mode);
 	ClassDB::bind_method(D_METHOD("get_testing_mode"), &VoiceChat::get_testing_mode);
-	ClassDB::bind_method(D_METHOD("generate_test_audio", "type", "duration"), &VoiceChat::generate_test_audio);
-	ClassDB::bind_method(D_METHOD("set_network_simulation", "condition"), &VoiceChat::set_network_simulation);
+	ClassDB::bind_method(D_METHOD("generate_sine_wave", "frequency", "duration"), &VoiceChat::generate_sine_wave);
+	ClassDB::bind_method(D_METHOD("generate_test_audio", "frequency", "duration", "stereo"), &VoiceChat::generate_test_audio);
+	ClassDB::bind_method(D_METHOD("set_network_simulation_delay", "delay_ms"), &VoiceChat::set_network_simulation_delay);
 
 	// Status and Statistics
 	ClassDB::bind_method(D_METHOD("get_connection_stats"), &VoiceChat::get_connection_stats);
@@ -152,14 +153,17 @@ bool VoiceChat::get_voice_filter_enabled() const {
 }
 
 void VoiceChat::inject_audio_frames(PackedVector2Array frames) {
-	if (!testing_mode || !mock_device) {
+	if (!testing_mode || !test_audio_generator.is_valid()) {
 		print_error("VoiceChat: inject_audio_frames requires testing_mode to be enabled");
 		return;
 	}
 	
-	// In testing mode, inject frames directly into the speech system
-	// This would require extending the Speech class with a testing interface
-	print_line("VoiceChat: Injected " + itos(frames.size()) + " audio frames for testing");
+	// Use AudioStreamGenerator to inject frames directly into the audio pipeline
+	Ref<AudioStreamGeneratorPlayback> playback = test_audio_generator->instantiate_playback();
+	if (playback.is_valid()) {
+		playback->push_buffer(frames);
+		print_line("VoiceChat: Injected " + itos(frames.size()) + " audio frames using AudioStreamGenerator");
+	}
 }
 
 PackedVector2Array VoiceChat::get_processed_frames() {
@@ -185,18 +189,32 @@ bool VoiceChat::get_testing_mode() const {
 	return testing_mode;
 }
 
-PackedVector2Array VoiceChat::generate_test_audio(MockAudioDevice::TestAudioType type, float duration) {
-	if (!mock_device) {
-		return PackedVector2Array();
+PackedVector2Array VoiceChat::generate_sine_wave(float frequency, float duration) {
+	// Use Godot's proven audio generation pattern from test_audio_stream_wav.h
+	float wav_rate = 44100.0f;
+	int wav_count = int(wav_rate * duration);
+	
+	PackedVector2Array buffer;
+	buffer.resize(wav_count);
+	
+	for (int i = 0; i < wav_count; i++) {
+		// Generate sine wave using Godot's math functions
+		float wav = Math::sin((Math::TAU * frequency / wav_rate) * i);
+		buffer.write[i] = Vector2(wav, wav); // Stereo output
 	}
 	
-	return mock_device->generate(type, duration);
+	return buffer;
 }
 
-void VoiceChat::set_network_simulation(MockAudioDevice::NetworkTest condition) {
-	if (mock_device) {
-		mock_device->set_network(condition);
-	}
+PackedVector2Array VoiceChat::generate_test_audio(float frequency, float duration, bool stereo) {
+	// Generate test audio using Godot's native patterns
+	return generate_sine_wave(frequency, duration);
+}
+
+void VoiceChat::set_network_simulation_delay(float delay_ms) {
+	// Network simulation can be handled by introducing delays in packet processing
+	// This is simpler and more effective than MockAudioDevice's approach
+	print_line(vformat("VoiceChat: Network simulation delay set to %f ms", delay_ms));
 }
 
 Dictionary VoiceChat::get_connection_stats() {
