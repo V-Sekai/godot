@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/godot-pmx
 	branch = master
-	commit = a06b94d68888392200e18168e0d26662c15b64fe
-	parent = 3096eb30cebabf5fb555acf36bd91db7b9eabec6
+	commit = 6d85cf19c49fce5c73be38e0866a5010c2e43e42
+	parent = d7af3a2caab934502f287ddaa48c2b10190ee834
 	method = merge
 	cmdver = 0.4.9
