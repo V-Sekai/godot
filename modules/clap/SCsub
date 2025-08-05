@@ -10,8 +10,9 @@ env_clap = env_modules.Clone()
 env_clap.Prepend(CPPEXTPATH=["#modules/clap/thirdparty/clap/include"])
 env_clap.Prepend(CPPEXTPATH=["#modules/clap/thirdparty/clap-helpers/include"])
 
-# Enable exceptions for CLAP code since helpers use them
-env_clap.Append(CXXFLAGS=["-fexceptions"])
+if not env.msvc:
+    # Enable exceptions for CLAP code since helpers use them
+    env_clap.Append(CXXFLAGS=["-fexceptions"])
 
 # Add OpenGL linking for GUI support
 if env["platform"] == "macos":
