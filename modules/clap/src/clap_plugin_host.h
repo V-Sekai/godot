@@ -1,5 +1,34 @@
-#ifndef CLAP_PLUGIN_HOST_H
-#define CLAP_PLUGIN_HOST_H
+/**************************************************************************/
+/*  clap_plugin_host.h                                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
 
 #include <clap/clap.h>
 #include <clap/helpers/event-list.hh>
@@ -7,9 +36,7 @@
 #include <clap/helpers/plugin-proxy.hh>
 #include <clap/helpers/reducing-param-queue.hh>
 
-namespace godot {
 struct AudioFrame;
-}
 
 constexpr auto PluginHost_MH = clap::helpers::MisbehaviourHandler::Terminate;
 constexpr auto PluginHost_CL = clap::helpers::CheckingLevel::Maximal;
@@ -113,6 +140,7 @@ public:
 	const clap_plugin_entry *_plugin_entry;
 	const clap_plugin_factory *_plugin_factory;
 	std::unique_ptr<PluginProxy> _plugin;
+	void *_lib_handle; // Store library handle to prevent unloading
 
 	clap_audio_buffer _audioIn = {};
 	clap_audio_buffer _audioOut = {};
@@ -122,9 +150,10 @@ public:
 
 	PluginState _state = Inactive;
 	bool _stateIsDirty = false;
+	mutable bool _is_processing = false;
 
 	ClapPluginHost();
-	~ClapPluginHost() override = default;
+	~ClapPluginHost() override;
 
 	bool load(const char *path, int plugin_index);
 
@@ -137,8 +166,20 @@ public:
 	bool isPluginSleeping() const;
 	void handlePluginOutputEvents();
 
-	void process(const void *p_src_buffer, godot::AudioFrame *p_dst_buffer, int32_t p_frame_count);
-	bool process_silence() const { return true; }
-};
+	void process(const void *p_src_buffer, AudioFrame *p_dst_buffer, int32_t p_frame_count);
+	bool process_silence() const;
 
-#endif //CLAP_PLUGIN_HOST_H
+	// GUI management methods
+	bool hasGui() const;
+	bool createGui();
+	void destroyGui();
+	bool showGui();
+	bool hideGui();
+	bool isGuiVisible() const;
+	void setGuiParent(void *parent_window);
+
+private:
+	bool _gui_created = false;
+	bool _gui_visible = false;
+	void *_gui_parent = nullptr;
+};

@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_clap = env_modules.Clone()
+
+# Add include paths using the correct SCons syntax
+env_clap.Prepend(CPPEXTPATH=["#modules/clap/thirdparty/clap/include"])
+env_clap.Prepend(CPPEXTPATH=["#modules/clap/thirdparty/clap-helpers/include"])
+
+# Enable exceptions for CLAP code since helpers use them
+env_clap.Append(CXXFLAGS=["-fexceptions"])
+
+# Add OpenGL linking for GUI support
+if env["platform"] == "macos":
+    env_clap.Append(LINKFLAGS=["-framework", "OpenGL"])
+    env_clap.Append(LINKFLAGS=["-framework", "Cocoa"])
+    env_clap.Append(LINKFLAGS=["-framework", "AppKit"])
+elif env["platform"] == "linuxbsd":
+    env_clap.Append(LIBS=["GL"])
+    env_clap.Append(LIBS=["X11"])
+elif env["platform"] == "windows":
+    env_clap.Append(LIBS=["opengl32"])
+    env_clap.Append(LIBS=["user32"])
+    env_clap.Append(LIBS=["gdi32"])
+
+# Add source files
+module_obj = []
+
+env_clap.add_source_files(module_obj, "*.cpp")
+env_clap.add_source_files(module_obj, "src/*.cpp")
+
+# Create the library target
+env.modules_sources += module_obj

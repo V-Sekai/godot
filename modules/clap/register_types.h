@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  register_types.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,25 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#pragma once
 
-#include "core/config/engine.h"
-#include "core/object/class_db.h"
+#include "modules/register_module_types.h"
 
-#include "clap_audio_effect.h"
-#include "clap_effect_instance.h"
-
-void initialize_clap_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-
-	GDREGISTER_CLASS(ClapAudioEffect);
-	GDREGISTER_CLASS(ClapAudioEffectInstance);
-}
-
-void uninitialize_clap_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-}
+void initialize_clap_module(ModuleInitializationLevel p_level);
+void uninitialize_clap_module(ModuleInitializationLevel p_level);

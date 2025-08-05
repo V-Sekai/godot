@@ -30,23 +30,12 @@
 
 #include "register_types.h"
 
-#include "core/config/engine.h"
-#include "core/object/class_db.h"
+#include "src/register_types.h"
 
-#include "clap_audio_effect.h"
-#include "clap_effect_instance.h"
-
-void initialize_clap_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-
-	GDREGISTER_CLASS(ClapAudioEffect);
-	GDREGISTER_CLASS(ClapAudioEffectInstance);
+void initialize_clap_module(ModuleInitializationLevel p_level) {
+	initialize_clap_types(p_level);
 }
 
-void uninitialize_clap_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
+void uninitialize_clap_module(ModuleInitializationLevel p_level) {
+	uninitialize_clap_types(p_level);
 }

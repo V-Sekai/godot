@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  clap_audio_effect.h                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,25 +28,35 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#pragma once
 
-#include "core/config/engine.h"
-#include "core/object/class_db.h"
+#include "core/variant/variant.h"
+#include "servers/audio/audio_effect.h"
 
-#include "clap_audio_effect.h"
-#include "clap_effect_instance.h"
+#include <clap/clap.h>
+#include <clap/helpers/event-list.hh>
+#include <clap/helpers/reducing-param-queue.hh>
 
-void initialize_clap_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
+class ClapAudioEffect : public AudioEffect {
+	GDCLASS(ClapAudioEffect, AudioEffect)
 
-	GDREGISTER_CLASS(ClapAudioEffect);
-	GDREGISTER_CLASS(ClapAudioEffectInstance);
-}
+private:
+	String plugin_path;
 
-void uninitialize_clap_types(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-}
+protected:
+	static void _bind_methods();
+
+public:
+	ClapAudioEffect() = default;
+	~ClapAudioEffect() override = default;
+
+	virtual Ref<AudioEffectInstance> instantiate() override;
+
+	void set_plugin_path(const String &p_path);
+	String get_plugin_path() const;
+
+	void print_type(const Variant &p_variant) const;
+
+	// GUI management methods
+	bool has_gui() const;
+};

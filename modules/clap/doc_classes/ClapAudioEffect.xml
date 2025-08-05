@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ClapAudioEffect" inherits="AudioEffect" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="has_gui" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="print_type" qualifiers="const">
+			<return type="void" />
+			<param index="0" name="variant" type="Variant" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="plugin_path" type="String" setter="set_plugin_path" getter="get_plugin_path" default="&quot;&quot;">
+		</member>
+	</members>
+</class>

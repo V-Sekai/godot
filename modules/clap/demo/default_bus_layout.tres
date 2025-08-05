@@ -2,7 +2,9 @@
 
 [sub_resource type="ClapAudioEffect" id="ClapAudioEffect_j3pel"]
 resource_name = "Clap"
+plugin_path = "/Library/Audio/Plug-Ins/CLAP/CHOWTapeModel.clap/Contents/MacOS/CHOWTapeModel"
 
 [resource]
+bus/0/volume_db = 1.1604843
 bus/0/effect/0/effect = SubResource("ClapAudioEffect_j3pel")
 bus/0/effect/0/enabled = true
