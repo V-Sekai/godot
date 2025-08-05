@@ -1,0 +1,10 @@
+[submodule "godot-cpp"]
+	path = godot-cpp
+	url = https://github.com/godotengine/godot-cpp.git
+	branch = 4.3
+[submodule "clap"]
+	path = clap
+	url = https://github.com/free-audio/clap.git
+[submodule "clap-helpers"]
+	path = clap-helpers
+	url = https://github.com/free-audio/clap-helpers.git
