@@ -5915,6 +5915,9 @@ void GLTFDocument::_process_mesh_instances(Ref<GLTFState> p_state, Node *p_scene
 			mi->get_parent()->remove_child(mi);
 			mi->set_owner(nullptr);
 			skeleton->add_child(mi, true);
+			if (skeleton->get_parent() == nullptr) {
+				p_scene_root->add_child(skeleton);
+			}
 			mi->set_owner(p_scene_root);
 
 			mi->set_skin(p_state->skins.write[skin_i]->godot_skin);
