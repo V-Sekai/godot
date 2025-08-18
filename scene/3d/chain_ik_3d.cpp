@@ -180,7 +180,7 @@ void ChainIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 		props.push_back(PropertyInfo(Variant::STRING, path + "end_bone_name", PROPERTY_HINT_ENUM_SUGGESTION, enum_hint));
 		props.push_back(PropertyInfo(Variant::INT, path + "end_bone", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR));
 		props.push_back(PropertyInfo(Variant::BOOL, path + "extend_end_bone"));
-		props.push_back(PropertyInfo(Variant::INT, path + "end_bone/direction", PROPERTY_HINT_ENUM, "+X,-X,+Y,-Y,+Z,-Z,FromParent"));
+		props.push_back(PropertyInfo(Variant::INT, path + "end_bone/direction", PROPERTY_HINT_ENUM, SkeletonModifier3D::get_hint_bone_direction()));
 		props.push_back(PropertyInfo(Variant::FLOAT, path + "end_bone/length", PROPERTY_HINT_RANGE, "0,1,0.001,or_greater,suffix:m"));
 		props.push_back(PropertyInfo(Variant::NODE_PATH, path + "pole_node"));
 		props.push_back(PropertyInfo(Variant::NODE_PATH, path + "target_node"));
@@ -189,10 +189,10 @@ void ChainIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 			String joint_path = path + "joints/" + itos(j) + "/";
 			props.push_back(PropertyInfo(Variant::STRING, joint_path + "bone_name", PROPERTY_HINT_ENUM_SUGGESTION, enum_hint, PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY | PROPERTY_USAGE_STORAGE));
 			props.push_back(PropertyInfo(Variant::INT, joint_path + "bone", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR | PROPERTY_USAGE_READ_ONLY));
-			props.push_back(PropertyInfo(Variant::INT, joint_path + "rotation_axis", PROPERTY_HINT_ENUM, "X,Y,Z,All,Custom"));
+			props.push_back(PropertyInfo(Variant::INT, joint_path + "rotation_axis", PROPERTY_HINT_ENUM, SkeletonModifier3D::get_hint_rotation_axis()));
 			props.push_back(PropertyInfo(Variant::VECTOR3, joint_path + "rotation_axis_vector"));
 			props.push_back(PropertyInfo(Variant::OBJECT, joint_path + "limitation", PROPERTY_HINT_RESOURCE_TYPE, "JointLimitation3D"));
-			props.push_back(PropertyInfo(Variant::INT, joint_path + "limitation/right_axis", PROPERTY_HINT_ENUM, "None,+X,-X,+Y,-Y,+Z,-Z,Custom"));
+			props.push_back(PropertyInfo(Variant::INT, joint_path + "limitation/right_axis", PROPERTY_HINT_ENUM, SkeletonModifier3D::get_hint_secondary_direction()));
 			props.push_back(PropertyInfo(Variant::VECTOR3, joint_path + "limitation/right_axis_vector"));
 			props.push_back(PropertyInfo(Variant::QUATERNION, joint_path + "limitation/rotation_offset"));
 		}
@@ -371,7 +371,7 @@ void ChainIK3D::set_end_bone_direction(int p_index, BoneDirection p_bone_directi
 #endif // TOOLS_ENABLED
 }
 
-ChainIK3D::BoneDirection ChainIK3D::get_end_bone_direction(int p_index) const {
+SkeletonModifier3D::BoneDirection ChainIK3D::get_end_bone_direction(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, settings.size(), BONE_DIRECTION_FROM_PARENT);
 	return settings[p_index]->end_bone_direction;
 }
@@ -496,7 +496,7 @@ void ChainIK3D::set_joint_rotation_axis(int p_index, int p_joint, RotationAxis p
 #endif // TOOLS_ENABLED
 }
 
-ChainIK3D::RotationAxis ChainIK3D::get_joint_rotation_axis(int p_index, int p_joint) const {
+SkeletonModifier3D::RotationAxis ChainIK3D::get_joint_rotation_axis(int p_index, int p_joint) const {
 	ERR_FAIL_INDEX_V(p_index, settings.size(), ROTATION_AXIS_ALL);
 	Vector<ChainIK3DJointSetting *> joints = settings[p_index]->joints;
 	ERR_FAIL_INDEX_V(p_joint, joints.size(), ROTATION_AXIS_ALL);

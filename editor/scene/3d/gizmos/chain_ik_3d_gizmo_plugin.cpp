@@ -143,8 +143,8 @@ Ref<ArrayMesh> ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, Cha
 
 				// Draw rotation axis vector if not ROTATION_AXIS_ALL.
 				if (j != joint_end || (j == joint_end && is_extended)) {
-					ManyBoneIK3D::RotationAxis rotation_axis = p_ik->get_joint_rotation_axis(i, j);
-					if (rotation_axis != ManyBoneIK3D::ROTATION_AXIS_ALL) {
+					SkeletonModifier3D::RotationAxis rotation_axis = p_ik->get_joint_rotation_axis(i, j);
+					if (rotation_axis != SkeletonModifier3D::ROTATION_AXIS_ALL) {
 						Vector3 axis_vector = p_ik->get_joint_rotation_axis_vector(i, j);
 						if (!axis_vector.is_zero_approx()) {
 							float rot_axis_length = (global_pose.origin - parent_global_pose.origin).length() * 0.2; // Use 20% of the bone length for the rotation axis vector.
@@ -220,8 +220,8 @@ Ref<ArrayMesh> ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, Cha
 						continue;
 					}
 					// Draw rotation axis vector if not ROTATION_AXIS_ALL.
-					ManyBoneIK3D::RotationAxis rotation_axis = p_ik->get_joint_rotation_axis(i, j);
-					if (rotation_axis != ManyBoneIK3D::ROTATION_AXIS_ALL) {
+					SkeletonModifier3D::RotationAxis rotation_axis = p_ik->get_joint_rotation_axis(i, j);
+					if (rotation_axis != SkeletonModifier3D::ROTATION_AXIS_ALL) {
 						Vector3 axis_vector = p_ik->get_joint_rotation_axis_vector(i, j);
 						if (!axis_vector.is_zero_approx()) {
 							Transform3D next_bone_global_pose = p_skeleton->get_bone_global_rest(p_ik->get_joint_bone(i, 1));

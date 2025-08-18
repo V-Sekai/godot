@@ -145,10 +145,10 @@ void TwoBoneIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 		props.push_back(PropertyInfo(Variant::INT, path + "end_bone", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR));
 		props.push_back(PropertyInfo(Variant::BOOL, path + "use_virtual_end"));
 		props.push_back(PropertyInfo(Variant::BOOL, path + "extend_end_bone"));
-		props.push_back(PropertyInfo(Variant::INT, path + "end_bone/direction", PROPERTY_HINT_ENUM, "+X,-X,+Y,-Y,+Z,-Z,FromParent"));
+		props.push_back(PropertyInfo(Variant::INT, path + "end_bone/direction", PROPERTY_HINT_ENUM, SkeletonModifier3D::get_hint_bone_direction()));
 		props.push_back(PropertyInfo(Variant::FLOAT, path + "end_bone/length", PROPERTY_HINT_RANGE, "0,1,0.001,or_greater,suffix:m"));
 		props.push_back(PropertyInfo(Variant::NODE_PATH, path + "pole_node"));
-		props.push_back(PropertyInfo(Variant::INT, path + "knuckle_direction", PROPERTY_HINT_ENUM, "None,+X,-X,+Y,-Y,+Z,-Z,Custom"));
+		props.push_back(PropertyInfo(Variant::INT, path + "knuckle_direction", PROPERTY_HINT_ENUM, SkeletonModifier3D::get_hint_secondary_direction()));
 		props.push_back(PropertyInfo(Variant::VECTOR3, path + "knuckle_direction_vector"));
 		props.push_back(PropertyInfo(Variant::NODE_PATH, path + "target_node"));
 	}
@@ -357,7 +357,7 @@ void TwoBoneIK3D::set_end_bone_direction(int p_index, BoneDirection p_bone_direc
 #endif // TOOLS_ENABLED
 }
 
-TwoBoneIK3D::BoneDirection TwoBoneIK3D::get_end_bone_direction(int p_index) const {
+SkeletonModifier3D::BoneDirection TwoBoneIK3D::get_end_bone_direction(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, settings.size(), BONE_DIRECTION_FROM_PARENT);
 	return settings[p_index]->end_bone_direction;
 }
@@ -410,7 +410,7 @@ void TwoBoneIK3D::set_knuckle_direction(int p_index, SecondaryDirection p_direct
 #endif // TOOLS_ENABLED
 }
 
-TwoBoneIK3D::SecondaryDirection TwoBoneIK3D::get_knuckle_direction(int p_index) const {
+SkeletonModifier3D::SecondaryDirection TwoBoneIK3D::get_knuckle_direction(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, settings.size(), SECONDARY_DIRECTION_NONE);
 	return settings[p_index]->knuckle_direction;
 }

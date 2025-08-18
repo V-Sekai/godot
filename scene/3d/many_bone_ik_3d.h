@@ -44,35 +44,6 @@ class ManyBoneIK3D : public SkeletonModifier3D {
 	bool joints_dirty = false;
 
 public:
-	enum BoneDirection {
-		BONE_DIRECTION_PLUS_X,
-		BONE_DIRECTION_MINUS_X,
-		BONE_DIRECTION_PLUS_Y,
-		BONE_DIRECTION_MINUS_Y,
-		BONE_DIRECTION_PLUS_Z,
-		BONE_DIRECTION_MINUS_Z,
-		BONE_DIRECTION_FROM_PARENT,
-	};
-
-	enum SecondaryDirection {
-		SECONDARY_DIRECTION_NONE,
-		SECONDARY_DIRECTION_PLUS_X,
-		SECONDARY_DIRECTION_MINUS_X,
-		SECONDARY_DIRECTION_PLUS_Y,
-		SECONDARY_DIRECTION_MINUS_Y,
-		SECONDARY_DIRECTION_PLUS_Z,
-		SECONDARY_DIRECTION_MINUS_Z,
-		SECONDARY_DIRECTION_CUSTOM,
-	};
-
-	enum RotationAxis {
-		ROTATION_AXIS_X,
-		ROTATION_AXIS_Y,
-		ROTATION_AXIS_Z,
-		ROTATION_AXIS_ALL,
-		ROTATION_AXIS_CUSTOM,
-	};
-
 	struct ManyBoneIK3DSolverInfo {
 		Quaternion current_lpose;
 		Quaternion current_lrest;
@@ -149,7 +120,3 @@ public:
 	// To process manually.
 	virtual void reset();
 };
-
-VARIANT_ENUM_CAST(ManyBoneIK3D::BoneDirection);
-VARIANT_ENUM_CAST(ManyBoneIK3D::SecondaryDirection);
-VARIANT_ENUM_CAST(ManyBoneIK3D::RotationAxis);

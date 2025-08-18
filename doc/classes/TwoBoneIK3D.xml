@@ -23,7 +23,7 @@
 			</description>
 		</method>
 		<method name="get_end_bone_direction" qualifiers="const">
-			<return type="int" enum="ManyBoneIK3D.BoneDirection" />
+			<return type="int" enum="SkeletonModifier3D.BoneDirection" />
 			<param index="0" name="index" type="int" />
 			<description>
 				Returns the end bone's tail direction when [method is_end_bone_extended] is [code]true[/code].
@@ -44,7 +44,7 @@
 			</description>
 		</method>
 		<method name="get_knuckle_direction" qualifiers="const">
-			<return type="int" enum="ManyBoneIK3D.SecondaryDirection" />
+			<return type="int" enum="SkeletonModifier3D.SecondaryDirection" />
 			<param index="0" name="index" type="int" />
 			<description>
 				Returns the knuckle direction.
@@ -55,7 +55,7 @@
 			<param index="0" name="index" type="int" />
 			<description>
 				Returns the knuckle direction vector.
-				If [method get_knuckle_direction] is [constant ManyBoneIK3D.SECONDARY_DIRECTION_NONE], this method returns [code]Vector3(0, 0, 0)[/code].
+				If [method get_knuckle_direction] is [constant SkeletonModifier3D.SECONDARY_DIRECTION_NONE], this method returns [code]Vector3(0, 0, 0)[/code].
 			</description>
 		</method>
 		<method name="get_middle_bone" qualifiers="const">
@@ -125,7 +125,7 @@
 		<method name="set_end_bone_direction">
 			<return type="void" />
 			<param index="0" name="index" type="int" />
-			<param index="1" name="bone_direction" type="int" enum="ManyBoneIK3D.BoneDirection" />
+			<param index="1" name="bone_direction" type="int" enum="SkeletonModifier3D.BoneDirection" />
 			<description>
 				Sets the end bone tail direction when [method is_end_bone_extended] is [code]true[/code].
 			</description>
@@ -158,7 +158,7 @@
 		<method name="set_knuckle_direction">
 			<return type="void" />
 			<param index="0" name="index" type="int" />
-			<param index="1" name="direction" type="int" enum="ManyBoneIK3D.SecondaryDirection" />
+			<param index="1" name="direction" type="int" enum="SkeletonModifier3D.SecondaryDirection" />
 			<description>
 				Sets the knuckle direction.
 				Knuckle is on the middle bone and will direct to the pole target.
@@ -173,7 +173,7 @@
 			<description>
 				Sets the knuckle direction vector.
 				This vector is normalized by an internal process.
-				If the vector length is [code]0[/code], it is considered synonymous with [constant ManyBoneIK3D.SECONDARY_DIRECTION_NONE].
+				If the vector length is [code]0[/code], it is considered synonymous with [constant SkeletonModifier3D.SECONDARY_DIRECTION_NONE].
 			</description>
 		</method>
 		<method name="set_middle_bone">
