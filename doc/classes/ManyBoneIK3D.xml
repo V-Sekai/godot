@@ -9,6 +9,12 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="clear_settings">
+			<return type="void" />
+			<description>
+				Clears all settings.
+			</description>
+		</method>
 		<method name="reset">
 			<return type="void" />
 			<description>
@@ -16,4 +22,9 @@
 			</description>
 		</method>
 	</methods>
+	<members>
+		<member name="setting_count" type="int" setter="set_setting_count" getter="get_setting_count" default="0">
+			The number of settings.
+		</member>
+	</members>
 </class>
