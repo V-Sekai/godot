@@ -30,7 +30,7 @@
 
 #include "jacob_ik_3d.h"
 
-void JacobIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
+void JacobIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
 	// Forwards.
 	for (int i = 0; i < p_joint_size; i++) {
 		ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
@@ -51,15 +51,19 @@ void JacobIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK
 			continue;
 		}
 
-		// Note:
-		// Jacobian can calculate (estimate) all joint rotations at once, so we can use limitations here.
-		// If we remove angular_delta_limit here, it behaves more similar to FABR/CCD (quickly converges to the target).
-		// But it may cause oscillation in some cases, so we keep it here to avoid that.
-		Quaternion to_rot = Quaternion(axis.normalized(), MIN(axis.length() / MAX(CMP_EPSILON, head_to_effector.length_squared()), angular_delta_limit));
+		Quaternion to_rot = Quaternion(axis.normalized(), axis.length() / MAX(CMP_EPSILON, head_to_effector.length()));
 
 		for (int j = TAIL; j < p_chain_size; j++) {
 			Vector3 to_tail = p_chain[j] - current_head;
-			p_setting->update_chain_coordinate(p_skeleton, j, current_head + to_rot.xform(to_tail), false);
+			p_setting->update_chain_coordinate_fw(p_skeleton, j, current_head + to_rot.xform(to_tail));
+
+			int k = j - 1;
+			if (p_joints[k]->rotation_axis != ROTATION_AXIS_ALL) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, j, p_chain[k] + p_joints[k]->get_projected_rotation(solver_info->current_grest, p_chain[j] - p_chain[k]));
+			}
+			if (p_joints[k]->limitation.is_valid()) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, j, p_chain[k] + p_joints[k]->get_limited_rotation(solver_info->current_grest, p_chain[j] - p_chain[k]));
+			}
 		}
 	}
 }

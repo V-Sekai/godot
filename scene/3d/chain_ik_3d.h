@@ -109,11 +109,13 @@ public:
 			Vector3 limited = limitation->solve(solver_info->forward_vector, get_limitation_right_axis_vector(), limitation_rotation_offset, local_vector.normalized()) * length;
 			return p_offset.xform(limited);
 		}
+
+		~ChainIK3DJointSetting() {
+			limitation.unref();
+		}
 	};
 
-	struct ChainIK3DSetting {
-		bool joints_dirty = false;
-
+	struct ChainIK3DSetting : public ManyBoneIK3DSetting {
 		String root_bone_name;
 		int root_bone = -1;
 
@@ -125,17 +127,8 @@ public:
 		BoneDirection end_bone_direction = BONE_DIRECTION_FROM_PARENT;
 		float end_bone_length = 0.0;
 
-		NodePath pole_node;
-		NodePath target_node;
-
 		Vector<ChainIK3DJointSetting *> joints;
 		Vector<Vector3> chain;
-		int joint_size_half = -1;
-		int chain_size_half = -1;
-
-		// To process.
-		bool simulation_dirty = true;
-		Transform3D cached_space;
 
 		bool is_penetrated(const Vector3 &p_destination) {
 			bool ret = false;
@@ -164,7 +157,7 @@ public:
 
 		// Only update chain coordinates to avoid to override previous result (bone poses).
 		// Chain coordinates will be converted to bone pose by cache_current_joint_rotations() in the end of iterating.
-		void update_chain_coordinate(Skeleton3D *p_skeleton, int p_index, const Vector3 &p_position, bool p_backward = true) {
+		void update_chain_coordinate_bw(Skeleton3D *p_skeleton, int p_index, const Vector3 &p_position) {
 			// Don't update if the position is same as the current position.
 			if (Math::is_zero_approx(chain[p_index].distance_squared_to(p_position))) {
 				return;
@@ -172,32 +165,16 @@ public:
 
 			// Prevent flipping.
 			Vector3 result = p_position;
-			if (p_backward) {
-				int HEAD = p_index - 1;
-				int TAIL = p_index;
-				if (HEAD >= 0 && HEAD < joints.size()) {
-					ManyBoneIK3DSolverInfo *solver_info = joints[HEAD]->solver_info;
-					if (solver_info) {
-						Vector3 old_head_to_tail = solver_info->current_vector;
-						Vector3 new_head_to_tail = (result - chain[HEAD]).normalized();
-						if (Math::is_equal_approx((double)old_head_to_tail.dot(new_head_to_tail), -1.0)) {
-							chain.write[TAIL] = chain[HEAD] + old_head_to_tail * solver_info->length; // Revert.
-							return; // No change, cache is not updated.
-						}
-					}
-				}
-			} else {
-				int HEAD = p_index;
-				int TAIL = p_index + 1;
-				if (TAIL >= 0 && TAIL < joints.size()) {
-					ManyBoneIK3DSolverInfo *solver_info = joints[HEAD]->solver_info;
-					if (solver_info) {
-						Vector3 old_head_to_tail = solver_info->current_vector;
-						Vector3 new_head_to_tail = (chain[TAIL] - result).normalized();
-						if (Math::is_equal_approx((double)old_head_to_tail.dot(new_head_to_tail), -1.0)) {
-							chain.write[HEAD] = chain[TAIL] - old_head_to_tail * solver_info->length; // Revert.
-							return; // No change, cache is not updated.
-						}
+			int HEAD = p_index - 1;
+			int TAIL = p_index;
+			if (HEAD >= 0 && HEAD < joints.size()) {
+				ManyBoneIK3DSolverInfo *solver_info = joints[HEAD]->solver_info;
+				if (solver_info) {
+					Vector3 old_head_to_tail = solver_info->current_vector;
+					Vector3 new_head_to_tail = (result - chain[HEAD]).normalized();
+					if (Math::is_equal_approx((double)old_head_to_tail.dot(new_head_to_tail), -1.0)) {
+						chain.write[TAIL] = chain[HEAD] + old_head_to_tail * solver_info->length; // Revert.
+						return; // No change, cache is not updated.
 					}
 				}
 			}
@@ -205,6 +182,32 @@ public:
 			chain.write[p_index] = result;
 			cache_current_vector(p_skeleton, p_index);
 		}
+		void update_chain_coordinate_fw(Skeleton3D *p_skeleton, int p_index, const Vector3 &p_position) {
+			// Don't update if the position is same as the current position.
+			if (Math::is_zero_approx(chain[p_index].distance_squared_to(p_position))) {
+				return;
+			}
+
+			// Prevent flipping.
+			Vector3 result = p_position;
+			int HEAD = p_index;
+			int TAIL = p_index + 1;
+			if (TAIL >= 0 && TAIL < joints.size()) {
+				ManyBoneIK3DSolverInfo *solver_info = joints[HEAD]->solver_info;
+				if (solver_info) {
+					Vector3 old_head_to_tail = solver_info->current_vector;
+					Vector3 new_head_to_tail = (chain[TAIL] - result).normalized();
+					if (Math::is_equal_approx((double)old_head_to_tail.dot(new_head_to_tail), -1.0)) {
+						chain.write[HEAD] = chain[TAIL] - old_head_to_tail * solver_info->length; // Revert.
+						return; // No change, cache is not updated.
+					}
+				}
+			}
+
+			chain.write[p_index] = result;
+			cache_current_vector(p_skeleton, p_index);
+		}
+
 
 		void cache_current_vector(Skeleton3D *p_skeleton, int p_index) {
 			int cur_head = p_index - 1;
@@ -232,6 +235,10 @@ public:
 		}
 
 		void init_current_joint_rotations(Skeleton3D *p_skeleton) {
+			if (root_bone < 0) {
+				return;
+			}
+
 			Quaternion parent_gpose;
 			int parent = p_skeleton->get_bone_parent(root_bone);
 			if (parent >= 0) {
@@ -315,16 +322,11 @@ public:
 	};
 
 protected:
-	int max_iterations = 4;
-	real_t min_distance = 0.01; // If distance between end joint and target is less than min_distance, finish iteration.
-	real_t min_distance_squared = min_distance * min_distance; // For cache.
-	real_t angular_delta_limit = Math::deg_to_rad(2.0); // If the delta is too large, the results before and after iterating can change significantly, and divergence of calculations can easily occur.
-
-	Vector<ChainIK3DSetting *> settings;
+	Vector<ChainIK3DSetting *> chain_settings; // For caching.
 
 	bool _get(const StringName &p_path, Variant &r_ret) const;
 	bool _set(const StringName &p_path, const Variant &p_value);
-	void _get_property_list(List<PropertyInfo> *p_list) const;
+	void get_property_list(List<PropertyInfo> *p_list) const;
 	void _validate_dynamic_prop(PropertyInfo &p_property) const;
 
 	static void _bind_methods();
@@ -334,25 +336,25 @@ protected:
 	void _validate_rotation_axis(Skeleton3D *p_skeleton, int p_index, int p_joint) const;
 
 	virtual void _make_all_joints_dirty() override;
-	void _init_joints(Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting);
-	void _update_joints(int p_index);
+	virtual void _init_joints(Skeleton3D *p_skeleton, int p_index) override;
+	virtual void _post_init_joints(int p_index);
+	virtual void _update_joints(int p_index) override;
 
 	virtual void _process_ik(Skeleton3D *p_skeleton, double p_delta) override;
-	void _process_joints(double p_delta, Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_target_destination, const Vector3 &p_pole_destination, bool p_use_pole);
-	virtual void _solve_iteration_with_pole(double p_delta, Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size, const Vector3 &p_pole_destination, int p_joint_size_half, int p_chain_size_half);
-	virtual void _solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size);
 
 #ifdef TOOLS_ENABLED
 	void _bind_limitations();
 #endif // TOOLS_ENABLED
 
 public:
-	void set_max_iterations(int p_max_iterations);
-	int get_max_iterations() const;
-	void set_min_distance(real_t p_min_distance);
-	real_t get_min_distance() const;
-	void set_angular_delta_limit(real_t p_angular_delta_limit);
-	real_t get_angular_delta_limit() const;
+	virtual void set_setting_count(int p_count) override {
+		_set_setting_count<ChainIK3DSetting>(p_count);
+		chain_settings = _cast_settings<ChainIK3DSetting>();
+	}
+	virtual void clear_settings() override {
+		_set_setting_count<ChainIK3DSetting>(0);
+		chain_settings.clear();
+	}
 
 	// Setting.
 	void set_root_bone_name(int p_index, const String &p_bone_name);
@@ -371,16 +373,6 @@ public:
 	BoneDirection get_end_bone_direction(int p_index) const;
 	void set_end_bone_length(int p_index, float p_length);
 	float get_end_bone_length(int p_index) const;
-
-	void set_pole_node(int p_index, const NodePath &p_pole_node);
-	NodePath get_pole_node(int p_index) const;
-
-	void set_target_node(int p_index, const NodePath &p_target_node);
-	NodePath get_target_node(int p_index) const;
-
-	void set_setting_count(int p_count);
-	int get_setting_count() const;
-	void clear_settings();
 
 	// Individual joints.
 	void set_joint_bone_name(int p_index, int p_joint, const String &p_bone_name);
@@ -407,9 +399,6 @@ public:
 
 	// Helper.
 	Quaternion get_joint_limitation_space(int p_index, int p_joint, const Vector3 &p_forward) const;
-
-	// To process manually.
-	virtual void reset() override;
 
 	~ChainIK3D();
 };

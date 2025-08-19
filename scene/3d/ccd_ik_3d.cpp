@@ -30,7 +30,7 @@
 
 #include "ccd_ik_3d.h"
 
-void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
+void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
 	// Backwards.
 	for (int ancestor = p_joint_size - 1; ancestor >= 0; ancestor--) {
 		// Forwards.
@@ -55,7 +55,14 @@ void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3D
 			Quaternion to_rot = Quaternion(head_to_effector.normalized(), head_to_destination.normalized());
 			Vector3 to_tail = p_chain[TAIL] - current_head;
 
-			p_setting->update_chain_coordinate(p_skeleton, TAIL, current_head + to_rot.xform(to_tail), false);
+			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, current_head + to_rot.xform(to_tail));
+
+			if (p_joints[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_chain[HEAD] + p_joints[HEAD]->get_projected_rotation(solver_info->current_grest, p_chain[TAIL] - p_chain[HEAD]));
+			}
+			if (p_joints[HEAD]->limitation.is_valid()) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_chain[HEAD] + p_joints[HEAD]->get_limited_rotation(solver_info->current_grest, p_chain[TAIL] - p_chain[HEAD]));
+			}
 		}
 	}
 }

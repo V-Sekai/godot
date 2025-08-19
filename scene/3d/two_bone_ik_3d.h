@@ -36,7 +36,7 @@ class TwoBoneIK3D : public ManyBoneIK3D {
 	GDCLASS(TwoBoneIK3D, ManyBoneIK3D);
 
 public:
-	struct TwoBoneIK3DSetting {
+	struct TwoBoneIK3DSetting : public ManyBoneIK3DSetting {
 		bool joints_dirty = false;
 
 		String root_bone_name;
@@ -192,7 +192,7 @@ public:
 				Quaternion mid_roll_rot = Quaternion();
 
 				// Make roll to align knuckle_vector onto plane with selecting the point nearer pole_destination.
-				Vector3 pole_dir = get_normal(root_pos, end_pos, p_pole_destination);
+				Vector3 pole_dir = get_projected_normal(root_pos, end_pos, p_pole_destination);
 				if (pole_dir.is_zero_approx()) {
 					return;
 				}
@@ -243,7 +243,7 @@ public:
 	};
 
 protected:
-	Vector<TwoBoneIK3DSetting *> settings;
+	Vector<TwoBoneIK3DSetting *> tb_settings;
 
 	bool _get(const StringName &p_path, Variant &r_ret) const;
 	bool _set(const StringName &p_path, const Variant &p_value);
@@ -256,20 +256,22 @@ protected:
 	void _validate_knuckle_directions(Skeleton3D *p_skeleton) const;
 	void _validate_knuckle_direction(Skeleton3D *p_skeleton, int p_index) const;
 
-	void _make_all_joints_dirty() override;
-	void _init_joints(Skeleton3D *p_skeleton, TwoBoneIK3DSetting *p_setting);
-	void _update_joints(int p_index);
+	virtual void _make_all_joints_dirty() override;
+	virtual void _init_joints(Skeleton3D *p_skeleton, int p_index) override;
+	virtual void _update_joints(int p_index) override;
 
 	virtual void _process_ik(Skeleton3D *p_skeleton, double p_delta) override;
 	void _process_joints(double p_delta, Skeleton3D *p_skeleton, TwoBoneIK3DSetting *p_setting, const Vector3 &p_destination, const Vector3 &p_pole_destination);
 
 public:
-	void set_max_iterations(int p_max_iterations);
-	int get_max_iterations() const;
-	void set_min_distance(real_t p_min_distance);
-	real_t get_min_distance() const;
-	void set_angular_delta_limit(real_t p_angular_delta_limit);
-	real_t get_angular_delta_limit() const;
+	virtual void set_setting_count(int p_count) override {
+		_set_setting_count<TwoBoneIK3DSetting>(p_count);
+		tb_settings = _cast_settings<TwoBoneIK3DSetting>();
+	}
+	virtual void clear_settings() override {
+		_set_setting_count<TwoBoneIK3DSetting>(0);
+		tb_settings.clear();
+	}
 
 	// Setting.
 	void set_root_bone_name(int p_index, const String &p_bone_name);
@@ -296,38 +298,18 @@ public:
 	void set_end_bone_length(int p_index, float p_length);
 	float get_end_bone_length(int p_index) const;
 
-	void set_pole_node(int p_index, const NodePath &p_pole_node);
-	NodePath get_pole_node(int p_index) const;
-
 	void set_target_node(int p_index, const NodePath &p_target_node);
 	NodePath get_target_node(int p_index) const;
+
+	void set_pole_node(int p_index, const NodePath &p_pole_node);
+	NodePath get_pole_node(int p_index) const;
 
 	void set_knuckle_direction(int p_index, SecondaryDirection p_axis);
 	SecondaryDirection get_knuckle_direction(int p_index) const;
 	void set_knuckle_direction_vector(int p_index, const Vector3 &p_vector);
 	Vector3 get_knuckle_direction_vector(int p_index) const;
 
-	void set_setting_count(int p_count);
-	int get_setting_count() const;
-	void clear_settings();
-
 	bool is_valid(int p_index) const; // Helper for editor and validation.
-
-	// To process manually.
-	virtual void reset() override;
-
-	// Helper.
-	static Vector3 get_normal(Vector3 p_a, Vector3 p_b, Vector3 p_point) {
-		const Vector3 dir = p_b - p_a;
-		const real_t denom = dir.length_squared();
-		if (Math::is_zero_approx(denom)) {
-			return Vector3();
-		}
-		const Vector3 w = p_point - p_a;
-		const real_t t = w.dot(dir) / denom;
-		const Vector3 h = p_a + dir * t;
-		return (p_point - h).normalized();
-	}
 
 	~TwoBoneIK3D();
 };

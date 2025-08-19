@@ -37,6 +37,7 @@
 class ManyBoneIK3D : public SkeletonModifier3D {
 	GDCLASS(ManyBoneIK3D, SkeletonModifier3D);
 
+protected:
 #ifdef TOOLS_ENABLED
 	bool saving = false;
 #endif //TOOLS_ENABLED
@@ -98,7 +99,15 @@ public:
 		}
 	};
 
+	struct ManyBoneIK3DSetting {
+		bool simulation_dirty = true;
+		Transform3D cached_space;
+		bool joints_dirty = false;
+	};
+
 protected:
+	Vector<ManyBoneIK3DSetting *> settings;
+
 	void _notification(int p_what);
 	static void _bind_methods();
 
@@ -108,15 +117,55 @@ protected:
 	virtual void _validate_bone_names() override;
 
 	virtual void _make_all_joints_dirty();
+	virtual void _init_joints(Skeleton3D *p_skeleton, int p_index);
+	virtual void _update_joints(int p_index);
 
 	virtual void _process_modification(double p_delta) override;
 	virtual void _process_ik(Skeleton3D *p_skeleton, double p_delta);
 
+	template <typename T>
+	void _set_setting_count(int p_count) {
+		ERR_FAIL_COND(p_count < 0);
+		int delta = p_count - settings.size();
+		if (delta < 0) {
+			for (int i = delta; i < 0; i++) {
+				memdelete(static_cast<T *>(settings[settings.size() + i]));
+			}
+		}
+		settings.resize(p_count);
+		delta++;
+		if (delta > 1) {
+			for (int i = 1; i < delta; i++) {
+				settings.write[p_count - i] = memnew(T);
+			}
+		}
+		notify_property_list_changed();
+	}
+	template <typename T>
+	Vector<T *> _cast_settings() const {
+		Vector<T *> result;
+		for (int i = 0; i < settings.size(); i++) {
+			result.push_back(static_cast<T *>(settings[i]));
+		}
+		return result;
+	}
+
 public:
+	int get_setting_count() const;
+
+	virtual void set_setting_count(int p_count) {
+		_set_setting_count<ManyBoneIK3DSetting>(p_count);
+	}
+	virtual void clear_settings() {
+		_set_setting_count<ManyBoneIK3DSetting>(0);
+	}
+
 	// Helper.
 	static Quaternion get_local_pose_rotation(Skeleton3D *p_skeleton, int p_bone, const Quaternion &p_global_pose_rotation);
 	Vector3 get_bone_axis(int p_end_bone, BoneDirection p_direction) const;
 
 	// To process manually.
-	virtual void reset();
+	void reset();
+
+	~ManyBoneIK3D();
 };

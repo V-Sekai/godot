@@ -49,6 +49,10 @@ void ManyBoneIK3D::_notification(int p_what) {
 }
 
 void ManyBoneIK3D::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_setting_count", "count"), &ManyBoneIK3D::set_setting_count);
+	ClassDB::bind_method(D_METHOD("get_setting_count"), &ManyBoneIK3D::get_setting_count);
+	ClassDB::bind_method(D_METHOD("clear_settings"), &ManyBoneIK3D::clear_settings);
+
 	// To process manually.
 	ClassDB::bind_method(D_METHOD("reset"), &ManyBoneIK3D::reset);
 }
@@ -74,6 +78,14 @@ void ManyBoneIK3D::_validate_bone_names() {
 }
 
 void ManyBoneIK3D::_make_all_joints_dirty() {
+	//
+}
+
+void ManyBoneIK3D::_init_joints(Skeleton3D *p_skeleton, int p_index) {
+	//
+}
+
+void ManyBoneIK3D::_update_joints(int p_index) {
 	//
 }
 
@@ -119,6 +131,21 @@ Vector3 ManyBoneIK3D::get_bone_axis(int p_end_bone, BoneDirection p_direction) c
 	return axis;
 }
 
+int ManyBoneIK3D::get_setting_count() const {
+	return settings.size();
+}
+
 void ManyBoneIK3D::reset() {
-	//
+	Skeleton3D *skeleton = get_skeleton();
+	if (!skeleton) {
+		return;
+	}
+	for (int i = 0; i < settings.size(); i++) {
+		settings[i]->simulation_dirty = true;
+		_init_joints(skeleton, i);
+	}
+}
+
+ManyBoneIK3D::~ManyBoneIK3D() {
+	clear_settings();
 }

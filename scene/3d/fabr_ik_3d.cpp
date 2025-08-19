@@ -30,7 +30,7 @@
 
 #include "fabr_ik_3d.h"
 
-void FABRIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
+void FABRIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
 	// Backwards.
 	bool first = true;
 	for (int i = p_joint_size - 1; i >= 0; i--) {
@@ -43,11 +43,18 @@ void FABRIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3
 		int TAIL = i + 1;
 
 		if (first) {
-			p_setting->update_chain_coordinate(p_skeleton, TAIL, p_destination);
+			p_setting->update_chain_coordinate_bw(p_skeleton, TAIL, p_destination);
 			first = false;
 		}
 
-		p_setting->update_chain_coordinate(p_skeleton, HEAD, limit_length(p_chain[TAIL], p_chain[HEAD], solver_info->length));
+		p_setting->update_chain_coordinate_bw(p_skeleton, HEAD, limit_length(p_chain[TAIL], p_chain[HEAD], solver_info->length));
+
+		if (p_joints[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
+			p_setting->update_chain_coordinate_bw(p_skeleton, HEAD, p_chain[TAIL] + p_joints[HEAD]->get_projected_rotation(solver_info->current_grest, p_chain[HEAD] - p_chain[TAIL]));
+		}
+		if (p_joints[HEAD]->limitation.is_valid()) {
+			p_setting->update_chain_coordinate_bw(p_skeleton, HEAD, p_chain[TAIL] + p_joints[HEAD]->get_limited_rotation(solver_info->current_grest, p_chain[HEAD] - p_chain[TAIL]));
+		}
 	}
 
 	// Forwards.
@@ -62,10 +69,17 @@ void FABRIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3
 		int TAIL = i + 1;
 
 		if (first) {
-			p_setting->update_chain_coordinate(p_skeleton, HEAD, p_skeleton->get_bone_global_pose(p_joints[HEAD]->bone).origin, false);
+			p_setting->update_chain_coordinate_fw(p_skeleton, HEAD, p_skeleton->get_bone_global_pose(p_joints[HEAD]->bone).origin);
 			first = false;
 		}
 
-		p_setting->update_chain_coordinate(p_skeleton, TAIL, limit_length(p_chain[HEAD], p_chain[TAIL], solver_info->length), false);
+		p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, limit_length(p_chain[HEAD], p_chain[TAIL], solver_info->length));
+
+		if (p_joints[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
+			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_chain[HEAD] + p_joints[HEAD]->get_projected_rotation(solver_info->current_grest, p_chain[TAIL] - p_chain[HEAD]));
+		}
+		if (p_joints[HEAD]->limitation.is_valid()) {
+			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_chain[HEAD] + p_joints[HEAD]->get_limited_rotation(solver_info->current_grest, p_chain[TAIL] - p_chain[HEAD]));
+		}
 	}
 }

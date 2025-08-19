@@ -9,12 +9,6 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="clear_settings">
-			<return type="void" />
-			<description>
-				Clears all settings.
-			</description>
-		</method>
 		<method name="get_end_bone" qualifiers="const">
 			<return type="int" />
 			<param index="0" name="index" type="int" />
@@ -236,7 +230,7 @@
 	</methods>
 	<members>
 		<member name="setting_count" type="int" setter="set_setting_count" getter="get_setting_count" default="0">
-			The number of settings.
+			The number of the settings.
 		</member>
 	</members>
 </class>

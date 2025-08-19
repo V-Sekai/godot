@@ -231,6 +231,7 @@
 #include "scene/3d/gpu_particles_3d.h"
 #include "scene/3d/gpu_particles_collision_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
+#include "scene/3d/iterate_ik_3d.h"
 #include "scene/3d/jacob_ik_3d.h"
 #include "scene/3d/label_3d.h"
 #include "scene/3d/light_3d.h"
@@ -677,6 +678,7 @@ void register_scene_types() {
 	GDREGISTER_ABSTRACT_CLASS(ManyBoneIK3D);
 	GDREGISTER_CLASS(TwoBoneIK3D);
 	GDREGISTER_ABSTRACT_CLASS(ChainIK3D);
+	GDREGISTER_ABSTRACT_CLASS(IterateIK3D);
 	GDREGISTER_CLASS(FABRIK3D);
 	GDREGISTER_CLASS(CCDIK3D);
 	GDREGISTER_CLASS(JacobIK3D);

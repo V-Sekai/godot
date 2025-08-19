@@ -377,5 +377,18 @@ double SkeletonModifier3D::get_roll_angle(const Quaternion &p_rotation, const Ve
 	return symmetrize_angle(angle * direction);
 }
 
+Vector3 SkeletonModifier3D::get_projected_normal(const Vector3 &p_a, const Vector3 &p_b, const Vector3 &p_point) {
+	// Get nearest normal vector to p_point from the infinite line p_a to p_b.
+	const Vector3 dir = p_b - p_a;
+	const real_t denom = dir.length_squared();
+	if (Math::is_zero_approx(denom)) {
+		return Vector3();
+	}
+	const Vector3 w = p_point - p_a;
+	const real_t t = w.dot(dir) / denom;
+	const Vector3 h = p_a + dir * t;
+	return (p_point - h).normalized();
+}
+
 SkeletonModifier3D::SkeletonModifier3D() {
 }
