@@ -42,6 +42,7 @@ public:
 	~OS_IOS();
 
 	virtual String get_name() const override;
+	virtual String get_processor_name() const override;
 };
 
 #endif // IOS_ENABLED

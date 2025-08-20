@@ -780,3 +780,7 @@ void DisplayServerEmbedded::post_draw_viewport(RID p_render_target) {
 #endif
 #endif
 }
+
+Point2i DisplayServerEmbedded::mouse_get_position() const {
+	return Size2i();
+}

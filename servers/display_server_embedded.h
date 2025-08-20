@@ -238,6 +238,8 @@ public:
 
 	virtual void pre_draw_viewport(RID p_render_target) override;
 	virtual void post_draw_viewport(RID p_render_target) override;
+
+	virtual Point2i mouse_get_position() const override;
 };
 
 #endif // DISPLAY_SERVER_EMBEDDED_H
