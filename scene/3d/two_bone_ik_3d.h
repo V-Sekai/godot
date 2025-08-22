@@ -39,14 +39,9 @@ public:
 	struct TwoBoneIK3DSetting : public ManyBoneIK3DSetting {
 		bool joints_dirty = false;
 
-		String root_bone_name;
-		int root_bone = -1;
-
-		String middle_bone_name;
-		int middle_bone = -1;
-
-		String end_bone_name;
-		int end_bone = -1;
+		BoneJoint root_bone;
+		BoneJoint middle_bone;
+		BoneJoint end_bone;
 
 		// To make virtual end joint.
 		bool use_virtual_end = false;
@@ -59,25 +54,24 @@ public:
 		Vector3 knuckle_direction_vector = Vector3(0, 0, 0); // Custom vector.
 		NodePath target_node;
 
-		ManyBoneIK3DJointSetting root_joint;
-		ManyBoneIK3DJointSetting mid_joint;
+		ManyBoneIK3DSolverInfo *root_joint_solver_info = nullptr;
+		ManyBoneIK3DSolverInfo *mid_joint_solver_info = nullptr;
 		Vector3 root_pos;
 		Vector3 mid_pos;
 		Vector3 end_pos;
 
 		// To process.
 		bool simulation_dirty = true;
-		Transform3D cached_space;
 		real_t cached_length_sq = 0.0;
 
 		bool is_valid() const {
-			return root_joint.solver_info && mid_joint.solver_info;
+			return root_joint_solver_info && mid_joint_solver_info;
 		}
 		bool is_end_valid() const {
-			return (!use_virtual_end && end_bone != -1) || (use_virtual_end && !Math::is_zero_approx(end_bone_length));
+			return (!use_virtual_end && end_bone.bone != -1) || (use_virtual_end && !Math::is_zero_approx(end_bone_length));
 		}
 		int get_end_bone() const {
-			return use_virtual_end ? middle_bone : end_bone; // Hack, but useful for external class such as TwoBoneIK3DGizmoPlugin.
+			return use_virtual_end ? middle_bone.bone : end_bone.bone; // Hack, but useful for external class such as TwoBoneIK3DGizmoPlugin.
 		}
 
 		Vector3 get_knuckle_direction_vector() const {
@@ -115,8 +109,8 @@ public:
 			if (!is_valid()) {
 				return;
 			}
-			root_joint.solver_info->current_vector = (mid_pos - root_pos).normalized();
-			mid_joint.solver_info->current_vector = (end_pos - mid_pos).normalized();
+			root_joint_solver_info->current_vector = (mid_pos - root_pos).normalized();
+			mid_joint_solver_info->current_vector = (end_pos - mid_pos).normalized();
 		}
 
 		void init_current_joint_rotations(Skeleton3D *p_skeleton) {
@@ -125,25 +119,25 @@ public:
 			}
 
 			Quaternion parent_gpose;
-			int parent = p_skeleton->get_bone_parent(root_bone);
+			int parent = p_skeleton->get_bone_parent(root_bone.bone);
 			if (parent >= 0) {
 				parent_gpose = p_skeleton->get_bone_global_pose(parent).basis.get_rotation_quaternion();
 			}
-			root_joint.solver_info->current_lrest = p_skeleton->get_bone_rest(root_joint.bone).basis.get_rotation_quaternion();
-			root_joint.solver_info->current_grest = parent_gpose * root_joint.solver_info->current_lrest;
-			root_joint.solver_info->current_grest.normalize();
-			root_joint.solver_info->current_lpose = p_skeleton->get_bone_pose(root_joint.bone).basis.get_rotation_quaternion();
-			root_joint.solver_info->current_gpose = parent_gpose * root_joint.solver_info->current_lpose;
-			root_joint.solver_info->current_gpose.normalize();
-			parent_gpose = root_joint.solver_info->current_gpose;
+			root_joint_solver_info->current_lrest = p_skeleton->get_bone_rest(root_bone.bone).basis.get_rotation_quaternion();
+			root_joint_solver_info->current_grest = parent_gpose * root_joint_solver_info->current_lrest;
+			root_joint_solver_info->current_grest.normalize();
+			root_joint_solver_info->current_lpose = p_skeleton->get_bone_pose(root_bone.bone).basis.get_rotation_quaternion();
+			root_joint_solver_info->current_gpose = parent_gpose * root_joint_solver_info->current_lpose;
+			root_joint_solver_info->current_gpose.normalize();
+			parent_gpose = root_joint_solver_info->current_gpose;
 
 			// Mid joint pose is relative to the root joint pose.
-			mid_joint.solver_info->current_lrest = p_skeleton->get_bone_global_rest(root_joint.bone).basis.get_rotation_quaternion().inverse() * p_skeleton->get_bone_global_rest(mid_joint.bone).basis.get_rotation_quaternion();
-			mid_joint.solver_info->current_grest = parent_gpose * mid_joint.solver_info->current_lrest;
-			mid_joint.solver_info->current_grest.normalize();
-			mid_joint.solver_info->current_lpose = p_skeleton->get_bone_global_pose(root_joint.bone).basis.get_rotation_quaternion().inverse() * p_skeleton->get_bone_global_pose(mid_joint.bone).basis.get_rotation_quaternion();
-			mid_joint.solver_info->current_gpose = parent_gpose * mid_joint.solver_info->current_lpose;
-			mid_joint.solver_info->current_gpose.normalize();
+			mid_joint_solver_info->current_lrest = p_skeleton->get_bone_global_rest(root_bone.bone).basis.get_rotation_quaternion().inverse() * p_skeleton->get_bone_global_rest(middle_bone.bone).basis.get_rotation_quaternion();
+			mid_joint_solver_info->current_grest = parent_gpose * mid_joint_solver_info->current_lrest;
+			mid_joint_solver_info->current_grest.normalize();
+			mid_joint_solver_info->current_lpose = p_skeleton->get_bone_global_pose(root_bone.bone).basis.get_rotation_quaternion().inverse() * p_skeleton->get_bone_global_pose(middle_bone.bone).basis.get_rotation_quaternion();
+			mid_joint_solver_info->current_gpose = parent_gpose * mid_joint_solver_info->current_lpose;
+			mid_joint_solver_info->current_gpose.normalize();
 
 			cache_current_vectors(p_skeleton);
 		}
@@ -155,34 +149,34 @@ public:
 			}
 
 			Quaternion parent_gpose;
-			int parent = p_skeleton->get_bone_parent(root_bone);
+			int parent = p_skeleton->get_bone_parent(root_bone.bone);
 			if (parent >= 0) {
 				parent_gpose = p_skeleton->get_bone_global_pose(parent).basis.get_rotation_quaternion();
 			}
 
-			root_joint.solver_info->current_lrest = p_skeleton->get_bone_rest(root_joint.bone).basis.get_rotation_quaternion();
-			root_joint.solver_info->current_grest = parent_gpose * root_joint.solver_info->current_lrest;
-			root_joint.solver_info->current_grest.normalize();
+			root_joint_solver_info->current_lrest = p_skeleton->get_bone_rest(root_bone.bone).basis.get_rotation_quaternion();
+			root_joint_solver_info->current_grest = parent_gpose * root_joint_solver_info->current_lrest;
+			root_joint_solver_info->current_grest.normalize();
 
-			Vector3 from = root_joint.solver_info->forward_vector;
-			Vector3 to = root_joint.solver_info->current_grest.xform_inv(root_joint.solver_info->current_vector).normalized();
-			root_joint.solver_info->current_lpose = root_joint.solver_info->current_lrest * get_swing(Quaternion(from, to), from);
+			Vector3 from = root_joint_solver_info->forward_vector;
+			Vector3 to = root_joint_solver_info->current_grest.xform_inv(root_joint_solver_info->current_vector).normalized();
+			root_joint_solver_info->current_lpose = root_joint_solver_info->current_lrest * get_swing(Quaternion(from, to), from);
 
-			root_joint.solver_info->current_gpose = parent_gpose * root_joint.solver_info->current_lpose;
-			root_joint.solver_info->current_gpose.normalize();
-			Quaternion root_gpose = root_joint.solver_info->current_gpose;
+			root_joint_solver_info->current_gpose = parent_gpose * root_joint_solver_info->current_lpose;
+			root_joint_solver_info->current_gpose.normalize();
+			Quaternion root_gpose = root_joint_solver_info->current_gpose;
 
 			// Mid joint pose is relative to the root joint pose for the case root-mid or mid-end have more than 1 joints.
-			mid_joint.solver_info->current_lrest = p_skeleton->get_bone_global_rest(root_joint.bone).basis.get_rotation_quaternion().inverse() * p_skeleton->get_bone_global_rest(mid_joint.bone).basis.get_rotation_quaternion();
-			mid_joint.solver_info->current_grest = root_gpose * mid_joint.solver_info->current_lrest;
-			mid_joint.solver_info->current_grest.normalize();
+			mid_joint_solver_info->current_lrest = p_skeleton->get_bone_global_rest(root_bone.bone).basis.get_rotation_quaternion().inverse() * p_skeleton->get_bone_global_rest(middle_bone.bone).basis.get_rotation_quaternion();
+			mid_joint_solver_info->current_grest = root_gpose * mid_joint_solver_info->current_lrest;
+			mid_joint_solver_info->current_grest.normalize();
 
-			from = mid_joint.solver_info->forward_vector;
-			to = mid_joint.solver_info->current_grest.xform_inv(mid_joint.solver_info->current_vector).normalized();
-			mid_joint.solver_info->current_lpose = mid_joint.solver_info->current_lrest * get_swing(Quaternion(from, to), from);
+			from = mid_joint_solver_info->forward_vector;
+			to = mid_joint_solver_info->current_grest.xform_inv(mid_joint_solver_info->current_vector).normalized();
+			mid_joint_solver_info->current_lpose = mid_joint_solver_info->current_lrest * get_swing(Quaternion(from, to), from);
 
-			mid_joint.solver_info->current_gpose = root_gpose * mid_joint.solver_info->current_lpose;
-			mid_joint.solver_info->current_gpose.normalize();
+			mid_joint_solver_info->current_gpose = root_gpose * mid_joint_solver_info->current_lpose;
+			mid_joint_solver_info->current_gpose.normalize();
 
 			bool is_knuckle_defined = knuckle_direction != SECONDARY_DIRECTION_NONE && (knuckle_direction != SECONDARY_DIRECTION_CUSTOM || !knuckle_direction_vector.is_zero_approx());
 			// Fix roll to align knuckle vector to plane.
@@ -196,8 +190,8 @@ public:
 				if (pole_dir.is_zero_approx()) {
 					return;
 				}
-				Vector3 a = mid_joint.solver_info->current_vector.normalized(); // Global roll axis (mid forward in current pose).
-				Vector3 k = mid_joint.solver_info->current_gpose.xform(get_knuckle_direction_vector()).normalized(); // Global knuckle vector.
+				Vector3 a = mid_joint_solver_info->current_vector.normalized(); // Global roll axis (mid forward in current pose).
+				Vector3 k = mid_joint_solver_info->current_gpose.xform(get_knuckle_direction_vector()).normalized(); // Global knuckle vector.
 				Vector3 n = pole_dir.cross((mid_pos - root_pos).normalized()).normalized(); // Global plane normal.
 
 				// Guard: degenerate cases (zero or already parallel)
@@ -227,23 +221,23 @@ public:
 				real_t s2 = pole_proj.is_zero_approx() ? Math::abs(t2) : k2p.dot(pole_proj);
 
 				real_t t = s1 >= s2 ? t1 : t2;
-				root_roll_rot = Quaternion(root_joint.solver_info->forward_vector, t);
-				mid_roll_rot = Quaternion(mid_joint.solver_info->forward_vector, t);
+				root_roll_rot = Quaternion(root_joint_solver_info->forward_vector, t);
+				mid_roll_rot = Quaternion(mid_joint_solver_info->forward_vector, t);
 
-				root_joint.solver_info->current_lpose = root_joint.solver_info->current_lpose * root_roll_rot;
-				root_joint.solver_info->current_gpose = parent_gpose * root_joint.solver_info->current_lpose;
-				root_joint.solver_info->current_gpose.normalize();
-				root_gpose = root_joint.solver_info->current_gpose;
+				root_joint_solver_info->current_lpose = root_joint_solver_info->current_lpose * root_roll_rot;
+				root_joint_solver_info->current_gpose = parent_gpose * root_joint_solver_info->current_lpose;
+				root_joint_solver_info->current_gpose.normalize();
+				root_gpose = root_joint_solver_info->current_gpose;
 
-				mid_joint.solver_info->current_lpose = root_roll_rot.inverse() * mid_joint.solver_info->current_lpose * mid_roll_rot;
-				mid_joint.solver_info->current_gpose = root_gpose * mid_joint.solver_info->current_lpose;
-				mid_joint.solver_info->current_gpose.normalize();
+				mid_joint_solver_info->current_lpose = root_roll_rot.inverse() * mid_joint_solver_info->current_lpose * mid_roll_rot;
+				mid_joint_solver_info->current_gpose = root_gpose * mid_joint_solver_info->current_lpose;
+				mid_joint_solver_info->current_gpose.normalize();
 			}
 		}
 	};
 
 protected:
-	Vector<TwoBoneIK3DSetting *> tb_settings;
+	LocalVector<TwoBoneIK3DSetting *> tb_settings;
 
 	bool _get(const StringName &p_path, Variant &r_ret) const;
 	bool _set(const StringName &p_path, const Variant &p_value);

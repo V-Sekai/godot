@@ -32,8 +32,6 @@
 
 #include "editor/settings/editor_settings.h"
 
-// SpringBoneSimulator3D
-
 ChainIK3DGizmoPlugin::SelectionMaterials ChainIK3DGizmoPlugin::selection_materials;
 
 ChainIK3DGizmoPlugin::ChainIK3DGizmoPlugin() {
@@ -108,6 +106,8 @@ Ref<ArrayMesh> ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, Cha
 	static const Color limitation_x_axis_color = Color(1, 0, 0, 1);
 	static const Color limitation_z_axis_color = Color(0, 0, 1, 1);
 
+	IterateIK3D *it_ik = Object::cast_to<IterateIK3D>(p_ik);
+
 	Ref<SurfaceTool> surface_tool;
 	surface_tool.instantiate();
 	surface_tool->begin(Mesh::PRIMITIVE_LINES);
@@ -141,40 +141,42 @@ Ref<ArrayMesh> ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, Cha
 				Transform3D parent_global_pose = p_skeleton->get_bone_global_rest(prev_bone);
 				draw_line(surface_tool, parent_global_pose.origin, global_pose.origin, bone_color);
 
-				// Draw rotation axis vector if not ROTATION_AXIS_ALL.
-				if (j != joint_end || (j == joint_end && is_extended)) {
-					SkeletonModifier3D::RotationAxis rotation_axis = p_ik->get_joint_rotation_axis(i, j);
-					if (rotation_axis != SkeletonModifier3D::ROTATION_AXIS_ALL) {
-						Vector3 axis_vector = p_ik->get_joint_rotation_axis_vector(i, j);
-						if (!axis_vector.is_zero_approx()) {
-							float rot_axis_length = (global_pose.origin - parent_global_pose.origin).length() * 0.2; // Use 20% of the bone length for the rotation axis vector.
-							Vector3 axis = global_pose.basis.xform(axis_vector.normalized()) * rot_axis_length;
-							draw_line(surface_tool, global_pose.origin - axis, global_pose.origin + axis, bone_color);
+				if (it_ik) {
+					// Draw rotation axis vector if not ROTATION_AXIS_ALL.
+					if (j != joint_end || (j == joint_end && is_extended)) {
+						SkeletonModifier3D::RotationAxis rotation_axis = it_ik->get_joint_rotation_axis(i, j);
+						if (rotation_axis != SkeletonModifier3D::ROTATION_AXIS_ALL) {
+							Vector3 axis_vector = it_ik->get_joint_rotation_axis_vector(i, j);
+							if (!axis_vector.is_zero_approx()) {
+								float rot_axis_length = (global_pose.origin - parent_global_pose.origin).length() * 0.2; // Use 20% of the bone length for the rotation axis vector.
+								Vector3 axis = global_pose.basis.xform(axis_vector.normalized()) * rot_axis_length;
+								draw_line(surface_tool, global_pose.origin - axis, global_pose.origin + axis, bone_color);
+							}
 						}
 					}
-				}
 
-				// Draw parent limitation shape.
-				int prev_joint = j - 1;
-				Ref<JointLimitation3D> lim = p_ik->get_joint_limitation(i, prev_joint);
-				if (lim.is_valid()) {
-					// Limitation space should bind parent bone rest.
-					if (prev_bone >= 0) {
-						int parent = p_skeleton->get_bone_parent(prev_bone);
-						if (parent >= 0) {
-							bones[0] = parent;
-							surface_tool->set_bones(bones);
-							surface_tool->set_weights(weights);
+					// Draw parent limitation shape.
+					int prev_joint = j - 1;
+					Ref<JointLimitation3D> lim = it_ik->get_joint_limitation(i, prev_joint);
+					if (lim.is_valid()) {
+						// Limitation space should bind parent bone rest.
+						if (prev_bone >= 0) {
+							int parent = p_skeleton->get_bone_parent(prev_bone);
+							if (parent >= 0) {
+								bones[0] = parent;
+								surface_tool->set_bones(bones);
+								surface_tool->set_weights(weights);
+							}
 						}
+						Transform3D tr = parent_global_pose;
+						Vector3 forward = p_skeleton->get_bone_rest(current_bone).origin;
+						tr.basis *= it_ik->get_joint_limitation_space(i, prev_joint, forward);
+						lim->draw_shape(surface_tool, tr, forward.length(), bone_color);
+						Vector3 x_axis = tr.basis.get_column(Vector3::AXIS_X).normalized() * forward.length() * 0.1;
+						Vector3 z_axis = tr.basis.get_column(Vector3::AXIS_Z).normalized() * forward.length() * 0.1;
+						draw_line(surface_tool, tr.origin + x_axis * 2, tr.origin + x_axis * 3, limitation_x_axis_color); // Offset 20%.
+						draw_line(surface_tool, tr.origin + z_axis * 2, tr.origin + z_axis * 3, limitation_z_axis_color); // Offset 20%.
 					}
-					Transform3D tr = parent_global_pose;
-					Vector3 forward = p_skeleton->get_bone_rest(current_bone).origin;
-					tr.basis *= p_ik->get_joint_limitation_space(i, prev_joint, forward);
-					lim->draw_shape(surface_tool, tr, forward.length(), bone_color);
-					Vector3 x_axis = tr.basis.get_column(Vector3::AXIS_X).normalized() * forward.length() * 0.1;
-					Vector3 z_axis = tr.basis.get_column(Vector3::AXIS_Z).normalized() * forward.length() * 0.1;
-					draw_line(surface_tool, tr.origin + x_axis * 2, tr.origin + x_axis * 3, limitation_x_axis_color); // Offset 20%.
-					draw_line(surface_tool, tr.origin + z_axis * 2, tr.origin + z_axis * 3, limitation_z_axis_color); // Offset 20%.
 				}
 			}
 			if (j == joint_end && is_extended) {
@@ -188,26 +190,28 @@ Ref<ArrayMesh> ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, Cha
 				float length = p_ik->get_end_bone_length(i);
 				axis = global_pose.xform(axis * length);
 				draw_line(surface_tool, global_pose.origin, axis, bone_color);
-				// Draw limitation shape.
-				Ref<JointLimitation3D> lim = p_ik->get_joint_limitation(i, j);
-				if (lim.is_valid()) {
-					// Limitation space should bind parent bone rest.
-					if (current_bone >= 0) {
-						int parent = p_skeleton->get_bone_parent(current_bone);
-						if (parent >= 0) {
-							bones[0] = parent;
-							surface_tool->set_bones(bones);
-							surface_tool->set_weights(weights);
+				if (it_ik) {
+					// Draw limitation shape.
+					Ref<JointLimitation3D> lim = it_ik->get_joint_limitation(i, j);
+					if (lim.is_valid()) {
+						// Limitation space should bind parent bone rest.
+						if (current_bone >= 0) {
+							int parent = p_skeleton->get_bone_parent(current_bone);
+							if (parent >= 0) {
+								bones[0] = parent;
+								surface_tool->set_bones(bones);
+								surface_tool->set_weights(weights);
+							}
 						}
+						Vector3 forward = it_ik->get_bone_axis(current_bone, it_ik->get_end_bone_direction(i));
+						Transform3D tr = global_pose;
+						tr.basis *= it_ik->get_joint_limitation_space(i, j, forward);
+						lim->draw_shape(surface_tool, tr, length, bone_color);
+						Vector3 x_axis = tr.basis.get_column(Vector3::AXIS_X).normalized() * length * 0.1;
+						Vector3 z_axis = tr.basis.get_column(Vector3::AXIS_Z).normalized() * length * 0.1;
+						draw_line(surface_tool, tr.origin + x_axis * 2, tr.origin + x_axis * 3, limitation_x_axis_color); // Offset 20%.
+						draw_line(surface_tool, tr.origin + z_axis * 2, tr.origin + z_axis * 3, limitation_z_axis_color); // Offset 20%.
 					}
-					Vector3 forward = p_ik->get_bone_axis(current_bone, p_ik->get_end_bone_direction(i));
-					Transform3D tr = global_pose;
-					tr.basis *= p_ik->get_joint_limitation_space(i, j, forward);
-					lim->draw_shape(surface_tool, tr, length, bone_color);
-					Vector3 x_axis = tr.basis.get_column(Vector3::AXIS_X).normalized() * length * 0.1;
-					Vector3 z_axis = tr.basis.get_column(Vector3::AXIS_Z).normalized() * length * 0.1;
-					draw_line(surface_tool, tr.origin + x_axis * 2, tr.origin + x_axis * 3, limitation_x_axis_color); // Offset 20%.
-					draw_line(surface_tool, tr.origin + z_axis * 2, tr.origin + z_axis * 3, limitation_z_axis_color); // Offset 20%.
 				}
 			} else {
 				bones[0] = current_bone;
@@ -219,15 +223,17 @@ Ref<ArrayMesh> ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, Cha
 					if (count < 2) {
 						continue;
 					}
-					// Draw rotation axis vector if not ROTATION_AXIS_ALL.
-					SkeletonModifier3D::RotationAxis rotation_axis = p_ik->get_joint_rotation_axis(i, j);
-					if (rotation_axis != SkeletonModifier3D::ROTATION_AXIS_ALL) {
-						Vector3 axis_vector = p_ik->get_joint_rotation_axis_vector(i, j);
-						if (!axis_vector.is_zero_approx()) {
-							Transform3D next_bone_global_pose = p_skeleton->get_bone_global_rest(p_ik->get_joint_bone(i, 1));
-							float rot_axis_length = (next_bone_global_pose.origin - global_pose.origin).length() * 0.2; // Use 20% of the bone length for the rotation axis vector.
-							Vector3 axis = global_pose.basis.xform(axis_vector.normalized()) * rot_axis_length;
-							draw_line(surface_tool, global_pose.origin - axis, global_pose.origin + axis, bone_color);
+					if (it_ik) {
+						// Draw rotation axis vector if not ROTATION_AXIS_ALL.
+						SkeletonModifier3D::RotationAxis rotation_axis = it_ik->get_joint_rotation_axis(i, j);
+						if (rotation_axis != SkeletonModifier3D::ROTATION_AXIS_ALL) {
+							Vector3 axis_vector = it_ik->get_joint_rotation_axis_vector(i, j);
+							if (!axis_vector.is_zero_approx()) {
+								Transform3D next_bone_global_pose = p_skeleton->get_bone_global_rest(it_ik->get_joint_bone(i, 1));
+								float rot_axis_length = (next_bone_global_pose.origin - global_pose.origin).length() * 0.2; // Use 20% of the bone length for the rotation axis vector.
+								Vector3 axis = global_pose.basis.xform(axis_vector.normalized()) * rot_axis_length;
+								draw_line(surface_tool, global_pose.origin - axis, global_pose.origin + axis, bone_color);
+							}
 						}
 					}
 				}

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  jacob_ik_3d.h                                                         */
+/*  jacobian_ik_3d.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -32,9 +32,9 @@
 
 #include "scene/3d/iterate_ik_3d.h"
 
-class JacobIK3D : public IterateIK3D {
-	GDCLASS(JacobIK3D, IterateIK3D);
+class JacobianIK3D : public IterateIK3D {
+	GDCLASS(JacobianIK3D, IterateIK3D);
 
 protected:
-	virtual void _solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) override;
+	virtual void _solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination, int p_joint_size, int p_chain_size) override;
 };

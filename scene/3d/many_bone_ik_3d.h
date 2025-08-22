@@ -32,8 +32,6 @@
 
 #include "scene/3d/skeleton_modifier_3d.h"
 
-#include "scene/resources/3d/joint_limitation_3d.h"
-
 class ManyBoneIK3D : public SkeletonModifier3D {
 	GDCLASS(ManyBoneIK3D, SkeletonModifier3D);
 
@@ -42,9 +40,15 @@ protected:
 	bool saving = false;
 #endif //TOOLS_ENABLED
 
+	Transform3D cached_space;
 	bool joints_dirty = false;
 
 public:
+	struct BoneJoint {
+		StringName name;
+		int bone = -1;
+	};
+
 	struct ManyBoneIK3DSolverInfo {
 		Quaternion current_lpose;
 		Quaternion current_lrest;
@@ -53,60 +57,15 @@ public:
 		Vector3 current_vector; // Global so needs xfrom_inv by gpose or grest in the process.
 		Vector3 forward_vector; // Local.
 		float length = 0.0;
-
-		Quaternion get_current_relative_pose() {
-			return (current_lrest.inverse() * current_lpose).normalized();
-		}
-	};
-
-	struct ManyBoneIK3DJointSetting {
-		String bone_name;
-		int bone = -1;
-
-		// Rotation axis.
-		RotationAxis rotation_axis = ROTATION_AXIS_ALL;
-		Vector3 rotation_axis_vector = Vector3(1, 0, 0);
-		Vector3 get_rotation_axis_vector() const {
-			Vector3 ret;
-			switch (rotation_axis) {
-				case ROTATION_AXIS_X:
-					ret = Vector3(1, 0, 0);
-					break;
-				case ROTATION_AXIS_Y:
-					ret = Vector3(0, 1, 0);
-					break;
-				case ROTATION_AXIS_Z:
-					ret = Vector3(0, 0, 1);
-					break;
-				case ROTATION_AXIS_ALL:
-					ret = Vector3(0, 0, 0);
-					break;
-				case ROTATION_AXIS_CUSTOM:
-					ret = rotation_axis_vector;
-					break;
-			}
-			return ret;
-		}
-
-		// To process.
-		ManyBoneIK3DSolverInfo *solver_info = nullptr;
-
-		~ManyBoneIK3DJointSetting() {
-			if (solver_info) {
-				memdelete(solver_info);
-				solver_info = nullptr;
-			}
-		}
 	};
 
 	struct ManyBoneIK3DSetting {
 		bool simulation_dirty = true;
-		Transform3D cached_space;
 		bool joints_dirty = false;
 	};
 
 protected:
-	Vector<ManyBoneIK3DSetting *> settings;
+	LocalVector<ManyBoneIK3DSetting *> settings;
 
 	void _notification(int p_what);
 	static void _bind_methods();
@@ -136,15 +95,15 @@ protected:
 		delta++;
 		if (delta > 1) {
 			for (int i = 1; i < delta; i++) {
-				settings.write[p_count - i] = memnew(T);
+				settings[p_count - i] = memnew(T);
 			}
 		}
 		notify_property_list_changed();
 	}
 	template <typename T>
-	Vector<T *> _cast_settings() const {
-		Vector<T *> result;
-		for (int i = 0; i < settings.size(); i++) {
+	LocalVector<T *> _cast_settings() const {
+		LocalVector<T *> result;
+		for (uint32_t i = 0; i < settings.size(); i++) {
 			result.push_back(static_cast<T *>(settings[i]));
 		}
 		return result;

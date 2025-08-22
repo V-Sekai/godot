@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="SplineIK3D" inherits="ChainIK3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		A [SkeletonModifier3D] for aligning bones on [Path3D].
+	</brief_description>
+	<description>
+		A [SkeletonModifier3D] for aligning bones on [Path3D].
+		If the root bone joint and the starting point of [Path3D] are apart, it assumes that there is a linear line segment between them.
+		If you want [Path3D] to attach a specific bone, it is recommended to place [ModifierBoneTarget3D] before [SplineIK3D] in the [SkeletonModifier3D] list (children of the [Skeleton3D]), and then place [Path3D] as [ModifierBoneTarget3D]'s child.
+		Bone twist is determined based on the [method Curve3D.get_point_tilt].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_end_vector" qualifiers="const">
+			<return type="int" enum="SplineIK3D.EndVector" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns how to handle the remaining bones when the path is not closed and the length of the bone chain is longer than the path.
+			</description>
+		</method>
+		<method name="get_path_3d" qualifiers="const">
+			<return type="NodePath" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the node path of the [Path3D] which is describing the path.
+			</description>
+		</method>
+		<method name="is_tilt_enabled" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the tilt property of [Curve3D] takes effect to the bone twist.
+			</description>
+		</method>
+		<method name="set_end_vector">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="end_vector" type="int" enum="SplineIK3D.EndVector" />
+			<description>
+				Sets how to handle the remaining bones when the path is not closed and the length of the bone chain is longer than the path.
+			</description>
+		</method>
+		<method name="set_path_3d">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="path_3d" type="NodePath" />
+			<description>
+				Sets the node path of the [Path3D] which is describing the path.
+			</description>
+		</method>
+		<method name="set_tilt_enabled">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+				Sets the tilt property of [Curve3D] takes effect to the bone twist.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="setting_count" type="int" setter="set_setting_count" getter="get_setting_count" default="0">
+			The number of the settings.
+		</member>
+	</members>
+	<constants>
+		<constant name="END_VECTOR_NONE" value="0" enum="EndVector">
+			The remaining bones are not processed and keep at the pose values they had before [Curve3D] was processed.
+		</constant>
+		<constant name="END_VECTOR_TANGENT" value="1" enum="EndVector">
+			Extends a straight line in the tangent direction from the end point to the end point.
+		</constant>
+		<constant name="END_VECTOR_FROM_PARENT" value="2" enum="EndVector">
+			Extends a straight line in the forward vector direction from the parent of the most processed child bone in the bone chain.
+		</constant>
+	</constants>
+</class>

@@ -30,12 +30,12 @@
 
 #include "ccd_ik_3d.h"
 
-void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, Vector<ChainIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
+void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
 	// Backwards.
 	for (int ancestor = p_joint_size - 1; ancestor >= 0; ancestor--) {
 		// Forwards.
 		for (int i = ancestor; i < p_joint_size; i++) {
-			ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
+			ManyBoneIK3DSolverInfo *solver_info = p_setting->solver_info_list[i];
 			if (!solver_info || Math::is_zero_approx(solver_info->length)) {
 				continue;
 			}
@@ -43,8 +43,8 @@ void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 			int HEAD = i;
 			int TAIL = i + 1;
 
-			Vector3 current_head = p_chain[HEAD];
-			Vector3 current_effector = p_chain[p_chain_size - 1];
+			Vector3 current_head = p_setting->chain[HEAD];
+			Vector3 current_effector = p_setting->chain[p_chain_size - 1];
 			Vector3 head_to_effector = current_effector - current_head;
 			Vector3 head_to_destination = p_destination - current_head;
 
@@ -53,15 +53,15 @@ void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 			}
 
 			Quaternion to_rot = Quaternion(head_to_effector.normalized(), head_to_destination.normalized());
-			Vector3 to_tail = p_chain[TAIL] - current_head;
+			Vector3 to_tail = p_setting->chain[TAIL] - current_head;
 
 			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, current_head + to_rot.xform(to_tail));
 
-			if (p_joints[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_chain[HEAD] + p_joints[HEAD]->get_projected_rotation(solver_info->current_grest, p_chain[TAIL] - p_chain[HEAD]));
+			if (p_setting->joint_settings[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_projected_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD]));
 			}
-			if (p_joints[HEAD]->limitation.is_valid()) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_chain[HEAD] + p_joints[HEAD]->get_limited_rotation(solver_info->current_grest, p_chain[TAIL] - p_chain[HEAD]));
+			if (p_setting->joint_settings[HEAD]->limitation.is_valid()) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_limited_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD], solver_info->forward_vector));
 			}
 		}
 	}

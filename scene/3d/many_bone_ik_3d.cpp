@@ -140,7 +140,7 @@ void ManyBoneIK3D::reset() {
 	if (!skeleton) {
 		return;
 	}
-	for (int i = 0; i < settings.size(); i++) {
+	for (uint32_t  i = 0; i < settings.size(); i++) {
 		settings[i]->simulation_dirty = true;
 		_init_joints(skeleton, i);
 	}
