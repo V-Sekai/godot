@@ -110,7 +110,7 @@ public:
 			}
 			cur_head = p_index;
 			cur_tail = p_index + 1;
-			if (cur_tail < chain.size()) {
+			if (cur_tail < (int)chain.size()) {
 				solver_info_list[cur_head]->current_vector = (chain[cur_tail] - chain[cur_head]).normalized();
 			}
 		}
