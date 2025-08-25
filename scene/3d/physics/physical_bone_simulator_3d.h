@@ -101,5 +101,8 @@ public:
 	void physical_bones_add_collision_exception(RID p_exception);
 	void physical_bones_remove_collision_exception(RID p_exception);
 
+	void cleanup_physical_bones();
+
 	PhysicalBoneSimulator3D();
+	~PhysicalBoneSimulator3D();
 };

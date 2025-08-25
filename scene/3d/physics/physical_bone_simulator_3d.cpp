@@ -138,7 +138,13 @@ bool PhysicalBoneSimulator3D::is_bone_parent_of(int p_bone, int p_parent_bone_id
 void PhysicalBoneSimulator3D::bind_physical_bone_to_bone(int p_bone, PhysicalBone3D *p_physical_bone) {
 	const int bone_size = bones.size();
 	ERR_FAIL_INDEX(p_bone, bone_size);
-	ERR_FAIL_COND(bones[p_bone].physical_bone);
+
+	// Clean up existing bone first
+	if (bones[p_bone].physical_bone) {
+		memdelete(bones[p_bone].physical_bone);
+		bones.write[p_bone].physical_bone = nullptr;
+	}
+
 	ERR_FAIL_NULL(p_physical_bone);
 	bones[p_bone].physical_bone = p_physical_bone;
 
@@ -392,5 +398,25 @@ void PhysicalBoneSimulator3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("physical_bones_remove_collision_exception", "exception"), &PhysicalBoneSimulator3D::physical_bones_remove_collision_exception);
 }
 
+void PhysicalBoneSimulator3D::cleanup_physical_bones() {
+	for (int i = 0; i < bones.size(); ++i) {
+		if (bones[i].physical_bone) {
+			memdelete(bones[i].physical_bone);
+			bones.write[i].physical_bone = nullptr;
+		}
+	}
+	_rebuild_physical_bones_cache();
+}
+
 PhysicalBoneSimulator3D::PhysicalBoneSimulator3D() {
+}
+
+PhysicalBoneSimulator3D::~PhysicalBoneSimulator3D() {
+	for (int i = 0; i < bones.size(); ++i) {
+		if (bones[i].physical_bone) {
+			memdelete(bones[i].physical_bone);
+			bones.write[i].physical_bone = nullptr;
+		}
+	}
+	bones.clear();
 }
