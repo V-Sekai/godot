@@ -10,7 +10,7 @@ def can_build(env, platform):
     if env.get("module_mono_enabled", False):
         print("Sandbox module cannot be built with Mono enabled.")
         return False
-    if env["platform"] == "web" and env.get("disable_exceptions", True):
+    if env["platform"] == "web" and not env.get("disable_exceptions", True):
         print("Sandbox module cannot be built for web with exceptions enabled.")
         return False
     # All platforms minus windows without mingw
