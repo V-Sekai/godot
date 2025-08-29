@@ -102,4 +102,17 @@ public:
 	void _import_animation(Ref<FBXState> p_state, AnimationPlayer *p_animation_player,
 			const GLTFAnimationIndex p_index, const bool p_trimming, const bool p_remove_immutable_tracks);
 	Error _parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> p_file);
+	Error _convert_scene_node(Node *p_node, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_parent_node, Ref<GLTFState> p_state);
+	
+	// Mesh conversion methods
+	Error _convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instance, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_node, Ref<GLTFState> p_state);
+	void _convert_mesh_instance_to_fbx(MeshInstance3D *p_scene_parent, Ref<GLTFState> p_state, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_fbx_node);
+	GLTFMeshIndex _convert_mesh_to_fbx(Ref<GLTFState> p_state, MeshInstance3D *p_mesh_instance, struct ufbx_export_scene *p_export_scene);
+	
+	// Material and texture conversion methods
+	Error _convert_material(Ref<Material> p_material, struct ufbx_export_scene *p_export_scene, struct ufbx_mesh *p_mesh, int p_surface_idx, Ref<GLTFState> p_state);
+	Error _convert_texture(Ref<Texture2D> p_texture, struct ufbx_export_scene *p_export_scene, struct ufbx_material *p_material, const String &p_texture_type, Ref<GLTFState> p_state);
+	
+	// Utility methods
+	Ref<ImporterMesh> _mesh_to_importer_mesh(Ref<Mesh> p_mesh);
 };

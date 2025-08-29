@@ -62,6 +62,7 @@
 #define FBX_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
 
 #include <ufbx.h>
+#include "../../thirdparty/ufbx/ufbx_export.h"
 
 static size_t _file_access_read_fn(void *user, void *data, size_t size) {
 	FileAccess *file = static_cast<FileAccess *>(user);
@@ -2483,15 +2484,75 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 }
 
 PackedByteArray FBXDocument::generate_buffer(Ref<GLTFState> p_state) {
-	return PackedByteArray();
+	ERR_FAIL_COND_V(p_state.is_null(), PackedByteArray());
+	
+	Ref<FBXState> fbx_state = p_state;
+	ERR_FAIL_COND_V(fbx_state.is_null(), PackedByteArray());
+	ERR_FAIL_COND_V(fbx_state->export_scene == nullptr, PackedByteArray());
+
+	// Get required buffer size
+	ufbx_error error;
+	size_t buffer_size = ufbx_get_export_size(fbx_state->export_scene, nullptr, &error);
+	if (error.type != UFBX_ERROR_NONE) {
+		ERR_PRINT("FBX Export: Failed to get export size: " + String(error.description));
+		return PackedByteArray();
+	}
+
+	// Allocate buffer
+	PackedByteArray buffer;
+	buffer.resize(buffer_size);
+
+	// Export to memory buffer
+	size_t written = ufbx_export_to_memory(fbx_state->export_scene, buffer.ptrw(), buffer_size, nullptr, &error);
+	if (error.type != UFBX_ERROR_NONE || written != buffer_size) {
+		ERR_PRINT("FBX Export: Failed to export scene to memory buffer: " + String(error.description));
+		return PackedByteArray();
+	}
+
+	return buffer;
 }
 
 Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) {
-	return ERR_UNAVAILABLE;
+	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(p_path.is_empty(), ERR_INVALID_PARAMETER);
+	
+	Ref<FBXState> fbx_state = p_state;
+	ERR_FAIL_COND_V(fbx_state.is_null(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(fbx_state->export_scene == nullptr, ERR_INVALID_DATA);
+
+	// Export directly to file
+	ufbx_error error;
+	bool success = ufbx_export_to_file(fbx_state->export_scene, p_path.utf8().get_data(), nullptr, &error);
+	if (!success) {
+		ERR_PRINT("FBX Export: Failed to export scene to file: " + p_path + " - " + String(error.description));
+		return ERR_FILE_CANT_WRITE;
+	}
+
+	return OK;
 }
 
 Error FBXDocument::append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint32_t p_flags) {
-	return ERR_UNAVAILABLE;
+	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
+
+	// Create export scene
+	ufbx_export_scene *export_scene = ufbx_create_scene(nullptr);
+	ERR_FAIL_NULL_V(export_scene, ERR_OUT_OF_MEMORY);
+
+	// Convert Godot scene hierarchy to ufbx scene
+	Error err = _convert_scene_node(p_node, export_scene, nullptr, p_state);
+	if (err != OK) {
+		ufbx_free_export_scene(export_scene);
+		return err;
+	}
+
+	// Store the export scene in state for later use
+	Ref<FBXState> fbx_state = p_state;
+	if (fbx_state.is_valid()) {
+		fbx_state->export_scene = export_scene;
+	}
+
+	return OK;
 }
 
 void FBXDocument::set_naming_version(int p_version) {
@@ -2517,4 +2578,296 @@ Transform3D FBXDocument::_as_xform(const ufbx_matrix &p_mat) {
 	xform.basis.set_column(Vector3::AXIS_Z, _as_vec3(p_mat.cols[2]));
 	xform.set_origin(_as_vec3(p_mat.cols[3]));
 	return xform;
+}
+
+Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instance, ufbx_export_scene *p_export_scene, ufbx_node *p_node, Ref<GLTFState> p_state) {
+	ERR_FAIL_NULL_V(p_mesh_instance, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
+
+	Ref<ImporterMesh> importer_mesh = p_mesh_instance->get_mesh();
+	ERR_FAIL_COND_V(importer_mesh.is_null(), ERR_INVALID_DATA);
+
+	// Create ufbx mesh
+	ufbx_mesh *fbx_mesh = ufbx_add_mesh(p_export_scene, p_mesh_instance->get_name().utf8().get_data());
+	ERR_FAIL_NULL_V(fbx_mesh, ERR_OUT_OF_MEMORY);
+
+	// Attach mesh to node
+	ufbx_error error;
+	ufbx_attach_mesh_to_node(p_node, fbx_mesh, &error);
+	if (error.type != UFBX_ERROR_NONE) {
+		ERR_PRINT("FBX Export: Failed to attach mesh to node: " + String(error.description));
+		return ERR_INVALID_DATA;
+	}
+
+	// Process each surface of the mesh
+	for (int surface_idx = 0; surface_idx < importer_mesh->get_surface_count(); surface_idx++) {
+		Array surface_arrays = importer_mesh->surface_get_arrays(surface_idx);
+		ERR_CONTINUE(surface_arrays.size() != Mesh::ARRAY_MAX);
+
+		// Get vertex data
+		PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+		PackedVector3Array normals = surface_arrays[Mesh::ARRAY_NORMAL];
+		PackedVector2Array uvs = surface_arrays[Mesh::ARRAY_TEX_UV];
+		PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
+
+		if (vertices.is_empty()) {
+			continue;
+		}
+
+		// Convert vertices to ufbx format
+		Vector<ufbx_vec3> ufbx_vertices;
+		ufbx_vertices.resize(vertices.size());
+		for (int i = 0; i < vertices.size(); i++) {
+			Vector3 v = vertices[i];
+			ufbx_vertices.write[i] = { v.x, v.y, v.z };
+		}
+
+		// Set mesh vertices
+		ufbx_set_mesh_vertices(fbx_mesh, ufbx_vertices.ptr(), ufbx_vertices.size(), &error);
+		if (error.type != UFBX_ERROR_NONE) {
+			ERR_PRINT("FBX Export: Failed to set mesh vertices: " + String(error.description));
+			continue;
+		}
+
+		// Convert normals if available
+		if (!normals.is_empty()) {
+			Vector<ufbx_vec3> ufbx_normals;
+			ufbx_normals.resize(normals.size());
+			for (int i = 0; i < normals.size(); i++) {
+				Vector3 n = normals[i];
+				ufbx_normals.write[i] = { n.x, n.y, n.z };
+			}
+			ufbx_set_mesh_normals(fbx_mesh, ufbx_normals.ptr(), ufbx_normals.size(), &error);
+			if (error.type != UFBX_ERROR_NONE) {
+				ERR_PRINT("FBX Export: Failed to set mesh normals: " + String(error.description));
+			}
+		}
+
+		// Convert UVs if available
+		if (!uvs.is_empty()) {
+			Vector<ufbx_vec2> ufbx_uvs;
+			ufbx_uvs.resize(uvs.size());
+			for (int i = 0; i < uvs.size(); i++) {
+				Vector2 uv = uvs[i];
+				// Flip V coordinate for FBX format
+				ufbx_uvs.write[i] = { uv.x, 1.0f - uv.y };
+			}
+			ufbx_set_mesh_uvs(fbx_mesh, ufbx_uvs.ptr(), ufbx_uvs.size(), &error);
+			if (error.type != UFBX_ERROR_NONE) {
+				ERR_PRINT("FBX Export: Failed to set mesh UVs: " + String(error.description));
+			}
+		}
+
+		// Convert indices if available
+		if (!indices.is_empty()) {
+			Vector<uint32_t> ufbx_indices;
+			ufbx_indices.resize(indices.size());
+			for (int i = 0; i < indices.size(); i++) {
+				ufbx_indices.write[i] = indices[i];
+			}
+			ufbx_set_mesh_indices(fbx_mesh, ufbx_indices.ptr(), ufbx_indices.size(), &error);
+			if (error.type != UFBX_ERROR_NONE) {
+				ERR_PRINT("FBX Export: Failed to set mesh indices: " + String(error.description));
+			}
+		}
+
+		// Handle material if available
+		Ref<Material> material = importer_mesh->surface_get_material(surface_idx);
+		if (material.is_valid()) {
+			Error mat_err = _convert_material(material, p_export_scene, fbx_mesh, surface_idx, p_state);
+			if (mat_err != OK) {
+				ERR_PRINT("FBX Export: Failed to convert material for surface " + itos(surface_idx));
+			}
+		}
+	}
+
+	return OK;
+}
+
+Error FBXDocument::_convert_material(Ref<Material> p_material, ufbx_export_scene *p_export_scene, ufbx_mesh *p_mesh, int p_surface_idx, Ref<GLTFState> p_state) {
+	ERR_FAIL_COND_V(p_material.is_null(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_mesh, ERR_INVALID_PARAMETER);
+
+	// Create ufbx material
+	String material_name = p_material->get_name();
+	if (material_name.is_empty()) {
+		material_name = "Material_" + itos(p_surface_idx);
+	}
+
+	ufbx_material *fbx_material = ufbx_add_material(p_export_scene, material_name.utf8().get_data());
+	ERR_FAIL_NULL_V(fbx_material, ERR_OUT_OF_MEMORY);
+
+	// Convert BaseMaterial3D properties
+	Ref<BaseMaterial3D> base_material = p_material;
+	if (base_material.is_valid()) {
+		ufbx_error error;
+
+		// Set albedo color
+		Color albedo = base_material->get_albedo();
+		ufbx_set_material_albedo(fbx_material, albedo.r, albedo.g, albedo.b, albedo.a, &error);
+		if (error.type != UFBX_ERROR_NONE) {
+			ERR_PRINT("FBX Export: Failed to set material albedo: " + String(error.description));
+		}
+
+		// Set metallic and roughness
+		float metallic = base_material->get_metallic();
+		float roughness = base_material->get_roughness();
+		ufbx_set_material_metallic_roughness(fbx_material, metallic, roughness, &error);
+		if (error.type != UFBX_ERROR_NONE) {
+			ERR_PRINT("FBX Export: Failed to set material metallic/roughness: " + String(error.description));
+		}
+
+		// Set emission
+		Color emission = base_material->get_emission();
+		float emission_energy = base_material->get_emission_energy_multiplier();
+		ufbx_set_material_emission(fbx_material, emission.r * emission_energy, emission.g * emission_energy, emission.b * emission_energy, &error);
+		if (error.type != UFBX_ERROR_NONE) {
+			ERR_PRINT("FBX Export: Failed to set material emission: " + String(error.description));
+		}
+
+		// Handle textures
+		Ref<Texture2D> albedo_texture = base_material->get_texture(BaseMaterial3D::TEXTURE_ALBEDO);
+		if (albedo_texture.is_valid()) {
+			Error tex_err = _convert_texture(albedo_texture, p_export_scene, fbx_material, "BaseColor", p_state);
+			if (tex_err != OK) {
+				ERR_PRINT("FBX Export: Failed to convert albedo texture");
+			}
+		}
+
+		Ref<Texture2D> normal_texture = base_material->get_texture(BaseMaterial3D::TEXTURE_NORMAL);
+		if (normal_texture.is_valid()) {
+			Error tex_err = _convert_texture(normal_texture, p_export_scene, fbx_material, "NormalMap", p_state);
+			if (tex_err != OK) {
+				ERR_PRINT("FBX Export: Failed to convert normal texture");
+			}
+		}
+
+		Ref<Texture2D> metallic_texture = base_material->get_texture(BaseMaterial3D::TEXTURE_METALLIC);
+		if (metallic_texture.is_valid()) {
+			Error tex_err = _convert_texture(metallic_texture, p_export_scene, fbx_material, "Metallic", p_state);
+			if (tex_err != OK) {
+				ERR_PRINT("FBX Export: Failed to convert metallic texture");
+			}
+		}
+
+		Ref<Texture2D> roughness_texture = base_material->get_texture(BaseMaterial3D::TEXTURE_ROUGHNESS);
+		if (roughness_texture.is_valid()) {
+			Error tex_err = _convert_texture(roughness_texture, p_export_scene, fbx_material, "Roughness", p_state);
+			if (tex_err != OK) {
+				ERR_PRINT("FBX Export: Failed to convert roughness texture");
+			}
+		}
+	}
+
+	// Attach material to mesh surface
+	ufbx_error error;
+	ufbx_attach_material_to_mesh(p_mesh, fbx_material, p_surface_idx, &error);
+	if (error.type != UFBX_ERROR_NONE) {
+		ERR_PRINT("FBX Export: Failed to attach material to mesh: " + String(error.description));
+		return ERR_INVALID_DATA;
+	}
+
+	return OK;
+}
+
+Error FBXDocument::_convert_texture(Ref<Texture2D> p_texture, ufbx_export_scene *p_export_scene, ufbx_material *p_material, const String &p_texture_type, Ref<GLTFState> p_state) {
+	ERR_FAIL_COND_V(p_texture.is_null(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_material, ERR_INVALID_PARAMETER);
+
+	// Get image data from texture
+	Ref<Image> image = p_texture->get_image();
+	ERR_FAIL_COND_V(image.is_null(), ERR_INVALID_DATA);
+
+	// Create texture name
+	String texture_name = p_texture->get_name();
+	if (texture_name.is_empty()) {
+		texture_name = p_texture_type + "_Texture";
+	}
+
+	// Convert image to PNG data for embedding
+	PackedByteArray png_data = image->save_png_to_buffer();
+	ERR_FAIL_COND_V(png_data.is_empty(), ERR_INVALID_DATA);
+
+	// Create ufbx texture
+	ufbx_texture *fbx_texture = ufbx_add_texture(p_export_scene, texture_name.utf8().get_data());
+	ERR_FAIL_NULL_V(fbx_texture, ERR_OUT_OF_MEMORY);
+
+	// Set texture data
+	ufbx_error error;
+	ufbx_set_texture_data(fbx_texture, png_data.ptr(), png_data.size(), "png", &error);
+	if (error.type != UFBX_ERROR_NONE) {
+		ERR_PRINT("FBX Export: Failed to set texture data: " + String(error.description));
+		return ERR_INVALID_DATA;
+	}
+
+	// Attach texture to material
+	ufbx_attach_texture_to_material(p_material, fbx_texture, p_texture_type.utf8().get_data(), &error);
+	if (error.type != UFBX_ERROR_NONE) {
+		ERR_PRINT("FBX Export: Failed to attach texture to material: " + String(error.description));
+		return ERR_INVALID_DATA;
+	}
+
+	return OK;
+}
+
+Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export_scene, ufbx_node *p_parent_node, Ref<GLTFState> p_state) {
+	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
+
+	// Create ufbx node for this Godot node
+	ufbx_node *fbx_node = ufbx_add_node(p_export_scene, p_node->get_name().utf8().get_data(), p_parent_node);
+	ERR_FAIL_NULL_V(fbx_node, ERR_OUT_OF_MEMORY);
+
+	// Set transform
+	Node3D *node_3d = Object::cast_to<Node3D>(p_node);
+	if (node_3d) {
+		Transform3D transform = node_3d->get_transform();
+		
+		// Convert Godot transform to ufbx format
+		ufbx_transform ufbx_xform;
+		ufbx_xform.translation = { transform.origin.x, transform.origin.y, transform.origin.z };
+		Quaternion rotation = transform.basis.get_rotation_quaternion();
+		ufbx_xform.rotation = { rotation.x, rotation.y, rotation.z, rotation.w };
+		Vector3 scale = transform.basis.get_scale();
+		ufbx_xform.scale = { scale.x, scale.y, scale.z };
+		
+		ufbx_error error;
+		ufbx_set_node_transform(fbx_node, &ufbx_xform, &error);
+		if (error.type != UFBX_ERROR_NONE) {
+			ERR_PRINT("FBX Export: Failed to set node transform: " + String(error.description));
+		}
+	}
+
+	// Handle different node types
+	ImporterMeshInstance3D *mesh_instance = Object::cast_to<ImporterMeshInstance3D>(p_node);
+	if (mesh_instance && mesh_instance->get_mesh().is_valid()) {
+		Error err = _convert_mesh_instance(mesh_instance, p_export_scene, fbx_node, p_state);
+		if (err != OK) {
+			ERR_PRINT("FBX Export: Failed to convert mesh instance: " + p_node->get_name());
+		}
+	}
+
+	Camera3D *camera = Object::cast_to<Camera3D>(p_node);
+	if (camera) {
+		// TODO: Convert camera data to ufbx format
+		print_verbose("FBX Export: Found camera: " + p_node->get_name());
+	}
+
+	Light3D *light = Object::cast_to<Light3D>(p_node);
+	if (light) {
+		// TODO: Convert light data to ufbx format
+		print_verbose("FBX Export: Found light: " + p_node->get_name());
+	}
+
+	// Recursively convert child nodes
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		Node *child = p_node->get_child(i);
+		Error err = _convert_scene_node(child, p_export_scene, fbx_node, p_state);
+		ERR_FAIL_COND_V(err != OK, err);
+	}
+
+	return OK;
 }
