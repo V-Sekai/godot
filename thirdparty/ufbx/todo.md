@@ -201,21 +201,90 @@ Godot Scene → FBXDocument::append_from_scene() → ufbx_scene → ufbx_export(
 - Maintains consistency with current ufbx architecture
 ---
 
+## Current Testing Plan: FBX Export with Godot Primitives
+
+### Immediate Testing Tasks
+- [ ] Create standalone GDScript test for FBX export
+- [ ] Set up test scene with Godot primitives (cube, sphere, cylinder)
+- [ ] Test ASCII FBX export functionality
+- [ ] Verify export API integration with existing ufbx test cases
+- [ ] Create test cases based on ufbx test patterns
+- [ ] Validate exported FBX files can be imported back
+- [ ] Document test results and findings
+
+### Test Scene Components
+- [ ] **Basic Primitives**
+  - Cube mesh with material
+  - Sphere mesh with PBR material
+  - Cylinder mesh with textures
+  - Plane mesh with UV mapping
+
+- [ ] **Scene Hierarchy**
+  - Root node with multiple children
+  - Nested transform hierarchies
+  - Empty nodes for organization
+
+- [ ] **Materials & Textures**
+  - StandardMaterial3D with albedo
+  - PBR materials with metallic/roughness
+  - Normal maps and emission
+  - Multiple materials per scene
+
+- [ ] **Export Formats**
+  - ASCII FBX export (primary focus)
+  - Binary FBX export (secondary)
+  - Different FBX versions (7400, 7500)
+
+### Test Script Structure
+- [x] Create `test_fbx_export.h` with ufbx test framework
+- [x] Implement comprehensive test cases using UFBXT_TEST() macros
+- [x] Set up material and mesh validation tests
+- [x] Integrate with ufbx test suite via all_tests.h
+- [x] Move GDScript test to thirdparty/ufbx/test/ directory
+- [ ] Remove standalone validation test (test_export_simple.c)
+
+### Validation Criteria
+- [ ] Export API compiles without errors ✓ (Basic compilation fixed)
+- [ ] ufbx test framework integration works
+- [ ] Exported FBX files are valid format (when implementation is complete)
+- [ ] ASCII format is human-readable (when implementation is complete)
+- [ ] Mesh data integrity preserved (when implementation is complete)
+- [ ] Material properties correctly exported (when implementation is complete)
+- [ ] Scene hierarchy maintained (when implementation is complete)
+- [ ] Files can be imported by external tools (when implementation is complete)
+
+---
+
 ## Implementation Checklist
 
+### Completed Tasks
+- [x] Move ufbx_new export functionality to thirdparty/ufbx
+- [x] Update export API header with missing declarations
+- [x] Implement basic export functions in ufbx_export.c
+- [x] Fix function signatures and error handling
+- [x] Fix compilation errors in export implementation
+- [x] Update error constants to use valid ufbx error types
+- [x] Fix error handling to use ufbx_error.info array format
+- [x] Fix allocator access patterns
+- [x] Fix material property names (metallic -> metalness)
+- [x] Fix mesh vertex attribute access patterns
+- [x] Update test files to match fixed implementation
+- [x] Consolidate test files into ufbx test framework
+- [x] Move test files to thirdparty/ufbx/test/ directory
+
 ### Current Sprint Tasks
-- [ ] Set up development environment for ufbx modifications
-- [ ] Create initial ufbx export API skeleton
-- [ ] Study existing FBXDocument import implementation
-- [ ] Analyze GLTFDocument export methods for reference patterns
-- [ ] Create test scenes for validation
+- [ ] Remove unnecessary standalone validation test
+- [ ] Implement actual FBX export functionality (currently stubbed)
+- [ ] Test export functionality with ufbx test framework
+- [ ] Validate exported FBX files can be imported back
+- [ ] Document test results and API usage
 
 ### Code Review Checkpoints
-- [ ] Phase 1.1 Complete - Scene construction API review
-- [ ] Phase 1.2 Complete - FBX writing implementation review
-- [ ] Phase 2.1 Complete - Godot integration review
-- [ ] Phase 2.2 Complete - File output implementation review
-- [ ] Phase 3.1 Complete - Final testing and validation review
+- [ ] Export API implementation review
+- [ ] Test script functionality review
+- [ ] ASCII export validation review
+- [ ] Integration with existing ufbx tests review
+- [ ] Final testing and documentation review
 
 ---
 

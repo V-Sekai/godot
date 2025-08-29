@@ -100,7 +100,7 @@ ufbx_abi ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name);
 ufbx_abi ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name);
 
 // Add a texture to the scene
-ufbx_abi ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name, const char *filename);
+ufbx_abi ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name);
 
 // Add an animation stack to the scene
 ufbx_abi ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, const char *name);
@@ -108,16 +108,16 @@ ufbx_abi ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, const cha
 // Mesh construction helpers
 
 // Set mesh vertex data
-ufbx_abi bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *positions, size_t num_vertices);
+ufbx_abi bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *positions, size_t num_vertices, ufbx_error *error);
 
 // Set mesh face data
-ufbx_abi bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices);
+ufbx_abi bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, ufbx_error *error);
 
 // Set mesh normals
-ufbx_abi bool ufbx_set_mesh_normals(ufbx_mesh *mesh, const ufbx_vec3 *normals, size_t num_normals);
+ufbx_abi bool ufbx_set_mesh_normals(ufbx_mesh *mesh, const ufbx_vec3 *normals, size_t num_normals, ufbx_error *error);
 
 // Set mesh UV coordinates
-ufbx_abi bool ufbx_set_mesh_uvs(ufbx_mesh *mesh, const ufbx_vec2 *uvs, size_t num_uvs);
+ufbx_abi bool ufbx_set_mesh_uvs(ufbx_mesh *mesh, const ufbx_vec2 *uvs, size_t num_uvs, ufbx_error *error);
 
 // Material construction helpers
 
@@ -130,24 +130,42 @@ ufbx_abi bool ufbx_set_material_diffuse_texture(ufbx_material *material, ufbx_te
 // Set material PBR properties
 ufbx_abi bool ufbx_set_material_pbr(ufbx_material *material, ufbx_vec3 base_color, ufbx_real metalness, ufbx_real roughness);
 
+// Set material albedo color
+ufbx_abi bool ufbx_set_material_albedo(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_real a, ufbx_error *error);
+
+// Set material metallic and roughness
+ufbx_abi bool ufbx_set_material_metallic_roughness(ufbx_material *material, ufbx_real metallic, ufbx_real roughness, ufbx_error *error);
+
+// Set material emission
+ufbx_abi bool ufbx_set_material_emission(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_error *error);
+
+// Set texture data
+ufbx_abi bool ufbx_set_texture_data(ufbx_texture *texture, const void *data, size_t size, const char *format, ufbx_error *error);
+
+// Attach texture to material
+ufbx_abi bool ufbx_attach_texture_to_material(ufbx_material *material, ufbx_texture *texture, const char *property_name, ufbx_error *error);
+
 // Node construction helpers
 
 // Set node transform
-ufbx_abi void ufbx_set_node_transform(ufbx_node *node, const ufbx_transform *transform);
+ufbx_abi void ufbx_set_node_transform(ufbx_node *node, const ufbx_transform *transform, ufbx_error *error);
 
 // Attach mesh to node
-ufbx_abi bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh);
+ufbx_abi bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh, ufbx_error *error);
 
 // Attach material to mesh
-ufbx_abi bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material);
+ufbx_abi bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, int surface_index, ufbx_error *error);
 
 // Export functions
 
-// Export scene to FBX binary format
-ufbx_abi ufbx_error ufbx_export_to_file(const ufbx_export_scene *scene, const char *filename, const ufbx_export_opts *opts);
+// Get export buffer size
+ufbx_abi size_t ufbx_get_export_size(const ufbx_export_scene *scene, const ufbx_export_opts *opts, ufbx_error *error);
 
 // Export scene to memory buffer
-ufbx_abi ufbx_export_result ufbx_export_to_memory(const ufbx_export_scene *scene, const ufbx_export_opts *opts);
+ufbx_abi size_t ufbx_export_to_memory(const ufbx_export_scene *scene, void *buffer, size_t buffer_size, const ufbx_export_opts *opts, ufbx_error *error);
+
+// Export scene to FBX file
+ufbx_abi bool ufbx_export_to_file(const ufbx_export_scene *scene, const char *filename, const ufbx_export_opts *opts, ufbx_error *error);
 
 // Free export result
 ufbx_abi void ufbx_free_export_result(ufbx_export_result *result);

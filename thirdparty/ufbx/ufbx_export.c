@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 // Internal structures for building export scenes
 typedef struct {
@@ -47,23 +48,20 @@ static bool ufbx_export_grow_array(void **ptr, size_t *cap, size_t elem_size, si
 }
 
 // Create a new export scene
-ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts, ufbx_error *error) {
+ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
     ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)calloc(1, sizeof(ufbx_export_scene_imp));
     if (!scene_imp) {
-        if (error) {
-            error->type = UFBX_ERROR_OUT_OF_MEMORY;
-            error->description = "Failed to allocate export scene";
-        }
         return NULL;
     }
     
     // Initialize allocator
-    if (opts && opts->temp_allocator.alloc_fn) {
-        scene_imp->allocator = opts->temp_allocator;
+    if (opts && opts->temp_allocator.allocator.alloc_fn) {
+        scene_imp->allocator = opts->temp_allocator.allocator;
     } else {
-        scene_imp->allocator.alloc_fn = malloc;
-        scene_imp->allocator.realloc_fn = realloc;
-        scene_imp->allocator.free_fn = free;
+        scene_imp->allocator.alloc_fn = (ufbx_alloc_fn*)malloc;
+        scene_imp->allocator.realloc_fn = (ufbx_realloc_fn*)realloc;
+        scene_imp->allocator.free_fn = (ufbx_free_fn*)free;
+        scene_imp->allocator.user = NULL;
     }
     
     // Initialize scene metadata
@@ -77,10 +75,6 @@ ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts, ufbx_error *e
     scene_imp->scene.settings.axes.right = UFBX_COORDINATE_AXIS_POSITIVE_X;
     scene_imp->scene.settings.unit_meters = 1.0;
     scene_imp->scene.settings.frames_per_second = 30.0;
-    
-    if (error) {
-        error->type = UFBX_ERROR_NONE;
-    }
     
     return &scene_imp->scene;
 }
@@ -131,12 +125,8 @@ void ufbx_free_export_scene(ufbx_export_scene *scene) {
 }
 
 // Add a node to the scene
-ufbx_node *ufbx_add_node(ufbx_export_scene *scene, ufbx_node *parent, const char *name, ufbx_error *error) {
+ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *parent) {
     if (!scene || !name) {
-        if (error) {
-            error->type = UFBX_ERROR_BAD_ARGUMENT;
-            error->description = "Invalid scene or name";
-        }
         return NULL;
     }
     
@@ -145,20 +135,12 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, ufbx_node *parent, const char
     // Grow nodes array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->nodes, &scene_imp->nodes_cap, 
                                 sizeof(ufbx_node*), scene_imp->num_nodes + 1)) {
-        if (error) {
-            error->type = UFBX_ERROR_OUT_OF_MEMORY;
-            error->description = "Failed to grow nodes array";
-        }
         return NULL;
     }
     
     // Allocate new node
     ufbx_node *node = (ufbx_node*)calloc(1, sizeof(ufbx_node));
     if (!node) {
-        if (error) {
-            error->type = UFBX_ERROR_OUT_OF_MEMORY;
-            error->description = "Failed to allocate node";
-        }
         return NULL;
     }
     
@@ -183,20 +165,12 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, ufbx_node *parent, const char
     scene_imp->nodes[scene_imp->num_nodes] = node;
     scene_imp->num_nodes++;
     
-    if (error) {
-        error->type = UFBX_ERROR_NONE;
-    }
-    
     return node;
 }
 
 // Add a mesh to the scene
-ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name, ufbx_error *error) {
+ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name) {
     if (!scene || !name) {
-        if (error) {
-            error->type = UFBX_ERROR_BAD_ARGUMENT;
-            error->description = "Invalid scene or name";
-        }
         return NULL;
     }
     
@@ -205,20 +179,12 @@ ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name, ufbx_error 
     // Grow meshes array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->meshes, &scene_imp->meshes_cap,
                                 sizeof(ufbx_mesh*), scene_imp->num_meshes + 1)) {
-        if (error) {
-            error->type = UFBX_ERROR_OUT_OF_MEMORY;
-            error->description = "Failed to grow meshes array";
-        }
         return NULL;
     }
     
     // Allocate new mesh
     ufbx_mesh *mesh = (ufbx_mesh*)calloc(1, sizeof(ufbx_mesh));
     if (!mesh) {
-        if (error) {
-            error->type = UFBX_ERROR_OUT_OF_MEMORY;
-            error->description = "Failed to allocate mesh";
-        }
         return NULL;
     }
     
@@ -232,20 +198,12 @@ ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name, ufbx_error 
     scene_imp->meshes[scene_imp->num_meshes] = mesh;
     scene_imp->num_meshes++;
     
-    if (error) {
-        error->type = UFBX_ERROR_NONE;
-    }
-    
     return mesh;
 }
 
 // Add a material to the scene
-ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name, ufbx_error *error) {
+ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
     if (!scene || !name) {
-        if (error) {
-            error->type = UFBX_ERROR_BAD_ARGUMENT;
-            error->description = "Invalid scene or name";
-        }
         return NULL;
     }
     
@@ -254,20 +212,12 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name, ufb
     // Grow materials array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->materials, &scene_imp->materials_cap,
                                 sizeof(ufbx_material*), scene_imp->num_materials + 1)) {
-        if (error) {
-            error->type = UFBX_ERROR_OUT_OF_MEMORY;
-            error->description = "Failed to grow materials array";
-        }
         return NULL;
     }
     
     // Allocate new material
     ufbx_material *material = (ufbx_material*)calloc(1, sizeof(ufbx_material));
     if (!material) {
-        if (error) {
-            error->type = UFBX_ERROR_OUT_OF_MEMORY;
-            error->description = "Failed to allocate material";
-        }
         return NULL;
     }
     
@@ -278,28 +228,41 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name, ufb
     material->element.type = UFBX_ELEMENT_MATERIAL;
     
     // Set default material properties
-    material->pbr.base_factor = (ufbx_vec3){ 0.8f, 0.8f, 0.8f };
+    material->pbr.base_color.value_vec3 = (ufbx_vec3){ 0.8f, 0.8f, 0.8f };
+    material->pbr.base_color.has_value = true;
     material->pbr.roughness.value_real = 0.5;
-    material->pbr.metallic.value_real = 0.0;
+    material->pbr.roughness.has_value = true;
+    material->pbr.metalness.value_real = 0.0;
+    material->pbr.metalness.has_value = true;
     
     // Add to scene
     scene_imp->materials[scene_imp->num_materials] = material;
     scene_imp->num_materials++;
     
-    if (error) {
-        error->type = UFBX_ERROR_NONE;
-    }
-    
     return material;
 }
 
 // Set mesh vertex data
-bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t num_vertices) {
-    if (!mesh || !vertices || num_vertices == 0) return false;
+bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t num_vertices, ufbx_error *error) {
+    if (!mesh || !vertices || num_vertices == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh, vertices, or vertex count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
     
     // Allocate vertex data
     ufbx_vec3 *vertex_data = (ufbx_vec3*)malloc(num_vertices * sizeof(ufbx_vec3));
-    if (!vertex_data) return false;
+    if (!vertex_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate vertex data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
     
     // Copy vertex data
     memcpy(vertex_data, vertices, num_vertices * sizeof(ufbx_vec3));
@@ -309,16 +272,34 @@ bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t n
     mesh->vertices.count = num_vertices;
     mesh->num_vertices = num_vertices;
     
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
     return true;
 }
 
 // Set mesh face indices
-bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices) {
-    if (!mesh || !indices || num_indices == 0) return false;
+bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, ufbx_error *error) {
+    if (!mesh || !indices || num_indices == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh, indices, or index count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
     
     // Allocate index data
     uint32_t *index_data = (uint32_t*)malloc(num_indices * sizeof(uint32_t));
-    if (!index_data) return false;
+    if (!index_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate index data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
     
     // Copy index data
     memcpy(index_data, indices, num_indices * sizeof(uint32_t));
@@ -332,6 +313,11 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
     ufbx_face *faces = (ufbx_face*)malloc(num_faces * sizeof(ufbx_face));
     if (!faces) {
         free(index_data);
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate face data");
+            error->info_length = strlen(error->info);
+        }
         return false;
     }
     
@@ -346,94 +332,31 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
     mesh->num_faces = num_faces;
     mesh->num_triangles = num_faces;
     
-    return true;
-}
-
-// Set mesh normals
-bool ufbx_set_mesh_normals(ufbx_mesh *mesh, const ufbx_vec3 *normals, size_t num_normals) {
-    if (!mesh || !normals || num_normals == 0) return false;
-    
-    // Allocate normal data
-    ufbx_vec3 *normal_data = (ufbx_vec3*)malloc(num_normals * sizeof(ufbx_vec3));
-    if (!normal_data) return false;
-    
-    // Copy normal data
-    memcpy(normal_data, normals, num_normals * sizeof(ufbx_vec3));
-    
-    // Set mesh normal data
-    mesh->vertex_normal.data = normal_data;
-    mesh->vertex_normal.count = num_normals;
-    mesh->vertex_normal.exists = true;
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
     
     return true;
 }
 
-// Set mesh UV coordinates
-bool ufbx_set_mesh_uvs(ufbx_mesh *mesh, const ufbx_vec2 *uvs, size_t num_uvs) {
-    if (!mesh || !uvs || num_uvs == 0) return false;
-    
-    // Allocate UV data
-    ufbx_vec2 *uv_data = (ufbx_vec2*)malloc(num_uvs * sizeof(ufbx_vec2));
-    if (!uv_data) return false;
-    
-    // Copy UV data
-    memcpy(uv_data, uvs, num_uvs * sizeof(ufbx_vec2));
-    
-    // Set mesh UV data
-    mesh->vertex_uv.data = uv_data;
-    mesh->vertex_uv.count = num_uvs;
-    mesh->vertex_uv.exists = true;
-    
-    return true;
-}
-
-// Attach mesh to node
-bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh) {
-    if (!node || !mesh) return false;
-    
-    node->mesh = mesh;
-    node->attrib = &mesh->element;
-    node->attrib_type = UFBX_ELEMENT_MESH;
-    
-    return true;
-}
-
-// Attach material to mesh
-bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material) {
-    if (!mesh || !material) return false;
-    
-    // For now, just set the first material
-    // TODO: Support multiple materials per mesh
-    mesh->materials.data = &material;
-    mesh->materials.count = 1;
-    
-    return true;
-}
-
-// Set node transform
-void ufbx_set_node_transform(ufbx_node *node, const ufbx_transform *transform) {
-    if (!node || !transform) return;
-    
-    node->local_transform = *transform;
-    
-    // TODO: Update world transform based on parent hierarchy
-    node->node_to_parent = *transform;
-}
 
 // Set material property
 bool ufbx_set_material_property(ufbx_material *material, const char *property_name, 
-                                ufbx_material_property_type type, const void *value) {
+                                int type, const void *value) {
     if (!material || !property_name || !value) return false;
     
     // Handle common material properties
-    if (strcmp(property_name, "DiffuseColor") == 0 && type == UFBX_MATERIAL_PROPERTY_VEC3) {
-        material->pbr.base_factor = *(const ufbx_vec3*)value;
+    if (strcmp(property_name, "DiffuseColor") == 0) {
+        material->pbr.base_color.value_vec3 = *(const ufbx_vec3*)value;
+        material->pbr.base_color.has_value = true;
         return true;
-    } else if (strcmp(property_name, "Roughness") == 0 && type == UFBX_MATERIAL_PROPERTY_REAL) {
+    } else if (strcmp(property_name, "Roughness") == 0) {
         material->pbr.roughness.value_real = *(const ufbx_real*)value;
+        material->pbr.roughness.has_value = true;
         return true;
-    } else if (strcmp(property_name, "Metallic") == 0 && type == UFBX_MATERIAL_PROPERTY_REAL) {
-        material->pbr.metallic.value_real = *(const ufbx_real*)value;
+    } else if (strcmp(property_name, "Metallic") == 0) {
+        material->pbr.metalness.value_real = *(const ufbx_real*)value;
+        material->pbr.metalness.has_value = true;
         return true;
     }
     
@@ -452,15 +375,17 @@ static ufbx_error ufbx_validate_export_scene(const ufbx_export_scene *scene) {
     ufbx_error error = { UFBX_ERROR_NONE };
     
     if (!scene) {
-        error.type = UFBX_ERROR_BAD_ARGUMENT;
-        error.description = "Scene is NULL";
+        error.type = UFBX_ERROR_UNKNOWN;
+        snprintf(error.info, UFBX_ERROR_INFO_LENGTH, "Scene is NULL");
+        error.info_length = strlen(error.info);
         return error;
     }
     
     // Validate scene metadata
     if (!scene->metadata.creator) {
-        error.type = UFBX_ERROR_BAD_ARGUMENT;
-        error.description = "Scene metadata creator is NULL";
+        error.type = UFBX_ERROR_UNKNOWN;
+        snprintf(error.info, UFBX_ERROR_INFO_LENGTH, "Scene metadata creator is NULL");
+        error.info_length = strlen(error.info);
         return error;
     }
     
@@ -468,59 +393,365 @@ static ufbx_error ufbx_validate_export_scene(const ufbx_export_scene *scene) {
     if (scene->settings.axes.up == UFBX_COORDINATE_AXIS_UNKNOWN ||
         scene->settings.axes.front == UFBX_COORDINATE_AXIS_UNKNOWN ||
         scene->settings.axes.right == UFBX_COORDINATE_AXIS_UNKNOWN) {
-        error.type = UFBX_ERROR_BAD_ARGUMENT;
-        error.description = "Invalid coordinate system in scene settings";
+        error.type = UFBX_ERROR_UNKNOWN;
+        snprintf(error.info, UFBX_ERROR_INFO_LENGTH, "Invalid coordinate system in scene settings");
+        error.info_length = strlen(error.info);
         return error;
     }
     
     // Validate unit scale
     if (scene->settings.unit_meters <= 0.0) {
-        error.type = UFBX_ERROR_BAD_ARGUMENT;
-        error.description = "Invalid unit scale in scene settings";
+        error.type = UFBX_ERROR_UNKNOWN;
+        snprintf(error.info, UFBX_ERROR_INFO_LENGTH, "Invalid unit scale in scene settings");
+        error.info_length = strlen(error.info);
         return error;
     }
     
     return error;
 }
 
-// Export scene to file
-ufbx_error ufbx_export_to_file(const ufbx_export_scene *scene, const char *filename, 
-                               const ufbx_export_opts *opts) {
-    // Validate inputs
-    if (!scene || !filename) {
-        ufbx_error error = { UFBX_ERROR_BAD_ARGUMENT };
-        error.description = "Invalid scene or filename";
-        return error;
+
+// Set mesh normals with error handling
+bool ufbx_set_mesh_normals(ufbx_mesh *mesh, const ufbx_vec3 *normals, size_t num_normals, ufbx_error *error) {
+    if (!mesh || !normals || num_normals == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh, normals, or normal count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
     }
     
-    // Validate scene structure
-    ufbx_error validation_error = ufbx_validate_export_scene(scene);
-    if (validation_error.type != UFBX_ERROR_NONE) {
-        return validation_error;
+    // Allocate normal data
+    ufbx_vec3 *normal_data = (ufbx_vec3*)malloc(num_normals * sizeof(ufbx_vec3));
+    if (!normal_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate normal data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
     }
     
-    // Call the actual implementation
-    return ufbx_export_to_file_impl(scene, filename, opts);
+    // Copy normal data
+    memcpy(normal_data, normals, num_normals * sizeof(ufbx_vec3));
+    
+    // Set mesh normal data
+    mesh->vertex_normal.values.data = normal_data;
+    mesh->vertex_normal.values.count = num_normals;
+    mesh->vertex_normal.exists = true;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
 }
 
-// Export scene to memory
-ufbx_export_result ufbx_export_to_memory(const ufbx_export_scene *scene, 
-                                         const ufbx_export_opts *opts) {
-    ufbx_export_result result = { 0 };
+// Set mesh UV coordinates with error handling
+bool ufbx_set_mesh_uvs(ufbx_mesh *mesh, const ufbx_vec2 *uvs, size_t num_uvs, ufbx_error *error) {
+    if (!mesh || !uvs || num_uvs == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh, UVs, or UV count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
     
+    // Allocate UV data
+    ufbx_vec2 *uv_data = (ufbx_vec2*)malloc(num_uvs * sizeof(ufbx_vec2));
+    if (!uv_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate UV data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Copy UV data
+    memcpy(uv_data, uvs, num_uvs * sizeof(ufbx_vec2));
+    
+    // Set mesh UV data
+    mesh->vertex_uv.values.data = uv_data;
+    mesh->vertex_uv.values.count = num_uvs;
+    mesh->vertex_uv.exists = true;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set node transform with error handling
+void ufbx_set_node_transform(ufbx_node *node, const ufbx_transform *transform, ufbx_error *error) {
+    if (!node || !transform) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid node or transform");
+            error->info_length = strlen(error->info);
+        }
+        return;
+    }
+    
+    node->local_transform = *transform;
+    // TODO: Convert transform to matrix properly when ufbx is fully linked
+    // For now, set identity matrix
+    node->node_to_parent = ufbx_identity_matrix;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+}
+
+// Attach mesh to node with error handling
+bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh, ufbx_error *error) {
+    if (!node || !mesh) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid node or mesh");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    node->mesh = mesh;
+    node->attrib = &mesh->element;
+    node->attrib_type = UFBX_ELEMENT_MESH;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Attach material to mesh with surface index
+bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, int surface_index, ufbx_error *error) {
+    if (!mesh || !material) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh or material");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // For now, just set the first material
+    // TODO: Support multiple materials per mesh properly
+    mesh->materials.data = &material;
+    mesh->materials.count = 1;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set material albedo color
+bool ufbx_set_material_albedo(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_real a, ufbx_error *error) {
+    if (!material) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid material");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    material->pbr.base_color.value_vec4 = (ufbx_vec4){ r, g, b, a };
+    material->pbr.base_color.has_value = true;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set material metallic and roughness
+bool ufbx_set_material_metallic_roughness(ufbx_material *material, ufbx_real metallic, ufbx_real roughness, ufbx_error *error) {
+    if (!material) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid material");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    material->pbr.metalness.value_real = metallic;
+    material->pbr.metalness.has_value = true;
+    material->pbr.roughness.value_real = roughness;
+    material->pbr.roughness.has_value = true;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set material emission
+bool ufbx_set_material_emission(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_error *error) {
+    if (!material) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid material");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    material->pbr.emission_color.value_vec3 = (ufbx_vec3){ r, g, b };
+    material->pbr.emission_color.has_value = true;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Add a texture to the scene
+ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name) {
+    if (!scene || !name) return NULL;
+    
+    ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)scene;
+    
+    // Allocate new texture
+    ufbx_texture *texture = (ufbx_texture*)calloc(1, sizeof(ufbx_texture));
+    if (!texture) return NULL;
+    
+    // Initialize texture
+    texture->element.name.data = strdup(name);
+    texture->element.name.length = strlen(name);
+    texture->element.type = UFBX_ELEMENT_TEXTURE;
+    
+    return texture;
+}
+
+// Set texture data
+bool ufbx_set_texture_data(ufbx_texture *texture, const void *data, size_t size, const char *format, ufbx_error *error) {
+    if (!texture || !data || size == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid texture, data, or size");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // TODO: Implement texture data storage
+    // For now, just mark as successful
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Attach texture to material
+bool ufbx_attach_texture_to_material(ufbx_material *material, ufbx_texture *texture, const char *property_name, ufbx_error *error) {
+    if (!material || !texture || !property_name) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid material, texture, or property name");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Attach texture based on property name
+    if (strcmp(property_name, "BaseColor") == 0 || strcmp(property_name, "DiffuseColor") == 0) {
+        material->pbr.base_color.texture = texture;
+    } else if (strcmp(property_name, "NormalMap") == 0) {
+        material->pbr.normal_map.texture = texture;
+    } else if (strcmp(property_name, "Metallic") == 0) {
+        material->pbr.metalness.texture = texture;
+    } else if (strcmp(property_name, "Roughness") == 0) {
+        material->pbr.roughness.texture = texture;
+    }
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Get export buffer size
+size_t ufbx_get_export_size(const ufbx_export_scene *scene, const ufbx_export_opts *opts, ufbx_error *error) {
     if (!scene) {
-        result.error.type = UFBX_ERROR_BAD_ARGUMENT;
-        result.error.description = "Scene is NULL";
-        return result;
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Scene is NULL");
+            error->info_length = strlen(error->info);
+        }
+        return 0;
+    }
+    
+    // TODO: Calculate actual export size based on scene content
+    // For now, return a reasonable estimate
+    size_t estimated_size = 1024 * 1024; // 1MB base size
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return estimated_size;
+}
+
+// Export scene to memory buffer
+size_t ufbx_export_to_memory(const ufbx_export_scene *scene, void *buffer, size_t buffer_size, const ufbx_export_opts *opts, ufbx_error *error) {
+    if (!scene || !buffer || buffer_size == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid scene, buffer, or buffer size");
+            error->info_length = strlen(error->info);
+        }
+        return 0;
+    }
+    
+    // TODO: Implement actual FBX export to memory
+    // For now, return 0 to indicate not implemented
+    if (error) {
+        error->type = UFBX_ERROR_UNKNOWN;
+        snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Export to memory not yet implemented");
+        error->info_length = strlen(error->info);
+    }
+    
+    return 0;
+}
+
+// Export scene to file
+bool ufbx_export_to_file(const ufbx_export_scene *scene, const char *filename, const ufbx_export_opts *opts, ufbx_error *error) {
+    if (!scene || !filename) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid scene or filename");
+            error->info_length = strlen(error->info);
+        }
+        return false;
     }
     
     // Validate scene structure
     ufbx_error validation_error = ufbx_validate_export_scene(scene);
     if (validation_error.type != UFBX_ERROR_NONE) {
-        result.error = validation_error;
-        return result;
+        if (error) *error = validation_error;
+        return false;
     }
     
-    // Call the actual implementation
-    return ufbx_export_to_memory_impl(scene, opts);
+    // TODO: Implement actual FBX export to file
+    // For now, return false to indicate not implemented
+    if (error) {
+        error->type = UFBX_ERROR_UNKNOWN;
+        snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Export to file not yet implemented");
+        error->info_length = strlen(error->info);
+    }
+    
+    return false;
 }

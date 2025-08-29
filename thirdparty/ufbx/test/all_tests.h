@@ -25,5 +25,6 @@
 #include "test_api.h"
 #include "test_scenes.h"
 #include "test_fuzz.h"
+#include "test_fbx_export.h"
 
 #undef UFBXT_TEST_GROUP
