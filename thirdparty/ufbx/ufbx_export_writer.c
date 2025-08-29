@@ -395,7 +395,7 @@ static bool ufbx_write_definitions(ufbx_fbx_writer *writer, const ufbx_export_sc
         if (!ufbx_writer_begin_node(writer, "Count", &count_ctx)) return false;
         
         // Calculate total object count
-        const ufbx_export_scene_imp *scene_imp = (const ufbx_export_scene_imp*)scene;
+        const ufbxi_export_scene *scene_imp = (const ufbxi_export_scene*)scene;
         int64_t total_count = 1; // GlobalSettings
         total_count += scene_imp->num_nodes;
         total_count += scene_imp->num_meshes;
@@ -450,7 +450,7 @@ static bool ufbx_write_definitions(ufbx_fbx_writer *writer, const ufbx_export_sc
 }
 
 static bool ufbx_write_objects(ufbx_fbx_writer *writer, const ufbx_export_scene *scene) {
-    const ufbx_export_scene_imp *scene_imp = (const ufbx_export_scene_imp*)scene;
+    const ufbxi_export_scene *scene_imp = (const ufbxi_export_scene*)scene;
     ufbx_fbx_node_context ctx;
     
     if (!ufbx_writer_begin_node(writer, "Objects", &ctx)) return false;
@@ -682,7 +682,7 @@ static bool ufbx_write_objects(ufbx_fbx_writer *writer, const ufbx_export_scene 
 }
 
 static bool ufbx_write_connections(ufbx_fbx_writer *writer, const ufbx_export_scene *scene) {
-    const ufbx_export_scene_imp *scene_imp = (const ufbx_export_scene_imp*)scene;
+    const ufbxi_export_scene *scene_imp = (const ufbxi_export_scene*)scene;
     ufbx_fbx_node_context ctx;
     
     if (!ufbx_writer_begin_node(writer, "Connections", &ctx)) return false;

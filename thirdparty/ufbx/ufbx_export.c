@@ -24,7 +24,7 @@ static bool ufbx_export_grow_array(void **ptr, size_t *cap, size_t elem_size, si
 
 // Create a new export scene
 ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
-    ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)calloc(1, sizeof(ufbx_export_scene_imp));
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)calloc(1, sizeof(ufbxi_export_scene));
     if (!scene_imp) {
         return NULL;
     }
@@ -58,7 +58,7 @@ ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
 void ufbx_free_export_scene(ufbx_export_scene *scene) {
     if (!scene) return;
     
-    ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)scene;
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
     // Free all allocated nodes
     for (size_t i = 0; i < scene_imp->num_nodes; i++) {
@@ -105,7 +105,7 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *
         return NULL;
     }
     
-    ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)scene;
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
     // Grow nodes array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->nodes, &scene_imp->nodes_cap, 
@@ -149,7 +149,7 @@ ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name) {
         return NULL;
     }
     
-    ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)scene;
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
     // Grow meshes array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->meshes, &scene_imp->meshes_cap,
@@ -182,7 +182,7 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
         return NULL;
     }
     
-    ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)scene;
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
     // Grow materials array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->materials, &scene_imp->materials_cap,
@@ -595,7 +595,7 @@ bool ufbx_set_material_emission(ufbx_material *material, ufbx_real r, ufbx_real 
 ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name) {
     if (!scene || !name) return NULL;
     
-    ufbx_export_scene_imp *scene_imp = (ufbx_export_scene_imp*)scene;
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
     // Allocate new texture
     ufbx_texture *texture = (ufbx_texture*)calloc(1, sizeof(ufbx_texture));

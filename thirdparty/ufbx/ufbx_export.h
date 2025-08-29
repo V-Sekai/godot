@@ -84,7 +84,7 @@ typedef struct {
     // Error handling
     ufbx_error error;
     bool has_error;
-} ufbx_export_scene_imp;
+} ufbxi_export_scene;
 
 // Options for FBX export
 struct ufbx_export_opts {
