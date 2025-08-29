@@ -51,7 +51,8 @@ static bool ufbx_writer_ensure_capacity(ufbx_fbx_writer *writer, size_t needed) 
     if (!new_data) {
         writer->has_error = true;
         writer->error.type = UFBX_ERROR_OUT_OF_MEMORY;
-        writer->error.description = "Failed to allocate memory for FBX writer";
+        snprintf(writer->error.info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate memory for FBX writer");
+        writer->error.info_length = strlen(writer->error.info);
         return false;
     }
     
@@ -572,7 +573,7 @@ static bool ufbx_write_objects(ufbx_fbx_writer *writer, const ufbx_export_scene 
                 }
                 
                 // LayerElementNormal
-                if (mesh->vertex_normal.exists && mesh->vertex_normal.count > 0) {
+                if (mesh->vertex_normal.exists && mesh->vertex_normal.values.count > 0) {
                     ufbx_fbx_node_context layer_elem_ctx;
                     if (!ufbx_writer_begin_node(writer, "LayerElementNormal", &layer_elem_ctx)) return false;
                     if (!ufbx_writer_write_property_i64(writer, 0)) return false;
@@ -605,14 +606,14 @@ static bool ufbx_write_objects(ufbx_fbx_writer *writer, const ufbx_export_scene 
                         ufbx_fbx_node_context normals_ctx;
                         if (!ufbx_writer_begin_node(writer, "Normals", &normals_ctx)) return false;
                         
-                        double *normal_data = (double*)malloc(mesh->vertex_normal.count * 3 * sizeof(double));
+                        double *normal_data = (double*)malloc(mesh->vertex_normal.values.count * 3 * sizeof(double));
                         if (normal_data) {
-                            for (size_t n = 0; n < mesh->vertex_normal.count; n++) {
-                                normal_data[n * 3 + 0] = mesh->vertex_normal.data[n].x;
-                                normal_data[n * 3 + 1] = mesh->vertex_normal.data[n].y;
-                                normal_data[n * 3 + 2] = mesh->vertex_normal.data[n].z;
+                            for (size_t n = 0; n < mesh->vertex_normal.values.count; n++) {
+                                normal_data[n * 3 + 0] = mesh->vertex_normal.values.data[n].x;
+                                normal_data[n * 3 + 1] = mesh->vertex_normal.values.data[n].y;
+                                normal_data[n * 3 + 2] = mesh->vertex_normal.values.data[n].z;
                             }
-                            if (!ufbx_writer_write_property_array_f64(writer, normal_data, mesh->vertex_normal.count * 3)) {
+                            if (!ufbx_writer_write_property_array_f64(writer, normal_data, mesh->vertex_normal.values.count * 3)) {
                                 free(normal_data);
                                 return false;
                             }
@@ -665,9 +666,9 @@ static bool ufbx_write_objects(ufbx_fbx_writer *writer, const ufbx_export_scene 
                     if (!ufbx_writer_write_property_string(writer, "Color")) return false;
                     if (!ufbx_writer_write_property_string(writer, "")) return false;
                     if (!ufbx_writer_write_property_string(writer, "A")) return false;
-                    if (!ufbx_writer_write_property_f64(writer, material->pbr.base_factor.x)) return false;
-                    if (!ufbx_writer_write_property_f64(writer, material->pbr.base_factor.y)) return false;
-                    if (!ufbx_writer_write_property_f64(writer, material->pbr.base_factor.z)) return false;
+                    if (!ufbx_writer_write_property_f64(writer, material->pbr.base_color.value_vec3.x)) return false;
+                    if (!ufbx_writer_write_property_f64(writer, material->pbr.base_color.value_vec3.y)) return false;
+                    if (!ufbx_writer_write_property_f64(writer, material->pbr.base_color.value_vec3.z)) return false;
                     if (!ufbx_writer_end_node(writer, &prop_ctx, 7)) return false;
                 }
                 if (!ufbx_writer_end_node(writer, &props_ctx, 0)) return false;
@@ -741,8 +742,9 @@ ufbx_error ufbx_export_to_file_impl(const ufbx_export_scene *scene, const char *
     ufbx_error error = { UFBX_ERROR_NONE };
     
     if (!scene || !filename) {
-        error.type = UFBX_ERROR_BAD_ARGUMENT;
-        error.description = "Invalid scene or filename";
+        error.type = UFBX_ERROR_UNKNOWN;
+        snprintf(error.info, UFBX_ERROR_INFO_LENGTH, "Invalid scene or filename");
+        error.info_length = strlen(error.info);
         return error;
     }
     
@@ -808,7 +810,8 @@ ufbx_error ufbx_export_to_file_impl(const ufbx_export_scene *scene, const char *
     FILE *file = fopen(filename, "wb");
     if (!file) {
         error.type = UFBX_ERROR_FILE_NOT_FOUND;
-        error.description = "Could not open file for writing";
+        snprintf(error.info, UFBX_ERROR_INFO_LENGTH, "Could not open file for writing");
+        error.info_length = strlen(error.info);
         goto cleanup;
     }
     
@@ -817,7 +820,8 @@ ufbx_error ufbx_export_to_file_impl(const ufbx_export_scene *scene, const char *
     
     if (written != writer.size) {
         error.type = UFBX_ERROR_IO;
-        error.description = "Failed to write complete file";
+        snprintf(error.info, UFBX_ERROR_INFO_LENGTH, "Failed to write complete file");
+        error.info_length = strlen(error.info);
         goto cleanup;
     }
     
@@ -831,8 +835,9 @@ ufbx_export_result ufbx_export_to_memory_impl(const ufbx_export_scene *scene,
     ufbx_export_result result = { 0 };
     
     if (!scene) {
-        result.error.type = UFBX_ERROR_BAD_ARGUMENT;
-        result.error.description = "Invalid scene";
+        result.error.type = UFBX_ERROR_UNKNOWN;
+        snprintf(result.error.info, UFBX_ERROR_INFO_LENGTH, "Invalid scene");
+        result.error.info_length = strlen(result.error.info);
         return result;
     }
     

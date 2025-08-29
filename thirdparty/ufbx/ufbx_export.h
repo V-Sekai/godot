@@ -59,6 +59,33 @@ struct ufbx_export_scene {
     void *_internal_data;
 };
 
+// Internal implementation structure (exposed for writer access)
+typedef struct {
+    ufbx_export_scene scene;
+    ufbx_allocator allocator;
+    
+    // Dynamic arrays for scene elements
+    ufbx_node **nodes;
+    size_t num_nodes;
+    size_t nodes_cap;
+    
+    ufbx_mesh **meshes;
+    size_t num_meshes;
+    size_t meshes_cap;
+    
+    ufbx_material **materials;
+    size_t num_materials;
+    size_t materials_cap;
+    
+    ufbx_anim_stack **anim_stacks;
+    size_t num_anim_stacks;
+    size_t anim_stacks_cap;
+    
+    // Error handling
+    ufbx_error error;
+    bool has_error;
+} ufbx_export_scene_imp;
+
 // Options for FBX export
 struct ufbx_export_opts {
     uint32_t _begin_zero;

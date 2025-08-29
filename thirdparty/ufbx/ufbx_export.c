@@ -5,32 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-// Internal structures for building export scenes
-typedef struct {
-    ufbx_export_scene scene;
-    ufbx_allocator allocator;
-    
-    // Dynamic arrays for scene elements
-    ufbx_node **nodes;
-    size_t num_nodes;
-    size_t nodes_cap;
-    
-    ufbx_mesh **meshes;
-    size_t num_meshes;
-    size_t meshes_cap;
-    
-    ufbx_material **materials;
-    size_t num_materials;
-    size_t materials_cap;
-    
-    ufbx_anim_stack **anim_stacks;
-    size_t num_anim_stacks;
-    size_t anim_stacks_cap;
-    
-    // Error handling
-    ufbx_error error;
-    bool has_error;
-} ufbx_export_scene_imp;
+// Internal structure is now defined in header for writer access
 
 // Helper function to grow dynamic arrays
 static bool ufbx_export_grow_array(void **ptr, size_t *cap, size_t elem_size, size_t min_cap) {
@@ -364,11 +339,11 @@ bool ufbx_set_material_property(ufbx_material *material, const char *property_na
     return false;
 }
 
-// Forward declarations for writer functions
-ufbx_error ufbx_export_to_file_impl(const ufbx_export_scene *scene, const char *filename, 
-                                    const ufbx_export_opts *opts);
-ufbx_export_result ufbx_export_to_memory_impl(const ufbx_export_scene *scene, 
-                                              const ufbx_export_opts *opts);
+// Forward declarations for writer functions (implemented in ufbx_export_writer.c)
+extern ufbx_error ufbx_export_to_file_impl(const ufbx_export_scene *scene, const char *filename, 
+                                           const ufbx_export_opts *opts);
+extern ufbx_export_result ufbx_export_to_memory_impl(const ufbx_export_scene *scene, 
+                                                     const ufbx_export_opts *opts);
 
 // Validation function
 static ufbx_error ufbx_validate_export_scene(const ufbx_export_scene *scene) {
@@ -716,15 +691,40 @@ size_t ufbx_export_to_memory(const ufbx_export_scene *scene, void *buffer, size_
         return 0;
     }
     
-    // TODO: Implement actual FBX export to memory
-    // For now, return 0 to indicate not implemented
-    if (error) {
-        error->type = UFBX_ERROR_UNKNOWN;
-        snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Export to memory not yet implemented");
-        error->info_length = strlen(error->info);
+    // Validate scene structure
+    ufbx_error validation_error = ufbx_validate_export_scene(scene);
+    if (validation_error.type != UFBX_ERROR_NONE) {
+        if (error) *error = validation_error;
+        return 0;
     }
     
-    return 0;
+    // Use the writer implementation to export to memory
+    ufbx_export_result result = ufbx_export_to_memory_impl(scene, opts);
+    if (result.error.type != UFBX_ERROR_NONE) {
+        if (error) *error = result.error;
+        return 0;
+    }
+    
+    // Check if buffer is large enough
+    if (result.size > buffer_size) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Buffer too small: need %zu bytes, got %zu", result.size, buffer_size);
+            error->info_length = strlen(error->info);
+        }
+        free(result.data);
+        return 0;
+    }
+    
+    // Copy data to user buffer
+    memcpy(buffer, result.data, result.size);
+    free(result.data);
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return result.size;
 }
 
 // Export scene to file
@@ -745,13 +745,16 @@ bool ufbx_export_to_file(const ufbx_export_scene *scene, const char *filename, c
         return false;
     }
     
-    // TODO: Implement actual FBX export to file
-    // For now, return false to indicate not implemented
-    if (error) {
-        error->type = UFBX_ERROR_UNKNOWN;
-        snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Export to file not yet implemented");
-        error->info_length = strlen(error->info);
+    // Use the writer implementation to export to file
+    ufbx_error export_error = ufbx_export_to_file_impl(scene, filename, opts);
+    if (export_error.type != UFBX_ERROR_NONE) {
+        if (error) *error = export_error;
+        return false;
     }
     
-    return false;
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
 }
