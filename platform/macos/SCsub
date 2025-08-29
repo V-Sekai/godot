@@ -11,7 +11,7 @@ common_files = [
     "godot_application_delegate.mm",
     "crash_handler_macos.mm",
     "display_server_macos_base.mm",
-    "display_server_embedded.mm",
+    "display_server_macos_embedded.mm",
     "display_server_macos.mm",
     "embedded_debugger.mm",
     "embedded_gl_manager.mm",
@@ -32,7 +32,7 @@ common_files = [
 ]
 
 if env.editor_build:
-    files += [
+    common_files += [
         "editor/embedded_game_view_plugin.mm",
         "editor/embedded_process_macos.mm",
     ]

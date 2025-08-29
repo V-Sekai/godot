@@ -554,8 +554,6 @@ Error RenderingDeviceDriverVulkan::_initialize_device_extensions() {
 	_register_requested_device_extension(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, true);
 #endif
 
-	// We don't actually use this extension, but some runtime components on some platforms
-	// can and will fill the validation layers with useless info otherwise if not enabled.
 	_register_requested_device_extension(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, false);
 
 	if (Engine::get_singleton()->is_generate_spirv_debug_info_enabled()) {
@@ -1260,6 +1258,10 @@ Error RenderingDeviceDriverVulkan::_initialize_device(const LocalVector<VkDevice
 		// Debug device fault extension.
 		if (device_fault_support) {
 			device_functions.GetDeviceFaultInfoEXT = (PFN_vkGetDeviceFaultInfoEXT)functions.GetDeviceProcAddr(vk_device, "vkGetDeviceFaultInfoEXT");
+		}
+
+		if (enabled_device_extension_names.has(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME)) {
+			device_functions.GetMemoryFdKHR = (PFN_vkGetMemoryFdKHR)functions.GetDeviceProcAddr(vk_device, "vkGetMemoryFdKHR");
 		}
 	}
 
@@ -3888,10 +3890,10 @@ void RenderingDeviceDriverVulkan::swap_chain_set_max_fps(SwapChainID p_swap_chai
 #endif
 }
 
-BinaryMutex &RenderingDeviceDriverVulkan::swap_chain_get_mutex(SwapChainID p_swap_chain) {
+BinaryMutex *RenderingDeviceDriverVulkan::swap_chain_get_mutex(SwapChainID p_swap_chain) {
 	SwapChain *swap_chain = (SwapChain *)(p_swap_chain.id);
 
-	return swap_chain->get_mutex();
+	return &swap_chain->get_mutex();
 }
 
 void RenderingDeviceDriverVulkan::swap_chain_set_frame_in_use(SwapChainID p_swap_chain, size_t p_index, bool p_in_use) {

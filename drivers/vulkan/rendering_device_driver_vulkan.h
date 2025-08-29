@@ -110,6 +110,8 @@ class RenderingDeviceDriverVulkan : public RenderingDeviceDriver {
 
 		// Debug device fault.
 		PFN_vkGetDeviceFaultInfoEXT GetDeviceFaultInfoEXT = nullptr;
+
+		PFN_vkGetMemoryFdKHR GetMemoryFdKHR = nullptr;
 	};
 	// Debug marker extensions.
 	VkDebugReportObjectTypeEXT _convert_to_debug_report_objectType(VkObjectType p_object_type);
@@ -447,13 +449,15 @@ private:
 			this->color_space = p_color_space;
 			this->render_pass = RenderPassID(p_render_pass);
 		}
+
+		virtual ~SwapChain() = default;
 	};
 
 	class PresentableSwapChain: public SwapChain {
 		VkSwapchainKHR vk_swapchain = VK_NULL_HANDLE;
 
 	public:
-		virtual VkSwapchainKHR get_swapchain_handle() const { return vk_swapchain; }
+		virtual VkSwapchainKHR get_swapchain_handle() const override { return vk_swapchain; }
 
 		virtual FramebufferID acquire_framebuffer(CommandQueue *p_command_queue, bool &r_resize_required) override final;
 
@@ -582,7 +586,7 @@ private:
 		ExternalSwapChain* swapchain = nullptr;
 	public:
 		virtual uint32_t hash() const override {
-			return (uint32_t)this;
+			return (intptr_t)this;
 		}
 
 		virtual String get_as_text() const override {
@@ -633,7 +637,7 @@ private:
 		const int required_argument_count = 1;
 	public:
 		virtual uint32_t hash() const override {
-			return (uint32_t)this;
+			return (intptr_t)this;
 		}
 
 		virtual String get_as_text() const override {
@@ -695,7 +699,7 @@ private:
 		const int required_argument_count = 1;
 	public:
 		virtual uint32_t hash() const override {
-			return (uint32_t)this;
+			return (intptr_t)this;
 		}
 
 		virtual String get_as_text() const override {
@@ -757,7 +761,7 @@ private:
 		const int required_argument_count = 1;
 	public:
 		virtual uint32_t hash() const override {
-			return (uint32_t)this;
+			return (intptr_t)this;
 		}
 
 		virtual String get_as_text() const override {
@@ -819,7 +823,7 @@ private:
 		const int required_argument_count = 1;
 	public:
 		virtual uint32_t hash() const override {
-			return (uint32_t)this;
+			return (intptr_t)this;
 		}
 
 		virtual String get_as_text() const override {
@@ -886,7 +890,7 @@ public:
 	virtual int swap_chain_get_pre_rotation_degrees(SwapChainID p_swap_chain) override final;
 	virtual DataFormat swap_chain_get_format(SwapChainID p_swap_chain) override final;
 	virtual void swap_chain_set_max_fps(SwapChainID p_swap_chain, int p_max_fps) override final;
-	virtual BinaryMutex &swap_chain_get_mutex(SwapChainID p_swap_chain) override final;
+	virtual BinaryMutex *swap_chain_get_mutex(SwapChainID p_swap_chain) override final;
 	virtual void swap_chain_set_frame_in_use(SwapChainID p_swap_chain, size_t p_index, bool p_in_use) override final;
 	virtual int swap_chain_get_last_drawn_buffer(SwapChainID p_swap_chain) override final;
 	virtual void swap_chain_set_last_drawn_buffer(SwapChainID p_swap_chain, int p_buffer) override final;

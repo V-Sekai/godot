@@ -53,7 +53,7 @@
 #include "scene/resources/image_texture.h"
 
 #ifdef TOOLS_ENABLED
-#import "display_server_embedded.h"
+#import "display_server_macos_embedded.h"
 #import "editor/embedded_process_macos.h"
 #endif
 
@@ -69,13 +69,11 @@
 #include "servers/rendering/renderer_rd/renderer_compositor_rd.h"
 #endif
 
-<<<<<<< HEAD
 #if defined(ACCESSKIT_ENABLED)
 #include "drivers/accesskit/accessibility_driver_accesskit.h"
 #endif
-=======
+
 #include "drivers/apple/rendering_native_surface_apple.h"
->>>>>>> dc277ab808 (LibGodot: Main Feature)
 
 #import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
@@ -3867,7 +3865,7 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, WindowM
 	}
 #endif
 	if (rendering_driver == "vulkan") {
-		rendering_context = memnew(RenderingContextDriverVulkanAppleEmbedded);
+		rendering_context = memnew(RenderingContextDriverVulkanApple);
 	}
 #endif
 #if defined(METAL_ENABLED)
@@ -3926,29 +3924,6 @@ DisplayServerMacOS::DisplayServerMacOS(const String &p_rendering_driver, WindowM
 			gl_manager_legacy = nullptr;
 			r_error = ERR_UNAVAILABLE;
 			ERR_FAIL_MSG("Could not initialize native OpenGL.");
-		}
-	}
-#endif
-
-#if defined(METAL_ENABLED)
-	if (rendering_driver == "metal") {
-		rendering_context = memnew(RenderingContextDriverMetal);
-	}
-
-	if (rendering_context) {
-		if (rendering_context->initialize() != OK) {
-			memdelete(rendering_context);
-			rendering_context = nullptr;
-			bool fallback_to_opengl3 = GLOBAL_GET("rendering/rendering_device/fallback_to_opengl3");
-			if (fallback_to_opengl3 && rendering_driver != "opengl3") {
-				WARN_PRINT("Your device seem not to support MoltenVK or Metal, switching to OpenGL 3.");
-				rendering_driver = "opengl3";
-				OS::get_singleton()->set_current_rendering_method("gl_compatibility");
-				OS::get_singleton()->set_current_rendering_driver_name(rendering_driver);
-			} else {
-				r_error = ERR_CANT_CREATE;
-				ERR_FAIL_MSG("Could not initialize " + rendering_driver);
-			}
 		}
 	}
 #endif

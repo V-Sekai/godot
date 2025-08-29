@@ -58,10 +58,12 @@ private:
     Callable pre_images_released_callback;
     RenderingContextDriver::SurfaceID surface;
 
+#ifdef GLES3_ENABLED
     // OpenGL specific members:
     Callable make_current;
     Callable done_current;
-    GLADloadfunc get_proc_address = nullptr;
+    uint64_t get_proc_address = 0u;
+#endif
 
 public:
     // VULKAN SPECIFIC OPERATIONS:
@@ -95,7 +97,9 @@ public:
     void release_image(int p_index);
 
     // OPENGL SPECIFIC OPERATIONS:
+#ifdef GLES3_ENABLED
     void set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address);
+#endif
     GLESContext *create_gles_context() override;
     uint32_t get_frame_texture(DisplayServer::WindowID p_window_id) const;
 

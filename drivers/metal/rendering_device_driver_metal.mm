@@ -843,6 +843,10 @@ RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
 	return FenceID(fence);
 }
 
+void RenderingDeviceDriverMetal::frame_cleanup(FenceID p_fence) {
+
+}
+
 Error RenderingDeviceDriverMetal::fence_wait(FenceID p_fence) {
 	Fence *fence = (Fence *)(p_fence.id);
 

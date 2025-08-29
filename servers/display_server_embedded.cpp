@@ -514,13 +514,13 @@ int64_t DisplayServerEmbedded::window_get_native_handle(HandleType p_handle_type
 			}
 			return 0;
 		}
-#endif
 		case WINDOW_HANDLE: {
 			if (gles_context) {
 				return (int64_t)gles_context->get_color_texture(p_window);
 			}
 			return 0;
 		}
+#endif
 		default: {
 			return 0;	// Not supported.
 		}

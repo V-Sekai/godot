@@ -453,22 +453,22 @@ public:
 	virtual void swap_chain_set_max_fps(SwapChainID p_swap_chain, int p_max_fps) {}
 
 	// Retrieve a swap chain's mutex.
-	virtual BinaryMutex &swap_chain_get_mutex(SwapChainID p_swap_chain) = 0;
+	virtual BinaryMutex *swap_chain_get_mutex(SwapChainID p_swap_chain) { return nullptr; }
 
 	// Set whether a frame is currently used by a swap chain or not.
-	virtual void swap_chain_set_frame_in_use(SwapChainID p_swap_chain, size_t p_index, bool p_in_use) = 0;
+	virtual void swap_chain_set_frame_in_use(SwapChainID p_swap_chain, size_t p_index, bool p_in_use) {}
 
 	// Retrieve the buffer of the last drawn frame.
-	virtual int swap_chain_get_last_drawn_buffer(SwapChainID p_swap_chain) = 0;
+	virtual int swap_chain_get_last_drawn_buffer(SwapChainID p_swap_chain) { return -1; }
 
 	// Update the buffer of the last drawn frame.
-	virtual void swap_chain_set_last_drawn_buffer(SwapChainID p_swap_chain, int p_buffer) = 0;
+	virtual void swap_chain_set_last_drawn_buffer(SwapChainID p_swap_chain, int p_buffer) {}
 
 	// Retrieve the index of the currently drawn frame.
-	virtual uint32_t swap_chain_get_image_index(SwapChainID p_swap_chain) = 0;
+	virtual uint32_t swap_chain_get_image_index(SwapChainID p_swap_chain) { return 0; }
 
 	// Retrieve swap chain version.
-	virtual uint64_t swap_chain_get_version(SwapChainID p_swap_chain) = 0;
+	virtual uint64_t swap_chain_get_version(SwapChainID p_swap_chain) { return 0; }
 
 	// Wait until all rendering associated to the swap chain is finished before deleting it.
 	virtual void swap_chain_free(SwapChainID p_swap_chain) = 0;

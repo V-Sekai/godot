@@ -38,10 +38,6 @@ if env.msvc:
 else:
     common_win += ["crash_handler_windows_signal.cpp"]
 
-host_interface = [
-    "../../servers/display_server_embedded_host_interface.cpp",
-]
-
 common_win_wrap = [
     "console_wrapper_windows.cpp",
 ]

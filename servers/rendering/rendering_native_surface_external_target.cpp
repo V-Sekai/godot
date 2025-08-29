@@ -32,8 +32,14 @@
 
 #include "servers/display_server_embedded.h"
 #include "servers/rendering/rendering_device.h"
+
+#ifdef VULKAN_ENABLED
 #include "drivers/vulkan/rendering_device_driver_vulkan.h"
+#endif
+
+#if defined(GLES3_ENABLED)
 #include "platform_gl.h"
+#endif
 
 struct WindowData {
 #if defined(GLES3_ENABLED)
@@ -48,7 +54,9 @@ struct WindowData {
 class GLESContextExternal : public GLESContext {
 public:
 	void set_surface(Ref<RenderingNativeSurfaceExternalTarget> p_surface);
-	void set_opengl_callbacks(Callable p_make_current, Callable p_done_current, GLADloadfunc p_get_proc_address);
+#ifdef GLES3_ENABLED
+	void set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address);
+#endif
 	virtual void initialize() override;
 	virtual bool create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) override;
 	virtual void resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) override;
@@ -58,7 +66,7 @@ public:
 	virtual void deinitialize() override;
 	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const override;
 	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const override;
-	virtual GLuint get_color_texture(DisplayServer::WindowID p_id) const override;
+	virtual int get_color_texture(DisplayServer::WindowID p_id) const override;
 
 	GLESContextExternal() {};
 	~GLESContextExternal() {};
@@ -68,10 +76,12 @@ private:
 	HashMap<DisplayServer::WindowID, WindowData> windows;
 	HashMap<DisplayServer::WindowID, Ref<RenderingNativeSurface>> window_surface_map;
 	HashMap<Ref<RenderingNativeSurface>, DisplayServer::WindowID> surface_window_map;
-#if defined(GLES3_ENABLED)
+#ifdef GLES3_ENABLED
 	Callable make_current;
     Callable done_current;
+#ifdef GLAD_ENABLED
 	GLADloadfunc get_proc_address = nullptr;
+#endif
 #endif
 };
 
@@ -79,15 +89,21 @@ void GLESContextExternal::set_surface(Ref<RenderingNativeSurfaceExternalTarget> 
 	surface = p_surface;
 }
 
-void GLESContextExternal::set_opengl_callbacks(Callable p_make_current, Callable p_done_current, GLADloadfunc p_get_proc_address) {
+#ifdef GLES3_ENABLED
+void GLESContextExternal::set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address) {
 	make_current = p_make_current;
 	done_current = p_done_current;
-	get_proc_address = p_get_proc_address;
+#ifdef GLAD_ENABLED
+	get_proc_address = (GLADloadfunc)p_get_proc_address;
+#endif
 }
+#endif
 
 void GLESContextExternal::initialize() {
-#if defined(GLES3_ENABLED)
+#ifdef GLES3_ENABLED
+#ifdef GLAD_ENABLED
 	RasterizerGLES3::preloadGL(get_proc_address);
+#endif
 
 	make_current.call();
 #endif
@@ -100,11 +116,11 @@ bool GLESContextExternal::create_framebuffer(DisplayServer::WindowID p_id, Ref<R
 		return false;
 	}
 
+#if defined(GLES3_ENABLED)
 	WindowData& gles_data = windows[p_id];
 	gles_data.backingWidth = surface->get_width();
 	gles_data.backingHeight = surface->get_height();
 
-#if defined(GLES3_ENABLED)
 	make_current.call();
 
 	// Generate Framebuffer.
@@ -133,9 +149,8 @@ bool GLESContextExternal::create_framebuffer(DisplayServer::WindowID p_id, Ref<R
 
 	surface_window_map[external_surface] = p_id;
 	window_surface_map[p_id] = external_surface;
-
-	return true;
 #endif
+	return true;
 }
 
 void GLESContextExternal::resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) {
@@ -221,7 +236,7 @@ DisplayServer::WindowID GLESContextExternal::get_window(Ref<RenderingNativeSurfa
 	return surface_window_map[p_native_surface];
 }
 
-GLuint GLESContextExternal::get_color_texture(DisplayServer::WindowID p_id) const {
+int GLESContextExternal::get_color_texture(DisplayServer::WindowID p_id) const {
 	ERR_FAIL_COND_V(!windows.has(p_id), 0);
 	const WindowData& gles_data = windows[p_id];
 #if defined(GLES3_ENABLED)
@@ -243,10 +258,13 @@ void RenderingNativeSurfaceExternalTarget::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("acquire_next_image"), &RenderingNativeSurfaceExternalTarget::acquire_next_image);
 	ClassDB::bind_method(D_METHOD("release_image", "index"), &RenderingNativeSurfaceExternalTarget::release_image);
 
+#ifdef GLES3_ENABLED
 	ClassDB::bind_method(D_METHOD("set_opengl_callbacks", "make_current", "done_current", "get_proc_address"), &RenderingNativeSurfaceExternalTarget::set_opengl_callbacks);
+#endif
 	ClassDB::bind_method(D_METHOD("get_frame_texture", "window_id"), &RenderingNativeSurfaceExternalTarget::get_frame_texture);
 }
 
+#ifdef VULKAN_ENABLED
 RenderingDeviceDriverVulkan *get_rendering_device_driver() {
 	RenderingDeviceDriverVulkan *driver = (RenderingDeviceDriverVulkan *)RenderingDevice::get_singleton()->get_driver();
 
@@ -264,6 +282,7 @@ RDD::SwapChainID get_swapchain(RenderingContextDriver::SurfaceID p_surface) {
 
 	return swapchain;
 }
+#endif
 
 uint32_t RenderingNativeSurfaceExternalTarget::get_width() const {
 	return width;
@@ -274,15 +293,20 @@ uint32_t RenderingNativeSurfaceExternalTarget::get_height() const {
 }
 
 DisplayServer::WindowID RenderingNativeSurfaceExternalTarget::get_window() {
-	DisplayServer::WindowID window;
+	DisplayServer::WindowID window = DisplayServer::INVALID_WINDOW_ID;
 
+#ifdef VULKAN_ENABLED
 	if (rendering_driver == "vulkan") {
 		RenderingDevice *rendering_device = RenderingDevice::get_singleton();
 		RenderingContextDriverVulkan *context = (RenderingContextDriverVulkan *)rendering_device->get_context();
 		window = context->window_get_from_surface(surface);
-	} else if (rendering_driver == "opengl3") {
+	}
+#endif
+#ifdef GLES3_ENABLED
+	if (rendering_driver == "opengl3") {
 		window = DisplayServerEmbedded::get_singleton()->get_native_surface_window_id(Ref<RenderingNativeSurface>(this));
 	}
+#endif
 
 	return window;
 }
@@ -321,12 +345,14 @@ RenderingContextDriver *RenderingNativeSurfaceExternalTarget::create_rendering_c
 }
 
 void RenderingNativeSurfaceExternalTarget::setup_external_swapchain_callbacks() {
+#ifdef VULKAN_ENABLED
 	RenderingDeviceDriverVulkan *driver = get_rendering_device_driver();
 	RDD::SwapChainID swapchain = get_swapchain(surface);
 
 	ERR_FAIL_COND_MSG(swapchain == RDD::SwapChainID(), "Swapchain not set for this surface.");
 
 	driver->external_swap_chain_set_callbacks(swapchain, post_images_created_callback, pre_images_released_callback);
+#endif
 }
 
 void RenderingNativeSurfaceExternalTarget::set_external_swapchain_callbacks(Callable p_images_created, Callable p_images_released) {
@@ -341,14 +367,17 @@ void RenderingNativeSurfaceExternalTarget::resize(Size2i p_new_size) {
 	width = p_new_size.x;
 	height = p_new_size.y;
 
+#ifdef VULKAN_ENABLED
 	if (rendering_driver == "vulkan") {
 		RenderingDevice *rendering_device = RenderingDevice::get_singleton();
 		RenderingContextDriverVulkan *context = (RenderingContextDriverVulkan *)rendering_device->get_context();
 		context->surface_set_size(surface, p_new_size.x, p_new_size.y);
 	}
+#endif
 }
 
 int RenderingNativeSurfaceExternalTarget::acquire_next_image() {
+#ifdef VULKAN_ENABLED
 	RenderingDeviceDriverVulkan *driver = get_rendering_device_driver();
 	RDD::SwapChainID swapchain = get_swapchain(surface);
 
@@ -356,22 +385,27 @@ int RenderingNativeSurfaceExternalTarget::acquire_next_image() {
 
 	int acquired_buffer_index = driver->external_swap_chain_grab_image(swapchain);
 	return acquired_buffer_index;
+#endif
 }
 
 void RenderingNativeSurfaceExternalTarget::release_image(int p_index) {
+#ifdef VULKAN_ENABLED
 	RenderingDeviceDriverVulkan *driver = get_rendering_device_driver();
 	RDD::SwapChainID swapchain = get_swapchain(surface);
 
 	ERR_FAIL_COND_MSG(swapchain == RDD::SwapChainID(), "Swapchain not set for this surface.");
 
 	driver->external_swap_chain_release_image(swapchain, p_index);
+#endif
 }
 
+#ifdef GLES3_ENABLED
 void RenderingNativeSurfaceExternalTarget::set_opengl_callbacks(Callable p_make_current, Callable p_done_current, uint64_t p_get_proc_address) {
 	make_current = p_make_current;
 	done_current = p_done_current;
-	get_proc_address = (GLADloadfunc)p_get_proc_address;
+	get_proc_address = p_get_proc_address;
 }
+#endif
 
 GLESContext *RenderingNativeSurfaceExternalTarget::create_gles_context() {
 #if defined(GLES3_ENABLED)

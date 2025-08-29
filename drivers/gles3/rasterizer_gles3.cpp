@@ -237,6 +237,7 @@ void *_egl_load_function_wrapper(const char *p_name) {
 }
 #endif
 
+#ifdef GLAD_ENABLED
 bool RasterizerGLES3::glad_loaded = false;
 GLADloadfunc RasterizerGLES3::gl_get_proc_addr = nullptr;
 
@@ -268,6 +269,7 @@ void RasterizerGLES3::preloadGL(GLADloadfunc p_load_func) {
 		}
 	}
 }
+#endif
 
 RasterizerGLES3::RasterizerGLES3() {
 	singleton = this;

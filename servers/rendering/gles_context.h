@@ -47,7 +47,7 @@ public:
 	virtual void deinitialize() = 0;
 	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const = 0;
 	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const = 0;
-	virtual GLuint get_color_texture(DisplayServer::WindowID p_id) const = 0;
+	virtual int get_color_texture(DisplayServer::WindowID p_id) const = 0;
 
 	GLESContext() {};
 	virtual ~GLESContext() {};

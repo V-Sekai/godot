@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_apple_embedded.h                      */
+/*  rendering_context_driver_vulkan_apple.h                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -36,20 +36,20 @@
 
 #import <QuartzCore/CAMetalLayer.h>
 
-class RenderingContextDriverVulkanAppleEmbedded : public RenderingContextDriverVulkan {
+class RenderingContextDriverVulkanApple : public RenderingContextDriverVulkan {
 private:
 	virtual const char *_get_platform_surface_extension() const override final;
 
 protected:
-	SurfaceID surface_create(const void *p_platform_data) override final;
+	virtual SurfaceID surface_create(Ref<RenderingNativeSurface> p_native_surface) override final;
 
 public:
 	struct WindowPlatformData {
 		CAMetalLayer *const *layer_ptr;
 	};
 
-	RenderingContextDriverVulkanAppleEmbedded();
-	~RenderingContextDriverVulkanAppleEmbedded();
+	RenderingContextDriverVulkanApple();
+	~RenderingContextDriverVulkanApple();
 };
 
 #endif // VULKAN_ENABLED

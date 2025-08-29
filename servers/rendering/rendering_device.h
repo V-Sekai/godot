@@ -1621,6 +1621,7 @@ private:
 		Frames(RenderingDeviceDriver *p_driver) {
 			driver = p_driver;
 		}
+		virtual ~Frames() = default;
 	};
 
 	class DefaultFrames: public Frames {
@@ -1691,7 +1692,7 @@ private:
 
 							const RDD::SwapChainID swapchain_id = p_context->context->screen_swap_chains.find(id)->value;
 
-							MutexLock<BinaryMutex> external_lock(p_context->driver->swap_chain_get_mutex(swapchain_id));
+							MutexLock<BinaryMutex> external_lock(*p_context->driver->swap_chain_get_mutex(swapchain_id));
 
 							if (p_context->fence_data[frame_to_wait].swapchain_versions[id] == p_context->driver->swap_chain_get_version(swapchain_id)) {
 								p_context->driver->swap_chain_set_last_drawn_buffer(swapchain_id, buffer);
@@ -1751,7 +1752,7 @@ private:
 					const DisplayServer::WindowID &id = E.key;
 					const RDD::SwapChainID& swapchain_id = E.value;
 
-					MutexLock external_lock(driver->swap_chain_get_mutex(swapchain_id));
+					MutexLock external_lock(*driver->swap_chain_get_mutex(swapchain_id));
 
 					fence_data[frame].window_buffers.insert(id, driver->swap_chain_get_image_index(swapchain_id));
 				}
@@ -1762,7 +1763,7 @@ private:
 						const DisplayServer::WindowID &id = E.key;
 						const RDD::SwapChainID swapchain_id = E.value;
 
-						MutexLock external_lock(driver->swap_chain_get_mutex(swapchain_id));
+						MutexLock external_lock(*driver->swap_chain_get_mutex(swapchain_id));
 
 						fence_data[frame].swapchain_versions.insert(id, driver->swap_chain_get_version(swapchain_id));
 					}

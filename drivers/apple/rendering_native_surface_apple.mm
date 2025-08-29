@@ -29,10 +29,11 @@
 /**************************************************************************/
 
 #include "rendering_native_surface_apple.h"
-#include "drivers/apple_embedded/rendering_context_driver_vulkan_apple_embedded.h"
 #include "drivers/gles3/storage/texture_storage.h"
 #include "drivers/metal/rendering_context_driver_metal.h"
 #include "servers/rendering/gles_context.h"
+
+#import "rendering_context_driver_vulkan_apple.h"
 
 #if defined(GLES3_ENABLED)
 #import <QuartzCore/QuartzCore.h>
@@ -61,12 +62,15 @@ class GLESContextApple : public GLESContext {
 public:
 	virtual void initialize() override;
 	virtual bool create_framebuffer(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface) override;
-	virtual void resized(DisplayServer::WindowID p_id) override;
+	virtual void resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) override;
 	virtual void begin_rendering(DisplayServer::WindowID p_id) override;
 	virtual void end_rendering(DisplayServer::WindowID p_id) override;
 	virtual bool destroy_framebuffer(DisplayServer::WindowID p_id) override;
 	virtual void deinitialize() override;
 	virtual uint64_t get_fbo(DisplayServer::WindowID p_id) const override;
+
+	virtual DisplayServer::WindowID get_window(Ref<RenderingNativeSurface> p_native_surface) const { return -1; }
+	virtual int get_color_texture(DisplayServer::WindowID p_id) const override { return 0; }
 
 protected:
 	bool create_framebuffer(DisplayServer::WindowID p_id, void *p_layer);
@@ -97,7 +101,7 @@ void GLESContextApple::initialize() {
 #endif
 }
 
-void GLESContextApple::resized(DisplayServer::WindowID p_id) {
+void GLESContextApple::resized(DisplayServer::WindowID p_id, uint32_t p_width, uint32_t p_height) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
@@ -252,7 +256,7 @@ uint64_t RenderingNativeSurfaceApple::get_layer() {
 RenderingContextDriver *RenderingNativeSurfaceApple::create_rendering_context(const String &p_rendering_driver) {
 #if defined(VULKAN_ENABLED)
 	if (p_rendering_driver == "vulkan") {
-		return memnew(RenderingContextDriverVulkanAppleEmbedded);
+		return memnew(RenderingContextDriverVulkanApple);
 	}
 #endif
 #if defined(METAL_ENABLED)

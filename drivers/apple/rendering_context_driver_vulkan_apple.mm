@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_apple_embedded.mm                     */
+/*  rendering_context_driver_vulkan_apple.mm                              */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#import "rendering_context_driver_vulkan_apple_embedded.h"
+#import "rendering_context_driver_vulkan_apple.h"
 #include "drivers/apple/rendering_native_surface_apple.h"
 
 #ifdef __APPLE__
@@ -37,11 +37,11 @@
 #include "drivers/vulkan/rendering_native_surface_vulkan.h"
 #include "drivers/vulkan/godot_vulkan.h"
 
-const char *RenderingContextDriverVulkanAppleEmbedded::_get_platform_surface_extension() const {
+const char *RenderingContextDriverVulkanApple::_get_platform_surface_extension() const {
 	return VK_EXT_METAL_SURFACE_EXTENSION_NAME;
 }
 
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanAppleEmbedded::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
+RenderingContextDriver::SurfaceID RenderingContextDriverVulkanApple::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
 	Ref<RenderingNativeSurfaceApple> apple_native_surface = Object::cast_to<RenderingNativeSurfaceApple>(*p_native_surface);
 	ERR_FAIL_COND_V(apple_native_surface.is_null(), SurfaceID());
 
@@ -59,11 +59,11 @@ RenderingContextDriver::SurfaceID RenderingContextDriverVulkanAppleEmbedded::sur
 	return result;
 }
 
-RenderingContextDriverVulkanAppleEmbedded::RenderingContextDriverVulkanAppleEmbedded() {
+RenderingContextDriverVulkanApple::RenderingContextDriverVulkanApple() {
 	// Does nothing.
 }
 
-RenderingContextDriverVulkanAppleEmbedded::~RenderingContextDriverVulkanAppleEmbedded() {
+RenderingContextDriverVulkanApple::~RenderingContextDriverVulkanApple() {
 	// Does nothing.
 }
 
