@@ -148,14 +148,8 @@ ufbx_abi bool ufbx_set_mesh_uvs(ufbx_mesh *mesh, const ufbx_vec2 *uvs, size_t nu
 
 // Material construction helpers
 
-// Set material diffuse color
-ufbx_abi bool ufbx_set_material_diffuse_color(ufbx_material *material, ufbx_vec3 color);
-
-// Set material diffuse texture
-ufbx_abi bool ufbx_set_material_diffuse_texture(ufbx_material *material, ufbx_texture *texture);
-
-// Set material PBR properties
-ufbx_abi bool ufbx_set_material_pbr(ufbx_material *material, ufbx_vec3 base_color, ufbx_real metalness, ufbx_real roughness);
+// Set material property (generic)
+ufbx_abi bool ufbx_set_material_property(ufbx_material *material, const char *property_name, int type, const void *value);
 
 // Set material albedo color
 ufbx_abi bool ufbx_set_material_albedo(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_real a, ufbx_error *error);
