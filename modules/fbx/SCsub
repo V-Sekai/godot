@@ -11,7 +11,11 @@ env_fbx = env_modules.Clone()
 thirdparty_obj = []
 
 thirdparty_dir = "#thirdparty/ufbx/"
-thirdparty_sources = [thirdparty_dir + "ufbx.c"]
+thirdparty_sources = [
+    thirdparty_dir + "ufbx.c",
+    thirdparty_dir + "ufbx_export.c",
+    thirdparty_dir + "ufbx_export_writer.c"
+]
 
 env_fbx.Prepend(CPPEXTPATH=[thirdparty_dir])
 

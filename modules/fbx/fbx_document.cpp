@@ -2494,7 +2494,7 @@ PackedByteArray FBXDocument::generate_buffer(Ref<GLTFState> p_state) {
 	ufbx_error error;
 	size_t buffer_size = ufbx_get_export_size(fbx_state->export_scene, nullptr, &error);
 	if (error.type != UFBX_ERROR_NONE) {
-		ERR_PRINT("FBX Export: Failed to get export size: " + String(error.description));
+		ERR_PRINT("FBX Export: Failed to get export size: " + String(error.description.data));
 		return PackedByteArray();
 	}
 
@@ -2505,7 +2505,7 @@ PackedByteArray FBXDocument::generate_buffer(Ref<GLTFState> p_state) {
 	// Export to memory buffer
 	size_t written = ufbx_export_to_memory(fbx_state->export_scene, buffer.ptrw(), buffer_size, nullptr, &error);
 	if (error.type != UFBX_ERROR_NONE || written != buffer_size) {
-		ERR_PRINT("FBX Export: Failed to export scene to memory buffer: " + String(error.description));
+		ERR_PRINT("FBX Export: Failed to export scene to memory buffer: " + String(error.description.data));
 		return PackedByteArray();
 	}
 
@@ -2524,7 +2524,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 	ufbx_error error;
 	bool success = ufbx_export_to_file(fbx_state->export_scene, p_path.utf8().get_data(), nullptr, &error);
 	if (!success) {
-		ERR_PRINT("FBX Export: Failed to export scene to file: " + p_path + " - " + String(error.description));
+		ERR_PRINT("FBX Export: Failed to export scene to file: " + p_path + " - " + String(error.description.data));
 		return ERR_FILE_CANT_WRITE;
 	}
 
@@ -2589,20 +2589,20 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 	ERR_FAIL_COND_V(importer_mesh.is_null(), ERR_INVALID_DATA);
 
 	// Create ufbx mesh
-	ufbx_mesh *fbx_mesh = ufbx_add_mesh(p_export_scene, p_mesh_instance->get_name().utf8().get_data());
+	ufbx_mesh *fbx_mesh = ufbx_add_mesh(p_export_scene, String(p_mesh_instance->get_name()).utf8().get_data());
 	ERR_FAIL_NULL_V(fbx_mesh, ERR_OUT_OF_MEMORY);
 
 	// Attach mesh to node
 	ufbx_error error;
 	ufbx_attach_mesh_to_node(p_node, fbx_mesh, &error);
 	if (error.type != UFBX_ERROR_NONE) {
-		ERR_PRINT("FBX Export: Failed to attach mesh to node: " + String(error.description));
+		ERR_PRINT("FBX Export: Failed to attach mesh to node: " + String(error.description.data));
 		return ERR_INVALID_DATA;
 	}
 
 	// Process each surface of the mesh
 	for (int surface_idx = 0; surface_idx < importer_mesh->get_surface_count(); surface_idx++) {
-		Array surface_arrays = importer_mesh->surface_get_arrays(surface_idx);
+		Array surface_arrays = importer_mesh->get_surface_arrays(surface_idx);
 		ERR_CONTINUE(surface_arrays.size() != Mesh::ARRAY_MAX);
 
 		// Get vertex data
@@ -2626,7 +2626,7 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 		// Set mesh vertices
 		ufbx_set_mesh_vertices(fbx_mesh, ufbx_vertices.ptr(), ufbx_vertices.size(), &error);
 		if (error.type != UFBX_ERROR_NONE) {
-			ERR_PRINT("FBX Export: Failed to set mesh vertices: " + String(error.description));
+			ERR_PRINT("FBX Export: Failed to set mesh vertices: " + String(error.description.data));
 			continue;
 		}
 
@@ -2640,7 +2640,7 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 			}
 			ufbx_set_mesh_normals(fbx_mesh, ufbx_normals.ptr(), ufbx_normals.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
-				ERR_PRINT("FBX Export: Failed to set mesh normals: " + String(error.description));
+				ERR_PRINT("FBX Export: Failed to set mesh normals: " + String(error.description.data));
 			}
 		}
 
@@ -2655,7 +2655,7 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 			}
 			ufbx_set_mesh_uvs(fbx_mesh, ufbx_uvs.ptr(), ufbx_uvs.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
-				ERR_PRINT("FBX Export: Failed to set mesh UVs: " + String(error.description));
+				ERR_PRINT("FBX Export: Failed to set mesh UVs: " + String(error.description.data));
 			}
 		}
 
@@ -2668,12 +2668,12 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 			}
 			ufbx_set_mesh_indices(fbx_mesh, ufbx_indices.ptr(), ufbx_indices.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
-				ERR_PRINT("FBX Export: Failed to set mesh indices: " + String(error.description));
+				ERR_PRINT("FBX Export: Failed to set mesh indices: " + String(error.description.data));
 			}
 		}
 
 		// Handle material if available
-		Ref<Material> material = importer_mesh->surface_get_material(surface_idx);
+		Ref<Material> material = importer_mesh->get_surface_material(surface_idx);
 		if (material.is_valid()) {
 			Error mat_err = _convert_material(material, p_export_scene, fbx_mesh, surface_idx, p_state);
 			if (mat_err != OK) {
@@ -2708,7 +2708,7 @@ Error FBXDocument::_convert_material(Ref<Material> p_material, ufbx_export_scene
 		Color albedo = base_material->get_albedo();
 		ufbx_set_material_albedo(fbx_material, albedo.r, albedo.g, albedo.b, albedo.a, &error);
 		if (error.type != UFBX_ERROR_NONE) {
-			ERR_PRINT("FBX Export: Failed to set material albedo: " + String(error.description));
+			ERR_PRINT("FBX Export: Failed to set material albedo: " + String(error.description.data));
 		}
 
 		// Set metallic and roughness
@@ -2716,7 +2716,7 @@ Error FBXDocument::_convert_material(Ref<Material> p_material, ufbx_export_scene
 		float roughness = base_material->get_roughness();
 		ufbx_set_material_metallic_roughness(fbx_material, metallic, roughness, &error);
 		if (error.type != UFBX_ERROR_NONE) {
-			ERR_PRINT("FBX Export: Failed to set material metallic/roughness: " + String(error.description));
+			ERR_PRINT("FBX Export: Failed to set material metallic/roughness: " + String(error.description.data));
 		}
 
 		// Set emission
@@ -2724,7 +2724,7 @@ Error FBXDocument::_convert_material(Ref<Material> p_material, ufbx_export_scene
 		float emission_energy = base_material->get_emission_energy_multiplier();
 		ufbx_set_material_emission(fbx_material, emission.r * emission_energy, emission.g * emission_energy, emission.b * emission_energy, &error);
 		if (error.type != UFBX_ERROR_NONE) {
-			ERR_PRINT("FBX Export: Failed to set material emission: " + String(error.description));
+			ERR_PRINT("FBX Export: Failed to set material emission: " + String(error.description.data));
 		}
 
 		// Handle textures
@@ -2765,7 +2765,7 @@ Error FBXDocument::_convert_material(Ref<Material> p_material, ufbx_export_scene
 	ufbx_error error;
 	ufbx_attach_material_to_mesh(p_mesh, fbx_material, p_surface_idx, &error);
 	if (error.type != UFBX_ERROR_NONE) {
-		ERR_PRINT("FBX Export: Failed to attach material to mesh: " + String(error.description));
+		ERR_PRINT("FBX Export: Failed to attach material to mesh: " + String(error.description.data));
 		return ERR_INVALID_DATA;
 	}
 
@@ -2799,14 +2799,14 @@ Error FBXDocument::_convert_texture(Ref<Texture2D> p_texture, ufbx_export_scene 
 	ufbx_error error;
 	ufbx_set_texture_data(fbx_texture, png_data.ptr(), png_data.size(), "png", &error);
 	if (error.type != UFBX_ERROR_NONE) {
-		ERR_PRINT("FBX Export: Failed to set texture data: " + String(error.description));
+		ERR_PRINT("FBX Export: Failed to set texture data: " + String(error.description.data));
 		return ERR_INVALID_DATA;
 	}
 
 	// Attach texture to material
 	ufbx_attach_texture_to_material(p_material, fbx_texture, p_texture_type.utf8().get_data(), &error);
 	if (error.type != UFBX_ERROR_NONE) {
-		ERR_PRINT("FBX Export: Failed to attach texture to material: " + String(error.description));
+		ERR_PRINT("FBX Export: Failed to attach texture to material: " + String(error.description.data));
 		return ERR_INVALID_DATA;
 	}
 
@@ -2818,7 +2818,7 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
 
 	// Create ufbx node for this Godot node
-	ufbx_node *fbx_node = ufbx_add_node(p_export_scene, p_node->get_name().utf8().get_data(), p_parent_node);
+	ufbx_node *fbx_node = ufbx_add_node(p_export_scene, String(p_node->get_name()).utf8().get_data(), p_parent_node);
 	ERR_FAIL_NULL_V(fbx_node, ERR_OUT_OF_MEMORY);
 
 	// Set transform
@@ -2837,7 +2837,7 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 		ufbx_error error;
 		ufbx_set_node_transform(fbx_node, &ufbx_xform, &error);
 		if (error.type != UFBX_ERROR_NONE) {
-			ERR_PRINT("FBX Export: Failed to set node transform: " + String(error.description));
+			ERR_PRINT("FBX Export: Failed to set node transform: " + String(error.description.data));
 		}
 	}
 

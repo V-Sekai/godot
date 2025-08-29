@@ -37,6 +37,7 @@
 #include "modules/gltf/structures/gltf_texture.h"
 
 #include <ufbx.h>
+#include "../../thirdparty/ufbx/ufbx_export.h"
 
 class FBXState : public GLTFState {
 	GDCLASS(FBXState, GLTFState);
@@ -46,6 +47,8 @@ class FBXState : public GLTFState {
 
 	// Smart pointer that holds the loaded scene.
 	ufbx_unique_ptr<ufbx_scene> scene;
+	// Export scene for FBX export functionality
+	ufbx_export_scene *export_scene = nullptr;
 	bool allow_geometry_helper_nodes = false;
 
 	HashMap<uint64_t, Image::AlphaMode> alpha_mode_cache;
