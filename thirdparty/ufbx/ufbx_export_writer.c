@@ -187,6 +187,45 @@ static bool ufbx_ascii_write_property_array_i32(ufbx_ascii_writer *writer, const
     return ufbx_ascii_write_char(writer, '}');
 }
 
+static bool ufbx_ascii_write_property_array_i64(ufbx_ascii_writer *writer, const int64_t *values, size_t count) {
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "*%zu", count);
+    if (!ufbx_ascii_write_string(writer, buffer)) {
+        return false;
+    }
+    if (!ufbx_ascii_write_string(writer, " {\n")) {
+        return false;
+    }
+    
+    writer->indent_level++;
+    if (!ufbx_ascii_write_indent(writer)) {
+        return false;
+    }
+    if (!ufbx_ascii_write_string(writer, "a: ")) {
+        return false;
+    }
+    
+    for (size_t i = 0; i < count; i++) {
+        if (i > 0) {
+            if (!ufbx_ascii_write_char(writer, ',')) {
+                return false;
+            }
+        }
+        if (!ufbx_ascii_write_property_i64(writer, values[i])) {
+            return false;
+        }
+    }
+    
+    if (!ufbx_ascii_write_newline(writer)) {
+        return false;
+    }
+    writer->indent_level--;
+    if (!ufbx_ascii_write_indent(writer)) {
+        return false;
+    }
+    return ufbx_ascii_write_char(writer, '}');
+}
+
 static bool ufbx_ascii_write_node_begin(ufbx_ascii_writer *writer, const char *name) {
     if (!ufbx_ascii_write_indent(writer)) {
         return false;
@@ -720,6 +759,255 @@ static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_expor
         }
     }
     
+    // Write all animation stacks
+    for (size_t i = 0; i < scene_imp->num_anim_stacks; i++) {
+        const ufbx_anim_stack *anim_stack = scene_imp->anim_stacks[i];
+        
+        if (!ufbx_ascii_write_node_begin(writer, "AnimationStack")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, anim_stack->element.element_id)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, anim_stack->element.name.data)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, " {\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        // Properties70
+        if (!ufbx_ascii_write_node_begin(writer, "Properties70")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, "{\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        // LocalStart
+        if (!ufbx_ascii_write_node_begin(writer, "P")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "LocalStart")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "KTime")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "Time")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, (int64_t)(anim_stack->time_begin * 46186158000LL))) {
+            return false;
+        }
+        if (!ufbx_ascii_write_newline(writer)) {
+            return false;
+        }
+        
+        // LocalStop
+        if (!ufbx_ascii_write_node_begin(writer, "P")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "LocalStop")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "KTime")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "Time")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, (int64_t)(anim_stack->time_end * 46186158000LL))) {
+            return false;
+        }
+        if (!ufbx_ascii_write_newline(writer)) {
+            return false;
+        }
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+    }
+    
+    // Write all animation layers
+    for (size_t i = 0; i < scene_imp->num_anim_layers; i++) {
+        const ufbx_anim_layer *anim_layer = scene_imp->anim_layers[i];
+        
+        if (!ufbx_ascii_write_node_begin(writer, "AnimationLayer")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, anim_layer->element.element_id)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, anim_layer->element.name.data)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, " {\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+    }
+    
+    // Write all animation curves
+    for (size_t i = 0; i < scene_imp->num_anim_curves; i++) {
+        const ufbx_anim_curve *anim_curve = scene_imp->anim_curves[i];
+        
+        if (!ufbx_ascii_write_node_begin(writer, "AnimationCurve")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, anim_curve->element.element_id)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, anim_curve->element.name.data)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, " {\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        // Default
+        if (!ufbx_ascii_write_node_begin(writer, "Default")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_f64(writer, 0.0)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_newline(writer)) {
+            return false;
+        }
+        
+        // KeyVer
+        if (!ufbx_ascii_write_node_begin(writer, "KeyVer")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, 4009)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_newline(writer)) {
+            return false;
+        }
+        
+        if (anim_curve->keyframes.count > 0) {
+            // KeyTime
+            if (!ufbx_ascii_write_node_begin(writer, "KeyTime")) {
+                return false;
+            }
+            
+            // Convert keyframe times to int64 array
+            int64_t *time_data = (int64_t*)malloc(anim_curve->keyframes.count * sizeof(int64_t));
+            if (time_data) {
+                for (size_t t = 0; t < anim_curve->keyframes.count; t++) {
+                    time_data[t] = (int64_t)(anim_curve->keyframes.data[t].time * 46186158000LL);
+                }
+                if (!ufbx_ascii_write_property_array_i64(writer, time_data, anim_curve->keyframes.count)) {
+                    free(time_data);
+                    return false;
+                }
+                free(time_data);
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+            
+            // KeyValueFloat
+            if (!ufbx_ascii_write_node_begin(writer, "KeyValueFloat")) {
+                return false;
+            }
+            
+            // Convert keyframe values to double array
+            double *value_data = (double*)malloc(anim_curve->keyframes.count * sizeof(double));
+            if (value_data) {
+                for (size_t v = 0; v < anim_curve->keyframes.count; v++) {
+                    value_data[v] = anim_curve->keyframes.data[v].value;
+                }
+                if (!ufbx_ascii_write_property_array_f64(writer, value_data, anim_curve->keyframes.count)) {
+                    free(value_data);
+                    return false;
+                }
+                free(value_data);
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+        }
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+    }
+    
     writer->indent_level--;
     return ufbx_ascii_write_node_end(writer);
 }
@@ -835,6 +1123,50 @@ static bool ufbx_ascii_write_connections(ufbx_ascii_writer *writer, const ufbx_e
             }
             if (!ufbx_ascii_write_newline(writer)) {
                 return false;
+            }
+        }
+    }
+    
+    // Connect animation layers to animation stacks
+    for (size_t i = 0; i < scene_imp->num_anim_layers; i++) {
+        const ufbx_anim_layer *layer = scene_imp->anim_layers[i];
+        
+        // Find the parent animation stack
+        for (size_t j = 0; j < scene_imp->num_anim_stacks; j++) {
+            const ufbx_anim_stack *stack = scene_imp->anim_stacks[j];
+            
+            // Check if this layer belongs to this stack
+            bool belongs_to_stack = false;
+            for (size_t k = 0; k < stack->layers.count; k++) {
+                if (stack->layers.data[k] == layer) {
+                    belongs_to_stack = true;
+                    break;
+                }
+            }
+            
+            if (belongs_to_stack) {
+                if (!ufbx_ascii_write_node_begin(writer, "C")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_property_string(writer, "OO")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_string(writer, ", ")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_property_i64(writer, layer->element.element_id)) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_string(writer, ", ")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_property_i64(writer, stack->element.element_id)) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_newline(writer)) {
+                    return false;
+                }
+                break;
             }
         }
     }
