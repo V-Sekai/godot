@@ -4,7 +4,7 @@ LDFLAGS = -lm
 
 # Source files
 UFBX_SRC = ../../ufbx.c ../../ufbx_export.c  ../../ufbx_export_writer.c
-MODULE_SRC = error_utils.c scene_analysis.c scene_copy.c main.c
+MODULE_SRC = error_utils.c scene_analysis.c scene_copy.c scene_copy_nodes.c scene_copy_materials.c scene_copy_meshes.c scene_copy_animations.c scene_copy_deformers.c main.c
 ALL_SRC = $(MODULE_SRC) $(UFBX_SRC)
 
 # Output executables
