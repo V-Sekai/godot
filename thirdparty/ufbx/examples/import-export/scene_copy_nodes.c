@@ -26,10 +26,11 @@ bool copy_nodes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
             (*node_mappings)[*num_mappings].src_node = src_node;
             (*node_mappings)[*num_mappings].export_node = export_scene->root_node;
             (*num_mappings)++;
+            printf("    Mapped root node: %s\n", src_node->name.data ? src_node->name.data : "(unnamed root)");
             continue;
         }
         
-        // Create node in export scene (temporarily without parent)
+        // Create all nodes first - parent relationships handled later
         ufbx_node *export_node = ufbx_add_node(export_scene, src_node->name.data, NULL);
         if (!export_node) {
             printf("    Failed to add node: %s\n", src_node->name.data);
@@ -87,10 +88,21 @@ bool setup_node_hierarchy(node_mapping *node_mappings, size_t num_mappings)
             }
             
             if (export_parent) {
-                // TODO: Implement proper parent setting when API is available
-                // For now we track the relationship but can't set it directly
-                printf("    Would set parent of '%s' to '%s'\n", 
-                       export_node->name.data, export_parent->name.data);
+                // Set parent pointer directly (following ufbx.c pattern)
+                export_node->parent = export_parent;
+                
+                // Add to parent's children list
+                size_t new_count = export_parent->children.count + 1;
+                ufbx_node **new_children = (ufbx_node**)realloc(export_parent->children.data, new_count * sizeof(ufbx_node*));
+                if (new_children) {
+                    new_children[export_parent->children.count] = export_node;
+                    export_parent->children.data = new_children;
+                    export_parent->children.count = new_count;
+                    printf("    Set parent of '%s' to '%s'\n", 
+                           export_node->name.data, export_parent->name.data);
+                } else {
+                    printf("    Failed to allocate children array for parent '%s'\n", export_parent->name.data);
+                }
             }
         }
     }
