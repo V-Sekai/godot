@@ -382,6 +382,27 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
                 if (!export_cluster) {
                     continue;
                 }
+                
+                // Copy cluster transform matrices with correct struct member names
+                bool success = ufbx_set_skin_cluster_transform(export_cluster, 
+                                                             &src_cluster->geometry_to_bone,
+                                                             &src_cluster->bind_to_world, &error);
+                if (!success) {
+                    print_error(&error, "Failed to set skin cluster transform");
+                    continue;
+                }
+                
+                // Copy cluster vertex indices and weights using per-cluster arrays
+                if (src_cluster->vertices.count > 0 && src_cluster->weights.count > 0) {
+                    success = ufbx_set_skin_cluster_vertices(export_cluster,
+                                                           src_cluster->vertices.data,
+                                                           src_cluster->weights.data,
+                                                           src_cluster->vertices.count, &error);
+                    if (!success) {
+                        print_error(&error, "Failed to set skin cluster vertices");
+                    }
+                    printf("      Set %zu vertices and weights for cluster\n", src_cluster->vertices.count);
+                }
             }
         }
         

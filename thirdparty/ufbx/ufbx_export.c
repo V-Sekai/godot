@@ -1370,6 +1370,11 @@ ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char 
     
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
+    if (!ufbx_export_grow_array((void**)&scene_imp->skin_deformers, &scene_imp->skin_deformers_cap,
+                                sizeof(ufbx_skin_deformer*), scene_imp->num_skin_deformers + 1)) {
+        return NULL;
+    }
+    
     // Allocate new skin deformer
     ufbx_skin_deformer *skin = (ufbx_skin_deformer*)calloc(1, sizeof(ufbx_skin_deformer));
     if (!skin) {
@@ -1386,8 +1391,16 @@ ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char 
     strcpy(name_copy, name);
     skin->element.name.data = name_copy;
     skin->element.name.length = name_len;
+    skin->element.element_id = scene_imp->num_skin_deformers + 3000; // Offset to avoid ID conflicts
     skin->element.type = UFBX_ELEMENT_SKIN_DEFORMER;
     skin->skinning_method = UFBX_SKINNING_METHOD_LINEAR;
+    
+    // Add to scene tracking
+    scene_imp->skin_deformers[scene_imp->num_skin_deformers] = skin;
+    scene_imp->num_skin_deformers++;
+    
+    scene_imp->scene.skin_deformers.data = (ufbx_skin_deformer**)scene_imp->skin_deformers;
+    scene_imp->scene.skin_deformers.count = scene_imp->num_skin_deformers;
     
     return skin;
 }
@@ -1395,6 +1408,13 @@ ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char 
 // Add a skin cluster to a skin deformer
 ufbx_skin_cluster *ufbx_add_skin_cluster(ufbx_export_scene *scene, ufbx_skin_deformer *skin, ufbx_node *bone_node, const char *name) {
     if (!scene || !skin || !bone_node || !name) {
+        return NULL;
+    }
+    
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
+    
+    if (!ufbx_export_grow_array((void**)&scene_imp->skin_clusters, &scene_imp->skin_clusters_cap,
+                                sizeof(ufbx_skin_cluster*), scene_imp->num_skin_clusters + 1)) {
         return NULL;
     }
     
@@ -1414,11 +1434,37 @@ ufbx_skin_cluster *ufbx_add_skin_cluster(ufbx_export_scene *scene, ufbx_skin_def
     strcpy(name_copy, name);
     cluster->element.name.data = name_copy;
     cluster->element.name.length = name_len;
+    cluster->element.element_id = scene_imp->num_skin_clusters + 4000; // Offset to avoid ID conflicts
     cluster->element.type = UFBX_ELEMENT_SKIN_CLUSTER;
     cluster->bone_node = bone_node;
     cluster->bind_to_world = ufbx_identity_matrix;
     cluster->geometry_to_bone = ufbx_identity_matrix;
     cluster->mesh_node_to_bone = ufbx_identity_matrix;
+    
+    // Add to scene tracking
+    scene_imp->skin_clusters[scene_imp->num_skin_clusters] = cluster;
+    scene_imp->num_skin_clusters++;
+    
+    scene_imp->scene.skin_clusters.data = (ufbx_skin_cluster**)scene_imp->skin_clusters;
+    scene_imp->scene.skin_clusters.count = scene_imp->num_skin_clusters;
+    
+    // Add cluster to skin deformer's clusters list
+    if (!skin->clusters.data) {
+        skin->clusters.data = (ufbx_skin_cluster**)malloc(sizeof(ufbx_skin_cluster*));
+        if (!skin->clusters.data) {
+            return NULL;
+        }
+        skin->clusters.count = 0;
+    } else {
+        ufbx_skin_cluster **new_clusters = (ufbx_skin_cluster**)realloc(skin->clusters.data, (skin->clusters.count + 1) * sizeof(ufbx_skin_cluster*));
+        if (!new_clusters) {
+            return NULL;
+        }
+        skin->clusters.data = new_clusters;
+    }
+    
+    skin->clusters.data[skin->clusters.count] = cluster;
+    skin->clusters.count++;
     
     return cluster;
 }
@@ -1691,6 +1737,85 @@ bool ufbx_attach_blend_to_mesh(ufbx_mesh *mesh, ufbx_blend_deformer *blend, ufbx
     // Set the blend deformer
     mesh->blend_deformers.data[0] = blend;
     mesh->blend_deformers.count = 1;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set skin cluster transform matrices
+bool ufbx_set_skin_cluster_transform(ufbx_skin_cluster *cluster, const ufbx_matrix *geometry_to_bone, const ufbx_matrix *bind_to_world, ufbx_error *error) {
+    if (!cluster || !geometry_to_bone || !bind_to_world) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid cluster, geometry_to_bone, or bind_to_world matrix");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Set transform matrices
+    cluster->geometry_to_bone = *geometry_to_bone;
+    cluster->bind_to_world = *bind_to_world;
+    
+    // Calculate derived matrices if needed
+    cluster->mesh_node_to_bone = *geometry_to_bone; // Simplified for now
+    cluster->geometry_to_world = ufbx_identity_matrix; // Will be computed later by ufbx
+    cluster->geometry_to_world_transform = ufbx_identity_transform;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set skin cluster vertex indices and weights (per-cluster arrays)
+bool ufbx_set_skin_cluster_vertices(ufbx_skin_cluster *cluster, const uint32_t *vertices, const ufbx_real *weights, size_t num_vertices, ufbx_error *error) {
+    if (!cluster || !vertices || !weights || num_vertices == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid cluster, vertices, weights, or vertex count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate vertex indices
+    uint32_t *vertex_data = (uint32_t*)malloc(num_vertices * sizeof(uint32_t));
+    if (!vertex_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate vertex indices");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate weight data
+    ufbx_real *weight_data = (ufbx_real*)malloc(num_vertices * sizeof(ufbx_real));
+    if (!weight_data) {
+        free(vertex_data);
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate vertex weights");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Copy data
+    memcpy(vertex_data, vertices, num_vertices * sizeof(uint32_t));
+    memcpy(weight_data, weights, num_vertices * sizeof(ufbx_real));
+    
+    // Set cluster data
+    cluster->vertices.data = vertex_data;
+    cluster->vertices.count = num_vertices;
+    cluster->weights.data = weight_data;
+    cluster->weights.count = num_vertices;
+    cluster->num_weights = num_vertices;
     
     if (error) {
         error->type = UFBX_ERROR_NONE;

@@ -54,6 +54,8 @@ struct ufbx_export_scene {
     ufbx_light_list lights;
     ufbx_camera_list cameras;
     ufbx_anim_stack_list anim_stacks;
+    ufbx_skin_deformer_list skin_deformers;
+    ufbx_skin_cluster_list skin_clusters;
     
     // Internal data for export
     void *_internal_data;
@@ -92,6 +94,14 @@ typedef struct {
     ufbx_anim_curve **anim_curves;
     size_t num_anim_curves;
     size_t anim_curves_cap;
+    
+    ufbx_skin_deformer **skin_deformers;
+    size_t num_skin_deformers;
+    size_t skin_deformers_cap;
+    
+    ufbx_skin_cluster **skin_clusters;
+    size_t num_skin_clusters;
+    size_t skin_clusters_cap;
     
     // Error handling
     ufbx_error error;
@@ -208,6 +218,7 @@ ufbx_abi bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh, ufbx_er
 ufbx_abi bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, int surface_index, ufbx_error *error);
 
 // Skinning construction helpers
+// TODO: Remove unused functions and finalize skinning API
 
 // Add a skin deformer to the scene
 ufbx_abi ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char *name);
@@ -220,6 +231,12 @@ ufbx_abi bool ufbx_set_skin_weights(ufbx_skin_deformer *skin, const ufbx_skin_we
 
 // Set skin vertex data
 ufbx_abi bool ufbx_set_skin_vertices(ufbx_skin_deformer *skin, const ufbx_skin_vertex *vertices, size_t num_vertices, ufbx_error *error);
+
+// Set skin cluster transform matrices
+ufbx_abi bool ufbx_set_skin_cluster_transform(ufbx_skin_cluster *cluster, const ufbx_matrix *geometry_to_bone, const ufbx_matrix *bind_to_world, ufbx_error *error);
+
+// Set skin cluster vertex indices and weights
+ufbx_abi bool ufbx_set_skin_cluster_vertices(ufbx_skin_cluster *cluster, const uint32_t *vertices, const ufbx_real *weights, size_t num_vertices, ufbx_error *error);
 
 // Attach skin deformer to mesh
 ufbx_abi bool ufbx_attach_skin_to_mesh(ufbx_mesh *mesh, ufbx_skin_deformer *skin, ufbx_error *error);
