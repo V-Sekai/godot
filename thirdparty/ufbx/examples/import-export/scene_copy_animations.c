@@ -1,6 +1,7 @@
 #include "scene_copy_common.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // Copy animation data with proper connections
 bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
@@ -58,7 +59,7 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
             return false;
         }
         
-        // Copy animation layers
+        // Copy animation layers with proper ufbx patterns
         for (size_t j = 0; j < src_stack->layers.count; j++) {
             ufbx_anim_layer *src_layer = src_stack->layers.data[j];
             
@@ -73,7 +74,18 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
             (*layer_mappings)[layer_mapping_index].export_layer = export_layer;
             layer_mapping_index++;
             
-            // Copy animation values and curves (simplified version)
+            // Copy layer properties for comprehensive preservation (THIS IS CRITICAL!)
+            export_layer->weight = src_layer->weight;
+            export_layer->weight_is_animated = src_layer->weight_is_animated;
+            export_layer->blended = src_layer->blended;
+            export_layer->additive = src_layer->additive;
+            export_layer->compose_rotation = src_layer->compose_rotation;
+            export_layer->compose_scale = src_layer->compose_scale;
+            
+            printf("    Enhanced layer copying: %s (weight=%.3f, blended=%d, additive=%d)\n", 
+                   src_layer->name.data, src_layer->weight, src_layer->blended, src_layer->additive);
+            
+            // Copy animation values following ufbx.c connection patterns
             for (size_t k = 0; k < src_layer->anim_values.count; k++) {
                 ufbx_anim_value *src_value = src_layer->anim_values.data[k];
                 
@@ -82,75 +94,87 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                     continue;
                 }
                 
-                // Copy animation value default value
+                // Copy default value
                 export_value->default_value = src_value->default_value;
                 
-                // Copy curves for all components (not just X,Y,Z)
-                size_t max_components = sizeof(src_value->curves) / sizeof(src_value->curves[0]);
-                for (size_t comp = 0; comp < max_components; comp++) {
+                // Copy curves with proper component handling (following ufbx.c patterns)
+                for (size_t comp = 0; comp < 3; comp++) { // Only X,Y,Z components to match ufbx.c
                     ufbx_anim_curve *src_curve = src_value->curves[comp];
                     if (src_curve && src_curve->keyframes.count > 0) {
                         ufbx_anim_curve *export_curve = ufbx_add_anim_curve(export_scene, export_value, (int)comp);
                         if (export_curve) {
-                            // Copy keyframes with all metadata - create enhanced keyframe array
-                            ufbx_keyframe *enhanced_keyframes = malloc(src_curve->keyframes.count * sizeof(ufbx_keyframe));
-                            if (enhanced_keyframes) {
-                                // Copy keyframes with full metadata preservation
-                                for (size_t kf_idx = 0; kf_idx < src_curve->keyframes.count; kf_idx++) {
-                                    ufbx_keyframe *src_kf = &src_curve->keyframes.data[kf_idx];
-                                    ufbx_keyframe *dst_kf = &enhanced_keyframes[kf_idx];
-                                    
-                                    // Copy all keyframe data
-                                    *dst_kf = *src_kf;  // Copy entire structure
-                                    
-                                    // Ensure tangent modes and weights are preserved (only available fields)
-                                    dst_kf->interpolation = src_kf->interpolation;
-                                    dst_kf->left.dx = src_kf->left.dx;
-                                    dst_kf->left.dy = src_kf->left.dy;
-                                    dst_kf->right.dx = src_kf->right.dx;
-                                    dst_kf->right.dy = src_kf->right.dy;
-                                    // Note: bias, continuity, tension may not be available in export structs
-                                }
-                                
-                                // Set enhanced keyframes
-                                ufbx_error curve_error = {0};
-                                bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
-                                                                                 enhanced_keyframes,
-                                                                                 src_curve->keyframes.count, &curve_error);
-                                free(enhanced_keyframes);
-                                
-                                if (!curve_success) {
-                                    print_error(&curve_error, "Failed to set animation keyframes");
-                                    continue;
-                                }
-                            } else {
-                                // Fallback to basic keyframe copying
-                                ufbx_error curve_error = {0};
-                                bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
-                                                                                 src_curve->keyframes.data,
-                                                                                 src_curve->keyframes.count, &curve_error);
-                                if (!curve_success) {
-                                    print_error(&curve_error, "Failed to set animation keyframes");
-                                    continue;
-                                }
+                            // Copy keyframes exactly as they are (no enhancements that might break format)
+                            ufbx_error curve_error = {0};
+                            bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
+                                                                             src_curve->keyframes.data,
+                                                                             src_curve->keyframes.count, &curve_error);
+                            if (!curve_success) {
+                                print_error(&curve_error, "Failed to set animation keyframes");
+                                continue;
                             }
                             
-                            // Copy curve extrapolation settings
-                            ufbx_error extrap_error = {0};
-                            bool extrap_success = ufbx_set_anim_curve_extrapolation(export_curve,
-                                                                                  src_curve->pre_extrapolation,
-                                                                                  src_curve->post_extrapolation, &extrap_error);
-                            if (!extrap_success) {
-                                print_error(&extrap_error, "Failed to set curve extrapolation");
-                            }
+                            // Copy ALL curve metadata for comprehensive preservation
+                            export_curve->pre_extrapolation = src_curve->pre_extrapolation;
+                            export_curve->post_extrapolation = src_curve->post_extrapolation;
+                            export_curve->min_value = src_curve->min_value;
+                            export_curve->max_value = src_curve->max_value;
+                            export_curve->min_time = src_curve->min_time;
+                            export_curve->max_time = src_curve->max_time;
                             
-                            printf("      Copied curve component %zu with %zu keyframes (enhanced metadata)\n", comp, src_curve->keyframes.count);
+                            printf("      Enhanced curve component %zu with %zu keyframes (extrapolation: %d->%d)\n", 
+                                   comp, src_curve->keyframes.count, 
+                                   src_curve->pre_extrapolation.mode, src_curve->post_extrapolation.mode);
                         }
                     }
                 }
                 
-                // Animation connection will be handled automatically by ufbx export
-                // when animation values are named properly and associated with layers
+                // Connect animation to the CORRECT element by finding the original source
+                // Don't connect to all nodes - find the specific node this animation belongs to
+                ufbx_node *target_node = NULL;
+                
+                // Find which node in the original scene this animation value belongs to
+                for (size_t anim_prop_idx = 0; anim_prop_idx < src_layer->anim_props.count; anim_prop_idx++) {
+                    ufbx_anim_prop *src_prop = &src_layer->anim_props.data[anim_prop_idx];
+                    if (src_prop->anim_value == src_value) {
+                        // Found the original connection - find the corresponding export node
+                        for (size_t node_idx = 0; node_idx < num_mappings; node_idx++) {
+                            if (node_mappings[node_idx].src_node == (ufbx_node*)src_prop->element) {
+                                target_node = node_mappings[node_idx].export_node;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                if (target_node) {
+                    // Connect based on animation value name patterns from ufbx.c
+                    const char *prop_name = NULL;
+                    if (strcmp(src_value->name.data, "T") == 0) {
+                        prop_name = "Lcl Translation";
+                    } else if (strcmp(src_value->name.data, "R") == 0) {
+                        prop_name = "Lcl Rotation";
+                    } else if (strcmp(src_value->name.data, "S") == 0) {
+                        prop_name = "Lcl Scaling";
+                    }
+                    
+                    if (prop_name) {
+                        ufbx_error connect_error = {0};
+                        bool connect_success = ufbx_connect_anim_prop(export_scene, export_layer, 
+                                                                    (ufbx_element*)target_node, 
+                                                                    prop_name, export_value, &connect_error);
+                        if (!connect_success) {
+                            printf("      Warning: Failed to connect animation '%s' to node '%s' property '%s'\n", 
+                                   src_value->name.data, target_node->element.name.data, prop_name);
+                        } else {
+                            printf("      Connected animation '%s' to node '%s' property '%s'\n", 
+                                   src_value->name.data, target_node->element.name.data, prop_name);
+                        }
+                    }
+                } else {
+                    printf("      Warning: Could not find target node for animation value '%s'\n", src_value->name.data);
+                }
+                
                 printf("      Added animation value: %s\n", src_value->name.data);
             }
         }

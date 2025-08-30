@@ -21,7 +21,7 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
     // 1. Create nodes first (needed for references, but don't set up hierarchy yet)
     if (!copy_nodes(source_scene, export_scene, &node_mappings, &num_node_mappings)) goto cleanup;
     
-    // 2. Create animations (before other elements reference them)
+    // 2. Create animations (enhanced data preservation)
     if (!copy_animations(source_scene, export_scene, node_mappings, num_node_mappings, &stack_mappings, &layer_mappings)) goto cleanup;
     
     // 3. Create materials (before meshes reference them)
