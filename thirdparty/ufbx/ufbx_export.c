@@ -51,6 +51,16 @@ ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
     scene_imp->scene.settings.unit_meters = 1.0;
     scene_imp->scene.settings.frames_per_second = 30.0;
     
+    // Initialize scene lists - these will be updated when elements are added
+    scene_imp->scene.nodes.data = NULL;
+    scene_imp->scene.nodes.count = 0;
+    scene_imp->scene.meshes.data = NULL;
+    scene_imp->scene.meshes.count = 0;
+    scene_imp->scene.materials.data = NULL;
+    scene_imp->scene.materials.count = 0;
+    scene_imp->scene.anim_stacks.data = NULL;
+    scene_imp->scene.anim_stacks.count = 0;
+    
     return &scene_imp->scene;
 }
 
@@ -140,6 +150,10 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *
     scene_imp->nodes[scene_imp->num_nodes] = node;
     scene_imp->num_nodes++;
     
+    // Update scene list pointer and count
+    scene_imp->scene.nodes.data = (ufbx_node**)scene_imp->nodes;
+    scene_imp->scene.nodes.count = scene_imp->num_nodes;
+    
     return node;
 }
 
@@ -172,6 +186,10 @@ ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name) {
     // Add to scene
     scene_imp->meshes[scene_imp->num_meshes] = mesh;
     scene_imp->num_meshes++;
+    
+    // Update scene list pointer and count
+    scene_imp->scene.meshes.data = (ufbx_mesh**)scene_imp->meshes;
+    scene_imp->scene.meshes.count = scene_imp->num_meshes;
     
     return mesh;
 }
@@ -213,6 +231,10 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
     // Add to scene
     scene_imp->materials[scene_imp->num_materials] = material;
     scene_imp->num_materials++;
+    
+    // Update scene list pointer and count
+    scene_imp->scene.materials.data = (ufbx_material**)scene_imp->materials;
+    scene_imp->scene.materials.count = scene_imp->num_materials;
     
     return material;
 }
@@ -514,9 +536,21 @@ bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, int 
         return false;
     }
     
-    // For now, just set the first material
-    // TODO: Support multiple materials per mesh properly
-    mesh->materials.data = &material;
+    // Allocate materials array if not already allocated
+    if (!mesh->materials.data) {
+        mesh->materials.data = (ufbx_material**)malloc(sizeof(ufbx_material*));
+        if (!mesh->materials.data) {
+            if (error) {
+                error->type = UFBX_ERROR_OUT_OF_MEMORY;
+                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate materials array");
+                error->info_length = strlen(error->info);
+            }
+            return false;
+        }
+    }
+    
+    // Set the material
+    mesh->materials.data[0] = material;
     mesh->materials.count = 1;
     
     if (error) {
