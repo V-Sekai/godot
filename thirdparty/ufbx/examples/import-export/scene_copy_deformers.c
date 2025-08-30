@@ -8,7 +8,6 @@ bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sce
                          mesh_mapping *mesh_mappings, skin_mapping **skin_mappings)
 {
     printf("  Copying %zu skin deformers...\n", source_scene->skin_deformers.count);
-    ufbx_error error;
     
     if (source_scene->skin_deformers.count == 0) {
         *skin_mappings = NULL;
@@ -133,7 +132,6 @@ bool copy_blend_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sc
                           mesh_mapping *mesh_mappings, blend_mapping **blend_mappings)
 {
     printf("  Copying %zu blend deformers...\n", source_scene->blend_deformers.count);
-    ufbx_error error;
     
     if (source_scene->blend_deformers.count == 0) {
         *blend_mappings = NULL;

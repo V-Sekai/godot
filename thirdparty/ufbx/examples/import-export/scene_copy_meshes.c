@@ -7,7 +7,6 @@ bool copy_meshes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                  mesh_mapping **mesh_mappings)
 {
     printf("  Copying %zu meshes...\n", source_scene->meshes.count);
-    ufbx_error error;
     
     if (source_scene->meshes.count == 0) {
         *mesh_mappings = NULL;

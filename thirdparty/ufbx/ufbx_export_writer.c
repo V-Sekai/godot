@@ -6,6 +6,7 @@
 #include "ufbx_material_writer.h"
 #include "ufbx_connections.h"
 #include <stdio.h>
+#include <string.h>
 
 static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_export_scene *scene) {
     const ufbxi_export_scene *scene_imp = (const ufbxi_export_scene*)scene;

@@ -9,7 +9,6 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                      anim_stack_mapping **stack_mappings, anim_layer_mapping **layer_mappings)
 {
     printf("  Copying %zu animation stacks...\n", source_scene->anim_stacks.count);
-    ufbx_error error;
     
     if (source_scene->anim_stacks.count == 0) {
         *stack_mappings = NULL;

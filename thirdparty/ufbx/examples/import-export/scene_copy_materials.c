@@ -7,7 +7,6 @@ bool copy_materials(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                     material_mapping **material_mappings)
 {
     printf("  Copying %zu materials...\n", source_scene->materials.count);
-    ufbx_error error;
     
     if (source_scene->materials.count == 0) {
         *material_mappings = NULL;

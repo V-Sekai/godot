@@ -134,7 +134,6 @@ bool attach_elements_to_nodes(ufbx_scene *source_scene, node_mapping *node_mappi
                               mesh_mapping *mesh_mappings)
 {
     printf("  Attaching elements to nodes...\n");
-    ufbx_error error;
     
     // Attach meshes to nodes
     for (size_t i = 0; i < source_scene->nodes.count; i++) {
