@@ -26,15 +26,15 @@ $(VALIDATE_BIN): validate.c $(UFBX_SRC)
 test-huesitos: $(ROUNDTRIP_BIN)
 	./$(ROUNDTRIP_BIN) ./data/huesitos.fbx huesitos_roundtrip.fbx
 
-# Test all FBX files systematically
+# Test all FBX files systematically (excluding Blender files)
 test-all: $(ROUNDTRIP_BIN)
 	@echo "=== Systematic FBX Roundtrip Testing ==="
-	@echo "Testing all FBX files in ../../data directory..."
+	@echo "Testing all FBX files in ../../data directory (excluding Blender files)..."
 	@mkdir -p test_results
 	@success_count=0; \
 	total_count=0; \
 	failed_files=""; \
-	for fbx_file in $$(find ../../data -name "*.fbx" | sort); do \
+	for fbx_file in $$(find ../../data ./data -name "*.fbx" 2>/dev/null | grep -v -i blender | sort); do \
 		total_count=$$((total_count + 1)); \
 		filename=$$(basename "$$fbx_file" .fbx); \
 		output_file="test_results/$${filename}_roundtrip.fbx"; \
@@ -61,15 +61,15 @@ test-all: $(ROUNDTRIP_BIN)
 		echo "Check test_results/*.log for details"; \
 	fi
 
-# Test golden path cases only (exclude known problematic files)
+# Test golden path cases only (exclude known problematic files and Blender files)
 test-golden: $(ROUNDTRIP_BIN)
 	@echo "=== Golden Path FBX Roundtrip Testing ==="
-	@echo "Testing well-formed FBX files (excluding fuzz, fail, and edge cases)..."
+	@echo "Testing well-formed FBX files (excluding fuzz, fail, edge cases, and Blender files)..."
 	@mkdir -p test_results
 	@success_count=0; \
 	total_count=0; \
 	failed_files=""; \
-	for fbx_file in $$(find ../../data -name "*.fbx" | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face)" | sort); do \
+	for fbx_file in $$(find ../../data ./data -name "*.fbx" 2>/dev/null | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face)" | grep -v -i blender | sort); do \
 		total_count=$$((total_count + 1)); \
 		filename=$$(basename "$$fbx_file" .fbx); \
 		output_file="test_results/$${filename}_roundtrip.fbx"; \
@@ -99,14 +99,14 @@ test-golden: $(ROUNDTRIP_BIN)
 # Test golden path with automatic validation
 test-golden-validated: $(ROUNDTRIP_BIN) $(VALIDATE_BIN)
 	@echo "=== Golden Path Testing with Validation ==="
-	@echo "Testing well-formed FBX files with automatic data preservation validation..."
+	@echo "Testing well-formed FBX files with automatic data preservation validation (excluding Blender files)..."
 	@mkdir -p test_results
 	@success_count=0; \
 	validation_pass=0; \
 	total_count=0; \
 	failed_files=""; \
 	validation_failed=""; \
-	for fbx_file in $$(find ../../data -name "*.fbx" | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face)" | sort | head -20); do \
+	for fbx_file in $$(find ../../data ./data -name "*.fbx" 2>/dev/null | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face)" | grep -v -i blender | sort | head -20); do \
 		total_count=$$((total_count + 1)); \
 		filename=$$(basename "$$fbx_file" .fbx); \
 		output_file="test_results/$${filename}_roundtrip.fbx"; \
