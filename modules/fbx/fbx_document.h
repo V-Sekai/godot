@@ -128,6 +128,9 @@ public:
 	Error _convert_material(Ref<Material> p_material, struct ufbx_export_scene *p_export_scene, struct ufbx_mesh *p_mesh, int p_surface_idx, Ref<GLTFState> p_state);
 	Error _convert_texture(Ref<Texture2D> p_texture, struct ufbx_export_scene *p_export_scene, struct ufbx_material *p_material, const String &p_texture_type, Ref<GLTFState> p_state);
 
+	// Skeleton conversion methods
+	Error _convert_skeleton_to_gltf_state(Skeleton3D *p_skeleton, Ref<GLTFState> p_state, Ref<GLTFNode> p_gltf_node);
+
 	// Utility methods
 	Ref<ImporterMesh> _mesh_to_importer_mesh(Ref<Mesh> p_mesh);
 };

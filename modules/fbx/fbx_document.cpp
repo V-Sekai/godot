@@ -3383,6 +3383,95 @@ Error FBXDocument::_convert_texture(Ref<Texture2D> p_texture, ufbx_export_scene 
 	return OK;
 }
 
+Error FBXDocument::_convert_skeleton_to_gltf_state(Skeleton3D *p_skeleton, Ref<GLTFState> p_state, Ref<GLTFNode> p_gltf_node) {
+	ERR_FAIL_NULL_V(p_skeleton, ERR_INVALID_PARAMETER);
+	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
+
+	print_verbose("FBX Export: Converting skeleton to GLTF state: " + p_skeleton->get_name());
+
+	// Skip skeleton registration if it has no bones
+	int bone_count = p_skeleton->get_bone_count();
+	if (bone_count == 0) {
+		print_verbose("FBX Export: Skeleton has no bones, skipping registration: " + p_skeleton->get_name());
+		return OK;
+	}
+
+	// Create a GLTFSkeleton to manage this skeleton
+	Ref<GLTFSkeleton> gltf_skeleton;
+	gltf_skeleton.instantiate();
+	gltf_skeleton->godot_skeleton = p_skeleton;
+
+	// Add the skeleton to the state using public API
+	TypedArray<GLTFSkeleton> skeletons = p_state->get_skeletons();
+	GLTFSkeletonIndex skeleton_index = skeletons.size();
+	skeletons.push_back(gltf_skeleton);
+	p_state->set_skeletons(skeletons);
+
+	// Register each bone as a GLTFNode
+	for (int bone_i = 0; bone_i < bone_count; bone_i++) {
+		// Create a GLTFNode for this bone
+		Ref<GLTFNode> bone_gltf_node;
+		bone_gltf_node.instantiate();
+		
+		String bone_name = p_skeleton->get_bone_name(bone_i);
+		if (bone_name.is_empty()) {
+			bone_name = "Bone_" + itos(bone_i);
+		}
+		
+		bone_gltf_node->set_name(bone_name);
+		bone_gltf_node->set_original_name(bone_name);
+		bone_gltf_node->joint = true;
+		bone_gltf_node->skeleton = skeleton_index;
+		bone_gltf_node->transform = p_skeleton->get_bone_pose(bone_i);
+
+		// Add the bone node to the state using public API
+		GLTFNodeIndex bone_node_index = p_state->append_gltf_node(bone_gltf_node, p_skeleton, -1);
+		
+		// Safely register the bone in the skeleton
+		if (bone_node_index >= 0) {
+			gltf_skeleton->joints.push_back(bone_node_index);
+			gltf_skeleton->godot_bone_node[bone_i] = bone_node_index;
+
+			// If this is a root bone (no parent), add it to skeleton roots
+			if (p_skeleton->get_bone_parent(bone_i) == -1) {
+				gltf_skeleton->roots.push_back(bone_node_index);
+			}
+		} else {
+			WARN_PRINT(vformat("FBX Export: Failed to register bone '%s' in GLTF state", bone_name));
+		}
+	}
+
+	// Set up bone hierarchy in GLTFNodes using public API with safety checks
+	TypedArray<GLTFNode> nodes = p_state->get_nodes();
+	for (int bone_i = 0; bone_i < bone_count; bone_i++) {
+		if (!gltf_skeleton->godot_bone_node.has(bone_i)) {
+			continue; // Skip bones that failed to register
+		}
+		
+		GLTFNodeIndex bone_node_index = gltf_skeleton->godot_bone_node[bone_i];
+		int parent_bone_i = p_skeleton->get_bone_parent(bone_i);
+		
+		if (parent_bone_i != -1 && gltf_skeleton->godot_bone_node.has(parent_bone_i)) {
+			// This bone has a parent bone that was successfully registered
+			GLTFNodeIndex parent_node_index = gltf_skeleton->godot_bone_node[parent_bone_i];
+			
+			// Safety checks to prevent crashes
+			if (bone_node_index < nodes.size() && parent_node_index < nodes.size()) {
+				Ref<GLTFNode> bone_node = nodes[bone_node_index];
+				Ref<GLTFNode> parent_node = nodes[parent_node_index];
+				
+				if (bone_node.is_valid() && parent_node.is_valid()) {
+					bone_node->parent = parent_node_index;
+					parent_node->children.push_back(bone_node_index);
+				}
+			}
+		}
+	}
+
+	print_verbose(vformat("FBX Export: Registered %d bones from skeleton '%s' in GLTF state", bone_count, p_skeleton->get_name()));
+	return OK;
+}
+
 Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export_scene, ufbx_node *p_parent_node, Ref<GLTFState> p_state) {
 	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
 	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
@@ -3450,6 +3539,15 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 	if (light) {
 		// TODO: Convert light data to ufbx format
 		print_verbose("FBX Export: Found light: " + p_node->get_name());
+	}
+
+	// Handle Skeleton3D nodes - register bones in GLTFState for animation export
+	Skeleton3D *skeleton = Object::cast_to<Skeleton3D>(p_node);
+	if (skeleton) {
+		Error err = _convert_skeleton_to_gltf_state(skeleton, p_state, gltf_node);
+		if (err != OK) {
+			ERR_PRINT("FBX Export: Failed to convert skeleton to GLTF state: " + p_node->get_name());
+		}
 	}
 
 	// Recursively convert child nodes

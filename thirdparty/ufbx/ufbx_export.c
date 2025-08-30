@@ -109,18 +109,19 @@ ufbx_anim_layer *ufbx_add_anim_layer(ufbx_export_scene *scene, ufbx_anim_stack *
     scene_imp->anim_layers[scene_imp->num_anim_layers] = layer;
     scene_imp->num_anim_layers++;
     
-    // Add layer to stack's layers list
-    if (!stack->layers.data) {
-        stack->layers.data = (ufbx_anim_layer**)malloc(sizeof(ufbx_anim_layer*));
-        if (!stack->layers.data) {
-            return NULL;
-        }
-        stack->layers.count = 0;
+    // Add layer to stack's layers list - properly grow the array
+    size_t new_count = stack->layers.count + 1;
+    ufbx_anim_layer **new_layers = (ufbx_anim_layer**)realloc(stack->layers.data, new_count * sizeof(ufbx_anim_layer*));
+    if (!new_layers) {
+        // Clean up the layer we just allocated
+        free((void*)layer->element.name.data);
+        free(layer);
+        return NULL;
     }
     
-    // TODO: Properly grow the stack's layers array
-    stack->layers.data[stack->layers.count] = layer;
-    stack->layers.count++;
+    new_layers[stack->layers.count] = layer;
+    stack->layers.data = new_layers;
+    stack->layers.count = new_count;
     
     return layer;
 }
@@ -158,18 +159,19 @@ ufbx_anim_value *ufbx_add_anim_value(ufbx_export_scene *scene, ufbx_anim_layer *
     scene_imp->anim_values[scene_imp->num_anim_values] = value;
     scene_imp->num_anim_values++;
     
-    // Add value to layer's anim_values list
-    if (!layer->anim_values.data) {
-        layer->anim_values.data = (ufbx_anim_value**)malloc(sizeof(ufbx_anim_value*));
-        if (!layer->anim_values.data) {
-            return NULL;
-        }
-        layer->anim_values.count = 0;
+    // Add value to layer's anim_values list - properly grow the array
+    size_t new_count = layer->anim_values.count + 1;
+    ufbx_anim_value **new_values = (ufbx_anim_value**)realloc(layer->anim_values.data, new_count * sizeof(ufbx_anim_value*));
+    if (!new_values) {
+        // Clean up the value we just allocated
+        free((void*)value->element.name.data);
+        free(value);
+        return NULL;
     }
     
-    // TODO: Properly grow the layer's anim_values array
-    layer->anim_values.data[layer->anim_values.count] = value;
-    layer->anim_values.count++;
+    new_values[layer->anim_values.count] = value;
+    layer->anim_values.data = new_values;
+    layer->anim_values.count = new_count;
     
     return value;
 }
@@ -394,24 +396,23 @@ bool ufbx_connect_anim_prop(ufbx_export_scene *scene, ufbx_anim_layer *layer, uf
     anim_prop->prop_name.length = strlen(prop_name);
     anim_prop->anim_value = value;
     
-    // Add to layer's anim_props list
-    if (!layer->anim_props.data) {
-        layer->anim_props.data = (ufbx_anim_prop*)malloc(sizeof(ufbx_anim_prop));
-        if (!layer->anim_props.data) {
-            free(anim_prop);
-            if (error) {
-                error->type = UFBX_ERROR_OUT_OF_MEMORY;
-                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate anim props array");
-                error->info_length = strlen(error->info);
-            }
-            return false;
+    // Add to layer's anim_props list - properly grow the array
+    size_t new_count = layer->anim_props.count + 1;
+    ufbx_anim_prop *new_props = (ufbx_anim_prop*)realloc(layer->anim_props.data, new_count * sizeof(ufbx_anim_prop));
+    if (!new_props) {
+        free((void*)anim_prop->prop_name.data);
+        free(anim_prop);
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to grow anim props array");
+            error->info_length = strlen(error->info);
         }
-        layer->anim_props.count = 0;
+        return false;
     }
     
-    // TODO: Properly grow the layer's anim_props array
-    layer->anim_props.data[layer->anim_props.count] = *anim_prop;
-    layer->anim_props.count++;
+    new_props[layer->anim_props.count] = *anim_prop;
+    layer->anim_props.data = new_props;
+    layer->anim_props.count = new_count;
     
     free(anim_prop); // We copied the data, so free the temporary allocation
     
@@ -573,18 +574,45 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *
     }
     
     node->element.name.data = strdup(name);
+    if (!node->element.name.data) {
+        free(node);
+        return NULL;
+    }
     node->element.name.length = strlen(name);
     node->element.element_id = scene_imp->num_nodes + 1;
     node->element.type = UFBX_ELEMENT_NODE;
     
+    // Initialize children list
+    node->children.data = NULL;
+    node->children.count = 0;
+    
     node->parent = parent;
     if (parent) {
-        // TODO: Add to parent's children list
+        // Add to parent's children list
+        size_t new_count = parent->children.count + 1;
+        ufbx_node **new_children = (ufbx_node**)realloc(parent->children.data, new_count * sizeof(ufbx_node*));
+        if (!new_children) {
+            free((void*)node->element.name.data);
+            free(node);
+            return NULL;
+        }
+        new_children[parent->children.count] = node;
+        parent->children.data = new_children;
+        parent->children.count = new_count;
     }
     
     node->local_transform.translation = (ufbx_vec3){ 0, 0, 0 };
     node->local_transform.rotation = (ufbx_quat){ 0, 0, 0, 1 };
     node->local_transform.scale = (ufbx_vec3){ 1, 1, 1 };
+    
+    // Initialize other node properties
+    node->mesh = NULL;
+    node->light = NULL;
+    node->camera = NULL;
+    node->bone = NULL;
+    node->attrib = NULL;
+    node->attrib_type = UFBX_ELEMENT_UNKNOWN;
+    node->node_depth = parent ? parent->node_depth + 1 : 0;
     
     scene_imp->nodes[scene_imp->num_nodes] = node;
     scene_imp->num_nodes++;
