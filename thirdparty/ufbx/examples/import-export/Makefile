@@ -186,7 +186,6 @@ clean:
 help:
 	@echo "Available targets:"
 	@echo "  all                 - Build roundtrip and validation tools"
-	@echo "  test-huesitos       - Test roundtrip with huesitos.fbx"
 	@echo "  test-all            - Test ALL FBX files in ../../data (comprehensive)"
 	@echo "  test-golden         - Test golden path files (exclude fuzz/fail/edge cases)"
 	@echo "  test-golden-validated - Test golden path with automatic validation"
@@ -213,6 +212,6 @@ help:
 	@echo "Manual usage:"
 	@echo "  ./roundtrip <input.fbx> <output.fbx>"
 	@echo "  ./validate <input.fbx> <roundtrip.fbx>"
-	@echo "  ./roundtrip ./data/huesitos.fbx huesitos_test.fbx"
+	@echo "  ./roundtrip ./data/example.fbx example_test.fbx"
 
-.PHONY: all test-huesitos test-all test-golden test-golden-validated test-complex test-verify clean help
+.PHONY: all test-all test-golden test-golden-validated test-complex test-verify clean help
