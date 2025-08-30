@@ -99,3 +99,33 @@ bool copy_meshes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
     
     return true;
 }
+
+// Attach materials to meshes (should be called after materials are copied)
+bool attach_materials_to_meshes(ufbx_scene *source_scene, mesh_mapping *mesh_mappings, material_mapping *material_mappings)
+{
+    printf("  Attaching materials to meshes...\n");
+    
+    for (size_t i = 0; i < source_scene->meshes.count; i++) {
+        ufbx_mesh *src_mesh = source_scene->meshes.data[i];
+        ufbx_mesh *export_mesh = mesh_mappings[i].export_mesh;
+        
+        // Attach materials to mesh
+        for (size_t j = 0; j < src_mesh->materials.count; j++) {
+            ufbx_material *src_mat = src_mesh->materials.data[j];
+            // Find corresponding export material
+            for (size_t k = 0; k < source_scene->materials.count; k++) {
+                if (source_scene->materials.data[k] == src_mat) {
+                    ufbx_error attach_error = {0};
+                    bool success = ufbx_attach_material_to_mesh(export_mesh, material_mappings[k].export_material, j, &attach_error);
+                    if (!success) {
+                        print_error(&attach_error, "Failed to attach material to mesh");
+                        return false;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    
+    return true;
+}

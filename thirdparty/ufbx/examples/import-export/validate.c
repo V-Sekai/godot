@@ -139,11 +139,16 @@ int validate_roundtrip(const char *input_file, const char *output_file)
     printf("Output file: %s\n", output_file);
     printf("\n");
 
-    // Load both files with same settings
+    // Load both files with verbose error reporting settings
     ufbx_load_opts load_opts = {
         .load_external_files = true,
         .ignore_missing_external_files = true,
         .generate_missing_normals = true,
+        .strict = true,  // Enable strict mode for detailed error reporting
+        .disable_quirks = true,  // Disable exporter-specific quirks
+        .retain_dom = true,  // Keep raw document structure for debugging
+        .index_error_handling = UFBX_INDEX_ERROR_HANDLING_ABORT_LOADING,  // Fail on bad indices
+        .unicode_error_handling = UFBX_UNICODE_ERROR_HANDLING_ABORT_LOADING,  // Fail on Unicode errors
         .target_axes = {
             .right = UFBX_COORDINATE_AXIS_POSITIVE_X,
             .up = UFBX_COORDINATE_AXIS_POSITIVE_Y,
