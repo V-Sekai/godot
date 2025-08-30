@@ -451,7 +451,14 @@ static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_expor
         if (!ufbx_ascii_write_string(writer, ", ")) {
             return false;
         }
-        if (!ufbx_ascii_write_property_string(writer, "Mesh")) {
+        // Determine correct node type: LimbNode for bones, Mesh for geometry nodes, Null for empties
+        const char *node_type = "Null"; // Default to Null/empty
+        if (node->mesh) {
+            node_type = "Mesh";
+        } else if (node->bone || strstr(node->element.name.data, "Bone") != NULL) {
+            node_type = "LimbNode";
+        }
+        if (!ufbx_ascii_write_property_string(writer, node_type)) {
             return false;
         }
         if (!ufbx_ascii_write_string(writer, " {\n")) {
