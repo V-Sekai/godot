@@ -19,24 +19,27 @@ bool copy_nodes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
     
     for (size_t i = 0; i < source_scene->nodes.count; i++) {
         ufbx_node *src_node = source_scene->nodes.data[i];
-        ufbx_node *export_node;
         
         // Skip root node as it's automatically created
         if (!src_node->parent) {
-            export_node = export_scene->root_node;
-        } else {
-            export_node = ufbx_add_node(export_scene, src_node->name.data, NULL);
-            if (!export_node) {
-                printf("    Failed to add node: %s\n", src_node->name.data);
-                return false;
-            }
+            // Map root node
+            (*node_mappings)[*num_mappings].src_node = src_node;
+            (*node_mappings)[*num_mappings].export_node = export_scene->root_node;
+            (*num_mappings)++;
+            continue;
+        }
+        
+        // Create node in export scene (temporarily without parent)
+        ufbx_node *export_node = ufbx_add_node(export_scene, src_node->name.data, NULL);
+        if (!export_node) {
+            printf("    Failed to add node: %s\n", src_node->name.data);
+            return false;
         }
         
         // Copy transform
-        ufbx_error transform_error = {0};
-        ufbx_set_node_transform(export_node, &src_node->local_transform, &transform_error);
-        if (transform_error.type != UFBX_ERROR_NONE) {
-            print_error(&transform_error, "Failed to set node transform");
+        ufbx_set_node_transform(export_node, &src_node->local_transform, &error);
+        if (error.type != UFBX_ERROR_NONE) {
+            print_error(&error, "Failed to set node transform");
             return false;
         }
         
