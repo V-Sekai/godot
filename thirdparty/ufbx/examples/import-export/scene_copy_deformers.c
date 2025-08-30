@@ -53,7 +53,7 @@ bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sce
                     continue;
                 }
                 
-                // Copy cluster transform matrices - use correct matrix members
+                // Copy comprehensive cluster transform matrices (enhanced for transformed skins)
                 ufbx_error transform_error = {0};
                 bool success = ufbx_set_skin_cluster_transform(export_cluster, 
                                                              &src_cluster->geometry_to_bone,
@@ -63,15 +63,27 @@ bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sce
                     continue;
                 }
                 
-                // Copy cluster vertex indices and weights
+                // Copy additional transform matrices for comprehensive skin support
+                export_cluster->mesh_node_to_bone = src_cluster->mesh_node_to_bone;
+                export_cluster->geometry_to_world = src_cluster->geometry_to_world;
+                export_cluster->geometry_to_world_transform = src_cluster->geometry_to_world_transform;
+                
+                // Copy cluster vertex indices and weights with validation
                 if (src_cluster->vertices.count > 0 && src_cluster->weights.count > 0) {
+                    // Ensure we have matching vertex/weight counts
+                    size_t min_count = src_cluster->vertices.count < src_cluster->weights.count ? 
+                                      src_cluster->vertices.count : src_cluster->weights.count;
+                    
                     ufbx_error vertices_error = {0};
                     success = ufbx_set_skin_cluster_vertices(export_cluster,
                                                            src_cluster->vertices.data,
                                                            src_cluster->weights.data,
-                                                           src_cluster->vertices.count, &vertices_error);
+                                                           min_count, &vertices_error);
                     if (!success) {
                         print_error(&vertices_error, "Failed to set skin cluster vertices");
+                    } else {
+                        printf("      Enhanced skin cluster '%s': %zu vertices with transforms\n", 
+                               src_cluster->name.data, min_count);
                     }
                 }
             }

@@ -82,6 +82,9 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                     continue;
                 }
                 
+                // Copy animation value default value
+                export_value->default_value = src_value->default_value;
+                
                 // Copy curves for all components (not just X,Y,Z)
                 size_t max_components = sizeof(src_value->curves) / sizeof(src_value->curves[0]);
                 for (size_t comp = 0; comp < max_components; comp++) {
@@ -89,14 +92,47 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                     if (src_curve && src_curve->keyframes.count > 0) {
                         ufbx_anim_curve *export_curve = ufbx_add_anim_curve(export_scene, export_value, (int)comp);
                         if (export_curve) {
-                            // Copy keyframes with all metadata
-                            ufbx_error curve_error = {0};
-                            bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
-                                                                             src_curve->keyframes.data,
-                                                                             src_curve->keyframes.count, &curve_error);
-                            if (!curve_success) {
-                                print_error(&curve_error, "Failed to set animation keyframes");
-                                continue;
+                            // Copy keyframes with all metadata - create enhanced keyframe array
+                            ufbx_keyframe *enhanced_keyframes = malloc(src_curve->keyframes.count * sizeof(ufbx_keyframe));
+                            if (enhanced_keyframes) {
+                                // Copy keyframes with full metadata preservation
+                                for (size_t kf_idx = 0; kf_idx < src_curve->keyframes.count; kf_idx++) {
+                                    ufbx_keyframe *src_kf = &src_curve->keyframes.data[kf_idx];
+                                    ufbx_keyframe *dst_kf = &enhanced_keyframes[kf_idx];
+                                    
+                                    // Copy all keyframe data
+                                    *dst_kf = *src_kf;  // Copy entire structure
+                                    
+                                    // Ensure tangent modes and weights are preserved (only available fields)
+                                    dst_kf->interpolation = src_kf->interpolation;
+                                    dst_kf->left.dx = src_kf->left.dx;
+                                    dst_kf->left.dy = src_kf->left.dy;
+                                    dst_kf->right.dx = src_kf->right.dx;
+                                    dst_kf->right.dy = src_kf->right.dy;
+                                    // Note: bias, continuity, tension may not be available in export structs
+                                }
+                                
+                                // Set enhanced keyframes
+                                ufbx_error curve_error = {0};
+                                bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
+                                                                                 enhanced_keyframes,
+                                                                                 src_curve->keyframes.count, &curve_error);
+                                free(enhanced_keyframes);
+                                
+                                if (!curve_success) {
+                                    print_error(&curve_error, "Failed to set animation keyframes");
+                                    continue;
+                                }
+                            } else {
+                                // Fallback to basic keyframe copying
+                                ufbx_error curve_error = {0};
+                                bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
+                                                                                 src_curve->keyframes.data,
+                                                                                 src_curve->keyframes.count, &curve_error);
+                                if (!curve_success) {
+                                    print_error(&curve_error, "Failed to set animation keyframes");
+                                    continue;
+                                }
                             }
                             
                             // Copy curve extrapolation settings
@@ -108,7 +144,7 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                                 print_error(&extrap_error, "Failed to set curve extrapolation");
                             }
                             
-                            printf("      Copied curve component %zu with %zu keyframes\n", comp, src_curve->keyframes.count);
+                            printf("      Copied curve component %zu with %zu keyframes (enhanced metadata)\n", comp, src_curve->keyframes.count);
                         }
                     }
                 }

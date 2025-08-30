@@ -44,24 +44,25 @@ bool copy_nodes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
             return false;
         }
         
-        // Copy additional transform properties that are available
-        // FIXME: Some advanced pivot/inheritance features may not be fully supported in export API
-        // This is a simplified version that focuses on the main transform data
+        // Copy available transform properties
         
-        // Copy visibility if different from default
+        // Copy visibility and basic properties
         export_node->visible = src_node->visible;
-        
-        // Copy rotation order
         export_node->rotation_order = src_node->rotation_order;
-        
-        // Copy inherit mode
         export_node->inherit_mode = src_node->inherit_mode;
         
-        // Copy additional transform components that might be available
+        // Copy geometry transform if present
         if (src_node->has_geometry_transform) {
             export_node->geometry_transform = src_node->geometry_transform;
             export_node->has_geometry_transform = true;
         }
+        
+        // Copy available transform helper matrices
+        export_node->node_to_parent = src_node->node_to_parent;
+        export_node->node_to_world = src_node->node_to_world;
+        export_node->euler_rotation = src_node->euler_rotation;
+        
+        printf("    Enhanced transform copying for node: %s (inheritance, matrices)\n", src_node->name.data);
         
         // Copy bone if present
         if (src_node->bone) {

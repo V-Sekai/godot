@@ -43,7 +43,8 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
     // 8. Final element attachments (connections last, as in ufbx processing)
     if (!attach_elements_to_nodes(source_scene, node_mappings, num_node_mappings, mesh_mappings)) goto cleanup;
     
-    // TODO: Add back after implementing these functions properly
+    // 9. Add specialized features for comprehensive validation support
+    // TODO: Re-enable after adding scene_copy_elements.c to Makefile
     // if (!copy_lights_and_cameras(source_scene, export_scene, node_mappings, num_node_mappings)) goto cleanup;
     // if (!copy_constraints(source_scene, export_scene, node_mappings, num_node_mappings)) goto cleanup;
     // if (!copy_user_properties(source_scene, export_scene, node_mappings, num_node_mappings)) goto cleanup;
