@@ -104,6 +104,21 @@ public:
 	Error _parse(Ref<FBXState> p_state, String p_path, Ref<FileAccess> p_file);
 	Error _convert_scene_node(Node *p_node, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_parent_node, Ref<GLTFState> p_state);
 
+	// Animation export methods
+	Error _serialize_animations(Ref<GLTFState> p_state, struct ufbx_export_scene *p_export_scene);
+	void _convert_animation(Ref<GLTFState> p_state, AnimationPlayer *p_animation_player, const String &p_animation_name, struct ufbx_export_scene *p_export_scene);
+	Error _convert_animation_track(Ref<GLTFState> p_state, const Ref<Animation> &p_godot_animation, int32_t p_track_index, struct ufbx_export_scene *p_export_scene, struct ufbx_anim_stack *p_anim_stack);
+	GLTFNodeIndex _find_node_index_for_animation_path(Ref<GLTFState> p_state, const NodePath &p_path, Node *p_scene_root);
+	
+	// New animation export methods
+	void _find_animation_players(Ref<GLTFState> p_state, Vector<AnimationPlayer *> &r_animation_players);
+	void _find_animation_players_recursive(Node *p_node, Vector<AnimationPlayer *> &r_animation_players);
+	void _find_animation_players_in_scene(Node *p_scene_root, Vector<AnimationPlayer *> &r_animation_players);
+	Error _convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_anim, struct ufbx_export_scene *p_export_scene, Ref<GLTFState> p_state);
+	Error _convert_node_track_to_ufbx(GLTFNodeIndex p_node_index, const GLTFAnimation::NodeTrack &p_track, struct ufbx_export_scene *p_export_scene, struct ufbx_anim_stack *p_stack, Ref<GLTFState> p_state);
+	struct ufbx_node *_find_ufbx_node_for_gltf_node(struct ufbx_export_scene *p_export_scene, GLTFNodeIndex p_node_index, Ref<GLTFState> p_state);
+	ufbx_interpolation _gltf_to_ufbx_interpolation(GLTFAnimation::Interpolation p_gltf_interp);
+
 	// Mesh conversion methods
 	Error _convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instance, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_node, Ref<GLTFState> p_state);
 	Error _convert_mesh_instance_3d(MeshInstance3D *p_mesh_instance, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_node, Ref<GLTFState> p_state);

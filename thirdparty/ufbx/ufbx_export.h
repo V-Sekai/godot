@@ -81,6 +81,18 @@ typedef struct {
     size_t num_anim_stacks;
     size_t anim_stacks_cap;
     
+    ufbx_anim_layer **anim_layers;
+    size_t num_anim_layers;
+    size_t anim_layers_cap;
+    
+    ufbx_anim_value **anim_values;
+    size_t num_anim_values;
+    size_t anim_values_cap;
+    
+    ufbx_anim_curve **anim_curves;
+    size_t num_anim_curves;
+    size_t anim_curves_cap;
+    
     // Error handling
     ufbx_error error;
     bool has_error;
@@ -131,6 +143,20 @@ ufbx_abi ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *na
 
 // Add an animation stack to the scene
 ufbx_abi ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, const char *name);
+
+// Animation layer functions
+ufbx_abi ufbx_anim_layer *ufbx_add_anim_layer(ufbx_export_scene *scene, ufbx_anim_stack *stack, const char *name);
+ufbx_abi ufbx_anim_value *ufbx_add_anim_value(ufbx_export_scene *scene, ufbx_anim_layer *layer, const char *name);
+ufbx_abi ufbx_anim_curve *ufbx_add_anim_curve(ufbx_export_scene *scene, ufbx_anim_value *value, int component);
+
+// Animation curve data functions
+ufbx_abi bool ufbx_set_anim_curve_keyframes(ufbx_anim_curve *curve, const ufbx_keyframe *keyframes, size_t num_keyframes, ufbx_error *error);
+ufbx_abi bool ufbx_add_keyframe(ufbx_anim_curve *curve, double time, ufbx_real value, ufbx_interpolation interpolation, ufbx_error *error);
+ufbx_abi bool ufbx_set_anim_curve_extrapolation(ufbx_anim_curve *curve, ufbx_extrapolation pre, ufbx_extrapolation post, ufbx_error *error);
+
+// Animation property binding functions
+ufbx_abi bool ufbx_connect_anim_prop(ufbx_export_scene *scene, ufbx_anim_layer *layer, ufbx_element *element, const char *prop_name, ufbx_anim_value *value, ufbx_error *error);
+ufbx_abi bool ufbx_set_anim_stack_time_range(ufbx_anim_stack *stack, double time_begin, double time_end, ufbx_error *error);
 
 // Mesh construction helpers
 

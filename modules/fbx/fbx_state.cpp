@@ -34,6 +34,20 @@ void FBXState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_allow_geometry_helper_nodes"), &FBXState::get_allow_geometry_helper_nodes);
 	ClassDB::bind_method(D_METHOD("set_allow_geometry_helper_nodes", "allow"), &FBXState::set_allow_geometry_helper_nodes);
 
+	// Export options API bindings
+	ClassDB::bind_method(D_METHOD("set_export_ascii_format", "ascii_format"), &FBXState::set_export_ascii_format);
+	ClassDB::bind_method(D_METHOD("get_export_ascii_format"), &FBXState::get_export_ascii_format);
+	ClassDB::bind_method(D_METHOD("set_export_embed_textures", "embed_textures"), &FBXState::set_export_embed_textures);
+	ClassDB::bind_method(D_METHOD("get_export_embed_textures"), &FBXState::get_export_embed_textures);
+	ClassDB::bind_method(D_METHOD("set_export_animations", "export_animations"), &FBXState::set_export_animations);
+	ClassDB::bind_method(D_METHOD("get_export_animations"), &FBXState::get_export_animations);
+	ClassDB::bind_method(D_METHOD("set_export_materials", "export_materials"), &FBXState::set_export_materials);
+	ClassDB::bind_method(D_METHOD("get_export_materials"), &FBXState::get_export_materials);
+	ClassDB::bind_method(D_METHOD("set_export_fbx_version", "fbx_version"), &FBXState::set_export_fbx_version);
+	ClassDB::bind_method(D_METHOD("get_export_fbx_version"), &FBXState::get_export_fbx_version);
+	ClassDB::bind_method(D_METHOD("set_export_coordinate_system", "coordinate_system"), &FBXState::set_export_coordinate_system);
+	ClassDB::bind_method(D_METHOD("get_export_coordinate_system"), &FBXState::get_export_coordinate_system);
+
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "allow_geometry_helper_nodes"), "set_allow_geometry_helper_nodes", "get_allow_geometry_helper_nodes");
 
 	BIND_ENUM_CONSTANT(COORDINATE_SYSTEM_Y_UP);

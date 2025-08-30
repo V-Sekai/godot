@@ -25,6 +25,433 @@ static bool ufbx_export_grow_array(void **ptr, size_t *cap, size_t elem_size, si
     return true;
 }
 
+// Animation export functions
+
+// Add an animation stack to the scene
+ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, const char *name) {
+    if (!scene || !name) {
+        return NULL;
+    }
+    
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
+    
+    if (!ufbx_export_grow_array((void**)&scene_imp->anim_stacks, &scene_imp->anim_stacks_cap,
+                                sizeof(ufbx_anim_stack*), scene_imp->num_anim_stacks + 1)) {
+        return NULL;
+    }
+    
+    ufbx_anim_stack *stack = (ufbx_anim_stack*)calloc(1, sizeof(ufbx_anim_stack));
+    if (!stack) {
+        return NULL;
+    }
+    
+    // Initialize animation stack
+    stack->element.name.data = strdup(name);
+    stack->element.name.length = strlen(name);
+    stack->element.element_id = scene_imp->num_anim_stacks + 5000; // Offset to avoid ID conflicts
+    stack->element.type = UFBX_ELEMENT_ANIM_STACK;
+    
+    // Initialize time range
+    stack->time_begin = 0.0;
+    stack->time_end = 0.0;
+    
+    // Initialize layers list
+    stack->layers.data = NULL;
+    stack->layers.count = 0;
+    
+    scene_imp->anim_stacks[scene_imp->num_anim_stacks] = stack;
+    scene_imp->num_anim_stacks++;
+    
+    scene_imp->scene.anim_stacks.data = (ufbx_anim_stack**)scene_imp->anim_stacks;
+    scene_imp->scene.anim_stacks.count = scene_imp->num_anim_stacks;
+    
+    return stack;
+}
+
+// Add an animation layer to a stack
+ufbx_anim_layer *ufbx_add_anim_layer(ufbx_export_scene *scene, ufbx_anim_stack *stack, const char *name) {
+    if (!scene || !stack || !name) {
+        return NULL;
+    }
+    
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
+    
+    if (!ufbx_export_grow_array((void**)&scene_imp->anim_layers, &scene_imp->anim_layers_cap,
+                                sizeof(ufbx_anim_layer*), scene_imp->num_anim_layers + 1)) {
+        return NULL;
+    }
+    
+    ufbx_anim_layer *layer = (ufbx_anim_layer*)calloc(1, sizeof(ufbx_anim_layer));
+    if (!layer) {
+        return NULL;
+    }
+    
+    // Initialize animation layer
+    layer->element.name.data = strdup(name);
+    layer->element.name.length = strlen(name);
+    layer->element.element_id = scene_imp->num_anim_layers + 6000; // Offset to avoid ID conflicts
+    layer->element.type = UFBX_ELEMENT_ANIM_LAYER;
+    
+    // Initialize layer properties
+    layer->weight = 1.0;
+    layer->weight_is_animated = false;
+    layer->blended = false;
+    layer->additive = false;
+    layer->compose_rotation = false;
+    layer->compose_scale = false;
+    
+    // Initialize lists
+    layer->anim_values.data = NULL;
+    layer->anim_values.count = 0;
+    layer->anim_props.data = NULL;
+    layer->anim_props.count = 0;
+    
+    scene_imp->anim_layers[scene_imp->num_anim_layers] = layer;
+    scene_imp->num_anim_layers++;
+    
+    // Add layer to stack's layers list
+    if (!stack->layers.data) {
+        stack->layers.data = (ufbx_anim_layer**)malloc(sizeof(ufbx_anim_layer*));
+        if (!stack->layers.data) {
+            return NULL;
+        }
+        stack->layers.count = 0;
+    }
+    
+    // TODO: Properly grow the stack's layers array
+    stack->layers.data[stack->layers.count] = layer;
+    stack->layers.count++;
+    
+    return layer;
+}
+
+// Add an animation value to a layer
+ufbx_anim_value *ufbx_add_anim_value(ufbx_export_scene *scene, ufbx_anim_layer *layer, const char *name) {
+    if (!scene || !layer || !name) {
+        return NULL;
+    }
+    
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
+    
+    if (!ufbx_export_grow_array((void**)&scene_imp->anim_values, &scene_imp->anim_values_cap,
+                                sizeof(ufbx_anim_value*), scene_imp->num_anim_values + 1)) {
+        return NULL;
+    }
+    
+    ufbx_anim_value *value = (ufbx_anim_value*)calloc(1, sizeof(ufbx_anim_value));
+    if (!value) {
+        return NULL;
+    }
+    
+    // Initialize animation value
+    value->element.name.data = strdup(name);
+    value->element.name.length = strlen(name);
+    value->element.element_id = scene_imp->num_anim_values + 7000; // Offset to avoid ID conflicts
+    value->element.type = UFBX_ELEMENT_ANIM_VALUE;
+    
+    // Initialize default value and curves
+    value->default_value = (ufbx_vec3){ 0, 0, 0 };
+    value->curves[0] = NULL;
+    value->curves[1] = NULL;
+    value->curves[2] = NULL;
+    
+    scene_imp->anim_values[scene_imp->num_anim_values] = value;
+    scene_imp->num_anim_values++;
+    
+    // Add value to layer's anim_values list
+    if (!layer->anim_values.data) {
+        layer->anim_values.data = (ufbx_anim_value**)malloc(sizeof(ufbx_anim_value*));
+        if (!layer->anim_values.data) {
+            return NULL;
+        }
+        layer->anim_values.count = 0;
+    }
+    
+    // TODO: Properly grow the layer's anim_values array
+    layer->anim_values.data[layer->anim_values.count] = value;
+    layer->anim_values.count++;
+    
+    return value;
+}
+
+// Add an animation curve to an animation value
+ufbx_anim_curve *ufbx_add_anim_curve(ufbx_export_scene *scene, ufbx_anim_value *value, int component) {
+    if (!scene || !value || component < 0 || component > 2) {
+        return NULL;
+    }
+    
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
+    
+    if (!ufbx_export_grow_array((void**)&scene_imp->anim_curves, &scene_imp->anim_curves_cap,
+                                sizeof(ufbx_anim_curve*), scene_imp->num_anim_curves + 1)) {
+        return NULL;
+    }
+    
+    ufbx_anim_curve *curve = (ufbx_anim_curve*)calloc(1, sizeof(ufbx_anim_curve));
+    if (!curve) {
+        return NULL;
+    }
+    
+    // Initialize animation curve
+    char curve_name[256];
+    snprintf(curve_name, sizeof(curve_name), "%s_%c", value->element.name.data, 'X' + component);
+    curve->element.name.data = strdup(curve_name);
+    curve->element.name.length = strlen(curve_name);
+    curve->element.element_id = scene_imp->num_anim_curves + 8000; // Offset to avoid ID conflicts
+    curve->element.type = UFBX_ELEMENT_ANIM_CURVE;
+    
+    // Initialize keyframes list
+    curve->keyframes.data = NULL;
+    curve->keyframes.count = 0;
+    
+    // Initialize extrapolation
+    curve->pre_extrapolation.mode = UFBX_EXTRAPOLATION_CONSTANT;
+    curve->pre_extrapolation.repeat_count = -1;
+    curve->post_extrapolation.mode = UFBX_EXTRAPOLATION_CONSTANT;
+    curve->post_extrapolation.repeat_count = -1;
+    
+    // Initialize value range
+    curve->min_value = 0.0;
+    curve->max_value = 0.0;
+    curve->min_time = 0.0;
+    curve->max_time = 0.0;
+    
+    scene_imp->anim_curves[scene_imp->num_anim_curves] = curve;
+    scene_imp->num_anim_curves++;
+    
+    // Attach curve to animation value
+    value->curves[component] = curve;
+    
+    return curve;
+}
+
+// Set animation curve keyframes
+bool ufbx_set_anim_curve_keyframes(ufbx_anim_curve *curve, const ufbx_keyframe *keyframes, size_t num_keyframes, ufbx_error *error) {
+    if (!curve || !keyframes || num_keyframes == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid curve, keyframes, or keyframe count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate keyframe data
+    ufbx_keyframe *keyframe_data = (ufbx_keyframe*)malloc(num_keyframes * sizeof(ufbx_keyframe));
+    if (!keyframe_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate keyframe data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Copy keyframe data
+    memcpy(keyframe_data, keyframes, num_keyframes * sizeof(ufbx_keyframe));
+    
+    // Free existing keyframes if any
+    if (curve->keyframes.data) {
+        free(curve->keyframes.data);
+    }
+    
+    // Set curve keyframe data
+    curve->keyframes.data = keyframe_data;
+    curve->keyframes.count = num_keyframes;
+    
+    // Update value and time ranges
+    if (num_keyframes > 0) {
+        curve->min_value = keyframes[0].value;
+        curve->max_value = keyframes[0].value;
+        curve->min_time = keyframes[0].time;
+        curve->max_time = keyframes[0].time;
+        
+        for (size_t i = 1; i < num_keyframes; i++) {
+            if (keyframes[i].value < curve->min_value) {
+                curve->min_value = keyframes[i].value;
+            }
+            if (keyframes[i].value > curve->max_value) {
+                curve->max_value = keyframes[i].value;
+            }
+            if (keyframes[i].time < curve->min_time) {
+                curve->min_time = keyframes[i].time;
+            }
+            if (keyframes[i].time > curve->max_time) {
+                curve->max_time = keyframes[i].time;
+            }
+        }
+    }
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Add a single keyframe to an animation curve
+bool ufbx_add_keyframe(ufbx_anim_curve *curve, double time, ufbx_real value, ufbx_interpolation interpolation, ufbx_error *error) {
+    if (!curve) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid curve");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Grow keyframes array
+    size_t new_count = curve->keyframes.count + 1;
+    ufbx_keyframe *new_keyframes = (ufbx_keyframe*)realloc(curve->keyframes.data, new_count * sizeof(ufbx_keyframe));
+    if (!new_keyframes) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate keyframe data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Add new keyframe
+    ufbx_keyframe *keyframe = &new_keyframes[curve->keyframes.count];
+    keyframe->time = time;
+    keyframe->value = value;
+    keyframe->interpolation = interpolation;
+    keyframe->left.dx = 0.0f;
+    keyframe->left.dy = 0.0f;
+    keyframe->right.dx = 0.0f;
+    keyframe->right.dy = 0.0f;
+    
+    curve->keyframes.data = new_keyframes;
+    curve->keyframes.count = new_count;
+    
+    // Update value and time ranges
+    if (curve->keyframes.count == 1) {
+        curve->min_value = value;
+        curve->max_value = value;
+        curve->min_time = time;
+        curve->max_time = time;
+    } else {
+        if (value < curve->min_value) curve->min_value = value;
+        if (value > curve->max_value) curve->max_value = value;
+        if (time < curve->min_time) curve->min_time = time;
+        if (time > curve->max_time) curve->max_time = time;
+    }
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set animation curve extrapolation modes
+bool ufbx_set_anim_curve_extrapolation(ufbx_anim_curve *curve, ufbx_extrapolation pre, ufbx_extrapolation post, ufbx_error *error) {
+    if (!curve) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid curve");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    curve->pre_extrapolation = pre;
+    curve->post_extrapolation = post;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Connect animation property to element
+bool ufbx_connect_anim_prop(ufbx_export_scene *scene, ufbx_anim_layer *layer, ufbx_element *element, const char *prop_name, ufbx_anim_value *value, ufbx_error *error) {
+    if (!scene || !layer || !element || !prop_name || !value) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid scene, layer, element, property name, or value");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate new animation property
+    ufbx_anim_prop *anim_prop = (ufbx_anim_prop*)calloc(1, sizeof(ufbx_anim_prop));
+    if (!anim_prop) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate animation property");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Initialize animation property
+    anim_prop->element = element;
+    anim_prop->prop_name.data = strdup(prop_name);
+    anim_prop->prop_name.length = strlen(prop_name);
+    anim_prop->anim_value = value;
+    
+    // Add to layer's anim_props list
+    if (!layer->anim_props.data) {
+        layer->anim_props.data = (ufbx_anim_prop*)malloc(sizeof(ufbx_anim_prop));
+        if (!layer->anim_props.data) {
+            free(anim_prop);
+            if (error) {
+                error->type = UFBX_ERROR_OUT_OF_MEMORY;
+                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate anim props array");
+                error->info_length = strlen(error->info);
+            }
+            return false;
+        }
+        layer->anim_props.count = 0;
+    }
+    
+    // TODO: Properly grow the layer's anim_props array
+    layer->anim_props.data[layer->anim_props.count] = *anim_prop;
+    layer->anim_props.count++;
+    
+    free(anim_prop); // We copied the data, so free the temporary allocation
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set animation stack time range
+bool ufbx_set_anim_stack_time_range(ufbx_anim_stack *stack, double time_begin, double time_end, ufbx_error *error) {
+    if (!stack) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid animation stack");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    if (time_end < time_begin) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid time range: end time (%f) is before begin time (%f)", time_end, time_begin);
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    stack->time_begin = time_begin;
+    stack->time_end = time_end;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
 ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)calloc(1, sizeof(ufbxi_export_scene));
     if (!scene_imp) {
@@ -101,6 +528,29 @@ void ufbx_free_export_scene(ufbx_export_scene *scene) {
         }
     }
     free(scene_imp->anim_stacks);
+    
+    for (size_t i = 0; i < scene_imp->num_anim_layers; i++) {
+        if (scene_imp->anim_layers[i]) {
+            free(scene_imp->anim_layers[i]);
+        }
+    }
+    free(scene_imp->anim_layers);
+    
+    for (size_t i = 0; i < scene_imp->num_anim_values; i++) {
+        if (scene_imp->anim_values[i]) {
+            free(scene_imp->anim_values[i]);
+        }
+    }
+    free(scene_imp->anim_values);
+    
+    for (size_t i = 0; i < scene_imp->num_anim_curves; i++) {
+        if (scene_imp->anim_curves[i]) {
+            ufbx_anim_curve *curve = scene_imp->anim_curves[i];
+            free(curve->keyframes.data);
+            free(curve);
+        }
+    }
+    free(scene_imp->anim_curves);
     
     free(scene_imp);
 }

@@ -58,6 +58,9 @@ private:
 	ufbx_export_scene *export_scene = nullptr;
 	bool allow_geometry_helper_nodes = false;
 
+	// Original scene root for animation export
+	Node *original_scene_root = nullptr;
+
 	// Export options for FBX export
 	struct ufbx_export_opts export_opts = {};
 
