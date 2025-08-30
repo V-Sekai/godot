@@ -575,16 +575,6 @@ static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_expor
                             }
                         }
                     }
-                } else {
-                    // Fallback: assume triangular faces if no face data available
-                    for (size_t idx = 0; idx < mesh->vertex_indices.count; idx++) {
-                        int32_t index = (int32_t)mesh->vertex_indices.data[idx];
-                        // FBX uses negative indices to mark polygon end
-                        if ((idx + 1) % 3 == 0) { // End of triangle
-                            index = -(index + 1);
-                        }
-                        index_data[idx] = index;
-                    }
                 }
                 if (!ufbx_ascii_write_property_array_i32(writer, index_data, mesh->vertex_indices.count)) {
                     free(index_data);
