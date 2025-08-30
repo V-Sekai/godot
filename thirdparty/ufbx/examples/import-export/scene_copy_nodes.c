@@ -37,11 +37,30 @@ bool copy_nodes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
             return false;
         }
         
-        // Copy transform
+        // Copy complete transform data
         ufbx_set_node_transform(export_node, &src_node->local_transform, &error);
         if (error.type != UFBX_ERROR_NONE) {
             print_error(&error, "Failed to set node transform");
             return false;
+        }
+        
+        // Copy additional transform properties that are available
+        // FIXME: Some advanced pivot/inheritance features may not be fully supported in export API
+        // This is a simplified version that focuses on the main transform data
+        
+        // Copy visibility if different from default
+        export_node->visible = src_node->visible;
+        
+        // Copy rotation order
+        export_node->rotation_order = src_node->rotation_order;
+        
+        // Copy inherit mode
+        export_node->inherit_mode = src_node->inherit_mode;
+        
+        // Copy additional transform components that might be available
+        if (src_node->has_geometry_transform) {
+            export_node->geometry_transform = src_node->geometry_transform;
+            export_node->has_geometry_transform = true;
         }
         
         // Copy bone if present

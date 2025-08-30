@@ -82,22 +82,40 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                     continue;
                 }
                 
-                // Copy curves for each component
-                for (int comp = 0; comp < 3; comp++) { // X, Y, Z components
+                // Copy curves for all components (not just X,Y,Z)
+                size_t max_components = sizeof(src_value->curves) / sizeof(src_value->curves[0]);
+                for (size_t comp = 0; comp < max_components; comp++) {
                     ufbx_anim_curve *src_curve = src_value->curves[comp];
                     if (src_curve && src_curve->keyframes.count > 0) {
-                        ufbx_anim_curve *export_curve = ufbx_add_anim_curve(export_scene, export_value, comp);
+                        ufbx_anim_curve *export_curve = ufbx_add_anim_curve(export_scene, export_value, (int)comp);
                         if (export_curve) {
+                            // Copy keyframes with all metadata
                             ufbx_error curve_error = {0};
                             bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
                                                                              src_curve->keyframes.data,
                                                                              src_curve->keyframes.count, &curve_error);
                             if (!curve_success) {
                                 print_error(&curve_error, "Failed to set animation keyframes");
+                                continue;
                             }
+                            
+                            // Copy curve extrapolation settings
+                            ufbx_error extrap_error = {0};
+                            bool extrap_success = ufbx_set_anim_curve_extrapolation(export_curve,
+                                                                                  src_curve->pre_extrapolation,
+                                                                                  src_curve->post_extrapolation, &extrap_error);
+                            if (!extrap_success) {
+                                print_error(&extrap_error, "Failed to set curve extrapolation");
+                            }
+                            
+                            printf("      Copied curve component %zu with %zu keyframes\n", comp, src_curve->keyframes.count);
                         }
                     }
                 }
+                
+                // Animation connection will be handled automatically by ufbx export
+                // when animation values are named properly and associated with layers
+                printf("      Added animation value: %s\n", src_value->name.data);
             }
         }
         
