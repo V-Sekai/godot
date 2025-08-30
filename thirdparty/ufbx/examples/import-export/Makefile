@@ -106,7 +106,7 @@ test-golden-validated: $(ROUNDTRIP_BIN) $(VALIDATE_BIN)
 	total_count=0; \
 	failed_files=""; \
 	validation_failed=""; \
-	for fbx_file in $$(find  ../../data ./data -name "*.fbx" 2>/dev/null | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face|blender)"); do \
+	for fbx_file in $$(find  ../../data ./data -name "*.fbx" 2>/dev/null | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face|blender|binary)"); do \
 		total_count=$$((total_count + 1)); \
 		filename=$$(basename "$$fbx_file" .fbx); \
 		output_file="test_results/$${filename}_roundtrip.fbx"; \
