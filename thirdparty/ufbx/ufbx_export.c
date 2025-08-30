@@ -46,8 +46,15 @@ ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, const char *name) 
     }
     
     // Initialize animation stack
-    stack->element.name.data = strdup(name);
-    stack->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(stack);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    stack->element.name.data = name_copy;
+    stack->element.name.length = name_len;
     stack->element.element_id = scene_imp->num_anim_stacks + 5000; // Offset to avoid ID conflicts
     stack->element.type = UFBX_ELEMENT_ANIM_STACK;
     
@@ -87,8 +94,15 @@ ufbx_anim_layer *ufbx_add_anim_layer(ufbx_export_scene *scene, ufbx_anim_stack *
     }
     
     // Initialize animation layer
-    layer->element.name.data = strdup(name);
-    layer->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(layer);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    layer->element.name.data = name_copy;
+    layer->element.name.length = name_len;
     layer->element.element_id = scene_imp->num_anim_layers + 6000; // Offset to avoid ID conflicts
     layer->element.type = UFBX_ELEMENT_ANIM_LAYER;
     
@@ -145,8 +159,15 @@ ufbx_anim_value *ufbx_add_anim_value(ufbx_export_scene *scene, ufbx_anim_layer *
     }
     
     // Initialize animation value
-    value->element.name.data = strdup(name);
-    value->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(value);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    value->element.name.data = name_copy;
+    value->element.name.length = name_len;
     value->element.element_id = scene_imp->num_anim_values + 7000; // Offset to avoid ID conflicts
     value->element.type = UFBX_ELEMENT_ANIM_VALUE;
     
@@ -197,8 +218,15 @@ ufbx_anim_curve *ufbx_add_anim_curve(ufbx_export_scene *scene, ufbx_anim_value *
     // Initialize animation curve
     char curve_name[256];
     snprintf(curve_name, sizeof(curve_name), "%s_%c", value->element.name.data, 'X' + component);
-    curve->element.name.data = strdup(curve_name);
-    curve->element.name.length = strlen(curve_name);
+    size_t curve_name_len = strlen(curve_name);
+    char *curve_name_copy = malloc(curve_name_len + 1);
+    if (!curve_name_copy) {
+        free(curve);
+        return NULL;
+    }
+    strcpy(curve_name_copy, curve_name);
+    curve->element.name.data = curve_name_copy;
+    curve->element.name.length = curve_name_len;
     curve->element.element_id = scene_imp->num_anim_curves + 8000; // Offset to avoid ID conflicts
     curve->element.type = UFBX_ELEMENT_ANIM_CURVE;
     
@@ -392,8 +420,15 @@ bool ufbx_connect_anim_prop(ufbx_export_scene *scene, ufbx_anim_layer *layer, uf
     
     // Initialize animation property
     anim_prop->element = element;
-    anim_prop->prop_name.data = strdup(prop_name);
-    anim_prop->prop_name.length = strlen(prop_name);
+    size_t prop_name_len = strlen(prop_name);
+    char *prop_name_copy = malloc(prop_name_len + 1);
+    if (!prop_name_copy) {
+        free(anim_prop);
+        return false;
+    }
+    strcpy(prop_name_copy, prop_name);
+    anim_prop->prop_name.data = prop_name_copy;
+    anim_prop->prop_name.length = prop_name_len;
     anim_prop->anim_value = value;
     
     // Add to layer's anim_props list - properly grow the array
@@ -573,12 +608,15 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *
         return NULL;
     }
     
-    node->element.name.data = strdup(name);
-    if (!node->element.name.data) {
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
         free(node);
         return NULL;
     }
-    node->element.name.length = strlen(name);
+    strcpy(name_copy, name);
+    node->element.name.data = name_copy;
+    node->element.name.length = name_len;
     node->element.element_id = scene_imp->num_nodes + 1;
     node->element.type = UFBX_ELEMENT_NODE;
     
@@ -640,8 +678,15 @@ ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name) {
         return NULL;
     }
     
-    mesh->element.name.data = strdup(name);
-    mesh->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(mesh);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    mesh->element.name.data = name_copy;
+    mesh->element.name.length = name_len;
     mesh->element.element_id = scene_imp->num_meshes + 1000; // Offset to avoid ID conflicts
     mesh->element.type = UFBX_ELEMENT_MESH;
     
@@ -671,8 +716,15 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
         return NULL;
     }
     
-    material->element.name.data = strdup(name);
-    material->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(material);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    material->element.name.data = name_copy;
+    material->element.name.length = name_len;
     material->element.element_id = scene_imp->num_materials + 2000; // Offset to avoid ID conflicts
     material->element.type = UFBX_ELEMENT_MATERIAL;
     
@@ -1146,8 +1198,15 @@ ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name) {
     }
     
     // Initialize texture
-    texture->element.name.data = strdup(name);
-    texture->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(texture);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    texture->element.name.data = name_copy;
+    texture->element.name.length = name_len;
     texture->element.type = UFBX_ELEMENT_TEXTURE;
     
     return texture;
@@ -1318,8 +1377,15 @@ ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char 
     }
     
     // Initialize skin deformer
-    skin->element.name.data = strdup(name);
-    skin->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(skin);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    skin->element.name.data = name_copy;
+    skin->element.name.length = name_len;
     skin->element.type = UFBX_ELEMENT_SKIN_DEFORMER;
     skin->skinning_method = UFBX_SKINNING_METHOD_LINEAR;
     
@@ -1339,8 +1405,15 @@ ufbx_skin_cluster *ufbx_add_skin_cluster(ufbx_export_scene *scene, ufbx_skin_def
     }
     
     // Initialize skin cluster
-    cluster->element.name.data = strdup(name);
-    cluster->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(cluster);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    cluster->element.name.data = name_copy;
+    cluster->element.name.length = name_len;
     cluster->element.type = UFBX_ELEMENT_SKIN_CLUSTER;
     cluster->bone_node = bone_node;
     cluster->bind_to_world = ufbx_identity_matrix;
@@ -1472,8 +1545,15 @@ ufbx_blend_deformer *ufbx_add_blend_deformer(ufbx_export_scene *scene, const cha
     }
     
     // Initialize blend deformer
-    blend->element.name.data = strdup(name);
-    blend->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(blend);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    blend->element.name.data = name_copy;
+    blend->element.name.length = name_len;
     blend->element.type = UFBX_ELEMENT_BLEND_DEFORMER;
     
     return blend;
@@ -1492,8 +1572,15 @@ ufbx_blend_channel *ufbx_add_blend_channel(ufbx_export_scene *scene, ufbx_blend_
     }
     
     // Initialize blend channel
-    channel->element.name.data = strdup(name);
-    channel->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(channel);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    channel->element.name.data = name_copy;
+    channel->element.name.length = name_len;
     channel->element.type = UFBX_ELEMENT_BLEND_CHANNEL;
     channel->weight = 0.0f;
     
@@ -1513,8 +1600,15 @@ ufbx_blend_shape *ufbx_add_blend_shape(ufbx_export_scene *scene, const char *nam
     }
     
     // Initialize blend shape
-    shape->element.name.data = strdup(name);
-    shape->element.name.length = strlen(name);
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(shape);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    shape->element.name.data = name_copy;
+    shape->element.name.length = name_len;
     shape->element.type = UFBX_ELEMENT_BLEND_SHAPE;
     
     return shape;

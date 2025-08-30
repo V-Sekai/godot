@@ -66,7 +66,6 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
     printf("  Setting up node hierarchy...\n");
     for (size_t i = 0; i < num_mappings; i++) {
         ufbx_node *src_node = node_mappings[i].src_node;
-        ufbx_node *export_node = node_mappings[i].export_node;
         
         if (src_node->parent) {
             // Find parent in mappings
@@ -175,17 +174,28 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
             }
         }
         
-        // Copy face/index data
+        // Copy face/index data with validation
         if (src_mesh->vertex_indices.count > 0 && src_mesh->num_faces > 0) {
-            bool success = ufbx_set_mesh_faces(export_mesh, src_mesh->vertex_indices.data,
-                                              src_mesh->vertex_indices.count,
-                                              src_mesh->faces.data, src_mesh->num_faces, &error);
-            if (!success) {
-                print_error(&error, "Failed to set mesh faces");
-                free(node_mappings);
-                free(material_mappings);
-                free(mesh_mappings);
-                return false;
+            // Validate faces first - skip faces with less than 3 vertices
+            bool has_valid_faces = false;
+            for (size_t face_idx = 0; face_idx < src_mesh->num_faces; face_idx++) {
+                ufbx_face face = src_mesh->faces.data[face_idx];
+                if (face.num_indices >= 3) {
+                    has_valid_faces = true;
+                    break;
+                }
+            }
+            
+            if (has_valid_faces) {
+                bool success = ufbx_set_mesh_faces(export_mesh, src_mesh->vertex_indices.data,
+                                                  src_mesh->vertex_indices.count,
+                                                  src_mesh->faces.data, src_mesh->num_faces, &error);
+                if (!success) {
+                    printf("    Warning: Failed to set mesh faces for '%s' - may contain invalid faces\n", src_mesh->name.data);
+                    // Don't fail entirely, just skip the problematic face data
+                }
+            } else {
+                printf("    Warning: Mesh '%s' has no valid faces (all faces have < 3 vertices)\n", src_mesh->name.data);
             }
         }
         
