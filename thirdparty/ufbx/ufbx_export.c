@@ -5,31 +5,32 @@
 #include <assert.h>
 #include <stdio.h>
 
-// Internal structure is now defined in header for writer access
-
-// Helper function to grow dynamic arrays
 static bool ufbx_export_grow_array(void **ptr, size_t *cap, size_t elem_size, size_t min_cap) {
-    if (*cap >= min_cap) return true;
+    if (*cap >= min_cap) {
+        return true;
+    }
     
     size_t new_cap = *cap ? *cap * 2 : 16;
-    if (new_cap < min_cap) new_cap = min_cap;
+    if (new_cap < min_cap) {
+        new_cap = min_cap;
+    }
     
     void *new_ptr = realloc(*ptr, new_cap * elem_size);
-    if (!new_ptr) return false;
+    if (!new_ptr) {
+        return false;
+    }
     
     *ptr = new_ptr;
     *cap = new_cap;
     return true;
 }
 
-// Create a new export scene
 ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)calloc(1, sizeof(ufbxi_export_scene));
     if (!scene_imp) {
         return NULL;
     }
     
-    // Initialize allocator
     if (opts && opts->temp_allocator.allocator.alloc_fn) {
         scene_imp->allocator = opts->temp_allocator.allocator;
     } else {
@@ -39,7 +40,6 @@ ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
         scene_imp->allocator.user = NULL;
     }
     
-    // Initialize scene metadata
     scene_imp->scene.metadata.creator = "ufbx_export";
     scene_imp->scene.metadata.version = 7400; // FBX 2014/2015 format
     scene_imp->scene.metadata.is_big_endian = false;
@@ -51,7 +51,6 @@ ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
     scene_imp->scene.settings.unit_meters = 1.0;
     scene_imp->scene.settings.frames_per_second = 30.0;
     
-    // Initialize scene lists - these will be updated when elements are added
     scene_imp->scene.nodes.data = NULL;
     scene_imp->scene.nodes.count = 0;
     scene_imp->scene.meshes.data = NULL;
@@ -64,13 +63,13 @@ ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
     return &scene_imp->scene;
 }
 
-// Free an export scene
 void ufbx_free_export_scene(ufbx_export_scene *scene) {
-    if (!scene) return;
+    if (!scene) {
+        return;
+    }
     
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
-    // Free all allocated nodes
     for (size_t i = 0; i < scene_imp->num_nodes; i++) {
         if (scene_imp->nodes[i]) {
             free(scene_imp->nodes[i]);
@@ -78,7 +77,6 @@ void ufbx_free_export_scene(ufbx_export_scene *scene) {
     }
     free(scene_imp->nodes);
     
-    // Free all allocated meshes
     for (size_t i = 0; i < scene_imp->num_meshes; i++) {
         if (scene_imp->meshes[i]) {
             ufbx_mesh *mesh = scene_imp->meshes[i];
@@ -90,7 +88,6 @@ void ufbx_free_export_scene(ufbx_export_scene *scene) {
     }
     free(scene_imp->meshes);
     
-    // Free all allocated materials
     for (size_t i = 0; i < scene_imp->num_materials; i++) {
         if (scene_imp->materials[i]) {
             free(scene_imp->materials[i]);
@@ -98,7 +95,6 @@ void ufbx_free_export_scene(ufbx_export_scene *scene) {
     }
     free(scene_imp->materials);
     
-    // Free animation stacks
     for (size_t i = 0; i < scene_imp->num_anim_stacks; i++) {
         if (scene_imp->anim_stacks[i]) {
             free(scene_imp->anim_stacks[i]);
@@ -109,7 +105,6 @@ void ufbx_free_export_scene(ufbx_export_scene *scene) {
     free(scene_imp);
 }
 
-// Add a node to the scene
 ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *parent) {
     if (!scene || !name) {
         return NULL;
@@ -117,40 +112,33 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *
     
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
-    // Grow nodes array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->nodes, &scene_imp->nodes_cap, 
                                 sizeof(ufbx_node*), scene_imp->num_nodes + 1)) {
         return NULL;
     }
     
-    // Allocate new node
     ufbx_node *node = (ufbx_node*)calloc(1, sizeof(ufbx_node));
     if (!node) {
         return NULL;
     }
     
-    // Initialize node
     node->element.name.data = strdup(name);
     node->element.name.length = strlen(name);
     node->element.element_id = scene_imp->num_nodes + 1;
     node->element.type = UFBX_ELEMENT_NODE;
     
-    // Set parent relationship
     node->parent = parent;
     if (parent) {
         // TODO: Add to parent's children list
     }
     
-    // Initialize transform to identity
     node->local_transform.translation = (ufbx_vec3){ 0, 0, 0 };
     node->local_transform.rotation = (ufbx_quat){ 0, 0, 0, 1 };
     node->local_transform.scale = (ufbx_vec3){ 1, 1, 1 };
     
-    // Add to scene
     scene_imp->nodes[scene_imp->num_nodes] = node;
     scene_imp->num_nodes++;
     
-    // Update scene list pointer and count
     scene_imp->scene.nodes.data = (ufbx_node**)scene_imp->nodes;
     scene_imp->scene.nodes.count = scene_imp->num_nodes;
     
@@ -276,12 +264,40 @@ bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t n
     return true;
 }
 
-// Set mesh face indices
-bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, ufbx_error *error) {
-    if (!mesh || !indices || num_indices == 0) {
+// Set mesh face indices with variable topology (triangles, quads, n-gons)
+bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, 
+                         const ufbx_face *face_definitions, size_t num_faces, ufbx_error *error) {
+    if (!mesh || !indices || !face_definitions || num_indices == 0 || num_faces == 0) {
         if (error) {
             error->type = UFBX_ERROR_UNKNOWN;
-            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh, indices, or index count");
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh, indices, face definitions, or counts");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Validate face definitions
+    size_t total_expected_indices = 0;
+    size_t triangle_count = 0;
+    for (size_t i = 0; i < num_faces; i++) {
+        if (face_definitions[i].num_indices < 3) {
+            if (error) {
+                error->type = UFBX_ERROR_UNKNOWN;
+                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Face %zu has invalid vertex count: %u (minimum 3)", i, face_definitions[i].num_indices);
+                error->info_length = strlen(error->info);
+            }
+            return false;
+        }
+        total_expected_indices += face_definitions[i].num_indices;
+        if (face_definitions[i].num_indices == 3) {
+            triangle_count++;
+        }
+    }
+    
+    if (total_expected_indices != num_indices) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Face definitions expect %zu indices but got %zu", total_expected_indices, num_indices);
             error->info_length = strlen(error->info);
         }
         return false;
@@ -301,12 +317,7 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
     // Copy index data
     memcpy(index_data, indices, num_indices * sizeof(uint32_t));
     
-    // Set mesh index data
-    mesh->vertex_indices.data = index_data;
-    mesh->vertex_indices.count = num_indices;
-    
-    // Calculate number of faces (assuming triangles)
-    size_t num_faces = num_indices / 3;
+    // Allocate face data
     ufbx_face *faces = (ufbx_face*)malloc(num_faces * sizeof(ufbx_face));
     if (!faces) {
         free(index_data);
@@ -318,16 +329,16 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
         return false;
     }
     
-    // Initialize faces
-    for (size_t i = 0; i < num_faces; i++) {
-        faces[i].index_begin = i * 3;
-        faces[i].num_indices = 3;
-    }
+    // Copy face definitions
+    memcpy(faces, face_definitions, num_faces * sizeof(ufbx_face));
     
+    // Set mesh data
+    mesh->vertex_indices.data = index_data;
+    mesh->vertex_indices.count = num_indices;
     mesh->faces.data = faces;
     mesh->faces.count = num_faces;
     mesh->num_faces = num_faces;
-    mesh->num_triangles = num_faces;
+    mesh->num_triangles = triangle_count;
     
     if (error) {
         error->type = UFBX_ERROR_NONE;
@@ -336,11 +347,59 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
     return true;
 }
 
+// Set mesh face indices (uniform topology - backward compatibility)
+bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, size_t vertices_per_face, ufbx_error *error) {
+    if (!mesh || !indices || num_indices == 0 || vertices_per_face == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh, indices, index count, or vertices per face");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Validate that indices can be evenly divided by vertices_per_face
+    if (num_indices % vertices_per_face != 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Index count (%zu) not divisible by vertices per face (%zu)", num_indices, vertices_per_face);
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Create uniform face definitions
+    size_t num_faces = num_indices / vertices_per_face;
+    ufbx_face *face_definitions = (ufbx_face*)malloc(num_faces * sizeof(ufbx_face));
+    if (!face_definitions) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate face definitions");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Initialize uniform face definitions
+    for (size_t i = 0; i < num_faces; i++) {
+        face_definitions[i].index_begin = i * vertices_per_face;
+        face_definitions[i].num_indices = vertices_per_face;
+    }
+    
+    // Use the variable topology function
+    bool result = ufbx_set_mesh_faces(mesh, indices, num_indices, face_definitions, num_faces, error);
+    free(face_definitions);
+    
+    return result;
+}
+
 
 // Set material property
 bool ufbx_set_material_property(ufbx_material *material, const char *property_name, 
                                 int type, const void *value) {
-    if (!material || !property_name || !value) return false;
+    if (!material || !property_name || !value) {
+        return false;
+    }
     
     // Handle common material properties
     if (strcmp(property_name, "DiffuseColor") == 0) {
@@ -627,13 +686,17 @@ bool ufbx_set_material_emission(ufbx_material *material, ufbx_real r, ufbx_real 
 
 // Add a texture to the scene
 ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name) {
-    if (!scene || !name) return NULL;
+    if (!scene || !name) {
+        return NULL;
+    }
     
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
     // Allocate new texture
     ufbx_texture *texture = (ufbx_texture*)calloc(1, sizeof(ufbx_texture));
-    if (!texture) return NULL;
+    if (!texture) {
+        return NULL;
+    }
     
     // Initialize texture
     texture->element.name.data = strdup(name);

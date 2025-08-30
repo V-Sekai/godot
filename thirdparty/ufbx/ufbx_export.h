@@ -137,8 +137,12 @@ ufbx_abi ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, const cha
 // Set mesh vertex data
 ufbx_abi bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *positions, size_t num_vertices, ufbx_error *error);
 
-// Set mesh face data
-ufbx_abi bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, ufbx_error *error);
+// Set mesh face data with variable topology (triangles, quads, n-gons)
+ufbx_abi bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, 
+                                  const ufbx_face *face_definitions, size_t num_faces, ufbx_error *error);
+
+// Set mesh face data (uniform topology - backward compatibility)
+ufbx_abi bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, size_t vertices_per_face, ufbx_error *error);
 
 // Set mesh normals
 ufbx_abi bool ufbx_set_mesh_normals(ufbx_mesh *mesh, const ufbx_vec3 *normals, size_t num_normals, ufbx_error *error);
