@@ -1,4 +1,4 @@
-#include "scene_copy_common.h"
+ #include "scene_copy_common.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -41,6 +41,19 @@ bool copy_nodes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
         if (error.type != UFBX_ERROR_NONE) {
             print_error(&error, "Failed to set node transform");
             return false;
+        }
+        
+        // Copy bone if present
+        if (src_node->bone) {
+            ufbx_bone *export_bone = ufbx_add_bone(export_scene, export_node, src_node->bone->element.name.data);
+            if (export_bone) {
+                ufbx_error bone_error = {0};
+                bool bone_success = ufbx_set_bone_properties(export_bone, src_node->bone->relative_length, &bone_error);
+                if (!bone_success) {
+                    print_error(&bone_error, "Failed to set bone properties");
+                }
+                printf("    Added bone to node: %s\n", src_node->name.data);
+            }
         }
         
         // Store mapping

@@ -319,6 +319,81 @@ bool ufbx_set_anim_curve_keyframes(ufbx_anim_curve *curve, const ufbx_keyframe *
     return true;
 }
 
+// Bone construction helpers
+
+// Add a bone to a node
+ufbx_bone *ufbx_add_bone(ufbx_export_scene *scene, ufbx_node *node, const char *name) {
+    if (!scene || !node || !name) {
+        return NULL;
+    }
+    
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
+    
+    // Grow bones array
+    if (!ufbx_export_grow_array((void**)&scene_imp->bones, &scene_imp->bones_cap,
+                                sizeof(ufbx_bone*), scene_imp->num_bones + 1)) {
+        return NULL;
+    }
+    
+    // Allocate new bone
+    ufbx_bone *bone = (ufbx_bone*)calloc(1, sizeof(ufbx_bone));
+    if (!bone) {
+        return NULL;
+    }
+    
+    // Initialize bone
+    size_t name_len = strlen(name);
+    char *name_copy = malloc(name_len + 1);
+    if (!name_copy) {
+        free(bone);
+        return NULL;
+    }
+    strcpy(name_copy, name);
+    bone->element.name.data = name_copy;
+    bone->element.name.length = name_len;
+    bone->element.element_id = scene_imp->num_bones + 9000; // Offset to avoid ID conflicts
+    bone->element.type = UFBX_ELEMENT_BONE;
+    
+    // Set default bone properties
+    bone->relative_length = 1.0;
+    bone->is_root = (node->parent == NULL || node->parent->bone == NULL);
+    
+    // Add to scene tracking
+    scene_imp->bones[scene_imp->num_bones] = bone;
+    scene_imp->num_bones++;
+    
+    // Update scene bones list
+    scene_imp->scene.bones.data = (ufbx_bone**)scene_imp->bones;
+    scene_imp->scene.bones.count = scene_imp->num_bones;
+    
+    // Attach bone to node
+    node->bone = bone;
+    node->attrib = &bone->element;
+    node->attrib_type = UFBX_ELEMENT_BONE;
+    
+    return bone;
+}
+
+// Set bone properties
+bool ufbx_set_bone_properties(ufbx_bone *bone, ufbx_real relative_length, ufbx_error *error) {
+    if (!bone) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid bone");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    bone->relative_length = relative_length;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
 // Add a single keyframe to an animation curve
 bool ufbx_add_keyframe(ufbx_anim_curve *curve, double time, ufbx_real value, ufbx_interpolation interpolation, ufbx_error *error) {
     if (!curve) {
@@ -520,6 +595,8 @@ ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts) {
     scene_imp->scene.meshes.count = 0;
     scene_imp->scene.materials.data = NULL;
     scene_imp->scene.materials.count = 0;
+    scene_imp->scene.bones.data = NULL;
+    scene_imp->scene.bones.count = 0;
     scene_imp->scene.anim_stacks.data = NULL;
     scene_imp->scene.anim_stacks.count = 0;
     
@@ -557,6 +634,14 @@ void ufbx_free_export_scene(ufbx_export_scene *scene) {
         }
     }
     free(scene_imp->materials);
+    
+    for (size_t i = 0; i < scene_imp->num_bones; i++) {
+        if (scene_imp->bones[i]) {
+            free((void*)scene_imp->bones[i]->element.name.data);
+            free(scene_imp->bones[i]);
+        }
+    }
+    free(scene_imp->bones);
     
     for (size_t i = 0; i < scene_imp->num_anim_stacks; i++) {
         if (scene_imp->anim_stacks[i]) {

@@ -455,7 +455,7 @@ static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_expor
         const char *node_type = "Null"; // Default to Null/empty
         if (node->mesh) {
             node_type = "Mesh";
-        } else if (node->bone || strstr(node->element.name.data, "Bone") != NULL) {
+        } else if (node->bone) {
             node_type = "LimbNode";
         }
         if (!ufbx_ascii_write_property_string(writer, node_type)) {
@@ -749,6 +749,99 @@ static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_expor
             return false;
         }
         if (!ufbx_ascii_write_property_f64(writer, material->pbr.base_color.value_vec3.z)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_newline(writer)) {
+            return false;
+        }
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+    }
+    
+    // Write all bones
+    for (size_t i = 0; i < scene_imp->scene.bones.count; i++) {
+        const ufbx_bone *bone = scene_imp->scene.bones.data[i];
+        
+        if (!ufbx_ascii_write_node_begin(writer, "NodeAttribute")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, bone->element.element_id)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, bone->element.name.data)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "LimbNode")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, " {\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        // TypeFlags
+        if (!ufbx_ascii_write_node_begin(writer, "TypeFlags")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "Skeleton")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_newline(writer)) {
+            return false;
+        }
+        
+        // Properties70
+        if (!ufbx_ascii_write_node_begin(writer, "Properties70")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, "{\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        // Size (relative length)
+        if (!ufbx_ascii_write_node_begin(writer, "P")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "Size")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "double")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "Number")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_f64(writer, bone->relative_length)) {
             return false;
         }
         if (!ufbx_ascii_write_newline(writer)) {
@@ -1268,6 +1361,31 @@ static bool ufbx_ascii_write_connections(ufbx_ascii_writer *writer, const ufbx_e
                 return false;
             }
             if (!ufbx_ascii_write_property_i64(writer, node->mesh->element.element_id)) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_i64(writer, node->element.element_id)) {
+                return false;
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+        }
+        
+        // Connect bone to node if it exists
+        if (node->bone) {
+            if (!ufbx_ascii_write_node_begin(writer, "C")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, "OO")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_i64(writer, node->bone->element.element_id)) {
                 return false;
             }
             if (!ufbx_ascii_write_string(writer, ", ")) {

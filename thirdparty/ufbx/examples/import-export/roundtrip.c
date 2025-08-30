@@ -454,7 +454,7 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
                 // Copy cluster transform matrices
                 bool success = ufbx_set_skin_cluster_transform(export_cluster, 
                                                              &src_cluster->geometry_to_bone,
-                                                             &src_cluster->bone_to_world, &error);
+                                                             &src_cluster->bind_to_world, &error);
                 if (!success) {
                     print_error(&error, "Failed to set skin cluster transform");
                     continue;

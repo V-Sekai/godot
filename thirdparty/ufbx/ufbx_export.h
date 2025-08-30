@@ -53,6 +53,7 @@ struct ufbx_export_scene {
     ufbx_texture_list textures;
     ufbx_light_list lights;
     ufbx_camera_list cameras;
+    ufbx_bone_list bones;
     ufbx_anim_stack_list anim_stacks;
     ufbx_skin_deformer_list skin_deformers;
     ufbx_skin_cluster_list skin_clusters;
@@ -78,6 +79,10 @@ typedef struct {
     ufbx_material **materials;
     size_t num_materials;
     size_t materials_cap;
+    
+    ufbx_bone **bones;
+    size_t num_bones;
+    size_t bones_cap;
     
     ufbx_anim_stack **anim_stacks;
     size_t num_anim_stacks;
@@ -254,6 +259,14 @@ ufbx_abi ufbx_blend_shape *ufbx_add_blend_shape(ufbx_export_scene *scene, const 
 
 // Set blend shape offset data
 ufbx_abi bool ufbx_set_blend_shape_offsets(ufbx_blend_shape *shape, const ufbx_vec3 *position_offsets, const ufbx_vec3 *normal_offsets, size_t num_offsets, ufbx_error *error);
+
+// Bone construction helpers
+
+// Add a bone to a node
+ufbx_abi ufbx_bone *ufbx_add_bone(ufbx_export_scene *scene, ufbx_node *node, const char *name);
+
+// Set bone properties
+ufbx_abi bool ufbx_set_bone_properties(ufbx_bone *bone, ufbx_real relative_length, ufbx_error *error);
 
 // Attach blend deformer to mesh
 ufbx_abi bool ufbx_attach_blend_to_mesh(ufbx_mesh *mesh, ufbx_blend_deformer *blend, ufbx_error *error);
