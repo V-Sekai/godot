@@ -22,6 +22,7 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
     if (!setup_node_hierarchy(node_mappings, num_node_mappings)) goto cleanup;
     if (!copy_materials(source_scene, export_scene, &material_mappings)) goto cleanup;
     if (!copy_meshes(source_scene, export_scene, &mesh_mappings)) goto cleanup;
+    if (!attach_materials_to_meshes(source_scene, mesh_mappings, material_mappings)) goto cleanup;
     if (!copy_animations(source_scene, export_scene, node_mappings, num_node_mappings, &stack_mappings, &layer_mappings)) goto cleanup;
     if (!copy_skin_deformers(source_scene, export_scene, node_mappings, num_node_mappings, mesh_mappings, &skin_mappings)) goto cleanup;
     if (!copy_blend_deformers(source_scene, export_scene, mesh_mappings, &blend_mappings)) goto cleanup;

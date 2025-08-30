@@ -53,6 +53,8 @@ bool copy_materials(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
 // Function declarations for mesh operations
 bool copy_meshes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                  mesh_mapping **mesh_mappings);
+bool attach_materials_to_meshes(ufbx_scene *source_scene, mesh_mapping *mesh_mappings, 
+                                material_mapping *material_mappings);
 
 // Function declarations for animation operations
 bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
