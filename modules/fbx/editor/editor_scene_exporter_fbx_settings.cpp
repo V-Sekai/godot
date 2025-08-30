@@ -33,6 +33,14 @@
 const uint32_t PROP_EDITOR_SCRIPT_VAR = PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_SCRIPT_VARIABLE;
 
 bool EditorSceneExporterFBXSettings::_set(const StringName &p_name, const Variant &p_value) {
+	if (p_name == StringName("copyright")) {
+		set_copyright(p_value);
+		return true;
+	}
+	if (p_name == StringName("bake_fps")) {
+		set_bake_fps(p_value);
+		return true;
+	}
 	if (p_name == StringName("ascii_format")) {
 		set_ascii_format(p_value);
 		emit_signal(CoreStringName(property_list_changed));
@@ -78,6 +86,14 @@ bool EditorSceneExporterFBXSettings::_set(const StringName &p_name, const Varian
 }
 
 bool EditorSceneExporterFBXSettings::_get(const StringName &p_name, Variant &r_ret) const {
+	if (p_name == StringName("copyright")) {
+		r_ret = get_copyright();
+		return true;
+	}
+	if (p_name == StringName("bake_fps")) {
+		r_ret = get_bake_fps();
+		return true;
+	}
 	if (p_name == StringName("ascii_format")) {
 		r_ret = get_ascii_format();
 		return true;
@@ -131,7 +147,13 @@ void EditorSceneExporterFBXSettings::generate_property_list(Ref<FBXDocument> p_d
 	_property_list.clear();
 	_document = p_document;
 
-	// Add FBX-specific export properties
+	// Add all FBX export properties to dynamic property list
+	PropertyInfo copyright_prop = PropertyInfo(Variant::STRING, "copyright", PROPERTY_HINT_PLACEHOLDER_TEXT, "Example: 2024 Your Company");
+	_property_list.push_back(copyright_prop);
+
+	PropertyInfo bake_fps_prop = PropertyInfo(Variant::FLOAT, "bake_fps", PROPERTY_HINT_NONE, "");
+	_property_list.push_back(bake_fps_prop);
+
 	PropertyInfo ascii_format_prop = PropertyInfo(Variant::BOOL, "ascii_format", PROPERTY_HINT_NONE, "");
 	_property_list.push_back(ascii_format_prop);
 
@@ -149,6 +171,18 @@ void EditorSceneExporterFBXSettings::generate_property_list(Ref<FBXDocument> p_d
 
 	PropertyInfo export_materials_prop = PropertyInfo(Variant::BOOL, "export_materials", PROPERTY_HINT_NONE, "");
 	_property_list.push_back(export_materials_prop);
+
+	PropertyInfo export_skinning_prop = PropertyInfo(Variant::BOOL, "export_skinning", PROPERTY_HINT_NONE, "");
+	_property_list.push_back(export_skinning_prop);
+
+	PropertyInfo export_morph_targets_prop = PropertyInfo(Variant::BOOL, "export_morph_targets", PROPERTY_HINT_NONE, "");
+	_property_list.push_back(export_morph_targets_prop);
+
+	PropertyInfo optimize_skin_weights_prop = PropertyInfo(Variant::BOOL, "optimize_skin_weights", PROPERTY_HINT_NONE, "");
+	_property_list.push_back(optimize_skin_weights_prop);
+
+	PropertyInfo max_skin_weights_prop = PropertyInfo(Variant::INT, "max_skin_weights_per_vertex", PROPERTY_HINT_RANGE, "1,8,1");
+	_property_list.push_back(max_skin_weights_prop);
 }
 
 String EditorSceneExporterFBXSettings::get_copyright() const {
@@ -248,35 +282,5 @@ void EditorSceneExporterFBXSettings::set_max_skin_weights_per_vertex(const int p
 }
 
 void EditorSceneExporterFBXSettings::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_copyright"), &EditorSceneExporterFBXSettings::get_copyright);
-	ClassDB::bind_method(D_METHOD("set_copyright", "copyright"), &EditorSceneExporterFBXSettings::set_copyright);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "copyright", PROPERTY_HINT_PLACEHOLDER_TEXT, "Example: 2024 Your Company"), "set_copyright", "get_copyright");
-
-	ClassDB::bind_method(D_METHOD("get_bake_fps"), &EditorSceneExporterFBXSettings::get_bake_fps);
-	ClassDB::bind_method(D_METHOD("set_bake_fps", "bake_fps"), &EditorSceneExporterFBXSettings::set_bake_fps);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "bake_fps"), "set_bake_fps", "get_bake_fps");
-
-	ClassDB::bind_method(D_METHOD("get_ascii_format"), &EditorSceneExporterFBXSettings::get_ascii_format);
-	ClassDB::bind_method(D_METHOD("set_ascii_format", "ascii_format"), &EditorSceneExporterFBXSettings::set_ascii_format);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "ascii_format"), "set_ascii_format", "get_ascii_format");
-
-	ClassDB::bind_method(D_METHOD("get_embed_textures"), &EditorSceneExporterFBXSettings::get_embed_textures);
-	ClassDB::bind_method(D_METHOD("set_embed_textures", "embed_textures"), &EditorSceneExporterFBXSettings::set_embed_textures);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "embed_textures"), "set_embed_textures", "get_embed_textures");
-
-	ClassDB::bind_method(D_METHOD("get_export_animations"), &EditorSceneExporterFBXSettings::get_export_animations);
-	ClassDB::bind_method(D_METHOD("set_export_animations", "export_animations"), &EditorSceneExporterFBXSettings::set_export_animations);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "export_animations"), "set_export_animations", "get_export_animations");
-
-	ClassDB::bind_method(D_METHOD("get_export_materials"), &EditorSceneExporterFBXSettings::get_export_materials);
-	ClassDB::bind_method(D_METHOD("set_export_materials", "export_materials"), &EditorSceneExporterFBXSettings::set_export_materials);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "export_materials"), "set_export_materials", "get_export_materials");
-
-	ClassDB::bind_method(D_METHOD("get_fbx_version"), &EditorSceneExporterFBXSettings::get_fbx_version);
-	ClassDB::bind_method(D_METHOD("set_fbx_version", "fbx_version"), &EditorSceneExporterFBXSettings::set_fbx_version);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "fbx_version"), "set_fbx_version", "get_fbx_version");
-
-	ClassDB::bind_method(D_METHOD("get_coordinate_system"), &EditorSceneExporterFBXSettings::get_coordinate_system);
-	ClassDB::bind_method(D_METHOD("set_coordinate_system", "coordinate_system"), &EditorSceneExporterFBXSettings::set_coordinate_system);
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "coordinate_system"), "set_coordinate_system", "get_coordinate_system");
+	// No static property binding - using dynamic property list only
 }
