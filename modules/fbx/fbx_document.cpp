@@ -62,8 +62,8 @@
 #define FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
 #define FBX_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
 
-#include "../../thirdparty/ufbx/ufbx_export.h"
-#include <ufbx.h>
+#include "thirdparty/ufbx/ufbx.h"
+#include "thirdparty/ufbx/ufbx_export.h"
 
 static size_t _file_access_read_fn(void *user, void *data, size_t size) {
 	FileAccess *file = static_cast<FileAccess *>(user);
@@ -2599,7 +2599,7 @@ Error FBXDocument::_serialize_animations(Ref<GLTFState> p_state, ufbx_export_sce
 	for (AnimationPlayer *animation_player : animation_players) {
 		List<StringName> animation_names;
 		animation_player->get_animation_list(&animation_names);
-		
+
 		for (const StringName &animation_name : animation_names) {
 			_convert_animation(p_state, animation_player, animation_name, p_export_scene);
 		}
@@ -2644,13 +2644,13 @@ void FBXDocument::_find_animation_players_recursive(Node *p_node, Vector<Animati
 
 void FBXDocument::_find_animation_players_in_scene(Node *p_scene_root, Vector<AnimationPlayer *> &r_animation_players) {
 	ERR_FAIL_NULL(p_scene_root);
-	
+
 	// Check if the root itself is an AnimationPlayer
 	AnimationPlayer *animation_player = Object::cast_to<AnimationPlayer>(p_scene_root);
 	if (animation_player) {
 		r_animation_players.push_back(animation_player);
 	}
-	
+
 	// Recursively search children for AnimationPlayer nodes
 	_find_animation_players_recursive(p_scene_root, r_animation_players);
 }
@@ -2658,39 +2658,39 @@ void FBXDocument::_find_animation_players_in_scene(Node *p_scene_root, Vector<An
 void FBXDocument::_convert_animation(Ref<GLTFState> p_state, AnimationPlayer *p_animation_player, const String &p_animation_name, ufbx_export_scene *p_export_scene) {
 	ERR_FAIL_NULL(p_animation_player);
 	ERR_FAIL_NULL(p_export_scene);
-	
+
 	// Get the animation from the player
 	Ref<Animation> godot_animation = p_animation_player->get_animation(p_animation_name);
 	if (godot_animation.is_null()) {
 		WARN_PRINT("FBX Export: Animation '" + p_animation_name + "' not found in AnimationPlayer");
 		return;
 	}
-	
+
 	print_verbose("FBX Export: Converting animation '" + p_animation_name + "' directly to ufbx format");
-	
+
 	// Create animation stack
 	ufbx_anim_stack *anim_stack = ufbx_add_animation(p_export_scene, p_animation_name.utf8().get_data());
 	ERR_FAIL_NULL(anim_stack);
-	
+
 	// Create animation layer
 	ufbx_anim_layer *anim_layer = ufbx_add_anim_layer(p_export_scene, anim_stack, "BaseLayer");
 	ERR_FAIL_NULL(anim_layer);
-	
+
 	// Set animation time range
 	double time_begin = 0.0;
 	double time_end = godot_animation->get_length();
-	
+
 	ufbx_error error;
 	ufbx_set_anim_stack_time_range(anim_stack, time_begin, time_end, &error);
 	if (error.type != UFBX_ERROR_NONE) {
 		ERR_PRINT("FBX Export: Failed to set animation time range: " + String(error.description.data));
 	}
-	
+
 	// Convert each track in the animation
 	for (int track_idx = 0; track_idx < godot_animation->get_track_count(); track_idx++) {
 		_convert_animation_track(p_state, godot_animation, track_idx, p_export_scene, anim_stack);
 	}
-	
+
 	print_verbose("FBX Export: Successfully converted animation '" + p_animation_name + "' to ufbx format");
 }
 
@@ -2712,7 +2712,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 	// Find the corresponding ufbx node by parsing the track path
 	String node_name = track_path.get_name(0);
 	ufbx_node *fbx_node = nullptr;
-	
+
 	// Search for the node by name
 	for (size_t i = 0; i < p_export_scene->nodes.count; i++) {
 		ufbx_node *candidate = p_export_scene->nodes.data[i];
@@ -2753,8 +2753,9 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 					double time = p_godot_animation->track_get_key_time(p_track_index, key_idx);
 					Vector3 position;
 					p_godot_animation->position_track_get_key(p_track_index, key_idx, &position);
-					ufbx_real value = (component == 0) ? position.x : (component == 1) ? position.y : position.z;
-					
+					ufbx_real value = (component == 0) ? position.x : (component == 1) ? position.y
+																					   : position.z;
+
 					ufbx_add_keyframe(curve, time, value, UFBX_INTERPOLATION_LINEAR, &error);
 					if (error.type != UFBX_ERROR_NONE) {
 						ERR_PRINT("FBX Export: Failed to add position keyframe: " + String(error.description.data));
@@ -2787,15 +2788,16 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 					double time = p_godot_animation->track_get_key_time(p_track_index, key_idx);
 					Quaternion rotation;
 					p_godot_animation->rotation_track_get_key(p_track_index, key_idx, &rotation);
-					
+
 					// Convert Godot quaternion to ufbx quaternion
 					ufbx_quat ufbx_rotation_quat = { rotation.x, rotation.y, rotation.z, rotation.w };
-					
+
 					// Use ufbx's proper rotation conversion with the node's rotation order
 					ufbx_vec3 euler = ufbx_quat_to_euler(ufbx_rotation_quat, rotation_order);
 					// ufbx_quat_to_euler already returns degrees, no conversion needed
-					ufbx_real value = (component == 0) ? euler.x : (component == 1) ? euler.y : euler.z;
-					
+					ufbx_real value = (component == 0) ? euler.x : (component == 1) ? euler.y
+																					: euler.z;
+
 					ufbx_add_keyframe(curve, time, value, UFBX_INTERPOLATION_LINEAR, &error);
 					if (error.type != UFBX_ERROR_NONE) {
 						ERR_PRINT("FBX Export: Failed to add rotation keyframe: " + String(error.description.data));
@@ -2825,8 +2827,9 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 					double time = p_godot_animation->track_get_key_time(p_track_index, key_idx);
 					Vector3 scale;
 					p_godot_animation->scale_track_get_key(p_track_index, key_idx, &scale);
-					ufbx_real value = (component == 0) ? scale.x : (component == 1) ? scale.y : scale.z;
-					
+					ufbx_real value = (component == 0) ? scale.x : (component == 1) ? scale.y
+																					: scale.z;
+
 					ufbx_add_keyframe(curve, time, value, UFBX_INTERPOLATION_LINEAR, &error);
 					if (error.type != UFBX_ERROR_NONE) {
 						ERR_PRINT("FBX Export: Failed to add scale keyframe: " + String(error.description.data));
@@ -2873,27 +2876,39 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 	// Set animation time range
 	double time_begin = 0.0;
 	double time_end = 0.0;
-	
+
 	// Calculate time range from all tracks
 	for (const KeyValue<int, GLTFAnimation::NodeTrack> &track_pair : p_gltf_anim->get_node_tracks()) {
 		const GLTFAnimation::NodeTrack &track = track_pair.value;
-		
+
 		// Check position track times
 		for (float time : track.position_track.times) {
-			if (time < time_begin) time_begin = time;
-			if (time > time_end) time_end = time;
+			if (time < time_begin) {
+				time_begin = time;
+			}
+			if (time > time_end) {
+				time_end = time;
+			}
 		}
-		
+
 		// Check rotation track times
 		for (float time : track.rotation_track.times) {
-			if (time < time_begin) time_begin = time;
-			if (time > time_end) time_end = time;
+			if (time < time_begin) {
+				time_begin = time;
+			}
+			if (time > time_end) {
+				time_end = time;
+			}
 		}
-		
+
 		// Check scale track times
 		for (float time : track.scale_track.times) {
-			if (time < time_begin) time_begin = time;
-			if (time > time_end) time_end = time;
+			if (time < time_begin) {
+				time_begin = time;
+			}
+			if (time > time_end) {
+				time_end = time;
+			}
 		}
 	}
 
@@ -2929,8 +2944,9 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 				for (int key_idx = 0; key_idx < track.position_track.times.size(); key_idx++) {
 					double time = track.position_track.times[key_idx];
 					Vector3 position = track.position_track.values[key_idx];
-					ufbx_real value = (component == 0) ? position.x : (component == 1) ? position.y : position.z;
-					
+					ufbx_real value = (component == 0) ? position.x : (component == 1) ? position.y
+																					   : position.z;
+
 					ufbx_interpolation interp = _gltf_to_ufbx_interpolation(track.position_track.interpolation);
 					ufbx_add_keyframe(curve, time, value, interp, &error);
 					if (error.type != UFBX_ERROR_NONE) {
@@ -2968,15 +2984,16 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 				for (int key_idx = 0; key_idx < track.rotation_track.times.size(); key_idx++) {
 					double time = track.rotation_track.times[key_idx];
 					Quaternion rotation = track.rotation_track.values[key_idx];
-					
+
 					// Convert Godot quaternion to ufbx quaternion
 					ufbx_quat ufbx_rotation_quat = { rotation.x, rotation.y, rotation.z, rotation.w };
-					
+
 					// Use ufbx's proper rotation conversion with the node's rotation order
 					ufbx_vec3 euler = ufbx_quat_to_euler(ufbx_rotation_quat, rotation_order);
 					// ufbx_quat_to_euler already returns degrees, no conversion needed
-					ufbx_real value = (component == 0) ? euler.x : (component == 1) ? euler.y : euler.z;
-					
+					ufbx_real value = (component == 0) ? euler.x : (component == 1) ? euler.y
+																					: euler.z;
+
 					ufbx_interpolation interp = _gltf_to_ufbx_interpolation(track.rotation_track.interpolation);
 					ufbx_add_keyframe(curve, time, value, interp, &error);
 					if (error.type != UFBX_ERROR_NONE) {
@@ -3006,8 +3023,9 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 				for (int key_idx = 0; key_idx < track.scale_track.times.size(); key_idx++) {
 					double time = track.scale_track.times[key_idx];
 					Vector3 scale = track.scale_track.values[key_idx];
-					ufbx_real value = (component == 0) ? scale.x : (component == 1) ? scale.y : scale.z;
-					
+					ufbx_real value = (component == 0) ? scale.x : (component == 1) ? scale.y
+																					: scale.z;
+
 					ufbx_interpolation interp = _gltf_to_ufbx_interpolation(track.scale_track.interpolation);
 					ufbx_add_keyframe(curve, time, value, interp, &error);
 					if (error.type != UFBX_ERROR_NONE) {
@@ -3412,12 +3430,12 @@ Error FBXDocument::_convert_skeleton_to_gltf_state(Skeleton3D *p_skeleton, Ref<G
 		// Create a GLTFNode for this bone
 		Ref<GLTFNode> bone_gltf_node;
 		bone_gltf_node.instantiate();
-		
+
 		String bone_name = p_skeleton->get_bone_name(bone_i);
 		if (bone_name.is_empty()) {
 			bone_name = "Bone_" + itos(bone_i);
 		}
-		
+
 		bone_gltf_node->set_name(bone_name);
 		bone_gltf_node->set_original_name(bone_name);
 		bone_gltf_node->joint = true;
@@ -3426,7 +3444,7 @@ Error FBXDocument::_convert_skeleton_to_gltf_state(Skeleton3D *p_skeleton, Ref<G
 
 		// Add the bone node to the state using public API
 		GLTFNodeIndex bone_node_index = p_state->append_gltf_node(bone_gltf_node, p_skeleton, -1);
-		
+
 		// Safely register the bone in the skeleton
 		if (bone_node_index >= 0) {
 			gltf_skeleton->joints.push_back(bone_node_index);
@@ -3447,19 +3465,19 @@ Error FBXDocument::_convert_skeleton_to_gltf_state(Skeleton3D *p_skeleton, Ref<G
 		if (!gltf_skeleton->godot_bone_node.has(bone_i)) {
 			continue; // Skip bones that failed to register
 		}
-		
+
 		GLTFNodeIndex bone_node_index = gltf_skeleton->godot_bone_node[bone_i];
 		int parent_bone_i = p_skeleton->get_bone_parent(bone_i);
-		
+
 		if (parent_bone_i != -1 && gltf_skeleton->godot_bone_node.has(parent_bone_i)) {
 			// This bone has a parent bone that was successfully registered
 			GLTFNodeIndex parent_node_index = gltf_skeleton->godot_bone_node[parent_bone_i];
-			
+
 			// Safety checks to prevent crashes
 			if (bone_node_index < nodes.size() && parent_node_index < nodes.size()) {
 				Ref<GLTFNode> bone_node = nodes[bone_node_index];
 				Ref<GLTFNode> parent_node = nodes[parent_node_index];
-				
+
 				if (bone_node.is_valid() && parent_node.is_valid()) {
 					bone_node->parent = parent_node_index;
 					parent_node->children.push_back(bone_node_index);

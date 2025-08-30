@@ -36,8 +36,8 @@
 #include "modules/gltf/structures/gltf_skin.h"
 #include "modules/gltf/structures/gltf_texture.h"
 
-#include "../../thirdparty/ufbx/ufbx_export.h"
-#include <ufbx.h>
+#include "thirdparty/ufbx/ufbx.h"
+#include "thirdparty/ufbx/ufbx_export.h"
 
 class FBXState : public GLTFState {
 	GDCLASS(FBXState, GLTFState);

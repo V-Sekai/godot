@@ -35,7 +35,7 @@
 #include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_document.h"
 
-#include <ufbx.h>
+#include "thirdparty/ufbx/ufbx.h"
 
 class FBXDocument : public GLTFDocument {
 	GDCLASS(FBXDocument, GLTFDocument);
@@ -108,8 +108,9 @@ public:
 	Error _serialize_animations(Ref<GLTFState> p_state, struct ufbx_export_scene *p_export_scene);
 	void _convert_animation(Ref<GLTFState> p_state, AnimationPlayer *p_animation_player, const String &p_animation_name, struct ufbx_export_scene *p_export_scene);
 	Error _convert_animation_track(Ref<GLTFState> p_state, const Ref<Animation> &p_godot_animation, int32_t p_track_index, struct ufbx_export_scene *p_export_scene, struct ufbx_anim_stack *p_anim_stack);
+	Error _create_animation_curve_node(struct ufbx_export_scene *p_export_scene, struct ufbx_anim_layer *p_anim_layer, struct ufbx_node *p_fbx_node, const String &p_property_name, const Ref<Animation> &p_godot_animation, int32_t p_track_index, int p_key_count, Animation::TrackType p_track_type);
 	GLTFNodeIndex _find_node_index_for_animation_path(Ref<GLTFState> p_state, const NodePath &p_path, Node *p_scene_root);
-	
+
 	// New animation export methods
 	void _find_animation_players(Ref<GLTFState> p_state, Vector<AnimationPlayer *> &r_animation_players);
 	void _find_animation_players_recursive(Node *p_node, Vector<AnimationPlayer *> &r_animation_players);

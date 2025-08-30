@@ -172,6 +172,9 @@
 #include "tests/scene/test_camera_3d.h"
 #include "tests/scene/test_convert_transform_modifier_3d.h"
 #include "tests/scene/test_copy_transform_modifier_3d.h"
+#ifdef MODULE_FBX_ENABLED
+#include "tests/scene/test_fbx_document.h"
+#endif // MODULE_FBX_ENABLED
 #include "tests/scene/test_gltf_document.h"
 #include "tests/scene/test_path_3d.h"
 #include "tests/scene/test_path_follow_3d.h"
