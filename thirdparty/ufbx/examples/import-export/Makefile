@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -O2 -std=c99
 LDFLAGS = -lm
 
 # Source files
-UFBX_SRC = ../../ufbx.c ../../ufbx_export.c  ../../ufbx_export_writer.c
+UFBX_SRC = ../../ufbx.c ../../ufbx_export.c ../../ufbx_export_writer.c ../../ufbx_ascii_writer.c ../../ufbx_fbx_structures.c ../../ufbx_geometry_writer.c ../../ufbx_animation_writer.c ../../ufbx_material_writer.c ../../ufbx_connections.c
 MODULE_SRC = error_utils.c scene_analysis.c scene_copy.c scene_copy_nodes.c scene_copy_materials.c scene_copy_meshes.c scene_copy_animations.c scene_copy_deformers.c main.c
 ALL_SRC = $(MODULE_SRC) $(UFBX_SRC)
 
