@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="EditorSceneExporterFBXSettings" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="ascii_format" type="bool" setter="set_ascii_format" getter="get_ascii_format" default="false">
+		</member>
+		<member name="bake_fps" type="float" setter="set_bake_fps" getter="get_bake_fps" default="30.0">
+		</member>
+		<member name="coordinate_system" type="int" setter="set_coordinate_system" getter="get_coordinate_system" enum="FBXState.CoordinateSystem" default="0">
+		</member>
+		<member name="copyright" type="String" setter="set_copyright" getter="get_copyright" default="&quot;&quot;">
+		</member>
+		<member name="embed_textures" type="bool" setter="set_embed_textures" getter="get_embed_textures" default="true">
+		</member>
+		<member name="export_animations" type="bool" setter="set_export_animations" getter="get_export_animations" default="true">
+		</member>
+		<member name="export_materials" type="bool" setter="set_export_materials" getter="get_export_materials" default="true">
+		</member>
+		<member name="fbx_version" type="int" setter="set_fbx_version" getter="get_fbx_version" default="7400">
+		</member>
+	</members>
+</class>

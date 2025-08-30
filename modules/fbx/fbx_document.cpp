@@ -61,8 +61,8 @@
 #define FBX_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
 #define FBX_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
 
-#include <ufbx.h>
 #include "../../thirdparty/ufbx/ufbx_export.h"
+#include <ufbx.h>
 
 static size_t _file_access_read_fn(void *user, void *data, size_t size) {
 	FileAccess *file = static_cast<FileAccess *>(user);
@@ -2485,7 +2485,7 @@ Error FBXDocument::_parse_skins(Ref<FBXState> p_state) {
 
 PackedByteArray FBXDocument::generate_buffer(Ref<GLTFState> p_state) {
 	ERR_FAIL_COND_V(p_state.is_null(), PackedByteArray());
-	
+
 	Ref<FBXState> fbx_state = p_state;
 	ERR_FAIL_COND_V(fbx_state.is_null(), PackedByteArray());
 	ERR_FAIL_COND_V(fbx_state->export_scene == nullptr, PackedByteArray());
@@ -2515,14 +2515,14 @@ PackedByteArray FBXDocument::generate_buffer(Ref<GLTFState> p_state) {
 Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) {
 	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(p_path.is_empty(), ERR_INVALID_PARAMETER);
-	
+
 	Ref<FBXState> fbx_state = p_state;
 	ERR_FAIL_COND_V(fbx_state.is_null(), ERR_INVALID_PARAMETER);
 	ERR_FAIL_COND_V(fbx_state->export_scene == nullptr, ERR_INVALID_DATA);
 
-	// Export directly to file
+	// Export to file using export options from FBXState
 	ufbx_error error;
-	bool success = ufbx_export_to_file(fbx_state->export_scene, p_path.utf8().get_data(), nullptr, &error);
+	bool success = ufbx_export_to_file(fbx_state->export_scene, p_path.utf8().get_data(), &fbx_state->export_opts, &error);
 	if (!success) {
 		ERR_PRINT("FBX Export: Failed to export scene to file: " + p_path + " - " + String(error.description.data));
 		return ERR_FILE_CANT_WRITE;
@@ -2666,7 +2666,8 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 			for (int i = 0; i < indices.size(); i++) {
 				ufbx_indices.write[i] = indices[i];
 			}
-			ufbx_set_mesh_indices(fbx_mesh, ufbx_indices.ptr(), ufbx_indices.size(), &error);
+			// Assume triangles (3 vertices per face)
+			ufbx_set_mesh_indices(fbx_mesh, ufbx_indices.ptr(), ufbx_indices.size(), 3, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to set mesh indices: " + String(error.description.data));
 			}
@@ -2825,7 +2826,7 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 	Node3D *node_3d = Object::cast_to<Node3D>(p_node);
 	if (node_3d) {
 		Transform3D transform = node_3d->get_transform();
-		
+
 		// Convert Godot transform to ufbx format
 		ufbx_transform ufbx_xform;
 		ufbx_xform.translation = { transform.origin.x, transform.origin.y, transform.origin.z };
@@ -2833,7 +2834,7 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 		ufbx_xform.rotation = { rotation.x, rotation.y, rotation.z, rotation.w };
 		Vector3 scale = transform.basis.get_scale();
 		ufbx_xform.scale = { scale.x, scale.y, scale.z };
-		
+
 		ufbx_error error;
 		ufbx_set_node_transform(fbx_node, &ufbx_xform, &error);
 		if (error.type != UFBX_ERROR_NONE) {

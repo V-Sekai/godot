@@ -12,4 +12,10 @@
 			If [code]true[/code], the import process used auxiliary nodes called geometry helper nodes. These nodes help preserve the pivots and transformations of the original 3D model during import.
 		</member>
 	</members>
+	<constants>
+		<constant name="COORDINATE_SYSTEM_Y_UP" value="0" enum="CoordinateSystem">
+		</constant>
+		<constant name="COORDINATE_SYSTEM_Z_UP" value="1" enum="CoordinateSystem">
+		</constant>
+	</constants>
 </class>

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  fbx_state.h                                                           */
+/*  editor_scene_exporter_fbx_settings.h                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,66 +30,52 @@
 
 #pragma once
 
-#include "modules/gltf/gltf_defines.h"
-#include "modules/gltf/gltf_state.h"
-#include "modules/gltf/structures/gltf_skeleton.h"
-#include "modules/gltf/structures/gltf_skin.h"
-#include "modules/gltf/structures/gltf_texture.h"
+#include "../fbx_document.h"
 
-#include "../../thirdparty/ufbx/ufbx_export.h"
-#include <ufbx.h>
+class EditorSceneExporterFBXSettings : public RefCounted {
+	GDCLASS(EditorSceneExporterFBXSettings, RefCounted);
+	List<PropertyInfo> _property_list;
+	Ref<FBXDocument> _document;
 
-class FBXState : public GLTFState {
-	GDCLASS(FBXState, GLTFState);
-	friend class FBXDocument;
-	friend class SkinTool;
-	friend class GLTFSkin;
-
-public:
-	enum CoordinateSystem {
-		COORDINATE_SYSTEM_Y_UP,
-		COORDINATE_SYSTEM_Z_UP
-	};
-
-private:
-	// Smart pointer that holds the loaded scene.
-	ufbx_unique_ptr<ufbx_scene> scene;
-	// Export scene for FBX export functionality
-	ufbx_export_scene *export_scene = nullptr;
-	bool allow_geometry_helper_nodes = false;
-
-	// Export options for FBX export
-	struct ufbx_export_opts export_opts = {};
-
-	HashMap<uint64_t, Image::AlphaMode> alpha_mode_cache;
-	HashMap<Pair<uint64_t, uint64_t>, GLTFTextureIndex> albedo_transparency_textures;
-
-	Vector<GLTFSkinIndex> skin_indices;
-	Vector<GLTFSkinIndex> original_skin_indices;
-	HashMap<ObjectID, GLTFSkeletonIndex> skeleton3d_to_fbx_skeleton;
-	HashMap<ObjectID, HashMap<ObjectID, GLTFSkinIndex>> skin_and_skeleton3d_to_fbx_skin;
-	HashSet<String> unique_mesh_names; // Not in GLTFState because GLTFState prefixes mesh names with the scene name (or _)
+	String _copyright;
+	double _bake_fps = 30.0;
+	bool _ascii_format = false;
+	bool _embed_textures = true;
+	bool _export_animations = true;
+	bool _export_materials = true;
+	int _fbx_version = 7400; // FBX 7.4
+	FBXState::CoordinateSystem _coordinate_system = FBXState::COORDINATE_SYSTEM_Y_UP;
 
 protected:
 	static void _bind_methods();
+	bool _set(const StringName &p_name, const Variant &p_value);
+	bool _get(const StringName &p_name, Variant &r_ret) const;
+	void _get_property_list(List<PropertyInfo> *p_list) const;
 
 public:
-	bool get_allow_geometry_helper_nodes();
-	void set_allow_geometry_helper_nodes(bool p_allow_geometry_helper_nodes);
+	void generate_property_list(Ref<FBXDocument> p_document, Node *p_root = nullptr);
 
-	// Export options API
-	void set_export_ascii_format(bool p_ascii_format);
-	bool get_export_ascii_format() const;
-	void set_export_embed_textures(bool p_embed_textures);
-	bool get_export_embed_textures() const;
-	void set_export_animations(bool p_export_animations);
+	String get_copyright() const;
+	void set_copyright(const String &p_copyright);
+
+	double get_bake_fps() const;
+	void set_bake_fps(const double p_bake_fps);
+
+	bool get_ascii_format() const;
+	void set_ascii_format(const bool p_ascii_format);
+
+	bool get_embed_textures() const;
+	void set_embed_textures(const bool p_embed_textures);
+
 	bool get_export_animations() const;
-	void set_export_materials(bool p_export_materials);
-	bool get_export_materials() const;
-	void set_export_fbx_version(int p_fbx_version);
-	int get_export_fbx_version() const;
-	void set_export_coordinate_system(CoordinateSystem p_coordinate_system);
-	CoordinateSystem get_export_coordinate_system() const;
-};
+	void set_export_animations(const bool p_export_animations);
 
-VARIANT_ENUM_CAST(FBXState::CoordinateSystem);
+	bool get_export_materials() const;
+	void set_export_materials(const bool p_export_materials);
+
+	int get_fbx_version() const;
+	void set_fbx_version(const int p_fbx_version);
+
+	FBXState::CoordinateSystem get_coordinate_system() const;
+	void set_coordinate_system(const FBXState::CoordinateSystem p_coordinate_system);
+};

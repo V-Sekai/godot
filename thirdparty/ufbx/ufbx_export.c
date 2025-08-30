@@ -145,7 +145,6 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *
     return node;
 }
 
-// Add a mesh to the scene
 ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name) {
     if (!scene || !name) {
         return NULL;
@@ -153,36 +152,30 @@ ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name) {
     
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
-    // Grow meshes array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->meshes, &scene_imp->meshes_cap,
                                 sizeof(ufbx_mesh*), scene_imp->num_meshes + 1)) {
         return NULL;
     }
     
-    // Allocate new mesh
     ufbx_mesh *mesh = (ufbx_mesh*)calloc(1, sizeof(ufbx_mesh));
     if (!mesh) {
         return NULL;
     }
     
-    // Initialize mesh
     mesh->element.name.data = strdup(name);
     mesh->element.name.length = strlen(name);
     mesh->element.element_id = scene_imp->num_meshes + 1000; // Offset to avoid ID conflicts
     mesh->element.type = UFBX_ELEMENT_MESH;
     
-    // Add to scene
     scene_imp->meshes[scene_imp->num_meshes] = mesh;
     scene_imp->num_meshes++;
     
-    // Update scene list pointer and count
     scene_imp->scene.meshes.data = (ufbx_mesh**)scene_imp->meshes;
     scene_imp->scene.meshes.count = scene_imp->num_meshes;
     
     return mesh;
 }
 
-// Add a material to the scene
 ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
     if (!scene || !name) {
         return NULL;
@@ -190,25 +183,21 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
     
     ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
-    // Grow materials array if needed
     if (!ufbx_export_grow_array((void**)&scene_imp->materials, &scene_imp->materials_cap,
                                 sizeof(ufbx_material*), scene_imp->num_materials + 1)) {
         return NULL;
     }
     
-    // Allocate new material
     ufbx_material *material = (ufbx_material*)calloc(1, sizeof(ufbx_material));
     if (!material) {
         return NULL;
     }
     
-    // Initialize material
     material->element.name.data = strdup(name);
     material->element.name.length = strlen(name);
     material->element.element_id = scene_imp->num_materials + 2000; // Offset to avoid ID conflicts
     material->element.type = UFBX_ELEMENT_MATERIAL;
     
-    // Set default material properties
     material->pbr.base_color.value_vec3 = (ufbx_vec3){ 0.8f, 0.8f, 0.8f };
     material->pbr.base_color.has_value = true;
     material->pbr.roughness.value_real = 0.5;
@@ -216,18 +205,15 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
     material->pbr.metalness.value_real = 0.0;
     material->pbr.metalness.has_value = true;
     
-    // Add to scene
     scene_imp->materials[scene_imp->num_materials] = material;
     scene_imp->num_materials++;
     
-    // Update scene list pointer and count
     scene_imp->scene.materials.data = (ufbx_material**)scene_imp->materials;
     scene_imp->scene.materials.count = scene_imp->num_materials;
     
     return material;
 }
 
-// Set mesh vertex data
 bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t num_vertices, ufbx_error *error) {
     if (!mesh || !vertices || num_vertices == 0) {
         if (error) {
@@ -238,7 +224,6 @@ bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t n
         return false;
     }
     
-    // Allocate vertex data
     ufbx_vec3 *vertex_data = (ufbx_vec3*)malloc(num_vertices * sizeof(ufbx_vec3));
     if (!vertex_data) {
         if (error) {
@@ -249,10 +234,8 @@ bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t n
         return false;
     }
     
-    // Copy vertex data
     memcpy(vertex_data, vertices, num_vertices * sizeof(ufbx_vec3));
     
-    // Set mesh vertex data
     mesh->vertices.data = vertex_data;
     mesh->vertices.count = num_vertices;
     mesh->num_vertices = num_vertices;
@@ -264,7 +247,6 @@ bool ufbx_set_mesh_vertices(ufbx_mesh *mesh, const ufbx_vec3 *vertices, size_t n
     return true;
 }
 
-// Set mesh face indices with variable topology (triangles, quads, n-gons)
 bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, 
                          const ufbx_face *face_definitions, size_t num_faces, ufbx_error *error) {
     if (!mesh || !indices || !face_definitions || num_indices == 0 || num_faces == 0) {
@@ -276,7 +258,6 @@ bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_in
         return false;
     }
     
-    // Validate face definitions
     size_t total_expected_indices = 0;
     size_t triangle_count = 0;
     for (size_t i = 0; i < num_faces; i++) {
@@ -303,7 +284,6 @@ bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_in
         return false;
     }
     
-    // Allocate index data
     uint32_t *index_data = (uint32_t*)malloc(num_indices * sizeof(uint32_t));
     if (!index_data) {
         if (error) {
@@ -314,10 +294,8 @@ bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_in
         return false;
     }
     
-    // Copy index data
     memcpy(index_data, indices, num_indices * sizeof(uint32_t));
     
-    // Allocate face data
     ufbx_face *faces = (ufbx_face*)malloc(num_faces * sizeof(ufbx_face));
     if (!faces) {
         free(index_data);
@@ -329,10 +307,8 @@ bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_in
         return false;
     }
     
-    // Copy face definitions
     memcpy(faces, face_definitions, num_faces * sizeof(ufbx_face));
     
-    // Set mesh data
     mesh->vertex_indices.data = index_data;
     mesh->vertex_indices.count = num_indices;
     mesh->faces.data = faces;
@@ -347,7 +323,6 @@ bool ufbx_set_mesh_faces(ufbx_mesh *mesh, const uint32_t *indices, size_t num_in
     return true;
 }
 
-// Set mesh face indices (uniform topology - backward compatibility)
 bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_indices, size_t vertices_per_face, ufbx_error *error) {
     if (!mesh || !indices || num_indices == 0 || vertices_per_face == 0) {
         if (error) {
@@ -358,7 +333,6 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
         return false;
     }
     
-    // Validate that indices can be evenly divided by vertices_per_face
     if (num_indices % vertices_per_face != 0) {
         if (error) {
             error->type = UFBX_ERROR_UNKNOWN;
@@ -368,7 +342,6 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
         return false;
     }
     
-    // Create uniform face definitions
     size_t num_faces = num_indices / vertices_per_face;
     ufbx_face *face_definitions = (ufbx_face*)malloc(num_faces * sizeof(ufbx_face));
     if (!face_definitions) {
@@ -380,13 +353,11 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
         return false;
     }
     
-    // Initialize uniform face definitions
     for (size_t i = 0; i < num_faces; i++) {
         face_definitions[i].index_begin = i * vertices_per_face;
         face_definitions[i].num_indices = vertices_per_face;
     }
     
-    // Use the variable topology function
     bool result = ufbx_set_mesh_faces(mesh, indices, num_indices, face_definitions, num_faces, error);
     free(face_definitions);
     
@@ -394,14 +365,12 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
 }
 
 
-// Set material property
 bool ufbx_set_material_property(ufbx_material *material, const char *property_name, 
                                 int type, const void *value) {
     if (!material || !property_name || !value) {
         return false;
     }
     
-    // Handle common material properties
     if (strcmp(property_name, "DiffuseColor") == 0) {
         material->pbr.base_color.value_vec3 = *(const ufbx_vec3*)value;
         material->pbr.base_color.has_value = true;
@@ -835,14 +804,12 @@ bool ufbx_export_to_file(const ufbx_export_scene *scene, const char *filename, c
         return false;
     }
     
-    // Validate scene structure
     ufbx_error validation_error = ufbx_validate_export_scene(scene);
     if (validation_error.type != UFBX_ERROR_NONE) {
         if (error) *error = validation_error;
         return false;
     }
     
-    // Use the writer implementation to export to file
     ufbx_error export_error = ufbx_export_to_file_impl(scene, filename, opts);
     if (export_error.type != UFBX_ERROR_NONE) {
         if (error) *error = export_error;
