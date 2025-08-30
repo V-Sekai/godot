@@ -77,6 +77,40 @@ bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sce
             }
         }
         
+        // Copy skin weights (global weights for the skin deformer)
+        if (src_skin->weights.count > 0) {
+            ufbx_error weights_error = {0};
+            bool success = ufbx_set_skin_weights(export_skin, src_skin->weights.data, src_skin->weights.count, &weights_error);
+            if (!success) {
+                print_error(&weights_error, "Failed to set skin weights");
+            }
+        }
+        
+        // Attach skin to meshes
+        for (size_t j = 0; j < source_scene->meshes.count; j++) {
+            ufbx_mesh *src_mesh = source_scene->meshes.data[j];
+            for (size_t k = 0; k < src_mesh->skin_deformers.count; k++) {
+                if (src_mesh->skin_deformers.data[k] == src_skin) {
+                    ufbx_mesh *export_mesh = NULL;
+                    // Find corresponding export mesh
+                    for (size_t m = 0; m < source_scene->meshes.count; m++) {
+                        if (source_scene->meshes.data[m] == src_mesh) {
+                            export_mesh = mesh_mappings[m].export_mesh;
+                            break;
+                        }
+                    }
+                    if (export_mesh) {
+                        ufbx_error attach_error = {0};
+                        bool success = ufbx_attach_skin_to_mesh(export_mesh, export_skin, &attach_error);
+                        if (!success) {
+                            print_error(&attach_error, "Failed to attach skin to mesh");
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        
         printf("    Added skin deformer: %s\n", src_skin->name.data);
     }
     
