@@ -106,8 +106,8 @@ public:
 
 	// Mesh conversion methods
 	Error _convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instance, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_node, Ref<GLTFState> p_state);
-	void _convert_mesh_instance_to_fbx(MeshInstance3D *p_scene_parent, Ref<GLTFState> p_state, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_fbx_node);
-	GLTFMeshIndex _convert_mesh_to_fbx(Ref<GLTFState> p_state, MeshInstance3D *p_mesh_instance, struct ufbx_export_scene *p_export_scene);
+	Error _convert_mesh_instance_3d(MeshInstance3D *p_mesh_instance, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_node, Ref<GLTFState> p_state);
+	Error _convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, struct ufbx_export_scene *p_export_scene, struct ufbx_node *p_node, const String &p_name, Ref<GLTFState> p_state);
 
 	// Material and texture conversion methods
 	Error _convert_material(Ref<Material> p_material, struct ufbx_export_scene *p_export_scene, struct ufbx_mesh *p_mesh, int p_surface_idx, Ref<GLTFState> p_state);

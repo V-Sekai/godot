@@ -43,7 +43,12 @@ class EditorSceneExporterFBXSettings : public RefCounted {
 	bool _embed_textures = true;
 	bool _export_animations = true;
 	bool _export_materials = true;
-	int _fbx_version = 7400; // FBX 7.4
+	bool _export_skinning = true;
+	bool _export_morph_targets = true;
+	bool _optimize_meshes = false;
+	bool _optimize_skin_weights = false;
+	int _max_skin_weights_per_vertex = 4;
+	int _fbx_version = 7400;
 	FBXState::CoordinateSystem _coordinate_system = FBXState::COORDINATE_SYSTEM_Y_UP;
 
 protected:
@@ -72,6 +77,18 @@ public:
 
 	bool get_export_materials() const;
 	void set_export_materials(const bool p_export_materials);
+
+	bool get_export_skinning() const;
+	void set_export_skinning(const bool p_export_skinning);
+
+	bool get_export_morph_targets() const;
+	void set_export_morph_targets(const bool p_export_morph_targets);
+
+	bool get_optimize_skin_weights() const;
+	void set_optimize_skin_weights(const bool p_optimize_skin_weights);
+
+	int get_max_skin_weights_per_vertex() const;
+	void set_max_skin_weights_per_vertex(const int p_max_skin_weights_per_vertex);
 
 	int get_fbx_version() const;
 	void set_fbx_version(const int p_fbx_version);

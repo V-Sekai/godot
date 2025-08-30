@@ -181,6 +181,40 @@ ufbx_abi bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh, ufbx_er
 // Attach material to mesh
 ufbx_abi bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, int surface_index, ufbx_error *error);
 
+// Skinning construction helpers
+
+// Add a skin deformer to the scene
+ufbx_abi ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char *name);
+
+// Add a skin cluster to a skin deformer
+ufbx_abi ufbx_skin_cluster *ufbx_add_skin_cluster(ufbx_export_scene *scene, ufbx_skin_deformer *skin, ufbx_node *bone_node, const char *name);
+
+// Set skin weight data
+ufbx_abi bool ufbx_set_skin_weights(ufbx_skin_deformer *skin, const ufbx_skin_weight *weights, size_t num_weights, ufbx_error *error);
+
+// Set skin vertex data
+ufbx_abi bool ufbx_set_skin_vertices(ufbx_skin_deformer *skin, const ufbx_skin_vertex *vertices, size_t num_vertices, ufbx_error *error);
+
+// Attach skin deformer to mesh
+ufbx_abi bool ufbx_attach_skin_to_mesh(ufbx_mesh *mesh, ufbx_skin_deformer *skin, ufbx_error *error);
+
+// Morph target construction helpers
+
+// Add a blend deformer to the scene
+ufbx_abi ufbx_blend_deformer *ufbx_add_blend_deformer(ufbx_export_scene *scene, const char *name);
+
+// Add a blend channel to a blend deformer
+ufbx_abi ufbx_blend_channel *ufbx_add_blend_channel(ufbx_export_scene *scene, ufbx_blend_deformer *deformer, const char *name);
+
+// Add a blend shape to the scene
+ufbx_abi ufbx_blend_shape *ufbx_add_blend_shape(ufbx_export_scene *scene, const char *name);
+
+// Set blend shape offset data
+ufbx_abi bool ufbx_set_blend_shape_offsets(ufbx_blend_shape *shape, const ufbx_vec3 *position_offsets, const ufbx_vec3 *normal_offsets, size_t num_offsets, ufbx_error *error);
+
+// Attach blend deformer to mesh
+ufbx_abi bool ufbx_attach_blend_to_mesh(ufbx_mesh *mesh, ufbx_blend_deformer *blend, ufbx_error *error);
+
 // Export functions
 
 // Get export buffer size

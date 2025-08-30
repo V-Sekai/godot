@@ -41,6 +41,7 @@
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/light_3d.h"
+#include "scene/3d/mesh_instance_3d.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "scene/resources/portable_compressed_texture.h"
@@ -2588,8 +2589,59 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 	Ref<ImporterMesh> importer_mesh = p_mesh_instance->get_mesh();
 	ERR_FAIL_COND_V(importer_mesh.is_null(), ERR_INVALID_DATA);
 
+	return _convert_mesh_to_ufbx(importer_mesh, p_export_scene, p_node, p_mesh_instance->get_name(), p_state);
+}
+
+Error FBXDocument::_convert_mesh_instance_3d(MeshInstance3D *p_mesh_instance, ufbx_export_scene *p_export_scene, ufbx_node *p_node, Ref<GLTFState> p_state) {
+	ERR_FAIL_NULL_V(p_mesh_instance, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
+
+	Ref<Mesh> mesh = p_mesh_instance->get_mesh();
+	ERR_FAIL_COND_V(mesh.is_null(), ERR_INVALID_DATA);
+
+	// Convert Mesh to ImporterMesh manually
+	Ref<ImporterMesh> importer_mesh;
+	importer_mesh.instantiate();
+
+	// Copy blend shape mode and names if available
+	// Check if this is an ArrayMesh which has get_blend_shape_mode()
+	Ref<ArrayMesh> array_mesh = mesh;
+	if (mesh->get_blend_shape_count() > 0) {
+		if (array_mesh.is_valid()) {
+			importer_mesh->set_blend_shape_mode(array_mesh->get_blend_shape_mode());
+		}
+		for (int i = 0; i < mesh->get_blend_shape_count(); i++) {
+			importer_mesh->add_blend_shape(mesh->get_blend_shape_name(i));
+		}
+	}
+
+	// Convert each surface
+	for (int surface_idx = 0; surface_idx < mesh->get_surface_count(); surface_idx++) {
+		Array surface_arrays = mesh->surface_get_arrays(surface_idx);
+		Mesh::PrimitiveType primitive = mesh->surface_get_primitive_type(surface_idx);
+		Ref<Material> material = mesh->surface_get_material(surface_idx);
+
+		// Get blend shape data if available (Mesh API only takes surface index)
+		TypedArray<Array> blend_shapes;
+		if (mesh->get_blend_shape_count() > 0) {
+			blend_shapes = mesh->surface_get_blend_shape_arrays(surface_idx);
+		}
+
+		String surface_name = "Surface_" + itos(surface_idx);
+		importer_mesh->add_surface(primitive, surface_arrays, blend_shapes, Dictionary(), material, surface_name);
+	}
+
+	return _convert_mesh_to_ufbx(importer_mesh, p_export_scene, p_node, p_mesh_instance->get_name(), p_state);
+}
+
+Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx_export_scene *p_export_scene, ufbx_node *p_node, const String &p_name, Ref<GLTFState> p_state) {
+	ERR_FAIL_COND_V(p_importer_mesh.is_null(), ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_export_scene, ERR_INVALID_PARAMETER);
+	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
+
 	// Create ufbx mesh
-	ufbx_mesh *fbx_mesh = ufbx_add_mesh(p_export_scene, String(p_mesh_instance->get_name()).utf8().get_data());
+	ufbx_mesh *fbx_mesh = ufbx_add_mesh(p_export_scene, p_name.utf8().get_data());
 	ERR_FAIL_NULL_V(fbx_mesh, ERR_OUT_OF_MEMORY);
 
 	// Attach mesh to node
@@ -2601,8 +2653,8 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 	}
 
 	// Process each surface of the mesh
-	for (int surface_idx = 0; surface_idx < importer_mesh->get_surface_count(); surface_idx++) {
-		Array surface_arrays = importer_mesh->get_surface_arrays(surface_idx);
+	for (int surface_idx = 0; surface_idx < p_importer_mesh->get_surface_count(); surface_idx++) {
+		Array surface_arrays = p_importer_mesh->get_surface_arrays(surface_idx);
 		ERR_CONTINUE(surface_arrays.size() != Mesh::ARRAY_MAX);
 
 		// Get vertex data
@@ -2674,7 +2726,7 @@ Error FBXDocument::_convert_mesh_instance(ImporterMeshInstance3D *p_mesh_instanc
 		}
 
 		// Handle material if available
-		Ref<Material> material = importer_mesh->get_surface_material(surface_idx);
+		Ref<Material> material = p_importer_mesh->get_surface_material(surface_idx);
 		if (material.is_valid()) {
 			Error mat_err = _convert_material(material, p_export_scene, fbx_mesh, surface_idx, p_state);
 			if (mat_err != OK) {
@@ -2843,11 +2895,20 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 	}
 
 	// Handle different node types
-	ImporterMeshInstance3D *mesh_instance = Object::cast_to<ImporterMeshInstance3D>(p_node);
-	if (mesh_instance && mesh_instance->get_mesh().is_valid()) {
-		Error err = _convert_mesh_instance(mesh_instance, p_export_scene, fbx_node, p_state);
+	ImporterMeshInstance3D *importer_mesh_instance = Object::cast_to<ImporterMeshInstance3D>(p_node);
+	if (importer_mesh_instance && importer_mesh_instance->get_mesh().is_valid()) {
+		Error err = _convert_mesh_instance(importer_mesh_instance, p_export_scene, fbx_node, p_state);
 		if (err != OK) {
-			ERR_PRINT("FBX Export: Failed to convert mesh instance: " + p_node->get_name());
+			ERR_PRINT("FBX Export: Failed to convert importer mesh instance: " + p_node->get_name());
+		}
+	}
+
+	// Handle regular MeshInstance3D nodes
+	MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_node);
+	if (mesh_instance && mesh_instance->get_mesh().is_valid()) {
+		Error err = _convert_mesh_instance_3d(mesh_instance, p_export_scene, fbx_node, p_state);
+		if (err != OK) {
+			ERR_PRINT("FBX Export: Failed to convert mesh instance 3d: " + p_node->get_name());
 		}
 	}
 

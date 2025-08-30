@@ -822,3 +822,307 @@ bool ufbx_export_to_file(const ufbx_export_scene *scene, const char *filename, c
     
     return true;
 }
+
+// Skinning export functions
+
+// Add a skin deformer to the scene
+ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char *name) {
+    if (!scene || !name) {
+        return NULL;
+    }
+    
+    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
+    
+    // Allocate new skin deformer
+    ufbx_skin_deformer *skin = (ufbx_skin_deformer*)calloc(1, sizeof(ufbx_skin_deformer));
+    if (!skin) {
+        return NULL;
+    }
+    
+    // Initialize skin deformer
+    skin->element.name.data = strdup(name);
+    skin->element.name.length = strlen(name);
+    skin->element.type = UFBX_ELEMENT_SKIN_DEFORMER;
+    skin->skinning_method = UFBX_SKINNING_METHOD_LINEAR;
+    
+    return skin;
+}
+
+// Add a skin cluster to a skin deformer
+ufbx_skin_cluster *ufbx_add_skin_cluster(ufbx_export_scene *scene, ufbx_skin_deformer *skin, ufbx_node *bone_node, const char *name) {
+    if (!scene || !skin || !bone_node || !name) {
+        return NULL;
+    }
+    
+    // Allocate new skin cluster
+    ufbx_skin_cluster *cluster = (ufbx_skin_cluster*)calloc(1, sizeof(ufbx_skin_cluster));
+    if (!cluster) {
+        return NULL;
+    }
+    
+    // Initialize skin cluster
+    cluster->element.name.data = strdup(name);
+    cluster->element.name.length = strlen(name);
+    cluster->element.type = UFBX_ELEMENT_SKIN_CLUSTER;
+    cluster->bone_node = bone_node;
+    cluster->bind_to_world = ufbx_identity_matrix;
+    cluster->geometry_to_bone = ufbx_identity_matrix;
+    cluster->mesh_node_to_bone = ufbx_identity_matrix;
+    
+    return cluster;
+}
+
+// Set skin weight data
+bool ufbx_set_skin_weights(ufbx_skin_deformer *skin, const ufbx_skin_weight *weights, size_t num_weights, ufbx_error *error) {
+    if (!skin || !weights || num_weights == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid skin, weights, or weight count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate weight data
+    ufbx_skin_weight *weight_data = (ufbx_skin_weight*)malloc(num_weights * sizeof(ufbx_skin_weight));
+    if (!weight_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate weight data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Copy weight data
+    memcpy(weight_data, weights, num_weights * sizeof(ufbx_skin_weight));
+    
+    // Set skin weight data
+    skin->weights.data = weight_data;
+    skin->weights.count = num_weights;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Set skin vertex data
+bool ufbx_set_skin_vertices(ufbx_skin_deformer *skin, const ufbx_skin_vertex *vertices, size_t num_vertices, ufbx_error *error) {
+    if (!skin || !vertices || num_vertices == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid skin, vertices, or vertex count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate vertex data
+    ufbx_skin_vertex *vertex_data = (ufbx_skin_vertex*)malloc(num_vertices * sizeof(ufbx_skin_vertex));
+    if (!vertex_data) {
+        if (error) {
+            error->type = UFBX_ERROR_OUT_OF_MEMORY;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate vertex data");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Copy vertex data
+    memcpy(vertex_data, vertices, num_vertices * sizeof(ufbx_skin_vertex));
+    
+    // Set skin vertex data
+    skin->vertices.data = vertex_data;
+    skin->vertices.count = num_vertices;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Attach skin deformer to mesh
+bool ufbx_attach_skin_to_mesh(ufbx_mesh *mesh, ufbx_skin_deformer *skin, ufbx_error *error) {
+    if (!mesh || !skin) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh or skin");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate skin deformers array if not already allocated
+    if (!mesh->skin_deformers.data) {
+        mesh->skin_deformers.data = (ufbx_skin_deformer**)malloc(sizeof(ufbx_skin_deformer*));
+        if (!mesh->skin_deformers.data) {
+            if (error) {
+                error->type = UFBX_ERROR_OUT_OF_MEMORY;
+                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate skin deformers array");
+                error->info_length = strlen(error->info);
+            }
+            return false;
+        }
+    }
+    
+    // Set the skin deformer
+    mesh->skin_deformers.data[0] = skin;
+    mesh->skin_deformers.count = 1;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Morph target export functions
+
+// Add a blend deformer to the scene
+ufbx_blend_deformer *ufbx_add_blend_deformer(ufbx_export_scene *scene, const char *name) {
+    if (!scene || !name) {
+        return NULL;
+    }
+    
+    // Allocate new blend deformer
+    ufbx_blend_deformer *blend = (ufbx_blend_deformer*)calloc(1, sizeof(ufbx_blend_deformer));
+    if (!blend) {
+        return NULL;
+    }
+    
+    // Initialize blend deformer
+    blend->element.name.data = strdup(name);
+    blend->element.name.length = strlen(name);
+    blend->element.type = UFBX_ELEMENT_BLEND_DEFORMER;
+    
+    return blend;
+}
+
+// Add a blend channel to a blend deformer
+ufbx_blend_channel *ufbx_add_blend_channel(ufbx_export_scene *scene, ufbx_blend_deformer *deformer, const char *name) {
+    if (!scene || !deformer || !name) {
+        return NULL;
+    }
+    
+    // Allocate new blend channel
+    ufbx_blend_channel *channel = (ufbx_blend_channel*)calloc(1, sizeof(ufbx_blend_channel));
+    if (!channel) {
+        return NULL;
+    }
+    
+    // Initialize blend channel
+    channel->element.name.data = strdup(name);
+    channel->element.name.length = strlen(name);
+    channel->element.type = UFBX_ELEMENT_BLEND_CHANNEL;
+    channel->weight = 0.0f;
+    
+    return channel;
+}
+
+// Add a blend shape to the scene
+ufbx_blend_shape *ufbx_add_blend_shape(ufbx_export_scene *scene, const char *name) {
+    if (!scene || !name) {
+        return NULL;
+    }
+    
+    // Allocate new blend shape
+    ufbx_blend_shape *shape = (ufbx_blend_shape*)calloc(1, sizeof(ufbx_blend_shape));
+    if (!shape) {
+        return NULL;
+    }
+    
+    // Initialize blend shape
+    shape->element.name.data = strdup(name);
+    shape->element.name.length = strlen(name);
+    shape->element.type = UFBX_ELEMENT_BLEND_SHAPE;
+    
+    return shape;
+}
+
+// Set blend shape offset data
+bool ufbx_set_blend_shape_offsets(ufbx_blend_shape *shape, const ufbx_vec3 *position_offsets, const ufbx_vec3 *normal_offsets, size_t num_offsets, ufbx_error *error) {
+    if (!shape || (!position_offsets && !normal_offsets) || num_offsets == 0) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid shape, offsets, or offset count");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Set position offsets if provided
+    if (position_offsets) {
+        ufbx_vec3 *pos_data = (ufbx_vec3*)malloc(num_offsets * sizeof(ufbx_vec3));
+        if (!pos_data) {
+            if (error) {
+                error->type = UFBX_ERROR_OUT_OF_MEMORY;
+                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate position offset data");
+                error->info_length = strlen(error->info);
+            }
+            return false;
+        }
+        memcpy(pos_data, position_offsets, num_offsets * sizeof(ufbx_vec3));
+        shape->position_offsets.data = pos_data;
+        shape->position_offsets.count = num_offsets;
+    }
+    
+    // Set normal offsets if provided
+    if (normal_offsets) {
+        ufbx_vec3 *norm_data = (ufbx_vec3*)malloc(num_offsets * sizeof(ufbx_vec3));
+        if (!norm_data) {
+            if (error) {
+                error->type = UFBX_ERROR_OUT_OF_MEMORY;
+                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate normal offset data");
+                error->info_length = strlen(error->info);
+            }
+            return false;
+        }
+        memcpy(norm_data, normal_offsets, num_offsets * sizeof(ufbx_vec3));
+        shape->normal_offsets.data = norm_data;
+        shape->normal_offsets.count = num_offsets;
+    }
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}
+
+// Attach blend deformer to mesh
+bool ufbx_attach_blend_to_mesh(ufbx_mesh *mesh, ufbx_blend_deformer *blend, ufbx_error *error) {
+    if (!mesh || !blend) {
+        if (error) {
+            error->type = UFBX_ERROR_UNKNOWN;
+            snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Invalid mesh or blend deformer");
+            error->info_length = strlen(error->info);
+        }
+        return false;
+    }
+    
+    // Allocate blend deformers array if not already allocated
+    if (!mesh->blend_deformers.data) {
+        mesh->blend_deformers.data = (ufbx_blend_deformer**)malloc(sizeof(ufbx_blend_deformer*));
+        if (!mesh->blend_deformers.data) {
+            if (error) {
+                error->type = UFBX_ERROR_OUT_OF_MEMORY;
+                snprintf(error->info, UFBX_ERROR_INFO_LENGTH, "Failed to allocate blend deformers array");
+                error->info_length = strlen(error->info);
+            }
+            return false;
+        }
+    }
+    
+    // Set the blend deformer
+    mesh->blend_deformers.data[0] = blend;
+    mesh->blend_deformers.count = 1;
+    
+    if (error) {
+        error->type = UFBX_ERROR_NONE;
+    }
+    
+    return true;
+}

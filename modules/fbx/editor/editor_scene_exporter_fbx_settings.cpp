@@ -50,6 +50,22 @@ bool EditorSceneExporterFBXSettings::_set(const StringName &p_name, const Varian
 		set_export_materials(p_value);
 		return true;
 	}
+	if (p_name == StringName("export_skinning")) {
+		set_export_skinning(p_value);
+		return true;
+	}
+	if (p_name == StringName("export_morph_targets")) {
+		set_export_morph_targets(p_value);
+		return true;
+	}
+	if (p_name == StringName("optimize_skin_weights")) {
+		set_optimize_skin_weights(p_value);
+		return true;
+	}
+	if (p_name == StringName("max_skin_weights_per_vertex")) {
+		set_max_skin_weights_per_vertex(p_value);
+		return true;
+	}
 	if (p_name == StringName("fbx_version")) {
 		set_fbx_version(p_value);
 		return true;
@@ -76,6 +92,22 @@ bool EditorSceneExporterFBXSettings::_get(const StringName &p_name, Variant &r_r
 	}
 	if (p_name == StringName("export_materials")) {
 		r_ret = get_export_materials();
+		return true;
+	}
+	if (p_name == StringName("export_skinning")) {
+		r_ret = get_export_skinning();
+		return true;
+	}
+	if (p_name == StringName("export_morph_targets")) {
+		r_ret = get_export_morph_targets();
+		return true;
+	}
+	if (p_name == StringName("optimize_skin_weights")) {
+		r_ret = get_optimize_skin_weights();
+		return true;
+	}
+	if (p_name == StringName("max_skin_weights_per_vertex")) {
+		r_ret = get_max_skin_weights_per_vertex();
 		return true;
 	}
 	if (p_name == StringName("fbx_version")) {
@@ -181,6 +213,38 @@ FBXState::CoordinateSystem EditorSceneExporterFBXSettings::get_coordinate_system
 
 void EditorSceneExporterFBXSettings::set_coordinate_system(const FBXState::CoordinateSystem p_coordinate_system) {
 	_coordinate_system = p_coordinate_system;
+}
+
+bool EditorSceneExporterFBXSettings::get_export_skinning() const {
+	return _export_skinning;
+}
+
+void EditorSceneExporterFBXSettings::set_export_skinning(const bool p_export_skinning) {
+	_export_skinning = p_export_skinning;
+}
+
+bool EditorSceneExporterFBXSettings::get_export_morph_targets() const {
+	return _export_morph_targets;
+}
+
+void EditorSceneExporterFBXSettings::set_export_morph_targets(const bool p_export_morph_targets) {
+	_export_morph_targets = p_export_morph_targets;
+}
+
+bool EditorSceneExporterFBXSettings::get_optimize_skin_weights() const {
+	return _optimize_skin_weights;
+}
+
+void EditorSceneExporterFBXSettings::set_optimize_skin_weights(const bool p_optimize_skin_weights) {
+	_optimize_skin_weights = p_optimize_skin_weights;
+}
+
+int EditorSceneExporterFBXSettings::get_max_skin_weights_per_vertex() const {
+	return _max_skin_weights_per_vertex;
+}
+
+void EditorSceneExporterFBXSettings::set_max_skin_weights_per_vertex(const int p_max_skin_weights_per_vertex) {
+	_max_skin_weights_per_vertex = p_max_skin_weights_per_vertex;
 }
 
 void EditorSceneExporterFBXSettings::_bind_methods() {
