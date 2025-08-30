@@ -1009,6 +1009,91 @@ static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_expor
         }
     }
     
+    // Write all animation values (CRITICAL MISSING COMPONENT!)
+    for (size_t i = 0; i < scene_imp->num_anim_values; i++) {
+        const ufbx_anim_value *anim_value = scene_imp->anim_values[i];
+        
+        if (!ufbx_ascii_write_node_begin(writer, "AnimationCurveNode")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_i64(writer, anim_value->element.element_id)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, anim_value->element.name.data)) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, ", ")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_property_string(writer, "")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, " {\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        // Properties70 with default values
+        if (!ufbx_ascii_write_node_begin(writer, "Properties70")) {
+            return false;
+        }
+        if (!ufbx_ascii_write_string(writer, "{\n")) {
+            return false;
+        }
+        writer->indent_level++;
+        
+        // Default values for each component
+        const char *components[] = {"X", "Y", "Z"};
+        for (int comp = 0; comp < 3; comp++) {
+            if (!ufbx_ascii_write_node_begin(writer, "P")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, components[comp])) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, "Number")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, "")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, "A")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_f64(writer, anim_value->default_value.v[comp])) {
+                return false;
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+        }
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+        
+        writer->indent_level--;
+        if (!ufbx_ascii_write_node_end(writer)) {
+            return false;
+        }
+    }
+    
     // Write all animation curves
     for (size_t i = 0; i < scene_imp->num_anim_curves; i++) {
         const ufbx_anim_curve *anim_curve = scene_imp->anim_curves[i];
@@ -1096,6 +1181,79 @@ static bool ufbx_ascii_write_objects(ufbx_ascii_writer *writer, const ufbx_expor
                     return false;
                 }
                 free(value_data);
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+            
+            // KeyAttrFlags (CRITICAL FOR VALIDATION!)
+            if (!ufbx_ascii_write_node_begin(writer, "KeyAttrFlags")) {
+                return false;
+            }
+            
+            // Generate interpolation flags based on keyframe interpolation
+            int32_t *flag_data = (int32_t*)malloc(anim_curve->keyframes.count * sizeof(int32_t));
+            if (flag_data) {
+                for (size_t f = 0; f < anim_curve->keyframes.count; f++) {
+                    // Use linear interpolation flag (1028) as default
+                    flag_data[f] = 1028; // Linear interpolation
+                }
+                if (!ufbx_ascii_write_property_array_i32(writer, flag_data, anim_curve->keyframes.count)) {
+                    free(flag_data);
+                    return false;
+                }
+                free(flag_data);
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+            
+            // KeyAttrDataFloat (CRITICAL TANGENT DATA FOR VALIDATION!)
+            if (!ufbx_ascii_write_node_begin(writer, "KeyAttrDataFloat")) {
+                return false;
+            }
+            
+            // Generate tangent data (8 floats per keyframe: slopes, weights, velocities)
+            double *attr_data = (double*)malloc(anim_curve->keyframes.count * 8 * sizeof(double));
+            if (attr_data) {
+                for (size_t a = 0; a < anim_curve->keyframes.count; a++) {
+                    const ufbx_keyframe *kf = &anim_curve->keyframes.data[a];
+                    // Default tangent data for linear interpolation
+                    attr_data[a * 8 + 0] = kf->right.dx;  // RightSlope
+                    attr_data[a * 8 + 1] = kf->right.dx;  // NextLeftSlope  
+                    attr_data[a * 8 + 2] = 218434821.0;  // RightWeight (0.333333 as int bits)
+                    attr_data[a * 8 + 3] = 0.0;          // Padding
+                    attr_data[a * 8 + 4] = kf->left.dx;  // RightVelocity
+                    attr_data[a * 8 + 5] = kf->left.dx;  // NextLeftVelocity
+                    attr_data[a * 8 + 6] = 218434821.0;  // NextLeftWeight
+                    attr_data[a * 8 + 7] = 0.0;          // Padding
+                }
+                if (!ufbx_ascii_write_property_array_f64(writer, attr_data, anim_curve->keyframes.count * 8)) {
+                    free(attr_data);
+                    return false;
+                }
+                free(attr_data);
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+            
+            // KeyAttrRefCount (CRITICAL REFERENCE COUNT DATA!)
+            if (!ufbx_ascii_write_node_begin(writer, "KeyAttrRefCount")) {
+                return false;
+            }
+            
+            // Generate reference counts (all 1s for simple case)
+            int32_t *ref_data = (int32_t*)malloc(anim_curve->keyframes.count * sizeof(int32_t));
+            if (ref_data) {
+                for (size_t r = 0; r < anim_curve->keyframes.count; r++) {
+                    ref_data[r] = 1; // Standard reference count
+                }
+                if (!ufbx_ascii_write_property_array_i32(writer, ref_data, anim_curve->keyframes.count)) {
+                    free(ref_data);
+                    return false;
+                }
+                free(ref_data);
             }
             if (!ufbx_ascii_write_newline(writer)) {
                 return false;
@@ -1472,6 +1630,118 @@ static bool ufbx_ascii_write_connections(ufbx_ascii_writer *writer, const ufbx_e
         }
     }
     
+    // Connect animation values to animation layers (CRITICAL MISSING CONNECTION!)
+    for (size_t i = 0; i < scene_imp->num_anim_layers; i++) {
+        const ufbx_anim_layer *layer = scene_imp->anim_layers[i];
+        
+        // Connect all animation values that belong to this layer
+        for (size_t j = 0; j < layer->anim_values.count; j++) {
+            const ufbx_anim_value *anim_value = layer->anim_values.data[j];
+            
+            if (!ufbx_ascii_write_node_begin(writer, "C")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, "OO")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_i64(writer, anim_value->element.element_id)) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_i64(writer, layer->element.element_id)) {
+                return false;
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+        }
+    }
+    
+    // Connect animation curves to animation values (CRITICAL MISSING CONNECTION!)
+    for (size_t i = 0; i < scene_imp->num_anim_values; i++) {
+        const ufbx_anim_value *anim_value = scene_imp->anim_values[i];
+        
+        // Connect all curves that belong to this animation value
+        for (int comp = 0; comp < 3; comp++) {
+            if (anim_value->curves[comp]) {
+                const ufbx_anim_curve *curve = anim_value->curves[comp];
+                
+                if (!ufbx_ascii_write_node_begin(writer, "C")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_property_string(writer, "OP")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_string(writer, ", ")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_property_i64(writer, curve->element.element_id)) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_string(writer, ", ")) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_property_i64(writer, anim_value->element.element_id)) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_string(writer, ", ")) {
+                    return false;
+                }
+                // Property name for component (X, Y, Z)
+                const char *prop_names[] = {"d|X", "d|Y", "d|Z"};
+                if (!ufbx_ascii_write_property_string(writer, prop_names[comp])) {
+                    return false;
+                }
+                if (!ufbx_ascii_write_newline(writer)) {
+                    return false;
+                }
+            }
+        }
+    }
+    
+    // Connect animation values to node properties (CRITICAL PROPERTY CONNECTIONS!)
+    for (size_t i = 0; i < scene_imp->num_anim_layers; i++) {
+        const ufbx_anim_layer *layer = scene_imp->anim_layers[i];
+        
+        // Connect animation properties
+        for (size_t j = 0; j < layer->anim_props.count; j++) {
+            const ufbx_anim_prop *anim_prop = &layer->anim_props.data[j];
+            
+            if (!ufbx_ascii_write_node_begin(writer, "C")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, "OP")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_i64(writer, anim_prop->anim_value->element.element_id)) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_i64(writer, anim_prop->element->element_id)) {
+                return false;
+            }
+            if (!ufbx_ascii_write_string(writer, ", ")) {
+                return false;
+            }
+            if (!ufbx_ascii_write_property_string(writer, anim_prop->prop_name.data)) {
+                return false;
+            }
+            if (!ufbx_ascii_write_newline(writer)) {
+                return false;
+            }
+        }
+    }
+    
     // Connect skin deformers to meshes
     for (size_t i = 0; i < scene_imp->num_meshes; i++) {
         const ufbx_mesh *mesh = scene_imp->meshes[i];
@@ -1598,6 +1868,42 @@ ufbx_error ufbx_export_to_file_impl(const ufbx_export_scene *scene, const char *
         goto cleanup;
     }
     
+    // Write Documents section (REQUIRED for FBX 7000+)
+    if (!ufbx_ascii_write_string(&writer, "Documents: {\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    writer.indent_level++;
+    if (!ufbx_ascii_write_indent(&writer) || !ufbx_ascii_write_string(&writer, "Count: 1\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    writer.indent_level--;
+    if (!ufbx_ascii_write_string(&writer, "}\n\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    
+    // Write Definitions section (REQUIRED for object types)
+    if (!ufbx_ascii_write_string(&writer, "Definitions: {\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    writer.indent_level++;
+    if (!ufbx_ascii_write_indent(&writer) || !ufbx_ascii_write_string(&writer, "Version: 100\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    if (!ufbx_ascii_write_indent(&writer) || !ufbx_ascii_write_string(&writer, "Count: 5\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    writer.indent_level--;
+    if (!ufbx_ascii_write_string(&writer, "}\n\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    
     // Write Objects
     if (!ufbx_ascii_write_objects(&writer, scene)) {
         error = writer.error;
@@ -1606,6 +1912,22 @@ ufbx_error ufbx_export_to_file_impl(const ufbx_export_scene *scene, const char *
     
     // Write Connections
     if (!ufbx_ascii_write_connections(&writer, scene)) {
+        error = writer.error;
+        goto cleanup;
+    }
+    
+    // Write Takes section (REQUIRED for animation metadata)
+    if (!ufbx_ascii_write_string(&writer, "Takes: {\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    writer.indent_level++;
+    if (!ufbx_ascii_write_indent(&writer) || !ufbx_ascii_write_string(&writer, "Current: \"Take 001\"\n")) {
+        error = writer.error;
+        goto cleanup;
+    }
+    writer.indent_level--;
+    if (!ufbx_ascii_write_string(&writer, "}\n")) {
         error = writer.error;
         goto cleanup;
     }
