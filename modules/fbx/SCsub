@@ -15,6 +15,12 @@ thirdparty_sources = [
     thirdparty_dir + "ufbx.c",
     thirdparty_dir + "ufbx_export.c",
     thirdparty_dir + "ufbx_export_writer.c",
+    thirdparty_dir + "ufbx_ascii_writer.c",
+    thirdparty_dir + "ufbx_fbx_structures.c",
+    thirdparty_dir + "ufbx_geometry_writer.c",
+    thirdparty_dir + "ufbx_animation_writer.c",
+    thirdparty_dir + "ufbx_material_writer.c",
+    thirdparty_dir + "ufbx_connections.c",
 ]
 
 env_fbx.Prepend(CPPEXTPATH=[thirdparty_dir])
