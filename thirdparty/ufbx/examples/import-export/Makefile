@@ -148,21 +148,6 @@ test-golden-validated: $(ROUNDTRIP_BIN) $(VALIDATE_BIN)
 		echo "Check test_results/*.log and *_validation.log for details"; \
 	fi
 
-# Test specific animations and complex models
-test-complex: $(ROUNDTRIP_BIN)
-	@echo "=== Testing Complex FBX Files ==="
-	@mkdir -p test_results
-	@for file in "../../data/blender_293_barbarian_7400_binary.fbx" \
-	             "../../data/blender440_shape_weight_anim_7400_binary.fbx" \
-	             "../../data/max7_skin_5000_binary.fbx" \
-	             "../../data/max2009_cube_anim_6100_binary.fbx"; do \
-		if [ -f "$$file" ]; then \
-			filename=$$(basename "$$file" .fbx); \
-			echo "Testing: $$file"; \
-			./$(ROUNDTRIP_BIN) "$$file" "test_results/$${filename}_roundtrip.fbx"; \
-		fi; \
-	done
-
 # Quick verification test with a few representative files
 test-verify: $(ROUNDTRIP_BIN)
 	@echo "=== Quick Verification Test ==="
@@ -189,7 +174,6 @@ help:
 	@echo "  test-all            - Test ALL FBX files in ../../data (comprehensive)"
 	@echo "  test-golden         - Test golden path files (exclude fuzz/fail/edge cases)"
 	@echo "  test-golden-validated - Test golden path with automatic validation"
-	@echo "  test-complex        - Test complex models with animations/skinning"
 	@echo "  test-verify         - Quick verification with representative files"
 	@echo "  clean               - Clean build artifacts and test results"
 	@echo "  help                - Show this help"
@@ -198,7 +182,6 @@ help:
 	@echo "  test-all            - Systematic testing of all ufbx data files"
 	@echo "  test-golden         - Golden path testing (well-formed files only)"
 	@echo "  test-golden-validated - Golden path with data preservation validation"
-	@echo "  test-complex        - Focus on barbarian, animations, skinning"
 	@echo "  test-verify         - Quick test with 3 representative files"
 	@echo ""
 	@echo "Source files:"
@@ -214,4 +197,4 @@ help:
 	@echo "  ./validate <input.fbx> <roundtrip.fbx>"
 	@echo "  ./roundtrip ./data/example.fbx example_test.fbx"
 
-.PHONY: all test-all test-golden test-golden-validated test-complex test-verify clean help
+.PHONY: all test-all test-golden test-golden-validated test-verify clean help
