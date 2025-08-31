@@ -65,7 +65,7 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
 bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                          node_mapping *node_mappings, size_t num_mappings,
                          mesh_mapping *mesh_mappings, skin_mapping **skin_mappings);
-bool copy_blend_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
+bool copy_blend_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_scene, mesh_mapping *mesh_mappings,
                           blend_mapping **blend_mappings);
 
 // Function declarations for additional element types
