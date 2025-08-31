@@ -273,13 +273,8 @@ StringName Skeleton3D::get_concatenated_bone_names() const {
 #if !defined(DISABLE_DEPRECATED) && !defined(PHYSICS_3D_DISABLED)
 void Skeleton3D::setup_simulator() {
 	if (simulator && simulator->get_parent() == this) {
-		PhysicalBoneSimulator3D *old_sim = cast_to<PhysicalBoneSimulator3D>(simulator);
-		if (old_sim) {
-			old_sim->cleanup_physical_bones(); // Clean up before removal
-		}
 		remove_child(simulator);
-		memdelete(simulator); // Immediate cleanup instead of queue_free
-		simulator = nullptr;
+		simulator->queue_free();
 	}
 	PhysicalBoneSimulator3D *sim = memnew(PhysicalBoneSimulator3D);
 	simulator = sim;
