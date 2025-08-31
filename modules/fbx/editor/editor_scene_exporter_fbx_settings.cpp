@@ -30,8 +30,6 @@
 
 #include "editor_scene_exporter_fbx_settings.h"
 
-const uint32_t PROP_EDITOR_SCRIPT_VAR = PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_SCRIPT_VARIABLE;
-
 bool EditorSceneExporterFBXSettings::_set(const StringName &p_name, const Variant &p_value) {
 	if (p_name == StringName("copyright")) {
 		set_copyright(p_value);
