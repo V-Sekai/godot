@@ -65,6 +65,13 @@
 #include "thirdparty/ufbx/ufbx.h"
 #include "thirdparty/ufbx/ufbx_export.h"
 
+static ufbx_string _to_ufbx_string(const char *p_cstr) {
+	ufbx_string result;
+	result.data = p_cstr;
+	result.length = strlen(p_cstr);
+	return result;
+}
+
 static size_t _file_access_read_fn(void *user, void *data, size_t size) {
 	FileAccess *file = static_cast<FileAccess *>(user);
 	return (size_t)file->get_buffer((uint8_t *)data, (uint64_t)size);
@@ -2493,7 +2500,7 @@ PackedByteArray FBXDocument::generate_buffer(Ref<GLTFState> p_state) {
 
 	// Get required buffer size
 	ufbx_error error;
-	size_t buffer_size = ufbx_get_export_size(fbx_state->export_scene, nullptr, &error);
+	size_t buffer_size = ufbx_get_export_size(fbx_state->export_scene, &error);
 	if (error.type != UFBX_ERROR_NONE) {
 		ERR_PRINT("FBX Export: Failed to get export size: " + String(error.description.data));
 		return PackedByteArray();
@@ -2669,11 +2676,12 @@ void FBXDocument::_convert_animation(Ref<GLTFState> p_state, AnimationPlayer *p_
 	print_verbose("FBX Export: Converting animation '" + p_animation_name + "' directly to ufbx format");
 
 	// Create animation stack
-	ufbx_anim_stack *anim_stack = ufbx_add_animation(p_export_scene, p_animation_name.utf8().get_data());
+	ufbx_string anim_name_str = _to_ufbx_string(p_animation_name.utf8().get_data());
+	ufbx_anim_stack *anim_stack = ufbx_add_animation(p_export_scene, anim_name_str);
 	ERR_FAIL_NULL(anim_stack);
 
 	// Create animation layer
-	ufbx_anim_layer *anim_layer = ufbx_add_anim_layer(p_export_scene, anim_stack, "BaseLayer");
+	ufbx_anim_layer *anim_layer = ufbx_add_anim_layer(p_export_scene, anim_stack, _to_ufbx_string("BaseLayer"));
 	ERR_FAIL_NULL(anim_layer);
 
 	// Set animation time range
@@ -2740,7 +2748,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 	// Handle different track types
 	switch (track_type) {
 		case Animation::TYPE_POSITION_3D: {
-			ufbx_anim_value *position_value = ufbx_add_anim_value(p_export_scene, anim_layer, "Lcl Translation");
+			ufbx_anim_value *position_value = ufbx_add_anim_value(p_export_scene, anim_layer, _to_ufbx_string("Lcl Translation"));
 			ERR_FAIL_NULL_V(position_value, ERR_OUT_OF_MEMORY);
 
 			// Create curves for X, Y, Z components
@@ -2764,7 +2772,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 			}
 
 			// Connect animation value to node property
-			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, "Lcl Translation", position_value, &error);
+			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, _to_ufbx_string("Lcl Translation"), position_value, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to connect position animation: " + String(error.description.data));
 			}
@@ -2772,7 +2780,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 		}
 
 		case Animation::TYPE_ROTATION_3D: {
-			ufbx_anim_value *rotation_value = ufbx_add_anim_value(p_export_scene, anim_layer, "Lcl Rotation");
+			ufbx_anim_value *rotation_value = ufbx_add_anim_value(p_export_scene, anim_layer, _to_ufbx_string("Lcl Rotation"));
 			ERR_FAIL_NULL_V(rotation_value, ERR_OUT_OF_MEMORY);
 
 			// Get the node's rotation order for proper conversion
@@ -2806,7 +2814,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 			}
 
 			// Connect animation value to node property
-			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, "Lcl Rotation", rotation_value, &error);
+			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, _to_ufbx_string("Lcl Rotation"), rotation_value, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to connect rotation animation: " + String(error.description.data));
 			}
@@ -2814,7 +2822,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 		}
 
 		case Animation::TYPE_SCALE_3D: {
-			ufbx_anim_value *scale_value = ufbx_add_anim_value(p_export_scene, anim_layer, "Lcl Scaling");
+			ufbx_anim_value *scale_value = ufbx_add_anim_value(p_export_scene, anim_layer, _to_ufbx_string("Lcl Scaling"));
 			ERR_FAIL_NULL_V(scale_value, ERR_OUT_OF_MEMORY);
 
 			// Create curves for X, Y, Z components
@@ -2838,7 +2846,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 			}
 
 			// Connect animation value to node property
-			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, "Lcl Scaling", scale_value, &error);
+			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, _to_ufbx_string("Lcl Scaling"), scale_value, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to connect scale animation: " + String(error.description.data));
 			}
@@ -2866,11 +2874,11 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 	print_verbose("FBX Export: Converting animation '" + anim_name + "' to ufbx format");
 
 	// Create animation stack
-	ufbx_anim_stack *anim_stack = ufbx_add_animation(p_export_scene, anim_name.utf8().get_data());
+	ufbx_anim_stack *anim_stack = ufbx_add_animation(p_export_scene, _to_ufbx_string(anim_name.utf8().get_data()));
 	ERR_FAIL_NULL_V(anim_stack, ERR_OUT_OF_MEMORY);
 
 	// Create animation layer
-	ufbx_anim_layer *anim_layer = ufbx_add_anim_layer(p_export_scene, anim_stack, "BaseLayer");
+	ufbx_anim_layer *anim_layer = ufbx_add_anim_layer(p_export_scene, anim_stack, _to_ufbx_string("BaseLayer"));
 	ERR_FAIL_NULL_V(anim_layer, ERR_OUT_OF_MEMORY);
 
 	// Set animation time range
@@ -2932,7 +2940,7 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 
 		// Convert position track
 		if (!track.position_track.times.is_empty()) {
-			ufbx_anim_value *position_value = ufbx_add_anim_value(p_export_scene, anim_layer, "Lcl Translation");
+			ufbx_anim_value *position_value = ufbx_add_anim_value(p_export_scene, anim_layer, _to_ufbx_string("Lcl Translation"));
 			ERR_FAIL_NULL_V(position_value, ERR_OUT_OF_MEMORY);
 
 			// Create curves for X, Y, Z components
@@ -2956,7 +2964,7 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 			}
 
 			// Connect animation value to node property
-			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, "Lcl Translation", position_value, &error);
+			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, _to_ufbx_string("Lcl Translation"), position_value, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to connect position animation: " + String(error.description.data));
 			}
@@ -2964,7 +2972,7 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 
 		// Convert rotation track
 		if (!track.rotation_track.times.is_empty()) {
-			ufbx_anim_value *rotation_value = ufbx_add_anim_value(p_export_scene, anim_layer, "Lcl Rotation");
+			ufbx_anim_value *rotation_value = ufbx_add_anim_value(p_export_scene, anim_layer, _to_ufbx_string("Lcl Rotation"));
 			ERR_FAIL_NULL_V(rotation_value, ERR_OUT_OF_MEMORY);
 
 			// Get the node's rotation order for proper conversion
@@ -3003,7 +3011,7 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 			}
 
 			// Connect animation value to node property
-			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, "Lcl Rotation", rotation_value, &error);
+			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, _to_ufbx_string("Lcl Rotation"), rotation_value, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to connect rotation animation: " + String(error.description.data));
 			}
@@ -3011,7 +3019,7 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 
 		// Convert scale track
 		if (!track.scale_track.times.is_empty()) {
-			ufbx_anim_value *scale_value = ufbx_add_anim_value(p_export_scene, anim_layer, "Lcl Scaling");
+			ufbx_anim_value *scale_value = ufbx_add_anim_value(p_export_scene, anim_layer, _to_ufbx_string("Lcl Scaling"));
 			ERR_FAIL_NULL_V(scale_value, ERR_OUT_OF_MEMORY);
 
 			// Create curves for X, Y, Z components
@@ -3035,7 +3043,7 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 			}
 
 			// Connect animation value to node property
-			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, "Lcl Scaling", scale_value, &error);
+			ufbx_connect_anim_prop(p_export_scene, anim_layer, &fbx_node->element, _to_ufbx_string("Lcl Scaling"), scale_value, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to connect scale animation: " + String(error.description.data));
 			}
@@ -3176,7 +3184,7 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 	ERR_FAIL_NULL_V(p_node, ERR_INVALID_PARAMETER);
 
 	// Create ufbx mesh
-	ufbx_mesh *fbx_mesh = ufbx_add_mesh(p_export_scene, p_name.utf8().get_data());
+	ufbx_mesh *fbx_mesh = ufbx_add_mesh(p_export_scene, _to_ufbx_string(p_name.utf8().get_data()));
 	ERR_FAIL_NULL_V(fbx_mesh, ERR_OUT_OF_MEMORY);
 
 	// Attach mesh to node
@@ -3284,7 +3292,7 @@ Error FBXDocument::_convert_material(Ref<Material> p_material, ufbx_export_scene
 		material_name = "Material_" + itos(p_surface_idx);
 	}
 
-	ufbx_material *fbx_material = ufbx_add_material(p_export_scene, material_name.utf8().get_data());
+	ufbx_material *fbx_material = ufbx_add_material(p_export_scene, _to_ufbx_string(material_name.utf8().get_data()));
 	ERR_FAIL_NULL_V(fbx_material, ERR_OUT_OF_MEMORY);
 
 	// Convert BaseMaterial3D properties
@@ -3351,7 +3359,7 @@ Error FBXDocument::_convert_material(Ref<Material> p_material, ufbx_export_scene
 
 	// Attach material to mesh surface
 	ufbx_error error;
-	ufbx_attach_material_to_mesh(p_mesh, fbx_material, p_surface_idx, &error);
+	ufbx_attach_material_to_mesh(p_mesh, fbx_material, &error);
 	if (error.type != UFBX_ERROR_NONE) {
 		ERR_PRINT("FBX Export: Failed to attach material to mesh: " + String(error.description.data));
 		return ERR_INVALID_DATA;
@@ -3380,19 +3388,19 @@ Error FBXDocument::_convert_texture(Ref<Texture2D> p_texture, ufbx_export_scene 
 	ERR_FAIL_COND_V(png_data.is_empty(), ERR_INVALID_DATA);
 
 	// Create ufbx texture
-	ufbx_texture *fbx_texture = ufbx_add_texture(p_export_scene, texture_name.utf8().get_data());
+	ufbx_texture *fbx_texture = ufbx_add_texture(p_export_scene, _to_ufbx_string(texture_name.utf8().get_data()));
 	ERR_FAIL_NULL_V(fbx_texture, ERR_OUT_OF_MEMORY);
 
 	// Set texture data
 	ufbx_error error;
-	ufbx_set_texture_data(fbx_texture, png_data.ptr(), png_data.size(), "png", &error);
+	ufbx_set_texture_data(fbx_texture, png_data.ptr(), png_data.size(), &error);
 	if (error.type != UFBX_ERROR_NONE) {
 		ERR_PRINT("FBX Export: Failed to set texture data: " + String(error.description.data));
 		return ERR_INVALID_DATA;
 	}
 
 	// Attach texture to material
-	ufbx_attach_texture_to_material(p_material, fbx_texture, p_texture_type.utf8().get_data(), &error);
+	ufbx_attach_texture_to_material(p_material, fbx_texture, _to_ufbx_string(p_texture_type.utf8().get_data()), &error);
 	if (error.type != UFBX_ERROR_NONE) {
 		ERR_PRINT("FBX Export: Failed to attach texture to material: " + String(error.description.data));
 		return ERR_INVALID_DATA;
@@ -3507,7 +3515,7 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 	}
 
 	// Create ufbx node for this Godot node
-	ufbx_node *fbx_node = ufbx_add_node(p_export_scene, String(p_node->get_name()).utf8().get_data(), p_parent_node);
+	ufbx_node *fbx_node = ufbx_add_node(p_export_scene, _to_ufbx_string(String(p_node->get_name()).utf8().get_data()), p_parent_node);
 	ERR_FAIL_NULL_V(fbx_node, ERR_OUT_OF_MEMORY);
 
 	// Set transform
