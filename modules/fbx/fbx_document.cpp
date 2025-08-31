@@ -2798,7 +2798,7 @@ Error FBXDocument::_convert_animation_track(Ref<GLTFState> p_state, const Ref<An
 					p_godot_animation->rotation_track_get_key(p_track_index, key_idx, &rotation);
 
 					// Convert Godot quaternion to ufbx quaternion
-					ufbx_quat ufbx_rotation_quat = { rotation.x, rotation.y, rotation.z, rotation.w };
+					ufbx_quat ufbx_rotation_quat = { { rotation.x, rotation.y, rotation.z, rotation.w } };
 
 					// Use ufbx's proper rotation conversion with the node's rotation order
 					ufbx_vec3 euler = ufbx_quat_to_euler(ufbx_rotation_quat, rotation_order);
@@ -2994,7 +2994,7 @@ Error FBXDocument::_convert_gltf_animation_to_ufbx(Ref<GLTFAnimation> p_gltf_ani
 					Quaternion rotation = track.rotation_track.values[key_idx];
 
 					// Convert Godot quaternion to ufbx quaternion
-					ufbx_quat ufbx_rotation_quat = { rotation.x, rotation.y, rotation.z, rotation.w };
+					ufbx_quat ufbx_rotation_quat = { { rotation.x, rotation.y, rotation.z, rotation.w } };
 
 					// Use ufbx's proper rotation conversion with the node's rotation order
 					ufbx_vec3 euler = ufbx_quat_to_euler(ufbx_rotation_quat, rotation_order);
@@ -3215,7 +3215,7 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 		ufbx_vertices.resize(vertices.size());
 		for (int i = 0; i < vertices.size(); i++) {
 			Vector3 v = vertices[i];
-			ufbx_vertices.write[i] = { v.x, v.y, v.z };
+			ufbx_vertices.write[i] = { { v.x, v.y, v.z } };
 		}
 
 		// Set mesh vertices
@@ -3231,7 +3231,7 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 			ufbx_normals.resize(normals.size());
 			for (int i = 0; i < normals.size(); i++) {
 				Vector3 n = normals[i];
-				ufbx_normals.write[i] = { n.x, n.y, n.z };
+				ufbx_normals.write[i] = { { n.x, n.y, n.z } };
 			}
 			ufbx_set_mesh_normals(fbx_mesh, ufbx_normals.ptr(), ufbx_normals.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
@@ -3246,7 +3246,7 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 			for (int i = 0; i < uvs.size(); i++) {
 				Vector2 uv = uvs[i];
 				// Flip V coordinate for FBX format
-				ufbx_uvs.write[i] = { uv.x, 1.0f - uv.y };
+				ufbx_uvs.write[i] = { { uv.x, 1.0f - uv.y } };
 			}
 			ufbx_set_mesh_uvs(fbx_mesh, ufbx_uvs.ptr(), ufbx_uvs.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
@@ -3261,6 +3261,16 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 			for (int i = 0; i < indices.size(); i++) {
 				ufbx_indices.write[i] = indices[i];
 			}
+
+			// Convert winding order from Godot (clockwise) to FBX (counter-clockwise)
+			// This is the reverse of what happens during import
+			if (indices.size() % 3 == 0) { // Only for triangular meshes
+				for (int i = 0; i < indices.size(); i += 3) {
+					// Swap vertices 0 and 2 of each triangle to reverse winding order
+					SWAP(ufbx_indices.write[i + 0], ufbx_indices.write[i + 2]);
+				}
+			}
+
 			// Assume triangles (3 vertices per face)
 			ufbx_set_mesh_indices(fbx_mesh, ufbx_indices.ptr(), ufbx_indices.size(), 3, &error);
 			if (error.type != UFBX_ERROR_NONE) {
@@ -3524,11 +3534,11 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 
 		// Convert Godot transform to ufbx format
 		ufbx_transform ufbx_xform;
-		ufbx_xform.translation = { transform.origin.x, transform.origin.y, transform.origin.z };
+		ufbx_xform.translation = { { transform.origin.x, transform.origin.y, transform.origin.z } };
 		Quaternion rotation = transform.basis.get_rotation_quaternion();
-		ufbx_xform.rotation = { rotation.x, rotation.y, rotation.z, rotation.w };
+		ufbx_xform.rotation = { { rotation.x, rotation.y, rotation.z, rotation.w } };
 		Vector3 scale = transform.basis.get_scale();
-		ufbx_xform.scale = { scale.x, scale.y, scale.z };
+		ufbx_xform.scale = { { scale.x, scale.y, scale.z } };
 
 		ufbx_error error;
 		ufbx_set_node_transform(fbx_node, &ufbx_xform, &error);
