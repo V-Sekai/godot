@@ -145,23 +145,23 @@ struct ufbx_export_opts {
 ufbx_abi ufbx_export_scene *ufbx_create_scene(const ufbx_export_opts *opts);
 
 // Add a node to the scene
-ufbx_abi ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *parent);
+ufbx_abi ufbx_node *ufbx_add_node(ufbx_export_scene *scene, ufbx_string name, ufbx_node *parent);
 
 // Add a mesh to the scene
-ufbx_abi ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, const char *name);
+ufbx_abi ufbx_mesh *ufbx_add_mesh(ufbx_export_scene *scene, ufbx_string name);
 
 // Add a material to the scene
-ufbx_abi ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name);
+ufbx_abi ufbx_material *ufbx_add_material(ufbx_export_scene *scene, ufbx_string name);
 
 // Add a texture to the scene
-ufbx_abi ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name);
+ufbx_abi ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, ufbx_string name);
 
 // Add an animation stack to the scene
-ufbx_abi ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, const char *name);
+ufbx_abi ufbx_anim_stack *ufbx_add_animation(ufbx_export_scene *scene, ufbx_string name);
 
 // Animation layer functions
-ufbx_abi ufbx_anim_layer *ufbx_add_anim_layer(ufbx_export_scene *scene, ufbx_anim_stack *stack, const char *name);
-ufbx_abi ufbx_anim_value *ufbx_add_anim_value(ufbx_export_scene *scene, ufbx_anim_layer *layer, const char *name);
+ufbx_abi ufbx_anim_layer *ufbx_add_anim_layer(ufbx_export_scene *scene, ufbx_anim_stack *stack, ufbx_string name);
+ufbx_abi ufbx_anim_value *ufbx_add_anim_value(ufbx_export_scene *scene, ufbx_anim_layer *layer, ufbx_string name);
 ufbx_abi ufbx_anim_curve *ufbx_add_anim_curve(ufbx_export_scene *scene, ufbx_anim_value *value, int component);
 
 // Animation curve data functions
@@ -170,7 +170,7 @@ ufbx_abi bool ufbx_add_keyframe(ufbx_anim_curve *curve, double time, ufbx_real v
 ufbx_abi bool ufbx_set_anim_curve_extrapolation(ufbx_anim_curve *curve, ufbx_extrapolation pre, ufbx_extrapolation post, ufbx_error *error);
 
 // Animation property binding functions
-ufbx_abi bool ufbx_connect_anim_prop(ufbx_export_scene *scene, ufbx_anim_layer *layer, ufbx_element *element, const char *prop_name, ufbx_anim_value *value, ufbx_error *error);
+ufbx_abi bool ufbx_connect_anim_prop(ufbx_export_scene *scene, ufbx_anim_layer *layer, ufbx_element *element, ufbx_string prop_name, ufbx_anim_value *value, ufbx_error *error);
 ufbx_abi bool ufbx_set_anim_stack_time_range(ufbx_anim_stack *stack, double time_begin, double time_end, ufbx_error *error);
 
 // Mesh construction helpers
@@ -194,7 +194,7 @@ ufbx_abi bool ufbx_set_mesh_uvs(ufbx_mesh *mesh, const ufbx_vec2 *uvs, size_t nu
 // Material construction helpers
 
 // Set material property (generic)
-ufbx_abi bool ufbx_set_material_property(ufbx_material *material, const char *property_name, const void *value);
+ufbx_abi bool ufbx_set_material_property(ufbx_material *material, ufbx_string property_name, const void *value);
 
 // Set material albedo color
 ufbx_abi bool ufbx_set_material_albedo(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_real a, ufbx_error *error);
@@ -209,7 +209,7 @@ ufbx_abi bool ufbx_set_material_emission(ufbx_material *material, ufbx_real r, u
 ufbx_abi bool ufbx_set_texture_data(ufbx_texture *texture, const void *data, size_t size, ufbx_error *error);
 
 // Attach texture to material
-ufbx_abi bool ufbx_attach_texture_to_material(ufbx_material *material, ufbx_texture *texture, const char *property_name, ufbx_error *error);
+ufbx_abi bool ufbx_attach_texture_to_material(ufbx_material *material, ufbx_texture *texture, ufbx_string property_name, ufbx_error *error);
 
 // Node construction helpers
 
@@ -223,13 +223,12 @@ ufbx_abi bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh, ufbx_er
 ufbx_abi bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, ufbx_error *error);
 
 // Skinning construction helpers
-// TODO: Remove unused functions and finalize skinning API
 
 // Add a skin deformer to the scene
-ufbx_abi ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, const char *name);
+ufbx_abi ufbx_skin_deformer *ufbx_add_skin_deformer(ufbx_export_scene *scene, ufbx_string name);
 
 // Add a skin cluster to a skin deformer
-ufbx_abi ufbx_skin_cluster *ufbx_add_skin_cluster(ufbx_export_scene *scene, ufbx_skin_deformer *skin, ufbx_node *bone_node, const char *name);
+ufbx_abi ufbx_skin_cluster *ufbx_add_skin_cluster(ufbx_export_scene *scene, ufbx_skin_deformer *skin, ufbx_node *bone_node, ufbx_string name);
 
 // Set skin weight data
 ufbx_abi bool ufbx_set_skin_weights(ufbx_skin_deformer *skin, const ufbx_skin_weight *weights, size_t num_weights, ufbx_error *error);
@@ -249,13 +248,13 @@ ufbx_abi bool ufbx_attach_skin_to_mesh(ufbx_mesh *mesh, ufbx_skin_deformer *skin
 // Morph target construction helpers
 
 // Add a blend deformer to the scene
-ufbx_abi ufbx_blend_deformer *ufbx_add_blend_deformer(ufbx_export_scene *scene, const char *name);
+ufbx_abi ufbx_blend_deformer *ufbx_add_blend_deformer(ufbx_export_scene *scene, ufbx_string name);
 
 // Add a blend channel to a blend deformer
-ufbx_abi ufbx_blend_channel *ufbx_add_blend_channel(ufbx_export_scene *scene, ufbx_blend_deformer *deformer, const char *name);
+ufbx_abi ufbx_blend_channel *ufbx_add_blend_channel(ufbx_export_scene *scene, ufbx_blend_deformer *deformer, ufbx_string name);
 
 // Add a blend shape to the scene
-ufbx_abi ufbx_blend_shape *ufbx_add_blend_shape(ufbx_export_scene *scene, const char *name);
+ufbx_abi ufbx_blend_shape *ufbx_add_blend_shape(ufbx_export_scene *scene, ufbx_string name);
 
 // Set blend shape offset data
 ufbx_abi bool ufbx_set_blend_shape_offsets(ufbx_blend_shape *shape, const ufbx_vec3 *position_offsets, const ufbx_vec3 *normal_offsets, size_t num_offsets, ufbx_error *error);
@@ -263,7 +262,7 @@ ufbx_abi bool ufbx_set_blend_shape_offsets(ufbx_blend_shape *shape, const ufbx_v
 // Bone construction helpers
 
 // Add a bone to a node
-ufbx_abi ufbx_bone *ufbx_add_bone(ufbx_export_scene *scene, ufbx_node *node, const char *name);
+ufbx_abi ufbx_bone *ufbx_add_bone(ufbx_export_scene *scene, ufbx_node *node, ufbx_string name);
 
 // Set bone properties
 ufbx_abi bool ufbx_set_bone_properties(ufbx_bone *bone, ufbx_real relative_length, ufbx_error *error);

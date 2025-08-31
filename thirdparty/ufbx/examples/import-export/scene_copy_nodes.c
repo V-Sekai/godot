@@ -31,7 +31,7 @@ bool copy_nodes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
         }
         
         // Create all nodes first - parent relationships handled later
-        ufbx_node *export_node = ufbx_add_node(export_scene, src_node->name.data, NULL);
+        ufbx_node *export_node = ufbx_add_node(export_scene, src_node->name, NULL);
         if (!export_node) {
             printf("    Failed to add node: %s\n", src_node->name.data);
             return false;
@@ -66,7 +66,7 @@ bool copy_nodes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
         
         // Copy bone if present
         if (src_node->bone) {
-            ufbx_bone *export_bone = ufbx_add_bone(export_scene, export_node, src_node->bone->element.name.data);
+            ufbx_bone *export_bone = ufbx_add_bone(export_scene, export_node, src_node->bone->element.name);
             if (export_bone) {
                 ufbx_error bone_error = {0};
                 bool bone_success = ufbx_set_bone_properties(export_bone, src_node->bone->relative_length, &bone_error);

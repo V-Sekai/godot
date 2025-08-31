@@ -23,7 +23,7 @@ bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sce
     for (size_t i = 0; i < source_scene->skin_deformers.count; i++) {
         ufbx_skin_deformer *src_skin = source_scene->skin_deformers.data[i];
         
-        ufbx_skin_deformer *export_skin = ufbx_add_skin_deformer(export_scene, src_skin->name.data);
+        ufbx_skin_deformer *export_skin = ufbx_add_skin_deformer(export_scene, src_skin->name);
         if (!export_skin) {
             printf("    Failed to add skin deformer: %s\n", src_skin->name.data);
             continue;
@@ -47,7 +47,7 @@ bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sce
             }
             
             if (export_bone) {
-                ufbx_skin_cluster *export_cluster = ufbx_add_skin_cluster(export_scene, export_skin, export_bone, src_cluster->name.data);
+                ufbx_skin_cluster *export_cluster = ufbx_add_skin_cluster(export_scene, export_skin, export_bone, src_cluster->name);
                 if (!export_cluster) {
                     continue;
                 }
@@ -147,7 +147,7 @@ bool copy_blend_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sc
     for (size_t i = 0; i < source_scene->blend_deformers.count; i++) {
         ufbx_blend_deformer *src_blend = source_scene->blend_deformers.data[i];
         
-        ufbx_blend_deformer *export_blend = ufbx_add_blend_deformer(export_scene, src_blend->name.data);
+        ufbx_blend_deformer *export_blend = ufbx_add_blend_deformer(export_scene, src_blend->name);
         if (!export_blend) {
             printf("    Failed to add blend deformer: %s\n", src_blend->name.data);
             continue;
@@ -161,7 +161,7 @@ bool copy_blend_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sc
         for (size_t j = 0; j < src_blend->channels.count; j++) {
             ufbx_blend_channel *src_channel = src_blend->channels.data[j];
             
-            ufbx_blend_channel *export_channel = ufbx_add_blend_channel(export_scene, export_blend, src_channel->name.data);
+            ufbx_blend_channel *export_channel = ufbx_add_blend_channel(export_scene, export_blend, src_channel->name);
             if (!export_channel) {
                 continue;
             }

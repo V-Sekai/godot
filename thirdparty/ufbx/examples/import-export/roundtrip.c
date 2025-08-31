@@ -1,9 +1,15 @@
 #include "../../ufbx.h"
 #include "../../ufbx_export.h"
+#include "scene_copy_common.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Forward declarations from scene_copy modules
+bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
+                     node_mapping *node_mappings, size_t num_mappings,
+                     anim_stack_mapping **stack_mappings, anim_layer_mapping **layer_mappings);
 
 void print_error(const ufbx_error *error, const char *description)
 {
@@ -80,13 +86,6 @@ void print_scene_info(ufbx_scene *scene)
         }
     }
 }
-
-// Helper structure to track node mappings during copy
-typedef struct {
-    ufbx_node *src_node;
-    ufbx_node *export_node;
-} node_mapping;
-
 
 // Copy scene data from imported scene to export scene
 bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
@@ -356,70 +355,22 @@ bool copy_scene_data(ufbx_scene *source_scene, ufbx_export_scene *export_scene)
         }
     }
     
-    // Copy animation data
-    printf("  Copying %zu animation stacks...\n", source_scene->anim_stacks.count);
-    for (size_t i = 0; i < source_scene->anim_stacks.count; i++) {
-        ufbx_anim_stack *src_stack = source_scene->anim_stacks.data[i];
-        
-        // Create animation stack
-        ufbx_anim_stack *export_stack = ufbx_add_animation(export_scene, src_stack->name.data);
-        if (!export_stack) {
-            printf("    Failed to add animation stack: %s\n", src_stack->name.data);
-            free(node_mappings);
-            free(material_mappings);
-            free(mesh_mappings);
-            return false;
-        }
-        
-        // Set time range
-        bool success = ufbx_set_anim_stack_time_range(export_stack, src_stack->time_begin, src_stack->time_end, &error);
-        if (!success) {
-            print_error(&error, "Failed to set animation time range");
-            free(node_mappings);
-            free(material_mappings);
-            free(mesh_mappings);
-            return false;
-        }
-        
-        // Copy animation layers
-        for (size_t j = 0; j < src_stack->layers.count; j++) {
-            ufbx_anim_layer *src_layer = src_stack->layers.data[j];
-            
-            ufbx_anim_layer *export_layer = ufbx_add_anim_layer(export_scene, export_stack, src_layer->name.data);
-            if (!export_layer) {
-                printf("    Failed to add animation layer: %s\n", src_layer->name.data);
-                continue;
-            }
-            
-            // Copy animation values and curves
-            for (size_t k = 0; k < src_layer->anim_values.count; k++) {
-                ufbx_anim_value *src_value = src_layer->anim_values.data[k];
-                
-                ufbx_anim_value *export_value = ufbx_add_anim_value(export_scene, export_layer, src_value->name.data);
-                if (!export_value) {
-                    continue;
-                }
-                
-                // Copy curves for each component
-                for (int comp = 0; comp < 3; comp++) { // X, Y, Z components
-                    ufbx_anim_curve *src_curve = src_value->curves[comp];
-                    if (src_curve && src_curve->keyframes.count > 0) {
-                        ufbx_anim_curve *export_curve = ufbx_add_anim_curve(export_scene, export_value, comp);
-                        if (export_curve) {
-                            bool curve_success = ufbx_set_anim_curve_keyframes(export_curve, 
-                                                                             src_curve->keyframes.data,
-                                                                             src_curve->keyframes.count, &error);
-                            if (!curve_success) {
-                                print_error(&error, "Failed to set animation keyframes");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        printf("    Added animation stack: %s\n", src_stack->name.data);
+    // Copy animation data using the enhanced animation copying function
+    anim_stack_mapping *stack_mappings = NULL;
+    anim_layer_mapping *layer_mappings = NULL;
+    
+    if (!copy_animations(source_scene, export_scene, node_mappings, num_mappings, 
+                        &stack_mappings, &layer_mappings)) {
+        fprintf(stderr, "Failed to copy animations\n");
+        free(node_mappings);
+        free(material_mappings);
+        free(mesh_mappings);
+        return false;
     }
+    
+    // Clean up animation mappings
+    free(stack_mappings);
+    free(layer_mappings);
     
     // Copy skin deformers
     printf("  Copying %zu skin deformers...\n", source_scene->skin_deformers.count);

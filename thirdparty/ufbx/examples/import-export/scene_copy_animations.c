@@ -40,7 +40,7 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
         ufbx_anim_stack *src_stack = source_scene->anim_stacks.data[i];
         
         // Create animation stack
-        ufbx_anim_stack *export_stack = ufbx_add_animation(export_scene, src_stack->name.data);
+        ufbx_anim_stack *export_stack = ufbx_add_animation(export_scene, src_stack->name);
         if (!export_stack) {
             printf("    Failed to add animation stack: %s\n", src_stack->name.data);
             return false;
@@ -62,7 +62,7 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
         for (size_t j = 0; j < src_stack->layers.count; j++) {
             ufbx_anim_layer *src_layer = src_stack->layers.data[j];
             
-            ufbx_anim_layer *export_layer = ufbx_add_anim_layer(export_scene, export_stack, src_layer->name.data);
+            ufbx_anim_layer *export_layer = ufbx_add_anim_layer(export_scene, export_stack, src_layer->name);
             if (!export_layer) {
                 printf("    Failed to add animation layer: %s\n", src_layer->name.data);
                 continue;
@@ -88,7 +88,7 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
             for (size_t k = 0; k < src_layer->anim_values.count; k++) {
                 ufbx_anim_value *src_value = src_layer->anim_values.data[k];
                 
-                ufbx_anim_value *export_value = ufbx_add_anim_value(export_scene, export_layer, src_value->name.data);
+                ufbx_anim_value *export_value = ufbx_add_anim_value(export_scene, export_layer, src_value->name);
                 if (!export_value) {
                     continue;
                 }
@@ -159,9 +159,10 @@ bool copy_animations(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
                     
                     if (prop_name) {
                         ufbx_error connect_error = {0};
+                        ufbx_string prop_name_str = { prop_name, strlen(prop_name) };
                         bool connect_success = ufbx_connect_anim_prop(export_scene, export_layer, 
                                                                     (ufbx_element*)target_node, 
-                                                                    prop_name, export_value, &connect_error);
+                                                                    prop_name_str, export_value, &connect_error);
                         if (!connect_success) {
                             printf("      Warning: Failed to connect animation '%s' to node '%s' property '%s'\n", 
                                    src_value->name.data, target_node->element.name.data, prop_name);

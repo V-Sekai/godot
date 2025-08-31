@@ -169,8 +169,50 @@ int validate_roundtrip(const char *input_file, const char *output_file)
     
     // Load output file
     printf("Loading output file...\n");
+    printf("  File path: %s\n", output_file);
+    
+    // Check if output file exists and get its size
+    FILE *test_file = fopen(output_file, "rb");
+    if (!test_file) {
+        fprintf(stderr, "ERROR: Output file does not exist or cannot be opened\n");
+        ufbx_free_scene(input_scene);
+        return 1;
+    }
+    
+    fseek(test_file, 0, SEEK_END);
+    long file_size = ftell(test_file);
+    fclose(test_file);
+    printf("  File size: %ld bytes\n", file_size);
+    
+    if (file_size == 0) {
+        fprintf(stderr, "ERROR: Output file is empty\n");
+        ufbx_free_scene(input_scene);
+        return 1;
+    }
+    
+    // Try to load with more detailed error reporting
     ufbx_scene *output_scene = ufbx_load_file(output_file, &load_opts, &error);
     if (!output_scene) {
+        printf("ERROR: Failed to load output FBX file\n");
+        printf("  Error type: %d\n", error.type);
+        printf("  Error description: %.*s\n", (int)error.description.length, error.description.data);
+        printf("  Stack size: %u\n", error.stack_size);
+        for (size_t i = 0; i < error.stack_size; i++) {
+            ufbx_error_frame *frame = &error.stack[i];
+            printf("    Frame %zu: %.*s (%u)\n", i, (int)frame->description.length, frame->description.data, frame->source_line);
+        }
+        
+        // Try to read the beginning of the file to see what's there
+        printf("\n  First 200 bytes of output file:\n");
+        test_file = fopen(output_file, "rb");
+        if (test_file) {
+            char buffer[201];
+            size_t bytes_read = fread(buffer, 1, 200, test_file);
+            buffer[bytes_read] = '\0';
+            printf("    \"%s\"\n", buffer);
+            fclose(test_file);
+        }
+        
         print_error(&error, "Failed to load output FBX file");
         ufbx_free_scene(input_scene);
         return 1;

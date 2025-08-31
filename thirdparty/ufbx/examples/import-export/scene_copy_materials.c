@@ -23,7 +23,7 @@ bool copy_materials(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
         ufbx_material *src_material = source_scene->materials.data[i];
         
         // Create material in export scene
-        ufbx_material *export_material = ufbx_add_material(export_scene, src_material->name.data);
+        ufbx_material *export_material = ufbx_add_material(export_scene, src_material->name);
         if (!export_material) {
             printf("    Failed to add material: %s\n", src_material->name.data);
             return false;

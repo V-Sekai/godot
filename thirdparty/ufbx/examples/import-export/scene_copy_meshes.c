@@ -23,7 +23,7 @@ bool copy_meshes(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
         ufbx_mesh *src_mesh = source_scene->meshes.data[i];
         
         // Create mesh in export scene
-        ufbx_mesh *export_mesh = ufbx_add_mesh(export_scene, src_mesh->name.data);
+        ufbx_mesh *export_mesh = ufbx_add_mesh(export_scene, src_mesh->name);
         if (!export_mesh) {
             printf("    Failed to add mesh: %s\n", src_mesh->name.data);
             return false;

@@ -189,7 +189,7 @@ ufbx_export_result ufbx_export_to_memory_impl(const ufbx_export_scene *scene,
     ufbx_ascii_writer writer = { 0 };
     writer.version = opts && opts->fbx_version ? opts->fbx_version : UFBX_FBX_VERSION_7400;
     
-    // Write ASCII FBX using modular approach
+    // Write ASCII FBX using modular approach - MATCH FILE EXPORT STRUCTURE
     if (!ufbx_ascii_write_header(&writer, writer.version)) {
         result.error = writer.error;
         goto cleanup;
@@ -205,12 +205,28 @@ ufbx_export_result ufbx_export_to_memory_impl(const ufbx_export_scene *scene,
         goto cleanup;
     }
     
+    // CRITICAL FIX: Add missing sections that were causing corruption
+    if (!ufbx_ascii_write_documents_section(&writer)) {
+        result.error = writer.error;
+        goto cleanup;
+    }
+    
+    if (!ufbx_ascii_write_definitions_section(&writer)) {
+        result.error = writer.error;
+        goto cleanup;
+    }
+    
     if (!ufbx_ascii_write_objects(&writer, scene)) {
         result.error = writer.error;
         goto cleanup;
     }
     
     if (!ufbx_ascii_write_connections(&writer, scene)) {
+        result.error = writer.error;
+        goto cleanup;
+    }
+    
+    if (!ufbx_ascii_write_takes_section(&writer)) {
         result.error = writer.error;
         goto cleanup;
     }
