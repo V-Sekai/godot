@@ -194,7 +194,7 @@ ufbx_abi bool ufbx_set_mesh_uvs(ufbx_mesh *mesh, const ufbx_vec2 *uvs, size_t nu
 // Material construction helpers
 
 // Set material property (generic)
-ufbx_abi bool ufbx_set_material_property(ufbx_material *material, const char *property_name, int type, const void *value);
+ufbx_abi bool ufbx_set_material_property(ufbx_material *material, const char *property_name, const void *value);
 
 // Set material albedo color
 ufbx_abi bool ufbx_set_material_albedo(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_real a, ufbx_error *error);
@@ -206,7 +206,7 @@ ufbx_abi bool ufbx_set_material_metallic_roughness(ufbx_material *material, ufbx
 ufbx_abi bool ufbx_set_material_emission(ufbx_material *material, ufbx_real r, ufbx_real g, ufbx_real b, ufbx_error *error);
 
 // Set texture data
-ufbx_abi bool ufbx_set_texture_data(ufbx_texture *texture, const void *data, size_t size, const char *format, ufbx_error *error);
+ufbx_abi bool ufbx_set_texture_data(ufbx_texture *texture, const void *data, size_t size, ufbx_error *error);
 
 // Attach texture to material
 ufbx_abi bool ufbx_attach_texture_to_material(ufbx_material *material, ufbx_texture *texture, const char *property_name, ufbx_error *error);
@@ -220,7 +220,7 @@ ufbx_abi void ufbx_set_node_transform(ufbx_node *node, const ufbx_transform *tra
 ufbx_abi bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh, ufbx_error *error);
 
 // Attach material to mesh
-ufbx_abi bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, int surface_index, ufbx_error *error);
+ufbx_abi bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, ufbx_error *error);
 
 // Skinning construction helpers
 // TODO: Remove unused functions and finalize skinning API
@@ -274,7 +274,7 @@ ufbx_abi bool ufbx_attach_blend_to_mesh(ufbx_mesh *mesh, ufbx_blend_deformer *bl
 // Export functions
 
 // Get export buffer size
-ufbx_abi size_t ufbx_get_export_size(const ufbx_export_scene *scene, const ufbx_export_opts *opts, ufbx_error *error);
+ufbx_abi size_t ufbx_get_export_size(const ufbx_export_scene *scene, ufbx_error *error);
 
 // Export scene to memory buffer
 ufbx_abi size_t ufbx_export_to_memory(const ufbx_export_scene *scene, void *buffer, size_t buffer_size, const ufbx_export_opts *opts, ufbx_error *error);

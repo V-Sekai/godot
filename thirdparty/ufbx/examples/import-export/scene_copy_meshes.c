@@ -115,7 +115,7 @@ bool attach_materials_to_meshes(ufbx_scene *source_scene, mesh_mapping *mesh_map
             for (size_t k = 0; k < source_scene->materials.count; k++) {
                 if (source_scene->materials.data[k] == src_mat) {
                     ufbx_error attach_error = {0};
-                    bool success = ufbx_attach_material_to_mesh(export_mesh, material_mappings[k].export_material, j, &attach_error);
+                    bool success = ufbx_attach_material_to_mesh(export_mesh, material_mappings[k].export_material, &attach_error);
                     if (!success) {
                         print_error(&attach_error, "Failed to attach material to mesh");
                         return false;

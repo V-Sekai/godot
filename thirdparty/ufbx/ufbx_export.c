@@ -172,7 +172,9 @@ ufbx_anim_value *ufbx_add_anim_value(ufbx_export_scene *scene, ufbx_anim_layer *
     value->element.type = UFBX_ELEMENT_ANIM_VALUE;
     
     // Initialize default value and curves
-    value->default_value = (ufbx_vec3){{ 0, 0, 0 }};
+    value->default_value.x = 0;
+    value->default_value.y = 0;
+    value->default_value.z = 0;
     value->curves[0] = NULL;
     value->curves[1] = NULL;
     value->curves[2] = NULL;
@@ -724,9 +726,16 @@ ufbx_node *ufbx_add_node(ufbx_export_scene *scene, const char *name, ufbx_node *
         parent->children.count = new_count;
     }
     
-    node->local_transform.translation = (ufbx_vec3){{ 0, 0, 0 }};
-    node->local_transform.rotation = (ufbx_quat){{ 0, 0, 0, 1 }};
-    node->local_transform.scale = (ufbx_vec3){{ 1, 1, 1 }};
+    node->local_transform.translation.x = 0;
+    node->local_transform.translation.y = 0;
+    node->local_transform.translation.z = 0;
+    node->local_transform.rotation.x = 0;
+    node->local_transform.rotation.y = 0;
+    node->local_transform.rotation.z = 0;
+    node->local_transform.rotation.w = 1;
+    node->local_transform.scale.x = 1;
+    node->local_transform.scale.y = 1;
+    node->local_transform.scale.z = 1;
     
     // Initialize other node properties
     node->mesh = NULL;
@@ -813,7 +822,7 @@ ufbx_material *ufbx_add_material(ufbx_export_scene *scene, const char *name) {
     material->element.element_id = scene_imp->num_materials + 2000; // Offset to avoid ID conflicts
     material->element.type = UFBX_ELEMENT_MATERIAL;
     
-    material->pbr.base_color.value_vec3 = (ufbx_vec3){{ 0.8f, 0.8f, 0.8f }};
+    material->pbr.base_color.value_vec3 = (ufbx_vec3){{{ 0.8f, 0.8f, 0.8f }}};
     material->pbr.base_color.has_value = true;
     material->pbr.roughness.value_real = 0.5;
     material->pbr.roughness.has_value = true;
@@ -981,7 +990,7 @@ bool ufbx_set_mesh_indices(ufbx_mesh *mesh, const uint32_t *indices, size_t num_
 
 
 bool ufbx_set_material_property(ufbx_material *material, const char *property_name, 
-                                int type, const void *value) {
+                                const void *value) {
     if (!material || !property_name || !value) {
         return false;
     }
@@ -1168,8 +1177,8 @@ bool ufbx_attach_mesh_to_node(ufbx_node *node, ufbx_mesh *mesh, ufbx_error *erro
     return true;
 }
 
-// Attach material to mesh with surface index
-bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, int surface_index, ufbx_error *error) {
+// Attach material to mesh
+bool ufbx_attach_material_to_mesh(ufbx_mesh *mesh, ufbx_material *material, ufbx_error *error) {
     if (!mesh || !material) {
         if (error) {
             error->type = UFBX_ERROR_UNKNOWN;
@@ -1214,7 +1223,7 @@ bool ufbx_set_material_albedo(ufbx_material *material, ufbx_real r, ufbx_real g,
         return false;
     }
     
-    material->pbr.base_color.value_vec4 = (ufbx_vec4){{ r, g, b, a }};
+    material->pbr.base_color.value_vec4 = (ufbx_vec4){{{ r, g, b, a }}};
     material->pbr.base_color.has_value = true;
     
     if (error) {
@@ -1258,7 +1267,7 @@ bool ufbx_set_material_emission(ufbx_material *material, ufbx_real r, ufbx_real 
         return false;
     }
     
-    material->pbr.emission_color.value_vec3 = (ufbx_vec3){{ r, g, b }};
+    material->pbr.emission_color.value_vec3 = (ufbx_vec3){{{ r, g, b }}};
     material->pbr.emission_color.has_value = true;
     
     if (error) {
@@ -1273,8 +1282,6 @@ ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name) {
     if (!scene || !name) {
         return NULL;
     }
-    
-    ufbxi_export_scene *scene_imp = (ufbxi_export_scene*)scene;
     
     // Allocate new texture
     ufbx_texture *texture = (ufbx_texture*)calloc(1, sizeof(ufbx_texture));
@@ -1298,7 +1305,7 @@ ufbx_texture *ufbx_add_texture(ufbx_export_scene *scene, const char *name) {
 }
 
 // Set texture data
-bool ufbx_set_texture_data(ufbx_texture *texture, const void *data, size_t size, const char *format, ufbx_error *error) {
+bool ufbx_set_texture_data(ufbx_texture *texture, const void *data, size_t size, ufbx_error *error) {
     if (!texture || !data || size == 0) {
         if (error) {
             error->type = UFBX_ERROR_UNKNOWN;
@@ -1347,7 +1354,7 @@ bool ufbx_attach_texture_to_material(ufbx_material *material, ufbx_texture *text
 }
 
 // Get export buffer size
-size_t ufbx_get_export_size(const ufbx_export_scene *scene, const ufbx_export_opts *opts, ufbx_error *error) {
+size_t ufbx_get_export_size(const ufbx_export_scene *scene, ufbx_error *error) {
     if (!scene) {
         if (error) {
             error->type = UFBX_ERROR_UNKNOWN;

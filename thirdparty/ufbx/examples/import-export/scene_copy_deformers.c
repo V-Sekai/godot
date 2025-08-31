@@ -129,7 +129,7 @@ bool copy_skin_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sce
 }
 
 bool copy_blend_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_scene,
-                          mesh_mapping *mesh_mappings, blend_mapping **blend_mappings)
+                          blend_mapping **blend_mappings)
 {
     printf("  Copying %zu blend deformers...\n", source_scene->blend_deformers.count);
     
