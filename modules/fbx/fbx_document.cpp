@@ -3231,7 +3231,7 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 			ufbx_normals.resize(normals.size());
 			for (int i = 0; i < normals.size(); i++) {
 				Vector3 n = normals[i];
-				ufbx_normals.write[i] = { { n.x, n.y, n.z } };
+				ufbx_normals.write[i] = { n.x, n.y, n.z };
 			}
 			ufbx_set_mesh_normals(fbx_mesh, ufbx_normals.ptr(), ufbx_normals.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
@@ -3246,7 +3246,7 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 			for (int i = 0; i < uvs.size(); i++) {
 				Vector2 uv = uvs[i];
 				// Flip V coordinate for FBX format
-				ufbx_uvs.write[i] = { { uv.x, 1.0f - uv.y } };
+				ufbx_uvs.write[i] = { uv.x, 1.0f - uv.y };
 			}
 			ufbx_set_mesh_uvs(fbx_mesh, ufbx_uvs.ptr(), ufbx_uvs.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
@@ -3262,16 +3262,7 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 				ufbx_indices.write[i] = indices[i];
 			}
 
-			// Convert winding order from Godot (clockwise) to FBX (counter-clockwise)
-			// This is the reverse of what happens during import
-			if (indices.size() % 3 == 0) { // Only for triangular meshes
-				for (int i = 0; i < indices.size(); i += 3) {
-					// Swap vertices 0 and 2 of each triangle to reverse winding order
-					SWAP(ufbx_indices.write[i + 0], ufbx_indices.write[i + 2]);
-				}
-			}
-
-			// Assume triangles (3 vertices per face)
+			// Use standard uniform topology - let UFBX handle coordinate system conversion
 			ufbx_set_mesh_indices(fbx_mesh, ufbx_indices.ptr(), ufbx_indices.size(), 3, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to set mesh indices: " + String(error.description.data));
