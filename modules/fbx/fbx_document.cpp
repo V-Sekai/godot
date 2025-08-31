@@ -3231,7 +3231,8 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 			ufbx_normals.resize(normals.size());
 			for (int i = 0; i < normals.size(); i++) {
 				Vector3 n = normals[i];
-				ufbx_normals.write[i] = { n.x, n.y, n.z };
+				// Flip normals to match reversed winding order
+				ufbx_normals.write[i] = { -n.x, -n.y, -n.z };
 			}
 			ufbx_set_mesh_normals(fbx_mesh, ufbx_normals.ptr(), ufbx_normals.size(), &error);
 			if (error.type != UFBX_ERROR_NONE) {
@@ -3531,11 +3532,11 @@ Error FBXDocument::_convert_scene_node(Node *p_node, ufbx_export_scene *p_export
 
 		// Convert Godot transform to ufbx format
 		ufbx_transform ufbx_xform;
-		ufbx_xform.translation = { { transform.origin.x, transform.origin.y, transform.origin.z } };
+		ufbx_xform.translation = { transform.origin.x, transform.origin.y, transform.origin.z };
 		Quaternion rotation = transform.basis.get_rotation_quaternion();
-		ufbx_xform.rotation = { { rotation.x, rotation.y, rotation.z, rotation.w } };
+		ufbx_xform.rotation = { rotation.x, rotation.y, rotation.z, rotation.w };
 		Vector3 scale = transform.basis.get_scale();
-		ufbx_xform.scale = { { scale.x, scale.y, scale.z } };
+		ufbx_xform.scale = { scale.x, scale.y, scale.z };
 
 		ufbx_error error;
 		ufbx_set_node_transform(fbx_node, &ufbx_xform, &error);
