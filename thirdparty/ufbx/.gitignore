@@ -20,3 +20,6 @@ __pycache__/
 # FBX backup files
 
 *.bck/
+
+!data/
+!*.obj
