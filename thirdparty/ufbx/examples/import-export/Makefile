@@ -96,59 +96,7 @@ test-golden: $(ROUNDTRIP_BIN)
 		echo "Check test_results/*.log for details"; \
 	fi
 
-# Test golden path with enhanced validation (now using default validate command)
-test-golden-enhanced: $(ROUNDTRIP_BIN) $(VALIDATE_BIN)
-	@echo "=== Golden Path Testing with Enhanced Validation ==="
-	@echo "Testing well-formed FBX files with comprehensive validation diagnostics..."
-	@mkdir -p test_results
-	@success_count=0; \
-	validation_pass=0; \
-	total_count=0; \
-	failed_files=""; \
-	validation_failed=""; \
-	for fbx_file in $$(find ../../data ./data -name "*.fbx" 2>/dev/null | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face|blender|binary)" | head -10); do \
-		total_count=$$((total_count + 1)); \
-		filename=$$(basename "$$fbx_file" .fbx); \
-		output_file="test_results/$${filename}_roundtrip.fbx"; \
-		echo ""; \
-		echo "Testing $$total_count: $$fbx_file"; \
-		echo "Output: $$output_file"; \
-		if ./$(ROUNDTRIP_BIN) "$$fbx_file" "$$output_file" > "test_results/$${filename}.log" 2>&1; then \
-			echo "✓ ROUNDTRIP SUCCESS: $$filename"; \
-			success_count=$$((success_count + 1)); \
-			echo "  Enhanced validation with comprehensive analysis..."; \
-			if ./$(VALIDATE_BIN) "$$fbx_file" "$$output_file" > "test_results/$${filename}_validation.log" 2>&1; then \
-				echo "  ✓ VALIDATION PASSED: Data preserved correctly"; \
-				validation_pass=$$((validation_pass + 1)); \
-			else \
-				echo "  ⚠️  VALIDATION FAILED: See detailed logs for analysis"; \
-				validation_failed="$$validation_failed $$filename"; \
-			fi; \
-		else \
-			echo "✗ ROUNDTRIP FAILED: $$filename"; \
-			failed_files="$$failed_files $$filename"; \
-		fi; \
-	done; \
-	echo ""; \
-	echo "=== Enhanced Validation Summary ==="; \
-	echo "Total files tested: $$total_count"; \
-	echo "Roundtrip successful: $$success_count"; \
-	echo "Validation passed: $$validation_pass"; \
-	echo "Roundtrip failed: $$((total_count - success_count))"; \
-	echo "Validation failed: $$((success_count - validation_pass))"; \
-	if [ $$success_count -eq $$total_count ] && [ $$validation_pass -eq $$success_count ]; then \
-		echo "🎉 ALL TESTS PASSED WITH PERFECT DATA PRESERVATION!"; \
-	else \
-		if [ $$success_count -ne $$total_count ]; then \
-			echo "❌ Roundtrip failures:$$failed_files"; \
-		fi; \
-		if [ $$validation_pass -ne $$success_count ]; then \
-			echo "⚠️  Enhanced validation failures:$$validation_failed"; \
-		fi; \
-		echo "Check test_results/*.log and *_validation.log for comprehensive diagnostics"; \
-	fi
-
-# Test golden path with automatic validation
+# Test golden path with enhanced validation (now the default validation system)
 test-golden-validated: $(ROUNDTRIP_BIN) $(VALIDATE_BIN)
 	@echo "=== Golden Path Testing with Validation ==="
 	@echo "Testing well-formed FBX files with automatic data preservation validation (excluding Blender files)..."
@@ -222,11 +170,10 @@ clean:
 # Show help
 help:
 	@echo "Available targets:"
-	@echo "  all                 - Build roundtrip and validation tools"
+	@echo "  all                 - Build roundtrip and enhanced validation tools"
 	@echo "  test-all            - Test ALL FBX files in ../../data (comprehensive)"
 	@echo "  test-golden         - Test golden path files (exclude fuzz/fail/edge cases)"
-	@echo "  test-golden-validated - Test golden path with automatic validation"
-	@echo "  test-golden-enhanced - Test golden path with enhanced validation (detailed analysis)"
+	@echo "  test-golden-validated - Test golden path with enhanced validation and detailed analysis"
 	@echo "  test-verify         - Quick verification with representative files"
 	@echo "  clean               - Clean build artifacts and test results"
 	@echo "  help                - Show this help"
@@ -234,8 +181,7 @@ help:
 	@echo "Test targets:"
 	@echo "  test-all            - Systematic testing of all ufbx data files"
 	@echo "  test-golden         - Golden path testing (well-formed files only)"
-	@echo "  test-golden-validated - Golden path with data preservation validation"
-	@echo "  test-golden-enhanced - Golden path with enhanced validation and detailed analysis"
+	@echo "  test-golden-validated - Golden path with enhanced validation and comprehensive diagnostics"
 	@echo "  test-verify         - Quick test with 3 representative files"
 	@echo ""
 	@echo "Source files:"
