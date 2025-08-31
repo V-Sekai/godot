@@ -3262,7 +3262,13 @@ Error FBXDocument::_convert_mesh_to_ufbx(Ref<ImporterMesh> p_importer_mesh, ufbx
 				ufbx_indices.write[i] = indices[i];
 			}
 
-			// Use standard uniform topology - let UFBX handle coordinate system conversion
+			// Reverse winding order from Godot (clockwise) to FBX (counter-clockwise)
+			if (indices.size() % 3 == 0) { // Only for triangular meshes
+				for (int i = 0; i < indices.size(); i += 3) {
+					SWAP(ufbx_indices.write[i + 0], ufbx_indices.write[i + 2]);
+				}
+			}
+
 			ufbx_set_mesh_indices(fbx_mesh, ufbx_indices.ptr(), ufbx_indices.size(), 3, &error);
 			if (error.type != UFBX_ERROR_NONE) {
 				ERR_PRINT("FBX Export: Failed to set mesh indices: " + String(error.description.data));
