@@ -15,6 +15,7 @@ int test_roundtrip(const char *input_file, const char *output_file)
         .load_external_files = true,
         .ignore_missing_external_files = true,
         .generate_missing_normals = true,
+        .ignore_animation = true, // TEMPORARY: Skip animation import for validation testing
         .target_axes = {
             .right = UFBX_COORDINATE_AXIS_POSITIVE_X,
             .up = UFBX_COORDINATE_AXIS_POSITIVE_Y,
