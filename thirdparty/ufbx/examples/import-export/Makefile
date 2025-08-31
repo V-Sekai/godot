@@ -18,8 +18,8 @@ all: $(ROUNDTRIP_BIN) $(VALIDATE_BIN)
 $(ROUNDTRIP_BIN): $(MODULE_SRC) $(UFBX_SRC)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Build validation tool
-$(VALIDATE_BIN): validate.c $(UFBX_SRC)
+# Build enhanced validation tool as the main validate binary
+$(VALIDATE_BIN): validate_enhanced.c $(UFBX_SRC)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Test with huesitos.fbx
@@ -94,6 +94,58 @@ test-golden: $(ROUNDTRIP_BIN)
 	else \
 		echo "❌ Some golden path tests failed:$$failed_files"; \
 		echo "Check test_results/*.log for details"; \
+	fi
+
+# Test golden path with enhanced validation (now using default validate command)
+test-golden-enhanced: $(ROUNDTRIP_BIN) $(VALIDATE_BIN)
+	@echo "=== Golden Path Testing with Enhanced Validation ==="
+	@echo "Testing well-formed FBX files with comprehensive validation diagnostics..."
+	@mkdir -p test_results
+	@success_count=0; \
+	validation_pass=0; \
+	total_count=0; \
+	failed_files=""; \
+	validation_failed=""; \
+	for fbx_file in $$(find ../../data ./data -name "*.fbx" 2>/dev/null | grep -v -E "(fuzz_|_fail_|edge_|cursed|maya_bad_face|blender|binary)" | head -10); do \
+		total_count=$$((total_count + 1)); \
+		filename=$$(basename "$$fbx_file" .fbx); \
+		output_file="test_results/$${filename}_roundtrip.fbx"; \
+		echo ""; \
+		echo "Testing $$total_count: $$fbx_file"; \
+		echo "Output: $$output_file"; \
+		if ./$(ROUNDTRIP_BIN) "$$fbx_file" "$$output_file" > "test_results/$${filename}.log" 2>&1; then \
+			echo "✓ ROUNDTRIP SUCCESS: $$filename"; \
+			success_count=$$((success_count + 1)); \
+			echo "  Enhanced validation with comprehensive analysis..."; \
+			if ./$(VALIDATE_BIN) "$$fbx_file" "$$output_file" > "test_results/$${filename}_validation.log" 2>&1; then \
+				echo "  ✓ VALIDATION PASSED: Data preserved correctly"; \
+				validation_pass=$$((validation_pass + 1)); \
+			else \
+				echo "  ⚠️  VALIDATION FAILED: See detailed logs for analysis"; \
+				validation_failed="$$validation_failed $$filename"; \
+			fi; \
+		else \
+			echo "✗ ROUNDTRIP FAILED: $$filename"; \
+			failed_files="$$failed_files $$filename"; \
+		fi; \
+	done; \
+	echo ""; \
+	echo "=== Enhanced Validation Summary ==="; \
+	echo "Total files tested: $$total_count"; \
+	echo "Roundtrip successful: $$success_count"; \
+	echo "Validation passed: $$validation_pass"; \
+	echo "Roundtrip failed: $$((total_count - success_count))"; \
+	echo "Validation failed: $$((success_count - validation_pass))"; \
+	if [ $$success_count -eq $$total_count ] && [ $$validation_pass -eq $$success_count ]; then \
+		echo "🎉 ALL TESTS PASSED WITH PERFECT DATA PRESERVATION!"; \
+	else \
+		if [ $$success_count -ne $$total_count ]; then \
+			echo "❌ Roundtrip failures:$$failed_files"; \
+		fi; \
+		if [ $$validation_pass -ne $$success_count ]; then \
+			echo "⚠️  Enhanced validation failures:$$validation_failed"; \
+		fi; \
+		echo "Check test_results/*.log and *_validation.log for comprehensive diagnostics"; \
 	fi
 
 # Test golden path with automatic validation
@@ -174,6 +226,7 @@ help:
 	@echo "  test-all            - Test ALL FBX files in ../../data (comprehensive)"
 	@echo "  test-golden         - Test golden path files (exclude fuzz/fail/edge cases)"
 	@echo "  test-golden-validated - Test golden path with automatic validation"
+	@echo "  test-golden-enhanced - Test golden path with enhanced validation (detailed analysis)"
 	@echo "  test-verify         - Quick verification with representative files"
 	@echo "  clean               - Clean build artifacts and test results"
 	@echo "  help                - Show this help"
@@ -182,11 +235,12 @@ help:
 	@echo "  test-all            - Systematic testing of all ufbx data files"
 	@echo "  test-golden         - Golden path testing (well-formed files only)"
 	@echo "  test-golden-validated - Golden path with data preservation validation"
+	@echo "  test-golden-enhanced - Golden path with enhanced validation and detailed analysis"
 	@echo "  test-verify         - Quick test with 3 representative files"
 	@echo ""
 	@echo "Source files:"
 	@echo "  main.c              - Main roundtrip test program"
-	@echo "  validate.c          - Roundtrip validation tool"
+	@echo "  validate_enhanced.c - Enhanced validation with progressive loading (main validate tool)"
 	@echo "  error_utils.c       - Error handling utilities"
 	@echo "  scene_analysis.c    - Scene analysis and printing"
 	@echo "  scene_copy.c        - Scene data copying functionality"
@@ -194,7 +248,7 @@ help:
 	@echo ""
 	@echo "Manual usage:"
 	@echo "  ./roundtrip <input.fbx> <output.fbx>"
-	@echo "  ./validate <input.fbx> <roundtrip.fbx>"
+	@echo "  ./validate <input.fbx> <roundtrip.fbx>   # Enhanced validation with detailed analysis"
 	@echo "  ./roundtrip ./data/example.fbx example_test.fbx"
 
 .PHONY: all test-all test-golden test-golden-validated test-verify clean help
