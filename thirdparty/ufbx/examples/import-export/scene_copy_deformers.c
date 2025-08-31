@@ -133,6 +133,12 @@ bool copy_blend_deformers(ufbx_scene *source_scene, ufbx_export_scene *export_sc
 {
     printf("  Copying %zu blend deformers...\n", source_scene->blend_deformers.count);
     
+    // DEFENSIVE PROGRAMMING: Add null pointer checks
+    if (!source_scene || !export_scene || !blend_mappings) {
+        fprintf(stderr, "ERROR: Null pointer passed to copy_blend_deformers\n");
+        return false;
+    }
+    
     if (source_scene->blend_deformers.count == 0) {
         *blend_mappings = NULL;
         return true;
