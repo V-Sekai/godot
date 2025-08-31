@@ -45,6 +45,7 @@
 #include "scene/main/timer.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/surface_tool.h"
+#include "servers/display_server.h"
 
 class SceneImportSettingsData : public Object {
 	GDCLASS(SceneImportSettingsData, Object)
@@ -408,7 +409,10 @@ void SceneImportSettingsDialog::_fill_scene(Node *p_node, TreeItem *p_parent_ite
 		mesh_node->set_visible(src_mesh_node->is_visible());
 		if (src_mesh_node->get_mesh().is_valid()) {
 			Ref<ImporterMesh> editor_mesh = src_mesh_node->get_mesh();
-			mesh_node->set_mesh(editor_mesh->get_mesh());
+			// Skip mesh operations in headless mode to prevent memory leaks
+			if (!(DisplayServer::get_singleton() && DisplayServer::get_singleton()->get_name() == "headless")) {
+				mesh_node->set_mesh(editor_mesh->get_mesh());
+			}
 		}
 		// Replace the original mesh node in the scene tree with the new one.
 		if (unlikely(p_node == scene)) {
@@ -526,7 +530,10 @@ void SceneImportSettingsDialog::_fill_scene(Node *p_node, TreeItem *p_parent_ite
 	if (skeleton) {
 		Ref<ArrayMesh> bones_mesh = Skeleton3DGizmoPlugin::get_bones_mesh(skeleton, -1, true);
 
-		bones_mesh_preview->set_mesh(bones_mesh);
+		// Skip mesh operations in headless mode to prevent memory leaks
+		if (!(DisplayServer::get_singleton() && DisplayServer::get_singleton()->get_name() == "headless")) {
+			bones_mesh_preview->set_mesh(bones_mesh);
+		}
 
 		Transform3D accum_xform;
 		Node3D *base = skeleton;
@@ -942,7 +949,10 @@ void SceneImportSettingsDialog::_select(Tree *p_from, const String &p_type, cons
 			}
 		}
 
-		mesh_preview->set_mesh(md.mesh);
+		// Skip mesh operations in headless mode to prevent memory leaks
+		if (!(DisplayServer::get_singleton() && DisplayServer::get_singleton()->get_name() == "headless")) {
+			mesh_preview->set_mesh(md.mesh);
+		}
 		mesh_preview->show();
 		_reset_animation();
 
@@ -962,7 +972,10 @@ void SceneImportSettingsDialog::_select(Tree *p_from, const String &p_type, cons
 		MaterialData &md = material_map[p_id];
 
 		material_preview->set_material(md.material);
-		mesh_preview->set_mesh(material_preview);
+		// Skip mesh operations in headless mode to prevent memory leaks
+		if (!(DisplayServer::get_singleton() && DisplayServer::get_singleton()->get_name() == "headless")) {
+			mesh_preview->set_mesh(material_preview);
+		}
 
 		if (p_from != mesh_tree) {
 			md.mesh_node->uncollapse_tree();
@@ -1919,7 +1932,10 @@ SceneImportSettingsDialog::SceneImportSettingsDialog() {
 		selection_mesh->surface_set_material(0, selection_mat);
 
 		node_selected = memnew(MeshInstance3D);
-		node_selected->set_mesh(selection_mesh);
+		// Skip mesh operations in headless mode to prevent memory leaks
+		if (!(DisplayServer::get_singleton() && DisplayServer::get_singleton()->get_name() == "headless")) {
+			node_selected->set_mesh(selection_mesh);
+		}
 		node_selected->set_cast_shadows_setting(GeometryInstance3D::SHADOW_CASTING_SETTING_OFF);
 		base_viewport->add_child(node_selected);
 		node_selected->hide();
