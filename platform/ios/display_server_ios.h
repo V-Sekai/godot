@@ -58,30 +58,6 @@ class DisplayServerIOS : public DisplayServerAppleEmbedded {
 
 	_THREAD_SAFE_CLASS_
 
-#if defined(RD_ENABLED)
-	RenderingContextDriver *rendering_context = nullptr;
-	RenderingDevice *rendering_device = nullptr;
-#endif
-#if defined(GLES3_ENABLED)
-	GLESContext *gles_context = nullptr;
-#endif
-	NativeMenu *native_menu = nullptr;
-
-	id tts = nullptr;
-
-	DisplayServer::ScreenOrientation screen_orientation;
-
-	ObjectID window_attached_instance_id;
-
-	Callable window_event_callback;
-	Callable window_resize_callback;
-	Callable input_event_callback;
-	Callable input_text_callback;
-
-	Callable system_theme_changed;
-
-	int virtual_keyboard_height = 0;
-
 	void perform_event(const Ref<InputEvent> &p_event);
 
 	DisplayServerIOS(const String &p_rendering_driver, DisplayServer::WindowMode p_mode, DisplayServer::VSyncMode p_vsync_mode, uint32_t p_flags, const Vector2i *p_position, const Vector2i &p_resolution, int p_screen, Context p_context, int64_t p_parent_window, Error &r_error);
