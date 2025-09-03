@@ -548,13 +548,15 @@ Error RenderingDeviceDriverVulkan::_initialize_device_extensions() {
 	_register_requested_device_extension(VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME, false);
 	_register_requested_device_extension(VK_EXT_TEXTURE_COMPRESSION_ASTC_HDR_EXTENSION_NAME, false);
 	_register_requested_device_extension(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME, true);
+#ifdef EXTERNAL_TARGET_ENABLED
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 	_register_requested_device_extension(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME, true);
 #elif defined(UNIX_ENABLED)
 	_register_requested_device_extension(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, true);
 #endif
-
+#else
 	_register_requested_device_extension(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, false);
+#endif
 
 	if (Engine::get_singleton()->is_generate_spirv_debug_info_enabled()) {
 		_register_requested_device_extension(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, true);

@@ -107,7 +107,12 @@ DisplayServerEmbedded::DisplayServerEmbedded(const String &p_rendering_driver, W
 		}
 
 		rendering_device = memnew(RenderingDevice);
-		rendering_device->initialize(rendering_context, MAIN_WINDOW_ID, true);
+#ifdef EXTERNAL_TARGET_ENABLED
+		bool monitored_frames = true;
+#else
+		bool monitored_frames = false;
+#endif
+		rendering_device->initialize(rendering_context, MAIN_WINDOW_ID, monitored_frames);
 		rendering_device->screen_create(MAIN_WINDOW_ID);
 
 		native_surface->setup_external_swapchain_callbacks();
