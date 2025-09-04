@@ -438,11 +438,38 @@ void EWBIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &EWBIK3D::get_stabilization_passes);
 	ClassDB::bind_method(D_METHOD("set_effector_bone_name", "index", "name"), &EWBIK3D::set_pin_bone_name);
 
+	// MultiIK method bindings
+	ClassDB::bind_method(D_METHOD("set_multi_ik_enabled", "enabled"), &EWBIK3D::set_multi_ik_enabled);
+	ClassDB::bind_method(D_METHOD("get_multi_ik_enabled"), &EWBIK3D::get_multi_ik_enabled);
+	ClassDB::bind_method(D_METHOD("set_root_bone_name", "root_bone"), &EWBIK3D::set_root_bone_name);
+	ClassDB::bind_method(D_METHOD("get_root_bone_name"), &EWBIK3D::get_root_bone_name);
+	ClassDB::bind_method(D_METHOD("add_effector", "bone_name", "target_path", "weight"), &EWBIK3D::add_effector, DEFVAL(NodePath()), DEFVAL(1.0));
+	ClassDB::bind_method(D_METHOD("remove_effector", "index"), &EWBIK3D::remove_effector);
+	ClassDB::bind_method(D_METHOD("clear_effectors"), &EWBIK3D::clear_effectors);
+	ClassDB::bind_method(D_METHOD("get_effector_count"), &EWBIK3D::get_effector_count);
+	ClassDB::bind_method(D_METHOD("get_effector_bone_name", "index"), &EWBIK3D::get_effector_bone_name);
+	ClassDB::bind_method(D_METHOD("set_effector_target", "index", "target_path"), &EWBIK3D::set_effector_target);
+	ClassDB::bind_method(D_METHOD("get_effector_target", "index"), &EWBIK3D::get_effector_target);
+	ClassDB::bind_method(D_METHOD("set_effector_weight", "index", "weight"), &EWBIK3D::set_effector_weight);
+	ClassDB::bind_method(D_METHOD("get_effector_weight", "index"), &EWBIK3D::get_effector_weight);
+	ClassDB::bind_method(D_METHOD("set_pole_target", "bone_name", "pole_target"), &EWBIK3D::set_pole_target);
+	ClassDB::bind_method(D_METHOD("remove_pole_target", "bone_name"), &EWBIK3D::remove_pole_target);
+	ClassDB::bind_method(D_METHOD("has_pole_target", "bone_name"), &EWBIK3D::has_pole_target);
+	ClassDB::bind_method(D_METHOD("get_pole_target", "bone_name"), &EWBIK3D::get_pole_target);
+	ClassDB::bind_method(D_METHOD("get_junction_bones"), &EWBIK3D::get_junction_bones);
+	ClassDB::bind_method(D_METHOD("get_effector_chains"), &EWBIK3D::get_effector_chains);
+	ClassDB::bind_method(D_METHOD("set_chain_priority", "chain_index", "priority"), &EWBIK3D::set_chain_priority);
+	ClassDB::bind_method(D_METHOD("get_chain_priority", "chain_index"), &EWBIK3D::get_chain_priority);
+
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations_per_frame", PROPERTY_HINT_RANGE, "1,150,1,or_greater"), "set_iterations_per_frame", "get_iterations_per_frame");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "default_damp", PROPERTY_HINT_RANGE, "0.01,180.0,0.1,radians,exp", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), "set_default_damp", "get_default_damp");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "constraint_mode"), "set_constraint_mode", "get_constraint_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "ui_selected_bone", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_ui_selected_bone", "get_ui_selected_bone");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "stabilization_passes"), "set_stabilization_passes", "get_stabilization_passes");
+
+	// MultiIK properties
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "multi_ik_enabled"), "set_multi_ik_enabled", "get_multi_ik_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "root_bone_name"), "set_root_bone_name", "get_root_bone_name");
 }
 
 EWBIK3D::EWBIK3D() {
@@ -473,9 +500,255 @@ EWBIK3D::~EWBIK3D() {
 	kusudama_open_cone_count.clear();
 	bone_damp.clear();
 
+	// Clear MultiIK data
+	multi_ik_effectors.clear();
+	pole_targets.clear();
+	chain_priorities.clear();
+
 	// Clear transform references - Ref<> will handle cleanup automatically
 	godot_skeleton_transform.unref();
 	ik_origin.unref();
+}
+
+// MultiIK-specific method implementations
+void EWBIK3D::set_multi_ik_enabled(bool p_enabled) {
+	multi_ik_enabled = p_enabled;
+	if (multi_ik_enabled) {
+		_update_multi_ik_effectors();
+	}
+	set_dirty();
+}
+
+bool EWBIK3D::get_multi_ik_enabled() const {
+	return multi_ik_enabled;
+}
+
+void EWBIK3D::set_root_bone_name(const String &p_root_bone) {
+	root_bone_name = p_root_bone;
+	set_dirty();
+}
+
+String EWBIK3D::get_root_bone_name() const {
+	return root_bone_name;
+}
+
+void EWBIK3D::add_effector(const String &p_bone_name, const NodePath &p_target_path, real_t p_weight) {
+	MultiIKEffector effector;
+	effector.bone_name = p_bone_name;
+	effector.target_path = p_target_path;
+	effector.weight = p_weight;
+	multi_ik_effectors.push_back(effector);
+	set_dirty();
+}
+
+void EWBIK3D::remove_effector(int32_t p_index) {
+	ERR_FAIL_INDEX(p_index, multi_ik_effectors.size());
+	multi_ik_effectors.remove_at(p_index);
+	set_dirty();
+}
+
+void EWBIK3D::clear_effectors() {
+	multi_ik_effectors.clear();
+	set_dirty();
+}
+
+int32_t EWBIK3D::get_effector_count() const {
+	return multi_ik_effectors.size();
+}
+
+String EWBIK3D::get_effector_bone_name(int32_t p_index) const {
+	ERR_FAIL_INDEX_V(p_index, multi_ik_effectors.size(), "");
+	return multi_ik_effectors[p_index].bone_name;
+}
+
+void EWBIK3D::set_effector_target(int32_t p_index, const NodePath &p_target_path) {
+	ERR_FAIL_INDEX(p_index, multi_ik_effectors.size());
+	multi_ik_effectors.write[p_index].target_path = p_target_path;
+	set_dirty();
+}
+
+NodePath EWBIK3D::get_effector_target(int32_t p_index) const {
+	ERR_FAIL_INDEX_V(p_index, multi_ik_effectors.size(), NodePath());
+	return multi_ik_effectors[p_index].target_path;
+}
+
+void EWBIK3D::set_effector_weight(int32_t p_index, real_t p_weight) {
+	ERR_FAIL_INDEX(p_index, multi_ik_effectors.size());
+	multi_ik_effectors.write[p_index].weight = p_weight;
+	set_dirty();
+}
+
+real_t EWBIK3D::get_effector_weight(int32_t p_index) const {
+	ERR_FAIL_INDEX_V(p_index, multi_ik_effectors.size(), 1.0);
+	return multi_ik_effectors[p_index].weight;
+}
+
+void EWBIK3D::set_pole_target(const String &p_bone_name, const NodePath &p_pole_target) {
+	pole_targets[p_bone_name] = p_pole_target;
+	set_dirty();
+}
+
+void EWBIK3D::remove_pole_target(const String &p_bone_name) {
+	pole_targets.erase(p_bone_name);
+	set_dirty();
+}
+
+bool EWBIK3D::has_pole_target(const String &p_bone_name) const {
+	return pole_targets.has(p_bone_name);
+}
+
+NodePath EWBIK3D::get_pole_target(const String &p_bone_name) const {
+	if (pole_targets.has(p_bone_name)) {
+		return pole_targets[p_bone_name];
+	}
+	return NodePath();
+}
+
+Vector<String> EWBIK3D::get_junction_bones() const {
+	return _find_junction_bones();
+}
+
+Vector<Vector<String>> EWBIK3D::get_effector_chains() const {
+	return _build_effector_chains();
+}
+
+void EWBIK3D::set_chain_priority(int32_t p_chain_index, real_t p_priority) {
+	if (p_chain_index >= chain_priorities.size()) {
+		chain_priorities.resize(p_chain_index + 1);
+	}
+	chain_priorities.write[p_chain_index] = p_priority;
+	set_dirty();
+}
+
+real_t EWBIK3D::get_chain_priority(int32_t p_chain_index) const {
+	if (p_chain_index < chain_priorities.size()) {
+		return chain_priorities[p_chain_index];
+	}
+	return 1.0;
+}
+
+// MultiIK helper method implementations
+void EWBIK3D::_update_multi_ik_effectors() {
+	if (!multi_ik_enabled || !get_skeleton()) {
+		return;
+	}
+
+	// Clear existing pins and set up new ones based on MultiIK effectors
+	set_pin_count(multi_ik_effectors.size());
+
+	for (int32_t i = 0; i < multi_ik_effectors.size(); i++) {
+		const MultiIKEffector &effector = multi_ik_effectors[i];
+		set_pin_bone_name(i, effector.bone_name);
+		set_pin_target_node_path(i, effector.target_path);
+		set_pin_weight(i, effector.weight);
+
+		// Set up pole targets if available
+		if (has_pole_target(effector.bone_name)) {
+			// Note: Pole target implementation would need additional work
+			// This is a placeholder for the pole target functionality
+		}
+	}
+
+	set_dirty();
+}
+
+void EWBIK3D::_apply_multi_ik_configuration() {
+	if (!multi_ik_enabled) {
+		return;
+	}
+
+	_update_multi_ik_effectors();
+}
+
+bool EWBIK3D::_validate_multi_ik_setup() const {
+	if (!multi_ik_enabled) {
+		return true;
+	}
+
+	Skeleton3D *skeleton = get_skeleton();
+	if (!skeleton) {
+		return false;
+	}
+
+	// Validate that all effector bones exist
+	for (const MultiIKEffector &effector : multi_ik_effectors) {
+		if (skeleton->find_bone(effector.bone_name) == -1) {
+			return false;
+		}
+	}
+
+	// Validate root bone if specified
+	if (!root_bone_name.is_empty()) {
+		if (skeleton->find_bone(root_bone_name) == -1) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+Vector<String> EWBIK3D::_find_junction_bones() const {
+	Vector<String> junctions;
+	Skeleton3D *skeleton = get_skeleton();
+
+	if (!skeleton) {
+		return junctions;
+	}
+
+	// Find bones that have multiple children or are effectors
+	for (int32_t bone_idx = 0; bone_idx < skeleton->get_bone_count(); bone_idx++) {
+		String bone_name = skeleton->get_bone_name(bone_idx);
+		Vector<int32_t> children = skeleton->get_bone_children(bone_idx);
+
+		bool is_effector = false;
+		for (const MultiIKEffector &effector : multi_ik_effectors) {
+			if (effector.bone_name == bone_name) {
+				is_effector = true;
+				break;
+			}
+		}
+
+		if (children.size() > 1 || is_effector) {
+			junctions.push_back(bone_name);
+		}
+	}
+
+	return junctions;
+}
+
+Vector<Vector<String>> EWBIK3D::_build_effector_chains() const {
+	Vector<Vector<String>> chains;
+	Skeleton3D *skeleton = get_skeleton();
+
+	if (!skeleton) {
+		return chains;
+	}
+
+	// Build chains from each effector to the root
+	for (const MultiIKEffector &effector : multi_ik_effectors) {
+		Vector<String> chain;
+		String current_bone = effector.bone_name;
+
+		// Build chain from effector to root
+		while (!current_bone.is_empty()) {
+			chain.push_back(current_bone);
+			int32_t bone_idx = skeleton->find_bone(current_bone);
+			if (bone_idx == -1) {
+				break;
+			}
+			int32_t parent_idx = skeleton->get_bone_parent(bone_idx);
+			if (parent_idx == -1) {
+				break;
+			}
+			current_bone = skeleton->get_bone_name(parent_idx);
+		}
+
+		if (!chain.is_empty()) {
+			chains.push_back(chain);
+		}
+	}
+
+	return chains;
 }
 
 float EWBIK3D::get_pin_motion_propagation_factor(int32_t p_effector_index) const {

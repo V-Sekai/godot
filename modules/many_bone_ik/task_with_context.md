@@ -40,6 +40,18 @@ This document outlines our strategy for implementing MultiIK (Multi-Effector Inv
 - **AriaJoint integration** for optimized transform calculations
 - **QCP algorithm** ready for Wahba's problem solving
 
+**🔥 NEW CAPABILITY UNLOCKED: Godot + Elixir Side-by-Side Development**
+
+We now have full code access to both:
+- **Godot ManyBoneIK3D**: Complete C++ implementation with GUI, shader system, and gizmo plugins
+- **AriaEwbik (Elixir)**: EWBIK algorithm foundation with AriaJoint/AriaQCP integration
+
+This enables powerful cross-platform development workflows:
+- **Algorithm Migration**: Port proven EWBIK algorithms from Elixir to Godot C++
+- **GUI Enhancement**: Leverage Godot's visualization system for advanced constraint editing
+- **Performance Optimization**: Combine Elixir's mathematical precision with Godot's real-time performance
+- **Standards Compliance**: Ensure VRM1, glTF 2.0, and IEEE-754 compatibility across platforms
+
 ## MultiIK Design Strategy
 
 ### Core Principles (from Godot ManyBoneIK3D)
@@ -101,16 +113,15 @@ end
 4. **Shader-based Constraint Rendering**: Custom shader with RGBA color data for kusudama cone visualization
 5. **Real-time Gizmo Updates**: Dynamic constraint visualization that updates with bone transformations
 
-#### Advanced Features (To Be Implemented)
+#### Advanced Features (To Be Implemented - Focused on Core IK)
 
 1. **Root Selection Interface**: Visual picker for IK chain root with skeleton hierarchy display
 2. **Multi-Effector Management**: Add/remove multiple end effectors with drag-and-drop
 3. **Junction Visualization**: Show automatic branch detection with colored indicators
-4. **Pole Target Controls**: Per-junction orientation controls with visual pole target spheres
-5. **Effector Priority Sliders**: Weight controls for each effector influence
-6. **Real-time IK Preview**: Live solution visualization with performance metrics
-7. **Constraint Library**: Preset anatomical constraints (humanoid, quadruped, etc.)
-8. **Animation Integration**: Keyframe animation compatibility with procedural IK baking
+4. **Dual Constraint Editing**: Interactive editing of twist fins and swing cones
+5. **Current Position Tracking**: Real-time display of current vs limit positions
+6. **Constraint Library**: Preset anatomical constraints (humanoid, quadruped, etc.)
+7. **Real-time IK Preview**: Live solution visualization with performance metrics
 
 ## Technical Implementation Plan
 
@@ -129,23 +140,220 @@ end
 - [ ] Add pole target support to solver
 - [ ] Integrate with existing decomposition algorithm
 
+**Phase 1.6: Cross-Platform Algorithm Migration (NEW - Godot + Elixir Synergy)**
+
+- [ ] **QCP Algorithm Migration**: Port Elixir AriaQCP (69/69 tests) to Godot C++ ManyBoneIK
+  - [ ] Analyze Elixir QCP implementation for algorithmic insights
+  - [ ] Translate quaternion mathematics to C++ with IEEE-754 compliance
+  - [ ] Implement comprehensive test suite translation (69 tests)
+  - [ ] Validate numerical accuracy between Elixir and C++ implementations
+  - [ ] Performance benchmark C++ QCP against Elixir reference
+- [ ] **EWBIK Decomposition Algorithm**: Migrate multi-effector coordination from Elixir to Godot
+  - [ ] Port effector group creation and solve order determination
+  - [ ] Implement junction detection and effector list splitting in C++
+  - [ ] Translate priority weighting and opacity coordination patterns
+  - [ ] Cross-validate algorithm results between platforms
+- [ ] **Constraint System Integration**: Unified Kusudama implementation across platforms
+  - [ ] Standardize cone-based constraint mathematics (Elixir ↔ C++)
+  - [ ] Implement shared constraint serialization format
+  - [ ] Validate constraint application consistency
+  - [ ] Performance optimize constraint evaluation in both environments
+- [ ] **Dual Constraint Visualization**: Implement twist fins + swing cones in Godot
+  - [ ] **Twist Axis Limits**: Fin-based visualization showing current position between min/max limits
+  - [ ] **Swing Kusudama Limits**: Cone visualization showing current vs allowable swing angles
+  - [ ] Update shader system for dual constraint rendering
+  - [ ] Add real-time current position tracking for both constraint types
+- [ ] **Cross-Platform Testing Framework**: Ensure algorithm consistency
+  - [ ] Create shared test data format (skeleton definitions, effector targets)
+  - [ ] Implement result comparison utilities between Elixir and Godot
+  - [ ] Establish performance benchmarking across platforms
+  - [ ] Validate standards compliance (VRM1, glTF 2.0, IEEE-754)
+
+### Investigation: Running Single Scripts from GDScript During SCons Compilation
+
+**Objective**: Enable execution of individual GDScript files during the Godot build process for testing, validation, and utility purposes.
+
+**Current Godot Build System Analysis:**
+
+#### **SCons Build Integration Methods:**
+
+1. **Custom Build Commands in SCsub**
+   ```python
+   # SCsub - Module build configuration
+   Import('env')
+
+   # Add custom command to run GDScript during build
+   def run_gdscript_test(target, source, env):
+       """Execute GDScript test file during compilation"""
+       import subprocess
+       import os
+
+       # Path to Godot executable (built or system)
+       godot_exe = env.get('GODOT_EXE', 'godot')
+
+       # Run specific GDScript file
+       test_script = str(source[0])
+       cmd = [godot_exe, '--script', test_script, '--no-window']
+
+       # Execute and capture output
+       result = subprocess.run(cmd, capture_output=True, text=True)
+
+       # Check for errors
+       if result.returncode != 0:
+           print(f"GDScript test failed: {test_script}")
+           print(f"STDOUT: {result.stdout}")
+           print(f"STDERR: {result.stderr}")
+           return 1
+
+       print(f"GDScript test passed: {test_script}")
+       return 0
+
+   # Register build command
+   env.Command('test_result', 'test_script.gd', run_gdscript_test)
+   ```
+
+2. **GDScript Execution via Command Line**
+   ```bash
+   # Run single GDScript file
+   godot --script path/to/script.gd --no-window
+
+   # With custom arguments
+   godot --script test_validation.gd --test-case kusudama_constraints
+
+   # Headless mode for CI/CD
+   godot --script benchmark.gd --headless --quiet
+   ```
+
+3. **Module-Specific Test Runner**
+   ```python
+   # many_bone_ik/SCsub
+   Import('env')
+
+   # Test runner for Many Bone IK module
+   def run_many_bone_ik_tests(target, source, env):
+       """Run all Many Bone IK tests during build"""
+       import subprocess
+       import glob
+
+       godot_exe = env.get('GODOT_EXE', 'godot')
+
+       # Find all test scripts in module
+       test_files = glob.glob('tests/*.gd')
+
+       for test_file in test_files:
+           print(f"Running test: {test_file}")
+           cmd = [godot_exe, '--script', test_file, '--no-window']
+           result = subprocess.run(cmd, capture_output=True, text=True)
+
+           if result.returncode != 0:
+               print(f"Test failed: {test_file}")
+               print(f"Output: {result.stdout}")
+               print(f"Errors: {result.stderr}")
+               return 1
+
+       print("All Many Bone IK tests passed!")
+       return 0
+
+   # Add to build targets
+   env.Command('many_bone_ik_tests', Glob('tests/*.gd'), run_many_bone_ik_tests)
+   ```
+
+#### **GDScript Test Script Structure:**
+
+```gdscript
+# tests/test_kusudama_constraints.gd
+extends SceneTree
+
+func _init():
+    print("Running Kusudama constraint tests...")
+
+    # Test constraint validation
+    var result = test_constraint_validation()
+    if not result:
+        print("Constraint validation test failed!")
+        quit(1)
+
+    # Test limit enforcement
+    result = test_limit_enforcement()
+    if not result:
+        print("Limit enforcement test failed!")
+        quit(1)
+
+    print("All Kusudama constraint tests passed!")
+    quit(0)
+
+func test_constraint_validation():
+    # Test implementation
+    return true
+
+func test_limit_enforcement():
+    # Test implementation
+    return true
+```
+
+#### **Build System Integration Options:**
+
+1. **Pre-build Validation**
+   ```python
+   # Run before main compilation
+   env.AddPreAction('many_bone_ik', run_many_bone_ik_tests)
+   ```
+
+2. **Post-build Testing**
+   ```python
+   # Run after successful compilation
+   env.AddPostAction('many_bone_ik', run_many_bone_ik_tests)
+   ```
+
+3. **Conditional Execution**
+   ```python
+   # Only run if GODOT_TEST=1 environment variable is set
+   if env.get('GODOT_TEST', '0') == '1':
+       env.Command('test_results', test_files, run_tests)
+   ```
+
+#### **Investigation Tasks:**
+
+- [ ] **Analyze Current SCsub**: Examine existing build configuration for Many Bone IK module
+- [ ] **Test Godot CLI Options**: Verify `--script` and `--no-window` functionality
+- [ ] **Implement Test Runner**: Create SCsub integration for running GDScript tests
+- [ ] **Validate Build Integration**: Ensure tests run correctly during scons compilation
+- [ ] **Document Usage**: Create guidelines for developers on running individual scripts
+- [ ] **CI/CD Integration**: Set up automated testing in build pipeline
+
+#### **Benefits:**
+
+- **Early Error Detection**: Catch issues during compilation rather than runtime
+- **Automated Testing**: Ensure code quality with every build
+- **Validation Scripts**: Run mathematical validation against known test cases
+- **Performance Benchmarks**: Automated performance testing during build
+- **Cross-Platform Consistency**: Validate behavior across different platforms
+
+#### **Challenges to Investigate:**
+
+- **Godot Executable Path**: How to reliably locate Godot binary during build
+- **Headless Mode**: Ensuring proper headless execution without display
+- **Error Handling**: Proper error reporting and build failure on test failures
+- **Performance Impact**: Minimizing build time impact of running scripts
+- **Dependency Management**: Ensuring test scripts have access to required modules
+
 ### Phase 2: GUI Framework (Based on Godot Gizmo Plugin Architecture)
 
 - [ ] **Implement Gizmo Plugin System**: Create EditorNode3DGizmoPlugin with gizmo registration
-- [ ] **Sphere Mesh Generation**: 8 rings × 8 radial segments for smooth kusudama visualization (0.02f scale)
-- [ ] **Shader Material System**: Custom ShaderMaterial with RGBA color data for constraint rendering
+- [ ] **Dual Constraint Mesh Generation**: Generate both fin-based twist indicators and cone-based swing limits
+- [ ] **Enhanced Shader Material System**: Custom ShaderMaterial with RGBA color data for dual constraint rendering
 - [ ] **Bone Selection Interface**: Click-to-select with visual feedback (yellow/blue color coding)
 - [ ] **Edit Mode Toggle**: Button integration with Node3DEditor menu panel
 - [ ] **Transform Coordinate Handling**: Complex skeleton ↔ gizmo ↔ constraint space transformations
 - [ ] **Real-time Gizmo Updates**: Dynamic constraint visualization with bone pose changes
-- [ ] **Handle Mesh System**: Point-based bone handles with custom shader materials
+- [ ] **Dual Handle System**: Interactive handles for both twist fin and swing cone editing
 
 ### Phase 3: Advanced Features
 
 - [ ] Effector priority weighting system
-- [ ] Pole target visualization and editing
+- [ ] Enhanced dual constraint editing tools
 - [ ] Constraint library and presets
-- [ ] Animation integration
+- [ ] Real-time IK performance monitoring
 
 ### Phase 4: Optimization and Testing
 
@@ -212,7 +420,7 @@ end
 
 - [ ] Single root with multiple end effectors
 - [ ] Automatic junction detection and chain splitting
-- [ ] Pole target support for each junction
+- [ ] Dual constraint visualization (twist fins + swing cones)
 - [ ] Real-time IK solving at 30+ FPS
 - [ ] Stable convergence for complex character rigs
 
@@ -241,6 +449,8 @@ end
 
 ## Conclusion
 
-The MultiIK design strategy provides a solid foundation for implementing sophisticated multi-effector inverse kinematics in the AriaEwbik system. By following the Godot ManyBoneIK3D approach of single root with multiple end effectors, automatic junction detection, and comprehensive pole target support, we can create a powerful and user-friendly IK system for complex character animation scenarios.
+The MultiIK design strategy provides a solid foundation for implementing sophisticated multi-effector inverse kinematics in the AriaEwbik system. By following the Godot ManyBoneIK3D approach of single root with multiple end effectors, automatic junction detection, and dual constraint visualization (twist fins + swing cones), we can create a powerful and user-friendly IK system for complex character animation scenarios.
+
+The cross-platform synergy between Godot and Elixir enables us to leverage the best of both worlds: Elixir's mathematical precision and comprehensive testing for algorithm development, combined with Godot's real-time performance and advanced GUI capabilities for production deployment.
 
 The phased implementation approach ensures we build a robust foundation before adding advanced GUI features and optimization, resulting in a production-ready MultiIK system that serves the needs of game developers and animation professionals.

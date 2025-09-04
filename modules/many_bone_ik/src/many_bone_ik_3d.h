@@ -149,7 +149,53 @@ public:
 	void set_kusudama_open_cone_radius(int32_t p_constraint_index, int32_t p_index, float p_radius);
 	void cleanup();
 
+	// MultiIK-specific methods
+	void set_multi_ik_enabled(bool p_enabled);
+	bool get_multi_ik_enabled() const;
+	void set_root_bone_name(const String &p_root_bone);
+	String get_root_bone_name() const;
+	void add_effector(const String &p_bone_name, const NodePath &p_target_path = NodePath(), real_t p_weight = 1.0);
+	void remove_effector(int32_t p_index);
+	void clear_effectors();
+	int32_t get_effector_count() const;
+	String get_effector_bone_name(int32_t p_index) const;
+	void set_effector_target(int32_t p_index, const NodePath &p_target_path);
+	NodePath get_effector_target(int32_t p_index) const;
+	void set_effector_weight(int32_t p_index, real_t p_weight);
+	real_t get_effector_weight(int32_t p_index) const;
+	void set_pole_target(const String &p_bone_name, const NodePath &p_pole_target);
+	void remove_pole_target(const String &p_bone_name);
+	bool has_pole_target(const String &p_bone_name) const;
+	NodePath get_pole_target(const String &p_bone_name) const;
+
+	// Junction and chain management
+	Vector<String> get_junction_bones() const;
+	Vector<Vector<String>> get_effector_chains() const;
+	void set_chain_priority(int32_t p_chain_index, real_t p_priority);
+	real_t get_chain_priority(int32_t p_chain_index) const;
+
 	EWBIK3D();
 	~EWBIK3D();
 	void set_dirty();
+
+private:
+	// MultiIK state
+	bool multi_ik_enabled = false;
+	String root_bone_name;
+	struct MultiIKEffector {
+		String bone_name;
+		NodePath target_path;
+		real_t weight = 1.0;
+		NodePath pole_target;
+	};
+	Vector<MultiIKEffector> multi_ik_effectors;
+	HashMap<String, NodePath> pole_targets;
+	Vector<real_t> chain_priorities;
+
+	// MultiIK helper methods
+	void _update_multi_ik_effectors();
+	void _apply_multi_ik_configuration();
+	bool _validate_multi_ik_setup() const;
+	Vector<String> _find_junction_bones() const;
+	Vector<Vector<String>> _build_effector_chains() const;
 };
