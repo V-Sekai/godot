@@ -1642,6 +1642,7 @@ private:
 		DefaultFrames(RenderingDeviceDriver *p_driver): Frames(p_driver) {}
 	};
 
+#ifdef EXTERNAL_TARGET_ENABLED
 	class MonitoredFrames;
 
 	struct FenceData {
@@ -1798,6 +1799,7 @@ private:
 			monitor_thread.wait_to_finish();
 		}
 	};
+#endif
 
 	Frames *frames;
 

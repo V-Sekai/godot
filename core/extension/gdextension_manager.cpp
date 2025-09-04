@@ -370,7 +370,6 @@ bool GDExtensionManager::ensure_extensions_loaded(const HashSet<String> &p_exten
 	}
 
 	Vector<String> loaded_extensions = get_loaded_extensions();
-	int i = 0;
 	for (const String &loaded_extension : loaded_extensions) {
 		if (!p_extensions.has(loaded_extension)) {
 			// The extension may not have a .gdextension file.
@@ -379,8 +378,6 @@ bool GDExtensionManager::ensure_extensions_loaded(const HashSet<String> &p_exten
 				extensions_removed.push_back(loaded_extension);
 			}
 		}
-		
-		i++;
 	}
 
 	String extension_list_config_file = GDExtension::get_extension_list_config_file();

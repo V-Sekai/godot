@@ -115,7 +115,9 @@ DisplayServerEmbedded::DisplayServerEmbedded(const String &p_rendering_driver, W
 		rendering_device->initialize(rendering_context, MAIN_WINDOW_ID, monitored_frames);
 		rendering_device->screen_create(MAIN_WINDOW_ID);
 
+#ifdef EXTERNAL_TARGET_ENABLED
 		native_surface->setup_external_swapchain_callbacks();
+#endif
 
 		RendererCompositorRD::make_current();
 	}

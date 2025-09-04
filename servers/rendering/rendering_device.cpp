@@ -6713,9 +6713,12 @@ Error RenderingDevice::initialize(RenderingContextDriver *p_context, DisplayServ
 		frame_count = MAX(2U, uint32_t(GLOBAL_GET("rendering/rendering_device/vsync/frame_queue_size")));
 	}
 
+#ifdef EXTERNAL_TARGET_ENABLED
 	if (p_monitored_frames) {
 		frames = new MonitoredFrames(driver, this);
-	} else {
+	} else
+#endif
+	{
 		frames = new DefaultFrames(driver);
 	}
 

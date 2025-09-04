@@ -39,6 +39,8 @@
 #include "servers/display_server.h"
 #include "servers/rendering/gl_manager.h"
 
+#ifdef EXTERNAL_TARGET_ENABLED
+
 class GLManagerExternal;
 
 class RenderingNativeSurfaceExternalTarget : public RenderingNativeSurface {    // Defines both Vulkan and OpenGL behavior.
@@ -109,5 +111,7 @@ public:
     RenderingNativeSurfaceExternalTarget(String p_rendering_driver, int p_width, int p_height);
     ~RenderingNativeSurfaceExternalTarget() {};
 };
+
+#endif
 
 #endif // RENDERING_NATIVE_SURFACE_EXTERNAL_TARGET_H

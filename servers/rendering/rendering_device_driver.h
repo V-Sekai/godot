@@ -452,6 +452,7 @@ public:
 	// Android uses this with Swappy library. Some implementations or platforms may ignore this hint.
 	virtual void swap_chain_set_max_fps(SwapChainID p_swap_chain, int p_max_fps) {}
 
+#ifdef EXTERNAL_TARGET_ENABLED
 	// Retrieve a swap chain's mutex.
 	virtual BinaryMutex *swap_chain_get_mutex(SwapChainID p_swap_chain) { return nullptr; }
 
@@ -469,6 +470,7 @@ public:
 
 	// Retrieve swap chain version.
 	virtual uint64_t swap_chain_get_version(SwapChainID p_swap_chain) { return 0; }
+#endif
 
 	// Wait until all rendering associated to the swap chain is finished before deleting it.
 	virtual void swap_chain_free(SwapChainID p_swap_chain) = 0;

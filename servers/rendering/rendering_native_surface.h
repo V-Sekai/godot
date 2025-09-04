@@ -46,8 +46,9 @@ public:
 	RenderingNativeSurface();
 	~RenderingNativeSurface();
 
-	// TODO: Don't have this in the base interface.
+#ifdef EXTERNAL_TARGET_ENABLED
 	virtual void setup_external_swapchain_callbacks();
+#endif
 
 	virtual RenderingContextDriver *create_rendering_context(const String &p_driver_name) = 0;
 

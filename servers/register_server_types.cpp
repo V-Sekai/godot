@@ -146,7 +146,9 @@ void register_core_server_types() {
 	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurface);
 	GDREGISTER_CLASS(DisplayServerEmbeddedHostInterface);
 	GDREGISTER_ABSTRACT_CLASS(DisplayServer);
+#ifdef EXTERNAL_TARGET_ENABLED
 	GDREGISTER_CLASS(RenderingNativeSurfaceExternalTarget);
+#endif
 	GDREGISTER_ABSTRACT_CLASS(DisplayServerEmbedded);
 	OS::get_singleton()->benchmark_end_measure("Servers", "Register Core Extensions");
 }

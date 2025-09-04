@@ -474,6 +474,7 @@ private:
 		): SwapChain(p_device_driver, p_surface, p_format, p_color_space, p_render_pass) {}
 	};
 
+#ifdef EXTERNAL_TARGET_ENABLED
 	class ExternalSwapChain: public SwapChain {
 		TightLocalVector<VkDeviceMemory> image_memories;
 		TightLocalVector<bool> externally_acquired;
@@ -879,6 +880,7 @@ private:
 			swapchain = p_swapchain;
 		}
 	};
+#endif
 
 	void _swap_chain_release(SwapChain *p_swap_chain);
 
@@ -890,23 +892,26 @@ public:
 	virtual int swap_chain_get_pre_rotation_degrees(SwapChainID p_swap_chain) override final;
 	virtual DataFormat swap_chain_get_format(SwapChainID p_swap_chain) override final;
 	virtual void swap_chain_set_max_fps(SwapChainID p_swap_chain, int p_max_fps) override final;
+#ifdef EXTERNAL_TARGET_ENABLED
 	virtual BinaryMutex *swap_chain_get_mutex(SwapChainID p_swap_chain) override final;
 	virtual void swap_chain_set_frame_in_use(SwapChainID p_swap_chain, size_t p_index, bool p_in_use) override final;
 	virtual int swap_chain_get_last_drawn_buffer(SwapChainID p_swap_chain) override final;
 	virtual void swap_chain_set_last_drawn_buffer(SwapChainID p_swap_chain, int p_buffer) override final;
 	virtual uint32_t swap_chain_get_image_index(SwapChainID p_swap_chain) override final;
 	virtual uint64_t swap_chain_get_version(SwapChainID p_swap_chain) override final;
+#endif
 	virtual void swap_chain_free(SwapChainID p_swap_chain) override final;
 
+#ifdef EXTERNAL_TARGET_ENABLED
 	void external_swap_chain_set_callbacks(SwapChainID p_swap_chain, Callable p_images_created, Callable p_images_released);
 	void external_swap_chain_release_image(SwapChainID p_swap_chain, uint32_t p_index);
 	VkImage external_swap_chain_get_image(SwapChainID p_swap_chain, uint32_t p_index);
 	int external_swap_chain_grab_image(SwapChainID p_swap_chain);
 
 	VkResult get_external_memory_handle(VkDevice p_device, VkDeviceMemory p_device_memory, uint64_t* p_exernal_handle_out);
+#endif
 
 private:
-
 	/*********************/
 	/**** FRAMEBUFFER ****/
 	/*********************/

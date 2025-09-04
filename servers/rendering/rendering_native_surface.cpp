@@ -39,5 +39,7 @@ RenderingNativeSurface::RenderingNativeSurface() {
 RenderingNativeSurface::~RenderingNativeSurface() {
 }
 
+#ifdef EXTERNAL_TARGET_ENABLED
 void RenderingNativeSurface::setup_external_swapchain_callbacks() {
 }
+#endif

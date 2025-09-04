@@ -3095,6 +3095,7 @@ void RenderingDeviceDriverVulkan::PresentableSwapChain::release() {
 	present_semaphores.clear();
 }
 
+#ifdef EXTERNAL_TARGET_ENABLED
 void RenderingDeviceDriverVulkan::ExternalSwapChain::release() {
 	// Destroy views and framebuffers associated to the swapchain's images.
 
@@ -3181,6 +3182,7 @@ void RenderingDeviceDriverVulkan::ExternalSwapChain::release() {
 		present_semaphores.clear();
 	}
 }
+#endif
 
 RenderingDeviceDriver::SwapChainID RenderingDeviceDriverVulkan::swap_chain_create(RenderingContextDriver::SurfaceID p_surface) {
 	DEV_ASSERT(p_surface != 0);
@@ -3269,10 +3271,13 @@ RenderingDeviceDriver::SwapChainID RenderingDeviceDriverVulkan::swap_chain_creat
 
 	SwapChain *swap_chain = nullptr;
 
-	if (!surface->headless) {
-		swap_chain = memnew(PresentableSwapChain(this, p_surface, format, color_space, render_pass_info));
-	} else {
+#ifdef EXTERNAL_TARGET_ENABLED
+	if (surface->headless) {
 		swap_chain = memnew(ExternalSwapChain(this, p_surface, format, color_space, render_pass_info));
+	} else
+#endif
+	{
+		swap_chain = memnew(PresentableSwapChain(this, p_surface, format, color_space, render_pass_info));
 	}
 
 	return SwapChainID(swap_chain);
@@ -3555,6 +3560,7 @@ Error RenderingDeviceDriverVulkan::PresentableSwapChain::resize(CommandQueueID p
 	return OK;
 }
 
+#ifdef EXTERNAL_TARGET_ENABLED
 Error RenderingDeviceDriverVulkan::ExternalSwapChain::resize(CommandQueueID p_cmd_queue, uint32_t p_desired_framebuffer_count) {
 	// Release all current contents of the swap chain.
 	release();
@@ -3737,6 +3743,7 @@ Error RenderingDeviceDriverVulkan::ExternalSwapChain::resize(CommandQueueID p_cm
 
 	return OK;
 }
+#endif
 
 Error RenderingDeviceDriverVulkan::swap_chain_resize(CommandQueueID p_cmd_queue, SwapChainID p_swap_chain, uint32_t p_desired_framebuffer_count) {
 	DEV_ASSERT(p_cmd_queue.id != 0);
@@ -3812,6 +3819,7 @@ RDD::FramebufferID RenderingDeviceDriverVulkan::PresentableSwapChain::acquire_fr
 	return framebuffer_id;
 }
 
+#ifdef EXTERNAL_TARGET_ENABLED
 RDD::FramebufferID RenderingDeviceDriverVulkan::ExternalSwapChain::acquire_framebuffer(CommandQueue *p_command_queue, bool &r_resize_required) {
 	// NOTE:
 		// external_swapchain_acquire_next is NOT acquire_framebuffer
@@ -3836,6 +3844,7 @@ RDD::FramebufferID RenderingDeviceDriverVulkan::ExternalSwapChain::acquire_frame
 
 	return framebuffers[image_index];
 }
+#endif
 
 RDD::FramebufferID RenderingDeviceDriverVulkan::swap_chain_acquire_framebuffer(CommandQueueID p_cmd_queue, SwapChainID p_swap_chain, bool &r_resize_required) {
 	DEV_ASSERT(p_cmd_queue);
@@ -3892,6 +3901,7 @@ void RenderingDeviceDriverVulkan::swap_chain_set_max_fps(SwapChainID p_swap_chai
 #endif
 }
 
+#ifdef EXTERNAL_TARGET_ENABLED
 BinaryMutex *RenderingDeviceDriverVulkan::swap_chain_get_mutex(SwapChainID p_swap_chain) {
 	SwapChain *swap_chain = (SwapChain *)(p_swap_chain.id);
 
@@ -3927,6 +3937,7 @@ uint64_t RenderingDeviceDriverVulkan::swap_chain_get_version(SwapChainID p_swap_
 
 	return swap_chain->get_version();
 }
+#endif
 
 void RenderingDeviceDriverVulkan::swap_chain_free(SwapChainID p_swap_chain) {
 	DEV_ASSERT(p_swap_chain.id != 0);
@@ -3941,6 +3952,7 @@ void RenderingDeviceDriverVulkan::swap_chain_free(SwapChainID p_swap_chain) {
 	memdelete(swap_chain);
 }
 
+#ifdef EXTERNAL_TARGET_ENABLED
 void RenderingDeviceDriverVulkan::external_swap_chain_set_callbacks(SwapChainID p_swap_chain, Callable p_images_created, Callable p_images_released) {
 	ExternalSwapChain *swap_chain = (ExternalSwapChain *)(p_swap_chain.id);
 
@@ -3986,6 +3998,7 @@ VkResult RenderingDeviceDriverVulkan::get_external_memory_handle(VkDevice p_devi
 	return VK_ERROR_INITIALIZATION_FAILED;
 #endif
 }
+#endif
 
 /*********************/
 /**** FRAMEBUFFER ****/

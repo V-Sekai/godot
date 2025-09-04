@@ -33,6 +33,8 @@
 #include "servers/display_server_embedded.h"
 #include "servers/rendering/rendering_device.h"
 
+#ifdef EXTERNAL_TARGET_ENABLED
+
 #ifdef VULKAN_ENABLED
 #include "drivers/vulkan/rendering_device_driver_vulkan.h"
 #endif
@@ -426,3 +428,4 @@ RenderingNativeSurfaceExternalTarget::RenderingNativeSurfaceExternalTarget(Strin
 	width = p_width;
 	height = p_height;
 }
+#endif

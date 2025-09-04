@@ -984,6 +984,7 @@ void RenderingContextDriverVulkan::driver_free(RenderingDeviceDriver *p_driver) 
 }
 
 RenderingContextDriver::SurfaceID RenderingContextDriverVulkan::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
+#ifdef EXTERNAL_TARGET_ENABLED
 	Ref<RenderingNativeSurfaceExternalTarget> external_native_surface = Object::cast_to<RenderingNativeSurfaceExternalTarget>(*p_native_surface);
 	if (external_native_surface.is_valid()) {
 		Surface *surface = memnew(Surface);
@@ -996,6 +997,7 @@ RenderingContextDriver::SurfaceID RenderingContextDriverVulkan::surface_create(R
 		external_native_surface->set_surface(surface_id);
 		return  surface_id;
 	}
+#endif
 
 	Ref<RenderingNativeSurfaceVulkan> vulkan_native_surface = Object::cast_to<RenderingNativeSurfaceVulkan>(*p_native_surface);
 	ERR_FAIL_COND_V(vulkan_native_surface == nullptr, SurfaceID());
@@ -1046,7 +1048,12 @@ bool RenderingContextDriverVulkan::surface_get_needs_resize(SurfaceID p_surface)
 void RenderingContextDriverVulkan::surface_destroy(SurfaceID p_surface) {
 	Surface *surface = (Surface *)(p_surface);
 
-	if (!surface->headless) {
+#ifdef EXTERNAL_TARGET_ENABLED
+	const bool should_destroy_surface = !surface->headless;
+#else
+	const bool should_destroy_surface = true;
+#endif
+	if (should_destroy_surface) {
 		functions.DestroySurfaceKHR(instance, surface->vk_surface, get_allocation_callbacks(VK_OBJECT_TYPE_SURFACE_KHR));
 	}
 	
