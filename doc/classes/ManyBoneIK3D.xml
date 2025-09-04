@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ManyBoneIK3D" inherits="SkeletonModifier3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="reset">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="BONE_DIRECTION_PLUS_X" value="0" enum="BoneDirection">
+		</constant>
+		<constant name="BONE_DIRECTION_MINUS_X" value="1" enum="BoneDirection">
+		</constant>
+		<constant name="BONE_DIRECTION_PLUS_Y" value="2" enum="BoneDirection">
+		</constant>
+		<constant name="BONE_DIRECTION_MINUS_Y" value="3" enum="BoneDirection">
+		</constant>
+		<constant name="BONE_DIRECTION_PLUS_Z" value="4" enum="BoneDirection">
+		</constant>
+		<constant name="BONE_DIRECTION_MINUS_Z" value="5" enum="BoneDirection">
+		</constant>
+		<constant name="BONE_DIRECTION_FROM_PARENT" value="6" enum="BoneDirection">
+		</constant>
+		<constant name="ROTATION_AXIS_X" value="0" enum="RotationAxis">
+		</constant>
+		<constant name="ROTATION_AXIS_Y" value="1" enum="RotationAxis">
+		</constant>
+		<constant name="ROTATION_AXIS_Z" value="2" enum="RotationAxis">
+		</constant>
+		<constant name="ROTATION_AXIS_ALL" value="3" enum="RotationAxis">
+		</constant>
+		<constant name="ROTATION_AXIS_CUSTOM" value="4" enum="RotationAxis">
+		</constant>
+	</constants>
+</class>

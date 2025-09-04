@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bone_constraint_3d.h                                                  */
+/*  ccd_ik_3d.cpp                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,60 +28,34 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "ccd_ik_3d.h"
 
-#include "scene/3d/skeleton_modifier_3d.h"
+void CCDIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, ChainIK3DSetting *p_setting, Vector<ManyBoneIK3DJointSetting *> &p_joints, Vector<Vector3> &p_chain, const Vector3 &p_destination, int p_joint_size, int p_chain_size) {
+	// Backwards.
+	for (int ancestor = p_joint_size - 1; ancestor >= 0; ancestor--) {
+		// Forwards.
+		for (int i = ancestor; i < p_joint_size; i++) {
+			ManyBoneIK3DSolverInfo *solver_info = p_joints[i]->solver_info;
+			if (!solver_info || Math::is_zero_approx(solver_info->length)) {
+				continue;
+			}
 
-class BoneConstraint3D : public SkeletonModifier3D {
-	GDCLASS(BoneConstraint3D, SkeletonModifier3D);
+			int HEAD = i;
+			int TAIL = i + 1;
 
-public:
-	struct BoneConstraint3DSetting {
-		float amount = 1.0;
+			Vector3 current_head = p_chain[HEAD];
+			Vector3 current_effector = p_chain[p_chain_size - 1];
+			Vector3 head_to_effector = current_effector - current_head;
+			Vector3 head_to_destination = p_destination - current_head;
 
-		String apply_bone_name;
-		int apply_bone = -1;
+			if (Math::is_zero_approx(head_to_destination.length_squared() * head_to_effector.length_squared())) {
+				continue;
+			}
 
-		String reference_bone_name;
-		int reference_bone = -1;
-	};
+			Quaternion to_rot = Quaternion(head_to_effector.normalized(), head_to_destination.normalized());
+			Vector3 to_tail = p_chain[TAIL] - current_head;
 
-protected:
-	Vector<BoneConstraint3DSetting *> settings;
-
-	bool _get(const StringName &p_path, Variant &r_ret) const;
-	bool _set(const StringName &p_path, const Variant &p_value);
-
-	// Define get_property_list() instead of _get_property_list()
-	// to merge child class properties into parent class array inspector.
-	void get_property_list(List<PropertyInfo> *p_list) const; // Will be called by child classes.
-
-	virtual void _validate_bone_names() override;
-	static void _bind_methods();
-
-	virtual void _process_modification(double p_delta) override;
-
-	virtual void _process_constraint(int p_index, Skeleton3D *p_skeleton, int p_apply_bone, int p_reference_bone, float p_amount);
-	virtual void _validate_setting(int p_index);
-
-public:
-	void set_amount(int p_index, float p_amount);
-	float get_amount(int p_index) const;
-
-	void set_apply_bone_name(int p_index, const String &p_bone_name);
-	String get_apply_bone_name(int p_index) const;
-	void set_apply_bone(int p_index, int p_bone);
-	int get_apply_bone(int p_index) const;
-
-	void set_reference_bone_name(int p_index, const String &p_bone_name);
-	String get_reference_bone_name(int p_index) const;
-	void set_reference_bone(int p_index, int p_bone);
-	int get_reference_bone(int p_index) const;
-
-	void set_setting_count(int p_count);
-	int get_setting_count() const;
-
-	void clear_settings();
-
-	~BoneConstraint3D();
-};
+			p_setting->update_chain_coordinate(p_skeleton, TAIL, current_head + to_rot.xform(to_tail), false);
+		}
+	}
+}

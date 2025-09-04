@@ -354,7 +354,12 @@ void SpringBoneSimulator3D::_validate_dynamic_prop(PropertyInfo &p_property) con
 		int which = split[1].to_int();
 
 		// Extended end bone option.
-		if (split[2] == "end_bone" && !is_end_bone_extended(which) && split.size() > 3) {
+		bool force_hide = false;
+		if (split[2] == "extend_end_bone" && get_end_bone(which) != -1) {
+			p_property.usage = PROPERTY_USAGE_NONE;
+			force_hide = true;
+		}
+		if (force_hide || (split[2] == "end_bone" && !is_end_bone_extended(which) && split.size() > 3)) {
 			p_property.usage = PROPERTY_USAGE_NONE;
 		}
 
@@ -502,6 +507,7 @@ void SpringBoneSimulator3D::set_end_bone(int p_index, int p_bone) {
 	if (changed) {
 		_update_joint_array(p_index);
 	}
+	notify_property_list_changed();
 }
 
 int SpringBoneSimulator3D::get_end_bone(int p_index) const {

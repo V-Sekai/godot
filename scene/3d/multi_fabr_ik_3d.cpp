@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  bone_constraint_3d.h                                                  */
+/*  multi_fabr_ik_3d.cpp                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,60 +28,25 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "multi_fabr_ik_3d.h"
 
-#include "scene/3d/skeleton_modifier_3d.h"
-
-class BoneConstraint3D : public SkeletonModifier3D {
-	GDCLASS(BoneConstraint3D, SkeletonModifier3D);
-
-public:
-	struct BoneConstraint3DSetting {
-		float amount = 1.0;
-
-		String apply_bone_name;
-		int apply_bone = -1;
-
-		String reference_bone_name;
-		int reference_bone = -1;
-	};
-
-protected:
-	Vector<BoneConstraint3DSetting *> settings;
-
-	bool _get(const StringName &p_path, Variant &r_ret) const;
-	bool _set(const StringName &p_path, const Variant &p_value);
-
-	// Define get_property_list() instead of _get_property_list()
-	// to merge child class properties into parent class array inspector.
-	void get_property_list(List<PropertyInfo> *p_list) const; // Will be called by child classes.
-
-	virtual void _validate_bone_names() override;
-	static void _bind_methods();
-
-	virtual void _process_modification(double p_delta) override;
-
-	virtual void _process_constraint(int p_index, Skeleton3D *p_skeleton, int p_apply_bone, int p_reference_bone, float p_amount);
-	virtual void _validate_setting(int p_index);
-
-public:
-	void set_amount(int p_index, float p_amount);
-	float get_amount(int p_index) const;
-
-	void set_apply_bone_name(int p_index, const String &p_bone_name);
-	String get_apply_bone_name(int p_index) const;
-	void set_apply_bone(int p_index, int p_bone);
-	int get_apply_bone(int p_index) const;
-
-	void set_reference_bone_name(int p_index, const String &p_bone_name);
-	String get_reference_bone_name(int p_index) const;
-	void set_reference_bone(int p_index, int p_bone);
-	int get_reference_bone(int p_index) const;
-
-	void set_setting_count(int p_count);
-	int get_setting_count() const;
-
-	void clear_settings();
-
-	~BoneConstraint3D();
-};
+void MultiFABRIK3D::_process_joints(double p_delta, Skeleton3D *p_skeleton) {
+	for (int i = 0; i < settings.size(); i++) {
+		Node3D *target = Object::cast_to<Node3D>(get_node_or_null(settings[i]->target_node));
+		if (!target || settings[i]->joints.is_empty()) {
+			continue; // Abort.
+		}
+		Node3D *pole = Object::cast_to<Node3D>(get_node_or_null(settings[i]->pole_node));
+		Vector3 destination = settings[i]->cached_space.affine_inverse().xform(target->get_global_position());
+		_process_joints_forward(p_delta, p_skeleton, settings[i], settings[i]->joints, settings[i]->chain, destination, !pole ? destination : settings[i]->cached_space.affine_inverse().xform(pole->get_global_position()), !!pole);
+	}
+	for (int i = 0; i < settings.size(); i++) {
+		Node3D *target = Object::cast_to<Node3D>(get_node_or_null(settings[i]->target_node));
+		if (!target || settings[i]->joints.is_empty()) {
+			continue; // Abort.
+		}
+		Node3D *pole = Object::cast_to<Node3D>(get_node_or_null(settings[i]->pole_node));
+		Vector3 destination = settings[i]->cached_space.affine_inverse().xform(target->get_global_position());
+		_process_joints_backward(p_delta, p_skeleton, settings[i], settings[i]->joints, settings[i]->chain, destination, !pole ? destination : settings[i]->cached_space.affine_inverse().xform(pole->get_global_position()), !!pole);
+	}
+}

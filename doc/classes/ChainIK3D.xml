@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="ChainIK3D" inherits="ManyBoneIK3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="clear_settings">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="get_end_bone" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_end_bone_direction" qualifiers="const">
+			<return type="int" enum="ManyBoneIK3D.BoneDirection" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_end_bone_length" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_end_bone_name" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_joint_bone" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_joint_bone_name" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_joint_count" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_joint_limitation" qualifiers="const">
+			<return type="JointLimitation3D" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_joint_rotation_axis" qualifiers="const">
+			<return type="int" enum="ManyBoneIK3D.RotationAxis" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_joint_rotation_axis_vector" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_pole_node" qualifiers="const">
+			<return type="NodePath" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_root_bone" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_root_bone_name" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="get_target_node" qualifiers="const">
+			<return type="NodePath" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="is_end_bone_extended" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_end_bone">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="bone" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_end_bone_direction">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="bone_direction" type="int" enum="ManyBoneIK3D.BoneDirection" />
+			<description>
+			</description>
+		</method>
+		<method name="set_end_bone_length">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="length" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="set_end_bone_name">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="bone_name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_extend_end_bone">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="set_joint_limitation">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<param index="2" name="limitation" type="JointLimitation3D" />
+			<description>
+			</description>
+		</method>
+		<method name="set_joint_rotation_axis">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<param index="2" name="axis" type="int" enum="ManyBoneIK3D.RotationAxis" />
+			<description>
+			</description>
+		</method>
+		<method name="set_joint_rotation_axis_vector">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="joint" type="int" />
+			<param index="2" name="axis_vector" type="Vector3" />
+			<description>
+			</description>
+		</method>
+		<method name="set_pole_node">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="pole_node" type="NodePath" />
+			<description>
+			</description>
+		</method>
+		<method name="set_root_bone">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="bone" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_root_bone_name">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="bone_name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_target_node">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="target_node" type="NodePath" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="angular_delta_limit" type="float" setter="set_angular_delta_limit" getter="get_angular_delta_limit" default="0.034906585">
+		</member>
+		<member name="max_iterations" type="int" setter="set_max_iterations" getter="get_max_iterations" default="4">
+		</member>
+		<member name="min_distance" type="float" setter="set_min_distance" getter="get_min_distance" default="0.01">
+		</member>
+		<member name="setting_count" type="int" setter="set_setting_count" getter="get_setting_count" default="0">
+		</member>
+	</members>
+</class>
