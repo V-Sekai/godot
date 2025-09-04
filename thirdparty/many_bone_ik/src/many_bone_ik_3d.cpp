@@ -58,9 +58,9 @@ void EWBIK3D::set_pin_count(int32_t p_value) {
 		int pin_index = 0;
 		for (int root_i = 0; root_i < roots.size(); root_i++) {
 			int root_bone_index = roots[root_i];
-			String root_bone_name = skeleton->get_bone_name(root_bone_index);
+			String local_root_bone_name = skeleton->get_bone_name(root_bone_index);
 			set_pin_count(get_pin_count() + 1);
-			set_pin_bone_name(pin_index, root_bone_name);
+			set_pin_bone_name(pin_index, local_root_bone_name);
 			pin_index++;
 
 			if (skeleton->get_bone_children(root_bone_index).size() > 0) {
@@ -456,8 +456,10 @@ void EWBIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("remove_pole_target", "bone_name"), &EWBIK3D::remove_pole_target);
 	ClassDB::bind_method(D_METHOD("has_pole_target", "bone_name"), &EWBIK3D::has_pole_target);
 	ClassDB::bind_method(D_METHOD("get_pole_target", "bone_name"), &EWBIK3D::get_pole_target);
-	ClassDB::bind_method(D_METHOD("get_junction_bones"), &EWBIK3D::get_junction_bones);
-	ClassDB::bind_method(D_METHOD("get_effector_chains"), &EWBIK3D::get_effector_chains);
+	// Note: get_junction_bones and get_effector_chains return Vector<Vector<String>>
+	// which is not supported by Godot's Variant system, so we don't bind them
+	// ClassDB::bind_method(D_METHOD("get_junction_bones"), &EWBIK3D::get_junction_bones);
+	// ClassDB::bind_method(D_METHOD("get_effector_chains"), &EWBIK3D::get_effector_chains);
 	ClassDB::bind_method(D_METHOD("set_chain_priority", "chain_index", "priority"), &EWBIK3D::set_chain_priority);
 	ClassDB::bind_method(D_METHOD("get_chain_priority", "chain_index"), &EWBIK3D::get_chain_priority);
 
