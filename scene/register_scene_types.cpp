@@ -107,6 +107,7 @@
 #include "scene/main/timer.h"
 #include "scene/main/viewport.h"
 #include "scene/main/window.h"
+#include "scene/3d/ewbik_3d.h"
 #include "scene/resources/animation_library.h"
 #include "scene/resources/atlas_texture.h"
 #include "scene/resources/audio_stream_polyphonic.h"
@@ -683,6 +684,7 @@ void register_scene_types() {
 	GDREGISTER_ABSTRACT_CLASS(IterateIK3D);
 	GDREGISTER_CLASS(FABRIK3D);
 	GDREGISTER_CLASS(CCDIK3D);
+	GDREGISTER_CLASS(EWBIK3D);
 	GDREGISTER_CLASS(JacobianIK3D);
 	GDREGISTER_CLASS(LimitAngularVelocityModifier3D);
 
