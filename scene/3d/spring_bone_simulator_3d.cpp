@@ -1485,9 +1485,6 @@ void SpringBoneSimulator3D::_find_collisions() {
 }
 
 void SpringBoneSimulator3D::_process_collisions() {
-	if (!is_inside_tree()) {
-		return;
-	}
 	for (const ObjectID &oid : collisions) {
 		Object *t_obj = ObjectDB::get_instance(oid);
 		if (!t_obj) {
@@ -1612,10 +1609,6 @@ void SpringBoneSimulator3D::_set_active(bool p_active) {
 }
 
 void SpringBoneSimulator3D::_process_modification(double p_delta) {
-	if (!is_inside_tree()) {
-		return;
-	}
-
 	Skeleton3D *skeleton = get_skeleton();
 	if (!skeleton) {
 		return;
