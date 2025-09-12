@@ -42,8 +42,9 @@ thirdparty_sources_common = [
     "jmemnobs.c",
     "jpeg_nbits.c",
     "transupp.c",
-    "turbojpeg.c",
 ]
+
+thirdparty_sources_common.append("turbojpeg.c")
 
 thirdparty_sources_bit_dependent = [
     "jcapistd.c",
@@ -90,6 +91,13 @@ def add_bit_depth(bit_depth: int):
     env_bit_depth.disable_warnings()
     env_bit_depth["OBJSUFFIX"] = f"_{bit_depth}{env_bit_depth['OBJSUFFIX']}"
     env_bit_depth.Append(CPPDEFINES=[f"BITS_IN_JSAMPLE={bit_depth}"])
+
+    # Configure for web platform compatibility
+    if env["platform"] == "web":
+        env_bit_depth.Append(CPPDEFINES=["NO_GETENV"])
+        # Enable emscripten setjmp/longjmp support
+        env_bit_depth.Append(CCFLAGS=["-sSUPPORT_LONGJMP='emscripten'"])
+
     env_bit_depth.add_source_files(thirdparty_obj, source_paths(thirdparty_sources_by_bits[bit_depth]))
 
 
@@ -98,6 +106,13 @@ add_bit_depth(12)
 
 env_thirdparty = env_jpg.Clone()
 env_thirdparty.disable_warnings()
+
+# Configure for web platform compatibility
+if env["platform"] == "web":
+    env_thirdparty.Append(CPPDEFINES=["NO_GETENV"])
+    # Enable emscripten setjmp/longjmp support
+    env_thirdparty.Append(CCFLAGS=["-sSUPPORT_LONGJMP='emscripten'"])
+
 env_thirdparty.add_source_files(thirdparty_obj, source_paths(thirdparty_sources_common))
 env.modules_sources += thirdparty_obj
 
