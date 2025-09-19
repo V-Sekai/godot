@@ -134,6 +134,14 @@ int AnimationNodeStateMachineTransition::get_priority() const {
 	return priority;
 }
 
+void AnimationNodeStateMachineTransition::set_transition_offset(float p_offset) {
+	transition_offset = p_offset;
+}
+
+float AnimationNodeStateMachineTransition::get_transition_offset() const {
+	return transition_offset;
+}
+
 void AnimationNodeStateMachineTransition::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_switch_mode", "mode"), &AnimationNodeStateMachineTransition::set_switch_mode);
 	ClassDB::bind_method(D_METHOD("get_switch_mode"), &AnimationNodeStateMachineTransition::get_switch_mode);
@@ -150,6 +158,9 @@ void AnimationNodeStateMachineTransition::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_xfade_curve", "curve"), &AnimationNodeStateMachineTransition::set_xfade_curve);
 	ClassDB::bind_method(D_METHOD("get_xfade_curve"), &AnimationNodeStateMachineTransition::get_xfade_curve);
 
+	ClassDB::bind_method(D_METHOD("set_transition_offset", "offset"), &AnimationNodeStateMachineTransition::set_transition_offset);
+	ClassDB::bind_method(D_METHOD("get_transition_offset"), &AnimationNodeStateMachineTransition::get_transition_offset);
+
 	ClassDB::bind_method(D_METHOD("set_break_loop_at_end", "enable"), &AnimationNodeStateMachineTransition::set_break_loop_at_end);
 	ClassDB::bind_method(D_METHOD("is_loop_broken_at_end"), &AnimationNodeStateMachineTransition::is_loop_broken_at_end);
 
@@ -164,6 +175,7 @@ void AnimationNodeStateMachineTransition::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "xfade_time", PROPERTY_HINT_RANGE, "0,240,0.01,suffix:s"), "set_xfade_time", "get_xfade_time");
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "xfade_curve", PROPERTY_HINT_RESOURCE_TYPE, "Curve"), "set_xfade_curve", "get_xfade_curve");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "transition_offset", PROPERTY_HINT_RANGE, "0,1,0.000001"), "set_transition_offset", "get_transition_offset");
 
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "break_loop_at_end"), "set_break_loop_at_end", "is_loop_broken_at_end");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reset"), "set_reset", "is_reset");
@@ -870,8 +882,9 @@ AnimationNode::NodeTimeInfo AnimationNodeStateMachinePlayback::_process(Animatio
 	pi.weight = fade_blend;
 	if (reset_request) {
 		reset_request = false;
-		pi.time = 0;
+		pi.time = _reset_position;
 		pi.seeked = true;
+		_reset_position = 0.0;
 	}
 	current_nti = p_state_machine->blend_node(p_state_machine->states[current].node, current, pi, AnimationNode::FILTER_IGNORE, true, p_test_only); // Blend values must be more than CMP_EPSILON to process discrete keys in edge.
 
@@ -950,7 +963,7 @@ bool AnimationNodeStateMachinePlayback::_transition_to_next_recursive(AnimationT
 		} else {
 			if (reset_request) {
 				// There is no possibility of processing doubly. Now we can apply reset actually in here.
-				pi.time = 0;
+				pi.time = _reset_position;
 				pi.seeked = true;
 				pi.is_external_seeking = false;
 				pi.weight = 0;
@@ -988,11 +1001,14 @@ bool AnimationNodeStateMachinePlayback::_transition_to_next_recursive(AnimationT
 		}
 
 		// Just get length to find next recursive.
-		pi.time = 0;
 		pi.is_external_seeking = false;
 		pi.weight = 0;
 		pi.seeked = next.is_reset;
 		current_nti = p_state_machine->blend_node(p_state_machine->states[current].node, current, pi, AnimationNode::FILTER_IGNORE, true, true); // Just retrieve remain length, don't process.
+		pi.time = get_current_length() * next.transition_offset;
+		if (reset_request) {
+			_reset_position = pi.time;
+		}
 
 		// Fading must be processed.
 		if (fading_time) {
@@ -1077,6 +1093,7 @@ AnimationNodeStateMachinePlayback::NextInfo AnimationNodeStateMachinePlayback::_
 				next.node = path[0];
 				next.xfade = ref_transition->get_xfade_time();
 				next.curve = ref_transition->get_xfade_curve();
+				next.transition_offset = ref_transition->get_transition_offset();
 				next.switch_mode = ref_transition->get_switch_mode();
 				next.is_reset = ref_transition->is_reset();
 				next.break_loop_at_end = ref_transition->is_loop_broken_at_end();
@@ -1107,6 +1124,7 @@ AnimationNodeStateMachinePlayback::NextInfo AnimationNodeStateMachinePlayback::_
 			Ref<AnimationNodeStateMachineTransition> ref_transition = _check_group_transition(p_tree, p_state_machine, p_state_machine->transitions[auto_advance_to], anodesm, bypass);
 			next.xfade = ref_transition->get_xfade_time();
 			next.curve = ref_transition->get_xfade_curve();
+			next.transition_offset = ref_transition->get_transition_offset();
 			next.switch_mode = ref_transition->get_switch_mode();
 			next.is_reset = ref_transition->is_reset();
 			next.break_loop_at_end = ref_transition->is_loop_broken_at_end();
@@ -1225,6 +1243,7 @@ AnimationNodeStateMachinePlayback::AnimationNodeStateMachinePlayback() {
 	set_local_to_scene(true); // Only one per instantiated scene.
 	default_transition.instantiate();
 	default_transition->set_xfade_time(0);
+	default_transition->set_transition_offset(0.0);
 	default_transition->set_reset(true);
 	default_transition->set_advance_mode(AnimationNodeStateMachineTransition::ADVANCE_MODE_AUTO);
 	default_transition->set_switch_mode(AnimationNodeStateMachineTransition::SWITCH_MODE_IMMEDIATE);

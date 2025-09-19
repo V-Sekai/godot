@@ -60,6 +60,7 @@ private:
 	bool reset = true;
 	int priority = 1;
 	String advance_expression;
+	float transition_offset = 0.0;
 
 	friend class AnimationNodeStateMachinePlayback;
 	Ref<Expression> expression;
@@ -96,6 +97,9 @@ public:
 
 	void set_priority(int p_priority);
 	int get_priority() const;
+
+	void set_transition_offset(float p_offset);
+	float get_transition_offset() const;
 
 	AnimationNodeStateMachineTransition();
 };
@@ -248,6 +252,7 @@ class AnimationNodeStateMachinePlayback : public Resource {
 		StringName node;
 		double xfade;
 		Ref<Curve> curve;
+		double transition_offset;
 		AnimationNodeStateMachineTransition::SwitchMode switch_mode;
 		bool is_reset;
 		bool break_loop_at_end;
@@ -281,6 +286,7 @@ class AnimationNodeStateMachinePlayback : public Resource {
 	StringName travel_request;
 	bool reset_request = false;
 	bool reset_request_on_teleport = false;
+	float _reset_position = 0.0;
 	bool _reset_request_for_fading_from = false;
 	bool next_request = false;
 	bool stop_request = false;
