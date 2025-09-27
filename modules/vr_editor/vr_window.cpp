@@ -347,6 +347,7 @@ VRWindow::VRWindow(Size2i p_viewport_size, real_t p_viewport_scale) {
 	subviewport->set_transparent_background(transparent_background);
 	subviewport->set_disable_3d(true);
 	subviewport->set_embedding_subwindows(true); // We don't support opening new windows in VR (yet) so make sure we embed popups etc.
+	subviewport->set_use_xr(true);
 
 	add_child(subviewport);
 
