@@ -35,8 +35,8 @@
 #include "core/os/os.h"
 #include "core/crypto/crypto_core.h"
 
-#include "modules/goal_task_planner/domain.h"
-#include "modules/goal_task_planner/multigoal.h"
+#include "domain.h"
+#include "multigoal.h"
 
 int PlannerPlan::get_verbose() const {
 	return verbose;
@@ -429,8 +429,6 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &PlannerPlan::find_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &PlannerPlan::run_lazy_lookahead, DEFVAL(10));
 	ClassDB::bind_method(D_METHOD("generate_plan_id"), &PlannerPlan::generate_plan_id);
-	ClassDB::bind_method(D_METHOD("get_hlc"), &PlannerPlan::get_hlc);
-	ClassDB::bind_method(D_METHOD("set_hlc", "hlc"), &PlannerPlan::set_hlc);
 	ClassDB::bind_method(D_METHOD("submit_operation", "operation"), &PlannerPlan::submit_operation);
 	ClassDB::bind_method(D_METHOD("get_global_state"), &PlannerPlan::get_global_state);
 	ADD_SIGNAL(MethodInfo("plan_id_generated", PropertyInfo(Variant::STRING, "plan_id")));
