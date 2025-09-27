@@ -6,7 +6,6 @@
 #include "../planner_hl_clock.h"
 #include "../domain.h"
 #include "../plan.h"
-#include "../planner_parallel_commits.h"
 
 namespace TestPlannerFeatures {
 

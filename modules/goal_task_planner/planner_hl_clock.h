@@ -5,11 +5,11 @@
 #include "core/typedefs.h"
 
 struct PlannerHLClock {
-    int64_t start_time;
-    int64_t end_time;
-    int64_t duration;
+    int64_t start_time = 0;
+    int64_t end_time = 0;
+    int64_t duration = 0;
 
-    PlannerHLClock() : start_time(0), end_time(0), duration(0) {}
+    PlannerHLClock() {}
     
     void set_start_time(int64_t p_time) { start_time = p_time; }
     int64_t get_start_time() const { return start_time; }
