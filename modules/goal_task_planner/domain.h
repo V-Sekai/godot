@@ -46,22 +46,20 @@ class PlannerTaskMetadata : public Resource {
 
 private:
     String task_id;
-    Ref<PlannerHLClock> hlc;
+    PlannerHLClock hlc;
 
 public:
     PlannerTaskMetadata();
     void set_task_id(String p_id) { task_id = p_id; }
     String get_task_id() const { return task_id; }
-    void set_hlc(Ref<PlannerHLClock> p_hlc) { hlc = p_hlc; }
-    Ref<PlannerHLClock> get_hlc() const { return hlc; }
+    void set_hlc(PlannerHLClock p_hlc) { hlc = p_hlc; }
+    PlannerHLClock get_hlc() const { return hlc; }
     void update_metadata(int64_t p_physical_time);
 
 protected:
     static void _bind_methods() {
         ClassDB::bind_method(D_METHOD("set_task_id", "id"), &PlannerTaskMetadata::set_task_id);
         ClassDB::bind_method(D_METHOD("get_task_id"), &PlannerTaskMetadata::get_task_id);
-        ClassDB::bind_method(D_METHOD("set_hlc", "hlc"), &PlannerTaskMetadata::set_hlc);
-        ClassDB::bind_method(D_METHOD("get_hlc"), &PlannerTaskMetadata::get_hlc);
         ClassDB::bind_method(D_METHOD("update_metadata", "physical_time"), &PlannerTaskMetadata::update_metadata);
     }
 };

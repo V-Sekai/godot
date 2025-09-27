@@ -1,28 +1,22 @@
-// Hybrid Logical Clock for temporal ordering
+// Simple time tracking for planning
 
 #pragma once
 
-#include "core/io/resource.h"
-#include "core/object/object.h"
+#include "core/typedefs.h"
 
-class PlannerHLClock : public Resource {
-    GDCLASS(PlannerHLClock, Resource);
+struct PlannerHLClock {
+    int64_t start_time;
+    int64_t end_time;
+    int64_t duration;
 
-private:
-    int64_t logical_time;
-    int64_t counter;
-
-public:
-    PlannerHLClock() : logical_time(0), counter(0) {}  // Exact Elixir %{l: 0, c: 0}
-    void update(int64_t p_physical_time);
-    int64_t get_logical_time() const { return logical_time; }
-    int64_t get_counter() const { return counter; }
-
-protected:
-    static void _bind_methods() {
-        ClassDB::bind_method(D_METHOD("update", "physical_time"), &PlannerHLClock::update);
-        ClassDB::bind_method(D_METHOD("get_logical_time"), &PlannerHLClock::get_logical_time);
-        ClassDB::bind_method(D_METHOD("get_counter"), &PlannerHLClock::get_counter);
-        ADD_SIGNAL(MethodInfo("hlc_updated", PropertyInfo(Variant::INT, "logical_time"), PropertyInfo(Variant::INT, "counter")));
-    }
+    PlannerHLClock() : start_time(0), end_time(0), duration(0) {}
+    
+    void set_start_time(int64_t p_time) { start_time = p_time; }
+    int64_t get_start_time() const { return start_time; }
+    
+    void set_end_time(int64_t p_time) { end_time = p_time; }
+    int64_t get_end_time() const { return end_time; }
+    
+    void set_duration(int64_t p_duration) { duration = p_duration; }
+    int64_t get_duration() const { return duration; }
 };
