@@ -37,6 +37,52 @@
 #include "multigoal.h"
 
 #include "core/variant/typed_array.h"
+#include "core/io/resource.h"
+#include "core/object/object.h"
+#include "planner_hl_clock.h"
+
+class PlannerTaskMetadata : public Resource {
+    GDCLASS(PlannerTaskMetadata, Resource);
+
+private:
+    String task_id;
+    Ref<PlannerHLClock> hlc;
+
+public:
+    PlannerTaskMetadata();
+    void set_task_id(String p_id) { task_id = p_id; }
+    String get_task_id() const { return task_id; }
+    void set_hlc(Ref<PlannerHLClock> p_hlc) { hlc = p_hlc; }
+    Ref<PlannerHLClock> get_hlc() const { return hlc; }
+    void update_metadata(int64_t p_physical_time);
+
+protected:
+    static void _bind_methods() {
+        ClassDB::bind_method(D_METHOD("set_task_id", "id"), &PlannerTaskMetadata::set_task_id);
+        ClassDB::bind_method(D_METHOD("get_task_id"), &PlannerTaskMetadata::get_task_id);
+        ClassDB::bind_method(D_METHOD("set_hlc", "hlc"), &PlannerTaskMetadata::set_hlc);
+        ClassDB::bind_method(D_METHOD("get_hlc"), &PlannerTaskMetadata::get_hlc);
+        ClassDB::bind_method(D_METHOD("update_metadata", "physical_time"), &PlannerTaskMetadata::update_metadata);
+    }
+};
+
+class PlannerTask : public Resource {
+    GDCLASS(PlannerTask, Resource);
+
+private:
+    Ref<PlannerTaskMetadata> metadata;
+
+public:
+    PlannerTask();
+    Ref<PlannerTaskMetadata> get_metadata() const { return metadata; }
+    void set_metadata(Ref<PlannerTaskMetadata> p_metadata) { metadata = p_metadata; }
+
+protected:
+    static void _bind_methods() {
+        ClassDB::bind_method(D_METHOD("get_metadata"), &PlannerTask::get_metadata);
+        ClassDB::bind_method(D_METHOD("set_metadata", "metadata"), &PlannerTask::set_metadata);
+    }
+};
 
 class PlannerPlan;
 class PlannerDomain : public Resource {

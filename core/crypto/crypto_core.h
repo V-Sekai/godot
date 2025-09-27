@@ -113,4 +113,6 @@ public:
 	static Error md5(const uint8_t *p_src, size_t p_src_len, unsigned char r_hash[16]);
 	static Error sha1(const uint8_t *p_src, size_t p_src_len, unsigned char r_hash[20]);
 	static Error sha256(const uint8_t *p_src, size_t p_src_len, unsigned char r_hash[32]);
+
+	static Error generate_uuidv7(String &r_uuid);
 };
