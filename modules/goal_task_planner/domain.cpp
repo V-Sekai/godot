@@ -32,8 +32,8 @@
 
 #include "core/crypto/crypto_core.h"
 
-#include "modules/goal_task_planner/multigoal.h"
-#include "modules/goal_task_planner/plan.h"
+#include "multigoal.h"
+#include "plan.h"
 
 void PlannerDomain::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("add_multigoal_methods", "methods"), &PlannerDomain::add_multigoal_methods);
@@ -131,13 +131,10 @@ PlannerTaskMetadata::PlannerTaskMetadata() {
     if (err != OK || task_id.is_empty()) {
         task_id = "00000000-0000-0000-0000-000000000000";  // Null UUID fallback
     }
-    hlc.instantiate();
 }
 
 void PlannerTaskMetadata::update_metadata(int64_t p_physical_time) {
-    if (hlc.is_valid()) {
-        hlc->update(p_physical_time);
-    }
+    hlc.set_start_time(p_physical_time);
 }
 
 PlannerTask::PlannerTask() {

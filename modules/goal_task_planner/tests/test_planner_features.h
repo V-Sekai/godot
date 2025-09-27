@@ -14,23 +14,18 @@ TEST_CASE("[Modules][PlannerHLClock] Basic functionality") {
     PlannerHLClock hlc;
 
     SUBCASE("Initial state") {
-        CHECK(hlc.get_logical_time() == 0);
-        CHECK(hlc.get_counter() == 0);
+        CHECK(hlc.get_start_time() == 0);
+        CHECK(hlc.get_end_time() == 0);
+        CHECK(hlc.get_duration() == 0);
     }
 
-    SUBCASE("Update with future time") {
-        int64_t future_time = 1000;
-        hlc.update(future_time);
-        CHECK(hlc.get_logical_time() == future_time);
-        CHECK(hlc.get_counter() == 0);
-    }
-
-    SUBCASE("Update with same time increments counter") {
-        int64_t same_time = 1000;
-        hlc.update(same_time);
-        hlc.update(same_time);
-        CHECK(hlc.get_logical_time() == same_time);
-        CHECK(hlc.get_counter() == 1);
+    SUBCASE("Set times") {
+        hlc.set_start_time(1000);
+        hlc.set_end_time(2000);
+        hlc.set_duration(1000);
+        CHECK(hlc.get_start_time() == 1000);
+        CHECK(hlc.get_end_time() == 2000);
+        CHECK(hlc.get_duration() == 1000);
     }
 }
 
@@ -46,10 +41,9 @@ TEST_CASE("[Modules][PlannerTaskMetadata] Basic functionality") {
     }
 
     SUBCASE("HLC integration") {
-        Ref<PlannerHLClock> hlc = metadata->get_hlc();
-        CHECK(hlc.is_valid());
+        PlannerHLClock hlc = metadata->get_hlc();
         metadata->update_metadata(2000);
-        CHECK(hlc->get_logical_time() == 2000);
+        CHECK(hlc.get_start_time() == 2000);
     }
 
     memdelete(metadata.ptr());
@@ -70,10 +64,10 @@ TEST_CASE("[Modules][PlannerPlan] ID generation and HLC") {
     }
 
     SUBCASE("HLC in plan") {
-        Ref<PlannerHLClock> hlc = memnew(PlannerHLClock);
+        PlannerHLClock hlc;
         plan.set_hlc(hlc);
-        CHECK(plan.get_hlc() == hlc);
-        memdelete(hlc.ptr());
+        PlannerHLClock retrieved = plan.get_hlc();
+        CHECK(retrieved.start_time == hlc.start_time);
     }
 }
 

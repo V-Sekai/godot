@@ -43,6 +43,13 @@ void initialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
+
+	ClassDB::register_class<PlannerTaskMetadata>();
+	ClassDB::register_class<PlannerTask>();
+	ClassDB::register_class<PlannerDomain>();
+	ClassDB::register_class<PlannerPlan>();
+	ClassDB::register_class<PlannerState>();
+	ClassDB::register_class<PlannerMultigoal>();
 }
 
 void uninitialize_goal_task_planner_module(ModuleInitializationLevel p_level) {
