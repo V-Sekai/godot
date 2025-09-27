@@ -33,6 +33,7 @@
 #include "core/input/input_event.h"
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/material.h"
+#include <cmath>
 
 /* VRCollisionWindow */
 
@@ -75,25 +76,25 @@ bool VRCollisionWindow::raycast(const Vector3 &p_global_origin, const Vector3 &p
 		float max_delta = 0.001;
 
 		// We know we're "inside" our "bowl" so we intersect somewhere, let's find it
-		float z = -curve_depth * cos(0.5 * Math::PI * intersect_test.x / half_size.x);
-		if (abs(intersect_test.z - z) > max_delta) {
+		float z = -curve_depth * Math::cos(0.5 * Math::PI * intersect_test.x / half_size.x);
+		if (Math::abs(intersect_test.z - z) > max_delta) {
 			// remember our start
 			Vector3 start_test = intersect_test;
 
 			// check our end
 			intersect_test = start_test + (local_dir * curve_depth);
-			z = -curve_depth * cos(0.5 * Math::PI * intersect_test.x / half_size.x);
+			z = -curve_depth * Math::cos(0.5 * Math::PI * intersect_test.x / half_size.x);
 
-			if (abs(intersect_test.z - z) > max_delta) {
+			if (Math::abs(intersect_test.z - z) > max_delta) {
 				Vector3 end_test = intersect_test;
 				int max_attempts = 10;
 
 				// check at the half way point
 				intersect_test = (start_test + end_test) * 0.5;
-				z = -curve_depth * cos(0.5 * Math::PI * intersect_test.x / half_size.x);
+				z = -curve_depth * Math::cos(0.5 * Math::PI * intersect_test.x / half_size.x);
 
 				// find our closest point by raymarching
-				for (int i = 0; i < max_attempts && abs(intersect_test.z - z) > max_delta; i++) {
+				for (int i = 0; i < max_attempts && Math::abs(intersect_test.z - z) > max_delta; i++) {
 					if (intersect_test.z > z) {
 						start_test = intersect_test;
 					} else {
@@ -101,7 +102,7 @@ bool VRCollisionWindow::raycast(const Vector3 &p_global_origin, const Vector3 &p
 					}
 
 					intersect_test = (start_test + end_test) * 0.5;
-					z = -curve_depth * cos(0.5 * Math::PI * intersect_test.x / half_size.x);
+					z = -curve_depth * Math::cos(0.5 * Math::PI * intersect_test.x / half_size.x);
 				}
 			}
 		}
@@ -141,8 +142,8 @@ bool VRCollisionWindow::within_sphere(const Vector3 &p_global_origin, float p_ra
 		return false;
 	}
 
-	float z = -curve_depth * cos(Math::PI * local_origin.x / half_size.x);
-	if (abs(local_origin.z - z) > p_radius) {
+	float z = -curve_depth * Math::cos(Math::PI * local_origin.x / half_size.x);
+	if (Math::abs(local_origin.z - z) > p_radius) {
 		return false;
 	}
 

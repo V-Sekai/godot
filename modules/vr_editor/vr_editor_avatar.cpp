@@ -182,7 +182,8 @@ void VREditorAvatar::_process_grab() {
 	}
 }
 
-VREditorAvatar::VREditorAvatar() : grab_translation_speed_factor(0.0f), grab_translation_deadzone(0.0f), scroll_translation_deadzone(0.0f), scroll_translation_speed_factor(0.0f), rotation_snap_angle_in_degrees(0) {
+VREditorAvatar::VREditorAvatar() :
+		grab_translation_speed_factor(0.0f), grab_translation_deadzone(0.0f), scroll_translation_deadzone(0.0f), scroll_translation_speed_factor(0.0f), rotation_snap_angle_in_degrees(0) {
 	// TODO once https://github.com/godotengine/godot/pull/63607 is merged we need to add an enhancement
 	// to make this node the "current" XROrigin3D node.
 	// For now this will be the current node but if a VR project is loaded things could go haywire.
