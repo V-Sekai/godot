@@ -182,7 +182,7 @@ void VREditorAvatar::_process_grab() {
 	}
 }
 
-VREditorAvatar::VREditorAvatar() {
+VREditorAvatar::VREditorAvatar() : grab_translation_speed_factor(0.0f), grab_translation_deadzone(0.0f), scroll_translation_deadzone(0.0f), scroll_translation_speed_factor(0.0f), rotation_snap_angle_in_degrees(0) {
 	// TODO once https://github.com/godotengine/godot/pull/63607 is merged we need to add an enhancement
 	// to make this node the "current" XROrigin3D node.
 	// For now this will be the current node but if a VR project is loaded things could go haywire.
@@ -233,7 +233,7 @@ VREditorAvatar::VREditorAvatar() {
 	// Add virtual keyboard
 	keyboard = memnew(VRKeyboard);
 	keyboard->set_name("VRKeyboard");
-	keyboard->set_rotation(Vector3(20.0 * Math_PI / 180.0, 0.0, 0.0)); // put at a slight angle for comfort
+	keyboard->set_rotation(Vector3(20.0 * Math::PI / 180.0, 0.0, 0.0)); // put at a slight angle for comfort
 	keyboard->set_position(Vector3(0.0, -0.4, 0.2)); // should make this a setting or something we can change
 	hud_root->add_child(keyboard);
 #endif

@@ -51,7 +51,6 @@
 #include "editor/project_manager/engine_update_label.h"
 #include "editor/translations/editor_translation.h"
 #include "main/main.h"
-#include "modules/modules_enabled.gen.h"
 #include "modules/regex/regex.h"
 #include "scene/gui/color_picker.h"
 #include "scene/main/node.h"

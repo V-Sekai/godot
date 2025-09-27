@@ -32,14 +32,16 @@
 
 #include "vr_util.h"
 
-#include "editor/docks/filesystem_dock.h"
-#include "editor/docks/import_dock.h"
-#include "editor/docks/inspector_dock.h"
-#include "editor/docks/node_dock.h"
-#include "editor/docks/scene_tree_dock.h"
 #include "editor/settings/editor_settings.h"
 #include "servers/xr/xr_interface.h"
 #include "servers/xr_server.h"
+
+#ifndef PHYSICS_3D_DISABLED
+#include "servers/physics_server_3d.h"
+#endif
+#ifndef PHYSICS_2D_DISABLED
+#include "servers/physics_server_2d.h"
+#endif
 
 EditorNode *VREditor::init_editor(SceneTree *p_scene_tree) {
 	Ref<XRInterface> xr_interface = XRServer::get_singleton()->find_interface("OpenXR");
@@ -277,6 +279,13 @@ VREditor::VREditor(Viewport *p_xr_viewport) {
 
 	editor_node = memnew(EditorNode);
 	editor_window->get_scene_root()->add_child(editor_node);
+
+#ifndef PHYSICS_3D_DISABLED
+	PhysicsServer3D::get_singleton()->set_active(true);
+#endif
+#ifndef PHYSICS_2D_DISABLED
+	PhysicsServer2D::get_singleton()->set_active(true);
+#endif
 
 	// Now we're going to hijack our 3d editor node
 	spatial_editor = Node3DEditor::get_singleton();
