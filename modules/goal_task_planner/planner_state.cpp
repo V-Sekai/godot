@@ -35,42 +35,42 @@
 #include "core/variant/variant.h"
 
 void PlannerState::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_value", "predicate", "subject"), &PlannerState::get_object);
-	ClassDB::bind_method(D_METHOD("set_value", "predicate", "subject", "object"), &PlannerState::set_object);
-	ClassDB::bind_method(D_METHOD("get_value_property_list"), &PlannerState::get_subject_property_list);
+	ClassDB::bind_method(D_METHOD("get_predicate", "subject", "predicate"), &PlannerState::get_predicate);
+	ClassDB::bind_method(D_METHOD("set_predicate", "subject", "predicate", "value"), &PlannerState::set_predicate);
+	ClassDB::bind_method(D_METHOD("get_subject_predicate_list"), &PlannerState::get_subject_predicate_list);
 
-	ClassDB::bind_method(D_METHOD("has_value_variable", "variable"), &PlannerState::has_subject_variable);
-	ClassDB::bind_method(D_METHOD("has_value", "variable", "arguments"), &PlannerState::has_subject);
+	ClassDB::bind_method(D_METHOD("has_subject_variable", "variable"), &PlannerState::has_subject_variable);
+	ClassDB::bind_method(D_METHOD("has_predicate", "subject", "predicate"), &PlannerState::has_predicate);
 }
 
-Variant PlannerState::get_object(const String &p_variable, const String &p_arguments) const {
-	if (data.has(p_variable)) {
-		Dictionary variable_data = data[p_variable];
-		if (variable_data.has(p_arguments)) {
-			return variable_data[p_arguments];
+Variant PlannerState::get_predicate(const String &p_subject, const String &p_predicate) const {
+	if (data.has(p_subject)) {
+		Dictionary subject_data = data[p_subject];
+		if (subject_data.has(p_predicate)) {
+			return subject_data[p_predicate];
 		}
 	}
 	return Variant();
 }
 
-void PlannerState::set_object(const String &p_variable, const String &p_arguments, Variant p_value) {
+void PlannerState::set_predicate(const String &p_subject, const String &p_predicate, Variant p_value) {
 	bool is_float = p_value.get_type() == Variant::FLOAT;
 	bool is_int = p_value.get_type() == Variant::INT;
 	bool is_string = p_value.get_type() == Variant::STRING;
 	bool is_bool = p_value.get_type() == Variant::BOOL;
 	ERR_FAIL_COND(!(is_float || is_int || is_string || is_bool));
-	if (data.has(p_variable)) {
-		Dictionary variable_data = data[p_variable];
-		variable_data[p_arguments] = p_value;
-		data[p_variable] = variable_data;
+	if (data.has(p_subject)) {
+		Dictionary subject_data = data[p_subject];
+		subject_data[p_predicate] = p_value;
+		data[p_subject] = subject_data;
 	} else {
-		Dictionary variable_data;
-		variable_data[p_arguments] = p_value;
-		data[p_variable] = variable_data;
+		Dictionary subject_data;
+		subject_data[p_predicate] = p_value;
+		data[p_subject] = subject_data;
 	}
 }
 
-Array PlannerState::get_subject_property_list() const {
+Array PlannerState::get_subject_predicate_list() const {
 	return data.keys();
 }
 
@@ -78,10 +78,10 @@ bool PlannerState::has_subject_variable(const String &p_variable) const {
 	return data.has(p_variable);
 }
 
-bool PlannerState::has_subject(const String &p_predicate, const String &p_subject) const {
-	if (!data.has(p_predicate)) {
+bool PlannerState::has_predicate(const String &p_subject, const String &p_predicate) const {
+	if (!data.has(p_subject)) {
 		return false;
 	}
-	Dictionary variable_data = data[p_predicate];
-	return variable_data.has(p_subject);
+	Dictionary subject_data = data[p_subject];
+	return subject_data.has(p_predicate);
 }
