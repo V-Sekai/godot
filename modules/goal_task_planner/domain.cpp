@@ -30,6 +30,8 @@
 
 #include "domain.h"
 
+#include "core/crypto/crypto_core.h"
+
 #include "modules/goal_task_planner/multigoal.h"
 #include "modules/goal_task_planner/plan.h"
 
@@ -121,4 +123,23 @@ void PlannerDomain::add_actions(TypedArray<Callable> p_actions) {
 		String method_name = action.get_method();
 		action_dictionary[method_name] = action;
 	}
+}
+
+PlannerTaskMetadata::PlannerTaskMetadata() {
+    // Generate initial ID
+    Error err = CryptoCore::generate_uuidv7(task_id);
+    if (err != OK || task_id.is_empty()) {
+        task_id = "00000000-0000-0000-0000-000000000000";  // Null UUID fallback
+    }
+    hlc.instantiate();
+}
+
+void PlannerTaskMetadata::update_metadata(int64_t p_physical_time) {
+    if (hlc.is_valid()) {
+        hlc->update(p_physical_time);
+    }
+}
+
+PlannerTask::PlannerTask() {
+    metadata.instantiate();
 }
