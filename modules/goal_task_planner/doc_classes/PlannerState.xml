@@ -7,36 +7,36 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_value" qualifiers="const">
+		<method name="get_predicate" qualifiers="const">
 			<return type="Variant" />
-			<param index="0" name="predicate" type="String" />
-			<param index="1" name="subject" type="String" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
 			<description>
 			</description>
 		</method>
-		<method name="get_value_property_list" qualifiers="const">
+		<method name="get_subject_predicate_list" qualifiers="const">
 			<return type="Array" />
 			<description>
 			</description>
 		</method>
-		<method name="has_value" qualifiers="const">
+		<method name="has_predicate" qualifiers="const">
 			<return type="bool" />
-			<param index="0" name="variable" type="String" />
-			<param index="1" name="arguments" type="String" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
 			<description>
 			</description>
 		</method>
-		<method name="has_value_variable" qualifiers="const">
+		<method name="has_subject_variable" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="variable" type="String" />
 			<description>
 			</description>
 		</method>
-		<method name="set_value">
+		<method name="set_predicate">
 			<return type="void" />
-			<param index="0" name="predicate" type="String" />
-			<param index="1" name="subject" type="String" />
-			<param index="2" name="object" type="Variant" />
+			<param index="0" name="subject" type="String" />
+			<param index="1" name="predicate" type="String" />
+			<param index="2" name="value" type="Variant" />
 			<description>
 			</description>
 		</method>
