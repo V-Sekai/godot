@@ -205,6 +205,8 @@
 
 #include "modules/modules_tests.gen.h"
 
+#include "modules/goal_task_planner/tests/test_planner_features.h"
+
 #include "tests/display_server_mock.h"
 #include "tests/test_macros.h"
 
