@@ -32,6 +32,8 @@
 
 #include "core/variant/callable.h"
 #include "core/variant/typed_array.h"
+#include "core/os/os.h"
+#include "core/crypto/crypto_core.h"
 
 #include "modules/goal_task_planner/domain.h"
 #include "modules/goal_task_planner/multigoal.h"
@@ -426,12 +428,69 @@ void PlannerPlan::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &PlannerPlan::find_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &PlannerPlan::run_lazy_lookahead, DEFVAL(10));
+	ClassDB::bind_method(D_METHOD("generate_plan_id"), &PlannerPlan::generate_plan_id);
+	ClassDB::bind_method(D_METHOD("get_hlc"), &PlannerPlan::get_hlc);
+	ClassDB::bind_method(D_METHOD("set_hlc", "hlc"), &PlannerPlan::set_hlc);
+	ClassDB::bind_method(D_METHOD("submit_operation", "operation"), &PlannerPlan::submit_operation);
+	ClassDB::bind_method(D_METHOD("get_global_state"), &PlannerPlan::get_global_state);
+	ADD_SIGNAL(MethodInfo("plan_id_generated", PropertyInfo(Variant::STRING, "plan_id")));
+}
+
+// Temporal method implementations
+String PlannerPlan::generate_plan_id() {
+    String uuid;
+    Error err = CryptoCore::generate_uuidv7(uuid);
+    if (err != OK) {
+        ERR_PRINT("Failed to generate UUIDv7: " + itos(err));
+        return String();
+    }
+    print_line("Generated plan ID: " + uuid);
+    emit_signal("plan_id_generated", uuid);
+    return uuid;
+}
+
+Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
+    String transaction_id;
+    Error err = CryptoCore::generate_uuidv7(transaction_id);
+    if (err != OK) {
+        ERR_PRINT("Failed to generate UUIDv7: " + itos(err));
+        return Dictionary();
+    }
+
+    Dictionary consensus_result;
+    consensus_result["operation_id"] = transaction_id;
+    consensus_result["agreed_at"] = OS::get_singleton()->get_unix_time() * 1000;
+    Array participants;
+    participants.push_back("node_1");
+    consensus_result["participants"] = participants;
+
+    print_line("ParallelCommits operation submitted [" + transaction_id + "]: " + String(Variant(p_operation)));
+    emit_signal("operation_submitted", consensus_result);
+    return consensus_result;
+}
+
+Dictionary PlannerPlan::get_global_state() {
+    Dictionary record;
+    Array intent_writes;
+    Dictionary tscache;
+
+    Dictionary global_state;
+    global_state["record"] = record;
+    global_state["intent_writes"] = intent_writes;
+    global_state["tscache"] = tscache;
+    global_state["commit_ack"] = false;
+    Dictionary hlc_dict;
+    hlc_dict["l"] = 0;
+    hlc_dict["c"] = 0;
+    global_state["hlc"] = hlc_dict;
+
+    return global_state;
 }
 
 bool PlannerPlan::get_verify_goals() const {
-	return verify_goals;
+    return verify_goals;
 }
 
 void PlannerPlan::set_verify_goals(bool p_value) {
-	verify_goals = p_value;
+    verify_goals = p_value;
 }
