@@ -41,7 +41,7 @@
 #include "modules/goal_task_planner/planner_hl_clock.h"
 
 class PlannerDomain;
-class PlannerHLClock;
+struct PlannerHLClock;
 
 class PlannerPlan : public Resource {
 	GDCLASS(PlannerPlan, Resource);
@@ -49,7 +49,7 @@ class PlannerPlan : public Resource {
 	int verbose = 0;
 	TypedArray<PlannerDomain> domains;
 	Ref<PlannerDomain> current_domain;
-	Ref<PlannerHLClock> hlc; // Added for temporal
+	PlannerHLClock hlc; // Added for temporal
 
 	// If verify_goals is True, then whenever the planner uses a method m to refine
 	// unigoal or multigoal, it will insert a "verification" task into the
@@ -82,8 +82,8 @@ public:
 	Dictionary run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
 	// Temporal methods
 	String generate_plan_id();
-	Ref<PlannerHLClock> get_hlc() const { return hlc; }
-	void set_hlc(Ref<PlannerHLClock> p_hlc) { hlc = p_hlc; }
+	PlannerHLClock get_hlc() const { return hlc; }
+	void set_hlc(PlannerHLClock p_hlc) { hlc = p_hlc; }
 	Dictionary submit_operation(Dictionary p_operation);
 	Dictionary get_global_state();
 
