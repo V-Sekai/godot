@@ -70,6 +70,6 @@ public:
 
 	void update_transform_gizmo_view();
 
-	VREditor(Viewport *p_xr_viewport);
+	VREditor(Viewport *p_xr_viewport, bool p_is_project_manager = false);
 	~VREditor();
 };

@@ -33,6 +33,7 @@
 #include "vr_util.h"
 
 #include "editor/settings/editor_settings.h"
+#include "editor/project_manager/project_manager.h"
 #include "servers/xr/xr_interface.h"
 #include "servers/xr_server.h"
 
@@ -46,17 +47,18 @@
 EditorNode *VREditor::init_editor(SceneTree *p_scene_tree) {
 	Ref<XRInterface> xr_interface = XRServer::get_singleton()->find_interface("OpenXR");
 	if (xr_interface.is_valid() && xr_interface->initialize()) {
-		Viewport *vp = p_scene_tree->get_root();
+		Viewport *vp = Object::cast_to<Viewport>(p_scene_tree->get_root());
 		configure_xr_interface(xr_interface, vp);
 
 		// Now add our VR editor
-		VREditor *vr_pm = memnew(VREditor(vp));
+		bool is_project_manager = Engine::get_singleton()->is_project_manager_hint();
+		VREditor *vr_pm = memnew(VREditor(vp, is_project_manager));
 		vp->add_child(vr_pm);
 
 		return vr_pm->get_editor_node();
 	} else {
 		// Our XR interface was never setup properly, for now assume this means we're not running in XR mode
-		// TODO improve this so if we were meant to be in XR mode but failed, especially if we're stand alone, we should hard exit.
+		// TODO improve this to only override v-sync when the player is wearing the headset
 		return nullptr;
 	}
 }
@@ -184,7 +186,7 @@ void VREditor::_finish_gizmo_instances() {
 void VREditor::update_transform_gizmo_view() {
 	// While our Gizmo logic is mostly the same as in Node3DEditorViewport
 	// we can't scale our gizmo the same way as on desktop as stereoscopic
-	// rendering let the brain know exactly what is going on.
+	// rendering let the brain know exactly what is going.
 
 	if (!is_visible_in_tree()) {
 		return;
@@ -258,7 +260,7 @@ void VREditor::update_transform_gizmo_view() {
 
 /* Initialization */
 
-VREditor::VREditor(Viewport *p_xr_viewport) {
+VREditor::VREditor(Viewport *p_xr_viewport, bool p_is_project_manager) {
 	xr_viewport = p_xr_viewport;
 
 	// Make sure our editor settings are loaded...
@@ -271,14 +273,21 @@ VREditor::VREditor(Viewport *p_xr_viewport) {
 	xr_viewport->add_child(avatar);
 
 	// Create a window to add our normal editor in
-	editor_window = memnew(VRWindow(Size2i(2000.0, 1000.0), 0.0015));
+	editor_window = memnew(VRWindow(Size2i(2000, 1000), 0.0015));
 	editor_window->set_name("Editor");
 	editor_window->set_curve_depth(0.2);
 	editor_window->set_position(Vector3(0.0, 0.0, -1.0));
 	avatar->get_hud_root()->add_child(editor_window);
 
-	editor_node = memnew(EditorNode);
-	editor_window->get_scene_root()->add_child(editor_node);
+	if (p_is_project_manager) {
+		// Create project manager
+		ProjectManager *pm = memnew(ProjectManager);
+		editor_window->get_scene_root()->add_child(pm);
+		editor_node = nullptr; // No editor node in project manager mode
+	} else {
+		editor_node = memnew(EditorNode);
+		editor_window->get_scene_root()->add_child(editor_node);
+	}
 
 #ifndef PHYSICS_3D_DISABLED
 	PhysicsServer3D::get_singleton()->set_active(true);

@@ -187,7 +187,8 @@ VREditorAvatar::VREditorAvatar() :
 	// TODO once https://github.com/godotengine/godot/pull/63607 is merged we need to add an enhancement
 	// to make this node the "current" XROrigin3D node.
 	// For now this will be the current node but if a VR project is loaded things could go haywire.
-
+	// FIXME: Update since `Add current setting to XROrigin3D and fix double positioning HMD #63607` was merged
+	 
 	_refresh_editor_settings();
 
 	camera = memnew(XRCamera3D);
@@ -267,6 +268,18 @@ void VREditorAvatar::_notification(int p_notification) {
 		case NOTIFICATION_PROCESS: {
 			_update_hud_position();
 			_process_grab();
+
+			time_since_last_print += get_process_delta_time();
+			if (time_since_last_print > 5.0f) {
+				time_since_last_print = 0.0f;
+				print_line(vformat("Camera transform: %s", camera->get_global_transform()));
+				if (left_hand) {
+					print_line(vformat("Left hand transform: %s, id: %s", left_hand->get_global_transform(), left_hand->get_tracker()));
+				}
+				if (right_hand) {
+					print_line(vformat("Right hand transform: %s, id: %s", right_hand->get_global_transform(), right_hand->get_tracker()));
+				}
+			}
 		} break;
 
 		case NOTIFICATION_LOCAL_TRANSFORM_CHANGED:

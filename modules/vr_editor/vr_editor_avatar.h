@@ -94,6 +94,8 @@ private:
 	VRKeyboard *keyboard = nullptr;
 #endif
 
+	float time_since_last_print = 0.0f;
+
 protected:
 	void _notification(int p_notification);
 
