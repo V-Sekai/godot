@@ -44,11 +44,11 @@ protected:
 	static void _bind_methods();
 
 public:
-	Variant get_object(const String &p_predicate, const String &p_subject) const;
-	void set_object(const String &p_predicate, const String &p_subject, Variant p_object);
-	Array get_subject_property_list() const;
+	Variant get_predicate(const String &p_subject, const String &p_predicate) const;
+	void set_predicate(const String &p_subject, const String &p_predicate, Variant p_value);
+	Array get_subject_predicate_list() const;
 	bool has_subject_variable(const String &p_variable) const;
-	bool has_subject(const String &p_predicate, const String &p_subject) const;
+	bool has_predicate(const String &p_subject, const String &p_predicate) const;
 
 	PlannerState() {}
 	~PlannerState() {}
