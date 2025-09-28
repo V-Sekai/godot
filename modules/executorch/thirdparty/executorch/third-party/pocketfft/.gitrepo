@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/mreineck/pocketfft
+	branch = cpp
+	commit = 0fa0ef591e38c2758e3184c6c23e497b9f732ffa
+	parent = ca42492913d08e57ad1c74ae8ba2a4cad85a455d
+	method = merge
+	cmdver = 0.4.9
