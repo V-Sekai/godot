@@ -35,6 +35,15 @@
 #include <memory>
 #include <vector>
 
+// Forward declarations for ExecuTorch types
+namespace executorch {
+namespace extension {
+class Module;
+class TensorPtr;
+}
+}
+using executorch::extension::Module;
+
 class ExecuTorchModule;
 class ExecuTorchMemoryManager;
 
@@ -144,7 +153,7 @@ private:
 	bool is_loaded_;
 	String file_path_;
 	PackedByteArray buffer_data_;
-	void *native_module_; // Actual ExecuTorch Module pointer
+	void* native_module_; // Stub
 
 public:
 	ExecuTorchModule();

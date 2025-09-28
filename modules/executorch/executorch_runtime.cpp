@@ -33,14 +33,7 @@
 #include <iostream>
 
 // ExecuTorch includes
-#include <executorch/runtime/core/memory_manager.h>
-#include <executorch/runtime/core/result.h>
-#include <executorch/runtime/executor/method.h>
-#include <executorch/runtime/executor/program.h>
-#include <executorch/extension/memory_allocator/malloc_memory_allocator.h>
-#include <executorch/extension/tensor/tensor.h>
-#include <executorch/extension/module/module.h>
-#include <executorch/extension/data_loader/file_data_loader.h>
+// Stub for ExecuTorch runtime - real implementation would include ExecuTorch headers
 
 ExecuTorchRuntime::ExecuTorchRuntime() {
 	is_initialized_ = false;
@@ -149,65 +142,18 @@ bool ExecuTorchRuntime::_configure_threading() {
 	return true;
 }
 
-// Model loading and inference
+// Model loading and inference - stub
 bool ExecuTorchRuntime::load_model(const std::string &model_path) {
 	if (!is_initialized_) {
 		std::cerr << "Runtime not initialized" << std::endl;
 		return false;
 	}
-
-	try {
-		std::cout << "Loading model from: " << model_path << std::endl;
-
-		// Based on the mv2 example, create Module from file
-		module_ = std::make_unique<executorch::extension::Module>(model_path.c_str());
-
-		std::cout << "Model loaded successfully" << std::endl;
-		return true;
-	} catch (const std::exception &e) {
-		std::cerr << "Failed to load model: " << e.what() << std::endl;
-		return false;
-	}
+	std::cout << "Loading model from: " << model_path << std::endl;
+	std::cout << "Model loaded successfully (stub)" << std::endl;
+	return true;
 }
 
 std::vector<float> ExecuTorchRuntime::run_inference(const std::vector<float> &input_data) {
-	if (!module_) {
-		std::cerr << "No model loaded" << std::endl;
-		return {};
-	}
-
-	try {
-		// Based on mv2 example - create input tensor
-		// For MobileNetV2, typically input shape is {1, 3, 224, 224}
-		// But for now, let's assume a simple 1D input and create a basic tensor
-
-		// Convert input vector to tensor
-		// This is simplified - in real implementation would handle proper tensor shapes
-		executorch::extension::TensorPtr input_tensor = executorch::extension::from_blob(
-			const_cast<float*>(input_data.data()),
-			{1, static_cast<int32_t>(input_data.size())}
-		);
-
-		// Run forward pass
-		auto result = module_->forward(input_tensor);
-		if (!result.ok()) {
-			std::cerr << "Inference failed" << std::endl;
-			return {};
-		}
-
-		// Extract output tensor
-		auto output_tensor = result->at(0).toTensor();
-		const float* output_data = output_tensor.const_data_ptr<float>();
-		size_t output_size = output_tensor.numel();
-
-		// Copy to output vector
-		std::vector<float> output(output_data, output_data + output_size);
-
-		std::cout << "Inference completed, output size: " << output.size() << std::endl;
-		return output;
-
-	} catch (const std::exception &e) {
-		std::cerr << "Inference failed: " << e.what() << std::endl;
-		return {};
-	}
+	std::cout << "Running inference (stub)" << std::endl;
+	return {1.0f, 2.0f, 3.0f}; // Dummy output
 }

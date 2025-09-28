@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  executorch_runtime.h                                                  */
+/*  executorch_mv2_demo.h                                             */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,58 +30,27 @@
 
 #pragma once
 
-#include <cstddef>
-#include <string>
-#include <vector>
+#include "core/object/class_db.h"
+#include "scene/main/node.h"
+#include "executorch_resource.h"
 
-// Stub forward declarations
+class ExecuTorchMV2Demo : public Node {
+	GDCLASS(ExecuTorchMV2Demo, Node);
 
-enum class ExecuTorchDevice {
-	CPU,
-	CUDA,
-	METAL,
-	VULKAN
-};
+protected:
+	String model_path_;
+	Ref<ExecuTorchResource> resource_;
 
-class ExecuTorchRuntime {
-private:
-	bool is_initialized_;
-	ExecuTorchDevice device_;
-	size_t memory_pool_size_;
-	int num_threads_;
+	static void _bind_methods();
 
 public:
-	ExecuTorchRuntime();
-	~ExecuTorchRuntime();
+	virtual void _ready();
 
-	bool initialize();
-	void shutdown();
-	bool is_initialized() const { return is_initialized_; }
+	void set_model_path(const String &path);
+	String get_model_path() const;
 
-	void set_device(ExecuTorchDevice device) { device_ = device; }
-	ExecuTorchDevice get_device() const { return device_; }
-	void set_memory_pool_size(size_t size) { memory_pool_size_ = size; }
-	size_t get_memory_pool_size() const { return memory_pool_size_; }
-	void set_num_threads(int threads) { num_threads_ = threads; }
-	int get_num_threads() const { return num_threads_; }
+	Ref<ExecuTorchResource> get_resource() const { return resource_; }
 
-	void *allocate_memory(size_t size);
-	void deallocate_memory(void *ptr);
-	void clear_memory_pool();
-
-	// Model operations
-	bool load_model(const std::string &model_path);
-	std::vector<float> run_inference(const std::vector<float> &input_data);
-
-	double get_last_inference_time() const;
-	size_t get_memory_usage() const;
-
-private:
-	// ExecuTorch runtime objects - stub
-	void *module_;
-
-private:
-	bool _initialize_device();
-	bool _setup_memory_pool();
-	bool _configure_threading();
+	ExecuTorchMV2Demo();
+	~ExecuTorchMV2Demo();
 };

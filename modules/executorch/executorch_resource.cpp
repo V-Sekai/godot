@@ -32,7 +32,9 @@
 #include "core/error/error_macros.h"
 #include "core/io/file_access.h"
 #include "core/os/time.h"
+#include "core/os/os.h"
 #include <memory>
+// Headers not available in git subrepo, so stub without includes.
 
 ExecuTorchResource::ExecuTorchResource() :
 		is_loaded_(false), memory_policy_(MEMORY_POLICY_AUTO), optimization_level_(OPTIMIZATION_BASIC), memory_limit_bytes_(0), enable_profiling_(false), last_inference_time_ms_(0.0), total_inferences_(0) {

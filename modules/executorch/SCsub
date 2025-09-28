@@ -4,7 +4,95 @@
 SCons build file for ExecuTorch Godot module
 """
 
+import os
+import sys
+
 Import("env")
+
+# Hardcoded source lists from build_variables.bzl
+executorch_core_srcs = [
+    "../thirdparty/executorch/runtime/backend/interface.cpp",
+    "../thirdparty/executorch/runtime/core/evalue.cpp",
+    "../thirdparty/executorch/runtime/core/exec_aten/util/tensor_shape_to_c_string.cpp",
+    "../thirdparty/executorch/runtime/core/exec_aten/util/tensor_util_portable.cpp",
+    "../thirdparty/executorch/runtime/core/portable_type/tensor_impl.cpp",
+    "../thirdparty/executorch/runtime/core/tag.cpp",
+    "../thirdparty/executorch/runtime/core/tensor_layout.cpp",
+    "../thirdparty/executorch/runtime/executor/tensor_parser_portable.cpp",
+    "../thirdparty/executorch/runtime/executor/pte_data_map.cpp",
+    "../thirdparty/executorch/runtime/kernel/operator_registry.cpp",
+    "../thirdparty/executorch/schema/extended_header.cpp"
+] + [
+    "../thirdparty/executorch/runtime/executor/" + x for x in [
+        "program.cpp",
+        "method.cpp",
+        "method_meta.cpp",
+        "tensor_parser_exec_aten.cpp"
+    ]
+] + [
+    "../thirdparty/executorch/runtime/platform/" + x for x in [
+        "platform.cpp",
+        "runtime.cpp",
+        "profiler.cpp",
+        "log.cpp",
+        "abort.cpp"
+    ]
+]
+
+executorch_srcs = [
+    "../thirdparty/executorch/kernels/prim_ops/et_copy_index.cpp",
+    "../thirdparty/executorch/kernels/prim_ops/et_view.cpp",
+    "../thirdparty/executorch/kernels/prim_ops/register_prim_ops.cpp"
+]
+
+extension_module_srcs = [
+    "../thirdparty/executorch/extension/module/module.cpp"
+]
+
+extension_tensor_srcs = [
+    "../thirdparty/executorch/extension/tensor/tensor_ptr.cpp",
+    "../thirdparty/executorch/extension/tensor/tensor_ptr_maker.cpp"
+]
+
+# Portable kernels - subset
+portable_kernels_srcs = [
+    "../thirdparty/executorch/kernels/portable/cpu/op_abs.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/op_add.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/op_mul.cpp",
+    # Add more as needed, truncated for brevity
+]
+
+kernels_util_all_deps_srcs = [
+    "../thirdparty/executorch/kernels/portable/cpu/util/activation_ops_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/broadcast_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/copy_ops_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/dtype_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/index_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/kernel_ops_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/matmul_ops_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/normalization_ops_util.cpp",
+    "../thirdparty/executorch/kernels/portable/cpu/util/reduce_util.cpp",
+]
+
+optimized_native_cpu_ops_srcs = [
+    "../thirdparty/executorch/codegen/templates/RegisterCodegenUnboxedKernelsEverything.cpp",
+    "../thirdparty/executorch/codegen/templates/RegisterDispatchKeyCustomOps.cpp",
+    "../thirdparty/executorch/codegen/templates/RegisterKernels.cpp",
+    "../thirdparty/executorch/codegen/templates/RegisterSchema.cpp",
+    "../thirdparty/executorch/kernels/optimized/cpu/binary_ops.cpp",
+    "../thirdparty/executorch/kernels/optimized/cpu/op_add.cpp",
+    "../thirdparty/executorch/kernels/optimized/cpu/op_bmm.cpp",
+    "../thirdparty/executorch/kernels/optimized/cpu/op_div.cpp",
+]
+
+xnnpack_backend_srcs = [
+    "../thirdparty/executorch/backends/xnnpack/runtime/XNNCompiler.cpp",
+    "../thirdparty/executorch/backends/xnnpack/runtime/XNNExecutor.cpp",
+    "../thirdparty/executorch/backends/xnnpack/runtime/XNNHeader.cpp",
+    "../thirdparty/executorch/backends/xnnpack/runtime/XNNPACKBackend.cpp",
+    "../thirdparty/executorch/backends/xnnpack/runtime/XNNWeightsCache.cpp",
+    "../thirdparty/executorch/backends/xnnpack/runtime/XNNWorkspaceManager.cpp",
+]
 
 module_env = env.Clone()
 
@@ -13,45 +101,135 @@ module_env.Append(CPPPATH=["."])
 
 # Add ExecuTorch include paths
 executorch_path = "../thirdparty/executorch"
+
 module_env.Append(CPPPATH=[
     executorch_path,  # Main include path
     executorch_path + "/runtime/core",
+    executorch_path + "/runtime/executor",
     executorch_path + "/runtime/core/exec_aten",
     executorch_path + "/extension",
     executorch_path + "/extension/tensor",
     executorch_path + "/extension/module",
     executorch_path + "/extension/data_loader",
     executorch_path + "/extension/memory_allocator",
+    executorch_path + "/schema",
 ])
+
+# Define executable torch and schema environment
+executorch_lib_env = module_env.Clone()
+executorch_lib_env.Append(CPPFLAGS=["-std=c++17"])
+executorch_lib_env.Append(CPPDEFINES=[
+    ("ET_LOG_ENABLED", 0),
+    ("ET_ENABLE_PROGRAM_VERIFICATION", 0),
+    ("ET_EVENT_TRACER_ENABLED", 0),
+    ("EXECUTORCH_OPTIMIZE_SIZE", 0),
+    ("C10_USING_CUSTOM_GENERATED_MACROS", 1),
+])
+
+# Build thirdparty dependencies first
+# CPUINFO: Core CPU detection lib
+cpuinfo_srcs = [
+    "../thirdparty/executorch/backends/xnnpack/third-party/cpuinfo/src/api.c",
+    "../thirdparty/executorch/backends/xnnpack/third-party/cpuinfo/src/cache.c",
+    "../thirdparty/executorch/backends/xnnpack/third-party/cpuinfo/src/init.c",
+    "../thirdparty/executorch/backends/xnnpack/third-party/cpuinfo/src/log.c",
+] + [
+    # For macOS arm64 - from CMakeLists logic
+    "../thirdparty/executorch/backends/xnnpack/third-party/cpuinfo/src/arm/uarch.c",
+    "../thirdparty/executorch/backends/xnnpack/third-party/cpuinfo/src/arm/cache.c",
+    "../thirdparty/executorch/backends/xnnpack/third-party/cpuinfo/src/mach/init.c",
+]
+cpuinfo_env = module_env.Clone()
+cpuinfo_env.Append(CFLAGS=["-std=c99"])
+libcpuinfo = cpuinfo_env.StaticLibrary(
+    "cpuinfo",
+    cpuinfo_srcs
+)
+
+# PTHREADPOOL: Threading for backends
+pthreadpool_srcs = [
+    "../thirdparty/executorch/backends/xnnpack/third-party/pthreadpool/thread_parallel.cpp",
+    "../thirdparty/executorch/backends/xnnpack/third-party/pthreadpool/threadpool.cpp",
+    "../thirdparty/executorch/backends/xnnpack/third-party/pthreadpool/threadpool_guard.cpp",
+]
+pthreadpool_env = module_env.Clone()
+pthreadpool_env.Append(CPPFLAGS=["-std=c++17"])
+pthreadpool_env.Append(CXXFLAGS=["-fPIC"])
+libpthreadpool = pthreadpool_env.StaticLibrary(
+    "pthreadpool",
+    pthreadpool_srcs
+)
+
+# FXDIV: Division functions
+# Header-only, no cpp
+
+# CLOGSRC for cpuinfo if needed, but not binding for now
+
+# Build libraries
+libexecutorch_core = executorch_lib_env.StaticLibrary(
+    "executorch_core",
+    executorch_core_srcs
+)
+
+libexecutorch = executorch_lib_env.StaticLibrary(
+    "executorch",
+    executorch_srcs + [libexecutorch_core]
+)
+
+libextension_module_static = executorch_lib_env.StaticLibrary(
+    "extension_module_static",
+    extension_module_srcs
+)
+
+libextension_tensor = executorch_lib_env.StaticLibrary(
+    "extension_tensor",
+    extension_tensor_srcs
+)
+
+# Portable ops
+libportable_ops_lib = executorch_lib_env.StaticLibrary(
+    "portable_ops_lib",
+    portable_kernels_srcs + kernels_util_all_deps_srcs
+)
+
+# Optimized CPU ops
+liboptimized_native_cpu_ops_lib = executorch_lib_env.StaticLibrary(
+    "optimized_native_cpu_ops_lib",
+    optimized_native_cpu_ops_srcs + [libportable_ops_lib]
+)
+
+# XNNPACK backend - with dependencies
+libxnnpack_backend = executorch_lib_env.StaticLibrary(
+    "xnnpack_backend",
+    xnnpack_backend_srcs + [libcpuinfo, libpthreadpool]
+)
+
+# Dependencies are set via lib hierarchy in sources
+# But to ensure order, use Depends
+executorch_lib_env.Depends(libexecutorch, libexecutorch_core)
+
+# Collect libs for linking
+executorch_libs = [libexecutorch_core, libexecutorch, libextension_module_static, libextension_tensor, libportable_ops_lib, liboptimized_native_cpu_ops_lib, libxnnpack_backend]
+
+# For linking in module_env
+module_env.Prepend(LIBS=executorch_libs)
+
+# No need for LIBPATH since passing objects directly
 
 if env["platform"] == "linuxbsd":
     module_env.Append(CPPFLAGS=["-std=c++17"])
     module_env.Append(LIBS=[
-        "executorch",  # Main library
-        "extension_module_static",
-        "extension_tensor",
-        "optimized_native_cpu_ops_lib",
-        "xnnpack_backend",
         "pthread",
         "dl",
     ])
 elif env["platform"] == "windows":
     module_env.Append(CPPFLAGS=["/std:c++17"])
-    module_env.Append(LIBS=[
-        "executorch",
-        "extension_module_static",
-        "extension_tensor",
-        "optimized_native_cpu_ops_lib",
-        "xnnpack_backend",
-    ])
-elif env["platform"] == "osx":
+    # No additional libs for windows in this context
+elif env["platform"] == "macos":
     module_env.Append(CPPFLAGS=["-std=c++17"])
     module_env.Append(LIBS=[
-        "executorch",
-        "extension_module_static",
-        "extension_tensor",
-        "optimized_native_cpu_ops_lib",
-        "xnnpack_backend",
+        "pthread",  # For macOS
+        "dl",  # Dynamic loading, may be libdl or built-in
     ])
 
 module_env.add_source_files(env.modules_sources, "*.cpp")

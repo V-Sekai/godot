@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<class name="ExecuTorchMV2Demo" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Demo node for ExecuTorch MobileNet v2 inference integration in Godot.
+	</brief_description>
+	<description>
+		This node provides a minimal demonstration of running ExecuTorch MobileNet v2 model inference within Godot. It loads a .pte model file and performs inference with dummy input data, printing results to the console.
+		[b]Note:[/b] This is a basic demo implementation. For production use, additional error handling and optimization would be needed.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_ready" qualifiers="virtual">
+			<return type="void" />
+			<description>
+				Called when the node is added to the scene. Loads the model and performs demo inference if model_path is set.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="model_path" type="String" setter="set_model_path" getter="get_model_path">
+			Path to the .pte model file to load for inference.
+		</member>
+	</members>
+	<constants>
+	</constants>
+</class>

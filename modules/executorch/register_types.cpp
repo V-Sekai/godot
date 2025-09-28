@@ -31,6 +31,7 @@
 #include "register_types.h"
 #include "core/object/class_db.h"
 #include "executorch_linear_regression.h"
+#include "executorch_mv2_demo.h"
 #include "executorch_node.h"
 #include "mcp_server.h"
 
@@ -41,6 +42,7 @@ void initialize_executorch_module(ModuleInitializationLevel p_level) {
 	ClassDB::register_class<ModelContextProtocolServer>();
 	ClassDB::register_class<ExecuTorchNode>();
 	ClassDB::register_class<ExecuTorchLinearRegression>();
+	ClassDB::register_class<ExecuTorchMV2Demo>();
 }
 
 void uninitialize_executorch_module(ModuleInitializationLevel p_level) {
