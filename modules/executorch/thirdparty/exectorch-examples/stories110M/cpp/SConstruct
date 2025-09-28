@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+
+#
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import os
+import sys
+
+# Try to import SCons and provide helpful error if missing
+try:
+    from SCons.Script import *
+except ImportError as e:
+    print("SCons not found. Please install it with 'pip install SCons'")
+    sys.exit(1)
+
+# Configuration
+executorch_path = '../../../../'
+env = Environment(ENV = os.environ)
+
+# Add preprocessor flags
+env.Append(CPPDEFINES = [
+    'ET_LOG_ENABLED=0',
+    'ET_EVENT_TRACER_ENABLED=0',
+    'ET_ENABLE_PROGRAM_VERIFICATION=0',
+    'EXECUTORCH_OPTIMIZE_SIZE=0',
+    'DC10_USING_CUSTOM_GENERATED_MACROS=1'
+])
+
+# Add include paths (minimal for demo)
+include_paths = [
+    '../../../../thirdparty',                    # flatbuffers
+    '../../../../runtime/core',                # executorch core
+    '../../../../runtime/executor',            # program, method
+    '../../../../runtime/core/exec_aten',      # exec_aten
+    '../../../../runtime/core/portable_type/c10', # c10 types
+    '../../../../extension',                   # extension modules
+]
+
+env.Append(CPPPATH = include_paths)
+
+# Compiler flags
+env.Append(CCFLAGS = [
+    '-std=c++17'
+])
+
+# Linker flags for macOS (minimal for demo)
+env.Append(LINKFLAGS = [
+])
+
+# Demo application - simple compilation without runtime dependencies
+main = env.Program(
+    'executorch_stories_demo_app',
+    ['main.cpp']
+)
+
+# Default target
+Default(main)
