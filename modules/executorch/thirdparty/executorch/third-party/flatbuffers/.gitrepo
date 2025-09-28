@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/google/flatbuffers.git
+	branch = master
+	commit = 27325e002a36b3de2999906a77ff13a14fb09471
+	parent = 0b705098cfbbade46773cc7a157decc137ab1721
+	method = merge
+	cmdver = 0.4.9
