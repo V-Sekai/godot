@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/executorch-examples.git
+	branch = main
+	commit = bc38f780aefa9ce2f8f5ad50ba1465433562acc2
+	parent = bf99d2e56feb18e803cf1e401fd4b5f152d93893
+	method = merge
+	cmdver = 0.4.9

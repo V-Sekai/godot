@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/pytorch/executorch.git
+	branch = main
+	commit = df8d03bbdc48f0d0848b373043e39af1a1f85a8c
+	parent = 3ff0778e0f1b0e914a842a5f88475f26272df34a
+	method = merge
+	cmdver = 0.4.9

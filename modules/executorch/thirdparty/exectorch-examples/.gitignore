@@ -1,0 +1,38 @@
+# System files
+.DS_Store
+
+# Python environment
+.venv/
+
+# Build and tool-generated files
+build/
+
+# Any exported models and profiling outputs
+*.bin
+*.model
+*.pte
+*.ptd
+
+# Xcode
+xcuserdata/
+.build/
+.swiftpm/
+*.xcworkspace/
+*.xcframework/
+*.iml
+
+.gradle
+/local.properties
+./idea
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.aar

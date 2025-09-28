@@ -8,13 +8,50 @@ Import("env")
 
 module_env = env.Clone()
 
+# Add local include path
 module_env.Append(CPPPATH=["."])
+
+# Add ExecuTorch include paths
+executorch_path = "../thirdparty/executorch"
+module_env.Append(CPPPATH=[
+    executorch_path,  # Main include path
+    executorch_path + "/runtime/core",
+    executorch_path + "/runtime/core/exec_aten",
+    executorch_path + "/extension",
+    executorch_path + "/extension/tensor",
+    executorch_path + "/extension/module",
+    executorch_path + "/extension/data_loader",
+    executorch_path + "/extension/memory_allocator",
+])
 
 if env["platform"] == "linuxbsd":
     module_env.Append(CPPFLAGS=["-std=c++17"])
+    module_env.Append(LIBS=[
+        "executorch",  # Main library
+        "extension_module_static",
+        "extension_tensor",
+        "optimized_native_cpu_ops_lib",
+        "xnnpack_backend",
+        "pthread",
+        "dl",
+    ])
 elif env["platform"] == "windows":
     module_env.Append(CPPFLAGS=["/std:c++17"])
+    module_env.Append(LIBS=[
+        "executorch",
+        "extension_module_static",
+        "extension_tensor",
+        "optimized_native_cpu_ops_lib",
+        "xnnpack_backend",
+    ])
 elif env["platform"] == "osx":
     module_env.Append(CPPFLAGS=["-std=c++17"])
+    module_env.Append(LIBS=[
+        "executorch",
+        "extension_module_static",
+        "extension_tensor",
+        "optimized_native_cpu_ops_lib",
+        "xnnpack_backend",
+    ])
 
 module_env.add_source_files(env.modules_sources, "*.cpp")

@@ -31,6 +31,16 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
+#include <vector>
+
+// Forward declarations to avoid full includes during development
+namespace executorch {
+namespace extension {
+class Module;
+class TensorPtr;
+} // namespace extension
+} // namespace executorch
 
 enum class ExecuTorchDevice {
 	CPU,
@@ -65,8 +75,16 @@ public:
 	void deallocate_memory(void *ptr);
 	void clear_memory_pool();
 
+	// Model operations
+	bool load_model(const std::string &model_path);
+	std::vector<float> run_inference(const std::vector<float> &input_data);
+
 	double get_last_inference_time() const;
 	size_t get_memory_usage() const;
+
+private:
+	// ExecuTorch runtime objects
+	std::unique_ptr<executorch::extension::Module> module_;
 
 private:
 	bool _initialize_device();
