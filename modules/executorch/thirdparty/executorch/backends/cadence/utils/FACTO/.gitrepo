@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/pytorch-labs/FACTO.git
+	branch = main
+	commit = 8bd23a25dd42712d9d6a9edf4bd8f15ad18885a6
+	parent = d67e5a193d083cd8255dc5d8bdcc16b01d7680d1
+	method = merge
+	cmdver = 0.4.9

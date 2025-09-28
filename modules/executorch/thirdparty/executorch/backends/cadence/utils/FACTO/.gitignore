@@ -1,0 +1,21 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Setuptools build directories
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments (if any)
+env/
+.venv/
+venv/
+
+# System-specific files
+.DS_Store
+Thumbs.db
