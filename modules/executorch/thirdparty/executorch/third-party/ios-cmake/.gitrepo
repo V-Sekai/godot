@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/leetal/ios-cmake
+	branch = master
+	commit = 21598aa550701d20654c032328f7e8710a14099b
+	parent = 4bc7ddf065807cefe9bcbe97ecc303892af0a8f3
+	method = merge
+	cmdver = 0.4.9
