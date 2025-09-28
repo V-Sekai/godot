@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/nlohmann/json.git
+	branch = develop
+	commit = 3ed64e502a6371311af3c2f309e6525b2f5f6f18
+	parent = 0e79c53118734162b53db0a391d7fda96f07e4a7
+	method = merge
+	cmdver = 0.4.9
