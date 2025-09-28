@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/Maratyszcza/FP16.git
+	branch = master
+	commit = 54408c3cdb679d1ca38f186a24927c957d949394
+	parent = 42e6a0bd2247bcd27f52a7cfaf956ba495c768df
+	method = merge
+	cmdver = 0.4.9
