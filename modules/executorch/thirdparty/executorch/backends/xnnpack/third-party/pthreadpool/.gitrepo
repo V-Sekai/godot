@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/google/pthreadpool.git
+	branch = main
+	commit = d5952a07c3196f47f4fac3deed22014c27bdb17d
+	parent = 5cafc0e6b728356d8a9da73907997cdcdba5e21f
+	method = merge
+	cmdver = 0.4.9
