@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/pytorch/ao.git
+	branch = main
+	commit = 0d3217d07ec112bf92fb9d7383938d884b411502
+	parent = 405a4c124c6e83d062392bcf9fe48830b0e9ba17
+	method = merge
+	cmdver = 0.4.9

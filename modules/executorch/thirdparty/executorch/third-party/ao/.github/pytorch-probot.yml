@@ -1,0 +1,6 @@
+mergebot: True
+ciflow_push_tags:
+- ciflow/benchmark
+- ciflow/tutorials
+- ciflow/rocm
+- ciflow/4xh100
