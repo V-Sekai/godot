@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/google/XNNPACK.git
+	branch = master
+	commit = ea1906f8df2faf8172da1b341c563bf9115581dd
+	parent = 28969438385e3868722fe2473326bcbc267be5e1
+	method = merge
+	cmdver = 0.4.9
