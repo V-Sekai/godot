@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/dvidelabs/flatcc.git
+	branch = master
+	commit = 54408c3cdb679d1ca38f186a24927c957d949394
+	parent = a2c62462ddf314696f06b2784b06a60670f7d572
+	method = merge
+	cmdver = 0.4.9
