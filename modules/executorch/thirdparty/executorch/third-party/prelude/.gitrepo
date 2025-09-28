@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/facebook/buck2-prelude.git
+	branch = main
+	commit = 9615d2448d5b6adf2031c731acbc4c211d480d1a
+	parent = 74ef784dc55a26f0975ebd3b897d8581f34a5484
+	method = merge
+	cmdver = 0.4.9

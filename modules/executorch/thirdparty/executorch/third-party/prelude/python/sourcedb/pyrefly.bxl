@@ -1,0 +1,156 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is dual-licensed under either the MIT license found in the
+# LICENSE-MIT file in the root directory of this source tree or the Apache
+# License, Version 2.0 found in the LICENSE-APACHE file in the root directory
+# of this source tree. You may select, at your option, one of the
+# above-listed licenses.
+
+# Analyse some python files/targets and produce data for the Pyrefly IDE.
+# See <https://github.com/facebook/pyrefly>.
+
+# Missing features:
+#
+# * Manifests for prebuilt library (i.e. 3p python libraries). I think getting those would actually require some extracting and reading from disk (https://github.com/facebook/buck2/blob/2b6c84ef285519a86ad793800296b3cda17e85dd/prelude/python/prebuilt_python_library.bzl#L56)
+# * Anything logic that tries to inject / alter srcs or deps within the python rule need to be replicated, e.g.
+#   + https://github.com/facebook/buck2/blob/2b6c84ef285519a86ad793800296b3cda17e85dd/prelude/python/python_library.bzl#L188-L192
+#   + https://github.com/facebook/buck2/blob/2b6c84ef285519a86ad793800296b3cda17e85dd/prelude/python/python_library.bzl#L339-L341
+#   + https://github.com/facebook/buck2/blob/2b6c84ef285519a86ad793800296b3cda17e85dd/prelude/python/python_library.bzl#L290-L306
+
+load("@prelude//python:typing.bzl", "DEFAULT_PY_VERSION")
+
+def _append_to_or_set_list(mapping: dict[str, list[typing.Any]], key: str, value: typing.Any) -> None:
+    if key in mapping:
+        mapping[key].append(value)
+    else:
+        mapping[key] = [value]
+
+# Produce a list of all the targets that I care about.
+# This should be everything reachable from the command line arguments.
+def _list_targets(ctx: bxl.Context) -> bxl.ConfiguredTargetSet:
+    cquery = ctx.cquery()
+    uquery = ctx.uquery()
+    files = cquery.deps(uquery.owner(ctx.cli_args.file), 0)  # deps(0) to convert to configured
+    targets = cquery.eval("kind('python_library|alias', %s)", ctx.cli_args.target)
+    res = files
+    for target in targets.values():
+        res += target
+
+    return cquery.deps(res, filter = "kind('python_library|alias', target_deps())")
+
+def _clean_module(base_module: str, module: str) -> str:
+    base_module = base_module.removesuffix("/").replace("/", ".")
+    module = module.replace("/", ".").removesuffix(".py").removesuffix("__init__").removesuffix(".")
+    sep = ""
+    if len(base_module) != 0 and len(module) != 0:
+        sep = "."
+    return base_module + sep + module
+
+def _main(ctx: bxl.Context) -> None:
+    targets = _list_targets(ctx)
+    fs = ctx.fs
+
+    to_build = []  # List of targets I need to build
+    to_insert = []  # Triples of (module, key, target) to insert after building
+    entries = {}  # dict[target, {"deps": list[target], "srcs": dict[qualified_path, list[files]]}]
+    json = {"db": entries, "root": ctx.root()}
+
+    # We only want to add `deps` to targets that are in the output.
+    known_targets = {x.label.raw_target(): None for x in targets}
+
+    for x in targets:
+        # TODO(connernilsen): is this how we should be excluding this alias type,
+        # or should it instead be done in the `kind` filter
+        if x.rule_type in (
+            "forward",
+            "prelude//rules.bzl:command_alias",
+            "prelude//rules.bzl:export_file",
+        ):
+            continue
+
+        attrs = x.attrs_lazy()
+        entry = {}
+        entries[str(x.label.raw_target())] = entry
+
+        base_module = attrs.get("base_module")
+        if base_module != None and base_module.value() != None:
+            base_module = base_module.value()
+        else:
+            base_module = x.label.package
+
+        if x.rule_type == "prelude//rules.bzl:alias":
+            actual = attrs.get("actual")
+            if actual != None and actual.value() != None:
+                entry["alias"] = actual.value().raw_target()
+                continue
+            else:
+                fail("Alias has no actual target".format(x.label))
+
+        srcs = {}
+        deps = []
+        entry["srcs"] = srcs
+        entry["deps"] = deps
+        python_version = attrs.get("py_version_for_type_checking")
+        entry["python_version"] = python_version.value() if python_version != None and python_version.value() != None else DEFAULT_PY_VERSION
+
+        # TOOD(connernilsen): replace with actual platform later
+        entry["python_platform"] = "linux"
+        if attrs.get("deps") == None:
+            fail(x.rule_type)
+        attr_deps = attrs.get("deps").value()
+        for dep in attr_deps:
+            dep = dep.raw_target()
+            if dep in known_targets:
+                deps.append(str(dep))
+
+        # python_binary might be the root target, which doesn't have `srcs`.
+        attr_srcs = attrs.get("srcs")
+        attr_srcs = {} if attr_srcs == None else attr_srcs.value()
+        if type(attr_srcs) == type([]):
+            for v in attr_srcs:
+                if getattr(v, "is_source", False):
+                    _append_to_or_set_list(
+                        srcs,
+                        _clean_module(base_module, v.short_path),
+                        fs.project_rel_path(v),
+                    )
+                elif type(v) != "Label" and getattr(v, "short_path"):
+                    to_build.append(v)
+                    to_insert.append((srcs, _clean_module(base_module, v.short_path), v))
+        elif type(attr_srcs) == type({}):
+            for k, v in attr_srcs.items():
+                if getattr(v, "is_source", False):
+                    _append_to_or_set_list(
+                        srcs,
+                        _clean_module(base_module, k),
+                        fs.project_rel_path(v),
+                    )
+                else:
+                    to_build.append(v)
+                    to_insert.append((srcs, _clean_module(base_module, k), v))
+
+    if to_build:
+        built = ctx.build(to_build)
+        ensured = ctx.output.ensure_multiple(built)
+        for srcs, key, target in to_insert:
+            _append_to_or_set_list(srcs, key, ensured[target][0].rel_path())
+
+    ctx.output.print_json(json)
+
+main = bxl_main(
+    doc = """Produce data required for the Pyrefly IDE.
+
+    Takes a list of target patterns and build the right data to check each.
+    """,
+    impl = _main,
+    cli_args = {
+        "file": cli_args.list(
+            cli_args.string(doc = "File to analyse"),
+            default = [],
+        ),
+        "target": cli_args.list(
+            cli_args.string(doc = "Target pattern to analyse"),
+            default = [],
+        ),
+    },
+)
