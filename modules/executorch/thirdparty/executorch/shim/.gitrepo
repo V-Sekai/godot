@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/facebook/buck2-shims-meta
+	branch = main
+	commit = ec68c2198b364e95041069d60498e5a9e1bd7369
+	parent = f538aa4b0d9285e202e18182e2053048818c802a
+	method = merge
+	cmdver = 0.4.9
