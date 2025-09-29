@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-opentelemetry:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential pkg-config libprotobuf-dev protobuf-compiler libgrpc++-dev
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake protobuf grpc
+
+    - name: Build OpenTelemetry C++ (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        cd thirdparty/opentelemetry-cpp
+        mkdir build
+        cd build
+        cmake .. -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DWITH_OTLP=ON -DWITH_OTLP_GRPC=ON -DCMAKE_BUILD_TYPE=Release
+        cmake --build . --config Release -- -j$(nproc)
+
+    - name: Build OpenTelemetry C++ (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        cd thirdparty/opentelemetry-cpp
+        mkdir build
+        cd build
+        cmake .. -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DWITH_OTLP=ON -DWITH_OTLP_GRPC=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_PROCESSOR=arm64
+        cmake --build . --config Release -- -j$(sysctl -n hw.logicalcpu)
+
+    - name: Verify libraries
+      run: |
+        ls -la thirdparty/opentelemetry-cpp/build/*.a
+        ls -la thirdparty/opentelemetry-cpp/build/sdk/src/common/*.a

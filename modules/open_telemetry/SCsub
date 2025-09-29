@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_otel = env_modules.Clone()
+
+# Add SQLite include path
+env_otel.Prepend(CPPPATH=["#modules/open_telemetry/thirdparty/sqlite"])
+
+module_obj = []
+
+# Main module files
+env_otel.add_source_files(module_obj, "*.cpp")
+
+# Structure classes
+env_otel.add_source_files(module_obj, "structures/*.cpp")
+
+# Add test sources if tests are enabled
+if env["tests"]:
+    env_otel.add_source_files(env.modules_sources, "./tests/*.cpp")
+    env_otel.Append(CPPDEFINES=["TESTS_ENABLED"])
+
+env.modules_sources += module_obj

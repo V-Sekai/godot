@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OTelExporterFile" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="ensure_directory_exists">
+			<return type="int" enum="Error" />
+			<description>
+			</description>
+		</method>
+		<method name="export_logs">
+			<return type="int" enum="Error" />
+			<param index="0" name="state" type="OTelState" />
+			<description>
+			</description>
+		</method>
+		<method name="export_metrics">
+			<return type="int" enum="Error" />
+			<param index="0" name="state" type="OTelState" />
+			<description>
+			</description>
+		</method>
+		<method name="export_traces">
+			<return type="int" enum="Error" />
+			<param index="0" name="state" type="OTelState" />
+			<description>
+			</description>
+		</method>
+		<method name="generate_filename" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="type" type="String" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="filename_prefix" type="String" setter="set_filename_prefix" getter="get_filename_prefix" default="&quot;otel&quot;">
+		</member>
+		<member name="mode" type="int" setter="set_mode" getter="get_mode" enum="OTelExporterFile.ExportMode" default="2">
+		</member>
+		<member name="output_directory" type="String" setter="set_output_directory" getter="get_output_directory" default="&quot;user://otel_traces&quot;">
+		</member>
+		<member name="pretty_print" type="bool" setter="set_pretty_print" getter="get_pretty_print" default="true">
+		</member>
+	</members>
+	<constants>
+		<constant name="EXPORT_MODE_APPEND" value="0" enum="ExportMode">
+		</constant>
+		<constant name="EXPORT_MODE_OVERWRITE" value="1" enum="ExportMode">
+		</constant>
+		<constant name="EXPORT_MODE_TIMESTAMPED" value="2" enum="ExportMode">
+		</constant>
+	</constants>
+</class>

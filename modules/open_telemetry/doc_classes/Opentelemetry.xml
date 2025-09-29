@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OpenTelemetry" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Main OpenTelemetry API for traces, metrics, and logs export via OTLP.
+	</brief_description>
+	<description>
+		OpenTelemetry provides a complete implementation of the OpenTelemetry Protocol (OTLP) for Godot Engine. It supports distributed tracing with spans, metrics collection (counters, gauges, histograms), and structured logging. Data is exported via HTTP/JSON to OTLP collectors.
+		Key features include multi-sink support for redundant export, automatic batching, UUID v7 trace IDs, and comprehensive span lifecycle management.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_event">
+			<return type="void" />
+			<param index="0" name="span_uuid" type="String" />
+			<param index="1" name="event_name" type="String" />
+			<param index="2" name="attributes" type="Dictionary" default="{}" />
+			<param index="3" name="timestamp" type="int" default="0" />
+			<description>
+			</description>
+		</method>
+		<method name="add_sink">
+			<return type="String" />
+			<param index="0" name="sink_name" type="String" />
+			<param index="1" name="hostname" type="String" />
+			<param index="2" name="headers" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="create_counter">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="unit" type="String" default="&quot;&quot;" />
+			<param index="2" name="description" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="create_gauge">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="unit" type="String" default="&quot;&quot;" />
+			<param index="2" name="description" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="create_histogram">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="unit" type="String" default="&quot;&quot;" />
+			<param index="2" name="description" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="end_span">
+			<return type="void" />
+			<param index="0" name="span_uuid" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="flush_all">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="generate_uuid_v7">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_document" qualifiers="const">
+			<return type="OTelDocument" />
+			<description>
+			</description>
+		</method>
+		<method name="get_sink">
+			<return type="Dictionary" />
+			<param index="0" name="sink_name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_state" qualifiers="const">
+			<return type="OTelState" />
+			<description>
+			</description>
+		</method>
+		<method name="increment_counter">
+			<return type="void" />
+			<param index="0" name="counter_id" type="String" />
+			<param index="1" name="value" type="float" default="1.0" />
+			<param index="2" name="attributes" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="init_tracer_provider">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="host" type="String" />
+			<param index="2" name="attributes" type="Dictionary" default="{}" />
+			<param index="3" name="version" type="String" default="&quot;&quot;" />
+			<param index="4" name="schema_url" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="list_sinks">
+			<return type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="log_message">
+			<return type="void" />
+			<param index="0" name="level" type="String" />
+			<param index="1" name="message" type="String" />
+			<param index="2" name="attributes" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="record_error">
+			<return type="void" />
+			<param index="0" name="span_uuid" type="String" />
+			<param index="1" name="error" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="record_exception">
+			<return type="void" />
+			<param index="0" name="span_uuid" type="String" />
+			<param index="1" name="message" type="String" />
+			<param index="2" name="attributes" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="record_histogram">
+			<return type="void" />
+			<param index="0" name="histogram_id" type="String" />
+			<param index="1" name="value" type="float" />
+			<param index="2" name="attributes" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="record_metric">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="value" type="float" />
+			<param index="2" name="unit" type="String" />
+			<param index="3" name="metric_type" type="int" />
+			<param index="4" name="attributes" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="remove_sink">
+			<return type="String" />
+			<param index="0" name="sink_name" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_attributes">
+			<return type="void" />
+			<param index="0" name="span_uuid" type="String" />
+			<param index="1" name="attributes" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="set_batch_size">
+			<return type="void" />
+			<param index="0" name="size" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_flush_interval">
+			<return type="void" />
+			<param index="0" name="interval_ms" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_gauge">
+			<return type="void" />
+			<param index="0" name="gauge_id" type="String" />
+			<param index="1" name="value" type="float" />
+			<param index="2" name="attributes" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="set_headers">
+			<return type="String" />
+			<param index="0" name="headers" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="set_sink_enabled">
+			<return type="String" />
+			<param index="0" name="sink_name" type="String" />
+			<param index="1" name="enabled" type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="set_status">
+			<return type="void" />
+			<param index="0" name="span_uuid" type="String" />
+			<param index="1" name="status_code" type="int" />
+			<param index="2" name="description" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="shutdown">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="start_span">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="kind" type="int" enum="SpanKind" default="0" />
+			<param index="2" name="links" type="Array" default="[]" />
+			<param index="3" name="attributes" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="start_span_with_parent">
+			<return type="String" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="parent_span_uuid" type="String" />
+			<param index="2" name="kind" type="int" enum="SpanKind" default="0" />
+			<param index="3" name="links" type="Array" default="[]" />
+			<param index="4" name="attributes" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="update_name">
+			<return type="void" />
+			<param index="0" name="span_uuid" type="String" />
+			<param index="1" name="name" type="String" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="SPAN_KIND_INTERNAL" value="0" enum="SpanKind">
+			Indicates an internal operation within an application.
+		</constant>
+		<constant name="SPAN_KIND_SERVER" value="1" enum="SpanKind">
+			Indicates a server handling a request.
+		</constant>
+		<constant name="SPAN_KIND_CLIENT" value="2" enum="SpanKind">
+			Indicates a client making a request.
+		</constant>
+		<constant name="SPAN_KIND_PRODUCER" value="3" enum="SpanKind">
+			Indicates a producer sending a message.
+		</constant>
+		<constant name="SPAN_KIND_CONSUMER" value="4" enum="SpanKind">
+			Indicates a consumer receiving a message.
+		</constant>
+		<constant name="STATUS_UNSET" value="0" enum="StatusCode">
+			The status is unset (default state).
+		</constant>
+		<constant name="STATUS_OK" value="1" enum="StatusCode">
+			The operation completed successfully.
+		</constant>
+		<constant name="STATUS_ERROR" value="2" enum="StatusCode">
+			The operation encountered an error.
+		</constant>
+	</constants>
+</class>
