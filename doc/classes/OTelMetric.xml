@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OTelMetric" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_data_point">
+			<return type="void" />
+			<param index="0" name="data_point" type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="to_otlp_dict" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="data_points" type="Array" setter="set_data_points" getter="get_data_points" default="[]">
+		</member>
+		<member name="description" type="String" setter="set_description" getter="get_description" default="&quot;&quot;">
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+		</member>
+		<member name="temporality" type="int" setter="set_temporality" getter="get_temporality" enum="OTelMetric.AggregationTemporality" default="2">
+		</member>
+		<member name="type" type="int" setter="set_type" getter="get_type" enum="OTelMetric.MetricType" default="0">
+		</member>
+		<member name="unit" type="String" setter="set_unit" getter="get_unit" default="&quot;&quot;">
+		</member>
+	</members>
+	<constants>
+		<constant name="METRIC_TYPE_GAUGE" value="0" enum="MetricType">
+		</constant>
+		<constant name="METRIC_TYPE_SUM" value="1" enum="MetricType">
+		</constant>
+		<constant name="METRIC_TYPE_HISTOGRAM" value="2" enum="MetricType">
+		</constant>
+		<constant name="METRIC_TYPE_EXPONENTIAL_HISTOGRAM" value="3" enum="MetricType">
+		</constant>
+		<constant name="METRIC_TYPE_SUMMARY" value="4" enum="MetricType">
+		</constant>
+		<constant name="AGGREGATION_TEMPORALITY_UNSPECIFIED" value="0" enum="AggregationTemporality">
+		</constant>
+		<constant name="AGGREGATION_TEMPORALITY_DELTA" value="1" enum="AggregationTemporality">
+		</constant>
+		<constant name="AGGREGATION_TEMPORALITY_CUMULATIVE" value="2" enum="AggregationTemporality">
+		</constant>
+	</constants>
+</class>

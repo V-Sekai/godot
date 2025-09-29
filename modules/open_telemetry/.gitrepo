@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/godot-open-telemetry.git
+	branch = main
+	commit = 75dd2fd9a0fa0f400ee167cdf42266a7a7844af8
+	parent = 8d8041bd4dab30e51ecf5be21dc7bf1f6a26c039
+	method = merge
+	cmdver = 0.4.9

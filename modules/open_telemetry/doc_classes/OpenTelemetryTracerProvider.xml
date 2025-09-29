@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OpenTelemetryTracerProvider" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Factory for creating tracers in distributed tracing.
+	</brief_description>
+	<description>
+		OpenTelemetryTracerProvider is the entry point for creating tracers. It manages a collection of tracers and provides resource attributes that are shared across all spans created by its tracers. Resource attributes typically describe the service, deployment environment, and other contextual information.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_resource_attributes" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns the resource attributes shared by all tracers from this provider.
+			</description>
+		</method>
+		<method name="get_tracer">
+			<return type="OpenTelemetryTracer" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="version" type="String" default="&quot;&quot;" />
+			<param index="2" name="schema_url" type="String" default="&quot;&quot;" />
+			<param index="3" name="attributes" type="Dictionary" default="{}" />
+			<description>
+				Gets or creates a tracer with the specified instrumentation scope. Returns the same tracer instance for identical name/version/schema combinations.
+			</description>
+		</method>
+		<method name="set_resource_attributes">
+			<return type="void" />
+			<param index="0" name="attributes" type="Dictionary" />
+			<description>
+				Sets resource attributes that describe the service (e.g., service.name, deployment.environment).
+			</description>
+		</method>
+	</methods>
+</class>
