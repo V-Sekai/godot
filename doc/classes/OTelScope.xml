@@ -23,8 +23,6 @@
 	<members>
 		<member name="attributes" type="Dictionary" setter="set_attributes" getter="get_attributes" default="{}">
 		</member>
-		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
-		</member>
 		<member name="version" type="String" setter="set_version" getter="get_version" default="&quot;&quot;">
 		</member>
 	</members>
