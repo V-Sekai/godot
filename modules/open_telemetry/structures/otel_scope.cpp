@@ -31,9 +31,7 @@
 #include "otel_scope.h"
 
 void OTelScope::_bind_methods() {
-	// Scope identification
-	ClassDB::bind_method(D_METHOD("get_name"), &OTelScope::get_name);
-	ClassDB::bind_method(D_METHOD("set_name", "name"), &OTelScope::set_name);
+	// Scope identification (name uses Resource::get_name/set_name)
 	ClassDB::bind_method(D_METHOD("get_version"), &OTelScope::get_version);
 	ClassDB::bind_method(D_METHOD("set_version", "version"), &OTelScope::set_version);
 
@@ -45,7 +43,7 @@ void OTelScope::_bind_methods() {
 	// Serialization
 	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OTelScope::to_otlp_dict);
 
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+	// Note: "name" property uses Resource's built-in get_name/set_name
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "version"), "set_version", "get_version");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "attributes"), "set_attributes", "get_attributes");
 }
@@ -53,14 +51,7 @@ void OTelScope::_bind_methods() {
 OTelScope::OTelScope() {
 }
 
-// Scope identification
-String OTelScope::get_name() const {
-	return name;
-}
-
-void OTelScope::set_name(const String &p_name) {
-	name = p_name;
-}
+// Scope identification (name uses Resource's built-in methods)
 
 String OTelScope::get_version() const {
 	return version;
@@ -87,7 +78,7 @@ void OTelScope::add_attribute(const String &p_key, const Variant &p_value) {
 Dictionary OTelScope::to_otlp_dict() const {
 	Dictionary scope_dict;
 	
-	scope_dict["name"] = name;
+	scope_dict["name"] = get_name();
 	
 	if (!version.is_empty()) {
 		scope_dict["version"] = version;

@@ -42,7 +42,6 @@ class OTelScope : public Resource {
 	friend class OTelState;
 
 private:
-	String name;
 	String version;
 	Dictionary attributes;
 
@@ -52,9 +51,7 @@ protected:
 public:
 	OTelScope();
 
-	// Scope identification
-	String get_name() const;
-	void set_name(const String &p_name);
+	// Scope identification (uses Resource::get_name() and Resource::set_name())
 
 	String get_version() const;
 	void set_version(const String &p_version);
