@@ -116,19 +116,19 @@ String OTelResource::get_service_instance_id() const {
 // Serialization to OTLP format
 Dictionary OTelResource::to_otlp_dict() const {
 	Dictionary resource_dict;
-	
+
 	if (attributes.size() > 0) {
 		// Convert attributes to OTLP format
 		Array otlp_attributes;
 		Array keys = attributes.keys();
-		
+
 		for (int i = 0; i < keys.size(); i++) {
 			String key = keys[i];
 			Variant value = attributes[key];
-			
+
 			Dictionary attr;
 			attr["key"] = key;
-			
+
 			Dictionary value_dict;
 			// Handle different value types according to OTLP spec
 			switch (value.get_type()) {
@@ -149,31 +149,31 @@ Dictionary OTelResource::to_otlp_dict() const {
 					value_dict["stringValue"] = String(value);
 					break;
 			}
-			
+
 			attr["value"] = value_dict;
 			otlp_attributes.push_back(attr);
 		}
-		
+
 		resource_dict["attributes"] = otlp_attributes;
 	}
-	
+
 	return resource_dict;
 }
 
 Ref<OTelResource> OTelResource::from_otlp_dict(const Dictionary &p_dict) {
 	Ref<OTelResource> resource;
 	resource.instantiate();
-	
+
 	if (p_dict.has("attributes")) {
 		Array otlp_attributes = p_dict["attributes"];
 		Dictionary attrs;
-		
+
 		for (int i = 0; i < otlp_attributes.size(); i++) {
 			Dictionary attr = otlp_attributes[i];
 			if (attr.has("key") && attr.has("value")) {
 				String key = attr["key"];
 				Dictionary value_dict = attr["value"];
-				
+
 				// Extract value based on type
 				Variant value;
 				if (value_dict.has("stringValue")) {
@@ -185,13 +185,13 @@ Ref<OTelResource> OTelResource::from_otlp_dict(const Dictionary &p_dict) {
 				} else if (value_dict.has("boolValue")) {
 					value = value_dict["boolValue"];
 				}
-				
+
 				attrs[key] = value;
 			}
 		}
-		
+
 		resource->set_attributes(attrs);
 	}
-	
+
 	return resource;
 }

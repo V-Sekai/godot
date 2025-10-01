@@ -262,7 +262,7 @@ String OpenTelemetry::start_span_with_parent_id(String p_name, String p_parent_s
 	}
 
 	Ref<OTelSpan> parent_span = active_spans[p_parent_span_uuid];
-	
+
 	Ref<OTelSpan> span;
 	span.instantiate();
 
@@ -294,7 +294,7 @@ void OpenTelemetry::add_event(String p_span_uuid, String p_event_name, Dictionar
 	}
 
 	Ref<OTelSpan> span = active_spans[p_span_uuid];
-	
+
 	uint64_t timestamp = p_timestamp;
 	if (timestamp == 0) {
 		timestamp = Time::get_singleton()->get_unix_time_from_system() * 1000000000ULL;
@@ -331,7 +331,7 @@ void OpenTelemetry::set_status(String p_span_uuid, int p_status_code, String p_d
 
 	Ref<OTelSpan> span = active_spans[p_span_uuid];
 	span->set_status_code((OTelSpan::StatusCode)p_status_code);
-	
+
 	if (!p_description.is_empty()) {
 		span->set_status_message(p_description);
 	}
@@ -368,13 +368,13 @@ void OpenTelemetry::set_batch_size(int p_size) {
 void OpenTelemetry::record_metric(String p_name, float p_value, String p_unit, int p_metric_type, Dictionary p_attributes) {
 	Ref<OTelMetric> metric;
 	metric.instantiate();
-	
+
 	metric->set_name(p_name);
 	if (!p_unit.is_empty()) {
 		metric->set_unit(p_unit);
 	}
 	metric->set_type((OTelMetric::MetricType)p_metric_type);
-	
+
 	// Create data point
 	Dictionary data_point;
 	data_point["time_unix_nano"] = Time::get_singleton()->get_unix_time_from_system() * 1000000000ULL;
@@ -382,7 +382,7 @@ void OpenTelemetry::record_metric(String p_name, float p_value, String p_unit, i
 	if (!p_attributes.is_empty()) {
 		data_point["attributes"] = p_attributes;
 	}
-	
+
 	metric->add_data_point(data_point);
 
 	state->add_metric(metric);
@@ -392,13 +392,13 @@ void OpenTelemetry::record_metric(String p_name, float p_value, String p_unit, i
 void OpenTelemetry::log_message(String p_level, String p_message, Dictionary p_attributes) {
 	Ref<OTelLog> log;
 	log.instantiate();
-	
+
 	log->set_body(p_message);
 	if (!p_attributes.is_empty()) {
 		log->set_attributes(p_attributes);
 	}
 	log->set_time_unix_nano(Time::get_singleton()->get_unix_time_from_system() * 1000000000ULL);
-	
+
 	// Map log level string to severity
 	if (p_level == "TRACE") {
 		log->set_severity_number(OTelLog::SEVERITY_NUMBER_TRACE);
@@ -423,12 +423,12 @@ void OpenTelemetry::CheckAndFlush() {
 	uint64_t current_time = Time::get_singleton()->get_unix_time_from_system() * 1000;
 
 	bool should_flush = (state->get_spans().size() >= batch_size) ||
-	                    (current_time - last_flush_time >= (uint64_t)flush_interval_ms);
-	
+			(current_time - last_flush_time >= (uint64_t)flush_interval_ms);
+
 	if (!should_flush) {
 		return;
 	}
-	
+
 	FlushAllBufferedData();
 	last_flush_time = current_time;
 }
@@ -495,7 +495,7 @@ Error OpenTelemetry::_send_to_sink(const String &p_sink_hostname, const Dictiona
 	if (use_ssl) {
 		tls_options = TLSOptions::client();
 	}
-	
+
 	Error err = client->connect_to_host(host, port, tls_options);
 	if (err != OK) {
 		return err;
@@ -550,7 +550,7 @@ void OpenTelemetry::FlushAllBufferedData() {
 		if (!span.is_valid() || !span->is_ended()) {
 			continue;
 		}
-		
+
 		state->add_span(span);
 		active_spans.erase(keys[i]);
 	}
