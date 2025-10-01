@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_span.h                                                          */
+/*  otel_span.h                                                           */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_SPAN_H
-#define OTEL_SPAN_H
+#pragma once
 
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
@@ -97,7 +96,7 @@ public:
 	// Validation methods
 	static bool is_valid_trace_id(const String &p_id);
 	static bool is_valid_span_id(const String &p_id);
-	
+
 	// ID generation helpers
 	static String generate_trace_id();
 	static String generate_span_id();
@@ -159,5 +158,3 @@ public:
 
 VARIANT_ENUM_CAST(OTelSpan::SpanKind);
 VARIANT_ENUM_CAST(OTelSpan::StatusCode);
-
-#endif // OTEL_SPAN_H

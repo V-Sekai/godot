@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_reflector.h                                                     */
+/*  otel_reflector.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_REFLECTOR_H
-#define OTEL_REFLECTOR_H
+#pragma once
 
 #include "core/io/resource.h"
 
@@ -71,5 +70,3 @@ public:
 	// Get document instance
 	Ref<OTelDocument> get_document() const;
 };
-
-#endif // OTEL_REFLECTOR_H

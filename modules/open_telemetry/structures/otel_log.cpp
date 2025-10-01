@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_log.cpp                                                         */
+/*  otel_log.cpp                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -162,7 +162,7 @@ Dictionary OTelLog::to_otlp_dict() const {
 	Dictionary log_dict;
 
 	log_dict["timeUnixNano"] = (int64_t)time_unix_nano;
-	
+
 	if (observed_time_unix_nano > 0) {
 		log_dict["observedTimeUnixNano"] = (int64_t)observed_time_unix_nano;
 	}

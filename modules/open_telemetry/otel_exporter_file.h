@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_exporter_file.h                                                 */
+/*  otel_exporter_file.h                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_EXPORTER_FILE_H
-#define OTEL_EXPORTER_FILE_H
+#pragma once
 
 #include "core/io/resource.h"
 #include "otel_document.h"
@@ -41,9 +40,9 @@ class OTelExporterFile : public Resource {
 
 public:
 	enum ExportMode {
-		EXPORT_MODE_APPEND = 0,      // Append to existing file
-		EXPORT_MODE_OVERWRITE = 1,   // Overwrite file each time
-		EXPORT_MODE_TIMESTAMPED = 2  // Create timestamped files
+		EXPORT_MODE_APPEND = 0, // Append to existing file
+		EXPORT_MODE_OVERWRITE = 1, // Overwrite file each time
+		EXPORT_MODE_TIMESTAMPED = 2 // Create timestamped files
 	};
 
 private:
@@ -83,5 +82,3 @@ public:
 };
 
 VARIANT_ENUM_CAST(OTelExporterFile::ExportMode);
-
-#endif // OTEL_EXPORTER_FILE_H

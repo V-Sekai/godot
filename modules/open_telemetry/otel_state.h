@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_state.h                                                         */
+/*  otel_state.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_STATE_H
-#define OTEL_STATE_H
+#pragma once
 
 #include "core/io/resource.h"
 #include "core/variant/typed_array.h"
@@ -92,5 +91,3 @@ public:
 	// Utility
 	void clear_all();
 };
-
-#endif // OTEL_STATE_H

@@ -1,6 +1,6 @@
 extends Node
 ## Godot OTLP Collector Test
-## 
+##
 ## This script demonstrates Godot acting as an OTLP collector,
 ## receiving and processing telemetry data from Python clients.
 
@@ -12,19 +12,19 @@ func _ready():
 	print("=" * 60)
 	print("Godot OTLP Collector Test")
 	print("=" * 60)
-	
+
 	# Initialize reflector
 	reflector = OTelReflector.new()
-	
+
 	# Create test data directory
 	DirAccess.make_dir_recursive_absolute(test_data_dir)
-	
+
 	# Run tests
 	await test_1_load_files()
 	await test_2_merge_multiple()
 	await test_3_find_files()
 	await test_4_process_traces()
-	
+
 	print("\n" + "=" * 60)
 	print("All tests complete!")
 	print("=" * 60)
@@ -33,24 +33,24 @@ func _ready():
 func test_1_load_files():
 	print("\nTest 1: Loading OTLP files from Python client")
 	print("-" * 60)
-	
+
 	# Check if test files exist (run python_client_test.py first)
 	var dir = DirAccess.open(".")
 	if dir == null:
 		print("✗ Could not open current directory")
 		return
-	
+
 	# Look for test files
 	var files = reflector.find_otlp_files(".", "test_*.json")
 	if files.size() == 0:
 		print("ℹ No test files found. Run python_client_test.py first.")
 		print("  Then copy generated JSON files to Godot project directory.")
 		return
-	
+
 	print("Found %d test files:" % files.size())
 	for file in files:
 		print("  - %s" % file)
-	
+
 	# Load trace file
 	for file in files:
 		if "traces" in file:
@@ -60,7 +60,7 @@ func test_1_load_files():
 				print("✓ Loaded successfully!")
 				print("  Service: %s" % state.get_resource().get_service_name())
 				print("  Spans: %d" % state.get_spans().size())
-				
+
 				# Print span details
 				for span in state.get_spans():
 					print("\n  Span Details:")
@@ -75,18 +75,18 @@ func test_1_load_files():
 func test_2_merge_multiple():
 	print("\nTest 2: Merging multiple trace files")
 	print("-" * 60)
-	
+
 	var trace_files = PackedStringArray()
 	var dir = DirAccess.open(".")
 	if dir:
 		var files = reflector.find_otlp_files(".", "test_traces_*.json")
 		for file in files:
 			trace_files.append(file)
-	
+
 	if trace_files.size() < 2:
 		print("ℹ Need at least 2 trace files. Run python client multiple times.")
 		return
-	
+
 	print("Merging %d trace files..." % trace_files.size())
 	var merged = reflector.load_and_merge_traces(trace_files)
 	if merged:
@@ -98,12 +98,12 @@ func test_2_merge_multiple():
 func test_3_find_files():
 	print("\nTest 3: Finding and categorizing OTLP files")
 	print("-" * 60)
-	
+
 	var all_files = reflector.find_otlp_files(".", "*.json")
 	var traces = []
 	var metrics = []
 	var logs = []
-	
+
 	for file in all_files:
 		if "traces" in file:
 			traces.append(file)
@@ -111,7 +111,7 @@ func test_3_find_files():
 			metrics.append(file)
 		elif "logs" in file:
 			logs.append(file)
-	
+
 	print("Categorized files:")
 	print("  Traces: %d" % traces.size())
 	print("  Metrics: %d" % metrics.size())
@@ -121,36 +121,36 @@ func test_3_find_files():
 func test_4_process_traces():
 	print("\nTest 4: Processing and analyzing trace data")
 	print("-" * 60)
-	
+
 	var trace_files = reflector.find_otlp_files(".", "test_traces_*.json")
 	if trace_files.size() == 0:
 		print("ℹ No trace files to process")
 		return
-	
+
 	# Load first trace file
 	var state = reflector.load_traces_from_file(trace_files[0])
 	if not state:
 		print("✗ Failed to load traces")
 		return
-	
+
 	print("Analyzing spans...")
 	var total_duration = 0.0
 	var span_count = state.get_spans().size()
-	
+
 	for span in state.get_spans():
 		total_duration += span.get_duration_ms()
-		
+
 		# Check for errors
 		if span.get_status_code() == OTelSpan.STATUS_CODE_ERROR:
 			print("  ⚠ Error span: %s" % span.get_name())
-		
+
 		# Print attributes
 		var attrs = span.get_attributes()
 		if attrs.size() > 0:
 			print("\n  Span: %s" % span.get_name())
 			for key in attrs.keys():
 				print("    %s: %s" % [key, attrs[key]])
-	
+
 	if span_count > 0:
 		print("\nStatistics:")
 		print("  Total spans: %d" % span_count)
@@ -159,11 +159,11 @@ func test_4_process_traces():
 ## Helper: Create test data programmatically
 func create_test_data():
 	print("\nCreating test data programmatically...")
-	
+
 	var state = OTelState.new()
 	state.get_resource().set_service_name("godot-test-service")
 	state.get_scope().set_name("godot-tracer")
-	
+
 	# Create a test span
 	var span = OTelSpan.new()
 	span.set_name("godot_test_operation")
@@ -171,13 +171,13 @@ func create_test_data():
 	span.set_span_id("d" * 16)
 	span.add_attribute("test.source", "godot")
 	span.mark_ended()
-	
+
 	state.add_span(span)
-	
+
 	# Export to JSON
 	var document = OTelDocument.new()
 	var json = document.serialize_traces(state)
-	
+
 	# Save to file
 	var filename = test_data_dir.path_join("godot_generated_trace.json")
 	var file = FileAccess.open(filename, FileAccess.WRITE)
@@ -185,7 +185,7 @@ func create_test_data():
 		file.store_string(json)
 		file.close()
 		print("✓ Created test file: %s" % filename)
-		
+
 		# Test reflector by loading it back
 		var loaded = reflector.load_traces_from_file(filename)
 		if loaded:

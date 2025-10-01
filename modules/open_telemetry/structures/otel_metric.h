@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_metric.h                                                        */
+/*  otel_metric.h                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_METRIC_H
-#define OTEL_METRIC_H
+#pragma once
 
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
@@ -98,5 +97,3 @@ public:
 
 VARIANT_ENUM_CAST(OTelMetric::MetricType);
 VARIANT_ENUM_CAST(OTelMetric::AggregationTemporality);
-
-#endif // OTEL_METRIC_H

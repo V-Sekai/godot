@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_metric.cpp                                                      */
+/*  otel_metric.cpp                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -129,13 +129,13 @@ void OTelMetric::add_data_point(const Dictionary &p_data_point) {
 // Serialization
 Dictionary OTelMetric::to_otlp_dict() const {
 	Dictionary metric_dict;
-	
+
 	metric_dict["name"] = name;
-	
+
 	if (!description.is_empty()) {
 		metric_dict["description"] = description;
 	}
-	
+
 	if (!unit.is_empty()) {
 		metric_dict["unit"] = unit;
 	}
@@ -177,11 +177,11 @@ Ref<OTelMetric> OTelMetric::from_otlp_dict(const Dictionary &p_dict) {
 	if (p_dict.has("name")) {
 		metric->set_name(p_dict["name"]);
 	}
-	
+
 	if (p_dict.has("description")) {
 		metric->set_description(p_dict["description"]);
 	}
-	
+
 	if (p_dict.has("unit")) {
 		metric->set_unit(p_dict["unit"]);
 	}

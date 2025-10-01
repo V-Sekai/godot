@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_resource.h                                                      */
+/*  otel_resource.h                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_RESOURCE_H
-#define OTEL_RESOURCE_H
+#pragma once
 
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
@@ -72,5 +71,3 @@ public:
 	Dictionary to_otlp_dict() const;
 	static Ref<OTelResource> from_otlp_dict(const Dictionary &p_dict);
 };
-
-#endif // OTEL_RESOURCE_H
