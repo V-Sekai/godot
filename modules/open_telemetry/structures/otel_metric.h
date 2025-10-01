@@ -60,7 +60,7 @@ private:
 	String unit;
 	MetricType type = METRIC_TYPE_GAUGE;
 	AggregationTemporality temporality = AGGREGATION_TEMPORALITY_CUMULATIVE;
-	
+
 	// Data points
 	Array data_points;
 

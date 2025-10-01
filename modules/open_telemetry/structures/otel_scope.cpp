@@ -77,25 +77,25 @@ void OTelScope::add_attribute(const String &p_key, const Variant &p_value) {
 // Serialization to OTLP format
 Dictionary OTelScope::to_otlp_dict() const {
 	Dictionary scope_dict;
-	
+
 	scope_dict["name"] = get_name();
-	
+
 	if (!version.is_empty()) {
 		scope_dict["version"] = version;
 	}
-	
+
 	if (attributes.size() > 0) {
 		// Convert attributes to OTLP format
 		Array otlp_attributes;
 		Array keys = attributes.keys();
-		
+
 		for (int i = 0; i < keys.size(); i++) {
 			String key = keys[i];
 			Variant value = attributes[key];
-			
+
 			Dictionary attr;
 			attr["key"] = key;
-			
+
 			Dictionary value_dict;
 			switch (value.get_type()) {
 				case Variant::STRING:
@@ -114,39 +114,39 @@ Dictionary OTelScope::to_otlp_dict() const {
 					value_dict["stringValue"] = String(value);
 					break;
 			}
-			
+
 			attr["value"] = value_dict;
 			otlp_attributes.push_back(attr);
 		}
-		
+
 		scope_dict["attributes"] = otlp_attributes;
 	}
-	
+
 	return scope_dict;
 }
 
 Ref<OTelScope> OTelScope::from_otlp_dict(const Dictionary &p_dict) {
 	Ref<OTelScope> scope;
 	scope.instantiate();
-	
+
 	if (p_dict.has("name")) {
 		scope->set_name(p_dict["name"]);
 	}
-	
+
 	if (p_dict.has("version")) {
 		scope->set_version(p_dict["version"]);
 	}
-	
+
 	if (p_dict.has("attributes")) {
 		Array otlp_attributes = p_dict["attributes"];
 		Dictionary attrs;
-		
+
 		for (int i = 0; i < otlp_attributes.size(); i++) {
 			Dictionary attr = otlp_attributes[i];
 			if (attr.has("key") && attr.has("value")) {
 				String key = attr["key"];
 				Dictionary value_dict = attr["value"];
-				
+
 				Variant value;
 				if (value_dict.has("stringValue")) {
 					value = value_dict["stringValue"];
@@ -157,13 +157,13 @@ Ref<OTelScope> OTelScope::from_otlp_dict(const Dictionary &p_dict) {
 				} else if (value_dict.has("boolValue")) {
 					value = value_dict["boolValue"];
 				}
-				
+
 				attrs[key] = value;
 			}
 		}
-		
+
 		scope->set_attributes(attrs);
 	}
-	
+
 	return scope;
 }
