@@ -87,8 +87,9 @@ OpenTelemetry::OpenTelemetry() {
 	state->get_resource()->set_service_name("godot_service");
 	state->get_scope()->set_name("godot_tracer");
 
-	// Initialize configuration
-	hostname = "";
+	// Initialize configuration with SigNoz defaults
+	hostname = "https://ingest.us.signoz.cloud";
+	headers["Authorization"] = "Bearer CLSbUJpdew0gPq2QLZNvPlwSCwnf16hvPE2Z";
 	trace_id = "";
 	tracer_name = "";
 	flush_interval_ms = 10000;
