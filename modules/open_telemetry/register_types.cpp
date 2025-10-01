@@ -55,20 +55,30 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 	// Handle server initialization
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
 		// Register project settings for exported games
-		GLOBAL_DEF("opentelemetry/enabled", false);
-		GLOBAL_DEF("opentelemetry/endpoint", "");
-		GLOBAL_DEF("opentelemetry/service_name", "");
+		GLOBAL_DEF("modules/open_telemetry/enabled", false);
+		ProjectSettings::get_singleton()->set_custom_property_info(
+				PropertyInfo(Variant::BOOL, "modules/open_telemetry/enabled"));
 
-		ProjectSettings::get_singleton()->set_custom_property_info(
-				PropertyInfo(Variant::BOOL, "opentelemetry/enabled"));
-		ProjectSettings::get_singleton()->set_custom_property_info(
-				PropertyInfo(Variant::STRING, "opentelemetry/endpoint"));
-		ProjectSettings::get_singleton()->set_custom_property_info(
-				PropertyInfo(Variant::STRING, "opentelemetry/service_name"));
+		// Register 10 service configurations (service_0 through service_9)
+		for (int i = 0; i < 10; i++) {
+			String service_prefix = "modules/open_telemetry/service_" + itos(i) + "/";
+
+			GLOBAL_DEF(service_prefix + "name", "");
+			GLOBAL_DEF(service_prefix + "endpoint", "");
+			GLOBAL_DEF(service_prefix + "headers", Dictionary());
+
+			ProjectSettings::get_singleton()->set_custom_property_info(
+					PropertyInfo(Variant::STRING, service_prefix + "name"));
+			ProjectSettings::get_singleton()->set_custom_property_info(
+					PropertyInfo(Variant::STRING, service_prefix + "endpoint"));
+			ProjectSettings::get_singleton()->set_custom_property_info(
+					PropertyInfo(Variant::DICTIONARY, service_prefix + "headers"));
+		}
 
 		bool should_initialize = false;
-		String endpoint = "";
-		String service_name = "";
+		String primary_endpoint;
+		String primary_service_name;
+		Dictionary primary_headers;
 
 #ifdef TOOLS_ENABLED
 		// Editor: Check if editor mode and telemetry enabled
@@ -76,35 +86,40 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 			return; // Not in editor, skip initialization
 		}
 
-		bool editor_telemetry_enabled = GLOBAL_DEF("opentelemetry/editor_enabled", true);
+		bool editor_telemetry_enabled = GLOBAL_DEF("modules/open_telemetry/editor_enabled", true);
 		ProjectSettings::get_singleton()->set_custom_property_info(
-				PropertyInfo(Variant::BOOL, "opentelemetry/editor_enabled"));
+				PropertyInfo(Variant::BOOL, "modules/open_telemetry/editor_enabled"));
 
 		if (!editor_telemetry_enabled) {
 			return; // Telemetry disabled in editor
 		}
 
 		should_initialize = true;
-		endpoint = "http://localhost:4318";
-		service_name = "godot_editor";
+		primary_endpoint = "http://localhost:4318";
+		primary_service_name = "godot_editor";
 #else
 		// Exported game: Check project settings (opt-in)
-		if (!GLOBAL_GET("opentelemetry/enabled")) {
+		if (!GLOBAL_GET("modules/open_telemetry/enabled")) {
 			return; // Telemetry not enabled in exported game
 		}
 
-		endpoint = GLOBAL_GET("opentelemetry/endpoint");
-		service_name = GLOBAL_GET("opentelemetry/service_name");
+		// Get primary service (service_0) configuration
+		Variant endpoint_var = GLOBAL_GET("modules/open_telemetry/service_0/endpoint");
+		primary_endpoint = endpoint_var;
+		Variant name_var = GLOBAL_GET("modules/open_telemetry/service_0/name");
+		primary_service_name = name_var;
+		Variant headers_var = GLOBAL_GET("modules/open_telemetry/service_0/headers");
+		primary_headers = headers_var;
 
-		if (endpoint.is_empty()) {
-			return; // No endpoint configured
+		if (primary_endpoint.is_empty()) {
+			return; // No primary endpoint configured
 		}
 
 		should_initialize = true;
 
 		// Use default service name if not provided
-		if (service_name.is_empty()) {
-			service_name = "godot_game";
+		if (primary_service_name.is_empty()) {
+			primary_service_name = "godot_game";
 		}
 #endif
 
@@ -115,13 +130,47 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 		// Initialize OpenTelemetry instance
 		global_otel_instance = memnew(OpenTelemetry);
 
-		// Initialize with configuration
+		// Initialize with primary service configuration (service_0)
 		Dictionary resource_attrs;
-		resource_attrs["service.name"] = service_name;
-		String init_result = global_otel_instance->init_tracer_provider("godot_tracer", endpoint, resource_attrs);
+		resource_attrs["service.name"] = primary_service_name;
+		String init_result = global_otel_instance->init_tracer_provider("godot_tracer", primary_endpoint, resource_attrs);
 		if (init_result != "OK") {
 			ERR_PRINT("OpenTelemetry: Failed to initialize tracer provider: " + init_result);
 		}
+
+		// Set headers for primary service if provided
+		if (!primary_headers.is_empty()) {
+			global_otel_instance->set_headers(primary_headers);
+		}
+
+#ifndef TOOLS_ENABLED
+		// Add additional sinks (service_1 through service_9) for exported games
+		for (int i = 1; i < 10; i++) {
+			String service_prefix = "modules/open_telemetry/service_" + itos(i) + "/";
+			Variant endpoint_var = GLOBAL_GET(service_prefix + "endpoint");
+			String sink_endpoint = endpoint_var;
+
+			// Skip if endpoint is not configured
+			if (sink_endpoint.is_empty()) {
+				continue;
+			}
+
+			Variant name_var = GLOBAL_GET(service_prefix + "name");
+			String sink_name = name_var;
+			Variant headers_var = GLOBAL_GET(service_prefix + "headers");
+			Dictionary sink_headers = headers_var;
+
+			// Use service index as name if not provided
+			if (sink_name.is_empty()) {
+				sink_name = "service_" + itos(i);
+			}
+
+			String sink_result = global_otel_instance->add_sink(sink_name, sink_endpoint, sink_headers);
+			if (sink_result != "OK") {
+				ERR_PRINT("OpenTelemetry: Failed to add sink '" + sink_name + "': " + sink_result);
+			}
+		}
+#endif
 
 #ifdef TOOLS_ENABLED
 		// Create and register custom logger in editor
