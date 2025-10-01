@@ -268,21 +268,21 @@ func analyze_trace(state: OTelState):
         "errors": 0,
         "services": {}
     }
-    
+
     var total_duration = 0.0
-    
+
     for span in state.get_spans():
         stats.total_spans += 1
         total_duration += span.get_duration_ms()
-        
+
         if span.get_status_code() == OTelSpan.STATUS_CODE_ERROR:
             stats.errors += 1
-    
+
     if stats.total_spans > 0:
         stats.avg_duration = total_duration / stats.total_spans
-    
+
     stats.services[state.get_resource().get_service_name()] = stats.total_spans
-    
+
     return stats
 ```
 

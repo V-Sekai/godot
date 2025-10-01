@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_span.cpp                                                        */
+/*  otel_span.cpp                                                         */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -138,12 +138,12 @@ String OTelSpan::generate_random_hex(int p_length) {
 	Ref<Crypto> crypto = Crypto::create();
 	int byte_count = (p_length + 1) / 2;
 	PackedByteArray random_bytes = crypto->generate_random_bytes(byte_count);
-	
+
 	String hex_str;
 	for (int i = 0; i < random_bytes.size(); i++) {
 		hex_str += String::num_int64(random_bytes[i], 16).pad_zeros(2);
 	}
-	
+
 	return hex_str.substr(0, p_length).to_lower();
 }
 
@@ -170,45 +170,45 @@ bool OTelSpan::is_valid_span_id(const String &p_id) {
 String OTelSpan::generate_trace_id() {
 	// Generate UUIDv7 as 32 hex characters (128 bits)
 	// UUIDv7 format: unix_ts_ms(48) + ver(4) + rand_a(12) + var(2) + rand_b(62)
-	
+
 	Ref<Crypto> crypto = Crypto::create();
-	
+
 	// Get current timestamp in milliseconds
 	uint64_t timestamp_ms = Time::get_singleton()->get_unix_time_from_system() * 1000;
-	
+
 	// Generate 10 bytes of cryptographically secure random data
 	PackedByteArray random_bytes = crypto->generate_random_bytes(10);
-	
+
 	// Build UUIDv7 structure (128 bits / 32 hex chars)
 	// Bits 0-47: timestamp_ms
-	uint64_t time_hi = (timestamp_ms >> 16) & 0xFFFFFFFF;  // Upper 32 bits
-	uint64_t time_lo = (timestamp_ms & 0xFFFF);             // Lower 16 bits
-	
+	uint64_t time_hi = (timestamp_ms >> 16) & 0xFFFFFFFF; // Upper 32 bits
+	uint64_t time_lo = (timestamp_ms & 0xFFFF); // Lower 16 bits
+
 	// Bits 48-63: version (0111 = 7) + 12 random bits
 	uint16_t rand_12bits = ((uint16_t)random_bytes[0] << 4) | ((random_bytes[1] >> 4) & 0xF);
 	uint64_t ver_rand = (0x7ULL << 12) | rand_12bits;
-	
+
 	// Bits 64-127: variant (10) + 62 random bits
 	uint64_t rand_62bits = ((uint64_t)(random_bytes[1] & 0xF) << 58) |
-	                       ((uint64_t)random_bytes[2] << 50) |
-	                       ((uint64_t)random_bytes[3] << 42) |
-	                       ((uint64_t)random_bytes[4] << 34) |
-	                       ((uint64_t)random_bytes[5] << 26) |
-	                       ((uint64_t)random_bytes[6] << 18) |
-	                       ((uint64_t)random_bytes[7] << 10) |
-	                       ((uint64_t)random_bytes[8] << 2) |
-	                       ((random_bytes[9] >> 6) & 0x3);
-	
+			((uint64_t)random_bytes[2] << 50) |
+			((uint64_t)random_bytes[3] << 42) |
+			((uint64_t)random_bytes[4] << 34) |
+			((uint64_t)random_bytes[5] << 26) |
+			((uint64_t)random_bytes[6] << 18) |
+			((uint64_t)random_bytes[7] << 10) |
+			((uint64_t)random_bytes[8] << 2) |
+			((random_bytes[9] >> 6) & 0x3);
+
 	uint64_t var_hi = (0x2ULL << 30) | ((rand_62bits >> 32) & 0x3FFFFFFF);
 	uint64_t var_lo = rand_62bits & 0xFFFFFFFF;
-	
+
 	// Convert to 32-character hex string
 	String uuid;
 	uuid += String::num_int64(time_hi, 16).pad_zeros(8);
 	uuid += String::num_int64((time_lo << 16) | ver_rand, 16).pad_zeros(8);
 	uuid += String::num_int64(var_hi, 16).pad_zeros(8);
 	uuid += String::num_int64(var_lo, 16).pad_zeros(8);
-	
+
 	return uuid.to_lower();
 }
 
@@ -327,7 +327,7 @@ void OTelSpan::add_link(const String &p_trace_id, const String &p_span_id, const
 			vformat("Invalid link trace_id: '%s'. Must be exactly 32 hexadecimal characters.", p_trace_id));
 	ERR_FAIL_COND_MSG(!is_valid_span_id(p_span_id),
 			vformat("Invalid link span_id: '%s'. Must be exactly 16 hexadecimal characters.", p_span_id));
-	
+
 	Dictionary link;
 	link["traceId"] = p_trace_id;
 	link["spanId"] = p_span_id;

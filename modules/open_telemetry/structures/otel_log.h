@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_log.h                                                           */
+/*  otel_log.h                                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_LOG_H
-#define OTEL_LOG_H
+#pragma once
 
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
@@ -102,5 +101,3 @@ public:
 };
 
 VARIANT_ENUM_CAST(OTelLog::SeverityNumber);
-
-#endif // OTEL_LOG_H

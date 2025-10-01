@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  otel_document.h                                                      */
+/*  otel_document.h                                                       */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef OTEL_DOCUMENT_H
-#define OTEL_DOCUMENT_H
+#pragma once
 
 #include "core/io/resource.h"
 #include "core/variant/typed_array.h"
@@ -70,5 +69,3 @@ public:
 	static Array attributes_to_otlp(const Dictionary &p_attributes);
 	static Dictionary attributes_from_otlp(const Array &p_otlp_attributes);
 };
-
-#endif // OTEL_DOCUMENT_H
