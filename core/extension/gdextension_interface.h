@@ -28,7 +28,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#ifndef GDEXTENSION_INTERFACE_H
+#define GDEXTENSION_INTERFACE_H
 
 /* This is a C class header, you can copy it and use it directly in your own binders.
  * Together with the JSON file, you should be able to generate any binder.
@@ -3196,3 +3197,5 @@ typedef void (*GDExtensionInterfaceRegisterMainLoopCallbacks)(GDExtensionClassLi
 #ifdef __cplusplus
 }
 #endif
+
+#endif // GDEXTENSION_INTERFACE_H
