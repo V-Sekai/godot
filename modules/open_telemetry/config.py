@@ -14,7 +14,6 @@ def get_doc_classes():
         "OTelSpan",
         "OTelTracer",
         "OTelTracerProvider",
-        "OpenTelemetryLogger",
         "OpenTelemetry",
     ]
 
