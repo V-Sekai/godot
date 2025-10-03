@@ -6,4 +6,112 @@
 	</description>
 	<tutorials>
 	</tutorials>
+	<methods>
+		<method name="add_attribute">
+			<return type="void" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="add_event">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="attributes" type="Dictionary" default="{}" />
+			<param index="2" name="timestamp" type="int" default="0" />
+			<description>
+			</description>
+		</method>
+		<method name="add_link">
+			<return type="void" />
+			<param index="0" name="trace_id" type="String" />
+			<param index="1" name="span_id" type="String" />
+			<param index="2" name="attributes" type="Dictionary" default="{}" />
+			<description>
+			</description>
+		</method>
+		<method name="generate_span_id" qualifiers="static">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="generate_trace_id" qualifiers="static">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="is_ended" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
+		<method name="is_valid_span_id" qualifiers="static">
+			<return type="bool" />
+			<param index="0" name="id" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="is_valid_trace_id" qualifiers="static">
+			<return type="bool" />
+			<param index="0" name="id" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="mark_ended">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="to_otlp_dict" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="attributes" type="Dictionary" setter="set_attributes" getter="get_attributes" default="{}">
+		</member>
+		<member name="end_time_unix_nano" type="int" setter="set_end_time_unix_nano" getter="get_end_time_unix_nano" default="0">
+		</member>
+		<member name="events" type="Dictionary[]" setter="set_events" getter="get_events" default="[]">
+		</member>
+		<member name="kind" type="int" setter="set_kind" getter="get_kind" enum="OTelSpan.SpanKind" default="1">
+		</member>
+		<member name="links" type="Dictionary[]" setter="set_links" getter="get_links" default="[]">
+		</member>
+		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
+		</member>
+		<member name="parent_span_id" type="String" setter="set_parent_span_id" getter="get_parent_span_id" default="&quot;&quot;">
+		</member>
+		<member name="span_id" type="String" setter="set_span_id" getter="get_span_id" default="&quot;&quot;">
+		</member>
+		<member name="start_time_unix_nano" type="int" setter="set_start_time_unix_nano" getter="get_start_time_unix_nano" default="0">
+		</member>
+		<member name="status_code" type="int" setter="set_status_code" getter="get_status_code" enum="OTelSpan.StatusCode" default="0">
+		</member>
+		<member name="status_message" type="String" setter="set_status_message" getter="get_status_message" default="&quot;&quot;">
+		</member>
+		<member name="trace_id" type="String" setter="set_trace_id" getter="get_trace_id" default="&quot;&quot;">
+		</member>
+	</members>
+	<constants>
+		<constant name="SPAN_KIND_UNSPECIFIED" value="0" enum="SpanKind">
+		</constant>
+		<constant name="SPAN_KIND_INTERNAL" value="1" enum="SpanKind">
+		</constant>
+		<constant name="SPAN_KIND_SERVER" value="2" enum="SpanKind">
+		</constant>
+		<constant name="SPAN_KIND_CLIENT" value="3" enum="SpanKind">
+		</constant>
+		<constant name="SPAN_KIND_PRODUCER" value="4" enum="SpanKind">
+		</constant>
+		<constant name="SPAN_KIND_CONSUMER" value="5" enum="SpanKind">
+		</constant>
+		<constant name="STATUS_CODE_UNSET" value="0" enum="StatusCode">
+		</constant>
+		<constant name="STATUS_CODE_OK" value="1" enum="StatusCode">
+		</constant>
+		<constant name="STATUS_CODE_ERROR" value="2" enum="StatusCode">
+		</constant>
+	</constants>
 </class>
