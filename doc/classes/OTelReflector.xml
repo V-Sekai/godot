@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OTelReflector" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="find_otlp_files">
+			<return type="PackedStringArray" />
+			<param index="0" name="directory" type="String" />
+			<param index="1" name="pattern" type="String" default="&quot;*.json&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="get_document" qualifiers="const">
+			<return type="OTelDocument" />
+			<description>
+			</description>
+		</method>
+		<method name="load_and_merge_logs">
+			<return type="OTelState" />
+			<param index="0" name="paths" type="PackedStringArray" />
+			<description>
+			</description>
+		</method>
+		<method name="load_and_merge_metrics">
+			<return type="OTelState" />
+			<param index="0" name="paths" type="PackedStringArray" />
+			<description>
+			</description>
+		</method>
+		<method name="load_and_merge_traces">
+			<return type="OTelState" />
+			<param index="0" name="paths" type="PackedStringArray" />
+			<description>
+			</description>
+		</method>
+		<method name="load_logs_from_file">
+			<return type="OTelState" />
+			<param index="0" name="path" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="load_logs_from_json">
+			<return type="OTelState" />
+			<param index="0" name="json" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="load_metrics_from_file">
+			<return type="OTelState" />
+			<param index="0" name="path" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="load_metrics_from_json">
+			<return type="OTelState" />
+			<param index="0" name="json" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="load_traces_from_file">
+			<return type="OTelState" />
+			<param index="0" name="path" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="load_traces_from_json">
+			<return type="OTelState" />
+			<param index="0" name="json" type="String" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>

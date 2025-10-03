@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OTelLog" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_attribute">
+			<return type="void" />
+			<param index="0" name="key" type="String" />
+			<param index="1" name="value" type="Variant" />
+			<description>
+			</description>
+		</method>
+		<method name="to_otlp_dict" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="attributes" type="Dictionary" setter="set_attributes" getter="get_attributes" default="{}">
+		</member>
+		<member name="body" type="String" setter="set_body" getter="get_body" default="&quot;&quot;">
+		</member>
+		<member name="observed_time_unix_nano" type="int" setter="set_observed_time_unix_nano" getter="get_observed_time_unix_nano" default="0">
+		</member>
+		<member name="severity_number" type="int" setter="set_severity_number" getter="get_severity_number" enum="OTelLog.SeverityNumber" default="0">
+		</member>
+		<member name="severity_text" type="String" setter="set_severity_text" getter="get_severity_text" default="&quot;&quot;">
+		</member>
+		<member name="span_id" type="String" setter="set_span_id" getter="get_span_id" default="&quot;&quot;">
+		</member>
+		<member name="time_unix_nano" type="int" setter="set_time_unix_nano" getter="get_time_unix_nano" default="0">
+		</member>
+		<member name="trace_id" type="String" setter="set_trace_id" getter="get_trace_id" default="&quot;&quot;">
+		</member>
+	</members>
+	<constants>
+		<constant name="SEVERITY_NUMBER_UNSPECIFIED" value="0" enum="SeverityNumber">
+		</constant>
+		<constant name="SEVERITY_NUMBER_TRACE" value="1" enum="SeverityNumber">
+		</constant>
+		<constant name="SEVERITY_NUMBER_DEBUG" value="5" enum="SeverityNumber">
+		</constant>
+		<constant name="SEVERITY_NUMBER_INFO" value="9" enum="SeverityNumber">
+		</constant>
+		<constant name="SEVERITY_NUMBER_WARN" value="13" enum="SeverityNumber">
+		</constant>
+		<constant name="SEVERITY_NUMBER_ERROR" value="17" enum="SeverityNumber">
+		</constant>
+		<constant name="SEVERITY_NUMBER_FATAL" value="21" enum="SeverityNumber">
+		</constant>
+	</constants>
+</class>
