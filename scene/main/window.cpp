@@ -642,7 +642,7 @@ void Window::_make_window() {
 		window_id = DisplayServer::get_singleton()->create_native_window(native_surface);
 		ERR_FAIL_COND(window_id == DisplayServer::INVALID_WINDOW_ID);
 
-		_update_window_size();
+		_update_window_size(true); // Force calling set size
 
 		_update_window_callbacks();
 
@@ -927,8 +927,7 @@ void Window::_accessibility_notify_exit(Node *p_node) {
 void Window::set_visible(bool p_visible) {
 	ERR_MAIN_THREAD_GUARD;
 	if (native_surface.is_valid()) {
-		visible = true;
-		return;
+		p_visible = true;
 	}
 
 	if (visible == p_visible) {
@@ -1027,6 +1026,10 @@ void Window::set_native_surface(Ref<RenderingNativeSurface> p_native_surface) {
 	if (new_native_handle == native_surface) {
 		return;
 	}
+	if (new_native_handle.is_valid()) {
+        // If it is a valid surface, then make us visible
+        set_visible(true);
+    }
 	if (!initialized) {
 		native_surface = new_native_handle;
 		return;
@@ -1190,7 +1193,7 @@ Size2i Window::_clamp_window_size(const Size2i &p_size) {
 	return window_size_clamped;
 }
 
-void Window::_update_window_size() {
+void Window::_update_window_size(bool p_force_set_size) {
 	Size2i size_limit = get_clamped_minimum_size();
 	if (!embedder && window_id != DisplayServer::INVALID_WINDOW_ID && keep_title_visible) {
 		Size2i title_size = DisplayServer::get_singleton()->window_get_title_size(displayed_title, window_id);
@@ -1234,10 +1237,10 @@ void Window::_update_window_size() {
 	}
 
 	//update the viewport
-	_update_viewport_size();
+	_update_viewport_size(p_force_set_size);
 }
 
-void Window::_update_viewport_size() {
+void Window::_update_viewport_size(bool p_force_set_size) {
 	//update the viewport part
 
 	Size2i final_size;
@@ -1357,7 +1360,7 @@ void Window::_update_viewport_size() {
 	}
 
 	bool allocate = is_inside_tree() && visible && (window_id != DisplayServer::INVALID_WINDOW_ID || embedder != nullptr);
-	_set_size(final_size, final_size_override, allocate);
+	_set_size(final_size, final_size_override, allocate, p_force_set_size);
 
 	if (window_id != DisplayServer::INVALID_WINDOW_ID) {
 		RenderingServer::get_singleton()->viewport_attach_to_screen(get_viewport_rid(), attach_to_screen_rect, window_id);
@@ -1586,7 +1589,7 @@ void Window::_notification(int p_what) {
 						focused = DisplayServer::get_singleton()->window_is_focused(window_id);
 					}
 					_update_window_size(); // Inform DisplayServer of minimum and maximum size.
-					_update_viewport_size(); // Then feed back to the viewport.
+					_update_viewport_size(p_force_set_size); // Then feed back to the viewport.
 					_update_window_callbacks();
 					// Simulate mouse-enter event when mouse is over the window, since OS event might arrive before setting callbacks.
 					if (!mouse_in_window && Rect2(position, size).has_point(DisplayServer::get_singleton()->mouse_get_position())) {

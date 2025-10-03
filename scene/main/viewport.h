@@ -502,7 +502,7 @@ private:
 	void _window_start_resize(SubWindowResize p_edge, Window *p_window);
 
 protected:
-	bool _set_size(const Size2i &p_size, const Size2 &p_size_2d_override, bool p_allocated);
+	bool _set_size(const Size2i &p_size, const Size2 &p_size_2d_override, bool p_allocated, bool p_force_set_size = false);
 
 	Size2i _get_size() const;
 	Size2 _get_size_2d_override() const;

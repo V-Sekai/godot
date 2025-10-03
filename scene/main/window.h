@@ -175,8 +175,8 @@ private:
 	Size2i _clamp_limit_size(const Size2i &p_limit_size);
 	Size2i _clamp_window_size(const Size2i &p_size);
 	void _validate_limit_size();
-	void _update_viewport_size();
-	void _update_window_size();
+	void _update_viewport_size(bool p_force_set_size = false);
+	void _update_window_size(bool p_force_set_size = false);
 
 	void _propagate_window_notification(Node *p_node, int p_notification);
 
