@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_thirdparty = env.Clone()
+env_thirdparty.Append(CPPDEFINES=[("EIGEN_HAS_STD_RESULT_OF", 0)])
+env_thirdparty.Prepend(CPPPATH=["thirdparty/eigen"])
+env_thirdparty.Prepend(CPPPATH=["#modules/lbfgs"])
+env_thirdparty.Prepend(CPPPATH=["#modules/lbfgs/src"])
+env_thirdparty.Prepend(CPPPATH=["thirdparty/LBFGSpp/include"])
+
+env_thirdparty.disable_warnings()
+env_lbfgs = env_thirdparty.Clone()
+
+env_lbfgs.Append(CPPDEFINES=["TASKING_INTERNAL"])
+env_lbfgs.Append(CPPDEFINES=["_USE_MATH_DEFINES"])
+env_lbfgs.add_source_files(env.modules_sources, "thirdparty/*.cpp")
+
+env_thirdparty.add_source_files(env.modules_sources, "*.cpp")

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="LBFGSBCapsuleFitterSolver" inherits="LBFGSBSolver" experimental="This class is under development and its API may change." xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Solver specialized for fitting capsules to 3D mesh data by optimizing the capsule's radius for a given axis.
+	</brief_description>
+	<description>
+		This class extends LBFGSBSolver to provide specific functionalities for fitting capsule shapes to 3D point clouds.
+		It is designed to take a source mesh, two points defining a central axis, and an initial radius guess.
+		The primary operation is to optimize this radius to best fit the vertices of the specified mesh surface around the given axis.
+		This is useful for tasks like generating collision shapes for avatar bones or other character parts.
+		The fitting process can be triggered by the "Fit Capsule" button in the editor or by calling the [method execute_fit] method.
+		The results of the fitting operation are stored in the [member last_fit_result] property.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="execute_fit">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="execute_orientation_fit">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
+		<method name="optimize_orientation_for_fixed_size">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="optimize_radius_for_fixed_axis">
+			<return type="Dictionary" />
+			<description>
+				Optimizes the capsule radius based on the current settings of [member source_mesh], [member surface_index], [member axis_point_a], [member axis_point_b].
+				This method directly performs the optimization using an internal objective function that considers the distance of mesh vertices to the capsule surface.
+				Returns a [Dictionary] containing the "optimized_radius" and "final_fx" (final objective function value), or an "error" key if the fitting fails or inputs are invalid.
+				This is the primary fitting logic called by [method execute_fit].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="axis_point_a" type="Vector3" setter="set_axis_point_a" getter="get_axis_point_a" default="Vector3(0, -0.25, 0)">
+			The starting point of the capsule's central axis. This point, along with [member axis_point_b], defines the orientation and length of the capsule's core segment.
+		</member>
+		<member name="axis_point_b" type="Vector3" setter="set_axis_point_b" getter="get_axis_point_b" default="Vector3(0, 0.25, 0)">
+			The ending point of the capsule's central axis. This point, along with [member axis_point_a], defines the orientation and length of the capsule's core segment.
+		</member>
+		<member name="height" type="float" setter="set_height" getter="get_height" default="0.5">
+			The height of the capsule, defined as the distance between [member axis_point_a] and [member axis_point_b]. Setting this value will adjust the positions of [member axis_point_a] and [member axis_point_b] while keeping their center and orientation.
+		</member>
+		<member name="huber_delta" type="float" setter="set_huber_delta" getter="get_huber_delta" default="0.1">
+		</member>
+		<member name="last_fit_result" type="Dictionary" setter="" getter="get_last_fit_result" default="{}">
+			A read-only [Dictionary] containing the results of the last fitting operation performed by [method execute_fit].
+			On success, it typically includes "optimized_radius" (the final calculated radius), "final_fx" (the final value of the objective function, indicating the quality of the fit), and "height" (the height of the capsule at the time of fitting).
+			If the fitting failed or inputs were invalid, it will contain an "error" key with a message describing the issue.
+		</member>
+		<member name="radius" type="float" setter="set_radius" getter="get_radius" default="0.1">
+			The initial guess for the capsule's radius. The optimization process will start from this value. A good initial guess can lead to faster and more accurate fitting.
+		</member>
+		<member name="source_mesh" type="Mesh" setter="set_source_mesh" getter="get_source_mesh">
+			The [Mesh] resource from which to extract vertices for fitting the capsule. The vertices will be taken from the surface specified by [member surface_index]. This mesh provides the 3D point cloud data for the fitting process.
+		</member>
+		<member name="surface_index" type="int" setter="set_surface_index" getter="get_surface_index" default="0">
+			The index of the surface within the [member source_mesh] to use for extracting vertices. Ensure this index is valid for the assigned mesh (i.e., less than the mesh's surface count). If the index is out of bounds, the fitting operation may fail.
+		</member>
+	</members>
+</class>
