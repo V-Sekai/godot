@@ -216,6 +216,8 @@ protected:
 	virtual void move_child_notify(Node *p_child) override;
 	virtual void remove_child_notify(Node *p_child) override;
 
+	void _apply_bone_scale(bool p_apply_rest, Vector<int> p_bones, Vector3 p_scale, HashMap<int, Vector3> &r_diffs);
+
 public:
 	enum {
 		NOTIFICATION_UPDATE_SKELETON = 50
@@ -283,6 +285,7 @@ public:
 	Ref<Skin> create_skin_from_rest_transforms();
 
 	Ref<SkinReference> register_skin(const Ref<Skin> &p_skin);
+	void apply_bone_scales(bool p_apply_rest = true, bool p_apply_skin = true);
 
 	void force_update_all_dirty_bones();
 	void _force_update_all_dirty_bones() const;

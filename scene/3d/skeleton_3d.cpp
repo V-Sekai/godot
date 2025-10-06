@@ -1040,6 +1040,51 @@ Ref<SkinReference> Skeleton3D::register_skin(const Ref<Skin> &p_skin) {
 	return skin_ref;
 }
 
+void Skeleton3D::_apply_bone_scale(bool p_apply_rest, Vector<int> p_bones, Vector3 p_scale, HashMap<int, Vector3> &r_diffs) {
+	for (int i = 0; i < p_bones.size(); i++) {
+		int bone = p_bones[i];
+
+		set_bone_pose_position(bone, get_bone_pose_position(bone) * p_scale);
+		Vector3 scale = get_bone_pose(bone).basis.scaled(p_scale).get_scale();
+		r_diffs.insert(bone, scale);
+		set_bone_pose_scale(bone, Vector3(1, 1, 1));
+
+		if (p_apply_rest) {
+			Transform3D rest = get_bone_rest(bone);
+			rest.origin *= p_scale;
+			set_bone_rest(bone, rest.orthonormalized());
+		}
+
+		Vector<int> bones = get_bone_children(bone);
+		if (bones.is_empty()) {
+			continue;
+		}
+		_apply_bone_scale(p_apply_rest, bones, scale, r_diffs);
+	}
+}
+
+void Skeleton3D::apply_bone_scales(bool p_apply_rest, bool p_apply_skin) {
+	// Note: non-uniform scaled bone makes shear in their children by looking from global space, but it will be force orthonormalized.
+	HashMap<int, Vector3> diffs;
+	Vector<int> bones_to_process = get_parentless_bones();
+	_apply_bone_scale(p_apply_rest, bones_to_process, Vector3(1, 1, 1), diffs);
+
+	if (!p_apply_skin) {
+		return;
+	}
+	for (SkinReference *E : skin_bindings) {
+		Ref<Skin> skin = E->get_skin();
+		int skin_len = skin->get_bind_count();
+		for (int i = 0; i < skin_len; i++) {
+			StringName bn = skin->get_bind_name(i);
+			int bone_idx = find_bone(bn);
+			if (bone_idx >= 0 && diffs.has(bone_idx)) {
+				skin->set_bind_pose(i, skin->get_bind_pose(i).scaled(diffs[bone_idx]));
+			}
+		}
+	}
+}
+
 void Skeleton3D::force_update_deferred() {
 	_make_dirty();
 }
@@ -1252,6 +1297,7 @@ void Skeleton3D::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("create_skin_from_rest_transforms"), &Skeleton3D::create_skin_from_rest_transforms);
 	ClassDB::bind_method(D_METHOD("register_skin", "skin"), &Skeleton3D::register_skin);
+	ClassDB::bind_method(D_METHOD("apply_bone_scales"), &Skeleton3D::apply_bone_scales);
 
 	ClassDB::bind_method(D_METHOD("localize_rests"), &Skeleton3D::localize_rests);
 

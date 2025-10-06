@@ -382,6 +382,10 @@ void Skeleton3DEditor::_on_click_skeleton_option(int p_skeleton_option) {
 			pose_to_rest(false);
 			break;
 		}
+		case SKELETON_OPTION_APPLY_BONE_SCALES: {
+			skeleton->apply_bone_scales();
+			break;
+		}
 		case SKELETON_OPTION_CREATE_PHYSICAL_SKELETON: {
 			create_physical_skeleton();
 			break;
@@ -1010,6 +1014,7 @@ void Skeleton3DEditor::create_editors() {
 	p->add_shortcut(ED_SHORTCUT("skeleton_3d_editor/reset_selected_poses", TTRC("Reset Selected Poses")), SKELETON_OPTION_RESET_SELECTED_POSES);
 	p->add_shortcut(ED_SHORTCUT("skeleton_3d_editor/all_poses_to_rests", TTRC("Apply All Poses to Rests")), SKELETON_OPTION_ALL_POSES_TO_RESTS);
 	p->add_shortcut(ED_SHORTCUT("skeleton_3d_editor/selected_poses_to_rests", TTRC("Apply Selected Poses to Rests")), SKELETON_OPTION_SELECTED_POSES_TO_RESTS);
+	p->add_shortcut(ED_SHORTCUT("skeleton_3d_editor/apply_bone_scales", TTRC("Apply Bone Scales")), SKELETON_OPTION_APPLY_BONE_SCALES);
 	p->add_item(TTR("Create Physical Skeleton"), SKELETON_OPTION_CREATE_PHYSICAL_SKELETON);
 	p->add_item(TTR("Export Skeleton Profile"), SKELETON_OPTION_EXPORT_SKELETON_PROFILE);
 
