@@ -227,7 +227,6 @@ public:
 	void set_content_scale(float p_scale);
 	virtual void swap_buffers() override;
 	virtual uint64_t get_native_window_id(WindowID p_id = MAIN_WINDOW_ID) const override;
-	virtual bool is_rendering_flipped() const override;
 	virtual WindowID get_native_surface_window_id(Ref<RenderingNativeSurface> p_native_surface) const;
 	virtual void gl_window_make_current(DisplayServer::WindowID p_window_id) override;
 

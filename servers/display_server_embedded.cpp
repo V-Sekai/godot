@@ -713,10 +713,6 @@ uint64_t DisplayServerEmbedded::get_native_window_id(WindowID p_id) const {
 	return 0;
 }
 
-bool DisplayServerEmbedded::is_rendering_flipped() const {
-	return false;
-}
-
 DisplayServer::WindowID DisplayServerEmbedded::get_native_surface_window_id(Ref<RenderingNativeSurface> p_native_surface) const {
 	ERR_FAIL_COND_V(!surface_to_window_id.has(p_native_surface), DisplayServer::INVALID_WINDOW_ID);
 	return surface_to_window_id[p_native_surface];
