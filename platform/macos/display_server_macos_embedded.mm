@@ -566,6 +566,26 @@ DisplayServer::WindowID DisplayServerMacOSEmbedded::get_window_at_screen_positio
 	return MAIN_WINDOW_ID;
 }
 
+int64_t DisplayServerMacOSEmbedded::window_get_native_handle(HandleType p_handle_type, WindowID p_window) const {
+	ERR_FAIL_COND_V(p_window != MAIN_WINDOW_ID, 0);
+	switch (p_handle_type) {
+		case DISPLAY_HANDLE: {
+			return 0; // Not supported.
+		}
+#if defined(GLES3_ENABLED)
+		case OPENGL_FBO: {
+			if (rendering_driver == "opengl3") {
+				return (int64_t)gl_manager->window_get_render_target(DisplayServer::MAIN_WINDOW_ID);
+			}
+			return 0;
+		}
+#endif
+		default: {
+			return 0;
+		}
+	}
+}
+
 void DisplayServerMacOSEmbedded::window_attach_instance_id(ObjectID p_instance, WindowID p_window) {
 	window_attached_instance_id[p_window] = p_instance;
 }

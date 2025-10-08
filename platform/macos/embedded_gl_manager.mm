@@ -183,6 +183,12 @@ Size2i GLManagerEmbedded::window_get_size(DisplayServer::WindowID p_window_id) c
 	return Size2i(win.width, win.height);
 }
 
+int GLManagerEmbedded::window_get_render_target(DisplayServer::WindowID p_window_id) const {
+	ERR_FAIL_COND_V(!windows.has(p_window_id), 0);
+	const GLWindow &window = windows[p_window_id];
+	return window.framebuffers[window.current_fb].fbo;
+}
+
 void GLManagerEmbedded::window_destroy(DisplayServer::WindowID p_window_id) {
 	GLWindowElement *el = windows.find(p_window_id);
 	if (el == nullptr) {
