@@ -274,7 +274,7 @@ void main() {
 			vec3 sky_dir = cross(sky_quat.xyz, ray_dir);
 			sky_dir = ray_dir + ((sky_dir * sky_quat.w) + cross(sky_quat.xyz, sky_dir)) * 2.0;
 #ifdef USE_CUBEMAP_ARRAY
-			light.rgb = textureLodFix(samplerCubeArrayFix(sky_irradiance, linear_sampler_mipmaps), vec4(sky_dir, 0.0), 2.0).rgb; // Use second mipmap because we don't usually throw a lot of rays, so this compensates.
+			light.rgb = textureLodFix(sky_irradiance, linear_sampler_mipmaps, vec4(sky_dir, 0.0), 2.0).rgb; // Use second mipmap because we don't usually throw a lot of rays, so this compensates.
 #else
 			light.rgb = textureLod(samplerCube(sky_irradiance, linear_sampler_mipmaps), sky_dir, 2.0).rgb; // Use second mipmap because we don't usually throw a lot of rays, so this compensates.
 #endif

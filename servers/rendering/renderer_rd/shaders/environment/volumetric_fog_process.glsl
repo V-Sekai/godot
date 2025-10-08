@@ -431,8 +431,8 @@ void main() {
 				float mip_bias = 2.0 + total_density * (MAX_SKY_LOD - 2.0); // Not physically based, but looks nice
 				vec3 scatter_direction = (params.radiance_inverse_xform * normalize(view_pos)) * sign(params.phase_g);
 #ifdef USE_RADIANCE_CUBEMAP_ARRAY
-				isotropic = textureFix(samplerCubeArrayFix(sky_texture, linear_sampler_with_mipmaps), vec4(0.0, 1.0, 0.0, mip_bias)).rgb;
-				anisotropic = textureFix(samplerCubeArrayFix(sky_texture, linear_sampler_with_mipmaps), vec4(scatter_direction, mip_bias)).rgb;
+				isotropic = textureFix(sky_texture, linear_sampler_with_mipmaps, vec4(0.0, 1.0, 0.0, mip_bias)).rgb;
+				anisotropic = textureFix(sky_texture, linear_sampler_with_mipmaps, vec4(scatter_direction, mip_bias)).rgb;
 #else
 				isotropic = textureLod(samplerCube(sky_texture, linear_sampler_with_mipmaps), vec3(0.0, 1.0, 0.0), mip_bias).rgb;
 				anisotropic = textureLod(samplerCube(sky_texture, linear_sampler_with_mipmaps), vec3(scatter_direction), mip_bias).rgb;
