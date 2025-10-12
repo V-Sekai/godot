@@ -98,39 +98,36 @@ def add_libs_to_env(module_obj, libs, sources):
         lib_name = os.path.basename(lib).split(".")[0]
         full_lib_path = os.path.join(MODULE_DIR, lib)
         env.Append(LIBS=[lib_name])
-    env.Depends(module_obj, libs)
+    # env.Depends(module_obj, libs)
 
 
 PATCHWORK_RUST_PREFIX = "rust/plugin"
 PATCHWORK_RUST_DIR = os.path.join(MODULE_DIR, PATCHWORK_RUST_PREFIX)
-PATCHWORK_RUST_BUILD_DIR = os.path.join(PATCHWORK_RUST_DIR, "target", "release")
-PATCHWORK_LIBS = ["libpatchwork_rust.a", "libpatchwork_rust_core.a"]
+PATCHWORK_RUST_BUILD_DIR = os.path.join(MODULE_DIR, "target", "x86_64-pc-windows-msvc", "release")
+PATCHWORK_LIBS = ["patchwork_rust_core.lib"]
 AUTOMERGE_CONFIG_OPTS = ["-DUTF32_INDEXING=true"]
 
 
 def patchwork_rust_builder(target, source, env):
     if env["platform"] == "windows":
-        # Use mingw cargo; assume cargo + mingw in PATH
-        rust_target = 'x86_64-pc-windows-gnu'
+        # Use msvc cargo; assume cargo + msvc in PATH
+        rust_target = 'x86_64-pc-windows-msvc'
         os.makedirs(PATCHWORK_RUST_BUILD_DIR, exist_ok=True)
         curr_dir = os.getcwd()
         try:
-            os.chdir(PATCHWORK_RUST_DIR)
+            os.chdir(MODULE_DIR)
             os.system(f'cargo build --target {rust_target} --release')
+            shutil.copy(os.path.join(PATCHWORK_RUST_BUILD_DIR, "patchwork_rust_core.lib"), os.path.join(PATCHWORK_RUST_BUILD_DIR, "patchwork_rust_core.windows.editor.x86_64.lib"))
             os.chdir(curr_dir)
-            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
-            env.Append(LIBS=['patchwork_rust'])
         finally:
             os.chdir(curr_dir)
     else:
         # For macOS/Linux
         curr_dir = os.getcwd()
         try:
-            os.chdir(PATCHWORK_RUST_DIR)
+            os.chdir(MODULE_DIR)
             os.system('cargo build --release')
             os.chdir(curr_dir)
-            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
-            env.Append(LIBS=['patchwork_rust'])
         finally:
             os.chdir(curr_dir)
 
@@ -142,50 +139,12 @@ def build_patchwork_rust(module_obj):
         "patchworkrustlib",
         [env_patchwork_editor.Execute(patchwork_rust_builder)],
     )
-    add_libs_to_env(module_obj, PATCHWORK_LIBS, patchwork_rust_sources)
-
-
-PATCHWORK_RUST_PREFIX = "rust/plugin"
-PATCHWORK_RUST_DIR = os.path.join(MODULE_DIR, PATCHWORK_RUST_PREFIX)
-PATCHWORK_RUST_BUILD_DIR = os.path.join(PATCHWORK_RUST_DIR, "target", "release")
-PATCHWORK_LIBS = ["libpatchwork_rust.a", "libpatchwork_rust_core.a"]
-AUTOMERGE_CONFIG_OPTS = ["-DUTF32_INDEXING=true"]
-
-
-def patchwork_rust_builder(target, source, env):
-    if env["platform"] == "windows":
-        # Use mingw cargo; assume cargo + mingw in PATH
-        rust_target = 'x86_64-pc-windows-gnu'
-        os.makedirs(PATCHWORK_RUST_BUILD_DIR, exist_ok=True)
-        curr_dir = os.getcwd()
-        try:
-            os.chdir(PATCHWORK_RUST_DIR)
-            os.system(f'cargo build --target {rust_target} --release')
-            os.chdir(curr_dir)
-            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
-            env.Append(LIBS=['patchwork_rust'])
-        finally:
-            os.chdir(curr_dir)
+    env_patchwork_editor.AlwaysBuild("patchworkrustlib")
+    env_patchwork_editor.Depends(module_obj, "patchworkrustlib")
+    if env_patchwork_editor["platform"] == "windows":
+        env.Append(LINKFLAGS=["/LIBPATH:" + PATCHWORK_RUST_BUILD_DIR, "patchwork_rust_core.windows.editor.x86_64.lib"])
     else:
-        # For macOS/Linux
-        curr_dir = os.getcwd()
-        try:
-            os.chdir(PATCHWORK_RUST_DIR)
-            os.system('cargo build --release')
-            os.chdir(curr_dir)
-            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
-            env.Append(LIBS=['patchwork_rust'])
-        finally:
-            os.chdir(curr_dir)
-
-
-def build_patchwork_rust(module_obj):
-    SRC_SUFFIXES = ["*.h", "*.cpp", "*.rs", "*.txt"]
-    patchwork_rust_sources = get_sources(PATCHWORK_RUST_PREFIX, SRC_SUFFIXES)
-    env_patchwork_editor.Alias(
-        "patchworkrustlib",
-        [env_patchwork_editor.Execute(patchwork_rust_builder)],
-    )
+        env.Append(LINKFLAGS=[lib_path])  # assuming full path for other platforms
     add_libs_to_env(module_obj, PATCHWORK_LIBS, patchwork_rust_sources)
 
 
