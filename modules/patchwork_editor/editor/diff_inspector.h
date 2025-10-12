@@ -31,7 +31,7 @@
 #ifndef DIFF_INSPECTOR_H
 #define DIFF_INSPECTOR_H
 
-#include "editor/editor_inspector.h"
+#include "editor/inspector/editor_inspector.h"
 #include "scene/gui/scroll_container.h"
 #include "scene/resources/style_box_flat.h"
 class EditorProperty;

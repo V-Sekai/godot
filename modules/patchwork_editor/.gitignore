@@ -1,6 +1,5 @@
 patchwork.cfg
 .DS_Store
-target/
 .idea/
 .cache/
 # Godot auto generated files

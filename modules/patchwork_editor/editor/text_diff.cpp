@@ -1,8 +1,8 @@
 #include "text_diff.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/editor_vcs_interface.h"
-#include "editor/plugins/version_control_editor_plugin.h"
+#include "editor/version_control/editor_vcs_interface.h"
+#include "editor/version_control/version_control_editor_plugin.h"
 #include "scene/gui/rich_text_label.h"
 using DiffViewType = VersionControlEditorPlugin::DiffViewType;
 

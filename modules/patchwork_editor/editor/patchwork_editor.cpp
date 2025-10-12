@@ -2,17 +2,17 @@
 #include "core/variant/callable.h"
 #include "core/variant/callable_bind.h"
 #include "editor/debugger/editor_debugger_node.h"
-#include "editor/plugins/shader_editor_plugin.h"
+#include "editor/shader/shader_editor_plugin.h"
 #include "scene/gui/box_container.h"
 
 #include <core/io/json.h>
 #include <core/io/missing_resource.h>
 #include <core/variant/variant.h>
-#include <editor/editor_file_system.h>
-#include <editor/editor_inspector.h>
+#include <editor/file_system/editor_file_system.h>
+#include <editor/inspector/editor_inspector.h>
 #include <editor/editor_interface.h>
 #include <editor/editor_undo_redo_manager.h>
-#include <editor/plugins/script_editor_plugin.h>
+#include <editor/script/script_editor_plugin.h>
 #include <main/main.h>
 #include <modules/gdscript/gdscript.h>
 #include <scene/resources/packed_scene.h>
@@ -21,10 +21,6 @@ PatchworkEditor::PatchworkEditor() {
 }
 
 PatchworkEditor::~PatchworkEditor() {
-}
-
-PatchworkEditor *PatchworkEditor::get_singleton() {
-	return singleton;
 }
 
 void PatchworkEditor::_on_filesystem_changed() {
@@ -399,10 +395,9 @@ Ref<Resource> PatchworkEditor::import_and_load_resource(const String &p_path) {
 	Error err = import_file->load(import_path);
 	ERR_FAIL_COND_V_MSG(err != OK, {}, "Failed to load import file at path " + import_path);
 	// get the importer name
-	List<String> param_keys;
 	HashMap<StringName, Variant> params;
 	String importer_name = import_file->get_value("remap", "importer");
-	import_file->get_section_keys("params", &param_keys);
+	Vector<String> param_keys = import_file->get_section_keys("params");
 	for (auto &param_key : param_keys) {
 		auto param_value = import_file->get_value("params", param_key);
 		params[param_key] = param_value;
@@ -410,8 +405,7 @@ Ref<Resource> PatchworkEditor::import_and_load_resource(const String &p_path) {
 	String import_base_path = import_file->get_value("remap", "path", "");
 	if (import_base_path.is_empty()) {
 		// iterate through the remap keys, find one that begins with 'path'
-		List<String> remap_keys;
-		import_file->get_section_keys("remap", &remap_keys);
+		Vector<String> remap_keys = import_file->get_section_keys("remap");
 		for (auto &remap_key : remap_keys) {
 			if (remap_key.begins_with("path")) {
 				import_base_path = import_file->get_value("remap", remap_key);
@@ -605,7 +599,7 @@ void PatchworkEditor::close_scene_file(const String &p_path) {
 	// Main::iteration();
 
 	// this needs to be bound to GDScript
-	EditorNode::get_singleton()->trigger_menu_option(EditorNode::FILE_CLOSE, true);
+	EditorNode::get_singleton()->trigger_menu_option(EditorNode::SCENE_CLOSE, true);
 }
 
 void PatchworkEditor::close_files_if_open(const Vector<String> &p_paths) {

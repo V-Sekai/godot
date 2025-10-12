@@ -1,4 +1,4 @@
-#include "editor/editor_vcs_interface.h"
+#include "editor/version_control/editor_vcs_interface.h"
 #include "scene/gui/rich_text_label.h"
 class TextDiffer : public Object {
 	GDCLASS(TextDiffer, Object);

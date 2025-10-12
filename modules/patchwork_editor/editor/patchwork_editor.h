@@ -9,12 +9,11 @@
 #include "scene/gui/control.h"
 #include "scene/main/node.h"
 
-class PatchworkEditor : public Node {
-	GDCLASS(PatchworkEditor, Node);
+class PatchworkEditor : public EditorPlugin {
+	GDCLASS(PatchworkEditor, EditorPlugin);
 
 private:
 	EditorNode *editor = nullptr;
-	static PatchworkEditor *singleton;
 	static void _editor_init_callback_static();
 	static Callable steal_close_current_script_tab_file_callback();
 
@@ -23,7 +22,11 @@ protected:
 	static void _bind_methods();
 
 public:
-	static PatchworkEditor *get_singleton();
+	// FIXME: Don't expose this.
+	static PatchworkEditor *singleton;
+	static PatchworkEditor *get_singleton() {
+		return singleton;
+	}
 	PatchworkEditor(EditorNode *p_editor);
 	PatchworkEditor();
 	~PatchworkEditor();

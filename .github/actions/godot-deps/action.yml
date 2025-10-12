@@ -29,7 +29,10 @@ runs:
         python -c "import sys; print(sys.version)"
         python -m pip install scons==${{ inputs.scons-version }}
         scons --version
-
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
     - name: Setup problem matchers
       shell: bash
       run: echo ::add-matcher::misc/utility/problem-matchers.json

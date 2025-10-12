@@ -101,29 +101,90 @@ def add_libs_to_env(module_obj, libs, sources):
     env.Depends(module_obj, libs)
 
 
-PATCHWORK_RUST_PREFIX = "thirdparty/patchwork_rust"
+PATCHWORK_RUST_PREFIX = "rust/plugin"
 PATCHWORK_RUST_DIR = os.path.join(MODULE_DIR, PATCHWORK_RUST_PREFIX)
-PATCHWORK_RUST_BUILD_DIR = os.path.join(PATCHWORK_RUST_DIR, "build")
-PATCHWORK_LIBS = ["external/lib/libpatchwork_rust.a", "external/lib/libpatchwork_rust_core.a"]
+PATCHWORK_RUST_BUILD_DIR = os.path.join(PATCHWORK_RUST_DIR, "target", "release")
+PATCHWORK_LIBS = ["libpatchwork_rust.a", "libpatchwork_rust_core.a"]
 AUTOMERGE_CONFIG_OPTS = ["-DUTF32_INDEXING=true"]
 
 
 def patchwork_rust_builder(target, source, env):
-    cmake_builder(EXTERNAL_DIR, PATCHWORK_RUST_DIR, PATCHWORK_RUST_BUILD_DIR, PATCHWORK_LIBS, AUTOMERGE_CONFIG_OPTS)
+    if env["platform"] == "windows":
+        # Use mingw cargo; assume cargo + mingw in PATH
+        rust_target = 'x86_64-pc-windows-gnu'
+        os.makedirs(PATCHWORK_RUST_BUILD_DIR, exist_ok=True)
+        curr_dir = os.getcwd()
+        try:
+            os.chdir(PATCHWORK_RUST_DIR)
+            os.system(f'cargo build --target {rust_target} --release')
+            os.chdir(curr_dir)
+            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
+            env.Append(LIBS=['patchwork_rust'])
+        finally:
+            os.chdir(curr_dir)
+    else:
+        # For macOS/Linux
+        curr_dir = os.getcwd()
+        try:
+            os.chdir(PATCHWORK_RUST_DIR)
+            os.system('cargo build --release')
+            os.chdir(curr_dir)
+            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
+            env.Append(LIBS=['patchwork_rust'])
+        finally:
+            os.chdir(curr_dir)
 
 
 def build_patchwork_rust(module_obj):
     SRC_SUFFIXES = ["*.h", "*.cpp", "*.rs", "*.txt"]
-    env_patchwork_editor["BUILDERS"]["PatchworkRustBuilder"] = Builder(
-        action=patchwork_rust_builder,
-        suffix=".a",
-        src_suffix=["*.h", "*.cpp", "*.rs", "*.txt"],
-    )
-
     patchwork_rust_sources = get_sources(PATCHWORK_RUST_PREFIX, SRC_SUFFIXES)
     env_patchwork_editor.Alias(
         "patchworkrustlib",
-        [env_patchwork_editor.PatchworkRustBuilder(PATCHWORK_LIBS, patchwork_rust_sources)],
+        [env_patchwork_editor.Execute(patchwork_rust_builder)],
+    )
+    add_libs_to_env(module_obj, PATCHWORK_LIBS, patchwork_rust_sources)
+
+
+PATCHWORK_RUST_PREFIX = "rust/plugin"
+PATCHWORK_RUST_DIR = os.path.join(MODULE_DIR, PATCHWORK_RUST_PREFIX)
+PATCHWORK_RUST_BUILD_DIR = os.path.join(PATCHWORK_RUST_DIR, "target", "release")
+PATCHWORK_LIBS = ["libpatchwork_rust.a", "libpatchwork_rust_core.a"]
+AUTOMERGE_CONFIG_OPTS = ["-DUTF32_INDEXING=true"]
+
+
+def patchwork_rust_builder(target, source, env):
+    if env["platform"] == "windows":
+        # Use mingw cargo; assume cargo + mingw in PATH
+        rust_target = 'x86_64-pc-windows-gnu'
+        os.makedirs(PATCHWORK_RUST_BUILD_DIR, exist_ok=True)
+        curr_dir = os.getcwd()
+        try:
+            os.chdir(PATCHWORK_RUST_DIR)
+            os.system(f'cargo build --target {rust_target} --release')
+            os.chdir(curr_dir)
+            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
+            env.Append(LIBS=['patchwork_rust'])
+        finally:
+            os.chdir(curr_dir)
+    else:
+        # For macOS/Linux
+        curr_dir = os.getcwd()
+        try:
+            os.chdir(PATCHWORK_RUST_DIR)
+            os.system('cargo build --release')
+            os.chdir(curr_dir)
+            env.Append(LIBPATH=[PATCHWORK_RUST_BUILD_DIR])
+            env.Append(LIBS=['patchwork_rust'])
+        finally:
+            os.chdir(curr_dir)
+
+
+def build_patchwork_rust(module_obj):
+    SRC_SUFFIXES = ["*.h", "*.cpp", "*.rs", "*.txt"]
+    patchwork_rust_sources = get_sources(PATCHWORK_RUST_PREFIX, SRC_SUFFIXES)
+    env_patchwork_editor.Alias(
+        "patchworkrustlib",
+        [env_patchwork_editor.Execute(patchwork_rust_builder)],
     )
     add_libs_to_env(module_obj, PATCHWORK_LIBS, patchwork_rust_sources)
 
@@ -137,7 +198,7 @@ def doproc(cmd):
     else:
         return None
 
-semver_regex = r"^[vV]?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+semver_regex = r"^[vV]?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?\$"
 
 
 def write_version_header():
@@ -216,5 +277,5 @@ module_obj = []
 
 env_patchwork_editor.add_source_files(module_obj, "*.cpp")
 env_patchwork_editor.add_source_files(module_obj, "editor/*.cpp")
-# build_patchwork_rust(module_obj)
+build_patchwork_rust(module_obj)
 env.modules_sources += module_obj
