@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/fire/patchwork-godot-plugin.git
+	branch = main
+	commit = 2ed7e9cfb4c664583ca5ca544e63880c12feb20c
+	parent = 8533b485e35c12c71449a6f4078d34ea13165b22
+	method = merge
+	cmdver = 0.4.9

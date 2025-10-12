@@ -1,0 +1,62 @@
+name: 🐧 Linux Builds
+on:
+  workflow_call:
+
+jobs:
+  linux:
+    runs-on: "ubuntu-22.04"
+    name: linux ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "armv7-unknown-linux-gnueabihf"] # , "i686-unknown-linux-gnu"
+        include-static-libs: [false]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Install dependencies"
+        shell: sh
+        run: |
+          sudo dpkg --add-architecture aarch64
+          sudo apt-get update
+          sudo apt-get install libunwind-dev
+          sudo apt-get install build-essential
+          sudo apt-get install pkg-config
+          sudo apt-get install libssl-dev
+          sudo apt-get install zlib1g-dev
+          # Multi platform build
+          sudo apt-get install gcc-multilib g++-multilib libc6-dev-i386
+          # Arm64 and arm32
+          sudo apt install gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
+
+      - name: Restore Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: patchwork_rust_plugin_linux-${{ matrix.arch }}
+
+      - name: Build
+        uses: ./.github/actions/build-plugin
+        with:
+          arch: ${{ matrix.arch }}
+          # features: ${{ matrix.features.feature }},${{ matrix.precision }}-${{ matrix.dimensions.feature }}
+      - name: Copy to bin
+        shell: sh
+        run: |
+          mkdir -p rust/plugin/linux
+          cp target/release/libpatchwork_rust_core.so rust/plugin/linux/libpatchwork_rust_core.linux.${{ matrix.arch }}.so
+          ls -la rust/plugin/linux
+      - name: Copy static lib
+        if: ${{ matrix.include-static-libs }}
+        shell: sh
+        run: |
+          mkdir -p rust/plugin/linux
+          cp target/release/libpatchwork_rust_core.a rust/plugin/linux/libpatchwork_rust_core.linux.${{ matrix.arch }}.a
+          ls -la rust/plugin/linux
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: patchwork-godot-linux-${{ matrix.arch }}
+          path: |
+            rust/plugin/linux/*
+          if-no-files-found: error
+
