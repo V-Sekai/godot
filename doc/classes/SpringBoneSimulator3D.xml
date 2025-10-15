@@ -637,6 +637,9 @@
 			The constant force that always affected bones. It is equal to the result when the parent [Skeleton3D] moves at this speed in the opposite direction.
 			This is useful for effects such as wind and anti-gravity.
 		</member>
+		<member name="mutable_bone_axes" type="bool" setter="set_mutable_bone_axes" getter="are_bone_axes_mutable" default="true">
+			If [code]false[/code], the [SpringBoneSimulator3D] handle rotation only, with caching bone lengths.
+		</member>
 		<member name="setting_count" type="int" setter="set_setting_count" getter="get_setting_count" default="0">
 			The number of settings.
 		</member>
