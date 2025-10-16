@@ -2549,4 +2549,59 @@ void MeshStorage::skeleton_update_dependency(RID p_skeleton, DependencyTracker *
 	p_instance->update_dependency(&skeleton->dependency);
 }
 
+/* DIRECT DELTA MUSH API */
+
+void MeshStorage::mesh_direct_delta_mush_set_enabled(RID p_mesh, bool p_enabled) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL(mesh);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+}
+
+bool MeshStorage::mesh_direct_delta_mush_get_enabled(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, false);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+	return false;
+}
+
+void MeshStorage::mesh_direct_delta_mush_set_iterations(RID p_mesh, int p_iterations) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL(mesh);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+}
+
+int MeshStorage::mesh_direct_delta_mush_get_iterations(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, 0);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+	return 0;
+}
+
+void MeshStorage::mesh_direct_delta_mush_set_lambda(RID p_mesh, float p_lambda) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL(mesh);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+}
+
+float MeshStorage::mesh_direct_delta_mush_get_lambda(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, 0.0f);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+	return 0.0f;
+}
+
+bool MeshStorage::mesh_direct_delta_mush_precompute(RID p_mesh) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, false);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+	return false;
+}
+
+bool MeshStorage::mesh_direct_delta_mush_is_precomputed(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, false);
+	// GLES3 does not support Direct Delta Mush - stub implementation
+	return false;
+}
+
 #endif // GLES3_ENABLED
