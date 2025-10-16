@@ -32,6 +32,8 @@
 
 #include "ddm_compute.h"
 
+#include <vector>
+
 #include "core/io/file_access.h"
 
 void DDMCompute::_bind_methods() {
