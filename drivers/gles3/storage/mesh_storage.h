@@ -340,6 +340,20 @@ public:
 	virtual void mesh_surface_remove(RID p_mesh, int p_surface) override;
 	virtual void mesh_debug_usage(List<RS::MeshInfo> *r_info) override {}
 
+	/* DIRECT DELTA MUSH API */
+
+	virtual void mesh_direct_delta_mush_set_enabled(RID p_mesh, bool p_enabled) override;
+	virtual bool mesh_direct_delta_mush_get_enabled(RID p_mesh) const override;
+
+	virtual void mesh_direct_delta_mush_set_iterations(RID p_mesh, int p_iterations) override;
+	virtual int mesh_direct_delta_mush_get_iterations(RID p_mesh) const override;
+
+	virtual void mesh_direct_delta_mush_set_lambda(RID p_mesh, float p_lambda) override;
+	virtual float mesh_direct_delta_mush_get_lambda(RID p_mesh) const override;
+
+	virtual bool mesh_direct_delta_mush_precompute(RID p_mesh) override;
+	virtual bool mesh_direct_delta_mush_is_precomputed(RID p_mesh) const override;
+
 	_FORCE_INLINE_ const RID *mesh_get_surface_count_and_materials(RID p_mesh, uint32_t &r_surface_count) {
 		Mesh *mesh = mesh_owner.get_or_null(p_mesh);
 		ERR_FAIL_NULL_V(mesh, nullptr);

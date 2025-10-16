@@ -66,6 +66,7 @@ private:
 	void compute_laplacian_matrix();
 	void precompute_omega_matrices();
 	void add_edge_to_adjacency(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors);
+	Node *get_skeleton();
 
 protected:
 	static void _bind_methods();

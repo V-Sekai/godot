@@ -34,6 +34,7 @@
 
 #include "core/config/engine.h"
 #include "scene/resources/mesh.h"
+#include "servers/rendering/ddm_compute.h"
 
 void DirectDeltaMushDeformer::_bind_methods() {
 	// Properties

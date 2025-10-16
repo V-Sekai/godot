@@ -46,10 +46,10 @@ bool DDMCompute::initialize(RenderingDevice *p_rd) {
 	}
 
 	// Load and compile compute shaders
-	adjacency_shader = load_shader_from_file("shaders/adjacency.compute.glsl");
-	laplacian_shader = load_shader_from_file("shaders/laplacian.compute.glsl");
-	omega_shader = load_shader_from_file("shaders/omega_precompute.compute.glsl");
-	deform_shader = load_shader_from_file("shaders/deform.compute.glsl");
+	adjacency_shader = load_shader_from_file("servers/rendering/shaders/ddm/adjacency.compute.glsl");
+	laplacian_shader = load_shader_from_file("servers/rendering/shaders/ddm/laplacian.compute.glsl");
+	omega_shader = load_shader_from_file("servers/rendering/shaders/ddm/omega_precompute.compute.glsl");
+	deform_shader = load_shader_from_file("servers/rendering/shaders/ddm/deform.compute.glsl");
 
 	if (adjacency_shader.is_null() || laplacian_shader.is_null() ||
 			omega_shader.is_null() || deform_shader.is_null()) {
@@ -176,65 +176,8 @@ bool DDMCompute::create_pipeline(RID &pipeline, RID shader, const Vector<StringN
 
 bool DDMCompute::compute_adjacency(const RID &vertex_buffer, const RID &index_buffer,
 		RID &output_buffer, int vertex_count) {
-	// CPU implementation using AMGCL data structures
-	// For now, we'll implement CPU computation and later this can be moved to GPU
-
-	if (!rd) {
-		return false;
-	}
-
-	// Get vertex and index data from buffers
-	Vector<uint8_t> vertex_data = rd->buffer_get_data(vertex_buffer);
-	Vector<uint8_t> index_data = rd->buffer_get_data(index_buffer);
-
-	if (vertex_data.is_empty() || index_data.is_empty()) {
-		return false;
-	}
-
-	// Parse vertex data (assuming PackedVector3Array format)
-	PackedVector3Array vertices;
-	vertices.resize(vertex_count);
-	memcpy(vertices.ptrw(), vertex_data.ptr(), vertex_data.size());
-
-	// Parse index data (assuming PackedInt32Array format)
-	int index_count = index_data.size() / sizeof(int32_t);
-	PackedInt32Array indices;
-	indices.resize(index_count);
-	memcpy(indices.ptrw(), index_data.ptr(), index_data.size());
-
-	const int max_neighbors = 32; // DDMMesh::maxOmegaCount
-
-	// Build adjacency matrix
-	Vector<int> adjacency_matrix;
-	adjacency_matrix.resize(vertex_count * max_neighbors);
-
-	// Initialize to -1
-	for (int i = 0; i < adjacency_matrix.size(); i++) {
-		adjacency_matrix.set(i, -1);
-	}
-
-	// Build from triangles
-	for (int tri = 0; tri < indices.size(); tri += 3) {
-		int v0 = indices[tri];
-		int v1 = indices[tri + 1];
-		int v2 = indices[tri + 2];
-
-		// Add edges
-		add_edge_to_adjacency_cpu(adjacency_matrix, v0, v1, max_neighbors);
-		add_edge_to_adjacency_cpu(adjacency_matrix, v0, v2, max_neighbors);
-		add_edge_to_adjacency_cpu(adjacency_matrix, v1, v2, max_neighbors);
-	}
-
-	// Create output buffer
-	output_buffer = rd->storage_buffer_create(adjacency_matrix.size() * sizeof(int));
-	if (output_buffer.is_null()) {
-		return false;
-	}
-
-	// Upload adjacency data
-	rd->buffer_update(output_buffer, 0, adjacency_matrix.size() * sizeof(int), adjacency_matrix.ptr());
-
-	return true;
+	// TODO: Implement adjacency computation on GPU using proper uniform sets
+	return false;
 }
 
 bool DDMCompute::compute_laplacian(const RID &adjacency_buffer, RID &output_buffer, int vertex_count) {

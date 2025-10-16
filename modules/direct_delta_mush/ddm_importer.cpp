@@ -329,7 +329,7 @@ void DDMImporter::add_edge_to_adjacency_with_mapping(const Vector<int> &map_to_u
 	add_edge_to_adjacency_direct(u0, u1);
 }
 
-void DDMImporter::broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique) const {
+void DDMImporter::broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique) {
 	// Ported from Unity MeshUtils.BroadcastAdjacencyFromUniqueToAllVertices
 
 	const int max_neighbors = 32;

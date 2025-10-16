@@ -38,11 +38,6 @@
 #include "core/object/ref_counted.h"
 #include "scene/resources/mesh.h"
 
-// Eigen for matrix operations
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-
 class DDMPrecomputer : public RefCounted {
 	GDCLASS(DDMPrecomputer, RefCounted);
 

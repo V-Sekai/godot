@@ -97,7 +97,7 @@ private:
 	void add_vertex_to_adjacency(int adjacency_idx, int from, int to);
 	void add_edge_to_adjacency_direct(int v0, int v1);
 	void add_edge_to_adjacency_with_mapping(const Vector<int> &map_to_unique, int v0, int v1);
-	void broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique) const;
+	void broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique);
 };
 
 VARIANT_ENUM_CAST(DDMImporter::ImportMode);

@@ -38,13 +38,6 @@
 #include "core/object/ref_counted.h"
 #include "servers/rendering/rendering_device.h"
 
-// AMGCL for sparse linear system solving
-#include <amgcl/adapter/crs_tuple.hpp>
-#include <amgcl/amg.hpp>
-#include <amgcl/backend/builtin.hpp>
-#include <amgcl/make_solver.hpp>
-#include <amgcl/solver/cg.hpp>
-
 class DDMCompute : public RefCounted {
 	GDCLASS(DDMCompute, RefCounted);
 
