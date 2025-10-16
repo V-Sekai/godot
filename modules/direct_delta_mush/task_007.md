@@ -561,9 +561,9 @@ where α, β are angles opposite edge (i,j)
 
 ---
 
-**Status:** Ready for Implementation  
-**Priority:** Critical  
-**Complexity:** High  
+**Status:** Ready for Implementation
+**Priority:** Critical
+**Complexity:** High
 **Estimated Cost:** 15 developer-days (3 weeks) **Blocks:** Task 008 (Release),
 Production Deployment </parameter> <parameter name="task_progress">
 

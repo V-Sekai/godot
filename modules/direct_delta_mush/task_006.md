@@ -552,9 +552,9 @@ Vector3 compute_non_rigid_displacement(
 
 ---
 
-**Status:** Ready for Implementation  
-**Priority:** Critical  
-**Complexity:** High  
+**Status:** Ready for Implementation
+**Priority:** Critical
+**Complexity:** High
 **Estimated Cost:** 12 developer-days </parameter>
 <parameter name="task_progress">
 
