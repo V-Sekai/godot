@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef DDM_DEFORMER_H
-#define DDM_DEFORMER_H
+#pragma once
 
 #include "core/object/ref_counted.h"
 #include "core/templates/local_vector.h"
@@ -75,44 +74,55 @@ public:
 	// Perform DDM deformation
 	DeformResult deform(const Vector<Transform3D> &p_bone_transforms, const Config &p_config);
 
+	// Public accessors for testing
+	Vector<Vector3> test_apply_laplacian_smoothing(const Vector<Vector3> &positions, int iterations, float lambda) {
+		return apply_laplacian_smoothing(positions, iterations, lambda);
+	}
+
+	Vector3 test_compute_laplacian_average(int vertex_index, const Vector<Vector3> &positions, bool uniform_weights) {
+		return compute_laplacian_average(vertex_index, positions, uniform_weights);
+	}
+
+	void test_decompose_transform(const Transform3D &M, Transform3D &M_rigid, Transform3D &M_scale) {
+		decompose_transform(M, M_rigid, M_scale);
+	}
+
 protected:
 	static void _bind_methods();
 
 private:
 	// Mesh data
 	MeshData mesh_data;
-	
+
 	// Adjacency list (neighbors for each vertex)
 	LocalVector<LocalVector<int>> adjacency;
-	
+
 	// Build adjacency list from triangles
 	void build_adjacency();
-	
+
 	// Apply Laplacian smoothing
 	Vector<Vector3> apply_laplacian_smoothing(
 			const Vector<Vector3> &positions,
 			int iterations,
 			float lambda);
-	
+
 	// Compute local transformation at a vertex
 	Transform3D compute_vertex_transform(
 			int vertex_index,
 			const Vector<Vector3> &original_positions,
 			const Vector<Vector3> &smooth_positions,
 			const Vector<Transform3D> &bone_transforms);
-	
+
 	// Helper: Compute weighted average position (for Laplacian)
 	Vector3 compute_laplacian_average(
 			int vertex_index,
 			const Vector<Vector3> &positions,
 			bool uniform_weights);
-	
+
 	// Enhanced DDM: Polar decomposition helpers
 	// Factor transform M into M_rigid * M_scale using square root method (paper equation 2)
 	void decompose_transform(const Transform3D &M, Transform3D &M_rigid, Transform3D &M_scale);
-	
+
 	// Compute symmetric matrix square root inverse: (M^T * M)^(-1/2)
 	Basis compute_symmetric_sqrt_inverse(const Basis &M);
 };
-
-#endif // DDM_DEFORMER_H
