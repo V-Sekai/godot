@@ -198,10 +198,120 @@ void DirectDeltaMushDeformer::update_deformation() {
 		deformed_mesh = mesh->duplicate();
 	}
 
+	// Extract mesh surface data for both CPU and GPU paths
+	Array surface_arrays = mesh->surface_get_arrays(0);
+	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+	PackedVector3Array normals = surface_arrays[Mesh::ARRAY_NORMAL];
+	PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
+	PackedFloat32Array bone_weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
+	PackedInt32Array bone_indices = surface_arrays[Mesh::ARRAY_BONES];
+
 	// Apply deformation
-	if (use_compute && rd) {
-		// GPU deformation
-		// TODO: Implement GPU deformation using DDMCompute
+	if (use_compute && rd && omega_buffer.is_valid()) {
+		// GPU deformation using DDMCompute
+		Ref<DDMCompute> ddm_compute;
+		ddm_compute.instantiate();
+		
+		if (!ddm_compute->initialize(rd)) {
+			WARN_PRINT("Failed to initialize DDMCompute, falling back to CPU");
+		} else {
+			// Create bone transforms buffer
+			Vector<float> bone_transform_data;
+			bone_transform_data.resize(bone_count * 16); // 4x4 matrices
+			
+			for (int i = 0; i < bone_count; i++) {
+				Transform3D t = bone_transforms[i];
+				// Pack transform into float array (column-major order)
+				int offset = i * 16;
+				for (int row = 0; row < 3; row++) {
+					for (int col = 0; col < 3; col++) {
+						bone_transform_data.set(offset + col * 4 + row, t.basis[col][row]);
+					}
+				}
+				// Translation in 4th column
+				bone_transform_data.set(offset + 12, t.origin.x);
+				bone_transform_data.set(offset + 13, t.origin.y);
+				bone_transform_data.set(offset + 14, t.origin.z);
+				bone_transform_data.set(offset + 15, 1.0f);
+			}
+			
+			RID bones_buffer = rd->storage_buffer_create(bone_transform_data.size() * sizeof(float), bone_transform_data.to_byte_array());
+			
+			// Create output buffers
+			RID output_vertices_buffer = rd->storage_buffer_create(vertices.size() * sizeof(float) * 3);
+			RID output_normals_buffer = rd->storage_buffer_create(normals.size() * sizeof(float) * 3);
+			
+			// Create input vertex/normal buffers
+			Vector<float> vertex_data;
+			vertex_data.resize(vertices.size() * 3);
+			for (int i = 0; i < vertices.size(); i++) {
+				vertex_data.set(i * 3 + 0, vertices[i].x);
+				vertex_data.set(i * 3 + 1, vertices[i].y);
+				vertex_data.set(i * 3 + 2, vertices[i].z);
+			}
+			RID input_vertices_buffer = rd->storage_buffer_create(vertex_data.size() * sizeof(float), vertex_data.to_byte_array());
+			
+			Vector<float> normal_data;
+			normal_data.resize(normals.size() * 3);
+			for (int i = 0; i < normals.size(); i++) {
+				normal_data.set(i * 3 + 0, normals[i].x);
+				normal_data.set(i * 3 + 1, normals[i].y);
+				normal_data.set(i * 3 + 2, normals[i].z);
+			}
+			RID input_normals_buffer = rd->storage_buffer_create(normal_data.size() * sizeof(float), normal_data.to_byte_array());
+			
+			// Perform GPU deformation
+			bool gpu_success = ddm_compute->deform_mesh(
+					omega_buffer,
+					bones_buffer,
+					input_vertices_buffer,
+					input_normals_buffer,
+					output_vertices_buffer,
+					output_normals_buffer,
+					vertices.size());
+			
+			if (gpu_success) {
+				// Download results from GPU
+				Vector<uint8_t> output_verts_bytes = rd->buffer_get_data(output_vertices_buffer);
+				Vector<uint8_t> output_norms_bytes = rd->buffer_get_data(output_normals_buffer);
+				
+				// Convert back to Vector3 arrays
+				PackedVector3Array deformed_verts;
+				deformed_verts.resize(vertices.size());
+				const float *verts_ptr = (const float *)output_verts_bytes.ptr();
+				for (int i = 0; i < vertices.size(); i++) {
+					deformed_verts.set(i, Vector3(verts_ptr[i * 3], verts_ptr[i * 3 + 1], verts_ptr[i * 3 + 2]));
+				}
+				
+				PackedVector3Array deformed_norms;
+				deformed_norms.resize(normals.size());
+				const float *norms_ptr = (const float *)output_norms_bytes.ptr();
+				for (int i = 0; i < normals.size(); i++) {
+					deformed_norms.set(i, Vector3(norms_ptr[i * 3], norms_ptr[i * 3 + 1], norms_ptr[i * 3 + 2]));
+				}
+				
+				// Update surface arrays with deformed geometry
+				surface_arrays[Mesh::ARRAY_VERTEX] = deformed_verts;
+				surface_arrays[Mesh::ARRAY_NORMAL] = deformed_norms;
+				
+				// Recreate mesh surface
+				Ref<ArrayMesh> array_mesh = Object::cast_to<ArrayMesh>(deformed_mesh.ptr());
+				if (array_mesh.is_valid()) {
+					array_mesh->clear_surfaces();
+					array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_arrays);
+					array_mesh->surface_set_material(0, mesh->surface_get_material(0));
+				}
+			}
+			
+			// Clean up GPU buffers
+			rd->free_rid(bones_buffer);
+			rd->free_rid(input_vertices_buffer);
+			rd->free_rid(input_normals_buffer);
+			rd->free_rid(output_vertices_buffer);
+			rd->free_rid(output_normals_buffer);
+			
+			ddm_compute->cleanup();
+		}
 	} else {
 		// CPU deformation using Enhanced DDM
 		Array surface_arrays = mesh->surface_get_arrays(0);

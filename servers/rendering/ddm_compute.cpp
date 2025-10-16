@@ -178,27 +178,260 @@ bool DDMCompute::create_pipeline(RID &pipeline, RID shader, const Vector<StringN
 
 bool DDMCompute::compute_adjacency(const RID &vertex_buffer, const RID &index_buffer,
 		RID &output_buffer, int vertex_count) {
-	// TODO: Implement adjacency computation on GPU using proper uniform sets
-	return false;
+	if (!rd || adjacency_pipeline.is_null()) {
+		ERR_PRINT("DDMCompute not properly initialized");
+		return false;
+	}
+
+	// Create uniform set for adjacency computation
+	Vector<RD::Uniform> uniforms;
+	
+	// Uniform 0: Vertex buffer (read-only)
+	RD::Uniform vertex_uniform;
+	vertex_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	vertex_uniform.binding = 0;
+	vertex_uniform.append_id(vertex_buffer);
+	uniforms.push_back(vertex_uniform);
+	
+	// Uniform 1: Index buffer (read-only)
+	RD::Uniform index_uniform;
+	index_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	index_uniform.binding = 1;
+	index_uniform.append_id(index_buffer);
+	uniforms.push_back(index_uniform);
+	
+	// Uniform 2: Output adjacency buffer (write)
+	RD::Uniform adjacency_uniform;
+	adjacency_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	adjacency_uniform.binding = 2;
+	adjacency_uniform.append_id(output_buffer);
+	uniforms.push_back(adjacency_uniform);
+	
+	// Create uniform set
+	RID uniform_set = rd->uniform_set_create(uniforms, adjacency_shader, 0);
+	if (uniform_set.is_null()) {
+		ERR_PRINT("Failed to create uniform set for adjacency computation");
+		return false;
+	}
+	
+	// Dispatch compute shader
+	RD::ComputeListID compute_list = rd->compute_list_begin();
+	rd->compute_list_bind_compute_pipeline(compute_list, adjacency_pipeline);
+	rd->compute_list_bind_uniform_set(compute_list, uniform_set, 0);
+	
+	// Dispatch with work groups (256 threads per group)
+	int work_groups = (vertex_count + 255) / 256;
+	rd->compute_list_dispatch(compute_list, work_groups, 1, 1);
+	
+	rd->compute_list_end();
+	
+	// Wait for completion
+	rd->submit();
+	rd->sync();
+	
+	// Clean up uniform set
+	rd->free_rid(uniform_set);
+	
+	return true;
 }
 
 bool DDMCompute::compute_laplacian(const RID &adjacency_buffer, RID &output_buffer, int vertex_count) {
-	// TODO: Implement Laplacian matrix computation on GPU using proper uniform sets
-	return false;
+	if (!rd || laplacian_pipeline.is_null()) {
+		ERR_PRINT("DDMCompute not properly initialized");
+		return false;
+	}
+
+	// Create uniform set for Laplacian computation
+	Vector<RD::Uniform> uniforms;
+	
+	// Uniform 0: Adjacency buffer (read-only)
+	RD::Uniform adjacency_uniform;
+	adjacency_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	adjacency_uniform.binding = 0;
+	adjacency_uniform.append_id(adjacency_buffer);
+	uniforms.push_back(adjacency_uniform);
+	
+	// Uniform 1: Output Laplacian buffer (write)
+	RD::Uniform laplacian_uniform;
+	laplacian_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	laplacian_uniform.binding = 1;
+	laplacian_uniform.append_id(output_buffer);
+	uniforms.push_back(laplacian_uniform);
+	
+	// Create uniform set
+	RID uniform_set = rd->uniform_set_create(uniforms, laplacian_shader, 0);
+	if (uniform_set.is_null()) {
+		ERR_PRINT("Failed to create uniform set for Laplacian computation");
+		return false;
+	}
+	
+	// Dispatch compute shader
+	RD::ComputeListID compute_list = rd->compute_list_begin();
+	rd->compute_list_bind_compute_pipeline(compute_list, laplacian_pipeline);
+	rd->compute_list_bind_uniform_set(compute_list, uniform_set, 0);
+	
+	// Dispatch with work groups (256 threads per group)
+	int work_groups = (vertex_count + 255) / 256;
+	rd->compute_list_dispatch(compute_list, work_groups, 1, 1);
+	
+	rd->compute_list_end();
+	
+	// Wait for completion
+	rd->submit();
+	rd->sync();
+	
+	// Clean up uniform set
+	rd->free_rid(uniform_set);
+	
+	return true;
 }
 
 bool DDMCompute::compute_omega_matrices(const RID &laplacian_buffer, const RID &vertex_buffer,
 		const RID &weights_buffer, RID &output_buffer,
 		int vertex_count, int bone_count, int iterations, float lambda) {
-	// TODO: Implement Omega matrix precomputation on GPU using proper uniform sets
-	return false;
+	if (!rd || omega_pipeline.is_null()) {
+		ERR_PRINT("DDMCompute not properly initialized");
+		return false;
+	}
+
+	// Create uniform set for omega matrix precomputation
+	Vector<RD::Uniform> uniforms;
+	
+	// Uniform 0: Vertex buffer (read-only)
+	RD::Uniform vertex_uniform;
+	vertex_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	vertex_uniform.binding = 0;
+	vertex_uniform.append_id(vertex_buffer);
+	uniforms.push_back(vertex_uniform);
+	
+	// Uniform 1: Weights buffer (read-only)
+	RD::Uniform weights_uniform;
+	weights_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	weights_uniform.binding = 1;
+	weights_uniform.append_id(weights_buffer);
+	uniforms.push_back(weights_uniform);
+	
+	// Uniform 2: Laplacian buffer (read-only)
+	RD::Uniform laplacian_uniform;
+	laplacian_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	laplacian_uniform.binding = 2;
+	laplacian_uniform.append_id(laplacian_buffer);
+	uniforms.push_back(laplacian_uniform);
+	
+	// Uniform 3: Output omega matrices buffer (write)
+	RD::Uniform omega_uniform;
+	omega_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	omega_uniform.binding = 3;
+	omega_uniform.append_id(output_buffer);
+	uniforms.push_back(omega_uniform);
+	
+	// Create uniform set
+	RID uniform_set = rd->uniform_set_create(uniforms, omega_shader, 0);
+	if (uniform_set.is_null()) {
+		ERR_PRINT("Failed to create uniform set for omega matrix computation");
+		return false;
+	}
+	
+	// Dispatch compute shader
+	RD::ComputeListID compute_list = rd->compute_list_begin();
+	rd->compute_list_bind_compute_pipeline(compute_list, omega_pipeline);
+	rd->compute_list_bind_uniform_set(compute_list, uniform_set, 0);
+	
+	// Dispatch with work groups (256 threads per group)
+	int work_groups = (vertex_count + 255) / 256;
+	rd->compute_list_dispatch(compute_list, work_groups, 1, 1);
+	
+	rd->compute_list_end();
+	
+	// Wait for completion
+	rd->submit();
+	rd->sync();
+	
+	// Clean up uniform set
+	rd->free_rid(uniform_set);
+	
+	return true;
 }
 
 bool DDMCompute::deform_mesh(const RID &omega_buffer, const RID &bones_buffer,
 		const RID &input_vertices, const RID &input_normals,
 		RID &output_vertices, RID &output_normals, int vertex_count) {
-	// TODO: Implement runtime mesh deformation on GPU using proper uniform sets
-	return false;
+	if (!rd || deform_pipeline.is_null()) {
+		ERR_PRINT("DDMCompute not properly initialized");
+		return false;
+	}
+
+	// Create uniform set for mesh deformation
+	Vector<RD::Uniform> uniforms;
+	
+	// Uniform 0: Input vertices buffer (read-only)
+	RD::Uniform input_verts_uniform;
+	input_verts_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	input_verts_uniform.binding = 0;
+	input_verts_uniform.append_id(input_vertices);
+	uniforms.push_back(input_verts_uniform);
+	
+	// Uniform 1: Input normals buffer (read-only)
+	RD::Uniform input_norms_uniform;
+	input_norms_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	input_norms_uniform.binding = 1;
+	input_norms_uniform.append_id(input_normals);
+	uniforms.push_back(input_norms_uniform);
+	
+	// Uniform 2: Bones buffer (read-only)
+	RD::Uniform bones_uniform;
+	bones_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	bones_uniform.binding = 2;
+	bones_uniform.append_id(bones_buffer);
+	uniforms.push_back(bones_uniform);
+	
+	// Uniform 3: Omega matrices buffer (read-only)
+	RD::Uniform omega_uniform;
+	omega_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	omega_uniform.binding = 3;
+	omega_uniform.append_id(omega_buffer);
+	uniforms.push_back(omega_uniform);
+	
+	// Uniform 4: Output vertices buffer (write)
+	RD::Uniform output_verts_uniform;
+	output_verts_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	output_verts_uniform.binding = 4;
+	output_verts_uniform.append_id(output_vertices);
+	uniforms.push_back(output_verts_uniform);
+	
+	// Uniform 5: Output normals buffer (write)
+	RD::Uniform output_norms_uniform;
+	output_norms_uniform.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+	output_norms_uniform.binding = 5;
+	output_norms_uniform.append_id(output_normals);
+	uniforms.push_back(output_norms_uniform);
+	
+	// Create uniform set
+	RID uniform_set = rd->uniform_set_create(uniforms, deform_shader, 0);
+	if (uniform_set.is_null()) {
+		ERR_PRINT("Failed to create uniform set for mesh deformation");
+		return false;
+	}
+	
+	// Dispatch compute shader
+	RD::ComputeListID compute_list = rd->compute_list_begin();
+	rd->compute_list_bind_compute_pipeline(compute_list, deform_pipeline);
+	rd->compute_list_bind_uniform_set(compute_list, uniform_set, 0);
+	
+	// Dispatch with work groups (256 threads per group)
+	int work_groups = (vertex_count + 255) / 256;
+	rd->compute_list_dispatch(compute_list, work_groups, 1, 1);
+	
+	rd->compute_list_end();
+	
+	// Wait for completion
+	rd->submit();
+	rd->sync();
+	
+	// Clean up uniform set
+	rd->free_rid(uniform_set);
+	
+	return true;
 }
 
 // CPU implementation for omega matrix precomputation using Gauss-Seidel iteration

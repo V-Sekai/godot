@@ -65,28 +65,38 @@ void DDMDeformer::build_adjacency() {
 		int v1 = mesh_data.indices[i + 1];
 		int v2 = mesh_data.indices[i + 2];
 		
+		// Helper lambda to check if neighbor exists in adjacency list
+		auto has_neighbor = [](const LocalVector<int> &list, int neighbor) -> bool {
+			for (unsigned int i = 0; i < list.size(); i++) {
+				if (list[i] == neighbor) {
+					return true;
+				}
+			}
+			return false;
+		};
+		
 		// Add edges (bidirectional)
 		// v0 <-> v1
-		if (!adjacency[v0].has(v1)) {
+		if (!has_neighbor(adjacency[v0], v1)) {
 			adjacency[v0].push_back(v1);
 		}
-		if (!adjacency[v1].has(v0)) {
+		if (!has_neighbor(adjacency[v1], v0)) {
 			adjacency[v1].push_back(v0);
 		}
 		
 		// v0 <-> v2
-		if (!adjacency[v0].has(v2)) {
+		if (!has_neighbor(adjacency[v0], v2)) {
 			adjacency[v0].push_back(v2);
 		}
-		if (!adjacency[v2].has(v0)) {
+		if (!has_neighbor(adjacency[v2], v0)) {
 			adjacency[v2].push_back(v0);
 		}
 		
 		// v1 <-> v2
-		if (!adjacency[v1].has(v2)) {
+		if (!has_neighbor(adjacency[v1], v2)) {
 			adjacency[v1].push_back(v2);
 		}
-		if (!adjacency[v2].has(v1)) {
+		if (!has_neighbor(adjacency[v2], v1)) {
 			adjacency[v2].push_back(v1);
 		}
 	}
