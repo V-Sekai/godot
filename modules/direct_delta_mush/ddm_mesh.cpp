@@ -38,7 +38,6 @@
 void DDMMesh::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_precomputed_data", "adjacency", "laplacian", "omega"), &DDMMesh::set_precomputed_data);
 	ClassDB::bind_method(D_METHOD("set_mesh_data", "source_mesh", "vertex_count", "bone_count"), &DDMMesh::set_mesh_data);
-	ClassDB::bind_method(D_METHOD("update_deformation", "bone_transforms"), &DDMMesh::update_deformation);
 }
 
 DDMMesh::DDMMesh() {

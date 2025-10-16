@@ -47,8 +47,7 @@ private:
 	Vector<Vector3> deformed_vertices;
 	Vector<Vector3> deformed_normals;
 
-public:
-	// Runtime deformation
+	// Runtime deformation (internal use only)
 	bool deform(const Vector<Transform3D> &bone_transforms,
 			const Vector<float> &omega_matrices,
 			int vertex_count);

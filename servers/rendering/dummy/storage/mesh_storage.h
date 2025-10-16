@@ -131,23 +131,23 @@ public:
 
 	virtual void mesh_set_shadow_mesh(RID p_mesh, RID p_shadow_mesh) override {}
 
-virtual void mesh_surface_remove(RID p_mesh, int p_surface) override;
-virtual void mesh_clear(RID p_mesh) override;
-virtual void mesh_debug_usage(List<RS::MeshInfo> *r_info) override {}
+	virtual void mesh_surface_remove(RID p_mesh, int p_surface) override;
+	virtual void mesh_clear(RID p_mesh) override;
+	virtual void mesh_debug_usage(List<RS::MeshInfo> *r_info) override {}
 
-/* DIRECT DELTA MUSH API */
+	/* DIRECT DELTA MUSH API */
 
-virtual void mesh_direct_delta_mush_set_enabled(RID p_mesh, bool p_enabled) override {}
-virtual bool mesh_direct_delta_mush_get_enabled(RID p_mesh) const override { return false; }
+	virtual void mesh_direct_delta_mush_set_enabled(RID p_mesh, bool p_enabled) override {}
+	virtual bool mesh_direct_delta_mush_get_enabled(RID p_mesh) const override { return false; }
 
-virtual void mesh_direct_delta_mush_set_iterations(RID p_mesh, int p_iterations) override {}
-virtual int mesh_direct_delta_mush_get_iterations(RID p_mesh) const override { return 4; }
+	virtual void mesh_direct_delta_mush_set_iterations(RID p_mesh, int p_iterations) override {}
+	virtual int mesh_direct_delta_mush_get_iterations(RID p_mesh) const override { return 4; }
 
-virtual void mesh_direct_delta_mush_set_lambda(RID p_mesh, float p_lambda) override {}
-virtual float mesh_direct_delta_mush_get_lambda(RID p_mesh) const override { return 1.0f; }
+	virtual void mesh_direct_delta_mush_set_lambda(RID p_mesh, float p_lambda) override {}
+	virtual float mesh_direct_delta_mush_get_lambda(RID p_mesh) const override { return 1.0f; }
 
-virtual bool mesh_direct_delta_mush_precompute(RID p_mesh) override { return false; }
-virtual bool mesh_direct_delta_mush_is_precomputed(RID p_mesh) const override { return false; }
+	virtual bool mesh_direct_delta_mush_precompute(RID p_mesh) override { return false; }
+	virtual bool mesh_direct_delta_mush_is_precomputed(RID p_mesh) const override { return false; }
 
 	/* MESH INSTANCE */
 

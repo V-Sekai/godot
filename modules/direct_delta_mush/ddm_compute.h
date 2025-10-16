@@ -81,6 +81,7 @@ protected:
 
 private:
 	RID load_shader(const String &shader_code);
+	RID load_shader_from_file(const String &shader_path);
 	bool create_pipeline(RID &pipeline, RID shader, const Vector<StringName> &uniform_names);
 };
 

@@ -35,11 +35,13 @@
 #ifndef DIRECT_DELTA_MUSH_H
 #define DIRECT_DELTA_MUSH_H
 
+#include "core/templates/vector.h"
 #include "scene/3d/mesh_instance_3d.h"
+#include "scene/3d/skeleton_3d.h"
 #include "servers/rendering/rendering_device.h"
 
 class DirectDeltaMushDeformer : public MeshInstance3D {
-GDCLASS(DirectDeltaMushDeformer, MeshInstance3D);
+	GDCLASS(DirectDeltaMushDeformer, MeshInstance3D);
 
 private:
 	// Direct Delta Mush parameters
@@ -63,14 +65,15 @@ private:
 	void build_adjacency_matrix();
 	void compute_laplacian_matrix();
 	void precompute_omega_matrices();
+	void add_edge_to_adjacency(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors);
 
 protected:
 	static void _bind_methods();
 	void _notification(int p_what);
 
 public:
-DirectDeltaMushDeformer();
-~DirectDeltaMushDeformer();
+	DirectDeltaMushDeformer();
+	~DirectDeltaMushDeformer();
 
 	// Property setters/getters
 	void set_iterations(int p_iterations);

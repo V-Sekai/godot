@@ -33,7 +33,6 @@
 #include "ddm_deformer.h"
 
 void DDMDeformer::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("deform", "bone_transforms", "omega_matrices", "vertex_count"), &DDMDeformer::deform);
 	ClassDB::bind_method(D_METHOD("set_original_mesh", "vertices", "normals"), &DDMDeformer::set_original_mesh);
 }
 

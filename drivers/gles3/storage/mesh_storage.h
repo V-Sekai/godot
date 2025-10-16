@@ -134,6 +134,12 @@ struct Mesh {
 
 	bool has_bone_weights = false;
 
+	// Direct Delta Mush
+	bool direct_delta_mush_enabled = false;
+	int direct_delta_mush_iterations = 4;
+	float direct_delta_mush_lambda = 1.0f;
+	bool direct_delta_mush_precomputed = false;
+
 	AABB aabb;
 	AABB custom_aabb;
 	uint64_t skeleton_aabb_version = 0;
