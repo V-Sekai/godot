@@ -33,6 +33,7 @@
 #include "direct_delta_mush.h"
 
 #include "core/config/engine.h"
+#include "ddm_deformer.h"
 #include "scene/resources/mesh.h"
 #include "servers/rendering/ddm_compute.h"
 
@@ -202,14 +203,85 @@ void DirectDeltaMushDeformer::update_deformation() {
 		// GPU deformation
 		// TODO: Implement GPU deformation using DDMCompute
 	} else {
-		// CPU deformation fallback
+		// CPU deformation using Enhanced DDM
 		Array surface_arrays = mesh->surface_get_arrays(0);
 		PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
-		PackedVector3Array normals = surface_arrays[Mesh::ARRAY_NORMAL];
+		PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
+		PackedFloat32Array bone_weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
+		PackedInt32Array bone_indices = surface_arrays[Mesh::ARRAY_BONES];
 
-		// TODO: Apply deformation using DDMDeformer
-		// For now, just copy original mesh
-		deformed_mesh->surface_set_material(0, mesh->surface_get_material(0));
+		// Convert to DDMDeformer format
+		DDMDeformer::MeshData mesh_data;
+		mesh_data.vertices.resize(vertices.size());
+		mesh_data.indices.resize(indices.size());
+		
+		// Copy vertices
+		for (int i = 0; i < vertices.size(); i++) {
+			mesh_data.vertices.set(i, vertices[i]);
+		}
+		
+		// Copy normals
+		PackedVector3Array normals = surface_arrays[Mesh::ARRAY_NORMAL];
+		mesh_data.normals.resize(normals.size());
+		for (int i = 0; i < normals.size(); i++) {
+			mesh_data.normals.set(i, normals[i]);
+		}
+		
+		// Copy indices
+		for (int i = 0; i < indices.size(); i++) {
+			mesh_data.indices.set(i, indices[i]);
+		}
+
+		// Set up bone weights (4 bones per vertex)
+		int bones_per_vertex = 4;
+		mesh_data.bone_weights.resize(vertices.size() * bones_per_vertex);
+		mesh_data.bone_indices.resize(vertices.size() * bones_per_vertex);
+
+		for (int v = 0; v < vertices.size(); v++) {
+			for (int b = 0; b < bones_per_vertex; b++) {
+				int idx = v * bones_per_vertex + b;
+				if (idx < bone_weights.size()) {
+					mesh_data.bone_weights.set(v * bones_per_vertex + b, bone_weights[idx]);
+				} else {
+					mesh_data.bone_weights.set(v * bones_per_vertex + b, 0.0f);
+				}
+				if (idx < bone_indices.size()) {
+					mesh_data.bone_indices.set(v * bones_per_vertex + b, bone_indices[idx]);
+				} else {
+					mesh_data.bone_indices.set(v * bones_per_vertex + b, 0);
+				}
+			}
+		}
+
+		// Configure Enhanced DDM
+		DDMDeformer::Config config;
+		config.iterations = iterations;
+		config.smooth_lambda = smooth_lambda;
+
+		// Create deformer, initialize, and apply
+		DDMDeformer deformer;
+		deformer.initialize(mesh_data);
+		DDMDeformer::DeformResult result = deformer.deform(bone_transforms, config);
+
+		// Update mesh with deformed vertices
+		if (result.success && result.vertices.size() == vertices.size()) {
+			PackedVector3Array deformed_verts;
+			deformed_verts.resize(result.vertices.size());
+			for (int i = 0; i < result.vertices.size(); i++) {
+				deformed_verts.set(i, result.vertices[i]);
+			}
+
+			// Update surface arrays with deformed vertices
+			surface_arrays[Mesh::ARRAY_VERTEX] = deformed_verts;
+			
+			// Recreate mesh surface
+			Ref<ArrayMesh> array_mesh = Object::cast_to<ArrayMesh>(deformed_mesh.ptr());
+			if (array_mesh.is_valid()) {
+				array_mesh->clear_surfaces();
+				array_mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_arrays);
+				array_mesh->surface_set_material(0, mesh->surface_get_material(0));
+			}
+		}
 	}
 
 	// Update the displayed mesh
