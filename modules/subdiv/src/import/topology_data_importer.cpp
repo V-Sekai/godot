@@ -388,6 +388,69 @@ int32_t TopologyDataImporter::generate_fake_format(const Array &arrays) const {
 	return format;
 }
 
+void TopologyDataImporter::subdivide_importer_mesh_in_place(Ref<ImporterMesh> importer_mesh, int32_t subdiv_level) {
+	ERR_FAIL_COND(importer_mesh.is_null());
+	ERR_FAIL_COND(subdiv_level <= 0);
+
+	// Create subdivision baker
+	Ref<SubdivisionBaker> baker;
+	baker.instantiate();
+
+	// Process each surface
+	Vector<Array> subdivided_surfaces;
+	Vector<TypedArray<Array>> subdivided_blend_shapes;
+	Vector<Ref<Material>> materials;
+	Vector<String> names;
+
+	for (int i = 0; i < importer_mesh->get_surface_count(); i++) {
+		Array surface_arrays = importer_mesh->get_surface_arrays(i);
+		int32_t format = generate_fake_format(surface_arrays);
+
+		if (format == 0 || !(format & Mesh::ARRAY_FORMAT_VERTEX)) {
+			continue;
+		}
+
+		// Generate topology surface arrays
+		Array topology_arrays;
+		int topology_type = _generate_topology_surface_arrays(SurfaceVertexArrays(surface_arrays), format, topology_arrays);
+
+		// Subdivide using baker
+		Array subdivided = baker->get_baked_arrays(topology_arrays, subdiv_level, format, topology_type);
+
+		// Handle blend shapes
+		TypedArray<Array> blend_shapes;
+		if (importer_mesh->get_blend_shape_count() > 0) {
+			Array blend_shape_arrays;
+			for (int j = 0; j < importer_mesh->get_blend_shape_count(); j++) {
+				blend_shape_arrays.push_back(importer_mesh->get_surface_blend_shape_arrays(i, j));
+			}
+			Array topology_blend_shapes = _generate_packed_blend_shapes(
+					blend_shape_arrays, surface_arrays[Mesh::ARRAY_INDEX], surface_arrays[Mesh::ARRAY_VERTEX]);
+			blend_shapes = baker->get_baked_blend_shape_arrays(topology_arrays, topology_blend_shapes,
+					subdiv_level, format, topology_type);
+		}
+
+		subdivided_surfaces.push_back(subdivided);
+		subdivided_blend_shapes.push_back(blend_shapes);
+		materials.push_back(importer_mesh->get_surface_material(i));
+		names.push_back(importer_mesh->get_surface_name(i));
+	}
+
+	// Replace all surfaces with subdivided versions
+	importer_mesh->clear();
+	for (int i = 0; i < subdivided_surfaces.size(); i++) {
+		importer_mesh->add_surface(
+				Mesh::PRIMITIVE_TRIANGLES,
+				subdivided_surfaces[i],
+				subdivided_blend_shapes[i],
+				Dictionary(), // lods
+				materials[i],
+				names[i],
+				0 // flags
+		);
+	}
+}
+
 MeshInstance3D *TopologyDataImporter::_replace_importer_mesh_instance_with_mesh_instance(ImporterMeshInstance3D *importer_mesh_instance) {
 	MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
 	Ref<ArrayMesh> array_mesh;

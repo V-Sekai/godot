@@ -86,6 +86,9 @@ public:
 	~TopologyDataImporter();
 
 	void convert_importer_meshinstance_to_subdiv(ImporterMeshInstance3D *importer_mesh_instance, ImportMode import_mode, int32_t subdiv_level);
+
+	// For scene importer: subdivide ImporterMesh in-place without node conversion
+	void subdivide_importer_mesh_in_place(Ref<ImporterMesh> importer_mesh, int32_t subdiv_level);
 };
 
 VARIANT_ENUM_CAST(TopologyDataImporter::ImportMode);
