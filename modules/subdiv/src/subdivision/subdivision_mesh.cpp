@@ -36,7 +36,7 @@
 #include "scene/resources/surface_tool.h"
 
 #include "scene/resources/mesh_data_tool.h"
-#include "servers/rendering_server.h"
+#include "servers/rendering/rendering_server.h"
 
 #include "quad_subdivider.hpp"
 #include "triangle_subdivider.hpp"
@@ -156,7 +156,7 @@ RID SubdivisionMesh::get_rid() const {
 
 void SubdivisionMesh::set_rid(RID p_rid) {
 	if (subdiv_mesh.is_valid()) {
-		RenderingServer::get_singleton()->free(subdiv_mesh);
+		RenderingServer::get_singleton()->free_rid(subdiv_mesh);
 	}
 	subdiv_mesh = p_rid;
 }
@@ -173,7 +173,7 @@ SubdivisionMesh::SubdivisionMesh() {
 
 SubdivisionMesh::~SubdivisionMesh() {
 	if (subdiv_mesh.is_valid()) {
-		RenderingServer::get_singleton()->free(subdiv_mesh);
+		RenderingServer::get_singleton()->free_rid(subdiv_mesh);
 	}
 
 	subdiv_mesh = RID();

@@ -33,15 +33,13 @@
 #include "core/object/ref_counted.h"
 
 #include "../../thirdparty/opensubdiv/far/primvarRefiner.h"
+#include "../../thirdparty/opensubdiv/far/stencilTableFactory.h"
 #include "../../thirdparty/opensubdiv/far/topologyDescriptor.h"
 
 class Subdivider : public RefCounted {
 	GDCLASS(Subdivider, RefCounted);
 
-protected:
-	static void _bind_methods();
-
-protected:
+public:
 	struct TopologyData {
 		PackedVector3Array vertex_array;
 		PackedVector3Array normal_array;
@@ -68,6 +66,26 @@ public:
 	};
 
 protected:
+	static void _bind_methods();
+
+private:
+	// Cached subdivision data (Performance improvements 1A + 1B)
+	struct CachedSubdivisionData {
+		OpenSubdiv::Far::TopologyRefiner *refiner = nullptr;
+		OpenSubdiv::Far::StencilTable const *vertex_stencils = nullptr;
+		OpenSubdiv::Far::StencilTable const *varying_stencils = nullptr;
+		OpenSubdiv::Far::StencilTable const *fvar_stencils = nullptr;
+		bool stencils_generated = false;
+	};
+	
+	static HashMap<uint64_t, CachedSubdivisionData> subdivision_cache;
+	static uint64_t _compute_topology_hash(const TopologyData &data, int level);
+	static void _cleanup_subdivision_cache();
+	
+	// Generate stencil tables for cached subdivision data
+	static void _generate_stencil_tables(CachedSubdivisionData &cache, int32_t p_format);
+
+protected:
 	TopologyData topology_data; //used for both passing to opensubdiv and storing result topology again (easier to handle level 0 like that)
 	void subdivide(const Array &p_arrays, int p_level, int32_t p_format, bool calculate_normals); //sets topology_data
 	OpenSubdiv::Far::TopologyDescriptor _create_topology_descriptor(Vector<int> &subdiv_face_vertex_count,
@@ -88,6 +106,10 @@ protected:
 public:
 	Array get_subdivided_arrays(const Array &p_arrays, int p_level, int32_t p_format, bool calculate_normals); //Returns triangle faces for rendering
 	Array get_subdivided_topology_arrays(const Array &p_arrays, int p_level, int32_t p_format, bool calculate_normals); //returns actual face data
+	
+	// Public cleanup for module shutdown
+	static void cleanup_subdivision_cache();
+	
 	Subdivider();
 	~Subdivider();
 };

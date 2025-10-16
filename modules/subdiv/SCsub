@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from misc.utility.scons_hints import *
 
 Import("env")
 
@@ -12,6 +13,19 @@ module_env.add_source_files(env.modules_sources, "src/subdivision/*.cpp")
 thirdparty_dir = "thirdparty/opensubdiv/"
 thirdparty_sources = [
     "far/error.cpp",
+    "far/patchBasis.cpp",
+    "far/patchDescriptor.cpp",
+    "far/patchMap.cpp",
+    "far/patchTable.cpp",
+    "far/patchTableFactory.cpp",
+    "far/patchBuilder.cpp",
+    "far/bilinearPatchBuilder.cpp",
+    "far/catmarkPatchBuilder.cpp",
+    "far/loopPatchBuilder.cpp",
+    "far/ptexIndices.cpp",
+    "far/stencilBuilder.cpp",
+    "far/stencilTable.cpp",
+    "far/stencilTableFactory.cpp",
     "far/topologyDescriptor.cpp",
     "far/topologyRefiner.cpp",
     "far/topologyRefinerFactory.cpp",
