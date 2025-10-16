@@ -31,7 +31,7 @@
 #include "baked_subdiv_mesh.hpp"
 
 #include "scene/resources/surface_tool.h"
-#include "servers/rendering_server.h"
+#include "servers/rendering/rendering_server.h"
 
 #include "../resources/topology_data_mesh.hpp"
 #include "../subdivision/subdivision_baker.hpp"

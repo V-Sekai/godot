@@ -32,7 +32,7 @@
 
 #include "core/object/class_db.h"
 #include "scene/resources/surface_tool.h"
-#include "servers/rendering_server.h"
+#include "servers/rendering/rendering_server.h"
 
 #include "../subdivision/subdivision_mesh.hpp"
 

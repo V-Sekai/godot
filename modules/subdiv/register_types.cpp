@@ -55,6 +55,7 @@ void initialize_subdiv_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
 		ClassDB::APIType prev_api = ClassDB::get_current_api();
 		ClassDB::set_current_api(ClassDB::API_EDITOR);
+		// Register SubdivEditorPlugin (it handles scene plugin registration internally)
 		EditorPlugins::add_by_type<SubdivEditorPlugin>();
 
 		ClassDB::set_current_api(prev_api);
@@ -82,4 +83,7 @@ void uninitialize_subdiv_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
+	
+	// Cleanup cached subdivision data (Performance improvements 1A + 1B)
+	Subdivider::cleanup_subdivision_cache();
 }

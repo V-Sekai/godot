@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  subdiv_converter.h                                                    */
+/*  subdiv_scene_plugin.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,28 +30,30 @@
 
 #pragma once
 
-#include "core/object/ref_counted.h"
-
+#include "editor/import/3d/resource_importer_scene.h"
 #include "../src/import/topology_data_importer.hpp"
-#include "scene/3d/importer_mesh_instance_3d.h"
 
-class SubdivConverter : public RefCounted {
-	GDCLASS(SubdivConverter, RefCounted);
+// Integrates subdivision into Godot's standard scene importer
+// Adds subdivision options to mesh import settings
+class SubdivScenePostImportPlugin : public EditorScenePostImportPlugin {
+	GDCLASS(SubdivScenePostImportPlugin, EditorScenePostImportPlugin);
 
-	Ref<TopologyDataImporter> importer;
-	TopologyDataImporter::ImportMode import_mode;
-	int subdiv_level = 0;
+private:
+	Ref<TopologyDataImporter> topology_importer;
 
 protected:
 	static void _bind_methods();
 
 public:
-	SubdivConverter(const TopologyDataImporter::ImportMode p_import_mode, int p_subdiv_level) {
-		importer.instantiate();
-		import_mode = p_import_mode;
-		subdiv_level = p_subdiv_level;
-	}
-	void convert_importer_mesh_instances_recursively(Node *node);
+	// Add subdivision options to mesh category
+	virtual void get_internal_import_options(InternalImportCategory p_category, List<ResourceImporter::ImportOption> *r_options) override;
+	
+	// Handle option visibility (note: matches base class signature)
+	virtual Variant get_internal_option_visibility(InternalImportCategory p_category, const String &p_scene_import_type, const String &p_option, const HashMap<StringName, Variant> &p_options) const override;
+	
+	// Process meshes during import
+	virtual void internal_process(InternalImportCategory p_category, Node *p_base_scene, Node *p_node, Ref<Resource> p_resource, const Dictionary &p_options) override;
 
-	SubdivConverter();
+	SubdivScenePostImportPlugin();
+	~SubdivScenePostImportPlugin();
 };
