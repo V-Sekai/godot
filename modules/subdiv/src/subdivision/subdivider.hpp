@@ -72,16 +72,16 @@ private:
 	// Cached subdivision data (Performance improvements 1A + 1B)
 	struct CachedSubdivisionData {
 		OpenSubdiv::Far::TopologyRefiner *refiner = nullptr;
-		OpenSubdiv::Far::StencilTable const *vertex_stencils = nullptr;
-		OpenSubdiv::Far::StencilTable const *varying_stencils = nullptr;
-		OpenSubdiv::Far::StencilTable const *fvar_stencils = nullptr;
+		OpenSubdiv::Far::StencilTableReal<float> const *vertex_stencils = nullptr;
+		OpenSubdiv::Far::StencilTableReal<float> const *varying_stencils = nullptr;
+		OpenSubdiv::Far::StencilTableReal<float> const *fvar_stencils = nullptr;
 		bool stencils_generated = false;
 	};
-	
+
 	static HashMap<uint64_t, CachedSubdivisionData> subdivision_cache;
 	static uint64_t _compute_topology_hash(const TopologyData &data, int level);
 	static void _cleanup_subdivision_cache();
-	
+
 	// Generate stencil tables for cached subdivision data
 	static void _generate_stencil_tables(CachedSubdivisionData &cache, int32_t p_format);
 
@@ -106,10 +106,10 @@ protected:
 public:
 	Array get_subdivided_arrays(const Array &p_arrays, int p_level, int32_t p_format, bool calculate_normals); //Returns triangle faces for rendering
 	Array get_subdivided_topology_arrays(const Array &p_arrays, int p_level, int32_t p_format, bool calculate_normals); //returns actual face data
-	
+
 	// Public cleanup for module shutdown
 	static void cleanup_subdivision_cache();
-	
+
 	Subdivider();
 	~Subdivider();
 };
