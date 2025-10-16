@@ -81,6 +81,20 @@ public:
 
 	virtual bool mesh_needs_instance(RID p_mesh, bool p_has_skeleton) = 0;
 
+	/* DIRECT DELTA MUSH API */
+
+	virtual void mesh_direct_delta_mush_set_enabled(RID p_mesh, bool p_enabled) = 0;
+	virtual bool mesh_direct_delta_mush_get_enabled(RID p_mesh) const = 0;
+
+	virtual void mesh_direct_delta_mush_set_iterations(RID p_mesh, int p_iterations) = 0;
+	virtual int mesh_direct_delta_mush_get_iterations(RID p_mesh) const = 0;
+
+	virtual void mesh_direct_delta_mush_set_lambda(RID p_mesh, float p_lambda) = 0;
+	virtual float mesh_direct_delta_mush_get_lambda(RID p_mesh) const = 0;
+
+	virtual bool mesh_direct_delta_mush_precompute(RID p_mesh) = 0;
+	virtual bool mesh_direct_delta_mush_is_precomputed(RID p_mesh) const = 0;
+
 	/* MESH INSTANCE */
 
 	virtual RID mesh_instance_create(RID p_base) = 0;

@@ -73,7 +73,8 @@ private:
 
 	struct MeshInstance;
 
-	struct Mesh {
+struct Mesh {
+
 		struct Surface {
 			RS::PrimitiveType primitive = RS::PRIMITIVE_POINTS;
 			uint64_t format = 0;
@@ -407,6 +408,8 @@ public:
 	virtual void mesh_debug_usage(List<RS::MeshInfo> *r_info) override;
 
 	virtual bool mesh_needs_instance(RID p_mesh, bool p_has_skeleton) override;
+
+
 
 	_FORCE_INLINE_ const RID *mesh_get_surface_count_and_materials(RID p_mesh, uint32_t &r_surface_count) {
 		Mesh *mesh = mesh_owner.get_or_null(p_mesh);

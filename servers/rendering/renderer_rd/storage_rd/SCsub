@@ -3,4 +3,8 @@ from misc.utility.scons_hints import *
 
 Import("env")
 
+# Add Eigen support for direct delta mush matrix operations
+env.Append(CPPDEFINES=["EIGEN_MPL2_ONLY"])
+env.Append(CPPPATH=["#thirdparty/eigen"])
+
 env.add_source_files(env.servers_sources, "*.cpp")

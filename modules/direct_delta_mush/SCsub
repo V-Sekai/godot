@@ -19,10 +19,9 @@ sources = [
     "ddm_compute.cpp",
 ]
 
-# Check for Eigen or other math libraries
-if env["builtin_eigen"]:
-    env_direct_delta_mush.Append(CPPDEFINES=["EIGEN_MPL2_ONLY"])
-    env_direct_delta_mush.Append(CPPPATH=["#thirdparty/eigen"])
+# Add Eigen support from local thirdparty directory
+env_direct_delta_mush.Append(CPPDEFINES=["EIGEN_MPL2_ONLY"])
+env_direct_delta_mush.Append(CPPPATH=["#modules/direct_delta_mush/thirdparty/eigen"])
 
 # Build the module
 if env["target"] == "editor":
@@ -30,12 +29,12 @@ if env["target"] == "editor":
 else:
     env_direct_delta_mush.add_source_files(env.modules_sources, sources)
 
-# Add shaders to build
-import glob
-shaders = glob.glob("shaders/*.glsl")
-for shader in shaders:
-    env_direct_delta_mush.Command(
-        shader.replace(".glsl", ".gen.h"),
-        shader,
-        env.Run(env_direct_delta_mush.GLSL_BUILDER, shader)
-    )
+# TODO: Add shader compilation when GLSL_BUILDER is available
+# import glob
+# shaders = glob.glob("shaders/*.glsl")
+# for shader in shaders:
+#     env_direct_delta_mush.Command(
+#         shader.replace(".glsl", ".gen.h"),
+#         shader,
+#         env_direct_delta_mush.Run(env.GLSL_BUILDER, shader)
+#     )

@@ -2505,3 +2505,67 @@ void MeshStorage::skeleton_update_dependency(RID p_skeleton, DependencyTracker *
 
 	p_instance->update_dependency(&skeleton->dependency);
 }
+
+/* DIRECT DELTA MUSH API */
+
+void MeshStorage::mesh_direct_delta_mush_set_enabled(RID p_mesh, bool p_enabled) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL(mesh);
+	mesh->direct_delta_mush.enabled = p_enabled;
+}
+
+bool MeshStorage::mesh_direct_delta_mush_get_enabled(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, false);
+	return mesh->direct_delta_mush.enabled;
+}
+
+void MeshStorage::mesh_direct_delta_mush_set_iterations(RID p_mesh, int p_iterations) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL(mesh);
+	ERR_FAIL_COND(p_iterations < 1);
+	mesh->direct_delta_mush.iterations = p_iterations;
+}
+
+int MeshStorage::mesh_direct_delta_mush_get_iterations(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, 4);
+	return mesh->direct_delta_mush.iterations;
+}
+
+void MeshStorage::mesh_direct_delta_mush_set_lambda(RID p_mesh, float p_lambda) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL(mesh);
+	mesh->direct_delta_mush.lambda = p_lambda;
+}
+
+float MeshStorage::mesh_direct_delta_mush_get_lambda(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, 1.0f);
+	return mesh->direct_delta_mush.lambda;
+}
+
+bool MeshStorage::mesh_direct_delta_mush_precompute(RID p_mesh) {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, false);
+
+	if (!mesh->direct_delta_mush.enabled) {
+		return false;
+	}
+
+	// TODO: Implement full direct delta mush precomputation
+	// This would involve:
+	// 1. Building adjacency matrix from mesh topology
+	// 2. Computing Laplacian matrix
+	// 3. Precomputing omega matrices for deformation
+
+	// For now, mark as precomputed
+	mesh->direct_delta_mush.precomputed = true;
+	return true;
+}
+
+bool MeshStorage::mesh_direct_delta_mush_is_precomputed(RID p_mesh) const {
+	Mesh *mesh = mesh_owner.get_or_null(p_mesh);
+	ERR_FAIL_NULL_V(mesh, false);
+	return mesh->direct_delta_mush.precomputed;
+}
