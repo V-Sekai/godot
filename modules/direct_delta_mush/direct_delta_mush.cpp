@@ -211,14 +211,14 @@ void DirectDeltaMushDeformer::update_deformation() {
 		// GPU deformation using DDMCompute
 		Ref<DDMCompute> ddm_compute;
 		ddm_compute.instantiate();
-		
+
 		if (!ddm_compute->initialize(rd)) {
 			WARN_PRINT("Failed to initialize DDMCompute, falling back to CPU");
 		} else {
 			// Create bone transforms buffer
 			Vector<float> bone_transform_data;
 			bone_transform_data.resize(bone_count * 16); // 4x4 matrices
-			
+
 			for (int i = 0; i < bone_count; i++) {
 				Transform3D t = bone_transforms[i];
 				// Pack transform into float array (column-major order)
@@ -234,13 +234,13 @@ void DirectDeltaMushDeformer::update_deformation() {
 				bone_transform_data.set(offset + 14, t.origin.z);
 				bone_transform_data.set(offset + 15, 1.0f);
 			}
-			
+
 			RID bones_buffer = rd->storage_buffer_create(bone_transform_data.size() * sizeof(float), bone_transform_data.to_byte_array());
-			
+
 			// Create output buffers
 			RID output_vertices_buffer = rd->storage_buffer_create(vertices.size() * sizeof(float) * 3);
 			RID output_normals_buffer = rd->storage_buffer_create(normals.size() * sizeof(float) * 3);
-			
+
 			// Create input vertex/normal buffers
 			Vector<float> vertex_data;
 			vertex_data.resize(vertices.size() * 3);
@@ -250,7 +250,7 @@ void DirectDeltaMushDeformer::update_deformation() {
 				vertex_data.set(i * 3 + 2, vertices[i].z);
 			}
 			RID input_vertices_buffer = rd->storage_buffer_create(vertex_data.size() * sizeof(float), vertex_data.to_byte_array());
-			
+
 			Vector<float> normal_data;
 			normal_data.resize(normals.size() * 3);
 			for (int i = 0; i < normals.size(); i++) {
@@ -259,7 +259,7 @@ void DirectDeltaMushDeformer::update_deformation() {
 				normal_data.set(i * 3 + 2, normals[i].z);
 			}
 			RID input_normals_buffer = rd->storage_buffer_create(normal_data.size() * sizeof(float), normal_data.to_byte_array());
-			
+
 			// Perform GPU deformation
 			bool gpu_success = ddm_compute->deform_mesh(
 					omega_buffer,
@@ -269,12 +269,12 @@ void DirectDeltaMushDeformer::update_deformation() {
 					output_vertices_buffer,
 					output_normals_buffer,
 					vertices.size());
-			
+
 			if (gpu_success) {
 				// Download results from GPU
 				Vector<uint8_t> output_verts_bytes = rd->buffer_get_data(output_vertices_buffer);
 				Vector<uint8_t> output_norms_bytes = rd->buffer_get_data(output_normals_buffer);
-				
+
 				// Convert back to Vector3 arrays
 				PackedVector3Array deformed_verts;
 				deformed_verts.resize(vertices.size());
@@ -282,18 +282,18 @@ void DirectDeltaMushDeformer::update_deformation() {
 				for (int i = 0; i < vertices.size(); i++) {
 					deformed_verts.set(i, Vector3(verts_ptr[i * 3], verts_ptr[i * 3 + 1], verts_ptr[i * 3 + 2]));
 				}
-				
+
 				PackedVector3Array deformed_norms;
 				deformed_norms.resize(normals.size());
 				const float *norms_ptr = (const float *)output_norms_bytes.ptr();
 				for (int i = 0; i < normals.size(); i++) {
 					deformed_norms.set(i, Vector3(norms_ptr[i * 3], norms_ptr[i * 3 + 1], norms_ptr[i * 3 + 2]));
 				}
-				
+
 				// Update surface arrays with deformed geometry
 				surface_arrays[Mesh::ARRAY_VERTEX] = deformed_verts;
 				surface_arrays[Mesh::ARRAY_NORMAL] = deformed_norms;
-				
+
 				// Recreate mesh surface
 				Ref<ArrayMesh> array_mesh = Object::cast_to<ArrayMesh>(deformed_mesh.ptr());
 				if (array_mesh.is_valid()) {
@@ -302,14 +302,14 @@ void DirectDeltaMushDeformer::update_deformation() {
 					array_mesh->surface_set_material(0, mesh->surface_get_material(0));
 				}
 			}
-			
+
 			// Clean up GPU buffers
 			rd->free_rid(bones_buffer);
 			rd->free_rid(input_vertices_buffer);
 			rd->free_rid(input_normals_buffer);
 			rd->free_rid(output_vertices_buffer);
 			rd->free_rid(output_normals_buffer);
-			
+
 			ddm_compute->cleanup();
 		}
 	} else {
@@ -324,19 +324,19 @@ void DirectDeltaMushDeformer::update_deformation() {
 		DDMDeformer::MeshData mesh_data;
 		mesh_data.vertices.resize(vertices.size());
 		mesh_data.indices.resize(indices.size());
-		
+
 		// Copy vertices
 		for (int i = 0; i < vertices.size(); i++) {
 			mesh_data.vertices.set(i, vertices[i]);
 		}
-		
+
 		// Copy normals
 		PackedVector3Array normals = surface_arrays[Mesh::ARRAY_NORMAL];
 		mesh_data.normals.resize(normals.size());
 		for (int i = 0; i < normals.size(); i++) {
 			mesh_data.normals.set(i, normals[i]);
 		}
-		
+
 		// Copy indices
 		for (int i = 0; i < indices.size(); i++) {
 			mesh_data.indices.set(i, indices[i]);
@@ -383,7 +383,7 @@ void DirectDeltaMushDeformer::update_deformation() {
 
 			// Update surface arrays with deformed vertices
 			surface_arrays[Mesh::ARRAY_VERTEX] = deformed_verts;
-			
+
 			// Recreate mesh surface
 			Ref<ArrayMesh> array_mesh = Object::cast_to<ArrayMesh>(deformed_mesh.ptr());
 			if (array_mesh.is_valid()) {
@@ -452,16 +452,61 @@ void DirectDeltaMushDeformer::compute_laplacian_matrix() {
 	Ref<Mesh> mesh = get_mesh();
 	Array surface_arrays = mesh->surface_get_arrays(0);
 	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+	PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
 	int vertex_count = vertices.size();
 	const int max_neighbors = 32;
 
-	// Allocate Laplacian buffer
-	if (rd) {
-		laplacian_buffer = rd->storage_buffer_create(vertex_count * max_neighbors * 2 * sizeof(float));
+	// Download adjacency data from GPU buffer to compute Laplacian weights
+	Vector<uint8_t> adjacency_bytes = rd->buffer_get_data(adjacency_buffer);
+	const int *adjacency_data = (const int *)adjacency_bytes.ptr();
+
+	// Compute Laplacian weights (uniform weights: w_ij = 1 / degree(vertex_i))
+	Vector<float> laplacian_data;
+	laplacian_data.resize(vertex_count * max_neighbors * 2); // [neighbor_idx, weight] pairs
+
+	// Initialize to sentinel values
+	for (int i = 0; i < laplacian_data.size(); i++) {
+		laplacian_data.set(i, -1.0f);
 	}
 
-	// TODO: Implement Laplacian computation
-	// For now, create a basic Laplacian matrix
+	for (int vi = 0; vi < vertex_count; vi++) {
+		// Count neighbors (degree of vertex)
+		int degree = 0;
+		for (int ni = 0; ni < max_neighbors; ni++) {
+			int neighbor_idx = adjacency_data[vi * max_neighbors + ni];
+			if (neighbor_idx >= 0 && neighbor_idx < vertex_count) {
+				degree++;
+			} else {
+				break; // No more neighbors
+			}
+		}
+
+		if (degree == 0) {
+			continue; // Isolated vertex - no neighbors
+		}
+
+		// Compute uniform weight: w_ij = 1 / degree
+		float uniform_weight = 1.0f / float(degree);
+
+		// Store Laplacian entries as [neighbor_index, weight] pairs
+		for (int ni = 0; ni < max_neighbors; ni++) {
+			int neighbor_idx = adjacency_data[vi * max_neighbors + ni];
+			if (neighbor_idx >= 0 && neighbor_idx < vertex_count) {
+				int entry_idx = vi * max_neighbors * 2 + ni * 2;
+				laplacian_data.set(entry_idx + 0, float(neighbor_idx)); // Neighbor index
+				laplacian_data.set(entry_idx + 1, uniform_weight); // Weight
+			} else {
+				break;
+			}
+		}
+	}
+
+	// Allocate and upload Laplacian buffer to GPU
+	if (rd) {
+		laplacian_buffer = rd->storage_buffer_create(laplacian_data.size() * sizeof(float), laplacian_data.to_byte_array());
+	}
+
+	print_line("Laplacian matrix computed with uniform weights");
 }
 
 void DirectDeltaMushDeformer::precompute_omega_matrices() {
@@ -474,37 +519,100 @@ void DirectDeltaMushDeformer::precompute_omega_matrices() {
 	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
 	PackedFloat32Array weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
 	int vertex_count = vertices.size();
+	const int max_neighbors = 32;
+	const int max_bones = 32;
 
-	// Allocate omega buffer (32 bones max, 16 floats per 4x4 matrix)
-	if (rd) {
-		omega_buffer = rd->storage_buffer_create(vertex_count * 32 * 16 * sizeof(float));
+	// Download adjacency data from GPU buffer
+	Vector<uint8_t> adjacency_bytes = rd->buffer_get_data(adjacency_buffer);
+	const int *adjacency_data_ptr = (const int *)adjacency_bytes.ptr();
+	Vector<int> adjacency_data;
+	adjacency_data.resize(vertex_count * max_neighbors);
+	for (int i = 0; i < adjacency_data.size(); i++) {
+		adjacency_data.set(i, adjacency_data_ptr[i]);
 	}
 
-	// TODO: Implement omega matrix precomputation using DDMCompute CPU fallback
-	// For now, initialize with identity matrices
+	// Download Laplacian data from GPU buffer
+	Vector<uint8_t> laplacian_bytes = rd->buffer_get_data(laplacian_buffer);
+	const float *laplacian_data_ptr = (const float *)laplacian_bytes.ptr();
+	Vector<float> laplacian_data;
+	laplacian_data.resize(vertex_count * max_neighbors * 2);
+	for (int i = 0; i < laplacian_data.size(); i++) {
+		laplacian_data.set(i, laplacian_data_ptr[i]);
+	}
 
-	// Create DDMCompute instance for CPU computation
+	// Convert vertex data
+	Vector<Vector3> vertex_data;
+	vertex_data.resize(vertices.size());
+	for (int i = 0; i < vertices.size(); i++) {
+		vertex_data.set(i, vertices[i]);
+	}
+
+	// Convert weight data
+	Vector<float> weight_data;
+	weight_data.resize(weights.size());
+	for (int i = 0; i < weights.size(); i++) {
+		weight_data.set(i, weights[i]);
+	}
+
+	// Determine bone count from weight data (4 weights per vertex)
+	int bone_count = 0;
+	for (int i = 0; i < weight_data.size(); i += 4) {
+		for (int b = 0; b < 4; b++) {
+			if (i + b < weight_data.size() && weight_data[i + b] > 0.0001f) {
+				// This assumes bone indices are in range [0, bone_count)
+				// For simplicity, assume max_bones
+				bone_count = max_bones;
+				break;
+			}
+		}
+		if (bone_count > 0) {
+			break;
+		}
+	}
+
+	if (bone_count == 0) {
+		bone_count = 1; // At least one bone
+	}
+
+	// Use CPU fallback to compute omega matrices
 	Ref<DDMCompute> ddm_compute;
 	ddm_compute.instantiate();
 	ddm_compute->initialize(rd);
 
-	// Prepare data for CPU computation
-	Vector<int> adjacency_data; // Would need to be extracted from adjacency_buffer
-	Vector<float> laplacian_data; // Would need to be extracted from laplacian_buffer
-	Vector<Vector3> vertex_data;
-	Vector<float> weight_data;
 	Vector<float> omega_data;
+	bool success = ddm_compute->compute_omega_matrices_cpu(
+			adjacency_data,
+			laplacian_data,
+			vertex_data,
+			weight_data,
+			omega_data,
+			vertex_count,
+			bone_count,
+			iterations,
+			smooth_lambda);
 
-	// Convert Godot arrays to Vectors
-	for (int i = 0; i < vertices.size(); i++) {
-		vertex_data.push_back(vertices[i]);
-	}
-	for (int i = 0; i < weights.size(); i++) {
-		weight_data.push_back(weights[i]);
+	if (!success || omega_data.is_empty()) {
+		WARN_PRINT("Failed to compute omega matrices, using identity matrices");
+		// Initialize with identity matrices as fallback
+		omega_data.resize(vertex_count * bone_count * 16);
+		for (int v = 0; v < vertex_count; v++) {
+			for (int b = 0; b < bone_count; b++) {
+				int offset = (v * bone_count + b) * 16;
+				// Identity matrix
+				for (int i = 0; i < 16; i++) {
+					omega_data.set(offset + i, (i % 5 == 0) ? 1.0f : 0.0f);
+				}
+			}
+		}
 	}
 
-	// TODO: Extract adjacency and Laplacian data from GPU buffers
-	// For now, skip CPU computation and use identity matrices
+	// Upload omega matrices to GPU
+	if (rd) {
+		omega_buffer = rd->storage_buffer_create(omega_data.size() * sizeof(float), omega_data.to_byte_array());
+	}
+
+	ddm_compute->cleanup();
+	print_line("Omega matrices precomputed using CPU fallback");
 }
 
 // Helper method
