@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/ddemidov/amgcl.git
+	branch = master
+	commit = 93827a00fc926d951c75f08fdb1d491912ff7065
+	parent = 0b874e81da96bf8bcc55bdc4088f07850d676e4b
+	method = merge
+	cmdver = 0.4.9
