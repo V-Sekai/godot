@@ -106,6 +106,13 @@ private:
 			int vertex_index,
 			const Vector<Vector3> &positions,
 			bool uniform_weights);
+	
+	// Enhanced DDM: Polar decomposition helpers
+	// Factor transform M into M_rigid * M_scale using square root method (paper equation 2)
+	void decompose_transform(const Transform3D &M, Transform3D &M_rigid, Transform3D &M_scale);
+	
+	// Compute symmetric matrix square root inverse: (M^T * M)^(-1/2)
+	Basis compute_symmetric_sqrt_inverse(const Basis &M);
 };
 
 #endif // DDM_DEFORMER_H

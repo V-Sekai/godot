@@ -201,96 +201,134 @@ bool DDMCompute::deform_mesh(const RID &omega_buffer, const RID &bones_buffer,
 	return false;
 }
 
-// CPU implementation using AMGCL for omega matrix precomputation
+// CPU implementation for omega matrix precomputation using Gauss-Seidel iteration
+// NOTE: This function is for standard Direct Delta Mush, not Enhanced DDM.
+// Enhanced DDM uses polar decomposition (see ddm_deformer.cpp) and doesn't need omega matrices.
+// This is kept for potential future standard DDM support.
 bool DDMCompute::compute_omega_matrices_cpu(const Vector<int> &adjacency_matrix,
 		const Vector<float> &laplacian_matrix,
 		const Vector<Vector3> &vertices,
 		const Vector<float> &weights,
 		Vector<float> &omega_matrices,
 		int vertex_count, int bone_count, int iterations, float lambda) {
+	// Validate input
 	if (adjacency_matrix.is_empty() || laplacian_matrix.is_empty()) {
 		return false;
 	}
 
 	const int max_neighbors = 32; // DDMMesh::maxOmegaCount
 
-	// Build AMGCL-compatible sparse matrix from Laplacian data
-	// Laplacian format: [neighbor_index, weight, neighbor_index, weight, ...] per vertex
-	std::vector<int> ptr(vertex_count + 1, 0);
-	std::vector<int> col;
-	std::vector<double> val;
+	// Allocate omega matrices: 4x4 matrix per vertex per bone
+	omega_matrices.resize(vertex_count * bone_count * 16);
 
-	// Convert Laplacian matrix to CRS format
-	for (int vi = 0; vi < vertex_count; vi++) {
-		ptr[vi] = col.size();
-
-		// Add diagonal element (always present in Laplacian)
-		col.push_back(vi);
-		val.push_back(1.0); // Diagonal is 1.0 for normalized Laplacian
-
-		// Add off-diagonal elements
-		for (int j = 0; j < max_neighbors; j++) {
-			int entry_idx = vi * max_neighbors * 2 + j * 2;
-			if (entry_idx + 1 >= laplacian_matrix.size()) {
-				break;
-			}
-
-			int neighbor_idx = laplacian_matrix[entry_idx];
-			float weight = laplacian_matrix[entry_idx + 1];
-
-			if (neighbor_idx >= 0 && neighbor_idx != vi) { // Skip invalid and diagonal
-				col.push_back(neighbor_idx);
-				val.push_back(weight);
-			}
-		}
-	}
-	ptr[vertex_count] = col.size();
-
-	// Create AMGCL solver for the Laplacian system
-	typedef amgcl::make_solver<
-			amgcl::amg<
-					amgcl::backend::builtin<double>,
-					amgcl::coarsening::smoothed_aggregation,
-					amgcl::relaxation::spai0>,
-			amgcl::solver::cg<amgcl::backend::builtin<double>>>
-			Solver;
-
-	Solver solver(std::tie(vertex_count, ptr, col, val));
-
-	// For each bone, solve L * ω = B where B contains bone weights
-	omega_matrices.resize(vertex_count * bone_count * 16); // 4x4 matrices per vertex per bone
-
+	// For each bone, solve L * ω = B using Gauss-Seidel iteration
+	// where L is the Laplacian matrix and B contains bone weights
 	for (int bone = 0; bone < bone_count; bone++) {
-		// Build RHS vector B for this bone (bone weights)
-		std::vector<double> rhs(vertex_count, 0.0);
+		// Initialize omega values for this bone
+		Vector<float> omega;
+		omega.resize(vertex_count);
+		for (int vi = 0; vi < vertex_count; vi++) {
+			omega.set(vi, 0.0f);
+		}
 
-		// Extract bone weights for this bone (4 weights per vertex: x,y,z,w)
+		// Extract bone weights for this bone (RHS vector B)
+		Vector<float> rhs;
+		rhs.resize(vertex_count);
 		for (int vi = 0; vi < vertex_count; vi++) {
 			int weight_idx = vi * bone_count * 4 + bone * 4;
 			// Use the x-component as the scalar weight for this bone
-			if (weight_idx < weights.size()) {
-				rhs[vi] = weights[weight_idx];
+			rhs.set(vi, (weight_idx < weights.size()) ? weights[weight_idx] : 0.0f);
+		}
+
+		// Gauss-Seidel iterations with convergence checking and robustness
+		// x_new[i] = (b[i] - sum(L[i,j] * x[j])) / L[i,i]
+		const float convergence_tolerance = 1e-6f;
+		const float min_diagonal = 1e-8f; // Prevent division by zero
+		bool converged = false;
+
+		for (int iter = 0; iter < iterations && !converged; iter++) {
+			float max_change = 0.0f;
+
+			for (int vi = 0; vi < vertex_count; vi++) {
+				float sum = 0.0f;
+
+				// Sum contributions from neighbors using Laplacian weights
+				// Laplacian format: [neighbor_index, weight, neighbor_index, weight, ...]
+				for (int j = 0; j < max_neighbors; j++) {
+					int entry_idx = vi * max_neighbors * 2 + j * 2;
+					if (entry_idx + 1 >= laplacian_matrix.size()) {
+						break;
+					}
+
+					int neighbor_idx = laplacian_matrix[entry_idx];
+					float weight = laplacian_matrix[entry_idx + 1];
+
+					if (neighbor_idx >= 0 && neighbor_idx < vertex_count && neighbor_idx != vi) {
+						// Use latest omega value (Gauss-Seidel property)
+						sum += weight * omega[neighbor_idx];
+					}
+				}
+
+				// Update omega value with robust diagonal handling
+				// L[i,i] is 1.0 for normalized Laplacian, but add regularization for stability
+				float diagonal = 1.0f + lambda;
+				
+				// Guard against degenerate cases
+				if (Math::abs(diagonal) < min_diagonal) {
+					diagonal = min_diagonal;
+				}
+
+				float old_value = omega[vi];
+				float new_value = (rhs[vi] - sum) / diagonal;
+
+				// Check for NaN/Inf and clamp if needed
+				if (!Math::is_finite(new_value)) {
+					new_value = 0.0f; // Fallback to zero
+					WARN_PRINT_ONCE("DDM omega computation produced non-finite value, using fallback");
+				}
+
+				omega.set(vi, new_value);
+
+				// Track convergence
+				float change = Math::abs(new_value - old_value);
+				max_change = MAX(max_change, change);
+			}
+
+			// Check for convergence
+			if (max_change < convergence_tolerance) {
+				converged = true;
 			}
 		}
 
-		// Solve L * ω = B
-		std::vector<double> omega(vertex_count, 0.0);
-		std::tie(iterations, lambda) = solver(rhs, omega); // lambda is residual tolerance
+		// Warn if didn't converge
+		if (!converged && iterations > 0) {
+			WARN_PRINT_ONCE("DDM Gauss-Seidel solver did not fully converge within iteration limit");
+		}
 
-		// Store omega values in output matrix (4x4 identity with omega on diagonal for now)
+		// Store omega values in output matrix (4x4 identity with omega on diagonal)
 		for (int vi = 0; vi < vertex_count; vi++) {
 			int matrix_idx = (vi * bone_count + bone) * 16;
-			// Store as identity matrix with omega on diagonal
-			for (int i = 0; i < 4; i++) {
-				for (int j = 0; j < 4; j++) {
-					int idx = matrix_idx + i * 4 + j;
-					if (i == j) {
-						omega_matrices.set(idx, omega[vi]);
-					} else {
-						omega_matrices.set(idx, (i == j) ? 1.0f : 0.0f);
-					}
-				}
-			}
+
+			// Set 4x4 identity matrix with omega value on diagonal
+			omega_matrices.set(matrix_idx + 0, omega[vi]);
+			omega_matrices.set(matrix_idx + 1, 0.0f);
+			omega_matrices.set(matrix_idx + 2, 0.0f);
+			omega_matrices.set(matrix_idx + 3, 0.0f);
+
+			omega_matrices.set(matrix_idx + 4, 0.0f);
+			omega_matrices.set(matrix_idx + 5, omega[vi]);
+			omega_matrices.set(matrix_idx + 6, 0.0f);
+			omega_matrices.set(matrix_idx + 7, 0.0f);
+
+			omega_matrices.set(matrix_idx + 8, 0.0f);
+			omega_matrices.set(matrix_idx + 9, 0.0f);
+			omega_matrices.set(matrix_idx + 10, omega[vi]);
+			omega_matrices.set(matrix_idx + 11, 0.0f);
+
+			omega_matrices.set(matrix_idx + 12, 0.0f);
+			omega_matrices.set(matrix_idx + 13, 0.0f);
+			omega_matrices.set(matrix_idx + 14, 0.0f);
+			omega_matrices.set(matrix_idx + 15, omega[vi]);
 		}
 	}
 

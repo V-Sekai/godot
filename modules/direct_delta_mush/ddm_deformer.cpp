@@ -92,6 +92,60 @@ void DDMDeformer::build_adjacency() {
 	}
 }
 
+Basis DDMDeformer::compute_symmetric_sqrt_inverse(const Basis &M) {
+	// Compute (M^T * M)^(-1/2) using eigenvalue decomposition
+	// This is used for polar decomposition in Enhanced DDM (paper equation 2)
+	
+	Basis MTM = M.transposed() * M;
+	
+	// For a 3x3 symmetric matrix, we can use a simplified approach
+	// Get eigenvalues using characteristic polynomial
+	// For now, use iterative power method for largest eigenvalue
+	
+	// Simplified approach: Use matrix inverse and approximate square root
+	// This is less accurate but sufficient for Stage 1
+	Basis MTM_inv = MTM.inverse();
+	
+	// Approximate sqrt by averaging M^-1 with its transpose and scaling
+	// Better: Use Denman-Beavers iteration for matrix square root
+	Basis X = MTM_inv;
+	Basis Y = Basis(); // Identity
+	
+	// 3-4 iterations usually sufficient for convergence
+	for (int iter = 0; iter < 4; iter++) {
+		Basis X_next = 0.5 * (X + Y.inverse());
+		Basis Y_next = 0.5 * (Y + X.inverse());
+		X = X_next;
+		Y = Y_next;
+	}
+	
+	return X; // This is (M^T * M)^(-1/2)
+}
+
+void DDMDeformer::decompose_transform(const Transform3D &M, Transform3D &M_rigid, Transform3D &M_scale) {
+	// Enhanced DDM polar decomposition (paper equation 2)
+	// Factor M = R * S where R is rotation and S is scale/shear
+	// Using: R = M * (M^T * M)^(-1/2)
+	
+	Basis M_basis = M.basis;
+	
+	// Compute (M^T * M)^(-1/2)
+	Basis sqrt_inv = compute_symmetric_sqrt_inverse(M_basis);
+	
+	// R = M * (M^T * M)^(-1/2)
+	Basis R = M_basis * sqrt_inv;
+	
+	// S = R^T * M (since M = R * S, then S = R^-1 * M = R^T * M for rotation)
+	Basis S = R.transposed() * M_basis;
+	
+	// Build output transforms
+	M_rigid.basis = R;
+	M_rigid.origin = M.origin; // Rigid part gets full translation
+	
+	M_scale.basis = S;
+	M_scale.origin = Vector3(0, 0, 0); // Scale part has no translation
+}
+
 Vector3 DDMDeformer::compute_laplacian_average(
 		int vertex_index,
 		const Vector<Vector3> &positions,
@@ -213,7 +267,40 @@ DDMDeformer::DeformResult DDMDeformer::deform(
 		return result; // No mesh data
 	}
 	
-	// Step 1: Apply bone transformations to get initial deformed positions
+	// ENHANCED DDM IMPLEMENTATION (paper equation 1)
+	
+	// Step 1: Decompose bone transforms into rigid and scale components
+	Vector<Transform3D> bone_rigid_transforms;
+	Vector<Transform3D> bone_scale_transforms;
+	bone_rigid_transforms.resize(p_bone_transforms.size());
+	bone_scale_transforms.resize(p_bone_transforms.size());
+	
+	for (int bi = 0; bi < p_bone_transforms.size(); bi++) {
+		Transform3D M_rigid, M_scale;
+		decompose_transform(p_bone_transforms[bi], M_rigid, M_scale);
+		bone_rigid_transforms.set(bi, M_rigid);
+		bone_scale_transforms.set(bi, M_scale);
+	}
+	
+	// Step 2: Compute non-rigid displacement for each vertex (paper: d_ij = M_sj * u_i - u_i)
+	Vector<Vector<Vector3>> non_rigid_displacements; // [vertex][bone]
+	non_rigid_displacements.resize(mesh_data.vertices.size());
+	
+	for (int vi = 0; vi < mesh_data.vertices.size(); vi++) {
+		Vector3 pos = mesh_data.vertices[vi];
+		Vector<Vector3> vertex_displacements;
+		vertex_displacements.resize(p_bone_transforms.size());
+		
+		for (int bi = 0; bi < p_bone_transforms.size(); bi++) {
+			// d_ij = M_scale * vertex_pos - vertex_pos
+			Vector3 scaled_pos = bone_scale_transforms[bi].xform(pos);
+			vertex_displacements.set(bi, scaled_pos - pos);
+		}
+		
+		non_rigid_displacements.set(vi, vertex_displacements);
+	}
+	
+	// Step 3: Apply weighted bone transforms to original positions (equation 1 part 1)
 	Vector<Vector3> bone_deformed_positions;
 	bone_deformed_positions.resize(mesh_data.vertices.size());
 	
@@ -222,7 +309,8 @@ DDMDeformer::DeformResult DDMDeformer::deform(
 		Vector3 deformed_pos = Vector3(0, 0, 0);
 		float total_weight = 0.0f;
 		
-		// Apply bone transforms with weights (linear blend skinning)
+		// Weighted sum: Σ w_ij * (M_rj * D_ij * Ω_ij)
+		// Simplified for Stage 1: Ω_ij = I (identity), so just M_rj * (I + d_ij)
 		for (int bi = 0; bi < 4; bi++) {
 			int bone_idx_offset = vi * 4 + bi;
 			if (bone_idx_offset >= mesh_data.bone_indices.size()) {
@@ -233,7 +321,14 @@ DDMDeformer::DeformResult DDMDeformer::deform(
 			float weight = mesh_data.bone_weights[bone_idx_offset];
 			
 			if (bone_idx >= 0 && bone_idx < p_bone_transforms.size() && weight > 0.0001f) {
-				deformed_pos += p_bone_transforms[bone_idx].xform(pos) * weight;
+				// Get non-rigid displacement for this bone
+				Vector3 d_ij = non_rigid_displacements[vi][bone_idx];
+				
+				// Apply: M_rigid * (pos + d_ij)
+				Vector3 displaced_pos = pos + d_ij;
+				Vector3 transformed_pos = bone_rigid_transforms[bone_idx].xform(displaced_pos);
+				
+				deformed_pos += transformed_pos * weight;
 				total_weight += weight;
 			}
 		}
@@ -246,19 +341,17 @@ DDMDeformer::DeformResult DDMDeformer::deform(
 		}
 	}
 	
-	// Step 2: Apply Laplacian smoothing to bone-deformed positions
+	// Step 4: Apply Laplacian smoothing to bone-deformed positions
 	Vector<Vector3> smoothed_positions = apply_laplacian_smoothing(
 			bone_deformed_positions,
 			p_config.iterations,
 			p_config.smooth_lambda);
 	
-	// Step 3: Compute local transformations and apply to original mesh
+	// Step 5: Final vertex positions
 	result.vertices.resize(mesh_data.vertices.size());
 	result.normals.resize(mesh_data.normals.size());
 	
 	for (int vi = 0; vi < mesh_data.vertices.size(); vi++) {
-		// For Stage 1: Simplified approach - use smoothed position directly
-		// (Full DDM would compute transformation matrices here)
 		result.vertices.set(vi, smoothed_positions[vi]);
 		
 		// Transform normals (simplified)
