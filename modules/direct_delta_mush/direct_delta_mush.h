@@ -38,8 +38,8 @@
 #include "scene/3d/mesh_instance_3d.h"
 #include "servers/rendering/rendering_device.h"
 
-class DirectDeltaMush : public MeshInstance3D {
-	GDCLASS(DirectDeltaMush, MeshInstance3D);
+class DirectDeltaMushMeshInstance3D : public MeshInstance3D {
+GDCLASS(DirectDeltaMushMeshInstance3D, MeshInstance3D);
 
 private:
 	// Direct Delta Mush parameters
@@ -69,8 +69,8 @@ protected:
 	void _notification(int p_what);
 
 public:
-	DirectDeltaMush();
-	~DirectDeltaMush();
+DirectDeltaMushMeshInstance3D();
+~DirectDeltaMushMeshInstance3D();
 
 	// Property setters/getters
 	void set_iterations(int p_iterations);

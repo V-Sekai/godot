@@ -45,7 +45,7 @@ void initialize_direct_delta_mush_module(ModuleInitializationLevel p_level) {
 	// Register classes
 	ClassDB::register_class<DDMMesh>();
 	ClassDB::register_class<DDMImporter>();
-	ClassDB::register_class<DirectDeltaMush>();
+	ClassDB::register_class<DirectDeltaMushMeshInstance3D>();
 }
 
 void uninitialize_direct_delta_mush_module(ModuleInitializationLevel p_level) {

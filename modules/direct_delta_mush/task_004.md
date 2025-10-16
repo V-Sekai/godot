@@ -14,7 +14,7 @@
   implementation
 - ✅ **GLSL Compute Shaders** - 4 complete compute shaders for GPU acceleration
 - ✅ **RenderingDevice Interface** - Full GPU compute pipeline integration
-- ✅ **DirectDeltaMush Node Class** - Complete MeshInstance3D extension with
+- ✅ **DirectDeltaMushMeshInstance3D Node Class** - Complete MeshInstance3D extension with
   Godot integration
 
 **Current Architecture Status:**
@@ -93,7 +93,7 @@ func _get_import_options(path, preset_index):
 
 **Requirements:**
 
-- [ ] Add DirectDeltaMush node to "Create New Node" menu
+- [ ] Add DirectDeltaMushMeshInstance3D node to "Create New Node" menu
 - [ ] Create custom inspector with parameter presets
 - [ ] Add visual feedback for precomputation progress
 - [ ] Implement mesh validation warnings in editor
@@ -103,7 +103,7 @@ func _get_import_options(path, preset_index):
 **Editor Features:**
 
 - **Node Creation**: Easy access from "3D Scene" → "MeshInstance3D" →
-  "DirectDeltaMush"
+  "DirectDeltaMushMeshInstance3D"
 - **Inspector Enhancements**:
   - Parameter validation with warnings
   - Performance estimates based on mesh complexity
@@ -126,7 +126,7 @@ func _get_import_options(path, preset_index):
 
 ```gdscript
 # Example usage with AnimationPlayer
-var ddm_node = $DirectDeltaMush
+var ddm_node = $DirectDeltaMushMeshInstance3D
 ddm_node.precompute()  # Precompute once
 
 # Animation plays automatically

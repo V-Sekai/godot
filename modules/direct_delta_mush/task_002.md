@@ -50,7 +50,7 @@ godot/modules/direct_delta_mush/
 
 **Node Classes:**
 
-- **DirectDeltaMush**: Main node extending MeshInstance3D (like
+- **DirectDeltaMushMeshInstance3D**: Main node extending MeshInstance3D (like
   SubdivMeshInstance3D)
 - **DDMImporter**: Handles import-time preprocessing (like TopologyDataImporter)
 - **DDMMesh**: Resource containing precomputed data (like SubdivisionMesh)

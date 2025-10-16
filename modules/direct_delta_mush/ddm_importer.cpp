@@ -232,7 +232,7 @@ Ref<DDMMesh> DDMImporter::create_ddm_mesh(const Ref<Mesh> &source_mesh, const Me
 
 MeshInstance3D *DDMImporter::replace_mesh_instance_with_ddm(MeshInstance3D *mesh_instance, ImportMode import_mode) {
 	// TODO: Implement replacement logic similar to TopologyDataImporter
-	// This would create a DirectDeltaMush node and replace the MeshInstance3D
+	// This would create a DirectDeltaMushMeshInstance3D node and replace the MeshInstance3D
 	return mesh_instance;
 }
 

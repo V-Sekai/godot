@@ -35,29 +35,29 @@
 #include "core/config/engine.h"
 #include "scene/resources/mesh.h"
 
-void DirectDeltaMush::_bind_methods() {
+void DirectDeltaMushMeshInstance3D::_bind_methods() {
 	// Properties
-	ClassDB::bind_method(D_METHOD("set_iterations", "iterations"), &DirectDeltaMush::set_iterations);
-	ClassDB::bind_method(D_METHOD("get_iterations"), &DirectDeltaMush::get_iterations);
+ClassDB::bind_method(D_METHOD("set_iterations", "iterations"), &DirectDeltaMushMeshInstance3D::set_iterations);
+ClassDB::bind_method(D_METHOD("get_iterations"), &DirectDeltaMushMeshInstance3D::get_iterations);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations", PROPERTY_HINT_RANGE, "1,100,1"), "set_iterations", "get_iterations");
 
-	ClassDB::bind_method(D_METHOD("set_smooth_lambda", "lambda"), &DirectDeltaMush::set_smooth_lambda);
-	ClassDB::bind_method(D_METHOD("get_smooth_lambda"), &DirectDeltaMush::get_smooth_lambda);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "smooth_lambda", PROPERTY_HINT_RANGE, "0.1,2.0,0.01"), "set_smooth_lambda", "get_smooth_lambda");
+ClassDB::bind_method(D_METHOD("set_smooth_lambda", "lambda"), &DirectDeltaMushMeshInstance3D::set_smooth_lambda);
+ClassDB::bind_method(D_METHOD("get_smooth_lambda"), &DirectDeltaMushMeshInstance3D::get_smooth_lambda);
+ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "smooth_lambda", PROPERTY_HINT_RANGE, "0.1,2.0,0.01"), "set_smooth_lambda", "get_smooth_lambda");
 
-	ClassDB::bind_method(D_METHOD("set_adjacency_tolerance", "tolerance"), &DirectDeltaMush::set_adjacency_tolerance);
-	ClassDB::bind_method(D_METHOD("get_adjacency_tolerance"), &DirectDeltaMush::get_adjacency_tolerance);
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "adjacency_tolerance", PROPERTY_HINT_RANGE, "0.0001,0.01,0.0001"), "set_adjacency_tolerance", "get_adjacency_tolerance");
+ClassDB::bind_method(D_METHOD("set_adjacency_tolerance", "tolerance"), &DirectDeltaMushMeshInstance3D::set_adjacency_tolerance);
+ClassDB::bind_method(D_METHOD("get_adjacency_tolerance"), &DirectDeltaMushMeshInstance3D::get_adjacency_tolerance);
+ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "adjacency_tolerance", PROPERTY_HINT_RANGE, "0.0001,0.01,0.0001"), "set_adjacency_tolerance", "get_adjacency_tolerance");
 
-	ClassDB::bind_method(D_METHOD("set_use_compute", "use_compute"), &DirectDeltaMush::set_use_compute);
-	ClassDB::bind_method(D_METHOD("get_use_compute"), &DirectDeltaMush::get_use_compute);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_compute"), "set_use_compute", "get_use_compute");
+ClassDB::bind_method(D_METHOD("set_use_compute", "use_compute"), &DirectDeltaMushMeshInstance3D::set_use_compute);
+ClassDB::bind_method(D_METHOD("get_use_compute"), &DirectDeltaMushMeshInstance3D::get_use_compute);
+ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_compute"), "set_use_compute", "get_use_compute");
 
-	// Methods
-	ClassDB::bind_method(D_METHOD("precompute"), &DirectDeltaMush::precompute);
+// Methods
+ClassDB::bind_method(D_METHOD("precompute"), &DirectDeltaMushMeshInstance3D::precompute);
 }
 
-void DirectDeltaMush::_notification(int p_what) {
+void DirectDeltaMushMeshInstance3D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			// Initialize rendering device
@@ -86,58 +86,58 @@ void DirectDeltaMush::_notification(int p_what) {
 	}
 }
 
-DirectDeltaMush::DirectDeltaMush() {
+DirectDeltaMushMeshInstance3D::DirectDeltaMushMeshInstance3D() {
 	// Initialize with default values
 	set_process(true);
 }
 
-DirectDeltaMush::~DirectDeltaMush() {
+DirectDeltaMushMeshInstance3D::~DirectDeltaMushMeshInstance3D() {
 	// Cleanup handled in _notification
 }
 
 // Property setters/getters
-void DirectDeltaMush::set_iterations(int p_iterations) {
+void DirectDeltaMushMeshInstance3D::set_iterations(int p_iterations) {
 	iterations = p_iterations;
 }
 
-int DirectDeltaMush::get_iterations() const {
+int DirectDeltaMushMeshInstance3D::get_iterations() const {
 	return iterations;
 }
 
-void DirectDeltaMush::set_smooth_lambda(float p_lambda) {
+void DirectDeltaMushMeshInstance3D::set_smooth_lambda(float p_lambda) {
 	smooth_lambda = p_lambda;
 }
 
-float DirectDeltaMush::get_smooth_lambda() const {
+float DirectDeltaMushMeshInstance3D::get_smooth_lambda() const {
 	return smooth_lambda;
 }
 
-void DirectDeltaMush::set_adjacency_tolerance(float p_tolerance) {
+void DirectDeltaMushMeshInstance3D::set_adjacency_tolerance(float p_tolerance) {
 	adjacency_tolerance = p_tolerance;
 }
 
-float DirectDeltaMush::get_adjacency_tolerance() const {
+float DirectDeltaMushMeshInstance3D::get_adjacency_tolerance() const {
 	return adjacency_tolerance;
 }
 
-void DirectDeltaMush::set_use_compute(bool p_use_compute) {
+void DirectDeltaMushMeshInstance3D::set_use_compute(bool p_use_compute) {
 	use_compute = p_use_compute;
 }
 
-bool DirectDeltaMush::get_use_compute() const {
+bool DirectDeltaMushMeshInstance3D::get_use_compute() const {
 	return use_compute;
 }
 
 // Public methods
-void DirectDeltaMush::precompute() {
+void DirectDeltaMushMeshInstance3D::precompute() {
 	precompute_data();
 }
 
 // Internal methods
-void DirectDeltaMush::precompute_data() {
+void DirectDeltaMushMeshInstance3D::precompute_data() {
 	Ref<Mesh> mesh = get_mesh();
 	if (mesh.is_null()) {
-		WARN_PRINT("No mesh assigned to DirectDeltaMush node");
+		WARN_PRINT("No mesh assigned to DirectDeltaMushMeshInstance3D node");
 		return;
 	}
 
@@ -160,7 +160,7 @@ void DirectDeltaMush::precompute_data() {
 	print_line("Direct Delta Mush precomputation completed");
 }
 
-void DirectDeltaMush::update_deformation() {
+void DirectDeltaMushMeshInstance3D::update_deformation() {
 	Ref<Mesh> mesh = get_mesh();
 	if (mesh.is_null() || !omega_buffer.is_valid()) {
 		return;
@@ -209,7 +209,7 @@ void DirectDeltaMush::update_deformation() {
 	set_mesh(deformed_mesh);
 }
 
-void DirectDeltaMush::build_adjacency_matrix() {
+void DirectDeltaMushMeshInstance3D::build_adjacency_matrix() {
 	Ref<Mesh> mesh = get_mesh();
 	if (mesh.is_null()) {
 		return;
@@ -255,7 +255,7 @@ void DirectDeltaMush::build_adjacency_matrix() {
 	}
 }
 
-void DirectDeltaMush::compute_laplacian_matrix() {
+void DirectDeltaMushMeshInstance3D::compute_laplacian_matrix() {
 	if (!adjacency_buffer.is_valid()) {
 		return;
 	}
@@ -273,7 +273,7 @@ void DirectDeltaMush::compute_laplacian_matrix() {
 	// For now, create a basic Laplacian matrix
 }
 
-void DirectDeltaMush::precompute_omega_matrices() {
+void DirectDeltaMushMeshInstance3D::precompute_omega_matrices() {
 	if (!laplacian_buffer.is_valid()) {
 		return;
 	}
@@ -291,7 +291,7 @@ void DirectDeltaMush::precompute_omega_matrices() {
 }
 
 // Helper method
-void DirectDeltaMush::add_edge_to_adjacency(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors) {
+void DirectDeltaMushMeshInstance3D::add_edge_to_adjacency(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors) {
 	// Add v1 to v0's adjacency list
 	for (int i = 0; i < max_neighbors; i++) {
 		int idx = v0 * max_neighbors + i;

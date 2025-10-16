@@ -166,7 +166,7 @@ bool DDMDeformer::deform(const Vector<Transform3D>& bone_transforms,
 - `shaders/omega_precompute.compute.glsl`
 - `shaders/deform.compute.glsl`
 
-### Phase 6: DirectDeltaMush Node Completion
+### Phase 6: DirectDeltaMushMeshInstance3D Node Completion
 
 **Objective:** Complete the MeshInstance3D integration
 
@@ -182,8 +182,8 @@ bool DDMDeformer::deform(const Vector<Transform3D>& bone_transforms,
 **Godot Integration:**
 
 ```cpp
-class DirectDeltaMush : public MeshInstance3D {
-    GDCLASS(DirectDeltaMush, MeshInstance3D)
+class DirectDeltaMushMeshInstance3D : public MeshInstance3D {
+    GDCLASS(DirectDeltaMushMeshInstance3D, MeshInstance3D)
 
     // Complete implementation with skeleton integration
     void _notification(int p_what) override;
@@ -256,7 +256,7 @@ vertex-bone pair **GPU Buffers:** RID-based with proper cleanup
 - ✅ Omega matrix precomputation with bone weights
 - ✅ Runtime deformation with SVD
 - ✅ GLSL compute shader implementations
-- ✅ Complete DirectDeltaMush node integration
+- ✅ Complete DirectDeltaMushMeshInstance3D node integration
 
 **Quality Assurance:**
 

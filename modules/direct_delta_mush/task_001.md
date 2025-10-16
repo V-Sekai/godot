@@ -30,7 +30,7 @@ The Unity implementation (in `MeshDeformUnity/`) provides the reference:
 - `DDMSkinnedMeshGPUVar0.cs`: Main component extending SkinnedMeshRenderer
 - `DDMUtilsGPU.cs`: GPU compute shader interface for precomputation
 - `DDMUtilsIterative.cs`: CPU fallback implementation
-- Compute shaders: `DDMPrecompute.compute`, `DirectDeltaMushVar0.compute`
+- Compute shaders: `DDMPrecompute.compute`, `DirectDeltaMushMeshInstance3DVar0.compute`
 - Math library: `Math.cginc` with SVD and matrix operations
 
 **Algorithm Flow:**
@@ -66,8 +66,8 @@ godot/modules/direct_delta_mush/
 **Node Class:**
 
 ```cpp
-class DirectDeltaMush : public MeshInstance3D {
-    GDCLASS(DirectDeltaMush, MeshInstance3D)
+class DirectDeltaMushMeshInstance3D : public MeshInstance3D {
+    GDCLASS(DirectDeltaMushMeshInstance3D, MeshInstance3D)
 
     // Inherits skeleton property from MeshInstance3D
     // Direct Delta Mush parameters
@@ -128,7 +128,7 @@ class DirectDeltaMush : public MeshInstance3D {
 
 #### Phase 3: Godot Integration
 
-- [ ] Create DirectDeltaMush node class extending MeshInstance3D
+- [ ] Create DirectDeltaMushMeshInstance3D node class extending MeshInstance3D
 - [ ] Integrate with skeleton system via inherited property
 - [ ] Add AnimationPlayer support
 - [ ] Editor integration and inspector properties

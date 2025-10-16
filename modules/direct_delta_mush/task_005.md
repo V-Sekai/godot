@@ -15,7 +15,7 @@ matching the Unity reference implementation.
 - ✅ Task 1: Initial planning and architecture design
 - ✅ Task 2: Analysis of godot-subdiv reference implementation
 - ✅ Task 3: Core algorithm implementation (mathematical components, GPU compute
-  shaders, DirectDeltaMush node)
+  shaders, DirectDeltaMushMeshInstance3D node)
 - ✅ Task 4: Integration & polish (editor integration, import pipeline,
   animation system compatibility)
 
@@ -29,7 +29,7 @@ matching the Unity reference implementation.
 
 **Critical Issues Identified:**
 
-- ❌ Naming inconsistencies ("DirectDeltaMush has wrong naming")
+- ❌ Naming inconsistencies ("DirectDeltaMushMeshInstance3D has wrong naming")
 - ❌ Inheritance problems ("ddmmesh extends mesh")
 
 ## QA Testing Objectives
