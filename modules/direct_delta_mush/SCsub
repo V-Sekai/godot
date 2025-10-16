@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+
+Import("env")
+Import("env_modules")
+
+env_direct_delta_mush = env_modules.Clone()
+
+# Add required include paths
+env_direct_delta_mush.Append(CPPPATH=["#modules/direct_delta_mush"])
+
+# Source files
+sources = [
+    "register_types.cpp",
+    "direct_delta_mush.cpp",
+    "ddm_mesh.cpp",
+    "ddm_importer.cpp",
+    "ddm_precomputer.cpp",
+    "ddm_deformer.cpp",
+    "ddm_compute.cpp",
+]
+
+# Check for Eigen or other math libraries
+if env["builtin_eigen"]:
+    env_direct_delta_mush.Append(CPPDEFINES=["EIGEN_MPL2_ONLY"])
+    env_direct_delta_mush.Append(CPPPATH=["#thirdparty/eigen"])
+
+# Build the module
+if env["target"] == "editor":
+    env_direct_delta_mush.add_source_files(env.modules_sources, sources)
+else:
+    env_direct_delta_mush.add_source_files(env.modules_sources, sources)
+
+# Add shaders to build
+import glob
+shaders = glob.glob("shaders/*.glsl")
+for shader in shaders:
+    env_direct_delta_mush.Command(
+        shader.replace(".glsl", ".gen.h"),
+        shader,
+        env.Run(env_direct_delta_mush.GLSL_BUILDER, shader)
+    )
