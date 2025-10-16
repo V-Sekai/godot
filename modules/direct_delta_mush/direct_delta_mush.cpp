@@ -35,29 +35,29 @@
 #include "core/config/engine.h"
 #include "scene/resources/mesh.h"
 
-void DirectDeltaMushMeshInstance3D::_bind_methods() {
+void DirectDeltaMushDeformer::_bind_methods() {
 	// Properties
-ClassDB::bind_method(D_METHOD("set_iterations", "iterations"), &DirectDeltaMushMeshInstance3D::set_iterations);
-ClassDB::bind_method(D_METHOD("get_iterations"), &DirectDeltaMushMeshInstance3D::get_iterations);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations", PROPERTY_HINT_RANGE, "1,100,1"), "set_iterations", "get_iterations");
+ClassDB::bind_method(D_METHOD("set_iterations", "iterations"), &DirectDeltaMushDeformer::set_iterations);
+ClassDB::bind_method(D_METHOD("get_iterations"), &DirectDeltaMushDeformer::get_iterations);
+ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations", PROPERTY_HINT_RANGE, "1,100,1"), "set_iterations", "get_iterations");
 
-ClassDB::bind_method(D_METHOD("set_smooth_lambda", "lambda"), &DirectDeltaMushMeshInstance3D::set_smooth_lambda);
-ClassDB::bind_method(D_METHOD("get_smooth_lambda"), &DirectDeltaMushMeshInstance3D::get_smooth_lambda);
+ClassDB::bind_method(D_METHOD("set_smooth_lambda", "lambda"), &DirectDeltaMushDeformer::set_smooth_lambda);
+ClassDB::bind_method(D_METHOD("get_smooth_lambda"), &DirectDeltaMushDeformer::get_smooth_lambda);
 ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "smooth_lambda", PROPERTY_HINT_RANGE, "0.1,2.0,0.01"), "set_smooth_lambda", "get_smooth_lambda");
 
-ClassDB::bind_method(D_METHOD("set_adjacency_tolerance", "tolerance"), &DirectDeltaMushMeshInstance3D::set_adjacency_tolerance);
-ClassDB::bind_method(D_METHOD("get_adjacency_tolerance"), &DirectDeltaMushMeshInstance3D::get_adjacency_tolerance);
+ClassDB::bind_method(D_METHOD("set_adjacency_tolerance", "tolerance"), &DirectDeltaMushDeformer::set_adjacency_tolerance);
+ClassDB::bind_method(D_METHOD("get_adjacency_tolerance"), &DirectDeltaMushDeformer::get_adjacency_tolerance);
 ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "adjacency_tolerance", PROPERTY_HINT_RANGE, "0.0001,0.01,0.0001"), "set_adjacency_tolerance", "get_adjacency_tolerance");
 
-ClassDB::bind_method(D_METHOD("set_use_compute", "use_compute"), &DirectDeltaMushMeshInstance3D::set_use_compute);
-ClassDB::bind_method(D_METHOD("get_use_compute"), &DirectDeltaMushMeshInstance3D::get_use_compute);
+ClassDB::bind_method(D_METHOD("set_use_compute", "use_compute"), &DirectDeltaMushDeformer::set_use_compute);
+ClassDB::bind_method(D_METHOD("get_use_compute"), &DirectDeltaMushDeformer::get_use_compute);
 ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_compute"), "set_use_compute", "get_use_compute");
 
 // Methods
-ClassDB::bind_method(D_METHOD("precompute"), &DirectDeltaMushMeshInstance3D::precompute);
+ClassDB::bind_method(D_METHOD("precompute"), &DirectDeltaMushDeformer::precompute);
 }
 
-void DirectDeltaMushMeshInstance3D::_notification(int p_what) {
+void DirectDeltaMushDeformer::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			// Initialize rendering device
@@ -86,212 +86,212 @@ void DirectDeltaMushMeshInstance3D::_notification(int p_what) {
 	}
 }
 
-DirectDeltaMushMeshInstance3D::DirectDeltaMushMeshInstance3D() {
-	// Initialize with default values
-	set_process(true);
+DirectDeltaMushDeformer::DirectDeltaMushDeformer() {
+// Initialize with default values
+set_process(true);
 }
 
-DirectDeltaMushMeshInstance3D::~DirectDeltaMushMeshInstance3D() {
-	// Cleanup handled in _notification
+DirectDeltaMushDeformer::~DirectDeltaMushDeformer() {
+// Cleanup handled in _notification
 }
 
 // Property setters/getters
-void DirectDeltaMushMeshInstance3D::set_iterations(int p_iterations) {
-	iterations = p_iterations;
+void DirectDeltaMushDeformer::set_iterations(int p_iterations) {
+iterations = p_iterations;
 }
 
-int DirectDeltaMushMeshInstance3D::get_iterations() const {
-	return iterations;
+int DirectDeltaMushDeformer::get_iterations() const {
+return iterations;
 }
 
-void DirectDeltaMushMeshInstance3D::set_smooth_lambda(float p_lambda) {
-	smooth_lambda = p_lambda;
+void DirectDeltaMushDeformer::set_smooth_lambda(float p_lambda) {
+smooth_lambda = p_lambda;
 }
 
-float DirectDeltaMushMeshInstance3D::get_smooth_lambda() const {
-	return smooth_lambda;
+float DirectDeltaMushDeformer::get_smooth_lambda() const {
+return smooth_lambda;
 }
 
-void DirectDeltaMushMeshInstance3D::set_adjacency_tolerance(float p_tolerance) {
-	adjacency_tolerance = p_tolerance;
+void DirectDeltaMushDeformer::set_adjacency_tolerance(float p_tolerance) {
+adjacency_tolerance = p_tolerance;
 }
 
-float DirectDeltaMushMeshInstance3D::get_adjacency_tolerance() const {
-	return adjacency_tolerance;
+float DirectDeltaMushDeformer::get_adjacency_tolerance() const {
+return adjacency_tolerance;
 }
 
-void DirectDeltaMushMeshInstance3D::set_use_compute(bool p_use_compute) {
-	use_compute = p_use_compute;
+void DirectDeltaMushDeformer::set_use_compute(bool p_use_compute) {
+use_compute = p_use_compute;
 }
 
-bool DirectDeltaMushMeshInstance3D::get_use_compute() const {
-	return use_compute;
+bool DirectDeltaMushDeformer::get_use_compute() const {
+return use_compute;
 }
 
 // Public methods
-void DirectDeltaMushMeshInstance3D::precompute() {
-	precompute_data();
+void DirectDeltaMushDeformer::precompute() {
+precompute_data();
 }
 
 // Internal methods
-void DirectDeltaMushMeshInstance3D::precompute_data() {
-	Ref<Mesh> mesh = get_mesh();
-	if (mesh.is_null()) {
-		WARN_PRINT("No mesh assigned to DirectDeltaMushMeshInstance3D node");
-		return;
-	}
-
-	// Check if mesh has bone weights
-	Array surface_arrays = mesh->surface_get_arrays(0);
-	if (surface_arrays.size() <= Mesh::ARRAY_BONES) {
-		WARN_PRINT("Mesh must have bone weights for Direct Delta Mush");
-		return;
-	}
-
-	// Build adjacency matrix
-	build_adjacency_matrix();
-
-	// Compute Laplacian matrix
-	compute_laplacian_matrix();
-
-	// Precompute Omega matrices
-	precompute_omega_matrices();
-
-	print_line("Direct Delta Mush precomputation completed");
+void DirectDeltaMushDeformer::precompute_data() {
+Ref<Mesh> mesh = get_mesh();
+if (mesh.is_null()) {
+WARN_PRINT("No mesh assigned to DirectDeltaMushDeformer node");
+return;
 }
 
-void DirectDeltaMushMeshInstance3D::update_deformation() {
-	Ref<Mesh> mesh = get_mesh();
-	if (mesh.is_null() || !omega_buffer.is_valid()) {
-		return;
-	}
-
-	// Get skeleton bone transforms
-	Node *skel_node = get_skeleton();
-	if (!skel_node) {
-		return;
-	}
-
-	Skeleton3D *skeleton = Object::cast_to<Skeleton3D>(skel_node);
-	if (!skeleton) {
-		return;
-	}
-
-	// Get bone transforms
-	int bone_count = skeleton->get_bone_count();
-	Vector<Transform3D> bone_transforms;
-	bone_transforms.resize(bone_count);
-
-	for (int i = 0; i < bone_count; i++) {
-		bone_transforms.set(i, skeleton->get_bone_global_pose(i));
-	}
-
-	// Create deformed mesh if needed
-	if (deformed_mesh.is_null()) {
-		deformed_mesh = mesh->duplicate();
-	}
-
-	// Apply deformation
-	if (use_compute && rd) {
-		// GPU deformation
-		// TODO: Implement GPU deformation using DDMCompute
-	} else {
-		// CPU deformation fallback
-		PackedVector3Array vertices = mesh->surface_get_arrays(0)[Mesh::ARRAY_VERTEX];
-		PackedVector3Array normals = mesh->surface_get_arrays(0)[Mesh::ARRAY_NORMAL];
-
-		// TODO: Apply deformation using DDMDeformer
-		// For now, just copy original mesh
-		deformed_mesh->surface_set_material(0, mesh->surface_get_material(0));
-	}
-
-	// Update the displayed mesh
-	set_mesh(deformed_mesh);
+// Check if mesh has bone weights
+Array surface_arrays = mesh->surface_get_arrays(0);
+if (surface_arrays.size() <= Mesh::ARRAY_BONES) {
+WARN_PRINT("Mesh must have bone weights for Direct Delta Mush");
+return;
 }
 
-void DirectDeltaMushMeshInstance3D::build_adjacency_matrix() {
-	Ref<Mesh> mesh = get_mesh();
-	if (mesh.is_null()) {
-		return;
-	}
+// Build adjacency matrix
+build_adjacency_matrix();
 
-	// Extract mesh surface data
-	Array surface_arrays = mesh->surface_get_arrays(0);
-	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
-	PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
+// Compute Laplacian matrix
+compute_laplacian_matrix();
 
-	int vertex_count = vertices.size();
-	const int max_neighbors = 32;
+// Precompute Omega matrices
+precompute_omega_matrices();
 
-	// Allocate adjacency buffer
-	if (rd) {
-		adjacency_buffer = rd->storage_buffer_create(vertex_count * max_neighbors * sizeof(int));
-	}
-
-	// Build adjacency matrix (CPU implementation for now)
-	Vector<int> adjacency_data;
-	adjacency_data.resize(vertex_count * max_neighbors);
-
-	// Initialize to -1
-	for (int i = 0; i < adjacency_data.size(); i++) {
-		adjacency_data.set(i, -1);
-	}
-
-	// Build from triangles
-	for (int tri = 0; tri < indices.size(); tri += 3) {
-		int v0 = indices[tri];
-		int v1 = indices[tri + 1];
-		int v2 = indices[tri + 2];
-
-		// Add edges
-		add_edge_to_adjacency(adjacency_data, v0, v1, max_neighbors);
-		add_edge_to_adjacency(adjacency_data, v0, v2, max_neighbors);
-		add_edge_to_adjacency(adjacency_data, v1, v2, max_neighbors);
-	}
-
-	// Upload to GPU if using compute
-	if (rd && adjacency_buffer.is_valid()) {
-		rd->buffer_update(adjacency_buffer, 0, adjacency_data.size() * sizeof(int), adjacency_data.ptr());
-	}
+print_line("Direct Delta Mush precomputation completed");
 }
 
-void DirectDeltaMushMeshInstance3D::compute_laplacian_matrix() {
-	if (!adjacency_buffer.is_valid()) {
-		return;
-	}
-
-	Ref<Mesh> mesh = get_mesh();
-	int vertex_count = mesh->surface_get_arrays(0)[Mesh::ARRAY_VERTEX].size();
-	const int max_neighbors = 32;
-
-	// Allocate Laplacian buffer
-	if (rd) {
-		laplacian_buffer = rd->storage_buffer_create(vertex_count * max_neighbors * 2 * sizeof(float));
-	}
-
-	// TODO: Implement Laplacian computation
-	// For now, create a basic Laplacian matrix
+void DirectDeltaMushDeformer::update_deformation() {
+Ref<Mesh> mesh = get_mesh();
+if (mesh.is_null() || !omega_buffer.is_valid()) {
+return;
 }
 
-void DirectDeltaMushMeshInstance3D::precompute_omega_matrices() {
-	if (!laplacian_buffer.is_valid()) {
-		return;
-	}
+// Get skeleton bone transforms
+Node *skel_node = get_skeleton();
+if (!skel_node) {
+return;
+}
 
-	Ref<Mesh> mesh = get_mesh();
-	int vertex_count = mesh->surface_get_arrays(0)[Mesh::ARRAY_VERTEX].size();
+Skeleton3D *skeleton = Object::cast_to<Skeleton3D>(skel_node);
+if (!skeleton) {
+return;
+}
 
-	// Allocate omega buffer (32 bones max, 16 floats per 4x4 matrix)
-	if (rd) {
-		omega_buffer = rd->storage_buffer_create(vertex_count * 32 * 16 * sizeof(float));
-	}
+// Get bone transforms
+int bone_count = skeleton->get_bone_count();
+Vector<Transform3D> bone_transforms;
+bone_transforms.resize(bone_count);
 
-	// TODO: Implement omega matrix precomputation
-	// For now, initialize with identity matrices
+for (int i = 0; i < bone_count; i++) {
+bone_transforms.set(i, skeleton->get_bone_global_pose(i));
+}
+
+// Create deformed mesh if needed
+if (deformed_mesh.is_null()) {
+deformed_mesh = mesh->duplicate();
+}
+
+// Apply deformation
+if (use_compute && rd) {
+// GPU deformation
+// TODO: Implement GPU deformation using DDMCompute
+} else {
+// CPU deformation fallback
+PackedVector3Array vertices = mesh->surface_get_arrays(0)[Mesh::ARRAY_VERTEX];
+PackedVector3Array normals = mesh->surface_get_arrays(0)[Mesh::ARRAY_NORMAL];
+
+// TODO: Apply deformation using DDMDeformer
+// For now, just copy original mesh
+deformed_mesh->surface_set_material(0, mesh->surface_get_material(0));
+}
+
+// Update the displayed mesh
+set_mesh(deformed_mesh);
+}
+
+void DirectDeltaMushDeformer::build_adjacency_matrix() {
+Ref<Mesh> mesh = get_mesh();
+if (mesh.is_null()) {
+return;
+}
+
+// Extract mesh surface data
+Array surface_arrays = mesh->surface_get_arrays(0);
+PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
+
+int vertex_count = vertices.size();
+const int max_neighbors = 32;
+
+// Allocate adjacency buffer
+if (rd) {
+adjacency_buffer = rd->storage_buffer_create(vertex_count * max_neighbors * sizeof(int));
+}
+
+// Build adjacency matrix (CPU implementation for now)
+Vector<int> adjacency_data;
+adjacency_data.resize(vertex_count * max_neighbors);
+
+// Initialize to -1
+for (int i = 0; i < adjacency_data.size(); i++) {
+adjacency_data.set(i, -1);
+}
+
+// Build from triangles
+for (int tri = 0; tri < indices.size(); tri += 3) {
+int v0 = indices[tri];
+int v1 = indices[tri + 1];
+int v2 = indices[tri + 2];
+
+// Add edges
+add_edge_to_adjacency(adjacency_data, v0, v1, max_neighbors);
+add_edge_to_adjacency(adjacency_data, v0, v2, max_neighbors);
+add_edge_to_adjacency(adjacency_data, v1, v2, max_neighbors);
+}
+
+// Upload to GPU if using compute
+if (rd && adjacency_buffer.is_valid()) {
+rd->buffer_update(adjacency_buffer, 0, adjacency_data.size() * sizeof(int), adjacency_data.ptr());
+}
+}
+
+void DirectDeltaMushDeformer::compute_laplacian_matrix() {
+if (!adjacency_buffer.is_valid()) {
+return;
+}
+
+Ref<Mesh> mesh = get_mesh();
+int vertex_count = mesh->surface_get_arrays(0)[Mesh::ARRAY_VERTEX].size();
+const int max_neighbors = 32;
+
+// Allocate Laplacian buffer
+if (rd) {
+laplacian_buffer = rd->storage_buffer_create(vertex_count * max_neighbors * 2 * sizeof(float));
+}
+
+// TODO: Implement Laplacian computation
+// For now, create a basic Laplacian matrix
+}
+
+void DirectDeltaMushDeformer::precompute_omega_matrices() {
+if (!laplacian_buffer.is_valid()) {
+return;
+}
+
+Ref<Mesh> mesh = get_mesh();
+int vertex_count = mesh->surface_get_arrays(0)[Mesh::ARRAY_VERTEX].size();
+
+// Allocate omega buffer (32 bones max, 16 floats per 4x4 matrix)
+if (rd) {
+omega_buffer = rd->storage_buffer_create(vertex_count * 32 * 16 * sizeof(float));
+}
+
+// TODO: Implement omega matrix precomputation
+// For now, initialize with identity matrices
 }
 
 // Helper method
-void DirectDeltaMushMeshInstance3D::add_edge_to_adjacency(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors) {
+void DirectDeltaMushDeformer::add_edge_to_adjacency(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors) {
 	// Add v1 to v0's adjacency list
 	for (int i = 0; i < max_neighbors; i++) {
 		int idx = v0 * max_neighbors + i;

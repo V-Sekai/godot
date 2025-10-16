@@ -21,6 +21,18 @@ if "RD_GLSL" in env["BUILDERS"]:
     for glsl_file in glsl_files:
         env.RD_GLSL(glsl_file)
 
+    # compile Direct Delta Mush compute shaders
+    ddm_compute_shaders = [
+        "adjacency.compute.glsl",
+        "deform.compute.glsl",
+        "laplacian.compute.glsl",
+        "omega_precompute.compute.glsl"
+    ]
+
+    for shader in ddm_compute_shaders:
+        if shader in glsl_files:
+            env.RD_GLSL(shader)
+
 SConscript("effects/SCsub")
 SConscript("environment/SCsub")
 SConscript("forward_clustered/SCsub")

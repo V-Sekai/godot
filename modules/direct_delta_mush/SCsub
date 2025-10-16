@@ -29,12 +29,5 @@ if env["target"] == "editor":
 else:
     env_direct_delta_mush.add_source_files(env.modules_sources, sources)
 
-# TODO: Add shader compilation when GLSL_BUILDER is available
-# import glob
-# shaders = glob.glob("shaders/*.glsl")
-# for shader in shaders:
-#     env_direct_delta_mush.Command(
-#         shader.replace(".glsl", ".gen.h"),
-#         shader,
-#         env_direct_delta_mush.Run(env.GLSL_BUILDER, shader)
-#     )
+# Note: Direct Delta Mush shaders are now compiled by the rendering server
+# in servers/rendering/renderer_rd/shaders/SCsub
