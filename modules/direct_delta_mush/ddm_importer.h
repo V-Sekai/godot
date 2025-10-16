@@ -36,6 +36,7 @@
 #define DDM_IMPORTER_H
 
 #include "core/object/ref_counted.h"
+#include "core/templates/vector.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/resources/mesh.h"
 
@@ -91,12 +92,12 @@ private:
 	bool validate_mesh_data(const Ref<Mesh> &mesh) const;
 	int find_vertex_adjacency(const MeshSurfaceData &surface_data, int vertex_index, float tolerance);
 
-	// Processing methods
-	Vector<int> map_vertices_to_unique_positions(const PackedVector3Array &vertices, float min_sqr_distance);
-	void add_vertex_to_adjacency(int adjacency_idx, int from, int to);
-	void add_edge_to_adjacency_direct(int v0, int v1);
-	void add_edge_to_adjacency_with_mapping(const Vector<int> &map_to_unique, int v0, int v1);
-	void broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique);
+// Processing methods
+Vector<int> map_vertices_to_unique_positions(const PackedVector3Array &vertices, float min_sqr_distance) const;
+void add_vertex_to_adjacency(int adjacency_idx, int from, int to);
+void add_edge_to_adjacency_direct(int v0, int v1);
+void add_edge_to_adjacency_with_mapping(const Vector<int> &map_to_unique, int v0, int v1);
+void broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique) const;
 };
 
 VARIANT_ENUM_CAST(DDMImporter::ImportMode);

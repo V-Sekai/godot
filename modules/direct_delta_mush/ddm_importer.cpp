@@ -258,7 +258,7 @@ int DDMImporter::find_vertex_adjacency(const MeshSurfaceData &surface_data, int 
 
 // Helper methods for adjacency matrix building
 
-Vector<int> DDMImporter::map_vertices_to_unique_positions(const PackedVector3Array &vertices, float min_sqr_distance) {
+Vector<int> DDMImporter::map_vertices_to_unique_positions(const PackedVector3Array &vertices, float min_sqr_distance) const {
 	// Ported from Unity MeshUtils.MapVerticesToUniquePositions
 
 	Vector<int> map_to_unique;
@@ -329,7 +329,7 @@ void DDMImporter::add_edge_to_adjacency_with_mapping(const Vector<int> &map_to_u
 	add_edge_to_adjacency_direct(u0, u1);
 }
 
-void DDMImporter::broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique) {
+void DDMImporter::broadcast_adjacency_from_unique_to_all(const Vector<int> &map_to_unique) const {
 	// Ported from Unity MeshUtils.BroadcastAdjacencyFromUniqueToAllVertices
 
 	const int max_neighbors = 32;

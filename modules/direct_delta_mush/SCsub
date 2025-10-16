@@ -16,7 +16,6 @@ sources = [
     "ddm_importer.cpp",
     "ddm_precomputer.cpp",
     "ddm_deformer.cpp",
-    "ddm_compute.cpp",
 ]
 
 # Add Eigen support from local thirdparty directory
