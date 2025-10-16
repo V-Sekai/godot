@@ -38,9 +38,12 @@
 #include "core/object/ref_counted.h"
 #include "servers/rendering/rendering_device.h"
 
-// Eigen for matrix operations
-#include <Eigen/Core>
-#include <Eigen/Dense>
+// AMGCL for sparse linear system solving
+#include <amgcl/adapter/crs_tuple.hpp>
+#include <amgcl/amg.hpp>
+#include <amgcl/backend/builtin.hpp>
+#include <amgcl/make_solver.hpp>
+#include <amgcl/solver/cg.hpp>
 
 class DDMCompute : public RefCounted {
 	GDCLASS(DDMCompute, RefCounted);
@@ -76,6 +79,14 @@ public:
 
 	void cleanup();
 
+	// CPU fallback implementations using AMGCL
+	bool compute_omega_matrices_cpu(const Vector<int> &adjacency_matrix,
+			const Vector<float> &laplacian_matrix,
+			const Vector<Vector3> &vertices,
+			const Vector<float> &weights,
+			Vector<float> &omega_matrices,
+			int vertex_count, int bone_count, int iterations, float lambda);
+
 protected:
 	static void _bind_methods();
 
@@ -83,6 +94,7 @@ private:
 	RID load_shader(const String &shader_code);
 	RID load_shader_from_file(const String &shader_path);
 	bool create_pipeline(RID &pipeline, RID shader, const Vector<StringName> &uniform_names);
+	void add_edge_to_adjacency_cpu(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors);
 };
 
 #endif // DDM_COMPUTE_H

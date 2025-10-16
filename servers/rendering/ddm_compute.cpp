@@ -88,6 +88,32 @@ void DDMCompute::cleanup() {
 	}
 }
 
+void DDMCompute::add_edge_to_adjacency_cpu(Vector<int> &adjacency_data, int v0, int v1, int max_neighbors) {
+	// Add v1 to v0's adjacency list
+	for (int i = 0; i < max_neighbors; i++) {
+		int idx = v0 * max_neighbors + i;
+		if (adjacency_data[idx] == -1) {
+			adjacency_data.set(idx, v1);
+			break;
+		}
+		if (adjacency_data[idx] == v1) {
+			break; // Already exists
+		}
+	}
+
+	// Add v0 to v1's adjacency list
+	for (int i = 0; i < max_neighbors; i++) {
+		int idx = v1 * max_neighbors + i;
+		if (adjacency_data[idx] == -1) {
+			adjacency_data.set(idx, v0);
+			break;
+		}
+		if (adjacency_data[idx] == v0) {
+			break; // Already exists
+		}
+	}
+}
+
 RID DDMCompute::load_shader_from_file(const String &shader_path) {
 	if (!rd) {
 		return RID();
@@ -150,8 +176,65 @@ bool DDMCompute::create_pipeline(RID &pipeline, RID shader, const Vector<StringN
 
 bool DDMCompute::compute_adjacency(const RID &vertex_buffer, const RID &index_buffer,
 		RID &output_buffer, int vertex_count) {
-	// TODO: Implement adjacency matrix computation on GPU using proper uniform sets
-	return false;
+	// CPU implementation using AMGCL data structures
+	// For now, we'll implement CPU computation and later this can be moved to GPU
+
+	if (!rd) {
+		return false;
+	}
+
+	// Get vertex and index data from buffers
+	Vector<uint8_t> vertex_data = rd->buffer_get_data(vertex_buffer);
+	Vector<uint8_t> index_data = rd->buffer_get_data(index_buffer);
+
+	if (vertex_data.is_empty() || index_data.is_empty()) {
+		return false;
+	}
+
+	// Parse vertex data (assuming PackedVector3Array format)
+	PackedVector3Array vertices;
+	vertices.resize(vertex_count);
+	memcpy(vertices.ptrw(), vertex_data.ptr(), vertex_data.size());
+
+	// Parse index data (assuming PackedInt32Array format)
+	int index_count = index_data.size() / sizeof(int32_t);
+	PackedInt32Array indices;
+	indices.resize(index_count);
+	memcpy(indices.ptrw(), index_data.ptr(), index_data.size());
+
+	const int max_neighbors = 32; // DDMMesh::maxOmegaCount
+
+	// Build adjacency matrix
+	Vector<int> adjacency_matrix;
+	adjacency_matrix.resize(vertex_count * max_neighbors);
+
+	// Initialize to -1
+	for (int i = 0; i < adjacency_matrix.size(); i++) {
+		adjacency_matrix.set(i, -1);
+	}
+
+	// Build from triangles
+	for (int tri = 0; tri < indices.size(); tri += 3) {
+		int v0 = indices[tri];
+		int v1 = indices[tri + 1];
+		int v2 = indices[tri + 2];
+
+		// Add edges
+		add_edge_to_adjacency_cpu(adjacency_matrix, v0, v1, max_neighbors);
+		add_edge_to_adjacency_cpu(adjacency_matrix, v0, v2, max_neighbors);
+		add_edge_to_adjacency_cpu(adjacency_matrix, v1, v2, max_neighbors);
+	}
+
+	// Create output buffer
+	output_buffer = rd->storage_buffer_create(adjacency_matrix.size() * sizeof(int));
+	if (output_buffer.is_null()) {
+		return false;
+	}
+
+	// Upload adjacency data
+	rd->buffer_update(output_buffer, 0, adjacency_matrix.size() * sizeof(int), adjacency_matrix.ptr());
+
+	return true;
 }
 
 bool DDMCompute::compute_laplacian(const RID &adjacency_buffer, RID &output_buffer, int vertex_count) {
@@ -171,4 +254,100 @@ bool DDMCompute::deform_mesh(const RID &omega_buffer, const RID &bones_buffer,
 		RID &output_vertices, RID &output_normals, int vertex_count) {
 	// TODO: Implement runtime mesh deformation on GPU using proper uniform sets
 	return false;
+}
+
+// CPU implementation using AMGCL for omega matrix precomputation
+bool DDMCompute::compute_omega_matrices_cpu(const Vector<int> &adjacency_matrix,
+		const Vector<float> &laplacian_matrix,
+		const Vector<Vector3> &vertices,
+		const Vector<float> &weights,
+		Vector<float> &omega_matrices,
+		int vertex_count, int bone_count, int iterations, float lambda) {
+	if (adjacency_matrix.is_empty() || laplacian_matrix.is_empty()) {
+		return false;
+	}
+
+	const int max_neighbors = 32; // DDMMesh::maxOmegaCount
+
+	// Build AMGCL-compatible sparse matrix from Laplacian data
+	// Laplacian format: [neighbor_index, weight, neighbor_index, weight, ...] per vertex
+	std::vector<int> ptr(vertex_count + 1, 0);
+	std::vector<int> col;
+	std::vector<double> val;
+
+	// Convert Laplacian matrix to CRS format
+	for (int vi = 0; vi < vertex_count; vi++) {
+		ptr[vi] = col.size();
+
+		// Add diagonal element (always present in Laplacian)
+		col.push_back(vi);
+		val.push_back(1.0); // Diagonal is 1.0 for normalized Laplacian
+
+		// Add off-diagonal elements
+		for (int j = 0; j < max_neighbors; j++) {
+			int entry_idx = vi * max_neighbors * 2 + j * 2;
+			if (entry_idx + 1 >= laplacian_matrix.size()) {
+				break;
+			}
+
+			int neighbor_idx = laplacian_matrix[entry_idx];
+			float weight = laplacian_matrix[entry_idx + 1];
+
+			if (neighbor_idx >= 0 && neighbor_idx != vi) { // Skip invalid and diagonal
+				col.push_back(neighbor_idx);
+				val.push_back(weight);
+			}
+		}
+	}
+	ptr[vertex_count] = col.size();
+
+	// Create AMGCL solver for the Laplacian system
+	typedef amgcl::make_solver<
+			amgcl::amg<
+					amgcl::backend::builtin<double>,
+					amgcl::coarsening::smoothed_aggregation,
+					amgcl::relaxation::spai0>,
+			amgcl::solver::cg<amgcl::backend::builtin<double>>>
+			Solver;
+
+	Solver solver(std::tie(vertex_count, ptr, col, val));
+
+	// For each bone, solve L * ω = B where B contains bone weights
+	omega_matrices.resize(vertex_count * bone_count * 16); // 4x4 matrices per vertex per bone
+
+	for (int bone = 0; bone < bone_count; bone++) {
+		// Build RHS vector B for this bone (bone weights)
+		std::vector<double> rhs(vertex_count, 0.0);
+
+		// Extract bone weights for this bone (4 weights per vertex: x,y,z,w)
+		for (int vi = 0; vi < vertex_count; vi++) {
+			int weight_idx = vi * bone_count * 4 + bone * 4;
+			// Use the x-component as the scalar weight for this bone
+			if (weight_idx < weights.size()) {
+				rhs[vi] = weights[weight_idx];
+			}
+		}
+
+		// Solve L * ω = B
+		std::vector<double> omega(vertex_count, 0.0);
+		std::tie(iterations, lambda) = solver(rhs, omega); // lambda is residual tolerance
+
+		// Store omega values in output matrix (4x4 identity with omega on diagonal for now)
+		for (int vi = 0; vi < vertex_count; vi++) {
+			int matrix_idx = (vi * bone_count + bone) * 16;
+			// Store as identity matrix with omega on diagonal
+			for (int i = 0; i < 4; i++) {
+				for (int j = 0; j < 4; j++) {
+					int idx = matrix_idx + i * 4 + j;
+					if (i == j) {
+						omega_matrices.set(idx, omega[vi]);
+					} else {
+						omega_matrices.set(idx, (i == j) ? 1.0f : 0.0f);
+					}
+				}
+			}
+		}
+	}
+
+	return true;
 }

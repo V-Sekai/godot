@@ -18,9 +18,7 @@ sources = [
     "ddm_deformer.cpp",
 ]
 
-# Add Eigen support from local thirdparty directory
-env_direct_delta_mush.Append(CPPDEFINES=["EIGEN_MPL2_ONLY"])
-env_direct_delta_mush.Append(CPPPATH=["#modules/direct_delta_mush/thirdparty/eigen"])
+# AMGCL is now used from Godot's main thirdparty directory
 
 # Build the module
 if env["target"] == "editor":

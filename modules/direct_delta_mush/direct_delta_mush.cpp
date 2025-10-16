@@ -289,6 +289,7 @@ void DirectDeltaMushDeformer::precompute_omega_matrices() {
 	Ref<Mesh> mesh = get_mesh();
 	Array surface_arrays = mesh->surface_get_arrays(0);
 	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+	PackedFloat32Array weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
 	int vertex_count = vertices.size();
 
 	// Allocate omega buffer (32 bones max, 16 floats per 4x4 matrix)
@@ -296,8 +297,31 @@ void DirectDeltaMushDeformer::precompute_omega_matrices() {
 		omega_buffer = rd->storage_buffer_create(vertex_count * 32 * 16 * sizeof(float));
 	}
 
-	// TODO: Implement omega matrix precomputation
+	// TODO: Implement omega matrix precomputation using DDMCompute CPU fallback
 	// For now, initialize with identity matrices
+
+	// Create DDMCompute instance for CPU computation
+	Ref<DDMCompute> ddm_compute;
+	ddm_compute.instantiate();
+	ddm_compute->initialize(rd);
+
+	// Prepare data for CPU computation
+	Vector<int> adjacency_data; // Would need to be extracted from adjacency_buffer
+	Vector<float> laplacian_data; // Would need to be extracted from laplacian_buffer
+	Vector<Vector3> vertex_data;
+	Vector<float> weight_data;
+	Vector<float> omega_data;
+
+	// Convert Godot arrays to Vectors
+	for (int i = 0; i < vertices.size(); i++) {
+		vertex_data.push_back(vertices[i]);
+	}
+	for (int i = 0; i < weights.size(); i++) {
+		weight_data.push_back(weights[i]);
+	}
+
+	// TODO: Extract adjacency and Laplacian data from GPU buffers
+	// For now, skip CPU computation and use identity matrices
 }
 
 // Helper method
