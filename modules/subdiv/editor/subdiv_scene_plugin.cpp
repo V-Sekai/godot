@@ -46,16 +46,15 @@ SubdivScenePostImportPlugin::~SubdivScenePostImportPlugin() {
 void SubdivScenePostImportPlugin::get_internal_import_options(
 		InternalImportCategory p_category,
 		List<ResourceImporter::ImportOption> *r_options) {
-	
-	if (p_category == INTERNAL_IMPORT_CATEGORY_MESH_3D_NODE) {
-		// Add subdivision options (only level - mode removed as import always bakes)
+	if (p_category == INTERNAL_IMPORT_CATEGORY_MESH) {
+		// Add subdivision options at mesh resource level
 		r_options->push_back(ResourceImporter::ImportOption(
-			PropertyInfo(Variant::BOOL, "subdivision/enabled", PROPERTY_HINT_NONE, "", 
-			             PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), 
-			false));
+				PropertyInfo(Variant::BOOL, "subdivision/enabled", PROPERTY_HINT_NONE, "",
+						PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED),
+				false));
 		r_options->push_back(ResourceImporter::ImportOption(
-			PropertyInfo(Variant::INT, "subdivision/level", PROPERTY_HINT_RANGE, "0,3,1"), 
-			0));
+				PropertyInfo(Variant::INT, "subdivision/level", PROPERTY_HINT_RANGE, "0,3,1"),
+				0));
 	}
 }
 
@@ -64,14 +63,13 @@ Variant SubdivScenePostImportPlugin::get_internal_option_visibility(
 		const String &p_scene_import_type,
 		const String &p_option,
 		const HashMap<StringName, Variant> &p_options) const {
-	
-	if (p_category == INTERNAL_IMPORT_CATEGORY_MESH_3D_NODE) {
+	if (p_category == INTERNAL_IMPORT_CATEGORY_MESH) {
 		// Only show subdivision level when enabled
 		if (p_option == "subdivision/level") {
 			return bool(p_options["subdivision/enabled"]);
 		}
 	}
-	
+
 	return true;
 }
 
@@ -81,29 +79,27 @@ void SubdivScenePostImportPlugin::internal_process(
 		Node *p_node,
 		Ref<Resource> p_resource,
 		const Dictionary &p_options) {
-	
-	if (p_category == INTERNAL_IMPORT_CATEGORY_MESH_3D_NODE) {
-		// Get subdivision settings from p_options Dictionary
+	if (p_category == INTERNAL_IMPORT_CATEGORY_MESH) {
+		// Process ImporterMesh resources directly (not nodes)
 		bool enabled = false;
 		if (p_options.has("subdivision/enabled")) {
 			enabled = p_options["subdivision/enabled"];
 		}
-		
+
 		if (!enabled) {
 			return;
 		}
-		
+
 		int level = 0;
 		if (p_options.has("subdivision/level")) {
 			level = p_options["subdivision/level"];
 		}
-		
-		// Always use BAKED_SUBDIV_MESH mode (runtime mode removed - import pipeline bakes mesh)
-		// This creates BakedSubdivMesh resource that preserves subdivision information
-		ImporterMeshInstance3D *mesh_instance = Object::cast_to<ImporterMeshInstance3D>(p_node);
-		if (mesh_instance && level > 0) {
-			topology_importer->convert_importer_meshinstance_to_subdiv(
-				mesh_instance, TopologyDataImporter::BAKED_SUBDIV_MESH, level);
+
+		// Subdivide the ImporterMesh resource in-place
+		// This preserves the import pipeline - no node conversion
+		Ref<ImporterMesh> importer_mesh = p_resource;
+		if (importer_mesh.is_valid() && level > 0) {
+			topology_importer->subdivide_importer_mesh_in_place(importer_mesh, level);
 		}
 	}
 }
