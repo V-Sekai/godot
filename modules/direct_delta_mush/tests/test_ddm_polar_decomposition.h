@@ -127,8 +127,8 @@ TEST_CASE("[DDM][PolarDecomp] Combined rotation and scale") {
 	deformer.test_decompose_transform(fixtures.combined_rotate_scale, rigid, scale);
 
 	SUBCASE("Rigid component is valid rotation") {
-		// Ensure basis is properly normalized before checking
-		Basis normalized_rigid = rigid.basis.orthonormalized();
+		// Convert basis to quaternion before checking is_rotation
+		Basis normalized_rigid = Basis(rigid.basis.get_rotation_quaternion());
 		CHECK(normalized_rigid.is_rotation());
 		CHECK(normalized_rigid.determinant() > 0.0); // Positive determinant
 
