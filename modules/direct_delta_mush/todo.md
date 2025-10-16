@@ -5,7 +5,7 @@ simple working system to complex features.
 
 ## Stage 1: CPU-Only Basic DDM ⏳ IN PROGRESS
 
-**Timeline:** 3-5 days  
+**Timeline:** 3-5 days
 **Goal:** Get ONE vertex deforming correctly with basic DDM algorithm on CPU
 
 ### Core Algorithm Implementation
@@ -51,7 +51,7 @@ simple working system to complex features.
 
 ## Stage 2: Add GPU Compute ⏸️ BLOCKED (Stage 1)
 
-**Goal:** Port working CPU implementation to GPU shaders  
+**Goal:** Port working CPU implementation to GPU shaders
 **Prerequisites:** Stage 1 complete and tested
 
 ### GPU Migration
@@ -80,7 +80,7 @@ simple working system to complex features.
 
 ## Stage 3: Add Precision Improvements ⏸️ BLOCKED (Stage 2)
 
-**Goal:** Improve numerical stability for edge cases  
+**Goal:** Improve numerical stability for edge cases
 **Prerequisites:** Stage 2 complete and validated
 
 ### Enhanced Precision
@@ -108,7 +108,7 @@ simple working system to complex features.
 
 ## Stage 4: Enhanced DDM ⏸️ BLOCKED (Stage 3)
 
-**Goal:** Add full Enhanced DDM features from paper  
+**Goal:** Add full Enhanced DDM features from paper
 **Prerequisites:** Stage 3 complete and stable
 
 ### Advanced Features Integration

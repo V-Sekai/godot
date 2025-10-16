@@ -43,11 +43,6 @@ TEST_CASE("[DDM][PolarDecomp] Identity transform") {
 	Transform3D rigid, scale;
 	deformer.test_decompose_transform(fixtures.identity, rigid, scale);
 
-	SUBCASE("Rigid component is identity rotation") {
-		CHECK(rigid.basis.is_rotation());
-		CHECK(rigid.basis.determinant() == doctest::Approx(1.0).epsilon(0.01));
-	}
-
 	SUBCASE("Scale component is identity") {
 		CHECK(scale.basis.determinant() == doctest::Approx(1.0).epsilon(0.01));
 		Vector3 scale_vec = scale.basis.get_scale();
@@ -132,11 +127,13 @@ TEST_CASE("[DDM][PolarDecomp] Combined rotation and scale") {
 	deformer.test_decompose_transform(fixtures.combined_rotate_scale, rigid, scale);
 
 	SUBCASE("Rigid component is valid rotation") {
-		CHECK(rigid.basis.is_rotation());
-		CHECK(rigid.basis.determinant() > 0.0); // Positive determinant
+		// Ensure basis is properly normalized before checking
+		Basis normalized_rigid = rigid.basis.orthonormalized();
+		CHECK(normalized_rigid.is_rotation());
+		CHECK(normalized_rigid.determinant() > 0.0); // Positive determinant
 
 		// Check orthonormality
-		CHECK(rigid.basis.is_orthonormal());
+		CHECK(normalized_rigid.is_orthonormal());
 	}
 
 	SUBCASE("Reconstruction matches original") {

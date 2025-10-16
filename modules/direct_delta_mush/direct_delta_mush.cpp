@@ -137,7 +137,6 @@ void DirectDeltaMushDeformer::precompute() {
 
 // Internal methods
 void DirectDeltaMushDeformer::precompute_data() {
-	Ref<Mesh> mesh = get_mesh();
 	if (mesh.is_null()) {
 		WARN_PRINT("No mesh assigned to DirectDeltaMushDeformer node");
 		return;
@@ -163,13 +162,10 @@ void DirectDeltaMushDeformer::precompute_data() {
 }
 
 void DirectDeltaMushDeformer::update_deformation() {
-	Ref<Mesh> mesh = get_mesh();
 	if (mesh.is_null() || !omega_buffer.is_valid()) {
 		return;
 	}
 
-	// Get skeleton bone transforms
-	NodePath skeleton_path = get_skeleton_path();
 	if (skeleton_path.is_empty()) {
 		return;
 	}
@@ -314,11 +310,11 @@ void DirectDeltaMushDeformer::update_deformation() {
 		}
 	} else {
 		// CPU deformation using Enhanced DDM
-		Array surface_arrays = mesh->surface_get_arrays(0);
-		PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
-		PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
-		PackedFloat32Array bone_weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
-		PackedInt32Array bone_indices = surface_arrays[Mesh::ARRAY_BONES];
+		surface_arrays = mesh->surface_get_arrays(0);
+		vertices = surface_arrays[Mesh::ARRAY_VERTEX];
+		indices = surface_arrays[Mesh::ARRAY_INDEX];
+		bone_weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
+		bone_indices = surface_arrays[Mesh::ARRAY_BONES];
 
 		// Convert to DDMDeformer format
 		DDMDeformer::MeshData mesh_data;
@@ -331,7 +327,7 @@ void DirectDeltaMushDeformer::update_deformation() {
 		}
 
 		// Copy normals
-		PackedVector3Array normals = surface_arrays[Mesh::ARRAY_NORMAL];
+		normals = surface_arrays[Mesh::ARRAY_NORMAL];
 		mesh_data.normals.resize(normals.size());
 		for (int i = 0; i < normals.size(); i++) {
 			mesh_data.normals.set(i, normals[i]);
@@ -399,7 +395,6 @@ void DirectDeltaMushDeformer::update_deformation() {
 }
 
 void DirectDeltaMushDeformer::build_adjacency_matrix() {
-	Ref<Mesh> mesh = get_mesh();
 	if (mesh.is_null()) {
 		return;
 	}
@@ -449,7 +444,6 @@ void DirectDeltaMushDeformer::compute_laplacian_matrix() {
 		return;
 	}
 
-	Ref<Mesh> mesh = get_mesh();
 	Array surface_arrays = mesh->surface_get_arrays(0);
 	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
 	PackedInt32Array indices = surface_arrays[Mesh::ARRAY_INDEX];
@@ -514,13 +508,36 @@ void DirectDeltaMushDeformer::precompute_omega_matrices() {
 		return;
 	}
 
-	Ref<Mesh> mesh = get_mesh();
 	Array surface_arrays = mesh->surface_get_arrays(0);
 	PackedVector3Array vertices = surface_arrays[Mesh::ARRAY_VERTEX];
 	PackedFloat32Array weights = surface_arrays[Mesh::ARRAY_WEIGHTS];
+	PackedInt32Array bone_indices_array = surface_arrays[Mesh::ARRAY_BONES];
 	int vertex_count = vertices.size();
 	const int max_neighbors = 32;
-	const int max_bones = 32;
+
+	// Determine actual bone count from skeleton (dynamic, no arbitrary limit)
+	int bone_count = 1; // Default to at least 1 bone
+
+	if (!skeleton_path.is_empty()) {
+		Node *skel_node = get_node_or_null(skeleton_path);
+		if (skel_node) {
+			Skeleton3D *skeleton = Object::cast_to<Skeleton3D>(skel_node);
+			if (skeleton) {
+				bone_count = skeleton->get_bone_count();
+			}
+		}
+	}
+
+	// If no skeleton found, infer from bone indices in mesh
+	if (bone_count == 1 && bone_indices_array.size() > 0) {
+		int max_bone_idx = 0;
+		for (int i = 0; i < bone_indices_array.size(); i++) {
+			max_bone_idx = MAX(max_bone_idx, bone_indices_array[i]);
+		}
+		bone_count = max_bone_idx + 1; // Bone indices are 0-based
+	}
+
+	print_line("Direct Delta Mush: Allocating omega matrices for " + itos(bone_count) + " bones");
 
 	// Download adjacency data from GPU buffer
 	Vector<uint8_t> adjacency_bytes = rd->buffer_get_data(adjacency_buffer);
@@ -554,26 +571,7 @@ void DirectDeltaMushDeformer::precompute_omega_matrices() {
 		weight_data.set(i, weights[i]);
 	}
 
-	// Determine bone count from weight data (4 weights per vertex)
-	int bone_count = 0;
-	for (int i = 0; i < weight_data.size(); i += 4) {
-		for (int b = 0; b < 4; b++) {
-			if (i + b < weight_data.size() && weight_data[i + b] > 0.0001f) {
-				// This assumes bone indices are in range [0, bone_count)
-				// For simplicity, assume max_bones
-				bone_count = max_bones;
-				break;
-			}
-		}
-		if (bone_count > 0) {
-			break;
-		}
-	}
-
-	if (bone_count == 0) {
-		bone_count = 1; // At least one bone
-	}
-
+	// bone_count already determined above from skeleton
 	// Use CPU fallback to compute omega matrices
 	Ref<DDMCompute> ddm_compute;
 	ddm_compute.instantiate();
