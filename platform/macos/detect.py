@@ -79,10 +79,10 @@ def configure(env: "SConsEnvironment"):
 
     # CPU architecture.
     if env["arch"] == "arm64":
-        print("Building for macOS 11.0+.")
-        env.Append(ASFLAGS=["-arch", "arm64", "-mmacosx-version-min=11.0"])
-        env.Append(CCFLAGS=["-arch", "arm64", "-mmacosx-version-min=11.0"])
-        env.Append(LINKFLAGS=["-arch", "arm64", "-mmacosx-version-min=11.0"])
+        print("Building for macOS 12.0+.")
+        env.Append(ASFLAGS=["-arch", "arm64", "-mmacosx-version-min=12.0"])
+        env.Append(CCFLAGS=["-arch", "arm64", "-mmacosx-version-min=12.0"])
+        env.Append(LINKFLAGS=["-arch", "arm64", "-mmacosx-version-min=12.0"])
     elif env["arch"] == "x86_64":
         print("Building for macOS 10.13+.")
         env.Append(ASFLAGS=["-arch", "x86_64", "-mmacosx-version-min=10.13"])
@@ -239,9 +239,14 @@ def configure(env: "SConsEnvironment"):
             "UniformTypeIdentifiers",
             "-framework",
             "IOSurface",
+            "-framework",
+            "CoreFoundation",
         ]
     )
-    env.Append(LIBS=["pthread", "z"])
+    env.Append(LIBS=["pthread", "z", "objc"])
+
+    # Allow undefined ___isPlatformVersionAtLeast to avoid linker errors with @available checks
+    env.Append(LINKFLAGS=["-Wl,-U,___isPlatformVersionAtLeast"])
 
     extra_frameworks = set()
 
