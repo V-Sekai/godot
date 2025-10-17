@@ -51,7 +51,7 @@ Error RenderingContextDriverMetal::initialize() {
 
 	metal_device = MTLCreateSystemDefaultDevice();
 #if TARGET_OS_OSX
-	if (@available(macOS 13.3, *)) {
+	if (MetalDeviceProperties::get_os_version() >= 130300) {
 		[id<MTLDeviceEx>(metal_device) setShouldMaximizeConcurrentCompilation:YES];
 	}
 #endif
@@ -59,7 +59,7 @@ Error RenderingContextDriverMetal::initialize() {
 	device.vendor = Vendor::VENDOR_APPLE;
 	device.workarounds = Workarounds();
 
-	MetalDeviceProperties props(metal_device);
+	MetalDeviceProperties props((__bridge void *)metal_device);
 	int version = (int)props.features.highestFamily - (int)MTLGPUFamilyApple1 + 1;
 	device.name = vformat("%s (Apple%d)", metal_device.name.UTF8String, version);
 

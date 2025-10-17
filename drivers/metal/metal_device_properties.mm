@@ -52,8 +52,17 @@
 
 #include "servers/rendering/renderer_rd/effects/metal_fx.h"
 
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 140000) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MAX_ALLOWED < 170000)
+#define MTLGPUFamilyApple9 (MTLGPUFamily)1009
+#endif
+
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 130000) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MAX_ALLOWED < 160000)
+#define MTLGPUFamilyMetal3 (MTLGPUFamily)5001
+#endif
+
 #import <Metal/Metal.h>
 #import <MetalFX/MetalFX.h>
+#include <unistd.h>
 #import <spirv_cross.hpp>
 #import <spirv_msl.hpp>
 
@@ -65,79 +74,74 @@
 #define MTLGPUFamilyApple9 (MTLGPUFamily)1009
 #endif
 
-API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0), visionos(1.0))
-MTLGPUFamily &operator--(MTLGPUFamily &p_family) {
-	p_family = static_cast<MTLGPUFamily>(static_cast<int>(p_family) - 1);
-	if (p_family < MTLGPUFamilyApple1) {
-		p_family = MTLGPUFamilyApple9;
-	}
+#if (TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 130000) || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MAX_ALLOWED < 160000)
+#define MTLGPUFamilyMetal3 (MTLGPUFamily)5001
+#endif
 
-	return p_family;
-}
-
-void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
+void MetalDeviceProperties::init_features(void *p_device) {
+	id<MTLDevice> device = (__bridge id<MTLDevice>)p_device;
 	features = {};
 
 	features.highestFamily = MTLGPUFamilyApple1;
-	for (MTLGPUFamily family = MTLGPUFamilyApple9; family >= MTLGPUFamilyApple1; --family) {
-		if ([p_device supportsFamily:family]) {
+	for (MTLGPUFamily family = MTLGPUFamilyApple9; family >= MTLGPUFamilyApple1; family = (MTLGPUFamily)((int)family - 1)) {
+		if ([device supportsFamily:family]) {
 			features.highestFamily = family;
 			break;
 		}
 	}
 
-	if (@available(macOS 11, iOS 16.4, tvOS 16.4, *)) {
-		features.supportsBCTextureCompression = p_device.supportsBCTextureCompression;
+	if (os_version >= 110000) { // macOS 11.0+
+		features.supportsBCTextureCompression = device.supportsBCTextureCompression;
 	} else {
 		features.supportsBCTextureCompression = false;
 	}
 
 #if TARGET_OS_OSX
-	features.supportsDepth24Stencil8 = p_device.isDepth24Stencil8PixelFormatSupported;
+	features.supportsDepth24Stencil8 = device.isDepth24Stencil8PixelFormatSupported;
 #endif
 
-	if (@available(macOS 11.0, iOS 14.0, tvOS 14.0, *)) {
-		features.supports32BitFloatFiltering = p_device.supports32BitFloatFiltering;
-		features.supports32BitMSAA = p_device.supports32BitMSAA;
+	if (os_version >= 110000) { // macOS 11.0+
+		features.supports32BitFloatFiltering = device.supports32BitFloatFiltering;
+		features.supports32BitMSAA = device.supports32BitMSAA;
 	}
 
-	if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
+	if (os_version >= 130000) { // macOS 13.0+
 		features.supports_gpu_address = true;
 	}
 
 	features.hostMemoryPageSize = sysconf(_SC_PAGESIZE);
 
 	for (SampleCount sc = SampleCount1; sc <= SampleCount64; sc <<= 1) {
-		if ([p_device supportsTextureSampleCount:sc]) {
+		if ([device supportsTextureSampleCount:sc]) {
 			features.supportedSampleCounts |= sc;
 		}
 	}
 
-	features.layeredRendering = [p_device supportsFamily:MTLGPUFamilyApple5];
-	features.multisampleLayeredRendering = [p_device supportsFamily:MTLGPUFamilyApple7];
-	features.tessellationShader = [p_device supportsFamily:MTLGPUFamilyApple3];
-	features.imageCubeArray = [p_device supportsFamily:MTLGPUFamilyApple3];
-	features.quadPermute = [p_device supportsFamily:MTLGPUFamilyApple4];
-	features.simdPermute = [p_device supportsFamily:MTLGPUFamilyApple6];
-	features.simdReduction = [p_device supportsFamily:MTLGPUFamilyApple7];
-	features.argument_buffers_tier = p_device.argumentBuffersSupport;
-	features.supports_image_atomic_32_bit = [p_device supportsFamily:MTLGPUFamilyApple6];
-	features.supports_image_atomic_64_bit = [p_device supportsFamily:MTLGPUFamilyApple9] || ([p_device supportsFamily:MTLGPUFamilyApple8] && [p_device supportsFamily:MTLGPUFamilyMac2]);
-	if (@available(macOS 14.0, iOS 17.0, tvOS 17.0, visionOS 1.0, *)) {
+	features.layeredRendering = [device supportsFamily:MTLGPUFamilyApple5];
+	features.multisampleLayeredRendering = [device supportsFamily:MTLGPUFamilyApple7];
+	features.tessellationShader = [device supportsFamily:MTLGPUFamilyApple3];
+	features.imageCubeArray = [device supportsFamily:MTLGPUFamilyApple3];
+	features.quadPermute = [device supportsFamily:MTLGPUFamilyApple4];
+	features.simdPermute = [device supportsFamily:MTLGPUFamilyApple6];
+	features.simdReduction = [device supportsFamily:MTLGPUFamilyApple7];
+	features.argument_buffers_tier = device.argumentBuffersSupport;
+	features.supports_image_atomic_32_bit = [device supportsFamily:MTLGPUFamilyApple6];
+	features.supports_image_atomic_64_bit = [device supportsFamily:MTLGPUFamilyApple9] || ([device supportsFamily:MTLGPUFamilyApple8] && [device supportsFamily:MTLGPUFamilyMac2]);
+	if (os_version >= 140000) { // macOS 14.0+
 		features.supports_native_image_atomics = true;
 	}
 	if (OS::get_singleton()->get_environment("GODOT_MTL_DISABLE_IMAGE_ATOMICS") == "1") {
 		features.supports_native_image_atomics = false;
 	}
 
-	if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
-		features.needs_arg_encoders = !([p_device supportsFamily:MTLGPUFamilyMetal3] && features.argument_buffers_tier == MTLArgumentBuffersTier2);
+	if (os_version >= 130000) { // macOS 13.0+
+		features.needs_arg_encoders = !([device supportsFamily:MTLGPUFamilyMetal3] && features.argument_buffers_tier == MTLArgumentBuffersTier2);
 	}
 
-	if (@available(macOS 13.0, iOS 16.0, tvOS 16.0, *)) {
-		features.metal_fx_spatial = [MTLFXSpatialScalerDescriptor supportsDevice:p_device];
+	if (os_version >= 130000) { // macOS 13.0+
+		features.metal_fx_spatial = [MTLFXSpatialScalerDescriptor supportsDevice:device];
 #ifdef METAL_MFXTEMPORAL_ENABLED
-		features.metal_fx_temporal = [MTLFXTemporalScalerDescriptor supportsDevice:p_device];
+		features.metal_fx_temporal = [MTLFXTemporalScalerDescriptor supportsDevice:device];
 #else
 		features.metal_fx_temporal = false;
 #endif
@@ -149,7 +153,8 @@ void MetalDeviceProperties::init_features(id<MTLDevice> p_device) {
 	features.mslVersionMinor = (opts.languageVersion >> 0x00) & 0xff;
 }
 
-void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
+void MetalDeviceProperties::init_limits(void *p_device) {
+	id<MTLDevice> device = (__bridge id<MTLDevice>)p_device;
 	using std::max;
 	using std::min;
 
@@ -157,7 +162,7 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 
 	// FST: Maximum number of layers per 1D texture array, 2D texture array, or 3D texture.
 	limits.maxImageArrayLayers = 2048;
-	if ([p_device supportsFamily:MTLGPUFamilyApple3]) {
+	if ([device supportsFamily:MTLGPUFamilyApple3]) {
 		// FST: Maximum 2D texture width and height.
 		limits.maxFramebufferWidth = 16384;
 		limits.maxFramebufferHeight = 16384;
@@ -185,7 +190,7 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 	// FST: Maximum 3D texture width, height, and depth.
 	limits.maxImageDimension3D = 2048;
 
-	limits.maxThreadsPerThreadGroup = p_device.maxThreadsPerThreadgroup;
+	limits.maxThreadsPerThreadGroup = device.maxThreadsPerThreadgroup;
 	// No effective limits.
 	limits.maxComputeWorkGroupCount = { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 	// https://github.com/KhronosGroup/MoltenVK/blob/568cc3acc0e2299931fdaecaaa1fc3ec5b4af281/MoltenVK/MoltenVK/GPUObjects/MVKDevice.h#L85
@@ -194,25 +199,25 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 	limits.maxColorAttachments = 8;
 
 	// Maximum number of textures the device can access, per stage, from an argument buffer.
-	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxTexturesPerArgumentBuffer = 1'000'000;
-	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
+	} else if ([device supportsFamily:MTLGPUFamilyApple4]) {
 		limits.maxTexturesPerArgumentBuffer = 96;
 	} else {
 		limits.maxTexturesPerArgumentBuffer = 31;
 	}
 
 	// Maximum number of samplers the device can access, per stage, from an argument buffer.
-	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxSamplersPerArgumentBuffer = 1024;
 	} else {
 		limits.maxSamplersPerArgumentBuffer = 16;
 	}
 
 	// Maximum number of buffers the device can access, per stage, from an argument buffer.
-	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxBuffersPerArgumentBuffer = std::numeric_limits<uint64_t>::max();
-	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
+	} else if ([device supportsFamily:MTLGPUFamilyApple4]) {
 		limits.maxBuffersPerArgumentBuffer = 96;
 	} else {
 		limits.maxBuffersPerArgumentBuffer = 31;
@@ -249,13 +254,13 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 		limits.subgroupSupportedOperations.set_flag(RD::SubgroupOperations::SUBGROUP_QUAD_BIT);
 	}
 
-	limits.maxBufferLength = p_device.maxBufferLength;
+	limits.maxBufferLength = device.maxBufferLength;
 
 	// FST: Maximum size of vertex descriptor layout stride.
 	limits.maxVertexDescriptorLayoutStride = std::numeric_limits<uint64_t>::max();
 
 	// Maximum number of viewports.
-	if ([p_device supportsFamily:MTLGPUFamilyApple5]) {
+	if ([device supportsFamily:MTLGPUFamilyApple5]) {
 		limits.maxViewports = 16;
 	} else {
 		limits.maxViewports = 1;
@@ -263,9 +268,9 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 
 	limits.maxPerStageBufferCount = 31;
 	limits.maxPerStageSamplerCount = 16;
-	if ([p_device supportsFamily:MTLGPUFamilyApple6]) {
+	if ([device supportsFamily:MTLGPUFamilyApple6]) {
 		limits.maxPerStageTextureCount = 128;
-	} else if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
+	} else if ([device supportsFamily:MTLGPUFamilyApple4]) {
 		limits.maxPerStageTextureCount = 96;
 	} else {
 		limits.maxPerStageTextureCount = 31;
@@ -276,9 +281,9 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 	limits.maxVertexInputBindingStride = (2 * KIBI);
 	limits.maxShaderVaryings = 31; // Accurate on Apple4 and above. See: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
 
-	if ([p_device supportsFamily:MTLGPUFamilyApple4]) {
+	if ([device supportsFamily:MTLGPUFamilyApple4]) {
 		limits.maxThreadGroupMemoryAllocation = 32768;
-	} else if ([p_device supportsFamily:MTLGPUFamilyApple3]) {
+	} else if ([device supportsFamily:MTLGPUFamilyApple3]) {
 		limits.maxThreadGroupMemoryAllocation = 16384;
 	} else {
 		limits.maxThreadGroupMemoryAllocation = 16352;
@@ -296,9 +301,9 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 	limits.maxDrawIndexedIndexValue = std::numeric_limits<uint32_t>::max() - 1;
 
 #ifdef METAL_MFXTEMPORAL_ENABLED
-	if (@available(macOS 14.0, iOS 17.0, tvOS 17.0, *)) {
-		limits.temporalScalerInputContentMinScale = (double)[MTLFXTemporalScalerDescriptor supportedInputContentMinScaleForDevice:p_device];
-		limits.temporalScalerInputContentMaxScale = (double)[MTLFXTemporalScalerDescriptor supportedInputContentMaxScaleForDevice:p_device];
+	if (os_version >= 140000) { // macOS 14.0+
+		limits.temporalScalerInputContentMinScale = (double)[MTLFXTemporalScalerDescriptor supportedInputContentMinScaleForDevice:device];
+		limits.temporalScalerInputContentMaxScale = (double)[MTLFXTemporalScalerDescriptor supportedInputContentMaxScaleForDevice:device];
 	} else {
 		// Defaults taken from macOS 14+
 		limits.temporalScalerInputContentMinScale = 1.0;
@@ -311,15 +316,20 @@ void MetalDeviceProperties::init_limits(id<MTLDevice> p_device) {
 #endif
 }
 
-void MetalDeviceProperties::init_os_props() {
+int MetalDeviceProperties::get_os_version() {
 	NSOperatingSystemVersion ver = NSProcessInfo.processInfo.operatingSystemVersion;
-	os_version = (uint32_t)ver.majorVersion * 10000 + (uint32_t)ver.minorVersion * 100 + (uint32_t)ver.patchVersion;
+	return (int)ver.majorVersion * 10000 + (int)ver.minorVersion * 100 + (int)ver.patchVersion;
 }
 
-MetalDeviceProperties::MetalDeviceProperties(id<MTLDevice> p_device) {
+void MetalDeviceProperties::init_os_props() {
+	os_version = get_os_version();
+	features.os_version = os_version;
+}
+
+MetalDeviceProperties::MetalDeviceProperties(void *p_device) {
+	init_os_props();
 	init_features(p_device);
 	init_limits(p_device);
-	init_os_props();
 }
 
 MetalDeviceProperties::~MetalDeviceProperties() {

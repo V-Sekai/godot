@@ -50,6 +50,8 @@
 /* permissions and limitations under the License.                         */
 /**************************************************************************/
 
+#include <stdint.h>
+
 #import "servers/rendering/rendering_device.h"
 
 #import <Foundation/Foundation.h>
@@ -59,17 +61,17 @@
 const static uint32_t VERT_CONTENT_BUFFER_INDEX = 0;
 const static uint32_t MAX_COLOR_ATTACHMENT_COUNT = 8;
 
-typedef NS_OPTIONS(NSUInteger, SampleCount) {
-	SampleCount1 = (1UL << 0),
-	SampleCount2 = (1UL << 1),
-	SampleCount4 = (1UL << 2),
-	SampleCount8 = (1UL << 3),
-	SampleCount16 = (1UL << 4),
-	SampleCount32 = (1UL << 5),
-	SampleCount64 = (1UL << 6),
-};
+typedef uint32_t SampleCount;
 
-struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MetalFeatures {
+#define SampleCount1 ((SampleCount)(1U << 0))
+#define SampleCount2 ((SampleCount)(1U << 1))
+#define SampleCount4 ((SampleCount)(1U << 2))
+#define SampleCount8 ((SampleCount)(1U << 3))
+#define SampleCount16 ((SampleCount)(1U << 4))
+#define SampleCount32 ((SampleCount)(1U << 5))
+#define SampleCount64 ((SampleCount)(1U << 6))
+
+struct MetalFeatures {
 	uint32_t mslVersionMajor = 0;
 	uint32_t mslVersionMinor = 0;
 	MTLGPUFamily highestFamily = MTLGPUFamilyApple4;
@@ -97,6 +99,7 @@ struct API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MetalFeatures {
 	bool supports_image_atomic_32_bit = false; /**< If true, 32-bit atomic operations on images are supported by the GPU. */
 	bool supports_image_atomic_64_bit = false; /**< If true, 64-bit atomic operations on images are supported by the GPU. */
 	bool supports_native_image_atomics = false; /**< If true, native image atomic operations are supported by the OS. */
+	uint32_t os_version = 0;
 };
 
 struct MetalLimits {
@@ -139,10 +142,13 @@ struct MetalLimits {
 	BitField<RD::SubgroupOperations> subgroupSupportedOperations; /**< The subgroup operations supported by the device. */
 };
 
-class API_AVAILABLE(macos(11.0), ios(14.0), tvos(14.0)) MetalDeviceProperties {
+class MetalDeviceProperties {
+public:
+	static int get_os_version();
+
 private:
-	void init_features(id<MTLDevice> p_device);
-	void init_limits(id<MTLDevice> p_device);
+	void init_features(void *p_device);
+	void init_limits(void *p_device);
 	void init_os_props();
 
 public:
@@ -154,7 +160,7 @@ public:
 
 	SampleCount find_nearest_supported_sample_count(RenderingDevice::TextureSamples p_samples) const;
 
-	MetalDeviceProperties(id<MTLDevice> p_device);
+	MetalDeviceProperties(void *p_device);
 	~MetalDeviceProperties();
 
 private:

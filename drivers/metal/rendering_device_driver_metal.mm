@@ -162,7 +162,7 @@ void RenderingDeviceDriverMetal::buffer_unmap(BufferID p_buffer) {
 }
 
 uint64_t RenderingDeviceDriverMetal::buffer_get_device_address(BufferID p_buffer) {
-	if (@available(iOS 16.0, macOS 13.0, *)) {
+	if (device_properties->os_version >= 130000) {
 		id<MTLBuffer> obj = rid::get(p_buffer);
 		return obj.gpuAddress;
 	} else {
@@ -328,7 +328,7 @@ RDD::TextureID RenderingDeviceDriverMetal::texture_create(const TextureFormat &p
 		ERR_FAIL_COND_V_MSG((format_caps & kMTLFmtCapsAtomic) == 0, RDD::TextureID(), "Atomic operations on this texture format are not supported.");
 		ERR_FAIL_COND_V_MSG(!device_properties->features.supports_native_image_atomics, RDD::TextureID(), "Atomic operations on textures are not supported on this OS version. Check SUPPORTS_IMAGE_ATOMIC_32_BIT.");
 		// If supports_native_image_atomics is true, this condition should always succeed, as it is set the same.
-		if (@available(macOS 14.0, iOS 17.0, tvOS 17.0, *)) {
+		if (device_properties->os_version >= 140000) {
 			desc.usage |= MTLTextureUsageShaderAtomic;
 		}
 	}
@@ -2906,7 +2906,7 @@ Error RenderingDeviceDriverMetal::initialize(uint32_t p_device_index, uint32_t p
 	Error err = _create_device();
 	ERR_FAIL_COND_V(err, ERR_CANT_CREATE);
 
-	device_properties = memnew(MetalDeviceProperties(device));
+	device_properties = memnew(MetalDeviceProperties((__bridge void *)device));
 	device_profile = device_profile_from_properties(device_properties);
 	shader_container_format = memnew(RenderingShaderContainerFormatMetal(&device_profile));
 
