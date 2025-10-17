@@ -240,21 +240,17 @@ bool CameraFeedMacOS::activate_feed() {
 		// Already recording!
 	} else {
 		// Start camera capture, check permission.
-		if (@available(macOS 10.14, *)) {
-			AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
-			if (status == AVAuthorizationStatusAuthorized) {
-				capture_session = [[MyCaptureSession alloc] initForFeed:this andDevice:device];
-			} else if (status == AVAuthorizationStatusNotDetermined) {
-				// Request permission.
-				[AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo
-										 completionHandler:^(BOOL granted) {
-											 if (granted) {
-												 capture_session = [[MyCaptureSession alloc] initForFeed:this andDevice:device];
-											 }
-										 }];
-			}
-		} else {
+		AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+		if (status == AVAuthorizationStatusAuthorized) {
 			capture_session = [[MyCaptureSession alloc] initForFeed:this andDevice:device];
+		} else if (status == AVAuthorizationStatusNotDetermined) {
+			// Request permission.
+			[AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo
+									 completionHandler:^(BOOL granted) {
+										 if (granted) {
+											 capture_session = [[MyCaptureSession alloc] initForFeed:this andDevice:device];
+										 }
+									 }];
 		}
 	};
 
@@ -310,21 +306,9 @@ MyDeviceNotifications *device_notifications = nil;
 
 void CameraMacOS::update_feeds() {
 	NSArray<AVCaptureDevice *> *devices = nullptr;
-#if defined(__x86_64__)
-	if (@available(macOS 10.15, *)) {
-#endif
-		AVCaptureDeviceDiscoverySession *session;
-		if (@available(macOS 14.0, *)) {
-			session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:[NSArray arrayWithObjects:AVCaptureDeviceTypeExternal, AVCaptureDeviceTypeBuiltInWideAngleCamera, AVCaptureDeviceTypeContinuityCamera, nil] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
-		} else {
-			session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:[NSArray arrayWithObjects:AVCaptureDeviceTypeExternalUnknown, AVCaptureDeviceTypeBuiltInWideAngleCamera, nil] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
-		}
-		devices = session.devices;
-#if defined(__x86_64__)
-	} else {
-		devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-	}
-#endif
+	AVCaptureDeviceDiscoverySession *session;
+	session = [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:[NSArray arrayWithObjects:AVCaptureDeviceTypeExternalUnknown, AVCaptureDeviceTypeBuiltInWideAngleCamera, nil] mediaType:AVMediaTypeVideo position:AVCaptureDevicePositionUnspecified];
+	devices = session.devices;
 
 	// remove devices that are gone..
 	for (int i = feeds.size() - 1; i >= 0; i--) {

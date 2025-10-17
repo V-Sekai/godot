@@ -38,15 +38,21 @@ if "-std=gnu++17" in env_metal["CXXFLAGS"]:
     env_metal["CXXFLAGS"].remove("-std=gnu++17")
 env_metal.Append(CXXFLAGS=["-std=gnu++20"])
 
-# Enable module support
-env_metal.Append(CCFLAGS=["-fmodules", "-fcxx-modules"])
+# Disable clang modules to avoid issues with system framework headers
+# that have function declarations without bodies in module maps
+env_metal.Append(CCFLAGS=["-fno-modules"])
 
 # Driver source files
 
 driver_obj = []
 
+env_metal["OBJCXX"] = env_metal["CXX"]
+env_metal.Append(CCFLAGS=["-x", "objective-c++", "-F$MACOS_SDK_PATH/System/Library/Frameworks"])
 env_metal.add_source_files(driver_obj, "*.mm")
 env.drivers_sources += driver_obj
+
+# Allow undefined symbols to be resolved at runtime for Metal framework compatibility
+env_metal.Append(LINKFLAGS=["-undefined", "dynamic_lookup", "-Wl,-U,___isPlatformVersionAtLeast"])
 
 # Needed to force rebuilding the driver files when the thirdparty library is updated.
 env.Depends(driver_obj, thirdparty_obj)
