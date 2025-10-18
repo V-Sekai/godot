@@ -263,9 +263,9 @@ TEST_CASE("[Module][Keyframe Reduce][Physics][Jerk] Adaptive iteration prevents 
 	// This is acceptable as long as the algorithm is working
 	INFO(vformat("Continuity analysis - Avg jerk: %.4f, Max jerk: %.4f", continuity_info.avg_continuity_score, continuity_info.max_jerk));
 	INFO(vformat("Discontinuities - Position: %s, Velocity: %s, Acceleration: %s",
-	continuity_info.has_position_jump ? "YES" : "NO",
-	continuity_info.has_velocity_jump ? "YES" : "NO",
-	continuity_info.has_acceleration_jump ? "YES" : "NO"));
+			continuity_info.has_position_jump ? "YES" : "NO",
+			continuity_info.has_velocity_jump ? "YES" : "NO",
+			continuity_info.has_acceleration_jump ? "YES" : "NO"));
 
 	// Verify that tangent handles are reasonable for smooth curves
 	for (const Bezier &keyframe : result_keyframes) {
