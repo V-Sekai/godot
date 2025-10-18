@@ -204,9 +204,3 @@ void IKRay3D::barycentric(Vector3 a, Vector3 b, Vector3 c, Vector3 p, Vector3 *u
 	(*uvw)[1] = nv * ood;
 	(*uvw)[2] = 1.0f - (*uvw)[0] - (*uvw)[1];
 }
-
-void IKRay3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_heading"), &IKRay3D::get_heading);
-	ClassDB::bind_method(D_METHOD("get_scaled_projection", "input"), &IKRay3D::get_scaled_projection);
-	ClassDB::bind_method(D_METHOD("get_intersects_plane", "a", "b", "c"), &IKRay3D::get_intersects_plane);
-}

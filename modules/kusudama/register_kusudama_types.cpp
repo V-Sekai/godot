@@ -41,10 +41,10 @@ void initialize_kusudama_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 	}
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
-GDREGISTER_CLASS(KusudamaBoneConstraint3D);
-GDREGISTER_CLASS(KusudamaSwingBoneSkeletonModifier3D);
-GDREGISTER_CLASS(IKLimitCone3D);
-GDREGISTER_CLASS(IKRay3D);
+		GDREGISTER_CLASS(KusudamaBoneConstraint3D);
+		GDREGISTER_CLASS(KusudamaSwingBoneSkeletonModifier3D);
+		GDREGISTER_CLASS(IKLimitCone3D);
+		GDREGISTER_CLASS(IKRay3D);
 	}
 #ifdef TOOLS_ENABLED
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
