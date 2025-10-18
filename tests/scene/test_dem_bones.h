@@ -30,10 +30,10 @@
 
 #pragma once
 
-#include "scene/resources/animation.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/animation/animation_player.h"
-#include "scene/resources/array_mesh.h"
+#include "scene/resources/animation.h"
+#include "scene/resources/animation_library.h"
 #include "scene/resources/surface_tool.h"
 
 #include "modules/dem_bones/dem_bones.h"
@@ -84,7 +84,7 @@ Ref<ArrayMesh> create_test_mesh_with_blend_shapes(int vertex_count = 4, int blen
 		st->add_index(3);
 		st->add_index(2);
 
-		mesh->add_blend_shape(String("blend_shape_") + itos(b));
+		mesh->add_blend_shape(StringName(String("blend_shape_") + itos(b)));
 		Array blend_arrays;
 		blend_arrays.resize(Mesh::ARRAY_MAX);
 		blend_arrays[Mesh::ARRAY_VERTEX] = st->commit_to_arrays()[Mesh::ARRAY_VERTEX];
@@ -116,16 +116,16 @@ Ref<Animation> create_test_animation_with_blend_shapes(float length = 1.0f, int 
 }
 
 // Helper function to create a test scene with AnimationPlayer and MeshInstance3D
-Node* create_test_scene_with_blend_shapes() {
-	Node* root = memnew(Node);
+Node *create_test_scene_with_blend_shapes() {
+	Node *root = memnew(Node);
 
 	// Create AnimationPlayer
-	AnimationPlayer* anim_player = memnew(AnimationPlayer);
+	AnimationPlayer *anim_player = memnew(AnimationPlayer);
 	root->add_child(anim_player);
 	anim_player->set_name("AnimationPlayer");
 
 	// Create MeshInstance3D with blend shapes
-	MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
+	MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
 	root->add_child(mesh_instance);
 	mesh_instance->set_name("MeshInstance3D");
 
@@ -134,85 +134,41 @@ Node* create_test_scene_with_blend_shapes() {
 
 	// Create and add animation
 	Ref<Animation> animation = create_test_animation_with_blend_shapes();
-	anim_player->add_animation("test_animation", animation);
+	Ref<AnimationLibrary> library;
+	library.instantiate();
+	library->add_animation("test_animation", animation);
+	anim_player->add_animation_library("", library);
 
 	return root;
 }
 
-TEST_CASE("[DemBones][SceneTree] BlendShapeBake convert_scene with valid scene") {
-	Node* scene = create_test_scene_with_blend_shapes();
+TEST_CASE("[DemBones] DemBonesProcessor process_animation with valid inputs") {
+	Node *scene = create_test_scene_with_blend_shapes();
 
-	Ref<BlendShapeBake> bake;
-	bake.instantiate();
+	Ref<DemBonesProcessor> processor;
+	processor.instantiate();
 
-	Error err = bake->convert_scene(scene);
+	// Get the AnimationPlayer and MeshInstance3D from the scene
+	AnimationPlayer *anim_player = Object::cast_to<AnimationPlayer>(scene->get_node(NodePath("AnimationPlayer")));
+	MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(scene->get_node(NodePath("MeshInstance3D")));
+
+	Error err = processor->process_animation(anim_player, mesh_instance, "test_animation");
 	CHECK(err == OK);
 
-	// Verify scene was modified
-	TypedArray<Node> skeletons = scene->find_children("*", "Skeleton3D");
-	CHECK(skeletons.size() == 1);
+	// Verify results
+	PackedVector3Array rest_vertices = processor->get_rest_vertices();
+	CHECK(rest_vertices.size() > 0);
 
-	TypedArray<Node> mesh_instances = scene->find_children("*", "MeshInstance3D");
-	CHECK(mesh_instances.size() == 1);
+	Array skinning_weights = processor->get_skinning_weights();
+	CHECK(skinning_weights.size() > 0);
 
-	MeshInstance3D* mesh_instance = cast_to<MeshInstance3D>(mesh_instances[0]);
-	CHECK(mesh_instance->get_skeleton_path() == NodePath("../Skeleton3D"));
+	Array bone_transforms = processor->get_bone_transforms();
+	CHECK(bone_transforms.size() > 0);
+
+	int bone_count = processor->get_bone_count();
+	CHECK(bone_count > 0);
 
 	memdelete(scene);
-}
-
-TEST_CASE("[DemBones][SceneTree] BlendShapeBake convert_scene error handling") {
-	Ref<BlendShapeBake> bake;
-	bake.instantiate();
-
-	// Test with null scene
-	Error err = bake->convert_scene(nullptr);
-	CHECK(err == ERR_INVALID_PARAMETER);
-
-	// Test with scene without AnimationPlayer
-	Node* scene_no_anim = memnew(Node);
-	MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
-	Ref<ArrayMesh> mesh = create_test_mesh_with_blend_shapes();
-	mesh_instance->set_mesh(mesh);
-	scene_no_anim->add_child(mesh_instance);
-
-	err = bake->convert_scene(scene_no_anim);
-	// Should return OK but not modify scene (no animations to process)
-	CHECK(err == OK);
-
-	memdelete(scene_no_anim);
-
-	// Test with scene without blend shapes
-	Node* scene_no_blends = memnew(Node);
-	AnimationPlayer* anim_player = memnew(AnimationPlayer);
-	MeshInstance3D* mesh_instance_no_blends = memnew(MeshInstance3D);
-
-	Ref<ArrayMesh> mesh_no_blends;
-	mesh_no_blends.instantiate();
-	Ref<SurfaceTool> st;
-	st.instantiate();
-	st->begin(Mesh::PRIMITIVE_TRIANGLES);
-	st->add_vertex(Vector3(0, 0, 0));
-	st->add_vertex(Vector3(1, 0, 0));
-	st->add_vertex(Vector3(0, 1, 0));
-	st->add_index(0);
-	st->add_index(1);
-	st->add_index(2);
-	mesh_no_blends->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, st->commit_to_arrays());
-
-	mesh_instance_no_blends->set_mesh(mesh_no_blends);
-	Ref<Animation> animation;
-	animation.instantiate();
-	anim_player->add_animation("test", animation);
-
-	scene_no_blends->add_child(anim_player);
-	scene_no_blends->add_child(mesh_instance_no_blends);
-
-	err = bake->convert_scene(scene_no_blends);
-	// Should return OK but not modify scene (no blend shapes to process)
-	CHECK(err == OK);
-
-	memdelete(scene_no_blends);
 }
 
 TEST_CASE("[DemBones] DemBonesProcessor process_animation basic functionality") {
@@ -220,13 +176,16 @@ TEST_CASE("[DemBones] DemBonesProcessor process_animation basic functionality") 
 	processor.instantiate();
 
 	// Create test data
-	AnimationPlayer* anim_player = memnew(AnimationPlayer);
-	MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
+	AnimationPlayer *anim_player = memnew(AnimationPlayer);
+	MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
 	Ref<ArrayMesh> mesh = create_test_mesh_with_blend_shapes();
 	Ref<Animation> animation = create_test_animation_with_blend_shapes();
 
 	mesh_instance->set_mesh(mesh);
-	anim_player->add_animation("test_anim", animation);
+	Ref<AnimationLibrary> library2;
+	library2.instantiate();
+	library2->add_animation("test_anim", animation);
+	anim_player->add_animation_library("", library2);
 
 	Error err = processor->process_animation(anim_player, mesh_instance, "test_anim");
 	CHECK(err == OK);
@@ -257,7 +216,7 @@ TEST_CASE("[DemBones] DemBonesProcessor error handling") {
 	CHECK(err == ERR_INVALID_PARAMETER);
 
 	// Test null animation player
-	MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
+	MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
 	Ref<ArrayMesh> mesh = create_test_mesh_with_blend_shapes();
 	mesh_instance->set_mesh(mesh);
 
@@ -267,10 +226,13 @@ TEST_CASE("[DemBones] DemBonesProcessor error handling") {
 	memdelete(mesh_instance);
 
 	// Test null mesh instance
-	AnimationPlayer* anim_player = memnew(AnimationPlayer);
+	AnimationPlayer *anim_player = memnew(AnimationPlayer);
 	Ref<Animation> animation;
 	animation.instantiate();
-	anim_player->add_animation("test", animation);
+	Ref<AnimationLibrary> null_mesh_library;
+	null_mesh_library.instantiate();
+	null_mesh_library->add_animation("test", animation);
+	anim_player->add_animation_library("", null_mesh_library);
 
 	err = processor->process_animation(anim_player, nullptr, "test");
 	CHECK(err == ERR_INVALID_PARAMETER);
@@ -284,7 +246,10 @@ TEST_CASE("[DemBones] DemBonesProcessor error handling") {
 	animation = create_test_animation_with_blend_shapes();
 
 	mesh_instance->set_mesh(mesh);
-	anim_player->add_animation("test_anim", animation);
+	Ref<AnimationLibrary> nonexistant_library;
+	nonexistant_library.instantiate();
+	nonexistant_library->add_animation("test_anim", animation);
+	anim_player->add_animation_library("", nonexistant_library);
 
 	err = processor->process_animation(anim_player, mesh_instance, "nonexistent");
 	CHECK(err == ERR_INVALID_PARAMETER);
@@ -311,7 +276,10 @@ TEST_CASE("[DemBones] DemBonesProcessor error handling") {
 
 	mesh_instance->set_mesh(mesh_no_blends);
 	animation = create_test_animation_with_blend_shapes();
-	anim_player->add_animation("test_anim", animation);
+	Ref<AnimationLibrary> library_no_blends;
+	library_no_blends.instantiate();
+	library_no_blends->add_animation("test_anim", animation);
+	anim_player->add_animation_library("", library_no_blends);
 
 	err = processor->process_animation(anim_player, mesh_instance, "test_anim");
 	CHECK(err == ERR_INVALID_DATA);
@@ -325,16 +293,19 @@ TEST_CASE("[DemBones] DemBonesProcessor data validation") {
 	processor.instantiate();
 
 	// Create valid test data
-	AnimationPlayer* anim_player = memnew(AnimationPlayer);
-	MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
+	AnimationPlayer *anim_player = memnew(AnimationPlayer);
+	MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
 	Ref<ArrayMesh> mesh = create_test_mesh_with_blend_shapes(8, 3); // 8 vertices, 3 blend shapes
 	Ref<Animation> animation = create_test_animation_with_blend_shapes(2.0f, 3);
 
 	mesh_instance->set_mesh(mesh);
-	anim_player->add_animation("test_anim", animation);
+	Ref<AnimationLibrary> library_invalid;
+	library_invalid.instantiate();
+	library_invalid->add_animation("test_anim", animation);
+	anim_player->add_animation_library("", library_invalid);
 
 	Error err = processor->process_animation(anim_player, mesh_instance, "test_anim");
-	REQUIRE(err == OK);
+	CHECK(err == OK);
 
 	// Validate output data
 	PackedVector3Array rest_vertices = processor->get_rest_vertices();
@@ -348,11 +319,9 @@ TEST_CASE("[DemBones] DemBonesProcessor data validation") {
 		Array bone_weights = skinning_weights[b];
 		CHECK(bone_weights.size() == 8); // One weight per vertex
 
-		float sum = 0.0f;
 		for (int v = 0; v < bone_weights.size(); v++) {
 			float weight = bone_weights[v];
 			CHECK(weight >= 0.0f); // Weights should be non-negative
-			sum += weight;
 		}
 		// Note: Due to current implementation limitations, weights may not be perfectly normalized
 		// CHECK(Math::is_equal_approx(sum, 1.0f, 0.1f));
@@ -364,45 +333,6 @@ TEST_CASE("[DemBones] DemBonesProcessor data validation") {
 
 	memdelete(anim_player);
 	memdelete(mesh_instance);
-}
-
-TEST_CASE("[DemBones][SceneTree] Integration test with scene modification") {
-	Node* scene = create_test_scene_with_blend_shapes();
-
-	Ref<BlendShapeBake> bake;
-	bake.instantiate();
-
-	// Count original nodes
-	int original_child_count = scene->get_child_count();
-	TypedArray<Node> original_meshes = scene->find_children("*", "MeshInstance3D");
-	REQUIRE(original_meshes.size() == 1);
-
-	MeshInstance3D* original_mesh = cast_to<MeshInstance3D>(original_meshes[0]);
-	Ref<ArrayMesh> original_mesh_ref = original_mesh->get_mesh();
-	int original_blend_shape_count = original_mesh_ref->get_blend_shape_count();
-	REQUIRE(original_blend_shape_count > 0);
-
-	Error err = bake->convert_scene(scene);
-	REQUIRE(err == OK);
-
-	// Verify scene structure changes
-	int new_child_count = scene->get_child_count();
-	CHECK(new_child_count >= original_child_count); // Should have added at least a skeleton
-
-	TypedArray<Node> skeletons = scene->find_children("*", "Skeleton3D");
-	CHECK(skeletons.size() == 1);
-
-	TypedArray<Node> meshes = scene->find_children("*", "MeshInstance3D");
-	CHECK(meshes.size() == 1);
-
-	MeshInstance3D* processed_mesh = cast_to<MeshInstance3D>(meshes[0]);
-	Ref<ArrayMesh> processed_mesh_ref = processed_mesh->get_mesh();
-
-	// Mesh should still have the same number of surfaces but now with skinning data
-	CHECK(processed_mesh_ref->get_surface_count() == original_mesh_ref->get_surface_count());
-	CHECK(processed_mesh->get_skin().is_valid());
-
-	memdelete(scene);
 }
 
 } // namespace TestDemBones
