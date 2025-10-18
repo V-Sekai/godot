@@ -30,9 +30,8 @@
 
 #pragma once
 
+#include "ik_effector_3d.h"
 #include "ik_effector_template_3d.h"
-#include "ik_open_cone_3d.h"
-#include "kusudama_bone_constraint_3d.h"
 #include "math/ik_node_3d.h"
 
 #include "core/io/resource.h"
@@ -92,8 +91,6 @@ public:
 	Ref<IKNode3D> get_constraint_twist_transform();
 	void update_default_constraint_transform();
 	void add_constraint(BoneConstraint3D *p_constraint);
-	void add_constraint(KusudamaBoneConstraint3D *p_constraint); // Backward compatibility
-	KusudamaBoneConstraint3D *get_constraint() const; // Backward compatibility - returns first Kusudama constraint
 	Vector<BoneConstraint3D *> get_constraints() const;
 	void clear_constraints();
 	void set_bone_id(BoneId p_bone_id, Skeleton3D *p_skeleton = nullptr);
@@ -118,6 +115,4 @@ public:
 	void set_cos_half_dampen(float p_cos_half_dampen);
 	Transform3D get_parent_bone_aligned_transform();
 	Transform3D get_set_constraint_twist_transform() const;
-	float calculate_total_radius_sum(const TypedArray<IKLimitCone3D> &p_cones) const;
-	Vector3 calculate_weighted_direction(const TypedArray<IKLimitCone3D> &p_cones, float p_total_radius_sum) const;
 };

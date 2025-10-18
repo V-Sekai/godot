@@ -36,14 +36,10 @@
 #include "ewbik_3d.h"
 #include "ik_bone_3d.h"
 #include "ik_bone_segment_3d.h"
-#include "kusudama_bone_constraint_3d.h"
 #include "many_bone_ik_3d_state.h"
-#include "scene/3d/marker_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
-#include "swing_bone_constraint_3d.h"
-#include "twist_bone_constraint_3d.h"
 
 void EWBIK3D::set_pin_count(int32_t p_value) {
 	int32_t old_count = pins.size();
@@ -870,139 +866,28 @@ TypedArray<IKBone3D> EWBIK3D::get_bone_list() const {
 
 void EWBIK3D::set_direction_transform_of_bone(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
-	if (!get_skeleton()) {
-		return;
-	}
-	String bone_name = constraint_names[p_index];
-	int32_t bone_index = get_skeleton()->find_bone(bone_name);
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
-		if (segmented_skeleton.is_null()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(bone_index);
-		if (ik_bone.is_null() || ik_bone->get_constraint() == nullptr) {
-			continue;
-		}
-		if (ik_bone->get_bone_direction_transform().is_null()) {
-			continue;
-		}
-		ik_bone->get_bone_direction_transform()->set_transform(p_transform);
-		break;
-	}
 }
 
 Transform3D EWBIK3D::get_direction_transform_of_bone(int32_t p_index) const {
-	if (p_index < 0 || p_index >= constraint_names.size() || get_skeleton() == nullptr) {
-		return Transform3D();
-	}
-
-	String bone_name = constraint_names[p_index];
-	int32_t bone_index = get_skeleton()->find_bone(bone_name);
-	for (const Ref<IKBoneSegment3D> &segmented_skeleton : segmented_skeletons) {
-		if (segmented_skeleton.is_null()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(bone_index);
-		if (ik_bone.is_null() || ik_bone->get_constraint() == nullptr) {
-			continue;
-		}
-		return ik_bone->get_bone_direction_transform()->get_transform();
-	}
 	return Transform3D();
 }
 
 Transform3D EWBIK3D::get_orientation_transform_of_constraint(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), Transform3D());
-	String bone_name = constraint_names[p_index];
-	if (!segmented_skeletons.size()) {
-		return Transform3D();
-	}
-	if (!get_skeleton()) {
-		return Transform3D();
-	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
-		if (segmented_skeleton.is_null()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
-		if (ik_bone.is_null()) {
-			continue;
-		}
-		if (ik_bone->get_constraint() == nullptr) {
-			continue;
-		}
-		return ik_bone->get_constraint_orientation_transform()->get_transform();
-	}
 	return Transform3D();
 }
 
 void EWBIK3D::set_orientation_transform_of_constraint(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
-	String bone_name = constraint_names[p_index];
-	if (!get_skeleton()) {
-		return;
-	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
-		if (segmented_skeleton.is_null()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
-		if (ik_bone.is_null()) {
-			continue;
-		}
-		if (ik_bone->get_constraint() == nullptr) {
-			continue;
-		}
-		ik_bone->get_constraint_orientation_transform()->set_transform(p_transform);
-		break;
-	}
 }
 
 Transform3D EWBIK3D::get_twist_transform_of_constraint(int32_t p_index) const {
 	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), Transform3D());
-	String bone_name = constraint_names[p_index];
-	if (!segmented_skeletons.size()) {
-		return Transform3D();
-	}
-	if (!get_skeleton()) {
-		return Transform3D();
-	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
-		if (segmented_skeleton.is_null()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
-		if (ik_bone.is_null()) {
-			continue;
-		}
-		if (ik_bone->get_constraint() == nullptr) {
-			continue;
-		}
-		return ik_bone->get_constraint_twist_transform()->get_transform();
-	}
 	return Transform3D();
 }
 
 void EWBIK3D::set_twist_transform_of_constraint(int32_t p_index, Transform3D p_transform) {
 	ERR_FAIL_INDEX(p_index, constraint_names.size());
-	String bone_name = constraint_names[p_index];
-	if (!get_skeleton()) {
-		return;
-	}
-	for (Ref<IKBoneSegment3D> segmented_skeleton : segmented_skeletons) {
-		if (segmented_skeleton.is_null()) {
-			continue;
-		}
-		Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(get_skeleton()->find_bone(bone_name));
-		if (ik_bone.is_null()) {
-			continue;
-		}
-		if (ik_bone->get_constraint() == nullptr) {
-			continue;
-		}
-		ik_bone->get_constraint_twist_transform()->set_transform(p_transform);
-		break;
-	}
 }
 
 bool EWBIK3D::get_pin_enabled(int32_t p_effector_index) const {
@@ -1127,25 +1012,12 @@ void EWBIK3D::_bone_list_changed() {
 			if (ik_bone_3d->get_bone_id() != bone_id) {
 				continue;
 			}
-			// Create swing constraint if there are limit cones
-			int32_t cone_count = kusudama_open_cone_count[constraint_i];
-			if (cone_count > 0) {
-				SwingBoneConstraint3D *swing_constraint = memnew(SwingBoneConstraint3D);
-				const Vector<Vector4> &cones = kusudama_open_cones[constraint_i];
-				for (int32_t cone_i = 0; cone_i < cone_count; ++cone_i) {
-					const Vector4 &cone = cones[cone_i];
-					swing_constraint->add_limit_cone(cone_i, Vector3(cone.x, cone.y, cone.z).normalized(), MAX(1.0e-38, cone.w));
-				}
-				ik_bone_3d->add_constraint(swing_constraint);
-			}
+			/* Limit cones disabled: creation of SwingBoneConstraint3D removed.
+			   Kusudama limit data is preserved (kusudama_open_cones, kusudama_open_cone_count),
+			   but no swing constraint objects are attached to bones. */
 
-			// Create twist constraint if axial limits are set
-			const Vector2 axial_limit = get_joint_twist(constraint_i);
-			if (axial_limit.y > 0.0f) { // Only create twist constraint if range is non-zero
-				TwistBoneConstraint3D *twist_constraint = memnew(TwistBoneConstraint3D);
-				twist_constraint->set_axial_limits(0, axial_limit.x, axial_limit.y);
-				ik_bone_3d->add_constraint(twist_constraint);
-			}
+			/* Axial twist limits disabled: creation of TwistBoneConstraint3D removed.
+			   joint_twist data is preserved but no twist constraint objects will be created. */
 			break;
 		}
 	}

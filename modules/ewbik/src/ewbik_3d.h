@@ -42,6 +42,7 @@
 #include "scene/3d/skeleton_3d.h"
 #include "scene/3d/skeleton_modifier_3d.h"
 
+class IKBoneSegment3D;
 class ManyBoneIK3DState;
 class EWBIK3D : public SkeletonModifier3D {
 	GDCLASS(EWBIK3D, SkeletonModifier3D);

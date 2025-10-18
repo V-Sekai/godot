@@ -38,8 +38,6 @@
 #include "ik_bone_segment_3d.h"
 #include "ik_effector_3d.h"
 #include "ik_effector_template_3d.h"
-#include "ik_kusudama_3d.h"
-#include "ik_open_cone_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/main/node.h"
 

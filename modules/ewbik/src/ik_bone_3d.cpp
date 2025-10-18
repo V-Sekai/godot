@@ -30,8 +30,6 @@
 
 #include "ik_bone_3d.h"
 #include "ewbik_3d.h"
-#include "ik_kusudama_3d.h"
-#include "ik_open_cone_3d.h"
 #include "math/ik_node_3d.h"
 #include <cmath>
 
@@ -103,21 +101,9 @@ void IKBone3D::update_default_constraint_transform() {
 	Transform3D set_constraint_twist_transform = get_set_constraint_twist_transform();
 	constraint_twist_transform->set_global_transform(set_constraint_twist_transform);
 
-	// Use first Kusudama constraint for backward compatibility
-	KusudamaBoneConstraint3D *kusudama_constraint = get_constraint();
-	if (!kusudama_constraint) {
-		return;
-	}
-
-	TypedArray<IKLimitCone3D> cones = kusudama_constraint->get_open_cones();
-	Vector3 direction;
-	if (cones.size() == 0) {
-		direction = bone_direction_transform->get_global_transform().basis.get_column(Vector3::AXIS_Y);
-	} else {
-		float total_radius_sum = calculate_total_radius_sum(cones);
-		direction = calculate_weighted_direction(cones, total_radius_sum);
-		direction -= constraint_orientation_transform->get_global_transform().origin;
-	}
+	// Kusudama open-cone limits disabled at runtime.
+	// Preserve stored kusudama data but do not evaluate cones here.
+	Vector3 direction = bone_direction_transform->get_global_transform().basis.get_column(Vector3::AXIS_Y);
 
 	Vector3 twist_axis = set_constraint_twist_transform.basis.get_column(Vector3::AXIS_Y);
 	Quaternion align_dir = Quaternion(twist_axis, direction);
@@ -193,7 +179,6 @@ void IKBone3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_pin"), &IKBone3D::get_pin);
 	ClassDB::bind_method(D_METHOD("set_pin", "pin"), &IKBone3D::set_pin);
 	ClassDB::bind_method(D_METHOD("is_pinned"), &IKBone3D::is_pinned);
-	ClassDB::bind_method(D_METHOD("get_constraint"), &IKBone3D::get_constraint);
 	ClassDB::bind_method(D_METHOD("get_constraint_orientation_transform"), &IKBone3D::get_constraint_orientation_transform);
 	ClassDB::bind_method(D_METHOD("get_constraint_twist_transform"), &IKBone3D::get_constraint_twist_transform);
 }
@@ -228,11 +213,7 @@ IKBone3D::IKBone3D(StringName p_bone, Skeleton3D *p_skeleton, const Ref<IKBone3D
 	float predamp = 1.0 - get_stiffness();
 	dampening = get_parent().is_null() ? Math::PI : predamp * p_default_dampening;
 	float iterations = p_many_bone_ik->get_iterations_per_frame();
-	if (!get_constraint()) {
-		KusudamaBoneConstraint3D *new_constraint = memnew(KusudamaBoneConstraint3D());
-		add_constraint(new_constraint);
-	}
-	float returnfulness = get_constraint()->get_resistance();
+	float returnfulness = 0.0f; // Kusudama limits removed — no resistance available
 	float falloff = 0.2f;
 	half_returnfulness_dampened.resize(iterations);
 	cos_half_returnfulness_dampened.resize(iterations);
@@ -254,25 +235,7 @@ void IKBone3D::set_cos_half_dampen(float p_cos_half_dampen) {
 	cos_half_dampen = p_cos_half_dampen;
 }
 
-KusudamaBoneConstraint3D *IKBone3D::get_constraint() const {
-	// Backward compatibility: return first Kusudama constraint if any
-	for (BoneConstraint3D *constraint : constraints) {
-		KusudamaBoneConstraint3D *kusudama = Object::cast_to<KusudamaBoneConstraint3D>(constraint);
-		if (kusudama) {
-			return kusudama;
-		}
-	}
-	return nullptr;
-}
-
 void IKBone3D::add_constraint(BoneConstraint3D *p_constraint) {
-	if (p_constraint) {
-		constraints.push_back(p_constraint);
-	}
-}
-
-void IKBone3D::add_constraint(KusudamaBoneConstraint3D *p_constraint) {
-	// Backward compatibility overload
 	if (p_constraint) {
 		constraints.push_back(p_constraint);
 	}
@@ -311,19 +274,13 @@ Ref<IKNode3D> IKBone3D::get_bone_direction_transform() {
 }
 
 bool IKBone3D::is_orientationally_constrained() {
-	KusudamaBoneConstraint3D *constraint = get_constraint();
-	if (!constraint) {
-		return false;
-	}
-	return constraint->is_orientationally_constrained();
+	// Constraint limits disabled: always report not orientationally constrained.
+	return false;
 }
 
 bool IKBone3D::is_axially_constrained() {
-	KusudamaBoneConstraint3D *constraint = get_constraint();
-	if (!constraint) {
-		return false;
-	}
-	return constraint->is_axially_constrained();
+	// Constraint limits disabled: always report not axially constrained.
+	return false;
 }
 
 Vector<float> &IKBone3D::get_cos_half_returnfullness_dampened() {
@@ -362,31 +319,4 @@ Transform3D IKBone3D::get_parent_bone_aligned_transform() {
 
 Transform3D IKBone3D::get_set_constraint_twist_transform() const {
 	return constraint_orientation_transform->get_global_transform();
-}
-
-float IKBone3D::calculate_total_radius_sum(const TypedArray<IKLimitCone3D> &p_cones) const {
-	float total_radius_sum = 0.0f;
-	for (int32_t i = 0; i < p_cones.size(); ++i) {
-		const Ref<IKLimitCone3D> &cone = p_cones[i];
-		if (cone.is_null()) {
-			break;
-		}
-		total_radius_sum += cone->get_radius();
-	}
-	return total_radius_sum;
-}
-
-Vector3 IKBone3D::calculate_weighted_direction(const TypedArray<IKLimitCone3D> &p_cones, float p_total_radius_sum) const {
-	Vector3 direction = Vector3();
-	for (int32_t i = 0; i < p_cones.size(); ++i) {
-		const Ref<IKLimitCone3D> &cone = p_cones[i];
-		if (cone.is_null()) {
-			break;
-		}
-		float weight = cone->get_radius() / p_total_radius_sum;
-		direction += cone->get_control_point() * weight;
-	}
-	direction.normalize();
-	direction = constraint_orientation_transform->get_global_transform().basis.xform(direction);
-	return direction;
 }

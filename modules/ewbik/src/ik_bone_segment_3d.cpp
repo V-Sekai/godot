@@ -33,7 +33,6 @@
 #include "core/string/string_builder.h"
 #include "ewbik_3d.h"
 #include "ik_effector_3d.h"
-#include "ik_kusudama_3d.h"
 #include "scene/3d/skeleton_3d.h"
 
 Ref<IKBone3D> IKBoneSegment3D::get_root() const {
@@ -153,13 +152,12 @@ void IKBoneSegment3D::_set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVect
 			Transform3D result = Transform3D(p_for_bone->get_global_pose().basis, p_for_bone->get_global_pose().origin + translation);
 			p_for_bone->set_global_pose(result);
 		}
-		bool is_parent_valid = p_for_bone->get_parent().is_valid();
-		if (is_parent_valid && p_for_bone->is_orientationally_constrained()) {
-			p_for_bone->get_constraint()->snap_to_orientation_limit(p_for_bone->get_bone_direction_transform(), p_for_bone->get_ik_transform(), p_for_bone->get_constraint_orientation_transform(), bone_damp, p_for_bone->get_cos_half_dampen());
-		}
-		if (is_parent_valid && p_for_bone->is_axially_constrained()) {
-			p_for_bone->get_constraint()->set_snap_to_twist_limit(p_for_bone->get_bone_direction_transform(), p_for_bone->get_ik_transform(), p_for_bone->get_constraint_twist_transform(), bone_damp, p_for_bone->get_cos_half_dampen());
-		}
+		// bool is_parent_valid = p_for_bone->get_parent().is_valid();
+		// Constraint limits disabled: Skip snapping to orientation/twist limits.
+		// Original behavior:
+		// if (is_parent_valid && p_for_bone->is_orientationally_constrained()) { ... }
+		// if (is_parent_valid && p_for_bone->is_axially_constrained()) { ... }
+		// Disabled to remove limit enforcement while preserving other solver behavior.
 		if (default_stabilizing_pass_count > 0) {
 			_update_tip_headings(p_for_bone, &tip_headings_uniform);
 			double current_msd = _get_manual_msd(tip_headings_uniform, target_headings, heading_weights);
