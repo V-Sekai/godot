@@ -9,12 +9,6 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_constraint" qualifiers="const">
-			<return type="IKKusudama3D" />
-			<description>
-				Returns the IKKusudama3D object representing the constraint of the bone.
-			</description>
-		</method>
 		<method name="get_constraint_orientation_transform">
 			<return type="IKNode3D" />
 			<description>

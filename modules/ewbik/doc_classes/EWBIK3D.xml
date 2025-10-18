@@ -279,9 +279,6 @@
 		</method>
 	</methods>
 	<members>
-		<member name="constraint_mode" type="bool" setter="set_constraint_mode" getter="get_constraint_mode" default="false">
-			A boolean value indicating whether the IK system is in constraint mode or not.
-		</member>
 		<member name="default_damp" type="float" setter="set_default_damp" getter="get_default_damp" default="0.08726646">
 			The default maximum number of radians a bone is allowed to rotate per solver iteration. The lower this value, the more natural the pose results. However, this will increase the number of iterations_per_frame the solver requires to converge.
 		</member>
@@ -290,9 +287,6 @@
 		</member>
 		<member name="stabilization_passes" type="int" setter="set_stabilization_passes" getter="get_stabilization_passes" default="0">
 			The number of stabilization passes performed by the solver. This can help to improve the stability of the IK solution.
-		</member>
-		<member name="ui_selected_bone" type="int" setter="set_ui_selected_bone" getter="get_ui_selected_bone" default="-1">
-			The index of the bone currently selected in the user interface.
 		</member>
 	</members>
 </class>

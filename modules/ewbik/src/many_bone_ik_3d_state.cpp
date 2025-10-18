@@ -45,9 +45,6 @@ void ManyBoneIK3DState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_default_damp", "damp"), &ManyBoneIK3DState::set_default_damp);
 	ClassDB::bind_method(D_METHOD("get_default_damp"), &ManyBoneIK3DState::get_default_damp);
 
-	ClassDB::bind_method(D_METHOD("set_constraint_mode", "enabled"), &ManyBoneIK3DState::set_constraint_mode);
-	ClassDB::bind_method(D_METHOD("get_constraint_mode"), &ManyBoneIK3DState::get_constraint_mode);
-
 	ClassDB::bind_method(D_METHOD("set_stabilization_passes", "passes"), &ManyBoneIK3DState::set_stabilization_passes);
 	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &ManyBoneIK3DState::get_stabilization_passes);
 }
@@ -82,14 +79,6 @@ void ManyBoneIK3DState::set_default_damp(float p_damp) {
 
 float ManyBoneIK3DState::get_default_damp() const {
 	return default_damp;
-}
-
-void ManyBoneIK3DState::set_constraint_mode(bool p_enabled) {
-	constraint_mode = p_enabled;
-}
-
-bool ManyBoneIK3DState::get_constraint_mode() const {
-	return constraint_mode;
 }
 
 void ManyBoneIK3DState::set_stabilization_passes(int p_passes) {

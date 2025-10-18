@@ -86,11 +86,11 @@ void IKBoneSegment3D::update_pinned_list(Vector<Vector<double>> &r_weights) {
 	}
 }
 
-void IKBoneSegment3D::_update_optimal_rotation(Ref<IKBone3D> p_for_bone, double p_damp, bool p_translate, bool p_constraint_mode, int32_t current_iteration, int32_t total_iterations) {
+void IKBoneSegment3D::_update_optimal_rotation(Ref<IKBone3D> p_for_bone, double p_damp, bool p_translate, int32_t current_iteration, int32_t total_iterations) {
 	ERR_FAIL_COND(p_for_bone.is_null());
 	_update_target_headings(p_for_bone, &heading_weights, &target_headings);
 	_update_tip_headings(p_for_bone, &tip_headings);
-	_set_optimal_rotation(p_for_bone, &tip_headings, &target_headings, &heading_weights, p_damp, p_translate, p_constraint_mode);
+	_set_optimal_rotation(p_for_bone, &tip_headings, &target_headings, &heading_weights, p_damp, p_translate);
 }
 
 Quaternion IKBoneSegment3D::clamp_to_cos_half_angle(Quaternion p_quat, double p_cos_half_angle) {
@@ -125,7 +125,7 @@ float IKBoneSegment3D::_get_manual_msd(const PackedVector3Array &r_htip, const P
 	return manual_RMSD;
 }
 
-void IKBoneSegment3D::_set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVector3Array *r_htip, PackedVector3Array *r_htarget, Vector<double> *r_weights, float p_dampening, bool p_translate, bool p_constraint_mode, double current_iteration, double total_iterations) {
+void IKBoneSegment3D::_set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVector3Array *r_htip, PackedVector3Array *r_htarget, Vector<double> *r_weights, float p_dampening, bool p_translate, double current_iteration, double total_iterations) {
 	ERR_FAIL_COND(p_for_bone.is_null());
 	ERR_FAIL_NULL(r_htip);
 	ERR_FAIL_NULL(r_htarget);
@@ -138,20 +138,18 @@ void IKBoneSegment3D::_set_optimal_rotation(Ref<IKBone3D> p_for_bone, PackedVect
 	int i = 0;
 	do {
 		_update_tip_headings(p_for_bone, &tip_headings);
-		if (!p_constraint_mode) {
-			Array superpose_result = QuaternionCharacteristicPolynomial::weighted_superpose(*r_htip, *r_htarget, *r_weights, p_translate, evec_prec);
-			Quaternion rotation = superpose_result[0];
-			Vector3 translation = superpose_result[1];
-			double dampening = (p_dampening != -1.0) ? p_dampening : bone_damp;
-			rotation = clamp_to_cos_half_angle(rotation, cos(dampening / 2.0));
-			if (current_iteration == 0) {
-				current_iteration = 0.0001;
-			}
-			rotation = rotation.slerp(p_for_bone->get_global_pose().basis.get_rotation_quaternion(), static_cast<double>(total_iterations) / current_iteration);
-			p_for_bone->get_ik_transform()->rotate_local_with_global(rotation);
-			Transform3D result = Transform3D(p_for_bone->get_global_pose().basis, p_for_bone->get_global_pose().origin + translation);
-			p_for_bone->set_global_pose(result);
+		Array superpose_result = QuaternionCharacteristicPolynomial::weighted_superpose(*r_htip, *r_htarget, *r_weights, p_translate, evec_prec);
+		Quaternion rotation = superpose_result[0];
+		Vector3 translation = superpose_result[1];
+		double dampening = (p_dampening != -1.0) ? p_dampening : bone_damp;
+		rotation = clamp_to_cos_half_angle(rotation, cos(dampening / 2.0));
+		if (current_iteration == 0) {
+			current_iteration = 0.0001;
 		}
+		rotation = rotation.slerp(p_for_bone->get_global_pose().basis.get_rotation_quaternion(), static_cast<double>(total_iterations) / current_iteration);
+		p_for_bone->get_ik_transform()->rotate_local_with_global(rotation);
+		Transform3D result = Transform3D(p_for_bone->get_global_pose().basis, p_for_bone->get_global_pose().origin + translation);
+		p_for_bone->set_global_pose(result);
 		// bool is_parent_valid = p_for_bone->get_parent().is_valid();
 		// Constraint limits disabled: Skip snapping to orientation/twist limits.
 		// Original behavior:
@@ -205,35 +203,29 @@ void IKBoneSegment3D::_update_tip_headings(Ref<IKBone3D> p_for_bone, PackedVecto
 	}
 }
 
-void IKBoneSegment3D::segment_solver(const Vector<float> &p_damp, float p_default_damp, bool p_constraint_mode, int32_t p_current_iteration, int32_t p_total_iteration) {
+void IKBoneSegment3D::segment_solver(float p_default_damp, int32_t p_current_iteration, int32_t p_total_iteration) {
 	for (Ref<IKBoneSegment3D> child : child_segments) {
 		if (child.is_null()) {
 			continue;
 		}
-		child->segment_solver(p_damp, p_default_damp, p_constraint_mode, p_current_iteration, p_total_iteration);
+		child->segment_solver(p_default_damp, p_current_iteration, p_total_iteration);
 	}
 	bool is_translate = parent_segment.is_null();
 	if (is_translate) {
-		Vector<float> damp = p_damp;
-		damp.fill(Math::PI);
-		_qcp_solver(damp, Math::PI, is_translate, p_constraint_mode, p_current_iteration, p_total_iteration);
+		_qcp_solver(Math::PI, is_translate, p_current_iteration, p_total_iteration);
 		return;
 	}
-	_qcp_solver(p_damp, p_default_damp, is_translate, p_constraint_mode, p_current_iteration, p_total_iteration);
+	_qcp_solver(p_default_damp, is_translate, p_current_iteration, p_total_iteration);
 }
 
-void IKBoneSegment3D::_qcp_solver(const Vector<float> &p_damp, float p_default_damp, bool p_translate, bool p_constraint_mode, int32_t p_current_iteration, int32_t p_total_iterations) {
+void IKBoneSegment3D::_qcp_solver(float p_default_damp, bool p_translate, int32_t p_current_iteration, int32_t p_total_iterations) {
 	for (Ref<IKBone3D> current_bone : bones) {
 		float damp = p_default_damp;
-		bool is_valid_access = !(unlikely((p_damp.size()) < 0 || (current_bone->get_bone_id()) >= (p_damp.size())));
-		if (is_valid_access) {
-			damp = p_damp[current_bone->get_bone_id()];
-		}
 		bool is_non_default_damp = p_default_damp < damp;
 		if (is_non_default_damp) {
 			damp = p_default_damp;
 		}
-		_update_optimal_rotation(current_bone, damp, p_translate, p_constraint_mode, p_current_iteration, p_total_iterations);
+		_update_optimal_rotation(current_bone, damp, p_translate, p_current_iteration, p_total_iterations);
 	}
 }
 

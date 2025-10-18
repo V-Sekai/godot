@@ -47,7 +47,6 @@ class ManyBoneIK3DState;
 class EWBIK3D : public SkeletonModifier3D {
 	GDCLASS(EWBIK3D, SkeletonModifier3D);
 
-	bool is_constraint_mode = false;
 	NodePath skeleton_path;
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
 	int32_t constraint_count = 0, pin_count = 0, bone_count = 0;
@@ -55,7 +54,6 @@ class EWBIK3D : public SkeletonModifier3D {
 	Vector<Ref<IKEffectorTemplate3D>> pins;
 	Vector<Ref<IKBone3D>> bone_list;
 	Vector<Vector2> joint_twist;
-	Vector<float> bone_damp;
 	Vector<Vector<Vector4>> kusudama_open_cones;
 	Vector<int> kusudama_open_cone_count;
 	float MAX_KUSUDAMA_OPEN_CONES = 10;
@@ -66,7 +64,7 @@ class EWBIK3D : public SkeletonModifier3D {
 	Ref<IKNode3D> ik_origin;
 	bool is_dirty = true;
 	NodePath skeleton_node_path = NodePath("..");
-	int32_t ui_selected_bone = -1, stabilize_passes = 0;
+	int32_t stabilize_passes = 0;
 
 	void _on_timer_timeout();
 	void _update_ik_bones_transform();
@@ -98,10 +96,6 @@ public:
 	int32_t get_stabilization_passes() const;
 	Transform3D get_godot_skeleton_transform_inverse();
 	Ref<IKNode3D> get_godot_skeleton_transform();
-	void set_ui_selected_bone(int32_t p_ui_selected_bone);
-	int32_t get_ui_selected_bone() const;
-	void set_constraint_mode(bool p_enabled);
-	bool get_constraint_mode() const;
 	bool get_pin_enabled(int32_t p_effector_index) const;
 	void register_skeleton();
 	void reset_constraints();

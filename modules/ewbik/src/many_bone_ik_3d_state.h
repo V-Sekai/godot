@@ -47,7 +47,6 @@ private:
 	// Simulation parameters
 	int iterations_per_frame = 10;
 	float default_damp = 0.1f;
-	bool constraint_mode = true;
 	int stabilization_passes = 1;
 
 protected:
@@ -65,9 +64,6 @@ public:
 
 	void set_default_damp(float p_damp);
 	float get_default_damp() const;
-
-	void set_constraint_mode(bool p_enabled);
-	bool get_constraint_mode() const;
 
 	void set_stabilization_passes(int p_passes);
 	int get_stabilization_passes() const;

@@ -56,9 +56,6 @@ void EWBIKState::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_default_damp", "damp"), &EWBIKState::set_default_damp);
 	ClassDB::bind_method(D_METHOD("get_default_damp"), &EWBIKState::get_default_damp);
 
-	ClassDB::bind_method(D_METHOD("set_constraint_mode", "enabled"), &EWBIKState::set_constraint_mode);
-	ClassDB::bind_method(D_METHOD("get_constraint_mode"), &EWBIKState::get_constraint_mode);
-
 	ClassDB::bind_method(D_METHOD("set_stabilization_passes", "passes"), &EWBIKState::set_stabilization_passes);
 	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &EWBIKState::get_stabilization_passes);
 }
@@ -93,14 +90,6 @@ void EWBIKState::set_default_damp(float p_damp) {
 
 float EWBIKState::get_default_damp() const {
 	return default_damp;
-}
-
-void EWBIKState::set_constraint_mode(bool p_enabled) {
-	constraint_mode = p_enabled;
-}
-
-bool EWBIKState::get_constraint_mode() const {
-	return constraint_mode;
 }
 
 void EWBIKState::set_stabilization_passes(int p_passes) {
@@ -221,14 +210,6 @@ Error EWBIKState::build_shadow_bones_from_skeleton(Skeleton3D *p_skeleton) {
 		}
 	}
 
-	// Initialize constraints (simplified - could be expanded)
-	shadow_constraints.bone_damp.resize(bone_count);
-	shadow_constraints.names.resize(bone_count);
-	for (int i = 0; i < bone_count; ++i) {
-		shadow_constraints.bone_damp.write[i] = default_damp;
-		shadow_constraints.names.write[i] = shadow_bones.names[i];
-	}
-
 	// Initialize IK chains from effectors
 	shadow_chains.clear();
 	for (const Ref<IKEffectorTemplate3D> &effector : effector_templates) {
@@ -329,11 +310,10 @@ Error EWBIKDocument::simulate_ik(Ref<EWBIKState> p_state, Skeleton3D *p_skeleton
 
 	// Set up IK algorithm state from the state parameters
 	float default_damp = p_state->get_default_damp();
-	bool is_constraint_mode = p_state->get_constraint_mode();
 
 	// Set up bone structures for IK solving
 	const Vector<Ref<IKEffectorTemplate3D>> &pins = p_state->get_effector_templates();
-	_bone_list_changed(p_state, p_skeleton, pins, bone_list, segmented_skeletons, ik_origin, bone_data, constraint_data, ik_chains);
+	_bone_list_changed(p_state, p_skeleton, pins, bone_list, segmented_skeletons, ik_origin, bone_data, ik_chains);
 
 	// Update IK bones with current skeleton transforms
 	_update_ik_bones_transform(bone_list);
@@ -345,7 +325,7 @@ Error EWBIKDocument::simulate_ik(Ref<EWBIKState> p_state, Skeleton3D *p_skeleton
 			if (segmented_skeleton.is_null()) {
 				continue;
 			}
-			segmented_skeleton->segment_solver(constraint_data.bone_damp, default_damp, is_constraint_mode, i, iterations);
+			segmented_skeleton->segment_solver(default_damp, i, iterations);
 		}
 	}
 
@@ -389,7 +369,6 @@ Error EWBIKDocument::apply_simulation_results(Ref<EWBIKState> p_state, Skeleton3
 	// Configure solver with state parameters
 	ik_solver->set_iterations_per_frame(p_state->get_iterations_per_frame());
 	ik_solver->set_default_damp(p_state->get_default_damp());
-	ik_solver->set_constraint_mode(p_state->get_constraint_mode());
 	ik_solver->set_stabilization_passes(p_state->get_stabilization_passes());
 
 	// Configure effector templates
@@ -433,7 +412,6 @@ Error EWBIKDocument::_extract_ik_from_scene(Node *p_node, Ref<EWBIKState> p_stat
 	// Extract solver configuration
 	p_state->set_iterations_per_frame(ik_solver->get_iterations_per_frame());
 	p_state->set_default_damp(ik_solver->get_default_damp());
-	p_state->set_constraint_mode(ik_solver->get_constraint_mode());
 	p_state->set_stabilization_passes(ik_solver->get_stabilization_passes());
 
 	// Extract effector templates by reconstructing from public API
@@ -460,7 +438,6 @@ Node *EWBIKDocument::_create_ik_scene_node(Ref<EWBIKState> p_state) {
 	// Configure with state parameters
 	ik_solver->set_iterations_per_frame(p_state->get_iterations_per_frame());
 	ik_solver->set_default_damp(p_state->get_default_damp());
-	ik_solver->set_constraint_mode(p_state->get_constraint_mode());
 	ik_solver->set_stabilization_passes(p_state->get_stabilization_passes());
 
 	// Copy effector configuration from templates
@@ -539,12 +516,6 @@ void EWBIKDocument::_bone_list_changed(Ref<EWBIKState> p_state, Skeleton3D *p_sk
 	r_bone_data.is_pinned.clear();
 	r_bone_data.bone_ids.clear();
 
-	r_constraint_data.names.clear();
-	r_constraint_data.joint_twist.clear();
-	r_constraint_data.kusudama_open_cones.clear();
-	r_constraint_data.kusudama_open_cone_count.clear();
-	r_constraint_data.bone_damp.clear();
-
 	r_ik_chains.clear();
 
 	// Create ik_origin once outside the loop
@@ -558,7 +529,6 @@ void EWBIKDocument::_bone_list_changed(Ref<EWBIKState> p_state, Skeleton3D *p_sk
 	}
 
 	int stabilize_passes = p_state->get_stabilization_passes();
-	float default_damp = p_state->get_default_damp();
 
 	for (BoneId root_bone_index : roots) {
 		String parentless_bone = p_skeleton->get_bone_name(root_bone_index);
@@ -610,13 +580,6 @@ void EWBIKDocument::_bone_list_changed(Ref<EWBIKState> p_state, Skeleton3D *p_sk
 				r_bone_data.local_transforms.write[i] = p_skeleton->get_bone_pose(bone->get_bone_id());
 			}
 		}
-	}
-
-	// Populate SOA constraint data
-	r_constraint_data.bone_damp.resize(bone_count);
-	for (int32_t i = 0; i < bone_count; ++i) {
-		r_constraint_data.bone_damp.write[i] = default_damp;
-		r_constraint_data.names.write[i] = r_bone_data.names[i];
 	}
 
 	// Update default bone direction transforms

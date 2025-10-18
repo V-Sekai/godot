@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  many_bone_ik_3d.cpp                                                   */
+/*  ewbik_3d.cpp                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,12 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+#include "ewbik_3d.h"
 #include "core/error/error_macros.h"
 #include "core/math/math_defs.h"
 #include "core/object/class_db.h"
 #include "core/object/object.h"
 #include "core/string/string_name.h"
-#include "ewbik_3d.h"
 #include "ik_bone_3d.h"
 #include "ik_bone_segment_3d.h"
 #include "many_bone_ik_3d_state.h"
@@ -429,18 +429,12 @@ void EWBIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_default_damp"), &EWBIK3D::get_default_damp);
 	ClassDB::bind_method(D_METHOD("set_default_damp", "damp"), &EWBIK3D::set_default_damp);
 	ClassDB::bind_method(D_METHOD("get_bone_count"), &EWBIK3D::get_bone_count);
-	ClassDB::bind_method(D_METHOD("set_constraint_mode", "enabled"), &EWBIK3D::set_constraint_mode);
-	ClassDB::bind_method(D_METHOD("get_constraint_mode"), &EWBIK3D::get_constraint_mode);
-	ClassDB::bind_method(D_METHOD("set_ui_selected_bone", "bone"), &EWBIK3D::set_ui_selected_bone);
-	ClassDB::bind_method(D_METHOD("get_ui_selected_bone"), &EWBIK3D::get_ui_selected_bone);
 	ClassDB::bind_method(D_METHOD("set_stabilization_passes", "passes"), &EWBIK3D::set_stabilization_passes);
 	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &EWBIK3D::get_stabilization_passes);
 	ClassDB::bind_method(D_METHOD("set_effector_bone_name", "index", "name"), &EWBIK3D::set_pin_bone_name);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations_per_frame", PROPERTY_HINT_RANGE, "1,150,1,or_greater"), "set_iterations_per_frame", "get_iterations_per_frame");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "default_damp", PROPERTY_HINT_RANGE, "0.01,180.0,0.1,radians,exp", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), "set_default_damp", "get_default_damp");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "constraint_mode"), "set_constraint_mode", "get_constraint_mode");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "ui_selected_bone", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_ui_selected_bone", "get_ui_selected_bone");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "stabilization_passes"), "set_stabilization_passes", "get_stabilization_passes");
 }
 
@@ -450,7 +444,6 @@ Ref<ManyBoneIK3DState> EWBIK3D::get_state() const {
 
 	state->set_iterations_per_frame(get_iterations_per_frame());
 	state->set_default_damp(get_default_damp());
-	state->set_constraint_mode(get_constraint_mode());
 	state->set_stabilization_passes(get_stabilization_passes());
 
 	// Copy effector templates
@@ -484,7 +477,6 @@ void EWBIK3D::set_state(Ref<ManyBoneIK3DState> p_state) {
 
 	set_iterations_per_frame(p_state->get_iterations_per_frame());
 	set_default_damp(p_state->get_default_damp());
-	set_constraint_mode(p_state->get_constraint_mode());
 	set_stabilization_passes(p_state->get_stabilization_passes());
 
 	// Copy effector templates
@@ -530,7 +522,6 @@ EWBIK3D::~EWBIK3D() {
 	joint_twist.clear();
 	kusudama_open_cones.clear();
 	kusudama_open_cone_count.clear();
-	bone_damp.clear();
 
 	// Clear transform references - Ref<> will handle cleanup automatically
 	godot_skeleton_transform.unref();
@@ -776,7 +767,7 @@ void EWBIK3D::_process_modification(double p_delta) {
 			if (segmented_skeleton.is_null()) {
 				continue;
 			}
-			segmented_skeleton->segment_solver(bone_damp, get_default_damp(), get_constraint_mode(), i, get_iterations_per_frame());
+			segmented_skeleton->segment_solver(get_default_damp(), i, get_iterations_per_frame());
 		}
 	}
 	_update_skeleton_bones_transform();
@@ -843,10 +834,6 @@ void EWBIK3D::remove_pin_at_index(int32_t p_index) {
 }
 
 void EWBIK3D::_set_bone_count(int32_t p_count) {
-	bone_damp.resize(p_count);
-	for (int32_t bone_i = p_count; bone_i-- > bone_count;) {
-		bone_damp.write[bone_i] = get_default_damp();
-	}
 	bone_count = p_count;
 	set_dirty();
 	notify_property_list_changed();
@@ -919,22 +906,6 @@ void EWBIK3D::reset_constraints() {
 		_set_bone_count(saved_constraint_count);
 	}
 	set_dirty();
-}
-
-bool EWBIK3D::get_constraint_mode() const {
-	return is_constraint_mode;
-}
-
-void EWBIK3D::set_constraint_mode(bool p_enabled) {
-	is_constraint_mode = p_enabled;
-}
-
-int32_t EWBIK3D::get_ui_selected_bone() const {
-	return ui_selected_bone;
-}
-
-void EWBIK3D::set_ui_selected_bone(int32_t p_ui_selected_bone) {
-	ui_selected_bone = p_ui_selected_bone;
 }
 
 void EWBIK3D::set_stabilization_passes(int32_t p_passes) {

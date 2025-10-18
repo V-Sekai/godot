@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="EWBIKDocument" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="append_from_scene" qualifiers="static">
+			<return type="int" enum="Error" />
+			<param index="0" name="node" type="Node" />
+			<param index="1" name="state" type="EWBIKState" />
+			<param index="2" name="flags" type="int" default="0" />
+			<description>
+			</description>
+		</method>
+		<method name="apply_simulation_results" qualifiers="static">
+			<return type="int" enum="Error" />
+			<param index="0" name="state" type="EWBIKState" />
+			<param index="1" name="skeleton" type="Skeleton3D" />
+			<description>
+			</description>
+		</method>
+		<method name="generate_scene" qualifiers="static">
+			<return type="Node" />
+			<param index="0" name="state" type="EWBIKState" />
+			<param index="1" name="apply_simulation" type="bool" default="true" />
+			<description>
+			</description>
+		</method>
+		<method name="simulate_ik" qualifiers="static">
+			<return type="int" enum="Error" />
+			<param index="0" name="state" type="EWBIKState" />
+			<param index="1" name="skeleton" type="Skeleton3D" />
+			<description>
+			</description>
+		</method>
+		<method name="simulate_ik_state_only" qualifiers="static">
+			<return type="int" enum="Error" />
+			<param index="0" name="state" type="EWBIKState" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
