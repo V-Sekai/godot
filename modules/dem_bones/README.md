@@ -50,4 +50,3 @@ Dem Bones was created by Binh Le (ble@ea.com). The [logo](logo/DemBones.png) was
 
 - The source code, including `include/DemBones` uses *BSD 3-Clause License* as detailed in [LICENSE.md](LICENSE.md)
 - The pre-compiled command line tool `bin/DemBones`(`.exe`) uses third party libraries: Eigen with licenses in [3RDPARTYLICENSES.md](3RDPARTYLICENSES.md)
-
