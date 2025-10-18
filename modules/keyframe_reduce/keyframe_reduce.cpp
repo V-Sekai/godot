@@ -73,6 +73,21 @@ LocalVector<double> BezierKeyframeReduce::_float_range(double p_start, double p_
 }
 
 void BezierKeyframeReduce::_fit_cubic(const LocalVector<Bezier> &p_curves, LocalVector<Bezier> &r_keyframes, uint32_t p_first, uint32_t p_last, Vector2Bezier p_tan_1, Vector2Bezier p_tan_2, real_t p_error) {
+	// Check for zero handles in the region - be very conservative if found
+	for (uint32_t i = p_first; i <= p_last; i++) {
+		real_t in_len = p_curves[i].in_handle.length();
+		real_t out_len = p_curves[i].out_handle.length();
+		if (in_len < 0.001f || out_len < 0.001f) {
+			// Found zero handles - add all points as keyframes to preserve discontinuities
+			for (uint32_t j = p_first; j <= p_last; j++) {
+				if (r_keyframes.is_empty() || r_keyframes[r_keyframes.size() - 1].time_value != p_curves[j].time_value) {
+					r_keyframes.push_back(p_curves[j]);
+				}
+			}
+			return;
+		}
+	}
+
 	//use heuristic if region only has two points in it
 	if (p_last - p_first == 1) {
 		// get points
@@ -467,7 +482,17 @@ LocalVector<int32_t> BezierKeyframeReduce::_find_tangent_split_existing(const Lo
 		// get closest index
 		int32_t index = int((i - p_start) / p_step);
 
-		// validate split
+		// Check for zero handles (instantaneous changes) - these should force splits
+		real_t in_handle_length = p_frames[i].in_handle.length();
+		real_t out_handle_length = p_frames[i].out_handle.length();
+
+		// Zero handles indicate intentional discontinuities - always split around them
+		if (in_handle_length < 0.001f || out_handle_length < 0.001f) {
+			splits.push_back(index);
+			continue;
+		}
+
+		// Check for significant tangent discontinuities (sharp direction changes)
 		Vector2 frame_abs = (p_frames[i].out_handle - p_frames[i].in_handle).abs();
 		if (frame_abs.x > CMP_EPSILON && frame_abs.y > CMP_EPSILON) {
 			splits.push_back(index);
