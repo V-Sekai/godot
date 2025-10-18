@@ -51,14 +51,6 @@ struct BoneSOA {
 	Vector<int32_t> bone_ids;
 };
 
-struct ConstraintSOA {
-	Vector<String> names;
-	Vector<Vector2> joint_twist;
-	Vector<Vector<Vector4>> kusudama_open_cones;
-	Vector<int32_t> kusudama_open_cone_count;
-	Vector<float> bone_damp;
-};
-
 struct IKChainSOA {
 	Vector<int32_t> bone_indices;
 	Vector<float> weights;
@@ -75,7 +67,6 @@ private:
 
 	// Complete abstracted skeleton data (shadow bones)
 	BoneSOA shadow_bones;
-	ConstraintSOA shadow_constraints;
 	Vector<IKChainSOA> shadow_chains;
 
 	// IK configuration data
@@ -119,9 +110,6 @@ public:
 	void set_shadow_bones(const BoneSOA &p_bones);
 	const BoneSOA &get_shadow_bones() const;
 
-	void set_shadow_constraints(const ConstraintSOA &p_constraints);
-	const ConstraintSOA &get_shadow_constraints() const;
-
 	void set_shadow_chains(const Vector<IKChainSOA> &p_chains);
 	const Vector<IKChainSOA> &get_shadow_chains() const;
 
@@ -150,7 +138,7 @@ private:
 	// IK algorithm methods - all take state as parameters
 	static void _bone_list_changed(Ref<EWBIKState> p_state, Skeleton3D *p_skeleton, const Vector<Ref<IKEffectorTemplate3D>> &p_pins,
 			Vector<Ref<IKBone3D>> &r_bone_list, Vector<Ref<IKBoneSegment3D>> &r_segmented_skeletons,
-			Ref<IKNode3D> &r_ik_origin, BoneSOA &r_bone_data, ConstraintSOA &r_constraint_data,
+			Ref<IKNode3D> &r_ik_origin, BoneSOA &r_bone_data,
 			Vector<IKChainSOA> &r_ik_chains);
 	static void _update_ik_bones_transform(const Vector<Ref<IKBone3D>> &p_bone_list);
 	static void _update_skeleton_bones_transform(const Vector<Ref<IKBone3D>> &p_bone_list, Skeleton3D *p_skeleton);

@@ -154,14 +154,6 @@ const BoneSOA &EWBIKState::get_shadow_bones() const {
 	return shadow_bones;
 }
 
-void EWBIKState::set_shadow_constraints(const ConstraintSOA &p_constraints) {
-	shadow_constraints = p_constraints;
-}
-
-const ConstraintSOA &EWBIKState::get_shadow_constraints() const {
-	return shadow_constraints;
-}
-
 void EWBIKState::set_shadow_chains(const Vector<IKChainSOA> &p_chains) {
 	shadow_chains = p_chains;
 }
@@ -333,7 +325,6 @@ Error EWBIKDocument::simulate_ik(Ref<EWBIKState> p_state, Skeleton3D *p_skeleton
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
 	Ref<IKNode3D> ik_origin;
 	BoneSOA bone_data;
-	ConstraintSOA constraint_data;
 	Vector<IKChainSOA> ik_chains;
 
 	// Set up IK algorithm state from the state parameters
@@ -531,7 +522,7 @@ Skeleton3D *EWBIKDocument::_find_skeleton_in_scene(Node *p_node) {
 
 void EWBIKDocument::_bone_list_changed(Ref<EWBIKState> p_state, Skeleton3D *p_skeleton, const Vector<Ref<IKEffectorTemplate3D>> &p_pins,
 		Vector<Ref<IKBone3D>> &r_bone_list, Vector<Ref<IKBoneSegment3D>> &r_segmented_skeletons,
-		Ref<IKNode3D> &r_ik_origin, BoneSOA &r_bone_data, ConstraintSOA &r_constraint_data,
+		Ref<IKNode3D> &r_ik_origin, BoneSOA &r_bone_data,
 		Vector<IKChainSOA> &r_ik_chains) {
 	ERR_FAIL_NULL(p_skeleton);
 
