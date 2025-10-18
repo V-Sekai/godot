@@ -180,56 +180,6 @@ void EWBIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 		p_list->push_back(
 				PropertyInfo(Variant::VECTOR3, "pins/" + itos(pin_i) + "/direction_priorities", PROPERTY_HINT_RANGE, "0,1,0.1,or_greater", pin_usage));
 	}
-	uint32_t constraint_usage = PROPERTY_USAGE_DEFAULT;
-	p_list->push_back(
-			PropertyInfo(Variant::INT, "constraint_count",
-					PROPERTY_HINT_RANGE, "0,256,or_greater", constraint_usage | PROPERTY_USAGE_ARRAY | PROPERTY_USAGE_READ_ONLY,
-					"Kusudama Constraints,constraints/"));
-	RBSet<String> existing_constraints;
-	for (int constraint_i = 0; constraint_i < get_constraint_count(); constraint_i++) {
-		PropertyInfo bone_name;
-		bone_name.type = Variant::STRING_NAME;
-		bone_name.usage = constraint_usage;
-		bone_name.name = "constraints/" + itos(constraint_i) + "/bone_name";
-		if (get_skeleton()) {
-			String names;
-			for (int bone_i = 0; bone_i < get_skeleton()->get_bone_count(); bone_i++) {
-				String name = get_skeleton()->get_bone_name(bone_i);
-				if (existing_constraints.has(name)) {
-					continue;
-				}
-				name += ",";
-				names += name;
-				existing_constraints.insert(name);
-			}
-			bone_name.hint = PROPERTY_HINT_ENUM_SUGGESTION;
-			bone_name.hint_string = names;
-		} else {
-			bone_name.hint = PROPERTY_HINT_NONE;
-			bone_name.hint_string = "";
-		}
-		p_list->push_back(bone_name);
-		p_list->push_back(
-				PropertyInfo(Variant::FLOAT, "constraints/" + itos(constraint_i) + "/twist_start", PROPERTY_HINT_RANGE, "-359.9,359.9,0.1,radians,exp", constraint_usage));
-		p_list->push_back(
-				PropertyInfo(Variant::FLOAT, "constraints/" + itos(constraint_i) + "/twist_end", PROPERTY_HINT_RANGE, "-359.9,359.9,0.1,radians,exp", constraint_usage));
-		p_list->push_back(
-				PropertyInfo(Variant::INT, "constraints/" + itos(constraint_i) + "/kusudama_open_cone_count", PROPERTY_HINT_RANGE, "0,10,1", constraint_usage | PROPERTY_USAGE_ARRAY | PROPERTY_USAGE_READ_ONLY,
-						"Limit Cones,constraints/" + itos(constraint_i) + "/kusudama_open_cone/"));
-		for (int cone_i = 0; cone_i < get_kusudama_open_cone_count(constraint_i); cone_i++) {
-			p_list->push_back(
-					PropertyInfo(Variant::VECTOR3, "constraints/" + itos(constraint_i) + "/kusudama_open_cone/" + itos(cone_i) + "/center", PROPERTY_HINT_RANGE, "-1,1,0.1,exp", constraint_usage));
-
-			p_list->push_back(
-					PropertyInfo(Variant::FLOAT, "constraints/" + itos(constraint_i) + "/kusudama_open_cone/" + itos(cone_i) + "/radius", PROPERTY_HINT_RANGE, "0,180,0.1,radians,exp", constraint_usage));
-		}
-		p_list->push_back(
-				PropertyInfo(Variant::TRANSFORM3D, "constraints/" + itos(constraint_i) + "/kusudama_twist", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
-		p_list->push_back(
-				PropertyInfo(Variant::TRANSFORM3D, "constraints/" + itos(constraint_i) + "/kusudama_orientation", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
-		p_list->push_back(
-				PropertyInfo(Variant::TRANSFORM3D, "constraints/" + itos(constraint_i) + "/bone_direction", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
-	}
 }
 
 bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
@@ -263,45 +213,6 @@ bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
 			return true;
 		} else if (what == "direction_priorities") {
 			r_ret = get_pin_direction_priorities(index);
-			return true;
-		}
-	} else if (name.begins_with("constraints/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
-		ERR_FAIL_INDEX_V(index, constraint_count, false);
-		String begins = "constraints/" + itos(index) + "/kusudama_open_cone";
-		if (what == "bone_name") {
-			ERR_FAIL_INDEX_V(index, constraint_names.size(), false);
-			r_ret = constraint_names[index];
-			return true;
-		} else if (what == "twist_start") {
-			r_ret = get_joint_twist(index).x;
-			return true;
-		} else if (what == "twist_end") {
-			r_ret = get_joint_twist(index).y;
-			return true;
-		} else if (what == "kusudama_open_cone_count") {
-			r_ret = get_kusudama_open_cone_count(index);
-			return true;
-		} else if (name.begins_with(begins)) {
-			int32_t cone_index = name.get_slicec('/', 3).to_int();
-			String cone_what = name.get_slicec('/', 4);
-			if (cone_what == "center") {
-				Vector3 center = get_kusudama_open_cone_center(index, cone_index);
-				r_ret = center;
-				return true;
-			} else if (cone_what == "radius") {
-				r_ret = get_kusudama_open_cone_radius(index, cone_index);
-				return true;
-			}
-		} else if (what == "bone_direction") {
-			r_ret = get_direction_transform_of_bone(index);
-			return true;
-		} else if (what == "kusudama_orientation") {
-			r_ret = get_orientation_transform_of_constraint(index);
-			return true;
-		} else if (what == "kusudama_twist") {
-			r_ret = get_twist_transform_of_constraint(index);
 			return true;
 		}
 	}
@@ -338,50 +249,7 @@ bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 			set_pin_direction_priorities(index, p_value);
 			return true;
 		}
-	} else if (name.begins_with("constraints/")) {
-		int index = name.get_slicec('/', 1).to_int();
-		String what = name.get_slicec('/', 2);
-		String begins = "constraints/" + itos(index) + "/kusudama_open_cone/";
-		if (index >= constraint_names.size()) {
-			_set_constraint_count(constraint_count);
-		}
-		if (what == "bone_name") {
-			set_constraint_name_at_index(index, p_value);
-			return true;
-
-		} else if (what == "twist_start") {
-			Vector2 twist_from = get_joint_twist(index);
-			set_joint_twist(index, Vector2(p_value, twist_from.y));
-			return true;
-		} else if (what == "twist_end") {
-			Vector2 twist_range = get_joint_twist(index);
-			set_joint_twist(index, Vector2(twist_range.x, p_value));
-			return true;
-		} else if (what == "kusudama_open_cone_count") {
-			set_kusudama_open_cone_count(index, p_value);
-			return true;
-		} else if (name.begins_with(begins)) {
-			int cone_index = name.get_slicec('/', 3).to_int();
-			String cone_what = name.get_slicec('/', 4);
-			if (cone_what == "center") {
-				set_kusudama_open_cone_center(index, cone_index, p_value);
-				return true;
-			} else if (cone_what == "radius") {
-				set_kusudama_open_cone_radius(index, cone_index, p_value);
-				return true;
-			}
-		} else if (what == "bone_direction") {
-			set_direction_transform_of_bone(index, p_value);
-			return true;
-		} else if (what == "kusudama_orientation") {
-			set_orientation_transform_of_constraint(index, p_value);
-			return true;
-		} else if (what == "kusudama_twist") {
-			set_twist_transform_of_constraint(index, p_value);
-			return true;
-		}
 	}
-
 	return false;
 }
 
