@@ -310,7 +310,10 @@ bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
 
 bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 	String name = p_name;
-	if (name == "pin_count") {
+	if (name == "constraint_count") {
+		_set_constraint_count(p_value);
+		return true;
+	} else if (name == "pin_count") {
 		set_pin_count(p_value);
 		return true;
 	} else if (name.begins_with("pins/")) {
@@ -333,6 +336,48 @@ bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 			return true;
 		} else if (what == "direction_priorities") {
 			set_pin_direction_priorities(index, p_value);
+			return true;
+		}
+	} else if (name.begins_with("constraints/")) {
+		int index = name.get_slicec('/', 1).to_int();
+		String what = name.get_slicec('/', 2);
+		String begins = "constraints/" + itos(index) + "/kusudama_open_cone/";
+		if (index >= constraint_names.size()) {
+			_set_constraint_count(constraint_count);
+		}
+		if (what == "bone_name") {
+			set_constraint_name_at_index(index, p_value);
+			return true;
+
+		} else if (what == "twist_start") {
+			Vector2 twist_from = get_joint_twist(index);
+			set_joint_twist(index, Vector2(p_value, twist_from.y));
+			return true;
+		} else if (what == "twist_end") {
+			Vector2 twist_range = get_joint_twist(index);
+			set_joint_twist(index, Vector2(twist_range.x, p_value));
+			return true;
+		} else if (what == "kusudama_open_cone_count") {
+			set_kusudama_open_cone_count(index, p_value);
+			return true;
+		} else if (name.begins_with(begins)) {
+			int cone_index = name.get_slicec('/', 3).to_int();
+			String cone_what = name.get_slicec('/', 4);
+			if (cone_what == "center") {
+				set_kusudama_open_cone_center(index, cone_index, p_value);
+				return true;
+			} else if (cone_what == "radius") {
+				set_kusudama_open_cone_radius(index, cone_index, p_value);
+				return true;
+			}
+		} else if (what == "bone_direction") {
+			set_direction_transform_of_bone(index, p_value);
+			return true;
+		} else if (what == "kusudama_orientation") {
+			set_orientation_transform_of_constraint(index, p_value);
+			return true;
+		} else if (what == "kusudama_twist") {
+			set_twist_transform_of_constraint(index, p_value);
 			return true;
 		}
 	}
