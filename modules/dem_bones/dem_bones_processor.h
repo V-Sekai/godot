@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  MatBlocks.h                                                           */
+/*  dem_bones_processor.h                                                 */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,36 +30,29 @@
 
 #pragma once
 
-///////////////////////////////////////////////////////////////////////////////
-//               Dem Bones - Skinning Decomposition Library                  //
-//         Copyright (c) 2019, Electronic Arts. All rights reserved.         //
-///////////////////////////////////////////////////////////////////////////////
+#include "core/io/resource.h"
+#include "scene/3d/mesh_instance_3d.h"
+#include "scene/animation/animation_player.h"
 
-/** @file "DemBones/MatBlocks.h"
-		@brief Defines some macros to access sub-blocks of packing
-   transformation/position matrices for convenience
+class DemBonesProcessor : public Resource {
+	GDCLASS(DemBonesProcessor, Resource);
 
-		@details These definitions are not included by default although they are
-   used in @p DemBones and @p DemBonesExt (they are undefined at the end of the
-   files).
-*/
+protected:
+	static void _bind_methods();
 
-#ifndef DEM_BONES_MAT_BLOCKS
-#define DEM_BONES_MAT_BLOCKS
+public:
+	Error process_animation(AnimationPlayer *p_animation_player, MeshInstance3D *p_mesh_instance, const StringName &p_animation_name);
 
-//! A 4*4 sub-block that represents a transformation matrix, typically @p k
-//! denotes frame number and @p j denotes bone index
-#define blk4(k, j) template block<4, 4>((k) * 4, (j) * 4)
+	PackedVector3Array get_rest_vertices() const;
+	Array get_skinning_weights() const;
+	Array get_bone_transforms() const;
+	int get_bone_count() const;
 
-//! The 3*3 rotation part or the transformation matrix #blk4(@p k, @p j)
-#define rotMat(k, j) template block<3, 3>((k) * 4, (j) * 4)
+	DemBonesProcessor();
 
-//! The 3*1 translation vector part or the transformation matrix #blk4(@p k, @p
-//! j)
-#define transVec(k, j) col((j) * 4 + 3).template segment<3>((k) * 4)
-
-//! A 3*1 sub-block that represents position of a vertex, typically @p k denotes
-//! frame number and @p i denotes vertex index
-#define vec3(k, i) col(i).template segment<3>((k) * 3)
-
-#endif
+private:
+	PackedVector3Array rest_vertices;
+	Array skinning_weights;
+	Array bone_transforms;
+	int bone_count = 0;
+};

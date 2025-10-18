@@ -1,3 +1,35 @@
+/**************************************************************************/
+/*  dem_bones_extension.h                                                 */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
+
 ///////////////////////////////////////////////////////////////////////////////
 //               Dem Bones - Skinning Decomposition Library                  //
 //         Copyright (c) 2019, Electronic Arts. All rights reserved.         //
@@ -105,7 +137,7 @@ public:
 	//! [@c parameter] Number of global iterations
 	int nIters = 30;
 
-	//! [@c parameter] Number of clustering update iterations in the initalization
+	//! [@c parameter] Number of clustering update iterations in the initialization
 	int nInitIters = 10;
 
 	//! [@c parameter] Number of bone transformations update iterations per global
@@ -210,7 +242,7 @@ public:
 	 *     missing matrix, i.e. #skinning_weights (or #bone_transform_mat)
 	 *   - Both #skinning_weights and #bone_transform_mat are missing (zero size): initialize both with
 	 *     rigid skinning using approximately #num_bones bones, i.e. values of #skinning_weights are 0 or 1.
-	 *     LBG-VQ clustering is peformed using mesh sequence #vertex, rest
+	 *     LBG-VQ clustering is performed using mesh sequence #vertex, rest
 	 *     pose geometries #rest_pose_geometry and topology #fv.
 	 *   @b Note: as the initialization does not use exactly #num_bones bones,
 	 *     the value of #num_bones could be changed when both #skinning_weights and #bone_transform_mat are missing.
@@ -448,10 +480,10 @@ public:
 		return std::sqrt(e / num_total_frames / num_vertices);
 	}
 
-	//! Callback function invoked before each spliting of bone clusters in
+	//! Callback function invoked before each splitting of bone clusters in
 	//! initialization
 	virtual void cbInitSplitBegin() {}
-	//! Callback function invoked after each spliting of bone clusters in
+	//! Callback function invoked after each splitting of bone clusters in
 	//! initialization
 	virtual void cbInitSplitEnd() {}
 
@@ -635,7 +667,7 @@ private:
 	/** Split bone clusters
 		  @param maxB is the maximum number of bones
 		  @param threshold*2 is the minimum size of the bone cluster to be
-	 splited
+	 split
   */
 	void split(int maxB, int threshold) {
 		// Centroids
@@ -1044,11 +1076,10 @@ private:
 #define DEM_BONES_DEM_BONES_EXT_MAT_BLOCKS_UNDEFINED
 #endif
 
-#include "core/config/engine.h"
-#include "dem_bones.h"
+#include "modules/dem_bones/dem_bones.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/animation/animation_player.h"
-#include "scene/resources/importer_mesh.h"
+#include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/mesh.h"
 
 namespace Dem {
