@@ -63,6 +63,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
 	uses_depth_prepass_alpha = false;
+	uses_alpha_order_independent = false;
 	uses_discard = false;
 	uses_roughness = false;
 	uses_normal = false;
@@ -126,6 +127,8 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.usage_flag_pointers["ALPHA_ANTIALIASING_EDGE"] = &uses_alpha_antialiasing;
 	actions.usage_flag_pointers["ALPHA_TEXTURE_COORDINATE"] = &uses_alpha_antialiasing;
 	actions.render_mode_flags["depth_prepass_alpha"] = &uses_depth_prepass_alpha;
+	actions.render_mode_flags["alpha_order_independent"] = &uses_alpha_order_independent;
+	actions.render_mode_flags["alpha_order_independent"] = &uses_alpha_order_independent;
 
 	actions.usage_flag_pointers["SSS_STRENGTH"] = &uses_sss;
 	actions.usage_flag_pointers["SSS_TRANSMITTANCE_DEPTH"] = &uses_transmittance;
@@ -601,13 +604,19 @@ Mutex SceneShaderForwardClustered::singleton_mutex;
 SceneShaderForwardClustered::SceneShaderForwardClustered() {
 	// there should be only one of these, contained within our RenderFM singleton.
 	singleton = this;
+
+	// Create dummy OIT buffers.
+	default_oit_tile_buffer = RD::get_singleton()->storage_buffer_create(256);
+	default_oit_fragment_buffer = RD::get_singleton()->storage_buffer_create(256);
+	default_oit_counter_buffer = RD::get_singleton()->storage_buffer_create(256);
 }
 
 SceneShaderForwardClustered::~SceneShaderForwardClustered() {
 	RendererRD::MaterialStorage *material_storage = RendererRD::MaterialStorage::get_singleton();
 
-	RD::get_singleton()->free_rid(default_vec4_xform_buffer);
-	RD::get_singleton()->free_rid(shadow_sampler);
+	RD::get_singleton()->free_rid(default_oit_tile_buffer);
+	RD::get_singleton()->free_rid(default_oit_fragment_buffer);
+	RD::get_singleton()->free_rid(default_oit_counter_buffer);
 
 	material_storage->shader_free(overdraw_material_shader);
 	material_storage->shader_free(default_shader);
@@ -834,6 +843,8 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 		actions.render_mode_defines["cull_disabled"] = "#define DO_SIDE_CHECK\n";
 		actions.render_mode_defines["particle_trails"] = "#define USE_PARTICLE_TRAILS\n";
 		actions.render_mode_defines["depth_prepass_alpha"] = "#define USE_OPAQUE_PREPASS\n";
+		actions.render_mode_defines["alpha_order_independent"] = "#define USE_ALPHA_ORDER_INDEPENDENT\n";
+		actions.render_mode_defines["alpha_order_independent"] = "#define USE_ALPHA_ORDER_INDEPENDENT\n";
 
 		bool force_lambert = GLOBAL_GET("rendering/shading/overrides/force_lambert_over_burley");
 
@@ -959,25 +970,6 @@ void fragment() {
 		debug_shadow_splits_material_uniform_set = md->uniform_set;
 	}
 
-	{
-		default_vec4_xform_buffer = RD::get_singleton()->storage_buffer_create(256);
-		Vector<RD::Uniform> uniforms;
-		RD::Uniform u;
-		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
-		u.append_id(default_vec4_xform_buffer);
-		u.binding = 0;
-		uniforms.push_back(u);
-
-		default_vec4_xform_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, default_shader_rd, RenderForwardClustered::TRANSFORMS_UNIFORM_SET);
-	}
-	{
-		RD::SamplerState sampler;
-		sampler.mag_filter = RD::SAMPLER_FILTER_LINEAR;
-		sampler.min_filter = RD::SAMPLER_FILTER_LINEAR;
-		sampler.enable_compare = true;
-		sampler.compare_op = RD::COMPARE_OP_GREATER;
-		shadow_sampler = RD::get_singleton()->sampler_create(sampler);
-	}
 }
 
 void SceneShaderForwardClustered::set_default_specialization(const ShaderSpecialization &p_specialization) {

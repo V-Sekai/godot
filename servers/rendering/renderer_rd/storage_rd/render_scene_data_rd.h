@@ -172,6 +172,8 @@ private:
 		float IBL_exposure_normalization; // Adjusts for baked exposure.
 		uint32_t camera_visible_layers;
 		float pass_alpha_multiplier;
+		uint32_t view_count; // Added for OIT and Multiview
+		uint32_t padding[7]; // Pad to 5696 bytes
 	};
 
 	struct UBODATA {

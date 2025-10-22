@@ -3,6 +3,7 @@
 
 #include "../decal_data_inc.glsl"
 #include "../scene_data_inc.glsl"
+#include "../implementation_data_inc.glsl"
 
 #if !defined(MODE_RENDER_DEPTH) || defined(MODE_RENDER_MATERIAL) || defined(TANGENT_USED) || defined(NORMAL_MAP_USED) || defined(BENT_NORMAL_MAP_USED) || defined(LIGHT_ANISOTROPY_USED)
 #ifndef NORMAL_USED
@@ -164,6 +165,10 @@ uint sc_directional_penumbra_shadow_samples() {
 	return (sc_packed_1() >> 6) & 63U;
 }
 
+bool sc_use_oit() {
+	return ((sc_packed_1() >> 10) & 1U) != 0;
+}
+
 #define SHADER_COUNT_NONE 0
 #define SHADER_COUNT_SINGLE 1
 #define SHADER_COUNT_MULTIPLE 2
@@ -301,6 +306,40 @@ layout(set = 0, binding = 12, std430) restrict readonly buffer GlobalShaderUnifo
 global_shader_uniforms;
 
 layout(set = 0, binding = 13) uniform sampler DEFAULT_SAMPLER_LINEAR_WITH_MIPMAPS_CLAMP;
+
+/*
+	OIT data structures (Overdraw Transparency - always declared for transparent rendering)
+*/
+struct TileData {
+	uint fragment_head;
+	uint fragment_count;
+	uint min_depth;
+	uint max_depth;
+};
+
+struct FragmentData {
+	uint next;
+	uint depth_packed;
+	uint color_packed;
+	uint padding;
+};
+
+// OIT buffers - always declared
+layout(std430, set = 1, binding = 37) restrict buffer OITTileBuffer {
+	TileData tiles[];
+};
+
+layout(std430, set = 1, binding = 38) restrict buffer OITFragmentBuffer {
+	FragmentData fragments[];
+};
+
+layout(std430, set = 1, binding = 39) restrict buffer OITFragmentCounterBuffer {
+	uint fragment_counter[];
+};
+
+// OIT parameters (can be passed via push constants or defines)
+const int OIT_TILE_SIZE = 16;
+const int OIT_DEPTH_BINS = 8;
 
 /* Set 1: Render Pass (changes per render pass) */
 

@@ -10,6 +10,7 @@
 /* Include our forward mobile UBOs definitions etc. */
 #include "scene_forward_mobile_inc.glsl"
 
+
 #define SHADER_IS_SRGB false
 #define SHADER_SPACE_FAR 0.0
 
@@ -794,6 +795,10 @@ void main() {
 #version 450
 
 #VERSION_DEFINES
+
+#ifdef USE_ALPHA_ORDER_INDEPENDENT
+#include "../effects/oit_dispatch.glsl.inc"
+#endif
 
 #define SHADER_IS_SRGB false
 #define SHADER_SPACE_FAR 0.0
@@ -2224,6 +2229,23 @@ void main() {
 #endif
 
 	frag_color = out_color;
+
+#ifdef USE_ALPHA_ORDER_INDEPENDENT
+	// OIT
+	if (bool(implementation_data.ss_effects_flags & SCREEN_SPACE_EFFECTS_FLAGS_USE_OIT_DEBUG)) {
+		uint screen_width = uint(scene_data.viewport_size.x);
+		uint screen_height = uint(scene_data.viewport_size.y);
+		frag_color.rgb = oit_debug_tile_visualization(gl_FragCoord.xy, screen_width, screen_height);
+	}
+
+	// OIT
+	if (bool(implementation_data.ss_effects_flags & SCREEN_SPACE_EFFECTS_FLAGS_USE_OIT)) {
+		uint screen_width = uint(scene_data.viewport_size.x);
+		uint screen_height = uint(scene_data.viewport_size.y);
+		oit_collect_fragment(frag_color, true, screen_width, screen_height, scene_data.view_count, implementation_data.max_fragments);
+		discard; // Prevent standard alpha blending
+	}
+#endif
 
 	if (sc_use_material_debanding()) {
 		// From https://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf

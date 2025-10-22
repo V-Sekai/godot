@@ -108,7 +108,7 @@ public:
 				uint32_t scene_use_ambient_cubemap : 1;
 				uint32_t scene_use_reflection_cubemap : 1;
 				uint32_t scene_roughness_limiter_enabled : 1;
-				uint32_t padding_0 : 1;
+				uint32_t use_oit : 1;
 
 				uint32_t soft_shadow_samples : 6;
 				uint32_t penumbra_shadow_samples : 6;
@@ -192,8 +192,8 @@ public:
 		};
 
 		struct PipelineKey {
-			RD::VertexFormatID vertex_format_id;
-			RD::FramebufferFormatID framebuffer_format_id;
+			RD::VertexFormatID vertex_format_id = 0LL;
+			RD::FramebufferFormatID framebuffer_format_id = 0LL;
 			RD::PolygonCullMode cull_mode = RD::POLYGON_CULL_MAX;
 			RS::PrimitiveType primitive_type = RS::PRIMITIVE_MAX;
 			ShaderSpecialization shader_specialization = {};
@@ -248,6 +248,7 @@ public:
 		bool uses_alpha_clip = false;
 		bool uses_alpha_antialiasing = false;
 		bool uses_depth_prepass_alpha = false;
+		bool uses_alpha_order_independent = false;
 		bool uses_discard = false;
 		bool uses_roughness = false;
 		bool uses_normal = false;
@@ -356,6 +357,10 @@ public:
 
 	RID default_vec4_xform_buffer;
 	RID default_vec4_xform_uniform_set;
+
+	RID default_oit_tile_buffer;
+	RID default_oit_fragment_buffer;
+	RID default_oit_counter_buffer;
 
 	RID shadow_sampler;
 

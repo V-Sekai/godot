@@ -121,6 +121,14 @@ public:
 
 		RID render_sdfgi_uniform_set;
 
+		RID oit_tile_buffer;
+		RID oit_fragment_buffer;
+		RID oit_counter_buffer;
+		bool oit_buffers_created = false;
+
+		void ensure_oit_buffers(Size2i p_internal_size, uint32_t p_view_count);
+		void free_oit_buffers();
+
 		void ensure_specular();
 		bool has_specular() const { return render_buffers->has_texture(RB_SCOPE_FORWARD_CLUSTERED, RB_TEX_SPECULAR); }
 		RID get_specular() const { return render_buffers->get_texture(RB_SCOPE_FORWARD_CLUSTERED, RB_TEX_SPECULAR); }
@@ -309,6 +317,8 @@ private:
 			float volumetric_fog_inv_length;
 			float volumetric_fog_detail_spread;
 			uint32_t volumetric_fog_pad;
+			uint32_t max_fragments; // Added for OIT
+			uint32_t padding[3]; // Pad to 160 bytes
 		};
 
 		struct PushConstantUbershader {
