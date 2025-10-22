@@ -241,6 +241,7 @@ public:
 		bool uses_alpha_clip = false;
 		bool uses_alpha_antialiasing = false;
 		bool uses_depth_prepass_alpha = false;
+		bool uses_alpha_order_independent = false;
 		bool uses_discard = false;
 		bool uses_roughness = false;
 		bool uses_normal = false;
@@ -352,10 +353,12 @@ public:
 	RID default_shader_rd;
 	RID default_shader_sdfgi_rd;
 
-	RID default_vec4_xform_buffer;
-	RID default_vec4_xform_uniform_set;
+	RID default_oit_tile_buffer;
+	RID default_oit_fragment_buffer;
+	RID default_oit_counter_buffer;
+	RID default_transforms_buffer;
+	RID default_transforms_uniform_set;
 
-	RID shadow_sampler;
 
 	RID default_material_uniform_set;
 	ShaderData *default_material_shader_ptr = nullptr;

@@ -65,6 +65,7 @@ void SceneShaderForwardMobile::ShaderData::set_code(const String &p_code) {
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
 	uses_depth_prepass_alpha = false;
+	uses_alpha_order_independent = false;
 	uses_discard = false;
 	uses_roughness = false;
 	uses_normal = false;
@@ -126,6 +127,7 @@ void SceneShaderForwardMobile::ShaderData::set_code(const String &p_code) {
 	actions.usage_flag_pointers["ALPHA_ANTIALIASING_EDGE"] = &uses_alpha_antialiasing;
 	actions.usage_flag_pointers["ALPHA_TEXTURE_COORDINATE"] = &uses_alpha_antialiasing;
 	actions.render_mode_flags["depth_prepass_alpha"] = &uses_depth_prepass_alpha;
+	actions.render_mode_flags["alpha_order_independent"] = &uses_alpha_order_independent;
 
 	actions.usage_flag_pointers["SSS_STRENGTH"] = &uses_sss;
 	actions.usage_flag_pointers["SSS_TRANSMITTANCE_DEPTH"] = &uses_transmittance;
@@ -768,6 +770,7 @@ void SceneShaderForwardMobile::init(const String p_defines) {
 		actions.render_mode_defines["cull_disabled"] = "#define DO_SIDE_CHECK\n";
 		actions.render_mode_defines["particle_trails"] = "#define USE_PARTICLE_TRAILS\n";
 		actions.render_mode_defines["depth_prepass_alpha"] = "#define USE_OPAQUE_PREPASS\n";
+		actions.render_mode_defines["alpha_order_independent"] = "#define USE_ALPHA_ORDER_INDEPENDENT\n";
 
 		bool force_lambert = GLOBAL_GET("rendering/shading/overrides/force_lambert_over_burley");
 		if (!force_lambert) {
@@ -905,6 +908,18 @@ void fragment() {
 
 		default_vec4_xform_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, default_shader_rd, RenderForwardMobile::TRANSFORMS_UNIFORM_SET);
 	}
+
+	{
+		// Create dummy OIT buffers with correct layouts
+		// Tile buffer: array of TileData (uint fragment_head, uint fragment_count, uint min_depth, uint max_depth)
+		default_oit_tile_buffer = RD::get_singleton()->storage_buffer_create(1024 * sizeof(uint32_t) * 4); // 1024 tiles * 4 uints per tile
+
+		// Fragment buffer: array of FragmentData (uint next, uint depth_packed, uint color_packed, uint padding)
+		default_oit_fragment_buffer = RD::get_singleton()->storage_buffer_create(4096 * sizeof(uint32_t) * 4); // 4096 fragments * 4 uints per fragment
+
+		// Counter buffer: array of uint counters
+		default_oit_counter_buffer = RD::get_singleton()->storage_buffer_create(256 * sizeof(uint32_t)); // 256 counters
+	}
 }
 
 void SceneShaderForwardMobile::set_default_specialization(const ShaderSpecialization &p_specialization) {
@@ -954,6 +969,9 @@ SceneShaderForwardMobile::~SceneShaderForwardMobile() {
 	RendererRD::MaterialStorage *material_storage = RendererRD::MaterialStorage::get_singleton();
 
 	RD::get_singleton()->free_rid(default_vec4_xform_buffer);
+	RD::get_singleton()->free_rid(default_oit_tile_buffer);
+	RD::get_singleton()->free_rid(default_oit_fragment_buffer);
+	RD::get_singleton()->free_rid(default_oit_counter_buffer);
 	RD::get_singleton()->free_rid(shadow_sampler);
 
 	material_storage->shader_free(overdraw_material_shader);

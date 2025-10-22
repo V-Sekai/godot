@@ -91,6 +91,13 @@ private:
 
 		RID get_motion_vectors_fb();
 
+		RID oit_tile_buffer;
+		RID oit_fragment_buffer;
+		RID oit_counter_buffer;
+		bool oit_buffers_created = false;
+		void ensure_oit_buffers(Size2i p_internal_size, uint32_t p_view_count);
+		void free_oit_buffers();
+
 	private:
 		RenderSceneBuffersRD *render_buffers = nullptr;
 	};
@@ -126,7 +133,7 @@ private:
 		RID render_pass_uniform_set;
 		bool force_wireframe = false;
 		Vector2 uv_offset;
-		SceneShaderForwardMobile::ShaderSpecialization base_specialization;
+		SceneShaderForwardMobile::ShaderSpecialization base_specialization{};
 		float lod_distance_multiplier = 0.0;
 		float screen_mesh_lod_threshold = 0.0;
 		RD::FramebufferFormatID framebuffer_format = 0;
@@ -296,18 +303,18 @@ private:
 		bool used_opaque_stencil = false;
 
 		struct ShadowPass {
-			uint32_t element_from;
-			uint32_t element_count;
-			bool flip_cull;
-			PassMode pass_mode;
+			uint32_t element_from = 0U;
+			uint32_t element_count = 0U;
+			bool flip_cull = false;
+			PassMode pass_mode = PASS_MODE_SHADOW;
 
 			RID rp_uniform_set;
-			float lod_distance_multiplier;
-			float screen_mesh_lod_threshold;
+			float lod_distance_multiplier = 0.0F;
+			float screen_mesh_lod_threshold = 0.0F;
 
 			RID framebuffer;
 			Rect2i rect;
-			bool clear_depth;
+			bool clear_depth = false;
 		};
 
 		LocalVector<ShadowPass> shadow_passes;
@@ -334,12 +341,12 @@ private:
 		};
 
 		void sort_by_key() {
-			SortArray<GeometryInstanceSurfaceDataCache *, SortByKey> sorter;
+			SortArray<GeometryInstanceSurfaceDataCache *, SortByKey> sorter{};
 			sorter.sort(elements.ptr(), elements.size());
 		}
 
 		void sort_by_key_range(uint32_t p_from, uint32_t p_size) {
-			SortArray<GeometryInstanceSurfaceDataCache *, SortByKey> sorter;
+			SortArray<GeometryInstanceSurfaceDataCache *, SortByKey> sorter{};
 			sorter.sort(elements.ptr() + p_from, p_size);
 		}
 
@@ -355,7 +362,7 @@ private:
 		};
 
 		void sort_by_key_and_stencil() {
-			SortArray<GeometryInstanceSurfaceDataCache *, SortByKeyAndStencil> sorter;
+			SortArray<GeometryInstanceSurfaceDataCache *, SortByKeyAndStencil> sorter{};
 			sorter.sort(elements.ptr(), elements.size());
 		}
 
@@ -367,7 +374,7 @@ private:
 
 		void sort_by_depth() { //used for shadows
 
-			SortArray<GeometryInstanceSurfaceDataCache *, SortByDepth> sorter;
+			SortArray<GeometryInstanceSurfaceDataCache *, SortByDepth> sorter{};
 			sorter.sort(elements.ptr(), elements.size());
 		}
 
@@ -379,7 +386,7 @@ private:
 
 		void sort_by_reverse_depth_and_priority() { //used for alpha
 
-			SortArray<GeometryInstanceSurfaceDataCache *, SortByReverseDepthAndPriority> sorter;
+			SortArray<GeometryInstanceSurfaceDataCache *, SortByReverseDepthAndPriority> sorter{};
 			sorter.sort(elements.ptr(), elements.size());
 		}
 
@@ -405,7 +412,7 @@ private:
 	template <PassMode p_pass_mode>
 	_FORCE_INLINE_ void _render_list_template(RenderingDevice::DrawListID p_draw_list, RenderingDevice::FramebufferFormatID p_framebuffer_Format, RenderListParameters *p_params, uint32_t p_from_element, uint32_t p_to_element);
 	void _render_list(RenderingDevice::DrawListID p_draw_list, RenderingDevice::FramebufferFormatID p_framebuffer_Format, RenderListParameters *p_params, uint32_t p_from_element, uint32_t p_to_element);
-	void _render_list_with_draw_list(RenderListParameters *p_params, RID p_framebuffer, BitField<RD::DrawFlags> p_clear_colors = RD::DRAW_DEFAULT_ALL, const Vector<Color> &p_clear_color_values = Vector<Color>(), float p_clear_depth_value = 0.0, uint32_t p_clear_stencil_value = 0, const Rect2 &p_region = Rect2());
+	void _render_list_with_draw_list(RenderingDevice::DrawListID p_draw_list_id, RenderListParameters *p_params, RID p_framebuffer);
 
 	RenderList render_list[RENDER_LIST_MAX];
 
@@ -495,7 +502,7 @@ protected:
 				uint64_t shader_id : 32;
 				uint64_t priority : 8;
 			};
-		} sort;
+		} sort{};
 
 		RS::PrimitiveType primitive = RS::PRIMITIVE_MAX;
 		uint32_t flags = 0;
@@ -538,7 +545,7 @@ protected:
 		uint32_t gi_offset_cache = 0; // !BAS! Should rename this to lightmap_offset_cache, in forward clustered this was shared between gi and lightmap
 		RID lightmap_instance;
 		Rect2 lightmap_uv_scale;
-		uint32_t lightmap_slice_index;
+		uint32_t lightmap_slice_index = 0U;
 		GeometryInstanceLightmapSH *lightmap_sh = nullptr;
 
 		// culled light info

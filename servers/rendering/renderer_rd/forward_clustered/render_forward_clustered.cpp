@@ -30,6 +30,7 @@
 
 #include "render_forward_clustered.h"
 #include "core/config/project_settings.h"
+#include "servers/rendering/renderer_rd/effects/alpha_order_independent.h" // OIT (Order Independent Transparency) is now AlphaOrderIndependent
 #include "servers/rendering/renderer_rd/environment/fog.h"
 #include "servers/rendering/renderer_rd/framebuffer_cache_rd.h"
 #include "servers/rendering/renderer_rd/storage_rd/light_storage.h"
@@ -82,6 +83,39 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_voxelgi() 
 	}
 }
 
+void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_oit_buffers(Size2i p_internal_size, uint32_t p_view_count) {
+	if (oit_buffers_created) {
+		return;
+	}
+
+	// OIT (Order Independent Transparency) is now AlphaOrderIndependent
+	RendererRD::AlphaOrderIndependent alpha_order_independent_system;
+	alpha_order_independent_system.create_alpha_order_independent_buffers(oit_tile_buffer, oit_fragment_buffer, oit_counter_buffer,
+			p_internal_size.width, p_internal_size.height, p_view_count > 1, p_view_count);
+	oit_buffers_created = true;
+}
+
+void RenderForwardClustered::RenderBufferDataForwardClustered::free_oit_buffers() {
+	if (!oit_buffers_created) {
+		return;
+	}
+
+	if (oit_tile_buffer.is_valid()) {
+		RD::get_singleton()->free_rid(oit_tile_buffer);
+		oit_tile_buffer = RID();
+	}
+	if (oit_fragment_buffer.is_valid()) {
+		RD::get_singleton()->free_rid(oit_fragment_buffer);
+		oit_fragment_buffer = RID();
+	}
+	if (oit_counter_buffer.is_valid()) {
+		RD::get_singleton()->free_rid(oit_counter_buffer);
+		oit_counter_buffer = RID();
+	}
+
+	oit_buffers_created = false;
+}
+
 void RenderForwardClustered::RenderBufferDataForwardClustered::ensure_fsr2(RendererRD::FSR2Effect *p_effect) {
 	if (fsr2_context == nullptr) {
 		fsr2_context = p_effect->create_context(render_buffers->get_internal_size(), render_buffers->get_target_size());
@@ -108,6 +142,9 @@ bool RenderForwardClustered::RenderBufferDataForwardClustered::ensure_mfx_tempor
 #endif
 
 void RenderForwardClustered::RenderBufferDataForwardClustered::free_data() {
+	// Free OIT buffers first
+	free_oit_buffers();
+
 	// JIC, should already have been cleared
 	if (render_buffers) {
 		render_buffers->clear_context(RB_SCOPE_FORWARD_CLUSTERED);
@@ -155,6 +192,9 @@ void RenderForwardClustered::RenderBufferDataForwardClustered::configure(RenderS
 
 	RID sampler = RendererRD::MaterialStorage::get_singleton()->sampler_rd_get_default(RS::CANVAS_ITEM_TEXTURE_FILTER_NEAREST, RS::CANVAS_ITEM_TEXTURE_REPEAT_DISABLED);
 	cluster_builder->setup(p_render_buffers->get_internal_size(), p_render_buffers->get_max_cluster_elements(), p_render_buffers->get_depth_texture(), sampler, p_render_buffers->get_internal_texture());
+
+	// Initialize OIT buffers
+	ensure_oit_buffers(p_render_buffers->get_internal_size(), p_render_buffers->get_view_count());
 }
 
 RID RenderForwardClustered::RenderBufferDataForwardClustered::get_color_only_fb() {
@@ -309,7 +349,9 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 	//global scope bindings
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, render_base_uniform_set, SCENE_UNIFORM_SET);
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, p_params->render_pass_uniform_set, RENDER_PASS_UNIFORM_SET);
-	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, scene_shader.default_vec4_xform_uniform_set, TRANSFORMS_UNIFORM_SET);
+	// The clustered renderer uses instance-specific transform uniform sets.
+	// A dummy uniform set is bound here to satisfy the shader pipeline requirements.
+	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, scene_shader.default_transforms_uniform_set, TRANSFORMS_UNIFORM_SET);
 
 	RID prev_material_uniform_set;
 
@@ -325,7 +367,7 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 
 	bool shadow_pass = (p_pass_mode == PASS_MODE_SHADOW) || (p_pass_mode == PASS_MODE_SHADOW_DP);
 
-	SceneState::PushConstant push_constant;
+	SceneState::PushConstant push_constant{};
 
 	if constexpr (p_pass_mode == PASS_MODE_DEPTH_MATERIAL) {
 		push_constant.uv_offset = Math::make_half_float(p_params->uv_offset.y) << 16;
@@ -3103,7 +3145,7 @@ void RenderForwardClustered::_update_render_base_uniform_set() {
 			RD::Uniform u;
 			u.binding = 2;
 			u.uniform_type = RD::UNIFORM_TYPE_SAMPLER;
-			u.append_id(scene_shader.shadow_sampler);
+						u.append_id(shadow_sampler);
 			uniforms.push_back(u);
 		}
 
@@ -3261,7 +3303,7 @@ RID RenderForwardClustered::_setup_render_pass_uniform_set(RenderListType p_rend
 		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
 		RID instance_buffer = scene_state.instance_buffer[p_render_list];
 		if (instance_buffer == RID()) {
-			instance_buffer = scene_shader.default_vec4_xform_buffer; // any buffer will do since its not used
+			instance_buffer = scene_shader.default_oit_tile_buffer; // any buffer will do since its not used
 		}
 		u.append_id(instance_buffer);
 		uniforms.push_back(u);
@@ -3372,7 +3414,7 @@ RID RenderForwardClustered::_setup_render_pass_uniform_set(RenderListType p_rend
 		RD::Uniform u;
 		u.binding = 9;
 		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
-		RID cb = (p_render_data && p_render_data->cluster_buffer.is_valid()) ? p_render_data->cluster_buffer : scene_shader.default_vec4_xform_buffer;
+				RID cb = (p_render_data && p_render_data->cluster_buffer.is_valid()) ? p_render_data->cluster_buffer : scene_shader.default_oit_tile_buffer;
 		u.append_id(cb);
 		uniforms.push_back(u);
 	}
@@ -3437,7 +3479,7 @@ RID RenderForwardClustered::_setup_render_pass_uniform_set(RenderListType p_rend
 		uniforms.push_back(u);
 	}
 
-	p_samplers.append_uniforms(uniforms, 12);
+	static_cast<const RendererRD::MaterialStorage::Samplers &>(p_samplers).append_uniforms(uniforms, 12);
 
 	{
 		RD::Uniform u;
@@ -3599,6 +3641,37 @@ RID RenderForwardClustered::_setup_render_pass_uniform_set(RenderListType p_rend
 		uniforms.push_back(u);
 	}
 
+	// OIT Buffers
+	// Binding 37: OITTileBuffer
+	// Binding 38: OITFragmentBuffer
+	// Binding 39: OITFragmentCounterBuffer
+	// These are always declared in the shader, so always provide them.
+	// Use real buffers when available, dummy buffers otherwise.
+	{
+		RD::Uniform u;
+		u.binding = 37;
+		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+		RID oit_tile = rb_data.is_valid() && rb_data->oit_tile_buffer.is_valid() ? rb_data->oit_tile_buffer : scene_shader.default_oit_tile_buffer;
+		u.append_id(oit_tile);
+		uniforms.push_back(u);
+	}
+	{
+		RD::Uniform u;
+		u.binding = 38;
+		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+		RID oit_frag = rb_data.is_valid() && rb_data->oit_fragment_buffer.is_valid() ? rb_data->oit_fragment_buffer : scene_shader.default_oit_fragment_buffer;
+		u.append_id(oit_frag);
+		uniforms.push_back(u);
+	}
+	{
+		RD::Uniform u;
+		u.binding = 39;
+		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+		RID oit_counter = rb_data.is_valid() && rb_data->oit_counter_buffer.is_valid() ? rb_data->oit_counter_buffer : scene_shader.default_oit_counter_buffer;
+		u.append_id(oit_counter);
+		uniforms.push_back(u);
+	}
+
 	return UniformSetCacheRD::get_singleton()->get_cache_vec(scene_shader.default_shader_rd, RENDER_PASS_UNIFORM_SET, uniforms);
 }
 
@@ -3627,7 +3700,7 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
 		RID instance_buffer = scene_state.instance_buffer[RENDER_LIST_SECONDARY];
 		if (instance_buffer == RID()) {
-			instance_buffer = scene_shader.default_vec4_xform_buffer; // any buffer will do since its not used
+			instance_buffer = scene_shader.default_oit_tile_buffer; // any buffer will do since its not used
 		}
 		u.append_id(instance_buffer);
 		uniforms.push_back(u);
@@ -3704,7 +3777,7 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 		RD::Uniform u;
 		u.binding = 9;
 		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
-		RID cb = scene_shader.default_vec4_xform_buffer;
+		RID cb = scene_shader.default_oit_tile_buffer;
 		u.append_id(cb);
 		uniforms.push_back(u);
 	}
@@ -3769,7 +3842,7 @@ RID RenderForwardClustered::_setup_sdfgi_render_pass_uniform_set(RID p_albedo_te
 		uniforms.push_back(u);
 	}
 
-	p_samplers.append_uniforms(uniforms, 12);
+	static_cast<const RendererRD::MaterialStorage::Samplers &>(p_samplers).append_uniforms(uniforms, 12);
 
 	// actual sdfgi stuff
 

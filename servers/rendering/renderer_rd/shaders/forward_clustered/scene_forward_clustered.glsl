@@ -4,10 +4,17 @@
 
 #VERSION_DEFINES
 
+
+
+
 /* Include half precision types. */
 #include "../half_inc.glsl"
 
 #include "scene_forward_clustered_inc.glsl"
+
+#ifdef USE_ALPHA_ORDER_INDEPENDENT
+#include "../effects/oit_dispatch.glsl.inc"
+#endif
 
 #define SHADER_IS_SRGB false
 #define SHADER_SPACE_FAR 0.0
@@ -121,7 +128,7 @@ layout(location = 8) out vec4 prev_screen_position;
 #ifdef MATERIAL_UNIFORMS_USED
 /* clang-format off */
 layout(set = MATERIAL_UNIFORM_SET, binding = 0, std140) uniform MaterialUniforms {
-#MATERIAL_UNIFORMS
+#MATERIAL_UNIFORMS;
 } material;
 /* clang-format on */
 #endif
@@ -836,6 +843,10 @@ void main() {
 #version 450
 
 #VERSION_DEFINES
+
+#ifdef USE_ALPHA_ORDER_INDEPENDENT
+#include "../effects/oit_dispatch.glsl.inc"
+#endif
 
 #define SHADER_IS_SRGB false
 #define SHADER_SPACE_FAR 0.0
@@ -2907,6 +2918,25 @@ void fragment_shader(in SceneData scene_data) {
 	// Draw "fixed" fog before volumetric fog to ensure volumetric fog can appear in front of the sky.
 	frag_color.rgb = mix(frag_color.rgb, fog.rgb, fog.a);
 #endif //!FOG_DISABLED
+
+#ifdef USE_ALPHA_ORDER_INDEPENDENT
+	// OIT
+	if (bool(implementation_data.ss_effects_flags & SCREEN_SPACE_EFFECTS_FLAGS_USE_OIT_DEBUG)) {
+		uint screen_width = uint(scene_data.viewport_size.x);
+		uint screen_height = uint(scene_data.viewport_size.y);
+		frag_color.rgb = oit_debug_tile_visualization(gl_FragCoord.xy, screen_width, screen_height);
+	}
+#endif // USE_ALPHA_ORDER_INDEPENDENT
+
+#ifdef USE_ALPHA_ORDER_INDEPENDENT
+	// OIT
+	if (bool(implementation_data.ss_effects_flags & SCREEN_SPACE_EFFECTS_FLAGS_USE_OIT)) {
+		uint screen_width = uint(scene_data.viewport_size.x);
+		uint screen_height = uint(scene_data.viewport_size.y);
+		oit_collect_fragment(frag_color, true, screen_width, screen_height, scene_data.view_count, implementation_data.max_fragments);
+		discard; // Prevent standard alpha blending
+	}
+#endif // USE_ALPHA_ORDER_INDEPENDENT
 
 #endif //MODE_SEPARATE_SPECULAR
 

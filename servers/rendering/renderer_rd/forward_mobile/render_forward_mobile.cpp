@@ -30,6 +30,7 @@
 
 #include "render_forward_mobile.h"
 #include "core/config/project_settings.h"
+#include "servers/rendering/renderer_rd/effects/alpha_order_independent.h" // OIT (Order Independent Transparency) is now AlphaOrderIndependent
 #include "servers/rendering/renderer_rd/framebuffer_cache_rd.h"
 #include "servers/rendering/renderer_rd/storage_rd/light_storage.h"
 #include "servers/rendering/renderer_rd/storage_rd/mesh_storage.h"
@@ -42,6 +43,38 @@
 #define PRELOAD_PIPELINES_ON_SURFACE_CACHE_CONSTRUCTION 1
 
 using namespace RendererSceneRenderImplementation;
+
+void RenderForwardMobile::RenderBufferDataForwardMobile::ensure_oit_buffers(Size2i p_internal_size, uint32_t p_view_count) {
+	if (oit_buffers_created) {
+		return;
+	}
+
+	RendererRD::AlphaOrderIndependent alpha_order_independent_system;
+	alpha_order_independent_system.create_alpha_order_independent_buffers(oit_tile_buffer, oit_fragment_buffer, oit_counter_buffer,
+			p_internal_size.width, p_internal_size.height, p_view_count > 1, p_view_count);
+	oit_buffers_created = true;
+}
+
+void RenderForwardMobile::RenderBufferDataForwardMobile::free_oit_buffers() {
+	if (!oit_buffers_created) {
+		return;
+	}
+
+	if (oit_tile_buffer.is_valid()) {
+		RD::get_singleton()->free_rid(oit_tile_buffer);
+		oit_tile_buffer = RID();
+	}
+	if (oit_fragment_buffer.is_valid()) {
+		RD::get_singleton()->free_rid(oit_fragment_buffer);
+		oit_fragment_buffer = RID();
+	}
+	if (oit_counter_buffer.is_valid()) {
+		RD::get_singleton()->free_rid(oit_counter_buffer);
+		oit_counter_buffer = RID();
+	}
+
+	oit_buffers_created = false;
+}
 
 RendererRD::ForwardID RenderForwardMobile::ForwardIDStorageMobile::allocate_forward_id(RendererRD::ForwardIDType p_type) {
 	int32_t index = -1;
@@ -131,7 +164,7 @@ void RenderForwardMobile::fill_push_constant_instance_indices(SceneState::Instan
 		sorted_reflection_probes[i].map = forward_id_storage_mobile->forward_id_allocators[RendererRD::FORWARD_ID_TYPE_REFLECTION_PROBE].map[p_instance->reflection_probes[i]];
 	}
 
-	SortArray<ForwardIDByMapSort> sort_array;
+	SortArray<ForwardIDByMapSort> sort_array{};
 	sort_array.sort(sorted_reflection_probes, p_instance->reflection_probe_count);
 
 	idx = 0;
@@ -150,7 +183,10 @@ void RenderForwardMobile::fill_push_constant_instance_indices(SceneState::Instan
 /* Render buffer */
 
 void RenderForwardMobile::RenderBufferDataForwardMobile::free_data() {
-	// this should already be done but JIC..
+	// Free OIT buffers first
+	free_oit_buffers();
+
+	// JIC, should already have been cleared
 	if (render_buffers) {
 		render_buffers->clear_context(RB_SCOPE_MOBILE);
 	}
@@ -163,7 +199,10 @@ void RenderForwardMobile::RenderBufferDataForwardMobile::configure(RenderSceneBu
 	}
 
 	render_buffers = p_render_buffers;
-	ERR_FAIL_NULL(render_buffers); // Huh? really?
+	ERR_FAIL_NULL(render_buffers);
+
+	// Initialize OIT buffers
+	ensure_oit_buffers(p_render_buffers->get_internal_size(), p_render_buffers->get_view_count());
 }
 
 RID RendererSceneRenderImplementation::RenderForwardMobile::RenderBufferDataForwardMobile::get_motion_vectors_fb() {
@@ -674,6 +713,37 @@ RID RenderForwardMobile::_setup_render_pass_uniform_set(RenderListType p_render_
 
 	p_samplers.append_uniforms(uniforms, 13);
 
+// OIT Buffers
+// Binding 37: OITTileBuffer
+// Binding 38: OITFragmentBuffer
+// Binding 39: OITFragmentCounterBuffer
+// These are always declared in the shader, so always provide them.
+// Use real buffers when available, dummy buffers otherwise.
+{
+RD::Uniform u;
+u.binding = 37;
+u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+RID oit_tile = rb_data.is_valid() && rb_data->oit_tile_buffer.is_valid() ? rb_data->oit_tile_buffer : scene_shader.default_oit_tile_buffer;
+u.append_id(oit_tile);
+uniforms.push_back(u);
+}
+{
+RD::Uniform u;
+u.binding = 38;
+u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+RID oit_frag = rb_data.is_valid() && rb_data->oit_fragment_buffer.is_valid() ? rb_data->oit_fragment_buffer : scene_shader.default_oit_fragment_buffer;
+u.append_id(oit_frag);
+uniforms.push_back(u);
+}
+{
+RD::Uniform u;
+u.binding = 39;
+u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+RID oit_counter = rb_data.is_valid() && rb_data->oit_counter_buffer.is_valid() ? rb_data->oit_counter_buffer : scene_shader.default_oit_counter_buffer;
+u.append_id(oit_counter);
+uniforms.push_back(u);
+}
+
 	return UniformSetCacheRD::get_singleton()->get_cache_vec(scene_shader.default_shader_rd, RENDER_PASS_UNIFORM_SET, uniforms);
 }
 
@@ -1116,6 +1186,9 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 		base_specialization.scene_use_reflection_cubemap = use_reflection_cubemap;
 		base_specialization.scene_roughness_limiter_enabled = p_render_data->render_buffers.is_valid() && screen_space_roughness_limiter_is_active();
 		base_specialization.luminance_multiplier = p_render_data->render_buffers.is_valid() ? p_render_data->render_buffers->get_luminance_multiplier() : 1.0;
+		if (rb_data.is_valid() && rb_data->oit_buffers_created) {
+			base_specialization.use_oit = 1;
+		}
 	}
 
 	{
@@ -1141,7 +1214,9 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 
 				RID rp_uniform_set = _setup_render_pass_uniform_set(RENDER_LIST_OPAQUE, nullptr, RID(), samplers);
 				RenderListParameters render_list_params(render_list[RENDER_LIST_OPAQUE].elements.ptr(), render_list[RENDER_LIST_OPAQUE].element_info.ptr(), render_list[RENDER_LIST_OPAQUE].elements.size(), reverse_cull, PASS_MODE_MOTION_VECTORS, rp_uniform_set, base_specialization);
-				_render_list_with_draw_list(&render_list_params, mv_fb, RD::DRAW_CLEAR_ALL, mv_pass_clear);
+				RD::DrawListID mv_draw_list = RD::get_singleton()->draw_list_begin(mv_fb, RD::DRAW_CLEAR_ALL, mv_pass_clear, 0.0f, 0, p_render_data->render_region);
+				_render_list_with_draw_list(mv_draw_list, &render_list_params, mv_fb);
+				RD::get_singleton()->draw_list_end();
 
 				RD::get_singleton()->draw_command_end_label();
 			}
@@ -1237,13 +1312,6 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 				RD::get_singleton()->draw_command_end_label(); // Render Transparent Subpass
 			}
 
-			// note if we are using MSAA we should get an automatic resolve through our subpass configuration.
-
-			// blit to tonemap
-			if (rb_data.is_valid() && using_subpass_post_process) {
-				_post_process_subpass(p_render_data->render_buffers->get_internal_texture(), framebuffer, p_render_data);
-			}
-
 			RD::get_singleton()->draw_command_end_label(); // Render 3D Pass / Render Reflection Probe Pass
 
 			RD::get_singleton()->draw_list_end();
@@ -1278,6 +1346,19 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 				}
 			}
 
+			// Clear OIT buffers before transparent pass
+			if (rb_data.is_valid() && rb_data->oit_buffers_created && base_specialization.use_oit) {
+				RendererRD::AlphaOrderIndependent alpha_order_independent_system;
+				Size2i internal_size = rb->get_internal_size();
+				alpha_order_independent_system.clear_alpha_order_independent_buffers(
+						rb_data->oit_tile_buffer,
+						rb_data->oit_fragment_buffer,
+						rb_data->oit_counter_buffer,
+						internal_size.width,
+						internal_size.height,
+						rb->get_view_count());
+			}
+
 			if (render_list[RENDER_LIST_ALPHA].element_info.size() > 0) {
 				RD::get_singleton()->draw_command_begin_label("Render Transparent Pass");
 				RENDER_TIMESTAMP("Render Transparent");
@@ -1291,12 +1372,43 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 				render_list_params.framebuffer_format = fb_format;
 				render_list_params.subpass = RD::get_singleton()->draw_list_get_current_pass(); // Should now always be 0.
 
-				draw_list = RD::get_singleton()->draw_list_begin(framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 1.0f, 0, p_render_data->render_region, breadcrumb);
-				_render_list(draw_list, fb_format, &render_list_params, 0, render_list_params.element_count);
-				RD::get_singleton()->draw_list_end();
+				// Only draw if OIT is not enabled, or if OIT is enabled but we are in OIT debug mode. For both cases the standard transparency path is taken.
+				// Otherwise when OIT transparency is fully enabled, the OIT shader dispatch handles collecting and rendering transparent objects.
+				if (!(rb_data.is_valid() && rb_data->oit_buffers_created && base_specialization.use_oit)) {
+					draw_list = RD::get_singleton()->draw_list_begin(framebuffer, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 1.0f, 0, p_render_data->render_region, breadcrumb);
+					_render_list(draw_list, fb_format, &render_list_params, 0, render_list_params.element_count);
+					RD::get_singleton()->draw_list_end();
+				}
 
 				RD::get_singleton()->draw_command_end_label(); // Render Transparent Pass
 			}
+
+			// Resolve OIT fragments after transparent pass
+			if (rb_data.is_valid() && rb_data->oit_buffers_created && base_specialization.use_oit) {
+				RENDER_TIMESTAMP("Resolve OIT");
+				RD::get_singleton()->draw_command_begin_label("Resolve OIT");
+
+				RendererRD::AlphaOrderIndependent alpha_order_independent_system;
+				Size2i internal_size = rb->get_internal_size();
+
+				for (uint32_t v = 0; v < rb->get_view_count(); v++) {
+					alpha_order_independent_system.resolve_alpha_order_independent(
+							rb_data->oit_tile_buffer,
+							rb_data->oit_fragment_buffer,
+							rb->get_internal_texture(v),
+							rb->get_depth_texture(v),
+							internal_size.width,
+							internal_size.height,
+							v);
+				}
+
+				RD::get_singleton()->draw_command_end_label();
+			}
+		}
+
+		// blit to tonemap
+		if (rb_data.is_valid() && using_subpass_post_process) {
+			_post_process_subpass(p_render_data->render_buffers->get_internal_texture(), framebuffer, p_render_data);
 		}
 	}
 
@@ -1597,7 +1709,9 @@ void RenderForwardMobile::_render_shadow_end() {
 
 	for (SceneState::ShadowPass &shadow_pass : scene_state.shadow_passes) {
 		RenderListParameters render_list_parameters(render_list[RENDER_LIST_SECONDARY].elements.ptr() + shadow_pass.element_from, render_list[RENDER_LIST_SECONDARY].element_info.ptr() + shadow_pass.element_from, shadow_pass.element_count, shadow_pass.flip_cull, shadow_pass.pass_mode, shadow_pass.rp_uniform_set, scene_shader.default_specialization, false, Vector2(), shadow_pass.lod_distance_multiplier, shadow_pass.screen_mesh_lod_threshold, 1, shadow_pass.element_from);
-		_render_list_with_draw_list(&render_list_parameters, shadow_pass.framebuffer, shadow_pass.clear_depth ? RD::DRAW_CLEAR_DEPTH : RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0, shadow_pass.rect);
+		RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(shadow_pass.framebuffer, shadow_pass.clear_depth ? RD::DRAW_CLEAR_DEPTH : RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0, shadow_pass.rect);
+		_render_list_with_draw_list(draw_list, &render_list_parameters, shadow_pass.framebuffer);
+		RD::get_singleton()->draw_list_end();
 	}
 
 	RD::get_singleton()->draw_command_end_label();
@@ -1770,7 +1884,9 @@ void RenderForwardMobile::_render_particle_collider_heightfield(RID p_fb, const 
 	{
 		//regular forward for now
 		RenderListParameters render_list_params(render_list[RENDER_LIST_SECONDARY].elements.ptr(), render_list[RENDER_LIST_SECONDARY].element_info.ptr(), render_list[RENDER_LIST_SECONDARY].elements.size(), false, pass_mode, rp_uniform_set, scene_shader.default_specialization);
-		_render_list_with_draw_list(&render_list_params, p_fb);
+		RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(p_fb, RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0, Rect2());
+		_render_list_with_draw_list(draw_list, &render_list_params, p_fb);
+		RD::get_singleton()->draw_list_end();
 	}
 	RD::get_singleton()->draw_command_end_label();
 }
@@ -2227,13 +2343,10 @@ void RenderForwardMobile::_render_list(RenderingDevice::DrawListID p_draw_list, 
 	}
 }
 
-void RenderForwardMobile::_render_list_with_draw_list(RenderListParameters *p_params, RID p_framebuffer, BitField<RD::DrawFlags> p_draw_flags, const Vector<Color> &p_clear_color_values, float p_clear_depth_value, uint32_t p_clear_stencil_value, const Rect2 &p_region) {
+void RenderForwardMobile::_render_list_with_draw_list(RD::DrawListID p_draw_list_id, RenderListParameters *p_params, RID p_framebuffer) {
 	RD::FramebufferFormatID fb_format = RD::get_singleton()->framebuffer_get_format(p_framebuffer);
 	p_params->framebuffer_format = fb_format;
-
-	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(p_framebuffer, p_draw_flags, p_clear_color_values, p_clear_depth_value, p_clear_stencil_value, p_region);
-	_render_list(draw_list, fb_format, p_params, 0, p_params->element_count);
-	RD::get_singleton()->draw_list_end();
+	_render_list(p_draw_list_id, fb_format, p_params, 0, p_params->element_count);
 }
 
 template <RenderForwardMobile::PassMode p_pass_mode>
@@ -2281,7 +2394,7 @@ void RenderForwardMobile::_render_list_template(RenderingDevice::DrawListID p_dr
 		pipeline_specialization.multimesh_has_color = bool(inst->flags_cache & INSTANCE_DATA_FLAG_MULTIMESH_HAS_COLOR);
 		pipeline_specialization.multimesh_has_custom_data = bool(inst->flags_cache & INSTANCE_DATA_FLAG_MULTIMESH_HAS_CUSTOM_DATA);
 
-		SceneState::PushConstant push_constant;
+		SceneState::PushConstant push_constant{};
 		push_constant.base_index = i + p_params->element_offset;
 
 		if constexpr (p_pass_mode == PASS_MODE_DEPTH_MATERIAL) {

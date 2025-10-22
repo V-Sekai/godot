@@ -170,6 +170,8 @@ layout(set = 0, binding = 2) uniform sampler shadow_sampler;
 #define SCREEN_SPACE_EFFECTS_FLAGS_USE_SSIL (1 << 1)
 #define SCREEN_SPACE_EFFECTS_FLAGS_USE_SSR (1 << 2)
 #define SCREEN_SPACE_EFFECTS_FLAGS_RESOLVE_SSR (1 << 3)
+#define SCREEN_SPACE_EFFECTS_FLAGS_USE_OIT (1 << 4)
+#define SCREEN_SPACE_EFFECTS_FLAGS_USE_OIT_DEBUG (1 << 5)
 
 layout(set = 0, binding = 3, std430) restrict readonly buffer OmniLights {
 	LightData data[];
@@ -284,30 +286,7 @@ layout(set = 1, binding = 0, std140) uniform SceneDataBlock {
 }
 scene_data_block;
 
-struct ImplementationData {
-	uint cluster_shift;
-	uint cluster_width;
-	uint cluster_type_size;
-	uint max_cluster_element_count_div_32;
-
-	uint ss_effects_flags;
-	float ssao_light_affect;
-	float ssao_ao_affect;
-	uint pad1;
-
-	mat4 sdf_to_bounds;
-
-	ivec3 sdf_offset;
-	uint pad2;
-
-	ivec3 sdf_size;
-	bool gi_upscale_for_msaa;
-
-	bool volumetric_fog_enabled;
-	float volumetric_fog_inv_length;
-	float volumetric_fog_detail_spread;
-	uint volumetric_fog_pad;
-};
+#include "../implementation_data_inc.glsl"
 
 layout(set = 1, binding = 1, std140) uniform ImplementationDataBlock {
 	ImplementationData data;
