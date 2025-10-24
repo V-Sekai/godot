@@ -1,0 +1,108 @@
+/*
+ * This file is part of AtomVM.
+ *
+ * Copyright 2017-2021 Davide Bettio <davide@uninstall.it>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ */
+
+%readonly-tables
+
+%{
+#include <string.h>
+#include <stdbool.h>
+typedef struct BifNameAndPtr BifNameAndPtr;
+%}
+struct BifNameAndPtr
+{
+  const char *name;
+  union
+  {
+    struct Bif bif;
+    struct GCBif gcbif;
+  };
+};
+%%
+erlang:self/0, {.bif.base.type = BIFFunctionType, .bif.bif0_ptr = bif_erlang_self_0}
+erlang:node/0, {.bif.base.type = BIFFunctionType, .bif.bif0_ptr = bif_erlang_node_0}
+erlang:length/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_length_1}
+erlang:byte_size/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_byte_size_1}
+erlang:bit_size/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_bit_size_1}
+erlang:binary_part/3, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif3_ptr = bif_erlang_binary_part_3}
+erlang:get/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_get_1}
+erlang:is_atom/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_atom_1}
+erlang:is_bitstring/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_binary_1}
+erlang:is_binary/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_binary_1}
+erlang:is_boolean/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_boolean_1}
+erlang:is_float/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_float_1}
+erlang:is_function/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_function_1}
+erlang:is_function/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_is_function_2}
+erlang:is_integer/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_integer_1}
+erlang:is_list/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_list_1}
+erlang:is_number/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_number_1}
+erlang:is_pid/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_pid_1}
+erlang:is_port/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_port_1}
+erlang:is_reference/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_reference_1}
+erlang:is_tuple/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_tuple_1}
+erlang:is_record/2,{.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_is_record_2}
+erlang:is_map/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_is_map_1}
+erlang:is_map_key/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_is_map_key_2}
+erlang:not/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_not_1}
+erlang:and/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_and_2}
+erlang:or/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_or_2}
+erlang:xor/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_xor_2}
+erlang:==/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_equal_to_2}
+erlang:/=/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_not_equal_to_2}
+erlang:=:=/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_exactly_equal_to_2}
+erlang:=/=/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_exactly_not_equal_to_2}
+erlang:>/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_greater_than_2}
+erlang:</2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_less_than_2}
+erlang:=</2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_less_than_or_equal_2}
+erlang:>=/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_greater_than_or_equal_2}
+erlang:+/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_add_2}
+erlang:-/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_sub_2}
+erlang:*/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_mul_2}
+erlang://2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_fdiv_2}
+erlang:div/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_div_2}
+erlang:rem/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_rem_2}
+erlang:-/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_neg_1}
+erlang:+/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_plus_1}
+erlang:abs/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_abs_1}
+erlang:ceil/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_ceil_1}
+erlang:floor/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_floor_1}
+erlang:round/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_round_1}
+erlang:trunc/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_trunc_1}
+erlang:float/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_float_1}
+erlang:bor/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_bor_2}
+erlang:band/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_band_2}
+erlang:bxor/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_bxor_2}
+erlang:bsl/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_bsl_2}
+erlang:bsr/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_bsr_2}
+erlang:bnot/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_bnot_1}
+erlang:hd/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_hd_1}
+erlang:tl/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_tl_1}
+erlang:element/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_element_2}
+erlang:tuple_size/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_tuple_size_1}
+erlang:map_size/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_map_size_1}
+erlang:map_get/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_map_get_2}
+erlang:unique_integer/0, {.bif.base.type = BIFFunctionType, .bif.bif0_ptr = bif_erlang_unique_integer_0}
+erlang:unique_integer/1, {.bif.base.type = BIFFunctionType, .bif.bif1_ptr = bif_erlang_unique_integer_1}
+erlang:min/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_min_2}
+erlang:max/2, {.bif.base.type = BIFFunctionType, .bif.bif2_ptr = bif_erlang_max_2}
+erlang:size/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_size_1}
+erlang:list_to_atom/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_list_to_atom_1}
+erlang:list_to_existing_atom/1, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif1_ptr = bif_erlang_list_to_existing_atom_1}
+erlang:binary_to_atom/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_binary_to_atom_2}
+erlang:binary_to_existing_atom/2, {.gcbif.base.type = GCBIFFunctionType, .gcbif.gcbif2_ptr = bif_erlang_binary_to_existing_atom_2}
