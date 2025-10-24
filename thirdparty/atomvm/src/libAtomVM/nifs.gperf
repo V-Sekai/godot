@@ -1,0 +1,228 @@
+/*
+ * This file is part of AtomVM.
+ *
+ * Copyright 2018-2021 Davide Bettio <davide@uninstall.it>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+ */
+
+%readonly-tables
+%define lookup-function-name nif_in_word_set
+
+%{
+#include <string.h>
+typedef struct NifNameAndNifPtr NifNameAndNifPtr;
+%}
+struct NifNameAndNifPtr
+{
+  const char *name;
+  const struct Nif *nif;
+};
+%%
+binary:at/2, &binary_at_nif
+binary:copy/1, &binary_copy_nif
+binary:copy/2, &binary_copy_nif
+binary:first/1, &binary_first_nif
+binary:last/1, &binary_last_nif
+binary:part/3, &binary_part_nif
+binary:split/2, &binary_split_nif
+binary:split/3, &binary_split_nif
+binary:replace/3, &binary_replace_nif
+binary:replace/4, &binary_replace_nif
+binary:match/2, &binary_match_nif
+binary:match/3, &binary_match_nif
+calendar:system_time_to_universal_time/2, &system_time_to_universal_time_nif
+os:getenv/1, &os_getenv_nif
+erlang:atom_to_binary/1, &atom_to_binary_nif
+erlang:atom_to_binary/2, &atom_to_binary_nif
+erlang:atom_to_list/1, &atom_to_list_nif
+erlang:binary_to_atom/1, &binary_to_atom_1_nif
+erlang:binary_to_float/1, &binary_to_float_nif
+erlang:binary_to_integer/1, &binary_to_integer_nif
+erlang:binary_to_integer/2, &binary_to_integer_nif
+erlang:binary_to_list/1, &binary_to_list_nif
+erlang:binary_to_existing_atom/1, &binary_to_existing_atom_1_nif
+erlang:delete_element/2, &delete_element_nif
+erlang:erase/0, &erase_0_nif
+erlang:erase/1, &erase_1_nif
+erlang:error/1, &error_nif
+erlang:error/2, &error_nif
+erlang:error/3, &error_nif
+erlang:exit/1, &exit_nif
+erlang:exit/2, &exit_nif
+erlang:display/1, &display_nif
+erlang:float_to_binary/1, &float_to_binary_nif
+erlang:float_to_binary/2, &float_to_binary_nif
+erlang:float_to_list/1, &float_to_list_nif
+erlang:float_to_list/2, &float_to_list_nif
+erlang:fun_info/2, &fun_info_nif
+erlang:insert_element/3, &insert_element_nif
+erlang:integer_to_binary/1, &integer_to_binary_nif
+erlang:integer_to_binary/2, &integer_to_binary_nif
+erlang:integer_to_list/1, &integer_to_list_nif
+erlang:integer_to_list/2, &integer_to_list_nif
+erlang:link/1, &link_nif
+erlang:list_to_binary/1, &list_to_binary_nif
+erlang:list_to_integer/1, &list_to_integer_nif
+erlang:list_to_integer/2, &list_to_integer_nif
+erlang:list_to_float/1, &list_to_float_nif
+erlang:list_to_tuple/1, &list_to_tuple_nif
+erlang:iolist_size/1, &iolist_size_nif
+erlang:iolist_to_binary/1, &iolist_to_binary_nif
+erlang:open_port/2, &open_port_nif
+erlang:make_fun/3, &make_fun_nif
+erlang:make_ref/0, &make_ref_nif
+erlang:make_tuple/2, &make_tuple_nif
+erlang:memory/1, &memory_nif
+erlang:monitor/2, &monitor_nif
+erlang:demonitor/1, &demonitor_nif
+erlang:demonitor/2, &demonitor_nif
+erlang:is_process_alive/1, &is_process_alive_nif
+erlang:register/2, &register_nif
+erlang:unregister/1, &unregister_nif
+erlang:send/2, &send_nif
+erlang:setelement/3, &setelement_nif
+erlang:spawn_opt/2, &spawn_fun_opt_nif
+erlang:spawn_opt/4, &spawn_opt_nif
+erlang:system_info/1, &system_info_nif
+erlang:system_flag/2, &system_flag_nif
+erlang:whereis/1, &whereis_nif
+erlang:++/2, &concat_nif
+erlang:--/2, &erlang_lists_subtract_nif
+erlang:monotonic_time/1, &monotonic_time_nif
+erlang:system_time/1, &system_time_nif
+erlang:tuple_to_list/1, &tuple_to_list_nif
+erlang:universaltime/0, &universaltime_nif
+erlang:localtime/0, &localtime_nif
+erlang:localtime/1, &localtime_nif
+erlang:timestamp/0, &timestamp_nif
+erlang:process_flag/2, &process_flag_nif
+erlang:process_flag/3, &process_flag_nif
+erlang:processes/0, &processes_nif
+erlang:process_info/2, &process_info_nif
+erlang:get/0, &get_0_nif
+erlang:put/2, &put_nif
+erlang:binary_to_term/1, &binary_to_term_nif
+erlang:binary_to_term/2, &binary_to_term_nif
+erlang:term_to_binary/1, &term_to_binary_nif
+erlang:split_binary/2, &split_binary_nif
+erlang:throw/1, &throw_nif
+erlang:raise/3, &raise_nif
+erlang:unlink/1, &unlink_nif
+erlang:pid_to_list/1, &pid_to_list_nif
+erlang:port_to_list/1, &port_to_list_nif
+erlang:ref_to_list/1, &ref_to_list_nif
+erlang:fun_to_list/1, &fun_to_list_nif
+erlang:function_exported/3, &function_exported_nif
+erlang:!/2, &send_nif
+erlang:garbage_collect/0, &garbage_collect_nif
+erlang:garbage_collect/1, &garbage_collect_nif
+erlang:group_leader/0, &group_leader_nif
+erlang:group_leader/2, &group_leader_nif
+erlang:get_module_info/1, &get_module_info_nif
+erlang:get_module_info/2, &get_module_info_nif
+erlang:setnode/2, &setnode_2_nif
+erlang:setnode/3, &setnode_3_nif
+erlang:dist_ctrl_get_data_notification/1, &dist_ctrl_get_data_notification_nif
+erlang:dist_ctrl_get_data/1, &dist_ctrl_get_data_nif
+erlang:dist_ctrl_put_data/2, &dist_ctrl_put_data_nif
+erlang:module_loaded/1,&module_loaded_nif
+erlang:nif_error/1,&nif_error_nif
+erlang:list_to_bitstring/1, &list_to_bitstring_nif
+erts_debug:flat_size/1, &flat_size_nif
+ets:new/2, &ets_new_nif
+ets:insert/2, &ets_insert_nif
+ets:lookup/2, &ets_lookup_nif
+ets:lookup_element/3, &ets_lookup_element_nif
+ets:delete/1, &ets_delete_nif
+file:get_cwd/0, IF_HAVE_GETCWD_PATHMAX(&file_get_cwd_nif)
+ets:delete/2, &ets_delete_nif
+ets:update_counter/3, &ets_update_counter_nif
+ets:update_counter/4, &ets_update_counter_nif
+atomvm:add_avm_pack_binary/2, &atomvm_add_avm_pack_binary_nif
+atomvm:add_avm_pack_file/2, &atomvm_add_avm_pack_file_nif
+atomvm:close_avm_pack/2, &atomvm_close_avm_pack_nif
+atomvm:get_start_beam/1, &atomvm_get_start_beam_nif
+atomvm:read_priv/2, &atomvm_read_priv_nif
+atomvm:posix_open/2, IF_HAVE_OPEN_CLOSE(&atomvm_posix_open_nif)
+atomvm:posix_open/3, IF_HAVE_OPEN_CLOSE(&atomvm_posix_open_nif)
+atomvm:posix_close/1, IF_HAVE_OPEN_CLOSE(&atomvm_posix_close_nif)
+atomvm:posix_read/2, IF_HAVE_OPEN_CLOSE(&atomvm_posix_read_nif)
+atomvm:posix_write/2, IF_HAVE_OPEN_CLOSE(&atomvm_posix_write_nif)
+atomvm:posix_select_read/3, IF_HAVE_OPEN_CLOSE(&atomvm_posix_select_read_nif)
+atomvm:posix_select_write/3, IF_HAVE_OPEN_CLOSE(&atomvm_posix_select_write_nif)
+atomvm:posix_select_stop/1, IF_HAVE_OPEN_CLOSE(&atomvm_posix_select_stop_nif)
+atomvm:subprocess/4, IF_HAVE_EXECVE(&atomvm_subprocess_nif)
+atomvm:posix_mkfifo/2, IF_HAVE_MKFIFO(&atomvm_posix_mkfifo_nif)
+atomvm:posix_unlink/1, IF_HAVE_UNLINK(&atomvm_posix_unlink_nif)
+atomvm:posix_clock_settime/2, IF_HAVE_CLOCK_SETTIME_OR_SETTIMEOFDAY(&atomvm_posix_clock_settime_nif)
+atomvm:posix_opendir/1, IF_HAVE_OPENDIR_READDIR_CLOSEDIR(&atomvm_posix_opendir_nif)
+atomvm:posix_closedir/1, IF_HAVE_OPENDIR_READDIR_CLOSEDIR(&atomvm_posix_closedir_nif)
+atomvm:posix_readdir/1, IF_HAVE_OPENDIR_READDIR_CLOSEDIR(&atomvm_posix_readdir_nif)
+atomvm:get_creation/0, &atomvm_get_creation_nif
+code:load_abs/1, &code_load_abs_nif
+code:load_binary/3, &code_load_binary_nif
+code:all_available/0, &code_all_available_nif
+code:all_loaded/0, &code_all_loaded_nif
+code:ensure_loaded/1, &code_ensure_loaded_nif
+code_server:is_loaded/1, &code_server_is_loaded_nif
+code_server:resume/2, &code_server_resume_nif
+code_server:code_chunk/1, IF_HAVE_JIT(&code_server_code_chunk_nif)
+code_server:atom_resolver/2, IF_HAVE_JIT(&code_server_atom_resolver_nif)
+code_server:literal_resolver/2, IF_HAVE_JIT(&code_server_literal_resolver_nif)
+code_server:type_resolver/2, IF_HAVE_JIT(&code_server_type_resolver_nif)
+code_server:set_native_code/3, IF_HAVE_JIT(&code_server_set_native_code_nif)
+console:print/1, &console_print_nif
+base64:encode/1, &base64_encode_nif
+base64:decode/1, &base64_decode_nif
+base64:encode_to_string/1, &base64_encode_to_string_nif
+base64:decode_to_string/1, &base64_decode_to_string_nif
+lists:keyfind/3, &lists_keyfind_nif
+lists:keymember/3, &lists_keymember_nif
+lists:member/2, &lists_member_nif
+jit:backend_module/0, IF_HAVE_JIT(&jit_backend_module_nif)
+jit:variant/0, IF_HAVE_JIT(&jit_variant_nif)
+lists:reverse/1, &lists_reverse_nif
+lists:reverse/2, &lists_reverse_nif
+maps:from_keys/2, &maps_from_keys_nif
+maps:next/1, &maps_next_nif
+unicode:characters_to_list/1, &unicode_characters_to_list_nif
+unicode:characters_to_list/2, &unicode_characters_to_list_nif
+unicode:characters_to_binary/1, &unicode_characters_to_binary_nif
+unicode:characters_to_binary/2, &unicode_characters_to_binary_nif
+unicode:characters_to_binary/3, &unicode_characters_to_binary_nif
+math:acos/1, &math_acos_nif
+math:acosh/1, &math_acosh_nif
+math:asin/1, &math_asin_nif
+math:asinh/1, &math_asinh_nif
+math:atan/1, &math_atan_nif
+math:atanh/1, &math_atanh_nif
+math:atan2/2, &math_atan2_nif
+math:ceil/1, &math_ceil_nif
+math:cos/1, &math_cos_nif
+math:cosh/1, &math_cosh_nif
+math:exp/1, &math_exp_nif
+math:floor/1, &math_floor_nif
+math:fmod/2, &math_fmod_nif
+math:log/1, &math_log_nif
+math:log10/1, &math_log10_nif
+math:log2/1, &math_log2_nif
+math:pow/2, &math_pow_nif
+math:sin/1, &math_sin_nif
+math:sinh/1, &math_sinh_nif
+math:sqrt/1, &math_sqrt_nif
+math:tan/1, &math_tan_nif
+math:tanh/1, &math_tanh_nif
+zlib:compress/1, &zlib_compress_nif

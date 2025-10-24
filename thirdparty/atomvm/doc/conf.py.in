@@ -1,0 +1,231 @@
+#
+# This file is part of AtomVM.
+#
+# Copyright 2021-2022 Fred Dushin <fred@dushin.net>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+#
+
+#Configuration file for the Sphinx documentation builder.
+#
+# This file only contains a selection of the most common options. For a full
+# list see the documentation:
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
+
+# -- Path setup --------------------------------------------------------------
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+#
+# import os
+# import sys
+# sys.path.insert(0, os.path.abspath('.'))
+import subprocess
+from sphinx.builders.html import StandaloneHTMLBuilder
+
+# Doxygen
+subprocess.call('doxygen Doxyfile', shell=True)
+
+# -- Project information -----------------------------------------------------
+import sphinx_rtd_theme
+
+project = 'AtomVM'
+copyright = '2017-2024, AtomVM'
+author = 'github.com/atomvm'
+version = '@ATOMVM_BASE_VERSION@'
+release = '@ATOMVM_VERSION@'
+
+# -- General configuration ---------------------------------------------------
+
+# Add any Sphinx extension module names here, as strings. They can be
+# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
+# ones.
+extensions = [
+    'breathe',
+    'myst_parser',
+    'sphinx_rtd_theme',
+    'sphinx.ext.graphviz'
+]
+
+graphviz_output_format = 'svg'
+
+suppress_warnings = [
+    'epub.unknown_project_files',
+    'misc.highlighting_failure',
+    'toc.excluded',
+    'myst.*',
+    'breathe.*'
+]
+
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['@CMAKE_CURRENT_SOURCE_DIR@/_templates']
+
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+# This pattern also affects html_static_path and html_extra_path.
+exclude_patterns = ['*/favicon/about.txt']
+
+# The master toctree document.
+master_doc = 'index'
+
+highlight_language = 'guess'
+primary_domain = 'c'
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.txt': 'restructuredtext',
+    '.md': 'markdown'
+}
+
+# -- Sphinx Extension configuration ---------------------------------------------------
+
+# Breathe configuration
+breathe_projects = { "libatomvm": "@CMAKE_CURRENT_BINARY_DIR@/xml/" }
+breathe_default_project = "libatomvm"
+breathe_default_members = ('members', 'undoc-members')
+breathe_show_enumvalue_initializer = True
+breathe_show_define_initializer = True
+breathe_domain_by_extension = {
+    "h" : "c",
+    "c" : "c"
+}
+breathe_use_project_refids = True
+
+myst_heading_anchors = 5
+myst_enable_extensions = ['colon_fence']
+
+# -- Options for HTML output -------------------------------------------------
+
+# The theme to use for HTML and HTML Help pages.  See the documentation for
+# a list of builtin themes.
+#
+html_theme = 'sphinx_rtd_theme'
+html_logo = '@CMAKE_CURRENT_SOURCE_DIR@/src/_static/avm_logo_banner.png'
+html_theme_options = {
+    'logo_only': True,
+    'style_external_links': True,
+    'display_version': True,
+    'includehidden': False
+}
+
+StandaloneHTMLBuilder.supported_image_types = [
+    'image/svg+xml',
+    'image/gif',
+    'image/png',
+    'image/jpeg'
+]
+
+html_copy_source = False
+
+language = "en"
+html_meta = {
+    "description lang=en": "AtomVM Guides and API Documentation",
+    "keywords": "AtomVM, Erlang, Elixir, BEAM, IoT, embedded, ESP32, STM32, RP2040, Raspberry Pi Pico, WASM, libAtomVM, eavmlib, packbeam",
+    "property=og:locale": "en_US"
+}
+
+# Add any paths that contain custom static files (such as style sheets) here,
+# relative to this directory. They are copied after the builtin static files,
+# so a file named "default.css" will overwrite the builtin "default.css".
+html_static_path = ['@CMAKE_CURRENT_BINARY_DIR@/src/_static']
+
+html_css_files = [
+    'css/custom.css',
+]
+
+html_favicon = '@CMAKE_CURRENT_SOURCE_DIR@/src/_static/favicon/favicon.ico'
+
+# html_baseurl is used for the Canonical Link Relation
+# See also https://datatracker.ietf.org/doc/html/rfc6596.html
+html_baseurl = 'https://doc.atomvm.org/main/'
+
+############################
+# SETUP THE RTD LOWER-LEFT #
+############################
+try:
+   html_context
+except NameError:
+   html_context = dict()
+
+html_baseurl = 'https://doc.atomvm.org/main/'
+
+html_context['display_lower_left'] = 'True'
+
+# SET CURRENT_VERSION
+from git import Repo
+repo = Repo( search_parent_directories=True )
+tag_list = sorted(repo.tags, key=lambda t: t.commit.committed_datetime)
+latest_tag = tag_list[-1]
+versions = list()
+release_list = list()
+omit_tag_list = [ 'v0.6.0-alpha.0', 'v0.6.0-alpha.1', 'v0.6.0-alpha.2', 'v0.6.0-beta.0', 'v0.6.0-beta.1', 'v0.6.0-rc.0' ]
+for tag in tag_list:
+    if tag.name not in omit_tag_list:
+        versions.append(tag.name)
+        release_list.append(tag.name)
+
+omit_branch_list = [ 'release-0.5' ]
+allowed_branch_prefixes = ( 'release-', 'main' )
+branch_list = sorted(repo.branches, key=lambda t: t.commit.committed_datetime)
+for branch in branch_list:
+    if branch.name not in omit_branch_list:
+        if branch.name.startswith(allowed_branch_prefixes):
+            versions.append(branch.name)
+
+if ((repo.head.object.hexsha) == (latest_tag.commit.hexsha)):
+    current_version = latest_tag.name
+    download_version = current_version
+else:
+    download_version = '@DOC_TREE_VERSION@'
+    if ((download_version) == ('main')):
+        current_version = download_version + ' branch (unstable)'
+    else:
+        current_version = download_version + ' branch (unreleased)'
+
+print("Sphinx config found documentation candidates: %r." % (versions))
+print("Sphinx config current version: %r." % (current_version))
+
+# tell the theme which version we're currently on ('current_version' affects
+# the lower-left rtd menu and 'version' affects the logo-area version)
+html_context['current_version'] = current_version
+html_context['version'] = current_version
+
+# POPULATE LINKS TO OTHER VERSIONS
+html_context['versions'] = list()
+for version in versions:
+    if ((version) == ('main')):
+        html_context['versions'].append( (version + ' branch (unstable)', '/' +version+ '/') )
+    else:
+        if (version not in release_list):
+            html_context['versions'].append( (version + ' branch (unreleased)', '/' +version+ '/') )
+        else:
+            html_context['versions'].append( (version, '/' +version+ '/') )
+
+html_sidebars = {
+    '**': [
+        'versions.html',
+    ],
+}
+
+# POPULATE LINKS TO OTHER FORMATS/DOWNLOADS
+html_context['downloads'] = list()
+html_context['downloads'].append( ('epub', '/' +download_version+ '/epub/' +project+ '-' +download_version+ '.epub') )
+
+# -- Options for EPUB output -------------------------------------------------
+
+epub_tocdepth = 3
+epub_show_urls = 'no'
+epub_basename = project+ '-' +download_version
