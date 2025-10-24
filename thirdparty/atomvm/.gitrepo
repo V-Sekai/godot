@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/atomvm/AtomVM.git
+	branch = main
+	commit = 88b87ca12b66b060dd84ec57506964db23feb6d7
+	parent = 2a15e94dcbb8d418256c5ab3eb8d807e5ac10965
+	method = merge
+	cmdver = 0.4.9

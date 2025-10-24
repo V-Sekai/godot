@@ -1,0 +1,112 @@
+<!--
+ Copyright 2023 AtomVM <atomvm.org>
+
+ SPDX-License-Identifier: Apache-2.0 OR LGPL-2.1-or-later
+-->
+
+# Release Notes
+
+Welcome to AtomVM `@ATOMVM_VERSION@`
+
+These release notes provide version information about the current release of AtomVM.
+
+```{seealso}
+For a detailed list of changes since the last release consult the [Changelog](./CHANGELOG.md).
+```
+
+## Required Software
+
+The following software is required to develop Erlang or Elixir applications on AtomVM:
+
+* An [Erlang/OTP](https://erlang.org) compiler (`erlc`)
+* The [Elixir](https://elixir-lang.org) runtime, if developing Elixir applications.
+* (recommended) For Erlang programs, [`rebar3`](https://rebar3.org)
+* (recommended) For Elixir programs, [`mix`](https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html), which ships with the Elixir runtime.
+
+AtomVM will run BEAM files that have been compiled using the following Erlang and Elixir versions:
+
+| Erlang Version | Elixir Version |
+|----------------|----------------|
+| ✅ OTP 21 | ✅ 1.7 |
+| ✅ OTP 22 | ✅ 1.8 |
+| ✅ OTP 23 | ✅ 1.11 |
+| ✅ OTP 24 | ✅ 1.14 |
+| ✅ OTP 25 | ✅ 1.14 |
+| ✅ OTP 26 | ✅ 1.15 |
+| ✅ OTP 27 | ✅ 1.17 |
+| ✅ OTP 28 | ✅ 1.17 |
+
+```{note}
+Versions of Elixir that are compatible with a particular OTP version may work.  This table reflects the versions that are tested.
+```
+
+Not all BEAM instructions are supported for every Erlang and Elixir compiler.  For details about which instructions are supported, see the `src/libAtomVM/opcodes.h` header file in the  [AtomVM](https://github.com/atomvm/AtomVM/) github repository corresponding to the current release.
+
+For detailed information about features and bug fixes in the current release, see the AtomVM [Change Log](CHANGELOG.md).  For information about how to update from previous versions of AtomVM, see the AtomVM [Updating](UPDATING.md) page.
+
+### ESP32 Support
+
+AtomVM supports deployment on the [Espressif ESP32](https://www.espressif.com/en/products/socs) family of architectures.
+
+To run applications built for AtomVM on the ESP32 platform you will need:
+
+* The [`esptool`](https://github.com/espressif/esptool) program, for flashing the AtomVM image and AtomVM programs to ESP32 MCUs.
+* A serial console program, such as `minicom` or `screen`, so that you can view console output from your AtomVM application.
+
+AtomVM currently supports the following [Espressif ESP SoCs](https://www.espressif.com/en/products/socs):
+
+| Espressif SoCs | AtomVM support |
+|------------------------------|----------------|
+| [ESP32](https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf) | ✅ |
+| [ESP32c2](https://www.espressif.com/sites/default/files/documentation/esp32-c2_datasheet_en.pdf) | ✅ |
+| [ESP32c3](https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf) | ✅ |
+| [ESP32c6](https://www.espressif.com/sites/default/files/documentation/esp32-c6_datasheet_en.pdf) | ✅ |
+| [ESP32h2](https://www.espressif.com/sites/default/files/documentation/esp32-h2_datasheet_en.pdf) | ✅ |
+| [ESP32s2](https://www.espressif.com/sites/default/files/documentation/esp32-s2_datasheet_en.pdf) | ✅ |
+| [ESP32s3](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf) | ✅ |
+| [ESP32p4](https://www.espressif.com/sites/default/files/documentation/esp32-p4_datasheet_en.pdf) Datasheet Pending | ✅ |
+
+AtomVM currently supports the following versions of ESP-IDF:
+
+| IDF SDK supported versions | AtomVM support |
+|------------------------------|----------------|
+| ESP-IDF [v5.0](https://docs.espressif.com/projects/esp-idf/en/v5.0.7/esp32/get-started/index.html) | ✅ |
+| ESP-IDF [v5.1](https://docs.espressif.com/projects/esp-idf/en/v5.1.5/esp32/get-started/index.html) | ✅ |
+| ESP-IDF [v5.2](https://docs.espressif.com/projects/esp-idf/en/v5.2.3/esp32/get-started/index.html) | ✅ |
+| ESP-IDF [v5.3](https://docs.espressif.com/projects/esp-idf/en/v5.3.2/esp32/get-started/index.html) | ✅ |
+| ESP-IDF [v5.4](https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32/get-started/index.html) | ✅ |
+
+Building the AtomVM virtual machine for ESP32 is optional.  In most cases, you can simply download a release image from the AtomVM [release](https://github.com/atomvm/AtomVM/releases) repository.  If you wish to work on development of the VM or use one on the additional drivers that are available in the [AtomVM repositories](https://github.com/atomvm) you will to build AtomVM from source.  See the [Build Instructions](build-instructions.md) for information about how to build AtomVM from source code.  We recommend you to use the latest subminor (patch) versions for source builds. You can check the current version used for testing in the [esp32-build.yaml](https://github.com/atomvm/AtomVM/actions/workflows/esp32-build.yaml) workflow.
+
+### STM32 Support
+
+AtomVM supports deployment on the [STMicroelectronics](https://www.st.com) [STM32](https://www.st.com/en/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus.html) architecture.
+
+
+AtomVM has been tested on the following development boards:
+
+| STM32 Development Boards | AtomVM support |
+|------------------------------|----------------|
+| [Nucleo-F429ZI](https://www.st.com/en/evaluation-tools/nucleo-f429zi.html) | ✅ |
+| [STM32F4Discovery](https://www.st.com/en/evaluation-tools/stm32f4discovery.html) | ✅ |
+| [BlackPill V2.0](https://stm32-base.org/boards/STM32F411CEU6-WeAct-Black-Pill-V2.0) | ✅ |
+
+Due to the proliferation of boards for the [STMicroelectronics](https://www.st.com) [STM32](https://www.st.com/en/microcontrollers-microprocessors/stm32-32-bit-arm-cortex-mcus.html) platform, AtomVM does not currently support pre-build binaries for STM32.  In order to deploy AtomVM to the STM32 platform, you will need to build AtomVM for STM32 from source.  See the [Build Instructions](build-instructions.md) for information about how to build AtomVM from source code.
+
+```{note}
+AtomVM tests this build on the latest Ubuntu github runner.
+```
+
+### Raspberry Pi Pico Support
+
+AtomVM supports deployment on the [Raspberry Pico RP2](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html#pico-1-family) architecture.
+
+AtomVM currently supports the following Raspberry Pico development boards:
+
+| Development Board | AtomVM support |
+|------------------------------|----------------|
+| [Raspberry Pico and Pico H](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html#pico-1-technical-specification) | ✅ |
+| [Raspberry Pico W and Pico WH](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html#picow-technical-specification) | ✅ |
+| [Raspberry Pico 2 and Pico 2H](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html#pico-2-technical-specification) | ✅ |
+
+Building the AtomVM virtual machine for Raspberry Pico is optional.  In most cases, you can simply download a release image from the AtomVM [release](https://github.com/atomvm/AtomVM/releases) repository.  If you wish to work on development of the VM or use one on the additional drivers that are available in the [AtomVM repositories](https://github.com/atomvm) you will to build AtomVM from source.  See the [Build Instructions](build-instructions.md) for information about how to build AtomVM from source code.
