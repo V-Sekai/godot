@@ -842,7 +842,6 @@ void main() {
 #VERSION_DEFINES
 
 #ifdef USE_ALPHA_ORDER_INDEPENDENT
-#include "../effects/oit_buffers.glsl"
 #include "../effects/oit_dispatch.glsl.inc"
 #endif
 
