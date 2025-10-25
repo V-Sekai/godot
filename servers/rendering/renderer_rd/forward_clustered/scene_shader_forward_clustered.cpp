@@ -632,7 +632,6 @@ SceneShaderForwardClustered::~SceneShaderForwardClustered() {
 	RD::get_singleton()->free_rid(default_oit_counter_buffer);
 	RD::get_singleton()->free_rid(default_transforms_buffer);
 	RD::get_singleton()->free_rid(default_transforms_uniform_set);
-	RD::get_singleton()->free_rid(default_oit_uniform_set);
 
 	material_storage->shader_free(overdraw_material_shader);
 	material_storage->shader_free(default_shader);
@@ -954,28 +953,6 @@ void fragment() {
 		default_transforms_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, default_shader_rd, RenderForwardClustered::TRANSFORMS_UNIFORM_SET);
 	}
 
-	{
-		// Create the OIT uniform set.
-		Vector<RD::Uniform> uniforms;
-		RD::Uniform u;
-
-		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
-		u.binding = 37;
-		u.append_id(default_oit_tile_buffer);
-		uniforms.push_back(u);
-
-		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
-		u.binding = 38;
-		u.append_id(default_oit_fragment_buffer);
-		uniforms.push_back(u);
-
-		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
-		u.binding = 39;
-		u.append_id(default_oit_counter_buffer);
-		uniforms.push_back(u);
-
-		default_oit_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, default_shader_rd, RenderForwardClustered::RENDER_PASS_UNIFORM_SET);
-	}
 
 	{
 		overdraw_material_shader = material_storage->shader_allocate();

@@ -72,7 +72,6 @@ private:
 	/* Scene Shader */
 
 	SceneShaderForwardMobile scene_shader;
-	RID default_oit_uniform_set;
 
 	/* Render Buffer */
 

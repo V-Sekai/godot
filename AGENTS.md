@@ -159,11 +159,28 @@ See the Beads documentation for database extension patterns.
 
 **Debugging Process:**
 
-1.  Identified the error message in `godot_output.log`.
+1.  Identified the error message in `godot_output_full.log`.
 2.  Confirmed that `max_fragments` was added to the `ImplementationData` struct in `servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl`.
 3.  Hypothesized that the `ImplementationData` struct definition is not consistently available across all renderers (e.g., mobile renderer) or that there's a more fundamental issue with its inclusion.
 
+**Solution Implemented:**
+
+1.  Moved the `ImplementationData` struct definition to a new common include file: `servers/rendering/renderer_rd/shaders/implementation_data_common.glsl`.
+2.  Modified `servers/rendering/renderer_rd/shaders/implementation_data_inc.glsl` to remove the `ImplementationData` struct definition and instead include `implementation_data_common.glsl`.
+3.  Verified that `servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl` and `servers/rendering/renderer_rd/shaders/forward_mobile/scene_forward_mobile_inc.glsl` correctly include `servers/rendering/renderer_rd/shaders/implementation_data_inc.glsl`, thus ensuring they now use the common `ImplementationData` struct.
+
+### Uniform Binding Error
+
+**Problem:** The `godot_output_full.log` shows the error: "ERROR: All the shader bindings for the given set must be covered by the uniforms provided. Binding (0), set (1) was not provided." This indicates a mismatch between the uniform bindings defined in the shader and the uniform bindings provided by the rendering pipeline. Specifically, the `SceneDataBlock` uniform buffer (Binding 0, Set 1) was expected by the shader but was not provided when creating the uniform set.
+
+**Debugging Process:**
+
+1.  Identified the error message in `godot_output_full.log`.
+2.  Traced the error to `uniform_set_create` in `servers/rendering/rendering_device.cpp`.
+3.  Determined that the `SceneDataBlock` uniform (Binding 0, Set 1) was missing from the `uniforms` vector when creating the uniform set for Set 1.
+4.  Realized that the `default_oit_uniform_set` was being created separately, potentially conflicting with the main uniform set for Set 1.
+
 **Proposed Solution:**
 
-1.  Move the `ImplementationData` struct definition to a new common include file: `servers/rendering/renderer_rd/shaders/implementation_data_inc.glsl`.
-2.  Include this new common file in both `servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl` and `servers/rendering/renderer_rd/shaders/forward_mobile/scene_forward_mobile_inc.glsl`. This will ensure that `max_fragments` is available to all renderers that use `ImplementationData`.
+1.  Remove the separate creation of `default_oit_uniform_set` in `SceneShaderForwardClustered.cpp` and `RenderForwardMobile.cpp`.
+2.  Instead, add the OIT buffers (Binding 37, 38, 39) to the `uniforms` vector within the `_setup_render_pass_uniform_set` function in both `render_forward_clustered.cpp` and `render_forward_mobile.cpp`. This will ensure that the OIT buffers are part of the main uniform set for Set 1, alongside the `SceneDataBlock` uniform.

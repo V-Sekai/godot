@@ -246,7 +246,7 @@ void AlphaOrderIndependent::clear_alpha_order_independent_buffers(RID p_tile_buf
 	RD::get_singleton()->buffer_update(p_tile_buffer, 0, clear_data.size(), clear_data.ptr());
 }
 
-void AlphaOrderIndependent::resolve_alpha_order_independent(RID p_tile_buffer, RID p_fragment_buffer, RID p_dst_texture, RID p_depth_texture, int p_width, int p_height, int p_view) {
+void AlphaOrderIndependent::resolve_alpha_order_independent(RID p_tile_buffer, RID p_fragment_buffer, RID p_dst_texture, RID p_depth_texture, int p_width, int p_height, int p_view, RID p_render_pass_uniform_set) {
 	if (!p_tile_buffer.is_valid() || !p_fragment_buffer.is_valid() || !p_dst_texture.is_valid()) {
 		return;
 	}
@@ -323,6 +323,7 @@ void AlphaOrderIndependent::resolve_alpha_order_independent(RID p_tile_buffer, R
 	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(framebuffer);
 	RD::get_singleton()->draw_list_bind_render_pipeline(draw_list, blend.pipeline.get_render_pipeline(RD::INVALID_ID, fb_format));
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, uniform_set, 0);
+	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, p_render_pass_uniform_set, 1); // Bind Set 1
 
 	// Draw fullscreen triangle (no vertex buffer needed, generated in vertex shader)
 	RD::get_singleton()->draw_list_draw(draw_list, false, 1u, 3u);

@@ -73,7 +73,7 @@ public:
 	void create_alpha_order_independent_buffers(RID &r_tile_buffer, RID &r_fragment_buffer, RID &r_counter_buffer, int p_width, int p_height, bool p_multiview, int p_view_count);
 	void free_alpha_order_independent_buffers(RID &r_tile_buffer, RID &r_fragment_buffer, RID &r_counter_buffer);
 	void clear_alpha_order_independent_buffers(RID p_tile_buffer, RID p_fragment_buffer, RID p_counter_buffer, int p_width, int p_height, int p_view_count);
-	void resolve_alpha_order_independent(RID p_tile_buffer, RID p_fragment_buffer, RID p_dst_texture, RID p_depth_texture, int p_width, int p_height, int p_view);
+	void resolve_alpha_order_independent(RID p_tile_buffer, RID p_fragment_buffer, RID p_dst_texture, RID p_depth_texture, int p_width, int p_height, int p_view, RID p_render_pass_uniform_set);
 
 private:
 	struct AlphaOrderIndependentBlend {

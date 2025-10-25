@@ -3544,4 +3544,5 @@ RenderForwardMobile::~RenderForwardMobile() {
 		memdelete_arr(scene_state.lightmap_captures);
 	}
 	RD::get_singleton()->free_rid(default_oit_uniform_set);
+	RD::get_singleton()->free_rid(default_oit_uniform_set);
 }
