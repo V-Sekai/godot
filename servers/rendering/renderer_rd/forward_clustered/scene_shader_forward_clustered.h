@@ -358,6 +358,7 @@ public:
 	RID default_oit_counter_buffer;
 	RID default_transforms_buffer;
 	RID default_transforms_uniform_set;
+	RID default_oit_uniform_set;
 
 
 	RID default_material_uniform_set;

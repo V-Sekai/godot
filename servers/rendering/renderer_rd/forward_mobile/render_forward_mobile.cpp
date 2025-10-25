@@ -3495,6 +3495,29 @@ RenderForwardMobile::RenderForwardMobile() {
 
 	scene_shader.init(defines);
 
+	{
+		// Create the OIT uniform set.
+		Vector<RD::Uniform> uniforms;
+		RD::Uniform u;
+
+		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+		u.binding = 37;
+		u.append_id(scene_shader.default_oit_tile_buffer);
+		uniforms.push_back(u);
+
+		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+		u.binding = 38;
+		u.append_id(scene_shader.default_oit_fragment_buffer);
+		uniforms.push_back(u);
+
+		u.uniform_type = RD::UNIFORM_TYPE_STORAGE_BUFFER;
+		u.binding = 39;
+		u.append_id(scene_shader.default_oit_counter_buffer);
+		uniforms.push_back(u);
+
+		default_oit_uniform_set = RD::get_singleton()->uniform_set_create(uniforms, scene_shader.default_shader_rd, RENDER_PASS_UNIFORM_SET);
+	}
+
 	_update_shader_quality_settings();
 	_update_global_pipeline_data_requirements_from_project();
 
@@ -3520,4 +3543,5 @@ RenderForwardMobile::~RenderForwardMobile() {
 		RD::get_singleton()->free_rid(scene_state.lightmap_capture_buffer);
 		memdelete_arr(scene_state.lightmap_captures);
 	}
+	RD::get_singleton()->free_rid(default_oit_uniform_set);
 }
