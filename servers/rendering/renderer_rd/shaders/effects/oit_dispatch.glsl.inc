@@ -31,11 +31,6 @@
 // OIT Fragment Dispatch Include
 // For BaseMaterial3D oit_transparency integration
 
-#ifndef OIT_DISPATCH_GLSL_INC
-#define OIT_DISPATCH_GLSL_INC
-
-#ifdef USE_ALPHA_ORDER_INDEPENDENT
-
 // OIT data structures
 struct TileData {
 	uint fragment_head;
@@ -120,7 +115,3 @@ void oit_collect_fragment(vec4 frag_color, bool oit_enabled, uint screen_width, 
 vec3 oit_debug_tile_visualization(vec2 p_frag_coord, uint p_screen_width, uint p_screen_height) {
 	return vec3(0.0, 0.0, 0.0);
 }
-
-#endif // USE_ALPHA_ORDER_INDEPENDENT
-
-#endif // OIT_DISPATCH_GLSL_INC

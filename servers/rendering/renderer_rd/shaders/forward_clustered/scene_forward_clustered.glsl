@@ -12,9 +12,6 @@
 
 #include "scene_forward_clustered_inc.glsl"
 
-#ifdef USE_ALPHA_ORDER_INDEPENDENT
-#include "../effects/oit_dispatch.glsl.inc"
-#endif
 
 #define SHADER_IS_SRGB false
 #define SHADER_SPACE_FAR 0.0
@@ -845,6 +842,7 @@ void main() {
 #VERSION_DEFINES
 
 #ifdef USE_ALPHA_ORDER_INDEPENDENT
+#include "../effects/oit_buffers.glsl"
 #include "../effects/oit_dispatch.glsl.inc"
 #endif
 
