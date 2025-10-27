@@ -18,9 +18,6 @@ ios_lib_files = [
     "display_server_ios.mm",
     "godot_view_ios.mm",
     "main_ios.mm",
-    "view_controller.mm",
-    "godot_view_renderer.mm",
-    "keyboard_input_view.mm",
 ]
 
 ios_libgodot_files = [

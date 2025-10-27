@@ -562,7 +562,7 @@ int64_t DisplayServerAppleEmbedded::window_get_native_handle(HandleType p_handle
 #endif
 #if defined(GLES3_ENABLED)
 		case OPENGL_FBO: {
-			if (rendering_driver == "opengl3") {
+			if (gl_manager) {
 				return (int64_t)gl_manager->window_get_render_target(DisplayServer::MAIN_WINDOW_ID);
 			}
 			return 0;
