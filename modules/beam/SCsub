@@ -1,0 +1,11 @@
+Import("env")
+
+env_beam = env.Clone()
+
+# Source files for the BEAM module
+sources = [
+    "register_beam_types.cpp",
+    "beam_server.cpp",
+]
+
+env_beam.add_source_files(env.modules_sources, sources)

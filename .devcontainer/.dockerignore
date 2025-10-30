@@ -1,0 +1,16 @@
+.git
+.gitignore
+.gitattributes
+bin/
+.scons_node_count
+.sconsign5.dblite
+__pycache__/
+*.pyc
+.vscode/
+.devcontainer/
+node_modules/
+.env
+.DS_Store
+*.swp
+*.swo
+*~

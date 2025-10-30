@@ -68,6 +68,7 @@
 #include "scene/theme/theme_db.h"
 #include "servers/audio/audio_driver_dummy.h"
 #include "servers/audio/audio_server.h"
+#include "servers/beam_server.h"
 #include "servers/camera/camera_server.h"
 #include "servers/display/display_server.h"
 #include "servers/movie_writer/movie_writer.h"
@@ -4793,6 +4794,10 @@ bool Main::iteration() {
 	}
 
 	AudioServer::get_singleton()->update();
+
+#ifdef LINUXBSD_ENABLED
+	BeamServer::get_singleton()->update();
+#endif
 
 	if (EngineDebugger::is_active()) {
 		EngineDebugger::get_singleton()->iteration(frame_time, process_ticks, physics_process_ticks, physics_step);

@@ -63,6 +63,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install Erlang
+        uses: erlef/setup-erlang@v1
+        with:
+          otp-version: '26.x'
+
+      - name: Install Elixir
+        uses: erlef/setup-elixir@v1
+        with:
+          elixir-version: '1.16.x'
+          otp-version: '26.x'
+
       - name: Restore Godot build cache
         uses: ./.github/actions/godot-cache-restore
         with:

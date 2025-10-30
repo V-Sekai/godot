@@ -1,0 +1,37 @@
+{
+  "name": "Godot BEAM Development",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=${localEnv:HOME}/godot,target=/workspace,type=bind,consistency=cached"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "erlang.erlang-ls",
+        "JakeBecker.elixir-ls",
+        "eamodio.gitlens",
+        "saoudrizwan.claude-dev"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "editor.formatOnSave": true,
+        "C_Cpp.clangFormatStyle": "file"
+      }
+    }
+  },
+  "remoteUser": "dev",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "forwardPorts": [],
+  "remoteEnv": {
+    "PATH": "/opt/elixir/bin/:/home/dev/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  }
+}

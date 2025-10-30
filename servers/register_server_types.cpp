@@ -33,6 +33,8 @@
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 
+#include "servers/beam_server.h"
+
 #include "audio/audio_effect.h"
 #include "audio/audio_server.h"
 #include "audio/audio_stream.h"
@@ -387,6 +389,19 @@ void register_server_singletons() {
 #ifndef XR_DISABLED
 	Engine::get_singleton()->add_singleton(Engine::Singleton("XRServer", XRServer::get_singleton(), "XRServer"));
 #endif // XR_DISABLED
+
+	// Beam server singleton (optional - will disable itself if initialization fails)
+	{
+		BeamServer *beam_server = memnew(BeamServer);
+		beam_server->init();
+		// Only register if initialization was successful (listen_fd >= 0)
+		if (beam_server->is_initialized()) {
+			Engine::get_singleton()->add_singleton(Engine::Singleton("BeamServer", BeamServer::get_singleton(), "BeamServer"));
+		} else {
+			// Clean up if initialization failed
+			memdelete(beam_server);
+		}
+	}
 
 	OS::get_singleton()->benchmark_end_measure("Servers", "Register Singletons");
 }

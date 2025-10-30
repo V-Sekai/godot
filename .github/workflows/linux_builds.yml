@@ -121,6 +121,17 @@ jobs:
             sudo apt-get install mesa-vulkan-drivers
           fi
 
+      - name: Install Erlang
+        uses: erlef/setup-erlang@v1
+        with:
+          otp-version: '26.x'
+
+      - name: Install Elixir
+        uses: erlef/setup-elixir@v1
+        with:
+          elixir-version: '1.16.x'
+          otp-version: '26.x'
+
       - name: Free disk space on runner
         run: |
           echo "Disk usage before:" && df -h

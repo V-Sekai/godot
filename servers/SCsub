@@ -7,6 +7,34 @@ env.servers_sources = []
 
 env.add_source_files(env.servers_sources, "register_server_types.cpp")
 
+# Linux-specific BeamServer
+if env["platform"] == "linuxbsd":
+    env.add_source_files(env.servers_sources, "beam_server.cpp")
+    env.add_source_files(env.servers_sources, "erlang_variant.cpp")
+
+    # Add Erlang Interface library for beam server
+    ei_base_path = "/usr/lib/erlang/lib/erl_interface-5.5.2"
+    env.Prepend(CPPPATH=[ei_base_path + "/include"])
+    env.Append(LIBPATH=[ei_base_path + "/lib"])
+
+    # Create ei library object for proper static linking
+    ei_lib_path = "/usr/lib/erlang/lib/erl_interface-5.5.2/lib/libei.a"
+    ei_lib = env.File(ei_lib_path)
+
+    # Insert ei library in correct position (before system libs, after module libs)
+    # LIBS contains first SCons Library objects and then plain strings for system libraries
+    inserted = False
+    for idx, linklib in enumerate(env["LIBS"]):
+        if isinstance(linklib, (str, bytes)):  # first system lib such as "X11", otherwise SCons lib object
+            env["LIBS"].insert(idx, ei_lib)
+            inserted = True
+            break
+    if not inserted:
+        env.Append(LIBS=[ei_lib])
+
+    # Add system libraries that may be needed for Erlang Interface
+    # Note: nsl library may not be available on all systems
+
 SConscript("audio/SCsub")
 SConscript("camera/SCsub")
 SConscript("debugger/SCsub")
