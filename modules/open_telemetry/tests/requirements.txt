@@ -1,0 +1,17 @@
+# OpenTelemetry Python SDK Requirements
+# Install with: pip install -r requirements.txt
+
+# Core OpenTelemetry API and SDK
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+
+# OTLP Exporters
+opentelemetry-exporter-otlp>=1.20.0
+opentelemetry-exporter-otlp-proto-http>=1.20.0
+
+# Optional: Additional exporters
+# opentelemetry-exporter-jaeger>=1.20.0
+# opentelemetry-exporter-zipkin>=1.20.0
+
+# HTTP client (required for OTLP HTTP exporter)
+requests>=2.28.0

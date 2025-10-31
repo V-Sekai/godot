@@ -2336,6 +2336,68 @@
 		<member name="memory/limits/message_queue/max_size_mb" type="int" setter="" getter="" default="32">
 			Godot uses a message queue to defer some function calls. If you run out of space on it (you will see an error), you can increase the size here.
 		</member>
+		<member name="modules/open_telemetry/enabled" type="bool" setter="" getter="" default="false">
+		</member>
+		<member name="modules/open_telemetry/service_0/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_0/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_0/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_1/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_1/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_1/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_2/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_2/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_2/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_3/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_3/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_3/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_4/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_4/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_4/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_5/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_5/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_5/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_6/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_6/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_6/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_7/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_7/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_7/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_8/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_8/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_8/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_9/endpoint" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
+		<member name="modules/open_telemetry/service_9/headers" type="Dictionary" setter="" getter="" default="{}">
+		</member>
+		<member name="modules/open_telemetry/service_9/name" type="String" setter="" getter="" default="&quot;&quot;">
+		</member>
 		<member name="navigation/2d/default_cell_size" type="float" setter="" getter="" default="1.0">
 			Default cell size for 2D navigation maps. See [method NavigationServer2D.map_set_cell_size].
 		</member>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OTelDocument" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="build_log_payload">
+			<return type="Dictionary" />
+			<param index="0" name="resource" type="OTelResource" />
+			<param index="1" name="scope" type="OTelScope" />
+			<param index="2" name="logs" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="build_metric_payload">
+			<return type="Dictionary" />
+			<param index="0" name="resource" type="OTelResource" />
+			<param index="1" name="scope" type="OTelScope" />
+			<param index="2" name="metrics" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="build_trace_payload">
+			<return type="Dictionary" />
+			<param index="0" name="resource" type="OTelResource" />
+			<param index="1" name="scope" type="OTelScope" />
+			<param index="2" name="spans" type="OTelSpan[]" />
+			<description>
+			</description>
+		</method>
+		<method name="deserialize_logs">
+			<return type="OTelState" />
+			<param index="0" name="json" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="deserialize_metrics">
+			<return type="OTelState" />
+			<param index="0" name="json" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="deserialize_traces">
+			<return type="OTelState" />
+			<param index="0" name="json" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="serialize_logs">
+			<return type="String" />
+			<param index="0" name="state" type="OTelState" />
+			<description>
+			</description>
+		</method>
+		<method name="serialize_metrics">
+			<return type="String" />
+			<param index="0" name="state" type="OTelState" />
+			<description>
+			</description>
+		</method>
+		<method name="serialize_traces">
+			<return type="String" />
+			<param index="0" name="state" type="OTelState" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
