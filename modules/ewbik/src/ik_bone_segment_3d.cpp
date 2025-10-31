@@ -71,19 +71,12 @@ void IKBoneSegment3D::create_bone_list(Vector<Ref<IKBone3D>> &p_list, bool p_rec
 }
 
 void IKBoneSegment3D::update_pinned_list(Vector<Vector<double>> &r_weights) {
-	for (int32_t chain_i = 0; chain_i < child_segments.size(); chain_i++) {
-		Ref<IKBoneSegment3D> chain = child_segments[chain_i];
-		chain->update_pinned_list(r_weights);
-	}
+	// Segments are now independent - collect only this segment's effectors
+	effector_list.clear();
 	if (is_pinned()) {
 		effector_list.push_back(tip->get_pin());
 	}
-	double motion_propagation_factor = is_pinned() ? tip->get_pin()->motion_propagation_factor : 1.0;
-	if (motion_propagation_factor > 0.0) {
-		for (Ref<IKBoneSegment3D> child : child_segments) {
-			effector_list.append_array(child->effector_list);
-		}
-	}
+	// Note: No longer collecting from child_segments since segments are independent
 }
 
 void IKBoneSegment3D::_update_optimal_rotation(Ref<IKBone3D> p_for_bone, double p_damp, bool p_translate, int32_t current_iteration, int32_t total_iterations) {
@@ -198,12 +191,7 @@ void IKBoneSegment3D::_update_tip_headings(Ref<IKBone3D> p_for_bone, PackedVecto
 }
 
 void IKBoneSegment3D::segment_solver(float p_default_damp, int32_t p_current_iteration, int32_t p_total_iteration) {
-	for (Ref<IKBoneSegment3D> child : child_segments) {
-		if (child.is_null()) {
-			continue;
-		}
-		child->segment_solver(p_default_damp, p_current_iteration, p_total_iteration);
-	}
+	// Segments are now independent - no recursive solving of child segments
 	bool is_translate = parent_segment.is_null();
 	if (is_translate) {
 		_qcp_solver(Math::PI, is_translate, p_current_iteration, p_total_iteration);
@@ -213,7 +201,12 @@ void IKBoneSegment3D::segment_solver(float p_default_damp, int32_t p_current_ite
 }
 
 void IKBoneSegment3D::_qcp_solver(float p_default_damp, bool p_translate, int32_t p_current_iteration, int32_t p_total_iterations) {
-	for (Ref<IKBone3D> current_bone : bones) {
+	// Use Eron's decomposition algorithm to determine optimal solve order
+	Vector<Ref<IKBone3D>> solve_order;
+	apply_erons_decomposition(solve_order);
+
+	// Solve bones in the determined order
+	for (Ref<IKBone3D> current_bone : solve_order) {
 		float damp = p_default_damp;
 		bool is_non_default_damp = p_default_damp < damp;
 		if (is_non_default_damp) {
@@ -373,7 +366,8 @@ void IKBoneSegment3D::_process_children(Vector<BoneId> &r_children, Ref<IKBone3D
 
 		if (child_segment->_has_pinned_descendants()) {
 			_enable_pinned_descendants();
-			child_segments.push_back(child_segment);
+			// Add independent segments directly to EWBIK3D instead of as child segments
+			p_many_bone_ik->add_segment(child_segment);
 		}
 	}
 }
@@ -408,4 +402,157 @@ void IKBoneSegment3D::_finalize_segment(Ref<IKBone3D> p_current_tip) {
 	set_name(ik_bone_name);
 	bones.clear();
 	create_bone_list(bones, false);
+}
+
+// Eron's decomposition algorithm implementation
+void IKBoneSegment3D::apply_erons_decomposition(Vector<Ref<IKBone3D>> &r_solve_order) {
+	r_solve_order.clear();
+
+	// Phase 1: Traverse from each effector to build bone sequences
+	Vector<EffectorTraversal> traversals;
+	for (Ref<IKEffector3D> effector : effector_list) {
+		if (effector.is_valid()) {
+			traverse_from_effector(effector, traversals);
+		}
+	}
+
+	// Phase 2: Consolidate into effector groups
+	Vector<EffectorGroup> groups;
+	consolidate_effector_groups(traversals, groups);
+
+	// Phase 3: Create solve order
+	create_solve_order(groups, r_solve_order);
+}
+
+void IKBoneSegment3D::traverse_from_effector(Ref<IKEffector3D> p_effector, Vector<EffectorTraversal> &r_traversals) {
+	if (p_effector.is_null()) {
+		return;
+	}
+
+	Ref<IKBone3D> current_bone = p_effector->get_ik_bone_3d();
+	if (current_bone.is_null()) {
+		return;
+	}
+
+	EffectorTraversal traversal;
+	traversal.source_effector = p_effector;
+	traversal.current_weight = 1.0f;
+
+	// Traverse up from effector to root
+	while (current_bone.is_valid()) {
+		// Check if this bone is pinned by another effector
+		if (is_bone_pinned(current_bone, p_effector)) {
+			Ref<IKEffector3D> other_effector = current_bone->get_pin();
+			if (other_effector != p_effector) {
+				// Multiply current_weight by (1 - effector_opacity)
+				float opacity = get_effector_opacity(other_effector);
+				traversal.current_weight *= (1.0f - opacity);
+
+				// If weight becomes 0, stop traversing
+				if (traversal.current_weight <= 0.0f) {
+					break;
+				}
+			}
+		}
+
+		// Add bone to encountered list
+		traversal.bones_encountered.push_back(current_bone);
+
+		// Move to parent bone
+		current_bone = current_bone->get_parent();
+	}
+
+	r_traversals.push_back(traversal);
+}
+
+void IKBoneSegment3D::consolidate_effector_groups(const Vector<EffectorTraversal> &p_traversals, Vector<EffectorGroup> &r_groups) {
+	// For each traversal, find or create effector groups with identical bone sequences
+	for (const EffectorTraversal &traversal : p_traversals) {
+		bool found_group = false;
+
+		// Look for existing group with same bone sequence
+		for (EffectorGroup &group : r_groups) {
+			if (group.bone_sequence.size() == traversal.bones_encountered.size()) {
+				bool sequences_match = true;
+				for (int i = 0; i < group.bone_sequence.size(); ++i) {
+					if (group.bone_sequence[i] != traversal.bones_encountered[i]) {
+						sequences_match = false;
+						break;
+					}
+				}
+
+				if (sequences_match) {
+					// Add effector to existing group
+					group.effectors.push_back(traversal.source_effector);
+					found_group = true;
+					break;
+				}
+			}
+		}
+
+		if (!found_group) {
+			// Create new group
+			EffectorGroup new_group;
+			new_group.bone_sequence = traversal.bones_encountered;
+			new_group.effectors.push_back(traversal.source_effector);
+
+			// Calculate root distance (distance from skeleton root)
+			if (!new_group.bone_sequence.is_empty()) {
+				Ref<IKBone3D> rootmost_bone = new_group.bone_sequence[new_group.bone_sequence.size() - 1];
+				int distance = 0;
+				Ref<IKBone3D> current = rootmost_bone;
+				while (current.is_valid() && current->get_parent().is_valid()) {
+					distance++;
+					current = current->get_parent();
+				}
+				new_group.root_distance = distance;
+			}
+
+			r_groups.push_back(new_group);
+		}
+	}
+}
+
+void IKBoneSegment3D::create_solve_order(const Vector<EffectorGroup> &p_groups, Vector<Ref<IKBone3D>> &r_solve_order) {
+	// Sort groups by root distance (reverse sorted - farthest from root first)
+	Vector<EffectorGroup> sorted_groups = p_groups;
+
+	// Manual bubble sort since Vector doesn't have sort_custom
+	for (int i = 0; i < sorted_groups.size(); ++i) {
+		for (int j = 0; j < sorted_groups.size() - 1 - i; ++j) {
+			if (sorted_groups[j].root_distance < sorted_groups[j + 1].root_distance) {
+				// Swap
+				EffectorGroup temp = sorted_groups[j];
+				sorted_groups.write[j] = sorted_groups[j + 1];
+				sorted_groups.write[j + 1] = temp;
+			}
+		}
+	}
+
+	// Traverse groups and append bones to solve order
+	for (const EffectorGroup &group : sorted_groups) {
+		for (Ref<IKBone3D> bone : group.bone_sequence) {
+			// Avoid duplicates
+			if (!r_solve_order.has(bone)) {
+				r_solve_order.push_back(bone);
+			}
+		}
+	}
+}
+
+bool IKBoneSegment3D::is_bone_pinned(Ref<IKBone3D> p_bone, Ref<IKEffector3D> p_exclude_effector) const {
+	if (p_bone.is_null()) {
+		return false;
+	}
+
+	Ref<IKEffector3D> pin = p_bone->get_pin();
+	return pin.is_valid() && pin != p_exclude_effector;
+}
+
+float IKBoneSegment3D::get_effector_opacity(Ref<IKEffector3D> p_effector) const {
+	if (p_effector.is_null()) {
+		return 0.0f;
+	}
+	// For now, use weight as opacity. This could be extended to use other properties
+	return p_effector->get_weight();
 }
