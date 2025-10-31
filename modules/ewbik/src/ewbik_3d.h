@@ -49,8 +49,7 @@ class EWBIK3D : public SkeletonModifier3D {
 
 	NodePath skeleton_path;
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
-	int32_t constraint_count = 0, pin_count = 0, bone_count = 0;
-	Vector<StringName> constraint_names;
+	int32_t pin_count = 0, bone_count = 0;
 	Vector<Ref<IKEffectorTemplate3D>> pins;
 	Vector<Ref<IKBone3D>> bone_list;
 	int32_t iterations_per_frame = 15;
@@ -66,8 +65,6 @@ class EWBIK3D : public SkeletonModifier3D {
 	void _update_ik_bones_transform();
 	void _update_skeleton_bones_transform();
 	Vector<Ref<IKEffectorTemplate3D>> _get_bone_effectors() const;
-	void set_constraint_name_at_index(int32_t p_index, String p_name);
-	void _set_constraint_count(int32_t p_count);
 	void _remove_pin(int32_t p_index);
 	void _set_bone_count(int32_t p_count);
 	void _set_pin_root_bone(int32_t p_pin_index, const String &p_root_bone);
@@ -87,14 +84,12 @@ protected:
 public:
 	void set_state(Ref<ManyBoneIK3DState> p_state);
 	Ref<ManyBoneIK3DState> get_state() const;
-	void add_constraint();
 	void set_stabilization_passes(int32_t p_passes);
 	int32_t get_stabilization_passes() const;
 	Transform3D get_godot_skeleton_transform_inverse();
 	Ref<IKNode3D> get_godot_skeleton_transform();
 	bool get_pin_enabled(int32_t p_effector_index) const;
 	void register_skeleton();
-	void reset_constraints();
 	TypedArray<IKBone3D> get_bone_list() const;
 	TypedArray<IKBoneSegment3D> get_segmented_skeletons();
 	float get_iterations_per_frame() const;
@@ -118,16 +113,7 @@ public:
 	float get_pin_motion_propagation_factor(int32_t p_effector_index) const;
 	real_t get_default_damp() const;
 	void set_default_damp(float p_default_damp);
-	int32_t find_constraint(String p_string) const;
 	int32_t find_pin(String p_string) const;
-	int32_t get_constraint_count() const;
-	StringName get_constraint_name(int32_t p_index) const;
-	void set_twist_transform_of_constraint(int32_t p_index, Transform3D p_transform);
-	Transform3D get_twist_transform_of_constraint(int32_t p_index) const;
-	void set_orientation_transform_of_constraint(int32_t p_index, Transform3D p_transform);
-	Transform3D get_orientation_transform_of_constraint(int32_t p_index) const;
-	void set_direction_transform_of_bone(int32_t p_index, Transform3D p_transform);
-	Transform3D get_direction_transform_of_bone(int32_t p_index) const;
 	int32_t get_bone_count() const;
 	void cleanup();
 

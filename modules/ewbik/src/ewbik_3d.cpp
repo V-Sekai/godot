@@ -184,10 +184,7 @@ void EWBIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 
 bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
 	String name = p_name;
-	if (name == "constraint_count") {
-		r_ret = get_constraint_count();
-		return true;
-	} else if (name == "pin_count") {
+	if (name == "pin_count") {
 		r_ret = get_pin_count();
 		return true;
 	} else if (name == "bone_count") {
@@ -221,17 +218,14 @@ bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
 
 bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 	String name = p_name;
-	if (name == "constraint_count") {
-		_set_constraint_count(p_value);
-		return true;
-	} else if (name == "pin_count") {
+	if (name == "pin_count") {
 		set_pin_count(p_value);
 		return true;
 	} else if (name.begins_with("pins/")) {
 		int index = name.get_slicec('/', 1).to_int();
 		String what = name.get_slicec('/', 2);
 		if (index >= pins.size()) {
-			set_pin_count(constraint_count);
+			set_pin_count(pin_count);
 		}
 		if (what == "bone_name") {
 			set_pin_bone_name(index, p_value);
@@ -254,17 +248,8 @@ bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 }
 
 void EWBIK3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_constraint_name_at_index", "index", "name"), &EWBIK3D::set_constraint_name_at_index);
 	ClassDB::bind_method(D_METHOD("set_total_effector_count", "count"), &EWBIK3D::set_pin_count);
-	ClassDB::bind_method(D_METHOD("get_twist_transform_of_constraint", "index"), &EWBIK3D::get_twist_transform_of_constraint);
-	ClassDB::bind_method(D_METHOD("set_twist_transform_of_constraint", "index", "transform"), &EWBIK3D::set_twist_transform_of_constraint);
-	ClassDB::bind_method(D_METHOD("get_orientation_transform_of_constraint", "index"), &EWBIK3D::get_orientation_transform_of_constraint);
-	ClassDB::bind_method(D_METHOD("set_orientation_transform_of_constraint", "index", "transform"), &EWBIK3D::set_orientation_transform_of_constraint);
-	ClassDB::bind_method(D_METHOD("get_direction_transform_of_bone", "index"), &EWBIK3D::get_direction_transform_of_bone);
-	ClassDB::bind_method(D_METHOD("set_direction_transform_of_bone", "index", "transform"), &EWBIK3D::set_direction_transform_of_bone);
-	ClassDB::bind_method(D_METHOD("remove_constraint_at_index", "index"), &EWBIK3D::remove_pin_at_index);
 	ClassDB::bind_method(D_METHOD("register_skeleton"), &EWBIK3D::register_skeleton);
-	ClassDB::bind_method(D_METHOD("reset_constraints"), &EWBIK3D::reset_constraints);
 	ClassDB::bind_method(D_METHOD("set_dirty"), &EWBIK3D::set_dirty);
 	ClassDB::bind_method(D_METHOD("set_pin_motion_propagation_factor", "index", "falloff"), &EWBIK3D::set_pin_motion_propagation_factor);
 	ClassDB::bind_method(D_METHOD("get_pin_motion_propagation_factor", "index"), &EWBIK3D::get_pin_motion_propagation_factor);
@@ -279,13 +264,9 @@ void EWBIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_pin_weight", "index", "weight"), &EWBIK3D::set_pin_weight);
 	ClassDB::bind_method(D_METHOD("get_pin_weight", "index"), &EWBIK3D::get_pin_weight);
 	ClassDB::bind_method(D_METHOD("get_pin_enabled", "index"), &EWBIK3D::get_pin_enabled);
-	ClassDB::bind_method(D_METHOD("get_constraint_name", "index"), &EWBIK3D::get_constraint_name);
 	ClassDB::bind_method(D_METHOD("get_iterations_per_frame"), &EWBIK3D::get_iterations_per_frame);
 	ClassDB::bind_method(D_METHOD("set_iterations_per_frame", "count"), &EWBIK3D::set_iterations_per_frame);
-	ClassDB::bind_method(D_METHOD("find_constraint", "name"), &EWBIK3D::find_constraint);
 	ClassDB::bind_method(D_METHOD("find_pin", "name"), &EWBIK3D::find_pin);
-	ClassDB::bind_method(D_METHOD("get_constraint_count"), &EWBIK3D::get_constraint_count);
-	ClassDB::bind_method(D_METHOD("set_constraint_count", "count"), &EWBIK3D::_set_constraint_count);
 	ClassDB::bind_method(D_METHOD("get_default_damp"), &EWBIK3D::get_default_damp);
 	ClassDB::bind_method(D_METHOD("set_default_damp", "damp"), &EWBIK3D::set_default_damp);
 	ClassDB::bind_method(D_METHOD("get_bone_count"), &EWBIK3D::get_bone_count);
@@ -377,8 +358,7 @@ EWBIK3D::~EWBIK3D() {
 	bone_list.clear();
 	pins.clear();
 
-	// Clear constraint data
-	constraint_names.clear();
+
 
 	// Clear transform references - Ref<> will handle cleanup automatically
 	godot_skeleton_transform.unref();
@@ -399,40 +379,7 @@ void EWBIK3D::set_pin_motion_propagation_factor(int32_t p_effector_index, const 
 	set_dirty();
 }
 
-void EWBIK3D::_set_constraint_count(int32_t p_count) {
-	int32_t old_count = constraint_names.size();
-	constraint_count = p_count;
-	constraint_names.resize(p_count);
-	for (int32_t constraint_i = p_count; constraint_i-- > old_count;) {
-		constraint_names.write[constraint_i] = String();
-	}
-	set_dirty();
-	notify_property_list_changed();
-}
 
-int32_t EWBIK3D::get_constraint_count() const {
-	return constraint_count;
-}
-
-inline StringName EWBIK3D::get_constraint_name(int32_t p_index) const {
-	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), StringName());
-	return constraint_names[p_index];
-}
-
-int32_t EWBIK3D::find_pin_id(StringName p_bone_name) {
-	for (int32_t constraint_i = 0; constraint_i < constraint_count; constraint_i++) {
-		if (constraint_names[constraint_i] == p_bone_name) {
-			return constraint_i;
-		}
-	}
-	return -1;
-}
-
-void EWBIK3D::set_constraint_name_at_index(int32_t p_index, String p_name) {
-	ERR_FAIL_INDEX(p_index, constraint_names.size());
-	constraint_names.write[p_index] = p_name;
-	set_dirty();
-}
 
 TypedArray<IKBoneSegment3D> EWBIK3D::get_segmented_skeletons() {
 	TypedArray<IKBoneSegment3D> result;
@@ -542,31 +489,6 @@ void EWBIK3D::set_dirty() {
 	is_dirty = true;
 }
 
-int32_t EWBIK3D::find_constraint(String p_string) const {
-	for (int32_t constraint_i = 0; constraint_i < constraint_count; constraint_i++) {
-		if (get_constraint_name(constraint_i) == p_string) {
-			return constraint_i;
-		}
-	}
-	return -1;
-}
-
-void EWBIK3D::remove_pin_at_index(int32_t p_index) {
-	ERR_FAIL_INDEX(p_index, constraint_count);
-
-	constraint_names.remove_at(p_index);
-
-	constraint_count--;
-
-	set_dirty();
-}
-
-void EWBIK3D::_set_bone_count(int32_t p_count) {
-	bone_count = p_count;
-	set_dirty();
-	notify_property_list_changed();
-}
-
 int32_t EWBIK3D::get_bone_count() const {
 	return bone_count;
 }
@@ -579,32 +501,6 @@ TypedArray<IKBone3D> EWBIK3D::get_bone_list() const {
 	return result;
 }
 
-void EWBIK3D::set_direction_transform_of_bone(int32_t p_index, Transform3D p_transform) {
-	ERR_FAIL_INDEX(p_index, constraint_names.size());
-}
-
-Transform3D EWBIK3D::get_direction_transform_of_bone(int32_t p_index) const {
-	return Transform3D();
-}
-
-Transform3D EWBIK3D::get_orientation_transform_of_constraint(int32_t p_index) const {
-	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), Transform3D());
-	return Transform3D();
-}
-
-void EWBIK3D::set_orientation_transform_of_constraint(int32_t p_index, Transform3D p_transform) {
-	ERR_FAIL_INDEX(p_index, constraint_names.size());
-}
-
-Transform3D EWBIK3D::get_twist_transform_of_constraint(int32_t p_index) const {
-	ERR_FAIL_INDEX_V(p_index, constraint_names.size(), Transform3D());
-	return Transform3D();
-}
-
-void EWBIK3D::set_twist_transform_of_constraint(int32_t p_index, Transform3D p_transform) {
-	ERR_FAIL_INDEX(p_index, constraint_names.size());
-}
-
 bool EWBIK3D::get_pin_enabled(int32_t p_effector_index) const {
 	ERR_FAIL_INDEX_V(p_effector_index, pins.size(), false);
 	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
@@ -615,24 +511,6 @@ bool EWBIK3D::get_pin_enabled(int32_t p_effector_index) const {
 }
 
 void EWBIK3D::register_skeleton() {
-	if (!get_pin_count() && !get_constraint_count()) {
-		reset_constraints();
-	}
-	set_dirty();
-}
-
-void EWBIK3D::reset_constraints() {
-	Skeleton3D *skeleton = get_skeleton();
-	if (skeleton) {
-		int32_t saved_pin_count = get_pin_count();
-		set_pin_count(0);
-		set_pin_count(saved_pin_count);
-		int32_t saved_constraint_count = constraint_names.size();
-		_set_constraint_count(0);
-		_set_constraint_count(saved_constraint_count);
-		_set_bone_count(0);
-		_set_bone_count(saved_constraint_count);
-	}
 	set_dirty();
 }
 
@@ -653,12 +531,7 @@ Ref<IKNode3D> EWBIK3D::get_godot_skeleton_transform() {
 	return godot_skeleton_transform;
 }
 
-void EWBIK3D::add_constraint() {
-	int32_t old_count = constraint_count;
-	_set_constraint_count(constraint_count + 1);
-	constraint_names.write[old_count] = String();
-	set_dirty();
-}
+
 
 int32_t EWBIK3D::find_pin(String p_string) const {
 	for (int32_t pin_i = 0; pin_i < pin_count; pin_i++) {

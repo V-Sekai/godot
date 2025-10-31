@@ -90,16 +90,7 @@ void IKBone3D::update_default_bone_direction_transform(Skeleton3D *p_skeleton) {
 	}
 }
 
-void IKBone3D::update_default_constraint_transform() {
-	Ref<IKBone3D> parent_bone = get_parent();
-	if (parent_bone.is_valid()) {
-		Transform3D parent_bone_aligned_transform = get_parent_bone_aligned_transform();
-		constraint_orientation_transform->set_global_transform(parent_bone_aligned_transform);
-	}
 
-	// Kusudama open-cone limits disabled at runtime.
-	// Preserve stored kusudama data but do not evaluate cones here.
-}
 
 Ref<IKBone3D> IKBone3D::get_parent() const {
 	return parent;
@@ -225,19 +216,7 @@ void IKBone3D::set_cos_half_dampen(float p_cos_half_dampen) {
 	cos_half_dampen = p_cos_half_dampen;
 }
 
-void IKBone3D::add_constraint(BoneConstraint3D *p_constraint) {
-	if (p_constraint) {
-		constraints.push_back(p_constraint);
-	}
-}
 
-Vector<BoneConstraint3D *> IKBone3D::get_constraints() const {
-	return constraints;
-}
-
-void IKBone3D::clear_constraints() {
-	constraints.clear();
-}
 
 Ref<IKNode3D> IKBone3D::get_ik_transform() {
 	return godot_skeleton_aligned_transform;
@@ -259,15 +238,7 @@ Ref<IKNode3D> IKBone3D::get_bone_direction_transform() {
 	return bone_direction_transform;
 }
 
-bool IKBone3D::is_orientationally_constrained() {
-	// Constraint limits disabled: always report not orientationally constrained.
-	return false;
-}
 
-bool IKBone3D::is_axially_constrained() {
-	// Constraint limits disabled: always report not axially constrained.
-	return false;
-}
 
 Vector<float> &IKBone3D::get_cos_half_returnfullness_dampened() {
 	return cos_half_returnfulness_dampened;
