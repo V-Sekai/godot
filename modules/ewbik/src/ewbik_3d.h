@@ -117,6 +117,7 @@ public:
 	int32_t find_pin(String p_string) const;
 	int32_t get_bone_count() const;
 	void cleanup();
+	void add_segment(Ref<IKBoneSegment3D> p_segment);
 
 	EWBIK3D();
 	~EWBIK3D();

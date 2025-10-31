@@ -340,6 +340,27 @@ void EWBIK3D::set_state(Ref<ManyBoneIK3DState> p_state) {
 EWBIK3D::EWBIK3D() {
 }
 
+void EWBIK3D::add_segment(Ref<IKBoneSegment3D> p_segment) {
+	if (p_segment.is_valid()) {
+		segmented_skeletons.push_back(p_segment);
+	}
+}
+
+StringName EWBIK3D::get_pin_bone_name(int32_t p_effector_index) const {
+	ERR_FAIL_INDEX_V(p_effector_index, pins.size(), StringName());
+	Ref<IKEffectorTemplate3D> effector_template = pins[p_effector_index];
+	return effector_template->get_name();
+}
+
+real_t EWBIK3D::get_default_damp() const {
+	return default_damp;
+}
+
+void EWBIK3D::set_default_damp(float p_default_damp) {
+	default_damp = p_default_damp;
+	set_dirty();
+}
+
 void EWBIK3D::cleanup() {
 	// Force immediate cleanup of all resources
 	set_active(false); // Stop any processing

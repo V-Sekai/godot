@@ -42,6 +42,19 @@
 class IKEffector3D;
 class IKBone3D;
 
+// Data structures for Eron's decomposition algorithm
+struct EffectorTraversal {
+	Vector<Ref<IKBone3D>> bones_encountered;
+	Ref<IKEffector3D> source_effector;
+	float current_weight = 1.0f;
+};
+
+struct EffectorGroup {
+	Vector<Ref<IKBone3D>> bone_sequence;
+	Vector<Ref<IKEffector3D>> effectors;
+	int root_distance = 0; // Distance from skeleton root
+};
+
 class IKBoneSegment3D : public Resource {
 	GDCLASS(IKBoneSegment3D, Resource);
 	Ref<IKBone3D> root;
@@ -94,6 +107,15 @@ public:
 	void create_bone_list(Vector<Ref<IKBone3D>> &p_list, bool p_recursive = false) const;
 	Ref<IKBone3D> get_ik_bone(BoneId p_bone) const;
 	void generate_default_segments(Vector<Ref<IKEffectorTemplate3D>> &p_pins, BoneId p_root_bone, BoneId p_tip_bone, EWBIK3D *p_many_bone_ik);
+
+	// Eron's decomposition algorithm methods
+	void apply_erons_decomposition(Vector<Ref<IKBone3D>> &r_solve_order);
+	void traverse_from_effector(Ref<IKEffector3D> p_effector, Vector<EffectorTraversal> &r_traversals);
+	void consolidate_effector_groups(const Vector<EffectorTraversal> &p_traversals, Vector<EffectorGroup> &r_groups);
+	void create_solve_order(const Vector<EffectorGroup> &p_groups, Vector<Ref<IKBone3D>> &r_solve_order);
+	bool is_bone_pinned(Ref<IKBone3D> p_bone, Ref<IKEffector3D> p_exclude_effector = nullptr) const;
+	float get_effector_opacity(Ref<IKEffector3D> p_effector) const;
+
 	IKBoneSegment3D() {}
 	IKBoneSegment3D(Skeleton3D *p_skeleton, StringName p_root_bone_name, Vector<Ref<IKEffectorTemplate3D>> &p_pins, EWBIK3D *p_many_bone_ik, const Ref<IKBoneSegment3D> &p_parent = nullptr,
 			BoneId root = -1, BoneId tip = -1, int32_t p_stabilizing_pass_count = 0);
