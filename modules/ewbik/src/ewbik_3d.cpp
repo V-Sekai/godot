@@ -449,6 +449,9 @@ void EWBIK3D::_process_modification(double p_delta) {
 		}
 	}
 	_update_skeleton_bones_transform();
+
+	// Apply standard Godot bone constraints after IK solving
+	_apply_bone_constraints();
 }
 
 real_t EWBIK3D::get_pin_weight(int32_t p_pin_index) const {
@@ -602,4 +605,20 @@ void EWBIK3D::set_pin_bone_name(int32_t p_pin_index, const String &p_bone) {
 	}
 	effector_template->set_name(p_bone);
 	set_dirty();
+}
+
+void EWBIK3D::_apply_bone_constraints() {
+	Skeleton3D *skeleton = get_skeleton();
+	if (!skeleton) {
+		return;
+	}
+
+	// Find and apply all BoneConstraint3D nodes that are children of the skeleton
+	for (int i = 0; i < skeleton->get_child_count(); i++) {
+		BoneConstraint3D *constraint = Object::cast_to<BoneConstraint3D>(skeleton->get_child(i));
+		if (constraint && constraint->is_active()) {
+			// Process the constraint with a small delta (constraints are typically processed per-frame)
+			constraint->process_modification(0.0);
+		}
+	}
 }

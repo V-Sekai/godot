@@ -72,6 +72,7 @@ class EWBIK3D : public SkeletonModifier3D {
 	void _bone_list_changed();
 	void _pose_updated();
 	void _update_ik_bone_pose(int32_t p_bone_idx);
+	void _apply_bone_constraints();
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
