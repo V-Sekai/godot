@@ -61,6 +61,11 @@ class EWBIK3D : public SkeletonModifier3D {
 	NodePath skeleton_node_path = NodePath("..");
 	int32_t stabilize_passes = 0;
 
+	// IterateIK3D compatible parameters
+	float angular_delta_limit = Math::deg_to_rad(2.0f); // ~2 degrees per iteration
+	int32_t max_iterations = 4;
+	float min_distance = 0.001f;
+
 	void _on_timer_timeout();
 	void _update_ik_bones_transform();
 	void _update_skeleton_bones_transform();
@@ -118,6 +123,14 @@ public:
 	int32_t get_bone_count() const;
 	void cleanup();
 	void add_segment(Ref<IKBoneSegment3D> p_segment);
+
+	// IterateIK3D compatible parameter getters/setters
+	void set_angular_delta_limit(float p_limit);
+	float get_angular_delta_limit() const;
+	void set_max_iterations(int32_t p_iterations);
+	int32_t get_max_iterations() const;
+	void set_min_distance(float p_distance);
+	float get_min_distance() const;
 
 	EWBIK3D();
 	~EWBIK3D();

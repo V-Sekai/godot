@@ -274,9 +274,22 @@ void EWBIK3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_stabilization_passes"), &EWBIK3D::get_stabilization_passes);
 	ClassDB::bind_method(D_METHOD("set_effector_bone_name", "index", "name"), &EWBIK3D::set_pin_bone_name);
 
+	// IterateIK3D compatible methods
+	ClassDB::bind_method(D_METHOD("set_angular_delta_limit", "limit"), &EWBIK3D::set_angular_delta_limit);
+	ClassDB::bind_method(D_METHOD("get_angular_delta_limit"), &EWBIK3D::get_angular_delta_limit);
+	ClassDB::bind_method(D_METHOD("set_max_iterations", "iterations"), &EWBIK3D::set_max_iterations);
+	ClassDB::bind_method(D_METHOD("get_max_iterations"), &EWBIK3D::get_max_iterations);
+	ClassDB::bind_method(D_METHOD("set_min_distance", "distance"), &EWBIK3D::set_min_distance);
+	ClassDB::bind_method(D_METHOD("get_min_distance"), &EWBIK3D::get_min_distance);
+
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "iterations_per_frame", PROPERTY_HINT_RANGE, "1,150,1,or_greater"), "set_iterations_per_frame", "get_iterations_per_frame");
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "default_damp", PROPERTY_HINT_RANGE, "0.01,180.0,0.1,radians,exp", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), "set_default_damp", "get_default_damp");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "stabilization_passes"), "set_stabilization_passes", "get_stabilization_passes");
+
+	// IterateIK3D compatible properties
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "angular_delta_limit", PROPERTY_HINT_RANGE, "0.001,3.14159,0.001,radians"), "set_angular_delta_limit", "get_angular_delta_limit");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_iterations", PROPERTY_HINT_RANGE, "1,100,1"), "set_max_iterations", "get_max_iterations");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_distance", PROPERTY_HINT_RANGE, "0.0001,1.0,0.0001"), "set_min_distance", "get_min_distance");
 }
 
 Ref<ManyBoneIK3DState> EWBIK3D::get_state() const {
@@ -344,6 +357,34 @@ void EWBIK3D::add_segment(Ref<IKBoneSegment3D> p_segment) {
 	if (p_segment.is_valid()) {
 		segmented_skeletons.push_back(p_segment);
 	}
+}
+
+// IterateIK3D compatible parameter implementations
+void EWBIK3D::set_angular_delta_limit(float p_limit) {
+	angular_delta_limit = p_limit;
+	set_dirty();
+}
+
+float EWBIK3D::get_angular_delta_limit() const {
+	return angular_delta_limit;
+}
+
+void EWBIK3D::set_max_iterations(int32_t p_iterations) {
+	max_iterations = p_iterations;
+	set_dirty();
+}
+
+int32_t EWBIK3D::get_max_iterations() const {
+	return max_iterations;
+}
+
+void EWBIK3D::set_min_distance(float p_distance) {
+	min_distance = p_distance;
+	set_dirty();
+}
+
+float EWBIK3D::get_min_distance() const {
+	return min_distance;
 }
 
 StringName EWBIK3D::get_pin_bone_name(int32_t p_effector_index) const {
