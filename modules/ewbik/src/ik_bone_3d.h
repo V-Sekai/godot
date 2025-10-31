@@ -59,7 +59,6 @@ class IKBone3D : public Resource {
 	Vector<float> cos_half_returnfulness_dampened;
 	Vector<float> half_returnfulness_dampened;
 	double stiffness = 0.0;
-	Vector<BoneConstraint3D *> constraints;
 	// In the space of the local parent bone transform.
 	// The origin is the origin of the bone direction transform
 	// Can be independent and should be calculated
@@ -79,8 +78,6 @@ public:
 	void set_half_returnfullness_dampened(const Vector<float> &p_value);
 	void set_stiffness(double p_stiffness);
 	double get_stiffness() const;
-	bool is_axially_constrained();
-	bool is_orientationally_constrained();
 	Transform3D get_bone_direction_global_pose() const;
 	Ref<IKNode3D> get_bone_direction_transform();
 	void set_bone_direction_transform(Ref<IKNode3D> p_bone_direction);
@@ -88,9 +85,6 @@ public:
 	void set_constraint_orientation_transform(Ref<IKNode3D> p_transform);
 	Ref<IKNode3D> get_constraint_orientation_transform();
 	void update_default_constraint_transform();
-	void add_constraint(BoneConstraint3D *p_constraint);
-	Vector<BoneConstraint3D *> get_constraints() const;
-	void clear_constraints();
 	void set_bone_id(BoneId p_bone_id, Skeleton3D *p_skeleton = nullptr);
 	BoneId get_bone_id() const;
 	void set_parent(const Ref<IKBone3D> &p_parent);
