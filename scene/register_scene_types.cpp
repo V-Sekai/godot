@@ -234,6 +234,7 @@
 #include "scene/3d/ik_modifier_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/iterate_ik_3d.h"
+#include "scene/3d/iterate_ik_3d_ewbik.h"
 #include "scene/3d/jacobian_ik_3d.h"
 #include "scene/3d/label_3d.h"
 #include "scene/3d/light_3d.h"
@@ -683,6 +684,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(FABRIK3D);
 	GDREGISTER_CLASS(CCDIK3D);
 	GDREGISTER_CLASS(JacobianIK3D);
+	GDREGISTER_CLASS(IterateIK3DEWBIK);
 	GDREGISTER_CLASS(LimitAngularVelocityModifier3D);
 
 #ifndef XR_DISABLED
