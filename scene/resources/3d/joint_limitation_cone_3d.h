@@ -31,11 +31,17 @@
 #pragma once
 
 #include "scene/resources/3d/joint_limitation_3d.h"
+#include "core/variant/typed_array.h"
+#include "core/object/ref_counted.h"
+
+// Forward declaration
+class IKLimitCone3D;
 
 class JointLimitationCone3D : public JointLimitation3D {
 	GDCLASS(JointLimitationCone3D, JointLimitation3D);
 
 	real_t radius_range = 0.25;
+	Vector<Ref<IKLimitCone3D>> open_cones;
 
 protected:
 	static void _bind_methods();
@@ -45,6 +51,13 @@ protected:
 public:
 	void set_radius_range(real_t p_radius_range);
 	real_t get_radius_range() const;
+
+	// Multi-cone support methods
+	void add_open_cone(Ref<IKLimitCone3D> p_cone);
+	void remove_open_cone(Ref<IKLimitCone3D> p_cone);
+	void clear_open_cones();
+	TypedArray<IKLimitCone3D> get_open_cones() const;
+	void set_open_cones(TypedArray<IKLimitCone3D> p_cones);
 
 #ifdef TOOLS_ENABLED
 	virtual void draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const override;
