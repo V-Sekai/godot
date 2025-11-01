@@ -235,7 +235,6 @@
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/iterate_ik_3d.h"
 #include "scene/3d/jacobian_ik_3d.h"
-#include "scene/3d/multi_chain_ik_3d.h"
 #include "scene/3d/label_3d.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/lightmap_gi.h"
@@ -683,7 +682,6 @@ void register_scene_types() {
 	GDREGISTER_ABSTRACT_CLASS(ChainIK3D);
 	GDREGISTER_CLASS(SplineIK3D);
 	GDREGISTER_ABSTRACT_CLASS(IterateIK3D);
-	GDREGISTER_CLASS(MultiChainIK3D);
 	GDREGISTER_CLASS(FABRIK3D);
 	GDREGISTER_CLASS(CCDIK3D);
 	GDREGISTER_CLASS(EWBIK3D);
