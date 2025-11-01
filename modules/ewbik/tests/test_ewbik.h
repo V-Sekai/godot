@@ -104,7 +104,7 @@ void init(const String &p_test) {
 	ProjectSettings::get_singleton()->setup(project_folder, String(), true);
 }
 
-TEST_CASE("[EWBik] Test Scene Creation") {
+TEST_CASE("[SceneTree][EWBik] Test Scene Creation") {
 	Node *scene_root = TestEwbik::ewbik_create_test_scene();
 	CHECK(scene_root != nullptr);
 	memdelete(scene_root);
