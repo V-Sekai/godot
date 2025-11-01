@@ -55,13 +55,22 @@ TEST_CASE("[SceneTree][CCDIK3D] Class instantiation and registration") {
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] Humanoid arm chain setup with basis and translation") {
+	Node3D *scene_root = memnew(Node3D);
 	Skeleton3D *skeleton = create_humanoid_arm_skeleton();
+	scene_root->add_child(skeleton);
+	skeleton->set_owner(scene_root);
+
 	CCDIK3D *ik = memnew(CCDIK3D);
+	skeleton->add_child(ik);
+	ik->set_owner(skeleton);
 
 	// Setup IK for arm chain
 	ik->set_setting_count(1);
 	ik->set_root_bone_name(0, "LeftShoulder");
 	ik->set_end_bone_name(0, "LeftHand");
+
+	// Process modification to update IK solver's internal state
+	ik->process_modification(0.016);
 
 	// Verify initial setup
 	Vector3 initial_pos = skeleton->get_bone_global_pose(7).origin; // LeftHand bone
@@ -97,18 +106,26 @@ TEST_CASE("[SceneTree][CCDIK3D] Humanoid arm chain setup with basis and translat
 	CHECK_MESSAGE(lower_arm_transform.basis.is_finite(), "LeftLowerArm should have finite basis");
 	CHECK_MESSAGE(hand_transform.basis.is_finite(), "LeftHand should have finite basis");
 
-	memdelete(ik);
-	memdelete(skeleton);
+	memdelete(scene_root);
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] Humanoid leg chain setup with basis and translation") {
+	Node3D *scene_root = memnew(Node3D);
 	Skeleton3D *skeleton = create_humanoid_leg_skeleton();
+	scene_root->add_child(skeleton);
+	skeleton->set_owner(scene_root);
+
 	CCDIK3D *ik = memnew(CCDIK3D);
+	skeleton->add_child(ik);
+	ik->set_owner(skeleton);
 
 	// Setup IK for leg chain
 	ik->set_setting_count(1);
 	ik->set_root_bone_name(0, "Hips");
 	ik->set_end_bone_name(0, "LeftFoot");
+
+	// Process modification to update IK solver's internal state
+	ik->process_modification(0.016);
 
 	// Verify initial setup
 	Vector3 initial_pos = skeleton->get_bone_global_pose(3).origin; // LeftFoot bone
@@ -144,18 +161,26 @@ TEST_CASE("[SceneTree][CCDIK3D] Humanoid leg chain setup with basis and translat
 	CHECK_MESSAGE(lower_leg_transform.basis.is_finite(), "LeftLowerLeg should have finite basis");
 	CHECK_MESSAGE(foot_transform.basis.is_finite(), "LeftFoot should have finite basis");
 
-	memdelete(ik);
-	memdelete(skeleton);
+	memdelete(scene_root);
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] Joint limitation support") {
+	Node3D *scene_root = memnew(Node3D);
 	Skeleton3D *skeleton = create_humanoid_arm_skeleton();
+	scene_root->add_child(skeleton);
+	skeleton->set_owner(scene_root);
+
 	CCDIK3D *ik = memnew(CCDIK3D);
+	skeleton->add_child(ik);
+	ik->set_owner(skeleton);
 
 	// Setup IK
 	ik->set_setting_count(1);
 	ik->set_root_bone_name(0, "LeftShoulder");
 	ik->set_end_bone_name(0, "LeftHand");
+
+	// Process modification to update IK solver's internal state
+	ik->process_modification(0.016);
 
 	// Add joint limitation
 	Ref<JointLimitationCone3D> elbow_limit = memnew(JointLimitationCone3D);
@@ -166,8 +191,7 @@ TEST_CASE("[SceneTree][CCDIK3D] Joint limitation support") {
 	CHECK_MESSAGE(retrieved.is_valid(), "Joint limitation should be retrievable");
 	CHECK_MESSAGE(retrieved->is_class_ptr(JointLimitationCone3D::get_class_ptr_static()), "Joint limitation should be cone type");
 
-	memdelete(ik);
-	memdelete(skeleton);
+	memdelete(scene_root);
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] Multiple settings support") {
