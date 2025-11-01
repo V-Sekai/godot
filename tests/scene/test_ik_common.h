@@ -66,6 +66,10 @@ Skeleton3D *create_humanoid_arm_skeleton() {
 	skeleton->set_bone_rest(6, Transform3D(Basis::from_euler(Vector3(1.571, 0, 0)), Vector3(0, -0.35, 0))); // LeftLowerArm (90° bend - contracted elbow)
 	skeleton->set_bone_rest(7, Transform3D(Basis::from_euler(Vector3(0, 0.175, 0)), Vector3(0, -0.25, 0))); // LeftHand (10° pronation)
 
+	for (int i = 0; i < skeleton->get_bone_count(); ++i) {
+		skeleton->set_bone_global_pose(i, skeleton->get_bone_rest(i));
+	}
+
 	return skeleton;
 }
 
@@ -92,6 +96,10 @@ Skeleton3D *create_humanoid_leg_skeleton() {
 	skeleton->set_bone_rest(2, Transform3D(Basis::from_euler(Vector3(1.047, 0, 0)), Vector3(0, -0.4, 0))); // LeftLowerLeg (60° bend - contracted knee)
 	skeleton->set_bone_rest(3, Transform3D(Basis(), Vector3(0, -0.3, 0))); // LeftFoot down
 	skeleton->set_bone_rest(4, Transform3D(Basis(), Vector3(0, -0.15, 0))); // LeftToes down
+
+	for (int i = 0; i < skeleton->get_bone_count(); ++i) {
+		skeleton->set_bone_global_pose(i, skeleton->get_bone_rest(i));
+	}
 
 	return skeleton;
 }
