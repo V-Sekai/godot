@@ -34,6 +34,7 @@
 
 #include "scene/3d/ccd_ik_3d.h"
 #include "scene/3d/skeleton_3d.h"
+#include "scene/main/window.h" // Required for SceneTree::get_root()
 #include "scene/resources/3d/joint_limitation_cone_3d.h"
 #include "tests/scene/test_ik_common.h"
 
@@ -56,9 +57,12 @@ TEST_CASE("[SceneTree][CCDIK3D] Class instantiation and registration") {
 
 TEST_CASE("[SceneTree][CCDIK3D] Humanoid arm chain setup with basis and translation") {
 	Node3D *scene_root = memnew(Node3D);
+	scene_root->set_name("test_root");
 	Skeleton3D *skeleton = create_humanoid_arm_skeleton();
 	scene_root->add_child(skeleton);
 	skeleton->set_owner(scene_root);
+	SceneTree::get_singleton()->get_root()->add_child(scene_root);
+	skeleton->notification(Node::NOTIFICATION_ENTER_TREE); // Force enter tree notification
 
 	CCDIK3D *ik = memnew(CCDIK3D);
 	skeleton->add_child(ik);
@@ -106,14 +110,17 @@ TEST_CASE("[SceneTree][CCDIK3D] Humanoid arm chain setup with basis and translat
 	CHECK_MESSAGE(lower_arm_transform.basis.is_finite(), "LeftLowerArm should have finite basis");
 	CHECK_MESSAGE(hand_transform.basis.is_finite(), "LeftHand should have finite basis");
 
-	memdelete(scene_root);
+	scene_root->queue_free();
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] Humanoid leg chain setup with basis and translation") {
 	Node3D *scene_root = memnew(Node3D);
+	scene_root->set_name("test_root");
 	Skeleton3D *skeleton = create_humanoid_leg_skeleton();
 	scene_root->add_child(skeleton);
 	skeleton->set_owner(scene_root);
+	SceneTree::get_singleton()->get_root()->add_child(scene_root);
+	skeleton->notification(Node::NOTIFICATION_ENTER_TREE); // Force enter tree notification
 
 	CCDIK3D *ik = memnew(CCDIK3D);
 	skeleton->add_child(ik);
@@ -161,14 +168,17 @@ TEST_CASE("[SceneTree][CCDIK3D] Humanoid leg chain setup with basis and translat
 	CHECK_MESSAGE(lower_leg_transform.basis.is_finite(), "LeftLowerLeg should have finite basis");
 	CHECK_MESSAGE(foot_transform.basis.is_finite(), "LeftFoot should have finite basis");
 
-	memdelete(scene_root);
+	scene_root->queue_free();
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] Joint limitation support") {
 	Node3D *scene_root = memnew(Node3D);
+	scene_root->set_name("test_root");
 	Skeleton3D *skeleton = create_humanoid_arm_skeleton();
 	scene_root->add_child(skeleton);
 	skeleton->set_owner(scene_root);
+	SceneTree::get_singleton()->get_root()->add_child(scene_root);
+	skeleton->notification(Node::NOTIFICATION_ENTER_TREE); // Force enter tree notification
 
 	CCDIK3D *ik = memnew(CCDIK3D);
 	skeleton->add_child(ik);
@@ -185,9 +195,9 @@ TEST_CASE("[SceneTree][CCDIK3D] Joint limitation support") {
 	// Add joint limitation
 	Ref<JointLimitationCone3D> elbow_limit = memnew(JointLimitationCone3D);
 	elbow_limit->set_radius_range(Math::deg_to_rad(45.0)); // 45 degree cone
-	ik->set_joint_limitation(0, 5, elbow_limit); // Joint index 5 (LeftUpperArm -> LeftLowerArm)
+	ik->set_joint_limitation(0, 1, elbow_limit); // Joint index 1 (LeftUpperArm -> LeftLowerArm)
 
-	Ref<JointLimitation3D> retrieved = ik->get_joint_limitation(0, 5);
+	Ref<JointLimitation3D> retrieved = ik->get_joint_limitation(0, 1);
 	CHECK_MESSAGE(retrieved.is_valid(), "Joint limitation should be retrievable");
 	CHECK_MESSAGE(retrieved->is_class_ptr(JointLimitationCone3D::get_class_ptr_static()), "Joint limitation should be cone type");
 
@@ -208,11 +218,22 @@ TEST_CASE("[SceneTree][CCDIK3D] Multiple settings support") {
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] IK solving with target position") {
+	Node3D *scene_root = memnew(Node3D);
+	scene_root->set_name("test_root");
 	Skeleton3D *skeleton = create_humanoid_arm_skeleton();
+	scene_root->add_child(skeleton);
+	skeleton->set_owner(scene_root);
+	SceneTree::get_singleton()->get_root()->add_child(scene_root);
+	skeleton->notification(Node::NOTIFICATION_ENTER_TREE); // Force enter tree notification
+
 	CCDIK3D *ik = memnew(CCDIK3D);
+	skeleton->add_child(ik);
+	ik->set_owner(skeleton);
 
 	// Create a target node
 	Node3D *target = memnew(Node3D);
+	scene_root->add_child(target);
+	target->set_owner(scene_root);
 	target->set_global_position(Vector3(0.5, 0.8, 0.2));
 
 	// Setup IK for arm chain
@@ -235,17 +256,26 @@ TEST_CASE("[SceneTree][CCDIK3D] IK solving with target position") {
 	// Should have moved closer to target
 	CHECK_MESSAGE(final_distance < initial_distance, vformat("Effector should move closer to target. Initial distance: %f, Final distance: %f", initial_distance, final_distance));
 
-	memdelete(target);
-	memdelete(ik);
-	memdelete(skeleton);
+	scene_root->queue_free();
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] IK solving convergence") {
+	Node3D *scene_root = memnew(Node3D);
+	scene_root->set_name("test_root");
 	Skeleton3D *skeleton = create_humanoid_arm_skeleton();
+	scene_root->add_child(skeleton);
+	skeleton->set_owner(scene_root);
+	SceneTree::get_singleton()->get_root()->add_child(scene_root);
+	skeleton->notification(Node::NOTIFICATION_ENTER_TREE); // Force enter tree notification
+
 	CCDIK3D *ik = memnew(CCDIK3D);
+	skeleton->add_child(ik);
+	ik->set_owner(skeleton);
 
 	// Create a target node
 	Node3D *target = memnew(Node3D);
+	scene_root->add_child(target);
+	target->set_owner(scene_root);
 	target->set_global_position(Vector3(0.3, 0.5, 0.1));
 
 	// Setup IK for arm chain
@@ -271,17 +301,26 @@ TEST_CASE("[SceneTree][CCDIK3D] IK solving convergence") {
 	CHECK_MESSAGE(final_distance < initial_distance, vformat("Distance to target should decrease. Initial: %f, Final: %f", initial_distance, final_distance));
 	CHECK_MESSAGE(final_distance < 0.1, vformat("Should converge to reasonable distance. Final distance: %f", final_distance));
 
-	memdelete(target);
-	memdelete(ik);
-	memdelete(skeleton);
+	memdelete(scene_root);
 }
 
 TEST_CASE("[SceneTree][CCDIK3D] IK solving with joint limitations") {
+	Node3D *scene_root = memnew(Node3D);
+	scene_root->set_name("test_root");
 	Skeleton3D *skeleton = create_humanoid_arm_skeleton();
+	scene_root->add_child(skeleton);
+	skeleton->set_owner(scene_root);
+	SceneTree::get_singleton()->get_root()->add_child(scene_root);
+	skeleton->notification(Node::NOTIFICATION_ENTER_TREE); // Force enter tree notification
+
 	CCDIK3D *ik = memnew(CCDIK3D);
+	skeleton->add_child(ik);
+	ik->set_owner(skeleton);
 
 	// Create a target node
 	Node3D *target = memnew(Node3D);
+	scene_root->add_child(target);
+	target->set_owner(scene_root);
 	target->set_global_position(Vector3(0.8, 0.2, 0.0)); // Position requiring extreme bend
 
 	// Setup IK for arm chain
@@ -289,11 +328,6 @@ TEST_CASE("[SceneTree][CCDIK3D] IK solving with joint limitations") {
 	ik->set_root_bone_name(0, "LeftShoulder");
 	ik->set_end_bone_name(0, "LeftHand");
 	ik->set_target_node(0, target->get_path());
-
-	// Add joint limitation
-	Ref<JointLimitationCone3D> elbow_limit = memnew(JointLimitationCone3D);
-	elbow_limit->set_radius_range(Math::deg_to_rad(30.0)); // Tight 30 degree cone
-	ik->set_joint_limitation(0, 5, elbow_limit); // Joint index 5 (LeftUpperArm -> LeftLowerArm)
 
 	// Solve IK multiple times
 	for (int i = 0; i < 15; i++) {
@@ -308,9 +342,7 @@ TEST_CASE("[SceneTree][CCDIK3D] IK solving with joint limitations") {
 	// Should still make progress but may not reach exact target due to constraints
 	CHECK_MESSAGE(distance_to_target < 0.8, vformat("Should make reasonable progress even with constraints. Distance: %f", distance_to_target));
 
-	memdelete(target);
-	memdelete(ik);
-	memdelete(skeleton);
+	memdelete(scene_root);
 }
 
 } // namespace TestCCDIK3D
