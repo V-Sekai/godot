@@ -198,102 +198,48 @@ void EWBIK3D::_update_joints(int p_index) {
 		return;
 	}
 
-	// Find path between root and end bones
-	Vector<int> bone_path;
-	if (!_find_bone_chain_path(sk, setting->root_bone.bone, setting->end_bone.bone, bone_path)) {
-		set_joint_count(p_index, 0);
-		ERR_FAIL_EDMSG("Cannot find a valid bone chain between root and end bones.");
+	setting->joints.clear();
+
+	// If root and end are the same, just return that bone
+	if (setting->root_bone.bone == setting->end_bone.bone) {
+		BoneJoint joint;
+		joint.bone = setting->root_bone.bone;
+		joint.name = sk->get_bone_name(setting->root_bone.bone);
+		setting->joints.push_back(joint);
+		set_joint_count(p_index, setting->joints.size());
+		_make_simulation_dirty(p_index);
 		return;
 	}
 
-	// Build joints from the path
-	_build_chain_from_path(sk, bone_path, setting->joints);
+	// Build path from end bone up to root
+	LocalVector<BoneJoint> temp_joints;
+	int current_bone = setting->end_bone.bone;
+	bool found_root = false;
+	while (current_bone != -1) {
+		BoneJoint joint;
+		joint.bone = current_bone;
+		joint.name = sk->get_bone_name(current_bone);
+		temp_joints.push_back(joint);
+		if (current_bone == setting->root_bone.bone) {
+			found_root = true;
+			break;
+		}
+		current_bone = sk->get_bone_parent(current_bone);
+	}
+
+	if (!found_root) {
+		set_joint_count(p_index, 0);
+		ERR_FAIL_EDMSG("Cannot find a valid bone chain between root and end bones. Root is not an ancestor of end bone.");
+		return;
+	}
+
+	// Reverse to get order from root to end
+	for (int i = temp_joints.size() - 1; i >= 0; --i) {
+		setting->joints.push_back(temp_joints[i]);
+	}
+
 	set_joint_count(p_index, setting->joints.size());
 
 	// Initialize solver info and other structures
 	_make_simulation_dirty(p_index);
-}
-
-bool EWBIK3D::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const {
-	r_chain.clear();
-
-	// If root and end are the same, just return that bone
-	if (p_root_bone == p_end_bone) {
-		r_chain.push_back(p_root_bone);
-		return true;
-	}
-
-	// Build path from end bone up to find common ancestor with root
-	Vector<int> end_to_root_path;
-	int current = p_end_bone;
-	while (current >= 0) {
-		end_to_root_path.push_back(current);
-		if (current == p_root_bone) {
-			// Root is an ancestor of end bone - use hierarchical path
-			r_chain = end_to_root_path;
-			r_chain.reverse();
-			return true;
-		}
-		current = p_skeleton->get_bone_parent(current);
-	}
-
-	// If we get here, root is not an ancestor. Find common ancestor.
-	// Build path from root up to root
-	Vector<int> root_to_root_path;
-	current = p_root_bone;
-	while (current >= 0) {
-		root_to_root_path.push_back(current);
-		current = p_skeleton->get_bone_parent(current);
-	}
-
-	// Find common ancestor
-	int common_ancestor = -1;
-	for (int root_ancestor : root_to_root_path) {
-		for (int end_ancestor : end_to_root_path) {
-			if (root_ancestor == end_ancestor) {
-				common_ancestor = root_ancestor;
-				goto found_common;
-			}
-		}
-	}
-
-	found_common:
-	if (common_ancestor == -1) {
-		return false; // No common ancestor - impossible to connect
-	}
-
-	// Build the path: root -> common_ancestor -> end
-	r_chain.clear();
-
-	// Add path from root to common ancestor
-	for (int bone : root_to_root_path) {
-		r_chain.push_back(bone);
-		if (bone == common_ancestor) {
-			break;
-		}
-	}
-
-	// Add path from common ancestor to end (excluding common ancestor since it's already added)
-	bool found_common_in_end_path = false;
-	for (int i = end_to_root_path.size() - 1; i >= 0; i--) {
-		int bone = end_to_root_path[i];
-		if (found_common_in_end_path) {
-			r_chain.push_back(bone);
-		} else if (bone == common_ancestor) {
-			found_common_in_end_path = true;
-		}
-	}
-
-	return true;
-}
-
-void EWBIK3D::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const {
-	r_joints.clear();
-	r_joints.resize(p_path.size());
-
-	for (int i = 0; i < p_path.size(); i++) {
-		int bone_idx = p_path[i];
-		r_joints[i].bone = bone_idx;
-		r_joints[i].name = p_skeleton->get_bone_name(bone_idx);
-	}
 }
