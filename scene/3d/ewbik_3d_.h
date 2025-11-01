@@ -28,13 +28,13 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef ITERATE_IK_3D_EWBIK_H
-#define ITERATE_IK_3D_EWBIK_H
+#ifndef EWBIK_3D__H
+#define EWBIK_3D__H
 
 #include "scene/3d/iterate_ik_3d.h"
 
-class IterateIK3DEWBIK : public IterateIK3D {
-	GDCLASS(IterateIK3DEWBIK, IterateIK3D);
+class EWBIK3D_ : public IterateIK3D {
+	GDCLASS(EWBIK3D_, IterateIK3D);
 
 protected:
 	virtual void _solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) override;

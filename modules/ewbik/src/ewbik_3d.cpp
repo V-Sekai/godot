@@ -146,7 +146,7 @@ bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
 		int index = name.get_slicec('/', 1).to_int();
 		String what = name.get_slicec('/', 2);
 
-		if (index >= (int)ewbik_settings.size()) {
+		if (index >= (int32_t)ewbik_settings.size()) {
 			return false;
 		}
 
@@ -184,7 +184,7 @@ bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 		int index = name.get_slicec('/', 1).to_int();
 		String what = name.get_slicec('/', 2);
 
-		if (index >= (int)ewbik_settings.size()) {
+		if (index >= (int32_t)ewbik_settings.size()) {
 			return false;
 		}
 
@@ -372,7 +372,7 @@ float EWBIK3D::get_min_distance() const {
 }
 
 StringName EWBIK3D::get_pin_bone_name(int32_t p_effector_index) const {
-	ERR_FAIL_INDEX_V(p_effector_index, ewbik_settings.size(), StringName());
+	ERR_FAIL_INDEX_V(p_effector_index, (int32_t)ewbik_settings.size(), StringName());
 	EWBIK3DSetting *setting = ewbik_settings[p_effector_index];
 	if (!setting) {
 		return StringName();
@@ -411,7 +411,7 @@ EWBIK3D::~EWBIK3D() {
 }
 
 float EWBIK3D::get_pin_motion_propagation_factor(int32_t p_effector_index) const {
-	ERR_FAIL_INDEX_V(p_effector_index, ewbik_settings.size(), 0.0f);
+	ERR_FAIL_INDEX_V(p_effector_index, (int32_t)ewbik_settings.size(), 0.0f);
 	EWBIK3DSetting *setting = ewbik_settings[p_effector_index];
 	if (!setting) {
 		return 0.0f;
@@ -420,7 +420,7 @@ float EWBIK3D::get_pin_motion_propagation_factor(int32_t p_effector_index) const
 }
 
 void EWBIK3D::set_pin_motion_propagation_factor(int32_t p_effector_index, const float p_motion_propagation_factor) {
-	ERR_FAIL_INDEX(p_effector_index, ewbik_settings.size());
+	ERR_FAIL_INDEX(p_effector_index, (int32_t)ewbik_settings.size());
 	EWBIK3DSetting *setting = ewbik_settings[p_effector_index];
 	if (setting) {
 		setting->motion_propagation_factor = p_motion_propagation_factor;
@@ -447,7 +447,7 @@ void EWBIK3D::set_iterations_per_frame(const float &p_iterations_per_frame) {
 }
 
 void EWBIK3D::set_pin_node_path(int32_t p_effector_index, NodePath p_node_path) {
-	ERR_FAIL_INDEX(p_effector_index, ewbik_settings.size());
+	ERR_FAIL_INDEX(p_effector_index, (int32_t)ewbik_settings.size());
 	EWBIK3DSetting *setting = ewbik_settings[p_effector_index];
 	if (setting) {
 		setting->target_node = p_node_path;
@@ -456,7 +456,7 @@ void EWBIK3D::set_pin_node_path(int32_t p_effector_index, NodePath p_node_path) 
 }
 
 NodePath EWBIK3D::get_pin_node_path(int32_t p_effector_index) const {
-	ERR_FAIL_INDEX_V(p_effector_index, ewbik_settings.size(), NodePath());
+	ERR_FAIL_INDEX_V(p_effector_index, (int32_t)ewbik_settings.size(), NodePath());
 	EWBIK3DSetting *setting = ewbik_settings[p_effector_index];
 	if (!setting) {
 		return NodePath();
@@ -514,7 +514,7 @@ void EWBIK3D::_process_modification(double p_delta) {
 }
 
 real_t EWBIK3D::get_pin_weight(int32_t p_pin_index) const {
-	ERR_FAIL_INDEX_V(p_pin_index, ewbik_settings.size(), 0.0);
+	ERR_FAIL_INDEX_V(p_pin_index, (int32_t)ewbik_settings.size(), 0.0);
 	EWBIK3DSetting *setting = ewbik_settings[p_pin_index];
 	if (!setting) {
 		return 0.0;
@@ -523,7 +523,7 @@ real_t EWBIK3D::get_pin_weight(int32_t p_pin_index) const {
 }
 
 void EWBIK3D::set_pin_weight(int32_t p_pin_index, const real_t &p_weight) {
-	ERR_FAIL_INDEX(p_pin_index, ewbik_settings.size());
+	ERR_FAIL_INDEX(p_pin_index, (int32_t)ewbik_settings.size());
 	EWBIK3DSetting *setting = ewbik_settings[p_pin_index];
 	if (setting) {
 		setting->weight = p_weight;
@@ -532,7 +532,7 @@ void EWBIK3D::set_pin_weight(int32_t p_pin_index, const real_t &p_weight) {
 }
 
 Vector3 EWBIK3D::get_pin_direction_priorities(int32_t p_pin_index) const {
-	ERR_FAIL_INDEX_V(p_pin_index, ewbik_settings.size(), Vector3(0, 0, 0));
+	ERR_FAIL_INDEX_V(p_pin_index, (int32_t)ewbik_settings.size(), Vector3(0, 0, 0));
 	EWBIK3DSetting *setting = ewbik_settings[p_pin_index];
 	if (!setting) {
 		return Vector3(0, 0, 0);
@@ -541,7 +541,7 @@ Vector3 EWBIK3D::get_pin_direction_priorities(int32_t p_pin_index) const {
 }
 
 void EWBIK3D::set_pin_direction_priorities(int32_t p_pin_index, const Vector3 &p_priority_direction) {
-	ERR_FAIL_INDEX(p_pin_index, ewbik_settings.size());
+	ERR_FAIL_INDEX(p_pin_index, (int32_t)ewbik_settings.size());
 	EWBIK3DSetting *setting = ewbik_settings[p_pin_index];
 	if (setting) {
 		setting->direction_priorities = p_priority_direction;
@@ -566,7 +566,7 @@ TypedArray<IKBone3D> EWBIK3D::get_bone_list() const {
 }
 
 bool EWBIK3D::get_pin_enabled(int32_t p_effector_index) const {
-	ERR_FAIL_INDEX_V(p_effector_index, ewbik_settings.size(), false);
+	ERR_FAIL_INDEX_V(p_effector_index, (int32_t)ewbik_settings.size(), false);
 	EWBIK3DSetting *setting = ewbik_settings[p_effector_index];
 	if (!setting) {
 		return false;
@@ -665,7 +665,7 @@ void EWBIK3D::_skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) {
 }
 
 void EWBIK3D::set_pin_bone_name(int32_t p_pin_index, const String &p_bone) {
-	ERR_FAIL_INDEX(p_pin_index, ewbik_settings.size());
+	ERR_FAIL_INDEX(p_pin_index, (int32_t)ewbik_settings.size());
 	EWBIK3DSetting *setting = ewbik_settings[p_pin_index];
 	if (setting) {
 		setting->bone_name = StringName(p_bone);
