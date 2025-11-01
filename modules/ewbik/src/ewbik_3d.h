@@ -39,13 +39,12 @@
 #include "ik_bone_3d.h"
 #include "ik_effector_template_3d.h"
 #include "math/ik_node_3d.h"
-#include "scene/3d/skeleton_3d.h"
-#include "scene/3d/skeleton_modifier_3d.h"
+#include "scene/3d/many_bone_ik_3d.h"
 
 class IKBoneSegment3D;
 class ManyBoneIK3DState;
-class EWBIK3D : public SkeletonModifier3D {
-	GDCLASS(EWBIK3D, SkeletonModifier3D);
+class EWBIK3D : public ManyBoneIK3D {
+	GDCLASS(EWBIK3D, ManyBoneIK3D);
 
 	NodePath skeleton_path;
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
@@ -79,13 +78,14 @@ class EWBIK3D : public SkeletonModifier3D {
 	void _update_ik_bone_pose(int32_t p_bone_idx);
 	void _apply_bone_constraints();
 
+	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
+
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
 	bool _get(const StringName &p_name, Variant &r_ret) const;
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 	static void _bind_methods();
 	virtual void _process_modification(double p_delta) override;
-	void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
 
 public:
 	void set_state(Ref<ManyBoneIK3DState> p_state);

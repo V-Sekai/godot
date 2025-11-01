@@ -351,6 +351,8 @@ void EWBIK3D::set_state(Ref<ManyBoneIK3DState> p_state) {
 }
 
 EWBIK3D::EWBIK3D() {
+	// Initialize with no settings initially
+	set_setting_count(0);
 }
 
 void EWBIK3D::add_segment(Ref<IKBoneSegment3D> p_segment) {
@@ -641,6 +643,10 @@ void EWBIK3D::_bone_list_changed() {
 }
 
 void EWBIK3D::_skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) {
+	// Call base class method first
+	ManyBoneIK3D::_skeleton_changed(p_old, p_new);
+
+	// EWBIK-specific skeleton change handling
 	if (p_old) {
 		if (p_old->is_connected(SNAME("bone_list_changed"), callable_mp(this, &EWBIK3D::_bone_list_changed))) {
 			p_old->disconnect(SNAME("bone_list_changed"), callable_mp(this, &EWBIK3D::_bone_list_changed));
