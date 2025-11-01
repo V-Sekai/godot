@@ -44,13 +44,24 @@
 class IKBoneSegment3D;
 class ManyBoneIK3DState;
 class EWBIK3D : public ManyBoneIK3D {
+public:
+	struct EWBIK3DSetting : public ManyBoneIK3DSetting {
+		StringName bone_name;
+		NodePath target_node;
+		float weight = 1.0f;
+		Vector3 direction_priorities = Vector3(0.25f, 0.25f, 0.25f);
+		float motion_propagation_factor = 0.5f;
+	};
 	GDCLASS(EWBIK3D, ManyBoneIK3D);
 
 	NodePath skeleton_path;
 	Vector<Ref<IKBoneSegment3D>> segmented_skeletons;
-	int32_t pin_count = 0, bone_count = 0;
-	Vector<Ref<IKEffectorTemplate3D>> pins;
+	int32_t bone_count = 0;
 	Vector<Ref<IKBone3D>> bone_list;
+
+	// Settings system
+	LocalVector<EWBIK3DSetting *> ewbik_settings;
+	int32_t pin_count = 0; // Keep for compatibility but use settings system
 	int32_t iterations_per_frame = 15;
 	float default_damp = Math::deg_to_rad(5.0f);
 	Ref<IKNode3D> godot_skeleton_transform;
@@ -79,6 +90,15 @@ class EWBIK3D : public ManyBoneIK3D {
 	void _apply_bone_constraints();
 
 	virtual void _skeleton_changed(Skeleton3D *p_old, Skeleton3D *p_new) override;
+
+	virtual void set_setting_count(int p_count) override {
+		_set_setting_count<EWBIK3DSetting>(p_count);
+		ewbik_settings = _cast_settings<EWBIK3DSetting>();
+	}
+	virtual void clear_settings() override {
+		_set_setting_count<EWBIK3DSetting>(0);
+		ewbik_settings.clear();
+	}
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
