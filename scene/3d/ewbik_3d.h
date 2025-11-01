@@ -42,9 +42,6 @@ protected:
 	// Chain building for arbitrary root-to-effector support
 	virtual void _update_joints(int p_index) override;
 
-	// Pathfinding helper methods
-	bool _find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const;
-	void _build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const;
 
 	// QCP solver helper methods
 	void _create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, const Vector3 &p_destination, const Transform3D &p_target_transform,
