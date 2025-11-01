@@ -49,7 +49,7 @@
 
 namespace TestEwbik {
 
-static Node *ewbik_create_test_scene() {
+Node *ewbik_create_test_scene() {
 	// Create a scene with simple skin like glTF example - mesh with skeleton for IK testing
 	Node3D *root = memnew(Node3D);
 	root->set_name("ewbik_test_root");
@@ -93,14 +93,6 @@ static Node *ewbik_create_test_scene() {
 	return root;
 }
 
-static Node *ewbik_load_and_instance_scene(const String &p_scene_path) {
-	Error err;
-	Ref<PackedScene> packed_scene = ResourceLoader::load(p_scene_path, "", ResourceFormatLoader::CACHE_MODE_REPLACE, &err);
-	if (err != OK) {
-		return nullptr;
-	}
-	return packed_scene->instantiate();
-}
 
 void init(const String &p_test) {
 	// Setup project settings since it's needed for the import process.
@@ -110,6 +102,12 @@ void init(const String &p_test) {
 	// Initialize res:// to `project_folder`.
 	TestProjectSettingsInternalsAccessor::resource_path() = project_folder;
 	ProjectSettings::get_singleton()->setup(project_folder, String(), true);
+}
+
+TEST_CASE("[EWBik] Test Scene Creation") {
+	Node *scene_root = TestEwbik::ewbik_create_test_scene();
+	CHECK(scene_root != nullptr);
+	memdelete(scene_root);
 }
 
 } // namespace TestEwbik
