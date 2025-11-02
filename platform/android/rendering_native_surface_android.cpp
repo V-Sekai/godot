@@ -31,6 +31,8 @@
 #include "rendering_native_surface_android.h"
 #include <android/native_window.h>
 
+#include "modules/regex/regex.h"
+
 #if defined(VULKAN_ENABLED)
 #include "rendering_context_driver_vulkan_android.h"
 #endif
@@ -410,6 +412,12 @@ bool GLManagerAndroid::validate_driver() const {
 	dlclose(handle);
 	if (rendering_device_name.contains("PowerVR") || rendering_device_vendor.contains("Imagination")) {
 		print_line("Detected Imagination GPU");
+		Ref<RegEx> regex = RegEx::create_from_string("G[EMT][0-9][0-9][0-9][0-9]");
+		Ref<RegExMatch> match = regex->search(rendering_device_name);
+		if (match.is_valid()) {
+			print_line(vformat("Detected PowerVR G[EMT] GPU, which works with System GL: %s", match->get_string(0)));
+			return true;
+		}
 		return false;
 	}
 	return true;
