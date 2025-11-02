@@ -102,7 +102,7 @@ public:
 	void window_destroy(DisplayServer::WindowID p_window_id) override;
 	int window_get_render_target(DisplayServer::WindowID p_window_id) const override { return 0; }
 	int window_get_color_texture(DisplayServer::WindowID p_id) const override { return 0; }
-	Size2i window_get_size(DisplayServer::WindowID p_id) override;
+	Size2i window_get_size(DisplayServer::WindowID p_window_id) const override { return Size2i(); }
 	void release_current() override;
 	void swap_buffers() override;
 
@@ -110,6 +110,7 @@ public:
 
 	void set_use_vsync(bool p_use) override;
 	bool is_using_vsync() const override;
+	bool validate_driver() const override { return true; }
 
 	EGLContext get_context(DisplayServer::WindowID p_window_id);
 	EGLDisplay get_display(DisplayServer::WindowID p_window_id);

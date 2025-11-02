@@ -40,6 +40,7 @@ def get_opts():
             False,
         ),
         BoolVariable("swappy", "Use Swappy Frame Pacing library", False),
+        ("angle_libs", "Path to the ANGLE libraries"),
     ]
 
 
@@ -235,7 +236,7 @@ def configure(env: "SConsEnvironment"):
     env.Prepend(CPPPATH=["#platform/android"])
     env.Append(CPPDEFINES=["ANDROID_ENABLED", "UNIX_ENABLED"])
     if env["library_type"] != "static_library":
-        env.Append(LIBS=["OpenSLES", "EGL", "android", "log", "z", "dl"])
+        env.Append(LIBS=["OpenSLES", "android", "log", "z", "dl"])
 
     if env["vulkan"]:
         env.Append(CPPDEFINES=["VULKAN_ENABLED", "RD_ENABLED"])
@@ -248,5 +249,9 @@ def configure(env: "SConsEnvironment"):
 
     if env["opengl3"]:
         env.Append(CPPDEFINES=["GLES3_ENABLED"])
-        if env["library_type"] != "static_library":
-            env.Append(LIBS=["GLESv3"])
+        # if env["library_type"] != "static_library":
+        #     env.Append(LIBS=["GLESv3", "EGL"])
+
+        if env["angle_libs"] != "":
+            env.Append(CPPDEFINES=["EGL_ENABLED", "ANGLE_ENABLED"])
+            env.Prepend(CPPPATH=["#thirdparty/angle/include"])

@@ -32,7 +32,6 @@
 
 #include "core/config/project_settings.h"
 #include "core/io/file_access_pack.h"
-#include "servers/rendering/gl_manager.h"
 
 #ifdef RD_ENABLED
 #if defined(VULKAN_ENABLED)
@@ -125,14 +124,59 @@ DisplayServerEmbedded::DisplayServerEmbedded(const String &p_rendering_driver, W
 
 #if defined(GLES3_ENABLED)
 	if (rendering_driver.contains("opengl3")) {
-		gl_manager = native_surface->create_gl_manager(rendering_driver);
-
-		if (gl_manager->initialize() != OK || gl_manager->open_display(nullptr) != OK) {
-			memdelete(gl_manager);
-			gl_manager = nullptr;
+		PackedStringArray driver_candidates;
+        bool gldriver_novalidate = false;
+        if (rendering_driver == "opengl3_novalidate") {
+            rendering_driver ="opengl3";
+            gldriver_novalidate = true;
+        }
+		driver_candidates.push_back(rendering_driver);
+		#ifdef ANGLE_ENABLED
+		if (rendering_driver != "opengl3_angle") {
+			driver_candidates.push_back("opengl3_angle");
 		}
-		if (create_native_window(native_surface) != MAIN_WINDOW_ID) {
-			ERR_PRINT(vformat("Failed to create %s window.", rendering_driver));
+		#endif
+		for (int i = 0; i < driver_candidates.size(); ++i) {
+			String driver_candidate = driver_candidates[i];
+			print_verbose(vformat("Initializing driver: %s", driver_candidate));
+
+			gl_manager = native_surface->create_gl_manager(driver_candidate);
+			if (gl_manager == nullptr) {
+				ERR_PRINT(vformat("Unable to instantiate GL Manager for driver: %s", driver_candidate));
+				continue;
+			}
+			if (gl_manager->initialize() != OK || gl_manager->open_display(nullptr) != OK) {
+				memdelete(gl_manager);
+				gl_manager = nullptr;
+				continue;
+			}
+
+			if (create_native_window(native_surface) != MAIN_WINDOW_ID) {
+				ERR_PRINT(vformat("Failed to create main window with driver: %s", driver_candidate));
+				memdelete(gl_manager);
+				gl_manager = nullptr;
+				continue;
+			}
+
+            bool validation_result = gl_manager->validate_driver();
+            if (!validation_result) {
+                print_verbose(vformat("GL driver validation failed: %s", driver_candidate));
+            }
+			if (gldriver_novalidate || validation_result) {
+                print_verbose(vformat("GL driver accepted: %s", driver_candidate));
+				rendering_driver = driver_candidate;
+				OS::get_singleton()->set_current_rendering_driver_name(rendering_driver);
+                break;
+			}
+
+            gl_manager->window_destroy(MAIN_WINDOW_ID);
+            window_id_counter = MAIN_WINDOW_ID;
+            memdelete(gl_manager);
+            gl_manager = nullptr;
+		}
+
+		if (gl_manager == nullptr) {
+			ERR_PRINT("Unable to initialize the display server with any of the OpenGL drivers.");
 			r_error = ERR_UNAVAILABLE;
 			return;
 		}
@@ -166,6 +210,7 @@ DisplayServerEmbedded::~DisplayServerEmbedded() {
 
 #if defined(GLES3_ENABLED)
 	if (gl_manager) {
+		gl_manager->window_destroy(MAIN_WINDOW_ID);
 		memdelete(gl_manager);
 		gl_manager = nullptr;
 	}
@@ -189,11 +234,11 @@ Vector<String> DisplayServerEmbedded::get_rendering_drivers_func() {
 #endif
 #if defined(GLES3_ENABLED)
 	drivers.push_back("opengl3");
-#if defined(EGL_STATIC)
+    drivers.push_back("opengl3_novalidate");
+#endif
+#if defined(ANGLE_ENABLED)
 	drivers.push_back("opengl3_angle");
 #endif
-#endif
-
 	return drivers;
 }
 
@@ -681,7 +726,7 @@ void DisplayServerEmbedded::resize_window(Size2i p_size, WindowID p_id) {
 
 #if defined(GLES3_ENABLED)
 	if (gl_manager) {
-		gl_manager->window_resize(p_id, p_size.width, p_size.height);
+		gl_manager->window_resize(p_id, size.width, size.height);
 	}
 #endif
 
@@ -779,5 +824,13 @@ void DisplayServerEmbedded::post_draw_viewport(RID p_render_target) {
 		texture_storage->render_target_set_reattach_textures(p_render_target, false);
 	}
 #endif
+#endif
+}
+
+void DisplayServerEmbedded::release_rendering_thread() {
+#if defined(GLES3_ENABLED)
+	if (gl_manager) {
+		gl_manager->release_current();
+	}
 #endif
 }

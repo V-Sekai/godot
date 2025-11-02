@@ -66,10 +66,10 @@ public:
 		return height;
 	}
 
-	void *get_native_id() const override;
-
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
 	GLManager *create_gl_manager(const String &p_driver_name) override;
+
+	void *get_native_id() const override;
 
 	RenderingNativeSurfaceAndroid();
 	~RenderingNativeSurfaceAndroid();

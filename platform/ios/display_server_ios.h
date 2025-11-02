@@ -48,6 +48,7 @@
 
 #if defined(GLES3_ENABLED)
 #include "drivers/gles3/rasterizer_gles3.h"
+#include "servers/rendering/gl_manager.h"
 #endif // GLES3_ENABLED
 
 #import <Foundation/Foundation.h>
@@ -57,6 +58,30 @@ class DisplayServerIOS : public DisplayServerAppleEmbedded {
 	GDSOFTCLASS(DisplayServerIOS, DisplayServerAppleEmbedded);
 
 	_THREAD_SAFE_CLASS_
+
+#if defined(RD_ENABLED)
+	RenderingContextDriver *rendering_context = nullptr;
+	RenderingDevice *rendering_device = nullptr;
+#endif
+#if defined(GLES3_ENABLED)
+	GLManager *gl_manager = nullptr;
+#endif
+	NativeMenu *native_menu = nullptr;
+
+	id tts = nullptr;
+
+	DisplayServer::ScreenOrientation screen_orientation;
+
+	ObjectID window_attached_instance_id;
+
+	Callable window_event_callback;
+	Callable window_resize_callback;
+	Callable input_event_callback;
+	Callable input_text_callback;
+
+	Callable system_theme_changed;
+
+	int virtual_keyboard_height = 0;
 
 	void perform_event(const Ref<InputEvent> &p_event);
 

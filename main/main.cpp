@@ -2560,6 +2560,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 			available_drivers.push_back("opengl3");
 			available_drivers.push_back("opengl3_angle");
 			available_drivers.push_back("opengl3_es");
+            available_drivers.push_back("opengl3_novalidate");
 		}
 #endif
 		if (rendering_method == "dummy") {

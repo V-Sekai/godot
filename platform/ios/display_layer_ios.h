@@ -36,6 +36,21 @@
 #import <OpenGLES/ES1/gl.h>
 #import <QuartzCore/QuartzCore.h>
 
+<<<<<<< HEAD:platform/ios/display_layer_ios.h
+=======
+#include "servers/rendering/gl_manager.h"
+
+@protocol DisplayLayer <NSObject>
+
+- (void)startRenderDisplayLayer;
+- (void)stopRenderDisplayLayer;
+- (void)initializeDisplayLayer;
+- (void)layoutDisplayLayer;
+- (void)setupContext:(GLESContext *)context withSurface:(Ref<RenderingNativeSurface> *)surface;
+
+@end
+
+>>>>>>> ebc6302053 (LibGodot: Unified EGL Manager with GLAD support on Android, dynamic fallback to ANGLE):platform/ios/display_layer.h
 // An ugly workaround for iOS simulator
 #if defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
 #if defined(__IPHONE_13_0)

@@ -52,6 +52,10 @@
 #include "drivers/egl/gl_manager_embedded_angle.h"
 #endif
 
+#if defined(EGL_STATIC)
+#include "drivers/egl/gl_manager_embedded_angle.h"
+#endif
+
 struct WindowData {
 	GLint backingWidth;
 	GLint backingHeight;
@@ -76,14 +80,15 @@ public:
 	virtual Error window_create(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) override;
 	virtual void window_resize(DisplayServer::WindowID p_id, int p_width, int p_height) override;
 	virtual void window_make_current(DisplayServer::WindowID p_id) override;
+	virtual Size2i window_get_size(DisplayServer::WindowID p_id) const override;
 	virtual void release_current() override {}
 	virtual void swap_buffers() override;
 	virtual void window_destroy(DisplayServer::WindowID p_id) override;
-	virtual Size2i window_get_size(DisplayServer::WindowID p_id) override;
 	void deinitialize();
 
 	virtual void set_use_vsync(bool p_use) override {}
 	virtual bool is_using_vsync() const override { return false; }
+	virtual bool validate_driver() const override { return true; }
 
 	virtual int window_get_render_target(DisplayServer::WindowID p_window_id) const override;
 	virtual int window_get_color_texture(DisplayServer::WindowID p_id) const override { return 0; }
@@ -117,9 +122,9 @@ Error GLManagerApple::initialize(void *p_native_display) {
 	return OK;
 }
 
-Size2i GLManagerApple::window_get_size(DisplayServer::WindowID p_id) {
+Size2i GLManagerApple::window_get_size(DisplayServer::WindowID p_id) const {
 	ERR_FAIL_COND_V(!windows.has(p_id), Size2i());
-	WindowData &gles_data = windows[p_id];
+	const WindowData &gles_data = windows[p_id];
 	return Size2i(gles_data.layer.bounds.size.width, gles_data.layer.bounds.size.height);
 }
 

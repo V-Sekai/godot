@@ -96,7 +96,7 @@
 }
 
 - (void)stopRenderDisplayLayer {
-	gl_manager->swap_buffers();
+	gl_manager->swap_buffers(DisplayServer::MAIN_WINDOW_ID);
 }
 
 - (void)dealloc {

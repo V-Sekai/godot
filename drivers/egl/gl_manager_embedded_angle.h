@@ -31,7 +31,7 @@
 #ifndef GL_MANAGER_EMBEDDED_ANGLE_H
 #define GL_MANAGER_EMBEDDED_ANGLE_H
 
-#if defined(GLES3_ENABLED) && defined(EGL_STATIC)
+#if defined(GLES3_ENABLED) && defined(ANGLE_ENABLED)
 
 #include "core/error/error_list.h"
 #include "core/os/os.h"

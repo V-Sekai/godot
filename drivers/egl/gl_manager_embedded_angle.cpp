@@ -30,7 +30,7 @@
 
 #include "gl_manager_embedded_angle.h"
 
-#if defined(GLES3_ENABLED) && defined(EGL_STATIC)
+#if defined(GLES3_ENABLED) && defined(ANGLE_ENABLED)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,7 +48,7 @@ EGLenum GLManagerANGLE_Embedded::_get_platform_extension_enum() const {
 Vector<EGLAttrib> GLManagerANGLE_Embedded::_get_platform_display_attributes() const {
 	Vector<EGLAttrib> ret;
 	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_ANGLE);
-	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE);
+	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE);
 	ret.push_back(EGL_NONE);
 
 	return ret;

@@ -44,9 +44,10 @@
 #endif
 
 #ifdef GLES3_ENABLED
+#include "platform_gl.h"
+
 #include "drivers/gles3/rasterizer_gles3.h"
 
-#include <EGL/egl.h>
 #endif
 
 DisplayServerAndroid *DisplayServerAndroid::get_singleton() {

@@ -237,6 +237,7 @@ public:
 
 	virtual void pre_draw_viewport(RID p_render_target) override;
 	virtual void post_draw_viewport(RID p_render_target) override;
+	virtual void release_rendering_thread() override;
 };
 
 #endif // DISPLAY_SERVER_EMBEDDED_H

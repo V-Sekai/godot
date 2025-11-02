@@ -46,10 +46,14 @@
 #if defined(GLES3_ENABLED) && !defined(MACOS_ENABLED)
 #ifdef ANDROID_ENABLED
 #define XR_USE_GRAPHICS_API_OPENGL_ES
+#ifdef GLAD_ENABLED
+#include "thirdparty/glad/glad/egl.h"
+#else
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
 #include <GLES3/gl3ext.h>
+#endif // GLAD_ENABLED
 #else
 #define XR_USE_GRAPHICS_API_OPENGL
 #endif // ANDROID_ENABLED

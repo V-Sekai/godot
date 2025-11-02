@@ -39,11 +39,18 @@
 #include <vector>
 #include "servers/rendering/gl_manager.h"
 #include "servers/rendering_server.h"
+#include "drivers/egl/gl_manager_embedded_angle.h"
 #include <android/native_window.h>
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
+#include <dlfcn.h>
 
 #define GL_ERR(expr) { expr; GLenum err = glGetError(); if (err) { print_line(vformat("%s:%s: %x error", __FUNCTION__, #expr, err)); } }
+
+#ifndef EGL_KHR_platform_android
+#define EGL_KHR_platform_android 1
+#define EGL_PLATFORM_ANDROID_KHR          0x3141
+#endif /* EGL_KHR_platform_android */
 
 struct WindowData {
 	EGLSurface surface = EGL_NO_SURFACE;
@@ -53,6 +60,13 @@ struct WindowData {
 };
 
 class GLManagerAndroid : public GLManager {
+private:
+	virtual const char *_get_platform_extension_name() const override;
+	virtual EGLenum _get_platform_extension_enum() const override;
+	virtual EGLenum _get_platform_api_enum() const override;
+	virtual Vector<EGLAttrib> _get_platform_display_attributes() const override;
+	virtual Vector<EGLint> _get_platform_context_attribs() const override;
+
 public:
 	virtual Error initialize(void *p_native_display = nullptr) override;
 	virtual Error open_display(void *p_native_display = nullptr) override { return OK; }
@@ -70,19 +84,14 @@ public:
 	virtual void set_use_vsync(bool p_use) override {}
 	virtual bool is_using_vsync() const override { return false; }
 
+	bool validate_driver() const override;
+
 	~GLManagerAndroid() {
 		deinitialize();
 	}
 
 protected:
 	bool create_framebuffer(DisplayServer::WindowID p_id, void *p_layer, uint32_t width, uint32_t height);
-
-private:
-	HashMap<DisplayServer::WindowID, WindowData> windows;
-
-	EGLDisplay display = EGL_NO_DISPLAY;
-	EGLContext context = EGL_NO_CONTEXT;
-	EGLConfig config;
 };
 
 typedef struct EGLConfigRequirements {
@@ -319,6 +328,33 @@ uint64_t GLESContextAndroid::get_fbo(DisplayServer::WindowID p_id) const {
 	return 0; // In EGL, eglMakeCurrent will set the default framebuffer correctly.
 }
 
+const char *GLManagerAndroid::_get_platform_extension_name() const {
+	return "EGL_KHR_platform_android";
+}
+
+EGLenum GLManagerAndroid::_get_platform_extension_enum() const {
+	return EGL_PLATFORM_ANDROID_KHR;
+}
+
+Vector<EGLAttrib> GLManagerAndroid::_get_platform_display_attributes() const {
+	Vector<EGLAttrib> ret;
+	return ret;
+}
+
+EGLenum GLManagerAndroid::_get_platform_api_enum() const {
+	return EGL_OPENGL_ES_API;
+}
+
+Vector<EGLint> GLManagerAndroid::_get_platform_context_attribs() const {
+	Vector<EGLint> ret;
+	ret.push_back(EGL_CONTEXT_CLIENT_VERSION);
+	ret.push_back(3);
+	ret.push_back(EGL_NONE);
+
+	return ret;
+}
+
+
 int GLManagerAndroid::window_get_color_texture(DisplayServer::WindowID p_id) const {
 	return -1;
 }
@@ -359,13 +395,57 @@ RenderingContextDriver *RenderingNativeSurfaceAndroid::create_rendering_context(
 	return nullptr;
 }
 
+bool GLManagerAndroid::validate_driver() const {
+	void *handle = dlopen("libGLESv3.so", RTLD_LOCAL);
+	if (handle == nullptr) {
+		CRASH_NOW_MSG("Unable to open libGLESv3.so");
+	}
+	PFNGLGETSTRINGPROC getStringProc = (PFNGLGETSTRINGPROC) dlsym(handle, "glGetString");
+	ERR_FAIL_COND_V_MSG(getStringProc == nullptr, false, "Unable to load glGetString symbol");
+
+	const String rendering_device_name = String::utf8((const char *)getStringProc(GL_RENDERER));
+	const String rendering_device_vendor = String::utf8((const char *)getStringProc(GL_VENDOR));
+	print_line(vformat("Device name: %s", rendering_device_name));
+	print_line(vformat("Vendor: %s", rendering_device_vendor));
+	dlclose(handle);
+	if (rendering_device_name.contains("PowerVR") || rendering_device_vendor.contains("Imagination")) {
+		print_line("Detected Imagination GPU");
+		return false;
+	}
+	return true;
+}
+
+
 GLManager *RenderingNativeSurfaceAndroid::create_gl_manager(const String &p_driver_name) {
 #if defined(GLES3_ENABLED)
-	return memnew(GLManagedAndroid);
-#else
-	return nullptr;
+	if (p_driver_name == "opengl3") {
+		#ifdef GLAD_ENABLED
+			static const char *EGL_NAMES[] = {"libEGL.so"};
+			static const char *GL_NAMES[] = {"libGLESv3.so"};
+			gladSetupEGL(1, EGL_NAMES);
+			gladSetupGLES2(1, GL_NAMES);
+        #endif
+        return memnew(GLManagerAndroid);
+	}
+	#if defined(ANGLE_ENABLED)
+	if (p_driver_name == "opengl3_angle") {
+		#ifdef GLAD_ENABLED
+			static const char *EGL_NAMES[] = {"libEGL_angle.so"};
+			static const char *GL_NAMES[] = {"libGLESv2_angle.so"};
+			gladSetupEGL(1, EGL_NAMES);
+			gladSetupGLES2(1, GL_NAMES);
+		#endif
+		return memnew(GLManagerANGLE_Embedded);
+	}
+	#endif
 #endif
+	return nullptr;
 }
+
+void *RenderingNativeSurfaceAndroid::get_native_id() const {
+	return (void *)window;
+}
+
 
 RenderingNativeSurfaceAndroid::RenderingNativeSurfaceAndroid() {
 	// Does nothing.
