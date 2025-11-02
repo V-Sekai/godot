@@ -162,7 +162,14 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 
 		case Variant::DICTIONARY: {
 			Dictionary dict = *p_arg;
-			jclass dclass = jni_find_class(env, "org/godotengine/godot/Dictionary");
+
+			static jclass dclass = nullptr;
+			if (!dclass) {
+				jclass localClass = env->FindClass("org/godotengine/godot/Dictionary");
+				dclass = (jclass)env->NewGlobalRef(localClass);
+				env->DeleteLocalRef(localClass);
+			}
+
 			jmethodID ctor = env->GetMethodID(dclass, "<init>", "()V");
 			jobject jdict = env->NewObject(dclass, ctor);
 
@@ -196,7 +203,6 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 			val.l = jvalues;
 			env->CallVoidMethodA(jdict, set_values, &val);
 			env->DeleteLocalRef(jvalues);
-			env->DeleteLocalRef(dclass);
 
 			v.val.l = jdict;
 			v.obj = jdict;
@@ -273,9 +279,25 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 				v.val.i = 0;
 			}
 		} break;
+		case Variant::ARRAY: {
+            Array array = *p_arg;
+            jobjectArray arr = env->NewObjectArray(array.size(), env->FindClass("java/lang/Object"), nullptr);
+
+            for (int j = 0; j < array.size(); j++) {
+                Variant var = array[j];
+                jvalret valret = _variant_to_jvalue(env, var.get_type(), &var, true);
+                env->SetObjectArrayElement(arr, j, valret.val.l);
+                if (valret.obj) {
+                    env->DeleteLocalRef(valret.obj);
+                }
+            }
+
+            v.val.l = arr;
+            v.obj = arr;
+        } break;
 
 		default: {
-			v.val.i = 0;
+			v.val.l = nullptr;
 		} break;
 	}
 	return v;
