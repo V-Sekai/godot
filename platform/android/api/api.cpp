@@ -40,10 +40,50 @@
 static JavaClassWrapper *java_class_wrapper = nullptr;
 #endif
 
-void register_core_android_api() {
-#if defined(ANDROID_ENABLED)
-	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceAndroid);
+#if !defined(ANDROID_ENABLED)
+// Dummy RenderingNativeSurfaceAndroid implementation
+
+void RenderingNativeSurfaceAndroid::_bind_methods() {
+	ClassDB::bind_static_method("RenderingNativeSurfaceAndroid", D_METHOD("create", "window", "width", "height"), &RenderingNativeSurfaceAndroid::create_api);
+	ClassDB::bind_method(D_METHOD("get_window"), &RenderingNativeSurfaceAndroid::get_window_api);
+	ClassDB::bind_method(D_METHOD("get_width"), &RenderingNativeSurfaceAndroid::get_width);
+	ClassDB::bind_method(D_METHOD("get_height"), &RenderingNativeSurfaceAndroid::get_height);
+}
+
+Ref<RenderingNativeSurfaceAndroid> RenderingNativeSurfaceAndroid::create_api(uint64_t p_window, uint32_t p_width, uint32_t p_height) {
+	return RenderingNativeSurfaceAndroid::create((ANativeWindow *)p_window, p_width, p_height);
+}
+
+Ref<RenderingNativeSurfaceAndroid> RenderingNativeSurfaceAndroid::create(ANativeWindow *p_window, uint32_t p_width, uint32_t p_height) {
+	Ref<RenderingNativeSurfaceAndroid> result;
+	return result;
+}
+
+RenderingContextDriver *RenderingNativeSurfaceAndroid::create_rendering_context(const String &p_rendering_driver) {
+	return nullptr;
+}
+
+GLManager *RenderingNativeSurfaceAndroid::create_gl_manager(const String &p_rendering_driver) {
+	return nullptr;
+}
+
+void *RenderingNativeSurfaceAndroid::get_native_id() const {
+	return nullptr;
+}
+
+
+RenderingNativeSurfaceAndroid::RenderingNativeSurfaceAndroid() {
+	// Does nothing.
+}
+
+RenderingNativeSurfaceAndroid::~RenderingNativeSurfaceAndroid() {
+	// Does nothing.
+}
+
 #endif
+
+void register_core_android_api() {
+	GDREGISTER_ABSTRACT_CLASS(RenderingNativeSurfaceAndroid);
 }
 
 void unregister_core_android_api() {

@@ -42,17 +42,34 @@ class RenderingNativeSurfaceAndroid : public RenderingNativeSurface {
 	static void _bind_methods();
 
 	ANativeWindow *window;
+	uint32_t width;
+	uint32_t height;
 
 public:
-	static Ref<RenderingNativeSurfaceAndroid> create_api(GDExtensionConstPtr<const void> p_window);
+	static Ref<RenderingNativeSurfaceAndroid> create_api(uint64_t p_window, uint32_t p_width, uint32_t p_height);
 
-	static Ref<RenderingNativeSurfaceAndroid> create(ANativeWindow *p_window);
+	static Ref<RenderingNativeSurfaceAndroid> create(ANativeWindow *p_window, uint32_t p_width, uint32_t p_height);
 
 	ANativeWindow *get_window() const {
 		return window;
 	}
 
+	uint64_t get_window_api() const {
+		return (uint64_t)window;
+	}
+
+	uint32_t get_width() const {
+		return width;
+	}
+
+	uint32_t get_height() const {
+		return height;
+	}
+
+	void *get_native_id() const override;
+
 	RenderingContextDriver *create_rendering_context(const String &p_driver_name) override;
+	GLManager *create_gl_manager(const String &p_driver_name) override;
 
 	RenderingNativeSurfaceAndroid();
 	~RenderingNativeSurfaceAndroid();

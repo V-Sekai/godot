@@ -230,10 +230,12 @@ def configure(env: "SConsEnvironment"):
     env.Append(LINKFLAGS=["-Wl,--gc-sections", "-Wl,--no-undefined", "-Wl,-z,now"])
     env.Append(LINKFLAGS=["-Wl,--build-id"])
     env.Append(LINKFLAGS=["-Wl,-soname,libgodot_android.so"])
+    env.Append(LINKFLAGS="-Wl,--build-id=sha1")
 
     env.Prepend(CPPPATH=["#platform/android"])
     env.Append(CPPDEFINES=["ANDROID_ENABLED", "UNIX_ENABLED"])
-    env.Append(LIBS=["OpenSLES", "EGL", "android", "log", "z", "dl"])
+    if env["library_type"] != "static_library":
+        env.Append(LIBS=["OpenSLES", "EGL", "android", "log", "z", "dl"])
 
     if env["vulkan"]:
         env.Append(CPPDEFINES=["VULKAN_ENABLED", "RD_ENABLED"])
@@ -241,8 +243,10 @@ def configure(env: "SConsEnvironment"):
             env.Append(CPPDEFINES=["SWAPPY_FRAME_PACING_ENABLED"])
             env.Append(LIBS=["swappy_static"])
         if not env["use_volk"]:
-            env.Append(LIBS=["vulkan"])
+            if env["library_type"] != "static_library":
+                env.Append(LIBS=["vulkan"])
 
     if env["opengl3"]:
         env.Append(CPPDEFINES=["GLES3_ENABLED"])
-        env.Append(LIBS=["GLESv3"])
+        if env["library_type"] != "static_library":
+            env.Append(LIBS=["GLESv3"])

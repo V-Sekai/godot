@@ -34,8 +34,6 @@
 
 #include "drivers/vulkan/rendering_context_driver_vulkan.h"
 
-struct ANativeWindow;
-
 class RenderingContextDriverVulkanAndroid : public RenderingContextDriverVulkan {
 private:
 	virtual const char *_get_platform_surface_extension() const override final;

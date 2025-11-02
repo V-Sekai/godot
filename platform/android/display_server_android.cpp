@@ -33,6 +33,7 @@
 #include "java_godot_io_wrapper.h"
 #include "java_godot_wrapper.h"
 #include "os_android.h"
+#include "rendering_native_surface_android.h"
 #include "tts_android.h"
 
 #include "core/config/project_settings.h"
@@ -675,7 +676,9 @@ void DisplayServerAndroid::reset_window() {
 		if (rendering_driver == "vulkan") {
 			ANativeWindow *native_window = OS_Android::get_singleton()->get_native_window();
 			ERR_FAIL_NULL(native_window);
-			android_surface = RenderingNativeSurfaceAndroid::create(native_window);
+
+			Size2i display_size = OS_Android::get_singleton()->get_display_size();
+			android_surface = RenderingNativeSurfaceAndroid::create(native_window, display_size.width, display_size.height);
 		}
 #endif
 
@@ -686,8 +689,6 @@ void DisplayServerAndroid::reset_window() {
 			return;
 		}
 
-		Size2i display_size = OS_Android::get_singleton()->get_display_size();
-		rendering_context->window_set_size(MAIN_WINDOW_ID, display_size.width, display_size.height);
 		rendering_context->window_set_vsync_mode(MAIN_WINDOW_ID, last_vsync_mode);
 
 		if (rendering_device) {
@@ -719,7 +720,8 @@ DisplayServerAndroid::DisplayServerAndroid(const String &p_rendering_driver, Dis
 	if (rendering_driver == "vulkan") {
 		ANativeWindow *native_window = OS_Android::get_singleton()->get_native_window();
 		ERR_FAIL_NULL(native_window);
-		android_surface = RenderingNativeSurfaceAndroid::create(native_window);
+		Size2i display_size = OS_Android::get_singleton()->get_display_size();
+		android_surface = RenderingNativeSurfaceAndroid::create(native_window, display_size.width, display_size.height);
 	}
 #endif
 
@@ -757,8 +759,6 @@ DisplayServerAndroid::DisplayServerAndroid(const String &p_rendering_driver, Dis
 			return;
 		}
 
-		Size2i display_size = OS_Android::get_singleton()->get_display_size();
-		rendering_context->window_set_size(MAIN_WINDOW_ID, display_size.width, display_size.height);
 		rendering_context->window_set_vsync_mode(MAIN_WINDOW_ID, p_vsync_mode);
 
 		rendering_device = memnew(RenderingDevice);

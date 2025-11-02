@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  rendering_context_driver_vulkan_android.cpp                           */
+/*  libgodot_android.h                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,42 +28,57 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "rendering_context_driver_vulkan_android.h"
-#include "drivers/vulkan/rendering_native_surface_vulkan.h"
-#include "rendering_native_surface_android.h"
+#ifndef LIBGODOT_ANDROID_H
+#define LIBGODOT_ANDROID_H
 
-#ifdef VULKAN_ENABLED
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "drivers/vulkan/godot_vulkan.h"
+// Export macros for DLL visibility
+#if defined(_MSC_VER) || defined(__MINGW32__)
+#define LIBGODOT_API __declspec(dllexport)
+#elif defined(__GNUC__) || defined(__clang__)
+#define LIBGODOT_API __attribute__((visibility("default")))
+#endif // if defined(_MSC_VER)
 
-const char *RenderingContextDriverVulkanAndroid::_get_platform_surface_extension() const {
-	return VK_KHR_ANDROID_SURFACE_EXTENSION_NAME;
+#if __has_include("core/extension/gdextension_interface.h")
+#include "core/extension/gdextension_interface.h"
+#elif __has_include("gdextension_interface.h")
+#include "gdextension_interface.h"
+#else
+#error gdextension_interface.h is required
+#endif
+
+#include <jni.h>
+
+/**
+ * @name libgodot_create_godot_instance_android
+ * @since 4.4
+ *
+ * Creates a new Godot instance.
+ *
+ * @param p_argc The number of command line arguments.
+ * @param p_argv The C-style array of command line arguments.
+ * @param p_init_func GDExtension initialization function of the host application.
+ *
+ * @return A pointer to created \ref GodotInstance GDExtension object or nullptr if there was an error.
+ */
+LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, JNIEnv *env, jobject p_asset_manager, jobject p_net_utils, jobject p_directory_access_handler, jobject p_file_access_handler, jobject p_godot_io_wrapper);
+
+/**
+ * @name libgodot_destroy_godot_instance
+ * @since 4.4
+ *
+ * Destroys an existing Godot instance.
+ *
+ * @param p_godot_instance The reference to the GodotInstance object to destroy.
+ *
+ */
+LIBGODOT_API void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance);
+
+#ifdef __cplusplus
 }
+#endif
 
-RenderingContextDriver::SurfaceID RenderingContextDriverVulkanAndroid::surface_create(Ref<RenderingNativeSurface> p_native_surface) {
-	Ref<RenderingNativeSurfaceAndroid> android_native_surface = Object::cast_to<RenderingNativeSurfaceAndroid>(*p_native_surface);
-	ERR_FAIL_COND_V(android_native_surface.is_null(), SurfaceID());
-
-	VkAndroidSurfaceCreateInfoKHR create_info = {};
-	create_info.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-	create_info.window = android_native_surface->get_window();
-
-	VkSurfaceKHR vk_surface = VK_NULL_HANDLE;
-	VkResult err = vkCreateAndroidSurfaceKHR(instance_get(), &create_info, get_allocation_callbacks(VK_OBJECT_TYPE_SURFACE_KHR), &vk_surface);
-	ERR_FAIL_COND_V(err != VK_SUCCESS, SurfaceID());
-
-	Ref<RenderingNativeSurfaceVulkan> vulkan_surface = RenderingNativeSurfaceVulkan::create(vk_surface);
-	RenderingContextDriver::SurfaceID result = RenderingContextDriverVulkan::surface_create(vulkan_surface);
-	surface_set_size(result, android_native_surface->get_width(), android_native_surface->get_height());
-	return result;
-}
-
-bool RenderingContextDriverVulkanAndroid::_use_validation_layers() const {
-	TightLocalVector<const char *> layer_names;
-	Error err = _find_validation_layers(layer_names);
-
-	// On Android, we use validation layers automatically if they were explicitly linked with the app.
-	return (err == OK) && !layer_names.is_empty();
-}
-
-#endif // VULKAN_ENABLED
+#endif // LIBGODOT_ANDROID_H
