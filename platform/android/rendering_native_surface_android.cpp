@@ -38,7 +38,7 @@
 #if defined(GLES3_ENABLED)
 #include <vector>
 #include "servers/rendering/gl_manager.h"
-
+#include "servers/rendering_server.h"
 #include <android/native_window.h>
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
@@ -46,10 +46,6 @@
 #define GL_ERR(expr) { expr; GLenum err = glGetError(); if (err) { print_line(vformat("%s:%s: %x error", __FUNCTION__, #expr, err)); } }
 
 struct WindowData {
-	GLuint viewRenderbuffer = 0;
-	GLuint viewFramebuffer = 0;
-	GLuint depthRenderbuffer = 0;
-
 	EGLSurface surface = EGL_NO_SURFACE;
 	ANativeWindow *window = nullptr;
 	uint32_t width;
@@ -239,18 +235,24 @@ void GLManagerAndroid::window_make_current(DisplayServer::WindowID p_id) {
 	if (!eglMakeCurrent(display, gles_data.surface, gles_data.surface, context)) {
 		ERR_FAIL_MSG(vformat("eglMakeCurrent() returned error %d", eglGetError()));
 	}
-	glBindFramebuffer(GL_FRAMEBUFFER, gles_data.viewFramebuffer);
 	current_window = p_id;
 }
 
 void GLManagerAndroid::swap_buffers() {
 	ERR_FAIL_COND(!windows.has(current_window));
 	WindowData &gles_data = windows[current_window];
-	if (!eglMakeCurrent(display, gles_data.surface, gles_data.surface, context)) {
-		ERR_FAIL_MSG(vformat("eglMakeCurrent() returned error %d", eglGetError()));
+	if (!eglSwapBuffers(display, gles_data.surface)) {
+		ERR_FAIL_MSG(vformat("eglSwapBuffers() returned error %d", eglGetError()));
 	}
-	glBindRenderbuffer(GL_RENDERBUFFER, gles_data.viewRenderbuffer);
-	eglSwapBuffers(display, gles_data.surface);
+    // static int count = 0;
+    // count ++;
+    // if (count % 600 == 0) {
+    //     count = 0;
+    //     RenderingServer *rs = RenderingServer::get_singleton();
+    //     print_line(vformat("RENDER::VIDEO_MEM: %d", rs->get_rendering_info(RenderingServer::RENDERING_INFO_VIDEO_MEM_USED)));
+    //     print_line(vformat("RENDER::BUFFER_MEM: %d", rs->get_rendering_info(RenderingServer::RENDERING_INFO_BUFFER_MEM_USED)));
+    //     print_line(vformat("RENDER::TEXTURE_MEM: %d", rs->get_rendering_info(RenderingServer::RENDERING_INFO_TEXTURE_MEM_USED)));
+    // }
 }
 
 void GLManagerAndroid::deinitialize() {
@@ -294,26 +296,6 @@ bool GLManagerAndroid::create_framebuffer(DisplayServer::WindowID p_id, void *p_
 		ERR_FAIL_V_MSG(false, vformat("eglMakeCurrent() returned error %d", eglGetError()));
 	}
 
-	GL_ERR(glGenFramebuffers(1, &gles_data.viewFramebuffer));
-	GL_ERR(glGenRenderbuffers(1, &gles_data.viewRenderbuffer));
-
-	GL_ERR(glBindFramebuffer(GL_FRAMEBUFFER, gles_data.viewFramebuffer));
-	GL_ERR(glBindRenderbuffer(GL_RENDERBUFFER, gles_data.viewRenderbuffer));
-	GL_ERR(glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, gles_data.width, gles_data.height));
-	GL_ERR(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, gles_data.viewRenderbuffer));
-
-
-
-	// For this sample, we also need a depth buffer, so we'll create and attach one via another renderbuffer.
-	GL_ERR(glGenRenderbuffers(1, &gles_data.depthRenderbuffer));
-	GL_ERR(glBindRenderbuffer(GL_RENDERBUFFER, gles_data.depthRenderbuffer));
-	GL_ERR(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, gles_data.width, gles_data.height));
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, gles_data.depthRenderbuffer);
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		ERR_FAIL_V_MSG(false, vformat("Failed to make complete framebuffer object %x", glCheckFramebufferStatus(GL_FRAMEBUFFER)));
-	}
-
 	return true;
 }
 
@@ -321,20 +303,6 @@ bool GLManagerAndroid::create_framebuffer(DisplayServer::WindowID p_id, void *p_
 void GLManagerAndroid::window_destroy(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
-
-	if (!eglMakeCurrent(display, gles_data.surface, gles_data.surface, context)) {
-		ERR_FAIL_MSG(vformat("eglMakeCurrent() returned error %d", eglGetError()));
-	}
-
-	glDeleteFramebuffers(1, &gles_data.viewFramebuffer);
-	gles_data.viewFramebuffer = 0;
-	glDeleteRenderbuffers(1, &gles_data.viewRenderbuffer);
-	gles_data.viewRenderbuffer = 0;
-
-	if (gles_data.depthRenderbuffer) {
-		glDeleteRenderbuffers(1, &gles_data.depthRenderbuffer);
-		gles_data.depthRenderbuffer = 0;
-	}
 
 	if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
 		ERR_FAIL_V_MSG(false, vformat("eglMakeCurrent() returned error %d", eglGetError()));
@@ -347,10 +315,8 @@ void GLManagerAndroid::window_destroy(DisplayServer::WindowID p_id) {
 	windows.erase(p_id);
 }
 
-int GLManagerAndroid::window_get_render_target(DisplayServer::WindowID p_id) const {
-	ERR_FAIL_COND_V(!windows.has(p_id), 0);
-	const WindowData &gles_data = windows[p_id];
-	return gles_data.viewFramebuffer;
+uint64_t GLESContextAndroid::get_fbo(DisplayServer::WindowID p_id) const {
+	return 0; // In EGL, eglMakeCurrent will set the default framebuffer correctly.
 }
 
 int GLManagerAndroid::window_get_color_texture(DisplayServer::WindowID p_id) const {

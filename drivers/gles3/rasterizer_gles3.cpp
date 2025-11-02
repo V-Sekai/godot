@@ -457,7 +457,22 @@ void RasterizerGLES3::_blit_render_target_to_screen(DisplayServer::WindowID p_sc
 	}
 #endif
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, DisplayServer::get_singleton()->window_get_native_handle(DisplayServer::OPENGL_FBO, p_screen));
+	GLuint read_fbo = 0;
+	glGenFramebuffers(1, &read_fbo);
+	FramebufferBinding binding(GL_READ_FRAMEBUFFER, read_fbo);
+
+	if (rt->view_count > 1) {
+		glFramebufferTextureLayer(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, rt->color, 0, p_layer);
+	} else {
+		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, rt->color, 0);
+	}
+
+	if (glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		print_line(vformat("Failed to make complete framebuffer object %x", glCheckFramebufferStatus(GL_READ_FRAMEBUFFER)));
+	}
+
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glBindFramebuffer(GL_FRAMEBUFFER, DisplayServer::get_singleton()->window_get_native_handle(DisplayServer::OPENGL_FBO, p_screen));
 
 	if (p_first) {
 		if (p_blit.dst_rect.position != Vector2() || p_blit.dst_rect.size != rt->size) {
