@@ -74,7 +74,7 @@ internal class FilePicker {
 			if (requestCode == FILE_PICKER_REQUEST || requestCode == FILE_SAVE_REQUEST) {
 				if (resultCode == Activity.RESULT_CANCELED) {
 					Log.d(TAG, "File picker canceled")
-					GodotLib.filePickerCallback(false, emptyArray())
+					GodotLib.getInstance().filePickerCallback(false, emptyArray())
 					return
 				}
 				if (resultCode == Activity.RESULT_OK) {
@@ -110,9 +110,9 @@ internal class FilePicker {
 					}
 
 					if (selectedPaths.isNotEmpty()) {
-						GodotLib.filePickerCallback(true, selectedPaths.toTypedArray())
+						GodotLib.getInstance().filePickerCallback(true, selectedPaths.toTypedArray())
 					} else {
-						GodotLib.filePickerCallback(false, emptyArray())
+						GodotLib.getInstance().filePickerCallback(false, emptyArray())
 					}
 				}
 			}

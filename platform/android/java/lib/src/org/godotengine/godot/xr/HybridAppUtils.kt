@@ -62,7 +62,8 @@ const val HYBRID_APP_PANEL_FEATURE = "godot_openxr_panel_app"
 const val HYBRID_APP_PANEL_CATEGORY = "org.godotengine.xr.hybrid.PANEL"
 const val HYBRID_APP_IMMERSIVE_CATEGORY = "org.godotengine.xr.hybrid.IMMERSIVE"
 
-fun isHybridAppEnabled() = GodotLib.getGlobal("xr/hybrid_app/enabled").toBoolean()
+// TODO Check GodotLib.getInstance() fix
+fun isHybridAppEnabled() = GodotLib.getInstance().getGlobal("xr/hybrid_app/enabled").toBoolean()
 
 fun getHybridAppLaunchMode(): HybridMode {
 	if (!isHybridAppEnabled()) {
@@ -70,7 +71,8 @@ fun getHybridAppLaunchMode(): HybridMode {
 	}
 
 	try {
-		val launchModeValue = GodotLib.getGlobal("xr/hybrid_app/launch_mode").toInt()
+		// TODO Check GodotLib.getInstance() fix
+		val launchModeValue = GodotLib.getInstance().getGlobal("xr/hybrid_app/launch_mode").toInt()
 		return HybridMode.fromNative(launchModeValue)
 	} catch (e: Exception) {
 		Log.w(TAG, "Unable to retrieve 'xr/hybrid_app/launch_mode' project setting", e)

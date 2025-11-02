@@ -104,7 +104,7 @@ class GodotGLRenderView extends GLSurfaceView implements GodotRenderView {
 	@Override
 	public void onActivityPaused() {
 		queueEvent(() -> {
-			GodotLib.focusout();
+			GodotLib.getInstance().focusout();
 			// Pause the renderer
 			godotRenderer.onActivityPaused();
 		});
@@ -120,7 +120,7 @@ class GodotGLRenderView extends GLSurfaceView implements GodotRenderView {
 		queueEvent(() -> {
 			// Resume the renderer
 			godotRenderer.onActivityResumed();
-			GodotLib.focusin();
+			GodotLib.getInstance().focusin();
 		});
 	}
 

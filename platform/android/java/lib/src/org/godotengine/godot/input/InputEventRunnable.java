@@ -135,6 +135,7 @@ final class InputEventRunnable implements Runnable {
 	private float pressure;
 	private float tiltX;
 	private float tiltY;
+
 	void setMouseEvent(int eventAction, int buttonsMask, float x, float y, float deltaX, float deltaY, boolean doubleClick, boolean sourceMouseRelative, float pressure, float tiltX, float tiltY) {
 		this.currentEventType = EventType.MOUSE;
 		this.eventAction = eventAction;
@@ -267,7 +268,7 @@ final class InputEventRunnable implements Runnable {
 
 			switch (currentEventType) {
 				case MOUSE:
-					GodotLib.dispatchMouseEvent(
+					GodotLib.getInstance().dispatchMouseEvent(
 							eventAction,
 							buttonsMask,
 							eventX,
@@ -282,7 +283,7 @@ final class InputEventRunnable implements Runnable {
 					break;
 
 				case TOUCH:
-					GodotLib.dispatchTouchEvent(
+					GodotLib.getInstance().dispatchTouchEvent(
 							eventAction,
 							actionPointerId,
 							pointerCount,
@@ -291,49 +292,49 @@ final class InputEventRunnable implements Runnable {
 					break;
 
 				case MAGNIFY:
-					GodotLib.magnify(eventX, eventY, magnifyFactor);
+					GodotLib.getInstance().magnify(eventX, eventY, magnifyFactor);
 					break;
 
 				case PAN:
-					GodotLib.pan(eventX, eventY, eventDeltaX, eventDeltaY);
+					GodotLib.getInstance().pan(eventX, eventY, eventDeltaX, eventDeltaY);
 					break;
 
 				case JOYSTICK_BUTTON:
-					GodotLib.joybutton(joystickDevice, button, eventPressed);
+					GodotLib.getInstance().joybutton(joystickDevice, button, eventPressed);
 					break;
 
 				case JOYSTICK_AXIS:
-					GodotLib.joyaxis(joystickDevice, axis, value);
+					GodotLib.getInstance().joyaxis(joystickDevice, axis, value);
 					break;
 
 				case JOYSTICK_HAT:
-					GodotLib.joyhat(joystickDevice, hatX, hatY);
+					GodotLib.getInstance().joyhat(joystickDevice, hatX, hatY);
 					break;
 
 				case JOYSTICK_CONNECTION_CHANGED:
-					GodotLib.joyconnectionchanged(joystickDevice, connected, joystickName);
+					GodotLib.getInstance().joyconnectionchanged(joystickDevice, connected, joystickName);
 					break;
 
 				case KEY:
-					GodotLib.key(physicalKeycode, unicode, keyLabel, eventPressed, echo);
+					GodotLib.getInstance().key(physicalKeycode, unicode, keyLabel, eventPressed, echo);
 					break;
 
 				case SENSOR:
 					switch (sensorType) {
 						case Sensor.TYPE_ACCELEROMETER:
-							GodotLib.accelerometer(-rotatedValue0, -rotatedValue1, -rotatedValue2);
+							GodotLib.getInstance().accelerometer(-rotatedValue0, -rotatedValue1, -rotatedValue2);
 							break;
 
 						case Sensor.TYPE_GRAVITY:
-							GodotLib.gravity(-rotatedValue0, -rotatedValue1, -rotatedValue2);
+							GodotLib.getInstance().gravity(-rotatedValue0, -rotatedValue1, -rotatedValue2);
 							break;
 
 						case Sensor.TYPE_MAGNETIC_FIELD:
-							GodotLib.magnetometer(-rotatedValue0, -rotatedValue1, -rotatedValue2);
+							GodotLib.getInstance().magnetometer(-rotatedValue0, -rotatedValue1, -rotatedValue2);
 							break;
 
 						case Sensor.TYPE_GYROSCOPE:
-							GodotLib.gyroscope(rotatedValue0, rotatedValue1, rotatedValue2);
+							GodotLib.getInstance().gyroscope(rotatedValue0, rotatedValue1, rotatedValue2);
 							break;
 					}
 					break;

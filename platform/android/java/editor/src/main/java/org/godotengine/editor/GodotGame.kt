@@ -266,7 +266,7 @@ open class GodotGame : BaseGodotGame() {
 	override fun supportsFeature(featureTag: String): Boolean {
 		if (HYBRID_APP_PANEL_FEATURE == featureTag) {
 			// Check if openxr is enabled
-			if (!GodotLib.getGlobal("xr/openxr/enabled").toBoolean()) {
+			if (!GodotLib.getInstance().getGlobal("xr/openxr/enabled").toBoolean()) {
 				return false
 			}
 

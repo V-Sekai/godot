@@ -49,7 +49,7 @@ import org.godotengine.godot.plugin.GodotPluginRegistry
  *
  * @see [VkSurfaceView.startRenderer]
  */
-internal class VkRenderer {
+internal class VkRenderer() {
 
 	companion object {
 		private val TAG = VkRenderer::class.java.simpleName
@@ -61,7 +61,7 @@ internal class VkRenderer {
 	 * Called when the surface is created and signals the beginning of rendering.
 	 */
 	fun onVkSurfaceCreated(surface: Surface) {
-		GodotLib.newcontext(surface)
+		GodotLib.getInstance().newcontext(surface)
 
 		for (plugin in pluginRegistry.getAllPlugins()) {
 			plugin.onVkSurfaceCreated(surface)
@@ -72,7 +72,7 @@ internal class VkRenderer {
 	 * Called after the surface is created and whenever its size changes.
 	 */
 	fun onVkSurfaceChanged(surface: Surface, width: Int, height: Int) {
-		GodotLib.resize(surface, width, height)
+		GodotLib.getInstance().resize(surface, width, height)
 
 		for (plugin in pluginRegistry.getAllPlugins()) {
 			plugin.onVkSurfaceChanged(surface, width, height)
@@ -83,7 +83,7 @@ internal class VkRenderer {
 	 * Called to draw the current frame.
 	 */
 	fun onVkDrawFrame() {
-		GodotLib.step()
+		GodotLib.getInstance().step()
 		for (plugin in pluginRegistry.getAllPlugins()) {
 			plugin.onVkDrawFrame()
 		}
@@ -93,14 +93,14 @@ internal class VkRenderer {
 	 * Called when the rendering thread is resumed.
 	 */
 	fun onVkResume() {
-		GodotLib.onRendererResumed()
+		GodotLib.getInstance().onRendererResumed()
 	}
 
 	/**
 	 * Called when the rendering thread is paused.
 	 */
 	fun onVkPause() {
-		GodotLib.onRendererPaused()
+		GodotLib.getInstance().onRendererPaused()
 	}
 
 	/**
@@ -108,6 +108,6 @@ internal class VkRenderer {
 	 */
 	fun onRenderThreadExiting() {
 		Log.d(TAG, "Destroying Godot Engine")
-		GodotLib.ondestroy()
+		GodotLib.getInstance().ondestroy()
 	}
 }

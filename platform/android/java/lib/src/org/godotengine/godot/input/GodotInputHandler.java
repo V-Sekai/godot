@@ -137,7 +137,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener, Sens
 	 * dispatched from the UI thread.
 	 */
 	private boolean shouldDispatchInputToRenderThread() {
-		return GodotLib.shouldDispatchInputToRenderThread();
+		return GodotLib.getInstance().shouldDispatchInputToRenderThread();
 	}
 
 	/**
@@ -701,7 +701,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener, Sens
 		dispatchInputEventRunnable(runnable);
 	}
 
-	private void handleJoystickButtonEvent(int device, int button, boolean pressed) {
+	protected void handleJoystickButtonEvent(int device, int button, boolean pressed) {
 		InputEventRunnable runnable = InputEventRunnable.obtain();
 		if (runnable == null) {
 			return;
@@ -711,7 +711,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener, Sens
 		dispatchInputEventRunnable(runnable);
 	}
 
-	private void handleJoystickAxisEvent(int device, int axis, float value) {
+	protected void handleJoystickAxisEvent(int device, int axis, float value) {
 		InputEventRunnable runnable = InputEventRunnable.obtain();
 		if (runnable == null) {
 			return;
@@ -721,7 +721,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener, Sens
 		dispatchInputEventRunnable(runnable);
 	}
 
-	private void handleJoystickHatEvent(int device, int hatX, int hatY) {
+	protected void handleJoystickHatEvent(int device, int hatX, int hatY) {
 		InputEventRunnable runnable = InputEventRunnable.obtain();
 		if (runnable == null) {
 			return;
@@ -731,7 +731,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener, Sens
 		dispatchInputEventRunnable(runnable);
 	}
 
-	private void handleJoystickConnectionChangedEvent(int device, boolean connected, String name) {
+	protected void handleJoystickConnectionChangedEvent(int device, boolean connected, String name) {
 		InputEventRunnable runnable = InputEventRunnable.obtain();
 		if (runnable == null) {
 			return;
@@ -822,7 +822,7 @@ public class GodotInputHandler implements InputManager.InputDeviceListener, Sens
 				newConfig.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO;
 		if (hasHardwareKeyboardConfig != newHardwareKeyboardConfig) {
 			hasHardwareKeyboardConfig = newHardwareKeyboardConfig;
-			GodotLib.hardwareKeyboardConnected(hasHardwareKeyboard());
+			GodotLib.getInstance().hardwareKeyboardConnected(hasHardwareKeyboard());
 		}
 	}
 }
