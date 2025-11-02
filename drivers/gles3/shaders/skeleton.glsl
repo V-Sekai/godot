@@ -148,16 +148,16 @@ vec4 vec2_to_vec4(uvec2 p_vec) {
 
 void main() {
 #ifdef MODE_2D
-	out_vertex = in_vertex;
+	VFORMAT vertex = in_vertex;
 
 #ifdef USE_BLEND_SHAPES
 #ifdef MODE_BLEND_PASS
-	out_vertex = in_vertex + blend_vertex * blend_weight;
+	vertex = in_vertex + blend_vertex * blend_weight;
 #else
-	out_vertex = in_vertex * blend_weight;
+	vertex = in_vertex * blend_weight;
 #endif
 #ifdef FINAL_PASS
-	out_vertex = normalize(out_vertex);
+	vertex = normalize(vertex);
 #endif
 #endif // USE_BLEND_SHAPES
 
@@ -180,14 +180,16 @@ void main() {
 
 	bone_matrix = skeleton_matrix * transpose(bone_matrix) * inverse_matrix;
 
-	out_vertex = (bone_matrix * vec4(out_vertex, 0.0, 1.0)).xy;
+	vertex = (bone_matrix * vec4(vertex, 0.0, 1.0)).xy;
 #endif // USE_SKELETON
 
+	out_vertex = vertex;
 #else // MODE_2D
+	VFORMAT vertex = in_vertex;
 
 #ifdef USE_BLEND_SHAPES
 #ifdef MODE_BLEND_PASS
-	out_vertex = in_vertex + blend_vertex * blend_weight;
+	vertex = in_vertex + blend_vertex * blend_weight;
 
 #ifdef USE_NORMAL
 	vec3 normal = vec2_to_vec4(in_normal).xyz * blend_shape_count;
@@ -210,7 +212,7 @@ void main() {
 #endif // USE_TANGENT
 
 #else // MODE_BLEND_PASS
-	out_vertex = in_vertex * blend_weight;
+	vertex = in_vertex * blend_weight;
 
 #ifdef USE_NORMAL
 	vec3 normal = oct_to_vec3(in_normal);
@@ -224,7 +226,7 @@ void main() {
 #else // USE_BLEND_SHAPES
 
 	// Make attributes available to the skeleton shader if not written by blend shapes.
-	out_vertex = in_vertex;
+	vertex = in_vertex;
 #ifdef USE_NORMAL
 	out_normal = in_normal;
 #endif
@@ -260,7 +262,7 @@ void main() {
 #endif
 
 	// Reverse order because its transposed.
-	out_vertex = (vec4(out_vertex, 1.0) * m).xyz;
+	vertex = (vec4(vertex, 1.0) * m).xyz;
 #ifdef USE_NORMAL
 	vec3 vertex_normal = oct_to_vec3(out_normal);
 	out_normal = vec3_to_oct(normalize((vec4(vertex_normal, 0.0) * m).xyz));
@@ -270,6 +272,7 @@ void main() {
 	out_tangent = tang_to_oct(vec4(normalize((vec4(vertex_tangent.xyz, 0.0) * m).xyz), vertex_tangent.w));
 #endif // USE_TANGENT
 #endif // USE_SKELETON
+	out_vertex = vertex;
 #endif // MODE_2D
 }
 
