@@ -40,15 +40,20 @@ real_t JointLimitationCone3D::get_radius_range() const {
 	return radius_range;
 }
 
-void JointLimitationCone3D::add_open_cone(Ref<IKLimitCone3D> p_cone) {
-	if (p_cone.is_valid()) {
-		open_cones.push_back(p_cone);
-		emit_changed();
-	}
+void JointLimitationCone3D::add_open_cone(const IKLimitCone3D &p_cone) {
+	open_cones.push_back(p_cone);
+	emit_changed();
 }
 
-void JointLimitationCone3D::remove_open_cone(Ref<IKLimitCone3D> p_cone) {
-	open_cones.erase(p_cone);
+void JointLimitationCone3D::remove_open_cone(const IKLimitCone3D &p_cone) {
+	// Find and remove the cone
+	for (int i = 0; i < open_cones.size(); i++) {
+		if (open_cones[i].control_point == p_cone.control_point &&
+			open_cones[i].radius == p_cone.radius) {
+			open_cones.remove_at(i);
+			break;
+		}
+	}
 	emit_changed();
 }
 
@@ -59,7 +64,7 @@ void JointLimitationCone3D::clear_open_cones() {
 
 TypedArray<IKLimitCone3D> JointLimitationCone3D::get_open_cones() const {
 	TypedArray<IKLimitCone3D> result;
-	for (const Ref<IKLimitCone3D> &cone : open_cones) {
+	for (const IKLimitCone3D &cone : open_cones) {
 		result.push_back(cone);
 	}
 	return result;
@@ -68,10 +73,8 @@ TypedArray<IKLimitCone3D> JointLimitationCone3D::get_open_cones() const {
 void JointLimitationCone3D::set_open_cones(TypedArray<IKLimitCone3D> p_cones) {
 	open_cones.clear();
 	for (int i = 0; i < p_cones.size(); i++) {
-		Ref<IKLimitCone3D> cone = p_cones[i];
-		if (cone.is_valid()) {
-			open_cones.push_back(cone);
-		}
+		IKLimitCone3D cone = p_cones[i];
+		open_cones.push_back(cone);
 	}
 	emit_changed();
 }
@@ -125,9 +128,9 @@ Vector3 JointLimitationCone3D::_solve(const Vector3 &p_direction) const {
 	Vector<double> in_bounds;
 
 	// Try to constrain using the first open cone
-	if (open_cones[0].is_valid()) {
+	if (!open_cones.is_empty()) {
 		// Use the kusudama constraint from the first cone
-		result = open_cones[0]->closest_to_cone(p_direction.normalized(), &in_bounds);
+		result = open_cones[0].closest_to_cone(p_direction.normalized(), &in_bounds);
 
 		// If the point is already in bounds, return as is
 		if (!in_bounds.is_empty() && in_bounds[0] >= 0.0) {
@@ -136,16 +139,16 @@ Vector3 JointLimitationCone3D::_solve(const Vector3 &p_direction) const {
 
 		// Otherwise, check multi-cone path sequences for better constraint
 		for (int i = 0; i < (int)open_cones.size() - 1; i++) {
-			if (open_cones[i].is_valid() && open_cones[i + 1].is_valid()) {
-				Vector3 path_result = open_cones[i]->get_closest_path_point(open_cones[i + 1], p_direction.normalized());
+			const IKLimitCone3D *next_cone = &open_cones[i + 1];
+			const IKLimitCone3D *cone = &open_cones[i];
+			Vector3 path_result = cone->get_closest_path_point(next_cone, p_direction.normalized());
 
-				// Use the result that requires least rotation
-				real_t orig_angle = p_direction.normalized().angle_to(path_result);
-				real_t prev_angle = result.angle_to(path_result);
+			// Use the result that requires least rotation
+			real_t orig_angle = p_direction.normalized().angle_to(path_result);
+			real_t prev_angle = result.angle_to(path_result);
 
-				if (orig_angle < prev_angle) {
-					result = path_result;
-				}
+			if (orig_angle < prev_angle) {
+				result = path_result;
 			}
 		}
 	}
@@ -168,14 +171,11 @@ void JointLimitationCone3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const T
 	// If multi-cone constraints exist, visualize each open cone
 	if (!open_cones.is_empty()) {
 		for (int cone_idx = 0; cone_idx < (int)open_cones.size(); cone_idx++) {
-			Ref<IKLimitCone3D> cone = open_cones[cone_idx];
-			if (!cone.is_valid()) {
-				continue;
-			}
+			const IKLimitCone3D &cone = open_cones[cone_idx];
 
 			// Get cone parameters
-			Vector3 control_point = cone->get_control_point();
-			real_t radius = cone->get_radius();
+			Vector3 control_point = cone.get_control_point();
+			real_t radius = cone.get_radius();
 
 			// Normalize control point for sphere visualization
 			Vector3 cone_center = control_point.normalized() * sphere_r;
@@ -209,9 +209,9 @@ void JointLimitationCone3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const T
 			}
 
 			// Draw tangent circle handles if available
-			Vector3 tc1 = cone->get_tangent_circle_center_next_1();
-			Vector3 tc2 = cone->get_tangent_circle_center_next_2();
-			real_t tc_radius = cone->get_tangent_circle_radius_next();
+			Vector3 tc1 = cone.tangent_circle_center_next_1;
+			Vector3 tc2 = cone.tangent_circle_center_next_2;
+			real_t tc_radius = cone.tangent_circle_radius_next;
 
 			if (tc_radius > CMP_EPSILON) {
 				// Draw tangent circle 1

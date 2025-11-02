@@ -1,40 +1,51 @@
 #pragma once
 
-#include "core/io/resource.h"
+#include "core/math/math_defs.h"
+#include "core/math/math_funcs.h"
+#include "core/math/vector3.h"
 #include "core/math/quaternion.h"
+#include "core/io/resource.h"
 #include "core/object/ref_counted.h"
 #include "core/variant/typed_array.h"
 
 class IKNode3D;
 
-class IKKusudama3D;
-class IKLimitCone3D : public Resource {
-	GDCLASS(IKLimitCone3D, Resource);
-
+struct IKLimitCone3D {
 	Vector3 control_point = Vector3(0, 1, 0);
 	double radius = 0;
 	double radius_cosine = 0;
-	WeakRef parent_kusudama;
 
-public:
+	// Tangent circle data (precalculated)
+	Vector3 tangent_circle_center_next_1;
+	Vector3 tangent_circle_center_next_2;
+	double tangent_circle_radius_next = 0;
+	double tangent_circle_radius_next_cos = 0;
+
 	IKLimitCone3D() {}
-	void set_attached_to(Ref<IKKusudama3D> p_attached_to);
-	Ref<IKKusudama3D> get_attached_to();
-	void update_tangent_handles(Ref<IKLimitCone3D> p_next);
-	Vector3 get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Vector3 input) const;
+	void update_tangent_handles(IKLimitCone3D *p_next);
+	Vector3 get_on_great_tangent_triangle(const IKLimitCone3D *next, Vector3 input) const;
 	Vector3 closest_to_cone(Vector3 input, Vector<double> *in_bounds) const;
-	Vector3 get_closest_path_point(Ref<IKLimitCone3D> next, Vector3 input) const;
-	Vector3 get_control_point() const;
+	Vector3 get_closest_path_point(const IKLimitCone3D *next, Vector3 input) const;
+	Vector3 get_control_point() const { return control_point; }
 	void set_control_point(Vector3 p_control_point);
-	double get_radius() const;
-	void set_radius(double radius);
+	double get_radius() const { return radius; }
+	void set_radius(double p_radius);
 	static Vector3 get_orthogonal(Vector3 p_input);
+
+	// Getters for tangent circle data
+	Vector3 get_tangent_circle_center_next_1() const { return tangent_circle_center_next_1; }
+	void set_tangent_circle_center_next_1(Vector3 p_center) { tangent_circle_center_next_1 = p_center; }
+	Vector3 get_tangent_circle_center_next_2() const { return tangent_circle_center_next_2; }
+	void set_tangent_circle_center_next_2(Vector3 p_center) { tangent_circle_center_next_2 = p_center; }
+	double get_tangent_circle_radius_next() const { return tangent_circle_radius_next; }
+	void set_tangent_circle_radius_next(double p_radius) { tangent_circle_radius_next = p_radius; tangent_circle_radius_next_cos = Math::cos(p_radius); }
+	double _get_tangent_circle_radius_next_cos() const { return tangent_circle_radius_next_cos; }
 };
 
 class IKKusudama3D : public Resource {
 	GDCLASS(IKKusudama3D, Resource);
 
-	Vector<Ref<IKLimitCone3D>> open_cones;
+	Vector<IKLimitCone3D> open_cones;
 	Quaternion twist_min_rot;
 	Vector3 twist_min_vec;
 	Vector3 twist_max_vec;
@@ -71,8 +82,8 @@ public:
 	void set_snap_to_twist_limit(Ref<IKNode3D> p_bone_direction, Ref<IKNode3D> p_to_set, Ref<IKNode3D> p_limiting_axes, real_t p_dampening, real_t p_cos_half_dampen);
 	Vector3 get_local_point_in_limits(Vector3 in_point, Vector<double> *in_bounds);
 	Vector3 local_point_on_path_sequence(Vector3 in_point, Ref<IKNode3D> limiting_axes);
-	void add_open_cone(Ref<IKLimitCone3D> p_open_cone);
-	void remove_open_cone(Ref<IKLimitCone3D> limitCone);
+	void add_open_cone(const IKLimitCone3D &p_open_cone);
+	void remove_open_cone(const IKLimitCone3D &limitCone);
 	real_t get_min_axial_angle();
 	real_t get_range_angle();
 	bool is_axially_constrained();

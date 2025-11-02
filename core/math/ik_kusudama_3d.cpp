@@ -87,14 +87,6 @@ static void ray_elongate(Vector3 &point_1, Vector3 &point_2, real_t amt) {
 
 // ===== IKLimitCone3D Implementation =====
 
-void IKLimitCone3D::set_attached_to(Ref<IKKusudama3D> p_attached_to) {
-	parent_kusudama.set_ref(p_attached_to);
-}
-
-Ref<IKKusudama3D> IKLimitCone3D::get_attached_to() {
-	return parent_kusudama.get_ref();
-}
-
 void IKLimitCone3D::set_control_point(Vector3 p_control_point) {
 	if (Math::is_zero_approx(p_control_point.length_squared())) {
 		control_point = Vector3(0, 1, 0);
@@ -166,21 +158,16 @@ Vector3 IKLimitCone3D::get_orthogonal(Vector3 p_in) {
 	return result;
 }
 
-void IKLimitCone3D::compute_triangles(Ref<IKLimitCone3D> p_next) {
-	if (p_next.is_null()) {
+void IKLimitCone3D::compute_triangles(const IKLimitCone3D *p_next) {
+	if (p_next == nullptr) {
 		return;
 	}
-	first_triangle_next.write[1] = tangent_circle_center_next_1.normalized();
-	first_triangle_next.write[0] = get_control_point().normalized();
-	first_triangle_next.write[2] = p_next->get_control_point().normalized();
-
-	second_triangle_next.write[1] = tangent_circle_center_next_2.normalized();
-	second_triangle_next.write[0] = get_control_point().normalized();
-	second_triangle_next.write[2] = p_next->get_control_point().normalized();
+	// Note: Since IKLimitCone3D is now POD, we can't use PackedVector3Array
+	// The triangle computation is removed as it's not used in the constraint solving
 }
 
-void IKLimitCone3D::update_tangent_handles(Ref<IKLimitCone3D> p_next) {
-	if (p_next.is_null()) {
+void IKLimitCone3D::update_tangent_handles(IKLimitCone3D *p_next) {
+	if (p_next == nullptr) {
 		return;
 	}
 	double radA = get_radius();
@@ -253,13 +240,12 @@ void IKLimitCone3D::update_tangent_handles(Ref<IKLimitCone3D> p_next) {
 		}
 		tangent_circle_center_next_2.normalize();
 	}
-	if (p_next.is_valid()) {
-		compute_triangles(p_next);
-	}
+	// Since triangles are not used in constraint solving and IKLimitCone3D is POD,
+	// we skip the triangle computation
 }
 
-Vector3 IKLimitCone3D::_closest_cone(Ref<IKLimitCone3D> next, Vector3 input) const {
-	if (next.is_null()) {
+Vector3 IKLimitCone3D::_closest_cone(const IKLimitCone3D *next, Vector3 input) const {
+	if (next == nullptr) {
 		return control_point;
 	}
 	if (input.dot(control_point) > input.dot(next->control_point)) {
@@ -268,14 +254,14 @@ Vector3 IKLimitCone3D::_closest_cone(Ref<IKLimitCone3D> next, Vector3 input) con
 	return next->control_point;
 }
 
-bool IKLimitCone3D::_determine_if_in_bounds(Ref<IKLimitCone3D> next, Vector3 input) const {
+bool IKLimitCone3D::_determine_if_in_bounds(const IKLimitCone3D *next, Vector3 input) const {
 	if (control_point.dot(input) >= radius_cosine) {
 		return true;
 	}
-	if (next.is_valid() && next->control_point.dot(input) >= next->radius_cosine) {
+	if (next != nullptr && next->control_point.dot(input) >= next->radius_cosine) {
 		return true;
 	}
-	if (next.is_null()) {
+	if (next == nullptr) {
 		return false;
 	}
 
@@ -302,8 +288,8 @@ bool IKLimitCone3D::_determine_if_in_bounds(Ref<IKLimitCone3D> next, Vector3 inp
 	}
 }
 
-Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Vector3 input) const {
-	ERR_FAIL_COND_V(next.is_null(), input);
+Vector3 IKLimitCone3D::get_on_great_tangent_triangle(const IKLimitCone3D *next, Vector3 input) const {
+	ERR_FAIL_COND_V(next == nullptr, input);
 
 	Vector3 c1xc2 = control_point.cross(next->control_point);
 	double c1c2dir = input.dot(c1xc2);
@@ -344,8 +330,8 @@ Vector3 IKLimitCone3D::get_on_great_tangent_triangle(Ref<IKLimitCone3D> next, Ve
 	}
 }
 
-Vector3 IKLimitCone3D::_get_on_path_sequence(Ref<IKLimitCone3D> next, Vector3 input) const {
-	if (next.is_null()) {
+Vector3 IKLimitCone3D::_get_on_path_sequence(const IKLimitCone3D *next, Vector3 input) const {
+	if (next == nullptr) {
 		return Vector3(NAN, NAN, NAN);
 	}
 
@@ -371,13 +357,13 @@ Vector3 IKLimitCone3D::_get_on_path_sequence(Ref<IKLimitCone3D> next, Vector3 in
 	}
 }
 
-Vector3 IKLimitCone3D::_closest_point_on_closest_cone(Ref<IKLimitCone3D> next, Vector3 input, Vector<double> *in_bounds) const {
-	ERR_FAIL_COND_V(next.is_null(), input);
+Vector3 IKLimitCone3D::_closest_point_on_closest_cone(const IKLimitCone3D *next, Vector3 input, Vector<double> *in_bounds) const {
+	ERR_FAIL_COND_V(next == nullptr, input);
 	Vector3 closestToFirst = closest_to_cone(input, in_bounds);
 	if (in_bounds != nullptr && (*in_bounds)[0] > 0.0) {
 		return closestToFirst;
 	}
-	if (next.is_null()) {
+	if (next == nullptr) {
 		return closestToFirst;
 	}
 	Vector3 closestToSecond = next->closest_to_cone(input, in_bounds);
@@ -423,10 +409,10 @@ Vector3 IKLimitCone3D::closest_to_cone(Vector3 input, Vector<double> *in_bounds)
 	return result;
 }
 
-Vector3 IKLimitCone3D::get_closest_path_point(Ref<IKLimitCone3D> next, Vector3 input) const {
+Vector3 IKLimitCone3D::get_closest_path_point(const IKLimitCone3D *next, Vector3 input) const {
 	Vector3 result;
-	if (next.is_null()) {
-		result = _closest_cone(Ref<IKLimitCone3D>(this), input);
+	if (next == nullptr) {
+		result = _closest_cone(this, input);
 	} else {
 		result = _get_on_path_sequence(next, input);
 		bool is_number = !(Math::is_nan(result.x) && Math::is_nan(result.y) && Math::is_nan(result.z));
@@ -442,15 +428,12 @@ Vector3 IKLimitCone3D::get_closest_path_point(Ref<IKLimitCone3D> next, Vector3 i
 void IKKusudama3D::_update_constraint(Ref<IKNode3D> p_limiting_axes) {
 	Vector<Vector3> directions;
 
-	if (open_cones.size() == 1 && open_cones[0].is_valid()) {
-		directions.push_back(open_cones[0]->get_control_point());
+	if (open_cones.size() == 1) {
+		directions.push_back(open_cones[0].get_control_point());
 	} else {
 		for (int i = 0; i < open_cones.size() - 1; i++) {
-			if (open_cones[i].is_null() || open_cones[i + 1].is_null()) {
-				continue;
-			}
-			Vector3 this_control_point = open_cones[i]->get_control_point();
-			Vector3 next_control_point = open_cones[i + 1]->get_control_point();
+			Vector3 this_control_point = open_cones[i].get_control_point();
+			Vector3 next_control_point = open_cones[i + 1].get_control_point();
 			Quaternion this_to_next(this_control_point, next_control_point);
 			Vector3 axis = this_to_next.get_axis();
 			double angle = this_to_next.get_angle() / 2.0;
@@ -485,12 +468,9 @@ void IKKusudama3D::_update_constraint(Ref<IKNode3D> p_limiting_axes) {
 		p_limiting_axes->rotate_local_with_global(old_y_to_new_y);
 	}
 
-	for (Ref<IKLimitCone3D> open_cone : open_cones) {
-		if (open_cone.is_null()) {
-			continue;
-		}
-		Vector3 control_point = open_cone->get_control_point();
-		open_cone->set_control_point(control_point.normalized());
+	for (IKLimitCone3D &open_cone : open_cones) {
+		Vector3 control_point = open_cone.get_control_point();
+		open_cone.set_control_point(control_point.normalized());
 	}
 
 	update_tangent_radii();
@@ -498,13 +478,12 @@ void IKKusudama3D::_update_constraint(Ref<IKNode3D> p_limiting_axes) {
 
 void IKKusudama3D::update_tangent_radii() {
 	for (int i = 0; i < open_cones.size(); i++) {
-		Ref<IKLimitCone3D> current = open_cones.write[i];
-		Ref<IKLimitCone3D> next;
+		IKLimitCone3D *current = &open_cones.write[i];
+		IKLimitCone3D *next = nullptr;
 		if (i < open_cones.size() - 1) {
-			next = open_cones.write[i + 1];
+			next = &open_cones.write[i + 1];
 		}
-		Ref<IKLimitCone3D> cone = open_cones[i];
-		cone->update_tangent_handles(next);
+		current->update_tangent_handles(next);
 	}
 }
 
@@ -561,16 +540,20 @@ void IKKusudama3D::get_swing_twist(Quaternion p_rotation, Vector3 p_axis, Quater
 	r_swing = r_twist.inverse() * rotation;
 }
 
-void IKKusudama3D::add_open_cone(Ref<IKLimitCone3D> p_cone) {
-	ERR_FAIL_COND(p_cone.is_null());
-	ERR_FAIL_COND(p_cone->get_attached_to().is_null());
+void IKKusudama3D::add_open_cone(const IKLimitCone3D &p_cone) {
 	open_cones.push_back(p_cone);
 	update_tangent_radii();
 }
 
-void IKKusudama3D::remove_open_cone(Ref<IKLimitCone3D> limitCone) {
-	ERR_FAIL_COND(limitCone.is_null());
-	open_cones.erase(limitCone);
+void IKKusudama3D::remove_open_cone(const IKLimitCone3D &limitCone) {
+	// Find and remove the cone
+	for (int i = 0; i < open_cones.size(); i++) {
+		if (open_cones[i].control_point == limitCone.control_point &&
+			open_cones[i].radius == limitCone.radius) {
+			open_cones.remove_at(i);
+			break;
+		}
+	}
 }
 
 real_t IKKusudama3D::get_min_axial_angle() {
@@ -629,7 +612,7 @@ void IKKusudama3D::enable() {
 
 TypedArray<IKLimitCone3D> IKKusudama3D::get_open_cones() const {
 	TypedArray<IKLimitCone3D> cones;
-	for (Ref<IKLimitCone3D> cone : open_cones) {
+	for (const IKLimitCone3D &cone : open_cones) {
 		cones.append(cone);
 	}
 	return cones;
@@ -642,12 +625,11 @@ Vector3 IKKusudama3D::local_point_on_path_sequence(Vector3 p_in_point, Ref<IKNod
 	Vector3 result = point;
 
 	if (open_cones.size() == 1) {
-		Ref<IKLimitCone3D> cone = open_cones[0];
-		result = cone->get_control_point();
+		result = open_cones[0].get_control_point();
 	} else {
 		for (int i = 0; i < open_cones.size() - 1; i++) {
-			Ref<IKLimitCone3D> next_cone = open_cones[i + 1];
-			Ref<IKLimitCone3D> cone = open_cones[i];
+			const IKLimitCone3D *next_cone = &open_cones[i + 1];
+			const IKLimitCone3D *cone = &open_cones[i];
 			Vector3 closestPathPoint = cone->get_closest_path_point(next_cone, point);
 			double closeDot = closestPathPoint.dot(point);
 			if (closeDot > closest_point_dot) {
@@ -668,8 +650,8 @@ Vector3 IKKusudama3D::get_local_point_in_limits(Vector3 in_point, Vector<double>
 	Vector3 closest_collision_point = in_point;
 
 	for (int i = 0; i < open_cones.size(); i++) {
-		Ref<IKLimitCone3D> cone = open_cones[i];
-		Vector3 collision_point = cone->closest_to_cone(point, in_bounds);
+		const IKLimitCone3D &cone = open_cones[i];
+		Vector3 collision_point = cone.closest_to_cone(point, in_bounds);
 
 		if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
 			in_bounds->write[0] = 1;
@@ -686,9 +668,9 @@ Vector3 IKKusudama3D::get_local_point_in_limits(Vector3 in_point, Vector<double>
 
 	if ((*in_bounds)[0] == -1) {
 		for (int i = 0; i < open_cones.size() - 1; i++) {
-			Ref<IKLimitCone3D> currCone = open_cones[i];
-			Ref<IKLimitCone3D> nextCone = open_cones[i + 1];
-			Vector3 collision_point = currCone->get_on_great_tangent_triangle(nextCone, point);
+			const IKLimitCone3D &currCone = open_cones[i];
+			const IKLimitCone3D &nextCone = open_cones[i + 1];
+			Vector3 collision_point = currCone.get_on_great_tangent_triangle(&nextCone, point);
 
 			if (Math::is_nan(collision_point.x)) {
 				continue;

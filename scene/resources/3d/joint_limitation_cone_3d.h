@@ -30,18 +30,18 @@
 
 #pragma once
 
+#include "core/math/math_defs.h"
+#include "core/math/vector3.h"
+#include "core/math/ik_kusudama_3d.h"
 #include "core/object/ref_counted.h"
 #include "core/variant/typed_array.h"
 #include "scene/resources/3d/joint_limitation_3d.h"
-
-// Forward declaration
-class IKLimitCone3D;
 
 class JointLimitationCone3D : public JointLimitation3D {
 	GDCLASS(JointLimitationCone3D, JointLimitation3D);
 
 	real_t radius_range = 0.25;
-	Vector<Ref<IKLimitCone3D>> open_cones;
+	Vector<IKLimitCone3D> open_cones;
 
 protected:
 	static void _bind_methods();
@@ -53,8 +53,8 @@ public:
 	real_t get_radius_range() const;
 
 	// Multi-cone support methods
-	void add_open_cone(Ref<IKLimitCone3D> p_cone);
-	void remove_open_cone(Ref<IKLimitCone3D> p_cone);
+	void add_open_cone(const IKLimitCone3D &p_cone);
+	void remove_open_cone(const IKLimitCone3D &p_cone);
 	void clear_open_cones();
 	TypedArray<IKLimitCone3D> get_open_cones() const;
 	void set_open_cones(TypedArray<IKLimitCone3D> p_cones);
