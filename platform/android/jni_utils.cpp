@@ -165,7 +165,7 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 
 			static jclass dclass = nullptr;
 			if (!dclass) {
-				jclass localClass = env->FindClass("org/godotengine/godot/Dictionary");
+				jclass localClass = jni_find_class(env, "org/godotengine/godot/Dictionary");
 				dclass = (jclass)env->NewGlobalRef(localClass);
 				env->DeleteLocalRef(localClass);
 			}
@@ -278,6 +278,26 @@ jvalret _variant_to_jvalue(JNIEnv *env, Variant::Type p_type, const Variant *p_a
 			} else {
 				v.val.i = 0;
 			}
+		} break;
+		case Variant::VECTOR2: {
+			Vector2 vector = *p_arg;
+			jfloatArray arr = env->NewFloatArray(2);
+			jfloat array_values[2];
+			array_values[0] = vector.x;
+			array_values[1] = vector.y;
+			env->SetFloatArrayRegion(arr, 0, 2, array_values);
+			v.val.l = arr;
+			v.obj = arr;
+		} break;
+		case Variant::VECTOR2I: {
+			Vector2 vector = *p_arg;
+			jintArray arr = env->NewIntArray(2);
+			jint array_values[2];
+			array_values[0] = vector.x;
+			array_values[1] = vector.y;
+			env->SetIntArrayRegion(arr, 0, 2, array_values);
+			v.val.l = arr;
+			v.obj = arr;
 		} break;
 
 		default: {
@@ -519,7 +539,7 @@ Variant::Type get_jni_type(const String &p_type) {
 	return Variant::OBJECT;
 }
 
-void setup_android_class_loader() {
+void setup_android_class_loader(jobject p_class_loader) {
 	// Find a known class defined in the Godot package and obtain its ClassLoader.
 	// This ClassLoader will be used by jni_find_class() to locate classes at runtime
 	// in a thread-safe manner, avoiding issues with FindClass in non-main threads.
@@ -531,17 +551,24 @@ void setup_android_class_loader() {
 	JNIEnv *env = get_jni_env();
 	ERR_FAIL_NULL(env);
 
-	jclass known_class = env->FindClass("org/godotengine/godot/Godot");
-	ERR_FAIL_NULL(known_class);
+	jobject class_loader = nullptr;
 
-	jclass class_class = env->FindClass("java/lang/Class");
-	ERR_FAIL_NULL(class_class);
+	if (p_class_loader) {
+		class_loader = p_class_loader;
+	} else {
 
-	jmethodID get_class_loader_method = env->GetMethodID(class_class, "getClassLoader", "()Ljava/lang/ClassLoader;");
-	ERR_FAIL_NULL(get_class_loader_method);
+		jclass known_class = env->FindClass("org/godotengine/godot/Godot");
+		ERR_FAIL_NULL(known_class);
 
-	jobject class_loader = env->CallObjectMethod(known_class, get_class_loader_method);
-	ERR_FAIL_NULL(class_loader);
+		jclass class_class = env->FindClass("java/lang/Class");
+		ERR_FAIL_NULL(class_class);
+
+		jmethodID get_class_loader_method = env->GetMethodID(class_class, "getClassLoader", "()Ljava/lang/ClassLoader;");
+		ERR_FAIL_NULL(get_class_loader_method);
+
+		class_loader = env->CallObjectMethod(known_class, get_class_loader_method);
+		ERR_FAIL_NULL(class_loader);
+	}
 
 	// NOTE: Make global ref so it can be used later.
 	android_class_loader = env->NewGlobalRef(class_loader);
@@ -575,9 +602,17 @@ jclass jni_find_class(JNIEnv *p_env, const char *p_class_name) {
 	ERR_FAIL_NULL_V(p_env, nullptr);
 	ERR_FAIL_NULL_V(p_class_name, nullptr);
 
+	jclass result = p_env->FindClass(p_class_name);
+	if (p_env->ExceptionOccurred()) {
+		p_env->ExceptionClear();
+	}
+	if (result) {
+		return result;
+	}
+
 	if (!android_class_loader || !load_class_method) {
 		ERR_PRINT("Android ClassLoader is not initialized. Falling back to FindClass.");
-		return p_env->FindClass(p_class_name);
+		return nullptr;
 	}
 
 	jstring java_class_name = p_env->NewStringUTF(p_class_name);

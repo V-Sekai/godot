@@ -68,21 +68,24 @@ static GodotInstanceCallbacksAndroid callbacks;
 static GodotIOJavaWrapper *godot_io_wrapper = nullptr;
 static GodotJavaWrapper *godot_wrapper = nullptr;
 static JavaClassWrapper *java_class_wrapper = nullptr;
+static jobject class_loader = nullptr;
 
-extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, JNIEnv* env, jobject p_asset_manager, jobject p_net_utils, jobject p_directory_access_handler, jobject p_file_access_handler, jobject p_godot_io_wrapper, jobject p_godot_wrapper, jobject p_host_activity) {
+extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, JNIEnv* env, jobject p_asset_manager, jobject p_net_utils, jobject p_directory_access_handler, jobject p_file_access_handler, jobject p_godot_io_wrapper, jobject p_godot_wrapper, jobject p_class_loader) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
 
 	JavaVM *jvm;
 	env->GetJavaVM(&jvm);
 
+	class_loader = env->NewGlobalRef(p_class_loader);
 	init_thread_jandroid(jvm, env);
+	setup_android_class_loader(class_loader);
 
 	FileAccessAndroid::setup(p_asset_manager);
 	DirAccessJAndroid::setup(p_directory_access_handler);
 	FileAccessFilesystemJAndroid::setup(p_file_access_handler);
 	NetSocketAndroid::setup(p_net_utils);
 	godot_io_wrapper = new GodotIOJavaWrapper(env, p_godot_io_wrapper);
-	godot_wrapper = new GodotJavaWrapper(env, p_host_activity, p_godot_wrapper);
+	godot_wrapper = new GodotJavaWrapper(env, p_godot_wrapper);
 
 	os = new OS_Android(godot_wrapper, godot_io_wrapper, false);
 
@@ -110,6 +113,8 @@ extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(
 
 extern LIBGODOT_API void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
 	GodotInstance *godot_instance = (GodotInstance *)p_godot_instance;
+	JNIEnv *env = get_jni_env();
+	env->DeleteGlobalRef(class_loader);
 	if (instance == godot_instance) {
 		godot_instance->stop();
 		memdelete(godot_instance);
