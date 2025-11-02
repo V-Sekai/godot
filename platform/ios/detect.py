@@ -179,11 +179,13 @@ def configure(env: "SConsEnvironment"):
     if env["opengl3"]:
         env.Append(CPPDEFINES=["GLES3_ENABLED", "GLES_SILENCE_DEPRECATION"])
         env.Append(CCFLAGS=["-Wno-module-import-in-extern-c"])
+
         env.Prepend(
             CPPPATH=[
                 "$IOS_SDK_PATH/System/Library/Frameworks/OpenGLES.framework/Headers",
             ]
         )
+
         extra_suffix = ""
         if env["simulator"]:
             extra_suffix = ".simulator"
@@ -191,9 +193,5 @@ def configure(env: "SConsEnvironment"):
         if env["angle_libs"] != "":
             print("-lANGLE.ios." + env["arch"])
             env.Append(CPPDEFINES=["EGL_ENABLED"])
-            env.AppendUnique(CPPDEFINES=["EGL_STATIC"])
-            env.Append(LINKFLAGS=["-L" + env["angle_libs"]])
-            env.Append(LINKFLAGS=["-lANGLE.ios." + env["arch"] + extra_suffix])
-            env.Append(LINKFLAGS=["-lEGL.ios." + env["arch"] + extra_suffix])
-            env.Append(LINKFLAGS=["-lGLES.ios." + env["arch"] + extra_suffix])
+            env.AppendUnique(CPPDEFINES=["ANGLE_ENABLED"])
             env.Prepend(CPPPATH=["#thirdparty/angle/include"])

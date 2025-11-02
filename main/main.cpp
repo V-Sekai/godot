@@ -2454,6 +2454,21 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		rendering_method = "gl_compatibility";
 		default_renderer_mobile = "gl_compatibility";
 	}
+#else
+	if (rendering_driver.is_empty() && rendering_method.is_empty() && project_manager) {
+		rendering_driver = "vulkan";
+		rendering_method = "mobile";
+		default_renderer_mobile = "mobile";
+	}
+#endif
+
+#if defined(IOS_SIMULATOR) && defined(ANGLE_ENABLED)
+	// iOS Simulator only works with OpenGL renderer due to missing required Vulkan / Metal features
+	if (rendering_driver.is_empty() && rendering_method.is_empty()) {
+		rendering_driver = "opengl3_angle";
+		rendering_method = "gl_compatibility";
+		default_renderer_mobile = "gl_compatibility";
+	}
 #endif
 
 	if (!rendering_method.is_empty()) {

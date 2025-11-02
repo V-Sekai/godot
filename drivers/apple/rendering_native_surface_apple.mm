@@ -28,11 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "rendering_native_surface_apple.h"
-#include "drivers/gles3/storage/texture_storage.h"
-#include "drivers/metal/rendering_context_driver_metal.h"
-#include "servers/rendering/gl_manager.h"
-
 #import "rendering_context_driver_vulkan_apple.h"
 
 #import <QuartzCore/CAMetalLayer.h>
@@ -51,10 +46,17 @@
 #if defined(EGL_STATIC)
 #include "drivers/egl/gl_manager_embedded_angle.h"
 #endif
-
-#if defined(EGL_STATIC)
-#include "drivers/egl/gl_manager_embedded_angle.h"
 #endif
+
+#include "rendering_native_surface_apple.h"
+#include "drivers/gles3/storage/texture_storage.h"
+#include "drivers/metal/rendering_context_driver_metal.h"
+#include "servers/rendering/gl_manager.h"
+
+#if defined(GLES3_ENABLED)
+
+#include "drivers/egl/gl_manager_embedded_angle.h"
+#import "platform/ios/os_ios.h"
 
 struct WindowData {
 	GLint backingWidth;
@@ -321,6 +323,19 @@ GLManager *RenderingNativeSurfaceApple::create_gl_manager(const String &p_driver
 #if defined(GLES3_ENABLED)
 #if defined(EGL_STATIC)
 	if (p_driver_name == "opengl3_angle") {
+		return memnew(GLManagerANGLE_Embedded);
+	}
+#endif
+#if defined(ANGLE_ENABLED)
+	if (p_driver_name == "opengl3_angle") {
+#ifdef GLAD_ENABLED
+		static CharString libegl_framework_path = OS_IOS::get_singleton()->get_library_path("libEGL.framework").utf8();
+		static CharString libglesv2_framework_path = OS_IOS::get_singleton()->get_library_path("libGLESv2.framework").utf8();
+		const char * eg = libegl_framework_path.get_data();
+		const char * gl = libglesv2_framework_path.get_data();
+		gladSetupEGL(1, &eg);
+		gladSetupGLES2(1, &gl);
+#endif
 		return memnew(GLManagerANGLE_Embedded);
 	}
 #endif

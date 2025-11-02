@@ -48,7 +48,11 @@ EGLenum GLManagerANGLE_Embedded::_get_platform_extension_enum() const {
 Vector<EGLAttrib> GLManagerANGLE_Embedded::_get_platform_display_attributes() const {
 	Vector<EGLAttrib> ret;
 	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_ANGLE);
+#if defined(IOS_ENABLED) || defined(MACOS_ENABLED)
+	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE);
+#else
 	ret.push_back(EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE);
+#endif
 	ret.push_back(EGL_NONE);
 
 	return ret;
