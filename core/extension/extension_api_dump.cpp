@@ -1349,7 +1349,7 @@ Dictionary GDExtensionAPIDump::generate_extension_api(bool p_include_docs) {
 
 					Array arguments;
 					int i = 0;
-					for (List<PropertyInfo>::ConstIterator itr = method_info.arguments.begin(); itr != method_info.arguments.end(); ++itr, ++i) {
+					for (Vector<PropertyInfo>::ConstIterator itr = method_info.arguments.begin(); itr != method_info.arguments.end(); ++itr, ++i) {
 						Dictionary argument_info;
 
 						argument_info["name"] = itr->name;

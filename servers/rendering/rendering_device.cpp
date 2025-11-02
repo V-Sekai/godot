@@ -36,15 +36,12 @@
 
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
-<<<<<<< HEAD
+#include "core/profiling.h"
 #include "modules/modules_enabled.gen.h"
 
 #ifdef MODULE_GLSLANG_ENABLED
 #include "modules/glslang/shader_compile.h"
 #endif
-=======
-#include "core/profiling.h"
->>>>>>> b8641431d5 (Add some important profiling hooks.)
 
 #define FORCE_SEPARATE_PRESENT_QUEUE 0
 #define PRINT_FRAMEBUFFER_FORMAT 0

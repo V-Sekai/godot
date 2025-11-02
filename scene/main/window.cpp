@@ -1589,7 +1589,7 @@ void Window::_notification(int p_what) {
 						focused = DisplayServer::get_singleton()->window_is_focused(window_id);
 					}
 					_update_window_size(); // Inform DisplayServer of minimum and maximum size.
-					_update_viewport_size(p_force_set_size); // Then feed back to the viewport.
+					_update_viewport_size(); // Then feed back to the viewport.
 					_update_window_callbacks();
 					// Simulate mouse-enter event when mouse is over the window, since OS event might arrive before setting callbacks.
 					if (DisplayServer::get_singleton()->has_feature(DisplayServer::Feature::FEATURE_MOUSE)) {
