@@ -262,11 +262,16 @@ Ref<RenderingNativeSurfaceApple> RenderingNativeSurfaceApple::create(void *p_lay
 		String rendering_driver = ::OS::get_singleton()->get_current_rendering_driver_name();
 		CALayer* __block myLayer = nil;
 		dispatch_sync(dispatch_get_main_queue(), ^{
+#if defined(GLES3_ENABLED)
         if (rendering_driver == "opengl3") {
-#if defined(IOS_ENABLED) && defined(GLES3_ENABLED)
+#if defined(IOS_ENABLED)
             myLayer = [[CAEAGLLayer alloc] init];
+#elif defined(MACOS_ENABLED)
+            myLayer = [[CAOpenGLLayer alloc] init];
 #endif
-        } else {
+        }
+#endif
+		if (rendering_driver == "vulkan" ) {
             myLayer = [[CAMetalLayer alloc] init];
         }
     	});

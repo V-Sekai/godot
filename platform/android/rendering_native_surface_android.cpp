@@ -224,8 +224,8 @@ void GLManagerAndroid::window_resize(DisplayServer::WindowID p_id, int p_width, 
 	window_create(p_id, (void *) gles_data.window, p_width, p_height);
 }
 
-Size2i GLManagerAndroid::window_get_size(DisplayServer::WindowID p_id) {
-	ERR_FAIL_COND(!windows.has(p_id));
+Size2i GLESContextAndroid::window_get_size(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND_V(!windows.has(p_id), Size2i());
 	WindowData &gles_data = windows[p_id];
 	return Size2i();
 }
