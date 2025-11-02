@@ -102,6 +102,7 @@ public:
 	void window_destroy(DisplayServer::WindowID p_window_id) override;
 	int window_get_render_target(DisplayServer::WindowID p_window_id) const override { return 0; }
 	int window_get_color_texture(DisplayServer::WindowID p_id) const override { return 0; }
+	Size2i window_get_size(DisplayServer::WindowID p_id) override;
 	void release_current() override;
 	void swap_buffers() override;
 

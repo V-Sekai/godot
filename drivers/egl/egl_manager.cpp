@@ -341,6 +341,10 @@ void EGLManager::window_destroy(DisplayServer::WindowID p_window_id) {
 	}
 }
 
+Size2i EGLManager::window_get_size(DisplayServer::WindowID p_id) {
+	return Size2i();
+}
+
 void EGLManager::release_current() {
 	if (!current_window) {
 		return;

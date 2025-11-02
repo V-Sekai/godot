@@ -35,6 +35,8 @@
 
 #import "rendering_context_driver_vulkan_apple.h"
 
+#import <QuartzCore/CAMetalLayer.h>
+
 #if defined(GLES3_ENABLED)
 #import <QuartzCore/QuartzCore.h>
 
@@ -43,6 +45,7 @@
 #import <OpenGLES/EAGLDrawable.h>
 #import <OpenGLES/ES1/gl.h>
 #import <OpenGLES/ES1/glext.h>
+#import <OpenGLES/EAGLDrawable.h>
 #endif
 
 #if defined(EGL_STATIC)
@@ -62,6 +65,8 @@ struct WindowData {
 #endif
 };
 
+#define GL_ERR(expr) { expr; GLenum err = glGetError(); if (err) { NSLog(@"%s:%s: %x error", __FUNCTION__, #expr, err); } }
+
 class GLManagerApple : public GLManager {
 	DisplayServer::WindowID current_window = -1;
 
@@ -74,6 +79,7 @@ public:
 	virtual void release_current() override {}
 	virtual void swap_buffers() override;
 	virtual void window_destroy(DisplayServer::WindowID p_id) override;
+	virtual Size2i window_get_size(DisplayServer::WindowID p_id) override;
 	void deinitialize();
 
 	virtual void set_use_vsync(bool p_use) override {}
@@ -111,11 +117,17 @@ Error GLManagerApple::initialize(void *p_native_display) {
 	return OK;
 }
 
+Size2i GLManagerApple::window_get_size(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND_V(!windows.has(p_id), Size2i());
+	WindowData &gles_data = windows[p_id];
+	return Size2i(gles_data.layer.bounds.size.width, gles_data.layer.bounds.size.height);
+}
+
 void GLManagerApple::window_resize(DisplayServer::WindowID p_id, int p_width, int p_height) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
-	[EAGLContext setCurrentContext:context];
+	GL_ERR([EAGLContext setCurrentContext:context]);
 	CAEAGLLayer *layer = gles_data.layer;
 	window_destroy(p_id);
 	create_framebuffer(p_id, (__bridge void *)layer);
@@ -126,8 +138,8 @@ void GLManagerApple::window_make_current(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
-	[EAGLContext setCurrentContext:context];
-	glBindFramebufferOES(GL_FRAMEBUFFER_OES, gles_data.viewFramebuffer);
+	GL_ERR([EAGLContext setCurrentContext:context]);
+	GL_ERR(glBindFramebufferOES(GL_FRAMEBUFFER_OES, gles_data.viewFramebuffer));
 	current_window = p_id;
 #endif
 }
@@ -136,16 +148,9 @@ void GLManagerApple::swap_buffers() {
 	ERR_FAIL_COND(!windows.has(current_window));
 	WindowData &gles_data = windows[current_window];
 #if defined(IOS_ENABLED)
-	[EAGLContext setCurrentContext:context];
-	glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer);
-	[context presentRenderbuffer:GL_RENDERBUFFER_OES];
-
-#ifdef DEBUG_ENABLED
-	GLenum err = glGetError();
-	if (err) {
-		NSLog(@"DrawView: %x error", err);
-	}
-#endif
+	GL_ERR([EAGLContext setCurrentContext:context]);
+	GL_ERR(glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer));
+	GL_ERR([context presentRenderbuffer:GL_RENDERBUFFER_OES]);
 #endif
 }
 
@@ -163,6 +168,7 @@ void GLManagerApple::deinitialize() {
 
 Error GLManagerApple::window_create(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) {
 #if defined(IOS_ENABLED)
+	NSLog(@"GLESContextApple::create_framebuffer surface");
 	CAEAGLLayer *layer = nullptr;
 	Ref<RenderingNativeSurfaceApple> apple_surface = Object::cast_to<RenderingNativeSurfaceApple>(*p_native_surface);
 	if (apple_surface.is_valid()) {
@@ -179,27 +185,29 @@ Error GLManagerApple::window_create(DisplayServer::WindowID p_id, Ref<RenderingN
 Error GLManagerApple::create_framebuffer(DisplayServer::WindowID p_id, void *p_layer) {
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
-	[EAGLContext setCurrentContext:context];
+	NSLog(@"GLESContextApple::create_framebuffer layer");
+	GL_ERR([EAGLContext setCurrentContext:context]);
 	gles_data.layer = (__bridge CAEAGLLayer *)p_layer;
 
-	glGenFramebuffersOES(1, &gles_data.viewFramebuffer);
-	glGenRenderbuffersOES(1, &gles_data.viewRenderbuffer);
+	GL_ERR(glGenFramebuffersOES(1, &gles_data.viewFramebuffer));
+	GL_ERR(glGenRenderbuffersOES(1, &gles_data.viewRenderbuffer));
 
-	glBindFramebufferOES(GL_FRAMEBUFFER_OES, gles_data.viewFramebuffer);
-	glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer);
+	GL_ERR(glBindFramebufferOES(GL_FRAMEBUFFER_OES, gles_data.viewFramebuffer));
+	GL_ERR(glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer));
 	// This call associates the storage for the current render buffer with the EAGLDrawable (our CAself)
 	// allowing us to draw into a buffer that will later be rendered to screen wherever the layer is (which corresponds with our view).
-	[context renderbufferStorage:GL_RENDERBUFFER_OES fromDrawable:gles_data.layer];
-	glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer);
+	[CATransaction flush];
+	GL_ERR([context renderbufferStorage:GL_RENDERBUFFER_OES fromDrawable:gles_data.layer]);
+	GL_ERR(glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_COLOR_ATTACHMENT0_OES, GL_RENDERBUFFER_OES, gles_data.viewRenderbuffer));
 
-	glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_WIDTH_OES, &gles_data.backingWidth);
-	glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_HEIGHT_OES, &gles_data.backingHeight);
+	GL_ERR(glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_WIDTH_OES, &gles_data.backingWidth));
+	GL_ERR(glGetRenderbufferParameterivOES(GL_RENDERBUFFER_OES, GL_RENDERBUFFER_HEIGHT_OES, &gles_data.backingHeight));
 
 	// For this sample, we also need a depth buffer, so we'll create and attach one via another renderbuffer.
-	glGenRenderbuffersOES(1, &gles_data.depthRenderbuffer);
-	glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.depthRenderbuffer);
-	glRenderbufferStorageOES(GL_RENDERBUFFER_OES, GL_DEPTH_COMPONENT16_OES, gles_data.backingWidth, gles_data.backingHeight);
-	glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_DEPTH_ATTACHMENT_OES, GL_RENDERBUFFER_OES, gles_data.depthRenderbuffer);
+	GL_ERR(glGenRenderbuffersOES(1, &gles_data.depthRenderbuffer));
+	GL_ERR(glBindRenderbufferOES(GL_RENDERBUFFER_OES, gles_data.depthRenderbuffer));
+	GL_ERR(glRenderbufferStorageOES(GL_RENDERBUFFER_OES, GL_DEPTH_COMPONENT16_OES, gles_data.backingWidth, gles_data.backingHeight));
+	GL_ERR(glFramebufferRenderbufferOES(GL_FRAMEBUFFER_OES, GL_DEPTH_ATTACHMENT_OES, GL_RENDERBUFFER_OES, gles_data.depthRenderbuffer));
 
 	if (glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES) != GL_FRAMEBUFFER_COMPLETE_OES) {
 		NSLog(@"failed to make complete framebuffer object %x", glCheckFramebufferStatusOES(GL_FRAMEBUFFER_OES));
@@ -217,14 +225,14 @@ void GLManagerApple::window_destroy(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND(!windows.has(p_id));
 	WindowData &gles_data = windows[p_id];
 #if defined(IOS_ENABLED)
-	[EAGLContext setCurrentContext:context];
-	glDeleteFramebuffersOES(1, &gles_data.viewFramebuffer);
+	GL_ERR([EAGLContext setCurrentContext:context]);
+	GL_ERR(glDeleteFramebuffersOES(1, &gles_data.viewFramebuffer));
 	gles_data.viewFramebuffer = 0;
-	glDeleteRenderbuffersOES(1, &gles_data.viewRenderbuffer);
+	GL_ERR(glDeleteRenderbuffersOES(1, &gles_data.viewRenderbuffer));
 	gles_data.viewRenderbuffer = 0;
 
 	if (gles_data.depthRenderbuffer) {
-		glDeleteRenderbuffersOES(1, &gles_data.depthRenderbuffer);
+		GL_ERR(glDeleteRenderbuffersOES(1, &gles_data.depthRenderbuffer));
 		gles_data.depthRenderbuffer = 0;
 	}
 #endif
@@ -249,7 +257,28 @@ Ref<RenderingNativeSurfaceApple> RenderingNativeSurfaceApple::create_api(/* GDEx
 }
 
 Ref<RenderingNativeSurfaceApple> RenderingNativeSurfaceApple::create(void *p_layer) {
-	Ref<RenderingNativeSurfaceApple> result = memnew(RenderingNativeSurfaceApple);
+	Ref<RenderingNativeSurfaceApple> result;
+	if (!p_layer) {
+		String rendering_driver = ::OS::get_singleton()->get_current_rendering_driver_name();
+		CALayer* __block myLayer = nil;
+		dispatch_sync(dispatch_get_main_queue(), ^{
+        if (rendering_driver == "opengl3") {
+#if defined(IOS_ENABLED) && defined(GLES3_ENABLED)
+            myLayer = [[CAEAGLLayer alloc] init];
+#endif
+        } else {
+            myLayer = [[CAMetalLayer alloc] init];
+        }
+    	});
+		if (!myLayer) {
+			return result;
+		}
+		p_layer = (void *) CFBridgingRetain(myLayer);
+	} else {
+		p_layer = (void *) CFBridgingRetain((__bridge CALayer *) p_layer);
+	}
+
+	result.instantiate();
 	result->layer = p_layer;
 	return result;
 }
@@ -296,4 +325,7 @@ RenderingNativeSurfaceApple::RenderingNativeSurfaceApple() {
 }
 
 RenderingNativeSurfaceApple::~RenderingNativeSurfaceApple() {
+	if (layer) {
+		CFBridgingRelease(layer);
+	}
 }

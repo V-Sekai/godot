@@ -102,6 +102,9 @@ public:
 	virtual void initialize() override;
 
 	virtual void initialize_joypads() override;
+	
+	virtual Error set_cwd(const String &p_cwd) override;
+	String get_asset_path_prefix() { return asset_path_prefix; };
 
 	virtual Error set_cwd(const String &p_cwd) override;
 	String get_asset_path_prefix() { return asset_path_prefix; }

@@ -607,6 +607,11 @@ Size2i DisplayServerEmbedded::window_get_size(WindowID p_window) const {
 		return Size2i(width, height);
 	}
 #endif
+#if defined(GLES3_ENABLED)
+	if (gl_manager) {
+		return gl_manager->window_get_size(p_window);
+	}
+#endif
 	if (window_sizes.has(p_window)) {
 		return window_sizes[p_window];
 	}

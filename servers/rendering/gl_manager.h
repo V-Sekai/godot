@@ -46,6 +46,7 @@ public:
 	virtual Error window_create(DisplayServer::WindowID p_window_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) = 0;
 	virtual void window_resize(DisplayServer::WindowID p_window_id, int p_width, int p_height) = 0;
 	virtual void window_destroy(DisplayServer::WindowID p_window_id) = 0;
+	virtual Size2i window_get_size(DisplayServer::WindowID p_id) = 0;
 	virtual int window_get_render_target(DisplayServer::WindowID p_window_id) const = 0;
 	virtual int window_get_color_texture(DisplayServer::WindowID p_id) const = 0;
 	virtual void release_current() = 0;

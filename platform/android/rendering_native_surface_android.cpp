@@ -47,7 +47,8 @@
 struct WindowData {
 	GLint backingWidth = 0;
 	GLint backingHeight = 0;
-	GLuint viewRenderbuffer = 0, viewFramebuffer = 0;
+	GLuint viewRenderbuffer = 0;
+	GLuint viewFramebuffer = 0;
 	GLuint depthRenderbuffer = 0;
 
 	EGLSurface surface = EGL_NO_SURFACE;
@@ -64,6 +65,7 @@ public:
 	virtual void release_current() override {}
 	virtual void swap_buffers() override;
 	virtual void window_destroy(DisplayServer::WindowID p_id) override;
+	virtual Size2i window_get_size(DisplayServer::WindowID p_id) override;
 	void deinitialize();
 	virtual int window_get_render_target(DisplayServer::WindowID p_id) const override;
 	virtual int window_get_color_texture(DisplayServer::WindowID p_id) const override;
@@ -220,6 +222,12 @@ void GLManagerAndroid::window_resize(DisplayServer::WindowID p_id, int p_width, 
 
 	window_destroy(p_id);
 	window_create(p_id, (void *) gles_data.window, p_width, p_height);
+}
+
+Size2i GLManagerAndroid::window_get_size(DisplayServer::WindowID p_id) {
+	ERR_FAIL_COND(!windows.has(p_id));
+	WindowData &gles_data = windows[p_id];
+	return Size2i();
 }
 
 void GLManagerAndroid::window_make_current(DisplayServer::WindowID p_id) {
