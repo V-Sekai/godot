@@ -31,6 +31,7 @@
 #include "core/extension/godot_instance.h"
 #include "core/extension/libgodot.h"
 #include "core/io/libgodot_logger.h"
+#include "core/profiling.h"
 #include "main/main.h"
 
 #import "os_ios.h"
@@ -67,6 +68,8 @@ static GodotInstanceCallbacksIOS callbacks;
 
 extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, InvokeCallbackFunction p_async_func, ExecutorData p_async_data, InvokeCallbackFunction p_sync_func, ExecutorData p_sync_data, LogCallbackFunction p_log_func, LogCallbackData p_log_data) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
+
+	godot_init_profiler();
 
 	TaskExecutor *executor = nullptr;
 	if (p_async_func != nullptr && p_sync_func != nullptr) {

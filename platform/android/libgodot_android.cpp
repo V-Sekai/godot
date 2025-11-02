@@ -31,6 +31,7 @@
 #include <jni.h>
 
 #include "core/extension/godot_instance.h"
+#include "core/profiling.h"
 #include "libgodot_android.h"
 #include "main/main.h"
 
@@ -72,6 +73,8 @@ static jobject class_loader = nullptr;
 
 extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, JNIEnv* env, jobject p_asset_manager, jobject p_net_utils, jobject p_directory_access_handler, jobject p_file_access_handler, jobject p_godot_io_wrapper, jobject p_godot_wrapper, jobject p_class_loader) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
+	
+	godot_init_profiler();
 
 	JavaVM *jvm;
 	env->GetJavaVM(&jvm);
