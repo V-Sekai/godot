@@ -379,13 +379,11 @@ void unregister_server_types() {
 		memdelete(shader_types);
 		shader_types = nullptr;
 	}
-	if (writer_mjpeg) {
-		memdelete(writer_mjpeg);
-		writer_mjpeg = nullptr;
-	}
-	if (writer_pngwav) {
-		memdelete(writer_pngwav);
-		writer_pngwav = nullptr;
+	if (GD_IS_CLASS_ENABLED(MovieWriterPNGWAV)) {
+		if (writer_pngwav) {
+			memdelete(writer_pngwav);
+			writer_pngwav = nullptr;
+		}
 	}
 
 	OS::get_singleton()->benchmark_end_measure("Servers", "Unregister Extensions");

@@ -377,20 +377,6 @@ void DisplayServerMacOSEmbedded::window_set_drop_files_callback(const Callable &
 	// Not supported
 }
 
-void DisplayServerMacOSEmbedded::joy_add(int p_idx, const String &p_name) {
-	Joy *joy = joysticks.getptr(p_idx);
-	if (joy == nullptr) {
-		joysticks[p_idx] = Joy(p_name);
-		Input::get_singleton()->joy_connection_changed(p_idx, true, p_name);
-	}
-}
-
-void DisplayServerMacOSEmbedded::joy_del(int p_idx) {
-	if (joysticks.erase(p_idx)) {
-		Input::get_singleton()->joy_connection_changed(p_idx, false, String());
-	}
-}
-
 void DisplayServerMacOSEmbedded::process_events() {
 	Input *input = Input::get_singleton();
 	input->flush_buffered_events();

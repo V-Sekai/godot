@@ -225,3 +225,4 @@ void MFXTemporalEffect::callback(RDD *p_driver, RDD::CommandBufferID p_command_b
 }
 
 #endif
+#endif

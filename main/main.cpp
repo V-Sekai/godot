@@ -5047,18 +5047,13 @@ void Main::cleanup(bool p_force) {
 		input->flush_frame_parsed_events();
 	}
 #endif
-<<<<<<< HEAD
 
 	GDExtensionManager::get_singleton()->shutdown();
 
-	for (int i = 0; i < TextServerManager::get_singleton()->get_interface_count(); i++) {
-		TextServerManager::get_singleton()->get_interface(i)->cleanup();
-=======
 	if (TextServerManager::get_singleton()) {
 		for (int i = 0; i < TextServerManager::get_singleton()->get_interface_count(); i++) {
 			TextServerManager::get_singleton()->get_interface(i)->cleanup();
 		}
->>>>>>> 05c63f4f8f (Fix Main::cleanup() to work if setup2() and start() did not run)
 	}
 
 	if (movie_writer) {

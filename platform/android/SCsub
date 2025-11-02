@@ -88,7 +88,7 @@ elif sys.platform.startswith("win"):
     else:
         host_subpath = "windows"
 
-if if env["library_type"] != "static_library" and lib_arch_dir != "" and host_subpath != "":
+if env["library_type"] != "static_library" and lib_arch_dir != "" and host_subpath != "":
     if env.dev_build:
         lib_type_dir = "dev"
     elif env.debug_features:

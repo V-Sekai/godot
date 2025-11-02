@@ -33,6 +33,10 @@
 #import "display_server_ios.h"
 #include "servers/display_server_embedded.h"
 
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <mach/machine.h>
+
 #ifdef IOS_ENABLED
 
 OS_IOS *OS_IOS::get_singleton() {
