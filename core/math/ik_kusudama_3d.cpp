@@ -549,7 +549,7 @@ void IKKusudama3D::remove_open_cone(const IKLimitCone3D &limitCone) {
 	// Find and remove the cone
 	for (int i = 0; i < open_cones.size(); i++) {
 		if (open_cones[i].control_point == limitCone.control_point &&
-			open_cones[i].radius == limitCone.radius) {
+				open_cones[i].radius == limitCone.radius) {
 			open_cones.remove_at(i);
 			break;
 		}

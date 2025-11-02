@@ -49,7 +49,7 @@ void JointLimitationCone3D::remove_open_cone(const IKLimitCone3D &p_cone) {
 	// Find and remove the cone
 	for (int i = 0; i < open_cones.size(); i++) {
 		if (open_cones[i].control_point == p_cone.control_point &&
-			open_cones[i].radius == p_cone.radius) {
+				open_cones[i].radius == p_cone.radius) {
 			open_cones.remove_at(i);
 			break;
 		}

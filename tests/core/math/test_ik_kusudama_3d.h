@@ -99,7 +99,9 @@ TEST_CASE("[IKKusudama3D][IKLimitCone3D] Test multi-cone path finding") {
 	Vector3 path_point = cone1.get_closest_path_point(&cone2, test_point);
 
 	CHECK_MESSAGE(path_point.is_finite(), "Path point should be finite");
-	CHECK_MESSAGE(!Math::is_nan(path_point.x) && !Math::is_nan(path_point.y) && !Math::is_nan(path_point.z), "Path point should not be NaN");
+	CHECK_MESSAGE(!Math::is_nan(path_point.x), "Path point X should not be NaN");
+	CHECK_MESSAGE(!Math::is_nan(path_point.y), "Path point Y should not be NaN");
+	CHECK_MESSAGE(!Math::is_nan(path_point.z), "Path point Z should not be NaN");
 }
 
 TEST_CASE("[IKKusudama3D] Test Resource class creation") {

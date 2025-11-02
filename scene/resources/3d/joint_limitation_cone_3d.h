@@ -30,9 +30,9 @@
 
 #pragma once
 
+#include "core/math/ik_kusudama_3d.h"
 #include "core/math/math_defs.h"
 #include "core/math/vector3.h"
-#include "core/math/ik_kusudama_3d.h"
 #include "core/object/ref_counted.h"
 #include "core/variant/typed_array.h"
 #include "scene/resources/3d/joint_limitation_3d.h"
