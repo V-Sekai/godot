@@ -988,4 +988,5 @@ void OS_Android::load_platform_gdextensions() const {
 }
 
 OS_Android::~OS_Android() {
+	AudioDriverManager::reset();
 }
