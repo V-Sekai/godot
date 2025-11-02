@@ -429,6 +429,7 @@ GLManager *RenderingNativeSurfaceAndroid::create_gl_manager(const String &p_driv
 	}
 	#if defined(ANGLE_ENABLED)
 	if (p_driver_name == "opengl3_angle") {
+		setenv("ANGLE_FEATURE_OVERRIDES_DISABLED", "supportsSwapchainMaintenance1", 1);
 		#ifdef GLAD_ENABLED
 			static const char *EGL_NAMES[] = {"libEGL_angle.so"};
 			static const char *GL_NAMES[] = {"libGLESv2_angle.so"};
