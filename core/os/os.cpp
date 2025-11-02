@@ -820,5 +820,6 @@ OS::~OS() {
 	if (_logger) {
 		memdelete(_logger);
 	}
+	OS::target_ticks = 0;
 	singleton = nullptr;
 }

@@ -116,6 +116,7 @@ void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_godot_instance) {
 			instance = nullptr;
 			Main::cleanup();
 			delete OS_IOS::get_singleton();
+			AudioDriverManager::cleanup();
 		};
 
 		TaskExecutor *executor = instance->get_executor();

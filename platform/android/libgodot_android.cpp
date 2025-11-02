@@ -131,6 +131,7 @@ extern LIBGODOT_API void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_
         	delete godot_wrapper;
     	}
 		delete os;
+		AudioDriverManager::cleanup();
 		os = nullptr;
 	}
 }
