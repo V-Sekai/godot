@@ -124,7 +124,7 @@ extern LIBGODOT_API void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_
 			unregister_plugins_singletons();
         	memdelete(java_class_wrapper);
     	}
-		Main::cleanup();
+		Main::cleanup(true);
 		if (godot_io_wrapper) {
         	delete godot_io_wrapper;
     	}
