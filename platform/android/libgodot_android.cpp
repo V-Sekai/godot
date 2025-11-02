@@ -99,8 +99,6 @@ extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(
 
 	java_class_wrapper = memnew(JavaClassWrapper);
 
-	godot_wrapper->on_godot_setup_completed(env);
-
 	instance = memnew(GodotInstance);
 	if (!instance->initialize(p_init_func, &callbacks)) {
 		memdelete(instance);
