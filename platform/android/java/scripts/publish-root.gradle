@@ -1,38 +1,51 @@
-// Create variables with empty default values
-ext["signing.keyId"] = ''
-ext["signing.password"] = ''
-ext["signing.key"] = ''
-ext["ossrhGroupId"] = ''
-ext["ossrhUsername"] = ''
-ext["ossrhPassword"] = ''
-ext["sonatypeStagingProfileId"] = ''
+ // Create variables with empty default values
+ ext["signing.disabled"] = ''
+ ext["signing.keyId"] = ''
+ ext["signing.password"] = ''
+ ext["signing.key"] = ''
+ ext["ossrhGroupId"] = ''
+ ext["ossrhUsername"] = ''
+ ext["ossrhPassword"] = ''
+ ext["sonatypeStagingProfileId"] = ''
+ ext["prebuiltRepo"] = ''
 
-File secretPropsFile = project.rootProject.file('local.properties')
-if (secretPropsFile.exists()) {
-    // Read local.properties file first if it exists
-    Properties p = new Properties()
-    new FileInputStream(secretPropsFile).withCloseable { is -> p.load(is) }
-    p.each { name, value -> ext[name] = value }
-} else {
-    // Use system environment variables
-    ext["ossrhGroupId"] = System.getenv('OSSRH_GROUP_ID')
-    ext["ossrhUsername"] = System.getenv('OSSRH_USERNAME')
-    ext["ossrhPassword"] = System.getenv('OSSRH_PASSWORD')
-    ext["sonatypeStagingProfileId"] = System.getenv('SONATYPE_STAGING_PROFILE_ID')
-    ext["signing.keyId"] = System.getenv('SIGNING_KEY_ID')
-    ext["signing.password"] = System.getenv('SIGNING_PASSWORD')
-    ext["signing.key"] = System.getenv('SIGNING_KEY')
-}
+ File secretPropsFile = project.rootProject.file('local.properties')
+ if (secretPropsFile.exists()) {
+     // Read local.properties file first if it exists
+     Properties p = new Properties()
+     new FileInputStream(secretPropsFile).withCloseable { is -> p.load(is) }
+     p.each { name, value -> ext[name] = value }
+ }
 
-// Set up Sonatype repository
-nexusPublishing {
-    repositories {
-        sonatype {
-            stagingProfileId = sonatypeStagingProfileId
-            username = ossrhUsername
-            password = ossrhPassword
-            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
-        }
-    }
-}
+ // Define environment variable fallback map
+ def envFallback = [
+     "ossrhGroupId"            : System.getenv('OSSRH_GROUP_ID'),
+     "ossrhUsername"           : System.getenv('OSSRH_USERNAME'),
+     "ossrhPassword"           : System.getenv('OSSRH_PASSWORD'),
+     "sonatypeStagingProfileId": System.getenv('SONATYPE_STAGING_PROFILE_ID'),
+     "signing.keyId"           : System.getenv('SIGNING_KEY_ID'),
+     "signing.password"        : System.getenv('SIGNING_PASSWORD'),
+     "signing.key"             : System.getenv('SIGNING_KEY'),
+     "signing.disabled"        : System.getenv('SIGNING_DISABLED'),
+     "prebuiltRepo"            : System.getenv('PREBUILT_REPO')
+ ]
+
+ // Apply fallback for any properties that are still empty
+ envFallback.each { name, value ->
+     if (value != null && (ext[name] == null || ext[name].toString().trim() == '')) {
+         ext[name] = value
+     }
+ }
+
+ // Set up Sonatype repository
+ nexusPublishing {
+     repositories {
+         sonatype {
+             stagingProfileId = sonatypeStagingProfileId
+             username = ossrhUsername
+             password = ossrhPassword
+             nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+             snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+         }
+     }
+ }
