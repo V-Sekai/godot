@@ -29,7 +29,7 @@
 /**************************************************************************/
 
 #include "joint_limitation_cone_3d.h"
-#include "modules/many_bone_ik/src/ik_open_cone_3d.h"
+#include "core/math/ik_kusudama_3d.h"
 
 void JointLimitationCone3D::set_radius_range(real_t p_radius_range) {
 	radius_range = p_radius_range;
