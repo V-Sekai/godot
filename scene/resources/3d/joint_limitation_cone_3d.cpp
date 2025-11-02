@@ -128,21 +128,21 @@ Vector3 JointLimitationCone3D::_solve(const Vector3 &p_direction) const {
 	if (open_cones[0].is_valid()) {
 		// Use the kusudama constraint from the first cone
 		result = open_cones[0]->closest_to_cone(p_direction.normalized(), &in_bounds);
-		
+
 		// If the point is already in bounds, return as is
 		if (!in_bounds.is_empty() && in_bounds[0] >= 0.0) {
 			return result;
 		}
-		
+
 		// Otherwise, check multi-cone path sequences for better constraint
 		for (int i = 0; i < (int)open_cones.size() - 1; i++) {
 			if (open_cones[i].is_valid() && open_cones[i + 1].is_valid()) {
 				Vector3 path_result = open_cones[i]->get_closest_path_point(open_cones[i + 1], p_direction.normalized());
-				
+
 				// Use the result that requires least rotation
 				real_t orig_angle = p_direction.normalized().angle_to(path_result);
 				real_t prev_angle = result.angle_to(path_result);
-				
+
 				if (orig_angle < prev_angle) {
 					result = path_result;
 				}
@@ -176,7 +176,7 @@ void JointLimitationCone3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const T
 			// Get cone parameters
 			Vector3 control_point = cone->get_control_point();
 			real_t radius = cone->get_radius();
-			
+
 			// Normalize control point for sphere visualization
 			Vector3 cone_center = control_point.normalized() * sphere_r;
 			real_t cone_radius = radius * sphere_r;
@@ -185,14 +185,14 @@ void JointLimitationCone3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const T
 			for (int i = 0; i < N; i++) {
 				real_t a0 = (real_t)i * DP;
 				real_t a1 = (real_t)((i + 1) % N) * DP;
-				
+
 				// Create perpendicular vectors for cone circle
 				Vector3 perp1 = cone_center.get_any_perpendicular().normalized();
 				Vector3 perp2 = cone_center.cross(perp1).normalized();
-				
+
 				Vector3 p0 = cone_center + perp1 * cone_radius * Math::cos(a0) + perp2 * cone_radius * Math::sin(a0);
 				Vector3 p1 = cone_center + perp1 * cone_radius * Math::cos(a1) + perp2 * cone_radius * Math::sin(a1);
-				
+
 				vts.push_back(p0);
 				vts.push_back(p1);
 			}
@@ -203,7 +203,7 @@ void JointLimitationCone3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const T
 				Vector3 perp1 = cone_center.get_any_perpendicular().normalized();
 				Vector3 perp2 = cone_center.cross(perp1).normalized();
 				Vector3 boundary = cone_center + perp1 * cone_radius * Math::cos(angle) + perp2 * cone_radius * Math::sin(angle);
-				
+
 				vts.push_back(Vector3());
 				vts.push_back(boundary);
 			}
@@ -218,17 +218,17 @@ void JointLimitationCone3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const T
 				if (tc1.length() > CMP_EPSILON) {
 					Vector3 tc1_norm = tc1.normalized() * sphere_r;
 					real_t tc1_r = tc_radius * sphere_r;
-					
+
 					for (int i = 0; i < N; i++) {
 						real_t a0 = (real_t)i * DP;
 						real_t a1 = (real_t)((i + 1) % N) * DP;
-						
+
 						Vector3 tc_perp1 = tc1_norm.get_any_perpendicular().normalized();
 						Vector3 tc_perp2 = tc1_norm.cross(tc_perp1).normalized();
-						
+
 						Vector3 p0 = tc1_norm + tc_perp1 * tc1_r * Math::cos(a0) + tc_perp2 * tc1_r * Math::sin(a0);
 						Vector3 p1 = tc1_norm + tc_perp1 * tc1_r * Math::cos(a1) + tc_perp2 * tc1_r * Math::sin(a1);
-						
+
 						vts.push_back(p0);
 						vts.push_back(p1);
 					}
@@ -238,17 +238,17 @@ void JointLimitationCone3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const T
 				if (tc2.length() > CMP_EPSILON) {
 					Vector3 tc2_norm = tc2.normalized() * sphere_r;
 					real_t tc2_r = tc_radius * sphere_r;
-					
+
 					for (int i = 0; i < N; i++) {
 						real_t a0 = (real_t)i * DP;
 						real_t a1 = (real_t)((i + 1) % N) * DP;
-						
+
 						Vector3 tc_perp1 = tc2_norm.get_any_perpendicular().normalized();
 						Vector3 tc_perp2 = tc2_norm.cross(tc_perp1).normalized();
-						
+
 						Vector3 p0 = tc2_norm + tc_perp1 * tc2_r * Math::cos(a0) + tc_perp2 * tc2_r * Math::sin(a0);
 						Vector3 p1 = tc2_norm + tc_perp1 * tc2_r * Math::cos(a1) + tc_perp2 * tc2_r * Math::sin(a1);
-						
+
 						vts.push_back(p0);
 						vts.push_back(p1);
 					}

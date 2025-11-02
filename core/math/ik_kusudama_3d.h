@@ -7,30 +7,6 @@
 
 class IKNode3D;
 
-class IKRay3D : public RefCounted {
-	GDCLASS(IKRay3D, RefCounted);
-
-	Vector3 point_1;
-	Vector3 point_2;
-
-protected:
-	static void _bind_methods();
-
-public:
-	IKRay3D();
-	IKRay3D(Vector3 p_point_one, Vector3 p_point_two);
-	Vector3 get_heading();
-	void set_heading(const Vector3 &p_new_head);
-	real_t get_scaled_projection(const Vector3 p_input);
-	void elongate(real_t p_amount);
-	Vector3 get_intersects_plane(Vector3 p_vertex_a, Vector3 p_vertex_b, Vector3 p_vertex_c);
-	int intersects_sphere(Vector3 p_sphere_center, real_t p_radius, Vector3 *r_first_intersection, Vector3 *r_second_intersection);
-	void set_point_1(Vector3 p_point);
-	void set_point_2(Vector3 p_point);
-	Vector3 get_point_2();
-	Vector3 get_point_1();
-};
-
 class IKKusudama3D;
 class IKLimitCone3D : public Resource {
 	GDCLASS(IKLimitCone3D, Resource);
@@ -84,8 +60,6 @@ public:
 
 	void _update_constraint(Ref<IKNode3D> p_limiting_axes);
 	void update_tangent_radii();
-	Ref<IKRay3D> bone_ray = Ref<IKRay3D>(memnew(IKRay3D()));
-	Ref<IKRay3D> constrained_ray = Ref<IKRay3D>(memnew(IKRay3D()));
 	double unit_hyper_area = 2 * Math::pow(Math::PI, 2);
 	double unit_area = 4 * Math::PI;
 

@@ -257,7 +257,6 @@ void register_core_types() {
 	GDREGISTER_CLASS(UndoRedo);
 	GDREGISTER_CLASS(TriangleMesh);
 
-	GDREGISTER_CLASS(IKRay3D);
 	GDREGISTER_CLASS(IKLimitCone3D);
 	GDREGISTER_CLASS(IKKusudama3D);
 

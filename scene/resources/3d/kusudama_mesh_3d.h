@@ -30,9 +30,9 @@
 
 #pragma once
 
-#include "scene/resources/mesh.h"
-#include "core/math/vector3.h"
 #include "core/containers/local_vector.h"
+#include "core/math/vector3.h"
+#include "scene/resources/mesh.h"
 
 // Forward declaration
 class IKLimitCone3D;

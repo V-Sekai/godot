@@ -1,48 +1,42 @@
+/**************************************************************************/
+/*  ik_kusudama_3d.cpp                                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
 #include "ik_kusudama_3d.h"
 #include "core/math/quaternion.h"
 
-IKRay3D::IKRay3D() {
-}
-
-IKRay3D::IKRay3D(Vector3 p_p1, Vector3 p_p2) {
-	point_1 = p_p1;
-	point_2 = p_p2;
-}
-
-Vector3 IKRay3D::get_heading() {
-	return point_2 - point_1;
-}
-
-void IKRay3D::set_heading(const Vector3 &p_new_head) {
-	point_2 = point_1 + p_new_head;
-}
-
-real_t IKRay3D::get_scaled_projection(const Vector3 p_input) {
-	Vector3 working_vector = p_input - point_1;
-	Vector3 heading = get_heading();
-	real_t headingMag = heading.length();
-	real_t workingVectorMag = working_vector.length();
-	if (workingVectorMag == 0 || headingMag == 0) {
-		return 0;
-	}
-	return (working_vector.dot(heading) / (headingMag * workingVectorMag)) * (workingVectorMag / headingMag);
-}
-
-void IKRay3D::elongate(real_t amt) {
-	Vector3 midPoint = (point_1 + point_2) * 0.5f;
-	Vector3 p1Heading = point_1 - midPoint;
-	Vector3 p2Heading = point_2 - midPoint;
-	Vector3 p1Add = p1Heading.normalized() * amt;
-	Vector3 p2Add = p2Heading.normalized() * amt;
-	point_1 = p1Heading + p1Add + midPoint;
-	point_2 = p2Heading + p2Add + midPoint;
-}
-
-Vector3 IKRay3D::get_intersects_plane(Vector3 ta, Vector3 tb, Vector3 tc) {
+// Inline ray utility functions
+static Vector3 ray_get_intersects_plane(Vector3 point_1, Vector3 point_2, Vector3 ta, Vector3 tb, Vector3 tc) {
 	Vector3 u = tb - ta;
 	Vector3 v = tc - ta;
 	Vector3 n = u.cross(v).normalized();
-	Vector3 dir = get_heading();
+	Vector3 dir = point_2 - point_1;
 	Vector3 w0 = -ta;
 	real_t a = -(n.dot(w0));
 	real_t b = n.dot(dir);
@@ -50,32 +44,9 @@ Vector3 IKRay3D::get_intersects_plane(Vector3 ta, Vector3 tb, Vector3 tc) {
 	return point_1 + dir * r;
 }
 
-int IKRay3D::intersects_sphere(Vector3 sphereCenter, real_t radius, Vector3 *S1, Vector3 *S2) {
-	Vector3 tp1 = point_1 - sphereCenter;
-	Vector3 tp2 = point_2 - sphereCenter;
-	int result = intersects_sphere(tp1, tp2, radius, S1, S2);
-	*S1 += sphereCenter;
-	*S2 += sphereCenter;
-	return result;
-}
-
-void IKRay3D::set_point_1(Vector3 in) {
-	point_1 = in;
-}
-
-void IKRay3D::set_point_2(Vector3 in) {
-	point_2 = in;
-}
-
-Vector3 IKRay3D::get_point_2() {
-	return point_2;
-}
-
-Vector3 IKRay3D::get_point_1() {
-	return point_1;
-}
-
-int IKRay3D::intersects_sphere(Vector3 rp1, Vector3 rp2, real_t radius, Vector3 *S1, Vector3 *S2) {
+static int ray_intersects_sphere(Vector3 point_1, Vector3 point_2, Vector3 sphere_center, real_t radius, Vector3 *S1, Vector3 *S2) {
+	Vector3 rp1 = point_1 - sphere_center;
+	Vector3 rp2 = point_2 - sphere_center;
 	Vector3 direction = rp2 - rp1;
 	Vector3 e = direction.normalized();
 	Vector3 h = -rp1;
@@ -99,15 +70,19 @@ int IKRay3D::intersects_sphere(Vector3 rp1, Vector3 rp2, real_t radius, Vector3 
 		result = 2;
 	}
 
-	*S1 = e * (lf - s) + rp1;
-	*S2 = e * (lf + s) + rp1;
+	*S1 = e * (lf - s) + rp1 + sphere_center;
+	*S2 = e * (lf + s) + rp1 + sphere_center;
 	return result;
 }
 
-void IKRay3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_heading"), &IKRay3D::get_heading);
-	ClassDB::bind_method(D_METHOD("get_scaled_projection", "input"), &IKRay3D::get_scaled_projection);
-	ClassDB::bind_method(D_METHOD("get_intersects_plane", "a", "b", "c"), &IKRay3D::get_intersects_plane);
+static void ray_elongate(Vector3 &point_1, Vector3 &point_2, real_t amt) {
+	Vector3 midPoint = (point_1 + point_2) * 0.5f;
+	Vector3 p1Heading = point_1 - midPoint;
+	Vector3 p2Heading = point_2 - midPoint;
+	Vector3 p1Add = p1Heading.normalized() * amt;
+	Vector3 p2Add = p2Heading.normalized() * amt;
+	point_1 = p1Heading + p1Add + midPoint;
+	point_2 = p2Heading + p2Add + midPoint;
 }
 
 // ===== IKLimitCone3D Implementation =====
@@ -240,20 +215,24 @@ void IKLimitCone3D::update_tangent_handles(Ref<IKLimitCone3D> p_next) {
 	Quaternion tempVar4 = IKKusudama3D::get_quaternion_axis_angle(B, Math::PI / 2);
 	Vector3 planeDir2B = tempVar4.xform(planeDir1B);
 
-	Ref<IKRay3D> r1B(memnew(IKRay3D(planeDir1B, scaledAxisB)));
-	Ref<IKRay3D> r2B(memnew(IKRay3D(planeDir1B, planeDir2B)));
-	r1B->elongate(99);
-	r2B->elongate(99);
+	Vector3 r1B_p1 = planeDir1B;
+	Vector3 r1B_p2 = scaledAxisB;
+	ray_elongate(r1B_p1, r1B_p2, 99);
 
-	Vector3 intersection1 = r1B->get_intersects_plane(scaledAxisA, planeDir1A, planeDir2A);
-	Vector3 intersection2 = r2B->get_intersects_plane(scaledAxisA, planeDir1A, planeDir2A);
+	Vector3 r2B_p1 = planeDir1B;
+	Vector3 r2B_p2 = planeDir2B;
+	ray_elongate(r2B_p1, r2B_p2, 99);
 
-	Ref<IKRay3D> intersectionRay(memnew(IKRay3D(intersection1, intersection2)));
-	intersectionRay->elongate(99);
+	Vector3 intersection1 = ray_get_intersects_plane(r1B_p1, r1B_p2, scaledAxisA, planeDir1A, planeDir2A);
+	Vector3 intersection2 = ray_get_intersects_plane(r2B_p1, r2B_p2, scaledAxisA, planeDir1A, planeDir2A);
+
+	Vector3 intersectionRay_p1 = intersection1;
+	Vector3 intersectionRay_p2 = intersection2;
+	ray_elongate(intersectionRay_p1, intersectionRay_p2, 99);
 
 	Vector3 sphereIntersect1, sphereIntersect2;
 	Vector3 sphereCenter;
-	intersectionRay->intersects_sphere(sphereCenter, 1.0f, &sphereIntersect1, &sphereIntersect2);
+	ray_intersects_sphere(intersectionRay_p1, intersectionRay_p2, sphereCenter, 1.0f, &sphereIntersect1, &sphereIntersect2);
 
 	set_tangent_circle_center_next_1(sphereIntersect1);
 	set_tangent_circle_center_next_2(sphereIntersect2);
@@ -377,8 +356,7 @@ Vector3 IKLimitCone3D::_get_on_path_sequence(Ref<IKLimitCone3D> next, Vector3 in
 		Vector3 c1xt1 = control_point.cross(tangent_circle_center_next_1);
 		Vector3 t1xc2 = tangent_circle_center_next_1.cross(next->control_point);
 		if (input.dot(c1xt1) > 0.0f && input.dot(t1xc2) > 0.0f) {
-			Ref<IKRay3D> tan1ToInput(memnew(IKRay3D(tangent_circle_center_next_1, input)));
-			Vector3 result = tan1ToInput->get_intersects_plane(Vector3(0.0f, 0.0f, 0.0f), get_control_point(), next->get_control_point());
+			Vector3 result = ray_get_intersects_plane(tangent_circle_center_next_1, input, Vector3(0.0f, 0.0f, 0.0f), get_control_point(), next->get_control_point());
 			return result.normalized();
 		}
 		return Vector3(NAN, NAN, NAN);
@@ -386,8 +364,7 @@ Vector3 IKLimitCone3D::_get_on_path_sequence(Ref<IKLimitCone3D> next, Vector3 in
 		Vector3 t2xc1 = tangent_circle_center_next_2.cross(control_point);
 		Vector3 c2xt2 = next->control_point.cross(tangent_circle_center_next_2);
 		if (input.dot(t2xc1) > 0 && input.dot(c2xt2) > 0) {
-			Ref<IKRay3D> tan2ToInput(memnew(IKRay3D(tangent_circle_center_next_2, input)));
-			Vector3 result = tan2ToInput->get_intersects_plane(Vector3(0.0f, 0.0f, 0.0f), get_control_point(), next->get_control_point());
+			Vector3 result = ray_get_intersects_plane(tangent_circle_center_next_2, input, Vector3(0.0f, 0.0f, 0.0f), get_control_point(), next->get_control_point());
 			return result.normalized();
 		}
 		return Vector3(NAN, NAN, NAN);
@@ -778,17 +755,20 @@ void IKKusudama3D::snap_to_orientation_limit(Ref<IKNode3D> bone_direction, Ref<I
 	Vector3 limiting_origin = limiting_axes->get_global_transform().origin;
 	Vector3 bone_dir_xform = bone_direction->get_global_transform().xform(Vector3(0.0, 1.0, 0.0));
 
-	bone_ray->set_point_1(limiting_origin);
-	bone_ray->set_point_2(bone_dir_xform);
+	Vector3 bone_ray_start = limiting_origin;
+	Vector3 bone_ray_end = bone_dir_xform;
 
-	Vector3 bone_tip = limiting_axes->to_local(bone_ray->get_point_2());
+	Vector3 bone_tip = limiting_axes->to_local(bone_ray_end);
 	Vector3 in_limits = get_local_point_in_limits(bone_tip, &in_bounds);
 
 	if (in_bounds[0] < 0) {
-		constrained_ray->set_point_1(bone_ray->get_point_1());
-		constrained_ray->set_point_2(limiting_axes->to_global(in_limits));
+		Vector3 constrained_ray_start = bone_ray_start;
+		Vector3 constrained_ray_end = limiting_axes->to_global(in_limits);
 
-		Quaternion rectified_rot = Quaternion(bone_ray->get_heading(), constrained_ray->get_heading());
+		Vector3 bone_heading = bone_ray_end - bone_ray_start;
+		Vector3 constrained_heading = constrained_ray_end - constrained_ray_start;
+
+		Quaternion rectified_rot = Quaternion(bone_heading, constrained_heading);
 		to_set->rotate_local_with_global(rectified_rot);
 	}
 }
@@ -842,19 +822,4 @@ Quaternion IKKusudama3D::get_quaternion_axis_angle(const Vector3 &p_axis, real_t
 	}
 
 	return Quaternion(p_axis, p_angle);
-}</parameter>
-<parameter name="task_progress">
-- [x] Port kusudama to JointLimitation3D with multi-cone support
-- [x] Create KusudamaMesh3D mesh primitive
-- [x] Implement array inspector for cone definition
-- [x] Remove tangent parameters from serialization
-- [x] Analyze many_bone_ik module structure
-- [x] Create core/math/ik_kusudama_3d.h with inlined IKOpenCone3D and IKRay3D
-- [x] Create core/math/ik_kusudama_3d.cpp with implementations (incremental)
-- [ ] Update includes in joint_limitation_cone_3d.cpp and kusudama_mesh_3d.cpp
-- [ ] Register classes in core/register_core_types.cpp
-- [ ] Move tests to tests/ directory
-- [ ] Remove many_bone_ik module directory
-- [ ] Verify build and dependencies
-</parameter>
-</write_to_file>
+}
