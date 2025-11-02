@@ -72,6 +72,7 @@
 #include "tests/core/math/test_expression.h"
 #include "tests/core/math/test_geometry_2d.h"
 #include "tests/core/math/test_geometry_3d.h"
+#include "tests/core/math/test_ik_kusudama_3d.h"
 #include "tests/core/math/test_math_funcs.h"
 #include "tests/core/math/test_plane.h"
 #include "tests/core/math/test_projection.h"
