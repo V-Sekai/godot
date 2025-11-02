@@ -41,6 +41,9 @@
 #include "net_socket_android.h"
 #include "os_android.h"
 #include "thread_jandroid.h"
+#include "java_godot_wrapper.h"
+#include "api/java_class_wrapper.h"
+#include "plugin/godot_plugin_jni.h"
 
 static OS_Android *os = nullptr;
 
@@ -62,7 +65,11 @@ public:
 
 static GodotInstanceCallbacksAndroid callbacks;
 
-extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, JNIEnv *env, jobject p_asset_manager, jobject p_net_utils, jobject p_directory_access_handler, jobject p_file_access_handler, jobject p_godot_io_wrapper) {
+static GodotIOJavaWrapper *godot_io_wrapper = nullptr;
+static GodotJavaWrapper *godot_wrapper = nullptr;
+static JavaClassWrapper *java_class_wrapper = nullptr;
+
+extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(int p_argc, char *p_argv[], GDExtensionInitializationFunction p_init_func, JNIEnv* env, jobject p_asset_manager, jobject p_net_utils, jobject p_directory_access_handler, jobject p_file_access_handler, jobject p_godot_io_wrapper, jobject p_godot_wrapper, jobject p_host_activity) {
 	ERR_FAIL_COND_V_MSG(instance != nullptr, nullptr, "Only one Godot Instance may be created.");
 
 	JavaVM *jvm;
@@ -74,19 +81,27 @@ extern LIBGODOT_API GDExtensionObjectPtr libgodot_create_godot_instance_android(
 	DirAccessJAndroid::setup(p_directory_access_handler);
 	FileAccessFilesystemJAndroid::setup(p_file_access_handler);
 	NetSocketAndroid::setup(p_net_utils);
-	GodotIOJavaWrapper *godot_io_wrapper = new GodotIOJavaWrapper(env, p_godot_io_wrapper);
+	godot_io_wrapper = new GodotIOJavaWrapper(env, p_godot_io_wrapper);
+	godot_wrapper = new GodotJavaWrapper(env, p_host_activity, p_godot_wrapper);
 
-	os = new OS_Android(nullptr, godot_io_wrapper, false);
+	os = new OS_Android(godot_wrapper, godot_io_wrapper, false);
 
 	Error err = Main::setup(p_argv[0], p_argc - 1, &p_argv[1], false);
 	if (err != OK) {
 		return nullptr;
 	}
 
+	java_class_wrapper = memnew(JavaClassWrapper);
+
+	godot_wrapper->on_godot_setup_completed(env);
+
 	instance = memnew(GodotInstance);
 	if (!instance->initialize(p_init_func, &callbacks)) {
 		memdelete(instance);
 		instance = nullptr;
+		delete godot_io_wrapper;
+		delete godot_wrapper;
+		memdelete(java_class_wrapper);
 		return nullptr;
 	}
 
@@ -99,6 +114,18 @@ extern LIBGODOT_API void libgodot_destroy_godot_instance(GDExtensionObjectPtr p_
 		godot_instance->stop();
 		memdelete(godot_instance);
 		instance = nullptr;
+		if (java_class_wrapper) {
+			unregister_plugins_singletons();
+        	memdelete(java_class_wrapper);
+    	}
 		Main::cleanup();
+		if (godot_io_wrapper) {
+        	delete godot_io_wrapper;
+    	}
+		if (godot_wrapper) {
+        	delete godot_wrapper;
+    	}
+		delete os;
+		os = nullptr;
 	}
 }
