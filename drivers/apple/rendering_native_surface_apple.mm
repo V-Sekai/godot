@@ -271,7 +271,7 @@ Ref<RenderingNativeSurfaceApple> RenderingNativeSurfaceApple::create(void *p_lay
 #endif
         }
 #endif
-		if (rendering_driver == "vulkan" ) {
+		else {
             myLayer = [[CAMetalLayer alloc] init];
         }
     	});
