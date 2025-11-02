@@ -44,15 +44,17 @@
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
 
+#define GL_ERR(expr) { expr; GLenum err = glGetError(); if (err) { print_line(vformat("%s:%s: %x error", __FUNCTION__, #expr, err)); } }
+
 struct WindowData {
-	GLint backingWidth = 0;
-	GLint backingHeight = 0;
 	GLuint viewRenderbuffer = 0;
 	GLuint viewFramebuffer = 0;
 	GLuint depthRenderbuffer = 0;
 
 	EGLSurface surface = EGL_NO_SURFACE;
 	ANativeWindow *window = nullptr;
+	uint32_t width;
+	uint32_t height;
 };
 
 class GLManagerAndroid : public GLManager {
@@ -78,7 +80,7 @@ public:
 	}
 
 protected:
-	bool create_framebuffer(DisplayServer::WindowID p_id, void *p_layer);
+	bool create_framebuffer(DisplayServer::WindowID p_id, void *p_layer, uint32_t width, uint32_t height);
 
 private:
 	HashMap<DisplayServer::WindowID, WindowData> windows;
@@ -125,6 +127,8 @@ EGLint config_attribs[] = {
 	EGL_NONE
 };
 
+EGLint context_attrib_list[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
+
 static EGLint findConfigAttrib(EGLDisplay p_display, EGLConfig p_config, int p_attribute, int p_default_value) {
 	EGLint value;
 	if (eglGetConfigAttrib(p_display, p_config, p_attribute, &value)) {
@@ -137,7 +141,7 @@ static int findMatchingConfig(EGLDisplay p_display, EGLConfigRequirements req, s
 	int result = -1;
 	for (EGLConfig cfg : configs) {
 		result ++;
-		
+
 		EGLint d = findConfigAttrib(p_display, cfg, EGL_DEPTH_SIZE, 0);
 		EGLint s = findConfigAttrib(p_display, cfg, EGL_STENCIL_SIZE, 0);
 
@@ -201,7 +205,7 @@ Error GLManagerAndroid::initialize(void *p_native_display) {
 			config = configs[matchingConfig];
 		}
 
-		context = eglCreateContext(display, config, 0, 0);
+		context = eglCreateContext(display, config, EGL_NO_CONTEXT, context_attrib_list);
 		if (!context) {
 			int error = eglGetError();
 			deinitialize();
@@ -224,10 +228,10 @@ void GLManagerAndroid::window_resize(DisplayServer::WindowID p_id, int p_width, 
 	window_create(p_id, (void *) gles_data.window, p_width, p_height);
 }
 
-Size2i GLESContextAndroid::window_get_size(DisplayServer::WindowID p_id) {
+Size2i GLManagerAndroid::window_get_size(DisplayServer::WindowID p_id) {
 	ERR_FAIL_COND_V(!windows.has(p_id), Size2i());
 	WindowData &gles_data = windows[p_id];
-	return Size2i();
+	return Size2i(gles_data.width, gles_data.height);
 }
 
 void GLManagerAndroid::window_make_current(DisplayServer::WindowID p_id) {
@@ -250,7 +254,7 @@ void GLManagerAndroid::swap_buffers() {
 	eglSwapBuffers(display, gles_data.surface);
 }
 
-void GLESContextAndroid::deinitialize() {
+void GLManagerAndroid::deinitialize() {
 	if (display) {
 	    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 		if (context) {
@@ -263,46 +267,48 @@ void GLESContextAndroid::deinitialize() {
 		windows.clear();
        	eglTerminate(display);
 	}
-    
+
     display = EGL_NO_DISPLAY;
     context = EGL_NO_CONTEXT;
 }
 
 Error GLManagerAndroid::window_create(DisplayServer::WindowID p_id, Ref<RenderingNativeSurface> p_native_surface, int p_width, int p_height) {
 	Ref<RenderingNativeSurfaceAndroid> android_surface = Object::cast_to<RenderingNativeSurfaceAndroid>(*p_native_surface);
-	if (create_framebuffer(p_id, (void *)android_surface->get_window())) {
+	if (create_framebuffer(p_id, (void *)android_surface->get_window(), android_surface->get_width(), android_surface->get_height())) {
 		return OK;
 	} else {
 		return FAILED;
 	}
 }
 
-bool GLESContextAndroid::create_framebuffer(DisplayServer::WindowID p_id, void *p_layer) {
+bool GLManagerAndroid::create_framebuffer(DisplayServer::WindowID p_id, void *p_layer, uint32_t width, uint32_t height) {
 	WindowData &gles_data = windows[p_id];
 	gles_data.window = (ANativeWindow *) p_layer;
+	gles_data.width = width;
+	gles_data.height = height;
+
 
 	gles_data.surface = eglCreateWindowSurface(display, config, gles_data.window, 0);
-	ERR_FAIL_COND_V_MSG(!gles_data.surface, false, vformat("eglCreateWindowSurface() returned error %d", eglGetError()));
+	ERR_FAIL_COND_V_MSG(!gles_data.surface, false, vformat("create_framebuffer for window(%d) eglCreateWindowSurface() returned error %d", p_id, eglGetError()));
 
 	if (!eglMakeCurrent(display, gles_data.surface, gles_data.surface, context)) {
 		ERR_FAIL_V_MSG(false, vformat("eglMakeCurrent() returned error %d", eglGetError()));
 	}
 
-	glGenFramebuffers(1, &gles_data.viewFramebuffer);
-	glGenRenderbuffers(1, &gles_data.viewRenderbuffer);
+	GL_ERR(glGenFramebuffers(1, &gles_data.viewFramebuffer));
+	GL_ERR(glGenRenderbuffers(1, &gles_data.viewRenderbuffer));
 
-	glBindFramebuffer(GL_FRAMEBUFFER, gles_data.viewFramebuffer);
-	glBindRenderbuffer(GL_RENDERBUFFER, gles_data.viewRenderbuffer);
-	
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, gles_data.viewRenderbuffer);
+	GL_ERR(glBindFramebuffer(GL_FRAMEBUFFER, gles_data.viewFramebuffer));
+	GL_ERR(glBindRenderbuffer(GL_RENDERBUFFER, gles_data.viewRenderbuffer));
+	GL_ERR(glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, gles_data.width, gles_data.height));
+	GL_ERR(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, gles_data.viewRenderbuffer));
 
-	glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &gles_data.backingWidth);
-	glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &gles_data.backingHeight);
+
 
 	// For this sample, we also need a depth buffer, so we'll create and attach one via another renderbuffer.
-	glGenRenderbuffers(1, &gles_data.depthRenderbuffer);
-	glBindRenderbuffer(GL_RENDERBUFFER, gles_data.depthRenderbuffer);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, gles_data.backingWidth, gles_data.backingHeight);
+	GL_ERR(glGenRenderbuffers(1, &gles_data.depthRenderbuffer));
+	GL_ERR(glBindRenderbuffer(GL_RENDERBUFFER, gles_data.depthRenderbuffer));
+	GL_ERR(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, gles_data.width, gles_data.height));
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, gles_data.depthRenderbuffer);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -329,6 +335,14 @@ void GLManagerAndroid::window_destroy(DisplayServer::WindowID p_id) {
 	if (gles_data.depthRenderbuffer) {
 		glDeleteRenderbuffers(1, &gles_data.depthRenderbuffer);
 		gles_data.depthRenderbuffer = 0;
+	}
+
+	if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+		ERR_FAIL_V_MSG(false, vformat("eglMakeCurrent() returned error %d", eglGetError()));
+	}
+
+	if (!eglDestroySurface(display, gles_data.surface)) {
+		ERR_FAIL_V_MSG(false, vformat("eglDestroySurface() returned error %d", eglGetError()));
 	}
 
 	windows.erase(p_id);
