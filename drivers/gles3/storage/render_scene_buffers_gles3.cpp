@@ -375,7 +375,10 @@ void RenderSceneBuffersGLES3::_check_render_buffers() {
 
 			// We render to our internal textures, MSAA is only done in tile memory only.
 			// On mobile this means MSAA never leaves tile memory = efficiency!
-			glGenFramebuffers(1, &msaa3d.fbo);
+            if (msaa3d.fbo == 0) {
+				// Only create a new framebuffer, if it was not created before
+				glGenFramebuffers(1, &msaa3d.fbo);
+            }
 			FramebufferBinding binding(GL_FRAMEBUFFER, msaa3d.fbo);
 
 			_rt_attach_textures(internal3d.color, internal3d.depth, msaa3d.samples, view_count, true);
