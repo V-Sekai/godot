@@ -606,8 +606,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal" * doctest::skip(true)) {
 	truck_at["truck1"] = "location1";
 	goal_state["truck_at"] = truck_at;
 	goal_state["at"] = at;
-	Ref<PlannerMultigoal> multi_goal;
-	multi_goal.instantiate("Multigoal", goal_state);
+	Dictionary multi_goal = goal_state;
 	Array task;
 	task.push_back(multi_goal);
 	Array plan = planner->find_plan(state, task);

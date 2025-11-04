@@ -50,6 +50,11 @@ int PlannerPlan::get_verbose() const {
 	return verbose;
 }
 
+void PlannerPlan::set_verbose(int p_verbose) {
+	verbose = p_verbose;
+}
+
+
 TypedArray<PlannerDomain> PlannerPlan::get_domains() const {
 	return domains;
 }
@@ -58,305 +63,8 @@ Ref<PlannerDomain> PlannerPlan::get_current_domain() const {
 	return current_domain;
 }
 
-void PlannerPlan::set_verbose(int p_verbose) {
-	verbose = p_verbose;
-}
-
 void PlannerPlan::set_domains(TypedArray<PlannerDomain> p_domain) {
 	domains = p_domain;
-}
-
-Variant PlannerPlan::_apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth) {
-	Callable action = current_domain->action_dictionary[p_first_task[0]];
-
-	if (verbose >= 2) {
-		Array action_info = p_first_task.slice(1);
-		action_info.insert(0, action.get_method());
-		print_line("Depth: " + itos(p_depth) + ", Action: " + _item_to_string(action_info));
-	}
-
-	Array arguments = p_first_task.slice(1);
-	arguments.insert(0, p_state);
-	Variant new_state = action.callv(arguments);
-
-	if (new_state) {
-		if (verbose >= 3) {
-			print_line("Intermediate computation: Action applied successfully.");
-			print_line("New state: " + String(new_state));
-		}
-		Array new_plan = p_plan;
-		new_plan.push_back(p_first_task);
-		return _seek_plan(new_state, p_todo_list, new_plan, p_depth + 1);
-	}
-
-	if (verbose >= 3) {
-		print_line("Intermediate computation: Failed to apply action. The new state is not valid.");
-		print_line("New state: " + String(new_state));
-		print_line("Task: ");
-		for (int i = 0; i < p_first_task.size(); ++i) {
-			print_line(String(p_first_task[i]));
-			print_line("State: " + _item_to_string(p_state));
-		}
-
-		if (verbose >= 2) {
-			Array action_info = p_first_task.slice(1);
-			action_info.insert(0, action.get_method());
-			ERR_PRINT("Recursive call: Not applicable action: " + _item_to_string(action_info));
-		}
-	}
-	return false;
-}
-
-Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const Array p_plan, const int p_depth) {
-	TypedArray<Callable> relevant = current_domain->task_method_dictionary[p_task1[0]];
-	if (verbose >= 3) {
-		print_line("Depth: " + itos(p_depth) + ", Task " + _item_to_string(p_task1) + ", Todo List " + _item_to_string(p_todo_list) + ", Plan " + _item_to_string(p_plan));
-	}
-	for (int i = 0; i < relevant.size(); i++) {
-		Callable method = relevant[i];
-		Array arguments;
-		arguments.push_back(p_state);
-		Array argument_slices = p_task1.slice(1);
-		arguments.append_array(argument_slices);
-		if (verbose >= 2) {
-			print_line("Depth: " + itos(p_depth) + ", Trying method: " + _item_to_string(method));
-		}
-		Variant result = method.callv(arguments);
-		if (result.is_array()) {
-			Array subgoals = result;
-			// Task methods must return an Array of todo elements (PlannerMultigoal, tasks, commands, or actions)
-			// Validate format by checking first element only (amortized check)
-			if (!subgoals.is_empty()) {
-				Variant first_element = subgoals[0];
-				// Must be PlannerMultigoal, Array (task/command/action), or Dictionary (metadata wrapper)
-				if (!Object::cast_to<PlannerMultigoal>(first_element) && 
-				    first_element.get_type() != Variant::ARRAY && 
-				    first_element.get_type() != Variant::DICTIONARY) {
-					ERR_PRINT(vformat("ERROR: Task method returned invalid format. Todo elements must be PlannerMultigoal, task Array, command Array, action Array, or metadata Dictionary. First element type: %d. Task: %s, Method: %s", first_element.get_type(), _item_to_string(p_task1), _item_to_string(method)));
-					return false;
-				}
-				// If Array, check it's not a single goal (would match unigoal pattern)
-				// Commands and actions are valid - they're in action_dictionary
-				if (first_element.get_type() == Variant::ARRAY) {
-					Array first_array = first_element;
-					if (!first_array.is_empty()) {
-						Variant first_name = first_array[0];
-						if (current_domain->unigoal_method_dictionary.has(first_name)) {
-							ERR_PRINT(vformat("ERROR: Task method returned single goal. Single goals are not allowed. Use PlannerMultigoal structure instead. Task: %s, Method: %s, Goal: %s", _item_to_string(p_task1), _item_to_string(method), _item_to_string(first_element)));
-							return false;
-						}
-					}
-				}
-			}
-			// Todo list can contain PlannerMultigoal, Arrays (tasks/commands/actions), or Dictionaries (metadata)
-			Array todo_list;
-			if (!subgoals.is_empty()) {
-				todo_list.append_array(subgoals);
-			}
-			if (!p_todo_list.is_empty()) {
-				todo_list.append_array(p_todo_list);
-			}
-			Variant plan = _seek_plan(p_state, todo_list, p_plan, p_depth + 1);
-			if (plan.is_array()) {
-				return plan;
-			}
-		} else {
-			// For verification tasks, false means verification failed - fail the plan immediately
-			String task_name = p_task1[0];
-			if (task_name == "_verify_g" || task_name == "_verify_mg") {
-				if (verbose >= 2) {
-					ERR_PRINT(vformat("Recursive call: Verification failed for task: %s", _item_to_string(p_task1)));
-				}
-				return false;
-			}
-			if (verbose >= 3) {
-				ERR_PRINT("Not applicable");
-			}
-		}
-	}
-
-	if (verbose >= 2) {
-		ERR_PRINT("Recursive call: Failed to achieve task: " + _item_to_string(p_task1));
-	}
-
-	return false;
-}
-
-Variant PlannerPlan::_refine_multigoal_and_continue(const Dictionary p_state, const Ref<PlannerMultigoal> p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth) {
-	if (verbose >= 3) {
-		print_line("Depth: " + itos(p_depth) + ", Multigoal: " + p_first_goal->get_name() + ": " + _item_to_string(p_first_goal));
-	}
-
-	Array relevant = current_domain->multigoal_method_list;
-
-	if (verbose >= 3) {
-		Array string_array;
-		for (int i = 0; i < relevant.size(); i++) {
-			print_line(String("Methods ") + String(relevant[i].call("get_method")));
-		}
-	}
-	Array todo_list = p_todo_list;
-	for (int i = 0; i < relevant.size(); i++) {
-		if (verbose >= 2) {
-			print_line("Depth: " + itos(p_depth) + ", Trying method: " + String(relevant[i].call("get_method")) + ": ");
-		}
-		Callable callable = relevant[i];
-		Variant result = callable.call(p_state, p_first_goal);
-		if (result.is_array()) {
-			Array subgoals = result;
-			// Multigoal methods must return an Array of todo elements (PlannerMultigoal, tasks, commands, or actions)
-			// Validate format by checking first element only (amortized check)
-			if (!subgoals.is_empty()) {
-				Variant first_element = subgoals[0];
-				// Must be PlannerMultigoal, Array (task/command/action), or Dictionary (metadata wrapper)
-				if (!Object::cast_to<PlannerMultigoal>(first_element) && 
-				    first_element.get_type() != Variant::ARRAY && 
-				    first_element.get_type() != Variant::DICTIONARY) {
-					ERR_PRINT(vformat("ERROR: Multigoal method returned invalid format. Todo elements must be PlannerMultigoal, task Array, command Array, action Array, or metadata Dictionary. First element type: %d. Multigoal: %s, Method: %s", first_element.get_type(), _item_to_string(p_first_goal), _item_to_string(callable)));
-					continue; // Try next method
-				}
-				// If Array, check it's not a single goal (would match unigoal pattern)
-				if (first_element.get_type() == Variant::ARRAY) {
-					Array first_array = first_element;
-					if (!first_array.is_empty()) {
-						Variant first_name = first_array[0];
-						if (current_domain->unigoal_method_dictionary.has(first_name)) {
-							ERR_PRINT(vformat("ERROR: Multigoal method returned single goal. Single goals are not allowed. Use PlannerMultigoal structure instead. Multigoal: %s, Method: %s, Goal: %s", _item_to_string(p_first_goal), _item_to_string(callable), _item_to_string(first_element)));
-							continue; // Try next method
-						}
-					}
-				}
-			}
-			// Todo list can contain PlannerMultigoal, Arrays (tasks/commands/actions), or Dictionaries (metadata)
-			Array subtodo_list;
-			if (verbose >= 3) {
-				print_line("Intermediate computation: Method applicable.");
-				print_line("Depth: " + itos(p_depth) + ", Subgoals: " + _item_to_string(subgoals));
-			}
-			if (!subgoals.is_empty()) {
-				subtodo_list.append_array(subgoals);
-			}
-			if (verify_goals) {
-				subtodo_list.push_back(varray("_verify_mg", callable.get_method(), p_first_goal, p_depth, verbose));
-			}
-			if (!p_todo_list.is_empty()) {
-				subtodo_list.append_array(p_todo_list);
-			}
-			todo_list.clear();
-			todo_list = subtodo_list;
-			Variant plan = _seek_plan(p_state, todo_list, p_plan, p_depth + 1);
-			if (plan.is_array()) {
-				return plan;
-			}
-		}
-	}
-
-	if (verbose >= 2) {
-		ERR_PRINT("Recursive call: Failed to achieve multigoal: " + _item_to_string(p_first_goal));
-	}
-
-	return false;
-}
-
-Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, const Array p_goal1, const Array p_todo_list, const Array p_plan, const int p_depth) {
-	if (verbose >= 3) {
-		String goals_list = vformat("Depth: %d, Goals: %s", p_depth, _item_to_string(p_goal1));
-	}
-
-	String state_variable_name = p_goal1[0];
-	String argument = p_goal1[1];
-	Variant value = p_goal1[2];
-
-	// Check if goal is already achieved (only if state variable exists)
-	if (p_state.has(state_variable_name)) {
-		Variant state_var_val = p_state[state_variable_name];
-		if (state_var_val.get_type() == Variant::DICTIONARY) {
-			Dictionary state_variable = state_var_val;
-			if (state_variable.has(argument) && state_variable[argument] == value) {
-				if (verbose >= 3) {
-					print_line("Intermediate computation: Goal already achieved.");
-				}
-				return _seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
-			}
-		}
-	}
-
-	if (!current_domain->unigoal_method_dictionary.has(state_variable_name)) {
-		if (verbose >= 2) {
-			ERR_PRINT(vformat("Recursive call: No unigoal methods found for: %s", state_variable_name));
-		}
-		return false;
-	}
-
-	TypedArray<Callable> relevant = current_domain->unigoal_method_dictionary[state_variable_name];
-	if (verbose >= 3) {
-		print_line("Methods: " + _item_to_string(relevant));
-	}
-	Array todo_list = p_todo_list;
-	for (int i = 0; i < relevant.size(); i++) {
-		Callable method = relevant[i];
-		if (verbose >= 2) {
-			print_line("Depth: " + itos(p_depth) + ", Trying method: " + _item_to_string(method));
-		}
-		// Call method with state and all goal arguments (matching aria-planner pattern: [current_state | Tuple.to_list(curr_node.info)])
-		Variant result = method.call(p_state, argument, value);
-		if (result.is_array()) {
-			Array subgoals = result;
-			// Unigoal methods must return an Array of todo elements (PlannerMultigoal, tasks, commands, or actions)
-			// Validate format by checking first element only (amortized check)
-			if (!subgoals.is_empty()) {
-				Variant first_element = subgoals[0];
-				// Must be PlannerMultigoal, Array (task/command/action), or Dictionary (metadata wrapper)
-				if (!Object::cast_to<PlannerMultigoal>(first_element) && 
-				    first_element.get_type() != Variant::ARRAY && 
-				    first_element.get_type() != Variant::DICTIONARY) {
-					ERR_PRINT(vformat("ERROR: Unigoal method returned invalid format. Todo elements must be PlannerMultigoal, task Array, command Array, action Array, or metadata Dictionary. First element type: %d. Goal: %s, Method: %s", first_element.get_type(), _item_to_string(p_goal1), _item_to_string(method)));
-					continue; // Try next method
-				}
-				// If Array, check it's not a single goal (would match unigoal pattern)
-				if (first_element.get_type() == Variant::ARRAY) {
-					Array first_array = first_element;
-					if (!first_array.is_empty()) {
-						Variant first_name = first_array[0];
-						if (current_domain->unigoal_method_dictionary.has(first_name)) {
-							ERR_PRINT(vformat("ERROR: Unigoal method returned single goal. Single goals are not allowed. Use PlannerMultigoal structure instead. Goal: %s, Method: %s, Single goal: %s", _item_to_string(p_goal1), _item_to_string(method), _item_to_string(first_element)));
-							continue; // Try next method
-						}
-					}
-				}
-			}
-			// Todo list can contain PlannerMultigoal, Arrays (tasks/commands/actions), or Dictionaries (metadata)
-			Array subtodo_list;
-			if (!subgoals.is_empty()) {
-				subtodo_list.append_array(subgoals);
-			}
-			if (verify_goals) {
-				subtodo_list.push_back(varray("_verify_g", method.get_method(), state_variable_name, argument, value, p_depth, verbose));
-			}
-			if (!todo_list.is_empty()) {
-				subtodo_list.append_array(todo_list);
-			}
-			todo_list.clear();
-			todo_list = subtodo_list;
-			if (verbose >= 3) {
-				print_line("Depth: " + itos(p_depth) + ", Seeking todo list " + _item_to_string(todo_list));
-			}
-			Variant plan = _seek_plan(p_state, todo_list, p_plan, p_depth + 1);
-			if (plan.is_array()) {
-				return plan;
-			}
-		} else {
-			if (verbose >= 3) {
-				ERR_PRINT("Not applicable");
-			}
-		}
-	}
-
-	if (verbose >= 2) {
-		ERR_PRINT(vformat("Recursive call: Failed to achieve goal: %s", _item_to_string(p_goal1)));
-	}
-
-	return false;
 }
 
 Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
@@ -365,51 +73,73 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 		print_line("    state = " + _item_to_string(p_state) + "\n    todo_list = " + _item_to_string(p_todo_list));
 	}
 
-	Variant result = _seek_plan(p_state, p_todo_list, Array(), 0);
-
-	if (verbose >= 1) {
-		print_line("result = " + _item_to_string(result));
+	// Initialize solution graph
+	solution_graph = PlannerSolutionGraph();
+	blacklisted_commands.clear();
+	
+	// Initialize STN solver (optional, but keep for consistency)
+	stn.clear();
+	stn.add_time_point("origin");
+	
+	// Initialize HLC if not already set
+	if (hlc.get_start_time() == 0) {
+		hlc.set_start_time(PlannerHLClock::now_microseconds());
 	}
-
-	return result;
+	
+	// Anchor origin to current absolute time
+	PlannerSTNConstraints::anchor_to_origin(stn, "origin", hlc.get_start_time());
+	
+	// Add initial tasks to the solution graph
+	int parent_node_id = 0; // Root node
+	PlannerGraphOperations::add_nodes_and_edges(
+		solution_graph,
+		parent_node_id,
+		p_todo_list,
+		current_domain->action_dictionary,
+		current_domain->task_method_dictionary,
+		current_domain->unigoal_method_dictionary,
+		current_domain->multigoal_method_list
+	);
+	
+	// Start planning loop
+	Dictionary final_state = _planning_loop_recursive(parent_node_id, p_state, 0);
+	
+	// Check if planning succeeded (if we got back to root with a valid state)
+	// Planning succeeds if all nodes are closed and we're back at root
+	Dictionary root_node = solution_graph.get_node(0);
+	
+	// Check if all nodes are closed (planning succeeded)
+	bool planning_succeeded = true;
+	Dictionary graph = solution_graph.get_graph();
+	Array graph_keys = graph.keys();
+	for (int i = 0; i < graph_keys.size(); i++) {
+		int node_id = graph_keys[i];
+		if (node_id == 0) continue; // Skip root
+		Dictionary node = graph[node_id];
+		int status = node["status"];
+		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+			planning_succeeded = false;
+			break;
+		}
+	}
+	
+	if (planning_succeeded && !final_state.is_empty()) {
+		// Extract the plan from the graph
+		Array plan = PlannerGraphOperations::extract_solution_plan(solution_graph);
+		
+		if (verbose >= 1) {
+			print_line("result = " + _item_to_string(plan));
+		}
+		
+		return plan;
+	} else {
+		if (verbose >= 1) {
+			print_line("result = false (planning failed)");
+		}
+		return false;
+	}
 }
 
-Variant PlannerPlan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth) {
-	if (verbose >= 2) {
-		print_line("Depth: " + itos(p_depth) + ", Todo List: " + _item_to_string(p_todo_list));
-	}
-
-	if (p_todo_list.is_empty()) {
-		if (verbose >= 3) {
-			print_line("Depth: " + itos(p_depth) + " no more tasks or goals, return plan: " + _item_to_string(p_plan));
-		}
-		return p_plan;
-	}
-	Variant todo_item = p_todo_list.front();
-	p_todo_list = p_todo_list.slice(1);
-	if (Object::cast_to<PlannerMultigoal>(todo_item)) {
-		return _refine_multigoal_and_continue(p_state, todo_item, p_todo_list, p_plan, p_depth);
-	} else if (todo_item.is_array()) {
-		Array item = todo_item;
-		Dictionary actions = current_domain->action_dictionary;
-		Dictionary tasks = current_domain->task_method_dictionary;
-		Dictionary unigoals = current_domain->unigoal_method_dictionary;
-		Variant item_name = item.front();
-		if (actions.has(item_name)) {
-			return _apply_action_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
-		} else if (tasks.has(item_name)) {
-			return _refine_task_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
-		} else if (unigoals.has(item_name)) {
-			// Single goals are not allowed - must use PlannerMultigoal structure
-			ERR_PRINT(vformat("ERROR: Single goal detected in todo list. Single goals are not allowed. Use PlannerMultigoal structure instead. Goal: %s", _item_to_string(item)));
-			return false;
-		} else {
-			ERR_PRINT(vformat("ERROR: Unknown todo element type. Must be PlannerMultigoal, task, command, or action. Element: %s", _item_to_string(item)));
-			return false;
-		}
-	}
-	return false;
-}
 
 String PlannerPlan::_item_to_string(Variant p_item) {
 	return String(p_item);
@@ -1277,14 +1007,14 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		}
 		
 		case PlannerNodeType::TYPE_MULTIGOAL: {
-			Ref<PlannerMultigoal> multigoal = curr_node["info"];
-			if (multigoal.is_null()) {
+			Variant multigoal_variant = curr_node["info"];
+			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
 				return p_state;
 			}
+			Dictionary multigoal = multigoal_variant;
 			
 			// Extract metadata from multigoal and validate entity requirements
-			// Multigoal metadata might be stored in the multigoal object itself
-			Variant multigoal_variant = multigoal;
+			// Multigoal metadata might be stored in the multigoal dictionary itself
 			PlannerMetadata metadata = _extract_metadata(multigoal_variant);
 			if (!_validate_entity_requirements(p_state, metadata)) {
 				if (verbose >= 2) {
@@ -1423,8 +1153,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		case PlannerNodeType::TYPE_VERIFY_MULTIGOAL: {
 			// Verify the parent multigoal
 			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-			Ref<PlannerMultigoal> multigoal = parent_node["info"];
-			if (multigoal.is_null()) {
+			Variant multigoal_variant = parent_node["info"];
+			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
 				// Invalid parent, backtrack
 				if (verbose >= 2) {
 					print_line("MultiGoal verification failed: invalid parent multigoal, backtracking");
@@ -1440,6 +1170,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 				return p_state;
 			}
+			Dictionary multigoal = multigoal_variant;
 			
 			Dictionary goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
 			if (goals_not_achieved.is_empty()) {

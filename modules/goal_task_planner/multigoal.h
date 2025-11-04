@@ -34,26 +34,28 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 // Author: Dana Nau <nau@umd.edu>, July 7, 2021
 
-#include "core/io/resource.h"
+#include "core/object/object.h"
 #include "core/variant/dictionary.h"
 
-class PlannerMultigoal : public Resource {
-	GDCLASS(PlannerMultigoal, Resource);
-
-private:
-	Dictionary state;
+// PlannerMultigoal is a utility class for working with Dictionary-based multigoals
+// Multigoals are represented as Dictionary: {variable_name: {argument: value, ...}, ...}
+class PlannerMultigoal : public Object {
+	GDCLASS(PlannerMultigoal, Object);
 
 public:
-	PlannerMultigoal(String p_multigoal_name = "", Dictionary p_state_variables = Dictionary());
-	Array get_goal_variables() const;
-
-	Dictionary get_goal_conditions_for_variable(const String &p_variable) const;
-	Variant get_goal_value(const String &p_variable, const String &p_argument) const;
-	bool has_goal_condition(const String &p_variable, const String &p_argument) const;
-
-	static Array method_split_multigoal(const Dictionary &p_state, const Ref<PlannerMultigoal> &p_multigoal);
-	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Ref<PlannerMultigoal> &p_multigoal, int p_depth, int p_verbose);
-	static Dictionary method_goals_not_achieved(const Dictionary &p_state, const Ref<PlannerMultigoal> &p_multigoal);
+	// Check if a Variant is a Dictionary multigoal (all values are dictionaries)
+	static bool is_multigoal_dict(const Variant &p_variant);
+	
+	// Accessor functions for Dictionary multigoals
+	static Array get_goal_variables(const Dictionary &p_multigoal_dict);
+	static Dictionary get_goal_conditions_for_variable(const Dictionary &p_multigoal_dict, const String &p_variable);
+	static Variant get_goal_value(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument);
+	static bool has_goal_condition(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument);
+	
+	// Static methods for multigoal operations
+	static Dictionary method_goals_not_achieved(const Dictionary &p_state, const Dictionary &p_multigoal_dict);
+	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Dictionary &p_multigoal_dict, int p_depth, int p_verbose);
+	static Array method_split_multigoal(const Dictionary &p_state, const Dictionary &p_multigoal_dict);
 
 protected:
 	static void _bind_methods();
