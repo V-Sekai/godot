@@ -108,7 +108,7 @@ Variant PlannerPlan::_apply_action_and_continue(Dictionary p_state, Array p_firs
 }
 
 Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const Array p_task1, const Array p_todo_list, const Array p_plan, const int p_depth) {
-	Array relevant = current_domain->task_method_dictionary[p_task1[0]];
+	TypedArray<Callable> relevant = current_domain->task_method_dictionary[p_task1[0]];
 	if (verbose >= 3) {
 		print_line("Depth: " + itos(p_depth) + ", Task " + _item_to_string(p_task1) + ", Todo List " + _item_to_string(p_todo_list) + ", Plan " + _item_to_string(p_plan));
 	}
@@ -124,7 +124,7 @@ Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const A
 		Variant result = method.callv(arguments);
 		if (result.is_array()) {
 			Array subgoals = result;
-			Array todo_list;
+			TypedArray<Array> todo_list;
 			if (!subgoals.is_empty()) {
 				todo_list.append_array(subgoals);
 			}
@@ -171,7 +171,7 @@ Variant PlannerPlan::_refine_multigoal_and_continue(const Dictionary p_state, co
 		Variant result = callable.call(p_state, p_first_goal);
 		if (result.is_array()) {
 			Array subgoals = result;
-			Array subtodo_list;
+			TypedArray<Array> subtodo_list;
 			if (verbose >= 3) {
 				print_line("Intermediate computation: Method applicable.");
 				print_line("Depth: " + itos(p_depth) + ", Subgoals: " + _item_to_string(subgoals));
@@ -210,16 +210,28 @@ Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, cons
 	String argument = p_goal1[1];
 	Variant value = p_goal1[2];
 
-	Dictionary state_variable = p_state[state_variable_name];
-
-	if (state_variable[argument] == value) {
-		if (verbose >= 3) {
-			print_line("Intermediate computation: Goal already achieved.");
+	// Check if goal is already achieved (only if state variable exists)
+	if (p_state.has(state_variable_name)) {
+		Variant state_var_val = p_state[state_variable_name];
+		if (state_var_val.get_type() == Variant::DICTIONARY) {
+			Dictionary state_variable = state_var_val;
+			if (state_variable.has(argument) && state_variable[argument] == value) {
+				if (verbose >= 3) {
+					print_line("Intermediate computation: Goal already achieved.");
+				}
+				return _seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
+			}
 		}
-		return _seek_plan(p_state, p_todo_list, p_plan, p_depth + 1);
 	}
 
-	Array relevant = current_domain->unigoal_method_dictionary[state_variable_name];
+	if (!current_domain->unigoal_method_dictionary.has(state_variable_name)) {
+		if (verbose >= 2) {
+			ERR_PRINT(vformat("Recursive call: No unigoal methods found for: %s", state_variable_name));
+		}
+		return false;
+	}
+
+	TypedArray<Callable> relevant = current_domain->unigoal_method_dictionary[state_variable_name];
 	if (verbose >= 3) {
 		print_line("Methods: " + _item_to_string(relevant));
 	}
@@ -229,12 +241,31 @@ Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, cons
 		if (verbose >= 2) {
 			print_line("Depth: " + itos(p_depth) + ", Trying method: " + _item_to_string(method));
 		}
-		Variant result = method.call(p_state, argument, value);
+		// Call method with state and all goal arguments (matching aria-planner pattern: [current_state | Tuple.to_list(curr_node.info)])
+		Variant args_variants[3] = { p_state, argument, value };
+		const Variant *args[3] = { &args_variants[0], &args_variants[1], &args_variants[2] };
+		Callable::CallError call_error;
+		Variant result;
+		method.callp(args, 3, result, call_error);
+		if (call_error.error != Callable::CallError::CALL_OK) {
+			if (verbose >= 2) {
+				ERR_PRINT(vformat("Method call failed with error %d at argument %d (expected %d)", call_error.error, call_error.argument, call_error.expected));
+			}
+			continue;
+		}
 		if (result.is_array()) {
 			Array subgoals = result;
 			Array subtodo_list;
 			if (!subgoals.is_empty()) {
-				subtodo_list.append_array(subgoals);
+				// Check if subgoals is a single action array or array of actions
+				// If first element is not an array, treat subgoals as a single action
+				if (subgoals.size() > 0 && subgoals[0].get_type() != Variant::ARRAY) {
+					// Single action array, add as one element
+					subtodo_list.push_back(subgoals);
+				} else {
+					// Array of actions, append each
+					subtodo_list.append_array(subgoals);
+				}
 			}
 			if (verify_goals) {
 				subtodo_list.push_back(varray("_verify_g", method.get_method(), state_variable_name, argument, value, p_depth, verbose));

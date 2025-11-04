@@ -400,7 +400,7 @@ static Variant tm_move_one(Dictionary p_state, String p_b1, String p_dest) {
 }
 
 // Method: tm_get - get a block (pickup or unstack)
-static Variant tm_get(Dictionary p_state, String p_b1) {
+static Variant tm_get(Dictionary p_state, String p_b1, Variant p_value) {
 	Dictionary clear = p_state["clear"];
 	Dictionary pos = p_state["pos"];
 	
@@ -616,7 +616,7 @@ static Dictionary attach_temporal_metadata(const Array &p_action_array, int64_t 
 
 TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
-	Ref<PlannerDomain> domain = setup_blocks_domain();
+	Ref<PlannerDomain> domain = setup_blocks_domain_goals_only();
 	plan->set_current_domain(domain);
 	
 	Dictionary state = create_init_state_1();

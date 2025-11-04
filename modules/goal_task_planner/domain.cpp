@@ -82,7 +82,7 @@ void PlannerDomain::add_unigoal_methods(String p_task_name, TypedArray<Callable>
 	if (!unigoal_method_dictionary.has(p_task_name)) {
 		unigoal_method_dictionary[p_task_name] = p_methods;
 	} else {
-		Array existing_methods = unigoal_method_dictionary[p_task_name];
+		TypedArray<Callable> existing_methods = unigoal_method_dictionary[p_task_name];
 		for (int i = 0; i < p_methods.size(); ++i) {
 			Callable m = p_methods[i];
 			if (m.is_null()) {
@@ -98,7 +98,7 @@ void PlannerDomain::add_unigoal_methods(String p_task_name, TypedArray<Callable>
 
 void PlannerDomain::add_task_methods(String p_task_name, TypedArray<Callable> p_methods) {
 	if (task_method_dictionary.has(p_task_name)) {
-		Array existing_methods = task_method_dictionary[p_task_name];
+		TypedArray<Callable> existing_methods = task_method_dictionary[p_task_name];
 		for (int i = 0; i < p_methods.size(); ++i) {
 			Callable m = p_methods[i];
 			if (m.is_null()) {
