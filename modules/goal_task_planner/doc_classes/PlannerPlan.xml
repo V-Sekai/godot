@@ -24,6 +24,27 @@
 				The return value is a [Variant], which means it could be of any type. In this case, it returns either false or an array of actions.
 			</description>
 		</method>
+		<method name="generate_plan_id">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="get_global_state">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
+		<method name="initialize_database">
+			<return type="bool" />
+			<param index="0" name="db_path" type="String" default="&quot;&quot;" />
+			<description>
+			</description>
+		</method>
+		<method name="load_temporal_state">
+			<return type="Dictionary" />
+			<description>
+			</description>
+		</method>
 		<method name="run_lazy_lookahead">
 			<return type="Dictionary" />
 			<param index="0" name="state" type="Dictionary" />
@@ -32,6 +53,26 @@
 			<description>
 				Initiates a lazy lookahead search to determine a [PlannerPlan], attempting up to max_tries times.
 				The return value is the resulting state.
+			</description>
+		</method>
+		<method name="run_lazy_refineahead">
+			<return type="Dictionary" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="todo_list" type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="store_temporal_state">
+			<return type="void" />
+			<param index="0" name="state" type="Dictionary" />
+			<param index="1" name="current_time" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="submit_operation">
+			<return type="Dictionary" />
+			<param index="0" name="operation" type="Dictionary" />
+			<description>
 			</description>
 		</method>
 	</methods>
@@ -49,4 +90,11 @@
 			Enables or disables the verification of the state to confirm if the goals are met.
 		</member>
 	</members>
+	<signals>
+		<signal name="plan_id_generated">
+			<param index="0" name="plan_id" type="String" />
+			<description>
+			</description>
+		</signal>
+	</signals>
 </class>

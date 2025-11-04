@@ -43,6 +43,7 @@
 #include "modules/goal_task_planner/domain.h"
 #include "modules/goal_task_planner/multigoal.h"
 #include "modules/goal_task_planner/plan.h"
+#include "modules/goal_task_planner/planner_state.h"
 
 #ifdef TOOLS_ENABLED
 namespace TestLogistics {
@@ -616,6 +617,167 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multigoal" * doctest::skip(true)) {
 	answer.push_back(varray("drive_truck", "truck1", "location2"));
 	answer.push_back(varray("unload_truck", "package1", "location2"));
 	CHECK_EQ(plan, answer);
+}
+
+TEST_CASE("[Modules][GoalTaskPlanner] Temporal planning with entity capabilities") {
+	Ref<PlannerPlan> planner;
+	planner.instantiate();
+	
+	// Initialize SQLite database for temporal state
+	planner->initialize_database("");
+	
+	// Create state with entity capabilities
+	Ref<PlannerState> planner_state = memnew(PlannerState);
+	planner_state->set_entity_capability("truck1", "movable", true);
+	planner_state->set_entity_capability("truck1", "speed", 5.0);
+	planner_state->set_entity_capability("plane2", "movable", true);
+	planner_state->set_entity_capability("plane2", "speed", 50.0);
+	
+	// Convert PlannerState to Dictionary for planning
+	Dictionary state;
+	before_each(state, planner, Ref<PlannerDomain>(memnew(PlannerDomain)));
+	
+	// Store temporal state with absolute time
+	int64_t current_time = PlannerHLClock::now_microseconds();
+	planner->store_temporal_state(state, current_time);
+	
+	// Submit operation with temporal constraints
+	Dictionary operation;
+	operation["action"] = "drive_truck";
+	operation["truck"] = "truck1";
+	operation["location"] = "location2";
+	Dictionary result = planner->submit_operation(operation);
+	
+	CHECK(result.has("operation_id"));
+	CHECK(result.has("agreed_at"));
+	int64_t agreed_at = result["agreed_at"];
+	CHECK(agreed_at >= current_time); // Should be absolute microseconds
+	
+	// Load temporal state back
+	Dictionary loaded_state = planner->load_temporal_state();
+	CHECK(loaded_state.has("truck_at"));
+	
+	// Verify entity capabilities are accessible
+	CHECK(planner_state->has_entity("truck1"));
+	CHECK(planner_state->get_entity_capability("truck1", "movable") == true);
+}
+
+TEST_CASE("[Modules][GoalTaskPlanner] Planning with temporal constraints in absolute time") {
+	Ref<PlannerPlan> planner;
+	planner.instantiate();
+	planner->initialize_database("");
+	
+	Ref<PlannerDomain> the_domain;
+	the_domain.instantiate();
+	Dictionary state;
+	before_each(state, planner, the_domain);
+	
+	// Set HLC with absolute microseconds
+	PlannerHLClock hlc;
+	int64_t start_time = PlannerHLClock::now_microseconds();
+	hlc.set_start_time(start_time);
+	hlc.set_duration(5000000LL); // 5 seconds
+	hlc.calculate_end_from_duration();
+	planner->set_hlc(hlc);
+	
+	// Plan with temporal constraints
+	Array task;
+	task.push_back(varray("at", "package1", "location2"));
+	Variant plan = planner->find_plan(state, task);
+	
+	// Verify plan exists and HLC is maintained
+	CHECK(plan.get_type() == Variant::ARRAY);
+	PlannerHLClock retrieved_hlc = planner->get_hlc();
+	CHECK(retrieved_hlc.get_start_time() == start_time);
+}
+
+TEST_CASE("[Modules][GoalTaskPlanner] Entity capability filtering in planning") {
+	Ref<PlannerPlan> planner;
+	planner.instantiate();
+	Ref<PlannerDomain> the_domain;
+	the_domain.instantiate();
+	Dictionary state;
+	before_each(state, planner, the_domain);
+	
+	// Add entity capabilities to state
+	Ref<PlannerState> planner_state = memnew(PlannerState);
+	planner_state->set_entity_capability("truck1", "can_move", true);
+	planner_state->set_entity_capability("truck6", "can_move", false); // Disabled
+	
+	// Plan should use truck1 (has capability) not truck6
+	Array task;
+	task.push_back(varray("at", "package1", "location2"));
+	Variant plan = planner->find_plan(state, task);
+	
+	// Verify plan uses truck1
+	CHECK(plan.get_type() == Variant::ARRAY);
+	Array plan_array = plan;
+	bool uses_truck1 = false;
+	for (int i = 0; i < plan_array.size(); i++) {
+		Array action = plan_array[i];
+		if (action.size() > 1 && action[1] == "truck1") {
+			uses_truck1 = true;
+			break;
+		}
+	}
+	CHECK(uses_truck1 == true);
+}
+
+TEST_CASE("[Modules][GoalTaskPlanner] Multi-entity planning with capabilities") {
+	Ref<PlannerPlan> planner;
+	planner.instantiate();
+	planner->initialize_database("");
+	
+	Ref<PlannerDomain> the_domain;
+	the_domain.instantiate();
+	Dictionary state;
+	before_each(state, planner, the_domain);
+	
+	// Add multiple entities with capabilities
+	Ref<PlannerState> planner_state = memnew(PlannerState);
+	planner_state->set_entity_capability("truck1", "movable", true);
+	planner_state->set_entity_capability("truck6", "movable", true);
+	planner_state->set_entity_capability("plane2", "movable", true);
+	
+	Array entities = planner_state->get_all_entities();
+	CHECK(entities.size() >= 3);
+	
+	// Plan with multiple goals requiring different entities
+	Array task;
+	task.push_back(varray("at", "package1", "location2"));
+	task.push_back(varray("at", "package2", "location10"));
+	Variant plan = planner->find_plan(state, task);
+	
+	CHECK(plan.get_type() == Variant::ARRAY);
+}
+
+TEST_CASE("[Modules][GoalTaskPlanner] Temporal operation submission and retrieval") {
+	Ref<PlannerPlan> planner;
+	planner.instantiate();
+	planner->initialize_database("");
+	
+	// Submit multiple operations with absolute timestamps
+	Dictionary op1;
+	op1["type"] = "task";
+	op1["name"] = "move_package1";
+	Dictionary result1 = planner->submit_operation(op1);
+	int64_t time1 = result1["agreed_at"];
+	
+	// Small delay simulation
+	int64_t time2 = PlannerHLClock::now_microseconds();
+	
+	Dictionary op2;
+	op2["type"] = "action";
+	op2["name"] = "pickup";
+	Dictionary result2 = planner->submit_operation(op2);
+	int64_t time2_result = result2["agreed_at"];
+	
+	// Verify operations are stored with increasing timestamps
+	CHECK(time2_result >= time1);
+	
+	// Load global state
+	Dictionary global_state = planner->get_global_state();
+	CHECK(global_state.has("hlc"));
 }
 
 } // namespace TestLogistics

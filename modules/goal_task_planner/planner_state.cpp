@@ -41,6 +41,12 @@ void PlannerState::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("has_subject_variable", "variable"), &PlannerState::has_subject_variable);
 	ClassDB::bind_method(D_METHOD("has_predicate", "subject", "predicate"), &PlannerState::has_predicate);
+
+	// Entity capabilities methods
+	ClassDB::bind_method(D_METHOD("get_entity_capability", "entity_id", "capability"), &PlannerState::get_entity_capability);
+	ClassDB::bind_method(D_METHOD("set_entity_capability", "entity_id", "capability", "value"), &PlannerState::set_entity_capability);
+	ClassDB::bind_method(D_METHOD("has_entity", "entity_id"), &PlannerState::has_entity);
+	ClassDB::bind_method(D_METHOD("get_all_entities"), &PlannerState::get_all_entities);
 }
 
 Variant PlannerState::get_predicate(const String &p_subject, const String &p_predicate) const {
@@ -84,4 +90,34 @@ bool PlannerState::has_predicate(const String &p_subject, const String &p_predic
 	}
 	Dictionary subject_data = data[p_subject];
 	return subject_data.has(p_predicate);
+}
+
+Variant PlannerState::get_entity_capability(const String &p_entity_id, const String &p_capability) const {
+	if (entity_capabilities.has(p_entity_id)) {
+		Dictionary entity_data = entity_capabilities[p_entity_id];
+		if (entity_data.has(p_capability)) {
+			return entity_data[p_capability];
+		}
+	}
+	return Variant();
+}
+
+void PlannerState::set_entity_capability(const String &p_entity_id, const String &p_capability, Variant p_value) {
+	if (entity_capabilities.has(p_entity_id)) {
+		Dictionary entity_data = entity_capabilities[p_entity_id];
+		entity_data[p_capability] = p_value;
+		entity_capabilities[p_entity_id] = entity_data;
+	} else {
+		Dictionary entity_data;
+		entity_data[p_capability] = p_value;
+		entity_capabilities[p_entity_id] = entity_data;
+	}
+}
+
+bool PlannerState::has_entity(const String &p_entity_id) const {
+	return entity_capabilities.has(p_entity_id);
+}
+
+Array PlannerState::get_all_entities() const {
+	return entity_capabilities.keys();
 }

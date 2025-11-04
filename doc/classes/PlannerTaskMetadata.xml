@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="PlannerTaskMetadata" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_task_id" qualifiers="const">
+			<return type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_task_id">
+			<return type="void" />
+			<param index="0" name="id" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="update_metadata">
+			<return type="void" />
+			<param index="0" name="physical_time" type="int" />
+			<description>
+			</description>
+		</method>
+	</methods>
+</class>
