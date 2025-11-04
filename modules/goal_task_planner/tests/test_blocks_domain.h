@@ -474,9 +474,10 @@ static Ref<PlannerDomain> setup_blocks_domain_goals_only() {
 	holding_methods.push_back(callable_mp_static(&tm_get));
 	domain->add_unigoal_methods("holding", holding_methods);
 	
+	// "put" is a task, not a unigoal (it affects multiple state variables)
 	TypedArray<Callable> put_methods;
 	put_methods.push_back(callable_mp_static(&tm_put));
-	domain->add_unigoal_methods("put", put_methods);
+	domain->add_task_methods("put", put_methods);
 	
 	return domain;
 }
