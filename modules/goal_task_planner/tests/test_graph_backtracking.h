@@ -343,9 +343,9 @@ TEST_CASE("[Modules][GraphBacktracking] State snapshot restoration") {
 		
 		// Both actions should have executed
 		CHECK(final_state.has("step1"));
-		CHECK(final_state["step1"] == 1);
+		CHECK(final_state["step1"] == Variant(1));
 		CHECK(final_state.has("step2"));
-		CHECK(final_state["step2"] == 2);
+		CHECK(final_state["step2"] == Variant(2));
 		CHECK(final_state.has("initialized"));
 	}
 	
