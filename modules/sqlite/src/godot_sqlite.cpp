@@ -33,8 +33,9 @@
 #include "core/error/error_macros.h"
 #include "core/os/os.h"
 #include "core/variant/variant.h"
-#include "sqlite/sqlite3.h"
+#include "core/io/file_access.h"
 
+#include "sqlite/sqlite3.h"
 #include "godot_sqlite.h"
 
 Array fast_parse_row(sqlite3_stmt *stmt) {
