@@ -71,12 +71,7 @@ class PlannerPlan : public Resource {
 	// final plan; it just will verify whether m did what it was supposed to do.
 	bool verify_goals = true;
 	static String _item_to_string(Variant p_item);
-	Variant _seek_plan(Dictionary p_state, Array p_todo_list, Array p_plan, int p_depth);
 	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
-	Variant _apply_action_and_continue(Dictionary p_state, Array p_first_task, Array p_todo_list, Array p_plan, int p_depth);
-	Variant _refine_task_and_continue(const Dictionary p_state, const Array p_first_task, const Array p_todo_list, const Array p_plan, const int p_depth);
-	Variant _refine_multigoal_and_continue(const Dictionary p_state, const Ref<PlannerMultigoal> p_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
-	Variant _refine_unigoal_and_continue(const Dictionary p_state, const Array p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
 	// Graph-based planning methods
 	Dictionary _planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter);
 	bool _is_command_blacklisted(Variant p_command) const;

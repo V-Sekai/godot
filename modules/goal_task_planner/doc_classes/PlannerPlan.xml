@@ -83,6 +83,8 @@
 		<member name="domains" type="PlannerDomain[]" setter="set_domains" getter="get_domains" default="[]">
 			The collection of [PlannerDomain]s available to the [PlannerPlan].
 		</member>
+		<member name="max_depth" type="int" setter="set_max_depth" getter="get_max_depth" default="100">
+		</member>
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
 			The verbosity level of the [PlannerPlan]'s output. This is useful for debugging and understanding the plan's execution. Level 0 is off, levels 1 to 3 show increasing verbosity with 3 being the maximum.
 		</member>

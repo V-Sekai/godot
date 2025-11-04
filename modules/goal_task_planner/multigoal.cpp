@@ -30,36 +30,51 @@
 
 #include "multigoal.h"
 
+#include "core/object/class_db.h"
+
 void PlannerMultigoal::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_goal_variables"), &PlannerMultigoal::get_goal_variables);
-	ClassDB::bind_method(D_METHOD("get_goal_conditions_for_variable", "variable"), &PlannerMultigoal::get_goal_conditions_for_variable);
-	ClassDB::bind_method(D_METHOD("get_goal_value", "variable", "argument"), &PlannerMultigoal::get_goal_value);
-	ClassDB::bind_method(D_METHOD("has_goal_condition", "variable", "argument"), &PlannerMultigoal::has_goal_condition);
-
-	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal"), &PlannerMultigoal::method_goals_not_achieved);
-	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal", "depth", "verbose"), &PlannerMultigoal::method_verify_multigoal);
-	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_split_multigoal", "state", "multigoal"), &PlannerMultigoal::method_split_multigoal);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("is_multigoal_dict", "variant"), &PlannerMultigoal::is_multigoal_dict);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("get_goal_variables", "multigoal_dict"), &PlannerMultigoal::get_goal_variables);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("get_goal_conditions_for_variable", "multigoal_dict", "variable"), &PlannerMultigoal::get_goal_conditions_for_variable);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("get_goal_value", "multigoal_dict", "variable", "argument"), &PlannerMultigoal::get_goal_value);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("has_goal_condition", "multigoal_dict", "variable", "argument"), &PlannerMultigoal::has_goal_condition);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal_dict"), &PlannerMultigoal::method_goals_not_achieved);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal_dict", "depth", "verbose"), &PlannerMultigoal::method_verify_multigoal);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_split_multigoal", "state", "multigoal_dict"), &PlannerMultigoal::method_split_multigoal);
 }
 
-PlannerMultigoal::PlannerMultigoal(String p_multigoal_name, Dictionary p_state_variables) {
-	set_name(p_multigoal_name);
-	state = p_state_variables;
+// Check if a Variant is a Dictionary multigoal (all values are dictionaries)
+bool PlannerMultigoal::is_multigoal_dict(const Variant &p_variant) {
+	if (p_variant.get_type() != Variant::DICTIONARY) {
+		return false;
+	}
+	Dictionary dict = p_variant;
+	// Check if all values are dictionaries (nested structure of multigoal)
+	Array keys = dict.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		Variant value = dict[key];
+		if (value.get_type() != Variant::DICTIONARY) {
+			return false;
+		}
+	}
+	return true;
 }
 
-Array PlannerMultigoal::get_goal_variables() const {
-	return state.keys();
+Array PlannerMultigoal::get_goal_variables(const Dictionary &p_multigoal_dict) {
+	return p_multigoal_dict.keys();
 }
 
-Dictionary PlannerMultigoal::get_goal_conditions_for_variable(const String &p_variable) const {
-	if (state.has(p_variable) && state[p_variable].get_type() == Variant::DICTIONARY) {
-		return state[p_variable];
+Dictionary PlannerMultigoal::get_goal_conditions_for_variable(const Dictionary &p_multigoal_dict, const String &p_variable) {
+	if (p_multigoal_dict.has(p_variable) && p_multigoal_dict[p_variable].get_type() == Variant::DICTIONARY) {
+		return p_multigoal_dict[p_variable];
 	}
 	return Dictionary();
 }
 
-Variant PlannerMultigoal::get_goal_value(const String &p_variable, const String &p_argument) const {
-	if (state.has(p_variable) && state[p_variable].get_type() == Variant::DICTIONARY) {
-		Dictionary conditions = state[p_variable];
+Variant PlannerMultigoal::get_goal_value(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument) {
+	if (p_multigoal_dict.has(p_variable) && p_multigoal_dict[p_variable].get_type() == Variant::DICTIONARY) {
+		Dictionary conditions = p_multigoal_dict[p_variable];
 		if (conditions.has(p_argument)) {
 			return conditions[p_argument];
 		}
@@ -67,101 +82,21 @@ Variant PlannerMultigoal::get_goal_value(const String &p_variable, const String 
 	return Variant();
 }
 
-bool PlannerMultigoal::has_goal_condition(const String &p_variable, const String &p_argument) const {
-	if (state.has(p_variable) && state[p_variable].get_type() == Variant::DICTIONARY) {
-		Dictionary conditions = state[p_variable];
+bool PlannerMultigoal::has_goal_condition(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument) {
+	if (p_multigoal_dict.has(p_variable) && p_multigoal_dict[p_variable].get_type() == Variant::DICTIONARY) {
+		Dictionary conditions = p_multigoal_dict[p_variable];
 		return conditions.has(p_argument);
 	}
 	return false;
 }
 
-Array PlannerMultigoal::method_split_multigoal(const Dictionary &p_state, const Ref<PlannerMultigoal> &p_multigoal) {
-	Dictionary goal_state = method_goals_not_achieved(p_state, p_multigoal);
-	Array goal_list;
-	for (Variant state_variable_name : goal_state.keys()) {
-		Variant state_values = goal_state[state_variable_name];
-		if (state_values.get_type() != Variant::DICTIONARY) {
-			continue;
-		}
-		Dictionary goal_value_dictionary = state_values;
-		Dictionary state_variable = state_values;
-		for (Variant state_goal : state_variable.keys()) {
-			if (!state_variable.has(state_goal)) {
-				continue;
-			}
-			Array goal;
-			goal.resize(3);
-			goal[0] = state_variable_name;
-			goal[1] = state_goal;
-			goal[2] = state_variable[state_goal];
-			goal_list.push_back(goal);
-		}
-	}
-	for (Variant state_variable_name : p_state.keys()) {
-		Variant state_values = p_state[state_variable_name];
-		if (state_values.get_type() != Variant::DICTIONARY) {
-			continue;
-		}
-		Dictionary goal_value_dictionary = state_values;
-		Dictionary state_variable = state_values;
-		for (Variant state_goal : state_variable.keys()) {
-			if (!state_variable.has(state_goal)) {
-				continue;
-			}
-			Array goal;
-			goal.resize(3);
-			goal[0] = state_variable_name;
-			goal[1] = state_goal;
-			goal[2] = state_variable[state_goal];
-			bool exists = false;
-			for (int i = 0; i < goal_list.size(); i++) {
-				Array existing_goal = goal_list[i];
-				if (existing_goal[0] == goal[0] && existing_goal[1] == goal[1]) {
-					exists = true;
-					break;
-				}
-			}
-
-			if (!exists) {
-				goal_list.push_back(goal);
-			}
-		}
-	}
-	if (!goal_list.is_empty()) {
-		goal_list.push_back(p_multigoal);
-	}
-	return goal_list;
-}
-
-Variant PlannerMultigoal::method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Ref<PlannerMultigoal> &p_multigoal, int p_depth, int p_verbose) {
-	if (p_multigoal.is_null()) {
-		return false;
-	}
-	Dictionary goal_dict = method_goals_not_achieved(p_state, p_multigoal);
-	if (!goal_dict.is_empty()) {
-		if (p_verbose >= 3) {
-			print_line(vformat("Depth %d: method %s didn't achieve %s", p_depth, p_method, p_multigoal));
-		}
-		return false;
-	}
-
-	if (p_verbose >= 3) {
-		print_line(vformat("Depth %d: method %s achieved %s", p_depth, p_method, p_multigoal));
-	}
-	return Array();
-}
-
-Dictionary PlannerMultigoal::method_goals_not_achieved(const Dictionary &p_state, const Ref<PlannerMultigoal> &p_multigoal) {
-	if (p_multigoal.is_null()) {
-		return p_state;
-	}
-
+Dictionary PlannerMultigoal::method_goals_not_achieved(const Dictionary &p_state, const Dictionary &p_multigoal_dict) {
 	Dictionary unmatched_states;
-	Array goal_variables = p_multigoal->get_goal_variables();
+	Array goal_variables = get_goal_variables(p_multigoal_dict);
 
 	for (int i = 0; i < goal_variables.size(); ++i) {
 		String variable_name = goal_variables[i];
-		Dictionary goal_conditions = p_multigoal->get_goal_conditions_for_variable(variable_name);
+		Dictionary goal_conditions = get_goal_conditions_for_variable(p_multigoal_dict, variable_name);
 
 		for (const Variant *key = goal_conditions.next(nullptr); key; key = goal_conditions.next(key)) {
 			String argument = *key;
@@ -196,4 +131,52 @@ Dictionary PlannerMultigoal::method_goals_not_achieved(const Dictionary &p_state
 		}
 	}
 	return unmatched_states;
+}
+
+Variant PlannerMultigoal::method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Dictionary &p_multigoal_dict, int p_depth, int p_verbose) {
+	Dictionary goal_dict = method_goals_not_achieved(p_state, p_multigoal_dict);
+	if (!goal_dict.is_empty()) {
+		if (p_verbose >= 3) {
+			print_line(vformat("Depth %d: method %s didn't achieve %s", p_depth, p_method, p_multigoal_dict));
+		}
+		return false;
+	}
+
+	if (p_verbose >= 3) {
+		print_line(vformat("Depth %d: method %s achieved %s", p_depth, p_method, p_multigoal_dict));
+	}
+	return Array();
+}
+
+Array PlannerMultigoal::method_split_multigoal(const Dictionary &p_state, const Dictionary &p_multigoal_dict) {
+	// Get only the unachieved goals (matching IPyHOP's _goals_not_achieved behavior)
+	Dictionary goal_state = method_goals_not_achieved(p_state, p_multigoal_dict);
+	Array goal_list;
+	
+	// Convert each unachieved goal to a Dictionary multigoal: {variable_name: {argument: value}}
+	for (Variant state_variable_name : goal_state.keys()) {
+		Variant state_values = goal_state[state_variable_name];
+		if (state_values.get_type() != Variant::DICTIONARY) {
+			continue;
+		}
+		Dictionary state_variable = state_values;
+		for (Variant state_goal : state_variable.keys()) {
+			if (!state_variable.has(state_goal)) {
+				continue;
+			}
+			// Convert single goal to Dictionary multigoal: {variable_name: {argument: value}}
+			Dictionary multigoal;
+			Dictionary variable_dict;
+			variable_dict[state_goal] = state_variable[state_goal];
+			multigoal[state_variable_name] = variable_dict;
+			goal_list.push_back(multigoal);
+		}
+	}
+	
+	// Match IPyHOP's behavior: if there are unachieved goals, append multigoal to re-check later
+	// If all goals are achieved (goal_list is empty), return empty list
+	if (!goal_list.is_empty()) {
+		goal_list.push_back(p_multigoal_dict);
+	}
+	return goal_list;
 }

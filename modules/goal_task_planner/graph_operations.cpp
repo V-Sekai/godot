@@ -7,8 +7,8 @@
 #include "multigoal.h"
 
 PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict) {
-	// Check if it's a MultiGoal
-	if (Object::cast_to<PlannerMultigoal>(p_node_info)) {
+	// Check if it's a MultiGoal (Dictionary-based)
+	if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
 		return PlannerNodeType::TYPE_MULTIGOAL;
 	}
 	

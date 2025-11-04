@@ -258,12 +258,12 @@ static Variant a_stack(Dictionary p_state, String p_b, String p_c) {
 }
 
 // Helper function: is_done - check if block b1 is in its final position
-static bool is_done(String p_b1, Dictionary p_state, Ref<PlannerMultigoal> p_goal) {
+static bool is_done(String p_b1, Dictionary p_state, Dictionary p_goal) {
 	if (p_b1 == "table") {
 		return true;
 	}
 	
-	Dictionary goal_pos = p_goal->get_goal_conditions_for_variable("pos");
+	Dictionary goal_pos = PlannerMultigoal::get_goal_conditions_for_variable(p_goal, "pos");
 	Dictionary state_pos = p_state["pos"];
 	
 	if (goal_pos.has(p_b1) && goal_pos[p_b1] != state_pos[p_b1]) {
@@ -276,7 +276,7 @@ static bool is_done(String p_b1, Dictionary p_state, Ref<PlannerMultigoal> p_goa
 }
 
 // Helper function: status - determine status of block b1
-static String status(String p_b1, Dictionary p_state, Ref<PlannerMultigoal> p_goal) {
+static String status(String p_b1, Dictionary p_state, Dictionary p_goal) {
 	if (is_done(p_b1, p_state, p_goal)) {
 		return "done";
 	}
@@ -286,7 +286,7 @@ static String status(String p_b1, Dictionary p_state, Ref<PlannerMultigoal> p_go
 		return "inaccessible";
 	}
 	
-	Dictionary goal_pos = p_goal->get_goal_conditions_for_variable("pos");
+	Dictionary goal_pos = PlannerMultigoal::get_goal_conditions_for_variable(p_goal, "pos");
 	if (!goal_pos.has(p_b1) || goal_pos[p_b1] == "table") {
 		return "move-to-table";
 	}
@@ -308,7 +308,7 @@ static Array all_blocks(Dictionary p_state) {
 }
 
 // Helper function: find_if - find first block matching condition
-static Variant find_if(Dictionary p_state, Ref<PlannerMultigoal> p_goal, String p_status) {
+static Variant find_if(Dictionary p_state, Dictionary p_goal, String p_status) {
 	Array blocks = all_blocks(p_state);
 	for (int i = 0; i < blocks.size(); i++) {
 		String b = blocks[i];
@@ -322,7 +322,7 @@ static Variant find_if(Dictionary p_state, Ref<PlannerMultigoal> p_goal, String 
 // Blocks World Methods
 
 // Method: tm_move_blocks - move blocks to achieve goal
-static Variant tm_move_blocks(Dictionary p_state, Ref<PlannerMultigoal> p_goal) {
+static Variant tm_move_blocks(Dictionary p_state, Dictionary p_goal) {
 	Array blocks = all_blocks(p_state);
 	
 	// Try to find a block that can be moved to its final position
@@ -343,7 +343,7 @@ static Variant tm_move_blocks(Dictionary p_state, Ref<PlannerMultigoal> p_goal) 
 			subtasks.push_back(move_blocks_task);
 			return subtasks;
 		} else if (s == "move-to-block") {
-			Dictionary goal_pos = p_goal->get_goal_conditions_for_variable("pos");
+			Dictionary goal_pos = PlannerMultigoal::get_goal_conditions_for_variable(p_goal, "pos");
 			String dest = goal_pos[b1];
 			Array subtasks;
 			Array move_task;
@@ -381,23 +381,15 @@ static Variant tm_move_blocks(Dictionary p_state, Ref<PlannerMultigoal> p_goal) 
 	return Array(); // Empty array means task is done
 }
 
-// Helper function to create a PlannerMultigoal from a single goal (variable, argument, value)
-static Ref<PlannerMultigoal> create_multigoal_from_single_goal(String p_variable, String p_argument, Variant p_value) {
-	Dictionary goal_state;
-	Dictionary variable_dict;
-	variable_dict[p_argument] = p_value;
-	goal_state[p_variable] = variable_dict;
-	Ref<PlannerMultigoal> multigoal = memnew(PlannerMultigoal("", goal_state));
-	return multigoal;
-}
-
-// Method: tm_move_one - move one block to destination
+// Method: tm_move_one - move one block to destination (task-based, like IPyHOP)
 static Variant tm_move_one(Dictionary p_state, String p_b1, String p_dest) {
+	// Task-based: return tasks, not goals
 	Array subtasks;
 	
-	// Create multigoal for holding goal
-	Ref<PlannerMultigoal> holding_goal = create_multigoal_from_single_goal("holding", "hand", p_b1);
-	subtasks.push_back(holding_goal);
+	Array get_task;
+	get_task.push_back("get");
+	get_task.push_back(p_b1);
+	subtasks.push_back(get_task);
 	
 	Array put_task;
 	put_task.push_back("put");
@@ -408,59 +400,117 @@ static Variant tm_move_one(Dictionary p_state, String p_b1, String p_dest) {
 	return subtasks;
 }
 
-// Method: tm_get - get a block (pickup or unstack)
-// Goal format: ["holding", "hand", block_name]
-// Arguments: state, "hand" (argument), block_name (value)
-static Variant tm_get(Dictionary p_state, String p_argument, Variant p_value) {
-	// p_value is the block name we want to hold
-	String b1 = p_value;
+// Method: tm_get - get a block (pickup or unstack) - task-based, like IPyHOP
+// Task: ["get", block_name]
+// Arguments: state, block_name
+static Variant tm_get(Dictionary p_state, String p_b1) {
 	Dictionary clear = p_state["clear"];
 	Dictionary pos = p_state["pos"];
-	
-	if (clear[b1] == Variant(true)) {
-		Array subtask;
-		if (pos[b1] == "table") {
-			subtask.push_back("a_pickup");
-			subtask.push_back(b1);
-		} else {
-			subtask.push_back("a_unstack");
-			subtask.push_back(b1);
-			subtask.push_back(pos[b1]);
-		}
-		// Unigoal methods must return an Array of Arrays (todo list format)
-		// Each element must be a PlannerMultigoal, task, or action - not a single goal
-		Array result;
-		result.push_back(subtask);
-		return result;
-	}
-	return false; // Not applicable
-}
-
-// Method: tm_put - put a block (putdown or stack)
-static Variant tm_put(Dictionary p_state, String p_b1, String p_b2) {
 	Dictionary holding = p_state["holding"];
-	Dictionary clear = p_state["clear"];
 	
+	// Check if task is already achieved (already holding the block)
 	if (holding["hand"] == p_b1) {
+		Array result;
+		return result; // Empty array means task already achieved
+	}
+	
+	if (clear[p_b1] == Variant(true)) {
 		Array subtask;
-		if (p_b2 == "table") {
-			subtask.push_back("a_putdown");
+		if (pos[p_b1] == "table") {
+			subtask.push_back("a_pickup");
 			subtask.push_back(p_b1);
 		} else {
-			if (clear[p_b2] == Variant(true)) {
-				subtask.push_back("a_stack");
-				subtask.push_back(p_b1);
-				subtask.push_back(p_b2);
-			} else {
-				return false; // Not applicable
-			}
+			subtask.push_back("a_unstack");
+			subtask.push_back(p_b1);
+			subtask.push_back(pos[p_b1]);
 		}
 		// Task methods must return an Array of Arrays (todo list format)
 		Array result;
 		result.push_back(subtask);
 		return result;
 	}
-	return false; // Not applicable
+	return false; // Not applicable - block not clear
+}
+
+// Method: tm_make_clear - make a block clear (task-based)
+// Task: ["make_clear", block_name]
+// Arguments: state, block_name
+static Variant tm_make_clear(Dictionary p_state, String p_b2) {
+	Dictionary clear = p_state["clear"];
+	Dictionary pos = p_state["pos"];
+	
+	// If already clear or is table, return empty (already achieved)
+	if (p_b2 == "table" || clear[p_b2] == Variant(true)) {
+		Array result;
+		return result; // Empty array means task already achieved
+	}
+	
+	// Find the block that's on top of b2
+	String b1;
+	Array pos_keys = pos.keys();
+	for (int i = 0; i < pos_keys.size(); i++) {
+		String block = pos_keys[i];
+		if (pos[block] == p_b2) {
+			b1 = block;
+			break;
+		}
+	}
+	
+	if (b1.is_empty()) {
+		return false; // Not applicable - no block found on top
+	}
+	
+	// To clear b2, move b1 to table
+	Array result;
+	Array move_task;
+	move_task.push_back("move_one");
+	move_task.push_back(b1);
+	move_task.push_back("table");
+	result.push_back(move_task);
+	
+	return result;
+}
+
+// Method: tm_put - put a block (putdown or stack) - task-based, like IPyHOP
+static Variant tm_put(Dictionary p_state, String p_b1, String p_b2) {
+	Dictionary holding = p_state["holding"];
+	Dictionary pos = p_state["pos"];
+	Dictionary clear = p_state["clear"];
+	
+	// Check if task is already achieved (block is already in desired position)
+	if (pos.has(p_b1) && pos[p_b1] == p_b2) {
+		Array result;
+		return result; // Empty array means task already achieved
+	}
+	
+	if (holding["hand"] == p_b1) {
+		Array result;
+		
+		if (p_b2 == "table") {
+			Array subtask;
+			subtask.push_back("a_putdown");
+			subtask.push_back(p_b1);
+			result.push_back(subtask);
+		} else {
+			// For stacking, check if destination is clear
+			// If not clear, add a task to clear it first
+			if (clear[p_b2] != Variant(true)) {
+				Array clear_task;
+				clear_task.push_back("make_clear");
+				clear_task.push_back(p_b2);
+				result.push_back(clear_task);
+			}
+			Array subtask;
+			subtask.push_back("a_stack");
+			subtask.push_back(p_b1);
+			subtask.push_back(p_b2);
+			result.push_back(subtask);
+		}
+		
+		// Task methods must return an Array of Arrays (todo list format)
+		return result;
+	}
+	return false; // Not applicable - not holding the block
 }
 
 // Helper function to set up blocks domain - goals only (unigoal methods)
@@ -522,12 +572,7 @@ static Ref<PlannerDomain> setup_blocks_domain_tasks_only() {
 	actions.push_back(callable_mp_static(&a_stack));
 	domain->add_actions(actions);
 	
-	// Add unigoal methods (needed by tm_move_one which returns goals)
-	TypedArray<Callable> holding_methods;
-	holding_methods.push_back(callable_mp_static(&tm_get));
-	domain->add_unigoal_methods("holding", holding_methods);
-	
-	// Add task methods (task-based decomposition)
+	// Add task methods (task-based decomposition only - no goal methods)
 	TypedArray<Callable> move_blocks_methods;
 	move_blocks_methods.push_back(callable_mp_static(&tm_move_blocks));
 	domain->add_task_methods("move_blocks", move_blocks_methods);
@@ -536,10 +581,20 @@ static Ref<PlannerDomain> setup_blocks_domain_tasks_only() {
 	move_one_methods.push_back(callable_mp_static(&tm_move_one));
 	domain->add_task_methods("move_one", move_one_methods);
 	
+	// "get" is needed by tm_move_one
+	TypedArray<Callable> get_methods;
+	get_methods.push_back(callable_mp_static(&tm_get));
+	domain->add_task_methods("get", get_methods);
+	
 	// "put" is needed by tm_move_one
 	TypedArray<Callable> put_methods;
 	put_methods.push_back(callable_mp_static(&tm_put));
 	domain->add_task_methods("put", put_methods);
+	
+	// "make_clear" is needed by tm_put when destination is not clear
+	TypedArray<Callable> make_clear_methods;
+	make_clear_methods.push_back(callable_mp_static(&tm_make_clear));
+	domain->add_task_methods("make_clear", make_clear_methods);
 	
 	return domain;
 }
@@ -573,7 +628,7 @@ static Dictionary create_init_state_1() {
 }
 
 // Helper function to create multigoal 1a (from IPyHOP example)
-static Ref<PlannerMultigoal> create_multigoal_1a() {
+static Dictionary create_multigoal_1a() {
 	Dictionary goal_state;
 	
 	Dictionary pos;
@@ -592,12 +647,11 @@ static Ref<PlannerMultigoal> create_multigoal_1a() {
 	holding["hand"] = false;
 	goal_state["holding"] = holding;
 	
-	Ref<PlannerMultigoal> goal = memnew(PlannerMultigoal("goal1a", goal_state));
-	return goal;
+	return goal_state;
 }
 
 // Helper function to create goal 1a (for backward compatibility)
-static Ref<PlannerMultigoal> create_goal_1a() {
+static Dictionary create_goal_1a() {
 	return create_multigoal_1a();
 }
 
@@ -632,9 +686,9 @@ static Dictionary attach_temporal_metadata(const Array &p_action_array, int64_t 
 
 TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
-	Ref<PlannerDomain> domain = setup_blocks_domain_goals_only();
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
 	plan->set_current_domain(domain);
-	plan->set_verbose(3); // Enable verbose debugging
+	plan->set_verbose(0); // Disable verbose output for cleaner test results
 	
 	Dictionary state = create_init_state_1();
 	
@@ -678,31 +732,50 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	
 	SUBCASE("get should succeed for block a (unstack)") {
 		Array todo_list;
-		Ref<PlannerMultigoal> goal = create_multigoal_from_single_goal("holding", "hand", "a");
-		todo_list.push_back(goal);
+		// Task-based: use task instead of goal
+		Array task;
+		task.push_back("get");
+		task.push_back("a");
+		todo_list.push_back(task);
 		
 		Variant result = plan->find_plan(state, todo_list);
 		CHECK(result.get_type() == Variant::ARRAY);
-		Array plan_array = result;
-		CHECK(plan_array.size() == 1);
-		Array first_action = plan_array[0];
-		CHECK(first_action[0] == "a_unstack");
-		CHECK(first_action[1] == "a");
-		CHECK(first_action[2] == "b");
+		if (result.get_type() == Variant::ARRAY) {
+			Array plan_array = result;
+			CHECK(plan_array.size() == 1);
+			if (plan_array.size() > 0) {
+				Array first_action = plan_array[0];
+				CHECK(first_action[0] == "a_unstack");
+				CHECK(first_action[1] == "a");
+				CHECK(first_action[2] == "b");
+			}
+		} else {
+			// Planning failed, print error for debugging
+			ERR_PRINT(vformat("Planning failed. Result type: %d, Value: %s", result.get_type(), result));
+		}
 	}
 	
 	SUBCASE("get should succeed for block c (pickup)") {
 		Array todo_list;
-		Ref<PlannerMultigoal> goal = create_multigoal_from_single_goal("holding", "hand", "c");
-		todo_list.push_back(goal);
+		// Task-based: use task instead of goal
+		Array task;
+		task.push_back("get");
+		task.push_back("c");
+		todo_list.push_back(task);
 		
 		Variant result = plan->find_plan(state, todo_list);
 		CHECK(result.get_type() == Variant::ARRAY);
-		Array plan_array = result;
-		CHECK(plan_array.size() == 1);
-		Array first_action = plan_array[0];
-		CHECK(first_action[0] == "a_pickup");
-		CHECK(first_action[1] == "c");
+		if (result.get_type() == Variant::ARRAY) {
+			Array plan_array = result;
+			CHECK(plan_array.size() == 1);
+			if (plan_array.size() > 0) {
+				Array first_action = plan_array[0];
+				CHECK(first_action[0] == "a_pickup");
+				CHECK(first_action[1] == "c");
+			}
+		} else {
+			ERR_PRINT(vformat("Planning failed. Result type: %d, Value: %s", result.get_type(), result));
+		}
 	}
 	
 	SUBCASE("move_one should succeed") {
@@ -732,10 +805,10 @@ TEST_CASE("[Modules][BlocksDomain] Block stacking problem") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = setup_blocks_domain();
 	plan->set_current_domain(domain);
-	plan->set_verbose(0);
+	plan->set_verbose(3);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> goal = create_goal_1a();
+	Dictionary goal = create_goal_1a();
 	
 	SUBCASE("move_blocks task should achieve goal 1a") {
 		Array todo_list;
@@ -802,7 +875,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 	plan->set_verbose(0);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> goal = create_goal_1a();
+	Dictionary goal = create_goal_1a();
 	
 	SUBCASE("run_lazy_refineahead should solve blocks domain") {
 		Array todo_list;
@@ -814,7 +887,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 		Dictionary final_state = plan->run_lazy_refineahead(state, todo_list);
 		
 		// Verify final state matches goal
-		Dictionary goal_pos = goal->get_goal_conditions_for_variable("pos");
+		Dictionary goal_pos = PlannerMultigoal::get_goal_conditions_for_variable(goal, "pos");
 		Dictionary final_pos = final_state["pos"];
 		
 		Array goal_pos_keys = goal_pos.keys();
@@ -874,7 +947,7 @@ TEST_CASE("[Modules][BlocksDomain] Goal-based planning (unigoal methods only)") 
 	plan->set_verbose(0);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	Dictionary multigoal = create_multigoal_1a();
 	
 	SUBCASE("Unigoal methods should solve blocks problem") {
 		Array todo_list;
@@ -903,7 +976,7 @@ TEST_CASE("[Modules][BlocksDomain] Task-based planning (task methods only)") {
 	plan->set_verbose(0);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	Dictionary multigoal = create_multigoal_1a();
 	
 	SUBCASE("Task methods should solve blocks problem") {
 		Array todo_list;
@@ -928,7 +1001,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 	plan->set_verbose(0);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	Dictionary multigoal = create_multigoal_1a();
 	
 	SUBCASE("run_lazy_refineahead should solve blocks domain with goal methods") {
 		Array todo_list;
@@ -955,7 +1028,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 	plan->set_verbose(0);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	Dictionary multigoal = create_multigoal_1a();
 	
 	SUBCASE("run_lazy_refineahead should solve blocks domain with task methods") {
 		Array todo_list;
@@ -967,7 +1040,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 		Dictionary final_state = plan->run_lazy_refineahead(state, todo_list);
 		
 		// Verify final state matches multigoal
-		Dictionary multigoal_pos = multigoal->get_goal_conditions_for_variable("pos");
+		Dictionary multigoal_pos = PlannerMultigoal::get_goal_conditions_for_variable(multigoal, "pos");
 		Dictionary final_pos = final_state["pos"];
 		
 		Array multigoal_pos_keys = multigoal_pos.keys();
@@ -1069,7 +1142,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
 	plan->set_verbose(0);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	Dictionary multigoal = create_multigoal_1a();
 	
 	SUBCASE("Task with entity requirements should fail when entities unavailable") {
 		Array task;
@@ -1120,7 +1193,7 @@ TEST_CASE("[Modules][BlocksDomain] Temporal constraints in tasks") {
 	plan->set_verbose(0);
 	
 	Dictionary state = create_init_state_1();
-	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	Dictionary multigoal = create_multigoal_1a();
 	
 	SUBCASE("Task with temporal constraints should succeed") {
 		// Use absolute time in microseconds
