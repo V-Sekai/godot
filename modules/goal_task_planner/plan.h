@@ -118,16 +118,17 @@ class PlannerPlan : public Resource {
 	ConstrainingFactor _calculate_constraining_factor(const Variant &p_goal, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) const;
 	PlannerMetadata _extract_temporal_constraints(const Variant &p_item) const;
 	PlannerMetadata _extract_metadata(const Variant &p_item) const; // Extract full PlannerMetadata (temporal + entity requirements)
-	Array _optimize_unigoal_order(const Array &p_unigoals, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict);
-	Variant _attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints);
-	Dictionary _get_temporal_constraints(const Variant &p_item) const;
-	bool _has_temporal_constraints(const Variant &p_item) const;
 	
 	// Entity matching helper (used during planning when PlannerMetadata has entity requirements)
 	Dictionary _match_entities(const Dictionary &p_state, const LocalVector<PlannerEntityRequirement> &p_requirements) const;
 	bool _validate_entity_requirements(const Dictionary &p_state, const PlannerMetadata &p_metadata) const;
 
 public:
+	// Temporal constraint methods (public for testing)
+	Variant _attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints);
+	Dictionary _get_temporal_constraints(const Variant &p_item) const;
+	bool _has_temporal_constraints(const Variant &p_item) const;
+	Array _optimize_unigoal_order(const Array &p_unigoals, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict);
 	int get_verbose() const;
 	void set_verbose(int p_level);
 	TypedArray<PlannerDomain> get_domains() const;

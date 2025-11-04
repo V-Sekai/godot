@@ -13,14 +13,14 @@ TEST_CASE("[Modules][SQLite] Database initialization") {
     
     SUBCASE("In-memory database initialization") {
         bool success = plan->initialize_database("");
-        CHECK(success == true);
+        CHECK(success);
     }
     
     SUBCASE("File database initialization") {
         // Note: This would create a file, so we test in-memory for unit tests
         // In actual QA tests, we can test file-based databases
         bool success = plan->initialize_database(":memory:");
-        CHECK(success == true);
+        CHECK(success);
     }
     
     memdelete(plan.ptr());
@@ -41,7 +41,7 @@ TEST_CASE("[Modules][SQLite] Temporal state storage and retrieval") {
         CHECK(loaded.has("test_key"));
         CHECK(loaded["test_key"] == "test_value");
         CHECK(loaded.has("current_time"));
-        CHECK(loaded["current_time"] == current_time);
+        CHECK((int64_t)loaded["current_time"] == current_time);
     }
     
     SUBCASE("Multiple state updates") {
@@ -56,8 +56,8 @@ TEST_CASE("[Modules][SQLite] Temporal state storage and retrieval") {
         plan->store_temporal_state(state2, time2);
         
         Dictionary loaded = plan->load_temporal_state();
-        CHECK(loaded["version"] == 2); // Should get latest
-        CHECK(loaded["current_time"] == time2);
+        CHECK(loaded["version"] == Variant(2)); // Should get latest
+        CHECK((int64_t)loaded["current_time"] == time2);
     }
     
     memdelete(plan.ptr());

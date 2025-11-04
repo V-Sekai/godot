@@ -88,8 +88,9 @@ class PlannerDomain : public Resource {
 	GDCLASS(PlannerDomain, Resource);
 	friend PlannerPlan;
 
+public:
+	Dictionary action_dictionary; // Public for testing
 private:
-	Dictionary action_dictionary;
 	Dictionary task_method_dictionary;
 	Dictionary unigoal_method_dictionary;
 	TypedArray<Callable> multigoal_method_list;

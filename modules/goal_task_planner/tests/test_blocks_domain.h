@@ -70,7 +70,7 @@ static Variant c_pickup(Dictionary p_state, String p_b) {
 	Dictionary clear = p_state["clear"];
 	Dictionary holding = p_state["holding"];
 	
-	if (pos[p_b] == "table" && clear[p_b] == true && holding["hand"] == false) {
+	if (pos[p_b] == "table" && clear[p_b] == Variant(true) && holding["hand"] == Variant(false)) {
 		Dictionary new_state = p_state.duplicate();
 		Dictionary new_pos = pos.duplicate();
 		Dictionary new_clear = clear.duplicate();
@@ -93,7 +93,7 @@ static Variant c_unstack(Dictionary p_state, String p_b, String p_c) {
 	Dictionary clear = p_state["clear"];
 	Dictionary holding = p_state["holding"];
 	
-	if (pos[p_b] == p_c && p_c != "table" && clear[p_b] == true && holding["hand"] == false) {
+	if (pos[p_b] == p_c && p_c != "table" && clear[p_b] == Variant(true) && holding["hand"] == Variant(false)) {
 		Dictionary new_state = p_state.duplicate();
 		Dictionary new_pos = pos.duplicate();
 		Dictionary new_clear = clear.duplicate();
@@ -139,7 +139,7 @@ static Variant c_stack(Dictionary p_state, String p_b, String p_c) {
 	Dictionary pos = p_state["pos"];
 	Dictionary clear = p_state["clear"];
 	
-	if (pos[p_b] == "hand" && clear[p_c] == true) {
+	if (pos[p_b] == "hand" && clear[p_c] == Variant(true)) {
 		Dictionary new_state = p_state.duplicate();
 		Dictionary new_pos = pos.duplicate();
 		Dictionary new_clear = clear.duplicate();
@@ -168,7 +168,7 @@ static Variant a_pickup(Dictionary p_state, String p_b) {
 	Dictionary clear = p_state["clear"];
 	Dictionary holding = p_state["holding"];
 	
-	if (pos[p_b] == "table" && clear[p_b] == true && holding["hand"] == false) {
+	if (pos[p_b] == "table" && clear[p_b] == Variant(true) && holding["hand"] == Variant(false)) {
 		Dictionary new_state = p_state.duplicate();
 		Dictionary new_pos = pos.duplicate();
 		Dictionary new_clear = clear.duplicate();
@@ -191,7 +191,7 @@ static Variant a_unstack(Dictionary p_state, String p_b, String p_c) {
 	Dictionary clear = p_state["clear"];
 	Dictionary holding = p_state["holding"];
 	
-	if (pos[p_b] == p_c && p_c != "table" && clear[p_b] == true && holding["hand"] == false) {
+	if (pos[p_b] == p_c && p_c != "table" && clear[p_b] == Variant(true) && holding["hand"] == Variant(false)) {
 		Dictionary new_state = p_state.duplicate();
 		Dictionary new_pos = pos.duplicate();
 		Dictionary new_clear = clear.duplicate();
@@ -237,7 +237,7 @@ static Variant a_stack(Dictionary p_state, String p_b, String p_c) {
 	Dictionary pos = p_state["pos"];
 	Dictionary clear = p_state["clear"];
 	
-	if (pos[p_b] == "hand" && clear[p_c] == true) {
+	if (pos[p_b] == "hand" && clear[p_c] == Variant(true)) {
 		Dictionary new_state = p_state.duplicate();
 		Dictionary new_pos = pos.duplicate();
 		Dictionary new_clear = clear.duplicate();
@@ -282,7 +282,7 @@ static String status(String p_b1, Dictionary p_state, Ref<PlannerMultigoal> p_go
 	}
 	
 	Dictionary clear = p_state["clear"];
-	if (clear[p_b1] == false) {
+	if (clear[p_b1] == Variant(false)) {
 		return "inaccessible";
 	}
 	
@@ -294,7 +294,7 @@ static String status(String p_b1, Dictionary p_state, Ref<PlannerMultigoal> p_go
 	String goal_dest = goal_pos[p_b1];
 	if (is_done(goal_dest, p_state, p_goal)) {
 		Dictionary state_clear = p_state["clear"];
-		if (state_clear[goal_dest] == true) {
+		if (state_clear[goal_dest] == Variant(true)) {
 			return "move-to-block";
 		}
 	}
@@ -404,7 +404,7 @@ static Variant tm_get(Dictionary p_state, String p_b1) {
 	Dictionary clear = p_state["clear"];
 	Dictionary pos = p_state["pos"];
 	
-	if (clear[p_b1] == true) {
+	if (clear[p_b1] == Variant(true)) {
 		Array subtask;
 		if (pos[p_b1] == "table") {
 			subtask.push_back("a_pickup");
@@ -430,7 +430,7 @@ static Variant tm_put(Dictionary p_state, String p_b1, String p_b2) {
 			subtask.push_back("a_putdown");
 			subtask.push_back(p_b1);
 		} else {
-			if (clear[p_b2] == true) {
+			if (clear[p_b2] == Variant(true)) {
 				subtask.push_back("a_stack");
 				subtask.push_back(p_b1);
 				subtask.push_back(p_b2);
@@ -629,7 +629,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 		todo_list.push_back(action);
 		
 		Variant result = plan->find_plan(state, todo_list);
-		CHECK(result == false); // Should fail
+		CHECK(result == Variant(false)); // Should fail
 	}
 	
 	SUBCASE("a_pickup should fail for block b (not clear)") {
@@ -640,7 +640,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 		todo_list.push_back(action);
 		
 		Variant result = plan->find_plan(state, todo_list);
-		CHECK(result == false); // Should fail
+		CHECK(result == Variant(false)); // Should fail
 	}
 	
 	SUBCASE("a_pickup should succeed for block c") {
@@ -774,12 +774,12 @@ TEST_CASE("[Modules][BlocksDomain] Block stacking problem") {
 			}
 		}
 		
-		CHECK(found_unstack_a == true);
-		CHECK(found_putdown_a == true);
-		CHECK(found_pickup_b == true);
-		CHECK(found_stack_b == true);
-		CHECK(found_pickup_c == true);
-		CHECK(found_stack_c == true);
+		CHECK(found_unstack_a);
+		CHECK(found_putdown_a);
+		CHECK(found_pickup_b);
+		CHECK(found_stack_b);
+		CHECK(found_pickup_c);
+		CHECK(found_stack_c);
 	}
 	
 	memdelete(domain.ptr());
@@ -837,7 +837,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic commands") {
 		todo_list.push_back(command);
 		
 		Variant result = plan->find_plan(state, todo_list);
-		CHECK(result == false); // Should fail
+		CHECK(result == Variant(false)); // Should fail
 	}
 	
 	SUBCASE("c_pickup should succeed for block c") {
@@ -1001,7 +1001,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in commands") {
 		
 		// State doesn't have entity_capabilities, so should fail
 		Variant result = plan->find_plan(state, todo_list);
-		CHECK(result == false);
+		CHECK(result == Variant(false));
 	}
 	
 	SUBCASE("Command with entity requirements should succeed when entities available") {
@@ -1056,9 +1056,8 @@ TEST_CASE("[Modules][BlocksDomain] Temporal constraints in commands") {
 		Variant result = plan->find_plan(state, todo_list);
 		CHECK(result.get_type() == Variant::ARRAY);
 	}
-	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	domain.unref();
+	plan.unref();
 }
 
 TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
@@ -1083,7 +1082,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
 		
 		// State doesn't have entity_capabilities, so should fail
 		Variant result = plan->find_plan(state, todo_list);
-		CHECK(result == false);
+		CHECK(result == Variant(false));
 	}
 	
 	SUBCASE("Task with entity requirements should succeed when entities available") {
@@ -1139,9 +1138,8 @@ TEST_CASE("[Modules][BlocksDomain] Temporal constraints in tasks") {
 		Variant result = plan->find_plan(state, todo_list);
 		CHECK(result.get_type() == Variant::ARRAY);
 	}
-	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	domain.unref();
+	plan.unref();
 }
 
 TEST_CASE("[Modules][BlocksDomain] Combined temporal and entity requirements") {
@@ -1187,8 +1185,8 @@ TEST_CASE("[Modules][BlocksDomain] Combined temporal and entity requirements") {
 		CHECK(result.get_type() == Variant::ARRAY);
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	domain.unref();
+	plan.unref();
 }
 
 }

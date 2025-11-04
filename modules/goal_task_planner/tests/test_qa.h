@@ -33,7 +33,7 @@ TEST_CASE("[QA] End-to-end temporal planning workflow with SQLite") {
     
     CHECK(result.has("operation_id"));
     CHECK(result.has("agreed_at"));
-    CHECK(result["agreed_at"] > 0);
+    CHECK((int64_t)result["agreed_at"] > 0);
     
     // Load state back
     Dictionary loaded_state = plan->load_temporal_state();
@@ -162,35 +162,34 @@ TEST_CASE("[QA] SQLite transaction rollback scenarios") {
 	
 	// Should get latest state
 	Dictionary loaded = plan->load_temporal_state();
-	CHECK(loaded["version"] == 2);
+	CHECK(loaded["version"] == Variant(2));
 	
 	memdelete(plan.ptr());
+}
+
+// Helper static functions for testing
+static Variant qa_test_action(Dictionary p_state, String p_arg) {
+	Dictionary new_state = p_state.duplicate();
+	new_state["qa_executed"] = p_arg;
+	return new_state;
+}
+
+static Variant qa_test_task_method(Dictionary p_state, String p_task_name) {
+	Array subtasks;
+	Array action_task;
+	action_task.push_back("qa_test_action");
+	action_task.push_back(p_task_name);
+	subtasks.push_back(action_task);
+	return subtasks;
 }
 
 TEST_CASE("[QA] Graph-based planning with run_lazy_refineahead") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	
-	// Simple test action
-	static Variant qa_test_action(Dictionary p_state, String p_arg) {
-		Dictionary new_state = p_state.duplicate();
-		new_state["qa_executed"] = p_arg;
-		return new_state;
-	}
-	
 	TypedArray<Callable> actions;
 	actions.push_back(callable_mp_static(&qa_test_action));
 	domain->add_actions(actions);
-	
-	// Simple test task method
-	static Variant qa_test_task_method(Dictionary p_state, String p_task_name) {
-		Array subtasks;
-		Array action_task;
-		action_task.push_back("qa_test_action");
-		action_task.push_back(p_task_name);
-		subtasks.push_back(action_task);
-		return subtasks;
-	}
 	
 	TypedArray<Callable> task_methods;
 	task_methods.push_back(callable_mp_static(&qa_test_task_method));

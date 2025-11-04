@@ -659,7 +659,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal planning with entity capabilities
 	
 	// Verify entity capabilities are accessible
 	CHECK(planner_state->has_entity("truck1"));
-	CHECK(planner_state->get_entity_capability("truck1", "movable") == true);
+	CHECK(planner_state->get_entity_capability("truck1", "movable") == Variant(true));
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Planning with temporal constraints in absolute time") {
@@ -720,7 +720,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Entity capability filtering in planning") 
 			break;
 		}
 	}
-	CHECK(uses_truck1 == true);
+	CHECK(uses_truck1);
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Multi-entity planning with capabilities") {
