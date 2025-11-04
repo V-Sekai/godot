@@ -385,10 +385,11 @@ static Variant tm_move_blocks(Dictionary p_state, Ref<PlannerMultigoal> p_goal) 
 static Variant tm_move_one(Dictionary p_state, String p_b1, String p_dest) {
 	Array subtasks;
 	
-	Array get_task;
-	get_task.push_back("get");
-	get_task.push_back(p_b1);
-	subtasks.push_back(get_task);
+	Array get_goal;
+	get_goal.push_back("holding");  // State variable: holding
+	get_goal.push_back("hand");     // Argument: which hand
+	get_goal.push_back(p_b1);       // Desired value: block to hold
+	subtasks.push_back(get_goal);
 	
 	Array put_task;
 	put_task.push_back("put");
@@ -400,7 +401,11 @@ static Variant tm_move_one(Dictionary p_state, String p_b1, String p_dest) {
 }
 
 // Method: tm_get - get a block (pickup or unstack)
-static Variant tm_get(Dictionary p_state, String p_b1, Variant p_value) {
+// Goal format: ["holding", "hand", block_name]
+// Arguments: state, "hand" (argument), block_name (value)
+static Variant tm_get(Dictionary p_state, String p_argument, Variant p_value) {
+	// p_value is the block name we want to hold
+	String p_b1 = p_value;
 	Dictionary clear = p_state["clear"];
 	Dictionary pos = p_state["pos"];
 	
@@ -681,9 +686,9 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	SUBCASE("get should succeed for block c (pickup)") {
 		Array todo_list;
 		Array goal;
-		goal.push_back("get");
-		goal.push_back("c");
-		goal.push_back(true); // desired value
+		goal.push_back("holding");  // State variable: holding
+		goal.push_back("hand");     // Argument: which hand (only "hand" exists)
+		goal.push_back("c");        // Desired value: block "c" should be held
 		todo_list.push_back(goal);
 		
 		Variant result = plan->find_plan(state, todo_list);
