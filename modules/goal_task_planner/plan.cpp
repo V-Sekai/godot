@@ -124,7 +124,32 @@ Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const A
 		Variant result = method.callv(arguments);
 		if (result.is_array()) {
 			Array subgoals = result;
-			TypedArray<Array> todo_list;
+			// Task methods must return an Array of todo elements (PlannerMultigoal, tasks, commands, or actions)
+			// Validate format by checking first element only (amortized check)
+			if (!subgoals.is_empty()) {
+				Variant first_element = subgoals[0];
+				// Must be PlannerMultigoal, Array (task/command/action), or Dictionary (metadata wrapper)
+				if (!Object::cast_to<PlannerMultigoal>(first_element) && 
+				    first_element.get_type() != Variant::ARRAY && 
+				    first_element.get_type() != Variant::DICTIONARY) {
+					ERR_PRINT(vformat("ERROR: Task method returned invalid format. Todo elements must be PlannerMultigoal, task Array, command Array, action Array, or metadata Dictionary. First element type: %d. Task: %s, Method: %s", first_element.get_type(), _item_to_string(p_task1), _item_to_string(method)));
+					return false;
+				}
+				// If Array, check it's not a single goal (would match unigoal pattern)
+				// Commands and actions are valid - they're in action_dictionary
+				if (first_element.get_type() == Variant::ARRAY) {
+					Array first_array = first_element;
+					if (!first_array.is_empty()) {
+						Variant first_name = first_array[0];
+						if (current_domain->unigoal_method_dictionary.has(first_name)) {
+							ERR_PRINT(vformat("ERROR: Task method returned single goal. Single goals are not allowed. Use PlannerMultigoal structure instead. Task: %s, Method: %s, Goal: %s", _item_to_string(p_task1), _item_to_string(method), _item_to_string(first_element)));
+							return false;
+						}
+					}
+				}
+			}
+			// Todo list can contain PlannerMultigoal, Arrays (tasks/commands/actions), or Dictionaries (metadata)
+			Array todo_list;
 			if (!subgoals.is_empty()) {
 				todo_list.append_array(subgoals);
 			}
@@ -179,7 +204,31 @@ Variant PlannerPlan::_refine_multigoal_and_continue(const Dictionary p_state, co
 		Variant result = callable.call(p_state, p_first_goal);
 		if (result.is_array()) {
 			Array subgoals = result;
-			TypedArray<Array> subtodo_list;
+			// Multigoal methods must return an Array of todo elements (PlannerMultigoal, tasks, commands, or actions)
+			// Validate format by checking first element only (amortized check)
+			if (!subgoals.is_empty()) {
+				Variant first_element = subgoals[0];
+				// Must be PlannerMultigoal, Array (task/command/action), or Dictionary (metadata wrapper)
+				if (!Object::cast_to<PlannerMultigoal>(first_element) && 
+				    first_element.get_type() != Variant::ARRAY && 
+				    first_element.get_type() != Variant::DICTIONARY) {
+					ERR_PRINT(vformat("ERROR: Multigoal method returned invalid format. Todo elements must be PlannerMultigoal, task Array, command Array, action Array, or metadata Dictionary. First element type: %d. Multigoal: %s, Method: %s", first_element.get_type(), _item_to_string(p_first_goal), _item_to_string(callable)));
+					continue; // Try next method
+				}
+				// If Array, check it's not a single goal (would match unigoal pattern)
+				if (first_element.get_type() == Variant::ARRAY) {
+					Array first_array = first_element;
+					if (!first_array.is_empty()) {
+						Variant first_name = first_array[0];
+						if (current_domain->unigoal_method_dictionary.has(first_name)) {
+							ERR_PRINT(vformat("ERROR: Multigoal method returned single goal. Single goals are not allowed. Use PlannerMultigoal structure instead. Multigoal: %s, Method: %s, Goal: %s", _item_to_string(p_first_goal), _item_to_string(callable), _item_to_string(first_element)));
+							continue; // Try next method
+						}
+					}
+				}
+			}
+			// Todo list can contain PlannerMultigoal, Arrays (tasks/commands/actions), or Dictionaries (metadata)
+			Array subtodo_list;
 			if (verbose >= 3) {
 				print_line("Intermediate computation: Method applicable.");
 				print_line("Depth: " + itos(p_depth) + ", Subgoals: " + _item_to_string(subgoals));
@@ -253,17 +302,33 @@ Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, cons
 		Variant result = method.call(p_state, argument, value);
 		if (result.is_array()) {
 			Array subgoals = result;
+			// Unigoal methods must return an Array of todo elements (PlannerMultigoal, tasks, commands, or actions)
+			// Validate format by checking first element only (amortized check)
+			if (!subgoals.is_empty()) {
+				Variant first_element = subgoals[0];
+				// Must be PlannerMultigoal, Array (task/command/action), or Dictionary (metadata wrapper)
+				if (!Object::cast_to<PlannerMultigoal>(first_element) && 
+				    first_element.get_type() != Variant::ARRAY && 
+				    first_element.get_type() != Variant::DICTIONARY) {
+					ERR_PRINT(vformat("ERROR: Unigoal method returned invalid format. Todo elements must be PlannerMultigoal, task Array, command Array, action Array, or metadata Dictionary. First element type: %d. Goal: %s, Method: %s", first_element.get_type(), _item_to_string(p_goal1), _item_to_string(method)));
+					continue; // Try next method
+				}
+				// If Array, check it's not a single goal (would match unigoal pattern)
+				if (first_element.get_type() == Variant::ARRAY) {
+					Array first_array = first_element;
+					if (!first_array.is_empty()) {
+						Variant first_name = first_array[0];
+						if (current_domain->unigoal_method_dictionary.has(first_name)) {
+							ERR_PRINT(vformat("ERROR: Unigoal method returned single goal. Single goals are not allowed. Use PlannerMultigoal structure instead. Goal: %s, Method: %s, Single goal: %s", _item_to_string(p_goal1), _item_to_string(method), _item_to_string(first_element)));
+							continue; // Try next method
+						}
+					}
+				}
+			}
+			// Todo list can contain PlannerMultigoal, Arrays (tasks/commands/actions), or Dictionaries (metadata)
 			Array subtodo_list;
 			if (!subgoals.is_empty()) {
-				// Check if subgoals is a single action array or array of actions
-				// If first element is not an array, treat subgoals as a single action
-				if (subgoals.size() > 0 && subgoals[0].get_type() != Variant::ARRAY) {
-					// Single action array, add as one element
-					subtodo_list.push_back(subgoals);
-				} else {
-					// Array of actions, append each
-					subtodo_list.append_array(subgoals);
-				}
+				subtodo_list.append_array(subgoals);
 			}
 			if (verify_goals) {
 				subtodo_list.push_back(varray("_verify_g", method.get_method(), state_variable_name, argument, value, p_depth, verbose));
@@ -335,7 +400,12 @@ Variant PlannerPlan::_seek_plan(Dictionary p_state, Array p_todo_list, Array p_p
 		} else if (tasks.has(item_name)) {
 			return _refine_task_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
 		} else if (unigoals.has(item_name)) {
-			return _refine_unigoal_and_continue(p_state, item, p_todo_list, p_plan, p_depth);
+			// Single goals are not allowed - must use PlannerMultigoal structure
+			ERR_PRINT(vformat("ERROR: Single goal detected in todo list. Single goals are not allowed. Use PlannerMultigoal structure instead. Goal: %s", _item_to_string(item)));
+			return false;
+		} else {
+			ERR_PRINT(vformat("ERROR: Unknown todo element type. Must be PlannerMultigoal, task, command, or action. Element: %s", _item_to_string(item)));
+			return false;
 		}
 	}
 	return false;
