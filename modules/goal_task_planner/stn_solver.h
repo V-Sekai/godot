@@ -55,6 +55,7 @@ public:
 	// Snapshot for backtracking (uses Variant types for serialization)
 	struct Snapshot {
 		Dictionary time_points_map; // Converted to Dictionary for serialization
+		Array time_points_list; // Converted to Array for serialization
 		Dictionary constraints_map; // Converted to Dictionary for serialization
 		Array distance_matrix; // Converted to Array for serialization
 		bool consistent;
