@@ -136,6 +136,14 @@ Variant PlannerPlan::_refine_task_and_continue(const Dictionary p_state, const A
 				return plan;
 			}
 		} else {
+			// For verification tasks, false means verification failed - fail the plan immediately
+			String task_name = p_task1[0];
+			if (task_name == "_verify_g" || task_name == "_verify_mg") {
+				if (verbose >= 2) {
+					ERR_PRINT(vformat("Recursive call: Verification failed for task: %s", _item_to_string(p_task1)));
+				}
+				return false;
+			}
 			if (verbose >= 3) {
 				ERR_PRINT("Not applicable");
 			}
@@ -242,17 +250,7 @@ Variant PlannerPlan::_refine_unigoal_and_continue(const Dictionary p_state, cons
 			print_line("Depth: " + itos(p_depth) + ", Trying method: " + _item_to_string(method));
 		}
 		// Call method with state and all goal arguments (matching aria-planner pattern: [current_state | Tuple.to_list(curr_node.info)])
-		Variant args_variants[3] = { p_state, argument, value };
-		const Variant *args[3] = { &args_variants[0], &args_variants[1], &args_variants[2] };
-		Callable::CallError call_error;
-		Variant result;
-		method.callp(args, 3, result, call_error);
-		if (call_error.error != Callable::CallError::CALL_OK) {
-			if (verbose >= 2) {
-				ERR_PRINT(vformat("Method call failed with error %d at argument %d (expected %d)", call_error.error, call_error.argument, call_error.expected));
-			}
-			continue;
-		}
+		Variant result = method.call(p_state, argument, value);
 		if (result.is_array()) {
 			Array subgoals = result;
 			Array subtodo_list;
