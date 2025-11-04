@@ -763,9 +763,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal operation submission and retrieva
 	Dictionary result1 = planner->submit_operation(op1);
 	int64_t time1 = result1["agreed_at"];
 	
-	// Small delay simulation
-	int64_t time2 = PlannerHLClock::now_microseconds();
-	
 	Dictionary op2;
 	op2["type"] = "action";
 	op2["name"] = "pickup";

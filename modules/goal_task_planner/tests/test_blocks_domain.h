@@ -479,6 +479,11 @@ static Ref<PlannerDomain> setup_blocks_domain_goals_only() {
 	put_methods.push_back(callable_mp_static(&tm_put));
 	domain->add_task_methods("put", put_methods);
 	
+	// "move_one" is a task method for moving one block to a destination
+	TypedArray<Callable> move_one_methods;
+	move_one_methods.push_back(callable_mp_static(&tm_move_one));
+	domain->add_task_methods("move_one", move_one_methods);
+	
 	return domain;
 }
 
@@ -571,27 +576,6 @@ static Ref<PlannerMultigoal> create_goal_1a() {
 	return create_multigoal_1a();
 }
 
-// Helper function to create state with entity capabilities
-static Dictionary create_state_with_entities(const Dictionary &p_base_state, const String &p_entity_id, const String &p_capability, Variant p_value) {
-	Dictionary state = p_base_state.duplicate();
-	
-	// Add entity capabilities to state
-	Dictionary entity_capabilities;
-	if (state.has("entity_capabilities")) {
-		entity_capabilities = state["entity_capabilities"];
-	}
-	
-	Dictionary entity_caps;
-	if (entity_capabilities.has(p_entity_id)) {
-		entity_caps = entity_capabilities[p_entity_id];
-	}
-	entity_caps[p_capability] = p_value;
-	entity_capabilities[p_entity_id] = entity_caps;
-	state["entity_capabilities"] = entity_capabilities;
-	
-	return state;
-}
-
 // Helper function to attach PlannerMetadata with entity requirements
 static Dictionary attach_entity_metadata(const Array &p_action_array, const String &p_entity_type, const Array &p_capabilities) {
 	Dictionary metadata_dict;
@@ -625,6 +609,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = setup_blocks_domain_goals_only();
 	plan->set_current_domain(domain);
+	plan->set_verbose(3); // Enable verbose debugging
 	
 	Dictionary state = create_init_state_1();
 	
