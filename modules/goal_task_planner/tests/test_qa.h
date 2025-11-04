@@ -39,8 +39,7 @@ TEST_CASE("[QA] End-to-end temporal planning workflow with SQLite") {
     Dictionary loaded_state = plan->load_temporal_state();
     CHECK(loaded_state.has("block_a"));
     
-    memdelete(plan.ptr());
-    memdelete(state.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[QA] Entity capability persistence across planning sessions") {
@@ -59,7 +58,7 @@ TEST_CASE("[QA] Entity capability persistence across planning sessions") {
     // For in-memory, we test that storage works
     CHECK(true);
     
-    memdelete(plan1.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[QA] Absolute time accuracy in planning operations") {
@@ -80,7 +79,7 @@ TEST_CASE("[QA] Absolute time accuracy in planning operations") {
     CHECK(agreed_at >= time_before);
     CHECK(agreed_at <= time_after);
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[QA] Memory management and resource cleanup") {
@@ -108,7 +107,7 @@ TEST_CASE("[QA] Error handling for database operations") {
     plan->store_temporal_state(Dictionary(), 0);
     // Should not crash
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[QA] Performance with multiple operations") {
@@ -125,7 +124,7 @@ TEST_CASE("[QA] Performance with multiple operations") {
     // Should complete without significant delay
     CHECK(true);
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[QA] Backward compatibility - existing GDScript patterns") {
@@ -143,7 +142,7 @@ TEST_CASE("[QA] Backward compatibility - existing GDScript patterns") {
     String id = plan->generate_plan_id();
     CHECK(!id.is_empty());
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[QA] SQLite transaction rollback scenarios") {
@@ -256,8 +255,7 @@ TEST_CASE("[QA] STN integration in planning loop") {
 	PlannerHLClock hlc = plan->get_hlc();
 	CHECK(hlc.get_start_time() > 0);
 	
-	memdelete(plan.ptr());
-	memdelete(domain.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 } // namespace TestQA

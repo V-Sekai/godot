@@ -125,7 +125,7 @@ TEST_CASE("[Modules][PlannerState] Entity capabilities") {
         CHECK(entities.size() >= 2);
     }
     
-    memdelete(state.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][PlannerPlan] SQLite integration") {
@@ -147,7 +147,7 @@ TEST_CASE("[Modules][PlannerPlan] SQLite integration") {
         CHECK(loaded.has("key"));
     }
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 } // namespace TestPlannerFeatures

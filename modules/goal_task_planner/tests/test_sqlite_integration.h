@@ -23,7 +23,7 @@ TEST_CASE("[Modules][SQLite] Database initialization") {
         CHECK(success);
     }
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][SQLite] Temporal state storage and retrieval") {
@@ -60,7 +60,7 @@ TEST_CASE("[Modules][SQLite] Temporal state storage and retrieval") {
         CHECK((int64_t)loaded["current_time"] == time2);
     }
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][SQLite] Entity capabilities storage") {
@@ -80,7 +80,7 @@ TEST_CASE("[Modules][SQLite] Entity capabilities storage") {
         CHECK(true); // If no error, storage succeeded
     }
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][SQLite] Planning operations persistence") {
@@ -108,7 +108,7 @@ TEST_CASE("[Modules][SQLite] Planning operations persistence") {
         // Operation should be stored in database
     }
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][SQLite] get_global_state loads from database") {
@@ -135,7 +135,7 @@ TEST_CASE("[Modules][SQLite] get_global_state loads from database") {
         memdelete(plan_no_db.ptr());
     }
     
-    memdelete(plan.ptr());
+    // Ref<> objects handle cleanup automatically via reference counting
 }
 
 } // namespace TestSQLiteIntegration

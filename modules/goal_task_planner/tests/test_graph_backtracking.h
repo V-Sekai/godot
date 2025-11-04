@@ -70,8 +70,7 @@ TEST_CASE("[Modules][GraphBacktracking] Basic graph-based planning") {
 		CHECK(final_state == initial_state);
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 // Static helper functions for backtracking tests
@@ -136,8 +135,7 @@ TEST_CASE("[Modules][GraphBacktracking] Action failure and backtracking") {
 		CHECK(final_state["success"] == "test_arg");
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 // Static helper for blacklisting test
@@ -184,8 +182,7 @@ TEST_CASE("[Modules][GraphBacktracking] Blacklisting functionality") {
 		CHECK(final_state.has("initialized"));
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 // Static helpers for goal refinement tests
@@ -261,8 +258,7 @@ TEST_CASE("[Modules][GraphBacktracking] Goal refinement and backtracking") {
 		CHECK(var_dict["value"] == "target");
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][GraphBacktracking] Solution graph structure") {
@@ -287,8 +283,7 @@ TEST_CASE("[Modules][GraphBacktracking] Solution graph structure") {
 		CHECK(final_state.has("executed"));
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 // Static helpers for state snapshot tests
@@ -349,8 +344,7 @@ TEST_CASE("[Modules][GraphBacktracking] State snapshot restoration") {
 		CHECK(final_state.has("initialized"));
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 } // namespace TestGraphBacktracking
