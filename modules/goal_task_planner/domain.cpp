@@ -45,7 +45,29 @@ void PlannerDomain::_bind_methods() {
 }
 
 Variant PlannerDomain::method_verify_goal(Dictionary p_state, String p_method, String p_state_variable, String p_arguments, Variant p_desired_value, int p_depth, int p_verbose) {
-	Dictionary state_dict = p_state[p_state_variable];
+	// Check if state variable exists - if not, goal wasn't achieved
+	if (!p_state.has(p_state_variable)) {
+		if (p_verbose >= 3) {
+			print_line(vformat("Depth %d: method %s didn't achieve - state variable %s doesn't exist\nGoal %s[%s] = %s", p_depth, p_method, p_state_variable, p_state_variable, p_arguments, p_desired_value));
+		}
+		return false;
+	}
+
+	Variant state_var_val = p_state[p_state_variable];
+	if (state_var_val.get_type() != Variant::DICTIONARY) {
+		if (p_verbose >= 3) {
+			print_line(vformat("Depth %d: method %s didn't achieve - state variable %s is not a dictionary\nGoal %s[%s] = %s", p_depth, p_method, p_state_variable, p_state_variable, p_arguments, p_desired_value));
+		}
+		return false;
+	}
+
+	Dictionary state_dict = state_var_val;
+	if (!state_dict.has(p_arguments)) {
+		if (p_verbose >= 3) {
+			print_line(vformat("Depth %d: method %s didn't achieve - argument %s doesn't exist in state variable\nGoal %s[%s] = %s", p_depth, p_method, p_arguments, p_state_variable, p_arguments, p_desired_value));
+		}
+		return false;
+	}
 
 	if (state_dict[p_arguments] != p_desired_value) {
 		if (p_verbose >= 3) {

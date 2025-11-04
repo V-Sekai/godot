@@ -464,9 +464,10 @@ static Ref<PlannerDomain> setup_blocks_domain_goals_only() {
 	domain->add_actions(actions);
 	
 	// Add unigoal methods (goal-based decomposition)
-	TypedArray<Callable> get_methods;
-	get_methods.push_back(callable_mp_static(&tm_get));
-	domain->add_unigoal_methods("get", get_methods);
+	// Note: "holding" is the state variable for what's being held
+	TypedArray<Callable> holding_methods;
+	holding_methods.push_back(callable_mp_static(&tm_get));
+	domain->add_unigoal_methods("holding", holding_methods);
 	
 	TypedArray<Callable> put_methods;
 	put_methods.push_back(callable_mp_static(&tm_put));
@@ -662,9 +663,9 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	SUBCASE("get should succeed for block a (unstack)") {
 		Array todo_list;
 		Array goal;
-		goal.push_back("get");
-		goal.push_back("a");
-		goal.push_back(true); // desired value (any non-false)
+		goal.push_back("holding");  // State variable: holding
+		goal.push_back("hand");     // Argument: which hand (only "hand" exists)
+		goal.push_back("a");        // Desired value: block "a" should be held
 		todo_list.push_back(goal);
 		
 		Variant result = plan->find_plan(state, todo_list);
