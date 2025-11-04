@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/abseil/abseil-cpp.git
+	branch = master
+	commit = 6d94b2ce1536376b214103a48e72795eff85c09f
+	parent = f270d981c9d8548020b6c83c4427f4c0537209fa
+	method = merge
+	cmdver = 0.4.9
