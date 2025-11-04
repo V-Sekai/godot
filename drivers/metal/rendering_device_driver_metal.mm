@@ -772,7 +772,7 @@ RDD::SamplerID RenderingDeviceDriverMetal::sampler_create(const SamplerState &p_
 
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000 || __IPHONE_OS_VERSION_MAX_ALLOWED >= 260000 || __TV_OS_VERSION_MAX_ALLOWED >= 260000 || __VISION_OS_VERSION_MAX_ALLOWED >= 260000
 	if (p_state.lod_bias != 0.0) {
-		if (@available(macOS 26.0, iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
+		if (device_properties->os_version >= 260000) { // macOS 26.0+, iOS 26.0+, tvOS 26.0+, visionOS 26.0+
 			desc.lodBias = p_state.lod_bias;
 		}
 	}
@@ -853,7 +853,7 @@ void RenderingDeviceDriverMetal::command_pipeline_barrier(
 
 RDD::FenceID RenderingDeviceDriverMetal::fence_create() {
 	Fence *fence = nullptr;
-	if (@available(macOS 10.14, iOS 12.0, tvOS 12.0, visionOS 1.0, *)) {
+	if (device_properties->os_version >= 101400) { // macOS 10.14+, iOS 12.0+, tvOS 12.0+, visionOS 1.0+
 		fence = memnew(FenceEvent([device newSharedEvent]));
 	} else {
 		fence = memnew(FenceSemaphore());
@@ -1167,7 +1167,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 	uint32_t major = mtl_reflection_data.msl_version / 10000;
 	uint32_t minor = (mtl_reflection_data.msl_version / 100) % 100;
 	options.languageVersion = MTLLanguageVersion((major << 0x10) + minor);
-	if (@available(macOS 15.0, iOS 18.0, tvOS 18.0, visionOS 2.0, *)) {
+	if (device_properties->os_version >= 150000) { // macOS 15.0+, iOS 18.0+, tvOS 18.0+, visionOS 2.0+
 		options.enableLogging = mtl_reflection_data.needs_debug_logging();
 	}
 
