@@ -39,9 +39,13 @@
 
 #include "modules/goal_task_planner/multigoal.h"
 #include "modules/goal_task_planner/planner_hl_clock.h"
+#include "modules/goal_task_planner/solution_graph.h"
+#include "modules/goal_task_planner/stn_solver.h"
+#include "modules/goal_task_planner/goal_solver.h"
 
 class PlannerDomain;
 struct PlannerHLClock;
+class SQLite;
 
 class PlannerPlan : public Resource {
 	GDCLASS(PlannerPlan, Resource);
@@ -50,6 +54,12 @@ class PlannerPlan : public Resource {
 	TypedArray<PlannerDomain> domains;
 	Ref<PlannerDomain> current_domain;
 	PlannerHLClock hlc; // Added for temporal
+	Ref<SQLite> db; // SQLite database for temporal state storage
+	PlannerSolutionGraph solution_graph; // Solution graph for explicit backtracking
+	TypedArray<Variant> blacklisted_commands; // Blacklisted commands/actions
+	PlannerSTNSolver stn; // STN solver for temporal constraint validation
+	PlannerSTNSolver::Snapshot stn_snapshot; // STN snapshot for backtracking
+	PlannerGoalSolver goal_solver; // Goal solver for unigoal ordering optimization
 
 	// If verify_goals is True, then whenever the planner uses a method m to refine
 	// unigoal or multigoal, it will insert a "verification" task into the
@@ -68,6 +78,11 @@ class PlannerPlan : public Resource {
 	Variant _refine_task_and_continue(const Dictionary p_state, const Array p_first_task, const Array p_todo_list, const Array p_plan, const int p_depth);
 	Variant _refine_multigoal_and_continue(const Dictionary p_state, const Ref<PlannerMultigoal> p_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
 	Variant _refine_unigoal_and_continue(const Dictionary p_state, const Array p_first_goal, const Array p_todo_list, const Array p_plan, const int p_depth);
+	// Graph-based planning methods
+	Dictionary _planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter);
+	bool _is_command_blacklisted(Variant p_command) const;
+	void _blacklist_command(Variant p_command);
+	void _restore_stn_from_node(int p_node_id);
 
 public:
 	int get_verbose() const;
@@ -80,12 +95,21 @@ public:
 	bool get_verify_goals() const;
 	Variant find_plan(Dictionary p_state, Array p_todo_list);
 	Dictionary run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
+	// Graph-based lazy refinement (Elixir-style)
+	Dictionary run_lazy_refineahead(Dictionary p_state, Array p_todo_list);
 	// Temporal methods
 	String generate_plan_id();
 	PlannerHLClock get_hlc() const { return hlc; }
 	void set_hlc(PlannerHLClock p_hlc) { hlc = p_hlc; }
 	Dictionary submit_operation(Dictionary p_operation);
 	Dictionary get_global_state();
+	
+	// SQLite database methods
+	bool initialize_database(const String &p_db_path = "");
+	void store_temporal_state(Dictionary p_state, int64_t p_current_time);
+	Dictionary load_temporal_state();
+	void store_entity_capability(const String &p_entity_id, const String &p_capability, Variant p_value, int64_t p_timestamp);
+	void store_planning_operation(const String &p_operation_id, const String &p_operation_type, Dictionary p_operation_data, int64_t p_timestamp);
 
 protected:
 	static void _bind_methods();

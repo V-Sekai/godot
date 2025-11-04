@@ -54,6 +54,7 @@ public:
     String get_task_id() const { return task_id; }
     void set_hlc(PlannerHLClock p_hlc) { hlc = p_hlc; }
     PlannerHLClock get_hlc() const { return hlc; }
+    // p_physical_time is in absolute microseconds since Unix epoch
     void update_metadata(int64_t p_physical_time);
 
 protected:

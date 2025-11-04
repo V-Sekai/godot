@@ -133,8 +133,9 @@ PlannerTaskMetadata::PlannerTaskMetadata() {
     }
 }
 
+// p_physical_time is in absolute microseconds since Unix epoch
 void PlannerTaskMetadata::update_metadata(int64_t p_physical_time) {
-    hlc.set_start_time(p_physical_time);
+    hlc.set_start_time(p_physical_time); // Store absolute microseconds
 }
 
 PlannerTask::PlannerTask() {

@@ -7,6 +7,18 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_all_entities" qualifiers="const">
+			<return type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="get_entity_capability" qualifiers="const">
+			<return type="Variant" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<description>
+			</description>
+		</method>
 		<method name="get_predicate" qualifiers="const">
 			<return type="Variant" />
 			<param index="0" name="subject" type="String" />
@@ -16,6 +28,12 @@
 		</method>
 		<method name="get_subject_predicate_list" qualifiers="const">
 			<return type="Array" />
+			<description>
+			</description>
+		</method>
+		<method name="has_entity" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity_id" type="String" />
 			<description>
 			</description>
 		</method>
@@ -29,6 +47,14 @@
 		<method name="has_subject_variable" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="variable" type="String" />
+			<description>
+			</description>
+		</method>
+		<method name="set_entity_capability">
+			<return type="void" />
+			<param index="0" name="entity_id" type="String" />
+			<param index="1" name="capability" type="String" />
+			<param index="2" name="value" type="Variant" />
 			<description>
 			</description>
 		</method>

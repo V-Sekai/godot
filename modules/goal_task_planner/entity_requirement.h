@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  planner_state.h                                                       */
+/*  entity_requirement.h                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,33 +30,54 @@
 
 #pragma once
 
-#include "core/io/resource.h"
-#include "core/object/object_id.h" // Include for ObjectID
+#include "core/string/ustring.h"
+#include "core/templates/local_vector.h"
 #include "core/variant/dictionary.h"
-#include "core/variant/variant.h"
+#include "core/variant/array.h"
 
-class PlannerState : public Resource {
-	GDCLASS(PlannerState, Resource);
-
-	Dictionary data;
-	Dictionary entity_capabilities; // entity_id -> Dictionary of capabilities
-
-protected:
-	static void _bind_methods();
-
+// Entity requirement for goal solving
+// Matches entities by type and required capabilities
+class PlannerEntityRequirement {
 public:
-	Variant get_predicate(const String &p_subject, const String &p_predicate) const;
-	void set_predicate(const String &p_subject, const String &p_predicate, Variant p_value);
-	Array get_subject_predicate_list() const;
-	bool has_subject_variable(const String &p_variable) const;
-	bool has_predicate(const String &p_subject, const String &p_predicate) const;
-
-	// Entity capabilities methods
-	Variant get_entity_capability(const String &p_entity_id, const String &p_capability) const;
-	void set_entity_capability(const String &p_entity_id, const String &p_capability, Variant p_value);
-	bool has_entity(const String &p_entity_id) const;
-	Array get_all_entities() const;
-
-	PlannerState() {}
-	~PlannerState() {}
+	String type; // Entity type (e.g., "agent", "robot")
+	LocalVector<String> capabilities; // Required capabilities (e.g., ["cooking", "cleaning"])
+	
+	PlannerEntityRequirement() {}
+	
+	PlannerEntityRequirement(const String &p_type, const LocalVector<String> &p_capabilities) :
+		type(p_type), capabilities(p_capabilities) {}
+	
+	// Validation
+	bool is_valid() const {
+		return !type.is_empty() && capabilities.size() > 0;
+	}
+	
+	// Convert to Dictionary for GDScript interface
+	Dictionary to_dictionary() const {
+		Dictionary dict;
+		dict["type"] = type;
+		Array caps_array;
+		for (uint32_t i = 0; i < capabilities.size(); i++) {
+			caps_array.push_back(capabilities[i]);
+		}
+		dict["capabilities"] = caps_array;
+		return dict;
+	}
+	
+	// Convert from Dictionary (GDScript interface)
+	static PlannerEntityRequirement from_dictionary(const Dictionary &p_dict) {
+		PlannerEntityRequirement req;
+		req.type = p_dict.get("type", "");
+		
+		Variant caps_var = p_dict.get("capabilities", Array());
+		if (caps_var.get_type() == Variant::ARRAY) {
+			Array caps_array = caps_var;
+			req.capabilities.resize(caps_array.size());
+			for (int i = 0; i < caps_array.size(); i++) {
+				req.capabilities[i] = caps_array[i];
+			}
+		}
+		return req;
+	}
 };
+

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  planner_state.h                                                       */
+/*  stn_constraints.h                                                     */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,33 +30,37 @@
 
 #pragma once
 
-#include "core/io/resource.h"
-#include "core/object/object_id.h" // Include for ObjectID
-#include "core/variant/dictionary.h"
+#include "stn_solver.h"
+#include "core/typedefs.h"
 #include "core/variant/variant.h"
 
-class PlannerState : public Resource {
-	GDCLASS(PlannerState, Resource);
+// Helper class for converting intervals (start/end/duration) to STN constraints
+// Provides convenient methods for adding temporal intervals to STN solver
 
-	Dictionary data;
-	Dictionary entity_capabilities; // entity_id -> Dictionary of capabilities
-
-protected:
-	static void _bind_methods();
-
+class PlannerSTNConstraints {
 public:
-	Variant get_predicate(const String &p_subject, const String &p_predicate) const;
-	void set_predicate(const String &p_subject, const String &p_predicate, Variant p_value);
-	Array get_subject_predicate_list() const;
-	bool has_subject_variable(const String &p_variable) const;
-	bool has_predicate(const String &p_subject, const String &p_predicate) const;
-
-	// Entity capabilities methods
-	Variant get_entity_capability(const String &p_entity_id, const String &p_capability) const;
-	void set_entity_capability(const String &p_entity_id, const String &p_capability, Variant p_value);
-	bool has_entity(const String &p_entity_id) const;
-	Array get_all_entities() const;
-
-	PlannerState() {}
-	~PlannerState() {}
+	// Add an interval with start time, end time, and duration
+	// Creates time points: {p_id}_start and {p_id}_end
+	// Adds constraint: start -> end: {duration, duration}
+	// If absolute times provided, anchors to origin time point
+	static bool add_interval(PlannerSTNSolver &p_stn, const String &p_id, int64_t p_start_time, int64_t p_end_time, int64_t p_duration);
+	
+	// Add a durative action with duration constraint only
+	// Creates time points: {p_action_id}_start and {p_action_id}_end
+	// Adds constraint: start -> end: {duration, duration}
+	static bool add_durative_action(PlannerSTNSolver &p_stn, const String &p_action_id, int64_t p_duration);
+	
+	// Add temporal relation between two actions/intervals
+	// Supports: "before", "after", "during"
+	// Converts to appropriate min/max constraints
+	static bool add_temporal_relation(PlannerSTNSolver &p_stn, const String &p_from, const String &p_to, const String &p_relation);
+	
+	// Anchor a time point to absolute time (relative to origin)
+	// If origin doesn't exist, creates it
+	static bool anchor_to_origin(PlannerSTNSolver &p_stn, const String &p_point, int64_t p_absolute_time);
+	
+private:
+	// Helper to ensure origin time point exists
+	static void ensure_origin(PlannerSTNSolver &p_stn);
 };
+
