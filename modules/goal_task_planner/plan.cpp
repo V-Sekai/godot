@@ -35,6 +35,9 @@
 #include "core/os/os.h"
 #include "core/crypto/crypto_core.h"
 #include "core/io/json.h"
+#include "core/templates/local_vector.h"
+#include "core/templates/hash_map.h"
+#include "core/string/ustring.h"
 
 #include "modules/sqlite/src/godot_sqlite.h"
 #include "domain.h"
@@ -938,10 +941,10 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			curr_node["stn_snapshot"] = stn_snapshot;
 			solution_graph.update_node(curr_node_id, curr_node);
 			
-			// Check for temporal metadata in action
+			// Check for temporal constraints in action
 			Dictionary temporal_metadata;
-			if (goal_solver.has_temporal_metadata(action_info)) {
-				temporal_metadata = goal_solver.get_temporal_metadata(action_info);
+			if (_has_temporal_constraints(action_info)) {
+				temporal_metadata = _get_temporal_constraints(action_info);
 			}
 			
 			// Execute action with temporal tracking
@@ -1179,7 +1182,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				solution_graph.update_node(curr_node_id, curr_node);
 				
 				// Optimize unigoal order (most constraining first) before adding to graph
-				Array optimized_subgoals = goal_solver.optimize_unigoal_order(
+				Array optimized_subgoals = _optimize_unigoal_order(
 					subgoals, p_state, current_domain->unigoal_method_dictionary
 				);
 				
@@ -1354,4 +1357,262 @@ void PlannerPlan::_blacklist_command(Variant p_command) {
 	if (!_is_command_blacklisted(p_command)) {
 		blacklisted_commands.push_back(p_command);
 	}
+}
+
+// Goal solver methods (moved from PlannerGoalSolver)
+
+PlannerPlan::ConstrainingFactor PlannerPlan::_calculate_constraining_factor(const Variant &p_goal, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) const {
+	ConstrainingFactor factor;
+	
+	// Extract goal info (assuming format: [state_var_name, argument, desired_value])
+	if (p_goal.get_type() != Variant::ARRAY) {
+		return factor;
+	}
+	
+	Array goal_arr = p_goal;
+	if (goal_arr.size() < 3) {
+		return factor;
+	}
+	
+	String state_var_name = goal_arr[0];
+	String argument = goal_arr[1];
+	Variant value = goal_arr[2];
+	
+	// Count available methods for this unigoal (optimization strategy 1: total method count)
+	if (p_unigoal_method_dict.has(state_var_name)) {
+		Variant methods_var = p_unigoal_method_dict[state_var_name];
+		if (methods_var.get_type() == Variant::ARRAY) {
+			TypedArray<Callable> methods = methods_var;
+			factor.total_method_count = methods.size();
+			
+			// Optimization strategy 2: count only applicable methods in current state
+			// Try each method to see if it's applicable (returns Array if applicable, false otherwise)
+			for (int i = 0; i < methods.size(); i++) {
+				Callable method = methods[i];
+				Variant result = method.call(p_state, argument, value);
+				if (result.get_type() == Variant::ARRAY) {
+					// Method is applicable in current state
+					factor.applicable_method_count++;
+				}
+			}
+		}
+	}
+	
+	// Check for temporal constraints
+	PlannerMetadata metadata = _extract_temporal_constraints(p_goal);
+	if (!metadata.start_time.is_empty() || !metadata.end_time.is_empty()) {
+		factor.has_temporal_constraints = true;
+	}
+	
+	return factor;
+}
+
+PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item) const {
+	PlannerMetadata metadata;
+	
+	// Check if item has temporal_constraints field
+	if (p_item.get_type() == Variant::DICTIONARY) {
+		Dictionary item_dict = p_item;
+		if (item_dict.has("temporal_constraints")) {
+			Dictionary temporal_dict = item_dict["temporal_constraints"];
+			metadata = PlannerMetadata::from_dictionary(temporal_dict);
+		}
+	} else if (p_item.get_type() == Variant::ARRAY) {
+		Array item_arr = p_item;
+		// Temporal constraints might be stored as last element or in a wrapper
+		// Check if last element is a dictionary with temporal constraints
+		if (item_arr.size() > 0) {
+			Variant last = item_arr[item_arr.size() - 1];
+			if (last.get_type() == Variant::DICTIONARY) {
+				Dictionary last_dict = last;
+				if (last_dict.has("temporal_constraints")) {
+					Dictionary temporal_dict = last_dict["temporal_constraints"];
+					metadata = PlannerMetadata::from_dictionary(temporal_dict);
+				}
+			}
+		}
+	}
+	
+	return metadata;
+}
+
+Array PlannerPlan::_optimize_unigoal_order(const Array &p_unigoals, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) {
+	// Use LocalVector internally for efficiency
+	LocalVector<GoalWithFactor> goals_with_factors;
+	
+	// Calculate constraining factors for each unigoal
+	for (int i = 0; i < p_unigoals.size(); i++) {
+		Variant goal = p_unigoals[i];
+		ConstrainingFactor factor = _calculate_constraining_factor(goal, p_state, p_unigoal_method_dict);
+		goals_with_factors.push_back(GoalWithFactor(goal, factor));
+	}
+	
+	// Sort by constraining factor (most constraining first)
+	// Use insertion sort for small arrays, or std::sort-like approach
+	if (goals_with_factors.size() > 1) {
+		// Simple insertion sort: most constraining first
+		for (uint32_t i = 1; i < goals_with_factors.size(); i++) {
+			GoalWithFactor key = goals_with_factors[i];
+			int j = i - 1;
+			
+			// Move elements with less constraining factors to the right
+			while (j >= 0 && goals_with_factors[j].factor < key.factor) {
+				goals_with_factors[j + 1] = goals_with_factors[j];
+				j--;
+			}
+			goals_with_factors[j + 1] = key;
+		}
+	}
+	
+	// Convert back to Array for GDScript interface
+	Array ordered_goals;
+	ordered_goals.resize(goals_with_factors.size());
+	for (uint32_t i = 0; i < goals_with_factors.size(); i++) {
+		ordered_goals[i] = goals_with_factors[i].goal;
+	}
+	
+	return ordered_goals;
+}
+
+Variant PlannerPlan::_attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints) {
+	PlannerMetadata metadata = PlannerMetadata::from_dictionary(p_temporal_constraints);
+	
+	// Create a wrapper dictionary with the item and temporal constraints
+	Dictionary result;
+	
+	if (p_item.get_type() == Variant::DICTIONARY) {
+		// If already a dictionary, add temporal_constraints field
+		result = Dictionary(p_item);
+		result["temporal_constraints"] = metadata.to_dictionary();
+	} else if (p_item.get_type() == Variant::ARRAY) {
+		// If array, wrap in dictionary with temporal constraints
+		result["item"] = p_item;
+		result["temporal_constraints"] = metadata.to_dictionary();
+	} else {
+		// For other types, wrap in dictionary
+		result["item"] = p_item;
+		result["temporal_constraints"] = metadata.to_dictionary();
+	}
+	
+	return result;
+}
+
+Dictionary PlannerPlan::_get_temporal_constraints(const Variant &p_item) const {
+	PlannerMetadata metadata = _extract_temporal_constraints(p_item);
+	return metadata.to_dictionary();
+}
+
+bool PlannerPlan::_has_temporal_constraints(const Variant &p_item) const {
+	PlannerMetadata metadata = _extract_temporal_constraints(p_item);
+	return !metadata.start_time.is_empty() || !metadata.end_time.is_empty() || !metadata.duration.is_empty();
+}
+
+Dictionary PlannerPlan::_match_entities(const Dictionary &p_state, const LocalVector<PlannerEntityRequirement> &p_requirements) const {
+	Dictionary result;
+	result["success"] = false;
+	result["matched_entities"] = Array();
+	result["error"] = "";
+	
+	// Use internal HashMap/LocalVector for efficiency
+	HashMap<String, String> entity_types; // entity_id -> type
+	HashMap<String, LocalVector<String>> entity_capabilities; // entity_id -> capabilities
+	
+	// Extract entity data from state
+	// State structure: entities are stored in a nested structure
+	// We'll look for entity_capabilities or similar structure
+	if (p_state.has("entity_capabilities")) {
+		Dictionary entity_caps_dict = p_state["entity_capabilities"];
+		Array entity_ids = entity_caps_dict.keys();
+		
+		for (int i = 0; i < entity_ids.size(); i++) {
+			String entity_id = entity_ids[i];
+			Dictionary entity_data = entity_caps_dict[entity_id];
+			
+			// Extract type (stored as "type" capability)
+			if (entity_data.has("type")) {
+				entity_types[entity_id] = entity_data["type"];
+			}
+			
+			// Extract all capabilities (any non-type key that has a truthy value)
+			LocalVector<String> caps;
+			Array cap_keys = entity_data.keys();
+			for (int j = 0; j < cap_keys.size(); j++) {
+				String cap_key = cap_keys[j];
+				if (cap_key != "type") {
+					Variant cap_value = entity_data[cap_key];
+					// Include capability if value is truthy (true, non-zero, non-empty)
+					if (cap_value.operator bool()) {
+						caps.push_back(cap_key);
+					}
+				}
+			}
+			entity_capabilities[entity_id] = caps;
+		}
+	}
+	
+	// Match entities to requirements
+	Array matched_entities;
+	
+	// Match each requirement to an entity
+	for (uint32_t req_idx = 0; req_idx < p_requirements.size(); req_idx++) {
+		const PlannerEntityRequirement &req = p_requirements[req_idx];
+		bool matched = false;
+		
+		// Try to find matching entity
+		for (const KeyValue<String, String> &E : entity_types) {
+			String entity_id = E.key;
+			String entity_type = E.value;
+			
+			// Check type match
+			if (entity_type != req.type) {
+				continue;
+			}
+			
+			// Check if entity has all required capabilities
+			const LocalVector<String> *entity_caps = entity_capabilities.getptr(entity_id);
+			if (entity_caps == nullptr) {
+				continue;
+			}
+			
+			bool has_all_caps = true;
+			for (uint32_t cap_idx = 0; cap_idx < req.capabilities.size(); cap_idx++) {
+				String required_cap = req.capabilities[cap_idx];
+				bool found = false;
+				for (uint32_t j = 0; j < entity_caps->size(); j++) {
+					if ((*entity_caps)[j] == required_cap) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					has_all_caps = false;
+					break;
+				}
+			}
+			
+			if (has_all_caps) {
+				// Found matching entity
+				matched_entities.push_back(entity_id);
+				matched = true;
+				break;
+			}
+		}
+		
+		if (!matched) {
+			result["success"] = false;
+			// Convert capabilities to string for error message
+			String caps_str = "[";
+			for (uint32_t i = 0; i < req.capabilities.size(); i++) {
+				if (i > 0) caps_str += ", ";
+				caps_str += req.capabilities[i];
+			}
+			caps_str += "]";
+			result["error"] = vformat("No entity found matching requirement: type=%s, capabilities=%s", req.type, caps_str);
+			return result;
+		}
+	}
+	
+	result["success"] = true;
+	result["matched_entities"] = matched_entities;
+	return result;
 }
