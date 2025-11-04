@@ -111,6 +111,7 @@ class PlannerPlan : public Resource {
 		Variant goal;
 		ConstrainingFactor factor;
 		
+		GoalWithFactor() : goal(), factor() {}
 		GoalWithFactor(const Variant &p_goal, const ConstrainingFactor &p_factor) : goal(p_goal), factor(p_factor) {}
 	};
 	

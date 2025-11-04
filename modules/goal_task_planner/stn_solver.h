@@ -60,6 +60,30 @@ public:
 		Array distance_matrix; // Converted to Array for serialization
 		bool consistent;
 		int64_t next_time_point_id;
+		
+		// Convert to Dictionary for Variant storage
+		Dictionary to_dictionary() const {
+			Dictionary dict;
+			dict["time_points_map"] = time_points_map;
+			dict["time_points_list"] = time_points_list;
+			dict["constraints_map"] = constraints_map;
+			dict["distance_matrix"] = distance_matrix;
+			dict["consistent"] = consistent;
+			dict["next_time_point_id"] = next_time_point_id;
+			return dict;
+		}
+		
+		// Convert from Dictionary
+		static Snapshot from_dictionary(const Dictionary &p_dict) {
+			Snapshot snapshot;
+			snapshot.time_points_map = p_dict["time_points_map"];
+			snapshot.time_points_list = p_dict["time_points_list"];
+			snapshot.constraints_map = p_dict["constraints_map"];
+			snapshot.distance_matrix = p_dict["distance_matrix"];
+			snapshot.consistent = p_dict["consistent"];
+			snapshot.next_time_point_id = p_dict["next_time_point_id"];
+			return snapshot;
+		}
 	};
 	
 private:
@@ -80,9 +104,9 @@ private:
 	// Next time point ID (for unique indexing)
 	int64_t next_time_point_id;
 	
-	// Constants
-	static constexpr int64_t INFINITY = INT64_MAX;
-	static constexpr int64_t NEG_INFINITY = INT64_MIN + 1; // Avoid overflow
+	// Constants (avoid INFINITY macro conflict by using different name)
+	static constexpr int64_t STN_INFINITY = INT64_MAX;
+	static constexpr int64_t STN_NEG_INFINITY = INT64_MIN + 1; // Avoid overflow
 	
 	// Helper methods
 	int64_t get_time_point_index(const String &p_name) const;
