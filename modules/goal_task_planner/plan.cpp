@@ -838,7 +838,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		solution_graph.save_state_snapshot(curr_node_id, p_state.duplicate());
 		// Also save STN snapshot on first visit
 		PlannerSTNSolver::Snapshot snapshot = stn.create_snapshot();
-		curr_node["stn_snapshot"] = snapshot;
+		curr_node["stn_snapshot"] = snapshot.to_dictionary();
 		solution_graph.update_node(curr_node_id, curr_node);
 	} else {
 		// Restore state if backtracking
@@ -956,7 +956,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			
 			// Create STN snapshot before action execution and store with node
 			stn_snapshot = stn.create_snapshot();
-			curr_node["stn_snapshot"] = stn_snapshot;
+			curr_node["stn_snapshot"] = stn_snapshot.to_dictionary();
 			solution_graph.update_node(curr_node_id, curr_node);
 			
 			// Check for temporal constraints and entity requirements in action
@@ -1027,7 +1027,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					// For now, use actual end_time
 				}
 				
-				bool stn_success = PlannerSTNConstraints::add_interval(
+				/*bool stn_success =*/ PlannerSTNConstraints::add_interval(
 					stn, action_id, metadata_start, metadata_end, action_duration
 				);
 				
@@ -1378,7 +1378,8 @@ void PlannerPlan::_restore_stn_from_node(int p_node_id) {
 	if (p_node_id >= 0) {
 		Dictionary node = solution_graph.get_node(p_node_id);
 		if (node.has("stn_snapshot")) {
-			PlannerSTNSolver::Snapshot snapshot = node["stn_snapshot"];
+			Dictionary snapshot_dict = node["stn_snapshot"];
+			PlannerSTNSolver::Snapshot snapshot = PlannerSTNSolver::Snapshot::from_dictionary(snapshot_dict);
 			stn.restore_snapshot(snapshot);
 			if (verbose >= 3) {
 				print_line("Restored STN snapshot from node " + itos(p_node_id));

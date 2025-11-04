@@ -57,11 +57,111 @@
 #ifdef TOOLS_ENABLED
 namespace TestBlocksDomain {
 
-// Blocks World Actions
+// Blocks World Commands (Allocentric World Changes)
+// Commands change the allocentric (shared/global) world state.
+// These are the atomic operations that actually modify the physical world.
 // State variables:
 // - pos[b] = block b's position, which may be 'table', 'hand', or another block.
 // - clear[b] = False if a block is on b or the hand is holding b, else True.
 // - holding['hand'] = name of the block being held by hand, or False if the hand is empty.
+
+static Variant c_pickup(Dictionary p_state, String p_b) {
+	Dictionary pos = p_state["pos"];
+	Dictionary clear = p_state["clear"];
+	Dictionary holding = p_state["holding"];
+	
+	if (pos[p_b] == "table" && clear[p_b] == true && holding["hand"] == false) {
+		Dictionary new_state = p_state.duplicate();
+		Dictionary new_pos = pos.duplicate();
+		Dictionary new_clear = clear.duplicate();
+		Dictionary new_holding = holding.duplicate();
+		
+		new_pos[p_b] = "hand";
+		new_clear[p_b] = false;
+		new_holding["hand"] = p_b;
+		
+		new_state["pos"] = new_pos;
+		new_state["clear"] = new_clear;
+		new_state["holding"] = new_holding;
+		return new_state;
+	}
+	return false; // Return false if not applicable
+}
+
+static Variant c_unstack(Dictionary p_state, String p_b, String p_c) {
+	Dictionary pos = p_state["pos"];
+	Dictionary clear = p_state["clear"];
+	Dictionary holding = p_state["holding"];
+	
+	if (pos[p_b] == p_c && p_c != "table" && clear[p_b] == true && holding["hand"] == false) {
+		Dictionary new_state = p_state.duplicate();
+		Dictionary new_pos = pos.duplicate();
+		Dictionary new_clear = clear.duplicate();
+		Dictionary new_holding = holding.duplicate();
+		
+		new_pos[p_b] = "hand";
+		new_clear[p_b] = false;
+		new_holding["hand"] = p_b;
+		new_clear[p_c] = true;
+		
+		new_state["pos"] = new_pos;
+		new_state["clear"] = new_clear;
+		new_state["holding"] = new_holding;
+		return new_state;
+	}
+	return false; // Return false if not applicable
+}
+
+static Variant c_putdown(Dictionary p_state, String p_b) {
+	Dictionary pos = p_state["pos"];
+	
+	if (pos[p_b] == "hand") {
+		Dictionary new_state = p_state.duplicate();
+		Dictionary new_pos = pos.duplicate();
+		Dictionary clear = p_state["clear"];
+		Dictionary new_clear = clear.duplicate();
+		Dictionary holding = p_state["holding"];
+		Dictionary new_holding = holding.duplicate();
+		
+		new_pos[p_b] = "table";
+		new_clear[p_b] = true;
+		new_holding["hand"] = false;
+		
+		new_state["pos"] = new_pos;
+		new_state["clear"] = new_clear;
+		new_state["holding"] = new_holding;
+		return new_state;
+	}
+	return false; // Return false if not applicable
+}
+
+static Variant c_stack(Dictionary p_state, String p_b, String p_c) {
+	Dictionary pos = p_state["pos"];
+	Dictionary clear = p_state["clear"];
+	
+	if (pos[p_b] == "hand" && clear[p_c] == true) {
+		Dictionary new_state = p_state.duplicate();
+		Dictionary new_pos = pos.duplicate();
+		Dictionary new_clear = clear.duplicate();
+		Dictionary holding = p_state["holding"];
+		Dictionary new_holding = holding.duplicate();
+		
+		new_pos[p_b] = p_c;
+		new_clear[p_b] = true;
+		new_holding["hand"] = false;
+		new_clear[p_c] = false;
+		
+		new_state["pos"] = new_pos;
+		new_state["clear"] = new_clear;
+		new_state["holding"] = new_holding;
+		return new_state;
+	}
+	return false; // Return false if not applicable
+}
+
+// Blocks World Actions (Egocentric Planner State)
+// Actions are egocentric - they affect only the planner's internal state representation,
+// not the allocentric world.
 
 static Variant a_pickup(Dictionary p_state, String p_b) {
 	Dictionary pos = p_state["pos"];
@@ -343,11 +443,19 @@ static Variant tm_put(Dictionary p_state, String p_b1, String p_b2) {
 	return false; // Not applicable
 }
 
-// Helper function to set up blocks domain
-static Ref<PlannerDomain> setup_blocks_domain() {
+// Helper function to set up blocks domain - goals only (unigoal methods)
+static Ref<PlannerDomain> setup_blocks_domain_goals_only() {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	
-	// Add actions
+	// Add commands (allocentric world changes)
+	TypedArray<Callable> commands;
+	commands.push_back(callable_mp_static(&c_pickup));
+	commands.push_back(callable_mp_static(&c_unstack));
+	commands.push_back(callable_mp_static(&c_putdown));
+	commands.push_back(callable_mp_static(&c_stack));
+	domain->add_actions(commands);
+	
+	// Add actions (egocentric planner state)
 	TypedArray<Callable> actions;
 	actions.push_back(callable_mp_static(&a_pickup));
 	actions.push_back(callable_mp_static(&a_unstack));
@@ -355,16 +463,7 @@ static Ref<PlannerDomain> setup_blocks_domain() {
 	actions.push_back(callable_mp_static(&a_stack));
 	domain->add_actions(actions);
 	
-	// Add task methods
-	TypedArray<Callable> move_blocks_methods;
-	move_blocks_methods.push_back(callable_mp_static(&tm_move_blocks));
-	domain->add_task_methods("move_blocks", move_blocks_methods);
-	
-	TypedArray<Callable> move_one_methods;
-	move_one_methods.push_back(callable_mp_static(&tm_move_one));
-	domain->add_task_methods("move_one", move_one_methods);
-	
-	// Add unigoal methods
+	// Add unigoal methods (goal-based decomposition)
 	TypedArray<Callable> get_methods;
 	get_methods.push_back(callable_mp_static(&tm_get));
 	domain->add_unigoal_methods("get", get_methods);
@@ -374,6 +473,43 @@ static Ref<PlannerDomain> setup_blocks_domain() {
 	domain->add_unigoal_methods("put", put_methods);
 	
 	return domain;
+}
+
+// Helper function to set up blocks domain - tasks only (task methods)
+static Ref<PlannerDomain> setup_blocks_domain_tasks_only() {
+	Ref<PlannerDomain> domain = memnew(PlannerDomain);
+	
+	// Add commands (allocentric world changes)
+	TypedArray<Callable> commands;
+	commands.push_back(callable_mp_static(&c_pickup));
+	commands.push_back(callable_mp_static(&c_unstack));
+	commands.push_back(callable_mp_static(&c_putdown));
+	commands.push_back(callable_mp_static(&c_stack));
+	domain->add_actions(commands);
+	
+	// Add actions (egocentric planner state)
+	TypedArray<Callable> actions;
+	actions.push_back(callable_mp_static(&a_pickup));
+	actions.push_back(callable_mp_static(&a_unstack));
+	actions.push_back(callable_mp_static(&a_putdown));
+	actions.push_back(callable_mp_static(&a_stack));
+	domain->add_actions(actions);
+	
+	// Add task methods (task-based decomposition)
+	TypedArray<Callable> move_blocks_methods;
+	move_blocks_methods.push_back(callable_mp_static(&tm_move_blocks));
+	domain->add_task_methods("move_blocks", move_blocks_methods);
+	
+	TypedArray<Callable> move_one_methods;
+	move_one_methods.push_back(callable_mp_static(&tm_move_one));
+	domain->add_task_methods("move_one", move_one_methods);
+	
+	return domain;
+}
+
+// Helper function to set up blocks domain (for backward compatibility)
+static Ref<PlannerDomain> setup_blocks_domain() {
+	return setup_blocks_domain_tasks_only();
 }
 
 // Helper function to create initial state 1 (from IPyHOP example)
@@ -399,8 +535,8 @@ static Dictionary create_init_state_1() {
 	return state;
 }
 
-// Helper function to create goal 1a (from IPyHOP example)
-static Ref<PlannerMultigoal> create_goal_1a() {
+// Helper function to create multigoal 1a (from IPyHOP example)
+static Ref<PlannerMultigoal> create_multigoal_1a() {
 	Dictionary goal_state;
 	
 	Dictionary pos;
@@ -421,6 +557,61 @@ static Ref<PlannerMultigoal> create_goal_1a() {
 	
 	Ref<PlannerMultigoal> goal = memnew(PlannerMultigoal("goal1a", goal_state));
 	return goal;
+}
+
+// Helper function to create goal 1a (for backward compatibility)
+static Ref<PlannerMultigoal> create_goal_1a() {
+	return create_multigoal_1a();
+}
+
+// Helper function to create state with entity capabilities
+static Dictionary create_state_with_entities(const Dictionary &p_base_state, const String &p_entity_id, const String &p_capability, Variant p_value) {
+	Dictionary state = p_base_state.duplicate();
+	
+	// Add entity capabilities to state
+	Dictionary entity_capabilities;
+	if (state.has("entity_capabilities")) {
+		entity_capabilities = state["entity_capabilities"];
+	}
+	
+	Dictionary entity_caps;
+	if (entity_capabilities.has(p_entity_id)) {
+		entity_caps = entity_capabilities[p_entity_id];
+	}
+	entity_caps[p_capability] = p_value;
+	entity_capabilities[p_entity_id] = entity_caps;
+	state["entity_capabilities"] = entity_capabilities;
+	
+	return state;
+}
+
+// Helper function to attach PlannerMetadata with entity requirements
+static Dictionary attach_entity_metadata(const Array &p_action_array, const String &p_entity_type, const Array &p_capabilities) {
+	Dictionary metadata_dict;
+	Array entities_array;
+	Dictionary entity_req;
+	entity_req["type"] = p_entity_type;
+	entity_req["capabilities"] = p_capabilities;
+	entities_array.push_back(entity_req);
+	metadata_dict["requires_entities"] = entities_array;
+	
+	Dictionary result;
+	result["item"] = p_action_array;
+	result["metadata"] = metadata_dict;
+	return result;
+}
+
+// Helper function to attach PlannerMetadata with temporal constraints
+static Dictionary attach_temporal_metadata(const Array &p_action_array, int64_t p_start_time_micros, int64_t p_end_time_micros, int64_t p_duration_micros) {
+	Dictionary temporal_dict;
+	temporal_dict["duration"] = String::num_int64(p_duration_micros);
+	temporal_dict["start_time"] = String::num_int64(p_start_time_micros);
+	temporal_dict["end_time"] = String::num_int64(p_end_time_micros);
+	
+	Dictionary result;
+	result["item"] = p_action_array;
+	result["temporal_constraints"] = temporal_dict;
+	return result;
 }
 
 TEST_CASE("[Modules][BlocksDomain] Basic actions") {
@@ -625,6 +816,375 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 				CHECK(final_pos[block] == goal_pos[block]);
 			}
 		}
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Basic commands") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	
+	Dictionary state = create_init_state_1();
+	
+	SUBCASE("c_pickup should fail for block a (not on table)") {
+		Array todo_list;
+		Array command;
+		command.push_back("c_pickup");
+		command.push_back("a");
+		todo_list.push_back(command);
+		
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result == false); // Should fail
+	}
+	
+	SUBCASE("c_pickup should succeed for block c") {
+		Array todo_list;
+		Array command;
+		command.push_back("c_pickup");
+		command.push_back("c");
+		todo_list.push_back(command);
+		
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+		Array plan_array = result;
+		CHECK(plan_array.size() == 1);
+		Array first_command = plan_array[0];
+		CHECK(first_command[0] == "c_pickup");
+		CHECK(first_command[1] == "c");
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Goal-based planning (unigoal methods only)") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_goals_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	
+	SUBCASE("Unigoal methods should solve blocks problem") {
+		Array todo_list;
+		Array goal;
+		goal.push_back("get");
+		goal.push_back("a");
+		goal.push_back(true); // desired value
+		todo_list.push_back(goal);
+		
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+		Array plan_array = result;
+		CHECK(plan_array.size() >= 1);
+		// Should use unigoal decomposition (get -> a_unstack)
+		Array first_action = plan_array[0];
+		CHECK(first_action[0] == "a_unstack");
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Task-based planning (task methods only)") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	
+	SUBCASE("Task methods should solve blocks problem") {
+		Array todo_list;
+		Array task;
+		task.push_back("move_blocks");
+		task.push_back(multigoal);
+		todo_list.push_back(task);
+		
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+		Array plan_array = result;
+		CHECK(plan_array.size() >= 4); // Should have multiple actions
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahead (goal methods)") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_goals_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	
+	SUBCASE("run_lazy_refineahead should solve blocks domain with goal methods") {
+		Array todo_list;
+		Array goal;
+		goal.push_back("get");
+		goal.push_back("a");
+		goal.push_back(true);
+		todo_list.push_back(goal);
+		
+		Dictionary final_state = plan->run_lazy_refineahead(state, todo_list);
+		CHECK(final_state.has("pos"));
+		// Verify final state has been modified
+		Dictionary final_pos = final_state["pos"];
+		CHECK(final_pos.has("a"));
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahead (task methods)") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	
+	SUBCASE("run_lazy_refineahead should solve blocks domain with task methods") {
+		Array todo_list;
+		Array task;
+		task.push_back("move_blocks");
+		task.push_back(multigoal);
+		todo_list.push_back(task);
+		
+		Dictionary final_state = plan->run_lazy_refineahead(state, todo_list);
+		
+		// Verify final state matches multigoal
+		Dictionary multigoal_pos = multigoal->get_goal_conditions_for_variable("pos");
+		Dictionary final_pos = final_state["pos"];
+		
+		Array multigoal_pos_keys = multigoal_pos.keys();
+		for (int i = 0; i < multigoal_pos_keys.size(); i++) {
+			String block = multigoal_pos_keys[i];
+			if (multigoal_pos.has(block)) {
+				CHECK(final_pos.has(block));
+				CHECK(final_pos[block] == multigoal_pos[block]);
+			}
+		}
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Entity requirements in commands") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	
+	SUBCASE("Command with entity requirements should fail when entities unavailable") {
+		Array command;
+		command.push_back("c_pickup");
+		command.push_back("c");
+		Array capabilities;
+		capabilities.push_back("gripper");
+		Dictionary command_with_metadata = attach_entity_metadata(command, "robot", capabilities);
+		
+		Array todo_list;
+		todo_list.push_back(command_with_metadata);
+		
+		// State doesn't have entity_capabilities, so should fail
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result == false);
+	}
+	
+	SUBCASE("Command with entity requirements should succeed when entities available") {
+		// Add entity capabilities to state
+		Dictionary state_dict = state;
+		Dictionary entity_capabilities;
+		Dictionary robot1_caps;
+		robot1_caps["gripper"] = true;
+		entity_capabilities["robot1"] = robot1_caps;
+		state_dict["entity_capabilities"] = entity_capabilities;
+		
+		Array command;
+		command.push_back("c_pickup");
+		command.push_back("c");
+		Array capabilities;
+		capabilities.push_back("gripper");
+		Dictionary command_with_metadata = attach_entity_metadata(command, "robot", capabilities);
+		
+		Array todo_list;
+		todo_list.push_back(command_with_metadata);
+		
+		Variant result = plan->find_plan(state_dict, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Temporal constraints in commands") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	
+	SUBCASE("Command with temporal constraints should succeed") {
+		// Use absolute time in microseconds
+		int64_t start_time_micros = 1735689600000000LL; // 2025-01-01 00:00:00 UTC
+		int64_t duration_micros = 1800000000LL; // 30 minutes
+		int64_t end_time_micros = start_time_micros + duration_micros;
+		
+		Array command;
+		command.push_back("c_pickup");
+		command.push_back("c");
+		Dictionary command_with_temporal = attach_temporal_metadata(command, start_time_micros, end_time_micros, duration_micros);
+		
+		Array todo_list;
+		todo_list.push_back(command_with_temporal);
+		
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	
+	SUBCASE("Task with entity requirements should fail when entities unavailable") {
+		Array task;
+		task.push_back("move_blocks");
+		task.push_back(multigoal);
+		Array capabilities;
+		capabilities.push_back("gripper");
+		Dictionary task_with_metadata = attach_entity_metadata(task, "robot", capabilities);
+		
+		Array todo_list;
+		todo_list.push_back(task_with_metadata);
+		
+		// State doesn't have entity_capabilities, so should fail
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result == false);
+	}
+	
+	SUBCASE("Task with entity requirements should succeed when entities available") {
+		// Add entity capabilities to state
+		Dictionary state_dict = state;
+		Dictionary entity_capabilities;
+		Dictionary robot1_caps;
+		robot1_caps["gripper"] = true;
+		entity_capabilities["robot1"] = robot1_caps;
+		state_dict["entity_capabilities"] = entity_capabilities;
+		
+		Array task;
+		task.push_back("move_blocks");
+		task.push_back(multigoal);
+		Array capabilities;
+		capabilities.push_back("gripper");
+		Dictionary task_with_metadata = attach_entity_metadata(task, "robot", capabilities);
+		
+		Array todo_list;
+		todo_list.push_back(task_with_metadata);
+		
+		Variant result = plan->find_plan(state_dict, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Temporal constraints in tasks") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	Ref<PlannerMultigoal> multigoal = create_multigoal_1a();
+	
+	SUBCASE("Task with temporal constraints should succeed") {
+		// Use absolute time in microseconds
+		int64_t start_time_micros = 1735689600000000LL; // 2025-01-01 00:00:00 UTC
+		int64_t duration_micros = 1800000000LL; // 30 minutes
+		int64_t end_time_micros = start_time_micros + duration_micros;
+		
+		Array task;
+		task.push_back("move_blocks");
+		task.push_back(multigoal);
+		Dictionary task_with_temporal = attach_temporal_metadata(task, start_time_micros, end_time_micros, duration_micros);
+		
+		Array todo_list;
+		todo_list.push_back(task_with_temporal);
+		
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+	}
+	
+	memdelete(domain.ptr());
+	memdelete(plan.ptr());
+}
+
+TEST_CASE("[Modules][BlocksDomain] Combined temporal and entity requirements") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
+	plan->set_current_domain(domain);
+	plan->set_verbose(0);
+	
+	Dictionary state = create_init_state_1();
+	
+	// Add entity capabilities to state
+	Dictionary entity_capabilities;
+	Dictionary robot1_caps;
+	robot1_caps["gripper"] = true;
+	entity_capabilities["robot1"] = robot1_caps;
+	state["entity_capabilities"] = entity_capabilities;
+	
+	SUBCASE("Command with both temporal and entity requirements should succeed") {
+		int64_t start_time_micros = 1735689600000000LL;
+		int64_t duration_micros = 1800000000LL;
+		int64_t end_time_micros = start_time_micros + duration_micros;
+		
+		Array command;
+		command.push_back("c_pickup");
+		command.push_back("c");
+		
+		// Attach both temporal and entity metadata
+		Dictionary temporal_dict = attach_temporal_metadata(command, start_time_micros, end_time_micros, duration_micros);
+		Array capabilities;
+		capabilities.push_back("gripper");
+		Dictionary entity_dict = attach_entity_metadata(command, "robot", capabilities);
+		
+		// Combine both metadata
+		Dictionary combined_metadata;
+		combined_metadata["item"] = command;
+		combined_metadata["temporal_constraints"] = temporal_dict["temporal_constraints"];
+		combined_metadata["metadata"] = entity_dict["metadata"];
+		
+		Array todo_list;
+		todo_list.push_back(combined_metadata);
+		
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
 	}
 	
 	memdelete(domain.ptr());
