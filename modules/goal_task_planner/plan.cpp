@@ -854,6 +854,24 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		case PlannerNodeType::TYPE_TASK: {
 			// Try to refine task with available methods (like Elixir's Enum.find_value)
 			Variant task_info = curr_node["info"];
+			
+			// Extract metadata and validate entity requirements
+			PlannerMetadata metadata = _extract_metadata(task_info);
+			if (!_validate_entity_requirements(p_state, metadata)) {
+				if (verbose >= 2) {
+					print_line("Task entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+				);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 			
 			// Try all available methods (like Elixir's Enum.find_value)
@@ -941,10 +959,27 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			curr_node["stn_snapshot"] = stn_snapshot;
 			solution_graph.update_node(curr_node_id, curr_node);
 			
-			// Check for temporal constraints in action
+			// Check for temporal constraints and entity requirements in action
+			PlannerMetadata metadata = _extract_metadata(action_info);
 			Dictionary temporal_metadata;
 			if (_has_temporal_constraints(action_info)) {
 				temporal_metadata = _get_temporal_constraints(action_info);
+			}
+			
+			// Validate entity requirements before executing action
+			if (!_validate_entity_requirements(p_state, metadata)) {
+				if (verbose >= 2) {
+					print_line("Action entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+				);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
 			}
 			
 			// Execute action with temporal tracking
@@ -1059,6 +1094,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			String argument = goal_arr[1];
 			Variant desired_value = goal_arr[2];
 			
+			// Extract metadata and validate entity requirements
+			PlannerMetadata metadata = _extract_metadata(goal_arr);
+			if (!_validate_entity_requirements(p_state, metadata)) {
+				if (verbose >= 2) {
+					print_line("Goal entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+				);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			
 			// Check if goal already achieved
 			Dictionary state_var = p_state[state_var_name];
 			if (state_var[argument] == desired_value) {
@@ -1128,6 +1180,25 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		case PlannerNodeType::TYPE_MULTIGOAL: {
 			Ref<PlannerMultigoal> multigoal = curr_node["info"];
 			if (multigoal.is_null()) {
+				return p_state;
+			}
+			
+			// Extract metadata from multigoal and validate entity requirements
+			// Multigoal metadata might be stored in the multigoal object itself
+			Variant multigoal_variant = multigoal;
+			PlannerMetadata metadata = _extract_metadata(multigoal_variant);
+			if (!_validate_entity_requirements(p_state, metadata)) {
+				if (verbose >= 2) {
+					print_line("MultiGoal entity requirements not met, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+				);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
 				return p_state;
 			}
 			
@@ -1408,19 +1479,30 @@ PlannerPlan::ConstrainingFactor PlannerPlan::_calculate_constraining_factor(cons
 }
 
 PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item) const {
+	// Extract only temporal constraints (for backward compatibility)
+	PlannerMetadata metadata = _extract_metadata(p_item);
+	// Clear entity requirements to return only temporal constraints
+	metadata.requires_entities.clear();
+	return metadata;
+}
+
+PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {
 	PlannerMetadata metadata;
 	
-	// Check if item has temporal_constraints field
+	// Check if item has temporal_constraints or metadata field
 	if (p_item.get_type() == Variant::DICTIONARY) {
 		Dictionary item_dict = p_item;
 		if (item_dict.has("temporal_constraints")) {
 			Dictionary temporal_dict = item_dict["temporal_constraints"];
 			metadata = PlannerMetadata::from_dictionary(temporal_dict);
+		} else if (item_dict.has("metadata")) {
+			Dictionary metadata_dict = item_dict["metadata"];
+			metadata = PlannerMetadata::from_dictionary(metadata_dict);
 		}
 	} else if (p_item.get_type() == Variant::ARRAY) {
 		Array item_arr = p_item;
-		// Temporal constraints might be stored as last element or in a wrapper
-		// Check if last element is a dictionary with temporal constraints
+		// Metadata might be stored as last element or in a wrapper
+		// Check if last element is a dictionary with temporal_constraints or metadata
 		if (item_arr.size() > 0) {
 			Variant last = item_arr[item_arr.size() - 1];
 			if (last.get_type() == Variant::DICTIONARY) {
@@ -1428,6 +1510,9 @@ PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item
 				if (last_dict.has("temporal_constraints")) {
 					Dictionary temporal_dict = last_dict["temporal_constraints"];
 					metadata = PlannerMetadata::from_dictionary(temporal_dict);
+				} else if (last_dict.has("metadata")) {
+					Dictionary metadata_dict = last_dict["metadata"];
+					metadata = PlannerMetadata::from_dictionary(metadata_dict);
 				}
 			}
 		}
@@ -1505,6 +1590,24 @@ Dictionary PlannerPlan::_get_temporal_constraints(const Variant &p_item) const {
 bool PlannerPlan::_has_temporal_constraints(const Variant &p_item) const {
 	PlannerMetadata metadata = _extract_temporal_constraints(p_item);
 	return !metadata.start_time.is_empty() || !metadata.end_time.is_empty() || !metadata.duration.is_empty();
+}
+
+bool PlannerPlan::_validate_entity_requirements(const Dictionary &p_state, const PlannerMetadata &p_metadata) const {
+	// Check if metadata has entity requirements
+	if (p_metadata.requires_entities.size() == 0) {
+		return true; // No entity requirements, validation passes
+	}
+	
+	// Match entities for all requirements
+	Dictionary match_result = _match_entities(p_state, p_metadata.requires_entities);
+	bool success = match_result["success"];
+	
+	if (!success && verbose >= 2) {
+		String error = match_result["error"];
+		print_line("Entity matching failed: " + error);
+	}
+	
+	return success;
 }
 
 Dictionary PlannerPlan::_match_entities(const Dictionary &p_state, const LocalVector<PlannerEntityRequirement> &p_requirements) const {
