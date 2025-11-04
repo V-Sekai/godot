@@ -714,8 +714,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 		CHECK(second_action[0] == "a_putdown");
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Block stacking problem") {
@@ -782,8 +781,7 @@ TEST_CASE("[Modules][BlocksDomain] Block stacking problem") {
 		CHECK(found_stack_c);
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahead") {
@@ -818,8 +816,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 		}
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Basic commands") {
@@ -856,8 +853,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic commands") {
 		CHECK(first_command[1] == "c");
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Goal-based planning (unigoal methods only)") {
@@ -886,8 +882,7 @@ TEST_CASE("[Modules][BlocksDomain] Goal-based planning (unigoal methods only)") 
 		CHECK(first_action[0] == "a_unstack");
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Task-based planning (task methods only)") {
@@ -912,8 +907,7 @@ TEST_CASE("[Modules][BlocksDomain] Task-based planning (task methods only)") {
 		CHECK(plan_array.size() >= 4); // Should have multiple actions
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahead (goal methods)") {
@@ -940,8 +934,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 		CHECK(final_pos.has("a"));
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahead (task methods)") {
@@ -976,8 +969,7 @@ TEST_CASE("[Modules][BlocksDomain] Graph-based planning with run_lazy_refineahea
 		}
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Entity requirements in commands") {
@@ -1027,8 +1019,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in commands") {
 		CHECK(result.get_type() == Variant::ARRAY);
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Temporal constraints in commands") {
@@ -1108,8 +1099,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
 		CHECK(result.get_type() == Variant::ARRAY);
 	}
 	
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[Modules][BlocksDomain] Temporal constraints in tasks") {
