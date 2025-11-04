@@ -1,0 +1,26 @@
+# ignore python compiled test_files
+*.pyc
+**/__pycache__/
+
+# ignore the pycharm specific setting test_files
+.idea/*
+
+# ignore the virtual environment directory.
+venv/
+
+# ignore the following test and temp test_files
+test.*
+test?.*
+test??.*
+
+temp.*
+temp?.*
+temp??.*
+
+# ignore pickle and numpy files
+*.pk
+*.npy
+
+# ignore logs
+**/logs/
+**/logs*/
