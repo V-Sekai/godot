@@ -381,15 +381,23 @@ static Variant tm_move_blocks(Dictionary p_state, Ref<PlannerMultigoal> p_goal) 
 	return Array(); // Empty array means task is done
 }
 
+// Helper function to create a PlannerMultigoal from a single goal (variable, argument, value)
+static Ref<PlannerMultigoal> create_multigoal_from_single_goal(String p_variable, String p_argument, Variant p_value) {
+	Dictionary goal_state;
+	Dictionary variable_dict;
+	variable_dict[p_argument] = p_value;
+	goal_state[p_variable] = variable_dict;
+	Ref<PlannerMultigoal> multigoal = memnew(PlannerMultigoal("", goal_state));
+	return multigoal;
+}
+
 // Method: tm_move_one - move one block to destination
 static Variant tm_move_one(Dictionary p_state, String p_b1, String p_dest) {
 	Array subtasks;
 	
-	Array get_goal;
-	get_goal.push_back("holding");  // State variable: holding
-	get_goal.push_back("hand");     // Argument: which hand
-	get_goal.push_back(p_b1);       // Desired value: block to hold
-	subtasks.push_back(get_goal);
+	// Create multigoal for holding goal
+	Ref<PlannerMultigoal> holding_goal = create_multigoal_from_single_goal("holding", "hand", p_b1);
+	subtasks.push_back(holding_goal);
 	
 	Array put_task;
 	put_task.push_back("put");
@@ -405,21 +413,25 @@ static Variant tm_move_one(Dictionary p_state, String p_b1, String p_dest) {
 // Arguments: state, "hand" (argument), block_name (value)
 static Variant tm_get(Dictionary p_state, String p_argument, Variant p_value) {
 	// p_value is the block name we want to hold
-	String p_b1 = p_value;
+	String b1 = p_value;
 	Dictionary clear = p_state["clear"];
 	Dictionary pos = p_state["pos"];
 	
-	if (clear[p_b1] == Variant(true)) {
+	if (clear[b1] == Variant(true)) {
 		Array subtask;
-		if (pos[p_b1] == "table") {
+		if (pos[b1] == "table") {
 			subtask.push_back("a_pickup");
-			subtask.push_back(p_b1);
+			subtask.push_back(b1);
 		} else {
 			subtask.push_back("a_unstack");
-			subtask.push_back(p_b1);
-			subtask.push_back(pos[p_b1]);
+			subtask.push_back(b1);
+			subtask.push_back(pos[b1]);
 		}
-		return subtask;
+		// Unigoal methods must return an Array of Arrays (todo list format)
+		// Each element must be a PlannerMultigoal, task, or action - not a single goal
+		Array result;
+		result.push_back(subtask);
+		return result;
 	}
 	return false; // Not applicable
 }
@@ -443,7 +455,10 @@ static Variant tm_put(Dictionary p_state, String p_b1, String p_b2) {
 				return false; // Not applicable
 			}
 		}
-		return subtask;
+		// Task methods must return an Array of Arrays (todo list format)
+		Array result;
+		result.push_back(subtask);
+		return result;
 	}
 	return false; // Not applicable
 }
@@ -507,6 +522,11 @@ static Ref<PlannerDomain> setup_blocks_domain_tasks_only() {
 	actions.push_back(callable_mp_static(&a_stack));
 	domain->add_actions(actions);
 	
+	// Add unigoal methods (needed by tm_move_one which returns goals)
+	TypedArray<Callable> holding_methods;
+	holding_methods.push_back(callable_mp_static(&tm_get));
+	domain->add_unigoal_methods("holding", holding_methods);
+	
 	// Add task methods (task-based decomposition)
 	TypedArray<Callable> move_blocks_methods;
 	move_blocks_methods.push_back(callable_mp_static(&tm_move_blocks));
@@ -515,6 +535,11 @@ static Ref<PlannerDomain> setup_blocks_domain_tasks_only() {
 	TypedArray<Callable> move_one_methods;
 	move_one_methods.push_back(callable_mp_static(&tm_move_one));
 	domain->add_task_methods("move_one", move_one_methods);
+	
+	// "put" is needed by tm_move_one
+	TypedArray<Callable> put_methods;
+	put_methods.push_back(callable_mp_static(&tm_put));
+	domain->add_task_methods("put", put_methods);
 	
 	return domain;
 }
@@ -653,10 +678,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	
 	SUBCASE("get should succeed for block a (unstack)") {
 		Array todo_list;
-		Array goal;
-		goal.push_back("holding");  // State variable: holding
-		goal.push_back("hand");     // Argument: which hand (only "hand" exists)
-		goal.push_back("a");        // Desired value: block "a" should be held
+		Ref<PlannerMultigoal> goal = create_multigoal_from_single_goal("holding", "hand", "a");
 		todo_list.push_back(goal);
 		
 		Variant result = plan->find_plan(state, todo_list);
@@ -671,10 +693,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	
 	SUBCASE("get should succeed for block c (pickup)") {
 		Array todo_list;
-		Array goal;
-		goal.push_back("holding");  // State variable: holding
-		goal.push_back("hand");     // Argument: which hand (only "hand" exists)
-		goal.push_back("c");        // Desired value: block "c" should be held
+		Ref<PlannerMultigoal> goal = create_multigoal_from_single_goal("holding", "hand", "c");
 		todo_list.push_back(goal);
 		
 		Variant result = plan->find_plan(state, todo_list);
