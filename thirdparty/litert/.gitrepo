@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/google-ai-edge/LiteRT.git
+	branch = main
+	commit = b2faeab4f711c77ceefd8ab9ad7c4a7082e60bd1
+	parent = 1db9c230e988935c899b748ccad0fb42a752609d
+	method = merge
+	cmdver = 0.4.9
