@@ -76,9 +76,9 @@ public:
 		root_node["selected_method"] = Variant();
 		root_node["available_methods"] = TypedArray<Callable>();
 		root_node["action"] = Variant();
-		root_node["start_time"] = 0LL;
-		root_node["end_time"] = 0LL;
-		root_node["duration"] = 0LL;
+		root_node["start_time"] = Variant(static_cast<int64_t>(0));
+		root_node["end_time"] = Variant(static_cast<int64_t>(0));
+		root_node["duration"] = Variant(static_cast<int64_t>(0));
 		graph[0] = root_node;
 		next_node_id = 1;
 	}
@@ -95,9 +95,9 @@ public:
 		node["selected_method"] = Variant();
 		node["available_methods"] = p_available_methods;
 		node["action"] = p_action;
-		node["start_time"] = 0LL;
-		node["end_time"] = 0LL;
-		node["duration"] = 0LL;
+		node["start_time"] = Variant(static_cast<int64_t>(0));
+		node["end_time"] = Variant(static_cast<int64_t>(0));
+		node["duration"] = Variant(static_cast<int64_t>(0));
 		graph[node_id] = node;
 		return node_id;
 	}
