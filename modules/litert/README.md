@@ -66,12 +66,6 @@ The LiteRT module supports multiple GPU backends:
 - **XNNPACK**: CPU acceleration via XNNPACK kernels
 - Always available as fallback
 
-### Metal (macOS/iOS)
-- **Framework**: Metal (system framework, no external dependency)
-- **Availability**: macOS and iOS platforms
-- **Status**: Enabled when GPU support is enabled
-- **Source**: `runtime/metal_info.cc` compiled as Objective-C++
-
 ### WebGPU (Cross-Platform)
 - **Library**: Requires `libLiteRtWebGpuAccelerator.dylib` (or `.so`/`.dll`)
 - **Dependency**: Dawn library (Google's WebGPU implementation)
@@ -81,20 +75,16 @@ The LiteRT module supports multiple GPU backends:
 
 ### Backend Priority Order
 
-On macOS, LiteRT tries accelerators in this order:
-1. **WebGPU** (`libLiteRtWebGpuAccelerator.dylib`) - **Primary choice**
+LiteRT tries accelerators in this order:
+1. **WebGPU** (`libLiteRtWebGpuAccelerator.dylib` or `.so`/`.dll`) - **Primary choice**
    - Cross-platform backend (works on macOS, Linux, Windows, Android, Web)
    - Universal backend that can target all platforms
    - Requires Dawn library and accelerator library to be built
-2. **Metal** (native) - **Fallback**
-   - Native macOS/iOS API (system framework, no external dependency)
-   - Potentially better performance on macOS due to native optimization
-   - Reliable fallback if WebGPU is unavailable
-3. **CPU** (XNNPACK) - **Always available**
-   - Final fallback if GPU backends fail
+2. **CPU** (XNNPACK) - **Always available**
+   - Final fallback if WebGPU backend fails or is unavailable
    - XNNPACK-accelerated CPU kernels
 
-**Rationale**: WebGPU is prioritized for cross-platform compatibility, while Metal serves as a reliable native fallback. This provides the best of both worlds: universal code path with native performance when needed.
+**Rationale**: WebGPU is prioritized for cross-platform compatibility. CPU serves as a reliable fallback when WebGPU is unavailable.
 
 ## Dependencies
 
@@ -103,7 +93,6 @@ On macOS, LiteRT tries accelerators in this order:
 - **Abseil**: Minimal build (~25 files)
 - **TensorFlow Lite**: Pre-built library (build separately)
 - **XNNPACK**: Skipped (optional acceleration)
-- **Metal Framework**: System framework (macOS/iOS only)
 - **WebGPU Accelerator**: Built separately (requires Dawn library)
 
 ## Build Status

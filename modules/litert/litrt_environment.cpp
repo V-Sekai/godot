@@ -32,31 +32,39 @@
 
 #include "core/error/error_macros.h"
 
-void LiteRtEnvironment::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("create"), &LiteRtEnvironment::create);
-	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtEnvironment::is_valid);
+// Include the LiteRT header here to get the typedef
+#include "litert/c/litert_environment.h"
+
+void LiteRtEnvironmentRef::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("create"), &LiteRtEnvironmentRef::create);
+	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtEnvironmentRef::is_valid);
 }
 
-LiteRtEnvironment::LiteRtEnvironment() {
+LiteRtEnvironmentRef::LiteRtEnvironmentRef() {
 }
 
-LiteRtEnvironment::~LiteRtEnvironment() {
+LiteRtEnvironmentRef::~LiteRtEnvironmentRef() {
 	if (environment != nullptr) {
-		LiteRtDestroyEnvironment(environment);
+		// Cast handle to typedef type for LiteRT API (both are pointers)
+		LiteRtEnvironment handle = reinterpret_cast<LiteRtEnvironment>(environment);
+		LiteRtDestroyEnvironment(handle);
 		environment = nullptr;
 	}
 }
 
-Error LiteRtEnvironment::create() {
+Error LiteRtEnvironmentRef::create() {
 	if (environment != nullptr) {
 		return ERR_ALREADY_EXISTS;
 	}
 
-	LiteRtStatus status = LiteRtCreateEnvironment(0, nullptr, &environment);
+	// Use the typedef type from litert headers for API call
+	LiteRtEnvironment handle = nullptr;
+	LiteRtStatus status = LiteRtCreateEnvironment(0, nullptr, &handle);
 	if (status != kLiteRtStatusOk) {
 		environment = nullptr;
 		return FAILED;
 	}
+	environment = reinterpret_cast<LiteRtEnvironmentHandle>(handle); // Assign to our handle type
 
 	return OK;
 }

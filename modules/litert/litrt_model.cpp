@@ -33,23 +33,28 @@
 #include "core/error/error_macros.h"
 #include "core/io/file_access.h"
 
-void LiteRtModel::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("load_from_file", "path"), &LiteRtModel::load_from_file);
-	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtModel::is_valid);
-	ClassDB::bind_method(D_METHOD("get_num_signatures"), &LiteRtModel::get_num_signatures);
+// Include the LiteRT header here to get the typedef
+#include "litert/c/litert_model.h"
+
+void LiteRtModelRef::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("load_from_file", "path"), &LiteRtModelRef::load_from_file);
+	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtModelRef::is_valid);
+	ClassDB::bind_method(D_METHOD("get_num_signatures"), &LiteRtModelRef::get_num_signatures);
 }
 
-LiteRtModel::LiteRtModel() {
+LiteRtModelRef::LiteRtModelRef() {
 }
 
-LiteRtModel::~LiteRtModel() {
+LiteRtModelRef::~LiteRtModelRef() {
 	if (model != nullptr) {
-		LiteRtDestroyModel(model);
+		// Cast handle to typedef type for LiteRT API (both are pointers)
+		LiteRtModel handle = reinterpret_cast<LiteRtModel>(model);
+		LiteRtDestroyModel(handle);
 		model = nullptr;
 	}
 }
 
-Error LiteRtModel::load_from_file(const String &p_path) {
+Error LiteRtModelRef::load_from_file(const String &p_path) {
 	if (model != nullptr) {
 		return ERR_ALREADY_EXISTS;
 	}
@@ -66,22 +71,27 @@ Error LiteRtModel::load_from_file(const String &p_path) {
 		return ERR_INVALID_DATA;
 	}
 
-	LiteRtStatus status = LiteRtCreateModelFromBuffer(data.ptr(), data.size(), &model);
+	// Use the typedef type from litert headers for API call
+	LiteRtModel handle = nullptr;
+	LiteRtStatus status = LiteRtCreateModelFromBuffer(data.ptr(), data.size(), &handle);
 	if (status != kLiteRtStatusOk) {
 		model = nullptr;
 		return FAILED;
 	}
+	model = reinterpret_cast<LiteRtModelHandle>(handle); // Assign to our handle type
 
 	return OK;
 }
 
-int LiteRtModel::get_num_signatures() const {
+int LiteRtModelRef::get_num_signatures() const {
 	if (model == nullptr) {
 		return 0;
 	}
 
+	// Cast handle to typedef type for LiteRT API (both are pointers)
+	LiteRtModel handle = reinterpret_cast<LiteRtModel>(model);
 	LiteRtParamIndex num_signatures = 0;
-	LiteRtStatus status = LiteRtGetNumSignatures(model, &num_signatures);
+	LiteRtStatus status = LiteRtGetNumModelSignatures(handle, &num_signatures);
 	if (status != kLiteRtStatusOk) {
 		return 0;
 	}

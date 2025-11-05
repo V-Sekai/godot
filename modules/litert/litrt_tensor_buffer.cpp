@@ -33,19 +33,25 @@
 #include "core/error/error_macros.h"
 #include "core/math/math_funcs.h"
 
-void LiteRtTensorBuffer::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("create_from_array", "data", "shape"), &LiteRtTensorBuffer::create_from_array);
-	ClassDB::bind_method(D_METHOD("get_data"), &LiteRtTensorBuffer::get_data);
-	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtTensorBuffer::is_valid);
-	ClassDB::bind_method(D_METHOD("get_shape"), &LiteRtTensorBuffer::get_shape);
+// Include the LiteRT headers here to get the typedefs
+#include "litert/c/litert_tensor_buffer.h"
+#include "litert/c/litert_layout.h"
+
+void LiteRtTensorBufferRef::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("create_from_array", "data", "shape"), &LiteRtTensorBufferRef::create_from_array);
+	ClassDB::bind_method(D_METHOD("get_data"), &LiteRtTensorBufferRef::get_data);
+	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtTensorBufferRef::is_valid);
+	ClassDB::bind_method(D_METHOD("get_shape"), &LiteRtTensorBufferRef::get_shape);
 }
 
-LiteRtTensorBuffer::LiteRtTensorBuffer() {
+LiteRtTensorBufferRef::LiteRtTensorBufferRef() {
 }
 
-LiteRtTensorBuffer::~LiteRtTensorBuffer() {
+LiteRtTensorBufferRef::~LiteRtTensorBufferRef() {
 	if (tensor_buffer != nullptr) {
-		LiteRtDestroyTensorBuffer(tensor_buffer);
+		// Cast handle to typedef type for LiteRT API (both are pointers)
+		LiteRtTensorBuffer handle = reinterpret_cast<LiteRtTensorBuffer>(tensor_buffer);
+		LiteRtDestroyTensorBuffer(handle);
 		tensor_buffer = nullptr;
 	}
 	if (host_memory != nullptr) {
@@ -54,7 +60,7 @@ LiteRtTensorBuffer::~LiteRtTensorBuffer() {
 	}
 }
 
-Error LiteRtTensorBuffer::create_from_array(const PackedFloat32Array &p_data, const PackedInt32Array &p_shape) {
+Error LiteRtTensorBufferRef::create_from_array(const PackedFloat32Array &p_data, const PackedInt32Array &p_shape) {
 	if (tensor_buffer != nullptr) {
 		return ERR_ALREADY_EXISTS;
 	}
@@ -74,12 +80,22 @@ Error LiteRtTensorBuffer::create_from_array(const PackedFloat32Array &p_data, co
 	}
 
 	// Create ranked tensor type
+	// Note: LiteRtRankedTensorType only has element_type and layout
+	// The layout encodes the shape information
 	LiteRtRankedTensorType tensor_type;
-	tensor_type.type_id = kLiteRtTensorTypeIdFloat32;
-	tensor_type.rank = p_shape.size();
-	for (int i = 0; i < p_shape.size(); i++) {
-		tensor_type.shape[i] = p_shape[i];
+	tensor_type.element_type = kLiteRtElementTypeFloat32;
+	// Build layout from shape
+	LiteRtLayout layout;
+	layout.rank = p_shape.size();
+	layout.has_strides = false;
+	for (int i = 0; i < p_shape.size() && i < LITERT_TENSOR_MAX_RANK; i++) {
+		layout.dimensions[i] = p_shape[i];
 	}
+	// Zero out remaining dimensions
+	for (int i = p_shape.size(); i < LITERT_TENSOR_MAX_RANK; i++) {
+		layout.dimensions[i] = 0;
+	}
+	tensor_type.layout = layout;
 
 	// Allocate aligned memory
 	size_t buffer_size = p_data.size() * sizeof(float);
@@ -93,12 +109,15 @@ Error LiteRtTensorBuffer::create_from_array(const PackedFloat32Array &p_data, co
 	data_array = p_data;
 
 	// Create tensor buffer
+	// Use the typedef type from litert headers for API call
+	LiteRtTensorBuffer buffer = nullptr;
 	LiteRtStatus status = LiteRtCreateTensorBufferFromHostMemory(
 			&tensor_type,
 			host_memory,
 			buffer_size,
 			nullptr, // deallocator - we'll manage memory ourselves
-			&tensor_buffer);
+			&buffer);
+	tensor_buffer = reinterpret_cast<LiteRtTensorBufferHandle>(buffer); // Assign to our handle type
 
 	if (status != kLiteRtStatusOk) {
 		memfree(host_memory);
@@ -109,7 +128,7 @@ Error LiteRtTensorBuffer::create_from_array(const PackedFloat32Array &p_data, co
 	return OK;
 }
 
-PackedFloat32Array LiteRtTensorBuffer::get_data() const {
+PackedFloat32Array LiteRtTensorBufferRef::get_data() const {
 	PackedFloat32Array result;
 
 	if (tensor_buffer == nullptr) {
@@ -117,7 +136,9 @@ PackedFloat32Array LiteRtTensorBuffer::get_data() const {
 	}
 
 	void *host_mem = nullptr;
-	LiteRtStatus status = LiteRtGetTensorBufferHostMemory(tensor_buffer, &host_mem);
+	// Cast handle to typedef type for LiteRT API (both are pointers)
+	LiteRtTensorBuffer handle = reinterpret_cast<LiteRtTensorBuffer>(tensor_buffer);
+	LiteRtStatus status = LiteRtGetTensorBufferHostMemory(handle, &host_mem);
 	if (status != kLiteRtStatusOk || host_mem == nullptr) {
 		return result;
 	}
@@ -127,7 +148,7 @@ PackedFloat32Array LiteRtTensorBuffer::get_data() const {
 	return data_array;
 }
 
-PackedInt32Array LiteRtTensorBuffer::get_shape() const {
+PackedInt32Array LiteRtTensorBufferRef::get_shape() const {
 	PackedInt32Array result;
 
 	if (tensor_buffer == nullptr) {

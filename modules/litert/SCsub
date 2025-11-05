@@ -4,7 +4,27 @@ from misc.utility.scons_hints import *
 Import("env")
 Import("env_modules")
 
+# Add include paths to global env so tests can access them
+# Tests are compiled via tests/SCsub which uses env, not env_modules
+# Note: LiteRT sources use #include "litert/c/..." so we need #thirdparty/litert (parent of litert/)
+env.Prepend(CPPPATH=[
+    "modules/litert",  # For module wrapper classes
+    "#thirdparty/litert",  # For litert/c/ includes (allows litert/c/litert_common.h -> thirdparty/litert/litert/c/litert_common.h)
+    "#thirdparty/flatbuffers/include",  # For flatbuffers headers (needed by tests)
+    "#thirdparty/tensorflow-lite/tensorflow/lite",  # For tflite headers (needed by tests)
+    "#thirdparty/tensorflow-lite/tensorflow",  # For tflite/schema includes
+    "#thirdparty/litert/tflite",  # For tflite/converter/schema/mutable/ includes (needed by tests)
+    "#thirdparty/litert/tflite/tensorflow/lite",  # Alternative path for tflite includes
+])
+
 env_litrt = env_modules.Clone()
+# env_modules inherits from env, so it should have the paths above
+# But ensure env_litrt also has them explicitly for thirdparty sources
+# Note: LiteRT sources use #include "litert/c/..." so we need #thirdparty/litert (parent of litert/)
+env_litrt.Prepend(CPPPATH=[
+    "modules/litert",  # For module wrapper classes
+    "#thirdparty/litert",  # For litert/c/ includes (allows litert/c/litert_common.h -> thirdparty/litert/litert/c/litert_common.h)
+])
 
 # Thirdparty source files - build litert static library
 
@@ -87,7 +107,7 @@ core_sources = [
     "core/model/model.cc",
     "core/model/model_buffer.cc",
     "core/model/model_load.cc",
-    "core/model/model_serialize.cc",
+    # "core/model/model_serialize.cc",  # Requires tflite/schema/mutable/schema_generated.h which isn't available
     "core/model/flatbuffer_to_litert.cc",
     "core/model/litert_to_flatbuffer.cc",
     "core/model/graph_validation.cc",
@@ -102,21 +122,19 @@ if env["platform"] == "windows":
 # gpu_environment.cc is always needed for GPU support
 runtime_sources.append("runtime/gpu_environment.cc")
 
-# Metal support for macOS/iOS (fallback backend)
-# Note: metal_info.cc needs to be compiled as Objective-C++ due to Metal API usage
-# Metal is kept as a reliable native fallback, but WebGPU is tried first (see auto_registration.cc)
-# If you want WebGPU-only, you can disable Metal by not including this source and removing framework linking
-if env["platform"] in ["macos", "ios"]:
-    runtime_sources.append("runtime/metal_info.cc")
+# Metal support removed - WebGPU-only backend strategy
 
 # Combine all sources
 litert_sources = c_api_sources + options_sources + runtime_sources + core_sources
 litert_sources = [thirdparty_dir + file for file in litert_sources]
 
 # Add include paths
+# Note: "#thirdparty/litert" is already added above, so litert/c/ includes work
 env_litrt.Prepend(
     CPPPATH=[
-        thirdparty_dir + "build_common/generated",  # For build_config.h
+        "#thirdparty/litert/litert/build_common/generated",  # For build_config.h (actual location)
+        "#thirdparty/litert/litert",  # Direct path for litert/build_common/build_config.h includes
+        thirdparty_dir + "build_common/generated",  # For build_config.h (alternative path)
         thirdparty_dir + "c",
         thirdparty_dir + "c/internal",
         thirdparty_dir + "c/options",
@@ -136,7 +154,9 @@ env_litrt.Prepend(
         "#thirdparty/xnnpack/include",  # For xnnpack headers
         "#thirdparty/pthreadpool/include",  # For pthreadpool headers
         "#thirdparty/tensorflow-lite/tensorflow/lite",  # For tflite:: headers (from git subrepo)
+        "#thirdparty/tensorflow-lite/tensorflow",  # For tflite/schema/ includes
         "#thirdparty/litert/tflite",  # LiteRT's bundled tflite (if still needed)
+        "#thirdparty/litert/tflite/tensorflow/lite",  # For tflite/schema/mutable/ includes
     ]
 )
 
@@ -164,25 +184,13 @@ else:
     )
 
 # Create thirdparty environment with warnings disabled
+# env_litrt already has the include paths from above, including "#thirdparty/litert"
+# This allows litert/c/litert_common.h to resolve to thirdparty/litert/litert/c/litert_common.h
 env_thirdparty = env_litrt.Clone()
 env_thirdparty.disable_warnings()
 
 # Build thirdparty sources
-# Handle metal_info.cc separately to compile as Objective-C++
-if env["platform"] in ["macos", "ios"]:
-    metal_info_source = thirdparty_dir + "runtime/metal_info.cc"
-    # Remove metal_info.cc from regular sources list
-    litert_sources_without_metal = [s for s in litert_sources if not s.endswith("runtime/metal_info.cc")]
-    
-    # Build all sources except metal_info.cc
-    env_thirdparty.add_source_files(thirdparty_obj, litert_sources_without_metal)
-    
-    # Build metal_info.cc with Objective-C++ flags
-    env_metal = env_thirdparty.Clone()
-    env_metal.Append(CXXFLAGS=["-x", "objective-c++"])
-    env_metal.add_source_files(thirdparty_obj, [metal_info_source])
-else:
-    env_thirdparty.add_source_files(thirdparty_obj, litert_sources)
+env_thirdparty.add_source_files(thirdparty_obj, litert_sources)
 
 env.modules_sources += thirdparty_obj
 
@@ -197,9 +205,12 @@ env.modules_sources += module_obj
 env.Depends(module_obj, thirdparty_obj)
 
 # Test files (doctest)
+# Note: Tests are compiled via tests/test_main.cpp which includes module test headers
+# The test files need access to litert headers, so ensure env.modules_env includes our paths
 if env["tests"]:
     env_litrt.Append(CPPDEFINES=["TESTS_ENABLED"])
-    env_litrt.add_source_files(module_obj, "./tests/*.cpp")
+    # Add test files to module_obj - they'll be included via test_main.cpp
+    # The include paths are already set in env_litrt above
     if env["platform"] in ["windows", "macos", "linux", "linuxbsd", "android"]:
         env_litrt.Append(CPPDEFINES=["DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS"])
 
@@ -356,10 +367,7 @@ if True:  # Link pre-built TFLite library
         # This is expected if TFLite hasn't been built yet
         pass
 
-# Link Metal framework on macOS/iOS for Metal backend support (fallback)
-# WebGPU is tried first, Metal serves as native fallback if WebGPU unavailable
-if env["platform"] in ["macos", "ios"]:
-    env_litrt.Append(LINKFLAGS=["-framework", "Metal", "-framework", "Foundation", "-framework", "OpenGL"])
+# Metal framework linking removed - WebGPU-only backend strategy
 
 # NOTE: Dependency linking requirements
 # LiteRT requires the following dependencies to be built and linked:

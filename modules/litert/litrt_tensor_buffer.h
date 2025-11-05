@@ -33,12 +33,17 @@
 #include "core/object/ref_counted.h"
 #include "core/variant/typed_array.h"
 
-#include "litert/c/litert_tensor_buffer.h"
+// Forward declare to avoid conflict with typedef LiteRtTensorBuffer (which is LiteRtTensorBufferT*)
+// Don't include litert_tensor_buffer.h here to avoid typedef conflict
+// The typedef will be handled in the .cpp file
+class LiteRtTensorBufferT;
+typedef class LiteRtTensorBufferT* LiteRtTensorBufferHandle;
 
-class LiteRtTensorBuffer : public RefCounted {
-	GDCLASS(LiteRtTensorBuffer, RefCounted);
+class LiteRtTensorBufferRef : public RefCounted {
+	GDCLASS(LiteRtTensorBufferRef, RefCounted);
 
-	LiteRtTensorBuffer tensor_buffer = nullptr;
+	// Use opaque pointer to avoid name collision with typedef LiteRtTensorBuffer
+	LiteRtTensorBufferHandle tensor_buffer = nullptr;
 	PackedFloat32Array data_array;
 	void *host_memory = nullptr;
 
@@ -46,8 +51,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	LiteRtTensorBuffer();
-	~LiteRtTensorBuffer();
+	LiteRtTensorBufferRef();
+	~LiteRtTensorBufferRef();
 
 	// Create tensor buffer from PackedFloat32Array
 	Error create_from_array(const PackedFloat32Array &p_data, const PackedInt32Array &p_shape);
@@ -56,7 +61,7 @@ public:
 	PackedFloat32Array get_data() const;
 
 	// Get the underlying handle
-	LiteRtTensorBuffer get_handle() const { return tensor_buffer; }
+	LiteRtTensorBufferHandle get_handle() const { return tensor_buffer; }
 
 	// Check if tensor buffer is valid
 	bool is_valid() const { return tensor_buffer != nullptr; }

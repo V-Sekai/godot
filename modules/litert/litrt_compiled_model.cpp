@@ -28,29 +28,67 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
+// Forward declare LiteRT types to avoid conflicts
+// We'll access the typedefs via function pointers and explicit casts
+class LiteRtCompiledModelT;
+class LiteRtTensorBufferT;
+class LiteRtEnvironmentT;
+class LiteRtModelT;
+
+// Include our class header first (defines our wrapper classes)
 #include "litrt_compiled_model.h"
+
+// Now include LiteRT headers to get typedefs for API calls
+// The typedefs will shadow our class names, so we use function pointers and casts
+#include "litert/c/litert_compiled_model.h"
+#include "litert/c/litert_tensor_buffer.h"
+#include "litert/c/litert_environment.h"
+#include "litert/c/litert_model.h"
 
 #include "core/error/error_macros.h"
 
-void LiteRtCompiledModel::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("create", "environment", "model"), &LiteRtCompiledModel::create);
-	ClassDB::bind_method(D_METHOD("run", "signature_index", "inputs", "outputs"), &LiteRtCompiledModel::run);
-	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtCompiledModel::is_valid);
-	ClassDB::bind_method(D_METHOD("get_num_inputs", "signature_index"), &LiteRtCompiledModel::get_num_inputs);
-	ClassDB::bind_method(D_METHOD("get_num_outputs", "signature_index"), &LiteRtCompiledModel::get_num_outputs);
+// After including LiteRT headers, the typedefs are defined:
+// - LiteRtCompiledModel is typedef LiteRtCompiledModelT*
+// - LiteRtTensorBuffer is typedef LiteRtTensorBufferT*
+// - LiteRtEnvironment is typedef LiteRtEnvironmentT*
+// - LiteRtModel is typedef LiteRtModelT*
+//
+// Our wrapper classes use handle types (LiteRt...Handle) to avoid conflicts.
+// When calling LiteRT API functions, we cast our handles to the typedef types.
+//
+// Helper typedefs to reference the LiteRT API types without name conflicts
+// LiteRT typedefs are: typedef class NameT* Name
+// We create our own typedefs that directly reference the underlying pointer types
+// This avoids the name conflict with our wrapper classes
+typedef class LiteRtCompiledModelT* LiteRtCompiledModelApi;
+typedef class LiteRtTensorBufferT* LiteRtTensorBufferApi;
+typedef class LiteRtEnvironmentT* LiteRtEnvironmentApi;
+typedef class LiteRtModelT* LiteRtModelApi;
+
+void LiteRtCompiledModelRef::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("create", "environment", "model"), &LiteRtCompiledModelRef::create);
+	ClassDB::bind_method(D_METHOD("run", "signature_index", "inputs", "outputs"), &LiteRtCompiledModelRef::run);
+	ClassDB::bind_method(D_METHOD("is_valid"), &LiteRtCompiledModelRef::is_valid);
+	ClassDB::bind_method(D_METHOD("get_num_inputs", "signature_index"), &LiteRtCompiledModelRef::get_num_inputs);
+	ClassDB::bind_method(D_METHOD("get_num_outputs", "signature_index"), &LiteRtCompiledModelRef::get_num_outputs);
 }
 
-LiteRtCompiledModel::LiteRtCompiledModel() {
+LiteRtCompiledModelRef::LiteRtCompiledModelRef() {
 }
 
-LiteRtCompiledModel::~LiteRtCompiledModel() {
+LiteRtCompiledModelRef::~LiteRtCompiledModelRef() {
 	if (compiled_model != nullptr) {
-		LiteRtDestroyCompiledModel(compiled_model);
+		// Cast our handle to LiteRT API type (both are LiteRtCompiledModelT*)
+	LiteRtCompiledModelApi handle = (LiteRtCompiledModelApi)(compiled_model);
+	// Call via function pointer using underlying pointer type to avoid name conflict
+	typedef void (*DestroyFunc)(LiteRtCompiledModelT*);
+	DestroyFunc destroy_func = (DestroyFunc)LiteRtDestroyCompiledModel;
+	destroy_func((LiteRtCompiledModelT*)(handle));
 		compiled_model = nullptr;
 	}
 }
 
-Error LiteRtCompiledModel::create(Ref<LiteRtEnvironment> p_environment, Ref<LiteRtModel> p_model) {
+Error LiteRtCompiledModelRef::create(Ref<LiteRtEnvironmentRef> p_environment, Ref<LiteRtModelRef> p_model) {
 	if (compiled_model != nullptr) {
 		return ERR_ALREADY_EXISTS;
 	}
@@ -63,11 +101,23 @@ Error LiteRtCompiledModel::create(Ref<LiteRtEnvironment> p_environment, Ref<Lite
 		return ERR_INVALID_PARAMETER;
 	}
 
-	LiteRtStatus status = LiteRtCreateCompiledModel(
-			p_environment->get_handle(),
-			p_model->get_handle(),
+	// Cast our handles to LiteRT API types (all are pointers to the T structs)
+	LiteRtEnvironmentApi env_handle = (LiteRtEnvironmentApi)(p_environment->get_handle());
+	LiteRtModelApi model_handle = (LiteRtModelApi)(p_model->get_handle());
+	
+	// Use function pointer with underlying pointer types to avoid name conflicts
+	// The actual LiteRT function signature uses typedefs, but we define our function pointer
+	// using the underlying types to avoid conflicts with our class names
+	typedef LiteRtStatus (*CreateCompiledModelFunc)(LiteRtEnvironmentT*, LiteRtModelT*, void*, LiteRtCompiledModelT**);
+	CreateCompiledModelFunc create_func = (CreateCompiledModelFunc)LiteRtCreateCompiledModel;
+	
+	LiteRtCompiledModelT* compiled_model_ptr = nullptr;
+	LiteRtStatus status = create_func(
+			(LiteRtEnvironmentT*)(env_handle),
+			(LiteRtModelT*)(model_handle),
 			nullptr, // compilation_options - null for now
-			&compiled_model);
+			&compiled_model_ptr);
+	compiled_model = (LiteRtCompiledModelHandle)(compiled_model_ptr); // Both are LiteRtCompiledModelT*, same type
 
 	if (status != kLiteRtStatusOk) {
 		compiled_model = nullptr;
@@ -80,7 +130,7 @@ Error LiteRtCompiledModel::create(Ref<LiteRtEnvironment> p_environment, Ref<Lite
 	return OK;
 }
 
-Error LiteRtCompiledModel::run(int p_signature_index, const TypedArray<LiteRtTensorBuffer> &p_inputs, TypedArray<LiteRtTensorBuffer> p_outputs) {
+Error LiteRtCompiledModelRef::run(int p_signature_index, const TypedArray<LiteRtTensorBufferRef> &p_inputs, TypedArray<LiteRtTensorBufferRef> p_outputs) {
 	if (compiled_model == nullptr) {
 		return ERR_UNCONFIGURED;
 	}
@@ -93,36 +143,50 @@ Error LiteRtCompiledModel::run(int p_signature_index, const TypedArray<LiteRtTen
 		return ERR_INVALID_PARAMETER;
 	}
 
-	LiteRtTensorBuffer *input_buffers = (LiteRtTensorBuffer *)memalloc(sizeof(LiteRtTensorBuffer) * num_inputs);
-	LiteRtTensorBuffer *output_buffers = (LiteRtTensorBuffer *)memalloc(sizeof(LiteRtTensorBuffer) * num_outputs);
+	// Allocate arrays of LiteRT API pointers (LiteRtTensorBuffer = LiteRtTensorBufferT*)
+	LiteRtTensorBufferApi *input_buffers = (LiteRtTensorBufferApi *)memalloc(sizeof(LiteRtTensorBufferApi) * num_inputs);
+	LiteRtTensorBufferApi *output_buffers = (LiteRtTensorBufferApi *)memalloc(sizeof(LiteRtTensorBufferApi) * num_outputs);
 
 	for (size_t i = 0; i < num_inputs; i++) {
-		Ref<LiteRtTensorBuffer> buf = p_inputs[i];
+		Ref<LiteRtTensorBufferRef> buf = p_inputs[i];
 		if (buf.is_null() || !buf->is_valid()) {
 			memfree(input_buffers);
 			memfree(output_buffers);
 			return ERR_INVALID_PARAMETER;
 		}
-		input_buffers[i] = buf->get_handle();
+		// Cast from our handle type to LiteRT API type (both are LiteRtTensorBufferT*)
+		input_buffers[i] = (LiteRtTensorBufferApi)(buf->get_handle());
 	}
 
 	for (size_t i = 0; i < num_outputs; i++) {
-		Ref<LiteRtTensorBuffer> buf = p_outputs[i];
+		Ref<LiteRtTensorBufferRef> buf = p_outputs[i];
 		if (buf.is_null() || !buf->is_valid()) {
 			memfree(input_buffers);
 			memfree(output_buffers);
 			return ERR_INVALID_PARAMETER;
 		}
-		output_buffers[i] = buf->get_handle();
+		// Cast from our handle type to LiteRT API type (both are LiteRtTensorBufferT*)
+		output_buffers[i] = (LiteRtTensorBufferApi)(buf->get_handle());
 	}
 
-	LiteRtStatus status = LiteRtRunCompiledModel(
-			compiled_model,
+	// Cast our handle to LiteRT API type (both are LiteRtCompiledModelT*)
+	// Use function pointer with underlying pointer types to avoid name conflict
+	typedef LiteRtStatus (*RunCompiledModelFunc)(
+			LiteRtCompiledModelT*,
+			LiteRtParamIndex,
+			size_t,
+			LiteRtTensorBufferT**,
+			size_t,
+			LiteRtTensorBufferT**);
+	RunCompiledModelFunc run_func = (RunCompiledModelFunc)LiteRtRunCompiledModel;
+	LiteRtCompiledModelApi handle = (LiteRtCompiledModelApi)(compiled_model);
+	LiteRtStatus status = run_func(
+			(LiteRtCompiledModelT*)(handle),
 			static_cast<LiteRtParamIndex>(p_signature_index),
 			num_inputs,
-			input_buffers,
+			(LiteRtTensorBufferT**)(input_buffers),
 			num_outputs,
-			output_buffers);
+			(LiteRtTensorBufferT**)(output_buffers));
 
 	memfree(input_buffers);
 	memfree(output_buffers);
@@ -134,20 +198,22 @@ Error LiteRtCompiledModel::run(int p_signature_index, const TypedArray<LiteRtTen
 	return OK;
 }
 
-int LiteRtCompiledModel::get_num_inputs(int p_signature_index) const {
+int LiteRtCompiledModelRef::get_num_inputs(int p_signature_index) const {
 	if (compiled_model == nullptr) {
 		return 0;
 	}
 
-	// This would require getting buffer requirements - simplified for now
+	// TODO: Implement get_num_inputs - API might not be available or have different name
+	// For now, return 0 as placeholder
 	return 0;
 }
 
-int LiteRtCompiledModel::get_num_outputs(int p_signature_index) const {
+int LiteRtCompiledModelRef::get_num_outputs(int p_signature_index) const {
 	if (compiled_model == nullptr) {
 		return 0;
 	}
 
-	// This would require getting buffer requirements - simplified for now
+	// TODO: Implement get_num_outputs - API might not be available or have different name
+	// For now, return 0 as placeholder
 	return 0;
 }

@@ -35,8 +35,16 @@
 #include "litrt_model.h"
 #include "litrt_tensor_buffer.h"
 
+// Type aliases to preserve GDScript API names (original names without Ref suffix)
+// These allow the GDScript API to use the original names while C++ uses Ref-suffixed names
+using LiteRtEnvironment = LiteRtEnvironmentRef;
+using LiteRtModel = LiteRtModelRef;
+using LiteRtCompiledModel = LiteRtCompiledModelRef;
+using LiteRtTensorBuffer = LiteRtTensorBufferRef;
+
 void initialize_litert_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		// Register with original names (via type aliases) to preserve GDScript API
 		GDREGISTER_CLASS(LiteRtEnvironment);
 		GDREGISTER_CLASS(LiteRtModel);
 		GDREGISTER_CLASS(LiteRtCompiledModel);

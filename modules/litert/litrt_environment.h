@@ -32,25 +32,30 @@
 
 #include "core/object/ref_counted.h"
 
-#include "litert/c/litert_environment.h"
+// Forward declare to avoid conflict with typedef LiteRtEnvironment (which is LiteRtEnvironmentT*)
+// Don't include litert_environment.h here to avoid typedef conflict
+// The typedef will be handled in the .cpp file
+class LiteRtEnvironmentT;
+typedef class LiteRtEnvironmentT* LiteRtEnvironmentHandle;
 
-class LiteRtEnvironment : public RefCounted {
-	GDCLASS(LiteRtEnvironment, RefCounted);
+class LiteRtEnvironmentRef : public RefCounted {
+	GDCLASS(LiteRtEnvironmentRef, RefCounted);
 
-	LiteRtEnvironment environment = nullptr;
+	// Use opaque pointer to avoid name collision with typedef LiteRtEnvironment
+	LiteRtEnvironmentHandle environment = nullptr;
 
 protected:
 	static void _bind_methods();
 
 public:
-	LiteRtEnvironment();
-	~LiteRtEnvironment();
+	LiteRtEnvironmentRef();
+	~LiteRtEnvironmentRef();
 
 	// Create environment (can be called with optional options)
 	Error create();
 
 	// Get the underlying handle
-	LiteRtEnvironment get_handle() const { return environment; }
+	LiteRtEnvironmentHandle get_handle() const { return environment; }
 
 	// Check if environment is valid
 	bool is_valid() const { return environment != nullptr; }

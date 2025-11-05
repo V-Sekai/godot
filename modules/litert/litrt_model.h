@@ -33,25 +33,30 @@
 #include "core/io/resource_loader.h"
 #include "core/object/ref_counted.h"
 
-#include "litert/c/litert_model.h"
+// Forward declare to avoid conflict with typedef LiteRtModel (which is LiteRtModelT*)
+// Don't include litert_model.h here to avoid typedef conflict
+// The typedef will be handled in the .cpp file
+class LiteRtModelT;
+typedef class LiteRtModelT* LiteRtModelHandle;
 
-class LiteRtModel : public RefCounted {
-	GDCLASS(LiteRtModel, RefCounted);
+class LiteRtModelRef : public RefCounted {
+	GDCLASS(LiteRtModelRef, RefCounted);
 
-	LiteRtModel model = nullptr;
+	// Use opaque pointer to avoid name collision with typedef LiteRtModel
+	LiteRtModelHandle model = nullptr;
 
 protected:
 	static void _bind_methods();
 
 public:
-	LiteRtModel();
-	~LiteRtModel();
+	LiteRtModelRef();
+	~LiteRtModelRef();
 
 	// Load model from file path
 	Error load_from_file(const String &p_path);
 
 	// Get the underlying handle
-	LiteRtModel get_handle() const { return model; }
+	LiteRtModelHandle get_handle() const { return model; }
 
 	// Check if model is valid
 	bool is_valid() const { return model != nullptr; }

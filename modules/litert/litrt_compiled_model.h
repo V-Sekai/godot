@@ -32,33 +32,42 @@
 
 #include "core/object/ref_counted.h"
 
-#include "litert/c/litert_compiled_model.h"
+// Forward declare to avoid conflict with typedefs
+// Include our headers (which forward declare types, not LiteRT headers)
+#include "litrt_tensor_buffer.h"
 #include "litrt_environment.h"
 #include "litrt_model.h"
-#include "litrt_tensor_buffer.h"
 
-class LiteRtCompiledModel : public RefCounted {
-	GDCLASS(LiteRtCompiledModel, RefCounted);
+// Don't include litert headers here to avoid typedef conflicts
+// The typedef will be handled in the .cpp file
+// Forward declare to avoid conflict with typedef LiteRtCompiledModel (which is LiteRtCompiledModelT*)
+// Note: Our class name conflicts with the LiteRT typedef, so we use a handle type
+class LiteRtCompiledModelT;
+typedef class LiteRtCompiledModelT* LiteRtCompiledModelHandle;
 
-	LiteRtCompiledModel compiled_model = nullptr;
-	Ref<LiteRtEnvironment> environment;
-	Ref<LiteRtModel> model;
+class LiteRtCompiledModelRef : public RefCounted {
+	GDCLASS(LiteRtCompiledModelRef, RefCounted);
+
+	// Use opaque pointer to avoid name collision with typedef LiteRtCompiledModel
+	LiteRtCompiledModelHandle compiled_model = nullptr;
+	Ref<LiteRtEnvironmentRef> environment;
+	Ref<LiteRtModelRef> model;
 
 protected:
 	static void _bind_methods();
 
 public:
-	LiteRtCompiledModel();
-	~LiteRtCompiledModel();
+	LiteRtCompiledModelRef();
+	~LiteRtCompiledModelRef();
 
 	// Create compiled model from environment and model
-	Error create(Ref<LiteRtEnvironment> p_environment, Ref<LiteRtModel> p_model);
+	Error create(Ref<LiteRtEnvironmentRef> p_environment, Ref<LiteRtModelRef> p_model);
 
 	// Run inference
-	Error run(int p_signature_index, const TypedArray<LiteRtTensorBuffer> &p_inputs, TypedArray<LiteRtTensorBuffer> p_outputs);
+	Error run(int p_signature_index, const TypedArray<LiteRtTensorBufferRef> &p_inputs, TypedArray<LiteRtTensorBufferRef> p_outputs);
 
 	// Get the underlying handle
-	LiteRtCompiledModel get_handle() const { return compiled_model; }
+	LiteRtCompiledModelHandle get_handle() const { return compiled_model; }
 
 	// Check if compiled model is valid
 	bool is_valid() const { return compiled_model != nullptr; }

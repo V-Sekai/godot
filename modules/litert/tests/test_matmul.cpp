@@ -37,106 +37,35 @@
 
 #include "core/io/file_access.h"
 #include "core/os/os.h"
-#include "tflite/c/common.h"
-#include "tflite/core/model_building.h"
-#include "tflite/interpreter.h"
-#include "tflite/model.h"
-#include "tflite/tools/serialization/writer_lib.h"
 
-using namespace tflite;
-using namespace tflite::model_builder;
-
-// Generate a minimal matmul model programmatically and save to temp file
-// Creates: input[2,3] * weights[3,2] = output[2,2]
-// Weights: [[1,2], [3,4], [5,6]] for FullyConnected (needs to be [output_size, input_size])
-// For scrappiest approach: Generate using TFLite model builder, serialize to file
-static String generate_and_save_matmul_model() {
-	ModelBuilder builder;
-
-	// Create weights buffer: [2,3] matrix (output_size=2, input_size=3)
-	// FullyConnected expects weights in [output_size, input_size] format
-	// Values: [[1,2,3], [4,5,6]] flattened = [1,2,3,4,5,6]
-	// This represents: output[0] = input[0]*1 + input[1]*2 + input[2]*3
-	//                   output[1] = input[0]*4 + input[1]*5 + input[2]*6
-	std::vector<float> weights_data = { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f };
-	Buffer weights = NewConstantBuffer<kTfLiteFloat32>(
-			builder,
-			/*shape=*/{ 2, 3 }, // [output_size, input_size]
-			weights_data,
-			NoQuantization());
-
-	// Create graph
-	Graph graph = NewGraph(builder);
-
-	// Create input tensor: [2, 3] (batch_size=2, input_features=3)
-	// Note: Input shape should be dynamic for batch, but we'll set it
-	Tensor input = NewInput(graph, kTfLiteFloat32);
-	SetShape(input, { 2, 3 }); // This will be the batch shape
-
-	// Create fully connected layer: input * weights^T = output
-	// FullyConnected(input[2,3], weights[2,3]) = output[2,2]
-	Tensor output = FullyConnected(input, weights);
-
-	// Mark output
-	MarkOutput(output);
-
-	// Build interpreter (this creates the model in memory)
-	Interpreter interpreter;
-	builder.Build(interpreter);
-
-	// Allocate tensors
-	interpreter.AllocateTensors();
-
-	// Serialize model to file using ModelWriter
-	String temp_path = OS::get_singleton()->get_user_data_dir().path_join("matmul_model_temp.tflite");
-
-	// Use ModelWriter to serialize the interpreter to a file
-	ModelWriter writer(&interpreter);
-	TfLiteStatus status = writer.Write(temp_path.utf8().get_data());
-
-	if (status == kTfLiteOk) {
-		return temp_path;
-	} else {
-		// ModelWriter failed - this is expected if TFLite serialization isn't available
-		// Fall back to file-based approach or Python script generation
-		return String();
-	}
-}
+// NOTE: Programmatic model generation requires TFLite model building APIs
+// which have complex dependencies (tflite/converter/schema/mutable/schema_generated.h).
+// For now, this test uses a file-based approach. Once the dependencies are resolved,
+// model generation can be re-enabled.
 
 TEST_CASE("[Litrt][MatMul] Hello World Matrix Multiplication") {
 	// Create environment
-	Ref<LiteRtEnvironment> environment = memnew(LiteRtEnvironment);
+	Ref<LiteRtEnvironmentRef> environment = memnew(LiteRtEnvironmentRef);
 	Error err = environment->create();
 	REQUIRE_MESSAGE(err == OK, "Environment should be created successfully");
 
-	// Generate model programmatically using TFLite model builder
-	Ref<LiteRtModel> model = memnew(LiteRtModel);
-
-	// Try to generate model inline
-	String generated_model_path = generate_and_save_matmul_model();
-
-	// Try to load generated model, or fall back to file-based
-	String model_path;
-	if (!generated_model_path.is_empty()) {
-		model_path = generated_model_path;
-	} else {
-		// Fall back to file-based approach
-		model_path = "res://test/matmul_model.tflite";
-	}
+	// Load model from file
+	Ref<LiteRtModelRef> model = memnew(LiteRtModelRef);
+	String model_path = "res://test/matmul_model.tflite";
 
 	err = model->load_from_file(model_path);
 
 	// If model file doesn't exist, skip test with helpful message
 	if (err != OK) {
-		INFO("Model not found at: " + model_path);
+		INFO("Model not found at: ", model_path);
 		INFO("To generate model, run: python3 modules/litert/tests/generate_matmul_model.py");
 		INFO("Then place matmul_model.tflite in res://test/");
-		INFO("Or complete model generation in generate_and_save_matmul_model()");
+		INFO("Or use the TFLite model builder once dependencies are resolved");
 		return;
 	}
 
 	// Create compiled model
-	Ref<LiteRtCompiledModel> compiled_model = memnew(LiteRtCompiledModel);
+	Ref<LiteRtCompiledModelRef> compiled_model = memnew(LiteRtCompiledModelRef);
 	err = compiled_model->create(environment, model);
 	REQUIRE_MESSAGE(err == OK, "Compiled model should be created successfully");
 
@@ -153,7 +82,7 @@ TEST_CASE("[Litrt][MatMul] Hello World Matrix Multiplication") {
 	input_shape.push_back(2);
 	input_shape.push_back(3);
 
-	Ref<LiteRtTensorBuffer> input_buffer = memnew(LiteRtTensorBuffer);
+	Ref<LiteRtTensorBufferRef> input_buffer = memnew(LiteRtTensorBufferRef);
 	err = input_buffer->create_from_array(input_data, input_shape);
 	REQUIRE_MESSAGE(err == OK, "Input buffer should be created successfully");
 
@@ -168,15 +97,16 @@ TEST_CASE("[Litrt][MatMul] Hello World Matrix Multiplication") {
 	output_shape.push_back(2);
 	output_shape.push_back(2);
 
-	Ref<LiteRtTensorBuffer> output_buffer = memnew(LiteRtTensorBuffer);
+	Ref<LiteRtTensorBufferRef> output_buffer = memnew(LiteRtTensorBufferRef);
 	err = output_buffer->create_from_array(output_data, output_shape);
 	REQUIRE_MESSAGE(err == OK, "Output buffer should be created successfully");
 
 	// Run inference
-	TypedArray<LiteRtTensorBuffer> inputs;
+	// Use Array instead of TypedArray since TypedArray requires type registration
+	Array inputs;
 	inputs.push_back(input_buffer);
 
-	TypedArray<LiteRtTensorBuffer> outputs;
+	Array outputs;
 	outputs.push_back(output_buffer);
 
 	err = compiled_model->run(0, inputs, outputs);
