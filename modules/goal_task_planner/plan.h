@@ -68,6 +68,7 @@ class PlannerPlan : public Resource {
 	// supposed to achieve. The verification task won't insert anything into the
 	// final plan; it just will verify whether m did what it was supposed to do.
 	bool verify_goals = true;
+	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	static String _item_to_string(Variant p_item);
 	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
 	// Graph-based planning methods
@@ -133,6 +134,8 @@ public:
 	void set_current_domain(Ref<PlannerDomain> p_current_domain) { current_domain = p_current_domain; }
 	void set_verify_goals(bool p_value);
 	bool get_verify_goals() const;
+	void set_max_depth(int p_max_depth);
+	int get_max_depth() const;
 	Variant find_plan(Dictionary p_state, Array p_todo_list);
 	Dictionary run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
 	// Graph-based lazy refinement (Elixir-style)

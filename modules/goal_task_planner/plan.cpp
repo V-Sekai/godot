@@ -350,6 +350,10 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &PlannerPlan::set_verbose);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
 
+	ClassDB::bind_method(D_METHOD("get_max_depth"), &PlannerPlan::get_max_depth);
+	ClassDB::bind_method(D_METHOD("set_max_depth", "max_depth"), &PlannerPlan::set_max_depth);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_depth"), "set_max_depth", "get_max_depth");
+
 	ClassDB::bind_method(D_METHOD("get_domains"), &PlannerPlan::get_domains);
 	ClassDB::bind_method(D_METHOD("set_domains", "domain"), &PlannerPlan::set_domains);
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "domains", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_domains", "get_domains");
@@ -433,6 +437,14 @@ void PlannerPlan::set_verify_goals(bool p_value) {
 	verify_goals = p_value;
 }
 
+int PlannerPlan::get_max_depth() const {
+	return max_depth;
+}
+
+void PlannerPlan::set_max_depth(int p_max_depth) {
+	max_depth = p_max_depth;
+}
+
 // Graph-based lazy refinement (Elixir-style)
 Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_list) {
 	if (verbose >= 1) {
@@ -484,6 +496,14 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 }
 
 Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter) {
+	// Check depth limit to prevent infinite recursion
+	if (p_iter >= max_depth) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("Planning depth limit (%d) exceeded, aborting", max_depth));
+		}
+		return p_state;
+	}
+
 	if (verbose >= 2) {
 		print_line(vformat("_planning_loop_recursive: parent_node_id=%d, iter=%d", p_parent_node_id, p_iter));
 	}
