@@ -45,13 +45,13 @@ class PlannerMultigoal : public Object {
 public:
 	// Check if a Variant is a Dictionary multigoal (all values are dictionaries)
 	static bool is_multigoal_dict(const Variant &p_variant);
-	
+
 	// Accessor functions for Dictionary multigoals
 	static Array get_goal_variables(const Dictionary &p_multigoal_dict);
 	static Dictionary get_goal_conditions_for_variable(const Dictionary &p_multigoal_dict, const String &p_variable);
 	static Variant get_goal_value(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument);
 	static bool has_goal_condition(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument);
-	
+
 	// Static methods for multigoal operations
 	static Dictionary method_goals_not_achieved(const Dictionary &p_state, const Dictionary &p_multigoal_dict);
 	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Dictionary &p_multigoal_dict, int p_depth, int p_verbose);

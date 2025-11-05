@@ -39,9 +39,9 @@
 
 #include "modules/goal_task_planner/multigoal.h"
 #include "modules/goal_task_planner/planner_hl_clock.h"
+#include "modules/goal_task_planner/planner_metadata.h"
 #include "modules/goal_task_planner/solution_graph.h"
 #include "modules/goal_task_planner/stn_solver.h"
-#include "modules/goal_task_planner/planner_metadata.h"
 
 class PlannerDomain;
 struct PlannerHLClock;
@@ -77,7 +77,7 @@ class PlannerPlan : public Resource {
 	bool _is_command_blacklisted(Variant p_command) const;
 	void _blacklist_command(Variant p_command);
 	void _restore_stn_from_node(int p_node_id);
-	
+
 	// Goal solver methods (moved from PlannerGoalSolver)
 	// Constraining factor for a goal/task - two optimization strategies:
 	// 1. Method count: fewer total methods = more constraining
@@ -86,11 +86,12 @@ class PlannerPlan : public Resource {
 		int total_method_count; // Total methods available for this unigoal
 		int applicable_method_count; // Methods actually applicable in current state
 		bool has_temporal_constraints;
-		
-		ConstrainingFactor() : total_method_count(0), applicable_method_count(0), has_temporal_constraints(false) {}
-		ConstrainingFactor(int p_total, int p_applicable, bool p_temporal) : 
-			total_method_count(p_total), applicable_method_count(p_applicable), has_temporal_constraints(p_temporal) {}
-		
+
+		ConstrainingFactor() :
+				total_method_count(0), applicable_method_count(0), has_temporal_constraints(false) {}
+		ConstrainingFactor(int p_total, int p_applicable, bool p_temporal) :
+				total_method_count(p_total), applicable_method_count(p_applicable), has_temporal_constraints(p_temporal) {}
+
 		// Compare: more constraining = fewer applicable methods, or has temporal constraints
 		// Use applicable_method_count as primary factor (more accurate optimization)
 		bool operator<(const ConstrainingFactor &p_other) const {
@@ -100,20 +101,22 @@ class PlannerPlan : public Resource {
 			return applicable_method_count < p_other.applicable_method_count; // Fewer applicable methods = more constraining
 		}
 	};
-	
+
 	// Internal storage for goal ordering
 	struct GoalWithFactor {
 		Variant goal;
 		ConstrainingFactor factor;
-		
-		GoalWithFactor() : goal(), factor() {}
-		GoalWithFactor(const Variant &p_goal, const ConstrainingFactor &p_factor) : goal(p_goal), factor(p_factor) {}
+
+		GoalWithFactor() :
+				goal(), factor() {}
+		GoalWithFactor(const Variant &p_goal, const ConstrainingFactor &p_factor) :
+				goal(p_goal), factor(p_factor) {}
 	};
-	
+
 	ConstrainingFactor _calculate_constraining_factor(const Variant &p_goal, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) const;
 	PlannerMetadata _extract_temporal_constraints(const Variant &p_item) const;
 	PlannerMetadata _extract_metadata(const Variant &p_item) const; // Extract full PlannerMetadata (temporal + entity requirements)
-	
+
 	// Entity matching helper (used during planning when PlannerMetadata has entity requirements)
 	Dictionary _match_entities(const Dictionary &p_state, const LocalVector<PlannerEntityRequirement> &p_requirements) const;
 	bool _validate_entity_requirements(const Dictionary &p_state, const PlannerMetadata &p_metadata) const;
@@ -142,7 +145,7 @@ public:
 	void set_hlc(PlannerHLClock p_hlc) { hlc = p_hlc; }
 	Dictionary submit_operation(Dictionary p_operation);
 	Dictionary get_global_state();
-	
+
 	// SQLite database methods
 	bool initialize_database(const String &p_db_path = "");
 	void store_temporal_state(Dictionary p_state, int64_t p_current_time);

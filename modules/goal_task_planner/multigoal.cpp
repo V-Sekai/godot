@@ -152,7 +152,7 @@ Array PlannerMultigoal::method_split_multigoal(const Dictionary &p_state, const 
 	// Get only the unachieved goals (matching IPyHOP's _goals_not_achieved behavior)
 	Dictionary goal_state = method_goals_not_achieved(p_state, p_multigoal_dict);
 	Array goal_list;
-	
+
 	// Convert each unachieved goal to a Dictionary multigoal: {variable_name: {argument: value}}
 	for (Variant state_variable_name : goal_state.keys()) {
 		Variant state_values = goal_state[state_variable_name];
@@ -172,7 +172,7 @@ Array PlannerMultigoal::method_split_multigoal(const Dictionary &p_state, const 
 			goal_list.push_back(multigoal);
 		}
 	}
-	
+
 	// Match IPyHOP's behavior: if there are unachieved goals, append multigoal to re-check later
 	// If all goals are achieved (goal_list is empty), return empty list
 	if (!goal_list.is_empty()) {

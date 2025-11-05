@@ -32,8 +32,8 @@
 
 #include "core/string/ustring.h"
 #include "core/templates/local_vector.h"
-#include "core/variant/dictionary.h"
 #include "core/variant/array.h"
+#include "core/variant/dictionary.h"
 
 // Entity requirement for goal solving
 // Matches entities by type and required capabilities
@@ -41,17 +41,17 @@ class PlannerEntityRequirement {
 public:
 	String type; // Entity type (e.g., "agent", "robot")
 	LocalVector<String> capabilities; // Required capabilities (e.g., ["cooking", "cleaning"])
-	
+
 	PlannerEntityRequirement() {}
-	
+
 	PlannerEntityRequirement(const String &p_type, const LocalVector<String> &p_capabilities) :
-		type(p_type), capabilities(p_capabilities) {}
-	
+			type(p_type), capabilities(p_capabilities) {}
+
 	// Validation
 	bool is_valid() const {
 		return !type.is_empty() && capabilities.size() > 0;
 	}
-	
+
 	// Convert to Dictionary for GDScript interface
 	Dictionary to_dictionary() const {
 		Dictionary dict;
@@ -63,12 +63,12 @@ public:
 		dict["capabilities"] = caps_array;
 		return dict;
 	}
-	
+
 	// Convert from Dictionary (GDScript interface)
 	static PlannerEntityRequirement from_dictionary(const Dictionary &p_dict) {
 		PlannerEntityRequirement req;
 		req.type = p_dict.get("type", "");
-		
+
 		Variant caps_var = p_dict.get("capabilities", Array());
 		if (caps_var.get_type() == Variant::ARRAY) {
 			Array caps_array = caps_var;
@@ -80,4 +80,3 @@ public:
 		return req;
 	}
 };
-

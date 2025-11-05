@@ -32,8 +32,8 @@
 
 #include "core/string/ustring.h"
 #include "core/templates/local_vector.h"
-#include "core/variant/dictionary.h"
 #include "core/variant/array.h"
+#include "core/variant/dictionary.h"
 #include "entity_requirement.h"
 
 // Planner metadata for temporal and entity requirements
@@ -44,50 +44,51 @@ public:
 	LocalVector<PlannerEntityRequirement> requires_entities; // Entity requirements
 	int64_t start_time; // Optional absolute time in microseconds since Unix epoch (0 means not set)
 	int64_t end_time; // Optional absolute time in microseconds since Unix epoch (0 means not set)
-	
-	PlannerMetadata() : duration(0), start_time(0), end_time(0) {}
-	
+
+	PlannerMetadata() :
+			duration(0), start_time(0), end_time(0) {}
+
 	PlannerMetadata(int64_t p_duration, const LocalVector<PlannerEntityRequirement> &p_requires_entities) :
-		duration(p_duration), requires_entities(p_requires_entities), start_time(0), end_time(0) {}
-	
+			duration(p_duration), requires_entities(p_requires_entities), start_time(0), end_time(0) {}
+
 	// Validation
 	bool is_valid() const {
 		return duration > 0 && requires_entities.size() > 0;
 	}
-	
+
 	// Check if temporal constraints are set
 	bool has_temporal() const {
 		return start_time > 0 || end_time > 0 || duration > 0;
 	}
-	
+
 	// Convert to Dictionary for GDScript interface
 	Dictionary to_dictionary() const {
 		Dictionary dict;
 		if (duration > 0) {
 			dict["duration"] = duration;
 		}
-		
+
 		Array entities_array;
 		for (uint32_t i = 0; i < requires_entities.size(); i++) {
 			entities_array.push_back(requires_entities[i].to_dictionary());
 		}
 		dict["requires_entities"] = entities_array;
-		
+
 		if (start_time > 0) {
 			dict["start_time"] = start_time;
 		}
 		if (end_time > 0) {
 			dict["end_time"] = end_time;
 		}
-		
+
 		return dict;
 	}
-	
+
 	// Convert from Dictionary (GDScript interface)
 	static PlannerMetadata from_dictionary(const Dictionary &p_dict) {
 		PlannerMetadata metadata;
 		metadata.duration = p_dict.get("duration", 0);
-		
+
 		Variant entities_var = p_dict.get("requires_entities", Array());
 		if (entities_var.get_type() == Variant::ARRAY) {
 			Array entities_array = entities_var;
@@ -97,10 +98,10 @@ public:
 				metadata.requires_entities[i] = PlannerEntityRequirement::from_dictionary(entity_dict);
 			}
 		}
-		
+
 		metadata.start_time = p_dict.get("start_time", 0);
 		metadata.end_time = p_dict.get("end_time", 0);
-		
+
 		return metadata;
 	}
 };
@@ -109,19 +110,19 @@ public:
 class PlannerUnigoalMetadata : public PlannerMetadata {
 public:
 	String predicate; // Which predicate this unigoal method handles
-	
+
 	PlannerUnigoalMetadata() {}
-	
+
 	PlannerUnigoalMetadata(const String &p_predicate, int64_t p_duration, const LocalVector<PlannerEntityRequirement> &p_requires_entities) :
-		PlannerMetadata(p_duration, p_requires_entities), predicate(p_predicate) {}
-	
+			PlannerMetadata(p_duration, p_requires_entities), predicate(p_predicate) {}
+
 	// Convert to Dictionary
 	Dictionary to_dictionary() const {
 		Dictionary dict = PlannerMetadata::to_dictionary();
 		dict["predicate"] = predicate;
 		return dict;
 	}
-	
+
 	// Convert from Dictionary
 	static PlannerUnigoalMetadata from_dictionary(const Dictionary &p_dict) {
 		PlannerUnigoalMetadata metadata;
@@ -134,4 +135,3 @@ public:
 		return metadata;
 	}
 };
-
