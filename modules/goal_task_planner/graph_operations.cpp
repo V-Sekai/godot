@@ -48,7 +48,7 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		// If it's a dictionary without "item" and not a MultiGoal, it's not a valid node
 		return PlannerNodeType::TYPE_ROOT;
 	}
-	
+
 	// Check if it's a MultiGoal (Dictionary-based) - for arrays or other types
 	if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
 		return PlannerNodeType::TYPE_MULTIGOAL;

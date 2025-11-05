@@ -34,8 +34,8 @@
 
 #include "../domain.h"
 #include "../plan.h"
-#include "../planner_time_range.h"
 #include "../planner_state.h"
+#include "../planner_time_range.h"
 #include "tests/test_macros.h"
 
 namespace TestGraphBacktracking {
