@@ -37,11 +37,12 @@
 
 #include "core/io/file_access.h"
 #include "core/os/os.h"
+#include "tests/test_utils.h"
 
 // NOTE: This test uses a pre-generated TFLite model file (matmul_model.tflite).
 // To generate the model, use the Python script:
 //   python3 modules/litert/tests/generate_matmul_model.py
-// Then place the generated matmul_model.tflite in res://test/
+// Then copy the generated matmul_model.tflite to tests/data/
 //
 // Programmatic C++ model generation would require TFLite model building APIs
 // with complex dependencies (tflite/converter/schema/mutable/schema_generated.h),
@@ -55,7 +56,8 @@ TEST_CASE("[Litrt][MatMul] Hello World Matrix Multiplication") {
 
 	// Load model from file
 	Ref<LiteRtModelRef> model = memnew(LiteRtModelRef);
-	String model_path = "res://test/matmul_model.tflite";
+	// Use test data path (tests/data/) instead of res://
+	String model_path = TestUtils::get_data_path("matmul_model.tflite");
 
 	err = model->load_from_file(model_path);
 
@@ -63,7 +65,7 @@ TEST_CASE("[Litrt][MatMul] Hello World Matrix Multiplication") {
 	if (err != OK) {
 		INFO("Model not found at: ", model_path);
 		INFO("To generate the model, run: python3 modules/litert/tests/generate_matmul_model.py");
-		INFO("Then place the generated matmul_model.tflite in res://test/");
+		INFO("Then copy the generated matmul_model.tflite to tests/data/");
 		return;
 	}
 

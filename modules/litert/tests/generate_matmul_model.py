@@ -30,8 +30,11 @@ converter.optimizations = []  # No optimizations for simplicity
 
 tflite_model = converter.convert()
 
-# Save the model
-output_path = "matmul_model.tflite"
+# Save the model to tests/data/ directory
+import os
+output_dir = os.path.join(os.path.dirname(__file__), "../../../tests/data")
+os.makedirs(output_dir, exist_ok=True)
+output_path = os.path.join(output_dir, "matmul_model.tflite")
 with open(output_path, "wb") as f:
     f.write(tflite_model)
 
