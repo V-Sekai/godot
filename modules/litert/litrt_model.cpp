@@ -88,4 +88,3 @@ int LiteRtModel::get_num_signatures() const {
 
 	return static_cast<int>(num_signatures);
 }
-

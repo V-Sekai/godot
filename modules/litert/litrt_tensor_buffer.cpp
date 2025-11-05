@@ -94,12 +94,11 @@ Error LiteRtTensorBuffer::create_from_array(const PackedFloat32Array &p_data, co
 
 	// Create tensor buffer
 	LiteRtStatus status = LiteRtCreateTensorBufferFromHostMemory(
-		&tensor_type,
-		host_memory,
-		buffer_size,
-		nullptr, // deallocator - we'll manage memory ourselves
-		&tensor_buffer
-	);
+			&tensor_type,
+			host_memory,
+			buffer_size,
+			nullptr, // deallocator - we'll manage memory ourselves
+			&tensor_buffer);
 
 	if (status != kLiteRtStatusOk) {
 		memfree(host_memory);
@@ -139,4 +138,3 @@ PackedInt32Array LiteRtTensorBuffer::get_shape() const {
 	// For now return empty
 	return result;
 }
-

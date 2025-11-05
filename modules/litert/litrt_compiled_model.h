@@ -53,20 +53,19 @@ public:
 
 	// Create compiled model from environment and model
 	Error create(Ref<LiteRtEnvironment> p_environment, Ref<LiteRtModel> p_model);
-	
+
 	// Run inference
 	Error run(int p_signature_index, const TypedArray<LiteRtTensorBuffer> &p_inputs, TypedArray<LiteRtTensorBuffer> p_outputs);
-	
+
 	// Get the underlying handle
 	LiteRtCompiledModel get_handle() const { return compiled_model; }
-	
+
 	// Check if compiled model is valid
 	bool is_valid() const { return compiled_model != nullptr; }
-	
+
 	// Get number of input buffers required
 	int get_num_inputs(int p_signature_index) const;
-	
+
 	// Get number of output buffers required
 	int get_num_outputs(int p_signature_index) const;
 };
-

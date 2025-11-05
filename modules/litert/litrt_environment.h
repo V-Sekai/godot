@@ -48,11 +48,10 @@ public:
 
 	// Create environment (can be called with optional options)
 	Error create();
-	
+
 	// Get the underlying handle
 	LiteRtEnvironment get_handle() const { return environment; }
-	
+
 	// Check if environment is valid
 	bool is_valid() const { return environment != nullptr; }
 };
-

@@ -51,17 +51,16 @@ public:
 
 	// Create tensor buffer from PackedFloat32Array
 	Error create_from_array(const PackedFloat32Array &p_data, const PackedInt32Array &p_shape);
-	
+
 	// Get data as PackedFloat32Array
 	PackedFloat32Array get_data() const;
-	
+
 	// Get the underlying handle
 	LiteRtTensorBuffer get_handle() const { return tensor_buffer; }
-	
+
 	// Check if tensor buffer is valid
 	bool is_valid() const { return tensor_buffer != nullptr; }
-	
+
 	// Get shape
 	PackedInt32Array get_shape() const;
 };
-

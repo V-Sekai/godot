@@ -49,14 +49,13 @@ public:
 
 	// Load model from file path
 	Error load_from_file(const String &p_path);
-	
+
 	// Get the underlying handle
 	LiteRtModel get_handle() const { return model; }
-	
+
 	// Check if model is valid
 	bool is_valid() const { return model != nullptr; }
-	
+
 	// Get number of signatures
 	int get_num_signatures() const;
 };
-

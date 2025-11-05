@@ -64,11 +64,10 @@ Error LiteRtCompiledModel::create(Ref<LiteRtEnvironment> p_environment, Ref<Lite
 	}
 
 	LiteRtStatus status = LiteRtCreateCompiledModel(
-		p_environment->get_handle(),
-		p_model->get_handle(),
-		nullptr, // compilation_options - null for now
-		&compiled_model
-	);
+			p_environment->get_handle(),
+			p_model->get_handle(),
+			nullptr, // compilation_options - null for now
+			&compiled_model);
 
 	if (status != kLiteRtStatusOk) {
 		compiled_model = nullptr;
@@ -118,13 +117,12 @@ Error LiteRtCompiledModel::run(int p_signature_index, const TypedArray<LiteRtTen
 	}
 
 	LiteRtStatus status = LiteRtRunCompiledModel(
-		compiled_model,
-		static_cast<LiteRtParamIndex>(p_signature_index),
-		num_inputs,
-		input_buffers,
-		num_outputs,
-		output_buffers
-	);
+			compiled_model,
+			static_cast<LiteRtParamIndex>(p_signature_index),
+			num_inputs,
+			input_buffers,
+			num_outputs,
+			output_buffers);
 
 	memfree(input_buffers);
 	memfree(output_buffers);
@@ -153,4 +151,3 @@ int LiteRtCompiledModel::get_num_outputs(int p_signature_index) const {
 	// This would require getting buffer requirements - simplified for now
 	return 0;
 }
-
