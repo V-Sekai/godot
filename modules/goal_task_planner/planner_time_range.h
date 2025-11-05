@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  planner_hl_clock.h                                                    */
+/*  planner_time_range.h                                                   */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -35,13 +35,13 @@
 #include "core/os/os.h"
 #include "core/typedefs.h"
 
-struct PlannerHLClock {
+struct PlannerTimeRange {
 	// All times in absolute microseconds since Unix epoch (1970-01-01 00:00:00 UTC)
 	int64_t start_time = 0; // Absolute microseconds
 	int64_t end_time = 0; // Absolute microseconds
 	int64_t duration = 0; // Duration in microseconds
 
-	PlannerHLClock() {}
+	PlannerTimeRange() {}
 
 	void set_start_time(int64_t p_time) { start_time = p_time; }
 	int64_t get_start_time() const { return start_time; }
@@ -87,3 +87,4 @@ struct PlannerHLClock {
 		end_time = start_time + duration;
 	}
 };
+

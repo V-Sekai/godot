@@ -637,7 +637,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal planning with entity capabilities
 	before_each(state, planner, Ref<PlannerDomain>(memnew(PlannerDomain)));
 
 	// Store temporal state with absolute time
-	int64_t current_time = PlannerHLClock::now_microseconds();
+	int64_t current_time = PlannerTimeRange::now_microseconds();
 	planner->store_temporal_state(state, current_time);
 
 	// Submit operation with temporal constraints
@@ -672,8 +672,8 @@ TEST_CASE("[Modules][GoalTaskPlanner] Planning with temporal constraints in abso
 	before_each(state, planner, the_domain);
 
 	// Set HLC with absolute microseconds
-	PlannerHLClock hlc;
-	int64_t start_time = PlannerHLClock::now_microseconds();
+	PlannerTimeRange hlc;
+	int64_t start_time = PlannerTimeRange::now_microseconds();
 	hlc.set_start_time(start_time);
 	hlc.set_duration(5000000LL); // 5 seconds
 	hlc.calculate_end_from_duration();
@@ -686,7 +686,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Planning with temporal constraints in abso
 
 	// Verify plan exists and HLC is maintained
 	CHECK(plan.get_type() == Variant::ARRAY);
-	PlannerHLClock retrieved_hlc = planner->get_hlc();
+	PlannerTimeRange retrieved_hlc = planner->get_hlc();
 	CHECK(retrieved_hlc.get_start_time() == start_time);
 }
 

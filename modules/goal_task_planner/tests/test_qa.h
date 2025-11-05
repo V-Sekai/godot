@@ -49,7 +49,7 @@ TEST_CASE("[QA] End-to-end temporal planning workflow with SQLite") {
 	state->set_entity_capability("robot_1", "movable", true);
 
 	// Store initial state
-	int64_t current_time = PlannerHLClock::now_microseconds();
+	int64_t current_time = PlannerTimeRange::now_microseconds();
 	Dictionary state_dict;
 	state_dict["block_a"] = Dictionary();
 	((Dictionary)state_dict["block_a"])["pos"] = "table";
@@ -81,7 +81,7 @@ TEST_CASE("[QA] Entity capability persistence across planning sessions") {
 	String capability = "movable";
 	Dictionary value;
 	value["speed"] = 5.0;
-	int64_t timestamp = PlannerHLClock::now_microseconds();
+	int64_t timestamp = PlannerTimeRange::now_microseconds();
 	plan1->store_entity_capability(entity_id, capability, value, timestamp);
 
 	// Create new plan instance with same database would test persistence
@@ -95,14 +95,14 @@ TEST_CASE("[QA] Absolute time accuracy in planning operations") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 
 	// Get current time
-	int64_t time_before = PlannerHLClock::now_microseconds();
+	int64_t time_before = PlannerTimeRange::now_microseconds();
 
 	// Submit operation
 	Dictionary operation;
 	operation["test"] = true;
 	Dictionary result = plan->submit_operation(operation);
 
-	int64_t time_after = PlannerHLClock::now_microseconds();
+	int64_t time_after = PlannerTimeRange::now_microseconds();
 	int64_t agreed_at = result["agreed_at"];
 
 	// Agreed time should be between before and after
@@ -119,7 +119,7 @@ TEST_CASE("[QA] Memory management and resource cleanup") {
 		plan->initialize_database("");
 
 		Dictionary state;
-		plan->store_temporal_state(state, PlannerHLClock::now_microseconds());
+		plan->store_temporal_state(state, PlannerTimeRange::now_microseconds());
 
 		memdelete(plan.ptr());
 	}
@@ -161,11 +161,11 @@ TEST_CASE("[QA] Backward compatibility - existing GDScript patterns") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 
 	// Test that basic operations still work
-	PlannerHLClock hlc;
+	PlannerTimeRange hlc;
 	hlc.set_start_time(1735689600000000LL);
 	plan->set_hlc(hlc);
 
-	PlannerHLClock retrieved = plan->get_hlc();
+	PlannerTimeRange retrieved = plan->get_hlc();
 	CHECK(retrieved.get_start_time() == 1735689600000000LL);
 
 	// Test plan ID generation
@@ -182,12 +182,12 @@ TEST_CASE("[QA] SQLite transaction rollback scenarios") {
 	// Store initial state
 	Dictionary state1;
 	state1["version"] = 1;
-	plan->store_temporal_state(state1, PlannerHLClock::now_microseconds());
+	plan->store_temporal_state(state1, PlannerTimeRange::now_microseconds());
 
 	// Overwrite state
 	Dictionary state2;
 	state2["version"] = 2;
-	plan->store_temporal_state(state2, PlannerHLClock::now_microseconds());
+	plan->store_temporal_state(state2, PlannerTimeRange::now_microseconds());
 
 	// Should get latest state
 	Dictionary loaded = plan->load_temporal_state();
@@ -282,7 +282,7 @@ TEST_CASE("[QA] STN integration in planning loop") {
 	Dictionary final_state = plan->run_lazy_refineahead(state, todo_list);
 
 	// Verify STN was initialized (plan has temporal tracking)
-	PlannerHLClock hlc = plan->get_hlc();
+	PlannerTimeRange hlc = plan->get_hlc();
 	CHECK(hlc.get_start_time() > 0);
 
 	// Ref<> objects handle cleanup automatically via reference counting

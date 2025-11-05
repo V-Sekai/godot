@@ -34,14 +34,14 @@
 
 #include "../domain.h"
 #include "../plan.h"
-#include "../planner_hl_clock.h"
+#include "../planner_time_range.h"
 #include "../planner_state.h"
 #include "tests/test_macros.h"
 
 namespace TestPlannerFeatures {
 
-TEST_CASE("[Modules][PlannerHLClock] Basic functionality") {
-	PlannerHLClock hlc;
+TEST_CASE("[Modules][PlannerTimeRange] Basic functionality") {
+	PlannerTimeRange hlc;
 
 	SUBCASE("Initial state") {
 		CHECK(hlc.get_start_time() == 0);
@@ -62,7 +62,7 @@ TEST_CASE("[Modules][PlannerHLClock] Basic functionality") {
 	}
 
 	SUBCASE("now_microseconds returns reasonable value") {
-		int64_t now = PlannerHLClock::now_microseconds();
+		int64_t now = PlannerTimeRange::now_microseconds();
 		// Should be a reasonable absolute time (after year 2001)
 		CHECK(now > 1000000000000000LL);
 	}
@@ -83,7 +83,7 @@ TEST_CASE("[Modules][PlannerTaskMetadata] Basic functionality" * doctest::skip(t
 	SUBCASE("HLC integration with absolute microseconds") {
 		int64_t absolute_time = 1735689600000000LL;
 		metadata->update_metadata(absolute_time);
-		PlannerHLClock hlc = metadata->get_hlc();
+		PlannerTimeRange hlc = metadata->get_hlc();
 		CHECK(hlc.get_start_time() == absolute_time);
 	}
 
@@ -105,9 +105,9 @@ TEST_CASE("[Modules][PlannerPlan] ID generation and HLC") {
 	}
 
 	SUBCASE("HLC in plan") {
-		PlannerHLClock hlc;
+		PlannerTimeRange hlc;
 		plan.set_hlc(hlc);
-		PlannerHLClock retrieved = plan.get_hlc();
+		PlannerTimeRange retrieved = plan.get_hlc();
 		CHECK(retrieved.start_time == hlc.start_time);
 	}
 }
@@ -167,7 +167,7 @@ TEST_CASE("[Modules][PlannerPlan] SQLite integration") {
 		plan->initialize_database("");
 		Dictionary state;
 		state["key"] = "value";
-		int64_t current_time = PlannerHLClock::now_microseconds();
+		int64_t current_time = PlannerTimeRange::now_microseconds();
 		plan->store_temporal_state(state, current_time);
 
 		Dictionary loaded = plan->load_temporal_state();
