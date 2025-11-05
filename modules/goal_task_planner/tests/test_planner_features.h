@@ -96,12 +96,20 @@ TEST_CASE("[Modules][PlannerPlan] ID generation and HLC") {
 	SUBCASE("Generate plan ID") {
 		String id = plan.generate_plan_id();
 		CHECK(!id.is_empty());
-		// Check for Base32 characters
-		String valid_chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+		// Check for UUID format: hexadecimal characters (0-9, a-f, A-F) and hyphens
+		String valid_chars = "0123456789abcdefABCDEF-";
 		for (int i = 0; i < id.length(); i++) {
 			char c = id[i];
 			CHECK(valid_chars.contains(String::chr(c)));
 		}
+		// Verify UUID format: 8-4-4-4-12 hex digits
+		PackedStringArray parts = id.split("-");
+		CHECK(parts.size() == 5);
+		CHECK(parts[0].length() == 8);
+		CHECK(parts[1].length() == 4);
+		CHECK(parts[2].length() == 4);
+		CHECK(parts[3].length() == 4);
+		CHECK(parts[4].length() == 12);
 	}
 
 	SUBCASE("HLC in plan") {
@@ -154,6 +162,5 @@ TEST_CASE("[Modules][PlannerState] Entity capabilities") {
 		CHECK(entities.size() >= 2);
 	}
 }
-
 
 } // namespace TestPlannerFeatures

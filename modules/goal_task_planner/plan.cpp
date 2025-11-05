@@ -398,7 +398,7 @@ Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
 	participants.push_back("node_1");
 	consensus_result["participants"] = participants;
 
-	print_line("ParallelCommits operation submitted [" + transaction_id + "]: " + String(Variant(p_operation)));
+	print_line("Operation submitted [" + transaction_id + "]: " + String(Variant(p_operation)));
 	emit_signal("operation_submitted", consensus_result);
 	return consensus_result;
 }
@@ -431,7 +431,6 @@ bool PlannerPlan::get_verify_goals() const {
 void PlannerPlan::set_verify_goals(bool p_value) {
 	verify_goals = p_value;
 }
-
 
 // Graph-based lazy refinement (Elixir-style)
 Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_list) {
