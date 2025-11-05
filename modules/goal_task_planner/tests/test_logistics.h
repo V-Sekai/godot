@@ -58,35 +58,35 @@ namespace TestLogistics {
 
 // Actions
 
-static Dictionary drive_truck(Dictionary p_state, String p_truck, String p_location) {
+static Variant drive_truck(Dictionary p_state, String p_truck, String p_location) {
 	Dictionary truck_at = p_state["truck_at"];
 	truck_at[p_truck] = p_location;
 	p_state["truck_at"] = truck_at;
 	return p_state;
 }
 
-static Dictionary fly_plane(Dictionary p_state, String p_plane, String p_airport) {
+static Variant fly_plane(Dictionary p_state, String p_plane, String p_airport) {
 	Dictionary plane_at = p_state["plane_at"];
 	plane_at[p_plane] = p_airport;
 	p_state["plane_at"] = plane_at;
 	return p_state;
 }
 
-static Dictionary load_truck(Dictionary p_state, String p_object, String p_truck) {
+static Variant load_truck(Dictionary p_state, String p_object, String p_truck) {
 	Dictionary at = p_state["at"];
 	at[p_object] = p_truck;
 	p_state["at"] = at;
 	return p_state;
 }
 
-static Dictionary load_plane(Dictionary p_state, String p_object, String p_plane) {
+static Variant load_plane(Dictionary p_state, String p_object, String p_plane) {
 	Dictionary at = p_state["at"];
 	at[p_object] = p_plane;
 	p_state["at"] = at;
 	return p_state;
 }
 
-static Dictionary unload_plane(Dictionary p_state, String p_object, String p_airport) {
+static Variant unload_plane(Dictionary p_state, String p_object, String p_airport) {
 	Dictionary at = p_state["at"];
 	Variant plane = at[p_object];
 	Dictionary plane_at = p_state["plane_at"];
@@ -97,7 +97,7 @@ static Dictionary unload_plane(Dictionary p_state, String p_object, String p_air
 	return p_state;
 }
 
-static Dictionary unload_truck(Dictionary p_state, String p_object, String p_location) {
+static Variant unload_truck(Dictionary p_state, String p_object, String p_location) {
 	Dictionary at = p_state["at"];
 	Variant truck = at[p_object];
 	Dictionary truck_at = p_state["truck_at"];
