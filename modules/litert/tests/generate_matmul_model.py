@@ -4,7 +4,6 @@ Generate a simple matrix multiplication TFLite model for testing.
 This creates a 2x3 * 3x2 = 2x2 matrix multiplication model.
 """
 
-import numpy as np
 import tensorflow as tf
 
 # Create a simple model: matmul(input, weights) where:
@@ -13,9 +12,9 @@ import tensorflow as tf
 # output: [2, 2]
 
 # Create the model
-input_layer = tf.keras.layers.Input(shape=(3,), name='input')
+input_layer = tf.keras.layers.Input(shape=(3,), name="input")
 weights = tf.constant([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=tf.float32)
-dense_layer = tf.keras.layers.Dense(2, use_bias=False, name='matmul')
+dense_layer = tf.keras.layers.Dense(2, use_bias=False, name="matmul")
 dense_layer.build((None, 3))
 dense_layer.set_weights([weights.numpy()])
 output = dense_layer(input_layer)
@@ -32,8 +31,8 @@ converter.optimizations = []  # No optimizations for simplicity
 tflite_model = converter.convert()
 
 # Save the model
-output_path = 'matmul_model.tflite'
-with open(output_path, 'wb') as f:
+output_path = "matmul_model.tflite"
+with open(output_path, "wb") as f:
     f.write(tflite_model)
 
 print(f"✅ Generated {output_path}")
@@ -53,4 +52,3 @@ print("Expected output:")
 print("  [[1*1+2*3+3*5, 1*2+2*4+3*6],")
 print("   [4*1+5*3+6*5, 4*2+5*4+6*6]]")
 print("  = [[22.0, 28.0], [49.0, 64.0]]")
-

@@ -91,4 +91,3 @@ echo ""
 echo "Next steps:"
 echo "1. Build Godot with: scons platform=macos target=template_debug"
 echo "2. The module should now link successfully"
-

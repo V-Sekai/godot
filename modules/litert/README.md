@@ -58,6 +58,44 @@ compiled_model.run(0, [input_buffer], outputs)
 - `create_from_array(data: PackedFloat32Array, shape: PackedInt32Array) -> Error`: Create buffer from array
 - `get_data() -> PackedFloat32Array`: Get buffer data
 
+## GPU Backends
+
+The LiteRT module supports multiple GPU backends:
+
+### CPU (Always Available)
+- **XNNPACK**: CPU acceleration via XNNPACK kernels
+- Always available as fallback
+
+### Metal (macOS/iOS)
+- **Framework**: Metal (system framework, no external dependency)
+- **Availability**: macOS and iOS platforms
+- **Status**: Enabled when GPU support is enabled
+- **Source**: `runtime/metal_info.cc` compiled as Objective-C++
+
+### WebGPU (Cross-Platform)
+- **Library**: Requires `libLiteRtWebGpuAccelerator.dylib` (or `.so`/`.dll`)
+- **Dependency**: Dawn library (Google's WebGPU implementation)
+- **Availability**: All platforms when accelerator library is available
+- **Status**: Enabled when GPU support is enabled
+- **Note**: Accelerator library must be built separately or provided
+
+### Backend Priority Order
+
+On macOS, LiteRT tries accelerators in this order:
+1. **WebGPU** (`libLiteRtWebGpuAccelerator.dylib`) - **Primary choice**
+   - Cross-platform backend (works on macOS, Linux, Windows, Android, Web)
+   - Universal backend that can target all platforms
+   - Requires Dawn library and accelerator library to be built
+2. **Metal** (native) - **Fallback**
+   - Native macOS/iOS API (system framework, no external dependency)
+   - Potentially better performance on macOS due to native optimization
+   - Reliable fallback if WebGPU is unavailable
+3. **CPU** (XNNPACK) - **Always available**
+   - Final fallback if GPU backends fail
+   - XNNPACK-accelerated CPU kernels
+
+**Rationale**: WebGPU is prioritized for cross-platform compatibility, while Metal serves as a reliable native fallback. This provides the best of both worlds: universal code path with native performance when needed.
+
 ## Dependencies
 
 - **pthreadpool**: Built from source (8 files)
@@ -65,6 +103,8 @@ compiled_model.run(0, [input_buffer], outputs)
 - **Abseil**: Minimal build (~25 files)
 - **TensorFlow Lite**: Pre-built library (build separately)
 - **XNNPACK**: Skipped (optional acceleration)
+- **Metal Framework**: System framework (macOS/iOS only)
+- **WebGPU Accelerator**: Built separately (requires Dawn library)
 
 ## Build Status
 
@@ -74,4 +114,3 @@ compiled_model.run(0, [input_buffer], outputs)
 ⚠️ TensorFlow Lite needs to be built separately
 
 See [SCRAPPY_BUILD.md](SCRAPPY_BUILD.md) for detailed build instructions.
-

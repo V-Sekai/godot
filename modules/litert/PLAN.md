@@ -86,4 +86,3 @@ None - all code is complete. Only build steps remain.
 - TFLite library built in `thirdparty/tensorflow-lite/build/` (SCons finds it automatically)
 - Godot builds successfully with litert module
 - Matmul test passes (or provides clear error message if model generation fails)
-
