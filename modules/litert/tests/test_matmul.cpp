@@ -37,6 +37,7 @@
 
 #include "core/io/file_access.h"
 #include "core/os/os.h"
+#include "core/variant/typed_array.h"
 #include "tests/test_utils.h"
 
 // NOTE: This test uses a pre-generated TFLite model file (matmul_model.tflite).
@@ -107,11 +108,10 @@ TEST_CASE("[Litrt][MatMul] Hello World Matrix Multiplication") {
 	REQUIRE_MESSAGE(err == OK, "Output buffer should be created successfully");
 
 	// Run inference
-	// Use Array instead of TypedArray since TypedArray requires type registration
-	Array inputs;
+	TypedArray<LiteRtTensorBufferRef> inputs;
 	inputs.push_back(input_buffer);
 
-	Array outputs;
+	TypedArray<LiteRtTensorBufferRef> outputs;
 	outputs.push_back(output_buffer);
 
 	err = compiled_model->run(0, inputs, outputs);

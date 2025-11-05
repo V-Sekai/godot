@@ -98,7 +98,6 @@ core_sources = [
     "core/buffer_error_reporter.cc",
     "core/error_reporter.cc",
     "core/dispatch_op_schema.cc",
-    "core/dynamic_loading.cc",
     "core/environment.cc",
     "core/environment_options.cc",
     "core/filesystem.cc",
@@ -117,6 +116,8 @@ core_sources = [
 # Platform-specific sources
 if env["platform"] == "windows":
     core_sources.append("core/dynamic_loading_windows.cc")
+else:
+    core_sources.append("core/dynamic_loading.cc")
 
 # Platform-specific GPU sources (enabled for GPU support)
 # gpu_environment.cc is always needed for GPU support
@@ -164,6 +165,7 @@ env_litrt.Prepend(
 env_litrt.Append(
     CPPDEFINES=[
         "LITERT_COMPILE_LIBRARY",
+        "LITERT_DISABLE_OPENCL_SUPPORT",  # Disable OpenCL support (not needed for basic functionality)
     ]
 )
 
@@ -188,6 +190,11 @@ else:
 # This allows litert/c/litert_common.h to resolve to thirdparty/litert/litert/c/litert_common.h
 env_thirdparty = env_litrt.Clone()
 env_thirdparty.disable_warnings()
+# LiteRT requires C++20 for designated initializers
+if env["platform"] == "windows":
+    env_thirdparty.Append(CXXFLAGS=["/std:c++20"])
+else:
+    env_thirdparty.Append(CXXFLAGS=["-std=c++20"])
 
 # Build thirdparty sources
 env_thirdparty.add_source_files(thirdparty_obj, litert_sources)
@@ -300,7 +307,7 @@ if True:  # Build Abseil (minimal components)
         "absl/strings/str_cat.cc",
         "absl/strings/str_format.cc",
         "absl/strings/string_view.cc",  # May be needed
-        "absl/strings/internal/str_format_internal.cc",
+        # "absl/strings/internal/str_format_internal.cc",  # File not found - may not be needed
         "absl/strings/internal/stringify_sink.cc",
         "absl/strings/internal/charconv_bigint.cc",
         "absl/strings/internal/charconv_parse.cc",
@@ -345,7 +352,22 @@ if True:  # Link pre-built TFLite library
 
     # Check multiple possible locations for the library
     tflite_build_dir = "#thirdparty/tensorflow-lite/build/"
+    
+    # Determine library extension based on platform
+    if env["platform"] == "windows":
+        lib_ext = ".lib"
+        lib_name = "tensorflow-lite"
+    else:
+        lib_ext = ".a"
+        lib_name = "libtensorflow-lite"
+    
     tflite_lib_paths = [
+        tflite_build_dir + lib_name + lib_ext,
+        tflite_build_dir + "tensorflow/lite/" + lib_name + lib_ext,
+        # Windows-specific paths
+        tflite_build_dir + "Release/" + lib_name + lib_ext,
+        tflite_build_dir + "tensorflow/lite/Release/" + lib_name + lib_ext,
+        # Also check Unix-style .a for cross-platform builds
         tflite_build_dir + "libtensorflow-lite.a",
         tflite_build_dir + "tensorflow/lite/libtensorflow-lite.a",
     ]
@@ -361,6 +383,7 @@ if True:  # Link pre-built TFLite library
         # Add the directory containing the library to LIBPATH
         tflite_lib_dir = os.path.dirname(tflite_lib_found)
         env_litrt.Append(LIBPATH=[tflite_lib_dir])
+        # SCons will automatically add the correct extension based on platform
         env_litrt.Append(LIBS=["tensorflow-lite"])
     else:
         # Library not found - will need to build it separately
