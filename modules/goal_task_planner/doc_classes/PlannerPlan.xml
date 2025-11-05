@@ -5,7 +5,8 @@
 	</brief_description>
 	<description>
 		The [PlannerPlan] class provides methods for declaring actions, goals, [PlannerMultigoal], and tasks. It also facilitates the process of finding and executing plans to achieve those goals within a specific [PlannerDomain].
-		[PlannerPlan] represents a totally-ordered version of Goal-Task-Network (GTN) planning. However, it does not support sharing and task insertion, and it is not a temporal planner.
+		[PlannerPlan] represents a totally-ordered version of Goal-Task-Network (GTN) planning. However, it does not support sharing and task insertion.
+		[PlannerPlan] supports optional temporal constraints through temporal metadata. Actions, tasks, and goals can include temporal constraints specifying start_time, end_time, and/or duration. These values are stored as int64_t representing absolute time in microseconds since Unix epoch. Actions without temporal metadata can occur at any time and are not constrained by the Simple Temporal Network (STN). Actions with temporal metadata are added to the STN and their timing constraints are validated for consistency.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -16,12 +17,13 @@
 			<param index="1" name="todo_list" type="Array" />
 			<description>
 				Determines a [PlannerPlan] to accomplish the todo list from the provided state.
-				                The todo list is an array of goals, [PlannerMultigoal], tasks, and actions.
-				                A goal is defined as one predicate-subject-object triple.
-				                A [PlannerMultigoal] is a state [Dictionary] of predicate-subject-object triples.
-				                Tasks can accept any number of arguments but only return either false or a series of goals, [PlannerMultigoal], tasks, and actions.
-				                Actions can accept any number of arguments but only return the state of predicate-subject-object triples.
+				The todo list is an array of goals, [PlannerMultigoal], tasks, and actions.
+				A goal is defined as one predicate-subject-object triple.
+				A [PlannerMultigoal] is a state [Dictionary] of predicate-subject-object triples.
+				Tasks can accept any number of arguments but only return either false or a series of goals, [PlannerMultigoal], tasks, and actions.
+				Actions can accept any number of arguments but only return the state of predicate-subject-object triples.
 				The return value is a [Variant], which means it could be of any type. In this case, it returns either false or an array of actions.
+				[b]Temporal Constraints:[/b] Actions, tasks, and goals in the todo_list can include optional temporal metadata. This metadata is provided as a [Dictionary] with keys "temporal_constraints" containing "start_time", "end_time", and/or "duration" as int64_t values representing absolute time in microseconds since Unix epoch. Actions without temporal metadata can occur at any time and are not added to the Simple Temporal Network (STN). Actions with temporal metadata are added to the STN and their timing constraints are validated for consistency. If temporal constraints are inconsistent, planning fails and returns false.
 			</description>
 		</method>
 		<method name="generate_plan_id">
@@ -60,6 +62,7 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="todo_list" type="Array" />
 			<description>
+				Executes graph-based lazy refinement planning to accomplish the todo list from the provided state. This method uses a solution graph for explicit backtracking and supports temporal constraints through the Simple Temporal Network (STN). The origin time point is anchored to the current time at plan start. Actions without temporal metadata can occur at any time and are not constrained by the STN. The return value is the resulting state after plan execution.
 			</description>
 		</method>
 		<method name="store_temporal_state">
