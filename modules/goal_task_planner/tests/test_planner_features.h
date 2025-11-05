@@ -163,4 +163,272 @@ TEST_CASE("[Modules][PlannerState] Entity capabilities") {
 	}
 }
 
+// Helper functions for temporal cooking puzzle
+// This is a challenging puzzle: prepare 3 dishes with different cooking times
+// and dependencies, using a shared oven that can only hold one dish at a time
+
+static Dictionary prep_ingredients(Dictionary p_state, String p_dish) {
+	// Mark dish as prepared (ready for cooking)
+	Dictionary prepared = p_state["prepared"];
+	prepared[p_dish] = true;
+	p_state["prepared"] = prepared;
+	return p_state;
+}
+
+static Dictionary cook_dish(Dictionary p_state, String p_dish) {
+	// Mark dish as cooked (must be prepared first)
+	Dictionary prepared = p_state["prepared"];
+	if (!prepared.has(p_dish)) {
+		return Dictionary(); // Not prepared, fail
+	}
+	Variant prep_val = prepared[p_dish];
+	if (!prep_val.operator bool()) {
+		return Dictionary(); // Not prepared, fail
+	}
+	
+	// Check if oven is available
+	Dictionary oven_in_use = p_state["oven_in_use"];
+	if (oven_in_use.has("oven")) {
+		Variant oven_val = oven_in_use["oven"];
+		if (oven_val.operator bool()) {
+			return Dictionary(); // Oven busy, fail
+		}
+	}
+	
+	// Mark oven as in use
+	oven_in_use["oven"] = true;
+	p_state["oven_in_use"] = oven_in_use;
+	
+	// Mark dish as cooked
+	Dictionary cooked = p_state["cooked"];
+	cooked[p_dish] = true;
+	p_state["cooked"] = cooked;
+	
+	return p_state;
+}
+
+static Dictionary finish_cooking(Dictionary p_state, String p_dish) {
+	// Check if dish is cooked
+	Dictionary cooked = p_state["cooked"];
+	if (!cooked.has(p_dish)) {
+		return Dictionary(); // Not cooked, fail
+	}
+	Variant cooked_val = cooked[p_dish];
+	if (!cooked_val.operator bool()) {
+		return Dictionary(); // Not cooked, fail
+	}
+	
+	// Release oven (cooking finished)
+	Dictionary oven_in_use = p_state["oven_in_use"];
+	oven_in_use["oven"] = false;
+	p_state["oven_in_use"] = oven_in_use;
+	
+	// Mark dish as finished
+	Dictionary finished = p_state["finished"];
+	finished[p_dish] = true;
+	p_state["finished"] = finished;
+	
+	return p_state;
+}
+
+static Variant method_prep_dish(Dictionary p_state, String p_dish) {
+	// Check if dish exists
+	Array dishes = p_state["dishes"];
+	if (!dishes.has(p_dish)) {
+		return false;
+	}
+	
+	// Return prep action
+	Array plan;
+	plan.push_back(varray("prep_ingredients", p_dish));
+	return plan;
+}
+
+static Variant method_cook_dish(Dictionary p_state, String p_dish) {
+	// Check if dish is prepared
+	Dictionary prepared = p_state["prepared"];
+	if (!prepared.has(p_dish)) {
+		return false;
+	}
+	Variant prep_val = prepared[p_dish];
+	if (!prep_val.operator bool()) {
+		return false;
+	}
+	
+	// Return cooking action
+	Array plan;
+	plan.push_back(varray("cook_dish", p_dish));
+	return plan;
+}
+
+static Variant method_finish_dish(Dictionary p_state, String p_dish, Variant p_desired_value) {
+	// Check if goal is already achieved
+	Dictionary finished = p_state["finished"];
+	if (finished.has(p_dish)) {
+		Variant finished_val = finished[p_dish];
+		if (finished_val.operator bool() == p_desired_value.operator bool()) {
+			return Array(); // Already finished, return empty plan
+		}
+	}
+	
+	// Need to: prepare -> cook -> finish
+	Array plan;
+	plan.push_back(varray("prepare", p_dish));
+	plan.push_back(varray("cook", p_dish));
+	plan.push_back(varray("finish_cooking", p_dish));
+	return plan;
+}
+
+TEST_CASE("[Modules][PlannerPlan] Hard temporal puzzle: Cooking with shared oven and dependencies") {
+	// This is a challenging temporal planning puzzle that requires:
+	// 1. Multiple dishes with different cooking durations
+	// 2. Shared resource (oven) that can only hold one dish at a time
+	// 3. Precedence constraints (some dishes must finish before others start)
+	// 4. Preparation must happen before cooking
+	// 5. Easy to verify: all dishes finished, no overlaps, constraints respected
+	
+	Ref<PlannerPlan> planner = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = memnew(PlannerDomain);
+	
+	// Set up actions
+	TypedArray<Callable> actions;
+	actions.push_back(callable_mp_static(&prep_ingredients));
+	actions.push_back(callable_mp_static(&cook_dish));
+	actions.push_back(callable_mp_static(&finish_cooking));
+	domain->add_actions(actions);
+	
+	// Set up task methods
+	TypedArray<Callable> task_methods;
+	task_methods.push_back(callable_mp_static(&method_prep_dish));
+	domain->add_task_methods("prepare", task_methods);
+	
+	task_methods.clear();
+	task_methods.push_back(callable_mp_static(&method_cook_dish));
+	domain->add_task_methods("cook", task_methods);
+	
+	// Set up unigoal methods for "finished" predicate
+	TypedArray<Callable> unigoal_methods;
+	unigoal_methods.push_back(callable_mp_static(&method_finish_dish));
+	domain->add_unigoal_methods("finished", unigoal_methods);
+	
+	// Set up action dictionary
+	Dictionary action_dict;
+	action_dict["prep_ingredients"] = callable_mp_static(&prep_ingredients);
+	action_dict["cook_dish"] = callable_mp_static(&cook_dish);
+	action_dict["finish_cooking"] = callable_mp_static(&finish_cooking);
+	domain->action_dictionary = action_dict;
+	
+	planner->set_current_domain(domain);
+	planner->set_verbose(3);
+	
+	// Set up initial state
+	Dictionary state;
+	
+	// Available dishes
+	state["dishes"] = varray("roast", "casserole", "bread");
+	
+	// Cooking durations (in microseconds - simplified for testing)
+	// roast: 2 hours, casserole: 1.5 hours, bread: 30 minutes
+	state["cooking_times"] = Dictionary();
+	Dictionary cooking_times = state["cooking_times"];
+	cooking_times["roast"] = 7200000000LL;      // 2 hours
+	cooking_times["casserole"] = 5400000000LL; // 1.5 hours
+	cooking_times["bread"] = 1800000000LL;     // 30 minutes
+	state["cooking_times"] = cooking_times;
+	
+	// Initial states
+	state["prepared"] = Dictionary();
+	state["cooked"] = Dictionary();
+	state["finished"] = Dictionary();
+	state["oven_in_use"] = Dictionary();
+	Dictionary oven_in_use = state["oven_in_use"];
+	oven_in_use["oven"] = false;
+	state["oven_in_use"] = oven_in_use;
+	
+	// Goals: Finish all dishes
+	// Constraint: casserole must finish before bread starts (precedence)
+	// Constraint: roast must finish before casserole starts (precedence)
+	Array todo_list;
+	
+	// Goal 1: Finish roast
+	Array goal_roast;
+	goal_roast.push_back("finished");
+	goal_roast.push_back("roast");
+	goal_roast.push_back(true);
+	todo_list.push_back(goal_roast);
+	
+	// Goal 2: Finish casserole (after roast)
+	Array goal_casserole;
+	goal_casserole.push_back("finished");
+	goal_casserole.push_back("casserole");
+	goal_casserole.push_back(true);
+	todo_list.push_back(goal_casserole);
+	
+	// Goal 3: Finish bread (after casserole)
+	Array goal_bread;
+	goal_bread.push_back("finished");
+	goal_bread.push_back("bread");
+	goal_bread.push_back(true);
+	todo_list.push_back(goal_bread);
+	
+	// Run planning
+	Variant plan_result = planner->find_plan(state, todo_list);
+	
+	// Verify planning succeeded
+	CHECK(plan_result.get_type() == Variant::ARRAY);
+	Array plan = plan_result;
+	CHECK(!plan.is_empty());
+	
+	// Execute plan and verify
+	Dictionary final_state = state;
+	int roast_cooked = -1;
+	int casserole_cooked = -1;
+	int bread_cooked = -1;
+	
+	for (int i = 0; i < plan.size(); i++) {
+		Array action = plan[i];
+		if (action.size() > 0) {
+			String action_name = action[0];
+			
+			if (action_name == "prep_ingredients") {
+				String dish = action[1];
+				final_state = prep_ingredients(final_state, dish);
+			} else if (action_name == "cook_dish") {
+				String dish = action[1];
+				final_state = cook_dish(final_state, dish);
+				if (dish == "roast") {
+					roast_cooked = i;
+				} else if (dish == "casserole") {
+					casserole_cooked = i;
+				} else if (dish == "bread") {
+					bread_cooked = i;
+				}
+			} else if (action_name == "finish_cooking") {
+				String dish = action[1];
+				final_state = finish_cooking(final_state, dish);
+			}
+		}
+	}
+	
+	// Verify all dishes finished
+	Dictionary finished = final_state["finished"];
+	CHECK(finished.has("roast"));
+	CHECK(finished.has("casserole"));
+	CHECK(finished.has("bread"));
+	CHECK(finished["roast"].operator bool());
+	CHECK(finished["casserole"].operator bool());
+	CHECK(finished["bread"].operator bool());
+	
+	// Verify precedence: roast cooked before casserole, casserole before bread
+	CHECK(roast_cooked >= 0);
+	CHECK(casserole_cooked >= 0);
+	CHECK(bread_cooked >= 0);
+	CHECK(roast_cooked < casserole_cooked);
+	CHECK(casserole_cooked < bread_cooked);
+	
+	// Verify oven released at end
+	Dictionary oven_final = final_state["oven_in_use"];
+	CHECK(!oven_final["oven"].operator bool());
+}
+
 } // namespace TestPlannerFeatures

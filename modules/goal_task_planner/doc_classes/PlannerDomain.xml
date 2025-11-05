@@ -7,8 +7,8 @@
 		The [PlannerDomain] represents the environment or context of a [PlannerPlan] in which multiple actions, goals, [PlannerMultigoal]s, and tasks need to be achieved.
 		Actions and methods are typically defined as functions (e.g., in GDScript, or C++ static/member functions exposed as [Callable]s) and then registered with the domain. Their preconditions are usually implemented as conditional logic within these functions.
 		The functions wrapped by these [Callable]s should adhere to the following conventions:
-		- [b]Action functions[/b]: Their arguments representing the current state and action parameters should be treated as read-only (e.g., by not modifying input Dictionaries directly but working on copies if changes are needed). They must return a new [Dictionary] representing the state after the action is applied.
-		- [b]Method, goal, and task functions[/b]: Their arguments should also be treated as read-only. They must return a [Variant] which is either false (boolean) to indicate failure/non-applicability, or an [Array] of sub-tasks/sub-goals to indicate success. An empty [Array] can signify that the method/goal/task was achieved with no further steps.
+		- [b]Action/Command functions[/b]: Their arguments representing the current state and action parameters should be treated as read-only (e.g., by not modifying input Dictionaries directly but working on copies if changes are needed). They must return false if the action is not applicable, or a new [Dictionary] representing the state after the action is applied (state changes).
+		- [b]Method functions[/b] (unigoal, task, multigoal): Their arguments should also be treated as read-only. They must return false if the method is not applicable, or an [Array] of sub-tasks/sub-goals (todo list) to indicate success. An empty [Array] can signify that the method/goal/task was achieved with no further steps.
 	</description>
 	<tutorials>
 	</tutorials>
@@ -17,14 +17,14 @@
 			<return type="void" />
 			<param index="0" name="actions" type="Callable[]" />
 			<description>
-				Adds a list of [Callable]s representing actions to the domain. Each [Callable] should refer to a function whose arguments are treated as read-only (the first usually being the current state [Dictionary]) and which returns a new [Dictionary] representing the state after the action.
+				Adds a list of [Callable]s representing actions to the domain. Each [Callable] should refer to a function whose arguments are treated as read-only (the first usually being the current state [Dictionary]) and which returns false if the action is not applicable, or a new [Dictionary] representing the state after the action (state changes).
 			</description>
 		</method>
 		<method name="add_multigoal_methods">
 			<return type="void" />
 			<param index="0" name="methods" type="Callable[]" />
 			<description>
-				Adds a list of [Callable]s representing methods for achieving multigoals. Each [Callable] should refer to a function whose arguments are treated as read-only (e.g., current state [Dictionary], the [PlannerMultigoal]) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals if it is.
+				Adds a list of [Callable]s representing methods for achieving multigoals. Each [Callable] should refer to a function whose arguments are treated as read-only (e.g., current state [Dictionary], the [PlannerMultigoal]) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals (todo list) if it is.
 			</description>
 		</method>
 		<method name="add_task_methods">
@@ -32,7 +32,7 @@
 			<param index="0" name="task_name" type="String" />
 			<param index="1" name="methods" type="Callable[]" />
 			<description>
-				Adds a list of [Callable]s representing methods for a specific task_name. Each [Callable] should refer to a function whose arguments are treated as read-only (the first usually being the current state [Dictionary], followed by task-specific arguments) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals if it is.
+				Adds a list of [Callable]s representing methods for a specific task_name. Each [Callable] should refer to a function whose arguments are treated as read-only (the first usually being the current state [Dictionary], followed by task-specific arguments) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals (todo list) if it is.
 			</description>
 		</method>
 		<method name="add_unigoal_methods">
@@ -40,7 +40,7 @@
 			<param index="0" name="task_name" type="String" />
 			<param index="1" name="methods" type="Callable[]" />
 			<description>
-				Adds a list of [Callable]s representing methods for achieving a specific unigoal (identified by task_name, which is often the state variable the unigoal targets). Each [Callable] should refer to a function whose arguments are treated as read-only (e.g., current state [Dictionary], goal-specific arguments) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals if it is.
+				Adds a list of [Callable]s representing methods for achieving a specific unigoal (identified by task_name, which is often the state variable the unigoal targets). Each [Callable] should refer to a function whose arguments are treated as read-only (e.g., current state [Dictionary], goal-specific arguments) and which returns a [Variant]. The [Variant] should be false if the method is not applicable, or an [Array] of sub-tasks/goals (todo list) if it is applicable.
 			</description>
 		</method>
 		<method name="method_verify_goal" qualifiers="static">
