@@ -250,6 +250,13 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
 				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			Variant info = node["info"];
+			// Unwrap if dictionary-wrapped (has constraints)
+			if (info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = info;
+				if (dict.has("item")) {
+					info = dict["item"];
+				}
+			}
 			plan.push_back(info);
 		}
 

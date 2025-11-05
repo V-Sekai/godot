@@ -1087,6 +1087,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in commands") {
 		Dictionary state_dict = state;
 		Dictionary entity_capabilities;
 		Dictionary robot1_caps;
+		robot1_caps["type"] = "robot";
 		robot1_caps["gripper"] = true;
 		entity_capabilities["robot1"] = robot1_caps;
 		state_dict["entity_capabilities"] = entity_capabilities;
@@ -1167,6 +1168,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
 		Dictionary state_dict = state;
 		Dictionary entity_capabilities;
 		Dictionary robot1_caps;
+		robot1_caps["type"] = "robot";
 		robot1_caps["gripper"] = true;
 		entity_capabilities["robot1"] = robot1_caps;
 		state_dict["entity_capabilities"] = entity_capabilities;
@@ -1229,6 +1231,7 @@ TEST_CASE("[Modules][BlocksDomain] Combined temporal and entity requirements") {
 	// Add entity capabilities to state
 	Dictionary entity_capabilities;
 	Dictionary robot1_caps;
+	robot1_caps["type"] = "robot";
 	robot1_caps["gripper"] = true;
 	entity_capabilities["robot1"] = robot1_caps;
 	state["entity_capabilities"] = entity_capabilities;
