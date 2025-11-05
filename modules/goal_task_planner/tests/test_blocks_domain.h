@@ -674,9 +674,9 @@ static Dictionary attach_entity_metadata(const Array &p_action_array, const Stri
 // Helper function to attach PlannerMetadata with temporal constraints
 static Dictionary attach_temporal_metadata(const Array &p_action_array, int64_t p_start_time_micros, int64_t p_end_time_micros, int64_t p_duration_micros) {
 	Dictionary temporal_dict;
-	temporal_dict["duration"] = String::num_int64(p_duration_micros);
-	temporal_dict["start_time"] = String::num_int64(p_start_time_micros);
-	temporal_dict["end_time"] = String::num_int64(p_end_time_micros);
+	temporal_dict["duration"] = p_duration_micros;
+	temporal_dict["start_time"] = p_start_time_micros;
+	temporal_dict["end_time"] = p_end_time_micros;
 	
 	Dictionary result;
 	result["item"] = p_action_array;
@@ -688,7 +688,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = setup_blocks_domain_tasks_only();
 	plan->set_current_domain(domain);
-	plan->set_verbose(0); // Disable verbose output for cleaner test results
+	plan->set_verbose(2);
 	
 	Dictionary state = create_init_state_1();
 	

@@ -40,25 +40,32 @@
 // Used with commands, multigoals, unigoals, actions, and tasks
 class PlannerMetadata {
 public:
-	String duration; // ISO 8601 duration string (e.g., "PT2H", "PT30M")
+	int64_t duration; // Duration in microseconds (0 means not set)
 	LocalVector<PlannerEntityRequirement> requires_entities; // Entity requirements
-	String start_time; // Optional ISO 8601 datetime
-	String end_time; // Optional ISO 8601 datetime
+	int64_t start_time; // Optional absolute time in microseconds since Unix epoch (0 means not set)
+	int64_t end_time; // Optional absolute time in microseconds since Unix epoch (0 means not set)
 	
-	PlannerMetadata() {}
+	PlannerMetadata() : duration(0), start_time(0), end_time(0) {}
 	
-	PlannerMetadata(const String &p_duration, const LocalVector<PlannerEntityRequirement> &p_requires_entities) :
-		duration(p_duration), requires_entities(p_requires_entities) {}
+	PlannerMetadata(int64_t p_duration, const LocalVector<PlannerEntityRequirement> &p_requires_entities) :
+		duration(p_duration), requires_entities(p_requires_entities), start_time(0), end_time(0) {}
 	
 	// Validation
 	bool is_valid() const {
-		return !duration.is_empty() && requires_entities.size() > 0;
+		return duration > 0 && requires_entities.size() > 0;
+	}
+	
+	// Check if temporal constraints are set
+	bool has_temporal() const {
+		return start_time > 0 || end_time > 0 || duration > 0;
 	}
 	
 	// Convert to Dictionary for GDScript interface
 	Dictionary to_dictionary() const {
 		Dictionary dict;
-		dict["duration"] = duration;
+		if (duration > 0) {
+			dict["duration"] = duration;
+		}
 		
 		Array entities_array;
 		for (uint32_t i = 0; i < requires_entities.size(); i++) {
@@ -66,10 +73,10 @@ public:
 		}
 		dict["requires_entities"] = entities_array;
 		
-		if (!start_time.is_empty()) {
+		if (start_time > 0) {
 			dict["start_time"] = start_time;
 		}
-		if (!end_time.is_empty()) {
+		if (end_time > 0) {
 			dict["end_time"] = end_time;
 		}
 		
@@ -79,7 +86,7 @@ public:
 	// Convert from Dictionary (GDScript interface)
 	static PlannerMetadata from_dictionary(const Dictionary &p_dict) {
 		PlannerMetadata metadata;
-		metadata.duration = p_dict.get("duration", "");
+		metadata.duration = p_dict.get("duration", 0);
 		
 		Variant entities_var = p_dict.get("requires_entities", Array());
 		if (entities_var.get_type() == Variant::ARRAY) {
@@ -91,8 +98,8 @@ public:
 			}
 		}
 		
-		metadata.start_time = p_dict.get("start_time", "");
-		metadata.end_time = p_dict.get("end_time", "");
+		metadata.start_time = p_dict.get("start_time", 0);
+		metadata.end_time = p_dict.get("end_time", 0);
 		
 		return metadata;
 	}
@@ -105,7 +112,7 @@ public:
 	
 	PlannerUnigoalMetadata() {}
 	
-	PlannerUnigoalMetadata(const String &p_predicate, const String &p_duration, const LocalVector<PlannerEntityRequirement> &p_requires_entities) :
+	PlannerUnigoalMetadata(const String &p_predicate, int64_t p_duration, const LocalVector<PlannerEntityRequirement> &p_requires_entities) :
 		PlannerMetadata(p_duration, p_requires_entities), predicate(p_predicate) {}
 	
 	// Convert to Dictionary

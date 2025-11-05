@@ -193,15 +193,22 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		Dictionary node = p_graph.get_node(node_id);
 		
 		int node_type = node["type"];
-		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION)) {
+		int node_status = node["status"];
+		
+		// Only extract actions that are closed (successful)
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) && 
+		    node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			Variant info = node["info"];
 			plan.push_back(info);
 		}
 		
-		TypedArray<int> successors = node["successors"];
-		// Add successors in reverse order to maintain DFS order
-		for (int i = successors.size() - 1; i >= 0; i--) {
-			to_visit.push_back(successors[i]);
+		// Only visit successors of closed nodes (skip failed branches)
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			TypedArray<int> successors = node["successors"];
+			// Add successors in reverse order to maintain DFS order
+			for (int i = successors.size() - 1; i >= 0; i--) {
+				to_visit.push_back(successors[i]);
+			}
 		}
 	}
 	

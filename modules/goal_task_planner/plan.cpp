@@ -70,7 +70,13 @@ void PlannerPlan::set_domains(TypedArray<PlannerDomain> p_domain) {
 Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	if (verbose >= 1) {
 		print_line("verbose=" + itos(verbose) + ":");
-		print_line("    state = " + _item_to_string(p_state) + "\n    todo_list = " + _item_to_string(p_todo_list));
+		print_line("    state = " + _item_to_string(p_state));
+		print_line("    todo_list = " + _item_to_string(p_todo_list));
+		if (verbose >= 2 && current_domain.is_valid()) {
+			Dictionary action_dict = current_domain->action_dictionary;
+			Array action_keys = action_dict.keys();
+			print_line("    Available actions: " + _item_to_string(action_keys));
+		}
 	}
 
 	// Initialize solution graph
@@ -112,14 +118,21 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	bool planning_succeeded = true;
 	Dictionary graph = solution_graph.get_graph();
 	Array graph_keys = graph.keys();
+	Array failed_nodes;
+	Array open_nodes;
+	
 	for (int i = 0; i < graph_keys.size(); i++) {
 		int node_id = graph_keys[i];
 		if (node_id == 0) continue; // Skip root
 		Dictionary node = graph[node_id];
 		int status = node["status"];
+		// Planning fails if any node is open or failed
 		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
 			planning_succeeded = false;
-			break;
+			open_nodes.push_back(node_id);
+		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+			planning_succeeded = false;
+			failed_nodes.push_back(node_id);
 		}
 	}
 	
@@ -135,6 +148,56 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	} else {
 		if (verbose >= 1) {
 			print_line("result = false (planning failed)");
+			if (verbose >= 2 || !failed_nodes.is_empty() || !open_nodes.is_empty()) {
+				// Print solution graph for debugging
+				print_line("Solution graph structure:");
+				for (int i = 0; i < graph_keys.size(); i++) {
+					int node_id = graph_keys[i];
+					Dictionary node = graph[node_id];
+					int node_type = node["type"];
+					int node_status = node["status"];
+					Variant node_info = node["info"];
+					TypedArray<int> successors = node["successors"];
+					
+					String type_str;
+					switch (static_cast<PlannerNodeType>(node_type)) {
+						case PlannerNodeType::TYPE_ROOT: type_str = "ROOT"; break;
+						case PlannerNodeType::TYPE_ACTION: type_str = "ACTION"; break;
+						case PlannerNodeType::TYPE_TASK: type_str = "TASK"; break;
+						case PlannerNodeType::TYPE_GOAL: type_str = "GOAL"; break;
+						case PlannerNodeType::TYPE_MULTIGOAL: type_str = "MULTIGOAL"; break;
+						case PlannerNodeType::TYPE_VERIFY_GOAL: type_str = "VERIFY_GOAL"; break;
+						case PlannerNodeType::TYPE_VERIFY_MULTIGOAL: type_str = "VERIFY_MULTIGOAL"; break;
+						default: type_str = "UNKNOWN"; break;
+					}
+					
+					String status_str;
+					switch (static_cast<PlannerNodeStatus>(node_status)) {
+						case PlannerNodeStatus::STATUS_OPEN: status_str = "OPEN"; break;
+						case PlannerNodeStatus::STATUS_CLOSED: status_str = "CLOSED"; break;
+						case PlannerNodeStatus::STATUS_FAILED: status_str = "FAILED"; break;
+						case PlannerNodeStatus::STATUS_NOT_APPLICABLE: status_str = "NA"; break;
+						default: status_str = "UNKNOWN"; break;
+					}
+					
+					String info_str = _item_to_string(node_info);
+					String successors_str = "[";
+					for (int j = 0; j < successors.size(); j++) {
+						if (j > 0) successors_str += ", ";
+						successors_str += itos(successors[j]);
+					}
+					successors_str += "]";
+					
+					print_line(vformat("  Node %d: type=%s, status=%s, info=%s, successors=%s", 
+						node_id, type_str, status_str, info_str, successors_str));
+				}
+				if (!failed_nodes.is_empty()) {
+					print_line("Failed nodes: " + _item_to_string(failed_nodes));
+				}
+				if (!open_nodes.is_empty()) {
+					print_line("Open nodes: " + _item_to_string(open_nodes));
+				}
+			}
 		}
 		return false;
 	}
@@ -814,70 +877,125 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Execute action with temporal tracking
 			Callable action = curr_node["action"];
 			Array action_arr = action_info;
+			
+			// Validate that action was found
+			if (!action.is_valid() || action.is_null()) {
+				if (verbose >= 1) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' not found in domain, marking as failed", action_name));
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+				);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			
 			Array args;
 			args.push_back(p_state);
 			args.append_array(action_arr.slice(1));
 			
-			int64_t action_start_time = PlannerHLClock::now_microseconds();
-			
-			// Use temporal metadata start_time if provided
+			// Use temporal metadata start_time if provided, otherwise use current time
+			int64_t action_start_time;
 			if (temporal_metadata.has("start_time")) {
-				String start_time_str = temporal_metadata["start_time"];
-				// Convert ISO 8601 to microseconds (simplified - would need proper parsing)
-				// For now, use actual time if metadata start_time is in the future
+				action_start_time = temporal_metadata["start_time"];
+			} else {
+				action_start_time = PlannerHLClock::now_microseconds();
+			}
+			
+			if (verbose >= 2) {
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				print_line(vformat("Executing action '%s' with args: %s", action_name, _item_to_string(args.slice(1))));
 			}
 			
 			Variant result = action.callv(args);
-			int64_t action_end_time = PlannerHLClock::now_microseconds();
-			int64_t action_duration = action_end_time - action_start_time;
 			
-			// Use temporal metadata duration if provided
+			// Use temporal metadata end_time if provided, otherwise use current time
+			int64_t action_end_time;
+			if (temporal_metadata.has("end_time")) {
+				action_end_time = temporal_metadata["end_time"];
+			} else {
+				action_end_time = PlannerHLClock::now_microseconds();
+			}
+			
+			// Use temporal metadata duration if provided, otherwise calculate from start/end times
+			int64_t action_duration;
 			if (temporal_metadata.has("duration")) {
-				String duration_str = temporal_metadata["duration"];
-				// Convert ISO 8601 duration to microseconds (simplified)
-				// For now, use actual measured duration
+				action_duration = temporal_metadata["duration"];
+			} else {
+				action_duration = action_end_time - action_start_time;
 			}
 			
 			if (result.get_type() == Variant::DICTIONARY) {
 				Dictionary new_state = result;
-				
-				// Add action interval to STN
-				String action_id = action_arr[0];
-				int64_t metadata_start = action_start_time;
-				int64_t metadata_end = action_end_time;
-				
-				// Use temporal metadata times if provided
-				if (temporal_metadata.has("start_time")) {
-					// Parse ISO 8601 start_time to microseconds (simplified for now)
-					// For now, use actual start_time
-				}
-				if (temporal_metadata.has("end_time")) {
-					// Parse ISO 8601 end_time to microseconds (simplified for now)
-					// For now, use actual end_time
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' succeeded, new state keys: %s", action_name, String(Variant(new_state.keys()))));
 				}
 				
-				/*bool stn_success =*/ PlannerSTNConstraints::add_interval(
-					stn, action_id, metadata_start, metadata_end, action_duration
-				);
+				// Add action to STN only if it has temporal metadata
+				// Actions without temporal metadata can occur at any time and don't need STN constraints
+				bool has_temporal = temporal_metadata.has("start_time") || temporal_metadata.has("end_time") || temporal_metadata.has("duration");
 				
-				// Check STN consistency
-				stn.check_consistency();
-				if (!stn.is_consistent()) {
-					// STN inconsistent, backtrack
-					if (verbose >= 2) {
-						print_line("STN inconsistent after action, backtracking");
-					}
-					_blacklist_command(action_info);
-					PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
-						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+				if (has_temporal) {
+					String action_id = action_arr[0];
+					int64_t metadata_start = temporal_metadata.get("start_time", 0);
+					int64_t metadata_end = temporal_metadata.get("end_time", 0);
+					int64_t metadata_duration = temporal_metadata.get("duration", action_duration);
+					
+					bool stn_success = PlannerSTNConstraints::add_interval(
+						stn, action_id, metadata_start, metadata_end, metadata_duration
 					);
-					solution_graph = backtrack_result.graph;
-					if (backtrack_result.parent_node_id >= 0) {
-						// Restore STN snapshot from the node we're backtracking to
-						_restore_stn_from_node(backtrack_result.parent_node_id);
-						return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+					
+					if (!stn_success) {
+						if (verbose >= 2) {
+							print_line("Failed to add interval to STN, backtracking");
+						}
+						_blacklist_command(action_info);
+						stn.restore_snapshot(stn_snapshot);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+							solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+						);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+						}
+						return p_state;
 					}
-					return p_state;
+					
+					// Check STN consistency only if we added temporal constraints
+					stn.check_consistency();
+					if (!stn.is_consistent()) {
+						// STN inconsistent, backtrack
+						if (verbose >= 2) {
+							print_line("STN inconsistent after action, backtracking");
+						}
+						_blacklist_command(action_info);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+							solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands
+						);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							// Restore STN snapshot from the node we're backtracking to
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+						}
+						return p_state;
+					}
+				} else {
+					// Action has no temporal constraints - can occur at any time
+					// Skip STN addition entirely
+					if (verbose >= 3) {
+						String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+						print_line(vformat("Action '%s' has no temporal constraints, skipping STN addition", action_name));
+					}
 				}
 				
 				// Action successful and STN consistent
@@ -894,8 +1012,14 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return _planning_loop_recursive(p_parent_node_id, new_state, p_iter + 1);
 			} else {
 				// Action failed, backtrack and restore STN
-				if (verbose >= 2) {
-					print_line("Action execution failed, backtracking");
+				String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+				if (verbose >= 1) {
+					print_line(vformat("Action '%s' failed (returned %s, expected Dictionary), backtracking", 
+						action_name, Variant::get_type_name(result.get_type())));
+					if (verbose >= 2) {
+						print_line(vformat("  Action args: %s", _item_to_string(args.slice(1))));
+						print_line(vformat("  Current state: %s", _item_to_string(p_state)));
+					}
 				}
 				_blacklist_command(action_info);
 				stn.restore_snapshot(stn_snapshot);
@@ -1302,7 +1426,7 @@ PlannerPlan::ConstrainingFactor PlannerPlan::_calculate_constraining_factor(cons
 	
 	// Check for temporal constraints
 	PlannerMetadata metadata = _extract_temporal_constraints(p_goal);
-	if (!metadata.start_time.is_empty() || !metadata.end_time.is_empty()) {
+	if (metadata.has_temporal()) {
 		factor.has_temporal_constraints = true;
 	}
 	
@@ -1420,7 +1544,7 @@ Dictionary PlannerPlan::_get_temporal_constraints(const Variant &p_item) const {
 
 bool PlannerPlan::_has_temporal_constraints(const Variant &p_item) const {
 	PlannerMetadata metadata = _extract_temporal_constraints(p_item);
-	return !metadata.start_time.is_empty() || !metadata.end_time.is_empty() || !metadata.duration.is_empty();
+	return metadata.has_temporal();
 }
 
 bool PlannerPlan::_validate_entity_requirements(const Dictionary &p_state, const PlannerMetadata &p_metadata) const {

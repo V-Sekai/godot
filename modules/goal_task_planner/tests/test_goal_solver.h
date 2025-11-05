@@ -21,8 +21,10 @@ TEST_CASE("[Modules][GoalSolver] Temporal constraints methods") {
 	
 	// Test attach_temporal_constraints
 	Dictionary temporal_constraints;
-	temporal_constraints["duration"] = "PT2H";
-	temporal_constraints["start_time"] = "2024-01-01T10:00:00Z";
+	int64_t duration_micros = 7200000000LL; // 2 hours in microseconds
+	int64_t start_time_micros = 1704110400000000LL; // 2024-01-01T10:00:00 UTC in microseconds
+	temporal_constraints["duration"] = duration_micros;
+	temporal_constraints["start_time"] = start_time_micros;
 	
 	Array test_item;
 	test_item.push_back("test");
@@ -42,7 +44,7 @@ TEST_CASE("[Modules][GoalSolver] Temporal constraints methods") {
 	// Test get_temporal_constraints
 	Dictionary retrieved = plan->_get_temporal_constraints(result);
 	CHECK(retrieved.has("duration"));
-	CHECK(retrieved["duration"] == "PT2H");
+	CHECK(int64_t(retrieved["duration"]) == duration_micros);
 }
 
 TEST_CASE("[Modules][GoalSolver] Unigoal ordering optimization") {
