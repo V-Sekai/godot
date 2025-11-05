@@ -148,18 +148,18 @@ void PlannerDomain::add_actions(TypedArray<Callable> p_actions) {
 }
 
 PlannerTaskMetadata::PlannerTaskMetadata() {
-    // Generate initial ID
-    Error err = CryptoCore::generate_uuidv7(task_id);
-    if (err != OK || task_id.is_empty()) {
-        task_id = "00000000-0000-0000-0000-000000000000";  // Null UUID fallback
-    }
+	// Generate initial ID
+	Error err = CryptoCore::generate_uuidv7(task_id);
+	if (err != OK || task_id.is_empty()) {
+		task_id = "00000000-0000-0000-0000-000000000000"; // Null UUID fallback
+	}
 }
 
 // p_physical_time is in absolute microseconds since Unix epoch
 void PlannerTaskMetadata::update_metadata(int64_t p_physical_time) {
-    hlc.set_start_time(p_physical_time); // Store absolute microseconds
+	hlc.set_start_time(p_physical_time); // Store absolute microseconds
 }
 
 PlannerTask::PlannerTask() {
-    metadata.instantiate();
+	metadata.instantiate();
 }

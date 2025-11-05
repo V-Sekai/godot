@@ -29,9 +29,9 @@
 /**************************************************************************/
 
 #include "stn_solver.h"
+#include "core/string/print_string.h"
 #include "core/variant/array.h"
 #include "core/variant/dictionary.h"
-#include "core/string/print_string.h"
 
 constexpr int64_t PlannerSTNSolver::STN_INFINITY;
 constexpr int64_t PlannerSTNSolver::STN_NEG_INFINITY;
@@ -58,17 +58,17 @@ void PlannerSTNSolver::ensure_time_point(const String &p_name) {
 		int64_t index = next_time_point_id++;
 		time_points_map_internal[p_name] = index;
 		time_points_list_internal.push_back(p_name);
-		
+
 		// Expand distance matrix to accommodate new point
 		// Initialize with STN_INFINITY for all distances except self (0)
 		uint32_t current_size = time_points_list_internal.size();
 		distance_matrix_internal.resize(current_size);
-		
+
 		for (uint32_t i = 0; i < current_size; i++) {
 			if (distance_matrix_internal[i].size() < current_size) {
 				distance_matrix_internal[i].resize(current_size);
 			}
-			
+
 			for (uint32_t j = 0; j < current_size; j++) {
 				if (i == j) {
 					distance_matrix_internal[i][j] = 0; // Distance to self is 0
@@ -84,12 +84,12 @@ PlannerSTNSolver::Constraint PlannerSTNSolver::intersect_constraints(const Const
 	// Intersection: take the tighter constraint (max of mins, min of maxes)
 	int64_t new_min = (p_a.min_distance > p_b.min_distance) ? p_a.min_distance : p_b.min_distance;
 	int64_t new_max = (p_a.max_distance < p_b.max_distance) ? p_a.max_distance : p_b.max_distance;
-	
+
 	// If min > max, constraints are incompatible (empty intersection)
 	if (new_min > new_max) {
 		return Constraint(STN_INFINITY, STN_NEG_INFINITY); // Empty/invalid constraint
 	}
-	
+
 	return Constraint(new_min, new_max);
 }
 
@@ -97,7 +97,7 @@ void PlannerSTNSolver::rebuild_distance_matrix() {
 	uint32_t n = time_points_list_internal.size();
 	distance_matrix_internal.clear();
 	distance_matrix_internal.resize(n);
-	
+
 	// Initialize distance matrix
 	for (uint32_t i = 0; i < n; i++) {
 		LocalVector<int64_t> row;
@@ -111,12 +111,12 @@ void PlannerSTNSolver::rebuild_distance_matrix() {
 		}
 		distance_matrix_internal[i] = row;
 	}
-	
+
 	// Add constraints to distance matrix
 	for (const KeyValue<String, Constraint> &E : constraints_map_internal) {
 		String key = E.key;
 		Constraint constraint = E.value;
-		
+
 		// Parse key: "from:to"
 		int colon_pos = key.find(":");
 		if (colon_pos < 0) {
@@ -124,14 +124,14 @@ void PlannerSTNSolver::rebuild_distance_matrix() {
 		}
 		String from = key.substr(0, colon_pos);
 		String to = key.substr(colon_pos + 1);
-		
+
 		int64_t from_idx = get_time_point_index(from);
 		int64_t to_idx = get_time_point_index(to);
-		
+
 		if (from_idx < 0 || to_idx < 0 || from_idx >= (int64_t)n || to_idx >= (int64_t)n) {
 			continue;
 		}
-		
+
 		// Set distance to max (temporal constraint: to - from <= max)
 		int64_t current_dist = distance_matrix_internal[from_idx][to_idx];
 		if (current_dist == STN_INFINITY || constraint.max_distance < current_dist) {
@@ -146,51 +146,51 @@ void PlannerSTNSolver::run_floyd_warshall() {
 		consistent = true;
 		return;
 	}
-	
+
 	// Ensure distance matrix is built
 	if (distance_matrix_internal.size() != n) {
 		rebuild_distance_matrix();
 	}
-	
+
 	// Floyd-Warshall algorithm: all-pairs shortest paths
 	for (uint32_t k = 0; k < n; k++) {
 		for (uint32_t i = 0; i < n; i++) {
 			int64_t dist_ik = distance_matrix_internal[i][k];
-			
+
 			if (dist_ik == STN_INFINITY) {
 				continue; // Can't reach k from i
 			}
-			
+
 			for (uint32_t j = 0; j < n; j++) {
 				int64_t dist_kj = distance_matrix_internal[k][j];
 				if (dist_kj == STN_INFINITY) {
 					continue; // Can't reach j from k
 				}
-				
+
 				int64_t dist_ij = distance_matrix_internal[i][j];
 				int64_t new_dist = dist_ik + dist_kj;
-				
+
 				// Check for overflow
 				if (dist_ik > 0 && dist_kj > 0 && new_dist < dist_ik) {
 					new_dist = STN_INFINITY; // Overflow, treat as infinity
 				} else if (dist_ik < 0 && dist_kj < 0 && new_dist > dist_ik) {
 					new_dist = STN_NEG_INFINITY; // Underflow
 				}
-				
+
 				if (new_dist < dist_ij) {
 					distance_matrix_internal[i][j] = new_dist;
 				}
 			}
 		}
 	}
-	
+
 	// Check for negative cycles (inconsistency)
 	consistent = !check_negative_cycles();
 }
 
 bool PlannerSTNSolver::check_negative_cycles() const {
 	uint32_t n = time_points_list_internal.size();
-	
+
 	// Negative cycle exists if distance[i][i] < 0 for any i
 	for (uint32_t i = 0; i < n; i++) {
 		int64_t self_dist = distance_matrix_internal[i][i];
@@ -198,7 +198,7 @@ bool PlannerSTNSolver::check_negative_cycles() const {
 			return true; // Negative cycle detected
 		}
 	}
-	
+
 	return false; // No negative cycles
 }
 
@@ -229,58 +229,58 @@ bool PlannerSTNSolver::add_constraint(const String &p_from, const String &p_to, 
 	// Ensure time points exist
 	ensure_time_point(p_from);
 	ensure_time_point(p_to);
-	
+
 	// Check for invalid constraint
 	if (p_constraint.min_distance > p_constraint.max_distance) {
 		consistent = false;
 		return false;
 	}
-	
+
 	String forward_key = p_from + ":" + p_to;
 	String reverse_key = p_to + ":" + p_from;
-	
+
 	// Get existing constraints if any
 	Constraint forward_constraint = p_constraint;
 	Constraint reverse_constraint = Constraint(-p_constraint.max_distance, -p_constraint.min_distance);
-	
+
 	const Constraint *existing_forward = constraints_map_internal.getptr(forward_key);
 	if (existing_forward) {
 		forward_constraint = intersect_constraints(*existing_forward, p_constraint);
-		
+
 		// Check if intersection is empty
 		if (forward_constraint.min_distance > forward_constraint.max_distance) {
 			consistent = false;
 			return false;
 		}
 	}
-	
+
 	const Constraint *existing_reverse = constraints_map_internal.getptr(reverse_key);
 	if (existing_reverse) {
 		Constraint new_reverse = Constraint(-p_constraint.max_distance, -p_constraint.min_distance);
 		reverse_constraint = intersect_constraints(*existing_reverse, new_reverse);
-		
+
 		// Check if intersection is empty
 		if (reverse_constraint.min_distance > reverse_constraint.max_distance) {
 			consistent = false;
 			return false;
 		}
 	}
-	
+
 	// Store constraints in internal HashMap
 	constraints_map_internal[forward_key] = forward_constraint;
 	constraints_map_internal[reverse_key] = reverse_constraint;
-	
+
 	// Rebuild distance matrix and run Floyd-Warshall
 	rebuild_distance_matrix();
 	run_floyd_warshall();
-	
+
 	return consistent;
 }
 
 bool PlannerSTNSolver::remove_constraint(const String &p_from, const String &p_to) {
 	String forward_key = p_from + ":" + p_to;
 	String reverse_key = p_to + ":" + p_from;
-	
+
 	bool removed = false;
 	if (constraints_map_internal.has(forward_key)) {
 		constraints_map_internal.erase(forward_key);
@@ -290,12 +290,12 @@ bool PlannerSTNSolver::remove_constraint(const String &p_from, const String &p_t
 		constraints_map_internal.erase(reverse_key);
 		removed = true;
 	}
-	
+
 	if (removed) {
 		rebuild_distance_matrix();
 		run_floyd_warshall();
 	}
-	
+
 	return removed;
 }
 
@@ -320,15 +320,15 @@ void PlannerSTNSolver::check_consistency() {
 int64_t PlannerSTNSolver::get_distance(const String &p_from, const String &p_to) const {
 	int64_t from_idx = get_time_point_index(p_from);
 	int64_t to_idx = get_time_point_index(p_to);
-	
+
 	if (from_idx < 0 || to_idx < 0 || from_idx >= (int64_t)distance_matrix_internal.size()) {
 		return STN_INFINITY;
 	}
-	
+
 	if (to_idx >= (int64_t)distance_matrix_internal[from_idx].size()) {
 		return STN_INFINITY;
 	}
-	
+
 	return distance_matrix_internal[from_idx][to_idx];
 }
 
@@ -338,7 +338,7 @@ int64_t PlannerSTNSolver::get_earliest_time(const String &p_point) const {
 	if (time_points_list_internal.size() == 0) {
 		return 0;
 	}
-	
+
 	// For now, return distance from first time point (could be origin)
 	String origin = time_points_list_internal[0];
 	return get_distance(origin, p_point);
@@ -349,26 +349,26 @@ int64_t PlannerSTNSolver::get_latest_time(const String &p_point) const {
 	if (time_points_list_internal.size() == 0) {
 		return 0;
 	}
-	
+
 	String origin = time_points_list_internal[0];
 	int64_t dist_to_origin = get_distance(p_point, origin);
 	if (dist_to_origin == STN_INFINITY) {
 		return STN_INFINITY;
 	}
-	
+
 	return -dist_to_origin;
 }
 
 PlannerSTNSolver::Snapshot PlannerSTNSolver::create_snapshot() const {
 	Snapshot snapshot;
-	
+
 	// Convert internal HashMap to Dictionary for serialization
 	Dictionary time_points_dict;
 	for (const KeyValue<String, int64_t> &E : time_points_map_internal) {
 		time_points_dict[E.key] = E.value;
 	}
 	snapshot.time_points_map = time_points_dict;
-	
+
 	// Convert internal LocalVector to Array for serialization
 	Array time_points_array;
 	time_points_array.resize(time_points_list_internal.size());
@@ -376,7 +376,7 @@ PlannerSTNSolver::Snapshot PlannerSTNSolver::create_snapshot() const {
 		time_points_array[i] = time_points_list_internal[i];
 	}
 	snapshot.time_points_list = time_points_array;
-	
+
 	// Convert internal constraints HashMap to Dictionary for serialization
 	Dictionary constraints_dict;
 	for (const KeyValue<String, Constraint> &E : constraints_map_internal) {
@@ -386,7 +386,7 @@ PlannerSTNSolver::Snapshot PlannerSTNSolver::create_snapshot() const {
 		constraints_dict[E.key] = constraint_dict;
 	}
 	snapshot.constraints_map = constraints_dict;
-	
+
 	// Convert internal distance matrix to Array for serialization
 	Array matrix_copy;
 	matrix_copy.resize(distance_matrix_internal.size());
@@ -399,10 +399,10 @@ PlannerSTNSolver::Snapshot PlannerSTNSolver::create_snapshot() const {
 		matrix_copy[i] = row;
 	}
 	snapshot.distance_matrix = matrix_copy;
-	
+
 	snapshot.consistent = consistent;
 	snapshot.next_time_point_id = next_time_point_id;
-	
+
 	return snapshot;
 }
 
@@ -415,14 +415,14 @@ void PlannerSTNSolver::restore_snapshot(const Snapshot &p_snapshot) {
 		int64_t value = p_snapshot.time_points_map[key];
 		time_points_map_internal[key] = value;
 	}
-	
+
 	// Convert Array to internal LocalVector
 	time_points_list_internal.clear();
 	time_points_list_internal.resize(p_snapshot.time_points_list.size());
 	for (int i = 0; i < p_snapshot.time_points_list.size(); i++) {
 		time_points_list_internal[i] = p_snapshot.time_points_list[i];
 	}
-	
+
 	// Convert Dictionary to internal constraints HashMap
 	constraints_map_internal.clear();
 	Array constraint_keys = p_snapshot.constraints_map.keys();
@@ -432,7 +432,7 @@ void PlannerSTNSolver::restore_snapshot(const Snapshot &p_snapshot) {
 		Constraint constraint(constraint_dict["min_distance"], constraint_dict["max_distance"]);
 		constraints_map_internal[key] = constraint;
 	}
-	
+
 	// Convert Array to internal distance matrix
 	distance_matrix_internal.clear();
 	distance_matrix_internal.resize(p_snapshot.distance_matrix.size());
@@ -445,7 +445,7 @@ void PlannerSTNSolver::restore_snapshot(const Snapshot &p_snapshot) {
 		}
 		distance_matrix_internal[i] = row_vec;
 	}
-	
+
 	consistent = p_snapshot.consistent;
 	next_time_point_id = p_snapshot.next_time_point_id;
 }
@@ -466,4 +466,3 @@ String PlannerSTNSolver::to_string() const {
 	result += "  Consistent: " + String(consistent ? "true" : "false") + "\n";
 	return result;
 }
-

@@ -16,6 +16,9 @@
 /* permit persons to whom the Software is furnished to do so, subject to  */
 /* the following conditions:                                              */
 /*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
@@ -30,27 +33,27 @@
 // SPDX-FileCopyrightText: 2025-present K. S. Ernest (iFire) Lee
 // SPDX-License-Identifier: MIT
 
-#include "core/variant/variant.h"
-#include "core/variant/typed_array.h"
-#include "core/variant/dictionary.h"
 #include "core/variant/callable.h"
+#include "core/variant/dictionary.h"
+#include "core/variant/typed_array.h"
+#include "core/variant/variant.h"
 
 // Node types matching Elixir planner
 enum class PlannerNodeType {
-	TYPE_ROOT = 0,      // :D - Root node
-	TYPE_ACTION = 1,   // :A - Action node
-	TYPE_TASK = 2,     // :T - Task node
-	TYPE_GOAL = 3,     // :G - Goal node
+	TYPE_ROOT = 0, // :D - Root node
+	TYPE_ACTION = 1, // :A - Action node
+	TYPE_TASK = 2, // :T - Task node
+	TYPE_GOAL = 3, // :G - Goal node
 	TYPE_MULTIGOAL = 4, // :M - MultiGoal node
-	TYPE_VERIFY_GOAL = 5,    // :VG - Verify Goal node
+	TYPE_VERIFY_GOAL = 5, // :VG - Verify Goal node
 	TYPE_VERIFY_MULTIGOAL = 6 // :VM - Verify MultiGoal node
 };
 
 // Node status matching Elixir planner
 enum class PlannerNodeStatus {
-	STATUS_OPEN = 0,      // :O - Open (not yet processed)
-	STATUS_CLOSED = 1,    // :C - Closed/Completed (successfully processed)
-	STATUS_FAILED = 2,    // :F - Failed
+	STATUS_OPEN = 0, // :O - Open (not yet processed)
+	STATUS_CLOSED = 1, // :C - Closed/Completed (successfully processed)
+	STATUS_FAILED = 2, // :F - Failed
 	STATUS_NOT_APPLICABLE = 3 // :NA - Not applicable
 };
 
@@ -108,7 +111,7 @@ public:
 	void update_node(int p_node_id, Dictionary p_node) {
 		graph[p_node_id] = p_node;
 	}
-	
+
 	// Get graph Dictionary (for graph operations that need direct access)
 	Dictionary &get_graph() {
 		return graph;
@@ -147,4 +150,3 @@ public:
 		return state.duplicate();
 	}
 };
-
