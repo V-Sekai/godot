@@ -535,9 +535,12 @@ static Ref<PlannerDomain> setup_blocks_domain_goals_only() {
 
 	// Add unigoal methods (goal-based decomposition)
 	// Note: "holding" is the state variable for what's being held
-	TypedArray<Callable> holding_methods;
-	holding_methods.push_back(callable_mp_static(&tm_get));
-	domain->add_unigoal_methods("holding", holding_methods);
+	// (tm_get is a task method, not a unigoal method, so it's registered as a task below)
+	
+	// Add task methods - tm_get is a task method, not a unigoal method
+	TypedArray<Callable> get_methods;
+	get_methods.push_back(callable_mp_static(&tm_get));
+	domain->add_task_methods("get", get_methods);
 
 	// "put" is a task, not a unigoal (it affects multiple state variables)
 	TypedArray<Callable> put_methods;
@@ -655,32 +658,32 @@ static Dictionary create_goal_1a() {
 	return create_multigoal_1a();
 }
 
-// Helper function to attach PlannerMetadata with entity requirements
-static Dictionary attach_entity_metadata(const Array &p_action_array, const String &p_entity_type, const Array &p_capabilities) {
-	Dictionary metadata_dict;
+// Helper function to attach constraints with entity requirements
+static Dictionary attach_entity_constraints(const Array &p_action_array, const String &p_entity_type, const Array &p_capabilities) {
+	Dictionary constraints_dict;
 	Array entities_array;
 	Dictionary entity_req;
 	entity_req["type"] = p_entity_type;
 	entity_req["capabilities"] = p_capabilities;
 	entities_array.push_back(entity_req);
-	metadata_dict["requires_entities"] = entities_array;
+	constraints_dict["requires_entities"] = entities_array;
 
 	Dictionary result;
 	result["item"] = p_action_array;
-	result["metadata"] = metadata_dict;
+	result["constraints"] = constraints_dict;
 	return result;
 }
 
-// Helper function to attach PlannerMetadata with temporal constraints
-static Dictionary attach_temporal_metadata(const Array &p_action_array, int64_t p_start_time_micros, int64_t p_end_time_micros, int64_t p_duration_micros) {
-	Dictionary temporal_dict;
-	temporal_dict["duration"] = p_duration_micros;
-	temporal_dict["start_time"] = p_start_time_micros;
-	temporal_dict["end_time"] = p_end_time_micros;
+// Helper function to attach constraints with temporal constraints
+static Dictionary attach_temporal_constraints(const Array &p_action_array, int64_t p_start_time_micros, int64_t p_end_time_micros, int64_t p_duration_micros) {
+	Dictionary constraints_dict;
+	constraints_dict["duration"] = p_duration_micros;
+	constraints_dict["start_time"] = p_start_time_micros;
+	constraints_dict["end_time"] = p_end_time_micros;
 
 	Dictionary result;
 	result["item"] = p_action_array;
-	result["temporal_constraints"] = temporal_dict;
+	result["constraints"] = constraints_dict;
 	return result;
 }
 
@@ -951,17 +954,16 @@ TEST_CASE("[Modules][BlocksDomain] Goal-based planning (unigoal methods only)") 
 
 	SUBCASE("Unigoal methods should solve blocks problem") {
 		Array todo_list;
-		Array goal;
-		goal.push_back("get");
-		goal.push_back("a");
-		goal.push_back(true); // desired value
-		todo_list.push_back(goal);
+		Array task;
+		task.push_back("get");  // task name matches task method registration
+		task.push_back("a");   // task argument
+		todo_list.push_back(task);
 
 		Variant result = plan->find_plan(state, todo_list);
 		CHECK(result.get_type() == Variant::ARRAY);
 		Array plan_array = result;
 		CHECK(plan_array.size() >= 1);
-		// Should use unigoal decomposition (get -> a_unstack)
+		// Should use task decomposition (get -> a_unstack)
 		Array first_action = plan_array[0];
 		CHECK(first_action[0] == "a_unstack");
 	}
@@ -1070,7 +1072,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in commands") {
 		command.push_back("c");
 		Array capabilities;
 		capabilities.push_back("gripper");
-		Dictionary command_with_metadata = attach_entity_metadata(command, "robot", capabilities);
+		Dictionary command_with_metadata = attach_entity_constraints(command, "robot", capabilities);
 
 		Array todo_list;
 		todo_list.push_back(command_with_metadata);
@@ -1094,7 +1096,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in commands") {
 		command.push_back("c");
 		Array capabilities;
 		capabilities.push_back("gripper");
-		Dictionary command_with_metadata = attach_entity_metadata(command, "robot", capabilities);
+		Dictionary command_with_metadata = attach_entity_constraints(command, "robot", capabilities);
 
 		Array todo_list;
 		todo_list.push_back(command_with_metadata);
@@ -1123,7 +1125,7 @@ TEST_CASE("[Modules][BlocksDomain] Temporal constraints in commands") {
 		Array command;
 		command.push_back("c_pickup");
 		command.push_back("c");
-		Dictionary command_with_temporal = attach_temporal_metadata(command, start_time_micros, end_time_micros, duration_micros);
+		Dictionary command_with_temporal = attach_temporal_constraints(command, start_time_micros, end_time_micros, duration_micros);
 
 		Array todo_list;
 		todo_list.push_back(command_with_temporal);
@@ -1150,7 +1152,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
 		task.push_back(multigoal);
 		Array capabilities;
 		capabilities.push_back("gripper");
-		Dictionary task_with_metadata = attach_entity_metadata(task, "robot", capabilities);
+		Dictionary task_with_metadata = attach_entity_constraints(task, "robot", capabilities);
 
 		Array todo_list;
 		todo_list.push_back(task_with_metadata);
@@ -1174,7 +1176,7 @@ TEST_CASE("[Modules][BlocksDomain] Entity requirements in tasks") {
 		task.push_back(multigoal);
 		Array capabilities;
 		capabilities.push_back("gripper");
-		Dictionary task_with_metadata = attach_entity_metadata(task, "robot", capabilities);
+		Dictionary task_with_metadata = attach_entity_constraints(task, "robot", capabilities);
 
 		Array todo_list;
 		todo_list.push_back(task_with_metadata);
@@ -1204,7 +1206,7 @@ TEST_CASE("[Modules][BlocksDomain] Temporal constraints in tasks") {
 		Array task;
 		task.push_back("move_blocks");
 		task.push_back(multigoal);
-		Dictionary task_with_temporal = attach_temporal_metadata(task, start_time_micros, end_time_micros, duration_micros);
+		Dictionary task_with_temporal = attach_temporal_constraints(task, start_time_micros, end_time_micros, duration_micros);
 
 		Array todo_list;
 		todo_list.push_back(task_with_temporal);
@@ -1240,17 +1242,24 @@ TEST_CASE("[Modules][BlocksDomain] Combined temporal and entity requirements") {
 		command.push_back("c_pickup");
 		command.push_back("c");
 
-		// Attach both temporal and entity metadata
-		Dictionary temporal_dict = attach_temporal_metadata(command, start_time_micros, end_time_micros, duration_micros);
+		// Attach both temporal and entity constraints
+		Dictionary temporal_dict = attach_temporal_constraints(command, start_time_micros, end_time_micros, duration_micros);
 		Array capabilities;
 		capabilities.push_back("gripper");
-		Dictionary entity_dict = attach_entity_metadata(command, "robot", capabilities);
+		Dictionary entity_dict = attach_entity_constraints(command, "robot", capabilities);
 
-		// Combine both metadata
+		// Combine both constraints into unified format
+		Dictionary combined_constraints;
+		Dictionary temporal_constraints = temporal_dict["constraints"];
+		Dictionary entity_constraints = entity_dict["constraints"];
+		combined_constraints["duration"] = temporal_constraints["duration"];
+		combined_constraints["start_time"] = temporal_constraints["start_time"];
+		combined_constraints["end_time"] = temporal_constraints["end_time"];
+		combined_constraints["requires_entities"] = entity_constraints["requires_entities"];
+		
 		Dictionary combined_metadata;
 		combined_metadata["item"] = command;
-		combined_metadata["temporal_constraints"] = temporal_dict["temporal_constraints"];
-		combined_metadata["metadata"] = entity_dict["metadata"];
+		combined_metadata["constraints"] = combined_constraints;
 
 		Array todo_list;
 		todo_list.push_back(combined_metadata);

@@ -33,7 +33,23 @@
 #include "multigoal.h"
 
 PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict) {
-	// Check if it's a MultiGoal (Dictionary-based)
+	// Check if it's a Dictionary-wrapped item (with constraints)
+	if (p_node_info.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_node_info;
+		if (dict.has("item")) {
+			// Unwrap and recursively check the item
+			Variant unwrapped_item = dict["item"];
+			return get_node_type(unwrapped_item, p_action_dict, p_task_dict, p_unigoal_dict);
+		}
+		// If it's a dictionary without "item", check if it's a MultiGoal
+		if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
+			return PlannerNodeType::TYPE_MULTIGOAL;
+		}
+		// If it's a dictionary without "item" and not a MultiGoal, it's not a valid node
+		return PlannerNodeType::TYPE_ROOT;
+	}
+	
+	// Check if it's a MultiGoal (Dictionary-based) - for arrays or other types
 	if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
 		return PlannerNodeType::TYPE_MULTIGOAL;
 	}
@@ -77,9 +93,18 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 		TypedArray<Callable> available_methods;
 		Callable action;
 
+		// Extract actual item if wrapped in dictionary
+		Variant actual_item = child_info;
+		if (child_info.get_type() == Variant::DICTIONARY) {
+			Dictionary dict = child_info;
+			if (dict.has("item")) {
+				actual_item = dict["item"];
+			}
+		}
+
 		// Set up node attributes based on type
 		if (node_type == PlannerNodeType::TYPE_TASK) {
-			Array arr = child_info;
+			Array arr = actual_item;
 			if (!arr.is_empty()) {
 				String task_name = arr[0];
 				if (p_task_dict.has(task_name)) {
@@ -88,7 +113,7 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 				}
 			}
 		} else if (node_type == PlannerNodeType::TYPE_GOAL) {
-			Array arr = child_info;
+			Array arr = actual_item;
 			if (!arr.is_empty()) {
 				String goal_name = arr[0];
 				if (p_unigoal_dict.has(goal_name)) {
@@ -97,7 +122,7 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 				}
 			}
 		} else if (node_type == PlannerNodeType::TYPE_ACTION) {
-			Array arr = child_info;
+			Array arr = actual_item;
 			if (!arr.is_empty()) {
 				String action_name = arr[0];
 				if (p_action_dict.has(action_name)) {

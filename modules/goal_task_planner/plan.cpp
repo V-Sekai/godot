@@ -774,7 +774,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Try to refine task with available methods (like Elixir's Enum.find_value)
 			Variant task_info = curr_node["info"];
 
-			// Extract metadata and validate entity requirements
+			// Extract metadata and validate entity requirements (use original task_info for metadata extraction to preserve constraints)
 			PlannerMetadata metadata = _extract_metadata(task_info);
 			if (!_validate_entity_requirements(p_state, metadata)) {
 				if (verbose >= 2) {
@@ -792,6 +792,15 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
+			// Unwrap task_info if it's in dictionary format
+			Variant actual_task_info = task_info;
+			if (task_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = task_info;
+				if (dict.has("item")) {
+					actual_task_info = dict["item"];
+				}
+			}
+
 			// Try all available methods (like Elixir's Enum.find_value)
 			// Don't modify available_methods - keep full list for backtracking
 			Callable selected_method;
@@ -800,7 +809,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			for (int i = 0; i < available_methods.size(); i++) {
 				Callable method = available_methods[i];
-				Array task_arr = task_info;
+				Array task_arr = actual_task_info;
 				Array args;
 				args.push_back(p_state);
 				args.append_array(task_arr.slice(1));
@@ -898,7 +907,15 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			// Execute action with temporal tracking
 			Callable action = curr_node["action"];
-			Array action_arr = action_info;
+			// Unwrap action_info if it's in dictionary format
+			Variant actual_action_info = action_info;
+			if (action_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = action_info;
+				if (dict.has("item")) {
+					actual_action_info = dict["item"];
+				}
+			}
+			Array action_arr = actual_action_info;
 
 			// Validate that action was found
 			if (!action.is_valid() || action.is_null()) {
@@ -1054,7 +1071,18 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		}
 
 		case PlannerNodeType::TYPE_GOAL: {
-			Array goal_arr = curr_node["info"];
+			Variant goal_info = curr_node["info"];
+			
+			// Unwrap goal_info if it's in dictionary format
+			Variant actual_goal_info = goal_info;
+			if (goal_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = goal_info;
+				if (dict.has("item")) {
+					actual_goal_info = dict["item"];
+				}
+			}
+			
+			Array goal_arr = actual_goal_info;
 			if (goal_arr.size() < 3) {
 				// Invalid goal format
 				return p_state;
@@ -1064,8 +1092,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			String argument = goal_arr[1];
 			Variant desired_value = goal_arr[2];
 
-			// Extract metadata and validate entity requirements
-			PlannerMetadata metadata = _extract_metadata(goal_arr);
+			// Extract metadata and validate entity requirements (use original goal_info for metadata extraction)
+			PlannerMetadata metadata = _extract_metadata(goal_info);
 			if (!_validate_entity_requirements(p_state, metadata)) {
 				if (verbose >= 2) {
 					print_line("Goal entity requirements not met, backtracking");
@@ -1146,6 +1174,15 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 		case PlannerNodeType::TYPE_MULTIGOAL: {
 			Variant multigoal_variant = curr_node["info"];
+			
+			// Unwrap if dictionary-wrapped
+			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = multigoal_variant;
+				if (dict.has("item")) {
+					multigoal_variant = dict["item"];
+				}
+			}
+			
 			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
 				return p_state;
 			}
@@ -1286,6 +1323,15 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Verify the parent multigoal
 			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 			Variant multigoal_variant = parent_node["info"];
+			
+			// Unwrap if dictionary-wrapped
+			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = multigoal_variant;
+				if (dict.has("item")) {
+					multigoal_variant = dict["item"];
+				}
+			}
+			
 			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
 				// Invalid parent, backtrack
 				if (verbose >= 2) {
@@ -1349,12 +1395,21 @@ void PlannerPlan::_restore_stn_from_node(int p_node_id) {
 }
 
 bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
+	// Unwrap if dictionary-wrapped
+	Variant actual_command = p_command;
+	if (p_command.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_command;
+		if (dict.has("item")) {
+			actual_command = dict["item"];
+		}
+	}
+	
 	// Compare Arrays properly - need to check if it's an Array and compare elements
-	if (p_command.get_type() != Variant::ARRAY) {
+	if (actual_command.get_type() != Variant::ARRAY) {
 		return false;
 	}
 
-	Array action_arr = p_command;
+	Array action_arr = actual_command;
 
 	// Check each blacklisted command
 	for (int i = 0; i < blacklisted_commands.size(); i++) {
@@ -1396,12 +1451,21 @@ void PlannerPlan::_blacklist_command(Variant p_command) {
 PlannerPlan::ConstrainingFactor PlannerPlan::_calculate_constraining_factor(const Variant &p_goal, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) const {
 	ConstrainingFactor factor;
 
+	// Unwrap if dictionary-wrapped
+	Variant actual_goal = p_goal;
+	if (p_goal.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_goal;
+		if (dict.has("item")) {
+			actual_goal = dict["item"];
+		}
+	}
+
 	// Extract goal info (assuming format: [state_var_name, argument, desired_value])
-	if (p_goal.get_type() != Variant::ARRAY) {
+	if (actual_goal.get_type() != Variant::ARRAY) {
 		return factor;
 	}
 
-	Array goal_arr = p_goal;
+	Array goal_arr = actual_goal;
 	if (goal_arr.size() < 3) {
 		return factor;
 	}
@@ -1450,30 +1514,23 @@ PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item
 PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {
 	PlannerMetadata metadata;
 
-	// Check if item has temporal_constraints or metadata field
+	// Check if item has constraints field (unified format)
 	if (p_item.get_type() == Variant::DICTIONARY) {
 		Dictionary item_dict = p_item;
-		if (item_dict.has("temporal_constraints")) {
-			Dictionary temporal_dict = item_dict["temporal_constraints"];
-			metadata = PlannerMetadata::from_dictionary(temporal_dict);
-		} else if (item_dict.has("metadata")) {
-			Dictionary metadata_dict = item_dict["metadata"];
-			metadata = PlannerMetadata::from_dictionary(metadata_dict);
+		if (item_dict.has("constraints")) {
+			Dictionary constraints_dict = item_dict["constraints"];
+			metadata = PlannerMetadata::from_dictionary(constraints_dict);
 		}
 	} else if (p_item.get_type() == Variant::ARRAY) {
 		Array item_arr = p_item;
-		// Metadata might be stored as last element or in a wrapper
-		// Check if last element is a dictionary with temporal_constraints or metadata
+		// Check if last element is a dictionary with constraints
 		if (item_arr.size() > 0) {
 			Variant last = item_arr[item_arr.size() - 1];
 			if (last.get_type() == Variant::DICTIONARY) {
 				Dictionary last_dict = last;
-				if (last_dict.has("temporal_constraints")) {
-					Dictionary temporal_dict = last_dict["temporal_constraints"];
-					metadata = PlannerMetadata::from_dictionary(temporal_dict);
-				} else if (last_dict.has("metadata")) {
-					Dictionary metadata_dict = last_dict["metadata"];
-					metadata = PlannerMetadata::from_dictionary(metadata_dict);
+				if (last_dict.has("constraints")) {
+					Dictionary constraints_dict = last_dict["constraints"];
+					metadata = PlannerMetadata::from_dictionary(constraints_dict);
 				}
 			}
 		}
@@ -1523,21 +1580,28 @@ Array PlannerPlan::_optimize_unigoal_order(const Array &p_unigoals, const Dictio
 Variant PlannerPlan::_attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints) {
 	PlannerMetadata metadata = PlannerMetadata::from_dictionary(p_temporal_constraints);
 
-	// Create a wrapper dictionary with the item and temporal constraints
+	// Create a wrapper dictionary with the item and constraints (unified format)
 	Dictionary result;
+	Dictionary constraints_dict = metadata.to_dictionary();
 
 	if (p_item.get_type() == Variant::DICTIONARY) {
-		// If already a dictionary, add temporal_constraints field
+		Dictionary item_dict = p_item;
+		// If already a dictionary, merge constraints
 		result = Dictionary(p_item);
-		result["temporal_constraints"] = metadata.to_dictionary();
-	} else if (p_item.get_type() == Variant::ARRAY) {
-		// If array, wrap in dictionary with temporal constraints
-		result["item"] = p_item;
-		result["temporal_constraints"] = metadata.to_dictionary();
+		if (result.has("constraints")) {
+			// Merge with existing constraints
+			Dictionary existing_constraints = result["constraints"];
+			for (const Variant *key = constraints_dict.next(nullptr); key; key = constraints_dict.next(key)) {
+				existing_constraints[*key] = constraints_dict[*key];
+			}
+			result["constraints"] = existing_constraints;
+		} else {
+			result["constraints"] = constraints_dict;
+		}
 	} else {
-		// For other types, wrap in dictionary
+		// Wrap in dictionary with constraints
 		result["item"] = p_item;
-		result["temporal_constraints"] = metadata.to_dictionary();
+		result["constraints"] = constraints_dict;
 	}
 
 	return result;
