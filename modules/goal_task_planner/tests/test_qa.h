@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-// QA test suite for goal_task_planner with absolute time and SQLite
+// QA test suite for goal_task_planner with absolute time
 
 #pragma once
 
@@ -39,21 +39,13 @@
 
 namespace TestQA {
 
-TEST_CASE("[QA] End-to-end temporal planning workflow with SQLite") {
+TEST_CASE("[QA] End-to-end temporal planning workflow") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
-	plan->initialize_database("");
 
 	// Initialize state
 	Ref<PlannerState> state = memnew(PlannerState);
 	state->set_predicate("block_a", "pos", "table");
 	state->set_entity_capability("robot_1", "movable", true);
-
-	// Store initial state
-	int64_t current_time = PlannerTimeRange::now_microseconds();
-	Dictionary state_dict;
-	state_dict["block_a"] = Dictionary();
-	((Dictionary)state_dict["block_a"])["pos"] = "table";
-	plan->store_temporal_state(state_dict, current_time);
 
 	// Submit operation
 	Dictionary operation;
@@ -64,29 +56,6 @@ TEST_CASE("[QA] End-to-end temporal planning workflow with SQLite") {
 	CHECK(result.has("operation_id"));
 	CHECK(result.has("agreed_at"));
 	CHECK((int64_t)result["agreed_at"] > 0);
-
-	// Load state back
-	Dictionary loaded_state = plan->load_temporal_state();
-	CHECK(loaded_state.has("block_a"));
-
-	// Ref<> objects handle cleanup automatically via reference counting
-}
-
-TEST_CASE("[QA] Entity capability persistence across planning sessions") {
-	Ref<PlannerPlan> plan1 = memnew(PlannerPlan);
-	plan1->initialize_database(":memory:");
-
-	// Store entity capability
-	String entity_id = "robot_1";
-	String capability = "movable";
-	Dictionary value;
-	value["speed"] = 5.0;
-	int64_t timestamp = PlannerTimeRange::now_microseconds();
-	plan1->store_entity_capability(entity_id, capability, value, timestamp);
-
-	// Create new plan instance with same database would test persistence
-	// For in-memory, we test that storage works
-	CHECK(true);
 
 	// Ref<> objects handle cleanup automatically via reference counting
 }
@@ -116,33 +85,13 @@ TEST_CASE("[QA] Memory management and resource cleanup") {
 	// Test that resources are properly cleaned up
 	for (int i = 0; i < 10; i++) {
 		Ref<PlannerPlan> plan = memnew(PlannerPlan);
-		plan->initialize_database("");
-
-		Dictionary state;
-		plan->store_temporal_state(state, PlannerTimeRange::now_microseconds());
-
 		memdelete(plan.ptr());
 	}
 	CHECK(true); // If we get here without crashing, cleanup works
 }
 
-TEST_CASE("[QA] Error handling for database operations") {
-	Ref<PlannerPlan> plan = memnew(PlannerPlan);
-
-	// Try to load without initializing database
-	Dictionary state = plan->load_temporal_state();
-	CHECK(state.is_empty()); // Should return empty dict, not crash
-
-	// Try to store without initializing
-	plan->store_temporal_state(Dictionary(), 0);
-	// Should not crash
-
-	// Ref<> objects handle cleanup automatically via reference counting
-}
-
 TEST_CASE("[QA] Performance with multiple operations") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
-	plan->initialize_database("");
 
 	// Submit multiple operations
 	for (int i = 0; i < 100; i++) {
@@ -175,26 +124,6 @@ TEST_CASE("[QA] Backward compatibility - existing GDScript patterns") {
 	// Ref<> objects handle cleanup automatically via reference counting
 }
 
-TEST_CASE("[QA] SQLite transaction rollback scenarios") {
-	Ref<PlannerPlan> plan = memnew(PlannerPlan);
-	plan->initialize_database("");
-
-	// Store initial state
-	Dictionary state1;
-	state1["version"] = 1;
-	plan->store_temporal_state(state1, PlannerTimeRange::now_microseconds());
-
-	// Overwrite state
-	Dictionary state2;
-	state2["version"] = 2;
-	plan->store_temporal_state(state2, PlannerTimeRange::now_microseconds());
-
-	// Should get latest state
-	Dictionary loaded = plan->load_temporal_state();
-	CHECK(loaded["version"] == Variant(2));
-
-	memdelete(plan.ptr());
-}
 
 // Helper static functions for testing
 static Variant qa_test_action(Dictionary p_state, String p_arg) {

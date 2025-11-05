@@ -42,7 +42,6 @@
 #include "backtracking.h"
 #include "domain.h"
 #include "graph_operations.h"
-#include "modules/sqlite/src/godot_sqlite.h"
 #include "multigoal.h"
 #include "stn_constraints.h"
 
@@ -365,11 +364,6 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("submit_operation", "operation"), &PlannerPlan::submit_operation);
 	ClassDB::bind_method(D_METHOD("get_global_state"), &PlannerPlan::get_global_state);
 
-	// SQLite database methods
-	ClassDB::bind_method(D_METHOD("initialize_database", "db_path"), &PlannerPlan::initialize_database, DEFVAL(""));
-	ClassDB::bind_method(D_METHOD("store_temporal_state", "state", "current_time"), &PlannerPlan::store_temporal_state);
-	ClassDB::bind_method(D_METHOD("load_temporal_state"), &PlannerPlan::load_temporal_state);
-
 	ADD_SIGNAL(MethodInfo("plan_id_generated", PropertyInfo(Variant::STRING, "plan_id")));
 }
 
@@ -397,11 +391,6 @@ Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
 	// Get absolute time in microseconds
 	int64_t current_time = PlannerTimeRange::now_microseconds();
 
-	// Store operation in SQLite if database is initialized
-	if (db.is_valid()) {
-		store_planning_operation(transaction_id, "operation", p_operation, current_time);
-	}
-
 	Dictionary consensus_result;
 	consensus_result["operation_id"] = transaction_id;
 	consensus_result["agreed_at"] = current_time; // Absolute microseconds
@@ -415,12 +404,7 @@ Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
 }
 
 Dictionary PlannerPlan::get_global_state() {
-	// If database is initialized, load from SQLite
-	if (db.is_valid()) {
-		return load_temporal_state();
-	}
-
-	// Fallback to in-memory state if database not initialized
+	// In-memory state
 	Dictionary record;
 	Array intent_writes;
 	Dictionary tscache;
@@ -448,217 +432,6 @@ void PlannerPlan::set_verify_goals(bool p_value) {
 	verify_goals = p_value;
 }
 
-// SQLite database method implementations
-bool PlannerPlan::initialize_database(const String &p_db_path) {
-	db = memnew(SQLite);
-
-	bool success = false;
-	if (p_db_path.is_empty()) {
-		// Use in-memory database
-		success = db->open_in_memory();
-	} else {
-		// Use file-based database
-		success = db->open(p_db_path);
-	}
-
-	if (!success) {
-		ERR_PRINT("Failed to open SQLite database: " + db->get_last_error_message());
-		db = Ref<SQLite>();
-		return false;
-	}
-
-	// Create schema
-	String create_temporal_state = "CREATE TABLE IF NOT EXISTS temporal_state ("
-								   "current_time INTEGER NOT NULL, "
-								   "timeline TEXT, "
-								   "last_updated INTEGER NOT NULL"
-								   ");";
-
-	String create_entity_capabilities = "CREATE TABLE IF NOT EXISTS entity_capabilities ("
-										"entity_id TEXT NOT NULL, "
-										"capability_name TEXT NOT NULL, "
-										"capability_value TEXT, "
-										"created_at INTEGER NOT NULL, "
-										"updated_at INTEGER NOT NULL, "
-										"PRIMARY KEY (entity_id, capability_name)"
-										");";
-
-	String create_planning_operations = "CREATE TABLE IF NOT EXISTS planning_operations ("
-										"operation_id TEXT PRIMARY KEY, "
-										"operation_type TEXT NOT NULL, "
-										"operation_data TEXT, "
-										"submitted_at INTEGER NOT NULL, "
-										"status TEXT"
-										");";
-
-	String create_plan_history = "CREATE TABLE IF NOT EXISTS plan_history ("
-								 "plan_id TEXT PRIMARY KEY, "
-								 "state_snapshot TEXT, "
-								 "created_at INTEGER NOT NULL"
-								 ");";
-
-	Ref<SQLiteQuery> query1 = db->create_query(create_temporal_state);
-	if (query1.is_null()) {
-		ERR_PRINT("Failed to create temporal_state table");
-		return false;
-	}
-	query1->execute(Array());
-
-	Ref<SQLiteQuery> query2 = db->create_query(create_entity_capabilities);
-	if (query2.is_null()) {
-		ERR_PRINT("Failed to create entity_capabilities table");
-		return false;
-	}
-	query2->execute(Array());
-
-	Ref<SQLiteQuery> query3 = db->create_query(create_planning_operations);
-	if (query3.is_null()) {
-		ERR_PRINT("Failed to create planning_operations table");
-		return false;
-	}
-	query3->execute(Array());
-
-	Ref<SQLiteQuery> query4 = db->create_query(create_plan_history);
-	if (query4.is_null()) {
-		ERR_PRINT("Failed to create plan_history table");
-		return false;
-	}
-	query4->execute(Array());
-
-	print_line("SQLite database initialized successfully");
-	return true;
-}
-
-void PlannerPlan::store_temporal_state(Dictionary p_state, int64_t p_current_time) {
-	if (!db.is_valid()) {
-		ERR_PRINT("Database not initialized");
-		return;
-	}
-
-	String timeline_json = JSON::stringify(p_state);
-	int64_t now = PlannerTimeRange::now_microseconds();
-
-	// Delete existing state
-	Ref<SQLiteQuery> delete_query = db->create_query("DELETE FROM temporal_state");
-	if (delete_query.is_valid()) {
-		delete_query->execute(Array());
-	}
-
-	// Insert new state
-	Ref<SQLiteQuery> insert_query = db->create_query(
-			"INSERT INTO temporal_state (current_time, timeline, last_updated) VALUES (?, ?, ?)");
-	if (insert_query.is_valid()) {
-		Array args;
-		args.push_back(p_current_time);
-		args.push_back(timeline_json);
-		args.push_back(now);
-		insert_query->execute(args);
-	}
-}
-
-Dictionary PlannerPlan::load_temporal_state() {
-	if (!db.is_valid()) {
-		ERR_PRINT("Database not initialized");
-		return Dictionary();
-	}
-
-	Ref<SQLiteQuery> query = db->create_query(
-			"SELECT current_time, timeline, last_updated FROM temporal_state ORDER BY last_updated DESC LIMIT 1");
-	if (query.is_null()) {
-		return Dictionary();
-	}
-
-	Variant result = query->execute(Array());
-	if (result.get_type() != Variant::ARRAY) {
-		return Dictionary();
-	}
-
-	Array rows = result;
-	if (rows.is_empty()) {
-		return Dictionary();
-	}
-
-	// SQLiteQuery returns Array of Arrays (rows), where each row is an Array of column values
-	Array row = rows[0];
-	if (row.size() < 3) {
-		return Dictionary();
-	}
-
-	int64_t current_time = row[0]; // First column: current_time
-	String timeline_json = row[1]; // Second column: timeline
-	int64_t last_updated = row[2]; // Third column: last_updated
-
-	Dictionary global_state;
-
-	// Parse timeline JSON
-	if (!timeline_json.is_empty()) {
-		JSON json;
-		Error err = json.parse(timeline_json);
-		if (err == OK) {
-			Variant parsed = json.get_data();
-			if (parsed.get_type() == Variant::DICTIONARY) {
-				global_state = parsed;
-			}
-		}
-	}
-
-	// Add HLC information
-	Dictionary hlc_dict;
-	hlc_dict["l"] = current_time;
-	hlc_dict["c"] = current_time;
-	global_state["hlc"] = hlc_dict;
-	global_state["current_time"] = current_time;
-	global_state["last_updated"] = last_updated;
-
-	return global_state;
-}
-
-void PlannerPlan::store_entity_capability(const String &p_entity_id, const String &p_capability, Variant p_value, int64_t p_timestamp) {
-	if (!db.is_valid()) {
-		ERR_PRINT("Database not initialized");
-		return;
-	}
-
-	String value_json = JSON::stringify(p_value);
-	int64_t now = PlannerTimeRange::now_microseconds();
-
-	Ref<SQLiteQuery> query = db->create_query(
-			"INSERT OR REPLACE INTO entity_capabilities (entity_id, capability_name, capability_value, created_at, updated_at) "
-			"VALUES (?, ?, ?, COALESCE((SELECT created_at FROM entity_capabilities WHERE entity_id = ? AND capability_name = ?), ?), ?)");
-	if (query.is_valid()) {
-		Array args;
-		args.push_back(p_entity_id);
-		args.push_back(p_capability);
-		args.push_back(value_json);
-		args.push_back(p_entity_id);
-		args.push_back(p_capability);
-		args.push_back(p_timestamp);
-		args.push_back(now);
-		query->execute(args);
-	}
-}
-
-void PlannerPlan::store_planning_operation(const String &p_operation_id, const String &p_operation_type, Dictionary p_operation_data, int64_t p_timestamp) {
-	if (!db.is_valid()) {
-		ERR_PRINT("Database not initialized");
-		return;
-	}
-
-	String operation_json = JSON::stringify(p_operation_data);
-
-	Ref<SQLiteQuery> query = db->create_query(
-			"INSERT INTO planning_operations (operation_id, operation_type, operation_data, submitted_at, status) "
-			"VALUES (?, ?, ?, ?, ?)");
-	if (query.is_valid()) {
-		Array args;
-		args.push_back(p_operation_id);
-		args.push_back(p_operation_type);
-		args.push_back(operation_json);
-		args.push_back(p_timestamp);
-		args.push_back("submitted");
-		query->execute(args);
-	}
-}
 
 // Graph-based lazy refinement (Elixir-style)
 Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_list) {
@@ -701,11 +474,6 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 	// Update HLC with end time
 	hlc.set_end_time(PlannerTimeRange::now_microseconds());
 	hlc.calculate_duration();
-
-	// Store temporal state if database is initialized
-	if (db.is_valid()) {
-		store_temporal_state(final_state, hlc.get_end_time());
-	}
 
 	if (verbose >= 1) {
 		print_line("run_lazy_refineahead: Completed graph-based planning");
