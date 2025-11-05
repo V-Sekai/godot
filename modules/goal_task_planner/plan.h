@@ -52,7 +52,7 @@ class PlannerPlan : public Resource {
 	int verbose = 0;
 	TypedArray<PlannerDomain> domains;
 	Ref<PlannerDomain> current_domain;
-	PlannerTimeRange hlc; // Added for temporal
+	PlannerTimeRange time_range; // Added for temporal
 	PlannerSolutionGraph solution_graph; // Solution graph for explicit backtracking
 	TypedArray<Variant> blacklisted_commands; // Blacklisted commands/actions
 	PlannerSTNSolver stn; // STN solver for temporal constraint validation
@@ -142,8 +142,8 @@ public:
 	Dictionary run_lazy_refineahead(Dictionary p_state, Array p_todo_list);
 	// Temporal methods
 	String generate_plan_id();
-	PlannerTimeRange get_hlc() const { return hlc; }
-	void set_hlc(PlannerTimeRange p_hlc) { hlc = p_hlc; }
+	PlannerTimeRange get_time_range() const { return time_range; }
+	void set_time_range(PlannerTimeRange p_time_range) { time_range = p_time_range; }
 	Dictionary submit_operation(Dictionary p_operation);
 	Dictionary get_global_state();
 

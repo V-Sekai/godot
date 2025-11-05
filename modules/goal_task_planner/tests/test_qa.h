@@ -110,11 +110,11 @@ TEST_CASE("[QA] Backward compatibility - existing GDScript patterns") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 
 	// Test that basic operations still work
-	PlannerTimeRange hlc;
-	hlc.set_start_time(1735689600000000LL);
-	plan->set_hlc(hlc);
+	PlannerTimeRange time_range;
+	time_range.set_start_time(1735689600000000LL);
+	plan->set_time_range(time_range);
 
-	PlannerTimeRange retrieved = plan->get_hlc();
+	PlannerTimeRange retrieved = plan->get_time_range();
 	CHECK(retrieved.get_start_time() == 1735689600000000LL);
 
 	// Test plan ID generation
@@ -210,8 +210,8 @@ TEST_CASE("[QA] STN integration in planning loop") {
 	Dictionary final_state = plan->run_lazy_refineahead(state, todo_list);
 
 	// Verify STN was initialized (plan has temporal tracking)
-	PlannerTimeRange hlc = plan->get_hlc();
-	CHECK(hlc.get_start_time() > 0);
+	PlannerTimeRange time_range = plan->get_time_range();
+	CHECK(time_range.get_start_time() > 0);
 
 	// Ref<> objects handle cleanup automatically via reference counting
 }
