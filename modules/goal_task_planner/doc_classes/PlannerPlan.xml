@@ -36,17 +36,6 @@
 			<description>
 			</description>
 		</method>
-		<method name="initialize_database">
-			<return type="bool" />
-			<param index="0" name="db_path" type="String" default="&quot;&quot;" />
-			<description>
-			</description>
-		</method>
-		<method name="load_temporal_state">
-			<return type="Dictionary" />
-			<description>
-			</description>
-		</method>
 		<method name="run_lazy_lookahead">
 			<return type="Dictionary" />
 			<param index="0" name="state" type="Dictionary" />
@@ -63,13 +52,6 @@
 			<param index="1" name="todo_list" type="Array" />
 			<description>
 				Executes graph-based lazy refinement planning to accomplish the todo list from the provided state. This method uses a solution graph for explicit backtracking and supports temporal constraints through the Simple Temporal Network (STN). The origin time point is anchored to the current time at plan start. Actions without temporal metadata can occur at any time and are not constrained by the STN. The return value is the resulting state after plan execution.
-			</description>
-		</method>
-		<method name="store_temporal_state">
-			<return type="void" />
-			<param index="0" name="state" type="Dictionary" />
-			<param index="1" name="current_time" type="int" />
-			<description>
 			</description>
 		</method>
 		<method name="submit_operation">
