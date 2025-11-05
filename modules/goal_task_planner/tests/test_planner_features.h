@@ -155,26 +155,5 @@ TEST_CASE("[Modules][PlannerState] Entity capabilities") {
 	}
 }
 
-TEST_CASE("[Modules][PlannerPlan] SQLite integration") {
-	Ref<PlannerPlan> plan = memnew(PlannerPlan);
-
-	SUBCASE("Database initialization") {
-		bool success = plan->initialize_database("");
-		CHECK(success == true);
-	}
-
-	SUBCASE("Temporal state persistence") {
-		plan->initialize_database("");
-		Dictionary state;
-		state["key"] = "value";
-		int64_t current_time = PlannerTimeRange::now_microseconds();
-		plan->store_temporal_state(state, current_time);
-
-		Dictionary loaded = plan->load_temporal_state();
-		CHECK(loaded.has("key"));
-	}
-
-	// Ref<> objects handle cleanup automatically via reference counting
-}
 
 } // namespace TestPlannerFeatures

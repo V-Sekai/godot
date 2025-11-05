@@ -45,7 +45,6 @@
 
 class PlannerDomain;
 struct PlannerTimeRange;
-class SQLite;
 
 class PlannerPlan : public Resource {
 	GDCLASS(PlannerPlan, Resource);
@@ -54,7 +53,6 @@ class PlannerPlan : public Resource {
 	TypedArray<PlannerDomain> domains;
 	Ref<PlannerDomain> current_domain;
 	PlannerTimeRange hlc; // Added for temporal
-	Ref<SQLite> db; // SQLite database for temporal state storage
 	PlannerSolutionGraph solution_graph; // Solution graph for explicit backtracking
 	TypedArray<Variant> blacklisted_commands; // Blacklisted commands/actions
 	PlannerSTNSolver stn; // STN solver for temporal constraint validation
@@ -145,13 +143,6 @@ public:
 	void set_hlc(PlannerTimeRange p_hlc) { hlc = p_hlc; }
 	Dictionary submit_operation(Dictionary p_operation);
 	Dictionary get_global_state();
-
-	// SQLite database methods
-	bool initialize_database(const String &p_db_path = "");
-	void store_temporal_state(Dictionary p_state, int64_t p_current_time);
-	Dictionary load_temporal_state();
-	void store_entity_capability(const String &p_entity_id, const String &p_capability, Variant p_value, int64_t p_timestamp);
-	void store_planning_operation(const String &p_operation_id, const String &p_operation_type, Dictionary p_operation_data, int64_t p_timestamp);
 
 protected:
 	static void _bind_methods();

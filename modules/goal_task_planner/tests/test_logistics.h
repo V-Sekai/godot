@@ -622,8 +622,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal planning with entity capabilities
 	Ref<PlannerPlan> planner;
 	planner.instantiate();
 
-	// Initialize SQLite database for temporal state
-	planner->initialize_database("");
 
 	// Create state with entity capabilities
 	Ref<PlannerState> planner_state = memnew(PlannerState);
@@ -636,25 +634,18 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal planning with entity capabilities
 	Dictionary state;
 	before_each(state, planner, Ref<PlannerDomain>(memnew(PlannerDomain)));
 
-	// Store temporal state with absolute time
-	int64_t current_time = PlannerTimeRange::now_microseconds();
-	planner->store_temporal_state(state, current_time);
-
 	// Submit operation with temporal constraints
 	Dictionary operation;
 	operation["action"] = "drive_truck";
 	operation["truck"] = "truck1";
 	operation["location"] = "location2";
+	int64_t current_time = PlannerTimeRange::now_microseconds();
 	Dictionary result = planner->submit_operation(operation);
 
 	CHECK(result.has("operation_id"));
 	CHECK(result.has("agreed_at"));
 	int64_t agreed_at = result["agreed_at"];
 	CHECK(agreed_at >= current_time); // Should be absolute microseconds
-
-	// Load temporal state back
-	Dictionary loaded_state = planner->load_temporal_state();
-	CHECK(loaded_state.has("truck_at"));
 
 	// Verify entity capabilities are accessible
 	CHECK(planner_state->has_entity("truck1"));
@@ -664,7 +655,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal planning with entity capabilities
 TEST_CASE("[Modules][GoalTaskPlanner] Planning with temporal constraints in absolute time") {
 	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	planner->initialize_database("");
 
 	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
@@ -725,7 +715,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Entity capability filtering in planning") 
 TEST_CASE("[Modules][GoalTaskPlanner] Multi-entity planning with capabilities") {
 	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	planner->initialize_database("");
 
 	Ref<PlannerDomain> the_domain;
 	the_domain.instantiate();
@@ -753,7 +742,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Multi-entity planning with capabilities") 
 TEST_CASE("[Modules][GoalTaskPlanner] Temporal operation submission and retrieval") {
 	Ref<PlannerPlan> planner;
 	planner.instantiate();
-	planner->initialize_database("");
 
 	// Submit multiple operations with absolute timestamps
 	Dictionary op1;
