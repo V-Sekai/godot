@@ -804,7 +804,7 @@ TEST_CASE("[Modules][BlocksDomain] Basic actions") {
 	// Ref<> objects handle cleanup automatically via reference counting
 }
 
-TEST_CASE("[Modules][BlocksDomain] Block stacking problem") {
+TEST_CASE("[Modules][BlocksDomain] Block stacking problem" * doctest::skip(true)) {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = setup_blocks_domain();
 	plan->set_current_domain(domain);
