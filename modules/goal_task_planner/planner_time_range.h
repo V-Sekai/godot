@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  planner_time_range.h                                                   */
+/*  planner_time_range.h                                                  */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -87,4 +87,3 @@ struct PlannerTimeRange {
 		end_time = start_time + duration;
 	}
 };
-

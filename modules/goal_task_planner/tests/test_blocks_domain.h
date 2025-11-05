@@ -536,7 +536,7 @@ static Ref<PlannerDomain> setup_blocks_domain_goals_only() {
 	// Add unigoal methods (goal-based decomposition)
 	// Note: "holding" is the state variable for what's being held
 	// (tm_get is a task method, not a unigoal method, so it's registered as a task below)
-	
+
 	// Add task methods - tm_get is a task method, not a unigoal method
 	TypedArray<Callable> get_methods;
 	get_methods.push_back(callable_mp_static(&tm_get));
@@ -955,8 +955,8 @@ TEST_CASE("[Modules][BlocksDomain] Goal-based planning (unigoal methods only)") 
 	SUBCASE("Unigoal methods should solve blocks problem") {
 		Array todo_list;
 		Array task;
-		task.push_back("get");  // task name matches task method registration
-		task.push_back("a");   // task argument
+		task.push_back("get"); // task name matches task method registration
+		task.push_back("a"); // task argument
 		todo_list.push_back(task);
 
 		Variant result = plan->find_plan(state, todo_list);
@@ -1261,7 +1261,7 @@ TEST_CASE("[Modules][BlocksDomain] Combined temporal and entity requirements" * 
 		combined_constraints["start_time"] = temporal_constraints["start_time"];
 		combined_constraints["end_time"] = temporal_constraints["end_time"];
 		combined_constraints["requires_entities"] = entity_constraints["requires_entities"];
-		
+
 		Dictionary combined_metadata;
 		combined_metadata["item"] = command;
 		combined_metadata["constraints"] = combined_constraints;

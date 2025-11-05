@@ -38,8 +38,8 @@
 #include "core/variant/typed_array.h"
 
 #include "modules/goal_task_planner/multigoal.h"
-#include "modules/goal_task_planner/planner_time_range.h"
 #include "modules/goal_task_planner/planner_metadata.h"
+#include "modules/goal_task_planner/planner_time_range.h"
 #include "modules/goal_task_planner/solution_graph.h"
 #include "modules/goal_task_planner/stn_solver.h"
 

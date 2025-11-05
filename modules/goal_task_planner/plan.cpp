@@ -141,7 +141,7 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 		Dictionary root_node = solution_graph.get_node(0);
 		root_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 		solution_graph.update_node(0, root_node);
-		
+
 		// Extract the plan from the graph
 		Array plan = PlannerGraphOperations::extract_solution_plan(solution_graph);
 
@@ -1072,7 +1072,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 		case PlannerNodeType::TYPE_GOAL: {
 			Variant goal_info = curr_node["info"];
-			
+
 			// Unwrap goal_info if it's in dictionary format
 			Variant actual_goal_info = goal_info;
 			if (goal_info.get_type() == Variant::DICTIONARY) {
@@ -1081,7 +1081,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					actual_goal_info = dict["item"];
 				}
 			}
-			
+
 			Array goal_arr = actual_goal_info;
 			if (goal_arr.size() < 3) {
 				// Invalid goal format
@@ -1174,7 +1174,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 		case PlannerNodeType::TYPE_MULTIGOAL: {
 			Variant multigoal_variant = curr_node["info"];
-			
+
 			// Unwrap if dictionary-wrapped
 			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
 				Dictionary dict = multigoal_variant;
@@ -1182,7 +1182,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					multigoal_variant = dict["item"];
 				}
 			}
-			
+
 			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
 				return p_state;
 			}
@@ -1323,7 +1323,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Verify the parent multigoal
 			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 			Variant multigoal_variant = parent_node["info"];
-			
+
 			// Unwrap if dictionary-wrapped
 			if (multigoal_variant.get_type() == Variant::DICTIONARY) {
 				Dictionary dict = multigoal_variant;
@@ -1331,7 +1331,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					multigoal_variant = dict["item"];
 				}
 			}
-			
+
 			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
 				// Invalid parent, backtrack
 				if (verbose >= 2) {
@@ -1403,7 +1403,7 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 			actual_command = dict["item"];
 		}
 	}
-	
+
 	// Compare Arrays properly - need to check if it's an Array and compare elements
 	if (actual_command.get_type() != Variant::ARRAY) {
 		return false;
