@@ -622,7 +622,6 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal planning with entity capabilities
 	Ref<PlannerPlan> planner;
 	planner.instantiate();
 
-
 	// Create state with entity capabilities
 	Ref<PlannerState> planner_state = memnew(PlannerState);
 	planner_state->set_entity_capability("truck1", "movable", true);

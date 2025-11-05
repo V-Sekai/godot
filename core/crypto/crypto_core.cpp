@@ -259,12 +259,17 @@ Error CryptoCore::generate_uuidv7(String &r_uuid) {
 		return err;
 	}
 	int64_t timestamp = OS::get_singleton()->get_unix_time() * 1000;
-	int64_t random_part = 0;
+	uint64_t random_part = 0;
 	for (int i = 0; i < 10; i++) {
 		random_part = (random_part << 8) | random_bytes[i];
 	}
-	r_uuid = vformat("%08x-%04x-%04x-%04x-%012llx",
+	// Format the last segment (12 hex digits) separately using uint64_t to avoid format specifier issues
+	uint64_t last_segment = random_part & 0xFFFFFFFFFFFFULL; // 48 bits for 12 hex digits
+	String last_hex = String::num_uint64(last_segment, 16, false);
+	last_hex = last_hex.lpad(12, "0"); // Pad to 12 hex digits
+
+	r_uuid = vformat("%08x-%04x-%04x-%04x-%s",
 			(uint32_t)(timestamp >> 32), (uint16_t)(timestamp >> 16), (uint16_t)timestamp,
-			(uint16_t)(random_part >> 16), random_part & 0xFFFFFFF);
+			(uint16_t)(random_part >> 16), last_hex);
 	return OK;
 }

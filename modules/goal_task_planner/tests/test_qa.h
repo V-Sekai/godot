@@ -124,7 +124,6 @@ TEST_CASE("[QA] Backward compatibility - existing GDScript patterns") {
 	// Ref<> objects handle cleanup automatically via reference counting
 }
 
-
 // Helper static functions for testing
 static Variant qa_test_action(Dictionary p_state, String p_arg) {
 	Dictionary new_state = p_state.duplicate();
