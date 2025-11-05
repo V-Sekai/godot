@@ -41,24 +41,24 @@
 namespace TestPlannerFeatures {
 
 TEST_CASE("[Modules][PlannerTimeRange] Basic functionality") {
-	PlannerTimeRange hlc;
+	PlannerTimeRange time_range;
 
 	SUBCASE("Initial state") {
-		CHECK(hlc.get_start_time() == 0);
-		CHECK(hlc.get_end_time() == 0);
-		CHECK(hlc.get_duration() == 0);
+		CHECK(time_range.get_start_time() == 0);
+		CHECK(time_range.get_end_time() == 0);
+		CHECK(time_range.get_duration() == 0);
 	}
 
 	SUBCASE("Set times with absolute microseconds") {
 		int64_t start = 1735689600000000LL;
 		int64_t end = 1735689601000000LL;
 		int64_t duration = 1000000LL;
-		hlc.set_start_time(start);
-		hlc.set_end_time(end);
-		hlc.set_duration(duration);
-		CHECK(hlc.get_start_time() == start);
-		CHECK(hlc.get_end_time() == end);
-		CHECK(hlc.get_duration() == duration);
+		time_range.set_start_time(start);
+		time_range.set_end_time(end);
+		time_range.set_duration(duration);
+		CHECK(time_range.get_start_time() == start);
+		CHECK(time_range.get_end_time() == end);
+		CHECK(time_range.get_duration() == duration);
 	}
 
 	SUBCASE("now_microseconds returns reasonable value") {
@@ -80,17 +80,17 @@ TEST_CASE("[Modules][PlannerTaskMetadata] Basic functionality" * doctest::skip(t
 		CHECK(id.length() == 36); // Standard UUID length
 	}
 
-	SUBCASE("HLC integration with absolute microseconds") {
+	SUBCASE("Time range integration with absolute microseconds") {
 		int64_t absolute_time = 1735689600000000LL;
 		metadata->update_metadata(absolute_time);
-		PlannerTimeRange hlc = metadata->get_hlc();
-		CHECK(hlc.get_start_time() == absolute_time);
+		PlannerTimeRange time_range = metadata->get_time_range();
+		CHECK(time_range.get_start_time() == absolute_time);
 	}
 
 	memdelete(metadata.ptr());
 }
 
-TEST_CASE("[Modules][PlannerPlan] ID generation and HLC") {
+TEST_CASE("[Modules][PlannerPlan] ID generation and time range") {
 	PlannerPlan plan;
 
 	SUBCASE("Generate plan ID") {
@@ -112,11 +112,11 @@ TEST_CASE("[Modules][PlannerPlan] ID generation and HLC") {
 		CHECK(parts[4].length() == 12);
 	}
 
-	SUBCASE("HLC in plan") {
-		PlannerTimeRange hlc;
-		plan.set_hlc(hlc);
-		PlannerTimeRange retrieved = plan.get_hlc();
-		CHECK(retrieved.start_time == hlc.start_time);
+	SUBCASE("Time range in plan") {
+		PlannerTimeRange time_range;
+		plan.set_time_range(time_range);
+		PlannerTimeRange retrieved = plan.get_time_range();
+		CHECK(retrieved.start_time == time_range.start_time);
 	}
 }
 

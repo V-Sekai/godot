@@ -40,7 +40,7 @@
 namespace TestTemporal {
 
 TEST_CASE("[Modules][Temporal] PlannerTimeRange time calculations") {
-	PlannerTimeRange hlc;
+	PlannerTimeRange time_range;
 
 	SUBCASE("Duration calculation with absolute microseconds") {
 		// Use realistic absolute microseconds (e.g., 2025-01-01 00:00:00 UTC = ~1735689600000000 microseconds)
@@ -48,20 +48,20 @@ TEST_CASE("[Modules][Temporal] PlannerTimeRange time calculations") {
 		int64_t end = 1735689601000000LL; // 1 second later
 		int64_t duration = 1000000LL; // 1 second in microseconds
 
-		hlc.set_start_time(start);
-		hlc.set_end_time(end);
-		hlc.set_duration(duration);
-		CHECK(hlc.get_duration() == duration);
-		CHECK(hlc.get_end_time() - hlc.get_start_time() == hlc.get_duration());
+		time_range.set_start_time(start);
+		time_range.set_end_time(end);
+		time_range.set_duration(duration);
+		CHECK(time_range.get_duration() == duration);
+		CHECK(time_range.get_end_time() - time_range.get_start_time() == time_range.get_duration());
 	}
 
 	SUBCASE("Time progression with absolute microseconds") {
 		int64_t start = 1735689600000000LL;
 		int64_t duration = 500000LL; // 0.5 seconds in microseconds
-		hlc.set_start_time(start);
-		hlc.set_duration(duration);
-		hlc.calculate_end_from_duration();
-		CHECK(hlc.get_end_time() == hlc.get_start_time() + hlc.get_duration());
+		time_range.set_start_time(start);
+		time_range.set_duration(duration);
+		time_range.calculate_end_from_duration();
+		CHECK(time_range.get_end_time() == time_range.get_start_time() + time_range.get_duration());
 	}
 
 	SUBCASE("Unix time to microseconds conversion") {
@@ -73,10 +73,10 @@ TEST_CASE("[Modules][Temporal] PlannerTimeRange time calculations") {
 	SUBCASE("Calculate duration from start and end") {
 		int64_t start = 1735689600000000LL;
 		int64_t end = 1735689601000000LL;
-		hlc.set_start_time(start);
-		hlc.set_end_time(end);
-		hlc.calculate_duration();
-		CHECK(hlc.get_duration() == 1000000LL); // 1 second
+		time_range.set_start_time(start);
+		time_range.set_end_time(end);
+		time_range.calculate_duration();
+		CHECK(time_range.get_duration() == 1000000LL); // 1 second
 	}
 }
 
@@ -86,8 +86,8 @@ TEST_CASE("[Modules][Temporal] PlannerTaskMetadata temporal updates") {
 	SUBCASE("Metadata time tracking with absolute microseconds") {
 		int64_t absolute_time = 1735689600000000LL;
 		metadata->update_metadata(absolute_time);
-		PlannerTimeRange hlc = metadata->get_hlc();
-		CHECK(hlc.get_start_time() == absolute_time);
+		PlannerTimeRange time_range = metadata->get_time_range();
+		CHECK(time_range.get_start_time() == absolute_time);
 	}
 
 	SUBCASE("Multiple updates with absolute microseconds") {
@@ -95,8 +95,8 @@ TEST_CASE("[Modules][Temporal] PlannerTaskMetadata temporal updates") {
 		int64_t time2 = 1735689601000000LL;
 		metadata->update_metadata(time1);
 		metadata->update_metadata(time2);
-		PlannerTimeRange hlc = metadata->get_hlc();
-		CHECK(hlc.get_start_time() == time2); // Last update wins
+		PlannerTimeRange time_range = metadata->get_time_range();
+		CHECK(time_range.get_start_time() == time2); // Last update wins
 	}
 
 	memdelete(metadata.ptr());
@@ -105,16 +105,16 @@ TEST_CASE("[Modules][Temporal] PlannerTaskMetadata temporal updates") {
 TEST_CASE("[Modules][Temporal] PlannerPlan temporal integration") {
 	PlannerPlan plan;
 
-	SUBCASE("Plan HLC management with absolute microseconds") {
-		PlannerTimeRange hlc;
+	SUBCASE("Plan time range management with absolute microseconds") {
+		PlannerTimeRange time_range;
 		int64_t start = 1735689600000000LL;
 		int64_t duration = 500000LL; // 0.5 seconds
-		hlc.set_start_time(start);
-		hlc.set_duration(duration);
-		hlc.calculate_end_from_duration();
+		time_range.set_start_time(start);
+		time_range.set_duration(duration);
+		time_range.calculate_end_from_duration();
 
-		plan.set_hlc(hlc);
-		PlannerTimeRange retrieved = plan.get_hlc();
+		plan.set_time_range(time_range);
+		PlannerTimeRange retrieved = plan.get_time_range();
 
 		CHECK(retrieved.get_start_time() == start);
 		CHECK(retrieved.get_duration() == duration);
@@ -123,20 +123,20 @@ TEST_CASE("[Modules][Temporal] PlannerPlan temporal integration") {
 
 	SUBCASE("Plan temporal state with absolute microseconds") {
 		// Test that plan maintains temporal state
-		PlannerTimeRange hlc;
+		PlannerTimeRange time_range;
 		int64_t start = 1735689600000000LL;
-		hlc.set_start_time(start);
-		plan.set_hlc(hlc);
+		time_range.set_start_time(start);
+		plan.set_time_range(time_range);
 
 		// Simulate some operation
-		PlannerTimeRange updated_hlc = plan.get_hlc();
+		PlannerTimeRange updated_time_range = plan.get_time_range();
 		int64_t end = start + 1000000LL; // 1 second later
-		updated_hlc.set_end_time(end);
-		plan.set_hlc(updated_hlc);
+		updated_time_range.set_end_time(end);
+		plan.set_time_range(updated_time_range);
 
-		PlannerTimeRange final_hlc = plan.get_hlc();
-		CHECK(final_hlc.get_start_time() == start);
-		CHECK(final_hlc.get_end_time() == end);
+		PlannerTimeRange final_time_range = plan.get_time_range();
+		CHECK(final_time_range.get_start_time() == start);
+		CHECK(final_time_range.get_end_time() == end);
 	}
 
 	SUBCASE("submit_operation uses absolute microseconds") {
@@ -153,26 +153,26 @@ TEST_CASE("[Modules][Temporal] PlannerPlan temporal integration") {
 }
 
 TEST_CASE("[Modules][Temporal] Temporal constraints validation") {
-	PlannerTimeRange hlc;
+	PlannerTimeRange time_range;
 
 	SUBCASE("Valid time ranges with absolute microseconds") {
 		int64_t start = 1735689600000000LL;
 		int64_t end = 1735689601000000LL; // 1 second later
 		int64_t duration = 1000000LL;
-		hlc.set_start_time(start);
-		hlc.set_end_time(end);
-		hlc.set_duration(duration);
-		CHECK(hlc.get_start_time() < hlc.get_end_time());
-		CHECK(hlc.get_duration() == hlc.get_end_time() - hlc.get_start_time());
+		time_range.set_start_time(start);
+		time_range.set_end_time(end);
+		time_range.set_duration(duration);
+		CHECK(time_range.get_start_time() < time_range.get_end_time());
+		CHECK(time_range.get_duration() == time_range.get_end_time() - time_range.get_start_time());
 	}
 
 	SUBCASE("Edge case: zero duration") {
 		int64_t time = 1735689600000000LL;
-		hlc.set_start_time(time);
-		hlc.set_end_time(time);
-		hlc.set_duration(0);
-		CHECK(hlc.get_start_time() == hlc.get_end_time());
-		CHECK(hlc.get_duration() == 0);
+		time_range.set_start_time(time);
+		time_range.set_end_time(time);
+		time_range.set_duration(0);
+		CHECK(time_range.get_start_time() == time_range.get_end_time());
+		CHECK(time_range.get_duration() == 0);
 	}
 
 	SUBCASE("Time arithmetic with absolute microseconds") {
@@ -180,10 +180,10 @@ TEST_CASE("[Modules][Temporal] Temporal constraints validation") {
 		int64_t duration = 5000000LL; // 5 seconds
 		int64_t end_time = base_time + duration;
 
-		hlc.set_start_time(base_time);
-		hlc.set_duration(duration);
-		hlc.calculate_end_from_duration();
-		CHECK(hlc.get_end_time() == end_time);
+		time_range.set_start_time(base_time);
+		time_range.set_duration(duration);
+		time_range.calculate_end_from_duration();
+		CHECK(time_range.get_end_time() == end_time);
 	}
 
 	SUBCASE("Timestamp comparisons") {

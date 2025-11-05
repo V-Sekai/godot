@@ -660,23 +660,23 @@ TEST_CASE("[Modules][GoalTaskPlanner] Planning with temporal constraints in abso
 	Dictionary state;
 	before_each(state, planner, the_domain);
 
-	// Set HLC with absolute microseconds
-	PlannerTimeRange hlc;
+	// Set time range with absolute microseconds
+	PlannerTimeRange time_range;
 	int64_t start_time = PlannerTimeRange::now_microseconds();
-	hlc.set_start_time(start_time);
-	hlc.set_duration(5000000LL); // 5 seconds
-	hlc.calculate_end_from_duration();
-	planner->set_hlc(hlc);
+	time_range.set_start_time(start_time);
+	time_range.set_duration(5000000LL); // 5 seconds
+	time_range.calculate_end_from_duration();
+	planner->set_time_range(time_range);
 
 	// Plan with temporal constraints
 	Array task;
 	task.push_back(varray("at", "package1", "location2"));
 	Variant plan = planner->find_plan(state, task);
 
-	// Verify plan exists and HLC is maintained
+	// Verify plan exists and time range is maintained
 	CHECK(plan.get_type() == Variant::ARRAY);
-	PlannerTimeRange retrieved_hlc = planner->get_hlc();
-	CHECK(retrieved_hlc.get_start_time() == start_time);
+	PlannerTimeRange retrieved_time_range = planner->get_time_range();
+	CHECK(retrieved_time_range.get_start_time() == start_time);
 }
 
 TEST_CASE("[Modules][GoalTaskPlanner] Entity capability filtering in planning") {
@@ -760,7 +760,7 @@ TEST_CASE("[Modules][GoalTaskPlanner] Temporal operation submission and retrieva
 
 	// Load global state
 	Dictionary global_state = planner->get_global_state();
-	CHECK(global_state.has("hlc"));
+	CHECK(global_state.has("time_range"));
 }
 
 } // namespace TestLogistics

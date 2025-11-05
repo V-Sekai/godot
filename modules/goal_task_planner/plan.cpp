@@ -85,13 +85,13 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	stn.clear();
 	stn.add_time_point("origin");
 
-	// Initialize HLC if not already set
-	if (hlc.get_start_time() == 0) {
-		hlc.set_start_time(PlannerTimeRange::now_microseconds());
+	// Initialize time range if not already set
+	if (time_range.get_start_time() == 0) {
+		time_range.set_start_time(PlannerTimeRange::now_microseconds());
 	}
 
 	// Anchor origin to current absolute time
-	PlannerSTNConstraints::anchor_to_origin(stn, "origin", hlc.get_start_time());
+	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
 
 	// Add initial tasks to the solution graph
 	int parent_node_id = 0; // Root node
@@ -420,11 +420,11 @@ Dictionary PlannerPlan::get_global_state() {
 	global_state["tscache"] = tscache;
 	global_state["commit_ack"] = false;
 
-	// Use current HLC from plan
-	Dictionary hlc_dict;
-	hlc_dict["l"] = hlc.get_start_time();
-	hlc_dict["c"] = hlc.get_end_time();
-	global_state["hlc"] = hlc_dict;
+	// Use current time range from plan
+	Dictionary time_range_dict;
+	time_range_dict["l"] = time_range.get_start_time();
+	time_range_dict["c"] = time_range.get_end_time();
+	global_state["time_range"] = time_range_dict;
 
 	return global_state;
 }
@@ -461,13 +461,13 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 	stn.clear();
 	stn.add_time_point("origin"); // Origin time point (plan start)
 
-	// Initialize HLC if not already set
-	if (hlc.get_start_time() == 0) {
-		hlc.set_start_time(PlannerTimeRange::now_microseconds());
+	// Initialize time range if not already set
+	if (time_range.get_start_time() == 0) {
+		time_range.set_start_time(PlannerTimeRange::now_microseconds());
 	}
 
 	// Anchor origin to current absolute time
-	PlannerSTNConstraints::anchor_to_origin(stn, "origin", hlc.get_start_time());
+	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
 
 	// Add initial tasks to the solution graph
 	int parent_node_id = 0; // Root node
@@ -483,13 +483,13 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 	// Start planning loop
 	Dictionary final_state = _planning_loop_recursive(parent_node_id, p_state, 0);
 
-	// Update HLC with end time
-	hlc.set_end_time(PlannerTimeRange::now_microseconds());
-	hlc.calculate_duration();
+	// Update time range with end time
+	time_range.set_end_time(PlannerTimeRange::now_microseconds());
+	time_range.calculate_duration();
 
 	if (verbose >= 1) {
 		print_line("run_lazy_refineahead: Completed graph-based planning");
-		print_line("Duration: " + itos(hlc.get_duration()) + " microseconds");
+		print_line("Duration: " + itos(time_range.get_duration()) + " microseconds");
 	}
 
 	return final_state;
@@ -828,9 +828,9 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["duration"] = action_duration;
 				solution_graph.update_node(curr_node_id, curr_node);
 
-				// Update plan HLC
-				hlc.set_end_time(action_end_time);
-				hlc.calculate_duration();
+				// Update plan time range
+				time_range.set_end_time(action_end_time);
+				time_range.calculate_duration();
 
 				return _planning_loop_recursive(p_parent_node_id, new_state, p_iter + 1);
 			} else {
