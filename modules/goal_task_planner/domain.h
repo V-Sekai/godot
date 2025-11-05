@@ -39,21 +39,21 @@
 #include "core/io/resource.h"
 #include "core/object/object.h"
 #include "core/variant/typed_array.h"
-#include "planner_hl_clock.h"
+#include "planner_time_range.h"
 
 class PlannerTaskMetadata : public Resource {
 	GDCLASS(PlannerTaskMetadata, Resource);
 
 private:
 	String task_id;
-	PlannerHLClock hlc;
+	PlannerTimeRange hlc;
 
 public:
 	PlannerTaskMetadata();
 	void set_task_id(String p_id) { task_id = p_id; }
 	String get_task_id() const { return task_id; }
-	void set_hlc(PlannerHLClock p_hlc) { hlc = p_hlc; }
-	PlannerHLClock get_hlc() const { return hlc; }
+	void set_hlc(PlannerTimeRange p_hlc) { hlc = p_hlc; }
+	PlannerTimeRange get_hlc() const { return hlc; }
 	// p_physical_time is in absolute microseconds since Unix epoch
 	void update_metadata(int64_t p_physical_time);
 

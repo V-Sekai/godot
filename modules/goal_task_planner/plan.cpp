@@ -88,7 +88,7 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 
 	// Initialize HLC if not already set
 	if (hlc.get_start_time() == 0) {
-		hlc.set_start_time(PlannerHLClock::now_microseconds());
+		hlc.set_start_time(PlannerTimeRange::now_microseconds());
 	}
 
 	// Anchor origin to current absolute time
@@ -395,7 +395,7 @@ Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
 	}
 
 	// Get absolute time in microseconds
-	int64_t current_time = PlannerHLClock::now_microseconds();
+	int64_t current_time = PlannerTimeRange::now_microseconds();
 
 	// Store operation in SQLite if database is initialized
 	if (db.is_valid()) {
@@ -536,7 +536,7 @@ void PlannerPlan::store_temporal_state(Dictionary p_state, int64_t p_current_tim
 	}
 
 	String timeline_json = JSON::stringify(p_state);
-	int64_t now = PlannerHLClock::now_microseconds();
+	int64_t now = PlannerTimeRange::now_microseconds();
 
 	// Delete existing state
 	Ref<SQLiteQuery> delete_query = db->create_query("DELETE FROM temporal_state");
@@ -620,7 +620,7 @@ void PlannerPlan::store_entity_capability(const String &p_entity_id, const Strin
 	}
 
 	String value_json = JSON::stringify(p_value);
-	int64_t now = PlannerHLClock::now_microseconds();
+	int64_t now = PlannerTimeRange::now_microseconds();
 
 	Ref<SQLiteQuery> query = db->create_query(
 			"INSERT OR REPLACE INTO entity_capabilities (entity_id, capability_name, capability_value, created_at, updated_at) "
@@ -678,7 +678,7 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 
 	// Initialize HLC if not already set
 	if (hlc.get_start_time() == 0) {
-		hlc.set_start_time(PlannerHLClock::now_microseconds());
+		hlc.set_start_time(PlannerTimeRange::now_microseconds());
 	}
 
 	// Anchor origin to current absolute time
@@ -699,7 +699,7 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 	Dictionary final_state = _planning_loop_recursive(parent_node_id, p_state, 0);
 
 	// Update HLC with end time
-	hlc.set_end_time(PlannerHLClock::now_microseconds());
+	hlc.set_end_time(PlannerTimeRange::now_microseconds());
 	hlc.calculate_duration();
 
 	// Store temporal state if database is initialized
@@ -944,7 +944,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (temporal_metadata.has("start_time")) {
 				action_start_time = temporal_metadata["start_time"];
 			} else {
-				action_start_time = PlannerHLClock::now_microseconds();
+				action_start_time = PlannerTimeRange::now_microseconds();
 			}
 
 			if (verbose >= 2) {
@@ -959,7 +959,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (temporal_metadata.has("end_time")) {
 				action_end_time = temporal_metadata["end_time"];
 			} else {
-				action_end_time = PlannerHLClock::now_microseconds();
+				action_end_time = PlannerTimeRange::now_microseconds();
 			}
 
 			// Use temporal metadata duration if provided, otherwise calculate from start/end times

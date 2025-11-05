@@ -38,13 +38,13 @@
 #include "core/variant/typed_array.h"
 
 #include "modules/goal_task_planner/multigoal.h"
-#include "modules/goal_task_planner/planner_hl_clock.h"
+#include "modules/goal_task_planner/planner_time_range.h"
 #include "modules/goal_task_planner/planner_metadata.h"
 #include "modules/goal_task_planner/solution_graph.h"
 #include "modules/goal_task_planner/stn_solver.h"
 
 class PlannerDomain;
-struct PlannerHLClock;
+struct PlannerTimeRange;
 class SQLite;
 
 class PlannerPlan : public Resource {
@@ -53,7 +53,7 @@ class PlannerPlan : public Resource {
 	int verbose = 0;
 	TypedArray<PlannerDomain> domains;
 	Ref<PlannerDomain> current_domain;
-	PlannerHLClock hlc; // Added for temporal
+	PlannerTimeRange hlc; // Added for temporal
 	Ref<SQLite> db; // SQLite database for temporal state storage
 	PlannerSolutionGraph solution_graph; // Solution graph for explicit backtracking
 	TypedArray<Variant> blacklisted_commands; // Blacklisted commands/actions
@@ -141,8 +141,8 @@ public:
 	Dictionary run_lazy_refineahead(Dictionary p_state, Array p_todo_list);
 	// Temporal methods
 	String generate_plan_id();
-	PlannerHLClock get_hlc() const { return hlc; }
-	void set_hlc(PlannerHLClock p_hlc) { hlc = p_hlc; }
+	PlannerTimeRange get_hlc() const { return hlc; }
+	void set_hlc(PlannerTimeRange p_hlc) { hlc = p_hlc; }
 	Dictionary submit_operation(Dictionary p_operation);
 	Dictionary get_global_state();
 

@@ -63,7 +63,7 @@ TEST_CASE("[Modules][SQLite] Temporal state storage and retrieval") {
 	SUBCASE("Store and load temporal state") {
 		Dictionary state;
 		state["test_key"] = "test_value";
-		int64_t current_time = PlannerHLClock::now_microseconds();
+		int64_t current_time = PlannerTimeRange::now_microseconds();
 
 		plan->store_temporal_state(state, current_time);
 		Dictionary loaded = plan->load_temporal_state();
@@ -102,7 +102,7 @@ TEST_CASE("[Modules][SQLite] Entity capabilities storage") {
 		String capability = "movable";
 		Dictionary value;
 		value["speed"] = 5.0;
-		int64_t timestamp = PlannerHLClock::now_microseconds();
+		int64_t timestamp = PlannerTimeRange::now_microseconds();
 
 		plan->store_entity_capability(entity_id, capability, value, timestamp);
 		// Capabilities are stored but not directly queryable through public API
@@ -122,7 +122,7 @@ TEST_CASE("[Modules][SQLite] Planning operations persistence") {
 		String operation_type = "task";
 		Dictionary operation_data;
 		operation_data["task"] = "move";
-		int64_t timestamp = PlannerHLClock::now_microseconds();
+		int64_t timestamp = PlannerTimeRange::now_microseconds();
 
 		plan->store_planning_operation(operation_id, operation_type, operation_data, timestamp);
 		CHECK(true); // If no error, storage succeeded
@@ -148,7 +148,7 @@ TEST_CASE("[Modules][SQLite] get_global_state loads from database") {
 	SUBCASE("Load state from database") {
 		Dictionary state;
 		state["key"] = "value";
-		int64_t current_time = PlannerHLClock::now_microseconds();
+		int64_t current_time = PlannerTimeRange::now_microseconds();
 		plan->store_temporal_state(state, current_time);
 
 		Dictionary global_state = plan->get_global_state();
