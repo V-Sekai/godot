@@ -288,8 +288,9 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 					print_line(vformat("run_lazy_lookahead: Task: %s, %s", action_name.get_method(), action_arguments));
 				}
 
-				Dictionary new_state = _apply_task_and_continue(p_state, action_name, action.slice(1, action.size()));
-				if (!new_state.is_empty()) {
+				Variant result = _apply_task_and_continue(p_state, action_name, action.slice(1, action.size()));
+				if (result.get_type() == Variant::DICTIONARY) {
+					Dictionary new_state = result;
 					if (verbose >= 2) {
 						print_line(new_state);
 					}

@@ -167,7 +167,7 @@ TEST_CASE("[Modules][PlannerState] Entity capabilities") {
 // This is a challenging puzzle: prepare 3 dishes with different cooking times
 // and dependencies, using a shared oven that can only hold one dish at a time
 
-static Dictionary prep_ingredients(Dictionary p_state, String p_dish) {
+static Variant prep_ingredients(Dictionary p_state, String p_dish) {
 	// Mark dish as prepared (ready for cooking)
 	Dictionary prepared = p_state["prepared"];
 	prepared[p_dish] = true;
@@ -175,15 +175,15 @@ static Dictionary prep_ingredients(Dictionary p_state, String p_dish) {
 	return p_state;
 }
 
-static Dictionary cook_dish(Dictionary p_state, String p_dish) {
+static Variant cook_dish(Dictionary p_state, String p_dish) {
 	// Mark dish as cooked (must be prepared first)
 	Dictionary prepared = p_state["prepared"];
 	if (!prepared.has(p_dish)) {
-		return Dictionary(); // Not prepared, fail
+		return false; // Not prepared, fail
 	}
 	Variant prep_val = prepared[p_dish];
 	if (!prep_val.operator bool()) {
-		return Dictionary(); // Not prepared, fail
+		return false; // Not prepared, fail
 	}
 	
 	// Check if oven is available
@@ -191,7 +191,7 @@ static Dictionary cook_dish(Dictionary p_state, String p_dish) {
 	if (oven_in_use.has("oven")) {
 		Variant oven_val = oven_in_use["oven"];
 		if (oven_val.operator bool()) {
-			return Dictionary(); // Oven busy, fail
+			return false; // Oven busy, fail
 		}
 	}
 	
@@ -207,15 +207,15 @@ static Dictionary cook_dish(Dictionary p_state, String p_dish) {
 	return p_state;
 }
 
-static Dictionary finish_cooking(Dictionary p_state, String p_dish) {
+static Variant finish_cooking(Dictionary p_state, String p_dish) {
 	// Check if dish is cooked
 	Dictionary cooked = p_state["cooked"];
 	if (!cooked.has(p_dish)) {
-		return Dictionary(); // Not cooked, fail
+		return false; // Not cooked, fail
 	}
 	Variant cooked_val = cooked[p_dish];
 	if (!cooked_val.operator bool()) {
-		return Dictionary(); // Not cooked, fail
+		return false; // Not cooked, fail
 	}
 	
 	// Release oven (cooking finished)
