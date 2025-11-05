@@ -8,12 +8,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TFLITE_SOURCE="$PROJECT_ROOT/thirdparty/tensorflow-lite"
 TFLITE_BUILD="$PROJECT_ROOT/thirdparty/tensorflow-lite/build"
-TFLITE_LIBS="$PROJECT_ROOT/thirdparty/tflite-libs"
+# TFLITE_LIBS no longer needed - SCons finds library in build directory
 
 echo "Building TensorFlow Lite..."
 echo "Source: $TFLITE_SOURCE"
 echo "Build: $TFLITE_BUILD"
-echo "Output: $TFLITE_LIBS"
+echo "Note: SCons will automatically find the library in the build directory"
 
 # Check for CMake
 if ! command -v cmake &> /dev/null; then
@@ -64,7 +64,7 @@ cmake --build . -j$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4
     exit 1
 }
 
-# Find the library
+# Find and verify the library
 LIBRARY=""
 if [ -f "libtensorflow-lite.a" ]; then
     LIBRARY="libtensorflow-lite.a"
@@ -80,11 +80,13 @@ else
     fi
 fi
 
-# Copy to target location
-mkdir -p "$TFLITE_LIBS"
-cp "$LIBRARY" "$TFLITE_LIBS/libtensorflow-lite.a"
+LIBRARY_PATH="$(pwd)/$LIBRARY"
+LIBRARY_SIZE=$(ls -lh "$LIBRARY_PATH" | awk '{print $5}')
 
-echo "✅ Success! libtensorflow-lite.a copied to $TFLITE_LIBS/"
+echo "✅ Success! libtensorflow-lite.a built at: $LIBRARY_PATH"
+echo "   Size: $LIBRARY_SIZE"
+echo ""
+echo "SCons will automatically find and link this library when building Godot."
 echo ""
 echo "Next steps:"
 echo "1. Build Godot with: scons platform=macos target=template_debug"

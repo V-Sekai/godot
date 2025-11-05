@@ -111,10 +111,11 @@ litert_sources = [thirdparty_dir + file for file in litert_sources]
 
 # Add include paths
 env_litrt.Prepend(CPPPATH=[
-    thirdparty_dir + "c",
-    thirdparty_dir + "c/internal",
-    thirdparty_dir + "c/options",
-    thirdparty_dir + "runtime",
+	thirdparty_dir + "build_common/generated",  # For build_config.h
+	thirdparty_dir + "c",
+	thirdparty_dir + "c/internal",
+	thirdparty_dir + "c/options",
+	thirdparty_dir + "runtime",
     thirdparty_dir + "runtime/accelerators",
     thirdparty_dir + "runtime/accelerators/dispatch",
     thirdparty_dir + "runtime/accelerators/xnnpack",
@@ -294,20 +295,33 @@ if True:  # Build Abseil (minimal components)
 # If XNNPACK is needed later, can be added as pre-built library or selective build
 
 # TensorFlow Lite - Pre-built library (Scrappiest approach)
-# NOTE: Build TFLite separately with CMake, then link the pre-built library
+# NOTE: Build TFLite separately with CMake, then SCons will find it automatically
 # Steps to build:
 #   cd thirdparty/tensorflow-lite
 #   mkdir build && cd build
-#   cmake .. -DCMAKE_BUILD_TYPE=Release
-#   make -j$(nproc)  # or cmake --build .
-#   cp libtensorflow-lite.a ../../tflite-libs/
+#   cmake ../tensorflow/lite -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DTFLITE_ENABLE_GPU=OFF -DTFLITE_ENABLE_XNNPACK=OFF
+#   cmake --build . -j$(nproc) --target tensorflow-lite
+# SCons will automatically find libtensorflow-lite.a in the build directory
 if True:  # Link pre-built TFLite library
-	tflite_lib_dir = "#thirdparty/tflite-libs/"
-	tflite_lib = tflite_lib_dir + "libtensorflow-lite.a"
-	
-	# Check if library exists (optional - will fail at link time if missing)
 	import os
-	if os.path.exists(tflite_lib):
+	
+	# Check multiple possible locations for the library
+	tflite_build_dir = "#thirdparty/tensorflow-lite/build/"
+	tflite_lib_paths = [
+		tflite_build_dir + "libtensorflow-lite.a",
+		tflite_build_dir + "tensorflow/lite/libtensorflow-lite.a",
+	]
+	
+	# Find the library
+	tflite_lib_found = None
+	for lib_path in tflite_lib_paths:
+		if os.path.exists(lib_path):
+			tflite_lib_found = lib_path
+			break
+	
+	if tflite_lib_found:
+		# Add the directory containing the library to LIBPATH
+		tflite_lib_dir = os.path.dirname(tflite_lib_found)
 		env_litrt.Append(LIBPATH=[tflite_lib_dir])
 		env_litrt.Append(LIBS=["tensorflow-lite"])
 	else:
@@ -341,11 +355,11 @@ if True:  # Link pre-built TFLite library
 # 4. ⏭️ XNNPACK - SKIPPED (optional, not needed for basic functionality)
 # 5. ⚠️ Build TensorFlow Lite separately - TODO
 #    - Steps: cd thirdparty/tensorflow-lite && mkdir build && cd build
-#    - Run: cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$(nproc)
-#    - Copy: cp libtensorflow-lite.a ../../tflite-libs/
-# 6. ✅ Link pre-built TFLite library - SETUP DONE (SCsub will link if library exists)
+#    - Run: cmake ../tensorflow/lite -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DTFLITE_ENABLE_XNNPACK=OFF
+#    - Build: cmake --build . -j$(nproc) --target tensorflow-lite
+# 6. ✅ Link pre-built TFLite library - SETUP DONE (SCsub will find library in build directory)
 #
 # Current state: pthreadpool, flatbuffers, and Abseil are fully built from source.
-# XNNPACK is skipped (optional). TFLite linking is set up - just need to build the library.
-# Once libtensorflow-lite.a is in thirdparty/tflite-libs/, the build should link successfully.
+# XNNPACK is skipped (optional). TFLite linking is set up - SCons will find libtensorflow-lite.a
+# in thirdparty/tensorflow-lite/build/ automatically when it exists.
 

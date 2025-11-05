@@ -94,8 +94,15 @@ done
 # Check TFLite
 echo ""
 echo "Checking TensorFlow Lite..."
-if [ -f "$PROJECT_ROOT/thirdparty/tflite-libs/libtensorflow-lite.a" ]; then
-    echo "  ✅ libtensorflow-lite.a found"
+TFLITE_LIB=""
+if [ -f "$PROJECT_ROOT/thirdparty/tensorflow-lite/build/libtensorflow-lite.a" ]; then
+    TFLITE_LIB="$PROJECT_ROOT/thirdparty/tensorflow-lite/build/libtensorflow-lite.a"
+elif [ -f "$PROJECT_ROOT/thirdparty/tensorflow-lite/build/tensorflow/lite/libtensorflow-lite.a" ]; then
+    TFLITE_LIB="$PROJECT_ROOT/thirdparty/tensorflow-lite/build/tensorflow/lite/libtensorflow-lite.a"
+fi
+
+if [ -n "$TFLITE_LIB" ]; then
+    echo "  ✅ libtensorflow-lite.a found at: $TFLITE_LIB"
 elif [ -d "$PROJECT_ROOT/thirdparty/tensorflow-lite" ]; then
     echo "  ⚠️  TFLite source found, but library not built yet"
     echo "     Run: ./modules/litert/build_tflite.sh"

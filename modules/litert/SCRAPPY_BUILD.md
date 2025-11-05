@@ -36,13 +36,12 @@ cmake ../tensorflow/lite -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 cmake --build . -j$(sysctl -n hw.ncpu)  # macOS
 # Or: cmake --build . -j$(nproc)  # Linux
 
-# Copy the library
-cp libtensorflow-lite.a ../../tflite-libs/
+# Library is ready - SCons will find it automatically in the build directory
 ```
 
 ### 2. Verify Library Location
 
-The SCsub build script will automatically link `thirdparty/tflite-libs/libtensorflow-lite.a` if it exists.
+The SCsub build script will automatically find and link `libtensorflow-lite.a` from `thirdparty/tensorflow-lite/build/` when it exists.
 
 ### 3. Build Godot with LiteRT Module
 
@@ -74,7 +73,7 @@ For the matmul test, you'll need a `matmul_model.tflite` file. You can:
 ## Troubleshooting
 
 ### Link Errors
-- Ensure `libtensorflow-lite.a` is in `thirdparty/tflite-libs/`
+- Ensure `libtensorflow-lite.a` exists in `thirdparty/tensorflow-lite/build/`
 - Check that library was built for the correct platform/architecture
 - Verify all Abseil symbols are resolved (may need to add more files)
 

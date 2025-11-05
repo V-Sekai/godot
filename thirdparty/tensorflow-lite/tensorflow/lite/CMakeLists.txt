@@ -879,7 +879,9 @@ target_compile_options(_pywrap_tensorflow_interpreter_wrapper
   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
 )
 
-target_compile_options(xnnpack-delegate
-  PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
-  PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
-)
+if(TARGET xnnpack-delegate)
+  target_compile_options(xnnpack-delegate
+    PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
+    PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
+  )
+endif()

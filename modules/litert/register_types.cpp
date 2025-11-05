@@ -35,7 +35,7 @@
 #include "litrt_model.h"
 #include "litrt_tensor_buffer.h"
 
-void initialize_litrt_module(ModuleInitializationLevel p_level) {
+void initialize_litert_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
 		GDREGISTER_CLASS(LiteRtEnvironment);
 		GDREGISTER_CLASS(LiteRtModel);
@@ -44,7 +44,7 @@ void initialize_litrt_module(ModuleInitializationLevel p_level) {
 	}
 }
 
-void uninitialize_litrt_module(ModuleInitializationLevel p_level) {
+void uninitialize_litert_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}

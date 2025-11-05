@@ -32,6 +32,6 @@
 
 #include "modules/register_module_types.h"
 
-void initialize_litrt_module(ModuleInitializationLevel p_level);
-void uninitialize_litrt_module(ModuleInitializationLevel p_level);
+void initialize_litert_module(ModuleInitializationLevel p_level);
+void uninitialize_litert_module(ModuleInitializationLevel p_level);
 
