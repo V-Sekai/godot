@@ -137,6 +137,11 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	}
 
 	if (planning_succeeded && !final_state.is_empty()) {
+		// Mark root node as CLOSED when planning succeeds so extract_solution_plan can traverse from it
+		Dictionary root_node = solution_graph.get_node(0);
+		root_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+		solution_graph.update_node(0, root_node);
+		
 		// Extract the plan from the graph
 		Array plan = PlannerGraphOperations::extract_solution_plan(solution_graph);
 
