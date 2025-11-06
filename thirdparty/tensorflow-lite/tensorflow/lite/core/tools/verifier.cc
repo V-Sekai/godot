@@ -428,15 +428,12 @@ bool VerifyNumericTensorBuffer(const Tensor& tensor, const Buffer& buffer,
     case TensorType_UINT32:
       bytes_required *= sizeof(uint32_t);
       break;
-    #ifdef TFLITE_ENABLE_INT2_INT4_TYPES
-
     case TensorType_INT2:
       bytes_required = (bytes_required + 3) / 4;
       break;
     case TensorType_INT4:
       bytes_required = (bytes_required + 1) / 2;
       break;
-    #endif
     case TensorType_UINT8:
       bytes_required *= sizeof(uint8_t);
       break;

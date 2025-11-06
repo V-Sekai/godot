@@ -311,8 +311,6 @@ else()
 endif()
 
 populate_tflite_source_vars("core" TFLITE_CORE_SRCS)
-# Exclude experimental model_building.cc (has compatibility issues with Abseil hash)
-list(FILTER TFLITE_CORE_SRCS EXCLUDE REGEX ".*model_building\.cc$")
 populate_tflite_source_vars(
   "core/acceleration/configuration" TFLITE_CORE_ACCELERATION_SRCS
   FILTER "xnnpack_plugin.*"
@@ -841,12 +839,10 @@ endif()
 set(TFLITE_GENERATED_HEADERS_DIR ${CMAKE_BINARY_DIR}/tensorflow/lite)
 
 # Add the profiling proto directory.
-# Disabled: proto compilation has path issues, not needed for core library
-# add_subdirectory(${TFLITE_SOURCE_DIR}/profiling/proto)
+add_subdirectory(${TFLITE_SOURCE_DIR}/profiling/proto)
 
 # Add the benchmark result proto directory.
-# Disabled: proto compilation has path issues, not needed for core library
-# add_subdirectory(${TFLITE_SOURCE_DIR}/tools/benchmark/proto)
+add_subdirectory(${TFLITE_SOURCE_DIR}/tools/benchmark/proto)
 
 # Add the tf example directory.
 add_subdirectory(${TF_SOURCE_DIR}/core/example ${CMAKE_BINARY_DIR}/example_proto_generated)
@@ -883,9 +879,7 @@ target_compile_options(_pywrap_tensorflow_interpreter_wrapper
   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
 )
 
-if(TARGET xnnpack-delegate)
-  target_compile_options(xnnpack-delegate
-    PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
-    PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
-  )
-endif()
+target_compile_options(xnnpack-delegate
+  PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
+  PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
+)

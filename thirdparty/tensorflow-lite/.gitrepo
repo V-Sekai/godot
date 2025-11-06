@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/tensorflow/tensorflow.git
 	branch = master
-	commit = 1505ee2c0ed710c7f822fbd328f35486dde02241
-	parent = cee28c9e33a5c18d7f468d31c8332e1e6071f529
+	commit = 5fcf510a862fb6d3c0d34906044389095a180ff6
+	parent = 70dfdd7d6662cace68dd9f96b05f90d52b12d76e
 	method = merge
 	cmdver = 0.4.9

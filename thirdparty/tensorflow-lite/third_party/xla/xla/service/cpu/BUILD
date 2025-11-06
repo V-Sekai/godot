@@ -19,6 +19,7 @@ load(
     "//xla/tsl/platform:build_config_root.bzl",
     "if_llvm_aarch64_available",
     "if_llvm_powerpc_available",
+    "if_llvm_riscv_available",
     "if_llvm_system_z_available",
     "if_llvm_x86_available",
 )
@@ -59,9 +60,7 @@ filegroup(
     srcs = [
         # Single-threaded support.
         "runtime_custom_call_status.cc",
-        "runtime_fp16.cc",
         "runtime_key_value_sort.cc",
-        "runtime_pow.cc",
         "runtime_single_threaded_conv2d.cc",
         "runtime_single_threaded_conv3d.cc",
         "runtime_single_threaded_matmul_c128.cc",
@@ -94,9 +93,7 @@ filegroup(
     srcs = [
         # Single-threaded support.
         "runtime_custom_call_status.h",
-        "runtime_fp16.h",
         "runtime_key_value_sort.h",
-        "runtime_pow.h",
         "runtime_single_threaded_conv2d.h",
         "runtime_single_threaded_conv3d.h",
         "runtime_single_threaded_matmul.h",
@@ -193,7 +190,6 @@ cc_library(
         ":ir_emitter2",
         ":metrics",
         ":parallel_task_assignment",
-        ":runtime_symbol_generator",
         ":small_while_loop_hoisting_pass",
         ":thunk_emitter",
         "//xla:debug_options_flags",
@@ -210,6 +206,7 @@ cc_library(
         "//xla/backends/cpu:alignment",
         "//xla/backends/cpu:constant_allocation",
         "//xla/backends/cpu:xnn_support",
+        "//xla/backends/cpu/codegen:builtin_definition_generator",
         "//xla/backends/cpu/codegen:compiled_function_library",
         "//xla/backends/cpu/codegen:cpu_features",
         "//xla/backends/cpu/codegen:execution_engine",
@@ -396,6 +393,8 @@ cc_library(
         "@llvm-project//llvm:AArch64CodeGen",  # fixdeps: keep
     ]) + if_llvm_powerpc_available([
         "@llvm-project//llvm:PowerPCCodeGen",  # fixdeps: keep
+    ]) + if_llvm_riscv_available([
+        "@llvm-project//llvm:RISCVCodeGen",  # fixdeps: keep
     ]) + if_llvm_system_z_available([
         "@llvm-project//llvm:SystemZCodeGen",  # fixdeps: keep
     ]) + if_llvm_x86_available([
@@ -566,54 +565,10 @@ tf_proto_library(
 )
 
 cc_library(
-    name = "runtime_symbol_generator",
-    srcs = ["runtime_symbol_generator.cc"],
-    hdrs = ["runtime_symbol_generator.h"],
-    copts = tsl_copts(),
-    deps = [
-        ":runtime_fp16",
-        "//xla/backends/cpu/codegen:builtin_pow",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/functional:any_invocable",
-        "@com_google_absl//absl/strings:string_view",
-        "@llvm-project//llvm:Core",
-        "@llvm-project//llvm:OrcJIT",
-        "@llvm-project//llvm:OrcShared",
-        "@llvm-project//llvm:Support",
-        "@llvm-project//mlir:mlir_c_runner_utils",
-    ],
-)
-
-cc_library(
     name = "runtime_lightweight_check",
     hdrs = ["runtime_lightweight_check.h"],
     compatible_with = get_compatible_with_portable(),
     copts = runtime_copts(),
-)
-
-cc_library(
-    name = "runtime_fp16",
-    srcs = [
-        "runtime_fp16.cc",
-    ],
-    hdrs = [
-        "runtime_fp16.h",
-    ],
-    copts = runtime_copts(),
-    deps = ["@com_google_absl//absl/base:core_headers"],
-)
-
-cc_library(
-    name = "runtime_pow",
-    srcs = [
-        "runtime_pow.cc",
-    ],
-    hdrs = [
-        "runtime_pow.h",
-    ],
-    copts = runtime_copts(),
-    deps = ["@com_google_absl//absl/base:core_headers"],
 )
 
 cc_library(
@@ -743,10 +698,10 @@ xla_cc_test(
         ":cpu_options",
         ":ir_emitter",
         ":ir_function",
-        ":runtime_symbol_generator",
         ":target_machine_features_stub",
         "//xla:shape_util",
         "//xla/backends/cpu:alignment",
+        "//xla/backends/cpu/codegen:builtin_definition_generator",
         "//xla/backends/cpu/codegen:cpu_features",
         "//xla/backends/cpu/codegen:execution_engine",
         "//xla/backends/cpu/codegen:ir_compiler",
@@ -2140,8 +2095,8 @@ cc_library(
     deps = [
         ":cpu_aot_compilation_result",
         ":executable_proto_cc",
-        ":runtime_symbol_generator",
         "//xla:util",
+        "//xla/backends/cpu/codegen:builtin_definition_generator",
         "//xla/backends/cpu/codegen:cpu_features",
         "//xla/backends/cpu/codegen:execution_engine",
         "//xla/backends/cpu/codegen:ir_compiler",
@@ -2168,6 +2123,8 @@ cc_library(
         "@llvm-project//llvm:AArch64CodeGen",  # fixdeps: keep
     ]) + if_llvm_powerpc_available([
         "@llvm-project//llvm:PowerPCCodeGen",  # fixdeps: keep
+    ]) + if_llvm_riscv_available([
+        "@llvm-project//llvm:RISCVCodeGen",  # fixdeps: keep
     ]) + if_llvm_system_z_available([
         "@llvm-project//llvm:SystemZCodeGen",  # fixdeps: keep
     ]) + if_llvm_x86_available([

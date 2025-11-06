@@ -156,30 +156,6 @@ TfLiteQuantization TfLiteQuantizationClone(const TfLiteQuantization& src) {
       dst_params->zero_point = TfLiteIntArrayCopy(src_params->zero_point);
       break;
     }
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
-#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
-
     case kTfLiteBlockwiseQuantization: {
       dst.params = calloc(1, sizeof(TfLiteBlockwiseQuantization));
       const TfLiteBlockwiseQuantization* const src_params =
@@ -188,31 +164,7 @@ TfLiteQuantization TfLiteQuantizationClone(const TfLiteQuantization& src) {
           (TfLiteBlockwiseQuantization*)(dst.params);
       dst_params->blocksize = src_params->blocksize;
       dst_params->scale = src_params->scale;
-#endif
       dst_params->zero_point = src_params->zero_point;
-#endif
-#endif
-
-#endif
-
-#endif
-
-#endif
-
-#endif
-
-#endif
-
-#endif
-
-#endif
-
-#endif
-
-#endif
-
-#endif
-
       break;
     }
   }
