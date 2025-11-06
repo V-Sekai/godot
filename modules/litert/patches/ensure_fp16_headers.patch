@@ -1,0 +1,14 @@
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -532,6 +532,9 @@ else()
+     "${TFLITE_SOURCE_DIR}/nnapi/nnapi_implementation_disabled.cc"
+   )
+ endif()
++# Ensure fp16_headers is fetched when XNNPACK is disabled (needed by embedding_lookup.cc)
++if(NOT TFLITE_ENABLE_XNNPACK)
++  include(fp16_headers)
++endif()
+ if(TFLITE_ENABLE_XNNPACK)
+   find_package(fp16_headers REQUIRED)
+   find_package(XNNPACK REQUIRED)
+

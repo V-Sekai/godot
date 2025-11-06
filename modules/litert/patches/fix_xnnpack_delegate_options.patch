@@ -1,0 +1,13 @@
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -887,6 +887,7 @@ target_compile_options(_pywrap_tensorflow_interpreter_wrapper
+   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
+ )
+ 
++if(TFLITE_ENABLE_XNNPACK)
+ target_compile_options(xnnpack-delegate
+   PUBLIC ${TFLITE_TARGET_PUBLIC_OPTIONS}
+   PRIVATE ${TFLITE_TARGET_PRIVATE_OPTIONS}
++)
+ endif()
+

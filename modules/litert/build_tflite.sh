@@ -64,104 +64,36 @@ using BufferIdx = internal::StrongType<int, class BufferTag>;\
 
     # Apply common_blockwise.patch
     if [ -f "$PATCHES_DIR/common_blockwise.patch" ]; then
-        echo "  Checking common_blockwise.patch..."
+        echo "  Applying common_blockwise.patch..."
         COMMON_FILE="tensorflow/lite/core/c/common.cc"
         if [ -f "$COMMON_FILE" ]; then
-            # Check if patch is already correctly applied (guard before and endif after)
-            # Count guards - should be exactly 1 before and 1 after
-            guard_count_before=$(grep -B 5 "case kTfLiteBlockwiseQuantization:" "$COMMON_FILE" | grep -c "#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED" || echo "0")
-            endif_count_after=$(grep -A 15 "case kTfLiteBlockwiseQuantization:" "$COMMON_FILE" | grep -c "#endif" || echo "0")
-            if [ "$guard_count_before" -eq 1 ] && [ "$endif_count_after" -eq 1 ]; then
+            # Simple check: look for the exact pattern we expect after patch is applied
+            if grep -q "#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED" "$COMMON_FILE" && \
+               grep -A 1 "#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED" "$COMMON_FILE" | grep -q "case kTfLiteBlockwiseQuantization:" && \
+               grep -A 12 "case kTfLiteBlockwiseQuantization:" "$COMMON_FILE" | grep -q "#endif"; then
                 echo "  Patch already applied, skipping..."
             elif command -v patch &> /dev/null; then
-                # Try to apply patch directly
-                patch -p1 < "$PATCHES_DIR/common_blockwise.patch" 2>/dev/null || {
-                    echo "  Patch tool failed, patch may already be applied"
+                # Use patch tool - it's idempotent and will skip if already applied
+                patch -p1 < "$PATCHES_DIR/common_blockwise.patch" 2>&1 | grep -v "Skipping patch" || {
+                    echo "  Patch applied (or already applied)"
                 }
             else
-                # Python fallback: clean up and apply correctly
-                python3 << 'PYEOF'
-import re
-with open("tensorflow/lite/core/c/common.cc", "r") as f:
-    lines = f.readlines()
-
-# Find blockwise case block and remove only its guards
-in_blockwise = False
-blockwise_start = -1
-blockwise_end = -1
-for i, line in enumerate(lines):
-    if 'case kTfLiteBlockwiseQuantization:' in line:
-        blockwise_start = i
-        in_blockwise = True
-    if in_blockwise and 'break;' in line and blockwise_start >= 0:
-        # Check if this break is for blockwise case
-        for j in range(blockwise_start, i):
-            if 'case kTfLiteBlockwiseQuantization' in lines[j]:
-                blockwise_end = i
-                break
-        if blockwise_end > 0:
-            break
-
-# Remove guards only around blockwise case (lines before and after)
-new_lines = []
-i = 0
-while i < len(lines):
-    if i == blockwise_start - 1 and lines[i].strip() == '#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED':
-        # Skip this guard if it's a duplicate
-        i += 1
-        continue
-    if i == blockwise_end + 1 and lines[i].strip() == '#endif':
-        # Skip this endif if it's a duplicate
-        i += 1
-        continue
-    new_lines.append(lines[i])
-    i += 1
-
-# Re-add guards correctly
-if blockwise_start > 0 and blockwise_end > 0:
-    # Find the position after affine case break
-    for i in range(len(new_lines)):
-        if 'case kTfLiteAffineQuantization:' in new_lines[i]:
-            # Find the matching break
-            for j in range(i, min(i+20, len(new_lines))):
-                if 'break;' in new_lines[j] and 'case kTfLiteAffineQuantization' in ''.join(new_lines[i:j]):
-                    # Find blockwise case
-                    for k in range(j, min(j+10, len(new_lines))):
-                        if 'case kTfLiteBlockwiseQuantization:' in new_lines[k]:
-                            # Insert guards
-                            new_lines.insert(k, '#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED\n')
-                            # Find blockwise break
-                            for m in range(k+1, min(k+20, len(new_lines))):
-                                if 'break;' in new_lines[m]:
-                                    new_lines.insert(m+1, '#endif\n')
-                                    break
-                            break
-                    break
-            break
-
-with open("tensorflow/lite/core/c/common.cc", "w") as f:
-    f.writelines(new_lines)
-PYEOF
-                patch -p1 < "$PATCHES_DIR/common_blockwise.patch" 2>/dev/null || {
-                    echo "  Patch applied via Python cleanup + patch tool"
-                }
-            else
-                # Python fallback: clean up and apply correctly
-                python3 << 'PYEOF'
-import re
-with open("tensorflow/lite/core/c/common.cc", "r") as f:
-    content = f.read()
-# Remove duplicate TFLITE_BLOCKWISE_QUANTIZATION_ENABLED guards
-content = re.sub(r'^#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED\n', '', content, flags=re.MULTILINE)
-content = re.sub(r'^#endif\n', '', content, flags=re.MULTILINE)
-# Re-add correctly
-content = re.sub(r'(case kTfLiteAffineQuantization: \{[^}]*?break;\s*\})\s*case kTfLiteBlockwiseQuantization: (\{[^}]*?dst_params->zero_point = src_params->zero_point;[^}]*?break;\s*\})',
-    r'\1\n#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED\n    case kTfLiteBlockwiseQuantization: \2\n#endif',
-    content, flags=re.DOTALL)
-with open("tensorflow/lite/core/c/common.cc", "w") as f:
-    f.write(content)
-PYEOF
-                echo "  Patch applied via Python"
+                # Simple sed fallback - only apply if not already present
+                if ! grep -q "#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED" "$COMMON_FILE" || \
+                   ! grep -A 1 "#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED" "$COMMON_FILE" | grep -q "case kTfLiteBlockwiseQuantization:"; then
+                    # Find line with case kTfLiteBlockwiseQuantization and insert guard before it
+                    sed -i '/case kTfLiteBlockwiseQuantization:/i\
+#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED' "$COMMON_FILE"
+                    # Find break statement after zero_point, then closing brace, then insert endif after closing brace
+                    # The endif should be after the closing brace of the case block, not after break
+                    sed -i '/dst_params->zero_point = src_params->zero_point;/,/^    }$/ {
+                        /^    }$/a\
+#endif
+                    }' "$COMMON_FILE"
+                    echo "  Patch applied via sed"
+                else
+                    echo "  Patch already applied, skipping..."
+                fi
             fi
         fi
     fi
@@ -263,6 +195,56 @@ list(FILTER TFLITE_CORE_SRCS EXCLUDE REGEX ".*model_building\\.cc$")' "$CMAKE_LI
                 if ! grep -q "# Disabled: proto compilation has path issues" "$CMAKE_LISTS"; then
                     sed -i 's/^add_subdirectory(\${TFLITE_SOURCE_DIR}\/profiling\/proto)$/# Disabled: proto compilation has path issues, not needed for core library\n# &/' "$CMAKE_LISTS" || echo "Warning: Failed to disable profiling proto"
                     sed -i 's/^add_subdirectory(\${TFLITE_SOURCE_DIR}\/tools\/benchmark\/proto)$/# Disabled: proto compilation has path issues, not needed for core library\n# &/' "$CMAKE_LISTS" || echo "Warning: Failed to disable benchmark proto"
+                fi
+            fi
+        fi
+    fi
+
+    # Apply ensure_fp16_headers.patch to ensure fp16 headers are fetched when XNNPACK is disabled
+    if [ -f "$PATCHES_DIR/ensure_fp16_headers.patch" ]; then
+        echo "  Applying ensure_fp16_headers.patch..."
+        if command -v patch &> /dev/null; then
+            patch -p1 < "$PATCHES_DIR/ensure_fp16_headers.patch" || {
+                echo "Warning: ensure_fp16_headers.patch failed to apply (may already be applied)"
+            }
+        else
+            # Fallback: apply patch manually using sed
+            CMAKE_LISTS="tensorflow/lite/CMakeLists.txt"
+            if [ -f "$CMAKE_LISTS" ]; then
+                if ! grep -q "# Ensure fp16_headers is fetched when XNNPACK is disabled" "$CMAKE_LISTS"; then
+                    # Insert after the NNAPI endif() block, before the XNNPACK check
+                    sed -i '/set(TFLITE_NNAPI_SRCS/,/endif()/ {
+                        /endif()/a\
+# Ensure fp16_headers is fetched when XNNPACK is disabled (needed by embedding_lookup.cc)\
+if(NOT TFLITE_ENABLE_XNNPACK)\
+  include(fp16_headers)\
+endif()
+                    }' "$CMAKE_LISTS" || echo "Warning: Failed to ensure fp16_headers"
+                fi
+            fi
+        fi
+    fi
+
+    # Apply fix_xnnpack_delegate_options.patch to guard xnnpack-delegate compile options
+    if [ -f "$PATCHES_DIR/fix_xnnpack_delegate_options.patch" ]; then
+        echo "  Applying fix_xnnpack_delegate_options.patch..."
+        if command -v patch &> /dev/null; then
+            patch -p1 < "$PATCHES_DIR/fix_xnnpack_delegate_options.patch" || {
+                echo "Warning: fix_xnnpack_delegate_options.patch failed to apply (may already be applied)"
+            }
+        else
+            # Fallback: apply patch manually using sed
+            CMAKE_LISTS="tensorflow/lite/CMakeLists.txt"
+            if [ -f "$CMAKE_LISTS" ]; then
+                if ! grep -q "if(TFLITE_ENABLE_XNNPACK)" "$CMAKE_LISTS" || \
+                   ! grep -A 3 "target_compile_options(xnnpack-delegate" "$CMAKE_LISTS" | grep -q "if(TFLITE_ENABLE_XNNPACK)"; then
+                    # Guard the xnnpack-delegate compile options with if(TFLITE_ENABLE_XNNPACK)
+                    sed -i '/^target_compile_options(xnnpack-delegate$/i\
+if(TFLITE_ENABLE_XNNPACK)' "$CMAKE_LISTS"
+                    sed -i '/^target_compile_options(xnnpack-delegate/,/^)$/ {
+                        /^)$/a\
+endif()
+                    }' "$CMAKE_LISTS" || echo "Warning: Failed to fix xnnpack-delegate options"
                 fi
             fi
         fi
