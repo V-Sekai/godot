@@ -75,7 +75,7 @@ runtime_sources = [
     "runtime/accelerator_registry.cc",
     "runtime/accelerators/auto_registration.cc",
     "runtime/accelerators/dispatch/dispatch_accelerator.cc",
-    "runtime/accelerators/xnnpack/xnnpack_accelerator.cc",
+    # "runtime/accelerators/xnnpack/xnnpack_accelerator.cc",  # Disabled - XNNPACK not available
     "runtime/compiled_model.cc",
     "runtime/custom_buffer.cc",
     "runtime/custom_op_dispatcher.cc",
@@ -90,6 +90,7 @@ runtime_sources = [
     "runtime/tensor_buffer_registry.cc",
     "runtime/tensor_buffer_requirements.cc",
     "runtime/tfl_utils.cc",
+    "runtime/magic_number_utils.cc",
 ]
 
 # Core sources
@@ -129,6 +130,8 @@ runtime_sources.append("runtime/gpu_environment.cc")
 cc_sources = [
     "cc/litert_tensor_buffer_types.cc",
     "cc/internal/litert_tensor_buffer_utils.cc",
+    "cc/litert_macros.cc",  # For ErrorStatusBuilder::LogMessage
+    "cc/internal/litert_shared_library.cc",  # For SharedLibrary implementation
 ]
 
 # Combine all sources
@@ -174,6 +177,7 @@ env_litrt.Append(
     CPPDEFINES=[
         "LITERT_COMPILE_LIBRARY",
         "LITERT_DISABLE_OPENCL_SUPPORT",  # Disable OpenCL support (not needed for basic functionality)
+        "TFLITE_BUILD_WITHOUT_XNNPACK",  # Disable XNNPACK (we built TFLite without it)
     ]
 )
 
@@ -206,8 +210,6 @@ else:
 
 # Build thirdparty sources
 env_thirdparty.add_source_files(thirdparty_obj, litert_sources)
-
-env.modules_sources += thirdparty_obj
 
 # Godot source files (wrapper classes)
 
@@ -305,6 +307,19 @@ if True:  # Build Abseil (minimal components)
         "absl/base/internal/sysinfo.cc",
         "absl/base/internal/thread_identity.cc",
     ]
+    
+    # Synchronization components (needed by hashtablez_sampler)
+    abseil_synchronization_sources = [
+        "absl/synchronization/mutex.cc",
+        "absl/synchronization/internal/graphcycles.cc",
+        "absl/synchronization/internal/kernel_timeout.cc",
+        "absl/synchronization/internal/per_thread_sem.cc",
+        "absl/synchronization/internal/waiter_base.cc",
+        "absl/synchronization/internal/create_thread_identity.cc",
+        # Platform-specific waiter (selected at compile time)
+        "absl/synchronization/internal/futex_waiter.cc",  # Linux/Unix (preferred)
+        "absl/synchronization/internal/pthread_waiter.cc",  # Linux/Unix (fallback)
+    ]
 
     # Status components (from BUILD.bazel: absl::status)
     abseil_status_sources = [
@@ -330,6 +345,7 @@ if True:  # Build Abseil (minimal components)
         "absl/strings/internal/charconv_bigint.cc",
         "absl/strings/internal/charconv_parse.cc",
         "absl/strings/internal/memutil.cc",
+        "absl/strings/internal/utf8.cc",  # For WideToUtf8
         "absl/strings/numbers.cc",
     ]
 
@@ -337,10 +353,58 @@ if True:  # Build Abseil (minimal components)
     abseil_container_sources = [
         "absl/container/internal/raw_hash_set.cc",
         "absl/container/internal/hashtablez_sampler.cc",
+        "absl/container/internal/hashtablez_sampler_force_weak_definition.cc",  # Provides weak definition for AbslContainerInternalSampleEverything
+    ]
+
+    # Hash components (needed by containers)
+    abseil_hash_sources = [
+        "absl/hash/internal/hash.cc",
+        "absl/hash/internal/city.cc",
+    ]
+    
+    # Profiling components (needed by hashtablez_sampler)
+    abseil_profiling_sources = [
+        "absl/profiling/internal/exponential_biased.cc",
+    ]
+    
+    # Debugging components (needed by hashtablez_sampler)
+    abseil_debugging_sources = [
+        "absl/debugging/stacktrace.cc",
+        "absl/debugging/symbolize.cc",
+        "absl/debugging/internal/address_is_readable.cc",
+    ]
+    
+    # Logging components (needed by LiteRT)
+    abseil_logging_sources = [
+        "absl/log/internal/log_message.cc",
+        "absl/log/internal/conditions.cc",
+        "absl/log/internal/log_format.cc",
+        "absl/log/internal/vlog_config.cc",
+        "absl/log/internal/globals.cc",
+        "absl/log/internal/proto.cc",
+        "absl/log/internal/nullguard.cc",
+        "absl/log/globals.cc",
+        "absl/log/initialize.cc",
+    ]
+    
+    # Time components (needed by synchronization)
+    abseil_time_sources = [
+        "absl/time/time.cc",
+        "absl/time/clock.cc",
+        "absl/time/duration.cc",
+        # cctz time zone components (needed by time.cc)
+        "absl/time/internal/cctz/src/time_zone_fixed.cc",
+        "absl/time/internal/cctz/src/time_zone_if.cc",
+        "absl/time/internal/cctz/src/time_zone_impl.cc",
+        "absl/time/internal/cctz/src/time_zone_info.cc",
+        "absl/time/internal/cctz/src/time_zone_libc.cc",
+        "absl/time/internal/cctz/src/time_zone_lookup.cc",
+        "absl/time/internal/cctz/src/time_zone_posix.cc",
+        "absl/time/internal/cctz/src/zone_info_source.cc",
     ]
 
     # Combine all Abseil sources
-    abseil_sources = abseil_base_sources + abseil_status_sources + abseil_strings_sources + abseil_container_sources
+    abseil_sources = abseil_base_sources + abseil_status_sources + abseil_strings_sources + abseil_container_sources + abseil_hash_sources + abseil_synchronization_sources + abseil_time_sources + abseil_profiling_sources + abseil_debugging_sources + abseil_logging_sources
     abseil_sources = [abseil_dir + file for file in abseil_sources]
 
     # Note: This is incomplete - Abseil has many more transitive dependencies
@@ -392,8 +456,12 @@ if True:  # Link pre-built TFLite library
 
     # Find the library
     tflite_lib_found = None
+    # Get project root (SCons # prefix)
+    project_root = env.Dir("#").abspath
     for lib_path in tflite_lib_paths:
-        if os.path.exists(lib_path):
+        # SCons resolves # to project root, but os.path.exists doesn't
+        actual_path = lib_path.replace("#", project_root + "/")
+        if os.path.exists(actual_path):
             tflite_lib_found = lib_path
             break
 
@@ -403,10 +471,22 @@ if True:  # Link pre-built TFLite library
         env_litrt.Append(LIBPATH=[tflite_lib_dir])
         # SCons will automatically add the correct extension based on platform
         env_litrt.Append(LIBS=["tensorflow-lite"])
+        
+        # Add TFLite minimal logging sources (not included in pre-built library)
+        # Use minimal_logging.cc which has all required functions, not minimal_logging_default.cc
+        tflite_logging_sources = [
+            "#thirdparty/tensorflow-lite/tensorflow/lite/minimal_logging.cc",
+        ]
+        env_tflite_logging = env_thirdparty.Clone()
+        env_tflite_logging.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
+        env_tflite_logging.add_source_files(thirdparty_obj, tflite_logging_sources)
     else:
         # Library not found - will need to build it separately
         # This is expected if TFLite hasn't been built yet
         pass
+
+# Add all thirdparty objects to modules_sources after all sources have been added
+env.modules_sources += thirdparty_obj
 
 # Metal framework linking removed - WebGPU-only backend strategy
 
