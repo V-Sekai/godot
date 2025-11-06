@@ -356,8 +356,10 @@ if True:  # Build Abseil (minimal components)
         "absl/strings/internal/cordz_info.cc",  # For CordzInfo
         "absl/strings/internal/cordz_functions.cc",  # For Cordz functions
         "absl/strings/internal/cord_rep_btree.cc",  # For Cord B-tree
+        "absl/strings/internal/cord_rep_btree_reader.cc",  # For CordRepBtreeReader::Read
         "absl/strings/internal/cord_rep_consume.cc",  # For Cord consume
         "absl/strings/internal/cord_rep_crc.cc",  # For Cord CRC
+        "absl/strings/internal/cordz_handle.cc",  # For CordzHandle
         "absl/strings/internal/escaping.cc",  # For Base64EscapeInternal
     ]
     
@@ -365,6 +367,7 @@ if True:  # Build Abseil (minimal components)
     abseil_crc_sources = [
         "absl/crc/internal/crc_cord_state.cc",  # For CrcCordState
         "absl/crc/internal/crc.cc",  # For CRC functions
+        "absl/crc/crc32c.cc",  # For RemoveCrc32cPrefix
     ]
     
     # Numeric components (needed for uint128)
@@ -396,7 +399,9 @@ if True:  # Build Abseil (minimal components)
         "absl/debugging/symbolize.cc",
         "absl/debugging/internal/address_is_readable.cc",
         "absl/debugging/internal/vdso_support.cc",  # For VDSOSupport
+        "absl/debugging/internal/elf_mem_image.cc",  # For ElfMemImage
         "absl/debugging/internal/demangle.cc",  # For Demangle
+        "absl/debugging/internal/demangle_rust.cc",  # For DemangleRustSymbolEncoding
         "absl/debugging/internal/examine_stack.cc",  # For DumpStackTrace
         "absl/debugging/leak_check.cc",  # For LeakCheckDisabler
     ]
@@ -413,6 +418,7 @@ if True:  # Build Abseil (minimal components)
         "absl/log/internal/log_sink_set.cc",  # For LogToSinks, FlushLogSinks, ThreadIsLoggingToLogSink
         "absl/log/internal/structured_proto.cc",  # For EncodeStructuredProtoField
         "absl/log/internal/check_op.cc",  # For CheckOpMessageBuilder
+        "absl/log/log_sink.cc",  # For LogSink vtable
         "absl/log/globals.cc",
         "absl/log/initialize.cc",
     ]
@@ -521,9 +527,10 @@ if True:  # Link pre-built TFLite library
         env_tflite_error_reporter.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
         env_tflite_error_reporter.add_source_files(thirdparty_obj, tflite_error_reporter_sources)
         
-        # Add TFLite allocation sources (needed for MemoryAllocation and GetAllocationFromFile)
+        # Add TFLite allocation sources (needed for MemoryAllocation, MMAPAllocation, and GetAllocationFromFile)
         tflite_allocation_sources = [
             "#thirdparty/tensorflow-lite/tensorflow/compiler/mlir/lite/allocation.cc",
+            "#thirdparty/tensorflow-lite/tensorflow/compiler/mlir/lite/mmap_allocation.cc",
             "#thirdparty/tensorflow-lite/tensorflow/compiler/mlir/lite/core/model_builder_base.cc",
         ]
         env_tflite_allocation = env_thirdparty.Clone()
