@@ -134,9 +134,137 @@ cc_sources = [
     "cc/internal/litert_shared_library.cc",  # For SharedLibrary implementation
 ]
 
-# Combine all sources
-litert_sources = c_api_sources + options_sources + runtime_sources + core_sources + cc_sources
-litert_sources = [thirdparty_dir + file for file in litert_sources]
+# Build ALL LiteRT source files (excluding vendors, tests, samples, tools, etc.)
+litert_all_sources = [
+    # ATS files may require vendor-specific code - exclude for now
+    # "ats/ats.cc",
+    # "ats/check_ats.cc",
+    # "ats/configure.cc",
+    "c/empty.cc",
+    "c/internal/litert_accelerator.cc",
+    "c/internal/litert_accelerator_registration.cc",
+    "c/internal/litert_delegate_wrapper.cc",
+    "c/internal/litert_external_litert_buffer_context.cc",
+    "c/internal/litert_logging.cc",
+    "c/internal/litert_tensor_buffer_registry.cc",
+    "c/litert_common.cc",
+    "c/litert_compiled_model.cc",
+    "c/litert_environment.cc",
+    "c/litert_environment_options.cc",
+    "c/litert_event.cc",
+    "c/litert_layout.cc",
+    "c/litert_metrics.cc",
+    "c/litert_model.cc",
+    "c/litert_op_options.cc",
+    "c/litert_opaque_options.cc",
+    "c/litert_options.cc",
+    "c/litert_profiler.cc",
+    "c/litert_rewriter.cc",
+    "c/litert_tensor_buffer.cc",
+    "c/litert_tensor_buffer_requirements.cc",
+    "c/options/litert_compiler_options.cc",
+    "c/options/litert_cpu_options.cc",
+    "c/options/litert_darwinn_runtime_options.cc",
+    "c/options/litert_google_tensor_options.cc",
+    "c/options/litert_gpu_options.cc",
+    "c/options/litert_intel_openvino_options.cc",
+    "c/options/litert_mediatek_options.cc",
+    "c/options/litert_qualcomm_options.cc",
+    "c/options/litert_runtime_options.cc",
+    "c/options/litert_webnn_options.cc",
+    "cc/internal/litert_compiled_model_next.cc",
+    "cc/internal/litert_extended_model.cc",
+    "cc/internal/litert_model_predicates.cc",
+    "cc/internal/litert_op_options.cc",
+    "cc/internal/litert_rewriter.cc",
+    # "cc/internal/litert_rng.cc",  # Has template compilation error
+    "cc/internal/litert_shared_library.cc",
+    "cc/internal/litert_tensor_buffer_utils.cc",
+    "cc/internal/test_shared_library.cc",
+    "cc/litert_compiled_model.cc",
+    "cc/litert_custom_op_kernel.cc",
+    "cc/litert_macros.cc",
+    "cc/litert_model.cc",
+    "cc/litert_opaque_options.cc",
+    "cc/litert_tensor_buffer.cc",
+    "cc/litert_tensor_buffer_types.cc",
+    "cc/options/compiler_options.cc",
+    "cc/options/darwinn_options.cc",
+    "cc/options/litert_cpu_options.cc",
+    "cc/options/litert_google_tensor_options.cc",
+    "cc/options/litert_gpu_options.cc",
+    "cc/options/litert_intel_openvino_options.cc",
+    "cc/options/litert_magic_number_options.cc",
+    "cc/options/litert_mediatek_options.cc",
+    "cc/options/litert_qualcomm_options.cc",
+    "cc/options/litert_runtime_options.cc",
+    "cc/options/litert_webnn_options.cc",
+    "compiler/plugin/algo.cc",
+    "compiler/plugin/compiler_plugin.cc",
+    "core/buffer_error_reporter.cc",
+    "core/build_stamp.cc",
+    "core/cache/compilation_cache.cc",
+    "core/dispatch_op_schema.cc",
+    "core/dynamic_loading.cc",
+    "core/dynamic_loading_windows.cc",
+    "core/environment.cc",
+    "core/environment_options.cc",
+    "core/error_reporter.cc",
+    "core/filesystem.cc",
+    "core/model/flatbuffer_to_litert.cc",
+    "core/model/graph_validation.cc",
+    "core/model/litert_to_flatbuffer.cc",
+    "core/model/model.cc",
+    "core/model/model_buffer.cc",
+    "core/model/model_file_test_util.cc",
+    "core/model/model_load.cc",
+    # "core/model/model_serialize.cc",  # Requires tflite/schema/mutable/schema_generated.h which isn't available
+    "core/util/flatbuffer_tools.cc",
+    "core/util/perfetto_profiling.cc",
+    "core/util/tensor_type_util.cc",
+    "runtime/accelerator_registry.cc",
+    "runtime/accelerators/auto_registration.cc",
+    "runtime/accelerators/dispatch/dispatch_accelerator.cc",
+    "runtime/accelerators/xnnpack/xnnpack_accelerator.cc",
+    "runtime/ahwb_buffer.cc",
+    "runtime/compiled_model.cc",
+    "runtime/custom_buffer.cc",
+    "runtime/custom_op_dispatcher.cc",
+    "runtime/dispatch/dispatch_delegate.cc",
+    "runtime/dispatch/dispatch_delegate_kernel.cc",
+    "runtime/dispatch/dispatch_opaque_options.cc",
+    "runtime/dispatch/litert_dispatch.cc",
+    "runtime/dispatch/litert_dispatch_dummy.cc",
+    "runtime/dmabuf_buffer.cc",
+    "runtime/event.cc",
+    "runtime/external_litert_buffer_context.cc",
+    "runtime/fastrpc_buffer.cc",
+    "runtime/gl_buffer.cc",
+    "runtime/gl_texture.cc",
+    "runtime/gpu_environment.cc",
+    "runtime/ion_buffer.cc",
+    "runtime/magic_number_utils.cc",
+    # "runtime/metal_info.cc",  # Requires Metal headers (macOS only)
+    # "runtime/open_cl_memory.cc",  # Requires OpenCL headers (optional)
+    # "runtime/open_cl_sync.cc",  # Requires OpenCL headers (optional)
+    "runtime/profiler.cc",
+    "runtime/tensor_buffer.cc",
+    "runtime/tensor_buffer_registry.cc",
+    "runtime/tensor_buffer_requirements.cc",
+    "runtime/tfl_utils.cc",
+]
+
+# Filter platform-specific files
+if env["platform"] != "windows":
+    # Remove Windows-specific file if not on Windows
+    if "core/dynamic_loading_windows.cc" in litert_all_sources:
+        litert_all_sources.remove("core/dynamic_loading_windows.cc")
+else:
+    # Remove Unix-specific file if on Windows
+    if "core/dynamic_loading.cc" in litert_all_sources:
+        litert_all_sources.remove("core/dynamic_loading.cc")
+
+litert_sources = [thirdparty_dir + file for file in litert_all_sources]
 
 # Add include paths
 # Note: "#thirdparty/litert" is already added above, so litert/c/ includes work
@@ -284,58 +412,140 @@ if True:  # Always build flatbuffers
     env_flatbuffers.Prepend(CPPPATH=[flatbuffers_dir + "include"])
     env_flatbuffers.add_source_files(thirdparty_obj, flatbuffers_sources)
 
-# Abseil (complex - 455 .cc files, many transitive dependencies)
-# NOTE: This is a minimal setup. Abseil has complex internal dependencies.
-# Full production build would require building ~50-100 source files across multiple components.
-# Components needed: status, statusor, strings (str_cat, str_format), span (header-only),
-#                    flat_hash_map, plus base dependencies (config, core_headers, etc.)
-if True:  # Build Abseil (minimal components)
+# Abseil - Build ALL source files (no whack-a-mole approach)
+if True:  # Build Abseil (all components)
     abseil_dir = "#thirdparty/abseil-cpp/"
-
-    # Core base components (minimal - many are header-only)
-    abseil_base_sources = [
-        # Base components needed by others
-        "absl/base/internal/raw_logging.cc",
-        "absl/base/internal/strerror.cc",
-        "absl/base/internal/throw_delegate.cc",
-        # Additional base dependencies
+    
+    # Build ALL Abseil source files (excluding tests and benchmarks)
+    abseil_all_sources = [
+        "absl/base/internal/atomic_hook_test_helper.cc",
+        "absl/base/internal/cycleclock.cc",
+        "absl/base/internal/exception_safety_testing.cc",
         "absl/base/internal/low_level_alloc.cc",
+        "absl/base/internal/poison.cc",
+        "absl/base/internal/raw_logging.cc",
+        "absl/base/internal/scoped_set_env.cc",
         "absl/base/internal/spinlock.cc",
         "absl/base/internal/spinlock_wait.cc",
-        "absl/base/internal/cycleclock.cc",
-        "absl/base/internal/unscaledcycleclock.cc",
+        "absl/base/internal/strerror.cc",
         "absl/base/internal/sysinfo.cc",
         "absl/base/internal/thread_identity.cc",
-    ]
-    
-    # Synchronization components (needed by hashtablez_sampler)
-    abseil_synchronization_sources = [
-        "absl/synchronization/mutex.cc",
-        "absl/synchronization/internal/graphcycles.cc",
-        "absl/synchronization/internal/kernel_timeout.cc",
-        "absl/synchronization/internal/per_thread_sem.cc",
-        "absl/synchronization/internal/waiter_base.cc",
-        "absl/synchronization/internal/create_thread_identity.cc",
-        # Platform-specific waiter (selected at compile time)
-        "absl/synchronization/internal/futex_waiter.cc",  # Linux/Unix (preferred)
-        "absl/synchronization/internal/pthread_waiter.cc",  # Linux/Unix (fallback)
-    ]
-
-    # Status components (from BUILD.bazel: absl::status)
-    abseil_status_sources = [
-        "absl/status/status.cc",
-        "absl/status/statusor.cc",
+        "absl/base/internal/throw_delegate.cc",
+        "absl/base/internal/tracing.cc",
+        "absl/base/internal/unscaledcycleclock.cc",
+        "absl/base/log_severity.cc",
+        # "absl/base/spinlock_test_common.cc",  # Test helper
+        # "absl/container/internal/hash_generator_testing.cc",  # Test helper
+        "absl/container/internal/hashtablez_sampler.cc",
+        "absl/container/internal/hashtablez_sampler_force_weak_definition.cc",
+        "absl/container/internal/raw_hash_set.cc",
+        # "absl/container/internal/test_instance_tracker.cc",  # Test helper
+        "absl/crc/crc32c.cc",
+        "absl/crc/internal/cpu_detect.cc",
+        "absl/crc/internal/crc.cc",
+        "absl/crc/internal/crc_cord_state.cc",
+        "absl/crc/internal/crc_memcpy_fallback.cc",
+        "absl/crc/internal/crc_memcpy_x86_arm_combined.cc",
+        "absl/crc/internal/crc_non_temporal_memcpy.cc",
+        "absl/crc/internal/crc_x86_arm_combined.cc",
+        "absl/debugging/failure_signal_handler.cc",
+        "absl/debugging/internal/address_is_readable.cc",
+        "absl/debugging/internal/decode_rust_punycode.cc",
+        "absl/debugging/internal/demangle.cc",
+        "absl/debugging/internal/demangle_rust.cc",
+        "absl/debugging/internal/elf_mem_image.cc",
+        "absl/debugging/internal/examine_stack.cc",
+        "absl/debugging/internal/stack_consumption.cc",
+        "absl/debugging/internal/utf8_for_code_point.cc",
+        "absl/debugging/internal/vdso_support.cc",
+        "absl/debugging/leak_check.cc",
+        "absl/debugging/stacktrace.cc",
+        "absl/debugging/symbolize.cc",
+        "absl/flags/commandlineflag.cc",
+        # "absl/flags/flag_test_defs.cc",  # Test helper
+        "absl/flags/internal/commandlineflag.cc",
+        "absl/flags/internal/flag.cc",
+        "absl/flags/internal/private_handle_accessor.cc",
+        "absl/flags/internal/program_name.cc",
+        "absl/flags/internal/usage.cc",
+        "absl/flags/marshalling.cc",
+        "absl/flags/parse.cc",
+        "absl/flags/reflection.cc",
+        "absl/flags/usage.cc",
+        "absl/flags/usage_config.cc",
+        "absl/hash/internal/city.cc",
+        "absl/hash/internal/hash.cc",
+        "absl/hash/internal/print_hash_of.cc",
+        "absl/log/die_if_null.cc",
+        "absl/log/flags.cc",
+        "absl/log/globals.cc",
+        "absl/log/initialize.cc",
+        "absl/log/internal/check_op.cc",
+        "absl/log/internal/conditions.cc",
+        "absl/log/internal/fnmatch.cc",
+        "absl/log/internal/globals.cc",
+        "absl/log/internal/log_format.cc",
+        "absl/log/internal/log_message.cc",
+        "absl/log/internal/log_sink_set.cc",
+        "absl/log/internal/nullguard.cc",
+        "absl/log/internal/proto.cc",
+        "absl/log/internal/structured_proto.cc",
+        # "absl/log/internal/test_actions.cc",  # Test helper
+        # "absl/log/internal/test_helpers.cc",  # Test helper
+        # "absl/log/internal/test_matchers.cc",  # Test helper
+        "absl/log/internal/vlog_config.cc",
+        "absl/log/log_entry.cc",
+        "absl/log/log_sink.cc",
+        # "absl/log/scoped_mock_log.cc",  # Test helper
+        "absl/numeric/int128.cc",
+        "absl/profiling/hashtable.cc",
+        "absl/profiling/internal/exponential_biased.cc",
+        "absl/profiling/internal/periodic_sampler.cc",
+        "absl/profiling/internal/profile_builder.cc",
+        # "absl/random/benchmarks.cc",  # Benchmark
+        "absl/random/discrete_distribution.cc",
+        "absl/random/gaussian_distribution.cc",
+        "absl/random/internal/chi_square.cc",
+        "absl/random/internal/distribution_test_util.cc",
+        "absl/random/internal/entropy_pool.cc",
+        "absl/random/internal/gaussian_distribution_gentables.cc",
+        "absl/random/internal/nanobenchmark.cc",
+        "absl/random/internal/randen.cc",
+        # "absl/random/internal/randen_benchmarks.cc",  # Benchmark
+        "absl/random/internal/randen_detect.cc",
+        "absl/random/internal/randen_hwaes.cc",
+        "absl/random/internal/randen_round_keys.cc",
+        "absl/random/internal/randen_slow.cc",
+        "absl/random/internal/seed_material.cc",
+        "absl/random/seed_gen_exception.cc",
+        "absl/random/seed_sequences.cc",
         "absl/status/internal/status_internal.cc",
+        # "absl/status/internal/status_matchers.cc",  # Test helper
+        "absl/status/status.cc",
         "absl/status/status_payload_printer.cc",
-    ]
-
-    # Strings components (from BUILD.bazel: absl::strings)
-    abseil_strings_sources = [
-        "absl/strings/str_cat.cc",
-        # "absl/strings/str_format.cc",  # File doesn't exist - str_format is header-only or uses internal/str_format/
-        "absl/strings/string_view.cc",  # May be needed
-        "absl/strings/ascii.cc",  # For ascii_internal::kPropertyBits and EqualsIgnoreCase
-        # str_format internal components (needed for StrFormat)
+        "absl/status/statusor.cc",
+        "absl/strings/ascii.cc",
+        "absl/strings/charconv.cc",
+        "absl/strings/cord.cc",
+        "absl/strings/cord_analysis.cc",
+        "absl/strings/escaping.cc",
+        "absl/strings/internal/charconv_bigint.cc",
+        "absl/strings/internal/charconv_parse.cc",
+        "absl/strings/internal/cord_internal.cc",
+        "absl/strings/internal/cord_rep_btree.cc",
+        "absl/strings/internal/cord_rep_btree_navigator.cc",
+        "absl/strings/internal/cord_rep_btree_reader.cc",
+        "absl/strings/internal/cord_rep_consume.cc",
+        "absl/strings/internal/cord_rep_crc.cc",
+        "absl/strings/internal/cordz_functions.cc",
+        "absl/strings/internal/cordz_handle.cc",
+        "absl/strings/internal/cordz_info.cc",
+        "absl/strings/internal/cordz_sample_token.cc",
+        "absl/strings/internal/damerau_levenshtein_distance.cc",
+        "absl/strings/internal/escaping.cc",
+        "absl/strings/internal/memutil.cc",
+        "absl/strings/internal/ostringstream.cc",
+        "absl/strings/internal/pow10_helper.cc",
         "absl/strings/internal/str_format/arg.cc",
         "absl/strings/internal/str_format/bind.cc",
         "absl/strings/internal/str_format/extension.cc",
@@ -343,99 +553,36 @@ if True:  # Build Abseil (minimal components)
         "absl/strings/internal/str_format/output.cc",
         "absl/strings/internal/str_format/parser.cc",
         "absl/strings/internal/stringify_sink.cc",
-        "absl/strings/internal/charconv_bigint.cc",
-        "absl/strings/internal/charconv_parse.cc",
-        "absl/strings/internal/memutil.cc",
-        "absl/strings/internal/utf8.cc",  # For WideToUtf8
+        "absl/strings/internal/utf8.cc",
+        "absl/strings/match.cc",
         "absl/strings/numbers.cc",
-        "absl/strings/charconv.cc",  # For from_chars
-        "absl/strings/escaping.cc",  # For CHexEscape
-        "absl/strings/match.cc",  # For EqualsIgnoreCase
-        "absl/strings/cord.cc",  # For Cord functions
-        "absl/strings/internal/cord_internal.cc",  # For Cord internal functions
-        "absl/strings/internal/cordz_info.cc",  # For CordzInfo
-        "absl/strings/internal/cordz_functions.cc",  # For Cordz functions
-        "absl/strings/internal/cord_rep_btree.cc",  # For Cord B-tree
-        "absl/strings/internal/cord_rep_btree_navigator.cc",  # For CordRepBtreeNavigator::Read
-        "absl/strings/internal/cord_rep_btree_reader.cc",  # For CordRepBtreeReader::Read
-        "absl/strings/internal/cord_rep_consume.cc",  # For Cord consume
-        "absl/strings/internal/cord_rep_crc.cc",  # For Cord CRC
-        "absl/strings/internal/cordz_handle.cc",  # For CordzHandle
-        "absl/strings/internal/escaping.cc",  # For Base64EscapeInternal
-    ]
-    
-    # CRC components (needed by Cord)
-    abseil_crc_sources = [
-        "absl/crc/internal/crc_cord_state.cc",  # For CrcCordState
-        "absl/crc/internal/crc.cc",  # For CRC functions
-        "absl/crc/crc32c.cc",  # For RemoveCrc32cPrefix
-        "absl/crc/internal/crc_x86_arm_combined.cc",  # For TryNewCRC32AcceleratedX86ARMCombined
-        "absl/crc/internal/crc_memcpy_x86_arm_combined.cc",  # For CrcMemcpy::GetArchSpecificEngines (x86/ARM)
-        "absl/crc/internal/crc_memcpy_fallback.cc",  # For CrcMemcpy::GetArchSpecificEngines (fallback)
-    ]
-    
-    # Numeric components (needed for uint128)
-    abseil_numeric_sources = [
-        "absl/numeric/int128.cc",  # For uint128
-    ]
-
-    # Container components (from BUILD.bazel: absl::container::flat_hash_map)
-    abseil_container_sources = [
-        "absl/container/internal/raw_hash_set.cc",
-        "absl/container/internal/hashtablez_sampler.cc",
-        "absl/container/internal/hashtablez_sampler_force_weak_definition.cc",  # Provides weak definition for AbslContainerInternalSampleEverything
-    ]
-
-    # Hash components (needed by containers)
-    abseil_hash_sources = [
-        "absl/hash/internal/hash.cc",
-        "absl/hash/internal/city.cc",
-    ]
-    
-    # Profiling components (needed by hashtablez_sampler)
-    abseil_profiling_sources = [
-        "absl/profiling/internal/exponential_biased.cc",
-    ]
-    
-    # Debugging components (needed by hashtablez_sampler)
-    abseil_debugging_sources = [
-        "absl/debugging/stacktrace.cc",
-        "absl/debugging/symbolize.cc",
-        "absl/debugging/internal/address_is_readable.cc",
-        "absl/debugging/internal/vdso_support.cc",  # For VDSOSupport
-        "absl/debugging/internal/elf_mem_image.cc",  # For ElfMemImage
-        "absl/debugging/internal/demangle.cc",  # For Demangle
-        "absl/debugging/internal/demangle_rust.cc",  # For DemangleRustSymbolEncoding
-        "absl/debugging/internal/decode_rust_punycode.cc",  # For DecodeRustPunycode
-        "absl/debugging/internal/utf8_for_code_point.cc",  # For Utf8ForCodePoint
-        "absl/debugging/internal/examine_stack.cc",  # For DumpStackTrace
-        "absl/debugging/leak_check.cc",  # For LeakCheckDisabler
-    ]
-    
-    # Logging components (needed by LiteRT)
-    abseil_logging_sources = [
-        "absl/log/internal/log_message.cc",
-        "absl/log/internal/conditions.cc",
-        "absl/log/internal/log_format.cc",
-        "absl/log/internal/vlog_config.cc",
-        "absl/log/internal/globals.cc",
-        "absl/log/internal/proto.cc",
-        "absl/log/internal/nullguard.cc",
-        "absl/log/internal/log_sink_set.cc",  # For LogToSinks, FlushLogSinks, ThreadIsLoggingToLogSink
-        "absl/log/internal/structured_proto.cc",  # For EncodeStructuredProtoField
-        "absl/log/internal/check_op.cc",  # For CheckOpMessageBuilder
-        "absl/log/log_sink.cc",  # For LogSink vtable
-        "absl/log/globals.cc",
-        "absl/log/initialize.cc",
-    ]
-    
-    # Time components (needed by synchronization)
-    abseil_time_sources = [
-        "absl/time/time.cc",
+        "absl/strings/str_cat.cc",
+        "absl/strings/str_replace.cc",
+        "absl/strings/str_split.cc",
+        "absl/strings/string_view.cc",
+        "absl/strings/substitute.cc",
+        "absl/synchronization/barrier.cc",
+        "absl/synchronization/blocking_counter.cc",
+        "absl/synchronization/internal/create_thread_identity.cc",
+        "absl/synchronization/internal/futex_waiter.cc",
+        "absl/synchronization/internal/graphcycles.cc",
+        "absl/synchronization/internal/kernel_timeout.cc",
+        "absl/synchronization/internal/per_thread_sem.cc",
+        "absl/synchronization/internal/pthread_waiter.cc",
+        "absl/synchronization/internal/sem_waiter.cc",
+        "absl/synchronization/internal/stdcpp_waiter.cc",
+        "absl/synchronization/internal/waiter_base.cc",
+        "absl/synchronization/internal/win32_waiter.cc",
+        "absl/synchronization/mutex.cc",
+        "absl/synchronization/notification.cc",
+        "absl/time/civil_time.cc",
         "absl/time/clock.cc",
         "absl/time/duration.cc",
-        # cctz time zone components (needed by time.cc)
+        "absl/time/format.cc",
+        "absl/time/internal/cctz/src/civil_time_detail.cc",
+        # "absl/time/internal/cctz/src/test_time_zone_names.cc",  # Test helper
         "absl/time/internal/cctz/src/time_zone_fixed.cc",
+        "absl/time/internal/cctz/src/time_zone_format.cc",
         "absl/time/internal/cctz/src/time_zone_if.cc",
         "absl/time/internal/cctz/src/time_zone_impl.cc",
         "absl/time/internal/cctz/src/time_zone_info.cc",
@@ -443,15 +590,11 @@ if True:  # Build Abseil (minimal components)
         "absl/time/internal/cctz/src/time_zone_lookup.cc",
         "absl/time/internal/cctz/src/time_zone_posix.cc",
         "absl/time/internal/cctz/src/zone_info_source.cc",
+        # "absl/time/internal/test_util.cc",  # Test helper
+        "absl/time/time.cc",
     ]
-
-    # Combine all Abseil sources
-    abseil_sources = abseil_base_sources + abseil_status_sources + abseil_strings_sources + abseil_container_sources + abseil_hash_sources + abseil_synchronization_sources + abseil_time_sources + abseil_profiling_sources + abseil_debugging_sources + abseil_logging_sources + abseil_crc_sources + abseil_numeric_sources
-    abseil_sources = [abseil_dir + file for file in abseil_sources]
-
-    # Note: This is incomplete - Abseil has many more transitive dependencies
-    # (base::config, base::core_headers, memory, algorithm, etc.)
-    # Full build would require ~50-100 source files total
+    
+    abseil_sources = [abseil_dir + file for file in abseil_all_sources]
     env_abseil = env_thirdparty.Clone()
     env_abseil.Prepend(CPPPATH=[abseil_dir])
     env_abseil.add_source_files(thirdparty_obj, abseil_sources)
