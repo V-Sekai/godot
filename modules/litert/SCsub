@@ -356,6 +356,7 @@ if True:  # Build Abseil (minimal components)
         "absl/strings/internal/cordz_info.cc",  # For CordzInfo
         "absl/strings/internal/cordz_functions.cc",  # For Cordz functions
         "absl/strings/internal/cord_rep_btree.cc",  # For Cord B-tree
+        "absl/strings/internal/cord_rep_btree_navigator.cc",  # For CordRepBtreeNavigator::Read
         "absl/strings/internal/cord_rep_btree_reader.cc",  # For CordRepBtreeReader::Read
         "absl/strings/internal/cord_rep_consume.cc",  # For Cord consume
         "absl/strings/internal/cord_rep_crc.cc",  # For Cord CRC
@@ -368,6 +369,9 @@ if True:  # Build Abseil (minimal components)
         "absl/crc/internal/crc_cord_state.cc",  # For CrcCordState
         "absl/crc/internal/crc.cc",  # For CRC functions
         "absl/crc/crc32c.cc",  # For RemoveCrc32cPrefix
+        "absl/crc/internal/crc_x86_arm_combined.cc",  # For TryNewCRC32AcceleratedX86ARMCombined
+        "absl/crc/internal/crc_memcpy_x86_arm_combined.cc",  # For CrcMemcpy::GetArchSpecificEngines (x86/ARM)
+        "absl/crc/internal/crc_memcpy_fallback.cc",  # For CrcMemcpy::GetArchSpecificEngines (fallback)
     ]
     
     # Numeric components (needed for uint128)
@@ -402,6 +406,8 @@ if True:  # Build Abseil (minimal components)
         "absl/debugging/internal/elf_mem_image.cc",  # For ElfMemImage
         "absl/debugging/internal/demangle.cc",  # For Demangle
         "absl/debugging/internal/demangle_rust.cc",  # For DemangleRustSymbolEncoding
+        "absl/debugging/internal/decode_rust_punycode.cc",  # For DecodeRustPunycode
+        "absl/debugging/internal/utf8_for_code_point.cc",  # For Utf8ForCodePoint
         "absl/debugging/internal/examine_stack.cc",  # For DumpStackTrace
         "absl/debugging/leak_check.cc",  # For LeakCheckDisabler
     ]
@@ -519,9 +525,10 @@ if True:  # Link pre-built TFLite library
         env_tflite_logging.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
         env_tflite_logging.add_source_files(thirdparty_obj, tflite_logging_sources)
         
-        # Add TFLite error reporter source (needed for DefaultErrorReporter)
+        # Add TFLite error reporter source (needed for DefaultErrorReporter and ErrorReporter::Report)
         tflite_error_reporter_sources = [
-            "#thirdparty/tensorflow-lite/tensorflow/lite/stderr_reporter.cc",
+            "#thirdparty/tensorflow-lite/tensorflow/compiler/mlir/lite/core/api/error_reporter.cc",  # For ErrorReporter::Report
+            "#thirdparty/tensorflow-lite/tensorflow/lite/stderr_reporter.cc",  # For DefaultErrorReporter
         ]
         env_tflite_error_reporter = env_thirdparty.Clone()
         env_tflite_error_reporter.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
