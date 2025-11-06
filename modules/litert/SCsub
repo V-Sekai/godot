@@ -334,6 +334,7 @@ if True:  # Build Abseil (minimal components)
         "absl/strings/str_cat.cc",
         # "absl/strings/str_format.cc",  # File doesn't exist - str_format is header-only or uses internal/str_format/
         "absl/strings/string_view.cc",  # May be needed
+        "absl/strings/ascii.cc",  # For ascii_internal::kPropertyBits and EqualsIgnoreCase
         # str_format internal components (needed for StrFormat)
         "absl/strings/internal/str_format/arg.cc",
         "absl/strings/internal/str_format/bind.cc",
@@ -347,6 +348,28 @@ if True:  # Build Abseil (minimal components)
         "absl/strings/internal/memutil.cc",
         "absl/strings/internal/utf8.cc",  # For WideToUtf8
         "absl/strings/numbers.cc",
+        "absl/strings/charconv.cc",  # For from_chars
+        "absl/strings/escaping.cc",  # For CHexEscape
+        "absl/strings/match.cc",  # For EqualsIgnoreCase
+        "absl/strings/cord.cc",  # For Cord functions
+        "absl/strings/internal/cord_internal.cc",  # For Cord internal functions
+        "absl/strings/internal/cordz_info.cc",  # For CordzInfo
+        "absl/strings/internal/cordz_functions.cc",  # For Cordz functions
+        "absl/strings/internal/cord_rep_btree.cc",  # For Cord B-tree
+        "absl/strings/internal/cord_rep_consume.cc",  # For Cord consume
+        "absl/strings/internal/cord_rep_crc.cc",  # For Cord CRC
+        "absl/strings/internal/escaping.cc",  # For Base64EscapeInternal
+    ]
+    
+    # CRC components (needed by Cord)
+    abseil_crc_sources = [
+        "absl/crc/internal/crc_cord_state.cc",  # For CrcCordState
+        "absl/crc/internal/crc.cc",  # For CRC functions
+    ]
+    
+    # Numeric components (needed for uint128)
+    abseil_numeric_sources = [
+        "absl/numeric/int128.cc",  # For uint128
     ]
 
     # Container components (from BUILD.bazel: absl::container::flat_hash_map)
@@ -372,6 +395,10 @@ if True:  # Build Abseil (minimal components)
         "absl/debugging/stacktrace.cc",
         "absl/debugging/symbolize.cc",
         "absl/debugging/internal/address_is_readable.cc",
+        "absl/debugging/internal/vdso_support.cc",  # For VDSOSupport
+        "absl/debugging/internal/demangle.cc",  # For Demangle
+        "absl/debugging/internal/examine_stack.cc",  # For DumpStackTrace
+        "absl/debugging/leak_check.cc",  # For LeakCheckDisabler
     ]
     
     # Logging components (needed by LiteRT)
@@ -383,6 +410,9 @@ if True:  # Build Abseil (minimal components)
         "absl/log/internal/globals.cc",
         "absl/log/internal/proto.cc",
         "absl/log/internal/nullguard.cc",
+        "absl/log/internal/log_sink_set.cc",  # For LogToSinks, FlushLogSinks, ThreadIsLoggingToLogSink
+        "absl/log/internal/structured_proto.cc",  # For EncodeStructuredProtoField
+        "absl/log/internal/check_op.cc",  # For CheckOpMessageBuilder
         "absl/log/globals.cc",
         "absl/log/initialize.cc",
     ]
@@ -404,7 +434,7 @@ if True:  # Build Abseil (minimal components)
     ]
 
     # Combine all Abseil sources
-    abseil_sources = abseil_base_sources + abseil_status_sources + abseil_strings_sources + abseil_container_sources + abseil_hash_sources + abseil_synchronization_sources + abseil_time_sources + abseil_profiling_sources + abseil_debugging_sources + abseil_logging_sources
+    abseil_sources = abseil_base_sources + abseil_status_sources + abseil_strings_sources + abseil_container_sources + abseil_hash_sources + abseil_synchronization_sources + abseil_time_sources + abseil_profiling_sources + abseil_debugging_sources + abseil_logging_sources + abseil_crc_sources + abseil_numeric_sources
     abseil_sources = [abseil_dir + file for file in abseil_sources]
 
     # Note: This is incomplete - Abseil has many more transitive dependencies
@@ -473,13 +503,32 @@ if True:  # Link pre-built TFLite library
         env_litrt.Append(LIBS=["tensorflow-lite"])
         
         # Add TFLite minimal logging sources (not included in pre-built library)
-        # Use minimal_logging.cc which has all required functions, not minimal_logging_default.cc
+        # Need both files: minimal_logging.cc provides Log(), GetSeverityName(), etc.
+        # and minimal_logging_default.cc provides LogFormatted() and the static member
         tflite_logging_sources = [
             "#thirdparty/tensorflow-lite/tensorflow/lite/minimal_logging.cc",
+            "#thirdparty/tensorflow-lite/tensorflow/lite/minimal_logging_default.cc",
         ]
         env_tflite_logging = env_thirdparty.Clone()
         env_tflite_logging.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
         env_tflite_logging.add_source_files(thirdparty_obj, tflite_logging_sources)
+        
+        # Add TFLite error reporter source (needed for DefaultErrorReporter)
+        tflite_error_reporter_sources = [
+            "#thirdparty/tensorflow-lite/tensorflow/lite/stderr_reporter.cc",
+        ]
+        env_tflite_error_reporter = env_thirdparty.Clone()
+        env_tflite_error_reporter.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
+        env_tflite_error_reporter.add_source_files(thirdparty_obj, tflite_error_reporter_sources)
+        
+        # Add TFLite allocation sources (needed for MemoryAllocation and GetAllocationFromFile)
+        tflite_allocation_sources = [
+            "#thirdparty/tensorflow-lite/tensorflow/compiler/mlir/lite/allocation.cc",
+            "#thirdparty/tensorflow-lite/tensorflow/compiler/mlir/lite/core/model_builder_base.cc",
+        ]
+        env_tflite_allocation = env_thirdparty.Clone()
+        env_tflite_allocation.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
+        env_tflite_allocation.add_source_files(thirdparty_obj, tflite_allocation_sources)
     else:
         # Library not found - will need to build it separately
         # This is expected if TFLite hasn't been built yet
