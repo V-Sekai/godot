@@ -1,0 +1,12 @@
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -313,6 +313,8 @@ populate_tflite_source_vars("core" TFLITE_CORE_SRCS)
+ populate_tflite_source_vars(
+   "core/acceleration/configuration" TFLITE_CORE_ACCELERATION_SRCS
+   FILTER "xnnpack_plugin.*"
++  # Exclude experimental model_building.cc (has compatibility issues with Abseil hash)
++  FILTER ".*model_building\\.cc$"
+   FILTER "(_test)\\.(cc|h)$"
+ )
+ populate_tflite_source_vars("core/api" TFLITE_CORE_API_SRCS)
+

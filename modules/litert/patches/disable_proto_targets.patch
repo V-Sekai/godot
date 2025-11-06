@@ -1,0 +1,11 @@
+--- a/tensorflow/lite/CMakeLists.txt
++++ b/tensorflow/lite/CMakeLists.txt
+@@ -450,6 +450,7 @@ if(TFLITE_ENABLE_PROFILING)
+ endif()
+ 
+ # Proto subdirectories
++# Disabled: proto compilation has path issues, not needed for core library
+ # add_subdirectory(${TFLITE_SOURCE_DIR}/profiling/proto)
++# Disabled: proto compilation has path issues, not needed for core library
+ # add_subdirectory(${TFLITE_SOURCE_DIR}/tools/benchmark/proto)
+

@@ -1,0 +1,21 @@
+--- a/tensorflow/lite/core/tools/verifier.cc
++++ b/tensorflow/lite/core/tools/verifier.cc
+@@ -428,7 +428,7 @@ int GetByteSize(const tflite::TensorType& type, int bytes_required) {
+         case TensorType_UINT32:
+           bytes_required *= sizeof(uint32_t);
+           break;
+-
++#ifdef TFLITE_ENABLE_INT2_INT4_TYPES
+         case TensorType_INT2:
+           bytes_required = (bytes_required + 3) / 4;
+           break;
+@@ -437,7 +437,7 @@ int GetByteSize(const tflite::TensorType& type, int bytes_required) {
+           break;
+         case TensorType_UINT4:
+           bytes_required = (bytes_required + 1) / 2;
+           break;
++#endif
+         case TensorType_UINT8:
+           bytes_required *= sizeof(uint8_t);
+           break;
+

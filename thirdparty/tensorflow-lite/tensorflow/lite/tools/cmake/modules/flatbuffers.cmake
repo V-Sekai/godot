@@ -22,7 +22,7 @@ include(OverridableFetchContent)
 OverridableFetchContent_Declare(
   flatbuffers
   GIT_REPOSITORY https://github.com/google/flatbuffers
-  # Keep in sync with tensorflow/third_party/flatbuffers/workspace.bzl
+  # TensorFlow Lite 4.4-stable requires FlatBuffers v25
   GIT_TAG v25.9.23
   # NOTE: b/340264458 - `GIT_SHALLOW TRUE` works for tag name only,
   # so if you change the `GIT_TAG` above to a hash rather than a tag name,

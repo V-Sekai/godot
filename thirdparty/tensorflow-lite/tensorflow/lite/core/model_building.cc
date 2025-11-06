@@ -41,6 +41,12 @@ limitations under the License.
 namespace tflite {
 namespace model_builder {
 
+// Ensure type aliases are visible (header already defines Quantization, but these help with scope)
+using TensorIdx = internal::StrongType<int, class TensorTag>;
+using GraphIdx = internal::StrongType<int, class GraphTag>;
+using BufferIdx = internal::StrongType<int, class BufferTag>;
+
+
 namespace {
 
 // Returns a functor that provides overloads based on the

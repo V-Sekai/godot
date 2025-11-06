@@ -1,0 +1,19 @@
+--- a/tensorflow/lite/core/c/common.cc
++++ b/tensorflow/lite/core/c/common.cc
+@@ -156,6 +156,7 @@ TfLiteQuantization TfLiteQuantizationClone(const TfLiteQuantization& src) {
+             dst_params->zero_point = TfLiteIntArrayCopy(src_params->zero_point);
+             break;
+           }
++#ifdef TFLITE_BLOCKWISE_QUANTIZATION_ENABLED
+           case kTfLiteBlockwiseQuantization: {
+             dst.params = calloc(1, sizeof(TfLiteBlockwiseQuantization));
+             const TfLiteBlockwiseQuantization* const src_params =
+@@ -167,6 +168,7 @@ TfLiteQuantization TfLiteQuantizationClone(const TfLiteQuantization& src) {
+             dst_params->zero_point = src_params->zero_point;
+             break;
+           }
++#endif
+         }
+         return dst;
+       }
+

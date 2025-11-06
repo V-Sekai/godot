@@ -1,0 +1,14 @@
+--- a/tensorflow/lite/core/model_building.cc
++++ b/tensorflow/lite/core/model_building.cc
+@@ -41,6 +41,10 @@ limitations under the License.
+ namespace tflite {
+ namespace model_builder {
+ 
++// Ensure type aliases are visible (header already defines these, but ensure they're in scope)
++using TensorIdx = internal::StrongType<int, class TensorTag>;
++using GraphIdx = internal::StrongType<int, class GraphTag>;
++using BufferIdx = internal::StrongType<int, class BufferTag>;
+ namespace {
+ 
+ // Returns a functor that provides overloads based on the
+
