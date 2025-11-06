@@ -125,8 +125,14 @@ runtime_sources.append("runtime/gpu_environment.cc")
 
 # Metal support removed - WebGPU-only backend strategy
 
+# CC API sources (C++ wrapper sources)
+cc_sources = [
+    "cc/litert_tensor_buffer_types.cc",
+    "cc/internal/litert_tensor_buffer_utils.cc",
+]
+
 # Combine all sources
-litert_sources = c_api_sources + options_sources + runtime_sources + core_sources
+litert_sources = c_api_sources + options_sources + runtime_sources + core_sources + cc_sources
 litert_sources = [thirdparty_dir + file for file in litert_sources]
 
 # Add include paths
@@ -148,6 +154,8 @@ env_litrt.Prepend(
         thirdparty_dir + "core/model",
         thirdparty_dir + "core/cache",
         thirdparty_dir + "core/util",
+        thirdparty_dir + "cc",
+        thirdparty_dir + "cc/internal",
         "#thirdparty/litert/",
         # Dependency include paths
         "#thirdparty/abseil-cpp",  # For absl:: headers
@@ -251,7 +259,11 @@ if True:  # Always build pthreadpool
     pthreadpool_sources = [pthreadpool_dir + file for file in pthreadpool_sources]
 
     env_pthreadpool = env_thirdparty.Clone()
-    env_pthreadpool.Prepend(CPPPATH=[pthreadpool_dir + "include"])
+    env_pthreadpool.Prepend(CPPPATH=[
+        pthreadpool_dir + "include",
+        pthreadpool_dir + "src",  # For fxdiv.h if it's in deps/fxdiv/include
+        "#thirdparty/fxdiv/include",  # FXdiv header-only library
+    ])
     # C files are automatically compiled with CC compiler
     env_pthreadpool.add_source_files(thirdparty_obj, pthreadpool_sources)
 
@@ -305,9 +317,15 @@ if True:  # Build Abseil (minimal components)
     # Strings components (from BUILD.bazel: absl::strings)
     abseil_strings_sources = [
         "absl/strings/str_cat.cc",
-        "absl/strings/str_format.cc",
+        # "absl/strings/str_format.cc",  # File doesn't exist - str_format is header-only or uses internal/str_format/
         "absl/strings/string_view.cc",  # May be needed
-        # "absl/strings/internal/str_format_internal.cc",  # File not found - may not be needed
+        # str_format internal components (needed for StrFormat)
+        "absl/strings/internal/str_format/arg.cc",
+        "absl/strings/internal/str_format/bind.cc",
+        "absl/strings/internal/str_format/extension.cc",
+        "absl/strings/internal/str_format/float_conversion.cc",
+        "absl/strings/internal/str_format/output.cc",
+        "absl/strings/internal/str_format/parser.cc",
         "absl/strings/internal/stringify_sink.cc",
         "absl/strings/internal/charconv_bigint.cc",
         "absl/strings/internal/charconv_parse.cc",

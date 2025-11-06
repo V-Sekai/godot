@@ -784,7 +784,7 @@ LiteRtCompiledModelT::GetTensorBufferRequirements(const TfLiteTensor* tensor) {
       /*num_strides=*/1, cpu_buffer_strides, &litert_cpu_buffer_requirements));
   cpu_buffer_requirements_[tensor_id] =
       LiteRtTensorBufferRequirementsPtr(litert_cpu_buffer_requirements);
-  return litert_cpu_buffer_requirements;
+  return cpu_buffer_requirements_[tensor_id].get();
 }
 
 Expected<const LiteRtTensorBufferRequirementsT*>

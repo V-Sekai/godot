@@ -35,6 +35,33 @@ PATCHES_DIR="$SCRIPT_DIR/patches"
 if [ -d "$PATCHES_DIR" ]; then
     echo "Applying build-time patches..."
     cd "$TFLITE_SOURCE"
+    
+    # Apply LiteRT source patches (for thirdparty/litert, not tensorflow-lite)
+    LITERT_SOURCE="$PROJECT_ROOT/thirdparty/litert"
+    if [ -d "$LITERT_SOURCE" ]; then
+        echo "Applying LiteRT source patches..."
+        cd "$LITERT_SOURCE"
+        
+        # Apply fix_compiled_model_return_type.patch
+        if [ -f "$PATCHES_DIR/fix_compiled_model_return_type.patch" ]; then
+            echo "  Applying fix_compiled_model_return_type.patch..."
+            if command -v patch &> /dev/null; then
+                patch -p1 < "$PATCHES_DIR/fix_compiled_model_return_type.patch" || {
+                    echo "Warning: fix_compiled_model_return_type.patch failed to apply (may already be applied)"
+                }
+            else
+                # Fallback: apply patch manually using sed
+                COMPILED_MODEL_FILE="litert/runtime/compiled_model.cc"
+                if [ -f "$COMPILED_MODEL_FILE" ]; then
+                    if ! grep -q "return cpu_buffer_requirements_\[tensor_id\]\.get();" "$COMPILED_MODEL_FILE"; then
+                        sed -i 's/return litert_cpu_buffer_requirements;/return cpu_buffer_requirements_[tensor_id].get();/' "$COMPILED_MODEL_FILE" || echo "Warning: Failed to fix compiled_model return type"
+                    fi
+                fi
+            fi
+        fi
+        
+        cd "$TFLITE_SOURCE"
+    fi
     # Set library path for runtime (protoc needs libc++)
     export LD_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/Cellar/llvm/21.1.5/lib:$LD_LIBRARY_PATH"
 

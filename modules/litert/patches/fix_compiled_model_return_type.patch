@@ -1,0 +1,9 @@
+--- a/litert/runtime/compiled_model.cc
++++ b/litert/runtime/compiled_model.cc
+@@ -784,6 +784,6 @@ LiteRtCompiledModelT::GetTensorBufferRequirements(const TfLiteTensor* tensor) {
+   cpu_buffer_requirements_[tensor_id] =
+       LiteRtTensorBufferRequirementsPtr(litert_cpu_buffer_requirements);
+-  return litert_cpu_buffer_requirements;
++  return cpu_buffer_requirements_[tensor_id].get();
+ }
+
