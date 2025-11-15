@@ -38,9 +38,33 @@ module_obj = []
 
 # TinyUSDZ is mostly header-only, but we need to compile some source files
 # Add TinyUSDZ source files to the build
+# Exclude optional dependencies: nanobind (Python bindings), pybind11
 tinyusdz_src_path = tinyusdz_include
-env_usd.add_source_files(module_obj, Glob(os.path.join(tinyusdz_src_path.abspath, "*.cc")))
-env_usd.add_source_files(module_obj, Glob(os.path.join(tinyusdz_src_path.abspath, "*.cpp")))
+
+# Files that require optional dependencies we don't need
+excluded_files = [
+    "nanobind-bindinds.cc",  # Requires nanobind (Python bindings)
+    "pybind11-bindings.cc",  # Requires pybind11 (Python bindings)
+    "python-bindings.cc",    # Requires pybind11 (Python bindings)
+    "subdiv.cc",             # Requires OpenSubdiv (subdivision surfaces)
+]
+
+# Get all .cc and .cpp files, then filter out excluded ones
+all_cc_files = Glob(os.path.join(tinyusdz_src_path.abspath, "*.cc"))
+all_cpp_files = Glob(os.path.join(tinyusdz_src_path.abspath, "*.cpp"))
+
+# Filter out files that require optional dependencies
+# SCons File nodes: convert to string path, get basename, check against excluded list
+def should_include_file(file_node):
+    file_path = str(file_node)
+    file_name = os.path.basename(file_path)
+    return file_name not in excluded_files
+
+filtered_cc_files = [f for f in all_cc_files if should_include_file(f)]
+filtered_cpp_files = [f for f in all_cpp_files if should_include_file(f)]
+
+env_usd.add_source_files(module_obj, filtered_cc_files)
+env_usd.add_source_files(module_obj, filtered_cpp_files)
 
 # Export source files
 env_usd.add_source_files(module_obj, "usd_document.cpp")
