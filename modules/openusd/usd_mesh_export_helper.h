@@ -33,19 +33,18 @@
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/mesh.h"
 
-// USD headers
-#include <pxr/base/gf/vec3f.h>
-#include <pxr/usd/sdf/path.h>
-#include <pxr/usd/usd/stage.h>
-#include <pxr/usd/usdGeom/capsule.h>
-#include <pxr/usd/usdGeom/cone.h>
-#include <pxr/usd/usdGeom/cube.h>
-#include <pxr/usd/usdGeom/cylinder.h>
-#include <pxr/usd/usdGeom/gprim.h>
-#include <pxr/usd/usdGeom/mesh.h>
-#include <pxr/usd/usdGeom/sphere.h>
+// TODO: Update export functionality to use TinyUSDZ
+// TinyUSDZ headers
+#include "tinyusdz.hh"
+#include "prim-types.hh"
+#include "usdGeom.hh"
+#include "value-types.hh"
 
-PXR_NAMESPACE_USING_DIRECTIVE
+namespace tinyusdz {
+	class Stage;
+	class Path;
+	class Prim;
+}
 
 class UsdMeshExportHelper {
 public:
@@ -55,17 +54,20 @@ public:
     }
 
 	// Export a Godot mesh to a USD prim
-	pxr::UsdPrim export_mesh_to_prim(const Ref<Mesh> p_mesh, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path);
+	// TODO: Update to use TinyUSDZ API (tinyusdz::Prim, tinyusdz::Stage, tinyusdz::Path)
+	tinyusdz::Prim export_mesh_to_prim(const Ref<Mesh> p_mesh, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
 
 private:
 	// Helper methods for specific primitive types
-	pxr::UsdGeomCube export_box(const Ref<BoxMesh> p_box, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path);
-	pxr::UsdGeomSphere export_sphere(const Ref<SphereMesh> p_sphere, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path);
-	pxr::UsdGeomCylinder export_cylinder(const Ref<CylinderMesh> p_cylinder, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path);
-	pxr::UsdGeomCone export_cone(const Ref<CylinderMesh> p_cone, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path);
-	pxr::UsdGeomCapsule export_capsule(const Ref<CapsuleMesh> p_capsule, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path);
-	pxr::UsdGeomMesh export_geom_mesh(const Ref<Mesh> p_mesh, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path);
+	// TODO: Update to use TinyUSDZ API
+	tinyusdz::Prim export_box(const Ref<BoxMesh> p_box, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
+	tinyusdz::Prim export_sphere(const Ref<SphereMesh> p_sphere, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
+	tinyusdz::Prim export_cylinder(const Ref<CylinderMesh> p_cylinder, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
+	tinyusdz::Prim export_cone(const Ref<CylinderMesh> p_cone, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
+	tinyusdz::Prim export_capsule(const Ref<CapsuleMesh> p_capsule, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
+	tinyusdz::Prim export_geom_mesh(const Ref<Mesh> p_mesh, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
 
 	// Helper method to handle non-uniform scaling
-	void apply_non_uniform_scale(pxr::UsdGeomGprim &p_gprim, const pxr::GfVec3f &p_scale);
+	// TODO: Update to use TinyUSDZ API
+	void apply_non_uniform_scale(tinyusdz::Prim &p_prim, const tinyusdz::value::float3 &p_scale);
 };

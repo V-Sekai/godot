@@ -65,10 +65,12 @@ float UsdState::get_bake_fps() const {
 	return _bake_fps;
 }
 
-void UsdState::set_stage(UsdStageRefPtr p_stage) {
+void UsdState::set_stage(tinyusdz::Stage *p_stage) {
+	// TODO: Update to use TinyUSDZ API
 	_stage = p_stage;
 }
 
-UsdStageRefPtr UsdState::get_stage() const {
+tinyusdz::Stage *UsdState::get_stage() const {
+	// TODO: Update to use TinyUSDZ API
 	return _stage;
 }

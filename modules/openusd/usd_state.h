@@ -32,10 +32,13 @@
 
 #include "core/io/resource.h"
 
-// USD headers
-#include <pxr/usd/usd/stage.h>
+// TODO: Update export state to use TinyUSDZ
+// TinyUSDZ headers
+#include "tinyusdz.hh"
 
-PXR_NAMESPACE_USING_DIRECTIVE
+namespace tinyusdz {
+	class Stage;
+}
 
 class UsdState : public Resource {
 	GDCLASS(UsdState, Resource);
@@ -46,7 +49,8 @@ private:
 	float _bake_fps;
 
 	// USD-specific state
-	UsdStageRefPtr _stage;
+	// TODO: Update to use TinyUSDZ API (tinyusdz::Stage)
+	tinyusdz::Stage *_stage;
 
 protected:
 	static void _bind_methods();
@@ -62,6 +66,7 @@ public:
 	float get_bake_fps() const;
 
 	// Stage management
-	void set_stage(UsdStageRefPtr p_stage);
-	UsdStageRefPtr get_stage() const;
+	// TODO: Update to use TinyUSDZ API
+	void set_stage(tinyusdz::Stage *p_stage);
+	tinyusdz::Stage *get_stage() const;
 };

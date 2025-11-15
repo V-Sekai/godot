@@ -30,36 +30,87 @@
 
 #pragma once
 
-#include "core/io/resource.h"
-#include "scene/main/node.h"
+#include "usd_import_state.h"
 
-// USD headers
-#include <pxr/usd/sdf/path.h>
-#include <pxr/usd/usd/stage.h>
+#include "modules/gltf/gltf_defines.h"
+#include "modules/gltf/gltf_document.h"
 
-class UsdState;
+// TinyUSDZ headers
+#include "tinyusdz.hh"
+#include "prim-types.hh"
+#include "usdGeom.hh"
+#include "usdShade.hh"
+#include "usdLux.hh"
+#include "usdSkel.hh"
+#include "value-types.hh"
+#include "math-util.inc"
 
-class UsdDocument : public Resource {
-	GDCLASS(UsdDocument, Resource);
+class USDDocument : public GLTFDocument {
+	GDCLASS(USDDocument, GLTFDocument);
 
-protected:
-	static void _bind_methods();
+	int _naming_version = 2;
 
 public:
-	UsdDocument();
+	enum {
+		TEXTURE_TYPE_GENERIC = 0,
+		TEXTURE_TYPE_NORMAL = 1,
+	};
 
-	// Export methods
-	Error append_from_scene(Node *p_scene_root, Ref<UsdState> p_state, int32_t p_flags = 0);
-	Error write_to_filesystem(Ref<UsdState> p_state, const String &p_path);
+	static Transform3D _as_xform(const tinyusdz::value::matrix4d &p_mat);
+	static Vector3 _as_vec3(const tinyusdz::value::float3 &p_vector);
+	static String _gen_unique_name(HashSet<String> &unique_names, const String &p_name);
+
+public:
+	Error append_from_file(const String &p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, const String &p_base_path = String()) override;
+	Error append_from_buffer(const PackedByteArray &p_bytes, const String &p_base_path, Ref<GLTFState> p_state, uint32_t p_flags = 0) override;
+	Error append_from_scene(Node *p_node, Ref<GLTFState> p_state, uint32_t p_flags = 0) override;
+
+	Node *generate_scene(Ref<GLTFState> p_state, float p_bake_fps = 30.0f, bool p_trimming = false, bool p_remove_immutable_tracks = true) override;
+	PackedByteArray generate_buffer(Ref<GLTFState> p_state) override;
+	Error write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) override;
+
+	void set_naming_version(int p_version);
+	int get_naming_version() const;
+
+	// Export methods (merged from UsdDocument)
+	// TODO: Update to use TinyUSDZ API
+	Error export_from_scene(Node *p_scene_root, Ref<USDState> p_state, int32_t p_flags = 0);
 	String get_file_extension_for_format(bool p_binary) const;
 
-	// Import methods
-	Error import_from_file(const String &p_path, Node *p_parent, Ref<UsdState> p_state);
-
 private:
-	// Export helpers
-	Error _convert_node_to_prim(Node *p_node, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_parent_path, Ref<UsdState> p_state);
+	String _get_texture_path(const String &p_base_directory, const String &p_source_file_path) const;
+	Error _parse_usd_state(Ref<USDState> p_state, const String &p_search_path);
+	Error _parse_scenes(Ref<USDState> p_state);
+	Error _parse_nodes(Ref<USDState> p_state);
+	String _sanitize_animation_name(const String &p_name);
+	String _gen_unique_animation_name(Ref<USDState> p_state, const String &p_name);
+	Ref<Texture2D> _get_texture(Ref<USDState> p_state,
+			const GLTFTextureIndex p_texture, int p_texture_type);
+	Error _parse_meshes(Ref<USDState> p_state);
+	Ref<Image> _parse_image_bytes_into_image(Ref<USDState> p_state, const Vector<uint8_t> &p_bytes, const String &p_filename, int p_index);
+	GLTFImageIndex _parse_image_save_image(Ref<USDState> p_state, const Vector<uint8_t> &p_bytes, const String &p_file_extension, int p_index, Ref<Image> p_image);
+	Error _parse_images(Ref<USDState> p_state, const String &p_base_path);
+	Error _parse_materials(Ref<USDState> p_state);
+	Error _parse_skins(Ref<USDState> p_state);
+	Error _parse_animations(Ref<USDState> p_state);
+	BoneAttachment3D *_generate_bone_attachment(Ref<USDState> p_state,
+			Skeleton3D *p_skeleton,
+			const GLTFNodeIndex p_node_index,
+			const GLTFNodeIndex p_bone_index);
+	ImporterMeshInstance3D *_generate_mesh_instance(Ref<USDState> p_state, const GLTFNodeIndex p_node_index);
+	Camera3D *_generate_camera(Ref<USDState> p_state, const GLTFNodeIndex p_node_index);
+	Light3D *_generate_light(Ref<USDState> p_state, const GLTFNodeIndex p_node_index);
+	Node3D *_generate_spatial(Ref<USDState> p_state, const GLTFNodeIndex p_node_index);
+	void _assign_node_names(Ref<USDState> p_state);
+	Error _parse_cameras(Ref<USDState> p_state);
+	Error _parse_lights(Ref<USDState> p_state);
 
-	// Import helpers
-	Error _import_prim_hierarchy(const pxr::UsdStageRefPtr &p_stage, const pxr::SdfPath &p_prim_path, Node *p_parent, Ref<UsdState> p_state);
+public:
+	void _process_mesh_instances(Ref<USDState> p_state, Node *p_scene_root);
+	void _generate_scene_node(Ref<USDState> p_state, const GLTFNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root);
+	void _generate_skeleton_bone_node(Ref<USDState> p_state, const GLTFNodeIndex p_node_index, Node *p_scene_parent, Node *p_scene_root);
+	void _import_animation(Ref<USDState> p_state, AnimationPlayer *p_animation_player,
+			const GLTFAnimationIndex p_index, const bool p_trimming, const bool p_remove_immutable_tracks);
+	Error _parse(Ref<USDState> p_state, const String &p_path, const String &p_base_path);
 };
+

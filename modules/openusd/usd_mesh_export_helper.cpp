@@ -30,12 +30,11 @@
 
 #include "usd_mesh_export_helper.h"
 
-pxr::UsdPrim UsdMeshExportHelper::export_mesh_to_prim(const Ref<Mesh> p_mesh, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path) {
-	// Check if the mesh is valid
-	if (p_mesh.is_null()) {
-		ERR_PRINT("USD Export: Invalid mesh");
-		return pxr::UsdPrim();
-	}
+// TODO: Update export functionality to use TinyUSDZ API
+tinyusdz::Prim UsdMeshExportHelper::export_mesh_to_prim(const Ref<Mesh> p_mesh, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path) {
+	ERR_PRINT("USD Export: export_mesh_to_prim not yet implemented with TinyUSDZ");
+	return tinyusdz::Prim();
+}
 
 	// Check if the stage is valid
 	if (!p_stage) {
@@ -78,7 +77,9 @@ pxr::UsdPrim UsdMeshExportHelper::export_mesh_to_prim(const Ref<Mesh> p_mesh, px
 	return pxr::UsdPrim();
 }
 
-pxr::UsdGeomCube UsdMeshExportHelper::export_box(const Ref<BoxMesh> p_box, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path) {
+tinyusdz::Prim UsdMeshExportHelper::export_box(const Ref<BoxMesh> p_box, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path) {
+	ERR_PRINT("USD Export: export_box not yet implemented with TinyUSDZ");
+	return tinyusdz::Prim();
 	// Create a new USD cube
 	pxr::UsdGeomCube cube = pxr::UsdGeomCube::Define(p_stage, p_path);
 
@@ -129,7 +130,9 @@ pxr::UsdGeomCube UsdMeshExportHelper::export_box(const Ref<BoxMesh> p_box, pxr::
 	return cube;
 }
 
-pxr::UsdGeomSphere UsdMeshExportHelper::export_sphere(const Ref<SphereMesh> p_sphere, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path) {
+tinyusdz::Prim UsdMeshExportHelper::export_sphere(const Ref<SphereMesh> p_sphere, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path) {
+	ERR_PRINT("USD Export: export_sphere not yet implemented with TinyUSDZ");
+	return tinyusdz::Prim();
 	// Create a new USD sphere
 	pxr::UsdGeomSphere sphere = pxr::UsdGeomSphere::Define(p_stage, p_path);
 
@@ -143,7 +146,9 @@ pxr::UsdGeomSphere UsdMeshExportHelper::export_sphere(const Ref<SphereMesh> p_sp
 	return sphere;
 }
 
-pxr::UsdGeomCylinder UsdMeshExportHelper::export_cylinder(const Ref<CylinderMesh> p_cylinder, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path) {
+tinyusdz::Prim UsdMeshExportHelper::export_cylinder(const Ref<CylinderMesh> p_cylinder, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path) {
+	ERR_PRINT("USD Export: export_cylinder not yet implemented with TinyUSDZ");
+	return tinyusdz::Prim();
 	// Create a new USD cylinder
 	pxr::UsdGeomCylinder cylinder = pxr::UsdGeomCylinder::Define(p_stage, p_path);
 
@@ -163,7 +168,9 @@ pxr::UsdGeomCylinder UsdMeshExportHelper::export_cylinder(const Ref<CylinderMesh
 	return cylinder;
 }
 
-pxr::UsdGeomCone UsdMeshExportHelper::export_cone(const Ref<CylinderMesh> p_cone, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path) {
+tinyusdz::Prim UsdMeshExportHelper::export_cone(const Ref<CylinderMesh> p_cone, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path) {
+	ERR_PRINT("USD Export: export_cone not yet implemented with TinyUSDZ");
+	return tinyusdz::Prim();
 	// Create a new USD cone
 	pxr::UsdGeomCone cone = pxr::UsdGeomCone::Define(p_stage, p_path);
 
@@ -179,7 +186,9 @@ pxr::UsdGeomCone UsdMeshExportHelper::export_cone(const Ref<CylinderMesh> p_cone
 	return cone;
 }
 
-pxr::UsdGeomCapsule UsdMeshExportHelper::export_capsule(const Ref<CapsuleMesh> p_capsule, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path) {
+tinyusdz::Prim UsdMeshExportHelper::export_capsule(const Ref<CapsuleMesh> p_capsule, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path) {
+	ERR_PRINT("USD Export: export_capsule not yet implemented with TinyUSDZ");
+	return tinyusdz::Prim();
 	// Create a new USD capsule
 	pxr::UsdGeomCapsule capsule = pxr::UsdGeomCapsule::Define(p_stage, p_path);
 
@@ -195,7 +204,9 @@ pxr::UsdGeomCapsule UsdMeshExportHelper::export_capsule(const Ref<CapsuleMesh> p
 	return capsule;
 }
 
-pxr::UsdGeomMesh UsdMeshExportHelper::export_geom_mesh(const Ref<Mesh> p_mesh, pxr::UsdStageRefPtr p_stage, const pxr::SdfPath &p_path) {
+tinyusdz::Prim UsdMeshExportHelper::export_geom_mesh(const Ref<Mesh> p_mesh, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path) {
+	ERR_PRINT("USD Export: export_geom_mesh not yet implemented with TinyUSDZ");
+	return tinyusdz::Prim();
 	// Create a new USD mesh
 	pxr::UsdGeomMesh mesh = pxr::UsdGeomMesh::Define(p_stage, p_path);
 
@@ -347,7 +358,8 @@ pxr::UsdGeomMesh UsdMeshExportHelper::export_geom_mesh(const Ref<Mesh> p_mesh, p
 	return mesh;
 }
 
-void UsdMeshExportHelper::apply_non_uniform_scale(pxr::UsdGeomGprim &p_gprim, const pxr::GfVec3f &p_scale) {
+void UsdMeshExportHelper::apply_non_uniform_scale(tinyusdz::Prim &p_prim, const tinyusdz::value::float3 &p_scale) {
+	ERR_PRINT("USD Export: apply_non_uniform_scale not yet implemented with TinyUSDZ");
 	// This is a stub implementation for now
 	// In a full implementation, we would apply non-uniform scaling to the mesh
 

@@ -30,10 +30,8 @@
 
 #include "usd_plugin.h"
 #include "usd_document.h"
+#include "usd_import_state.h"
 #include "usd_export_settings.h"
-#include "usd_mesh_export_helper.h"
-#include "usd_mesh_import_helper.h"
-#include "usd_state.h"
 
 #include "core/io/resource_saver.h"
 #include "editor/editor_interface.h"
@@ -41,12 +39,6 @@
 #include "core/config/project_settings.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/packed_scene.h"
-
-#include <pxr/base/gf/vec3f.h>
-#include <pxr/base/plug/registry.h>
-#include <pxr/base/vt/array.h>
-
-PXR_NAMESPACE_USING_DIRECTIVE
 
 // For setenv
 #if defined(_WIN32)
@@ -199,15 +191,15 @@ void USDPlugin::_export_scene_as_usd(const String &p_file_path) {
 	print_line("USD Export: Exporting scene to ", p_file_path);
 
 	// Create a new USD state
-	Ref<UsdState> state;
+	Ref<USDState> state;
 	state.instantiate();
-	state->set_copyright(_export_settings->get_copyright());
-	state->set_bake_fps(_export_settings->get_bake_fps());
+	// TODO: Add copyright and bake_fps to USDState if needed for export
+	// For now, export functionality is stubbed out
 
 	// Export the scene
-	Error err = _usd_document->append_from_scene(edited_scene_root, state);
+	Error err = _usd_document->export_from_scene(edited_scene_root, state);
 	if (err != OK) {
-		ERR_PRINT("USD Export: Failed to append scene to USD document");
+		ERR_PRINT("USD Export: Failed to export scene to USD document");
 		return;
 	}
 
@@ -247,45 +239,10 @@ void USDPlugin::_import_usd_file(const String &p_file_path) {
 		return;
 	}
 
-	print_line("USD Import: Importing USD file from ", p_file_path);
-
-	// Create a new USD state
-	Ref<UsdState> state;
-	state.instantiate();
-
-	// Open the USD stage
-	UsdStageRefPtr stage = UsdStage::Open(p_file_path.utf8().get_data());
-	if (!stage) {
-		ERR_PRINT(vformat("USD Import: Failed to open USD stage from %s", p_file_path));
-		return;
-	}
-
-	// Store the stage in the state
-	state->set_stage(stage);
-
-	// Get the default prim
-	UsdPrim defaultPrim = stage->GetDefaultPrim();
-	if (!defaultPrim) {
-		// If there's no default prim, use the pseudo-root
-		defaultPrim = stage->GetPseudoRoot();
-	}
-
-	// Print some information about the USD file
-	print_line("USD Import: Default prim: ", String(defaultPrim.GetName().GetText()));
-	print_line("USD Import: Stage start timeCode: ", stage->GetStartTimeCode());
-	print_line("USD Import: Stage end timeCode: ", stage->GetEndTimeCode());
-
-	// Print the prim hierarchy (for debugging)
-	print_line("USD Import: Prim hierarchy:");
-	//_print_prim_hierarchy(defaultPrim, 0);
-
-	// Create a root node for the imported scene
-	Node3D *root = memnew(Node3D);
-	root->set_name(p_file_path.get_file().get_basename());
-
-	// Convert USD prims to Godot nodes
-	// Pass the root node as both the parent and the scene root
-	_convert_prim_to_node(defaultPrim, root, root);
+	// TODO: This old import method is deprecated - use EditorSceneFormatImporterUSD instead
+	// The GLTF-based import system handles USD import through the editor importer
+	ERR_PRINT("USD Import: _import_usd_file is deprecated - use EditorSceneFormatImporterUSD (GLTF-based import system)");
+	return;
 
 	// Create a scene with the root node
 	Ref<PackedScene> scene;
@@ -316,7 +273,10 @@ void USDPlugin::_import_usd_file(const String &p_file_path) {
 }
 
 // Helper method to extract and apply transform from a USD prim to a Godot node
-bool USDPlugin::_apply_transform_from_usd_prim(const UsdPrim &p_prim, Node3D *p_node) {
+// TODO: Update to use TinyUSDZ API
+bool USDPlugin::_apply_transform_from_usd_prim(const tinyusdz::Prim &p_prim, Node3D *p_node) {
+	ERR_PRINT("USD Plugin: _apply_transform_from_usd_prim not yet implemented with TinyUSDZ");
+	return false;
 	if (!p_node) {
 		return false;
 	}
@@ -360,7 +320,10 @@ bool USDPlugin::_apply_transform_from_usd_prim(const UsdPrim &p_prim, Node3D *p_
 }
 
 // Helper method to convert a USD prim to a Godot node
-Node *USDPlugin::_convert_prim_to_node(const UsdPrim &p_prim, Node *p_parent, Node *p_scene_root) {
+// TODO: Update to use TinyUSDZ API
+Node *USDPlugin::_convert_prim_to_node(const tinyusdz::Prim &p_prim, Node *p_parent, Node *p_scene_root) {
+	ERR_PRINT("USD Plugin: _convert_prim_to_node not yet implemented with TinyUSDZ");
+	return nullptr;
 	// Skip the pseudo-root
 	if (p_prim.IsPseudoRoot()) {
 		// Process children
@@ -461,7 +424,9 @@ Node *USDPlugin::_convert_prim_to_node(const UsdPrim &p_prim, Node *p_parent, No
 }
 
 // Helper method to print the prim hierarchy
-void USDPlugin::_print_prim_hierarchy(const UsdPrim &p_prim, int p_indent) {
+// TODO: Update to use TinyUSDZ API
+void USDPlugin::_print_prim_hierarchy(const tinyusdz::Prim &p_prim, int p_indent) {
+	ERR_PRINT("USD Plugin: _print_prim_hierarchy not yet implemented with TinyUSDZ");
 	// Create an indentation string
 	String indent = "";
 	for (int i = 0; i < p_indent; i++) {

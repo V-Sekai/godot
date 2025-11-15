@@ -32,7 +32,7 @@
 
 #include "core/io/resource.h"
 
-class UsdDocument;
+class USDDocument;
 
 class UsdExportSettings : public Resource {
 	GDCLASS(UsdExportSettings, Resource);
@@ -98,5 +98,5 @@ public:
 	bool get_export_with_references() const;
 
 	// Generate property list for the inspector
-	void generate_property_list(Ref<UsdDocument> p_document, Node *p_root = nullptr);
+	void generate_property_list(Ref<USDDocument> p_document, Node *p_root = nullptr);
 };

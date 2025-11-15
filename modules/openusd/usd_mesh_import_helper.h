@@ -33,18 +33,16 @@
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/mesh.h"
 
-// USD headers
-#include <pxr/base/gf/vec3f.h>
-#include <pxr/usd/usd/prim.h>
-#include <pxr/usd/usdGeom/capsule.h>
-#include <pxr/usd/usdGeom/cone.h>
-#include <pxr/usd/usdGeom/cube.h>
-#include <pxr/usd/usdGeom/cylinder.h>
-#include <pxr/usd/usdGeom/gprim.h>
-#include <pxr/usd/usdGeom/mesh.h>
-#include <pxr/usd/usdGeom/sphere.h>
+// TODO: Update import helper to use TinyUSDZ (currently using GLTF-based import)
+// TinyUSDZ headers
+#include "tinyusdz.hh"
+#include "prim-types.hh"
+#include "usdGeom.hh"
+#include "value-types.hh"
 
-PXR_NAMESPACE_USING_DIRECTIVE
+namespace tinyusdz {
+	class Prim;
+}
 
 class UsdMeshImportHelper {
 public:
@@ -53,17 +51,18 @@ public:
 
 	// Import a USD mesh prim into a Godot mesh, delegates to the
 	// appropriate import method based on the prim type
-	Ref<Mesh> import_mesh_from_prim(const pxr::UsdPrim &p_prim);
+	// TODO: Update to use TinyUSDZ API (tinyusdz::Prim)
+	Ref<Mesh> import_mesh_from_prim(const tinyusdz::Prim &p_prim);
 
-	Ref<BoxMesh> import_cube(const pxr::UsdPrim &p_prim);
-	Ref<SphereMesh> import_sphere(const pxr::UsdGeomSphere &p_sphere);
-	Ref<CylinderMesh> import_cylinder(const pxr::UsdGeomCylinder &p_cylinder);
-	Ref<CylinderMesh> import_cone(const pxr::UsdGeomCone &p_cone);
-	Ref<CapsuleMesh> import_capsule(const pxr::UsdGeomCapsule &p_capsule);
-	Ref<Mesh> import_geom_mesh(const pxr::UsdGeomMesh &p_mesh);
+	Ref<BoxMesh> import_cube(const tinyusdz::Prim &p_prim);
+	Ref<SphereMesh> import_sphere(const tinyusdz::GeomSphere &p_sphere);
+	Ref<CylinderMesh> import_cylinder(const tinyusdz::GeomCylinder &p_cylinder);
+	Ref<CylinderMesh> import_cone(const tinyusdz::GeomCone &p_cone);
+	Ref<CapsuleMesh> import_capsule(const tinyusdz::GeomCapsule &p_capsule);
+	Ref<Mesh> import_geom_mesh(const tinyusdz::GeomMesh &p_mesh);
 
 	// Helper method to handle non-uniform scaling
-	void apply_non_uniform_scale(Ref<Mesh> p_mesh, const pxr::GfVec3f &p_scale);
+	void apply_non_uniform_scale(Ref<Mesh> p_mesh, const tinyusdz::value::float3 &p_scale);
 
-	Ref<StandardMaterial3D> create_material(const pxr::UsdPrim &p_prim);
+	Ref<StandardMaterial3D> create_material(const tinyusdz::Prim &p_prim);
 };

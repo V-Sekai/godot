@@ -200,7 +200,7 @@ bool UsdExportSettings::get_export_with_references() const {
 	return _export_with_references;
 }
 
-void UsdExportSettings::generate_property_list(Ref<UsdDocument> p_document, Node *p_root) {
+void UsdExportSettings::generate_property_list(Ref<USDDocument> p_document, Node *p_root) {
 	// This method would be used to dynamically generate properties based on the scene
 	// For now, we'll just use the static properties defined in _bind_methods
 

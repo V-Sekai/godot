@@ -34,6 +34,13 @@ env_usd = env_modules.Clone()
 env_usd.Prepend(CPPPATH=[tinyusdz_include.abspath])
 env_usd.Prepend(CPPEXTPATH=[tinyusdz_include.abspath])
 
+# Add OpenSubdiv include path from the subdiv module
+# The subdiv module provides OpenSubdiv headers
+# TinyUSDZ includes <opensubdiv/far/primvarRefiner.h>, so we need the parent directory
+opensubdiv_base_path = Dir("#modules/subdiv/thirdparty")
+env_usd.Prepend(CPPPATH=[opensubdiv_base_path.abspath])
+env_usd.Prepend(CPPEXTPATH=[opensubdiv_base_path.abspath])
+
 module_obj = []
 
 # TinyUSDZ is mostly header-only, but we need to compile some source files
@@ -46,7 +53,7 @@ excluded_files = [
     "nanobind-bindinds.cc",  # Requires nanobind (Python bindings)
     "pybind11-bindings.cc",  # Requires pybind11 (Python bindings)
     "python-bindings.cc",    # Requires pybind11 (Python bindings)
-    "subdiv.cc",             # Requires OpenSubdiv (subdivision surfaces)
+    # subdiv.cc is now included since we have the subdiv module with OpenSubdiv
 ]
 
 # Get all .cc and .cpp files, then filter out excluded ones
@@ -66,16 +73,15 @@ filtered_cpp_files = [f for f in all_cpp_files if should_include_file(f)]
 env_usd.add_source_files(module_obj, filtered_cc_files)
 env_usd.add_source_files(module_obj, filtered_cpp_files)
 
-# Export source files
-env_usd.add_source_files(module_obj, "usd_document.cpp")
+# Export source files (export functionality merged into USDDocument)
 env_usd.add_source_files(module_obj, "usd_export_settings.cpp")
 env_usd.add_source_files(module_obj, "usd_mesh_export_helper.cpp")
 env_usd.add_source_files(module_obj, "usd_mesh_import_helper.cpp")
 env_usd.add_source_files(module_obj, "usd_state.cpp")
 env_usd.add_source_files(module_obj, "usd_plugin.cpp")
 
-# Import source files (GLTF-based)
-env_usd.add_source_files(module_obj, "usd_import_document.cpp")
+# Import source files (GLTF-based) - merged with export functionality
+env_usd.add_source_files(module_obj, "usd_document.cpp")
 env_usd.add_source_files(module_obj, "usd_import_state.cpp")
 
 if env.editor_build:

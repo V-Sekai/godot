@@ -30,14 +30,12 @@
 
 #include "register_types.h"
 
-#include "usd_document.h"
 #include "usd_export_settings.h"
 #include "usd_plugin.h"
-#include "usd_state.h"
 
-// USD import classes (GLTF-based)
+// USD import classes (GLTF-based) - merged with export functionality
 #include "../gltf/extensions/gltf_document_extension_convert_importer_mesh.h"
-#include "usd_import_document.h"
+#include "usd_document.h"
 #include "usd_import_state.h"
 
 #include "core/object/class_db.h"
@@ -64,12 +62,10 @@ static void _editor_init() {
 
 void initialize_openusd_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		// Export classes
-		ClassDB::register_class<UsdDocument>();
+		// USD classes (merged - USDDocument handles both import and export)
 		ClassDB::register_class<UsdExportSettings>();
-		ClassDB::register_class<UsdState>();
 		
-		// Import classes (GLTF-based)
+		// Import/Export classes (GLTF-based)
 		GDREGISTER_CLASS(USDDocument);
 		GDREGISTER_CLASS(USDState);
 		bool is_editor = Engine::get_singleton()->is_editor_hint();

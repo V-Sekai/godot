@@ -34,16 +34,10 @@
 #include "editor/gui/editor_file_dialog.h"
 #include "editor/plugins/editor_plugin.h"
 
-// USD headers
-#include <pxr/usd/usd/prim.h>
-#include <pxr/usd/usd/stage.h>
-#include <pxr/usd/usdGeom/cube.h>
-#include <pxr/usd/usdGeom/xform.h>
-#include <pxr/usd/usdGeom/xformOp.h>
+// TinyUSDZ headers
+#include "tinyusdz.hh"
 
-PXR_NAMESPACE_USING_DIRECTIVE
-
-class UsdDocument;
+class USDDocument;
 class UsdExportSettings;
 class EditorFileDialog;
 
@@ -53,8 +47,8 @@ class USDPlugin : public EditorPlugin {
 private:
 	Button *hello_button;
 
-	// USD Export components
-	Ref<UsdDocument> _usd_document;
+	// USD Export components (using merged USDDocument)
+	Ref<USDDocument> _usd_document;
 	Ref<UsdExportSettings> _export_settings;
 	EditorInspector *_settings_inspector = nullptr;
 	EditorFileDialog *_file_dialog = nullptr;
@@ -69,16 +63,19 @@ private:
 	void _import_usd_file(const String &p_file_path);
 
 	// Helper method to print the prim hierarchy
-	void _print_prim_hierarchy(const UsdPrim &p_prim, int p_indent);
+	// TODO: Update to use TinyUSDZ API
+	void _print_prim_hierarchy(const tinyusdz::Prim &p_prim, int p_indent);
 
 	// Helper method to print the node hierarchy
 	void _print_node_hierarchy(Node *p_node, int p_indent);
 
 	// Helper method to extract and apply transform from a USD prim to a Godot node
-	bool _apply_transform_from_usd_prim(const UsdPrim &p_prim, Node3D *p_node);
+	// TODO: Update to use TinyUSDZ API
+	bool _apply_transform_from_usd_prim(const tinyusdz::Prim &p_prim, Node3D *p_node);
 
 	// Helper method to convert a USD prim to a Godot node
-	Node *_convert_prim_to_node(const UsdPrim &p_prim, Node *p_parent, Node *p_scene_root);
+	// TODO: Update to use TinyUSDZ API
+	Node *_convert_prim_to_node(const tinyusdz::Prim &p_prim, Node *p_parent, Node *p_scene_root);
 
 protected:
 	static void _bind_methods();
