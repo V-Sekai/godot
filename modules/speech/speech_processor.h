@@ -38,9 +38,9 @@
 #include "core/object/ref_counted.h"
 #include "core/os/mutex.h"
 #include "scene/audio/audio_stream_player.h"
+#include "servers/audio/audio_server.h"
 #include "servers/audio/audio_stream.h"
 #include "servers/audio/effects/audio_effect_capture.h"
-#include "servers/audio/audio_server.h"
 
 #include <stdlib.h>
 #include <functional>
