@@ -28,9 +28,9 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "ik_effector_template_3d.h"
+#include "scene/3d/ik_effector_template_3d.h"
 
-#include "many_bone_ik_3d.h"
+#include "scene/3d/ewbik_3d.h"
 
 void IKEffectorTemplate3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_root_bone"), &IKEffectorTemplate3D::get_root_bone);

@@ -30,10 +30,10 @@
 
 #pragma once
 
-#include "ik_bone_3d.h"
-#include "ik_effector_3d.h"
-#include "ik_effector_template_3d.h"
-#include "math/qcp.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ik_effector_3d.h"
+#include "scene/3d/ik_effector_template_3d.h"
+#include "scene/3d/ik_math/qcp.h"
 #include "scene/3d/skeleton_3d.h"
 
 #include "core/io/resource.h"

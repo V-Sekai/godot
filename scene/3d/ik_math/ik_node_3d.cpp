@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "ik_node_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
 
 void IKNode3D::_propagate_transform_changed() {
 	Vector<Ref<IKNode3D>> to_remove;

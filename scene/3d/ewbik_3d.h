@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  many_bone_ik_3d.h                                                     */
+/*  ewbik_3d.h                                                            */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -34,9 +34,9 @@
 #include "core/math/transform_3d.h"
 #include "core/math/vector3.h"
 #include "core/object/ref_counted.h"
-#include "ik_bone_3d.h"
-#include "ik_effector_template_3d.h"
-#include "math/ik_node_3d.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ik_effector_template_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/3d/skeleton_modifier_3d.h"
 

@@ -28,10 +28,10 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "ik_bone_3d.h"
-#include "ik_kusudama_3d.h"
-#include "many_bone_ik_3d.h"
-#include "math/ik_node_3d.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ewbik_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
 #include <cmath>
 
 void IKBone3D::set_bone_id(BoneId p_bone_id, Skeleton3D *p_skeleton) {

@@ -30,8 +30,8 @@
 
 #pragma once
 
-#include "../src/ik_bone_3d.h"
-#include "../src/many_bone_ik_3d.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ewbik_3d.h"
 
 #include "editor/inspector/editor_inspector.h"
 #include "editor/scene/3d/skeleton_3d_editor_plugin.h"

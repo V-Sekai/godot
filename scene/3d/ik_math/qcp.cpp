@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "qcp.h"
+#include "scene/3d/ik_math/qcp.h"
 
 QuaternionCharacteristicPolynomial::QuaternionCharacteristicPolynomial(double p_evec_prec) {
 	eigenvector_precision = p_evec_prec;

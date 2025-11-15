@@ -32,17 +32,17 @@
 #include "core/templates/local_vector.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_node.h"
-#include "editor/many_bone_ik_shader.h"
+#include "editor/scene/3d/many_bone_ik_shader.h"
 #include "editor/scene/3d/node_3d_editor_gizmos.h"
 #include "editor/scene/3d/node_3d_editor_plugin.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/resources/surface_tool.h"
 
-#include "../src/ik_bone_3d.h"
-#include "../src/ik_kusudama_3d.h"
-#include "../src/many_bone_ik_3d.h"
-#include "many_bone_ik_3d_gizmo_plugin.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ewbik_3d.h"
+#include "editor/scene/3d/many_bone_ik_3d_gizmo_plugin.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_node.h"

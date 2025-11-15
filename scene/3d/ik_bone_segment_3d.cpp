@@ -28,12 +28,12 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "ik_bone_segment_3d.h"
+#include "scene/3d/ik_bone_segment_3d.h"
 
 #include "core/string/string_builder.h"
-#include "ik_effector_3d.h"
-#include "ik_kusudama_3d.h"
-#include "many_bone_ik_3d.h"
+#include "scene/3d/ik_effector_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ewbik_3d.h"
 #include "scene/3d/skeleton_3d.h"
 
 Ref<IKBone3D> IKBoneSegment3D::get_root() const {

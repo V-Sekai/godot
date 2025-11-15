@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  many_bone_ik_3d.cpp                                                   */
+/*  ewbik_3d.cpp                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,15 +28,15 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "many_bone_ik_3d.h"
+#include "scene/3d/ewbik_3d.h"
 #include "core/error/error_macros.h"
 #include "core/math/math_defs.h"
 #include "core/object/class_db.h"
 #include "core/object/object.h"
 #include "core/string/string_name.h"
-#include "ik_bone_3d.h"
-#include "ik_kusudama_3d.h"
-#include "ik_open_cone_3d.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ik_open_cone_3d.h"
 #include "scene/3d/marker_3d.h"
 #include "scene/3d/skeleton_3d.h"
 #include "scene/main/node.h"

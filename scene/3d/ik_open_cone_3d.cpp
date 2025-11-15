@@ -28,11 +28,11 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "ik_open_cone_3d.h"
+#include "scene/3d/ik_open_cone_3d.h"
 
 #include "core/math/quaternion.h"
-#include "ik_kusudama_3d.h"
-#include "math/interval_math.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ik_math/interval_math.h"
 
 using namespace IntervalMath;
 

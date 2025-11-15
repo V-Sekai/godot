@@ -241,6 +241,15 @@
 #include "scene/3d/lightmap_probe.h"
 #include "scene/3d/limit_angular_velocity_modifier_3d.h"
 #include "scene/3d/look_at_modifier_3d.h"
+#include "scene/3d/ewbik_3d.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ik_effector_3d.h"
+#include "scene/3d/ik_effector_template_3d.h"
+#include "scene/3d/ik_bone_segment_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ik_ray_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
+#include "scene/3d/ik_open_cone_3d.h"
 #include "scene/3d/marker_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/modifier_bone_target_3d.h"
@@ -684,6 +693,15 @@ void register_scene_types() {
 	GDREGISTER_CLASS(CCDIK3D);
 	GDREGISTER_CLASS(JacobianIK3D);
 	GDREGISTER_CLASS(LimitAngularVelocityModifier3D);
+	GDREGISTER_CLASS(IKEffectorTemplate3D);
+	GDREGISTER_CLASS(EWBIK3D);
+	GDREGISTER_CLASS(IKBone3D);
+	GDREGISTER_CLASS(IKNode3D);
+	GDREGISTER_CLASS(IKEffector3D);
+	GDREGISTER_CLASS(IKBoneSegment3D);
+	GDREGISTER_CLASS(IKKusudama3D);
+	GDREGISTER_CLASS(IKRay3D);
+	GDREGISTER_CLASS(IKLimitCone3D);
 
 #ifndef XR_DISABLED
 	GDREGISTER_CLASS(XRCamera3D);

@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "math/ik_node_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
 
 #include "core/object/ref_counted.h"
 #include "scene/3d/skeleton_3d.h"

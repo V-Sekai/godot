@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "ik_ray_3d.h"
+#include "scene/3d/ik_ray_3d.h"
 
 IKRay3D::IKRay3D() {
 }
