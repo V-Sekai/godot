@@ -83,7 +83,7 @@ void uninitialize_subdiv_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	
+
 	// Cleanup cached subdivision data (Performance improvements 1A + 1B)
 	Subdivider::cleanup_subdivision_cache();
 }

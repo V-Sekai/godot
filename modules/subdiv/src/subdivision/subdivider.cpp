@@ -79,13 +79,13 @@ void Subdivider::_generate_stencil_tables(CachedSubdivisionData &cache, int32_t 
 	if (cache.stencils_generated || !cache.refiner) {
 		return;
 	}
-	
+
 	// Generate vertex position stencils
 	Far::StencilTableFactory::Options vertex_opts;
 	vertex_opts.generateIntermediateLevels = false; // Only final level
 	vertex_opts.interpolationMode = Far::StencilTableFactory::INTERPOLATE_VERTEX;
 	cache.vertex_stencils = Far::StencilTableFactory::Create(*cache.refiner, vertex_opts);
-	
+
 	// Generate varying stencils (for bone weights if needed)
 	if ((p_format & Mesh::ARRAY_FORMAT_BONES) && (p_format & Mesh::ARRAY_FORMAT_WEIGHTS)) {
 		Far::StencilTableFactory::Options varying_opts;
@@ -93,7 +93,7 @@ void Subdivider::_generate_stencil_tables(CachedSubdivisionData &cache, int32_t 
 		varying_opts.interpolationMode = Far::StencilTableFactory::INTERPOLATE_VARYING;
 		cache.varying_stencils = Far::StencilTableFactory::Create(*cache.refiner, varying_opts);
 	}
-	
+
 	// Generate face-varying stencils (for UVs if needed)
 	if (p_format & Mesh::ARRAY_FORMAT_TEX_UV) {
 		Far::StencilTableFactory::Options fvar_opts;
@@ -102,7 +102,7 @@ void Subdivider::_generate_stencil_tables(CachedSubdivisionData &cache, int32_t 
 		fvar_opts.fvarChannel = Channels::UV;
 		cache.fvar_stencils = Far::StencilTableFactory::Create(*cache.refiner, fvar_opts);
 	}
-	
+
 	cache.stencils_generated = true;
 }
 
@@ -165,7 +165,7 @@ struct Bone {
 // Comparison function for sorting bone weights (descending by weight)
 struct BoneWeightCompare {
 	bool operator()(const Pair<int, float> &a, const Pair<int, float> &b) const {
-		return a.second > b.second;  // Descending order (highest weights first)
+		return a.second > b.second; // Descending order (highest weights first)
 	}
 };
 
@@ -289,19 +289,19 @@ void Subdivider::_create_subdivision_vertices(Far::TopologyRefiner *refiner, con
 
 	// Try to use stencil tables if available (Performance improvement 1B)
 	uint64_t cache_key = _compute_topology_hash(topology_data, p_level);
-	bool use_stencils = subdivision_cache.has(cache_key) && 
-	                    subdivision_cache[cache_key].stencils_generated &&
-	                    subdivision_cache[cache_key].vertex_stencils;
+	bool use_stencils = subdivision_cache.has(cache_key) &&
+			subdivision_cache[cache_key].stencils_generated &&
+			subdivision_cache[cache_key].vertex_stencils;
 
 	if (use_stencils) {
 		// Fast path: Apply pre-computed stencils (2-3x faster!)
 		CachedSubdivisionData &cache = subdivision_cache[cache_key];
-		
+
 		// Apply vertex stencils
 		Vertex *src = (Vertex *)topology_data.vertex_array.ptr();
 		Vertex *dst = src;
 		cache.vertex_stencils->UpdateValues(src, dst);
-		
+
 		// Apply UV stencils if present
 		if (use_uv && cache.fvar_stencils) {
 			topology_data.uv_array.resize(topology_data.uv_count);
@@ -312,7 +312,7 @@ void Subdivider::_create_subdivision_vertices(Far::TopologyRefiner *refiner, con
 	} else {
 		// Fallback: Use PrimvarRefiner (slower but always works)
 		Far::PrimvarRefiner primvar_refiner(*refiner);
-		
+
 		// Vertices
 		Vertex *src = (Vertex *)topology_data.vertex_array.ptr();
 		for (int level = 0; level < p_level; ++level) {
@@ -336,7 +336,7 @@ void Subdivider::_create_subdivision_vertices(Far::TopologyRefiner *refiner, con
 	if (use_bones) {
 		// Bone weights use PrimvarRefiner (complex logic, keep existing implementation)
 		Far::PrimvarRefiner primvar_refiner(*refiner);
-		
+
 		int highest_bone_index = 0;
 		for (int i = 0; i < topology_data.bones_array.size(); i++) {
 			if (topology_data.bones_array[i] > highest_bone_index) {

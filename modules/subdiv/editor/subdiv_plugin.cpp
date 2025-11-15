@@ -46,7 +46,7 @@ void SubdivEditorPlugin::_notification(int p_what) {
 			scene_plugin.instantiate();
 			ResourceImporterScene::add_post_importer_plugin(scene_plugin);
 		} break;
-		
+
 		case NOTIFICATION_EXIT_TREE: {
 			// Unregister scene plugin
 			if (scene_plugin.is_valid()) {

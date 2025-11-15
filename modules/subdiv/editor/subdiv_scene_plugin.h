@@ -30,8 +30,8 @@
 
 #pragma once
 
-#include "editor/import/3d/resource_importer_scene.h"
 #include "../src/import/topology_data_importer.hpp"
+#include "editor/import/3d/resource_importer_scene.h"
 
 // Integrates subdivision into Godot's standard scene importer
 // Adds subdivision options to mesh import settings
@@ -47,10 +47,10 @@ protected:
 public:
 	// Add subdivision options to mesh category
 	virtual void get_internal_import_options(InternalImportCategory p_category, List<ResourceImporter::ImportOption> *r_options) override;
-	
+
 	// Handle option visibility (note: matches base class signature)
 	virtual Variant get_internal_option_visibility(InternalImportCategory p_category, const String &p_scene_import_type, const String &p_option, const HashMap<StringName, Variant> &p_options) const override;
-	
+
 	// Process meshes during import
 	virtual void internal_process(InternalImportCategory p_category, Node *p_base_scene, Node *p_node, Ref<Resource> p_resource, const Dictionary &p_options) override;
 
