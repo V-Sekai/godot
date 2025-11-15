@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "modules/many_bone_ik/src/math/ik_node_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
 #include "tests/test_macros.h"
 
 namespace TestIKNode3D {

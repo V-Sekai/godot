@@ -29,8 +29,8 @@
 /**************************************************************************/
 
 #pragma once
-#include "modules/many_bone_ik/src/ik_kusudama_3d.h"
-#include "modules/many_bone_ik/src/ik_open_cone_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ik_open_cone_3d.h"
 #include "tests/test_macros.h"
 
 namespace TestIKKusudama3DSingularities {

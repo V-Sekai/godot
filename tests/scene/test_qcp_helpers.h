@@ -33,7 +33,7 @@
 #include "core/math/math_defs.h"
 #include "core/math/math_funcs.h"
 #include "core/math/quaternion.h"
-#include "modules/many_bone_ik/src/math/qcp.h"
+#include "scene/3d/ik_math/qcp.h"
 
 namespace TestQCPHelpers {
 
