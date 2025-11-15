@@ -45,8 +45,10 @@
 #ifdef TOOLS_ENABLED
 #include "editor/editor_import_blend_runner.h"
 #include "editor/editor_scene_exporter_gltf_plugin.h"
+#include "editor/editor_scene_exporter_usd_plugin.h"
 #include "editor/editor_scene_importer_blend.h"
 #include "editor/editor_scene_importer_gltf.h"
+#include "editor/editor_scene_importer_usd.h"
 
 #include "core/config/project_settings.h"
 #include "editor/editor_node.h"
@@ -92,6 +94,15 @@ static void _editor_init() {
 		Ref<EditorFileSystemImportFormatSupportQueryBlend> blend_import_query;
 		blend_import_query.instantiate();
 		EditorFileSystem::get_singleton()->add_import_format_support_query(blend_import_query);
+
+		// USD importer (also uses Blender)
+		Ref<EditorSceneFormatImporterUSD> usd_importer;
+		usd_importer.instantiate();
+		ResourceImporterScene::add_scene_importer(usd_importer);
+
+		Ref<EditorFileSystemImportFormatSupportQueryUSD> usd_import_query;
+		usd_import_query.instantiate();
+		EditorFileSystem::get_singleton()->add_import_format_support_query(usd_import_query);
 	}
 	memnew(EditorImportBlendRunner);
 	EditorNode::get_singleton()->add_child(EditorImportBlendRunner::get_singleton());
@@ -144,10 +155,13 @@ void initialize_gltf_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
 		GDREGISTER_CLASS(EditorSceneFormatImporterGLTF);
 		EditorPlugins::add_by_type<SceneExporterGLTFPlugin>();
+		EditorPlugins::add_by_type<SceneExporterUSDPlugin>();
 
 		// Project settings defined here so doctool finds them.
 		GLOBAL_DEF_RST_BASIC("filesystem/import/blender/enabled", true);
 		GDREGISTER_CLASS(EditorSceneFormatImporterBlend);
+		GDREGISTER_CLASS(EditorSceneFormatImporterUSD);
+		GDREGISTER_CLASS(EditorFileSystemImportFormatSupportQueryUSD);
 		// Can't (a priori) run external app on these platforms.
 		GLOBAL_DEF_RST("filesystem/import/blender/enabled.android", false);
 		GLOBAL_DEF_RST("filesystem/import/blender/enabled.web", false);
