@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/lighttransport/tinyusdz.git
+	branch = release
+	commit = 5a0c271bea5c0266102438ea6c839f7543ce7e49
+	parent = 2f839c9575ba68a0fd74c8477750fba611eda02d
+	method = merge
+	cmdver = 0.4.9
