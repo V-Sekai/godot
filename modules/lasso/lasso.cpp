@@ -30,7 +30,7 @@
 
 #include "lasso.h"
 #include <core/math/math_defs.h>
-#include <servers/xr_server.h>
+#include "servers/xr/xr_server.h"
 
 LassoPoint::LassoPoint() {};
 
