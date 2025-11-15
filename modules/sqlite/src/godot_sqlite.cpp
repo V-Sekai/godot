@@ -31,6 +31,7 @@
 #include "core/config/project_settings.h"
 #include "core/core_bind.h"
 #include "core/error/error_macros.h"
+#include "core/io/file_access.h"
 #include "core/os/os.h"
 #include "core/variant/variant.h"
 #include "sqlite/sqlite3.h"
