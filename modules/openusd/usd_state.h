@@ -34,7 +34,10 @@
 
 // TODO: Update export state to use TinyUSDZ
 // TinyUSDZ headers
+// Workaround for Texture name conflict: rename TinyUSDZ's Texture before including
+#define Texture TinyUSDZTexture
 #include "tinyusdz.hh"
+#undef Texture
 
 namespace tinyusdz {
 	class Stage;

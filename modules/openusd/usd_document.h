@@ -35,8 +35,15 @@
 #include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_document.h"
 
+// Forward declare Godot's Texture class to avoid conflict with TinyUSDZ's struct Texture
+class Texture2D;
+
 // TinyUSDZ headers
+// Note: TinyUSDZ's texture-types.hh defines 'struct Texture' which conflicts with Godot's 'class Texture'
+// We use a preprocessor workaround: temporarily rename TinyUSDZ's Texture before including
+#define Texture TinyUSDZTexture
 #include "tinyusdz.hh"
+#undef Texture
 #include "prim-types.hh"
 #include "usdGeom.hh"
 #include "usdShade.hh"

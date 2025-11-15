@@ -39,6 +39,7 @@
 #include "core/config/project_settings.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/packed_scene.h"
+#include "scene/gui/popup.h"
 
 // For setenv
 #if defined(_WIN32)
@@ -103,21 +104,8 @@ void USDPlugin::_on_hello_button_pressed() {
 		return;
 	}
 
-	// Create a new TextMesh
-	Ref<TextMesh> text_mesh;
-	text_mesh.instantiate();
-	text_mesh->set_text("Hello USD");
-
-	// Create a MeshInstance3D to display the text mesh
-	MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
-	mesh_instance->set_name("HelloUSD");
-	mesh_instance->set_mesh(text_mesh);
-
-	// Add the mesh instance to the scene
-	edited_scene_root->add_child(mesh_instance);
-	mesh_instance->set_owner(edited_scene_root);
-
-	print_line("Added 'Hello USD' text node to the scene");
+	// TODO: Add example USD functionality here
+	print_line("Hello USD button pressed!");
 }
 
 void USDPlugin::_popup_usd_export_dialog() {
@@ -243,33 +231,6 @@ void USDPlugin::_import_usd_file(const String &p_file_path) {
 	// The GLTF-based import system handles USD import through the editor importer
 	ERR_PRINT("USD Import: _import_usd_file is deprecated - use EditorSceneFormatImporterUSD (GLTF-based import system)");
 	return;
-
-	// Create a scene with the root node
-	Ref<PackedScene> scene;
-	scene.instantiate();
-
-	// Pack the scene
-	Error pack_err = scene->pack(root);
-	if (pack_err != OK) {
-		ERR_PRINT(vformat("USD Import: Failed to pack scene: %s", pack_err));
-		root->queue_free(); // Clean up the root node
-		return;
-	}
-
-	// Save the scene to a file
-	String temp_scene_path = "res://" + p_file_path.get_file().get_basename() + ".tscn";
-	Error save_err = ResourceSaver::save(scene, temp_scene_path);
-	if (save_err != OK) {
-		ERR_PRINT(vformat("USD Import: Failed to save scene to %s Error: %d", temp_scene_path, save_err));
-		root->queue_free(); // Clean up the root node
-		return;
-	}
-
-	// Open the scene in the editor
-	editor->open_scene_from_path(temp_scene_path);
-
-	print_line("USD Import: Successfully imported USD file from ", p_file_path);
-	print_line("USD Import: Saved scene to ", temp_scene_path);
 }
 
 // Helper method to extract and apply transform from a USD prim to a Godot node
@@ -277,46 +238,6 @@ void USDPlugin::_import_usd_file(const String &p_file_path) {
 bool USDPlugin::_apply_transform_from_usd_prim(const tinyusdz::Prim &p_prim, Node3D *p_node) {
 	ERR_PRINT("USD Plugin: _apply_transform_from_usd_prim not yet implemented with TinyUSDZ");
 	return false;
-	if (!p_node) {
-		return false;
-	}
-
-	// Extract transform from USD prim
-	UsdGeomXform usdXform(p_prim);
-	bool reset_xform_stack = false;
-	std::vector<UsdGeomXformOp> xform_ops = usdXform.GetOrderedXformOps(&reset_xform_stack);
-
-	if (xform_ops.empty()) {
-		//print_line("USD Import: No transform found for node: ", p_node->get_name());
-		return false;
-	}
-
-	// Get the transform matrix
-	GfMatrix4d usd_matrix;
-	bool resetsXformStack = false;
-	usdXform.GetLocalTransformation(&usd_matrix, &resetsXformStack);
-
-	// Convert USD matrix to Godot transform
-	Transform3D transform;
-
-	// Extract basis (rotation and scale)
-	Basis basis(
-			Vector3(usd_matrix[0][0], usd_matrix[0][1], usd_matrix[0][2]),
-			Vector3(usd_matrix[1][0], usd_matrix[1][1], usd_matrix[1][2]),
-			Vector3(usd_matrix[2][0], usd_matrix[2][1], usd_matrix[2][2]));
-
-	// Extract translation
-	Vector3 origin(usd_matrix[3][0], usd_matrix[3][1], usd_matrix[3][2]);
-
-	// Set the transform
-	transform.set_basis(basis);
-	transform.set_origin(origin);
-
-	// Apply the transform to the node
-	p_node->set_transform(transform);
-
-	//print_line("USD Import: Applied transform to node: ", p_node->get_name());
-	return true;
 }
 
 // Helper method to convert a USD prim to a Godot node
@@ -324,122 +245,12 @@ bool USDPlugin::_apply_transform_from_usd_prim(const tinyusdz::Prim &p_prim, Nod
 Node *USDPlugin::_convert_prim_to_node(const tinyusdz::Prim &p_prim, Node *p_parent, Node *p_scene_root) {
 	ERR_PRINT("USD Plugin: _convert_prim_to_node not yet implemented with TinyUSDZ");
 	return nullptr;
-	// Skip the pseudo-root
-	if (p_prim.IsPseudoRoot()) {
-		// Process children
-		for (UsdPrim child : p_prim.GetChildren()) {
-			_convert_prim_to_node(child, p_parent, p_scene_root ? p_scene_root : p_parent);
-		}
-		return p_parent;
-	}
-
-	// Get the prim type and name
-	String prim_type = String(p_prim.GetTypeName().GetText());
-	String prim_name = String(p_prim.GetName().GetText());
-
-	bool prim_is_mesh = !!pxr::UsdGeomGprim(p_prim);
-
-	// Debug output
-	//print_line("USD Import: Converting prim: ", prim_name, " with type: ", prim_type);
-
-	// Create a node based on the prim type
-	Node *node = nullptr;
-
-	if (prim_type == "Xform") {
-		// Create a Node3D for Xform prims
-		Node3D *xform = memnew(Node3D);
-		xform->set_name(prim_name);
-
-		// Apply transform from USD prim
-		_apply_transform_from_usd_prim(p_prim, xform);
-
-		node = xform;
-	} else if (prim_type == "Scope") {
-		// Create a Node3D for Scope prims (organizational)
-		Node3D *scope = memnew(Node3D);
-		scope->set_name(prim_name);
-
-		// Apply transform from USD prim
-		_apply_transform_from_usd_prim(p_prim, scope);
-
-		//print_line("USD Import: Created Scope node: ", prim_name);
-		node = scope;
-	} else if (prim_type == "Material" || prim_type == "Shader") {
-		// Skip materials and shaders for now
-		// In a full implementation, we would create materials and shaders
-		// print_line("USD Import: Skipping Material/Shader: ", prim_name);
-	} else if (prim_is_mesh) {
-		// Create a MeshInstance3D with a BoxMesh for Cube prims
-		MeshInstance3D *mesh_instance = memnew(MeshInstance3D);
-		mesh_instance->set_name(prim_name);
-
-		UsdMeshImportHelper helper;
-		Ref<Mesh> box_mesh = helper.import_mesh_from_prim(p_prim);
-		if (box_mesh.is_valid()) {
-			mesh_instance->set_mesh(box_mesh);
-			auto mat = helper.create_material(p_prim);
-
-			// Apply the material to the mesh
-			if (mat.is_valid()) {
-				mesh_instance->set_surface_override_material(0, mat);
-			}
-
-			// Apply transform from USD prim
-			_apply_transform_from_usd_prim(p_prim, mesh_instance);
-		}
-		//print_line("USD Import: Created ", prim_type, " node: ", prim_name);
-		node = mesh_instance;
-	} else {
-		// For empty or unknown prim types, create a Node3D
-		// This handles cases like "Shapes" and "Materials" which have empty type names
-		Node3D *generic = memnew(Node3D);
-		generic->set_name(prim_name);
-
-		// Apply transform from USD prim
-		_apply_transform_from_usd_prim(p_prim, generic);
-
-		//print_line("USD Import: Created generic node for type: ", prim_type, " prim: ", prim_name);
-		node = generic;
-	}
-
-	// Add the node to the parent
-	if (node) {
-		p_parent->add_child(node);
-
-		// Set the owner for proper serialization
-		if (p_scene_root) {
-			node->set_owner(p_scene_root);
-		} else {
-			// If no scene root is provided, use the node itself as the owner
-			node->set_owner(p_parent->get_owner());
-		}
-
-		// Process children
-		for (UsdPrim child : p_prim.GetChildren()) {
-			_convert_prim_to_node(child, node, p_scene_root);
-		}
-	}
-
-	return node;
 }
 
 // Helper method to print the prim hierarchy
 // TODO: Update to use TinyUSDZ API
 void USDPlugin::_print_prim_hierarchy(const tinyusdz::Prim &p_prim, int p_indent) {
 	ERR_PRINT("USD Plugin: _print_prim_hierarchy not yet implemented with TinyUSDZ");
-	// Create an indentation string
-	String indent = "";
-	for (int i = 0; i < p_indent; i++) {
-		indent += "  ";
-	}
-
-	// Print the prim name and type
-	print_line(indent, "- ", String(p_prim.GetName().GetText()), " (", String(p_prim.GetTypeName().GetText()), ")");
-
-	// Recursively print children
-	for (UsdPrim child : p_prim.GetChildren()) {
-		_print_prim_hierarchy(child, p_indent + 1);
-	}
 }
 
 // Helper method to print the node hierarchy
@@ -485,14 +296,8 @@ void USDPlugin::_notification(int p_what) {
                 project_root += "/";
             }
 
-            // Set up plugin paths
-            std::vector<std::string> pluginPaths;
-            std::string pluginPath = project_root.utf8().get_data();
-            pluginPaths.push_back(pluginPath + "lib/usd");
-            pluginPaths.push_back(pluginPath + "lib/plugin");
-
-            // Register the plugins using USD's plugin registry
-            PlugRegistry::GetInstance().RegisterPlugins(pluginPaths);
+            // TODO: Set up TinyUSDZ plugin paths if needed
+            // TinyUSDZ doesn't use the same plugin system as OpenUSD
 
             // Create the "Hello USD" button
             hello_button = memnew(Button);

@@ -35,7 +35,10 @@
 
 // TODO: Update export functionality to use TinyUSDZ
 // TinyUSDZ headers
+// Workaround for Texture name conflict: rename TinyUSDZ's Texture before including
+#define Texture TinyUSDZTexture
 #include "tinyusdz.hh"
+#undef Texture
 #include "prim-types.hh"
 #include "usdGeom.hh"
 #include "value-types.hh"
@@ -56,6 +59,9 @@ public:
 	// Export a Godot mesh to a USD prim
 	// TODO: Update to use TinyUSDZ API (tinyusdz::Prim, tinyusdz::Stage, tinyusdz::Path)
 	tinyusdz::Prim export_mesh_to_prim(const Ref<Mesh> p_mesh, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
+	
+	// Export a GeomMesh (public for use by USDDocument)
+	tinyusdz::Prim export_geom_mesh(const Ref<Mesh> p_mesh, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
 
 private:
 	// Helper methods for specific primitive types
@@ -65,7 +71,6 @@ private:
 	tinyusdz::Prim export_cylinder(const Ref<CylinderMesh> p_cylinder, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
 	tinyusdz::Prim export_cone(const Ref<CylinderMesh> p_cone, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
 	tinyusdz::Prim export_capsule(const Ref<CapsuleMesh> p_capsule, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
-	tinyusdz::Prim export_geom_mesh(const Ref<Mesh> p_mesh, tinyusdz::Stage *p_stage, const tinyusdz::Path &p_path);
 
 	// Helper method to handle non-uniform scaling
 	// TODO: Update to use TinyUSDZ API

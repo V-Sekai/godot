@@ -29,6 +29,15 @@
 /**************************************************************************/
 
 #include "usd_document.h"
+#include "usd_import_state.h"
+#include "usd_mesh_export_helper.h"
+
+// Include Texture2D here to avoid conflict with TinyUSDZ's Texture struct in header
+#include "scene/resources/texture.h"
+
+// TinyUSDZ writer headers for export
+#include "usda-writer.hh"
+#include "usdc-writer.hh"
 
 #include "core/config/project_settings.h"
 #include "core/io/file_access.h"
@@ -67,25 +76,26 @@
 Transform3D USDDocument::_as_xform(const tinyusdz::value::matrix4d &p_mat) {
 	Transform3D result;
 	
-	// TinyUSDZ matrix4d is a 4x4 matrix stored as array[16]
-	// Format: column-major order
-	// [0  4  8  12]
-	// [1  5  9  13]
-	// [2  6  10 14]
-	// [3  7  11 15]
+	// TinyUSDZ matrix4d is a 4x4 matrix stored as m[4][4] (row-major order)
+	// Format: row-major order
+	// [m[0][0] m[0][1] m[0][2] m[0][3]]
+	// [m[1][0] m[1][1] m[1][2] m[1][3]]
+	// [m[2][0] m[2][1] m[2][2] m[2][3]]
+	// [m[3][0] m[3][1] m[3][2] m[3][3]]
+	// Translation is at m[3][0], m[3][1], m[3][2]
 	
-	// Extract translation (last column)
+	// Extract translation (last row, first 3 columns)
 	result.origin = Vector3(
-		real_t(p_mat.m[12]),
-		real_t(p_mat.m[13]),
-		real_t(p_mat.m[14])
+		real_t(p_mat.m[3][0]),
+		real_t(p_mat.m[3][1]),
+		real_t(p_mat.m[3][2])
 	);
 	
-	// Extract rotation and scale from upper 3x3
+	// Extract rotation and scale from upper 3x3 (row-major, so columns are m[row][col])
 	Basis basis;
-	basis.set_column(0, Vector3(real_t(p_mat.m[0]), real_t(p_mat.m[1]), real_t(p_mat.m[2])));
-	basis.set_column(1, Vector3(real_t(p_mat.m[4]), real_t(p_mat.m[5]), real_t(p_mat.m[6])));
-	basis.set_column(2, Vector3(real_t(p_mat.m[8]), real_t(p_mat.m[9]), real_t(p_mat.m[10])));
+	basis.set_column(0, Vector3(real_t(p_mat.m[0][0]), real_t(p_mat.m[1][0]), real_t(p_mat.m[2][0])));
+	basis.set_column(1, Vector3(real_t(p_mat.m[0][1]), real_t(p_mat.m[1][1]), real_t(p_mat.m[2][1])));
+	basis.set_column(2, Vector3(real_t(p_mat.m[0][2]), real_t(p_mat.m[1][2]), real_t(p_mat.m[2][2])));
 	
 	// Extract scale and normalize basis
 	Vector3 scale = basis.get_scale();
@@ -201,9 +211,43 @@ PackedByteArray USDDocument::generate_buffer(Ref<GLTFState> p_state) {
 }
 
 Error USDDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) {
-	// USD export functionality - not needed for import
-	ERR_PRINT("USD: write_to_filesystem not yet implemented");
-	return ERR_UNAVAILABLE;
+	// Cast to USDState
+	Ref<USDState> usd_state = p_state;
+	if (usd_state.is_null()) {
+		ERR_PRINT("USD Export: Invalid state");
+		return ERR_INVALID_PARAMETER;
+	}
+	
+	const tinyusdz::Stage &stage = usd_state->get_stage();
+	
+	// Determine format from file extension
+	bool is_binary = p_path.ends_with(".usdc") || p_path.ends_with(".usdz");
+	
+	std::string warn;
+	std::string err;
+	bool ret = false;
+	
+	if (is_binary) {
+		// Use USDC writer for binary format
+		ret = tinyusdz::usdc::SaveAsUSDCToFile(p_path.utf8().get_data(), stage, &warn, &err);
+	} else {
+		// Use USDA writer for ASCII format
+		ret = tinyusdz::usda::SaveAsUSDA(p_path.utf8().get_data(), stage, &warn, &err);
+	}
+	
+	if (!ret) {
+		ERR_PRINT("USD Export: Failed to save file: " + p_path);
+		if (!err.empty()) {
+			ERR_PRINT("USD Export: Error: " + String(err.c_str()));
+		}
+		return ERR_FILE_CANT_WRITE;
+	}
+	
+	if (!warn.empty()) {
+		WARN_PRINT("USD Export: Warning: " + String(warn.c_str()));
+	}
+	
+	return OK;
 }
 
 void USDDocument::set_naming_version(int p_version) {
@@ -216,10 +260,62 @@ int USDDocument::get_naming_version() const {
 
 // Export methods (merged from UsdDocument)
 Error USDDocument::export_from_scene(Node *p_scene_root, Ref<USDState> p_state, int32_t p_flags) {
-	// TODO: Update export functionality to use TinyUSDZ API
-	// This method will convert the Godot scene to USD using TinyUSDZ
-	ERR_PRINT("USD Export: export_from_scene not yet implemented with TinyUSDZ");
-	return ERR_UNAVAILABLE;
+	if (!p_scene_root) {
+		ERR_PRINT("USD Export: Invalid scene root");
+		return ERR_INVALID_PARAMETER;
+	}
+
+	// Create a new TinyUSDZ stage
+	tinyusdz::Stage stage;
+	
+	// Minimum working subset: export first MeshInstance3D found in scene
+	// TODO: Full scene traversal and hierarchy export
+	MeshInstance3D *mesh_instance = Object::cast_to<MeshInstance3D>(p_scene_root);
+	if (!mesh_instance) {
+		// Try to find a MeshInstance3D in children
+		for (int i = 0; i < p_scene_root->get_child_count(); i++) {
+			Node *child = p_scene_root->get_child(i);
+			mesh_instance = Object::cast_to<MeshInstance3D>(child);
+			if (mesh_instance) {
+				break;
+			}
+		}
+	}
+	
+	if (mesh_instance && mesh_instance->get_mesh().is_valid()) {
+		Ref<Mesh> mesh = mesh_instance->get_mesh();
+		String mesh_name = mesh_instance->get_name();
+		if (mesh_name.is_empty()) {
+			mesh_name = "mesh";
+		}
+		String mesh_path_str = "/" + mesh_name;
+		tinyusdz::Path mesh_path(mesh_path_str.utf8().get_data(), "");
+		
+		UsdMeshExportHelper helper;
+		tinyusdz::Prim mesh_prim = helper.export_geom_mesh(mesh, &stage, mesh_path);
+		
+		if (!stage.add_root_prim(std::move(mesh_prim))) {
+			ERR_PRINT("USD Export: Failed to add mesh prim to stage: " + String(stage.get_error().c_str()));
+			return ERR_CANT_CREATE;
+		}
+	} else {
+		// Create empty root prim if no mesh found
+		tinyusdz::Xform root_xform;
+		root_xform.name = "root";
+		tinyusdz::Prim root_prim(root_xform);
+		if (!stage.add_root_prim(std::move(root_prim))) {
+			ERR_PRINT("USD Export: Failed to add root prim to stage: " + String(stage.get_error().c_str()));
+			return ERR_CANT_CREATE;
+		}
+	}
+	
+	// Commit stage
+	stage.commit();
+	
+	// Store stage in state
+	p_state->set_stage(stage);
+	
+	return OK;
 }
 
 String USDDocument::get_file_extension_for_format(bool p_binary) const {
@@ -357,7 +453,7 @@ static void _collect_prims_recursive(const tinyusdz::Prim &prim, const tinyusdz:
 	all_prims.push_back({prim, prim_path});
 	
 	// Recursively process children
-	for (const auto &child : prim.primChildren()) {
+	for (const auto &child : prim.children()) {
 		_collect_prims_recursive(child, prim_path, all_prims);
 	}
 }
@@ -397,22 +493,22 @@ Error USDDocument::_parse_nodes(Ref<USDState> p_state) {
 			if (xform) {
 				// TODO: Extract transform from Xform ops
 				// For now, use identity transform
-				node->transform = Transform3D();
+				node->set_xform(Transform3D());
 			}
 		} else {
-			node->transform = Transform3D();
+			node->set_xform(Transform3D());
 		}
 
 		// Check for mesh
 		if (prim.is<tinyusdz::GeomMesh>()) {
 			// Will be set when parsing meshes
-			node->mesh = -1; // Placeholder, will be set in _parse_meshes
+			node->set_mesh(-1); // Placeholder, will be set in _parse_meshes
 		}
 
 		// Check for camera
 		if (prim.is<tinyusdz::GeomCamera>()) {
 			// Will be set when parsing cameras
-			node->camera = -1; // Placeholder, will be set in _parse_cameras
+			node->set_camera(-1); // Placeholder, will be set in _parse_cameras
 		}
 
 		// Store node
@@ -443,15 +539,17 @@ Error USDDocument::_parse_nodes(Ref<USDState> p_state) {
 		Ref<GLTFNode> node = p_state->nodes[node_index];
 
 		// Set parent
-		tinyusdz::Path parent_path = prim_path.GetParentPath();
+		tinyusdz::Path parent_path = prim_path.get_parent_path();
 		if (parent_path.is_valid() && !parent_path.is_root_path()) {
 			String parent_path_str = String(parent_path.prim_part().c_str());
 			if (path_to_node_index.has(parent_path_str)) {
 				GLTFNodeIndex parent_index = path_to_node_index[parent_path_str];
-				node->parent = parent_index;
-				p_state->nodes[parent_index]->children.push_back(node_index);
+				node->set_parent(parent_index);
+				Vector<int> parent_children = p_state->nodes[parent_index]->get_children();
+				parent_children.push_back(node_index);
+				p_state->nodes[parent_index]->set_children(parent_children);
 			}
-		} else {
+					} else {
 			// Root node
 			p_state->root_nodes.push_back(node_index);
 		}
@@ -470,7 +568,7 @@ static void _collect_mesh_prims_recursive(const tinyusdz::Prim &prim, const tiny
 	}
 	
 	// Recursively process children
-	for (const auto &child : prim.primChildren()) {
+	for (const auto &child : prim.children()) {
 		_collect_mesh_prims_recursive(child, prim_path, mesh_prims);
 	}
 }
@@ -533,317 +631,93 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 		PackedVector3Array vertices;
 		vertices.resize(points.size());
 		for (size_t i = 0; i < points.size(); i++) {
-			vertices.write[i] = _as_vec3(tinyusdz::value::float3(points[i][0], points[i][1], points[i][2]));
+			tinyusdz::value::float3 vec = {{points[i][0], points[i][1], points[i][2]}};
+			vertices.write[i] = _as_vec3(vec);
 		}
 
 		// Check for subdivision surfaces
-		if (usd_mesh->subdivisionScheme.has_value()) {
-			std::string scheme = usd_mesh->subdivisionScheme.value().str();
-			if (scheme != "none" && !scheme.empty()) {
-				WARN_PRINT(vformat("USD: Mesh '%s' uses subdivision scheme '%s'. Subdivision surfaces are not fully supported - importing control cage only.", 
-					String(prim.element_name().c_str()), String(scheme.c_str())));
-				// TODO: Implement subdivision surface tessellation
+		// subdivisionScheme is a TypedAttributeWithFallback<SubdivisionScheme>
+		// Get the value directly (it has a fallback, so get_value() always returns a value)
+		tinyusdz::GeomMesh::SubdivisionScheme scheme = usd_mesh->subdivisionScheme.get_value();
+		if (scheme != tinyusdz::GeomMesh::SubdivisionScheme::SubdivisionSchemeNone) {
+			// Convert enum to string for warning message
+			String scheme_str = "unknown";
+			switch (scheme) {
+				case tinyusdz::GeomMesh::SubdivisionScheme::CatmullClark:
+					scheme_str = "catmullClark";
+					break;
+				case tinyusdz::GeomMesh::SubdivisionScheme::Loop:
+					scheme_str = "loop";
+					break;
+				case tinyusdz::GeomMesh::SubdivisionScheme::Bilinear:
+					scheme_str = "bilinear";
+					break;
+				case tinyusdz::GeomMesh::SubdivisionScheme::SubdivisionSchemeNone:
+					scheme_str = "none";
+					break;
 			}
+			WARN_PRINT(vformat("USD: Mesh '%s' uses subdivision scheme '%s'. Subdivision surfaces are not fully supported - importing control cage only.", 
+				String(prim.element_name().c_str()), scheme_str));
+			// TODO: Implement subdivision surface tessellation
 		}
 
 		// Get face vertex indices and counts
 		std::vector<int32_t> face_vertex_indices = usd_mesh->get_faceVertexIndices();
 		std::vector<int32_t> face_vertex_counts = usd_mesh->get_faceVertexCounts();
 		
+		// Simplified mesh import: only vertices, faces, and basic normals
 		if (!face_vertex_indices.empty() && !face_vertex_counts.empty()) {
-				
-				// Build index array for triangles
-				PackedInt32Array indices;
-				int index_offset = 0;
-				for (size_t face_i = 0; face_i < face_vertex_counts.size(); face_i++) {
-					int face_count = face_vertex_counts[face_i];
-					if (face_count >= 3) {
-						// Triangulate polygon
-						for (int tri = 0; tri < face_count - 2; tri++) {
-							indices.push_back(face_vertex_indices[index_offset]);
-							indices.push_back(face_vertex_indices[index_offset + tri + 1]);
-							indices.push_back(face_vertex_indices[index_offset + tri + 2]);
-						}
-					}
-					index_offset += face_count;
-				}
-
-				// Get normals if available
-				PackedVector3Array normals;
-				std::vector<tinyusdz::value::normal3f> usd_normals = usd_mesh->get_normals();
-				if (!usd_normals.empty()) {
-					normals.resize(usd_normals.size());
-					for (size_t i = 0; i < usd_normals.size(); i++) {
-						normals.write[i] = _as_vec3(tinyusdz::value::float3(usd_normals[i][0], usd_normals[i][1], usd_normals[i][2]));
+			// Build index array for triangles
+			PackedInt32Array indices;
+			int index_offset = 0;
+			for (size_t face_i = 0; face_i < face_vertex_counts.size(); face_i++) {
+				int face_count = face_vertex_counts[face_i];
+				if (face_count >= 3) {
+					// Triangulate polygon
+					for (int tri = 0; tri < face_count - 2; tri++) {
+						indices.push_back(face_vertex_indices[index_offset]);
+						indices.push_back(face_vertex_indices[index_offset + tri + 1]);
+						indices.push_back(face_vertex_indices[index_offset + tri + 2]);
 					}
 				}
-
-				// Get UVs - try standard "st" first, then check for other UV sets
-				PackedVector2Array uvs;
-				tinyusdz::GeomPrimvar uv_primvar;
-				std::string err;
-				
-				// Try standard "st" primvar
-				if (!usd_mesh->get_primvar("st", &uv_primvar, &err)) {
-					// Try alternative names
-					if (!usd_mesh->get_primvar("uv", &uv_primvar, &err)) {
-						usd_mesh->get_primvar("map1", &uv_primvar, &err);
-					}
-				}
-				
-				if (uv_primvar.has_value()) {
-					std::vector<tinyusdz::value::float2> usd_uvs;
-					if (uv_primvar.get_value(&usd_uvs)) {
-						// Handle different interpolation modes
-						tinyusdz::Interpolation interp = tinyusdz::Interpolation::Vertex; // Default
-						if (uv_primvar.has_interpolation()) {
-							interp = uv_primvar.get_interpolation();
-						}
-						if (interp == tinyusdz::Interpolation::Vertex || interp == tinyusdz::Interpolation::Varying) {
-							// Per-vertex UVs - map directly
-							uvs.resize(usd_uvs.size());
-							for (size_t i = 0; i < usd_uvs.size(); i++) {
-								uvs.write[i] = Vector2(usd_uvs[i][0], 1.0f - usd_uvs[i][1]); // Flip V coordinate
-							}
-						} else if (interp == tinyusdz::Interpolation::FaceVarying) {
-							// Per-face-vertex UVs - need to map through face vertex indices
-							uvs.resize(face_vertex_indices.size());
-							for (size_t i = 0; i < face_vertex_indices.size() && i < usd_uvs.size(); i++) {
-								uvs.write[i] = Vector2(usd_uvs[i][0], 1.0f - usd_uvs[i][1]);
-							}
-						} else {
-							// Constant or uniform - use first value for all
-							if (usd_uvs.size() > 0) {
-								Vector2 uv_val(usd_uvs[0][0], 1.0f - usd_uvs[0][1]);
-								uvs.resize(vertices.size());
-								for (size_t i = 0; i < uvs.size(); i++) {
-									uvs.write[i] = uv_val;
-								}
-							}
-						}
-					}
-				}
-
-				// Get vertex colors (displayColor primvar)
-				PackedColorArray colors;
-				tinyusdz::GeomPrimvar color_primvar;
-				if (usd_mesh->get_primvar("displayColor", &color_primvar, &err)) {
-					std::vector<tinyusdz::value::color3f> usd_colors;
-					if (color_primvar.get_value(&usd_colors)) {
-						tinyusdz::Interpolation interp = tinyusdz::Interpolation::Vertex; // Default
-						if (color_primvar.has_interpolation()) {
-							interp = color_primvar.get_interpolation();
-						}
-						if (interp == tinyusdz::Interpolation::Vertex || interp == tinyusdz::Interpolation::Varying) {
-							// Per-vertex colors
-							colors.resize(usd_colors.size());
-							for (size_t i = 0; i < usd_colors.size(); i++) {
-								colors.write[i] = Color(usd_colors[i][0], usd_colors[i][1], usd_colors[i][2]);
-							}
-						} else if (interp == tinyusdz::Interpolation::FaceVarying) {
-							// Per-face-vertex colors
-							colors.resize(face_vertex_indices.size());
-							for (size_t i = 0; i < face_vertex_indices.size() && i < usd_colors.size(); i++) {
-								colors.write[i] = Color(usd_colors[i][0], usd_colors[i][1], usd_colors[i][2]);
-							}
-						} else {
-							// Constant or uniform - use first value for all
-							if (usd_colors.size() > 0) {
-								Color color_val(usd_colors[0][0], usd_colors[0][1], usd_colors[0][2]);
-								colors.resize(vertices.size());
-								for (size_t i = 0; i < colors.size(); i++) {
-									colors.write[i] = color_val;
-								}
-							}
-						}
-					}
-				}
-
-				// Build surface arrays
-				Array surface_arrays;
-				surface_arrays.resize(Mesh::ARRAY_MAX);
-				surface_arrays[Mesh::ARRAY_VERTEX] = vertices;
-				if (indices.size() > 0) {
-					surface_arrays[Mesh::ARRAY_INDEX] = indices;
-				}
-				if (normals.size() > 0) {
-					surface_arrays[Mesh::ARRAY_NORMAL] = normals;
-				}
-				if (uvs.size() > 0) {
-					surface_arrays[Mesh::ARRAY_TEX_UV] = uvs;
-				}
-				if (colors.size() > 0) {
-					surface_arrays[Mesh::ARRAY_COLOR] = colors;
-				}
-
-				// TODO: Parse blend shapes if available
-				// Design:
-				// 1. Check if GeomMesh has blendShapeTargets relationship (GeomMesh::blendShapeTargets)
-				// 2. Check if GeomMesh has blendShapes attribute (GeomMesh::blendShapes) - list of blend shape names
-				// 3. For each blend shape target path:
-				//    a. Find the BlendShape prim using stage.GetPrimAtPath() or recursive search
-				//    b. Get BlendShape.offsets (vector3f[]) - vertex offsets
-				//    c. Get BlendShape.normalOffsets (vector3f[]) - normal offsets
-				//    d. Get BlendShape.pointIndices (int[]) - optional sparse indices
-				// 4. Convert USD offset-based blend shapes to Godot absolute positions:
-				//    - If pointIndices is empty: apply offsets[i] to base_vertices[i]
-				//    - If pointIndices exists: apply offsets[i] to base_vertices[pointIndices[i]]
-				// 5. Create Array for each blend shape with ARRAY_VERTEX and ARRAY_NORMAL
-				// 6. Add to morphs array and call import_mesh->add_blend_shape(name)
-				// Reference: tinyusdz::BlendShape struct in usdSkel.hh
-				Array morphs;
-				// TODO: Implement blend shape parsing
-				if (false) { // Placeholder
-					// Get blend shape targets
-					UsdRelationship blend_shape_targets_rel = skel_binding_api.GetBlendShapeTargetsRel();
-					VtTokenArray blend_shapes;
-					skel_binding_api.GetBlendShapesAttr().Get(&blend_shapes);
-					
-					SdfPathVector blend_shape_targets;
-					if (blend_shape_targets_rel.GetTargets(&blend_shape_targets) && !blend_shape_targets.empty()) {
-						import_mesh->set_blend_shape_mode(Mesh::BLEND_SHAPE_MODE_NORMALIZED);
-						
-						// Add blend shape names
-						for (size_t bs_i = 0; bs_i < blend_shapes.size() && bs_i < blend_shape_targets.size(); bs_i++) {
-							String bs_name = String(blend_shapes[bs_i].GetText());
-							if (bs_name.is_empty()) {
-								bs_name = String("morph_") + itos(bs_i);
-							}
-							import_mesh->add_blend_shape(bs_name);
-						}
-						
-						// Process each blend shape target
-						for (size_t bs_i = 0; bs_i < blend_shape_targets.size(); bs_i++) {
-							UsdSkelBlendShape blend_shape = UsdSkelBlendShape::Get(stage, blend_shape_targets[bs_i]);
-							if (!blend_shape) {
-								continue;
-							}
-							
-							// Get offsets
-							VtVec3fArray offsets;
-							VtVec3fArray normal_offsets;
-							VtIntArray point_indices;
-							
-							blend_shape.GetOffsetsAttr().Get(&offsets);
-							blend_shape.GetNormalOffsetsAttr().Get(&normal_offsets);
-							blend_shape.GetPointIndicesAttr().Get(&point_indices);
-							
-							// Create blend shape array
-							Array array_copy;
-							array_copy.resize(Mesh::ARRAY_MAX);
-							
-							// Copy base arrays
-							for (int l = 0; l < Mesh::ARRAY_MAX; l++) {
-								array_copy[l] = surface_arrays[l];
-							}
-							
-							// Apply offsets to vertices (USD stores offsets, Godot needs absolute positions)
-							if (!offsets.empty()) {
-								PackedVector3Array varr = surface_arrays[Mesh::ARRAY_VERTEX];
-								const Vector<Vector3> src_varr = varr;
-								
-								// Resize to match base mesh
-								varr.resize(src_varr.size());
-								
-								if (point_indices.empty()) {
-									// Apply to all points - USD offsets are per-point in order
-									for (size_t i = 0; i < offsets.size() && i < varr.size(); i++) {
-										varr.write[i] = src_varr[i] + _as_vec3(offsets[i]);
-									}
-									// Fill remaining with base values
-									for (size_t i = offsets.size(); i < varr.size(); i++) {
-										varr.write[i] = src_varr[i];
-									}
-								} else {
-									// Initialize with base values
-									for (size_t i = 0; i < varr.size(); i++) {
-										varr.write[i] = src_varr[i];
-									}
-									// Apply to specific point indices
-									for (size_t i = 0; i < point_indices.size() && i < offsets.size(); i++) {
-										int idx = point_indices[i];
-										if (idx >= 0 && idx < varr.size()) {
-											varr.write[idx] = src_varr[idx] + _as_vec3(offsets[i]);
-										}
-									}
-								}
-								array_copy[Mesh::ARRAY_VERTEX] = varr;
-							} else {
-								// No offsets, use base vertices
-								array_copy[Mesh::ARRAY_VERTEX] = surface_arrays[Mesh::ARRAY_VERTEX];
-							}
-							
-							// Apply normal offsets
-							if (!normal_offsets.empty()) {
-								PackedVector3Array narr;
-								if (surface_arrays[Mesh::ARRAY_NORMAL].get_type() == Variant::PACKED_VECTOR3_ARRAY) {
-									narr = surface_arrays[Mesh::ARRAY_NORMAL];
-								} else {
-									// Create empty normals array
-									narr.resize(vertices.size());
-								}
-								
-								if (narr.size() > 0) {
-									const Vector<Vector3> src_narr = narr;
-									
-									// Resize to match base mesh
-									narr.resize(src_narr.size());
-									
-									if (point_indices.empty()) {
-										// Apply to all normals
-										for (size_t i = 0; i < normal_offsets.size() && i < narr.size(); i++) {
-											narr.write[i] = src_narr[i] + _as_vec3(normal_offsets[i]);
-										}
-										// Fill remaining with base values
-										for (size_t i = normal_offsets.size(); i < narr.size(); i++) {
-											narr.write[i] = src_narr[i];
-										}
-									} else {
-										// Initialize with base values
-										for (size_t i = 0; i < narr.size(); i++) {
-											narr.write[i] = src_narr[i];
-										}
-										// Apply to specific point indices
-										for (size_t i = 0; i < point_indices.size() && i < normal_offsets.size(); i++) {
-											int idx = point_indices[i];
-											if (idx >= 0 && idx < narr.size()) {
-												narr.write[idx] = src_narr[idx] + _as_vec3(normal_offsets[i]);
-											}
-										}
-									}
-									array_copy[Mesh::ARRAY_NORMAL] = narr;
-								}
-							} else {
-								// No normal offsets, use base normals
-								if (surface_arrays[Mesh::ARRAY_NORMAL].get_type() == Variant::PACKED_VECTOR3_ARRAY) {
-									array_copy[Mesh::ARRAY_NORMAL] = surface_arrays[Mesh::ARRAY_NORMAL];
-								}
-							}
-							
-							// Enforce blend shape mask array format (only vertex and normal)
-							for (int l = 0; l < Mesh::ARRAY_MAX; l++) {
-								if (!(Mesh::ARRAY_FORMAT_BLEND_SHAPE_MASK & (1ULL << l))) {
-									array_copy[l] = Variant();
-								}
-							}
-							
-							morphs.push_back(array_copy);
-						}
-					}
-				}
-				
-				import_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, surface_arrays, morphs, Dictionary(), Ref<Material>());
-			} else {
-				WARN_PRINT(vformat("USD: Mesh '%s' has invalid face data, skipping", String(prim.element_name().c_str())));
-				continue;
+				index_offset += face_count;
 			}
-		} else {
-			WARN_PRINT(vformat("USD: Mesh '%s' has no face data, creating point cloud", String(prim.element_name().c_str())));
+
+			// Get normals if available (simplified - just per-vertex)
+			PackedVector3Array normals;
+			std::vector<tinyusdz::value::normal3f> usd_normals = usd_mesh->get_normals();
+			if (!usd_normals.empty() && usd_normals.size() == vertices.size()) {
+				normals.resize(usd_normals.size());
+				for (size_t i = 0; i < usd_normals.size(); i++) {
+					tinyusdz::value::float3 vec = {{usd_normals[i][0], usd_normals[i][1], usd_normals[i][2]}};
+					normals.write[i] = _as_vec3(vec);
+				}
+			}
+
+			// Build surface arrays (minimal: vertices, indices, normals only)
+			Array surface_arrays;
+			surface_arrays.resize(Mesh::ARRAY_MAX);
+			surface_arrays[Mesh::ARRAY_VERTEX] = vertices;
+			if (indices.size() > 0) {
+				surface_arrays[Mesh::ARRAY_INDEX] = indices;
+			}
+			if (normals.size() > 0) {
+				surface_arrays[Mesh::ARRAY_NORMAL] = normals;
+			}
+			
+			// Skip UVs, colors, blend shapes for minimum working subset
+			Array morphs;
+			import_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, surface_arrays, morphs, Dictionary(), Ref<Material>());
+		} else if (!vertices.is_empty()) {
 			// Create a point cloud if we have vertices but no faces
+			WARN_PRINT(vformat("USD: Mesh '%s' has no face data, creating point cloud", String(prim.element_name().c_str())));
 			Array surface_arrays;
 			surface_arrays.resize(Mesh::ARRAY_MAX);
 			surface_arrays[Mesh::ARRAY_VERTEX] = vertices;
 			import_mesh->add_surface(Mesh::PRIMITIVE_POINTS, surface_arrays, Array(), Dictionary(), Ref<Material>());
+		} else {
+			WARN_PRINT(vformat("USD: Mesh '%s' has no valid geometry, skipping", String(prim.element_name().c_str())));
+			continue;
 		}
 
 		if (import_mesh->get_surface_count() == 0) {
@@ -874,7 +748,7 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 		if (p_state->prim_path_to_node_index.has(prim_path_str)) {
 			GLTFNodeIndex node_index = p_state->prim_path_to_node_index[prim_path_str];
 			if (node_index >= 0 && node_index < p_state->nodes.size()) {
-				p_state->nodes[node_index]->mesh = mesh_index;
+				p_state->nodes[node_index]->set_mesh(mesh_index);
 			}
 		}
 
@@ -896,90 +770,13 @@ static void _collect_material_prims_recursive(const tinyusdz::Prim &prim, const 
 	}
 	
 	// Recursively process children
-	for (const auto &child : prim.primChildren()) {
+	for (const auto &child : prim.children()) {
 		_collect_material_prims_recursive(child, prim_path, material_prims);
 	}
 }
 
 Error USDDocument::_parse_materials(Ref<USDState> p_state) {
-	const tinyusdz::Stage &stage = p_state->get_stage();
-	
-	HashMap<String, GLTFMaterialIndex> material_path_to_index;
-	
-	// Collect all material prims
-	std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> material_prims;
-	tinyusdz::Path root_path = tinyusdz::Path::make_root_path();
-	
-	for (const auto &root_prim : stage.root_prims()) {
-		_collect_material_prims_recursive(root_prim, root_path, material_prims);
-	}
-	
-	// Parse materials
-	for (const auto &prim_path_pair : material_prims) {
-		const tinyusdz::Prim &prim = prim_path_pair.first;
-		const tinyusdz::Path &prim_path = prim_path_pair.second;
-		
-		if (!prim.is<tinyusdz::Material>()) {
-			continue;
-		}
-		
-		const tinyusdz::Material *material = prim.as<tinyusdz::Material>();
-		if (!material) {
-			continue;
-		}
-		
-		Ref<StandardMaterial3D> godot_material;
-		godot_material.instantiate();
-		godot_material->set_name(String(prim.element_name().c_str()));
-		godot_material->set_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
-		
-		GLTFMaterialIndex material_index = p_state->materials.size();
-		String prim_path_str = String(prim_path.prim_part().c_str());
-		material_path_to_index[prim_path_str] = material_index;
-		
-		// Get the surface output connection
-		// TODO: Follow surface connection to find shader
-		// For now, create a basic material
-		// TinyUSDZ's Material has a `surface` TypedConnection that points to a shader
-		// We need to follow this connection to get the UsdPreviewSurface shader
-		
-		// Placeholder: create default material
-		godot_material->set_albedo(Color(0.8, 0.8, 0.8));
-		godot_material->set_metallic(0.0);
-		godot_material->set_roughness(0.5);
-		
-		// TODO: Parse surface connection and UsdPreviewSurface shader inputs
-		// Design:
-		// 1. Get Material::surface (TypedConnection<value::token>) - this connects to a shader
-		// 2. Follow connection to find shader prim:
-		//    - material.surface.get_target_path() gives the path to the shader
-		//    - Use stage.GetPrimAtPath() or search recursively to find the prim
-		//    - Check if prim.is<tinyusdz::Shader>() and get shader.info_id
-		// 3. If info_id == "UsdPreviewSurface", cast to UsdPreviewSurface:
-		//    - Check if prim.value (value::Value) contains UsdPreviewSurface
-		//    - Use tydra::GetPreviewSurface() or manually extract from prim.value
-		// 4. Parse UsdPreviewSurface inputs:
-		//    - diffuseColor (color3f) -> set_albedo()
-		//    - metallic (float) -> set_metallic()
-		//    - roughness (float) -> set_roughness()
-		//    - emissiveColor (color3f) -> set_emission()
-		//    - opacity (float) -> set_transparency() if < 1.0
-		//    - normal (normal3f) -> may be connected to texture
-		// 5. For texture connections (e.g., diffuseColor connected to UsdUVTexture):
-		//    - Follow TypedConnection to find UsdUVTexture shader
-		//    - Get UsdUVTexture::file (AssetPath) attribute
-		//    - Resolve asset path and find/create texture in p_state->textures
-		//    - Assign texture to material using set_texture()
-		// 6. Handle UsdPrimvarReader nodes for UV coordinates and other primvars
-		// Reference: Material, Shader, UsdPreviewSurface, UsdUVTexture in usdShade.hh
-		// Note: TinyUSDZ uses value::Value type-erased storage, may need tydra API for evaluation
-		
-		p_state->materials.push_back(godot_material);
-		material_path_to_index[prim_path_str] = p_state->materials.size() - 1;
-	}
-
-	print_verbose("USD: Total materials: " + itos(p_state->materials.size()));
-
+	// Stubbed out for minimum working subset - skip material parsing
 	return OK;
 }
 
@@ -993,145 +790,13 @@ static void _collect_skeleton_prims_recursive(const tinyusdz::Prim &prim, const 
 	}
 	
 	// Recursively process children
-	for (const auto &child : prim.primChildren()) {
+	for (const auto &child : prim.children()) {
 		_collect_skeleton_prims_recursive(child, prim_path, skeleton_prims);
 	}
 }
 
 Error USDDocument::_parse_skins(Ref<USDState> p_state) {
-	const tinyusdz::Stage &stage = p_state->get_stage();
-	
-	HashMap<GLTFNodeIndex, bool> joint_mapping;
-	HashMap<String, GLTFSkeletonIndex> skeleton_path_to_index;
-	
-	// Collect all skeleton prims
-	std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> skeleton_prims;
-	tinyusdz::Path root_path = tinyusdz::Path::make_root_path();
-	
-	for (const auto &root_prim : stage.root_prims()) {
-		_collect_skeleton_prims_recursive(root_prim, root_path, skeleton_prims);
-	}
-	
-	// First pass: find all skeletons and create skeleton nodes
-	for (const auto &prim_path_pair : skeleton_prims) {
-		const tinyusdz::Prim &prim = prim_path_pair.first;
-		const tinyusdz::Path &prim_path = prim_path_pair.second;
-		
-		if (!prim.is<tinyusdz::Skeleton>()) {
-			continue;
-		}
-		
-		const tinyusdz::Skeleton *usd_skeleton = prim.as<tinyusdz::Skeleton>();
-		if (!usd_skeleton) {
-			continue;
-		}
-		
-		GLTFSkeletonIndex skeleton_index = p_state->skeletons.size();
-		String prim_path_str = String(prim_path.prim_part().c_str());
-		skeleton_path_to_index[prim_path_str] = skeleton_index;
-		
-		Ref<GLTFSkeleton> skeleton;
-		skeleton.instantiate();
-		skeleton->set_name(String(prim.element_name().c_str()));
-		
-		// TODO: Get joints - Need to evaluate TypedAttribute
-		// Design:
-		// 1. Use tydra::EvaluateTypedAttribute() or manually evaluate:
-		//    - Check if usd_skeleton->joints.has_value()
-		//    - Get default value: joints.get_default_value<std::vector<value::token>>()
-		//    - Or evaluate at specific time if timesampled
-		// 2. For each joint token, resolve to full path:
-		//    - Joint tokens are relative to skeleton prim
-		//    - Build full path: prim_path.AppendPrim(joint_token.str())
-		//    - Or use prim_path + "/" + joint_token.str()
-		// 3. Find corresponding GLTFNode by matching USD_prim_path
-		// 4. Add to skin->joints and mark node as joint
-		// Reference: TypedAttribute evaluation in tinyusdz, Skeleton struct in usdSkel.hh
-		std::vector<tinyusdz::value::token> joints;
-		if (usd_skeleton->joints.has_value()) {
-			// TODO: Evaluate attribute - see design above
-		}
-		
-		// TODO: Get bind transforms - Need to evaluate TypedAttribute
-		// Design: Similar to joints, evaluate bindTransforms attribute
-		// Convert each matrix4d to Transform3D using _as_xform()
-		// Store inverse bind matrices in skin->inverse_binds
-		std::vector<tinyusdz::value::matrix4d> bind_transforms;
-		if (usd_skeleton->bindTransforms.has_value()) {
-			// TODO: Evaluate attribute - see design above
-		}
-		
-		// TODO: Get rest transforms (if available) - Need to evaluate TypedAttribute
-		// Design: Similar to bind transforms, evaluate restTransforms attribute
-		// Store in node's additional_data as "GODOT_rest_transform"
-		std::vector<tinyusdz::value::matrix4d> rest_transforms;
-		if (usd_skeleton->restTransforms.has_value()) {
-			// TODO: Evaluate attribute - see design above
-		}
-			
-		// Create a skin for this skeleton
-		Ref<GLTFSkin> skin;
-		skin.instantiate();
-		skin->set_name(String(prim.element_name().c_str()) + "_skin");
-		
-		// Process joints
-		// TODO: Implement full joint processing once we can evaluate TypedAttributes
-		// For now, create empty skeleton/skin
-		// This will need to:
-		// 1. Evaluate joints attribute to get joint paths
-		// 2. Find corresponding nodes by path
-		// 3. Evaluate bindTransforms and restTransforms
-		// 4. Create skin with proper inverse bind matrices
-		
-		if (skin->joints.size() > 0) {
-			p_state->skins.push_back(skin);
-			skeleton->set_skin(p_state->skins.size() - 1);
-		}
-		
-		p_state->skeletons.push_back(skeleton);
-	}
-	
-	// TODO: Second pass: find skinned meshes and bind them to skeletons
-	// Design:
-	// 1. Iterate through all GeomMesh prims (reuse mesh collection from _parse_meshes)
-	// 2. Check GeomMesh::skeleton (Relationship) - points to Skeleton prim
-	// 3. Follow relationship to get skeleton path, look up in skeleton_path_to_index
-	// 4. Get joint influences from primvars:
-	//    - Get primvar "skel:jointIndices" (int[]) - joint indices per vertex
-	//    - Get primvar "skel:jointWeights" (float[]) - joint weights per vertex
-	//    - Use GeomMesh::get_primvar("skel:jointIndices") and get_primvar("skel:jointWeights")
-	// 5. Store joint indices/weights in mesh's additional_data or create GLTFSkin structure
-	// 6. Assign skin index to mesh node using p_state->nodes[node_index]->skin
-	// 7. For GLTF compatibility, may need to convert to GLTF skin format
-	// Reference: GeomMesh::skeleton, GeomPrimvar API in usdGeom.hh
-	
-	p_state->original_skin_indices = p_state->skin_indices.duplicate();
-	
-	// Use SkinTool to process skins
-	if (p_state->skins.size() > 0) {
-		Error err = SkinTool::_asset_parse_skins(
-				p_state->original_skin_indices,
-				p_state->skins.duplicate(),
-				p_state->nodes.duplicate(),
-				p_state->skin_indices,
-				p_state->skins,
-				joint_mapping);
-		if (err != OK) {
-			return err;
-		}
-		
-		for (int i = 0; i < p_state->skins.size(); ++i) {
-			Ref<GLTFSkin> skin = p_state->skins.write[i];
-			ERR_FAIL_COND_V(skin.is_null(), ERR_PARSE_ERROR);
-			// Expand and verify the skin
-			ERR_FAIL_COND_V(SkinTool::_expand_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
-			ERR_FAIL_COND_V(SkinTool::_verify_skin(p_state->nodes, skin), ERR_PARSE_ERROR);
-		}
-	}
-
-	print_verbose("USD: Total skins: " + itos(p_state->skins.size()));
-	print_verbose("USD: Total skeletons: " + itos(p_state->skeletons.size()));
-
+	// Stubbed out for minimum working subset - skip skeleton/skin parsing
 	return OK;
 }
 
@@ -1274,76 +939,6 @@ Error USDDocument::_parse_images(Ref<USDState> p_state, const String &p_base_pat
 	// For now, return OK (no textures parsed)
 	
 	print_verbose("USD: Total textures: " + itos(p_state->textures.size()));
-
-	return OK;
-}
-												if (resolved_path.is_empty()) {
-													resolved_path = String(asset_path.GetAssetPath().c_str());
-												}
-												if (!resolved_path.is_empty()) {
-													texture_paths.insert(resolved_path);
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Load images from collected paths
-	for (const String &texture_path : texture_paths) {
-		String path = texture_path;
-		// Use only filename for absolute paths to avoid portability issues.
-		if (path.is_absolute_path()) {
-			path = path.get_file();
-		}
-		if (!p_base_path.is_empty()) {
-			path = p_base_path.path_join(path);
-		}
-		path = path.simplify_path();
-
-		// Try to load as existing texture first
-		String base_dir = p_state->get_base_path();
-		Ref<Texture2D> texture = ResourceLoader::load(_get_texture_path(base_dir, path), "Texture2D");
-		if (texture.is_valid()) {
-			p_state->images.push_back(texture);
-			p_state->source_images.push_back(texture->get_image());
-			continue;
-		}
-
-		// Fallback to loading as byte array
-		Vector<uint8_t> data = FileAccess::get_file_as_bytes(path);
-		if (data.is_empty()) {
-			WARN_PRINT(vformat("USD: Image couldn't be loaded from path: %s. Skipping it.", path));
-			p_state->images.push_back(Ref<Texture2D>()); // Placeholder to keep count.
-			p_state->source_images.push_back(Ref<Image>());
-			continue;
-		}
-
-		// Parse the image data from bytes into an Image resource and save if needed.
-		String file_extension = path.get_extension();
-		Ref<Image> img = _parse_image_bytes_into_image(p_state, data, path, p_state->images.size());
-		img->set_name(path.get_file().get_basename());
-		GLTFImageIndex image_index = _parse_image_save_image(p_state, data, file_extension, p_state->images.size(), img);
-		if (image_index >= 0) {
-			// Image was added successfully
-		}
-	}
-
-	// Create a texture for each image
-	for (GLTFImageIndex i = 0; i < p_state->images.size(); i++) {
-		Ref<GLTFTexture> texture;
-		texture.instantiate();
-		texture->set_src_image(i);
-		p_state->textures.push_back(texture);
-	}
-
-	print_verbose("USD: Total images: " + itos(p_state->images.size()));
 
 	return OK;
 }

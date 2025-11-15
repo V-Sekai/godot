@@ -35,7 +35,10 @@
 
 // TODO: Update import helper to use TinyUSDZ (currently using GLTF-based import)
 // TinyUSDZ headers
+// Workaround for Texture name conflict: rename TinyUSDZ's Texture before including
+#define Texture TinyUSDZTexture
 #include "tinyusdz.hh"
+#undef Texture
 #include "prim-types.hh"
 #include "usdGeom.hh"
 #include "value-types.hh"

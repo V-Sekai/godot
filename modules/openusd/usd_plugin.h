@@ -35,7 +35,10 @@
 #include "editor/plugins/editor_plugin.h"
 
 // TinyUSDZ headers
+// Workaround for Texture name conflict: rename TinyUSDZ's Texture before including
+#define Texture TinyUSDZTexture
 #include "tinyusdz.hh"
+#undef Texture
 
 class USDDocument;
 class UsdExportSettings;
