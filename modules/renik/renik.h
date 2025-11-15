@@ -36,7 +36,7 @@
 #include "renik/renik_helper.h"
 #include "renik/renik_limb.h"
 #include "renik/renik_placement.h"
-#include "servers/physics_server_3d.h"
+#include "servers/physics_3d/physics_server_3d.h"
 #include <core/config/engine.h>
 #include <core/variant/variant.h>
 #include <scene/3d/skeleton_3d.h>
