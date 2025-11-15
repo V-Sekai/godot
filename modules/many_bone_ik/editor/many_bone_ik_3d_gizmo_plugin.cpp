@@ -247,9 +247,12 @@ void ManyBoneIK3DGizmoPlugin::create_gizmo_mesh(BoneId current_bone_idx, Ref<IKB
 	surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 	const int32_t MESH_CUSTOM_0 = 0;
 	surface_tool->set_custom_format(MESH_CUSTOM_0, SurfaceTool::CustomFormat::CUSTOM_RGBA_HALF);
+	// Convert LocalVector to Vector for SurfaceTool API
+	Vector<int> bones_vec = static_cast<Vector<int>>(bones);
+	Vector<float> weights_vec = static_cast<Vector<float>>(weights);
 	for (int32_t point_i = 0; point_i < points.size(); point_i++) {
-		surface_tool->set_bones(bones);
-		surface_tool->set_weights(weights);
+		surface_tool->set_bones(bones_vec);
+		surface_tool->set_weights(weights_vec);
 		Color c;
 		c.r = normals[point_i].x;
 		c.g = normals[point_i].y;

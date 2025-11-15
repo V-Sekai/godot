@@ -45,7 +45,7 @@
 #include "scene/main/timer.h"
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/surface_tool.h"
-#include "servers/display_server.h"
+#include "servers/display/display_server.h"
 
 class SceneImportSettingsData : public Object {
 	GDCLASS(SceneImportSettingsData, Object)
