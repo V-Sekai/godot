@@ -39,7 +39,7 @@
 #include "core/variant/array.h"
 #include "core/variant/dictionary.h"
 #include "scene/main/node.h"
-#include "servers/audio_server.h"
+#include "servers/audio/audio_server.h"
 
 #include "playback_stats.h"
 #include "servers/audio/effects/audio_stream_generator.h"
