@@ -35,30 +35,15 @@
 #include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_document.h"
 
-// USD headers
-#include <pxr/base/gf/matrix4d.h>
-#include <pxr/base/gf/matrix3d.h>
-#include <pxr/base/gf/vec3f.h>
-#include <pxr/base/gf/vec3d.h>
-#include <pxr/base/tf/token.h>
-#include <pxr/usd/sdf/path.h>
-#include <pxr/usd/usd/prim.h>
-#include <pxr/usd/usd/stage.h>
-#include <pxr/usd/usdGeom/mesh.h>
-#include <pxr/usd/usdGeom/xform.h>
-#include <pxr/usd/usdGeom/xformOp.h>
-#include <pxr/usd/usdGeom/camera.h>
-#include <pxr/usd/usdShade/material.h>
-#include <pxr/usd/usdLux/light.h>
-#include <pxr/usd/usdLux/shapingAPI.h>
-#include <pxr/usd/usdSkel/skeleton.h>
-#include <pxr/usd/usdSkel/bindingAPI.h>
-#include <pxr/usd/usdSkel/animation.h>
-#include <pxr/usd/usdSkel/blendShape.h>
-#include <pxr/base/gf/quatf.h>
-#include <pxr/base/gf/quath.h>
-
-PXR_NAMESPACE_USING_DIRECTIVE
+// TinyUSDZ headers
+#include "tinyusdz.hh"
+#include "prim-types.hh"
+#include "usdGeom.hh"
+#include "usdShade.hh"
+#include "usdLux.hh"
+#include "usdSkel.hh"
+#include "value-types.hh"
+#include "math-util.inc"
 
 class USDDocument : public GLTFDocument {
 	GDCLASS(USDDocument, GLTFDocument);
@@ -71,8 +56,8 @@ public:
 		TEXTURE_TYPE_NORMAL = 1,
 	};
 
-	static Transform3D _as_xform(const GfMatrix4d &p_mat);
-	static Vector3 _as_vec3(const GfVec3f &p_vector);
+	static Transform3D _as_xform(const tinyusdz::value::matrix4d &p_mat);
+	static Vector3 _as_vec3(const tinyusdz::value::float3 &p_vector);
 	static String _gen_unique_name(HashSet<String> &unique_names, const String &p_name);
 
 public:

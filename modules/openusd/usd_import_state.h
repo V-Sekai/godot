@@ -36,10 +36,12 @@
 #include "modules/gltf/structures/gltf_skin.h"
 #include "modules/gltf/structures/gltf_texture.h"
 
-// USD headers
-#include <pxr/usd/usd/stage.h>
+// TinyUSDZ headers
+#include "tinyusdz.hh"
 
-PXR_NAMESPACE_USING_DIRECTIVE
+namespace tinyusdz {
+	class Stage;
+}
 
 class USDState : public GLTFState {
 	GDCLASS(USDState, GLTFState);
@@ -47,8 +49,8 @@ class USDState : public GLTFState {
 	friend class SkinTool;
 	friend class GLTFSkin;
 
-	// USD stage reference
-	UsdStageRefPtr stage;
+	// TinyUSDZ stage reference
+	tinyusdz::Stage stage;
 
 	Vector<GLTFSkinIndex> skin_indices;
 	Vector<GLTFSkinIndex> original_skin_indices;
@@ -63,7 +65,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	UsdStageRefPtr get_stage() const { return stage; }
-	void set_stage(UsdStageRefPtr p_stage) { stage = p_stage; }
+	const tinyusdz::Stage &get_stage() const { return stage; }
+	tinyusdz::Stage &get_stage() { return stage; }
+	void set_stage(const tinyusdz::Stage &p_stage) { stage = p_stage; }
 };
 

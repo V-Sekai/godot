@@ -5,75 +5,42 @@ import os
 Import("env")
 Import("env_modules")
 
-# Check if USD is built (install directory exists)
-# If not, print a message directing user to run build_usd.sh
-usd_install_include = "#modules/openusd/thirdparty/install/include"
-usd_install_lib = "#modules/openusd/thirdparty/install/lib"
-usd_pxr_h = os.path.join(usd_install_include.replace("#", ""), "pxr", "pxr.h")
+# TinyUSDZ is a header-only library with some source files
+# Check if TinyUSDZ is available
+# Use SCons Dir() to resolve paths relative to SConstruct root
+tinyusdz_path = Dir("#modules/openusd/thirdparty/tinyusdz")
+tinyusdz_include = tinyusdz_path.Dir("src")
+tinyusdz_hh = tinyusdz_include.File("tinyusdz.hh")
 
-if not os.path.exists(usd_pxr_h):
+if not tinyusdz_hh.exists():
     print("")
     print("=" * 60)
-    print("WARNING: USD libraries not found.")
+    print("WARNING: TinyUSDZ not found.")
     print("=" * 60)
-    print("The openusd module requires USD to be built first.")
+    print("The openusd module requires TinyUSDZ to be available.")
     print("")
-    print("To build USD, run:")
-    print("  cd modules/openusd")
-    print("  ./build_usd.sh")
+    print("TinyUSDZ should be cloned via git subrepo:")
+    print("  cd /path/to/godot")
+    print("  git subrepo clone https://github.com/lighttransport/tinyusdz.git modules/openusd/thirdparty/tinyusdz -b release")
     print("")
-    print("This will build USD and its dependencies (oneTBB, OpenSubdiv).")
-    print("The build may take 10-30 minutes depending on your system.")
-    print("")
-    print("After USD is built, run 'scons' again to build Godot.")
     print("=" * 60)
     print("")
-    # Exit early - don't build this module if USD isn't available
+    # Exit early - don't build this module if TinyUSDZ isn't available
     Return()
 
 env_usd = env_modules.Clone()
 
-# Add USD include path for all source files
-usd_install_include = "#modules/openusd/thirdparty/install/include"
-env_usd.Prepend(CPPPATH=[usd_install_include])
-env_usd.Prepend(CPPEXTPATH=["thirdparty/install/include"])
-env_usd.Prepend(LIBPATH=["#modules/openusd/thirdparty/install/lib"])
-env_usd.Prepend(LIBS=[
-    "libtbb.dylib",
-    "libtbbmalloc.dylib",
-    "libtbbmalloc_proxy.dylib",
-    "libusd_usd.a",
-    "libusd_usdGeom.a",
-    "libusd_usdImaging.a",
-    "libusd_usdImagingGL.a",
-    "libusd_hd.a",
-    "libusd_hdSt.a",
-    "libusd_hdx.a",
-    "libusd_gf.a",
-    "libusd_sdf.a",
-    "libusd_tf.a",
-    "libusd_vt.a",
-    "libusd_ar.a",
-    "libusd_kind.a",
-    "libusd_pcp.a",
-    "libusd_plug.a",
-    "libusd_work.a",
-    "libusd_usdShade.a",
-    "libusd_usdLux.a",
-    "libusd_usdSkel.a",
-    "libusd_usdUtils.a",
-    "libusd_arch.a",
-    "libusd_garch.a",
-    "libusd_hio.a",
-    "libusd_ndr.a",
-    "libusd_sdr.a",
-    "libusd_trace.a"
-])
-
-# Also add to global env for any other dependencies
-env.Prepend(LIBPATH=["#modules/openusd/thirdparty/install/lib"])
+# Add TinyUSDZ include path for all source files
+env_usd.Prepend(CPPPATH=[tinyusdz_include.abspath])
+env_usd.Prepend(CPPEXTPATH=[tinyusdz_include.abspath])
 
 module_obj = []
+
+# TinyUSDZ is mostly header-only, but we need to compile some source files
+# Add TinyUSDZ source files to the build
+tinyusdz_src_path = tinyusdz_include
+env_usd.add_source_files(module_obj, Glob(os.path.join(tinyusdz_src_path.abspath, "*.cc")))
+env_usd.add_source_files(module_obj, Glob(os.path.join(tinyusdz_src_path.abspath, "*.cpp")))
 
 # Export source files
 env_usd.add_source_files(module_obj, "usd_document.cpp")

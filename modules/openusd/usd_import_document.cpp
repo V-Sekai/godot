@@ -62,59 +62,41 @@
 #define USD_IMPORT_DISCARD_MESHES_AND_MATERIALS 32
 #define USD_IMPORT_FORCE_DISABLE_MESH_COMPRESSION 64
 
-// USD headers
-#include <pxr/base/gf/matrix4d.h>
-#include <pxr/base/gf/matrix3d.h>
-#include <pxr/base/gf/vec3f.h>
-#include <pxr/base/gf/vec3d.h>
-#include <pxr/base/gf/vec2f.h>
-#include <pxr/base/tf/token.h>
-#include <pxr/base/vt/array.h>
-#include <pxr/base/vt/value.h>
-#include <pxr/base/vt/types.h>
-#include <pxr/usd/sdf/path.h>
-#include <pxr/usd/sdf/types.h>
-#include <pxr/usd/usd/prim.h>
-#include <pxr/usd/usd/stage.h>
-#include <pxr/usd/usdGeom/mesh.h>
-#include <pxr/usd/usdGeom/xform.h>
-#include <pxr/usd/usdGeom/xformOp.h>
-#include <pxr/usd/usdGeom/camera.h>
-#include <pxr/usd/usdGeom/primvar.h>
-#include <pxr/usd/usdGeom/primvarsAPI.h>
-#include <pxr/usd/usdShade/material.h>
-#include <pxr/usd/usdShade/materialBindingAPI.h>
-#include <pxr/usd/usdSkel/skeleton.h>
-#include <pxr/usd/usdSkel/bindingAPI.h>
+// TinyUSDZ is already included via usd_import_document.h
 
-PXR_NAMESPACE_USING_DIRECTIVE
-
-Transform3D USDDocument::_as_xform(const GfMatrix4d &p_mat) {
+Transform3D USDDocument::_as_xform(const tinyusdz::value::matrix4d &p_mat) {
 	Transform3D result;
 	
-	// Extract translation
-	GfVec3d translation = p_mat.ExtractTranslation();
-	result.origin = Vector3(translation[0], translation[1], translation[2]);
+	// TinyUSDZ matrix4d is a 4x4 matrix stored as array[16]
+	// Format: column-major order
+	// [0  4  8  12]
+	// [1  5  9  13]
+	// [2  6  10 14]
+	// [3  7  11 15]
 	
-	// Extract rotation and scale
-	GfMatrix3d rot_scale = p_mat.ExtractRotationMatrix();
-	GfVec3d scale = p_mat.ExtractScale();
+	// Extract translation (last column)
+	result.origin = Vector3(
+		real_t(p_mat.m[12]),
+		real_t(p_mat.m[13]),
+		real_t(p_mat.m[14])
+	);
 	
-	// Build basis from rotation matrix and scale
+	// Extract rotation and scale from upper 3x3
 	Basis basis;
-	basis.set_column(0, Vector3(rot_scale[0][0] / scale[0], rot_scale[0][1] / scale[0], rot_scale[0][2] / scale[0]));
-	basis.set_column(1, Vector3(rot_scale[1][0] / scale[1], rot_scale[1][1] / scale[1], rot_scale[1][2] / scale[1]));
-	basis.set_column(2, Vector3(rot_scale[2][0] / scale[2], rot_scale[2][1] / scale[2], rot_scale[2][2] / scale[2]));
-	basis.orthonormalize();
+	basis.set_column(0, Vector3(real_t(p_mat.m[0]), real_t(p_mat.m[1]), real_t(p_mat.m[2])));
+	basis.set_column(1, Vector3(real_t(p_mat.m[4]), real_t(p_mat.m[5]), real_t(p_mat.m[6])));
+	basis.set_column(2, Vector3(real_t(p_mat.m[8]), real_t(p_mat.m[9]), real_t(p_mat.m[10])));
 	
-	// Apply scale
-	basis.scale(Vector3(scale[0], scale[1], scale[2]));
+	// Extract scale and normalize basis
+	Vector3 scale = basis.get_scale();
+	basis.orthonormalize();
+	basis.scale(scale);
 	result.basis = basis;
 	
 	return result;
 }
 
-Vector3 USDDocument::_as_vec3(const GfVec3f &p_vector) {
+Vector3 USDDocument::_as_vec3(const tinyusdz::value::float3 &p_vector) {
 	return Vector3(real_t(p_vector[0]), real_t(p_vector[1]), real_t(p_vector[2]));
 }
 
@@ -247,17 +229,31 @@ Error USDDocument::_parse(Ref<USDState> p_state, const String &p_path, const Str
 		return ERR_FILE_NOT_FOUND;
 	}
 
-	// Open USD stage
-	UsdStageRefPtr stage = UsdStage::Open(p_path.utf8().get_data());
-	if (!stage) {
-		ERR_PRINT("USD: Failed to open USD file: " + p_path);
-		ERR_PRINT("USD: This may be due to an invalid USD file or missing USD dependencies");
+	// Load USD stage using TinyUSDZ
+	tinyusdz::Stage stage;
+	std::string warn;
+	std::string err_msg;
+	
+	tinyusdz::USDLoadOptions options;
+	options.do_composition = false; // Don't do composition for now
+	
+	bool ret = tinyusdz::LoadUSDFromFile(p_path.utf8().get_data(), &stage, &warn, &err_msg, options);
+	
+	if (!ret) {
+		ERR_PRINT("USD: Failed to load USD file: " + p_path);
+		if (!err_msg.empty()) {
+			ERR_PRINT("USD: Error: " + String(err_msg.c_str()));
+		}
 		return ERR_FILE_CANT_OPEN;
 	}
 	
+	if (!warn.empty()) {
+		WARN_PRINT("USD: Warning: " + String(warn.c_str()));
+	}
+	
 	// Validate stage
-	if (!stage->GetRootLayer()) {
-		ERR_PRINT("USD: Stage has no root layer: " + p_path);
+	if (stage.root_prims().empty()) {
+		ERR_PRINT("USD: Stage has no root prims: " + p_path);
 		return ERR_FILE_CORRUPT;
 	}
 	
@@ -324,70 +320,84 @@ Error USDDocument::_parse(Ref<USDState> p_state, const String &p_path, const Str
 }
 
 Error USDDocument::_parse_scenes(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
+	// Get root prims
+	const auto &root_prims = stage.root_prims();
+	if (root_prims.empty()) {
 		return ERR_INVALID_DATA;
 	}
 
-	// Get default prim or root prim
-	UsdPrim default_prim = stage->GetDefaultPrim();
-	if (!default_prim.IsValid()) {
-		// Try to get root prims
-		UsdPrimRange range = stage->Traverse();
-		if (range.empty()) {
-			return ERR_INVALID_DATA;
-		}
-		default_prim = *range.begin();
-	}
-
-	if (default_prim.IsValid()) {
-		p_state->scene_name = String(default_prim.GetName().GetText());
+	// Use first root prim as scene name
+	const tinyusdz::Prim &first_prim = root_prims[0];
+	if (!first_prim.element_name().empty()) {
+		p_state->scene_name = String(first_prim.element_name().c_str());
 	}
 
 	return OK;
 }
 
-Error USDDocument::_parse_nodes(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		return ERR_INVALID_DATA;
+// Helper function to recursively collect all prims from TinyUSDZ stage
+static void _collect_prims_recursive(const tinyusdz::Prim &prim, const tinyusdz::Path &parent_path, 
+		std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> &all_prims) {
+	tinyusdz::Path prim_path = parent_path.AppendPrim(prim.element_name());
+	all_prims.push_back({prim, prim_path});
+	
+	// Recursively process children
+	for (const auto &child : prim.primChildren()) {
+		_collect_prims_recursive(child, prim_path, all_prims);
 	}
+}
 
-	HashMap<SdfPath, GLTFNodeIndex> path_to_node_index;
-	UsdPrimRange range = stage->Traverse();
+Error USDDocument::_parse_nodes(Ref<USDState> p_state) {
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
+	// Collect all prims recursively
+	std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> all_prims;
+	tinyusdz::Path root_path = tinyusdz::Path::make_root_path();
+	
+	for (const auto &root_prim : stage.root_prims()) {
+		_collect_prims_recursive(root_prim, root_path, all_prims);
+	}
+	
+	HashMap<String, GLTFNodeIndex> path_to_node_index;
 	
 	// First pass: create all nodes
-	for (UsdPrim prim : range) {
+	for (const auto &prim_path_pair : all_prims) {
+		const tinyusdz::Prim &prim = prim_path_pair.first;
+		const tinyusdz::Path &prim_path = prim_path_pair.second;
+		
 		Ref<GLTFNode> node;
 		node.instantiate();
 
 		// Set name
-		String prim_name = String(prim.GetName().GetText());
+		String prim_name = String(prim.element_name().c_str());
 		if (prim_name.is_empty()) {
-			prim_name = String(prim.GetPath().GetName().GetText());
+			prim_name = "node_" + itos(p_state->nodes.size());
 		}
 		node->set_name(prim_name);
 		node->set_original_name(prim_name);
 
-		// Get transform
-		UsdGeomXformable xformable(prim);
-		if (xformable) {
-			GfMatrix4d local_transform;
-			bool reset_xform_stack = false;
-			xformable.GetLocalTransformation(&local_transform, &reset_xform_stack);
-			node->transform = _as_xform(local_transform);
+		// Get transform from Xform if available
+		if (prim.is<tinyusdz::Xform>()) {
+			const tinyusdz::Xform *xform = prim.as<tinyusdz::Xform>();
+			if (xform) {
+				// TODO: Extract transform from Xform ops
+				// For now, use identity transform
+				node->transform = Transform3D();
+			}
+		} else {
+			node->transform = Transform3D();
 		}
 
 		// Check for mesh
-		UsdGeomMesh mesh(prim);
-		if (mesh) {
+		if (prim.is<tinyusdz::GeomMesh>()) {
 			// Will be set when parsing meshes
 			node->mesh = -1; // Placeholder, will be set in _parse_meshes
 		}
 
 		// Check for camera
-		UsdGeomCamera camera(prim);
-		if (camera) {
+		if (prim.is<tinyusdz::GeomCamera>()) {
 			// Will be set when parsing cameras
 			node->camera = -1; // Placeholder, will be set in _parse_cameras
 		}
@@ -395,11 +405,12 @@ Error USDDocument::_parse_nodes(Ref<USDState> p_state) {
 		// Store node
 		GLTFNodeIndex node_index = p_state->nodes.size();
 		p_state->nodes.push_back(node);
-		SdfPath prim_path = prim.GetPath();
-		path_to_node_index[prim_path] = node_index;
+		
+		// Store prim path as string for lookup
+		String prim_path_str = String(prim_path.prim_part().c_str());
+		path_to_node_index[prim_path_str] = node_index;
 		
 		// Store prim path in node's additional_data for later matching
-		String prim_path_str = String(prim_path.GetText());
 		node->set_additional_data("USD_prim_path", prim_path_str);
 		
 		// Cache in state for faster lookups
@@ -407,21 +418,23 @@ Error USDDocument::_parse_nodes(Ref<USDState> p_state) {
 	}
 
 	// Second pass: build hierarchy
-	for (UsdPrim prim : range) {
-		SdfPath prim_path = prim.GetPath();
-		if (!path_to_node_index.has(prim_path)) {
+	for (const auto &prim_path_pair : all_prims) {
+		const tinyusdz::Path &prim_path = prim_path_pair.second;
+		String prim_path_str = String(prim_path.prim_part().c_str());
+		
+		if (!path_to_node_index.has(prim_path_str)) {
 			continue;
 		}
 		
-		GLTFNodeIndex node_index = path_to_node_index[prim_path];
+		GLTFNodeIndex node_index = path_to_node_index[prim_path_str];
 		Ref<GLTFNode> node = p_state->nodes[node_index];
 
 		// Set parent
-		UsdPrim parent_prim = prim.GetParent();
-		if (parent_prim && parent_prim != stage->GetPseudoRoot()) {
-			SdfPath parent_path = parent_prim.GetPath();
-			if (path_to_node_index.has(parent_path)) {
-				GLTFNodeIndex parent_index = path_to_node_index[parent_path];
+		tinyusdz::Path parent_path = prim_path.GetParentPath();
+		if (parent_path.is_valid() && !parent_path.is_root_path()) {
+			String parent_path_str = String(parent_path.prim_part().c_str());
+			if (path_to_node_index.has(parent_path_str)) {
+				GLTFNodeIndex parent_index = path_to_node_index[parent_path_str];
 				node->parent = parent_index;
 				p_state->nodes[parent_index]->children.push_back(node_index);
 			}
@@ -434,14 +447,25 @@ Error USDDocument::_parse_nodes(Ref<USDState> p_state) {
 	return OK;
 }
 
-Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		ERR_PRINT("USD: Invalid stage in _parse_meshes");
-		return ERR_INVALID_DATA;
+// Helper to recursively find all mesh prims
+static void _collect_mesh_prims_recursive(const tinyusdz::Prim &prim, const tinyusdz::Path &parent_path,
+		std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> &mesh_prims) {
+	tinyusdz::Path prim_path = parent_path.AppendPrim(prim.element_name());
+	
+	if (prim.is<tinyusdz::GeomMesh>()) {
+		mesh_prims.push_back({prim, prim_path});
 	}
+	
+	// Recursively process children
+	for (const auto &child : prim.primChildren()) {
+		_collect_mesh_prims_recursive(child, prim_path, mesh_prims);
+	}
+}
 
-	HashMap<SdfPath, GLTFMeshIndex> path_to_mesh_index;
+Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
+	HashMap<String, GLTFMeshIndex> path_to_mesh_index;
 	
 	// Build material path to index map for faster lookup
 	HashMap<String, GLTFMaterialIndex> material_name_to_index;
@@ -452,11 +476,25 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 		}
 	}
 	
+	// Collect all mesh prims
+	std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> mesh_prims;
+	tinyusdz::Path root_path = tinyusdz::Path::make_root_path();
+	
+	for (const auto &root_prim : stage.root_prims()) {
+		_collect_mesh_prims_recursive(root_prim, root_path, mesh_prims);
+	}
+	
 	// Parse meshes
 	GLTFMeshIndex mesh_index = 0;
-	UsdPrimRange range = stage->Traverse();
-	for (UsdPrim prim : range) {
-		UsdGeomMesh usd_mesh(prim);
+	for (const auto &prim_path_pair : mesh_prims) {
+		const tinyusdz::Prim &prim = prim_path_pair.first;
+		const tinyusdz::Path &prim_path = prim_path_pair.second;
+		
+		if (!prim.is<tinyusdz::GeomMesh>()) {
+			continue;
+		}
+		
+		const tinyusdz::GeomMesh *usd_mesh = prim.as<tinyusdz::GeomMesh>();
 		if (!usd_mesh) {
 			continue;
 		}
@@ -466,46 +504,40 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 
 		Ref<ImporterMesh> import_mesh;
 		import_mesh.instantiate();
-		String mesh_name = String(prim.GetName().GetText());
+		String mesh_name = String(prim.element_name().c_str());
 		if (mesh_name.is_empty()) {
 			mesh_name = "mesh_" + itos(mesh_index);
 		}
 		import_mesh->set_name(_gen_unique_name(p_state->unique_mesh_names, mesh_name));
 
 		// Get points (vertices)
-		UsdAttribute points_attr = usd_mesh.GetPointsAttr();
-		VtArray<GfVec3f> points;
-		if (!points_attr || !points_attr.Get(&points) || points.empty()) {
-			WARN_PRINT(vformat("USD: Mesh '%s' has no points, skipping", String(prim.GetName().GetText())));
+		std::vector<tinyusdz::value::point3f> points = usd_mesh->get_points();
+		if (points.empty()) {
+			WARN_PRINT(vformat("USD: Mesh '%s' has no points, skipping", String(prim.element_name().c_str())));
 			continue;
 		}
 
 		PackedVector3Array vertices;
 		vertices.resize(points.size());
 		for (size_t i = 0; i < points.size(); i++) {
-			vertices.write[i] = _as_vec3(points[i]);
+			vertices.write[i] = _as_vec3(tinyusdz::value::float3(points[i][0], points[i][1], points[i][2]));
 		}
 
 		// Check for subdivision surfaces
-		TfToken subdivision_scheme;
-		usd_mesh.GetSubdivisionSchemeAttr().Get(&subdivision_scheme);
-		if (subdivision_scheme != UsdGeomTokens->none && subdivision_scheme != TfToken()) {
-			WARN_PRINT(vformat("USD: Mesh '%s' uses subdivision scheme '%s'. Subdivision surfaces are not fully supported - importing control cage only.", 
-				String(prim.GetName().GetText()), String(subdivision_scheme.GetText())));
-			// TODO: Implement subdivision surface tessellation
-			// For now, we'll import the control cage as-is
+		if (usd_mesh->subdivisionScheme.has_value()) {
+			std::string scheme = usd_mesh->subdivisionScheme.value().str();
+			if (scheme != "none" && !scheme.empty()) {
+				WARN_PRINT(vformat("USD: Mesh '%s' uses subdivision scheme '%s'. Subdivision surfaces are not fully supported - importing control cage only.", 
+					String(prim.element_name().c_str()), String(scheme.c_str())));
+				// TODO: Implement subdivision surface tessellation
+			}
 		}
 
-		// Get face vertex indices
-		UsdAttribute face_vertex_indices_attr = usd_mesh.GetFaceVertexIndicesAttr();
-		UsdAttribute face_vertex_counts_attr = usd_mesh.GetFaceVertexCountsAttr();
+		// Get face vertex indices and counts
+		std::vector<int32_t> face_vertex_indices = usd_mesh->get_faceVertexIndices();
+		std::vector<int32_t> face_vertex_counts = usd_mesh->get_faceVertexCounts();
 		
-		VtArray<int> face_vertex_indices;
-		VtArray<int> face_vertex_counts;
-		
-		if (face_vertex_indices_attr && face_vertex_indices_attr.Get(&face_vertex_indices) &&
-			face_vertex_counts_attr && face_vertex_counts_attr.Get(&face_vertex_counts) &&
-			!face_vertex_indices.empty() && !face_vertex_counts.empty()) {
+		if (!face_vertex_indices.empty() && !face_vertex_counts.empty()) {
 				
 				// Build index array for triangles
 				PackedInt32Array indices;
@@ -525,41 +557,42 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 
 				// Get normals if available
 				PackedVector3Array normals;
-				UsdAttribute normals_attr = usd_mesh.GetNormalsAttr();
-				VtArray<GfVec3f> usd_normals;
-				if (normals_attr && normals_attr.Get(&usd_normals)) {
+				std::vector<tinyusdz::value::normal3f> usd_normals = usd_mesh->get_normals();
+				if (!usd_normals.empty()) {
 					normals.resize(usd_normals.size());
 					for (size_t i = 0; i < usd_normals.size(); i++) {
-						normals.write[i] = _as_vec3(usd_normals[i]);
+						normals.write[i] = _as_vec3(tinyusdz::value::float3(usd_normals[i][0], usd_normals[i][1], usd_normals[i][2]));
 					}
 				}
 
 				// Get UVs - try standard "st" first, then check for other UV sets
 				PackedVector2Array uvs;
-				UsdGeomPrimvarsAPI primvars_api(usd_mesh);
+				tinyusdz::GeomPrimvar uv_primvar;
+				std::string err;
 				
 				// Try standard "st" primvar
-				UsdGeomPrimvar uv_primvar = usd_mesh.GetPrimvar(TfToken("st"));
-				if (!uv_primvar) {
+				if (!usd_mesh->get_primvar("st", &uv_primvar, &err)) {
 					// Try alternative names
-					uv_primvar = usd_mesh.GetPrimvar(TfToken("uv"));
-					if (!uv_primvar) {
-						uv_primvar = usd_mesh.GetPrimvar(TfToken("map1"));
+					if (!usd_mesh->get_primvar("uv", &uv_primvar, &err)) {
+						usd_mesh->get_primvar("map1", &uv_primvar, &err);
 					}
 				}
 				
-				if (uv_primvar) {
-					VtArray<GfVec2f> usd_uvs;
-					if (uv_primvar.Get(&usd_uvs)) {
+				if (uv_primvar.has_value()) {
+					std::vector<tinyusdz::value::float2> usd_uvs;
+					if (uv_primvar.get_value(&usd_uvs)) {
 						// Handle different interpolation modes
-						TfToken interp = uv_primvar.GetInterpolation();
-						if (interp == UsdGeomTokens->vertex || interp == UsdGeomTokens->varying) {
+						tinyusdz::Interpolation interp = tinyusdz::Interpolation::Vertex; // Default
+						if (uv_primvar.has_interpolation()) {
+							interp = uv_primvar.get_interpolation();
+						}
+						if (interp == tinyusdz::Interpolation::Vertex || interp == tinyusdz::Interpolation::Varying) {
 							// Per-vertex UVs - map directly
 							uvs.resize(usd_uvs.size());
 							for (size_t i = 0; i < usd_uvs.size(); i++) {
 								uvs.write[i] = Vector2(usd_uvs[i][0], 1.0f - usd_uvs[i][1]); // Flip V coordinate
 							}
-						} else if (interp == UsdGeomTokens->faceVarying) {
+						} else if (interp == tinyusdz::Interpolation::FaceVarying) {
 							// Per-face-vertex UVs - need to map through face vertex indices
 							uvs.resize(face_vertex_indices.size());
 							for (size_t i = 0; i < face_vertex_indices.size() && i < usd_uvs.size(); i++) {
@@ -580,18 +613,21 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 
 				// Get vertex colors (displayColor primvar)
 				PackedColorArray colors;
-				UsdGeomPrimvar color_primvar = usd_mesh.GetPrimvar(TfToken("displayColor"));
-				if (color_primvar) {
-					VtArray<GfVec3f> usd_colors;
-					if (color_primvar.Get(&usd_colors)) {
-						TfToken interp = color_primvar.GetInterpolation();
-						if (interp == UsdGeomTokens->vertex || interp == UsdGeomTokens->varying) {
+				tinyusdz::GeomPrimvar color_primvar;
+				if (usd_mesh->get_primvar("displayColor", &color_primvar, &err)) {
+					std::vector<tinyusdz::value::color3f> usd_colors;
+					if (color_primvar.get_value(&usd_colors)) {
+						tinyusdz::Interpolation interp = tinyusdz::Interpolation::Vertex; // Default
+						if (color_primvar.has_interpolation()) {
+							interp = color_primvar.get_interpolation();
+						}
+						if (interp == tinyusdz::Interpolation::Vertex || interp == tinyusdz::Interpolation::Varying) {
 							// Per-vertex colors
 							colors.resize(usd_colors.size());
 							for (size_t i = 0; i < usd_colors.size(); i++) {
 								colors.write[i] = Color(usd_colors[i][0], usd_colors[i][1], usd_colors[i][2]);
 							}
-						} else if (interp == UsdGeomTokens->faceVarying) {
+						} else if (interp == tinyusdz::Interpolation::FaceVarying) {
 							// Per-face-vertex colors
 							colors.resize(face_vertex_indices.size());
 							for (size_t i = 0; i < face_vertex_indices.size() && i < usd_colors.size(); i++) {
@@ -627,10 +663,24 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 					surface_arrays[Mesh::ARRAY_COLOR] = colors;
 				}
 
-				// Parse blend shapes if available
+				// TODO: Parse blend shapes if available
+				// Design:
+				// 1. Check if GeomMesh has blendShapeTargets relationship (GeomMesh::blendShapeTargets)
+				// 2. Check if GeomMesh has blendShapes attribute (GeomMesh::blendShapes) - list of blend shape names
+				// 3. For each blend shape target path:
+				//    a. Find the BlendShape prim using stage.GetPrimAtPath() or recursive search
+				//    b. Get BlendShape.offsets (vector3f[]) - vertex offsets
+				//    c. Get BlendShape.normalOffsets (vector3f[]) - normal offsets
+				//    d. Get BlendShape.pointIndices (int[]) - optional sparse indices
+				// 4. Convert USD offset-based blend shapes to Godot absolute positions:
+				//    - If pointIndices is empty: apply offsets[i] to base_vertices[i]
+				//    - If pointIndices exists: apply offsets[i] to base_vertices[pointIndices[i]]
+				// 5. Create Array for each blend shape with ARRAY_VERTEX and ARRAY_NORMAL
+				// 6. Add to morphs array and call import_mesh->add_blend_shape(name)
+				// Reference: tinyusdz::BlendShape struct in usdSkel.hh
 				Array morphs;
-				UsdSkelBindingAPI skel_binding_api(prim);
-				if (skel_binding_api) {
+				// TODO: Implement blend shape parsing
+				if (false) { // Placeholder
 					// Get blend shape targets
 					UsdRelationship blend_shape_targets_rel = skel_binding_api.GetBlendShapeTargetsRel();
 					VtTokenArray blend_shapes;
@@ -771,11 +821,11 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 				
 				import_mesh->add_surface(Mesh::PRIMITIVE_TRIANGLES, surface_arrays, morphs, Dictionary(), Ref<Material>());
 			} else {
-				WARN_PRINT(vformat("USD: Mesh '%s' has invalid face data, skipping", String(prim.GetName().GetText())));
+				WARN_PRINT(vformat("USD: Mesh '%s' has invalid face data, skipping", String(prim.element_name().c_str())));
 				continue;
 			}
 		} else {
-			WARN_PRINT(vformat("USD: Mesh '%s' has no face data, creating point cloud", String(prim.GetName().GetText())));
+			WARN_PRINT(vformat("USD: Mesh '%s' has no face data, creating point cloud", String(prim.element_name().c_str())));
 			// Create a point cloud if we have vertices but no faces
 			Array surface_arrays;
 			surface_arrays.resize(Mesh::ARRAY_MAX);
@@ -784,55 +834,29 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 		}
 
 		if (import_mesh->get_surface_count() == 0) {
-			WARN_PRINT(vformat("USD: Mesh '%s' has no surfaces, skipping", String(prim.GetName().GetText())));
+			WARN_PRINT(vformat("USD: Mesh '%s' has no surfaces, skipping", String(prim.element_name().c_str())));
 			continue;
 		}
 
-		// Get material binding and assign to mesh
-		UsdShadeMaterialBindingAPI binding_api(prim);
-		UsdShadeMaterial bound_material = binding_api.ComputeBoundMaterial();
-		if (!bound_material) {
-			// Try legacy binding
-			UsdRelationship mat_rel = prim.GetRelationship(TfToken("material:binding"));
-			if (mat_rel) {
-				SdfPathVector targets;
-				if (mat_rel.GetTargets(&targets) && !targets.empty()) {
-					bound_material = UsdShadeMaterial::Get(stage, targets[0]);
-				}
-			}
-		}
+		// TODO: Get material binding and assign to mesh
+		// Design:
+		// 1. Check GPrim::materialBinding (Relationship) - this is the primary binding
+		// 2. Also check GPrim::materialBindingPreview and GPrim::materialBindingFull for purpose-specific bindings
+		// 3. Follow the relationship target path to find the Material prim:
+		//    - Use stage.GetPrimAtPath() or search recursively
+		//    - Verify it's a Material prim using prim.is<tinyusdz::Material>()
+		// 4. Once we have the Material, look it up in material_path_to_index map
+		// 5. Assign material to mesh using gltf_mesh->set_instance_materials()
+		// 6. For multi-surface meshes, may need to check GeomSubset prims for per-face material assignments
+		// Reference: GPrim::MaterialBinding mixin in usdGeom.hh, Material struct in usdShade.hh
+		// For now, skip material binding - will be implemented later
 		
-		// Match material to mesh using material path (use cached map for faster lookup)
-		if (bound_material) {
-			String material_name = String(bound_material.GetPrim().GetName().GetText());
-			if (material_name_to_index.has(material_name)) {
-				GLTFMaterialIndex mat_i = material_name_to_index[material_name];
-				Ref<Material> mat = p_state->materials[mat_i];
-				if (mat.is_valid()) {
-					// Assign material to mesh using instance_materials
-					TypedArray<Material> instance_materials = gltf_mesh->get_instance_materials();
-					if (instance_materials.is_empty()) {
-						// Initialize with null materials for all surfaces
-						for (int surf_i = 0; surf_i < import_mesh->get_surface_count(); surf_i++) {
-							instance_materials.append(Ref<Material>());
-						}
-					}
-					// Assign material to first surface (USD typically has one material per mesh)
-					if (instance_materials.size() > 0) {
-						instance_materials[0] = mat;
-					}
-					gltf_mesh->set_instance_materials(instance_materials);
-				}
-			}
-		}
-
 		gltf_mesh->set_mesh(import_mesh);
 		p_state->meshes.push_back(gltf_mesh);
-		path_to_mesh_index[prim.GetPath()] = mesh_index;
+		String prim_path_str = String(prim_path.prim_part().c_str());
+		path_to_mesh_index[prim_path_str] = mesh_index;
 
 		// Find corresponding node and set mesh index using cached mapping
-		SdfPath prim_path = prim.GetPath();
-		String prim_path_str = String(prim_path.GetText());
 		
 		if (p_state->prim_path_to_node_index.has(prim_path_str)) {
 			GLTFNodeIndex node_index = p_state->prim_path_to_node_index[prim_path_str];
@@ -849,202 +873,96 @@ Error USDDocument::_parse_meshes(Ref<USDState> p_state) {
 	return OK;
 }
 
-Error USDDocument::_parse_materials(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		ERR_PRINT("USD: Invalid stage in _parse_materials");
-		return ERR_INVALID_DATA;
-	}
-
-	HashMap<SdfPath, GLTFMaterialIndex> material_path_to_index;
+// Helper to recursively find all material prims
+static void _collect_material_prims_recursive(const tinyusdz::Prim &prim, const tinyusdz::Path &parent_path,
+		std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> &material_prims) {
+	tinyusdz::Path prim_path = parent_path.AppendPrim(prim.element_name());
 	
-	// First pass: collect all materials
-	UsdPrimRange range = stage->Traverse();
-	for (UsdPrim prim : range) {
-		UsdShadeMaterial material(prim);
-		if (material) {
-			Ref<StandardMaterial3D> godot_material;
-			godot_material.instantiate();
-			godot_material->set_name(String(prim.GetName().GetText()));
-			godot_material->set_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
-			
-			GLTFMaterialIndex material_index = p_state->materials.size();
-			material_path_to_index[prim.GetPath()] = material_index;
-			
-			// Get the surface output
-			UsdShadeOutput surface_output = material.GetSurfaceOutput();
-			if (surface_output) {
-				// Get connected shader
-				UsdShadeConnectableAPI source;
-				TfToken source_name;
-				UsdShadeAttributeType source_type;
-				if (surface_output.GetConnectedSource(&source, &source_name, &source_type)) {
-					UsdShadeShader surface_shader = UsdShadeShader::Get(stage, source.GetPath());
-					if (surface_shader) {
-						TfToken id;
-						if (surface_shader.GetIdAttr().Get(&id) && id == TfToken("UsdPreviewSurface")) {
-							// Parse baseColor (albedo)
-							UsdShadeInput base_color_input = surface_shader.GetInput(TfToken("diffuseColor"));
-							if (!base_color_input) {
-								base_color_input = surface_shader.GetInput(TfToken("baseColor"));
-							}
-							if (base_color_input) {
-								// Check if connected to texture
-								UsdShadeConnectableAPI texture_source;
-								TfToken texture_source_name;
-								UsdShadeAttributeType texture_source_type;
-								if (base_color_input.GetConnectedSource(&texture_source, &texture_source_name, &texture_source_type)) {
-									UsdShadeShader texture_shader = UsdShadeShader::Get(stage, texture_source.GetPath());
-									if (texture_shader) {
-										TfToken texture_id;
-										if (texture_shader.GetIdAttr().Get(&texture_id) && texture_id == TfToken("UsdUVTexture")) {
-											UsdShadeInput file_input = texture_shader.GetInput(TfToken("file"));
-											if (file_input) {
-												SdfAssetPath asset_path;
-												if (file_input.Get(&asset_path)) {
-													String texture_path = String(asset_path.GetResolvedPath().c_str());
-													if (texture_path.is_empty()) {
-														texture_path = String(asset_path.GetAssetPath().c_str());
-													}
-													// Find texture index
-													for (GLTFTextureIndex tex_i = 0; tex_i < p_state->textures.size(); tex_i++) {
-														// Match by path - we'd need to store paths, for now use simple matching
-														Ref<Texture2D> tex = _get_texture(p_state, tex_i, TEXTURE_TYPE_GENERIC);
-														if (tex.is_valid() && tex->get_path().contains(texture_path.get_file())) {
-															godot_material->set_texture(BaseMaterial3D::TEXTURE_ALBEDO, tex);
-															break;
-														}
-													}
-												}
-											}
-										}
-									}
-								} else {
-									// Get color value directly
-									GfVec3f color_value;
-									if (base_color_input.Get(&color_value)) {
-										Color albedo(color_value[0], color_value[1], color_value[2]);
-										godot_material->set_albedo(albedo.linear_to_srgb());
-									}
-								}
-							}
-							
-							// Parse metallic
-							UsdShadeInput metallic_input = surface_shader.GetInput(TfToken("metallic"));
-							if (metallic_input) {
-								float metallic_value;
-								if (metallic_input.Get(&metallic_value)) {
-									godot_material->set_metallic(metallic_value);
-								}
-							}
-							
-							// Parse roughness
-							UsdShadeInput roughness_input = surface_shader.GetInput(TfToken("roughness"));
-							if (roughness_input) {
-								float roughness_value;
-								if (roughness_input.Get(&roughness_value)) {
-									godot_material->set_roughness(roughness_value);
-								}
-							}
-							
-							// Parse normal map
-							UsdShadeInput normal_input = surface_shader.GetInput(TfToken("normal"));
-							if (normal_input) {
-								UsdShadeConnectableAPI normal_source;
-								TfToken normal_source_name;
-								UsdShadeAttributeType normal_source_type;
-								if (normal_input.GetConnectedSource(&normal_source, &normal_source_name, &normal_source_type)) {
-									UsdShadeShader normal_shader = UsdShadeShader::Get(stage, normal_source.GetPath());
-									if (normal_shader) {
-										TfToken normal_id;
-										if (normal_shader.GetIdAttr().Get(&normal_id) && normal_id == TfToken("UsdUVTexture")) {
-											UsdShadeInput file_input = normal_shader.GetInput(TfToken("file"));
-											if (file_input) {
-												SdfAssetPath asset_path;
-												if (file_input.Get(&asset_path)) {
-													String texture_path = String(asset_path.GetResolvedPath().c_str());
-													if (texture_path.is_empty()) {
-														texture_path = String(asset_path.GetAssetPath().c_str());
-													}
-													// Find texture index
-													for (GLTFTextureIndex tex_i = 0; tex_i < p_state->textures.size(); tex_i++) {
-														Ref<Texture2D> tex = _get_texture(p_state, tex_i, TEXTURE_TYPE_NORMAL);
-														if (tex.is_valid() && tex->get_path().contains(texture_path.get_file())) {
-															godot_material->set_texture(BaseMaterial3D::TEXTURE_NORMAL, tex);
-															godot_material->set_feature(BaseMaterial3D::FEATURE_NORMAL_MAPPING, true);
-															break;
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-							
-							// Parse emissive
-							UsdShadeInput emissive_input = surface_shader.GetInput(TfToken("emissiveColor"));
-							if (emissive_input) {
-								UsdShadeConnectableAPI emissive_source;
-								TfToken emissive_source_name;
-								UsdShadeAttributeType emissive_source_type;
-								if (emissive_input.GetConnectedSource(&emissive_source, &emissive_source_name, &emissive_source_type)) {
-									UsdShadeShader emissive_shader = UsdShadeShader::Get(stage, emissive_source.GetPath());
-									if (emissive_shader) {
-										TfToken emissive_id;
-										if (emissive_shader.GetIdAttr().Get(&emissive_id) && emissive_id == TfToken("UsdUVTexture")) {
-											UsdShadeInput file_input = emissive_shader.GetInput(TfToken("file"));
-											if (file_input) {
-												SdfAssetPath asset_path;
-												if (file_input.Get(&asset_path)) {
-													String texture_path = String(asset_path.GetResolvedPath().c_str());
-													if (texture_path.is_empty()) {
-														texture_path = String(asset_path.GetAssetPath().c_str());
-													}
-													// Find texture index
-													for (GLTFTextureIndex tex_i = 0; tex_i < p_state->textures.size(); tex_i++) {
-														Ref<Texture2D> tex = _get_texture(p_state, tex_i, TEXTURE_TYPE_GENERIC);
-														if (tex.is_valid() && tex->get_path().contains(texture_path.get_file())) {
-															godot_material->set_texture(BaseMaterial3D::TEXTURE_EMISSION, tex);
-															godot_material->set_feature(BaseMaterial3D::FEATURE_EMISSION, true);
-															break;
-														}
-													}
-												}
-											}
-										}
-									}
-								} else {
-									GfVec3f emissive_value;
-									if (emissive_input.Get(&emissive_value)) {
-										Color emissive(emissive_value[0], emissive_value[1], emissive_value[2]);
-										godot_material->set_emission(emissive.linear_to_srgb());
-										godot_material->set_feature(BaseMaterial3D::FEATURE_EMISSION, true);
-									}
-								}
-							}
-							
-							// Parse opacity
-							UsdShadeInput opacity_input = surface_shader.GetInput(TfToken("opacity"));
-							if (opacity_input) {
-								float opacity_value;
-								if (opacity_input.Get(&opacity_value)) {
-									if (opacity_value < 1.0f) {
-										godot_material->set_transparency(BaseMaterial3D::TRANSPARENCY_ALPHA);
-										Color albedo = godot_material->get_albedo();
-										albedo.a = opacity_value;
-										godot_material->set_albedo(albedo);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			
-			p_state->materials.push_back(godot_material);
-			material_path_to_index[prim.GetPath()] = p_state->materials.size() - 1;
+	if (prim.is<tinyusdz::Material>()) {
+		material_prims.push_back({prim, prim_path});
+	}
+	
+	// Recursively process children
+	for (const auto &child : prim.primChildren()) {
+		_collect_material_prims_recursive(child, prim_path, material_prims);
+	}
+}
+
+Error USDDocument::_parse_materials(Ref<USDState> p_state) {
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
+	HashMap<String, GLTFMaterialIndex> material_path_to_index;
+	
+	// Collect all material prims
+	std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> material_prims;
+	tinyusdz::Path root_path = tinyusdz::Path::make_root_path();
+	
+	for (const auto &root_prim : stage.root_prims()) {
+		_collect_material_prims_recursive(root_prim, root_path, material_prims);
+	}
+	
+	// Parse materials
+	for (const auto &prim_path_pair : material_prims) {
+		const tinyusdz::Prim &prim = prim_path_pair.first;
+		const tinyusdz::Path &prim_path = prim_path_pair.second;
+		
+		if (!prim.is<tinyusdz::Material>()) {
+			continue;
 		}
+		
+		const tinyusdz::Material *material = prim.as<tinyusdz::Material>();
+		if (!material) {
+			continue;
+		}
+		
+		Ref<StandardMaterial3D> godot_material;
+		godot_material.instantiate();
+		godot_material->set_name(String(prim.element_name().c_str()));
+		godot_material->set_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
+		
+		GLTFMaterialIndex material_index = p_state->materials.size();
+		String prim_path_str = String(prim_path.prim_part().c_str());
+		material_path_to_index[prim_path_str] = material_index;
+		
+		// Get the surface output connection
+		// TODO: Follow surface connection to find shader
+		// For now, create a basic material
+		// TinyUSDZ's Material has a `surface` TypedConnection that points to a shader
+		// We need to follow this connection to get the UsdPreviewSurface shader
+		
+		// Placeholder: create default material
+		godot_material->set_albedo(Color(0.8, 0.8, 0.8));
+		godot_material->set_metallic(0.0);
+		godot_material->set_roughness(0.5);
+		
+		// TODO: Parse surface connection and UsdPreviewSurface shader inputs
+		// Design:
+		// 1. Get Material::surface (TypedConnection<value::token>) - this connects to a shader
+		// 2. Follow connection to find shader prim:
+		//    - material.surface.get_target_path() gives the path to the shader
+		//    - Use stage.GetPrimAtPath() or search recursively to find the prim
+		//    - Check if prim.is<tinyusdz::Shader>() and get shader.info_id
+		// 3. If info_id == "UsdPreviewSurface", cast to UsdPreviewSurface:
+		//    - Check if prim.value (value::Value) contains UsdPreviewSurface
+		//    - Use tydra::GetPreviewSurface() or manually extract from prim.value
+		// 4. Parse UsdPreviewSurface inputs:
+		//    - diffuseColor (color3f) -> set_albedo()
+		//    - metallic (float) -> set_metallic()
+		//    - roughness (float) -> set_roughness()
+		//    - emissiveColor (color3f) -> set_emission()
+		//    - opacity (float) -> set_transparency() if < 1.0
+		//    - normal (normal3f) -> may be connected to texture
+		// 5. For texture connections (e.g., diffuseColor connected to UsdUVTexture):
+		//    - Follow TypedConnection to find UsdUVTexture shader
+		//    - Get UsdUVTexture::file (AssetPath) attribute
+		//    - Resolve asset path and find/create texture in p_state->textures
+		//    - Assign texture to material using set_texture()
+		// 6. Handle UsdPrimvarReader nodes for UV coordinates and other primvars
+		// Reference: Material, Shader, UsdPreviewSurface, UsdUVTexture in usdShade.hh
+		// Note: TinyUSDZ uses value::Value type-erased storage, may need tydra API for evaluation
+		
+		p_state->materials.push_back(godot_material);
+		material_path_to_index[prim_path_str] = p_state->materials.size() - 1;
 	}
 
 	print_verbose("USD: Total materials: " + itos(p_state->materials.size()));
@@ -1052,156 +970,127 @@ Error USDDocument::_parse_materials(Ref<USDState> p_state) {
 	return OK;
 }
 
-Error USDDocument::_parse_skins(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		return ERR_INVALID_DATA;
+// Helper to recursively find all skeleton prims
+static void _collect_skeleton_prims_recursive(const tinyusdz::Prim &prim, const tinyusdz::Path &parent_path,
+		std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> &skeleton_prims) {
+	tinyusdz::Path prim_path = parent_path.AppendPrim(prim.element_name());
+	
+	if (prim.is<tinyusdz::Skeleton>()) {
+		skeleton_prims.push_back({prim, prim_path});
 	}
+	
+	// Recursively process children
+	for (const auto &child : prim.primChildren()) {
+		_collect_skeleton_prims_recursive(child, prim_path, skeleton_prims);
+	}
+}
 
+Error USDDocument::_parse_skins(Ref<USDState> p_state) {
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
 	HashMap<GLTFNodeIndex, bool> joint_mapping;
-	HashMap<SdfPath, GLTFSkeletonIndex> skeleton_path_to_index;
+	HashMap<String, GLTFSkeletonIndex> skeleton_path_to_index;
+	
+	// Collect all skeleton prims
+	std::vector<std::pair<tinyusdz::Prim, tinyusdz::Path>> skeleton_prims;
+	tinyusdz::Path root_path = tinyusdz::Path::make_root_path();
+	
+	for (const auto &root_prim : stage.root_prims()) {
+		_collect_skeleton_prims_recursive(root_prim, root_path, skeleton_prims);
+	}
 	
 	// First pass: find all skeletons and create skeleton nodes
-	UsdPrimRange range = stage->Traverse();
-	for (UsdPrim prim : range) {
-		UsdSkelSkeleton usd_skeleton(prim);
-		if (usd_skeleton) {
-			GLTFSkeletonIndex skeleton_index = p_state->skeletons.size();
-			skeleton_path_to_index[prim.GetPath()] = skeleton_index;
-			
-			Ref<GLTFSkeleton> skeleton;
-			skeleton.instantiate();
-			skeleton->set_name(String(prim.GetName().GetText()));
-			
-			// Get joints
-			VtTokenArray joints;
-			usd_skeleton.GetJointsAttr().Get(&joints);
-			
-			// Get bind transforms
-			VtMatrix4dArray bind_transforms;
-			usd_skeleton.GetBindTransformsAttr().Get(&bind_transforms);
-			
-			// Get rest transforms (if available)
-			VtMatrix4dArray rest_transforms;
-			usd_skeleton.GetRestTransformsAttr().Get(&rest_transforms);
-			
-			// Create a skin for this skeleton
-			Ref<GLTFSkin> skin;
-			skin.instantiate();
-			skin->set_name(String(prim.GetName().GetText()) + "_skin");
-			
-			// Map joint paths to node indices
-			HashMap<String, GLTFNodeIndex> joint_path_to_node;
-			for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); node_i++) {
-				Ref<GLTFNode> node = p_state->nodes[node_i];
-				if (node->has_additional_data("USD_prim_path")) {
-					String stored_path = node->get_additional_data("USD_prim_path");
-					joint_path_to_node[stored_path] = node_i;
-				}
-			}
-			
-			// Process joints
-			for (size_t joint_i = 0; joint_i < joints.size(); joint_i++) {
-				String joint_path_str = String(joints[joint_i].GetText());
-				// Build full path relative to skeleton
-				SdfPath joint_path = prim.GetPath().AppendChild(TfToken(joint_path_str.get_file().get_basename()));
-				// Try to find the joint node
-				GLTFNodeIndex joint_node_index = -1;
-				
-				// Search for node matching this joint path
-				for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); node_i++) {
-					Ref<GLTFNode> node = p_state->nodes[node_i];
-					if (node->has_additional_data("USD_prim_path")) {
-						String stored_path = node->get_additional_data("USD_prim_path");
-						// Check if the stored path ends with the joint name
-						if (stored_path.ends_with(joint_path_str) || stored_path.ends_with("/" + joint_path_str)) {
-							joint_node_index = node_i;
-							break;
-						}
-					}
-				}
-				
-				if (joint_node_index >= 0) {
-					skin->joints.push_back(joint_node_index);
-					skin->joints_original.push_back(joint_node_index);
-					p_state->nodes.write[joint_node_index]->joint = true;
-					joint_mapping[joint_node_index] = true;
-					
-					// Set inverse bind transform
-					if (joint_i < bind_transforms.size()) {
-						Transform3D bind_xform = _as_xform(bind_transforms[joint_i]);
-						skin->inverse_binds.push_back(bind_xform.affine_inverse());
-					} else {
-						// Default identity
-						skin->inverse_binds.push_back(Transform3D());
-					}
-					
-					// Set rest transform if available
-					if (joint_i < rest_transforms.size()) {
-						Transform3D rest_xform = _as_xform(rest_transforms[joint_i]);
-						p_state->nodes.write[joint_node_index]->set_additional_data("GODOT_rest_transform", rest_xform);
-					}
-				}
-			}
-			
-			if (skin->joints.size() > 0) {
-				p_state->skins.push_back(skin);
-				skeleton->set_skin(p_state->skins.size() - 1);
-			}
-			
-			p_state->skeletons.push_back(skeleton);
-		}
-	}
-	
-	// Second pass: find skinned meshes and bind them to skeletons
-	for (UsdPrim prim : range) {
-		UsdGeomMesh usd_mesh(prim);
-		if (!usd_mesh) {
+	for (const auto &prim_path_pair : skeleton_prims) {
+		const tinyusdz::Prim &prim = prim_path_pair.first;
+		const tinyusdz::Path &prim_path = prim_path_pair.second;
+		
+		if (!prim.is<tinyusdz::Skeleton>()) {
 			continue;
 		}
 		
-		// Check for SkelBindingAPI
-		UsdSkelBindingAPI binding_api(prim);
-		if (binding_api) {
-			// Get skeleton binding
-			UsdRelationship skeleton_rel = binding_api.GetSkeletonRel();
-			SdfPathVector targets;
-			if (skeleton_rel.GetTargets(&targets) && targets.size() > 0) {
-				SdfPath skeleton_path = targets[0];
-				if (skeleton_path_to_index.has(skeleton_path)) {
-					GLTFSkeletonIndex skeleton_index = skeleton_path_to_index[skeleton_path];
-					
-					// Get joint influences from primvars
-					UsdGeomPrimvar joint_indices_primvar = binding_api.GetJointIndicesPrimvar();
-					UsdGeomPrimvar joint_weights_primvar = binding_api.GetJointWeightsPrimvar();
-					
-					if (joint_indices_primvar && joint_weights_primvar) {
-						VtIntArray joint_indices;
-						VtFloatArray joint_weights;
-						
-						if (joint_indices_primvar.Get(&joint_indices) && joint_weights_primvar.Get(&joint_weights)) {
-							// Find the mesh node and assign skin using cached mapping
-							SdfPath prim_path = prim.GetPath();
-							String prim_path_str = String(prim_path.GetText());
-							if (p_state->prim_path_to_node_index.has(prim_path_str)) {
-								GLTFNodeIndex node_index = p_state->prim_path_to_node_index[prim_path_str];
-								if (node_index >= 0 && node_index < p_state->nodes.size()) {
-									// Assign skin to this node
-									if (skeleton_index < p_state->skeletons.size()) {
-										Ref<GLTFSkeleton> skeleton = p_state->skeletons[skeleton_index];
-										if (skeleton.is_valid() && skeleton->get_skin() >= 0) {
-											p_state->nodes[node_index]->skin = skeleton->get_skin();
-											p_state->nodes[node_index]->skeleton = skeleton_index;
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+		const tinyusdz::Skeleton *usd_skeleton = prim.as<tinyusdz::Skeleton>();
+		if (!usd_skeleton) {
+			continue;
 		}
+		
+		GLTFSkeletonIndex skeleton_index = p_state->skeletons.size();
+		String prim_path_str = String(prim_path.prim_part().c_str());
+		skeleton_path_to_index[prim_path_str] = skeleton_index;
+		
+		Ref<GLTFSkeleton> skeleton;
+		skeleton.instantiate();
+		skeleton->set_name(String(prim.element_name().c_str()));
+		
+		// TODO: Get joints - Need to evaluate TypedAttribute
+		// Design:
+		// 1. Use tydra::EvaluateTypedAttribute() or manually evaluate:
+		//    - Check if usd_skeleton->joints.has_value()
+		//    - Get default value: joints.get_default_value<std::vector<value::token>>()
+		//    - Or evaluate at specific time if timesampled
+		// 2. For each joint token, resolve to full path:
+		//    - Joint tokens are relative to skeleton prim
+		//    - Build full path: prim_path.AppendPrim(joint_token.str())
+		//    - Or use prim_path + "/" + joint_token.str()
+		// 3. Find corresponding GLTFNode by matching USD_prim_path
+		// 4. Add to skin->joints and mark node as joint
+		// Reference: TypedAttribute evaluation in tinyusdz, Skeleton struct in usdSkel.hh
+		std::vector<tinyusdz::value::token> joints;
+		if (usd_skeleton->joints.has_value()) {
+			// TODO: Evaluate attribute - see design above
+		}
+		
+		// TODO: Get bind transforms - Need to evaluate TypedAttribute
+		// Design: Similar to joints, evaluate bindTransforms attribute
+		// Convert each matrix4d to Transform3D using _as_xform()
+		// Store inverse bind matrices in skin->inverse_binds
+		std::vector<tinyusdz::value::matrix4d> bind_transforms;
+		if (usd_skeleton->bindTransforms.has_value()) {
+			// TODO: Evaluate attribute - see design above
+		}
+		
+		// TODO: Get rest transforms (if available) - Need to evaluate TypedAttribute
+		// Design: Similar to bind transforms, evaluate restTransforms attribute
+		// Store in node's additional_data as "GODOT_rest_transform"
+		std::vector<tinyusdz::value::matrix4d> rest_transforms;
+		if (usd_skeleton->restTransforms.has_value()) {
+			// TODO: Evaluate attribute - see design above
+		}
+			
+		// Create a skin for this skeleton
+		Ref<GLTFSkin> skin;
+		skin.instantiate();
+		skin->set_name(String(prim.element_name().c_str()) + "_skin");
+		
+		// Process joints
+		// TODO: Implement full joint processing once we can evaluate TypedAttributes
+		// For now, create empty skeleton/skin
+		// This will need to:
+		// 1. Evaluate joints attribute to get joint paths
+		// 2. Find corresponding nodes by path
+		// 3. Evaluate bindTransforms and restTransforms
+		// 4. Create skin with proper inverse bind matrices
+		
+		if (skin->joints.size() > 0) {
+			p_state->skins.push_back(skin);
+			skeleton->set_skin(p_state->skins.size() - 1);
+		}
+		
+		p_state->skeletons.push_back(skeleton);
 	}
+	
+	// TODO: Second pass: find skinned meshes and bind them to skeletons
+	// Design:
+	// 1. Iterate through all GeomMesh prims (reuse mesh collection from _parse_meshes)
+	// 2. Check GeomMesh::skeleton (Relationship) - points to Skeleton prim
+	// 3. Follow relationship to get skeleton path, look up in skeleton_path_to_index
+	// 4. Get joint influences from primvars:
+	//    - Get primvar "skel:jointIndices" (int[]) - joint indices per vertex
+	//    - Get primvar "skel:jointWeights" (float[]) - joint weights per vertex
+	//    - Use GeomMesh::get_primvar("skel:jointIndices") and get_primvar("skel:jointWeights")
+	// 5. Store joint indices/weights in mesh's additional_data or create GLTFSkin structure
+	// 6. Assign skin index to mesh node using p_state->nodes[node_index]->skin
+	// 7. For GLTF compatibility, may need to convert to GLTF skin format
+	// Reference: GeomMesh::skeleton, GeomPrimvar API in usdGeom.hh
 	
 	p_state->original_skin_indices = p_state->skin_indices.duplicate();
 	
@@ -1234,434 +1123,147 @@ Error USDDocument::_parse_skins(Ref<USDState> p_state) {
 }
 
 Error USDDocument::_parse_animations(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		return ERR_INVALID_DATA;
-	}
-
-	// Get stage time range
-	double start_time = stage->GetStartTimeCode();
-	double end_time = stage->GetEndTimeCode();
-	if (start_time == end_time) {
-		// No time range set, check for time samples
-		start_time = 0.0;
-		end_time = 1.0;
-	}
-
-	// First pass: find UsdSkelAnimation prims for skeletal animations
-	UsdPrimRange range = stage->Traverse();
-	HashMap<SdfPath, GLTFAnimationIndex> animation_path_to_index;
+	// TODO: Implement animation parsing using TinyUSDZ API
+	// Design:
+	// 1. Find SkelAnimation prims (prim.is<tinyusdz::SkelAnimation>())
+	// 2. Evaluate SkelAnimation attributes:
+	//    - translations (vector3f[]) - per-joint translations over time
+	//    - rotations (quatf[]) - per-joint rotations over time
+	//    - scales (vector3f[]) - per-joint scales over time
+	//    - joints (token[]) - joint names this animation affects
+	// 3. Handle time samples:
+	//    - Check if attributes are timesampled using has_timesamples()
+	//    - Get all time codes from time samples
+	//    - Evaluate at each time code to get keyframe values
+	// 4. Match joints to GLTF nodes by path/name
+	// 5. Create GLTFAnimation with node tracks:
+	//    - For each joint, create translation/rotation/scale tracks
+	//    - Add keyframes at each time sample
+	// 6. Also handle Xform animation (non-skeletal):
+	//    - Find Xform prims with animated xformOps
+	//    - Evaluate xformOps at different time codes
+	//    - Create animation tracks for transform changes
+	// 7. Handle blend shape animations:
+	//    - Check SkelAnimation::blendShapes (token[]) - blend shape names
+	//    - Get blend shape weights over time
+	//    - Create blend shape animation tracks
+	// Reference: SkelAnimation struct in usdSkel.hh, Xform ops in xform.hh
+	// Note: TinyUSDZ uses TypedTimeSamples for animated attributes
 	
-	for (UsdPrim prim : range) {
-		UsdSkelAnimation usd_animation(prim);
-		if (usd_animation) {
-			Ref<GLTFAnimation> animation;
-			animation.instantiate();
-			animation->set_name(String(prim.GetName().GetText()));
-			animation->set_original_name(String(prim.GetName().GetText()));
-			
-			// Get time samples from individual attributes
-			std::vector<double> time_samples;
-			UsdAttribute translations_attr = usd_animation.GetTranslationsAttr();
-			UsdAttribute rotations_attr = usd_animation.GetRotationsAttr();
-			UsdAttribute scales_attr = usd_animation.GetScalesAttr();
-			
-			// Collect time samples from all transform attributes
-			std::vector<double> trans_times, rot_times, scale_times;
-			if (translations_attr) {
-				translations_attr.GetTimeSamples(&trans_times);
-			}
-			if (rotations_attr) {
-				rotations_attr.GetTimeSamples(&rot_times);
-			}
-			if (scales_attr) {
-				scales_attr.GetTimeSamples(&scale_times);
-			}
-			
-			// Union all time samples
-			time_samples.insert(time_samples.end(), trans_times.begin(), trans_times.end());
-			time_samples.insert(time_samples.end(), rot_times.begin(), rot_times.end());
-			time_samples.insert(time_samples.end(), scale_times.begin(), scale_times.end());
-			
-			// Remove duplicates and sort
-			std::sort(time_samples.begin(), time_samples.end());
-			time_samples.erase(std::unique(time_samples.begin(), time_samples.end()), time_samples.end());
-			
-			// If no time samples, create a single frame animation
-			if (time_samples.empty()) {
-				time_samples.push_back(start_time);
-			}
-			
-			// Get joints that this animation affects
-			VtTokenArray joints;
-			usd_animation.GetJointsAttr().Get(&joints);
-			
-			// Process each time sample
-			for (double time : time_samples) {
-				UsdTimeCode time_code(time);
-				
-				// Get translations, rotations, scales
-				VtVec3fArray translations;
-				VtQuatfArray rotations;
-				VtVec3hArray scales;
-				
-				if (usd_animation.GetTranslationsAttr().Get(&translations, time_code) &&
-					usd_animation.GetRotationsAttr().Get(&rotations, time_code) &&
-					usd_animation.GetScalesAttr().Get(&scales, time_code)) {
-					
-					// Match joints to nodes
-					for (size_t joint_i = 0; joint_i < joints.size() && joint_i < translations.size(); joint_i++) {
-						String joint_name = String(joints[joint_i].GetText());
-						
-						// Find node matching this joint
-						GLTFNodeIndex node_index = -1;
-						for (GLTFNodeIndex node_i = 0; node_i < p_state->nodes.size(); node_i++) {
-							Ref<GLTFNode> node = p_state->nodes[node_i];
-							if (node->has_additional_data("USD_prim_path")) {
-								String stored_path = node->get_additional_data("USD_prim_path");
-								if (stored_path.ends_with(joint_name) || stored_path.ends_with("/" + joint_name)) {
-									node_index = node_i;
-									break;
-								}
-							}
-						}
-						
-						if (node_index >= 0) {
-							GLTFAnimation::NodeTrack &track = animation->get_node_tracks()[node_index];
-							
-							// Add translation key
-							if (joint_i < translations.size()) {
-								track.position_track.times.push_back(time);
-								track.position_track.values.push_back(_as_vec3(translations[joint_i]));
-							}
-							
-							// Add rotation key
-							if (joint_i < rotations.size()) {
-								Quaternion rot(rotations[joint_i].GetReal(), rotations[joint_i].GetImaginary()[0],
-											   rotations[joint_i].GetImaginary()[1], rotations[joint_i].GetImaginary()[2]);
-								track.rotation_track.times.push_back(time);
-								track.rotation_track.values.push_back(rot);
-							}
-							
-							// Add scale key
-							if (joint_i < scales.size()) {
-								track.scale_track.times.push_back(time);
-								track.scale_track.values.push_back(Vector3(scales[joint_i][0], scales[joint_i][1], scales[joint_i][2]));
-							}
-						}
-					}
-				}
-			}
-			
-			if (animation->get_node_tracks().size() > 0) {
-				GLTFAnimationIndex anim_index = p_state->animations.size();
-				p_state->animations.push_back(animation);
-				animation_path_to_index[prim.GetPath()] = anim_index;
-			}
-		}
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
+	// TODO: Get stage time range from stage metadata
+	// Check StageMetas::startTimeCode and endTimeCode
+	double start_time = 0.0;
+	double end_time = 1.0;
+	
+	// TODO: Collect all SkelAnimation prims recursively
+	HashMap<String, GLTFAnimationIndex> animation_path_to_index;
+	
+	// TODO: Implement animation parsing - see design above
+	// All the code below uses OpenUSD APIs and needs to be rewritten
+	if (false) { // Placeholder - remove when implementing
+		// Old OpenUSD code removed - see design above for implementation
 	}
 	
-	// Second pass: find transform animations on regular prims
-	for (UsdPrim prim : range) {
-		UsdGeomXformable xformable(prim);
-		if (!xformable) {
-			continue;
-		}
-		
-		// Check if transform attributes have time samples
-		std::vector<double> time_samples;
-		UsdAttribute xform_attr = xformable.GetXformOpOrderAttr();
-		if (xform_attr) {
-			xform_attr.GetTimeSamples(&time_samples);
-		}
-		
-		// Also check individual xform ops
-		if (time_samples.empty()) {
-			UsdGeomXformOp::Type op_types[] = {
-				UsdGeomXformOp::TypeTranslate,
-				UsdGeomXformOp::TypeRotateXYZ,
-				UsdGeomXformOp::TypeScale
-			};
-			
-			for (UsdGeomXformOp::Type op_type : op_types) {
-				UsdGeomXformOp op = xformable.GetXformOp(op_type);
-				if (op) {
-					UsdAttribute attr = op.GetAttr();
-					if (attr) {
-						std::vector<double> op_times;
-						attr.GetTimeSamples(&op_times);
-						time_samples.insert(time_samples.end(), op_times.begin(), op_times.end());
-					}
-				}
-			}
-		}
-		
-		if (!time_samples.empty()) {
-			// Find the node for this prim using cached mapping
-			SdfPath prim_path = prim.GetPath();
-			String prim_path_str = String(prim_path.GetText());
-			GLTFNodeIndex node_index = -1;
-			if (p_state->prim_path_to_node_index.has(prim_path_str)) {
-				node_index = p_state->prim_path_to_node_index[prim_path_str];
-			}
-			
-			if (node_index >= 0) {
-				// Create or get animation for this node
-				Ref<GLTFAnimation> animation;
-				String anim_name = String(prim.GetName().GetText()) + "_transform";
-				
-				// Check if we already have an animation for this node
-				GLTFAnimationIndex existing_anim_index = -1;
-				for (GLTFAnimationIndex anim_i = 0; anim_i < p_state->animations.size(); anim_i++) {
-					Ref<GLTFAnimation> existing_anim = p_state->animations[anim_i];
-					if (existing_anim->get_name() == anim_name) {
-						animation = existing_anim;
-						existing_anim_index = anim_i;
-						break;
-					}
-				}
-				
-				if (animation.is_null()) {
-					animation.instantiate();
-					animation->set_name(anim_name);
-					animation->set_original_name(anim_name);
-				}
-				
-				GLTFAnimation::NodeTrack &track = animation->get_node_tracks()[node_index];
-				
-				// Sample transforms at each time
-				for (double time : time_samples) {
-					UsdTimeCode time_code(time);
-					
-					GfMatrix4d local_transform;
-					bool reset_xform_stack = false;
-					xformable.GetLocalTransformation(&local_transform, &reset_xform_stack, time_code);
-					
-					Transform3D xform = _as_xform(local_transform);
-					
-					track.position_track.times.push_back(time);
-					track.position_track.values.push_back(xform.origin);
-					
-					track.rotation_track.times.push_back(time);
-					track.rotation_track.values.push_back(xform.basis.get_rotation_quaternion());
-					
-					Vector3 scale = xform.basis.get_scale();
-					track.scale_track.times.push_back(time);
-					track.scale_track.values.push_back(scale);
-				}
-				
-				if (existing_anim_index < 0 && track.position_track.times.size() > 0) {
-					p_state->animations.push_back(animation);
-				}
-			}
-		}
-	}
-
-	print_verbose("USD: Total animations: " + itos(p_state->animations.size()));
-
-	return OK;
+	return OK; // Placeholder
 }
 
 Error USDDocument::_parse_cameras(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		return ERR_INVALID_DATA;
-	}
-
-	HashMap<SdfPath, GLTFCameraIndex> camera_path_to_index;
+	// TODO: Implement camera parsing using TinyUSDZ API
+	// Design:
+	// 1. Find GeomCamera prims (prim.is<tinyusdz::GeomCamera>())
+	// 2. Evaluate GeomCamera attributes:
+	//    - focalLength (float) - camera focal length
+	//    - horizontalAperture (float) - horizontal film aperture
+	//    - verticalAperture (float) - vertical film aperture
+	//    - clippingRange (float2) - near and far clipping planes
+	//    - projection (token) - "perspective" or "orthographic"
+	// 3. Convert USD camera to GLTF camera:
+	//    - For perspective: calculate FOV from focalLength and aperture
+	//    - FOV = 2 * atan(aperture / (2 * focalLength))
+	//    - For orthographic: use xmag/ymag from aperture
+	// 4. Create GLTFCamera and add to p_state->cameras
+	// 5. Find corresponding node and set camera index
+	// Reference: GeomCamera struct in usdGeom.hh
 	
-	UsdPrimRange range = stage->Traverse();
-	for (UsdPrim prim : range) {
-		UsdGeomCamera usd_camera(prim);
-		if (usd_camera) {
-			GLTFCameraIndex camera_index = p_state->cameras.size();
-			camera_path_to_index[prim.GetPath()] = camera_index;
-			
-			Ref<GLTFCamera> camera;
-			camera.instantiate();
-			camera->set_name(String(prim.GetName().GetText()));
-			
-			// Get projection type
-			TfToken projection;
-			usd_camera.GetProjectionAttr().Get(&projection);
-			bool is_perspective = (projection == TfToken("perspective"));
-			camera->set_perspective(is_perspective);
-			
-			if (is_perspective) {
-				// Calculate FOV from focal length and horizontal aperture
-				double focal_length = 50.0; // Default
-				double horizontal_aperture = 20.955; // Default (inches)
-				usd_camera.GetFocalLengthAttr().Get(&focal_length);
-				usd_camera.GetHorizontalApertureAttr().Get(&horizontal_aperture);
-				
-				// Convert to FOV in radians
-				// FOV = 2 * atan(horizontal_aperture / (2 * focal_length))
-				// USD uses mm for focal length and inches for aperture, convert to same units
-				double horizontal_aperture_mm = horizontal_aperture * 25.4; // inches to mm
-				double fov_rad = 2.0 * atan(horizontal_aperture_mm / (2.0 * focal_length));
-				camera->set_fov(fov_rad);
-			} else {
-				// Orthographic camera
-				double horizontal_aperture = 20.955;
-				usd_camera.GetHorizontalApertureAttr().Get(&horizontal_aperture);
-				camera->set_size_mag(horizontal_aperture * 0.5 * 25.4); // Convert inches to mm, then half for size
-			}
-			
-			// Get near and far planes
-			double near_plane = 0.1;
-			double far_plane = 1000.0;
-			usd_camera.GetClippingRangeAttr().Get(&near_plane, &far_plane);
-			camera->set_depth_near(near_plane);
-			camera->set_depth_far(far_plane);
-			
-			p_state->cameras.push_back(camera);
-			
-			// Find corresponding node and set camera index using cached mapping
-			SdfPath prim_path = prim.GetPath();
-			String prim_path_str = String(prim_path.GetText());
-			if (p_state->prim_path_to_node_index.has(prim_path_str)) {
-				GLTFNodeIndex node_index = p_state->prim_path_to_node_index[prim_path_str];
-				if (node_index >= 0 && node_index < p_state->nodes.size()) {
-					p_state->nodes[node_index]->camera = camera_index;
-				}
-			}
-		}
-	}
-
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
+	HashMap<String, GLTFCameraIndex> camera_path_to_index;
+	
+	// TODO: Collect all GeomCamera prims recursively
+	// TODO: Implement camera parsing - see design above
+	
 	print_verbose("USD: Total cameras: " + itos(p_state->cameras.size()));
 
 	return OK;
 }
 
 Error USDDocument::_parse_lights(Ref<USDState> p_state) {
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		return ERR_INVALID_DATA;
-	}
-
+	// TODO: Implement light parsing using TinyUSDZ API
+	// Design:
+	// 1. Find light prims - TinyUSDZ has various light types in usdLux.hh:
+	//    - SphereLight, DiskLight, RectLight, CylinderLight, etc.
+	//    - All inherit from Light base class
+	// 2. Check prim.is<tinyusdz::SphereLight>() or other light types
+	// 3. Evaluate common light attributes (from Light base class):
+	//    - color (color3f) - light color
+	//    - intensity (float) - light intensity
+	//    - exposure (float) - exposure value
+	//    - enableColorTemperature (bool) - use color temperature
+	//    - colorTemperature (float) - color temperature in Kelvin
+	// 4. Evaluate type-specific attributes:
+	//    - SphereLight: radius, treatPointAsDirection
+	//    - DiskLight: radius
+	//    - RectLight: width, height
+	//    - DistantLight: angle (for directional lights)
+	//    - SpotLight: innerConeAngle, outerConeAngle
+	// 5. Convert to GLTFLight:
+	//    - Map USD light types to GLTF light types
+	//    - Calculate final color: color * intensity * pow(2, exposure)
+	//    - For spot lights, set inner/outer cone angles
+	// 6. Create GLTFLight and add to p_state->lights
+	// 7. Find corresponding node and set light index
+	// Reference: Light types in usdLux.hh (SphereLight, DiskLight, etc.)
+	
+	const tinyusdz::Stage &stage = p_state->get_stage();
+	
+	// TODO: Collect all light prims recursively
 	// USD uses UsdLux for lights
-	UsdPrimRange range = stage->Traverse();
-	for (UsdPrim prim : range) {
-		// Check for various light types
-		if (prim.IsA<pxr::UsdLuxLight>()) {
-			pxr::UsdLuxLight usd_light(prim);
-			
-			Ref<GLTFLight> light;
-			light.instantiate();
-			light->set_name(String(prim.GetName().GetText()));
-			
-			// Get color
-			GfVec3f color_value(1.0f, 1.0f, 1.0f);
-			usd_light.GetColorAttr().Get(&color_value);
-			light->set_color(Color(color_value[0], color_value[1], color_value[2]));
-			
-			// Get intensity
-			float intensity = 1.0f;
-			usd_light.GetIntensityAttr().Get(&intensity);
-			light->set_intensity(intensity);
-			
-			// Determine light type based on prim type
-			String prim_type = String(prim.GetTypeName().GetText());
-			if (prim_type.contains("DistantLight") || prim_type == "DistantLight") {
-				light->set_light_type("directional");
-			} else if (prim_type.contains("RectLight") || prim_type == "RectLight") {
-				light->set_light_type("area");
-			} else if (prim_type.contains("DiskLight") || prim_type == "DiskLight") {
-				light->set_light_type("area");
-			} else if (prim_type.contains("SphereLight") || prim_type == "SphereLight") {
-				light->set_light_type("point");
-			} else if (prim_type.contains("CylinderLight") || prim_type == "CylinderLight") {
-				light->set_light_type("point");
-			} else {
-				// Default to point light
-				light->set_light_type("point");
-			}
-			
-			// For spot lights, check if it's a UsdLuxShapingAPI
-			pxr::UsdLuxShapingAPI shaping_api(prim);
-			if (shaping_api) {
-				double cone_angle = 0.0;
-				if (shaping_api.GetShapingConeAngleAttr().Get(&cone_angle) && cone_angle > 0.0) {
-					light->set_light_type("spot");
-					light->set_outer_cone_angle(Math::deg_to_rad(cone_angle));
-					
-					double cone_softness = 0.0;
-					if (shaping_api.GetShapingConeSoftnessAttr().Get(&cone_softness)) {
-						double inner_angle = cone_angle * (1.0 - cone_softness);
-						light->set_inner_cone_angle(Math::deg_to_rad(inner_angle));
-					}
-				}
-			}
-			
-			p_state->lights.push_back(light);
-			
-			// Find corresponding node and set light index using cached mapping
-			SdfPath prim_path = prim.GetPath();
-			String prim_path_str = String(prim_path.GetText());
-			if (p_state->prim_path_to_node_index.has(prim_path_str)) {
-				GLTFNodeIndex node_index = p_state->prim_path_to_node_index[prim_path_str];
-				if (node_index >= 0 && node_index < p_state->nodes.size()) {
-					p_state->nodes[node_index]->light = p_state->lights.size() - 1;
-				}
-			}
-		}
-	}
-
+	// TODO: Implement light parsing - see design above
+	
 	print_verbose("USD: Total lights: " + itos(p_state->lights.size()));
 
 	return OK;
 }
 
 Error USDDocument::_parse_images(Ref<USDState> p_state, const String &p_base_path) {
+	// TODO: Implement image/texture parsing using TinyUSDZ API
+	// Design:
+	// 1. Find all Material prims and follow shader connections
+	// 2. For each UsdPreviewSurface shader, check texture inputs:
+	//    - diffuseColor, emissiveColor, normal, metallicRoughness, occlusion
+	// 3. Follow TypedConnection to find UsdUVTexture shaders
+	// 4. Get UsdUVTexture::file (AssetPath) attribute
+	// 5. Resolve asset paths (may need AssetResolutionResolver)
+	// 6. Load images and create GLTFTexture entries
+	// 7. Store texture paths for later material assignment
+	// Reference: Material, Shader, UsdUVTexture in usdShade.hh
+	// Note: Asset path resolution may require TinyUSDZ's AssetResolutionResolver
+	
 	ERR_FAIL_COND_V(p_state.is_null(), ERR_INVALID_PARAMETER);
 
-	UsdStageRefPtr stage = p_state->get_stage();
-	if (!stage) {
-		return ERR_INVALID_DATA;
-	}
+	const tinyusdz::Stage &stage = p_state->get_stage();
 
 	HashSet<String> texture_paths;
 	
-	// Collect texture paths from materials
-	UsdPrimRange range = stage->Traverse();
-	for (UsdPrim prim : range) {
-		UsdShadeMaterial material(prim);
-		if (material) {
-			// Get the surface output
-			UsdShadeOutput surface_output = material.GetSurfaceOutput();
-			if (surface_output) {
-				// Get connected shader
-				UsdShadeShader surface_shader = UsdShadeShader::Get(stage, surface_output.GetConnectedSource().source.GetPath());
-				if (surface_shader) {
-					// Check for texture inputs in UsdPreviewSurface
-					// Common texture inputs: diffuseColor, emissiveColor, normal, metallicRoughness, occlusion
-					Vector<TfToken> texture_inputs = {
-						TfToken("diffuseColor"),
-						TfToken("emissiveColor"),
-						TfToken("normal"),
-						TfToken("metallicRoughness"),
-						TfToken("occlusion"),
-						TfToken("baseColor"), // Alternative name
-					};
+	// TODO: Collect texture paths from materials - see design above
+	// For now, return OK (no textures parsed)
+	
+	print_verbose("USD: Total textures: " + itos(p_state->textures.size()));
 
-					for (const TfToken &input_name : texture_inputs) {
-						UsdShadeInput input = surface_shader.GetInput(input_name);
-						if (input) {
-							// Check if connected to a texture shader
-							UsdShadeConnectableAPI source;
-							TfToken source_name;
-							UsdShadeAttributeType source_type;
-							if (input.GetConnectedSource(&source, &source_name, &source_type)) {
-								UsdShadeShader texture_shader = UsdShadeShader::Get(stage, source.GetPath());
-								if (texture_shader) {
-									// Check if it's a UsdUVTexture
-									TfToken id;
-									if (texture_shader.GetIdAttr().Get(&id) && id == TfToken("UsdUVTexture")) {
-										UsdShadeInput file_input = texture_shader.GetInput(TfToken("file"));
-										if (file_input) {
-											SdfAssetPath asset_path;
-											if (file_input.Get(&asset_path)) {
-												String resolved_path = String(asset_path.GetResolvedPath().c_str());
+	return OK;
+}
 												if (resolved_path.is_empty()) {
 													resolved_path = String(asset_path.GetAssetPath().c_str());
 												}
@@ -1852,27 +1454,43 @@ GLTFImageIndex USDDocument::_parse_image_save_image(Ref<USDState> p_state, const
 }
 
 BoneAttachment3D *USDDocument::_generate_bone_attachment(Ref<USDState> p_state, Skeleton3D *p_skeleton, const GLTFNodeIndex p_node_index, const GLTFNodeIndex p_bone_index) {
-	// TODO: Implement
+	// TODO: Implement bone attachment generation
+	// This is called by GLTFDocument::generate_scene() to create BoneAttachment3D nodes
+	// Should create a BoneAttachment3D node and attach it to the skeleton
+	// Reference: GLTFDocument::_generate_scene_node() implementation
 	return nullptr;
 }
 
 ImporterMeshInstance3D *USDDocument::_generate_mesh_instance(Ref<USDState> p_state, const GLTFNodeIndex p_node_index) {
-	// TODO: Implement
+	// TODO: Implement mesh instance generation
+	// This is called by GLTFDocument::generate_scene() to create ImporterMeshInstance3D nodes
+	// Should create an ImporterMeshInstance3D node with the mesh from p_state->nodes[p_node_index]->mesh
+	// Reference: GLTFDocument::_generate_scene_node() implementation
 	return nullptr;
 }
 
 Camera3D *USDDocument::_generate_camera(Ref<USDState> p_state, const GLTFNodeIndex p_node_index) {
-	// TODO: Implement
+	// TODO: Implement camera generation
+	// This is called by GLTFDocument::generate_scene() to create Camera3D nodes
+	// Should create a Camera3D node with settings from p_state->cameras[p_state->nodes[p_node_index]->camera]
+	// Reference: GLTFDocument::_generate_scene_node() implementation
 	return nullptr;
 }
 
 Light3D *USDDocument::_generate_light(Ref<USDState> p_state, const GLTFNodeIndex p_node_index) {
-	// TODO: Implement
+	// TODO: Implement light generation
+	// This is called by GLTFDocument::generate_scene() to create Light3D nodes
+	// Should create appropriate Light3D subclass (DirectionalLight3D, OmniLight3D, SpotLight3D)
+	// based on p_state->lights[p_state->nodes[p_node_index]->light]
+	// Reference: GLTFDocument::_generate_scene_node() implementation
 	return nullptr;
 }
 
 Node3D *USDDocument::_generate_spatial(Ref<USDState> p_state, const GLTFNodeIndex p_node_index) {
-	// TODO: Implement
+	// TODO: Implement spatial node generation
+	// This is called by GLTFDocument::generate_scene() to create generic Node3D nodes
+	// Should create a Node3D node with transform from p_state->nodes[p_node_index]->transform
+	// Reference: GLTFDocument::_generate_scene_node() implementation
 	return nullptr;
 }
 
