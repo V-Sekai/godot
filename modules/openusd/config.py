@@ -18,7 +18,17 @@ def configure(env):
 
 
 def get_doc_classes():
-    return []
+    return [
+        # Export classes
+        "UsdDocument",
+        "UsdExportSettings",
+        "UsdState",
+        "USDPlugin",
+        # Import classes (GLTF-based)
+        "USDDocument",
+        "USDState",
+        "EditorSceneFormatImporterUSD",
+    ]
 
 
 def get_doc_path():

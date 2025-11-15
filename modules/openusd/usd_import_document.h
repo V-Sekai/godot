@@ -30,7 +30,7 @@
 
 #pragma once
 
-#include "usd_state.h"
+#include "usd_import_state.h"
 
 #include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_document.h"

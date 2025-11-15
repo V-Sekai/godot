@@ -5,11 +5,40 @@ import os
 Import("env")
 Import("env_modules")
 
+# Check if USD is built (install directory exists)
+# If not, print a message directing user to run build_usd.sh
+usd_install_include = "#modules/openusd/thirdparty/install/include"
+usd_install_lib = "#modules/openusd/thirdparty/install/lib"
+usd_pxr_h = os.path.join(usd_install_include.replace("#", ""), "pxr", "pxr.h")
+
+if not os.path.exists(usd_pxr_h):
+    print("")
+    print("=" * 60)
+    print("WARNING: USD libraries not found.")
+    print("=" * 60)
+    print("The openusd module requires USD to be built first.")
+    print("")
+    print("To build USD, run:")
+    print("  cd modules/openusd")
+    print("  ./build_usd.sh")
+    print("")
+    print("This will build USD and its dependencies (oneTBB, OpenSubdiv).")
+    print("The build may take 10-30 minutes depending on your system.")
+    print("")
+    print("After USD is built, run 'scons' again to build Godot.")
+    print("=" * 60)
+    print("")
+    # Exit early - don't build this module if USD isn't available
+    Return()
+
 env_usd = env_modules.Clone()
 
-env.Prepend(CPPEXTPATH=["thirdparty/install/include"])
-env.Prepend(LIBPATH=["#modules/openusd/thirdparty/install/lib"])
-env.Prepend(LIBS=[
+# Add USD include path for all source files
+usd_install_include = "#modules/openusd/thirdparty/install/include"
+env_usd.Prepend(CPPPATH=[usd_install_include])
+env_usd.Prepend(CPPEXTPATH=["thirdparty/install/include"])
+env_usd.Prepend(LIBPATH=["#modules/openusd/thirdparty/install/lib"])
+env_usd.Prepend(LIBS=[
     "libtbb.dylib",
     "libtbbmalloc.dylib",
     "libtbbmalloc_proxy.dylib",
@@ -41,7 +70,24 @@ env.Prepend(LIBS=[
     "libusd_trace.a"
 ])
 
+# Also add to global env for any other dependencies
+env.Prepend(LIBPATH=["#modules/openusd/thirdparty/install/lib"])
+
 module_obj = []
 
-env_usd.add_source_files(module_obj, "*.cpp")
+# Export source files
+env_usd.add_source_files(module_obj, "usd_document.cpp")
+env_usd.add_source_files(module_obj, "usd_export_settings.cpp")
+env_usd.add_source_files(module_obj, "usd_mesh_export_helper.cpp")
+env_usd.add_source_files(module_obj, "usd_mesh_import_helper.cpp")
+env_usd.add_source_files(module_obj, "usd_state.cpp")
+env_usd.add_source_files(module_obj, "usd_plugin.cpp")
+
+# Import source files (GLTF-based)
+env_usd.add_source_files(module_obj, "usd_import_document.cpp")
+env_usd.add_source_files(module_obj, "usd_import_state.cpp")
+
+if env.editor_build:
+	env_usd.add_source_files(module_obj, "editor_import/*.cpp")
+
 env.modules_sources += module_obj

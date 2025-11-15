@@ -30,8 +30,8 @@
 
 #include "editor_scene_importer_usd.h"
 
-#include "../usd_document.h"
-#include "../usd_state.h"
+#include "../usd_import_document.h"
+#include "../usd_import_state.h"
 
 #include "core/config/project_settings.h"
 

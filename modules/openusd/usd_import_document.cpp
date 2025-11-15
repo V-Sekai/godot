@@ -28,7 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "usd_document.h"
+#include "usd_import_document.h"
 
 #include "core/config/project_settings.h"
 #include "core/io/file_access.h"

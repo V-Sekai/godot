@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  usd_state.cpp                                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,52 +28,10 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
+#include "usd_import_state.h"
 
-#include "../gltf/extensions/gltf_document_extension_convert_importer_mesh.h"
-#include "usd_document.h"
-
-#ifdef TOOLS_ENABLED
-#include "editor/editor_scene_importer_usd.h"
-
-#include "core/config/project_settings.h"
-#include "editor/editor_node.h"
-
-static void _editor_init() {
-	Ref<EditorSceneFormatImporterUSD> import_usd;
-	import_usd.instantiate();
-	ResourceImporterScene::add_scene_importer(import_usd);
-}
-#endif // TOOLS_ENABLED
-
-#define USD_REGISTER_DOCUMENT_EXTENSION(m_doc_ext_class) \
-	Ref<m_doc_ext_class> extension_##m_doc_ext_class;    \
-	extension_##m_doc_ext_class.instantiate();           \
-	GLTFDocument::register_gltf_document_extension(extension_##m_doc_ext_class);
-
-void initialize_usd_import_module(ModuleInitializationLevel p_level) {
-	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
-		GDREGISTER_CLASS(USDDocument);
-		GDREGISTER_CLASS(USDState);
-		bool is_editor = Engine::get_singleton()->is_editor_hint();
-		if (!is_editor) {
-			USD_REGISTER_DOCUMENT_EXTENSION(GLTFDocumentExtensionConvertImporterMesh);
-		}
-	}
-
-#ifdef TOOLS_ENABLED
-	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		GDREGISTER_CLASS(EditorSceneFormatImporterUSD);
-
-		EditorNode::add_init_callback(_editor_init);
-	}
-#endif // TOOLS_ENABLED
-}
-
-void uninitialize_usd_import_module(ModuleInitializationLevel p_level) {
-	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
-		return;
-	}
-	GLTFDocument::unregister_all_gltf_document_extensions();
+void USDState::_bind_methods() {
+	// USDState extends GLTFState, so we inherit all its bindings
+	// Add any USD-specific bindings here if needed
 }
 
