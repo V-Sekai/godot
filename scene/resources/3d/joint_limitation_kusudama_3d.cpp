@@ -221,14 +221,14 @@ static bool is_in_inter_cone_path(const Vector3 &p_normal_dir, const Vector3 &p_
 static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_open_cones) {
 	Vector3 dir = p_point.normalized();
 	
-	// Check if point is in any cone (inside, not on boundary)
+	// Check if point is in any cone (inside, not on boundary - matches shader)
 	for (int i = 0; i < p_open_cones.size(); i++) {
 		const Vector4 &cone_data = p_open_cones[i];
 		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 		real_t radius = cone_data.w;
 		real_t angle = Math::acos(CLAMP(dir.dot(center), -1.0, 1.0));
 		if (angle < radius) {
-			return true; // Point is inside this cone
+			return true; // Point is inside this cone (strictly inside, not on boundary)
 		}
 	}
 	
@@ -859,27 +859,30 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment only if one point is in the union and the other is out (boundary edge)
-				if (i > 0 && prev_in_union != in_union) {
-					vts.push_back(prev_point);
-					vts.push_back(point);
-					
-					// Draw equally spaced sections from disallowed boundary point to origin
-					// Find which point is on the disallowed side
-					Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
-					int num_sections = 4; // Number of equally spaced sections
-					Vector3 origin = Vector3(0, 0, 0);
-					Vector3 prev_section_point = disallowed_point;
-					for (int s = 1; s <= num_sections; s++) {
-						real_t t = (real_t)s / (real_t)(num_sections + 1);
-						Vector3 section_point = disallowed_point.lerp(origin, t);
+				// Draw line segment if both points are NOT in the union (disallowed area - visualize as sphere)
+				// OR if one point is in and one is out (boundary edge - only draw lines to origin, not the edge itself)
+				if (i > 0) {
+					if (!prev_in_union && !in_union) {
+						// Both points are disallowed - draw the edge
+						vts.push_back(prev_point);
+						vts.push_back(point);
+					} else if (prev_in_union != in_union) {
+						// Boundary edge - only draw lines to origin from disallowed side (don't draw the boundary edge itself)
+						Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
+						int num_sections = 4; // Number of equally spaced sections
+						Vector3 origin = Vector3(0, 0, 0);
+						Vector3 prev_section_point = disallowed_point;
+						for (int s = 1; s <= num_sections; s++) {
+							real_t t = (real_t)s / (real_t)(num_sections + 1);
+							Vector3 section_point = disallowed_point.lerp(origin, t);
+							vts.push_back(prev_section_point);
+							vts.push_back(section_point);
+							prev_section_point = section_point;
+						}
+						// Draw final segment to origin
 						vts.push_back(prev_section_point);
-						vts.push_back(section_point);
-						prev_section_point = section_point;
+						vts.push_back(origin);
 					}
-					// Draw final segment to origin
-					vts.push_back(prev_section_point);
-					vts.push_back(origin);
 				}
 				
 				prev_point = point;
@@ -906,27 +909,30 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment only if one point is in the union and the other is out (boundary edge)
-				if (j > 0 && prev_in_union != in_union) {
-					vts.push_back(prev_point);
-					vts.push_back(point);
-					
-					// Draw equally spaced sections from disallowed boundary point to origin
-					// Find which point is on the disallowed side
-					Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
-					int num_sections = 4; // Number of equally spaced sections
-					Vector3 origin = Vector3(0, 0, 0);
-					Vector3 prev_section_point = disallowed_point;
-					for (int s = 1; s <= num_sections; s++) {
-						real_t t = (real_t)s / (real_t)(num_sections + 1);
-						Vector3 section_point = disallowed_point.lerp(origin, t);
+				// Draw line segment if both points are NOT in the union (disallowed area - visualize as sphere)
+				// OR if one point is in and one is out (boundary edge - only draw lines to origin, not the edge itself)
+				if (j > 0) {
+					if (!prev_in_union && !in_union) {
+						// Both points are disallowed - draw the edge
+						vts.push_back(prev_point);
+						vts.push_back(point);
+					} else if (prev_in_union != in_union) {
+						// Boundary edge - only draw lines to origin from disallowed side (don't draw the boundary edge itself)
+						Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
+						int num_sections = 4; // Number of equally spaced sections
+						Vector3 origin = Vector3(0, 0, 0);
+						Vector3 prev_section_point = disallowed_point;
+						for (int s = 1; s <= num_sections; s++) {
+							real_t t = (real_t)s / (real_t)(num_sections + 1);
+							Vector3 section_point = disallowed_point.lerp(origin, t);
+							vts.push_back(prev_section_point);
+							vts.push_back(section_point);
+							prev_section_point = section_point;
+						}
+						// Draw final segment to origin
 						vts.push_back(prev_section_point);
-						vts.push_back(section_point);
-						prev_section_point = section_point;
+						vts.push_back(origin);
 					}
-					// Draw final segment to origin
-					vts.push_back(prev_section_point);
-					vts.push_back(origin);
 				}
 				
 				prev_point = point;
