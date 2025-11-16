@@ -38,7 +38,8 @@ class JointLimitationKusudama3D : public JointLimitation3D {
 	GDCLASS(JointLimitationKusudama3D, JointLimitation3D);
 
 	// Open cones data: Vector4(x, y, z, radius) where (x,y,z) is normalized control point
-	Vector<Vector4> open_cones;
+	// Default to one cone matching JointLimitationCone3D: +Y axis, radius_range 0.25 (0.25 * PI radians)
+	Vector<Vector4> open_cones = { Vector4(0, 1, 0, 0.7853981633974483) };
 
 	// Axial (twist) limits
 	real_t min_axial_angle = 0.0;
