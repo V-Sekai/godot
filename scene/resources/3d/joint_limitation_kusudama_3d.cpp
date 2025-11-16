@@ -363,8 +363,31 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 				print_line(vformat("  Tangent 2: center=(%.3f, %.3f, %.3f)", tan2.x, tan2.y, tan2.z));
 			}
 			
+			// Check if point is inside or on either tangent circle - if so, it's forbidden
+			// The inside of tangent circles is forbidden area (the inter-cone path is OUTSIDE both tangent circles)
+			real_t angle_to_tan1 = Math::acos(CLAMP(dir.dot(tan1), -1.0, 1.0));
+			real_t angle_to_tan2 = Math::acos(CLAMP(dir.dot(tan2), -1.0, 1.0));
+			bool inside_tan1 = (angle_to_tan1 <= tan_radius);
+			bool inside_tan2 = (angle_to_tan2 <= tan_radius);
+			
+			if (should_log) {
+				print_line(vformat("  Angle to tan1: %.3f rad (%.1f deg), inside=%s", 
+					angle_to_tan1, Math::rad_to_deg(angle_to_tan1), inside_tan1 ? "YES" : "NO"));
+				print_line(vformat("  Angle to tan2: %.3f rad (%.1f deg), inside=%s", 
+					angle_to_tan2, Math::rad_to_deg(angle_to_tan2), inside_tan2 ? "YES" : "NO"));
+			}
+			
+			// If point is inside a tangent circle, it's forbidden (skip this path check)
+			if (inside_tan1 || inside_tan2) {
+				if (should_log) {
+					print_line("  -> FORBIDDEN: Point is inside a tangent circle");
+				}
+				continue; // Skip this path - point is inside a tangent circle (forbidden)
+			}
+			
 			// Check if point is in the inter-cone path region using the same logic as the solving code
 			// get_on_great_tangent_triangle returns NaN if point is NOT in path, non-NaN if it IS in path
+			// This should only return true for points OUTSIDE both tangent circles
 			Vector3 path_point = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
 			bool in_path = !Math::is_nan(path_point.x);
 			
@@ -373,12 +396,12 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 			}
 			
 			// The path region connects the two cones and should be allowed
-			// Open areas (cones + inter-cone paths) = allowed, everything else = forbidden
+			// Open areas (cones + inter-cone paths outside tangent circles) = allowed, everything else = forbidden
 			if (in_path) {
 				if (should_log) {
-					print_line("  -> ALLOWED: Point is in inter-cone path region");
+					print_line("  -> ALLOWED: Point is in inter-cone path region (outside both tangent circles)");
 				}
-				return true; // Point is in the inter-cone path region (open area)
+				return true; // Point is in the inter-cone path region (open area, outside both tangent circles)
 			}
 			// else: point is not in the inter-cone path region - continue checking other cone pairs
 		}
@@ -996,14 +1019,14 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	}
 	
 	// Create wireframe visualization: sphere with cones and tangents subtracted
-	// Draw sphere wireframe, but skip (subtract) areas inside cones and tangent paths
+	// Use exact cone and tangent boundaries to precisely determine forbidden areas
 	if (!open_cones.is_empty()) {
-		int rings = 32;
-		int radial_segments = 32;
+		// Increased density for more precise visualization using exact boundaries
+		int rings = 64;
+		int radial_segments = 64;
 		
 		// Generate horizontal wireframe lines (parallels/latitudes)
-		// Draw sphere lines, but subtract areas in cones and tangent paths
-		// Draw smooth boundary curves where transitions occur
+		// Draw sphere lines, but subtract areas inside exact cone and tangent boundaries
 		for (int j = 0; j <= rings; j++) {
 			real_t v = (real_t)j / (real_t)rings;
 			real_t w = Math::sin(Math::PI * v);
@@ -1020,23 +1043,22 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				Vector3 normal = Vector3(x * w, y, z * w).normalized();
 				Vector3 point = normal * socket_r;
 				
-				// Check if point is in any cone or tangent path (allowed area to subtract)
+				// Check if point is inside any exact cone or tangent boundary (allowed area)
+				// Using exact boundaries we've computed for precise determination
 				bool in_allowed = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment only if both points are NOT in allowed areas (sphere minus cones/tangents)
+				// Draw line segment only if both points are in forbidden area (outside all exact boundaries)
 				if (i > 0 && !prev_in_allowed && !in_allowed) {
-					// Both points are in disallowed area - draw the sphere edge
+					// Both points are in forbidden area - draw the sphere edge
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
 				
-				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
-				// Always draw the entire boundary curve when there's a transition (boundaries are epsilon away from forbidden)
+				// Draw exact boundary at transition (boundaries are epsilon away from forbidden)
 				if (i > 0 && prev_in_allowed != in_allowed) {
-					// Transition point - draw smooth spline boundary curve with fragment shader level detail
-					// Use spherical interpolation to create very fine smooth boundary
-					// Draw ALL segments of the boundary curve (boundaries are epsilon away, so always draw them)
-					int boundary_subdiv = 64; // Very high subdivision for fragment shader level detail
+					// Transition detected - draw smooth boundary curve with high precision
+					// This follows the exact cone/tangent boundaries we've computed
+					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
 					Vector3 prev_boundary;
 					
 					for (int k = 0; k <= boundary_subdiv; k++) {
@@ -1045,7 +1067,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 						Vector3 p1 = point.normalized();
 						Vector3 boundary_point = p0.slerp(p1, t).normalized();
 						
-						// Draw all boundary segments - boundaries are epsilon away from forbidden, so always draw them
+						// Draw all boundary segments - these align with exact cone/tangent boundaries
 						if (k > 0) {
 							vts.push_back(prev_boundary * socket_r);
 							vts.push_back(boundary_point * socket_r);
@@ -1061,8 +1083,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		}
 		
 		// Generate vertical lines (meridians/longitudes)
-		// Draw sphere lines, but subtract areas in cones and tangent paths
-		// Draw smooth boundary curves where transitions occur
+		// Draw sphere lines, but subtract areas inside exact cone and tangent boundaries
 		for (int i = 0; i <= radial_segments; i++) {
 			real_t u = (real_t)i / (real_t)radial_segments;
 			real_t x = Math::sin(u * Math::TAU);
@@ -1079,23 +1100,22 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				Vector3 normal = Vector3(x * w, y, z * w).normalized();
 				Vector3 point = normal * socket_r;
 				
-				// Check if point is in any cone or tangent path (allowed area to subtract)
+				// Check if point is inside any exact cone or tangent boundary (allowed area)
+				// Using exact boundaries we've computed for precise determination
 				bool in_allowed = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment only if both points are NOT in allowed areas (sphere minus cones/tangents)
+				// Draw line segment only if both points are in forbidden area (outside all exact boundaries)
 				if (j > 0 && !prev_in_allowed && !in_allowed) {
-					// Both points are in disallowed area - draw the sphere edge
+					// Both points are in forbidden area - draw the sphere edge
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
 				
-				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
-				// Always draw the entire boundary curve when there's a transition (boundaries are epsilon away from forbidden)
+				// Draw exact boundary at transition (boundaries are epsilon away from forbidden)
 				if (j > 0 && prev_in_allowed != in_allowed) {
-					// Transition point - draw smooth spline boundary curve with fragment shader level detail
-					// Use spherical interpolation to create very fine smooth boundary
-					// Draw ALL segments of the boundary curve (boundaries are epsilon away, so always draw them)
-					int boundary_subdiv = 64; // Very high subdivision for fragment shader level detail
+					// Transition detected - draw smooth boundary curve with high precision
+					// This follows the exact cone/tangent boundaries we've computed
+					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
 					Vector3 prev_boundary;
 					
 					for (int k = 0; k <= boundary_subdiv; k++) {
@@ -1104,7 +1124,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 						Vector3 p1 = point.normalized();
 						Vector3 boundary_point = p0.slerp(p1, t).normalized();
 						
-						// Draw all boundary segments - boundaries are epsilon away from forbidden, so always draw them
+						// Draw all boundary segments - these align with exact cone/tangent boundaries
 						if (k > 0) {
 							vts.push_back(prev_boundary * socket_r);
 							vts.push_back(boundary_point * socket_r);
@@ -1132,6 +1152,30 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		
 		// Draw the exact boundary circle of the cone (using spline interpolation with reduced detail)
 		draw_cone_circle(vts, center, cone_radius, socket_r, 64);
+	}
+	
+	// Draw exact tangent boundary rings on the unit sphere
+	// These show the exact boundary of each tangent circle connecting adjacent cones
+	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
+		const Vector4 &cone_data1 = open_cones[cone_i];
+		Vector3 center1 = Vector3(cone_data1.x, cone_data1.y, cone_data1.z).normalized();
+		real_t radius1 = cone_data1.w; // Cone radius in radians
+		
+		// For each pair of cones (including wrapping around)
+		for (int cone_j = cone_i + 1; cone_j < open_cones.size(); cone_j++) {
+			const Vector4 &cone_data2 = open_cones[cone_j];
+			Vector3 center2 = Vector3(cone_data2.x, cone_data2.y, cone_data2.z).normalized();
+			real_t radius2 = cone_data2.w; // Cone radius in radians
+			
+			// Compute tangent circles
+			Vector3 tan1, tan2;
+			real_t tan_radius;
+			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+			
+			// Draw both tangent circle boundaries
+			draw_cone_circle(vts, tan1, tan_radius, socket_r, 64);
+			draw_cone_circle(vts, tan2, tan_radius, socket_r, 64);
+		}
 	}
 	
 	// Add all vertices to surface tool as a single mesh
