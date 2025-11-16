@@ -31,6 +31,7 @@
 #include "chain_ik_3d_gizmo_plugin.h"
 
 #include "editor/settings/editor_settings.h"
+#include "scene/resources/3d/joint_limitation_kusudama_3d.h"
 
 ChainIK3DGizmoPlugin::SelectionMaterials ChainIK3DGizmoPlugin::selection_materials;
 
