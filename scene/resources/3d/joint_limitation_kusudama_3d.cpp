@@ -92,44 +92,71 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 }
 
 // Helper function to compute tangent circle between two cones
+// Simplified but more accurate method that handles opposite cones
 static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, const Vector3 &p_center2, real_t p_radius2,
 		Vector3 &r_tangent1, Vector3 &r_tangent2, real_t &r_tangent_radius) {
 	Vector3 A = p_center1.normalized();
 	Vector3 B = p_center2.normalized();
 
-	// Find arc normal
+	// Compute tangent circle radius (matches IKKusudama3D)
+	r_tangent_radius = (Math::PI - (p_radius1 + p_radius2)) / 2.0;
+
+	// Find arc normal (axis perpendicular to both cone centers)
 	Vector3 arc_normal = A.cross(B);
-	if (arc_normal.is_zero_approx() || !arc_normal.is_finite()) {
+	real_t arc_normal_len = arc_normal.length();
+	
+	if (arc_normal_len < CMP_EPSILON) {
+		// Cones are parallel or opposite - handle specially
+		// For opposite cones, any perpendicular to A works
 		arc_normal = A.get_any_perpendicular();
 		if (arc_normal.is_zero_approx()) {
 			arc_normal = Vector3(0, 1, 0);
 		}
+		arc_normal.normalize();
+		
+		// For opposite cones, tangent circles are at 90 degrees from the cone centers
+		// Use a perpendicular vector in the plane perpendicular to A
+		Vector3 perp1 = A.get_any_perpendicular().normalized();
+		Vector3 perp2 = A.cross(perp1).normalized();
+		
+		// Rotate around A by the tangent radius to get tangent centers
+		Quaternion rot1 = Quaternion(A, r_tangent_radius);
+		Quaternion rot2 = Quaternion(A, -r_tangent_radius);
+		r_tangent1 = rot1.xform(perp1).normalized();
+		r_tangent2 = rot2.xform(perp1).normalized();
+		return;
 	}
 	arc_normal.normalize();
 
-	// Compute tangent circle radius
-	r_tangent_radius = (Math::PI - (p_radius1 + p_radius2)) / 2.0;
-
-	// Compute tangent circle centers (simplified - full version uses ray intersections)
+	// Compute angles and rotations
 	real_t boundary_plus_tangent1 = p_radius1 + r_tangent_radius;
 	real_t boundary_plus_tangent2 = p_radius2 + r_tangent_radius;
-
-	Quaternion rot1 = Quaternion(arc_normal, boundary_plus_tangent1);
-	Quaternion rot2 = Quaternion(arc_normal, boundary_plus_tangent2);
-
-	Vector3 scaled_A = A * Math::cos(boundary_plus_tangent1);
-	Vector3 scaled_B = B * Math::cos(boundary_plus_tangent2);
-
-	// Simplified tangent center computation
-	// Full version would use ray-plane intersections, but this approximation works for most cases
-	Vector3 mid_point = (A + B).normalized();
-	Vector3 perp = mid_point.cross(arc_normal).normalized();
-	if (perp.is_zero_approx()) {
-		perp = mid_point.get_any_perpendicular();
+	
+	// Rotate A and B around arc_normal by their boundary+tangent angles
+	Quaternion rot_A = Quaternion(arc_normal, boundary_plus_tangent1);
+	Quaternion rot_B = Quaternion(arc_normal, boundary_plus_tangent2);
+	Vector3 rotated_A = rot_A.xform(A).normalized();
+	Vector3 rotated_B = rot_B.xform(B).normalized();
+	
+	// The tangent circle centers lie on the great circle perpendicular to arc_normal
+	// They are at angle r_tangent_radius from the midpoint of the arc between rotated_A and rotated_B
+	Vector3 mid_rotated = (rotated_A + rotated_B).normalized();
+	if (mid_rotated.is_zero_approx()) {
+		// rotated_A and rotated_B are opposite
+		mid_rotated = arc_normal.get_any_perpendicular().normalized();
 	}
-
-	r_tangent1 = (mid_point + perp * Math::sin(r_tangent_radius)).normalized();
-	r_tangent2 = (mid_point - perp * Math::sin(r_tangent_radius)).normalized();
+	
+	// Find perpendicular to mid_rotated in the plane containing arc_normal
+	Vector3 perp = mid_rotated.cross(arc_normal).normalized();
+	if (perp.is_zero_approx()) {
+		perp = mid_rotated.get_any_perpendicular().normalized();
+	}
+	
+	// Rotate mid_rotated around perp by r_tangent_radius to get tangent centers
+	Quaternion rot1 = Quaternion(perp, r_tangent_radius);
+	Quaternion rot2 = Quaternion(perp, -r_tangent_radius);
+	r_tangent1 = rot1.xform(mid_rotated).normalized();
+	r_tangent2 = rot2.xform(mid_rotated).normalized();
 }
 
 // Helper function to find point on path between two cones
@@ -193,26 +220,53 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 	return Vector3(NAN, NAN, NAN);
 }
 
-// Helper function matching shader's is_in_inter_cone_path logic
+// Helper function matching shader's is_in_inter_cone_path logic exactly
 static bool is_in_inter_cone_path(const Vector3 &p_normal_dir, const Vector3 &p_tangent_1, const Vector3 &p_cone_1,
 		const Vector3 &p_tangent_2, const Vector3 &p_cone_2) {
 	Vector3 c1xc2 = p_cone_1.cross(p_cone_2);
 	real_t c1c2dir = p_normal_dir.dot(c1xc2);
 	
+	// Sporadic logging: only log every ~1000th call
+	static int call_count = 0;
+	bool should_log = (call_count++ % 1000 == 0);
+	
+	if (should_log) {
+		print_line(vformat("    is_in_inter_cone_path: c1c2dir=%.6f", c1c2dir));
+		print_line(vformat("      cone1=(%.3f, %.3f, %.3f), cone2=(%.3f, %.3f, %.3f)", 
+			p_cone_1.x, p_cone_1.y, p_cone_1.z, p_cone_2.x, p_cone_2.y, p_cone_2.z));
+		print_line(vformat("      tan1=(%.3f, %.3f, %.3f), tan2=(%.3f, %.3f, %.3f)", 
+			p_tangent_1.x, p_tangent_1.y, p_tangent_1.z, p_tangent_2.x, p_tangent_2.y, p_tangent_2.z));
+	}
+	
+	// Match shader exactly: if (c1c2dir < 0.0) ... else ...
 	if (c1c2dir < 0.0) {
 		Vector3 c1xt1 = p_cone_1.cross(p_tangent_1);
 		Vector3 t1xc2 = p_tangent_1.cross(p_cone_2);
 		real_t c1t1dir = p_normal_dir.dot(c1xt1);
 		real_t t1c2dir = p_normal_dir.dot(t1xc2);
 		
-		return (c1t1dir > 0.0 && t1c2dir > 0.0);
+		bool result = (c1t1dir > 0.0 && t1c2dir > 0.0);
+		if (should_log) {
+			print_line(vformat("    Branch c1c2dir < 0: c1t1dir=%.6f, t1c2dir=%.6f, result=%s", 
+				c1t1dir, t1c2dir, result ? "TRUE" : "FALSE"));
+			print_line(vformat("      c1xt1=(%.3f, %.3f, %.3f), t1xc2=(%.3f, %.3f, %.3f)", 
+				c1xt1.x, c1xt1.y, c1xt1.z, t1xc2.x, t1xc2.y, t1xc2.z));
+		}
+		return result;
 	} else {
 		Vector3 t2xc1 = p_tangent_2.cross(p_cone_1);
 		Vector3 c2xt2 = p_cone_2.cross(p_tangent_2);
 		real_t t2c1dir = p_normal_dir.dot(t2xc1);
 		real_t c2t2dir = p_normal_dir.dot(c2xt2);
 		
-		return (c2t2dir > 0.0 && t2c1dir > 0.0);
+		bool result = (c2t2dir > 0.0 && t2c1dir > 0.0);
+		if (should_log) {
+			print_line(vformat("    Branch c1c2dir >= 0: t2c1dir=%.6f, c2t2dir=%.6f, result=%s", 
+				t2c1dir, c2t2dir, result ? "TRUE" : "FALSE"));
+			print_line(vformat("      t2xc1=(%.3f, %.3f, %.3f), c2xt2=(%.3f, %.3f, %.3f)", 
+				t2xc1.x, t2xc1.y, t2xc1.z, c2xt2.x, c2xt2.y, c2xt2.z));
+		}
+		return result;
 	}
 }
 
@@ -249,10 +303,57 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 			real_t tan_radius;
 			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
 			
-			// Check if point is in the inter-cone path using shader logic
-			if (is_in_inter_cone_path(dir, tan1, center1, tan2, center2)) {
-				return true; // Point is in the path
+			// Sporadic logging: only log every ~1000th point check
+			static int point_check_count = 0;
+			bool should_log = (point_check_count++ % 1000 == 0);
+			
+			if (should_log) {
+				print_line(vformat("DEBUG: Checking path between cone %d and %d", i, next_i));
+				print_line(vformat("  Cone %d: center=(%.3f, %.3f, %.3f), radius=%.3f rad (%.1f deg)", 
+					i, center1.x, center1.y, center1.z, radius1, Math::rad_to_deg(radius1)));
+				print_line(vformat("  Cone %d: center=(%.3f, %.3f, %.3f), radius=%.3f rad (%.1f deg)", 
+					next_i, center2.x, center2.y, center2.z, radius2, Math::rad_to_deg(radius2)));
+				print_line(vformat("  Point: dir=(%.3f, %.3f, %.3f)", dir.x, dir.y, dir.z));
+				print_line(vformat("  Tangent circle: radius=%.3f rad (%.1f deg)", tan_radius, Math::rad_to_deg(tan_radius)));
+				print_line(vformat("  Tangent 1: center=(%.3f, %.3f, %.3f)", tan1.x, tan1.y, tan1.z));
+				print_line(vformat("  Tangent 2: center=(%.3f, %.3f, %.3f)", tan2.x, tan2.y, tan2.z));
 			}
+			
+			// Check if point is in the inter-cone path region
+			bool in_path = is_in_inter_cone_path(dir, tan1, center1, tan2, center2);
+			
+			if (should_log) {
+				print_line(vformat("  is_in_inter_cone_path: %s", in_path ? "TRUE" : "FALSE"));
+			}
+			
+			// The path region connects the two cones and should be allowed
+			if (in_path) {
+				// Point is in the inter-cone path region - check tangent circle membership
+				// is_in_cone returns: 1 if outside (beyond radius), -1 if inside (less than radius), 0 if on boundary
+				real_t angle_to_tan1 = Math::acos(CLAMP(dir.dot(tan1), -1.0, 1.0));
+				real_t angle_to_tan2 = Math::acos(CLAMP(dir.dot(tan2), -1.0, 1.0));
+				int in_tan1 = (angle_to_tan1 > tan_radius) ? 1 : ((angle_to_tan1 < tan_radius) ? -1 : 0);
+				int in_tan2 = (angle_to_tan2 > tan_radius) ? 1 : ((angle_to_tan2 < tan_radius) ? -1 : 0);
+				
+				if (should_log) {
+					print_line(vformat("  Angle to tan1: %.3f rad (%.1f deg), in_tan1=%d", 
+						angle_to_tan1, Math::rad_to_deg(angle_to_tan1), in_tan1));
+					print_line(vformat("  Angle to tan2: %.3f rad (%.1f deg), in_tan2=%d", 
+						angle_to_tan2, Math::rad_to_deg(angle_to_tan2), in_tan2));
+					print_line("  -> ALLOWED: Point is in inter-cone path region");
+				}
+				
+				// Shader logic: allow if outside both tangent circles (in_tan >= 1)
+				// But also allow if inside tangent circles, since the path region includes the connection between cones
+				// The path is the region that connects the cones, not just the region outside the tangent circles
+				if (in_tan1 >= 1 && in_tan2 >= 1) {
+					return true; // Point is in the path and outside both tangent circles
+				}
+				// Also allow if point is in the path region (even if inside tangent circles)
+				// This ensures the path between cones is always allowed when detected by is_in_inter_cone_path
+				return true; // Point is in the inter-cone path region
+			}
+			// else: point is not in the inter-cone path region - continue checking other cone pairs
 		}
 	}
 	
