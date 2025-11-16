@@ -349,11 +349,9 @@ static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, c
 }
 
 // Helper function to find point on path between two cones
+// Uses the simpler test version that avoids origin-crossing issues
 static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vector3 &p_center1, real_t p_radius1,
 		const Vector3 &p_center2, real_t p_radius2) {
-	static int call_count = 0;
-	call_count++;
-	
 	Vector3 center1 = p_center1.normalized();
 	Vector3 center2 = p_center2.normalized();
 	Vector3 input = p_input.normalized();
@@ -369,50 +367,27 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 	Vector3 arc_normal = center1.cross(center2);
 	real_t arc_side_dot = input.dot(arc_normal);
 
-	// Sporadic logging (every 1000th call)
-	if (call_count % 1000 == 0) {
-		print_verbose(vformat("get_on_great_tangent_triangle: input=(%.3f,%.3f,%.3f) center1=(%.3f,%.3f,%.3f) center2=(%.3f,%.3f,%.3f) tan1=(%.3f,%.3f,%.3f) tan2=(%.3f,%.3f,%.3f) tan_radius=%.4f arc_side_dot=%.4f",
-			input.x, input.y, input.z,
-			center1.x, center1.y, center1.z,
-			center2.x, center2.y, center2.z,
-			tan1.x, tan1.y, tan1.z,
-			tan2.x, tan2.y, tan2.z,
-			tan_radius, arc_side_dot));
-	}
-
 	if (arc_side_dot < 0.0) {
 		// Use first tangent circle
 		Vector3 cone1_cross_tangent1 = center1.cross(tan1);
 		Vector3 tangent1_cross_cone2 = tan1.cross(center2);
 		if (input.dot(cone1_cross_tangent1) > 0 && input.dot(tangent1_cross_cone2) > 0) {
 			real_t to_next_cos = input.dot(tan1);
-			if (call_count % 1000 == 0) {
-				print_verbose(vformat("  neg side: dot_c1xt1=%.4f dot_t1xc2=%.4f to_next_cos=%.4f tan_radius_cos=%.4f (to_next_cos > tan_radius_cos: %s)",
-					input.dot(cone1_cross_tangent1), input.dot(tangent1_cross_cone2), to_next_cos, tan_radius_cos, (to_next_cos > tan_radius_cos) ? "YES" : "NO"));
-			}
 			if (to_next_cos > tan_radius_cos) {
-				// Project onto tangent circle
+				// Project onto tangent circle, but move slightly outside to ensure it's in the allowed region
 				Vector3 plane_normal = tan1.cross(input);
 				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
 					plane_normal = Vector3(0, 1, 0);
 				}
 				plane_normal.normalize();
-				real_t adjusted_tan_radius = tan_radius + 1e-4;
+				// Use slightly larger angle to move point outside the tangent circle (into allowed region)
+				// Points with angle > tan_radius are outside (allowed), points with angle < tan_radius are inside (forbidden)
+				// Use minimal adjustment (5e-5 radians) to ensure it's in allowed region without moving too far
+				real_t adjusted_tan_radius = tan_radius + 5e-5;
 				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-				Vector3 result = rotate_about_by.xform(tan1).normalized();
-				if (call_count % 1000 == 0) {
-					print_verbose(vformat("  -> in path (neg side, projected): result=(%.3f,%.3f,%.3f)", result.x, result.y, result.z));
-				}
-				return result;
+				return rotate_about_by.xform(tan1).normalized();
 			} else {
-				if (call_count % 1000 == 0) {
-					print_verbose(vformat("  -> in path (neg side, unchanged): result=(%.3f,%.3f,%.3f)", input.x, input.y, input.z));
-				}
 				return input;
-			}
-		} else {
-			if (call_count % 1000 == 0) {
-				print_verbose(vformat("  neg side: NOT in cross-product region (dot_c1xt1=%.4f dot_t1xc2=%.4f)", input.dot(cone1_cross_tangent1), input.dot(tangent1_cross_cone2)));
 			}
 		}
 	} else {
@@ -421,40 +396,25 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 		Vector3 cone2_cross_tangent2 = center2.cross(tan2);
 		if (input.dot(tangent2_cross_cone1) > 0 && input.dot(cone2_cross_tangent2) > 0) {
 			real_t to_next_cos = input.dot(tan2);
-			if (call_count % 1000 == 0) {
-				print_verbose(vformat("  pos side: dot_t2xc1=%.4f dot_c2xt2=%.4f to_next_cos=%.4f tan_radius_cos=%.4f (to_next_cos > tan_radius_cos: %s)",
-					input.dot(tangent2_cross_cone1), input.dot(cone2_cross_tangent2), to_next_cos, tan_radius_cos, (to_next_cos > tan_radius_cos) ? "YES" : "NO"));
-			}
 			if (to_next_cos > tan_radius_cos) {
-				// Project onto tangent circle
+				// Project onto tangent circle, but move slightly outside to ensure it's in the allowed region
 				Vector3 plane_normal = tan2.cross(input);
 				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
 					plane_normal = Vector3(0, 1, 0);
 				}
 				plane_normal.normalize();
-				real_t adjusted_tan_radius = tan_radius + 1e-4;
+				// Use slightly larger angle to move point outside the tangent circle (into allowed region)
+				// Points with angle > tan_radius are outside (allowed), points with angle < tan_radius are inside (forbidden)
+				// Use minimal adjustment (5e-5 radians) to ensure it's in allowed region without moving too far
+				real_t adjusted_tan_radius = tan_radius + 5e-5;
 				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-				Vector3 result = rotate_about_by.xform(tan2).normalized();
-				if (call_count % 1000 == 0) {
-					print_verbose(vformat("  -> in path (pos side, projected): result=(%.3f,%.3f,%.3f)", result.x, result.y, result.z));
-				}
-				return result;
+				return rotate_about_by.xform(tan2).normalized();
 			} else {
-				if (call_count % 1000 == 0) {
-					print_verbose(vformat("  -> in path (pos side, unchanged): result=(%.3f,%.3f,%.3f)", input.x, input.y, input.z));
-				}
 				return input;
-			}
-		} else {
-			if (call_count % 1000 == 0) {
-				print_verbose(vformat("  pos side: NOT in cross-product region (dot_t2xc1=%.4f dot_c2xt2=%.4f)", input.dot(tangent2_cross_cone1), input.dot(cone2_cross_tangent2)));
 			}
 		}
 	}
 
-	if (call_count % 1000 == 0) {
-		print_verbose("  -> returning NaN (not in path)");
-	}
 	return Vector3(NAN, NAN, NAN);
 }
 
