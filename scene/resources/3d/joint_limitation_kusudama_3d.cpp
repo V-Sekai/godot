@@ -1028,7 +1028,6 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 					// This follows the exact cone/tangent boundaries we've computed
 					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
 					Vector3 prev_boundary;
-					Vector3 origin = Vector3(0, 0, 0);
 					
 					for (int k = 0; k <= boundary_subdiv; k++) {
 						real_t t = (real_t)k / (real_t)boundary_subdiv;
@@ -1040,14 +1039,6 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 						if (k > 0) {
 							vts.push_back(prev_boundary);
 							vts.push_back(boundary_point);
-						}
-						
-						// Draw segment from boundary point to origin to show forbidden wall
-						// Only draw if the boundary point is on the forbidden side
-						bool boundary_in_allowed = is_point_in_union(boundary_point.normalized(), open_cones);
-						if (!boundary_in_allowed) {
-							vts.push_back(boundary_point);
-							vts.push_back(origin);
 						}
 						
 						prev_boundary = boundary_point;
@@ -1094,7 +1085,6 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 					// This follows the exact cone/tangent boundaries we've computed
 					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
 					Vector3 prev_boundary;
-					Vector3 origin = Vector3(0, 0, 0);
 					
 					for (int k = 0; k <= boundary_subdiv; k++) {
 						real_t t = (real_t)k / (real_t)boundary_subdiv;
@@ -1106,14 +1096,6 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 						if (k > 0) {
 							vts.push_back(prev_boundary);
 							vts.push_back(boundary_point);
-						}
-						
-						// Draw segment from boundary point to origin to show forbidden wall
-						// Only draw if the boundary point is on the forbidden side
-						bool boundary_in_allowed = is_point_in_union(boundary_point.normalized(), open_cones);
-						if (!boundary_in_allowed) {
-							vts.push_back(boundary_point);
-							vts.push_back(origin);
 						}
 						
 						prev_boundary = boundary_point;
