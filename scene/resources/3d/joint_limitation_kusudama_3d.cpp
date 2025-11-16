@@ -31,6 +31,8 @@
 #include "joint_limitation_kusudama_3d.h"
 
 #include "core/math/math_funcs.h"
+#include "scene/3d/ik_ray_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
 
 void JointLimitationKusudama3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_open_cones", "cones"), &JointLimitationKusudama3D::set_open_cones);
@@ -92,7 +94,8 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 }
 
 // Helper function to compute tangent circle between two cones
-// Simplified but more accurate method that handles opposite cones
+// Uses plane intersection method matching the actual implementation in ik_open_cone_3d.cpp
+// This ensures the tangent circles are computed on the correct side (the open side)
 static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, const Vector3 &p_center2, real_t p_radius2,
 		Vector3 &r_tangent1, Vector3 &r_tangent2, real_t &r_tangent_radius) {
 	Vector3 A = p_center1.normalized();
@@ -128,35 +131,76 @@ static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, c
 	}
 	arc_normal.normalize();
 
-	// Compute angles and rotations
-	real_t boundary_plus_tangent1 = p_radius1 + r_tangent_radius;
-	real_t boundary_plus_tangent2 = p_radius2 + r_tangent_radius;
-	
-	// Rotate A and B around arc_normal by their boundary+tangent angles
-	Quaternion rot_A = Quaternion(arc_normal, boundary_plus_tangent1);
-	Quaternion rot_B = Quaternion(arc_normal, boundary_plus_tangent2);
-	Vector3 rotated_A = rot_A.xform(A).normalized();
-	Vector3 rotated_B = rot_B.xform(B).normalized();
-	
-	// The tangent circle centers lie on the great circle perpendicular to arc_normal
-	// They are at angle r_tangent_radius from the midpoint of the arc between rotated_A and rotated_B
-	Vector3 mid_rotated = (rotated_A + rotated_B).normalized();
-	if (mid_rotated.is_zero_approx()) {
-		// rotated_A and rotated_B are opposite
-		mid_rotated = arc_normal.get_any_perpendicular().normalized();
+	// Use plane intersection method matching ik_open_cone_3d.cpp
+	real_t boundaryPlusTangentRadiusA = p_radius1 + r_tangent_radius;
+	real_t boundaryPlusTangentRadiusB = p_radius2 + r_tangent_radius;
+
+	// The axis of this cone, scaled to minimize its distance to the tangent contact points
+	Vector3 scaledAxisA = A * Math::cos(boundaryPlusTangentRadiusA);
+	// A point on the plane running through the tangent contact points
+	Vector3 safe_arc_normal = arc_normal;
+	if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
+		safe_arc_normal = Vector3(0, 1, 0);
 	}
-	
-	// Find perpendicular to mid_rotated in the plane containing arc_normal
-	Vector3 perp = mid_rotated.cross(arc_normal).normalized();
-	if (perp.is_zero_approx()) {
-		perp = mid_rotated.get_any_perpendicular().normalized();
+	Quaternion temp_var = IKKusudama3D::get_quaternion_axis_angle(safe_arc_normal, boundaryPlusTangentRadiusA);
+	Vector3 planeDir1A = temp_var.xform(A);
+	// Another point on the same plane
+	Vector3 safe_A = A;
+	if (Math::is_zero_approx(safe_A.length_squared())) {
+		safe_A = Vector3(0, 0, 1);
 	}
-	
-	// Rotate mid_rotated around perp by r_tangent_radius to get tangent centers
-	Quaternion rot1 = Quaternion(perp, r_tangent_radius);
-	Quaternion rot2 = Quaternion(perp, -r_tangent_radius);
-	r_tangent1 = rot1.xform(mid_rotated).normalized();
-	r_tangent2 = rot2.xform(mid_rotated).normalized();
+	Quaternion tempVar2 = IKKusudama3D::get_quaternion_axis_angle(safe_A, Math::PI / 2);
+	Vector3 planeDir2A = tempVar2.xform(planeDir1A);
+
+	Vector3 scaledAxisB = B * Math::cos(boundaryPlusTangentRadiusB);
+	// A point on the plane running through the tangent contact points
+	Quaternion tempVar3 = IKKusudama3D::get_quaternion_axis_angle(safe_arc_normal, boundaryPlusTangentRadiusB);
+	Vector3 planeDir1B = tempVar3.xform(B);
+	// Another point on the same plane
+	Vector3 safe_B = B;
+	if (Math::is_zero_approx(safe_B.length_squared())) {
+		safe_B = Vector3(0, 0, 1);
+	}
+	Quaternion tempVar4 = IKKusudama3D::get_quaternion_axis_angle(safe_B, Math::PI / 2);
+	Vector3 planeDir2B = tempVar4.xform(planeDir1B);
+
+	// Ray from scaled center of next cone to half way point between the circumference of this cone and the next cone
+	Ref<IKRay3D> r1B = Ref<IKRay3D>(memnew(IKRay3D(planeDir1B, scaledAxisB)));
+	Ref<IKRay3D> r2B = Ref<IKRay3D>(memnew(IKRay3D(planeDir1B, planeDir2B)));
+
+	r1B->elongate(99);
+	r2B->elongate(99);
+
+	Vector3 intersection1 = r1B->get_intersects_plane(scaledAxisA, planeDir1A, planeDir2A);
+	Vector3 intersection2 = r2B->get_intersects_plane(scaledAxisA, planeDir1A, planeDir2A);
+
+	Ref<IKRay3D> intersectionRay = Ref<IKRay3D>(memnew(IKRay3D(intersection1, intersection2)));
+	intersectionRay->elongate(99);
+
+	Vector3 sphereIntersect1;
+	Vector3 sphereIntersect2;
+	Vector3 sphereCenter;
+	intersectionRay->intersects_sphere(sphereCenter, 1.0f, &sphereIntersect1, &sphereIntersect2);
+
+	r_tangent1 = sphereIntersect1.normalized();
+	r_tangent2 = sphereIntersect2.normalized();
+
+	// Handle degenerate tangent centers (NaN or zero)
+	if (!r_tangent1.is_finite() || Math::is_zero_approx(r_tangent1.length_squared())) {
+		r_tangent1 = A.get_any_perpendicular();
+		if (Math::is_zero_approx(r_tangent1.length_squared())) {
+			r_tangent1 = Vector3(0, 1, 0);
+		}
+		r_tangent1.normalize();
+	}
+	if (!r_tangent2.is_finite() || Math::is_zero_approx(r_tangent2.length_squared())) {
+		Vector3 orthogonal_base = r_tangent1.is_finite() ? r_tangent1 : A;
+		r_tangent2 = orthogonal_base.get_any_perpendicular();
+		if (Math::is_zero_approx(r_tangent2.length_squared())) {
+			r_tangent2 = Vector3(1, 0, 0);
+		}
+		r_tangent2.normalize();
+	}
 }
 
 // Helper function to find point on path between two cones
@@ -987,21 +1031,27 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				}
 				
 				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
+				// Always draw the entire boundary curve when there's a transition (boundaries are epsilon away from forbidden)
 				if (i > 0 && prev_in_allowed != in_allowed) {
 					// Transition point - draw smooth spline boundary curve with fragment shader level detail
 					// Use spherical interpolation to create very fine smooth boundary
+					// Draw ALL segments of the boundary curve (boundaries are epsilon away, so always draw them)
 					int boundary_subdiv = 64; // Very high subdivision for fragment shader level detail
+					Vector3 prev_boundary;
+					
 					for (int k = 0; k <= boundary_subdiv; k++) {
 						real_t t = (real_t)k / (real_t)boundary_subdiv;
 						Vector3 p0 = prev_point.normalized();
 						Vector3 p1 = point.normalized();
-						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
+						Vector3 boundary_point = p0.slerp(p1, t).normalized();
 						
+						// Draw all boundary segments - boundaries are epsilon away from forbidden, so always draw them
 						if (k > 0) {
-							Vector3 prev_boundary = p0.slerp(p1, (real_t)(k - 1) / (real_t)boundary_subdiv).normalized() * socket_r;
-							vts.push_back(prev_boundary);
-							vts.push_back(boundary_point);
+							vts.push_back(prev_boundary * socket_r);
+							vts.push_back(boundary_point * socket_r);
 						}
+						
+						prev_boundary = boundary_point;
 					}
 				}
 				
@@ -1040,21 +1090,27 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				}
 				
 				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
+				// Always draw the entire boundary curve when there's a transition (boundaries are epsilon away from forbidden)
 				if (j > 0 && prev_in_allowed != in_allowed) {
 					// Transition point - draw smooth spline boundary curve with fragment shader level detail
 					// Use spherical interpolation to create very fine smooth boundary
+					// Draw ALL segments of the boundary curve (boundaries are epsilon away, so always draw them)
 					int boundary_subdiv = 64; // Very high subdivision for fragment shader level detail
+					Vector3 prev_boundary;
+					
 					for (int k = 0; k <= boundary_subdiv; k++) {
 						real_t t = (real_t)k / (real_t)boundary_subdiv;
 						Vector3 p0 = prev_point.normalized();
 						Vector3 p1 = point.normalized();
-						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
+						Vector3 boundary_point = p0.slerp(p1, t).normalized();
 						
+						// Draw all boundary segments - boundaries are epsilon away from forbidden, so always draw them
 						if (k > 0) {
-							Vector3 prev_boundary = p0.slerp(p1, (real_t)(k - 1) / (real_t)boundary_subdiv).normalized() * socket_r;
-							vts.push_back(prev_boundary);
-							vts.push_back(boundary_point);
+							vts.push_back(prev_boundary * socket_r);
+							vts.push_back(boundary_point * socket_r);
 						}
+						
+						prev_boundary = boundary_point;
 					}
 				}
 				
@@ -1064,36 +1120,9 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		}
 	}
 	
-	// Draw exact cone boundaries (circle at cone radius)
-	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
-		const Vector4 &cone_data = open_cones[cone_i];
-		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		real_t cone_radius = cone_data.w; // Cone radius in radians
-		
-		// Draw the exact boundary circle of the cone (using spline interpolation with reduced detail)
-		draw_cone_circle(vts, center, cone_radius, socket_r, 64);
-	}
-	
 	// Tangent path boundaries are shown in the wireframe visualization where the sphere is cut
 	// The is_point_in_union function includes tangent paths, so boundaries are automatically visible
-	
-	// Draw simple markers at exact cone center locations
-	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
-		const Vector4 &cone_data = open_cones[cone_i];
-		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		Vector3 center_point = center * socket_r;
-		
-		// Draw a small cross at the cone center
-		Vector3 perp1 = center.get_any_perpendicular().normalized();
-		Vector3 perp2 = center.cross(perp1).normalized();
-		real_t marker_size = socket_r * 0.02f; // Small marker size
-		
-		// Draw two orthogonal lines forming a cross
-		vts.push_back(center_point - perp1 * marker_size);
-		vts.push_back(center_point + perp1 * marker_size);
-		vts.push_back(center_point - perp2 * marker_size);
-		vts.push_back(center_point + perp2 * marker_size);
-	}
+	// We only draw forbidden areas - cone boundaries and markers are in allowed areas, so they are not drawn
 	
 	// Add all vertices to surface tool as a single mesh
 	// All lines (boundaries) use the same color
