@@ -831,8 +831,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment if both points are in the union
-				if (i > 0 && prev_in_union && in_union) {
+				// Draw line segment if both points are NOT in the union (inverse)
+				if (i > 0 && !prev_in_union && !in_union) {
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
@@ -861,130 +861,14 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment if both points are in the union
-				if (j > 0 && prev_in_union && in_union) {
+				// Draw line segment if both points are NOT in the union (inverse)
+				if (j > 0 && !prev_in_union && !in_union) {
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
 				
 				prev_point = point;
 				prev_in_union = in_union;
-			}
-		}
-	}
-	
-	// Draw all cones in JointLimitationCone3D style
-	static const int N_CONE = 16;
-	static const real_t DP_CONE = Math::TAU / (real_t)N_CONE;
-	
-	for (int cone_idx = 0; cone_idx < open_cones.size(); cone_idx++) {
-		const Vector4 &cone_data = open_cones[cone_idx];
-		Vector3 cone_center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		real_t radius_angle = cone_data.w;
-		
-		real_t alpha = CLAMP(radius_angle, (real_t)0.0, Math::PI);
-		real_t y_cap = socket_r * Math::cos(alpha);
-		real_t r_cap = socket_r * Math::sin(alpha);
-		
-		// Create basis to transform from +Y axis to cone center
-		Vector3 default_axis = Vector3(0, 1, 0);
-		Basis cone_basis;
-		if (cone_center.dot(default_axis) > 0.999f) {
-			// Cone center is nearly aligned with +Y, use identity
-			cone_basis = Basis();
-		} else if (cone_center.dot(default_axis) < -0.999f) {
-			// Cone center is nearly opposite to +Y, use 180 degree rotation
-			Vector3 perp = default_axis.get_any_perpendicular();
-			cone_basis = Basis(Quaternion(perp, Math::PI));
-		} else {
-			// Create rotation from +Y to cone center
-			Vector3 axis = default_axis.cross(cone_center).normalized();
-			real_t angle = Math::acos(CLAMP(default_axis.dot(cone_center), -1.0f, 1.0f));
-			cone_basis = Basis(Quaternion(axis, angle));
-		}
-		
-		// Cone bottom circle (the cap at the angle limit)
-		if (r_cap > CMP_EPSILON) {
-			for (int i = 0; i < N_CONE; i++) {
-				real_t a0 = (real_t)i * DP_CONE;
-				real_t a1 = (real_t)((i + 1) % N_CONE) * DP_CONE;
-				Vector3 p0 = cone_basis.xform(Vector3(r_cap * Math::cos(a0), y_cap, r_cap * Math::sin(a0)));
-				Vector3 p1 = cone_basis.xform(Vector3(r_cap * Math::cos(a1), y_cap, r_cap * Math::sin(a1)));
-				vts.push_back(p0);
-				vts.push_back(p1);
-			}
-		}
-		
-		// Rotate arcs around cone axis
-		real_t t_start;
-		real_t arc_len;
-		if (alpha <= (real_t)1e-6) {
-			t_start = (real_t)0.5 * Math::PI;
-			arc_len = Math::PI;
-		} else {
-			t_start = (real_t)0.5 * Math::PI + alpha;
-			arc_len = Math::PI - alpha;
-		}
-		real_t dt = arc_len / (real_t)N_CONE;
-		
-		for (int k = 0; k < N_CONE; k++) {
-			// Rotate around cone_center axis
-			Basis ry(cone_center, (real_t)k * DP_CONE);
-			
-			// Start with the arc in the local coordinate system (aligned with +Y)
-			Vector3 prev_local = Vector3(socket_r * Math::cos(t_start), socket_r * Math::sin(t_start), 0);
-			Vector3 prev = ry.xform(cone_basis.xform(prev_local));
-			
-			for (int s = 1; s <= N_CONE; s++) {
-				real_t t = t_start + dt * (real_t)s;
-				Vector3 cur_local = Vector3(socket_r * Math::cos(t), socket_r * Math::sin(t), 0);
-				Vector3 cur = ry.xform(cone_basis.xform(cur_local));
-				
-				vts.push_back(prev);
-				vts.push_back(cur);
-				
-				prev = cur;
-			}
-			
-			// Line from center to mouth
-			Vector3 mouth = ry.xform(cone_basis.xform(Vector3(socket_r * Math::cos(t_start), socket_r * Math::sin(t_start), 0)));
-			Vector3 center = Vector3();
-			
-			vts.push_back(center);
-			vts.push_back(mouth);
-		}
-		
-		// Stack rings (perpendicular to cone axis)
-		Vector3 perp1 = cone_center.get_any_perpendicular().normalized();
-		Vector3 perp2 = cone_center.cross(perp1).normalized();
-		
-		for (int i = 1; i <= 3; i++) {
-			for (int sgn = -1; sgn <= 1; sgn += 2) {
-				// Distance along cone axis
-				real_t dist_along_axis = (real_t)sgn * socket_r * ((real_t)i / (real_t)4.0);
-				Vector3 ring_center = cone_center * dist_along_axis;
-				
-				// Check if ring is above the cap
-				real_t y_local = dist_along_axis; // In local space where cone_center = +Y
-				if (y_local >= y_cap - CMP_EPSILON) {
-					continue;
-				}
-				
-				real_t ring_r2 = socket_r * socket_r - dist_along_axis * dist_along_axis;
-				if (ring_r2 <= (real_t)0.0) {
-					continue;
-				}
-				real_t ring_r = Math::sqrt(ring_r2);
-				
-				for (int j = 0; j < N_CONE; j++) {
-					real_t a0 = (real_t)j * DP_CONE;
-					real_t a1 = (real_t)((j + 1) % N_CONE) * DP_CONE;
-					Vector3 p0 = ring_center + perp1 * (ring_r * Math::cos(a0)) + perp2 * (ring_r * Math::sin(a0));
-					Vector3 p1 = ring_center + perp1 * (ring_r * Math::cos(a1)) + perp2 * (ring_r * Math::sin(a1));
-					
-					vts.push_back(p0);
-					vts.push_back(p1);
-				}
 			}
 		}
 	}
