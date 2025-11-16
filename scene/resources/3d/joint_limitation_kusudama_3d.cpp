@@ -331,9 +331,10 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 	}
 	
 	// Check if point is in any path between cones (matching shader logic)
+	// Only check adjacent cones in sequence (no wrap-around from last to first)
 	if (p_open_cones.size() > 1) {
-		for (int i = 0; i < p_open_cones.size(); i++) {
-			int next_i = (i + 1) % p_open_cones.size();
+		for (int i = 0; i < p_open_cones.size() - 1; i++) {
+			int next_i = i + 1; // Only connect to next adjacent cone, no wrap-around
 			const Vector4 &cone1_data = p_open_cones[i];
 			const Vector4 &cone2_data = p_open_cones[next_i];
 			
@@ -1123,26 +1124,25 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	
 	// Draw exact tangent boundary rings on the unit sphere
 	// These show the exact boundary of each tangent circle connecting adjacent cones
-	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
+	// Only connect adjacent cones in sequence (no wrap-around from last to first)
+	for (int cone_i = 0; cone_i < open_cones.size() - 1; cone_i++) {
 		const Vector4 &cone_data1 = open_cones[cone_i];
 		Vector3 center1 = Vector3(cone_data1.x, cone_data1.y, cone_data1.z).normalized();
 		real_t radius1 = cone_data1.w; // Cone radius in radians
 		
-		// For each pair of cones (including wrapping around)
-		for (int cone_j = cone_i + 1; cone_j < open_cones.size(); cone_j++) {
-			const Vector4 &cone_data2 = open_cones[cone_j];
-			Vector3 center2 = Vector3(cone_data2.x, cone_data2.y, cone_data2.z).normalized();
-			real_t radius2 = cone_data2.w; // Cone radius in radians
-			
-			// Compute tangent circles
-			Vector3 tan1, tan2;
-			real_t tan_radius;
-			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-			
-			// Draw both tangent circle boundaries
-			draw_cone_circle(vts, tan1, tan_radius, socket_r, 64);
-			draw_cone_circle(vts, tan2, tan_radius, socket_r, 64);
-		}
+		// Connect only to the next adjacent cone (no wrap-around)
+		const Vector4 &cone_data2 = open_cones[cone_i + 1];
+		Vector3 center2 = Vector3(cone_data2.x, cone_data2.y, cone_data2.z).normalized();
+		real_t radius2 = cone_data2.w; // Cone radius in radians
+		
+		// Compute tangent circles
+		Vector3 tan1, tan2;
+		real_t tan_radius;
+		compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+		
+		// Draw both tangent circle boundaries
+		draw_cone_circle(vts, tan1, tan_radius, socket_r, 64);
+		draw_cone_circle(vts, tan2, tan_radius, socket_r, 64);
 	}
 	
 	// Add all vertices to surface tool as a single mesh
