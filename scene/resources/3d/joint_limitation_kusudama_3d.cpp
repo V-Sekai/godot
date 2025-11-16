@@ -652,31 +652,91 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		real_t max_angle = normalized_min + range_angle;
 		real_t wrapped_max = (max_angle > Math::TAU) ? Math::fposmod(max_angle, (real_t)Math::TAU) : max_angle;
 		
-		// Draw indicator arcs showing rotation freedom at the origin
+		// Draw indicator arcs showing disallowed rotation areas at the origin (inverted)
 		Vector3 indicator_pos = Vector3(0, 0, 0);
 		Vector3 y_axis = Vector3(0, 1, 0); // Bone axis (forward direction)
 		Vector3 x_axis = Vector3(1, 0, 0);
 		Vector3 z_axis = Vector3(0, 0, 1);
 		
-		// Draw allowed rotation arc in the XZ plane (perpendicular to bone axis)
-		int arc_segments = MAX(16, (int)(range_angle / Math::PI * 32.0));
-		arc_segments = MIN(arc_segments, 64);
-		for (int i = 0; i < arc_segments; i++) {
-			real_t t = (real_t)i / (real_t)arc_segments;
-			real_t angle = normalized_min + range_angle * t;
-			Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
-			Vector3 p0 = indicator_pos + dir;
-			Vector3 p1;
-			if (i < arc_segments - 1) {
-				real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-				real_t next_angle = normalized_min + range_angle * next_t;
-				Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
-				p1 = indicator_pos + next_dir;
-			} else {
-				p1 = indicator_pos + dir;
+		// Draw disallowed rotation arcs (inverse of allowed range)
+		bool wraps_around = (max_angle > Math::TAU);
+		
+		if (wraps_around) {
+			// Range wraps: draw arc from wrapped_max to normalized_min
+			real_t disallowed_range = normalized_min - wrapped_max;
+			if (disallowed_range < 0) {
+				disallowed_range += Math::TAU;
 			}
-			vts.push_back(p0);
-			vts.push_back(p1);
+			int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
+			arc_segments = MIN(arc_segments, 64);
+			for (int i = 0; i < arc_segments; i++) {
+				real_t t = (real_t)i / (real_t)arc_segments;
+				real_t angle = wrapped_max + disallowed_range * t;
+				if (angle >= Math::TAU) {
+					angle -= Math::TAU;
+				}
+				Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
+				Vector3 p0 = indicator_pos + dir;
+				Vector3 p1;
+				if (i < arc_segments - 1) {
+					real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
+					real_t next_angle = wrapped_max + disallowed_range * next_t;
+					if (next_angle >= Math::TAU) {
+						next_angle -= Math::TAU;
+					}
+					Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
+					p1 = indicator_pos + next_dir;
+				} else {
+					p1 = indicator_pos + dir;
+				}
+				vts.push_back(p0);
+				vts.push_back(p1);
+			}
+		} else {
+			// Range doesn't wrap: draw arcs from 0 to normalized_min and from max_angle to TAU
+			if (normalized_min > 0) {
+				int arc_segments = MAX(16, (int)(normalized_min / Math::PI * 32.0));
+				arc_segments = MIN(arc_segments, 64);
+				for (int i = 0; i < arc_segments; i++) {
+					real_t t = (real_t)i / (real_t)arc_segments;
+					real_t angle = normalized_min * t;
+					Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
+					Vector3 p0 = indicator_pos + dir;
+					Vector3 p1;
+					if (i < arc_segments - 1) {
+						real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
+						real_t next_angle = normalized_min * next_t;
+						Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
+						p1 = indicator_pos + next_dir;
+					} else {
+						p1 = indicator_pos + dir;
+					}
+					vts.push_back(p0);
+					vts.push_back(p1);
+				}
+			}
+			if (max_angle < Math::TAU) {
+				real_t disallowed_range = Math::TAU - max_angle;
+				int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
+				arc_segments = MIN(arc_segments, 64);
+				for (int i = 0; i < arc_segments; i++) {
+					real_t t = (real_t)i / (real_t)arc_segments;
+					real_t angle = max_angle + disallowed_range * t;
+					Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
+					Vector3 p0 = indicator_pos + dir;
+					Vector3 p1;
+					if (i < arc_segments - 1) {
+						real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
+						real_t next_angle = max_angle + disallowed_range * next_t;
+						Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
+						p1 = indicator_pos + next_dir;
+					} else {
+						p1 = indicator_pos + dir;
+					}
+					vts.push_back(p0);
+					vts.push_back(p1);
+				}
+			}
 		}
 		
 		// Draw lines from origin to arc endpoints to show limits
