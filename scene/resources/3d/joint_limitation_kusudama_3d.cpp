@@ -814,7 +814,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		vts.push_back(center * sphere_r);
 	}
 
-	// Draw axial limits if constrained - show the open area like the open cones
+	// Draw axial limits if constrained - use octahedron pattern to fill non-open areas
 	if (axially_constrained && range_angle < Math::TAU) {
 		// Use the average cone radius for the axial limit visualization
 		real_t avg_cone_radius = 0.0;
@@ -827,38 +827,152 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			avg_cone_radius = Math::PI * 0.25; // Default 45 degrees
 		}
 		
-		// Draw the open area for axial limits - similar to how open cones show their boundaries
 		Vector3 y_axis = Vector3(0, 1, 0);
 		real_t ring_radius = sphere_r * Math::sin(avg_cone_radius);
 		real_t ring_y = sphere_r * Math::cos(avg_cone_radius);
-		
-		// Number of segments for the arc
-		int arc_segments = MAX(16, (int)(range_angle / Math::PI * 32.0)); // Scale with range
-		arc_segments = MIN(arc_segments, 64); // Cap at reasonable number
-		
-		// Draw the boundary of the open area - an arc showing the allowed twist range
-		// This is similar to how open cones show their circular boundaries
 		Vector3 arc_center = Vector3(0, ring_y, 0); // Center of the arc circle
+		
+		// Normalize angles to [0, 2π] range
+		real_t normalized_min = min_axial_angle;
+		if (normalized_min < 0) {
+			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+		} else if (normalized_min >= Math::TAU) {
+			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+		}
+		
+		real_t max_angle = normalized_min + range_angle;
+		bool wraps_around = (max_angle > Math::TAU);
+		real_t wrapped_max = wraps_around ? Math::fposmod(max_angle, (real_t)Math::TAU) : max_angle;
+		
+		// Calculate non-open angle ranges (the complement of the allowed range)
+		LocalVector<Pair<real_t, real_t>> non_open_ranges;
+		
+		if (wraps_around) {
+			// Range wraps around: non-open is [wrapped_max, normalized_min]
+			if (wrapped_max < normalized_min) {
+				non_open_ranges.push_back(Pair<real_t, real_t>(wrapped_max, normalized_min));
+			} else {
+				// This shouldn't happen, but handle it
+				non_open_ranges.push_back(Pair<real_t, real_t>(0, wrapped_max));
+				non_open_ranges.push_back(Pair<real_t, real_t>(normalized_min, Math::TAU));
+			}
+		} else {
+			// Range doesn't wrap: non-open is [0, normalized_min] and [max_angle, 2π]
+			if (normalized_min > 0) {
+				non_open_ranges.push_back(Pair<real_t, real_t>(0, normalized_min));
+			}
+			if (max_angle < Math::TAU) {
+				non_open_ranges.push_back(Pair<real_t, real_t>(max_angle, Math::TAU));
+			}
+		}
+		
+		// Draw octahedron pattern to fill each non-open range
+		// Octahedron has 8 triangular faces, create pattern with 8 radial directions
+		const int octahedron_directions = 8;
+		const real_t dir_angle_step = Math::TAU / (real_t)octahedron_directions;
+		
+		for (int range_idx = 0; range_idx < (int)non_open_ranges.size(); range_idx++) {
+			real_t range_start = non_open_ranges[range_idx].first;
+			real_t range_end = non_open_ranges[range_idx].second;
+			real_t range_size = range_end - range_start;
+			
+			if (range_size <= 0) {
+				continue;
+			}
+			
+			// Create octahedron pattern: draw lines in 8 directions from center
+			// Sample the range and draw radial lines to create filled appearance
+			int pattern_layers = MAX(4, (int)(range_size / Math::PI * 8.0));
+			pattern_layers = MIN(pattern_layers, 16);
+			
+			real_t mid_angle = range_start + range_size * 0.5;
+			
+			// Draw octahedron pattern: 8 radial lines from center
+			for (int dir = 0; dir < octahedron_directions; dir++) {
+				real_t dir_angle = mid_angle + (real_t)dir * dir_angle_step;
+				
+				// Clamp direction angle to be within the non-open range
+				real_t clamped_dir_angle = dir_angle;
+				if (clamped_dir_angle < range_start) {
+					clamped_dir_angle = range_start;
+				} else if (clamped_dir_angle > range_end) {
+					clamped_dir_angle = range_end;
+				}
+				
+				// Calculate point on the ring at this direction
+				Quaternion rot = Quaternion(y_axis, clamped_dir_angle);
+				Vector3 ring_point = rot.xform(Vector3(ring_radius, ring_y, 0));
+				
+				// Draw line from arc center to ring point (octahedron radial pattern)
+				vts.push_back(arc_center);
+				vts.push_back(ring_point);
+			}
+			
+			// Draw additional pattern lines: connect points on the ring to create octahedral structure
+			// Create triangular pattern by connecting adjacent octahedron directions
+			for (int dir = 0; dir < octahedron_directions; dir++) {
+				real_t dir_angle1 = mid_angle + (real_t)dir * dir_angle_step;
+				real_t dir_angle2 = mid_angle + (real_t)((dir + 1) % octahedron_directions) * dir_angle_step;
+				
+				// Clamp angles to non-open range
+				real_t clamped_angle1 = CLAMP(dir_angle1, range_start, range_end);
+				real_t clamped_angle2 = CLAMP(dir_angle2, range_start, range_end);
+				
+				Quaternion rot1 = Quaternion(y_axis, clamped_angle1);
+				Quaternion rot2 = Quaternion(y_axis, clamped_angle2);
+				Vector3 p1 = rot1.xform(Vector3(ring_radius, ring_y, 0));
+				Vector3 p2 = rot2.xform(Vector3(ring_radius, ring_y, 0));
+				
+				// Draw line connecting two adjacent octahedron directions (forms triangle edge)
+				vts.push_back(p1);
+				vts.push_back(p2);
+			}
+			
+			// Draw the boundary arc for this non-open range
+			int arc_segments = MAX(8, (int)(range_size / Math::PI * 16.0));
+			arc_segments = MIN(arc_segments, 32);
+			
+			for (int seg = 0; seg < arc_segments; seg++) {
+				real_t t = (real_t)seg / (real_t)arc_segments;
+				real_t angle = range_start + range_size * t;
+				Quaternion rot = Quaternion(y_axis, angle);
+				Vector3 p0 = rot.xform(Vector3(ring_radius, ring_y, 0));
+				Vector3 p1;
+				if (seg < arc_segments - 1) {
+					real_t next_t = (real_t)(seg + 1) / (real_t)arc_segments;
+					real_t next_angle = range_start + range_size * next_t;
+					Quaternion next_rot = Quaternion(y_axis, next_angle);
+					p1 = next_rot.xform(Vector3(ring_radius, ring_y, 0));
+				} else {
+					p1 = rot.xform(Vector3(ring_radius, ring_y, 0));
+				}
+				// Draw boundary arc
+				vts.push_back(p0);
+				vts.push_back(p1);
+			}
+		}
+		
+		// Draw the boundary of the open area (the allowed range)
+		int arc_segments = MAX(16, (int)(range_angle / Math::PI * 32.0));
+		arc_segments = MIN(arc_segments, 64);
+		
 		for (int i = 0; i < arc_segments; i++) {
 			real_t t = (real_t)i / (real_t)arc_segments;
-			real_t angle = min_axial_angle + range_angle * t;
+			real_t angle = normalized_min + range_angle * t;
 			Quaternion rot = Quaternion(y_axis, angle);
 			Vector3 p0 = rot.xform(Vector3(ring_radius, ring_y, 0));
 			Vector3 p1;
 			if (i < arc_segments - 1) {
 				real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-				real_t next_angle = min_axial_angle + range_angle * next_t;
+				real_t next_angle = normalized_min + range_angle * next_t;
 				Quaternion next_rot = Quaternion(y_axis, next_angle);
 				p1 = next_rot.xform(Vector3(ring_radius, ring_y, 0));
 			} else {
 				p1 = rot.xform(Vector3(ring_radius, ring_y, 0));
 			}
-			// Draw outer arc
+			// Draw outer arc boundary
 			vts.push_back(p0);
 			vts.push_back(p1);
-			// Draw inner arc from arc center to outer arc
-			vts.push_back(arc_center);
-			vts.push_back(p0);
 		}
 	}
 
