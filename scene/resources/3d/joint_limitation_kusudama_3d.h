@@ -64,6 +64,9 @@ public:
 	void set_cone_center(int p_index, const Vector3 &p_center);
 	Vector3 get_cone_center(int p_index) const;
 
+	void set_cone_center_quaternion(int p_index, const Quaternion &p_quaternion);
+	Quaternion get_cone_center_quaternion(int p_index) const;
+
 	void set_cone_radius(int p_index, real_t p_radius);
 	real_t get_cone_radius(int p_index) const;
 
