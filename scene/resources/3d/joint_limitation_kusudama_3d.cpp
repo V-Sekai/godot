@@ -859,30 +859,11 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment if both points are NOT in the union (disallowed area - visualize as sphere)
-				// OR if one point is in and one is out (boundary edge - only draw lines to origin, not the edge itself)
-				if (i > 0) {
-					if (!prev_in_union && !in_union) {
-						// Both points are disallowed - draw the edge
-						vts.push_back(prev_point);
-						vts.push_back(point);
-					} else if (prev_in_union != in_union) {
-						// Boundary edge - only draw lines to origin from disallowed side (don't draw the boundary edge itself)
-						Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
-						int num_sections = 4; // Number of equally spaced sections
-						Vector3 origin = Vector3(0, 0, 0);
-						Vector3 prev_section_point = disallowed_point;
-						for (int s = 1; s <= num_sections; s++) {
-							real_t t = (real_t)s / (real_t)(num_sections + 1);
-							Vector3 section_point = disallowed_point.lerp(origin, t);
-							vts.push_back(prev_section_point);
-							vts.push_back(section_point);
-							prev_section_point = section_point;
-						}
-						// Draw final segment to origin
-						vts.push_back(prev_section_point);
-						vts.push_back(origin);
-					}
+				// Draw line segment only if both points are NOT in the union (disallowed area - visualize as sphere)
+				if (i > 0 && !prev_in_union && !in_union) {
+					// Both points are disallowed - draw the edge
+					vts.push_back(prev_point);
+					vts.push_back(point);
 				}
 				
 				prev_point = point;
@@ -909,30 +890,11 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment if both points are NOT in the union (disallowed area - visualize as sphere)
-				// OR if one point is in and one is out (boundary edge - only draw lines to origin, not the edge itself)
-				if (j > 0) {
-					if (!prev_in_union && !in_union) {
-						// Both points are disallowed - draw the edge
-						vts.push_back(prev_point);
-						vts.push_back(point);
-					} else if (prev_in_union != in_union) {
-						// Boundary edge - only draw lines to origin from disallowed side (don't draw the boundary edge itself)
-						Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
-						int num_sections = 4; // Number of equally spaced sections
-						Vector3 origin = Vector3(0, 0, 0);
-						Vector3 prev_section_point = disallowed_point;
-						for (int s = 1; s <= num_sections; s++) {
-							real_t t = (real_t)s / (real_t)(num_sections + 1);
-							Vector3 section_point = disallowed_point.lerp(origin, t);
-							vts.push_back(prev_section_point);
-							vts.push_back(section_point);
-							prev_section_point = section_point;
-						}
-						// Draw final segment to origin
-						vts.push_back(prev_section_point);
-						vts.push_back(origin);
-					}
+				// Draw line segment only if both points are NOT in the union (disallowed area - visualize as sphere)
+				if (j > 0 && !prev_in_union && !in_union) {
+					// Both points are disallowed - draw the edge
+					vts.push_back(prev_point);
+					vts.push_back(point);
 				}
 				
 				prev_point = point;
@@ -983,6 +945,34 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				}
 				prev_point = arc_point;
 			}
+		}
+	}
+	
+	// Draw markers at each cone center on the sphere surface
+	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
+		const Vector4 &cone_data = open_cones[cone_i];
+		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		
+		// Draw a small circle on the sphere surface around the cone center
+		Vector3 perp1 = center.get_any_perpendicular().normalized();
+		Vector3 perp2 = center.cross(perp1).normalized();
+		real_t marker_angle = 0.1f; // Small angular radius in radians (~5.7 degrees)
+		int marker_segments = 16;
+		
+		Vector3 prev_marker_point;
+		for (int i = 0; i <= marker_segments; i++) {
+			real_t angle = (real_t)i / (real_t)marker_segments * Math::TAU;
+			// Create a point on a circle in the tangent plane
+			Vector3 tangent_dir = (perp1 * Math::cos(angle) + perp2 * Math::sin(angle)).normalized();
+			// Point on sphere circle: center * cos(angle) + tangent * sin(angle), then normalize
+			Vector3 marker_dir = (center * Math::cos(marker_angle) + tangent_dir * Math::sin(marker_angle)).normalized();
+			Vector3 marker_point = marker_dir * socket_r;
+			
+			if (i > 0) {
+				vts.push_back(prev_marker_point);
+				vts.push_back(marker_point);
+			}
+			prev_marker_point = marker_point;
 		}
 	}
 	
