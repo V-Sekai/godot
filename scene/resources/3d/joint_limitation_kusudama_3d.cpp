@@ -347,22 +347,6 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 			real_t tan_radius;
 			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
 			
-			// Sporadic logging: only log every ~1000th point check
-			static int point_check_count = 0;
-			bool should_log = (point_check_count++ % 1000 == 0);
-			
-			if (should_log) {
-				print_line(vformat("DEBUG: Checking path between cone %d and %d", i, next_i));
-				print_line(vformat("  Cone %d: center=(%.3f, %.3f, %.3f), radius=%.3f rad (%.1f deg)", 
-					i, center1.x, center1.y, center1.z, radius1, Math::rad_to_deg(radius1)));
-				print_line(vformat("  Cone %d: center=(%.3f, %.3f, %.3f), radius=%.3f rad (%.1f deg)", 
-					next_i, center2.x, center2.y, center2.z, radius2, Math::rad_to_deg(radius2)));
-				print_line(vformat("  Point: dir=(%.3f, %.3f, %.3f)", dir.x, dir.y, dir.z));
-				print_line(vformat("  Tangent circle: radius=%.3f rad (%.1f deg)", tan_radius, Math::rad_to_deg(tan_radius)));
-				print_line(vformat("  Tangent 1: center=(%.3f, %.3f, %.3f)", tan1.x, tan1.y, tan1.z));
-				print_line(vformat("  Tangent 2: center=(%.3f, %.3f, %.3f)", tan2.x, tan2.y, tan2.z));
-			}
-			
 			// Check if point is inside or on either tangent circle - if so, it's forbidden
 			// The inside of tangent circles is forbidden area (the inter-cone path is OUTSIDE both tangent circles)
 			real_t angle_to_tan1 = Math::acos(CLAMP(dir.dot(tan1), -1.0, 1.0));
@@ -370,18 +354,8 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 			bool inside_tan1 = (angle_to_tan1 <= tan_radius);
 			bool inside_tan2 = (angle_to_tan2 <= tan_radius);
 			
-			if (should_log) {
-				print_line(vformat("  Angle to tan1: %.3f rad (%.1f deg), inside=%s", 
-					angle_to_tan1, Math::rad_to_deg(angle_to_tan1), inside_tan1 ? "YES" : "NO"));
-				print_line(vformat("  Angle to tan2: %.3f rad (%.1f deg), inside=%s", 
-					angle_to_tan2, Math::rad_to_deg(angle_to_tan2), inside_tan2 ? "YES" : "NO"));
-			}
-			
 			// If point is inside a tangent circle, it's forbidden (skip this path check)
 			if (inside_tan1 || inside_tan2) {
-				if (should_log) {
-					print_line("  -> FORBIDDEN: Point is inside a tangent circle");
-				}
 				continue; // Skip this path - point is inside a tangent circle (forbidden)
 			}
 			
@@ -391,16 +365,9 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 			Vector3 path_point = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
 			bool in_path = !Math::is_nan(path_point.x);
 			
-			if (should_log) {
-				print_line(vformat("  get_on_great_tangent_triangle: %s", in_path ? "in_path" : "NaN (not in path)"));
-			}
-			
 			// The path region connects the two cones and should be allowed
 			// Open areas (cones + inter-cone paths outside tangent circles) = allowed, everything else = forbidden
 			if (in_path) {
-				if (should_log) {
-					print_line("  -> ALLOWED: Point is in inter-cone path region (outside both tangent circles)");
-				}
 				return true; // Point is in the inter-cone path region (open area, outside both tangent circles)
 			}
 			// else: point is not in the inter-cone path region - continue checking other cone pairs
