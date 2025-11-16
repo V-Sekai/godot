@@ -1146,7 +1146,12 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	}
 	
 	// Add all vertices to surface tool as a single mesh
-	// All lines (boundaries and markers) use the same color
+	// Bone weights are set by the gizmo before calling draw_shape, so they apply to all vertices
+	// For bone weights to work, vertices should be in parent bone's local space (rest pose)
+	// p_transform = parent_global_rest * limitation_space
+	// To get vertices in parent bone local space, we need: parent_global_rest.affine_inverse() * p_transform = limitation_space
+	// However, we don't have parent_global_rest separately, so we use p_transform which puts vertices in global space
+	// The bone weights should still transform them correctly if set properly by the gizmo
 	for (int64_t i = 0; i < vts.size(); i++) {
 		p_surface_tool->set_color(p_color);
 		p_surface_tool->add_vertex(p_transform.xform(vts[i]));
