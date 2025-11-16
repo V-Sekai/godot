@@ -34,6 +34,9 @@ bool IterateIK3D::_set(const StringName &p_path, const Variant &p_value) {
 	String path = p_path;
 
 	if (path.begins_with("settings/")) {
+		if (settings.is_empty()) {
+			return false;
+		}
 		int which = path.get_slicec('/', 1).to_int();
 		String what = path.get_slicec('/', 2);
 		ERR_FAIL_INDEX_V(which, (int)settings.size(), false);
@@ -80,6 +83,9 @@ bool IterateIK3D::_get(const StringName &p_path, Variant &r_ret) const {
 	String path = p_path;
 
 	if (path.begins_with("settings/")) {
+		if (settings.is_empty()) {
+			return false;
+		}
 		int which = path.get_slicec('/', 1).to_int();
 		String what = path.get_slicec('/', 2);
 		ERR_FAIL_INDEX_V(which, (int)settings.size(), false);
