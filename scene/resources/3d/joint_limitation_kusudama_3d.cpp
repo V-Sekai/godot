@@ -842,53 +842,71 @@ static void generate_forbidden_region_mesh(const Vector<Vector4> &p_cones, real_
 		Vector3 v1 = sphere_vertices[i1];
 		Vector3 v2 = sphere_vertices[i2];
 		
-		// Check triangle center (barycenter projected onto sphere surface)
+		// Normalize vertices to sphere surface
+		Vector3 n0 = v0.normalized();
+		Vector3 n1 = v1.normalized();
+		Vector3 n2 = v2.normalized();
+		
+		// Check triangle center and all three vertices - if ANY is in allowed region, subtract the triangle
+		// Use the solver's _solve method directly to ensure exact match with solver behavior
+		// Create a temporary limitation object to use _solve
+		// Note: We need to check if _solve returns the input unchanged, which means point is in allowed region
 		Vector3 center = (v0 + v1 + v2) / 3.0;
 		Vector3 center_normalized = center.normalized();
 		
-		// CSG subtraction: Check if triangle is in allowed region (cones + paths)
-		// Step 2: Check if point is inside any cone (spherical cap)
-		bool inside_cone = false;
-		for (int i = 0; i < p_cones.size(); i++) {
-			const Vector4 &cone_data = p_cones[i];
-			Vector3 cone_center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-			real_t cone_radius = cone_data.w;
+		bool triangle_in_allowed = false;
+		
+		// Check center and all vertices using a helper that mimics _solve logic
+		Vector3 points_to_check[4] = { center_normalized, n0, n1, n2 };
+		for (int p_idx = 0; p_idx < 4; p_idx++) {
+			Vector3 vertex = points_to_check[p_idx];
 			
-			// Check if point is inside this cone (spherical cap)
-			real_t angle_to_cone = Math::acos(CLAMP(center_normalized.dot(cone_center), -1.0, 1.0));
-			if (angle_to_cone <= cone_radius) {
-				inside_cone = true;
+			// Use the exact same logic as _solve method
+			// Check cones first
+			bool in_bounds = false;
+			for (int i = 0; i < p_cones.size(); i++) {
+				const Vector4 &cone_data = p_cones[i];
+				Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+				real_t radius = cone_data.w;
+				
+				Vector3 collision_point = closest_to_cone_boundary(vertex, control_point, radius);
+				// If NaN, point is within this cone (matches _solve logic exactly)
+				if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
+					in_bounds = true;
+					break;
+				}
+			}
+			
+			// If not in any cone, check paths (exact same as _solve)
+			if (!in_bounds && p_cones.size() > 1) {
+				for (int i = 0; i < p_cones.size() - 1; i++) {
+					const Vector4 &cone1_data = p_cones[i];
+					const Vector4 &cone2_data = p_cones[i + 1];
+					Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+					Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+					real_t radius1 = cone1_data.w;
+					real_t radius2 = cone2_data.w;
+					
+					Vector3 collision_point = get_on_great_tangent_triangle(vertex, center1, radius1, center2, radius2);
+					if (!Math::is_nan(collision_point.x)) {
+						real_t cosine = collision_point.dot(vertex);
+						if (cosine > 0.999f) {
+							in_bounds = true;
+							break;
+						}
+					}
+				}
+			}
+			
+			// If point is in allowed region, mark triangle as in allowed region
+			if (in_bounds) {
+				triangle_in_allowed = true;
 				break;
 			}
 		}
 		
-		// Step 3: Check if point is inside any inter-cone path (bounded by tangent circles)
-		bool inside_path = false;
-		if (!inside_cone && p_cones.size() > 1) {
-			// Check all inter-cone paths (only adjacent pairs, no wrap-around)
-			for (int i = 0; i < p_cones.size() - 1; i++) {
-				const Vector4 &cone1_data = p_cones[i];
-				const Vector4 &cone2_data = p_cones[i + 1];
-				
-				Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-				real_t radius1 = cone1_data.w;
-				real_t radius2 = cone2_data.w;
-				
-				// Use the solver's path detection logic
-				Vector3 collision_point = get_on_great_tangent_triangle(center_normalized, center1, radius1, center2, radius2);
-				if (!Math::is_nan(collision_point.x)) {
-					real_t cosine = collision_point.dot(center_normalized);
-					if (cosine > 0.999f) {
-						inside_path = true;
-						break;
-					}
-				}
-			}
-		}
-		
 		// If triangle is NOT in any allowed region (cone or path), keep it (it's in forbidden region)
-		if (!inside_cone && !inside_path) {
+		if (!triangle_in_allowed) {
 			// Add triangle vertices
 			int idx0 = r_vertices.size();
 			r_vertices.push_back(v0);
