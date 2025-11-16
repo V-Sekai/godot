@@ -610,8 +610,8 @@ bool JointLimitationKusudama3D::is_orientationally_constrained() const {
 
 #ifdef TOOLS_ENABLED
 // Helper to draw a circle on the sphere given center, radius angle, and sphere radius
-// Uses spherical interpolation for smooth curve fitting with fragment shader level detail
-static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 256) {
+// Uses spherical interpolation for smooth curve fitting
+static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 64) {
 	Vector3 axis = p_center.normalized();
 	Vector3 perp1 = axis.get_any_perpendicular().normalized();
 	
@@ -626,8 +626,8 @@ static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_cente
 		Vector3 current_point = rot.xform(start_point).normalized() * p_sphere_r;
 		
 		// Use spherical linear interpolation for smoother curve
-		// Subdivide each segment for fragment shader level detail
-		int subdiv = 16; // High subdivision for very fine detail
+		// Reduced subdivision for radius rings
+		int subdiv = 2; // Reduced subdivision for radius rings
 		for (int j = 1; j <= subdiv; j++) {
 			real_t t = (real_t)j / (real_t)subdiv;
 			Vector3 p0 = prev_point.normalized();
@@ -986,8 +986,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 		real_t cone_radius = cone_data.w; // Cone radius in radians
 		
-		// Draw the exact boundary circle of the cone (using spline interpolation with fragment shader level detail)
-		draw_cone_circle(vts, center, cone_radius, socket_r, 256);
+		// Draw the exact boundary circle of the cone (using spline interpolation with reduced detail)
+		draw_cone_circle(vts, center, cone_radius, socket_r, 64);
 	}
 	
 	// Tangent path boundaries are shown in the wireframe visualization where the sphere is cut
