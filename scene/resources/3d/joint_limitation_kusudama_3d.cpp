@@ -762,7 +762,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		vts.push_back(center * sphere_r);
 	}
 
-	// Draw axial limits if constrained - draw fins in line mesh style
+	// Draw axial limits if constrained - show the open area like the open cones
 	if (axially_constrained && range_angle < Math::TAU) {
 		// Use the average cone radius for the axial limit visualization
 		real_t avg_cone_radius = 0.0;
@@ -775,56 +775,38 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			avg_cone_radius = Math::PI * 0.25; // Default 45 degrees
 		}
 		
-		// Draw fins as radial lines extending from center to show twist limits
-		// Each fin is a line from origin to the ring at the cone radius
+		// Draw the open area for axial limits - similar to how open cones show their boundaries
 		Vector3 y_axis = Vector3(0, 1, 0);
 		real_t ring_radius = sphere_r * Math::sin(avg_cone_radius);
 		real_t ring_y = sphere_r * Math::cos(avg_cone_radius);
 		
-		// Number of fins to draw (more fins for better visualization)
-		int fin_count = MAX(8, (int)(range_angle / Math::PI * 16.0)); // Scale with range
-		fin_count = MIN(fin_count, 32); // Cap at reasonable number
+		// Number of segments for the arc
+		int arc_segments = MAX(16, (int)(range_angle / Math::PI * 32.0)); // Scale with range
+		arc_segments = MIN(arc_segments, 64); // Cap at reasonable number
 		
-		// Draw the boundary fins (start and end of range)
-		// Start fin
-		Quaternion start_rot = Quaternion(y_axis, min_axial_angle);
-		Vector3 start_ring_point = start_rot.xform(Vector3(ring_radius, ring_y, 0));
-		vts.push_back(Vector3()); // Origin
-		vts.push_back(start_ring_point);
-		
-		// End fin
-		Quaternion end_rot = Quaternion(y_axis, min_axial_angle + range_angle);
-		Vector3 end_ring_point = end_rot.xform(Vector3(ring_radius, ring_y, 0));
-		vts.push_back(Vector3()); // Origin
-		vts.push_back(end_ring_point);
-		
-		// Draw intermediate fins (spaced evenly across the range)
-		for (int i = 1; i < fin_count - 1; i++) {
-			real_t t = (real_t)i / (real_t)(fin_count - 1);
-			real_t angle = min_axial_angle + range_angle * t;
-			Quaternion rot = Quaternion(y_axis, angle);
-			Vector3 ring_point = rot.xform(Vector3(ring_radius, ring_y, 0));
-			vts.push_back(Vector3()); // Origin
-			vts.push_back(ring_point);
-		}
-		
-		// Draw the arc connecting the fins at the ring
-		for (int i = 0; i < fin_count; i++) {
-			real_t t = (real_t)i / (real_t)(fin_count - 1);
+		// Draw the boundary of the open area - an arc showing the allowed twist range
+		// This is similar to how open cones show their circular boundaries
+		Vector3 arc_center = Vector3(0, ring_y, 0); // Center of the arc circle
+		for (int i = 0; i < arc_segments; i++) {
+			real_t t = (real_t)i / (real_t)arc_segments;
 			real_t angle = min_axial_angle + range_angle * t;
 			Quaternion rot = Quaternion(y_axis, angle);
 			Vector3 p0 = rot.xform(Vector3(ring_radius, ring_y, 0));
 			Vector3 p1;
-			if (i < fin_count - 1) {
-				real_t next_t = (real_t)(i + 1) / (real_t)(fin_count - 1);
+			if (i < arc_segments - 1) {
+				real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
 				real_t next_angle = min_axial_angle + range_angle * next_t;
 				Quaternion next_rot = Quaternion(y_axis, next_angle);
 				p1 = next_rot.xform(Vector3(ring_radius, ring_y, 0));
 			} else {
-				p1 = p0;
+				p1 = rot.xform(Vector3(ring_radius, ring_y, 0));
 			}
+			// Draw outer arc
 			vts.push_back(p0);
 			vts.push_back(p1);
+			// Draw inner arc from arc center to outer arc
+			vts.push_back(arc_center);
+			vts.push_back(p0);
 		}
 	}
 
