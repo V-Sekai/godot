@@ -411,14 +411,15 @@ Vector3 JointLimitationKusudama3D::get_cone_center(int p_index) const {
 void JointLimitationKusudama3D::set_cone_azimuth(int p_index, real_t p_azimuth) {
 	ERR_FAIL_INDEX(p_index, open_cones.size());
 	Vector3 center = get_cone_center(p_index);
-	real_t elevation = Math::asin(CLAMP(center.y, -1.0, 1.0));
+	real_t elevation = Math::asin(CLAMP(center.x, -1.0, 1.0));
 	// Convert azimuth from degrees to radians, normalize to 0-360 range
 	real_t azimuth_deg = Math::fposmod(p_azimuth, (real_t)360.0);
 	real_t azimuth_rad = Math::deg_to_rad(azimuth_deg);
 	// Convert spherical to cartesian
+	// X axis is the pole axis, YZ plane is the equator (singularity at X=0)
 	Vector3 new_center;
-	new_center.x = Math::cos(elevation) * Math::sin(azimuth_rad);
-	new_center.y = Math::sin(elevation);
+	new_center.x = Math::sin(elevation);
+	new_center.y = Math::cos(elevation) * Math::sin(azimuth_rad);
 	new_center.z = Math::cos(elevation) * Math::cos(azimuth_rad);
 	set_cone_center(p_index, new_center);
 }
@@ -426,8 +427,8 @@ void JointLimitationKusudama3D::set_cone_azimuth(int p_index, real_t p_azimuth) 
 real_t JointLimitationKusudama3D::get_cone_azimuth(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, open_cones.size(), 0.0);
 	Vector3 center = get_cone_center(p_index);
-	// Convert to azimuth (horizontal angle)
-	real_t azimuth_rad = Math::atan2(center.x, center.z);
+	// Convert to azimuth (angle in YZ plane, rotating around X axis)
+	real_t azimuth_rad = Math::atan2(center.y, center.z);
 	// Convert from radians to degrees and normalize to 0-360 range
 	real_t azimuth_deg = Math::rad_to_deg(azimuth_rad);
 	return Math::fposmod(azimuth_deg, (real_t)360.0);
@@ -436,26 +437,27 @@ real_t JointLimitationKusudama3D::get_cone_azimuth(int p_index) const {
 void JointLimitationKusudama3D::set_cone_elevation(int p_index, real_t p_elevation) {
 	ERR_FAIL_INDEX(p_index, open_cones.size());
 	Vector3 center = get_cone_center(p_index);
-	real_t azimuth_rad = Math::atan2(center.x, center.z);
-	// Convert elevation from degrees to radians
-	// Clamp to valid range for direction vectors (±90 degrees)
-	// Allow wider input range in UI, but clamp for calculation
-	real_t elevation_rad = Math::deg_to_rad(CLAMP(p_elevation, -90.0, 90.0));
-	// Convert spherical to cartesian
+	real_t azimuth_rad = Math::atan2(center.y, center.z);
+	// Use axis position directly (-1 to 1) instead of elevation angle
+	// This avoids poles: X axis is the pole axis, YZ plane is the equator
+	// p_elevation is treated as the X coordinate value directly
+	real_t axis_pos = CLAMP(p_elevation, -1.0, 1.0);
+	// Calculate the radius in the YZ plane
+	real_t yz_radius = Math::sqrt(MAX(0.0, 1.0 - axis_pos * axis_pos));
+	// Convert to cartesian
 	Vector3 new_center;
-	new_center.x = Math::cos(elevation_rad) * Math::sin(azimuth_rad);
-	new_center.y = Math::sin(elevation_rad);
-	new_center.z = Math::cos(elevation_rad) * Math::cos(azimuth_rad);
+	new_center.x = axis_pos;
+	new_center.y = yz_radius * Math::sin(azimuth_rad);
+	new_center.z = yz_radius * Math::cos(azimuth_rad);
 	set_cone_center(p_index, new_center);
 }
 
 real_t JointLimitationKusudama3D::get_cone_elevation(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, open_cones.size(), 0.0);
 	Vector3 center = get_cone_center(p_index);
-	// Convert to elevation (vertical angle)
-	real_t elevation_rad = Math::asin(CLAMP(center.y, -1.0, 1.0));
-	// Convert from radians to degrees
-	return Math::rad_to_deg(elevation_rad);
+	// Return the X coordinate directly (axis position from -1 to 1)
+	// This avoids poles and singularities
+	return CLAMP(center.x, -1.0, 1.0);
 }
 
 void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
@@ -524,7 +526,7 @@ void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) c
 	for (int i = 0; i < get_cone_count(); i++) {
 		const String prefix = vformat("%s/%d/", PNAME("open_cones"), i);
 		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("azimuth"), PROPERTY_HINT_RANGE, "-360,720,0.1,or_less,or_greater,degrees"));
-		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("elevation"), PROPERTY_HINT_RANGE, "-180,180,0.1,or_less,or_greater,degrees"));
+		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("elevation"), PROPERTY_HINT_RANGE, "-1,1,0.01"));
 		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("radius"), PROPERTY_HINT_RANGE, "0,180,0.1,radians_as_degrees"));
 	}
 }
@@ -678,17 +680,64 @@ static void draw_tangent_circle_arc(LocalVector<Vector3> &r_vts, const Vector3 &
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
 	static const int N = 32; // Number of segments per circle
 
-	real_t sphere_r = p_bone_length * 0.25f;
-	if (sphere_r <= CMP_EPSILON) {
+	real_t socket_r = p_bone_length * 0.25f;
+	if (socket_r <= CMP_EPSILON) {
 		return;
 	}
 
 	LocalVector<Vector3> vts;
-
-	// Compute the merged boundary of all open areas (boolean union)
-	// Like the shader, we distinguish between control cone boundaries and tangent cone boundaries
-	LocalVector<Vector3> control_cone_boundary_points; // Points on actual cone boundaries
-	LocalVector<Vector3> tangent_cone_boundary_points; // Points on tangent arcs between cones
+	
+	// Draw rotation freedom indicators at the joint origin
+	// Show how much the bone can still rotate around its axis
+	if (axially_constrained && range_angle < Math::TAU) {
+		real_t indicator_r = socket_r * 0.3f; // Size of indicator relative to socket
+		
+		// Normalize angles
+		real_t normalized_min = min_axial_angle;
+		if (normalized_min < 0) {
+			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+		} else if (normalized_min >= Math::TAU) {
+			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+		}
+		
+		real_t max_angle = normalized_min + range_angle;
+		real_t wrapped_max = (max_angle > Math::TAU) ? Math::fposmod(max_angle, (real_t)Math::TAU) : max_angle;
+		
+		// Draw indicator arcs showing rotation freedom at the origin
+		Vector3 indicator_pos = Vector3(0, 0, 0);
+		Vector3 y_axis = Vector3(0, 1, 0); // Bone axis (forward direction)
+		Vector3 x_axis = Vector3(1, 0, 0);
+		Vector3 z_axis = Vector3(0, 0, 1);
+		
+		// Draw allowed rotation arc in the XZ plane (perpendicular to bone axis)
+		int arc_segments = MAX(16, (int)(range_angle / Math::PI * 32.0));
+		arc_segments = MIN(arc_segments, 64);
+		for (int i = 0; i < arc_segments; i++) {
+			real_t t = (real_t)i / (real_t)arc_segments;
+			real_t angle = normalized_min + range_angle * t;
+			Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
+			Vector3 p0 = indicator_pos + dir;
+			Vector3 p1;
+			if (i < arc_segments - 1) {
+				real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
+				real_t next_angle = normalized_min + range_angle * next_t;
+				Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
+				p1 = indicator_pos + next_dir;
+			} else {
+				p1 = indicator_pos + dir;
+			}
+			vts.push_back(p0);
+			vts.push_back(p1);
+		}
+		
+		// Draw lines from origin to arc endpoints to show limits
+		Vector3 limit1_dir = (x_axis * Math::cos(normalized_min) + z_axis * Math::sin(normalized_min)) * indicator_r;
+		Vector3 limit2_dir = (x_axis * Math::cos(wrapped_max) + z_axis * Math::sin(wrapped_max)) * indicator_r;
+		vts.push_back(indicator_pos);
+		vts.push_back(indicator_pos + limit1_dir);
+		vts.push_back(indicator_pos);
+		vts.push_back(indicator_pos + limit2_dir);
+	}
 	
 	// Helper to check if a point on the sphere is inside any open area
 	auto is_point_in_open_area = [&](const Vector3 &p_point) -> bool {
@@ -746,7 +795,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			Vector3 boundary_point = rot.xform(boundary_start).normalized();
 			
 			// Always add all boundary points to show the full circle
-			control_cone_boundary_points.push_back(boundary_point * sphere_r);
+			control_cone_boundary_points.push_back(boundary_point * socket_r);
 		}
 	}
 	
@@ -787,7 +836,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				Vector3 arc_point = rot.xform(arc_base).normalized();
 				
 				// Always add all arc points to show the full tangent circle
-				tangent_cone_boundary_points.push_back(arc_point * sphere_r);
+				tangent_cone_boundary_points.push_back(arc_point * socket_r);
 			}
 		}
 	}
@@ -811,7 +860,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		const Vector4 &cone = open_cones[cone_i];
 		Vector3 center = Vector3(cone.x, cone.y, cone.z).normalized();
 		vts.push_back(Vector3());
-		vts.push_back(center * sphere_r);
+		vts.push_back(center * socket_r);
 	}
 
 	// Draw axial limits if constrained - use octahedron pattern to fill non-open areas
@@ -828,8 +877,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		}
 		
 		Vector3 y_axis = Vector3(0, 1, 0);
-		real_t ring_radius = sphere_r * Math::sin(avg_cone_radius);
-		real_t ring_y = sphere_r * Math::cos(avg_cone_radius);
+		real_t ring_radius = socket_r * Math::sin(avg_cone_radius);
+		real_t ring_y = socket_r * Math::cos(avg_cone_radius);
 		Vector3 arc_center = Vector3(0, ring_y, 0); // Center of the arc circle
 		
 		// Normalize angles to [0, 2π] range
@@ -997,7 +1046,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				real_t z = Math::cos(u * Math::TAU);
 				
 				Vector3 normal = Vector3(x * w, y, z * w).normalized();
-				Vector3 point = normal * sphere_r;
+				Vector3 point = normal * socket_r;
 				
 				bool in_area = is_point_in_open_area(normal);
 				
@@ -1027,7 +1076,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				real_t y = Math::cos(Math::PI * v);
 				
 				Vector3 normal = Vector3(x * w, y, z * w).normalized();
-				Vector3 point = normal * sphere_r;
+				Vector3 point = normal * socket_r;
 				
 				bool in_area = is_point_in_open_area(normal);
 				
