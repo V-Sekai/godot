@@ -473,8 +473,14 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	}
 	
 	// Apply axial limit constraint (if enabled)
-	// Note: _solve is called in constraint space where Y is forward (twist axis), X is right, Z is up
-	if (axially_constrained && range_angle < Math::TAU) {
+	// NOTE: Twist constraints are now properly applied at the IK solver level (in IterateIK3D::cache_current_joint_rotations)
+	// using swing-twist decomposition via apply_twist_constraints(). This code path is disabled because _solve only
+	// receives a direction vector, not a rotation, so it cannot properly constrain twist.
+	//
+	// The twist constraint code below is kept for reference but should not be used.
+	// Disabled: if (axially_constrained && range_angle < Math::TAU) {
+	if (false && axially_constrained && range_angle < Math::TAU) {
+		// DEBUG: This code path is being executed but may not work correctly
 		// In constraint space: Y is forward (twist axis), X is right, Z is up
 		// The twist angle is the rotation around Y-axis
 		// Project direction onto XZ plane (perpendicular to Y)
@@ -725,6 +731,100 @@ void JointLimitationKusudama3D::set_orientationally_constrained(bool p_constrain
 
 bool JointLimitationKusudama3D::is_orientationally_constrained() const {
 	return orientationally_constrained;
+}
+
+Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector, const Quaternion &p_rotation, Quaternion *r_constrained_rotation) const {
+	// First solve direction constraint using base implementation
+	Vector3 constrained_dir = JointLimitation3D::solve(p_local_forward_vector, p_local_right_vector, p_rotation_offset, p_local_current_vector, p_rotation, r_constrained_rotation);
+	
+	// Apply twist constraints if enabled and output requested
+	if (!r_constrained_rotation || !axially_constrained || range_angle >= Math::TAU) {
+		return constrained_dir;
+	}
+
+	// Use make_space to transform rotation into constraint space
+	// In constraint space, Y is forward (twist axis), X is right, Z is up
+	Quaternion space = make_space(p_local_forward_vector, p_local_right_vector, p_rotation_offset);
+	Quaternion rot = p_rotation.normalized();
+	
+	// Transform rotation into constraint space
+	Quaternion constraint_space_rot = space.inverse() * rot * space;
+	constraint_space_rot.normalize();
+	
+	// In constraint space, twist axis is Y (0, 1, 0)
+	Vector3 twist_axis = Vector3(0, 1, 0);
+	
+	// Simple swing-twist decomposition in constraint space
+	const Vector3 v(constraint_space_rot.x, constraint_space_rot.y, constraint_space_rot.z);
+	const real_t proj_len = v.dot(twist_axis);
+	const Vector3 twist_vec = twist_axis * proj_len;
+	Quaternion twist(twist_vec.x, twist_vec.y, twist_vec.z, constraint_space_rot.w);
+	
+	if (!twist.is_normalized()) {
+		if (Math::is_zero_approx(twist.length_squared())) {
+			// No twist component, return as-is
+			*r_constrained_rotation = p_rotation;
+			return constrained_dir;
+		}
+		twist.normalize();
+	}
+
+	// Calculate swing as remaining rotation
+	Quaternion swing = constraint_space_rot * twist.inverse();
+	swing.normalize();
+
+	// Use clamp_to_cos_half_angle approach similar to IKKusudama3D
+	real_t normalized_min = Math::fposmod(min_axial_angle, (real_t)Math::TAU);
+	real_t center_angle = normalized_min + range_angle * 0.5;
+	real_t half_range = range_angle * 0.5;
+	real_t twist_half_range_half_cos = Math::cos(half_range * 0.5);
+	
+	// Compute twist angle from the twist quaternion
+	real_t twist_angle = 2.0 * Math::acos(CLAMP(Math::abs(twist.w), 0.0, 1.0));
+	
+	// Determine twist direction
+	Vector3 twist_axis_from_quat = Vector3(twist.x, twist.y, twist.z);
+	if (twist_axis_from_quat.length_squared() > CMP_EPSILON) {
+		twist_axis_from_quat.normalize();
+		if (twist_axis_from_quat.dot(twist_axis) < 0) {
+			twist_angle = -twist_angle;
+		}
+	}
+	
+	// Normalize twist angle relative to center
+	real_t twist_relative_to_center = Math::fposmod((real_t)(twist_angle - center_angle + Math::PI), (real_t)Math::TAU) - (real_t)Math::PI;
+	
+	// Clamp twist using cos(half_angle) method
+	Quaternion twist_relative = Quaternion(twist_axis, twist_relative_to_center).normalized();
+	
+	Quaternion clamped_twist_relative = twist_relative;
+	if (clamped_twist_relative.w < 0.0) {
+		clamped_twist_relative = clamped_twist_relative * -1;
+	}
+	real_t previous_coefficient = (1.0 - (clamped_twist_relative.w * clamped_twist_relative.w));
+	if (twist_half_range_half_cos > clamped_twist_relative.w && previous_coefficient > CMP_EPSILON) {
+		real_t composite_coefficient = Math::sqrt((1.0 - (twist_half_range_half_cos * twist_half_range_half_cos)) / previous_coefficient);
+		clamped_twist_relative.w = twist_half_range_half_cos;
+		clamped_twist_relative.x *= composite_coefficient;
+		clamped_twist_relative.y *= composite_coefficient;
+		clamped_twist_relative.z *= composite_coefficient;
+	}
+	clamped_twist_relative.normalize();
+	
+	// Convert back to absolute twist
+	Quaternion center_twist = Quaternion(twist_axis, center_angle).normalized();
+	Quaternion clamped_twist = center_twist * clamped_twist_relative;
+	clamped_twist.normalize();
+
+	// Recompose rotation in constraint space: swing * clamped_twist
+	Quaternion constrained_rot = swing * clamped_twist;
+	constrained_rot.normalize();
+	
+	// Transform back from constraint space to original space
+	*r_constrained_rotation = space * constrained_rot * space.inverse();
+	r_constrained_rotation->normalize();
+	
+	return constrained_dir;
 }
 
 #ifdef TOOLS_ENABLED
