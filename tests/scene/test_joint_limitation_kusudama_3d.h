@@ -99,7 +99,7 @@ static int test_ray_sphere_intersection(const Vector3 &p_ray_start, const Vector
 }
 
 // Helper function to compute tangent circle between two cones (independent implementation)
-static void test_compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, const Vector3 &p_center2, real_t p_radius2,
+void test_compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, const Vector3 &p_center2, real_t p_radius2,
 		Vector3 &r_tangent1, Vector3 &r_tangent2, real_t &r_tangent_radius) {
 	Vector3 center1 = p_center1.normalized();
 	Vector3 center2 = p_center2.normalized();
@@ -207,7 +207,7 @@ static void test_compute_tangent_circle(const Vector3 &p_center1, real_t p_radiu
 }
 
 // Helper function to find point on path between two cones (independent implementation)
-static Vector3 test_get_on_great_tangent_triangle(const Vector3 &p_input, const Vector3 &p_center1, real_t p_radius1,
+Vector3 test_get_on_great_tangent_triangle(const Vector3 &p_input, const Vector3 &p_center1, real_t p_radius1,
 		const Vector3 &p_center2, real_t p_radius2) {
 	Vector3 center1 = p_center1.normalized();
 	Vector3 center2 = p_center2.normalized();
@@ -276,7 +276,7 @@ static Vector3 test_get_on_great_tangent_triangle(const Vector3 &p_input, const 
 }
 
 // Helper function to check if a point is inside a cone (independent implementation)
-static bool test_is_point_in_cone(const Vector3 &p_point, const Vector3 &p_cone_center, real_t p_cone_radius) {
+bool test_is_point_in_cone(const Vector3 &p_point, const Vector3 &p_cone_center, real_t p_cone_radius) {
 	Vector3 dir = p_point.normalized();
 	Vector3 center = p_cone_center.normalized();
 	real_t radius_cosine = Math::cos(p_cone_radius);
@@ -285,7 +285,7 @@ static bool test_is_point_in_cone(const Vector3 &p_point, const Vector3 &p_cone_
 }
 
 // Helper function to check if a point is in a tangent path between two cones (independent implementation)
-static bool test_is_point_in_tangent_path(const Vector3 &p_point, const Vector3 &p_center1, real_t p_radius1,
+bool test_is_point_in_tangent_path(const Vector3 &p_point, const Vector3 &p_center1, real_t p_radius1,
 		const Vector3 &p_center2, real_t p_radius2) {
 	Vector3 dir = p_point.normalized();
 
@@ -308,7 +308,7 @@ static bool test_is_point_in_tangent_path(const Vector3 &p_point, const Vector3 
 }
 
 // Main independent solver function that checks if a point is in any allowed region (independent implementation)
-static bool test_is_point_allowed(const Vector3 &p_point, const Vector<Vector4> &p_cones) {
+bool test_is_point_allowed(const Vector3 &p_point, const Vector<Vector4> &p_cones) {
 	Vector3 dir = p_point.normalized();
 
 	// Check if point is in any cone
