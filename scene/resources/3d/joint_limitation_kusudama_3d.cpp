@@ -610,29 +610,46 @@ bool JointLimitationKusudama3D::is_orientationally_constrained() const {
 
 #ifdef TOOLS_ENABLED
 // Helper to draw a circle on the sphere given center, radius angle, and sphere radius
-static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 32) {
+// Uses spherical interpolation for smooth curve fitting
+static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 64) {
 	Vector3 axis = p_center.normalized();
 	Vector3 perp1 = axis.get_any_perpendicular().normalized();
 	
-	// Generate circle points on the sphere
-	Vector3 start_point = Quaternion(perp1, p_radius_angle).xform(axis);
+	// Generate circle points on the sphere using spherical interpolation
+	Vector3 start_point = Quaternion(perp1, p_radius_angle).xform(axis).normalized();
 	real_t dp = Math::TAU / (real_t)p_segments;
 	
-	for (int i = 0; i < p_segments; i++) {
+	Vector3 prev_point = start_point * p_sphere_r;
+	for (int i = 1; i <= p_segments; i++) {
 		real_t angle = (real_t)i * dp;
 		Quaternion rot = Quaternion(axis, angle);
-		Vector3 point = rot.xform(start_point) * p_sphere_r;
-		Vector3 next_point = rot.xform(Quaternion(axis, (real_t)(i + 1) * dp).xform(start_point)) * p_sphere_r;
-		r_vts.push_back(point);
-		r_vts.push_back(next_point);
+		Vector3 current_point = rot.xform(start_point).normalized() * p_sphere_r;
+		
+		// Use spherical linear interpolation for smoother curve
+		// Subdivide each segment for better fit
+		int subdiv = 4; // Subdivide each segment for smoother curve
+		for (int j = 1; j <= subdiv; j++) {
+			real_t t = (real_t)j / (real_t)subdiv;
+			Vector3 p0 = prev_point.normalized();
+			Vector3 p1 = current_point.normalized();
+			Vector3 interp = p0.slerp(p1, t).normalized() * p_sphere_r;
+			
+			if (j == 1) {
+				r_vts.push_back(prev_point);
+			}
+			r_vts.push_back(interp);
+		}
+		
+		prev_point = current_point;
 	}
 }
 
 // Helper to draw a circle arc on the sphere along a tangent circle
 // The arc connects the boundaries of two adjacent cones
+// Uses spherical interpolation for smooth curve fitting
 static void draw_tangent_circle_arc(LocalVector<Vector3> &r_vts, const Vector3 &p_tangent_center, real_t p_tangent_radius, 
 		const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius,
-		real_t p_sphere_r, int p_segments = 16) {
+		real_t p_sphere_r, int p_segments = 64) {
 	Vector3 tan_center = p_tangent_center.normalized();
 	Vector3 cone1 = p_cone1_center.normalized();
 	Vector3 cone2 = p_cone2_center.normalized();
@@ -696,19 +713,35 @@ static void draw_tangent_circle_arc(LocalVector<Vector3> &r_vts, const Vector3 &
 		end_angle += Math::TAU;
 	}
 	
-	// Generate arc points
-	Vector3 arc_base = Quaternion(perp, p_tangent_radius).xform(rot_axis);
-	for (int i = 0; i < p_segments; i++) {
+	// Generate arc points using spherical interpolation for smooth curve fitting
+	Vector3 arc_base = Quaternion(perp, p_tangent_radius).xform(rot_axis).normalized();
+	Vector3 start_arc_point = start_point.normalized();
+	Vector3 end_arc_point = end_point.normalized();
+	
+	// Use spherical linear interpolation (slerp) for smooth curve along the arc
+	int subdiv = 4; // Subdivide each segment for better fit
+	Vector3 prev_arc_point = start_arc_point * p_sphere_r;
+	
+	for (int i = 1; i <= p_segments; i++) {
 		real_t t = (real_t)i / (real_t)p_segments;
 		real_t angle = start_angle + (end_angle - start_angle) * t;
 		Quaternion rot = Quaternion(rot_axis, angle);
-		Vector3 point = rot.xform(arc_base) * p_sphere_r;
-		real_t next_t = (real_t)(i + 1) / (real_t)p_segments;
-		real_t next_angle = start_angle + (end_angle - start_angle) * next_t;
-		Quaternion next_rot = Quaternion(rot_axis, next_angle);
-		Vector3 next_point = next_rot.xform(arc_base) * p_sphere_r;
-		r_vts.push_back(point);
-		r_vts.push_back(next_point);
+		Vector3 current_arc_point = rot.xform(arc_base).normalized() * p_sphere_r;
+		
+		// Subdivide using spherical interpolation for smoother curve
+		for (int j = 1; j <= subdiv; j++) {
+			real_t subdiv_t = (real_t)j / (real_t)subdiv;
+			Vector3 p0 = prev_arc_point.normalized();
+			Vector3 p1 = current_arc_point.normalized();
+			Vector3 interp = p0.slerp(p1, subdiv_t).normalized() * p_sphere_r;
+			
+			if (j == 1) {
+				r_vts.push_back(prev_arc_point);
+			}
+			r_vts.push_back(interp);
+		}
+		
+		prev_arc_point = current_arc_point;
 	}
 }
 
@@ -725,7 +758,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	// Draw rotation freedom indicators at the joint origin
 	// Show how much the bone can still rotate around its axis
 	if (axially_constrained && range_angle < Math::TAU) {
-		real_t indicator_r = socket_r * 0.3f; // Size of indicator relative to socket
+		real_t indicator_r = socket_r * 1.2f; // Extend outside the unit sphere for better visibility
 		
 		// Normalize angles
 		real_t normalized_min = min_axial_angle;
@@ -834,20 +867,22 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		vts.push_back(indicator_pos + limit2_dir);
 	}
 	
-	// Create wireframe visualization of the boolean union
-	// Sample sphere mesh and draw only edges within the union
+	// Create wireframe visualization: sphere with cones and tangents subtracted
+	// Draw sphere wireframe, but skip (subtract) areas inside cones and tangent paths
 	if (!open_cones.is_empty()) {
 		int rings = 32;
 		int radial_segments = 32;
 		
-		// Generate horizontal wireframe lines (parallels/latitudes) - only in union
+		// Generate horizontal wireframe lines (parallels/latitudes)
+		// Draw sphere lines, but subtract areas in cones and tangent paths
+		// Draw smooth boundary curves where transitions occur
 		for (int j = 0; j <= rings; j++) {
 			real_t v = (real_t)j / (real_t)rings;
 			real_t w = Math::sin(Math::PI * v);
 			real_t y = Math::cos(Math::PI * v);
 			
 			Vector3 prev_point;
-			bool prev_in_union = false;
+			bool prev_in_allowed = false;
 			
 			for (int i = 0; i <= radial_segments; i++) {
 				real_t u = (real_t)i / (real_t)radial_segments;
@@ -857,28 +892,50 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				Vector3 normal = Vector3(x * w, y, z * w).normalized();
 				Vector3 point = normal * socket_r;
 				
-				bool in_union = is_point_in_union(normal, open_cones);
+				// Check if point is in any cone or tangent path (allowed area to subtract)
+				bool in_allowed = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment only if both points are NOT in the union (disallowed area - visualize as sphere)
-				if (i > 0 && !prev_in_union && !in_union) {
-					// Both points are disallowed - draw the edge
+				// Draw line segment only if both points are NOT in allowed areas (sphere minus cones/tangents)
+				if (i > 0 && !prev_in_allowed && !in_allowed) {
+					// Both points are in disallowed area - draw the sphere edge
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
 				
+				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
+				if (i > 0 && prev_in_allowed != in_allowed) {
+					// Transition point - draw smooth spline boundary curve
+					// Use spherical interpolation to create smooth boundary
+					int boundary_subdiv = 8;
+					for (int k = 0; k <= boundary_subdiv; k++) {
+						real_t t = (real_t)k / (real_t)boundary_subdiv;
+						Vector3 p0 = prev_point.normalized();
+						Vector3 p1 = point.normalized();
+						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
+						
+						if (k > 0) {
+							Vector3 prev_boundary = p0.slerp(p1, (real_t)(k - 1) / (real_t)boundary_subdiv).normalized() * socket_r;
+							vts.push_back(prev_boundary);
+							vts.push_back(boundary_point);
+						}
+					}
+				}
+				
 				prev_point = point;
-				prev_in_union = in_union;
+				prev_in_allowed = in_allowed;
 			}
 		}
 		
-		// Generate vertical lines (meridians/longitudes) - only in union
+		// Generate vertical lines (meridians/longitudes)
+		// Draw sphere lines, but subtract areas in cones and tangent paths
+		// Draw smooth boundary curves where transitions occur
 		for (int i = 0; i <= radial_segments; i++) {
 			real_t u = (real_t)i / (real_t)radial_segments;
 			real_t x = Math::sin(u * Math::TAU);
 			real_t z = Math::cos(u * Math::TAU);
 			
 			Vector3 prev_point;
-			bool prev_in_union = false;
+			bool prev_in_allowed = false;
 			
 			for (int j = 0; j <= rings; j++) {
 				real_t v = (real_t)j / (real_t)rings;
@@ -888,22 +945,52 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				Vector3 normal = Vector3(x * w, y, z * w).normalized();
 				Vector3 point = normal * socket_r;
 				
-				bool in_union = is_point_in_union(normal, open_cones);
+				// Check if point is in any cone or tangent path (allowed area to subtract)
+				bool in_allowed = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment only if both points are NOT in the union (disallowed area - visualize as sphere)
-				if (j > 0 && !prev_in_union && !in_union) {
-					// Both points are disallowed - draw the edge
+				// Draw line segment only if both points are NOT in allowed areas (sphere minus cones/tangents)
+				if (j > 0 && !prev_in_allowed && !in_allowed) {
+					// Both points are in disallowed area - draw the sphere edge
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
 				
+				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
+				if (j > 0 && prev_in_allowed != in_allowed) {
+					// Transition point - draw smooth spline boundary curve
+					// Use spherical interpolation to create smooth boundary
+					int boundary_subdiv = 8;
+					for (int k = 0; k <= boundary_subdiv; k++) {
+						real_t t = (real_t)k / (real_t)boundary_subdiv;
+						Vector3 p0 = prev_point.normalized();
+						Vector3 p1 = point.normalized();
+						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
+						
+						if (k > 0) {
+							Vector3 prev_boundary = p0.slerp(p1, (real_t)(k - 1) / (real_t)boundary_subdiv).normalized() * socket_r;
+							vts.push_back(prev_boundary);
+							vts.push_back(boundary_point);
+						}
+					}
+				}
+				
 				prev_point = point;
-				prev_in_union = in_union;
+				prev_in_allowed = in_allowed;
 			}
 		}
 	}
 	
-	// Draw tangent circle arcs (paths between cones) if there are multiple cones
+	// Draw exact cone boundaries (circle at cone radius)
+	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
+		const Vector4 &cone_data = open_cones[cone_i];
+		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		real_t cone_radius = cone_data.w; // Cone radius in radians
+		
+		// Draw the exact boundary circle of the cone (using spline interpolation)
+		draw_cone_circle(vts, center, cone_radius, socket_r, 64);
+	}
+	
+	// Draw exact tangent circle arc boundaries (paths between cones) if there are multiple cones
 	if (open_cones.size() > 1) {
 		for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
 			int next_i = (cone_i + 1) % open_cones.size();
@@ -925,55 +1012,27 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			real_t side = mid_dir.dot(c1xc2);
 			Vector3 tan_center = (side < 0.0) ? tan1 : tan2;
 			
-			// Sample points along the tangent circle arc
-			Vector3 rot_axis = tan_center.normalized();
-			Vector3 perp = rot_axis.get_any_perpendicular().normalized();
-			Vector3 arc_base = Quaternion(perp, tan_radius).xform(rot_axis);
-			
-			// Sample the full tangent circle and draw it
-			int arc_samples = 32;
-			Vector3 prev_point;
-			for (int i = 0; i < arc_samples; i++) {
-				real_t t = (real_t)i / (real_t)(arc_samples - 1);
-				real_t arc_angle = Math::TAU * t;
-				Quaternion rot = Quaternion(rot_axis, arc_angle);
-				Vector3 arc_point = rot.xform(arc_base).normalized() * socket_r;
-				
-				if (i > 0) {
-					vts.push_back(prev_point);
-					vts.push_back(arc_point);
-				}
-				prev_point = arc_point;
-			}
+			// Draw the exact arc boundary between the two cones (using spline interpolation)
+			draw_tangent_circle_arc(vts, tan_center, tan_radius, center1, radius1, center2, radius2, socket_r, 64);
 		}
 	}
 	
-	// Draw markers at each cone center on the sphere surface
+	// Draw simple markers at exact cone center locations
 	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
 		const Vector4 &cone_data = open_cones[cone_i];
 		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		Vector3 center_point = center * socket_r;
 		
-		// Draw a small circle on the sphere surface around the cone center
+		// Draw a small cross at the cone center
 		Vector3 perp1 = center.get_any_perpendicular().normalized();
 		Vector3 perp2 = center.cross(perp1).normalized();
-		real_t marker_angle = 0.1f; // Small angular radius in radians (~5.7 degrees)
-		int marker_segments = 16;
+		real_t marker_size = socket_r * 0.02f; // Small marker size
 		
-		Vector3 prev_marker_point;
-		for (int i = 0; i <= marker_segments; i++) {
-			real_t angle = (real_t)i / (real_t)marker_segments * Math::TAU;
-			// Create a point on a circle in the tangent plane
-			Vector3 tangent_dir = (perp1 * Math::cos(angle) + perp2 * Math::sin(angle)).normalized();
-			// Point on sphere circle: center * cos(angle) + tangent * sin(angle), then normalize
-			Vector3 marker_dir = (center * Math::cos(marker_angle) + tangent_dir * Math::sin(marker_angle)).normalized();
-			Vector3 marker_point = marker_dir * socket_r;
-			
-			if (i > 0) {
-				vts.push_back(prev_marker_point);
-				vts.push_back(marker_point);
-			}
-			prev_marker_point = marker_point;
-		}
+		// Draw two orthogonal lines forming a cross
+		vts.push_back(center_point - perp1 * marker_size);
+		vts.push_back(center_point + perp1 * marker_size);
+		vts.push_back(center_point - perp2 * marker_size);
+		vts.push_back(center_point + perp2 * marker_size);
 	}
 	
 	// Add all vertices to surface tool as a single mesh
