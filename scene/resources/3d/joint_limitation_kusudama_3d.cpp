@@ -863,6 +863,23 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				if (i > 0 && prev_in_union != in_union) {
 					vts.push_back(prev_point);
 					vts.push_back(point);
+					
+					// Draw equally spaced sections from disallowed boundary point to origin
+					// Find which point is on the disallowed side
+					Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
+					int num_sections = 4; // Number of equally spaced sections
+					Vector3 origin = Vector3(0, 0, 0);
+					Vector3 prev_section_point = disallowed_point;
+					for (int s = 1; s <= num_sections; s++) {
+						real_t t = (real_t)s / (real_t)(num_sections + 1);
+						Vector3 section_point = disallowed_point.lerp(origin, t);
+						vts.push_back(prev_section_point);
+						vts.push_back(section_point);
+						prev_section_point = section_point;
+					}
+					// Draw final segment to origin
+					vts.push_back(prev_section_point);
+					vts.push_back(origin);
 				}
 				
 				prev_point = point;
@@ -893,6 +910,23 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				if (j > 0 && prev_in_union != in_union) {
 					vts.push_back(prev_point);
 					vts.push_back(point);
+					
+					// Draw equally spaced sections from disallowed boundary point to origin
+					// Find which point is on the disallowed side
+					Vector3 disallowed_point = (!prev_in_union) ? prev_point : point;
+					int num_sections = 4; // Number of equally spaced sections
+					Vector3 origin = Vector3(0, 0, 0);
+					Vector3 prev_section_point = disallowed_point;
+					for (int s = 1; s <= num_sections; s++) {
+						real_t t = (real_t)s / (real_t)(num_sections + 1);
+						Vector3 section_point = disallowed_point.lerp(origin, t);
+						vts.push_back(prev_section_point);
+						vts.push_back(section_point);
+						prev_section_point = section_point;
+					}
+					// Draw final segment to origin
+					vts.push_back(prev_section_point);
+					vts.push_back(origin);
 				}
 				
 				prev_point = point;
