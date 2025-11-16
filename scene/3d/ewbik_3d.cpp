@@ -105,6 +105,33 @@ bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
 		r_ret = get_bone_count();
 		return true;
 	}
+	
+	// Validate settings/joints before delegating to prevent crashes
+	if (name.begins_with("settings/")) {
+		String path = name;
+		int which = path.get_slicec('/', 1).to_int();
+		String what = path.get_slicec('/', 2);
+		
+		// Check if settings array is empty
+		if (settings.is_empty()) {
+			return false;
+		}
+		
+		// Check if setting index is valid
+		if (which >= (int)settings.size()) {
+			return false;
+		}
+		
+		// If accessing joints, check if joint_settings is valid
+		if (what == "joints") {
+			int idx = path.get_slicec('/', 3).to_int();
+			const IterateIK3DSetting *setting = static_cast<const IterateIK3DSetting *>(settings[which]);
+			if (!setting || (uint32_t)idx >= setting->joint_settings.size()) {
+				return false;
+			}
+		}
+	}
+	
 	// Delegate to IterateIK3D for settings-based properties
 	return IterateIK3D::_get(p_name, r_ret);
 }
@@ -126,6 +153,33 @@ bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 		ui_selected_bone = p_value;
 		return true;
 	}
+	
+	// Validate settings/joints before delegating to prevent crashes
+	if (name.begins_with("settings/")) {
+		String path = name;
+		int which = path.get_slicec('/', 1).to_int();
+		String what = path.get_slicec('/', 2);
+		
+		// Check if settings array is empty
+		if (settings.is_empty()) {
+			return false;
+		}
+		
+		// Check if setting index is valid
+		if (which >= (int)settings.size()) {
+			return false;
+		}
+		
+		// If accessing joints, check if joint_settings is valid
+		if (what == "joints") {
+			int idx = path.get_slicec('/', 3).to_int();
+			IterateIK3DSetting *setting = static_cast<IterateIK3DSetting *>(settings[which]);
+			if (!setting || (uint32_t)idx >= setting->joint_settings.size()) {
+				return false;
+			}
+		}
+	}
+	
 	// Delegate to IterateIK3D for settings-based properties
 	return IterateIK3D::_set(p_name, p_value);
 }
