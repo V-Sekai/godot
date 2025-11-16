@@ -32,9 +32,9 @@
 
 #include "scene/3d/ik_bone_3d.h"
 #include "scene/3d/ik_bone_segment_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
 #include "scene/3d/ik_open_cone_3d.h"
 #include "scene/3d/ik_ray_3d.h"
-#include "scene/3d/ik_math/ik_node_3d.h"
 
 #include "core/io/resource.h"
 #include "core/math/quaternion.h"

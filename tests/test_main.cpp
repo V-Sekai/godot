@@ -179,6 +179,7 @@
 #include "tests/scene/test_ik_kusudama_3d_singularities.h"
 #include "tests/scene/test_ik_node_3d.h"
 #include "tests/scene/test_ik_open_cone_3d_singularities.h"
+#include "tests/scene/test_joint_limitation_kusudama_3d.h"
 #include "tests/scene/test_many_bone_ik_singularities_integration.h"
 #include "tests/scene/test_path_3d.h"
 #include "tests/scene/test_path_follow_3d.h"

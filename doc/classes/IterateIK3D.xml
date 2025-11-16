@@ -10,6 +10,12 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="get_direction_priorities" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
 		<method name="get_joint_limitation" qualifiers="const">
 			<return type="JointLimitation3D" />
 			<param index="0" name="index" type="int" />
@@ -63,11 +69,30 @@
 				If [method get_joint_rotation_axis] is [constant SkeletonModifier3D.ROTATION_AXIS_ALL], this method returns [code]Vector3(0, 0, 0)[/code].
 			</description>
 		</method>
+		<method name="get_motion_propagation_factor" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
 		<method name="get_target_node" qualifiers="const">
 			<return type="NodePath" />
 			<param index="0" name="index" type="int" />
 			<description>
 				Returns the target node that the end bone is trying to reach.
+			</description>
+		</method>
+		<method name="get_weight" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+			</description>
+		</method>
+		<method name="set_direction_priorities">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="priorities" type="Vector3" />
+			<description>
 			</description>
 		</method>
 		<method name="set_joint_limitation">
@@ -131,12 +156,26 @@
 				If the vector length is [code]0[/code], it is considered synonymous with [constant SkeletonModifier3D.ROTATION_AXIS_ALL].
 			</description>
 		</method>
+		<method name="set_motion_propagation_factor">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="factor" type="float" />
+			<description>
+			</description>
+		</method>
 		<method name="set_target_node">
 			<return type="void" />
 			<param index="0" name="index" type="int" />
 			<param index="1" name="target_node" type="NodePath" />
 			<description>
 				Sets the target node that the end bone is trying to reach.
+			</description>
+		</method>
+		<method name="set_weight">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<param index="1" name="weight" type="float" />
+			<description>
 			</description>
 		</method>
 	</methods>

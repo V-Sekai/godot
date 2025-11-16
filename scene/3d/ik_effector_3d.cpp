@@ -31,8 +31,8 @@
 #include "scene/3d/ik_effector_3d.h"
 
 #include "core/typedefs.h"
-#include "scene/3d/ik_bone_3d.h"
 #include "scene/3d/ewbik_3d.h"
+#include "scene/3d/ik_bone_3d.h"
 #include "scene/3d/ik_math/ik_node_3d.h"
 #include "scene/3d/node_3d.h"
 

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="JointLimitationKusudama3D" inherits="JointLimitation3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_min_axial_angle" qualifiers="const">
+			<return type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="get_range_angle" qualifiers="const">
+			<return type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="set_axial_limits">
+			<return type="void" />
+			<param index="0" name="min_angle" type="float" />
+			<param index="1" name="range_angle" type="float" />
+			<description>
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="axially_constrained" type="bool" setter="set_axially_constrained" getter="is_axially_constrained" default="false">
+		</member>
+		<member name="open_cones" type="PackedVector4Array" setter="set_open_cones" getter="get_open_cones" default="PackedVector4Array()">
+		</member>
+		<member name="orientationally_constrained" type="bool" setter="set_orientationally_constrained" getter="is_orientationally_constrained" default="true">
+		</member>
+	</members>
+</class>

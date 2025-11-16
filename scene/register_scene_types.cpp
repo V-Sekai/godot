@@ -227,11 +227,20 @@
 #include "scene/3d/copy_transform_modifier_3d.h"
 #include "scene/3d/cpu_particles_3d.h"
 #include "scene/3d/decal.h"
+#include "scene/3d/ewbik_3d.h"
 #include "scene/3d/fabr_ik_3d.h"
 #include "scene/3d/fog_volume.h"
 #include "scene/3d/gpu_particles_3d.h"
 #include "scene/3d/gpu_particles_collision_3d.h"
+#include "scene/3d/ik_bone_3d.h"
+#include "scene/3d/ik_bone_segment_3d.h"
+#include "scene/3d/ik_effector_3d.h"
+#include "scene/3d/ik_effector_template_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
+#include "scene/3d/ik_math/ik_node_3d.h"
 #include "scene/3d/ik_modifier_3d.h"
+#include "scene/3d/ik_open_cone_3d.h"
+#include "scene/3d/ik_ray_3d.h"
 #include "scene/3d/importer_mesh_instance_3d.h"
 #include "scene/3d/iterate_ik_3d.h"
 #include "scene/3d/jacobian_ik_3d.h"
@@ -241,15 +250,6 @@
 #include "scene/3d/lightmap_probe.h"
 #include "scene/3d/limit_angular_velocity_modifier_3d.h"
 #include "scene/3d/look_at_modifier_3d.h"
-#include "scene/3d/ewbik_3d.h"
-#include "scene/3d/ik_bone_3d.h"
-#include "scene/3d/ik_effector_3d.h"
-#include "scene/3d/ik_effector_template_3d.h"
-#include "scene/3d/ik_bone_segment_3d.h"
-#include "scene/3d/ik_kusudama_3d.h"
-#include "scene/3d/ik_ray_3d.h"
-#include "scene/3d/ik_math/ik_node_3d.h"
-#include "scene/3d/ik_open_cone_3d.h"
 #include "scene/3d/marker_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/modifier_bone_target_3d.h"
@@ -366,6 +366,7 @@
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/3d/joint_limitation_3d.h"
 #include "scene/resources/3d/joint_limitation_cone_3d.h"
+#include "scene/resources/3d/joint_limitation_kusudama_3d.h"
 #include "scene/resources/3d/mesh_library.h"
 #include "scene/resources/3d/navigation_mesh_source_geometry_data_3d.h"
 #include "scene/resources/3d/primitive_meshes.h"
@@ -675,6 +676,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(RetargetModifier3D);
 	GDREGISTER_VIRTUAL_CLASS(JointLimitation3D);
 	GDREGISTER_CLASS(JointLimitationCone3D);
+	GDREGISTER_CLASS(JointLimitationKusudama3D);
 	GDREGISTER_CLASS(SpringBoneSimulator3D);
 	GDREGISTER_VIRTUAL_CLASS(SpringBoneCollision3D);
 	GDREGISTER_CLASS(SpringBoneCollisionSphere3D);

@@ -145,6 +145,11 @@ public:
 	struct IterateIK3DSetting : public ChainIK3DSetting {
 		NodePath target_node;
 
+		// EWBIK-compatible properties (per-pin/setting)
+		real_t motion_propagation_factor = 0.0f;
+		real_t weight = 1.0f;
+		Vector3 direction_priorities = Vector3(0.2f, 0.0f, 0.2f); // Purported ideal values are 1.0 / 3.0 for one direction, 1.0 / 5.0 for two directions and 1.0 / 7.0 for three directions.
+
 		LocalVector<IterateIK3DJointSetting *> joint_settings;
 
 		bool simulated = false;
@@ -293,6 +298,12 @@ public:
 	// Setting.
 	void set_target_node(int p_index, const NodePath &p_target_node);
 	NodePath get_target_node(int p_index) const;
+	void set_motion_propagation_factor(int p_index, real_t p_factor);
+	real_t get_motion_propagation_factor(int p_index) const;
+	void set_weight(int p_index, real_t p_weight);
+	real_t get_weight(int p_index) const;
+	void set_direction_priorities(int p_index, const Vector3 &p_priorities);
+	Vector3 get_direction_priorities(int p_index) const;
 
 	// Individual joints.
 	void set_joint_rotation_axis(int p_index, int p_joint, RotationAxis p_axis);

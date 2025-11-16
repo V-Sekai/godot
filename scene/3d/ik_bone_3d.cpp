@@ -29,8 +29,8 @@
 /**************************************************************************/
 
 #include "scene/3d/ik_bone_3d.h"
-#include "scene/3d/ik_kusudama_3d.h"
 #include "scene/3d/ewbik_3d.h"
+#include "scene/3d/ik_kusudama_3d.h"
 #include "scene/3d/ik_math/ik_node_3d.h"
 #include <cmath>
 

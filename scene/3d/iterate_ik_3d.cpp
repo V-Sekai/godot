@@ -40,6 +40,12 @@ bool IterateIK3D::_set(const StringName &p_path, const Variant &p_value) {
 
 		if (what == "target_node") {
 			set_target_node(which, p_value);
+		} else if (what == "motion_propagation_factor") {
+			set_motion_propagation_factor(which, p_value);
+		} else if (what == "weight") {
+			set_weight(which, p_value);
+		} else if (what == "direction_priorities") {
+			set_direction_priorities(which, p_value);
 		} else if (what == "joints") {
 			int idx = path.get_slicec('/', 3).to_int();
 			String prop = path.get_slicec('/', 4);
@@ -80,6 +86,12 @@ bool IterateIK3D::_get(const StringName &p_path, Variant &r_ret) const {
 
 		if (what == "target_node") {
 			r_ret = get_target_node(which);
+		} else if (what == "motion_propagation_factor") {
+			r_ret = get_motion_propagation_factor(which);
+		} else if (what == "weight") {
+			r_ret = get_weight(which);
+		} else if (what == "direction_priorities") {
+			r_ret = get_direction_priorities(which);
 		} else if (what == "joints") {
 			int idx = path.get_slicec('/', 3).to_int();
 			String prop = path.get_slicec('/', 4);
@@ -201,6 +213,36 @@ void IterateIK3D::set_target_node(int p_index, const NodePath &p_node_path) {
 NodePath IterateIK3D::get_target_node(int p_index) const {
 	ERR_FAIL_INDEX_V(p_index, (int)settings.size(), NodePath());
 	return iterate_settings[p_index]->target_node;
+}
+
+void IterateIK3D::set_motion_propagation_factor(int p_index, real_t p_factor) {
+	ERR_FAIL_INDEX(p_index, (int)settings.size());
+	iterate_settings[p_index]->motion_propagation_factor = p_factor;
+}
+
+real_t IterateIK3D::get_motion_propagation_factor(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, (int)settings.size(), 0.0f);
+	return iterate_settings[p_index]->motion_propagation_factor;
+}
+
+void IterateIK3D::set_weight(int p_index, real_t p_weight) {
+	ERR_FAIL_INDEX(p_index, (int)settings.size());
+	iterate_settings[p_index]->weight = p_weight;
+}
+
+real_t IterateIK3D::get_weight(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, (int)settings.size(), 1.0f);
+	return iterate_settings[p_index]->weight;
+}
+
+void IterateIK3D::set_direction_priorities(int p_index, const Vector3 &p_priorities) {
+	ERR_FAIL_INDEX(p_index, (int)settings.size());
+	iterate_settings[p_index]->direction_priorities = p_priorities;
+}
+
+Vector3 IterateIK3D::get_direction_priorities(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, (int)settings.size(), Vector3(0.2f, 0.0f, 0.2f));
+	return iterate_settings[p_index]->direction_priorities;
 }
 
 // Individual joints.
@@ -372,6 +414,12 @@ void IterateIK3D::_bind_methods() {
 	// Setting.
 	ClassDB::bind_method(D_METHOD("set_target_node", "index", "target_node"), &IterateIK3D::set_target_node);
 	ClassDB::bind_method(D_METHOD("get_target_node", "index"), &IterateIK3D::get_target_node);
+	ClassDB::bind_method(D_METHOD("set_motion_propagation_factor", "index", "factor"), &IterateIK3D::set_motion_propagation_factor);
+	ClassDB::bind_method(D_METHOD("get_motion_propagation_factor", "index"), &IterateIK3D::get_motion_propagation_factor);
+	ClassDB::bind_method(D_METHOD("set_weight", "index", "weight"), &IterateIK3D::set_weight);
+	ClassDB::bind_method(D_METHOD("get_weight", "index"), &IterateIK3D::get_weight);
+	ClassDB::bind_method(D_METHOD("set_direction_priorities", "index", "priorities"), &IterateIK3D::set_direction_priorities);
+	ClassDB::bind_method(D_METHOD("get_direction_priorities", "index"), &IterateIK3D::get_direction_priorities);
 
 	// Individual joints.
 	ClassDB::bind_method(D_METHOD("set_joint_rotation_axis", "index", "joint", "axis"), &IterateIK3D::set_joint_rotation_axis);

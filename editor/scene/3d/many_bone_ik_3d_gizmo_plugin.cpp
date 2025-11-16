@@ -30,6 +30,7 @@
 
 #include "core/math/transform_3d.h"
 #include "core/templates/local_vector.h"
+#include "core/templates/rb_set.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_node.h"
 #include "editor/scene/3d/many_bone_ik_shader.h"
@@ -39,10 +40,13 @@
 #include "scene/3d/skeleton_3d.h"
 #include "scene/resources/surface_tool.h"
 
+#include "editor/scene/3d/many_bone_ik_3d_gizmo_plugin.h"
+#include "scene/3d/ewbik_3d.h"
 #include "scene/3d/ik_bone_3d.h"
 #include "scene/3d/ik_kusudama_3d.h"
-#include "scene/3d/ewbik_3d.h"
-#include "editor/scene/3d/many_bone_ik_3d_gizmo_plugin.h"
+#include "scene/3d/iterate_ik_3d.h"
+#include "scene/resources/3d/joint_limitation_3d.h"
+#include "scene/resources/3d/joint_limitation_kusudama_3d.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_node.h"
@@ -92,11 +96,65 @@ void ManyBoneIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 	}
 	Color selected_bone_color = EDITOR_GET("editors/3d_gizmos/gizmo_colors/selected_bone");
 
+	// First, try to create gizmos from IterateIK3D settings
+	// This is the new approach using IterateIK3D's settings system
+	for (int setting_idx = 0; setting_idx < many_bone_ik->get_setting_count(); setting_idx++) {
+		for (int joint_idx = 0; joint_idx < many_bone_ik->get_joint_count(setting_idx); joint_idx++) {
+			int bone_id = many_bone_ik->get_joint_bone(setting_idx, joint_idx);
+			if (bone_id < 0) {
+				continue;
+			}
+
+			Ref<JointLimitation3D> limitation = many_bone_ik->get_joint_limitation(setting_idx, joint_idx);
+			if (limitation.is_null()) {
+				continue;
+			}
+
+			Color current_bone_color = (bone_id == selected) ? selected_bone_color : bone_color;
+
+			// Check if this is a kusudama limitation - use its draw_shape method
+			Ref<JointLimitationKusudama3D> kusudama_lim = limitation;
+			if (kusudama_lim.is_valid()) {
+				// Use the limitation's draw_shape method via ChainIK3D gizmo drawing
+				// The limitation will be drawn by ChainIK3DGizmoPlugin automatically
+				// But we can also draw it here if needed
+				continue; // Let ChainIK3D gizmo handle it
+			}
+
+			// Fallback: Try to get from internal structures (for backward compatibility)
+			for (const Ref<IKBoneSegment3D> &segmented_skeleton : many_bone_ik->get_segmented_skeletons()) {
+				if (segmented_skeleton.is_null()) {
+					continue;
+				}
+				Ref<IKBone3D> ik_bone = segmented_skeleton->get_ik_bone(bone_id);
+				if (ik_bone.is_null() || ik_bone->get_constraint().is_null()) {
+					continue;
+				}
+				create_gizmo_mesh(bone_id, ik_bone, p_gizmo, current_bone_color, skeleton, many_bone_ik);
+				break; // Only create once per bone
+			}
+		}
+	}
+
+	// Fallback: Also check internal segmented skeletons for any constraints not in settings
+	// This ensures backward compatibility
 	int current_bone_index = 0;
 	Vector<int> bones_to_process = skeleton->get_parentless_bones();
+	RBSet<int> processed_bones; // Track which bones we've already processed from settings
 
 	while (bones_to_process.size() > current_bone_index) {
 		int current_bone_idx = bones_to_process[current_bone_index];
+
+		if (processed_bones.has(current_bone_idx)) {
+			current_bone_index++;
+			Vector<int> child_bones_vector = skeleton->get_bone_children(current_bone_idx);
+			for (int i = 0; i < child_bones_vector.size(); i++) {
+				if (child_bones_vector[i] >= 0) {
+					bones_to_process.push_back(child_bones_vector[i]);
+				}
+			}
+			continue;
+		}
 
 		Color current_bone_color = (current_bone_idx == selected) ? selected_bone_color : bone_color;
 
@@ -108,7 +166,11 @@ void ManyBoneIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 			if (ik_bone.is_null() || ik_bone->get_constraint().is_null()) {
 				continue;
 			}
-			create_gizmo_mesh(current_bone_idx, ik_bone, p_gizmo, current_bone_color, skeleton, many_bone_ik);
+			// Only create if not already processed from settings
+			if (!processed_bones.has(current_bone_idx)) {
+				create_gizmo_mesh(current_bone_idx, ik_bone, p_gizmo, current_bone_color, skeleton, many_bone_ik);
+				processed_bones.insert(current_bone_idx);
+			}
 		}
 
 		current_bone_index++;
@@ -117,11 +179,9 @@ void ManyBoneIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 		child_bones_vector = skeleton->get_bone_children(current_bone_idx);
 		int child_bones_size = child_bones_vector.size();
 		for (int i = 0; i < child_bones_size; i++) {
-			// Something wrong.
 			if (child_bones_vector[i] < 0) {
 				continue;
 			}
-			// Add the bone's children to the list of bones to be processed.
 			bones_to_process.push_back(child_bones_vector[i]);
 		}
 	}
@@ -379,13 +439,46 @@ void ManyBoneIK3DGizmoPlugin::commit_subgizmos(const EditorNode3DGizmo *p_gizmo,
 	ur->create_action("Set Bone Transform"); // Avoid TTR to reduce text rendering
 	if (ne->get_tool_mode() == Node3DEditor::TOOL_MODE_SELECT || ne->get_tool_mode() == Node3DEditor::TOOL_MODE_ROTATE) {
 		for (int i = 0; i < p_ids.size(); i++) {
-			int32_t constraint_i = many_bone_ik->find_constraint(skeleton->get_bone_name(p_ids[i]));
-			float from_original = many_bone_ik->get_joint_twist(constraint_i).x;
-			float range = many_bone_ik->get_joint_twist(constraint_i).y;
-			ur->add_do_method(many_bone_ik, "set_kusudama_twist", constraint_i, Vector2(skeleton->get_bone_pose(p_ids[i]).get_basis().get_euler().y, range));
-			ur->add_undo_method(many_bone_ik, "set_kusudama_twist", constraint_i, Vector2(from_original, range));
-			ur->add_do_method(many_bone_ik, "set_dirty");
-			ur->add_undo_method(many_bone_ik, "set_dirty");
+			int bone_id = p_ids[i];
+			StringName bone_name = skeleton->get_bone_name(bone_id);
+
+			// Find the bone in IterateIK3D settings
+			int setting_idx = -1;
+			int joint_idx = -1;
+			for (int s = 0; s < many_bone_ik->get_setting_count(); s++) {
+				for (int j = 0; j < many_bone_ik->get_joint_count(s); j++) {
+					if (many_bone_ik->get_joint_bone(s, j) == bone_id) {
+						setting_idx = s;
+						joint_idx = j;
+						break;
+					}
+				}
+				if (setting_idx >= 0) {
+					break;
+				}
+			}
+
+			if (setting_idx >= 0 && joint_idx >= 0) {
+				// Get current limitation
+				Ref<JointLimitation3D> limitation = many_bone_ik->get_joint_limitation(setting_idx, joint_idx);
+				Ref<JointLimitationKusudama3D> kusudama_lim = limitation;
+
+				if (kusudama_lim.is_valid() && kusudama_lim->is_axially_constrained()) {
+					// Get current axial limits
+					real_t from_original = kusudama_lim->get_min_axial_angle();
+					real_t range = kusudama_lim->get_range_angle();
+
+					// Calculate new twist from bone rotation
+					real_t new_twist = skeleton->get_bone_pose(bone_id).get_basis().get_euler().y;
+
+					// Update via property path on EWBIK3D
+					String path = vformat("settings/%d/joints/%d/limitation/min_axial_angle", setting_idx, joint_idx);
+					ur->add_do_property(many_bone_ik, path, new_twist);
+					ur->add_undo_property(many_bone_ik, path, from_original);
+					ur->add_do_method(many_bone_ik, "set_dirty");
+					ur->add_undo_method(many_bone_ik, "set_dirty");
+				}
+			}
 		}
 	}
 	ur->commit_action();

@@ -31,9 +31,9 @@
 #include "scene/3d/ik_bone_segment_3d.h"
 
 #include "core/string/string_builder.h"
+#include "scene/3d/ewbik_3d.h"
 #include "scene/3d/ik_effector_3d.h"
 #include "scene/3d/ik_kusudama_3d.h"
-#include "scene/3d/ewbik_3d.h"
 #include "scene/3d/skeleton_3d.h"
 
 Ref<IKBone3D> IKBoneSegment3D::get_root() const {
