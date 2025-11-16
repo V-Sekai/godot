@@ -193,6 +193,44 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 	return Vector3(NAN, NAN, NAN);
 }
 
+// Helper function to check if a point on the sphere is in the union of all open areas
+static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_open_cones) {
+	Vector3 dir = p_point.normalized();
+	
+	// Check if point is in any cone
+	for (int i = 0; i < p_open_cones.size(); i++) {
+		const Vector4 &cone_data = p_open_cones[i];
+		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		real_t radius = cone_data.w;
+		real_t angle = Math::acos(CLAMP(dir.dot(center), -1.0, 1.0));
+		if (angle <= radius) {
+			return true; // Point is inside this cone
+		}
+	}
+	
+	// Check if point is in any path between cones
+	if (p_open_cones.size() > 1) {
+		for (int i = 0; i < p_open_cones.size(); i++) {
+			int next_i = (i + 1) % p_open_cones.size();
+			const Vector4 &cone1_data = p_open_cones[i];
+			const Vector4 &cone2_data = p_open_cones[next_i];
+			
+			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+			real_t radius1 = cone1_data.w;
+			real_t radius2 = cone2_data.w;
+			
+			// Check if point is in the path between these cones
+			Vector3 collision = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
+			if (!Math::is_nan(collision.x) && Math::is_equal_approx(collision.dot(dir), (real_t)1.0)) {
+				return true; // Point is in the path
+			}
+		}
+	}
+	
+	return false; // Point is not in any open area
+}
+
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	Vector3 result = p_direction.normalized();
 	
@@ -766,6 +804,73 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		vts.push_back(indicator_pos + limit1_dir);
 		vts.push_back(indicator_pos);
 		vts.push_back(indicator_pos + limit2_dir);
+	}
+	
+	// Create wireframe visualization of the boolean union
+	// Sample sphere mesh and draw only edges within the union
+	if (!open_cones.is_empty()) {
+		int rings = 32;
+		int radial_segments = 32;
+		
+		// Generate horizontal wireframe lines (parallels/latitudes) - only in union
+		for (int j = 0; j <= rings; j++) {
+			real_t v = (real_t)j / (real_t)rings;
+			real_t w = Math::sin(Math::PI * v);
+			real_t y = Math::cos(Math::PI * v);
+			
+			Vector3 prev_point;
+			bool prev_in_union = false;
+			
+			for (int i = 0; i <= radial_segments; i++) {
+				real_t u = (real_t)i / (real_t)radial_segments;
+				real_t x = Math::sin(u * Math::TAU);
+				real_t z = Math::cos(u * Math::TAU);
+				
+				Vector3 normal = Vector3(x * w, y, z * w).normalized();
+				Vector3 point = normal * socket_r;
+				
+				bool in_union = is_point_in_union(normal, open_cones);
+				
+				// Draw line segment if both points are in the union
+				if (i > 0 && prev_in_union && in_union) {
+					vts.push_back(prev_point);
+					vts.push_back(point);
+				}
+				
+				prev_point = point;
+				prev_in_union = in_union;
+			}
+		}
+		
+		// Generate vertical lines (meridians/longitudes) - only in union
+		for (int i = 0; i <= radial_segments; i++) {
+			real_t u = (real_t)i / (real_t)radial_segments;
+			real_t x = Math::sin(u * Math::TAU);
+			real_t z = Math::cos(u * Math::TAU);
+			
+			Vector3 prev_point;
+			bool prev_in_union = false;
+			
+			for (int j = 0; j <= rings; j++) {
+				real_t v = (real_t)j / (real_t)rings;
+				real_t w = Math::sin(Math::PI * v);
+				real_t y = Math::cos(Math::PI * v);
+				
+				Vector3 normal = Vector3(x * w, y, z * w).normalized();
+				Vector3 point = normal * socket_r;
+				
+				bool in_union = is_point_in_union(normal, open_cones);
+				
+				// Draw line segment if both points are in the union
+				if (j > 0 && prev_in_union && in_union) {
+					vts.push_back(prev_point);
+					vts.push_back(point);
+				}
+				
+				prev_point = point;
+				prev_in_union = in_union;
+			}
+		}
 	}
 	
 	// Draw all cones in JointLimitationCone3D style
