@@ -349,10 +349,19 @@ static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, c
 }
 
 // Helper function to check a specific tangent side for path detection
-static Vector3 check_tangent_side(const Vector3 &p_input, const Vector3 &p_tangent, const Vector3 &p_cone1, const Vector3 &p_cone2, real_t p_tan_radius_cos, real_t p_tan_radius) {
-	Vector3 cone1_cross_tangent = p_cone1.cross(p_tangent);
-	Vector3 tangent_cross_cone2 = p_tangent.cross(p_cone2);
-	if (p_input.dot(cone1_cross_tangent) > 0 && p_input.dot(tangent_cross_cone2) > 0) {
+// The cross product order depends on which side of the arc we're on (coordinate system convention)
+static Vector3 check_tangent_side(const Vector3 &p_input, const Vector3 &p_tangent, const Vector3 &p_cone1, const Vector3 &p_cone2, real_t p_tan_radius_cos, real_t p_tan_radius, bool p_use_tan1_order) {
+	Vector3 cross1, cross2;
+	if (p_use_tan1_order) {
+		// For tan1 side: center1.cross(tan1) and tan1.cross(center2)
+		cross1 = p_cone1.cross(p_tangent);
+		cross2 = p_tangent.cross(p_cone2);
+	} else {
+		// For tan2 side: tan2.cross(center1) and center2.cross(tan2) - order is reversed
+		cross1 = p_tangent.cross(p_cone1);
+		cross2 = p_cone2.cross(p_tangent);
+	}
+	if (p_input.dot(cross1) > 0 && p_input.dot(cross2) > 0) {
 		real_t to_next_cos = p_input.dot(p_tangent);
 		if (to_next_cos > p_tan_radius_cos) {
 			// Project onto tangent circle, but move slightly outside to ensure it's in the allowed region
@@ -389,140 +398,30 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 
 	real_t tan_radius_cos = Math::cos(tan_radius);
 
-	// Check if tan1 and tan2 are opposite (degenerate case - ray passes through origin)
-	// When they're opposite, they represent the same great circle, so we need special handling
-	real_t tan_dot = tan1.dot(tan2);
-	bool tangents_opposite = tan_dot < -0.999f;
-
 	// Determine which side of the arc we're on
 	Vector3 arc_normal = center1.cross(center2);
 	real_t arc_side_dot = input.dot(arc_normal);
 
-	if (tangents_opposite) {
-		// When tangents are opposite, they represent the same great circle
-		// The path region is the area outside both cones, in the arc region between cones, and outside the tangent circle
-		// When tangents are opposite, we need to check both sides of the arc
-		
-		// Check if point is outside both cones first
-		Vector3 collision1 = closest_to_cone_boundary(input, center1, p_radius1);
-		Vector3 collision2 = closest_to_cone_boundary(input, center2, p_radius2);
-		bool outside_cone1 = !Math::is_nan(collision1.x);
-		bool outside_cone2 = !Math::is_nan(collision2.x);
-		
-		if (outside_cone1 && outside_cone2) {
-			// Point is outside both cones, now check if it's in the arc region
-			// When tangents are opposite, check both sides of the arc using cross products
-			Vector3 cone1_cross_tan = center1.cross(tan1);
-			Vector3 tan_cross_cone2 = tan1.cross(center2);
-			real_t dot1 = input.dot(cone1_cross_tan);
-			real_t dot2 = input.dot(tan_cross_cone2);
-			
-			// Point is in arc region if it's on the same side of both cross products
-			// This works for both sides of the arc when tangents are opposite
-			bool in_arc_region = (dot1 > 0 && dot2 > 0) || (dot1 < 0 && dot2 < 0);
-			
-			if (in_arc_region) {
-				// Point is in the arc region, now check if it's outside the tangent circle
-				// The path region is outside the tangent circle (which is the same for both tan1 and tan2)
-				// Points with angle > tan_radius are outside the tangent circle (in the path region)
-				// Points with angle < tan_radius are inside the tangent circle (forbidden)
-				real_t to_tan_cos = input.dot(tan1);
-				if (to_tan_cos < tan_radius_cos) {
-					// Point is outside the tangent circle - it's in the path region
-					return input;
-				} else {
-					// Point is inside the tangent circle - project to boundary and move slightly outside
-					Vector3 plane_normal = tan1.cross(input);
-					if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-						plane_normal = Vector3(0, 1, 0);
-					}
-					plane_normal.normalize();
-					// Move point slightly outside the tangent circle (into allowed region)
-					real_t adjusted_tan_radius = tan_radius + 5e-5;
-					Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-					return rotate_about_by.xform(tan1).normalized();
-				}
-			}
+	// Use the same logic as the test version - check only the side the point is on
+	// This matches the test implementation which doesn't have special opposite-tangent handling
+	// IMPORTANT: Cross product order depends on coordinate system convention
+	if (arc_side_dot < 0.0) {
+		// Use first tangent circle - use tan1 cross product order
+		Vector3 result = check_tangent_side(input, tan1, center1, center2, tan_radius_cos, tan_radius, true);
+		if (!Math::is_nan(result.x)) {
+			return result;
 		}
-		// Point is inside at least one cone or not in the arc region, so it's not in the path
-		return Vector3(NAN, NAN, NAN);
 	} else {
-		// Normal case: check only the side the point is on
-		if (arc_side_dot < 0.0) {
-			// Use first tangent circle
-			Vector3 result = check_tangent_side(input, tan1, center1, center2, tan_radius_cos, tan_radius);
-			if (!Math::is_nan(result.x)) {
-				return result;
-			}
-		} else {
-			// Use second tangent circle
-			Vector3 result = check_tangent_side(input, tan2, center1, center2, tan_radius_cos, tan_radius);
-			if (!Math::is_nan(result.x)) {
-				return result;
-			}
+		// Use second tangent circle - use tan2 cross product order (reversed)
+		Vector3 result = check_tangent_side(input, tan2, center1, center2, tan_radius_cos, tan_radius, false);
+		if (!Math::is_nan(result.x)) {
+			return result;
 		}
 	}
 
 	return Vector3(NAN, NAN, NAN);
 }
 
-
-// Helper function to check if a point on the sphere is in the union of all open areas
-// Uses the EXACT same logic as the solver (_solve method) to ensure visualization matches solver output
-#ifdef TOOLS_ENABLED
-static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_cones) {
-	Vector3 dir = p_point.normalized();
-
-	// Use EXACT same logic as _solve() method
-	// First check if point is in any cone using closest_to_cone_boundary
-	for (int i = 0; i < p_cones.size(); i++) {
-		const Vector4 &cone_data = p_cones[i];
-		Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		real_t radius = cone_data.w;
-
-		Vector3 collision_point = closest_to_cone_boundary(dir, control_point, radius);
-
-		// If NaN, point is within this cone (matches _solve logic exactly)
-		if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
-			return true; // Point is inside this cone
-		}
-	}
-
-	// If not in any cone, check if point is in any path between cones
-	// IMPORTANT: We explicitly do NOT check the pair (last_cone, first_cone) to prevent wrap-around
-	if (p_cones.size() > 1) {
-		for (int i = 0; i < p_cones.size() - 1; i++) {
-			int next_i = i + 1; // Only connect to next adjacent cone, no wrap-around
-			ERR_FAIL_COND_V_MSG(next_i >= p_cones.size() || next_i <= i, false, "Invalid cone pair in is_point_in_union - possible wrap-around");
-			const Vector4 &cone1_data = p_cones[i];
-			const Vector4 &cone2_data = p_cones[next_i];
-
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-			real_t radius1 = cone1_data.w;
-			real_t radius2 = cone2_data.w;
-
-			// Use EXACT same logic as _solve() method
-			Vector3 collision_point = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
-
-			// If NaN, skip this path (matches solving code)
-			if (Math::is_nan(collision_point.x)) {
-				continue;
-			}
-
-			// If the returned point is approximately equal to the input point, point is in the path region
-			// This matches the solving code's check: cosine > 0.999f
-			real_t cosine = collision_point.dot(dir);
-			if (cosine > 0.999f) { // Point is in path region (allowing for floating point precision)
-				return true; // Point is in the inter-cone path region
-			}
-			// else: point is not in the inter-cone path region - continue checking other cone pairs
-		}
-	}
-
-	return false; // Point is not in any open area
-}
-#endif // TOOLS_ENABLED
 
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	Vector3 result = p_direction.normalized();
@@ -883,6 +782,129 @@ Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, 
 }
 
 #ifdef TOOLS_ENABLED
+// CSG boolean approach: Start with closed sphere, subtract cones and inter-cone paths
+// 1. Generate full closed sphere mesh
+// 2. For each cone: subtract spherical cap (center + radius)
+// 3. For each inter-cone path: subtract path region (bounded by tangent circles)
+// Result: forbidden region mesh
+static void generate_forbidden_region_mesh(const Vector<Vector4> &p_cones, real_t p_sphere_r,
+		int p_radial_segments, int p_rings, LocalVector<Vector3> &r_vertices, LocalVector<int> &r_indices) {
+	// Step 1: Generate a full closed sphere mesh
+	LocalVector<Vector3> sphere_vertices;
+	LocalVector<int> sphere_indices;
+	
+	// Generate sphere vertices
+	sphere_vertices.reserve((p_rings + 1) * (p_radial_segments + 1));
+	for (int ring = 0; ring <= p_rings; ring++) {
+		real_t v = (real_t)ring / (real_t)p_rings;
+		real_t w = Math::sin(Math::PI * v);
+		real_t y = Math::cos(Math::PI * v);
+		
+		for (int seg = 0; seg <= p_radial_segments; seg++) {
+			real_t u = (real_t)seg / (real_t)p_radial_segments;
+			real_t x = Math::sin(u * Math::TAU) * w;
+			real_t z = Math::cos(u * Math::TAU) * w;
+			sphere_vertices.push_back(Vector3(x, y, z) * p_sphere_r);
+		}
+	}
+	
+	// Generate sphere triangle indices
+	for (int ring = 0; ring < p_rings; ring++) {
+		int ring_start = ring * (p_radial_segments + 1);
+		int next_ring_start = (ring + 1) * (p_radial_segments + 1);
+		
+		for (int seg = 0; seg < p_radial_segments; seg++) {
+			int i0 = ring_start + seg;
+			int i1 = ring_start + ((seg + 1) % (p_radial_segments + 1));
+			int i2 = next_ring_start + seg;
+			int i3 = next_ring_start + ((seg + 1) % (p_radial_segments + 1));
+			
+			// Two triangles per quad (clockwise winding)
+			sphere_indices.push_back(i0);
+			sphere_indices.push_back(i2);
+			sphere_indices.push_back(i1);
+			
+			sphere_indices.push_back(i1);
+			sphere_indices.push_back(i2);
+			sphere_indices.push_back(i3);
+		}
+	}
+	
+	// Step 2 & 3: CSG subtraction - remove triangles that are in allowed regions
+	// For each triangle, check if it's inside any cone or inter-cone path
+	// If inside any allowed region, subtract it (don't add to forbidden mesh)
+	for (int tri = 0; tri < sphere_indices.size(); tri += 3) {
+		int i0 = sphere_indices[tri];
+		int i1 = sphere_indices[tri + 1];
+		int i2 = sphere_indices[tri + 2];
+		
+		Vector3 v0 = sphere_vertices[i0];
+		Vector3 v1 = sphere_vertices[i1];
+		Vector3 v2 = sphere_vertices[i2];
+		
+		// Check triangle center (barycenter projected onto sphere surface)
+		Vector3 center = (v0 + v1 + v2) / 3.0;
+		Vector3 center_normalized = center.normalized();
+		
+		// CSG subtraction: Check if triangle is in allowed region (cones + paths)
+		// Step 2: Check if point is inside any cone (spherical cap)
+		bool inside_cone = false;
+		for (int i = 0; i < p_cones.size(); i++) {
+			const Vector4 &cone_data = p_cones[i];
+			Vector3 cone_center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+			real_t cone_radius = cone_data.w;
+			
+			// Check if point is inside this cone (spherical cap)
+			real_t angle_to_cone = Math::acos(CLAMP(center_normalized.dot(cone_center), -1.0, 1.0));
+			if (angle_to_cone <= cone_radius) {
+				inside_cone = true;
+				break;
+			}
+		}
+		
+		// Step 3: Check if point is inside any inter-cone path (bounded by tangent circles)
+		bool inside_path = false;
+		if (!inside_cone && p_cones.size() > 1) {
+			// Check all inter-cone paths (only adjacent pairs, no wrap-around)
+			for (int i = 0; i < p_cones.size() - 1; i++) {
+				const Vector4 &cone1_data = p_cones[i];
+				const Vector4 &cone2_data = p_cones[i + 1];
+				
+				Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+				real_t radius1 = cone1_data.w;
+				real_t radius2 = cone2_data.w;
+				
+				// Use the solver's path detection logic
+				Vector3 collision_point = get_on_great_tangent_triangle(center_normalized, center1, radius1, center2, radius2);
+				if (!Math::is_nan(collision_point.x)) {
+					real_t cosine = collision_point.dot(center_normalized);
+					if (cosine > 0.999f) {
+						inside_path = true;
+						break;
+					}
+				}
+			}
+		}
+		
+		// If triangle is NOT in any allowed region (cone or path), keep it (it's in forbidden region)
+		if (!inside_cone && !inside_path) {
+			// Add triangle vertices
+			int idx0 = r_vertices.size();
+			r_vertices.push_back(v0);
+			int idx1 = r_vertices.size();
+			r_vertices.push_back(v1);
+			int idx2 = r_vertices.size();
+			r_vertices.push_back(v2);
+			
+			// Add triangle indices
+			r_indices.push_back(idx0);
+			r_indices.push_back(idx1);
+			r_indices.push_back(idx2);
+		}
+	}
+}
+
 // Helper to draw a circle on the sphere given center, radius angle, and sphere radius
 // Uses spherical interpolation for smooth curve fitting
 static void draw_cone_circle(LocalVector<Vector3> &r_vertices, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 16) {
@@ -1149,130 +1171,36 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		vertices.push_back(indicator_pos + limit2_dir);
 	}
 
-	// Create wireframe visualization: sphere with cones and tangents subtracted
-	// Use exact cone and tangent boundaries to precisely determine forbidden areas
+	// CSG boolean visualization: Generate forbidden region mesh by subtracting allowed regions from sphere
 	if (!cones.is_empty()) {
-		// Increased density for more precise visualization using exact boundaries
-		int rings = 64;
-		int radial_segments = 64;
-
-		// Generate horizontal wireframe lines (parallels/latitudes)
-		// Draw sphere lines, but subtract areas inside exact cone and tangent boundaries
-		for (int j = 0; j <= rings; j++) {
-			real_t v = (real_t)j / (real_t)rings;
-			real_t w = Math::sin(Math::PI * v);
-			real_t y = Math::cos(Math::PI * v);
-
-			Vector3 prev_point;
-			bool prev_in_allowed = false;
-
-			for (int i = 0; i <= radial_segments; i++) {
-				real_t u = (real_t)i / (real_t)radial_segments;
-				real_t x = Math::sin(u * Math::TAU);
-				real_t z = Math::cos(u * Math::TAU);
-
-				Vector3 normal = Vector3(x * w, y, z * w).normalized();
-				Vector3 point = normal * socket_r;
-
-				// Check if point is inside any exact cone or tangent boundary (allowed area)
-				// Using exact boundaries we've computed for precise determination
-				bool in_allowed = is_point_in_union(normal, cones);
-
-				// Draw line segment only if both points are in forbidden area (outside all exact boundaries)
-				if (i > 0 && !prev_in_allowed && !in_allowed) {
-					// Both points are in forbidden area - draw the sphere edge
-					vertices.push_back(prev_point);
-					vertices.push_back(point);
-				}
-
-				// Draw exact boundary at transition (boundaries are epsilon away from forbidden)
-				if (i > 0 && prev_in_allowed != in_allowed) {
-					// Transition detected - draw smooth boundary curve with high precision
-					// This follows the exact cone/tangent boundaries we've computed
-					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
-					Vector3 prev_boundary;
-
-					for (int k = 0; k <= boundary_subdiv; k++) {
-						real_t t = (real_t)k / (real_t)boundary_subdiv;
-						Vector3 p0 = prev_point.normalized();
-						Vector3 p1 = point.normalized();
-						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
-
-						// Draw all boundary segments - these align with exact cone/tangent boundaries
-						if (k > 0) {
-							vertices.push_back(prev_boundary);
-							vertices.push_back(boundary_point);
-						}
-
-						prev_boundary = boundary_point;
-					}
-				}
-
-				prev_point = point;
-				prev_in_allowed = in_allowed;
-			}
-		}
-
-		// Generate vertical lines (meridians/longitudes)
-		// Draw sphere lines, but subtract areas inside exact cone and tangent boundaries
-		for (int i = 0; i <= radial_segments; i++) {
-			real_t u = (real_t)i / (real_t)radial_segments;
-			real_t x = Math::sin(u * Math::TAU);
-			real_t z = Math::cos(u * Math::TAU);
-
-			Vector3 prev_point;
-			bool prev_in_allowed = false;
-
-			for (int j = 0; j <= rings; j++) {
-				real_t v = (real_t)j / (real_t)rings;
-				real_t w = Math::sin(Math::PI * v);
-				real_t y = Math::cos(Math::PI * v);
-
-				Vector3 normal = Vector3(x * w, y, z * w).normalized();
-				Vector3 point = normal * socket_r;
-
-				// Check if point is inside any exact cone or tangent boundary (allowed area)
-				// Using exact boundaries we've computed for precise determination
-				bool in_allowed = is_point_in_union(normal, cones);
-
-				// Draw line segment only if both points are in forbidden area (outside all exact boundaries)
-				if (j > 0 && !prev_in_allowed && !in_allowed) {
-					// Both points are in forbidden area - draw the sphere edge
-					vertices.push_back(prev_point);
-					vertices.push_back(point);
-				}
-
-				// Draw exact boundary at transition (boundaries are epsilon away from forbidden)
-				if (j > 0 && prev_in_allowed != in_allowed) {
-					// Transition detected - draw smooth boundary curve with high precision
-					// This follows the exact cone/tangent boundaries we've computed
-					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
-					Vector3 prev_boundary;
-
-					for (int k = 0; k <= boundary_subdiv; k++) {
-						real_t t = (real_t)k / (real_t)boundary_subdiv;
-						Vector3 p0 = prev_point.normalized();
-						Vector3 p1 = point.normalized();
-						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
-
-						// Draw all boundary segments - these align with exact cone/tangent boundaries
-						if (k > 0) {
-							vertices.push_back(prev_boundary);
-							vertices.push_back(boundary_point);
-						}
-
-						prev_boundary = boundary_point;
-					}
-				}
-
-				prev_point = point;
-				prev_in_allowed = in_allowed;
-			}
+		// Generate triangle mesh for forbidden region using CSG subtraction
+		LocalVector<Vector3> forbidden_vertices;
+		LocalVector<int> forbidden_indices;
+		
+		// Use high density for accurate CSG result
+		int rings = 128;
+		int radial_segments = 128;
+		
+		generate_forbidden_region_mesh(cones, socket_r, radial_segments, rings, forbidden_vertices, forbidden_indices);
+		
+		// Draw wireframe edges of the forbidden region mesh
+		// For each triangle, draw its three edges
+		for (int tri = 0; tri < forbidden_indices.size(); tri += 3) {
+			int i0 = forbidden_indices[tri];
+			int i1 = forbidden_indices[tri + 1];
+			int i2 = forbidden_indices[tri + 2];
+			
+			// Draw triangle edges as wireframe
+			vertices.push_back(forbidden_vertices[i0]);
+			vertices.push_back(forbidden_vertices[i1]);
+			
+			vertices.push_back(forbidden_vertices[i1]);
+			vertices.push_back(forbidden_vertices[i2]);
+			
+			vertices.push_back(forbidden_vertices[i2]);
+			vertices.push_back(forbidden_vertices[i0]);
 		}
 	}
-
-	// Tangent path boundaries are shown in the wireframe visualization where the sphere is cut
-	// The is_point_in_union function includes tangent paths, so boundaries are automatically visible
 
 	// Draw exact cone boundary rings on the unit sphere
 	// These show the exact boundary of each cone
