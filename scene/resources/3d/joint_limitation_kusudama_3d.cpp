@@ -193,22 +193,46 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 	return Vector3(NAN, NAN, NAN);
 }
 
+// Helper function matching shader's is_in_inter_cone_path logic
+static bool is_in_inter_cone_path(const Vector3 &p_normal_dir, const Vector3 &p_tangent_1, const Vector3 &p_cone_1,
+		const Vector3 &p_tangent_2, const Vector3 &p_cone_2) {
+	Vector3 c1xc2 = p_cone_1.cross(p_cone_2);
+	real_t c1c2dir = p_normal_dir.dot(c1xc2);
+	
+	if (c1c2dir < 0.0) {
+		Vector3 c1xt1 = p_cone_1.cross(p_tangent_1);
+		Vector3 t1xc2 = p_tangent_1.cross(p_cone_2);
+		real_t c1t1dir = p_normal_dir.dot(c1xt1);
+		real_t t1c2dir = p_normal_dir.dot(t1xc2);
+		
+		return (c1t1dir > 0.0 && t1c2dir > 0.0);
+	} else {
+		Vector3 t2xc1 = p_tangent_2.cross(p_cone_1);
+		Vector3 c2xt2 = p_cone_2.cross(p_tangent_2);
+		real_t t2c1dir = p_normal_dir.dot(t2xc1);
+		real_t c2t2dir = p_normal_dir.dot(c2xt2);
+		
+		return (c2t2dir > 0.0 && t2c1dir > 0.0);
+	}
+}
+
 // Helper function to check if a point on the sphere is in the union of all open areas
+// Matches the shader's color_allowed logic
 static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_open_cones) {
 	Vector3 dir = p_point.normalized();
 	
-	// Check if point is in any cone
+	// Check if point is in any cone (inside, not on boundary)
 	for (int i = 0; i < p_open_cones.size(); i++) {
 		const Vector4 &cone_data = p_open_cones[i];
 		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 		real_t radius = cone_data.w;
 		real_t angle = Math::acos(CLAMP(dir.dot(center), -1.0, 1.0));
-		if (angle <= radius) {
+		if (angle < radius) {
 			return true; // Point is inside this cone
 		}
 	}
 	
-	// Check if point is in any path between cones
+	// Check if point is in any path between cones (matching shader logic)
 	if (p_open_cones.size() > 1) {
 		for (int i = 0; i < p_open_cones.size(); i++) {
 			int next_i = (i + 1) % p_open_cones.size();
@@ -220,9 +244,13 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 			real_t radius1 = cone1_data.w;
 			real_t radius2 = cone2_data.w;
 			
-			// Check if point is in the path between these cones
-			Vector3 collision = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
-			if (!Math::is_nan(collision.x) && Math::is_equal_approx(collision.dot(dir), (real_t)1.0)) {
+			// Compute tangent circles
+			Vector3 tan1, tan2;
+			real_t tan_radius;
+			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+			
+			// Check if point is in the inter-cone path using shader logic
+			if (is_in_inter_cone_path(dir, tan1, center1, tan2, center2)) {
 				return true; // Point is in the path
 			}
 		}
@@ -831,8 +859,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment if both points are NOT in the union (inverse)
-				if (i > 0 && !prev_in_union && !in_union) {
+				// Draw line segment only if one point is in the union and the other is out (boundary edge)
+				if (i > 0 && prev_in_union != in_union) {
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
@@ -861,8 +889,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				bool in_union = is_point_in_union(normal, open_cones);
 				
-				// Draw line segment if both points are NOT in the union (inverse)
-				if (j > 0 && !prev_in_union && !in_union) {
+				// Draw line segment only if one point is in the union and the other is out (boundary edge)
+				if (j > 0 && prev_in_union != in_union) {
 					vts.push_back(prev_point);
 					vts.push_back(point);
 				}
