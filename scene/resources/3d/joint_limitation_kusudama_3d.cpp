@@ -390,7 +390,7 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 	real_t tan_radius_cos = Math::cos(tan_radius);
 
 	// Check if tan1 and tan2 are opposite (degenerate case - ray passes through origin)
-	// When they're opposite, we need to check both sides of the arc
+	// When they're opposite, they represent the same great circle, so we need special handling
 	real_t tan_dot = tan1.dot(tan2);
 	bool tangents_opposite = tan_dot < -0.999f;
 
@@ -398,24 +398,54 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 	Vector3 arc_normal = center1.cross(center2);
 	real_t arc_side_dot = input.dot(arc_normal);
 
-	// If tangents are opposite, check both sides
 	if (tangents_opposite) {
-		Vector3 result1 = check_tangent_side(input, tan1, center1, center2, tan_radius_cos, tan_radius);
-		Vector3 result2 = check_tangent_side(input, tan2, center1, center2, tan_radius_cos, tan_radius);
+		// When tangents are opposite, they represent the same great circle
+		// The path region is the area outside both cones, in the arc region between cones, and outside the tangent circle
+		// When tangents are opposite, we need to check both sides of the arc
 		
-		// If both sides return valid results, return the one closer to input
-		if (!Math::is_nan(result1.x) && !Math::is_nan(result2.x)) {
-			real_t cos1 = result1.dot(input);
-			real_t cos2 = result2.dot(input);
-			return (cos1 > cos2) ? result1 : result2;
+		// Check if point is outside both cones first
+		Vector3 collision1 = closest_to_cone_boundary(input, center1, p_radius1);
+		Vector3 collision2 = closest_to_cone_boundary(input, center2, p_radius2);
+		bool outside_cone1 = !Math::is_nan(collision1.x);
+		bool outside_cone2 = !Math::is_nan(collision2.x);
+		
+		if (outside_cone1 && outside_cone2) {
+			// Point is outside both cones, now check if it's in the arc region
+			// When tangents are opposite, check both sides of the arc using cross products
+			Vector3 cone1_cross_tan = center1.cross(tan1);
+			Vector3 tan_cross_cone2 = tan1.cross(center2);
+			real_t dot1 = input.dot(cone1_cross_tan);
+			real_t dot2 = input.dot(tan_cross_cone2);
+			
+			// Point is in arc region if it's on the same side of both cross products
+			// This works for both sides of the arc when tangents are opposite
+			bool in_arc_region = (dot1 > 0 && dot2 > 0) || (dot1 < 0 && dot2 < 0);
+			
+			if (in_arc_region) {
+				// Point is in the arc region, now check if it's outside the tangent circle
+				// The path region is outside the tangent circle (which is the same for both tan1 and tan2)
+				// Points with angle > tan_radius are outside the tangent circle (in the path region)
+				// Points with angle < tan_radius are inside the tangent circle (forbidden)
+				real_t to_tan_cos = input.dot(tan1);
+				if (to_tan_cos < tan_radius_cos) {
+					// Point is outside the tangent circle - it's in the path region
+					return input;
+				} else {
+					// Point is inside the tangent circle - project to boundary and move slightly outside
+					Vector3 plane_normal = tan1.cross(input);
+					if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
+						plane_normal = Vector3(0, 1, 0);
+					}
+					plane_normal.normalize();
+					// Move point slightly outside the tangent circle (into allowed region)
+					real_t adjusted_tan_radius = tan_radius + 5e-5;
+					Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
+					return rotate_about_by.xform(tan1).normalized();
+				}
+			}
 		}
-		// If only one side returns valid result, use it
-		if (!Math::is_nan(result1.x)) {
-			return result1;
-		}
-		if (!Math::is_nan(result2.x)) {
-			return result2;
-		}
+		// Point is inside at least one cone or not in the arc region, so it's not in the path
+		return Vector3(NAN, NAN, NAN);
 	} else {
 		// Normal case: check only the side the point is on
 		if (arc_side_dot < 0.0) {
