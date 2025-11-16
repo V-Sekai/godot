@@ -7,32 +7,10 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_min_axial_angle" qualifiers="const">
-			<return type="float" />
-			<description>
-			</description>
-		</method>
-		<method name="get_range_angle" qualifiers="const">
-			<return type="float" />
-			<description>
-			</description>
-		</method>
 		<method name="set_axial_limits">
 			<return type="void" />
 			<param index="0" name="min_angle" type="float" />
 			<param index="1" name="range_angle" type="float" />
-			<description>
-			</description>
-		</method>
-		<method name="set_min_axial_angle">
-			<return type="void" />
-			<param index="0" name="angle" type="float" />
-			<description>
-			</description>
-		</method>
-		<method name="set_range_angle">
-			<return type="void" />
-			<param index="0" name="angle" type="float" />
 			<description>
 			</description>
 		</method>
@@ -46,7 +24,7 @@
 		</member>
 		<member name="orientationally_constrained" type="bool" setter="set_orientationally_constrained" getter="is_orientationally_constrained" default="true">
 		</member>
-		<member name="range_angle" type="float" setter="set_range_angle" getter="get_range_angle" default="6.28318530718">
+		<member name="range_angle" type="float" setter="set_range_angle" getter="get_range_angle" default="6.2831855">
 		</member>
 	</members>
 </class>
