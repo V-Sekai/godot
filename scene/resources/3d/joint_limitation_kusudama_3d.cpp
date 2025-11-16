@@ -676,10 +676,6 @@ static void draw_tangent_circle_arc(LocalVector<Vector3> &r_vts, const Vector3 &
 }
 
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
-	if (open_cones.is_empty() || !orientationally_constrained) {
-		return;
-	}
-
 	static const int N = 32; // Number of segments per circle
 
 	real_t sphere_r = p_bone_length * 0.25f;
@@ -733,7 +729,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	};
 	
 	// Sample boundary points on control cone boundaries
-	// A point is on the merged boundary if it's on a cone boundary AND moving outward takes you outside all open areas
+	// Always draw all cone boundaries regardless of viewing angle
 	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
 		const Vector4 &cone_data = open_cones[cone_i];
 		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
@@ -749,17 +745,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			Quaternion rot = Quaternion(axis, angle);
 			Vector3 boundary_point = rot.xform(boundary_start).normalized();
 			
-			// Check if this boundary point is actually on the merged boundary
-			// by checking if a point slightly outside is not in any open area
-			Vector3 outward_dir = (boundary_point - center * center.dot(boundary_point)).normalized();
-			real_t small_offset = 0.01; // Small angle offset
-			Quaternion offset_rot = Quaternion(outward_dir, small_offset);
-			Vector3 test_point = offset_rot.xform(boundary_point).normalized();
-			
-			// If test point is outside all open areas, this boundary point is part of the merged boundary
-			if (!is_point_in_open_area(test_point)) {
-				control_cone_boundary_points.push_back(boundary_point * sphere_r);
-			}
+			// Always add all boundary points to show the full circle
+			control_cone_boundary_points.push_back(boundary_point * sphere_r);
 		}
 	}
 	
@@ -790,24 +777,17 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			Vector3 perp = rot_axis.get_any_perpendicular().normalized();
 			Vector3 arc_base = Quaternion(perp, tan_radius).xform(rot_axis);
 			
-			// Find the arc segment that's part of the boundary
-			int arc_samples = 16;
+			// Sample the full tangent circle and always draw it
+			int arc_samples = 32;
 			for (int i = 0; i < arc_samples; i++) {
 				real_t t = (real_t)i / (real_t)(arc_samples - 1);
-				// Approximate arc angle range (simplified - full version would compute exact intersection points)
+				// Sample full circle - the actual arc will be visible as it connects the cones
 				real_t arc_angle = Math::TAU * t;
 				Quaternion rot = Quaternion(rot_axis, arc_angle);
 				Vector3 arc_point = rot.xform(arc_base).normalized();
 				
-				// Check if this arc point is on the merged boundary
-				Vector3 outward_dir = (arc_point - tan_center * tan_center.dot(arc_point)).normalized();
-				real_t small_offset = 0.01;
-				Quaternion offset_rot = Quaternion(outward_dir, small_offset);
-				Vector3 test_point = offset_rot.xform(arc_point).normalized();
-				
-				if (!is_point_in_open_area(test_point)) {
-					tangent_cone_boundary_points.push_back(arc_point * sphere_r);
-				}
+				// Always add all arc points to show the full tangent circle
+				tangent_cone_boundary_points.push_back(arc_point * sphere_r);
 			}
 		}
 	}
@@ -882,7 +862,75 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		}
 	}
 
-	// Add all vertices to surface tool
+	// Create wireframe volume visualization using lines
+	// Similar to shader approach but using lines to show the volume
+	if (!open_cones.is_empty()) {
+		int rings = 8;
+		int radial_segments = 8;
+		
+		// Generate horizontal wireframe lines (parallels/latitudes)
+		for (int j = 0; j <= rings; j++) {
+			real_t v = (real_t)j / (real_t)rings;
+			real_t w = Math::sin(Math::PI * v);
+			real_t y = Math::cos(Math::PI * v);
+			
+			Vector3 prev_point;
+			bool prev_in_area = false;
+			
+			for (int i = 0; i <= radial_segments; i++) {
+				real_t u = (real_t)i / (real_t)radial_segments;
+				real_t x = Math::sin(u * Math::TAU);
+				real_t z = Math::cos(u * Math::TAU);
+				
+				Vector3 normal = Vector3(x * w, y, z * w).normalized();
+				Vector3 point = normal * sphere_r;
+				
+				bool in_area = is_point_in_open_area(normal);
+				
+				// Draw line segment if both points are in the open area
+				if (i > 0 && prev_in_area && in_area) {
+					vts.push_back(prev_point);
+					vts.push_back(point);
+				}
+				
+				prev_point = point;
+				prev_in_area = in_area;
+			}
+		}
+		
+		// Generate vertical lines (meridians/longitudes)
+		for (int i = 0; i <= radial_segments; i++) {
+			real_t u = (real_t)i / (real_t)radial_segments;
+			real_t x = Math::sin(u * Math::TAU);
+			real_t z = Math::cos(u * Math::TAU);
+			
+			Vector3 prev_point;
+			bool prev_in_area = false;
+			
+			for (int j = 0; j <= rings; j++) {
+				real_t v = (real_t)j / (real_t)rings;
+				real_t w = Math::sin(Math::PI * v);
+				real_t y = Math::cos(Math::PI * v);
+				
+				Vector3 normal = Vector3(x * w, y, z * w).normalized();
+				Vector3 point = normal * sphere_r;
+				
+				bool in_area = is_point_in_open_area(normal);
+				
+				// Draw line segment if both points are in the open area
+				if (j > 0 && prev_in_area && in_area) {
+					vts.push_back(prev_point);
+					vts.push_back(point);
+				}
+				
+				prev_point = point;
+				prev_in_area = in_area;
+			}
+		}
+	}
+	
+	// Add all vertices to surface tool as a single mesh
+	// All lines (boundaries and volume wireframe) use the same color
 	for (int64_t i = 0; i < vts.size(); i++) {
 		p_surface_tool->set_color(p_color);
 		p_surface_tool->add_vertex(p_transform.xform(vts[i]));
