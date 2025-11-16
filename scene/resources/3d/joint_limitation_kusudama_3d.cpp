@@ -348,6 +348,32 @@ static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, c
 	}
 }
 
+// Helper function to check a specific tangent side for path detection
+static Vector3 check_tangent_side(const Vector3 &p_input, const Vector3 &p_tangent, const Vector3 &p_cone1, const Vector3 &p_cone2, real_t p_tan_radius_cos, real_t p_tan_radius) {
+	Vector3 cone1_cross_tangent = p_cone1.cross(p_tangent);
+	Vector3 tangent_cross_cone2 = p_tangent.cross(p_cone2);
+	if (p_input.dot(cone1_cross_tangent) > 0 && p_input.dot(tangent_cross_cone2) > 0) {
+		real_t to_next_cos = p_input.dot(p_tangent);
+		if (to_next_cos > p_tan_radius_cos) {
+			// Project onto tangent circle, but move slightly outside to ensure it's in the allowed region
+			Vector3 plane_normal = p_tangent.cross(p_input);
+			if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
+				plane_normal = Vector3(0, 1, 0);
+			}
+			plane_normal.normalize();
+			// Use slightly larger angle to move point outside the tangent circle (into allowed region)
+			// Points with angle > tan_radius are outside (allowed), points with angle < tan_radius are inside (forbidden)
+			// Use minimal adjustment (5e-5 radians) to ensure it's in allowed region without moving too far
+			real_t adjusted_tan_radius = p_tan_radius + 5e-5;
+			Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
+			return rotate_about_by.xform(p_tangent).normalized();
+		} else {
+			return p_input;
+		}
+	}
+	return Vector3(NAN, NAN, NAN);
+}
+
 // Helper function to find point on path between two cones
 // Uses the simpler test version that avoids origin-crossing issues
 static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vector3 &p_center1, real_t p_radius1,
@@ -363,54 +389,46 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 
 	real_t tan_radius_cos = Math::cos(tan_radius);
 
+	// Check if tan1 and tan2 are opposite (degenerate case - ray passes through origin)
+	// When they're opposite, we need to check both sides of the arc
+	real_t tan_dot = tan1.dot(tan2);
+	bool tangents_opposite = tan_dot < -0.999f;
+
 	// Determine which side of the arc we're on
 	Vector3 arc_normal = center1.cross(center2);
 	real_t arc_side_dot = input.dot(arc_normal);
 
-	if (arc_side_dot < 0.0) {
-		// Use first tangent circle
-		Vector3 cone1_cross_tangent1 = center1.cross(tan1);
-		Vector3 tangent1_cross_cone2 = tan1.cross(center2);
-		if (input.dot(cone1_cross_tangent1) > 0 && input.dot(tangent1_cross_cone2) > 0) {
-			real_t to_next_cos = input.dot(tan1);
-			if (to_next_cos > tan_radius_cos) {
-				// Project onto tangent circle, but move slightly outside to ensure it's in the allowed region
-				Vector3 plane_normal = tan1.cross(input);
-				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-					plane_normal = Vector3(0, 1, 0);
-				}
-				plane_normal.normalize();
-				// Use slightly larger angle to move point outside the tangent circle (into allowed region)
-				// Points with angle > tan_radius are outside (allowed), points with angle < tan_radius are inside (forbidden)
-				// Use minimal adjustment (5e-5 radians) to ensure it's in allowed region without moving too far
-				real_t adjusted_tan_radius = tan_radius + 5e-5;
-				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-				return rotate_about_by.xform(tan1).normalized();
-			} else {
-				return input;
-			}
+	// If tangents are opposite, check both sides
+	if (tangents_opposite) {
+		Vector3 result1 = check_tangent_side(input, tan1, center1, center2, tan_radius_cos, tan_radius);
+		Vector3 result2 = check_tangent_side(input, tan2, center1, center2, tan_radius_cos, tan_radius);
+		
+		// If both sides return valid results, return the one closer to input
+		if (!Math::is_nan(result1.x) && !Math::is_nan(result2.x)) {
+			real_t cos1 = result1.dot(input);
+			real_t cos2 = result2.dot(input);
+			return (cos1 > cos2) ? result1 : result2;
+		}
+		// If only one side returns valid result, use it
+		if (!Math::is_nan(result1.x)) {
+			return result1;
+		}
+		if (!Math::is_nan(result2.x)) {
+			return result2;
 		}
 	} else {
-		// Use second tangent circle
-		Vector3 tangent2_cross_cone1 = tan2.cross(center1);
-		Vector3 cone2_cross_tangent2 = center2.cross(tan2);
-		if (input.dot(tangent2_cross_cone1) > 0 && input.dot(cone2_cross_tangent2) > 0) {
-			real_t to_next_cos = input.dot(tan2);
-			if (to_next_cos > tan_radius_cos) {
-				// Project onto tangent circle, but move slightly outside to ensure it's in the allowed region
-				Vector3 plane_normal = tan2.cross(input);
-				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-					plane_normal = Vector3(0, 1, 0);
-				}
-				plane_normal.normalize();
-				// Use slightly larger angle to move point outside the tangent circle (into allowed region)
-				// Points with angle > tan_radius are outside (allowed), points with angle < tan_radius are inside (forbidden)
-				// Use minimal adjustment (5e-5 radians) to ensure it's in allowed region without moving too far
-				real_t adjusted_tan_radius = tan_radius + 5e-5;
-				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-				return rotate_about_by.xform(tan2).normalized();
-			} else {
-				return input;
+		// Normal case: check only the side the point is on
+		if (arc_side_dot < 0.0) {
+			// Use first tangent circle
+			Vector3 result = check_tangent_side(input, tan1, center1, center2, tan_radius_cos, tan_radius);
+			if (!Math::is_nan(result.x)) {
+				return result;
+			}
+		} else {
+			// Use second tangent circle
+			Vector3 result = check_tangent_side(input, tan2, center1, center2, tan_radius_cos, tan_radius);
+			if (!Math::is_nan(result.x)) {
+				return result;
 			}
 		}
 	}
@@ -420,35 +438,31 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 
 
 // Helper function to check if a point on the sphere is in the union of all open areas
-// Matches the shader's color_allowed logic
+// Uses the EXACT same logic as the solver (_solve method) to ensure visualization matches solver output
 #ifdef TOOLS_ENABLED
 static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_cones) {
 	Vector3 dir = p_point.normalized();
 
-	// Check if point is in any cone using the EXACT same logic as the solving code
-	// This matches _solve() method which uses closest_to_cone_boundary
+	// Use EXACT same logic as _solve() method
+	// First check if point is in any cone using closest_to_cone_boundary
 	for (int i = 0; i < p_cones.size(); i++) {
 		const Vector4 &cone_data = p_cones[i];
-		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 		real_t radius = cone_data.w;
-		
-		// Use the same check as closest_to_cone_boundary
-		real_t radius_cosine = Math::cos(radius);
-		real_t input_dot_control = dir.dot(center);
-		
-		// Check if input is within the cone (matches closest_to_cone_boundary logic)
-		if (input_dot_control >= radius_cosine - 1e-4) {
+
+		Vector3 collision_point = closest_to_cone_boundary(dir, control_point, radius);
+
+		// If NaN, point is within this cone (matches _solve logic exactly)
+		if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
 			return true; // Point is inside this cone
 		}
 	}
 
-	// Check if point is in any path between cones (matching shader logic)
-	// Only check adjacent cones in sequence (no wrap-around from last to first)
+	// If not in any cone, check if point is in any path between cones
 	// IMPORTANT: We explicitly do NOT check the pair (last_cone, first_cone) to prevent wrap-around
 	if (p_cones.size() > 1) {
 		for (int i = 0; i < p_cones.size() - 1; i++) {
 			int next_i = i + 1; // Only connect to next adjacent cone, no wrap-around
-			// Assert: next_i must be valid and greater than i, ensuring no wrap-around
 			ERR_FAIL_COND_V_MSG(next_i >= p_cones.size() || next_i <= i, false, "Invalid cone pair in is_point_in_union - possible wrap-around");
 			const Vector4 &cone1_data = p_cones[i];
 			const Vector4 &cone2_data = p_cones[next_i];
@@ -458,44 +472,19 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_c
 			real_t radius1 = cone1_data.w;
 			real_t radius2 = cone2_data.w;
 
-			// Compute tangent circles
-			Vector3 tan1, tan2;
-			real_t tan_radius;
-			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-
-			// Check if point is inside or on either tangent circle - if so, it's forbidden
-			// The inside of tangent circles is forbidden area (the inter-cone path is OUTSIDE both tangent circles)
-			real_t angle_to_tan1 = Math::acos(CLAMP(dir.dot(tan1), -1.0, 1.0));
-			real_t angle_to_tan2 = Math::acos(CLAMP(dir.dot(tan2), -1.0, 1.0));
-			bool inside_tan1 = (angle_to_tan1 <= tan_radius);
-			bool inside_tan2 = (angle_to_tan2 <= tan_radius);
-
-			// If point is inside a tangent circle, it's forbidden (skip this path check)
-			if (inside_tan1 || inside_tan2) {
-				continue; // Skip this path - point is inside a tangent circle (forbidden)
-			}
-
-			// Check if point is in the inter-cone path region using the EXACT same logic as the solving code
-			// This matches _solve() method exactly
-			Vector3 path_point = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
+			// Use EXACT same logic as _solve() method
+			Vector3 collision_point = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
 
 			// If NaN, skip this path (matches solving code)
-			if (Math::is_nan(path_point.x)) {
+			if (Math::is_nan(collision_point.x)) {
 				continue;
 			}
 
 			// If the returned point is approximately equal to the input point, point is in the path region
 			// This matches the solving code's check: cosine > 0.999f
-			// The cosine check distinguishes between:
-			// - Point in allowed path (returned point = input point, cosine ≈ 1.0)
-			// - Point inside tangent circle (returned point = projected boundary, cosine < 1.0)
-			// Note: get_on_great_tangent_triangle uses the same plane intersection method as compute_tangent_circle
-			// to determine the path region, so this check is consistent with the ray_plane_intersection approach
-			real_t cosine = path_point.dot(dir);
+			real_t cosine = collision_point.dot(dir);
 			if (cosine > 0.999f) { // Point is in path region (allowing for floating point precision)
-				// get_on_great_tangent_triangle already handles the geometric checks correctly using cross products
-				// to determine if the point is in the inter-cone path region, so no additional check is needed
-				return true; // Point is in the inter-cone path region (open area, outside both tangent circles)
+				return true; // Point is in the inter-cone path region
 			}
 			// else: point is not in the inter-cone path region - continue checking other cone pairs
 		}
