@@ -319,11 +319,13 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 				print_line(vformat("  Tangent 2: center=(%.3f, %.3f, %.3f)", tan2.x, tan2.y, tan2.z));
 			}
 			
-			// Check if point is in the inter-cone path region
-			bool in_path = is_in_inter_cone_path(dir, tan1, center1, tan2, center2);
+			// Check if point is in the inter-cone path region using the same logic as the solving code
+			// get_on_great_tangent_triangle returns NaN if point is NOT in path, non-NaN if it IS in path
+			Vector3 path_point = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
+			bool in_path = !Math::is_nan(path_point.x);
 			
 			if (should_log) {
-				print_line(vformat("  is_in_inter_cone_path: %s", in_path ? "TRUE" : "FALSE"));
+				print_line(vformat("  get_on_great_tangent_triangle: %s", in_path ? "in_path" : "NaN (not in path)"));
 			}
 			
 			// The path region connects the two cones and should be allowed
