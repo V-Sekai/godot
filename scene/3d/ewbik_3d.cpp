@@ -89,99 +89,314 @@ void EWBIK3D::_get_property_list(List<PropertyInfo> *p_list) const {
 
 bool EWBIK3D::_get(const StringName &p_name, Variant &r_ret) const {
 	String name = p_name;
+	
+	// Handle EWBIK-specific properties
 	if (name == "iterations_per_frame") {
 		r_ret = iterations_per_frame;
 		return true;
-	} else if (name == "default_damp") {
+	}
+	if (name == "default_damp") {
 		r_ret = default_damp;
 		return true;
-	} else if (name == "stabilization_passes") {
+	}
+	if (name == "stabilization_passes") {
 		r_ret = stabilize_passes;
 		return true;
-	} else if (name == "ui_selected_bone") {
+	}
+	if (name == "ui_selected_bone") {
 		r_ret = ui_selected_bone;
 		return true;
-	} else if (name == "bone_count") {
+	}
+	if (name == "bone_count") {
 		r_ret = get_bone_count();
 		return true;
 	}
 	
-	// Validate settings/joints before delegating to prevent crashes
-	if (name.begins_with("settings/")) {
-		String path = name;
-		int which = path.get_slicec('/', 1).to_int();
-		String what = path.get_slicec('/', 2);
-		
-		// Check if settings array is empty
-		if (settings.is_empty()) {
-			return false;
-		}
-		
-		// Check if setting index is valid
-		if (which >= (int)settings.size()) {
-			return false;
-		}
-		
-		// If accessing joints, check if joint_settings is valid
-		if (what == "joints") {
-			int idx = path.get_slicec('/', 3).to_int();
-			const IterateIK3DSetting *setting = static_cast<const IterateIK3DSetting *>(settings[which]);
-			if (!setting || (uint32_t)idx >= setting->joint_settings.size()) {
-				return false;
-			}
-		}
+	// Handle settings-based properties directly (avoid delegation)
+	if (!name.begins_with("settings/")) {
+		return false;
 	}
 	
-	// Delegate to IterateIK3D for settings-based properties
-	return IterateIK3D::_get(p_name, r_ret);
+	String path = name;
+	
+	// Guard: Check if settings array is empty
+	if (settings.is_empty()) {
+		return false;
+	}
+	
+	int which = path.get_slicec('/', 1).to_int();
+	String what = path.get_slicec('/', 2);
+	
+	// Guard: Check if setting index is valid
+	if (which >= (int)settings.size()) {
+		return false;
+	}
+	
+	// Handle ChainIK3D properties
+	if (what == "root_bone_name") {
+		r_ret = get_root_bone_name(which);
+		return true;
+	}
+	if (what == "root_bone") {
+		r_ret = get_root_bone(which);
+		return true;
+	}
+	if (what == "end_bone_name") {
+		r_ret = get_end_bone_name(which);
+		return true;
+	}
+	if (what == "end_bone") {
+		String opt = path.get_slicec('/', 3);
+		if (opt.is_empty()) {
+			r_ret = get_end_bone(which);
+			return true;
+		}
+		if (opt == "direction") {
+			r_ret = (int)get_end_bone_direction(which);
+			return true;
+		}
+		if (opt == "length") {
+			r_ret = get_end_bone_length(which);
+			return true;
+		}
+		return false;
+	}
+	if (what == "extend_end_bone") {
+		r_ret = is_end_bone_extended(which);
+		return true;
+	}
+	if (what == "joint_count") {
+		r_ret = get_joint_count(which);
+		return true;
+	}
+	if (what == "target_node") {
+		r_ret = get_target_node(which);
+		return true;
+	}
+	if (what == "motion_propagation_factor") {
+		r_ret = get_motion_propagation_factor(which);
+		return true;
+	}
+	if (what == "weight") {
+		r_ret = get_weight(which);
+		return true;
+	}
+	if (what == "direction_priorities") {
+		r_ret = get_direction_priorities(which);
+		return true;
+	}
+	if (what != "joints") {
+		return false;
+	}
+	
+	// Handle joints
+	int idx = path.get_slicec('/', 3).to_int();
+	String prop = path.get_slicec('/', 4);
+	
+	// Guard: Check if joint_settings is valid
+	const IterateIK3DSetting *setting = static_cast<const IterateIK3DSetting *>(settings[which]);
+	if (!setting || (uint32_t)idx >= setting->joint_settings.size()) {
+		return false;
+	}
+	
+	// Handle ChainIK3D joint properties
+	if (prop == "bone_name") {
+		r_ret = get_joint_bone_name(which, idx);
+		return true;
+	}
+	if (prop == "bone") {
+		r_ret = get_joint_bone(which, idx);
+		return true;
+	}
+	
+	// Handle IterateIK3D joint properties
+	if (prop == "rotation_axis") {
+		r_ret = (int)get_joint_rotation_axis(which, idx);
+		return true;
+	}
+	if (prop == "rotation_axis_vector") {
+		r_ret = get_joint_rotation_axis_vector(which, idx);
+		return true;
+	}
+	if (prop != "limitation") {
+		return false;
+	}
+	
+	// Handle limitation properties
+	String opt = path.get_slicec('/', 5);
+	if (opt.is_empty()) {
+		r_ret = get_joint_limitation(which, idx);
+		return true;
+	}
+	if (opt == "right_axis") {
+		r_ret = get_joint_limitation_right_axis(which, idx);
+		return true;
+	}
+	if (opt == "right_axis_vector") {
+		r_ret = get_joint_limitation_right_axis_vector(which, idx);
+		return true;
+	}
+	if (opt == "rotation_offset") {
+		r_ret = get_joint_limitation_rotation_offset(which, idx);
+		return true;
+	}
+	
+	return false;
 }
 
 bool EWBIK3D::_set(const StringName &p_name, const Variant &p_value) {
 	String name = p_name;
+	
+	// Handle EWBIK-specific properties
 	if (name == "iterations_per_frame") {
 		iterations_per_frame = p_value;
 		return true;
-	} else if (name == "default_damp") {
+	}
+	if (name == "default_damp") {
 		default_damp = p_value;
 		set_dirty();
 		return true;
-	} else if (name == "stabilization_passes") {
+	}
+	if (name == "stabilization_passes") {
 		stabilize_passes = p_value;
 		set_dirty();
 		return true;
-	} else if (name == "ui_selected_bone") {
+	}
+	if (name == "ui_selected_bone") {
 		ui_selected_bone = p_value;
 		return true;
 	}
 	
-	// Validate settings/joints before delegating to prevent crashes
-	if (name.begins_with("settings/")) {
-		String path = name;
-		int which = path.get_slicec('/', 1).to_int();
-		String what = path.get_slicec('/', 2);
-		
-		// Check if settings array is empty
-		if (settings.is_empty()) {
-			return false;
-		}
-		
-		// Check if setting index is valid
-		if (which >= (int)settings.size()) {
-			return false;
-		}
-		
-		// If accessing joints, check if joint_settings is valid
-		if (what == "joints") {
-			int idx = path.get_slicec('/', 3).to_int();
-			IterateIK3DSetting *setting = static_cast<IterateIK3DSetting *>(settings[which]);
-			if (!setting || (uint32_t)idx >= setting->joint_settings.size()) {
-				return false;
-			}
-		}
+	// Handle settings-based properties directly (avoid delegation)
+	if (!name.begins_with("settings/")) {
+		return false;
 	}
 	
-	// Delegate to IterateIK3D for settings-based properties
-	return IterateIK3D::_set(p_name, p_value);
+	String path = name;
+	
+	// Guard: Check if settings array is empty
+	if (settings.is_empty()) {
+		return false;
+	}
+	
+	int which = path.get_slicec('/', 1).to_int();
+	String what = path.get_slicec('/', 2);
+	
+	// Guard: Check if setting index is valid
+	if (which >= (int)settings.size()) {
+		return false;
+	}
+	
+	// Handle ChainIK3D properties
+	if (what == "root_bone_name") {
+		set_root_bone_name(which, p_value);
+		return true;
+	}
+	if (what == "root_bone") {
+		set_root_bone(which, p_value);
+		return true;
+	}
+	if (what == "end_bone_name") {
+		set_end_bone_name(which, p_value);
+		return true;
+	}
+	if (what == "end_bone") {
+		String opt = path.get_slicec('/', 3);
+		if (opt.is_empty()) {
+			set_end_bone(which, p_value);
+			return true;
+		}
+		if (opt == "direction") {
+			set_end_bone_direction(which, static_cast<BoneDirection>((int)p_value));
+			return true;
+		}
+		if (opt == "length") {
+			set_end_bone_length(which, p_value);
+			return true;
+		}
+		return false;
+	}
+	if (what == "extend_end_bone") {
+		set_extend_end_bone(which, p_value);
+		return true;
+	}
+	if (what == "joint_count") {
+		set_joint_count(which, p_value);
+		return true;
+	}
+	if (what == "target_node") {
+		set_target_node(which, p_value);
+		return true;
+	}
+	if (what == "motion_propagation_factor") {
+		set_motion_propagation_factor(which, p_value);
+		return true;
+	}
+	if (what == "weight") {
+		set_weight(which, p_value);
+		return true;
+	}
+	if (what == "direction_priorities") {
+		set_direction_priorities(which, p_value);
+		return true;
+	}
+	if (what != "joints") {
+		return false;
+	}
+	
+	// Handle joints
+	int idx = path.get_slicec('/', 3).to_int();
+	String prop = path.get_slicec('/', 4);
+	
+	// Guard: Check if joint_settings is valid
+	IterateIK3DSetting *setting = static_cast<IterateIK3DSetting *>(settings[which]);
+	if (!setting || (uint32_t)idx >= setting->joint_settings.size()) {
+		return false;
+	}
+	
+	// Handle ChainIK3D joint properties
+	if (prop == "bone_name") {
+		set_joint_bone_name(which, idx, p_value);
+		return true;
+	}
+	if (prop == "bone") {
+		set_joint_bone(which, idx, p_value);
+		return true;
+	}
+	
+	// Handle IterateIK3D joint properties
+	if (prop == "rotation_axis") {
+		set_joint_rotation_axis(which, idx, static_cast<RotationAxis>((int)p_value));
+		return true;
+	}
+	if (prop == "rotation_axis_vector") {
+		set_joint_rotation_axis_vector(which, idx, p_value);
+		return true;
+	}
+	if (prop != "limitation") {
+		return false;
+	}
+	
+	// Handle limitation properties
+	String opt = path.get_slicec('/', 5);
+	if (opt.is_empty()) {
+		set_joint_limitation(which, idx, p_value);
+		return true;
+	}
+	if (opt == "right_axis") {
+		set_joint_limitation_right_axis(which, idx, p_value);
+		return true;
+	}
+	if (opt == "right_axis_vector") {
+		set_joint_limitation_right_axis_vector(which, idx, p_value);
+		return true;
+	}
+	if (opt == "rotation_offset") {
+		set_joint_limitation_rotation_offset(which, idx, p_value);
+		return true;
+	}
+	
+	return false;
 }
 
 void EWBIK3D::_bind_methods() {
