@@ -327,31 +327,12 @@ static bool is_point_in_union(const Vector3 &p_point, const Vector<Vector4> &p_o
 			}
 			
 			// The path region connects the two cones and should be allowed
+			// Open areas (cones + inter-cone paths) = allowed, everything else = forbidden
 			if (in_path) {
-				// Point is in the inter-cone path region - check tangent circle membership
-				// is_in_cone returns: 1 if outside (beyond radius), -1 if inside (less than radius), 0 if on boundary
-				real_t angle_to_tan1 = Math::acos(CLAMP(dir.dot(tan1), -1.0, 1.0));
-				real_t angle_to_tan2 = Math::acos(CLAMP(dir.dot(tan2), -1.0, 1.0));
-				int in_tan1 = (angle_to_tan1 > tan_radius) ? 1 : ((angle_to_tan1 < tan_radius) ? -1 : 0);
-				int in_tan2 = (angle_to_tan2 > tan_radius) ? 1 : ((angle_to_tan2 < tan_radius) ? -1 : 0);
-				
 				if (should_log) {
-					print_line(vformat("  Angle to tan1: %.3f rad (%.1f deg), in_tan1=%d", 
-						angle_to_tan1, Math::rad_to_deg(angle_to_tan1), in_tan1));
-					print_line(vformat("  Angle to tan2: %.3f rad (%.1f deg), in_tan2=%d", 
-						angle_to_tan2, Math::rad_to_deg(angle_to_tan2), in_tan2));
 					print_line("  -> ALLOWED: Point is in inter-cone path region");
 				}
-				
-				// Shader logic: allow if outside both tangent circles (in_tan >= 1)
-				// But also allow if inside tangent circles, since the path region includes the connection between cones
-				// The path is the region that connects the cones, not just the region outside the tangent circles
-				if (in_tan1 >= 1 && in_tan2 >= 1) {
-					return true; // Point is in the path and outside both tangent circles
-				}
-				// Also allow if point is in the path region (even if inside tangent circles)
-				// This ensures the path between cones is always allowed when detected by is_in_inter_cone_path
-				return true; // Point is in the inter-cone path region
+				return true; // Point is in the inter-cone path region (open area)
 			}
 			// else: point is not in the inter-cone path region - continue checking other cone pairs
 		}
