@@ -391,7 +391,15 @@ int JointLimitationKusudama3D::get_cone_count() const {
 
 void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_center) {
 	ERR_FAIL_INDEX(p_index, open_cones.size());
-	Vector3 normalized = p_center.normalized();
+	// Allow non-normalized vectors (representing rotations) and normalize to unit sphere
+	// This allows one full rotation in either direction before normalization
+	Vector3 normalized;
+	if (p_center.length_squared() > CMP_EPSILON) {
+		normalized = p_center.normalized();
+	} else {
+		// Fallback to default direction if zero vector
+		normalized = Vector3(0, 1, 0);
+	}
 	Vector4 &cone = open_cones.write[p_index];
 	cone.x = normalized.x;
 	cone.y = normalized.y;
@@ -461,7 +469,8 @@ void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) c
 	p_list->push_back(PropertyInfo(Variant::INT, PNAME("cone_count"), PROPERTY_HINT_RANGE, "0,16384,1,or_greater", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY, "Open Cones," + String(PNAME("open_cones")) + "/"));
 	for (int i = 0; i < get_cone_count(); i++) {
 		const String prefix = vformat("%s/%d/", PNAME("open_cones"), i);
-		p_list->push_back(PropertyInfo(Variant::VECTOR3, prefix + PNAME("center")));
+		// Allow Vector3 components to represent rotations before normalization (one full rotation in either direction)
+		p_list->push_back(PropertyInfo(Variant::VECTOR3, prefix + PNAME("center"), PROPERTY_HINT_RANGE, "-2,2,0.01,or_greater,or_less"));
 		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("radius"), PROPERTY_HINT_RANGE, "0,180,0.1,radians_as_degrees"));
 	}
 }
