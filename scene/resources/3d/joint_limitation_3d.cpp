@@ -69,4 +69,10 @@ Vector3 JointLimitation3D::solve(const Vector3 &p_local_forward_vector, const Ve
 void JointLimitation3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
 	//
 }
+
+void JointLimitation3D::draw_triangle_mesh(const Transform3D &p_transform, float p_bone_length, const Color &p_color, const PackedInt32Array &p_bones, const PackedFloat32Array &p_weights, Ref<Mesh> &r_mesh, Ref<Material> &r_material) const {
+	r_mesh = Ref<Mesh>();
+	r_material = Ref<Material>();
+	// Default implementation returns empty mesh/material (no triangle visualization)
+}
 #endif // TOOLS_ENABLED

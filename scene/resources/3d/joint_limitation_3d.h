@@ -34,6 +34,8 @@
 
 #ifdef TOOLS_ENABLED
 #include "scene/resources/surface_tool.h"
+#include "scene/resources/mesh.h"
+#include "scene/resources/material.h"
 #endif // TOOLS_ENABLED
 
 class JointLimitation3D : public Resource {
@@ -54,5 +56,8 @@ public:
 
 #ifdef TOOLS_ENABLED
 	virtual void draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const; // For drawing gizmo.
+	
+	// Draw triangle mesh visualization (optional, returns empty mesh/material if not supported)
+	virtual void draw_triangle_mesh(const Transform3D &p_transform, float p_bone_length, const Color &p_color, const PackedInt32Array &p_bones, const PackedFloat32Array &p_weights, Ref<Mesh> &r_mesh, Ref<Material> &r_material) const;
 #endif // TOOLS_ENABLED
 };

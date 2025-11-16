@@ -101,6 +101,91 @@ void ChainIK3DGizmoPlugin::redraw(EditorNode3DGizmo *p_gizmo) {
 	Ref<ArrayMesh> mesh = get_joints_mesh(skeleton, ik, p_gizmo->is_selected());
 	Transform3D skel_tr = ik->get_global_transform().inverse() * skeleton->get_global_transform();
 	p_gizmo->add_mesh(mesh, Ref<Material>(), skel_tr, skeleton->register_skin(skeleton->create_skin_from_rest_transforms()));
+
+	// Add triangle mesh visualizations for limitations that support them
+	IterateIK3D *it_ik = Object::cast_to<IterateIK3D>(ik);
+	if (it_ik) {
+		Color bone_color = EDITOR_GET("editors/3d_gizmos/gizmo_colors/ik_chain");
+		PackedInt32Array bones;
+		PackedFloat32Array weights;
+		bones.resize(4);
+		weights.resize(4);
+		for (int i = 0; i < 4; i++) {
+			bones.write[i] = 0;
+			weights.write[i] = 0;
+		}
+		weights.write[0] = 1;
+
+		for (int i = 0; i < ik->get_setting_count(); i++) {
+			int current_bone = -1;
+			int prev_bone = -1;
+			int joint_end = ik->get_joint_count(i) - 1;
+			bool is_extended = ik->is_end_bone_extended(i) && ik->get_end_bone_length(i) > 0;
+			for (int j = 0; j <= joint_end; j++) {
+				current_bone = ik->get_joint_bone(i, j);
+				Transform3D global_pose = skeleton->get_bone_global_rest(current_bone);
+				if (j > 0) {
+					Transform3D parent_global_pose = skeleton->get_bone_global_rest(prev_bone);
+					
+					// Draw parent limitation triangle mesh.
+					int prev_joint = j - 1;
+					Ref<JointLimitation3D> lim = it_ik->get_joint_limitation(i, prev_joint);
+					if (lim.is_valid()) {
+						// Limitation space should bind parent bone rest.
+						// Set bone to parent of prev_bone, or prev_bone itself if no parent
+						if (prev_bone >= 0) {
+							int parent = skeleton->get_bone_parent(prev_bone);
+							bones.write[0] = (parent >= 0) ? parent : prev_bone;
+						} else {
+							bones.write[0] = 0;
+						}
+						Transform3D tr = parent_global_pose;
+						Vector3 forward = skeleton->get_bone_rest(current_bone).origin;
+						tr.basis *= it_ik->get_joint_limitation_space(i, prev_joint, forward);
+						
+						Ref<Mesh> triangle_mesh;
+						Ref<Material> triangle_material;
+						lim->draw_triangle_mesh(tr, forward.length(), bone_color, bones, weights, triangle_mesh, triangle_material);
+						if (triangle_mesh.is_valid() && triangle_material.is_valid()) {
+							// Use skel_tr only (same as wireframe mesh) since vertices are already in p_transform space
+							p_gizmo->add_mesh(triangle_mesh, triangle_material, skel_tr, skeleton->register_skin(skeleton->create_skin_from_rest_transforms()));
+						}
+					}
+				}
+				if (j == joint_end && is_extended) {
+					Vector3 axis = ik->get_bone_axis(current_bone, ik->get_end_bone_direction(i));
+					if (!axis.is_zero_approx()) {
+						float length = ik->get_end_bone_length(i);
+						
+						// Draw limitation triangle mesh.
+						Ref<JointLimitation3D> lim = it_ik->get_joint_limitation(i, j);
+						if (lim.is_valid()) {
+							// Limitation space should bind parent bone rest.
+							// Set bone to parent of current_bone, or current_bone itself if no parent
+							if (current_bone >= 0) {
+								int parent = skeleton->get_bone_parent(current_bone);
+								bones.write[0] = (parent >= 0) ? parent : current_bone;
+							} else {
+								bones.write[0] = 0;
+							}
+							Vector3 forward = it_ik->get_bone_axis(current_bone, it_ik->get_end_bone_direction(i));
+							Transform3D tr = global_pose;
+							tr.basis *= it_ik->get_joint_limitation_space(i, j, forward);
+							
+							Ref<Mesh> triangle_mesh;
+							Ref<Material> triangle_material;
+							lim->draw_triangle_mesh(tr, length, bone_color, bones, weights, triangle_mesh, triangle_material);
+							if (triangle_mesh.is_valid() && triangle_material.is_valid()) {
+								// Use skel_tr only (same as wireframe mesh) since vertices are already in p_transform space
+								p_gizmo->add_mesh(triangle_mesh, triangle_material, skel_tr, skeleton->register_skin(skeleton->create_skin_from_rest_transforms()));
+							}
+						}
+					}
+				}
+				prev_bone = current_bone;
+			}
+		}
+	}
 }
 
 Ref<ArrayMesh> ChainIK3DGizmoPlugin::get_joints_mesh(Skeleton3D *p_skeleton, ChainIK3D *p_ik, bool p_is_selected) {

@@ -32,6 +32,12 @@
 
 #include "core/math/math_funcs.h"
 
+#ifdef TOOLS_ENABLED
+#include "editor/scene/3d/kusudama_shader.h"
+#include "scene/resources/surface_tool.h"
+#include "scene/resources/material.h"
+#endif // TOOLS_ENABLED
+
 void JointLimitationKusudama3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_cones", "cones"), &JointLimitationKusudama3D::set_cones);
 	ClassDB::bind_method(D_METHOD("get_cones"), &JointLimitationKusudama3D::get_cones);
@@ -955,10 +961,8 @@ static void draw_path_boundary(LocalVector<Vector3> &r_vertices, const Vector3 &
 }
 
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
-	// Don't draw visualization if orientation constraints are disabled
-	if (!orientationally_constrained) {
-		return;
-	}
+	// Only draw axial twist limits visualization
+	// Swing limits (orientation constraints) are handled by the shader-based visualization
 	real_t socket_r = p_bone_length * 0.25f;
 	if (socket_r <= CMP_EPSILON) {
 		return;
@@ -1077,169 +1081,6 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		vertices.push_back(indicator_pos + limit2_dir);
 	}
 
-	// Create wireframe visualization: sphere with cones and tangents subtracted
-	// Use exact cone and tangent boundaries to precisely determine forbidden areas
-	if (!cones.is_empty()) {
-		// Increased density for more precise visualization using exact boundaries
-		int rings = 64;
-		int radial_segments = 64;
-
-		// Generate horizontal wireframe lines (parallels/latitudes)
-		// Draw sphere lines, but subtract areas inside exact cone and tangent boundaries
-		for (int j = 0; j <= rings; j++) {
-			real_t v = (real_t)j / (real_t)rings;
-			real_t w = Math::sin(Math::PI * v);
-			real_t y = Math::cos(Math::PI * v);
-
-			Vector3 prev_point;
-			bool prev_in_allowed = false;
-
-			for (int i = 0; i <= radial_segments; i++) {
-				real_t u = (real_t)i / (real_t)radial_segments;
-				real_t x = Math::sin(u * Math::TAU);
-				real_t z = Math::cos(u * Math::TAU);
-
-				Vector3 normal = Vector3(x * w, y, z * w).normalized();
-				Vector3 point = normal * socket_r;
-
-				// Check if point is inside any exact cone or tangent boundary (allowed area)
-				// Using exact boundaries we've computed for precise determination
-				bool in_allowed = is_point_in_union(normal, cones);
-
-				// Draw line segment only if both points are in forbidden area (outside all exact boundaries)
-				if (i > 0 && !prev_in_allowed && !in_allowed) {
-					// Both points are in forbidden area - draw the sphere edge
-					vertices.push_back(prev_point);
-					vertices.push_back(point);
-				}
-
-				// Draw exact boundary at transition (boundaries are epsilon away from forbidden)
-				if (i > 0 && prev_in_allowed != in_allowed) {
-					// Transition detected - draw smooth boundary curve with high precision
-					// This follows the exact cone/tangent boundaries we've computed
-					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
-					Vector3 prev_boundary;
-
-					for (int k = 0; k <= boundary_subdiv; k++) {
-						real_t t = (real_t)k / (real_t)boundary_subdiv;
-						Vector3 p0 = prev_point.normalized();
-						Vector3 p1 = point.normalized();
-						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
-
-						// Draw all boundary segments - these align with exact cone/tangent boundaries
-						if (k > 0) {
-							vertices.push_back(prev_boundary);
-							vertices.push_back(boundary_point);
-						}
-
-						prev_boundary = boundary_point;
-					}
-				}
-
-				prev_point = point;
-				prev_in_allowed = in_allowed;
-			}
-		}
-
-		// Generate vertical lines (meridians/longitudes)
-		// Draw sphere lines, but subtract areas inside exact cone and tangent boundaries
-		for (int i = 0; i <= radial_segments; i++) {
-			real_t u = (real_t)i / (real_t)radial_segments;
-			real_t x = Math::sin(u * Math::TAU);
-			real_t z = Math::cos(u * Math::TAU);
-
-			Vector3 prev_point;
-			bool prev_in_allowed = false;
-
-			for (int j = 0; j <= rings; j++) {
-				real_t v = (real_t)j / (real_t)rings;
-				real_t w = Math::sin(Math::PI * v);
-				real_t y = Math::cos(Math::PI * v);
-
-				Vector3 normal = Vector3(x * w, y, z * w).normalized();
-				Vector3 point = normal * socket_r;
-
-				// Check if point is inside any exact cone or tangent boundary (allowed area)
-				// Using exact boundaries we've computed for precise determination
-				bool in_allowed = is_point_in_union(normal, cones);
-
-				// Draw line segment only if both points are in forbidden area (outside all exact boundaries)
-				if (j > 0 && !prev_in_allowed && !in_allowed) {
-					// Both points are in forbidden area - draw the sphere edge
-					vertices.push_back(prev_point);
-					vertices.push_back(point);
-				}
-
-				// Draw exact boundary at transition (boundaries are epsilon away from forbidden)
-				if (j > 0 && prev_in_allowed != in_allowed) {
-					// Transition detected - draw smooth boundary curve with high precision
-					// This follows the exact cone/tangent boundaries we've computed
-					int boundary_subdiv = 128; // Very high subdivision to match exact boundary precision
-					Vector3 prev_boundary;
-
-					for (int k = 0; k <= boundary_subdiv; k++) {
-						real_t t = (real_t)k / (real_t)boundary_subdiv;
-						Vector3 p0 = prev_point.normalized();
-						Vector3 p1 = point.normalized();
-						Vector3 boundary_point = p0.slerp(p1, t).normalized() * socket_r;
-
-						// Draw all boundary segments - these align with exact cone/tangent boundaries
-						if (k > 0) {
-							vertices.push_back(prev_boundary);
-							vertices.push_back(boundary_point);
-						}
-
-						prev_boundary = boundary_point;
-					}
-				}
-
-				prev_point = point;
-				prev_in_allowed = in_allowed;
-			}
-		}
-	}
-
-	// Tangent path boundaries are shown in the wireframe visualization where the sphere is cut
-	// The is_point_in_union function includes tangent paths, so boundaries are automatically visible
-
-	// Draw exact cone boundary rings on the unit sphere
-	// These show the exact boundary of each cone
-	for (int cone_i = 0; cone_i < cones.size(); cone_i++) {
-		const Vector4 &cone_data = cones[cone_i];
-		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		real_t cone_radius = cone_data.w; // Cone radius in radians
-
-		// Draw the exact boundary circle of the cone (using spline interpolation with reduced detail)
-		draw_cone_circle(vertices, center, cone_radius, socket_r, 64);
-	}
-
-	// Draw exact tangent boundary rings on the unit sphere
-	// These show the exact boundary of each tangent circle connecting adjacent cones
-	// Only connect adjacent cones in sequence (no wrap-around from last to first)
-	for (int cone_i = 0; cone_i < cones.size() - 1; cone_i++) {
-		const Vector4 &cone_data1 = cones[cone_i];
-		Vector3 center1 = Vector3(cone_data1.x, cone_data1.y, cone_data1.z).normalized();
-		real_t radius1 = cone_data1.w; // Cone radius in radians
-
-		// Connect only to the next adjacent cone (no wrap-around)
-		const Vector4 &cone_data2 = cones[cone_i + 1];
-		Vector3 center2 = Vector3(cone_data2.x, cone_data2.y, cone_data2.z).normalized();
-		real_t radius2 = cone_data2.w; // Cone radius in radians
-
-		// Compute tangent circles
-		Vector3 tan1, tan2;
-		real_t tan_radius;
-		compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-
-		// Draw both tangent circle boundaries
-		draw_cone_circle(vertices, tan1, tan_radius, socket_r, 64);
-		draw_cone_circle(vertices, tan2, tan_radius, socket_r, 64);
-
-		// Draw the exact path boundary as a curved line
-		// This shows the precise boundary of the allowed region between the two cones
-		draw_path_boundary(vertices, center1, radius1, center2, radius2, socket_r, 128);
-	}
-
 	// Add all vertices to surface tool as a single mesh
 	// Bone weights are set by the gizmo before calling draw_shape, so they apply to all vertices
 	// For bone weights to work, vertices should be in parent bone's local space (rest pose)
@@ -1252,4 +1093,179 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		p_surface_tool->add_vertex(p_transform.xform(vertices[i]));
 	}
 }
+
+void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transform, float p_bone_length, const Color &p_color, const PackedInt32Array &p_bones, const PackedFloat32Array &p_weights, Ref<Mesh> &r_mesh, Ref<Material> &r_material) const {
+	r_mesh = Ref<Mesh>();
+	r_material = Ref<Material>();
+	
+	if (!is_orientationally_constrained() || cones.is_empty()) {
+		return;
+	}
+
+	real_t socket_r = p_bone_length * 0.25f;
+	if (socket_r <= CMP_EPSILON) {
+		return;
+	}
+
+	// Build cone sequence for shader (cone1, tangent1, tangent2, cone2, ...)
+	PackedFloat32Array cone_sequence;
+	
+	// Build cone sequence
+	if (cones.size() == 1) {
+		// Single cone
+		const Vector4 &cone_data = cones[0];
+		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		real_t radius = cone_data.w;
+		cone_sequence.append(center.x);
+		cone_sequence.append(center.y);
+		cone_sequence.append(center.z);
+		cone_sequence.append(radius);
+	} else {
+		// Multiple cones - need tangent circles
+		// Shader expects: [cone1, tan1, tan2, cone2, tan1, tan2, cone3, ...]
+		// For each iteration i, shader reads: [i+0, i+1, i+2, i+3] = [cone1, tan1, tan2, cone2]
+		// Next iteration starts at i+3 (which is cone2)
+		for (int i = 0; i < cones.size() - 1; i++) {
+			const Vector4 &cone1_data = cones[i];
+			const Vector4 &cone2_data = cones[i + 1];
+			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+			real_t radius1 = cone1_data.w;
+			real_t radius2 = cone2_data.w;
+			
+			// Cone 1 (only output on first iteration to avoid duplication)
+			if (i == 0) {
+				cone_sequence.append(center1.x);
+				cone_sequence.append(center1.y);
+				cone_sequence.append(center1.z);
+				cone_sequence.append(radius1);
+			}
+			
+			// Tangent circles between cone1 and cone2
+			Vector3 tan1, tan2;
+			real_t tan_radius;
+			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+			
+			// Ensure tan1 and tan2 are ordered correctly based on arc direction
+			// Solver uses: if (input.dot(center1.cross(center2)) < 0.0) use tan1, else use tan2
+			// Shader uses: if (dot(normal_dir, cross(cone_1, cone_2)) < 0.0) use tangent_1, else use tangent_2
+			// The shader reads: tangent_1 = cone_sequence[i+1], tangent_2 = cone_sequence[i+2]
+			// Since swapping made no visible difference, the issue may be in compute_tangent_circle's return order
+			// Try swapping the append order: put tan2 first (becomes tangent_1) and tan1 second (becomes tangent_2)
+			cone_sequence.append(tan2.x);
+			cone_sequence.append(tan2.y);
+			cone_sequence.append(tan2.z);
+			cone_sequence.append(tan_radius);
+			
+			cone_sequence.append(tan1.x);
+			cone_sequence.append(tan1.y);
+			cone_sequence.append(tan1.z);
+			cone_sequence.append(tan_radius);
+			
+			// Cone 2 (always output, becomes cone1 for next iteration)
+			cone_sequence.append(center2.x);
+			cone_sequence.append(center2.y);
+			cone_sequence.append(center2.z);
+			cone_sequence.append(radius2);
+		}
+	}
+
+	// Create sphere mesh for shader visualization using triangles
+	int rings = 8;
+	int i = 0, j = 0, prevrow = 0, thisrow = 0, point = 0;
+	float x, y, z;
+
+	Vector<Vector3> points;
+	Vector<Vector3> normals;
+	Vector<int> indices;
+	point = 0;
+
+	thisrow = 0;
+	prevrow = 0;
+	for (j = 0; j <= (rings + 1); j++) {
+		int radial_segments = 8;
+		float v = j;
+		float w;
+
+		v /= (rings + 1);
+		w = sin(Math::PI * v);
+		y = cos(Math::PI * v);
+
+		for (i = 0; i <= radial_segments; i++) {
+			float u = i;
+			u /= radial_segments;
+
+			x = sin(u * Math::TAU);
+			z = cos(u * Math::TAU);
+
+			Vector3 p = Vector3(x * w, y, z * w) * socket_r;
+			points.push_back(p);
+			Vector3 normal = Vector3(x * w, y, z * w);
+			normals.push_back(normal.normalized());
+			point++;
+
+			if (i > 0 && j > 0) {
+				indices.push_back(prevrow + i - 1);
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i - 1);
+
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i);
+				indices.push_back(thisrow + i - 1);
+			}
+		}
+
+		prevrow = thisrow;
+		thisrow = point;
+	}
+	if (!indices.size()) {
+		return;
+	}
+
+	Ref<SurfaceTool> surface_tool;
+	surface_tool.instantiate();
+	surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+	const int32_t MESH_CUSTOM_0 = 0;
+	surface_tool->set_custom_format(MESH_CUSTOM_0, SurfaceTool::CustomFormat::CUSTOM_RGBA_HALF);
+	
+	Vector<int> bones_vec = static_cast<Vector<int>>(p_bones);
+	Vector<float> weights_vec = static_cast<Vector<float>>(p_weights);
+	for (int32_t point_i = 0; point_i < points.size(); point_i++) {
+		surface_tool->set_bones(bones_vec);
+		surface_tool->set_weights(weights_vec);
+		Color c;
+		c.r = normals[point_i].x;
+		c.g = normals[point_i].y;
+		c.b = normals[point_i].z;
+		c.a = 0;
+		surface_tool->set_custom(MESH_CUSTOM_0, c);
+		surface_tool->set_normal(normals[point_i]);
+		// Transform vertices to p_transform space (same as draw_shape does)
+		// This puts vertices in skeleton global space, matching the wireframe mesh
+		surface_tool->add_vertex(p_transform.xform(points[point_i]));
+	}
+	for (int32_t index_i : indices) {
+		surface_tool->add_index(index_i);
+	}
+
+	r_mesh = surface_tool->commit(Ref<Mesh>(), RS::ARRAY_CUSTOM_RGBA_HALF << RS::ARRAY_FORMAT_CUSTOM0_SHIFT);
+	
+	// Create shader material
+	static Ref<Shader> kusudama_shader;
+	if (!kusudama_shader.is_valid()) {
+		kusudama_shader.instantiate();
+		kusudama_shader->set_code(KUSUDAMA_SHADER);
+	}
+	
+	Ref<ShaderMaterial> kusudama_material;
+	kusudama_material.instantiate();
+	kusudama_material->set_shader(kusudama_shader);
+	kusudama_material->set_shader_parameter("cone_sequence", cone_sequence);
+	int32_t cone_count = cones.size();
+	kusudama_material->set_shader_parameter("cone_count", cone_count);
+	kusudama_material->set_shader_parameter("kusudama_color", p_color);
+	
+	r_material = kusudama_material;
+}
+
 #endif // TOOLS_ENABLED
