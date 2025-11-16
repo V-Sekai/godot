@@ -1049,5 +1049,50 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		p_surface_tool->set_color(p_color);
 		p_surface_tool->add_vertex(p_transform.xform(vts[i]));
 	}
+	
+	// Draw current bone position marker in a different color
+	// The Y-axis of the transform is the forward direction in constraint space
+	Vector3 current_bone_dir = p_transform.basis.get_column(Vector3::AXIS_Y).normalized();
+	Vector3 current_bone_pos = current_bone_dir * sphere_r;
+	
+	// Draw a cross marker at the current bone position
+	// Use a brighter/contrasting color to show where we are
+	Color current_color = p_color;
+	current_color.r = MIN(1.0, current_color.r * 1.5);
+	current_color.g = MIN(1.0, current_color.g * 1.5);
+	current_color.b = MIN(1.0, current_color.b * 1.5);
+	
+	// Create a small cross marker (4 lines forming a cross)
+	real_t marker_size = sphere_r * 0.1; // 10% of sphere radius
+	
+	// Get perpendicular vectors for the cross
+	Vector3 perp1 = current_bone_dir.get_any_perpendicular().normalized();
+	Vector3 perp2 = current_bone_dir.cross(perp1).normalized();
+	
+	// Draw cross lines
+	LocalVector<Vector3> marker_vts;
+	marker_vts.push_back(current_bone_pos - perp1 * marker_size);
+	marker_vts.push_back(current_bone_pos + perp1 * marker_size);
+	marker_vts.push_back(current_bone_pos - perp2 * marker_size);
+	marker_vts.push_back(current_bone_pos + perp2 * marker_size);
+	
+	// Also draw a small circle around the current position
+	int circle_segments = 16;
+	for (int i = 0; i < circle_segments; i++) {
+		real_t angle1 = (real_t)i / (real_t)circle_segments * Math::TAU;
+		real_t angle2 = (real_t)(i + 1) / (real_t)circle_segments * Math::TAU;
+		
+		Vector3 p1 = current_bone_pos + (perp1 * Math::cos(angle1) + perp2 * Math::sin(angle1)) * marker_size;
+		Vector3 p2 = current_bone_pos + (perp1 * Math::cos(angle2) + perp2 * Math::sin(angle2)) * marker_size;
+		
+		marker_vts.push_back(p1);
+		marker_vts.push_back(p2);
+	}
+	
+	// Add marker vertices with different color
+	for (int64_t i = 0; i < marker_vts.size(); i++) {
+		p_surface_tool->set_color(current_color);
+		p_surface_tool->add_vertex(p_transform.xform(marker_vts[i]));
+	}
 }
 #endif // TOOLS_ENABLED
