@@ -1123,35 +1123,15 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	// Tangent path boundaries are shown in the wireframe visualization where the sphere is cut
 	// The is_point_in_union function includes tangent paths, so boundaries are automatically visible
 	
-	// Draw markers at exact cone center locations on the unit sphere
-	// These are small circles at each cone center to indicate where the open areas are
+	// Draw exact cone boundary rings on the unit sphere
+	// These show the exact boundary of each open cone
 	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
 		const Vector4 &cone_data = open_cones[cone_i];
 		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 		real_t cone_radius = cone_data.w; // Cone radius in radians
 		
-		// Draw a small circle marker at the cone center
-		// The marker radius scales with the cone radius
-		real_t marker_radius = cone_radius * 0.1f; // Small marker relative to cone radius
-		Vector3 axis = center.normalized();
-		Vector3 perp1 = axis.get_any_perpendicular().normalized();
-		
-		// Generate small circle around the center point
-		int marker_segments = 16; // Small circle doesn't need high detail
-		Vector3 start_point = Quaternion(perp1, marker_radius).xform(axis).normalized();
-		real_t dp = Math::TAU / (real_t)marker_segments;
-		
-		Vector3 prev_marker = start_point * socket_r;
-		for (int i = 1; i <= marker_segments; i++) {
-			real_t angle = (real_t)i * dp;
-			Quaternion rot = Quaternion(axis, angle);
-			Vector3 current_marker = rot.xform(start_point).normalized() * socket_r;
-			
-			vts.push_back(prev_marker);
-			vts.push_back(current_marker);
-			
-			prev_marker = current_marker;
-		}
+		// Draw the exact boundary circle of the cone (using spline interpolation with reduced detail)
+		draw_cone_circle(vts, center, cone_radius, socket_r, 64);
 	}
 	
 	// Add all vertices to surface tool as a single mesh
