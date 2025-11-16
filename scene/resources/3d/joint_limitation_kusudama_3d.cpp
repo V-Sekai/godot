@@ -610,8 +610,8 @@ bool JointLimitationKusudama3D::is_orientationally_constrained() const {
 
 #ifdef TOOLS_ENABLED
 // Helper to draw a circle on the sphere given center, radius angle, and sphere radius
-// Uses spherical interpolation for smooth curve fitting
-static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 64) {
+// Uses spherical interpolation for smooth curve fitting with fragment shader level detail
+static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 256) {
 	Vector3 axis = p_center.normalized();
 	Vector3 perp1 = axis.get_any_perpendicular().normalized();
 	
@@ -626,8 +626,8 @@ static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_cente
 		Vector3 current_point = rot.xform(start_point).normalized() * p_sphere_r;
 		
 		// Use spherical linear interpolation for smoother curve
-		// Subdivide each segment for better fit
-		int subdiv = 4; // Subdivide each segment for smoother curve
+		// Subdivide each segment for fragment shader level detail
+		int subdiv = 16; // High subdivision for very fine detail
 		for (int j = 1; j <= subdiv; j++) {
 			real_t t = (real_t)j / (real_t)subdiv;
 			Vector3 p0 = prev_point.normalized();
@@ -646,10 +646,10 @@ static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_cente
 
 // Helper to draw a circle arc on the sphere along a tangent circle
 // The arc connects the boundaries of two adjacent cones
-// Uses spherical interpolation for smooth curve fitting
+// Uses spherical interpolation for smooth curve fitting with fragment shader level detail
 static void draw_tangent_circle_arc(LocalVector<Vector3> &r_vts, const Vector3 &p_tangent_center, real_t p_tangent_radius, 
 		const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius,
-		real_t p_sphere_r, int p_segments = 64) {
+		real_t p_sphere_r, int p_segments = 256) {
 	Vector3 tan_center = p_tangent_center.normalized();
 	Vector3 cone1 = p_cone1_center.normalized();
 	Vector3 cone2 = p_cone2_center.normalized();
@@ -719,7 +719,7 @@ static void draw_tangent_circle_arc(LocalVector<Vector3> &r_vts, const Vector3 &
 	Vector3 end_arc_point = end_point.normalized();
 	
 	// Use spherical linear interpolation (slerp) for smooth curve along the arc
-	int subdiv = 4; // Subdivide each segment for better fit
+	int subdiv = 16; // High subdivision for fragment shader level detail
 	Vector3 prev_arc_point = start_arc_point * p_sphere_r;
 	
 	for (int i = 1; i <= p_segments; i++) {
@@ -904,9 +904,9 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
 				if (i > 0 && prev_in_allowed != in_allowed) {
-					// Transition point - draw smooth spline boundary curve
-					// Use spherical interpolation to create smooth boundary
-					int boundary_subdiv = 8;
+					// Transition point - draw smooth spline boundary curve with fragment shader level detail
+					// Use spherical interpolation to create very fine smooth boundary
+					int boundary_subdiv = 64; // Very high subdivision for fragment shader level detail
 					for (int k = 0; k <= boundary_subdiv; k++) {
 						real_t t = (real_t)k / (real_t)boundary_subdiv;
 						Vector3 p0 = prev_point.normalized();
@@ -957,9 +957,9 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				
 				// Draw smooth boundary curve at transition from disallowed to allowed (cut boundary)
 				if (j > 0 && prev_in_allowed != in_allowed) {
-					// Transition point - draw smooth spline boundary curve
-					// Use spherical interpolation to create smooth boundary
-					int boundary_subdiv = 8;
+					// Transition point - draw smooth spline boundary curve with fragment shader level detail
+					// Use spherical interpolation to create very fine smooth boundary
+					int boundary_subdiv = 64; // Very high subdivision for fragment shader level detail
 					for (int k = 0; k <= boundary_subdiv; k++) {
 						real_t t = (real_t)k / (real_t)boundary_subdiv;
 						Vector3 p0 = prev_point.normalized();
@@ -986,8 +986,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 		real_t cone_radius = cone_data.w; // Cone radius in radians
 		
-		// Draw the exact boundary circle of the cone (using spline interpolation)
-		draw_cone_circle(vts, center, cone_radius, socket_r, 64);
+		// Draw the exact boundary circle of the cone (using spline interpolation with fragment shader level detail)
+		draw_cone_circle(vts, center, cone_radius, socket_r, 256);
 	}
 	
 	// Draw exact tangent circle arc boundaries (paths between cones) if there are multiple cones
@@ -1012,8 +1012,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			real_t side = mid_dir.dot(c1xc2);
 			Vector3 tan_center = (side < 0.0) ? tan1 : tan2;
 			
-			// Draw the exact arc boundary between the two cones (using spline interpolation)
-			draw_tangent_circle_arc(vts, tan_center, tan_radius, center1, radius1, center2, radius2, socket_r, 64);
+			// Draw the exact arc boundary between the two cones (using spline interpolation with fragment shader level detail)
+			draw_tangent_circle_arc(vts, tan_center, tan_radius, center1, radius1, center2, radius2, socket_r, 256);
 		}
 	}
 	
