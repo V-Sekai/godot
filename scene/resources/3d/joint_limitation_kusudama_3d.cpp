@@ -48,9 +48,20 @@ void JointLimitationKusudama3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_orientationally_constrained", "constrained"), &JointLimitationKusudama3D::set_orientationally_constrained);
 	ClassDB::bind_method(D_METHOD("is_orientationally_constrained"), &JointLimitationKusudama3D::is_orientationally_constrained);
 
+	ClassDB::bind_method(D_METHOD("set_cone_count", "count"), &JointLimitationKusudama3D::set_cone_count);
+	ClassDB::bind_method(D_METHOD("get_cone_count"), &JointLimitationKusudama3D::get_cone_count);
+	ClassDB::bind_method(D_METHOD("set_cone_center", "index", "center"), &JointLimitationKusudama3D::set_cone_center);
+	ClassDB::bind_method(D_METHOD("get_cone_center", "index"), &JointLimitationKusudama3D::get_cone_center);
+	ClassDB::bind_method(D_METHOD("set_cone_azimuth", "index", "azimuth"), &JointLimitationKusudama3D::set_cone_azimuth);
+	ClassDB::bind_method(D_METHOD("get_cone_azimuth", "index"), &JointLimitationKusudama3D::get_cone_azimuth);
+	ClassDB::bind_method(D_METHOD("set_cone_elevation", "index", "elevation"), &JointLimitationKusudama3D::set_cone_elevation);
+	ClassDB::bind_method(D_METHOD("get_cone_elevation", "index"), &JointLimitationKusudama3D::get_cone_elevation);
+	ClassDB::bind_method(D_METHOD("set_cone_radius", "index", "radius"), &JointLimitationKusudama3D::set_cone_radius);
+	ClassDB::bind_method(D_METHOD("get_cone_radius", "index"), &JointLimitationKusudama3D::get_cone_radius);
+
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "open_cones", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_open_cones", "get_open_cones");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_axial_angle"), "set_min_axial_angle", "get_min_axial_angle");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "range_angle"), "set_range_angle", "get_range_angle");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_axial_angle", PROPERTY_HINT_RANGE, "-360,360,0.1,radians_as_degrees"), "set_min_axial_angle", "get_min_axial_angle");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "range_angle", PROPERTY_HINT_RANGE, "0,360,0.1,radians_as_degrees"), "set_range_angle", "get_range_angle");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "axially_constrained"), "set_axially_constrained", "is_axially_constrained");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "orientationally_constrained"), "set_orientationally_constrained", "is_orientationally_constrained");
 }
@@ -289,6 +300,163 @@ Vector<Vector4> JointLimitationKusudama3D::get_open_cones() const {
 	return open_cones;
 }
 
+void JointLimitationKusudama3D::set_cone_count(int p_count) {
+	if (p_count < 0) {
+		p_count = 0;
+	}
+	int old_size = open_cones.size();
+	if (old_size == p_count) {
+		return;
+	}
+	open_cones.resize(p_count);
+	// Initialize new cones with default values
+	for (int i = old_size; i < open_cones.size(); i++) {
+		open_cones.write[i] = Vector4(0, 1, 0, Math::PI * 0.25); // Default: +Y axis, 45 degree cone
+	}
+	notify_property_list_changed();
+	emit_changed();
+}
+
+int JointLimitationKusudama3D::get_cone_count() const {
+	return open_cones.size();
+}
+
+void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_center) {
+	ERR_FAIL_INDEX(p_index, open_cones.size());
+	Vector3 normalized = p_center.normalized();
+	Vector4 &cone = open_cones.write[p_index];
+	cone.x = normalized.x;
+	cone.y = normalized.y;
+	cone.z = normalized.z;
+	emit_changed();
+}
+
+Vector3 JointLimitationKusudama3D::get_cone_center(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, open_cones.size(), Vector3(0, 1, 0));
+	return Vector3(open_cones[p_index].x, open_cones[p_index].y, open_cones[p_index].z);
+}
+
+void JointLimitationKusudama3D::set_cone_azimuth(int p_index, real_t p_azimuth) {
+	ERR_FAIL_INDEX(p_index, open_cones.size());
+	Vector3 center = get_cone_center(p_index);
+	real_t elevation = Math::asin(CLAMP(center.y, -1.0, 1.0));
+	// Convert azimuth from degrees to radians, normalize to 0-360 range
+	real_t azimuth_deg = Math::fposmod(p_azimuth, (real_t)360.0);
+	real_t azimuth_rad = Math::deg_to_rad(azimuth_deg);
+	// Convert spherical to cartesian
+	Vector3 new_center;
+	new_center.x = Math::cos(elevation) * Math::sin(azimuth_rad);
+	new_center.y = Math::sin(elevation);
+	new_center.z = Math::cos(elevation) * Math::cos(azimuth_rad);
+	set_cone_center(p_index, new_center);
+}
+
+real_t JointLimitationKusudama3D::get_cone_azimuth(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, open_cones.size(), 0.0);
+	Vector3 center = get_cone_center(p_index);
+	// Convert to azimuth (horizontal angle)
+	real_t azimuth_rad = Math::atan2(center.x, center.z);
+	// Convert from radians to degrees and normalize to 0-360 range
+	real_t azimuth_deg = Math::rad_to_deg(azimuth_rad);
+	return Math::fposmod(azimuth_deg, (real_t)360.0);
+}
+
+void JointLimitationKusudama3D::set_cone_elevation(int p_index, real_t p_elevation) {
+	ERR_FAIL_INDEX(p_index, open_cones.size());
+	Vector3 center = get_cone_center(p_index);
+	real_t azimuth_rad = Math::atan2(center.x, center.z);
+	// Convert elevation from degrees to radians
+	// Clamp to valid range for direction vectors (±90 degrees)
+	// Allow wider input range in UI, but clamp for calculation
+	real_t elevation_rad = Math::deg_to_rad(CLAMP(p_elevation, -90.0, 90.0));
+	// Convert spherical to cartesian
+	Vector3 new_center;
+	new_center.x = Math::cos(elevation_rad) * Math::sin(azimuth_rad);
+	new_center.y = Math::sin(elevation_rad);
+	new_center.z = Math::cos(elevation_rad) * Math::cos(azimuth_rad);
+	set_cone_center(p_index, new_center);
+}
+
+real_t JointLimitationKusudama3D::get_cone_elevation(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, open_cones.size(), 0.0);
+	Vector3 center = get_cone_center(p_index);
+	// Convert to elevation (vertical angle)
+	real_t elevation_rad = Math::asin(CLAMP(center.y, -1.0, 1.0));
+	// Convert from radians to degrees
+	return Math::rad_to_deg(elevation_rad);
+}
+
+void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
+	ERR_FAIL_INDEX(p_index, open_cones.size());
+	open_cones.write[p_index].w = p_radius;
+	emit_changed();
+}
+
+real_t JointLimitationKusudama3D::get_cone_radius(int p_index) const {
+	ERR_FAIL_INDEX_V(p_index, open_cones.size(), 0.0);
+	return open_cones[p_index].w;
+}
+
+bool JointLimitationKusudama3D::_set(const StringName &p_name, const Variant &p_value) {
+	String prop_name = p_name;
+	if (prop_name == "cone_count") {
+		set_cone_count(p_value);
+		return true;
+	}
+	if (prop_name.begins_with("open_cones/")) {
+		int index = prop_name.get_slicec('/', 1).to_int();
+		String what = prop_name.get_slicec('/', 2);
+		if (what == "azimuth") {
+			set_cone_azimuth(index, p_value);
+			return true;
+		}
+		if (what == "elevation") {
+			set_cone_elevation(index, p_value);
+			return true;
+		}
+		if (what == "radius") {
+			set_cone_radius(index, p_value);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool JointLimitationKusudama3D::_get(const StringName &p_name, Variant &r_ret) const {
+	String prop_name = p_name;
+	if (prop_name == "cone_count") {
+		r_ret = get_cone_count();
+		return true;
+	}
+	if (prop_name.begins_with("open_cones/")) {
+		int index = prop_name.get_slicec('/', 1).to_int();
+		String what = prop_name.get_slicec('/', 2);
+		if (what == "azimuth") {
+			r_ret = get_cone_azimuth(index);
+			return true;
+		}
+		if (what == "elevation") {
+			r_ret = get_cone_elevation(index);
+			return true;
+		}
+		if (what == "radius") {
+			r_ret = get_cone_radius(index);
+			return true;
+		}
+	}
+	return false;
+}
+
+void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) const {
+	p_list->push_back(PropertyInfo(Variant::INT, PNAME("cone_count"), PROPERTY_HINT_RANGE, "0,16384,1,or_greater", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY, "Open Cones," + String(PNAME("open_cones")) + "/"));
+	for (int i = 0; i < get_cone_count(); i++) {
+		const String prefix = vformat("%s/%d/", PNAME("open_cones"), i);
+		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("azimuth"), PROPERTY_HINT_RANGE, "-360,720,0.1,or_less,or_greater,degrees"));
+		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("elevation"), PROPERTY_HINT_RANGE, "-180,180,0.1,or_less,or_greater,degrees"));
+		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("radius"), PROPERTY_HINT_RANGE, "0,180,0.1,radians_as_degrees"));
+	}
+}
+
 void JointLimitationKusudama3D::set_axial_limits(real_t p_min_angle, real_t p_range_angle) {
 	min_axial_angle = p_min_angle;
 	range_angle = p_range_angle;
@@ -332,13 +500,115 @@ bool JointLimitationKusudama3D::is_orientationally_constrained() const {
 }
 
 #ifdef TOOLS_ENABLED
+// Helper to draw a circle on the sphere given center, radius angle, and sphere radius
+static void draw_cone_circle(LocalVector<Vector3> &r_vts, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 32) {
+	Vector3 axis = p_center.normalized();
+	Vector3 perp1 = axis.get_any_perpendicular().normalized();
+	
+	// Generate circle points on the sphere
+	Vector3 start_point = Quaternion(perp1, p_radius_angle).xform(axis);
+	real_t dp = Math::TAU / (real_t)p_segments;
+	
+	for (int i = 0; i < p_segments; i++) {
+		real_t angle = (real_t)i * dp;
+		Quaternion rot = Quaternion(axis, angle);
+		Vector3 point = rot.xform(start_point) * p_sphere_r;
+		Vector3 next_point = rot.xform(Quaternion(axis, (real_t)(i + 1) * dp).xform(start_point)) * p_sphere_r;
+		r_vts.push_back(point);
+		r_vts.push_back(next_point);
+	}
+}
+
+// Helper to draw a circle arc on the sphere along a tangent circle
+// The arc connects the boundaries of two adjacent cones
+static void draw_tangent_circle_arc(LocalVector<Vector3> &r_vts, const Vector3 &p_tangent_center, real_t p_tangent_radius, 
+		const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius,
+		real_t p_sphere_r, int p_segments = 16) {
+	Vector3 tan_center = p_tangent_center.normalized();
+	Vector3 cone1 = p_cone1_center.normalized();
+	Vector3 cone2 = p_cone2_center.normalized();
+	
+	// Find intersection points: points that are on both the cone boundary and the tangent circle
+	// The intersection occurs where the angle from cone center to point equals cone radius,
+	// and the angle from tangent center to point equals tangent radius
+	
+	// For cone1: find point on its boundary that's closest to the tangent circle
+	// The point on cone1 boundary closest to tan_center
+	Vector3 dir1 = (tan_center - cone1 * cone1.dot(tan_center)).normalized();
+	if (dir1.is_zero_approx()) {
+		dir1 = cone1.get_any_perpendicular().normalized();
+	}
+	// Rotate this direction by cone1_radius around cone1 to get boundary point
+	Quaternion cone1_rot = Quaternion(cone1, p_cone1_radius);
+	Vector3 cone1_boundary = cone1_rot.xform(dir1).normalized();
+	
+	// Project cone1_boundary onto the tangent circle
+	// Find the plane containing tan_center and cone1_boundary, rotate around normal
+	Vector3 plane_normal = tan_center.cross(cone1_boundary);
+	if (plane_normal.is_zero_approx()) {
+		plane_normal = tan_center.get_any_perpendicular();
+	}
+	plane_normal.normalize();
+	Quaternion project_rot = Quaternion(plane_normal, p_tangent_radius);
+	Vector3 start_point = project_rot.xform(tan_center).normalized();
+	
+	// For cone2: same process
+	Vector3 dir2 = (tan_center - cone2 * cone2.dot(tan_center)).normalized();
+	if (dir2.is_zero_approx()) {
+		dir2 = cone2.get_any_perpendicular().normalized();
+	}
+	Quaternion cone2_rot = Quaternion(cone2, p_cone2_radius);
+	Vector3 cone2_boundary = cone2_rot.xform(dir2).normalized();
+	
+	Vector3 plane_normal2 = tan_center.cross(cone2_boundary);
+	if (plane_normal2.is_zero_approx()) {
+		plane_normal2 = tan_center.get_any_perpendicular();
+	}
+	plane_normal2.normalize();
+	Quaternion project_rot2 = Quaternion(plane_normal2, p_tangent_radius);
+	Vector3 end_point = project_rot2.xform(tan_center).normalized();
+	
+	// Now draw arc along tangent circle from start_point to end_point
+	Vector3 rot_axis = tan_center;
+	Vector3 perp = rot_axis.get_any_perpendicular().normalized();
+	Vector3 perp2 = rot_axis.cross(perp).normalized();
+	
+	// Compute angles in the tangent circle's coordinate system
+	Vector3 start_rel = start_point - rot_axis * rot_axis.dot(start_point);
+	Vector3 end_rel = end_point - rot_axis * rot_axis.dot(end_point);
+	start_rel.normalize();
+	end_rel.normalize();
+	
+	real_t start_angle = Math::atan2(start_rel.dot(perp2), start_rel.dot(perp));
+	real_t end_angle = Math::atan2(end_rel.dot(perp2), end_rel.dot(perp));
+	
+	// Normalize to [0, 2π]
+	if (end_angle < start_angle) {
+		end_angle += Math::TAU;
+	}
+	
+	// Generate arc points
+	Vector3 arc_base = Quaternion(perp, p_tangent_radius).xform(rot_axis);
+	for (int i = 0; i < p_segments; i++) {
+		real_t t = (real_t)i / (real_t)p_segments;
+		real_t angle = start_angle + (end_angle - start_angle) * t;
+		Quaternion rot = Quaternion(rot_axis, angle);
+		Vector3 point = rot.xform(arc_base) * p_sphere_r;
+		real_t next_t = (real_t)(i + 1) / (real_t)p_segments;
+		real_t next_angle = start_angle + (end_angle - start_angle) * next_t;
+		Quaternion next_rot = Quaternion(rot_axis, next_angle);
+		Vector3 next_point = next_rot.xform(arc_base) * p_sphere_r;
+		r_vts.push_back(point);
+		r_vts.push_back(next_point);
+	}
+}
+
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
 	if (open_cones.is_empty() || !orientationally_constrained) {
 		return;
 	}
 
 	static const int N = 32; // Number of segments per circle
-	static const real_t DP = Math::TAU / (real_t)N;
 
 	real_t sphere_r = p_bone_length * 0.25f;
 	if (sphere_r <= CMP_EPSILON) {
@@ -347,73 +617,211 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 
 	LocalVector<Vector3> vts;
 
-	// Draw each open cone as a circle on the sphere
+	// Compute the merged boundary of all open areas (boolean union)
+	// Like the shader, we distinguish between control cone boundaries and tangent cone boundaries
+	LocalVector<Vector3> control_cone_boundary_points; // Points on actual cone boundaries
+	LocalVector<Vector3> tangent_cone_boundary_points; // Points on tangent arcs between cones
+	
+	// Helper to check if a point on the sphere is inside any open area
+	auto is_point_in_open_area = [&](const Vector3 &p_point) -> bool {
+		Vector3 dir = p_point.normalized();
+		
+		// Check if point is in any cone
+		for (int i = 0; i < open_cones.size(); i++) {
+			const Vector4 &cone_data = open_cones[i];
+			Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+			real_t radius = cone_data.w;
+			real_t angle = Math::acos(CLAMP(dir.dot(center), -1.0, 1.0));
+			if (angle <= radius) {
+				return true; // Point is inside this cone
+			}
+		}
+		
+		// Check if point is in any path between cones
+		if (open_cones.size() > 1) {
+			for (int i = 0; i < open_cones.size(); i++) {
+				int next_i = (i + 1) % open_cones.size();
+				const Vector4 &cone1_data = open_cones[i];
+				const Vector4 &cone2_data = open_cones[next_i];
+				
+				Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+				real_t radius1 = cone1_data.w;
+				real_t radius2 = cone2_data.w;
+				
+				// Check if point is in the path between these cones
+				Vector3 collision = get_on_great_tangent_triangle(dir, center1, radius1, center2, radius2);
+				if (!Math::is_nan(collision.x) && Math::is_equal_approx(collision.dot(dir), (real_t)1.0)) {
+					return true; // Point is in the path
+				}
+			}
+		}
+		
+		return false; // Point is not in any open area
+	};
+	
+	// Sample boundary points on control cone boundaries
+	// A point is on the merged boundary if it's on a cone boundary AND moving outward takes you outside all open areas
 	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
-		const Vector4 &cone = open_cones[cone_i];
-		Vector3 center = Vector3(cone.x, cone.y, cone.z).normalized();
-		real_t radius_angle = cone.w;
-
-		// Calculate the circle on the sphere defined by the cone
-		// The cone center is a point on the sphere, and radius_angle is the half-angle
+		const Vector4 &cone_data = open_cones[cone_i];
+		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		real_t radius_angle = cone_data.w;
+		
+		// Sample points around the cone boundary
 		Vector3 axis = center;
 		Vector3 perp1 = axis.get_any_perpendicular().normalized();
-		Vector3 perp2 = axis.cross(perp1).normalized();
-
-		// Generate circle points on the sphere
-		// The circle is defined by rotating a point at radius_angle from the center around the center axis
-		LocalVector<Vector3> circle_points;
-		Vector3 start_point = Quaternion(perp1, radius_angle).xform(axis);
-		for (int i = 0; i <= N; i++) {
-			real_t angle = (real_t)i * DP;
-			// Rotate the start point around the axis
-			Quaternion rot = Quaternion(axis, angle);
-			Vector3 point = rot.xform(start_point) * sphere_r;
-			circle_points.push_back(point);
-		}
-
-		// Draw circle
+		Vector3 boundary_start = Quaternion(perp1, radius_angle).xform(axis);
+		
 		for (int i = 0; i < N; i++) {
-			vts.push_back(circle_points[i]);
-			vts.push_back(circle_points[i + 1]);
-		}
-
-		// Draw line from origin to cone center
-		vts.push_back(Vector3());
-		vts.push_back(center * sphere_r);
-
-		// Draw connections between adjacent cones
-		if (open_cones.size() > 1) {
-			int next_i = (cone_i + 1) % open_cones.size();
-			const Vector4 &next_cone = open_cones[next_i];
-			Vector3 next_center = Vector3(next_cone.x, next_cone.y, next_cone.z).normalized();
-
-			// Draw arc between cone centers
-			int arc_segments = 8;
-			for (int j = 0; j < arc_segments; j++) {
-				real_t t = (real_t)j / (real_t)arc_segments;
-				Vector3 arc_point = center.lerp(next_center, t).normalized() * sphere_r;
-				Vector3 next_arc_point = center.lerp(next_center, t + 1.0f / arc_segments).normalized() * sphere_r;
-				vts.push_back(arc_point);
-				vts.push_back(next_arc_point);
+			real_t angle = (real_t)i * Math::TAU / (real_t)N;
+			Quaternion rot = Quaternion(axis, angle);
+			Vector3 boundary_point = rot.xform(boundary_start).normalized();
+			
+			// Check if this boundary point is actually on the merged boundary
+			// by checking if a point slightly outside is not in any open area
+			Vector3 outward_dir = (boundary_point - center * center.dot(boundary_point)).normalized();
+			real_t small_offset = 0.01; // Small angle offset
+			Quaternion offset_rot = Quaternion(outward_dir, small_offset);
+			Vector3 test_point = offset_rot.xform(boundary_point).normalized();
+			
+			// If test point is outside all open areas, this boundary point is part of the merged boundary
+			if (!is_point_in_open_area(test_point)) {
+				control_cone_boundary_points.push_back(boundary_point * sphere_r);
 			}
 		}
 	}
+	
+	// Sample boundary points on tangent circle arcs (paths between cones)
+	if (open_cones.size() > 1) {
+		for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
+			int next_i = (cone_i + 1) % open_cones.size();
+			const Vector4 &cone1_data = open_cones[cone_i];
+			const Vector4 &cone2_data = open_cones[next_i];
+			
+			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+			real_t radius1 = cone1_data.w;
+			real_t radius2 = cone2_data.w;
+			
+			Vector3 tan1, tan2;
+			real_t tan_radius;
+			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+			
+			// Determine which tangent circle to use
+			Vector3 mid_dir = (center1 + center2).normalized();
+			Vector3 c1xc2 = center1.cross(center2);
+			real_t side = mid_dir.dot(c1xc2);
+			Vector3 tan_center = (side < 0.0) ? tan1 : tan2;
+			
+			// Sample points along the tangent circle arc
+			Vector3 rot_axis = tan_center.normalized();
+			Vector3 perp = rot_axis.get_any_perpendicular().normalized();
+			Vector3 arc_base = Quaternion(perp, tan_radius).xform(rot_axis);
+			
+			// Find the arc segment that's part of the boundary
+			int arc_samples = 16;
+			for (int i = 0; i < arc_samples; i++) {
+				real_t t = (real_t)i / (real_t)(arc_samples - 1);
+				// Approximate arc angle range (simplified - full version would compute exact intersection points)
+				real_t arc_angle = Math::TAU * t;
+				Quaternion rot = Quaternion(rot_axis, arc_angle);
+				Vector3 arc_point = rot.xform(arc_base).normalized();
+				
+				// Check if this arc point is on the merged boundary
+				Vector3 outward_dir = (arc_point - tan_center * tan_center.dot(arc_point)).normalized();
+				real_t small_offset = 0.01;
+				Quaternion offset_rot = Quaternion(outward_dir, small_offset);
+				Vector3 test_point = offset_rot.xform(arc_point).normalized();
+				
+				if (!is_point_in_open_area(test_point)) {
+					tangent_cone_boundary_points.push_back(arc_point * sphere_r);
+				}
+			}
+		}
+	}
+	
+	// Draw control cone boundaries (the actual cone circles that are part of the merged boundary)
+	// These are drawn as continuous curves
+	for (int i = 0; i < (int)control_cone_boundary_points.size() - 1; i++) {
+		vts.push_back(control_cone_boundary_points[i]);
+		vts.push_back(control_cone_boundary_points[i + 1]);
+	}
+	
+	// Draw tangent cone boundaries (paths between cones)
+	// These are drawn as separate segments to distinguish them from control cone boundaries
+	for (int i = 0; i < (int)tangent_cone_boundary_points.size() - 1; i++) {
+		vts.push_back(tangent_cone_boundary_points[i]);
+		vts.push_back(tangent_cone_boundary_points[i + 1]);
+	}
+	
+	// Also draw lines from origin to cone centers for reference
+	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
+		const Vector4 &cone = open_cones[cone_i];
+		Vector3 center = Vector3(cone.x, cone.y, cone.z).normalized();
+		vts.push_back(Vector3());
+		vts.push_back(center * sphere_r);
+	}
 
-	// Draw axial limits if constrained
+	// Draw axial limits if constrained - draw fins in line mesh style
 	if (axially_constrained && range_angle < Math::TAU) {
-		// Draw a ring showing the twist limits
+		// Use the average cone radius for the axial limit visualization
+		real_t avg_cone_radius = 0.0;
+		if (!open_cones.is_empty()) {
+			for (int i = 0; i < open_cones.size(); i++) {
+				avg_cone_radius += open_cones[i].w;
+			}
+			avg_cone_radius /= (real_t)open_cones.size();
+		} else {
+			avg_cone_radius = Math::PI * 0.25; // Default 45 degrees
+		}
+		
+		// Draw fins as radial lines extending from center to show twist limits
+		// Each fin is a line from origin to the ring at the cone radius
 		Vector3 y_axis = Vector3(0, 1, 0);
-		real_t ring_radius = sphere_r * 0.8f;
-
-		for (int i = 0; i < N; i++) {
-			real_t angle = min_axial_angle + (range_angle * (real_t)i / (real_t)N);
+		real_t ring_radius = sphere_r * Math::sin(avg_cone_radius);
+		real_t ring_y = sphere_r * Math::cos(avg_cone_radius);
+		
+		// Number of fins to draw (more fins for better visualization)
+		int fin_count = MAX(8, (int)(range_angle / Math::PI * 16.0)); // Scale with range
+		fin_count = MIN(fin_count, 32); // Cap at reasonable number
+		
+		// Draw the boundary fins (start and end of range)
+		// Start fin
+		Quaternion start_rot = Quaternion(y_axis, min_axial_angle);
+		Vector3 start_ring_point = start_rot.xform(Vector3(ring_radius, ring_y, 0));
+		vts.push_back(Vector3()); // Origin
+		vts.push_back(start_ring_point);
+		
+		// End fin
+		Quaternion end_rot = Quaternion(y_axis, min_axial_angle + range_angle);
+		Vector3 end_ring_point = end_rot.xform(Vector3(ring_radius, ring_y, 0));
+		vts.push_back(Vector3()); // Origin
+		vts.push_back(end_ring_point);
+		
+		// Draw intermediate fins (spaced evenly across the range)
+		for (int i = 1; i < fin_count - 1; i++) {
+			real_t t = (real_t)i / (real_t)(fin_count - 1);
+			real_t angle = min_axial_angle + range_angle * t;
 			Quaternion rot = Quaternion(y_axis, angle);
-			Vector3 p0 = rot.xform(Vector3(ring_radius, 0, 0));
-			Vector3 p1 = rot.xform(Vector3(ring_radius, 0, 0));
-			if (i < N - 1) {
-				real_t next_angle = min_axial_angle + (range_angle * (real_t)(i + 1) / (real_t)N);
+			Vector3 ring_point = rot.xform(Vector3(ring_radius, ring_y, 0));
+			vts.push_back(Vector3()); // Origin
+			vts.push_back(ring_point);
+		}
+		
+		// Draw the arc connecting the fins at the ring
+		for (int i = 0; i < fin_count; i++) {
+			real_t t = (real_t)i / (real_t)(fin_count - 1);
+			real_t angle = min_axial_angle + range_angle * t;
+			Quaternion rot = Quaternion(y_axis, angle);
+			Vector3 p0 = rot.xform(Vector3(ring_radius, ring_y, 0));
+			Vector3 p1;
+			if (i < fin_count - 1) {
+				real_t next_t = (real_t)(i + 1) / (real_t)(fin_count - 1);
+				real_t next_angle = min_axial_angle + range_angle * next_t;
 				Quaternion next_rot = Quaternion(y_axis, next_angle);
-				p1 = next_rot.xform(Vector3(ring_radius, 0, 0));
+				p1 = next_rot.xform(Vector3(ring_radius, ring_y, 0));
+			} else {
+				p1 = p0;
 			}
 			vts.push_back(p0);
 			vts.push_back(p1);
