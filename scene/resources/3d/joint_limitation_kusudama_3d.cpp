@@ -198,97 +198,169 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 }
 
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
-	if (!orientationally_constrained || open_cones.is_empty()) {
-		return p_direction;
-	}
+	Vector3 result = p_direction.normalized();
+	
+	// Apply orientation constraint (if enabled)
+	if (orientationally_constrained && !open_cones.is_empty()) {
+		// Full kusudama solving implementation based on IKKusudama3D::get_local_point_in_limits
+		Vector3 point = result;
+		real_t closest_cos = -2.0;
+		Vector3 closest_collision_point = point;
+		bool in_bounds = false;
 
-	// Full kusudama solving implementation based on IKKusudama3D::get_local_point_in_limits
-	Vector3 point = p_direction.normalized();
-	real_t closest_cos = -2.0;
-	Vector3 closest_collision_point = point;
-	bool in_bounds = false;
+		// Loop through each limit cone
+		for (int i = 0; i < open_cones.size(); i++) {
+			const Vector4 &cone_data = open_cones[i];
+			Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+			real_t radius = cone_data.w;
 
-	// Loop through each limit cone
-	for (int i = 0; i < open_cones.size(); i++) {
-		const Vector4 &cone_data = open_cones[i];
-		Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		real_t radius = cone_data.w;
+			Vector3 collision_point = closest_to_cone_boundary(point, control_point, radius);
 
-		Vector3 collision_point = closest_to_cone_boundary(point, control_point, radius);
-
-		// If NaN, point is within this cone
-		if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
-			in_bounds = true;
-			return point; // Point is within limits
-		}
-
-		// Calculate cosine of angle between collision point and original point
-		real_t this_cos = collision_point.dot(point);
-
-		// Update closest collision point if this one is closer
-		if (closest_collision_point.is_zero_approx() || this_cos > closest_cos) {
-			closest_collision_point = collision_point;
-			closest_cos = this_cos;
-		}
-	}
-
-	// If we're out of bounds of all cones, check if we're in the paths between the cones
-	if (!in_bounds && open_cones.size() > 1) {
-		for (int i = 0; i < open_cones.size() - 1; i++) {
-			const Vector4 &cone1_data = open_cones[i];
-			const Vector4 &cone2_data = open_cones[i + 1];
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-			real_t radius1 = cone1_data.w;
-			real_t radius2 = cone2_data.w;
-
-			Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
-
-			// If NaN, skip this path
-			if (Math::is_nan(collision_point.x)) {
-				continue;
+			// If NaN, point is within this cone
+			if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
+				in_bounds = true;
+				return point; // Point is within limits
 			}
 
+			// Calculate cosine of angle between collision point and original point
 			real_t this_cos = collision_point.dot(point);
 
-			// If cosine is approximately 1, point is in bounds
-			if (Math::is_equal_approx(this_cos, real_t(1.0))) {
-				return point;
-			}
-
 			// Update closest collision point if this one is closer
-			if (this_cos > closest_cos) {
+			if (closest_collision_point.is_zero_approx() || this_cos > closest_cos) {
 				closest_collision_point = collision_point;
 				closest_cos = this_cos;
 			}
 		}
 
-		// Also check path from last to first cone (if more than 2 cones)
-		if (open_cones.size() > 2) {
-			const Vector4 &cone1_data = open_cones[open_cones.size() - 1];
-			const Vector4 &cone2_data = open_cones[0];
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-			real_t radius1 = cone1_data.w;
-			real_t radius2 = cone2_data.w;
+		// If we're out of bounds of all cones, check if we're in the paths between the cones
+		if (!in_bounds && open_cones.size() > 1) {
+			for (int i = 0; i < open_cones.size() - 1; i++) {
+				const Vector4 &cone1_data = open_cones[i];
+				const Vector4 &cone2_data = open_cones[i + 1];
+				Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+				real_t radius1 = cone1_data.w;
+				real_t radius2 = cone2_data.w;
 
-			Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
+				Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
 
-			if (!Math::is_nan(collision_point.x)) {
+				// If NaN, skip this path
+				if (Math::is_nan(collision_point.x)) {
+					continue;
+				}
+
 				real_t this_cos = collision_point.dot(point);
+
+				// If cosine is approximately 1, point is in bounds
 				if (Math::is_equal_approx(this_cos, real_t(1.0))) {
 					return point;
 				}
+
+				// Update closest collision point if this one is closer
 				if (this_cos > closest_cos) {
 					closest_collision_point = collision_point;
 					closest_cos = this_cos;
 				}
 			}
+
+			// Also check path from last to first cone (if more than 2 cones)
+			if (open_cones.size() > 2) {
+				const Vector4 &cone1_data = open_cones[open_cones.size() - 1];
+				const Vector4 &cone2_data = open_cones[0];
+				Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+				real_t radius1 = cone1_data.w;
+				real_t radius2 = cone2_data.w;
+
+				Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
+
+				if (!Math::is_nan(collision_point.x)) {
+					real_t this_cos = collision_point.dot(point);
+					if (Math::is_equal_approx(this_cos, real_t(1.0))) {
+						return point;
+					}
+					if (this_cos > closest_cos) {
+						closest_collision_point = collision_point;
+						closest_cos = this_cos;
+					}
+				}
+			}
+		}
+		
+		// Return the closest boundary point
+		result = closest_collision_point.normalized();
+	}
+	
+	// Apply axial limit constraint (if enabled)
+	// Note: _solve is called in constraint space where Y is forward (twist axis), X is right, Z is up
+	if (axially_constrained && range_angle < Math::TAU) {
+		// In constraint space: Y is forward (twist axis), X is right, Z is up
+		// The twist angle is the rotation around Y-axis
+		// Project direction onto XZ plane (perpendicular to Y)
+		Vector3 y_axis = Vector3(0, 1, 0);
+		Vector3 proj = result - y_axis * result.dot(y_axis);
+		real_t proj_len = proj.length();
+		
+		if (proj_len > CMP_EPSILON) {
+			proj.normalize();
+			// Compute twist angle from X-axis
+			real_t twist_angle = Math::atan2(proj.z, proj.x);
+			
+			// Normalize angle to [0, 2π] range
+			if (twist_angle < 0) {
+				twist_angle += Math::TAU;
+			}
+			
+			// Normalize min_axial_angle to [0, 2π] range
+			real_t normalized_min = min_axial_angle;
+			if (normalized_min < 0) {
+				normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+			} else if (normalized_min >= Math::TAU) {
+				normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+			}
+			
+			real_t max_angle = normalized_min + range_angle;
+			real_t clamped_angle = twist_angle;
+			
+			// Handle angle wrapping
+			if (max_angle <= Math::TAU) {
+				// Simple case: range doesn't wrap
+				if (twist_angle < normalized_min) {
+					clamped_angle = normalized_min;
+				} else if (twist_angle > max_angle) {
+					clamped_angle = max_angle;
+				}
+			} else {
+				// Range wraps around: check both cases
+				real_t wrapped_max = Math::fposmod(max_angle, (real_t)Math::TAU);
+				if (twist_angle >= normalized_min && twist_angle <= Math::TAU) {
+					// In first part of range
+					clamped_angle = twist_angle;
+				} else if (twist_angle >= 0 && twist_angle <= wrapped_max) {
+					// In wrapped part of range
+					clamped_angle = twist_angle;
+				} else {
+					// Outside range - clamp to nearest boundary
+					real_t dist_to_min = MIN(Math::abs(twist_angle - normalized_min), Math::abs(twist_angle + Math::TAU - normalized_min));
+					real_t dist_to_max = MIN(Math::abs(twist_angle - wrapped_max), Math::abs(twist_angle - Math::TAU - wrapped_max));
+					if (dist_to_min < dist_to_max) {
+						clamped_angle = normalized_min;
+					} else {
+						clamped_angle = wrapped_max;
+					}
+				}
+			}
+			
+			// Reconstruct direction with clamped twist angle
+			real_t y_component = result.dot(y_axis);
+			real_t proj_scale = Math::sqrt(MAX(0.0, 1.0 - y_component * y_component));
+			Vector3 clamped_proj = Vector3(Math::cos(clamped_angle) * proj_scale, 0, Math::sin(clamped_angle) * proj_scale);
+			result = clamped_proj + y_axis * y_component;
+			result.normalize();
 		}
 	}
-
-	// Return the closest boundary point
-	return closest_collision_point.normalized();
+	
+	return result;
 }
 
 void JointLimitationKusudama3D::set_open_cones(const Vector<Vector4> &p_cones) {
