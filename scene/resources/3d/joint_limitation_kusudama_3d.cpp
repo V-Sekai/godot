@@ -990,32 +990,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		draw_cone_circle(vts, center, cone_radius, socket_r, 256);
 	}
 	
-	// Draw exact tangent circle arc boundaries (paths between cones) if there are multiple cones
-	if (open_cones.size() > 1) {
-		for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
-			int next_i = (cone_i + 1) % open_cones.size();
-			const Vector4 &cone1_data = open_cones[cone_i];
-			const Vector4 &cone2_data = open_cones[next_i];
-			
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-			real_t radius1 = cone1_data.w;
-			real_t radius2 = cone2_data.w;
-			
-			Vector3 tan1, tan2;
-			real_t tan_radius;
-			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-			
-			// Determine which tangent circle to use
-			Vector3 mid_dir = (center1 + center2).normalized();
-			Vector3 c1xc2 = center1.cross(center2);
-			real_t side = mid_dir.dot(c1xc2);
-			Vector3 tan_center = (side < 0.0) ? tan1 : tan2;
-			
-			// Draw the exact arc boundary between the two cones (using spline interpolation with fragment shader level detail)
-			draw_tangent_circle_arc(vts, tan_center, tan_radius, center1, radius1, center2, radius2, socket_r, 256);
-		}
-	}
+	// Tangent path boundaries are shown in the wireframe visualization where the sphere is cut
+	// The is_point_in_union function includes tangent paths, so boundaries are automatically visible
 	
 	// Draw simple markers at exact cone center locations
 	for (int cone_i = 0; cone_i < open_cones.size(); cone_i++) {
