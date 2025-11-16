@@ -52,10 +52,6 @@ void JointLimitationKusudama3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_cone_count"), &JointLimitationKusudama3D::get_cone_count);
 	ClassDB::bind_method(D_METHOD("set_cone_center", "index", "center"), &JointLimitationKusudama3D::set_cone_center);
 	ClassDB::bind_method(D_METHOD("get_cone_center", "index"), &JointLimitationKusudama3D::get_cone_center);
-	ClassDB::bind_method(D_METHOD("set_cone_azimuth", "index", "azimuth"), &JointLimitationKusudama3D::set_cone_azimuth);
-	ClassDB::bind_method(D_METHOD("get_cone_azimuth", "index"), &JointLimitationKusudama3D::get_cone_azimuth);
-	ClassDB::bind_method(D_METHOD("set_cone_elevation", "index", "elevation"), &JointLimitationKusudama3D::set_cone_elevation);
-	ClassDB::bind_method(D_METHOD("get_cone_elevation", "index"), &JointLimitationKusudama3D::get_cone_elevation);
 	ClassDB::bind_method(D_METHOD("set_cone_radius", "index", "radius"), &JointLimitationKusudama3D::set_cone_radius);
 	ClassDB::bind_method(D_METHOD("get_cone_radius", "index"), &JointLimitationKusudama3D::get_cone_radius);
 
@@ -408,58 +404,6 @@ Vector3 JointLimitationKusudama3D::get_cone_center(int p_index) const {
 	return Vector3(open_cones[p_index].x, open_cones[p_index].y, open_cones[p_index].z);
 }
 
-void JointLimitationKusudama3D::set_cone_azimuth(int p_index, real_t p_azimuth) {
-	ERR_FAIL_INDEX(p_index, open_cones.size());
-	Vector3 center = get_cone_center(p_index);
-	real_t elevation = Math::asin(CLAMP(center.x, -1.0, 1.0));
-	// Convert azimuth from degrees to radians, normalize to 0-360 range
-	real_t azimuth_deg = Math::fposmod(p_azimuth, (real_t)360.0);
-	real_t azimuth_rad = Math::deg_to_rad(azimuth_deg);
-	// Convert spherical to cartesian
-	// X axis is the pole axis, YZ plane is the equator (singularity at X=0)
-	Vector3 new_center;
-	new_center.x = Math::sin(elevation);
-	new_center.y = Math::cos(elevation) * Math::sin(azimuth_rad);
-	new_center.z = Math::cos(elevation) * Math::cos(azimuth_rad);
-	set_cone_center(p_index, new_center);
-}
-
-real_t JointLimitationKusudama3D::get_cone_azimuth(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, open_cones.size(), 0.0);
-	Vector3 center = get_cone_center(p_index);
-	// Convert to azimuth (angle in YZ plane, rotating around X axis)
-	real_t azimuth_rad = Math::atan2(center.y, center.z);
-	// Convert from radians to degrees and normalize to 0-360 range
-	real_t azimuth_deg = Math::rad_to_deg(azimuth_rad);
-	return Math::fposmod(azimuth_deg, (real_t)360.0);
-}
-
-void JointLimitationKusudama3D::set_cone_elevation(int p_index, real_t p_elevation) {
-	ERR_FAIL_INDEX(p_index, open_cones.size());
-	Vector3 center = get_cone_center(p_index);
-	real_t azimuth_rad = Math::atan2(center.y, center.z);
-	// Use axis position directly (-1 to 1) instead of elevation angle
-	// This avoids poles: X axis is the pole axis, YZ plane is the equator
-	// p_elevation is treated as the X coordinate value directly
-	real_t axis_pos = CLAMP(p_elevation, -1.0, 1.0);
-	// Calculate the radius in the YZ plane
-	real_t yz_radius = Math::sqrt(MAX(0.0, 1.0 - axis_pos * axis_pos));
-	// Convert to cartesian
-	Vector3 new_center;
-	new_center.x = axis_pos;
-	new_center.y = yz_radius * Math::sin(azimuth_rad);
-	new_center.z = yz_radius * Math::cos(azimuth_rad);
-	set_cone_center(p_index, new_center);
-}
-
-real_t JointLimitationKusudama3D::get_cone_elevation(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, open_cones.size(), 0.0);
-	Vector3 center = get_cone_center(p_index);
-	// Return the X coordinate directly (axis position from -1 to 1)
-	// This avoids poles and singularities
-	return CLAMP(center.x, -1.0, 1.0);
-}
-
 void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
 	ERR_FAIL_INDEX(p_index, open_cones.size());
 	open_cones.write[p_index].w = p_radius;
@@ -480,12 +424,8 @@ bool JointLimitationKusudama3D::_set(const StringName &p_name, const Variant &p_
 	if (prop_name.begins_with("open_cones/")) {
 		int index = prop_name.get_slicec('/', 1).to_int();
 		String what = prop_name.get_slicec('/', 2);
-		if (what == "azimuth") {
-			set_cone_azimuth(index, p_value);
-			return true;
-		}
-		if (what == "elevation") {
-			set_cone_elevation(index, p_value);
+		if (what == "center") {
+			set_cone_center(index, p_value);
 			return true;
 		}
 		if (what == "radius") {
@@ -505,12 +445,8 @@ bool JointLimitationKusudama3D::_get(const StringName &p_name, Variant &r_ret) c
 	if (prop_name.begins_with("open_cones/")) {
 		int index = prop_name.get_slicec('/', 1).to_int();
 		String what = prop_name.get_slicec('/', 2);
-		if (what == "azimuth") {
-			r_ret = get_cone_azimuth(index);
-			return true;
-		}
-		if (what == "elevation") {
-			r_ret = get_cone_elevation(index);
+		if (what == "center") {
+			r_ret = get_cone_center(index);
 			return true;
 		}
 		if (what == "radius") {
@@ -525,8 +461,7 @@ void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) c
 	p_list->push_back(PropertyInfo(Variant::INT, PNAME("cone_count"), PROPERTY_HINT_RANGE, "0,16384,1,or_greater", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_ARRAY, "Open Cones," + String(PNAME("open_cones")) + "/"));
 	for (int i = 0; i < get_cone_count(); i++) {
 		const String prefix = vformat("%s/%d/", PNAME("open_cones"), i);
-		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("azimuth"), PROPERTY_HINT_RANGE, "-360,720,0.1,or_less,or_greater,degrees"));
-		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("elevation"), PROPERTY_HINT_RANGE, "-1,1,0.01"));
+		p_list->push_back(PropertyInfo(Variant::VECTOR3, prefix + PNAME("center")));
 		p_list->push_back(PropertyInfo(Variant::FLOAT, prefix + PNAME("radius"), PROPERTY_HINT_RANGE, "0,180,0.1,radians_as_degrees"));
 	}
 }
@@ -686,6 +621,11 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	}
 
 	LocalVector<Vector3> vts;
+	
+	// Compute the merged boundary of all open areas (boolean union)
+	// Like the shader, we distinguish between control cone boundaries and tangent cone boundaries
+	LocalVector<Vector3> control_cone_boundary_points; // Points on actual cone boundaries
+	LocalVector<Vector3> tangent_cone_boundary_points; // Points on tangent arcs between cones
 	
 	// Draw rotation freedom indicators at the joint origin
 	// Show how much the bone can still rotate around its axis

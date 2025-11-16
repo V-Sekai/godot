@@ -64,12 +64,6 @@ public:
 	void set_cone_center(int p_index, const Vector3 &p_center);
 	Vector3 get_cone_center(int p_index) const;
 
-	void set_cone_azimuth(int p_index, real_t p_azimuth);
-	real_t get_cone_azimuth(int p_index) const;
-
-	void set_cone_elevation(int p_index, real_t p_elevation);
-	real_t get_cone_elevation(int p_index) const;
-
 	void set_cone_radius(int p_index, real_t p_radius);
 	real_t get_cone_radius(int p_index) const;
 
