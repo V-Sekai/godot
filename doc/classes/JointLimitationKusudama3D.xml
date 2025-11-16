@@ -24,13 +24,29 @@
 			<description>
 			</description>
 		</method>
+		<method name="set_min_axial_angle">
+			<return type="void" />
+			<param index="0" name="angle" type="float" />
+			<description>
+			</description>
+		</method>
+		<method name="set_range_angle">
+			<return type="void" />
+			<param index="0" name="angle" type="float" />
+			<description>
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="axially_constrained" type="bool" setter="set_axially_constrained" getter="is_axially_constrained" default="false">
 		</member>
+		<member name="min_axial_angle" type="float" setter="set_min_axial_angle" getter="get_min_axial_angle" default="0.0">
+		</member>
 		<member name="open_cones" type="PackedVector4Array" setter="set_open_cones" getter="get_open_cones" default="PackedVector4Array()">
 		</member>
 		<member name="orientationally_constrained" type="bool" setter="set_orientationally_constrained" getter="is_orientationally_constrained" default="true">
+		</member>
+		<member name="range_angle" type="float" setter="set_range_angle" getter="get_range_angle" default="6.28318530718">
 		</member>
 	</members>
 </class>
