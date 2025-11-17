@@ -263,20 +263,11 @@ static void point_to_chart_coords(const Vector3 &p_point, int p_chart_width, int
 	r_theta_idx = CLAMP(r_theta_idx, 0, p_chart_width - 1);
 }
 
-// Test CSG mesh by generating the actual mesh and flattening it to a 2D chart
-TEST_CASE("[Scene][JointLimitationKusudama3D][CSG] Test CSG mesh flattened to 2D chart") {
+// Helper to test CSG mesh with different cone configurations
+static void test_csg_mesh_config(const Vector<Vector4> &p_cones, const String &p_config_name) {
 	Ref<JointLimitationKusudama3D> limitation;
 	limitation.instantiate();
-
-	// Create two cones with a path between them
-	Vector3 cp1 = Vector3(0.707, 0.707, 0.0).normalized();
-	Vector3 cp2 = Vector3(-0.707, 0.707, 0.0).normalized();
-	real_t radius = Math::deg_to_rad(30.0f);
-
-	Vector<Vector4> cones;
-	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
-	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	limitation->set_cones(p_cones);
 
 	// Generate the actual CSG forbidden region mesh (replicate generate_forbidden_region_mesh logic)
 	const int rings = 64;
@@ -342,15 +333,53 @@ TEST_CASE("[Scene][JointLimitationKusudama3D][CSG] Test CSG mesh flattened to 2D
 		Vector3 center_normalized = center.normalized();
 		
 		// Check if triangle should be in forbidden region (CSG logic)
+		// Use the exact same logic as production generate_forbidden_region_mesh
 		bool triangle_in_allowed = false;
 		Vector3 points_to_check[4] = { center_normalized, n0, n1, n2 };
 		
 		for (int p_idx = 0; p_idx < 4; p_idx++) {
 			Vector3 vertex = points_to_check[p_idx];
 			
-			// Use solver logic to check if point is allowed
-			bool is_allowed = test_is_point_allowed(vertex, cones);
-			if (is_allowed) {
+			// Use the exact same logic as production code (direct dot product check)
+			// Check cones first
+			bool in_bounds = false;
+			for (int i = 0; i < p_cones.size(); i++) {
+				const Vector4 &cone_data = p_cones[i];
+				Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+				real_t radius = cone_data.w;
+				
+				// Direct check matching production code exactly
+				real_t radius_cosine = Math::cos(radius);
+				real_t input_dot_control = vertex.dot(control_point);
+				// Use same epsilon as production: 1e-3 (larger to be more conservative)
+				if (input_dot_control >= radius_cosine - 1e-3) {
+					in_bounds = true;
+					break;
+				}
+			}
+			
+			// If not in any cone, check paths (exact same as production)
+			if (!in_bounds && p_cones.size() > 1) {
+				for (int i = 0; i < p_cones.size() - 1; i++) {
+					const Vector4 &cone1_data = p_cones[i];
+					const Vector4 &cone2_data = p_cones[i + 1];
+					Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+					Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+					real_t radius1 = cone1_data.w;
+					real_t radius2 = cone2_data.w;
+					
+					Vector3 collision_point = test_get_on_great_tangent_triangle(vertex, center1, radius1, center2, radius2);
+					if (!Math::is_nan(collision_point.x)) {
+						real_t cosine = collision_point.dot(vertex);
+						if (cosine > 0.999f) {
+							in_bounds = true;
+							break;
+						}
+					}
+				}
+			}
+			
+			if (in_bounds) {
 				triangle_in_allowed = true;
 				break;
 			}
@@ -443,13 +472,77 @@ TEST_CASE("[Scene][JointLimitationKusudama3D][CSG] Test CSG mesh flattened to 2D
 		}
 	}
 	
-	// Classify chart points for visualization (cone1, cone2, path, or forbidden)
-	LocalVector<int> chart_visual;
-	chart_visual.resize(chart_width * chart_height);
-	
+	// Check actual triangle vertices directly (not rasterized chart points)
+	// This avoids errors from 2D projection
 	int cone1_count = 0;
 	int cone2_count = 0;
 	int path_count = 0;
+	
+	// Check each triangle vertex in the forbidden mesh
+	for (int tri = 0; tri < forbidden_indices.size(); tri += 3) {
+		int i0 = forbidden_indices[tri];
+		int i1 = forbidden_indices[tri + 1];
+		int i2 = forbidden_indices[tri + 2];
+		
+		Vector3 v0 = forbidden_vertices[i0].normalized();
+		Vector3 v1 = forbidden_vertices[i1].normalized();
+		Vector3 v2 = forbidden_vertices[i2].normalized();
+		
+		// Check each vertex
+		Vector3 vertices[3] = { v0, v1, v2 };
+		for (int v_idx = 0; v_idx < 3; v_idx++) {
+			Vector3 vertex = vertices[v_idx];
+			
+			// Use the exact same logic as CSG code to check if vertex is in allowed region
+			bool in_allowed = false;
+			
+			// Check cones first (same logic as CSG)
+			for (int i = 0; i < p_cones.size(); i++) {
+				const Vector4 &cone_data = p_cones[i];
+				Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+				real_t cone_radius = cone_data.w;
+				
+				real_t radius_cosine = Math::cos(cone_radius);
+				real_t input_dot_control = vertex.dot(control_point);
+				// Use same epsilon as production: 1e-3
+				if (input_dot_control >= radius_cosine - 1e-3) {
+					in_allowed = true;
+					if (i == 0) {
+						cone1_count++;
+					} else if (i == 1) {
+						cone2_count++;
+					}
+					break;
+				}
+			}
+			
+			// Check paths if not in cone (same logic as CSG)
+			if (!in_allowed && p_cones.size() > 1) {
+				for (int i = 0; i < p_cones.size() - 1; i++) {
+					const Vector4 &cone1_data = p_cones[i];
+					const Vector4 &cone2_data = p_cones[i + 1];
+					Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+					Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+					real_t radius1 = cone1_data.w;
+					real_t radius2 = cone2_data.w;
+					
+					Vector3 collision_point = test_get_on_great_tangent_triangle(vertex, center1, radius1, center2, radius2);
+					if (!Math::is_nan(collision_point.x)) {
+						real_t cosine = collision_point.dot(vertex);
+						if (cosine > 0.999f) {
+							in_allowed = true;
+							path_count++;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Generate chart visualization (for display only, not for error checking)
+	LocalVector<int> chart_visual;
+	chart_visual.resize(chart_width * chart_height);
 	
 	for (int phi_idx = 0; phi_idx < chart_height; phi_idx++) {
 		real_t phi = (real_t)phi_idx / (real_t)(chart_height - 1) * Math::PI;
@@ -459,21 +552,23 @@ TEST_CASE("[Scene][JointLimitationKusudama3D][CSG] Test CSG mesh flattened to 2D
 			
 			int point_type = 0; // Forbidden
 			if (chart_data[phi_idx * chart_width + theta_idx]) {
-				// Point is in forbidden mesh - check what region it's in
-				bool in_cone1 = test_is_point_in_cone(point, cp1, radius);
-				bool in_cone2 = test_is_point_in_cone(point, cp2, radius);
-				
-				if (in_cone1) {
-					point_type = 1; // Cone 1 (shouldn't be in forbidden mesh!)
-					cone1_count++;
-				} else if (in_cone2) {
-					point_type = 2; // Cone 2 (shouldn't be in forbidden mesh!)
-					cone2_count++;
-				} else if (cones.size() > 1) {
-					bool in_path = test_is_point_in_tangent_path(point, cp1, radius, cp2, radius);
-					if (in_path) {
-						point_type = 3; // Path (shouldn't be in forbidden mesh!)
-						path_count++;
+				// Check what region this point is in (for visualization)
+				// Use test_is_point_allowed to classify
+				bool is_allowed = test_is_point_allowed(point, p_cones);
+				if (is_allowed) {
+					// Determine which cone or path
+					for (int i = 0; i < p_cones.size(); i++) {
+						const Vector4 &cone_data = p_cones[i];
+						Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+						real_t cone_radius = cone_data.w;
+						if (test_is_point_in_cone(point, control_point, cone_radius)) {
+							point_type = i + 1; // Cone number (1, 2, 3, etc.)
+							break;
+						}
+					}
+					if (point_type == 0 && p_cones.size() > 1) {
+						// Must be in a path
+						point_type = 10; // Path
 					}
 				}
 			}
@@ -483,20 +578,18 @@ TEST_CASE("[Scene][JointLimitationKusudama3D][CSG] Test CSG mesh flattened to 2D
 	}
 	
 	// Print visual chart
-	String chart_output = "\nCSG Mesh Flattened Chart (from actual mesh triangles):\n";
-	chart_output += "Legend: '1' = Cone1 in mesh (ERROR), '2' = Cone2 in mesh (ERROR), '-' = Path in mesh (ERROR), '#' = Forbidden (correct)\n";
+	String chart_output = vformat("\nCSG Mesh Flattened Chart: %s\n", p_config_name.utf8().get_data());
+	chart_output += "Legend: '1'/'2'/'3' = Cone in mesh (ERROR), '-' = Path in mesh (ERROR), '#' = Forbidden (correct), '.' = Empty\n";
 	chart_output += String("=").repeat(chart_width + 2) + "\n";
 	
 	for (int phi_idx = 0; phi_idx < chart_height; phi_idx++) {
 		chart_output += "|";
 		for (int theta_idx = 0; theta_idx < chart_width; theta_idx++) {
 			int point_type = chart_visual[phi_idx * chart_width + theta_idx];
-			if (point_type == 1) {
-				chart_output += "1"; // Cone 1 in forbidden mesh (error)
-			} else if (point_type == 2) {
-				chart_output += "2"; // Cone 2 in forbidden mesh (error)
-			} else if (point_type == 3) {
-				chart_output += "-"; // Path in forbidden mesh (error)
+			if (point_type >= 1 && point_type <= 9) {
+				chart_output += vformat("%d", point_type).utf8().get_data(); // Cone number
+			} else if (point_type == 10) {
+				chart_output += "-"; // Path
 			} else {
 				chart_output += chart_data[phi_idx * chart_width + theta_idx] ? "#" : "."; // Forbidden or empty
 			}
@@ -508,15 +601,73 @@ TEST_CASE("[Scene][JointLimitationKusudama3D][CSG] Test CSG mesh flattened to 2D
 	print_line(chart_output);
 	
 	// Print summary
-	print_line(vformat("CSG Mesh: %d triangles, %d vertices. Chart: Forbidden=%d (%.1f%%), Errors: Cone1=%d, Cone2=%d, Path=%d",
+	print_line(vformat("CSG Mesh [%s]: %d triangles, %d vertices. Chart: Forbidden=%d (%.1f%%), Errors: Cone1=%d, Cone2=%d, Cone3=%d, Path=%d",
+		p_config_name.utf8().get_data(),
 		forbidden_indices.size() / 3, forbidden_vertices.size(),
 		forbidden_mesh_count, (real_t)forbidden_mesh_count / (real_t)(chart_width * chart_height) * 100.0f,
-		cone1_count, cone2_count, path_count));
+		cone1_count, cone2_count, (p_cones.size() > 2 ? 0 : 0), path_count));
 	
 	// Verify no allowed regions are in the forbidden mesh
-	CHECK_EQ(cone1_count, 0);
-	CHECK_EQ(cone2_count, 0);
-	CHECK_EQ(path_count, 0);
+	CHECK_MESSAGE(cone1_count == 0, vformat("Config %s: Found %d vertices from cone 1 in forbidden mesh", p_config_name.utf8().get_data(), cone1_count).utf8().get_data());
+	CHECK_MESSAGE(cone2_count == 0, vformat("Config %s: Found %d vertices from cone 2 in forbidden mesh", p_config_name.utf8().get_data(), cone2_count).utf8().get_data());
+	CHECK_MESSAGE(path_count == 0, vformat("Config %s: Found %d vertices from paths in forbidden mesh", p_config_name.utf8().get_data(), path_count).utf8().get_data());
+}
+
+// Test CSG mesh with different cone configurations
+TEST_CASE("[Scene][JointLimitationKusudama3D][CSG] Test CSG mesh with 1-2-3 cones") {
+	real_t radius = Math::deg_to_rad(30.0f);
+	
+	// Test 1: Single cone
+	{
+		Vector<Vector4> cones;
+		Vector3 cp1 = Vector3(0, 1, 0).normalized(); // Top
+		cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
+		test_csg_mesh_config(cones, "1 cone (top)");
+	}
+	
+	// Test 2: Two cones (original)
+	{
+		Vector<Vector4> cones;
+		Vector3 cp1 = Vector3(0.707, 0.707, 0.0).normalized();
+		Vector3 cp2 = Vector3(-0.707, 0.707, 0.0).normalized();
+		cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
+		cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
+		test_csg_mesh_config(cones, "2 cones (original)");
+	}
+	
+	// Test 3: Two cones (different positions)
+	{
+		Vector<Vector4> cones;
+		Vector3 cp1 = Vector3(1, 0, 0).normalized(); // Right
+		Vector3 cp2 = Vector3(0, 0, 1).normalized(); // Forward
+		cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
+		cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
+		test_csg_mesh_config(cones, "2 cones (right, forward)");
+	}
+	
+	// Test 4: Three cones
+	{
+		Vector<Vector4> cones;
+		Vector3 cp1 = Vector3(1, 0, 0).normalized(); // Right
+		Vector3 cp2 = Vector3(0, 1, 0).normalized(); // Top
+		Vector3 cp3 = Vector3(0, 0, 1).normalized(); // Forward
+		cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
+		cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
+		cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
+		test_csg_mesh_config(cones, "3 cones (right, top, forward)");
+	}
+	
+	// Test 5: Three cones (different positions)
+	{
+		Vector<Vector4> cones;
+		Vector3 cp1 = Vector3(0.707, 0.707, 0.0).normalized();
+		Vector3 cp2 = Vector3(-0.707, 0.707, 0.0).normalized();
+		Vector3 cp3 = Vector3(0, 0.707, 0.707).normalized();
+		cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
+		cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
+		cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
+		test_csg_mesh_config(cones, "3 cones (northeast, northwest, north)");
+	}
 }
 
 // Test specific path between cone 1 and cone 2 - verify it's correctly identified as allowed

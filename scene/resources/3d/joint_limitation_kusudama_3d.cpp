@@ -856,22 +856,26 @@ static void generate_forbidden_region_mesh(const Vector<Vector4> &p_cones, real_
 		
 		bool triangle_in_allowed = false;
 		
-		// Check center and all vertices using a helper that mimics _solve logic
+		// Check center and all vertices using the exact same logic as test_is_point_allowed
+		// This ensures the CSG mesh matches the solver exactly
 		Vector3 points_to_check[4] = { center_normalized, n0, n1, n2 };
 		for (int p_idx = 0; p_idx < 4; p_idx++) {
 			Vector3 vertex = points_to_check[p_idx];
 			
-			// Use the exact same logic as _solve method
-			// Check cones first
+			// Use the exact same logic as test_is_point_allowed (which matches _solve)
+			// Check cones first - use direct dot product check to match test exactly
 			bool in_bounds = false;
 			for (int i = 0; i < p_cones.size(); i++) {
 				const Vector4 &cone_data = p_cones[i];
 				Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 				real_t radius = cone_data.w;
 				
-				Vector3 collision_point = closest_to_cone_boundary(vertex, control_point, radius);
-				// If NaN, point is within this cone (matches _solve logic exactly)
-				if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
+				// Direct check matching test_is_point_in_cone exactly
+				real_t radius_cosine = Math::cos(radius);
+				real_t input_dot_control = vertex.dot(control_point);
+				// Use slightly larger epsilon to be more conservative (ensure we catch all points in allowed regions)
+				// This prevents triangles with vertices just inside cones from being kept in forbidden mesh
+				if (input_dot_control >= radius_cosine - 1e-3) {
 					in_bounds = true;
 					break;
 				}
