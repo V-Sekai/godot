@@ -150,18 +150,18 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 		// Add additional sinks (service_1 through service_9) for exported games
 		for (int i = 1; i < 10; i++) {
 			String service_prefix = "modules/open_telemetry/service_" + itos(i) + "/";
-			Variant endpoint_var = GLOBAL_GET(service_prefix + "endpoint");
-			String sink_endpoint = endpoint_var;
+			Variant sink_endpoint_var = GLOBAL_GET(service_prefix + "endpoint");
+			String sink_endpoint = sink_endpoint_var;
 
 			// Skip if endpoint is not configured
 			if (sink_endpoint.is_empty()) {
 				continue;
 			}
 
-			Variant name_var = GLOBAL_GET(service_prefix + "name");
-			String sink_name = name_var;
-			Variant headers_var = GLOBAL_GET(service_prefix + "headers");
-			Dictionary sink_headers = headers_var;
+			Variant sink_name_var = GLOBAL_GET(service_prefix + "name");
+			String sink_name = sink_name_var;
+			Variant sink_headers_var = GLOBAL_GET(service_prefix + "headers");
+			Dictionary sink_headers = sink_headers_var;
 
 			// Use service index as name if not provided
 			if (sink_name.is_empty()) {
