@@ -32,7 +32,7 @@ def test_basic_span(tracer):
     print("Test 1: Basic Span")
     print("=" * 60)
 
-    with tracer.start_as_current_span("test-basic-span") as span:
+    with tracer.start_as_current_span("test-basic-span"):
         time.sleep(0.01)
 
     print("✓ Basic span created")
@@ -78,8 +78,8 @@ def test_span_hierarchy(tracer):
     print("Test 4: Span Hierarchy")
     print("=" * 60)
 
-    with tracer.start_as_current_span("parent-span") as parent:
-        with tracer.start_as_current_span("child-span") as child:
+    with tracer.start_as_current_span("parent-span"):
+        with tracer.start_as_current_span("child-span"):
             time.sleep(0.01)
 
     print("✓ Parent-child span hierarchy created")
