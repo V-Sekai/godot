@@ -83,6 +83,9 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 	real_t input_dot_control = normalized_input.dot(normalized_control);
 
 	// Check if input is within the cone
+	// For angles <= 90°: inside if input_dot_control >= radius_cosine (angle <= radius)
+	// For angles > 90°: the cone covers more than half the sphere, so inside if input_dot_control >= radius_cosine
+	// Note: when radius > 90°, radius_cosine is negative, so this correctly handles large cones
 	// Use a small epsilon to account for floating-point precision
 	// Points on or very close to the boundary are considered inside
 	// Note: input_dot_control = cos(angle), so larger values mean smaller angles (closer to center)
@@ -151,10 +154,20 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 	
 	arc_normal.normalize();
 	
-	// Use plane intersection method matching ik_open_cone_3d.cpp
+	// Use plane intersection method to find tangent circles
+	// The tangent circles must satisfy:
+	// - tan1 · center1 = cos(radius1 + tan_radius)
+	// - tan1 · center2 = cos(radius2 + tan_radius)
+	// We avoid acos by working with dot products directly
+	
 	real_t boundary_plus_tangent_radius_a = p_radius1 + r_tan_radius;
 	real_t boundary_plus_tangent_radius_b = p_radius2 + r_tan_radius;
 	
+	// Target dot products (avoiding acos)
+	real_t target_dot1 = Math::cos(boundary_plus_tangent_radius_a);
+	real_t target_dot2 = Math::cos(boundary_plus_tangent_radius_b);
+	
+	// Use plane intersection method matching ik_open_cone_3d.cpp
 	Vector3 scaled_axis_a = center1 * Math::cos(boundary_plus_tangent_radius_a);
 	Vector3 safe_arc_normal = arc_normal;
 	if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
@@ -232,18 +245,10 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 		}
 	}
 	
-	// Check for invalid intersections before extending ray
+	// Extend intersection ray and find sphere intersection
 	Vector3 sphere_intersect1, sphere_intersect2;
 	if (!intersection1.is_finite() || !intersection2.is_finite()) {
-		// Fallback: use direct spherical geometry when plane intersection fails
-		// This happens with very small radii where numerical precision is an issue
-		// The tangent circles must satisfy:
-		// - acos(tan1 · center1) = radius1 + tan_radius
-		// - acos(tan1 · center2) = radius2 + tan_radius
-		// We solve this by finding the intersection of two spherical circles
-		
-		// Find a point on the great circle perpendicular to arc_normal
-		// This gives us a starting point in the plane containing both cone centers
+		// Fallback: use iterative search with dot products (no acos)
 		Vector3 perp_to_arc = center1.get_any_perpendicular();
 		if (perp_to_arc.dot(arc_normal) > 0.9) {
 			perp_to_arc = center1.cross(arc_normal);
@@ -252,24 +257,13 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			}
 		}
 		perp_to_arc.normalize();
-		
-		// Project perp_to_arc onto the plane containing center1 and center2
 		Vector3 in_plane = perp_to_arc - arc_normal * perp_to_arc.dot(arc_normal);
 		if (in_plane.length_squared() < CMP_EPSILON) {
-			// If projection is zero, use center1 rotated around arc_normal
 			Quaternion rot = Quaternion(arc_normal, Math::PI / 2.0);
 			in_plane = rot.xform(center1).normalized();
 		}
 		in_plane.normalize();
 		
-		// The tangent circles are at angular distances from the cone centers
-		// We need to find points on the unit sphere that satisfy both constraints
-		// Use the fact that tan1 and tan2 are symmetric about the arc_normal
-		// Try to find them by rotating in_plane around arc_normal
-		real_t target_angle1 = p_radius1 + r_tan_radius;
-		real_t target_angle2 = p_radius2 + r_tan_radius;
-		
-		// Find rotation angle that minimizes the error
 		real_t best_angle = 0.0;
 		real_t best_error = Math::INF;
 		for (int i = 0; i < 64; i++) {
@@ -277,11 +271,11 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			Quaternion rot = Quaternion(arc_normal, angle);
 			Vector3 candidate = rot.xform(in_plane).normalized();
 			
-			real_t dist1 = Math::acos(CLAMP(candidate.dot(center1), -1.0, 1.0));
-			real_t dist2 = Math::acos(CLAMP(candidate.dot(center2), -1.0, 1.0));
+			real_t dot1 = candidate.dot(center1);
+			real_t dot2 = candidate.dot(center2);
 			
-			real_t error1 = Math::abs(dist1 - target_angle1);
-			real_t error2 = Math::abs(dist2 - target_angle2);
+			real_t error1 = Math::abs(dot1 - target_dot1);
+			real_t error2 = Math::abs(dot2 - target_dot2);
 			real_t total_error = error1 + error2;
 			
 			if (total_error < best_error) {
@@ -290,7 +284,6 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			}
 		}
 		
-		// Use the best angle and its opposite
 		Quaternion rot1 = Quaternion(arc_normal, best_angle);
 		Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
 		sphere_intersect1 = rot1.xform(in_plane).normalized();
@@ -306,10 +299,92 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			real_t start_len = start_heading.length();
 			real_t end_len = end_heading.length();
 			
-			// Check if ray passes through origin (both points are very close to origin)
-			if (start_len < 0.01 && end_len < 0.01) {
-				// Ray passes through origin - use iterative search to find tangent circles
-				// that satisfy the angular distance constraints
+			if (start_len > CMP_EPSILON) {
+				start_heading = start_heading.normalized() * 99.0;
+			} else {
+				start_heading = (end_len > CMP_EPSILON) ? end_heading.normalized() * 99.0 : Vector3(1, 0, 0) * 99.0;
+			}
+			if (end_len > CMP_EPSILON) {
+				end_heading = end_heading.normalized() * 99.0;
+			} else {
+				end_heading = (start_len > CMP_EPSILON) ? start_heading.normalized() * 99.0 : Vector3(0, 1, 0) * 99.0;
+			}
+			intersection_ray_start = start_heading + mid_point;
+			intersection_ray_end = end_heading + mid_point;
+		}
+		
+		// Ray-sphere intersection
+		Vector3 sphere_center(0, 0, 0);
+		Vector3 ray_start_rel = intersection_ray_start - sphere_center;
+		Vector3 ray_end_rel = intersection_ray_end - sphere_center;
+		Vector3 direction = ray_end_rel - ray_start_rel;
+		real_t dir_len = direction.length();
+		
+		if (dir_len < CMP_EPSILON) {
+			// Degenerate ray - use iterative search with dot products
+			Vector3 perp_to_arc = center1.get_any_perpendicular();
+			if (perp_to_arc.dot(arc_normal) > 0.9) {
+				perp_to_arc = center1.cross(arc_normal);
+				if (perp_to_arc.length_squared() < CMP_EPSILON) {
+					perp_to_arc = Vector3(1, 0, 0);
+				}
+			}
+			perp_to_arc.normalize();
+			Vector3 in_plane = perp_to_arc - arc_normal * perp_to_arc.dot(arc_normal);
+			if (in_plane.length_squared() < CMP_EPSILON) {
+				Quaternion rot = Quaternion(arc_normal, Math::PI / 2.0);
+				in_plane = rot.xform(center1).normalized();
+			}
+			in_plane.normalize();
+			
+			real_t best_angle = 0.0;
+			real_t best_error = Math::INF;
+			for (int i = 0; i < 64; i++) {
+				real_t angle = (real_t)i * Math::TAU / 64.0;
+				Quaternion rot = Quaternion(arc_normal, angle);
+				Vector3 candidate = rot.xform(in_plane).normalized();
+				
+				real_t dot1 = candidate.dot(center1);
+				real_t dot2 = candidate.dot(center2);
+				
+				real_t error1 = Math::abs(dot1 - target_dot1);
+				real_t error2 = Math::abs(dot2 - target_dot2);
+				real_t total_error = error1 + error2;
+				
+				if (total_error < best_error) {
+					best_error = total_error;
+					best_angle = angle;
+				}
+			}
+			
+			Quaternion rot1 = Quaternion(arc_normal, best_angle);
+			Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
+			sphere_intersect1 = rot1.xform(in_plane).normalized();
+			sphere_intersect2 = rot2.xform(in_plane).normalized();
+		} else {
+			Vector3 ray_dir_normalized = direction.normalized();
+			Vector3 ray_to_center = -ray_start_rel;
+			real_t ray_dot_center = ray_dir_normalized.dot(ray_to_center);
+			real_t radius_squared = 1.0;
+			real_t center_dist_squared = ray_to_center.length_squared();
+			real_t ray_dot_squared = ray_dot_center * ray_dot_center;
+			real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
+			
+			if (discriminant >= 0.0) {
+				discriminant = Math::sqrt(discriminant);
+				int result = 0;
+				if (ray_dot_center < discriminant) {
+					if (ray_dot_center + discriminant >= 0) {
+						discriminant = -discriminant;
+						result = 1;
+					}
+				} else {
+					result = 2;
+				}
+				sphere_intersect1 = ray_dir_normalized * (ray_dot_center - discriminant) + sphere_center;
+				sphere_intersect2 = ray_dir_normalized * (ray_dot_center + discriminant) + sphere_center;
+			} else {
+				// No intersection - use iterative search with dot products
 				Vector3 perp_to_arc = center1.get_any_perpendicular();
 				if (perp_to_arc.dot(arc_normal) > 0.9) {
 					perp_to_arc = center1.cross(arc_normal);
@@ -318,16 +393,12 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 					}
 				}
 				perp_to_arc.normalize();
-				
 				Vector3 in_plane = perp_to_arc - arc_normal * perp_to_arc.dot(arc_normal);
 				if (in_plane.length_squared() < CMP_EPSILON) {
 					Quaternion rot = Quaternion(arc_normal, Math::PI / 2.0);
 					in_plane = rot.xform(center1).normalized();
 				}
 				in_plane.normalize();
-				
-				real_t target_angle1 = p_radius1 + r_tan_radius;
-				real_t target_angle2 = p_radius2 + r_tan_radius;
 				
 				real_t best_angle = 0.0;
 				real_t best_error = Math::INF;
@@ -336,11 +407,11 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 					Quaternion rot = Quaternion(arc_normal, angle);
 					Vector3 candidate = rot.xform(in_plane).normalized();
 					
-					real_t dist1 = Math::acos(CLAMP(candidate.dot(center1), -1.0, 1.0));
-					real_t dist2 = Math::acos(CLAMP(candidate.dot(center2), -1.0, 1.0));
+					real_t dot1 = candidate.dot(center1);
+					real_t dot2 = candidate.dot(center2);
 					
-					real_t error1 = Math::abs(dist1 - target_angle1);
-					real_t error2 = Math::abs(dist2 - target_angle2);
+					real_t error1 = Math::abs(dot1 - target_dot1);
+					real_t error2 = Math::abs(dot2 - target_dot2);
 					real_t total_error = error1 + error2;
 					
 					if (total_error < best_error) {
@@ -353,148 +424,12 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 				Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
 				sphere_intersect1 = rot1.xform(in_plane).normalized();
 				sphere_intersect2 = rot2.xform(in_plane).normalized();
-			} else {
-				// Normal case: extend ray away from midpoint
-				if (start_len > CMP_EPSILON) {
-					start_heading = start_heading.normalized() * 99.0;
-				} else {
-					start_heading = (end_heading.length() > CMP_EPSILON) ? end_heading.normalized() * 99.0 : Vector3(1, 0, 0) * 99.0;
-				}
-				if (end_len > CMP_EPSILON) {
-					end_heading = end_heading.normalized() * 99.0;
-				} else {
-					end_heading = (start_heading.length() > CMP_EPSILON) ? start_heading.normalized() * 99.0 : Vector3(0, 1, 0) * 99.0;
-				}
-				intersection_ray_start = start_heading + mid_point;
-				intersection_ray_end = end_heading + mid_point;
-				
-				// Ray-sphere intersection
-				Vector3 sphere_center(0, 0, 0);
-				Vector3 ray_start_rel = intersection_ray_start - sphere_center;
-				Vector3 ray_end_rel = intersection_ray_end - sphere_center;
-				Vector3 direction = ray_end_rel - ray_start_rel;
-				real_t dir_len = direction.length();
-				
-				if (dir_len < CMP_EPSILON) {
-					// Degenerate ray - use iterative search
-					Vector3 perp_to_arc = center1.get_any_perpendicular();
-					if (perp_to_arc.dot(arc_normal) > 0.9) {
-						perp_to_arc = center1.cross(arc_normal);
-						if (perp_to_arc.length_squared() < CMP_EPSILON) {
-							perp_to_arc = Vector3(1, 0, 0);
-						}
-					}
-					perp_to_arc.normalize();
-					
-					Vector3 in_plane = perp_to_arc - arc_normal * perp_to_arc.dot(arc_normal);
-					if (in_plane.length_squared() < CMP_EPSILON) {
-						Quaternion rot = Quaternion(arc_normal, Math::PI / 2.0);
-						in_plane = rot.xform(center1).normalized();
-					}
-					in_plane.normalize();
-					
-					real_t target_angle1 = p_radius1 + r_tan_radius;
-					real_t target_angle2 = p_radius2 + r_tan_radius;
-					
-					real_t best_angle = 0.0;
-					real_t best_error = Math::INF;
-					for (int i = 0; i < 64; i++) {
-						real_t angle = (real_t)i * Math::TAU / 64.0;
-						Quaternion rot = Quaternion(arc_normal, angle);
-						Vector3 candidate = rot.xform(in_plane).normalized();
-						
-						real_t dist1 = Math::acos(CLAMP(candidate.dot(center1), -1.0, 1.0));
-						real_t dist2 = Math::acos(CLAMP(candidate.dot(center2), -1.0, 1.0));
-						
-						real_t error1 = Math::abs(dist1 - target_angle1);
-						real_t error2 = Math::abs(dist2 - target_angle2);
-						real_t total_error = error1 + error2;
-						
-						if (total_error < best_error) {
-							best_error = total_error;
-							best_angle = angle;
-						}
-					}
-					
-					Quaternion rot1 = Quaternion(arc_normal, best_angle);
-					Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
-					sphere_intersect1 = rot1.xform(in_plane).normalized();
-					sphere_intersect2 = rot2.xform(in_plane).normalized();
-				} else {
-					Vector3 ray_dir_normalized = direction.normalized();
-					Vector3 ray_to_center = -ray_start_rel;
-					real_t ray_dot_center = ray_dir_normalized.dot(ray_to_center);
-					real_t radius_squared = 1.0;
-					real_t center_dist_squared = ray_to_center.length_squared();
-					real_t ray_dot_squared = ray_dot_center * ray_dot_center;
-					real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
-					
-					if (discriminant >= 0.0) {
-						discriminant = Math::sqrt(discriminant);
-						int result = 0;
-						if (ray_dot_center < discriminant) {
-							if (ray_dot_center + discriminant >= 0) {
-								discriminant = -discriminant;
-								result = 1;
-							}
-						} else {
-							result = 2;
-						}
-						sphere_intersect1 = ray_dir_normalized * (ray_dot_center - discriminant) + sphere_center;
-						sphere_intersect2 = ray_dir_normalized * (ray_dot_center + discriminant) + sphere_center;
-					} else {
-						// No intersection - use iterative search
-						Vector3 perp_to_arc = center1.get_any_perpendicular();
-						if (perp_to_arc.dot(arc_normal) > 0.9) {
-							perp_to_arc = center1.cross(arc_normal);
-							if (perp_to_arc.length_squared() < CMP_EPSILON) {
-								perp_to_arc = Vector3(1, 0, 0);
-							}
-						}
-						perp_to_arc.normalize();
-						
-						Vector3 in_plane = perp_to_arc - arc_normal * perp_to_arc.dot(arc_normal);
-						if (in_plane.length_squared() < CMP_EPSILON) {
-							Quaternion rot = Quaternion(arc_normal, Math::PI / 2.0);
-							in_plane = rot.xform(center1).normalized();
-						}
-						in_plane.normalize();
-						
-						real_t target_angle1 = p_radius1 + r_tan_radius;
-						real_t target_angle2 = p_radius2 + r_tan_radius;
-						
-						real_t best_angle = 0.0;
-						real_t best_error = Math::INF;
-						for (int i = 0; i < 64; i++) {
-							real_t angle = (real_t)i * Math::TAU / 64.0;
-							Quaternion rot = Quaternion(arc_normal, angle);
-							Vector3 candidate = rot.xform(in_plane).normalized();
-							
-							real_t dist1 = Math::acos(CLAMP(candidate.dot(center1), -1.0, 1.0));
-							real_t dist2 = Math::acos(CLAMP(candidate.dot(center2), -1.0, 1.0));
-							
-							real_t error1 = Math::abs(dist1 - target_angle1);
-							real_t error2 = Math::abs(dist2 - target_angle2);
-							real_t total_error = error1 + error2;
-							
-							if (total_error < best_error) {
-								best_error = total_error;
-								best_angle = angle;
-							}
-						}
-						
-						Quaternion rot1 = Quaternion(arc_normal, best_angle);
-						Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
-						sphere_intersect1 = rot1.xform(in_plane).normalized();
-						sphere_intersect2 = rot2.xform(in_plane).normalized();
-					}
-				}
 			}
 		}
-		
-		sphere_intersect1 = sphere_intersect1.normalized();
-		sphere_intersect2 = sphere_intersect2.normalized();
 	}
+	
+	sphere_intersect1 = sphere_intersect1.normalized();
+	sphere_intersect2 = sphere_intersect2.normalized();
 	
 	// Check if intersections are too close (degenerate case)
 	real_t dot_between = sphere_intersect1.dot(sphere_intersect2);
@@ -610,6 +545,34 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 		return result;
 	}
 
+	// Rotate to avoid singularities at poles
+	// Check if input or any cone center is near +Y or -Y pole, rotate coordinate system to avoid numerical issues
+	Vector3 pole_axis = Vector3(0, 1, 0);
+	real_t input_pole_dot = Math::abs(result.dot(pole_axis));
+	bool needs_rotation = (input_pole_dot > 0.9);
+	
+	// Check all cone centers for pole proximity
+	if (!needs_rotation) {
+		for (int i = 0; i < cones.size(); i++) {
+			const Vector4 &cone_data = cones[i];
+			Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+			real_t center_pole_dot = Math::abs(center.dot(pole_axis));
+			if (center_pole_dot > 0.9) {
+				needs_rotation = true;
+				break;
+			}
+		}
+	}
+	
+	Quaternion pole_rotation;
+	if (needs_rotation) {
+		// Near pole - rotate 90 degrees around X axis to move to equator
+		pole_rotation = Quaternion(Vector3(1, 0, 0), Math::PI / 2.0);
+		result = pole_rotation.xform(result).normalized();
+	} else {
+		pole_rotation = Quaternion(); // Identity - no rotation needed
+	}
+
 	// Full kusudama solving implementation based on IKKusudama3D::get_local_point_in_limits
 	Vector3 point = result;
 	real_t closest_cosine = -2.0;
@@ -619,12 +582,20 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	for (int i = 0; i < cones.size(); i++) {
 		const Vector4 &cone_data = cones[i];
 		Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		// Rotate cone center if we rotated the input
+		if (pole_rotation.length_squared() > CMP_EPSILON) {
+			control_point = pole_rotation.xform(control_point).normalized();
+		}
 		real_t radius = cone_data.w;
 
 		Vector3 collision_point = closest_to_cone_boundary(point, control_point, radius);
 
 		// If NaN, point is within this cone
 		if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
+			// Rotate back if we rotated to avoid pole singularities
+			if (pole_rotation.length_squared() > CMP_EPSILON) {
+				return pole_rotation.inverse().xform(point).normalized();
+			}
 			return point; // Point is within limits
 		}
 
@@ -641,6 +612,10 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	// If we're out of bounds of all cones, check if we're in the paths between the cones
 	// IMPORTANT: We explicitly do NOT check the pair (last_cone, first_cone) to prevent wrap-around
 	if (cones.size() <= 1) {
+		// Rotate back if we rotated to avoid pole singularities
+		if (pole_rotation.length_squared() > CMP_EPSILON) {
+			return pole_rotation.inverse().xform(closest_collision_point).normalized();
+		}
 		return closest_collision_point.normalized();
 	}
 
@@ -652,6 +627,11 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 		const Vector4 &cone2_data = cones[next_i];
 		Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
 		Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+		// Rotate cone centers if we rotated the input
+		if (pole_rotation.length_squared() > CMP_EPSILON) {
+			center1 = pole_rotation.xform(center1).normalized();
+			center2 = pole_rotation.xform(center2).normalized();
+		}
 		real_t radius1 = cone1_data.w;
 		real_t radius2 = cone2_data.w;
 
@@ -667,6 +647,10 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 		if (cosine > 0.999f) { // Point is in path region (allowing for floating point precision)
 			// get_on_great_tangent_triangle already handles the geometric checks correctly using cross products
 			// to determine if the point is in the inter-cone path region, so no additional check is needed
+			// Rotate back if we rotated to avoid pole singularities
+			if (pole_rotation.length_squared() > CMP_EPSILON) {
+				return pole_rotation.inverse().xform(point).normalized();
+			}
 			return point;
 		}
 
@@ -677,10 +661,16 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 		}
 	}
 
+	// Rotate result back if we rotated the input to avoid pole singularities
+	Vector3 final_result = closest_collision_point;
+	if (pole_rotation.length_squared() > CMP_EPSILON) {
+		final_result = pole_rotation.inverse().xform(final_result).normalized();
+	}
+	
 	// Return the closest boundary point
 	// The boundary calculation functions (closest_to_cone_boundary and get_on_great_tangent_triangle)
 	// already ensure the result is in an allowed region by adjusting slightly inside/outside boundaries
-	return closest_collision_point.normalized();
+	return final_result.normalized();
 }
 
 void JointLimitationKusudama3D::set_cones(const Vector<Vector4> &p_cones) {
