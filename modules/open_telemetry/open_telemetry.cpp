@@ -245,20 +245,20 @@ String OpenTelemetry::generate_uuid_v7() {
 		String hex_byte = String::num_uint64((uint64_t)uuid_bytes[i], 16, false);
 		// Ensure exactly 2 hex characters (pad with leading zero if needed)
 		if (hex_byte.length() < 2) {
-			hex.append("0");
+			hex.append(String("0"));
 		}
 		hex.append(hex_byte);
 	}
 	String hex_str = hex.as_string();
 	StringBuilder uuid;
 	uuid.append(hex_str.substr(0, 8));
-	uuid.append("-");
+	uuid.append(String("-"));
 	uuid.append(hex_str.substr(8, 4));
-	uuid.append("-");
+	uuid.append(String("-"));
 	uuid.append(hex_str.substr(12, 4));
-	uuid.append("-");
+	uuid.append(String("-"));
 	uuid.append(hex_str.substr(16, 4));
-	uuid.append("-");
+	uuid.append(String("-"));
 	uuid.append(hex_str.substr(20, 12));
 	return uuid.as_string();
 }
