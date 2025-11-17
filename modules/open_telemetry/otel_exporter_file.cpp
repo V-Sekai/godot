@@ -35,25 +35,25 @@
 #include "core/io/json.h"
 #include "core/os/time.h"
 
-void OTelExporterFile::_bind_methods() {
+void OpenTelemetryExporterFile::_bind_methods() {
 	// Configuration
-	ClassDB::bind_method(D_METHOD("set_output_directory", "directory"), &OTelExporterFile::set_output_directory);
-	ClassDB::bind_method(D_METHOD("get_output_directory"), &OTelExporterFile::get_output_directory);
-	ClassDB::bind_method(D_METHOD("set_filename_prefix", "prefix"), &OTelExporterFile::set_filename_prefix);
-	ClassDB::bind_method(D_METHOD("get_filename_prefix"), &OTelExporterFile::get_filename_prefix);
-	ClassDB::bind_method(D_METHOD("set_mode", "mode"), &OTelExporterFile::set_mode);
-	ClassDB::bind_method(D_METHOD("get_mode"), &OTelExporterFile::get_mode);
-	ClassDB::bind_method(D_METHOD("set_pretty_print", "enabled"), &OTelExporterFile::set_pretty_print);
-	ClassDB::bind_method(D_METHOD("get_pretty_print"), &OTelExporterFile::get_pretty_print);
+	ClassDB::bind_method(D_METHOD("set_output_directory", "directory"), &OpenTelemetryExporterFile::set_output_directory);
+	ClassDB::bind_method(D_METHOD("get_output_directory"), &OpenTelemetryExporterFile::get_output_directory);
+	ClassDB::bind_method(D_METHOD("set_filename_prefix", "prefix"), &OpenTelemetryExporterFile::set_filename_prefix);
+	ClassDB::bind_method(D_METHOD("get_filename_prefix"), &OpenTelemetryExporterFile::get_filename_prefix);
+	ClassDB::bind_method(D_METHOD("set_mode", "mode"), &OpenTelemetryExporterFile::set_mode);
+	ClassDB::bind_method(D_METHOD("get_mode"), &OpenTelemetryExporterFile::get_mode);
+	ClassDB::bind_method(D_METHOD("set_pretty_print", "enabled"), &OpenTelemetryExporterFile::set_pretty_print);
+	ClassDB::bind_method(D_METHOD("get_pretty_print"), &OpenTelemetryExporterFile::get_pretty_print);
 
 	// Export operations
-	ClassDB::bind_method(D_METHOD("export_traces", "state"), &OTelExporterFile::export_traces);
-	ClassDB::bind_method(D_METHOD("export_metrics", "state"), &OTelExporterFile::export_metrics);
-	ClassDB::bind_method(D_METHOD("export_logs", "state"), &OTelExporterFile::export_logs);
+	ClassDB::bind_method(D_METHOD("export_traces", "state"), &OpenTelemetryExporterFile::export_traces);
+	ClassDB::bind_method(D_METHOD("export_metrics", "state"), &OpenTelemetryExporterFile::export_metrics);
+	ClassDB::bind_method(D_METHOD("export_logs", "state"), &OpenTelemetryExporterFile::export_logs);
 
 	// Helper methods
-	ClassDB::bind_method(D_METHOD("generate_filename", "type"), &OTelExporterFile::generate_filename);
-	ClassDB::bind_method(D_METHOD("ensure_directory_exists"), &OTelExporterFile::ensure_directory_exists);
+	ClassDB::bind_method(D_METHOD("generate_filename", "type"), &OpenTelemetryExporterFile::generate_filename);
+	ClassDB::bind_method(D_METHOD("ensure_directory_exists"), &OpenTelemetryExporterFile::ensure_directory_exists);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "output_directory", PROPERTY_HINT_DIR), "set_output_directory", "get_output_directory");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "filename_prefix"), "set_filename_prefix", "get_filename_prefix");
@@ -65,47 +65,47 @@ void OTelExporterFile::_bind_methods() {
 	BIND_ENUM_CONSTANT(EXPORT_MODE_TIMESTAMPED);
 }
 
-OTelExporterFile::OTelExporterFile() {
+OpenTelemetryExporterFile::OpenTelemetryExporterFile() {
 	document.instantiate();
 	output_directory = "user://otel_traces";
 	filename_prefix = "otel";
 }
 
 // Configuration
-void OTelExporterFile::set_output_directory(const String &p_directory) {
+void OpenTelemetryExporterFile::set_output_directory(const String &p_directory) {
 	output_directory = p_directory;
 }
 
-String OTelExporterFile::get_output_directory() const {
+String OpenTelemetryExporterFile::get_output_directory() const {
 	return output_directory;
 }
 
-void OTelExporterFile::set_filename_prefix(const String &p_prefix) {
+void OpenTelemetryExporterFile::set_filename_prefix(const String &p_prefix) {
 	filename_prefix = p_prefix;
 }
 
-String OTelExporterFile::get_filename_prefix() const {
+String OpenTelemetryExporterFile::get_filename_prefix() const {
 	return filename_prefix;
 }
 
-void OTelExporterFile::set_mode(ExportMode p_mode) {
+void OpenTelemetryExporterFile::set_mode(ExportMode p_mode) {
 	mode = p_mode;
 }
 
-OTelExporterFile::ExportMode OTelExporterFile::get_mode() const {
+OpenTelemetryExporterFile::ExportMode OpenTelemetryExporterFile::get_mode() const {
 	return mode;
 }
 
-void OTelExporterFile::set_pretty_print(bool p_enabled) {
+void OpenTelemetryExporterFile::set_pretty_print(bool p_enabled) {
 	pretty_print = p_enabled;
 }
 
-bool OTelExporterFile::get_pretty_print() const {
+bool OpenTelemetryExporterFile::get_pretty_print() const {
 	return pretty_print;
 }
 
 // Helper methods
-String OTelExporterFile::generate_filename(const String &p_type) const {
+String OpenTelemetryExporterFile::generate_filename(const String &p_type) const {
 	String filename;
 
 	switch (mode) {
@@ -131,7 +131,7 @@ String OTelExporterFile::generate_filename(const String &p_type) const {
 	return output_directory.path_join(filename);
 }
 
-Error OTelExporterFile::ensure_directory_exists() {
+Error OpenTelemetryExporterFile::ensure_directory_exists() {
 	Ref<DirAccess> dir = DirAccess::create(DirAccess::ACCESS_USERDATA);
 	if (dir.is_null()) {
 		return ERR_CANT_CREATE;
@@ -140,7 +140,7 @@ Error OTelExporterFile::ensure_directory_exists() {
 	if (!dir->dir_exists(output_directory)) {
 		Error err = dir->make_dir_recursive(output_directory);
 		if (err != OK) {
-			ERR_PRINT(vformat("OTelExporterFile: Failed to create directory: %s", output_directory));
+			ERR_PRINT(vformat("OpenTelemetryExporterFile: Failed to create directory: %s", output_directory));
 			return err;
 		}
 	}
@@ -149,7 +149,7 @@ Error OTelExporterFile::ensure_directory_exists() {
 }
 
 // Export operations
-Error OTelExporterFile::export_traces(Ref<OTelState> p_state) {
+Error OpenTelemetryExporterFile::export_traces(Ref<OpenTelemetryState> p_state) {
 	if (p_state.is_null()) {
 		return ERR_INVALID_PARAMETER;
 	}
@@ -159,7 +159,7 @@ Error OTelExporterFile::export_traces(Ref<OTelState> p_state) {
 		return err;
 	}
 
-	// Serialize using OTelDocument
+	// Serialize using OpenTelemetryDocument
 	String json_data = document->serialize_traces(p_state);
 
 	// Pretty print if enabled
@@ -187,7 +187,7 @@ Error OTelExporterFile::export_traces(Ref<OTelState> p_state) {
 	}
 
 	if (file.is_null()) {
-		ERR_PRINT(vformat("OTelExporterFile: Failed to open file for writing: %s", filepath));
+		ERR_PRINT(vformat("OpenTelemetryExporterFile: Failed to open file for writing: %s", filepath));
 		return ERR_FILE_CANT_WRITE;
 	}
 
@@ -197,7 +197,7 @@ Error OTelExporterFile::export_traces(Ref<OTelState> p_state) {
 	return OK;
 }
 
-Error OTelExporterFile::export_metrics(Ref<OTelState> p_state) {
+Error OpenTelemetryExporterFile::export_metrics(Ref<OpenTelemetryState> p_state) {
 	if (p_state.is_null()) {
 		return ERR_INVALID_PARAMETER;
 	}
@@ -231,7 +231,7 @@ Error OTelExporterFile::export_metrics(Ref<OTelState> p_state) {
 	}
 
 	if (file.is_null()) {
-		ERR_PRINT(vformat("OTelExporterFile: Failed to open file for writing: %s", filepath));
+		ERR_PRINT(vformat("OpenTelemetryExporterFile: Failed to open file for writing: %s", filepath));
 		return ERR_FILE_CANT_WRITE;
 	}
 
@@ -241,7 +241,7 @@ Error OTelExporterFile::export_metrics(Ref<OTelState> p_state) {
 	return OK;
 }
 
-Error OTelExporterFile::export_logs(Ref<OTelState> p_state) {
+Error OpenTelemetryExporterFile::export_logs(Ref<OpenTelemetryState> p_state) {
 	if (p_state.is_null()) {
 		return ERR_INVALID_PARAMETER;
 	}
@@ -275,7 +275,7 @@ Error OTelExporterFile::export_logs(Ref<OTelState> p_state) {
 	}
 
 	if (file.is_null()) {
-		ERR_PRINT(vformat("OTelExporterFile: Failed to open file for writing: %s", filepath));
+		ERR_PRINT(vformat("OpenTelemetryExporterFile: Failed to open file for writing: %s", filepath));
 		return ERR_FILE_CANT_WRITE;
 	}
 

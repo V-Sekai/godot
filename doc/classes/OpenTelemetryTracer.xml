@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="OpenTelemetryTracer" inherits="RefCounted" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Represents an instrumentation scope for creating spans in distributed tracing.
+	</brief_description>
+	<description>
+		OpenTelemetryTracer represents an instrumentation scope identified by name, version, schema URL, and attributes. It is created by OpenTelemetryTracerProvider and used to create spans for distributed tracing.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="enabled" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns whether this tracer is enabled. Currently always returns [code]true[/code].
+			</description>
+		</method>
+		<method name="get_attributes" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns the attributes associated with this tracer's instrumentation scope.
+			</description>
+		</method>
+		<method name="get_name" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the name of this tracer's instrumentation scope.
+			</description>
+		</method>
+		<method name="get_schema_url" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the schema URL associated with this tracer's instrumentation scope.
+			</description>
+		</method>
+		<method name="get_version" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the version of this tracer's instrumentation scope.
+			</description>
+		</method>
+	</methods>
+</class>
+

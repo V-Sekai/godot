@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="OTelState" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+<class name="OpenTelemetryState" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
@@ -9,19 +9,19 @@
 	<methods>
 		<method name="add_log">
 			<return type="void" />
-			<param index="0" name="log" type="OTelLog" />
+			<param index="0" name="log" type="OpenTelemetryLog" />
 			<description>
 			</description>
 		</method>
 		<method name="add_metric">
 			<return type="void" />
-			<param index="0" name="metric" type="OTelMetric" />
+			<param index="0" name="metric" type="OpenTelemetryMetric" />
 			<description>
 			</description>
 		</method>
 		<method name="add_span">
 			<return type="void" />
-			<param index="0" name="span" type="OTelSpan" />
+			<param index="0" name="span" type="OpenTelemetrySpan" />
 			<description>
 			</description>
 		</method>
@@ -47,15 +47,15 @@
 		</method>
 	</methods>
 	<members>
-		<member name="logs" type="OTelLog[]" setter="set_logs" getter="get_logs" default="[]">
+		<member name="logs" type="OpenTelemetryLog[]" setter="set_logs" getter="get_logs" default="[]">
 		</member>
-		<member name="metrics" type="OTelMetric[]" setter="set_metrics" getter="get_metrics" default="[]">
+		<member name="metrics" type="OpenTelemetryMetric[]" setter="set_metrics" getter="get_metrics" default="[]">
 		</member>
-		<member name="resource" type="OTelResource" setter="set_resource" getter="get_resource">
+		<member name="resource" type="OpenTelemetryResource" setter="set_resource" getter="get_resource">
 		</member>
-		<member name="scope" type="OTelScope" setter="set_scope" getter="get_scope">
+		<member name="scope" type="OpenTelemetryScope" setter="set_scope" getter="get_scope">
 		</member>
-		<member name="spans" type="OTelSpan[]" setter="set_spans" getter="get_spans" default="[]">
+		<member name="spans" type="OpenTelemetrySpan[]" setter="set_spans" getter="get_spans" default="[]">
 		</member>
 	</members>
 </class>

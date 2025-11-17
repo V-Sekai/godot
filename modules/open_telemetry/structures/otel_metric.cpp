@@ -30,26 +30,26 @@
 
 #include "otel_metric.h"
 
-void OTelMetric::_bind_methods() {
+void OpenTelemetryMetric::_bind_methods() {
 	// Metadata
-	ClassDB::bind_method(D_METHOD("get_name"), &OTelMetric::get_name);
-	ClassDB::bind_method(D_METHOD("set_name", "name"), &OTelMetric::set_name);
-	ClassDB::bind_method(D_METHOD("get_description"), &OTelMetric::get_description);
-	ClassDB::bind_method(D_METHOD("set_description", "description"), &OTelMetric::set_description);
-	ClassDB::bind_method(D_METHOD("get_unit"), &OTelMetric::get_unit);
-	ClassDB::bind_method(D_METHOD("set_unit", "unit"), &OTelMetric::set_unit);
-	ClassDB::bind_method(D_METHOD("get_type"), &OTelMetric::get_type);
-	ClassDB::bind_method(D_METHOD("set_type", "type"), &OTelMetric::set_type);
-	ClassDB::bind_method(D_METHOD("get_temporality"), &OTelMetric::get_temporality);
-	ClassDB::bind_method(D_METHOD("set_temporality", "temporality"), &OTelMetric::set_temporality);
+	ClassDB::bind_method(D_METHOD("get_name"), &OpenTelemetryMetric::get_name);
+	ClassDB::bind_method(D_METHOD("set_name", "name"), &OpenTelemetryMetric::set_name);
+	ClassDB::bind_method(D_METHOD("get_description"), &OpenTelemetryMetric::get_description);
+	ClassDB::bind_method(D_METHOD("set_description", "description"), &OpenTelemetryMetric::set_description);
+	ClassDB::bind_method(D_METHOD("get_unit"), &OpenTelemetryMetric::get_unit);
+	ClassDB::bind_method(D_METHOD("set_unit", "unit"), &OpenTelemetryMetric::set_unit);
+	ClassDB::bind_method(D_METHOD("get_type"), &OpenTelemetryMetric::get_type);
+	ClassDB::bind_method(D_METHOD("set_type", "type"), &OpenTelemetryMetric::set_type);
+	ClassDB::bind_method(D_METHOD("get_temporality"), &OpenTelemetryMetric::get_temporality);
+	ClassDB::bind_method(D_METHOD("set_temporality", "temporality"), &OpenTelemetryMetric::set_temporality);
 
 	// Data points
-	ClassDB::bind_method(D_METHOD("get_data_points"), &OTelMetric::get_data_points);
-	ClassDB::bind_method(D_METHOD("set_data_points", "data_points"), &OTelMetric::set_data_points);
-	ClassDB::bind_method(D_METHOD("add_data_point", "data_point"), &OTelMetric::add_data_point);
+	ClassDB::bind_method(D_METHOD("get_data_points"), &OpenTelemetryMetric::get_data_points);
+	ClassDB::bind_method(D_METHOD("set_data_points", "data_points"), &OpenTelemetryMetric::set_data_points);
+	ClassDB::bind_method(D_METHOD("add_data_point", "data_point"), &OpenTelemetryMetric::add_data_point);
 
 	// Serialization
-	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OTelMetric::to_otlp_dict);
+	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OpenTelemetryMetric::to_otlp_dict);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "description"), "set_description", "get_description");
@@ -69,65 +69,65 @@ void OTelMetric::_bind_methods() {
 	BIND_ENUM_CONSTANT(AGGREGATION_TEMPORALITY_CUMULATIVE);
 }
 
-OTelMetric::OTelMetric() {
+OpenTelemetryMetric::OpenTelemetryMetric() {
 }
 
 // Metadata
-String OTelMetric::get_name() const {
+String OpenTelemetryMetric::get_name() const {
 	return name;
 }
 
-void OTelMetric::set_name(const String &p_name) {
+void OpenTelemetryMetric::set_name(const String &p_name) {
 	name = p_name;
 }
 
-String OTelMetric::get_description() const {
+String OpenTelemetryMetric::get_description() const {
 	return description;
 }
 
-void OTelMetric::set_description(const String &p_description) {
+void OpenTelemetryMetric::set_description(const String &p_description) {
 	description = p_description;
 }
 
-String OTelMetric::get_unit() const {
+String OpenTelemetryMetric::get_unit() const {
 	return unit;
 }
 
-void OTelMetric::set_unit(const String &p_unit) {
+void OpenTelemetryMetric::set_unit(const String &p_unit) {
 	unit = p_unit;
 }
 
-OTelMetric::MetricType OTelMetric::get_type() const {
+OpenTelemetryMetric::MetricType OpenTelemetryMetric::get_type() const {
 	return type;
 }
 
-void OTelMetric::set_type(MetricType p_type) {
+void OpenTelemetryMetric::set_type(MetricType p_type) {
 	type = p_type;
 }
 
-OTelMetric::AggregationTemporality OTelMetric::get_temporality() const {
+OpenTelemetryMetric::AggregationTemporality OpenTelemetryMetric::get_temporality() const {
 	return temporality;
 }
 
-void OTelMetric::set_temporality(AggregationTemporality p_temporality) {
+void OpenTelemetryMetric::set_temporality(AggregationTemporality p_temporality) {
 	temporality = p_temporality;
 }
 
 // Data points
-Array OTelMetric::get_data_points() const {
+Array OpenTelemetryMetric::get_data_points() const {
 	return data_points;
 }
 
-void OTelMetric::set_data_points(const Array &p_data_points) {
+void OpenTelemetryMetric::set_data_points(const Array &p_data_points) {
 	data_points = p_data_points;
 }
 
-void OTelMetric::add_data_point(const Dictionary &p_data_point) {
+void OpenTelemetryMetric::add_data_point(const Dictionary &p_data_point) {
 	data_points.push_back(p_data_point);
 }
 
 // Serialization
-Dictionary OTelMetric::to_otlp_dict() const {
+Dictionary OpenTelemetryMetric::to_otlp_dict() const {
 	Dictionary metric_dict;
 
 	metric_dict["name"] = name;
@@ -170,8 +170,8 @@ Dictionary OTelMetric::to_otlp_dict() const {
 	return metric_dict;
 }
 
-Ref<OTelMetric> OTelMetric::from_otlp_dict(const Dictionary &p_dict) {
-	Ref<OTelMetric> metric;
+Ref<OpenTelemetryMetric> OpenTelemetryMetric::from_otlp_dict(const Dictionary &p_dict) {
+	Ref<OpenTelemetryMetric> metric;
 	metric.instantiate();
 
 	if (p_dict.has("name")) {

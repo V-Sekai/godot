@@ -37,28 +37,28 @@
 
 #include "core/io/json.h"
 
-void OTelDocument::_bind_methods() {
+void OpenTelemetryDocument::_bind_methods() {
 	// Serialization
-	ClassDB::bind_method(D_METHOD("serialize_traces", "state"), &OTelDocument::serialize_traces);
-	ClassDB::bind_method(D_METHOD("serialize_metrics", "state"), &OTelDocument::serialize_metrics);
-	ClassDB::bind_method(D_METHOD("serialize_logs", "state"), &OTelDocument::serialize_logs);
+	ClassDB::bind_method(D_METHOD("serialize_traces", "state"), &OpenTelemetryDocument::serialize_traces);
+	ClassDB::bind_method(D_METHOD("serialize_metrics", "state"), &OpenTelemetryDocument::serialize_metrics);
+	ClassDB::bind_method(D_METHOD("serialize_logs", "state"), &OpenTelemetryDocument::serialize_logs);
 
 	// Deserialization
-	ClassDB::bind_method(D_METHOD("deserialize_traces", "json"), &OTelDocument::deserialize_traces);
-	ClassDB::bind_method(D_METHOD("deserialize_metrics", "json"), &OTelDocument::deserialize_metrics);
-	ClassDB::bind_method(D_METHOD("deserialize_logs", "json"), &OTelDocument::deserialize_logs);
+	ClassDB::bind_method(D_METHOD("deserialize_traces", "json"), &OpenTelemetryDocument::deserialize_traces);
+	ClassDB::bind_method(D_METHOD("deserialize_metrics", "json"), &OpenTelemetryDocument::deserialize_metrics);
+	ClassDB::bind_method(D_METHOD("deserialize_logs", "json"), &OpenTelemetryDocument::deserialize_logs);
 
 	// Build payloads
-	ClassDB::bind_method(D_METHOD("build_trace_payload", "resource", "scope", "spans"), &OTelDocument::build_trace_payload);
-	ClassDB::bind_method(D_METHOD("build_metric_payload", "resource", "scope", "metrics"), &OTelDocument::build_metric_payload);
-	ClassDB::bind_method(D_METHOD("build_log_payload", "resource", "scope", "logs"), &OTelDocument::build_log_payload);
+	ClassDB::bind_method(D_METHOD("build_trace_payload", "resource", "scope", "spans"), &OpenTelemetryDocument::build_trace_payload);
+	ClassDB::bind_method(D_METHOD("build_metric_payload", "resource", "scope", "metrics"), &OpenTelemetryDocument::build_metric_payload);
+	ClassDB::bind_method(D_METHOD("build_log_payload", "resource", "scope", "logs"), &OpenTelemetryDocument::build_log_payload);
 }
 
-OTelDocument::OTelDocument() {
+OpenTelemetryDocument::OpenTelemetryDocument() {
 }
 
 // Helper: Convert single attribute to OTLP format
-Dictionary OTelDocument::attribute_to_otlp(const String &p_key, const Variant &p_value) {
+Dictionary OpenTelemetryDocument::attribute_to_otlp(const String &p_key, const Variant &p_value) {
 	Dictionary attr;
 	attr["key"] = p_key;
 
@@ -86,7 +86,7 @@ Dictionary OTelDocument::attribute_to_otlp(const String &p_key, const Variant &p
 }
 
 // Helper: Convert Dictionary of attributes to OTLP array format
-Array OTelDocument::attributes_to_otlp(const Dictionary &p_attributes) {
+Array OpenTelemetryDocument::attributes_to_otlp(const Dictionary &p_attributes) {
 	Array otlp_attributes;
 	Array keys = p_attributes.keys();
 
@@ -100,7 +100,7 @@ Array OTelDocument::attributes_to_otlp(const Dictionary &p_attributes) {
 }
 
 // Helper: Convert OTLP attribute array to Dictionary
-Dictionary OTelDocument::attributes_from_otlp(const Array &p_otlp_attributes) {
+Dictionary OpenTelemetryDocument::attributes_from_otlp(const Array &p_otlp_attributes) {
 	Dictionary attributes;
 
 	for (int i = 0; i < p_otlp_attributes.size(); i++) {
@@ -128,11 +128,11 @@ Dictionary OTelDocument::attributes_from_otlp(const Array &p_otlp_attributes) {
 }
 
 // Build complete OTLP trace payload
-Dictionary OTelDocument::build_trace_payload(Ref<OTelResource> p_resource, Ref<OTelScope> p_scope, const TypedArray<OTelSpan> &p_spans) {
-	// Build spans array using OTelSpan::to_otlp_dict()
+Dictionary OpenTelemetryDocument::build_trace_payload(Ref<OpenTelemetryResource> p_resource, Ref<OpenTelemetryScope> p_scope, const TypedArray<OpenTelemetrySpan> &p_spans) {
+	// Build spans array using OpenTelemetrySpan::to_otlp_dict()
 	Array spans_array;
 	for (int i = 0; i < p_spans.size(); i++) {
-		Ref<OTelSpan> span = p_spans[i];
+		Ref<OpenTelemetrySpan> span = p_spans[i];
 		if (!span.is_valid()) {
 			continue;
 		}
@@ -163,7 +163,7 @@ Dictionary OTelDocument::build_trace_payload(Ref<OTelResource> p_resource, Ref<O
 }
 
 // Build complete OTLP metric payload
-Dictionary OTelDocument::build_metric_payload(Ref<OTelResource> p_resource, Ref<OTelScope> p_scope, const Array &p_metrics) {
+Dictionary OpenTelemetryDocument::build_metric_payload(Ref<OpenTelemetryResource> p_resource, Ref<OpenTelemetryScope> p_scope, const Array &p_metrics) {
 	// Build scope metrics
 	Dictionary scope_metric;
 	scope_metric["scope"] = p_scope->to_otlp_dict();
@@ -188,7 +188,7 @@ Dictionary OTelDocument::build_metric_payload(Ref<OTelResource> p_resource, Ref<
 }
 
 // Build complete OTLP log payload
-Dictionary OTelDocument::build_log_payload(Ref<OTelResource> p_resource, Ref<OTelScope> p_scope, const Array &p_logs) {
+Dictionary OpenTelemetryDocument::build_log_payload(Ref<OpenTelemetryResource> p_resource, Ref<OpenTelemetryScope> p_scope, const Array &p_logs) {
 	// Build scope logs
 	Dictionary scope_log;
 	scope_log["scope"] = p_scope->to_otlp_dict();
@@ -213,7 +213,7 @@ Dictionary OTelDocument::build_log_payload(Ref<OTelResource> p_resource, Ref<OTe
 }
 
 // Serialize traces to OTLP JSON
-String OTelDocument::serialize_traces(Ref<OTelState> p_state) {
+String OpenTelemetryDocument::serialize_traces(Ref<OpenTelemetryState> p_state) {
 	if (p_state.is_null()) {
 		return "{}";
 	}
@@ -251,7 +251,7 @@ String OTelDocument::serialize_traces(Ref<OTelState> p_state) {
 }
 
 // Serialize metrics to OTLP JSON
-String OTelDocument::serialize_metrics(Ref<OTelState> p_state) {
+String OpenTelemetryDocument::serialize_metrics(Ref<OpenTelemetryState> p_state) {
 	if (p_state.is_null()) {
 		return "{}";
 	}
@@ -289,7 +289,7 @@ String OTelDocument::serialize_metrics(Ref<OTelState> p_state) {
 }
 
 // Serialize logs to OTLP JSON
-String OTelDocument::serialize_logs(Ref<OTelState> p_state) {
+String OpenTelemetryDocument::serialize_logs(Ref<OpenTelemetryState> p_state) {
 	if (p_state.is_null()) {
 		return "{}";
 	}
@@ -327,8 +327,8 @@ String OTelDocument::serialize_logs(Ref<OTelState> p_state) {
 }
 
 // Deserialize traces from OTLP JSON (for reflector)
-Ref<OTelState> OTelDocument::deserialize_traces(const String &p_json) {
-	Ref<OTelState> state;
+Ref<OpenTelemetryState> OpenTelemetryDocument::deserialize_traces(const String &p_json) {
+	Ref<OpenTelemetryState> state;
 	state.instantiate();
 
 	JSON json;
@@ -351,7 +351,7 @@ Ref<OTelState> OTelDocument::deserialize_traces(const String &p_json) {
 
 	// Parse resource
 	if (resource_span.has("resource")) {
-		state->set_resource(OTelResource::from_otlp_dict(resource_span["resource"]));
+		state->set_resource(OpenTelemetryResource::from_otlp_dict(resource_span["resource"]));
 	}
 
 	// Parse scope spans
@@ -368,7 +368,7 @@ Ref<OTelState> OTelDocument::deserialize_traces(const String &p_json) {
 
 	// Parse scope
 	if (scope_span.has("scope")) {
-		state->set_scope(OTelScope::from_otlp_dict(scope_span["scope"]));
+		state->set_scope(OpenTelemetryScope::from_otlp_dict(scope_span["scope"]));
 	}
 
 	// Parse spans
@@ -377,11 +377,11 @@ Ref<OTelState> OTelDocument::deserialize_traces(const String &p_json) {
 	}
 
 	Array spans = scope_span["spans"];
-	TypedArray<OTelSpan> otel_spans;
+	TypedArray<OpenTelemetrySpan> otel_spans;
 
 	for (int i = 0; i < spans.size(); i++) {
 		Dictionary span_dict = spans[i];
-		otel_spans.push_back(OTelSpan::from_otlp_dict(span_dict));
+		otel_spans.push_back(OpenTelemetrySpan::from_otlp_dict(span_dict));
 	}
 
 	state->set_spans(otel_spans);
@@ -390,8 +390,8 @@ Ref<OTelState> OTelDocument::deserialize_traces(const String &p_json) {
 }
 
 // Deserialize metrics from OTLP JSON (for reflector)
-Ref<OTelState> OTelDocument::deserialize_metrics(const String &p_json) {
-	Ref<OTelState> state;
+Ref<OpenTelemetryState> OpenTelemetryDocument::deserialize_metrics(const String &p_json) {
+	Ref<OpenTelemetryState> state;
 	state.instantiate();
 
 	JSON json;
@@ -414,7 +414,7 @@ Ref<OTelState> OTelDocument::deserialize_metrics(const String &p_json) {
 
 	// Parse resource
 	if (resource_metric.has("resource")) {
-		state->set_resource(OTelResource::from_otlp_dict(resource_metric["resource"]));
+		state->set_resource(OpenTelemetryResource::from_otlp_dict(resource_metric["resource"]));
 	}
 
 	// Parse scope metrics
@@ -431,7 +431,7 @@ Ref<OTelState> OTelDocument::deserialize_metrics(const String &p_json) {
 
 	// Parse scope
 	if (scope_metric.has("scope")) {
-		state->set_scope(OTelScope::from_otlp_dict(scope_metric["scope"]));
+		state->set_scope(OpenTelemetryScope::from_otlp_dict(scope_metric["scope"]));
 	}
 
 	// Parse metrics
@@ -443,8 +443,8 @@ Ref<OTelState> OTelDocument::deserialize_metrics(const String &p_json) {
 }
 
 // Deserialize logs from OTLP JSON (for reflector)
-Ref<OTelState> OTelDocument::deserialize_logs(const String &p_json) {
-	Ref<OTelState> state;
+Ref<OpenTelemetryState> OpenTelemetryDocument::deserialize_logs(const String &p_json) {
+	Ref<OpenTelemetryState> state;
 	state.instantiate();
 
 	JSON json;
@@ -467,7 +467,7 @@ Ref<OTelState> OTelDocument::deserialize_logs(const String &p_json) {
 
 	// Parse resource
 	if (resource_log.has("resource")) {
-		state->set_resource(OTelResource::from_otlp_dict(resource_log["resource"]));
+		state->set_resource(OpenTelemetryResource::from_otlp_dict(resource_log["resource"]));
 	}
 
 	// Parse scope logs
@@ -484,7 +484,7 @@ Ref<OTelState> OTelDocument::deserialize_logs(const String &p_json) {
 
 	// Parse scope
 	if (scope_log.has("scope")) {
-		state->set_scope(OTelScope::from_otlp_dict(scope_log["scope"]));
+		state->set_scope(OpenTelemetryScope::from_otlp_dict(scope_log["scope"]));
 	}
 
 	// Parse logs

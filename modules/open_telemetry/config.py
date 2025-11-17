@@ -8,12 +8,17 @@ def configure(env):
 
 def get_doc_classes():
     return [
-        "OTelStatus",
-        "OTelSpanContext",
-        "OTelLink",
-        "OTelSpan",
-        "OTelTracer",
-        "OTelTracerProvider",
+        "OpenTelemetrySpan",
+        "OpenTelemetryResource",
+        "OpenTelemetryScope",
+        "OpenTelemetryMetric",
+        "OpenTelemetryLog",
+        "OpenTelemetryDocument",
+        "OpenTelemetryState",
+        "OpenTelemetryExporterFile",
+        "OpenTelemetryReflector",
+        "OpenTelemetryTracer",
+        "OpenTelemetryTracerProvider",
         "OpenTelemetry",
     ]
 

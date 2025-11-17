@@ -36,37 +36,37 @@
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 
-void OTelReflector::_bind_methods() {
+void OpenTelemetryReflector::_bind_methods() {
 	// Load from file
-	ClassDB::bind_method(D_METHOD("load_traces_from_file", "path"), &OTelReflector::load_traces_from_file);
-	ClassDB::bind_method(D_METHOD("load_metrics_from_file", "path"), &OTelReflector::load_metrics_from_file);
-	ClassDB::bind_method(D_METHOD("load_logs_from_file", "path"), &OTelReflector::load_logs_from_file);
+	ClassDB::bind_method(D_METHOD("load_traces_from_file", "path"), &OpenTelemetryReflector::load_traces_from_file);
+	ClassDB::bind_method(D_METHOD("load_metrics_from_file", "path"), &OpenTelemetryReflector::load_metrics_from_file);
+	ClassDB::bind_method(D_METHOD("load_logs_from_file", "path"), &OpenTelemetryReflector::load_logs_from_file);
 
 	// Load from JSON string
-	ClassDB::bind_method(D_METHOD("load_traces_from_json", "json"), &OTelReflector::load_traces_from_json);
-	ClassDB::bind_method(D_METHOD("load_metrics_from_json", "json"), &OTelReflector::load_metrics_from_json);
-	ClassDB::bind_method(D_METHOD("load_logs_from_json", "json"), &OTelReflector::load_logs_from_json);
+	ClassDB::bind_method(D_METHOD("load_traces_from_json", "json"), &OpenTelemetryReflector::load_traces_from_json);
+	ClassDB::bind_method(D_METHOD("load_metrics_from_json", "json"), &OpenTelemetryReflector::load_metrics_from_json);
+	ClassDB::bind_method(D_METHOD("load_logs_from_json", "json"), &OpenTelemetryReflector::load_logs_from_json);
 
 	// Load and merge
-	ClassDB::bind_method(D_METHOD("load_and_merge_traces", "paths"), &OTelReflector::load_and_merge_traces);
-	ClassDB::bind_method(D_METHOD("load_and_merge_metrics", "paths"), &OTelReflector::load_and_merge_metrics);
-	ClassDB::bind_method(D_METHOD("load_and_merge_logs", "paths"), &OTelReflector::load_and_merge_logs);
+	ClassDB::bind_method(D_METHOD("load_and_merge_traces", "paths"), &OpenTelemetryReflector::load_and_merge_traces);
+	ClassDB::bind_method(D_METHOD("load_and_merge_metrics", "paths"), &OpenTelemetryReflector::load_and_merge_metrics);
+	ClassDB::bind_method(D_METHOD("load_and_merge_logs", "paths"), &OpenTelemetryReflector::load_and_merge_logs);
 
 	// Utility
-	ClassDB::bind_method(D_METHOD("find_otlp_files", "directory", "pattern"), &OTelReflector::find_otlp_files, DEFVAL("*.json"));
-	ClassDB::bind_method(D_METHOD("get_document"), &OTelReflector::get_document);
+	ClassDB::bind_method(D_METHOD("find_otlp_files", "directory", "pattern"), &OpenTelemetryReflector::find_otlp_files, DEFVAL("*.json"));
+	ClassDB::bind_method(D_METHOD("get_document"), &OpenTelemetryReflector::get_document);
 }
 
-OTelReflector::OTelReflector() {
+OpenTelemetryReflector::OpenTelemetryReflector() {
 	document.instantiate();
 }
 
 // Load OTLP JSON from file
-Ref<OTelState> OTelReflector::load_traces_from_file(const String &p_path) {
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_traces_from_file(const String &p_path) {
 	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
 	if (file.is_null()) {
-		ERR_PRINT("OTelReflector: Failed to open file: " + p_path);
-		return Ref<OTelState>();
+		ERR_PRINT("OpenTelemetryReflector: Failed to open file: " + p_path);
+		return Ref<OpenTelemetryState>();
 	}
 
 	String json = file->get_as_text();
@@ -75,11 +75,11 @@ Ref<OTelState> OTelReflector::load_traces_from_file(const String &p_path) {
 	return load_traces_from_json(json);
 }
 
-Ref<OTelState> OTelReflector::load_metrics_from_file(const String &p_path) {
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_metrics_from_file(const String &p_path) {
 	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
 	if (file.is_null()) {
-		ERR_PRINT("OTelReflector: Failed to open file: " + p_path);
-		return Ref<OTelState>();
+		ERR_PRINT("OpenTelemetryReflector: Failed to open file: " + p_path);
+		return Ref<OpenTelemetryState>();
 	}
 
 	String json = file->get_as_text();
@@ -88,11 +88,11 @@ Ref<OTelState> OTelReflector::load_metrics_from_file(const String &p_path) {
 	return load_metrics_from_json(json);
 }
 
-Ref<OTelState> OTelReflector::load_logs_from_file(const String &p_path) {
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_logs_from_file(const String &p_path) {
 	Ref<FileAccess> file = FileAccess::open(p_path, FileAccess::READ);
 	if (file.is_null()) {
-		ERR_PRINT("OTelReflector: Failed to open file: " + p_path);
-		return Ref<OTelState>();
+		ERR_PRINT("OpenTelemetryReflector: Failed to open file: " + p_path);
+		return Ref<OpenTelemetryState>();
 	}
 
 	String json = file->get_as_text();
@@ -101,29 +101,29 @@ Ref<OTelState> OTelReflector::load_logs_from_file(const String &p_path) {
 	return load_logs_from_json(json);
 }
 
-// Load OTLP JSON from string (delegates to OTelDocument)
-Ref<OTelState> OTelReflector::load_traces_from_json(const String &p_json) {
+// Load OTLP JSON from string (delegates to OpenTelemetryDocument)
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_traces_from_json(const String &p_json) {
 	return document->deserialize_traces(p_json);
 }
 
-Ref<OTelState> OTelReflector::load_metrics_from_json(const String &p_json) {
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_metrics_from_json(const String &p_json) {
 	return document->deserialize_metrics(p_json);
 }
 
-Ref<OTelState> OTelReflector::load_logs_from_json(const String &p_json) {
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_logs_from_json(const String &p_json) {
 	return document->deserialize_logs(p_json);
 }
 
 // Load multiple files and merge
-Ref<OTelState> OTelReflector::load_and_merge_traces(const PackedStringArray &p_paths) {
-	Ref<OTelState> merged_state;
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_and_merge_traces(const PackedStringArray &p_paths) {
+	Ref<OpenTelemetryState> merged_state;
 	merged_state.instantiate();
 
 	for (int i = 0; i < p_paths.size(); i++) {
-		Ref<OTelState> state = load_traces_from_file(p_paths[i]);
+		Ref<OpenTelemetryState> state = load_traces_from_file(p_paths[i]);
 		if (state.is_valid()) {
 			// Merge spans
-			TypedArray<OTelSpan> spans = state->get_spans();
+			TypedArray<OpenTelemetrySpan> spans = state->get_spans();
 			for (int j = 0; j < spans.size(); j++) {
 				merged_state->add_span(spans[j]);
 			}
@@ -139,15 +139,15 @@ Ref<OTelState> OTelReflector::load_and_merge_traces(const PackedStringArray &p_p
 	return merged_state;
 }
 
-Ref<OTelState> OTelReflector::load_and_merge_metrics(const PackedStringArray &p_paths) {
-	Ref<OTelState> merged_state;
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_and_merge_metrics(const PackedStringArray &p_paths) {
+	Ref<OpenTelemetryState> merged_state;
 	merged_state.instantiate();
 
 	for (int i = 0; i < p_paths.size(); i++) {
-		Ref<OTelState> state = load_metrics_from_file(p_paths[i]);
+		Ref<OpenTelemetryState> state = load_metrics_from_file(p_paths[i]);
 		if (state.is_valid()) {
 			// Merge metrics
-			TypedArray<OTelMetric> metrics = state->get_metrics();
+			TypedArray<OpenTelemetryMetric> metrics = state->get_metrics();
 			for (int j = 0; j < metrics.size(); j++) {
 				merged_state->add_metric(metrics[j]);
 			}
@@ -163,15 +163,15 @@ Ref<OTelState> OTelReflector::load_and_merge_metrics(const PackedStringArray &p_
 	return merged_state;
 }
 
-Ref<OTelState> OTelReflector::load_and_merge_logs(const PackedStringArray &p_paths) {
-	Ref<OTelState> merged_state;
+Ref<OpenTelemetryState> OpenTelemetryReflector::load_and_merge_logs(const PackedStringArray &p_paths) {
+	Ref<OpenTelemetryState> merged_state;
 	merged_state.instantiate();
 
 	for (int i = 0; i < p_paths.size(); i++) {
-		Ref<OTelState> state = load_logs_from_file(p_paths[i]);
+		Ref<OpenTelemetryState> state = load_logs_from_file(p_paths[i]);
 		if (state.is_valid()) {
 			// Merge logs
-			TypedArray<OTelLog> logs = state->get_logs();
+			TypedArray<OpenTelemetryLog> logs = state->get_logs();
 			for (int j = 0; j < logs.size(); j++) {
 				merged_state->add_log(logs[j]);
 			}
@@ -188,12 +188,12 @@ Ref<OTelState> OTelReflector::load_and_merge_logs(const PackedStringArray &p_pat
 }
 
 // Utility: Find all OTLP JSON files in directory
-PackedStringArray OTelReflector::find_otlp_files(const String &p_directory, const String &p_pattern) {
+PackedStringArray OpenTelemetryReflector::find_otlp_files(const String &p_directory, const String &p_pattern) {
 	PackedStringArray result;
 
 	Ref<DirAccess> dir = DirAccess::open(p_directory);
 	if (dir.is_null()) {
-		ERR_PRINT("OTelReflector: Failed to open directory: " + p_directory);
+		ERR_PRINT("OpenTelemetryReflector: Failed to open directory: " + p_directory);
 		return result;
 	}
 
@@ -216,6 +216,6 @@ PackedStringArray OTelReflector::find_otlp_files(const String &p_directory, cons
 	return result;
 }
 
-Ref<OTelDocument> OTelReflector::get_document() const {
+Ref<OpenTelemetryDocument> OpenTelemetryReflector::get_document() const {
 	return document;
 }

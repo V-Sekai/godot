@@ -32,36 +32,36 @@
 
 #include "core/os/time.h"
 
-void OTelLog::_bind_methods() {
+void OpenTelemetryLog::_bind_methods() {
 	// Timestamps
-	ClassDB::bind_method(D_METHOD("get_time_unix_nano"), &OTelLog::get_time_unix_nano);
-	ClassDB::bind_method(D_METHOD("set_time_unix_nano", "time"), &OTelLog::set_time_unix_nano);
-	ClassDB::bind_method(D_METHOD("get_observed_time_unix_nano"), &OTelLog::get_observed_time_unix_nano);
-	ClassDB::bind_method(D_METHOD("set_observed_time_unix_nano", "time"), &OTelLog::set_observed_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("get_time_unix_nano"), &OpenTelemetryLog::get_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("set_time_unix_nano", "time"), &OpenTelemetryLog::set_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("get_observed_time_unix_nano"), &OpenTelemetryLog::get_observed_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("set_observed_time_unix_nano", "time"), &OpenTelemetryLog::set_observed_time_unix_nano);
 
 	// Severity
-	ClassDB::bind_method(D_METHOD("get_severity_number"), &OTelLog::get_severity_number);
-	ClassDB::bind_method(D_METHOD("set_severity_number", "severity"), &OTelLog::set_severity_number);
-	ClassDB::bind_method(D_METHOD("get_severity_text"), &OTelLog::get_severity_text);
-	ClassDB::bind_method(D_METHOD("set_severity_text", "text"), &OTelLog::set_severity_text);
+	ClassDB::bind_method(D_METHOD("get_severity_number"), &OpenTelemetryLog::get_severity_number);
+	ClassDB::bind_method(D_METHOD("set_severity_number", "severity"), &OpenTelemetryLog::set_severity_number);
+	ClassDB::bind_method(D_METHOD("get_severity_text"), &OpenTelemetryLog::get_severity_text);
+	ClassDB::bind_method(D_METHOD("set_severity_text", "text"), &OpenTelemetryLog::set_severity_text);
 
 	// Body
-	ClassDB::bind_method(D_METHOD("get_body"), &OTelLog::get_body);
-	ClassDB::bind_method(D_METHOD("set_body", "body"), &OTelLog::set_body);
+	ClassDB::bind_method(D_METHOD("get_body"), &OpenTelemetryLog::get_body);
+	ClassDB::bind_method(D_METHOD("set_body", "body"), &OpenTelemetryLog::set_body);
 
 	// Attributes
-	ClassDB::bind_method(D_METHOD("get_attributes"), &OTelLog::get_attributes);
-	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OTelLog::set_attributes);
-	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OTelLog::add_attribute);
+	ClassDB::bind_method(D_METHOD("get_attributes"), &OpenTelemetryLog::get_attributes);
+	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OpenTelemetryLog::set_attributes);
+	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OpenTelemetryLog::add_attribute);
 
 	// Trace context
-	ClassDB::bind_method(D_METHOD("get_trace_id"), &OTelLog::get_trace_id);
-	ClassDB::bind_method(D_METHOD("set_trace_id", "trace_id"), &OTelLog::set_trace_id);
-	ClassDB::bind_method(D_METHOD("get_span_id"), &OTelLog::get_span_id);
-	ClassDB::bind_method(D_METHOD("set_span_id", "span_id"), &OTelLog::set_span_id);
+	ClassDB::bind_method(D_METHOD("get_trace_id"), &OpenTelemetryLog::get_trace_id);
+	ClassDB::bind_method(D_METHOD("set_trace_id", "trace_id"), &OpenTelemetryLog::set_trace_id);
+	ClassDB::bind_method(D_METHOD("get_span_id"), &OpenTelemetryLog::get_span_id);
+	ClassDB::bind_method(D_METHOD("set_span_id", "span_id"), &OpenTelemetryLog::set_span_id);
 
 	// Serialization
-	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OTelLog::to_otlp_dict);
+	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OpenTelemetryLog::to_otlp_dict);
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "time_unix_nano"), "set_time_unix_nano", "get_time_unix_nano");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "observed_time_unix_nano"), "set_observed_time_unix_nano", "get_observed_time_unix_nano");
@@ -81,84 +81,84 @@ void OTelLog::_bind_methods() {
 	BIND_ENUM_CONSTANT(SEVERITY_NUMBER_FATAL);
 }
 
-OTelLog::OTelLog() {
+OpenTelemetryLog::OpenTelemetryLog() {
 }
 
 // Timestamps
-uint64_t OTelLog::get_time_unix_nano() const {
+uint64_t OpenTelemetryLog::get_time_unix_nano() const {
 	return time_unix_nano;
 }
 
-void OTelLog::set_time_unix_nano(uint64_t p_time) {
+void OpenTelemetryLog::set_time_unix_nano(uint64_t p_time) {
 	time_unix_nano = p_time;
 }
 
-uint64_t OTelLog::get_observed_time_unix_nano() const {
+uint64_t OpenTelemetryLog::get_observed_time_unix_nano() const {
 	return observed_time_unix_nano;
 }
 
-void OTelLog::set_observed_time_unix_nano(uint64_t p_time) {
+void OpenTelemetryLog::set_observed_time_unix_nano(uint64_t p_time) {
 	observed_time_unix_nano = p_time;
 }
 
 // Severity
-OTelLog::SeverityNumber OTelLog::get_severity_number() const {
+OpenTelemetryLog::SeverityNumber OpenTelemetryLog::get_severity_number() const {
 	return severity_number;
 }
 
-void OTelLog::set_severity_number(SeverityNumber p_severity) {
+void OpenTelemetryLog::set_severity_number(SeverityNumber p_severity) {
 	severity_number = p_severity;
 }
 
-String OTelLog::get_severity_text() const {
+String OpenTelemetryLog::get_severity_text() const {
 	return severity_text;
 }
 
-void OTelLog::set_severity_text(const String &p_text) {
+void OpenTelemetryLog::set_severity_text(const String &p_text) {
 	severity_text = p_text;
 }
 
 // Body
-String OTelLog::get_body() const {
+String OpenTelemetryLog::get_body() const {
 	return body;
 }
 
-void OTelLog::set_body(const String &p_body) {
+void OpenTelemetryLog::set_body(const String &p_body) {
 	body = p_body;
 }
 
 // Attributes
-Dictionary OTelLog::get_attributes() const {
+Dictionary OpenTelemetryLog::get_attributes() const {
 	return attributes;
 }
 
-void OTelLog::set_attributes(const Dictionary &p_attributes) {
+void OpenTelemetryLog::set_attributes(const Dictionary &p_attributes) {
 	attributes = p_attributes;
 }
 
-void OTelLog::add_attribute(const String &p_key, const Variant &p_value) {
+void OpenTelemetryLog::add_attribute(const String &p_key, const Variant &p_value) {
 	attributes[p_key] = p_value;
 }
 
 // Trace context
-String OTelLog::get_trace_id() const {
+String OpenTelemetryLog::get_trace_id() const {
 	return trace_id;
 }
 
-void OTelLog::set_trace_id(const String &p_trace_id) {
+void OpenTelemetryLog::set_trace_id(const String &p_trace_id) {
 	trace_id = p_trace_id;
 }
 
-String OTelLog::get_span_id() const {
+String OpenTelemetryLog::get_span_id() const {
 	return span_id;
 }
 
-void OTelLog::set_span_id(const String &p_span_id) {
+void OpenTelemetryLog::set_span_id(const String &p_span_id) {
 	span_id = p_span_id;
 }
 
 // Serialization
-Dictionary OTelLog::to_otlp_dict() const {
+Dictionary OpenTelemetryLog::to_otlp_dict() const {
 	Dictionary log_dict;
 
 	log_dict["timeUnixNano"] = (int64_t)time_unix_nano;
@@ -196,8 +196,8 @@ Dictionary OTelLog::to_otlp_dict() const {
 	return log_dict;
 }
 
-Ref<OTelLog> OTelLog::from_otlp_dict(const Dictionary &p_dict) {
-	Ref<OTelLog> log;
+Ref<OpenTelemetryLog> OpenTelemetryLog::from_otlp_dict(const Dictionary &p_dict) {
+	Ref<OpenTelemetryLog> log;
 	log.instantiate();
 
 	if (p_dict.has("timeUnixNano")) {

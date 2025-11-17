@@ -37,6 +37,13 @@
 
 // OpenTelemetryTracer implementation
 
+OpenTelemetryTracer::OpenTelemetryTracer() {
+	name = "";
+	version = "";
+	schema_url = "";
+	attributes = Dictionary();
+}
+
 OpenTelemetryTracer::OpenTelemetryTracer(String p_name, String p_version, String p_schema_url, Dictionary p_attributes) {
 	name = p_name;
 	version = p_version;
@@ -241,13 +248,13 @@ String OpenTelemetry::start_span_with_parent(String p_name, String p_parent_span
 }
 
 String OpenTelemetry::start_span_with_id(String p_name, String p_span_id) {
-	Ref<OTelSpan> span;
+	Ref<OpenTelemetrySpan> span;
 	span.instantiate();
 
 	span->set_name(p_name);
 	span->set_trace_id(trace_id);
 	span->set_span_id(p_span_id);
-	span->set_kind(OTelSpan::SPAN_KIND_INTERNAL);
+	span->set_kind(OpenTelemetrySpan::SPAN_KIND_INTERNAL);
 	span->set_start_time_unix_nano(Time::get_singleton()->get_unix_time_from_system() * 1000000000ULL);
 
 	String uuid = generate_uuid_v7();
@@ -261,16 +268,16 @@ String OpenTelemetry::start_span_with_parent_id(String p_name, String p_parent_s
 		return "";
 	}
 
-	Ref<OTelSpan> parent_span = active_spans[p_parent_span_uuid];
+	Ref<OpenTelemetrySpan> parent_span = active_spans[p_parent_span_uuid];
 
-	Ref<OTelSpan> span;
+	Ref<OpenTelemetrySpan> span;
 	span.instantiate();
 
 	span->set_name(p_name);
 	span->set_trace_id(parent_span->get_trace_id());
 	span->set_span_id(p_span_id);
 	span->set_parent_span_id(parent_span->get_span_id());
-	span->set_kind(OTelSpan::SPAN_KIND_INTERNAL);
+	span->set_kind(OpenTelemetrySpan::SPAN_KIND_INTERNAL);
 	span->set_start_time_unix_nano(Time::get_singleton()->get_unix_time_from_system() * 1000000000ULL);
 
 	String uuid = generate_uuid_v7();
@@ -284,7 +291,7 @@ void OpenTelemetry::update_name(String p_span_uuid, String p_name) {
 		return;
 	}
 
-	Ref<OTelSpan> span = active_spans[p_span_uuid];
+	Ref<OpenTelemetrySpan> span = active_spans[p_span_uuid];
 	span->set_name(p_name);
 }
 
@@ -293,7 +300,7 @@ void OpenTelemetry::add_event(String p_span_uuid, String p_event_name, Dictionar
 		return;
 	}
 
-	Ref<OTelSpan> span = active_spans[p_span_uuid];
+	Ref<OpenTelemetrySpan> span = active_spans[p_span_uuid];
 
 	uint64_t timestamp = p_timestamp;
 	if (timestamp == 0) {
@@ -320,7 +327,7 @@ void OpenTelemetry::set_attributes(String p_span_uuid, Dictionary p_attributes) 
 		return;
 	}
 
-	Ref<OTelSpan> span = active_spans[p_span_uuid];
+	Ref<OpenTelemetrySpan> span = active_spans[p_span_uuid];
 	span->set_attributes(p_attributes);
 }
 
@@ -329,8 +336,8 @@ void OpenTelemetry::set_status(String p_span_uuid, int p_status_code, String p_d
 		return;
 	}
 
-	Ref<OTelSpan> span = active_spans[p_span_uuid];
-	span->set_status_code((OTelSpan::StatusCode)p_status_code);
+	Ref<OpenTelemetrySpan> span = active_spans[p_span_uuid];
+	span->set_status_code((OpenTelemetrySpan::StatusCode)p_status_code);
 
 	if (!p_description.is_empty()) {
 		span->set_status_message(p_description);
@@ -347,7 +354,7 @@ void OpenTelemetry::end_span(String p_span_uuid) {
 		return;
 	}
 
-	Ref<OTelSpan> span = active_spans[p_span_uuid];
+	Ref<OpenTelemetrySpan> span = active_spans[p_span_uuid];
 	span->mark_ended();
 
 	// Add to state for export
@@ -366,14 +373,14 @@ void OpenTelemetry::set_batch_size(int p_size) {
 }
 
 void OpenTelemetry::record_metric(String p_name, float p_value, String p_unit, int p_metric_type, Dictionary p_attributes) {
-	Ref<OTelMetric> metric;
+	Ref<OpenTelemetryMetric> metric;
 	metric.instantiate();
 
 	metric->set_name(p_name);
 	if (!p_unit.is_empty()) {
 		metric->set_unit(p_unit);
 	}
-	metric->set_type((OTelMetric::MetricType)p_metric_type);
+	metric->set_type((OpenTelemetryMetric::MetricType)p_metric_type);
 
 	// Create data point
 	Dictionary data_point;
@@ -390,7 +397,7 @@ void OpenTelemetry::record_metric(String p_name, float p_value, String p_unit, i
 }
 
 void OpenTelemetry::log_message(String p_level, String p_message, Dictionary p_attributes) {
-	Ref<OTelLog> log;
+	Ref<OpenTelemetryLog> log;
 	log.instantiate();
 
 	log->set_body(p_message);
@@ -401,17 +408,17 @@ void OpenTelemetry::log_message(String p_level, String p_message, Dictionary p_a
 
 	// Map log level string to severity
 	if (p_level == "TRACE") {
-		log->set_severity_number(OTelLog::SEVERITY_NUMBER_TRACE);
+		log->set_severity_number(OpenTelemetryLog::SEVERITY_NUMBER_TRACE);
 	} else if (p_level == "DEBUG") {
-		log->set_severity_number(OTelLog::SEVERITY_NUMBER_DEBUG);
+		log->set_severity_number(OpenTelemetryLog::SEVERITY_NUMBER_DEBUG);
 	} else if (p_level == "INFO") {
-		log->set_severity_number(OTelLog::SEVERITY_NUMBER_INFO);
+		log->set_severity_number(OpenTelemetryLog::SEVERITY_NUMBER_INFO);
 	} else if (p_level == "WARN") {
-		log->set_severity_number(OTelLog::SEVERITY_NUMBER_WARN);
+		log->set_severity_number(OpenTelemetryLog::SEVERITY_NUMBER_WARN);
 	} else if (p_level == "ERROR") {
-		log->set_severity_number(OTelLog::SEVERITY_NUMBER_ERROR);
+		log->set_severity_number(OpenTelemetryLog::SEVERITY_NUMBER_ERROR);
 	} else if (p_level == "FATAL") {
-		log->set_severity_number(OTelLog::SEVERITY_NUMBER_FATAL);
+		log->set_severity_number(OpenTelemetryLog::SEVERITY_NUMBER_FATAL);
 	}
 	log->set_severity_text(p_level);
 
@@ -546,7 +553,7 @@ void OpenTelemetry::FlushAllBufferedData() {
 	// Move any ended active spans to state
 	Array keys = active_spans.keys();
 	for (int i = 0; i < keys.size(); i++) {
-		Ref<OTelSpan> span = active_spans[keys[i]];
+		Ref<OpenTelemetrySpan> span = active_spans[keys[i]];
 		if (!span.is_valid() || !span->is_ended()) {
 			continue;
 		}
@@ -555,7 +562,7 @@ void OpenTelemetry::FlushAllBufferedData() {
 		active_spans.erase(keys[i]);
 	}
 
-	// Use OTelDocument for serialization
+	// Use OpenTelemetryDocument for serialization
 	if (state->get_spans().size() > 0) {
 		String json = document->serialize_traces(state);
 		_send_otlp_request("/v1/traces", json);

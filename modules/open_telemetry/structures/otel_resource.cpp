@@ -30,83 +30,83 @@
 
 #include "otel_resource.h"
 
-void OTelResource::_bind_methods() {
+void OpenTelemetryResource::_bind_methods() {
 	// Attributes management
-	ClassDB::bind_method(D_METHOD("get_attributes"), &OTelResource::get_attributes);
-	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OTelResource::set_attributes);
-	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OTelResource::add_attribute);
-	ClassDB::bind_method(D_METHOD("get_attribute", "key"), &OTelResource::get_attribute);
-	ClassDB::bind_method(D_METHOD("has_attribute", "key"), &OTelResource::has_attribute);
+	ClassDB::bind_method(D_METHOD("get_attributes"), &OpenTelemetryResource::get_attributes);
+	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OpenTelemetryResource::set_attributes);
+	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OpenTelemetryResource::add_attribute);
+	ClassDB::bind_method(D_METHOD("get_attribute", "key"), &OpenTelemetryResource::get_attribute);
+	ClassDB::bind_method(D_METHOD("has_attribute", "key"), &OpenTelemetryResource::has_attribute);
 
 	// Semantic conventions helpers
-	ClassDB::bind_method(D_METHOD("set_service_name", "name"), &OTelResource::set_service_name);
-	ClassDB::bind_method(D_METHOD("get_service_name"), &OTelResource::get_service_name);
-	ClassDB::bind_method(D_METHOD("set_service_version", "version"), &OTelResource::set_service_version);
-	ClassDB::bind_method(D_METHOD("get_service_version"), &OTelResource::get_service_version);
-	ClassDB::bind_method(D_METHOD("set_service_instance_id", "id"), &OTelResource::set_service_instance_id);
-	ClassDB::bind_method(D_METHOD("get_service_instance_id"), &OTelResource::get_service_instance_id);
+	ClassDB::bind_method(D_METHOD("set_service_name", "name"), &OpenTelemetryResource::set_service_name);
+	ClassDB::bind_method(D_METHOD("get_service_name"), &OpenTelemetryResource::get_service_name);
+	ClassDB::bind_method(D_METHOD("set_service_version", "version"), &OpenTelemetryResource::set_service_version);
+	ClassDB::bind_method(D_METHOD("get_service_version"), &OpenTelemetryResource::get_service_version);
+	ClassDB::bind_method(D_METHOD("set_service_instance_id", "id"), &OpenTelemetryResource::set_service_instance_id);
+	ClassDB::bind_method(D_METHOD("get_service_instance_id"), &OpenTelemetryResource::get_service_instance_id);
 
 	// Serialization
-	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OTelResource::to_otlp_dict);
+	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OpenTelemetryResource::to_otlp_dict);
 
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "attributes"), "set_attributes", "get_attributes");
 }
 
-OTelResource::OTelResource() {
+OpenTelemetryResource::OpenTelemetryResource() {
 }
 
 // Attributes management
-Dictionary OTelResource::get_attributes() const {
+Dictionary OpenTelemetryResource::get_attributes() const {
 	return attributes;
 }
 
-void OTelResource::set_attributes(const Dictionary &p_attributes) {
+void OpenTelemetryResource::set_attributes(const Dictionary &p_attributes) {
 	attributes = p_attributes;
 }
 
-void OTelResource::add_attribute(const String &p_key, const Variant &p_value) {
+void OpenTelemetryResource::add_attribute(const String &p_key, const Variant &p_value) {
 	attributes[p_key] = p_value;
 }
 
-Variant OTelResource::get_attribute(const String &p_key) const {
+Variant OpenTelemetryResource::get_attribute(const String &p_key) const {
 	if (attributes.has(p_key)) {
 		return attributes[p_key];
 	}
 	return Variant();
 }
 
-bool OTelResource::has_attribute(const String &p_key) const {
+bool OpenTelemetryResource::has_attribute(const String &p_key) const {
 	return attributes.has(p_key);
 }
 
 // Common semantic conventions helpers
-void OTelResource::set_service_name(const String &p_name) {
+void OpenTelemetryResource::set_service_name(const String &p_name) {
 	attributes["service.name"] = p_name;
 }
 
-String OTelResource::get_service_name() const {
+String OpenTelemetryResource::get_service_name() const {
 	if (attributes.has("service.name")) {
 		return attributes["service.name"];
 	}
 	return String();
 }
 
-void OTelResource::set_service_version(const String &p_version) {
+void OpenTelemetryResource::set_service_version(const String &p_version) {
 	attributes["service.version"] = p_version;
 }
 
-String OTelResource::get_service_version() const {
+String OpenTelemetryResource::get_service_version() const {
 	if (attributes.has("service.version")) {
 		return attributes["service.version"];
 	}
 	return String();
 }
 
-void OTelResource::set_service_instance_id(const String &p_id) {
+void OpenTelemetryResource::set_service_instance_id(const String &p_id) {
 	attributes["service.instance.id"] = p_id;
 }
 
-String OTelResource::get_service_instance_id() const {
+String OpenTelemetryResource::get_service_instance_id() const {
 	if (attributes.has("service.instance.id")) {
 		return attributes["service.instance.id"];
 	}
@@ -114,7 +114,7 @@ String OTelResource::get_service_instance_id() const {
 }
 
 // Serialization to OTLP format
-Dictionary OTelResource::to_otlp_dict() const {
+Dictionary OpenTelemetryResource::to_otlp_dict() const {
 	Dictionary resource_dict;
 
 	if (attributes.size() > 0) {
@@ -160,8 +160,8 @@ Dictionary OTelResource::to_otlp_dict() const {
 	return resource_dict;
 }
 
-Ref<OTelResource> OTelResource::from_otlp_dict(const Dictionary &p_dict) {
-	Ref<OTelResource> resource;
+Ref<OpenTelemetryResource> OpenTelemetryResource::from_otlp_dict(const Dictionary &p_dict) {
+	Ref<OpenTelemetryResource> resource;
 	resource.instantiate();
 
 	if (p_dict.has("attributes")) {

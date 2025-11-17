@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="OTelLog" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+<class name="OpenTelemetryLog" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
@@ -27,7 +27,7 @@
 		</member>
 		<member name="observed_time_unix_nano" type="int" setter="set_observed_time_unix_nano" getter="get_observed_time_unix_nano" default="0">
 		</member>
-		<member name="severity_number" type="int" setter="set_severity_number" getter="get_severity_number" enum="OTelLog.SeverityNumber" default="0">
+		<member name="severity_number" type="int" setter="set_severity_number" getter="get_severity_number" enum="OpenTelemetryLog.SeverityNumber" default="0">
 		</member>
 		<member name="severity_text" type="String" setter="set_severity_text" getter="get_severity_text" default="&quot;&quot;">
 		</member>

@@ -33,12 +33,12 @@
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 
-// OTelResource represents resource attributes (service.name, etc.)
+// OpenTelemetryResource represents resource attributes (service.name, etc.)
 // as defined in OTLP Resource specification
-class OTelResource : public Resource {
-	GDCLASS(OTelResource, Resource);
-	friend class OTelDocument;
-	friend class OTelState;
+class OpenTelemetryResource : public Resource {
+	GDCLASS(OpenTelemetryResource, Resource);
+	friend class OpenTelemetryDocument;
+	friend class OpenTelemetryState;
 
 private:
 	// Resource attributes following OTLP semantic conventions
@@ -48,7 +48,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	OTelResource();
+	OpenTelemetryResource();
 
 	// Attributes management
 	Dictionary get_attributes() const;
@@ -69,5 +69,5 @@ public:
 
 	// Serialization to OTLP format
 	Dictionary to_otlp_dict() const;
-	static Ref<OTelResource> from_otlp_dict(const Dictionary &p_dict);
+	static Ref<OpenTelemetryResource> from_otlp_dict(const Dictionary &p_dict);
 };

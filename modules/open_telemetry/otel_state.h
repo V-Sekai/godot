@@ -38,54 +38,54 @@
 #include "structures/otel_scope.h"
 #include "structures/otel_span.h"
 
-// OTelState manages runtime state of telemetry data
+// OpenTelemetryState manages runtime state of telemetry data
 // Similar to GLTFState - holds active spans, metrics, logs, and configuration
-class OTelState : public Resource {
-	GDCLASS(OTelState, Resource);
-	friend class OTelDocument;
+class OpenTelemetryState : public Resource {
+	GDCLASS(OpenTelemetryState, Resource);
+	friend class OpenTelemetryDocument;
 
 private:
 	// Resource configuration (service.name, etc.)
-	Ref<OTelResource> resource;
+	Ref<OpenTelemetryResource> resource;
 
 	// Instrumentation scope
-	Ref<OTelScope> scope;
+	Ref<OpenTelemetryScope> scope;
 
 	// Telemetry data - C++ Vector internally, convert to Array at API boundary
-	Vector<Ref<OTelSpan>> spans;
-	Vector<Ref<OTelMetric>> metrics;
-	Vector<Ref<OTelLog>> logs;
+	Vector<Ref<OpenTelemetrySpan>> spans;
+	Vector<Ref<OpenTelemetryMetric>> metrics;
+	Vector<Ref<OpenTelemetryLog>> logs;
 
 protected:
 	static void _bind_methods();
 
 public:
-	OTelState();
+	OpenTelemetryState();
 
 	// Resource management
-	Ref<OTelResource> get_resource() const;
-	void set_resource(Ref<OTelResource> p_resource);
+	Ref<OpenTelemetryResource> get_resource() const;
+	void set_resource(Ref<OpenTelemetryResource> p_resource);
 
 	// Scope management
-	Ref<OTelScope> get_scope() const;
-	void set_scope(Ref<OTelScope> p_scope);
+	Ref<OpenTelemetryScope> get_scope() const;
+	void set_scope(Ref<OpenTelemetryScope> p_scope);
 
 	// Span management
-	TypedArray<OTelSpan> get_spans() const;
-	void set_spans(const TypedArray<OTelSpan> &p_spans);
-	void add_span(Ref<OTelSpan> p_span);
+	TypedArray<OpenTelemetrySpan> get_spans() const;
+	void set_spans(const TypedArray<OpenTelemetrySpan> &p_spans);
+	void add_span(Ref<OpenTelemetrySpan> p_span);
 	void clear_spans();
 
 	// Metric management
-	TypedArray<OTelMetric> get_metrics() const;
-	void set_metrics(const TypedArray<OTelMetric> &p_metrics);
-	void add_metric(Ref<OTelMetric> p_metric);
+	TypedArray<OpenTelemetryMetric> get_metrics() const;
+	void set_metrics(const TypedArray<OpenTelemetryMetric> &p_metrics);
+	void add_metric(Ref<OpenTelemetryMetric> p_metric);
 	void clear_metrics();
 
 	// Log management
-	TypedArray<OTelLog> get_logs() const;
-	void set_logs(const TypedArray<OTelLog> &p_logs);
-	void add_log(Ref<OTelLog> p_log);
+	TypedArray<OpenTelemetryLog> get_logs() const;
+	void set_logs(const TypedArray<OpenTelemetryLog> &p_logs);
+	void add_log(Ref<OpenTelemetryLog> p_log);
 	void clear_logs();
 
 	// Utility

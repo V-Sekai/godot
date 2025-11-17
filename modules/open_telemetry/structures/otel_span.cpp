@@ -33,60 +33,60 @@
 #include "core/crypto/crypto.h"
 #include "core/os/time.h"
 
-void OTelSpan::_bind_methods() {
+void OpenTelemetrySpan::_bind_methods() {
 	// Validation methods
-	ClassDB::bind_static_method("OTelSpan", D_METHOD("is_valid_trace_id", "id"), &OTelSpan::is_valid_trace_id);
-	ClassDB::bind_static_method("OTelSpan", D_METHOD("is_valid_span_id", "id"), &OTelSpan::is_valid_span_id);
-	ClassDB::bind_static_method("OTelSpan", D_METHOD("generate_trace_id"), &OTelSpan::generate_trace_id);
-	ClassDB::bind_static_method("OTelSpan", D_METHOD("generate_span_id"), &OTelSpan::generate_span_id);
+	ClassDB::bind_static_method("OpenTelemetrySpan", D_METHOD("is_valid_trace_id", "id"), &OpenTelemetrySpan::is_valid_trace_id);
+	ClassDB::bind_static_method("OpenTelemetrySpan", D_METHOD("is_valid_span_id", "id"), &OpenTelemetrySpan::is_valid_span_id);
+	ClassDB::bind_static_method("OpenTelemetrySpan", D_METHOD("generate_trace_id"), &OpenTelemetrySpan::generate_trace_id);
+	ClassDB::bind_static_method("OpenTelemetrySpan", D_METHOD("generate_span_id"), &OpenTelemetrySpan::generate_span_id);
 
 	// Trace and Span IDs
-	ClassDB::bind_method(D_METHOD("get_trace_id"), &OTelSpan::get_trace_id);
-	ClassDB::bind_method(D_METHOD("set_trace_id", "trace_id"), &OTelSpan::set_trace_id);
-	ClassDB::bind_method(D_METHOD("get_span_id"), &OTelSpan::get_span_id);
-	ClassDB::bind_method(D_METHOD("set_span_id", "span_id"), &OTelSpan::set_span_id);
-	ClassDB::bind_method(D_METHOD("get_parent_span_id"), &OTelSpan::get_parent_span_id);
-	ClassDB::bind_method(D_METHOD("set_parent_span_id", "parent_span_id"), &OTelSpan::set_parent_span_id);
+	ClassDB::bind_method(D_METHOD("get_trace_id"), &OpenTelemetrySpan::get_trace_id);
+	ClassDB::bind_method(D_METHOD("set_trace_id", "trace_id"), &OpenTelemetrySpan::set_trace_id);
+	ClassDB::bind_method(D_METHOD("get_span_id"), &OpenTelemetrySpan::get_span_id);
+	ClassDB::bind_method(D_METHOD("set_span_id", "span_id"), &OpenTelemetrySpan::set_span_id);
+	ClassDB::bind_method(D_METHOD("get_parent_span_id"), &OpenTelemetrySpan::get_parent_span_id);
+	ClassDB::bind_method(D_METHOD("set_parent_span_id", "parent_span_id"), &OpenTelemetrySpan::set_parent_span_id);
 
 	// Span metadata
-	ClassDB::bind_method(D_METHOD("get_name"), &OTelSpan::get_name);
-	ClassDB::bind_method(D_METHOD("set_name", "name"), &OTelSpan::set_name);
-	ClassDB::bind_method(D_METHOD("get_kind"), &OTelSpan::get_kind);
-	ClassDB::bind_method(D_METHOD("set_kind", "kind"), &OTelSpan::set_kind);
+	ClassDB::bind_method(D_METHOD("get_name"), &OpenTelemetrySpan::get_name);
+	ClassDB::bind_method(D_METHOD("set_name", "name"), &OpenTelemetrySpan::set_name);
+	ClassDB::bind_method(D_METHOD("get_kind"), &OpenTelemetrySpan::get_kind);
+	ClassDB::bind_method(D_METHOD("set_kind", "kind"), &OpenTelemetrySpan::set_kind);
 
 	// Timestamps
-	ClassDB::bind_method(D_METHOD("get_start_time_unix_nano"), &OTelSpan::get_start_time_unix_nano);
-	ClassDB::bind_method(D_METHOD("set_start_time_unix_nano", "time"), &OTelSpan::set_start_time_unix_nano);
-	ClassDB::bind_method(D_METHOD("get_end_time_unix_nano"), &OTelSpan::get_end_time_unix_nano);
-	ClassDB::bind_method(D_METHOD("set_end_time_unix_nano", "time"), &OTelSpan::set_end_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("get_start_time_unix_nano"), &OpenTelemetrySpan::get_start_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("set_start_time_unix_nano", "time"), &OpenTelemetrySpan::set_start_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("get_end_time_unix_nano"), &OpenTelemetrySpan::get_end_time_unix_nano);
+	ClassDB::bind_method(D_METHOD("set_end_time_unix_nano", "time"), &OpenTelemetrySpan::set_end_time_unix_nano);
 
 	// Attributes
-	ClassDB::bind_method(D_METHOD("get_attributes"), &OTelSpan::get_attributes);
-	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OTelSpan::set_attributes);
-	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OTelSpan::add_attribute);
+	ClassDB::bind_method(D_METHOD("get_attributes"), &OpenTelemetrySpan::get_attributes);
+	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OpenTelemetrySpan::set_attributes);
+	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OpenTelemetrySpan::add_attribute);
 
 	// Events
-	ClassDB::bind_method(D_METHOD("get_events"), &OTelSpan::get_events);
-	ClassDB::bind_method(D_METHOD("set_events", "events"), &OTelSpan::set_events);
-	ClassDB::bind_method(D_METHOD("add_event", "name", "attributes", "timestamp"), &OTelSpan::add_event, DEFVAL(Dictionary()), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("get_events"), &OpenTelemetrySpan::get_events);
+	ClassDB::bind_method(D_METHOD("set_events", "events"), &OpenTelemetrySpan::set_events);
+	ClassDB::bind_method(D_METHOD("add_event", "name", "attributes", "timestamp"), &OpenTelemetrySpan::add_event, DEFVAL(Dictionary()), DEFVAL(0));
 
 	// Links
-	ClassDB::bind_method(D_METHOD("get_links"), &OTelSpan::get_links);
-	ClassDB::bind_method(D_METHOD("set_links", "links"), &OTelSpan::set_links);
-	ClassDB::bind_method(D_METHOD("add_link", "trace_id", "span_id", "attributes"), &OTelSpan::add_link, DEFVAL(Dictionary()));
+	ClassDB::bind_method(D_METHOD("get_links"), &OpenTelemetrySpan::get_links);
+	ClassDB::bind_method(D_METHOD("set_links", "links"), &OpenTelemetrySpan::set_links);
+	ClassDB::bind_method(D_METHOD("add_link", "trace_id", "span_id", "attributes"), &OpenTelemetrySpan::add_link, DEFVAL(Dictionary()));
 
 	// Status
-	ClassDB::bind_method(D_METHOD("get_status_code"), &OTelSpan::get_status_code);
-	ClassDB::bind_method(D_METHOD("set_status_code", "code"), &OTelSpan::set_status_code);
-	ClassDB::bind_method(D_METHOD("get_status_message"), &OTelSpan::get_status_message);
-	ClassDB::bind_method(D_METHOD("set_status_message", "message"), &OTelSpan::set_status_message);
+	ClassDB::bind_method(D_METHOD("get_status_code"), &OpenTelemetrySpan::get_status_code);
+	ClassDB::bind_method(D_METHOD("set_status_code", "code"), &OpenTelemetrySpan::set_status_code);
+	ClassDB::bind_method(D_METHOD("get_status_message"), &OpenTelemetrySpan::get_status_message);
+	ClassDB::bind_method(D_METHOD("set_status_message", "message"), &OpenTelemetrySpan::set_status_message);
 
 	// State
-	ClassDB::bind_method(D_METHOD("is_ended"), &OTelSpan::is_ended);
-	ClassDB::bind_method(D_METHOD("mark_ended"), &OTelSpan::mark_ended);
+	ClassDB::bind_method(D_METHOD("is_ended"), &OpenTelemetrySpan::is_ended);
+	ClassDB::bind_method(D_METHOD("mark_ended"), &OpenTelemetrySpan::mark_ended);
 
 	// Serialization
-	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OTelSpan::to_otlp_dict);
+	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OpenTelemetrySpan::to_otlp_dict);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "trace_id"), "set_trace_id", "get_trace_id");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "span_id"), "set_span_id", "get_span_id");
@@ -113,11 +113,11 @@ void OTelSpan::_bind_methods() {
 	BIND_ENUM_CONSTANT(STATUS_CODE_ERROR);
 }
 
-OTelSpan::OTelSpan() {
+OpenTelemetrySpan::OpenTelemetrySpan() {
 }
 
 // Validation helpers (private)
-bool OTelSpan::is_valid_hex_string(const String &p_str, int p_expected_length) {
+bool OpenTelemetrySpan::is_valid_hex_string(const String &p_str, int p_expected_length) {
 	if (p_str.length() != p_expected_length) {
 		return false;
 	}
@@ -133,7 +133,7 @@ bool OTelSpan::is_valid_hex_string(const String &p_str, int p_expected_length) {
 	return true;
 }
 
-String OTelSpan::generate_random_hex(int p_length) {
+String OpenTelemetrySpan::generate_random_hex(int p_length) {
 	// Generate cryptographically secure random hex string
 	Ref<Crypto> crypto = Crypto::create();
 	int byte_count = (p_length + 1) / 2;
@@ -148,7 +148,7 @@ String OTelSpan::generate_random_hex(int p_length) {
 }
 
 // Validation methods (public)
-bool OTelSpan::is_valid_trace_id(const String &p_id) {
+bool OpenTelemetrySpan::is_valid_trace_id(const String &p_id) {
 	// Allow empty (unset)
 	if (p_id.is_empty()) {
 		return true;
@@ -157,7 +157,7 @@ bool OTelSpan::is_valid_trace_id(const String &p_id) {
 	return is_valid_hex_string(p_id, 32);
 }
 
-bool OTelSpan::is_valid_span_id(const String &p_id) {
+bool OpenTelemetrySpan::is_valid_span_id(const String &p_id) {
 	// Allow empty (unset)
 	if (p_id.is_empty()) {
 		return true;
@@ -167,7 +167,7 @@ bool OTelSpan::is_valid_span_id(const String &p_id) {
 }
 
 // ID generation helpers
-String OTelSpan::generate_trace_id() {
+String OpenTelemetrySpan::generate_trace_id() {
 	// Generate UUIDv7 as 32 hex characters (128 bits)
 	// UUIDv7 format: unix_ts_ms(48) + ver(4) + rand_a(12) + var(2) + rand_b(62)
 
@@ -212,98 +212,98 @@ String OTelSpan::generate_trace_id() {
 	return uuid.to_lower();
 }
 
-String OTelSpan::generate_span_id() {
+String OpenTelemetrySpan::generate_span_id() {
 	return generate_random_hex(16);
 }
 
 // Trace and Span IDs
-String OTelSpan::get_trace_id() const {
+String OpenTelemetrySpan::get_trace_id() const {
 	return trace_id;
 }
 
-void OTelSpan::set_trace_id(const String &p_trace_id) {
+void OpenTelemetrySpan::set_trace_id(const String &p_trace_id) {
 	ERR_FAIL_COND_MSG(!is_valid_trace_id(p_trace_id),
 			vformat("Invalid trace_id: '%s'. Must be exactly 32 hexadecimal characters or empty.", p_trace_id));
 	trace_id = p_trace_id;
 }
 
-String OTelSpan::get_span_id() const {
+String OpenTelemetrySpan::get_span_id() const {
 	return span_id;
 }
 
-void OTelSpan::set_span_id(const String &p_span_id) {
+void OpenTelemetrySpan::set_span_id(const String &p_span_id) {
 	ERR_FAIL_COND_MSG(!is_valid_span_id(p_span_id),
 			vformat("Invalid span_id: '%s'. Must be exactly 16 hexadecimal characters or empty.", p_span_id));
 	span_id = p_span_id;
 }
 
-String OTelSpan::get_parent_span_id() const {
+String OpenTelemetrySpan::get_parent_span_id() const {
 	return parent_span_id;
 }
 
-void OTelSpan::set_parent_span_id(const String &p_parent_span_id) {
+void OpenTelemetrySpan::set_parent_span_id(const String &p_parent_span_id) {
 	ERR_FAIL_COND_MSG(!is_valid_span_id(p_parent_span_id),
 			vformat("Invalid parent_span_id: '%s'. Must be exactly 16 hexadecimal characters or empty.", p_parent_span_id));
 	parent_span_id = p_parent_span_id;
 }
 
 // Span metadata
-String OTelSpan::get_name() const {
+String OpenTelemetrySpan::get_name() const {
 	return name;
 }
 
-void OTelSpan::set_name(const String &p_name) {
+void OpenTelemetrySpan::set_name(const String &p_name) {
 	name = p_name;
 }
 
-OTelSpan::SpanKind OTelSpan::get_kind() const {
+OpenTelemetrySpan::SpanKind OpenTelemetrySpan::get_kind() const {
 	return kind;
 }
 
-void OTelSpan::set_kind(SpanKind p_kind) {
+void OpenTelemetrySpan::set_kind(SpanKind p_kind) {
 	kind = p_kind;
 }
 
 // Timestamps
-uint64_t OTelSpan::get_start_time_unix_nano() const {
+uint64_t OpenTelemetrySpan::get_start_time_unix_nano() const {
 	return start_time_unix_nano;
 }
 
-void OTelSpan::set_start_time_unix_nano(uint64_t p_time) {
+void OpenTelemetrySpan::set_start_time_unix_nano(uint64_t p_time) {
 	start_time_unix_nano = p_time;
 }
 
-uint64_t OTelSpan::get_end_time_unix_nano() const {
+uint64_t OpenTelemetrySpan::get_end_time_unix_nano() const {
 	return end_time_unix_nano;
 }
 
-void OTelSpan::set_end_time_unix_nano(uint64_t p_time) {
+void OpenTelemetrySpan::set_end_time_unix_nano(uint64_t p_time) {
 	end_time_unix_nano = p_time;
 }
 
 // Attributes
-Dictionary OTelSpan::get_attributes() const {
+Dictionary OpenTelemetrySpan::get_attributes() const {
 	return attributes;
 }
 
-void OTelSpan::set_attributes(const Dictionary &p_attributes) {
+void OpenTelemetrySpan::set_attributes(const Dictionary &p_attributes) {
 	attributes = p_attributes;
 }
 
-void OTelSpan::add_attribute(const String &p_key, const Variant &p_value) {
+void OpenTelemetrySpan::add_attribute(const String &p_key, const Variant &p_value) {
 	attributes[p_key] = p_value;
 }
 
 // Events
-TypedArray<Dictionary> OTelSpan::get_events() const {
+TypedArray<Dictionary> OpenTelemetrySpan::get_events() const {
 	return events;
 }
 
-void OTelSpan::set_events(const TypedArray<Dictionary> &p_events) {
+void OpenTelemetrySpan::set_events(const TypedArray<Dictionary> &p_events) {
 	events = p_events;
 }
 
-void OTelSpan::add_event(const String &p_name, const Dictionary &p_attributes, uint64_t p_timestamp) {
+void OpenTelemetrySpan::add_event(const String &p_name, const Dictionary &p_attributes, uint64_t p_timestamp) {
 	Dictionary event;
 	event["name"] = p_name;
 	event["timeUnixNano"] = p_timestamp == 0 ? (uint64_t)(Time::get_singleton()->get_unix_time_from_system() * 1000000000ULL) : p_timestamp;
@@ -314,15 +314,15 @@ void OTelSpan::add_event(const String &p_name, const Dictionary &p_attributes, u
 }
 
 // Links
-TypedArray<Dictionary> OTelSpan::get_links() const {
+TypedArray<Dictionary> OpenTelemetrySpan::get_links() const {
 	return links;
 }
 
-void OTelSpan::set_links(const TypedArray<Dictionary> &p_links) {
+void OpenTelemetrySpan::set_links(const TypedArray<Dictionary> &p_links) {
 	links = p_links;
 }
 
-void OTelSpan::add_link(const String &p_trace_id, const String &p_span_id, const Dictionary &p_attributes) {
+void OpenTelemetrySpan::add_link(const String &p_trace_id, const String &p_span_id, const Dictionary &p_attributes) {
 	ERR_FAIL_COND_MSG(!is_valid_trace_id(p_trace_id),
 			vformat("Invalid link trace_id: '%s'. Must be exactly 32 hexadecimal characters.", p_trace_id));
 	ERR_FAIL_COND_MSG(!is_valid_span_id(p_span_id),
@@ -338,28 +338,28 @@ void OTelSpan::add_link(const String &p_trace_id, const String &p_span_id, const
 }
 
 // Status
-OTelSpan::StatusCode OTelSpan::get_status_code() const {
+OpenTelemetrySpan::StatusCode OpenTelemetrySpan::get_status_code() const {
 	return status_code;
 }
 
-void OTelSpan::set_status_code(StatusCode p_code) {
+void OpenTelemetrySpan::set_status_code(StatusCode p_code) {
 	status_code = p_code;
 }
 
-String OTelSpan::get_status_message() const {
+String OpenTelemetrySpan::get_status_message() const {
 	return status_message;
 }
 
-void OTelSpan::set_status_message(const String &p_message) {
+void OpenTelemetrySpan::set_status_message(const String &p_message) {
 	status_message = p_message;
 }
 
 // State
-bool OTelSpan::is_ended() const {
+bool OpenTelemetrySpan::is_ended() const {
 	return ended;
 }
 
-void OTelSpan::mark_ended() {
+void OpenTelemetrySpan::mark_ended() {
 	if (!ended) {
 		ended = true;
 		if (end_time_unix_nano == 0) {
@@ -369,7 +369,7 @@ void OTelSpan::mark_ended() {
 }
 
 // Serialization
-Dictionary OTelSpan::to_otlp_dict() const {
+Dictionary OpenTelemetrySpan::to_otlp_dict() const {
 	Dictionary span_dict;
 
 	span_dict["traceId"] = trace_id;
@@ -408,8 +408,8 @@ Dictionary OTelSpan::to_otlp_dict() const {
 	return span_dict;
 }
 
-Ref<OTelSpan> OTelSpan::from_otlp_dict(const Dictionary &p_dict) {
-	Ref<OTelSpan> span;
+Ref<OpenTelemetrySpan> OpenTelemetrySpan::from_otlp_dict(const Dictionary &p_dict) {
+	Ref<OpenTelemetrySpan> span;
 	span.instantiate();
 
 	if (p_dict.has("traceId")) {

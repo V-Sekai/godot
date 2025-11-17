@@ -33,10 +33,10 @@
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 
-class OTelLog : public Resource {
-	GDCLASS(OTelLog, Resource);
-	friend class OTelDocument;
-	friend class OTelState;
+class OpenTelemetryLog : public Resource {
+	GDCLASS(OpenTelemetryLog, Resource);
+	friend class OpenTelemetryDocument;
+	friend class OpenTelemetryState;
 
 public:
 	enum SeverityNumber {
@@ -63,7 +63,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	OTelLog();
+	OpenTelemetryLog();
 
 	// Timestamps
 	uint64_t get_time_unix_nano() const;
@@ -97,7 +97,7 @@ public:
 
 	// Serialization
 	Dictionary to_otlp_dict() const;
-	static Ref<OTelLog> from_otlp_dict(const Dictionary &p_dict);
+	static Ref<OpenTelemetryLog> from_otlp_dict(const Dictionary &p_dict);
 };
 
-VARIANT_ENUM_CAST(OTelLog::SeverityNumber);
+VARIANT_ENUM_CAST(OpenTelemetryLog::SeverityNumber);

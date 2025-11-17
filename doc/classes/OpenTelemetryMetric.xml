@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="OTelMetric" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+<class name="OpenTelemetryMetric" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
@@ -26,9 +26,9 @@
 		</member>
 		<member name="name" type="String" setter="set_name" getter="get_name" default="&quot;&quot;">
 		</member>
-		<member name="temporality" type="int" setter="set_temporality" getter="get_temporality" enum="OTelMetric.AggregationTemporality" default="2">
+		<member name="temporality" type="int" setter="set_temporality" getter="get_temporality" enum="OpenTelemetryMetric.AggregationTemporality" default="2">
 		</member>
-		<member name="type" type="int" setter="set_type" getter="get_type" enum="OTelMetric.MetricType" default="0">
+		<member name="type" type="int" setter="set_type" getter="get_type" enum="OpenTelemetryMetric.MetricType" default="0">
 		</member>
 		<member name="unit" type="String" setter="set_unit" getter="get_unit" default="&quot;&quot;">
 		</member>

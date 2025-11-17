@@ -30,52 +30,52 @@
 
 #include "otel_scope.h"
 
-void OTelScope::_bind_methods() {
+void OpenTelemetryScope::_bind_methods() {
 	// Scope identification (name uses Resource::get_name/set_name)
-	ClassDB::bind_method(D_METHOD("get_version"), &OTelScope::get_version);
-	ClassDB::bind_method(D_METHOD("set_version", "version"), &OTelScope::set_version);
+	ClassDB::bind_method(D_METHOD("get_version"), &OpenTelemetryScope::get_version);
+	ClassDB::bind_method(D_METHOD("set_version", "version"), &OpenTelemetryScope::set_version);
 
 	// Scope attributes
-	ClassDB::bind_method(D_METHOD("get_attributes"), &OTelScope::get_attributes);
-	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OTelScope::set_attributes);
-	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OTelScope::add_attribute);
+	ClassDB::bind_method(D_METHOD("get_attributes"), &OpenTelemetryScope::get_attributes);
+	ClassDB::bind_method(D_METHOD("set_attributes", "attributes"), &OpenTelemetryScope::set_attributes);
+	ClassDB::bind_method(D_METHOD("add_attribute", "key", "value"), &OpenTelemetryScope::add_attribute);
 
 	// Serialization
-	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OTelScope::to_otlp_dict);
+	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OpenTelemetryScope::to_otlp_dict);
 
 	// Note: "name" property uses Resource's built-in get_name/set_name
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "version"), "set_version", "get_version");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "attributes"), "set_attributes", "get_attributes");
 }
 
-OTelScope::OTelScope() {
+OpenTelemetryScope::OpenTelemetryScope() {
 }
 
 // Scope identification (name uses Resource's built-in methods)
 
-String OTelScope::get_version() const {
+String OpenTelemetryScope::get_version() const {
 	return version;
 }
 
-void OTelScope::set_version(const String &p_version) {
+void OpenTelemetryScope::set_version(const String &p_version) {
 	version = p_version;
 }
 
 // Scope attributes
-Dictionary OTelScope::get_attributes() const {
+Dictionary OpenTelemetryScope::get_attributes() const {
 	return attributes;
 }
 
-void OTelScope::set_attributes(const Dictionary &p_attributes) {
+void OpenTelemetryScope::set_attributes(const Dictionary &p_attributes) {
 	attributes = p_attributes;
 }
 
-void OTelScope::add_attribute(const String &p_key, const Variant &p_value) {
+void OpenTelemetryScope::add_attribute(const String &p_key, const Variant &p_value) {
 	attributes[p_key] = p_value;
 }
 
 // Serialization to OTLP format
-Dictionary OTelScope::to_otlp_dict() const {
+Dictionary OpenTelemetryScope::to_otlp_dict() const {
 	Dictionary scope_dict;
 
 	scope_dict["name"] = get_name();
@@ -125,8 +125,8 @@ Dictionary OTelScope::to_otlp_dict() const {
 	return scope_dict;
 }
 
-Ref<OTelScope> OTelScope::from_otlp_dict(const Dictionary &p_dict) {
-	Ref<OTelScope> scope;
+Ref<OpenTelemetryScope> OpenTelemetryScope::from_otlp_dict(const Dictionary &p_dict) {
+	Ref<OpenTelemetryScope> scope;
 	scope.instantiate();
 
 	if (p_dict.has("name")) {

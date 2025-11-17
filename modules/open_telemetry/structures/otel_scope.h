@@ -33,12 +33,12 @@
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 
-// OTelScope represents instrumentation scope (formerly instrumentation library)
+// OpenTelemetryScope represents instrumentation scope (formerly instrumentation library)
 // as defined in OTLP InstrumentationScope specification
-class OTelScope : public Resource {
-	GDCLASS(OTelScope, Resource);
-	friend class OTelDocument;
-	friend class OTelState;
+class OpenTelemetryScope : public Resource {
+	GDCLASS(OpenTelemetryScope, Resource);
+	friend class OpenTelemetryDocument;
+	friend class OpenTelemetryState;
 
 private:
 	String version;
@@ -48,7 +48,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	OTelScope();
+	OpenTelemetryScope();
 
 	// Scope identification (uses Resource::get_name() and Resource::set_name())
 
@@ -62,5 +62,5 @@ public:
 
 	// Serialization to OTLP format
 	Dictionary to_otlp_dict() const;
-	static Ref<OTelScope> from_otlp_dict(const Dictionary &p_dict);
+	static Ref<OpenTelemetryScope> from_otlp_dict(const Dictionary &p_dict);
 };

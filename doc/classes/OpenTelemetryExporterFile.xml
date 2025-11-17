@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="OTelExporterFile" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+<class name="OpenTelemetryExporterFile" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
@@ -14,19 +14,19 @@
 		</method>
 		<method name="export_logs">
 			<return type="int" enum="Error" />
-			<param index="0" name="state" type="OTelState" />
+			<param index="0" name="state" type="OpenTelemetryState" />
 			<description>
 			</description>
 		</method>
 		<method name="export_metrics">
 			<return type="int" enum="Error" />
-			<param index="0" name="state" type="OTelState" />
+			<param index="0" name="state" type="OpenTelemetryState" />
 			<description>
 			</description>
 		</method>
 		<method name="export_traces">
 			<return type="int" enum="Error" />
-			<param index="0" name="state" type="OTelState" />
+			<param index="0" name="state" type="OpenTelemetryState" />
 			<description>
 			</description>
 		</method>
@@ -40,7 +40,7 @@
 	<members>
 		<member name="filename_prefix" type="String" setter="set_filename_prefix" getter="get_filename_prefix" default="&quot;otel&quot;">
 		</member>
-		<member name="mode" type="int" setter="set_mode" getter="get_mode" enum="OTelExporterFile.ExportMode" default="2">
+		<member name="mode" type="int" setter="set_mode" getter="get_mode" enum="OpenTelemetryExporterFile.ExportMode" default="2">
 		</member>
 		<member name="output_directory" type="String" setter="set_output_directory" getter="get_output_directory" default="&quot;user://otel_traces&quot;">
 		</member>

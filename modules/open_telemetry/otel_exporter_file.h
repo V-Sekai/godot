@@ -35,8 +35,8 @@
 #include "otel_state.h"
 
 // File-based OTLP exporter - writes telemetry data to JSON files
-class OTelExporterFile : public Resource {
-	GDCLASS(OTelExporterFile, Resource);
+class OpenTelemetryExporterFile : public Resource {
+	GDCLASS(OpenTelemetryExporterFile, Resource);
 
 public:
 	enum ExportMode {
@@ -49,14 +49,14 @@ private:
 	String output_directory;
 	String filename_prefix;
 	ExportMode mode = EXPORT_MODE_TIMESTAMPED;
-	Ref<OTelDocument> document;
+	Ref<OpenTelemetryDocument> document;
 	bool pretty_print = true;
 
 protected:
 	static void _bind_methods();
 
 public:
-	OTelExporterFile();
+	OpenTelemetryExporterFile();
 
 	// Configuration
 	void set_output_directory(const String &p_directory);
@@ -72,13 +72,13 @@ public:
 	bool get_pretty_print() const;
 
 	// Export operations
-	Error export_traces(Ref<OTelState> p_state);
-	Error export_metrics(Ref<OTelState> p_state);
-	Error export_logs(Ref<OTelState> p_state);
+	Error export_traces(Ref<OpenTelemetryState> p_state);
+	Error export_metrics(Ref<OpenTelemetryState> p_state);
+	Error export_logs(Ref<OpenTelemetryState> p_state);
 
 	// Helper methods
 	String generate_filename(const String &p_type) const;
 	Error ensure_directory_exists();
 };
 
-VARIANT_ENUM_CAST(OTelExporterFile::ExportMode);
+VARIANT_ENUM_CAST(OpenTelemetryExporterFile::ExportMode);

@@ -46,7 +46,7 @@
 #include "otel_state.h"
 #include "structures/otel_span.h"
 
-// Deprecated enums - kept for backward compatibility, map to OTelSpan enums
+// Deprecated enums - kept for backward compatibility, map to OpenTelemetrySpan enums
 enum SpanKind {
 	SPAN_KIND_INTERNAL = 0,
 	SPAN_KIND_SERVER = 1,
@@ -71,6 +71,7 @@ private:
 	Dictionary attributes;
 
 public:
+	OpenTelemetryTracer();
 	OpenTelemetryTracer(String p_name, String p_version = "", String p_schema_url = "", Dictionary p_attributes = Dictionary());
 
 	String get_name() const { return name; }
@@ -106,10 +107,10 @@ class OpenTelemetry : public RefCounted {
 
 private:
 	// New structure-based state
-	Ref<OTelState> state;
-	Ref<OTelDocument> document;
+	Ref<OpenTelemetryState> state;
+	Ref<OpenTelemetryDocument> document;
 
-	// Active spans tracking (maps UUID -> OTelSpan)
+	// Active spans tracking (maps UUID -> OpenTelemetrySpan)
 	Dictionary active_spans;
 
 	// Configuration
@@ -170,8 +171,8 @@ public:
 	Array list_sinks();
 
 	// Direct access to new classes (for advanced usage)
-	Ref<OTelState> get_state() const { return state; }
-	Ref<OTelDocument> get_document() const { return document; }
+	Ref<OpenTelemetryState> get_state() const { return state; }
+	Ref<OpenTelemetryDocument> get_document() const { return document; }
 
 private:
 	// OTLP ID generation helpers

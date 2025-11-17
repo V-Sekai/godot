@@ -186,19 +186,20 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 	}
 
 	// Register main API classes
+	GDREGISTER_CLASS(OpenTelemetryTracer);
 	GDREGISTER_CLASS(OpenTelemetryTracerProvider);
 	GDREGISTER_CLASS(OpenTelemetry);
 
 	// Register new structure classes (GLTFDocument pattern)
-	GDREGISTER_CLASS(OTelSpan);
-	GDREGISTER_CLASS(OTelResource);
-	GDREGISTER_CLASS(OTelScope);
-	GDREGISTER_CLASS(OTelMetric);
-	GDREGISTER_CLASS(OTelLog);
-	GDREGISTER_CLASS(OTelDocument);
-	GDREGISTER_CLASS(OTelState);
-	GDREGISTER_CLASS(OTelExporterFile);
-	GDREGISTER_CLASS(OTelReflector);
+	GDREGISTER_CLASS(OpenTelemetrySpan);
+	GDREGISTER_CLASS(OpenTelemetryResource);
+	GDREGISTER_CLASS(OpenTelemetryScope);
+	GDREGISTER_CLASS(OpenTelemetryMetric);
+	GDREGISTER_CLASS(OpenTelemetryLog);
+	GDREGISTER_CLASS(OpenTelemetryDocument);
+	GDREGISTER_CLASS(OpenTelemetryState);
+	GDREGISTER_CLASS(OpenTelemetryExporterFile);
+	GDREGISTER_CLASS(OpenTelemetryReflector);
 }
 
 void uninitialize_open_telemetry_module(ModuleInitializationLevel p_level) {

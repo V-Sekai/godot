@@ -68,7 +68,7 @@
 			</description>
 		</method>
 		<method name="get_document" qualifiers="const">
-			<return type="OTelDocument" />
+			<return type="OpenTelemetryDocument" />
 			<description>
 			</description>
 		</method>
@@ -79,7 +79,7 @@
 			</description>
 		</method>
 		<method name="get_state" qualifiers="const">
-			<return type="OTelState" />
+			<return type="OpenTelemetryState" />
 			<description>
 			</description>
 		</method>

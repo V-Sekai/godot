@@ -33,36 +33,36 @@
 #include "core/io/resource.h"
 #include "core/variant/typed_array.h"
 
-class OTelState;
-class OTelSpan;
-class OTelResource;
-class OTelScope;
+class OpenTelemetryState;
+class OpenTelemetrySpan;
+class OpenTelemetryResource;
+class OpenTelemetryScope;
 
-// OTelDocument handles serialization/deserialization of OTLP data
+// OpenTelemetryDocument handles serialization/deserialization of OTLP data
 // Similar to GLTFDocument - central conversion between internal structures and OTLP JSON
-class OTelDocument : public Resource {
-	GDCLASS(OTelDocument, Resource);
+class OpenTelemetryDocument : public Resource {
+	GDCLASS(OpenTelemetryDocument, Resource);
 
 protected:
 	static void _bind_methods();
 
 public:
-	OTelDocument();
+	OpenTelemetryDocument();
 
 	// Serialization: Internal structures -> OTLP JSON
-	String serialize_traces(Ref<OTelState> p_state);
-	String serialize_metrics(Ref<OTelState> p_state);
-	String serialize_logs(Ref<OTelState> p_state);
+	String serialize_traces(Ref<OpenTelemetryState> p_state);
+	String serialize_metrics(Ref<OpenTelemetryState> p_state);
+	String serialize_logs(Ref<OpenTelemetryState> p_state);
 
 	// Deserialization: OTLP JSON -> Internal structures (for reflector)
-	Ref<OTelState> deserialize_traces(const String &p_json);
-	Ref<OTelState> deserialize_metrics(const String &p_json);
-	Ref<OTelState> deserialize_logs(const String &p_json);
+	Ref<OpenTelemetryState> deserialize_traces(const String &p_json);
+	Ref<OpenTelemetryState> deserialize_metrics(const String &p_json);
+	Ref<OpenTelemetryState> deserialize_logs(const String &p_json);
 
 	// Build complete OTLP payload
-	Dictionary build_trace_payload(Ref<OTelResource> p_resource, Ref<OTelScope> p_scope, const TypedArray<OTelSpan> &p_spans);
-	Dictionary build_metric_payload(Ref<OTelResource> p_resource, Ref<OTelScope> p_scope, const Array &p_metrics);
-	Dictionary build_log_payload(Ref<OTelResource> p_resource, Ref<OTelScope> p_scope, const Array &p_logs);
+	Dictionary build_trace_payload(Ref<OpenTelemetryResource> p_resource, Ref<OpenTelemetryScope> p_scope, const TypedArray<OpenTelemetrySpan> &p_spans);
+	Dictionary build_metric_payload(Ref<OpenTelemetryResource> p_resource, Ref<OpenTelemetryScope> p_scope, const Array &p_metrics);
+	Dictionary build_log_payload(Ref<OpenTelemetryResource> p_resource, Ref<OpenTelemetryScope> p_scope, const Array &p_logs);
 
 	// Helper methods
 	static Dictionary attribute_to_otlp(const String &p_key, const Variant &p_value);

@@ -34,10 +34,10 @@
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
 
-class OTelSpan : public Resource {
-	GDCLASS(OTelSpan, Resource);
-	friend class OTelDocument;
-	friend class OTelState;
+class OpenTelemetrySpan : public Resource {
+	GDCLASS(OpenTelemetrySpan, Resource);
+	friend class OpenTelemetryDocument;
+	friend class OpenTelemetryState;
 
 public:
 	enum SpanKind {
@@ -91,7 +91,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	OTelSpan();
+	OpenTelemetrySpan();
 
 	// Validation methods
 	static bool is_valid_trace_id(const String &p_id);
@@ -153,8 +153,8 @@ public:
 
 	// Serialization
 	Dictionary to_otlp_dict() const;
-	static Ref<OTelSpan> from_otlp_dict(const Dictionary &p_dict);
+	static Ref<OpenTelemetrySpan> from_otlp_dict(const Dictionary &p_dict);
 };
 
-VARIANT_ENUM_CAST(OTelSpan::SpanKind);
-VARIANT_ENUM_CAST(OTelSpan::StatusCode);
+VARIANT_ENUM_CAST(OpenTelemetrySpan::SpanKind);
+VARIANT_ENUM_CAST(OpenTelemetrySpan::StatusCode);

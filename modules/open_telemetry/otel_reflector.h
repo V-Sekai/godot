@@ -32,41 +32,41 @@
 
 #include "core/io/resource.h"
 
-class OTelDocument;
-class OTelState;
+class OpenTelemetryDocument;
+class OpenTelemetryState;
 
-// OTelReflector loads OTLP JSON data (from Python/external sources) into Godot
-// Pairs with OTelDocument serialization for bidirectional data flow
-class OTelReflector : public Resource {
-	GDCLASS(OTelReflector, Resource);
+// OpenTelemetryReflector loads OTLP JSON data (from Python/external sources) into Godot
+// Pairs with OpenTelemetryDocument serialization for bidirectional data flow
+class OpenTelemetryReflector : public Resource {
+	GDCLASS(OpenTelemetryReflector, Resource);
 
 private:
-	Ref<OTelDocument> document;
+	Ref<OpenTelemetryDocument> document;
 
 protected:
 	static void _bind_methods();
 
 public:
-	OTelReflector();
+	OpenTelemetryReflector();
 
 	// Load OTLP JSON from file
-	Ref<OTelState> load_traces_from_file(const String &p_path);
-	Ref<OTelState> load_metrics_from_file(const String &p_path);
-	Ref<OTelState> load_logs_from_file(const String &p_path);
+	Ref<OpenTelemetryState> load_traces_from_file(const String &p_path);
+	Ref<OpenTelemetryState> load_metrics_from_file(const String &p_path);
+	Ref<OpenTelemetryState> load_logs_from_file(const String &p_path);
 
 	// Load OTLP JSON from string
-	Ref<OTelState> load_traces_from_json(const String &p_json);
-	Ref<OTelState> load_metrics_from_json(const String &p_json);
-	Ref<OTelState> load_logs_from_json(const String &p_json);
+	Ref<OpenTelemetryState> load_traces_from_json(const String &p_json);
+	Ref<OpenTelemetryState> load_metrics_from_json(const String &p_json);
+	Ref<OpenTelemetryState> load_logs_from_json(const String &p_json);
 
 	// Load multiple files and merge
-	Ref<OTelState> load_and_merge_traces(const PackedStringArray &p_paths);
-	Ref<OTelState> load_and_merge_metrics(const PackedStringArray &p_paths);
-	Ref<OTelState> load_and_merge_logs(const PackedStringArray &p_paths);
+	Ref<OpenTelemetryState> load_and_merge_traces(const PackedStringArray &p_paths);
+	Ref<OpenTelemetryState> load_and_merge_metrics(const PackedStringArray &p_paths);
+	Ref<OpenTelemetryState> load_and_merge_logs(const PackedStringArray &p_paths);
 
 	// Utility: List all files in directory
 	PackedStringArray find_otlp_files(const String &p_directory, const String &p_pattern = "*.json");
 
 	// Get document instance
-	Ref<OTelDocument> get_document() const;
+	Ref<OpenTelemetryDocument> get_document() const;
 };

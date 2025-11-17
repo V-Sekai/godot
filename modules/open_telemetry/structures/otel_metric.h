@@ -33,10 +33,10 @@
 #include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 
-class OTelMetric : public Resource {
-	GDCLASS(OTelMetric, Resource);
-	friend class OTelDocument;
-	friend class OTelState;
+class OpenTelemetryMetric : public Resource {
+	GDCLASS(OpenTelemetryMetric, Resource);
+	friend class OpenTelemetryDocument;
+	friend class OpenTelemetryState;
 
 public:
 	enum MetricType {
@@ -67,7 +67,7 @@ protected:
 	static void _bind_methods();
 
 public:
-	OTelMetric();
+	OpenTelemetryMetric();
 
 	// Metric metadata
 	String get_name() const;
@@ -92,8 +92,8 @@ public:
 
 	// Serialization
 	Dictionary to_otlp_dict() const;
-	static Ref<OTelMetric> from_otlp_dict(const Dictionary &p_dict);
+	static Ref<OpenTelemetryMetric> from_otlp_dict(const Dictionary &p_dict);
 };
 
-VARIANT_ENUM_CAST(OTelMetric::MetricType);
-VARIANT_ENUM_CAST(OTelMetric::AggregationTemporality);
+VARIANT_ENUM_CAST(OpenTelemetryMetric::MetricType);
+VARIANT_ENUM_CAST(OpenTelemetryMetric::AggregationTemporality);

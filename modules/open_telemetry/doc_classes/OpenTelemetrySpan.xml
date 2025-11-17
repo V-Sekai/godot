@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<class name="OTelSpan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+<class name="OpenTelemetrySpan" inherits="Resource" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
 	<brief_description>
 	</brief_description>
 	<description>
@@ -75,7 +75,7 @@
 		</member>
 		<member name="events" type="Dictionary[]" setter="set_events" getter="get_events" default="[]">
 		</member>
-		<member name="kind" type="int" setter="set_kind" getter="get_kind" enum="OTelSpan.SpanKind" default="1">
+		<member name="kind" type="int" setter="set_kind" getter="get_kind" enum="OpenTelemetrySpan.SpanKind" default="1">
 		</member>
 		<member name="links" type="Dictionary[]" setter="set_links" getter="get_links" default="[]">
 		</member>
@@ -87,7 +87,7 @@
 		</member>
 		<member name="start_time_unix_nano" type="int" setter="set_start_time_unix_nano" getter="get_start_time_unix_nano" default="0">
 		</member>
-		<member name="status_code" type="int" setter="set_status_code" getter="get_status_code" enum="OTelSpan.StatusCode" default="0">
+		<member name="status_code" type="int" setter="set_status_code" getter="get_status_code" enum="OpenTelemetrySpan.StatusCode" default="0">
 		</member>
 		<member name="status_message" type="String" setter="set_status_message" getter="get_status_message" default="&quot;&quot;">
 		</member>

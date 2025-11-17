@@ -5,7 +5,7 @@ extends Node
 ## receiving and processing telemetry data from Python clients.
 
 # Test configuration
-var reflector: OTelReflector
+var reflector: OpenTelemetryReflector
 var test_data_dir: String = "user://otel_test_data"
 
 func _ready():
@@ -14,7 +14,7 @@ func _ready():
 	print("=" * 60)
 
 	# Initialize reflector
-	reflector = OTelReflector.new()
+	reflector = OpenTelemetryReflector.new()
 
 	# Create test data directory
 	DirAccess.make_dir_recursive_absolute(test_data_dir)
@@ -141,7 +141,7 @@ func test_4_process_traces():
 		total_duration += span.get_duration_ms()
 
 		# Check for errors
-		if span.get_status_code() == OTelSpan.STATUS_CODE_ERROR:
+		if span.get_status_code() == OpenTelemetrySpan.STATUS_CODE_ERROR:
 			print("  ⚠ Error span: %s" % span.get_name())
 
 		# Print attributes
@@ -160,12 +160,12 @@ func test_4_process_traces():
 func create_test_data():
 	print("\nCreating test data programmatically...")
 
-	var state = OTelState.new()
+	var state = OpenTelemetryState.new()
 	state.get_resource().set_service_name("godot-test-service")
 	state.get_scope().set_name("godot-tracer")
 
 	# Create a test span
-	var span = OTelSpan.new()
+	var span = OpenTelemetrySpan.new()
 	span.set_name("godot_test_operation")
 	span.set_trace_id("c" * 32)
 	span.set_span_id("d" * 16)
@@ -175,7 +175,7 @@ func create_test_data():
 	state.add_span(span)
 
 	# Export to JSON
-	var document = OTelDocument.new()
+	var document = OpenTelemetryDocument.new()
 	var json = document.serialize_traces(state)
 
 	# Save to file
