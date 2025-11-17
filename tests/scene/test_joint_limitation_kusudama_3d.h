@@ -351,37 +351,6 @@ enum class PointRegion {
 	FORBIDDEN
 };
 
-// Helper to replicate closest_to_cone_boundary logic
-static Vector3 test_closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p_control_point, real_t p_radius) {
-	Vector3 input = p_input.normalized();
-	Vector3 control = p_control_point.normalized();
-	real_t radius_cosine = Math::cos(p_radius);
-	real_t input_dot_control = input.dot(control);
-
-	// Check if input is within the cone (matches _solve logic)
-	if (input_dot_control >= radius_cosine - 1e-4) {
-		return Vector3(NAN, NAN, NAN); // Point is inside cone
-	}
-
-	// Point is outside cone, find closest point on boundary
-	Vector3 projection = input - control * input_dot_control;
-	real_t proj_len = projection.length();
-	if (proj_len < CMP_EPSILON) {
-		// Input is aligned with control, use any perpendicular
-		projection = control.get_any_perpendicular();
-		proj_len = projection.length();
-	}
-	projection.normalize();
-
-	// Rotate control point by radius to get boundary point
-	Vector3 axis = control.cross(projection).normalized();
-	if (axis.is_zero_approx()) {
-		axis = control.get_any_perpendicular().normalized();
-	}
-	Quaternion rot = Quaternion(axis, p_radius);
-	return rot.xform(control).normalized();
-}
-
 // Classify which region a point is in using the independent solver
 // This provides a separate verification mechanism that doesn't rely on the production solve() method
 static PointRegion classify_point_region(const Vector3 &p_point, const Vector<Vector4> &p_cones, Ref<JointLimitationKusudama3D> p_limitation) {
