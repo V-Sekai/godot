@@ -1047,77 +1047,48 @@ static void draw_path_boundary(LocalVector<Vector3> &r_vertices, const Vector3 &
 	Vector3 cone2_boundary_tan1 = (center2 * Math::cos(p_radius2) + cone2_to_tan1 * Math::sin(p_radius2)).normalized();
 	Vector3 cone2_boundary_tan2 = (center2 * Math::cos(p_radius2) + cone2_to_tan2 * Math::sin(p_radius2)).normalized();
 
-	// Determine which tangent circle forms the path boundary
-	// The path is the region outside both tangent circles
-	// Use the solver's get_on_great_tangent_triangle to determine which tangent is used for a point in the path region
-	// This ensures we use the exact same logic as the solver
+	// Determine which tangent circle forms the path boundary using solver's logic
 	Vector3 arc_normal = center1.cross(center2);
+	Vector3 path_point = (center1 + center2).normalized();
 	
-	// Use a point between the cone centers as representative of the path region
-	Vector3 path_midpoint = (center1 + center2).normalized();
-	
-	// Use the solver's logic to determine which tangent circle this point would use
-	// get_on_great_tangent_triangle checks arc_side_dot = input.dot(arc_normal)
-	// If < 0, it uses tan1; if >= 0, it uses tan2
-	real_t path_side_dot = path_midpoint.dot(arc_normal);
-	
-	// However, we need to verify the point is actually in the path region
-	// If get_on_great_tangent_triangle returns the point unchanged (cosine > 0.999), it's in the path
-	// Otherwise, we need to find a point that is in the path region
-	Vector3 test_result = get_on_great_tangent_triangle(path_midpoint, center1, p_radius1, center2, p_radius2);
-	real_t cosine = test_result.dot(path_midpoint);
-	if (cosine < 0.999f) {
-		// Point is not in path region, try a point further from both cones
-		// Use a point that's clearly between the cones but outside both
-		Vector3 perp = center1.cross(center2).normalized();
-		if (perp.is_zero_approx()) {
-			perp = center1.get_any_perpendicular().normalized();
+	// Verify point is in path region, adjust if needed
+	Vector3 result = get_on_great_tangent_triangle(path_point, center1, p_radius1, center2, p_radius2);
+	if (result.dot(path_point) >= 0.999f) {
+		// Point is already in path region, use it directly
+		bool use_tan1 = (path_point.dot(arc_normal) < 0.0);
+		
+		draw_arc_between_points(r_vertices, cone1_boundary_tan1, cone1_boundary_tan2, center1, p_sphere_r, p_segments);
+		if (use_tan1) {
+			draw_arc_between_points(r_vertices, cone1_boundary_tan1, cone2_boundary_tan1, tan1, p_sphere_r, p_segments);
+		} else {
+			draw_arc_between_points(r_vertices, cone1_boundary_tan2, cone2_boundary_tan2, tan2, p_sphere_r, p_segments);
 		}
-		// Create a point in the plane between the cones, rotated around the perpendicular
-		path_midpoint = (center1 + center2 + perp * 0.5).normalized();
-		path_side_dot = path_midpoint.dot(arc_normal);
+		draw_arc_between_points(r_vertices, cone2_boundary_tan1, cone2_boundary_tan2, center2, p_sphere_r, p_segments);
+		return;
 	}
 	
-	// Draw arc along cone1 boundary
-	draw_arc_between_points(r_vertices, cone1_boundary_tan1, cone1_boundary_tan2, center1, p_sphere_r, p_segments);
-	
-	// Draw arc along the tangent circle that forms the boundary on the path side
-	// The solver uses: if arc_side_dot < 0, it checks tan1; if >= 0, it checks tan2
-	// But for visualization, we need to draw the tangent circle that forms the boundary of the allowed path region
-	// The path is outside both tangent circles, so we need to determine which one is on the boundary
-	// Check which tangent circle the path midpoint is closer to being outside of
+	// Adjust point to be outside both tangent circles
 	real_t tan_radius_cos = Math::cos(tan_radius);
-	real_t dist_to_tan1 = path_midpoint.dot(tan1);
-	real_t dist_to_tan2 = path_midpoint.dot(tan2);
+	real_t dist_to_tan1 = path_point.dot(tan1);
+	real_t dist_to_tan2 = path_point.dot(tan2);
 	
-	// The path is outside both tangent circles (dist < tan_radius_cos means outside)
-	// We want to draw the tangent circle that's on the boundary of the path region
-	// This should be the one that the path midpoint is closer to the boundary of
-	// But actually, we should use the solver's logic: if path_side_dot < 0, the solver checks tan1 side
-	// So the boundary on that side is formed by tan1
-	// However, we might need to check which tangent is actually on the correct side
-	// Try both and see which one makes sense geometrically
-	bool use_tan1 = (path_side_dot < 0.0);
-	
-	// Verify: the path midpoint should be outside the tangent circle we're using
-	// If not, try the other one
-	if (use_tan1 && dist_to_tan1 > tan_radius_cos) {
-		// Path midpoint is inside tan1 circle, but we're trying to use tan1 - try tan2 instead
-		use_tan1 = false;
-	} else if (!use_tan1 && dist_to_tan2 > tan_radius_cos) {
-		// Path midpoint is inside tan2 circle, but we're trying to use tan2 - try tan1 instead
-		use_tan1 = true;
+	if (dist_to_tan1 > tan_radius_cos) {
+		Vector3 away = (path_point - tan1 * dist_to_tan1).normalized();
+		path_point = (tan1 * tan_radius_cos + away * Math::sin(tan_radius) * 1.1).normalized();
+	}
+	if (dist_to_tan2 > tan_radius_cos) {
+		Vector3 away = (path_point - tan2 * dist_to_tan2).normalized();
+		path_point = (tan2 * tan_radius_cos + away * Math::sin(tan_radius) * 1.1).normalized();
 	}
 	
+	bool use_tan1 = (path_point.dot(arc_normal) < 0.0);
+	
+	draw_arc_between_points(r_vertices, cone1_boundary_tan1, cone1_boundary_tan2, center1, p_sphere_r, p_segments);
 	if (use_tan1) {
-		// Path region is on tan1 side, draw arc along tan1
 		draw_arc_between_points(r_vertices, cone1_boundary_tan1, cone2_boundary_tan1, tan1, p_sphere_r, p_segments);
 	} else {
-		// Path region is on tan2 side, draw arc along tan2
 		draw_arc_between_points(r_vertices, cone1_boundary_tan2, cone2_boundary_tan2, tan2, p_sphere_r, p_segments);
 	}
-	
-	// Draw arc along cone2 boundary
 	draw_arc_between_points(r_vertices, cone2_boundary_tan1, cone2_boundary_tan2, center2, p_sphere_r, p_segments);
 }
 
