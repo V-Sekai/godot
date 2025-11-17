@@ -107,7 +107,6 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 		if (projection.is_zero_approx()) {
 			projection = Vector3(0, 1, 0);
 		}
-		projection_length = projection.length();
 	}
 	projection.normalize();
 	
@@ -333,125 +332,127 @@ static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vecto
 		// Use first tangent circle - use tan1 cross product order
 		Vector3 cross1 = center1.cross(tan1);
 		Vector3 cross2 = tan1.cross(center2);
-		if (input.dot(cross1) > 0 && input.dot(cross2) > 0) {
-			real_t to_next_cos = input.dot(tan1);
-			if (to_next_cos > tan_radius_cos) {
-				Vector3 plane_normal = tan1.cross(input);
-				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-					plane_normal = Vector3(0, 1, 0);
-				}
-				plane_normal.normalize();
-				real_t adjusted_tan_radius = tan_radius + 5e-5;
-				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-				return rotate_about_by.xform(tan1).normalized();
-			} else {
-				return input;
-			}
+		if (input.dot(cross1) <= 0 || input.dot(cross2) <= 0) {
+			return Vector3(NAN, NAN, NAN);
 		}
-	} else {
-		// Use second tangent circle - use tan2 cross product order (reversed)
-		Vector3 cross1 = tan2.cross(center1);
-		Vector3 cross2 = center2.cross(tan2);
-		if (input.dot(cross1) > 0 && input.dot(cross2) > 0) {
-			real_t to_next_cos = input.dot(tan2);
-			if (to_next_cos > tan_radius_cos) {
-				Vector3 plane_normal = tan2.cross(input);
-				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-					plane_normal = Vector3(0, 1, 0);
-				}
-				plane_normal.normalize();
-				real_t adjusted_tan_radius = tan_radius + 5e-5;
-				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-				return rotate_about_by.xform(tan2).normalized();
-			} else {
-				return input;
-			}
+		
+		real_t to_next_cos = input.dot(tan1);
+		if (to_next_cos <= tan_radius_cos) {
+			return input;
 		}
+		
+		Vector3 plane_normal = tan1.cross(input);
+		if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
+			plane_normal = Vector3(0, 1, 0);
+		}
+		plane_normal.normalize();
+		real_t adjusted_tan_radius = tan_radius + 5e-5;
+		Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
+		return rotate_about_by.xform(tan1).normalized();
 	}
-
-	return Vector3(NAN, NAN, NAN);
+	
+	// Use second tangent circle - use tan2 cross product order (reversed)
+	Vector3 cross1 = tan2.cross(center1);
+	Vector3 cross2 = center2.cross(tan2);
+	if (input.dot(cross1) <= 0 || input.dot(cross2) <= 0) {
+		return Vector3(NAN, NAN, NAN);
+	}
+	
+	real_t to_next_cos = input.dot(tan2);
+	if (to_next_cos <= tan_radius_cos) {
+		return input;
+	}
+	
+	Vector3 plane_normal = tan2.cross(input);
+	if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
+		plane_normal = Vector3(0, 1, 0);
+	}
+	plane_normal.normalize();
+	real_t adjusted_tan_radius = tan_radius + 5e-5;
+	Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
+	return rotate_about_by.xform(tan2).normalized();
 }
 
 
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	Vector3 result = p_direction.normalized();
 
-	// Apply orientation constraint (if enabled)
-	if (orientationally_constrained && !cones.is_empty()) {
-		// Full kusudama solving implementation based on IKKusudama3D::get_local_point_in_limits
-		Vector3 point = result;
-		real_t closest_cosine = -2.0;
-		Vector3 closest_collision_point = point;
-		bool in_bounds = false;
-
-		// Loop through each limit cone
-		for (int i = 0; i < cones.size(); i++) {
-			const Vector4 &cone_data = cones[i];
-			Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-			real_t radius = cone_data.w;
-
-			Vector3 collision_point = closest_to_cone_boundary(point, control_point, radius);
-
-			// If NaN, point is within this cone
-			if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
-				in_bounds = true;
-				return point; // Point is within limits
-			}
-
-			// Calculate cosine of angle between collision point and original point
-			real_t cosine = collision_point.dot(point);
-
-			// Update closest collision point if this one is closer
-			if (closest_collision_point.is_zero_approx() || cosine > closest_cosine) {
-				closest_collision_point = collision_point;
-				closest_cosine = cosine;
-			}
-		}
-
-		// If we're out of bounds of all cones, check if we're in the paths between the cones
-		// IMPORTANT: We explicitly do NOT check the pair (last_cone, first_cone) to prevent wrap-around
-		if (!in_bounds && cones.size() > 1) {
-			for (int i = 0; i < cones.size() - 1; i++) {
-				int next_i = i + 1; // Only connect to next adjacent cone, no wrap-around
-				// Assert: next_i must be valid and greater than i, ensuring no wrap-around
-				ERR_FAIL_COND_V_MSG(next_i >= cones.size() || next_i <= i, result, "Invalid cone pair in _solve - possible wrap-around");
-				const Vector4 &cone1_data = cones[i];
-				const Vector4 &cone2_data = cones[next_i];
-				Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-				real_t radius1 = cone1_data.w;
-				real_t radius2 = cone2_data.w;
-
-				Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
-
-				// If NaN, skip this path
-				if (Math::is_nan(collision_point.x)) {
-					continue;
-				}
-
-				// If the returned point is approximately equal to the input point, point is in the path region
-				real_t cosine = collision_point.dot(point);
-				if (cosine > 0.999f) { // Point is in path region (allowing for floating point precision)
-					// get_on_great_tangent_triangle already handles the geometric checks correctly using cross products
-					// to determine if the point is in the inter-cone path region, so no additional check is needed
-					return point;
-				}
-
-				// Update closest collision point if this one is closer
-				if (cosine > closest_cosine) {
-					closest_collision_point = collision_point;
-					closest_cosine = cosine;
-				}
-			}
-		}
-
-		// Return the closest boundary point
-		// The boundary calculation functions (closest_to_cone_boundary and get_on_great_tangent_triangle)
-		// already ensure the result is in an allowed region by adjusting slightly inside/outside boundaries
-		result = closest_collision_point.normalized();
+	// Early return if orientation constraints are disabled or no cones
+	if (!orientationally_constrained || cones.is_empty()) {
+		return result;
 	}
 
-	return result;
+	// Full kusudama solving implementation based on IKKusudama3D::get_local_point_in_limits
+	Vector3 point = result;
+	real_t closest_cosine = -2.0;
+	Vector3 closest_collision_point = point;
+
+	// Loop through each limit cone
+	for (int i = 0; i < cones.size(); i++) {
+		const Vector4 &cone_data = cones[i];
+		Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+		real_t radius = cone_data.w;
+
+		Vector3 collision_point = closest_to_cone_boundary(point, control_point, radius);
+
+		// If NaN, point is within this cone
+		if (Math::is_nan(collision_point.x) || Math::is_nan(collision_point.y) || Math::is_nan(collision_point.z)) {
+			return point; // Point is within limits
+		}
+
+		// Calculate cosine of angle between collision point and original point
+		real_t cosine = collision_point.dot(point);
+
+		// Update closest collision point if this one is closer
+		if (closest_collision_point.is_zero_approx() || cosine > closest_cosine) {
+			closest_collision_point = collision_point;
+			closest_cosine = cosine;
+		}
+	}
+
+	// If we're out of bounds of all cones, check if we're in the paths between the cones
+	// IMPORTANT: We explicitly do NOT check the pair (last_cone, first_cone) to prevent wrap-around
+	if (cones.size() <= 1) {
+		return closest_collision_point.normalized();
+	}
+
+	for (int i = 0; i < cones.size() - 1; i++) {
+		int next_i = i + 1; // Only connect to next adjacent cone, no wrap-around
+		// Assert: next_i must be valid and greater than i, ensuring no wrap-around
+		ERR_FAIL_COND_V_MSG(next_i >= cones.size() || next_i <= i, result, "Invalid cone pair in _solve - possible wrap-around");
+		const Vector4 &cone1_data = cones[i];
+		const Vector4 &cone2_data = cones[next_i];
+		Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+		Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+		real_t radius1 = cone1_data.w;
+		real_t radius2 = cone2_data.w;
+
+		Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
+
+		// If NaN, skip this path
+		if (Math::is_nan(collision_point.x)) {
+			continue;
+		}
+
+		// If the returned point is approximately equal to the input point, point is in the path region
+		real_t cosine = collision_point.dot(point);
+		if (cosine > 0.999f) { // Point is in path region (allowing for floating point precision)
+			// get_on_great_tangent_triangle already handles the geometric checks correctly using cross products
+			// to determine if the point is in the inter-cone path region, so no additional check is needed
+			return point;
+		}
+
+		// Update closest collision point if this one is closer
+		if (cosine > closest_cosine) {
+			closest_collision_point = collision_point;
+			closest_cosine = cosine;
+		}
+	}
+
+	// Return the closest boundary point
+	// The boundary calculation functions (closest_to_cone_boundary and get_on_great_tangent_triangle)
+	// already ensure the result is in an allowed region by adjusting slightly inside/outside boundaries
+	return closest_collision_point.normalized();
 }
 
 void JointLimitationKusudama3D::set_cones(const Vector<Vector4> &p_cones) {
