@@ -214,15 +214,25 @@ String OpenTelemetry::generate_uuid_v7() {
 	uuid_bytes.resize(16);
 	uint8_t *uuid_ptr = uuid_bytes.ptrw();
 
-	// Timestamp (48 bits)
+	// Initialize all bytes to 0 first
+	for (int i = 0; i < 16; i++) {
+		uuid_ptr[i] = 0;
+	}
+
+	// Timestamp (48 bits) - bytes 0-5
 	for (int i = 0; i < 6; i++) {
 		uuid_ptr[i] = (timestamp_ms >> (40 - i * 8)) & 0xFF;
 	}
 
-	// Version and random
-	uuid_ptr[6] = (0x70 | (random_bytes[0] & 0x0F));
+	// Version and random - byte 6
+	// UUID v7: version 7 (0111) in upper 4 bits of byte 6, lower 4 bits are random
+	// Set upper 4 bits to 0111 (7), lower 4 bits to random
+	uuid_ptr[6] = (uint8_t)(0x70 | (random_bytes[0] & 0x0F));
 	uuid_ptr[7] = random_bytes[1];
-	uuid_ptr[8] = (0x80 | (random_bytes[2] & 0x3F));
+	
+	// Variant: 10 in upper 2 bits of byte 8, lower 6 bits are random
+	// Set upper 2 bits to 10 (binary), lower 6 bits to random
+	uuid_ptr[8] = (uint8_t)(0x80 | (random_bytes[2] & 0x3F));
 
 	for (int i = 9; i < 16; i++) {
 		uuid_ptr[i] = random_bytes[i - 6];
@@ -230,7 +240,13 @@ String OpenTelemetry::generate_uuid_v7() {
 
 	String hex;
 	for (int i = 0; i < uuid_bytes.size(); i++) {
-		hex += String::num_int64(uuid_bytes[i], 16, false).pad_zeros(2);
+		// Use num_uint64 to ensure proper unsigned conversion, then pad to 2 hex digits
+		String hex_byte = String::num_uint64((uint64_t)uuid_bytes[i], 16, false);
+		// Ensure exactly 2 hex characters (pad with leading zero if needed)
+		if (hex_byte.length() < 2) {
+			hex_byte = "0" + hex_byte;
+		}
+		hex += hex_byte;
 	}
 	return hex.substr(0, 8) + "-" + hex.substr(8, 4) + "-" + hex.substr(12, 4) + "-" + hex.substr(16, 4) + "-" + hex.substr(20, 12);
 }

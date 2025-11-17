@@ -32,8 +32,7 @@
 
 void OpenTelemetryMetric::_bind_methods() {
 	// Metadata
-	ClassDB::bind_method(D_METHOD("get_name"), &OpenTelemetryMetric::get_name);
-	ClassDB::bind_method(D_METHOD("set_name", "name"), &OpenTelemetryMetric::set_name);
+	// Note: get_name() and set_name() are inherited from Resource, so we don't bind them here
 	ClassDB::bind_method(D_METHOD("get_description"), &OpenTelemetryMetric::get_description);
 	ClassDB::bind_method(D_METHOD("set_description", "description"), &OpenTelemetryMetric::set_description);
 	ClassDB::bind_method(D_METHOD("get_unit"), &OpenTelemetryMetric::get_unit);
@@ -51,7 +50,7 @@ void OpenTelemetryMetric::_bind_methods() {
 	// Serialization
 	ClassDB::bind_method(D_METHOD("to_otlp_dict"), &OpenTelemetryMetric::to_otlp_dict);
 
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+	// Note: "name" property is inherited from Resource, so we don't add it here
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "description"), "set_description", "get_description");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "unit"), "set_unit", "get_unit");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "type"), "set_type", "get_type");
@@ -74,11 +73,13 @@ OpenTelemetryMetric::OpenTelemetryMetric() {
 
 // Metadata
 String OpenTelemetryMetric::get_name() const {
-	return name;
+	// Use Resource's built-in name property
+	return Resource::get_name();
 }
 
 void OpenTelemetryMetric::set_name(const String &p_name) {
-	name = p_name;
+	// Use Resource's built-in name property
+	Resource::set_name(p_name);
 }
 
 String OpenTelemetryMetric::get_description() const {
@@ -130,7 +131,7 @@ void OpenTelemetryMetric::add_data_point(const Dictionary &p_data_point) {
 Dictionary OpenTelemetryMetric::to_otlp_dict() const {
 	Dictionary metric_dict;
 
-	metric_dict["name"] = name;
+	metric_dict["name"] = get_name();
 
 	if (!description.is_empty()) {
 		metric_dict["description"] = description;

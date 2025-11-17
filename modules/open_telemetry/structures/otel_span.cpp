@@ -49,8 +49,7 @@ void OpenTelemetrySpan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_parent_span_id", "parent_span_id"), &OpenTelemetrySpan::set_parent_span_id);
 
 	// Span metadata
-	ClassDB::bind_method(D_METHOD("get_name"), &OpenTelemetrySpan::get_name);
-	ClassDB::bind_method(D_METHOD("set_name", "name"), &OpenTelemetrySpan::set_name);
+	// Note: get_name() and set_name() are inherited from Resource, so we don't bind them here
 	ClassDB::bind_method(D_METHOD("get_kind"), &OpenTelemetrySpan::get_kind);
 	ClassDB::bind_method(D_METHOD("set_kind", "kind"), &OpenTelemetrySpan::set_kind);
 
@@ -91,7 +90,7 @@ void OpenTelemetrySpan::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "trace_id"), "set_trace_id", "get_trace_id");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "span_id"), "set_span_id", "get_span_id");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "parent_span_id"), "set_parent_span_id", "get_parent_span_id");
-	ADD_PROPERTY(PropertyInfo(Variant::STRING, "name"), "set_name", "get_name");
+	// Note: "name" property is inherited from Resource, so we don't add it here
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "kind", PROPERTY_HINT_ENUM, "Unspecified,Internal,Server,Client,Producer,Consumer"), "set_kind", "get_kind");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "start_time_unix_nano"), "set_start_time_unix_nano", "get_start_time_unix_nano");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "end_time_unix_nano"), "set_end_time_unix_nano", "get_end_time_unix_nano");
@@ -114,6 +113,9 @@ void OpenTelemetrySpan::_bind_methods() {
 }
 
 OpenTelemetrySpan::OpenTelemetrySpan() {
+	// Initialize with generated IDs
+	trace_id = generate_trace_id();
+	span_id = generate_span_id();
 }
 
 // Validation helpers (private)
@@ -203,11 +205,32 @@ String OpenTelemetrySpan::generate_trace_id() {
 	uint64_t var_lo = rand_62bits & 0xFFFFFFFF;
 
 	// Convert to 32-character hex string
+	// Each part must be exactly 8 hex characters
+	// pad_zeros only pads if shorter, so we need to truncate if longer
 	String uuid;
-	uuid += String::num_int64(time_hi, 16).pad_zeros(8);
-	uuid += String::num_int64((time_lo << 16) | ver_rand, 16).pad_zeros(8);
-	uuid += String::num_int64(var_hi, 16).pad_zeros(8);
-	uuid += String::num_int64(var_lo, 16).pad_zeros(8);
+	String part1 = String::num_int64(time_hi, 16).pad_zeros(8);
+	if (part1.length() > 8) {
+		part1 = part1.substr(part1.length() - 8, 8); // Take last 8 chars
+	}
+	uuid += part1;
+	
+	String part2 = String::num_int64((time_lo << 16) | ver_rand, 16).pad_zeros(8);
+	if (part2.length() > 8) {
+		part2 = part2.substr(part2.length() - 8, 8); // Take last 8 chars
+	}
+	uuid += part2;
+	
+	String part3 = String::num_int64(var_hi, 16).pad_zeros(8);
+	if (part3.length() > 8) {
+		part3 = part3.substr(part3.length() - 8, 8); // Take last 8 chars
+	}
+	uuid += part3;
+	
+	String part4 = String::num_int64(var_lo, 16).pad_zeros(8);
+	if (part4.length() > 8) {
+		part4 = part4.substr(part4.length() - 8, 8); // Take last 8 chars
+	}
+	uuid += part4;
 
 	return uuid.to_lower();
 }
@@ -249,11 +272,13 @@ void OpenTelemetrySpan::set_parent_span_id(const String &p_parent_span_id) {
 
 // Span metadata
 String OpenTelemetrySpan::get_name() const {
-	return name;
+	// Use Resource's built-in name property
+	return Resource::get_name();
 }
 
 void OpenTelemetrySpan::set_name(const String &p_name) {
-	name = p_name;
+	// Use Resource's built-in name property
+	Resource::set_name(p_name);
 }
 
 OpenTelemetrySpan::SpanKind OpenTelemetrySpan::get_kind() const {
@@ -379,7 +404,7 @@ Dictionary OpenTelemetrySpan::to_otlp_dict() const {
 		span_dict["parentSpanId"] = parent_span_id;
 	}
 
-	span_dict["name"] = name;
+	span_dict["name"] = get_name();
 	span_dict["kind"] = (int)kind;
 	span_dict["startTimeUnixNano"] = (int64_t)start_time_unix_nano;
 	span_dict["endTimeUnixNano"] = (int64_t)end_time_unix_nano;
