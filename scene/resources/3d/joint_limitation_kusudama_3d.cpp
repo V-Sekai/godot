@@ -31,7 +31,6 @@
 #include "joint_limitation_kusudama_3d.h"
 
 #include "core/math/math_funcs.h"
-#include "core/io/logger.h"
 #include "core/variant/variant.h"
 
 void JointLimitationKusudama3D::_bind_methods() {
@@ -311,20 +310,6 @@ static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, c
 			Quaternion rot = Quaternion(arc_normal, Math::PI);
 			sphere_intersect2 = rot.xform(sphere_intersect1).normalized();
 		}
-	}
-
-	// Debug: Check if intersections are too close (degenerate case)
-	static int debug_count = 0;
-	debug_count++;
-	if (debug_count % 1000 == 0) {
-		real_t dist = sphere_intersect1.distance_to(sphere_intersect2);
-		real_t dot = sphere_intersect1.dot(sphere_intersect2);
-		print_verbose(vformat("compute_tangent_circle: intersection_count=%d dist_between_tangents=%.6f dot=%.6f intersect1=(%.6f,%.6f,%.6f) intersect2=(%.6f,%.6f,%.6f) ray_start=(%.3f,%.3f,%.3f) ray_end=(%.3f,%.3f,%.3f)",
-			intersection_count, dist, dot,
-			sphere_intersect1.x, sphere_intersect1.y, sphere_intersect1.z,
-			sphere_intersect2.x, sphere_intersect2.y, sphere_intersect2.z,
-			intersection_ray_start.x, intersection_ray_start.y, intersection_ray_start.z,
-			intersection_ray_end.x, intersection_ray_end.y, intersection_ray_end.z));
 	}
 
 	r_tangent1 = sphere_intersect1;
@@ -783,8 +768,8 @@ Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, 
 
 #ifdef TOOLS_ENABLED
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
-	// Don't draw visualization if orientation constraints are disabled
-	if (!orientationally_constrained) {
+	// Don't draw visualization if axial constraints are disabled
+	if (!axially_constrained || range_angle >= Math::TAU) {
 		return;
 	}
 	real_t socket_r = p_bone_length * 0.25f;
@@ -796,51 +781,72 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 
 	// Draw rotation freedom indicators at the joint origin
 	// Show how much the bone can still rotate around its axis
-	if (axially_constrained && range_angle < Math::TAU) {
-		real_t indicator_r = socket_r * 1.2f; // Extend outside the unit sphere for better visibility
+	real_t indicator_r = socket_r * 1.2f; // Extend outside the unit sphere for better visibility
 
-		// Normalize angles
-		real_t normalized_min = min_axial_angle;
-		if (normalized_min < 0) {
-			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
-		} else if (normalized_min >= Math::TAU) {
-			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+	// Normalize angles
+	real_t normalized_min = min_axial_angle;
+	if (normalized_min < 0) {
+		normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+	} else if (normalized_min >= Math::TAU) {
+		normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
+	}
+
+	real_t max_angle = normalized_min + range_angle;
+	real_t wrapped_max = (max_angle > Math::TAU) ? Math::fposmod(max_angle, (real_t)Math::TAU) : max_angle;
+
+	// Draw indicator arcs showing disallowed rotation areas at the origin (inverted)
+	Vector3 indicator_pos = Vector3(0, 0, 0);
+	Vector3 x_axis = Vector3(1, 0, 0);
+	Vector3 z_axis = Vector3(0, 0, 1);
+
+	// Draw disallowed rotation arcs (inverse of allowed range)
+	bool wraps_around = (max_angle > Math::TAU);
+
+	if (wraps_around) {
+		// Range wraps: draw arc from wrapped_max to normalized_min
+		real_t disallowed_range = normalized_min - wrapped_max;
+		if (disallowed_range < 0) {
+			disallowed_range += Math::TAU;
 		}
-
-		real_t max_angle = normalized_min + range_angle;
-		real_t wrapped_max = (max_angle > Math::TAU) ? Math::fposmod(max_angle, (real_t)Math::TAU) : max_angle;
-
-		// Draw indicator arcs showing disallowed rotation areas at the origin (inverted)
-		Vector3 indicator_pos = Vector3(0, 0, 0);
-		Vector3 x_axis = Vector3(1, 0, 0);
-		Vector3 z_axis = Vector3(0, 0, 1);
-
-		// Draw disallowed rotation arcs (inverse of allowed range)
-		bool wraps_around = (max_angle > Math::TAU);
-
-		if (wraps_around) {
-			// Range wraps: draw arc from wrapped_max to normalized_min
-			real_t disallowed_range = normalized_min - wrapped_max;
-			if (disallowed_range < 0) {
-				disallowed_range += Math::TAU;
+		int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
+		arc_segments = MIN(arc_segments, 64);
+		for (int i = 0; i < arc_segments; i++) {
+			real_t t = (real_t)i / (real_t)arc_segments;
+			real_t angle = wrapped_max + disallowed_range * t;
+			if (angle >= Math::TAU) {
+				angle -= Math::TAU;
 			}
-			int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
+			Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
+			Vector3 p0 = indicator_pos + dir;
+			Vector3 p1;
+			if (i < arc_segments - 1) {
+				real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
+				real_t next_angle = wrapped_max + disallowed_range * next_t;
+				if (next_angle >= Math::TAU) {
+					next_angle -= Math::TAU;
+				}
+				Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
+				p1 = indicator_pos + next_dir;
+			} else {
+				p1 = indicator_pos + dir;
+			}
+			vertices.push_back(p0);
+			vertices.push_back(p1);
+		}
+	} else {
+		// Range doesn't wrap: draw arcs from 0 to normalized_min and from max_angle to TAU
+		if (normalized_min > 0) {
+			int arc_segments = MAX(16, (int)(normalized_min / Math::PI * 32.0));
 			arc_segments = MIN(arc_segments, 64);
 			for (int i = 0; i < arc_segments; i++) {
 				real_t t = (real_t)i / (real_t)arc_segments;
-				real_t angle = wrapped_max + disallowed_range * t;
-				if (angle >= Math::TAU) {
-					angle -= Math::TAU;
-				}
+				real_t angle = normalized_min * t;
 				Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
 				Vector3 p0 = indicator_pos + dir;
 				Vector3 p1;
 				if (i < arc_segments - 1) {
 					real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-					real_t next_angle = wrapped_max + disallowed_range * next_t;
-					if (next_angle >= Math::TAU) {
-						next_angle -= Math::TAU;
-					}
+					real_t next_angle = normalized_min * next_t;
 					Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
 					p1 = indicator_pos + next_dir;
 				} else {
@@ -849,61 +855,38 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				vertices.push_back(p0);
 				vertices.push_back(p1);
 			}
-		} else {
-			// Range doesn't wrap: draw arcs from 0 to normalized_min and from max_angle to TAU
-			if (normalized_min > 0) {
-				int arc_segments = MAX(16, (int)(normalized_min / Math::PI * 32.0));
-				arc_segments = MIN(arc_segments, 64);
-				for (int i = 0; i < arc_segments; i++) {
-					real_t t = (real_t)i / (real_t)arc_segments;
-					real_t angle = normalized_min * t;
-					Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
-					Vector3 p0 = indicator_pos + dir;
-					Vector3 p1;
-					if (i < arc_segments - 1) {
-						real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-						real_t next_angle = normalized_min * next_t;
-						Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
-						p1 = indicator_pos + next_dir;
-					} else {
-						p1 = indicator_pos + dir;
-					}
-					vertices.push_back(p0);
-					vertices.push_back(p1);
+		}
+		if (max_angle < Math::TAU) {
+			real_t disallowed_range = Math::TAU - max_angle;
+			int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
+			arc_segments = MIN(arc_segments, 64);
+			for (int i = 0; i < arc_segments; i++) {
+				real_t t = (real_t)i / (real_t)arc_segments;
+				real_t angle = max_angle + disallowed_range * t;
+				Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
+				Vector3 p0 = indicator_pos + dir;
+				Vector3 p1;
+				if (i < arc_segments - 1) {
+					real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
+					real_t next_angle = max_angle + disallowed_range * next_t;
+					Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
+					p1 = indicator_pos + next_dir;
+				} else {
+					p1 = indicator_pos + dir;
 				}
-			}
-			if (max_angle < Math::TAU) {
-				real_t disallowed_range = Math::TAU - max_angle;
-				int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
-				arc_segments = MIN(arc_segments, 64);
-				for (int i = 0; i < arc_segments; i++) {
-					real_t t = (real_t)i / (real_t)arc_segments;
-					real_t angle = max_angle + disallowed_range * t;
-					Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
-					Vector3 p0 = indicator_pos + dir;
-					Vector3 p1;
-					if (i < arc_segments - 1) {
-						real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-						real_t next_angle = max_angle + disallowed_range * next_t;
-						Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
-						p1 = indicator_pos + next_dir;
-					} else {
-						p1 = indicator_pos + dir;
-					}
-					vertices.push_back(p0);
-					vertices.push_back(p1);
-				}
+				vertices.push_back(p0);
+				vertices.push_back(p1);
 			}
 		}
-
-		// Draw lines from origin to arc endpoints to show limits
-		Vector3 limit1_dir = (x_axis * Math::cos(normalized_min) + z_axis * Math::sin(normalized_min)) * indicator_r;
-		Vector3 limit2_dir = (x_axis * Math::cos(wrapped_max) + z_axis * Math::sin(wrapped_max)) * indicator_r;
-		vertices.push_back(indicator_pos);
-		vertices.push_back(indicator_pos + limit1_dir);
-		vertices.push_back(indicator_pos);
-		vertices.push_back(indicator_pos + limit2_dir);
 	}
+
+	// Draw lines from origin to arc endpoints to show limits
+	Vector3 limit1_dir = (x_axis * Math::cos(normalized_min) + z_axis * Math::sin(normalized_min)) * indicator_r;
+	Vector3 limit2_dir = (x_axis * Math::cos(wrapped_max) + z_axis * Math::sin(wrapped_max)) * indicator_r;
+	vertices.push_back(indicator_pos);
+	vertices.push_back(indicator_pos + limit1_dir);
+	vertices.push_back(indicator_pos);
+	vertices.push_back(indicator_pos + limit2_dir);
 
 	// Add all vertices to surface tool as a single mesh
 	// Bone weights are set by the gizmo before calling draw_shape, so they apply to all vertices
