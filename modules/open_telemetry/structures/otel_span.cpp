@@ -213,19 +213,19 @@ String OpenTelemetrySpan::generate_trace_id() {
 		part1 = part1.substr(part1.length() - 8, 8); // Take last 8 chars
 	}
 	uuid += part1;
-	
+
 	String part2 = String::num_int64((time_lo << 16) | ver_rand, 16).pad_zeros(8);
 	if (part2.length() > 8) {
 		part2 = part2.substr(part2.length() - 8, 8); // Take last 8 chars
 	}
 	uuid += part2;
-	
+
 	String part3 = String::num_int64(var_hi, 16).pad_zeros(8);
 	if (part3.length() > 8) {
 		part3 = part3.substr(part3.length() - 8, 8); // Take last 8 chars
 	}
 	uuid += part3;
-	
+
 	String part4 = String::num_int64(var_lo, 16).pad_zeros(8);
 	if (part4.length() > 8) {
 		part4 = part4.substr(part4.length() - 8, 8); // Take last 8 chars

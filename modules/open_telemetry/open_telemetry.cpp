@@ -229,7 +229,7 @@ String OpenTelemetry::generate_uuid_v7() {
 	// Set upper 4 bits to 0111 (7), lower 4 bits to random
 	uuid_ptr[6] = (uint8_t)(0x70 | (random_bytes[0] & 0x0F));
 	uuid_ptr[7] = random_bytes[1];
-	
+
 	// Variant: 10 in upper 2 bits of byte 8, lower 6 bits are random
 	// Set upper 2 bits to 10 (binary), lower 6 bits to random
 	uuid_ptr[8] = (uint8_t)(0x80 | (random_bytes[2] & 0x3F));
