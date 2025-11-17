@@ -140,7 +140,10 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 
 		// Set headers for primary service if provided
 		if (!primary_headers.is_empty()) {
-			global_otel_instance->set_headers(primary_headers);
+			String headers_result = global_otel_instance->set_headers(primary_headers);
+			if (headers_result != "OK") {
+				ERR_PRINT("OpenTelemetry: Failed to set headers: " + headers_result);
+			}
 		}
 
 #ifndef TOOLS_ENABLED
