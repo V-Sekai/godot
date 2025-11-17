@@ -270,6 +270,7 @@
 #include "scene/resources/3d/importer_mesh.h"
 #include "scene/resources/3d/joint_limitation_3d.h"
 #include "scene/resources/3d/joint_limitation_cone_3d.h"
+#include "scene/resources/3d/joint_limitation_kusudama_3d.h"
 #include "scene/resources/3d/mesh_library.h"
 #include "scene/resources/3d/navigation_mesh_source_geometry_data_3d.h"
 #include "scene/resources/3d/primitive_meshes.h"

@@ -63,64 +63,60 @@ void JointLimitationKusudama3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "orientationally_constrained"), "set_orientationally_constrained", "is_orientationally_constrained");
 }
 
-// Helper function to find closest point on a single cone boundary
+// Helper function to get orthogonal vector (from ik_open_cone_3d.cpp)
+static Vector3 get_orthogonal(const Vector3 &p_in) {
+	if (Math::abs(p_in.y) < Math::abs(p_in.x)) {
+		if (Math::abs(p_in.z) < Math::abs(p_in.x)) {
+			real_t inverse = 1.0f / Math::sqrt(p_in.y * p_in.y + p_in.z * p_in.z);
+			return Vector3(0.0f, -inverse * p_in.z, inverse * p_in.y);
+		}
+		real_t inverse = 1.0f / Math::sqrt(p_in.x * p_in.x + p_in.y * p_in.y);
+		return Vector3(-inverse * p_in.y, inverse * p_in.x, 0.0f);
+	}
+	if (Math::abs(p_in.z) < Math::abs(p_in.y)) {
+		real_t inverse = 1.0f / Math::sqrt(p_in.x * p_in.x + p_in.z * p_in.z);
+		return Vector3(-inverse * p_in.z, 0.0f, inverse * p_in.x);
+	}
+	real_t inverse = 1.0f / Math::sqrt(p_in.x * p_in.x + p_in.y * p_in.y);
+	return Vector3(inverse * p_in.y, -inverse * p_in.x, 0.0f);
+}
+
+// Helper function to find closest point on a single cone boundary (improved from ik_open_cone_3d.cpp)
 static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p_control_point, real_t p_radius) {
 	Vector3 normalized_input = p_input.normalized();
 	Vector3 normalized_control = p_control_point.normalized();
-	
-	// For zero radius, return the control point exactly (or NaN if input is the control point)
-	if (p_radius < CMP_EPSILON) {
-		real_t input_dot_control = normalized_input.dot(normalized_control);
-		if (input_dot_control >= 1.0 - 1e-4) {
-			// Input is the control point (or very close) - inside cone
-			return Vector3(NAN, NAN, NAN);
-		}
-		// Input is not the control point - return control point as boundary
-		return normalized_control;
-	}
-	
+
 	real_t radius_cosine = Math::cos(p_radius);
 	real_t input_dot_control = normalized_input.dot(normalized_control);
 
 	// Check if input is within the cone
-	// For angles <= 90°: inside if input_dot_control >= radius_cosine (angle <= radius)
-	// For angles > 90°: the cone covers more than half the sphere, so inside if input_dot_control >= radius_cosine
-	// Note: when radius > 90°, radius_cosine is negative, so this correctly handles large cones
-	// Use a small epsilon to account for floating-point precision
-	// Points on or very close to the boundary are considered inside
-	// Note: input_dot_control = cos(angle), so larger values mean smaller angles (closer to center)
-	// Use a slightly larger epsilon (1e-4) to account for normalization and coordinate space transformations
-	if (input_dot_control >= radius_cosine - 1e-4) {
+	if (input_dot_control > radius_cosine) {
 		// Inside cone - return NaN to indicate in bounds
 		return Vector3(NAN, NAN, NAN);
 	}
 
-	// Find the closest point on the cone boundary to the input point
-	// The boundary is a circle on the unit sphere at angle p_radius from the control point
-	// We need to find the point on this circle that is closest to the input point
-	
-	// Project the input point onto the plane perpendicular to the control point
-	// Then normalize to the cone radius distance
-	Vector3 projection = normalized_input - normalized_control * input_dot_control;
-	real_t projection_length = projection.length();
-	
-	if (projection_length < CMP_EPSILON) {
-		// Input is opposite to control point - use any perpendicular
-		projection = normalized_control.get_any_perpendicular();
-		if (projection.is_zero_approx()) {
-			projection = Vector3(0, 1, 0);
+	// Find the closest point on the cone boundary using improved algorithm from ik_open_cone_3d.cpp
+	// Use safe cross product approach
+	Vector3 axis = normalized_control.cross(normalized_input);
+
+	// Additional validation for the axis
+	if (!axis.is_finite() || Math::is_zero_approx(axis.length_squared())) {
+		// Fallback: use the most orthogonal axis to the control point
+		axis = get_orthogonal(normalized_control);
+		if (Math::is_zero_approx(axis.length_squared())) {
+			axis = Vector3(0, 1, 0);
 		}
+		axis.normalize();
+	} else {
+		axis.normalize();
 	}
-	projection.normalize();
-	
-	// Calculate boundary point slightly inside the cone to ensure it passes the "inside" check
-	// This "snaps" the point to be guaranteed inside the allowed region
-	// Use a small adjustment (1e-4 radians ≈ 0.0057 degrees) to move slightly inside the boundary
-	real_t adjustment = 1e-4;
-	real_t adjusted_radius = MAX(0.0, p_radius - adjustment);
-	real_t adjusted_radius_cosine = Math::cos(adjusted_radius);
-	real_t sin_adjusted_radius = Math::sin(adjusted_radius);
-	Vector3 result = normalized_control * adjusted_radius_cosine + projection * sin_adjusted_radius;
+
+	Quaternion rot_to = Quaternion(axis, p_radius);
+	Vector3 axis_control_point = normalized_control;
+	if (Math::is_zero_approx(axis_control_point.length_squared())) {
+		axis_control_point = Vector3(0, 1, 0);
+	}
+	Vector3 result = rot_to.xform(axis_control_point);
 	return result.normalized();
 }
 
@@ -129,14 +125,14 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 		Vector3 &r_tan1, Vector3 &r_tan2, real_t &r_tan_radius) {
 	Vector3 center1 = p_center1.normalized();
 	Vector3 center2 = p_center2.normalized();
-	
+
 	// Compute tangent circle radius
 	r_tan_radius = (Math::PI - (p_radius1 + p_radius2)) / 2.0;
-	
+
 	// Find arc normal (axis perpendicular to both cone centers)
 	Vector3 arc_normal = center1.cross(center2);
 	real_t arc_normal_len = arc_normal.length();
-	
+
 	if (arc_normal_len < CMP_EPSILON) {
 		// Cones are parallel or opposite - handle specially
 		arc_normal = center1.get_any_perpendicular();
@@ -151,22 +147,22 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 		r_tan2 = rot2.xform(perp1).normalized();
 		return;
 	}
-	
+
 	arc_normal.normalize();
-	
+
 	// Use plane intersection method to find tangent circles
 	// The tangent circles must satisfy:
 	// - tan1 · center1 = cos(radius1 + tan_radius)
 	// - tan1 · center2 = cos(radius2 + tan_radius)
 	// We avoid acos by working with dot products directly
-	
+
 	real_t boundary_plus_tangent_radius_a = p_radius1 + r_tan_radius;
 	real_t boundary_plus_tangent_radius_b = p_radius2 + r_tan_radius;
-	
+
 	// Target dot products (avoiding acos)
 	real_t target_dot1 = Math::cos(boundary_plus_tangent_radius_a);
 	real_t target_dot2 = Math::cos(boundary_plus_tangent_radius_b);
-	
+
 	// Use plane intersection method matching ik_open_cone_3d.cpp
 	Vector3 scaled_axis_a = center1 * Math::cos(boundary_plus_tangent_radius_a);
 	Vector3 safe_arc_normal = arc_normal;
@@ -181,7 +177,7 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 	}
 	Quaternion temp_var2 = Quaternion(safe_center1.normalized(), Math::PI / 2);
 	Vector3 plane_dir2_a = temp_var2.xform(plane_dir1_a);
-	
+
 	Vector3 scaled_axis_b = center2 * Math::cos(boundary_plus_tangent_radius_b);
 	Quaternion temp_var3 = Quaternion(safe_arc_normal.normalized(), boundary_plus_tangent_radius_b);
 	Vector3 plane_dir1_b = temp_var3.xform(center2);
@@ -191,7 +187,7 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 	}
 	Quaternion temp_var4 = Quaternion(safe_center2.normalized(), Math::PI / 2);
 	Vector3 plane_dir2_b = temp_var4.xform(plane_dir1_b);
-	
+
 	// Extend rays
 	Vector3 ray1_b_start = plane_dir1_b;
 	Vector3 ray1_b_end = scaled_axis_b;
@@ -211,7 +207,7 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 		ray2_b_start = start_heading + start_heading.normalized() * 99.0 + mid_point;
 		ray2_b_end = end_heading + end_heading.normalized() * 99.0 + mid_point;
 	}
-	
+
 	// Ray-plane intersections
 	Vector3 intersection1, intersection2;
 	{
@@ -244,7 +240,7 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			intersection2 = Vector3(NAN, NAN, NAN);
 		}
 	}
-	
+
 	// Extend intersection ray and find sphere intersection
 	Vector3 sphere_intersect1, sphere_intersect2;
 	if (!intersection1.is_finite() || !intersection2.is_finite()) {
@@ -263,27 +259,27 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			in_plane = rot.xform(center1).normalized();
 		}
 		in_plane.normalize();
-		
+
 		real_t best_angle = 0.0;
 		real_t best_error = Math::INF;
 		for (int i = 0; i < 64; i++) {
 			real_t angle = (real_t)i * Math::TAU / 64.0;
 			Quaternion rot = Quaternion(arc_normal, angle);
 			Vector3 candidate = rot.xform(in_plane).normalized();
-			
+
 			real_t dot1 = candidate.dot(center1);
 			real_t dot2 = candidate.dot(center2);
-			
+
 			real_t error1 = Math::abs(dot1 - target_dot1);
 			real_t error2 = Math::abs(dot2 - target_dot2);
 			real_t total_error = error1 + error2;
-			
+
 			if (total_error < best_error) {
 				best_error = total_error;
 				best_angle = angle;
 			}
 		}
-		
+
 		Quaternion rot1 = Quaternion(arc_normal, best_angle);
 		Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
 		sphere_intersect1 = rot1.xform(in_plane).normalized();
@@ -298,7 +294,7 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			Vector3 end_heading = intersection_ray_end - mid_point;
 			real_t start_len = start_heading.length();
 			real_t end_len = end_heading.length();
-			
+
 			if (start_len > CMP_EPSILON) {
 				start_heading = start_heading.normalized() * 99.0;
 			} else {
@@ -312,14 +308,14 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			intersection_ray_start = start_heading + mid_point;
 			intersection_ray_end = end_heading + mid_point;
 		}
-		
+
 		// Ray-sphere intersection
 		Vector3 sphere_center(0, 0, 0);
 		Vector3 ray_start_rel = intersection_ray_start - sphere_center;
 		Vector3 ray_end_rel = intersection_ray_end - sphere_center;
 		Vector3 direction = ray_end_rel - ray_start_rel;
 		real_t dir_len = direction.length();
-		
+
 		if (dir_len < CMP_EPSILON) {
 			// Degenerate ray - use iterative search with dot products
 			Vector3 perp_to_arc = center1.get_any_perpendicular();
@@ -336,27 +332,27 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 				in_plane = rot.xform(center1).normalized();
 			}
 			in_plane.normalize();
-			
+
 			real_t best_angle = 0.0;
 			real_t best_error = Math::INF;
 			for (int i = 0; i < 64; i++) {
 				real_t angle = (real_t)i * Math::TAU / 64.0;
 				Quaternion rot = Quaternion(arc_normal, angle);
 				Vector3 candidate = rot.xform(in_plane).normalized();
-				
+
 				real_t dot1 = candidate.dot(center1);
 				real_t dot2 = candidate.dot(center2);
-				
+
 				real_t error1 = Math::abs(dot1 - target_dot1);
 				real_t error2 = Math::abs(dot2 - target_dot2);
 				real_t total_error = error1 + error2;
-				
+
 				if (total_error < best_error) {
 					best_error = total_error;
 					best_angle = angle;
 				}
 			}
-			
+
 			Quaternion rot1 = Quaternion(arc_normal, best_angle);
 			Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
 			sphere_intersect1 = rot1.xform(in_plane).normalized();
@@ -369,17 +365,13 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			real_t center_dist_squared = ray_to_center.length_squared();
 			real_t ray_dot_squared = ray_dot_center * ray_dot_center;
 			real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
-			
+
 			if (discriminant >= 0.0) {
 				discriminant = Math::sqrt(discriminant);
-				int result = 0;
 				if (ray_dot_center < discriminant) {
 					if (ray_dot_center + discriminant >= 0) {
 						discriminant = -discriminant;
-						result = 1;
 					}
-				} else {
-					result = 2;
 				}
 				sphere_intersect1 = ray_dir_normalized * (ray_dot_center - discriminant) + sphere_center;
 				sphere_intersect2 = ray_dir_normalized * (ray_dot_center + discriminant) + sphere_center;
@@ -399,27 +391,27 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 					in_plane = rot.xform(center1).normalized();
 				}
 				in_plane.normalize();
-				
+
 				real_t best_angle = 0.0;
 				real_t best_error = Math::INF;
 				for (int i = 0; i < 64; i++) {
 					real_t angle = (real_t)i * Math::TAU / 64.0;
 					Quaternion rot = Quaternion(arc_normal, angle);
 					Vector3 candidate = rot.xform(in_plane).normalized();
-					
+
 					real_t dot1 = candidate.dot(center1);
 					real_t dot2 = candidate.dot(center2);
-					
+
 					real_t error1 = Math::abs(dot1 - target_dot1);
 					real_t error2 = Math::abs(dot2 - target_dot2);
 					real_t total_error = error1 + error2;
-					
+
 					if (total_error < best_error) {
 						best_error = total_error;
 						best_angle = angle;
 					}
 				}
-				
+
 				Quaternion rot1 = Quaternion(arc_normal, best_angle);
 				Quaternion rot2 = Quaternion(arc_normal, best_angle + Math::PI);
 				sphere_intersect1 = rot1.xform(in_plane).normalized();
@@ -427,10 +419,10 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			}
 		}
 	}
-	
+
 	sphere_intersect1 = sphere_intersect1.normalized();
 	sphere_intersect2 = sphere_intersect2.normalized();
-	
+
 	// Check if intersections are too close (degenerate case)
 	real_t dot_between = sphere_intersect1.dot(sphere_intersect2);
 	if (dot_between > 0.999f) {
@@ -450,10 +442,10 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 			sphere_intersect2 = rot.xform(sphere_intersect1).normalized();
 		}
 	}
-	
+
 	r_tan1 = sphere_intersect1;
 	r_tan2 = sphere_intersect2;
-	
+
 	// Handle degenerate tangent centers
 	if (!r_tan1.is_finite() || Math::is_zero_approx(r_tan1.length_squared())) {
 		r_tan1 = center1.get_any_perpendicular();
@@ -472,70 +464,62 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 	}
 }
 
-// Helper function to find point on path between two cones
+// Helper function to find point on path between two cones (improved from ik_open_cone_3d.cpp)
 static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vector3 &p_center1, real_t p_radius1,
-		const Vector3 &p_center2, real_t p_radius2) {
+		const Vector3 &p_center2, real_t p_radius2, const Vector3 &p_tan1, const Vector3 &p_tan2, real_t p_tan_radius) {
 	Vector3 center1 = p_center1.normalized();
 	Vector3 center2 = p_center2.normalized();
 	Vector3 input = p_input.normalized();
+	Vector3 tan1 = p_tan1.normalized();
+	Vector3 tan2 = p_tan2.normalized();
 
-	// Compute tangent circles using shared function
-	Vector3 tan1, tan2;
-	real_t tan_radius;
-	compute_tangent_circles(center1, p_radius1, center2, p_radius2, tan1, tan2, tan_radius);
+	real_t tan_radius_cos = Math::cos(p_tan_radius);
 
-	real_t tan_radius_cos = Math::cos(tan_radius);
+	// Use improved algorithm from ik_open_cone_3d.cpp with safe cross products
+	Vector3 c1xc2 = center1.cross(center2);
+	real_t c1c2dir = input.dot(c1xc2);
 
-	// Determine which side of the arc we're on
-	Vector3 arc_normal_check = center1.cross(center2);
-	real_t arc_side_dot = input.dot(arc_normal_check);
-
-	// Check tangent side
-	if (arc_side_dot < 0.0) {
-		// Use first tangent circle - use tan1 cross product order
-		Vector3 cross1 = center1.cross(tan1);
-		Vector3 cross2 = tan1.cross(center2);
-		if (input.dot(cross1) <= 0 || input.dot(cross2) <= 0) {
+	if (c1c2dir < 0.0) {
+		Vector3 c1xt1 = center1.cross(tan1);
+		Vector3 t1xc2 = tan1.cross(center2);
+		if (input.dot(c1xt1) > 0 && input.dot(t1xc2) > 0) {
+			real_t to_next_cos = input.dot(tan1);
+			if (to_next_cos > tan_radius_cos) {
+				Vector3 plane_normal = tan1.cross(input);
+				// Ensure plane_normal is valid before creating quaternion
+				if (!plane_normal.is_finite() || Math::is_zero_approx(plane_normal.length_squared())) {
+					plane_normal = Vector3(0, 1, 0);
+				}
+				plane_normal.normalize();
+				Quaternion rotate_about_by = Quaternion(plane_normal, p_tan_radius);
+				return rotate_about_by.xform(tan1).normalized();
+			} else {
+				return input;
+			}
+		} else {
 			return Vector3(NAN, NAN, NAN);
 		}
-		
-		real_t to_next_cos = input.dot(tan1);
-		if (to_next_cos <= tan_radius_cos) {
-			return input;
+	} else {
+		Vector3 t2xc1 = tan2.cross(center1);
+		Vector3 c2xt2 = center2.cross(tan2);
+		if (input.dot(t2xc1) > 0 && input.dot(c2xt2) > 0) {
+			if (input.dot(tan2) > tan_radius_cos) {
+				Vector3 plane_normal = tan2.cross(input);
+				// Ensure plane_normal is valid before creating quaternion
+				if (!plane_normal.is_finite() || Math::is_zero_approx(plane_normal.length_squared())) {
+					plane_normal = Vector3(0, 1, 0);
+				}
+				plane_normal.normalize();
+				Quaternion rotate_about_by = Quaternion(plane_normal, p_tan_radius);
+				return rotate_about_by.xform(tan2).normalized();
+			} else {
+				return input;
+			}
+		} else {
+			return Vector3(NAN, NAN, NAN);
 		}
-		
-		Vector3 plane_normal = tan1.cross(input);
-		if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-			plane_normal = Vector3(0, 1, 0);
-		}
-		plane_normal.normalize();
-		real_t adjusted_tan_radius = tan_radius + 5e-5;
-		Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-		return rotate_about_by.xform(tan1).normalized();
 	}
-	
-	// Use second tangent circle - use tan2 cross product order (reversed)
-	Vector3 cross1 = tan2.cross(center1);
-	Vector3 cross2 = center2.cross(tan2);
-	if (input.dot(cross1) <= 0 || input.dot(cross2) <= 0) {
-		return Vector3(NAN, NAN, NAN);
-	}
-	
-	real_t to_next_cos = input.dot(tan2);
-	if (to_next_cos <= tan_radius_cos) {
-		return input;
-	}
-	
-	Vector3 plane_normal = tan2.cross(input);
-	if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-		plane_normal = Vector3(0, 1, 0);
-	}
-	plane_normal.normalize();
-	real_t adjusted_tan_radius = tan_radius + 5e-5;
-	Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-	return rotate_about_by.xform(tan2).normalized();
 }
-
 
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	Vector3 result = p_direction.normalized();
@@ -550,7 +534,7 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	Vector3 pole_axis = Vector3(0, 1, 0);
 	real_t input_pole_dot = Math::abs(result.dot(pole_axis));
 	bool needs_rotation = (input_pole_dot > 0.9);
-	
+
 	// Check all cone centers for pole proximity
 	if (!needs_rotation) {
 		for (int i = 0; i < cones.size(); i++) {
@@ -563,7 +547,7 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 			}
 		}
 	}
-	
+
 	Quaternion pole_rotation;
 	if (needs_rotation) {
 		// Near pole - rotate 90 degrees around X axis to move to equator
@@ -635,7 +619,12 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 		real_t radius1 = cone1_data.w;
 		real_t radius2 = cone2_data.w;
 
-		Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
+		// Precompute tangent circles for this pair
+		Vector3 tan1, tan2;
+		real_t tan_radius;
+		compute_tangent_circles(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+
+		Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2, tan1, tan2, tan_radius);
 
 		// If NaN, skip this path
 		if (Math::is_nan(collision_point.x)) {
@@ -666,7 +655,7 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	if (pole_rotation.length_squared() > CMP_EPSILON) {
 		final_result = pole_rotation.inverse().xform(final_result).normalized();
 	}
-	
+
 	// Return the closest boundary point
 	// The boundary calculation functions (closest_to_cone_boundary and get_on_great_tangent_triangle)
 	// already ensure the result is in an allowed region by adjusting slightly inside/outside boundaries
@@ -951,24 +940,32 @@ Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, 
 }
 
 #ifdef TOOLS_ENABLED
-// Helper function to draw a circle on the unit sphere
+// Helper function to draw a circle on the unit sphere as wireframe (improved from ik_open_cone_3d.cpp)
 static void draw_cone_circle_on_sphere(LocalVector<Vector3> &r_vertices, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 64) {
 	Vector3 axis = p_center.normalized();
-	Vector3 perp1 = axis.get_any_perpendicular().normalized();
-	
+	// Use improved get_orthogonal function for better numerical stability
+	Vector3 perp1 = get_orthogonal(axis);
+	if (perp1.is_zero_approx()) {
+		perp1 = axis.get_any_perpendicular();
+		if (perp1.is_zero_approx()) {
+			perp1 = Vector3(0, 1, 0);
+		}
+	}
+	perp1.normalize();
+
 	// Generate circle points on the sphere using spherical interpolation
 	Vector3 start_point = Quaternion(perp1, p_radius_angle).xform(axis).normalized();
 	real_t angle_step = Math::TAU / (real_t)p_segments;
-	
+
 	Vector3 prev_point = start_point * p_sphere_r;
 	for (int i = 1; i <= p_segments; i++) {
 		real_t angle = (real_t)i * angle_step;
 		Quaternion rot = Quaternion(axis, angle);
 		Vector3 current_point = rot.xform(start_point).normalized() * p_sphere_r;
-		
+
 		r_vertices.push_back(prev_point);
 		r_vertices.push_back(current_point);
-		
+
 		prev_point = current_point;
 	}
 }
@@ -987,11 +984,11 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			const Vector4 &cone_data = cones[i];
 			Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
 			real_t cone_radius = cone_data.w;
-			
+
 			// Draw the boundary circle of the cone on the unit sphere
 			draw_cone_circle_on_sphere(vertices, center, cone_radius, socket_r, 64);
 		}
-		
+
 		// Draw tangent circles between adjacent cones
 		if (cones.size() > 1) {
 			for (int i = 0; i < cones.size() - 1; i++) {
@@ -1001,12 +998,12 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
 				real_t radius1 = cone1_data.w;
 				real_t radius2 = cone2_data.w;
-				
+
 				// Compute tangent circles
 				Vector3 tan1, tan2;
 				real_t tan_radius;
 				compute_tangent_circles(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-				
+
 				// Draw both tangent circles
 				draw_cone_circle_on_sphere(vertices, tan1, tan_radius, socket_r, 64);
 				draw_cone_circle_on_sphere(vertices, tan2, tan_radius, socket_r, 64);
