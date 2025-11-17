@@ -30,6 +30,7 @@
 
 #include "open_telemetry.h"
 
+#include "core/string/string_builder.h"
 #include "structures/otel_log.h"
 #include "structures/otel_metric.h"
 #include "structures/otel_resource.h"
@@ -188,21 +189,21 @@ String OpenTelemetry::set_headers(Dictionary p_headers) {
 String OpenTelemetry::generate_trace_id() {
 	Ref<Crypto> crypto = Crypto::create();
 	PackedByteArray random_bytes = crypto->generate_random_bytes(16);
-	String hex;
+	StringBuilder hex;
 	for (int i = 0; i < random_bytes.size(); i++) {
-		hex += String::num_int64(random_bytes[i], 16, false).pad_zeros(2);
+		hex.append(String::num_int64(random_bytes[i], 16, false).pad_zeros(2));
 	}
-	return hex;
+	return hex.as_string();
 }
 
 String OpenTelemetry::generate_span_id() {
 	Ref<Crypto> crypto = Crypto::create();
 	PackedByteArray random_bytes = crypto->generate_random_bytes(8);
-	String hex;
+	StringBuilder hex;
 	for (int i = 0; i < random_bytes.size(); i++) {
-		hex += String::num_int64(random_bytes[i], 16, false).pad_zeros(2);
+		hex.append(String::num_int64(random_bytes[i], 16, false).pad_zeros(2));
 	}
-	return hex;
+	return hex.as_string();
 }
 
 String OpenTelemetry::generate_uuid_v7() {
@@ -238,17 +239,28 @@ String OpenTelemetry::generate_uuid_v7() {
 		uuid_ptr[i] = random_bytes[i - 6];
 	}
 
-	String hex;
+	StringBuilder hex;
 	for (int i = 0; i < uuid_bytes.size(); i++) {
 		// Use num_uint64 to ensure proper unsigned conversion, then pad to 2 hex digits
 		String hex_byte = String::num_uint64((uint64_t)uuid_bytes[i], 16, false);
 		// Ensure exactly 2 hex characters (pad with leading zero if needed)
 		if (hex_byte.length() < 2) {
-			hex_byte = "0" + hex_byte;
+			hex.append("0");
 		}
-		hex += hex_byte;
+		hex.append(hex_byte);
 	}
-	return hex.substr(0, 8) + "-" + hex.substr(8, 4) + "-" + hex.substr(12, 4) + "-" + hex.substr(16, 4) + "-" + hex.substr(20, 12);
+	String hex_str = hex.as_string();
+	StringBuilder uuid;
+	uuid.append(hex_str.substr(0, 8));
+	uuid.append("-");
+	uuid.append(hex_str.substr(8, 4));
+	uuid.append("-");
+	uuid.append(hex_str.substr(12, 4));
+	uuid.append("-");
+	uuid.append(hex_str.substr(16, 4));
+	uuid.append("-");
+	uuid.append(hex_str.substr(20, 12));
+	return uuid.as_string();
 }
 
 String OpenTelemetry::start_span(String p_name, SpanKind p_kind, Array p_links, Dictionary p_attributes) {

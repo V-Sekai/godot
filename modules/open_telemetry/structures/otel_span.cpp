@@ -32,6 +32,7 @@
 
 #include "core/crypto/crypto.h"
 #include "core/os/time.h"
+#include "core/string/string_builder.h"
 
 void OpenTelemetrySpan::_bind_methods() {
 	// Validation methods
@@ -141,12 +142,12 @@ String OpenTelemetrySpan::generate_random_hex(int p_length) {
 	int byte_count = (p_length + 1) / 2;
 	PackedByteArray random_bytes = crypto->generate_random_bytes(byte_count);
 
-	String hex_str;
+	StringBuilder hex;
 	for (int i = 0; i < random_bytes.size(); i++) {
-		hex_str += String::num_int64(random_bytes[i], 16).pad_zeros(2);
+		hex.append(String::num_int64(random_bytes[i], 16).pad_zeros(2));
 	}
 
-	return hex_str.substr(0, p_length).to_lower();
+	return hex.as_string().substr(0, p_length).to_lower();
 }
 
 // Validation methods (public)
@@ -207,32 +208,32 @@ String OpenTelemetrySpan::generate_trace_id() {
 	// Convert to 32-character hex string
 	// Each part must be exactly 8 hex characters
 	// pad_zeros only pads if shorter, so we need to truncate if longer
-	String uuid;
+	StringBuilder uuid;
 	String part1 = String::num_int64(time_hi, 16).pad_zeros(8);
 	if (part1.length() > 8) {
 		part1 = part1.substr(part1.length() - 8, 8); // Take last 8 chars
 	}
-	uuid += part1;
+	uuid.append(part1);
 
 	String part2 = String::num_int64((time_lo << 16) | ver_rand, 16).pad_zeros(8);
 	if (part2.length() > 8) {
 		part2 = part2.substr(part2.length() - 8, 8); // Take last 8 chars
 	}
-	uuid += part2;
+	uuid.append(part2);
 
 	String part3 = String::num_int64(var_hi, 16).pad_zeros(8);
 	if (part3.length() > 8) {
 		part3 = part3.substr(part3.length() - 8, 8); // Take last 8 chars
 	}
-	uuid += part3;
+	uuid.append(part3);
 
 	String part4 = String::num_int64(var_lo, 16).pad_zeros(8);
 	if (part4.length() > 8) {
 		part4 = part4.substr(part4.length() - 8, 8); // Take last 8 chars
 	}
-	uuid += part4;
+	uuid.append(part4);
 
-	return uuid.to_lower();
+	return uuid.as_string().to_lower();
 }
 
 String OpenTelemetrySpan::generate_span_id() {
