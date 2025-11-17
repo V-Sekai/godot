@@ -733,6 +733,206 @@ Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, 
 }
 
 #ifdef TOOLS_ENABLED
+// Helper function to compute tangent circles between two cones
+static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, const Vector3 &p_center2, real_t p_radius2,
+		Vector3 &r_tan1, Vector3 &r_tan2, real_t &r_tan_radius) {
+	Vector3 center1 = p_center1.normalized();
+	Vector3 center2 = p_center2.normalized();
+	
+	// Compute tangent circle radius
+	r_tan_radius = (Math::PI - (p_radius1 + p_radius2)) / 2.0;
+	
+	// Find arc normal (axis perpendicular to both cone centers)
+	Vector3 arc_normal = center1.cross(center2);
+	real_t arc_normal_len = arc_normal.length();
+	
+	if (arc_normal_len < CMP_EPSILON) {
+		// Cones are parallel or opposite - handle specially
+		arc_normal = center1.get_any_perpendicular();
+		if (arc_normal.is_zero_approx()) {
+			arc_normal = Vector3(0, 1, 0);
+		}
+		arc_normal.normalize();
+		Vector3 perp1 = center1.get_any_perpendicular().normalized();
+		Quaternion rot1 = Quaternion(center1, r_tan_radius);
+		Quaternion rot2 = Quaternion(center1, -r_tan_radius);
+		r_tan1 = rot1.xform(perp1).normalized();
+		r_tan2 = rot2.xform(perp1).normalized();
+		return;
+	}
+	
+	arc_normal.normalize();
+	
+	// Use plane intersection method matching ik_open_cone_3d.cpp
+	real_t boundary_plus_tangent_radius_a = p_radius1 + r_tan_radius;
+	real_t boundary_plus_tangent_radius_b = p_radius2 + r_tan_radius;
+	
+	Vector3 scaled_axis_a = center1 * Math::cos(boundary_plus_tangent_radius_a);
+	Vector3 safe_arc_normal = arc_normal;
+	if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
+		safe_arc_normal = Vector3(0, 1, 0);
+	}
+	Quaternion temp_var = Quaternion(safe_arc_normal.normalized(), boundary_plus_tangent_radius_a);
+	Vector3 plane_dir1_a = temp_var.xform(center1);
+	Vector3 safe_center1 = center1;
+	if (Math::is_zero_approx(safe_center1.length_squared())) {
+		safe_center1 = Vector3(0, 0, 1);
+	}
+	Quaternion temp_var2 = Quaternion(safe_center1.normalized(), Math::PI / 2);
+	Vector3 plane_dir2_a = temp_var2.xform(plane_dir1_a);
+	
+	Vector3 scaled_axis_b = center2 * Math::cos(boundary_plus_tangent_radius_b);
+	Quaternion temp_var3 = Quaternion(safe_arc_normal.normalized(), boundary_plus_tangent_radius_b);
+	Vector3 plane_dir1_b = temp_var3.xform(center2);
+	Vector3 safe_center2 = center2;
+	if (Math::is_zero_approx(safe_center2.length_squared())) {
+		safe_center2 = Vector3(0, 0, 1);
+	}
+	Quaternion temp_var4 = Quaternion(safe_center2.normalized(), Math::PI / 2);
+	Vector3 plane_dir2_b = temp_var4.xform(plane_dir1_b);
+	
+	// Extend rays
+	Vector3 ray1_b_start = plane_dir1_b;
+	Vector3 ray1_b_end = scaled_axis_b;
+	Vector3 ray2_b_start = plane_dir1_b;
+	Vector3 ray2_b_end = plane_dir2_b;
+	{
+		Vector3 mid_point = (ray1_b_start + ray1_b_end) * 0.5;
+		Vector3 start_heading = ray1_b_start - mid_point;
+		Vector3 end_heading = ray1_b_end - mid_point;
+		ray1_b_start = start_heading + start_heading.normalized() * 99.0 + mid_point;
+		ray1_b_end = end_heading + end_heading.normalized() * 99.0 + mid_point;
+	}
+	{
+		Vector3 mid_point = (ray2_b_start + ray2_b_end) * 0.5;
+		Vector3 start_heading = ray2_b_start - mid_point;
+		Vector3 end_heading = ray2_b_end - mid_point;
+		ray2_b_start = start_heading + start_heading.normalized() * 99.0 + mid_point;
+		ray2_b_end = end_heading + end_heading.normalized() * 99.0 + mid_point;
+	}
+	
+	// Ray-plane intersections
+	Vector3 intersection1, intersection2;
+	{
+		Vector3 ray_dir = (ray1_b_end - ray1_b_start).normalized();
+		Vector3 plane_edge1 = plane_dir1_a - scaled_axis_a;
+		Vector3 plane_edge2 = plane_dir2_a - scaled_axis_a;
+		Vector3 plane_normal = plane_edge1.cross(plane_edge2).normalized();
+		Vector3 ray_to_plane = ray1_b_start - scaled_axis_a;
+		real_t plane_distance = -plane_normal.dot(ray_to_plane);
+		real_t ray_dot_normal = plane_normal.dot(ray_dir);
+		if (Math::abs(ray_dot_normal) >= CMP_EPSILON) {
+			real_t intersection_param = plane_distance / ray_dot_normal;
+			intersection1 = ray1_b_start + ray_dir * intersection_param;
+		} else {
+			intersection1 = Vector3(NAN, NAN, NAN);
+		}
+	}
+	{
+		Vector3 ray_dir = (ray2_b_end - ray2_b_start).normalized();
+		Vector3 plane_edge1 = plane_dir1_a - scaled_axis_a;
+		Vector3 plane_edge2 = plane_dir2_a - scaled_axis_a;
+		Vector3 plane_normal = plane_edge1.cross(plane_edge2).normalized();
+		Vector3 ray_to_plane = ray2_b_start - scaled_axis_a;
+		real_t plane_distance = -plane_normal.dot(ray_to_plane);
+		real_t ray_dot_normal = plane_normal.dot(ray_dir);
+		if (Math::abs(ray_dot_normal) >= CMP_EPSILON) {
+			real_t intersection_param = plane_distance / ray_dot_normal;
+			intersection2 = ray2_b_start + ray_dir * intersection_param;
+		} else {
+			intersection2 = Vector3(NAN, NAN, NAN);
+		}
+	}
+	
+	// Extend intersection ray
+	Vector3 intersection_ray_start = intersection1;
+	Vector3 intersection_ray_end = intersection2;
+	{
+		Vector3 mid_point = (intersection_ray_start + intersection_ray_end) * 0.5;
+		Vector3 start_heading = intersection_ray_start - mid_point;
+		Vector3 end_heading = intersection_ray_end - mid_point;
+		intersection_ray_start = start_heading + start_heading.normalized() * 99.0 + mid_point;
+		intersection_ray_end = end_heading + end_heading.normalized() * 99.0 + mid_point;
+	}
+	
+	// Ray-sphere intersection
+	Vector3 sphere_intersect1, sphere_intersect2;
+	Vector3 sphere_center(0, 0, 0);
+	{
+		Vector3 ray_start_rel = intersection_ray_start - sphere_center;
+		Vector3 ray_end_rel = intersection_ray_end - sphere_center;
+		Vector3 direction = ray_end_rel - ray_start_rel;
+		Vector3 ray_dir_normalized = direction.normalized();
+		Vector3 ray_to_center = -ray_start_rel;
+		real_t ray_dot_center = ray_dir_normalized.dot(ray_to_center);
+		real_t radius_squared = 1.0;
+		real_t center_dist_squared = ray_to_center.length_squared();
+		real_t ray_dot_squared = ray_dot_center * ray_dot_center;
+		real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
+		
+		if (discriminant >= 0.0) {
+			discriminant = Math::sqrt(discriminant);
+			int result = 0;
+			if (ray_dot_center < discriminant) {
+				if (ray_dot_center + discriminant >= 0) {
+					discriminant = -discriminant;
+					result = 1;
+				}
+			} else {
+				result = 2;
+			}
+			sphere_intersect1 = ray_dir_normalized * (ray_dot_center - discriminant) + sphere_center;
+			sphere_intersect2 = ray_dir_normalized * (ray_dot_center + discriminant) + sphere_center;
+		} else {
+			sphere_intersect1 = Vector3(NAN, NAN, NAN);
+			sphere_intersect2 = Vector3(NAN, NAN, NAN);
+		}
+	}
+	
+	sphere_intersect1 = sphere_intersect1.normalized();
+	sphere_intersect2 = sphere_intersect2.normalized();
+	
+	// Check if intersections are too close (degenerate case)
+	real_t dot_between = sphere_intersect1.dot(sphere_intersect2);
+	if (dot_between > 0.999f) {
+		Vector3 arc_normal_reflect = center1.cross(center2);
+		if (arc_normal_reflect.length_squared() < CMP_EPSILON) {
+			arc_normal_reflect = center1.get_any_perpendicular();
+			if (arc_normal_reflect.is_zero_approx()) {
+				arc_normal_reflect = Vector3(0, 1, 0);
+			}
+		}
+		arc_normal_reflect.normalize();
+		real_t dot_with_normal = sphere_intersect1.dot(arc_normal_reflect);
+		sphere_intersect2 = (sphere_intersect1 - 2.0 * dot_with_normal * arc_normal_reflect).normalized();
+		real_t new_dot = sphere_intersect1.dot(sphere_intersect2);
+		if (new_dot > 0.999f) {
+			Quaternion rot = Quaternion(arc_normal_reflect, Math::PI);
+			sphere_intersect2 = rot.xform(sphere_intersect1).normalized();
+		}
+	}
+	
+	r_tan1 = sphere_intersect1;
+	r_tan2 = sphere_intersect2;
+	
+	// Handle degenerate tangent centers
+	if (!r_tan1.is_finite() || Math::is_zero_approx(r_tan1.length_squared())) {
+		r_tan1 = center1.get_any_perpendicular();
+		if (Math::is_zero_approx(r_tan1.length_squared())) {
+			r_tan1 = Vector3(0, 1, 0);
+		}
+		r_tan1.normalize();
+	}
+	if (!r_tan2.is_finite() || Math::is_zero_approx(r_tan2.length_squared())) {
+		Vector3 orthogonal_base = r_tan1.is_finite() ? r_tan1 : center1;
+		r_tan2 = orthogonal_base.get_any_perpendicular();
+		if (Math::is_zero_approx(r_tan2.length_squared())) {
+			r_tan2 = Vector3(1, 0, 0);
+		}
+		r_tan2.normalize();
+	}
+}
+
 // Helper function to draw a circle on the unit sphere
 static void draw_cone_circle_on_sphere(LocalVector<Vector3> &r_vertices, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 64) {
 	Vector3 axis = p_center.normalized();
@@ -772,6 +972,27 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			
 			// Draw the boundary circle of the cone on the unit sphere
 			draw_cone_circle_on_sphere(vertices, center, cone_radius, socket_r, 64);
+		}
+		
+		// Draw tangent circles between adjacent cones
+		if (cones.size() > 1) {
+			for (int i = 0; i < cones.size() - 1; i++) {
+				const Vector4 &cone1_data = cones[i];
+				const Vector4 &cone2_data = cones[i + 1];
+				Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
+				Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+				real_t radius1 = cone1_data.w;
+				real_t radius2 = cone2_data.w;
+				
+				// Compute tangent circles
+				Vector3 tan1, tan2;
+				real_t tan_radius;
+				compute_tangent_circles(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+				
+				// Draw both tangent circles
+				draw_cone_circle_on_sphere(vertices, tan1, tan_radius, socket_r, 64);
+				draw_cone_circle_on_sphere(vertices, tan2, tan_radius, socket_r, 64);
+			}
 		}
 	}
 
