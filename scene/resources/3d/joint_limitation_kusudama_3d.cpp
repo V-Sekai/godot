@@ -733,11 +733,29 @@ Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, 
 }
 
 #ifdef TOOLS_ENABLED
-void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
-	// Don't draw visualization if axial constraints are disabled
-	if (!axially_constrained || range_angle >= Math::TAU) {
-		return;
+// Helper function to draw a circle on the unit sphere
+static void draw_cone_circle_on_sphere(LocalVector<Vector3> &r_vertices, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 64) {
+	Vector3 axis = p_center.normalized();
+	Vector3 perp1 = axis.get_any_perpendicular().normalized();
+	
+	// Generate circle points on the sphere using spherical interpolation
+	Vector3 start_point = Quaternion(perp1, p_radius_angle).xform(axis).normalized();
+	real_t angle_step = Math::TAU / (real_t)p_segments;
+	
+	Vector3 prev_point = start_point * p_sphere_r;
+	for (int i = 1; i <= p_segments; i++) {
+		real_t angle = (real_t)i * angle_step;
+		Quaternion rot = Quaternion(axis, angle);
+		Vector3 current_point = rot.xform(start_point).normalized() * p_sphere_r;
+		
+		r_vertices.push_back(prev_point);
+		r_vertices.push_back(current_point);
+		
+		prev_point = current_point;
 	}
+}
+
+void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
 	real_t socket_r = p_bone_length * 0.25f;
 	if (socket_r <= CMP_EPSILON) {
 		return;
@@ -745,8 +763,29 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 
 	LocalVector<Vector3> vertices;
 
+	// Draw cone boundaries on the unit sphere
+	if (orientationally_constrained && !cones.is_empty()) {
+		for (int i = 0; i < cones.size(); i++) {
+			const Vector4 &cone_data = cones[i];
+			Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
+			real_t cone_radius = cone_data.w;
+			
+			// Draw the boundary circle of the cone on the unit sphere
+			draw_cone_circle_on_sphere(vertices, center, cone_radius, socket_r, 64);
+		}
+	}
+
 	// Draw rotation freedom indicators at the joint origin
 	// Show how much the bone can still rotate around its axis
+	if (!axially_constrained || range_angle >= Math::TAU) {
+		// Add all vertices to surface tool
+		for (int64_t i = 0; i < vertices.size(); i++) {
+			p_surface_tool->set_color(p_color);
+			p_surface_tool->add_vertex(p_transform.xform(vertices[i]));
+		}
+		return;
+	}
+
 	real_t indicator_r = socket_r * 1.2f; // Extend outside the unit sphere for better visibility
 
 	// Normalize angles
