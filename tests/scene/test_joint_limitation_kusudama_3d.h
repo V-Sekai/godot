@@ -579,7 +579,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test no wrap-around from last to f
 	CHECK(angle_to_cp1 > radius);
 	CHECK(angle_to_cp2 > radius);
 	CHECK(angle_to_cp3 > radius);
-	
+
 	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), between_last_first);
 
 	CHECK(result.is_finite());
@@ -1451,15 +1451,15 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - point outside 
 	real_t angle_to_cp2_check = far_point.angle_to(cp2);
 	CHECK(angle_to_cp1_check > radius);
 	CHECK(angle_to_cp2_check > radius);
-	
+
 	// Use independent solver to check if point is in an allowed region
 	bool is_allowed = test_is_point_allowed(far_point, cones);
-	
+
 	Vector3 result = limitation->solve(Vector3(0, 0, 1), Vector3(1, 0, 0), Quaternion(), far_point);
 
 	CHECK(result.is_finite());
 	CHECK(result.is_normalized());
-	CHECK_FALSE (is_allowed);
+	CHECK_FALSE(is_allowed);
 }
 
 TEST_CASE("[Scene][JointLimitationKusudama3D] Exhaustive test of all regions - top to equator to bottom") {
