@@ -63,64 +63,61 @@ void JointLimitationKusudama3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "orientationally_constrained"), "set_orientationally_constrained", "is_orientationally_constrained");
 }
 
-// Helper function to find closest point on a single cone boundary
+// Helper function to get orthogonal vector (from ik_open_cone_3d.cpp)
+static Vector3 get_orthogonal(const Vector3 &p_in) {
+	Vector3 result;
+	if (Math::abs(p_in.y) < Math::abs(p_in.x)) {
+		if (Math::abs(p_in.z) < Math::abs(p_in.x)) {
+			real_t inverse = 1.0f / Math::sqrt(p_in.y * p_in.y + p_in.z * p_in.z);
+			return Vector3(0.0f, -inverse * p_in.z, inverse * p_in.y);
+		}
+		real_t inverse = 1.0f / Math::sqrt(p_in.x * p_in.x + p_in.y * p_in.y);
+		return Vector3(-inverse * p_in.y, inverse * p_in.x, 0.0f);
+	}
+	if (Math::abs(p_in.z) < Math::abs(p_in.y)) {
+		real_t inverse = 1.0f / Math::sqrt(p_in.x * p_in.x + p_in.z * p_in.z);
+		return Vector3(-inverse * p_in.z, 0.0f, inverse * p_in.x);
+	}
+	real_t inverse = 1.0f / Math::sqrt(p_in.x * p_in.x + p_in.y * p_in.y);
+	return Vector3(inverse * p_in.y, -inverse * p_in.x, 0.0f);
+}
+
+// Helper function to find closest point on a single cone boundary (improved from ik_open_cone_3d.cpp)
 static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p_control_point, real_t p_radius) {
 	Vector3 normalized_input = p_input.normalized();
 	Vector3 normalized_control = p_control_point.normalized();
-	
-	// For zero radius, return the control point exactly (or NaN if input is the control point)
-	if (p_radius < CMP_EPSILON) {
-		real_t input_dot_control = normalized_input.dot(normalized_control);
-		if (input_dot_control >= 1.0 - 1e-4) {
-			// Input is the control point (or very close) - inside cone
-			return Vector3(NAN, NAN, NAN);
-		}
-		// Input is not the control point - return control point as boundary
-		return normalized_control;
-	}
 	
 	real_t radius_cosine = Math::cos(p_radius);
 	real_t input_dot_control = normalized_input.dot(normalized_control);
 
 	// Check if input is within the cone
-	// For angles <= 90°: inside if input_dot_control >= radius_cosine (angle <= radius)
-	// For angles > 90°: the cone covers more than half the sphere, so inside if input_dot_control >= radius_cosine
-	// Note: when radius > 90°, radius_cosine is negative, so this correctly handles large cones
-	// Use a small epsilon to account for floating-point precision
-	// Points on or very close to the boundary are considered inside
-	// Note: input_dot_control = cos(angle), so larger values mean smaller angles (closer to center)
-	// Use a slightly larger epsilon (1e-4) to account for normalization and coordinate space transformations
-	if (input_dot_control >= radius_cosine - 1e-4) {
+	if (input_dot_control > radius_cosine) {
 		// Inside cone - return NaN to indicate in bounds
 		return Vector3(NAN, NAN, NAN);
 	}
 
-	// Find the closest point on the cone boundary to the input point
-	// The boundary is a circle on the unit sphere at angle p_radius from the control point
-	// We need to find the point on this circle that is closest to the input point
+	// Find the closest point on the cone boundary using improved algorithm from ik_open_cone_3d.cpp
+	// Use safe cross product approach
+	Vector3 axis = normalized_control.cross(normalized_input);
 	
-	// Project the input point onto the plane perpendicular to the control point
-	// Then normalize to the cone radius distance
-	Vector3 projection = normalized_input - normalized_control * input_dot_control;
-	real_t projection_length = projection.length();
-	
-	if (projection_length < CMP_EPSILON) {
-		// Input is opposite to control point - use any perpendicular
-		projection = normalized_control.get_any_perpendicular();
-		if (projection.is_zero_approx()) {
-			projection = Vector3(0, 1, 0);
+	// Additional validation for the axis
+	if (!axis.is_finite() || Math::is_zero_approx(axis.length_squared())) {
+		// Fallback: use the most orthogonal axis to the control point
+		axis = get_orthogonal(normalized_control);
+		if (Math::is_zero_approx(axis.length_squared())) {
+			axis = Vector3(0, 1, 0);
 		}
+		axis.normalize();
+	} else {
+		axis.normalize();
 	}
-	projection.normalize();
-	
-	// Calculate boundary point slightly inside the cone to ensure it passes the "inside" check
-	// This "snaps" the point to be guaranteed inside the allowed region
-	// Use a small adjustment (1e-4 radians ≈ 0.0057 degrees) to move slightly inside the boundary
-	real_t adjustment = 1e-4;
-	real_t adjusted_radius = MAX(0.0, p_radius - adjustment);
-	real_t adjusted_radius_cosine = Math::cos(adjusted_radius);
-	real_t sin_adjusted_radius = Math::sin(adjusted_radius);
-	Vector3 result = normalized_control * adjusted_radius_cosine + projection * sin_adjusted_radius;
+
+	Quaternion rot_to = Quaternion(axis, p_radius);
+	Vector3 axis_control_point = normalized_control;
+	if (Math::is_zero_approx(axis_control_point.length_squared())) {
+		axis_control_point = Vector3(0, 1, 0);
+	}
+	Vector3 result = rot_to.xform(axis_control_point);
 	return result.normalized();
 }
 
@@ -472,68 +469,61 @@ static void compute_tangent_circles(const Vector3 &p_center1, real_t p_radius1, 
 	}
 }
 
-// Helper function to find point on path between two cones
+// Helper function to find point on path between two cones (improved from ik_open_cone_3d.cpp)
 static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vector3 &p_center1, real_t p_radius1,
-		const Vector3 &p_center2, real_t p_radius2) {
+		const Vector3 &p_center2, real_t p_radius2, const Vector3 &p_tan1, const Vector3 &p_tan2, real_t p_tan_radius) {
 	Vector3 center1 = p_center1.normalized();
 	Vector3 center2 = p_center2.normalized();
 	Vector3 input = p_input.normalized();
+	Vector3 tan1 = p_tan1.normalized();
+	Vector3 tan2 = p_tan2.normalized();
 
-	// Compute tangent circles using shared function
-	Vector3 tan1, tan2;
-	real_t tan_radius;
-	compute_tangent_circles(center1, p_radius1, center2, p_radius2, tan1, tan2, tan_radius);
+	real_t tan_radius_cos = Math::cos(p_tan_radius);
 
-	real_t tan_radius_cos = Math::cos(tan_radius);
+	// Use improved algorithm from ik_open_cone_3d.cpp with safe cross products
+	Vector3 c1xc2 = center1.cross(center2);
+	real_t c1c2dir = input.dot(c1xc2);
 
-	// Determine which side of the arc we're on
-	Vector3 arc_normal_check = center1.cross(center2);
-	real_t arc_side_dot = input.dot(arc_normal_check);
-
-	// Check tangent side
-	if (arc_side_dot < 0.0) {
-		// Use first tangent circle - use tan1 cross product order
-		Vector3 cross1 = center1.cross(tan1);
-		Vector3 cross2 = tan1.cross(center2);
-		if (input.dot(cross1) <= 0 || input.dot(cross2) <= 0) {
+	if (c1c2dir < 0.0) {
+		Vector3 c1xt1 = center1.cross(tan1);
+		Vector3 t1xc2 = tan1.cross(center2);
+		if (input.dot(c1xt1) > 0 && input.dot(t1xc2) > 0) {
+			real_t to_next_cos = input.dot(tan1);
+			if (to_next_cos > tan_radius_cos) {
+				Vector3 plane_normal = tan1.cross(input);
+				// Ensure plane_normal is valid before creating quaternion
+				if (!plane_normal.is_finite() || Math::is_zero_approx(plane_normal.length_squared())) {
+					plane_normal = Vector3(0, 1, 0);
+				}
+				plane_normal.normalize();
+				Quaternion rotate_about_by = Quaternion(plane_normal, p_tan_radius);
+				return rotate_about_by.xform(tan1).normalized();
+			} else {
+				return input;
+			}
+		} else {
 			return Vector3(NAN, NAN, NAN);
 		}
-		
-		real_t to_next_cos = input.dot(tan1);
-		if (to_next_cos <= tan_radius_cos) {
-			return input;
+	} else {
+		Vector3 t2xc1 = tan2.cross(center1);
+		Vector3 c2xt2 = center2.cross(tan2);
+		if (input.dot(t2xc1) > 0 && input.dot(c2xt2) > 0) {
+			if (input.dot(tan2) > tan_radius_cos) {
+				Vector3 plane_normal = tan2.cross(input);
+				// Ensure plane_normal is valid before creating quaternion
+				if (!plane_normal.is_finite() || Math::is_zero_approx(plane_normal.length_squared())) {
+					plane_normal = Vector3(0, 1, 0);
+				}
+				plane_normal.normalize();
+				Quaternion rotate_about_by = Quaternion(plane_normal, p_tan_radius);
+				return rotate_about_by.xform(tan2).normalized();
+			} else {
+				return input;
+			}
+		} else {
+			return Vector3(NAN, NAN, NAN);
 		}
-		
-		Vector3 plane_normal = tan1.cross(input);
-		if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-			plane_normal = Vector3(0, 1, 0);
-		}
-		plane_normal.normalize();
-		real_t adjusted_tan_radius = tan_radius + 5e-5;
-		Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-		return rotate_about_by.xform(tan1).normalized();
 	}
-	
-	// Use second tangent circle - use tan2 cross product order (reversed)
-	Vector3 cross1 = tan2.cross(center1);
-	Vector3 cross2 = center2.cross(tan2);
-	if (input.dot(cross1) <= 0 || input.dot(cross2) <= 0) {
-		return Vector3(NAN, NAN, NAN);
-	}
-	
-	real_t to_next_cos = input.dot(tan2);
-	if (to_next_cos <= tan_radius_cos) {
-		return input;
-	}
-	
-	Vector3 plane_normal = tan2.cross(input);
-	if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-		plane_normal = Vector3(0, 1, 0);
-	}
-	plane_normal.normalize();
-	real_t adjusted_tan_radius = tan_radius + 5e-5;
-	Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-	return rotate_about_by.xform(tan2).normalized();
 }
 
 
@@ -635,7 +625,12 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 		real_t radius1 = cone1_data.w;
 		real_t radius2 = cone2_data.w;
 
-		Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
+		// Precompute tangent circles for this pair
+		Vector3 tan1, tan2;
+		real_t tan_radius;
+		compute_tangent_circles(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
+		
+		Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2, tan1, tan2, tan_radius);
 
 		// If NaN, skip this path
 		if (Math::is_nan(collision_point.x)) {
@@ -951,10 +946,18 @@ Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, 
 }
 
 #ifdef TOOLS_ENABLED
-// Helper function to draw a circle on the unit sphere
+// Helper function to draw a circle on the unit sphere as wireframe (improved from ik_open_cone_3d.cpp)
 static void draw_cone_circle_on_sphere(LocalVector<Vector3> &r_vertices, const Vector3 &p_center, real_t p_radius_angle, real_t p_sphere_r, int p_segments = 64) {
 	Vector3 axis = p_center.normalized();
-	Vector3 perp1 = axis.get_any_perpendicular().normalized();
+	// Use improved get_orthogonal function for better numerical stability
+	Vector3 perp1 = get_orthogonal(axis);
+	if (perp1.is_zero_approx()) {
+		perp1 = axis.get_any_perpendicular();
+		if (perp1.is_zero_approx()) {
+			perp1 = Vector3(0, 1, 0);
+		}
+	}
+	perp1.normalize();
 	
 	// Generate circle points on the sphere using spherical interpolation
 	Vector3 start_point = Quaternion(perp1, p_radius_angle).xform(axis).normalized();
