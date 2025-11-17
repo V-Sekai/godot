@@ -122,285 +122,250 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 	return result.normalized();
 }
 
-// Helper function to compute plane-ray intersection
-static Vector3 ray_plane_intersection(const Vector3 &p_ray_start, const Vector3 &p_ray_end, const Vector3 &p_plane_a, const Vector3 &p_plane_b, const Vector3 &p_plane_c) {
-	Vector3 ray_dir = (p_ray_end - p_ray_start).normalized();
-	Vector3 plane_edge1 = p_plane_b - p_plane_a;
-	Vector3 plane_edge2 = p_plane_c - p_plane_a;
-	Vector3 plane_normal = plane_edge1.cross(plane_edge2).normalized();
-
-	Vector3 ray_to_plane = p_ray_start - p_plane_a;
-	real_t plane_distance = -plane_normal.dot(ray_to_plane);
-	real_t ray_dot_normal = plane_normal.dot(ray_dir);
-
-	if (Math::abs(ray_dot_normal) < CMP_EPSILON) {
-		return Vector3(NAN, NAN, NAN); // Ray is parallel to plane
-	}
-
-	real_t intersection_param = plane_distance / ray_dot_normal;
-	return p_ray_start + ray_dir * intersection_param;
-}
-
-// Helper function to extend a ray in both directions
-static void extend_ray(Vector3 &r_start, Vector3 &r_end, real_t p_amount) {
-	Vector3 mid_point = (r_start + r_end) * 0.5;
-	Vector3 start_heading = r_start - mid_point;
-	Vector3 end_heading = r_end - mid_point;
-	Vector3 start_extension = start_heading.normalized() * p_amount;
-	Vector3 end_extension = end_heading.normalized() * p_amount;
-	r_start = start_heading + start_extension + mid_point;
-	r_end = end_heading + end_extension + mid_point;
-}
-
-// Helper function to compute ray-sphere intersection
-static int ray_sphere_intersection(const Vector3 &p_ray_start, const Vector3 &p_ray_end, const Vector3 &p_sphere_center, real_t p_radius, Vector3 *r_intersection1, Vector3 *r_intersection2) {
-	Vector3 ray_start_rel = p_ray_start - p_sphere_center;
-	Vector3 ray_end_rel = p_ray_end - p_sphere_center;
-	Vector3 direction = ray_end_rel - ray_start_rel;
-	Vector3 ray_dir_normalized = direction.normalized();
-	Vector3 ray_to_center = -ray_start_rel;
-	real_t ray_dot_center = ray_dir_normalized.dot(ray_to_center);
-	real_t radius_squared = p_radius * p_radius;
-	real_t center_dist_squared = ray_to_center.length_squared();
-	real_t ray_dot_squared = ray_dot_center * ray_dot_center;
-	real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
-
-	if (discriminant < 0.0) {
-		return 0; // No intersection
-	}
-	discriminant = Math::sqrt(discriminant);
-
-	int result = 0;
-	if (ray_dot_center < discriminant) {
-		if (ray_dot_center + discriminant >= 0) {
-			discriminant = -discriminant;
-			result = 1;
-		}
-	} else {
-		result = 2;
-	}
-
-	*r_intersection1 = ray_dir_normalized * (ray_dot_center - discriminant) + p_sphere_center;
-	*r_intersection2 = ray_dir_normalized * (ray_dot_center + discriminant) + p_sphere_center;
-	return result;
-}
-
-// Helper function to compute tangent circle between two cones
-// Uses plane intersection method matching the actual implementation in ik_open_cone_3d.cpp
-// This ensures the tangent circles are computed on the correct side (the open side)
-static void compute_tangent_circle(const Vector3 &p_center1, real_t p_radius1, const Vector3 &p_center2, real_t p_radius2,
-		Vector3 &r_tangent1, Vector3 &r_tangent2, real_t &r_tangent_radius) {
-	Vector3 center1 = p_center1.normalized();
-	Vector3 center2 = p_center2.normalized();
-
-	// Compute tangent circle radius (matches IKKusudama3D)
-	r_tangent_radius = (Math::PI - (p_radius1 + p_radius2)) / 2.0;
-
-	// Find arc normal (axis perpendicular to both cone centers)
-	Vector3 arc_normal = center1.cross(center2);
-	real_t arc_normal_len = arc_normal.length();
-
-	if (arc_normal_len < CMP_EPSILON) {
-		// Cones are parallel or opposite - handle specially
-		// For opposite cones, any perpendicular to center1 works
-		arc_normal = center1.get_any_perpendicular();
-		if (arc_normal.is_zero_approx()) {
-			arc_normal = Vector3(0, 1, 0);
-		}
-		arc_normal.normalize();
-
-		// For opposite cones, tangent circles are at 90 degrees from the cone centers
-		// Use a perpendicular vector in the plane perpendicular to center1
-		Vector3 perp1 = center1.get_any_perpendicular().normalized();
-
-		// Rotate around center1 by the tangent radius to get tangent centers
-		Quaternion rot1 = Quaternion(center1, r_tangent_radius);
-		Quaternion rot2 = Quaternion(center1, -r_tangent_radius);
-		r_tangent1 = rot1.xform(perp1).normalized();
-		r_tangent2 = rot2.xform(perp1).normalized();
-		return;
-	}
-	arc_normal.normalize();
-
-	// Use plane intersection method matching ik_open_cone_3d.cpp
-	real_t boundary_plus_tangent_radius_a = p_radius1 + r_tangent_radius;
-	real_t boundary_plus_tangent_radius_b = p_radius2 + r_tangent_radius;
-
-	// The axis of this cone, scaled to minimize its distance to the tangent contact points
-	Vector3 scaled_axis_a = center1 * Math::cos(boundary_plus_tangent_radius_a);
-	// A point on the plane running through the tangent contact points
-	Vector3 safe_arc_normal = arc_normal;
-	if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
-		safe_arc_normal = Vector3(0, 1, 0);
-	}
-	Quaternion temp_var = Quaternion(safe_arc_normal.normalized(), boundary_plus_tangent_radius_a);
-	Vector3 plane_dir1_a = temp_var.xform(center1);
-	// Another point on the same plane
-	Vector3 safe_center1 = center1;
-	if (Math::is_zero_approx(safe_center1.length_squared())) {
-		safe_center1 = Vector3(0, 0, 1);
-	}
-	Quaternion temp_var2 = Quaternion(safe_center1.normalized(), Math::PI / 2);
-	Vector3 plane_dir2_a = temp_var2.xform(plane_dir1_a);
-
-	Vector3 scaled_axis_b = center2 * Math::cos(boundary_plus_tangent_radius_b);
-	// A point on the plane running through the tangent contact points
-	Quaternion temp_var3 = Quaternion(safe_arc_normal.normalized(), boundary_plus_tangent_radius_b);
-	Vector3 plane_dir1_b = temp_var3.xform(center2);
-	// Another point on the same plane
-	Vector3 safe_center2 = center2;
-	if (Math::is_zero_approx(safe_center2.length_squared())) {
-		safe_center2 = Vector3(0, 0, 1);
-	}
-	Quaternion temp_var4 = Quaternion(safe_center2.normalized(), Math::PI / 2);
-	Vector3 plane_dir2_b = temp_var4.xform(plane_dir1_b);
-
-	// Ray from scaled center of next cone to half way point between the circumference of this cone and the next cone
-	Vector3 ray1_b_start = plane_dir1_b;
-	Vector3 ray1_b_end = scaled_axis_b;
-	Vector3 ray2_b_start = plane_dir1_b;
-	Vector3 ray2_b_end = plane_dir2_b;
-
-	extend_ray(ray1_b_start, ray1_b_end, 99.0);
-	extend_ray(ray2_b_start, ray2_b_end, 99.0);
-
-	Vector3 intersection1 = ray_plane_intersection(ray1_b_start, ray1_b_end, scaled_axis_a, plane_dir1_a, plane_dir2_a);
-	Vector3 intersection2 = ray_plane_intersection(ray2_b_start, ray2_b_end, scaled_axis_a, plane_dir1_a, plane_dir2_a);
-
-	Vector3 intersection_ray_start = intersection1;
-	Vector3 intersection_ray_end = intersection2;
-	extend_ray(intersection_ray_start, intersection_ray_end, 99.0);
-
-	Vector3 sphere_intersect1;
-	Vector3 sphere_intersect2;
-	Vector3 sphere_center(0, 0, 0);
-	int intersection_count = ray_sphere_intersection(intersection_ray_start, intersection_ray_end, sphere_center, 1.0, &sphere_intersect1, &sphere_intersect2);
-
-	// Ensure intersections are on the unit sphere (normalize them)
-	// The ray-sphere intersection may return points that are not exactly on the unit sphere due to numerical precision
-	sphere_intersect1 = sphere_intersect1.normalized();
-	sphere_intersect2 = sphere_intersect2.normalized();
-
-	// Check if the two intersections are too close (degenerate case - ray passes through or very close to origin)
-	// If they're nearly identical after normalization, compute the second tangent as the point on the opposite side of the arc
-	real_t dot_between = sphere_intersect1.dot(sphere_intersect2);
-	if (dot_between > 0.999f) {
-		// The two intersections are nearly identical - this happens when the ray passes very close to the origin
-		// The two tangent circles should be on opposite sides of the arc between the two cones
-		// Compute the second tangent by reflecting the first across the plane defined by the arc normal
-		Vector3 arc_normal = center1.cross(center2);
-		if (arc_normal.length_squared() < CMP_EPSILON) {
-			// Cones are parallel/opposite - use a perpendicular to center1
-			arc_normal = center1.get_any_perpendicular();
-			if (arc_normal.is_zero_approx()) {
-				arc_normal = Vector3(0, 1, 0);
-			}
-		}
-		arc_normal.normalize();
-		
-		// Reflect sphere_intersect1 across the plane perpendicular to arc_normal
-		// This gives us the point on the opposite side of the arc
-		real_t dot_with_normal = sphere_intersect1.dot(arc_normal);
-		sphere_intersect2 = (sphere_intersect1 - 2.0 * dot_with_normal * arc_normal).normalized();
-		
-		// Ensure they're actually different (should have dot product close to -1 if arc_normal is correct)
-		real_t new_dot = sphere_intersect1.dot(sphere_intersect2);
-		if (new_dot > 0.999f) {
-			// Still too close - try the opposite approach: rotate 180 degrees around arc_normal
-			Quaternion rot = Quaternion(arc_normal, Math::PI);
-			sphere_intersect2 = rot.xform(sphere_intersect1).normalized();
-		}
-	}
-
-	r_tangent1 = sphere_intersect1;
-	r_tangent2 = sphere_intersect2;
-
-	// Handle degenerate tangent centers (NaN or zero)
-	if (!r_tangent1.is_finite() || Math::is_zero_approx(r_tangent1.length_squared())) {
-		r_tangent1 = center1.get_any_perpendicular();
-		if (Math::is_zero_approx(r_tangent1.length_squared())) {
-			r_tangent1 = Vector3(0, 1, 0);
-		}
-		r_tangent1.normalize();
-	}
-	if (!r_tangent2.is_finite() || Math::is_zero_approx(r_tangent2.length_squared())) {
-		Vector3 orthogonal_base = r_tangent1.is_finite() ? r_tangent1 : center1;
-		r_tangent2 = orthogonal_base.get_any_perpendicular();
-		if (Math::is_zero_approx(r_tangent2.length_squared())) {
-			r_tangent2 = Vector3(1, 0, 0);
-		}
-		r_tangent2.normalize();
-	}
-}
-
-// Helper function to check a specific tangent side for path detection
-// The cross product order depends on which side of the arc we're on (coordinate system convention)
-static Vector3 check_tangent_side(const Vector3 &p_input, const Vector3 &p_tangent, const Vector3 &p_cone1, const Vector3 &p_cone2, real_t p_tan_radius_cos, real_t p_tan_radius, bool p_use_tan1_order) {
-	Vector3 cross1, cross2;
-	if (p_use_tan1_order) {
-		// For tan1 side: center1.cross(tan1) and tan1.cross(center2)
-		cross1 = p_cone1.cross(p_tangent);
-		cross2 = p_tangent.cross(p_cone2);
-	} else {
-		// For tan2 side: tan2.cross(center1) and center2.cross(tan2) - order is reversed
-		cross1 = p_tangent.cross(p_cone1);
-		cross2 = p_cone2.cross(p_tangent);
-	}
-	if (p_input.dot(cross1) > 0 && p_input.dot(cross2) > 0) {
-		real_t to_next_cos = p_input.dot(p_tangent);
-		if (to_next_cos > p_tan_radius_cos) {
-			// Project onto tangent circle, but move slightly outside to ensure it's in the allowed region
-			Vector3 plane_normal = p_tangent.cross(p_input);
-			if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
-				plane_normal = Vector3(0, 1, 0);
-			}
-			plane_normal.normalize();
-			// Use slightly larger angle to move point outside the tangent circle (into allowed region)
-			// Points with angle > tan_radius are outside (allowed), points with angle < tan_radius are inside (forbidden)
-			// Use minimal adjustment (5e-5 radians) to ensure it's in allowed region without moving too far
-			real_t adjusted_tan_radius = p_tan_radius + 5e-5;
-			Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
-			return rotate_about_by.xform(p_tangent).normalized();
-		} else {
-			return p_input;
-		}
-	}
-	return Vector3(NAN, NAN, NAN);
-}
-
 // Helper function to find point on path between two cones
-// Uses the simpler test version that avoids origin-crossing issues
 static Vector3 get_on_great_tangent_triangle(const Vector3 &p_input, const Vector3 &p_center1, real_t p_radius1,
 		const Vector3 &p_center2, real_t p_radius2) {
 	Vector3 center1 = p_center1.normalized();
 	Vector3 center2 = p_center2.normalized();
 	Vector3 input = p_input.normalized();
 
-	// Compute tangent circle
+	// Compute tangent circle radius
+	real_t tan_radius = (Math::PI - (p_radius1 + p_radius2)) / 2.0;
+
+	// Find arc normal (axis perpendicular to both cone centers)
+	Vector3 arc_normal = center1.cross(center2);
+	real_t arc_normal_len = arc_normal.length();
+
 	Vector3 tan1, tan2;
-	real_t tan_radius;
-	compute_tangent_circle(center1, p_radius1, center2, p_radius2, tan1, tan2, tan_radius);
+	if (arc_normal_len < CMP_EPSILON) {
+		// Cones are parallel or opposite - handle specially
+		arc_normal = center1.get_any_perpendicular();
+		if (arc_normal.is_zero_approx()) {
+			arc_normal = Vector3(0, 1, 0);
+		}
+		arc_normal.normalize();
+		Vector3 perp1 = center1.get_any_perpendicular().normalized();
+		Quaternion rot1 = Quaternion(center1, tan_radius);
+		Quaternion rot2 = Quaternion(center1, -tan_radius);
+		tan1 = rot1.xform(perp1).normalized();
+		tan2 = rot2.xform(perp1).normalized();
+	} else {
+		arc_normal.normalize();
+
+		// Use plane intersection method matching ik_open_cone_3d.cpp
+		real_t boundary_plus_tangent_radius_a = p_radius1 + tan_radius;
+		real_t boundary_plus_tangent_radius_b = p_radius2 + tan_radius;
+
+		Vector3 scaled_axis_a = center1 * Math::cos(boundary_plus_tangent_radius_a);
+		Vector3 safe_arc_normal = arc_normal;
+		if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
+			safe_arc_normal = Vector3(0, 1, 0);
+		}
+		Quaternion temp_var = Quaternion(safe_arc_normal.normalized(), boundary_plus_tangent_radius_a);
+		Vector3 plane_dir1_a = temp_var.xform(center1);
+		Vector3 safe_center1 = center1;
+		if (Math::is_zero_approx(safe_center1.length_squared())) {
+			safe_center1 = Vector3(0, 0, 1);
+		}
+		Quaternion temp_var2 = Quaternion(safe_center1.normalized(), Math::PI / 2);
+		Vector3 plane_dir2_a = temp_var2.xform(plane_dir1_a);
+
+		Vector3 scaled_axis_b = center2 * Math::cos(boundary_plus_tangent_radius_b);
+		Quaternion temp_var3 = Quaternion(safe_arc_normal.normalized(), boundary_plus_tangent_radius_b);
+		Vector3 plane_dir1_b = temp_var3.xform(center2);
+		Vector3 safe_center2 = center2;
+		if (Math::is_zero_approx(safe_center2.length_squared())) {
+			safe_center2 = Vector3(0, 0, 1);
+		}
+		Quaternion temp_var4 = Quaternion(safe_center2.normalized(), Math::PI / 2);
+		Vector3 plane_dir2_b = temp_var4.xform(plane_dir1_b);
+
+		// Extend rays
+		Vector3 ray1_b_start = plane_dir1_b;
+		Vector3 ray1_b_end = scaled_axis_b;
+		Vector3 ray2_b_start = plane_dir1_b;
+		Vector3 ray2_b_end = plane_dir2_b;
+		{
+			Vector3 mid_point = (ray1_b_start + ray1_b_end) * 0.5;
+			Vector3 start_heading = ray1_b_start - mid_point;
+			Vector3 end_heading = ray1_b_end - mid_point;
+			ray1_b_start = start_heading + start_heading.normalized() * 99.0 + mid_point;
+			ray1_b_end = end_heading + end_heading.normalized() * 99.0 + mid_point;
+		}
+		{
+			Vector3 mid_point = (ray2_b_start + ray2_b_end) * 0.5;
+			Vector3 start_heading = ray2_b_start - mid_point;
+			Vector3 end_heading = ray2_b_end - mid_point;
+			ray2_b_start = start_heading + start_heading.normalized() * 99.0 + mid_point;
+			ray2_b_end = end_heading + end_heading.normalized() * 99.0 + mid_point;
+		}
+
+		// Ray-plane intersections
+		Vector3 intersection1, intersection2;
+		{
+			Vector3 ray_dir = (ray1_b_end - ray1_b_start).normalized();
+			Vector3 plane_edge1 = plane_dir1_a - scaled_axis_a;
+			Vector3 plane_edge2 = plane_dir2_a - scaled_axis_a;
+			Vector3 plane_normal = plane_edge1.cross(plane_edge2).normalized();
+			Vector3 ray_to_plane = ray1_b_start - scaled_axis_a;
+			real_t plane_distance = -plane_normal.dot(ray_to_plane);
+			real_t ray_dot_normal = plane_normal.dot(ray_dir);
+			if (Math::abs(ray_dot_normal) >= CMP_EPSILON) {
+				real_t intersection_param = plane_distance / ray_dot_normal;
+				intersection1 = ray1_b_start + ray_dir * intersection_param;
+			} else {
+				intersection1 = Vector3(NAN, NAN, NAN);
+			}
+		}
+		{
+			Vector3 ray_dir = (ray2_b_end - ray2_b_start).normalized();
+			Vector3 plane_edge1 = plane_dir1_a - scaled_axis_a;
+			Vector3 plane_edge2 = plane_dir2_a - scaled_axis_a;
+			Vector3 plane_normal = plane_edge1.cross(plane_edge2).normalized();
+			Vector3 ray_to_plane = ray2_b_start - scaled_axis_a;
+			real_t plane_distance = -plane_normal.dot(ray_to_plane);
+			real_t ray_dot_normal = plane_normal.dot(ray_dir);
+			if (Math::abs(ray_dot_normal) >= CMP_EPSILON) {
+				real_t intersection_param = plane_distance / ray_dot_normal;
+				intersection2 = ray2_b_start + ray_dir * intersection_param;
+			} else {
+				intersection2 = Vector3(NAN, NAN, NAN);
+			}
+		}
+
+		// Extend intersection ray
+		Vector3 intersection_ray_start = intersection1;
+		Vector3 intersection_ray_end = intersection2;
+		{
+			Vector3 mid_point = (intersection_ray_start + intersection_ray_end) * 0.5;
+			Vector3 start_heading = intersection_ray_start - mid_point;
+			Vector3 end_heading = intersection_ray_end - mid_point;
+			intersection_ray_start = start_heading + start_heading.normalized() * 99.0 + mid_point;
+			intersection_ray_end = end_heading + end_heading.normalized() * 99.0 + mid_point;
+		}
+
+		// Ray-sphere intersection
+		Vector3 sphere_intersect1, sphere_intersect2;
+		Vector3 sphere_center(0, 0, 0);
+		{
+			Vector3 ray_start_rel = intersection_ray_start - sphere_center;
+			Vector3 ray_end_rel = intersection_ray_end - sphere_center;
+			Vector3 direction = ray_end_rel - ray_start_rel;
+			Vector3 ray_dir_normalized = direction.normalized();
+			Vector3 ray_to_center = -ray_start_rel;
+			real_t ray_dot_center = ray_dir_normalized.dot(ray_to_center);
+			real_t radius_squared = 1.0;
+			real_t center_dist_squared = ray_to_center.length_squared();
+			real_t ray_dot_squared = ray_dot_center * ray_dot_center;
+			real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
+
+			if (discriminant >= 0.0) {
+				discriminant = Math::sqrt(discriminant);
+				int result = 0;
+				if (ray_dot_center < discriminant) {
+					if (ray_dot_center + discriminant >= 0) {
+						discriminant = -discriminant;
+						result = 1;
+					}
+				} else {
+					result = 2;
+				}
+				sphere_intersect1 = ray_dir_normalized * (ray_dot_center - discriminant) + sphere_center;
+				sphere_intersect2 = ray_dir_normalized * (ray_dot_center + discriminant) + sphere_center;
+			} else {
+				sphere_intersect1 = Vector3(NAN, NAN, NAN);
+				sphere_intersect2 = Vector3(NAN, NAN, NAN);
+			}
+		}
+
+		sphere_intersect1 = sphere_intersect1.normalized();
+		sphere_intersect2 = sphere_intersect2.normalized();
+
+		// Check if intersections are too close (degenerate case)
+		real_t dot_between = sphere_intersect1.dot(sphere_intersect2);
+		if (dot_between > 0.999f) {
+			Vector3 arc_normal_reflect = center1.cross(center2);
+			if (arc_normal_reflect.length_squared() < CMP_EPSILON) {
+				arc_normal_reflect = center1.get_any_perpendicular();
+				if (arc_normal_reflect.is_zero_approx()) {
+					arc_normal_reflect = Vector3(0, 1, 0);
+				}
+			}
+			arc_normal_reflect.normalize();
+			real_t dot_with_normal = sphere_intersect1.dot(arc_normal_reflect);
+			sphere_intersect2 = (sphere_intersect1 - 2.0 * dot_with_normal * arc_normal_reflect).normalized();
+			real_t new_dot = sphere_intersect1.dot(sphere_intersect2);
+			if (new_dot > 0.999f) {
+				Quaternion rot = Quaternion(arc_normal_reflect, Math::PI);
+				sphere_intersect2 = rot.xform(sphere_intersect1).normalized();
+			}
+		}
+
+		tan1 = sphere_intersect1;
+		tan2 = sphere_intersect2;
+
+		// Handle degenerate tangent centers
+		if (!tan1.is_finite() || Math::is_zero_approx(tan1.length_squared())) {
+			tan1 = center1.get_any_perpendicular();
+			if (Math::is_zero_approx(tan1.length_squared())) {
+				tan1 = Vector3(0, 1, 0);
+			}
+			tan1.normalize();
+		}
+		if (!tan2.is_finite() || Math::is_zero_approx(tan2.length_squared())) {
+			Vector3 orthogonal_base = tan1.is_finite() ? tan1 : center1;
+			tan2 = orthogonal_base.get_any_perpendicular();
+			if (Math::is_zero_approx(tan2.length_squared())) {
+				tan2 = Vector3(1, 0, 0);
+			}
+			tan2.normalize();
+		}
+	}
 
 	real_t tan_radius_cos = Math::cos(tan_radius);
 
 	// Determine which side of the arc we're on
-	Vector3 arc_normal = center1.cross(center2);
-	real_t arc_side_dot = input.dot(arc_normal);
+	Vector3 arc_normal_check = center1.cross(center2);
+	real_t arc_side_dot = input.dot(arc_normal_check);
 
-	// Use the same logic as the test version - check only the side the point is on
-	// This matches the test implementation which doesn't have special opposite-tangent handling
-	// IMPORTANT: Cross product order depends on coordinate system convention
+	// Check tangent side
 	if (arc_side_dot < 0.0) {
 		// Use first tangent circle - use tan1 cross product order
-		Vector3 result = check_tangent_side(input, tan1, center1, center2, tan_radius_cos, tan_radius, true);
-		if (!Math::is_nan(result.x)) {
-			return result;
+		Vector3 cross1 = center1.cross(tan1);
+		Vector3 cross2 = tan1.cross(center2);
+		if (input.dot(cross1) > 0 && input.dot(cross2) > 0) {
+			real_t to_next_cos = input.dot(tan1);
+			if (to_next_cos > tan_radius_cos) {
+				Vector3 plane_normal = tan1.cross(input);
+				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
+					plane_normal = Vector3(0, 1, 0);
+				}
+				plane_normal.normalize();
+				real_t adjusted_tan_radius = tan_radius + 5e-5;
+				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
+				return rotate_about_by.xform(tan1).normalized();
+			} else {
+				return input;
+			}
 		}
 	} else {
 		// Use second tangent circle - use tan2 cross product order (reversed)
-		Vector3 result = check_tangent_side(input, tan2, center1, center2, tan_radius_cos, tan_radius, false);
-		if (!Math::is_nan(result.x)) {
-			return result;
+		Vector3 cross1 = tan2.cross(center1);
+		Vector3 cross2 = center2.cross(tan2);
+		if (input.dot(cross1) > 0 && input.dot(cross2) > 0) {
+			real_t to_next_cos = input.dot(tan2);
+			if (to_next_cos > tan_radius_cos) {
+				Vector3 plane_normal = tan2.cross(input);
+				if (plane_normal.is_zero_approx() || !plane_normal.is_finite()) {
+					plane_normal = Vector3(0, 1, 0);
+				}
+				plane_normal.normalize();
+				real_t adjusted_tan_radius = tan_radius + 5e-5;
+				Quaternion rotate_about_by = Quaternion(plane_normal, adjusted_tan_radius);
+				return rotate_about_by.xform(tan2).normalized();
+			} else {
+				return input;
+			}
 		}
 	}
 
