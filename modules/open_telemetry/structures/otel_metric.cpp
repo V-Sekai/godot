@@ -53,8 +53,8 @@ void OpenTelemetryMetric::_bind_methods() {
 	// Note: "name" property is inherited from Resource, so we don't add it here
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "description"), "set_description", "get_description");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "unit"), "set_unit", "get_unit");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "metric_type"), "set_metric_type", "get_metric_type");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "temporality"), "set_temporality", "get_temporality");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "metric_type", PROPERTY_HINT_ENUM, "Gauge,Sum,Histogram,Exponential Histogram,Summary"), "set_metric_type", "get_metric_type");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "temporality", PROPERTY_HINT_ENUM, "Unspecified,Delta,Cumulative"), "set_temporality", "get_temporality");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "data_points"), "set_data_points", "get_data_points");
 
 	BIND_ENUM_CONSTANT(METRIC_TYPE_GAUGE);

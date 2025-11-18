@@ -65,7 +65,7 @@ void OpenTelemetryLog::_bind_methods() {
 
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "time_unix_nano"), "set_time_unix_nano", "get_time_unix_nano");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "observed_time_unix_nano"), "set_observed_time_unix_nano", "get_observed_time_unix_nano");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "severity_number"), "set_severity_number", "get_severity_number");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "severity_number", PROPERTY_HINT_ENUM, "Unspecified:0,Trace:1,Debug:5,Info:9,Warn:13,Error:17,Fatal:21"), "set_severity_number", "get_severity_number");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "severity_text"), "set_severity_text", "get_severity_text");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "body"), "set_body", "get_body");
 	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "attributes"), "set_attributes", "get_attributes");
