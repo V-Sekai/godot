@@ -53,4 +53,5 @@ public:
 
 	void set_enabled(bool p_enabled) { enabled = p_enabled; }
 	bool is_enabled() const { return enabled; }
+	void clear_otel_instance() { otel_instance = nullptr; }
 };

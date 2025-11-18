@@ -207,7 +207,13 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 
 void uninitialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
-		// Shutdown OpenTelemetry instance first (may log errors during flush)
+		// Disable and clear logger's reference to OpenTelemetry to prevent use-after-free
+		if (global_otel_logger) {
+			global_otel_logger->set_enabled(false);
+			global_otel_logger->clear_otel_instance();
+		}
+
+		// Shutdown OpenTelemetry instance (may log errors during flush, but logger is disabled)
 		if (global_otel_instance) {
 			String shutdown_result = global_otel_instance->shutdown();
 			if (shutdown_result != "OK") {
@@ -217,11 +223,9 @@ void uninitialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 			global_otel_instance = nullptr;
 		}
 
-		// Clean up logger after shutdown (so it can be used for error logging during shutdown)
-		if (global_otel_logger) {
-			memdelete(global_otel_logger);
-			global_otel_logger = nullptr;
-		}
+		// Don't delete the logger here - let OS's CompositeLogger delete it when OS is destroyed
+		// Just clear our reference to it
+		global_otel_logger = nullptr;
 	}
 
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
