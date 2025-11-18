@@ -696,7 +696,7 @@ if True:  # Link TFLite library (auto-build if needed)
             "-DTFLITE_ENABLE_GPU=OFF " +
             "-DTFLITE_ENABLE_XNNPACK=OFF " +
             "-DTFLITE_ENABLE_RESOURCE=OFF " +
-            "-DTFLITE_ENABLE_SIGNATURE=OFF " +
+            "-DTFLITE_ENABLE_SIGNATURE=ON " +
             "-DTENSORFLOW_SOURCE_DIR=" + tensorflow_source_abs + " " +
             "&& touch " + cmake_sentinel_abs
         )
@@ -909,11 +909,10 @@ if True:  # Link TFLite library (auto-build if needed)
                     tflite_lib_abs = expected_lib_path.replace("#", project_root + "/")
                 
                 if os.path.exists(tflite_lib_abs):
-                    # Use -force_load with correct format: -Wl,-force_load,<path> (comma-separated, single argument)
-                    # This forces the linker to load ALL symbols from this specific library
-                    # We add it to LINKFLAGS to force-load, and also add to LIBS for proper linking
+                    # Use -force_load with correct format: -Wl,-force_load,<path> (single argument, comma-separated)
+                    # This forces the linker to load ALL symbols from the specified library
                     env_litrt.Append(LINKFLAGS=["-Wl,-force_load," + tflite_lib_abs])
-                    # Also add to LIBS - the -force_load in LINKFLAGS will modify how it's linked
+                    # Also add library name to LIBS so SCons tracks it as a dependency
                     env_litrt.Append(LIBS=["tensorflow-lite"])
                 else:
                     # Last resort: regular linking
