@@ -377,10 +377,12 @@ if True:  # Always build pthreadpool
     if env["platform"] == "windows":
         pthreadpool_sources.append("src/windows.c")
     else:
-        pthreadpool_sources.append("src/pthreads.c")
-        # Add GCD for macOS/iOS
+        # Add GCD for macOS/iOS (pthreads.c is not used when GCD is enabled)
         if env["platform"] in ["macos", "ios"]:
             pthreadpool_sources.append("src/gcd.c")
+        else:
+            # Use pthreads.c for other Unix-like platforms (Linux, etc.)
+            pthreadpool_sources.append("src/pthreads.c")
         # Add fastpath for x86/x86_64
         # Note: This would need platform detection, for now include it
         if env["platform"] not in ["windows"]:
@@ -606,19 +608,14 @@ if True:  # Build Abseil (all components)
 # XNNPACK include paths are already added above for headers (won't break if unused)
 # If XNNPACK is needed later, can be added as pre-built library or selective build
 
-# TensorFlow Lite - Pre-built library (Scrappiest approach)
-# NOTE: Build TFLite separately with CMake, then SCons will find it automatically
-# Steps to build:
-#   cd thirdparty/tensorflow-lite
-#   mkdir build && cd build
-#   cmake ../tensorflow/lite -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DTFLITE_ENABLE_GPU=OFF -DTFLITE_ENABLE_XNNPACK=OFF
-#   cmake --build . -j$(nproc) --target tensorflow-lite
-# SCons will automatically find libtensorflow-lite.a in the build directory
-if True:  # Link pre-built TFLite library
+# TensorFlow Lite - Automatically build with CMake if not found
+if True:  # Link TFLite library (auto-build if needed)
     import os
+    import multiprocessing
 
     # Check multiple possible locations for the library
     tflite_build_dir = "#thirdparty/tensorflow-lite/build/"
+    tflite_source_dir = "#thirdparty/tensorflow-lite/tensorflow/lite/"
     
     # Determine library extension based on platform
     if env["platform"] == "windows":
@@ -650,9 +647,100 @@ if True:  # Link pre-built TFLite library
             tflite_lib_found = lib_path
             break
 
+    # If library not found, automatically build it with CMake
+    if not tflite_lib_found:
+        print("TensorFlow Lite library not found. Building with CMake...")
+        
+        # Get build directory path for os.makedirs
+        tflite_build_path = os.path.join(project_root, "thirdparty", "tensorflow-lite", "build")
+        
+        # Create build directory if it doesn't exist
+        # Check if it exists and is a directory first
+        if os.path.exists(tflite_build_path):
+            if not os.path.isdir(tflite_build_path):
+                # If it's a file, remove it and create directory
+                os.remove(tflite_build_path)
+                os.makedirs(tflite_build_path, exist_ok=True)
+        else:
+            os.makedirs(tflite_build_path, exist_ok=True)
+        
+        # Determine number of parallel jobs
+        try:
+            num_jobs = multiprocessing.cpu_count()
+        except:
+            num_jobs = 4
+        
+        # Create SCons Command to run CMake configure and build
+        # Use a sentinel file to track if build is needed
+        cmake_sentinel = env.File(tflite_build_dir + ".cmake_configured")
+        build_sentinel = env.File(tflite_build_dir + ".tflite_built")
+        cmake_lists = env.File(tflite_source_dir + "CMakeLists.txt")
+        
+        # Get absolute paths for CMake commands
+        build_dir_abs = env.Dir(tflite_build_dir).abspath
+        source_dir_abs = env.Dir(tflite_source_dir).abspath
+        cmake_sentinel_abs = env.File(cmake_sentinel).abspath
+        build_sentinel_abs = env.File(build_sentinel).abspath
+        
+        # Configure CMake (run once)
+        # Use Action to properly handle the command
+        from SCons.Action import Action
+        # Configure CMake with options to fix compatibility issues
+        # Use the existing TensorFlow source directory to avoid downloading and version conflicts
+        tensorflow_source_abs = os.path.join(project_root, "thirdparty", "tensorflow-lite")
+        cmake_configure_cmd = (
+            "cd " + build_dir_abs + " && " +
+            "cmake " + source_dir_abs + " " +
+            "-DCMAKE_BUILD_TYPE=Release " +
+            "-DBUILD_SHARED_LIBS=OFF " +
+            "-DTFLITE_ENABLE_GPU=OFF " +
+            "-DTFLITE_ENABLE_XNNPACK=OFF " +
+            "-DTFLITE_ENABLE_RESOURCE=OFF " +
+            "-DTFLITE_ENABLE_SIGNATURE=OFF " +
+            "-DTENSORFLOW_SOURCE_DIR=" + tensorflow_source_abs + " " +
+            "&& touch " + cmake_sentinel_abs
+        )
+        cmake_configure_action = Action(
+            cmake_configure_cmd,
+            cmdstr="Configuring TensorFlow Lite with CMake..."
+        )
+        env.Command(
+            cmake_sentinel,
+            cmake_lists,
+            cmake_configure_action
+        )
+        
+        # Build TFLite library (depends on configure)
+        cmake_build_action = Action(
+            "cd " + build_dir_abs + " && cmake --build . -j" + str(num_jobs) + " --target tensorflow-lite && touch " + build_sentinel_abs,
+            cmdstr="Building TensorFlow Lite library..."
+        )
+        env.Command(
+            build_sentinel,
+            cmake_sentinel,
+            cmake_build_action
+        )
+        
+        # Re-check for library after build
+        # Note: This will be evaluated at build time, so we need to make the library
+        # a dependency of the build
+        expected_lib_path = tflite_build_dir + lib_name + lib_ext
+        expected_lib_file = env.File(expected_lib_path)
+        tflite_lib_found = expected_lib_path
+        
+        # Make the library depend on the build - this ensures it's built before linking
+        env.Depends(expected_lib_file, build_sentinel)
+        
+        # Make the module sources depend on the build sentinel so linking waits
+        # This ensures CMake build completes before we try to link
+        env.Depends(thirdparty_obj, build_sentinel)
+        env.Depends(module_obj, build_sentinel)
+    
     if tflite_lib_found:
         # Add the directory containing the library to LIBPATH
-        tflite_lib_dir = os.path.dirname(tflite_lib_found)
+        # Use SCons Dir to properly resolve the path
+        tflite_lib_file_path = env.File(tflite_lib_found)
+        tflite_lib_dir = str(tflite_lib_file_path.dir)
         env_litrt.Append(LIBPATH=[tflite_lib_dir])
         # SCons will automatically add the correct extension based on platform
         env_litrt.Append(LIBS=["tensorflow-lite"])
@@ -686,10 +774,6 @@ if True:  # Link pre-built TFLite library
         env_tflite_allocation = env_thirdparty.Clone()
         env_tflite_allocation.Prepend(CPPPATH=["#thirdparty/tensorflow-lite"])
         env_tflite_allocation.add_source_files(thirdparty_obj, tflite_allocation_sources)
-    else:
-        # Library not found - will need to build it separately
-        # This is expected if TFLite hasn't been built yet
-        pass
 
 # Add all thirdparty objects to modules_sources after all sources have been added
 env.modules_sources += thirdparty_obj
