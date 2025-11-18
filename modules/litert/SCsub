@@ -894,10 +894,13 @@ if True:  # Link TFLite library (auto-build if needed)
                 "absl_exponential_biased",
             ]
             
-            # Link TensorFlow Lite library
+            # Add all dependency libraries FIRST
+            # These must be linked to satisfy TensorFlow Lite's dependencies
+            env_litrt.Append(LIBS=tflite_deps_libs)
+            
+            # Link TensorFlow Lite library AFTER dependencies
             # On macOS, use -force_load to ensure all symbols are loaded from the static library
             # Static libraries only export symbols that are referenced, so we need -force_load
-            # We need to add it to both LINKFLAGS (for -force_load) and ensure it's in the link command
             if env["platform"] == "macos":
                 tflite_lib_abs = os.path.join(project_root, "thirdparty", "tensorflow-lite", "build", "libtensorflow-lite.a")
                 if not os.path.exists(tflite_lib_abs):
@@ -908,17 +911,16 @@ if True:  # Link TFLite library (auto-build if needed)
                 if os.path.exists(tflite_lib_abs):
                     # Use -force_load with correct format: -Wl,-force_load,<path> (comma-separated, single argument)
                     # This forces the linker to load ALL symbols from this specific library
+                    # We add it to LINKFLAGS to force-load, and also add to LIBS for proper linking
                     env_litrt.Append(LINKFLAGS=["-Wl,-force_load," + tflite_lib_abs])
+                    # Also add to LIBS - the -force_load in LINKFLAGS will modify how it's linked
+                    env_litrt.Append(LIBS=["tensorflow-lite"])
                 else:
                     # Last resort: regular linking
                     env_litrt.Append(LIBS=["tensorflow-lite"])
             else:
                 # For other platforms, link normally
                 env_litrt.Append(LIBS=["tensorflow-lite"])
-            
-            # Add all dependency libraries
-            # These must be linked to satisfy TensorFlow Lite's dependencies
-            env_litrt.Append(LIBS=tflite_deps_libs)
             
             # Add system libraries (dl on Unix, needed by TensorFlow Lite)
             if env["platform"] != "windows":
