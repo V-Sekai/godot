@@ -81,7 +81,7 @@
 		</member>
 		<member name="parent_span_id" type="String" setter="set_parent_span_id" getter="get_parent_span_id" default="&quot;&quot;">
 		</member>
-		<member name="span_id" type="String" setter="set_span_id" getter="get_span_id" default="&quot;1a9d8396025f2f59&quot;">
+		<member name="span_id" type="String" setter="set_span_id" getter="get_span_id" default="&quot;&quot;">
 		</member>
 		<member name="start_time_unix_nano" type="int" setter="set_start_time_unix_nano" getter="get_start_time_unix_nano" default="0">
 		</member>
@@ -89,7 +89,7 @@
 		</member>
 		<member name="status_message" type="String" setter="set_status_message" getter="get_status_message" default="&quot;&quot;">
 		</member>
-		<member name="trace_id" type="String" setter="set_trace_id" getter="get_trace_id" default="&quot;019a9645008172628d03d363792793ca&quot;">
+		<member name="trace_id" type="String" setter="set_trace_id" getter="get_trace_id" default="&quot;&quot;">
 		</member>
 	</members>
 	<constants>
