@@ -909,10 +909,16 @@ if True:  # Link TFLite library (auto-build if needed)
                     tflite_lib_abs = expected_lib_path.replace("#", project_root + "/")
                 
                 if os.path.exists(tflite_lib_abs):
-                    # Use -force_load with correct format: -Wl,-force_load,<path> (single argument, comma-separated)
-                    # This forces the linker to load ALL symbols from the specified library
-                    # The -force_load flag with absolute path already links the library, so don't add to LIBS
-                    env_litrt.Append(LINKFLAGS=["-Wl,-force_load," + tflite_lib_abs])
+                    # Use -force_load with the absolute library path
+                    # Format: -Wl,-force_load,<path> (single argument, comma-separated)
+                    # This forces the linker to load ALL symbols from this specific library
+                    # Create a File object for the library to ensure SCons tracks it properly
+                    tflite_lib_file = env.File(tflite_lib_abs)
+                    # Use the File object's absolute path in the -force_load flag
+                    env_litrt.Append(LINKFLAGS=["-Wl,-force_load," + tflite_lib_file.abspath])
+                    # Also add the File object to LIBS so SCons tracks it as a dependency
+                    # The -force_load flag will ensure all symbols are loaded
+                    env_litrt.Append(LIBS=[tflite_lib_file])
                 else:
                     # Last resort: regular linking
                     env_litrt.Append(LIBS=["tensorflow-lite"])
