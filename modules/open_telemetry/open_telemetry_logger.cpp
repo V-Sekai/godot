@@ -30,6 +30,7 @@
 
 #include "open_telemetry_logger.h"
 
+#include "core/os/memory.h"
 #include "core/os/time.h"
 #include "core/string/print_string.h"
 #include "core/string/ustring.h"
@@ -57,8 +58,24 @@ void OpenTelemetryLogger::logv(const char *p_format, va_list p_list, bool p_err)
 
 	logging_in_progress = true;
 
-	// Format the message using Godot's vformat
-	String message = vformat(p_format, p_list);
+	// Format the message using vsnprintf (similar to RotatedFileLogger)
+	const int static_buf_size = 512;
+	char static_buf[static_buf_size];
+	char *buf = static_buf;
+	va_list list_copy;
+	va_copy(list_copy, p_list);
+	int len = vsnprintf(buf, static_buf_size, p_format, p_list);
+	if (len >= static_buf_size) {
+		buf = (char *)Memory::alloc_static(len + 1);
+		vsnprintf(buf, len + 1, p_format, list_copy);
+	}
+	va_end(list_copy);
+
+	String message = String::utf8(buf);
+
+	if (len >= static_buf_size) {
+		Memory::free_static(buf);
+	}
 
 	// Map to log level
 	String level = p_err ? "ERROR" : "INFO";
