@@ -1451,7 +1451,7 @@ void RasterizerSceneGLES3::_fill_render_list(RenderListType p_render_list, const
 void RasterizerSceneGLES3::_setup_environment(const RenderDataGLES3 *p_render_data, bool p_no_fog, const Size2i &p_screen_size, bool p_flip_y, const Color &p_default_bg_color, bool p_pancake_shadows, float p_shadow_bias) {
 	Projection correction;
 	correction.set_depth_correction(p_flip_y, true, false);
-	Projection projection = correction * p_render_data->view_projection[0];
+	Projection projection = correction * p_render_data->cam_projection;
 	//store camera into ubo
 	GLES3::MaterialStorage::store_camera(projection, scene_state.ubo.projection_matrix);
 	GLES3::MaterialStorage::store_camera(projection.inverse(), scene_state.ubo.inv_projection_matrix);
@@ -2258,7 +2258,7 @@ void RasterizerSceneGLES3::render_scene(const Ref<RenderSceneBuffers> &p_render_
 		// Our first camera is used by default
 		render_data.cam_transform = p_camera_data->main_transform;
 		render_data.inv_cam_transform = render_data.cam_transform.affine_inverse();
-		render_data.cam_projection = p_camera_data->main_projection;
+		render_data.cam_projection = p_camera_data->view_projection[0];
 		render_data.cam_orthogonal = p_camera_data->is_orthogonal;
 		render_data.cam_frustum = p_camera_data->is_frustum;
 		render_data.camera_visible_layers = p_camera_data->visible_layers;
