@@ -37,8 +37,8 @@ void OpenTelemetryMetric::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_description", "description"), &OpenTelemetryMetric::set_description);
 	ClassDB::bind_method(D_METHOD("get_unit"), &OpenTelemetryMetric::get_unit);
 	ClassDB::bind_method(D_METHOD("set_unit", "unit"), &OpenTelemetryMetric::set_unit);
-	ClassDB::bind_method(D_METHOD("get_type"), &OpenTelemetryMetric::get_type);
-	ClassDB::bind_method(D_METHOD("set_type", "type"), &OpenTelemetryMetric::set_type);
+	ClassDB::bind_method(D_METHOD("get_metric_type"), &OpenTelemetryMetric::get_metric_type);
+	ClassDB::bind_method(D_METHOD("set_metric_type", "type"), &OpenTelemetryMetric::set_metric_type);
 	ClassDB::bind_method(D_METHOD("get_temporality"), &OpenTelemetryMetric::get_temporality);
 	ClassDB::bind_method(D_METHOD("set_temporality", "temporality"), &OpenTelemetryMetric::set_temporality);
 
@@ -53,7 +53,7 @@ void OpenTelemetryMetric::_bind_methods() {
 	// Note: "name" property is inherited from Resource, so we don't add it here
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "description"), "set_description", "get_description");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "unit"), "set_unit", "get_unit");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "type"), "set_type", "get_type");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "metric_type"), "set_metric_type", "get_metric_type");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "temporality"), "set_temporality", "get_temporality");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "data_points"), "set_data_points", "get_data_points");
 
@@ -98,11 +98,11 @@ void OpenTelemetryMetric::set_unit(const String &p_unit) {
 	unit = p_unit;
 }
 
-OpenTelemetryMetric::MetricType OpenTelemetryMetric::get_type() const {
+OpenTelemetryMetric::MetricType OpenTelemetryMetric::get_metric_type() const {
 	return type;
 }
 
-void OpenTelemetryMetric::set_type(MetricType p_type) {
+void OpenTelemetryMetric::set_metric_type(MetricType p_type) {
 	type = p_type;
 }
 
@@ -189,13 +189,13 @@ Ref<OpenTelemetryMetric> OpenTelemetryMetric::from_otlp_dict(const Dictionary &p
 
 	// Determine type and extract data points
 	if (p_dict.has("gauge")) {
-		metric->set_type(METRIC_TYPE_GAUGE);
+		metric->set_metric_type(METRIC_TYPE_GAUGE);
 		Dictionary gauge = p_dict["gauge"];
 		if (gauge.has("dataPoints")) {
 			metric->set_data_points(gauge["dataPoints"]);
 		}
 	} else if (p_dict.has("sum")) {
-		metric->set_type(METRIC_TYPE_SUM);
+		metric->set_metric_type(METRIC_TYPE_SUM);
 		Dictionary sum = p_dict["sum"];
 		if (sum.has("dataPoints")) {
 			metric->set_data_points(sum["dataPoints"]);
@@ -204,7 +204,7 @@ Ref<OpenTelemetryMetric> OpenTelemetryMetric::from_otlp_dict(const Dictionary &p
 			metric->set_temporality((AggregationTemporality)(int)sum["aggregationTemporality"]);
 		}
 	} else if (p_dict.has("histogram")) {
-		metric->set_type(METRIC_TYPE_HISTOGRAM);
+		metric->set_metric_type(METRIC_TYPE_HISTOGRAM);
 		Dictionary histogram = p_dict["histogram"];
 		if (histogram.has("dataPoints")) {
 			metric->set_data_points(histogram["dataPoints"]);

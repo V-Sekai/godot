@@ -408,7 +408,7 @@ void OpenTelemetry::record_metric(String p_name, float p_value, String p_unit, i
 	if (!p_unit.is_empty()) {
 		metric->set_unit(p_unit);
 	}
-	metric->set_type((OpenTelemetryMetric::MetricType)p_metric_type);
+	metric->set_metric_type((OpenTelemetryMetric::MetricType)p_metric_type);
 
 	// Create data point
 	Dictionary data_point;

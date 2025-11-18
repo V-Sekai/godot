@@ -79,8 +79,8 @@ public:
 	String get_unit() const;
 	void set_unit(const String &p_unit);
 
-	MetricType get_type() const;
-	void set_type(MetricType p_type);
+	MetricType get_metric_type() const;
+	void set_metric_type(MetricType p_type);
 
 	AggregationTemporality get_temporality() const;
 	void set_temporality(AggregationTemporality p_temporality);
