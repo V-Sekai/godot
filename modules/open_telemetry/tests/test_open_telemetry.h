@@ -54,8 +54,9 @@ TEST_CASE("[OpenTelemetry] Basic span creation") {
 	Ref<OpenTelemetrySpan> span = memnew(OpenTelemetrySpan);
 
 	CHECK(span->get_name() == "");
-	CHECK(span->get_trace_id().length() == 32);
-	CHECK(span->get_span_id().length() == 16);
+	// IDs are empty by default (will be generated when span is actually used)
+	CHECK(span->get_trace_id().is_empty());
+	CHECK(span->get_span_id().is_empty());
 	CHECK(span->get_kind() == OpenTelemetrySpan::SPAN_KIND_INTERNAL);
 	CHECK(span->get_status_code() == OpenTelemetrySpan::STATUS_CODE_UNSET);
 	CHECK_FALSE(span->is_ended());

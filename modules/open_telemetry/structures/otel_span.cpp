@@ -114,9 +114,10 @@ void OpenTelemetrySpan::_bind_methods() {
 }
 
 OpenTelemetrySpan::OpenTelemetrySpan() {
-	// Initialize with generated IDs
-	trace_id = generate_trace_id();
-	span_id = generate_span_id();
+	// Initialize with empty IDs (will be generated when needed)
+	// Don't generate random IDs here to ensure consistent default values for documentation
+	trace_id = "";
+	span_id = "";
 }
 
 // Validation helpers (private)
