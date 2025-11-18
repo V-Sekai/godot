@@ -742,8 +742,187 @@ if True:  # Link TFLite library (auto-build if needed)
         tflite_lib_file_path = env.File(tflite_lib_found)
         tflite_lib_dir = str(tflite_lib_file_path.dir)
         env_litrt.Append(LIBPATH=[tflite_lib_dir])
-        # SCons will automatically add the correct extension based on platform
-        env_litrt.Append(LIBS=["tensorflow-lite"])
+        
+        # Link TensorFlow Lite's CMake-built dependencies
+        # These are required because libtensorflow-lite.a was built with CMake
+        # and expects these dependencies to be available at link time
+        tflite_deps_dir = tflite_build_dir + "_deps"
+        tflite_deps_abs = os.path.join(project_root, "thirdparty", "tensorflow-lite", "build", "_deps")
+        
+        # Add all dependency build directories to LIBPATH
+        # This allows the linker to find all the dependency libraries
+        if os.path.exists(tflite_deps_abs):
+            # Add base directories for each dependency
+            deps_build_dirs = [
+                tflite_build_dir + "_deps/abseil-cpp-build",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/base",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/strings",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/flags",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/hash",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/status",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/synchronization",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/container",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/time",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/debugging",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/crc",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/numeric",
+                tflite_build_dir + "_deps/abseil-cpp-build/absl/profiling",
+                tflite_build_dir + "_deps/farmhash-build",
+                tflite_build_dir + "_deps/fft2d-build",
+                tflite_build_dir + "_deps/flatbuffers-build",
+                tflite_build_dir + "_deps/gemmlowp-build",
+                tflite_build_dir + "_deps/ruy-build/ruy",
+                tflite_build_dir + "_deps/ruy-build/ruy/profiler",
+                tflite_build_dir + "_deps/cpuinfo-build",
+            ]
+            
+            # Add each directory to LIBPATH if it exists
+            for dep_dir in deps_build_dirs:
+                dep_abs = dep_dir.replace("#", project_root + "/")
+                if os.path.exists(dep_abs):
+                    env_litrt.Append(LIBPATH=[dep_dir])
+            
+            # Link TensorFlow Lite dependencies in the correct order
+            # Order matters: dependencies must come after the libraries that depend on them
+            # Based on tensorflow/lite/CMakeLists.txt target_link_libraries
+            tflite_deps_libs = [
+                # Ruy (matrix multiplication library)
+                "ruy_frontend",
+                "ruy_trmul",
+                "ruy_prepare_packed_matrices",
+                "ruy_prepacked_cache",
+                "ruy_context",
+                "ruy_context_get_ctx",
+                "ruy_ctx",
+                "ruy_thread_pool",
+                "ruy_blocking_counter",
+                "ruy_wait",
+                "ruy_allocator",
+                "ruy_system_aligned_alloc",
+                "ruy_apply_multiplier",
+                "ruy_tune",
+                "ruy_denormal",
+                "ruy_block_map",
+                "ruy_cpuinfo",
+                # Ruy platform-specific kernels (link all, linker will pick what's needed)
+                "ruy_kernel_arm",
+                "ruy_kernel_avx",
+                "ruy_kernel_avx2_fma",
+                "ruy_kernel_avx512",
+                "ruy_pack_arm",
+                "ruy_pack_avx",
+                "ruy_pack_avx2_fma",
+                "ruy_pack_avx512",
+                "ruy_have_built_path_for_avx",
+                "ruy_have_built_path_for_avx2_fma",
+                "ruy_have_built_path_for_avx512",
+                "ruy_profiler_instrumentation",
+                # Gemmlowp (8-bit GEMM)
+                "eight_bit_int_gemm",
+                # FlatBuffers
+                "flatbuffers",
+                # FFT2D
+                "fft2d_fftsg2d",
+                "fft2d_fftsg",
+                # Farmhash
+                "farmhash",
+                # CPU info
+                "cpuinfo",
+                # Abseil libraries (in dependency order)
+                # Base libraries first
+                "absl_base",
+                "absl_spinlock_wait",
+                "absl_raw_logging_internal",
+                "absl_log_severity",
+                "absl_malloc_internal",
+                "absl_throw_delegate",
+                "absl_strerror",
+                "absl_tracing_internal",
+                # Numeric
+                "absl_int128",
+                # Container
+                "absl_raw_hash_set",
+                "absl_hashtablez_sampler",
+                # Strings (depends on base)
+                "absl_strings",
+                "absl_strings_internal",
+                "absl_str_format_internal",
+                "absl_cord",
+                "absl_cord_internal",
+                "absl_cordz_info",
+                "absl_cordz_handle",
+                "absl_cordz_functions",
+                "absl_string_view",
+                # Hash (depends on strings)
+                "absl_hash",
+                "absl_city",
+                # Status (depends on base, strings)
+                "absl_status",
+                # Synchronization (depends on base, time)
+                "absl_synchronization",
+                "absl_graphcycles_internal",
+                "absl_kernel_timeout_internal",
+                # Flags (depends on strings, status)
+                # Note: absl_flags is a CMake target, not a library - link individual components
+                "absl_flags_internal",
+                "absl_flags_commandlineflag",
+                "absl_flags_commandlineflag_internal",
+                "absl_flags_private_handle_accessor",
+                "absl_flags_program_name",
+                "absl_flags_config",
+                "absl_flags_marshalling",
+                "absl_flags_reflection",
+                # Time (depends on base)
+                "absl_time",
+                "absl_time_zone",
+                "absl_civil_time",
+                # Debugging
+                "absl_debugging_internal",
+                "absl_symbolize",
+                "absl_stacktrace",
+                "absl_demangle_internal",
+                "absl_demangle_rust",
+                "absl_leak_check",
+                "absl_utf8_for_code_point",
+                "absl_decode_rust_punycode",
+                # CRC
+                "absl_crc32c",
+                "absl_crc_internal",
+                "absl_crc_cord_state",
+                "absl_crc_cpu_detect",
+                # Profiling
+                "absl_exponential_biased",
+            ]
+            
+            # Link TensorFlow Lite library
+            # On macOS, use -force_load to ensure all symbols are loaded from the static library
+            # Static libraries only export symbols that are referenced, so we need -force_load
+            # We need to add it to both LINKFLAGS (for -force_load) and ensure it's in the link command
+            if env["platform"] == "macos":
+                tflite_lib_abs = os.path.join(project_root, "thirdparty", "tensorflow-lite", "build", "libtensorflow-lite.a")
+                if not os.path.exists(tflite_lib_abs):
+                    # Fallback: try to find the library
+                    expected_lib_path = tflite_build_dir + "libtensorflow-lite.a"
+                    tflite_lib_abs = expected_lib_path.replace("#", project_root + "/")
+                
+                if os.path.exists(tflite_lib_abs):
+                    # Use -force_load with correct format: -Wl,-force_load,<path> (comma-separated, single argument)
+                    # This forces the linker to load ALL symbols from this specific library
+                    env_litrt.Append(LINKFLAGS=["-Wl,-force_load," + tflite_lib_abs])
+                else:
+                    # Last resort: regular linking
+                    env_litrt.Append(LIBS=["tensorflow-lite"])
+            else:
+                # For other platforms, link normally
+                env_litrt.Append(LIBS=["tensorflow-lite"])
+            
+            # Add all dependency libraries
+            # These must be linked to satisfy TensorFlow Lite's dependencies
+            env_litrt.Append(LIBS=tflite_deps_libs)
+            
+            # Add system libraries (dl on Unix, needed by TensorFlow Lite)
+            if env["platform"] != "windows":
+                env_litrt.Append(LIBS=["dl"])
         
         # Add TFLite minimal logging sources (not included in pre-built library)
         # Need both files: minimal_logging.cc provides Log(), GetSeverityName(), etc.
