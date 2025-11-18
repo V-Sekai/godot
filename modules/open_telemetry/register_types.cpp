@@ -207,12 +207,7 @@ void initialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 
 void uninitialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_SERVERS) {
-		// Clean up logger and OpenTelemetry instance
-		if (global_otel_logger) {
-			memdelete(global_otel_logger);
-			global_otel_logger = nullptr;
-		}
-
+		// Shutdown OpenTelemetry instance first (may log errors during flush)
 		if (global_otel_instance) {
 			String shutdown_result = global_otel_instance->shutdown();
 			if (shutdown_result != "OK") {
@@ -220,6 +215,12 @@ void uninitialize_open_telemetry_module(ModuleInitializationLevel p_level) {
 			}
 			memdelete(global_otel_instance);
 			global_otel_instance = nullptr;
+		}
+
+		// Clean up logger after shutdown (so it can be used for error logging during shutdown)
+		if (global_otel_logger) {
+			memdelete(global_otel_logger);
+			global_otel_logger = nullptr;
 		}
 	}
 
