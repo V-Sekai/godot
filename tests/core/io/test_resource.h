@@ -1386,4 +1386,97 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Recursive whitelist enforcement")
 			loaded_all.is_valid(),
 			"load_whitelisted should return valid resource when all dependencies are whitelisted.");
 }
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Path traversal security (normalization)") {
+	// Create and save resources in a directory structure
+	Ref<Resource> resource1 = memnew(Resource);
+	resource1->set_name("Resource1");
+	const String save_path1 = TestUtils::get_temp_path("textures/icon.png");
+	ResourceSaver::save(resource1, save_path1);
+
+	Ref<Resource> resource2 = memnew(Resource);
+	resource2->set_name("Resource2");
+	const String save_path2 = TestUtils::get_temp_path("secret/file.png");
+	ResourceSaver::save(resource2, save_path2);
+
+	// Test with directory prefix in whitelist
+	Dictionary path_whitelist;
+	String textures_dir = save_path1.get_base_dir();
+	path_whitelist[textures_dir] = true; // Whitelist entire textures directory
+	Dictionary empty_type_whitelist;
+
+	// Test 1: Normal path should match (baseline)
+	Error error1 = OK;
+	Ref<Resource> loaded1 = ResourceLoader::load_whitelisted(save_path1, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error1);
+
+	CHECK_MESSAGE(
+			error1 == OK,
+			"load_whitelisted should succeed with normal path in whitelisted directory.");
+	CHECK_MESSAGE(
+			loaded1.is_valid(),
+			"load_whitelisted should return valid resource for normal path.");
+
+	// Test 2: Path traversal attack should be blocked
+	// Attempt to access secret/file.png via path traversal from textures directory
+	String traversal_path = save_path1.get_base_dir() + "/../secret/file.png";
+	Error error2 = OK;
+	ERR_PRINT_OFF;
+	Ref<Resource> loaded2 = ResourceLoader::load_whitelisted(traversal_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error2);
+	ERR_PRINT_ON;
+
+	CHECK_MESSAGE(
+			error2 == ERR_FILE_MISSING_DEPENDENCIES || loaded2.is_null(),
+			"load_whitelisted should block path traversal attacks (../secret/file.png should not match textures/).");
+
+	// Test 3: Double slashes should be normalized and still match
+	String double_slash_path = save_path1.get_base_dir() + "//icon.png";
+	Error error3 = OK;
+	Ref<Resource> loaded3 = ResourceLoader::load_whitelisted(double_slash_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error3);
+
+	CHECK_MESSAGE(
+			error3 == OK,
+			"load_whitelisted should handle normalized paths with double slashes.");
+	CHECK_MESSAGE(
+			loaded3.is_valid(),
+			"load_whitelisted should return valid resource for normalized path with double slashes.");
+
+	// Test 4: Exact match with normalized path should work
+	// Test that exact path matching still works after normalization
+	Dictionary exact_path_whitelist;
+	exact_path_whitelist[save_path1] = true;
+	Error error4 = OK;
+	Ref<Resource> loaded4 = ResourceLoader::load_whitelisted(save_path1, exact_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error4);
+
+	CHECK_MESSAGE(
+			error4 == OK,
+			"load_whitelisted should succeed with exact path match after normalization.");
+	CHECK_MESSAGE(
+			loaded4.is_valid(),
+			"load_whitelisted should return valid resource for exact path match.");
+
+	// Test 5: Whitelist key with path traversal should not match normal paths
+	Dictionary traversal_whitelist;
+	String traversal_whitelist_key = textures_dir + "/../secret/";
+	traversal_whitelist[traversal_whitelist_key] = true;
+	Error error5 = OK;
+	ERR_PRINT_OFF;
+	Ref<Resource> loaded5 = ResourceLoader::load_whitelisted(save_path1, traversal_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error5);
+	ERR_PRINT_ON;
+
+	CHECK_MESSAGE(
+			error5 == ERR_FILE_MISSING_DEPENDENCIES || loaded5.is_null(),
+			"load_whitelisted should not match when whitelist key contains path traversal.");
+
+	// Test 6: Path with current directory (.) should be normalized and match
+	String dot_path = save_path1.get_base_dir() + "/./icon.png";
+	Error error6 = OK;
+	Ref<Resource> loaded6 = ResourceLoader::load_whitelisted(dot_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error6);
+
+	CHECK_MESSAGE(
+			error6 == OK,
+			"load_whitelisted should normalize paths with current directory (.) and match correctly.");
+	CHECK_MESSAGE(
+			loaded6.is_valid(),
+			"load_whitelisted should return valid resource for normalized path with current directory.");
+}
 } // namespace TestResource

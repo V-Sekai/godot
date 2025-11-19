@@ -1262,17 +1262,27 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 		return false;
 	}
 
+	// Normalize the input path to prevent path traversal attacks
+	// This ensures paths like "res://textures/../secret/file.png" are properly normalized
+	// before comparison, preventing them from matching "res://textures/"
+	String normalized_path = p_path.simplify_path();
+
 	// Check for exact match first (backward compatible)
-	if (p_whitelist.has(p_path)) {
+	// Check both original and normalized path for exact matches
+	if (p_whitelist.has(p_path) || p_whitelist.has(normalized_path)) {
 		return true;
 	}
 
 	// Check for prefix match (directory whitelisting)
 	// This allows whitelisting directories like "res://textures/" to match "res://textures/icon.png"
+	// Normalize both the path and whitelist keys to ensure consistent matching
 	Array keys = p_whitelist.keys();
 	for (int i = 0; i < keys.size(); i++) {
 		String whitelist_key = keys[i];
-		if (p_path.begins_with(whitelist_key)) {
+		String normalized_key = whitelist_key.simplify_path();
+		
+		// Check if normalized path begins with normalized whitelist key
+		if (normalized_path.begins_with(normalized_key)) {
 			return true;
 		}
 	}
