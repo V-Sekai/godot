@@ -1102,6 +1102,55 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Resource with metadata") {
 			"The loaded resource numeric metadata should match the saved metadata.");
 }
 
+TEST_CASE("[ResourceLoader] load_whitelisted - Metadata cache exhaustion") {
+	// Test that the whitelist metadata cache handles many unique whitelists correctly
+	// This verifies that the LRU cache properly evicts old entries when capacity is exceeded
+	// Create a resource to load
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("CacheExhaustionTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_cache_exhaustion_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Create many unique whitelist dictionaries (more than default cache capacity of 256)
+	// Each dictionary will have a different hash, so each will create a new cache entry
+	// This tests that the LRU cache properly evicts old entries when capacity is exceeded
+	const int num_whitelists = 300; // Exceed default capacity of 256
+	Vector<Dictionary> whitelists;
+	Dictionary empty_type_whitelist;
+
+	for (int i = 0; i < num_whitelists; i++) {
+		Dictionary path_whitelist;
+		// Create unique paths to ensure different dictionary hashes
+		String unique_path = vformat("res://test/path_%d.tres", i);
+		path_whitelist[unique_path] = true;
+		whitelists.push_back(path_whitelist);
+	}
+
+	// Load with each unique whitelist - this should fill and then evict from cache
+	// The cache should handle this gracefully without crashing or leaking memory
+	for (int i = 0; i < num_whitelists; i++) {
+		Error error = OK;
+		Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, whitelists[i], empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+		CHECK_MESSAGE(
+				error == OK,
+				vformat("load_whitelisted should succeed with whitelist %d.", i));
+		CHECK_MESSAGE(
+				loaded.is_valid(),
+				vformat("load_whitelisted should return valid resource with whitelist %d.", i));
+	}
+
+	// Verify cache still works correctly after eviction
+	// Re-load with the last whitelist (should be cached as it's most recently used)
+	Error error = OK;
+	Ref<Resource> loaded_again = ResourceLoader::load_whitelisted(save_path, whitelists[num_whitelists - 1], empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should still work after cache eviction.");
+	CHECK_MESSAGE(
+			loaded_again.is_valid(),
+			"load_whitelisted should return valid resource after cache eviction.");
+}
+
 TEST_CASE("[ResourceLoader] load_whitelisted - Comparison with regular load") {
 	// Create and save a resource
 	Ref<Resource> resource = memnew(Resource);

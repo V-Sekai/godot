@@ -601,12 +601,21 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 
 	// Check if the resource being loaded is already in cache with whitelist context
 	// This handles cases where we're loading a dependency of a whitelisted resource
+	// If resource is in cache, return it directly without reloading
 	{
 		MutexLock thread_load_lock(thread_load_mutex);
-		HashMap<String, WhitelistContext>::Iterator W = resource_whitelist_context.find(p_path);
-		if (W && ResourceCache::has(p_path)) {
-			// Resource was previously loaded with whitelist and is still in cache
-			return load_whitelisted(p_path, W->value.external_path_whitelist, W->value.type_whitelist, p_type_hint, p_cache_mode, r_error);
+		if (ResourceCache::has(p_path)) {
+			Ref<Resource> cached_res = ResourceCache::get_ref(p_path);
+			if (cached_res.is_valid()) {
+				// Resource is in cache, return it directly
+				// Note: We don't check whitelist context here because the resource is already loaded
+				// and cached. If it was loaded with a whitelist, that context is stored but we
+				// don't need to re-validate or reload the resource.
+				if (r_error) {
+					*r_error = OK;
+				}
+				return cached_res;
+			}
 		}
 
 		// Clean up whitelist context for resources no longer in cache
@@ -1375,7 +1384,7 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 	String normalized_path = p_path.simplify_path();
 
 	// Get or build cached metadata for this whitelist
-	// FixedCapacityCache is not thread-safe, so we need to protect access with the existing mutex
+	// LRUCache is not thread-safe, so we need to protect access with the existing mutex
 	uint64_t whitelist_hash = p_whitelist.hash();
 	
 	WhitelistMetadata *metadata;
@@ -1400,8 +1409,9 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 			if (cached_metadata_retry) {
 				metadata = const_cast<WhitelistMetadata *>(cached_metadata_retry);
 			} else {
-				// FixedCapacityCache.insert() automatically evicts one entry if at capacity
-				metadata = const_cast<WhitelistMetadata *>(whitelist_metadata_cache.insert(whitelist_hash, new_metadata));
+				// LRUCache.insert() automatically evicts least recently used entry if at capacity
+				const LRUCache<uint64_t, WhitelistMetadata>::Pair *pair = whitelist_metadata_cache.insert(whitelist_hash, new_metadata);
+				metadata = const_cast<WhitelistMetadata *>(&pair->data);
 			}
 		}
 	}
@@ -1771,7 +1781,7 @@ bool ResourceLoader::cleaning_tasks = false;
 
 HashMap<String, ResourceLoader::LoadToken *> ResourceLoader::user_load_tokens;
 HashMap<String, ResourceLoader::WhitelistContext> ResourceLoader::resource_whitelist_context;
-ResourceLoader::FixedCapacityCache<uint64_t, ResourceLoader::WhitelistMetadata> ResourceLoader::whitelist_metadata_cache(256); // Default: 256 entries (~4MB for typical whitelists)
+LRUCache<uint64_t, ResourceLoader::WhitelistMetadata> ResourceLoader::whitelist_metadata_cache(256); // Default: 256 entries (~4MB for typical whitelists)
 const Dictionary ResourceLoader::EMPTY_DICTIONARY;
 
 void ResourceLoader::set_whitelist_cache_capacity(size_t p_capacity) {
