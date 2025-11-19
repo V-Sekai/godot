@@ -625,24 +625,6 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		}
 	}
 
-	// If we're loading a placeholder scene from PackedScene::instantiate(),
-	// and the PackedScene was loaded with whitelist, we need to find that whitelist.
-	// Since we can't modify PackedScene, we check if any resource in cache has whitelist.
-	// This is a fallback for the case where load_paths_stack is empty.
-	// Note: This is conservative - it will use whitelist if ANY resource in cache has one.
-	// This ensures security but may be overly restrictive in some edge cases.
-	if (load_paths_stack.is_empty()) {
-		MutexLock thread_load_lock(thread_load_mutex);
-		// Find any resource in cache with whitelist context
-		// This handles PackedScene::instantiate() calling load() after initial load completes
-		for (const KeyValue<String, WhitelistContext> &E : resource_whitelist_context) {
-			if (ResourceCache::has(E.key)) {
-				// Found a resource in cache with whitelist context
-				// Use it to ensure placeholder scenes respect whitelist
-				return load_whitelisted(p_path, E.value.external_path_whitelist, E.value.type_whitelist, p_type_hint, p_cache_mode, r_error);
-			}
-		}
-	}
 
 	LoadThreadMode thread_mode = LOAD_THREAD_FROM_CURRENT;
 	if (WorkerThreadPool::get_singleton()->get_caller_task_id() != WorkerThreadPool::INVALID_TASK_ID) {
