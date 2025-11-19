@@ -216,7 +216,6 @@ void ResourceFormatLoader::_bind_methods() {
 	GDVIRTUAL_BIND(_exists, "path");
 	GDVIRTUAL_BIND(_get_classes_used, "path");
 	GDVIRTUAL_BIND(_load, "path", "original_path", "use_sub_threads", "cache_mode");
-	//GDVIRTUAL_BIND(_load_whitelisted, "path", "external_path_whitelist", "type_Whitelist", "original_path", "use_sub_threads", "cache_mode");
 }
 
 ///////////////////////////////////
@@ -538,7 +537,7 @@ String ResourceLoader::_validate_local_path(const String &p_path) {
 }
 
 Error ResourceLoader::load_threaded_request(const String &p_path, const String &p_type_hint, bool p_use_sub_threads, ResourceFormatLoader::CacheMode p_cache_mode) {
-	Ref<ResourceLoader::LoadToken> token = _load_start(p_path, p_type_hint, p_use_sub_threads ? LOAD_THREAD_DISTRIBUTE : LOAD_THREAD_SPAWN_SINGLE, p_cache_mode, true, false, Dictionary(), Dictionary());
+	Ref<ResourceLoader::LoadToken> token = _load_start(p_path, p_type_hint, p_use_sub_threads ? LOAD_THREAD_DISTRIBUTE : LOAD_THREAD_SPAWN_SINGLE, p_cache_mode, true, false, EMPTY_DICTIONARY, EMPTY_DICTIONARY);
 	return token.is_valid() ? OK : FAILED;
 }
 
@@ -653,7 +652,7 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		// cyclic load detection and awaiting.
 		thread_mode = LOAD_THREAD_SPAWN_SINGLE;
 	}
-	Ref<LoadToken> load_token = _load_start(p_path, p_type_hint, thread_mode, p_cache_mode, false, false, Dictionary(), Dictionary());
+	Ref<LoadToken> load_token = _load_start(p_path, p_type_hint, thread_mode, p_cache_mode, false, false, EMPTY_DICTIONARY, EMPTY_DICTIONARY);
 	if (load_token.is_null()) {
 		if (r_error) {
 			*r_error = FAILED;
@@ -1339,6 +1338,43 @@ bool ResourceLoader::should_create_uid_file(const String &p_path) {
 	return false;
 }
 
+ResourceLoader::WhitelistMetadata ResourceLoader::WhitelistMetadata::build(const Dictionary &p_whitelist) {
+	WhitelistMetadata metadata;
+
+	if (p_whitelist.is_empty()) {
+		metadata.is_valid = true; // Empty whitelist is valid, just denies everything
+		return metadata;
+	}
+
+	// Security: Validate whitelist dictionary structure
+	// Ensure all keys are strings to prevent type confusion attacks
+	Array keys = p_whitelist.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		// Only allow string keys in whitelist dictionary
+		if (key.get_type() != Variant::STRING) {
+			metadata.is_valid = false;
+			return metadata;
+		}
+
+		String whitelist_key = key;
+		String normalized_key = whitelist_key.simplify_path();
+		
+		// Store normalized path for fast lookup
+		metadata.normalized_paths.insert(normalized_key);
+
+		// Separate folder paths (ending with '/') from file paths
+		if (normalized_key.ends_with("/")) {
+			metadata.folder_paths.push_back(normalized_key);
+		} else {
+			metadata.file_paths.push_back(normalized_key);
+		}
+	}
+
+	metadata.is_valid = true;
+	return metadata;
+}
+
 bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary &p_whitelist) {
 	if (p_whitelist.is_empty()) {
 		return false;
@@ -1351,39 +1387,36 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 		return false;
 	}
 
-	// Security: Validate whitelist dictionary structure
-	// Ensure all keys are strings to prevent type confusion attacks
-	Array keys = p_whitelist.keys();
-	for (int i = 0; i < keys.size(); i++) {
-		Variant key = keys[i];
-		// Only allow string keys in whitelist dictionary
-		if (key.get_type() != Variant::STRING) {
-			return false;
-		}
-	}
-
 	// Normalize the input path to prevent path traversal attacks
 	// This ensures paths like "res://textures/../secret/file.png" are properly normalized
 	// before comparison, preventing them from matching "res://textures/"
 	String normalized_path = p_path.simplify_path();
 
-	// Check for exact match first (backward compatible)
-	// Check both original and normalized path for exact matches
-	if (p_whitelist.has(p_path) || p_whitelist.has(normalized_path)) {
+	// Get or build cached metadata for this whitelist
+	uint64_t whitelist_hash = p_whitelist.hash();
+	HashMap<uint64_t, WhitelistMetadata>::Iterator cache_it = whitelist_metadata_cache.find(whitelist_hash);
+	
+	WhitelistMetadata *metadata;
+	if (cache_it) {
+		metadata = &cache_it->value;
+	} else {
+		// Build and cache metadata
+		WhitelistMetadata new_metadata = WhitelistMetadata::build(p_whitelist);
+		if (!new_metadata.is_valid) {
+			return false; // Invalid whitelist structure
+		}
+		metadata = &whitelist_metadata_cache.insert(whitelist_hash, new_metadata)->value;
+	}
+
+	// Check for exact match using cached normalized paths
+	if (metadata->normalized_paths.has(normalized_path)) {
 		return true;
 	}
 
-	// Check for prefix match (directory whitelisting)
+	// Check for prefix match (directory whitelisting) - only iterate folder paths
 	// This allows whitelisting directories like "res://textures/" to match "res://textures/icon.png"
-	// Normalize both the path and whitelist keys to ensure consistent matching
-	for (int i = 0; i < keys.size(); i++) {
-		Variant key = keys[i];
-		// We've already validated keys are strings above, safe to convert
-		String whitelist_key = key;
-		String normalized_key = whitelist_key.simplify_path();
-		
-		// Check if normalized path begins with normalized whitelist key
-		if (normalized_path.begins_with(normalized_key)) {
+	for (int i = 0; i < metadata->folder_paths.size(); i++) {
+		if (normalized_path.begins_with(metadata->folder_paths[i])) {
 			return true;
 		}
 	}
@@ -1740,6 +1773,8 @@ bool ResourceLoader::cleaning_tasks = false;
 
 HashMap<String, ResourceLoader::LoadToken *> ResourceLoader::user_load_tokens;
 HashMap<String, ResourceLoader::WhitelistContext> ResourceLoader::resource_whitelist_context;
+HashMap<uint64_t, ResourceLoader::WhitelistMetadata> ResourceLoader::whitelist_metadata_cache;
+const Dictionary ResourceLoader::EMPTY_DICTIONARY;
 
 SelfList<Resource>::List ResourceLoader::remapped_list;
 HashMap<String, Vector<String>> ResourceLoader::translation_remaps;

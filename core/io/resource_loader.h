@@ -231,6 +231,23 @@ private:
 	};
 	static HashMap<String, WhitelistContext> resource_whitelist_context;
 
+	// Cached metadata for whitelist dictionaries to avoid repeated validation and iteration
+	struct WhitelistMetadata {
+		bool is_valid = false;
+		Vector<String> folder_paths; // Paths ending with '/' for prefix matching
+		Vector<String> file_paths; // Exact file paths
+		HashSet<String> normalized_paths; // All normalized paths for fast lookup
+
+		// Build metadata from a dictionary, validating structure and separating paths
+		static WhitelistMetadata build(const Dictionary &p_whitelist);
+	};
+
+	// Cache for whitelist metadata keyed by dictionary hash
+	static HashMap<uint64_t, WhitelistMetadata> whitelist_metadata_cache;
+
+	// Static empty dictionary constant to avoid repeated allocations
+	static const Dictionary EMPTY_DICTIONARY;
+
 	static float _dependency_get_progress(const String &p_path);
 
 	static Error _load_threaded_request_whitelisted_int(const String &p_path, const String &p_type_hint, bool p_use_sub_threads, ResourceFormatLoader::CacheMode p_cache_mode, bool p_use_whitelist, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist);
