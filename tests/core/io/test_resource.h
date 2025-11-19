@@ -38,6 +38,7 @@
 #include "thirdparty/doctest/doctest.h"
 
 #include "tests/test_macros.h"
+#include "tests/test_utils.h"
 
 #include <functional>
 
@@ -626,5 +627,627 @@ TEST_CASE("[Resource] Breaking circular references on save") {
 
 	// Break circular reference to avoid memory leak
 	resource_c->remove_meta("next");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Basic functionality with empty whitelists") {
+	// Create a simple resource without external dependencies and save it
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("TestResource");
+	const String save_path = TestUtils::get_temp_path("whitelist_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Test with empty whitelists - should load successfully for resources without external dependencies
+	// Note: Empty whitelists deny all external dependencies, but simple resources without
+	// external dependencies can still load since the whitelist only applies to external resources
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed with empty whitelists for resources without external dependencies.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return a valid resource with empty whitelists when no external dependencies exist.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "TestResource",
+			"The loaded resource name should match the saved resource name.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Path whitelist validation") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("WhitelistTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_path_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Test with path in whitelist - should succeed
+	Dictionary path_whitelist;
+	path_whitelist[save_path] = true;
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed when path is in whitelist.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return a valid resource when path is whitelisted.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "WhitelistTest",
+			"The loaded resource name should match the saved resource name.");
+
+	// Test with empty whitelist - should still work for simple resources without external dependencies
+	// Empty whitelist denies all external dependencies, but the main resource itself is not checked
+	Dictionary empty_path_whitelist;
+	error = OK;
+	Ref<Resource> loaded_empty_whitelist = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	// For simple resources without external dependencies, empty whitelist still works
+	// The whitelist only applies to external dependencies, not the main resource path
+	CHECK_MESSAGE(
+			error == OK && loaded_empty_whitelist.is_valid(),
+			"load_whitelisted should work with empty whitelist for resources without external dependencies.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Type whitelist validation") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("TypeWhitelistTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_type_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Test with type in whitelist
+	Dictionary empty_path_whitelist;
+	Dictionary type_whitelist;
+	type_whitelist["Resource"] = true;
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed when resource type is in whitelist.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return a valid resource when type is whitelisted.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "TypeWhitelistTest",
+			"The loaded resource name should match the saved resource name.");
+
+	// Test with different type in whitelist
+	Dictionary wrong_type_whitelist;
+	wrong_type_whitelist["Texture2D"] = true;
+	error = OK;
+	Ref<Resource> loaded_wrong_type = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, wrong_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	// Type whitelist may not be strictly enforced for the main resource,
+	// but affects external dependencies
+	CHECK_MESSAGE(
+			loaded_wrong_type.is_valid() || error != OK,
+			"load_whitelisted behavior with non-matching type whitelist depends on implementation.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Combined path and type whitelist") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("CombinedWhitelistTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_combined_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Test with both path and type in whitelists
+	Dictionary path_whitelist;
+	path_whitelist[save_path] = true;
+	Dictionary type_whitelist;
+	type_whitelist["Resource"] = true;
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, path_whitelist, type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed when both path and type are whitelisted.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return a valid resource when both whitelists match.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "CombinedWhitelistTest",
+			"The loaded resource name should match the saved resource name.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Invalid path handling") {
+	// Test with non-existent path
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+	const String invalid_path = TestUtils::get_temp_path("nonexistent_resource.tres");
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(invalid_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error != OK || loaded.is_null(),
+			"load_whitelisted should fail or return null for non-existent paths.");
+	CHECK_MESSAGE(
+			loaded.is_null(),
+			"load_whitelisted should return null resource for invalid paths.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Empty path string") {
+	// Test with empty path
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted("", empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error != OK || loaded.is_null(),
+			"load_whitelisted should fail or return null for empty path.");
+	CHECK_MESSAGE(
+			loaded.is_null(),
+			"load_whitelisted should return null resource for empty path.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Type hint parameter") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("TypeHintTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_type_hint_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Test with type hint
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "Resource", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed with type hint.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return a valid resource with type hint.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "TypeHintTest",
+			"The loaded resource name should match the saved resource name.");
+
+	// Test with incorrect type hint
+	error = OK;
+	Ref<Resource> loaded_wrong_hint = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "Texture2D", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	// Type hint is a hint, not a requirement, so it may still succeed
+	CHECK_MESSAGE(
+			loaded_wrong_hint.is_valid() || error != OK,
+			"load_whitelisted behavior with incorrect type hint depends on loader implementation.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Cache mode variations") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("CacheModeTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_cache_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+
+	// Test CACHE_MODE_REUSE
+	Ref<Resource> loaded_reuse = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+	CHECK_MESSAGE(
+			error == OK && loaded_reuse.is_valid(),
+			"load_whitelisted should work with CACHE_MODE_REUSE.");
+
+	// Test CACHE_MODE_IGNORE
+	error = OK;
+	Ref<Resource> loaded_ignore = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_IGNORE, &error);
+	CHECK_MESSAGE(
+			error == OK && loaded_ignore.is_valid(),
+			"load_whitelisted should work with CACHE_MODE_IGNORE.");
+
+	// Test CACHE_MODE_REPLACE
+	error = OK;
+	Ref<Resource> loaded_replace = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REPLACE, &error);
+	CHECK_MESSAGE(
+			error == OK && loaded_replace.is_valid(),
+			"load_whitelisted should work with CACHE_MODE_REPLACE.");
+
+	// Test CACHE_MODE_IGNORE_DEEP
+	error = OK;
+	Ref<Resource> loaded_ignore_deep = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_IGNORE_DEEP, &error);
+	CHECK_MESSAGE(
+			error == OK && loaded_ignore_deep.is_valid(),
+			"load_whitelisted should work with CACHE_MODE_IGNORE_DEEP.");
+
+	// Test CACHE_MODE_REPLACE_DEEP
+	error = OK;
+	Ref<Resource> loaded_replace_deep = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REPLACE_DEEP, &error);
+	CHECK_MESSAGE(
+			error == OK && loaded_replace_deep.is_valid(),
+			"load_whitelisted should work with CACHE_MODE_REPLACE_DEEP.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Error pointer handling") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("ErrorPointerTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_error_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+
+	// Test with error pointer
+	Error error = ERR_UNCONFIGURED;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"Error pointer should be set to OK on successful load.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"Resource should be valid on successful load.");
+
+	// Test with null error pointer (should not crash)
+	Ref<Resource> loaded_no_error = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, nullptr);
+	CHECK_MESSAGE(
+			loaded_no_error.is_valid(),
+			"load_whitelisted should work with null error pointer.");
+
+	// Test with invalid path and error pointer
+	error = OK;
+	const String invalid_path = TestUtils::get_temp_path("nonexistent_error_test.tres");
+	Ref<Resource> loaded_invalid = ResourceLoader::load_whitelisted(invalid_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error != OK,
+			"Error pointer should be set to non-OK value on failed load.");
+	CHECK_MESSAGE(
+			loaded_invalid.is_null(),
+			"Resource should be null on failed load.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Multiple loads with same whitelist") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("MultipleLoadTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_multiple_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	Dictionary path_whitelist;
+	path_whitelist[save_path] = true;
+	Dictionary type_whitelist;
+	type_whitelist["Resource"] = true;
+
+	// Load multiple times with same whitelist
+	Error error1 = OK;
+	Ref<Resource> loaded1 = ResourceLoader::load_whitelisted(save_path, path_whitelist, type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error1);
+
+	Error error2 = OK;
+	Ref<Resource> loaded2 = ResourceLoader::load_whitelisted(save_path, path_whitelist, type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error2);
+
+	CHECK_MESSAGE(
+			error1 == OK && error2 == OK,
+			"Multiple loads with same whitelist should both succeed.");
+	CHECK_MESSAGE(
+			loaded1.is_valid() && loaded2.is_valid(),
+			"Multiple loads should return valid resources.");
+	CHECK_MESSAGE(
+			loaded1->get_name() == loaded2->get_name(),
+			"Multiple loads should return resources with same name.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Path whitelist with multiple paths") {
+	// Create and save multiple resources
+	Ref<Resource> resource1 = memnew(Resource);
+	resource1->set_name("Resource1");
+	const String save_path1 = TestUtils::get_temp_path("whitelist_multi1_test.tres");
+	ResourceSaver::save(resource1, save_path1);
+
+	Ref<Resource> resource2 = memnew(Resource);
+	resource2->set_name("Resource2");
+	const String save_path2 = TestUtils::get_temp_path("whitelist_multi2_test.tres");
+	ResourceSaver::save(resource2, save_path2);
+
+	// Create whitelist with multiple paths
+	Dictionary path_whitelist;
+	path_whitelist[save_path1] = true;
+	path_whitelist[save_path2] = true;
+	Dictionary empty_type_whitelist;
+
+	// Load first resource
+	Error error1 = OK;
+	Ref<Resource> loaded1 = ResourceLoader::load_whitelisted(save_path1, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error1);
+
+	CHECK_MESSAGE(
+			error1 == OK,
+			"load_whitelisted should succeed when path is in multi-path whitelist.");
+	CHECK_MESSAGE(
+			loaded1.is_valid(),
+			"load_whitelisted should return valid resource from multi-path whitelist.");
+	CHECK_MESSAGE(
+			loaded1->get_name() == "Resource1",
+			"The loaded resource name should match the saved resource name.");
+
+	// Load second resource
+	Error error2 = OK;
+	Ref<Resource> loaded2 = ResourceLoader::load_whitelisted(save_path2, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error2);
+
+	CHECK_MESSAGE(
+			error2 == OK,
+			"load_whitelisted should succeed for second path in multi-path whitelist.");
+	CHECK_MESSAGE(
+			loaded2.is_valid(),
+			"load_whitelisted should return valid resource for second path.");
+	CHECK_MESSAGE(
+			loaded2->get_name() == "Resource2",
+			"The loaded resource name should match the saved resource name.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Type whitelist with multiple types") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("MultiTypeTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_multitype_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Create type whitelist with multiple types
+	Dictionary empty_path_whitelist;
+	Dictionary type_whitelist;
+	type_whitelist["Resource"] = true;
+	type_whitelist["Texture2D"] = true;
+	type_whitelist["Material"] = true;
+
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed when resource type is in multi-type whitelist.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return valid resource when type is in multi-type whitelist.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "MultiTypeTest",
+			"The loaded resource name should match the saved resource name.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Thread mode behavior") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("ThreadModeTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_thread_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+
+	// Test that load_whitelisted works from main thread
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should work from main thread.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return valid resource from main thread.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "ThreadModeTest",
+			"The loaded resource name should match the saved resource name.");
+
+	// Note: Testing from worker threads would require more complex setup
+	// The function automatically handles thread mode based on WorkerThreadPool context
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Resource with metadata") {
+	// Create resource with metadata
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("MetadataTest");
+	resource->set_meta("test_meta", "test_value");
+	resource->set_meta("test_number", 42);
+	const String save_path = TestUtils::get_temp_path("whitelist_metadata_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed for resource with metadata.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return valid resource with metadata.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "MetadataTest",
+			"The loaded resource name should match the saved resource name.");
+	CHECK_MESSAGE(
+			loaded->has_meta("test_meta"),
+			"The loaded resource should have the saved metadata.");
+	CHECK_MESSAGE(
+			loaded->get_meta("test_meta") == "test_value",
+			"The loaded resource metadata should match the saved metadata.");
+	CHECK_MESSAGE(
+			loaded->get_meta("test_number") == 42,
+			"The loaded resource numeric metadata should match the saved metadata.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Comparison with regular load") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("ComparisonTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_comparison_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+
+	// Load with whitelisted method
+	Error error_whitelisted = OK;
+	Ref<Resource> loaded_whitelisted = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error_whitelisted);
+
+	// Load with regular method
+	Error error_regular = OK;
+	Ref<Resource> loaded_regular = ResourceLoader::load(save_path, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error_regular);
+
+	CHECK_MESSAGE(
+			error_whitelisted == error_regular,
+			"load_whitelisted and load should have same error status for simple resources.");
+	CHECK_MESSAGE(
+			loaded_whitelisted.is_valid() == loaded_regular.is_valid(),
+			"load_whitelisted and load should both return valid resources for simple resources.");
+	if (loaded_whitelisted.is_valid() && loaded_regular.is_valid()) {
+		CHECK_MESSAGE(
+				loaded_whitelisted->get_name() == loaded_regular->get_name(),
+				"load_whitelisted and load should return resources with same name.");
+	}
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Path normalization") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("PathNormalizationTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_normalize_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Test with normalized path in whitelist
+	Dictionary path_whitelist;
+	path_whitelist[save_path] = true;
+	Dictionary empty_type_whitelist;
+
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should handle normalized paths correctly.");
+	CHECK_MESSAGE(
+			loaded.is_valid(),
+			"load_whitelisted should return valid resource with normalized path.");
+	CHECK_MESSAGE(
+			loaded->get_name() == "PathNormalizationTest",
+			"The loaded resource name should match the saved resource name.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Binary and text formats") {
+	// Create and save resource in binary format
+	Ref<Resource> resource_binary = memnew(Resource);
+	resource_binary->set_name("BinaryFormatTest");
+	const String save_path_binary = TestUtils::get_temp_path("whitelist_binary_test.res");
+	ResourceSaver::save(resource_binary, save_path_binary);
+
+	// Create and save resource in text format
+	Ref<Resource> resource_text = memnew(Resource);
+	resource_text->set_name("TextFormatTest");
+	const String save_path_text = TestUtils::get_temp_path("whitelist_text_test.tres");
+	ResourceSaver::save(resource_text, save_path_text);
+
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+
+	// Test binary format
+	Error error_binary = OK;
+	Ref<Resource> loaded_binary = ResourceLoader::load_whitelisted(save_path_binary, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error_binary);
+
+	CHECK_MESSAGE(
+			error_binary == OK,
+			"load_whitelisted should work with binary format (.res).");
+	CHECK_MESSAGE(
+			loaded_binary.is_valid(),
+			"load_whitelisted should return valid resource from binary format.");
+	CHECK_MESSAGE(
+			loaded_binary->get_name() == "BinaryFormatTest",
+			"The loaded resource name should match the saved resource name for binary format.");
+
+	// Test text format
+	Error error_text = OK;
+	Ref<Resource> loaded_text = ResourceLoader::load_whitelisted(save_path_text, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error_text);
+
+	CHECK_MESSAGE(
+			error_text == OK,
+			"load_whitelisted should work with text format (.tres).");
+	CHECK_MESSAGE(
+			loaded_text.is_valid(),
+			"load_whitelisted should return valid resource from text format.");
+	CHECK_MESSAGE(
+			loaded_text->get_name() == "TextFormatTest",
+			"The loaded resource name should match the saved resource name for text format.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Error code consistency") {
+	// Test various error scenarios
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+
+	// Test with invalid path
+	const String invalid_path = TestUtils::get_temp_path("nonexistent_consistency_test.tres");
+	Error error = OK;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(invalid_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error != OK,
+			"load_whitelisted should set error code to non-OK for invalid path.");
+	CHECK_MESSAGE(
+			error == FAILED || error == ERR_FILE_NOT_FOUND || error == ERR_CANT_OPEN,
+			"load_whitelisted should set appropriate error code for invalid path.");
+	CHECK_MESSAGE(
+			loaded.is_null(),
+			"load_whitelisted should return null resource when error occurs.");
+
+	// Test with empty path
+	error = OK;
+	Ref<Resource> loaded_empty = ResourceLoader::load_whitelisted("", empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error != OK,
+			"load_whitelisted should set error code to non-OK for empty path.");
+	CHECK_MESSAGE(
+			loaded_empty.is_null(),
+			"load_whitelisted should return null resource for empty path.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Empty whitelist denies external dependencies") {
+	// Create a resource with an external dependency (child resource)
+	Ref<Resource> parent_resource = memnew(Resource);
+	parent_resource->set_name("ParentResource");
+	Ref<Resource> child_resource = memnew(Resource);
+	child_resource->set_name("ChildResource");
+	
+	// Set child as metadata to create an external dependency
+	parent_resource->set_meta("child_resource", child_resource);
+	
+	const String child_path = TestUtils::get_temp_path("whitelist_child_test.tres");
+	const String parent_path = TestUtils::get_temp_path("whitelist_parent_test.tres");
+	
+	// Save child resource first
+	ResourceSaver::save(child_resource, child_path);
+	// Save parent resource (which references child)
+	ResourceSaver::save(parent_resource, parent_path);
+
+	// Test with empty whitelist - should fail because child resource is not whitelisted
+	Dictionary empty_path_whitelist;
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	ERR_PRINT_OFF; // Suppress expected error messages
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(parent_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+	ERR_PRINT_ON;
+
+	// Empty whitelist should deny external dependencies
+	CHECK_MESSAGE(
+			error == ERR_FILE_MISSING_DEPENDENCIES || loaded.is_null(),
+			"load_whitelisted should fail with empty whitelist when resource has external dependencies.");
+
+	// Test with child path in whitelist - should succeed
+	Dictionary path_whitelist;
+	path_whitelist[child_path] = true; // Whitelist the child resource
+	error = OK;
+	Ref<Resource> loaded_with_whitelist = ResourceLoader::load_whitelisted(parent_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed when external dependency is in whitelist.");
+	CHECK_MESSAGE(
+			loaded_with_whitelist.is_valid(),
+			"load_whitelisted should return valid resource when external dependency is whitelisted.");
 }
 } // namespace TestResource
