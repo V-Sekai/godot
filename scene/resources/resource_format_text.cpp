@@ -482,7 +482,18 @@ Error ResourceLoaderText::load() {
 
 		ext_resources[id].path = path;
 		ext_resources[id].type = type;
-		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, false, Dictionary(), Dictionary());
+
+		// Validate external resource path against whitelist if whitelist is provided
+		if (using_whitelist && !ResourceLoader::_is_path_whitelisted(path, external_path_whitelist)) {
+			error = ERR_FILE_MISSING_DEPENDENCIES;
+			error_text = "[ext_resource] External dependency not in whitelist: " + path;
+			_printerr();
+			return error;
+		}
+
+		// Once the external resource has passed the whitelist, recursively enforce whitelist for its dependencies.
+		// This ensures all nested dependencies are also validated against the whitelist.
+		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, using_whitelist, external_path_whitelist, type_whitelist);
 		if (ext_resources[id].load_token.is_null()) {
 			if (ResourceLoader::get_abort_on_missing_resources()) {
 				error = ERR_FILE_CORRUPT;
@@ -1430,11 +1441,65 @@ Ref<Resource> ResourceFormatLoaderText::load(const String &p_path, const String 
 	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
 	loader.progress = r_progress;
 	loader.res_path = loader.local_path;
+	loader.using_whitelist = false;
+	loader.external_path_whitelist = Dictionary();
+	loader.type_whitelist = Dictionary();
 	loader.open(f);
 	err = loader.load();
 	if (r_error) {
 		*r_error = err;
 	}
+	if (err == OK) {
+		return loader.get_resource();
+	} else {
+		return Ref<Resource>();
+	}
+}
+
+Ref<Resource> ResourceFormatLoaderText::load_whitelisted(const String &p_path, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist, const String &p_original_path, Error *r_error, bool p_use_sub_threads, float *r_progress, CacheMode p_cache_mode) {
+	if (r_error) {
+		*r_error = ERR_CANT_OPEN;
+	}
+
+	Error err;
+
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ, &err);
+
+	ERR_FAIL_COND_V_MSG(err != OK, Ref<Resource>(), "Cannot open file '" + p_path + "'.");
+
+	ResourceLoaderText loader;
+	String path = !p_original_path.is_empty() ? p_original_path : p_path;
+	switch (p_cache_mode) {
+		case CACHE_MODE_IGNORE:
+		case CACHE_MODE_REUSE:
+		case CACHE_MODE_REPLACE:
+			loader.cache_mode = p_cache_mode;
+			loader.cache_mode_for_external = CACHE_MODE_REUSE;
+			break;
+		case CACHE_MODE_IGNORE_DEEP:
+			loader.cache_mode = ResourceFormatLoader::CACHE_MODE_IGNORE;
+			loader.cache_mode_for_external = p_cache_mode;
+			break;
+		case CACHE_MODE_REPLACE_DEEP:
+			loader.cache_mode = ResourceFormatLoader::CACHE_MODE_REPLACE;
+			loader.cache_mode_for_external = p_cache_mode;
+			break;
+	}
+	loader.use_sub_threads = p_use_sub_threads;
+	loader.local_path = ProjectSettings::get_singleton()->localize_path(path);
+	loader.progress = r_progress;
+	loader.res_path = loader.local_path;
+	loader.using_whitelist = true;
+	loader.external_path_whitelist = p_external_path_whitelist;
+	loader.type_whitelist = p_type_whitelist;
+	loader.open(f);
+
+	err = loader.load();
+
+	if (r_error) {
+		*r_error = err;
+	}
+
 	if (err == OK) {
 		return loader.get_resource();
 	} else {
