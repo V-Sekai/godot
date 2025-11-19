@@ -690,6 +690,8 @@ Error ResourceLoaderBinary::load() {
 		return error;
 	}
 
+	bool has_missing_dependencies = false;
+
 	for (int i = 0; i < external_resources.size(); i++) {
 		String path = external_resources[i].path;
 
@@ -706,6 +708,7 @@ Error ResourceLoaderBinary::load() {
 
 		if (using_whitelist && !ResourceLoader::_is_path_whitelisted(path, external_path_whitelist)) {
 			error = ERR_FILE_MISSING_DEPENDENCIES;
+			resource = Ref<Resource>(); // Clear resource before returning error
 			ERR_FAIL_V_MSG(error, "External dependency not in whitelist: " + path + ".");
 		}
 
@@ -714,10 +717,12 @@ Error ResourceLoaderBinary::load() {
 		external_resources.write[i].load_token = ResourceLoader::_load_start(path, external_resources[i].type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, true, external_path_whitelist, type_whitelist);
 
 		if (external_resources[i].load_token.is_null()) {
+			has_missing_dependencies = true;
 			if (!ResourceLoader::get_abort_on_missing_resources()) {
 				ResourceLoader::notify_dependency_error(local_path, path, external_resources[i].type);
 			} else {
 				error = ERR_FILE_MISSING_DEPENDENCIES;
+				resource = Ref<Resource>(); // Clear resource before returning error
 				ERR_FAIL_V_MSG(error, vformat("Can't load dependency: '%s'.", path));
 			}
 		}
@@ -839,6 +844,7 @@ Error ResourceLoaderBinary::load() {
 
 			if (name == StringName()) {
 				error = ERR_FILE_CORRUPT;
+				resource = Ref<Resource>(); // Clear resource before returning error
 				ERR_FAIL_V(ERR_FILE_CORRUPT);
 			}
 
@@ -846,6 +852,7 @@ Error ResourceLoaderBinary::load() {
 
 			error = parse_variant(value);
 			if (error) {
+				resource = Ref<Resource>(); // Clear resource before returning error
 				return error;
 			}
 
@@ -912,6 +919,13 @@ Error ResourceLoaderBinary::load() {
 
 		if (main) {
 			f.unref();
+			if (has_missing_dependencies) {
+				// Even if abort_on_missing_resources is false, we should not return OK
+				// when dependencies are missing, as the resource is invalid
+				error = ERR_FILE_MISSING_DEPENDENCIES;
+				resource = Ref<Resource>(); // Clear resource before returning error
+				return error;
+			}
 			resource = res;
 			resource->set_as_translation_remapped(translation_remapped);
 			error = OK;

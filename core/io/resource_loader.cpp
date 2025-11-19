@@ -580,7 +580,7 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 	}
 
 	// Also check if there's an active load in thread_load_tasks with whitelist
-	// This handles cases where we're loading nested resources
+	// This handles cases where we're loading nested resources during an active whitelisted load
 	if (!load_paths_stack.is_empty()) {
 		MutexLock thread_load_lock(thread_load_mutex);
 		const String &parent_path = load_paths_stack.get(load_paths_stack.size() - 1);
@@ -588,15 +588,10 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		if (E && E->value.using_whitelist) {
 			return load_whitelisted(p_path, E->value.external_path_whitelist, E->value.type_whitelist, p_type_hint, p_cache_mode, r_error);
 		}
-
-		// Check if any parent resource in the call chain has whitelist context stored
-		// This handles cases where PackedScene::instantiate() is called after initial load
-		for (int i = load_paths_stack.size() - 1; i >= 0; i--) {
-			HashMap<String, WhitelistContext>::Iterator W = resource_whitelist_context.find(load_paths_stack[i]);
-			if (W) {
-				return load_whitelisted(p_path, W->value.external_path_whitelist, W->value.type_whitelist, p_type_hint, p_cache_mode, r_error);
-			}
-		}
+		// Note: We don't check resource_whitelist_context here because that's for resources
+		// that were previously loaded with whitelist and are now in cache. When loading
+		// dependencies of cached resources, we should use the regular load path unless
+		// we're actively in a whitelisted load context (checked above).
 	}
 
 	// Check if the resource being loaded is already in cache
@@ -996,6 +991,16 @@ Ref<Resource> ResourceLoader::_load_complete_inner(LoadToken &p_load_token, Erro
 		}
 
 		load_task_ptr = &load_task;
+	}
+
+	// If there was an error during loading, don't return the resource even if it's valid
+	// This prevents returning resources in invalid states (e.g., PackedScene with missing dependencies)
+	// Check error before temp_unlock() to avoid mutex state issues
+	if (load_task_ptr->error != OK) {
+		if (r_error) {
+			*r_error = load_task_ptr->error;
+		}
+		return Ref<Resource>();
 	}
 
 	p_thread_load_lock.temp_unlock();

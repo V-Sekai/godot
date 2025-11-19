@@ -2481,7 +2481,15 @@ Node *PackedScene::instantiate(GenEditState p_edit_state) const {
 	ERR_FAIL_COND_V_MSG(p_edit_state != GEN_EDIT_STATE_DISABLED, nullptr, "Edit state is only for editors, does not work without tools compiled.");
 #endif
 
-	ERR_FAIL_COND_V_MSG(state.is_null(), nullptr, vformat("Cannot instantiate PackedScene from path '%s': scene state is null. The scene may not have been loaded correctly.", get_path()));
+	if (state.is_null()) {
+		ERR_PRINT(vformat("Cannot instantiate PackedScene from path '%s': scene state is null. The scene may not have been loaded correctly.", get_path()));
+		return nullptr;
+	}
+
+	if (!state->can_instantiate()) {
+		ERR_PRINT(vformat("Cannot instantiate PackedScene from path '%s': scene state is invalid.", get_path()));
+		return nullptr;
+	}
 
 	Node *s = state->instantiate((SceneState::GenEditState)p_edit_state);
 	if (!s) {
