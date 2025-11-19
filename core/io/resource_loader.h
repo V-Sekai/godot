@@ -223,6 +223,14 @@ private:
 
 	static HashMap<String, LoadToken *> user_load_tokens;
 
+	// Whitelist context for resources in cache - allows PackedScene::instantiate() to
+	// respect whitelist even when called after the initial load completes
+	struct WhitelistContext {
+		Dictionary external_path_whitelist;
+		Dictionary type_whitelist;
+	};
+	static HashMap<String, WhitelistContext> resource_whitelist_context;
+
 	static float _dependency_get_progress(const String &p_path);
 
 	static Error _load_threaded_request_whitelisted_int(const String &p_path, const String &p_type_hint, bool p_use_sub_threads, ResourceFormatLoader::CacheMode p_cache_mode, bool p_use_whitelist, Dictionary p_external_path_whitelist, Dictionary p_type_whitelist);

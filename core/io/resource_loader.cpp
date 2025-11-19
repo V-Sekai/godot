@@ -463,6 +463,15 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 			if (pending_unlock) {
 				ResourceCache::lock.unlock();
 			}
+
+			// Store whitelist context for resources loaded with whitelist
+			// This allows PackedScene::instantiate() to respect whitelist even when called later
+			if (load_task.using_whitelist) {
+				MutexLock whitelist_lock(thread_load_mutex);
+				WhitelistContext &ctx = resource_whitelist_context[load_task.local_path];
+				ctx.external_path_whitelist = load_task.external_path_whitelist;
+				ctx.type_whitelist = load_task.type_whitelist;
+			}
 		} else {
 			load_task.resource->set_path_cache(load_task.local_path);
 		}
@@ -561,6 +570,79 @@ void ResourceLoader::_load_threaded_request_setup_user_token(LoadToken *p_token,
 Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hint, ResourceFormatLoader::CacheMode p_cache_mode, Error *r_error) {
 	if (r_error) {
 		*r_error = OK;
+	}
+
+	// Check if we're in a load context with active whitelist
+	// This allows PackedScene::instantiate() and other code to automatically
+	// respect whitelist without requiring explicit whitelist parameters
+	// First check curr_load_task (for loads happening during active load tasks)
+	if (curr_load_task && curr_load_task->using_whitelist) {
+		return load_whitelisted(p_path, curr_load_task->external_path_whitelist, curr_load_task->type_whitelist, p_type_hint, p_cache_mode, r_error);
+	}
+
+	// Also check if there's an active load in thread_load_tasks with whitelist
+	// This handles cases where we're loading nested resources
+	if (!load_paths_stack.is_empty()) {
+		MutexLock thread_load_lock(thread_load_mutex);
+		const String &parent_path = load_paths_stack.get(load_paths_stack.size() - 1);
+		HashMap<String, ThreadLoadTask>::Iterator E = thread_load_tasks.find(parent_path);
+		if (E && E->value.using_whitelist) {
+			return load_whitelisted(p_path, E->value.external_path_whitelist, E->value.type_whitelist, p_type_hint, p_cache_mode, r_error);
+		}
+
+		// Check if any parent resource in the call chain has whitelist context stored
+		// This handles cases where PackedScene::instantiate() is called after initial load
+		for (int i = load_paths_stack.size() - 1; i >= 0; i--) {
+			HashMap<String, WhitelistContext>::Iterator W = resource_whitelist_context.find(load_paths_stack[i]);
+			if (W) {
+				return load_whitelisted(p_path, W->value.external_path_whitelist, W->value.type_whitelist, p_type_hint, p_cache_mode, r_error);
+			}
+		}
+	}
+
+	// Check if the resource being loaded is already in cache with whitelist context
+	// This handles cases where we're loading a dependency of a whitelisted resource
+	{
+		MutexLock thread_load_lock(thread_load_mutex);
+		HashMap<String, WhitelistContext>::Iterator W = resource_whitelist_context.find(p_path);
+		if (W && ResourceCache::has(p_path)) {
+			// Resource was previously loaded with whitelist and is still in cache
+			return load_whitelisted(p_path, W->value.external_path_whitelist, W->value.type_whitelist, p_type_hint, p_cache_mode, r_error);
+		}
+
+		// Clean up whitelist context for resources no longer in cache
+		// Do this lazily to avoid expensive ResourceCache::has() checks on every load
+		static uint32_t cleanup_counter = 0;
+		if ((++cleanup_counter % 100) == 0) { // Clean up every 100 loads
+			LocalVector<String> to_remove;
+			for (const KeyValue<String, WhitelistContext> &E : resource_whitelist_context) {
+				if (!ResourceCache::has(E.key)) {
+					to_remove.push_back(E.key);
+				}
+			}
+			for (const String &key : to_remove) {
+				resource_whitelist_context.erase(key);
+			}
+		}
+	}
+
+	// If we're loading a placeholder scene from PackedScene::instantiate(),
+	// and the PackedScene was loaded with whitelist, we need to find that whitelist.
+	// Since we can't modify PackedScene, we check if any resource in cache has whitelist.
+	// This is a fallback for the case where load_paths_stack is empty.
+	// Note: This is conservative - it will use whitelist if ANY resource in cache has one.
+	// This ensures security but may be overly restrictive in some edge cases.
+	if (load_paths_stack.is_empty()) {
+		MutexLock thread_load_lock(thread_load_mutex);
+		// Find any resource in cache with whitelist context
+		// This handles PackedScene::instantiate() calling load() after initial load completes
+		for (const KeyValue<String, WhitelistContext> &E : resource_whitelist_context) {
+			if (ResourceCache::has(E.key)) {
+				// Found a resource in cache with whitelist context
+				// Use it to ensure placeholder scenes respect whitelist
+				return load_whitelisted(p_path, E.value.external_path_whitelist, E.value.type_whitelist, p_type_hint, p_cache_mode, r_error);
+			}
+		}
 	}
 
 	LoadThreadMode thread_mode = LOAD_THREAD_FROM_CURRENT;
@@ -1657,6 +1739,7 @@ HashMap<String, ResourceLoader::ThreadLoadTask> ResourceLoader::thread_load_task
 bool ResourceLoader::cleaning_tasks = false;
 
 HashMap<String, ResourceLoader::LoadToken *> ResourceLoader::user_load_tokens;
+HashMap<String, ResourceLoader::WhitelistContext> ResourceLoader::resource_whitelist_context;
 
 SelfList<Resource>::List ResourceLoader::remapped_list;
 HashMap<String, Vector<String>> ResourceLoader::translation_remaps;
