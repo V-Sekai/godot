@@ -34,7 +34,8 @@
 #include "core/object/gdvirtual.gen.inc"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/thread.h"
-#include "core/templates/lru.h"
+#include "core/templates/hash_map.h"
+#include "core/templates/vector.h"
 
 namespace CoreBind {
 class ResourceLoader;
@@ -243,10 +244,61 @@ private:
 		static WhitelistMetadata build(const Dictionary &p_whitelist);
 	};
 
+	// Fixed-capacity cache for whitelist metadata
+	// Uses simple eviction when full (evicts first entry found)
+	// NOTE: Not thread-safe - requires external synchronization (protected by thread_load_mutex)
+	template <typename TKey, typename TData>
+	struct FixedCapacityCache {
+		HashMap<TKey, TData> cache;
+		size_t capacity;
+
+		FixedCapacityCache(size_t p_capacity) : capacity(p_capacity) {
+		}
+
+		const TData *getptr(const TKey &p_key) {
+			return cache.getptr(p_key);
+		}
+
+		const TData *insert(const TKey &p_key, const TData &p_value) {
+			// If key exists, update it
+			TData *existing = cache.getptr(p_key);
+			if (existing) {
+				*existing = p_value;
+				return existing;
+			}
+
+			// If at capacity, evict one entry (first one we find)
+			if (cache.size() >= capacity) {
+				for (typename HashMap<TKey, TData>::Iterator it = cache.begin(); it != cache.end(); ++it) {
+					cache.erase(it->key);
+					break;
+				}
+			}
+
+			cache[p_key] = p_value;
+			return cache.getptr(p_key);
+		}
+
+		void set_capacity(size_t p_capacity) {
+			capacity = p_capacity;
+			// Evict entries until we're under capacity
+			while (cache.size() > capacity) {
+				for (typename HashMap<TKey, TData>::Iterator it = cache.begin(); it != cache.end(); ++it) {
+					cache.erase(it->key);
+					break;
+				}
+			}
+		}
+
+		size_t get_capacity() const {
+			return capacity;
+		}
+	};
+
 	// Cache for whitelist metadata keyed by dictionary hash
-	// Uses LRU cache to prevent unbounded growth in long-running sessions (e.g., MMOGs)
+	// Uses fixed-capacity cache to prevent unbounded growth in long-running sessions (e.g., MMOGs)
 	// Default capacity: 256 entries (~4MB for typical whitelists)
-	static LRUCache<uint64_t, WhitelistMetadata> whitelist_metadata_cache;
+	static FixedCapacityCache<uint64_t, WhitelistMetadata> whitelist_metadata_cache;
 	
 	// Get/set cache capacity for whitelist metadata
 	static void set_whitelist_cache_capacity(size_t p_capacity);
