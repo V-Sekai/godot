@@ -636,9 +636,8 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Basic functionality with empty wh
 	const String save_path = TestUtils::get_temp_path("whitelist_test.tres");
 	ResourceSaver::save(resource, save_path);
 
-	// Test with empty whitelists - should load successfully for resources without external dependencies
-	// Note: Empty whitelists deny all external dependencies, but simple resources without
-	// external dependencies can still load since the whitelist only applies to external resources
+	// Test with empty whitelists - should load successfully
+	// Empty whitelist allows main path (backward compatibility) but denies external dependencies
 	Dictionary empty_path_whitelist;
 	Dictionary empty_type_whitelist;
 	Error error = OK;
@@ -646,10 +645,10 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Basic functionality with empty wh
 
 	CHECK_MESSAGE(
 			error == OK,
-			"load_whitelisted should succeed with empty whitelists for resources without external dependencies.");
+			"load_whitelisted should succeed with empty whitelists (backward compatibility - empty whitelist allows main path).");
 	CHECK_MESSAGE(
 			loaded.is_valid(),
-			"load_whitelisted should return a valid resource with empty whitelists when no external dependencies exist.");
+			"load_whitelisted should return a valid resource with empty whitelists.");
 	CHECK_MESSAGE(
 			loaded->get_name() == "TestResource",
 			"The loaded resource name should match the saved resource name.");
@@ -679,17 +678,16 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Path whitelist validation") {
 			loaded->get_name() == "WhitelistTest",
 			"The loaded resource name should match the saved resource name.");
 
-	// Test with empty whitelist - should still work for simple resources without external dependencies
-	// Empty whitelist denies all external dependencies, but the main resource itself is not checked
+	// Test with empty whitelist - should still work (backward compatibility)
+	// Empty whitelist allows main path but denies external dependencies
 	Dictionary empty_path_whitelist;
 	error = OK;
 	Ref<Resource> loaded_empty_whitelist = ResourceLoader::load_whitelisted(save_path, empty_path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
 
-	// For simple resources without external dependencies, empty whitelist still works
-	// The whitelist only applies to external dependencies, not the main resource path
+	// Empty whitelist allows main path for backward compatibility
 	CHECK_MESSAGE(
 			error == OK && loaded_empty_whitelist.is_valid(),
-			"load_whitelisted should work with empty whitelist for resources without external dependencies.");
+			"load_whitelisted should work with empty whitelist (backward compatibility - empty whitelist allows main path).");
 }
 
 TEST_CASE("[ResourceLoader] load_whitelisted - Type whitelist validation") {
@@ -1249,5 +1247,143 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Empty whitelist denies external d
 	CHECK_MESSAGE(
 			loaded_with_whitelist.is_valid(),
 			"load_whitelisted should return valid resource when external dependency is whitelisted.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Main resource path validation") {
+	// Create and save a resource
+	Ref<Resource> resource = memnew(Resource);
+	resource->set_name("MainPathValidationTest");
+	const String save_path = TestUtils::get_temp_path("whitelist_main_path_test.tres");
+	ResourceSaver::save(resource, save_path);
+
+	// Test with main path NOT in whitelist - should fail
+	Dictionary path_whitelist;
+	path_whitelist["res://other_path.tres"] = true; // Different path
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	ERR_PRINT_OFF; // Suppress expected error messages
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(save_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+	ERR_PRINT_ON;
+
+	CHECK_MESSAGE(
+			error == ERR_FILE_MISSING_DEPENDENCIES,
+			"load_whitelisted should fail when main path is not in whitelist.");
+	CHECK_MESSAGE(
+			loaded.is_null(),
+			"load_whitelisted should return null when main path is not whitelisted.");
+
+	// Test with main path in whitelist - should succeed
+	path_whitelist[save_path] = true;
+	error = OK;
+	Ref<Resource> loaded_whitelisted = ResourceLoader::load_whitelisted(save_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed when main path is in whitelist.");
+	CHECK_MESSAGE(
+			loaded_whitelisted.is_valid(),
+			"load_whitelisted should return valid resource when main path is whitelisted.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Hierarchical path support (directory prefix matching)") {
+	// Create and save resources in a directory structure
+	Ref<Resource> resource1 = memnew(Resource);
+	resource1->set_name("Resource1");
+	const String save_path1 = TestUtils::get_temp_path("textures/icon1.png");
+	ResourceSaver::save(resource1, save_path1);
+
+	Ref<Resource> resource2 = memnew(Resource);
+	resource2->set_name("Resource2");
+	const String save_path2 = TestUtils::get_temp_path("textures/icon2.png");
+	ResourceSaver::save(resource2, save_path2);
+
+	Ref<Resource> resource3 = memnew(Resource);
+	resource3->set_name("Resource3");
+	const String save_path3 = TestUtils::get_temp_path("scripts/script.gd");
+	ResourceSaver::save(resource3, save_path3);
+
+	// Test with directory prefix in whitelist
+	Dictionary path_whitelist;
+	// Get the base directory path for prefix matching
+	String textures_dir = save_path1.get_base_dir();
+	path_whitelist[textures_dir] = true; // Whitelist entire textures directory
+	Dictionary empty_type_whitelist;
+
+	// Test that resources in whitelisted directory can be loaded
+	Error error1 = OK;
+	Ref<Resource> loaded1 = ResourceLoader::load_whitelisted(save_path1, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error1);
+
+	CHECK_MESSAGE(
+			error1 == OK,
+			"load_whitelisted should succeed when path matches directory prefix in whitelist.");
+	CHECK_MESSAGE(
+			loaded1.is_valid(),
+			"load_whitelisted should return valid resource when path matches directory prefix.");
+
+	Error error2 = OK;
+	Ref<Resource> loaded2 = ResourceLoader::load_whitelisted(save_path2, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error2);
+
+	CHECK_MESSAGE(
+			error2 == OK,
+			"load_whitelisted should succeed for second resource in whitelisted directory.");
+
+	// Test that resources outside whitelisted directory are denied
+	Error error3 = OK;
+	ERR_PRINT_OFF;
+	Ref<Resource> loaded3 = ResourceLoader::load_whitelisted(save_path3, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error3);
+	ERR_PRINT_ON;
+
+	CHECK_MESSAGE(
+			error3 == ERR_FILE_MISSING_DEPENDENCIES || loaded3.is_null(),
+			"load_whitelisted should fail for paths outside whitelisted directory prefix.");
+}
+
+TEST_CASE("[ResourceLoader] load_whitelisted - Recursive whitelist enforcement") {
+	// Create a resource with nested external dependencies
+	Ref<Resource> grandchild_resource = memnew(Resource);
+	grandchild_resource->set_name("GrandchildResource");
+	const String grandchild_path = TestUtils::get_temp_path("whitelist_grandchild_test.tres");
+	ResourceSaver::save(grandchild_resource, grandchild_path);
+
+	Ref<Resource> child_resource = memnew(Resource);
+	child_resource->set_name("ChildResource");
+	child_resource->set_meta("grandchild", grandchild_resource);
+	const String child_path = TestUtils::get_temp_path("whitelist_child_recursive_test.tres");
+	ResourceSaver::save(child_resource, child_path);
+
+	Ref<Resource> parent_resource = memnew(Resource);
+	parent_resource->set_name("ParentResource");
+	parent_resource->set_meta("child", child_resource);
+	const String parent_path = TestUtils::get_temp_path("whitelist_parent_recursive_test.tres");
+	ResourceSaver::save(parent_resource, parent_path);
+
+	// Test with only parent and child in whitelist (grandchild not whitelisted)
+	// Should fail because recursive enforcement requires grandchild to be whitelisted
+	Dictionary path_whitelist;
+	path_whitelist[parent_path] = true;
+	path_whitelist[child_path] = true;
+	// Intentionally NOT whitelisting grandchild_path
+	Dictionary empty_type_whitelist;
+	Error error = OK;
+	ERR_PRINT_OFF;
+	Ref<Resource> loaded = ResourceLoader::load_whitelisted(parent_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+	ERR_PRINT_ON;
+
+	// With recursive enforcement, grandchild must also be whitelisted
+	CHECK_MESSAGE(
+			error == ERR_FILE_MISSING_DEPENDENCIES || loaded.is_null(),
+			"load_whitelisted should fail when nested dependency is not whitelisted (recursive enforcement).");
+
+	// Test with all dependencies whitelisted - should succeed
+	path_whitelist[grandchild_path] = true;
+	error = OK;
+	Ref<Resource> loaded_all = ResourceLoader::load_whitelisted(parent_path, path_whitelist, empty_type_whitelist, "", ResourceFormatLoader::CACHE_MODE_REUSE, &error);
+
+	CHECK_MESSAGE(
+			error == OK,
+			"load_whitelisted should succeed when all nested dependencies are whitelisted.");
+	CHECK_MESSAGE(
+			loaded_all.is_valid(),
+			"load_whitelisted should return valid resource when all dependencies are whitelisted.");
 }
 } // namespace TestResource

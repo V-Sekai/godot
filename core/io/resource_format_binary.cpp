@@ -431,8 +431,13 @@ Error ResourceLoaderBinary::parse_variant(Variant &r_v) {
 					}
 
 					Ref<Resource> res;
-					if (!using_whitelist || external_path_whitelist.has(path)) {
-						res = ResourceLoader::load(path, exttype, cache_mode_for_external);
+					if (!using_whitelist || ResourceLoader::_is_path_whitelisted(path, external_path_whitelist)) {
+						// For legacy format, use load_whitelisted when whitelist is enabled to ensure recursive enforcement
+						if (using_whitelist) {
+							res = ResourceLoader::load_whitelisted(path, external_path_whitelist, type_whitelist, exttype, cache_mode_for_external);
+						} else {
+							res = ResourceLoader::load(path, exttype, cache_mode_for_external);
+						}
 					}
 					if (res.is_null()) {
 						WARN_PRINT(vformat("Couldn't load resource: %s.", path));
@@ -699,14 +704,14 @@ Error ResourceLoaderBinary::load() {
 
 		external_resources.write[i].path = path; //remap happens here, not on load because on load it can actually be used for filesystem dock resource remap
 
-		if (using_whitelist && !external_path_whitelist.has(path)) {
+		if (using_whitelist && !ResourceLoader::_is_path_whitelisted(path, external_path_whitelist)) {
 			error = ERR_FILE_MISSING_DEPENDENCIES;
 			ERR_FAIL_V_MSG(error, "External dependency not in whitelist: " + path + ".");
 		}
 
-		// Once the external resource has passed the whitelist, we consider the external resource to be safe.
-		// The external resource can always be loaded without whitelist.
-		external_resources.write[i].load_token = ResourceLoader::_load_start(path, external_resources[i].type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, false, Dictionary(), Dictionary());
+		// Once the external resource has passed the whitelist, recursively enforce whitelist for its dependencies.
+		// This ensures all nested dependencies are also validated against the whitelist.
+		external_resources.write[i].load_token = ResourceLoader::_load_start(path, external_resources[i].type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, true, external_path_whitelist, type_whitelist);
 
 		if (external_resources[i].load_token.is_null()) {
 			if (!ResourceLoader::get_abort_on_missing_resources()) {

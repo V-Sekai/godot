@@ -588,6 +588,14 @@ Ref<Resource> ResourceLoader::load_whitelisted(const String &p_path, Dictionary 
 		*r_error = OK;
 	}
 
+	// Validate main resource path against whitelist if whitelist is provided
+	if (!p_external_path_whitelist.is_empty() && !_is_path_whitelisted(p_path, p_external_path_whitelist)) {
+		if (r_error) {
+			*r_error = ERR_FILE_MISSING_DEPENDENCIES;
+		}
+		return Ref<Resource>();
+	}
+
 	LoadThreadMode thread_mode = LOAD_THREAD_FROM_CURRENT;
 	if (WorkerThreadPool::get_singleton()->get_caller_task_id() != WorkerThreadPool::INVALID_TASK_ID) {
 		// If user is initiating a single-threaded load from a WorkerThreadPool task,
@@ -1246,6 +1254,29 @@ bool ResourceLoader::should_create_uid_file(const String &p_path) {
 			return !loader[i]->has_custom_uid_support();
 		}
 	}
+	return false;
+}
+
+bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary &p_whitelist) {
+	if (p_whitelist.is_empty()) {
+		return false;
+	}
+
+	// Check for exact match first (backward compatible)
+	if (p_whitelist.has(p_path)) {
+		return true;
+	}
+
+	// Check for prefix match (directory whitelisting)
+	// This allows whitelisting directories like "res://textures/" to match "res://textures/icon.png"
+	Array keys = p_whitelist.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		String whitelist_key = keys[i];
+		if (p_path.begins_with(whitelist_key)) {
+			return true;
+		}
+	}
+
 	return false;
 }
 
