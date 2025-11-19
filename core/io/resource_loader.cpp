@@ -599,18 +599,15 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		}
 	}
 
-	// Check if the resource being loaded is already in cache with whitelist context
-	// This handles cases where we're loading a dependency of a whitelisted resource
-	// If resource is in cache, return it directly without reloading
+	// Check if the resource being loaded is already in cache
+	// Only return cached resource if cache mode allows it (CACHE_MODE_REUSE)
+	// For CACHE_MODE_REPLACE or CACHE_MODE_IGNORE, we need to reload/ignore cache
 	{
 		MutexLock thread_load_lock(thread_load_mutex);
-		if (ResourceCache::has(p_path)) {
+		if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE && ResourceCache::has(p_path)) {
 			Ref<Resource> cached_res = ResourceCache::get_ref(p_path);
 			if (cached_res.is_valid()) {
-				// Resource is in cache, return it directly
-				// Note: We don't check whitelist context here because the resource is already loaded
-				// and cached. If it was loaded with a whitelist, that context is stored but we
-				// don't need to re-validate or reload the resource.
+				// Resource is in cache and cache mode allows reuse, return it directly
 				if (r_error) {
 					*r_error = OK;
 				}
