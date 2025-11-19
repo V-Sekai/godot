@@ -34,6 +34,7 @@
 #include "core/object/gdvirtual.gen.inc"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/thread.h"
+#include "core/templates/lru.h"
 
 namespace CoreBind {
 class ResourceLoader;
@@ -243,7 +244,13 @@ private:
 	};
 
 	// Cache for whitelist metadata keyed by dictionary hash
-	static HashMap<uint64_t, WhitelistMetadata> whitelist_metadata_cache;
+	// Uses LRU cache to prevent unbounded growth in long-running sessions (e.g., MMOGs)
+	// Default capacity: 256 entries (~4MB for typical whitelists)
+	static LRUCache<uint64_t, WhitelistMetadata> whitelist_metadata_cache;
+	
+	// Get/set cache capacity for whitelist metadata
+	static void set_whitelist_cache_capacity(size_t p_capacity);
+	static size_t get_whitelist_cache_capacity();
 
 	// Static empty dictionary constant to avoid repeated allocations
 	static const Dictionary EMPTY_DICTIONARY;
