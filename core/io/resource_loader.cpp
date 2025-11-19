@@ -1262,6 +1262,24 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 		return false;
 	}
 
+	// Security: Validate input path doesn't contain null bytes (defense in depth)
+	// Null bytes can be used in path traversal attacks (e.g., "../../etc/passwd%00.png")
+	// Even though Godot's String class handles null bytes, we explicitly reject them for security
+	if (p_path.find_char('\0') >= 0) {
+		return false;
+	}
+
+	// Security: Validate whitelist dictionary structure
+	// Ensure all keys are strings to prevent type confusion attacks
+	Array keys = p_whitelist.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		// Only allow string keys in whitelist dictionary
+		if (key.get_type() != Variant::STRING) {
+			return false;
+		}
+	}
+
 	// Normalize the input path to prevent path traversal attacks
 	// This ensures paths like "res://textures/../secret/file.png" are properly normalized
 	// before comparison, preventing them from matching "res://textures/"
@@ -1276,9 +1294,10 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 	// Check for prefix match (directory whitelisting)
 	// This allows whitelisting directories like "res://textures/" to match "res://textures/icon.png"
 	// Normalize both the path and whitelist keys to ensure consistent matching
-	Array keys = p_whitelist.keys();
 	for (int i = 0; i < keys.size(); i++) {
-		String whitelist_key = keys[i];
+		Variant key = keys[i];
+		// We've already validated keys are strings above, safe to convert
+		String whitelist_key = key;
 		String normalized_key = whitelist_key.simplify_path();
 		
 		// Check if normalized path begins with normalized whitelist key
