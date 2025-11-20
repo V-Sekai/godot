@@ -1387,15 +1387,17 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 
 	// Get or build cached metadata for this whitelist
 	// LRUCache is not thread-safe, so we need to protect access with the existing mutex
+	// CRITICAL: We must copy the metadata before unlocking the mutex, as the pointer
+	// points to data inside the LRUCache which can be evicted by other threads.
 	uint64_t whitelist_hash = p_whitelist.hash();
 	
-	WhitelistMetadata *metadata;
+	WhitelistMetadata metadata_copy;
 	{
 		MutexLock thread_load_lock(thread_load_mutex);
 		const WhitelistMetadata *cached_metadata = whitelist_metadata_cache.getptr(whitelist_hash);
 		if (cached_metadata) {
-			// Cache hit
-			metadata = const_cast<WhitelistMetadata *>(cached_metadata);
+			// Cache hit - copy metadata before unlocking
+			metadata_copy = *cached_metadata;
 		} else {
 			// Cache miss - build and cache metadata
 			// Release lock while building metadata (expensive operation)
@@ -1409,24 +1411,26 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 			// Check again in case another thread inserted it while we were building
 			const WhitelistMetadata *cached_metadata_retry = whitelist_metadata_cache.getptr(whitelist_hash);
 			if (cached_metadata_retry) {
-				metadata = const_cast<WhitelistMetadata *>(cached_metadata_retry);
+				// Another thread inserted it, use that
+				metadata_copy = *cached_metadata_retry;
 			} else {
 				// LRUCache.insert() automatically evicts least recently used entry if at capacity
-				const LRUCache<uint64_t, WhitelistMetadata>::Pair *pair = whitelist_metadata_cache.insert(whitelist_hash, new_metadata);
-				metadata = const_cast<WhitelistMetadata *>(&pair->data);
+				whitelist_metadata_cache.insert(whitelist_hash, new_metadata);
+				// Copy the metadata we just built before unlocking
+				metadata_copy = new_metadata;
 			}
 		}
 	}
 
 	// Check for exact match using cached normalized paths
-	if (metadata->normalized_paths.has(normalized_path)) {
+	if (metadata_copy.normalized_paths.has(normalized_path)) {
 		return true;
 	}
 
 	// Check for prefix match (directory whitelisting) - only iterate folder paths
 	// This allows whitelisting directories like "res://textures/" to match "res://textures/icon.png"
-	for (int i = 0; i < metadata->folder_paths.size(); i++) {
-		if (normalized_path.begins_with(metadata->folder_paths[i])) {
+	for (int i = 0; i < metadata_copy.folder_paths.size(); i++) {
+		if (normalized_path.begins_with(metadata_copy.folder_paths[i])) {
 			return true;
 		}
 	}
