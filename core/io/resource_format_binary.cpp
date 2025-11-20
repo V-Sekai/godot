@@ -790,7 +790,8 @@ Error ResourceLoaderBinary::load() {
 				//did not replace
 
 				Object *obj = nullptr;
-				if (!using_whitelist || type_whitelist.has(t)) {
+				// Empty type whitelist allows all types (backward compatibility)
+				if (!using_whitelist || type_whitelist.is_empty() || type_whitelist.has(t)) {
 					obj = ClassDB::instantiate(t);
 				}
 				if (!obj) {

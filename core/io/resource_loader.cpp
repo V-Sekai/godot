@@ -1403,6 +1403,20 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 		}
 	}
 
+	// Also check file paths as potential directory prefixes
+	// This handles cases where get_base_dir() returns a path without trailing slash
+	// e.g., "textures" should match "textures/icon.png"
+	for (int i = 0; i < metadata.file_paths.size(); i++) {
+		const String &file_path = metadata.file_paths[i];
+		// Check if normalized_path begins with file_path followed by '/'
+		// This indicates file_path is a directory prefix
+		if (normalized_path.length() > file_path.length() &&
+				normalized_path.begins_with(file_path) &&
+				normalized_path[file_path.length()] == '/') {
+			return true;
+		}
+	}
+
 	return false;
 }
 
