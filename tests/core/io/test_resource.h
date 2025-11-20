@@ -1185,9 +1185,11 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Binary and text formats") {
 	CHECK_MESSAGE(
 			loaded_binary.is_valid(),
 			"load_whitelisted should return valid resource from binary format.");
-	CHECK_MESSAGE(
-			loaded_binary->get_name() == "BinaryFormatTest",
-			"The loaded resource name should match the saved resource name for binary format.");
+	if (loaded_binary.is_valid()) {
+		CHECK_MESSAGE(
+				loaded_binary->get_name() == "BinaryFormatTest",
+				"The loaded resource name should match the saved resource name for binary format.");
+	}
 
 	// Test text format
 	Error error_text = OK;
@@ -1199,9 +1201,11 @@ TEST_CASE("[ResourceLoader] load_whitelisted - Binary and text formats") {
 	CHECK_MESSAGE(
 			loaded_text.is_valid(),
 			"load_whitelisted should return valid resource from text format.");
-	CHECK_MESSAGE(
-			loaded_text->get_name() == "TextFormatTest",
-			"The loaded resource name should match the saved resource name for text format.");
+	if (loaded_text.is_valid()) {
+		CHECK_MESSAGE(
+				loaded_text->get_name() == "TextFormatTest",
+				"The loaded resource name should match the saved resource name for text format.");
+	}
 }
 
 TEST_CASE("[ResourceLoader] load_whitelisted - Error code consistency") {
