@@ -626,7 +626,6 @@ Ref<Resource> ResourceLoader::load(const String &p_path, const String &p_type_hi
 		}
 	}
 
-
 	LoadThreadMode thread_mode = LOAD_THREAD_FROM_CURRENT;
 	if (WorkerThreadPool::get_singleton()->get_caller_task_id() != WorkerThreadPool::INVALID_TASK_ID) {
 		// If user is initiating a single-threaded load from a WorkerThreadPool task,
@@ -1352,7 +1351,7 @@ ResourceLoader::WhitelistMetadata ResourceLoader::WhitelistMetadata::build(const
 
 		String whitelist_key = key;
 		String normalized_key = whitelist_key.simplify_path();
-		
+
 		// Store normalized path for fast lookup
 		metadata.normalized_paths.insert(normalized_key);
 
@@ -1385,52 +1384,21 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 	// before comparison, preventing them from matching "res://textures/"
 	String normalized_path = p_path.simplify_path();
 
-	// Get or build cached metadata for this whitelist
-	// LRUCache is not thread-safe, so we need to protect access with the existing mutex
-	// CRITICAL: We must copy the metadata before unlocking the mutex, as the pointer
-	// points to data inside the LRUCache which can be evicted by other threads.
-	uint64_t whitelist_hash = p_whitelist.hash();
-	
-	WhitelistMetadata metadata_copy;
-	{
-		MutexLock thread_load_lock(thread_load_mutex);
-		const WhitelistMetadata *cached_metadata = whitelist_metadata_cache.getptr(whitelist_hash);
-		if (cached_metadata) {
-			// Cache hit - copy metadata before unlocking
-			metadata_copy = *cached_metadata;
-		} else {
-			// Cache miss - build and cache metadata
-			// Release lock while building metadata (expensive operation)
-			thread_load_lock.temp_unlock();
-			WhitelistMetadata new_metadata = WhitelistMetadata::build(p_whitelist);
-			if (!new_metadata.is_valid) {
-				return false; // Invalid whitelist structure
-			}
-			// Re-acquire lock for cache insertion
-			thread_load_lock.temp_relock();
-			// Check again in case another thread inserted it while we were building
-			const WhitelistMetadata *cached_metadata_retry = whitelist_metadata_cache.getptr(whitelist_hash);
-			if (cached_metadata_retry) {
-				// Another thread inserted it, use that
-				metadata_copy = *cached_metadata_retry;
-			} else {
-				// LRUCache.insert() automatically evicts least recently used entry if at capacity
-				whitelist_metadata_cache.insert(whitelist_hash, new_metadata);
-				// Copy the metadata we just built before unlocking
-				metadata_copy = new_metadata;
-			}
-		}
+	// Build metadata directly - no caching to avoid thread safety issues
+	WhitelistMetadata metadata = WhitelistMetadata::build(p_whitelist);
+	if (!metadata.is_valid) {
+		return false; // Invalid whitelist structure
 	}
 
-	// Check for exact match using cached normalized paths
-	if (metadata_copy.normalized_paths.has(normalized_path)) {
+	// Check for exact match using normalized paths
+	if (metadata.normalized_paths.has(normalized_path)) {
 		return true;
 	}
 
 	// Check for prefix match (directory whitelisting) - only iterate folder paths
 	// This allows whitelisting directories like "res://textures/" to match "res://textures/icon.png"
-	for (int i = 0; i < metadata_copy.folder_paths.size(); i++) {
-		if (normalized_path.begins_with(metadata_copy.folder_paths[i])) {
+	for (int i = 0; i < metadata.folder_paths.size(); i++) {
+		if (normalized_path.begins_with(metadata.folder_paths[i])) {
 			return true;
 		}
 	}
@@ -1787,16 +1755,7 @@ bool ResourceLoader::cleaning_tasks = false;
 
 HashMap<String, ResourceLoader::LoadToken *> ResourceLoader::user_load_tokens;
 HashMap<String, ResourceLoader::WhitelistContext> ResourceLoader::resource_whitelist_context;
-LRUCache<uint64_t, ResourceLoader::WhitelistMetadata> ResourceLoader::whitelist_metadata_cache(256); // Default: 256 entries (~4MB for typical whitelists)
 const Dictionary ResourceLoader::EMPTY_DICTIONARY;
-
-void ResourceLoader::set_whitelist_cache_capacity(size_t p_capacity) {
-	whitelist_metadata_cache.set_capacity(p_capacity);
-}
-
-size_t ResourceLoader::get_whitelist_cache_capacity() {
-	return whitelist_metadata_cache.get_capacity();
-}
 
 SelfList<Resource>::List ResourceLoader::remapped_list;
 HashMap<String, Vector<String>> ResourceLoader::translation_remaps;

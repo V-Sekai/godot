@@ -682,22 +682,22 @@ Error ResourceLoaderText::load() {
 					if (set_valid) {
 						res->set(assign, value);
 					}
-			}
-			//it's assignment
-		} else if (!next_tag.name.is_empty()) {
-			if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
-				error = ERR_FILE_MISSING_DEPENDENCIES;
-				resource = Ref<Resource>(); // Clear resource before returning error
+				}
+				//it's assignment
+			} else if (!next_tag.name.is_empty()) {
+				if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+					error = ERR_FILE_MISSING_DEPENDENCIES;
+					resource = Ref<Resource>(); // Clear resource before returning error
+					return error;
+				}
+				error = OK;
+				break;
+			} else {
+				error = ERR_FILE_CORRUPT;
+				error_text = "Premature end of file while parsing [sub_resource]";
+				_printerr();
 				return error;
 			}
-			error = OK;
-			break;
-		} else {
-			error = ERR_FILE_CORRUPT;
-			error_text = "Premature end of file while parsing [sub_resource]";
-			_printerr();
-			return error;
-		}
 		}
 
 		if (missing_resource) {

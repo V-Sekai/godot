@@ -35,7 +35,6 @@
 #include "core/object/worker_thread_pool.h"
 #include "core/os/thread.h"
 #include "core/templates/hash_map.h"
-#include "core/templates/lru.h"
 #include "core/templates/vector.h"
 
 namespace CoreBind {
@@ -234,7 +233,7 @@ private:
 	};
 	static HashMap<String, WhitelistContext> resource_whitelist_context;
 
-	// Cached metadata for whitelist dictionaries to avoid repeated validation and iteration
+	// Metadata for whitelist dictionaries used for path validation
 	struct WhitelistMetadata {
 		bool is_valid = false;
 		Vector<String> folder_paths; // Paths ending with '/' for prefix matching
@@ -244,16 +243,6 @@ private:
 		// Build metadata from a dictionary, validating structure and separating paths
 		static WhitelistMetadata build(const Dictionary &p_whitelist);
 	};
-
-	// Cache for whitelist metadata keyed by dictionary hash
-	// Uses LRU cache to prevent unbounded growth in long-running sessions (e.g., MMOGs)
-	// Default capacity: 256 entries (~4MB for typical whitelists)
-	// NOTE: Not thread-safe - requires external synchronization (protected by thread_load_mutex)
-	static LRUCache<uint64_t, WhitelistMetadata> whitelist_metadata_cache;
-	
-	// Get/set cache capacity for whitelist metadata
-	static void set_whitelist_cache_capacity(size_t p_capacity);
-	static size_t get_whitelist_cache_capacity();
 
 	// Static empty dictionary constant to avoid repeated allocations
 	static const Dictionary EMPTY_DICTIONARY;
