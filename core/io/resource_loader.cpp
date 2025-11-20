@@ -651,8 +651,12 @@ Ref<Resource> ResourceLoader::load_whitelisted(const String &p_path, Dictionary 
 		*r_error = OK;
 	}
 
+	// Normalize the path the same way _load_start does, so whitelist check matches actual file loading
+	String local_path = _validate_local_path(p_path);
+	ERR_FAIL_COND_V_MSG(local_path.is_empty(), Ref<Resource>(), "Invalid path for load_whitelisted");
+
 	// Validate main resource path against whitelist if whitelist is provided
-	if (!p_external_path_whitelist.is_empty() && !_is_path_whitelisted(p_path, p_external_path_whitelist)) {
+	if (!p_external_path_whitelist.is_empty() && !_is_path_whitelisted(local_path, p_external_path_whitelist)) {
 		if (r_error) {
 			*r_error = ERR_FILE_MISSING_DEPENDENCIES;
 		}
@@ -1350,7 +1354,13 @@ ResourceLoader::WhitelistMetadata ResourceLoader::WhitelistMetadata::build(const
 		}
 
 		String whitelist_key = key;
-		String normalized_key = whitelist_key.simplify_path();
+		// Normalize whitelist key using the same method as path validation for consistency
+		String validated_key = _validate_local_path(whitelist_key);
+		if (validated_key.is_empty()) {
+			// Invalid key, skip it
+			continue;
+		}
+		String normalized_key = validated_key.simplify_path();
 
 		// Store normalized path for fast lookup
 		metadata.normalized_paths.insert(normalized_key);
@@ -1379,10 +1389,14 @@ bool ResourceLoader::_is_path_whitelisted(const String &p_path, const Dictionary
 		return false;
 	}
 
-	// Normalize the input path to prevent path traversal attacks
+	// Normalize the input path using the same method as _load_start to ensure consistency
 	// This ensures paths like "res://textures/../secret/file.png" are properly normalized
 	// before comparison, preventing them from matching "res://textures/"
-	String normalized_path = p_path.simplify_path();
+	String normalized_path = _validate_local_path(p_path);
+	if (normalized_path.is_empty()) {
+		return false;
+	}
+	normalized_path = normalized_path.simplify_path();
 
 	// Build metadata directly - no caching to avoid thread safety issues
 	WhitelistMetadata metadata = WhitelistMetadata::build(p_whitelist);
