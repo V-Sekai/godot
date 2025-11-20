@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef TEST_RESOURCE_LOADER_ERROR_HANDLING_H
-#define TEST_RESOURCE_LOADER_ERROR_HANDLING_H
+#pragma once
 
 #include "tests/test_macros.h"
 
@@ -65,8 +64,4 @@ TEST_CASE("[ResourceLoader] Resource with missing dependencies should return nul
 	}
 }
 
-
 } // namespace TestResourceLoaderErrorHandling
-
-#endif // TEST_RESOURCE_LOADER_ERROR_HANDLING_H
-

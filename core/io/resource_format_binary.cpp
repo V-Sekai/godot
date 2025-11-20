@@ -1275,7 +1275,6 @@ Ref<Resource> ResourceFormatLoaderBinary::load(const String &p_path, const Strin
 	return loader.resource;
 }
 
-
 void ResourceFormatLoaderBinary::get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const {
 	if (p_type.is_empty()) {
 		get_recognized_extensions(p_extensions);

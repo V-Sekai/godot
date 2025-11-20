@@ -1279,7 +1279,6 @@ bool ResourceLoader::should_create_uid_file(const String &p_path) {
 	return false;
 }
 
-
 String ResourceLoader::_path_remap(const String &p_path, bool *r_translation_remapped) {
 	String new_path = p_path;
 

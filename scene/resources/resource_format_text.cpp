@@ -671,22 +671,22 @@ Error ResourceLoaderText::load() {
 					if (set_valid) {
 						res->set(assign, value);
 					}
-			}
-			//it's assignment
-		} else if (!next_tag.name.is_empty()) {
-			if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
-				error = ERR_FILE_MISSING_DEPENDENCIES;
-				resource = Ref<Resource>(); // Clear resource before returning error
+				}
+				//it's assignment
+			} else if (!next_tag.name.is_empty()) {
+				if (has_missing_dependencies || error == ERR_FILE_MISSING_DEPENDENCIES) {
+					error = ERR_FILE_MISSING_DEPENDENCIES;
+					resource = Ref<Resource>(); // Clear resource before returning error
+					return error;
+				}
+				error = OK;
+				break;
+			} else {
+				error = ERR_FILE_CORRUPT;
+				error_text = "Premature end of file while parsing [sub_resource]";
+				_printerr();
 				return error;
 			}
-			error = OK;
-			break;
-		} else {
-			error = ERR_FILE_CORRUPT;
-			error_text = "Premature end of file while parsing [sub_resource]";
-			_printerr();
-			return error;
-		}
 		}
 
 		if (missing_resource) {
@@ -1469,7 +1469,6 @@ Ref<Resource> ResourceFormatLoaderText::load(const String &p_path, const String 
 		return Ref<Resource>();
 	}
 }
-
 
 void ResourceFormatLoaderText::get_recognized_extensions_for_type(const String &p_type, List<String> *p_extensions) const {
 	if (p_type.is_empty()) {
