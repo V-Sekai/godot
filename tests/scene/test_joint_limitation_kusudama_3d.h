@@ -748,24 +748,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test orientationally unconstrained
 	CHECK(result.is_equal_approx(test_point));
 }
 
-TEST_CASE("[Scene][JointLimitationKusudama3D] Test axial limits getters and setters") {
-	Ref<JointLimitationKusudama3D> limitation;
-	limitation.instantiate();
-
-	real_t min_angle = Math::deg_to_rad(-45.0f);
-	real_t range_angle = Math::deg_to_rad(90.0f);
-
-	limitation->set_axial_limits(min_angle, range_angle);
-	CHECK(Math::is_equal_approx(limitation->get_min_axial_angle(), min_angle));
-	CHECK(Math::is_equal_approx(limitation->get_range_angle(), range_angle));
-
-	limitation->set_axially_constrained(true);
-	CHECK(limitation->is_axially_constrained() == true);
-
-	limitation->set_axially_constrained(false);
-	CHECK(limitation->is_axially_constrained() == false);
-}
-
 TEST_CASE("[Scene][JointLimitationKusudama3D] Test cones getters and setters") {
 	Ref<JointLimitationKusudama3D> limitation;
 	limitation.instantiate();
@@ -971,94 +953,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test individual cone property sett
 	CHECK(quat_matches2);
 }
 
-TEST_CASE("[Scene][JointLimitationKusudama3D] Test twist constraints - axially constrained disabled") {
-	Ref<JointLimitationKusudama3D> limitation;
-	limitation.instantiate();
-
-	Vector3 control_point = Vector3(0, 0, 1).normalized();
-	real_t radius = Math::deg_to_rad(30.0f);
-	Vector<Vector4> cones;
-	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
-
-	limitation->set_axially_constrained(false);
-	limitation->set_min_axial_angle(Math::deg_to_rad(-45.0f));
-	limitation->set_range_angle(Math::deg_to_rad(90.0f));
-
-	// With axially_constrained = false, rotation should pass through unchanged
-	Vector3 test_dir = Vector3(1, 0, 0).normalized();
-	Quaternion test_rot = Quaternion(Vector3(0, 0, 1), Math::deg_to_rad(60.0f));
-	Quaternion constrained_rot;
-
-	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_dir, test_rot, &constrained_rot);
-	(void)result; // Result is used for side effects (calling solve)
-
-	// Rotation should be unchanged when axially_constrained is false
-	CHECK(constrained_rot.is_equal_approx(test_rot));
-}
-
-TEST_CASE("[Scene][JointLimitationKusudama3D] Test twist constraints - axially constrained enabled") {
-	Ref<JointLimitationKusudama3D> limitation;
-	limitation.instantiate();
-
-	Vector3 control_point = Vector3(0, 0, 1).normalized();
-	real_t radius = Math::deg_to_rad(30.0f);
-	Vector<Vector4> cones;
-	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
-
-	limitation->set_axially_constrained(true);
-	limitation->set_min_axial_angle(Math::deg_to_rad(0.0f));
-	limitation->set_range_angle(Math::deg_to_rad(90.0f)); // Allow 0-90 degrees
-
-	// Test rotation within range
-	Quaternion rot_within = Quaternion(Vector3(0, 0, 1), Math::deg_to_rad(45.0f));
-	Quaternion constrained_rot;
-	Vector3 test_dir = Vector3(1, 0, 0).normalized();
-
-	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_dir, rot_within, &constrained_rot);
-
-	// Rotation within range should be allowed (or clamped to range)
-	CHECK(constrained_rot.is_finite());
-	CHECK(constrained_rot.is_normalized());
-
-	// Test rotation outside range
-	Quaternion rot_outside = Quaternion(Vector3(0, 0, 1), Math::deg_to_rad(120.0f)); // Outside 0-90 range
-	Quaternion constrained_rot2;
-
-	result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_dir, rot_outside, &constrained_rot2);
-
-	// Should be constrained to the allowed range
-	CHECK(constrained_rot2.is_finite());
-	CHECK(constrained_rot2.is_normalized());
-}
-
-TEST_CASE("[Scene][JointLimitationKusudama3D] Test twist constraints - wrapping range") {
-	Ref<JointLimitationKusudama3D> limitation;
-	limitation.instantiate();
-
-	Vector3 control_point = Vector3(0, 0, 1).normalized();
-	real_t radius = Math::deg_to_rad(30.0f);
-	Vector<Vector4> cones;
-	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
-
-	limitation->set_axially_constrained(true);
-	// Set range that wraps around (e.g., 300-60 degrees = -60 to 60)
-	limitation->set_min_axial_angle(Math::deg_to_rad(300.0f));
-	limitation->set_range_angle(Math::deg_to_rad(120.0f)); // Wraps from 300 to 60 degrees
-
-	Quaternion test_rot = Quaternion(Vector3(0, 0, 1), Math::deg_to_rad(350.0f));
-	Quaternion constrained_rot;
-	Vector3 test_dir = Vector3(1, 0, 0).normalized();
-
-	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_dir, test_rot, &constrained_rot);
-	(void)result; // Result is used for side effects (calling solve)
-
-	CHECK(constrained_rot.is_finite());
-	CHECK(constrained_rot.is_normalized());
-}
-
 TEST_CASE("[Scene][JointLimitationKusudama3D] Test point exactly on cone boundary") {
 	Ref<JointLimitationKusudama3D> limitation;
 	limitation.instantiate();
@@ -1090,9 +984,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test default cone configuration") 
 	// Check default values
 	CHECK(limitation->get_cone_count() == 1);
 	CHECK(limitation->is_orientationally_constrained() == true);
-	CHECK(limitation->is_axially_constrained() == false);
-	CHECK(Math::is_equal_approx(limitation->get_min_axial_angle(), (real_t)0.0));
-	CHECK(Math::is_equal_approx(limitation->get_range_angle(), (real_t)Math::TAU));
 
 	// Default cone should be +Y axis with 45 degree radius
 	Vector3 default_center = limitation->get_cone_center(0);
@@ -1191,26 +1082,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test solve without rotation parame
 	CHECK(result.length() > 0.9f);
 }
 
-TEST_CASE("[Scene][JointLimitationKusudama3D] Test solve with null rotation output") {
-	Ref<JointLimitationKusudama3D> limitation;
-	limitation.instantiate();
-
-	Vector3 control_point = Vector3(0, 0, 1).normalized();
-	real_t radius = Math::deg_to_rad(30.0f);
-	Vector<Vector4> cones;
-	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
-
-	// Test solve with rotation but null output pointer (should not crash)
-	Vector3 test_dir = Vector3(1, 0, 0).normalized();
-	Quaternion test_rot = Quaternion(Vector3(0, 0, 1), Math::deg_to_rad(45.0f));
-
-	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_dir, test_rot, nullptr);
-
-	CHECK(result.is_finite());
-	CHECK(result.length() > 0.9f);
-}
-
 TEST_CASE("[Scene][JointLimitationKusudama3D] Test orientationally constrained with empty cones") {
 	Ref<JointLimitationKusudama3D> limitation;
 	limitation.instantiate();
@@ -1222,59 +1093,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test orientationally constrained w
 	Vector3 test_point = Vector3(1, 0, 0).normalized();
 	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_point);
 	CHECK(result.is_equal_approx(test_point));
-}
-
-TEST_CASE("[Scene][JointLimitationKusudama3D] Test axial limits with full range") {
-	Ref<JointLimitationKusudama3D> limitation;
-	limitation.instantiate();
-
-	limitation->set_axially_constrained(true);
-	limitation->set_min_axial_angle(0.0f);
-	limitation->set_range_angle(Math::TAU); // Full 360 degrees
-
-	// With full range, any rotation should be allowed
-	Vector3 control_point = Vector3(0, 0, 1).normalized();
-	real_t radius = Math::deg_to_rad(30.0f);
-	Vector<Vector4> cones;
-	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
-
-	Quaternion test_rot = Quaternion(Vector3(0, 0, 1), Math::deg_to_rad(180.0f));
-	Quaternion constrained_rot;
-	Vector3 test_dir = Vector3(1, 0, 0).normalized();
-
-	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_dir, test_rot, &constrained_rot);
-	(void)result; // Result is used for side effects (calling solve)
-
-	// With full range, rotation should pass through (or be very close)
-	CHECK(constrained_rot.is_finite());
-	CHECK(constrained_rot.is_normalized());
-}
-
-TEST_CASE("[Scene][JointLimitationKusudama3D] Test axial limits with zero range") {
-	Ref<JointLimitationKusudama3D> limitation;
-	limitation.instantiate();
-
-	limitation->set_axially_constrained(true);
-	limitation->set_min_axial_angle(Math::deg_to_rad(45.0f));
-	limitation->set_range_angle(0.0f); // Zero range - only one angle allowed
-
-	Vector3 control_point = Vector3(0, 0, 1).normalized();
-	real_t radius = Math::deg_to_rad(30.0f);
-	Vector<Vector4> cones;
-	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
-
-	Quaternion test_rot = Quaternion(Vector3(0, 0, 1), Math::deg_to_rad(60.0f));
-	Quaternion constrained_rot;
-	Vector3 test_dir = Vector3(1, 0, 0).normalized();
-
-	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_dir, test_rot, &constrained_rot);
-	(void)result; // Result is used for side effects (calling solve)
-
-	// Should be constrained to the single allowed angle
-	CHECK(constrained_rot.is_finite());
-	CHECK(constrained_rot.is_normalized());
 }
 
 TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - point in allowed region") {
