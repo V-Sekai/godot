@@ -126,25 +126,15 @@ public:
 		}
 
 		// Get limited rotation from forward axis in local rest space.
-		// Automatically applies twist constraints if limitation supports them
-		Vector3 get_limited_rotation(const Quaternion &p_offset, const Vector3 &p_vector, const Vector3 &p_forward, const Quaternion &p_rotation = Quaternion(), Quaternion *r_constrained_rotation = nullptr) const {
+		// Applies orientation constraints (swing limits) only - twist constraints have been removed
+		Vector3 get_limited_rotation(const Quaternion &p_offset, const Vector3 &p_vector, const Vector3 &p_forward) const {
 			ERR_FAIL_COND_V(limitation.is_null(), p_vector);
 			Vector3 local_vector = p_offset.xform_inv(p_vector);
 			float length = local_vector.length();
 			if (Math::is_zero_approx(length)) {
-				if (r_constrained_rotation) {
-					*r_constrained_rotation = p_rotation;
-				}
 				return p_vector;
 			}
-
-			// Use solve with optional rotation (applies twist constraints if limitation supports them)
-			Quaternion constrained_rot;
-			Quaternion *rot_ptr = (r_constrained_rotation && p_rotation != Quaternion()) ? &constrained_rot : nullptr;
-			Vector3 limited = limitation->solve(p_forward, get_limitation_right_axis_vector(), limitation_rotation_offset, local_vector.normalized(), p_rotation, rot_ptr) * length;
-			if (r_constrained_rotation && rot_ptr) {
-				*r_constrained_rotation = constrained_rot;
-			}
+			Vector3 limited = limitation->solve(p_forward, get_limitation_right_axis_vector(), limitation_rotation_offset, local_vector.normalized()) * length;
 			return p_offset.xform(limited);
 		}
 
@@ -217,11 +207,10 @@ public:
 				if (!Math::is_zero_approx(diff)) {
 					solver_info->current_lpose = prev.slerp(solver_info->current_lpose, MIN(1.0, p_angular_delta_limit / diff));
 				}
-				// Apply twist constraints via solve overload
+				// Apply orientation constraints (swing limits only, twist constraints have been removed)
 				if (joint_settings[HEAD]->limitation.is_valid()) {
-					Quaternion constrained_rot;
-					(void)joint_settings[HEAD]->get_limited_rotation(solver_info->current_grest, solver_info->current_vector, solver_info->forward_vector, solver_info->current_lpose, &constrained_rot);
-					solver_info->current_lpose = constrained_rot.normalized();
+					// Direction constraint only - rotation is not constrained
+					(void)joint_settings[HEAD]->get_limited_rotation(solver_info->current_grest, solver_info->current_vector, solver_info->forward_vector);
 				}
 				solver_info->current_gpose = parent_gpose * solver_info->current_lpose;
 				solver_info->current_gpose.normalize();

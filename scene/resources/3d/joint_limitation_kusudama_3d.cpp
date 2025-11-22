@@ -34,22 +34,13 @@
 
 #ifdef TOOLS_ENABLED
 #include "editor/scene/3d/kusudama_shader.h"
-#include "scene/resources/surface_tool.h"
 #include "scene/resources/material.h"
+#include "scene/resources/surface_tool.h"
 #endif // TOOLS_ENABLED
 
 void JointLimitationKusudama3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_cones", "cones"), &JointLimitationKusudama3D::set_cones);
 	ClassDB::bind_method(D_METHOD("get_cones"), &JointLimitationKusudama3D::get_cones);
-
-	ClassDB::bind_method(D_METHOD("set_axial_limits", "min_angle", "range_angle"), &JointLimitationKusudama3D::set_axial_limits);
-	ClassDB::bind_method(D_METHOD("set_min_axial_angle", "angle"), &JointLimitationKusudama3D::set_min_axial_angle);
-	ClassDB::bind_method(D_METHOD("get_min_axial_angle"), &JointLimitationKusudama3D::get_min_axial_angle);
-	ClassDB::bind_method(D_METHOD("set_range_angle", "angle"), &JointLimitationKusudama3D::set_range_angle);
-	ClassDB::bind_method(D_METHOD("get_range_angle"), &JointLimitationKusudama3D::get_range_angle);
-
-	ClassDB::bind_method(D_METHOD("set_axially_constrained", "constrained"), &JointLimitationKusudama3D::set_axially_constrained);
-	ClassDB::bind_method(D_METHOD("is_axially_constrained"), &JointLimitationKusudama3D::is_axially_constrained);
 
 	ClassDB::bind_method(D_METHOD("set_orientationally_constrained", "constrained"), &JointLimitationKusudama3D::set_orientationally_constrained);
 	ClassDB::bind_method(D_METHOD("is_orientationally_constrained"), &JointLimitationKusudama3D::is_orientationally_constrained);
@@ -62,9 +53,6 @@ void JointLimitationKusudama3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_cone_radius", "index"), &JointLimitationKusudama3D::get_cone_radius);
 
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "cones", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_cones", "get_cones");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "min_axial_angle", PROPERTY_HINT_RANGE, "-360,360,0.1,radians_as_degrees"), "set_min_axial_angle", "get_min_axial_angle");
-	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "range_angle", PROPERTY_HINT_RANGE, "0,360,0.1,radians_as_degrees"), "set_range_angle", "get_range_angle");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "axially_constrained"), "set_axially_constrained", "is_axially_constrained");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "orientationally_constrained"), "set_orientationally_constrained", "is_orientationally_constrained");
 }
 
@@ -72,7 +60,7 @@ void JointLimitationKusudama3D::_bind_methods() {
 static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p_control_point, real_t p_radius) {
 	Vector3 normalized_input = p_input.normalized();
 	Vector3 normalized_control = p_control_point.normalized();
-	
+
 	// For zero radius, return the control point exactly (or NaN if input is the control point)
 	if (p_radius < CMP_EPSILON) {
 		real_t input_dot_control = normalized_input.dot(normalized_control);
@@ -83,7 +71,7 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 		// Input is not the control point - return control point as boundary
 		return normalized_control;
 	}
-	
+
 	real_t radius_cosine = Math::cos(p_radius);
 	real_t input_dot_control = normalized_input.dot(normalized_control);
 
@@ -100,12 +88,12 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 	// Find the closest point on the cone boundary to the input point
 	// The boundary is a circle on the unit sphere at angle p_radius from the control point
 	// We need to find the point on this circle that is closest to the input point
-	
+
 	// Project the input point onto the plane perpendicular to the control point
 	// Then normalize to the cone radius distance
 	Vector3 projection = normalized_input - normalized_control * input_dot_control;
 	real_t projection_length = projection.length();
-	
+
 	if (projection_length < CMP_EPSILON) {
 		// Input is opposite to control point - use any perpendicular
 		projection = normalized_control.get_any_perpendicular();
@@ -115,7 +103,7 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 		projection_length = projection.length();
 	}
 	projection.normalize();
-	
+
 	// Calculate boundary point slightly inside the cone to ensure it passes the "inside" check
 	// This "snaps" the point to be guaranteed inside the allowed region
 	// Use a small adjustment (1e-4 radians ≈ 0.0057 degrees) to move slightly inside the boundary
@@ -593,39 +581,6 @@ void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) c
 	}
 }
 
-void JointLimitationKusudama3D::set_axial_limits(real_t p_min_angle, real_t p_range_angle) {
-	min_axial_angle = p_min_angle;
-	range_angle = p_range_angle;
-	emit_changed();
-}
-
-void JointLimitationKusudama3D::set_min_axial_angle(real_t p_angle) {
-	min_axial_angle = p_angle;
-	emit_changed();
-}
-
-real_t JointLimitationKusudama3D::get_min_axial_angle() const {
-	return min_axial_angle;
-}
-
-void JointLimitationKusudama3D::set_range_angle(real_t p_angle) {
-	range_angle = p_angle;
-	emit_changed();
-}
-
-real_t JointLimitationKusudama3D::get_range_angle() const {
-	return range_angle;
-}
-
-void JointLimitationKusudama3D::set_axially_constrained(bool p_constrained) {
-	axially_constrained = p_constrained;
-	emit_changed();
-}
-
-bool JointLimitationKusudama3D::is_axially_constrained() const {
-	return axially_constrained;
-}
-
 void JointLimitationKusudama3D::set_orientationally_constrained(bool p_constrained) {
 	orientationally_constrained = p_constrained;
 	emit_changed();
@@ -635,296 +590,18 @@ bool JointLimitationKusudama3D::is_orientationally_constrained() const {
 	return orientationally_constrained;
 }
 
-Vector3 JointLimitationKusudama3D::solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector, const Quaternion &p_rotation, Quaternion *r_constrained_rotation) const {
-	// First solve direction constraint using base implementation
-	Vector3 constrained_dir = JointLimitation3D::solve(p_local_forward_vector, p_local_right_vector, p_rotation_offset, p_local_current_vector, p_rotation, r_constrained_rotation);
-
-	// Apply twist constraints if enabled and output requested
-	if (!r_constrained_rotation || !axially_constrained || range_angle >= Math::TAU) {
-		return constrained_dir;
-	}
-
-	// Use make_space to transform rotation into constraint space
-	// In constraint space, Y is forward (twist axis), X is right, Z is up
-	Quaternion space = make_space(p_local_forward_vector, p_local_right_vector, p_rotation_offset);
-	Quaternion rot = p_rotation.normalized();
-
-	// Transform rotation into constraint space
-	Quaternion constraint_space_rot = space.inverse() * rot * space;
-	constraint_space_rot.normalize();
-
-	// In constraint space, twist axis is Y (0, 1, 0)
-	Vector3 twist_axis = Vector3(0, 1, 0);
-
-	// Simple swing-twist decomposition in constraint space
-	const Vector3 v(constraint_space_rot.x, constraint_space_rot.y, constraint_space_rot.z);
-	const real_t proj_len = v.dot(twist_axis);
-	const Vector3 twist_vec = twist_axis * proj_len;
-	Quaternion twist(twist_vec.x, twist_vec.y, twist_vec.z, constraint_space_rot.w);
-
-	if (!twist.is_normalized()) {
-		if (Math::is_zero_approx(twist.length_squared())) {
-			// No twist component, return as-is
-			*r_constrained_rotation = p_rotation;
-			return constrained_dir;
-		}
-		twist.normalize();
-	}
-
-	// Calculate swing as remaining rotation
-	Quaternion swing = constraint_space_rot * twist.inverse();
-	swing.normalize();
-
-	// Use clamp_to_cos_half_angle approach similar to IKKusudama3D
-	real_t normalized_min = Math::fposmod(min_axial_angle, (real_t)Math::TAU);
-	real_t center_angle = normalized_min + range_angle * 0.5;
-	real_t half_range = range_angle * 0.5;
-	real_t twist_half_range_half_cos = Math::cos(half_range * 0.5);
-
-	// Compute twist angle from the twist quaternion
-	real_t twist_angle = 2.0 * Math::acos(CLAMP(Math::abs(twist.w), 0.0, 1.0));
-
-	// Determine twist direction
-	Vector3 twist_axis_from_quat = Vector3(twist.x, twist.y, twist.z);
-	if (twist_axis_from_quat.length_squared() > CMP_EPSILON) {
-		twist_axis_from_quat.normalize();
-		if (twist_axis_from_quat.dot(twist_axis) < 0) {
-			twist_angle = -twist_angle;
-		}
-	}
-
-	// Normalize twist angle relative to center
-	real_t twist_relative_to_center = Math::fposmod((real_t)(twist_angle - center_angle + Math::PI), (real_t)Math::TAU) - (real_t)Math::PI;
-
-	// Clamp twist using cos(half_angle) method
-	Quaternion twist_relative = Quaternion(twist_axis, twist_relative_to_center).normalized();
-
-	Quaternion clamped_twist_relative = twist_relative;
-	if (clamped_twist_relative.w < 0.0) {
-		clamped_twist_relative = clamped_twist_relative * -1;
-	}
-	real_t previous_coefficient = (1.0 - (clamped_twist_relative.w * clamped_twist_relative.w));
-	if (twist_half_range_half_cos > clamped_twist_relative.w && previous_coefficient > CMP_EPSILON) {
-		real_t composite_coefficient = Math::sqrt((1.0 - (twist_half_range_half_cos * twist_half_range_half_cos)) / previous_coefficient);
-		clamped_twist_relative.w = twist_half_range_half_cos;
-		clamped_twist_relative.x *= composite_coefficient;
-		clamped_twist_relative.y *= composite_coefficient;
-		clamped_twist_relative.z *= composite_coefficient;
-	}
-	clamped_twist_relative.normalize();
-
-	// Convert back to absolute twist
-	Quaternion center_twist = Quaternion(twist_axis, center_angle).normalized();
-	Quaternion clamped_twist = center_twist * clamped_twist_relative;
-	clamped_twist.normalize();
-
-	// Recompose rotation in constraint space: swing * clamped_twist
-	Quaternion constrained_rot = swing * clamped_twist;
-	constrained_rot.normalize();
-
-	// Transform back from constraint space to original space
-	*r_constrained_rotation = space * constrained_rot * space.inverse();
-	r_constrained_rotation->normalize();
-
-	return constrained_dir;
-}
-
 #ifdef TOOLS_ENABLED
 
-// Helper function to draw an arc along a circle on the sphere between two points
-// The circle is defined by its center (axis) and the points lie on the circle
-static void draw_arc_between_points(LocalVector<Vector3> &r_vertices, const Vector3 &p_start, const Vector3 &p_end, const Vector3 &p_circle_center, real_t p_sphere_r, int p_segments = 32) {
-	// Normalize inputs
-	Vector3 start = p_start.normalized();
-	Vector3 end = p_end.normalized();
-	Vector3 circle_center = p_circle_center.normalized();
-
-	// Project start and end onto the plane perpendicular to circle center
-	Vector3 start_proj = (start - circle_center * start.dot(circle_center));
-	Vector3 end_proj = (end - circle_center * end.dot(circle_center));
-	
-	real_t start_proj_len = start_proj.length();
-	real_t end_proj_len = end_proj.length();
-	
-	if (start_proj_len < CMP_EPSILON || end_proj_len < CMP_EPSILON) {
-		// Points are aligned with circle center, can't draw arc
-		return;
-	}
-
-	start_proj.normalize();
-	end_proj.normalize();
-
-	// Find the angle between the projections
-	real_t angle = Math::acos(CLAMP(start_proj.dot(end_proj), -1.0, 1.0));
-	
-	// Determine direction (use cross product to check orientation relative to circle center)
-	Vector3 cross = start_proj.cross(end_proj);
-	if (circle_center.dot(cross) < 0.0) {
-		angle = Math::TAU - angle;
-	}
-
-	// Draw arc by rotating around the circle center axis
-	// Add vertices in pairs (p0, p1) for each line segment
-	Vector3 axis = circle_center;
-	Vector3 prev_point = start * p_sphere_r;
-	
-	for (int i = 1; i <= p_segments; i++) {
-		real_t t = (real_t)i / (real_t)p_segments;
-		real_t current_angle = angle * t;
-		
-		// Rotate start_proj around axis by current_angle
-		Quaternion rot = Quaternion(axis, current_angle);
-		Vector3 rotated_proj = rot.xform(start_proj);
-		
-		// Reconstruct point on circle (maintain same distance from center as start)
-		real_t dist_from_center = start.dot(circle_center);
-		Vector3 current_point = (circle_center * dist_from_center + rotated_proj * Math::sqrt(1.0 - dist_from_center * dist_from_center)).normalized() * p_sphere_r;
-		
-		// Add line segment as pair of vertices (prev_point, current_point)
-		r_vertices.push_back(prev_point);
-		r_vertices.push_back(current_point);
-		prev_point = current_point;
-	}
-}
-
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
-	// Only draw axial twist limits visualization
+	// Twist limits visualization has been removed
 	// Swing limits (orientation constraints) are handled by the shader-based visualization
-	real_t socket_r = p_bone_length * 0.25f;
-	if (socket_r <= CMP_EPSILON) {
-		return;
-	}
-
-	LocalVector<Vector3> vertices;
-
-	// Draw rotation freedom indicators at the joint origin
-	// Show how much the bone can still rotate around its axis
-	if (axially_constrained && range_angle < Math::TAU) {
-		real_t indicator_r = socket_r * 1.2f; // Extend outside the unit sphere for better visibility
-
-		// Normalize angles
-		real_t normalized_min = min_axial_angle;
-		if (normalized_min < 0) {
-			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
-		} else if (normalized_min >= Math::TAU) {
-			normalized_min = Math::fposmod(normalized_min, (real_t)Math::TAU);
-		}
-
-		real_t max_angle = normalized_min + range_angle;
-		real_t wrapped_max = (max_angle > Math::TAU) ? Math::fposmod(max_angle, (real_t)Math::TAU) : max_angle;
-
-		// Draw indicator arcs showing disallowed rotation areas at the origin (inverted)
-		Vector3 indicator_pos = Vector3(0, 0, 0);
-		Vector3 x_axis = Vector3(1, 0, 0);
-		Vector3 z_axis = Vector3(0, 0, 1);
-
-		// Draw disallowed rotation arcs (inverse of allowed range)
-		bool wraps_around = (max_angle > Math::TAU);
-
-		if (wraps_around) {
-			// Range wraps: draw arc from wrapped_max to normalized_min
-			real_t disallowed_range = normalized_min - wrapped_max;
-			if (disallowed_range < 0) {
-				disallowed_range += Math::TAU;
-			}
-			int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
-			arc_segments = MIN(arc_segments, 64);
-			for (int i = 0; i < arc_segments; i++) {
-				real_t t = (real_t)i / (real_t)arc_segments;
-				real_t angle = wrapped_max + disallowed_range * t;
-				if (angle >= Math::TAU) {
-					angle -= Math::TAU;
-				}
-				Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
-				Vector3 p0 = indicator_pos + dir;
-				Vector3 p1;
-				if (i < arc_segments - 1) {
-					real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-					real_t next_angle = wrapped_max + disallowed_range * next_t;
-					if (next_angle >= Math::TAU) {
-						next_angle -= Math::TAU;
-					}
-					Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
-					p1 = indicator_pos + next_dir;
-				} else {
-					p1 = indicator_pos + dir;
-				}
-				vertices.push_back(p0);
-				vertices.push_back(p1);
-			}
-		} else {
-			// Range doesn't wrap: draw arcs from 0 to normalized_min and from max_angle to TAU
-			if (normalized_min > 0) {
-				int arc_segments = MAX(16, (int)(normalized_min / Math::PI * 32.0));
-				arc_segments = MIN(arc_segments, 64);
-				for (int i = 0; i < arc_segments; i++) {
-					real_t t = (real_t)i / (real_t)arc_segments;
-					real_t angle = normalized_min * t;
-					Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
-					Vector3 p0 = indicator_pos + dir;
-					Vector3 p1;
-					if (i < arc_segments - 1) {
-						real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-						real_t next_angle = normalized_min * next_t;
-						Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
-						p1 = indicator_pos + next_dir;
-					} else {
-						p1 = indicator_pos + dir;
-					}
-					vertices.push_back(p0);
-					vertices.push_back(p1);
-				}
-			}
-			if (max_angle < Math::TAU) {
-				real_t disallowed_range = Math::TAU - max_angle;
-				int arc_segments = MAX(16, (int)(disallowed_range / Math::PI * 32.0));
-				arc_segments = MIN(arc_segments, 64);
-				for (int i = 0; i < arc_segments; i++) {
-					real_t t = (real_t)i / (real_t)arc_segments;
-					real_t angle = max_angle + disallowed_range * t;
-					Vector3 dir = (x_axis * Math::cos(angle) + z_axis * Math::sin(angle)) * indicator_r;
-					Vector3 p0 = indicator_pos + dir;
-					Vector3 p1;
-					if (i < arc_segments - 1) {
-						real_t next_t = (real_t)(i + 1) / (real_t)arc_segments;
-						real_t next_angle = max_angle + disallowed_range * next_t;
-						Vector3 next_dir = (x_axis * Math::cos(next_angle) + z_axis * Math::sin(next_angle)) * indicator_r;
-						p1 = indicator_pos + next_dir;
-					} else {
-						p1 = indicator_pos + dir;
-					}
-					vertices.push_back(p0);
-					vertices.push_back(p1);
-				}
-			}
-		}
-
-		// Draw lines from origin to arc endpoints to show limits
-		Vector3 limit1_dir = (x_axis * Math::cos(normalized_min) + z_axis * Math::sin(normalized_min)) * indicator_r;
-		Vector3 limit2_dir = (x_axis * Math::cos(wrapped_max) + z_axis * Math::sin(wrapped_max)) * indicator_r;
-		vertices.push_back(indicator_pos);
-		vertices.push_back(indicator_pos + limit1_dir);
-		vertices.push_back(indicator_pos);
-		vertices.push_back(indicator_pos + limit2_dir);
-	}
-
-	// Add all vertices to surface tool as a single mesh
-	// Bone weights are set by the gizmo before calling draw_shape, so they apply to all vertices
-	// For bone weights to work, vertices should be in parent bone's local space (rest pose)
-	// p_transform = parent_global_rest * limitation_space
-	// To get vertices in parent bone local space, we need: parent_global_rest.affine_inverse() * p_transform = limitation_space
-	// However, we don't have parent_global_rest separately, so we use p_transform which puts vertices in global space
-	// The bone weights should still transform them correctly if set properly by the gizmo
-	for (int64_t i = 0; i < vertices.size(); i++) {
-		p_surface_tool->set_color(p_color);
-		p_surface_tool->add_vertex(p_transform.xform(vertices[i]));
-	}
+	// This method is kept for API compatibility but no longer draws anything
 }
 
 void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transform, float p_bone_length, const Color &p_color, const PackedInt32Array &p_bones, const PackedFloat32Array &p_weights, Ref<Mesh> &r_mesh, Ref<Material> &r_material) const {
 	r_mesh = Ref<Mesh>();
 	r_material = Ref<Material>();
-	
+
 	if (!is_orientationally_constrained() || cones.is_empty()) {
 		return;
 	}
@@ -936,7 +613,7 @@ void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transfor
 
 	// Build cone sequence for shader (cone1, tangent1, tangent2, cone2, ...)
 	PackedFloat32Array cone_sequence;
-	
+
 	// Build cone sequence
 	if (cones.size() == 1) {
 		// Single cone
@@ -959,7 +636,7 @@ void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transfor
 			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
 			real_t radius1 = cone1_data.w;
 			real_t radius2 = cone2_data.w;
-			
+
 			// Cone 1 (only output on first iteration to avoid duplication)
 			if (i == 0) {
 				cone_sequence.append(center1.x);
@@ -967,12 +644,12 @@ void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transfor
 				cone_sequence.append(center1.z);
 				cone_sequence.append(radius1);
 			}
-			
+
 			// Tangent circles between cone1 and cone2
 			Vector3 tan1, tan2;
 			real_t tan_radius;
 			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-			
+
 			// Ensure tan1 and tan2 are ordered correctly based on arc direction
 			// Solver uses: if (input.dot(center1.cross(center2)) < 0.0) use tan1, else use tan2
 			// Shader uses: if (dot(normal_dir, cross(cone_1, cone_2)) < 0.0) use tangent_1, else use tangent_2
@@ -983,12 +660,12 @@ void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transfor
 			cone_sequence.append(tan2.y);
 			cone_sequence.append(tan2.z);
 			cone_sequence.append(tan_radius);
-			
+
 			cone_sequence.append(tan1.x);
 			cone_sequence.append(tan1.y);
 			cone_sequence.append(tan1.z);
 			cone_sequence.append(tan_radius);
-			
+
 			// Cone 2 (always output, becomes cone1 for next iteration)
 			cone_sequence.append(center2.x);
 			cone_sequence.append(center2.y);
@@ -1054,7 +731,7 @@ void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transfor
 	surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 	const int32_t MESH_CUSTOM_0 = 0;
 	surface_tool->set_custom_format(MESH_CUSTOM_0, SurfaceTool::CustomFormat::CUSTOM_RGBA_HALF);
-	
+
 	Vector<int> bones_vec = static_cast<Vector<int>>(p_bones);
 	Vector<float> weights_vec = static_cast<Vector<float>>(p_weights);
 	for (int32_t point_i = 0; point_i < points.size(); point_i++) {
@@ -1076,14 +753,14 @@ void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transfor
 	}
 
 	r_mesh = surface_tool->commit(Ref<Mesh>(), RS::ARRAY_CUSTOM_RGBA_HALF << RS::ARRAY_FORMAT_CUSTOM0_SHIFT);
-	
+
 	// Create shader material
 	static Ref<Shader> kusudama_shader;
 	if (!kusudama_shader.is_valid()) {
 		kusudama_shader.instantiate();
 		kusudama_shader->set_code(KUSUDAMA_SHADER);
 	}
-	
+
 	Ref<ShaderMaterial> kusudama_material;
 	kusudama_material.instantiate();
 	kusudama_material->set_shader(kusudama_shader);
@@ -1091,7 +768,7 @@ void JointLimitationKusudama3D::draw_triangle_mesh(const Transform3D &p_transfor
 	int32_t cone_count = cones.size();
 	kusudama_material->set_shader_parameter("cone_count", cone_count);
 	kusudama_material->set_shader_parameter("kusudama_color", p_color);
-	
+
 	r_material = kusudama_material;
 }
 

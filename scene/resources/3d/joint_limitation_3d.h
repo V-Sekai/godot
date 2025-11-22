@@ -33,9 +33,9 @@
 #include "core/io/resource.h"
 
 #ifdef TOOLS_ENABLED
-#include "scene/resources/surface_tool.h"
-#include "scene/resources/mesh.h"
 #include "scene/resources/material.h"
+#include "scene/resources/mesh.h"
+#include "scene/resources/surface_tool.h"
 #endif // TOOLS_ENABLED
 
 class JointLimitation3D : public Resource {
@@ -49,14 +49,12 @@ public:
 	// Define temporary space based on rest and forward vector.
 	virtual Quaternion make_space(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset) const;
 
-	// Solve direction constraint, optionally applying twist constraints
-	// If p_rotation is provided and r_constrained_rotation is not null, twist constraints will be applied
-	// r_constrained_rotation will contain the constrained rotation (or p_rotation if no constraints)
-	virtual Vector3 solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector, const Quaternion &p_rotation = Quaternion(), Quaternion *r_constrained_rotation = nullptr) const;
+	// Solve direction constraint (orientation/swing limits only, no twist constraints)
+	Vector3 solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector) const;
 
 #ifdef TOOLS_ENABLED
 	virtual void draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const; // For drawing gizmo.
-	
+
 	// Draw triangle mesh visualization (optional, returns empty mesh/material if not supported)
 	virtual void draw_triangle_mesh(const Transform3D &p_transform, float p_bone_length, const Color &p_color, const PackedInt32Array &p_bones, const PackedFloat32Array &p_weights, Ref<Mesh> &r_mesh, Ref<Material> &r_material) const;
 #endif // TOOLS_ENABLED

@@ -39,10 +39,6 @@ class JointLimitationKusudama3D : public JointLimitation3D {
 	// Default to one cone matching JointLimitationCone3D: +Y axis, radius_range 0.25 (0.25 * PI radians)
 	Vector<Vector4> cones = { Vector4(0, 1, 0, 0.7853981633974483) };
 
-	// Axial (twist) limits
-	real_t min_axial_angle = 0.0;
-	real_t range_angle = Math::TAU;
-	bool axially_constrained = false;
 	bool orientationally_constrained = true;
 
 protected:
@@ -69,24 +65,12 @@ public:
 	void set_cone_radius(int p_index, real_t p_radius);
 	real_t get_cone_radius(int p_index) const;
 
-	void set_axial_limits(real_t p_min_angle, real_t p_range_angle);
-	void set_min_axial_angle(real_t p_angle);
-	real_t get_min_axial_angle() const;
-	void set_range_angle(real_t p_angle);
-	real_t get_range_angle() const;
-
-	void set_axially_constrained(bool p_constrained);
-	bool is_axially_constrained() const;
-
 	void set_orientationally_constrained(bool p_constrained);
 	bool is_orientationally_constrained() const;
 
-	// Override base class method to apply twist constraints using make_space
-	virtual Vector3 solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector, const Quaternion &p_rotation = Quaternion(), Quaternion *r_constrained_rotation = nullptr) const override;
-
 #ifdef TOOLS_ENABLED
 	virtual void draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const override;
-	
+
 	// Override base class method to draw shader-based triangle mesh visualization
 	virtual void draw_triangle_mesh(const Transform3D &p_transform, float p_bone_length, const Color &p_color, const PackedInt32Array &p_bones, const PackedFloat32Array &p_weights, Ref<Mesh> &r_mesh, Ref<Material> &r_material) const override;
 #endif // TOOLS_ENABLED
