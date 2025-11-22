@@ -49,7 +49,6 @@ public:
 	// Define temporary space based on rest and forward vector.
 	virtual Quaternion make_space(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset) const;
 
-	// Solve direction constraint (orientation/swing limits only, no twist constraints)
 	Vector3 solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector) const;
 
 #ifdef TOOLS_ENABLED
