@@ -1302,22 +1302,40 @@ PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item
 PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {
 	PlannerMetadata metadata;
 
-	// Check if item has constraints field (unified format)
+	// Check if item has temporal_constraints field
 	if (p_item.get_type() == Variant::DICTIONARY) {
 		Dictionary item_dict = p_item;
-		if (item_dict.has("constraints")) {
-			Dictionary constraints_dict = item_dict["constraints"];
+		const Variant *temporal_constraints_var = item_dict.getptr("temporal_constraints");
+		if (temporal_constraints_var && temporal_constraints_var->get_type() == Variant::DICTIONARY) {
+			Dictionary constraints_dict = *temporal_constraints_var;
 			metadata = PlannerMetadata::from_dictionary(constraints_dict);
+		}
+		// Also check for entity requirements in constraints field (for combined format)
+		const Variant *constraints_var = item_dict.getptr("constraints");
+		if (constraints_var && constraints_var->get_type() == Variant::DICTIONARY) {
+			Dictionary constraints_dict = *constraints_var;
+			if (constraints_dict.has("requires_entities")) {
+				Variant entities_var = constraints_dict.get("requires_entities", Array());
+				if (entities_var.get_type() == Variant::ARRAY) {
+					Array entities_array = entities_var;
+					metadata.requires_entities.resize(entities_array.size());
+					for (int i = 0; i < entities_array.size(); i++) {
+						Dictionary entity_dict = entities_array[i];
+						metadata.requires_entities[i] = PlannerEntityRequirement::from_dictionary(entity_dict);
+					}
+				}
+			}
 		}
 	} else if (p_item.get_type() == Variant::ARRAY) {
 		Array item_arr = p_item;
-		// Check if last element is a dictionary with constraints
+		// Check if last element is a dictionary with temporal_constraints
 		if (item_arr.size() > 0) {
 			Variant last = item_arr[item_arr.size() - 1];
 			if (last.get_type() == Variant::DICTIONARY) {
 				Dictionary last_dict = last;
-				if (last_dict.has("constraints")) {
-					Dictionary constraints_dict = last_dict["constraints"];
+				const Variant *temporal_constraints_var = last_dict.getptr("temporal_constraints");
+				if (temporal_constraints_var && temporal_constraints_var->get_type() == Variant::DICTIONARY) {
+					Dictionary constraints_dict = *temporal_constraints_var;
 					metadata = PlannerMetadata::from_dictionary(constraints_dict);
 				}
 			}
@@ -1368,28 +1386,28 @@ Array PlannerPlan::_optimize_unigoal_order(const Array &p_unigoals, const Dictio
 Variant PlannerPlan::_attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints) {
 	PlannerMetadata metadata = PlannerMetadata::from_dictionary(p_temporal_constraints);
 
-	// Create a wrapper dictionary with the item and constraints (unified format)
+	// Create a wrapper dictionary with the item and temporal_constraints
 	Dictionary result;
 	Dictionary constraints_dict = metadata.to_dictionary();
 
 	if (p_item.get_type() == Variant::DICTIONARY) {
 		Dictionary item_dict = p_item;
-		// If already a dictionary, merge constraints
+		// If already a dictionary, merge temporal constraints
 		result = Dictionary(p_item);
-		if (result.has("constraints")) {
-			// Merge with existing constraints
-			Dictionary existing_constraints = result["constraints"];
+		if (result.has("temporal_constraints")) {
+			// Merge with existing temporal constraints
+			Dictionary existing_temporal = result["temporal_constraints"];
 			for (const Variant *key = constraints_dict.next(nullptr); key; key = constraints_dict.next(key)) {
-				existing_constraints[*key] = constraints_dict[*key];
+				existing_temporal[*key] = constraints_dict[*key];
 			}
-			result["constraints"] = existing_constraints;
+			result["temporal_constraints"] = existing_temporal;
 		} else {
-			result["constraints"] = constraints_dict;
+			result["temporal_constraints"] = constraints_dict;
 		}
 	} else {
-		// Wrap in dictionary with constraints
+		// Wrap in dictionary with temporal_constraints
 		result["item"] = p_item;
-		result["constraints"] = constraints_dict;
+		result["temporal_constraints"] = constraints_dict;
 	}
 
 	return result;
@@ -1403,6 +1421,73 @@ Dictionary PlannerPlan::_get_temporal_constraints(const Variant &p_item) const {
 bool PlannerPlan::_has_temporal_constraints(const Variant &p_item) const {
 	PlannerMetadata metadata = _extract_temporal_constraints(p_item);
 	return metadata.has_temporal();
+}
+
+Variant PlannerPlan::attach_metadata(const Variant &p_item, const Dictionary &p_temporal_constraints, const Dictionary &p_entity_constraints) {
+	Dictionary result;
+
+	// Extract the actual item if it's already wrapped
+	Variant actual_item = p_item;
+	if (p_item.get_type() == Variant::DICTIONARY) {
+		Dictionary item_dict = p_item;
+		const Variant *item_var = item_dict.getptr("item");
+		if (item_var) {
+			actual_item = *item_var;
+		} else {
+			actual_item = p_item; // Use as-is if no "item" key
+		}
+	}
+
+	// Start with the item
+	result["item"] = actual_item;
+
+	// Add temporal constraints if provided
+	if (!p_temporal_constraints.is_empty()) {
+		Dictionary temporal_dict;
+		const Variant *duration_var = p_temporal_constraints.getptr("duration");
+		const Variant *start_time_var = p_temporal_constraints.getptr("start_time");
+		const Variant *end_time_var = p_temporal_constraints.getptr("end_time");
+
+		if (duration_var) {
+			temporal_dict["duration"] = *duration_var;
+		}
+		if (start_time_var) {
+			temporal_dict["start_time"] = *start_time_var;
+		}
+		if (end_time_var) {
+			temporal_dict["end_time"] = *end_time_var;
+		}
+		if (!temporal_dict.is_empty()) {
+			result["temporal_constraints"] = temporal_dict;
+		}
+	}
+
+	// Add entity constraints if provided
+	if (!p_entity_constraints.is_empty()) {
+		Dictionary entity_dict;
+		const Variant *requires_entities_var = p_entity_constraints.getptr("requires_entities");
+		if (requires_entities_var) {
+			// Full format: already has requires_entities
+			entity_dict["requires_entities"] = *requires_entities_var;
+		} else {
+			// Convenience format: convert {type, capabilities} to requires_entities format
+			const Variant *type_var = p_entity_constraints.getptr("type");
+			const Variant *capabilities_var = p_entity_constraints.getptr("capabilities");
+			if (type_var && capabilities_var) {
+				Array entities_array;
+				Dictionary entity_req;
+				entity_req["type"] = *type_var;
+				entity_req["capabilities"] = *capabilities_var;
+				entities_array.push_back(entity_req);
+				entity_dict["requires_entities"] = entities_array;
+			}
+		}
+		if (!entity_dict.is_empty()) {
+			result["constraints"] = entity_dict;
+		}
+	}
+
+	return result;
 }
 
 bool PlannerPlan::_validate_entity_requirements(const Dictionary &p_state, const PlannerMetadata &p_metadata) const {

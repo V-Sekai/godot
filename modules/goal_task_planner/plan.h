@@ -125,6 +125,14 @@ public:
 	Variant _attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints);
 	Dictionary _get_temporal_constraints(const Variant &p_item) const;
 	bool _has_temporal_constraints(const Variant &p_item) const;
+
+	// Unified metadata attachment method (public API)
+	// Attach temporal and/or entity constraints to any planner element (action, task, goal, multigoal)
+	// p_temporal: Dictionary with optional keys: "duration", "start_time", "end_time" (all int64_t in microseconds)
+	// p_entity: Dictionary with either:
+	//   - {"type": String, "capabilities": Array} (convenience format)
+	//   - {"requires_entities": Array} (full format with PlannerEntityRequirement dictionaries)
+	Variant attach_metadata(const Variant &p_item, const Dictionary &p_temporal_constraints = Dictionary(), const Dictionary &p_entity_constraints = Dictionary());
 	Array _optimize_unigoal_order(const Array &p_unigoals, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict);
 	int get_verbose() const;
 	void set_verbose(int p_level);

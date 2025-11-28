@@ -683,7 +683,56 @@ static Dictionary attach_temporal_constraints(const Array &p_action_array, int64
 
 	Dictionary result;
 	result["item"] = p_action_array;
-	result["constraints"] = constraints_dict;
+	result["temporal_constraints"] = constraints_dict;
+	return result;
+}
+
+// Unified helper function to attach temporal and/or entity constraints
+// p_temporal: Dictionary with optional keys: "duration", "start_time", "end_time"
+// p_entity: Dictionary with either:
+//   - {"type": String, "capabilities": Array} (convenience format)
+//   - {"requires_entities": Array} (full format)
+static Dictionary attach_metadata(const Array &p_item, const Dictionary &p_temporal = Dictionary(), const Dictionary &p_entity = Dictionary()) {
+	Dictionary result;
+	result["item"] = p_item;
+
+	// Add temporal constraints if provided
+	if (!p_temporal.is_empty()) {
+		Dictionary temporal_constraints;
+		if (p_temporal.has("duration")) {
+			temporal_constraints["duration"] = p_temporal["duration"];
+		}
+		if (p_temporal.has("start_time")) {
+			temporal_constraints["start_time"] = p_temporal["start_time"];
+		}
+		if (p_temporal.has("end_time")) {
+			temporal_constraints["end_time"] = p_temporal["end_time"];
+		}
+		if (!temporal_constraints.is_empty()) {
+			result["temporal_constraints"] = temporal_constraints;
+		}
+	}
+
+	// Add entity constraints if provided
+	if (!p_entity.is_empty()) {
+		Dictionary entity_constraints;
+		if (p_entity.has("requires_entities")) {
+			// Full format: already has requires_entities
+			entity_constraints["requires_entities"] = p_entity["requires_entities"];
+		} else if (p_entity.has("type") && p_entity.has("capabilities")) {
+			// Convenience format: convert to requires_entities format
+			Array entities_array;
+			Dictionary entity_req;
+			entity_req["type"] = p_entity["type"];
+			entity_req["capabilities"] = p_entity["capabilities"];
+			entities_array.push_back(entity_req);
+			entity_constraints["requires_entities"] = entities_array;
+		}
+		if (!entity_constraints.is_empty()) {
+			result["constraints"] = entity_constraints;
+		}
+	}
+
 	return result;
 }
 
@@ -1247,24 +1296,19 @@ TEST_CASE("[Modules][BlocksDomain] Combined temporal and entity requirements" * 
 		command.push_back("c_pickup");
 		command.push_back("c");
 
-		// Attach both temporal and entity constraints
-		Dictionary temporal_dict = attach_temporal_constraints(command, start_time_micros, end_time_micros, duration_micros);
+		// Attach both temporal and entity constraints using unified API
+		Dictionary temporal;
+		temporal["duration"] = duration_micros;
+		temporal["start_time"] = start_time_micros;
+		temporal["end_time"] = end_time_micros;
+
 		Array capabilities;
 		capabilities.push_back("gripper");
-		Dictionary entity_dict = attach_entity_constraints(command, "robot", capabilities);
+		Dictionary entity;
+		entity["type"] = "robot";
+		entity["capabilities"] = capabilities;
 
-		// Combine both constraints into unified format
-		Dictionary combined_constraints;
-		Dictionary temporal_constraints = temporal_dict["constraints"];
-		Dictionary entity_constraints = entity_dict["constraints"];
-		combined_constraints["duration"] = temporal_constraints["duration"];
-		combined_constraints["start_time"] = temporal_constraints["start_time"];
-		combined_constraints["end_time"] = temporal_constraints["end_time"];
-		combined_constraints["requires_entities"] = entity_constraints["requires_entities"];
-
-		Dictionary combined_metadata;
-		combined_metadata["item"] = command;
-		combined_metadata["constraints"] = combined_constraints;
+		Dictionary combined_metadata = attach_metadata(command, temporal, entity);
 
 		Array todo_list;
 		todo_list.push_back(combined_metadata);
@@ -1405,19 +1449,17 @@ TEST_CASE("[Modules][BlocksDomain] Backtracking with temporal and entity constra
 		int64_t end3 = start3 + action_duration;
 		Array capabilities;
 		capabilities.push_back("gripper");
-		Dictionary cmd3_temporal = attach_temporal_constraints(cmd3, start3, end3, action_duration);
-		Dictionary cmd3_entity = attach_entity_constraints(cmd3, "robot", capabilities);
-		// Combine temporal and entity constraints
-		Dictionary cmd3_constraints;
-		Dictionary temp_const = cmd3_temporal["constraints"];
-		Dictionary ent_const = cmd3_entity["constraints"];
-		cmd3_constraints["duration"] = temp_const["duration"];
-		cmd3_constraints["start_time"] = temp_const["start_time"];
-		cmd3_constraints["end_time"] = temp_const["end_time"];
-		cmd3_constraints["requires_entities"] = ent_const["requires_entities"];
-		Dictionary cmd3_combined;
-		cmd3_combined["item"] = cmd3;
-		cmd3_combined["constraints"] = cmd3_constraints;
+		// Combine temporal and entity constraints using unified API
+		Dictionary temporal;
+		temporal["duration"] = action_duration;
+		temporal["start_time"] = start3;
+		temporal["end_time"] = end3;
+
+		Dictionary entity;
+		entity["type"] = "robot";
+		entity["capabilities"] = capabilities;
+
+		Dictionary cmd3_combined = attach_metadata(cmd3, temporal, entity);
 
 		Array cmd4;
 		cmd4.push_back("c_stack");

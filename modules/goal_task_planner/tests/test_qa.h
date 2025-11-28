@@ -85,7 +85,8 @@ TEST_CASE("[QA] Memory management and resource cleanup") {
 	// Test that resources are properly cleaned up
 	for (int i = 0; i < 10; i++) {
 		Ref<PlannerPlan> plan = memnew(PlannerPlan);
-		memdelete(plan.ptr());
+		// Ref<> objects handle cleanup automatically via reference counting
+		// No need to manually delete - let Ref<> destructor handle it
 	}
 	CHECK(true); // If we get here without crashing, cleanup works
 }
@@ -171,8 +172,7 @@ TEST_CASE("[QA] Graph-based planning with run_lazy_refineahead") {
 		CHECK(final_state.has("initialized"));
 	}
 
-	memdelete(domain.ptr());
-	memdelete(plan.ptr());
+	// Ref<> objects handle cleanup automatically via reference counting
 }
 
 TEST_CASE("[QA] STN integration in planning loop") {
