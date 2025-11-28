@@ -30,7 +30,6 @@
 
 #include "plan.h"
 
-#include "core/crypto/crypto_core.h"
 #include "core/io/json.h"
 #include "core/os/os.h"
 #include "core/string/ustring.h"
@@ -413,24 +412,14 @@ void PlannerPlan::_bind_methods() {
 
 // Temporal method implementations
 String PlannerPlan::generate_plan_id() {
-	String uuid;
-	Error err = CryptoCore::generate_uuidv7(uuid);
-	if (err != OK) {
-		ERR_PRINT("Failed to generate UUIDv7: " + itos(err));
-		return String();
-	}
-	print_line("Generated plan ID: " + uuid);
-	emit_signal("plan_id_generated", uuid);
-	return uuid;
+	String plan_id = "";
+	print_line("Generated plan ID: " + plan_id);
+	emit_signal("plan_id_generated", plan_id);
+	return plan_id;
 }
 
 Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
-	String transaction_id;
-	Error err = CryptoCore::generate_uuidv7(transaction_id);
-	if (err != OK) {
-		ERR_PRINT("Failed to generate UUIDv7: " + itos(err));
-		return Dictionary();
-	}
+	String transaction_id = "";
 
 	// Get absolute time in microseconds
 	int64_t current_time = PlannerTimeRange::now_microseconds();

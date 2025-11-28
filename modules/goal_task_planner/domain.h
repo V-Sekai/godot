@@ -45,13 +45,10 @@ class PlannerTaskMetadata : public Resource {
 	GDCLASS(PlannerTaskMetadata, Resource);
 
 private:
-	String task_id;
 	PlannerTimeRange time_range;
 
 public:
 	PlannerTaskMetadata();
-	void set_task_id(String p_id) { task_id = p_id; }
-	String get_task_id() const { return task_id; }
 	void set_time_range(PlannerTimeRange p_time_range) { time_range = p_time_range; }
 	PlannerTimeRange get_time_range() const { return time_range; }
 	// p_physical_time is in absolute microseconds since Unix epoch
@@ -59,8 +56,6 @@ public:
 
 protected:
 	static void _bind_methods() {
-		ClassDB::bind_method(D_METHOD("set_task_id", "id"), &PlannerTaskMetadata::set_task_id);
-		ClassDB::bind_method(D_METHOD("get_task_id"), &PlannerTaskMetadata::get_task_id);
 		ClassDB::bind_method(D_METHOD("update_metadata", "physical_time"), &PlannerTaskMetadata::update_metadata);
 	}
 };
