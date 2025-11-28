@@ -110,29 +110,29 @@ static Variant action_mine_ore(Dictionary p_state, String p_ore_location) {
 	Dictionary resources = p_state["resources"];
 	Dictionary locations = p_state["locations"];
 
-	// Need pickaxe to mine or
+	// Need pickaxe to mine ore
 	if (!tools.has("pickaxe") || !tools["pickaxe"].operator bool()) {
 		return false;
 	}
 
-	// Check if or location exists and has or
+	// Check if ore location exists and has ore
 	if (!locations.has(p_ore_location)) {
 		return false;
 	}
 	Dictionary location = locations[p_ore_location];
-	if (!location.has("or") || !location["or"].operator bool()) {
+	if (!location.has("ore") || !location["ore"].operator bool()) {
 		return false;
 	}
 
-	// Mine the or
+	// Mine the ore
 	Dictionary new_state = p_state.duplicate();
 	Dictionary new_resources = resources.duplicate();
 	Dictionary new_locations = locations.duplicate();
 	Dictionary new_location = location.duplicate();
 
-	int ore_count = resources.has("or") ? resources["or"].operator int() : 0;
-	new_resources["or"] = ore_count + 1;
-	new_location["or"] = false; // Or is now mined
+	int ore_count = resources.has("ore") ? resources["ore"].operator int() : 0;
+	new_resources["ore"] = ore_count + 1;
+	new_location["ore"] = false; // Ore is now mined
 
 	new_locations[p_ore_location] = new_location;
 	new_state["resources"] = new_resources;
@@ -168,7 +168,7 @@ static Variant action_craft_pickaxe(Dictionary p_state) {
 
 // Task methods
 static Variant task_method_collect_resources(Dictionary p_state, Dictionary p_requirements) {
-	// Requirements: {"wood": 3, "or": 2}
+	// Requirements: {"wood": 3, "ore": 2}
 	Dictionary resources = p_state["resources"];
 	Array subtasks;
 
@@ -185,7 +185,7 @@ static Variant task_method_collect_resources(Dictionary p_state, Dictionary p_re
 				task.push_back("gather_wood");
 				task.push_back(needed - current);
 				subtasks.push_back(task);
-			} else if (resource_type == "or") {
+			} else if (resource_type == "ore") {
 				Array task;
 				task.push_back("gather_ore");
 				task.push_back(needed - current);
@@ -269,13 +269,13 @@ static Variant task_method_gather_wood(Dictionary p_state, int p_amount) {
 static Variant task_method_gather_ore(Dictionary p_state, int p_amount) {
 	Dictionary resources = p_state["resources"];
 	Dictionary tools = p_state["tools"];
-	int current_ore = resources.has("or") ? resources["or"].operator int() : 0;
+	int current_ore = resources.has("ore") ? resources["ore"].operator int() : 0;
 
 	if (current_ore >= p_amount) {
-		return Array(); // Already have enough or
+		return Array(); // Already have enough ore
 	}
 
-	// Need pickaxe to mine or
+	// Need pickaxe to mine ore
 	if (!tools.has("pickaxe") || !tools["pickaxe"].operator bool()) {
 		// First craft the pickaxe
 		Array subtasks;
@@ -290,7 +290,7 @@ static Variant task_method_gather_ore(Dictionary p_state, int p_amount) {
 		return subtasks;
 	}
 
-	// Have pickaxe, can mine or
+	// Have pickaxe, can mine ore
 	Array subtasks;
 	Array action;
 	action.push_back("action_mine_ore");
@@ -368,7 +368,7 @@ static Variant goal_method_has_axe_alternative(Dictionary p_state, String p_arg,
 
 // Multigoal methods
 static Variant multigoal_method_collect_resources_multigoal(Dictionary p_state, Dictionary p_multigoal) {
-	// Multigoal format: {"resources": {"wood": 3, "or": 2}}
+	// Multigoal format: {"resources": {"wood": 3, "ore": 2}}
 	Dictionary goal_resources = PlannerMultigoal::get_goal_conditions_for_variable(p_multigoal, "resources");
 	Dictionary current_resources = p_state["resources"];
 

@@ -506,7 +506,7 @@ TEST_CASE("[Modules][GameDomains][MultigoalBacktracking] Resource Gathering - Mu
 		Dictionary multigoal;
 		Dictionary resources_goal;
 		resources_goal["wood"] = 3;
-		resources_goal["or"] = 2;
+		resources_goal["ore"] = 2;
 		multigoal["resources"] = resources_goal;
 
 		Array todo_list;
@@ -661,7 +661,7 @@ TEST_CASE("[Modules][GameDomains][VerifyMultigoalBacktracking] Resource Gatherin
 	Dictionary state;
 	Dictionary resources;
 	resources["wood"] = 2; // Need 3
-	resources["or"] = 0; // Need 2
+	resources["ore"] = 0; // Need 2
 	state["resources"] = resources;
 	state["tools"] = Dictionary();
 	state["trees"] = Dictionary();
@@ -671,7 +671,7 @@ TEST_CASE("[Modules][GameDomains][VerifyMultigoalBacktracking] Resource Gatherin
 		Dictionary multigoal;
 		Dictionary resources_goal;
 		resources_goal["wood"] = 3;
-		resources_goal["or"] = 2;
+		resources_goal["ore"] = 2;
 		multigoal["resources"] = resources_goal;
 
 		Array todo_list;
