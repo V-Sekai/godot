@@ -589,6 +589,21 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 			}
 
+			// Check if this task is blacklisted (IPyHOP-style)
+			if (_is_command_blacklisted(actual_task_info)) {
+				if (verbose >= 2) {
+					print_line("Task is blacklisted, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
 			// Try all available methods (like Elixir's Enum.find_value)
 			// Don't modify available_methods - keep full list for backtracking
 			Callable selected_method;
@@ -635,6 +650,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Failed to refine, backtrack
 			if (verbose >= 2) {
 				print_line("Task refinement failed, backtracking");
+			}
+			// Blacklist the task info since all methods failed (IPyHOP-style)
+			_blacklist_command(actual_task_info);
+			if (verbose >= 2) {
+				print_line("Blacklisted task info since all methods failed");
 			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
@@ -870,6 +890,21 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 			}
 
+			// Check if this goal is blacklisted (IPyHOP-style)
+			if (_is_command_blacklisted(actual_goal_info)) {
+				if (verbose >= 2) {
+					print_line("Goal is blacklisted, backtracking");
+				}
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
 			Array goal_arr = actual_goal_info;
 			if (goal_arr.size() < 3) {
 				// Invalid goal format
@@ -949,6 +984,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (verbose >= 2) {
 				print_line("Goal refinement failed, backtracking");
 			}
+			// Blacklist the goal info since all methods failed (IPyHOP-style)
+			_blacklist_command(actual_goal_info);
+			if (verbose >= 2) {
+				print_line("Blacklisted goal info since all methods failed");
+			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 			solution_graph = backtrack_result.graph;
@@ -975,6 +1015,25 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return p_state;
 			}
 			Dictionary multigoal = multigoal_variant;
+
+			// Check if this multigoal is blacklisted (IPyHOP-style)
+			// Note: multigoal_variant is a Dictionary, but blacklister works with Arrays
+			// If multigoal_variant is actually an Array, check it; otherwise skip blacklist check
+			if (multigoal_variant.get_type() == Variant::ARRAY) {
+				if (_is_command_blacklisted(multigoal_variant)) {
+					if (verbose >= 2) {
+						print_line("MultiGoal is blacklisted, backtracking");
+					}
+					PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+							solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+					solution_graph = backtrack_result.graph;
+					if (backtrack_result.parent_node_id >= 0) {
+						_restore_stn_from_node(backtrack_result.parent_node_id);
+						return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+					}
+					return p_state;
+				}
+			}
 
 			// Extract metadata from multigoal and validate entity requirements
 			// Multigoal metadata might be stored in the multigoal dictionary itself
@@ -1062,6 +1121,14 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Failed to refine, backtrack
 			if (verbose >= 2) {
 				print_line("MultiGoal refinement failed, backtracking");
+			}
+			// Blacklist the multigoal info since all methods failed (IPyHOP-style)
+			// Only blacklist if it's an Array (blacklister works with Arrays)
+			if (multigoal_variant.get_type() == Variant::ARRAY) {
+				_blacklist_command(multigoal_variant);
+				if (verbose >= 2) {
+					print_line("Blacklisted multigoal info since all methods failed");
+				}
 			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
