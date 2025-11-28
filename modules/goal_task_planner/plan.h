@@ -75,6 +75,9 @@ class PlannerPlan : public Resource {
 	Dictionary _planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter);
 	bool _is_command_blacklisted(Variant p_command) const;
 	bool _contains_blacklisted_action(Array p_subtasks) const;
+	// Helper functions for preventing infinite multigoal splitting
+	bool _multigoals_equal(const Dictionary &p_multigoal1, const Variant &p_multigoal2) const;
+	bool _states_equal_for_multigoal(const Dictionary &p_state1, const Dictionary &p_state2, const Dictionary &p_multigoal) const;
 	void _blacklist_command(Variant p_command);
 	void _restore_stn_from_node(int p_node_id);
 

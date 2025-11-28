@@ -1181,6 +1181,102 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
 			}
 
+			// Check if this multigoal is being split recursively (prevent infinite loops)
+			// Check if any ancestor multigoal has the same content - if so, we're in a recursive split
+			bool is_recursive_split = false;
+			int ancestor_multigoal_id = -1;
+			if (p_parent_node_id >= 0) {
+				// Check parent and ancestors for same multigoal
+				int check_node_id = p_parent_node_id;
+				int depth = 0;
+				const int max_ancestor_depth = 10; // Prevent infinite ancestor checking
+				while (check_node_id >= 0 && depth < max_ancestor_depth) {
+					Dictionary check_node = solution_graph.get_node(check_node_id);
+					int check_type = check_node["type"];
+					if (check_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
+						Variant check_info = check_node["info"];
+						// Unwrap if dictionary-wrapped
+						if (check_info.get_type() == Variant::DICTIONARY) {
+							Dictionary dict = check_info;
+							if (dict.has("item")) {
+								check_info = dict["item"];
+							}
+						}
+						if (PlannerMultigoal::is_multigoal_dict(check_info)) {
+							Dictionary check_multigoal = check_info;
+							if (_multigoals_equal(multigoal, check_multigoal)) {
+								is_recursive_split = true;
+								ancestor_multigoal_id = check_node_id;
+								break;
+							}
+						}
+					}
+					// Move to predecessor
+					check_node_id = PlannerGraphOperations::find_predecessor(solution_graph, check_node_id);
+					depth++;
+				}
+			}
+
+			if (is_recursive_split && ancestor_multigoal_id >= 0) {
+				// Check if state has changed since ancestor was processed
+				Dictionary ancestor_state = solution_graph.get_state_snapshot(ancestor_multigoal_id);
+				if (!ancestor_state.is_empty()) {
+					bool state_changed = !_states_equal_for_multigoal(p_state, ancestor_state, multigoal);
+					if (!state_changed) {
+						// State hasn't changed, splitting again would cause infinite loop
+						// Check if all siblings (individual goals/tasks) are closed
+						Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+						TypedArray<int> siblings = parent_node["successors"];
+						bool all_siblings_closed = true;
+						for (int i = 0; i < siblings.size(); i++) {
+							int sibling_id = siblings[i];
+							if (sibling_id == curr_node_id) {
+								continue; // Skip self
+							}
+							Dictionary sibling = solution_graph.get_node(sibling_id);
+							int sibling_status = sibling["status"];
+							if (sibling_status != static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+								all_siblings_closed = false;
+								break;
+							}
+						}
+
+						if (all_siblings_closed) {
+							// All siblings are closed, but state hasn't changed and goals aren't achieved
+							// This means the individual goals/tasks didn't achieve the multigoal
+							// Don't split again - would cause infinite loop
+							// Instead, mark as closed and let verification node handle it (will fail and backtrack)
+							if (verbose >= 2) {
+								print_line("MultiGoal recursive split: all siblings closed but state unchanged, marking closed for verification");
+							}
+							curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+							solution_graph.update_node(curr_node_id, curr_node);
+							Array empty_subgoals;
+							PlannerGraphOperations::add_nodes_and_edges(
+									solution_graph,
+									curr_node_id,
+									empty_subgoals,
+									current_domain->action_dictionary,
+									current_domain->task_method_dictionary,
+									current_domain->unigoal_method_dictionary,
+									current_domain->multigoal_method_list);
+							return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+						} else {
+							// Siblings not all closed yet, wait for them to complete
+							// Return to parent to process other nodes first
+							if (verbose >= 2) {
+								print_line("MultiGoal recursive split: waiting for siblings to complete");
+							}
+							return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+						}
+					}
+					// State has changed, allow splitting (handle deleted-condition interactions)
+					if (verbose >= 2) {
+						print_line("MultiGoal recursive split detected but state changed, allowing split");
+					}
+				}
+			}
+
 			// Try to refine multigoal (like Elixir's Enum.find_value)
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
@@ -1378,6 +1474,85 @@ void PlannerPlan::_restore_stn_from_node(int p_node_id) {
 			}
 		}
 	}
+}
+
+bool PlannerPlan::_multigoals_equal(const Dictionary &p_multigoal1, const Variant &p_multigoal2) const {
+	// Unwrap p_multigoal2 if dictionary-wrapped
+	Variant actual_multigoal2 = p_multigoal2;
+	if (p_multigoal2.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_multigoal2;
+		if (dict.has("item")) {
+			actual_multigoal2 = dict["item"];
+		}
+	}
+
+	if (!PlannerMultigoal::is_multigoal_dict(actual_multigoal2)) {
+		return false;
+	}
+
+	Dictionary multigoal2 = actual_multigoal2;
+
+	// Compare keys
+	Array keys1 = p_multigoal1.keys();
+	Array keys2 = multigoal2.keys();
+	if (keys1.size() != keys2.size()) {
+		return false;
+	}
+
+	// Check each key and its values
+	for (int i = 0; i < keys1.size(); i++) {
+		String key = keys1[i];
+		if (!multigoal2.has(key)) {
+			return false;
+		}
+
+		Variant val1 = p_multigoal1[key];
+		Variant val2 = multigoal2[key];
+
+		if (val1.get_type() != val2.get_type()) {
+			return false;
+		}
+
+		if (val1.get_type() == Variant::DICTIONARY) {
+			Dictionary dict1 = val1;
+			Dictionary dict2 = val2;
+			if (dict1.hash() != dict2.hash()) {
+				return false;
+			}
+		} else if (val1 != val2) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool PlannerPlan::_states_equal_for_multigoal(const Dictionary &p_state1, const Dictionary &p_state2, const Dictionary &p_multigoal) const {
+	// Check if the state variables relevant to the multigoal have changed
+	Array goal_variables = PlannerMultigoal::get_goal_variables(p_multigoal);
+
+	for (int i = 0; i < goal_variables.size(); i++) {
+		String variable_name = goal_variables[i];
+		
+		Variant val1 = p_state1.get(variable_name, Variant());
+		Variant val2 = p_state2.get(variable_name, Variant());
+
+		if (val1.get_type() != val2.get_type()) {
+			return false;
+		}
+
+		if (val1.get_type() == Variant::DICTIONARY) {
+			Dictionary dict1 = val1;
+			Dictionary dict2 = val2;
+			if (dict1.hash() != dict2.hash()) {
+				return false;
+			}
+		} else if (val1 != val2) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {

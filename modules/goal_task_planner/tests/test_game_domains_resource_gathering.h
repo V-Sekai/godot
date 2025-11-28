@@ -386,22 +386,17 @@ static Variant multigoal_method_collect_resources_multigoal(Dictionary p_state, 
 	return subtasks;
 }
 
-static Variant multigoal_method_collect_resources_direct(Dictionary p_state, Dictionary p_multigoal) {
-	// Direct decomposition: break down into individual resource gathering tasks
+static Variant multigoal_method_split_resources(Dictionary p_state, Dictionary p_multigoal) {
+	// IPyHOP-style split: get unachieved goals, convert to individual tasks/goals, add multigoal at end
 	Dictionary goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, p_multigoal);
 	if (goals_not_achieved.is_empty()) {
 		return Array(); // All goals achieved
 	}
 
-	// Get only the resources that are not achieved
+	// Get unachieved resources
 	Dictionary goal_resources = PlannerMultigoal::get_goal_conditions_for_variable(goals_not_achieved, "resources");
-	if (goal_resources.is_empty()) {
-		return Array(); // No resource goals to achieve
-	}
-
 	Dictionary current_resources = p_state["resources"];
 
-	// Break down into individual resource tasks for unachieved resources only
 	Array subtasks;
 	Array resource_keys = goal_resources.keys();
 	for (int i = 0; i < resource_keys.size(); i++) {
@@ -422,6 +417,11 @@ static Variant multigoal_method_collect_resources_direct(Dictionary p_state, Dic
 				subtasks.push_back(task);
 			}
 		}
+	}
+
+	// IPyHOP pattern: return individual tasks/goals + multigoal at end for re-checking
+	if (!subtasks.is_empty()) {
+		subtasks.push_back(p_multigoal); // Add multigoal at end for re-checking
 	}
 
 	return subtasks;
@@ -470,10 +470,10 @@ static Ref<PlannerDomain> setup_resource_gathering_domain() {
 	goal_methods.push_back(callable_mp_static(&goal_method_has_axe_alternative));
 	domain->add_unigoal_methods("has_axe", goal_methods);
 
-	// Add multigoal methods
+	// Add multigoal methods (IPyHOP-style split method first)
 	TypedArray<Callable> multigoal_methods;
+	multigoal_methods.push_back(callable_mp_static(&multigoal_method_split_resources));
 	multigoal_methods.push_back(callable_mp_static(&multigoal_method_collect_resources_multigoal));
-	multigoal_methods.push_back(callable_mp_static(&multigoal_method_collect_resources_direct));
 	domain->add_multigoal_methods(multigoal_methods);
 
 	// Set up action dictionary

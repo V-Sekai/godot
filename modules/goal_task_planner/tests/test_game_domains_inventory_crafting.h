@@ -297,6 +297,42 @@ static Variant multigoal_method_recipe_requirements(Dictionary p_state, Dictiona
 	return subtasks;
 }
 
+static Variant multigoal_method_split_inventory(Dictionary p_state, Dictionary p_multigoal) {
+	// IPyHOP-style split: get unachieved goals, convert to individual goals, add multigoal at end
+	Dictionary goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, p_multigoal);
+	if (goals_not_achieved.is_empty()) {
+		return Array(); // All goals achieved
+	}
+
+	// Get unachieved inventory items
+	Dictionary goal_inventory = PlannerMultigoal::get_goal_conditions_for_variable(goals_not_achieved, "inventory");
+	Dictionary current_inventory = p_state["inventory"];
+
+	Array subtasks;
+	Array goal_keys = goal_inventory.keys();
+	for (int i = 0; i < goal_keys.size(); i++) {
+		String item = goal_keys[i];
+		int needed = goal_inventory[item].operator int();
+		int current = current_inventory.has(item) ? current_inventory[item].operator int() : 0;
+
+		if (current < needed) {
+			// Create goal for inventory_has
+			Array goal;
+			goal.push_back("inventory_has");
+			goal.push_back(item);
+			goal.push_back(true);
+			subtasks.push_back(goal);
+		}
+	}
+
+	// IPyHOP pattern: return individual goals + multigoal at end for re-checking
+	if (!subtasks.is_empty()) {
+		subtasks.push_back(p_multigoal); // Add multigoal at end for re-checking
+	}
+
+	return subtasks;
+}
+
 // Setup inventory/crafting domain
 static Ref<PlannerDomain> setup_inventory_crafting_domain() {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
@@ -323,8 +359,9 @@ static Ref<PlannerDomain> setup_inventory_crafting_domain() {
 	goal_methods.push_back(callable_mp_static(&goal_method_inventory_has_alternative));
 	domain->add_unigoal_methods("inventory_has", goal_methods);
 
-	// Add multigoal methods
+	// Add multigoal methods (IPyHOP-style split method first)
 	TypedArray<Callable> multigoal_methods;
+	multigoal_methods.push_back(callable_mp_static(&multigoal_method_split_inventory));
 	multigoal_methods.push_back(callable_mp_static(&multigoal_method_recipe_requirements));
 	domain->add_multigoal_methods(multigoal_methods);
 
