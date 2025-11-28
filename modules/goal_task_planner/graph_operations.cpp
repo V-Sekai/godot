@@ -189,6 +189,19 @@ int PlannerGraphOperations::find_predecessor(PlannerSolutionGraph &p_graph, int 
 	return -1; // No predecessor found
 }
 
+void PlannerGraphOperations::remove_node_from_parent(PlannerSolutionGraph &p_graph, int p_node_id) {
+	// Find the parent of this node
+	int parent_id = find_predecessor(p_graph, p_node_id);
+	if (parent_id >= 0) {
+		Dictionary parent_node = p_graph.get_node(parent_id);
+		TypedArray<int> successors = parent_node["successors"];
+		// Remove the node from parent's successors
+		successors.erase(p_node_id);
+		parent_node["successors"] = successors;
+		p_graph.update_node(parent_id, parent_node);
+	}
+}
+
 void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id) {
 	TypedArray<int> to_remove;
 	TypedArray<int> visited;

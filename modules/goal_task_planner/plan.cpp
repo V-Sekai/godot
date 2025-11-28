@@ -111,28 +111,67 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	// Planning succeeds if all nodes are closed and we're back at root
 	Dictionary root_node = solution_graph.get_node(0);
 
-	// Check if all nodes are closed (planning succeeded)
+	// Check if all nodes reachable from root are closed (planning succeeded)
+	// Only consider nodes that are reachable from root via closed nodes
+	// This way, failed nodes that were removed from their parent's successors don't cause planning to fail
 	bool planning_succeeded = true;
 	Dictionary graph = solution_graph.get_graph();
 	Array graph_keys = graph.keys();
 	Array failed_nodes;
 	Array open_nodes;
+	TypedArray<int> reachable_nodes;
+	TypedArray<int> to_visit;
+	to_visit.push_back(0); // Start from root
+	TypedArray<int> visited;
 
-	for (int i = 0; i < graph_keys.size(); i++) {
-		int node_id = graph_keys[i];
+	// Find all nodes reachable from root via closed nodes
+	while (!to_visit.is_empty()) {
+		int node_id = to_visit.pop_back();
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+		reachable_nodes.push_back(node_id);
+
+		Dictionary node = graph[node_id];
+		int status = node["status"];
+		// Only traverse through closed nodes (or root which is NA)
+		if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
+				node_id == 0) {
+			TypedArray<int> successors = node["successors"];
+			for (int j = 0; j < successors.size(); j++) {
+				int succ_id = successors[j];
+				if (!visited.has(succ_id)) {
+					to_visit.push_back(succ_id);
+				}
+			}
+		}
+	}
+
+	// Check reachable nodes for failures
+	bool has_reachable_closed_nodes = false;
+	for (int i = 0; i < reachable_nodes.size(); i++) {
+		int node_id = reachable_nodes[i];
 		if (node_id == 0) {
 			continue; // Skip root
 		}
 		Dictionary node = graph[node_id];
 		int status = node["status"];
-		// Planning fails if any node is open or failed
+		// Planning fails if any reachable node is open or failed
 		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
 			planning_succeeded = false;
 			open_nodes.push_back(node_id);
 		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
 			planning_succeeded = false;
 			failed_nodes.push_back(node_id);
+		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			has_reachable_closed_nodes = true;
 		}
+	}
+
+	// If no reachable closed nodes (besides root), planning failed
+	if (!has_reachable_closed_nodes) {
+		planning_succeeded = false;
 	}
 
 	if (planning_succeeded && !final_state.is_empty()) {
@@ -619,7 +658,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 				Variant result = method.callv(args);
 				if (result.get_type() == Variant::ARRAY) {
-					subtasks = result;
+					Array candidate_subtasks = result;
+					// Check if this exact subtasks array is blacklisted (not its contents)
+					// IPyHOP is reentrant - methods can return different results, so we only
+					// blacklist the exact array that failed, not arrays that contain blacklisted actions
+					if (_is_command_blacklisted(candidate_subtasks)) {
+						if (verbose >= 2) {
+							print_line("Method returned blacklisted subtasks array, skipping this method");
+						}
+						continue; // Skip this method, try next
+					}
+					subtasks = candidate_subtasks;
 					selected_method = method;
 					found_working_method = true;
 					break; // Found working method, stop trying
@@ -631,6 +680,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Successfully refined - like Elixir's {method, subtasks}
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
+				// Store the subtasks that were created by this method for potential blacklisting
+				curr_node["created_subtasks"] = subtasks;
 				// Don't modify available_methods - keep full list for potential backtracking
 				solution_graph.update_node(curr_node_id, curr_node);
 
@@ -656,6 +707,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (verbose >= 2) {
 				print_line("Blacklisted task info since all methods failed");
 			}
+			// If this node was created by a parent's method subtasks, blacklist those subtasks
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subtasks = parent_node["created_subtasks"];
+					_blacklist_command(parent_subtasks);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subtasks that led to failure");
+					}
+				}
+			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 			solution_graph = backtrack_result.graph;
@@ -674,6 +736,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (_is_command_blacklisted(action_info)) {
 				if (verbose >= 2) {
 					print_line("Action is blacklisted, backtracking");
+				}
+				// If this action was created by a parent's method subtasks, blacklist those subtasks
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array parent_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(parent_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent subtasks that contained blacklisted action");
+						}
+					}
 				}
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
@@ -865,6 +938,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					}
 				}
 				_blacklist_command(action_info);
+				// If this action was created by a parent's method subtasks, blacklist those subtasks
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array parent_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(parent_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent subtasks that contained failing action");
+						}
+					}
+				}
 				stn.restore_snapshot(stn_snapshot);
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
@@ -952,7 +1036,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				Callable method = available_methods[i];
 				Variant result = method.call(p_state, argument, desired_value);
 				if (result.get_type() == Variant::ARRAY) {
-					subgoals = result;
+					Array candidate_subgoals = result;
+					// Check if this exact subgoals array is blacklisted (not its contents)
+					// IPyHOP is reentrant - methods can return different results, so we only
+					// blacklist the exact array that failed, not arrays that contain blacklisted actions
+					if (_is_command_blacklisted(candidate_subgoals)) {
+						if (verbose >= 2) {
+							print_line("Method returned blacklisted subgoals array, skipping this method");
+						}
+						continue; // Skip this method, try next
+					}
+					subgoals = candidate_subgoals;
 					selected_method = method;
 					found_working_method = true;
 					break;
@@ -964,6 +1058,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Successfully refined
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
+				// Store the subgoals that were created by this method for potential blacklisting
+				curr_node["created_subtasks"] = subgoals;
 				// Don't modify available_methods
 				solution_graph.update_node(curr_node_id, curr_node);
 
@@ -988,6 +1084,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			_blacklist_command(actual_goal_info);
 			if (verbose >= 2) {
 				print_line("Blacklisted goal info since all methods failed");
+			}
+			// If this node was created by a parent's method subgoals, blacklist those subgoals
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subgoals = parent_node["created_subtasks"];
+					_blacklist_command(parent_subgoals);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subgoals that led to failure");
+					}
+				}
 			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
@@ -1086,7 +1193,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				Callable method = available_methods[i];
 				Variant result = method.call(p_state, multigoal);
 				if (result.get_type() == Variant::ARRAY) {
-					subgoals = result;
+					Array candidate_subgoals = result;
+					// Check if this exact subgoals array is blacklisted (not its contents)
+					// IPyHOP is reentrant - methods can return different results, so we only
+					// blacklist the exact array that failed, not arrays that contain blacklisted actions
+					if (_is_command_blacklisted(candidate_subgoals)) {
+						if (verbose >= 2) {
+							print_line("Method returned blacklisted subgoals array, skipping this method");
+						}
+						continue; // Skip this method, try next
+					}
+					subgoals = candidate_subgoals;
 					selected_method = method;
 					found_working_method = true;
 					break;
@@ -1099,11 +1216,14 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
 				// Don't modify available_methods
-				solution_graph.update_node(curr_node_id, curr_node);
-
+				
 				// Optimize unigoal order (most constraining first) before adding to graph
 				Array optimized_subgoals = _optimize_unigoal_order(
 						subgoals, p_state, current_domain->unigoal_method_dictionary);
+				
+				// Store the optimized subgoals that were created by this method for potential blacklisting
+				curr_node["created_subtasks"] = optimized_subgoals;
+				solution_graph.update_node(curr_node_id, curr_node);
 
 				// Add optimized subgoals to graph
 				PlannerGraphOperations::add_nodes_and_edges(
@@ -1128,6 +1248,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				_blacklist_command(multigoal_variant);
 				if (verbose >= 2) {
 					print_line("Blacklisted multigoal info since all methods failed");
+				}
+			}
+			// If this node was created by a parent's method subgoals, blacklist those subgoals
+			if (p_parent_node_id >= 0) {
+				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+				if (parent_node.has("created_subtasks")) {
+					Array parent_subgoals = parent_node["created_subtasks"];
+					_blacklist_command(parent_subgoals);
+					if (verbose >= 2) {
+						print_line("Blacklisted parent subgoals that led to failure");
+					}
 				}
 			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
@@ -1289,6 +1420,30 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 		}
 
 		if (match) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool PlannerPlan::_contains_blacklisted_action(Array p_subtasks) const {
+	// Check if the subtasks array itself is blacklisted
+	if (_is_command_blacklisted(p_subtasks)) {
+		return true;
+	}
+	
+	// Check if any action/task/goal in the subtasks array is blacklisted
+	for (int i = 0; i < p_subtasks.size(); i++) {
+		Variant subtask = p_subtasks[i];
+		// Unwrap if dictionary-wrapped
+		Variant actual_subtask = subtask;
+		if (subtask.get_type() == Variant::DICTIONARY) {
+			Dictionary dict = subtask;
+			if (dict.has("item")) {
+				actual_subtask = dict["item"];
+			}
+		}
+		if (_is_command_blacklisted(actual_subtask)) {
 			return true;
 		}
 	}

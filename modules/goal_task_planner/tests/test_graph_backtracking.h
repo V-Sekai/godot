@@ -380,4 +380,72 @@ TEST_CASE("[Modules][GraphBacktracking] State snapshot restoration") {
 	// Ref<> objects handle cleanup automatically via reference counting
 }
 
+// Test case to demonstrate and fix infinite loop with method backtracking
+static Variant test_action_always_fail_simple(Dictionary p_state, String p_arg) {
+	// Always fail
+	return Variant();
+}
+
+static Variant test_task_method1_returns_failing(Dictionary p_state, String p_task_name) {
+	// First method: returns subtasks with an action that always fails
+	Array subtasks;
+	Array action_task;
+	action_task.push_back("test_action_always_fail_simple");
+	action_task.push_back(p_task_name);
+	subtasks.push_back(action_task);
+	return subtasks;
+}
+
+static Variant test_task_method2_succeeds(Dictionary p_state, String p_task_name) {
+	// Second method: returns subtasks with an action that succeeds
+	Array subtasks;
+	Array action_task;
+	action_task.push_back("test_action_success");
+	action_task.push_back(p_task_name);
+	subtasks.push_back(action_task);
+	return subtasks;
+}
+
+TEST_CASE("[Modules][GraphBacktracking] Method backtracking prevents infinite loops") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = memnew(PlannerDomain);
+
+	TypedArray<Callable> actions;
+	actions.push_back(callable_mp_static(&test_action_success));
+	actions.push_back(callable_mp_static(&test_action_always_fail_simple));
+	domain->add_actions(actions);
+
+	TypedArray<Callable> task_methods;
+	task_methods.push_back(callable_mp_static(&test_task_method1_returns_failing));
+	task_methods.push_back(callable_mp_static(&test_task_method2_succeeds));
+	domain->add_task_methods("test_task_simple", task_methods);
+
+	plan->set_current_domain(domain);
+	plan->set_max_depth(20); // Lower depth for testing
+	plan->set_verbose(1); // Enable verbose for debugging
+
+	SUBCASE("First method fails, should try second method") {
+		Dictionary initial_state;
+		initial_state["initialized"] = true;
+
+		Array todo_list;
+		Array task;
+		task.push_back("test_task_simple");
+		task.push_back("test_arg");
+		todo_list.push_back(task);
+
+		// First method returns subtasks with failing action
+		// Action gets blacklisted, subtasks get blacklisted
+		// When backtracking, first method should be skipped (subtasks blacklisted)
+		// Second method should be tried and succeed
+		Variant result = plan->find_plan(initial_state, todo_list);
+		CHECK(result.get_type() == Variant::ARRAY);
+		if (result.get_type() == Variant::ARRAY) {
+			Array plan_array = result;
+			// Should succeed with second method
+			CHECK(plan_array.size() >= 1);
+		}
+	}
+}
+
 } // namespace TestGraphBacktracking

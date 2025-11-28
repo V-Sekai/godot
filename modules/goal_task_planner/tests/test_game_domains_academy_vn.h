@@ -601,6 +601,33 @@ static Variant multigoal_method_story_route(Dictionary p_state, Dictionary p_mul
 	return subtasks;
 }
 
+static Variant multigoal_method_relationships_direct(Dictionary p_state, Dictionary p_multigoal) {
+	// Direct decomposition: break down into individual relationship goals
+	Dictionary goal_relationships = PlannerMultigoal::get_goal_conditions_for_variable(p_multigoal, "relationships");
+	Dictionary current_relationships = p_state["relationships"];
+
+	Dictionary goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, p_multigoal);
+	if (goals_not_achieved.is_empty()) {
+		return Array(); // All goals achieved
+	}
+
+	// Break down into individual relationship goals
+	Array subtasks;
+	Array rel_keys = goal_relationships.keys();
+	for (int i = 0; i < rel_keys.size(); i++) {
+		String char_id = rel_keys[i];
+		int target_level = goal_relationships[char_id].operator int();
+
+		Array goal;
+		goal.push_back("relationship_level");
+		goal.push_back(char_id);
+		goal.push_back(target_level);
+		subtasks.push_back(goal);
+	}
+
+	return subtasks;
+}
+
 // Setup academy visual novel domain
 static Ref<PlannerDomain> setup_academy_visual_novel_domain() {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
@@ -649,6 +676,7 @@ static Ref<PlannerDomain> setup_academy_visual_novel_domain() {
 	// Add multigoal methods
 	TypedArray<Callable> multigoal_methods;
 	multigoal_methods.push_back(callable_mp_static(&multigoal_method_story_route));
+	multigoal_methods.push_back(callable_mp_static(&multigoal_method_relationships_direct));
 	domain->add_multigoal_methods(multigoal_methods);
 
 	// Set up action dictionary

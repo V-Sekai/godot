@@ -55,6 +55,9 @@ public:
 	// Remove descendants of a node
 	static void remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id);
 
+	// Remove a node from its parent's successors list
+	static void remove_node_from_parent(PlannerSolutionGraph &p_graph, int p_node_id);
+
 	// Extract solution plan (sequence of actions) from graph
 	static Array extract_solution_plan(PlannerSolutionGraph &p_graph);
 
