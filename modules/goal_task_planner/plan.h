@@ -68,7 +68,7 @@ class PlannerPlan : public Resource {
 	// supposed to achieve. The verification task won't insert anything into the
 	// final plan; it just will verify whether m did what it was supposed to do.
 	bool verify_goals = true;
-	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
+	int max_depth = 100; // Maximum recursion depth to prevent infinite loops
 	static String _item_to_string(Variant p_item);
 	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
 	// Graph-based planning methods

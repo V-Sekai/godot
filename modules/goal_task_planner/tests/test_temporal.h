@@ -98,8 +98,6 @@ TEST_CASE("[Modules][Temporal] PlannerTaskMetadata temporal updates") {
 		PlannerTimeRange time_range = metadata->get_time_range();
 		CHECK(time_range.get_start_time() == time2); // Last update wins
 	}
-
-	memdelete(metadata.ptr());
 }
 
 TEST_CASE("[Modules][Temporal] PlannerPlan temporal integration") {
