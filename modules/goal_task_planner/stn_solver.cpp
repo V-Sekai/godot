@@ -117,6 +117,13 @@ void PlannerSTNSolver::rebuild_distance_matrix() {
 		String key = E.key;
 		Constraint constraint = E.value;
 
+		// Check for invalid constraints (empty intersection) - these indicate inconsistency
+		if (constraint.min_distance > constraint.max_distance) {
+			// Invalid constraint found - mark as inconsistent
+			consistent = false;
+			continue;
+		}
+
 		// Parse key: "from:to"
 		int colon_pos = key.find(":");
 		if (colon_pos < 0) {
@@ -133,6 +140,8 @@ void PlannerSTNSolver::rebuild_distance_matrix() {
 		}
 
 		// Set distance to max (temporal constraint: to - from <= max)
+		// In STN, constraint [min, max] means: min <= to - from <= max
+		// This translates to: distance[from][to] <= max
 		int64_t current_dist = distance_matrix_internal[from_idx][to_idx];
 		if (current_dist == STN_INFINITY || constraint.max_distance < current_dist) {
 			distance_matrix_internal[from_idx][to_idx] = constraint.max_distance;
@@ -147,9 +156,24 @@ void PlannerSTNSolver::run_floyd_warshall() {
 		return;
 	}
 
+	// Check for invalid constraints first (empty intersections indicate inconsistency)
+	for (const KeyValue<String, Constraint> &E : constraints_map_internal) {
+		if (E.value.min_distance > E.value.max_distance) {
+			consistent = false;
+			return;
+		}
+	}
+
 	// Ensure distance matrix is built
 	if (distance_matrix_internal.size() != n) {
 		rebuild_distance_matrix();
+		// Re-check for invalid constraints after rebuild
+		for (const KeyValue<String, Constraint> &E : constraints_map_internal) {
+			if (E.value.min_distance > E.value.max_distance) {
+				consistent = false;
+				return;
+			}
+		}
 	}
 
 	// Floyd-Warshall algorithm: all-pairs shortest paths
@@ -249,7 +273,14 @@ bool PlannerSTNSolver::add_constraint(const String &p_from, const String &p_to, 
 
 		// Check if intersection is empty
 		if (forward_constraint.min_distance > forward_constraint.max_distance) {
-			consistent = false;
+			// Store invalid constraint to mark inconsistency
+			constraints_map_internal[forward_key] = forward_constraint;
+			// Update reverse constraint to reflect the conflict
+			reverse_constraint = Constraint(-forward_constraint.max_distance, -forward_constraint.min_distance);
+			constraints_map_internal[reverse_key] = reverse_constraint;
+			// Rebuild and check to ensure inconsistency is detected
+			rebuild_distance_matrix();
+			run_floyd_warshall();
 			return false;
 		}
 	}
@@ -261,7 +292,14 @@ bool PlannerSTNSolver::add_constraint(const String &p_from, const String &p_to, 
 
 		// Check if intersection is empty
 		if (reverse_constraint.min_distance > reverse_constraint.max_distance) {
-			consistent = false;
+			// Store invalid constraint to mark inconsistency
+			constraints_map_internal[reverse_key] = reverse_constraint;
+			// Update forward constraint to reflect the conflict
+			forward_constraint = Constraint(-reverse_constraint.max_distance, -reverse_constraint.min_distance);
+			constraints_map_internal[forward_key] = forward_constraint;
+			// Rebuild and check to ensure inconsistency is detected
+			rebuild_distance_matrix();
+			run_floyd_warshall();
 			return false;
 		}
 	}

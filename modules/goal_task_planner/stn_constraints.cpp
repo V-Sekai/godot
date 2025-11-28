@@ -169,6 +169,15 @@ bool PlannerSTNConstraints::add_temporal_relation(PlannerSTNSolver &p_stn, const
 bool PlannerSTNConstraints::anchor_to_origin(PlannerSTNSolver &p_stn, const String &p_point, int64_t p_absolute_time) {
 	ensure_origin(p_stn);
 
+	// Don't anchor origin to itself (origin is always at time 0)
+	if (p_point == "origin") {
+		// If trying to set origin to non-zero time, this is invalid
+		if (p_absolute_time != 0) {
+			return false;
+		}
+		return true; // Origin at time 0 is already the default
+	}
+
 	// Add constraint: origin -> point: {absolute_time, absolute_time}
 	return p_stn.add_constraint("origin", p_point, p_absolute_time, p_absolute_time);
 }

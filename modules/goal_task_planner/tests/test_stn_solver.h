@@ -331,13 +331,13 @@ TEST_CASE("[Modules][STN] Complex temporal scenarios") {
 	}
 
 	SUBCASE("Action with absolute time anchoring") {
-		int64_t origin_time = 1735689600000000LL; // Unix epoch anchor
+		// Origin is always at time 0, so we use relative times from origin
 		stn.add_time_point("origin");
-		PlannerSTNConstraints::anchor_to_origin(stn, "origin", origin_time);
+		// Don't anchor origin to itself - origin is at time 0 by definition
 
-		// Add action with absolute times
-		int64_t action_start = 1735689601000000LL; // 1 second after origin
-		int64_t action_end = 1735689602000000LL; // 2 seconds after origin
+		// Add action with absolute times (relative to origin at time 0)
+		int64_t action_start = 1735689601000000LL; // Absolute time (1 second after some epoch)
+		int64_t action_end = 1735689602000000LL; // Absolute time (2 seconds after some epoch)
 		int64_t duration = 1000000LL;
 
 		bool success = PlannerSTNConstraints::add_interval(stn, "action1", action_start, action_end, duration);
