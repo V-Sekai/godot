@@ -116,7 +116,7 @@ def test_fixture_primary():
     """Standard primary fixture - returns [object_a, object_b]"""
     return test_setup_function()
 
-@modern.fixture  
+@modern.fixture
 def test_fixture_generic():
     """Alias for primary fixture - backward compatibility"""
     return test_setup_function()

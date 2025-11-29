@@ -28,7 +28,7 @@ Design changes should be documented immediately in the corresponding ADR to ensu
 - Updated [System Component] to support [New Feature/Pattern]
 - Reason: Enhanced error handling requirements from user feedback
 
-### [Date]  
+### [Date]
 - Modified [System Component] logic
 - Reason: Performance optimization based on load testing results
 ```

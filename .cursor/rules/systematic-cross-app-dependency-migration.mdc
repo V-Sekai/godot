@@ -45,7 +45,7 @@ All cross-app dependency migration work MUST use the `ast_migrate` app for syste
 **Fix by violation type, not by app:**
 
 1. **Type A violations:** All `AriaEngine.Timeline.*` → `AriaTimeline` API calls
-2. **Type B violations:** All `AriaEngineCore.*` direct usage → `AriaEngineCore` API calls  
+2. **Type B violations:** All `AriaEngineCore.*` direct usage → `AriaEngineCore` API calls
 3. **Type C violations:** All `AriaTimeline.TimelineCore.*` → `AriaTimeline` API calls
 4. **Type D violations:** All remaining internal module imports across apps
 
@@ -160,7 +160,7 @@ end
 - **Status:** ✅ Complete - All violations fixed and tested
 
 ### Violation Type B: AriaEngineCore.* → AriaEngineCore API
-- **Total violations:** 78 found  
+- **Total violations:** 78 found
 - **Apps affected:** aria_hybrid_planner, aria_town
 - **Status:** 🔄 In Progress - 45/78 violations fixed
 

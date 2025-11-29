@@ -80,15 +80,15 @@ Architectural violations in umbrella projects often indicate incorrect app bound
 # Clean, focused external API
 defmodule AppName do
   # Group related functionality logically
-  
+
   # Primary operations
   defdelegate core_operation(args), to: AppName.Core
   defdelegate primary_function(args), to: AppName.Primary
-  
+
   # Secondary operations
   defdelegate utility_function(args), to: AppName.Utilities
   defdelegate helper_operation(args), to: AppName.Helpers
-  
+
   # Maintain 2-level depth maximum for internal modules
 end
 ```
@@ -140,7 +140,7 @@ AriaEngineCore.Math.Quaternion → AriaMath.Quaternion
 **Domain functionality migration:**
 
 ```elixir
-# BEFORE: AriaEngineCore.Domain.Methods (3 levels - VIOLATION)  
+# BEFORE: AriaEngineCore.Domain.Methods (3 levels - VIOLATION)
 # AFTER: AriaCore.Methods (migrate to existing app)
 
 # Move files:

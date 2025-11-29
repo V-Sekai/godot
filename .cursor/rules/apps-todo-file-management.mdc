@@ -71,7 +71,7 @@ AriaEngine.execute_plan(plan)
 **Tiered line limits for maintainability:**
 
 - **200-300 lines**: Review and consider splitting (soft threshold)
-- **400-500 lines**: Strong recommendation to split (firm threshold)  
+- **400-500 lines**: Strong recommendation to split (firm threshold)
 - **500+ lines**: Mandatory splitting (hard limit)
 
 ## Check using CLI tooling

@@ -29,7 +29,7 @@ Emoji usage should follow a power law distribution where the most common emoji a
 
 **Rank 2:** 📋 (Documentation, planning, organization)
 
-- **Target frequency:** ~15% of commits with emojis  
+- **Target frequency:** ~15% of commits with emojis
 - **Use for:** Documentation updates, ADR work, project organization
 
 **Rank 3:** 🌟 (Achievements, completions, milestones)

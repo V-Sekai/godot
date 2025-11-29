@@ -20,7 +20,7 @@ When a code file becomes too large, it should be split into smaller, more manage
    - **Backing up**: Rename with `.bak` extension (already in `.gitignore`) for complete replacement
    - **Disabling**: Rename with `.disabled` extension to preserve for reference
 2. **Identify logical units** and create stubs with type annotations
-3. **Create new files** for each logical unit  
+3. **Create new files** for each logical unit
 4. **Update the original file** to reference the new files
 5. **Test the changes** to ensure everything works as expected
 6. **Remove or finalize the original file** based on your backup choice

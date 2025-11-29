@@ -203,7 +203,7 @@ CREATE POLICY "Users can view their org's assignments"
 const verifyETNF = async () => {
   // Check for functional dependencies
   const fdCheck = await executeSQL(`
-    SELECT 
+    SELECT
       supplier_id,
       part_id,
       COUNT(DISTINCT project_id) as project_count
