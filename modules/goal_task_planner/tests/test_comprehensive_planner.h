@@ -517,14 +517,6 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 		CHECK(retrieved.get_start_time() == 1735689600000000LL);
 	}
 
-	SUBCASE("Plan ID generation") {
-		String id1 = plan->generate_plan_id();
-		String id2 = plan->generate_plan_id();
-		// IDs should be generated (may be empty or unique)
-		CHECK(id1.length() >= 0);
-		CHECK(id2.length() >= 0);
-	}
-
 	SUBCASE("Submit operation") {
 		Dictionary operation;
 		operation["type"] = "test_operation";

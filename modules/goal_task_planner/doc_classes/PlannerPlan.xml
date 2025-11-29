@@ -26,11 +26,6 @@
 				[b]Temporal Constraints:[/b] Actions, tasks, and goals in the todo_list can include optional temporal metadata. This metadata is provided as a [Dictionary] with keys "temporal_constraints" containing "start_time", "end_time", and/or "duration" as int64_t values representing absolute time in microseconds since Unix epoch. Actions without temporal metadata can occur at any time and are not added to the Simple Temporal Network (STN). Actions with temporal metadata are added to the STN and their timing constraints are validated for consistency. If temporal constraints are inconsistent, planning fails and returns false.
 			</description>
 		</method>
-		<method name="generate_plan_id">
-			<return type="String" />
-			<description>
-			</description>
-		</method>
 		<method name="run_lazy_lookahead">
 			<return type="Dictionary" />
 			<param index="0" name="state" type="Dictionary" />
@@ -71,10 +66,5 @@
 		</member>
 	</members>
 	<signals>
-		<signal name="plan_id_generated">
-			<param index="0" name="plan_id" type="String" />
-			<description>
-			</description>
-		</signal>
 	</signals>
 </class>

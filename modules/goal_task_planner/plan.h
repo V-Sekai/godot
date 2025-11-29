@@ -113,7 +113,6 @@ public:
 	// Graph-based lazy refinement (Elixir-style)
 	Dictionary run_lazy_refineahead(Dictionary p_state, Array p_todo_list);
 	// Temporal methods
-	String generate_plan_id();
 	PlannerTimeRange get_time_range() const { return time_range; }
 	void set_time_range(PlannerTimeRange p_time_range) { time_range = p_time_range; }
 	Dictionary submit_operation(Dictionary p_operation);

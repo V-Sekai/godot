@@ -431,23 +431,10 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &PlannerPlan::find_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &PlannerPlan::run_lazy_lookahead, DEFVAL(10));
 	ClassDB::bind_method(D_METHOD("run_lazy_refineahead", "state", "todo_list"), &PlannerPlan::run_lazy_refineahead);
-	ClassDB::bind_method(D_METHOD("generate_plan_id"), &PlannerPlan::generate_plan_id);
 	ClassDB::bind_method(D_METHOD("submit_operation", "operation"), &PlannerPlan::submit_operation);
-
-	ADD_SIGNAL(MethodInfo("plan_id_generated", PropertyInfo(Variant::STRING, "plan_id")));
 }
 
 // Temporal method implementations
-String PlannerPlan::generate_plan_id() {
-	String plan_id = get_name();
-	if (plan_id.is_empty()) {
-		plan_id = get_path();
-	}
-	print_line("Generated plan ID: " + plan_id);
-	emit_signal("plan_id_generated", plan_id);
-	return plan_id;
-}
-
 Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
 	String transaction_id = "";
 
