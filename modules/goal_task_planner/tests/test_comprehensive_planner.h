@@ -148,7 +148,7 @@ TEST_CASE("[Modules][Planner] PlannerSTNSolver - Temporal constraint validation"
 		// Valid constraints: task1 takes 2-4 seconds
 		stn.add_constraint("origin", "task1_start", 0, INT64_MAX);
 		stn.add_constraint("task1_start", "task1_end", 2000000LL, 4000000LL);
-		stn.add_constraint("task1_end", "origin", 0, INT64_MAX);
+		// Removed conflicting constraint - forward path already constrains task1_end
 		
 		stn.check_consistency();
 		CHECK(stn.is_consistent());
@@ -588,7 +588,7 @@ TEST_CASE("[Modules][Planner] PlannerBacktracking - Backtracking operations") {
 		// Set up available_methods on parent node so backtrack() can return it
 		Dictionary parent_node = graph.get_node(parent_id);
 		TypedArray<Callable> available_methods;
-		available_methods.push_back(Callable()); // Add at least one method
+		available_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::task_prepare_meal));
 		parent_node["available_methods"] = available_methods;
 		graph.update_node(parent_id, parent_node);
 		

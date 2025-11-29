@@ -121,7 +121,8 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 			p_graph.update_node(new_parent_node_id, updated_node);
 
 			BacktrackResult result;
-			result.parent_node_id = PlannerGraphOperations::find_predecessor(p_graph, new_parent_node_id);
+			// Return the retriable node as parent_node_id so planning can continue from it
+			result.parent_node_id = new_parent_node_id;
 			result.current_node_id = new_parent_node_id;
 			result.graph = p_graph;
 			result.state = p_state;
