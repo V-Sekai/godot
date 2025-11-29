@@ -37,24 +37,20 @@
 #include "core/object/object.h"
 #include "core/variant/dictionary.h"
 
-// PlannerMultigoal is a utility class for working with Dictionary-based multigoals
-// Multigoals are represented as Dictionary: {variable_name: {argument: value, ...}, ...}
+// PlannerMultigoal is a utility class for working with Array-based multigoals
+// Multigoals are represented as Array of unigoal arrays: [[predicate, subject, value], ...]
+// Each unigoal is [predicate, subject, value] where predicate is the state variable name
 class PlannerMultigoal : public Object {
 	GDCLASS(PlannerMultigoal, Object);
 
 public:
-	// Check if a Variant is a Dictionary multigoal (all values are dictionaries)
-	static bool is_multigoal_dict(const Variant &p_variant);
-
-	// Accessor functions for Dictionary multigoals
-	static Array get_goal_variables(const Dictionary &p_multigoal_dict);
-	static Dictionary get_goal_conditions_for_variable(const Dictionary &p_multigoal_dict, const String &p_variable);
-	static Variant get_goal_value(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument);
-	static bool has_goal_condition(const Dictionary &p_multigoal_dict, const String &p_variable, const String &p_argument);
+	// Check if a Variant is an Array multigoal (Array of unigoal arrays)
+	// A multigoal is an Array where the first element is also an Array (unigoal)
+	static bool is_multigoal_array(const Variant &p_variant);
 
 	// Static methods for multigoal operations
-	static Dictionary method_goals_not_achieved(const Dictionary &p_state, const Dictionary &p_multigoal_dict);
-	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Dictionary &p_multigoal_dict, int p_depth, int p_verbose);
+	static Array method_goals_not_achieved(const Dictionary &p_state, const Array &p_multigoal_array);
+	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Array &p_multigoal_array, int p_depth, int p_verbose);
 
 protected:
 	static void _bind_methods();

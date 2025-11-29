@@ -60,17 +60,11 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 			Variant unwrapped_item = dict["item"];
 			return get_node_type(unwrapped_item, p_action_dict, p_task_dict, p_unigoal_dict);
 		}
-		// If it's a dictionary without "item", check if it's a MultiGoal
-		if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
-			return PlannerNodeType::TYPE_MULTIGOAL;
-		}
-		// If it's a dictionary without "item" and not a MultiGoal, it's not a valid node
+		// If it's a dictionary without "item", it's not a valid node (multigoals are now Arrays)
 		return PlannerNodeType::TYPE_ROOT;
 	}
 
-	// Check if it's an Array (task/goal/action) - do this BEFORE checking is_multigoal_dict
-	// because multigoals decompose to ordered unigoals (arrays), and we want to recognize
-	// unigoal arrays correctly, not misclassify them as multigoals
+	// Check if it's an Array (task/goal/action/multigoal)
 	if (p_node_info.get_type() == Variant::ARRAY) {
 		Array arr = p_node_info;
 		if (arr.is_empty()) {
@@ -78,6 +72,14 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		}
 
 		Variant first = arr[0];
+		
+		// Check if it's a multigoal (Array of unigoal arrays)
+		// A multigoal is an Array where the first element is also an Array
+		if (first.get_type() == Variant::ARRAY) {
+			return PlannerNodeType::TYPE_MULTIGOAL;
+		}
+		
+		// Otherwise, it's a single unigoal/action/task - check first element as string
 		String first_str = first;
 
 		// Check action dictionary
@@ -94,12 +96,6 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		if (p_unigoal_dict.has(first_str)) {
 			return PlannerNodeType::TYPE_UNIGOAL;
 		}
-	}
-
-	// Check if it's a MultiGoal (Dictionary-based) - only for non-Array types
-	// Arrays are already handled above
-	if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
-		return PlannerNodeType::TYPE_MULTIGOAL;
 	}
 
 	return PlannerNodeType::TYPE_ROOT;

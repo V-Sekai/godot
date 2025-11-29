@@ -175,11 +175,15 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		
 		Dictionary state_dict;
 		// Empty state - no relationships yet
-		Dictionary multigoal;
-		Dictionary character1;
-		character1["affection_level"] = 50;
-		character1["student"] = "protagonist";
-		multigoal["class_president"] = character1;
+		// Multigoal is now an Array of unigoal arrays
+		Array multigoal;
+		// Create unigoal: [predicate, subject, value]
+		// predicate="affection", subject="protagonist_class_president", value=50
+		Array unigoal;
+		unigoal.push_back("affection");
+		unigoal.push_back("protagonist_class_president");
+		unigoal.push_back(50);
+		multigoal.push_back(unigoal);
 
 		Array todo_list;
 		todo_list.push_back(multigoal);

@@ -213,8 +213,8 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 				// Don't mark as failed yet - check if there's a CLOSED one
 			} else {
 				// Other FAILED nodes are real failures
-				planning_succeeded = false;
-				failed_nodes.push_back(node_id);
+			planning_succeeded = false;
+			failed_nodes.push_back(node_id);
 			}
 		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			has_reachable_closed_nodes = true;
@@ -1222,10 +1222,10 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				Dictionary predicate_dict = p_state[predicate];
 				if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
 					// Unigoal already achieved
-					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-					solution_graph.update_node(curr_node_id, curr_node);
-					return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
-				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+			}
 			}
 
 			// Try to refine unigoal using unigoal methods (like Elixir's Enum.find_value)
@@ -1340,14 +1340,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 			}
 
-			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
+			if (!PlannerMultigoal::is_multigoal_array(multigoal_variant)) {
 				return p_state;
 			}
-			Dictionary multigoal = multigoal_variant;
+			Array multigoal = multigoal_variant;
 
 			// Check if this multigoal is blacklisted (IPyHOP-style)
-			// Note: multigoal_variant is a Dictionary, but blacklister works with Arrays
-			// If multigoal_variant is actually an Array, check it; otherwise skip blacklist check
+			// Multigoal is an Array, so we can check it directly
 			if (multigoal_variant.get_type() == Variant::ARRAY) {
 				if (_is_command_blacklisted(multigoal_variant)) {
 					if (verbose >= 2) {
@@ -1382,7 +1381,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 
 			// Check if multigoal already achieved
-			Dictionary goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+			Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
 			if (goals_not_achieved.is_empty()) {
 				// All goals are already achieved
 				if (verbose >= 1) {
@@ -1424,12 +1423,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 				// All successors are closed or failed - check if multigoal is achieved now
 				// (This handles the case where all unigoals from previous refinement are achieved)
-				Dictionary goals_not_achieved_check = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+				Array goals_not_achieved_check = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
 				if (goals_not_achieved_check.is_empty()) {
 					// All goals achieved, mark as closed
 					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 					solution_graph.update_node(curr_node_id, curr_node);
-					return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+					// Verification succeeded - continue from parent, don't retry multigoal
+					return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 				}
 				// Goals not achieved and all successors are closed/failed - need to re-refine
 				// Fall through to refinement logic below
@@ -1487,7 +1487,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
 				// Don't modify available_methods
-
+				
 				// Store the subgoals that were created by this method for potential blacklisting
 				curr_node["created_subtasks"] = subgoals;
 				solution_graph.update_node(curr_node_id, curr_node);
@@ -1502,7 +1502,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list);
 
-				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+				// Continue from first successor to process subgoals, not from multigoal itself
+				TypedArray<int> new_successors = curr_node["successors"];
+				if (new_successors.size() > 0) {
+					return _planning_loop_recursive(new_successors[0], p_state, p_iter + 1);
+				}
+				// No successors (shouldn't happen, but fallback to parent)
+				return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 			}
 
 			// Failed to refine, backtrack
@@ -1552,13 +1558,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				if (p_state.has(predicate)) {
 					Dictionary predicate_dict = p_state[predicate];
 					if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
-						// Verification successful
+					// Verification successful
 						if (verbose >= 2) {
 							print_line(vformat("Unigoal verified: %s[%s] == %s", predicate, subject, value));
 						}
-						curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-						solution_graph.update_node(curr_node_id, curr_node);
-						return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(curr_node_id, curr_node);
+					return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 					}
 				}
 			}
@@ -1613,7 +1619,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 			}
 
-			if (!PlannerMultigoal::is_multigoal_dict(multigoal_variant)) {
+			if (!PlannerMultigoal::is_multigoal_array(multigoal_variant)) {
 				// Invalid parent, backtrack
 				if (verbose >= 2) {
 					print_line("MultiGoal verification failed: invalid parent multigoal, backtracking");
@@ -1628,9 +1634,9 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 				return p_state;
 			}
-			Dictionary multigoal = multigoal_variant;
+			Array multigoal = multigoal_variant;
 
-			Dictionary goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+			Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
 			if (goals_not_achieved.is_empty()) {
 				// Verification successful - all goals are achieved
 				if (verbose >= 1) {
@@ -1644,8 +1650,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Instead of backtracking, re-refine the parent multigoal (iterative refinement)
 				// This allows the planner to continue building toward the goal incrementally
 				if (verbose >= 2) {
-					Array goals_not_achieved_keys = goals_not_achieved.keys();
-					print_line(vformat("MultiGoal verification failed: %d goals not achieved, re-refining parent multigoal", goals_not_achieved_keys.size()));
+					print_line(vformat("MultiGoal verification failed: %d goals not achieved, re-refining parent multigoal", goals_not_achieved.size()));
 				}
 				
 				// Mark parent multigoal as OPEN to trigger re-refinement
@@ -1734,7 +1739,7 @@ bool PlannerPlan::_contains_blacklisted_action(Array p_subtasks) const {
 	if (_is_command_blacklisted(p_subtasks)) {
 		return true;
 	}
-
+	
 	// Check if any action/task/goal in the subtasks array is blacklisted
 	for (int i = 0; i < p_subtasks.size(); i++) {
 		Variant subtask = p_subtasks[i];

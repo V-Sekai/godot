@@ -50,7 +50,7 @@ public:
 	static Array task_build_relationship(Dictionary p_state, String p_student, String p_character);
 	static Array unigoal_achieve_affection_level(Dictionary p_state, String p_relationship_key, int p_target_level);
 	static Array unigoal_pass_exam(Dictionary p_state, String p_exam_key, bool p_target_value);
-	static Array multigoal_complete_route(Dictionary p_state, Dictionary p_multigoal);
+	static Array multigoal_complete_route(Dictionary p_state, Array p_multigoal);
 };
 
 // Helper functions for isekai academy visual novel domain
@@ -264,27 +264,12 @@ Array unigoal_pass_exam(Dictionary state, String exam_key, bool target_value) {
 	return subtasks;
 }
 
-// Multigoal method
-Array multigoal_complete_route(Dictionary state, Dictionary multigoal) {
-	Array result;
-	Array characters = multigoal.keys();
-	for (int i = 0; i < characters.size(); i++) {
-		String character = characters[i];
-		Dictionary character_goal = multigoal[character];
-		int affection_level = character_goal.get("affection_level", 0);
-		String student = character_goal.get("student", "");
-		if (affection_level > 0 && !student.is_empty()) {
-			// Return unigoal as array: [predicate, subject, value]
-			// predicate="affection", subject="student_character", value=affection_level
-			String relationship_key = student + "_" + character;
-			Array unigoal;
-			unigoal.push_back("affection");
-			unigoal.push_back(relationship_key);
-			unigoal.push_back(affection_level);
-			result.push_back(unigoal);
-		}
-	}
-	return result;
+// Multigoal method - multigoal is now an Array of unigoal arrays
+// This method just returns the multigoal as-is (it's already an Array of unigoals)
+Array multigoal_complete_route(Dictionary state, Array multigoal) {
+	// Multigoal is already an Array of unigoal arrays, so just return it
+	// This allows the planner to process each unigoal in order
+	return multigoal;
 }
 
 } // namespace IsekaiAcademyDomain
@@ -322,7 +307,7 @@ inline Array IsekaiAcademyDomainCallable::unigoal_pass_exam(Dictionary p_state, 
 	return IsekaiAcademyDomain::unigoal_pass_exam(p_state, p_exam_key, p_target_value);
 }
 
-inline Array IsekaiAcademyDomainCallable::multigoal_complete_route(Dictionary p_state, Dictionary p_multigoal) {
+inline Array IsekaiAcademyDomainCallable::multigoal_complete_route(Dictionary p_state, Array p_multigoal) {
 	return IsekaiAcademyDomain::multigoal_complete_route(p_state, p_multigoal);
 }
 

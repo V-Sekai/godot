@@ -336,32 +336,62 @@ TEST_CASE("[Modules][Planner] PlannerMultigoal - Multigoal operations") {
 		multigoal["class_president"] = character1;
 		multigoal["upperclassman"] = character2;
 
-		CHECK(PlannerMultigoal::is_multigoal_dict(multigoal));
+		// Multigoal is now an Array of unigoal arrays
+		Array multigoal_array;
+		Array unigoal1;
+		unigoal1.push_back("affection");
+		unigoal1.push_back("protagonist_class_president");
+		unigoal1.push_back(50);
+		Array unigoal2;
+		unigoal2.push_back("affection");
+		unigoal2.push_back("protagonist_upperclassman");
+		unigoal2.push_back(30);
+		multigoal_array.push_back(unigoal1);
+		multigoal_array.push_back(unigoal2);
 
+		CHECK(PlannerMultigoal::is_multigoal_array(multigoal_array));
+
+		// Single unigoal is not a multigoal
+		CHECK(!PlannerMultigoal::is_multigoal_array(unigoal1));
+		
+		// Dictionary is not a multigoal
 		Dictionary not_multigoal;
 		not_multigoal["key"] = "value";
-		CHECK(!PlannerMultigoal::is_multigoal_dict(not_multigoal));
+		CHECK(!PlannerMultigoal::is_multigoal_array(not_multigoal));
 	}
 
-	SUBCASE("Get goal variables") {
-		Dictionary multigoal;
-		multigoal["class_president"] = Dictionary();
-		multigoal["upperclassman"] = Dictionary();
+	SUBCASE("Goals not achieved") {
+		Array multigoal_array;
+		Array unigoal1;
+		unigoal1.push_back("affection");
+		unigoal1.push_back("protagonist_class_president");
+		unigoal1.push_back(50);
+		multigoal_array.push_back(unigoal1);
 
-		Array variables = PlannerMultigoal::get_goal_variables(multigoal);
-		CHECK(variables.size() == 2);
+		Dictionary state;
+		Dictionary affection_dict;
+		affection_dict["protagonist_class_president"] = 30; // Not yet 50
+		state["affection"] = affection_dict;
+
+		Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(state, multigoal_array);
+		CHECK(goals_not_achieved.size() == 1); // One goal not achieved
 	}
 
-	SUBCASE("Get goal conditions") {
-		Dictionary multigoal;
-		Dictionary character1;
-		character1["affection_level"] = 50;
-		character1["student"] = "protagonist";
-		multigoal["class_president"] = character1;
+	SUBCASE("All goals achieved") {
+		Array multigoal_array;
+		Array unigoal1;
+		unigoal1.push_back("affection");
+		unigoal1.push_back("protagonist_class_president");
+		unigoal1.push_back(50);
+		multigoal_array.push_back(unigoal1);
 
-		Dictionary conditions = PlannerMultigoal::get_goal_conditions_for_variable(multigoal, "class_president");
-		CHECK(int(conditions["affection_level"]) == 50);
-		CHECK(conditions["student"] == "protagonist");
+		Dictionary state;
+		Dictionary affection_dict;
+		affection_dict["protagonist_class_president"] = 50; // Achieved
+		state["affection"] = affection_dict;
+
+		Array goals_not_achieved = PlannerMultigoal::method_goals_not_achieved(state, multigoal_array);
+		CHECK(goals_not_achieved.size() == 0); // All goals achieved
 	}
 
 	SUBCASE("Get goal value") {
