@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_planner_helpers.h                                               */
+/*  test_planner_helpers.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -38,162 +38,207 @@
 
 namespace TestComprehensivePlanner {
 
-// Wrapper class used to construct Callables for free functions in RestaurantDomain.
-// Defined before RestaurantDomain namespace so it can be referenced from within it.
-class RestaurantDomainCallable {
+// Wrapper class used to construct Callables for free functions in IsekaiAcademyDomain.
+// Defined before IsekaiAcademyDomain namespace so it can be referenced from within it.
+class IsekaiAcademyDomainCallable {
 public:
-	static Dictionary action_cook(Dictionary p_state, String p_dish, String p_chef);
-	static Dictionary action_serve(Dictionary p_state, String p_dish, String p_customer, String p_waiter);
-	static Dictionary action_clean(Dictionary p_state, String p_table);
-	static Array task_prepare_meal(Dictionary p_state, String p_dish, String p_chef);
-	static Array task_serve_customer(Dictionary p_state, String p_dish, String p_customer, String p_waiter);
-	static Array unigoal_cook_dish(Dictionary p_state, String p_dish, String p_chef);
-	static Array unigoal_clean_table(Dictionary p_state, String p_table);
-	static Array multigoal_serve_customers(Dictionary p_state, Dictionary p_multigoal);
+	static Dictionary action_study_subject(Dictionary p_state, String p_student, String p_subject);
+	static Dictionary action_attend_class(Dictionary p_state, String p_student, String p_class_name);
+	static Dictionary action_talk_to_character(Dictionary p_state, String p_student, String p_character);
+	static Dictionary action_increase_affection(Dictionary p_state, String p_student, String p_character, int p_amount);
+	static Array task_complete_lesson(Dictionary p_state, String p_student, String p_subject);
+	static Array task_build_relationship(Dictionary p_state, String p_student, String p_character);
+	static Array unigoal_achieve_affection_level(Dictionary p_state, String p_student, String p_character, int p_level);
+	static Array unigoal_pass_exam(Dictionary p_state, String p_student, String p_subject);
+	static Array multigoal_complete_route(Dictionary p_state, Dictionary p_multigoal);
 };
 
-// Helper functions for restaurant domain
-namespace RestaurantDomain {
+// Helper functions for isekai academy visual novel domain
+namespace IsekaiAcademyDomain {
 
 // Actions
-Dictionary action_cook(Dictionary state, String dish, String chef) {
+Dictionary action_study_subject(Dictionary state, String student, String subject) {
 	Dictionary new_state = state.duplicate();
-	Dictionary chef_state;
-	if (new_state.has(chef)) {
-		chef_state = new_state[chef];
+	Dictionary student_state;
+	if (new_state.has(student)) {
+		student_state = new_state[student];
 	} else {
-		chef_state = Dictionary();
+		student_state = Dictionary();
 	}
-	chef_state["cooking"] = dish;
-	new_state[chef] = chef_state;
-
-	Dictionary dish_state;
-	if (new_state.has(dish)) {
-		dish_state = new_state[dish];
+	Dictionary studies;
+	if (student_state.has("studies")) {
+		studies = student_state["studies"];
 	} else {
-		dish_state = Dictionary();
+		studies = Dictionary();
 	}
-	dish_state["status"] = "cooked";
-	new_state[dish] = dish_state;
+	studies[subject] = true;
+	student_state["studies"] = studies;
+	new_state[student] = student_state;
 	return new_state;
 }
 
-Dictionary action_serve(Dictionary state, String dish, String customer, String waiter) {
+Dictionary action_attend_class(Dictionary state, String student, String class_name) {
 	Dictionary new_state = state.duplicate();
-	Dictionary customer_state;
-	if (new_state.has(customer)) {
-		customer_state = new_state[customer];
+	Dictionary student_state;
+	if (new_state.has(student)) {
+		student_state = new_state[student];
 	} else {
-		customer_state = Dictionary();
+		student_state = Dictionary();
 	}
-	customer_state["served"] = dish;
-	new_state[customer] = customer_state;
-
-	Dictionary dish_state;
-	if (new_state.has(dish)) {
-		dish_state = new_state[dish];
+	Array classes_attended;
+	if (student_state.has("classes_attended")) {
+		classes_attended = student_state["classes_attended"];
 	} else {
-		dish_state = Dictionary();
+		classes_attended = Array();
 	}
-	dish_state["status"] = "served";
-	new_state[dish] = dish_state;
+	if (!classes_attended.has(class_name)) {
+		classes_attended.push_back(class_name);
+	}
+	student_state["classes_attended"] = classes_attended;
+	new_state[student] = student_state;
 	return new_state;
 }
 
-Dictionary action_clean(Dictionary state, String table) {
+Dictionary action_talk_to_character(Dictionary state, String student, String character) {
 	Dictionary new_state = state.duplicate();
-	Dictionary table_state;
-	if (new_state.has(table)) {
-		table_state = new_state[table];
+	Dictionary relationship_state;
+	if (new_state.has("relationships")) {
+		relationship_state = new_state["relationships"];
 	} else {
-		table_state = Dictionary();
+		relationship_state = Dictionary();
 	}
-	table_state["clean"] = true;
-	new_state[table] = table_state;
+	String relationship_key = student + "_" + character;
+	Dictionary relationship;
+	if (relationship_state.has(relationship_key)) {
+		relationship = relationship_state[relationship_key];
+	} else {
+		relationship = Dictionary();
+	}
+	relationship["last_interaction"] = true;
+	relationship_state[relationship_key] = relationship;
+	new_state["relationships"] = relationship_state;
+	return new_state;
+}
+
+Dictionary action_increase_affection(Dictionary state, String student, String character, int amount) {
+	Dictionary new_state = state.duplicate();
+	Dictionary relationship_state;
+	if (new_state.has("relationships")) {
+		relationship_state = new_state["relationships"];
+	} else {
+		relationship_state = Dictionary();
+	}
+	String relationship_key = student + "_" + character;
+	Dictionary relationship;
+	if (relationship_state.has(relationship_key)) {
+		relationship = relationship_state[relationship_key];
+	} else {
+		relationship = Dictionary();
+		relationship["affection"] = 0;
+	}
+	int current_affection = relationship.get("affection", 0);
+	relationship["affection"] = current_affection + amount;
+	relationship_state[relationship_key] = relationship;
+	new_state["relationships"] = relationship_state;
 	return new_state;
 }
 
 // Task methods
-Array task_prepare_meal(Dictionary state, String dish, String chef) {
+Array task_complete_lesson(Dictionary state, String student, String subject) {
 	Array subtasks;
-	subtasks.push_back(callable_mp_static(&RestaurantDomainCallable::action_cook).bind(dish, chef));
+	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_study_subject).bind(student, subject));
+	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_attend_class).bind(student, subject + "_class"));
 	return subtasks;
 }
 
-Array task_serve_customer(Dictionary state, String dish, String customer, String waiter) {
+Array task_build_relationship(Dictionary state, String student, String character) {
 	Array subtasks;
-	subtasks.push_back(callable_mp_static(&RestaurantDomainCallable::action_serve).bind(dish, customer, waiter));
+	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_talk_to_character).bind(student, character));
+	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_increase_affection).bind(student, character, 10));
 	return subtasks;
 }
 
 // Unigoal methods
-Array unigoal_cook_dish(Dictionary state, String dish, String chef) {
+Array unigoal_achieve_affection_level(Dictionary state, String student, String character, int level) {
 	Array subtasks;
-	Dictionary chef_state = state.get(chef, Dictionary());
-	if (!chef_state.has("cooking") || chef_state["cooking"] != dish) {
-		subtasks.push_back(callable_mp_static(&RestaurantDomainCallable::action_cook).bind(dish, chef));
+	Dictionary relationship_state = state.get("relationships", Dictionary());
+	String relationship_key = student + "_" + character;
+	if (relationship_state.has(relationship_key)) {
+		Dictionary relationship = relationship_state[relationship_key];
+		int current_affection = relationship.get("affection", 0);
+		if (current_affection < level) {
+			subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_build_relationship).bind(student, character));
+		}
+	} else {
+		subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_build_relationship).bind(student, character));
 	}
 	return subtasks;
 }
 
-Array unigoal_clean_table(Dictionary state, String table) {
+Array unigoal_pass_exam(Dictionary state, String student, String subject) {
 	Array subtasks;
-	Dictionary table_state = state.get(table, Dictionary());
-	if (!table_state.has("clean") || !table_state["clean"]) {
-		subtasks.push_back(callable_mp_static(&RestaurantDomainCallable::action_clean).bind(table));
+	Dictionary student_state = state.get(student, Dictionary());
+	Dictionary studies = student_state.get("studies", Dictionary());
+	Array classes_attended = student_state.get("classes_attended", Array());
+	if (!studies.has(subject) || !classes_attended.has(subject + "_class")) {
+		subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_complete_lesson).bind(student, subject));
 	}
 	return subtasks;
 }
 
 // Multigoal method
-Array multigoal_serve_customers(Dictionary state, Dictionary multigoal) {
+Array multigoal_complete_route(Dictionary state, Dictionary multigoal) {
 	Array result;
-	Array customers = multigoal.keys();
-	for (int i = 0; i < customers.size(); i++) {
-		String customer = customers[i];
-		Dictionary customer_goal = multigoal[customer];
-		String dish = customer_goal.get("dish", "");
-		String waiter = customer_goal.get("waiter", "");
-		if (!dish.is_empty() && !waiter.is_empty()) {
-			result.push_back(callable_mp_static(&RestaurantDomainCallable::task_serve_customer).bind(dish, customer, waiter));
+	Array characters = multigoal.keys();
+	for (int i = 0; i < characters.size(); i++) {
+		String character = characters[i];
+		Dictionary character_goal = multigoal[character];
+		int affection_level = character_goal.get("affection_level", 0);
+		String student = character_goal.get("student", "");
+		if (affection_level > 0 && !student.is_empty()) {
+			result.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level).bind(student, character, affection_level));
 		}
 	}
 	return result;
 }
 
-} // namespace RestaurantDomain
+} // namespace IsekaiAcademyDomain
 
-// Implementations of RestaurantDomainCallable static methods
-inline Dictionary RestaurantDomainCallable::action_cook(Dictionary p_state, String p_dish, String p_chef) {
-	return RestaurantDomain::action_cook(p_state, p_dish, p_chef);
+// Implementations of IsekaiAcademyDomainCallable static methods
+inline Dictionary IsekaiAcademyDomainCallable::action_study_subject(Dictionary p_state, String p_student, String p_subject) {
+	return IsekaiAcademyDomain::action_study_subject(p_state, p_student, p_subject);
 }
 
-inline Dictionary RestaurantDomainCallable::action_serve(Dictionary p_state, String p_dish, String p_customer, String p_waiter) {
-	return RestaurantDomain::action_serve(p_state, p_dish, p_customer, p_waiter);
+inline Dictionary IsekaiAcademyDomainCallable::action_attend_class(Dictionary p_state, String p_student, String p_class_name) {
+	return IsekaiAcademyDomain::action_attend_class(p_state, p_student, p_class_name);
 }
 
-inline Dictionary RestaurantDomainCallable::action_clean(Dictionary p_state, String p_table) {
-	return RestaurantDomain::action_clean(p_state, p_table);
+inline Dictionary IsekaiAcademyDomainCallable::action_talk_to_character(Dictionary p_state, String p_student, String p_character) {
+	return IsekaiAcademyDomain::action_talk_to_character(p_state, p_student, p_character);
 }
 
-inline Array RestaurantDomainCallable::task_prepare_meal(Dictionary p_state, String p_dish, String p_chef) {
-	return RestaurantDomain::task_prepare_meal(p_state, p_dish, p_chef);
+inline Dictionary IsekaiAcademyDomainCallable::action_increase_affection(Dictionary p_state, String p_student, String p_character, int p_amount) {
+	return IsekaiAcademyDomain::action_increase_affection(p_state, p_student, p_character, p_amount);
 }
 
-inline Array RestaurantDomainCallable::task_serve_customer(Dictionary p_state, String p_dish, String p_customer, String p_waiter) {
-	return RestaurantDomain::task_serve_customer(p_state, p_dish, p_customer, p_waiter);
+inline Array IsekaiAcademyDomainCallable::task_complete_lesson(Dictionary p_state, String p_student, String p_subject) {
+	return IsekaiAcademyDomain::task_complete_lesson(p_state, p_student, p_subject);
 }
 
-inline Array RestaurantDomainCallable::unigoal_cook_dish(Dictionary p_state, String p_dish, String p_chef) {
-	return RestaurantDomain::unigoal_cook_dish(p_state, p_dish, p_chef);
+inline Array IsekaiAcademyDomainCallable::task_build_relationship(Dictionary p_state, String p_student, String p_character) {
+	return IsekaiAcademyDomain::task_build_relationship(p_state, p_student, p_character);
 }
 
-inline Array RestaurantDomainCallable::unigoal_clean_table(Dictionary p_state, String p_table) {
-	return RestaurantDomain::unigoal_clean_table(p_state, p_table);
+inline Array IsekaiAcademyDomainCallable::unigoal_achieve_affection_level(Dictionary p_state, String p_student, String p_character, int p_level) {
+	return IsekaiAcademyDomain::unigoal_achieve_affection_level(p_state, p_student, p_character, p_level);
 }
 
-inline Array RestaurantDomainCallable::multigoal_serve_customers(Dictionary p_state, Dictionary p_multigoal) {
-	return RestaurantDomain::multigoal_serve_customers(p_state, p_multigoal);
+inline Array IsekaiAcademyDomainCallable::unigoal_pass_exam(Dictionary p_state, String p_student, String p_subject) {
+	return IsekaiAcademyDomain::unigoal_pass_exam(p_state, p_student, p_subject);
+}
+
+inline Array IsekaiAcademyDomainCallable::multigoal_complete_route(Dictionary p_state, Dictionary p_multigoal) {
+	return IsekaiAcademyDomain::multigoal_complete_route(p_state, p_multigoal);
 }
 
 } // namespace TestComprehensivePlanner

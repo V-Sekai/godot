@@ -148,7 +148,7 @@ void PlannerSTNSolver::rebuild_distance_matrix() {
 		if (current_dist == STN_INFINITY || constraint.max_distance < current_dist) {
 			distance_matrix_internal[from_idx][to_idx] = constraint.max_distance;
 		}
-		
+
 		// Handle min_distance constraint: set reverse edge
 		// min <= to - from means from - to <= -min
 		int64_t reverse_dist = distance_matrix_internal[to_idx][from_idx];
@@ -269,7 +269,7 @@ bool PlannerSTNSolver::add_constraint(const String &p_from, const String &p_to, 
 		consistent = false;
 		return false; // Invalid time point names
 	}
-	
+
 	// Ensure time points exist
 	ensure_time_point(p_from);
 	ensure_time_point(p_to);
@@ -381,7 +381,7 @@ int64_t PlannerSTNSolver::get_distance(const String &p_from, const String &p_to)
 	if (p_from.is_empty() || p_to.is_empty()) {
 		return STN_INFINITY; // Invalid time point names
 	}
-	
+
 	int64_t from_idx = get_time_point_index(p_from);
 	int64_t to_idx = get_time_point_index(p_to);
 
@@ -401,7 +401,7 @@ int64_t PlannerSTNSolver::get_earliest_time(const String &p_point) const {
 	if (p_point.is_empty()) {
 		return STN_INFINITY; // Invalid time point name
 	}
-	
+
 	// Distance from origin (time point 0) to this point
 	// Assuming origin is at index 0, or we need to track it
 	if (time_points_list_internal.size() == 0) {
@@ -423,7 +423,7 @@ int64_t PlannerSTNSolver::get_latest_time(const String &p_point) const {
 	if (p_point.is_empty()) {
 		return STN_INFINITY; // Invalid time point name
 	}
-	
+
 	// Latest time is negative of distance from point to origin
 	if (time_points_list_internal.size() == 0) {
 		return 0;

@@ -1333,7 +1333,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
 				// Don't modify available_methods
-				
+
 				// Store the subgoals that were created by this method for potential blacklisting
 				curr_node["created_subtasks"] = subgoals;
 				solution_graph.update_node(curr_node_id, curr_node);
@@ -1544,7 +1544,7 @@ bool PlannerPlan::_contains_blacklisted_action(Array p_subtasks) const {
 	if (_is_command_blacklisted(p_subtasks)) {
 		return true;
 	}
-	
+
 	// Check if any action/task/goal in the subtasks array is blacklisted
 	for (int i = 0; i < p_subtasks.size(); i++) {
 		Variant subtask = p_subtasks[i];

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_planner_problems.h                                              */
+/*  test_planner_problems.h                                               */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -38,62 +38,64 @@
 #include "../planner_time_range.h"
 #include "tests/test_macros.h"
 
-// Use shared restaurant helpers.
+// Use shared academy domain helpers.
 #include "test_planner_helpers.h"
 
 namespace TestComprehensivePlanner {
 
-TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") {
+TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerState> state = memnew(PlannerState);
 
-	// Setup complete restaurant domain
+	// Setup complete academy domain
 	TypedArray<Callable> actions;
-	actions.push_back(callable_mp_static(&RestaurantDomainCallable::action_cook));
-	actions.push_back(callable_mp_static(&RestaurantDomainCallable::action_serve));
-	actions.push_back(callable_mp_static(&RestaurantDomainCallable::action_clean));
+	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_study_subject));
+	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_attend_class));
+	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_talk_to_character));
 	domain->add_actions(actions);
 
 	TypedArray<Callable> task_methods;
-	task_methods.push_back(callable_mp_static(&RestaurantDomainCallable::task_prepare_meal));
-	domain->add_task_methods("prepare_meal", task_methods);
+	task_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_complete_lesson));
+	domain->add_task_methods("complete_lesson", task_methods);
 
 	TypedArray<Callable> unigoal_methods;
-	unigoal_methods.push_back(callable_mp_static(&RestaurantDomainCallable::unigoal_cook_dish));
-	unigoal_methods.push_back(callable_mp_static(&RestaurantDomainCallable::unigoal_clean_table));
-	domain->add_unigoal_methods("cook_dish", unigoal_methods);
-	domain->add_unigoal_methods("clean_table", unigoal_methods);
+	unigoal_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+	unigoal_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_pass_exam));
+	domain->add_unigoal_methods("achieve_affection_level", unigoal_methods);
+	domain->add_unigoal_methods("pass_exam", unigoal_methods);
 
 	TypedArray<Callable> multigoal_methods;
-	multigoal_methods.push_back(callable_mp_static(&RestaurantDomainCallable::multigoal_serve_customers));
+	multigoal_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::multigoal_complete_route));
 	domain->add_multigoal_methods(multigoal_methods);
 
 	plan->set_current_domain(domain);
 
 	// Setup initial state with entities
-	state->set_entity_capability("chef1", "cooking", true);
-	state->set_entity_capability("waiter1", "serving", true);
-	state->set_predicate("chef1", "available", true);
-	state->set_predicate("waiter1", "available", true);
+	state->set_entity_capability("protagonist", "studying", true);
+	state->set_entity_capability("classmate1", "socializing", true);
+	state->set_predicate("protagonist", "available", true);
+	state->set_predicate("classmate1", "available", true);
 
 	SUBCASE("Plan with entity requirements") {
 		Dictionary state_dict;
 		// Add entity capabilities to state
-		Dictionary chef1;
-		chef1["cooking"] = true;
-		state_dict["chef1"] = chef1;
+		Dictionary protagonist;
+		Dictionary studies;
+		studies["magic_class"] = true;
+		protagonist["studies"] = studies;
+		state_dict["protagonist"] = protagonist;
 
 		Array todo_list;
-		todo_list.push_back("cook_dish");
+		todo_list.push_back("achieve_affection_level");
 
 		// Attach entity requirement to goal
 		Dictionary entity_constraints;
-		entity_constraints["type"] = "chef";
+		entity_constraints["type"] = "protagonist";
 		Array capabilities;
-		capabilities.push_back("cooking");
+		capabilities.push_back("studying");
 		entity_constraints["capabilities"] = capabilities;
-		plan->attach_metadata("cook_dish", Dictionary(), entity_constraints);
+		plan->attach_metadata("achieve_affection_level", Dictionary(), entity_constraints);
 
 		Variant result = plan->find_plan(state_dict, todo_list);
 		// Planning should attempt to use entities with required capabilities
@@ -105,7 +107,7 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 	SUBCASE("Plan with temporal constraints") {
 		Dictionary state_dict;
 		Array todo_list;
-		todo_list.push_back("cook");
+		todo_list.push_back("study");
 
 		// Set temporal constraints
 		PlannerTimeRange time_range;
@@ -114,7 +116,7 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 
 		Dictionary temporal;
 		temporal["duration"] = 5000000LL; // 5 seconds
-		plan->attach_metadata("cook", temporal);
+		plan->attach_metadata("study", temporal);
 
 		Variant result = plan->find_plan(state_dict, todo_list);
 		Variant::Type result_type = result.get_type();
@@ -125,10 +127,10 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 	SUBCASE("Plan with multigoal") {
 		Dictionary state_dict;
 		Dictionary multigoal;
-		Dictionary customer1;
-		customer1["dish"] = "pasta";
-		customer1["waiter"] = "waiter1";
-		multigoal["customer1"] = customer1;
+		Dictionary character1;
+		character1["affection_level"] = 50;
+		character1["student"] = "protagonist";
+		multigoal["class_president"] = character1;
 
 		Array todo_list;
 		todo_list.push_back(multigoal);
@@ -143,7 +145,7 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 		// This tests that STN solver is integrated with planning
 		Dictionary state_dict;
 		Array todo_list;
-		todo_list.push_back("cook");
+		todo_list.push_back("study");
 
 		PlannerTimeRange time_range;
 		time_range.set_start_time(1735689600000000LL);
@@ -158,5 +160,3 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 }
 
 } // namespace TestComprehensivePlanner
-
-

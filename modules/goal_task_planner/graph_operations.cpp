@@ -51,7 +51,7 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		// Not found in any dictionary, return ROOT
 		return PlannerNodeType::TYPE_ROOT;
 	}
-	
+
 	// Check if it's a Dictionary-wrapped item (with constraints)
 	if (p_node_info.get_type() == Variant::DICTIONARY) {
 		Dictionary dict = p_node_info;

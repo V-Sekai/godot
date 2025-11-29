@@ -34,7 +34,7 @@
 PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolutionGraph p_graph, int p_parent_node_id, int p_current_node_id, Dictionary p_state, TypedArray<Variant> p_blacklisted_commands) {
 	// Mark current node as failed
 	p_graph.set_node_status(p_current_node_id, PlannerNodeStatus::STATUS_FAILED);
-	
+
 	// Reset current node's selected_method and state (IPyHOP-style)
 	Dictionary current_node = p_graph.get_node(p_current_node_id);
 	// Validate required dictionary keys exist
@@ -59,7 +59,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 
 	// Remove descendants of the failed node
 	PlannerGraphOperations::remove_descendants(p_graph, p_current_node_id);
-	
+
 	// Remove the failed node from its parent's successors list
 	// This prevents failed nodes from being considered as part of the solution path
 	PlannerGraphOperations::remove_node_from_parent(p_graph, p_current_node_id);
@@ -82,7 +82,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 			return result;
 		}
 		int node_type = node["type"];
-		
+
 		// Validate available_methods exists before accessing
 		// Some node types may not have available_methods (e.g., ACTION nodes)
 		TypedArray<Callable> available_methods;
@@ -111,7 +111,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		if (can_retry) {
 			// Found a node with available methods, retry it
 			p_graph.set_node_status(new_parent_node_id, PlannerNodeStatus::STATUS_OPEN);
-			
+
 			// Reset selected_method and state (IPyHOP-style)
 			// This allows the node to try all methods again from the beginning
 			// Re-fetch node to get latest state after status change

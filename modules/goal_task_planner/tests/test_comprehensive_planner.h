@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_comprehensive_planner.h                                         */
+/*  test_comprehensive_planner.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -33,8 +33,8 @@
 
 #pragma once
 
-#include "test_planner_helpers.h"
 #include "test_planner_domains.h"
+#include "test_planner_helpers.h"
 #include "test_planner_problems.h"
 
 TEST_CASE("[Modules][Planner] PlannerEntityRequirement - Entity matching") {
@@ -42,9 +42,9 @@ TEST_CASE("[Modules][Planner] PlannerEntityRequirement - Entity matching") {
 		LocalVector<String> capabilities;
 		capabilities.push_back("cooking");
 		capabilities.push_back("cleaning");
-		
-		PlannerEntityRequirement req("chef", capabilities);
-		CHECK(req.type == "chef");
+
+		PlannerEntityRequirement req("protagonist", capabilities);
+		CHECK(req.type == "protagonist");
 		CHECK(req.capabilities.size() == 2);
 		CHECK(req.is_valid());
 	}
@@ -52,17 +52,17 @@ TEST_CASE("[Modules][Planner] PlannerEntityRequirement - Entity matching") {
 	SUBCASE("Dictionary conversion") {
 		LocalVector<String> capabilities;
 		capabilities.push_back("serving");
-		
-		PlannerEntityRequirement req("waiter", capabilities);
+
+		PlannerEntityRequirement req("classmate", capabilities);
 		Dictionary dict = req.to_dictionary();
-		
-		CHECK(dict["type"] == "waiter");
+
+		CHECK(dict["type"] == "classmate");
 		Array caps = dict["capabilities"];
 		CHECK(caps.size() == 1);
 		CHECK(caps[0] == "serving");
-		
+
 		PlannerEntityRequirement restored = PlannerEntityRequirement::from_dictionary(dict);
-		CHECK(restored.type == "waiter");
+		CHECK(restored.type == "classmate");
 		CHECK(restored.capabilities.size() == 1);
 	}
 
@@ -78,7 +78,7 @@ TEST_CASE("[Modules][Planner] PlannerMetadata - Temporal and entity constraints"
 		metadata.duration = 5000000LL; // 5 seconds
 		metadata.start_time = 1735689600000000LL;
 		metadata.end_time = 1735689605000000LL;
-		
+
 		CHECK(metadata.has_temporal());
 		CHECK(metadata.duration == 5000000LL);
 	}
@@ -87,8 +87,8 @@ TEST_CASE("[Modules][Planner] PlannerMetadata - Temporal and entity constraints"
 		LocalVector<PlannerEntityRequirement> entities;
 		LocalVector<String> caps1;
 		caps1.push_back("cooking");
-		entities.push_back(PlannerEntityRequirement("chef", caps1));
-		
+		entities.push_back(PlannerEntityRequirement("protagonist", caps1));
+
 		PlannerMetadata metadata(1000000LL, entities);
 		CHECK(metadata.requires_entities.size() == 1);
 		CHECK(metadata.duration == 1000000LL);
@@ -98,16 +98,16 @@ TEST_CASE("[Modules][Planner] PlannerMetadata - Temporal and entity constraints"
 		LocalVector<PlannerEntityRequirement> entities;
 		LocalVector<String> caps;
 		caps.push_back("serving");
-		entities.push_back(PlannerEntityRequirement("waiter", caps));
-		
+		entities.push_back(PlannerEntityRequirement("classmate", caps));
+
 		PlannerMetadata metadata(2000000LL, entities);
 		metadata.start_time = 1735689600000000LL;
-		
+
 		Dictionary dict = metadata.to_dictionary();
 		CHECK(dict.has("duration"));
 		CHECK(dict.has("requires_entities"));
 		CHECK(dict.has("start_time"));
-		
+
 		PlannerMetadata restored = PlannerMetadata::from_dictionary(dict);
 		CHECK(restored.duration == 2000000LL);
 		CHECK(restored.requires_entities.size() == 1);
@@ -130,11 +130,11 @@ TEST_CASE("[Modules][Planner] PlannerSTNSolver - Temporal constraint validation"
 	SUBCASE("Add constraints") {
 		stn.add_time_point("start");
 		stn.add_time_point("end");
-		
+
 		bool added = stn.add_constraint("start", "end", 1000000LL, 5000000LL); // 1-5 seconds
 		CHECK(added);
 		CHECK(stn.has_constraint("start", "end"));
-		
+
 		PlannerSTNSolver::Constraint constraint = stn.get_constraint("start", "end");
 		CHECK(constraint.min_distance == 1000000LL);
 		CHECK(constraint.max_distance == 5000000LL);
@@ -144,12 +144,12 @@ TEST_CASE("[Modules][Planner] PlannerSTNSolver - Temporal constraint validation"
 		stn.add_time_point("origin");
 		stn.add_time_point("task1_start");
 		stn.add_time_point("task1_end");
-		
+
 		// Valid constraints: task1 takes 2-4 seconds
 		stn.add_constraint("origin", "task1_start", 0, INT64_MAX);
 		stn.add_constraint("task1_start", "task1_end", 2000000LL, 4000000LL);
 		// Removed conflicting constraint - forward path already constrains task1_end
-		
+
 		stn.check_consistency();
 		CHECK(stn.is_consistent());
 	}
@@ -158,12 +158,12 @@ TEST_CASE("[Modules][Planner] PlannerSTNSolver - Temporal constraint validation"
 		stn.add_time_point("a");
 		stn.add_time_point("b");
 		stn.add_time_point("c");
-		
+
 		// Contradictory: a->b: 1-2s, b->c: 1-2s, but c->a: -1s (impossible)
 		stn.add_constraint("a", "b", 1000000LL, 2000000LL);
 		stn.add_constraint("b", "c", 1000000LL, 2000000LL);
 		stn.add_constraint("c", "a", -1000000LL, -1000000LL); // Negative cycle
-		
+
 		stn.check_consistency();
 		// May or may not be consistent depending on implementation
 	}
@@ -173,7 +173,7 @@ TEST_CASE("[Modules][Planner] PlannerSTNSolver - Temporal constraint validation"
 		stn.add_time_point("end");
 		stn.add_constraint("start", "end", 1000000LL, 5000000LL);
 		stn.check_consistency();
-		
+
 		int64_t distance = stn.get_distance("start", "end");
 		CHECK(distance >= 1000000LL);
 		CHECK(distance <= 5000000LL);
@@ -184,10 +184,10 @@ TEST_CASE("[Modules][Planner] PlannerSTNSolver - Temporal constraint validation"
 		stn.add_time_point("b");
 		stn.add_constraint("a", "b", 1000000LL, 2000000LL);
 		stn.check_consistency();
-		
+
 		PlannerSTNSolver::Snapshot snapshot = stn.create_snapshot();
 		stn.clear();
-		
+
 		stn.restore_snapshot(snapshot);
 		CHECK(stn.has_time_point("a"));
 		CHECK(stn.has_time_point("b"));
@@ -200,14 +200,14 @@ TEST_CASE("[Modules][Planner] PlannerSolutionGraph - Graph operations") {
 	PlannerSolutionGraph graph;
 
 	SUBCASE("Create nodes") {
-		int action_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "cook_pasta");
-		int task_id = graph.create_node(PlannerNodeType::TYPE_TASK, "prepare_meal");
-		int goal_id = graph.create_node(PlannerNodeType::TYPE_GOAL, "cook_dish");
-		
+		int action_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "study_magic_class");
+		int task_id = graph.create_node(PlannerNodeType::TYPE_TASK, "complete_lesson");
+		int goal_id = graph.create_node(PlannerNodeType::TYPE_GOAL, "achieve_affection_level");
+
 		CHECK(action_id > 0);
 		CHECK(task_id > 0);
 		CHECK(goal_id > 0);
-		
+
 		Dictionary action_node = graph.get_node(action_id);
 		CHECK(int(action_node["type"]) == static_cast<int>(PlannerNodeType::TYPE_ACTION));
 		CHECK(int(action_node["status"]) == static_cast<int>(PlannerNodeStatus::STATUS_OPEN));
@@ -216,7 +216,7 @@ TEST_CASE("[Modules][Planner] PlannerSolutionGraph - Graph operations") {
 	SUBCASE("Node status management") {
 		int node_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "test_action");
 		graph.set_node_status(node_id, PlannerNodeStatus::STATUS_CLOSED);
-		
+
 		Dictionary node = graph.get_node(node_id);
 		CHECK(int(node["status"]) == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED));
 	}
@@ -225,10 +225,10 @@ TEST_CASE("[Modules][Planner] PlannerSolutionGraph - Graph operations") {
 		int parent_id = graph.create_node(PlannerNodeType::TYPE_TASK, "parent");
 		int child1_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "child1");
 		int child2_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "child2");
-		
+
 		graph.add_successor(parent_id, child1_id);
 		graph.add_successor(parent_id, child2_id);
-		
+
 		Dictionary parent = graph.get_node(parent_id);
 		TypedArray<int> successors = parent["successors"];
 		CHECK(successors.size() == 2);
@@ -237,16 +237,19 @@ TEST_CASE("[Modules][Planner] PlannerSolutionGraph - Graph operations") {
 	SUBCASE("State snapshots") {
 		int node_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "test");
 		Dictionary state;
-		Dictionary chef_state;
-		chef_state["cooking"] = "pasta";
-		state["chef"] = chef_state;
-		
+		Dictionary protagonist_state;
+		Dictionary studies;
+		studies["magic_class"] = true;
+		protagonist_state["studies"] = studies;
+		state["protagonist"] = protagonist_state;
+
 		graph.save_state_snapshot(node_id, state);
 		Dictionary retrieved = graph.get_state_snapshot(node_id);
-		
-		CHECK(retrieved.has("chef"));
-		Dictionary retrieved_chef_state = retrieved["chef"];
-		CHECK(retrieved_chef_state["cooking"] == "pasta");
+
+		CHECK(retrieved.has("protagonist"));
+		Dictionary retrieved_protagonist_state = retrieved["protagonist"];
+		Dictionary retrieved_studies = retrieved_protagonist_state["studies"];
+		CHECK(bool(retrieved_studies["magic_class"]) == true);
 	}
 }
 
@@ -265,21 +268,21 @@ TEST_CASE("[Modules][Planner] PlannerGraphOperations - Graph manipulation") {
 		CHECK(type == PlannerNodeType::TYPE_ACTION);
 
 		// Task
-		Variant task_info = "prepare_meal";
-		task_dict["prepare_meal"] = TypedArray<Callable>();
+		Variant task_info = "complete_lesson";
+		task_dict["complete_lesson"] = TypedArray<Callable>();
 		type = PlannerGraphOperations::get_node_type(task_info, action_dict, task_dict, unigoal_dict);
 		CHECK(type == PlannerNodeType::TYPE_TASK);
 	}
 
 	SUBCASE("Add nodes and edges") {
 		Array todo_list;
-		todo_list.push_back("cook_pasta");
-		action_dict["cook_pasta"] = Callable();
-		
+		todo_list.push_back("study_magic_class");
+		action_dict["study_magic_class"] = Callable();
+
 		int parent_id = 0; // Root
 		int result = PlannerGraphOperations::add_nodes_and_edges(
-			graph, parent_id, todo_list, action_dict, task_dict, unigoal_dict, multigoal_methods);
-		
+				graph, parent_id, todo_list, action_dict, task_dict, unigoal_dict, multigoal_methods);
+
 		CHECK(result >= 0);
 		Dictionary root = graph.get_node(0);
 		TypedArray<int> successors = root["successors"];
@@ -292,7 +295,7 @@ TEST_CASE("[Modules][Planner] PlannerGraphOperations - Graph manipulation") {
 		graph.set_node_status(node1, PlannerNodeStatus::STATUS_CLOSED);
 		graph.add_successor(0, node1);
 		graph.add_successor(0, node2);
-		
+
 		Variant open_node = PlannerGraphOperations::find_open_node(graph, 0);
 		CHECK(open_node.get_type() == Variant::INT);
 		CHECK(static_cast<int>(open_node) == node2);
@@ -302,7 +305,7 @@ TEST_CASE("[Modules][Planner] PlannerGraphOperations - Graph manipulation") {
 		int parent = graph.create_node(PlannerNodeType::TYPE_TASK, "parent");
 		int child = graph.create_node(PlannerNodeType::TYPE_ACTION, "child");
 		graph.add_successor(parent, child);
-		
+
 		int found_parent = PlannerGraphOperations::find_predecessor(graph, child);
 		CHECK(found_parent == parent);
 	}
@@ -314,7 +317,7 @@ TEST_CASE("[Modules][Planner] PlannerGraphOperations - Graph manipulation") {
 		graph.set_node_status(action2, PlannerNodeStatus::STATUS_CLOSED);
 		graph.add_successor(0, action1);
 		graph.add_successor(action1, action2);
-		
+
 		graph.set_node_status(0, PlannerNodeStatus::STATUS_CLOSED);
 		Array plan = PlannerGraphOperations::extract_solution_plan(graph);
 		CHECK(plan.size() >= 0); // May be empty or contain actions
@@ -324,17 +327,17 @@ TEST_CASE("[Modules][Planner] PlannerGraphOperations - Graph manipulation") {
 TEST_CASE("[Modules][Planner] PlannerMultigoal - Multigoal operations") {
 	SUBCASE("Check if multigoal") {
 		Dictionary multigoal;
-		Dictionary customer1;
-		customer1["dish"] = "pasta";
-		customer1["waiter"] = "waiter1";
-		Dictionary customer2;
-		customer2["dish"] = "pizza";
-		customer2["waiter"] = "waiter2";
-		multigoal["customer1"] = customer1;
-		multigoal["customer2"] = customer2;
-		
+		Dictionary character1;
+		character1["affection_level"] = 50;
+		character1["student"] = "protagonist";
+		Dictionary character2;
+		character2["affection_level"] = 30;
+		character2["student"] = "protagonist";
+		multigoal["class_president"] = character1;
+		multigoal["upperclassman"] = character2;
+
 		CHECK(PlannerMultigoal::is_multigoal_dict(multigoal));
-		
+
 		Dictionary not_multigoal;
 		not_multigoal["key"] = "value";
 		CHECK(!PlannerMultigoal::is_multigoal_dict(not_multigoal));
@@ -342,46 +345,48 @@ TEST_CASE("[Modules][Planner] PlannerMultigoal - Multigoal operations") {
 
 	SUBCASE("Get goal variables") {
 		Dictionary multigoal;
-		multigoal["customer1"] = Dictionary();
-		multigoal["customer2"] = Dictionary();
-		
+		multigoal["class_president"] = Dictionary();
+		multigoal["upperclassman"] = Dictionary();
+
 		Array variables = PlannerMultigoal::get_goal_variables(multigoal);
 		CHECK(variables.size() == 2);
 	}
 
 	SUBCASE("Get goal conditions") {
 		Dictionary multigoal;
-		Dictionary customer1;
-		customer1["dish"] = "pasta";
-		customer1["waiter"] = "waiter1";
-		multigoal["customer1"] = customer1;
-		
-		Dictionary conditions = PlannerMultigoal::get_goal_conditions_for_variable(multigoal, "customer1");
-		CHECK(conditions["dish"] == "pasta");
-		CHECK(conditions["waiter"] == "waiter1");
+		Dictionary character1;
+		character1["affection_level"] = 50;
+		character1["student"] = "protagonist";
+		multigoal["class_president"] = character1;
+
+		Dictionary conditions = PlannerMultigoal::get_goal_conditions_for_variable(multigoal, "class_president");
+		CHECK(int(conditions["affection_level"]) == 50);
+		CHECK(conditions["student"] == "protagonist");
 	}
 
 	SUBCASE("Get goal value") {
 		Dictionary multigoal;
-		Dictionary customer1;
-		customer1["dish"] = "pasta";
-		multigoal["customer1"] = customer1;
-		
-		Variant dish = PlannerMultigoal::get_goal_value(multigoal, "customer1", "dish");
-		CHECK(dish == "pasta");
+		Dictionary character1;
+		character1["affection_level"] = 50;
+		multigoal["class_president"] = character1;
+
+		Variant affection = PlannerMultigoal::get_goal_value(multigoal, "class_president", "affection_level");
+		CHECK(int(affection) == 50);
 	}
 
 	SUBCASE("Goals not achieved") {
 		Dictionary state;
-		Dictionary customer1_state;
-		customer1_state["served"] = "pasta";
-		state["customer1"] = customer1_state;
-		
+		Dictionary relationship_state;
+		Dictionary character1_relationship;
+		character1_relationship["affection"] = 50;
+		relationship_state["protagonist_class_president"] = character1_relationship;
+		state["relationships"] = relationship_state;
+
 		Dictionary multigoal;
-		Dictionary customer1_goal;
-		customer1_goal["dish"] = "pasta";
-		multigoal["customer1"] = customer1_goal;
-		
+		Dictionary character1_goal;
+		character1_goal["affection_level"] = 50;
+		multigoal["class_president"] = character1_goal;
+
 		Dictionary not_achieved = PlannerMultigoal::method_goals_not_achieved(state, multigoal);
 		// Should be empty if goal is achieved
 		CHECK(not_achieved.size() >= 0);
@@ -392,31 +397,31 @@ TEST_CASE("[Modules][Planner] PlannerState - State management") {
 	Ref<PlannerState> state = memnew(PlannerState);
 
 	SUBCASE("Set and get predicates") {
-		state->set_predicate("chef1", "cooking", "pasta");
-		Variant value = state->get_predicate("chef1", "cooking");
-		CHECK(value == "pasta");
+		state->set_predicate("protagonist", "studying", "magic_class");
+		Variant value = state->get_predicate("protagonist", "studying");
+		CHECK(value == "magic_class");
 	}
 
 	SUBCASE("Has predicate") {
-		state->set_predicate("table1", "clean", true);
-		CHECK(state->has_predicate("table1", "clean"));
-		CHECK(!state->has_predicate("table1", "dirty"));
+		state->set_predicate("classroom1", "attended", true);
+		CHECK(state->has_predicate("classroom1", "attended"));
+		CHECK(!state->has_predicate("classroom1", "skipped"));
 	}
 
 	SUBCASE("Entity capabilities") {
-		state->set_entity_capability("chef1", "cooking", true);
-		state->set_entity_capability("chef1", "cleaning", false);
-		
-		Variant cooking = state->get_entity_capability("chef1", "cooking");
-		CHECK(bool(cooking) == true);
-		
-		CHECK(state->has_entity("chef1"));
+		state->set_entity_capability("protagonist", "studying", true);
+		state->set_entity_capability("protagonist", "socializing", false);
+
+		Variant studying = state->get_entity_capability("protagonist", "studying");
+		CHECK(bool(studying) == true);
+
+		CHECK(state->has_entity("protagonist"));
 	}
 
 	SUBCASE("Get all entities") {
-		state->set_entity_capability("chef1", "cooking", true);
-		state->set_entity_capability("waiter1", "serving", true);
-		
+		state->set_entity_capability("protagonist", "studying", true);
+		state->set_entity_capability("classmate1", "socializing", true);
+
 		Array entities = state->get_all_entities();
 		CHECK(entities.size() >= 2);
 	}
@@ -427,32 +432,32 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 
 	SUBCASE("Add actions") {
 		TypedArray<Callable> actions;
-		actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_cook));
-		actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_serve));
-		
+		actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_study_subject));
+		actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_attend_class));
+
 		domain->add_actions(actions);
 		CHECK(domain->action_dictionary.size() > 0);
 	}
 
 	SUBCASE("Add task methods") {
 		TypedArray<Callable> methods;
-		methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::task_prepare_meal));
-		domain->add_task_methods("prepare_meal", methods);
+		methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
+		domain->add_task_methods("complete_lesson", methods);
 		// Task methods are stored internally
 		CHECK(true); // Domain accepts task methods
 	}
 
 	SUBCASE("Add unigoal methods") {
 		TypedArray<Callable> methods;
-		methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::unigoal_cook_dish));
-		domain->add_unigoal_methods("cook_dish", methods);
+		methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+		domain->add_unigoal_methods("achieve_affection_level", methods);
 		// Unigoal methods are stored internally
 		CHECK(true); // Domain accepts unigoal methods
 	}
 
 	SUBCASE("Add multigoal methods") {
 		TypedArray<Callable> methods;
-		methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::multigoal_serve_customers));
+		methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::multigoal_complete_route));
 		domain->add_multigoal_methods(methods);
 		// Multigoal methods are stored internally
 		CHECK(true); // Domain accepts multigoal methods
@@ -465,21 +470,21 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 
 	// Setup domain
 	TypedArray<Callable> actions;
-	actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_cook));
-	actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_serve));
-	actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_clean));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_study_subject));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_attend_class));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_talk_to_character));
 	domain->add_actions(actions);
 
 	TypedArray<Callable> task_methods;
-	task_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::task_prepare_meal));
-	domain->add_task_methods("prepare_meal", task_methods);
+	task_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
+	domain->add_task_methods("complete_lesson", task_methods);
 
 	TypedArray<Callable> unigoal_methods;
-	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::unigoal_cook_dish));
-	domain->add_unigoal_methods("cook_dish", unigoal_methods);
+	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+	domain->add_unigoal_methods("achieve_affection_level", unigoal_methods);
 
 	TypedArray<Callable> multigoal_methods;
-	multigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::multigoal_serve_customers));
+	multigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::multigoal_complete_route));
 	domain->add_multigoal_methods(multigoal_methods);
 
 	plan->set_current_domain(domain);
@@ -487,8 +492,8 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 	SUBCASE("Basic planning with actions") {
 		Dictionary state;
 		Array todo_list;
-		todo_list.push_back("cook");
-		
+		todo_list.push_back("study");
+
 		// Note: This may fail if actions aren't properly registered
 		// The test verifies the planning infrastructure works
 		Variant result = plan->find_plan(state, todo_list);
@@ -500,13 +505,13 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 	SUBCASE("Plan with temporal constraints") {
 		Dictionary state;
 		Array todo_list;
-		todo_list.push_back("cook");
-		
+		todo_list.push_back("study");
+
 		// Set time range
 		PlannerTimeRange time_range;
 		time_range.set_start_time(1735689600000000LL);
 		plan->set_time_range(time_range);
-		
+
 		Variant result = plan->find_plan(state, todo_list);
 		PlannerTimeRange retrieved = plan->get_time_range();
 		CHECK(retrieved.get_start_time() == 1735689600000000LL);
@@ -529,17 +534,17 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 	}
 
 	SUBCASE("Attach metadata") {
-		Variant item = "cook_pasta";
+		Variant item = "study_magic_class";
 		Dictionary temporal;
 		temporal["duration"] = 5000000LL; // 5 seconds
 		temporal["start_time"] = 1735689600000000LL;
-		
+
 		Dictionary entity;
-		entity["type"] = "chef";
+		entity["type"] = "protagonist";
 		Array capabilities;
-		capabilities.push_back("cooking");
+		capabilities.push_back("studying");
 		entity["capabilities"] = capabilities;
-		
+
 		Variant result = plan->attach_metadata(item, temporal, entity);
 		CHECK(result.get_type() != Variant::NIL);
 	}
@@ -549,7 +554,7 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 		Dictionary temporal;
 		temporal["duration"] = 3000000LL;
 		Variant wrapped_item = plan->attach_metadata(item, temporal);
-		
+
 		Dictionary constraints = plan->_get_temporal_constraints(wrapped_item);
 		CHECK(constraints.has("duration"));
 	}
@@ -559,7 +564,7 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 		Dictionary temporal;
 		temporal["duration"] = 2000000LL;
 		Variant wrapped_item = plan->attach_metadata(item, temporal);
-		
+
 		bool has_temporal = plan->_has_temporal_constraints(wrapped_item);
 		CHECK(has_temporal);
 	}
@@ -567,10 +572,10 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 	SUBCASE("Plan configuration") {
 		plan->set_verbose(2);
 		CHECK(plan->get_verbose() == 2);
-		
+
 		plan->set_verify_goals(true);
 		CHECK(plan->get_verify_goals() == true);
-		
+
 		plan->set_max_depth(15);
 		CHECK(plan->get_max_depth() == 15);
 	}
@@ -578,83 +583,85 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 
 TEST_CASE("[Modules][Planner] PlannerBacktracking - Backtracking operations") {
 	PlannerSolutionGraph graph;
-	
+
 	SUBCASE("Backtrack from failed node") {
 		int parent_id = graph.create_node(PlannerNodeType::TYPE_TASK, "parent");
 		int failed_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "failed_action");
 		graph.set_node_status(failed_id, PlannerNodeStatus::STATUS_FAILED);
 		graph.add_successor(parent_id, failed_id);
-		
+
 		// Set up available_methods on parent node so backtrack() can return it
 		Dictionary parent_node = graph.get_node(parent_id);
 		TypedArray<Callable> available_methods;
-		available_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::task_prepare_meal));
+		available_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
 		parent_node["available_methods"] = available_methods;
 		graph.update_node(parent_id, parent_node);
-		
+
 		Dictionary state;
 		TypedArray<Variant> blacklisted;
-		
+
 		PlannerBacktracking::BacktrackResult result = PlannerBacktracking::backtrack(
-			graph, parent_id, failed_id, state, blacklisted);
-		
+				graph, parent_id, failed_id, state, blacklisted);
+
 		CHECK(result.parent_node_id == parent_id);
 		CHECK(result.current_node_id >= 0);
 	}
 }
 
-TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") {
+TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
 	Ref<PlannerState> state = memnew(PlannerState);
 
-	// Setup complete restaurant domain
+	// Setup complete academy domain
 	TypedArray<Callable> actions;
-	actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_cook));
-	actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_serve));
-	actions.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::action_clean));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_study_subject));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_attend_class));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_talk_to_character));
 	domain->add_actions(actions);
 
 	TypedArray<Callable> task_methods;
-	task_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::task_prepare_meal));
-	domain->add_task_methods("prepare_meal", task_methods);
+	task_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
+	domain->add_task_methods("complete_lesson", task_methods);
 
 	TypedArray<Callable> unigoal_methods;
-	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::unigoal_cook_dish));
-	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::unigoal_clean_table));
-	domain->add_unigoal_methods("cook_dish", unigoal_methods);
-	domain->add_unigoal_methods("clean_table", unigoal_methods);
+	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_pass_exam));
+	domain->add_unigoal_methods("achieve_affection_level", unigoal_methods);
+	domain->add_unigoal_methods("pass_exam", unigoal_methods);
 
 	TypedArray<Callable> multigoal_methods;
-	multigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::RestaurantDomainCallable::multigoal_serve_customers));
+	multigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::multigoal_complete_route));
 	domain->add_multigoal_methods(multigoal_methods);
 
 	plan->set_current_domain(domain);
 
 	// Setup initial state with entities
-	state->set_entity_capability("chef1", "cooking", true);
-	state->set_entity_capability("waiter1", "serving", true);
-	state->set_predicate("chef1", "available", true);
-	state->set_predicate("waiter1", "available", true);
+	state->set_entity_capability("protagonist", "studying", true);
+	state->set_entity_capability("classmate1", "socializing", true);
+	state->set_predicate("protagonist", "available", true);
+	state->set_predicate("classmate1", "available", true);
 
 	SUBCASE("Plan with entity requirements") {
 		Dictionary state_dict;
 		// Add entity capabilities to state
-		Dictionary chef1;
-		chef1["cooking"] = true;
-		state_dict["chef1"] = chef1;
-		
+		Dictionary protagonist;
+		Dictionary studies;
+		studies["magic_class"] = true;
+		protagonist["studies"] = studies;
+		state_dict["protagonist"] = protagonist;
+
 		Array todo_list;
-		todo_list.push_back("cook_dish");
-		
+		todo_list.push_back("achieve_affection_level");
+
 		// Attach entity requirement to goal
 		Dictionary entity_constraints;
-		entity_constraints["type"] = "chef";
+		entity_constraints["type"] = "protagonist";
 		Array capabilities;
-		capabilities.push_back("cooking");
+		capabilities.push_back("studying");
 		entity_constraints["capabilities"] = capabilities;
-		plan->attach_metadata("cook_dish", Dictionary(), entity_constraints);
-		
+		plan->attach_metadata("achieve_affection_level", Dictionary(), entity_constraints);
+
 		Variant result = plan->find_plan(state_dict, todo_list);
 		// Planning should attempt to use entities with required capabilities
 		Variant::Type result_type = result.get_type();
@@ -665,17 +672,17 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 	SUBCASE("Plan with temporal constraints") {
 		Dictionary state_dict;
 		Array todo_list;
-		todo_list.push_back("cook");
-		
+		todo_list.push_back("study");
+
 		// Set temporal constraints
 		PlannerTimeRange time_range;
 		time_range.set_start_time(1735689600000000LL);
 		plan->set_time_range(time_range);
-		
+
 		Dictionary temporal;
 		temporal["duration"] = 5000000LL; // 5 seconds
-		plan->attach_metadata("cook", temporal);
-		
+		plan->attach_metadata("study", temporal);
+
 		Variant result = plan->find_plan(state_dict, todo_list);
 		Variant::Type result_type = result.get_type();
 		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
@@ -685,14 +692,14 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 	SUBCASE("Plan with multigoal") {
 		Dictionary state_dict;
 		Dictionary multigoal;
-		Dictionary customer1;
-		customer1["dish"] = "pasta";
-		customer1["waiter"] = "waiter1";
-		multigoal["customer1"] = customer1;
-		
+		Dictionary character1;
+		character1["affection_level"] = 50;
+		character1["student"] = "protagonist";
+		multigoal["class_president"] = character1;
+
 		Array todo_list;
 		todo_list.push_back(multigoal);
-		
+
 		Variant result = plan->find_plan(state_dict, todo_list);
 		Variant::Type result_type = result.get_type();
 		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
@@ -703,12 +710,12 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 		// This tests that STN solver is integrated with planning
 		Dictionary state_dict;
 		Array todo_list;
-		todo_list.push_back("cook");
-		
+		todo_list.push_back("study");
+
 		PlannerTimeRange time_range;
 		time_range.set_start_time(1735689600000000LL);
 		plan->set_time_range(time_range);
-		
+
 		Variant result = plan->find_plan(state_dict, todo_list);
 		// STN should be initialized and used during planning
 		Variant::Type result_type = result.get_type();
@@ -723,8 +730,8 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
 	SUBCASE("Find plan with null domain") {
 		Dictionary state;
 		Array todo_list;
-		todo_list.push_back("cook");
-		
+		todo_list.push_back("study");
+
 		// Don't set domain - should return false
 		Variant result = plan->find_plan(state, todo_list);
 		CHECK(result == Variant(false));
@@ -733,12 +740,12 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
 	SUBCASE("Find plan with null todo_list") {
 		Ref<PlannerDomain> domain = memnew(PlannerDomain);
 		plan->set_current_domain(domain);
-		
+
 		Dictionary state;
 		Array null_todo_list; // Empty array is valid, but we test null handling
 		// Note: In Godot, Array() is not null, so we test with empty array
 		// Actual null would require Variant() which may not be testable here
-		
+
 		Variant result = plan->find_plan(state, null_todo_list);
 		// Should handle gracefully (may return false or empty plan)
 		Variant::Type result_type = result.get_type();
@@ -749,15 +756,15 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
 	SUBCASE("Run lazy lookahead with invalid max_tries") {
 		Ref<PlannerDomain> domain = memnew(PlannerDomain);
 		plan->set_current_domain(domain);
-		
+
 		Dictionary state;
 		Array todo_list;
-		todo_list.push_back("cook");
-		
+		todo_list.push_back("study");
+
 		// Test with zero max_tries (should be rejected)
 		Dictionary result = plan->run_lazy_lookahead(state, todo_list, 0);
 		CHECK(result.is_empty());
-		
+
 		// Test with negative max_tries (should be rejected)
 		result = plan->run_lazy_lookahead(state, todo_list, -1);
 		CHECK(result.is_empty());
@@ -766,8 +773,8 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
 	SUBCASE("Run lazy refineahead with null domain") {
 		Dictionary state;
 		Array todo_list;
-		todo_list.push_back("cook");
-		
+		todo_list.push_back("study");
+
 		// Don't set domain - should return empty dictionary
 		Dictionary result = plan->run_lazy_refineahead(state, todo_list);
 		CHECK(result.is_empty());
@@ -775,15 +782,15 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
 
 	SUBCASE("STN solver with empty time point names") {
 		PlannerSTNSolver stn;
-		
+
 		// Adding time point with empty name should return -1
 		int64_t result = stn.add_time_point("");
 		CHECK(result == -1);
-		
+
 		// Adding constraint with empty names should fail
 		bool added = stn.add_constraint("", "end", 1000000LL, 5000000LL);
 		CHECK(!added);
-		
+
 		added = stn.add_constraint("start", "", 1000000LL, 5000000LL);
 		CHECK(!added);
 	}
@@ -792,17 +799,16 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
 		PlannerSTNSolver stn;
 		stn.add_time_point("start");
 		stn.add_time_point("end");
-		
+
 		// Get distance with empty time point names should return infinity
 		int64_t dist = stn.get_distance("", "end");
 		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
-		
+
 		dist = stn.get_distance("start", "");
 		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
-		
+
 		// Get distance with non-existent time points should return infinity
 		dist = stn.get_distance("nonexistent", "end");
 		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
 	}
 }
-
