@@ -83,10 +83,10 @@ Variant PlannerDomain::method_verify_goal(Dictionary p_state, String p_method, S
 PlannerDomain::PlannerDomain() {
 	task_method_dictionary["_verify_g"] = varray(callable_mp_static(&PlannerDomain::method_verify_goal));
 	task_method_dictionary["_verify_mg"] = varray(callable_mp_static(&PlannerMultigoal::method_verify_multigoal));
-	multigoal_method_list.push_back(callable_mp_static(&PlannerMultigoal::method_split_multigoal));
 }
 
 void PlannerDomain::add_multigoal_methods(TypedArray<Callable> p_methods) {
+	// Add domain-specific methods that decompose multigoals to ordered unigoals
 	for (int i = 0; i < p_methods.size(); ++i) {
 		Callable m = p_methods[i];
 		if (m.is_null()) {
@@ -141,6 +141,13 @@ void PlannerDomain::add_actions(TypedArray<Callable> p_actions) {
 			continue;
 		}
 		String method_name = action.get_method();
+		// Extract just the method name without class prefix (e.g., "action_talk_to_character" from "IsekaiAcademyDomainCallable::action_talk_to_character")
+		if (method_name.contains("::")) {
+			PackedStringArray parts = method_name.split("::");
+			if (parts.size() > 0) {
+				method_name = parts[parts.size() - 1];
+			}
+		}
 		action_dictionary[method_name] = action;
 	}
 }

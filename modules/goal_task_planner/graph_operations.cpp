@@ -46,7 +46,7 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		}
 		// Check unigoal method dictionary
 		if (p_unigoal_dict.has(node_str)) {
-			return PlannerNodeType::TYPE_GOAL;
+			return PlannerNodeType::TYPE_UNIGOAL;
 		}
 		// Not found in any dictionary, return ROOT
 		return PlannerNodeType::TYPE_ROOT;
@@ -68,12 +68,9 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		return PlannerNodeType::TYPE_ROOT;
 	}
 
-	// Check if it's a MultiGoal (Dictionary-based) - for arrays or other types
-	if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
-		return PlannerNodeType::TYPE_MULTIGOAL;
-	}
-
-	// Check if it's an Array (task/goal/action)
+	// Check if it's an Array (task/goal/action) - do this BEFORE checking is_multigoal_dict
+	// because multigoals decompose to ordered unigoals (arrays), and we want to recognize
+	// unigoal arrays correctly, not misclassify them as multigoals
 	if (p_node_info.get_type() == Variant::ARRAY) {
 		Array arr = p_node_info;
 		if (arr.is_empty()) {
@@ -95,8 +92,14 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 
 		// Check unigoal method dictionary
 		if (p_unigoal_dict.has(first_str)) {
-			return PlannerNodeType::TYPE_GOAL;
+			return PlannerNodeType::TYPE_UNIGOAL;
 		}
+	}
+
+	// Check if it's a MultiGoal (Dictionary-based) - only for non-Array types
+	// Arrays are already handled above
+	if (PlannerMultigoal::is_multigoal_dict(p_node_info)) {
+		return PlannerNodeType::TYPE_MULTIGOAL;
 	}
 
 	return PlannerNodeType::TYPE_ROOT;
@@ -131,7 +134,7 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 					available_methods = TypedArray<Callable>(methods_var);
 				}
 			}
-		} else if (node_type == PlannerNodeType::TYPE_GOAL) {
+		} else if (node_type == PlannerNodeType::TYPE_UNIGOAL) {
 			Array arr = actual_item;
 			if (!arr.is_empty()) {
 				String goal_name = arr[0];
@@ -158,12 +161,12 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 		current_id = child_id;
 	}
 
-	// Add verification nodes for Goals and MultiGoals
+	// Add verification nodes for Unigoals and MultiGoals
 	Dictionary parent_node = p_graph.get_node(p_parent_node_id);
 	int parent_type = parent_node["type"];
 
-	if (parent_type == static_cast<int>(PlannerNodeType::TYPE_GOAL)) {
-		int verify_id = p_graph.create_node(PlannerNodeType::TYPE_VERIFY_GOAL, Variant("VerifyGoal"), TypedArray<Callable>(), Callable());
+	if (parent_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)) {
+		int verify_id = p_graph.create_node(PlannerNodeType::TYPE_VERIFY_GOAL, Variant("VerifyUnigoal"), TypedArray<Callable>(), Callable());
 		p_graph.add_successor(p_parent_node_id, verify_id);
 		current_id = verify_id;
 	} else if (parent_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {

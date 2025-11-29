@@ -40,7 +40,6 @@ void PlannerMultigoal::_bind_methods() {
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("has_goal_condition", "multigoal_dict", "variable", "argument"), &PlannerMultigoal::has_goal_condition);
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal_dict"), &PlannerMultigoal::method_goals_not_achieved);
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal_dict", "depth", "verbose"), &PlannerMultigoal::method_verify_multigoal);
-	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_split_multigoal", "state", "multigoal_dict"), &PlannerMultigoal::method_split_multigoal);
 }
 
 // Check if a Variant is a Dictionary multigoal (all values are dictionaries)
@@ -146,37 +145,4 @@ Variant PlannerMultigoal::method_verify_multigoal(const Dictionary &p_state, con
 		print_line(vformat("Depth %d: method %s achieved %s", p_depth, p_method, p_multigoal_dict));
 	}
 	return Array();
-}
-
-Array PlannerMultigoal::method_split_multigoal(const Dictionary &p_state, const Dictionary &p_multigoal_dict) {
-	// Get only the unachieved goals (matching IPyHOP's _goals_not_achieved behavior)
-	Dictionary goal_state = method_goals_not_achieved(p_state, p_multigoal_dict);
-	Array goal_list;
-
-	// Convert each unachieved goal to a Dictionary multigoal: {variable_name: {argument: value}}
-	for (Variant state_variable_name : goal_state.keys()) {
-		Variant state_values = goal_state[state_variable_name];
-		if (state_values.get_type() != Variant::DICTIONARY) {
-			continue;
-		}
-		Dictionary state_variable = state_values;
-		for (Variant state_goal : state_variable.keys()) {
-			if (!state_variable.has(state_goal)) {
-				continue;
-			}
-			// Convert single goal to Dictionary multigoal: {variable_name: {argument: value}}
-			Dictionary multigoal;
-			Dictionary variable_dict;
-			variable_dict[state_goal] = state_variable[state_goal];
-			multigoal[state_variable_name] = variable_dict;
-			goal_list.push_back(multigoal);
-		}
-	}
-
-	// Match IPyHOP's behavior: if there are unachieved goals, append multigoal to re-check later
-	// If all goals are achieved (goal_list is empty), return empty list
-	if (!goal_list.is_empty()) {
-		goal_list.push_back(p_multigoal_dict);
-	}
-	return goal_list;
 }

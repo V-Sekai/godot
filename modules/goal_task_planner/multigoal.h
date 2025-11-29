@@ -55,7 +55,6 @@ public:
 	// Static methods for multigoal operations
 	static Dictionary method_goals_not_achieved(const Dictionary &p_state, const Dictionary &p_multigoal_dict);
 	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Dictionary &p_multigoal_dict, int p_depth, int p_verbose);
-	static Array method_split_multigoal(const Dictionary &p_state, const Dictionary &p_multigoal_dict);
 
 protected:
 	static void _bind_methods();

@@ -50,7 +50,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 	}
 	int current_node_type = current_node["type"];
 	if (current_node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
-			current_node_type == static_cast<int>(PlannerNodeType::TYPE_GOAL) ||
+			current_node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) ||
 			current_node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
 		current_node["selected_method"] = Variant();
 		current_node["state"] = Dictionary();
@@ -100,7 +100,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		bool can_retry = false;
 
 		if (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
-				node_type == static_cast<int>(PlannerNodeType::TYPE_GOAL) ||
+				node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) ||
 				node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
 			// Check if there are available methods
 			if (available_methods.size() > 0) {

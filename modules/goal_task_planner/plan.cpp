@@ -152,6 +152,13 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 
 	// Check reachable nodes for failures
 	bool has_reachable_closed_nodes = false;
+	// Track FAILED VERIFY_GOAL nodes - they're acceptable if there's a CLOSED one for the same parent
+	Dictionary failed_verify_goals_by_parent; // parent_id -> array of failed verify goal node_ids
+	TypedArray<int> closed_verify_goals;
+	// Track FAILED VERIFY_MULTIGOAL nodes - they're acceptable if there's a CLOSED one for the same parent
+	Dictionary failed_verify_multigoals_by_parent; // parent_id -> array of failed verify multigoal node_ids
+	TypedArray<int> closed_verify_multigoals;
+	
 	for (int i = 0; i < reachable_nodes.size(); i++) {
 		int node_id = reachable_nodes[i];
 		if (node_id == 0) {
@@ -159,15 +166,141 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 		}
 		Dictionary node = graph[node_id];
 		int status = node["status"];
-		// Planning fails if any reachable node is open or failed
+		int node_type = node["type"];
+		
+		// Planning fails if any reachable node is open
 		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
 			planning_succeeded = false;
 			open_nodes.push_back(node_id);
 		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
-			planning_succeeded = false;
-			failed_nodes.push_back(node_id);
+			// FAILED VERIFY_GOAL and VERIFY_MULTIGOAL nodes are acceptable if there's a CLOSED one for the same parent
+			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL) || 
+				node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
+				// Get parent node ID (stored in node or find it)
+				// For now, just track it - we'll check later if there's a CLOSED one
+				// We need to find the parent by searching the graph
+				int parent_id = -1;
+				Array graph_keys = graph.keys();
+				for (int j = 0; j < graph_keys.size(); j++) {
+					int candidate_id = graph_keys[j];
+					if (candidate_id == node_id) {
+						continue;
+					}
+					Dictionary candidate_node = graph[candidate_id];
+					TypedArray<int> candidate_successors = candidate_node["successors"];
+					if (candidate_successors.has(node_id)) {
+						parent_id = candidate_id;
+						break;
+					}
+				}
+				if (parent_id >= 0) {
+					if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL)) {
+						if (!failed_verify_goals_by_parent.has(parent_id)) {
+							failed_verify_goals_by_parent[parent_id] = TypedArray<int>();
+						}
+						TypedArray<int> failed_list = failed_verify_goals_by_parent[parent_id];
+						failed_list.push_back(node_id);
+						failed_verify_goals_by_parent[parent_id] = failed_list;
+					} else { // TYPE_VERIFY_MULTIGOAL
+						if (!failed_verify_multigoals_by_parent.has(parent_id)) {
+							failed_verify_multigoals_by_parent[parent_id] = TypedArray<int>();
+						}
+						TypedArray<int> failed_list = failed_verify_multigoals_by_parent[parent_id];
+						failed_list.push_back(node_id);
+						failed_verify_multigoals_by_parent[parent_id] = failed_list;
+					}
+				}
+				// Don't mark as failed yet - check if there's a CLOSED one
+			} else {
+				// Other FAILED nodes are real failures
+				planning_succeeded = false;
+				failed_nodes.push_back(node_id);
+			}
 		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			has_reachable_closed_nodes = true;
+			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL)) {
+				closed_verify_goals.push_back(node_id);
+			} else if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
+				closed_verify_multigoals.push_back(node_id);
+			}
+		}
+	}
+	
+	// For each parent with failed verify goals, check if there's a closed one
+	Array failed_parent_keys = failed_verify_goals_by_parent.keys();
+	for (int i = 0; i < failed_parent_keys.size(); i++) {
+		int parent_id = failed_parent_keys[i];
+		bool has_closed_verify_goal = false;
+		// Check if any closed verify goal has this parent
+		for (int j = 0; j < closed_verify_goals.size(); j++) {
+			int verify_goal_id = closed_verify_goals[j];
+			// Find parent of this verify goal
+			Array graph_keys = graph.keys();
+			for (int k = 0; k < graph_keys.size(); k++) {
+				int candidate_id = graph_keys[k];
+				if (candidate_id == verify_goal_id) {
+					continue;
+				}
+				Dictionary candidate_node = graph[candidate_id];
+				TypedArray<int> candidate_successors = candidate_node["successors"];
+				if (candidate_successors.has(verify_goal_id)) {
+					if (candidate_id == parent_id) {
+						has_closed_verify_goal = true;
+						break;
+					}
+				}
+			}
+			if (has_closed_verify_goal) {
+				break;
+			}
+		}
+		// If no closed verify goal for this parent, the failed ones are real failures
+		if (!has_closed_verify_goal) {
+			TypedArray<int> failed_list = failed_verify_goals_by_parent[parent_id];
+			for (int j = 0; j < failed_list.size(); j++) {
+				failed_nodes.push_back(failed_list[j]);
+			}
+			// Don't mark planning as failed just because of intermediate verify failures
+			// The final CLOSED verify goal is what matters
+		}
+	}
+	
+	// For each parent with failed verify multigoals, check if there's a closed one
+	Array failed_multigoal_parent_keys = failed_verify_multigoals_by_parent.keys();
+	for (int i = 0; i < failed_multigoal_parent_keys.size(); i++) {
+		int parent_id = failed_multigoal_parent_keys[i];
+		bool has_closed_verify_multigoal = false;
+		// Check if any closed verify multigoal has this parent
+		for (int j = 0; j < closed_verify_multigoals.size(); j++) {
+			int verify_multigoal_id = closed_verify_multigoals[j];
+			// Find parent of this verify multigoal
+			Array graph_keys = graph.keys();
+			for (int k = 0; k < graph_keys.size(); k++) {
+				int candidate_id = graph_keys[k];
+				if (candidate_id == verify_multigoal_id) {
+					continue;
+				}
+				Dictionary candidate_node = graph[candidate_id];
+				TypedArray<int> candidate_successors = candidate_node["successors"];
+				if (candidate_successors.has(verify_multigoal_id)) {
+					if (candidate_id == parent_id) {
+						has_closed_verify_multigoal = true;
+						break;
+					}
+				}
+			}
+			if (has_closed_verify_multigoal) {
+				break;
+			}
+		}
+		// If no closed verify multigoal for this parent, the failed ones are real failures
+		if (!has_closed_verify_multigoal) {
+			TypedArray<int> failed_list = failed_verify_multigoals_by_parent[parent_id];
+			for (int j = 0; j < failed_list.size(); j++) {
+				failed_nodes.push_back(failed_list[j]);
+			}
+			// Don't mark planning as failed just because of intermediate verify failures
+			// The final CLOSED verify multigoal is what matters
 		}
 	}
 
@@ -215,8 +348,8 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 						case PlannerNodeType::TYPE_TASK:
 							type_str = "TASK";
 							break;
-						case PlannerNodeType::TYPE_GOAL:
-							type_str = "GOAL";
+						case PlannerNodeType::TYPE_UNIGOAL:
+							type_str = "UNIGOAL";
 							break;
 						case PlannerNodeType::TYPE_MULTIGOAL:
 							type_str = "MULTIGOAL";
@@ -809,6 +942,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 			Array action_arr = actual_action_info;
 
+			// Validate action array has at least the action name
+			if (action_arr.is_empty()) {
+				if (verbose >= 1) {
+					ERR_PRINT("PlannerPlan::_planning_loop_recursive: Action array is empty");
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+
 			// Validate that action was found
 			if (!action.is_valid() || action.is_null()) {
 				if (verbose >= 1) {
@@ -844,7 +994,31 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				print_line(vformat("Executing action '%s' with args: %s", action_name, _item_to_string(args.slice(1))));
 			}
 
+			// Execute action
+			// Note: Godot's callv() will throw an error if arguments don't match, but we can't easily
+			// validate argument count beforehand without reflection. The error will be caught by the
+			// error handler and planning will fail gracefully.
 			Variant result = action.callv(args);
+			
+			// If we get here, the action call succeeded (no exception thrown)
+			// Validate result is a Dictionary (actions should return new state)
+			if (result.get_type() != Variant::DICTIONARY) {
+				if (verbose >= 1) {
+					String action_name = String(action_arr[0]);
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Action '%s' returned non-Dictionary result (type: %d), marking as failed", 
+						action_name, result.get_type()));
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
 
 			// Use temporal metadata end_time if provided, otherwise use current time
 			int64_t action_end_time;
@@ -990,22 +1164,22 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 		}
 
-		case PlannerNodeType::TYPE_GOAL: {
-			Variant goal_info = curr_node["info"];
+		case PlannerNodeType::TYPE_UNIGOAL: {
+			Variant unigoal_info = curr_node["info"];
 
-			// Unwrap goal_info if it's in dictionary format
-			Variant actual_goal_info = goal_info;
-			if (goal_info.get_type() == Variant::DICTIONARY) {
-				Dictionary dict = goal_info;
+			// Unwrap unigoal_info if it's in dictionary format
+			Variant actual_unigoal_info = unigoal_info;
+			if (unigoal_info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = unigoal_info;
 				if (dict.has("item")) {
-					actual_goal_info = dict["item"];
+					actual_unigoal_info = dict["item"];
 				}
 			}
 
-			// Check if this goal is blacklisted (IPyHOP-style)
-			if (_is_command_blacklisted(actual_goal_info)) {
+			// Check if this unigoal is blacklisted (IPyHOP-style)
+			if (_is_command_blacklisted(actual_unigoal_info)) {
 				if (verbose >= 2) {
-					print_line("Goal is blacklisted, backtracking");
+					print_line("Unigoal is blacklisted, backtracking");
 				}
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
@@ -1017,21 +1191,21 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return p_state;
 			}
 
-			Array goal_arr = actual_goal_info;
-			if (goal_arr.size() < 3) {
-				// Invalid goal format
+			Array unigoal_arr = actual_unigoal_info;
+			if (unigoal_arr.size() < 3) {
+				// Invalid unigoal format - unigoals are [predicate, subject, value]
 				return p_state;
 			}
 
-			String state_var_name = goal_arr[0];
-			String argument = goal_arr[1];
-			Variant desired_value = goal_arr[2];
+			String predicate = unigoal_arr[0];
+			String subject = unigoal_arr[1];
+			Variant value = unigoal_arr[2];
 
-			// Extract metadata and validate entity requirements (use original goal_info for metadata extraction)
-			PlannerMetadata metadata = _extract_metadata(goal_info);
+			// Extract metadata and validate entity requirements (use original unigoal_info for metadata extraction)
+			PlannerMetadata metadata = _extract_metadata(unigoal_info);
 			if (!_validate_entity_requirements(p_state, metadata)) {
 				if (verbose >= 2) {
-					print_line("Goal entity requirements not met, backtracking");
+					print_line("Unigoal entity requirements not met, backtracking");
 				}
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
@@ -1043,20 +1217,22 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return p_state;
 			}
 
-			// Check if goal already achieved
-			Dictionary state_var = p_state[state_var_name];
-			if (state_var[argument] == desired_value) {
-				// Goal already achieved
-				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-				solution_graph.update_node(curr_node_id, curr_node);
-				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+			// Check if unigoal already achieved: state[predicate][subject] == value
+			if (p_state.has(predicate)) {
+				Dictionary predicate_dict = p_state[predicate];
+				if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
+					// Unigoal already achieved
+					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(curr_node_id, curr_node);
+					return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+				}
 			}
 
-			// Try to refine goal (like Elixir's Enum.find_value)
+			// Try to refine unigoal using unigoal methods (like Elixir's Enum.find_value)
 			// Validate available_methods exists before accessing
 			if (!curr_node.has("available_methods")) {
 				if (verbose >= 1) {
-					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Goal node %d missing 'available_methods' field", curr_node_id));
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Unigoal node %d missing 'available_methods' field", curr_node_id));
 				}
 				// Mark as failed and backtrack
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
@@ -1074,24 +1250,25 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			// Try all available methods - don't modify available_methods
 			Callable selected_method;
-			Array subgoals;
+			Array subtasks;
 			bool found_working_method = false;
 
 			for (int i = 0; i < available_methods.size(); i++) {
 				Callable method = available_methods[i];
-				Variant result = method.call(p_state, argument, desired_value);
+				// Unigoal methods: pass state, subject, value
+				Variant result = method.call(p_state, subject, value);
 				if (result.get_type() == Variant::ARRAY) {
-					Array candidate_subgoals = result;
-					// Check if this exact subgoals array is blacklisted (not its contents)
+					Array candidate_subtasks = result;
+					// Check if this exact subtasks array is blacklisted (not its contents)
 					// IPyHOP is reentrant - methods can return different results, so we only
 					// blacklist the exact array that failed, not arrays that contain blacklisted actions
-					if (_is_command_blacklisted(candidate_subgoals)) {
+					if (_is_command_blacklisted(candidate_subtasks)) {
 						if (verbose >= 2) {
-							print_line("Method returned blacklisted subgoals array, skipping this method");
+							print_line("Method returned blacklisted subtasks array, skipping this method");
 						}
 						continue; // Skip this method, try next
 					}
-					subgoals = candidate_subgoals;
+					subtasks = candidate_subtasks;
 					selected_method = method;
 					found_working_method = true;
 					break;
@@ -1103,16 +1280,16 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Successfully refined
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
-				// Store the subgoals that were created by this method for potential blacklisting
-				curr_node["created_subtasks"] = subgoals;
+				// Store the subtasks that were created by this method for potential blacklisting
+				curr_node["created_subtasks"] = subtasks;
 				// Don't modify available_methods
 				solution_graph.update_node(curr_node_id, curr_node);
 
-				// Add subgoals to graph
+				// Add subtasks to graph
 				PlannerGraphOperations::add_nodes_and_edges(
 						solution_graph,
 						curr_node_id,
-						subgoals,
+						subtasks,
 						current_domain->action_dictionary,
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
@@ -1123,21 +1300,21 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			// Failed to refine, backtrack
 			if (verbose >= 2) {
-				print_line("Goal refinement failed, backtracking");
+				print_line("Unigoal refinement failed, backtracking");
 			}
-			// Blacklist the goal info since all methods failed (IPyHOP-style)
-			_blacklist_command(actual_goal_info);
+			// Blacklist the unigoal info since all methods failed (IPyHOP-style)
+			_blacklist_command(actual_unigoal_info);
 			if (verbose >= 2) {
-				print_line("Blacklisted goal info since all methods failed");
+				print_line("Blacklisted unigoal info since all methods failed");
 			}
-			// If this node was created by a parent's method subgoals, blacklist those subgoals
+			// If this node was created by a parent's method subtasks, blacklist those subtasks
 			if (p_parent_node_id >= 0) {
 				Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 				if (parent_node.has("created_subtasks")) {
-					Array parent_subgoals = parent_node["created_subtasks"];
-					_blacklist_command(parent_subgoals);
+					Array parent_subtasks = parent_node["created_subtasks"];
+					_blacklist_command(parent_subtasks);
 					if (verbose >= 2) {
-						print_line("Blacklisted parent subgoals that led to failure");
+						print_line("Blacklisted parent subtasks that led to failure");
 					}
 				}
 			}
@@ -1224,6 +1401,38 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list);
 				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+			}
+			
+			// If multigoal already has successors (from previous refinement), continue planning from them
+			// instead of creating new ones (iterative refinement - reuse existing work)
+			TypedArray<int> successors = curr_node["successors"];
+			if (successors.size() > 0) {
+				// Multigoal already has successors from previous refinement
+				// Continue planning from the first open successor instead of re-refining
+				// This prevents creating duplicate multigoal nodes
+				for (int i = 0; i < successors.size(); i++) {
+					int succ_id = successors[i];
+					Dictionary succ_node = solution_graph.get_node(succ_id);
+					int succ_status = succ_node["status"];
+					if (succ_status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+						// Found an open successor, continue planning from it
+						if (verbose >= 2) {
+							print_line(vformat("MultiGoal node %d already has successors, continuing from open successor %d", curr_node_id, succ_id));
+						}
+						return _planning_loop_recursive(succ_id, p_state, p_iter + 1);
+					}
+				}
+				// All successors are closed or failed - check if multigoal is achieved now
+				// (This handles the case where all unigoals from previous refinement are achieved)
+				Dictionary goals_not_achieved_check = PlannerMultigoal::method_goals_not_achieved(p_state, multigoal);
+				if (goals_not_achieved_check.is_empty()) {
+					// All goals achieved, mark as closed
+					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(curr_node_id, curr_node);
+					return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+				}
+				// Goals not achieved and all successors are closed/failed - need to re-refine
+				// Fall through to refinement logic below
 			}
 
 			// Try to refine multigoal (like IPyHOP - rely on backtracking and blacklisting, not recursive split detection)
@@ -1331,36 +1540,64 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		}
 
 		case PlannerNodeType::TYPE_VERIFY_GOAL: {
-			// Verify the parent goal
+			// Verify the parent unigoal (not multigoal - that's VERIFY_MULTIGOAL)
 			Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
-			Array goal_arr = parent_node["info"];
-			if (goal_arr.size() >= 3) {
-				String state_var_name = goal_arr[0];
-				String argument = goal_arr[1];
-				Variant desired_value = goal_arr[2];
+			Array unigoal_arr = parent_node["info"];
+			if (unigoal_arr.size() >= 3) {
+				String predicate = unigoal_arr[0];
+				String subject = unigoal_arr[1];
+				Variant value = unigoal_arr[2];
 
-				Dictionary state_var = p_state[state_var_name];
-				if (state_var[argument] == desired_value) {
-					// Verification successful
-					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-					solution_graph.update_node(curr_node_id, curr_node);
-					return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+				// Check if unigoal is achieved: state[predicate][subject] == value
+				if (p_state.has(predicate)) {
+					Dictionary predicate_dict = p_state[predicate];
+					if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
+						// Verification successful
+						if (verbose >= 2) {
+							print_line(vformat("Unigoal verified: %s[%s] == %s", predicate, subject, value));
+						}
+						curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+						solution_graph.update_node(curr_node_id, curr_node);
+						return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+					}
 				}
 			}
 
-			// Verification failed, backtrack
+			// Verification failed - unigoal not yet achieved
+			// Instead of backtracking, re-refine the parent unigoal (iterative refinement)
+			// This allows the planner to continue building toward the goal incrementally
 			if (verbose >= 2) {
-				print_line("Goal verification failed, backtracking");
+				if (unigoal_arr.size() >= 3) {
+					String predicate = unigoal_arr[0];
+					String subject = unigoal_arr[1];
+					Variant value = unigoal_arr[2];
+					Variant current_value;
+					if (p_state.has(predicate)) {
+						Dictionary predicate_dict = p_state[predicate];
+						if (predicate_dict.has(subject)) {
+							current_value = predicate_dict[subject];
+						}
+					}
+					print_line(vformat("Unigoal verification failed: %s[%s] = %s (need %s), re-refining parent unigoal", 
+						predicate, subject, current_value, value));
+				} else {
+					print_line("Unigoal verification failed, re-refining parent unigoal");
+				}
 			}
-			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
-					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
-			solution_graph = backtrack_result.graph;
-			if (backtrack_result.parent_node_id >= 0) {
-				// Restore STN snapshot from the node we're backtracking to
-				_restore_stn_from_node(backtrack_result.parent_node_id);
-				return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
-			}
-			return p_state;
+			
+			// Mark parent unigoal as OPEN to trigger re-refinement
+			// Keep old successors - they represent actions already executed
+			// New successors will be added when we re-refine
+			parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+			// Don't clear successors - we want to accumulate all actions from all iterations
+			solution_graph.update_node(p_parent_node_id, parent_node);
+			
+			// Mark verification node as failed (but don't backtrack)
+			curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+			solution_graph.update_node(curr_node_id, curr_node);
+			
+			// Return to parent unigoal to re-refine with updated state
+			return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 		}
 
 		case PlannerNodeType::TYPE_VERIFY_MULTIGOAL: {
@@ -1404,18 +1641,26 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 			} else {
 				// Verification failed - some goals not achieved
+				// Instead of backtracking, re-refine the parent multigoal (iterative refinement)
+				// This allows the planner to continue building toward the goal incrementally
 				if (verbose >= 2) {
-					print_line("MultiGoal verification failed: some goals not achieved, backtracking");
+					Array goals_not_achieved_keys = goals_not_achieved.keys();
+					print_line(vformat("MultiGoal verification failed: %d goals not achieved, re-refining parent multigoal", goals_not_achieved_keys.size()));
 				}
-				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
-						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
-				solution_graph = backtrack_result.graph;
-				if (backtrack_result.parent_node_id >= 0) {
-					// Restore STN snapshot from the node we're backtracking to
-					_restore_stn_from_node(backtrack_result.parent_node_id);
-					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
-				}
-				return p_state;
+				
+				// Mark parent multigoal as OPEN to trigger re-refinement
+				// Keep old successors - they represent actions already executed
+				// New successors will be added when we re-refine
+				parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
+				// Don't clear successors - we want to accumulate all actions from all iterations
+				solution_graph.update_node(p_parent_node_id, parent_node);
+				
+				// Mark verification node as failed (but don't backtrack)
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				
+				// Return to parent multigoal to re-refine with updated state
+				return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 			}
 		}
 

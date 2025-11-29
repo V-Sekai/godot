@@ -268,11 +268,11 @@ TEST_CASE("[Modules][Planner] PlannerSolutionGraph - Graph operations") {
 	SUBCASE("Create nodes") {
 		int action_id = graph.create_node(PlannerNodeType::TYPE_ACTION, "study_magic_class");
 		int task_id = graph.create_node(PlannerNodeType::TYPE_TASK, "complete_lesson");
-		int goal_id = graph.create_node(PlannerNodeType::TYPE_GOAL, "achieve_affection_level");
+		int unigoal_id = graph.create_node(PlannerNodeType::TYPE_UNIGOAL, "achieve_affection_level");
 
 		CHECK(action_id > 0);
 		CHECK(task_id > 0);
-		CHECK(goal_id > 0);
+		CHECK(unigoal_id > 0);
 
 		Dictionary action_node = graph.get_node(action_id);
 		CHECK(int(action_node["type"]) == static_cast<int>(PlannerNodeType::TYPE_ACTION));
@@ -516,7 +516,7 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 	SUBCASE("Add unigoal methods") {
 		TypedArray<Callable> methods;
 		methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
-		domain->add_unigoal_methods("achieve_affection_level", methods);
+		domain->add_unigoal_methods("affection", methods);
 		// Unigoal methods are stored internally
 		CHECK(true); // Domain accepts unigoal methods
 	}
@@ -547,7 +547,7 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 
 	TypedArray<Callable> unigoal_methods;
 	unigoal_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
-	domain->add_unigoal_methods("achieve_affection_level", unigoal_methods);
+	domain->add_unigoal_methods("affection", unigoal_methods);
 
 	TypedArray<Callable> multigoal_methods;
 	multigoal_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::multigoal_complete_route));

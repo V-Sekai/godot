@@ -48,8 +48,8 @@ public:
 	static Dictionary action_increase_affection(Dictionary p_state, String p_student, String p_character, int p_amount);
 	static Array task_complete_lesson(Dictionary p_state, String p_student, String p_subject);
 	static Array task_build_relationship(Dictionary p_state, String p_student, String p_character);
-	static Array unigoal_achieve_affection_level(Dictionary p_state, String p_student, String p_character, int p_level);
-	static Array unigoal_pass_exam(Dictionary p_state, String p_student, String p_subject);
+	static Array unigoal_achieve_affection_level(Dictionary p_state, String p_relationship_key, int p_target_level);
+	static Array unigoal_pass_exam(Dictionary p_state, String p_exam_key, bool p_target_value);
 	static Array multigoal_complete_route(Dictionary p_state, Dictionary p_multigoal);
 };
 
@@ -122,6 +122,8 @@ Dictionary action_talk_to_character(Dictionary state, String student, String cha
 
 Dictionary action_increase_affection(Dictionary state, String student, String character, int amount) {
 	Dictionary new_state = state.duplicate();
+	
+	// Update nested relationship structure (for compatibility)
 	Dictionary relationship_state;
 	if (new_state.has("relationships")) {
 		relationship_state = new_state["relationships"];
@@ -140,49 +142,125 @@ Dictionary action_increase_affection(Dictionary state, String student, String ch
 	relationship["affection"] = current_affection + amount;
 	relationship_state[relationship_key] = relationship;
 	new_state["relationships"] = relationship_state;
+	
+	// Also maintain flat affection structure for unigoal checking: state["affection"][key] = value
+	Dictionary affection_dict;
+	if (new_state.has("affection")) {
+		affection_dict = new_state["affection"];
+	} else {
+		affection_dict = Dictionary();
+	}
+	int new_affection = current_affection + amount;
+	affection_dict[relationship_key] = new_affection;
+	new_state["affection"] = affection_dict;
+	
 	return new_state;
 }
 
 // Task methods
 Array task_complete_lesson(Dictionary state, String student, String subject) {
 	Array subtasks;
-	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_study_subject).bind(student, subject));
-	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_attend_class).bind(student, subject + "_class"));
+	// Return actions as arrays: ["action_name", arg1, arg2, ...]
+	Array action1;
+	action1.push_back("action_study_subject");
+	action1.push_back(student);
+	action1.push_back(subject);
+	subtasks.push_back(action1);
+	
+	Array action2;
+	action2.push_back("action_attend_class");
+	action2.push_back(student);
+	action2.push_back(subject + "_class");
+	subtasks.push_back(action2);
 	return subtasks;
 }
 
 Array task_build_relationship(Dictionary state, String student, String character) {
 	Array subtasks;
-	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_talk_to_character).bind(student, character));
-	subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_increase_affection).bind(student, character, 10));
+	// Return actions as arrays: ["action_name", arg1, arg2, ...]
+	Array action1;
+	action1.push_back("action_talk_to_character");
+	action1.push_back(student);
+	action1.push_back(character);
+	subtasks.push_back(action1);
+	
+	Array action2;
+	action2.push_back("action_increase_affection");
+	action2.push_back(student);
+	action2.push_back(character);
+	action2.push_back(10);
+	subtasks.push_back(action2);
 	return subtasks;
 }
 
 // Unigoal methods
-Array unigoal_achieve_affection_level(Dictionary state, String student, String character, int level) {
+// Unigoal format: [predicate, subject, value]
+// For affection: predicate="affection", subject="student_character" (e.g., "protagonist_class_president"), value=target_affection_level (e.g., 50)
+Array unigoal_achieve_affection_level(Dictionary state, String relationship_key, int target_level) {
 	Array subtasks;
-	Dictionary relationship_state = state.get("relationships", Dictionary());
-	String relationship_key = student + "_" + character;
-	if (relationship_state.has(relationship_key)) {
-		Dictionary relationship = relationship_state[relationship_key];
-		int current_affection = relationship.get("affection", 0);
-		if (current_affection < level) {
-			subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_build_relationship).bind(student, character));
+	
+	// Check current affection level: state["affection"][relationship_key]
+	Dictionary affection_dict = state.get("affection", Dictionary());
+	int current_affection = affection_dict.get(relationship_key, 0);
+	
+	if (current_affection < target_level) {
+		// Extract student and character from relationship_key (format: "student_character")
+		PackedStringArray parts = relationship_key.split("_");
+		if (parts.size() >= 2) {
+			String student = parts[0];
+			// Rejoin the rest as character name (in case character name has underscores)
+			String character = "";
+			for (int i = 1; i < parts.size(); i++) {
+				if (i > 1) {
+					character += "_";
+				}
+				character += parts[i];
+			}
+			
+			// Return one task - planner will re-check unigoal after execution
+			Array task;
+			task.push_back("build_relationship");
+			task.push_back(student);
+			task.push_back(character);
+			subtasks.push_back(task);
 		}
-	} else {
-		subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_build_relationship).bind(student, character));
 	}
+	// If current_affection >= target_level, return empty array (unigoal achieved)
 	return subtasks;
 }
 
-Array unigoal_pass_exam(Dictionary state, String student, String subject) {
+// Unigoal format: [predicate, subject, value]
+// For pass_exam: predicate="exam_passed", subject="student_subject" (e.g., "protagonist_magic_class"), value=true
+Array unigoal_pass_exam(Dictionary state, String exam_key, bool target_value) {
 	Array subtasks;
-	Dictionary student_state = state.get(student, Dictionary());
-	Dictionary studies = student_state.get("studies", Dictionary());
-	Array classes_attended = student_state.get("classes_attended", Array());
-	if (!studies.has(subject) || !classes_attended.has(subject + "_class")) {
-		subtasks.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_complete_lesson).bind(student, subject));
+	
+	// Check current exam status: state["exam_passed"][exam_key]
+	Dictionary exam_dict = state.get("exam_passed", Dictionary());
+	bool current_status = exam_dict.get(exam_key, false);
+	
+	if (current_status != target_value) {
+		// Extract student and subject from exam_key (format: "student_subject")
+		PackedStringArray parts = exam_key.split("_");
+		if (parts.size() >= 2) {
+			String student = parts[0];
+			// Rejoin the rest as subject name (in case subject name has underscores)
+			String subject = "";
+			for (int i = 1; i < parts.size(); i++) {
+				if (i > 1) {
+					subject += "_";
+				}
+				subject += parts[i];
+			}
+			
+			// Return one task - planner will re-check unigoal after execution
+			Array task;
+			task.push_back("complete_lesson");
+			task.push_back(student);
+			task.push_back(subject);
+			subtasks.push_back(task);
+		}
 	}
+	// If current_status == target_value, return empty array (unigoal achieved)
 	return subtasks;
 }
 
@@ -196,7 +274,14 @@ Array multigoal_complete_route(Dictionary state, Dictionary multigoal) {
 		int affection_level = character_goal.get("affection_level", 0);
 		String student = character_goal.get("student", "");
 		if (affection_level > 0 && !student.is_empty()) {
-			result.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level).bind(student, character, affection_level));
+			// Return unigoal as array: [predicate, subject, value]
+			// predicate="affection", subject="student_character", value=affection_level
+			String relationship_key = student + "_" + character;
+			Array unigoal;
+			unigoal.push_back("affection");
+			unigoal.push_back(relationship_key);
+			unigoal.push_back(affection_level);
+			result.push_back(unigoal);
 		}
 	}
 	return result;
@@ -229,16 +314,87 @@ inline Array IsekaiAcademyDomainCallable::task_build_relationship(Dictionary p_s
 	return IsekaiAcademyDomain::task_build_relationship(p_state, p_student, p_character);
 }
 
-inline Array IsekaiAcademyDomainCallable::unigoal_achieve_affection_level(Dictionary p_state, String p_student, String p_character, int p_level) {
-	return IsekaiAcademyDomain::unigoal_achieve_affection_level(p_state, p_student, p_character, p_level);
+inline Array IsekaiAcademyDomainCallable::unigoal_achieve_affection_level(Dictionary p_state, String p_relationship_key, int p_target_level) {
+	return IsekaiAcademyDomain::unigoal_achieve_affection_level(p_state, p_relationship_key, p_target_level);
 }
 
-inline Array IsekaiAcademyDomainCallable::unigoal_pass_exam(Dictionary p_state, String p_student, String p_subject) {
-	return IsekaiAcademyDomain::unigoal_pass_exam(p_state, p_student, p_subject);
+inline Array IsekaiAcademyDomainCallable::unigoal_pass_exam(Dictionary p_state, String p_exam_key, bool p_target_value) {
+	return IsekaiAcademyDomain::unigoal_pass_exam(p_state, p_exam_key, p_target_value);
 }
 
 inline Array IsekaiAcademyDomainCallable::multigoal_complete_route(Dictionary p_state, Dictionary p_multigoal) {
 	return IsekaiAcademyDomain::multigoal_complete_route(p_state, p_multigoal);
+}
+
+// Helper function to validate a plan result
+// Returns true if result is a valid plan (Array, not false)
+// Optionally checks that plan is not empty when expect_non_empty is true
+static bool is_valid_plan_result(Variant result, bool expect_non_empty = false) {
+	if (result.get_type() == Variant::BOOL) {
+		// false means planning failed - this is NOT a valid plan
+		return false;
+	}
+	if (result.get_type() != Variant::ARRAY) {
+		// Should be an array
+		return false;
+	}
+	Array plan = result;
+	if (expect_non_empty && plan.is_empty()) {
+		// Expected non-empty plan but got empty - this is NOT a valid plan
+		return false;
+	}
+	return true;
+}
+
+// Helper function to check plan contains expected action
+// Plan is Array of action arrays like [["action_name", arg1, arg2], ...]
+static bool plan_contains_action(Array plan, String action_name) {
+	for (int i = 0; i < plan.size(); i++) {
+		Variant item = plan[i];
+		if (item.get_type() == Variant::ARRAY) {
+			Array action = item;
+			if (!action.is_empty()) {
+				Variant first = action[0];
+				// Handle both string and unwrapped dictionary cases
+				if (first.get_type() == Variant::STRING && first == action_name) {
+					return true;
+				}
+				// Handle dictionary-wrapped actions
+				if (first.get_type() == Variant::DICTIONARY) {
+					Dictionary dict = first;
+					if (dict.has("item")) {
+						Variant unwrapped = dict["item"];
+						if (unwrapped.get_type() == Variant::ARRAY) {
+							Array unwrapped_arr = unwrapped;
+							if (!unwrapped_arr.is_empty() && unwrapped_arr[0] == action_name) {
+								return true;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
+// Helper to validate plan structure matches expected fixture
+// expected_min_actions: minimum number of actions expected in plan
+// expected_actions: array of action names that should be present
+static bool validate_plan_against_fixture(Array plan, int expected_min_actions, Array expected_actions = Array()) {
+	if (plan.size() < expected_min_actions) {
+		return false;
+	}
+	
+	// Check that expected actions are present
+	for (int i = 0; i < expected_actions.size(); i++) {
+		String action_name = expected_actions[i];
+		if (!plan_contains_action(plan, action_name)) {
+			return false;
+		}
+	}
+	
+	return true;
 }
 
 } // namespace TestComprehensivePlanner
