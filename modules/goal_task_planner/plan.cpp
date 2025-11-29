@@ -412,7 +412,10 @@ void PlannerPlan::_bind_methods() {
 
 // Temporal method implementations
 String PlannerPlan::generate_plan_id() {
-	String plan_id = "";
+	String plan_id = get_name();
+	if (plan_id.is_empty()) {
+		plan_id = get_path();
+	}
 	print_line("Generated plan ID: " + plan_id);
 	emit_signal("plan_id_generated", plan_id);
 	return plan_id;

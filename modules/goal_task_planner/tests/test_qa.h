@@ -118,9 +118,10 @@ TEST_CASE("[QA] Backward compatibility - existing GDScript patterns") {
 	PlannerTimeRange retrieved = plan->get_time_range();
 	CHECK(retrieved.get_start_time() == 1735689600000000LL);
 
-	// Test plan ID generation
+	// Test plan ID generation (uses resource name or path)
+	plan->set_name("test_plan");
 	String id = plan->generate_plan_id();
-	CHECK(!id.is_empty());
+	CHECK(id == "test_plan");
 
 	// Ref<> objects handle cleanup automatically via reference counting
 }
