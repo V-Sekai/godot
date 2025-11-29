@@ -52,16 +52,8 @@ void PlannerPlan::set_verbose(int p_verbose) {
 	verbose = p_verbose;
 }
 
-TypedArray<PlannerDomain> PlannerPlan::get_domains() const {
-	return domains;
-}
-
 Ref<PlannerDomain> PlannerPlan::get_current_domain() const {
 	return current_domain;
-}
-
-void PlannerPlan::set_domains(TypedArray<PlannerDomain> p_domain) {
-	domains = p_domain;
 }
 
 Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
@@ -408,10 +400,6 @@ Variant PlannerPlan::_apply_task_and_continue(Dictionary p_state, Callable p_com
 }
 
 void PlannerPlan::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_verify_goals"), &PlannerPlan::get_verify_goals);
-	ClassDB::bind_method(D_METHOD("set_verify_goals", "value"), &PlannerPlan::set_verify_goals);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "verify_goals"), "set_verify_goals", "get_verify_goals");
-
 	ClassDB::bind_method(D_METHOD("get_verbose"), &PlannerPlan::get_verbose);
 	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &PlannerPlan::set_verbose);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "verbose"), "set_verbose", "get_verbose");
@@ -419,10 +407,6 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_max_depth"), &PlannerPlan::get_max_depth);
 	ClassDB::bind_method(D_METHOD("set_max_depth", "max_depth"), &PlannerPlan::set_max_depth);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "max_depth"), "set_max_depth", "get_max_depth");
-
-	ClassDB::bind_method(D_METHOD("get_domains"), &PlannerPlan::get_domains);
-	ClassDB::bind_method(D_METHOD("set_domains", "domain"), &PlannerPlan::set_domains);
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "domains", PROPERTY_HINT_RESOURCE_TYPE, "Domain"), "set_domains", "get_domains");
 
 	ClassDB::bind_method(D_METHOD("get_current_domain"), &PlannerPlan::get_current_domain);
 	ClassDB::bind_method(D_METHOD("set_current_domain", "current_domain"), &PlannerPlan::set_current_domain);
@@ -434,14 +418,6 @@ void PlannerPlan::_bind_methods() {
 }
 
 // Temporal method implementations
-
-bool PlannerPlan::get_verify_goals() const {
-	return verify_goals;
-}
-
-void PlannerPlan::set_verify_goals(bool p_value) {
-	verify_goals = p_value;
-}
 
 int PlannerPlan::get_max_depth() const {
 	return max_depth;

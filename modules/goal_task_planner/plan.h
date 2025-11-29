@@ -50,7 +50,6 @@ class PlannerPlan : public Resource {
 	GDCLASS(PlannerPlan, Resource);
 
 	int verbose = 0;
-	TypedArray<PlannerDomain> domains;
 	Ref<PlannerDomain> current_domain;
 	PlannerTimeRange time_range; // Added for temporal
 	PlannerSolutionGraph solution_graph; // Solution graph for explicit backtracking
@@ -58,16 +57,6 @@ class PlannerPlan : public Resource {
 	PlannerSTNSolver stn; // STN solver for temporal constraint validation
 	PlannerSTNSolver::Snapshot stn_snapshot; // STN snapshot for backtracking
 
-	// If verify_goals is True, then whenever the planner uses a method m to refine
-	// unigoal or multigoal, it will insert a "verification" task into the
-	// current partial plan. If verify_goals is False, the planner won't insert any
-	// verification tasks into the plan.
-	//
-	// The purpose of the verification task is to raise an exception if the
-	// refinement produced by m doesn't achieve the goal or multigoal that it is
-	// supposed to achieve. The verification task won't insert anything into the
-	// final plan; it just will verify whether m did what it was supposed to do.
-	bool verify_goals = true;
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	static String _item_to_string(Variant p_item);
 	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
@@ -100,12 +89,8 @@ public:
 	Variant attach_metadata(const Variant &p_item, const Dictionary &p_temporal_constraints = Dictionary(), const Dictionary &p_entity_constraints = Dictionary());
 	int get_verbose() const;
 	void set_verbose(int p_level);
-	TypedArray<PlannerDomain> get_domains() const;
-	void set_domains(TypedArray<PlannerDomain> p_domain);
 	Ref<PlannerDomain> get_current_domain() const;
 	void set_current_domain(Ref<PlannerDomain> p_current_domain) { current_domain = p_current_domain; }
-	void set_verify_goals(bool p_value);
-	bool get_verify_goals() const;
 	void set_max_depth(int p_max_depth);
 	int get_max_depth() const;
 	Variant find_plan(Dictionary p_state, Array p_todo_list);

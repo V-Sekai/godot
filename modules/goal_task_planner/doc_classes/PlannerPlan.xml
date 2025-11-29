@@ -49,14 +49,8 @@
 		<member name="current_domain" type="PlannerDomain" setter="set_current_domain" getter="get_current_domain">
 			The active [PlannerDomain] in which the [PlannerPlan] is operating.
 		</member>
-		<member name="domains" type="PlannerDomain[]" setter="set_domains" getter="get_domains" default="[]">
-			The collection of [PlannerDomain]s available to the [PlannerPlan].
-		</member>
 		<member name="verbose" type="int" setter="set_verbose" getter="get_verbose" default="0">
 			The verbosity level of the [PlannerPlan]'s output. This is useful for debugging and understanding the plan's execution. Level 0 is off, levels 1 to 3 show increasing verbosity with 3 being the maximum.
-		</member>
-		<member name="verify_goals" type="bool" setter="set_verify_goals" getter="get_verify_goals" default="true">
-			Enables or disables the verification of the state to confirm if the goals are met.
 		</member>
 	</members>
 	<signals>

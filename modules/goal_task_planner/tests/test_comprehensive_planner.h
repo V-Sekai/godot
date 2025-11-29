@@ -557,9 +557,6 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 		plan->set_verbose(2);
 		CHECK(plan->get_verbose() == 2);
 
-		plan->set_verify_goals(true);
-		CHECK(plan->get_verify_goals() == true);
-
 		plan->set_max_depth(15);
 		CHECK(plan->get_max_depth() == 15);
 	}

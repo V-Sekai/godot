@@ -158,7 +158,7 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 		current_id = child_id;
 	}
 
-	// Add verification nodes for Goals and MultiGoals if verify_goals is enabled
+	// Add verification nodes for Goals and MultiGoals
 	Dictionary parent_node = p_graph.get_node(p_parent_node_id);
 	int parent_type = parent_node["type"];
 
