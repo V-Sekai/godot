@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/fire/cursor-rules.git
 	branch = main
-	commit = 9b63df14b5408591dd5ca915c1a6c53480aa048e
-	parent = fe1d68ce2faa371347f64e0b50a21d17e51d2d56
+	commit = 9765d061a8824f23761cb35fecb526fa1daf0124
+	parent = aa838ff715055bca135549e15fb564ad22bb3386
 	method = merge
 	cmdver = 0.4.9
