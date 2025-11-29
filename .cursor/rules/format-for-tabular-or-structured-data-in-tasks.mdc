@@ -1,0 +1,43 @@
+---
+type: Always
+description: Record 1
+---
+
+# Handling tabular or structured data
+
+When handling tabular or structured data in tasks, responses, file edits, or tool interactions, prioritize the Markdown-KV format for presentation and processing. This format uses markdown headings for sections (e.g., '## Record 1') followed by fenced code blocks containing key: value pairs (e.g., 'id: 1\nname: John Doe'). This format has been shown to improve AI processing efficiency for data extraction and analysis compared to other formats.
+
+- Always convert incoming tabular data (e.g., from CSVs, JSON) to Markdown-KV when generating outputs or summaries.
+- Use it for lists, databases, or records to improve reliability in RAG pipelines or agentic workflows.
+- Fall back to Markdown tables only if visual alignment is critical for non-LLM users.
+- Example for employee data:
+
+# Employee Database
+
+## Record 1
+
+```
+id: 1
+name: Diana A0
+age: 46
+city: London
+department: Engineering
+salary: 141015
+years_experience: 7
+project_count: 17
+```
+
+## Record 2
+
+```
+id: 2
+name: Grace B1
+age: 59
+city: Berlin
+department: Engineering
+salary: 100066
+years_experience: 11
+project_count: 32
+```
+
+This enhances accuracy while maintaining readability, but note it may use more tokens than compact formats like CSV.

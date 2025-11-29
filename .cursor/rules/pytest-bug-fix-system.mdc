@@ -1,0 +1,122 @@
+---
+type: Always
+description: The Principle
+---
+
+# Test Framework Migration Bug Fix System - Systematic Approach for legacy→modern Conversion Issues
+
+## The Principle
+
+During legacy→modern test framework conversions, consistently-occurring bugs emerge that require structured resolution. This system provides categorization and systematic fixes for the most common conversion issues.
+
+## Bug Pattern Categorization
+
+### **Pattern 1: Fixture Name Mismatches**
+
+- **Symptoms**: "fixture not found" errors, `generic_blender_instances` not defined
+- **Root Cause**: Incorrect fixture names from legacy→modern test framework conversion
+- **Solution**:
+  1. Add missing fixture definitions to `test configuration files`
+  2. Map old fixture names to new ones
+  3. Ensure backward compatibility
+
+### **Pattern 2: Attribute Access Errors**
+
+- **Symptoms**: "'TestMixinClass' object has no attribute 'sender'"
+- **Root Cause**: Missing attribute initialization in test mixin classes
+- **Solution**:
+  1. Implement proper `__init__` method in mixin classes
+  2. Initialize all expected attributes (sender, receiver, _blenders, etc.)
+  3. Add fallback handling for ImportError cases
+
+### **Pattern 3: Return Value Issues**
+
+- **Symptoms**: "NoneType object is not subscriptable" errors
+- **Root Cause**: Setup functions return None instead of expected objects
+- **Solution**:
+  1. Audit all setup functions for proper return values
+  2. Add defensive null checks before array access
+  3. Improve error handling for missing dependencies
+
+### **Pattern 4: Legacy Method Remnants**
+
+- **Symptoms**: "AttributeError: 'LegacyTestCase' object has no attribute 'setUp'"
+- **Root Cause**: Remaining legacy test framework-style method calls
+- **Solution**:
+  1. Complete pytest function conversion
+  2. Remove all class-based inheritance patterns
+  3. Convert all test methods to pytest functions
+
+### **Pattern 5: Module Import Issues**
+
+- **Symptoms**: "ModuleNotFoundError: No module named 'a_specific_module'"
+- **Root Cause**: Server module path issues
+- **Solution**:
+  1. Fix module import paths
+  2. Add fallback handling for missing dependencies
+  3. Update server process configuration
+
+## Implementation Priority Framework
+
+### **Phase 1: Fix Infrastructure Issues (Priority: HIGH)**
+
+1. Add critical fixtures to `test configuration files`:
+   - `test_fixture_primary()` - Primary test fixture
+   - `test_fixture_generic()` - Backward compatibility fixture
+   - `test_fixture_setup_specific()` - Specific setup fixture
+   - `test_fixture_scene_specific()` - Scene-specific fixture
+
+2. Fix test mixin class attributes:
+   - Implement proper `__init__` method
+   - Initialize all expected attributes (e.g., sender, receiver, internal_objects)
+   - Add ImportError handling
+
+3. Fix test setup function:
+   - Ensure non-None return value
+   - Add proper error handling
+   - Defensive null checks
+
+### **Phase 2: Fix Legacy Remnants (Priority: MEDIUM)**
+
+1. Complete class→function conversion
+2. Remove legacy test framework method calls
+3. Convert all test structures to modern test framework patterns
+
+### **Phase 3: Fix Module Import Issues (Priority: LOW)**
+
+1. Update server import paths
+2. Add dependency fallbacks
+3. Configure module imports
+
+## Quality Assurance Framework
+
+### **Validation Steps:**
+
+1. **Collection Test**: `pytest tests --collect-only -v`
+2. **Individual File Tests**: Test each file separately
+3. **Integration Testing**: `pytest tests --tb=short`
+4. **Error Code Tracking**: Monitor specific error patterns
+
+### **Success Metrics:**
+
+- ✅ **All tests collected** (no collection errors)
+- ✅ **Zero "fixture not found" errors**
+- ✅ **Zero "has no attribute" errors**
+- ✅ **Zero "NoneType object is not" errors**
+- ✅ **Zero legacy method errors**
+- ✅ **Stable broadcaster server imports**
+
+## Implementation Guidelines
+
+### **Fixture Conventions:**
+
+```python
+@modern.fixture
+def test_fixture_primary():
+    """Standard primary fixture - returns [object_a, object_b]"""
+    return test_setup_function()
+
+@modern.fixture  
+def test_fixture_generic():
+    """Alias for primary fixture - backward compatibility"""
+    return test_setup_function()

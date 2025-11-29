@@ -1,0 +1,82 @@
+# Cursor Configuration - Gitignore
+# Prevents committing sensitive files like API keys, tokens, and user-specific data
+
+# API Keys and Secrets
+**/*key*
+**/*secret*
+**/*token*
+**/*credential*
+**/*password*
+**/*auth*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cert
+
+# Configuration files that may contain sensitive data
+mcp.json
+**/mcp.json
+**/*config*.json
+**/*settings*.json
+**/*.env
+**/.env*
+**/*secrets*.json
+**/*credentials*.json
+
+# User-specific paths and data
+argv.json
+ide_state.json
+**/argv.json
+**/ide_state.json
+
+# Cache and temporary files
+**/cache/
+**/tmp/
+**/temp/
+**/*.log
+**/*.tmp
+**/.DS_Store
+
+# Browser logs (may contain sensitive URLs or data)
+browser-logs/
+**/browser-logs/
+
+# Extensions (large and user-specific)
+extensions/
+**/extensions/
+
+# Projects directory (user-specific workspace data)
+projects/
+**/projects/
+
+# Backup files
+**/*.bak
+**/*.backup
+**/*~
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE state files
+**/*.code-workspace
+**/.vscode/
+**/.idea/
+
+# Sensitive patterns (catch-all for common secret patterns)
+**/*api*key*
+**/*access*token*
+**/*bearer*
+**/*authorization*
+**/*private*key*
+**/*secret*key*
+**/*session*id*
+

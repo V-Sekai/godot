@@ -1,0 +1,351 @@
+---
+type: Always
+description: Overview
+---
+
+# Relational Database Design Using Essential Tuple Normal Form (ETNF)
+
+## Overview
+
+When designing or modifying relational databases, apply Essential Tuple Normal Form (ETNF) to prevent redundant tuples while avoiding over-normalization. ETNF lies between 4NF and 5NF and is exactly what's needed to eliminate tuple redundancy.
+
+## Core ETNF Principles
+
+A relation schema is in ETNF if and only if:
+
+1. **It is in BCNF (Boyce-Codd Normal Form)**: Every functional dependency's determinant is a superkey
+2. **Some component of every join dependency is a superkey**: At least one component in each JD must be a superkey
+
+### Key Definitions
+
+- **Partly Redundant Tuple**: A tuple where some of its data is already derivable from another tuple via functional dependencies
+- **Fully Redundant Tuple**: A tuple whose entire presence is implied by other tuples and join dependencies
+- **Essential Tuple**: A tuple that is neither partly nor fully redundant (ETNF ensures all tuples are essential)
+
+## Design Guidelines
+
+### 1. Start with BCNF Compliance
+
+**Rule**: Every functional dependency X→Y must have X as a superkey.
+
+```sql
+-- ❌ NOT BCNF: supplier_id is not a superkey
+CREATE TABLE orders (
+  order_id UUID PRIMARY KEY,
+  supplier_id UUID NOT NULL,
+  part_id UUID NOT NULL,
+  supplier_name TEXT, -- Violates BCNF: supplier_id→supplier_name
+  quantity INTEGER
+);
+
+-- ✅ BCNF: Move supplier_name to suppliers table
+CREATE TABLE suppliers (
+  supplier_id UUID PRIMARY KEY,
+  supplier_name TEXT NOT NULL
+);
+
+CREATE TABLE orders (
+  order_id UUID PRIMARY KEY,
+  supplier_id UUID REFERENCES suppliers(supplier_id),
+  part_id UUID NOT NULL,
+  quantity INTEGER
+);
+```
+
+### 2. Identify Join Dependencies
+
+**Rule**: Document explicit join dependencies in your schema comments.
+
+```sql
+-- Join Dependency: ⋈{supplier_part, part_project, project_supplier}
+-- Meaning: If supplier S supplies part P, and part P goes to project J,
+-- and project J uses supplier S, then S supplies P to J.
+
+CREATE TABLE supplier_part (
+  supplier_id UUID REFERENCES suppliers(supplier_id),
+  part_id UUID REFERENCES parts(part_id),
+  PRIMARY KEY (supplier_id, part_id)
+);
+
+CREATE TABLE part_project (
+  part_id UUID REFERENCES parts(part_id),
+  project_id UUID REFERENCES projects(project_id),
+  PRIMARY KEY (part_id, project_id)
+);
+
+CREATE TABLE project_supplier (
+  project_id UUID REFERENCES projects(project_id),
+  supplier_id UUID REFERENCES suppliers(supplier_id),
+  PRIMARY KEY (project_id, supplier_id)
+);
+```
+
+### 3. Apply ETNF Optimization
+
+**Key Insight**: If you have a join dependency but one component is a superkey, you can keep the relation intact without redundancy.
+
+```sql
+-- Example: supplier_id + part_id is a superkey (functional dependency)
+-- Join Dependency: ⋈{(supplier_id, part_id), (part_id, project_id), (project_id, supplier_id)}
+
+CREATE TABLE supplier_part_project (
+  supplier_id UUID NOT NULL REFERENCES suppliers(supplier_id),
+  part_id UUID NOT NULL REFERENCES parts(part_id),
+  project_id UUID NOT NULL,
+  -- Functional dependency: (supplier_id, part_id) → project_id
+  PRIMARY KEY (supplier_id, part_id, project_id),
+  UNIQUE (supplier_id, part_id), -- This makes (supplier_id, part_id) a superkey
+  FOREIGN KEY (part_id, project_id) REFERENCES part_project(part_id, project_id),
+  FOREIGN KEY (project_id, supplier_id) REFERENCES project_supplier(project_id, supplier_id)
+);
+
+-- The UNIQUE constraint on (supplier_id, part_id) means:
+-- Each supplier supplies a given part to AT MOST ONE project
+-- This prevents the fully redundant tuples that would occur without this constraint
+```
+
+### 4. Simple ETNF Guarantee
+
+**Theorem**: If a relation is in BCNF and some key has only one attribute, it's automatically in ETNF.
+
+```sql
+-- ✅ Automatically ETNF: single-attribute key (user_id)
+CREATE TABLE users (
+  user_id UUID PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ✅ Automatically ETNF: single-attribute key (product_id)
+CREATE TABLE products (
+  product_id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  price DECIMAL(10,2),
+  category_id UUID REFERENCES categories(category_id)
+);
+```
+
+## Supabase-Specific Implementation
+
+### Use Database Migrations
+
+```sql
+-- migrations/20240106_etnf_compliant_schema.sql
+
+-- Step 1: Ensure base entities have single-attribute keys (automatic ETNF)
+CREATE TABLE suppliers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  contact_info JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE parts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  specification JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  budget DECIMAL(12,2),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Step 2: Create association tables with proper constraints
+-- This is ETNF because (supplier_id, part_id) is a superkey
+CREATE TABLE supplier_part_assignments (
+  supplier_id UUID REFERENCES suppliers(id) ON DELETE CASCADE,
+  part_id UUID REFERENCES parts(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  assigned_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- ETNF constraint: supplier+part determines project
+  UNIQUE (supplier_id, part_id),
+  PRIMARY KEY (supplier_id, part_id, project_id),
+
+  -- Optional: Add check constraint
+  CHECK (quantity > 0)
+);
+
+-- Add comment documenting the normalization
+COMMENT ON TABLE supplier_part_assignments IS
+'ETNF compliant: Join dependency ⋈{SP, PP, PS} with superkey (supplier_id, part_id)';
+```
+
+### Enable Row Level Security
+
+```sql
+-- ETNF doesn't conflict with RLS policies
+ALTER TABLE supplier_part_assignments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their org's assignments"
+  ON supplier_part_assignments
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM suppliers
+      WHERE suppliers.id = supplier_part_assignments.supplier_id
+      AND suppliers.org_id = auth.jwt() ->> 'org_id'
+    )
+  );
+```
+
+### Use MCP Tools for Verification
+
+```typescript
+// Use the execute_sql MCP tool to verify ETNF compliance
+const verifyETNF = async () => {
+  // Check for functional dependencies
+  const fdCheck = await executeSQL(`
+    SELECT 
+      supplier_id,
+      part_id,
+      COUNT(DISTINCT project_id) as project_count
+    FROM supplier_part_assignments
+    GROUP BY supplier_id, part_id
+    HAVING COUNT(DISTINCT project_id) > 1
+  `);
+
+  if (fdCheck.length > 0) {
+    console.warn("ETNF violation: Multiple projects for same supplier+part");
+  }
+};
+```
+
+## Common Patterns
+
+### Pattern 1: Many-to-Many with Attribute Dependency
+
+```sql
+-- Student enrolls in courses, each enrollment has a grade
+-- (student_id, course_id) → grade is the FD
+-- This is ETNF because (student_id, course_id) is a superkey
+
+CREATE TABLE enrollments (
+  student_id UUID REFERENCES students(id),
+  course_id UUID REFERENCES courses(id),
+  grade CHAR(2),
+  enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (student_id, course_id)
+  -- No redundancy: each student-course pair appears once
+);
+```
+
+### Pattern 2: Temporal Data with ETNF
+
+```sql
+-- Track employee assignments over time
+-- (employee_id, valid_from) is a superkey
+-- This is ETNF because each employee can have only one assignment
+-- per start date
+
+CREATE TABLE employee_assignments (
+  employee_id UUID REFERENCES employees(id),
+  department_id UUID REFERENCES departments(id),
+  valid_from DATE NOT NULL,
+  valid_to DATE,
+  PRIMARY KEY (employee_id, valid_from),
+  CHECK (valid_to IS NULL OR valid_to > valid_from)
+);
+```
+
+### Pattern 3: Avoiding Over-Decomposition
+
+```sql
+-- ❌ OVER-NORMALIZED: Split unnecessarily (in 5NF but causes extra joins)
+CREATE TABLE user_preferences_theme (user_id UUID, theme TEXT, PRIMARY KEY (user_id));
+CREATE TABLE user_preferences_language (user_id UUID, language TEXT, PRIMARY KEY (user_id));
+CREATE TABLE user_preferences_timezone (user_id UUID, timezone TEXT, PRIMARY KEY (user_id));
+
+-- ✅ ETNF OPTIMAL: Single table with user_id as superkey
+CREATE TABLE user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  theme TEXT DEFAULT 'light',
+  language TEXT DEFAULT 'en',
+  timezone TEXT DEFAULT 'UTC',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- This is ETNF because user_id is a single-attribute key
+```
+
+## Verification Checklist
+
+When designing or reviewing a database schema for ETNF:
+
+- [ ] All tables are in BCNF (no partial dependencies on non-superkeys)
+- [ ] Document all join dependencies in table comments
+- [ ] For each join dependency, verify at least one component is a superkey
+- [ ] Use single-attribute primary keys where possible (automatic ETNF)
+- [ ] Avoid unnecessary decomposition beyond ETNF
+- [ ] Add appropriate UNIQUE constraints to enforce functional dependencies
+- [ ] Test with sample data to ensure no tuple redundancy
+- [ ] Document normalization decisions in migration comments
+
+## Anti-Patterns to Avoid
+
+### ❌ Violating BCNF
+
+```sql
+-- supplier_id determines supplier_name but isn't a superkey
+CREATE TABLE shipments (
+  order_id UUID,
+  supplier_id UUID,
+  supplier_name TEXT, -- Redundant!
+  PRIMARY KEY (order_id)
+);
+```
+
+### ❌ Fully Redundant Tuples
+
+```sql
+-- Without the UNIQUE constraint, tuple (s1, p1, j1) could be
+-- fully redundant if (s1, p1, j2), (s2, p1, j1), (s1, p2, j1) exist
+CREATE TABLE assignments (
+  supplier_id UUID,
+  part_id UUID,
+  project_id UUID,
+  PRIMARY KEY (supplier_id, part_id, project_id)
+  -- Missing: UNIQUE constraint that would make it ETNF
+);
+```
+
+## Working with Supabase TypeScript Types
+
+```typescript
+// Generate ETNF-compliant types
+import { Database } from "./database-types";
+
+// The generated types will reflect ETNF constraints
+type SupplierPartAssignment =
+  Database["public"]["Tables"]["supplier_part_assignments"]["Row"]; // Example type
+
+// TypeScript will enforce the uniqueness constraints
+const assignment: SupplierPartAssignment = {
+  supplier_id: "uuid-1",
+  part_id: "uuid-2",
+  project_id: "uuid-3",
+  quantity: 100,
+  assigned_at: new Date().toISOString(),
+};
+```
+
+## Additional Resources
+
+- Use an MCP tool to apply migrations to create ETNF-compliant schemas
+- Query an MCP tool to check for potential normalization issues
+- Generate TypeScript types with an MCP tool to enforce constraints
+
+## Summary
+
+ETNF is the sweet spot for relational database design:
+
+- Stronger than 4NF (prevents more redundancy)
+- More practical than 5NF (avoids over-decomposition)
+- Essential for preventing both partly and fully redundant tuples
+- Simple rule: BCNF + at least one superkey component in each join dependency

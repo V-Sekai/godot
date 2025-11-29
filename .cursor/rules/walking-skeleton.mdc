@@ -1,0 +1,100 @@
+---
+type: Always
+description: The principle
+---
+
+# Walking Skeleton Pattern
+
+## The principle
+
+A Walking Skeleton is a minimal, end-to-end implementation of a system that performs a small but complete function. It connects the main architectural components without necessarily using the final architecture, allowing both the architecture and functionality to evolve in parallel.
+
+## Implementation approach
+
+**When to implement a Walking Skeleton:**
+
+- **Project kick-start:** Begin new projects with a minimal working system
+- **Architecture validation:** Test core architectural assumptions early
+- **TDD initiation:** Use as foundation for Test-Driven Development
+- **Integration verification:** Ensure main components can communicate
+
+**Implementation steps:**
+
+1. **Identify core function:** Choose the smallest meaningful end-to-end capability
+2. **Select minimal components:** Include only essential architectural elements
+3. **Build end-to-end path:** Create working connections between components
+4. **Avoid over-engineering:** Use simplest possible implementation
+5. **Enable parallel evolution:** Design for architecture and functionality to grow together
+
+**Key characteristics:**
+
+- **Tiny scope:** Minimal functionality, maximum architectural coverage
+- **End-to-end:** Complete path from input to output
+- **Architectural linkage:** Connects all major system components
+- **Evolutionary foundation:** Built to grow, not to be perfect
+
+## Relation to other patterns
+
+**Distinction from Spike Solution:**
+
+- **Walking Skeleton:** Implements full architectural range with minimal functionality
+- **Spike Solution:** Either implements specific functionality deeply or creates throwaway prototypes
+
+**Integration with TDD:**
+
+- **Kick-start TDD:** Provides initial working system for test development
+- **Evolutionary growth:** Tests evolve alongside architecture and functionality
+- **Continuous validation:** Each addition maintains end-to-end capability
+
+## Examples
+
+**Web application Walking Skeleton:**
+
+- Basic HTTP request handling
+- Simple data storage (file/database)
+- Minimal business logic
+- Basic user interface
+- End-to-end user registration flow
+
+**API service Walking Skeleton:**
+
+- Single endpoint implementation
+- Basic request/response handling
+- Minimal data processing
+- Authentication stub
+- Complete request lifecycle
+
+## Benefits
+
+- **Early validation:** Discover architectural issues before full implementation
+- **Parallel development:** Architecture and features evolve simultaneously
+- **Risk reduction:** Identify integration problems early
+- **Team alignment:** Provides concrete system vision
+- **TDD foundation:** Establishes testing patterns from project start
+- **Incremental growth:** Natural progression from minimal to complete system
+
+## What to avoid
+
+- **Over-engineering:** Don't implement full functionality in initial skeleton
+- **Final architecture assumption:** Avoid assuming current architecture is permanent
+- **Feature creep:** Keep scope minimal and focused
+- **Throwaway mentality:** Build to evolve, not to discard
+- **Incomplete integration:** Ensure true end-to-end capability
+
+## Implementation guidelines
+
+**Scope management:**
+
+- **Functionality:** 10-20% of final system capabilities
+- **Architecture:** 80-90% of final architectural components
+- **Quality:** Sufficient for demonstration and testing
+- **Evolution:** Designed for growth and refactoring
+
+**Success criteria:**
+
+- **End-to-end functionality:** Complete user-facing capability
+- **Architectural coverage:** All major components connected
+- **Test foundation:** Supports TDD practices
+- **Evolution readiness:** Architecture can grow without complete rewrite
+
+This pattern provides a solid foundation for evolutionary system development, enabling early validation and parallel growth of architecture and functionality.

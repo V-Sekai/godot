@@ -1,0 +1,151 @@
+---
+type: Always
+description: Overview
+---
+
+When addressing maintenance, research, development and other tasks, follow these steps:
+
+1. Start by creating a new Architecture Decision Record (ADR) in the `decisions` directory
+2. Use GitHub tasklist syntax (`- [ ] task` for incomplete tasks, `- [x] task` for completed tasks)
+3. Mark initial tasks as incomplete and update the ADR as tasks are completed
+4. Follow this structure for the ADRs:
+   - Status (Proposed → Active → Completed)
+   - Context (describe the issue)
+   - Decision (outline the approach)
+   - Implementation Plan (with GitHub tasklists)
+   - Consequences/Risks
+   - Success Criteria
+5. Process the tasks defined in the ADR
+   - Before making any code modifications, you must ask for user confirmation using the `ask_followup_question` tool, providing options for approval or cancellation.
+6. When all tasks are complete, update the ADR status to "Completed"
+7. Add a completion date to clearly mark that the ADR is no longer active
+
+This process ensures:
+
+- Documentation of decisions
+- Clear tracking of progress
+- History of completed activities
+- Structured approach to handling technical debt
+
+### The principle
+
+Complex scope requires structured decomposition. Break overwhelming tasks into manageable phases with clear tracking, file references, and implementation strategy separation.
+
+### When to create ADR files
+
+**Always create systematic breakdowns for:**
+
+- **Multi-file refactoring:** Changes spanning 10+ files across different modules
+- **Large feature implementation:** New systems requiring multiple components
+- **API expansion:** Adding significant operation coverage (50+ new functions)
+- **Architecture migration:** Moving between different patterns or frameworks
+- **Integration projects:** Connecting multiple existing systems
+
+**Essential sections:**
+
+```markdown
+## Overview
+**Current State**: Brief description with metrics
+**Target State**: Clear completion criteria
+
+## Phase Breakdown
+### Phase 1: [Category] (PRIORITY: [LEVEL])
+**File**: `path/to/relevant/file.ex`
+
+**Missing/Required**:
+- [ ] Specific actionable item
+- [ ] Another concrete task
+- [ ] Technical requirement
+
+**Implementation Patterns Needed**:
+- [ ] Code pattern or AST structure
+- [ ] API mapping requirement
+
+### Phase 2: [Next Category]
+[Continue pattern...]
+
+## Implementation Strategy
+### Step 1: [Action Phase]
+1. Concrete implementation steps
+2. Ordered sequence of work
+
+### Current Focus: [Immediate Priority]
+Rationale for starting point selection
+```
+
+### Breakdown methodology
+
+**Phase structure:**
+
+- **Group by logical domain:** Math operations, control flow, events, etc.
+- **Sub-phases by complexity:** Basic → advanced within each domain
+- **Priority assignment:** HIGH/MEDIUM/LOW based on dependencies
+- **File path references:** Direct links to implementation files
+
+**Task granularity:**
+
+- **Actionable items:** Each checkbox represents completable unit
+- **Technical context:** Include function names, operation types, patterns
+- **Gap identification:** Current vs required state clearly marked
+- **Dependency tracking:** Prerequisites and blocking relationships
+
+### Essential information per phase
+
+**File context:**
+
+- **Source file path:** Where implementation exists
+- **Target registry:** Where mappings need addition
+- **Pattern requirements:** AST structures or API calls needed
+
+**Technical details:**
+
+- **Operation names:** Exact function/action identifiers
+- **Input/output types:** Parameter and return value specifications
+- **Implementation gaps:** Missing functionality or incomplete coverage
+
+### Implementation strategy separation
+
+**Keep separate:**
+
+- **Task list:** What needs completion (phases/checkboxes)
+- **Implementation strategy:** How to approach work (steps/sequence)
+- **Current focus:** Immediate next actions with rationale
+
+**Strategy components:**
+
+- **Ordered steps:** Sequential work phases
+- **Decision points:** Where choices affect approach
+- **Testing approach:** Validation and verification methods
+
+### Progress tracking format
+
+**Checkbox states:**
+
+- `[ ]` Incomplete task
+- `[*]` Completed task
+- `!!!` Uncertain scope or blocked
+
+**Progress indicators:**
+
+- **Phase completion:** Percentage or ratio tracking
+- **File coverage:** Operations mapped vs total available
+- **Priority completion:** High-priority items resolved first
+
+### Benefits
+
+- **Reduced cognitive load:** Complex scope becomes manageable chunks
+- **Clear progress tracking:** Visible completion status at all levels
+- **Dependency management:** Prerequisites and blocking relationships documented
+- **Context preservation:** Technical details captured for future reference
+- **Scope containment:** Prevents feature creep and unplanned expansion
+
+### Implementation approach
+
+1. **Analyze full scope:** Survey all affected files and required changes
+2. **Identify natural phases:** Group related work into logical units
+3. **Prioritize by dependencies:** High-priority blocking work first
+4. **Document current gaps:** Clear measurement of completion progress
+5. **Define success criteria:** Measurable completion conditions
+6. **Choose starting point:** Logical first phase with clear completion criteria
+
+This approach ensures complex tasks remain tractable and progress remains visible throughout extended implementation periods.

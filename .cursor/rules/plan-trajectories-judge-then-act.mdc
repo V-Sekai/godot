@@ -1,0 +1,111 @@
+---
+type: Always
+description: The Principle
+---
+
+# Plan Trajectories, Judgment, Then Act Pattern
+
+## The Principle
+
+For complex architectural or refactoring tasks in umbrella projects, systematically generate multiple implementation trajectories, provide objective judgment criteria, and execute only the user-selected path. This ensures comprehensive exploration while maintaining focused, efficient implementation. The core planning engine remains timeless by avoiding premature commitment to specific use cases; trajectories separate generic capabilities from domain-specific extensions.
+
+## When to Apply
+
+**Mandatory for tasks involving:**
+
+- Multi-module extraction or restructuring (e.g., planning engine separation)
+- Architectural boundary decisions (INST-045 cross-app violations, domain isolation)
+- Multiple viable approaches (e.g., sequential vs parallel domain development)
+- High-risk migrations (backcompat, dependency reordering)
+
+**Characteristics of suitable tasks:**
+
+- Complexity spanning 10+ files or multiple apps
+- Multiple potential solutions with trade-offs
+- Long-term maintainability implications
+- Dependency chain or boundary concerns
+
+## Implementation Approach
+
+1. **Generate Trajectories (8 Options)**
+
+   - **Diverse Coverage**: Create 8 trajectories diversifying major approaches: pure/simple, focused/specific, parallel/integrated, test-driven/refactor-first, and their combinations.
+   - **Narrative Description**: For each, provide a short scenario-based story (1-2 sentences) showing real-world use in context (e.g., "Developer extracts domain for [use_case1], registers to core for [use_case2] in [scenario]").
+   - **Phased Rollout**: Outline short-term (0-3/5 days: immediate setup/stubs), mid-term (validation/iteration), long-term (integration/publish/ADR) phases with concrete milestones.
+   - **Pros/Cons**: Balance benefits (e.g., low risk) vs trade-offs (e.g., timeline).
+
+2. **Judgment Criteria**
+
+   - **Fixed Metrics**: Score 1-10 on:
+     - Feasibility: Ease of implementation (tools, deps, compilation success).
+     - Timeline: Estimated completion (short/mid/long phases).
+     - Alignment: Fit to docs/rules (INST-041 API boundaries, 042 migration, 045 separation).
+     - Risk: Compliance/breaking changes (timelessness, backcompat).
+   - **Total /80**: Aggregate scores, rank 1-8 with explanation (e.g., "Top: Sequential for safety, 39/40—optimal boundary correction without coupling").
+
+3. **User Selection & Act**
+   - **Present Ranked**: Show top-ranked first, explain rationale, ask confirmation (e.g., "Aligns with vision? Preference [trajectory]? Toggle to Act mode to implement").
+   - **Act on Selected**: In ACT MODE, execute sequential steps from todo list, using tools (mix new for apps, write_to_file for modules, replace_in_file for migration, execute_command for validation).
+   - **Timeless Enforcement**: Core trajectories generic (placeholders [domain_app1]/[use_case]); selected path ensures separation (core no domain knowledge, apps register dynamically).
+
+## Example for Planner Extraction
+
+**Task Context**: Extract planning/ to core lib, separate persona/tactical domains for timeless modularity.
+
+1. **Trajectories**:
+
+   - Pure Sequential: Build persona app first (domain, register, tests), then tactics, integrate last.
+     - Phases: Short: [domain_app1] domain/stubs; Mid: [domain_app2] mirror; Long: Backcompat/ADR.
+     - Pros: Focused validation. Cons: Linear time.
+     - Judgment: Feasibility 10/10, Timeline 9/10, Alignment 10/10, Risk 10/10. Total: 39/40.
+   - Parallel: Develop both domains simultaneously.
+     - Phases: Short: Stubs/register for both; Mid: Impl/tests; Long: Migrate.
+     - Pros: Speed. Cons: Sync risks.
+     - Judgment: Total: 35/40.
+   - Test-Driven: Tests first for domains, impl to pass.
+     - Phases: Short: [use_case1]/[use_case2] tests; Mid: Methods; Long: Umbrella.
+     - Pros: Robust. Cons: Overhead.
+     - Judgment: Total: 36/40.
+   - Integrated: Migrate [main_app] while building domains.
+     - Phases: Short: Stub + partial migration; Mid: Full; Long: Clean.
+     - Pros: Early backcompat. Cons: Mixing risks.
+     - Judgment: Total: 31/40.
+
+2. **Ranking**: Pure Sequential top—ensures INST-042 systematic migration, 045 separation by order (persona leaf, tactics depends).
+
+3. **Act on Selected**: User selects sequential → ACT: mix new [domain_app1] --lib, domain ex, register_self, tests, repeat for [domain_app2], migrate [main_app] Planning to [domain_app1].register_self(); [core_app].solve(domain: :[domain1]).
+
+## Enforcement Rules
+
+**Mandatory Elements**:
+
+- 8 trajectories minimum, diverse approaches
+- Judgment always on fixed /40 metrics with ranking/explanation
+- Trajectories timeless: Use placeholders [domain], [use_case]; no hardcoded examples beyond illustration
+- Act only on user-selected (operator confirmation); if none, ask/toggle to Act
+- Post-act: Update todo progress, validate (mix compile/test apps/\*), ADR for decision (Context: Task, Decision: Selected trajectory, Implementation: Phases, Status: Completed)
+
+**Code Review Requirements**:
+
+- No core domain knowledge (INST-019 local solutions)
+- External APIs full (INST-041 no delegations, complete orchestration)
+- Domain registration dynamic (no static in_umbrella cycles)
+- Timeless patterns (INST-022 simple for simple; extensible without rewrite)
+
+**Benefits**:
+
+- Comprehensive exploration without premature optimization
+- Objective selection reduces bias in complex decisions
+- Timeless core supports future domains (e.g., [rpg_quest])
+- Focused ACT execution from selected path
+- Maintainable history (ADR captures choice rationale)
+
+**What to Avoid**:
+
+- Hardcoded use cases in core trajectories (pollutes timelessness)
+- Fewer than 8 trajectories (misses alternatives)
+- Subjective judgment (always /40 metrics)
+- Acting without user selection (breaks operator control)
+- Static coupling (domains must register dynamically)
+
+This pattern ensures methodical, timeless architectural evolution in umbrella projects while maintaining operator control over implementation direction.

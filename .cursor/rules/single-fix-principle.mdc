@@ -1,0 +1,12 @@
+---
+type: Always
+description: Single Fix Principle
+---
+
+## Single Fix Principle
+
+- One change at a time
+- Test → commit → next issue
+- No bundling unrelated fixes
+- Exception: same root cause = one fix
+- Avoid "while I'm here" changes
