@@ -37,6 +37,17 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 	
 	// Reset current node's selected_method and state (IPyHOP-style)
 	Dictionary current_node = p_graph.get_node(p_current_node_id);
+	// Validate required dictionary keys exist
+	if (!current_node.has("type")) {
+		// Invalid node structure, return failure
+		BacktrackResult result;
+		result.parent_node_id = -1;
+		result.current_node_id = -1;
+		result.graph = p_graph;
+		result.state = p_state;
+		result.blacklisted_commands = p_blacklisted_commands;
+		return result;
+	}
 	int current_node_type = current_node["type"];
 	if (current_node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
 			current_node_type == static_cast<int>(PlannerNodeType::TYPE_GOAL) ||
@@ -59,8 +70,31 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 	// Traverse up the tree to find a node that can be retried
 	while (new_parent_node_id >= 0) {
 		Dictionary node = p_graph.get_node(new_parent_node_id);
+		// Validate required dictionary keys exist
+		if (!node.has("type")) {
+			// Invalid node structure, return failure
+			BacktrackResult result;
+			result.parent_node_id = -1;
+			result.current_node_id = -1;
+			result.graph = p_graph;
+			result.state = p_state;
+			result.blacklisted_commands = p_blacklisted_commands;
+			return result;
+		}
 		int node_type = node["type"];
-		TypedArray<Callable> available_methods = node["available_methods"];
+		
+		// Validate available_methods exists before accessing
+		// Some node types may not have available_methods (e.g., ACTION nodes)
+		TypedArray<Callable> available_methods;
+		if (node.has("available_methods")) {
+			Variant methods_var = node["available_methods"];
+			// Try to convert to TypedArray<Callable> - handle both Array and TypedArray
+			if (methods_var.get_type() == Variant::ARRAY) {
+				Array methods_array = methods_var;
+				// Convert to TypedArray and check size after conversion
+				available_methods = TypedArray<Callable>(methods_array);
+			}
+		}
 
 		// Check if this node has alternative methods
 		bool can_retry = false;
@@ -80,9 +114,11 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 			
 			// Reset selected_method and state (IPyHOP-style)
 			// This allows the node to try all methods again from the beginning
-			node["selected_method"] = Variant();
-			node["state"] = Dictionary();
-			p_graph.update_node(new_parent_node_id, node);
+			// Re-fetch node to get latest state after status change
+			Dictionary updated_node = p_graph.get_node(new_parent_node_id);
+			updated_node["selected_method"] = Variant();
+			updated_node["state"] = Dictionary();
+			p_graph.update_node(new_parent_node_id, updated_node);
 
 			BacktrackResult result;
 			result.parent_node_id = PlannerGraphOperations::find_predecessor(p_graph, new_parent_node_id);

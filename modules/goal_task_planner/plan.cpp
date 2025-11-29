@@ -65,6 +65,8 @@ void PlannerPlan::set_domains(TypedArray<PlannerDomain> p_domain) {
 }
 
 Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
+	// Note: Array is a value type in Godot and cannot be null, so no null check needed
+
 	if (verbose >= 1) {
 		print_line("verbose=" + itos(verbose) + ":");
 		print_line("    state = " + _item_to_string(p_state));
@@ -91,6 +93,15 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 
 	// Anchor origin to current absolute time
 	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
+
+	// Validate that current_domain is set before accessing its members
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			print_line("result = false (no domain set)");
+		}
+		ERR_PRINT("PlannerPlan::find_plan: current_domain is not set. Call set_current_domain() before planning.");
+		return false;
+	}
 
 	// Add initial tasks to the solution graph
 	int parent_node_id = 0; // Root node
@@ -278,6 +289,16 @@ String PlannerPlan::_item_to_string(Variant p_item) {
 }
 
 Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries) {
+	// Note: Array is a value type in Godot and cannot be null, so no null check needed
+
+	// Input validation: validate max_tries is positive
+	if (p_max_tries <= 0) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::run_lazy_lookahead: max_tries must be positive, got %d", p_max_tries));
+		}
+		return Dictionary(); // Return empty dictionary on error
+	}
+
 	if (verbose >= 1) {
 		print_line(vformat("run_lazy_lookahead: verbose = %s, max_tries = %s", verbose, p_max_tries));
 		print_line(vformat("Initial state: %s", p_state.keys()));
@@ -316,6 +337,13 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 			Array action_list = plan;
 			for (int i = 0; i < action_list.size(); i++) {
 				Array action = action_list[i];
+				// Validate action array is not empty before accessing first element
+				if (action.is_empty()) {
+					if (verbose >= 1) {
+						ERR_PRINT("run_lazy_lookahead: Found empty action in plan, skipping");
+					}
+					continue;
+				}
 				Callable action_name = current_domain->action_dictionary[action[0]];
 				if (verbose >= 1) {
 					String action_arguments;
@@ -456,6 +484,8 @@ void PlannerPlan::set_max_depth(int p_max_depth) {
 
 // Graph-based lazy refinement (Elixir-style)
 Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_list) {
+	// Note: Array is a value type in Godot and cannot be null, so no null check needed
+
 	if (verbose >= 1) {
 		print_line("run_lazy_refineahead: Starting graph-based planning");
 		print_line("Initial state keys: " + String(Variant(p_state.keys())));
@@ -477,6 +507,15 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 
 	// Anchor origin to current absolute time
 	PlannerSTNConstraints::anchor_to_origin(stn, "origin", time_range.get_start_time());
+
+	// Validate that current_domain is set before accessing its members
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			print_line("run_lazy_refineahead: Error - no domain set");
+		}
+		ERR_PRINT("PlannerPlan::run_lazy_refineahead: current_domain is not set. Call set_current_domain() before planning.");
+		return Dictionary(); // Return empty dictionary on error
+	}
 
 	// Add initial tasks to the solution graph
 	int parent_node_id = 0; // Root node
@@ -509,6 +548,15 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 	if (p_iter >= max_depth) {
 		if (verbose >= 1) {
 			ERR_PRINT(vformat("Planning depth limit (%d) exceeded, aborting", max_depth));
+		}
+		return p_state;
+	}
+
+	// Validate that current_domain is set before accessing its members
+	// This defensive check protects against invalid state even if called from unexpected contexts
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::_planning_loop_recursive: current_domain is not set. Aborting planning loop.");
 		}
 		return p_state;
 	}
@@ -563,6 +611,20 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		_restore_stn_from_node(curr_node_id);
 	}
 
+	// Validate required dictionary keys exist
+	if (!curr_node.has("type")) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Node %d missing 'type' field", curr_node_id));
+		}
+		return p_state;
+	}
+	if (!curr_node.has("info")) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Node %d missing 'info' field", curr_node_id));
+		}
+		return p_state;
+	}
+
 	int node_type = curr_node["type"];
 
 	// Handle different node types
@@ -587,6 +649,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return p_state;
 			}
 
+			// Validate available_methods exists before accessing
+			if (!curr_node.has("available_methods")) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Task node %d missing 'available_methods' field", curr_node_id));
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
 			// Unwrap task_info if it's in dictionary format
@@ -757,6 +836,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 
 			// Execute action with temporal tracking
+			// Validate action field exists before accessing
+			if (!curr_node.has("action")) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Action node %d missing 'action' field", curr_node_id));
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
 			Callable action = curr_node["action"];
 			// Unwrap action_info if it's in dictionary format
 			Variant actual_action_info = action_info;
@@ -833,6 +929,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				bool has_temporal = temporal_metadata.has("start_time") || temporal_metadata.has("end_time") || temporal_metadata.has("duration");
 
 				if (has_temporal) {
+					// Validate action_arr is not empty before accessing first element
+					if (action_arr.is_empty()) {
+						if (verbose >= 2) {
+							ERR_PRINT("Action array is empty, cannot create STN interval");
+						}
+						// Action failed, backtrack
+						curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+						solution_graph.update_node(curr_node_id, curr_node);
+						PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+								solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+						solution_graph = backtrack_result.graph;
+						if (backtrack_result.parent_node_id >= 0) {
+							_restore_stn_from_node(backtrack_result.parent_node_id);
+							return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+						}
+						return p_state;
+					}
 					String action_id = action_arr[0];
 					int64_t metadata_start = temporal_metadata.get("start_time", 0);
 					int64_t metadata_end = temporal_metadata.get("end_time", 0);
@@ -995,6 +1108,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 
 			// Try to refine goal (like Elixir's Enum.find_value)
+			// Validate available_methods exists before accessing
+			if (!curr_node.has("available_methods")) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Goal node %d missing 'available_methods' field", curr_node_id));
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
 			// Try all available methods - don't modify available_methods
@@ -1152,6 +1282,23 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 
 			// Try to refine multigoal (like IPyHOP - rely on backtracking and blacklisting, not recursive split detection)
+			// Validate available_methods exists before accessing
+			if (!curr_node.has("available_methods")) {
+				if (verbose >= 1) {
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: MultiGoal node %d missing 'available_methods' field", curr_node_id));
+				}
+				// Mark as failed and backtrack
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
 			// Try all available methods - don't modify available_methods

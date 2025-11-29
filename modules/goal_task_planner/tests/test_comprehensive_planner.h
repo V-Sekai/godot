@@ -717,3 +717,92 @@ TEST_CASE("[Modules][Planner] Integration - Full restaurant planning scenario") 
 	}
 }
 
+TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+
+	SUBCASE("Find plan with null domain") {
+		Dictionary state;
+		Array todo_list;
+		todo_list.push_back("cook");
+		
+		// Don't set domain - should return false
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result == Variant(false));
+	}
+
+	SUBCASE("Find plan with null todo_list") {
+		Ref<PlannerDomain> domain = memnew(PlannerDomain);
+		plan->set_current_domain(domain);
+		
+		Dictionary state;
+		Array null_todo_list; // Empty array is valid, but we test null handling
+		// Note: In Godot, Array() is not null, so we test with empty array
+		// Actual null would require Variant() which may not be testable here
+		
+		Variant result = plan->find_plan(state, null_todo_list);
+		// Should handle gracefully (may return false or empty plan)
+		Variant::Type result_type = result.get_type();
+		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
+		CHECK(is_valid_type);
+	}
+
+	SUBCASE("Run lazy lookahead with invalid max_tries") {
+		Ref<PlannerDomain> domain = memnew(PlannerDomain);
+		plan->set_current_domain(domain);
+		
+		Dictionary state;
+		Array todo_list;
+		todo_list.push_back("cook");
+		
+		// Test with zero max_tries (should be rejected)
+		Dictionary result = plan->run_lazy_lookahead(state, todo_list, 0);
+		CHECK(result.is_empty());
+		
+		// Test with negative max_tries (should be rejected)
+		result = plan->run_lazy_lookahead(state, todo_list, -1);
+		CHECK(result.is_empty());
+	}
+
+	SUBCASE("Run lazy refineahead with null domain") {
+		Dictionary state;
+		Array todo_list;
+		todo_list.push_back("cook");
+		
+		// Don't set domain - should return empty dictionary
+		Dictionary result = plan->run_lazy_refineahead(state, todo_list);
+		CHECK(result.is_empty());
+	}
+
+	SUBCASE("STN solver with empty time point names") {
+		PlannerSTNSolver stn;
+		
+		// Adding time point with empty name should return -1
+		int64_t result = stn.add_time_point("");
+		CHECK(result == -1);
+		
+		// Adding constraint with empty names should fail
+		bool added = stn.add_constraint("", "end", 1000000LL, 5000000LL);
+		CHECK(!added);
+		
+		added = stn.add_constraint("start", "", 1000000LL, 5000000LL);
+		CHECK(!added);
+	}
+
+	SUBCASE("STN solver get_distance with invalid time points") {
+		PlannerSTNSolver stn;
+		stn.add_time_point("start");
+		stn.add_time_point("end");
+		
+		// Get distance with empty time point names should return infinity
+		int64_t dist = stn.get_distance("", "end");
+		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
+		
+		dist = stn.get_distance("start", "");
+		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
+		
+		// Get distance with non-existent time points should return infinity
+		dist = stn.get_distance("nonexistent", "end");
+		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
+	}
+}
+

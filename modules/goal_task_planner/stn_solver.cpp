@@ -237,6 +237,10 @@ bool PlannerSTNSolver::check_negative_cycles() const {
 }
 
 int64_t PlannerSTNSolver::add_time_point(const String &p_name) {
+	// Validate time point name is not empty
+	if (p_name.is_empty()) {
+		return -1; // Invalid time point name
+	}
 	ensure_time_point(p_name);
 	return get_time_point_index(p_name);
 }
@@ -260,6 +264,12 @@ bool PlannerSTNSolver::add_constraint(const String &p_from, const String &p_to, 
 }
 
 bool PlannerSTNSolver::add_constraint(const String &p_from, const String &p_to, const Constraint &p_constraint) {
+	// Validate time point names are not empty
+	if (p_from.is_empty() || p_to.is_empty()) {
+		consistent = false;
+		return false; // Invalid time point names
+	}
+	
 	// Ensure time points exist
 	ensure_time_point(p_from);
 	ensure_time_point(p_to);
@@ -367,6 +377,11 @@ void PlannerSTNSolver::check_consistency() {
 }
 
 int64_t PlannerSTNSolver::get_distance(const String &p_from, const String &p_to) const {
+	// Validate time point names are not empty
+	if (p_from.is_empty() || p_to.is_empty()) {
+		return STN_INFINITY; // Invalid time point names
+	}
+	
 	int64_t from_idx = get_time_point_index(p_from);
 	int64_t to_idx = get_time_point_index(p_to);
 
@@ -382,10 +397,20 @@ int64_t PlannerSTNSolver::get_distance(const String &p_from, const String &p_to)
 }
 
 int64_t PlannerSTNSolver::get_earliest_time(const String &p_point) const {
+	// Validate time point name is not empty
+	if (p_point.is_empty()) {
+		return STN_INFINITY; // Invalid time point name
+	}
+	
 	// Distance from origin (time point 0) to this point
 	// Assuming origin is at index 0, or we need to track it
 	if (time_points_list_internal.size() == 0) {
 		return 0;
+	}
+
+	// Validate time point exists
+	if (!has_time_point(p_point)) {
+		return STN_INFINITY; // Time point not found
 	}
 
 	// For now, return distance from first time point (could be origin)
@@ -394,9 +419,19 @@ int64_t PlannerSTNSolver::get_earliest_time(const String &p_point) const {
 }
 
 int64_t PlannerSTNSolver::get_latest_time(const String &p_point) const {
+	// Validate time point name is not empty
+	if (p_point.is_empty()) {
+		return STN_INFINITY; // Invalid time point name
+	}
+	
 	// Latest time is negative of distance from point to origin
 	if (time_points_list_internal.size() == 0) {
 		return 0;
+	}
+
+	// Validate time point exists
+	if (!has_time_point(p_point)) {
+		return STN_INFINITY; // Time point not found
 	}
 
 	String origin = time_points_list_internal[0];

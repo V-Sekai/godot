@@ -88,6 +88,11 @@ public:
 		}
 	};
 
+	// Constants (avoid INFINITY macro conflict by using different name)
+	// Made public for testing purposes
+	static constexpr int64_t STN_INFINITY = INT64_MAX;
+	static constexpr int64_t STN_NEG_INFINITY = INT64_MIN + 1; // Avoid overflow
+
 private:
 	// Time points: name -> index mapping (internal HashMap)
 	HashMap<String, int64_t> time_points_map_internal; // String -> int64_t
@@ -105,10 +110,6 @@ private:
 
 	// Next time point ID (for unique indexing)
 	int64_t next_time_point_id;
-
-	// Constants (avoid INFINITY macro conflict by using different name)
-	static constexpr int64_t STN_INFINITY = INT64_MAX;
-	static constexpr int64_t STN_NEG_INFINITY = INT64_MIN + 1; // Avoid overflow
 
 	// Helper methods
 	int64_t get_time_point_index(const String &p_name) const;
