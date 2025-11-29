@@ -31,11 +31,6 @@
 			<description>
 			</description>
 		</method>
-		<method name="get_global_state">
-			<return type="Dictionary" />
-			<description>
-			</description>
-		</method>
 		<method name="run_lazy_lookahead">
 			<return type="Dictionary" />
 			<param index="0" name="state" type="Dictionary" />

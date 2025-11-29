@@ -405,7 +405,6 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("run_lazy_refineahead", "state", "todo_list"), &PlannerPlan::run_lazy_refineahead);
 	ClassDB::bind_method(D_METHOD("generate_plan_id"), &PlannerPlan::generate_plan_id);
 	ClassDB::bind_method(D_METHOD("submit_operation", "operation"), &PlannerPlan::submit_operation);
-	ClassDB::bind_method(D_METHOD("get_global_state"), &PlannerPlan::get_global_state);
 
 	ADD_SIGNAL(MethodInfo("plan_id_generated", PropertyInfo(Variant::STRING, "plan_id")));
 }
@@ -437,27 +436,6 @@ Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
 	print_line("Operation submitted [" + transaction_id + "]: " + String(Variant(p_operation)));
 	emit_signal("operation_submitted", consensus_result);
 	return consensus_result;
-}
-
-Dictionary PlannerPlan::get_global_state() {
-	// In-memory state
-	Dictionary record;
-	Array intent_writes;
-	Dictionary tscache;
-
-	Dictionary global_state;
-	global_state["record"] = record;
-	global_state["intent_writes"] = intent_writes;
-	global_state["tscache"] = tscache;
-	global_state["commit_ack"] = false;
-
-	// Use current time range from plan
-	Dictionary time_range_dict;
-	time_range_dict["l"] = time_range.get_start_time();
-	time_range_dict["c"] = time_range.get_end_time();
-	global_state["time_range"] = time_range_dict;
-
-	return global_state;
 }
 
 bool PlannerPlan::get_verify_goals() const {
