@@ -115,7 +115,6 @@ public:
 	// Temporal methods
 	PlannerTimeRange get_time_range() const { return time_range; }
 	void set_time_range(PlannerTimeRange p_time_range) { time_range = p_time_range; }
-	Dictionary submit_operation(Dictionary p_operation);
 
 protected:
 	static void _bind_methods();

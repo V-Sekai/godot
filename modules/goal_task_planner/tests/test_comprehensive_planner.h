@@ -517,14 +517,6 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 		CHECK(retrieved.get_start_time() == 1735689600000000LL);
 	}
 
-	SUBCASE("Submit operation") {
-		Dictionary operation;
-		operation["type"] = "test_operation";
-		Dictionary result = plan->submit_operation(operation);
-		CHECK(result.has("operation_id"));
-		CHECK(result.has("agreed_at"));
-	}
-
 	SUBCASE("Attach metadata") {
 		Variant item = "study_magic_class";
 		Dictionary temporal;

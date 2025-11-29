@@ -44,12 +44,6 @@
 				Executes graph-based lazy refinement planning to accomplish the todo list from the provided state. This method uses a solution graph for explicit backtracking and supports temporal constraints through the Simple Temporal Network (STN). The origin time point is anchored to the current time at plan start. Actions without temporal metadata can occur at any time and are not constrained by the STN. The return value is the resulting state after plan execution.
 			</description>
 		</method>
-		<method name="submit_operation">
-			<return type="Dictionary" />
-			<param index="0" name="operation" type="Dictionary" />
-			<description>
-			</description>
-		</method>
 	</methods>
 	<members>
 		<member name="current_domain" type="PlannerDomain" setter="set_current_domain" getter="get_current_domain">

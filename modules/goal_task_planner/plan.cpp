@@ -431,27 +431,9 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &PlannerPlan::find_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &PlannerPlan::run_lazy_lookahead, DEFVAL(10));
 	ClassDB::bind_method(D_METHOD("run_lazy_refineahead", "state", "todo_list"), &PlannerPlan::run_lazy_refineahead);
-	ClassDB::bind_method(D_METHOD("submit_operation", "operation"), &PlannerPlan::submit_operation);
 }
 
 // Temporal method implementations
-Dictionary PlannerPlan::submit_operation(Dictionary p_operation) {
-	String transaction_id = "";
-
-	// Get absolute time in microseconds
-	int64_t current_time = PlannerTimeRange::now_microseconds();
-
-	Dictionary consensus_result;
-	consensus_result["operation_id"] = transaction_id;
-	consensus_result["agreed_at"] = current_time; // Absolute microseconds
-	Array participants;
-	participants.push_back("node_1");
-	consensus_result["participants"] = participants;
-
-	print_line("Operation submitted [" + transaction_id + "]: " + String(Variant(p_operation)));
-	emit_signal("operation_submitted", consensus_result);
-	return consensus_result;
-}
 
 bool PlannerPlan::get_verify_goals() const {
 	return verify_goals;
