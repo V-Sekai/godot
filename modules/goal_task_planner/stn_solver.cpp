@@ -142,9 +142,19 @@ void PlannerSTNSolver::rebuild_distance_matrix() {
 		// Set distance to max (temporal constraint: to - from <= max)
 		// In STN, constraint [min, max] means: min <= to - from <= max
 		// This translates to: distance[from][to] <= max
+		// Also need to handle min: to - from >= min means from - to <= -min
+		// So: distance[to][from] <= -min
 		int64_t current_dist = distance_matrix_internal[from_idx][to_idx];
 		if (current_dist == STN_INFINITY || constraint.max_distance < current_dist) {
 			distance_matrix_internal[from_idx][to_idx] = constraint.max_distance;
+		}
+		
+		// Handle min_distance constraint: set reverse edge
+		// min <= to - from means from - to <= -min
+		int64_t reverse_dist = distance_matrix_internal[to_idx][from_idx];
+		int64_t min_reverse = -constraint.min_distance;
+		if (reverse_dist == STN_INFINITY || min_reverse < reverse_dist) {
+			distance_matrix_internal[to_idx][from_idx] = min_reverse;
 		}
 	}
 }
@@ -352,6 +362,7 @@ bool PlannerSTNSolver::has_constraint(const String &p_from, const String &p_to) 
 }
 
 void PlannerSTNSolver::check_consistency() {
+	rebuild_distance_matrix();
 	run_floyd_warshall();
 }
 

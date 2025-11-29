@@ -33,6 +33,25 @@
 #include "multigoal.h"
 
 PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict) {
+	// Check if it's a String - look up in dictionaries
+	if (p_node_info.get_type() == Variant::STRING) {
+		String node_str = p_node_info;
+		// Check action dictionary
+		if (p_action_dict.has(node_str)) {
+			return PlannerNodeType::TYPE_ACTION;
+		}
+		// Check task method dictionary
+		if (p_task_dict.has(node_str)) {
+			return PlannerNodeType::TYPE_TASK;
+		}
+		// Check unigoal method dictionary
+		if (p_unigoal_dict.has(node_str)) {
+			return PlannerNodeType::TYPE_GOAL;
+		}
+		// Not found in any dictionary, return ROOT
+		return PlannerNodeType::TYPE_ROOT;
+	}
+	
 	// Check if it's a Dictionary-wrapped item (with constraints)
 	if (p_node_info.get_type() == Variant::DICTIONARY) {
 		Dictionary dict = p_node_info;
