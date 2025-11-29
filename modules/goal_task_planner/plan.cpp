@@ -1209,19 +1209,15 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["selected_method"] = selected_method;
 				// Don't modify available_methods
 				
-				// Optimize unigoal order (most constraining first) before adding to graph
-				Array optimized_subgoals = _optimize_unigoal_order(
-						subgoals, p_state, current_domain->unigoal_method_dictionary);
-				
-				// Store the optimized subgoals that were created by this method for potential blacklisting
-				curr_node["created_subtasks"] = optimized_subgoals;
+				// Store the subgoals that were created by this method for potential blacklisting
+				curr_node["created_subtasks"] = subgoals;
 				solution_graph.update_node(curr_node_id, curr_node);
 
-				// Add optimized subgoals to graph
+				// Add subgoals to graph
 				PlannerGraphOperations::add_nodes_and_edges(
 						solution_graph,
 						curr_node_id,
-						optimized_subgoals,
+						subgoals,
 						current_domain->action_dictionary,
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
@@ -1448,63 +1444,6 @@ void PlannerPlan::_blacklist_command(Variant p_command) {
 	}
 }
 
-// Goal solver methods (moved from PlannerGoalSolver)
-
-PlannerPlan::ConstrainingFactor PlannerPlan::_calculate_constraining_factor(const Variant &p_goal, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) const {
-	ConstrainingFactor factor;
-
-	// Unwrap if dictionary-wrapped
-	Variant actual_goal = p_goal;
-	if (p_goal.get_type() == Variant::DICTIONARY) {
-		Dictionary dict = p_goal;
-		if (dict.has("item")) {
-			actual_goal = dict["item"];
-		}
-	}
-
-	// Extract goal info (assuming format: [state_var_name, argument, desired_value])
-	if (actual_goal.get_type() != Variant::ARRAY) {
-		return factor;
-	}
-
-	Array goal_arr = actual_goal;
-	if (goal_arr.size() < 3) {
-		return factor;
-	}
-
-	String state_var_name = goal_arr[0];
-	String argument = goal_arr[1];
-	Variant value = goal_arr[2];
-
-	// Count available methods for this unigoal (optimization strategy 1: total method count)
-	if (p_unigoal_method_dict.has(state_var_name)) {
-		Variant methods_var = p_unigoal_method_dict[state_var_name];
-		if (methods_var.get_type() == Variant::ARRAY) {
-			TypedArray<Callable> methods = methods_var;
-			factor.total_method_count = methods.size();
-
-			// Optimization strategy 2: count only applicable methods in current state
-			// Try each method to see if it's applicable (returns Array if applicable, false otherwise)
-			for (int i = 0; i < methods.size(); i++) {
-				Callable method = methods[i];
-				Variant result = method.call(p_state, argument, value);
-				if (result.get_type() == Variant::ARRAY) {
-					// Method is applicable in current state
-					factor.applicable_method_count++;
-				}
-			}
-		}
-	}
-
-	// Check for temporal constraints
-	PlannerMetadata metadata = _extract_temporal_constraints(p_goal);
-	if (metadata.has_temporal()) {
-		factor.has_temporal_constraints = true;
-	}
-
-	return factor;
-}
-
 PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item) const {
 	// Extract only temporal constraints (for backward compatibility)
 	PlannerMetadata metadata = _extract_metadata(p_item);
@@ -1557,44 +1496,6 @@ PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {
 	}
 
 	return metadata;
-}
-
-Array PlannerPlan::_optimize_unigoal_order(const Array &p_unigoals, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) {
-	// Use LocalVector internally for efficiency
-	LocalVector<GoalWithFactor> goals_with_factors;
-
-	// Calculate constraining factors for each unigoal
-	for (int i = 0; i < p_unigoals.size(); i++) {
-		Variant goal = p_unigoals[i];
-		ConstrainingFactor factor = _calculate_constraining_factor(goal, p_state, p_unigoal_method_dict);
-		goals_with_factors.push_back(GoalWithFactor(goal, factor));
-	}
-
-	// Sort by constraining factor (most constraining first)
-	// Use insertion sort for small arrays, or std::sort-like approach
-	if (goals_with_factors.size() > 1) {
-		// Simple insertion sort: most constraining first
-		for (uint32_t i = 1; i < goals_with_factors.size(); i++) {
-			GoalWithFactor key = goals_with_factors[i];
-			int j = i - 1;
-
-			// Move elements with less constraining factors to the right
-			while (j >= 0 && goals_with_factors[j].factor < key.factor) {
-				goals_with_factors[j + 1] = goals_with_factors[j];
-				j--;
-			}
-			goals_with_factors[j + 1] = key;
-		}
-	}
-
-	// Convert back to Array for GDScript interface
-	Array ordered_goals;
-	ordered_goals.resize(goals_with_factors.size());
-	for (uint32_t i = 0; i < goals_with_factors.size(); i++) {
-		ordered_goals[i] = goals_with_factors[i].goal;
-	}
-
-	return ordered_goals;
 }
 
 Variant PlannerPlan::_attach_temporal_constraints(const Variant &p_item, const Dictionary &p_temporal_constraints) {

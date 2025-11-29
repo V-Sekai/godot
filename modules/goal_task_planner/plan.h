@@ -78,42 +78,6 @@ class PlannerPlan : public Resource {
 	void _blacklist_command(Variant p_command);
 	void _restore_stn_from_node(int p_node_id);
 
-	// Goal solver methods (moved from PlannerGoalSolver)
-	// Constraining factor for a goal/task - two optimization strategies:
-	// 1. Method count: fewer total methods = more constraining
-	// 2. Applicable method count: fewer applicable methods in current state = more constraining
-	struct ConstrainingFactor {
-		int total_method_count; // Total methods available for this unigoal
-		int applicable_method_count; // Methods actually applicable in current state
-		bool has_temporal_constraints;
-
-		ConstrainingFactor() :
-				total_method_count(0), applicable_method_count(0), has_temporal_constraints(false) {}
-		ConstrainingFactor(int p_total, int p_applicable, bool p_temporal) :
-				total_method_count(p_total), applicable_method_count(p_applicable), has_temporal_constraints(p_temporal) {}
-
-		// Compare: more constraining = fewer applicable methods, or has temporal constraints
-		// Use applicable_method_count as primary factor (more accurate optimization)
-		bool operator<(const ConstrainingFactor &p_other) const {
-			if (has_temporal_constraints != p_other.has_temporal_constraints) {
-				return has_temporal_constraints; // Temporal constraints make it more constraining
-			}
-			return applicable_method_count < p_other.applicable_method_count; // Fewer applicable methods = more constraining
-		}
-	};
-
-	// Internal storage for goal ordering
-	struct GoalWithFactor {
-		Variant goal;
-		ConstrainingFactor factor;
-
-		GoalWithFactor() :
-				goal(), factor() {}
-		GoalWithFactor(const Variant &p_goal, const ConstrainingFactor &p_factor) :
-				goal(p_goal), factor(p_factor) {}
-	};
-
-	ConstrainingFactor _calculate_constraining_factor(const Variant &p_goal, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict) const;
 	PlannerMetadata _extract_temporal_constraints(const Variant &p_item) const;
 	PlannerMetadata _extract_metadata(const Variant &p_item) const; // Extract full PlannerMetadata (temporal + entity requirements)
 
@@ -134,7 +98,6 @@ public:
 	//   - {"type": String, "capabilities": Array} (convenience format)
 	//   - {"requires_entities": Array} (full format with PlannerEntityRequirement dictionaries)
 	Variant attach_metadata(const Variant &p_item, const Dictionary &p_temporal_constraints = Dictionary(), const Dictionary &p_entity_constraints = Dictionary());
-	Array _optimize_unigoal_order(const Array &p_unigoals, const Dictionary &p_state, const Dictionary &p_unigoal_method_dict);
 	int get_verbose() const;
 	void set_verbose(int p_level);
 	TypedArray<PlannerDomain> get_domains() const;
