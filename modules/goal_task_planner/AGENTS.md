@@ -142,7 +142,7 @@ From test files:
 
 -   States are `Dictionary` objects with nested structures
 -   Actions return new state dictionaries (use `state.duplicate()`)
--   Task methods return `Array` of subtasks/actions
+-   Methods (task, unigoal, multigoal) return `Array` of planner elements (goals, [PlannerMultigoal], tasks, and actions)
 -   Goals are predicate-subject-value triples `[predicate, subject, value]`
 -   Multigoals are `Array` of unigoal arrays: `[[predicate, subject, value], ...]`
 
@@ -195,7 +195,7 @@ From test files:
 3. Create wrapper class with `static` methods for `Callable` creation
 4. Use `callable_mp_static(&WrapperClass::method)` to register
 5. Actions must return `false` or a new state `Dictionary`
-6. Methods must return `false` or an `Array` of subtasks/sub-goals
+6. Methods must return `false` or an `Array` of planner elements (goals, [PlannerMultigoal], tasks, and actions)
 7. Register actions via `domain->add_actions()`
 8. Register methods via `domain->add_task_methods()`, `add_unigoal_methods()`, or `add_multigoal_methods()`
 

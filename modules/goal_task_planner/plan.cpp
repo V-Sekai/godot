@@ -652,11 +652,95 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		int parent_type = parent_node["type"];
 
 		if (parent_type == static_cast<int>(PlannerNodeType::TYPE_ROOT)) {
-			// Planning complete
-			if (verbose >= 1) {
-				print_line("Planning complete, returning final state");
+			// Check if all root children are CLOSED (all tasks completed)
+			Dictionary root_node = solution_graph.get_node(0);
+			TypedArray<int> root_successors = root_node["successors"];
+			int closed_count = 0;
+			bool all_closed = true;
+			for (int i = 0; i < root_successors.size(); i++) {
+				int child_id = root_successors[i];
+				if (!solution_graph.get_graph().has(child_id)) {
+					continue;
+				}
+				Dictionary child_node = solution_graph.get_node(child_id);
+				int status = child_node["status"];
+				if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+					closed_count++;
+				} else {
+					all_closed = false;
+					if (verbose >= 3) {
+						print_line(vformat("Planning at root: Found non-CLOSED child node %d (status=%d)", child_id, status));
+					}
+					break;
+				}
 			}
-			return p_state;
+			// Check if we've completed all tasks from original todo_list
+			// If some tasks were removed (failed completely), we need to recreate them
+			if (all_closed) {
+				if (closed_count >= original_todo_list.size()) {
+					// Planning complete - all tasks are CLOSED
+					if (verbose >= 1) {
+						print_line("Planning complete, returning final state");
+					}
+					return p_state;
+				} else {
+					// Some tasks were removed (failed completely), recreate them
+					if (verbose >= 2) {
+						print_line(vformat("Planning at root: All remaining tasks CLOSED (%d/%d), recreating removed tasks...", closed_count, original_todo_list.size()));
+					}
+					// Find tasks from original todo_list that aren't in the graph
+					Array tasks_to_recreate;
+					for (int i = 0; i < original_todo_list.size(); i++) {
+						Array task_info = original_todo_list[i];
+						bool found = false;
+						// Check if this task exists in root's successors
+						for (int j = 0; j < root_successors.size(); j++) {
+							int child_id = root_successors[j];
+							if (!solution_graph.get_graph().has(child_id)) {
+								continue;
+							}
+							Dictionary child_node = solution_graph.get_node(child_id);
+							Array child_info = child_node["info"];
+							// Compare task info (simplified - just check first element)
+							if (child_info.size() > 0 && task_info.size() > 0 && child_info[0] == task_info[0]) {
+								found = true;
+								break;
+							}
+						}
+						if (!found) {
+							tasks_to_recreate.push_back(task_info);
+						}
+					}
+					// Recreate missing tasks
+					if (tasks_to_recreate.size() > 0) {
+						PlannerGraphOperations::add_nodes_and_edges(
+								solution_graph,
+								0,
+								tasks_to_recreate,
+								current_domain->action_dictionary,
+								current_domain->task_method_dictionary,
+								current_domain->unigoal_method_dictionary,
+								current_domain->multigoal_method_list);
+						if (verbose >= 2) {
+							print_line(vformat("Planning at root: Recreated %d tasks, continuing...", tasks_to_recreate.size()));
+						}
+						// Continue from root to process recreated tasks
+						return _planning_loop_recursive(0, p_state, p_iter + 1);
+					}
+					// No tasks to recreate, planning complete
+					if (verbose >= 1) {
+						print_line("Planning complete, returning final state");
+					}
+					return p_state;
+				}
+			} else {
+				// Some tasks are not CLOSED, continue planning
+				if (verbose >= 2) {
+					print_line("Planning at root: Not all tasks are CLOSED, continuing...");
+				}
+				// Continue from root to process remaining tasks
+				return _planning_loop_recursive(0, p_state, p_iter + 1);
+			}
 		} else {
 			// Move to predecessor
 			int new_parent = PlannerGraphOperations::find_predecessor(solution_graph, p_parent_node_id);
@@ -787,9 +871,10 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// The state in the node is only used as a reference point, not restored
 
 			// Try all available methods (like Elixir's Enum.find_value)
+			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
 			// Don't modify available_methods - keep full list for backtracking
 			Callable selected_method;
-			Array subtasks;
+			Array subtasks; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
 			bool found_working_method = false;
 
 			for (int i = 0; i < available_methods.size(); i++) {
@@ -801,13 +886,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 				Variant result = method.callv(args);
 				if (result.get_type() == Variant::ARRAY) {
-					Array candidate_subtasks = result;
-					// Check if this exact subtasks array is blacklisted (not its contents)
+					Array candidate_subtasks = result; // Can contain any planner elements
+					// Check if this exact array is blacklisted (not its contents)
 					// IPyHOP is reentrant - methods can return different results, so we only
 					// blacklist the exact array that failed, not arrays that contain blacklisted actions
 					if (_is_command_blacklisted(candidate_subtasks)) {
 						if (verbose >= 2) {
-							print_line("Method returned blacklisted subtasks array, skipping this method");
+							print_line("Method returned blacklisted planner elements array, skipping this method");
 						}
 						continue; // Skip this method, try next
 					}
@@ -823,12 +908,12 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Successfully refined - like Elixir's {method, subtasks}
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
-				// Store the subtasks that were created by this method for potential blacklisting
+				// Store the planner elements that were created by this method for potential blacklisting
 				curr_node["created_subtasks"] = subtasks;
 				// Don't modify available_methods - keep full list for potential backtracking
 				solution_graph.update_node(curr_node_id, curr_node);
 
-				// Add subtasks to graph
+				// Add planner elements to graph (handles goals, multigoals, tasks, and actions)
 				PlannerGraphOperations::add_nodes_and_edges(
 						solution_graph,
 						curr_node_id,
@@ -862,7 +947,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
-					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands, verbose);
 			solution_graph = backtrack_result.graph;
 			if (backtrack_result.parent_node_id >= 0) {
 				// Restore STN snapshot from the node we're backtracking to
@@ -1302,8 +1387,9 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
 			// Try all available methods - don't modify available_methods
+			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
 			Callable selected_method;
-			Array subtasks;
+			Array subtasks; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
 			bool found_working_method = false;
 
 			for (int i = 0; i < available_methods.size(); i++) {
@@ -1311,13 +1397,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Unigoal methods: pass state, subject, value
 				Variant result = method.call(p_state, subject, value);
 				if (result.get_type() == Variant::ARRAY) {
-					Array candidate_subtasks = result;
-					// Check if this exact subtasks array is blacklisted (not its contents)
+					Array candidate_subtasks = result; // Can contain any planner elements
+					// Check if this exact array is blacklisted (not its contents)
 					// IPyHOP is reentrant - methods can return different results, so we only
 					// blacklist the exact array that failed, not arrays that contain blacklisted actions
 					if (_is_command_blacklisted(candidate_subtasks)) {
 						if (verbose >= 2) {
-							print_line("Method returned blacklisted subtasks array, skipping this method");
+							print_line("Method returned blacklisted planner elements array, skipping this method");
 						}
 						continue; // Skip this method, try next
 					}
@@ -1333,12 +1419,12 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Successfully refined
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
-				// Store the subtasks that were created by this method for potential blacklisting
+				// Store the planner elements that were created by this method for potential blacklisting
 				curr_node["created_subtasks"] = subtasks;
 				// Don't modify available_methods
 				solution_graph.update_node(curr_node_id, curr_node);
 
-				// Add subtasks to graph
+				// Add planner elements to graph (handles goals, multigoals, tasks, and actions)
 				PlannerGraphOperations::add_nodes_and_edges(
 						solution_graph,
 						curr_node_id,
@@ -1372,7 +1458,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
-					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands, verbose);
 			solution_graph = backtrack_result.graph;
 			if (backtrack_result.parent_node_id >= 0) {
 				// Restore STN snapshot from the node we're backtracking to
@@ -1509,21 +1595,22 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
 			// Try all available methods - don't modify available_methods
+			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
 			Callable selected_method;
-			Array subgoals;
+			Array subgoals; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
 			bool found_working_method = false;
 
 			for (int i = 0; i < available_methods.size(); i++) {
 				Callable method = available_methods[i];
 				Variant result = method.call(p_state, multigoal);
 				if (result.get_type() == Variant::ARRAY) {
-					Array candidate_subgoals = result;
-					// Check if this exact subgoals array is blacklisted (not its contents)
+					Array candidate_subgoals = result; // Can contain any planner elements
+					// Check if this exact array is blacklisted (not its contents)
 					// IPyHOP is reentrant - methods can return different results, so we only
 					// blacklist the exact array that failed, not arrays that contain blacklisted actions
 					if (_is_command_blacklisted(candidate_subgoals)) {
 						if (verbose >= 2) {
-							print_line("Method returned blacklisted subgoals array, skipping this method");
+							print_line("Method returned blacklisted planner elements array, skipping this method");
 						}
 						continue; // Skip this method, try next
 					}
@@ -1541,11 +1628,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["selected_method"] = selected_method;
 				// Don't modify available_methods
 
-				// Store the subgoals that were created by this method for potential blacklisting
+				// Store the planner elements that were created by this method for potential blacklisting
 				curr_node["created_subtasks"] = subgoals;
 				solution_graph.update_node(curr_node_id, curr_node);
 
-				// Add subgoals to graph
+				// Add planner elements to graph (handles goals, multigoals, tasks, and actions)
 				PlannerGraphOperations::add_nodes_and_edges(
 						solution_graph,
 						curr_node_id,
@@ -1588,7 +1675,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				}
 			}
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
-					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands, verbose);
 			solution_graph = backtrack_result.graph;
 			if (backtrack_result.parent_node_id >= 0) {
 				// Restore STN snapshot from the node we're backtracking to

@@ -86,7 +86,8 @@ PlannerDomain::PlannerDomain() {
 }
 
 void PlannerDomain::add_multigoal_methods(TypedArray<Callable> p_methods) {
-	// Add domain-specific methods that decompose multigoals to ordered unigoals
+	// Add domain-specific methods for multigoals
+	// Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, actions)
 	for (int i = 0; i < p_methods.size(); ++i) {
 		Callable m = p_methods[i];
 		if (m.is_null()) {

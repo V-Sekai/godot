@@ -32,6 +32,9 @@
 #include "domain.h"
 #include "multigoal.h"
 
+// Determine node type from node_info
+// Supports all planner element types: actions, tasks, unigoals (goals), and multigoals
+// Methods can return Arrays containing any of these types
 PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict) {
 	// Check if it's a String - look up in dictionaries
 	if (p_node_info.get_type() == Variant::STRING) {
@@ -52,7 +55,7 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		return PlannerNodeType::TYPE_ROOT;
 	}
 
-	// Check if it's a Dictionary-wrapped item (with constraints)
+	// Check if it's a Dictionary-wrapped item (with constraints/metadata)
 	if (p_node_info.get_type() == Variant::DICTIONARY) {
 		Dictionary dict = p_node_info;
 		if (dict.has("item")) {
@@ -60,11 +63,12 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 			Variant unwrapped_item = dict["item"];
 			return get_node_type(unwrapped_item, p_action_dict, p_task_dict, p_unigoal_dict);
 		}
-		// If it's a dictionary without "item", it's not a valid node (multigoals are now Arrays)
+		// If it's a dictionary without "item", it's not a valid node (multigoals are Arrays)
 		return PlannerNodeType::TYPE_ROOT;
 	}
 
-	// Check if it's an Array (task/goal/action/multigoal)
+	// Check if it's an Array (can be task/goal/action/multigoal)
+	// Methods return Arrays containing any planner elements
 	if (p_node_info.get_type() == Variant::ARRAY) {
 		Array arr = p_node_info;
 		if (arr.is_empty()) {
@@ -101,11 +105,15 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 	return PlannerNodeType::TYPE_ROOT;
 }
 
+// Add nodes and edges to solution graph
+// p_children_node_info_list can contain any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
+// Methods return Arrays of these elements, which are processed here
 int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, int p_parent_node_id, Array p_children_node_info_list, Dictionary p_action_dict, Dictionary p_task_dict, Dictionary p_unigoal_dict, TypedArray<Callable> p_multigoal_methods) {
 	int current_id = p_graph.next_node_id - 1;
 
 	for (int i = 0; i < p_children_node_info_list.size(); i++) {
 		Variant child_info = p_children_node_info_list[i];
+		// Determine type of planner element (action, task, unigoal, multigoal)
 		PlannerNodeType node_type = get_node_type(child_info, p_action_dict, p_task_dict, p_unigoal_dict);
 
 		TypedArray<Callable> available_methods;
@@ -400,48 +408,45 @@ bool PlannerGraphOperations::is_retriable_closed_node(PlannerSolutionGraph &p_gr
 	return successors.size() > 0;
 }
 
-int PlannerGraphOperations::find_first_closed_node_dfs(PlannerSolutionGraph &p_graph, int p_start_node_id, int p_failed_node_id) {
-	// If start node is root, check all root children first (siblings of failed node)
-	if (p_start_node_id == 0) {
-		Dictionary root_node = p_graph.get_node(0);
-		TypedArray<int> root_successors = root_node["successors"];
+int PlannerGraphOperations::find_first_closed_node_dfs(PlannerSolutionGraph &p_graph, int p_start_node_id, int p_failed_node_id, int p_verbose) {
+	// IPyHOP-style backtracking: Do DFS preorder from start node, reverse it, find first CLOSED node with descendants
+	// This matches IPyHOP's reversed(list(dfs_preorder_nodes(self.sol_tree, source=p_node_id)))
+	// The DFS includes ALL nodes in the subtree rooted at p_start_node_id, including siblings
+	
+	if (p_verbose >= 3) {
+		print_line(vformat("find_first_closed_node_dfs: start=%d, failed_node=%d", p_start_node_id, p_failed_node_id));
+	}
+	
+	// Do DFS preorder traversal from start node
+	TypedArray<int> visited;
+	TypedArray<int> dfs_list;
+	do_dfs_preorder(p_graph, p_start_node_id, visited, dfs_list);
+	
+	if (p_verbose >= 3) {
+		print_line(vformat("find_first_closed_node_dfs: DFS collected %d nodes", dfs_list.size()));
+	}
+	
+	// Traverse in reverse order (from leaves to root) to find first CLOSED node with descendants
+	// This matches IPyHOP's behavior: reversed(dfs_list)
+	for (int i = dfs_list.size() - 1; i >= 0; i--) {
+		int node_id = dfs_list[i];
 		
-		for (int i = 0; i < root_successors.size(); i++) {
-			int child_id = root_successors[i];
-			if (is_retriable_closed_node(p_graph, child_id)) {
-				return child_id;
+		// Skip the failed node itself
+		if (node_id == p_failed_node_id) {
+			continue;
+		}
+		
+		// Check if this node is retriable (CLOSED with descendants)
+		if (is_retriable_closed_node(p_graph, node_id)) {
+			if (p_verbose >= 3) {
+				print_line(vformat("find_first_closed_node_dfs: Found retriable CLOSED node %d", node_id));
 			}
+			return node_id;
 		}
 	}
 	
-	// Traverse up parent chain from failed node to start node
-	// Check each ancestor for retriable CLOSED nodes
-	int current_node = p_failed_node_id;
-	
-	while (current_node >= 0) {
-		int parent = find_predecessor(p_graph, current_node);
-		
-		// Stop if we've reached invalid node or gone beyond start node
-		if (parent < 0) {
-			break;
-		}
-		
-		// Stop if we've reached root (parent == 0) and start node is not root
-		// Or if we've reached start node
-		if (parent == 0 && p_start_node_id > 0) {
-			break;
-		}
-		if (parent == p_start_node_id) {
-			break;
-		}
-		
-		// Check if this ancestor node is retriable
-		if (is_retriable_closed_node(p_graph, parent)) {
-			return parent;
-		}
-		
-		current_node = parent;
+	if (p_verbose >= 3) {
+		print_line("find_first_closed_node_dfs: No retriable CLOSED node found");
 	}
-	
 	return -1; // No retriable CLOSED node found
 }

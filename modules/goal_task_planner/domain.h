@@ -94,9 +94,13 @@ public:
 	PlannerDomain();
 
 public:
+	// Add actions to domain. Actions return false or a new state Dictionary.
 	void add_actions(TypedArray<Callable> p_actions);
+	// Add task methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, actions).
 	void add_task_methods(String p_task_name, TypedArray<Callable> p_methods);
+	// Add unigoal methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, actions).
 	void add_unigoal_methods(String p_task_name, TypedArray<Callable> p_methods);
+	// Add multigoal methods. Methods return false or an Array of planner elements (goals, PlannerMultigoal, tasks, actions).
 	void add_multigoal_methods(TypedArray<Callable> p_methods);
 
 public:
