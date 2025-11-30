@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-// End-to-end planning problems built on top of planner domains/helpers.
-
 #pragma once
 
 #include "../domain.h"
@@ -59,15 +57,15 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 	TypedArray<Callable> task_methods;
 	task_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_complete_lesson));
 	domain->add_task_methods("complete_lesson", task_methods);
-	
+
 	TypedArray<Callable> task_build_relationship_methods;
 	task_build_relationship_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_build_relationship));
 	domain->add_task_methods("build_relationship", task_build_relationship_methods);
 
-		TypedArray<Callable> unigoal_affection_methods;
-		unigoal_affection_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
-		domain->add_unigoal_methods("affection", unigoal_affection_methods);
-	
+	TypedArray<Callable> unigoal_affection_methods;
+	unigoal_affection_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+	domain->add_unigoal_methods("affection", unigoal_affection_methods);
+
 	TypedArray<Callable> unigoal_pass_exam_methods;
 	unigoal_pass_exam_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_pass_exam));
 	domain->add_unigoal_methods("pass_exam", unigoal_pass_exam_methods);
@@ -87,7 +85,7 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 	SUBCASE("Plan with entity requirements") {
 		// Ensure domain is properly set
 		CHECK(plan->get_current_domain().is_valid());
-		
+
 		Dictionary state_dict;
 		// Empty state - no relationships yet, so we need to build them
 
@@ -108,11 +106,11 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		entity_constraints["capabilities"] = capabilities;
 		plan->attach_metadata(unigoal, Dictionary(), entity_constraints);
 		plan->set_max_depth(40); // Need higher depth for iterative refinement: 5 iterations * ~6 steps each = 30+ steps
-		
+
 		Variant result = plan->find_plan(state_dict, todo_list);
 		// Planning should succeed and return a valid plan (not false, not empty)
 		CHECK(is_valid_plan_result(result, true)); // Expect non-empty plan
-		
+
 		// Validate against expected fixture
 		// Fixture: Since affection starts at 0 and we need 50, we need 5 build_relationship calls
 		// Each build_relationship has: talk_to_character + increase_affection (2 actions)
@@ -120,7 +118,7 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		CHECK(result.get_type() == Variant::ARRAY);
 		Array plan_result = result;
 		CHECK(plan_result.size() >= 10); // Fixture: minimum 10 actions
-		
+
 		// Fixture: Plan should contain these action types
 		Array expected_actions;
 		expected_actions.push_back("action_talk_to_character");
@@ -131,7 +129,7 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 	SUBCASE("Plan with temporal constraints") {
 		// Ensure domain is properly set
 		CHECK(plan->get_current_domain().is_valid());
-		
+
 		Dictionary state_dict;
 		Array todo_list;
 		// Use action name string (will be recognized as action)
@@ -152,7 +150,7 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		// Accept either false (planning failed) or a valid plan array
 		bool is_valid = (result == Variant(false)) || is_valid_plan_result(result, false);
 		CHECK(is_valid); // May be empty if action needs args
-		
+
 		// If we get a result, it should be an array (not false)
 		if (result.get_type() == Variant::ARRAY) {
 			Array plan_result = result;
@@ -170,7 +168,7 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		// Ensure domain is properly set
 		CHECK(plan->get_current_domain().is_valid());
 		plan->set_max_depth(60); // Need higher depth for multigoal iterative refinement (more complex than unigoal)
-		
+
 		Dictionary state_dict;
 		// Empty state - no relationships yet
 		// Multigoal is now an Array of unigoal arrays
@@ -189,14 +187,14 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		Variant result = plan->find_plan(state_dict, todo_list);
 		// Planning should succeed with multigoal and return valid plan (not false, not empty)
 		CHECK(is_valid_plan_result(result, true)); // Expect non-empty plan
-		
+
 		// Validate against expected fixture
 		// Fixture: Since affection starts at 0 and we need 50, we need 5 build_relationship calls
 		// Each has 2 actions (talk + increase), so minimum 10 actions
 		CHECK(result.get_type() == Variant::ARRAY);
 		Array plan_result = result;
 		CHECK(plan_result.size() >= 10); // Fixture: minimum 10 actions
-		
+
 		// Fixture: Plan should contain these action types
 		Array expected_actions;
 		expected_actions.push_back("action_talk_to_character");
@@ -207,7 +205,7 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 	SUBCASE("Plan with STN constraints") {
 		// Ensure domain is properly set
 		CHECK(plan->get_current_domain().is_valid());
-		
+
 		// This tests that STN solver is integrated with planning
 		Dictionary state_dict;
 		Array todo_list;

@@ -58,7 +58,7 @@ bool PlannerMultigoal::is_multigoal_array(const Variant &p_variant) {
 // Each unigoal is [predicate, subject, value]
 Array PlannerMultigoal::method_goals_not_achieved(const Dictionary &p_state, const Array &p_multigoal_array) {
 	Array unmatched_goals;
-	
+
 	for (int i = 0; i < p_multigoal_array.size(); ++i) {
 		Variant goal_variant = p_multigoal_array[i];
 		if (goal_variant.get_type() != Variant::ARRAY) {
@@ -68,11 +68,11 @@ Array PlannerMultigoal::method_goals_not_achieved(const Dictionary &p_state, con
 		if (unigoal.size() < 3) {
 			continue; // Invalid unigoal format
 		}
-		
+
 		String predicate = unigoal[0]; // e.g., "affection"
-		String subject = unigoal[1];  // e.g., "protagonist_class_president"
+		String subject = unigoal[1]; // e.g., "protagonist_class_president"
 		Variant desired_value = unigoal[2]; // e.g., 50
-		
+
 		// Check if state[predicate][subject] == desired_value
 		bool achieved = false;
 		if (p_state.has(predicate)) {
@@ -84,12 +84,12 @@ Array PlannerMultigoal::method_goals_not_achieved(const Dictionary &p_state, con
 				}
 			}
 		}
-		
+
 		if (!achieved) {
 			unmatched_goals.push_back(unigoal);
 		}
 	}
-	
+
 	return unmatched_goals;
 }
 

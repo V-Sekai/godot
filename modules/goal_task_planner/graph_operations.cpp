@@ -72,13 +72,13 @@ PlannerNodeType PlannerGraphOperations::get_node_type(Variant p_node_info, Dicti
 		}
 
 		Variant first = arr[0];
-		
+
 		// Check if it's a multigoal (Array of unigoal arrays)
 		// A multigoal is an Array where the first element is also an Array
 		if (first.get_type() == Variant::ARRAY) {
 			return PlannerNodeType::TYPE_MULTIGOAL;
 		}
-		
+
 		// Otherwise, it's a single unigoal/action/task - check first element as string
 		String first_str = first;
 

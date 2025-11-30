@@ -158,7 +158,7 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	// Track FAILED VERIFY_MULTIGOAL nodes - they're acceptable if there's a CLOSED one for the same parent
 	Dictionary failed_verify_multigoals_by_parent; // parent_id -> array of failed verify multigoal node_ids
 	TypedArray<int> closed_verify_multigoals;
-	
+
 	for (int i = 0; i < reachable_nodes.size(); i++) {
 		int node_id = reachable_nodes[i];
 		if (node_id == 0) {
@@ -167,15 +167,15 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 		Dictionary node = graph[node_id];
 		int status = node["status"];
 		int node_type = node["type"];
-		
+
 		// Planning fails if any reachable node is open
 		if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
 			planning_succeeded = false;
 			open_nodes.push_back(node_id);
 		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
 			// FAILED VERIFY_GOAL and VERIFY_MULTIGOAL nodes are acceptable if there's a CLOSED one for the same parent
-			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL) || 
-				node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
+			if (node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_GOAL) ||
+					node_type == static_cast<int>(PlannerNodeType::TYPE_VERIFY_MULTIGOAL)) {
 				// Get parent node ID (stored in node or find it)
 				// For now, just track it - we'll check later if there's a CLOSED one
 				// We need to find the parent by searching the graph
@@ -213,8 +213,8 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 				// Don't mark as failed yet - check if there's a CLOSED one
 			} else {
 				// Other FAILED nodes are real failures
-			planning_succeeded = false;
-			failed_nodes.push_back(node_id);
+				planning_succeeded = false;
+				failed_nodes.push_back(node_id);
 			}
 		} else if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
 			has_reachable_closed_nodes = true;
@@ -225,7 +225,7 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 			}
 		}
 	}
-	
+
 	// For each parent with failed verify goals, check if there's a closed one
 	Array failed_parent_keys = failed_verify_goals_by_parent.keys();
 	for (int i = 0; i < failed_parent_keys.size(); i++) {
@@ -264,7 +264,7 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 			// The final CLOSED verify goal is what matters
 		}
 	}
-	
+
 	// For each parent with failed verify multigoals, check if there's a closed one
 	Array failed_multigoal_parent_keys = failed_verify_multigoals_by_parent.keys();
 	for (int i = 0; i < failed_multigoal_parent_keys.size(); i++) {
@@ -999,14 +999,14 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// validate argument count beforehand without reflection. The error will be caught by the
 			// error handler and planning will fail gracefully.
 			Variant result = action.callv(args);
-			
+
 			// If we get here, the action call succeeded (no exception thrown)
 			// Validate result is a Dictionary (actions should return new state)
 			if (result.get_type() != Variant::DICTIONARY) {
 				if (verbose >= 1) {
 					String action_name = String(action_arr[0]);
-					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Action '%s' returned non-Dictionary result (type: %d), marking as failed", 
-						action_name, result.get_type()));
+					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Action '%s' returned non-Dictionary result (type: %d), marking as failed",
+							action_name, result.get_type()));
 				}
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 				solution_graph.update_node(curr_node_id, curr_node);
@@ -1222,10 +1222,10 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				Dictionary predicate_dict = p_state[predicate];
 				if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
 					// Unigoal already achieved
-				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-				solution_graph.update_node(curr_node_id, curr_node);
-				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
-			}
+					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+					solution_graph.update_node(curr_node_id, curr_node);
+					return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
+				}
 			}
 
 			// Try to refine unigoal using unigoal methods (like Elixir's Enum.find_value)
@@ -1401,7 +1401,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						current_domain->multigoal_method_list);
 				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
 			}
-			
+
 			// If multigoal already has successors (from previous refinement), continue planning from them
 			// instead of creating new ones (iterative refinement - reuse existing work)
 			TypedArray<int> successors = curr_node["successors"];
@@ -1487,7 +1487,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
 				// Don't modify available_methods
-				
+
 				// Store the subgoals that were created by this method for potential blacklisting
 				curr_node["created_subtasks"] = subgoals;
 				solution_graph.update_node(curr_node_id, curr_node);
@@ -1558,13 +1558,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				if (p_state.has(predicate)) {
 					Dictionary predicate_dict = p_state[predicate];
 					if (predicate_dict.has(subject) && predicate_dict[subject] == value) {
-					// Verification successful
+						// Verification successful
 						if (verbose >= 2) {
 							print_line(vformat("Unigoal verified: %s[%s] == %s", predicate, subject, value));
 						}
-					curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-					solution_graph.update_node(curr_node_id, curr_node);
-					return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
+						curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
+						solution_graph.update_node(curr_node_id, curr_node);
+						return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 					}
 				}
 			}
@@ -1584,24 +1584,24 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 							current_value = predicate_dict[subject];
 						}
 					}
-					print_line(vformat("Unigoal verification failed: %s[%s] = %s (need %s), re-refining parent unigoal", 
-						predicate, subject, current_value, value));
+					print_line(vformat("Unigoal verification failed: %s[%s] = %s (need %s), re-refining parent unigoal",
+							predicate, subject, current_value, value));
 				} else {
 					print_line("Unigoal verification failed, re-refining parent unigoal");
 				}
 			}
-			
+
 			// Mark parent unigoal as OPEN to trigger re-refinement
 			// Keep old successors - they represent actions already executed
 			// New successors will be added when we re-refine
 			parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
 			// Don't clear successors - we want to accumulate all actions from all iterations
 			solution_graph.update_node(p_parent_node_id, parent_node);
-			
+
 			// Mark verification node as failed (but don't backtrack)
 			curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 			solution_graph.update_node(curr_node_id, curr_node);
-			
+
 			// Return to parent unigoal to re-refine with updated state
 			return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 		}
@@ -1652,18 +1652,18 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				if (verbose >= 2) {
 					print_line(vformat("MultiGoal verification failed: %d goals not achieved, re-refining parent multigoal", goals_not_achieved.size()));
 				}
-				
+
 				// Mark parent multigoal as OPEN to trigger re-refinement
 				// Keep old successors - they represent actions already executed
 				// New successors will be added when we re-refine
 				parent_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_OPEN);
 				// Don't clear successors - we want to accumulate all actions from all iterations
 				solution_graph.update_node(p_parent_node_id, parent_node);
-				
+
 				// Mark verification node as failed (but don't backtrack)
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
 				solution_graph.update_node(curr_node_id, curr_node);
-				
+
 				// Return to parent multigoal to re-refine with updated state
 				return _planning_loop_recursive(p_parent_node_id, p_state, p_iter + 1);
 			}
@@ -1739,7 +1739,7 @@ bool PlannerPlan::_contains_blacklisted_action(Array p_subtasks) const {
 	if (_is_command_blacklisted(p_subtasks)) {
 		return true;
 	}
-	
+
 	// Check if any action/task/goal in the subtasks array is blacklisted
 	for (int i = 0; i < p_subtasks.size(); i++) {
 		Variant subtask = p_subtasks[i];

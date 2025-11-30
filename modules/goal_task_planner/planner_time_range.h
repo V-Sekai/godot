@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-// Absolute time tracking for planning (microseconds since Unix epoch)
-
 #pragma once
 
 #include "core/os/os.h"

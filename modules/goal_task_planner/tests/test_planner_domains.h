@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-// Core planner domain and data-structure tests (no full problems here).
-
 #pragma once
 
 #include "../backtracking.h"
@@ -419,7 +417,7 @@ TEST_CASE("[Modules][Planner] PlannerMultigoal - Multigoal operations") {
 
 		// Single unigoal is not a multigoal
 		CHECK(!PlannerMultigoal::is_multigoal_array(unigoal1));
-		
+
 		// Dictionary is not a multigoal
 		Dictionary not_multigoal;
 		not_multigoal["key"] = "value";

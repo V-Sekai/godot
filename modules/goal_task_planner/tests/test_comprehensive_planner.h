@@ -28,9 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-// Comprehensive test suite for goal-task planner.
-// This header now just aggregates the split helpers/domains/problems tests.
-
 #pragma once
 
 #include "test_planner_domains.h"
@@ -353,7 +350,7 @@ TEST_CASE("[Modules][Planner] PlannerMultigoal - Multigoal operations") {
 
 		// Single unigoal is not a multigoal
 		CHECK(!PlannerMultigoal::is_multigoal_array(unigoal1));
-		
+
 		// Dictionary is not a multigoal
 		Dictionary not_multigoal;
 		not_multigoal["key"] = "value";

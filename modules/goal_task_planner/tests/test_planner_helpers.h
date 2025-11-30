@@ -28,8 +28,6 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-// Helper functions and domain definitions shared by planner tests.
-
 #pragma once
 
 #include "../planner_state.h"
@@ -122,7 +120,7 @@ Dictionary action_talk_to_character(Dictionary state, String student, String cha
 
 Dictionary action_increase_affection(Dictionary state, String student, String character, int amount) {
 	Dictionary new_state = state.duplicate();
-	
+
 	// Update nested relationship structure (for compatibility)
 	Dictionary relationship_state;
 	if (new_state.has("relationships")) {
@@ -142,7 +140,7 @@ Dictionary action_increase_affection(Dictionary state, String student, String ch
 	relationship["affection"] = current_affection + amount;
 	relationship_state[relationship_key] = relationship;
 	new_state["relationships"] = relationship_state;
-	
+
 	// Also maintain flat affection structure for unigoal checking: state["affection"][key] = value
 	Dictionary affection_dict;
 	if (new_state.has("affection")) {
@@ -153,7 +151,7 @@ Dictionary action_increase_affection(Dictionary state, String student, String ch
 	int new_affection = current_affection + amount;
 	affection_dict[relationship_key] = new_affection;
 	new_state["affection"] = affection_dict;
-	
+
 	return new_state;
 }
 
@@ -166,7 +164,7 @@ Array task_complete_lesson(Dictionary state, String student, String subject) {
 	action1.push_back(student);
 	action1.push_back(subject);
 	subtasks.push_back(action1);
-	
+
 	Array action2;
 	action2.push_back("action_attend_class");
 	action2.push_back(student);
@@ -183,7 +181,7 @@ Array task_build_relationship(Dictionary state, String student, String character
 	action1.push_back(student);
 	action1.push_back(character);
 	subtasks.push_back(action1);
-	
+
 	Array action2;
 	action2.push_back("action_increase_affection");
 	action2.push_back(student);
@@ -198,11 +196,11 @@ Array task_build_relationship(Dictionary state, String student, String character
 // For affection: predicate="affection", subject="student_character" (e.g., "protagonist_class_president"), value=target_affection_level (e.g., 50)
 Array unigoal_achieve_affection_level(Dictionary state, String relationship_key, int target_level) {
 	Array subtasks;
-	
+
 	// Check current affection level: state["affection"][relationship_key]
 	Dictionary affection_dict = state.get("affection", Dictionary());
 	int current_affection = affection_dict.get(relationship_key, 0);
-	
+
 	if (current_affection < target_level) {
 		// Extract student and character from relationship_key (format: "student_character")
 		PackedStringArray parts = relationship_key.split("_");
@@ -216,7 +214,7 @@ Array unigoal_achieve_affection_level(Dictionary state, String relationship_key,
 				}
 				character += parts[i];
 			}
-			
+
 			// Return one task - planner will re-check unigoal after execution
 			Array task;
 			task.push_back("build_relationship");
@@ -233,11 +231,11 @@ Array unigoal_achieve_affection_level(Dictionary state, String relationship_key,
 // For pass_exam: predicate="exam_passed", subject="student_subject" (e.g., "protagonist_magic_class"), value=true
 Array unigoal_pass_exam(Dictionary state, String exam_key, bool target_value) {
 	Array subtasks;
-	
+
 	// Check current exam status: state["exam_passed"][exam_key]
 	Dictionary exam_dict = state.get("exam_passed", Dictionary());
 	bool current_status = exam_dict.get(exam_key, false);
-	
+
 	if (current_status != target_value) {
 		// Extract student and subject from exam_key (format: "student_subject")
 		PackedStringArray parts = exam_key.split("_");
@@ -251,7 +249,7 @@ Array unigoal_pass_exam(Dictionary state, String exam_key, bool target_value) {
 				}
 				subject += parts[i];
 			}
-			
+
 			// Return one task - planner will re-check unigoal after execution
 			Array task;
 			task.push_back("complete_lesson");
@@ -370,7 +368,7 @@ static bool validate_plan_against_fixture(Array plan, int expected_min_actions, 
 	if (plan.size() < expected_min_actions) {
 		return false;
 	}
-	
+
 	// Check that expected actions are present
 	for (int i = 0; i < expected_actions.size(); i++) {
 		String action_name = expected_actions[i];
@@ -378,7 +376,7 @@ static bool validate_plan_against_fixture(Array plan, int expected_min_actions, 
 			return false;
 		}
 	}
-	
+
 	return true;
 }
 
