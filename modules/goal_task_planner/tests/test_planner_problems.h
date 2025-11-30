@@ -107,7 +107,6 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		capabilities.push_back("studying");
 		entity_constraints["capabilities"] = capabilities;
 		plan->attach_metadata(unigoal, Dictionary(), entity_constraints);
-		plan->set_verbose(3);
 		plan->set_max_depth(40); // Need higher depth for iterative refinement: 5 iterations * ~6 steps each = 30+ steps
 		
 		Variant result = plan->find_plan(state_dict, todo_list);
@@ -170,7 +169,6 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 	SUBCASE("Plan with multigoal") {
 		// Ensure domain is properly set
 		CHECK(plan->get_current_domain().is_valid());
-		plan->set_verbose(3);
 		plan->set_max_depth(60); // Need higher depth for multigoal iterative refinement (more complex than unigoal)
 		
 		Dictionary state_dict;

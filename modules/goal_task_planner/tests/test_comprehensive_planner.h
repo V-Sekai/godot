@@ -394,32 +394,22 @@ TEST_CASE("[Modules][Planner] PlannerMultigoal - Multigoal operations") {
 		CHECK(goals_not_achieved.size() == 0); // All goals achieved
 	}
 
-	SUBCASE("Get goal value") {
-		Dictionary multigoal;
-		Dictionary character1;
-		character1["affection_level"] = 50;
-		multigoal["class_president"] = character1;
-
-		Variant affection = PlannerMultigoal::get_goal_value(multigoal, "class_president", "affection_level");
-		CHECK(int(affection) == 50);
-	}
-
-	SUBCASE("Goals not achieved") {
+	SUBCASE("Goals not achieved with Array multigoal") {
 		Dictionary state;
-		Dictionary relationship_state;
-		Dictionary character1_relationship;
-		character1_relationship["affection"] = 50;
-		relationship_state["protagonist_class_president"] = character1_relationship;
-		state["relationships"] = relationship_state;
+		Dictionary affection_dict;
+		affection_dict["protagonist_class_president"] = 30; // Not achieved (need 50)
+		state["affection"] = affection_dict;
 
-		Dictionary multigoal;
-		Dictionary character1_goal;
-		character1_goal["affection_level"] = 50;
-		multigoal["class_president"] = character1_goal;
+		Array multigoal_array;
+		Array unigoal1;
+		unigoal1.push_back("affection");
+		unigoal1.push_back("protagonist_class_president");
+		unigoal1.push_back(50);
+		multigoal_array.push_back(unigoal1);
 
-		Dictionary not_achieved = PlannerMultigoal::method_goals_not_achieved(state, multigoal);
-		// Should be empty if goal is achieved
-		CHECK(not_achieved.size() >= 0);
+		Array not_achieved = PlannerMultigoal::method_goals_not_achieved(state, multigoal_array);
+		// Should have one goal not achieved
+		CHECK(not_achieved.size() == 1);
 	}
 }
 
