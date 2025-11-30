@@ -24,7 +24,7 @@ Key components:
 
 ## Build Commands
 
--   Build editor: `godot-build-editor` (from project root)
+-   Build editor: `godot-build-editor` (alias for `scons platform=macos arch=arm64 target=editor dev_build=yes debug_symbols=yes compiledb=yes tests=yes generate_bundle=yes cache_path=/Users/ernest.lee/.scons_cache`)
 -   Build and run tests: `godot-build-editor && ./bin/godot.macos.editor.dev.arm64 --test --test-path=modules/goal_task_planner/tests`
 -   Run specific test: `./bin/godot.macos.editor.dev.arm64 --test --test-path=modules/goal_task_planner/tests --test-name="<Test Name>"`
 
