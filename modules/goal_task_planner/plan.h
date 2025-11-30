@@ -39,6 +39,7 @@
 
 #include "modules/goal_task_planner/multigoal.h"
 #include "modules/goal_task_planner/planner_metadata.h"
+#include "modules/goal_task_planner/planner_result.h"
 #include "modules/goal_task_planner/planner_time_range.h"
 #include "modules/goal_task_planner/solution_graph.h"
 #include "modules/goal_task_planner/stn_solver.h"
@@ -56,6 +57,7 @@ class PlannerPlan : public Resource {
 	TypedArray<Variant> blacklisted_commands; // Blacklisted commands/actions
 	PlannerSTNSolver stn; // STN solver for temporal constraint validation
 	PlannerSTNSolver::Snapshot stn_snapshot; // STN snapshot for backtracking
+	Array original_todo_list; // Store original todo_list to check if all tasks completed
 
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	static String _item_to_string(Variant p_item);
@@ -93,10 +95,10 @@ public:
 	void set_current_domain(Ref<PlannerDomain> p_current_domain) { current_domain = p_current_domain; }
 	void set_max_depth(int p_max_depth);
 	int get_max_depth() const;
-	Variant find_plan(Dictionary p_state, Array p_todo_list);
-	Dictionary run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
+	Ref<PlannerResult> find_plan(Dictionary p_state, Array p_todo_list);
+	Ref<PlannerResult> run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries = 10);
 	// Graph-based lazy refinement (Elixir-style)
-	Dictionary run_lazy_refineahead(Dictionary p_state, Array p_todo_list);
+	Ref<PlannerResult> run_lazy_refineahead(Dictionary p_state, Array p_todo_list);
 	// Temporal methods
 	PlannerTimeRange get_time_range() const { return time_range; }
 	void set_time_range(PlannerTimeRange p_time_range) { time_range = p_time_range; }

@@ -30,6 +30,7 @@
 #pragma once
 
 #include "../../domain.h"
+#include "../../planner_result.h"
 #include "../domains/ipyhop_test_domain.h"
 #include "core/variant/array.h"
 #include "core/variant/variant.h"
@@ -61,11 +62,11 @@ Ref<PlannerDomain> create_ipyhop_test_domain() {
 }
 
 // Helper to validate plan result
-bool validate_plan_result(const Variant &result, const Array &expected_actions) {
-	if (result.get_type() != Variant::ARRAY) {
+bool validate_plan_result(Ref<PlannerResult> result, const Array &expected_actions) {
+	if (!result.is_valid() || !result->get_success()) {
 		return false;
 	}
-	Array plan = result;
+	Array plan = result->extract_plan();
 	if (plan.size() != expected_actions.size()) {
 		return false;
 	}

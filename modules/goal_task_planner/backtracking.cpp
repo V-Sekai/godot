@@ -31,9 +31,58 @@
 #include "backtracking.h"
 #include "graph_operations.h"
 
-PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolutionGraph p_graph, int p_parent_node_id, int p_current_node_id, Dictionary p_state, TypedArray<Variant> p_blacklisted_commands) {
-	// Mark current node as failed
+PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolutionGraph p_graph, int p_parent_node_id, int p_current_node_id, Dictionary p_state, TypedArray<Variant> p_blacklisted_commands, int p_verbose) {
+	if (p_verbose >= 2) {
+		print_line(vformat("Backtracking: parent_node_id=%d, current_node_id=%d", p_parent_node_id, p_current_node_id));
+	}
+	
+	// Mark current node as failed first
 	p_graph.set_node_status(p_current_node_id, PlannerNodeStatus::STATUS_FAILED);
+	
+	// If backtracking from root, check for OPEN nodes (excluding the failed node)
+	// This ensures we try other OPEN tasks before retrying CLOSED ones or giving up
+	if (p_parent_node_id == 0) {
+		Dictionary root_node = p_graph.get_node(0);
+		TypedArray<int> root_successors = root_node["successors"];
+		int open_node_id = -1;
+		// Check root children for OPEN nodes, excluding the failed node
+		for (int i = 0; i < root_successors.size(); i++) {
+			int child_id = root_successors[i];
+			if (child_id == p_current_node_id) {
+				continue; // Skip the failed node
+			}
+			if (!p_graph.get_graph().has(child_id)) {
+				continue;
+			}
+			Dictionary child_node = p_graph.get_node(child_id);
+			int status = child_node["status"];
+			if (status == static_cast<int>(PlannerNodeStatus::STATUS_OPEN)) {
+				open_node_id = child_id;
+				break;
+			}
+		}
+		if (p_verbose >= 3) {
+			if (open_node_id >= 0) {
+				print_line(vformat("Backtracking from root: Found OPEN node %d at root (excluding failed node %d)", open_node_id, p_current_node_id));
+			} else {
+				print_line(vformat("Backtracking from root: No OPEN nodes found at root (excluding failed node %d)", p_current_node_id));
+			}
+		}
+		if (open_node_id >= 0) {
+			// Found an OPEN node at root, remove failed node and return OPEN node for retry
+			if (p_verbose >= 2) {
+				print_line(vformat("Backtracking: Returning OPEN node %d at root (failed node %d)", open_node_id, p_current_node_id));
+			}
+			PlannerGraphOperations::remove_descendants(p_graph, p_current_node_id, true);
+			BacktrackResult result;
+			result.parent_node_id = 0;
+			result.current_node_id = open_node_id;
+			result.graph = p_graph;
+			result.state = p_state;
+			result.blacklisted_commands = p_blacklisted_commands;
+			return result;
+		}
+	}
 
 	// Reset current node's selected_method and state (IPyHOP-style)
 	Dictionary current_node = p_graph.get_node(p_current_node_id);
@@ -63,8 +112,19 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 
 	// IPyHOP-style backtracking: Do reverse DFS from parent to find first CLOSED node
 	// This matches IPyHOP's _backtrack behavior (ipyhop/planner.py lines 401-410)
-	// Pass failed node ID to ensure we only find ancestors, not siblings
-	int closed_node_id = PlannerGraphOperations::find_first_closed_node_dfs(p_graph, p_parent_node_id, p_current_node_id);
+	// The DFS includes ALL nodes in the subtree rooted at parent, including siblings
+	if (p_verbose >= 3) {
+		print_line(vformat("Backtracking: Calling find_first_closed_node_dfs(start=%d, failed=%d)", p_parent_node_id, p_current_node_id));
+	}
+	int closed_node_id = PlannerGraphOperations::find_first_closed_node_dfs(p_graph, p_parent_node_id, p_current_node_id, p_verbose);
+	
+	if (p_verbose >= 3) {
+		if (closed_node_id >= 0) {
+			print_line(vformat("Backtracking: Found CLOSED node %d to retry", closed_node_id));
+		} else {
+			print_line("Backtracking: No CLOSED node found, falling back to parent chain traversal");
+		}
+	}
 	
 	if (closed_node_id >= 0) {
 		// Found a CLOSED node with available methods, retry it
@@ -172,6 +232,9 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 	}
 
 	// Reached root, return failure
+	if (p_verbose >= 2) {
+		print_line("Backtracking: Reached root, no retriable nodes found, returning failure");
+	}
 	BacktrackResult result;
 	result.parent_node_id = -1;
 	result.current_node_id = -1;

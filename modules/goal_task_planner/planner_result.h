@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  backtracking.h                                                        */
+/*  planner_result.h                                                      */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -18,7 +18,6 @@
 /*                                                                        */
 /* The above copyright notice and this permission notice shall be         */
 /* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
@@ -30,25 +29,35 @@
 
 #pragma once
 
-// SPDX-FileCopyrightText: 2025-present K. S. Ernest (iFire) Lee
-// SPDX-License-Identifier: MIT
-
+#include "core/io/resource.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/typed_array.h"
-#include "graph_operations.h"
 #include "solution_graph.h"
 
-class PlannerBacktracking {
-public:
-	struct BacktrackResult {
-		int parent_node_id;
-		int current_node_id;
-		PlannerSolutionGraph graph;
-		Dictionary state;
-		TypedArray<Variant> blacklisted_commands;
-	};
+class PlannerResult : public Resource {
+	GDCLASS(PlannerResult, Resource);
 
-	// Backtrack from a failed node
-	// p_verbose: verbosity level (0=none, 1=basic, 2=detailed, 3=very detailed)
-	static BacktrackResult backtrack(PlannerSolutionGraph p_graph, int p_parent_node_id, int p_current_node_id, Dictionary p_state, TypedArray<Variant> p_blacklisted_commands, int p_verbose = 0);
+private:
+	Dictionary final_state;
+	Dictionary solution_graph; // The graph Dictionary from PlannerSolutionGraph
+	bool success;
+
+public:
+	PlannerResult();
+
+	Dictionary get_final_state() const { return final_state; }
+	void set_final_state(Dictionary p_state) { final_state = p_state; }
+
+	Dictionary get_solution_graph() const { return solution_graph; }
+	void set_solution_graph(Dictionary p_graph) { solution_graph = p_graph; }
+
+	bool get_success() const { return success; }
+	void set_success(bool p_success) { success = p_success; }
+
+	// Extract array of actions from the solution graph
+	Array extract_plan() const;
+
+protected:
+	static void _bind_methods();
 };
+

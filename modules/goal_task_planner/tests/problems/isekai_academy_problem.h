@@ -30,10 +30,10 @@
 
 #pragma once
 
-#include "../domain.h"
-#include "../plan.h"
-#include "../planner_state.h"
-#include "../planner_time_range.h"
+#include "../../domain.h"
+#include "../../plan.h"
+#include "../../planner_state.h"
+#include "../../planner_time_range.h"
 #include "tests/test_macros.h"
 
 // Use shared academy domain helpers.
@@ -108,16 +108,17 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		plan->attach_metadata(unigoal, Dictionary(), entity_constraints);
 		plan->set_max_depth(40); // Need higher depth for iterative refinement: 5 iterations * ~6 steps each = 30+ steps
 
-		Variant result = plan->find_plan(state_dict, todo_list);
+		Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
 		// Planning should succeed and return a valid plan (not false, not empty)
+		CHECK(result.is_valid());
+		CHECK(result->get_success());
 		CHECK(is_valid_plan_result(result, true)); // Expect non-empty plan
 
 		// Validate against expected fixture
 		// Fixture: Since affection starts at 0 and we need 50, we need 5 build_relationship calls
 		// Each build_relationship has: talk_to_character + increase_affection (2 actions)
 		// Expected minimum: 10 actions (5 iterations * 2 actions each)
-		CHECK(result.get_type() == Variant::ARRAY);
-		Array plan_result = result;
+		Array plan_result = result->extract_plan();
 		CHECK(plan_result.size() >= 10); // Fixture: minimum 10 actions
 
 		// Fixture: Plan should contain these action types
@@ -145,23 +146,18 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		temporal["duration"] = 5000000LL; // 5 seconds
 		plan->attach_metadata("action_study_subject", temporal);
 
-		Variant result = plan->find_plan(state_dict, todo_list);
+		Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
 		// Planning should succeed with temporal constraints
 		// Note: action_study_subject requires arguments, so this may fail
-		// Accept either false (planning failed) or a valid plan array
-		bool is_valid = (result == Variant(false)) || is_valid_plan_result(result, false);
-		CHECK(is_valid); // May be empty if action needs args
-
-		// If we get a result, it should be an array (not false)
-		if (result.get_type() == Variant::ARRAY) {
-			Array plan_result = result;
+		// Accept either failed result or a valid plan array
+		CHECK(result.is_valid());
+		if (result->get_success()) {
+			CHECK(is_valid_plan_result(result, false)); // May be empty if action needs args
+			Array plan_result = result->extract_plan();
 			// If plan is non-empty, it should contain valid actions
 			if (plan_result.size() > 0) {
 				CHECK(plan_result.size() > 0);
 			}
-		} else {
-			// If false, planning failed (expected if action needs arguments)
-			CHECK(result == Variant(false));
 		}
 	}
 
@@ -185,15 +181,16 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		Array todo_list;
 		todo_list.push_back(multigoal);
 
-		Variant result = plan->find_plan(state_dict, todo_list);
+		Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
 		// Planning should succeed with multigoal and return valid plan (not false, not empty)
+		CHECK(result.is_valid());
+		CHECK(result->get_success());
 		CHECK(is_valid_plan_result(result, true)); // Expect non-empty plan
 
 		// Validate against expected fixture
 		// Fixture: Since affection starts at 0 and we need 50, we need 5 build_relationship calls
 		// Each has 2 actions (talk + increase), so minimum 10 actions
-		CHECK(result.get_type() == Variant::ARRAY);
-		Array plan_result = result;
+		Array plan_result = result->extract_plan();
 		CHECK(plan_result.size() >= 10); // Fixture: minimum 10 actions
 
 		// Fixture: Plan should contain these action types
@@ -218,19 +215,14 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		plan->set_time_range(time_range);
 		plan->set_max_depth(40); // Need higher depth for iterative refinement
 
-		Variant result = plan->find_plan(state_dict, todo_list);
+		Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
 		// STN should be initialized and used during planning
-		// Result can be false (planning failed) or an array (plan found)
-		// Both are valid - false is expected if action needs arguments
-		if (result.get_type() == Variant::ARRAY) {
+		// Result can be failed (planning failed) or successful (plan found)
+		// Both are valid - failed is expected if action needs arguments
+		CHECK(result.is_valid());
+		if (result->get_success()) {
 			// Got a plan (may be empty if action needs args)
 			CHECK(is_valid_plan_result(result, false));
-		} else if (result.get_type() == Variant::BOOL) {
-			// Planning failed (expected if action needs arguments)
-			CHECK(bool(result) == false);
-		} else {
-			// Unexpected type
-			CHECK(false);
 		}
 	}
 }

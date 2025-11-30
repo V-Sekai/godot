@@ -29,24 +29,21 @@
 
 #pragma once
 
+#include "../../planner_result.h"
 #include "core/variant/array.h"
 #include "core/variant/variant.h"
 
 namespace TestComprehensivePlanner {
 
 // Helper function to validate a plan result
-// Returns true if result is a valid plan (Array, not false)
+// Returns true if result is valid and successful
 // Optionally checks that plan is not empty when expect_non_empty is true
-static bool is_valid_plan_result(Variant result, bool expect_non_empty = false) {
-	if (result.get_type() == Variant::BOOL) {
-		// false means planning failed - this is NOT a valid plan
+static bool is_valid_plan_result(Ref<PlannerResult> result, bool expect_non_empty = false) {
+	if (!result.is_valid() || !result->get_success()) {
+		// Planning failed - this is NOT a valid plan
 		return false;
 	}
-	if (result.get_type() != Variant::ARRAY) {
-		// Should be an array
-		return false;
-	}
-	Array plan = result;
+	Array plan = result->extract_plan();
 	if (expect_non_empty && plan.is_empty()) {
 		// Expected non-empty plan but got empty - this is NOT a valid plan
 		return false;

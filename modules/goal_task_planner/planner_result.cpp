@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  backtracking.h                                                        */
+/*  planner_result.cpp                                                    */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -18,7 +18,6 @@
 /*                                                                        */
 /* The above copyright notice and this permission notice shall be         */
 /* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
@@ -28,27 +27,40 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#pragma once
+#include "planner_result.h"
 
-// SPDX-FileCopyrightText: 2025-present K. S. Ernest (iFire) Lee
-// SPDX-License-Identifier: MIT
-
-#include "core/variant/dictionary.h"
-#include "core/variant/typed_array.h"
+#include "core/object/class_db.h"
 #include "graph_operations.h"
-#include "solution_graph.h"
 
-class PlannerBacktracking {
-public:
-	struct BacktrackResult {
-		int parent_node_id;
-		int current_node_id;
-		PlannerSolutionGraph graph;
-		Dictionary state;
-		TypedArray<Variant> blacklisted_commands;
-	};
+PlannerResult::PlannerResult() :
+		success(false) {
+}
 
-	// Backtrack from a failed node
-	// p_verbose: verbosity level (0=none, 1=basic, 2=detailed, 3=very detailed)
-	static BacktrackResult backtrack(PlannerSolutionGraph p_graph, int p_parent_node_id, int p_current_node_id, Dictionary p_state, TypedArray<Variant> p_blacklisted_commands, int p_verbose = 0);
-};
+void PlannerResult::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_final_state"), &PlannerResult::get_final_state);
+	ClassDB::bind_method(D_METHOD("set_final_state", "state"), &PlannerResult::set_final_state);
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "final_state"), "set_final_state", "get_final_state");
+
+	ClassDB::bind_method(D_METHOD("get_solution_graph"), &PlannerResult::get_solution_graph);
+	ClassDB::bind_method(D_METHOD("set_solution_graph", "graph"), &PlannerResult::set_solution_graph);
+	ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "solution_graph"), "set_solution_graph", "get_solution_graph");
+
+	ClassDB::bind_method(D_METHOD("get_success"), &PlannerResult::get_success);
+	ClassDB::bind_method(D_METHOD("set_success", "success"), &PlannerResult::set_success);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "success"), "set_success", "get_success");
+
+	ClassDB::bind_method(D_METHOD("extract_plan"), &PlannerResult::extract_plan);
+}
+
+Array PlannerResult::extract_plan() const {
+	// Reconstruct PlannerSolutionGraph from the stored graph Dictionary
+	PlannerSolutionGraph graph;
+	// Copy the stored graph Dictionary into the PlannerSolutionGraph
+	// get_graph() returns a reference, so we can assign directly
+	// The stored solution_graph Dictionary already contains all nodes including root
+	graph.get_graph() = solution_graph.duplicate();
+
+	// Extract the plan using the existing graph operations
+	return PlannerGraphOperations::extract_solution_plan(graph);
+}
+

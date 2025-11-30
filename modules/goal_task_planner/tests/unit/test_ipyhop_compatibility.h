@@ -35,6 +35,7 @@
 
 #include "../../domain.h"
 #include "../../plan.h"
+#include "../../planner_result.h"
 #include "../../planner_time_range.h"
 #include "../domains/ipyhop_test_domain.h"
 #include "../domains/temporal_entity_test_domain.h"
@@ -73,7 +74,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Sample Test 1") {
 	todo_list.push_back(task1);
 	todo_list.push_back(task2);
 	
-	Variant result = plan->find_plan(init_state, todo_list);
+	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
 	
 	// Expected plan: [('action_transfer_flag', 0, 1), ('action_transfer_flag', 1, 2), ('action_transfer_flag', 2, 3), ('action_transfer_flag', 3, 4), ('action_transfer_flag', 4, 5), ('action_transfer_flag', 5, 6), ('action_transfer_flag', 6, 7)]
 	Array expected_plan;
@@ -92,7 +93,8 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Sample Test 1") {
 	expected_plan.push_back(action6);
 	expected_plan.push_back(action7);
 	
-	CHECK(result.get_type() == Variant::ARRAY);
+	CHECK(result.is_valid());
+	CHECK(result->get_success());
 	CHECK(validate_plan_result(result, expected_plan));
 }
 
@@ -125,7 +127,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 1") {
 	todo_list.push_back(task1);
 	todo_list.push_back(task2);
 	
-	Variant result = plan->find_plan(init_state, todo_list);
+	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
 	
 	// Expected plan: [('action_putv', 0), ('action_getv', 0), ('action_getv', 0)]
 	Array expected_plan;
@@ -136,7 +138,8 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 1") {
 	expected_plan.push_back(action2);
 	expected_plan.push_back(action3);
 	
-	CHECK(result.get_type() == Variant::ARRAY);
+	CHECK(result.is_valid());
+	CHECK(result->get_success());
 	CHECK(validate_plan_result(result, expected_plan));
 }
 
@@ -170,7 +173,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 2") {
 	todo_list.push_back(task1);
 	todo_list.push_back(task2);
 	
-	Variant result = plan->find_plan(init_state, todo_list);
+	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
 	
 	// Expected plan: [('action_putv', 0), ('action_getv', 0), ('action_getv', 0)]
 	Array expected_plan;
@@ -181,7 +184,8 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 2") {
 	expected_plan.push_back(action2);
 	expected_plan.push_back(action3);
 	
-	CHECK(result.get_type() == Variant::ARRAY);
+	CHECK(result.is_valid());
+	CHECK(result->get_success());
 	CHECK(validate_plan_result(result, expected_plan));
 }
 
@@ -215,7 +219,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 3") {
 	todo_list.push_back(task1);
 	todo_list.push_back(task2);
 	
-	Variant result = plan->find_plan(init_state, todo_list);
+	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
 	
 	// Expected plan: [('action_putv', 0), ('action_getv', 0), ('action_getv', 0)]
 	Array expected_plan;
@@ -226,7 +230,8 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 3") {
 	expected_plan.push_back(action2);
 	expected_plan.push_back(action3);
 	
-	CHECK(result.get_type() == Variant::ARRAY);
+	CHECK(result.is_valid());
+	CHECK(result->get_success());
 	CHECK(validate_plan_result(result, expected_plan));
 }
 
@@ -259,7 +264,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 4") {
 	todo_list.push_back(task1);
 	todo_list.push_back(task2);
 	
-	Variant result = plan->find_plan(init_state, todo_list);
+	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
 	
 	// Expected plan: [('action_putv', 1), ('action_getv', 1), ('action_getv', 1)]
 	Array expected_plan;
@@ -270,7 +275,8 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 4") {
 	expected_plan.push_back(action2);
 	expected_plan.push_back(action3);
 	
-	CHECK(result.get_type() == Variant::ARRAY);
+	CHECK(result.is_valid());
+	CHECK(result->get_success());
 	CHECK(validate_plan_result(result, expected_plan));
 }
 
@@ -325,12 +331,13 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Temporal and Entity Constra
 	plan->attach_metadata(task1, Dictionary(), entity_constraints);
 	
 	// Find plan
-	Variant result = plan->find_plan(state_dict, todo_list);
+	Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
 	
 	// Verify result is valid
-	CHECK(result.get_type() == Variant::ARRAY);
-	if (result.get_type() == Variant::ARRAY) {
-		Array plan_result = result;
+	CHECK(result.is_valid());
+	CHECK(result->get_success());
+	if (result.is_valid() && result->get_success()) {
+		Array plan_result = result->extract_plan();
 		// Plan should contain at least 2 actions: use_tool and work_task
 		CHECK(plan_result.size() >= 2);
 		

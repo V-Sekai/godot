@@ -53,21 +53,6 @@ public:
 };
 
 namespace IPyHOPTestDomain {
-public:
-	static Variant action_transfer_flag(Dictionary p_state, int p_flag_key_1, int p_flag_key_2);
-	static Dictionary action_putv(Dictionary p_state, int p_flag_val);
-	static Variant action_getv(Dictionary p_state, int p_flag_val);
-	static Array task_method_1_1(Dictionary p_state);
-	static Array task_method_1_2(Dictionary p_state);
-	static Array task_method_1_3(Dictionary p_state);
-	static Array task_method_2_1(Dictionary p_state);
-	static Array task_method_2_2(Dictionary p_state);
-	static Array task_method_m_err(Dictionary p_state);
-	static Array task_method_m0(Dictionary p_state);
-	static Array task_method_m1(Dictionary p_state);
-	static Array task_method_m_need0(Dictionary p_state);
-	static Array task_method_m_need1(Dictionary p_state);
-};
 
 // Action: transfer_flag(state, flag_key_1, flag_key_2) - sets flag[flag_key_2] = True if flag[flag_key_1] is True
 Variant action_transfer_flag(Dictionary state, int flag_key_1, int flag_key_2) {

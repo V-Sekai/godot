@@ -56,7 +56,7 @@ Ref<PlannerDomain> PlannerPlan::get_current_domain() const {
 	return current_domain;
 }
 
-Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
+Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 	// Note: Array is a value type in Godot and cannot be null, so no null check needed
 
 	if (verbose >= 1) {
@@ -92,7 +92,11 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 			print_line("result = false (no domain set)");
 		}
 		ERR_PRINT("PlannerPlan::find_plan: current_domain is not set. Call set_current_domain() before planning.");
-		return false;
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
 	}
 
 	// Add initial tasks to the solution graph
@@ -309,20 +313,26 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 		planning_succeeded = false;
 	}
 
+	// Create PlannerResult with final state and solution graph
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	result->set_final_state(final_state);
+	result->set_solution_graph(solution_graph.get_graph());
+	result->set_success(planning_succeeded && !final_state.is_empty());
+
 	if (planning_succeeded && !final_state.is_empty()) {
 		// Mark root node as CLOSED when planning succeeds so extract_solution_plan can traverse from it
 		Dictionary root_node = solution_graph.get_node(0);
 		root_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 		solution_graph.update_node(0, root_node);
-
-		// Extract the plan from the graph
-		Array plan = PlannerGraphOperations::extract_solution_plan(solution_graph);
+		// Update the result's solution graph with the updated root node
+		result->set_solution_graph(solution_graph.get_graph());
 
 		if (verbose >= 1) {
-			print_line("result = " + _item_to_string(plan));
+			Array plan = result->extract_plan();
+			print_line("result plan = " + _item_to_string(plan));
 		}
 
-		return plan;
+		return result;
 	} else {
 		if (verbose >= 1) {
 			print_line("result = false (planning failed)");
@@ -405,7 +415,7 @@ Variant PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list) {
 				}
 			}
 		}
-		return false;
+		return result;
 	}
 }
 
@@ -413,7 +423,7 @@ String PlannerPlan::_item_to_string(Variant p_item) {
 	return String(p_item);
 }
 
-Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries) {
+Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries) {
 	// Note: Array is a value type in Godot and cannot be null, so no null check needed
 
 	// Input validation: validate max_tries is positive
@@ -421,7 +431,11 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 		if (verbose >= 1) {
 			ERR_PRINT(vformat("PlannerPlan::run_lazy_lookahead: max_tries must be positive, got %d", p_max_tries));
 		}
-		return Dictionary(); // Return empty dictionary on error
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
 	}
 
 	if (verbose >= 1) {
@@ -435,30 +449,45 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 	ordinals[2] = "nd";
 	ordinals[3] = "rd";
 
+	Ref<PlannerResult> last_result; // Track the last successful result
+
 	for (int tries = 1; tries <= p_max_tries; tries++) {
 		if (verbose >= 1) {
 			print_line(vformat("run_lazy_lookahead: %sth call to find_plan: %s", tries, ordinals.get(tries, "")));
 		}
 
-		Variant plan = find_plan(p_state, p_todo_list);
-		if (plan == Variant(false)) {
+		Ref<PlannerResult> plan_result = find_plan(p_state, p_todo_list);
+		if (!plan_result.is_valid() || !plan_result->get_success()) {
 			if (verbose >= 1) {
 				ERR_PRINT(vformat("run_lazy_lookahead: find_plan has failed after %s calls.", tries));
 			}
-			return p_state;
+			// Return result with current state and last solution graph if available
+			Ref<PlannerResult> result = memnew(PlannerResult);
+			result->set_success(false);
+			result->set_final_state(p_state);
+			result->set_solution_graph(last_result.is_valid() ? last_result->get_solution_graph() : (plan_result.is_valid() ? plan_result->get_solution_graph() : Dictionary()));
+			return result;
 		}
 
-		if (plan.is_array() && Array(plan).is_empty()) {
+		last_result = plan_result; // Track the last successful result
+
+		Array plan = plan_result->extract_plan();
+		if (plan.is_empty()) {
 			if (verbose >= 1) {
 				print_line(vformat("run_lazy_lookahead: Empty plan => success\nafter %s calls to find_plan.", tries));
 			}
 			if (verbose >= 2) {
 				print_line(vformat("run_lazy_lookahead: final state %s", p_state));
 			}
-			return p_state;
+			// Return result with final state and solution graph
+			Ref<PlannerResult> result = memnew(PlannerResult);
+			result->set_success(true);
+			result->set_final_state(p_state);
+			result->set_solution_graph(plan_result->get_solution_graph());
+			return result;
 		}
 
-		if (plan.is_array()) {
+		if (!plan.is_empty()) {
 			Array action_list = plan;
 			for (int i = 0; i < action_list.size(); i++) {
 				Array action = action_list[i];
@@ -507,7 +536,13 @@ Dictionary PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list
 		print_line(vformat("run_lazy_lookahead: final state %s", p_state));
 	}
 
-	return p_state;
+	// Return result with final state (planning failed due to too many tries)
+	// Use the solution graph from the last successful find_plan call if available
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	result->set_success(false);
+	result->set_final_state(p_state);
+	result->set_solution_graph(last_result.is_valid() ? last_result->get_solution_graph() : solution_graph.get_graph());
+	return result;
 }
 
 Variant PlannerPlan::_apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments) {
@@ -561,7 +596,7 @@ void PlannerPlan::set_max_depth(int p_max_depth) {
 }
 
 // Graph-based lazy refinement (Elixir-style)
-Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_list) {
+Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_list) {
 	// Note: Array is a value type in Godot and cannot be null, so no null check needed
 
 	if (verbose >= 1) {
@@ -592,7 +627,11 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 			print_line("run_lazy_refineahead: Error - no domain set");
 		}
 		ERR_PRINT("PlannerPlan::run_lazy_refineahead: current_domain is not set. Call set_current_domain() before planning.");
-		return Dictionary(); // Return empty dictionary on error
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
 	}
 
 	// Add initial tasks to the solution graph
@@ -618,7 +657,15 @@ Dictionary PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p_todo_li
 		print_line("Duration: " + itos(time_range.get_duration()) + " microseconds");
 	}
 
-	return final_state;
+	// Create PlannerResult with final state and solution graph
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	result->set_final_state(final_state);
+	result->set_solution_graph(solution_graph.get_graph());
+	// Check if planning succeeded (similar to find_plan logic)
+	// For run_lazy_refineahead, we consider it successful if we got a non-empty final state
+	result->set_success(!final_state.is_empty());
+
+	return result;
 }
 
 Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter) {

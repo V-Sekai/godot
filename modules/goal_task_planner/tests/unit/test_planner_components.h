@@ -30,17 +30,18 @@
 
 #pragma once
 
-#include "../backtracking.h"
-#include "../domain.h"
-#include "../entity_requirement.h"
-#include "../graph_operations.h"
-#include "../multigoal.h"
-#include "../plan.h"
-#include "../planner_metadata.h"
-#include "../planner_state.h"
-#include "../planner_time_range.h"
-#include "../solution_graph.h"
-#include "../stn_solver.h"
+#include "../../backtracking.h"
+#include "../../domain.h"
+#include "../../entity_requirement.h"
+#include "../../graph_operations.h"
+#include "../../multigoal.h"
+#include "../../plan.h"
+#include "../../planner_metadata.h"
+#include "../../planner_result.h"
+#include "../../planner_state.h"
+#include "../../planner_time_range.h"
+#include "../../solution_graph.h"
+#include "../../stn_solver.h"
 #include "tests/test_macros.h"
 
 // Helpers for isekai academy visual novel domain definitions.
@@ -581,10 +582,14 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 
 		// Note: This may fail if actions aren't properly registered
 		// The test verifies the planning infrastructure works
-		Variant result = plan->find_plan(state, todo_list);
-		Variant::Type result_type = result.get_type();
-		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
-		CHECK(is_valid_type);
+		Ref<PlannerResult> result = plan->find_plan(state, todo_list);
+		CHECK(result.is_valid());
+		// Result may be successful or failed, both are valid
+		if (result.is_valid() && result->get_success()) {
+			// If successful, should be able to extract plan
+			Array plan_array = result->extract_plan();
+			// plan_array is already an Array, no need to check type
+		}
 	}
 
 	SUBCASE("Plan with temporal constraints") {
@@ -597,7 +602,8 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 		time_range.set_start_time(1735689600000000LL);
 		plan->set_time_range(time_range);
 
-		Variant result = plan->find_plan(state, todo_list);
+		Ref<PlannerResult> result = plan->find_plan(state, todo_list);
+		CHECK(result.is_valid());
 		PlannerTimeRange retrieved = plan->get_time_range();
 		CHECK(retrieved.get_start_time() == 1735689600000000LL);
 	}
