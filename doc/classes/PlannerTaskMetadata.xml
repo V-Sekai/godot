@@ -7,17 +7,6 @@
 	<tutorials>
 	</tutorials>
 	<methods>
-		<method name="get_task_id" qualifiers="const">
-			<return type="String" />
-			<description>
-			</description>
-		</method>
-		<method name="set_task_id">
-			<return type="void" />
-			<param index="0" name="id" type="String" />
-			<description>
-			</description>
-		</method>
 		<method name="update_metadata">
 			<return type="void" />
 			<param index="0" name="physical_time" type="int" />
