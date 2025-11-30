@@ -89,15 +89,15 @@ This planner aims to be compatible with IPyHOP (Python HTN planner). Reference i
 
 ## Planning Methods
 
-The `PlannerPlan` class provides three planning methods. All three methods return `Ref<PlannerResult>`, which contains:
+The `PlannerPlan` class provides three planning methods. **All three methods support STN (Simple Temporal Network) temporal constraints and entity-capability requirements.** All three methods return `Ref<PlannerResult>`, which contains:
 - `final_state`: The final state dictionary after planning
 - `solution_graph`: The complete solution graph Dictionary (from `PlannerSolutionGraph`)
 - `success`: Boolean indicating if planning succeeded
 - `extract_plan()`: Method to extract the plan (Array of actions) from the solution graph
 
-1. **`find_plan(state, todo_list)`**: Standard HTN planning that returns a `PlannerResult`. Use `result->extract_plan()` to get the plan (Array of actions) or check `result->get_success()` for failure. Does not execute actions. Use this when you only need the plan.
-2. **`run_lazy_lookahead(state, todo_list, max_tries=10)`**: Lazy lookahead search that attempts planning up to `max_tries` times, executing actions as it goes. Returns `PlannerResult` with the final state after execution. Use this when you want to execute the plan incrementally.
-3. **`run_lazy_refineahead(state, todo_list)`**: Graph-based lazy refinement planning with explicit backtracking and STN support. Returns `PlannerResult` with the final state. Use this when you need full graph-based planning with temporal constraints.
+1. **`find_plan(state, todo_list)`**: Standard HTN planning that returns a `PlannerResult`. Use `result->extract_plan()` to get the plan (Array of actions) or check `result->get_success()` for failure. Does not execute actions. Supports STN temporal constraints and entity-capability requirements. Use this when you only need the plan.
+2. **`run_lazy_lookahead(state, todo_list, max_tries=10)`**: Lazy lookahead search that attempts planning up to `max_tries` times, executing actions as it goes. Returns `PlannerResult` with the final state after execution. Use `result->extract_plan()` to get the partially executed plan (actions that were successfully executed). Supports STN temporal constraints and entity-capability requirements. Use this when you want to execute the plan incrementally.
+3. **`run_lazy_refineahead(state, todo_list)`**: Graph-based lazy refinement planning with explicit backtracking and STN support. Returns `PlannerResult` with the final state. Supports STN temporal constraints and entity-capability requirements. Use this when you need full graph-based planning with temporal constraints.
 
 ## File Organization
 
