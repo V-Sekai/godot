@@ -770,6 +770,22 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				return p_state;
 			}
 
+			// Store state in node when first visited (IPyHOP-style, lines 138-146)
+			// When backtracking from a failed action, preserve the accumulated state from successful actions
+			// Only restore state from node when trying a different method
+			int node_status = curr_node["status"];
+			if (!curr_node.has("state") || curr_node["state"].get_type() == Variant::NIL) {
+				// First visit - save current state in node
+				curr_node["state"] = p_state;
+				solution_graph.update_node(curr_node_id, curr_node);
+				if (verbose >= 3) {
+					print_line(vformat("Saved state in node %d (first visit)", curr_node_id));
+				}
+			}
+			// Don't restore state when reopening - preserve the current state which includes successful actions
+			// This ensures that when backtracking from a failed action, we keep progress from successful actions
+			// The state in the node is only used as a reference point, not restored
+
 			// Try all available methods (like Elixir's Enum.find_value)
 			// Don't modify available_methods - keep full list for backtracking
 			Callable selected_method;
@@ -852,6 +868,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				// Restore STN snapshot from the node we're backtracking to
 				_restore_stn_from_node(backtrack_result.parent_node_id);
 				return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+			}
+			// Backtracking reached root - check for other open nodes before giving up
+			Variant open_node_result = PlannerGraphOperations::find_open_node(solution_graph, 0);
+			if (open_node_result.get_type() != Variant::NIL) {
+				return _planning_loop_recursive(0, backtrack_result.state, p_iter + 1);
 			}
 			return p_state;
 		}
@@ -1001,7 +1022,34 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			Variant result = action.callv(args);
 
 			// If we get here, the action call succeeded (no exception thrown)
-			// Validate result is a Dictionary (actions should return new state)
+			// Actions should return Dictionary (even empty = reset world state) for success, or false for failure
+			if (result.get_type() == Variant::BOOL && result == Variant(false)) {
+				// Action failed (returned false)
+				if (verbose >= 2) {
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
+					print_line(vformat("Action '%s' failed (returned false), backtracking", action_name));
+				}
+				_blacklist_command(action_info);
+				// If this action was created by a parent's method subtasks, blacklist those subtasks
+				if (p_parent_node_id >= 0) {
+					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
+					if (parent_node.has("created_subtasks")) {
+						Array created_subtasks = parent_node["created_subtasks"];
+						_blacklist_command(created_subtasks);
+					}
+				}
+				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
+				solution_graph.update_node(curr_node_id, curr_node);
+				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
+				solution_graph = backtrack_result.graph;
+				if (backtrack_result.parent_node_id >= 0) {
+					_restore_stn_from_node(backtrack_result.parent_node_id);
+					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				return p_state;
+			}
+			// Validate result is a Dictionary (actions should return new state, even if empty)
 			if (result.get_type() != Variant::DICTIONARY) {
 				if (verbose >= 1) {
 					String action_name = String(action_arr[0]);
@@ -1159,6 +1207,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					// Restore STN snapshot from the node we're backtracking to
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+				}
+				// Backtracking reached root - check for other open nodes before giving up
+				Variant open_node_result = PlannerGraphOperations::find_open_node(solution_graph, 0);
+				if (open_node_result.get_type() != Variant::NIL) {
+					return _planning_loop_recursive(0, backtrack_result.state, p_iter + 1);
 				}
 				return p_state;
 			}

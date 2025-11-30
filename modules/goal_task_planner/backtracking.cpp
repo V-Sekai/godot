@@ -57,13 +57,45 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		p_graph.update_node(p_current_node_id, current_node);
 	}
 
-	// Remove descendants of the failed node
-	PlannerGraphOperations::remove_descendants(p_graph, p_current_node_id);
-
-	// Remove the failed node from its parent's successors list
+	// Remove descendants of the failed node and remove it from parent's successors list
 	// This prevents failed nodes from being considered as part of the solution path
-	PlannerGraphOperations::remove_node_from_parent(p_graph, p_current_node_id);
+	PlannerGraphOperations::remove_descendants(p_graph, p_current_node_id, true);
 
+	// IPyHOP-style backtracking: Do reverse DFS from parent to find first CLOSED node
+	// This matches IPyHOP's _backtrack behavior (ipyhop/planner.py lines 401-410)
+	// Pass failed node ID to ensure we only find ancestors, not siblings
+	int closed_node_id = PlannerGraphOperations::find_first_closed_node_dfs(p_graph, p_parent_node_id, p_current_node_id);
+	
+	if (closed_node_id >= 0) {
+		// Found a CLOSED node with available methods, retry it
+		Dictionary closed_node = p_graph.get_node(closed_node_id);
+		
+		// Set to OPEN
+		p_graph.set_node_status(closed_node_id, PlannerNodeStatus::STATUS_OPEN);
+		
+		// Remove old descendants before retrying (like IPyHOP line 406-408)
+		PlannerGraphOperations::remove_descendants(p_graph, closed_node_id);
+		
+		// Reset selected_method (IPyHOP-style)
+		// Don't reset state - preserve it for potential restoration
+		closed_node["selected_method"] = Variant();
+		p_graph.update_node(closed_node_id, closed_node);
+		
+		// Find the predecessor of the closed node to return as parent
+		int closed_node_parent = PlannerGraphOperations::find_predecessor(p_graph, closed_node_id);
+		
+		BacktrackResult result;
+		result.parent_node_id = closed_node_parent >= 0 ? closed_node_parent : p_parent_node_id;
+		result.current_node_id = closed_node_id;
+		result.graph = p_graph;
+		// Preserve the current state which includes successful actions from this method
+		// This is the state at the point of failure, which includes all successful actions
+		result.state = p_state;
+		result.blacklisted_commands = p_blacklisted_commands;
+		return result;
+	}
+
+	// No CLOSED node found in DFS, fall back to parent chain traversal
 	// Find the nearest ancestor that can be retried
 	int new_parent_node_id = p_parent_node_id;
 
@@ -111,6 +143,10 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		if (can_retry) {
 			// Found a node with available methods, retry it
 			p_graph.set_node_status(new_parent_node_id, PlannerNodeStatus::STATUS_OPEN);
+
+			// Remove old descendants before retrying (like IPyHOP line 406-408)
+			// This ensures old nodes from previous attempts are removed from the graph
+			PlannerGraphOperations::remove_descendants(p_graph, new_parent_node_id);
 
 			// Reset selected_method and state (IPyHOP-style)
 			// This allows the node to try all methods again from the beginning

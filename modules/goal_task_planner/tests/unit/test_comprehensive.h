@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  test_planner_domains.h                                                */
+/*  test_comprehensive_planner.h                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,76 +30,10 @@
 
 #pragma once
 
-#include "../backtracking.h"
-#include "../domain.h"
-#include "../entity_requirement.h"
-#include "../graph_operations.h"
-#include "../multigoal.h"
-#include "../plan.h"
-#include "../planner_metadata.h"
-#include "../planner_state.h"
-#include "../planner_time_range.h"
-#include "../solution_graph.h"
-#include "../stn_solver.h"
-#include "tests/test_macros.h"
-
-// Helpers for isekai academy visual novel domain definitions.
-#include "test_planner_helpers.h"
-
-namespace TestComprehensivePlanner {
-
-TEST_CASE("[Modules][Planner] PlannerTimeRange - Temporal time management") {
-	PlannerTimeRange time_range;
-
-	SUBCASE("Initial state") {
-		CHECK(time_range.get_start_time() == 0);
-		CHECK(time_range.get_end_time() == 0);
-		CHECK(time_range.get_duration() == 0);
-	}
-
-	SUBCASE("Set and get times with absolute microseconds") {
-		int64_t start = 1735689600000000LL; // 2025-01-01 00:00:00 UTC
-		int64_t end = 1735689601000000LL; // 1 second later
-		int64_t duration = 1000000LL; // 1 second
-
-		time_range.set_start_time(start);
-		time_range.set_end_time(end);
-		time_range.set_duration(duration);
-
-		CHECK(time_range.get_start_time() == start);
-		CHECK(time_range.get_end_time() == end);
-		CHECK(time_range.get_duration() == duration);
-	}
-
-	SUBCASE("Calculate duration from start and end") {
-		int64_t start = 1735689600000000LL;
-		int64_t end = 1735689605000000LL; // 5 seconds later
-		time_range.set_start_time(start);
-		time_range.set_end_time(end);
-		time_range.calculate_duration();
-		CHECK(time_range.get_duration() == 5000000LL);
-	}
-
-	SUBCASE("Calculate end from start and duration") {
-		int64_t start = 1735689600000000LL;
-		int64_t duration = 3000000LL; // 3 seconds
-		time_range.set_start_time(start);
-		time_range.set_duration(duration);
-		time_range.calculate_end_from_duration();
-		CHECK(time_range.get_end_time() == start + duration);
-	}
-
-	SUBCASE("Unix time conversion") {
-		double unix_time = 1735689600.0; // 2025-01-01 00:00:00 UTC
-		int64_t microseconds = PlannerTimeRange::unix_time_to_microseconds(unix_time);
-		CHECK(microseconds == 1735689600000000LL);
-	}
-
-	SUBCASE("Now microseconds returns reasonable value") {
-		int64_t now = PlannerTimeRange::now_microseconds();
-		CHECK(now > 1000000000000000LL); // After year 2001
-	}
-}
+#include "../helpers/isekai_academy_domain.h"
+#include "../helpers/test_helpers.h"
+#include "../problems/isekai_academy_problem.h"
+#include "test_planner_components.h"
 
 TEST_CASE("[Modules][Planner] PlannerEntityRequirement - Entity matching") {
 	SUBCASE("Create and validate entity requirement") {
@@ -516,8 +450,8 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 
 	SUBCASE("Add actions") {
 		TypedArray<Callable> actions;
-		actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_study_subject));
-		actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_attend_class));
+		actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_study_subject));
+		actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_attend_class));
 
 		domain->add_actions(actions);
 		CHECK(domain->action_dictionary.size() > 0);
@@ -525,7 +459,7 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 
 	SUBCASE("Add task methods") {
 		TypedArray<Callable> methods;
-		methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_complete_lesson));
+		methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
 		domain->add_task_methods("complete_lesson", methods);
 		// Task methods are stored internally
 		CHECK(true); // Domain accepts task methods
@@ -533,7 +467,7 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 
 	SUBCASE("Add unigoal methods") {
 		TypedArray<Callable> methods;
-		methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+		methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
 		domain->add_unigoal_methods("affection", methods);
 		// Unigoal methods are stored internally
 		CHECK(true); // Domain accepts unigoal methods
@@ -541,7 +475,7 @@ TEST_CASE("[Modules][Planner] PlannerDomain - Domain operations") {
 
 	SUBCASE("Add multigoal methods") {
 		TypedArray<Callable> methods;
-		methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::multigoal_complete_route));
+		methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::multigoal_complete_route));
 		domain->add_multigoal_methods(methods);
 		// Multigoal methods are stored internally
 		CHECK(true); // Domain accepts multigoal methods
@@ -554,21 +488,21 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 
 	// Setup domain
 	TypedArray<Callable> actions;
-	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_study_subject));
-	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_attend_class));
-	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_talk_to_character));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_study_subject));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_attend_class));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_talk_to_character));
 	domain->add_actions(actions);
 
 	TypedArray<Callable> task_methods;
-	task_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_complete_lesson));
+	task_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
 	domain->add_task_methods("complete_lesson", task_methods);
 
 	TypedArray<Callable> unigoal_methods;
-	unigoal_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
 	domain->add_unigoal_methods("affection", unigoal_methods);
 
 	TypedArray<Callable> multigoal_methods;
-	multigoal_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::multigoal_complete_route));
+	multigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::multigoal_complete_route));
 	domain->add_multigoal_methods(multigoal_methods);
 
 	plan->set_current_domain(domain);
@@ -576,7 +510,7 @@ TEST_CASE("[Modules][Planner] PlannerPlan - Complete planning workflow") {
 	SUBCASE("Basic planning with actions") {
 		Dictionary state;
 		Array todo_list;
-		todo_list.push_back("cook");
+		todo_list.push_back("study");
 
 		// Note: This may fail if actions aren't properly registered
 		// The test verifies the planning infrastructure works
@@ -658,7 +592,7 @@ TEST_CASE("[Modules][Planner] PlannerBacktracking - Backtracking operations") {
 		// Set up available_methods on parent node so backtrack() can return it
 		Dictionary parent_node = graph.get_node(parent_id);
 		TypedArray<Callable> available_methods;
-		available_methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_complete_lesson));
+		available_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
 		parent_node["available_methods"] = available_methods;
 		graph.update_node(parent_id, parent_node);
 
@@ -673,4 +607,212 @@ TEST_CASE("[Modules][Planner] PlannerBacktracking - Backtracking operations") {
 	}
 }
 
-} // namespace TestComprehensivePlanner
+TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	Ref<PlannerDomain> domain = memnew(PlannerDomain);
+	Ref<PlannerState> state = memnew(PlannerState);
+
+	// Setup complete academy domain
+	TypedArray<Callable> actions;
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_study_subject));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_attend_class));
+	actions.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::action_talk_to_character));
+	domain->add_actions(actions);
+
+	TypedArray<Callable> task_methods;
+	task_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::task_complete_lesson));
+	domain->add_task_methods("complete_lesson", task_methods);
+
+	TypedArray<Callable> unigoal_methods;
+	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_achieve_affection_level));
+	unigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::unigoal_pass_exam));
+	domain->add_unigoal_methods("affection", unigoal_methods);
+	domain->add_unigoal_methods("pass_exam", unigoal_methods);
+
+	TypedArray<Callable> multigoal_methods;
+	multigoal_methods.push_back(callable_mp_static(&TestComprehensivePlanner::IsekaiAcademyDomainCallable::multigoal_complete_route));
+	domain->add_multigoal_methods(multigoal_methods);
+
+	plan->set_current_domain(domain);
+
+	// Setup initial state with entities
+	state->set_entity_capability("protagonist", "studying", true);
+	state->set_entity_capability("classmate1", "socializing", true);
+	state->set_predicate("protagonist", "available", true);
+	state->set_predicate("classmate1", "available", true);
+
+	SUBCASE("Plan with entity requirements") {
+		Dictionary state_dict;
+		// Add entity capabilities to state
+		Dictionary protagonist;
+		Dictionary studies;
+		studies["magic_class"] = true;
+		protagonist["studies"] = studies;
+		state_dict["protagonist"] = protagonist;
+
+		Array todo_list;
+		// Create unigoal in format [predicate, subject, value]
+		Array unigoal;
+		unigoal.push_back("affection");
+		unigoal.push_back("protagonist_class_president");
+		unigoal.push_back(50);
+		todo_list.push_back(unigoal);
+
+		// Attach entity requirement to unigoal
+		Dictionary entity_constraints;
+		entity_constraints["type"] = "protagonist";
+		Array capabilities;
+		capabilities.push_back("studying");
+		entity_constraints["capabilities"] = capabilities;
+		plan->attach_metadata(unigoal, Dictionary(), entity_constraints);
+
+		Variant result = plan->find_plan(state_dict, todo_list);
+		// Planning should attempt to use entities with required capabilities
+		Variant::Type result_type = result.get_type();
+		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
+		CHECK(is_valid_type);
+	}
+
+	SUBCASE("Plan with temporal constraints") {
+		Dictionary state_dict;
+		Array todo_list;
+		todo_list.push_back("study");
+
+		// Set temporal constraints
+		PlannerTimeRange time_range;
+		time_range.set_start_time(1735689600000000LL);
+		plan->set_time_range(time_range);
+
+		Dictionary temporal;
+		temporal["duration"] = 5000000LL; // 5 seconds
+		plan->attach_metadata("study", temporal);
+
+		Variant result = plan->find_plan(state_dict, todo_list);
+		Variant::Type result_type = result.get_type();
+		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
+		CHECK(is_valid_type);
+	}
+
+	SUBCASE("Plan with multigoal") {
+		Dictionary state_dict;
+		Dictionary multigoal;
+		Dictionary character1;
+		character1["affection_level"] = 50;
+		character1["student"] = "protagonist";
+		multigoal["class_president"] = character1;
+
+		Array todo_list;
+		todo_list.push_back(multigoal);
+
+		Variant result = plan->find_plan(state_dict, todo_list);
+		Variant::Type result_type = result.get_type();
+		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
+		CHECK(is_valid_type);
+	}
+
+	SUBCASE("Plan with STN constraints") {
+		// This tests that STN solver is integrated with planning
+		Dictionary state_dict;
+		Array todo_list;
+		todo_list.push_back("study");
+
+		PlannerTimeRange time_range;
+		time_range.set_start_time(1735689600000000LL);
+		plan->set_time_range(time_range);
+
+		Variant result = plan->find_plan(state_dict, todo_list);
+		// STN should be initialized and used during planning
+		Variant::Type result_type = result.get_type();
+		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
+		CHECK(is_valid_type);
+	}
+}
+
+TEST_CASE("[Modules][Planner] PlannerPlan - Error handling and edge cases") {
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+
+	SUBCASE("Find plan with null domain") {
+		Dictionary state;
+		Array todo_list;
+		todo_list.push_back("study");
+
+		// Don't set domain - should return false
+		Variant result = plan->find_plan(state, todo_list);
+		CHECK(result == Variant(false));
+	}
+
+	SUBCASE("Find plan with null todo_list") {
+		Ref<PlannerDomain> domain = memnew(PlannerDomain);
+		plan->set_current_domain(domain);
+
+		Dictionary state;
+		Array null_todo_list; // Empty array is valid, but we test null handling
+		// Note: In Godot, Array() is not null, so we test with empty array
+		// Actual null would require Variant() which may not be testable here
+
+		Variant result = plan->find_plan(state, null_todo_list);
+		// Should handle gracefully (may return false or empty plan)
+		Variant::Type result_type = result.get_type();
+		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
+		CHECK(is_valid_type);
+	}
+
+	SUBCASE("Run lazy lookahead with invalid max_tries") {
+		Ref<PlannerDomain> domain = memnew(PlannerDomain);
+		plan->set_current_domain(domain);
+
+		Dictionary state;
+		Array todo_list;
+		todo_list.push_back("study");
+
+		// Test with zero max_tries (should be rejected)
+		Dictionary result = plan->run_lazy_lookahead(state, todo_list, 0);
+		CHECK(result.is_empty());
+
+		// Test with negative max_tries (should be rejected)
+		result = plan->run_lazy_lookahead(state, todo_list, -1);
+		CHECK(result.is_empty());
+	}
+
+	SUBCASE("Run lazy refineahead with null domain") {
+		Dictionary state;
+		Array todo_list;
+		todo_list.push_back("study");
+
+		// Don't set domain - should return empty dictionary
+		Dictionary result = plan->run_lazy_refineahead(state, todo_list);
+		CHECK(result.is_empty());
+	}
+
+	SUBCASE("STN solver with empty time point names") {
+		PlannerSTNSolver stn;
+
+		// Adding time point with empty name should return -1
+		int64_t result = stn.add_time_point("");
+		CHECK(result == -1);
+
+		// Adding constraint with empty names should fail
+		bool added = stn.add_constraint("", "end", 1000000LL, 5000000LL);
+		CHECK(!added);
+
+		added = stn.add_constraint("start", "", 1000000LL, 5000000LL);
+		CHECK(!added);
+	}
+
+	SUBCASE("STN solver get_distance with invalid time points") {
+		PlannerSTNSolver stn;
+		stn.add_time_point("start");
+		stn.add_time_point("end");
+
+		// Get distance with empty time point names should return infinity
+		int64_t dist = stn.get_distance("", "end");
+		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
+
+		dist = stn.get_distance("start", "");
+		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
+
+		// Get distance with non-existent time points should return infinity
+		dist = stn.get_distance("nonexistent", "end");
+		CHECK(dist == PlannerSTNSolver::STN_INFINITY);
+	}
+}

@@ -207,20 +207,7 @@ int PlannerGraphOperations::find_predecessor(PlannerSolutionGraph &p_graph, int 
 	return -1; // No predecessor found
 }
 
-void PlannerGraphOperations::remove_node_from_parent(PlannerSolutionGraph &p_graph, int p_node_id) {
-	// Find the parent of this node
-	int parent_id = find_predecessor(p_graph, p_node_id);
-	if (parent_id >= 0) {
-		Dictionary parent_node = p_graph.get_node(parent_id);
-		TypedArray<int> successors = parent_node["successors"];
-		// Remove the node from parent's successors
-		successors.erase(p_node_id);
-		parent_node["successors"] = successors;
-		p_graph.update_node(parent_id, parent_node);
-	}
-}
-
-void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id) {
+void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, int p_node_id, bool p_also_remove_from_parent) {
 	TypedArray<int> to_remove;
 	TypedArray<int> visited;
 
@@ -243,6 +230,19 @@ void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, i
 	successors.clear();
 	node["successors"] = successors;
 	p_graph.update_node(p_node_id, node);
+
+	// Optionally remove the node itself from its parent's successors list
+	if (p_also_remove_from_parent) {
+		int parent_id = find_predecessor(p_graph, p_node_id);
+		if (parent_id >= 0) {
+			Dictionary parent_node = p_graph.get_node(parent_id);
+			TypedArray<int> parent_successors = parent_node["successors"];
+			// Remove the node from parent's successors
+			parent_successors.erase(p_node_id);
+			parent_node["successors"] = parent_successors;
+			p_graph.update_node(parent_id, parent_node);
+		}
+	}
 }
 
 void PlannerGraphOperations::do_get_descendants(PlannerSolutionGraph &p_graph, TypedArray<int> p_current_nodes, TypedArray<int> &p_visited, TypedArray<int> &p_result) {
@@ -269,9 +269,17 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 	Array plan;
 	Array to_visit;
 	to_visit.push_back(0); // Start from root
+	TypedArray<int> visited; // Track visited nodes to prevent revisiting
 
 	while (!to_visit.is_empty()) {
 		int node_id = to_visit.pop_back();
+		
+		// Skip if already visited
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+		
 		Dictionary node = p_graph.get_node(node_id);
 
 		int node_type = node["type"];
@@ -292,14 +300,148 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		}
 
 		// Only visit successors of closed nodes (skip failed branches)
-		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+		// This ensures we only follow the final successful path
+		// Failed nodes are removed from their parent's successors during backtracking,
+		// so only nodes in the final successful path will be in the successors list
+		// Also verify that each successor is actually still in its parent's successors list
+		// (this prevents including nodes from backtracked paths that weren't fully cleaned up)
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
+				node_id == 0) { // Root is NA status, but we need to visit it
 			TypedArray<int> successors = node["successors"];
-			// Add successors in reverse order to maintain DFS order
+			// Add successors in reverse order to maintain DFS order (last added = first visited)
+			// This ensures we process tasks in the order they appear in the todo list
 			for (int i = successors.size() - 1; i >= 0; i--) {
-				to_visit.push_back(successors[i]);
+				int succ_id = successors[i];
+				// Only visit if not already visited
+				if (!visited.has(succ_id)) {
+					// Verify this successor is actually in its parent's successors list
+					// (double-check to ensure we're only following the final successful path)
+					int parent_of_succ = find_predecessor(p_graph, succ_id);
+					if (parent_of_succ == node_id) {
+						// This successor is actually a child of the current node
+						Dictionary succ_node = p_graph.get_node(succ_id);
+						int succ_status = succ_node["status"];
+						// Only follow closed nodes (or root which is NA)
+						// Failed nodes should have been removed from successors, so they won't be here
+						if (succ_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
+								succ_id == 0) {
+							to_visit.push_back(succ_id);
+						}
+					}
+					// If parent doesn't match, skip this successor (it was removed during backtracking)
+				}
 			}
 		}
 	}
 
 	return plan;
+}
+
+void PlannerGraphOperations::do_dfs_preorder(PlannerSolutionGraph &p_graph, int p_node_id, TypedArray<int> &p_visited, TypedArray<int> &p_result) {
+	// Check if already visited (prevent cycles)
+	if (p_visited.has(p_node_id)) {
+		return;
+	}
+	
+	// Mark as visited and add to result
+	p_visited.push_back(p_node_id);
+	p_result.push_back(p_node_id);
+	
+	// Get node and its successors
+	Dictionary node = p_graph.get_node(p_node_id);
+	TypedArray<int> successors = node["successors"];
+	
+	// Recursively visit all successors
+	for (int i = 0; i < successors.size(); i++) {
+		int succ_id = successors[i];
+		// Only visit if node exists in graph (might have been removed)
+		if (p_graph.get_graph().has(succ_id)) {
+			do_dfs_preorder(p_graph, succ_id, p_visited, p_result);
+		}
+	}
+}
+
+bool PlannerGraphOperations::is_retriable_closed_node(PlannerSolutionGraph &p_graph, int p_node_id) {
+	// Check if node exists in graph
+	if (!p_graph.get_graph().has(p_node_id)) {
+		return false;
+	}
+	
+	Dictionary node = p_graph.get_node(p_node_id);
+	int status = node["status"];
+	int node_type = node["type"];
+	
+	// Must be CLOSED and of type TASK/UNIGOAL/MULTIGOAL
+	if (status != static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
+			(node_type != static_cast<int>(PlannerNodeType::TYPE_TASK) &&
+			 node_type != static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) &&
+			 node_type != static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL))) {
+		return false;
+	}
+	
+	// Must have available methods
+	if (!node.has("available_methods")) {
+		return false;
+	}
+	
+	Variant methods_var = node["available_methods"];
+	if (methods_var.get_type() != Variant::ARRAY) {
+		return false;
+	}
+	
+	Array methods_array = methods_var;
+	TypedArray<Callable> available_methods = TypedArray<Callable>(methods_array);
+	if (available_methods.size() == 0) {
+		return false;
+	}
+	
+	// Must have successors (IPyHOP only retries if it has descendants)
+	TypedArray<int> successors = node["successors"];
+	return successors.size() > 0;
+}
+
+int PlannerGraphOperations::find_first_closed_node_dfs(PlannerSolutionGraph &p_graph, int p_start_node_id, int p_failed_node_id) {
+	// If start node is root, check all root children first (siblings of failed node)
+	if (p_start_node_id == 0) {
+		Dictionary root_node = p_graph.get_node(0);
+		TypedArray<int> root_successors = root_node["successors"];
+		
+		for (int i = 0; i < root_successors.size(); i++) {
+			int child_id = root_successors[i];
+			if (is_retriable_closed_node(p_graph, child_id)) {
+				return child_id;
+			}
+		}
+	}
+	
+	// Traverse up parent chain from failed node to start node
+	// Check each ancestor for retriable CLOSED nodes
+	int current_node = p_failed_node_id;
+	
+	while (current_node >= 0) {
+		int parent = find_predecessor(p_graph, current_node);
+		
+		// Stop if we've reached invalid node or gone beyond start node
+		if (parent < 0) {
+			break;
+		}
+		
+		// Stop if we've reached root (parent == 0) and start node is not root
+		// Or if we've reached start node
+		if (parent == 0 && p_start_node_id > 0) {
+			break;
+		}
+		if (parent == p_start_node_id) {
+			break;
+		}
+		
+		// Check if this ancestor node is retriable
+		if (is_retriable_closed_node(p_graph, parent)) {
+			return parent;
+		}
+		
+		current_node = parent;
+	}
+	
+	return -1; // No retriable CLOSED node found
 }

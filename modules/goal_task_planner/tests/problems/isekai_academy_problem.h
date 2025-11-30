@@ -37,7 +37,8 @@
 #include "tests/test_macros.h"
 
 // Use shared academy domain helpers.
-#include "test_planner_helpers.h"
+#include "../helpers/isekai_academy_domain.h"
+#include "../helpers/test_helpers.h"
 
 namespace TestComprehensivePlanner {
 
