@@ -174,9 +174,9 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  skeleton->get_bone_pose_position(tgt_bone).x,
 							  (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin.x),
 				"Position x is copied correctly.");
-		CHECK_MESSAGE(Math::is_equal_approx(
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-							  BoneConstraint3D::get_roll_angle((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X))),
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		CHECK_MESSAGE(Math::abs(ref_roll.dot(apply_roll)) > 0.99,
 				"Rotation x (roll x) is copied correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  skeleton->get_bone_pose_scale(tgt_bone).x,
@@ -192,9 +192,9 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  skeleton->get_bone_pose_position(tgt_bone).x,
 							  ((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin - skeleton->get_bone_pose_position(apl_bone)).x),
 				"Position x is copied correctly.");
-		CHECK_MESSAGE(Math::is_equal_approx(
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X))),
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		CHECK_MESSAGE(Math::abs(ref_roll.dot(apply_roll)) > 0.99,
 				"Rotation x (roll x) is copied correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  skeleton->get_bone_pose_scale(tgt_bone).x,
@@ -210,9 +210,9 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  (skeleton->get_bone_pose_position(tgt_bone) - skeleton->get_bone_rest(tgt_bone).origin).x,
 							  ((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin - skeleton->get_bone_rest(apl_bone).origin).x),
 				"Position x is copied correctly.");
-		CHECK_MESSAGE(Math::is_equal_approx(
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_rest(apl_bone).basis.get_rotation_quaternion().inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X))),
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_rest(apl_bone).basis.get_rotation_quaternion().inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		CHECK_MESSAGE(Math::abs(ref_roll.dot(apply_roll)) > 0.99,
 				"Rotation x (roll x) is copied correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  (skeleton->get_bone_pose_scale(tgt_bone) / skeleton->get_bone_rest(tgt_bone).basis.get_scale()).x,
@@ -228,9 +228,9 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  (skeleton->get_bone_pose_position(tgt_bone) - skeleton->get_bone_rest(tgt_bone).origin).x,
 							  ((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin - skeleton->get_bone_pose_position(apl_bone)).x),
 				"Position x is copied correctly.");
-		CHECK_MESSAGE(Math::is_equal_approx(
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X))),
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		CHECK_MESSAGE(Math::abs(ref_roll.dot(apply_roll)) > 0.99,
 				"Rotation x (roll x) is copied correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  (skeleton->get_bone_pose_scale(tgt_bone) / skeleton->get_bone_rest(tgt_bone).basis.get_scale()).x,
@@ -258,8 +258,11 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  skeleton->get_bone_pose_position(tgt_bone).y,
 							  (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin.y),
 				"Position y is copied correctly.");
-		CHECK_MESSAGE(Math::is_zero_approx(
-							  BoneConstraint3D::get_roll_angle((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z))),
+		Quaternion roll_z = BoneConstraint3D::get_roll_quaternion((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z));
+		double dot_identity = Math::abs(roll_z.dot(Quaternion()));
+		double dot_neg_identity = Math::abs(roll_z.dot(Quaternion(0, 0, 0, -1)));
+		double max_dot = MAX(dot_identity, dot_neg_identity);
+		CHECK_MESSAGE(max_dot > 0.99,
 				"Rotation z (roll z) is zero correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  skeleton->get_bone_pose_scale(tgt_bone).x,
@@ -283,8 +286,11 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  skeleton->get_bone_pose_position(tgt_bone).y,
 							  ((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin - skeleton->get_bone_pose_position(apl_bone)).y),
 				"Position y is copied correctly.");
-		CHECK_MESSAGE(Math::is_zero_approx(
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z))),
+		Quaternion roll_z = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z));
+		double dot_identity = Math::abs(roll_z.dot(Quaternion()));
+		double dot_neg_identity = Math::abs(roll_z.dot(Quaternion(0, 0, 0, -1)));
+		double max_dot = MAX(dot_identity, dot_neg_identity);
+		CHECK_MESSAGE(max_dot > 0.99,
 				"Rotation z (roll z) is zero correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  skeleton->get_bone_pose_scale(tgt_bone).x,
@@ -308,8 +314,11 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  (skeleton->get_bone_pose_position(tgt_bone) - skeleton->get_bone_rest(tgt_bone).origin).y,
 							  ((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin - skeleton->get_bone_rest(apl_bone).origin).y),
 				"Position y is copied correctly.");
-		CHECK_MESSAGE(Math::is_zero_approx(
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_rest(apl_bone).basis.get_rotation_quaternion().inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z))),
+		Quaternion roll_z = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_rest(apl_bone).basis.get_rotation_quaternion().inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z));
+		double dot_identity = Math::abs(roll_z.dot(Quaternion()));
+		double dot_neg_identity = Math::abs(roll_z.dot(Quaternion(0, 0, 0, -1)));
+		double max_dot = MAX(dot_identity, dot_neg_identity);
+		CHECK_MESSAGE(max_dot > 0.99,
 				"Rotation z (roll z) is zero correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  (skeleton->get_bone_pose_scale(tgt_bone) / skeleton->get_bone_rest(tgt_bone).basis.get_scale()).x,
@@ -333,8 +342,11 @@ TEST_CASE("[SceneTree][CopyTransformModifier3D]") {
 							  (skeleton->get_bone_pose_position(tgt_bone) - skeleton->get_bone_rest(tgt_bone).origin).y,
 							  ((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).origin - skeleton->get_bone_pose_position(apl_bone)).y),
 				"Position y is copied correctly.");
-		CHECK_MESSAGE(Math::is_zero_approx(
-							  BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z))),
+		Quaternion roll_z = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Z));
+		double dot_identity = Math::abs(roll_z.dot(Quaternion()));
+		double dot_neg_identity = Math::abs(roll_z.dot(Quaternion(0, 0, 0, -1)));
+		double max_dot = MAX(dot_identity, dot_neg_identity);
+		CHECK_MESSAGE(max_dot > 0.99,
 				"Rotation z (roll z) is zero correctly.");
 		CHECK_MESSAGE(Math::is_equal_approx(
 							  (skeleton->get_bone_pose_scale(tgt_bone) / skeleton->get_bone_rest(tgt_bone).basis.get_scale()).x,

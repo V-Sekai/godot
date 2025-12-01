@@ -783,11 +783,11 @@ void BoneTwistDisperser3D::_process_modification(double p_delta) {
 			joints[end].axis = joints[end - 1].axis;
 		}
 
-		// Extract twist.
+		// Extract twist quaternion (avoid angle extraction).
 		Quaternion twist_rest = setting->twist_from_rest ? skeleton->get_bone_rest(setting->reference_bone.bone).basis.get_rotation_quaternion() : setting->twist_from.normalized();
 		Quaternion ref_rot = twist_rest.inverse() * skeleton->get_bone_pose_rotation(setting->reference_bone.bone);
 		ref_rot.normalize();
-		double twist = get_roll_angle(ref_rot, joints[end].axis);
+		Quaternion twist_quat = get_roll_quaternion(ref_rot, joints[end].axis);
 
 		// Apply twist for each bone by their amount.
 		// Twist parent, then cancel all twists caused by this modifier in child, and re-apply accumulated twist.
@@ -795,14 +795,34 @@ void BoneTwistDisperser3D::_process_modification(double p_delta) {
 		if (mutable_bone_axes) {
 			for (int i = 0; i < actual_joint_size; i++) {
 				int bn = joints[i].joint.bone;
-				Quaternion cur_rot = Quaternion(joints[i].axis, twist * joints[i].amount);
+				// Scale the twist quaternion by amount using quaternion log/exp: q_scaled = (q.log() * amount).exp()
+				Quaternion scaled_twist = (twist_quat.log() * joints[i].amount).exp();
+				// Reorient from reference axis to bone axis using quaternion conjugation.
+				Vector3 ref_axis = joints[end].axis;
+				Vector3 bone_axis = joints[i].axis.normalized();
+				if (!ref_axis.is_equal_approx(bone_axis) && !ref_axis.is_equal_approx(-bone_axis)) {
+					// Find rotation that maps ref_axis to bone_axis, then conjugate.
+					Quaternion axis_rot = Quaternion(ref_axis, bone_axis);
+					scaled_twist = axis_rot * scaled_twist * axis_rot.inverse();
+				}
+				Quaternion cur_rot = scaled_twist;
 				skeleton->set_bone_pose_rotation(bn, prev_rot.inverse() * skeleton->get_bone_pose_rotation(bn) * cur_rot);
 				prev_rot = cur_rot;
 			}
 		} else {
 			for (int i = 0; i < actual_joint_size; i++) {
 				int bn = joints[i].joint.bone;
-				Quaternion cur_rot = Quaternion(joints[i].axis, twist * joints[i].amount);
+				// Scale the twist quaternion by amount using quaternion log/exp: q_scaled = (q.log() * amount).exp()
+				Quaternion scaled_twist = (twist_quat.log() * joints[i].amount).exp();
+				// Reorient from reference axis to bone axis using quaternion conjugation.
+				Vector3 ref_axis = joints[end].axis;
+				Vector3 bone_axis = joints[i].axis.normalized();
+				if (!ref_axis.is_equal_approx(bone_axis) && !ref_axis.is_equal_approx(-bone_axis)) {
+					// Find rotation that maps ref_axis to bone_axis, then conjugate.
+					Quaternion axis_rot = Quaternion(ref_axis, bone_axis);
+					scaled_twist = axis_rot * scaled_twist * axis_rot.inverse();
+				}
+				Quaternion cur_rot = scaled_twist;
 				skeleton->set_bone_pose_rotation(bn, prev_rot.inverse() * skeleton->get_bone_pose_rotation(bn) * cur_rot);
 				prev_rot = cur_rot;
 			}

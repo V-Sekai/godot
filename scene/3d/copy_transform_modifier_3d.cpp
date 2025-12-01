@@ -418,27 +418,27 @@ void CopyTransformModifier3D::_process_copy(int p_index, Skeleton3D *p_skeleton,
 		} break;
 		case AXIS_FLAG_X: {
 			Vector3 axis = get_vector_from_axis(Vector3::AXIS_X);
-			dest_rot = Quaternion(axis, get_roll_angle(dest_rot, axis));
+			dest_rot = get_roll_quaternion(dest_rot, axis);
 		} break;
 		case AXIS_FLAG_Y: {
 			Vector3 axis = get_vector_from_axis(Vector3::AXIS_Y);
-			dest_rot = Quaternion(axis, get_roll_angle(dest_rot, axis));
+			dest_rot = get_roll_quaternion(dest_rot, axis);
 		} break;
 		case AXIS_FLAG_Z: {
 			Vector3 axis = get_vector_from_axis(Vector3::AXIS_Z);
-			dest_rot = Quaternion(axis, get_roll_angle(dest_rot, axis));
+			dest_rot = get_roll_quaternion(dest_rot, axis);
 		} break;
 		case AXIS_FLAG_X | AXIS_FLAG_Y: {
 			Vector3 axis = get_vector_from_axis(Vector3::AXIS_Z);
-			dest_rot = dest_rot * Quaternion(axis, get_roll_angle(dest_rot, axis)).inverse();
+			dest_rot = dest_rot * get_roll_quaternion(dest_rot, axis).inverse();
 		} break;
 		case AXIS_FLAG_Y | AXIS_FLAG_Z: {
 			Vector3 axis = get_vector_from_axis(Vector3::AXIS_X);
-			dest_rot = dest_rot * Quaternion(axis, get_roll_angle(dest_rot, axis)).inverse();
+			dest_rot = dest_rot * get_roll_quaternion(dest_rot, axis).inverse();
 		} break;
 		case AXIS_FLAG_Z | AXIS_FLAG_X: {
 			Vector3 axis = get_vector_from_axis(Vector3::AXIS_Y);
-			dest_rot = dest_rot * Quaternion(axis, get_roll_angle(dest_rot, axis)).inverse();
+			dest_rot = dest_rot * get_roll_quaternion(dest_rot, axis).inverse();
 		} break;
 		case AXIS_FLAG_ALL: {
 		} break;

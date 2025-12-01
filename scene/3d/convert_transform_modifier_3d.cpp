@@ -31,7 +31,7 @@
 #include "convert_transform_modifier_3d.h"
 
 constexpr const char *HINT_POSITION = "-10,10,0.01,or_greater,or_less,suffix:m";
-constexpr const char *HINT_ROTATION = "-180,180,0.01,radians_as_degrees";
+constexpr const char *HINT_ROTATION = "-360,360,0.01,radians_as_degrees";
 constexpr const char *HINT_SCALE = "0,10,0.01,or_greater";
 
 bool ConvertTransformModifier3D::_set(const StringName &p_path, const Variant &p_value) {
@@ -373,8 +373,52 @@ void ConvertTransformModifier3D::_process_convert(int p_index, Skeleton3D *p_ske
 			point = destination.origin[axis];
 		} break;
 		case TRANSFORM_MODE_ROTATION: {
+			// Work entirely in quaternion space to avoid angle extraction.
 			Quaternion tgt_rot = destination.basis.get_rotation_quaternion();
-			point = get_roll_angle(tgt_rot, get_vector_from_axis(setting->reference_axis));
+			Vector3 ref_axis = get_vector_from_axis(setting->reference_axis);
+			Quaternion roll_quat = get_roll_quaternion(tgt_rot, ref_axis);
+			
+			// Create reference quaternions for min/max ranges.
+			Quaternion ref_min_quat = Quaternion(ref_axis, (real_t)setting->reference_range_min).normalized();
+			Quaternion ref_max_quat = Quaternion(ref_axis, (real_t)setting->reference_range_max).normalized();
+			
+			// Find interpolation parameter t using quaternion log space.
+			// For rotations around the same axis, we can use log space to find where
+			// roll_quat lies between ref_min_quat and ref_max_quat.
+			double t = 0.0;
+			if (Math::is_equal_approx(setting->reference_range_min, setting->reference_range_max)) {
+				// Special case: single value range - compare quaternions directly using dot product.
+				// If roll_quat is closer to ref_min_quat (dot >= 0), use t=0, else t=1.
+				// Note: For quaternions, q and -q represent the same rotation, so we check |dot|.
+				double dot_min = Math::abs(roll_quat.dot(ref_min_quat));
+				// If dot is close to 1, quaternions are similar (t=0), otherwise t=1.
+				t = (dot_min > 0.5) ? 0.0 : 1.0;
+			} else {
+				// Find where roll_quat lies between ref_min_quat and ref_max_quat.
+				// Use quaternion log space: log(q) represents the rotation in a linear space.
+				Quaternion ref_min_inv = ref_min_quat.inverse();
+				Quaternion rel_to_min = (ref_min_inv * roll_quat).normalized();
+				Quaternion rel_min_to_max = (ref_min_inv * ref_max_quat).normalized();
+				
+				// Convert to log space for linear interpolation.
+				Quaternion log_rel_to_min = rel_to_min.log();
+				Quaternion log_rel_min_to_max = rel_min_to_max.log();
+				
+				// For rotations around the same axis, the log quaternions have vector parts
+				// pointing in the same direction. Project one onto the other to find t.
+				double log_min_mag_sq = log_rel_min_to_max.length_squared();
+				if (log_min_mag_sq > CMP_EPSILON) {
+					// Dot product in log space gives us the projection.
+					double dot = log_rel_to_min.dot(log_rel_min_to_max);
+					t = CLAMP(dot / log_min_mag_sq, 0.0, 1.0);
+				} else {
+					// Degenerate case: min and max are very close.
+					t = 0.0;
+				}
+			}
+			
+			// Store t for later use in apply step (will be used to slerp between apply ranges).
+			point = t;
 		} break;
 		case TRANSFORM_MODE_SCALE: {
 			point = destination.basis.get_scale()[axis];
@@ -382,12 +426,17 @@ void ConvertTransformModifier3D::_process_convert(int p_index, Skeleton3D *p_ske
 	}
 	// Convert point to apply.
 	destination = p_skeleton->get_bone_pose(p_apply_bone);
-	if (Math::is_equal_approx(setting->reference_range_min, setting->reference_range_max)) {
-		point = point <= (double)setting->reference_range_min ? 0 : 1;
-	} else {
-		point = Math::inverse_lerp((double)setting->reference_range_min, (double)setting->reference_range_max, point);
+	// For rotation mode, point is already the interpolation parameter t (0-1).
+	// For other modes, perform the standard inverse_lerp/lerp.
+	if (setting->reference_transform_mode != TRANSFORM_MODE_ROTATION) {
+		if (Math::is_equal_approx(setting->reference_range_min, setting->reference_range_max)) {
+			point = point <= (double)setting->reference_range_min ? 0 : 1;
+		} else {
+			point = Math::inverse_lerp((double)setting->reference_range_min, (double)setting->reference_range_max, point);
+		}
+		point = Math::lerp((double)setting->apply_range_min, (double)setting->apply_range_max, CLAMP(point, 0, 1));
 	}
-	point = Math::lerp((double)setting->apply_range_min, (double)setting->apply_range_max, CLAMP(point, 0, 1));
+	// For rotation mode, point is t (0-1), which we'll use directly for quaternion slerp.
 	axis = (int)setting->apply_axis;
 	switch (setting->apply_transform_mode) {
 		case TRANSFORM_MODE_POSITION: {
@@ -401,10 +450,14 @@ void ConvertTransformModifier3D::_process_convert(int p_index, Skeleton3D *p_ske
 		case TRANSFORM_MODE_ROTATION: {
 			Vector3 rot_axis = get_vector_from_axis(setting->apply_axis);
 			Vector3 dest_scl = destination.basis.get_scale();
-			if (influence < 1.0 || p_amount < 1.0) {
-				point = CLAMP(point, CMP_EPSILON - Math::PI, Math::PI - CMP_EPSILON); // Hack to consistent slerp (interpolate_with) orientation since -180/180 deg rot is mixed in slerp.
-			}
-			Quaternion rot = Quaternion(rot_axis, point);
+			
+			// Use quaternion slerp to interpolate between apply_range_min and apply_range_max.
+			// point is already the interpolation parameter t (0-1) from the reference step.
+			Quaternion apply_min_quat = Quaternion(rot_axis, (real_t)setting->apply_range_min).normalized();
+			Quaternion apply_max_quat = Quaternion(rot_axis, (real_t)setting->apply_range_max).normalized();
+			real_t t = CLAMP((real_t)point, 0.0, 1.0);
+			Quaternion rot = apply_min_quat.slerp(apply_max_quat, t);
+			
 			if (setting->additive) {
 				destination.basis = p_skeleton->get_bone_pose(p_apply_bone).basis.get_rotation_quaternion() * rot;
 			} else if (setting->is_relative()) {

@@ -140,8 +140,7 @@ public:
 	static Quaternion get_from_to_rotation_by_axis(const Vector3 &p_from, const Vector3 &p_to, const Vector3 &p_axis);
 	static Quaternion get_swing(const Quaternion &p_rotation, const Vector3 &p_axis);
 	static Vector3 snap_vector_to_plane(const Vector3 &p_plane_normal, const Vector3 &p_vector);
-	static double symmetrize_angle(double p_angle);
-	static double get_roll_angle(const Quaternion &p_rotation, const Vector3 &p_roll_axis);
+	static Quaternion get_roll_quaternion(const Quaternion &p_rotation, const Vector3 &p_roll_axis);
 	static Vector3 get_projected_normal(const Vector3 &p_a, const Vector3 &p_b, const Vector3 &p_point);
 
 #ifdef TOOLS_ENABLED

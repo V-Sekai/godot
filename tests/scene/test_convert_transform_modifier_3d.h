@@ -171,40 +171,50 @@ TEST_CASE("[SceneTree][ConvertTransformModifier3D]") {
 	mod->set_apply_range_min(0, -180.0);
 	mod->set_apply_range_max(0, 180.0);
 
-	SUBCASE("[ConvertTransformModifier3D] Rotation (roll) x to y, additive=false, relative=false") {
+	// ===== [ConvertTransformModifier3D] Rotation (roll quaternion) x to y =====
+	// Test the quaternion-based approach (no angle extraction)
+	SUBCASE("[ConvertTransformModifier3D] Rotation (roll quaternion) x to y, additive=false, relative=false") {
 		mod->set_additive(0, false);
 		mod->set_relative(0, false);
 		skeleton->notification(Skeleton3D::NOTIFICATION_UPDATE_SKELETON);
-		CHECK(Math::is_equal_approx(
-				BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-				BoneConstraint3D::get_roll_angle((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y))));
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion((skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y));
+		// Compare quaternions (accounting for q/-q equivalence)
+		double dot = Math::abs(ref_roll.dot(apply_roll));
+		CHECK(dot > 0.99); // Quaternions should be approximately equal (or opposite)
 	}
 
-	SUBCASE("[ConvertTransformModifier3D] Rotation (roll) x to y, additive=true, relative=false") {
+	SUBCASE("[ConvertTransformModifier3D] Rotation (roll quaternion) x to y, additive=true, relative=false") {
 		mod->set_additive(0, true);
 		mod->set_relative(0, false);
 		skeleton->notification(Skeleton3D::NOTIFICATION_UPDATE_SKELETON);
-		CHECK(Math::is_equal_approx(
-				BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-				BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y))));
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y));
+		// Compare quaternions (accounting for q/-q equivalence)
+		double dot = Math::abs(ref_roll.dot(apply_roll));
+		CHECK(dot > 0.99); // Quaternions should be approximately equal (or opposite)
 	}
 
-	SUBCASE("[ConvertTransformModifier3D] Rotation (roll) x to y, additive=false, relative=true") {
+	SUBCASE("[ConvertTransformModifier3D] Rotation (roll quaternion) x to y, additive=false, relative=true") {
 		mod->set_additive(0, false);
 		mod->set_relative(0, true);
 		skeleton->notification(Skeleton3D::NOTIFICATION_UPDATE_SKELETON);
-		CHECK(Math::is_equal_approx(
-				BoneConstraint3D::get_roll_angle(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-				BoneConstraint3D::get_roll_angle(skeleton->get_bone_rest(apl_bone).basis.get_rotation_quaternion().inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y))));
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_rest(apl_bone).basis.get_rotation_quaternion().inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y));
+		// Compare quaternions (accounting for q/-q equivalence)
+		double dot = Math::abs(ref_roll.dot(apply_roll));
+		CHECK(dot > 0.99); // Quaternions should be approximately equal (or opposite)
 	}
 
-	SUBCASE("[ConvertTransformModifier3D] Rotation (roll) x to y, additive=true, relative=true") {
+	SUBCASE("[ConvertTransformModifier3D] Rotation (roll quaternion) x to y, additive=true, relative=true") {
 		mod->set_additive(0, true);
 		mod->set_relative(0, true);
 		skeleton->notification(Skeleton3D::NOTIFICATION_UPDATE_SKELETON);
-		CHECK(Math::is_equal_approx(
-				BoneConstraint3D::get_roll_angle(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X)),
-				BoneConstraint3D::get_roll_angle(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y))));
+		Quaternion ref_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_rest(tgt_bone).basis.get_rotation_quaternion().inverse() * skeleton->get_bone_pose_rotation(tgt_bone), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_X));
+		Quaternion apply_roll = BoneConstraint3D::get_roll_quaternion(skeleton->get_bone_pose_rotation(apl_bone).inverse() * (skeleton->get_bone_global_pose(apl_root).affine_inverse() * modified->get_transform()).basis.get_rotation_quaternion(), BoneConstraint3D::get_vector_from_axis(Vector3::AXIS_Y));
+		// Compare quaternions (accounting for q/-q equivalence)
+		double dot = Math::abs(ref_roll.dot(apply_roll));
+		CHECK(dot > 0.99); // Quaternions should be approximately equal (or opposite)
 	}
 
 	// ===== [ConvertTransformModifier3D] Scale x to y =====

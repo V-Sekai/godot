@@ -338,12 +338,7 @@ Vector3 SkeletonModifier3D::snap_vector_to_plane(const Vector3 &p_plane_normal, 
 	return normalized_vec.slide(normal) * length;
 }
 
-double SkeletonModifier3D::symmetrize_angle(double p_angle) {
-	double angle = Math::fposmod(p_angle, Math::TAU);
-	return angle > Math::PI ? angle - Math::TAU : angle;
-}
-
-double SkeletonModifier3D::get_roll_angle(const Quaternion &p_rotation, const Vector3 &p_roll_axis) {
+Quaternion SkeletonModifier3D::get_roll_quaternion(const Quaternion &p_rotation, const Vector3 &p_roll_axis) {
 	// Ensure roll axis is normalized.
 	Vector3 roll_axis = p_roll_axis.normalized();
 
@@ -365,16 +360,11 @@ double SkeletonModifier3D::get_roll_angle(const Quaternion &p_rotation, const Ve
 	if (length > CMP_EPSILON) {
 		roll_component = roll_component / length;
 	} else {
-		return 0.0;
+		return Quaternion();
 	}
 
-	// Extract the angle.
-	double angle = 2.0 * Math::acos(CLAMP(roll_component.w, -1.0, 1.0));
-
-	// Determine the sign.
-	double direction = (roll_component.x * roll_axis.x + roll_component.y * roll_axis.y + roll_component.z * roll_axis.z > 0) ? 1.0 : -1.0;
-
-	return symmetrize_angle(angle * direction);
+	// Return the roll quaternion component directly (no angle extraction).
+	return roll_component;
 }
 
 Vector3 SkeletonModifier3D::get_projected_normal(const Vector3 &p_a, const Vector3 &p_b, const Vector3 &p_point) {
