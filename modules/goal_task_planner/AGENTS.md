@@ -219,6 +219,50 @@ From test files:
 -   Verify entity requirements are being matched correctly
 -   Check temporal constraints are properly attached and validated
 
+### Debugging Infinite Loops and Inefficient Planning
+
+When the planner generates excessively long plans or hits depth limits, determine if it's a **domain problem** or **planner problem**:
+
+#### Domain Problems (Most Common)
+
+Domain methods are responsible for:
+-   **Progress tracking**: Methods should only recurse if they make progress toward the goal
+-   **Termination conditions**: Methods must check if goals are already achieved before recursing
+-   **State validation**: Methods should verify current state before making decisions (e.g., don't move a block that's already on the table)
+-   **Idempotency**: Methods should avoid repeating the same operations
+
+**Symptoms of domain problems:**
+-   Planner repeatedly executes the same actions (e.g., `action_pickup(c)`, `action_putdown(c)` in a loop)
+-   Methods return the same subtasks repeatedly
+-   Methods don't check if goals are already achieved
+-   Methods recurse unconditionally without progress checks
+
+**Fixes:**
+-   Add early termination checks: verify if goal is already achieved before recursing
+-   Add state validation: check if operations are already done (e.g., block already on table)
+-   Track progress: only recurse if actual work remains
+-   Use TLA+ models to verify domain logic (see `tla/` directory)
+
+#### Planner Problems (Less Common)
+
+The planner is responsible for:
+-   **State propagation**: Passing updated state to sibling nodes after actions execute
+-   **Graph traversal**: Processing nodes in correct order (DFS)
+-   **State snapshots**: Correctly saving/restoring state during backtracking
+
+**Symptoms of planner problems:**
+-   Methods are called with stale state (state doesn't reflect executed actions)
+-   Sibling nodes don't receive updated state from previous siblings
+-   State snapshots are incorrect during backtracking
+
+**How to diagnose:**
+1.   Check if actions update state correctly: `action->callv(args)` should return new state
+2.   Verify state flows correctly: after action executes (line 1442 in `plan.cpp`), it returns to parent with `new_state`
+3.   Check if sibling nodes receive updated state: when processing next sibling, verify `p_state` reflects previous actions
+4.   Use verbose logging to trace state through the planning graph
+
+**TLA+ Modeling**: Use TLA+ models in `tla/` directory to prototype and verify planning logic before implementing in C++.
+
 ## Reference Implementation
 
 -   IPyHOP Python code: `thirdparty/IPyHOP/ipyhop/planner.py`
@@ -280,6 +324,19 @@ When you have a `PlannerResult` from a planning operation:
 -   Supports time points, constraints (min/max distance), and snapshots for backtracking
 -   Constants: `STN_INFINITY` (INT64_MAX), `STN_NEG_INFINITY` (INT64_MIN + 1)
 -   Methods: `add_time_point()`, `add_constraint()`, `check_consistency()`, `create_snapshot()`, `restore_snapshot()`
+
+### VSIDS Activity Tracking
+
+The planner implements VSIDS (Variable State Independent Decaying Sum) style activity tracking for adaptive method selection:
+
+-   **Activity scores**: Methods are scored based on their involvement in conflicts and successes
+-   **Activity bumping**: Methods involved in backtracking paths get their activity scores increased
+-   **Activity decay**: Activity scores decay periodically (decay factor: 0.95) to prevent stale scores from dominating
+-   **Method selection**: When multiple methods are available, the one with the highest activity score is selected first
+
+This optimization helps the planner learn from past planning attempts and prioritize methods that are more likely to succeed. The activity tracking is transparent to domain methods - they don't need to be aware of it.
+
+**TLA+ Models**: See `tla/VSIDSActivityTracking.tla` for a formal model of the activity tracking logic.
 
 ## Commit Guidelines
 
