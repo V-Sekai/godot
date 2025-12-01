@@ -123,6 +123,7 @@ The `PlannerPlan` class provides three planning methods. **All three methods sup
 -   Helper functions go in `tests/helpers/`
 -   Test cases go in `tests/unit/` or `tests/problems/`
 -   Always update `test_all.h` when adding new test files
+-   New API tests are in `tests/unit/test_new_api.h` (blacklist, iterations, multigoal tags, node tags, replan, simulate, PlannerResult helpers)
 
 ### Include Paths
 
@@ -174,9 +175,11 @@ From test files:
 
 -   **Node Types**: `TYPE_ROOT`, `TYPE_ACTION`, `TYPE_TASK`, `TYPE_UNIGOAL`, `TYPE_MULTIGOAL`, `TYPE_VERIFY_GOAL`, `TYPE_VERIFY_MULTIGOAL`
 -   **Node Status**: `STATUS_OPEN`, `STATUS_CLOSED`, `STATUS_FAILED`, `STATUS_NOT_APPLICABLE`
+-   **Node Tags**: Nodes have a "tag" field ("new" or "old") used for replanning. New nodes default to "new", root is "old". During replanning, existing nodes are marked as "old" and new nodes are tagged "new".
 -   Graph maintains parent-child relationships via `successors` arrays
 -   Each node stores state snapshots, temporal metadata, and method information
 -   CLOSED nodes are only reopened if they have descendants (checked via `is_retriable_closed_node`)
+-   Use `solution_graph.set_node_tag(node_id, tag)` and `solution_graph.get_node_tag(node_id)` to manage node tags
 
 ### Metadata System
 
@@ -226,6 +229,35 @@ From test files:
 -   IPyHOP examples: `thirdparty/IPyHOP/examples/` (blocks_world, rescue, robosub, simple_travel)
 -   IPyHOP tests: `thirdparty/IPyHOP/ipyhop_tests/` (backtracking_test, sample_test_1-8, etc.)
 
+## Public API Methods
+
+### PlannerPlan Public Methods
+
+-   **`blacklist_command(command)`**: Adds a command (action, task, or method result array) to the blacklist, preventing it from being used during planning. Useful for excluding known failing actions or method combinations.
+-   **`get_iterations()`**: Returns the maximum number of planning iterations that occurred during the last planning operation. Useful for debugging and performance analysis. Reset at the start of each planning method call.
+-   **`simulate(result, state, start_ind=0)`**: Simulates the execution of a plan from a `PlannerResult`, starting from the action at `start_ind`. Returns an `Array` of state `Dictionary` objects, one for each action execution. The first element is the initial state, and each subsequent element is the state after executing the corresponding action. Useful for previewing plan execution without modifying world state.
+-   **`replan(result, state, fail_node_id)`**: Re-plans from a failure point in a previous plan. Loads the solution graph from the provided `PlannerResult`, marks nodes from root to the failure point as "old", reopens them, and continues planning from the failure point. Only actions tagged as "new" are included in the returned plan. Use `PlannerResult.find_failed_nodes()` to identify which nodes failed.
+-   **`load_solution_graph(graph)`**: Loads a solution graph from a `Dictionary` into the planner's internal state. Used internally by `simulate()` and `replan()` to restore a solution graph from a `PlannerResult`.
+
+### PlannerResult Helper Methods
+
+-   **`extract_plan()`**: Extracts the sequence of actions from the solution graph. Returns an `Array` of action arrays, where each action array has the format `[action_name, arg1, arg2, ...]`. Only successfully completed (CLOSED) actions are included.
+-   **`find_failed_nodes()`**: Returns an `Array` of `Dictionary` objects representing all nodes in the solution graph that have a FAILED status. Each dictionary contains "node_id", "type", and "info" keys. Useful for identifying which nodes failed during planning for use with `replan()`.
+-   **`get_all_nodes()`**: Returns an `Array` of `Dictionary` objects representing all nodes in the solution graph. Each dictionary contains "node_id", "type", "status", "info", and "tag" keys. Provides a complete overview of the planning graph structure.
+-   **`get_node(node_id)`**: Returns the node `Dictionary` for the specified node_id from the solution graph. The dictionary contains all node properties including "type", "status", "info", "tag", "successors", etc. Returns an empty dictionary if the node_id does not exist.
+-   **`has_node(node_id)`**: Returns `true` if the solution graph contains a node with the specified node_id, `false` otherwise.
+
+### Working with PlannerResult
+
+When you have a `PlannerResult` from a planning operation:
+
+1. **Check success**: `result->get_success()` to see if planning succeeded
+2. **Get the plan**: `result->extract_plan()` to get the action sequence
+3. **Inspect the graph**: `result->get_all_nodes()` to see all nodes, or `result->get_node(node_id)` for specific nodes
+4. **Find failures**: `result->find_failed_nodes()` to identify failed nodes for replanning
+5. **Simulate**: `plan->simulate(result, state, 0)` to simulate plan execution
+6. **Replan**: `plan->replan(result, new_state, fail_node_id)` to replan from a failure point
+
 ## Additional Notes
 
 ### PlannerTask and PlannerTaskMetadata
@@ -239,6 +271,7 @@ From test files:
 -   Utility class for working with multigoal arrays
 -   Static methods: `is_multigoal_array()`, `method_goals_not_achieved()`, `method_verify_multigoal()`
 -   Multigoals are `Array` of unigoal arrays: `[[predicate, subject, value], ...]`
+-   **Goal Tag Support**: `get_goal_tag(multigoal)` extracts the goal tag from a multigoal (returns empty string if no tag). `set_goal_tag(multigoal, tag)` attaches a goal tag to a multigoal, wrapping it in a Dictionary with "item" and "goal_tag" keys. Tags can be used to match multigoals to specific methods in the domain.
 
 ### STN Solver Details
 
