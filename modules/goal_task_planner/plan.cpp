@@ -72,9 +72,15 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 
 	// CRITICAL: Initialize solution graph and blacklist to ensure test isolation
 	// Each call to find_plan() starts with a completely fresh state
+	if (verbose >= 3) {
+		print_line(vformat("find_plan: Clearing blacklist (had %d entries)", blacklisted_commands.size()));
+	}
 	solution_graph = PlannerSolutionGraph();
 	blacklisted_commands.clear();
 	original_todo_list.clear();
+	if (verbose >= 3) {
+		print_line("find_plan: Blacklist cleared, starting fresh");
+	}
 
 	// Initialize STN solver (optional, but keep for consistency)
 	stn.clear();
@@ -1074,10 +1080,14 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 		case PlannerNodeType::TYPE_ACTION: {
 			Variant action_info = curr_node["info"];
 
-			// Check if blacklisted
+			// CRITICAL: We no longer blacklist individual actions (they're context-dependent)
+			// So this check should never trigger for actions. However, we keep it for safety
+			// in case there's legacy blacklist data or other edge cases.
+			// If an action is blacklisted, it means the parent method array was blacklisted,
+			// which should have been handled at the task/method level.
 			if (_is_command_blacklisted(action_info)) {
 				if (verbose >= 2) {
-					print_line("Action is blacklisted, backtracking");
+					print_line("Action is blacklisted (unexpected - individual actions should not be blacklisted), backtracking");
 				}
 				// If this action was created by a parent's method subtasks, blacklist those subtasks
 				if (p_parent_node_id >= 0) {
@@ -1086,7 +1096,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						Array parent_subtasks = parent_node["created_subtasks"];
 						_blacklist_command(parent_subtasks);
 						if (verbose >= 2) {
-							print_line("Blacklisted parent subtasks that contained blacklisted action");
+							print_line("Blacklisted parent method array that contained blacklisted action");
 						}
 					}
 				}
@@ -1233,13 +1243,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
 					print_line(vformat("Action '%s' failed (returned false), backtracking", action_name));
 				}
-				_blacklist_command(action_info);
-				// If this action was created by a parent's method subtasks, blacklist those subtasks
+				// CRITICAL: Do NOT blacklist individual actions - they can succeed in different states
+				// Only blacklist the parent's method array (IPyHOP behavior)
+				// Individual actions are context-dependent and should not be globally blacklisted
 				if (p_parent_node_id >= 0) {
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array created_subtasks = parent_node["created_subtasks"];
 						_blacklist_command(created_subtasks);
+						if (verbose >= 2) {
+							print_line("Blacklisted parent method array that contained failing action");
+						}
 					}
 				}
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_FAILED);
@@ -1395,15 +1409,15 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						print_line(vformat("  Current state: %s", _item_to_string(p_state)));
 					}
 				}
-				_blacklist_command(action_info);
-				// If this action was created by a parent's method subtasks, blacklist those subtasks
+				// CRITICAL: Do NOT blacklist individual actions - they can succeed in different states
+				// Only blacklist the parent's method array (IPyHOP behavior)
 				if (p_parent_node_id >= 0) {
 					Dictionary parent_node = solution_graph.get_node(p_parent_node_id);
 					if (parent_node.has("created_subtasks")) {
 						Array parent_subtasks = parent_node["created_subtasks"];
 						_blacklist_command(parent_subtasks);
 						if (verbose >= 2) {
-							print_line("Blacklisted parent subtasks that contained failing action");
+							print_line("Blacklisted parent method array that contained failing action");
 						}
 					}
 				}
@@ -2006,7 +2020,53 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 
 		// Compare Arrays element by element
 		if (blacklisted_arr.size() != action_arr.size()) {
+			if (verbose >= 3) {
+				print_line(vformat("_is_command_blacklisted: Size mismatch: action size %d vs blacklisted[%d] size %d", action_arr.size(), i, blacklisted_arr.size()));
+			}
 			continue;
+		}
+		
+		if (verbose >= 3) {
+			// Show what we're comparing
+			String action_str = "[";
+			String blacklisted_str = "[";
+			for (int idx = 0; idx < action_arr.size() && idx < 2; idx++) {
+				Variant action_elem = action_arr[idx];
+				Variant blacklisted_elem = blacklisted_arr[idx];
+				if (action_elem.get_type() == Variant::ARRAY) {
+					Array action_elem_arr = action_elem;
+					action_str += "[";
+					for (int k = 0; k < action_elem_arr.size() && k < 3; k++) {
+						action_str += String(action_elem_arr[k]);
+						if (k < action_elem_arr.size() - 1 && k < 2) action_str += ", ";
+					}
+					action_str += "]";
+				} else {
+					action_str += String(action_elem);
+				}
+				if (blacklisted_elem.get_type() == Variant::ARRAY) {
+					Array blacklisted_elem_arr = blacklisted_elem;
+					blacklisted_str += "[";
+					for (int k = 0; k < blacklisted_elem_arr.size() && k < 3; k++) {
+						blacklisted_str += String(blacklisted_elem_arr[k]);
+						if (k < blacklisted_elem_arr.size() - 1 && k < 2) blacklisted_str += ", ";
+					}
+					blacklisted_str += "]";
+				} else {
+					blacklisted_str += String(blacklisted_elem);
+				}
+				if (idx < action_arr.size() - 1 && idx < 1) {
+					action_str += ", ";
+					blacklisted_str += ", ";
+				}
+			}
+			if (action_arr.size() > 2) {
+				action_str += "...";
+				blacklisted_str += "...";
+			}
+			action_str += "]";
+			blacklisted_str += "]";
+			print_line(vformat("_is_command_blacklisted: Comparing action=%s vs blacklisted[%d]=%s", action_str, i, blacklisted_str));
 		}
 
 		bool match = true;
@@ -2046,7 +2106,29 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 
 		if (match) {
 			if (verbose >= 2) {
-				print_line(vformat("_is_command_blacklisted: Found match! Command array (size %d) is blacklisted", action_arr.size()));
+				// Show what matched for debugging
+				String match_info = vformat("_is_command_blacklisted: Found match! Command array (size %d) is blacklisted", action_arr.size());
+				if (verbose >= 3 && action_arr.size() > 0) {
+					match_info += " [";
+					for (int idx = 0; idx < action_arr.size() && idx < 2; idx++) {
+						Variant elem = action_arr[idx];
+						if (elem.get_type() == Variant::ARRAY) {
+							Array elem_arr = elem;
+							match_info += "[";
+							for (int k = 0; k < elem_arr.size() && k < 3; k++) {
+								match_info += String(elem_arr[k]);
+								if (k < elem_arr.size() - 1 && k < 2) match_info += ", ";
+							}
+							match_info += "]";
+						} else {
+							match_info += String(elem);
+						}
+						if (idx < action_arr.size() - 1 && idx < 1) match_info += ", ";
+					}
+					if (action_arr.size() > 2) match_info += "...";
+					match_info += "]";
+				}
+				print_line(match_info);
 			}
 			return true;
 		}

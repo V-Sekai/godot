@@ -66,7 +66,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Sample Test 1") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
 	plan->set_max_depth(100);
-	plan->set_verbose(0); // Disable verbose for clean test output
+	plan->set_verbose(3); // Enable verbose for debugging
 	
 	Dictionary init_state = create_init_state_1();
 	
@@ -257,7 +257,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 4") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
 	plan->set_max_depth(100);
-	plan->set_verbose(0); // Disable verbose for clean test output
+	plan->set_verbose(3); // Enable verbose for debugging
 	
 	Dictionary init_state;
 	init_state["flag"] = -1;
