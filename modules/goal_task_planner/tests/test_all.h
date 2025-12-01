@@ -38,6 +38,7 @@
 #include "unit/test_ipyhop_compatibility.h"
 #include "unit/test_new_api.h"
 #include "unit/test_planner_components.h"
+#include "unit/test_vsids.h"
 
 // Problem/integration tests
 #include "problems/blocks_world_problem.h"

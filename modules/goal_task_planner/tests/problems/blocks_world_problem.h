@@ -290,7 +290,7 @@ TEST_CASE("[Modules][Planner] Blocks World - Small Problem (init_state_1, goal1a
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
 	plan->set_max_depth(500); // Increased depth limit for small problem
-	plan->set_verbose(2); // Enable verbose output to debug inefficiency
+	plan->set_verbose(3); // Enable maximum verbose output to debug crash
 
 	Dictionary init_state = create_init_state_1();
 	Dictionary goal = create_goal1a();
@@ -410,7 +410,7 @@ TEST_CASE("[Modules][Planner] Blocks World - Performance Test") {
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
 	plan->set_max_depth(200);
-	plan->set_verbose(0);
+	plan->set_verbose(3); // Enable verbose logging to track VSIDS
 
 	Dictionary init_state = create_init_state_3();
 	Dictionary goal = create_goal3();
