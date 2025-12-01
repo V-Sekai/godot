@@ -11,6 +11,13 @@
 	<tutorials>
 	</tutorials>
 	<methods>
+		<method name="blacklist_command">
+			<return type="void" />
+			<param index="0" name="command" type="Variant" />
+			<description>
+				Adds a command (action, task, or method result array) to the blacklist, preventing it from being used during planning. This is useful for excluding specific actions or method combinations that are known to fail or are undesirable. Blacklisted commands are checked during planning and will cause the planner to skip them and try alternative methods.
+			</description>
+		</method>
 		<method name="find_plan">
 			<return type="PlannerResult" />
 			<param index="0" name="state" type="Dictionary" />
@@ -22,8 +29,33 @@
 				A [PlannerMultigoal] is a state [Dictionary] of predicate-subject-object triples.
 				Tasks can accept any number of arguments but only return either false or a series of goals, [PlannerMultigoal], tasks, and actions.
 				Actions can accept any number of arguments but only return the state of predicate-subject-object triples.
-				The return value is a [Variant], which means it could be of any type. In this case, it returns either false or an array of actions.
-				[b]Temporal Constraints:[/b] Actions, tasks, and goals in the todo_list can include optional temporal metadata. This metadata is provided as a [Dictionary] with keys "temporal_constraints" containing "start_time", "end_time", and/or "duration" as int64_t values representing absolute time in microseconds since Unix epoch. Actions without temporal metadata can occur at any time and are not added to the Simple Temporal Network (STN). Actions with temporal metadata are added to the STN and their timing constraints are validated for consistency. If temporal constraints are inconsistent, planning fails and returns false.
+				The return value is a [PlannerResult] containing the final state, solution graph, success status, and methods to extract the plan.
+				[b]Temporal Constraints:[/b] Actions, tasks, and goals in the todo_list can include optional temporal metadata. This metadata is provided as a [Dictionary] with keys "temporal_constraints" containing "start_time", "end_time", and/or "duration" as int64_t values representing absolute time in microseconds since Unix epoch. Actions without temporal metadata can occur at any time and are not added to the Simple Temporal Network (STN). Actions with temporal metadata are added to the STN and their timing constraints are validated for consistency. If temporal constraints are inconsistent, planning fails and returns a [PlannerResult] with success=false.
+				
+				[b]Entity Requirements:[/b] Actions, tasks, and goals can also include entity requirements specifying which entities (by type and capabilities) are needed for execution. The planner will match available entities from the state and ensure requirements are met before executing planner elements.
+			</description>
+		</method>
+		<method name="get_iterations" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the maximum number of planning iterations that occurred during the last planning operation. This can be useful for debugging and performance analysis. The iteration count is reset at the start of each planning method call.
+			</description>
+		</method>
+		<method name="load_solution_graph">
+			<return type="void" />
+			<param index="0" name="graph" type="Dictionary" />
+			<description>
+				Loads a solution graph from a [Dictionary] into the planner's internal state. This is used internally by [method simulate] and [method replan] to restore a solution graph from a [PlannerResult]. The graph dictionary should contain node IDs as keys and node dictionaries as values.
+			</description>
+		</method>
+		<method name="replan">
+			<return type="PlannerResult" />
+			<param index="0" name="result" type="PlannerResult" />
+			<param index="1" name="state" type="Dictionary" />
+			<param index="2" name="fail_node_id" type="int" />
+			<description>
+				Re-plans from a failure point in a previous plan. This method loads the solution graph from the provided [PlannerResult], marks nodes from root to the failure point as "old", reopens them, and continues planning from the failure point. Only actions tagged as "new" are included in the returned plan. This is useful for handling execution failures and generating alternative plans.
+				Use [method PlannerResult.find_failed_nodes] to identify which nodes failed, then pass one of those node IDs to this method.
 			</description>
 		</method>
 		<method name="run_lazy_lookahead">
@@ -32,8 +64,9 @@
 			<param index="1" name="todo_list" type="Array" />
 			<param index="2" name="max_tries" type="int" default="10" />
 			<description>
-				Initiates a lazy lookahead search to determine a [PlannerPlan], attempting up to max_tries times.
-				The return value is the resulting state.
+				Initiates a lazy lookahead search to determine a [PlannerPlan], attempting up to max_tries times. This method executes actions as they are planned, allowing for immediate feedback and state changes. If an action fails during execution, the planner backtracks and tries alternative methods. The return value is a [PlannerResult] containing the final state, solution graph, and success status. Use [method PlannerResult.extract_plan] to get the partially executed plan (actions that were successfully executed).
+				
+				[b]Temporal Constraints:[/b] Supports STN temporal constraints and entity-capability requirements, same as [method find_plan].
 			</description>
 		</method>
 		<method name="run_lazy_refineahead">
@@ -41,7 +74,18 @@
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="todo_list" type="Array" />
 			<description>
-				Executes graph-based lazy refinement planning to accomplish the todo list from the provided state. This method uses a solution graph for explicit backtracking and supports temporal constraints through the Simple Temporal Network (STN). The origin time point is anchored to the current time at plan start. Actions without temporal metadata can occur at any time and are not constrained by the STN. The return value is the resulting state after plan execution.
+				Executes graph-based lazy refinement planning to accomplish the todo list from the provided state. This method uses a solution graph for explicit backtracking and supports temporal constraints through the Simple Temporal Network (STN). The origin time point is anchored to the current time at plan start. Actions without temporal metadata can occur at any time and are not constrained by the STN. The return value is a [PlannerResult] containing the final state, solution graph, and success status.
+				
+				[b]Temporal Constraints:[/b] Supports STN temporal constraints and entity-capability requirements, same as [method find_plan].
+			</description>
+		</method>
+		<method name="simulate">
+			<return type="Array" />
+			<param index="0" name="result" type="PlannerResult" />
+			<param index="1" name="state" type="Dictionary" />
+			<param index="2" name="start_ind" type="int" default="0" />
+			<description>
+				Simulates the execution of a plan from a [PlannerResult], starting from the action at start_ind. Returns an [Array] of state [Dictionary] objects, one for each action execution. The first element is the initial state, and each subsequent element is the state after executing the corresponding action. If an action fails during simulation, the array stops at that point. This is useful for previewing plan execution without actually modifying the world state.
 			</description>
 		</method>
 	</methods>

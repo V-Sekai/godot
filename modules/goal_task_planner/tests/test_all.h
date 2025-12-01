@@ -37,6 +37,7 @@
 #include "unit/test_comprehensive.h"
 #include "unit/test_ipyhop_compatibility.h"
 #include "unit/test_planner_components.h"
+#include "unit/test_new_api.h"
 
 // Problem/integration tests
 #include "problems/isekai_academy_problem.h"

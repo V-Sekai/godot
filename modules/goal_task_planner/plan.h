@@ -60,12 +60,14 @@ class PlannerPlan : public Resource {
 	Array original_todo_list; // Store original todo_list to check if all tasks completed
 
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
+	int iterations = 0; // Track number of planning iterations
 	static String _item_to_string(Variant p_item);
 	// Graph-based planning methods
 	Dictionary _planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter);
 	bool _is_command_blacklisted(Variant p_command) const;
 	void _blacklist_command(Variant p_command);
 	void _restore_stn_from_node(int p_node_id);
+	int _post_failure_modify(int p_fail_node_id, Dictionary p_state);
 
 	PlannerMetadata _extract_metadata(const Variant &p_item) const; // Extract full PlannerMetadata (temporal + entity requirements)
 
@@ -99,6 +101,13 @@ public:
 	// Temporal methods
 	PlannerTimeRange get_time_range() const { return time_range; }
 	void set_time_range(PlannerTimeRange p_time_range) { time_range = p_time_range; }
+
+	// Public API methods
+	void blacklist_command(Variant p_command);
+	int get_iterations() const { return iterations; }
+	Array simulate(Ref<PlannerResult> p_result, Dictionary p_state, int p_start_ind = 0);
+	Ref<PlannerResult> replan(Ref<PlannerResult> p_result, Dictionary p_state, int p_fail_node_id);
+	void load_solution_graph(Dictionary p_graph);
 
 protected:
 	static void _bind_methods();

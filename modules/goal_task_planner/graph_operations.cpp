@@ -340,3 +340,56 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 
 	return plan;
 }
+
+Array PlannerGraphOperations::extract_new_actions(PlannerSolutionGraph &p_graph) {
+	Array plan;
+	Array to_visit;
+	to_visit.push_back(0); // Start from root
+	TypedArray<int> visited; // Track visited nodes to prevent revisiting
+
+	while (!to_visit.is_empty()) {
+		int node_id = to_visit.pop_back();
+
+		// Skip if already visited
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+
+		Dictionary node = p_graph.get_node(node_id);
+
+		int node_type = node["type"];
+		int node_status = node["status"];
+		String node_tag = p_graph.get_node_tag(node_id);
+
+		// Only extract actions that are closed (successful) and tagged as "new"
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
+				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) &&
+				node_tag == "new") {
+			Variant info = node["info"];
+			// Unwrap if dictionary-wrapped (has constraints)
+			if (info.get_type() == Variant::DICTIONARY) {
+				Dictionary dict = info;
+				if (dict.has("item")) {
+					info = dict["item"];
+				}
+			}
+			plan.push_back(info);
+		}
+
+		// Visit successors (only closed nodes or root)
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
+				node_id == 0) { // Root is NA status, but we need to visit it
+			TypedArray<int> successors = node["successors"];
+			// Add successors in reverse order to maintain DFS order
+			for (int i = successors.size() - 1; i >= 0; i--) {
+				int succ_id = successors[i];
+				if (!visited.has(succ_id) && p_graph.get_graph().has(succ_id)) {
+					to_visit.push_back(succ_id);
+				}
+			}
+		}
+	}
+
+	return plan;
+}

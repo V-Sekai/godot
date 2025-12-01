@@ -34,6 +34,8 @@
 
 void PlannerMultigoal::_bind_methods() {
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("is_multigoal_array", "variant"), &PlannerMultigoal::is_multigoal_array);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("get_goal_tag", "multigoal"), &PlannerMultigoal::get_goal_tag);
+	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("set_goal_tag", "multigoal", "tag"), &PlannerMultigoal::set_goal_tag);
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_goals_not_achieved", "state", "multigoal_array"), &PlannerMultigoal::method_goals_not_achieved);
 	ClassDB::bind_static_method("PlannerMultigoal", D_METHOD("method_verify_multigoal", "state", "method", "multigoal_array", "depth", "verbose"), &PlannerMultigoal::method_verify_multigoal);
 }
@@ -42,6 +44,20 @@ void PlannerMultigoal::_bind_methods() {
 // A multigoal is an Array where the first element is also an Array (unigoal)
 // This distinguishes it from a single unigoal which is [predicate, subject, value]
 bool PlannerMultigoal::is_multigoal_array(const Variant &p_variant) {
+	if (p_variant.get_type() == Variant::DICTIONARY) {
+		// Check if it's a wrapped multigoal
+		Dictionary dict = p_variant;
+		if (dict.has("item")) {
+			Variant item = dict["item"];
+			if (item.get_type() == Variant::ARRAY) {
+				Array arr = item;
+				if (!arr.is_empty() && arr[0].get_type() == Variant::ARRAY) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 	if (p_variant.get_type() != Variant::ARRAY) {
 		return false;
 	}
@@ -52,6 +68,39 @@ bool PlannerMultigoal::is_multigoal_array(const Variant &p_variant) {
 	// Check if first element is also an Array (unigoal)
 	Variant first = arr[0];
 	return first.get_type() == Variant::ARRAY;
+}
+
+String PlannerMultigoal::get_goal_tag(const Variant &p_multigoal) {
+	if (p_multigoal.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_multigoal;
+		if (dict.has("goal_tag")) {
+			return dict["goal_tag"];
+		}
+	}
+	return String(); // No tag found
+}
+
+Variant PlannerMultigoal::set_goal_tag(const Variant &p_multigoal, const String &p_tag) {
+	Variant actual_multigoal = p_multigoal;
+	
+	// Unwrap if already wrapped
+	if (p_multigoal.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_multigoal;
+		if (dict.has("item")) {
+			actual_multigoal = dict["item"];
+		} else {
+			// Already a dictionary, just add/update tag
+			Dictionary result = dict.duplicate();
+			result["goal_tag"] = p_tag;
+			return result;
+		}
+	}
+	
+	// Wrap in dictionary with tag
+	Dictionary result;
+	result["item"] = actual_multigoal;
+	result["goal_tag"] = p_tag;
+	return result;
 }
 
 // Return Array of unigoals that are not yet achieved

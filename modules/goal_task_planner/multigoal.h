@@ -48,6 +48,12 @@ public:
 	// A multigoal is an Array where the first element is also an Array (unigoal)
 	static bool is_multigoal_array(const Variant &p_variant);
 
+	// Multigoal tag support
+	// Get goal_tag from multigoal (supports both Array and Dictionary-wrapped formats)
+	static String get_goal_tag(const Variant &p_multigoal);
+	// Set goal_tag on multigoal (wraps in Dictionary if needed)
+	static Variant set_goal_tag(const Variant &p_multigoal, const String &p_tag);
+
 	// Static methods for multigoal operations
 	static Array method_goals_not_achieved(const Dictionary &p_state, const Array &p_multigoal_array);
 	static Variant method_verify_multigoal(const Dictionary &p_state, const String &p_method, const Array &p_multigoal_array, int p_depth, int p_verbose);

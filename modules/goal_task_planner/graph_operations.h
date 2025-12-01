@@ -58,6 +58,8 @@ public:
 
 	// Extract solution plan (sequence of actions) from graph
 	static Array extract_solution_plan(PlannerSolutionGraph &p_graph);
+	// Extract only "new" actions from graph (for replanning)
+	static Array extract_new_actions(PlannerSolutionGraph &p_graph);
 
 private:
 	// Helper for remove_descendants - collects all descendant node IDs

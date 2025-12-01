@@ -32,6 +32,7 @@
 
 #include "core/object/class_db.h"
 #include "graph_operations.h"
+#include "solution_graph.h"
 
 PlannerResult::PlannerResult() :
 		success(false) {
@@ -51,6 +52,10 @@ void PlannerResult::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "success"), "set_success", "get_success");
 
 	ClassDB::bind_method(D_METHOD("extract_plan"), &PlannerResult::extract_plan);
+	ClassDB::bind_method(D_METHOD("find_failed_nodes"), &PlannerResult::find_failed_nodes);
+	ClassDB::bind_method(D_METHOD("get_node", "node_id"), &PlannerResult::get_node);
+	ClassDB::bind_method(D_METHOD("get_all_nodes"), &PlannerResult::get_all_nodes);
+	ClassDB::bind_method(D_METHOD("has_node", "node_id"), &PlannerResult::has_node);
 }
 
 Array PlannerResult::extract_plan() const {
@@ -63,4 +68,56 @@ Array PlannerResult::extract_plan() const {
 
 	// Extract the plan using the existing graph operations
 	return PlannerGraphOperations::extract_solution_plan(graph);
+}
+
+Array PlannerResult::find_failed_nodes() const {
+	Array failed_nodes;
+	Array graph_keys = solution_graph.keys();
+	
+	for (int i = 0; i < graph_keys.size(); i++) {
+		int node_id = graph_keys[i];
+		Dictionary node = solution_graph[node_id];
+		if (node.has("status")) {
+			int status = node["status"];
+			if (status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+				Dictionary node_info;
+				node_info["node_id"] = node_id;
+				node_info["type"] = node.get("type", Variant());
+				node_info["info"] = node.get("info", Variant());
+				failed_nodes.push_back(node_info);
+			}
+		}
+	}
+	
+	return failed_nodes;
+}
+
+Dictionary PlannerResult::get_node(int p_node_id) const {
+	if (!solution_graph.has(p_node_id)) {
+		return Dictionary();
+	}
+	return solution_graph[p_node_id];
+}
+
+Array PlannerResult::get_all_nodes() const {
+	Array nodes;
+	Array graph_keys = solution_graph.keys();
+	
+	for (int i = 0; i < graph_keys.size(); i++) {
+		int node_id = graph_keys[i];
+		Dictionary node = solution_graph[node_id];
+		Dictionary node_info;
+		node_info["node_id"] = node_id;
+		node_info["type"] = node.get("type", Variant());
+		node_info["status"] = node.get("status", Variant());
+		node_info["info"] = node.get("info", Variant());
+		node_info["tag"] = node.get("tag", Variant("new"));
+		nodes.push_back(node_info);
+	}
+	
+	return nodes;
+}
+
+bool PlannerResult::has_node(int p_node_id) const {
+	return solution_graph.has(p_node_id);
 }

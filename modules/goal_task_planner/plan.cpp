@@ -75,6 +75,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	solution_graph = PlannerSolutionGraph();
 	blacklisted_commands.clear();
 	original_todo_list.clear();
+	iterations = 0; // Reset iteration counter
 
 	// Initialize STN solver (optional, but keep for consistency)
 	stn.clear();
@@ -588,6 +589,12 @@ void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("find_plan", "state", "todo_list"), &PlannerPlan::find_plan);
 	ClassDB::bind_method(D_METHOD("run_lazy_lookahead", "state", "todo_list", "max_tries"), &PlannerPlan::run_lazy_lookahead, DEFVAL(10));
 	ClassDB::bind_method(D_METHOD("run_lazy_refineahead", "state", "todo_list"), &PlannerPlan::run_lazy_refineahead);
+
+	ClassDB::bind_method(D_METHOD("blacklist_command", "command"), &PlannerPlan::blacklist_command);
+	ClassDB::bind_method(D_METHOD("get_iterations"), &PlannerPlan::get_iterations);
+	ClassDB::bind_method(D_METHOD("simulate", "result", "state", "start_ind"), &PlannerPlan::simulate, DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("replan", "result", "state", "fail_node_id"), &PlannerPlan::replan);
+	ClassDB::bind_method(D_METHOD("load_solution_graph", "graph"), &PlannerPlan::load_solution_graph);
 }
 
 // Temporal method implementations
@@ -613,6 +620,7 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 	// Initialize solution graph
 	solution_graph = PlannerSolutionGraph();
 	blacklisted_commands.clear();
+	iterations = 0; // Reset iteration counter
 
 	// Initialize STN solver
 	stn.clear();
@@ -674,6 +682,11 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 }
 
 Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter) {
+	// Track maximum iteration reached
+	if (p_iter > iterations) {
+		iterations = p_iter;
+	}
+
 	// Check depth limit to prevent infinite recursion
 	if (p_iter >= max_depth) {
 		if (verbose >= 1) {
@@ -2035,6 +2048,287 @@ void PlannerPlan::_blacklist_command(Variant p_command) {
 	if (!_is_command_blacklisted(p_command)) {
 		blacklisted_commands.push_back(p_command);
 	}
+}
+
+void PlannerPlan::blacklist_command(Variant p_command) {
+	_blacklist_command(p_command);
+}
+
+Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int p_start_ind) {
+	Array state_list;
+	state_list.push_back(p_state.duplicate()); // Initial state
+
+	if (!p_result.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::simulate: p_result is invalid");
+		}
+		return state_list;
+	}
+
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::simulate: current_domain is not set");
+		}
+		return state_list;
+	}
+
+	// Load the solution graph from the result
+	load_solution_graph(p_result->get_solution_graph());
+
+	// Extract plan from solution graph
+	Array plan = PlannerGraphOperations::extract_solution_plan(solution_graph);
+
+	if (p_start_ind < 0 || p_start_ind >= plan.size()) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::simulate: start_ind %d is out of range (plan size: %d)", p_start_ind, plan.size()));
+		}
+		return state_list;
+	}
+
+	Dictionary state_copy = p_state.duplicate();
+	Dictionary action_dict = current_domain->action_dictionary;
+
+	// Execute actions starting from p_start_ind
+	for (int i = p_start_ind; i < plan.size(); i++) {
+		Variant action_variant = plan[i];
+		Array action;
+		
+		// Unwrap if dictionary-wrapped
+		if (action_variant.get_type() == Variant::DICTIONARY) {
+			Dictionary dict = action_variant;
+			if (dict.has("item")) {
+				action_variant = dict["item"];
+			}
+		}
+		
+		if (action_variant.get_type() != Variant::ARRAY) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::simulate: action at index %d is not an Array", i));
+			}
+			break;
+		}
+		
+		action = action_variant;
+		if (action.is_empty()) {
+			continue;
+		}
+
+		String action_name = action[0];
+		if (!action_dict.has(action_name)) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' not found in domain", action_name));
+			}
+			break;
+		}
+
+		Callable action_callable = action_dict[action_name];
+		Array args;
+		args.push_back(state_copy);
+		args.append_array(action.slice(1, action.size()));
+
+		Variant result = action_callable.callv(args);
+		if (result.get_type() != Variant::DICTIONARY) {
+			// Action failed
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::simulate: action '%s' failed at index %d", action_name, i));
+			}
+			break;
+		}
+
+		state_copy = result;
+		state_list.push_back(state_copy.duplicate());
+	}
+
+	return state_list;
+}
+
+int PlannerPlan::_post_failure_modify(int p_fail_node_id, Dictionary p_state) {
+	// Mark nodes from root to failure point as OPEN and "old"
+	// Remove descendants of reopened nodes
+	// Similar to IPyHOP's _post_failure_modify
+
+	// Get all nodes in reverse DFS order (from root)
+	Array all_nodes;
+	Array to_visit;
+	to_visit.push_back(0); // Start from root
+	TypedArray<int> visited;
+
+	// Collect all nodes in DFS preorder
+	while (!to_visit.is_empty()) {
+		int node_id = to_visit.pop_back();
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+		all_nodes.push_back(node_id);
+
+		Dictionary node = solution_graph.get_node(node_id);
+		TypedArray<int> successors = node["successors"];
+		// Add successors in reverse order
+		for (int i = successors.size() - 1; i >= 0; i--) {
+			int succ_id = successors[i];
+			if (!visited.has(succ_id) && solution_graph.get_graph().has(succ_id)) {
+				to_visit.push_back(succ_id);
+			}
+		}
+	}
+
+	// Process nodes in reverse order (from leaves to root)
+	int max_id = -1;
+	for (int i = all_nodes.size() - 1; i >= 0; i--) {
+		int node_id = all_nodes[i];
+		if (node_id > max_id) {
+			max_id = node_id;
+		}
+
+		Dictionary node = solution_graph.get_node(node_id);
+		int node_type = node["type"];
+		int node_status = node["status"];
+
+		// Set all nodes to OPEN
+		solution_graph.set_node_status(node_id, PlannerNodeStatus::STATUS_OPEN);
+
+		// Stop when we reach the failure node
+		if (node_id == p_fail_node_id) {
+			break;
+		}
+
+		// For T/G/M nodes, clear state, selected_method, and reset available_methods
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_TASK) ||
+				node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) ||
+				node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
+			node["state"] = Dictionary();
+			node["selected_method"] = Variant();
+			// Reset available_methods iterator (keep the methods list)
+			if (node.has("available_methods")) {
+				TypedArray<Callable> methods = node["available_methods"];
+				node["available_methods"] = methods; // Reset to full list
+			}
+			solution_graph.update_node(node_id, node);
+
+			// Remove descendants
+			PlannerGraphOperations::remove_descendants(solution_graph, node_id, false);
+		}
+
+		// Mark CLOSED nodes as "old"
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			solution_graph.set_node_tag(node_id, "old");
+			// Update state snapshot for CLOSED nodes
+			node["state"] = p_state.duplicate();
+			solution_graph.update_node(node_id, node);
+		} else {
+			// Clear state for non-CLOSED nodes
+			node["state"] = Dictionary();
+			solution_graph.update_node(node_id, node);
+		}
+	}
+
+	return max_id + 1; // Return next available node ID
+}
+
+Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p_state, int p_fail_node_id) {
+	if (!p_result.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::replan: p_result is invalid");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(Dictionary());
+		return result;
+	}
+
+	if (!current_domain.is_valid()) {
+		if (verbose >= 1) {
+			ERR_PRINT("PlannerPlan::replan: current_domain is not set");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(p_result->get_solution_graph());
+		return result;
+	}
+
+	// Load the solution graph from the result
+	load_solution_graph(p_result->get_solution_graph());
+
+	if (!solution_graph.get_graph().has(p_fail_node_id)) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::replan: fail_node_id %d not found in solution graph", p_fail_node_id));
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	if (verbose >= 1) {
+		print_line(vformat("replan: Starting replanning from failure node %d", p_fail_node_id));
+	}
+
+	// Reset iteration counter
+	iterations = 0;
+
+	// Modify graph: mark nodes as OPEN/old, remove descendants
+	int max_id = _post_failure_modify(p_fail_node_id, p_state);
+
+	// Find parent of failure node
+	int parent_id = PlannerGraphOperations::find_predecessor(solution_graph, p_fail_node_id);
+	if (parent_id < 0) {
+		if (verbose >= 1) {
+			ERR_PRINT(vformat("PlannerPlan::replan: Could not find parent of fail_node_id %d", p_fail_node_id));
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Backtrack from failure point
+	PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
+			solution_graph, parent_id, p_fail_node_id, p_state, blacklisted_commands, verbose);
+	solution_graph = backtrack_result.graph;
+	blacklisted_commands = backtrack_result.blacklisted_commands;
+
+	// Update next_node_id to max_id
+	solution_graph.next_node_id = max_id;
+
+	// Continue planning from backtrack point
+	Dictionary final_state = _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, 0);
+
+	// Extract only "new" actions
+	Array new_plan = PlannerGraphOperations::extract_new_actions(solution_graph);
+
+	// Create result
+	Ref<PlannerResult> result = memnew(PlannerResult);
+	result->set_final_state(final_state);
+	result->set_solution_graph(solution_graph.get_graph());
+	result->set_success(!final_state.is_empty() && new_plan.size() > 0);
+
+	if (verbose >= 1) {
+		print_line(vformat("replan: Completed, extracted %d new actions", new_plan.size()));
+	}
+
+	return result;
+}
+
+void PlannerPlan::load_solution_graph(Dictionary p_graph) {
+	// Load a solution graph from a PlannerResult
+	solution_graph = PlannerSolutionGraph();
+	solution_graph.get_graph() = p_graph.duplicate();
+	
+	// Find max node ID to set next_node_id
+	int max_id = -1;
+	Array graph_keys = p_graph.keys();
+	for (int i = 0; i < graph_keys.size(); i++) {
+		int node_id = graph_keys[i];
+		if (node_id > max_id) {
+			max_id = node_id;
+		}
+	}
+	solution_graph.next_node_id = max_id + 1;
 }
 
 PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {

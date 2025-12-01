@@ -79,6 +79,7 @@ public:
 		root_node["start_time"] = Variant(static_cast<int64_t>(0));
 		root_node["end_time"] = Variant(static_cast<int64_t>(0));
 		root_node["duration"] = Variant(static_cast<int64_t>(0));
+		root_node["tag"] = Variant("old"); // Root is always "old"
 		graph[0] = root_node;
 		next_node_id = 1;
 	}
@@ -98,6 +99,7 @@ public:
 		node["start_time"] = Variant(static_cast<int64_t>(0));
 		node["end_time"] = Variant(static_cast<int64_t>(0));
 		node["duration"] = Variant(static_cast<int64_t>(0));
+		node["tag"] = Variant("new"); // New nodes default to "new"
 		graph[node_id] = node;
 		return node_id;
 	}
@@ -148,5 +150,21 @@ public:
 			return Dictionary();
 		}
 		return state.duplicate();
+	}
+
+	// Set node tag ("new" or "old")
+	void set_node_tag(int p_node_id, const String &p_tag) {
+		Dictionary node = graph[p_node_id];
+		node["tag"] = Variant(p_tag);
+		graph[p_node_id] = node;
+	}
+
+	// Get node tag
+	String get_node_tag(int p_node_id) const {
+		Dictionary node = graph[p_node_id];
+		if (node.has("tag")) {
+			return node["tag"];
+		}
+		return String("new"); // Default to "new" if not set
 	}
 };

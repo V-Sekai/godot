@@ -58,6 +58,12 @@ public:
 	// Extract array of actions from the solution graph
 	Array extract_plan() const;
 
+	// Helper methods for working with the solution graph
+	Array find_failed_nodes() const;
+	Dictionary get_node(int p_node_id) const;
+	Array get_all_nodes() const;
+	bool has_node(int p_node_id) const;
+
 protected:
 	static void _bind_methods();
 };
