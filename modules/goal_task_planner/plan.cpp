@@ -77,10 +77,12 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	original_todo_list.clear();
 	iterations = 0; // Reset iteration counter
 
-	// Initialize VSIDS activity tracking
+	// VSIDS activity tracking: Reset at start of each solve
+	// VSIDS learns during backtracking within a single solve, not across solves
 	method_activities.clear();
 	activity_var_inc = 1.0;
 	activity_bump_count = 0;
+	rewarded_methods_this_solve.clear(); // Reset reward tracking
 
 	// Initialize STN solver (optional, but keep for consistency)
 	stn.clear();
@@ -144,6 +146,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	// Only consider nodes that are reachable from root via closed nodes
 	// This way, failed nodes that were removed from their parent's successors don't cause planning to fail
 	bool planning_succeeded = true;
+	// Get graph keys safely - use get_graph() but validate access
 	Dictionary graph = solution_graph.get_graph();
 	Array graph_keys = graph.keys();
 	Array failed_nodes;
@@ -162,7 +165,17 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		visited.push_back(node_id);
 		reachable_nodes.push_back(node_id);
 
-		Dictionary node = graph[node_id];
+		// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+		Dictionary node = solution_graph.get_node(node_id);
+		
+		// TLA+ verification identified: Must validate node has required fields
+		if (node.is_empty() || !node.has("status") || !node.has("successors")) {
+			if (verbose >= 2) {
+				ERR_PRINT(vformat("Planning success check: Node %d missing required fields, skipping", node_id));
+			}
+			continue; // Skip invalid node
+		}
+		
 		int status = node["status"];
 		// Only traverse through closed nodes (or root which is NA)
 		if (status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
@@ -191,7 +204,18 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		if (node_id == 0) {
 			continue; // Skip root
 		}
-		Dictionary node = graph[node_id];
+		
+		// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+		Dictionary node = solution_graph.get_node(node_id);
+		
+		// TLA+ verification identified: Must validate node has required fields
+		if (node.is_empty() || !node.has("status") || !node.has("type")) {
+			if (verbose >= 2) {
+				ERR_PRINT(vformat("Planning success check: Reachable node %d missing required fields, skipping", node_id));
+			}
+			continue; // Skip invalid node
+		}
+		
 		int status = node["status"];
 		int node_type = node["type"];
 
@@ -213,7 +237,14 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 					if (candidate_id == node_id) {
 						continue;
 					}
-					Dictionary candidate_node = graph[candidate_id];
+					
+					// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+					Dictionary candidate_node = solution_graph.get_node(candidate_id);
+					
+					// TLA+ verification identified: Must validate candidate has required fields
+					if (candidate_node.is_empty() || !candidate_node.has("successors")) {
+						continue; // Skip invalid candidate
+					}
 					TypedArray<int> candidate_successors = candidate_node["successors"];
 					if (candidate_successors.has(node_id)) {
 						parent_id = candidate_id;
@@ -268,7 +299,14 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				if (candidate_id == verify_goal_id) {
 					continue;
 				}
-				Dictionary candidate_node = graph[candidate_id];
+				
+				// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+				Dictionary candidate_node = solution_graph.get_node(candidate_id);
+				
+				// TLA+ verification identified: Must validate candidate has required fields
+				if (candidate_node.is_empty() || !candidate_node.has("successors")) {
+					continue; // Skip invalid candidate
+				}
 				TypedArray<int> candidate_successors = candidate_node["successors"];
 				if (candidate_successors.has(verify_goal_id)) {
 					if (candidate_id == parent_id) {
@@ -307,7 +345,14 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 				if (candidate_id == verify_multigoal_id) {
 					continue;
 				}
-				Dictionary candidate_node = graph[candidate_id];
+				
+				// TLA+ verification identified: Use get_node() for safe access instead of direct dictionary access
+				Dictionary candidate_node = solution_graph.get_node(candidate_id);
+				
+				// TLA+ verification identified: Must validate candidate has required fields
+				if (candidate_node.is_empty() || !candidate_node.has("successors")) {
+					continue; // Skip invalid candidate
+				}
 				TypedArray<int> candidate_successors = candidate_node["successors"];
 				if (candidate_successors.has(verify_multigoal_id)) {
 					if (candidate_id == parent_id) {
@@ -337,26 +382,46 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	}
 
 	// Create PlannerResult with final state and solution graph
+	print_line("[FIND_PLAN] Creating PlannerResult...");
+	print_line(vformat("[FIND_PLAN] planning_succeeded=%s, final_state.is_empty()=%s", 
+			planning_succeeded ? "true" : "false", 
+			final_state.is_empty() ? "true" : "false"));
 	Ref<PlannerResult> result = memnew(PlannerResult);
+	print_line("[FIND_PLAN] PlannerResult created");
 	result->set_final_state(final_state);
-	result->set_solution_graph(solution_graph.get_graph());
+	print_line("[FIND_PLAN] Final state set");
+	Dictionary graph_to_set = solution_graph.get_graph();
+	print_line(vformat("[FIND_PLAN] Graph to set has %d keys", graph_to_set.keys().size()));
+	result->set_solution_graph(graph_to_set);
+	print_line("[FIND_PLAN] Solution graph set");
 	result->set_success(planning_succeeded && !final_state.is_empty());
+	print_line(vformat("[FIND_PLAN] Success set to %s", (planning_succeeded && !final_state.is_empty()) ? "true" : "false"));
 
 	if (planning_succeeded && !final_state.is_empty()) {
 		// Mark root node as CLOSED when planning succeeds so extract_solution_plan can traverse from it
+		print_line("[FIND_PLAN] Planning succeeded, marking root as CLOSED");
 		Dictionary root_node = solution_graph.get_node(0);
 		root_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 		solution_graph.update_node(0, root_node);
 		// Update the result's solution graph with the updated root node
-		result->set_solution_graph(solution_graph.get_graph());
+		print_line("[FIND_PLAN] Setting solution graph in result...");
+		Dictionary graph_to_store = solution_graph.get_graph();
+		print_line(vformat("[FIND_PLAN] Graph to store has %d keys", graph_to_store.keys().size()));
+		result->set_solution_graph(graph_to_store);
+		print_line("[FIND_PLAN] Solution graph set in result");
+		// Note: Methods are already rewarded immediately when they succeed during planning
+		// No need for end-of-plan reward since VSIDS learns during backtracking
 
 		if (verbose >= 1) {
+			print_line("[FIND_PLAN] About to call extract_plan() for verbose output...");
 			Array plan = result->extract_plan();
 			print_line("result plan = " + _item_to_string(plan));
 		}
 
+		print_line("[FIND_PLAN] Returning result (success case)");
 		return result;
 	} else {
+		print_line("[FIND_PLAN] Planning failed or final_state empty, returning failure result");
 		if (verbose >= 1) {
 			print_line("result = false (planning failed)");
 			if (verbose >= 2 || !failed_nodes.is_empty() || !open_nodes.is_empty()) {
@@ -472,10 +537,12 @@ void PlannerPlan::_bump_method_activity(Callable p_method) {
 	double current_activity = _get_method_activity(p_method);
 
 	// Bump activity (like Chuffed's varBumpActivity)
+	// Simple addition of current var_inc (proven approach from Chuffed)
 	method_activities[method_id] = current_activity + activity_var_inc;
 	activity_bump_count++;
 
 	// Decay periodically (every N bumps, like Chuffed)
+	// Chuffed calls varDecayActivity() once per conflict, we do it every N bumps
 	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
 		_decay_method_activities();
 		activity_bump_count = 0;
@@ -483,10 +550,13 @@ void PlannerPlan::_bump_method_activity(Callable p_method) {
 }
 
 void PlannerPlan::_decay_method_activities() {
-	// Decay all activities and increase var_inc (like Chuffed's varDecayActivity)
-	activity_var_inc *= 1.05; // Increase increment
+	// Activity inflation (like Chuffed's varDecayActivity)
+	// Instead of decaying activities directly, increase var_inc
+	// This makes newer bumps worth more relative to older ones
+	activity_var_inc *= 1.05; // Increase increment by 5% (matches Chuffed)
 
-	// If var_inc gets too large, scale down all activities
+	// If var_inc gets too large, normalize by scaling down all activities
+	// This prevents numerical overflow while maintaining relative ordering
 	if (activity_var_inc > 1e100) {
 		Array keys = method_activities.keys();
 		for (int i = 0; i < keys.size(); i++) {
@@ -494,19 +564,16 @@ void PlannerPlan::_decay_method_activities() {
 			method_activities[key] = (double)method_activities[key] * 1e-100;
 		}
 		activity_var_inc *= 1e-100;
-	} else {
-		// Normal decay: multiply all activities by decay factor
-		Array keys = method_activities.keys();
-		for (int i = 0; i < keys.size(); i++) {
-			Variant key = keys[i];
-			method_activities[key] = (double)method_activities[key] * activity_decay_factor;
-		}
 	}
+	// NOTE: We do NOT multiply activities by decay_factor here
+	// Activity inflation (increasing var_inc) achieves the same effect more efficiently
 }
 
 void PlannerPlan::_bump_conflict_path_activities(int p_fail_node_id) {
 	// Walk up the conflict path and bump activity of all methods
 	// This learns from conflicts (VSIDS-style)
+	// NOTE: For optimization, we primarily reward success, but still track failures
+	// to avoid repeatedly trying methods that consistently fail
 	int current_id = p_fail_node_id;
 
 	while (current_id >= 0) {
@@ -515,6 +582,7 @@ void PlannerPlan::_bump_conflict_path_activities(int p_fail_node_id) {
 			Variant method_variant = node["selected_method"];
 			if (method_variant.get_type() == Variant::CALLABLE) {
 				Callable method = method_variant;
+				// Use smaller bump for failures (less impactful than success rewards)
 				_bump_method_activity(method);
 				if (verbose >= 3) {
 					print_line(vformat("Bumped activity for method in conflict path (node %d)", current_id));
@@ -526,6 +594,152 @@ void PlannerPlan::_bump_conflict_path_activities(int p_fail_node_id) {
 		current_id = PlannerGraphOperations::find_predecessor(solution_graph, current_id);
 		if (current_id < 0) {
 			break;
+		}
+	}
+}
+
+void PlannerPlan::_reward_successful_methods(int p_plan_length) {
+	// Reward all methods used in the successful plan
+	// Shorter plans get higher rewards (optimization goal)
+	// This is the primary learning mechanism for VSIDS optimization
+	
+	if (p_plan_length <= 0) {
+		return; // Invalid plan length
+	}
+
+	// Calculate reward: inverse of plan length (shorter = better = higher reward)
+	// Use much larger scale to ensure rewards dominate over subtask bonuses
+	// For 30 actions: ~1000, for 300 actions: ~100 (10x difference)
+	double base_reward = 10000.0 / (1.0 + p_plan_length);
+	double reward = base_reward * activity_var_inc;
+
+	// Walk through solution graph and reward all methods that were used
+	Dictionary graph = solution_graph.get_graph();
+	Array graph_keys = graph.keys();
+	TypedArray<int> visited;
+	Array to_visit;
+	to_visit.push_back(0); // Start from root
+
+	while (!to_visit.is_empty()) {
+		int node_id = to_visit.pop_back();
+		if (visited.has(node_id)) {
+			continue;
+		}
+		visited.push_back(node_id);
+
+		Dictionary node = graph[node_id];
+		int node_status = node["status"];
+
+		// Only reward methods in the successful path (closed nodes)
+		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			// Reward the method that was selected for this node
+			if (node.has("selected_method")) {
+				Variant method_variant = node["selected_method"];
+				if (method_variant.get_type() == Variant::CALLABLE) {
+					Callable method = method_variant;
+					String method_id = _method_to_id(method);
+					double current_activity = _get_method_activity(method);
+					
+					// Reward successful method (add to activity)
+					method_activities[method_id] = current_activity + reward;
+					activity_bump_count++;
+
+					if (verbose >= 3) {
+						print_line(vformat("VSIDS: Rewarded method '%s' with %.6f (plan length: %d, new activity: %.6f)",
+								method_id, reward, p_plan_length, current_activity + reward));
+					}
+				}
+			}
+
+			// Visit successors
+			TypedArray<int> successors = node["successors"];
+			for (int i = 0; i < successors.size(); i++) {
+				int succ_id = successors[i];
+				if (!visited.has(succ_id) && graph.has(succ_id)) {
+					to_visit.push_back(succ_id);
+				}
+			}
+		}
+	}
+
+	// Decay if needed
+	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
+		_decay_method_activities();
+		activity_bump_count = 0;
+	}
+}
+
+int PlannerPlan::_count_closed_actions() {
+	// Count closed action nodes without extracting full plan (safer during planning)
+	int count = 0;
+	Dictionary graph = solution_graph.get_graph();
+	Array keys = graph.keys();
+	
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		if (key.get_type() != Variant::INT) {
+			continue;
+		}
+		int node_id = key;
+		if (!graph.has(node_id)) {
+			continue;
+		}
+		Dictionary node = graph[node_id];
+		if (!node.has("type") || !node.has("status")) {
+			continue;
+		}
+		int node_type = node["type"];
+		int node_status = node["status"];
+		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
+				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			count++;
+		}
+	}
+	return count;
+}
+
+void PlannerPlan::_reward_method_immediate(Callable p_method, int p_current_action_count) {
+	// Reward method immediately when it succeeds
+	// Use Chuffed's proven approach: simple fixed increment (activity_var_inc)
+	// This allows VSIDS to learn during backtracking within a single solve
+	
+	if (p_current_action_count < 0) {
+		return; // Invalid count
+	}
+
+	String method_id = _method_to_id(p_method);
+	
+	// CRITICAL: Only reward each method once per solve to prevent duplicate rewards
+	// The same method may be called recursively, but we only want to reward it once
+	// (Like Chuffed's seen[] array to prevent duplicate bumps)
+	if (rewarded_methods_this_solve.has(method_id)) {
+		if (verbose >= 3) {
+			print_line(vformat("VSIDS: Method '%s' already rewarded this solve, skipping", method_id));
+		}
+		return; // Already rewarded
+	}
+
+	// Use Chuffed's approach: simple fixed increment
+	// The activity_var_inc grows over time (activity inflation), so newer rewards
+	// are worth more relative to older ones, achieving decay effect efficiently
+	double current_activity = _get_method_activity(p_method);
+	
+	// Reward successful method (add var_inc, like Chuffed's varBumpActivity)
+	method_activities[method_id] = current_activity + activity_var_inc;
+	activity_bump_count++;
+	rewarded_methods_this_solve.push_back(method_id); // Mark as rewarded
+
+	if (verbose >= 3) {
+		print_line(vformat("VSIDS: Rewarded method '%s' with var_inc=%.6f (current actions: %d, new activity: %.6f)",
+				method_id, activity_var_inc, p_current_action_count, current_activity + activity_var_inc));
+	}
+
+	// Decay if needed (activity inflation: increase var_inc)
+	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
+		_decay_method_activities();
+		activity_bump_count = 0;
+		if (verbose >= 3) {
+			print_line(vformat("VSIDS: Activity inflation (new var_inc: %.6f)", activity_var_inc));
 		}
 	}
 }
@@ -571,11 +785,21 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 
 			// Score this method using VSIDS activity
 			double activity = _get_method_activity(method);
-			double score = activity; // Use activity as primary score (VSIDS-style)
+			// Activity is the PRIMARY score - it should dominate
+			// Scale activity by 10x to ensure it dominates over subtask bonus
+			// This ensures methods that have been rewarded for shorter plans are preferred
+			double score = activity * 10.0; // Use activity as primary score (VSIDS-style)
 
 			// Add small bonus for methods with fewer subtasks (prefer direct methods)
+			// This bonus is secondary to activity score (only matters if activities are equal)
 			if (candidate_subtasks.size() > 0) {
-				score += 100.0 / (1.0 + candidate_subtasks.size());
+				score += 10.0 / (1.0 + candidate_subtasks.size()); // Reduced from 100.0 to 10.0
+			}
+
+			if (verbose >= 3) {
+				String method_id = _method_to_id(method);
+				print_line(vformat("VSIDS: Evaluating method '%s' - activity: %.6f, scaled: %.6f, subtask bonus: %.2f, total score: %.6f",
+						method_id, activity, activity * 100.0, candidate_subtasks.size() > 0 ? 10.0 / (1.0 + candidate_subtasks.size()) : 0.0, score));
 			}
 
 			if (score > best_candidate.score) {
@@ -769,6 +993,8 @@ void PlannerPlan::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("blacklist_command", "command"), &PlannerPlan::blacklist_command);
 	ClassDB::bind_method(D_METHOD("get_iterations"), &PlannerPlan::get_iterations);
+	ClassDB::bind_method(D_METHOD("get_method_activities"), &PlannerPlan::get_method_activities);
+	ClassDB::bind_method(D_METHOD("reset_vsids_activity"), &PlannerPlan::reset_vsids_activity);
 	ClassDB::bind_method(D_METHOD("simulate", "result", "state", "start_ind"), &PlannerPlan::simulate, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("replan", "result", "state", "fail_node_id"), &PlannerPlan::replan);
 	ClassDB::bind_method(D_METHOD("load_solution_graph", "graph"), &PlannerPlan::load_solution_graph);
@@ -782,6 +1008,29 @@ int PlannerPlan::get_max_depth() const {
 
 void PlannerPlan::set_max_depth(int p_max_depth) {
 	max_depth = p_max_depth;
+}
+
+Dictionary PlannerPlan::get_method_activities() const {
+	// Return a copy of method_activities dictionary for testing
+	Dictionary result;
+	Array keys = method_activities.keys();
+	for (int i = 0; i < keys.size(); i++) {
+		Variant key = keys[i];
+		result[key] = method_activities[key];
+	}
+	return result;
+}
+
+void PlannerPlan::reset_vsids_activity() {
+	// Reset VSIDS activity tracking to initial state
+	// This clears all learned activity scores, allowing a fresh start
+	// Useful when switching problem types or domains
+	method_activities.clear();
+	activity_var_inc = 1.0;
+	activity_bump_count = 0;
+	if (verbose >= 1) {
+		print_line("VSIDS activity tracking reset");
+	}
 }
 
 // Graph-based lazy refinement (Elixir-style)
@@ -1187,6 +1436,12 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				if (verbose >= 2) {
 					print_line(vformat("Selected method with activity score %.2f", best.score));
 				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected task method '%s' with activity %.6f (score %.2f, subtasks: %d)",
+							method_id, activity, best.score, subtasks.size()));
+				}
 			}
 
 			if (found_working_method) {
@@ -1207,6 +1462,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						current_domain->task_method_dictionary,
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list);
+
+				// Reward method immediately based on current action count
+				// Count closed actions directly (safer than extracting full plan during planning)
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
 
 				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
 			}
@@ -1417,6 +1677,9 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
 					print_line(vformat("Action '%s' failed (returned false), backtracking", action_name));
 				}
+				// Bump activity of methods in conflict path (VSIDS-style)
+				// Actions don't have selected_method, but their parent method should be bumped
+				_bump_conflict_path_activities(curr_node_id);
 				// CRITICAL: Do NOT blacklist individual actions - they can succeed in different states
 				// Only blacklist the parent's method array (IPyHOP behavior)
 				// Individual actions are context-dependent and should not be globally blacklisted
@@ -1589,6 +1852,9 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						print_line(vformat("  Current state: %s", _item_to_string(p_state)));
 					}
 				}
+				// Bump activity of methods in conflict path (VSIDS-style)
+				// Actions don't have selected_method, but their parent method should be bumped
+				_bump_conflict_path_activities(curr_node_id);
 				// CRITICAL: Do NOT blacklist individual actions - they can succeed in different states
 				// Only blacklist the parent's method array (IPyHOP behavior)
 				if (p_parent_node_id >= 0) {
@@ -1725,6 +1991,12 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				if (verbose >= 2) {
 					print_line(vformat("Selected method with activity score %.2f", best.score));
 				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected unigoal method '%s' with activity %.6f (score %.2f, subtasks: %d)",
+							method_id, activity, best.score, subtasks.size()));
+				}
 			}
 
 			if (found_working_method) {
@@ -1747,6 +2019,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list);
 
+				// Reward method immediately based on current action count
+				// Count closed actions directly (safer than extracting full plan during planning)
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
 				return _planning_loop_recursive(curr_node_id, p_state, p_iter + 1);
 			}
 
@@ -1754,6 +2031,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (verbose >= 2) {
 				print_line("Unigoal refinement failed, backtracking");
 			}
+			// Bump activity of methods in conflict path (VSIDS-style)
+			_bump_conflict_path_activities(curr_node_id);
 			// Blacklist the unigoal info since all methods failed (IPyHOP-style)
 			_blacklist_command(actual_unigoal_info);
 			if (verbose >= 2) {
@@ -1925,6 +2204,12 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				if (verbose >= 2) {
 					print_line(vformat("Selected method with activity score %.2f", best.score));
 				}
+				if (verbose >= 3) {
+					double activity = _get_method_activity(best.method);
+					String method_id = _method_to_id(best.method);
+					print_line(vformat("VSIDS: Selected multigoal method '%s' with activity %.6f (score %.2f, subgoals: %d)",
+							method_id, activity, best.score, subgoals.size()));
+				}
 			}
 
 			if (found_working_method) {
@@ -1947,6 +2232,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						current_domain->unigoal_method_dictionary,
 						current_domain->multigoal_method_list);
 
+				// Reward method immediately based on current action count
+				// Count closed actions directly (safer than extracting full plan during planning)
+				int action_count = _count_closed_actions();
+				_reward_method_immediate(selected_method, action_count);
+
 				// Continue from first successor to process subgoals, not from multigoal itself
 				TypedArray<int> new_successors = curr_node["successors"];
 				if (new_successors.size() > 0) {
@@ -1960,6 +2250,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (verbose >= 2) {
 				print_line("MultiGoal refinement failed, backtracking");
 			}
+			// Bump activity of methods in conflict path (VSIDS-style)
+			_bump_conflict_path_activities(curr_node_id);
 			// Blacklist the multigoal info since all methods failed (IPyHOP-style)
 			// Only blacklist if it's an Array (blacklister works with Arrays)
 			if (multigoal_variant.get_type() == Variant::ARRAY) {

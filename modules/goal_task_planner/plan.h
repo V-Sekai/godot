@@ -62,12 +62,13 @@ class PlannerPlan : public Resource {
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	int iterations = 0; // Track number of planning iterations
 
-	// VSIDS-style method activity tracking (inspired by Chuffed)
+	// VSIDS-style method activity tracking (following Chuffed's proven approach)
 	Dictionary method_activities; // Track activity scores: method_id -> double
-	double activity_var_inc = 1.0; // Increment value (grows over time)
-	double activity_decay_factor = 0.95; // Decay factor (like Chuffed's VSIDS)
+	double activity_var_inc = 1.0; // Increment value (grows over time via activity inflation)
 	int activity_bump_count = 0; // Track bumps to trigger decay
 	static const int ACTIVITY_DECAY_INTERVAL = 100; // Decay every N bumps
+	// Note: No activity_decay_factor - we use activity inflation (var_inc *= 1.05) instead
+	TypedArray<String> rewarded_methods_this_solve; // Track which methods already rewarded this solve
 
 	static String _item_to_string(Variant p_item);
 
@@ -77,6 +78,9 @@ class PlannerPlan : public Resource {
 	void _bump_method_activity(Callable p_method);
 	void _decay_method_activities();
 	void _bump_conflict_path_activities(int p_fail_node_id);
+	void _reward_successful_methods(int p_plan_length);
+	void _reward_method_immediate(Callable p_method, int p_current_action_count);
+	int _count_closed_actions(); // Count closed action nodes in solution graph
 
 	// Method selection with activity scoring
 	struct MethodCandidate {
@@ -128,6 +132,8 @@ public:
 	// Public API methods
 	void blacklist_command(Variant p_command);
 	int get_iterations() const { return iterations; }
+	Dictionary get_method_activities() const; // Get VSIDS activity scores for testing
+	void reset_vsids_activity(); // Reset VSIDS activity tracking (clears all activity scores)
 	Array simulate(Ref<PlannerResult> p_result, Dictionary p_state, int p_start_ind = 0);
 	Ref<PlannerResult> replan(Ref<PlannerResult> p_result, Dictionary p_state, int p_fail_node_id);
 	void load_solution_graph(Dictionary p_graph);
