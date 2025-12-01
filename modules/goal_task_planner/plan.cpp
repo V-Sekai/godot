@@ -72,15 +72,9 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 
 	// CRITICAL: Initialize solution graph and blacklist to ensure test isolation
 	// Each call to find_plan() starts with a completely fresh state
-	if (verbose >= 3) {
-		print_line(vformat("find_plan: Clearing blacklist (had %d entries)", blacklisted_commands.size()));
-	}
 	solution_graph = PlannerSolutionGraph();
 	blacklisted_commands.clear();
 	original_todo_list.clear();
-	if (verbose >= 3) {
-		print_line("find_plan: Blacklist cleared, starting fresh");
-	}
 
 	// Initialize STN solver (optional, but keep for consistency)
 	stn.clear();
@@ -995,15 +989,6 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					if (_is_command_blacklisted(candidate_subtasks)) {
 						if (verbose >= 2) {
 							print_line(vformat("Method returned blacklisted planner elements array (size %d), skipping this method", candidate_subtasks.size()));
-							if (verbose >= 3 && candidate_subtasks.size() > 0) {
-								Variant first = candidate_subtasks[0];
-								if (first.get_type() == Variant::ARRAY) {
-									Array first_arr = first;
-									if (first_arr.size() > 0) {
-										print_line(vformat("  First element: [%s, ...]", first_arr[0]));
-									}
-								}
-							}
 						}
 						continue; // Skip this method, try next
 					}
@@ -1549,15 +1534,6 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					if (_is_command_blacklisted(candidate_subtasks)) {
 						if (verbose >= 2) {
 							print_line(vformat("Method returned blacklisted planner elements array (size %d), skipping this method", candidate_subtasks.size()));
-							if (verbose >= 3 && candidate_subtasks.size() > 0) {
-								Variant first = candidate_subtasks[0];
-								if (first.get_type() == Variant::ARRAY) {
-									Array first_arr = first;
-									if (first_arr.size() > 0) {
-										print_line(vformat("  First element: [%s, ...]", first_arr[0]));
-									}
-								}
-							}
 						}
 						continue; // Skip this method, try next
 					}
@@ -2020,53 +1996,7 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 
 		// Compare Arrays element by element
 		if (blacklisted_arr.size() != action_arr.size()) {
-			if (verbose >= 3) {
-				print_line(vformat("_is_command_blacklisted: Size mismatch: action size %d vs blacklisted[%d] size %d", action_arr.size(), i, blacklisted_arr.size()));
-			}
 			continue;
-		}
-		
-		if (verbose >= 3) {
-			// Show what we're comparing
-			String action_str = "[";
-			String blacklisted_str = "[";
-			for (int idx = 0; idx < action_arr.size() && idx < 2; idx++) {
-				Variant action_elem = action_arr[idx];
-				Variant blacklisted_elem = blacklisted_arr[idx];
-				if (action_elem.get_type() == Variant::ARRAY) {
-					Array action_elem_arr = action_elem;
-					action_str += "[";
-					for (int k = 0; k < action_elem_arr.size() && k < 3; k++) {
-						action_str += String(action_elem_arr[k]);
-						if (k < action_elem_arr.size() - 1 && k < 2) action_str += ", ";
-					}
-					action_str += "]";
-				} else {
-					action_str += String(action_elem);
-				}
-				if (blacklisted_elem.get_type() == Variant::ARRAY) {
-					Array blacklisted_elem_arr = blacklisted_elem;
-					blacklisted_str += "[";
-					for (int k = 0; k < blacklisted_elem_arr.size() && k < 3; k++) {
-						blacklisted_str += String(blacklisted_elem_arr[k]);
-						if (k < blacklisted_elem_arr.size() - 1 && k < 2) blacklisted_str += ", ";
-					}
-					blacklisted_str += "]";
-				} else {
-					blacklisted_str += String(blacklisted_elem);
-				}
-				if (idx < action_arr.size() - 1 && idx < 1) {
-					action_str += ", ";
-					blacklisted_str += ", ";
-				}
-			}
-			if (action_arr.size() > 2) {
-				action_str += "...";
-				blacklisted_str += "...";
-			}
-			action_str += "]";
-			blacklisted_str += "]";
-			print_line(vformat("_is_command_blacklisted: Comparing action=%s vs blacklisted[%d]=%s", action_str, i, blacklisted_str));
 		}
 
 		bool match = true;
@@ -2083,10 +2013,6 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 				}
 				for (int k = 0; k < action_elem_arr.size(); k++) {
 					if (action_elem_arr[k] != blacklisted_elem_arr[k]) {
-						if (verbose >= 3) {
-							print_line(vformat("_is_command_blacklisted: Nested array mismatch at [%d][%d]: action=%s, blacklisted=%s", 
-								j, k, action_elem_arr[k], blacklisted_elem_arr[k]));
-						}
 						match = false;
 						break;
 					}
@@ -2095,47 +2021,14 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 					break;
 				}
 			} else if (action_elem != blacklisted_elem) {
-				if (verbose >= 3) {
-					print_line(vformat("_is_command_blacklisted: Element mismatch at [%d]: action=%s, blacklisted=%s", 
-						j, action_elem, blacklisted_elem));
-				}
 				match = false;
 				break;
 			}
 		}
 
 		if (match) {
-			if (verbose >= 2) {
-				// Show what matched for debugging
-				String match_info = vformat("_is_command_blacklisted: Found match! Command array (size %d) is blacklisted", action_arr.size());
-				if (verbose >= 3 && action_arr.size() > 0) {
-					match_info += " [";
-					for (int idx = 0; idx < action_arr.size() && idx < 2; idx++) {
-						Variant elem = action_arr[idx];
-						if (elem.get_type() == Variant::ARRAY) {
-							Array elem_arr = elem;
-							match_info += "[";
-							for (int k = 0; k < elem_arr.size() && k < 3; k++) {
-								match_info += String(elem_arr[k]);
-								if (k < elem_arr.size() - 1 && k < 2) match_info += ", ";
-							}
-							match_info += "]";
-						} else {
-							match_info += String(elem);
-						}
-						if (idx < action_arr.size() - 1 && idx < 1) match_info += ", ";
-					}
-					if (action_arr.size() > 2) match_info += "...";
-					match_info += "]";
-				}
-				print_line(match_info);
-			}
 			return true;
 		}
-	}
-	if (verbose >= 3) {
-		print_line(vformat("_is_command_blacklisted: Command array (size %d) is NOT blacklisted (checked %d blacklisted commands)", 
-			action_arr.size(), blacklisted_commands.size()));
 	}
 	return false;
 }

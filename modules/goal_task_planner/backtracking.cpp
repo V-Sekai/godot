@@ -182,30 +182,8 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 				if (!already_blacklisted) {
 					updated_blacklist.push_back(subtasks_copy);
 					if (p_verbose >= 2) {
-						String subtasks_str = "[";
-						for (int idx = 0; idx < subtasks_copy.size() && idx < 3; idx++) {
-							Variant elem = subtasks_copy[idx];
-							if (elem.get_type() == Variant::ARRAY) {
-								Array elem_arr = elem;
-								subtasks_str += "[";
-								for (int k = 0; k < elem_arr.size() && k < 3; k++) {
-									subtasks_str += String(elem_arr[k]);
-									if (k < elem_arr.size() - 1 && k < 2) subtasks_str += ", ";
-								}
-								subtasks_str += "]";
-							} else {
-								subtasks_str += String(elem);
-							}
-							if (idx < subtasks_copy.size() - 1 && idx < 2) subtasks_str += ", ";
-						}
-						if (subtasks_copy.size() > 3) subtasks_str += "...";
-						subtasks_str += "]";
-						print_line(vformat("Backtracking: Blacklisted reopened node %d's created_subtasks: %s (size %d)", 
-							closed_node_id, subtasks_str, subtasks_copy.size()));
-					}
-				} else {
-					if (p_verbose >= 2) {
-						print_line(vformat("Backtracking: Node %d's created_subtasks already blacklisted, skipping", closed_node_id));
+						print_line(vformat("Backtracking: Blacklisted reopened node %d's created_subtasks (size %d)", 
+							closed_node_id, subtasks_copy.size()));
 					}
 				}
 			}
