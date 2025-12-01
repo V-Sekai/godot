@@ -70,9 +70,11 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		}
 	}
 
-	// Initialize solution graph
+	// CRITICAL: Initialize solution graph and blacklist to ensure test isolation
+	// Each call to find_plan() starts with a completely fresh state
 	solution_graph = PlannerSolutionGraph();
 	blacklisted_commands.clear();
+	original_todo_list.clear();
 
 	// Initialize STN solver (optional, but keep for consistency)
 	stn.clear();

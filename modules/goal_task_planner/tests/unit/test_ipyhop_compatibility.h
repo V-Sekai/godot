@@ -46,6 +46,7 @@
 namespace TestIPyHOPCompatibility {
 
 TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Sample Test 1") {
+	// Create completely fresh domain and planner for this test
 	Ref<PlannerDomain> domain = create_ipyhop_test_domain();
 	
 	// Add task methods for task_method_1
@@ -61,10 +62,11 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Sample Test 1") {
 	task_method_2_methods.push_back(callable_mp_static(&IPyHOPTestDomainCallable::task_method_2_2));
 	domain->add_task_methods("task_method_2", task_method_2_methods);
 	
+	// Create fresh planner instance - ensures no state from previous tests
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
 	plan->set_max_depth(100);
-	plan->set_verbose(3);
+	plan->set_verbose(0); // Disable verbose for clean test output
 	
 	Dictionary init_state = create_init_state_1();
 	
@@ -236,6 +238,7 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 3") {
 }
 
 TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 4") {
+	// Create completely fresh domain and planner for this test
 	Ref<PlannerDomain> domain = create_ipyhop_test_domain();
 	
 	// Add task methods for put_it
@@ -250,10 +253,11 @@ TEST_CASE("[Modules][Planner] IPyHOP Compatibility - Backtracking Test 4") {
 	need1_methods.push_back(callable_mp_static(&IPyHOPTestDomainCallable::task_method_m_need1));
 	domain->add_task_methods("need1", need1_methods);
 	
+	// Create fresh planner instance - ensures no state from previous tests
 	Ref<PlannerPlan> plan = memnew(PlannerPlan);
 	plan->set_current_domain(domain);
 	plan->set_max_depth(100);
-	// Remove verbose - test is passing
+	plan->set_verbose(0); // Disable verbose for clean test output
 	
 	Dictionary init_state;
 	init_state["flag"] = -1;
