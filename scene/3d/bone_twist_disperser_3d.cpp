@@ -783,11 +783,38 @@ void BoneTwistDisperser3D::_process_modification(double p_delta) {
 			joints[end].axis = joints[end - 1].axis;
 		}
 
-		// Extract twist.
+		// Extract twist using full-range swing-twist decomposition (supports ±360 degrees)
+		// Replaces get_roll_angle() which was limited to ±180 degrees
 		Quaternion twist_rest = setting->twist_from_rest ? skeleton->get_bone_rest(setting->reference_bone.bone).basis.get_rotation_quaternion() : setting->twist_from.normalized();
 		Quaternion ref_rot = twist_rest.inverse() * skeleton->get_bone_pose_rotation(setting->reference_bone.bone);
 		ref_rot.normalize();
-		double twist = get_roll_angle(ref_rot, joints[end].axis);
+
+		// Swing-twist decomposition to extract full-range twist (not limited to ±180)
+		Vector3 twist_axis = joints[end].axis.normalized();
+		const Vector3 v(ref_rot.x, ref_rot.y, ref_rot.z);
+		const real_t proj_len = v.dot(twist_axis);
+		const Vector3 twist_vec = twist_axis * proj_len;
+		Quaternion twist(twist_vec.x, twist_vec.y, twist_vec.z, ref_rot.w);
+
+		if (!twist.is_normalized()) {
+			if (Math::is_zero_approx(twist.length_squared())) {
+				// No twist component, skip twist application
+				continue;
+			}
+			twist.normalize();
+		}
+
+		// Compute twist angle from the twist quaternion (full range ±360, not limited to ±180)
+		real_t twist_angle = 2.0 * Math::acos(CLAMP(Math::abs(twist.w), 0.0, 1.0));
+
+		// Determine twist direction
+		Vector3 twist_axis_from_quat = Vector3(twist.x, twist.y, twist.z);
+		if (twist_axis_from_quat.length_squared() > CMP_EPSILON) {
+			twist_axis_from_quat.normalize();
+			if (twist_axis_from_quat.dot(twist_axis) < 0) {
+				twist_angle = -twist_angle;
+			}
+		}
 
 		// Apply twist for each bone by their amount.
 		// Twist parent, then cancel all twists caused by this modifier in child, and re-apply accumulated twist.
@@ -795,14 +822,14 @@ void BoneTwistDisperser3D::_process_modification(double p_delta) {
 		if (mutable_bone_axes) {
 			for (int i = 0; i < actual_joint_size; i++) {
 				int bn = joints[i].joint.bone;
-				Quaternion cur_rot = Quaternion(joints[i].axis, twist * joints[i].amount);
+				Quaternion cur_rot = Quaternion(joints[i].axis, twist_angle * joints[i].amount);
 				skeleton->set_bone_pose_rotation(bn, prev_rot.inverse() * skeleton->get_bone_pose_rotation(bn) * cur_rot);
 				prev_rot = cur_rot;
 			}
 		} else {
 			for (int i = 0; i < actual_joint_size; i++) {
 				int bn = joints[i].joint.bone;
-				Quaternion cur_rot = Quaternion(joints[i].axis, twist * joints[i].amount);
+				Quaternion cur_rot = Quaternion(joints[i].axis, twist_angle * joints[i].amount);
 				skeleton->set_bone_pose_rotation(bn, prev_rot.inverse() * skeleton->get_bone_pose_rotation(bn) * cur_rot);
 				prev_rot = cur_rot;
 			}
