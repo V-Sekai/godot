@@ -30,13 +30,13 @@
 
 #pragma once
 
+#include "../../domain.h"
+#include "../../multigoal.h"
 #include "../../plan.h"
 #include "../../planner_result.h"
-#include "../../multigoal.h"
-#include "../../domain.h"
 #include "../../solution_graph.h"
-#include "tests/test_macros.h"
 #include "../helpers/isekai_academy_domain.h"
+#include "tests/test_macros.h"
 
 TEST_CASE("[Modules][Planner] Public Blacklist API") {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
@@ -103,7 +103,7 @@ TEST_CASE("[Modules][Planner] Iteration Counter") {
 	todo_list.push_back(task);
 
 	Ref<PlannerResult> result = plan->find_plan(state, todo_list);
-	
+
 	// Should have some iterations
 	int iterations = plan->get_iterations();
 	CHECK(iterations >= 0);
@@ -124,7 +124,7 @@ TEST_CASE("[Modules][Planner] Multigoal Tag Support") {
 	// Test set_goal_tag
 	Variant tagged_multigoal = PlannerMultigoal::set_goal_tag(multigoal, "friendship");
 	CHECK(tagged_multigoal.get_type() == Variant::DICTIONARY);
-	
+
 	Dictionary dict = tagged_multigoal;
 	CHECK(dict.has("goal_tag"));
 	CHECK(dict["goal_tag"] == "friendship");
@@ -164,7 +164,7 @@ TEST_CASE("[Modules][Planner] Node Tagging System") {
 	// Check that nodes have tags
 	Array all_nodes = result->get_all_nodes();
 	CHECK(all_nodes.size() > 0);
-	
+
 	bool found_new_tag = false;
 	for (int i = 0; i < all_nodes.size(); i++) {
 		Dictionary node_info = all_nodes[i];
@@ -301,11 +301,10 @@ TEST_CASE("[Modules][Planner] Replan Method") {
 	if (fail_node_id >= 0) {
 		// Create a new state (simulating that the action failed and state changed)
 		Dictionary new_state = state.duplicate();
-		
+
 		// Replan from the failure
 		Ref<PlannerResult> replan_result = plan->replan(result, new_state, fail_node_id);
 		// Replanning should produce a result (may or may not succeed depending on state)
 		CHECK(replan_result.is_valid());
 	}
 }
-

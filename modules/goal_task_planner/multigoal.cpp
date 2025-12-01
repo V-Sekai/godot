@@ -82,7 +82,7 @@ String PlannerMultigoal::get_goal_tag(const Variant &p_multigoal) {
 
 Variant PlannerMultigoal::set_goal_tag(const Variant &p_multigoal, const String &p_tag) {
 	Variant actual_multigoal = p_multigoal;
-	
+
 	// Unwrap if already wrapped
 	if (p_multigoal.get_type() == Variant::DICTIONARY) {
 		Dictionary dict = p_multigoal;
@@ -95,7 +95,7 @@ Variant PlannerMultigoal::set_goal_tag(const Variant &p_multigoal, const String 
 			return result;
 		}
 	}
-	
+
 	// Wrap in dictionary with tag
 	Dictionary result;
 	result["item"] = actual_multigoal;

@@ -73,9 +73,16 @@ Array PlannerResult::extract_plan() const {
 Array PlannerResult::find_failed_nodes() const {
 	Array failed_nodes;
 	Array graph_keys = solution_graph.keys();
-	
+
 	for (int i = 0; i < graph_keys.size(); i++) {
-		int node_id = graph_keys[i];
+		Variant key = graph_keys[i];
+		if (key.get_type() != Variant::INT) {
+			continue; // Skip invalid node IDs
+		}
+		int node_id = key;
+		if (!solution_graph.has(node_id)) {
+			continue; // Skip missing nodes
+		}
 		Dictionary node = solution_graph[node_id];
 		if (node.has("status")) {
 			int status = node["status"];
@@ -88,7 +95,7 @@ Array PlannerResult::find_failed_nodes() const {
 			}
 		}
 	}
-	
+
 	return failed_nodes;
 }
 
@@ -102,9 +109,16 @@ Dictionary PlannerResult::get_node(int p_node_id) const {
 Array PlannerResult::get_all_nodes() const {
 	Array nodes;
 	Array graph_keys = solution_graph.keys();
-	
+
 	for (int i = 0; i < graph_keys.size(); i++) {
-		int node_id = graph_keys[i];
+		Variant key = graph_keys[i];
+		if (key.get_type() != Variant::INT) {
+			continue; // Skip invalid node IDs
+		}
+		int node_id = key;
+		if (!solution_graph.has(node_id)) {
+			continue; // Skip missing nodes
+		}
 		Dictionary node = solution_graph[node_id];
 		Dictionary node_info;
 		node_info["node_id"] = node_id;
@@ -114,7 +128,7 @@ Array PlannerResult::get_all_nodes() const {
 		node_info["tag"] = node.get("tag", Variant("new"));
 		nodes.push_back(node_info);
 	}
-	
+
 	return nodes;
 }
 

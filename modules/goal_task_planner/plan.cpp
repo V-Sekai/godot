@@ -105,6 +105,18 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	// Store original todo_list to track completion of all tasks
 	original_todo_list = p_todo_list.duplicate();
 
+	// Handle empty todo_list edge case
+	if (p_todo_list.is_empty()) {
+		if (verbose >= 1) {
+			print_line("result = false (empty todo_list)");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
 	// Add initial tasks to the solution graph
 	int parent_node_id = 0; // Root node
 	PlannerGraphOperations::add_nodes_and_edges(
@@ -444,6 +456,18 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 		return result;
 	}
 
+	// Handle empty todo_list edge case
+	if (p_todo_list.is_empty()) {
+		if (verbose >= 1) {
+			print_line("run_lazy_lookahead: Empty todo_list");
+		}
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
 	if (verbose >= 1) {
 		print_line(vformat("run_lazy_lookahead: verbose = %s, max_tries = %s", verbose, p_max_tries));
 		print_line(vformat("Initial state: %s", p_state.keys()));
@@ -498,9 +522,15 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 			for (int i = 0; i < action_list.size(); i++) {
 				Array action = action_list[i];
 				// Validate action array is not empty before accessing first element
-				if (action.is_empty()) {
+				if (action.is_empty() || action.size() < 1) {
 					if (verbose >= 1) {
 						ERR_PRINT("run_lazy_lookahead: Found empty action in plan, skipping");
+					}
+					continue;
+				}
+				if (!current_domain->action_dictionary.has(action[0])) {
+					if (verbose >= 1) {
+						ERR_PRINT(vformat("run_lazy_lookahead: Action '%s' not found in domain, skipping", action[0]));
 					}
 					continue;
 				}
@@ -572,7 +602,6 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 	return result;
 }
 
-
 void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_verbose"), &PlannerPlan::get_verbose);
 	ClassDB::bind_method(D_METHOD("set_verbose", "level"), &PlannerPlan::set_verbose);
@@ -640,6 +669,18 @@ Ref<PlannerResult> PlannerPlan::run_lazy_refineahead(Dictionary p_state, Array p
 			print_line("run_lazy_refineahead: Error - no domain set");
 		}
 		ERR_PRINT("PlannerPlan::run_lazy_refineahead: current_domain is not set. Call set_current_domain() before planning.");
+		Ref<PlannerResult> result = memnew(PlannerResult);
+		result->set_success(false);
+		result->set_final_state(p_state);
+		result->set_solution_graph(solution_graph.get_graph());
+		return result;
+	}
+
+	// Handle empty todo_list edge case
+	if (p_todo_list.is_empty()) {
+		if (verbose >= 1) {
+			print_line("run_lazy_refineahead: Empty todo_list");
+		}
 		Ref<PlannerResult> result = memnew(PlannerResult);
 		result->set_success(false);
 		result->set_final_state(p_state);
@@ -1268,7 +1309,7 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Validate result is a Dictionary (actions should return new state, even if empty)
 			if (result.get_type() != Variant::DICTIONARY) {
 				if (verbose >= 1) {
-					String action_name = String(action_arr[0]);
+					String action_name = action_arr.is_empty() ? "unknown" : String(action_arr[0]);
 					ERR_PRINT(vformat("PlannerPlan::_planning_loop_recursive: Action '%s' returned non-Dictionary result (type: %d), marking as failed",
 							action_name, result.get_type()));
 				}
@@ -1328,6 +1369,12 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 						if (backtrack_result.parent_node_id >= 0) {
 							_restore_stn_from_node(backtrack_result.parent_node_id);
 							return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
+						}
+						return p_state;
+					}
+					if (action_arr.is_empty() || action_arr.size() < 1) {
+						if (verbose >= 1) {
+							ERR_PRINT("PlannerPlan::_planning_loop_recursive: Action array is empty when processing temporal metadata");
 						}
 						return p_state;
 					}
@@ -2092,7 +2139,7 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 	for (int i = p_start_ind; i < plan.size(); i++) {
 		Variant action_variant = plan[i];
 		Array action;
-		
+
 		// Unwrap if dictionary-wrapped
 		if (action_variant.get_type() == Variant::DICTIONARY) {
 			Dictionary dict = action_variant;
@@ -2100,16 +2147,16 @@ Array PlannerPlan::simulate(Ref<PlannerResult> p_result, Dictionary p_state, int
 				action_variant = dict["item"];
 			}
 		}
-		
+
 		if (action_variant.get_type() != Variant::ARRAY) {
 			if (verbose >= 1) {
 				ERR_PRINT(vformat("PlannerPlan::simulate: action at index %d is not an Array", i));
 			}
 			break;
 		}
-		
+
 		action = action_variant;
-		if (action.is_empty()) {
+		if (action.is_empty() || action.size() < 1) {
 			continue;
 		}
 
@@ -2163,6 +2210,9 @@ int PlannerPlan::_post_failure_modify(int p_fail_node_id, Dictionary p_state) {
 		all_nodes.push_back(node_id);
 
 		Dictionary node = solution_graph.get_node(node_id);
+		if (!node.has("successors")) {
+			continue; // Skip nodes without successors
+		}
 		TypedArray<int> successors = node["successors"];
 		// Add successors in reverse order
 		for (int i = successors.size() - 1; i >= 0; i--) {
@@ -2182,6 +2232,12 @@ int PlannerPlan::_post_failure_modify(int p_fail_node_id, Dictionary p_state) {
 		}
 
 		Dictionary node = solution_graph.get_node(node_id);
+		if (!node.has("type") || !node.has("status")) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::_post_failure_modify: Node %d missing 'type' or 'status' field", node_id));
+			}
+			continue; // Skip malformed nodes
+		}
 		int node_type = node["type"];
 		int node_status = node["status"];
 
@@ -2317,18 +2373,33 @@ Ref<PlannerResult> PlannerPlan::replan(Ref<PlannerResult> p_result, Dictionary p
 void PlannerPlan::load_solution_graph(Dictionary p_graph) {
 	// Load a solution graph from a PlannerResult
 	solution_graph = PlannerSolutionGraph();
+
+	// Handle empty or invalid graph
+	if (p_graph.is_empty()) {
+		solution_graph.get_graph() = Dictionary();
+		solution_graph.next_node_id = 1; // Start from 1 (0 is root)
+		return;
+	}
+
 	solution_graph.get_graph() = p_graph.duplicate();
-	
+
 	// Find max node ID to set next_node_id
 	int max_id = -1;
 	Array graph_keys = p_graph.keys();
 	for (int i = 0; i < graph_keys.size(); i++) {
-		int node_id = graph_keys[i];
+		Variant key = graph_keys[i];
+		if (key.get_type() != Variant::INT) {
+			if (verbose >= 1) {
+				ERR_PRINT(vformat("PlannerPlan::load_solution_graph: Invalid node ID type (expected INT, got %d)", key.get_type()));
+			}
+			continue; // Skip invalid keys
+		}
+		int node_id = key;
 		if (node_id > max_id) {
 			max_id = node_id;
 		}
 	}
-	solution_graph.next_node_id = max_id + 1;
+	solution_graph.next_node_id = (max_id >= 0) ? (max_id + 1) : 1;
 }
 
 PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {
