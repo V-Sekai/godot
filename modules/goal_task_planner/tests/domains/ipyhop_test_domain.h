@@ -50,6 +50,14 @@ public:
 	static Array task_method_m1(Dictionary p_state);
 	static Array task_method_m_need0(Dictionary p_state);
 	static Array task_method_m_need1(Dictionary p_state);
+	// Methods for sample_test_2 (depth 3)
+	static Array task_method_tm_1_1_v2(Dictionary p_state);
+	static Array task_method_tm_1_2_v2(Dictionary p_state);
+	static Array task_method_tm_2_1_v2(Dictionary p_state);
+	static Array task_method_tm_2_2_v2(Dictionary p_state);
+	static Array task_method_tm_3_1(Dictionary p_state);
+	// Methods for sample_test_3 (unsolvable)
+	static Array task_method_tm_3_1_unsolvable(Dictionary p_state);
 };
 
 namespace IPyHOPTestDomain {
@@ -196,6 +204,73 @@ Array task_method_m_need1(Dictionary state) {
 	return subtasks;
 }
 
+// Task methods for sample_test_2 (depth 3 backtracking)
+// tm_1 has 2 methods (tm_1_2 is duplicated)
+Array task_method_tm_1_1_v2(Dictionary state) {
+	Array subtasks;
+	Array task1; task1.push_back("tm_2");
+	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(3); task2.push_back(4);
+	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(4); task3.push_back(5);
+	subtasks.push_back(task1);
+	subtasks.push_back(task2);
+	subtasks.push_back(task3);
+	return subtasks;
+}
+
+Array task_method_tm_1_2_v2(Dictionary state) {
+	Array subtasks;
+	Array task1; task1.push_back("tm_2");
+	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(3); task2.push_back(4);
+	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(4); task3.push_back(5);
+	Array task4; task4.push_back("action_transfer_flag"); task4.push_back(5); task4.push_back(6);
+	subtasks.push_back(task1);
+	subtasks.push_back(task2);
+	subtasks.push_back(task3);
+	subtasks.push_back(task4);
+	return subtasks;
+}
+
+// tm_2 has 2 methods
+Array task_method_tm_2_1_v2(Dictionary state) {
+	Array subtasks;
+	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(0); task1.push_back(1);
+	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(1); task2.push_back(2);
+	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(2); task3.push_back(3);
+	subtasks.push_back(task1);
+	subtasks.push_back(task2);
+	subtasks.push_back(task3);
+	return subtasks;
+}
+
+Array task_method_tm_2_2_v2(Dictionary state) {
+	Array subtasks;
+	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(0); task1.push_back(1);
+	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(1); task2.push_back(2);
+	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(2); task3.push_back(3);
+	Array task4; task4.push_back("action_transfer_flag"); task4.push_back(3); task4.push_back(7);
+	subtasks.push_back(task1);
+	subtasks.push_back(task2);
+	subtasks.push_back(task3);
+	subtasks.push_back(task4);
+	return subtasks;
+}
+
+// tm_3 has 1 method
+Array task_method_tm_3_1(Dictionary state) {
+	Array subtasks;
+	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(7); task1.push_back(8);
+	subtasks.push_back(task1);
+	return subtasks;
+}
+
+// Task method for sample_test_3 (unsolvable - requires flag[9] which is never set)
+Array task_method_tm_3_1_unsolvable(Dictionary state) {
+	Array subtasks;
+	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(9); task1.push_back(10);
+	subtasks.push_back(task1);
+	return subtasks;
+}
+
 } // namespace IPyHOPTestDomain
 
 // Implementations of IPyHOPTestDomainCallable static methods
@@ -249,5 +324,29 @@ inline Array IPyHOPTestDomainCallable::task_method_m_need0(Dictionary p_state) {
 
 inline Array IPyHOPTestDomainCallable::task_method_m_need1(Dictionary p_state) {
 	return IPyHOPTestDomain::task_method_m_need1(p_state);
+}
+
+inline Array IPyHOPTestDomainCallable::task_method_tm_1_1_v2(Dictionary p_state) {
+	return IPyHOPTestDomain::task_method_tm_1_1_v2(p_state);
+}
+
+inline Array IPyHOPTestDomainCallable::task_method_tm_1_2_v2(Dictionary p_state) {
+	return IPyHOPTestDomain::task_method_tm_1_2_v2(p_state);
+}
+
+inline Array IPyHOPTestDomainCallable::task_method_tm_2_1_v2(Dictionary p_state) {
+	return IPyHOPTestDomain::task_method_tm_2_1_v2(p_state);
+}
+
+inline Array IPyHOPTestDomainCallable::task_method_tm_2_2_v2(Dictionary p_state) {
+	return IPyHOPTestDomain::task_method_tm_2_2_v2(p_state);
+}
+
+inline Array IPyHOPTestDomainCallable::task_method_tm_3_1(Dictionary p_state) {
+	return IPyHOPTestDomain::task_method_tm_3_1(p_state);
+}
+
+inline Array IPyHOPTestDomainCallable::task_method_tm_3_1_unsolvable(Dictionary p_state) {
+	return IPyHOPTestDomain::task_method_tm_3_1_unsolvable(p_state);
 }
 
