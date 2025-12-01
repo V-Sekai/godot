@@ -12,7 +12,7 @@
 	</tutorials>
 	<methods>
 		<method name="find_plan">
-			<return type="Variant" />
+			<return type="PlannerResult" />
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="todo_list" type="Array" />
 			<description>
@@ -27,7 +27,7 @@
 			</description>
 		</method>
 		<method name="run_lazy_lookahead">
-			<return type="Dictionary" />
+			<return type="PlannerResult" />
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="todo_list" type="Array" />
 			<param index="2" name="max_tries" type="int" default="10" />
@@ -37,7 +37,7 @@
 			</description>
 		</method>
 		<method name="run_lazy_refineahead">
-			<return type="Dictionary" />
+			<return type="PlannerResult" />
 			<param index="0" name="state" type="Dictionary" />
 			<param index="1" name="todo_list" type="Array" />
 			<description>
