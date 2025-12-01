@@ -1,6 +1,22 @@
 ---- MODULE VSIDSActivityTracking ----
 EXTENDS Naturals, Integers, Sequences, FiniteSets
 
+(*
+ * Simplified TLA+ model of VSIDS activity tracking.
+ * 
+ * NOTE: This is a simplified model. The actual C++ implementation uses:
+ * - activity_var_inc: starts at 1.0, grows by 1.05 on each decay
+ * - Decay factor: 0.95 (multiply all activities by 0.95)
+ * - ACTIVITY_DECAY_INTERVAL: 100 bumps before decay
+ * - Activities are doubles (Real numbers), not integers
+ * 
+ * This simplified model verifies core invariants:
+ * - Activities are non-negative
+ * - Bumping increases activities
+ * - Decay reduces activities
+ * - Method selection prefers higher activity
+ *)
+
 CONSTANTS Methods, MaxBumpsBeforeDecay
 
 VARIABLES
@@ -14,6 +30,7 @@ Init ==
     /\ selectedMethods = <<>>
 
 (* Simplified bump - just increments by 1 *)
+(* In actual implementation: activity += activity_var_inc (which grows over time) *)
 BumpActivity(m) ==
     LET newActivity == methodActivities[m] + 1
     IN  /\ methodActivities[m] < 3  (* Bound max activity *)
@@ -22,6 +39,7 @@ BumpActivity(m) ==
         /\ selectedMethods' = selectedMethods
 
 (* Simplified decay - just resets bump count and decrements activities *)
+(* In actual implementation: all activities *= 0.95, activity_var_inc *= 1.05 *)
 DecayActivities ==
     /\ methodActivities' = [m \in Methods |-> IF methodActivities[m] > 0 THEN methodActivities[m] - 1 ELSE 0]
     /\ bumpCount' = 0

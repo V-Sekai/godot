@@ -279,6 +279,8 @@ The planner is responsible for:
 
 -   **`blacklist_command(command)`**: Adds a command (action, task, or method result array) to the blacklist, preventing it from being used during planning. Useful for excluding known failing actions or method combinations.
 -   **`get_iterations()`**: Returns the maximum number of planning iterations that occurred during the last planning operation. Useful for debugging and performance analysis. Reset at the start of each planning method call.
+-   **`get_method_activities()`**: Returns a `Dictionary` of VSIDS activity scores (method_id -> activity_score). Useful for inspecting which methods have been rewarded or penalized during planning. Activity scores persist across `find_plan()` calls to enable learning.
+-   **`reset_vsids_activity()`**: Resets all VSIDS activity scores to zero, clearing accumulated learning. Useful when switching between different problem types or domains to prevent contamination. Activity persists by default to enable optimization across multiple attempts.
 -   **`simulate(result, state, start_ind=0)`**: Simulates the execution of a plan from a `PlannerResult`, starting from the action at `start_ind`. Returns an `Array` of state `Dictionary` objects, one for each action execution. The first element is the initial state, and each subsequent element is the state after executing the corresponding action. Useful for previewing plan execution without modifying world state.
 -   **`replan(result, state, fail_node_id)`**: Re-plans from a failure point in a previous plan. Loads the solution graph from the provided `PlannerResult`, marks nodes from root to the failure point as "old", reopens them, and continues planning from the failure point. Only actions tagged as "new" are included in the returned plan. Use `PlannerResult.find_failed_nodes()` to identify which nodes failed.
 -   **`load_solution_graph(graph)`**: Loads a solution graph from a `Dictionary` into the planner's internal state. Used internally by `simulate()` and `replan()` to restore a solution graph from a `PlannerResult`.
@@ -327,16 +329,39 @@ When you have a `PlannerResult` from a planning operation:
 
 ### VSIDS Activity Tracking
 
-The planner implements VSIDS (Variable State Independent Decaying Sum) style activity tracking for adaptive method selection:
+The planner implements VSIDS (Variable State Independent Decaying Sum) style activity tracking, following Chuffed's proven approach:
 
 -   **Activity scores**: Methods are scored based on their involvement in conflicts and successes
--   **Activity bumping**: Methods involved in backtracking paths get their activity scores increased
--   **Activity decay**: Activity scores decay periodically (decay factor: 0.95) to prevent stale scores from dominating
--   **Method selection**: When multiple methods are available, the one with the highest activity score is selected first
+-   **Activity bumping**: Methods get their activity increased by a fixed increment (`activity_var_inc`)
+-   **Activity inflation**: Instead of decaying activities directly, we increase `activity_var_inc` by 5% periodically (like Chuffed)
+-   **Method selection**: When multiple methods are available, the one with the highest activity score (scaled by 10x) is selected first
+
+**Implementation details (matching Chuffed):**
+- Fixed increment: `activity[v] += var_inc` (not calculated reward)
+- Activity inflation: `var_inc *= 1.05` (instead of `activity *= 0.95`)
+- Duplicate prevention: Each method rewarded once per solve (like Chuffed's `seen[]` array)
+- Normalization: If `var_inc > 1e100`, scale down all activities and `var_inc` by `1e-100`
 
 This optimization helps the planner learn from past planning attempts and prioritize methods that are more likely to succeed. The activity tracking is transparent to domain methods - they don't need to be aware of it.
 
-**TLA+ Models**: See `tla/VSIDSActivityTracking.tla` for a formal model of the activity tracking logic.
+**VSIDS is triggered for all failure types:**
+-   **TASK failures**: When all methods for a task fail, `_bump_conflict_path_activities()` is called
+-   **UNIGOAL failures**: When all methods for a unigoal fail, `_bump_conflict_path_activities()` is called
+-   **MULTIGOAL failures**: When all methods for a multigoal fail, `_bump_conflict_path_activities()` is called
+-   **ACTION failures**: When an action fails, `_bump_conflict_path_activities()` is called (bumps parent method)
+
+**Testing VSIDS:**
+-   Use `plan->get_method_activities()` to inspect activity scores after planning
+-   Run tests in `tests/unit/test_vsids.h` to verify VSIDS behavior
+-   Enable verbose logging (`plan->set_verbose(3)`) to see activity scores when methods are selected
+-   **Activity scores RESET at the start of each `find_plan()` call** - VSIDS learns during backtracking within a single solve, not across solves
+-   **Reset activity**: Call `plan->reset_vsids_activity()` to clear all activity scores when switching problem types or domains
+-   **Fixed increment rewards**: Methods are rewarded with `activity_var_inc` (following Chuffed's proven approach), not calculated rewards
+-   **Activity inflation**: `activity_var_inc` grows by 5% periodically, making newer rewards worth more (efficient decay mechanism)
+-   **Conflict-based bumping**: Methods in conflict paths get bumped (like Chuffed's conflict analysis)
+-   **Success-based bumping**: Successful methods also get bumped (optimization for plan quality)
+
+**TLA+ Models**: See `tla/VSIDSActivityTracking.tla` for a formal model of the activity tracking logic. Note: The TLA+ model is simplified; the actual implementation uses floating-point activities with growing increment values.
 
 ## Commit Guidelines
 
