@@ -160,7 +160,52 @@ int PlannerGraphOperations::add_nodes_and_edges(PlannerSolutionGraph &p_graph, i
 			available_methods = p_multigoal_methods;
 		}
 
-		int child_id = p_graph.create_node(node_type, child_info, available_methods, action);
+		// Check for duplicate tasks with same info to prevent infinite recursion
+		// For tasks like move_blocks that recursively create themselves
+		int existing_node_id = -1;
+		if (node_type == PlannerNodeType::TYPE_TASK) {
+			Array arr = actual_item;
+			if (!arr.is_empty()) {
+				String task_name = arr[0];
+				// For recursive tasks like move_blocks, check if a node with same info already exists
+				// Only check if task_name is "move_blocks" to avoid false positives
+				if (task_name == "move_blocks") {
+					const Dictionary &graph = p_graph.get_graph();
+					Array graph_keys = graph.keys();
+					for (int j = 0; j < graph_keys.size(); j++) {
+						int node_id = graph_keys[j];
+						Dictionary node = p_graph.get_node(node_id);
+						if (node.is_empty() || !node.has("type") || !node.has("info")) {
+							continue;
+						}
+						int node_type_check = node["type"];
+						if (node_type_check == static_cast<int>(PlannerNodeType::TYPE_TASK)) {
+							Array node_info = node["info"];
+							if (!node_info.is_empty() && node_info[0] == task_name) {
+								// Compare task info - for move_blocks, compare the goal state
+								if (arr.size() >= 2 && node_info.size() >= 2) {
+									Variant arr_goal = arr[1];
+									Variant node_goal = node_info[1];
+									if (arr_goal == node_goal) {
+										// Same task with same goal - reuse existing node
+										existing_node_id = node_id;
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		int child_id;
+		if (existing_node_id >= 0) {
+			// Reuse existing node instead of creating new one
+			child_id = existing_node_id;
+		} else {
+			child_id = p_graph.create_node(node_type, child_info, available_methods, action);
+		}
 		p_graph.add_successor(p_parent_node_id, child_id);
 		current_id = child_id;
 	}
@@ -200,11 +245,18 @@ Variant PlannerGraphOperations::find_open_node(PlannerSolutionGraph &p_graph, in
 }
 
 int PlannerGraphOperations::find_predecessor(PlannerSolutionGraph &p_graph, int p_node_id) {
-	Array keys = p_graph.graph.keys();
+	Dictionary graph_dict = p_graph.get_graph();
+	Array keys = graph_dict.keys();
 
 	for (int i = 0; i < keys.size(); i++) {
 		int parent_id = keys[i];
 		Dictionary parent_node = p_graph.get_node(parent_id);
+		
+		// Validate parent node exists and has required fields
+		if (parent_node.is_empty() || !parent_node.has("successors")) {
+			continue; // Skip invalid parent nodes
+		}
+		
 		TypedArray<int> successors = parent_node["successors"];
 
 		if (successors.has(p_node_id)) {
@@ -254,26 +306,78 @@ void PlannerGraphOperations::remove_descendants(PlannerSolutionGraph &p_graph, i
 }
 
 void PlannerGraphOperations::do_get_descendants(PlannerSolutionGraph &p_graph, TypedArray<int> p_current_nodes, TypedArray<int> &p_visited, TypedArray<int> &p_result) {
-	for (int i = 0; i < p_current_nodes.size(); i++) {
-		int node_id = p_current_nodes[i];
+	// Convert from recursive to iterative to prevent stack overflow with deep graphs
+	// Use a stack (TypedArray) instead of recursion
+	TypedArray<int> to_process = p_current_nodes;
+	
+	while (!to_process.is_empty()) {
+		int node_id = to_process.pop_back();
+		
+		// Skip if already visited
 		if (p_visited.has(node_id)) {
 			continue;
 		}
+		
+		// Mark as visited and add to result
 		p_visited.push_back(node_id);
 		p_result.push_back(node_id);
+		
+		// Get node and its successors
 		Dictionary node = p_graph.get_node(node_id);
+		
+		// Validate node exists and has successors field
+		if (node.is_empty() || !node.has("successors")) {
+			continue; // Skip invalid nodes
+		}
+		
 		TypedArray<int> successors = node["successors"];
-		if (successors.size() > 0) {
-			do_get_descendants(p_graph, successors, p_visited, p_result);
+		
+		// Add successors to stack instead of recursing
+		// Process in reverse order to maintain DFS order (last added = first processed)
+		for (int i = successors.size() - 1; i >= 0; i--) {
+			int succ_id = successors[i];
+			if (!p_visited.has(succ_id)) {
+				to_process.push_back(succ_id);
+			}
 		}
 	}
 }
 
 Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_graph) {
+	print_line("[EXTRACT_SOLUTION_PLAN] Starting extract_solution_plan()");
 	Array plan;
 	Array to_visit;
 	to_visit.push_back(0); // Start from root
 	TypedArray<int> visited; // Track visited nodes to prevent revisiting
+
+	// Optimize: Precompute parent map once instead of calling find_predecessor() repeatedly
+	// This follows the Nostradamus Distributor principle: reduce expensive indirect operations
+	// in tight loops (http://www.emulators.com/docs/nx25_nostradamus.htm)
+	print_line("[EXTRACT_SOLUTION_PLAN] Building parent map...");
+	Dictionary parent_map; // child_id -> parent_id
+	Dictionary graph_dict = p_graph.get_graph();
+	Array graph_keys = graph_dict.keys();
+	print_line(vformat("[EXTRACT_SOLUTION_PLAN] Graph has %d nodes", graph_keys.size()));
+	
+	int parent_map_count = 0;
+	for (int i = 0; i < graph_keys.size(); i++) {
+		Variant key = graph_keys[i];
+		if (key.get_type() != Variant::INT) {
+			continue;
+		}
+		int parent_id = key;
+		Dictionary parent_node = p_graph.get_node(parent_id);
+		if (parent_node.is_empty() || !parent_node.has("successors")) {
+			continue;
+		}
+		TypedArray<int> successors = parent_node["successors"];
+		for (int j = 0; j < successors.size(); j++) {
+			int child_id = successors[j];
+			parent_map[child_id] = parent_id; // O(1) lookup instead of O(n) search
+			parent_map_count++;
+		}
+	}
+	print_line(vformat("[EXTRACT_SOLUTION_PLAN] Parent map built with %d entries", parent_map_count));
 
 	while (!to_visit.is_empty()) {
 		int node_id = to_visit.pop_back();
@@ -285,6 +389,12 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		visited.push_back(node_id);
 
 		Dictionary node = p_graph.get_node(node_id);
+		
+		// Validate node exists and has required fields
+		if (node.is_empty() || !node.has("type") || !node.has("status")) {
+			// Skip invalid nodes (may have been removed during backtracking)
+			continue;
+		}
 
 		int node_type = node["type"];
 		int node_status = node["status"];
@@ -292,6 +402,10 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		// Only extract actions that are closed (successful)
 		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
 				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+			// Validate info field exists
+			if (!node.has("info")) {
+				continue; // Skip nodes without info field
+			}
 			Variant info = node["info"];
 			// Unwrap if dictionary-wrapped (has constraints)
 			if (info.get_type() == Variant::DICTIONARY) {
@@ -311,6 +425,10 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 		// (this prevents including nodes from backtracked paths that weren't fully cleaned up)
 		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
 				node_id == 0) { // Root is NA status, but we need to visit it
+			// Validate successors field exists
+			if (!node.has("successors")) {
+				continue; // Skip nodes without successors field
+			}
 			TypedArray<int> successors = node["successors"];
 			// Add successors in reverse order to maintain DFS order (last added = first visited)
 			// This ensures we process tasks in the order they appear in the todo list
@@ -319,11 +437,16 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 				// Only visit if not already visited
 				if (!visited.has(succ_id)) {
 					// Verify this successor is actually in its parent's successors list
-					// (double-check to ensure we're only following the final successful path)
-					int parent_of_succ = find_predecessor(p_graph, succ_id);
+					// Use O(1) lookup from precomputed parent_map instead of O(n) find_predecessor()
+					int parent_of_succ = parent_map.get(succ_id, -1);
 					if (parent_of_succ == node_id) {
 						// This successor is actually a child of the current node
 						Dictionary succ_node = p_graph.get_node(succ_id);
+						// Validate successor node exists and has required fields
+						if (succ_node.is_empty() || !succ_node.has("status")) {
+							// Skip invalid successor nodes (may have been removed)
+							continue;
+						}
 						int succ_status = succ_node["status"];
 						// Only follow closed nodes (or root which is NA)
 						// Failed nodes should have been removed from successors, so they won't be here
@@ -357,6 +480,12 @@ Array PlannerGraphOperations::extract_new_actions(PlannerSolutionGraph &p_graph)
 		visited.push_back(node_id);
 
 		Dictionary node = p_graph.get_node(node_id);
+		
+		// Validate node exists and has required fields
+		if (node.is_empty() || !node.has("type") || !node.has("status")) {
+			// Skip invalid nodes (may have been removed during backtracking)
+			continue;
+		}
 
 		int node_type = node["type"];
 		int node_status = node["status"];
@@ -366,6 +495,10 @@ Array PlannerGraphOperations::extract_new_actions(PlannerSolutionGraph &p_graph)
 		if (node_type == static_cast<int>(PlannerNodeType::TYPE_ACTION) &&
 				node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) &&
 				node_tag == "new") {
+			// Validate info field exists
+			if (!node.has("info")) {
+				continue; // Skip nodes without info field
+			}
 			Variant info = node["info"];
 			// Unwrap if dictionary-wrapped (has constraints)
 			if (info.get_type() == Variant::DICTIONARY) {
@@ -380,6 +513,10 @@ Array PlannerGraphOperations::extract_new_actions(PlannerSolutionGraph &p_graph)
 		// Visit successors (only closed nodes or root)
 		if (node_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
 				node_id == 0) { // Root is NA status, but we need to visit it
+			// Validate successors field exists
+			if (!node.has("successors")) {
+				continue; // Skip nodes without successors field
+			}
 			TypedArray<int> successors = node["successors"];
 			// Add successors in reverse order to maintain DFS order
 			for (int i = successors.size() - 1; i >= 0; i--) {
