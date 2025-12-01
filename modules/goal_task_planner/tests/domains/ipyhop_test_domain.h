@@ -18,6 +18,7 @@
 /*                                                                        */
 /* The above copyright notice and this permission notice shall be         */
 /* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
@@ -62,7 +63,7 @@ Variant action_transfer_flag(Dictionary state, int flag_key_1, int flag_key_2) {
 	} else {
 		flag_dict = Dictionary();
 	}
-	
+
 	// Check if flag[flag_key_1] is True
 	if (flag_dict.has(flag_key_1) && bool(flag_dict[flag_key_1])) {
 		Dictionary new_state = state.duplicate();
@@ -96,9 +97,18 @@ Variant action_getv(Dictionary state, int flag_val) {
 // task_method_1 has 3 methods: task_method_1_1, task_method_1_2, task_method_1_3
 Array task_method_1_1(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(0); task1.push_back(1);
-	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(1); task2.push_back(2);
-	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(3); task3.push_back(4);
+	Array task1;
+	task1.push_back("action_transfer_flag");
+	task1.push_back(0);
+	task1.push_back(1);
+	Array task2;
+	task2.push_back("action_transfer_flag");
+	task2.push_back(1);
+	task2.push_back(2);
+	Array task3;
+	task3.push_back("action_transfer_flag");
+	task3.push_back(3);
+	task3.push_back(4);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	subtasks.push_back(task3);
@@ -107,9 +117,18 @@ Array task_method_1_1(Dictionary state) {
 
 Array task_method_1_2(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(0); task1.push_back(1);
-	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(1); task2.push_back(2);
-	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(2); task3.push_back(3);
+	Array task1;
+	task1.push_back("action_transfer_flag");
+	task1.push_back(0);
+	task1.push_back(1);
+	Array task2;
+	task2.push_back("action_transfer_flag");
+	task2.push_back(1);
+	task2.push_back(2);
+	Array task3;
+	task3.push_back("action_transfer_flag");
+	task3.push_back(2);
+	task3.push_back(3);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	subtasks.push_back(task3);
@@ -118,10 +137,22 @@ Array task_method_1_2(Dictionary state) {
 
 Array task_method_1_3(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(0); task1.push_back(1);
-	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(1); task2.push_back(2);
-	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(2); task3.push_back(3);
-	Array task4; task4.push_back("action_transfer_flag"); task4.push_back(3); task4.push_back(4);
+	Array task1;
+	task1.push_back("action_transfer_flag");
+	task1.push_back(0);
+	task1.push_back(1);
+	Array task2;
+	task2.push_back("action_transfer_flag");
+	task2.push_back(1);
+	task2.push_back(2);
+	Array task3;
+	task3.push_back("action_transfer_flag");
+	task3.push_back(2);
+	task3.push_back(3);
+	Array task4;
+	task4.push_back("action_transfer_flag");
+	task4.push_back(3);
+	task4.push_back(4);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	subtasks.push_back(task3);
@@ -132,10 +163,22 @@ Array task_method_1_3(Dictionary state) {
 // task_method_2 has 2 methods: task_method_2_1, task_method_2_2
 Array task_method_2_1(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(3); task1.push_back(4);
-	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(4); task2.push_back(5);
-	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(5); task3.push_back(6);
-	Array task4; task4.push_back("action_transfer_flag"); task4.push_back(6); task4.push_back(7);
+	Array task1;
+	task1.push_back("action_transfer_flag");
+	task1.push_back(3);
+	task1.push_back(4);
+	Array task2;
+	task2.push_back("action_transfer_flag");
+	task2.push_back(4);
+	task2.push_back(5);
+	Array task3;
+	task3.push_back("action_transfer_flag");
+	task3.push_back(5);
+	task3.push_back(6);
+	Array task4;
+	task4.push_back("action_transfer_flag");
+	task4.push_back(6);
+	task4.push_back(7);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	subtasks.push_back(task3);
@@ -145,9 +188,18 @@ Array task_method_2_1(Dictionary state) {
 
 Array task_method_2_2(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(4); task1.push_back(5);
-	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(5); task2.push_back(6);
-	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(6); task3.push_back(7);
+	Array task1;
+	task1.push_back("action_transfer_flag");
+	task1.push_back(4);
+	task1.push_back(5);
+	Array task2;
+	task2.push_back("action_transfer_flag");
+	task2.push_back(5);
+	task2.push_back(6);
+	Array task3;
+	task3.push_back("action_transfer_flag");
+	task3.push_back(6);
+	task3.push_back(7);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	subtasks.push_back(task3);
@@ -157,8 +209,12 @@ Array task_method_2_2(Dictionary state) {
 // Task methods for backtracking_test
 Array task_method_m_err(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_putv"); task1.push_back(0);
-	Array task2; task2.push_back("action_getv"); task2.push_back(1);
+	Array task1;
+	task1.push_back("action_putv");
+	task1.push_back(0);
+	Array task2;
+	task2.push_back("action_getv");
+	task2.push_back(1);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	return subtasks;
@@ -166,8 +222,12 @@ Array task_method_m_err(Dictionary state) {
 
 Array task_method_m0(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_putv"); task1.push_back(0);
-	Array task2; task2.push_back("action_getv"); task2.push_back(0);
+	Array task1;
+	task1.push_back("action_putv");
+	task1.push_back(0);
+	Array task2;
+	task2.push_back("action_getv");
+	task2.push_back(0);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	return subtasks;
@@ -175,8 +235,12 @@ Array task_method_m0(Dictionary state) {
 
 Array task_method_m1(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_putv"); task1.push_back(1);
-	Array task2; task2.push_back("action_getv"); task2.push_back(1);
+	Array task1;
+	task1.push_back("action_putv");
+	task1.push_back(1);
+	Array task2;
+	task2.push_back("action_getv");
+	task2.push_back(1);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	return subtasks;
@@ -184,14 +248,18 @@ Array task_method_m1(Dictionary state) {
 
 Array task_method_m_need0(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_getv"); task1.push_back(0);
+	Array task1;
+	task1.push_back("action_getv");
+	task1.push_back(0);
 	subtasks.push_back(task1);
 	return subtasks;
 }
 
 Array task_method_m_need1(Dictionary state) {
 	Array subtasks;
-	Array task1; task1.push_back("action_getv"); task1.push_back(1);
+	Array task1;
+	task1.push_back("action_getv");
+	task1.push_back(1);
 	subtasks.push_back(task1);
 	return subtasks;
 }
@@ -250,4 +318,3 @@ inline Array IPyHOPTestDomainCallable::task_method_m_need0(Dictionary p_state) {
 inline Array IPyHOPTestDomainCallable::task_method_m_need1(Dictionary p_state) {
 	return IPyHOPTestDomain::task_method_m_need1(p_state);
 }
-

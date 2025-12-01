@@ -7,7 +7,7 @@ EXTENDS Naturals, Sequences, FiniteSets
 
 CONSTANTS MaxDepth
 
-VARIABLES 
+VARIABLES
     state,
     solutionGraph,
     originalTodoList,
@@ -30,7 +30,7 @@ InitState == [flag |-> 999]
 
 Init ==
     /\ state = InitState
-    /\ solutionGraph = [i \in {0, 1, 2} |-> 
+    /\ solutionGraph = [i \in {0, 1, 2} |->
         IF i = 0 THEN [type |-> "ROOT", status |-> "CLOSED", info |-> "root", successors |-> <<1, 2>>, selectedMethod |-> ""]
         ELSE IF i = 1 THEN [type |-> "TASK", status |-> "OPEN", info |-> "put_it", successors |-> <<>>, selectedMethod |-> ""]
         ELSE [type |-> "TASK", status |-> "OPEN", info |-> "need1", successors |-> <<>>, selectedMethod |-> ""]]
@@ -55,7 +55,7 @@ ApplyPutItMethodErr(nodeId) ==
     LET node == solutionGraph[nodeId]
         newSuccessors == <<3, 4>>  \* putv(0), getv(1)
         updatedNode == [node EXCEPT !.status = "CLOSED", !.successors = newSuccessors, !.selectedMethod = "m_err"]
-        newNodes == [i \in {3, 4} |-> 
+        newNodes == [i \in {3, 4} |->
             IF i = 3 THEN [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_putv", 0>>, successors |-> <<>>, selectedMethod |-> ""]
             ELSE [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_getv", 1>>, successors |-> <<>>, selectedMethod |-> ""]]
         updatedGraph == [solutionGraph EXCEPT ![nodeId] = updatedNode]
@@ -69,7 +69,7 @@ ApplyPutItMethod0(nodeId) ==
     LET node == solutionGraph[nodeId]
         newSuccessors == <<5, 6>>  \* putv(0), getv(0)
         updatedNode == [node EXCEPT !.status = "CLOSED", !.successors = newSuccessors, !.selectedMethod = "m0"]
-        newNodes == [i \in {5, 6} |-> 
+        newNodes == [i \in {5, 6} |->
             IF i = 5 THEN [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_putv", 0>>, successors |-> <<>>, selectedMethod |-> ""]
             ELSE [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_getv", 0>>, successors |-> <<>>, selectedMethod |-> ""]]
         updatedGraph == [solutionGraph EXCEPT ![nodeId] = updatedNode]
@@ -83,7 +83,7 @@ ApplyPutItMethod1(nodeId) ==
     LET node == solutionGraph[nodeId]
         newSuccessors == <<7, 8>>  \* putv(1), getv(1)
         updatedNode == [node EXCEPT !.status = "CLOSED", !.successors = newSuccessors, !.selectedMethod = "m1"]
-        newNodes == [i \in {7, 8} |-> 
+        newNodes == [i \in {7, 8} |->
             IF i = 7 THEN [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_putv", 1>>, successors |-> <<>>, selectedMethod |-> ""]
             ELSE [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_getv", 1>>, successors |-> <<>>, selectedMethod |-> ""]]
         updatedGraph == [solutionGraph EXCEPT ![nodeId] = updatedNode]
@@ -134,7 +134,7 @@ ExecuteGetv(nodeId, val) ==
 \* - When put_it is reopened, m0's array is blacklisted, so it should try m1
 \* - m1 succeeds: putv(1) sets flag=1, getv(1) checks flag=1 - succeeds, need1 can now succeed
 \* The planner should skip blacklisted method arrays and try the next method
-\* 
+\*
 \* In TLA+, we represent blacklisted arrays as strings for easier comparison
 \* "m_err" = methodErrArray, "m0" = method0Array, "m1" = method1Array
 ProcessPutItTask(nodeId) ==
@@ -158,11 +158,11 @@ ProcessNeed1Task(nodeId) ==
         putItMethod == putItNode.selectedMethod
         putItStatus == putItNode.status
         \* Get all descendants of put_it (nodes in its successors sequence)
-        putItSuccessorsSet == IF Len(putItNode.successors) > 0 
+        putItSuccessorsSet == IF Len(putItNode.successors) > 0
             THEN {putItNode.successors[i]: i \in DOMAIN putItNode.successors}
             ELSE {}
-        putItDescendants == putItSuccessorsSet \cup 
-            {i \in DOMAIN solutionGraph: \E j \in putItSuccessorsSet: 
+        putItDescendants == putItSuccessorsSet \cup
+            {i \in DOMAIN solutionGraph: \E j \in putItSuccessorsSet:
                 j \in DOMAIN solutionGraph /\ Len(solutionGraph[j].successors) > 0 /\
                 i \in {solutionGraph[j].successors[k]: k \in DOMAIN solutionGraph[j].successors}}
     IN IF node.status = "OPEN"
@@ -250,4 +250,3 @@ BothTasksCompleted ==
     /\ (state.flag = 1 \/ state.flag = 999)
 
 ====
-

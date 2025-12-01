@@ -12,7 +12,7 @@
 % - task_method_1: Should produce actions to get flag[3] = true
 % - task_method_2: Should produce actions to get flag[7] = true
 
-% Expected plan: 
+% Expected plan:
 % [action_transfer_flag(0,1), action_transfer_flag(1,2), action_transfer_flag(2,3),
 %  action_transfer_flag(3,4), action_transfer_flag(4,5), action_transfer_flag(5,6),
 %  action_transfer_flag(6,7)]
@@ -110,4 +110,3 @@ output [
     "  flag[" ++ show(f) ++ "] = " ++ show(flag_state[max_actions, f]) ++ "\n"
     | f in 0..7
 ];
-

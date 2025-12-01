@@ -18,6 +18,7 @@
 /*                                                                        */
 /* The above copyright notice and this permission notice shall be         */
 /* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
@@ -304,4 +305,3 @@ inline Array IsekaiAcademyDomainCallable::unigoal_pass_exam(Dictionary p_state, 
 inline Array IsekaiAcademyDomainCallable::multigoal_complete_route(Dictionary p_state, Array p_multigoal) {
 	return IsekaiAcademyDomain::multigoal_complete_route(p_state, p_multigoal);
 }
-

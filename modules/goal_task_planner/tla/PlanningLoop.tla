@@ -139,4 +139,3 @@ Spec == Init /\ [][Next]_<<state, solutionGraph, originalTodoList, iteration>>
 \* This is a simplified check - in reality we'd extract the plan from the graph
 
 ====
-

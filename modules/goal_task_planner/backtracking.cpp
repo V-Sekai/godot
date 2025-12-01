@@ -35,10 +35,10 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 	if (p_verbose >= 2) {
 		print_line(vformat("Backtracking: parent_node_id=%d, current_node_id=%d", p_parent_node_id, p_current_node_id));
 	}
-	
+
 	// Mark current node as failed first
 	p_graph.set_node_status(p_current_node_id, PlannerNodeStatus::STATUS_FAILED);
-	
+
 	// If backtracking from root, check for OPEN nodes (excluding the failed node)
 	// This ensures we try other OPEN tasks before retrying CLOSED ones or giving up
 	if (p_parent_node_id == 0) {
@@ -117,7 +117,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		print_line(vformat("Backtracking: Calling find_first_closed_node_dfs(start=%d, failed=%d)", p_parent_node_id, p_current_node_id));
 	}
 	int closed_node_id = PlannerGraphOperations::find_first_closed_node_dfs(p_graph, p_parent_node_id, p_current_node_id, p_verbose);
-	
+
 	if (p_verbose >= 3) {
 		if (closed_node_id >= 0) {
 			print_line(vformat("Backtracking: Found CLOSED node %d to retry", closed_node_id));
@@ -125,11 +125,11 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 			print_line("Backtracking: No CLOSED node found, falling back to parent chain traversal");
 		}
 	}
-	
+
 	if (closed_node_id >= 0) {
 		// Found a CLOSED node with available methods, retry it
 		Dictionary closed_node = p_graph.get_node(closed_node_id);
-		
+
 		// CRITICAL: Before reopening, blacklist the method array that this node used
 		// This ensures that when the node is reopened, it will skip the method that led to failure
 		// and try the next method instead (TLA+ model insight)
@@ -182,19 +182,19 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 				if (!already_blacklisted) {
 					updated_blacklist.push_back(subtasks_copy);
 					if (p_verbose >= 2) {
-						print_line(vformat("Backtracking: Blacklisted reopened node %d's created_subtasks (size %d)", 
-							closed_node_id, subtasks_copy.size()));
+						print_line(vformat("Backtracking: Blacklisted reopened node %d's created_subtasks (size %d)",
+								closed_node_id, subtasks_copy.size()));
 					}
 				}
 			}
 		}
-		
+
 		// Set to OPEN
 		p_graph.set_node_status(closed_node_id, PlannerNodeStatus::STATUS_OPEN);
-		
+
 		// Remove old descendants before retrying (like IPyHOP line 406-408)
 		PlannerGraphOperations::remove_descendants(p_graph, closed_node_id);
-		
+
 		// Reset selected_method (IPyHOP-style)
 		// Clear state snapshot so we use the current state (with successful actions) instead of restoring old state
 		// This is critical: when reopening to try a different method, we want to preserve progress from previous attempts
@@ -204,10 +204,10 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		// Clear created_subtasks since we're trying a different method
 		closed_node["created_subtasks"] = Variant();
 		p_graph.update_node(closed_node_id, closed_node);
-		
+
 		// Find the predecessor of the closed node to return as parent
 		int closed_node_parent = PlannerGraphOperations::find_predecessor(p_graph, closed_node_id);
-		
+
 		BacktrackResult result;
 		result.parent_node_id = closed_node_parent >= 0 ? closed_node_parent : p_parent_node_id;
 		result.current_node_id = closed_node_id;

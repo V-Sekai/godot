@@ -6,7 +6,7 @@ EXTENDS Naturals, Sequences, FiniteSets
 
 CONSTANTS MaxDepth, MaxActions
 
-VARIABLES 
+VARIABLES
     state,           \* Current state (Dictionary-like: flag -> value)
     solutionGraph,   \* Solution graph: nodeId -> node
     currentNodeId,   \* Current node being processed
@@ -83,7 +83,7 @@ AllRootChildrenClosed ==
 AllTasksCompleted ==
     LET rootNode == solutionGraph[0]
         rootSuccessors == rootNode.successors
-        closedCount == Cardinality({i \in DOMAIN rootSuccessors: 
+        closedCount == Cardinality({i \in DOMAIN rootSuccessors:
             LET childId == rootSuccessors[i]
             IN /\ childId \in DOMAIN solutionGraph
                /\ solutionGraph[childId].status = "CLOSED"})
@@ -94,7 +94,7 @@ ApplyTaskMethod1(nodeId) ==
     LET node == solutionGraph[nodeId]
         newSuccessors == <<3, 4, 5>>  \* Three action nodes
         updatedNode == [node EXCEPT !.status = "CLOSED", !.successors = newSuccessors]
-        newNodes == [i \in {3, 4, 5} |-> 
+        newNodes == [i \in {3, 4, 5} |->
             IF i = 3 THEN [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_transfer_flag", 0, 1>>, successors |-> <<>>, state |-> state]
             ELSE IF i = 4 THEN [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_transfer_flag", 1, 2>>, successors |-> <<>>, state |-> state]
             ELSE [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_transfer_flag", 2, 3>>, successors |-> <<>>, state |-> state]]
@@ -106,7 +106,7 @@ ApplyTaskMethod2(nodeId) ==
     LET node == solutionGraph[nodeId]
         newSuccessors == <<6, 7, 8>>  \* Three action nodes
         updatedNode == [node EXCEPT !.status = "CLOSED", !.successors = newSuccessors]
-        newNodes == [i \in {6, 7, 8} |-> 
+        newNodes == [i \in {6, 7, 8} |->
             IF i = 6 THEN [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_transfer_flag", 4, 5>>, successors |-> <<>>, state |-> state]
             ELSE IF i = 7 THEN [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_transfer_flag", 5, 6>>, successors |-> <<>>, state |-> state]
             ELSE [type |-> "ACTION", status |-> "OPEN", info |-> <<"action_transfer_flag", 6, 7>>, successors |-> <<>>, state |-> state]]
@@ -185,4 +185,3 @@ Flag7Property == <> (state.flag[7] = TRUE)
 AllTasksCompletedProperty == <> AllTasksCompleted
 
 ====
-

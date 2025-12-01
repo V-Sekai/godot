@@ -281,13 +281,13 @@ Array PlannerGraphOperations::extract_solution_plan(PlannerSolutionGraph &p_grap
 
 	while (!to_visit.is_empty()) {
 		int node_id = to_visit.pop_back();
-		
+
 		// Skip if already visited
 		if (visited.has(node_id)) {
 			continue;
 		}
 		visited.push_back(node_id);
-		
+
 		Dictionary node = p_graph.get_node(node_id);
 
 		int node_type = node["type"];
@@ -350,15 +350,15 @@ void PlannerGraphOperations::do_dfs_preorder(PlannerSolutionGraph &p_graph, int 
 	if (p_visited.has(p_node_id)) {
 		return;
 	}
-	
+
 	// Mark as visited and add to result
 	p_visited.push_back(p_node_id);
 	p_result.push_back(p_node_id);
-	
+
 	// Get node and its successors
 	Dictionary node = p_graph.get_node(p_node_id);
 	TypedArray<int> successors = node["successors"];
-	
+
 	// Recursively visit all successors
 	for (int i = 0; i < successors.size(); i++) {
 		int succ_id = successors[i];
@@ -374,35 +374,35 @@ bool PlannerGraphOperations::is_retriable_closed_node(PlannerSolutionGraph &p_gr
 	if (!p_graph.get_graph().has(p_node_id)) {
 		return false;
 	}
-	
+
 	Dictionary node = p_graph.get_node(p_node_id);
 	int status = node["status"];
 	int node_type = node["type"];
-	
+
 	// Must be CLOSED and of type TASK/UNIGOAL/MULTIGOAL
 	if (status != static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
 			(node_type != static_cast<int>(PlannerNodeType::TYPE_TASK) &&
-			 node_type != static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) &&
-			 node_type != static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL))) {
+					node_type != static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) &&
+					node_type != static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL))) {
 		return false;
 	}
-	
+
 	// Must have available methods
 	if (!node.has("available_methods")) {
 		return false;
 	}
-	
+
 	Variant methods_var = node["available_methods"];
 	if (methods_var.get_type() != Variant::ARRAY) {
 		return false;
 	}
-	
+
 	Array methods_array = methods_var;
 	TypedArray<Callable> available_methods = TypedArray<Callable>(methods_array);
 	if (available_methods.size() == 0) {
 		return false;
 	}
-	
+
 	// Must have successors (IPyHOP only retries if it has descendants)
 	TypedArray<int> successors = node["successors"];
 	return successors.size() > 0;
@@ -412,30 +412,30 @@ int PlannerGraphOperations::find_first_closed_node_dfs(PlannerSolutionGraph &p_g
 	// IPyHOP-style backtracking: Do DFS preorder from start node, reverse it, find first CLOSED node with descendants
 	// This matches IPyHOP's reversed(list(dfs_preorder_nodes(self.sol_tree, source=p_node_id)))
 	// The DFS includes ALL nodes in the subtree rooted at p_start_node_id, including siblings
-	
+
 	if (p_verbose >= 3) {
 		print_line(vformat("find_first_closed_node_dfs: start=%d, failed_node=%d", p_start_node_id, p_failed_node_id));
 	}
-	
+
 	// Do DFS preorder traversal from start node
 	TypedArray<int> visited;
 	TypedArray<int> dfs_list;
 	do_dfs_preorder(p_graph, p_start_node_id, visited, dfs_list);
-	
+
 	if (p_verbose >= 3) {
 		print_line(vformat("find_first_closed_node_dfs: DFS collected %d nodes", dfs_list.size()));
 	}
-	
+
 	// Traverse in reverse order (from leaves to root) to find first CLOSED node with descendants
 	// This matches IPyHOP's behavior: reversed(dfs_list)
 	for (int i = dfs_list.size() - 1; i >= 0; i--) {
 		int node_id = dfs_list[i];
-		
+
 		// Skip the failed node itself
 		if (node_id == p_failed_node_id) {
 			continue;
 		}
-		
+
 		// Check if this node is retriable (CLOSED with descendants)
 		if (is_retriable_closed_node(p_graph, node_id)) {
 			if (p_verbose >= 3) {
@@ -444,7 +444,7 @@ int PlannerGraphOperations::find_first_closed_node_dfs(PlannerSolutionGraph &p_g
 			return node_id;
 		}
 	}
-	
+
 	if (p_verbose >= 3) {
 		print_line("find_first_closed_node_dfs: No retriable CLOSED node found");
 	}

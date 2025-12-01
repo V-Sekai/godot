@@ -19,4 +19,3 @@ fi
 
 # Run TLC with the provided arguments
 "$JAVA_CMD" -cp "$TLA_TOOLBOX_JAR" tlc2.TLC "$@"
-

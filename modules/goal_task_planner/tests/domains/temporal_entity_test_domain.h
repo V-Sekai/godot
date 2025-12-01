@@ -18,6 +18,7 @@
 /*                                                                        */
 /* The above copyright notice and this permission notice shall be         */
 /* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
@@ -90,8 +91,14 @@ Dictionary action_use_tool(Dictionary state, String worker, String tool) {
 Array task_complete_work(Dictionary state, String worker, String task) {
 	Array subtasks;
 	// First use a tool, then complete the work
-	Array use_tool_task; use_tool_task.push_back("action_use_tool"); use_tool_task.push_back(worker); use_tool_task.push_back("hammer");
-	Array work_task; work_task.push_back("action_work_task"); work_task.push_back(worker); work_task.push_back(task);
+	Array use_tool_task;
+	use_tool_task.push_back("action_use_tool");
+	use_tool_task.push_back(worker);
+	use_tool_task.push_back("hammer");
+	Array work_task;
+	work_task.push_back("action_work_task");
+	work_task.push_back(worker);
+	work_task.push_back(task);
 	subtasks.push_back(use_tool_task);
 	subtasks.push_back(work_task);
 	return subtasks;
@@ -111,4 +118,3 @@ inline Dictionary TemporalEntityTestDomainCallable::action_use_tool(Dictionary p
 inline Array TemporalEntityTestDomainCallable::task_complete_work(Dictionary p_state, String p_worker, String p_task) {
 	return TemporalEntityTestDomain::task_complete_work(p_state, p_worker, p_task);
 }
-

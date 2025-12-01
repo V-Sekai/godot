@@ -18,6 +18,7 @@
 /*                                                                        */
 /* The above copyright notice and this permission notice shall be         */
 /* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
 /* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
 /* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
 /* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
@@ -50,14 +51,14 @@ Dictionary create_init_state_1() {
 // Helper to create domain for IPyHOP tests
 Ref<PlannerDomain> create_ipyhop_test_domain() {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
-	
+
 	// Register actions
 	TypedArray<Callable> actions;
 	actions.push_back(callable_mp_static(&IPyHOPTestDomainCallable::action_transfer_flag));
 	actions.push_back(callable_mp_static(&IPyHOPTestDomainCallable::action_putv));
 	actions.push_back(callable_mp_static(&IPyHOPTestDomainCallable::action_getv));
 	domain->add_actions(actions);
-	
+
 	return domain;
 }
 
@@ -84,4 +85,3 @@ bool validate_plan_result(Ref<PlannerResult> result, const Array &expected_actio
 	}
 	return true;
 }
-

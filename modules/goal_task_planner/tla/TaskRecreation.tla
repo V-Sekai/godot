@@ -6,7 +6,7 @@ EXTENDS Naturals, Sequences, FiniteSets
 
 CONSTANTS MaxDepth
 
-VARIABLES 
+VARIABLES
     state,
     solutionGraph,
     originalTodoList,
@@ -27,7 +27,7 @@ InitState == [flag |-> [i \in 0..19 |-> IF i = 0 THEN TRUE ELSE FALSE]]
 
 Init ==
     /\ state = InitState
-    /\ solutionGraph = [i \in {0, 1, 2} |-> 
+    /\ solutionGraph = [i \in {0, 1, 2} |->
         IF i = 0 THEN [type |-> "ROOT", status |-> "CLOSED", info |-> "root", successors |-> <<1, 2>>, methodIndex |-> 0]
         ELSE IF i = 1 THEN [type |-> "TASK", status |-> "OPEN", info |-> "task_method_1", successors |-> <<>>, methodIndex |-> 0]
         ELSE [type |-> "TASK", status |-> "OPEN", info |-> "task_method_2", successors |-> <<>>, methodIndex |-> 0]]
@@ -53,7 +53,7 @@ ApplyTaskMethod1(nodeId, methodIdx) ==
         numActions == Len(methodActions)
         newSuccessors == [i \in 1..numActions |-> nodeId * 10 + i]
         updatedNode == [node EXCEPT !.status = "CLOSED", !.successors = newSuccessors, !.methodIndex = methodIdx]
-        newNodes == [i \in 1..numActions |-> 
+        newNodes == [i \in 1..numActions |->
             LET actionId == nodeId * 10 + i
                 actionArgs == methodActions[i]
             IN [type |-> "ACTION", status |-> "OPEN", info |-> actionArgs, successors |-> <<>>, methodIndex |-> 0]]
@@ -70,7 +70,7 @@ ApplyTaskMethod2(nodeId, methodIdx) ==
         numActions == Len(methodActions)
         newSuccessors == [i \in 1..numActions |-> nodeId * 10 + i]
         updatedNode == [node EXCEPT !.status = "CLOSED", !.successors = newSuccessors, !.methodIndex = methodIdx]
-        newNodes == [i \in 1..numActions |-> 
+        newNodes == [i \in 1..numActions |->
             LET actionId == nodeId * 10 + i
                 actionArgs == methodActions[i]
             IN [type |-> "ACTION", status |-> "OPEN", info |-> actionArgs, successors |-> <<>>, methodIndex |-> 0]]
@@ -197,4 +197,3 @@ BothTasksCompleted ==
     /\ ClosedCount >= Len(originalTodoList)
 
 ====
-

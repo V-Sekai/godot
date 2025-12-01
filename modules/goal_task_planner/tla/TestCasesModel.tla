@@ -6,13 +6,13 @@ CONSTANTS MaxNodes
 
 (*
   This model captures the execution flow of the failing test cases to identify edge cases.
-  
+
   Backtracking Test 4:
   - Initial: flag = -1
   - Tasks: [put_it, need1]
   - put_it methods: m_err, m0, m1
   - need1 method: m_need1
-  
+
   Sample Test 1:
   - Initial: flag[0] = True, flag[1..7] = False
   - Tasks: [task_method_1, task_method_2]
@@ -102,7 +102,7 @@ ProcessPutItTask(nodeId) ==
        THEN LET TryMethod(methodIdx) ==
                  IF methodIdx > Len(methods)
                  THEN (* All methods failed *)
-                     /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] = 
+                     /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] =
                                          [node EXCEPT !.status = "FAILED"]]
                      /\ state' = state
                      /\ blacklistedCommands' = blacklistedCommands
@@ -113,7 +113,7 @@ ProcessPutItTask(nodeId) ==
                       IN IF IsBlacklisted(method)
                          THEN TryMethod(methodIdx + 1)
                          ELSE (* Use this method *)
-                             /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] = 
+                             /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] =
                                                  [node EXCEPT !.status = "CLOSED",
                                                        !.selectedMethod = methodNames[methodIdx],
                                                        !.createdSubtasks = method,
@@ -131,14 +131,14 @@ ProcessNeed1Task(nodeId) ==
     LET node == solutionGraph[nodeId]
     IN IF node.status = "OPEN"
        THEN IF IsBlacklisted(MethodMNeed1)
-            THEN /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] = 
+            THEN /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] =
                                      [node EXCEPT !.status = "FAILED"]]
                  /\ state' = state
                  /\ blacklistedCommands' = blacklistedCommands
                  /\ currentNodeId' = nodeId
                  /\ iteration' = iteration + 1
                  /\ nextNodeId' = nextNodeId
-            ELSE /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] = 
+            ELSE /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] =
                                       [node EXCEPT !.status = "CLOSED",
                                             !.selectedMethod = "m_need1",
                                             !.createdSubtasks = MethodMNeed1,
@@ -156,7 +156,7 @@ ProcessPutvAction(nodeId, arg) ==
         flagVal == IF arg = "0" THEN 0 ELSE 1
     IN IF node.status = "OPEN"
        THEN /\ state' = [state EXCEPT !.flag = flagVal]
-            /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] = 
+            /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] =
                                  [node EXCEPT !.status = "CLOSED"]]
             /\ blacklistedCommands' = blacklistedCommands
             /\ currentNodeId' = nodeId
@@ -172,14 +172,14 @@ ProcessGetvAction(nodeId, arg) ==
     IN IF node.status = "OPEN"
        THEN IF currentFlag = flagVal
             THEN /\ state' = state
-                 /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] = 
+                 /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] =
                                       [node EXCEPT !.status = "CLOSED"]]
                  /\ blacklistedCommands' = blacklistedCommands
                  /\ currentNodeId' = nodeId
                  /\ iteration' = iteration + 1
                  /\ nextNodeId' = nextNodeId
             ELSE /\ state' = state
-                 /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] = 
+                 /\ solutionGraph' = [solutionGraph EXCEPT ![nodeId] =
                                       [node EXCEPT !.status = "FAILED"]]
                  /\ blacklistedCommands' = blacklistedCommands
                  /\ currentNodeId' = nodeId
@@ -210,7 +210,7 @@ Backtrack(nodeId) ==
        THEN /\ blacklistedCommands' = IF ~IsBlacklisted(parentMethod)
                                         THEN Append(blacklistedCommands, parentMethod)
                                         ELSE blacklistedCommands
-            /\ solutionGraph' = [solutionGraph EXCEPT ![parentId] = 
+            /\ solutionGraph' = [solutionGraph EXCEPT ![parentId] =
                                  [parentNode EXCEPT !.status = "OPEN",
                                        !.selectedMethod = "",
                                        !.createdSubtasks = <<>>,
@@ -254,4 +254,3 @@ PlanningFails ==
     \/ solutionGraph[2].status = "FAILED"
 
 ====
-
