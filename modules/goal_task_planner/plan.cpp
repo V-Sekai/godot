@@ -1007,7 +1007,6 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// Store state in node when first visited (IPyHOP-style, lines 138-146)
 			// When backtracking from a failed action, preserve the accumulated state from successful actions
 			// Only restore state from node when trying a different method
-			int node_status = curr_node["status"];
 			if (!curr_node.has("state") || curr_node["state"].get_type() == Variant::NIL) {
 				// First visit - save current state in node
 				curr_node["state"] = p_state;
