@@ -106,6 +106,9 @@ public:
 
 	// Get node by ID
 	Dictionary get_node(int p_node_id) const {
+		if (!graph.has(p_node_id)) {
+			return Dictionary(); // Return empty dictionary if node doesn't exist
+		}
 		return graph[p_node_id];
 	}
 
@@ -161,6 +164,9 @@ public:
 
 	// Get node tag
 	String get_node_tag(int p_node_id) const {
+		if (!graph.has(p_node_id)) {
+			return String("new"); // Default to "new" if node doesn't exist
+		}
 		Dictionary node = graph[p_node_id];
 		if (node.has("tag")) {
 			return node["tag"];

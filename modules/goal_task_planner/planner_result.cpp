@@ -59,15 +59,61 @@ void PlannerResult::_bind_methods() {
 }
 
 Array PlannerResult::extract_plan() const {
+	// Flush output immediately
+	fflush(stdout);
+	fflush(stderr);
+	
+	print_line("[EXTRACT_PLAN] Starting extract_plan()");
+	fflush(stdout);
+	
+	// Safety check: ensure solution_graph is valid
+	print_line("[EXTRACT_PLAN] Checking if solution_graph is empty...");
+	fflush(stdout);
+	if (solution_graph.is_empty()) {
+		print_line("[EXTRACT_PLAN] ERROR: solution_graph is empty");
+		return Array(); // Return empty plan if graph is empty
+	}
+	
+	print_line(vformat("[EXTRACT_PLAN] solution_graph has %d keys", solution_graph.keys().size()));
+	
 	// Reconstruct PlannerSolutionGraph from the stored graph Dictionary
 	PlannerSolutionGraph graph;
 	// Copy the stored graph Dictionary into the PlannerSolutionGraph
 	// get_graph() returns a reference, so we can assign directly
 	// The stored solution_graph Dictionary already contains all nodes including root
-	graph.get_graph() = solution_graph.duplicate();
+	print_line("[EXTRACT_PLAN] Duplicating solution_graph...");
+	Dictionary graph_dict = solution_graph.duplicate();
+	print_line(vformat("[EXTRACT_PLAN] Duplicated graph has %d keys", graph_dict.keys().size()));
+	
+	// Safety check: ensure root node (0) exists
+	if (!graph_dict.has(0)) {
+		print_line("[EXTRACT_PLAN] ERROR: Root node (0) missing from graph");
+		return Array(); // Return empty plan if root node is missing
+	}
+	
+	print_line("[EXTRACT_PLAN] Setting graph...");
+	graph.get_graph() = graph_dict;
+	
+	// Set next_node_id to prevent issues (find max node ID)
+	int max_id = -1;
+	Array graph_keys = graph_dict.keys();
+	for (int i = 0; i < graph_keys.size(); i++) {
+		Variant key = graph_keys[i];
+		if (key.get_type() == Variant::INT) {
+			int node_id = key;
+			if (node_id > max_id) {
+				max_id = node_id;
+			}
+		}
+	}
+	graph.next_node_id = (max_id >= 0) ? (max_id + 1) : 1;
+	print_line(vformat("[EXTRACT_PLAN] Max node ID: %d, next_node_id: %d", max_id, graph.next_node_id));
 
 	// Extract the plan using the existing graph operations
-	return PlannerGraphOperations::extract_solution_plan(graph);
+	print_line("[EXTRACT_PLAN] Calling extract_solution_plan()...");
+	Array result = PlannerGraphOperations::extract_solution_plan(graph);
+	print_line(vformat("[EXTRACT_PLAN] extract_solution_plan() returned %d actions", result.size()));
+	return result;
 }
 
 Array PlannerResult::find_failed_nodes() const {
