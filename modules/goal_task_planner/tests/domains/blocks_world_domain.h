@@ -62,19 +62,24 @@ bool is_done(Variant p_b1, Dictionary p_state, Dictionary p_goal) {
 	Dictionary pos = p_state.get("pos", Dictionary());
 	Dictionary goal_pos = p_goal.get("pos", Dictionary());
 	
+	Variant current_location = pos.get(p_b1, Variant());
+	
+	// If goal specifies a position for this block, check if it matches
 	if (goal_pos.has(p_b1)) {
 		Variant goal_location = goal_pos[p_b1];
-		Variant current_location = pos.get(p_b1, Variant());
 		if (current_location != goal_location) {
-			return false;
+			return false; // Not in goal position
 		}
+		// Current location matches goal location, recursively check if the location is done
+		return is_done(goal_location, p_state, p_goal);
 	}
 	
-	Variant current_location = pos.get(p_b1, Variant());
+	// No goal specified for this block, it's done if it's on the table
 	if (current_location.get_type() == Variant::STRING && String(current_location) == "table") {
 		return true;
 	}
 	
+	// Block is on another block, recursively check if that block is done
 	return is_done(current_location, p_state, p_goal);
 }
 
@@ -265,6 +270,19 @@ int count_blocks_to_move(Variant p_b1, Dictionary p_state, Dictionary p_goal) {
 Array task_move_blocks(Dictionary state, Dictionary goal) {
 	Array blocks = all_blocks(state);
 	
+	// Check if all blocks are already done (in their goal positions)
+	bool all_done = true;
+	for (int i = 0; i < blocks.size(); i++) {
+		Variant b1 = blocks[i];
+		if (!is_done(b1, state, goal)) {
+			all_done = false;
+			break;
+		}
+	}
+	if (all_done) {
+		return Array(); // All blocks are in their goal positions, nothing to do
+	}
+	
 	// Priority 1: Try to move a block to its final position (move-to-block)
 	// Prefer blocks with fewer dependencies (blocks that are closer to their goal)
 	Variant best_block_move_to_block;
@@ -329,6 +347,15 @@ Array task_move_blocks(Dictionary state, Dictionary goal) {
 	for (int i = 0; i < blocks.size(); i++) {
 		Variant b1 = blocks[i];
 		if (status(b1, state, goal) == "waiting") {
+			// Check if already on table
+			Dictionary current_pos = state.get("pos", Dictionary());
+			if (current_pos.has(b1)) {
+				Variant pos_val = current_pos[b1];
+				if (pos_val.get_type() == Variant::STRING && String(pos_val) == "table") {
+					continue; // Already on table, don't move
+				}
+			}
+
 			Array result;
 			Array move_task;
 			move_task.push_back("move_one");

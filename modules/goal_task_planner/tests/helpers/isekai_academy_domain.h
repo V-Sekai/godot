@@ -43,6 +43,7 @@ public:
 	static Dictionary action_increase_affection(Dictionary p_state, String p_student, String p_character, int p_amount);
 	static Array task_complete_lesson(Dictionary p_state, String p_student, String p_subject);
 	static Array task_build_relationship(Dictionary p_state, String p_student, String p_character);
+	static Array task_build_relationship_impossible(Dictionary p_state, String p_student, String p_character);
 	static Array unigoal_achieve_affection_level(Dictionary p_state, String p_relationship_key, int p_target_level);
 	static Array unigoal_pass_exam(Dictionary p_state, String p_exam_key, bool p_target_value);
 	static Array multigoal_complete_route(Dictionary p_state, Array p_multigoal);
@@ -188,6 +189,16 @@ Array task_build_relationship(Dictionary state, String student, String character
 	return subtasks;
 }
 
+Array task_build_relationship_impossible(Dictionary state, String student, String character) {
+	Array subtasks;
+	// Return an action that is NOT registered in the domain to cause failure
+	Array action1;
+	action1.push_back("action_non_existent");
+	action1.push_back(student);
+	subtasks.push_back(action1);
+	return subtasks;
+}
+
 // Unigoal methods
 // Unigoal format: [predicate, subject, value]
 // For affection: predicate="affection", subject="student_character" (e.g., "protagonist_class_president"), value=target_affection_level (e.g., 50)
@@ -292,6 +303,10 @@ inline Array IsekaiAcademyDomainCallable::task_complete_lesson(Dictionary p_stat
 
 inline Array IsekaiAcademyDomainCallable::task_build_relationship(Dictionary p_state, String p_student, String p_character) {
 	return IsekaiAcademyDomain::task_build_relationship(p_state, p_student, p_character);
+}
+
+inline Array IsekaiAcademyDomainCallable::task_build_relationship_impossible(Dictionary p_state, String p_student, String p_character) {
+	return IsekaiAcademyDomain::task_build_relationship_impossible(p_state, p_student, p_character);
 }
 
 inline Array IsekaiAcademyDomainCallable::unigoal_achieve_affection_level(Dictionary p_state, String p_relationship_key, int p_target_level) {
