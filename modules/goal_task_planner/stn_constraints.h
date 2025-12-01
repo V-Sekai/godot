@@ -45,16 +45,6 @@ public:
 	// If absolute times provided, anchors to origin time point
 	static bool add_interval(PlannerSTNSolver &p_stn, const String &p_id, int64_t p_start_time, int64_t p_end_time, int64_t p_duration);
 
-	// Add a durative action with duration constraint only
-	// Creates time points: {p_action_id}_start and {p_action_id}_end
-	// Adds constraint: start -> end: {duration, duration}
-	static bool add_durative_action(PlannerSTNSolver &p_stn, const String &p_action_id, int64_t p_duration);
-
-	// Add temporal relation between two actions/intervals
-	// Supports: "before", "after", "during"
-	// Converts to appropriate min/max constraints
-	static bool add_temporal_relation(PlannerSTNSolver &p_stn, const String &p_from, const String &p_to, const String &p_relation);
-
 	// Anchor a time point to absolute time (relative to origin)
 	// If origin doesn't exist, creates it
 	static bool anchor_to_origin(PlannerSTNSolver &p_stn, const String &p_point, int64_t p_absolute_time);

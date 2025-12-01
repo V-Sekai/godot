@@ -61,15 +61,12 @@ class PlannerPlan : public Resource {
 
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	static String _item_to_string(Variant p_item);
-	Variant _apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments);
 	// Graph-based planning methods
 	Dictionary _planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter);
 	bool _is_command_blacklisted(Variant p_command) const;
-	bool _contains_blacklisted_action(Array p_subtasks) const;
 	void _blacklist_command(Variant p_command);
 	void _restore_stn_from_node(int p_node_id);
 
-	PlannerMetadata _extract_temporal_constraints(const Variant &p_item) const;
 	PlannerMetadata _extract_metadata(const Variant &p_item) const; // Extract full PlannerMetadata (temporal + entity requirements)
 
 	// Entity matching helper (used during planning when PlannerMetadata has entity requirements)

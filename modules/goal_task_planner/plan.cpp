@@ -513,7 +513,27 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 					print_line(vformat("run_lazy_lookahead: Task: %s, %s", action_name.get_method(), action_arguments));
 				}
 
-				Variant result = _apply_task_and_continue(p_state, action_name, action.slice(1, action.size()));
+				// Inline _apply_task_and_continue (single use)
+				Array argument;
+				argument.push_back(p_state);
+				argument.append_array(action.slice(1, action.size()));
+				if (verbose >= 3) {
+					print_line(vformat("_apply_task_and_continue %s, args = %s", action_name.get_method(), _item_to_string(action.slice(1, action.size()))));
+				}
+				Variant result = action_name.callv(argument);
+				if (!result) {
+					if (verbose >= 3) {
+						print_line(vformat("Not applicable command %s", argument));
+					}
+					if (verbose >= 1) {
+						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
+					}
+					break;
+				}
+				if (verbose >= 3) {
+					print_line("Applied");
+					print_line(result);
+				}
 				if (result.get_type() == Variant::DICTIONARY) {
 					Dictionary new_state = result;
 					if (verbose >= 2) {
@@ -521,6 +541,7 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 					}
 					p_state = new_state;
 				} else {
+					// Result is not a Dictionary, action failed
 					if (verbose >= 1) {
 						ERR_PRINT(vformat("run_lazy_lookahead: WARNING: action %s failed; will call find_plan.", action_name));
 					}
@@ -550,27 +571,6 @@ Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_t
 	return result;
 }
 
-Variant PlannerPlan::_apply_task_and_continue(Dictionary p_state, Callable p_command, Array p_arguments) {
-	if (verbose >= 3) {
-		print_line(vformat("_apply_task_and_continue %s, args = %s", p_command.get_method(), _item_to_string(p_arguments)));
-	}
-	Array argument;
-	argument.push_back(p_state);
-	argument.append_array(p_arguments);
-	Variant next_state = p_command.callv(argument);
-	if (!next_state) {
-		if (verbose >= 3) {
-			print_line(vformat("Not applicable command %s", argument));
-		}
-		return false;
-	}
-
-	if (verbose >= 3) {
-		print_line("Applied");
-		print_line(next_state);
-	}
-	return next_state;
-}
 
 void PlannerPlan::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_verbose"), &PlannerPlan::get_verbose);
@@ -2031,41 +2031,10 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 	return false;
 }
 
-bool PlannerPlan::_contains_blacklisted_action(Array p_subtasks) const {
-	// Check if the subtasks array itself is blacklisted
-	if (_is_command_blacklisted(p_subtasks)) {
-		return true;
-	}
-
-	// Check if any action/task/goal in the subtasks array is blacklisted
-	for (int i = 0; i < p_subtasks.size(); i++) {
-		Variant subtask = p_subtasks[i];
-		// Unwrap if dictionary-wrapped
-		Variant actual_subtask = subtask;
-		if (subtask.get_type() == Variant::DICTIONARY) {
-			Dictionary dict = subtask;
-			if (dict.has("item")) {
-				actual_subtask = dict["item"];
-			}
-		}
-		if (_is_command_blacklisted(actual_subtask)) {
-			return true;
-		}
-	}
-	return false;
-}
-
 void PlannerPlan::_blacklist_command(Variant p_command) {
 	if (!_is_command_blacklisted(p_command)) {
 		blacklisted_commands.push_back(p_command);
 	}
-}
-
-PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item) const {
-	// Extract only temporal constraints (excludes entity requirements)
-	PlannerMetadata metadata = _extract_metadata(p_item);
-	metadata.requires_entities.clear();
-	return metadata;
 }
 
 PlannerMetadata PlannerPlan::_extract_metadata(const Variant &p_item) const {
@@ -2145,12 +2114,16 @@ Variant PlannerPlan::_attach_temporal_constraints(const Variant &p_item, const D
 }
 
 Dictionary PlannerPlan::_get_temporal_constraints(const Variant &p_item) const {
-	PlannerMetadata metadata = _extract_temporal_constraints(p_item);
+	// Extract only temporal constraints (excludes entity requirements)
+	PlannerMetadata metadata = _extract_metadata(p_item);
+	metadata.requires_entities.clear();
 	return metadata.to_dictionary();
 }
 
 bool PlannerPlan::_has_temporal_constraints(const Variant &p_item) const {
-	PlannerMetadata metadata = _extract_temporal_constraints(p_item);
+	// Extract only temporal constraints (excludes entity requirements)
+	PlannerMetadata metadata = _extract_metadata(p_item);
+	metadata.requires_entities.clear();
 	return metadata.has_temporal();
 }
 
