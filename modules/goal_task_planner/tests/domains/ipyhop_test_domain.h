@@ -134,10 +134,12 @@ Array task_method_2_1(Dictionary state) {
 	Array subtasks;
 	Array task1; task1.push_back("action_transfer_flag"); task1.push_back(3); task1.push_back(4);
 	Array task2; task2.push_back("action_transfer_flag"); task2.push_back(4); task2.push_back(5);
-	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(6); task3.push_back(7);
+	Array task3; task3.push_back("action_transfer_flag"); task3.push_back(5); task3.push_back(6);
+	Array task4; task4.push_back("action_transfer_flag"); task4.push_back(6); task4.push_back(7);
 	subtasks.push_back(task1);
 	subtasks.push_back(task2);
 	subtasks.push_back(task3);
+	subtasks.push_back(task4);
 	return subtasks;
 }
 

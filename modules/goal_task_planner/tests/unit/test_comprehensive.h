@@ -695,10 +695,9 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		temporal["duration"] = 5000000LL; // 5 seconds
 		plan->attach_metadata("study", temporal);
 
-		Variant result = plan->find_plan(state_dict, todo_list);
-		Variant::Type result_type = result.get_type();
-		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
-		CHECK(is_valid_type);
+		Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
+		CHECK(result.is_valid());
+		// Result may be successful or failed, both are valid for this test
 	}
 
 	SUBCASE("Plan with multigoal") {
@@ -712,10 +711,9 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		Array todo_list;
 		todo_list.push_back(multigoal);
 
-		Variant result = plan->find_plan(state_dict, todo_list);
-		Variant::Type result_type = result.get_type();
-		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
-		CHECK(is_valid_type);
+		Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
+		CHECK(result.is_valid());
+		// Result may be successful or failed, both are valid for this test
 	}
 
 	SUBCASE("Plan with STN constraints") {
@@ -728,11 +726,10 @@ TEST_CASE("[Modules][Planner] Integration - Full academy planning scenario") {
 		time_range.set_start_time(1735689600000000LL);
 		plan->set_time_range(time_range);
 
-		Variant result = plan->find_plan(state_dict, todo_list);
+		Ref<PlannerResult> result = plan->find_plan(state_dict, todo_list);
 		// STN should be initialized and used during planning
-		Variant::Type result_type = result.get_type();
-		bool is_valid_type = (result_type == Variant::ARRAY) || (result_type == Variant::BOOL);
-		CHECK(is_valid_type);
+		CHECK(result.is_valid());
+		// Result may be successful or failed, both are valid for this test
 	}
 }
 

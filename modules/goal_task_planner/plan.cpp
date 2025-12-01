@@ -99,6 +99,9 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 		return result;
 	}
 
+	// Store original todo_list to track completion of all tasks
+	original_todo_list = p_todo_list.duplicate();
+
 	// Add initial tasks to the solution graph
 	int parent_node_id = 0; // Root node
 	PlannerGraphOperations::add_nodes_and_edges(
@@ -735,31 +738,69 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					if (verbose >= 2) {
 						print_line(vformat("Planning at root: All remaining tasks CLOSED (%d/%d), recreating removed tasks...", closed_count, original_todo_list.size()));
 					}
-					// Find tasks from original todo_list that aren't in the graph
+					// Find tasks from original todo_list that aren't in the graph or are FAILED
 					Array tasks_to_recreate;
+					TypedArray<int> failed_root_children_to_remove;
 					for (int i = 0; i < original_todo_list.size(); i++) {
 						Array task_info = original_todo_list[i];
-						bool found = false;
-						// Check if this task exists in root's successors
+						bool found_closed = false;
+						// Check if this task exists in root's successors and is CLOSED
 						for (int j = 0; j < root_successors.size(); j++) {
 							int child_id = root_successors[j];
 							if (!solution_graph.get_graph().has(child_id)) {
 								continue;
 							}
 							Dictionary child_node = solution_graph.get_node(child_id);
+							int child_status = child_node["status"];
 							Array child_info = child_node["info"];
 							// Compare task info (simplified - just check first element)
 							if (child_info.size() > 0 && task_info.size() > 0 && child_info[0] == task_info[0]) {
-								found = true;
-								break;
+								// Task exists - only consider it found if it's CLOSED
+								// If it's FAILED, we need to remove it and recreate it
+								if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_CLOSED)) {
+									found_closed = true;
+									break;
+								} else if (child_status == static_cast<int>(PlannerNodeStatus::STATUS_FAILED)) {
+									// Mark this FAILED node for removal
+									if (!failed_root_children_to_remove.has(child_id)) {
+										failed_root_children_to_remove.push_back(child_id);
+									}
+								}
 							}
 						}
-						if (!found) {
+						if (!found_closed) {
 							tasks_to_recreate.push_back(task_info);
 						}
 					}
-					// Recreate missing tasks
+					// Remove FAILED root children from root's successors before recreating
+					if (failed_root_children_to_remove.size() > 0) {
+						Dictionary root_node = solution_graph.get_node(0);
+						TypedArray<int> updated_successors;
+						TypedArray<int> current_successors = root_node["successors"];
+						for (int i = 0; i < current_successors.size(); i++) {
+							int child_id = current_successors[i];
+							if (!failed_root_children_to_remove.has(child_id)) {
+								updated_successors.push_back(child_id);
+							}
+						}
+						root_node["successors"] = updated_successors;
+						solution_graph.update_node(0, root_node);
+						if (verbose >= 2) {
+							print_line(vformat("Planning at root: Removed %d FAILED root children", failed_root_children_to_remove.size()));
+						}
+					}
+					// Recreate missing or failed tasks
 					if (tasks_to_recreate.size() > 0) {
+						// Clear entire blacklist when recreating tasks at root level
+						// This is necessary because:
+						// 1. The state has changed (e.g., flag[3] is now true)
+						// 2. Previous failures may have been due to missing state conditions
+						// 3. Subtask arrays returned by methods may have been blacklisted
+						// Clearing the blacklist allows all methods to be tried again in the new state
+						blacklisted_commands.clear();
+						if (verbose >= 2) {
+							print_line(vformat("Planning at root: Cleared entire blacklist before recreating %d tasks (state has changed)", tasks_to_recreate.size()));
+						}
 						PlannerGraphOperations::add_nodes_and_edges(
 								solution_graph,
 								0,
@@ -851,6 +892,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -869,6 +912,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -894,6 +939,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -939,7 +986,16 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					// blacklist the exact array that failed, not arrays that contain blacklisted actions
 					if (_is_command_blacklisted(candidate_subtasks)) {
 						if (verbose >= 2) {
-							print_line("Method returned blacklisted planner elements array, skipping this method");
+							print_line(vformat("Method returned blacklisted planner elements array (size %d), skipping this method", candidate_subtasks.size()));
+							if (verbose >= 3 && candidate_subtasks.size() > 0) {
+								Variant first = candidate_subtasks[0];
+								if (first.get_type() == Variant::ARRAY) {
+									Array first_arr = first;
+									if (first_arr.size() > 0) {
+										print_line(vformat("  First element: [%s, ...]", first_arr[0]));
+									}
+								}
+							}
 						}
 						continue; // Skip this method, try next
 					}
@@ -996,6 +1052,10 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 					solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands, verbose);
 			solution_graph = backtrack_result.graph;
+			// CRITICAL: Update blacklisted_commands from backtrack result
+			// This ensures that blacklists added during backtracking (e.g., parent subtasks)
+			// are preserved for subsequent method tries
+			blacklisted_commands = backtrack_result.blacklisted_commands;
 			if (backtrack_result.parent_node_id >= 0) {
 				// Restore STN snapshot from the node we're backtracking to
 				_restore_stn_from_node(backtrack_result.parent_node_id);
@@ -1031,6 +1091,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					// Restore STN snapshot from the node we're backtracking to
 					_restore_stn_from_node(backtrack_result.parent_node_id);
@@ -1059,6 +1121,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1078,6 +1142,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1105,6 +1171,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1123,6 +1191,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1175,6 +1245,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1193,6 +1265,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1335,6 +1409,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					// Restore STN snapshot from the node we're backtracking to
 					_restore_stn_from_node(backtrack_result.parent_node_id);
@@ -1369,6 +1445,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1395,6 +1473,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1425,6 +1505,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1450,7 +1532,16 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 					// blacklist the exact array that failed, not arrays that contain blacklisted actions
 					if (_is_command_blacklisted(candidate_subtasks)) {
 						if (verbose >= 2) {
-							print_line("Method returned blacklisted planner elements array, skipping this method");
+							print_line(vformat("Method returned blacklisted planner elements array (size %d), skipping this method", candidate_subtasks.size()));
+							if (verbose >= 3 && candidate_subtasks.size() > 0) {
+								Variant first = candidate_subtasks[0];
+								if (first.get_type() == Variant::ARRAY) {
+									Array first_arr = first;
+									if (first_arr.size() > 0) {
+										print_line(vformat("  First element: [%s, ...]", first_arr[0]));
+									}
+								}
+							}
 						}
 						continue; // Skip this method, try next
 					}
@@ -1467,7 +1558,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				curr_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 				curr_node["selected_method"] = selected_method;
 				// Store the planner elements that were created by this method for potential blacklisting
-				curr_node["created_subtasks"] = subtasks;
+				// Store a deep copy to avoid reference issues
+				curr_node["created_subtasks"] = subtasks.duplicate(true);
 				// Don't modify available_methods
 				solution_graph.update_node(curr_node_id, curr_node);
 
@@ -1559,6 +1651,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1633,6 +1727,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					_restore_stn_from_node(backtrack_result.parent_node_id);
 					return _planning_loop_recursive(backtrack_result.parent_node_id, backtrack_result.state, p_iter + 1);
@@ -1814,6 +1910,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 				PlannerBacktracking::BacktrackResult backtrack_result = PlannerBacktracking::backtrack(
 						solution_graph, p_parent_node_id, curr_node_id, p_state, blacklisted_commands);
 				solution_graph = backtrack_result.graph;
+				// CRITICAL: Update blacklisted_commands from backtrack result
+				blacklisted_commands = backtrack_result.blacklisted_commands;
 				if (backtrack_result.parent_node_id >= 0) {
 					// Restore STN snapshot from the node we're backtracking to
 					_restore_stn_from_node(backtrack_result.parent_node_id);
@@ -1864,14 +1962,17 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 void PlannerPlan::_restore_stn_from_node(int p_node_id) {
 	if (p_node_id >= 0) {
 		Dictionary node = solution_graph.get_node(p_node_id);
-		if (node.has("stn_snapshot")) {
+		if (node.has("stn_snapshot") && node["stn_snapshot"].get_type() != Variant::NIL) {
 			Dictionary snapshot_dict = node["stn_snapshot"];
-			PlannerSTNSolver::Snapshot snapshot = PlannerSTNSolver::Snapshot::from_dictionary(snapshot_dict);
-			stn.restore_snapshot(snapshot);
-			if (verbose >= 3) {
-				print_line("Restored STN snapshot from node " + itos(p_node_id));
+			if (!snapshot_dict.is_empty()) {
+				PlannerSTNSolver::Snapshot snapshot = PlannerSTNSolver::Snapshot::from_dictionary(snapshot_dict);
+				stn.restore_snapshot(snapshot);
+				if (verbose >= 3) {
+					print_line("Restored STN snapshot from node " + itos(p_node_id));
+				}
 			}
 		}
+		// If no snapshot exists or it's empty, keep current STN state (don't restore)
 	}
 }
 
@@ -1908,15 +2009,49 @@ bool PlannerPlan::_is_command_blacklisted(Variant p_command) const {
 
 		bool match = true;
 		for (int j = 0; j < action_arr.size(); j++) {
-			if (action_arr[j] != blacklisted_arr[j]) {
+			Variant action_elem = action_arr[j];
+			Variant blacklisted_elem = blacklisted_arr[j];
+			// For nested arrays, we need to compare element by element
+			if (action_elem.get_type() == Variant::ARRAY && blacklisted_elem.get_type() == Variant::ARRAY) {
+				Array action_elem_arr = action_elem;
+				Array blacklisted_elem_arr = blacklisted_elem;
+				if (action_elem_arr.size() != blacklisted_elem_arr.size()) {
+					match = false;
+					break;
+				}
+				for (int k = 0; k < action_elem_arr.size(); k++) {
+					if (action_elem_arr[k] != blacklisted_elem_arr[k]) {
+						if (verbose >= 3) {
+							print_line(vformat("_is_command_blacklisted: Nested array mismatch at [%d][%d]: action=%s, blacklisted=%s", 
+								j, k, action_elem_arr[k], blacklisted_elem_arr[k]));
+						}
+						match = false;
+						break;
+					}
+				}
+				if (!match) {
+					break;
+				}
+			} else if (action_elem != blacklisted_elem) {
+				if (verbose >= 3) {
+					print_line(vformat("_is_command_blacklisted: Element mismatch at [%d]: action=%s, blacklisted=%s", 
+						j, action_elem, blacklisted_elem));
+				}
 				match = false;
 				break;
 			}
 		}
 
 		if (match) {
+			if (verbose >= 2) {
+				print_line(vformat("_is_command_blacklisted: Found match! Command array (size %d) is blacklisted", action_arr.size()));
+			}
 			return true;
 		}
+	}
+	if (verbose >= 3) {
+		print_line(vformat("_is_command_blacklisted: Command array (size %d) is NOT blacklisted (checked %d blacklisted commands)", 
+			action_arr.size(), blacklisted_commands.size()));
 	}
 	return false;
 }
@@ -1948,6 +2083,50 @@ bool PlannerPlan::_contains_blacklisted_action(Array p_subtasks) const {
 void PlannerPlan::_blacklist_command(Variant p_command) {
 	if (!_is_command_blacklisted(p_command)) {
 		blacklisted_commands.push_back(p_command);
+	}
+}
+
+void PlannerPlan::_clear_blacklist_for_command(Variant p_command) {
+	// Unwrap if dictionary-wrapped
+	Variant actual_command = p_command;
+	if (p_command.get_type() == Variant::DICTIONARY) {
+		Dictionary dict = p_command;
+		if (dict.has("item")) {
+			actual_command = dict["item"];
+		}
+	}
+
+	// Remove matching command from blacklist
+	for (int i = blacklisted_commands.size() - 1; i >= 0; i--) {
+		Variant blacklisted = blacklisted_commands[i];
+		Variant actual_blacklisted = blacklisted;
+		if (blacklisted.get_type() == Variant::DICTIONARY) {
+			Dictionary dict = blacklisted;
+			if (dict.has("item")) {
+				actual_blacklisted = dict["item"];
+			}
+		}
+
+		// Compare Arrays element by element
+		if (actual_command.get_type() == Variant::ARRAY && actual_blacklisted.get_type() == Variant::ARRAY) {
+			Array cmd_arr = actual_command;
+			Array blacklisted_arr = actual_blacklisted;
+			if (cmd_arr.size() == blacklisted_arr.size()) {
+				bool match = true;
+				for (int j = 0; j < cmd_arr.size(); j++) {
+					if (cmd_arr[j] != blacklisted_arr[j]) {
+						match = false;
+						break;
+					}
+				}
+				if (match) {
+					blacklisted_commands.remove_at(i);
+					if (verbose >= 2) {
+						print_line("Cleared blacklist for command: " + _item_to_string(p_command));
+					}
+				}
+			}
+		}
 	}
 }
 

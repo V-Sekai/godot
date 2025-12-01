@@ -130,6 +130,87 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		// Found a CLOSED node with available methods, retry it
 		Dictionary closed_node = p_graph.get_node(closed_node_id);
 		
+		// CRITICAL: Before reopening, blacklist the method array that this node used
+		// This ensures that when the node is reopened, it will skip the method that led to failure
+		// and try the next method instead (TLA+ model insight)
+		TypedArray<Variant> updated_blacklist = p_blacklisted_commands;
+		if (closed_node.has("created_subtasks")) {
+			Array created_subtasks = closed_node["created_subtasks"];
+			if (created_subtasks.size() > 0) {
+				// Store a deep copy to avoid reference issues
+				Array subtasks_copy = created_subtasks.duplicate(true);
+				// Check if not already blacklisted to avoid duplicates (using nested comparison)
+				bool already_blacklisted = false;
+				for (int i = 0; i < updated_blacklist.size(); i++) {
+					Variant blacklisted = updated_blacklist[i];
+					if (blacklisted.get_type() == Variant::ARRAY) {
+						Array blacklisted_arr = blacklisted;
+						if (blacklisted_arr.size() == subtasks_copy.size()) {
+							bool match = true;
+							for (int j = 0; j < subtasks_copy.size(); j++) {
+								Variant subtask_elem = subtasks_copy[j];
+								Variant blacklisted_elem = blacklisted_arr[j];
+								// Nested array comparison
+								if (subtask_elem.get_type() == Variant::ARRAY && blacklisted_elem.get_type() == Variant::ARRAY) {
+									Array subtask_elem_arr = subtask_elem;
+									Array blacklisted_elem_arr = blacklisted_elem;
+									if (subtask_elem_arr.size() != blacklisted_elem_arr.size()) {
+										match = false;
+										break;
+									}
+									for (int k = 0; k < subtask_elem_arr.size(); k++) {
+										if (subtask_elem_arr[k] != blacklisted_elem_arr[k]) {
+											match = false;
+											break;
+										}
+									}
+									if (!match) {
+										break;
+									}
+								} else if (subtask_elem != blacklisted_elem) {
+									match = false;
+									break;
+								}
+							}
+							if (match) {
+								already_blacklisted = true;
+								break;
+							}
+						}
+					}
+				}
+				if (!already_blacklisted) {
+					updated_blacklist.push_back(subtasks_copy);
+					if (p_verbose >= 2) {
+						String subtasks_str = "[";
+						for (int idx = 0; idx < subtasks_copy.size() && idx < 3; idx++) {
+							Variant elem = subtasks_copy[idx];
+							if (elem.get_type() == Variant::ARRAY) {
+								Array elem_arr = elem;
+								subtasks_str += "[";
+								for (int k = 0; k < elem_arr.size() && k < 3; k++) {
+									subtasks_str += String(elem_arr[k]);
+									if (k < elem_arr.size() - 1 && k < 2) subtasks_str += ", ";
+								}
+								subtasks_str += "]";
+							} else {
+								subtasks_str += String(elem);
+							}
+							if (idx < subtasks_copy.size() - 1 && idx < 2) subtasks_str += ", ";
+						}
+						if (subtasks_copy.size() > 3) subtasks_str += "...";
+						subtasks_str += "]";
+						print_line(vformat("Backtracking: Blacklisted reopened node %d's created_subtasks: %s (size %d)", 
+							closed_node_id, subtasks_str, subtasks_copy.size()));
+					}
+				} else {
+					if (p_verbose >= 2) {
+						print_line(vformat("Backtracking: Node %d's created_subtasks already blacklisted, skipping", closed_node_id));
+					}
+				}
+			}
+		}
+		
 		// Set to OPEN
 		p_graph.set_node_status(closed_node_id, PlannerNodeStatus::STATUS_OPEN);
 		
@@ -137,8 +218,13 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		PlannerGraphOperations::remove_descendants(p_graph, closed_node_id);
 		
 		// Reset selected_method (IPyHOP-style)
-		// Don't reset state - preserve it for potential restoration
+		// Clear state snapshot so we use the current state (with successful actions) instead of restoring old state
+		// This is critical: when reopening to try a different method, we want to preserve progress from previous attempts
 		closed_node["selected_method"] = Variant();
+		closed_node["state"] = Dictionary(); // Clear state snapshot - use current state instead
+		closed_node["stn_snapshot"] = Variant(); // Clear STN snapshot too
+		// Clear created_subtasks since we're trying a different method
+		closed_node["created_subtasks"] = Variant();
 		p_graph.update_node(closed_node_id, closed_node);
 		
 		// Find the predecessor of the closed node to return as parent
@@ -151,7 +237,7 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 		// Preserve the current state which includes successful actions from this method
 		// This is the state at the point of failure, which includes all successful actions
 		result.state = p_state;
-		result.blacklisted_commands = p_blacklisted_commands;
+		result.blacklisted_commands = updated_blacklist;
 		return result;
 	}
 
@@ -208,12 +294,15 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 			// This ensures old nodes from previous attempts are removed from the graph
 			PlannerGraphOperations::remove_descendants(p_graph, new_parent_node_id);
 
-			// Reset selected_method and state (IPyHOP-style)
-			// This allows the node to try all methods again from the beginning
+			// Reset selected_method and clear state snapshot (IPyHOP-style)
+			// Clear state snapshot so we use the current state (with successful actions) instead of restoring old state
+			// This allows the node to try all methods again from the beginning, but with current state
 			// Re-fetch node to get latest state after status change
 			Dictionary updated_node = p_graph.get_node(new_parent_node_id);
 			updated_node["selected_method"] = Variant();
-			updated_node["state"] = Dictionary();
+			updated_node["state"] = Dictionary(); // Clear state snapshot - use current state instead
+			updated_node["stn_snapshot"] = Variant(); // Clear STN snapshot too
+			updated_node["created_subtasks"] = Variant(); // Clear created_subtasks
 			p_graph.update_node(new_parent_node_id, updated_node);
 
 			BacktrackResult result;
