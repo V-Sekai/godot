@@ -41,3 +41,4 @@
 
 // Problem/integration tests
 #include "problems/isekai_academy_problem.h"
+#include "problems/blocks_world_problem.h"
