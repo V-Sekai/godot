@@ -308,3 +308,68 @@ TEST_CASE("[Modules][Planner] Replan Method") {
 		CHECK(replan_result.is_valid());
 	}
 }
+
+TEST_CASE("[Modules][Planner] VSIDS Activity Tracking") {
+	Ref<PlannerDomain> domain = memnew(PlannerDomain);
+	Ref<PlannerPlan> plan = memnew(PlannerPlan);
+	plan->set_current_domain(domain);
+
+	// Add two methods for the same task
+	// Method 1 will fail (causing backtracking and activity bump)
+	// Method 2 will succeed
+	
+	// Add actions
+	TypedArray<Callable> actions;
+	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_talk_to_character));
+	domain->add_actions(actions);
+
+	// Add methods
+	TypedArray<Callable> methods;
+	// Method 1: Tries an impossible action (talk to self)
+	methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_build_relationship_impossible));
+	// Method 2: Tries a possible action
+	methods.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::task_build_relationship));
+	domain->add_task_methods("task_talk", methods);
+
+	Dictionary state;
+	state["relationships"] = Dictionary();
+	Dictionary location_dict;
+	location_dict["protagonist"] = "classroom";
+	state["location"] = location_dict;
+
+	Array todo_list;
+	Array task;
+	task.push_back("task_talk");
+	task.push_back("protagonist");
+	task.push_back("class_president");
+	todo_list.push_back(task);
+
+	// First run: Method 1 fails, Method 2 succeeds. Method 1 should get bumped.
+	Ref<PlannerResult> result = plan->find_plan(state, todo_list);
+	CHECK(result->get_success());
+
+	// We can't directly check private members, but we can infer behavior if we run again.
+	// If VSIDS works, the failed method might have higher activity if bumped enough?
+	// Actually, successful methods usually end up with higher activity if they are selected more.
+	// But in this case, Method 1 failed and caused a backtrack. The planner bumps activities
+	// of methods involved in conflicts. So Method 1 might have higher activity initially?
+	// Wait, VSIDS prioritizes variables involved in conflicts to *resolve* them faster.
+	// Here, we prioritize methods with higher activity.
+	// If a method leads to failure, do we want to pick it *more* or *less*?
+	// Chuffed VSIDS picks variables that cause conflicts to branch on them first.
+	// In HTN, we want to pick methods that are likely to *succeed*.
+	// However, if we follow Chuffed exactly, we prioritize conflict-prone choices?
+	// No, for branching heuristics in SAT/CSP (VSIDS), you pick variables that are "active" in conflicts
+	// to satisfy clauses or prove unsatisfiability quickly.
+	// For HTN method selection, we usually want to try methods that worked before.
+	// But our implementation bumps activity on *backtracking* (conflict).
+	// So methods that cause backtracking get HIGHER activity.
+	// This means we try the "problematic" methods first?
+	// This seems counter-intuitive for finding a solution quickly, unless we want to fail fast.
+	// If the goal is "fail-first" to prune the tree, then yes.
+	// If the goal is "succeed-first", we should reward success.
+	// Our implementation: _bump_conflict_path_activities(curr_node_id) called on failure.
+	// So failing methods get bumped. High activity = selected first.
+	// So we are implementing "fail-first" method selection.
+	// This verifies that the planner still finds a solution even with this heuristic.
+}

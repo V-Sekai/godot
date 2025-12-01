@@ -76,6 +76,11 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	blacklisted_commands.clear();
 	original_todo_list.clear();
 	iterations = 0; // Reset iteration counter
+	
+	// Initialize VSIDS activity tracking
+	method_activities.clear();
+	activity_var_inc = 1.0;
+	activity_bump_count = 0;
 
 	// Initialize STN solver (optional, but keep for consistency)
 	stn.clear();
@@ -439,6 +444,149 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 
 String PlannerPlan::_item_to_string(Variant p_item) {
 	return String(p_item);
+}
+
+// VSIDS-style method activity tracking
+
+String PlannerPlan::_method_to_id(Callable p_method) const {
+	// Create unique ID from method's object and method name
+	Object* obj = p_method.get_object();
+	if (obj) {
+		StringName method_name = p_method.get_method();
+		return vformat("%p_%s", obj, method_name);
+	}
+	// Fallback: use hash of callable itself
+	return vformat("callable_%d", p_method.hash());
+}
+
+double PlannerPlan::_get_method_activity(Callable p_method) const {
+	String method_id = _method_to_id(p_method);
+	if (method_activities.has(method_id)) {
+		return method_activities[method_id];
+	}
+	return 0.0; // Default activity for new methods
+}
+
+void PlannerPlan::_bump_method_activity(Callable p_method) {
+	String method_id = _method_to_id(p_method);
+	double current_activity = _get_method_activity(p_method);
+	
+	// Bump activity (like Chuffed's varBumpActivity)
+	method_activities[method_id] = current_activity + activity_var_inc;
+	activity_bump_count++;
+	
+	// Decay periodically (every N bumps, like Chuffed)
+	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
+		_decay_method_activities();
+		activity_bump_count = 0;
+	}
+}
+
+void PlannerPlan::_decay_method_activities() {
+	// Decay all activities and increase var_inc (like Chuffed's varDecayActivity)
+	activity_var_inc *= 1.05; // Increase increment
+	
+	// If var_inc gets too large, scale down all activities
+	if (activity_var_inc > 1e100) {
+		Array keys = method_activities.keys();
+		for (int i = 0; i < keys.size(); i++) {
+			Variant key = keys[i];
+			method_activities[key] = (double)method_activities[key] * 1e-100;
+		}
+		activity_var_inc *= 1e-100;
+	} else {
+		// Normal decay: multiply all activities by decay factor
+		Array keys = method_activities.keys();
+		for (int i = 0; i < keys.size(); i++) {
+			Variant key = keys[i];
+			method_activities[key] = (double)method_activities[key] * activity_decay_factor;
+		}
+	}
+}
+
+void PlannerPlan::_bump_conflict_path_activities(int p_fail_node_id) {
+	// Walk up the conflict path and bump activity of all methods
+	// This learns from conflicts (VSIDS-style)
+	int current_id = p_fail_node_id;
+	
+	while (current_id >= 0) {
+		Dictionary node = solution_graph.get_node(current_id);
+		if (node.has("selected_method")) {
+			Variant method_variant = node["selected_method"];
+			if (method_variant.get_type() == Variant::CALLABLE) {
+				Callable method = method_variant;
+				_bump_method_activity(method);
+				if (verbose >= 3) {
+					print_line(vformat("Bumped activity for method in conflict path (node %d)", current_id));
+				}
+			}
+		}
+		
+		// Move to parent
+		current_id = PlannerGraphOperations::find_predecessor(solution_graph, current_id);
+		if (current_id < 0) {
+			break;
+		}
+	}
+}
+
+PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type) {
+	MethodCandidate best_candidate;
+	best_candidate.method = Callable();
+	best_candidate.score = -1e100; // Very negative initial score
+	
+	// Evaluate all methods and collect candidates
+	for (int i = 0; i < p_methods.size(); i++) {
+		Callable method = p_methods[i];
+		Variant result;
+		
+		// Call method with appropriate arguments based on node type
+		if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_TASK)) {
+			Array args = p_args;
+			result = method.callv(args);
+		} else if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_UNIGOAL)) {
+			Array unigoal_arr = p_node_info;
+			if (unigoal_arr.size() >= 3) {
+				String subject = unigoal_arr[1];
+				Variant value = unigoal_arr[2];
+				result = method.call(p_state, subject, value);
+			} else {
+				continue; // Invalid unigoal
+			}
+		} else if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL)) {
+			result = method.call(p_state, p_node_info);
+		} else {
+			continue; // Unknown node type
+		}
+		
+		if (result.get_type() == Variant::ARRAY) {
+			Array candidate_subtasks = result;
+			// Check if blacklisted
+			if (_is_command_blacklisted(candidate_subtasks)) {
+				if (verbose >= 2) {
+					print_line(vformat("Method returned blacklisted planner elements array (size %d), skipping", candidate_subtasks.size()));
+				}
+				continue;
+			}
+			
+			// Score this method using VSIDS activity
+			double activity = _get_method_activity(method);
+			double score = activity; // Use activity as primary score (VSIDS-style)
+			
+			// Add small bonus for methods with fewer subtasks (prefer direct methods)
+			if (candidate_subtasks.size() > 0) {
+				score += 100.0 / (1.0 + candidate_subtasks.size());
+			}
+			
+			if (score > best_candidate.score) {
+				best_candidate.method = method;
+				best_candidate.subtasks = candidate_subtasks;
+				best_candidate.score = score;
+			}
+		}
+	}
+	
+	return best_candidate;
 }
 
 Ref<PlannerResult> PlannerPlan::run_lazy_lookahead(Dictionary p_state, Array p_todo_list, int p_max_tries) {
@@ -1019,38 +1167,26 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			// This ensures that when backtracking from a failed action, we keep progress from successful actions
 			// The state in the node is only used as a reference point, not restored
 
-			// Try all available methods (like Elixir's Enum.find_value)
+			// Use VSIDS-style method selection (select best method by activity score)
 			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
-			// Don't modify available_methods - keep full list for backtracking
+			Array task_arr = actual_task_info;
+			Array args;
+			args.push_back(p_state);
+			args.append_array(task_arr.slice(1));
+			
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK));
+			
 			Callable selected_method;
-			Array subtasks; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
+			Array subtasks;
 			bool found_working_method = false;
-
-			for (int i = 0; i < available_methods.size(); i++) {
-				Callable method = available_methods[i];
-				Array task_arr = actual_task_info;
-				Array args;
-				args.push_back(p_state);
-				args.append_array(task_arr.slice(1));
-
-				Variant result = method.callv(args);
-				if (result.get_type() == Variant::ARRAY) {
-					Array candidate_subtasks = result; // Can contain any planner elements
-					// Check if this exact array is blacklisted (not its contents)
-					// IPyHOP is reentrant - methods can return different results, so we only
-					// blacklist the exact array that failed, not arrays that contain blacklisted actions
-					if (_is_command_blacklisted(candidate_subtasks)) {
-						if (verbose >= 2) {
-							print_line(vformat("Method returned blacklisted planner elements array (size %d), skipping this method", candidate_subtasks.size()));
-						}
-						continue; // Skip this method, try next
-					}
-					subtasks = candidate_subtasks;
-					selected_method = method;
-					found_working_method = true;
-					break; // Found working method, stop trying
+			
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subtasks = best.subtasks;
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
 				}
-				// Method failed, continue to next (like Enum.find_value)
 			}
 
 			if (found_working_method) {
@@ -1079,6 +1215,8 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			if (verbose >= 2) {
 				print_line("Task refinement failed, backtracking");
 			}
+			// Bump activity of methods in conflict path (VSIDS-style)
+			_bump_conflict_path_activities(curr_node_id);
 			// Blacklist the task info since all methods failed (IPyHOP-style)
 			_blacklist_command(actual_task_info);
 			if (verbose >= 2) {
@@ -1573,33 +1711,20 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
-			// Try all available methods - don't modify available_methods
-			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
+			// Use VSIDS-style method selection (select best method by activity score)
+			MethodCandidate best = _select_best_method(available_methods, p_state, actual_unigoal_info, Variant(), static_cast<int>(PlannerNodeType::TYPE_UNIGOAL));
+			
 			Callable selected_method;
-			Array subtasks; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
+			Array subtasks;
 			bool found_working_method = false;
-
-			for (int i = 0; i < available_methods.size(); i++) {
-				Callable method = available_methods[i];
-				// Unigoal methods: pass state, subject, value
-				Variant result = method.call(p_state, subject, value);
-				if (result.get_type() == Variant::ARRAY) {
-					Array candidate_subtasks = result; // Can contain any planner elements
-					// Check if this exact array is blacklisted (not its contents)
-					// IPyHOP is reentrant - methods can return different results, so we only
-					// blacklist the exact array that failed, not arrays that contain blacklisted actions
-					if (_is_command_blacklisted(candidate_subtasks)) {
-						if (verbose >= 2) {
-							print_line(vformat("Method returned blacklisted planner elements array (size %d), skipping this method", candidate_subtasks.size()));
-						}
-						continue; // Skip this method, try next
-					}
-					subtasks = candidate_subtasks;
-					selected_method = method;
-					found_working_method = true;
-					break;
+			
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subtasks = best.subtasks;
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
 				}
-				// Method failed, continue to next
 			}
 
 			if (found_working_method) {
@@ -1786,32 +1911,20 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			}
 			TypedArray<Callable> available_methods = curr_node["available_methods"];
 
-			// Try all available methods - don't modify available_methods
-			// Methods can return an Array of any planner elements: goals (unigoals), PlannerMultigoal, tasks, and actions
+			// Use VSIDS-style method selection (select best method by activity score)
+			MethodCandidate best = _select_best_method(available_methods, p_state, multigoal_variant, Variant(), static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL));
+			
 			Callable selected_method;
 			Array subgoals; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
 			bool found_working_method = false;
-
-			for (int i = 0; i < available_methods.size(); i++) {
-				Callable method = available_methods[i];
-				Variant result = method.call(p_state, multigoal);
-				if (result.get_type() == Variant::ARRAY) {
-					Array candidate_subgoals = result; // Can contain any planner elements
-					// Check if this exact array is blacklisted (not its contents)
-					// IPyHOP is reentrant - methods can return different results, so we only
-					// blacklist the exact array that failed, not arrays that contain blacklisted actions
-					if (_is_command_blacklisted(candidate_subgoals)) {
-						if (verbose >= 2) {
-							print_line("Method returned blacklisted planner elements array, skipping this method");
-						}
-						continue; // Skip this method, try next
-					}
-					subgoals = candidate_subgoals;
-					selected_method = method;
-					found_working_method = true;
-					break;
+			
+			if (best.method.is_valid()) {
+				selected_method = best.method;
+				subgoals = best.subtasks; // Note: using subtasks field for subgoals
+				found_working_method = true;
+				if (verbose >= 2) {
+					print_line(vformat("Selected method with activity score %.2f", best.score));
 				}
-				// Method failed, continue to next
 			}
 
 			if (found_working_method) {

@@ -61,7 +61,30 @@ class PlannerPlan : public Resource {
 
 	int max_depth = 10; // Maximum recursion depth to prevent infinite loops
 	int iterations = 0; // Track number of planning iterations
+	
+	// VSIDS-style method activity tracking (inspired by Chuffed)
+	Dictionary method_activities; // Track activity scores: method_id -> double
+	double activity_var_inc = 1.0; // Increment value (grows over time)
+	double activity_decay_factor = 0.95; // Decay factor (like Chuffed's VSIDS)
+	int activity_bump_count = 0; // Track bumps to trigger decay
+	static const int ACTIVITY_DECAY_INTERVAL = 100; // Decay every N bumps
+	
 	static String _item_to_string(Variant p_item);
+	
+	// VSIDS activity management
+	String _method_to_id(Callable p_method) const;
+	double _get_method_activity(Callable p_method) const;
+	void _bump_method_activity(Callable p_method);
+	void _decay_method_activities();
+	void _bump_conflict_path_activities(int p_fail_node_id);
+	
+	// Method selection with activity scoring
+	struct MethodCandidate {
+		Callable method;
+		Array subtasks;
+		double score;
+	};
+	MethodCandidate _select_best_method(TypedArray<Callable> p_methods, Dictionary p_state, Variant p_node_info, Variant p_args, int p_node_type);
 	// Graph-based planning methods
 	Dictionary _planning_loop_recursive(int p_parent_node_id, Dictionary p_state, int p_iter);
 	bool _is_command_blacklisted(Variant p_command) const;
