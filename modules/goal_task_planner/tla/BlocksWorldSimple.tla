@@ -10,7 +10,7 @@ ASSUME Table = "table"
 
 VARIABLES state, plan, steps
 
-InitState == 
+InitState ==
     /\ state = [pos |-> [x \in Blocks |-> IF x = "a" THEN "b" ELSE IF x = "b" THEN Table ELSE Table],
                 clear |-> [x \in Blocks |-> IF x = "a" THEN TRUE ELSE IF x = "b" THEN FALSE ELSE TRUE],
                 holding |-> [x \in {"hand"} |-> FALSE]]
@@ -81,4 +81,3 @@ OptimalPlan == Len(plan) = 6
 InefficientPlan == Len(plan) > 10
 
 ====
-

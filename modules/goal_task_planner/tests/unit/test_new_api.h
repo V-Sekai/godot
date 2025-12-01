@@ -317,7 +317,7 @@ TEST_CASE("[Modules][Planner] VSIDS Activity Tracking") {
 	// Add two methods for the same task
 	// Method 1 will fail (causing backtracking and activity bump)
 	// Method 2 will succeed
-	
+
 	// Add actions
 	TypedArray<Callable> actions;
 	actions.push_back(callable_mp_static(&IsekaiAcademyDomainCallable::action_talk_to_character));

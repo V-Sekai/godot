@@ -13,7 +13,7 @@ ASSUME Table = "table"
 VARIABLES pos, clear, holding, plan, iterations
 
 (* Initial state: a on b, b on table, c on table *)
-InitState == 
+InitState ==
     /\ pos = [x \in Blocks |-> IF x = "a" THEN "b" ELSE Table]
     /\ clear = [x \in Blocks |-> IF x = "a" THEN TRUE ELSE IF x = "b" THEN FALSE ELSE TRUE]
     /\ holding = [x \in {"hand"} |-> FALSE]
@@ -87,7 +87,7 @@ Next ==
 Spec == InitState /\ [][Next]_<<pos, clear, holding, plan, iterations>>
 
 (* Property: Plan should reach goal state *)
-GoalReached == 
+GoalReached ==
     /\ pos["a"] = Table
     /\ pos["b"] = "a"
     /\ pos["c"] = "b"
@@ -100,7 +100,7 @@ GoalReached ==
 OptimalPlan == Len(plan) = 6
 
 (* Expected optimal plan: unstack(a,b), putdown(a), pickup(b), stack(b,a), pickup(c), stack(c,b) *)
-ExpectedPlan == 
+ExpectedPlan ==
     plan = <<["action_unstack", "a", "b"],
              ["action_putdown", "a"],
              ["action_pickup", "b"],
@@ -109,7 +109,7 @@ ExpectedPlan ==
              ["action_stack", "c", "b"]>>
 
 (* Check if current plan is a valid path to goal *)
-ValidPlan == 
+ValidPlan ==
     /\ GoalReached
     /\ Len(plan) >= 6
     /\ Len(plan) <= 20  (* Reasonable upper bound *)
@@ -118,5 +118,3 @@ ValidPlan ==
 InefficientPlanning == iterations > 50
 
 ====
-
-

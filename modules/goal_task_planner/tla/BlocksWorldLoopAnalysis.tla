@@ -72,4 +72,3 @@ LoopInvariant ==
     \A b \in Blocks : pos[b] \in Blocks \cup {Table}
 
 ====
-

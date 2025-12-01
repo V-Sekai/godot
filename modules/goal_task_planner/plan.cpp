@@ -76,7 +76,7 @@ Ref<PlannerResult> PlannerPlan::find_plan(Dictionary p_state, Array p_todo_list)
 	blacklisted_commands.clear();
 	original_todo_list.clear();
 	iterations = 0; // Reset iteration counter
-	
+
 	// Initialize VSIDS activity tracking
 	method_activities.clear();
 	activity_var_inc = 1.0;
@@ -450,7 +450,7 @@ String PlannerPlan::_item_to_string(Variant p_item) {
 
 String PlannerPlan::_method_to_id(Callable p_method) const {
 	// Create unique ID from method's object and method name
-	Object* obj = p_method.get_object();
+	Object *obj = p_method.get_object();
 	if (obj) {
 		StringName method_name = p_method.get_method();
 		return vformat("%p_%s", obj, method_name);
@@ -470,11 +470,11 @@ double PlannerPlan::_get_method_activity(Callable p_method) const {
 void PlannerPlan::_bump_method_activity(Callable p_method) {
 	String method_id = _method_to_id(p_method);
 	double current_activity = _get_method_activity(p_method);
-	
+
 	// Bump activity (like Chuffed's varBumpActivity)
 	method_activities[method_id] = current_activity + activity_var_inc;
 	activity_bump_count++;
-	
+
 	// Decay periodically (every N bumps, like Chuffed)
 	if (activity_bump_count >= ACTIVITY_DECAY_INTERVAL) {
 		_decay_method_activities();
@@ -485,7 +485,7 @@ void PlannerPlan::_bump_method_activity(Callable p_method) {
 void PlannerPlan::_decay_method_activities() {
 	// Decay all activities and increase var_inc (like Chuffed's varDecayActivity)
 	activity_var_inc *= 1.05; // Increase increment
-	
+
 	// If var_inc gets too large, scale down all activities
 	if (activity_var_inc > 1e100) {
 		Array keys = method_activities.keys();
@@ -508,7 +508,7 @@ void PlannerPlan::_bump_conflict_path_activities(int p_fail_node_id) {
 	// Walk up the conflict path and bump activity of all methods
 	// This learns from conflicts (VSIDS-style)
 	int current_id = p_fail_node_id;
-	
+
 	while (current_id >= 0) {
 		Dictionary node = solution_graph.get_node(current_id);
 		if (node.has("selected_method")) {
@@ -521,7 +521,7 @@ void PlannerPlan::_bump_conflict_path_activities(int p_fail_node_id) {
 				}
 			}
 		}
-		
+
 		// Move to parent
 		current_id = PlannerGraphOperations::find_predecessor(solution_graph, current_id);
 		if (current_id < 0) {
@@ -534,12 +534,12 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 	MethodCandidate best_candidate;
 	best_candidate.method = Callable();
 	best_candidate.score = -1e100; // Very negative initial score
-	
+
 	// Evaluate all methods and collect candidates
 	for (int i = 0; i < p_methods.size(); i++) {
 		Callable method = p_methods[i];
 		Variant result;
-		
+
 		// Call method with appropriate arguments based on node type
 		if (p_node_type == static_cast<int>(PlannerNodeType::TYPE_TASK)) {
 			Array args = p_args;
@@ -558,7 +558,7 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 		} else {
 			continue; // Unknown node type
 		}
-		
+
 		if (result.get_type() == Variant::ARRAY) {
 			Array candidate_subtasks = result;
 			// Check if blacklisted
@@ -568,16 +568,16 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 				}
 				continue;
 			}
-			
+
 			// Score this method using VSIDS activity
 			double activity = _get_method_activity(method);
 			double score = activity; // Use activity as primary score (VSIDS-style)
-			
+
 			// Add small bonus for methods with fewer subtasks (prefer direct methods)
 			if (candidate_subtasks.size() > 0) {
 				score += 100.0 / (1.0 + candidate_subtasks.size());
 			}
-			
+
 			if (score > best_candidate.score) {
 				best_candidate.method = method;
 				best_candidate.subtasks = candidate_subtasks;
@@ -585,7 +585,7 @@ PlannerPlan::MethodCandidate PlannerPlan::_select_best_method(TypedArray<Callabl
 			}
 		}
 	}
-	
+
 	return best_candidate;
 }
 
@@ -1173,13 +1173,13 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			Array args;
 			args.push_back(p_state);
 			args.append_array(task_arr.slice(1));
-			
+
 			MethodCandidate best = _select_best_method(available_methods, p_state, actual_task_info, args, static_cast<int>(PlannerNodeType::TYPE_TASK));
-			
+
 			Callable selected_method;
 			Array subtasks;
 			bool found_working_method = false;
-			
+
 			if (best.method.is_valid()) {
 				selected_method = best.method;
 				subtasks = best.subtasks;
@@ -1713,11 +1713,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			// Use VSIDS-style method selection (select best method by activity score)
 			MethodCandidate best = _select_best_method(available_methods, p_state, actual_unigoal_info, Variant(), static_cast<int>(PlannerNodeType::TYPE_UNIGOAL));
-			
+
 			Callable selected_method;
 			Array subtasks;
 			bool found_working_method = false;
-			
+
 			if (best.method.is_valid()) {
 				selected_method = best.method;
 				subtasks = best.subtasks;
@@ -1913,11 +1913,11 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 
 			// Use VSIDS-style method selection (select best method by activity score)
 			MethodCandidate best = _select_best_method(available_methods, p_state, multigoal_variant, Variant(), static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL));
-			
+
 			Callable selected_method;
 			Array subgoals; // Array of planner elements (goals, multigoals, tasks, actions) returned by method
 			bool found_working_method = false;
-			
+
 			if (best.method.is_valid()) {
 				selected_method = best.method;
 				subgoals = best.subtasks; // Note: using subtasks field for subgoals

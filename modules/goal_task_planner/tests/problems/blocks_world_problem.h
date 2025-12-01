@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  blocks_world_problem.h                                                 */
+/*  blocks_world_problem.h                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -46,13 +46,13 @@ bool verify_plan_achieves_goal(Ref<PlannerPlan> plan, Dictionary init_state, Dic
 	Ref<PlannerResult> temp_result = memnew(PlannerResult);
 	temp_result->set_success(true);
 	temp_result->set_final_state(init_state);
-	
+
 	// Create a minimal solution graph for simulation with proper successors links
 	Dictionary graph;
 	Dictionary root_node;
 	root_node["type"] = static_cast<int>(PlannerNodeType::TYPE_ROOT);
 	root_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
-	
+
 	// Link action nodes in sequence: root -> action1 -> action2 -> ... -> actionN
 	Array root_successors;
 	if (plan_result.size() > 0) {
@@ -60,44 +60,44 @@ bool verify_plan_achieves_goal(Ref<PlannerPlan> plan, Dictionary init_state, Dic
 	}
 	root_node["successors"] = root_successors;
 	graph[0] = root_node;
-	
+
 	// Add action nodes with proper successors links
 	for (int i = 0; i < plan_result.size(); i++) {
 		Dictionary action_node;
 		action_node["type"] = static_cast<int>(PlannerNodeType::TYPE_ACTION);
 		action_node["status"] = static_cast<int>(PlannerNodeStatus::STATUS_CLOSED);
 		action_node["info"] = plan_result[i];
-		
+
 		// Link to next action (if not last)
 		Array action_successors;
 		if (i < plan_result.size() - 1) {
 			action_successors.push_back(i + 2); // Next action node (i+1+1 because root is 0)
 		}
 		action_node["successors"] = action_successors;
-		
+
 		graph[i + 1] = action_node;
 	}
-	
+
 	temp_result->set_solution_graph(graph);
-	
+
 	// Simulate plan execution
 	Array state_sequence = plan->simulate(temp_result, init_state, 0);
 	if (state_sequence.is_empty()) {
 		return false;
 	}
-	
+
 	// Get final state
 	Dictionary final_state = state_sequence[state_sequence.size() - 1];
-	
+
 	// Check if goal is achieved
 	Dictionary goal_pos = goal.get("pos", Dictionary());
 	Dictionary goal_clear = goal.get("clear", Dictionary());
 	Dictionary goal_holding = goal.get("holding", Dictionary());
-	
+
 	Dictionary final_pos = final_state.get("pos", Dictionary());
 	Dictionary final_clear = final_state.get("clear", Dictionary());
 	Dictionary final_holding = final_state.get("holding", Dictionary());
-	
+
 	// Check all goal positions
 	Array goal_pos_keys = goal_pos.keys();
 	for (int i = 0; i < goal_pos_keys.size(); i++) {
@@ -107,7 +107,7 @@ bool verify_plan_achieves_goal(Ref<PlannerPlan> plan, Dictionary init_state, Dic
 			return false;
 		}
 	}
-	
+
 	// Check goal clear states (if specified)
 	if (!goal_clear.is_empty()) {
 		Array goal_clear_keys = goal_clear.keys();
@@ -119,7 +119,7 @@ bool verify_plan_achieves_goal(Ref<PlannerPlan> plan, Dictionary init_state, Dic
 			}
 		}
 	}
-	
+
 	// Check holding state (if specified)
 	if (!goal_holding.is_empty() && goal_holding.has("hand")) {
 		bool goal_hand = goal_holding["hand"];
@@ -127,60 +127,60 @@ bool verify_plan_achieves_goal(Ref<PlannerPlan> plan, Dictionary init_state, Dic
 			return false;
 		}
 	}
-	
+
 	return true;
 }
 
 // Helper: Create initial state 1 (small problem)
 Dictionary create_init_state_1() {
 	Dictionary state;
-	
+
 	Dictionary pos;
 	pos["a"] = "b";
 	pos["b"] = "table";
 	pos["c"] = "table";
 	state["pos"] = pos;
-	
+
 	Dictionary clear;
 	clear["c"] = true;
 	clear["b"] = false;
 	clear["a"] = true;
 	state["clear"] = clear;
-	
+
 	Dictionary holding;
 	holding["hand"] = false;
 	state["holding"] = holding;
-	
+
 	return state;
 }
 
 // Helper: Create goal 1a
 Dictionary create_goal1a() {
 	Dictionary goal;
-	
+
 	Dictionary pos;
 	pos["c"] = "b";
 	pos["b"] = "a";
 	pos["a"] = "table";
 	goal["pos"] = pos;
-	
+
 	Dictionary clear;
 	clear["c"] = true;
 	clear["b"] = false;
 	clear["a"] = false;
 	goal["clear"] = clear;
-	
+
 	Dictionary holding;
 	holding["hand"] = false;
 	goal["holding"] = holding;
-	
+
 	return goal;
 }
 
 // Helper: Create initial state 3 (large benchmark problem)
 Dictionary create_init_state_3() {
 	Dictionary state;
-	
+
 	Dictionary pos;
 	// Stack 1: 1->12->13->table
 	pos[1] = 12;
@@ -205,9 +205,9 @@ Dictionary create_init_state_3() {
 	pos[16] = 3;
 	pos[3] = 2;
 	pos[2] = "table";
-	
+
 	state["pos"] = pos;
-	
+
 	Dictionary clear;
 	for (int i = 1; i < 20; i++) {
 		clear[i] = false;
@@ -217,18 +217,18 @@ Dictionary create_init_state_3() {
 	clear[9] = true;
 	clear[19] = true;
 	state["clear"] = clear;
-	
+
 	Dictionary holding;
 	holding["hand"] = false;
 	state["holding"] = holding;
-	
+
 	return state;
 }
 
 // Helper: Create goal 3 (large benchmark problem)
 Dictionary create_goal3() {
 	Dictionary goal;
-	
+
 	Dictionary pos;
 	pos[15] = 13;
 	pos[13] = 8;
@@ -243,20 +243,20 @@ Dictionary create_goal3() {
 	pos[7] = 6;
 	pos[6] = "table";
 	goal["pos"] = pos;
-	
+
 	Dictionary clear;
 	clear[17] = true;
 	clear[15] = true;
 	clear[12] = true;
 	goal["clear"] = clear;
-	
+
 	return goal;
 }
 
 // Helper: Setup blocks world domain
 Ref<PlannerDomain> create_blocks_world_domain() {
 	Ref<PlannerDomain> domain = memnew(PlannerDomain);
-	
+
 	// Register actions
 	TypedArray<Callable> actions;
 	actions.push_back(callable_mp_static(&BlocksWorldDomainCallable::action_pickup));
@@ -264,24 +264,24 @@ Ref<PlannerDomain> create_blocks_world_domain() {
 	actions.push_back(callable_mp_static(&BlocksWorldDomainCallable::action_putdown));
 	actions.push_back(callable_mp_static(&BlocksWorldDomainCallable::action_stack));
 	domain->add_actions(actions);
-	
+
 	// Register task methods
 	TypedArray<Callable> move_blocks_methods;
 	move_blocks_methods.push_back(callable_mp_static(&BlocksWorldDomainCallable::task_move_blocks));
 	domain->add_task_methods("move_blocks", move_blocks_methods);
-	
+
 	TypedArray<Callable> move_one_methods;
 	move_one_methods.push_back(callable_mp_static(&BlocksWorldDomainCallable::task_move_one));
 	domain->add_task_methods("move_one", move_one_methods);
-	
+
 	TypedArray<Callable> get_methods;
 	get_methods.push_back(callable_mp_static(&BlocksWorldDomainCallable::task_get));
 	domain->add_task_methods("get", get_methods);
-	
+
 	TypedArray<Callable> put_methods;
 	put_methods.push_back(callable_mp_static(&BlocksWorldDomainCallable::task_put));
 	domain->add_task_methods("put", put_methods);
-	
+
 	return domain;
 }
 
@@ -291,37 +291,37 @@ TEST_CASE("[Modules][Planner] Blocks World - Small Problem (init_state_1, goal1a
 	plan->set_current_domain(domain);
 	plan->set_max_depth(500); // Increased depth limit for small problem
 	plan->set_verbose(2); // Enable verbose output to debug inefficiency
-	
+
 	Dictionary init_state = create_init_state_1();
 	Dictionary goal = create_goal1a();
-	
+
 	Array todo_list;
 	Array task;
 	task.push_back("move_blocks");
 	task.push_back(goal);
 	todo_list.push_back(task);
-	
+
 	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
-	
+
 	CHECK(result.is_valid());
 	CHECK(result->get_success());
-	
+
 	Array plan_result = result->extract_plan();
 	// IPyHOP finds 6 actions, but our planner may find a different valid plan
 	// Accept any plan that achieves the goal (at least 6 actions, reasonable upper bound)
 	CHECK(plan_result.size() >= 6);
 	CHECK(plan_result.size() <= 50); // Reasonable upper bound for small problem
-	
+
 	// Verify plan actually achieves the goal
 	bool plan_correct = verify_plan_achieves_goal(plan, init_state, goal, plan_result);
 	CHECK(plan_correct);
-	
+
 	// Verify plan contains expected action types
 	bool has_unstack = false;
 	bool has_putdown = false;
 	bool has_pickup = false;
 	bool has_stack = false;
-	
+
 	for (int i = 0; i < plan_result.size(); i++) {
 		Array action = plan_result[i];
 		if (action.size() > 0) {
@@ -337,7 +337,7 @@ TEST_CASE("[Modules][Planner] Blocks World - Small Problem (init_state_1, goal1a
 			}
 		}
 	}
-	
+
 	// Should use at least one pickup/unstack action
 	bool has_pickup_or_unstack = has_unstack || has_pickup;
 	CHECK(has_pickup_or_unstack);
@@ -352,37 +352,37 @@ TEST_CASE("[Modules][Planner] Blocks World - Large Benchmark (init_state_3, goal
 	plan->set_current_domain(domain);
 	plan->set_max_depth(300); // Higher depth for large problem
 	plan->set_verbose(0); // Set to 2 for debugging
-	
+
 	Dictionary init_state = create_init_state_3();
 	Dictionary goal = create_goal3();
-	
+
 	Array todo_list;
 	Array task;
 	task.push_back("move_blocks");
 	task.push_back(goal);
 	todo_list.push_back(task);
-	
+
 	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
-	
+
 	CHECK(result.is_valid());
 	CHECK(result->get_success());
-	
+
 	Array plan_result = result->extract_plan();
 	// IPyHOP finds 33 actions for bw_large_d, but our planner may find a different valid plan
 	// Accept any plan that achieves the goal (at least 20 actions, reasonable upper bound)
 	CHECK(plan_result.size() >= 20); // Minimum reasonable plan size
 	CHECK(plan_result.size() <= 150); // Reasonable upper bound for large problem
-	
+
 	// Verify plan actually achieves the goal
 	bool plan_correct = verify_plan_achieves_goal(plan, init_state, goal, plan_result);
 	CHECK(plan_correct);
-	
+
 	// Verify plan contains expected action types
 	bool has_unstack = false;
 	bool has_putdown = false;
 	bool has_pickup = false;
 	bool has_stack = false;
-	
+
 	for (int i = 0; i < plan_result.size(); i++) {
 		Array action = plan_result[i];
 		if (action.size() > 0) {
@@ -398,7 +398,7 @@ TEST_CASE("[Modules][Planner] Blocks World - Large Benchmark (init_state_3, goal
 			}
 		}
 	}
-	
+
 	CHECK(has_unstack);
 	CHECK(has_putdown);
 	CHECK(has_pickup);
@@ -411,32 +411,31 @@ TEST_CASE("[Modules][Planner] Blocks World - Performance Test") {
 	plan->set_current_domain(domain);
 	plan->set_max_depth(200);
 	plan->set_verbose(0);
-	
+
 	Dictionary init_state = create_init_state_3();
 	Dictionary goal = create_goal3();
-	
+
 	Array todo_list;
 	Array task;
 	task.push_back("move_blocks");
 	task.push_back(goal);
 	todo_list.push_back(task);
-	
+
 	// Measure iterations
 	Ref<PlannerResult> result = plan->find_plan(init_state, todo_list);
-	
+
 	CHECK(result.is_valid());
 	CHECK(result->get_success());
-	
+
 	int iterations = plan->get_iterations();
 	CHECK(iterations > 0);
-	
+
 	// Large problem should complete in reasonable iterations
 	// (exact number depends on implementation, but should be finite)
 	CHECK(iterations < 10000); // Sanity check
-	
+
 	Array plan_result = result->extract_plan();
 	CHECK(plan_result.size() > 0);
 }
 
 } // namespace TestBlocksWorld
-

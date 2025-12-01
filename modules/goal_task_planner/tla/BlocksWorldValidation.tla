@@ -8,7 +8,7 @@ EXTENDS Naturals, Sequences
 VARIABLES pos, clear, holding
 
 (* Initial state for small problem *)
-InitState1 == 
+InitState1 ==
     /\ pos = [a |-> b, b |-> "table", c |-> "table"]
     /\ clear = [a |-> TRUE, b |-> FALSE, c |-> TRUE]
     /\ holding = ["hand" |-> FALSE]
@@ -111,4 +111,3 @@ ApplyStack(state, b, c) ==
 PlanCorrectness == ExecutePlan(ExpectedPlan)
 
 ====
-

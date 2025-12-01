@@ -3,7 +3,7 @@ EXTENDS Naturals, Integers, Sequences, FiniteSets
 
 CONSTANTS Methods, MaxBumpsBeforeDecay
 
-VARIABLES 
+VARIABLES
     methodActivities,    (* Map: Method -> Int *)
     bumpCount,           (* Number of bumps since last decay *)
     selectedMethods      (* Sequence of selected methods *)
@@ -31,7 +31,7 @@ ShouldDecay == bumpCount >= MaxBumpsBeforeDecay
 
 SelectBestMethod(candidates) ==
     LET scores == [m \in candidates |-> methodActivities[m]]
-        maxScore == CHOOSE s \in {scores[m] : m \in candidates} : 
+        maxScore == CHOOSE s \in {scores[m] : m \in candidates} :
                      \A s2 \in {scores[m] : m \in candidates} : s >= s2
         bestMethod == CHOOSE m \in candidates : scores[m] = maxScore
     IN  /\ Len(selectedMethods) < 2  (* Strictly bound selection history length *)
@@ -39,13 +39,13 @@ SelectBestMethod(candidates) ==
         /\ UNCHANGED <<methodActivities, bumpCount>>
 
 BumpConflictPath(conflictPath) ==
-    LET newActivities == 
-        [m \in Methods |-> 
+    LET newActivities ==
+        [m \in Methods |->
          IF m \in conflictPath /\ methodActivities[m] < 3
          THEN methodActivities[m] + 1
          ELSE methodActivities[m]]
     IN  /\ methodActivities' = newActivities
-        /\ bumpCount' = bumpCount + 1 
+        /\ bumpCount' = bumpCount + 1
         /\ selectedMethods' = selectedMethods
 
 Next ==
