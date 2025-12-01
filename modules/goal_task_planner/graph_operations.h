@@ -59,16 +59,7 @@ public:
 	// Extract solution plan (sequence of actions) from graph
 	static Array extract_solution_plan(PlannerSolutionGraph &p_graph);
 
-	// Find first CLOSED node in reverse DFS order (for IPyHOP-style backtracking)
-	// Does a DFS preorder traversal from p_start_node_id, reverses it, and finds first CLOSED node with descendants
-	// This matches IPyHOP's reversed(dfs_preorder_nodes) behavior - includes ALL nodes in subtree, including siblings
-	// Returns node_id if found, -1 if not found
-	// p_verbose: verbosity level for logging
-	static int find_first_closed_node_dfs(PlannerSolutionGraph &p_graph, int p_start_node_id, int p_failed_node_id, int p_verbose = 0);
-
 private:
+	// Helper for remove_descendants - collects all descendant node IDs
 	static void do_get_descendants(PlannerSolutionGraph &p_graph, TypedArray<int> p_current_nodes, TypedArray<int> &p_visited, TypedArray<int> &p_result);
-	static void do_dfs_preorder(PlannerSolutionGraph &p_graph, int p_node_id, TypedArray<int> &p_visited, TypedArray<int> &p_result);
-	// Check if a CLOSED node is retriable (has available methods and successors)
-	static bool is_retriable_closed_node(PlannerSolutionGraph &p_graph, int p_node_id);
 };

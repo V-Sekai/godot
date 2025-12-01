@@ -114,9 +114,93 @@ PlannerBacktracking::BacktrackResult PlannerBacktracking::backtrack(PlannerSolut
 	// This matches IPyHOP's _backtrack behavior (ipyhop/planner.py lines 401-410)
 	// The DFS includes ALL nodes in the subtree rooted at parent, including siblings
 	if (p_verbose >= 3) {
-		print_line(vformat("Backtracking: Calling find_first_closed_node_dfs(start=%d, failed=%d)", p_parent_node_id, p_current_node_id));
+		print_line(vformat("Backtracking: Finding first CLOSED node (start=%d, failed=%d)", p_parent_node_id, p_current_node_id));
 	}
-	int closed_node_id = PlannerGraphOperations::find_first_closed_node_dfs(p_graph, p_parent_node_id, p_current_node_id, p_verbose);
+
+	// Do DFS preorder traversal from start node
+	TypedArray<int> visited;
+	TypedArray<int> dfs_list;
+	// Helper function for DFS preorder (inlined from graph_operations)
+	struct DFSHelper {
+		PlannerSolutionGraph &graph;
+		TypedArray<int> &visited;
+		TypedArray<int> &dfs_list;
+
+		void do_dfs_preorder(int node_id) {
+			if (visited.has(node_id)) {
+				return;
+			}
+			visited.push_back(node_id);
+			dfs_list.push_back(node_id);
+			Dictionary node = graph.get_node(node_id);
+			TypedArray<int> successors = node["successors"];
+			for (int i = 0; i < successors.size(); i++) {
+				int succ_id = successors[i];
+				if (graph.get_graph().has(succ_id)) {
+					do_dfs_preorder(succ_id);
+				}
+			}
+		}
+	};
+	DFSHelper dfs_helper = { p_graph, visited, dfs_list };
+	dfs_helper.do_dfs_preorder(p_parent_node_id);
+
+	if (p_verbose >= 3) {
+		print_line(vformat("Backtracking: DFS collected %d nodes", dfs_list.size()));
+	}
+
+	// Traverse in reverse order to find first CLOSED node with descendants
+	int closed_node_id = -1;
+	for (int i = dfs_list.size() - 1; i >= 0; i--) {
+		int node_id = dfs_list[i];
+		if (node_id == p_current_node_id) {
+			continue; // Skip the failed node
+		}
+
+		// Check if node is retriable (CLOSED with descendants and available methods)
+		if (!p_graph.get_graph().has(node_id)) {
+			continue;
+		}
+		Dictionary node = p_graph.get_node(node_id);
+		int status = node["status"];
+		int node_type = node["type"];
+
+		// Must be CLOSED and of type TASK/UNIGOAL/MULTIGOAL
+		if (status != static_cast<int>(PlannerNodeStatus::STATUS_CLOSED) ||
+				(node_type != static_cast<int>(PlannerNodeType::TYPE_TASK) &&
+						node_type != static_cast<int>(PlannerNodeType::TYPE_UNIGOAL) &&
+						node_type != static_cast<int>(PlannerNodeType::TYPE_MULTIGOAL))) {
+			continue;
+		}
+
+		// Must have available methods
+		if (!node.has("available_methods")) {
+			continue;
+		}
+		Variant methods_var = node["available_methods"];
+		if (methods_var.get_type() != Variant::ARRAY) {
+			continue;
+		}
+		Array methods_array = methods_var;
+		TypedArray<Callable> available_methods = TypedArray<Callable>(methods_array);
+		if (available_methods.size() == 0) {
+			continue;
+		}
+
+		// Must have successors (IPyHOP only retries if it has descendants)
+		TypedArray<int> successors = node["successors"];
+		if (successors.size() > 0) {
+			closed_node_id = node_id;
+			if (p_verbose >= 3) {
+				print_line(vformat("Backtracking: Found retriable CLOSED node %d", closed_node_id));
+			}
+			break;
+		}
+	}
+
+	if (p_verbose >= 3 && closed_node_id < 0) {
+		print_line("Backtracking: No retriable CLOSED node found");
+	}
 
 	if (p_verbose >= 3) {
 		if (closed_node_id >= 0) {
