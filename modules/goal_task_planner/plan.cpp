@@ -1066,8 +1066,6 @@ Dictionary PlannerPlan::_planning_loop_recursive(int p_parent_node_id, Dictionar
 			Variant action_info = curr_node["info"];
 
 			// CRITICAL: We no longer blacklist individual actions (they're context-dependent)
-			// So this check should never trigger for actions. However, we keep it for safety
-			// in case there's legacy blacklist data or other edge cases.
 			// If an action is blacklisted, it means the parent method array was blacklisted,
 			// which should have been handled at the task/method level.
 			if (_is_command_blacklisted(action_info)) {
@@ -2063,54 +2061,9 @@ void PlannerPlan::_blacklist_command(Variant p_command) {
 	}
 }
 
-void PlannerPlan::_clear_blacklist_for_command(Variant p_command) {
-	// Unwrap if dictionary-wrapped
-	Variant actual_command = p_command;
-	if (p_command.get_type() == Variant::DICTIONARY) {
-		Dictionary dict = p_command;
-		if (dict.has("item")) {
-			actual_command = dict["item"];
-		}
-	}
-
-	// Remove matching command from blacklist
-	for (int i = blacklisted_commands.size() - 1; i >= 0; i--) {
-		Variant blacklisted = blacklisted_commands[i];
-		Variant actual_blacklisted = blacklisted;
-		if (blacklisted.get_type() == Variant::DICTIONARY) {
-			Dictionary dict = blacklisted;
-			if (dict.has("item")) {
-				actual_blacklisted = dict["item"];
-			}
-		}
-
-		// Compare Arrays element by element
-		if (actual_command.get_type() == Variant::ARRAY && actual_blacklisted.get_type() == Variant::ARRAY) {
-			Array cmd_arr = actual_command;
-			Array blacklisted_arr = actual_blacklisted;
-			if (cmd_arr.size() == blacklisted_arr.size()) {
-				bool match = true;
-				for (int j = 0; j < cmd_arr.size(); j++) {
-					if (cmd_arr[j] != blacklisted_arr[j]) {
-						match = false;
-						break;
-					}
-				}
-				if (match) {
-					blacklisted_commands.remove_at(i);
-					if (verbose >= 2) {
-						print_line("Cleared blacklist for command: " + _item_to_string(p_command));
-					}
-				}
-			}
-		}
-	}
-}
-
 PlannerMetadata PlannerPlan::_extract_temporal_constraints(const Variant &p_item) const {
-	// Extract only temporal constraints (for backward compatibility)
+	// Extract only temporal constraints (excludes entity requirements)
 	PlannerMetadata metadata = _extract_metadata(p_item);
-	// Clear entity requirements to return only temporal constraints
 	metadata.requires_entities.clear();
 	return metadata;
 }

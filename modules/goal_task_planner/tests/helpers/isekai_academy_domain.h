@@ -117,7 +117,7 @@ Dictionary action_talk_to_character(Dictionary state, String student, String cha
 Dictionary action_increase_affection(Dictionary state, String student, String character, int amount) {
 	Dictionary new_state = state.duplicate();
 
-	// Update nested relationship structure (for compatibility)
+	// Update nested relationship structure
 	Dictionary relationship_state;
 	if (new_state.has("relationships")) {
 		relationship_state = new_state["relationships"];

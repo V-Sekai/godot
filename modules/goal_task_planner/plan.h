@@ -67,7 +67,6 @@ class PlannerPlan : public Resource {
 	bool _is_command_blacklisted(Variant p_command) const;
 	bool _contains_blacklisted_action(Array p_subtasks) const;
 	void _blacklist_command(Variant p_command);
-	void _clear_blacklist_for_command(Variant p_command);
 	void _restore_stn_from_node(int p_node_id);
 
 	PlannerMetadata _extract_temporal_constraints(const Variant &p_item) const;
