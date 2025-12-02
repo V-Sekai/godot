@@ -44,7 +44,7 @@
 // Kusudama constraint shader (reused from many_bone_ik project)
 static constexpr char KUSUDAMA_SHADER[] = R"(
 shader_type spatial;
-render_mode depth_draw_always;
+render_mode depth_draw_always, cull_disabled;
 
 uniform vec4 kusudama_color : source_color = vec4(0.58039218187332, 0.27058824896812, 0.00784313771874, 1.0);
 uniform int cone_count = 0;
