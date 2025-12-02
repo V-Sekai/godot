@@ -124,6 +124,175 @@ static Vector3 closest_to_cone_boundary(const Vector3 &p_input, const Vector3 &p
 	return result.normalized();
 }
 
+// Update tangents for a specific quad based on its cone1 and cone2
+void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
+	if (p_quad_index < 0 || p_quad_index >= cones.size()) {
+		return;
+	}
+	
+	Projection &quad = cones.write[p_quad_index];
+	Vector4 cone1_vec = quad[0];
+	Vector4 cone2_vec = quad[3];
+	
+	Vector3 center1 = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
+	Vector3 center2 = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
+	real_t radius1 = cone1_vec.w;
+	real_t radius2 = cone2_vec.w;
+	
+	if (center1.length_squared() < CMP_EPSILON || center2.length_squared() < CMP_EPSILON) {
+		return;
+	}
+	
+	center1 = center1.normalized();
+	center2 = center2.normalized();
+	
+	// Compute tangent circle radius
+	real_t tan_radius = (Math::PI - (radius1 + radius2)) / 2.0;
+	
+	// Find arc normal (axis perpendicular to both cone centers)
+	Vector3 arc_normal = center1.cross(center2);
+	real_t arc_normal_len = arc_normal.length();
+	
+	Vector3 tan1, tan2;
+	
+	if (arc_normal_len < CMP_EPSILON) {
+		// Handle parallel/opposite cones
+		Vector3 perp1 = get_orthogonal(center1);
+		if (perp1.is_zero_approx()) {
+			perp1 = Vector3(0, 1, 0);
+		}
+		perp1.normalize();
+		
+		// Rotate around center1 by the tangent radius to get tangent centers
+		Quaternion rot1 = get_quaternion_axis_angle(center1, tan_radius);
+		Quaternion rot2 = get_quaternion_axis_angle(center1, -tan_radius);
+		tan1 = rot1.xform(perp1).normalized();
+		tan2 = rot2.xform(perp1).normalized();
+	} else {
+		arc_normal.normalize();
+		
+		// Use plane intersection method (simplified version)
+		real_t boundary_plus_tan_radius_a = radius1 + tan_radius;
+		real_t boundary_plus_tan_radius_b = radius2 + tan_radius;
+		
+		Vector3 scaled_axis_a = center1 * Math::cos(boundary_plus_tan_radius_a);
+		Vector3 safe_arc_normal = arc_normal;
+		if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
+			safe_arc_normal = Vector3(0, 1, 0);
+		}
+		Quaternion temp_var = get_quaternion_axis_angle(safe_arc_normal.normalized(), boundary_plus_tan_radius_a);
+		Vector3 plane_dir1_a = temp_var.xform(center1);
+		Vector3 safe_center1 = center1;
+		if (Math::is_zero_approx(safe_center1.length_squared())) {
+			safe_center1 = Vector3(0, 0, 1);
+		}
+		Quaternion temp_var2 = get_quaternion_axis_angle(safe_center1.normalized(), Math::PI / 2);
+		Vector3 plane_dir2_a = temp_var2.xform(plane_dir1_a);
+		
+		Vector3 scaled_axis_b = center2 * Math::cos(boundary_plus_tan_radius_b);
+		Quaternion temp_var3 = get_quaternion_axis_angle(safe_arc_normal.normalized(), boundary_plus_tan_radius_b);
+		Vector3 plane_dir1_b = temp_var3.xform(center2);
+		Vector3 safe_center2 = center2;
+		if (Math::is_zero_approx(safe_center2.length_squared())) {
+			safe_center2 = Vector3(0, 0, 1);
+		}
+		Quaternion temp_var4 = get_quaternion_axis_angle(safe_center2.normalized(), Math::PI / 2);
+		Vector3 plane_dir2_b = temp_var4.xform(plane_dir1_b);
+		
+		// Extend rays
+		Vector3 ray1_b_start = plane_dir1_b;
+		Vector3 ray1_b_end = scaled_axis_b;
+		Vector3 ray2_b_start = plane_dir1_b;
+		Vector3 ray2_b_end = plane_dir2_b;
+		
+		Vector3 mid1 = (ray1_b_start + ray1_b_end) * 0.5;
+		Vector3 dir1 = (ray1_b_start - mid1).normalized();
+		ray1_b_start = mid1 - dir1 * 99.0;
+		ray1_b_end = mid1 + dir1 * 99.0;
+		
+		Vector3 mid2 = (ray2_b_start + ray2_b_end) * 0.5;
+		Vector3 dir2 = (ray2_b_start - mid2).normalized();
+		ray2_b_start = mid2 - dir2 * 99.0;
+		ray2_b_end = mid2 + dir2 * 99.0;
+		
+		// Ray-plane intersection
+		Vector3 plane_edge1 = plane_dir1_a - scaled_axis_a;
+		Vector3 plane_edge2 = plane_dir2_a - scaled_axis_a;
+		Vector3 plane_normal = plane_edge1.cross(plane_edge2).normalized();
+		
+		Vector3 ray1_dir = (ray1_b_end - ray1_b_start).normalized();
+		Vector3 ray1_to_plane = ray1_b_start - scaled_axis_a;
+		real_t plane_dist1 = -plane_normal.dot(ray1_to_plane);
+		real_t ray1_dot_normal = plane_normal.dot(ray1_dir);
+		Vector3 intersection1 = ray1_b_start + ray1_dir * (plane_dist1 / ray1_dot_normal);
+		
+		Vector3 ray2_dir = (ray2_b_end - ray2_b_start).normalized();
+		Vector3 ray2_to_plane = ray2_b_start - scaled_axis_a;
+		real_t plane_dist2 = -plane_normal.dot(ray2_to_plane);
+		real_t ray2_dot_normal = plane_normal.dot(ray2_dir);
+		Vector3 intersection2 = ray2_b_start + ray2_dir * (plane_dist2 / ray2_dot_normal);
+		
+		// Ray-sphere intersection
+		Vector3 intersection_ray_start = intersection1;
+		Vector3 intersection_ray_end = intersection2;
+		Vector3 intersection_ray_mid = (intersection_ray_start + intersection_ray_end) * 0.5;
+		Vector3 intersection_ray_dir_ext = (intersection_ray_start - intersection_ray_mid).normalized();
+		intersection_ray_start = intersection_ray_mid - intersection_ray_dir_ext * 99.0;
+		intersection_ray_end = intersection_ray_mid + intersection_ray_dir_ext * 99.0;
+		
+		Vector3 ray_start_rel = intersection_ray_start;
+		Vector3 ray_end_rel = intersection_ray_end;
+		Vector3 direction = ray_end_rel - ray_start_rel;
+		Vector3 ray_dir_normalized = direction.normalized();
+		Vector3 ray_to_center = -ray_start_rel;
+		real_t ray_dot_center = ray_dir_normalized.dot(ray_to_center);
+		real_t radius_squared = 1.0;
+		real_t center_dist_squared = ray_to_center.length_squared();
+		real_t ray_dot_squared = ray_dot_center * ray_dot_center;
+		real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
+		
+		if (discriminant >= 0.0) {
+			real_t sqrt_discriminant = Math::sqrt(discriminant);
+			real_t t1 = ray_dot_center - sqrt_discriminant;
+			real_t t2 = ray_dot_center + sqrt_discriminant;
+			tan1 = (intersection_ray_start + ray_dir_normalized * t1).normalized();
+			tan2 = (intersection_ray_start + ray_dir_normalized * t2).normalized();
+		} else {
+			// Fallback
+			Vector3 perp1 = get_orthogonal(center1);
+			if (perp1.is_zero_approx()) {
+				perp1 = Vector3(0, 1, 0);
+			}
+			perp1.normalize();
+			Quaternion rot1 = get_quaternion_axis_angle(center1, tan_radius);
+			Quaternion rot2 = get_quaternion_axis_angle(center1, -tan_radius);
+			tan1 = rot1.xform(perp1).normalized();
+			tan2 = rot2.xform(perp1).normalized();
+		}
+	}
+	
+	// Handle degenerate tangent centers
+	if (!tan1.is_finite() || Math::is_zero_approx(tan1.length_squared())) {
+		tan1 = get_orthogonal(center1);
+		if (Math::is_zero_approx(tan1.length_squared())) {
+			tan1 = Vector3(0, 1, 0);
+		}
+		tan1.normalize();
+	}
+	if (!tan2.is_finite() || Math::is_zero_approx(tan2.length_squared())) {
+		Vector3 orthogonal_base = tan1.is_finite() ? tan1 : center1;
+		tan2 = get_orthogonal(orthogonal_base);
+		if (Math::is_zero_approx(tan2.length_squared())) {
+			tan2 = Vector3(1, 0, 0);
+		}
+		tan2.normalize();
+	}
+	
+	// Store tangents in the quad (columns 1 and 2)
+	quad[1] = Vector4(tan1.x, tan1.y, tan1.z, tan_radius);
+	quad[2] = Vector4(tan2.x, tan2.y, tan2.z, tan_radius);
+}
+
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	// If constraints are disabled, return the original direction
 	if (!orientationally_constrained || cones.is_empty()) {
@@ -281,7 +450,10 @@ void JointLimitationKusudama3D::set_cone_count(int p_count) {
 		Vector4 default_cone = Vector4(0, 1, 0, Math::PI * 0.25); // Default: +Y axis, 45 degree cone
 		quad[0] = default_cone; // cone1
 		quad[3] = default_cone; // cone2 (same as next quad's cone1)
-		// tan1 and tan2 will be computed when needed
+	}
+	// Recompute tangents for all quads (in case existing quads were affected)
+	for (int i = 0; i < cones.size(); i++) {
+		_update_quad_tangents(i);
 	}
 	notify_property_list_changed();
 	emit_changed();
@@ -311,17 +483,25 @@ void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_ce
 	// Store raw value (non-normalized) to allow editor to accept values outside [-1, 1]
 	// Normalization happens lazily when values are used
 	if (p_index < quad_count) {
-		// Access column 0 of quad at p_index
+		// Access column 0 of quad at p_index (cone1)
 		Vector4 &cone = cones.write[p_index][0];
 		cone.x = p_center.x;
 		cone.y = p_center.y;
 		cone.z = p_center.z;
+		// Update tangents for this quad
+		_update_quad_tangents(p_index);
+		// Also update previous quad if it exists (since cone2 of prev = cone1 of current)
+		if (p_index > 0) {
+			_update_quad_tangents(p_index - 1);
+		}
 	} else {
-		// Access column 3 of last quad
+		// Access column 3 of last quad (cone2)
 		Vector4 &cone = cones.write[quad_count - 1][3];
 		cone.x = p_center.x;
 		cone.y = p_center.y;
 		cone.z = p_center.z;
+		// Update tangents for the last quad
+		_update_quad_tangents(quad_count - 1);
 	}
 	emit_changed();
 }
@@ -368,11 +548,19 @@ void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
 	}
 	
 	if (p_index < quad_count) {
-		// Access column 0 of quad at p_index
+		// Access column 0 of quad at p_index (cone1)
 		cones.write[p_index][0].w = p_radius;
+		// Update tangents for this quad
+		_update_quad_tangents(p_index);
+		// Also update previous quad if it exists (since cone2 of prev = cone1 of current)
+		if (p_index > 0) {
+			_update_quad_tangents(p_index - 1);
+		}
 	} else {
-		// Access column 3 of last quad
+		// Access column 3 of last quad (cone2)
 		cones.write[quad_count - 1][3].w = p_radius;
+		// Update tangents for the last quad
+		_update_quad_tangents(quad_count - 1);
 	}
 	emit_changed();
 }

@@ -50,6 +50,8 @@ protected:
 	void _get_property_list(List<PropertyInfo> *p_list) const;
 
 	virtual Vector3 _solve(const Vector3 &p_direction) const override;
+	
+	void _update_quad_tangents(int p_quad_index);
 
 public:
 	void set_cone_count(int p_count);
