@@ -773,13 +773,19 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			real_t tan_radius;
 			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
 			
-			// Draw forbidden tangent circle areas (filled wireframe)
+			// Draw forbidden tangent cone areas (filled wireframe)
+			// These are forbidden EXCEPT for the allowed path from cone1 to cone2
 			draw_forbidden_cone_wireframe(p_surface_tool, p_transform, tan1, tan_radius, sphere_r, p_color, N);
 			draw_forbidden_cone_wireframe(p_surface_tool, p_transform, tan2, tan_radius, sphere_r, p_color, N);
 			
-			// Draw tangent circle boundary rings
+			// Draw tangent cone boundary rings (showing the forbidden area boundaries)
 			draw_sphere_circle(p_surface_tool, p_transform, tan1, tan_radius, sphere_r, p_color, N);
 			draw_sphere_circle(p_surface_tool, p_transform, tan2, tan_radius, sphere_r, p_color, N);
+			
+			// Draw tangent cone center indicators
+			real_t tan_center_ring_radius = (real_t)0.05;
+			draw_sphere_circle(p_surface_tool, p_transform, tan1, tan_center_ring_radius, sphere_r, p_color, N);
+			draw_sphere_circle(p_surface_tool, p_transform, tan2, tan_center_ring_radius, sphere_r, p_color, N);
 			
 			// Draw inter-cone path boundaries showing both short and long paths
 			// The path selection depends on input.dot(center1.cross(center2)):
@@ -829,16 +835,20 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			Vector3 t2_boundary_c1 = get_cone_boundary_point(tan2, tan_radius, t2_to_c1, sphere_r);
 			Vector3 t2_boundary_c2 = get_cone_boundary_point(tan2, tan_radius, t2_to_c2, sphere_r);
 			
-			// Draw SHORT PATH (tan1): c1_boundary -> t1_boundary -> c2_boundary
-			// This path is used when input.dot(center1.cross(center2)) < 0
-			// Represents going from quaternion identity to one of the sides (short way)
+			// Draw ALLOWED PATH through tangent cone 1 (tan1): cone1 -> tan1 -> cone2
+			// This path is the ONLY allowed region inside the forbidden tan1 cone
+			// Used when input.dot(center1.cross(center2)) < 0 (SHORT path)
+			// The path goes: cone1 boundary -> tan1 boundary -> cone2 boundary
+			// This shows the allowed "tunnel" through the forbidden tan1 cone
 			draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), c1_boundary_t1.normalized(), t1_boundary_c1.normalized(), sphere_r, p_color, N);
 			draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), t1_boundary_c1.normalized(), t1_boundary_c2.normalized(), sphere_r, p_color, N);
 			draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), t1_boundary_c2.normalized(), c2_boundary_t1.normalized(), sphere_r, p_color, N);
 			
-			// Draw LONG PATH (tan2): c1_boundary -> t2_boundary -> c2_boundary
-			// This path is used when input.dot(center1.cross(center2)) >= 0
-			// Represents going from one of the sides to identity (long way, opposite direction)
+			// Draw ALLOWED PATH through tangent cone 2 (tan2): cone1 -> tan2 -> cone2
+			// This path is the ONLY allowed region inside the forbidden tan2 cone
+			// Used when input.dot(center1.cross(center2)) >= 0 (LONG path)
+			// The path goes: cone1 boundary -> tan2 boundary -> cone2 boundary
+			// This shows the allowed "tunnel" through the forbidden tan2 cone
 			draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), c1_boundary_t2.normalized(), t2_boundary_c1.normalized(), sphere_r, p_color, N);
 			draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), t2_boundary_c1.normalized(), t2_boundary_c2.normalized(), sphere_r, p_color, N);
 			draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), t2_boundary_c2.normalized(), c2_boundary_t2.normalized(), sphere_r, p_color, N);
