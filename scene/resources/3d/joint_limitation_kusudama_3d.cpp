@@ -295,14 +295,14 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 	
 	center1 = center1.normalized();
 	center2 = center2.normalized();
-	
+
 	// Compute tangent circle radius
 	real_t tan_radius = (Math::PI - (radius1 + radius2)) / 2.0;
-	
+
 	// Find arc normal (axis perpendicular to both cone centers)
 	Vector3 arc_normal = center1.cross(center2);
 	real_t arc_normal_len = arc_normal.length();
-	
+
 	Vector3 tan1, tan2;
 	
 	if (arc_normal_len < CMP_EPSILON) {
@@ -313,53 +313,53 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 			arc_normal = Vector3(0, 1, 0);
 		}
 		arc_normal.normalize();
-		
+
 		// For opposite cones, tangent circles are at 90 degrees from the cone centers
 		// Use a perpendicular vector in the plane perpendicular to center1
 		Vector3 perp1 = center1.get_any_perpendicular().normalized();
-		
+
 		// Rotate around center1 by the tangent radius to get tangent centers
 		Quaternion rot1 = Quaternion(center1, tan_radius);
 		Quaternion rot2 = Quaternion(center1, -tan_radius);
 		tan1 = rot1.xform(perp1).normalized();
 		tan2 = rot2.xform(perp1).normalized();
 	} else {
-		arc_normal.normalize();
-		
+	arc_normal.normalize();
+
 		// Use plane intersection method (simplified version)
 		real_t boundary_plus_tan_radius_a = radius1 + tan_radius;
 		real_t boundary_plus_tan_radius_b = radius2 + tan_radius;
-		
+
 		Vector3 scaled_axis_a = center1 * Math::cos(boundary_plus_tan_radius_a);
-		Vector3 safe_arc_normal = arc_normal;
-		if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
-			safe_arc_normal = Vector3(0, 1, 0);
-		}
+	Vector3 safe_arc_normal = arc_normal;
+	if (Math::is_zero_approx(safe_arc_normal.length_squared())) {
+		safe_arc_normal = Vector3(0, 1, 0);
+	}
 		Quaternion temp_var = get_quaternion_axis_angle(safe_arc_normal.normalized(), boundary_plus_tan_radius_a);
-		Vector3 plane_dir1_a = temp_var.xform(center1);
-		Vector3 safe_center1 = center1;
-		if (Math::is_zero_approx(safe_center1.length_squared())) {
-			safe_center1 = Vector3(0, 0, 1);
-		}
-		Quaternion temp_var2 = get_quaternion_axis_angle(safe_center1.normalized(), Math::PI / 2);
-		Vector3 plane_dir2_a = temp_var2.xform(plane_dir1_a);
-		
+	Vector3 plane_dir1_a = temp_var.xform(center1);
+	Vector3 safe_center1 = center1;
+	if (Math::is_zero_approx(safe_center1.length_squared())) {
+		safe_center1 = Vector3(0, 0, 1);
+	}
+	Quaternion temp_var2 = get_quaternion_axis_angle(safe_center1.normalized(), Math::PI / 2);
+	Vector3 plane_dir2_a = temp_var2.xform(plane_dir1_a);
+
 		Vector3 scaled_axis_b = center2 * Math::cos(boundary_plus_tan_radius_b);
 		Quaternion temp_var3 = get_quaternion_axis_angle(safe_arc_normal.normalized(), boundary_plus_tan_radius_b);
-		Vector3 plane_dir1_b = temp_var3.xform(center2);
-		Vector3 safe_center2 = center2;
-		if (Math::is_zero_approx(safe_center2.length_squared())) {
-			safe_center2 = Vector3(0, 0, 1);
-		}
-		Quaternion temp_var4 = get_quaternion_axis_angle(safe_center2.normalized(), Math::PI / 2);
-		Vector3 plane_dir2_b = temp_var4.xform(plane_dir1_b);
-		
+	Vector3 plane_dir1_b = temp_var3.xform(center2);
+	Vector3 safe_center2 = center2;
+	if (Math::is_zero_approx(safe_center2.length_squared())) {
+		safe_center2 = Vector3(0, 0, 1);
+	}
+	Quaternion temp_var4 = get_quaternion_axis_angle(safe_center2.normalized(), Math::PI / 2);
+	Vector3 plane_dir2_b = temp_var4.xform(plane_dir1_b);
+
 		// Extend rays
-		Vector3 ray1_b_start = plane_dir1_b;
-		Vector3 ray1_b_end = scaled_axis_b;
-		Vector3 ray2_b_start = plane_dir1_b;
-		Vector3 ray2_b_end = plane_dir2_b;
-		
+	Vector3 ray1_b_start = plane_dir1_b;
+	Vector3 ray1_b_end = scaled_axis_b;
+	Vector3 ray2_b_start = plane_dir1_b;
+	Vector3 ray2_b_end = plane_dir2_b;
+
 		Vector3 mid1 = (ray1_b_start + ray1_b_end) * 0.5;
 		Vector3 dir1 = (ray1_b_start - mid1).normalized();
 		ray1_b_start = mid1 - dir1 * 99.0;
@@ -405,19 +405,19 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 		real_t center_dist_squared = ray_to_center.length_squared();
 		real_t ray_dot_squared = ray_dot_center * ray_dot_center;
 		real_t discriminant = radius_squared - center_dist_squared + ray_dot_squared;
-		
+
 		if (discriminant >= 0.0) {
 			real_t sqrt_discriminant = Math::sqrt(discriminant);
 			real_t t1 = ray_dot_center - sqrt_discriminant;
 			real_t t2 = ray_dot_center + sqrt_discriminant;
 			tan1 = (intersection_ray_start + ray_dir_normalized * t1).normalized();
 			tan2 = (intersection_ray_start + ray_dir_normalized * t2).normalized();
-		} else {
+			} else {
 			// Fallback
 			Vector3 perp1 = center1.get_any_perpendicular();
 			if (perp1.is_zero_approx()) {
 				perp1 = Vector3(0, 1, 0);
-			}
+		}
 			perp1.normalize();
 			Quaternion rot1 = Quaternion(center1, tan_radius);
 			Quaternion rot2 = Quaternion(center1, -tan_radius);
@@ -431,7 +431,7 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 		tan1 = center1.get_any_perpendicular();
 		if (Math::is_zero_approx(tan1.length_squared())) {
 			tan1 = Vector3(0, 1, 0);
-		}
+				}
 		tan1.normalize();
 	}
 	if (!tan2.is_finite() || Math::is_zero_approx(tan2.length_squared())) {
@@ -641,9 +641,9 @@ void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_ce
 	if (p_index < quad_count) {
 		// Access column 0 of quad at p_index (cone1)
 		Vector4 &cone = cones.write[p_index][0];
-		cone.x = p_center.x;
-		cone.y = p_center.y;
-		cone.z = p_center.z;
+	cone.x = p_center.x;
+	cone.y = p_center.y;
+	cone.z = p_center.z;
 		// Update tangents for this quad
 		_update_quad_tangents(p_index);
 		// Also update previous quad if it exists (since cone2 of prev = cone1 of current)
@@ -858,7 +858,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				indices.push_back(prevrow + i);
 				indices.push_back(thisrow + i);
 				indices.push_back(thisrow + i - 1);
-			}
+	}
 		}
 		
 		prevrow = thisrow;
@@ -902,8 +902,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		p_surface_tool->set_color(p_color);
 		p_surface_tool->set_normal(normals[point_i]);
 		p_surface_tool->add_vertex(points[point_i]);
-	}
-	
+}
+
 	// Add indices
 	for (int32_t index_i : indices) {
 		p_surface_tool->add_index(index_i);
@@ -927,7 +927,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			Vector4 tan1_vec = quad[1];
 			Vector4 tan2_vec = quad[2];
 			Vector4 cone2_vec = quad[3];
-			
+	
 			// Normalize centers
 			Vector3 cone1_center = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
 			Vector3 tan1_center = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z);
@@ -945,8 +945,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			}
 			if (cone2_center.length_squared() > CMP_EPSILON) {
 				cone2_center = cone2_center.normalized();
-			}
-			
+	}
+	
 			cone_sequence.push_back(Vector4(cone1_center.x, cone1_center.y, cone1_center.z, cone1_vec.w));
 			cone_sequence.push_back(Vector4(tan1_center.x, tan1_center.y, tan1_center.z, tan1_vec.w));
 			cone_sequence.push_back(Vector4(tan2_center.x, tan2_center.y, tan2_center.z, tan2_vec.w));
