@@ -740,82 +740,100 @@ static void draw_dashed_great_circle_arc(Ref<SurfaceTool> &p_surface_tool, const
 	}
 }
 
-// Helper function to draw filled wireframe for forbidden cone area (only the forbidden half)
-static void draw_forbidden_tangent_cone_half(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_tan_center, real_t p_tan_radius, const Vector3 &p_cone1_center, const Vector3 &p_cone2_center, real_t p_sphere_r, const Color &p_color, int p_segments = 16) {
-	Vector3 tan_center = p_tan_center.normalized();
-	Vector3 cone1_center = p_cone1_center.normalized();
-	Vector3 cone2_center = p_cone2_center.normalized();
+// Helper function to draw an arc along a circle on the sphere from start to end point
+// p_start_dir and p_end_dir are normalized direction vectors on the sphere surface
+static void draw_sphere_circle_arc(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, const Vector3 &p_start_dir, const Vector3 &p_end_dir, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
+	Vector3 center = p_center_dir.normalized();
+	Vector3 start = p_start_dir.normalized();
+	Vector3 end = p_end_dir.normalized();
 	
-	// Find the plane that divides the tangent cone into path half and forbidden half
-	// The path goes from cone1 → tan → cone2, so we need to find which half is the path
-	Vector3 tan_to_cone1 = (cone1_center - tan_center).normalized();
-	Vector3 tan_to_cone2 = (cone2_center - tan_center).normalized();
-	
-	// Find perpendicular vectors to tangent center
+	// Find two perpendicular vectors to the center
 	Vector3 perp1, perp2;
-	if (Math::abs(tan_center.y) < 0.9f) {
-		perp1 = Vector3(0, 1, 0).cross(tan_center).normalized();
+	if (Math::abs(center.y) < 0.9f) {
+		perp1 = Vector3(0, 1, 0).cross(center).normalized();
 	} else {
-		perp1 = Vector3(1, 0, 0).cross(tan_center).normalized();
+		perp1 = Vector3(1, 0, 0).cross(center).normalized();
 	}
-	perp2 = tan_center.cross(perp1).normalized();
+	perp2 = center.cross(perp1).normalized();
 	
-	real_t radius_cos = Math::cos(p_tan_radius);
-	real_t boundary_y = p_sphere_r * radius_cos;
-	real_t boundary_r = p_sphere_r * Math::sin(p_tan_radius);
+	real_t y_offset = p_sphere_r * Math::cos(p_angle);
+	real_t circle_r = p_sphere_r * Math::sin(p_angle);
 	
-	static const real_t DP = Math::TAU / (real_t)p_segments;
-	Vector3 sphere_center = Vector3();
+	if (circle_r <= CMP_EPSILON) {
+		return;
+	}
 	
-	// Draw radial lines from sphere center to boundary for the forbidden half only
-	// The forbidden half is the one NOT on the path from cone1 → tan → cone2
-	for (int i = 0; i < p_segments; i++) {
-		real_t angle = (real_t)i * DP;
-		Vector3 dir = (perp1 * Math::cos(angle) + perp2 * Math::sin(angle)).normalized();
-		Vector3 boundary_point = tan_center * boundary_y + dir * boundary_r;
-		Vector3 boundary_dir = boundary_point.normalized();
-		
-		// Check if this point is on the forbidden half (not on the path)
-		// The path region is between tan_to_cone1 and tan_to_cone2
-		// We check if boundary_dir is in the forbidden region
-		Vector3 cross1 = tan_to_cone1.cross(boundary_dir);
-		Vector3 cross2 = boundary_dir.cross(tan_to_cone2);
-		real_t dot1 = cross1.dot(tan_center);
-		real_t dot2 = cross2.dot(tan_center);
-		
-		// If both cross products point in the same direction relative to tan_center,
-		// we're in the path region. Otherwise, we're in the forbidden region.
-		bool in_path_region = (dot1 > 0.0 && dot2 > 0.0) || (dot1 < 0.0 && dot2 < 0.0);
-		
-		if (!in_path_region) {
-			// Draw radial line for forbidden half
-			p_surface_tool->set_color(p_color);
-			p_surface_tool->add_vertex(p_transform.xform(sphere_center));
-			p_surface_tool->set_color(p_color);
-			p_surface_tool->add_vertex(p_transform.xform(boundary_point));
+	// Project start and end onto the circle plane to find their angles
+	Vector3 start_proj = (start - center * (start.dot(center))).normalized();
+	Vector3 end_proj = (end - center * (end.dot(center))).normalized();
+	
+	real_t start_angle = Math::atan2(start_proj.dot(perp2), start_proj.dot(perp1));
+	real_t end_angle = Math::atan2(end_proj.dot(perp2), end_proj.dot(perp1));
+	
+	// Normalize angles to [0, 2π)
+	if (start_angle < 0.0) {
+		start_angle += Math::TAU;
+	}
+	if (end_angle < 0.0) {
+		end_angle += Math::TAU;
+	}
+	
+	// Calculate the arc angle (take the shorter path)
+	real_t arc_angle = end_angle - start_angle;
+	if (arc_angle < 0.0) {
+		arc_angle += Math::TAU;
+	}
+	if (arc_angle > Math::PI) {
+		arc_angle = Math::TAU - arc_angle;
+		// Reverse direction
+		real_t temp = start_angle;
+		start_angle = end_angle;
+		end_angle = temp;
+		if (end_angle < start_angle) {
+			end_angle += Math::TAU;
 		}
+		arc_angle = end_angle - start_angle;
+	}
+	
+	real_t d_angle = arc_angle / (real_t)p_segments;
+	Vector3 prev = start * p_sphere_r;
+	
+	for (int i = 1; i <= p_segments; i++) {
+		real_t angle = start_angle + d_angle * (real_t)i;
+		if (angle >= Math::TAU) {
+			angle -= Math::TAU;
+		}
+		Vector3 dir = (perp1 * Math::cos(angle) + perp2 * Math::sin(angle)).normalized();
+		Vector3 cur = center * y_offset + dir * circle_r;
+		
+		p_surface_tool->set_color(p_color);
+		p_surface_tool->add_vertex(p_transform.xform(prev));
+		p_surface_tool->set_color(p_color);
+		p_surface_tool->add_vertex(p_transform.xform(cur));
+		
+		prev = cur;
 	}
 }
 
 // Helper function to draw spherical quad path boundary (4 arcs forming the allowed path region)
 static void draw_spherical_quad_path(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius, const Vector3 &p_tan_center, real_t p_tan_radius, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
-	// Find boundary points
-	Vector3 cone1_boundary = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan_center);
-	Vector3 cone2_boundary = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan_center);
+	// Find boundary points (normalized directions)
+	Vector3 cone1_boundary = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan_center).normalized();
+	Vector3 cone2_boundary = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan_center).normalized();
 	
-	Vector3 tan_point1 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone1_center);
-	Vector3 tan_point2 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone2_center);
+	Vector3 tan_point1 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone1_center).normalized();
+	Vector3 tan_point2 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone2_center).normalized();
 	
-	// Arc 1: cone1 boundary point → tangent boundary point (cone1 side) - short way
+	// Arc 1: cone1 boundary point → tangent boundary point (cone1 side) - short way (great circle)
 	draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), cone1_boundary, tan_point1, p_sphere_r, p_color, p_segments, false);
 	
-	// Arc 2: tangent boundary point (cone1 side) → tangent boundary point (cone2 side) - along tangent circle
-	draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), tan_point1, tan_point2, p_sphere_r, p_color, p_segments, false);
+	// Arc 2: tangent boundary point (cone1 side) → tangent boundary point (cone2 side) - along tangent circle (NOT a great circle)
+	draw_sphere_circle_arc(p_surface_tool, p_transform, p_tan_center, p_tan_radius, tan_point1, tan_point2, p_sphere_r, p_color, p_segments);
 	
-	// Arc 3: tangent boundary point (cone2 side) → cone2 boundary point - short way
+	// Arc 3: tangent boundary point (cone2 side) → cone2 boundary point - short way (great circle)
 	draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), tan_point2, cone2_boundary, p_sphere_r, p_color, p_segments, false);
 	
-	// Arc 4: cone2 boundary point → cone1 boundary point - long way (completing the quad loop)
+	// Arc 4: cone2 boundary point → cone1 boundary point - long way (great circle, completing the quad loop)
 	draw_great_circle_arc(p_surface_tool, p_transform, Vector3(), cone2_boundary, cone1_boundary, p_sphere_r, p_color, p_segments, true);
 }
 
@@ -855,7 +873,6 @@ static void draw_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform
 		prev = cur;
 	}
 }
-
 
 /*
  * Visualization Algorithm for Kusudama Joint Limitation
@@ -922,46 +939,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		draw_sphere_circle(p_surface_tool, p_transform, center, center_ring_radius, sphere_r, p_color, N);
 	}
 
-	// 2. For each pair of cones, draw path regions and forbidden areas
+	// 2. Draw fish bone structure (dashed lines connecting cone centers in order)
 	if (cones.size() > 1) {
-		for (int i = 0; i < cones.size() - 1; i++) {
-			const Vector4 &cone1_data = cones[i];
-			const Vector4 &cone2_data = cones[i + 1];
-			
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-			real_t radius1 = cone1_data.w;
-			real_t radius2 = cone2_data.w;
-			
-			// Compute tangent circles
-			Vector3 tan1, tan2;
-			real_t tan_radius;
-			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-			
-			// Normalize and validate tangent circles before drawing
-			tan1 = tan1.normalized();
-			tan2 = tan2.normalized();
-			bool tan1_valid = tan1.is_finite() && tan1.length_squared() > CMP_EPSILON2 && tan_radius > CMP_EPSILON && tan_radius < Math::PI;
-			bool tan2_valid = tan2.is_finite() && tan2.length_squared() > CMP_EPSILON2 && tan_radius > CMP_EPSILON && tan_radius < Math::PI;
-			
-			// 3. Draw spherical quad path boundaries for each tangent circle (allowed path: cone1 → tan → cone2)
-			if (tan1_valid) {
-				draw_spherical_quad_path(p_surface_tool, p_transform, center1, radius1, center2, radius2, tan1, tan_radius, sphere_r, p_color, N);
-			}
-			if (tan2_valid) {
-				draw_spherical_quad_path(p_surface_tool, p_transform, center1, radius1, center2, radius2, tan2, tan_radius, sphere_r, p_color, N);
-			}
-			
-			// 4. Draw forbidden tangent cone regions (filled wireframe for the forbidden half only)
-			if (tan1_valid) {
-				draw_forbidden_tangent_cone_half(p_surface_tool, p_transform, tan1, tan_radius, center1, center2, sphere_r, p_color, N);
-			}
-			if (tan2_valid) {
-				draw_forbidden_tangent_cone_half(p_surface_tool, p_transform, tan2, tan_radius, center1, center2, sphere_r, p_color, N);
-			}
-		}
-		
-		// 5. Draw fish bone structure (dashed lines connecting cone centers in order)
 		for (int i = 0; i < cones.size() - 1; i++) {
 			const Vector4 &cone1_data = cones[i];
 			const Vector4 &cone2_data = cones[i + 1];
