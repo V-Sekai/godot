@@ -30,7 +30,7 @@
 
 #include "ewbik_3d_.h"
 
-#include "modules/ewbik/src/math/qcp.h"
+#include "core/math/qcp.h"
 
 void EWBIK3D_::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
 	int joint_size = (int)p_setting->joints.size();
@@ -44,7 +44,7 @@ void EWBIK3D_::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateI
 
 	// For each bone in the chain, solve using QCP
 	for (int i = 0; i < joint_size; i++) {
-		ManyBoneIK3DSolverInfo *solver_info = p_setting->solver_info_list[i];
+		IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
 		if (!solver_info || Math::is_zero_approx(solver_info->length)) {
 			continue;
 		}
@@ -75,7 +75,7 @@ void EWBIK3D_::_create_point_correspondences(Skeleton3D *p_skeleton, const Itera
 
 	// For each bone, create point correspondences
 	for (int i = 0; i < (int)p_setting->joints.size(); i++) {
-		ManyBoneIK3DSolverInfo *solver_info = p_setting->solver_info_list[i];
+		IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
 		if (!solver_info || Math::is_zero_approx(solver_info->length)) {
 			continue;
 		}
@@ -127,7 +127,7 @@ void EWBIK3D_::_apply_qcp_rotation(Skeleton3D *p_skeleton, IterateIK3DSetting *p
 		return;
 	}
 
-	ManyBoneIK3DSolverInfo *solver_info = p_setting->solver_info_list[p_bone_idx];
+	IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[p_bone_idx];
 	if (!solver_info || Math::is_zero_approx(solver_info->length)) {
 		return;
 	}

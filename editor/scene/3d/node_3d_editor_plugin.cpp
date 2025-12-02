@@ -6827,7 +6827,8 @@ void Node3DEditor::update_transform_gizmo() {
 			count++;
 		}
 	} else {
-		const List<Node *> &selection = editor_selection->get_top_selected_node_list();
+		// Make a copy to avoid use-after-free if the list is modified during iteration
+		List<Node *> selection = editor_selection->get_top_selected_node_list();
 		for (Node *E : selection) {
 			Node3D *sp = Object::cast_to<Node3D>(E);
 			if (!sp) {
