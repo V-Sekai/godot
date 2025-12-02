@@ -841,35 +841,31 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	}
 
 	static const int N = 32; // Number of segments for rings and arcs
+	static const real_t CENTER_RING_RADIUS = (real_t)0.05; // Fixed 0.05 radians (~2.86 degrees)
 
-	// 1. Draw kusudama cone boundaries, tangents, and center indicators using quad style
-	real_t center_ring_radius = (real_t)0.05; // Fixed 0.05 radians (~2.86 degrees)
-	
-	// Iterate through each quad and draw: cone1, tan1, tan2 (cone2 of quad i = cone1 of quad i+1, so skip it)
+	// Draw cone boundaries, tangent rings, and center indicators
 	for (int i = 0; i < cones.size(); i++) {
 		const Projection &quad = cones[i];
 		
-		// Extract quad elements
+		// Extract quad elements: [cone1, tan1, tan2, cone2]
 		Vector4 cone1_vec = quad[0];
 		Vector4 tan1_vec = quad[1];
 		Vector4 tan2_vec = quad[2];
-		Vector4 cone2_vec = quad[3];
 		
 		Vector3 cone1_center = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
-		Vector3 cone2_center = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
 		Vector3 tan1_center = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z);
 		Vector3 tan2_center = Vector3(tan2_vec.x, tan2_vec.y, tan2_vec.z);
 		real_t cone1_radius = cone1_vec.w;
 		real_t tan_radius = tan1_vec.w;
 		
-		// Draw cone1 boundary and center indicator (full circles, no cuts)
+		// Draw cone1 boundary and center indicator
 		if (cone1_center.length_squared() > CMP_EPSILON) {
 			cone1_center = cone1_center.normalized();
 			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, cone1_radius, sphere_r, p_color, N);
-			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, center_ring_radius, sphere_r, p_color, N);
+			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, CENTER_RING_RADIUS, sphere_r, p_color, N);
 		}
 		
-		// Draw tangent boundary rings as full dotted circles
+		// Draw tangent boundary rings (dotted)
 		if (tan1_center.length_squared() > CMP_EPSILON) {
 			tan1_center = tan1_center.normalized();
 			draw_dashed_sphere_circle(p_surface_tool, p_transform, tan1_center, tan_radius, sphere_r, p_color, N);
@@ -881,27 +877,20 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	}
 	
 	// Draw the last cone (cone2 of the last quad) - this is the only unique cone2
-	// Cut arc towards previous cone (the cone1 of the last quad)
 	if (cones.size() > 0) {
 		const Projection &last_quad = cones[cones.size() - 1];
 		Vector4 cone2_vec = last_quad[3]; // Column 3 = cone2
-		Vector4 cone1_vec = last_quad[0]; // Column 0 = cone1 (previous cone)
 		Vector3 center = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
-		Vector3 prev_cone = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
 		real_t radius = cone2_vec.w;
 		
 		if (center.length_squared() > CMP_EPSILON) {
 			center = center.normalized();
-			
-			// Draw full circle (no cuts)
 			draw_sphere_circle(p_surface_tool, p_transform, center, radius, sphere_r, p_color, N);
-			
-			// Draw center indicator (always full circle)
-			draw_sphere_circle(p_surface_tool, p_transform, center, center_ring_radius, sphere_r, p_color, N);
+			draw_sphere_circle(p_surface_tool, p_transform, center, CENTER_RING_RADIUS, sphere_r, p_color, N);
 		}
 	}
 
-	// 2. Draw fish bone structure (dashed lines connecting cone centers in order)
+	// Draw dashed lines connecting cone centers in order
 	int cone_count = get_cone_count();
 	if (cone_count > 1) {
 		for (int i = 0; i < cone_count - 1; i++) {
