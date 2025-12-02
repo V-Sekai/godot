@@ -729,14 +729,10 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test empty cones") {
 	Vector<Vector4> empty_cones;
 	set_cones_from_vector4(limitation, empty_cones);
 
-	// With no cones and orientationally constrained, should return input
-	limitation->set_orientationally_constrained(true);
 	Vector3 test_point = Vector3(1, 0, 0).normalized();
 	Vector3 result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_point);
 	CHECK(result.is_equal_approx(test_point));
 
-	// With orientationally unconstrained, should return input
-	limitation->set_orientationally_constrained(false);
 	result = limitation->solve(Vector3(0, 1, 0), Vector3(1, 0, 0), Quaternion(), test_point);
 	CHECK(result.is_equal_approx(test_point));
 }
@@ -751,7 +747,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test orientationally unconstrained
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
 	set_cones_from_vector4(limitation, cones);
-	limitation->set_orientationally_constrained(false);
 
 	// Should return input regardless of cone constraints
 	Vector3 test_point = Vector3(1, 0, 0).normalized();
@@ -1000,7 +995,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test default cone configuration") 
 
 	// Check default values
 	CHECK(limitation->get_cone_count() == 1);
-	CHECK(limitation->is_orientationally_constrained() == true);
 
 	// Default cone should be +Y axis with 45 degree radius
 	Vector3 default_center = limitation->get_cone_center(0);
@@ -1104,7 +1098,6 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test orientationally constrained w
 	limitation.instantiate();
 
 	limitation->set_cone_count(0);
-	limitation->set_orientationally_constrained(true);
 
 	// With no cones but orientationally constrained, should return input unchanged
 	Vector3 test_point = Vector3(1, 0, 0).normalized();

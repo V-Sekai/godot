@@ -41,8 +41,6 @@ class JointLimitationKusudama3D : public JointLimitation3D {
 	// Column 0 = cone1, Column 1 = tan1, Column 2 = tan2, Column 3 = cone2
 	Vector<Projection> cones;
 
-	bool orientationally_constrained = true;
-
 protected:
 	static void _bind_methods();
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -62,9 +60,6 @@ public:
 
 	void set_cone_radius(int p_index, real_t p_radius);
 	real_t get_cone_radius(int p_index) const;
-
-	void set_orientationally_constrained(bool p_constrained);
-	bool is_orientationally_constrained() const;
 
 #ifdef TOOLS_ENABLED
 	virtual void draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const override;

@@ -34,20 +34,166 @@
 
 #ifdef TOOLS_ENABLED
 #include "scene/resources/surface_tool.h"
+#include "scene/resources/shader.h"
+#include "scene/resources/material.h"
+
+// Kusudama constraint shader (reused from many_bone_ik project)
+static constexpr char KUSUDAMA_SHADER[] = R"(
+shader_type spatial;
+render_mode depth_draw_always;
+
+uniform vec4 kusudama_color : source_color = vec4(0.58039218187332, 0.27058824896812, 0.00784313771874, 1.0);
+uniform int cone_count = 0;
+
+uniform vec4 cone_sequence[30];
+
+varying vec3 normal_model_dir;
+varying vec4 vert_model_color;
+
+bool is_in_inter_cone_path(in vec3 normal_dir, in vec4 tangent_1, in vec4 cone_1, in vec4 tangent_2, in vec4 cone_2) {
+	vec3 c1xc2 = cross(cone_1.xyz, cone_2.xyz);
+	float c1c2dir = dot(normal_dir, c1xc2);
+
+	if (c1c2dir < 0.0) {
+		vec3 c1xt1 = cross(cone_1.xyz, tangent_1.xyz);
+		vec3 t1xc2 = cross(tangent_1.xyz, cone_2.xyz);
+		float c1t1dir = dot(normal_dir, c1xt1);
+		float t1c2dir = dot(normal_dir, t1xc2);
+
+		return (c1t1dir > 0.0 && t1c2dir > 0.0);
+
+	} else {
+		vec3 t2xc1 = cross(tangent_2.xyz, cone_1.xyz);
+		vec3 c2xt2 = cross(cone_2.xyz, tangent_2.xyz);
+		float t2c1dir = dot(normal_dir, t2xc1);
+		float c2t2dir = dot(normal_dir, c2xt2);
+
+		return (c2t2dir > 0.0 && t2c1dir > 0.0);
+	}
+}
+
+int get_allowability_condition(in int current_condition, in int set_to) {
+	if((current_condition == -1 || current_condition == -2)
+		&& set_to >= 0) {
+		return current_condition *= -1;
+	} else if(current_condition == 0 && (set_to == -1 || set_to == -2)) {
+		return set_to *=-2;
+	}
+	return max(current_condition, set_to);
+}
+
+int is_in_cone(in vec3 normal_dir, in vec4 cone, in float boundary_width) {
+	float arc_dist_to_cone = acos(dot(normal_dir, cone.rgb));
+	if (arc_dist_to_cone > (cone.a+(boundary_width/2.))) {
+		return 1;
+	}
+	if (arc_dist_to_cone < (cone.a-(boundary_width/2.))) {
+		return -1;
+	}
+	return 0;
+}
+
+vec4 color_allowed(in vec3 normal_dir,  in int cone_counts, in float boundary_width) {
+	int current_condition = -3;
+	if (cone_counts == 1) {
+		vec4 cone = cone_sequence[0];
+		int in_cone = is_in_cone(normal_dir, cone, boundary_width);
+		bool is_in_cone = in_cone == 0;
+		if (is_in_cone) {
+			in_cone = -1;
+		} else {
+			if (in_cone < 0) {
+				in_cone = 0;
+			} else {
+				in_cone = -3;
+			}
+		}
+		current_condition = get_allowability_condition(current_condition, in_cone);
+	} else {
+		for(int i=0; i < (cone_counts-1)*3; i=i+3) {
+			normal_dir = normalize(normal_dir);
+
+			vec4 cone_1 = cone_sequence[i+0];
+			vec4 tangent_1 = cone_sequence[i+1];
+			vec4 tangent_2 = cone_sequence[i+2];
+			vec4 cone_2 = cone_sequence[i+3];
+
+			int inCone1 = is_in_cone(normal_dir, cone_1, boundary_width);
+			if (inCone1 == 0) {
+				inCone1 = -1;
+			} else {
+				if (inCone1 < 0) {
+					inCone1 = 0;
+				} else {
+					inCone1 = -3;
+				}
+			}
+			current_condition = get_allowability_condition(current_condition, inCone1);
+
+			int inCone2 = is_in_cone(normal_dir, cone_2, boundary_width);
+			if (inCone2 == 0) {
+				inCone2 = -1;
+			} else {
+				if (inCone2 < 0) {
+					inCone2 = 0;
+				} else {
+					inCone2 = -3;
+				}
+			}
+			current_condition = get_allowability_condition(current_condition, inCone2);
+
+			int in_tan_1 = is_in_cone(normal_dir, tangent_1, boundary_width);
+			int in_tan_2 = is_in_cone(normal_dir, tangent_2, boundary_width);
+
+			if (float(in_tan_1) < 1. || float(in_tan_2) < 1.) {
+				in_tan_1 = in_tan_1 == 0 ? -2 : -3;
+				current_condition = get_allowability_condition(current_condition, in_tan_1);
+				in_tan_2 = in_tan_2 == 0 ? -2 : -3;
+				current_condition = get_allowability_condition(current_condition, in_tan_2);
+			} else {
+				bool in_intercone = is_in_inter_cone_path(normal_dir, tangent_1, cone_1, tangent_2, cone_2);
+				int intercone_condition = in_intercone ? 0 : -3;
+				current_condition = get_allowability_condition(current_condition, intercone_condition);
+			}
+		}
+	}
+	vec4 result = vert_model_color;
+	bool is_disallowed_entirely = current_condition == -3;
+	bool is_disallowed_on_tangent_cone_boundary = current_condition == -2;
+	bool is_disallowed_on_control_cone_boundary = current_condition == -1;
+	if (is_disallowed_entirely || is_disallowed_on_tangent_cone_boundary || is_disallowed_on_control_cone_boundary) {
+		return result;
+	} else {
+		return vec4(0.0, 0.0, 0.0, 0.0);
+	}
+	return result;
+}
+
+void vertex() {
+	normal_model_dir = CUSTOM0.rgb;
+	vert_model_color.rgb = kusudama_color.rgb;
+	VERTEX = VERTEX;
+	POSITION = PROJECTION_MATRIX * VIEW_MATRIX * MODEL_MATRIX * vec4(VERTEX.xyz, 1.0);
+	POSITION.z = mix(POSITION.z, POSITION.w, 0.999);
+}
+
+void fragment() {
+	vec4 result_color_allowed = vec4(0.0, 0.0, 0.0, 0.0);
+	result_color_allowed = color_allowed(normal_model_dir, cone_count, 0.02);
+	ALBEDO = result_color_allowed.rgb;
+	ALPHA = 0.8;
+}
+)";
+
 #endif // TOOLS_ENABLED
 
 void JointLimitationKusudama3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_orientationally_constrained", "constrained"), &JointLimitationKusudama3D::set_orientationally_constrained);
-	ClassDB::bind_method(D_METHOD("is_orientationally_constrained"), &JointLimitationKusudama3D::is_orientationally_constrained);
-
 	ClassDB::bind_method(D_METHOD("set_cone_count", "count"), &JointLimitationKusudama3D::set_cone_count);
 	ClassDB::bind_method(D_METHOD("get_cone_count"), &JointLimitationKusudama3D::get_cone_count);
 	ClassDB::bind_method(D_METHOD("set_cone_center", "index", "center"), &JointLimitationKusudama3D::set_cone_center);
 	ClassDB::bind_method(D_METHOD("get_cone_center", "index"), &JointLimitationKusudama3D::get_cone_center);
 	ClassDB::bind_method(D_METHOD("set_cone_radius", "index", "radius"), &JointLimitationKusudama3D::set_cone_radius);
 	ClassDB::bind_method(D_METHOD("get_cone_radius", "index"), &JointLimitationKusudama3D::get_cone_radius);
-
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "orientationally_constrained"), "set_orientationally_constrained", "is_orientationally_constrained");
 }
 
 // Helper function to get orthogonal vector (from IKLimitCone3D::get_orthogonal)
@@ -295,7 +441,7 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	// If constraints are disabled, return the original direction
-	if (!orientationally_constrained || cones.is_empty()) {
+	if (cones.is_empty()) {
 		return p_direction.normalized();
 	}
 
@@ -651,176 +797,12 @@ void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) c
 	}
 }
 
-void JointLimitationKusudama3D::set_orientationally_constrained(bool p_constrained) {
-	orientationally_constrained = p_constrained;
-	emit_changed();
-}
-
-bool JointLimitationKusudama3D::is_orientationally_constrained() const {
-	return orientationally_constrained;
-}
 
 
 
 #ifdef TOOLS_ENABLED
-// Helper function to draw a dashed great circle arc on the sphere
-static void draw_dashed_great_circle_arc(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_start_dir, const Vector3 &p_end_dir, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
-	Vector3 start = p_start_dir.normalized();
-	Vector3 end = p_end_dir.normalized();
-	Vector3 axis = start.cross(end);
-	if (axis.length_squared() < CMP_EPSILON2) {
-		// Parallel vectors, draw straight line
-		Vector3 p0 = start * p_sphere_r;
-		Vector3 p1 = end * p_sphere_r;
-		p_surface_tool->set_color(p_color);
-		p_surface_tool->add_vertex(p_transform.xform(p0));
-		p_surface_tool->set_color(p_color);
-		p_surface_tool->add_vertex(p_transform.xform(p1));
-		return;
-	}
-	axis.normalize();
-	
-	real_t angle = start.angle_to(end);
-	
-	// Draw dashed pattern: 60% dash, 40% gap
-	int num_dashes = p_segments / 5;
-	if (num_dashes < 2) {
-		num_dashes = 2;
-	}
-	real_t dash_ratio = 0.6;
-	real_t total_angle_per_dash = angle / (real_t)num_dashes;
-	real_t dash_angle = total_angle_per_dash * dash_ratio;
-	
-	real_t current_angle = 0.0;
-	int dash_segments = (int)(dash_angle / (angle / (real_t)p_segments));
-	if (dash_segments < 2) {
-		dash_segments = 2;
-	}
-	
-	for (int dash = 0; dash < num_dashes; dash++) {
-		real_t dash_start_angle = current_angle;
-		real_t dash_end_angle = current_angle + dash_angle;
-		if (dash_end_angle > angle) {
-			dash_end_angle = angle;
-		}
-		
-		real_t d_angle = (dash_end_angle - dash_start_angle) / (real_t)dash_segments;
-		Vector3 prev = get_quaternion_axis_angle(axis, dash_start_angle).xform(start) * p_sphere_r;
-		
-		for (int i = 1; i <= dash_segments; i++) {
-			real_t cur_angle = dash_start_angle + d_angle * (real_t)i;
-			if (cur_angle > angle) {
-				cur_angle = angle;
-			}
-			Vector3 cur = get_quaternion_axis_angle(axis, cur_angle).xform(start) * p_sphere_r;
-			
-			p_surface_tool->set_color(p_color);
-			p_surface_tool->add_vertex(p_transform.xform(prev));
-			p_surface_tool->set_color(p_color);
-			p_surface_tool->add_vertex(p_transform.xform(cur));
-			
-			prev = cur;
-		}
-		
-		current_angle += total_angle_per_dash;
-		if (current_angle >= angle) {
-			break;
-		}
-	}
-}
-
-// Helper function to draw a dashed circle on the sphere
-static void draw_dashed_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
-	Vector3 center = p_center_dir.normalized();
-	
-	// Find two perpendicular vectors to the center
-	Vector3 perp1, perp2;
-	if (Math::abs(center.y) < 0.9f) {
-		perp1 = Vector3(0, 1, 0).cross(center).normalized();
-	} else {
-		perp1 = Vector3(1, 0, 0).cross(center).normalized();
-	}
-	perp2 = center.cross(perp1).normalized();
-	
-	real_t y_offset = p_sphere_r * Math::cos(p_angle);
-	real_t circle_r = p_sphere_r * Math::sin(p_angle);
-	
-	if (circle_r <= CMP_EPSILON) {
-		return;
-	}
-	
-	// Draw dashed pattern: 60% dash, 40% gap
-	static const real_t DASH_RATIO = 0.6;
-	static const int DASH_SEGMENTS = 4;
-	
-	int num_dashes = MAX(p_segments / 4, 2);
-	real_t total_angle_per_dash = Math::TAU / (real_t)num_dashes;
-	real_t dash_angle = total_angle_per_dash * DASH_RATIO;
-	
-	real_t current_angle = 0.0;
-	
-	for (int dash = 0; dash < num_dashes && current_angle < Math::TAU; dash++) {
-		real_t dash_start_angle = current_angle;
-		real_t dash_end_angle = MIN(current_angle + dash_angle, Math::TAU);
-		
-		real_t d_angle = (dash_end_angle - dash_start_angle) / (real_t)DASH_SEGMENTS;
-		Vector3 prev = center * y_offset + (perp1 * Math::cos(dash_start_angle) + perp2 * Math::sin(dash_start_angle)) * circle_r;
-		
-		for (int i = 1; i <= DASH_SEGMENTS; i++) {
-			real_t cur_angle = MIN(dash_start_angle + d_angle * (real_t)i, dash_end_angle);
-			Vector3 cur = center * y_offset + (perp1 * Math::cos(cur_angle) + perp2 * Math::sin(cur_angle)) * circle_r;
-			
-			p_surface_tool->set_color(p_color);
-			p_surface_tool->add_vertex(p_transform.xform(prev));
-			p_surface_tool->set_color(p_color);
-			p_surface_tool->add_vertex(p_transform.xform(cur));
-			
-			prev = cur;
-		}
-		
-		current_angle += total_angle_per_dash;
-	}
-}
-
-// Helper function to draw a circle on the sphere (not necessarily a great circle)
-static void draw_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
-	Vector3 center = p_center_dir.normalized();
-	
-	// Find two perpendicular vectors to the center
-	Vector3 perp1, perp2;
-	if (Math::abs(center.y) < 0.9f) {
-		perp1 = Vector3(0, 1, 0).cross(center).normalized();
-	} else {
-		perp1 = Vector3(1, 0, 0).cross(center).normalized();
-	}
-	perp2 = center.cross(perp1).normalized();
-	
-	real_t y_offset = p_sphere_r * Math::cos(p_angle);
-	real_t circle_r = p_sphere_r * Math::sin(p_angle);
-	
-	if (circle_r <= CMP_EPSILON) {
-		return;
-	}
-	
-	static const real_t DP = Math::TAU / (real_t)p_segments;
-	Vector3 prev = center * y_offset + (perp1 * Math::cos(0.0) + perp2 * Math::sin(0.0)) * circle_r;
-	
-	for (int i = 1; i <= p_segments; i++) {
-		real_t angle = (real_t)i * DP;
-		Vector3 dir = (perp1 * Math::cos(angle) + perp2 * Math::sin(angle)).normalized();
-		Vector3 cur = center * y_offset + dir * circle_r;
-		
-		p_surface_tool->set_color(p_color);
-		p_surface_tool->add_vertex(p_transform.xform(prev));
-		p_surface_tool->set_color(p_color);
-		p_surface_tool->add_vertex(p_transform.xform(cur));
-		
-		prev = cur;
-	}
-}
-
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
-	if (!is_orientationally_constrained() || cones.is_empty()) {
+	if (cones.is_empty()) {
 		return;
 	}
 
@@ -829,67 +811,135 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		return;
 	}
 
-	static const int N = 32; // Number of segments for rings and arcs
-	static const real_t CENTER_RING_RADIUS = (real_t)0.05; // Fixed 0.05 radians (~2.86 degrees)
-
-	// Draw cone boundaries, tangent rings, and center indicators
-	for (int i = 0; i < cones.size(); i++) {
-		const Projection &quad = cones[i];
+	// Generate sphere mesh with triangles
+	static const int rings = 8;
+	static const int radial_segments = 8;
+	
+	Vector<Vector3> points;
+	Vector<Vector3> normals;
+	Vector<int> indices;
+	
+	int point = 0;
+	int thisrow = 0;
+	int prevrow = 0;
+	
+	for (int j = 0; j <= rings + 1; j++) {
+		real_t v = (real_t)j / (real_t)(rings + 1);
+		real_t w = Math::sin(Math::PI * v);
+		real_t y = Math::cos(Math::PI * v);
 		
-		// Extract quad elements: [cone1, tan1, tan2, cone2]
-		Vector4 cone1_vec = quad[0];
-		Vector4 tan1_vec = quad[1];
-		Vector4 tan2_vec = quad[2];
-		
-		Vector3 cone1_center = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
-		Vector3 tan1_center = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z);
-		Vector3 tan2_center = Vector3(tan2_vec.x, tan2_vec.y, tan2_vec.z);
-		real_t cone1_radius = cone1_vec.w;
-		real_t tan_radius = tan1_vec.w;
-		
-		// Draw cone1 boundary and center indicator
-		if (cone1_center.length_squared() > CMP_EPSILON) {
-			cone1_center = cone1_center.normalized();
-			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, cone1_radius, sphere_r, p_color, N);
-			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, CENTER_RING_RADIUS, sphere_r, p_color, N);
+		for (int i = 0; i <= radial_segments; i++) {
+			real_t u = (real_t)i / (real_t)radial_segments;
+			
+			real_t x = Math::sin(u * Math::TAU);
+			real_t z = Math::cos(u * Math::TAU);
+			
+			Vector3 p = Vector3(x * w, y, z * w) * sphere_r;
+			points.push_back(p_transform.xform(p));
+			Vector3 normal = Vector3(x * w, y, z * w).normalized();
+			normals.push_back(normal);
+			point++;
+			
+			if (i > 0 && j > 0) {
+				indices.push_back(prevrow + i - 1);
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i - 1);
+				
+				indices.push_back(prevrow + i);
+				indices.push_back(thisrow + i);
+				indices.push_back(thisrow + i - 1);
+			}
 		}
 		
-		// Draw tangent boundary rings (dotted)
-		if (tan1_center.length_squared() > CMP_EPSILON) {
-			tan1_center = tan1_center.normalized();
-			draw_dashed_sphere_circle(p_surface_tool, p_transform, tan1_center, tan_radius, sphere_r, p_color, N);
-		}
-		if (tan2_center.length_squared() > CMP_EPSILON) {
-			tan2_center = tan2_center.normalized();
-			draw_dashed_sphere_circle(p_surface_tool, p_transform, tan2_center, tan_radius, sphere_r, p_color, N);
+		prevrow = thisrow;
+		thisrow = point;
+	}
+	
+	if (indices.is_empty()) {
+		return;
+	}
+	
+	// Set up SurfaceTool for shader-based rendering
+	p_surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
+	const int32_t MESH_CUSTOM_0 = 0;
+	p_surface_tool->set_custom_format(MESH_CUSTOM_0, SurfaceTool::CustomFormat::CUSTOM_RGBA_HALF);
+	
+	// Add vertices with normals stored in CUSTOM0
+	for (int32_t point_i = 0; point_i < points.size(); point_i++) {
+		Color c;
+		c.r = normals[point_i].x;
+		c.g = normals[point_i].y;
+		c.b = normals[point_i].z;
+		c.a = 0;
+		p_surface_tool->set_custom(MESH_CUSTOM_0, c);
+		p_surface_tool->set_normal(normals[point_i]);
+		p_surface_tool->add_vertex(points[point_i]);
+	}
+	
+	// Add indices
+	for (int32_t index_i : indices) {
+		p_surface_tool->add_index(index_i);
+	}
+	
+	// Convert quad structure to shader-compatible format
+	// Shader expects: [cone1, tan1, tan2, cone2] for each quad
+	Vector<Vector4> cone_sequence;
+	int cone_count = get_cone_count();
+	
+	if (cone_count == 1) {
+		// Single cone case
+		Vector3 center = get_cone_center(0);
+		real_t radius = get_cone_radius(0);
+		cone_sequence.push_back(Vector4(center.x, center.y, center.z, radius));
+	} else {
+		// Multiple cones: convert quads to shader format
+		for (int i = 0; i < cones.size(); i++) {
+			const Projection &quad = cones[i];
+			Vector4 cone1_vec = quad[0];
+			Vector4 tan1_vec = quad[1];
+			Vector4 tan2_vec = quad[2];
+			Vector4 cone2_vec = quad[3];
+			
+			// Normalize centers
+			Vector3 cone1_center = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
+			Vector3 tan1_center = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z);
+			Vector3 tan2_center = Vector3(tan2_vec.x, tan2_vec.y, tan2_vec.z);
+			Vector3 cone2_center = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
+			
+			if (cone1_center.length_squared() > CMP_EPSILON) {
+				cone1_center = cone1_center.normalized();
+			}
+			if (tan1_center.length_squared() > CMP_EPSILON) {
+				tan1_center = tan1_center.normalized();
+			}
+			if (tan2_center.length_squared() > CMP_EPSILON) {
+				tan2_center = tan2_center.normalized();
+			}
+			if (cone2_center.length_squared() > CMP_EPSILON) {
+				cone2_center = cone2_center.normalized();
+			}
+			
+			cone_sequence.push_back(Vector4(cone1_center.x, cone1_center.y, cone1_center.z, cone1_vec.w));
+			cone_sequence.push_back(Vector4(tan1_center.x, tan1_center.y, tan1_center.z, tan1_vec.w));
+			cone_sequence.push_back(Vector4(tan2_center.x, tan2_center.y, tan2_center.z, tan2_vec.w));
+			cone_sequence.push_back(Vector4(cone2_center.x, cone2_center.y, cone2_center.z, cone2_vec.w));
 		}
 	}
 	
-	// Draw the last cone (cone2 of the last quad) - this is the only unique cone2
-	if (cones.size() > 0) {
-		const Projection &last_quad = cones[cones.size() - 1];
-		Vector4 cone2_vec = last_quad[3]; // Column 3 = cone2
-		Vector3 center = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
-		real_t radius = cone2_vec.w;
-		
-		if (center.length_squared() > CMP_EPSILON) {
-			center = center.normalized();
-			draw_sphere_circle(p_surface_tool, p_transform, center, radius, sphere_r, p_color, N);
-			draw_sphere_circle(p_surface_tool, p_transform, center, CENTER_RING_RADIUS, sphere_r, p_color, N);
-		}
-	}
-
-	// Draw dashed lines connecting cone centers in order
-	int cone_count = get_cone_count();
-	if (cone_count > 1) {
-		for (int i = 0; i < cone_count - 1; i++) {
-			Vector3 center1 = get_cone_center(i);
-			Vector3 center2 = get_cone_center(i + 1);
-			
-			// Draw dashed great circle arc from cone1 center to cone2 center on sphere surface
-			draw_dashed_great_circle_arc(p_surface_tool, p_transform, center1, center2, sphere_r, p_color, N);
-		}
-	}
+	// Create shader material
+	Ref<Shader> kusudama_shader;
+	kusudama_shader.instantiate();
+	kusudama_shader->set_code(KUSUDAMA_SHADER);
+	
+	Ref<ShaderMaterial> kusudama_material;
+	kusudama_material.instantiate();
+	kusudama_material->set_shader(kusudama_shader);
+	kusudama_material->set_shader_parameter("cone_sequence", cone_sequence);
+	kusudama_material->set_shader_parameter("cone_count", cone_count);
+	kusudama_material->set_shader_parameter("kusudama_color", p_color);
+	
+	// Set material on SurfaceTool
+	p_surface_tool->set_material(kusudama_material);
 }
 
 #endif // TOOLS_ENABLED

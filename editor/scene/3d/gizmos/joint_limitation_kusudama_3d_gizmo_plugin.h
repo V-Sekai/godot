@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  joint_limitation_3d.h                                                 */
+/*  joint_limitation_kusudama_3d_gizmo_plugin.h                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -30,27 +30,19 @@
 
 #pragma once
 
-#include "core/io/resource.h"
+#include "editor/scene/3d/node_3d_editor_gizmos.h"
+#include "scene/3d/node_3d.h"
+#include "scene/resources/3d/joint_limitation_kusudama_3d.h"
 
-#ifdef TOOLS_ENABLED
-#include "scene/resources/surface_tool.h"
-#endif // TOOLS_ENABLED
-
-class JointLimitation3D : public Resource {
-	GDCLASS(JointLimitation3D, Resource);
-
-protected:
-
-	// Directions are normalized vector from Vector(0, 0, 0). Space is defined by _make_space(), must return normalized vector.
-	virtual Vector3 _solve(const Vector3 &p_direction) const;
+class JointLimitationKusudama3DGizmoPlugin : public EditorNode3DGizmoPlugin {
+	GDCLASS(JointLimitationKusudama3DGizmoPlugin, EditorNode3DGizmoPlugin);
 
 public:
-	// Define temporary space based on rest and forward vector.
-	virtual Quaternion make_space(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset) const;
+	bool has_gizmo(Node3D *p_spatial) override;
+	String get_gizmo_name() const override;
+	int get_priority() const override;
+	void redraw(EditorNode3DGizmo *p_gizmo) override;
 
-	Vector3 solve(const Vector3 &p_local_forward_vector, const Vector3 &p_local_right_vector, const Quaternion &p_rotation_offset, const Vector3 &p_local_current_vector) const;
-
-#ifdef TOOLS_ENABLED
-	virtual void draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const; // For drawing gizmo.
-#endif // TOOLS_ENABLED
+	JointLimitationKusudama3DGizmoPlugin();
 };
+
