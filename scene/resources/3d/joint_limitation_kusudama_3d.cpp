@@ -37,9 +37,6 @@
 #endif // TOOLS_ENABLED
 
 void JointLimitationKusudama3D::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_cones", "cones"), &JointLimitationKusudama3D::set_cones);
-	ClassDB::bind_method(D_METHOD("get_cones"), &JointLimitationKusudama3D::get_cones);
-
 	ClassDB::bind_method(D_METHOD("set_orientationally_constrained", "constrained"), &JointLimitationKusudama3D::set_orientationally_constrained);
 	ClassDB::bind_method(D_METHOD("is_orientationally_constrained"), &JointLimitationKusudama3D::is_orientationally_constrained);
 
@@ -50,7 +47,6 @@ void JointLimitationKusudama3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_cone_radius", "index", "radius"), &JointLimitationKusudama3D::set_cone_radius);
 	ClassDB::bind_method(D_METHOD("get_cone_radius", "index"), &JointLimitationKusudama3D::get_cone_radius);
 
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "cones", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE), "set_cones", "get_cones");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "orientationally_constrained"), "set_orientationally_constrained", "is_orientationally_constrained");
 }
 
@@ -384,10 +380,13 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	Vector3 closest_collision_point = point;
 
 	// Loop through each limit cone
+	// Extract all unique cones from the quads: cone0 from quad[0][0], cone1 from quad[0][3], cone2 from quad[1][3], etc.
 	for (int i = 0; i < cones.size(); i++) {
-		const Vector4 &cone_data = cones[i];
-		Vector3 control_point = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		real_t radius = cone_data.w;
+		const Projection &quad = cones[i];
+		// Check cone1 (column 0) of this quad
+		Vector4 cone1_vec = quad[0];
+		Vector3 control_point = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z).normalized();
+		real_t radius = cone1_vec.w;
 
 		Vector3 collision_point = closest_to_cone_boundary(point, control_point, radius);
 
@@ -405,37 +404,108 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 			closest_cos = this_cos;
 		}
 	}
+	// Also check the last cone (column 3 of the last quad)
+	if (cones.size() > 0) {
+		const Projection &last_quad = cones[cones.size() - 1];
+		Vector4 cone2_vec = last_quad[3];
+		Vector3 control_point = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z).normalized();
+		real_t radius = cone2_vec.w;
 
-	// If we're out of bounds of all cones, check if we're in the paths between the cones
-	// IMPORTANT: We explicitly do NOT check the pair (last_cone, first_cone) to prevent wrap-around
-	if (cones.size() > 1) {
-		for (int i = 0; i < cones.size() - 1; i++) {
-			int next_i = i + 1; // Only connect to next adjacent cone, no wrap-around
-			const Vector4 &cone1_data = cones[i];
-			const Vector4 &cone2_data = cones[next_i];
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-			real_t radius1 = cone1_data.w;
-			real_t radius2 = cone2_data.w;
-
-			Vector3 collision_point = get_on_great_tangent_triangle(point, center1, radius1, center2, radius2);
-
-			// If the collision point is NaN, skip to the next iteration
-			if (Math::is_nan(collision_point.x)) {
-				continue;
-			}
-
+		Vector3 collision_point = closest_to_cone_boundary(point, control_point, radius);
+		if (!Math::is_nan(collision_point.x)) {
 			real_t this_cos = collision_point.dot(point);
-
-			// If the cosine is approximately 1, return the original point (matches many_bone_ik)
 			if (Math::is_equal_approx(this_cos, real_t(1.0))) {
 				return point;
 			}
-
-			// If the cosine is greater than the current closest cosine, update the closest collision point and cosine
 			if (this_cos > closest_cos) {
 				closest_collision_point = collision_point;
 				closest_cos = this_cos;
+			}
+		}
+	}
+
+	// If we're out of bounds of all cones, check if we're in the paths between the cones
+	// IMPORTANT: We explicitly do NOT check the pair (last_cone, first_cone) to prevent wrap-around
+	// For each cone pair, get the quad as a 4x4 Projection: [cone1, tan1, tan2, cone2] and check all 4 regions
+	if (cones.size() > 0) {
+		for (int i = 0; i < cones.size(); i++) {
+			// Get quad as 4x4 Projection matrix: columns are [cone1, tan1, tan2, cone2]
+			// Each column is Vector4(x, y, z, radius)
+			const Projection &quad = cones[i];
+			
+			// Extract elements from quad
+			Vector4 cone1_vec = quad[0]; // Column 0 = cone1
+			Vector4 tan1_vec = quad[1];  // Column 1 = tan1
+			Vector4 tan2_vec = quad[2];  // Column 2 = tan2
+			Vector4 cone2_vec = quad[3];  // Column 3 = cone2
+			
+			Vector3 center1 = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z).normalized();
+			Vector3 center2 = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z).normalized();
+			real_t radius1 = cone1_vec.w;
+			real_t radius2 = cone2_vec.w;
+			
+			Vector3 tan1 = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z).normalized();
+			Vector3 tan2 = Vector3(tan2_vec.x, tan2_vec.y, tan2_vec.z).normalized();
+			real_t tan_radius = tan1_vec.w; // tan1 and tan2 have same radius
+
+			// Check all 4 regions of the quad: iterate through [cone1, tan1, tan2, cone2]
+			real_t tan_radius_cos = Math::cos(tan_radius);
+			for (int quad_idx = 0; quad_idx < 4; quad_idx++) {
+				Vector4 elem_vec = quad[quad_idx];
+				Vector3 elem_center = Vector3(elem_vec.x, elem_vec.y, elem_vec.z).normalized();
+				real_t elem_radius = elem_vec.w;
+				bool is_tangent = (quad_idx == 1 || quad_idx == 2);
+				
+				Vector3 collision_point;
+				
+				if (!is_tangent) {
+					// Check cone region
+					collision_point = closest_to_cone_boundary(point, elem_center, elem_radius);
+				} else {
+					// Check tangent region
+					// For tan1 (quad_idx == 1): check region between center1 and center2
+					// For tan2 (quad_idx == 2): check region between center1 and center2
+					Vector3 c1xt = center1.cross(elem_center);
+					Vector3 txc2 = elem_center.cross(center2);
+					if (quad_idx == 2) {
+						// tan2: reverse the cross products
+						c1xt = elem_center.cross(center1);
+						txc2 = center2.cross(elem_center);
+					}
+					
+					if (point.dot(c1xt) > 0 && point.dot(txc2) > 0) {
+						real_t to_tan_cos = point.dot(elem_center);
+						if (to_tan_cos > tan_radius_cos) {
+							// Project onto tangent circle
+							Vector3 plane_normal = elem_center.cross(point);
+							if (!plane_normal.is_finite() || Math::is_zero_approx(plane_normal.length_squared())) {
+								plane_normal = Vector3(0, 1, 0);
+							}
+							plane_normal.normalize();
+							Quaternion rotate_about_by = get_quaternion_axis_angle(plane_normal, elem_radius);
+							collision_point = rotate_about_by.xform(elem_center).normalized();
+						} else {
+							// Point is inside tangent circle, so it's valid
+							collision_point = point;
+						}
+					} else {
+						collision_point = Vector3(NAN, NAN, NAN);
+					}
+				}
+
+				// Process collision point
+				if (Math::is_nan(collision_point.x)) {
+					continue;
+				}
+
+				real_t this_cos = collision_point.dot(point);
+				if (Math::is_equal_approx(this_cos, real_t(1.0))) {
+					return point;
+				}
+				if (this_cos > closest_cos) {
+					closest_collision_point = collision_point;
+					closest_cos = this_cos;
+				}
 			}
 		}
 	}
@@ -444,50 +514,68 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 	return closest_collision_point.normalized();
 }
 
-void JointLimitationKusudama3D::set_cones(const Vector<Vector4> &p_cones) {
-	cones = p_cones;
-	emit_changed();
-}
-
-Vector<Vector4> JointLimitationKusudama3D::get_cones() const {
-	return cones;
-}
-
 void JointLimitationKusudama3D::set_cone_count(int p_count) {
 	if (p_count < 0) {
 		p_count = 0;
 	}
+	// Number of quads = number of individual cones - 1
+	int quad_count = p_count > 0 ? p_count - 1 : 0;
 	int old_size = cones.size();
-	if (old_size == p_count) {
+	if (old_size == quad_count) {
 		return;
 	}
-	cones.resize(p_count);
-	// Initialize new cones with default values
+	cones.resize(quad_count);
+	// Initialize new quads with default values
 	for (int i = old_size; i < cones.size(); i++) {
-		cones.write[i] = Vector4(0, 1, 0, Math::PI * 0.25); // Default: +Y axis, 45 degree cone
+		Projection &quad = cones.write[i];
+		Vector4 default_cone = Vector4(0, 1, 0, Math::PI * 0.25); // Default: +Y axis, 45 degree cone
+		quad[0] = default_cone; // cone1
+		quad[3] = default_cone; // cone2 (same as next quad's cone1)
+		// tan1 and tan2 will be computed when needed
 	}
 	notify_property_list_changed();
 	emit_changed();
 }
 
 int JointLimitationKusudama3D::get_cone_count() const {
-	return cones.size();
+	// Number of unique cones = number of quads + 1
+	// Each quad has cone1 (col 0) and cone2 (col 3), and cone2 of quad i = cone1 of quad i+1
+	return cones.size() + 1;
 }
 
 void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_center) {
-	ERR_FAIL_INDEX(p_index, cones.size());
+	int quad_count = cones.size();
+	ERR_FAIL_INDEX(p_index, quad_count + 1);
 	// Store raw value (non-normalized) to allow editor to accept values outside [-1, 1]
 	// Normalization happens lazily when values are used
-	Vector4 &cone = cones.write[p_index];
-	cone.x = p_center.x;
-	cone.y = p_center.y;
-	cone.z = p_center.z;
+	if (p_index < quad_count) {
+		// Access column 0 of quad at p_index
+		Vector4 &cone = cones.write[p_index][0];
+		cone.x = p_center.x;
+		cone.y = p_center.y;
+		cone.z = p_center.z;
+	} else {
+		// Access column 3 of last quad
+		Vector4 &cone = cones.write[quad_count - 1][3];
+		cone.x = p_center.x;
+		cone.y = p_center.y;
+		cone.z = p_center.z;
+	}
 	emit_changed();
 }
 
 Vector3 JointLimitationKusudama3D::get_cone_center(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, cones.size(), Vector3(0, 1, 0));
-	Vector3 center = Vector3(cones[p_index].x, cones[p_index].y, cones[p_index].z);
+	int quad_count = cones.size();
+	ERR_FAIL_INDEX_V(p_index, quad_count + 1, Vector3(0, 1, 0));
+	Vector4 cone_vec;
+	if (p_index < quad_count) {
+		// Access column 0 of quad at p_index
+		cone_vec = cones[p_index][0];
+	} else {
+		// Access column 3 of last quad
+		cone_vec = cones[quad_count - 1][3];
+	}
+	Vector3 center = Vector3(cone_vec.x, cone_vec.y, cone_vec.z);
 	// Normalize when reading to ensure we always return a normalized value
 	if (center.length_squared() > CMP_EPSILON) {
 		return center.normalized();
@@ -497,14 +585,28 @@ Vector3 JointLimitationKusudama3D::get_cone_center(int p_index) const {
 
 
 void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
-	ERR_FAIL_INDEX(p_index, cones.size());
-	cones.write[p_index].w = p_radius;
+	int quad_count = cones.size();
+	ERR_FAIL_INDEX(p_index, quad_count + 1);
+	if (p_index < quad_count) {
+		// Access column 0 of quad at p_index
+		cones.write[p_index][0].w = p_radius;
+	} else {
+		// Access column 3 of last quad
+		cones.write[quad_count - 1][3].w = p_radius;
+	}
 	emit_changed();
 }
 
 real_t JointLimitationKusudama3D::get_cone_radius(int p_index) const {
-	ERR_FAIL_INDEX_V(p_index, cones.size(), 0.0);
-	return cones[p_index].w;
+	int quad_count = cones.size();
+	ERR_FAIL_INDEX_V(p_index, quad_count + 1, 0.0);
+	if (p_index < quad_count) {
+		// Access column 0 of quad at p_index
+		return cones[p_index][0].w;
+	} else {
+		// Access column 3 of last quad
+		return cones[quad_count - 1][3].w;
+	}
 }
 
 bool JointLimitationKusudama3D::_set(const StringName &p_name, const Variant &p_value) {
@@ -519,15 +621,11 @@ bool JointLimitationKusudama3D::_set(const StringName &p_name, const Variant &p_
 		if (what == "center") {
 			// Handle quaternion input from inspector
 			if (p_value.get_type() == Variant::QUATERNION) {
-				ERR_FAIL_INDEX_V(index, cones.size(), false);
+				int quad_count = cones.size();
+				ERR_FAIL_INDEX_V(index, quad_count + 1, false);
 				// Convert quaternion to direction vector by rotating the default direction (0, 1, 0)
 				Vector3 default_dir = Vector3(0, 1, 0);
 				Vector3 center = Quaternion(p_value).normalized().xform(default_dir);
-				// Store raw value (non-normalized) to allow editor to accept values outside [-1, 1]
-				Vector4 &cone = cones.write[index];
-				cone.x = center.x;
-				cone.y = center.y;
-				cone.z = center.z;
 				set_cone_center(index, center);
 			} else {
 				set_cone_center(index, p_value);
@@ -553,7 +651,8 @@ bool JointLimitationKusudama3D::_get(const StringName &p_name, Variant &r_ret) c
 		String what = prop_name.get_slicec('/', 2);
 		if (what == "center") {
 			// Return as quaternion for inspector display with degrees
-			ERR_FAIL_INDEX_V(index, cones.size(), false);
+			int quad_count = cones.size();
+			ERR_FAIL_INDEX_V(index, quad_count + 1, false);
 			Vector3 center = get_cone_center(index); // This already normalizes
 			Vector3 default_dir = Vector3(0, 1, 0);
 			// Create quaternion representing rotation from default_dir to center
@@ -790,10 +889,10 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	static const int N = 32; // Number of segments for rings and arcs
 
 	// 1. Draw kusudama cone boundaries and center indicators
-	for (int i = 0; i < cones.size(); i++) {
-		const Vector4 &cone_data = cones[i];
-		Vector3 center = Vector3(cone_data.x, cone_data.y, cone_data.z).normalized();
-		real_t radius = cone_data.w;
+	int cone_count = get_cone_count();
+	for (int i = 0; i < cone_count; i++) {
+		Vector3 center = get_cone_center(i);
+		real_t radius = get_cone_radius(i);
 
 		// Draw cone boundary ring (for visibility, not filled)
 		draw_sphere_circle(p_surface_tool, p_transform, center, radius, sphere_r, p_color, N);
@@ -805,13 +904,10 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 
 
 	// 3. Draw fish bone structure (dashed lines connecting cone centers in order)
-	if (cones.size() > 1) {
-		for (int i = 0; i < cones.size() - 1; i++) {
-			const Vector4 &cone1_data = cones[i];
-			const Vector4 &cone2_data = cones[i + 1];
-			
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
+	if (cone_count > 1) {
+		for (int i = 0; i < cone_count - 1; i++) {
+			Vector3 center1 = get_cone_center(i);
+			Vector3 center2 = get_cone_center(i + 1);
 			
 			// Draw dashed great circle arc from cone1 center to cone2 center on sphere surface
 			draw_dashed_great_circle_arc(p_surface_tool, p_transform, center1, center2, sphere_r, p_color, N);

@@ -31,13 +31,15 @@
 #pragma once
 
 #include "scene/resources/3d/joint_limitation_3d.h"
+#include "core/math/projection.h"
 
 class JointLimitationKusudama3D : public JointLimitation3D {
 	GDCLASS(JointLimitationKusudama3D, JointLimitation3D);
 
-	// Cones data: Vector4(x, y, z, radius) where (x,y,z) is normalized control point
-	// Default to one cone matching JointLimitationCone3D: +Y axis, radius_range 0.25 (0.25 * PI radians)
-	Vector<Vector4> cones = { Vector4(0, 1, 0, 0.7853981633974483) };
+	// Cones data: Each Projection is a 4x4 matrix representing a quad [cone1, tan1, tan2, cone2]
+	// Each column is Vector4(x, y, z, radius) for that element
+	// Column 0 = cone1, Column 1 = tan1, Column 2 = tan2, Column 3 = cone2
+	Vector<Projection> cones;
 
 	bool orientationally_constrained = true;
 
@@ -50,9 +52,6 @@ protected:
 	virtual Vector3 _solve(const Vector3 &p_direction) const override;
 
 public:
-	void set_cones(const Vector<Vector4> &p_cones);
-	Vector<Vector4> get_cones() const;
-
 	void set_cone_count(int p_count);
 	int get_cone_count() const;
 

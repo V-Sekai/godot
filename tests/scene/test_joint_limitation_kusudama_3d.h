@@ -34,6 +34,17 @@
 
 namespace TestJointLimitationKusudama3D {
 
+// Helper function to set cones from Vector<Vector4> using the individual cone API
+static void set_cones_from_vector4(Ref<JointLimitationKusudama3D> limitation, const Vector<Vector4> &cones) {
+	limitation->set_cone_count(cones.size());
+	for (int i = 0; i < cones.size(); i++) {
+		Vector3 center = Vector3(cones[i].x, cones[i].y, cones[i].z);
+		real_t radius = cones[i].w;
+		limitation->set_cone_center(i, center);
+		limitation->set_cone_radius(i, radius);
+	}
+}
+
 // Independent solver implementation - completely separate from production code
 // This provides a verification mechanism for the main solver
 
@@ -388,7 +399,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test point inside single cone") {
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point at the center of the cone should be returned as-is
 	Vector3 test_point = control_point;
@@ -410,7 +421,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test point outside single cone") {
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point far outside the cone should be clamped to boundary
 	Vector3 test_point = Vector3(1, 0, 0).normalized();
@@ -433,7 +444,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test point with zero radius cone")
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point at exact control point should be returned
 	Vector3 test_point = control_point;
@@ -458,7 +469,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test multiple cones - point betwee
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point1.x, control_point1.y, control_point1.z, radius));
 	cones.push_back(Vector4(control_point2.x, control_point2.y, control_point2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point between the two cones should be handled by path logic
 	Vector3 point_between = (control_point1 + control_point2).normalized();
@@ -481,7 +492,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test point on path between two adj
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point exactly on the great circle path between cones
 	Vector3 path_point = (cp1 + cp2).normalized();
@@ -509,7 +520,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test point outside both cones but 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point outside both cones but in the region between them
 	Vector3 outside_point = Vector3(0.5, 0.5, 0.7).normalized();
@@ -540,7 +551,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test path between cones with diffe
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius1));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius2));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point between cones should still work with different radii
 	Vector3 between = (cp1 + cp2).normalized();
@@ -565,7 +576,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test no wrap-around from last to f
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
 	cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point between last and first cone - should NOT be in an allowed path (no wrap-around)
 	// Use a point that's clearly in the forbidden wrap-around region
@@ -603,7 +614,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test point in tangent circle regio
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point that should be in the tangent circle region
 	// This is in the region where the tangent circle connects the two cones
@@ -634,7 +645,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test multiple paths - point closes
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
 	cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point that could be in path between cp1-cp2 or cp2-cp3
 	// Should find the closest valid path
@@ -660,7 +671,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test path with very close cones") 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point between very close cones
 	Vector3 between = (cp1 + cp2).normalized();
@@ -682,7 +693,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test path with nearly opposite con
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point between nearly opposite cones
 	Vector3 between = (cp1 + cp2).normalized();
@@ -703,7 +714,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test multiple cones - point in fir
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point1.x, control_point1.y, control_point1.z, radius));
 	cones.push_back(Vector4(control_point2.x, control_point2.y, control_point2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point inside first cone should be returned as-is
 	Vector3 point_in_cone1 = Quaternion(Vector3(0, 1, 0), radius * 0.3f).xform(control_point1);
@@ -716,7 +727,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test empty cones") {
 	limitation.instantiate();
 
 	Vector<Vector4> empty_cones;
-	limitation->set_cones(empty_cones);
+	set_cones_from_vector4(limitation, empty_cones);
 
 	// With no cones and orientationally constrained, should return input
 	limitation->set_orientationally_constrained(true);
@@ -739,7 +750,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test orientationally unconstrained
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 	limitation->set_orientationally_constrained(false);
 
 	// Should return input regardless of cone constraints
@@ -757,13 +768,12 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test cones getters and setters") {
 	cones.push_back(Vector4(0, 1, 0, Math::deg_to_rad(45.0f)));
 	cones.push_back(Vector4(0, 0, 1, Math::deg_to_rad(60.0f)));
 
-	limitation->set_cones(cones);
-	Vector<Vector4> retrieved = limitation->get_cones();
+	set_cones_from_vector4(limitation, cones);
 
-	CHECK(retrieved.size() == 3);
-	CHECK(Math::is_equal_approx(retrieved[0].w, Math::deg_to_rad(30.0f)));
-	CHECK(Math::is_equal_approx(retrieved[1].w, Math::deg_to_rad(45.0f)));
-	CHECK(Math::is_equal_approx(retrieved[2].w, Math::deg_to_rad(60.0f)));
+	CHECK(limitation->get_cone_count() == 3);
+	CHECK(Math::is_equal_approx(limitation->get_cone_radius(0), Math::deg_to_rad(30.0f)));
+	CHECK(Math::is_equal_approx(limitation->get_cone_radius(1), Math::deg_to_rad(45.0f)));
+	CHECK(Math::is_equal_approx(limitation->get_cone_radius(2), Math::deg_to_rad(60.0f)));
 }
 
 TEST_CASE("[Scene][JointLimitationKusudama3D] Test large radius cone") {
@@ -775,7 +785,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test large radius cone") {
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Most points should be inside such a large cone
 	Vector3 test_point = Vector3(1, 0, 0).normalized();
@@ -800,7 +810,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test three cones in sequence") {
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
 	cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Test point in first cone
 	Vector3 point1 = Quaternion(Vector3(0, 1, 0), radius * 0.3f).xform(cp1);
@@ -836,7 +846,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test edge case - parallel vectors"
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Test with input parallel to control point (should handle gracefully)
 	Vector3 parallel_point = control_point * 2.0f; // Same direction, different length
@@ -856,7 +866,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test edge case - opposite directio
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point in opposite direction (180 degrees away)
 	Vector3 opposite = -control_point;
@@ -969,7 +979,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test point exactly on cone boundar
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Create a point exactly on the boundary
 	Vector3 perp = control_point.get_any_perpendicular().normalized();
@@ -1008,7 +1018,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test very small radius cone") {
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point at center should be allowed
 	Vector3 center_point = control_point;
@@ -1031,7 +1041,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test near maximum radius cone") {
 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Most points should be inside such a large cone
 	Vector3 test_point = Vector3(1, 0, 0).normalized();
@@ -1057,7 +1067,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test four cones in sequence") {
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
 	cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
 	cones.push_back(Vector4(cp4.x, cp4.y, cp4.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Test point in first cone
 	Vector3 point1 = Quaternion(Vector3(0, 1, 0), radius * 0.3f).xform(cp1);
@@ -1079,7 +1089,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test solve without rotation parame
 	real_t radius = Math::deg_to_rad(30.0f);
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(control_point.x, control_point.y, control_point.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Test solve without rotation (should work with default parameters)
 	Vector3 test_dir = Vector3(1, 0, 0).normalized();
@@ -1114,7 +1124,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - point in allow
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point that should be in the allowed tangent path region (outside both tangent circles)
 	// This is between the cones but outside the forbidden tangent circle regions
@@ -1138,7 +1148,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - point inside f
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point that should be inside a forbidden tangent circle
 	// This should be projected to the tangent circle boundary
@@ -1161,7 +1171,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - point on tange
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point approximately on the tangent circle boundary
 	// Should be handled gracefully (either returned as-is or projected slightly)
@@ -1188,7 +1198,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - three cones wi
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
 	cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point in path between cp1 and cp2
 	Vector3 path12 = Vector3(0.7, 0.7, 0.1).normalized();
@@ -1221,7 +1231,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - large cone rad
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point between cones - with large radii, most points should be in cones
 	// But tangent path should still work for points outside both cones
@@ -1244,7 +1254,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - small cone rad
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point in the tangent path between small cones
 	Vector3 path_point = Vector3(0.6, 0.6, 0.5).normalized();
@@ -1265,7 +1275,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Test tangent path - point outside 
 	Vector<Vector4> cones;
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// Point far from both cones and their tangent paths
 	// Use a point that's 90 degrees from both cp1 and cp2 to ensure it's outside both cones (radius 30deg)
@@ -1301,7 +1311,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Exhaustive test of all regions - t
 	cones.push_back(Vector4(top.x, top.y, top.z, radius));
 	cones.push_back(Vector4(equator.x, equator.y, equator.z, radius));
 	cones.push_back(Vector4(bottom.x, bottom.y, bottom.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// ===== TEST POINTS IN OPEN REGIONS (should be allowed) =====
 
@@ -1360,7 +1370,7 @@ TEST_CASE("[Scene][JointLimitationKusudama3D] Exhaustive test of all regions - t
 	cones.push_back(Vector4(cp1.x, cp1.y, cp1.z, radius));
 	cones.push_back(Vector4(cp2.x, cp2.y, cp2.z, radius));
 	cones.push_back(Vector4(cp3.x, cp3.y, cp3.z, radius));
-	limitation->set_cones(cones);
+	set_cones_from_vector4(limitation, cones);
 
 	// ===== TEST POINTS IN OPEN REGIONS (should be allowed) =====
 
