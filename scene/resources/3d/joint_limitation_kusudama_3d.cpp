@@ -444,9 +444,8 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 	}
 	
 	// Store tangents in the quad (columns 1 and 2)
-	// Swap tan1 and tan2 to match shader expectations
-	quad[1] = Vector4(tan2.x, tan2.y, tan2.z, tan_radius);
-	quad[2] = Vector4(tan1.x, tan1.y, tan1.z, tan_radius);
+	quad[1] = Vector4(tan1.x, tan1.y, tan1.z, tan_radius);
+	quad[2] = Vector4(tan2.x, tan2.y, tan2.z, tan_radius);
 }
 
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
