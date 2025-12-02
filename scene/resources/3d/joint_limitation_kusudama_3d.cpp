@@ -590,43 +590,52 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 
 	static const int N = 32; // Number of segments for rings and arcs
 
-	// 1. Draw kusudama cone boundaries and center indicators
-	int cone_count = get_cone_count();
-	for (int i = 0; i < cone_count; i++) {
-		Vector3 center = get_cone_center(i);
-		real_t radius = get_cone_radius(i);
-
-		// Draw cone boundary ring (for visibility, not filled)
-		draw_sphere_circle(p_surface_tool, p_transform, center, radius, sphere_r, p_color, N);
-		
-		// Draw center indicator (small ring at cone center)
-		real_t center_ring_radius = (real_t)0.05; // Fixed 0.05 radians (~2.86 degrees)
-		draw_sphere_circle(p_surface_tool, p_transform, center, center_ring_radius, sphere_r, p_color, N);
-	}
-
-	// 2. Draw tangent circles for each cone pair
+	// 1. Draw kusudama cone boundaries, tangents, and center indicators using quad style
+	real_t center_ring_radius = (real_t)0.05; // Fixed 0.05 radians (~2.86 degrees)
+	
+	// Iterate through each quad and draw: cone1, tan1, tan2 (cone2 of quad i = cone1 of quad i+1, so skip it)
 	for (int i = 0; i < cones.size(); i++) {
 		const Projection &quad = cones[i];
 		
-		// Extract tangents from the quad (already computed and stored)
-		Vector4 tan1_vec = quad[1];  // Column 1 = tan1
-		Vector4 tan2_vec = quad[2];  // Column 2 = tan2
-		
-		Vector3 tan1 = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z).normalized();
-		Vector3 tan2 = Vector3(tan2_vec.x, tan2_vec.y, tan2_vec.z).normalized();
-		real_t tan_radius = tan1_vec.w; // tan1 and tan2 have same radius
-		
-		// Only draw if tangents are valid (non-zero)
-		if (tan1.length_squared() > CMP_EPSILON && tan2.length_squared() > CMP_EPSILON) {
-			// Draw tan1 circle
-			draw_sphere_circle(p_surface_tool, p_transform, tan1, tan_radius, sphere_r, p_color, N);
+		// Draw cone1, tan1, tan2 (skip cone2 since it's the same as next quad's cone1)
+		for (int quad_idx = 0; quad_idx < 3; quad_idx++) {
+			Vector4 elem_vec = quad[quad_idx];
+			Vector3 elem_center = Vector3(elem_vec.x, elem_vec.y, elem_vec.z);
+			real_t elem_radius = elem_vec.w;
 			
-			// Draw tan2 circle
-			draw_sphere_circle(p_surface_tool, p_transform, tan2, tan_radius, sphere_r, p_color, N);
+			// Only draw if element is valid (non-zero)
+			if (elem_center.length_squared() > CMP_EPSILON) {
+				elem_center = elem_center.normalized();
+				
+				// Draw boundary ring
+				draw_sphere_circle(p_surface_tool, p_transform, elem_center, elem_radius, sphere_r, p_color, N);
+				
+				// Draw center indicator (small ring at center)
+				draw_sphere_circle(p_surface_tool, p_transform, elem_center, center_ring_radius, sphere_r, p_color, N);
+			}
+		}
+	}
+	
+	// Draw the last cone (cone2 of the last quad) - this is the only unique cone2
+	if (cones.size() > 0) {
+		const Projection &last_quad = cones[cones.size() - 1];
+		Vector4 cone2_vec = last_quad[3]; // Column 3 = cone2
+		Vector3 center = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
+		real_t radius = cone2_vec.w;
+		
+		if (center.length_squared() > CMP_EPSILON) {
+			center = center.normalized();
+			
+			// Draw boundary ring
+			draw_sphere_circle(p_surface_tool, p_transform, center, radius, sphere_r, p_color, N);
+			
+			// Draw center indicator
+			draw_sphere_circle(p_surface_tool, p_transform, center, center_ring_radius, sphere_r, p_color, N);
 		}
 	}
 
-	// 3. Draw fish bone structure (dashed lines connecting cone centers in order)
+	// 2. Draw fish bone structure (dashed lines connecting cone centers in order)
+	int cone_count = get_cone_count();
 	if (cone_count > 1) {
 		for (int i = 0; i < cone_count - 1; i++) {
 			Vector3 center1 = get_cone_center(i);
