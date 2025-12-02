@@ -702,16 +702,17 @@ static void draw_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform
  * ==================
  * The constraint regions are defined using boolean set operations:
  * 
- * 1. Start with FullSphere = entire sphere surface (everything is forbidden by default)
+ * 1. Start with ForbiddenSphere = FullSphere = entire sphere surface (everything is forbidden by default)
+ *    - ForbiddenSphere = solid regions that forbid movement (everything is forbidden initially)
+ *    - OpenSphere = open areas that do NOT forbid movement (allowed regions) = complement(ForbiddenSphere)
  * 
  * 2. For each pair of cones (cone_i, cone_{i+1}):
  *    - Cones = cone_i, cone_{i+1} (always open/allowed regions)
- *    - PathRegion_i = complement of (ForbiddenSphere - ForbiddenPathRegion_i - ForbiddenTangents_i - Cones_i)
- *      This represents the allowed path region: cone_i → tan1,tan2 → cone_{i+1}
  *    - ForbiddenPathRegion_i = cone_{i+1} → tan1,tan2 → cone_i (the forbidden reverse path direction)
  *    - ForbiddenTangents = parts of tangent cones that are forbidden (NOT on allowed path)
- * 
- * 3. OpenArea = Cones ∪ PathRegion_1 ∪ PathRegion_2 ∪ ... (union of all cones and all path regions)
+ *    - PathRegion_i is the open area left when you add ForbiddenPathRegion_i + ForbiddenTangents_i + complement(Cones_i)
+ *     
+ * 3. OpenArea is the sum of the open areas of Cones ∪ PathRegion_1 ∪ PathRegion_2 ∪ ... (union of all cones and all path regions)
  * 
  * 4. ForbiddenArea = FullSphere - OpenArea
  * 
