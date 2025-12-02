@@ -761,39 +761,29 @@ static Vector3 get_tangent_cone_contact_point(const Vector3 &p_tan_center, real_
 	return get_cone_tangent_contact_point(p_cone_center, p_cone_radius, p_tan_center, p_tan_radius);
 }
 
-// Helper function to draw PathRegion boundaries (spherical quadrilateral showing the allowed path)
-// Arcs are ordered: 0 = tan1 (cone1 along to cone2), 1 = cone2 (tan1 to tan2), 2 = tan2 (cone2 to cone1), 3 = cone1 (tan2 to tan1)
-// These are arcs along the boundaries (circles on the sphere), not great circle arcs
-static void draw_path_region_boundaries(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius, const Vector3 &p_tan1_center, const Vector3 &p_tan2_center, real_t p_tan_radius, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
-	// Find boundary points (normalized directions) for the 4 arcs
-	// Arc 0: tan1 (from cone1 along to cone2) - contact points on tan1 circle
-	Vector3 tan1_point_cone1 = get_tangent_cone_contact_point(p_tan1_center, p_tan_radius, p_cone1_center, p_cone1_radius).normalized();
-	Vector3 tan1_point_cone2 = get_tangent_cone_contact_point(p_tan1_center, p_tan_radius, p_cone2_center, p_cone2_radius).normalized();
+// Helper function to draw PathRegion boundaries for a single tangent circle
+// This draws the spherical quadrilateral showing the allowed path from cone1 to cone2 through the tangent
+static void draw_path_region_for_tangent(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius, const Vector3 &p_tan_center, real_t p_tan_radius, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
+	// Find contact points where the tangent circle touches each cone
+	Vector3 tan_point_cone1 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone1_center, p_cone1_radius).normalized();
+	Vector3 tan_point_cone2 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone2_center, p_cone2_radius).normalized();
 	
-	// Arc 1: cone2 (from tan1 to tan2) - contact points on cone2 boundary
-	Vector3 cone2_boundary_tan1 = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan1_center, p_tan_radius).normalized();
-	Vector3 cone2_boundary_tan2 = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan2_center, p_tan_radius).normalized();
-	
-	// Arc 2: tan2 (from cone2 to cone1) - contact points on tan2 circle
-	Vector3 tan2_point_cone2 = get_tangent_cone_contact_point(p_tan2_center, p_tan_radius, p_cone2_center, p_cone2_radius).normalized();
-	Vector3 tan2_point_cone1 = get_tangent_cone_contact_point(p_tan2_center, p_tan_radius, p_cone1_center, p_cone1_radius).normalized();
-	
-	// Arc 3: cone1 (from tan2 to tan1) - contact points on cone1 boundary
-	Vector3 cone1_boundary_tan2 = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan2_center, p_tan_radius).normalized();
-	Vector3 cone1_boundary_tan1 = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan1_center, p_tan_radius).normalized();
+	// Find contact points on cone boundaries
+	Vector3 cone1_boundary = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan_center, p_tan_radius).normalized();
+	Vector3 cone2_boundary = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan_center, p_tan_radius).normalized();
 	
 	// Draw the 4 arcs forming the spherical quadrilateral (using great circle arcs)
-	// Arc 0: tan1 (cone1 along to cone2) - great circle arc from tan1 contact with cone1 to tan1 contact with cone2
-	draw_great_circle_arc(p_surface_tool, p_transform, tan1_point_cone1, tan1_point_cone2, p_sphere_r, p_color, p_segments, false);
+	// Arc 1: cone1 boundary to tan contact with cone1
+	draw_great_circle_arc(p_surface_tool, p_transform, cone1_boundary, tan_point_cone1, p_sphere_r, p_color, p_segments, false);
 	
-	// Arc 1: cone2 (tan1 to tan2) - great circle arc from cone2 contact with tan1 to cone2 contact with tan2
-	draw_great_circle_arc(p_surface_tool, p_transform, cone2_boundary_tan1, cone2_boundary_tan2, p_sphere_r, p_color, p_segments, false);
+	// Arc 2: tan contact with cone1 to tan contact with cone2 (along tangent circle)
+	draw_great_circle_arc(p_surface_tool, p_transform, tan_point_cone1, tan_point_cone2, p_sphere_r, p_color, p_segments, false);
 	
-	// Arc 2: tan2 (cone2 to cone1) - great circle arc from tan2 contact with cone2 to tan2 contact with cone1
-	draw_great_circle_arc(p_surface_tool, p_transform, tan2_point_cone2, tan2_point_cone1, p_sphere_r, p_color, p_segments, false);
+	// Arc 3: tan contact with cone2 to cone2 boundary
+	draw_great_circle_arc(p_surface_tool, p_transform, tan_point_cone2, cone2_boundary, p_sphere_r, p_color, p_segments, false);
 	
-	// Arc 3: cone1 (tan2 to tan1) - great circle arc from cone1 contact with tan2 to cone1 contact with tan1
-	draw_great_circle_arc(p_surface_tool, p_transform, cone1_boundary_tan2, cone1_boundary_tan1, p_sphere_r, p_color, p_segments, false);
+	// Arc 4: cone2 boundary back to cone1 boundary (completing the quadrilateral)
+	draw_great_circle_arc(p_surface_tool, p_transform, cone2_boundary, cone1_boundary, p_sphere_r, p_color, p_segments, true); // long way
 }
 
 /*
@@ -880,10 +870,14 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				draw_sphere_circle(p_surface_tool, p_transform, tan2, tan_radius, sphere_r, p_color, N);
 			}
 			
-			// Draw PathRegion boundaries (allowed path: cone1 → tan1 → tan2 → cone2)
-			// Arcs: 0 = tan1 (cone1 along to cone2), 1 = cone2 (tan1 to tan2), 2 = tan2 (cone2 to cone1), 3 = cone1 (tan2 to tan1)
-			if (tan1_valid && tan2_valid) {
-				draw_path_region_boundaries(p_surface_tool, p_transform, center1, radius1, center2, radius2, tan1, tan2, tan_radius, sphere_r, p_color, N);
+			// Draw PathRegion boundaries for tan1 (allowed path: cone1 → tan1 → cone2)
+			if (tan1_valid) {
+				draw_path_region_for_tangent(p_surface_tool, p_transform, center1, radius1, center2, radius2, tan1, tan_radius, sphere_r, p_color, N);
+			}
+			
+			// Draw PathRegion boundaries for tan2 (allowed path: cone1 → tan2 → cone2)
+			if (tan2_valid) {
+				draw_path_region_for_tangent(p_surface_tool, p_transform, center1, radius1, center2, radius2, tan2, tan_radius, sphere_r, p_color, N);
 			}
 		}
 	}
