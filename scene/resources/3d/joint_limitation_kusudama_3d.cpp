@@ -729,10 +729,9 @@ static void draw_dashed_great_circle_arc(Ref<SurfaceTool> &p_surface_tool, const
 	}
 }
 
-// Helper function to draw a partial circle arc on the sphere (excluding the half towards a direction)
-static void draw_sphere_circle_arc(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Vector3 &p_exclude_dir, const Color &p_color, int p_segments = 32) {
+// Helper function to draw a dashed circle on the sphere (not necessarily a great circle)
+static void draw_dashed_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
 	Vector3 center = p_center_dir.normalized();
-	Vector3 exclude = p_exclude_dir.normalized();
 	
 	// Find two perpendicular vectors to the center
 	Vector3 perp1, perp2;
@@ -750,41 +749,47 @@ static void draw_sphere_circle_arc(Ref<SurfaceTool> &p_surface_tool, const Trans
 		return;
 	}
 	
-	// Project exclude direction onto the circle plane
-	Vector3 exclude_proj = (exclude - center * center.dot(exclude)).normalized();
-	if (exclude_proj.length_squared() < CMP_EPSILON) {
-		exclude_proj = perp1;
+	// Draw dashed pattern: 60% dash, 40% gap
+	int num_dashes = p_segments / 4;
+	if (num_dashes < 2) {
+		num_dashes = 2;
 	}
+	real_t dash_ratio = 0.6;
+	real_t total_angle_per_dash = Math::TAU / (real_t)num_dashes;
+	real_t dash_angle = total_angle_per_dash * dash_ratio;
 	
-	// Find the angle of the exclude direction on the circle
-	real_t exclude_angle = Math::atan2(exclude_proj.dot(perp2), exclude_proj.dot(perp1));
+	real_t current_angle = 0.0;
+	int dash_segments = 4; // Segments per dash
 	
-	// Draw only the half circle away from exclude direction (exclude half circle around exclude_angle)
-	static const real_t DP = Math::TAU / (real_t)p_segments;
-	Vector3 prev;
-	bool prev_valid = false;
-	
-	for (int i = 0; i <= p_segments; i++) {
-		real_t angle = (real_t)i * DP;
-		// Check if this angle is in the excluded half (around exclude_angle ± PI/2)
-		real_t angle_diff = Math::fmod(angle - exclude_angle + Math::PI, Math::TAU) - Math::PI;
-		if (Math::abs(angle_diff) < Math::PI * 0.5) {
-			// This is in the excluded half, skip it
-			prev_valid = false;
-			continue;
+	for (int dash = 0; dash < num_dashes; dash++) {
+		real_t dash_start_angle = current_angle;
+		real_t dash_end_angle = current_angle + dash_angle;
+		if (dash_end_angle > Math::TAU) {
+			dash_end_angle = Math::TAU;
 		}
 		
-		Vector3 dir = (perp1 * Math::cos(angle) + perp2 * Math::sin(angle)).normalized();
-		Vector3 cur = center * y_offset + dir * circle_r;
+		real_t d_angle = (dash_end_angle - dash_start_angle) / (real_t)dash_segments;
+		Vector3 prev = center * y_offset + (perp1 * Math::cos(dash_start_angle) + perp2 * Math::sin(dash_start_angle)) * circle_r;
 		
-		if (prev_valid) {
+		for (int i = 1; i <= dash_segments; i++) {
+			real_t cur_angle = dash_start_angle + d_angle * (real_t)i;
+			if (cur_angle > dash_end_angle) {
+				cur_angle = dash_end_angle;
+			}
+			Vector3 cur = center * y_offset + (perp1 * Math::cos(cur_angle) + perp2 * Math::sin(cur_angle)) * circle_r;
+			
 			p_surface_tool->set_color(p_color);
 			p_surface_tool->add_vertex(p_transform.xform(prev));
 			p_surface_tool->set_color(p_color);
 			p_surface_tool->add_vertex(p_transform.xform(cur));
+			
+			prev = cur;
 		}
-		prev = cur;
-		prev_valid = true;
+		
+		current_angle += total_angle_per_dash;
+		if (current_angle >= Math::TAU) {
+			break;
+		}
 	}
 }
 
@@ -857,52 +862,41 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		real_t cone1_radius = cone1_vec.w;
 		real_t tan_radius = tan1_vec.w;
 		
-		// Draw cone1 boundary and center indicator
+		// Draw cone1 boundary and center indicator (full circles, no cuts)
 		if (cone1_center.length_squared() > CMP_EPSILON) {
 			cone1_center = cone1_center.normalized();
 			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, cone1_radius, sphere_r, p_color, N);
 			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, center_ring_radius, sphere_r, p_color, N);
 		}
 		
-		// Draw tangent boundary rings - only the half away from the path (cut the half touching the path)
-		if (tan1_center.length_squared() > CMP_EPSILON && cone1_center.length_squared() > CMP_EPSILON && cone2_center.length_squared() > CMP_EPSILON) {
+		// Draw tangent boundary rings as full dotted circles
+		if (tan1_center.length_squared() > CMP_EPSILON) {
 			tan1_center = tan1_center.normalized();
-			cone1_center = cone1_center.normalized();
-			cone2_center = cone2_center.normalized();
-			
-			// Direction towards the path (midpoint between cone1 and cone2)
-			Vector3 path_dir = (cone1_center + cone2_center).normalized();
-			
-			// Draw only the half of the tangent ring away from the path
-			draw_sphere_circle_arc(p_surface_tool, p_transform, tan1_center, tan_radius, sphere_r, path_dir, p_color, N);
+			draw_dashed_sphere_circle(p_surface_tool, p_transform, tan1_center, tan_radius, sphere_r, p_color, N);
 		}
-		if (tan2_center.length_squared() > CMP_EPSILON && cone1_center.length_squared() > CMP_EPSILON && cone2_center.length_squared() > CMP_EPSILON) {
+		if (tan2_center.length_squared() > CMP_EPSILON) {
 			tan2_center = tan2_center.normalized();
-			cone1_center = cone1_center.normalized();
-			cone2_center = cone2_center.normalized();
-			
-			// Direction towards the path (midpoint between cone1 and cone2)
-			Vector3 path_dir = (cone1_center + cone2_center).normalized();
-			
-			// Draw only the half of the tangent ring away from the path
-			draw_sphere_circle_arc(p_surface_tool, p_transform, tan2_center, tan_radius, sphere_r, path_dir, p_color, N);
+			draw_dashed_sphere_circle(p_surface_tool, p_transform, tan2_center, tan_radius, sphere_r, p_color, N);
 		}
 	}
 	
 	// Draw the last cone (cone2 of the last quad) - this is the only unique cone2
+	// Cut arc towards previous cone (the cone1 of the last quad)
 	if (cones.size() > 0) {
 		const Projection &last_quad = cones[cones.size() - 1];
 		Vector4 cone2_vec = last_quad[3]; // Column 3 = cone2
+		Vector4 cone1_vec = last_quad[0]; // Column 0 = cone1 (previous cone)
 		Vector3 center = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
+		Vector3 prev_cone = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
 		real_t radius = cone2_vec.w;
 		
 		if (center.length_squared() > CMP_EPSILON) {
 			center = center.normalized();
 			
-			// Draw boundary ring
+			// Draw full circle (no cuts)
 			draw_sphere_circle(p_surface_tool, p_transform, center, radius, sphere_r, p_color, N);
 			
-			// Draw center indicator
+			// Draw center indicator (always full circle)
 			draw_sphere_circle(p_surface_tool, p_transform, center, center_ring_radius, sphere_r, p_color, N);
 		}
 	}
