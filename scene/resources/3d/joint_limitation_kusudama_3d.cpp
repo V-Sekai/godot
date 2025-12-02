@@ -59,18 +59,18 @@ bool is_in_inter_cone_path(in vec3 normal_dir, in vec4 tangent_1, in vec4 cone_1
 	float c1c2dir = dot(normal_dir, c1xc2);
 
 	if (c1c2dir < 0.0) {
-		// Use tangent_2 for this side
-		vec3 t2xc1 = cross(tangent_2.xyz, cone_1.xyz);
-		vec3 c2xt2 = cross(cone_2.xyz, tangent_2.xyz);
+		// Use tangent_2 for this side - invert cross products
+		vec3 t2xc1 = cross(cone_1.xyz, tangent_2.xyz);
+		vec3 c2xt2 = cross(tangent_2.xyz, cone_2.xyz);
 		float t2c1dir = dot(normal_dir, t2xc1);
 		float c2t2dir = dot(normal_dir, c2xt2);
 
 		return (c2t2dir > 0.0 && t2c1dir > 0.0);
 
 	} else {
-		// Use tangent_1 for this side
-		vec3 c1xt1 = cross(cone_1.xyz, tangent_1.xyz);
-		vec3 t1xc2 = cross(tangent_1.xyz, cone_2.xyz);
+		// Use tangent_1 for this side - invert cross products
+		vec3 c1xt1 = cross(tangent_1.xyz, cone_1.xyz);
+		vec3 t1xc2 = cross(cone_2.xyz, tangent_1.xyz);
 		float c1t1dir = dot(normal_dir, c1xt1);
 		float t1c2dir = dot(normal_dir, t1xc2);
 
@@ -946,8 +946,8 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	}
 	
 			cone_sequence.push_back(Vector4(cone1_center.x, cone1_center.y, cone1_center.z, cone1_vec.w));
-			cone_sequence.push_back(Vector4(tan1_center.x, tan1_center.y, tan1_center.z, tan1_vec.w));
 			cone_sequence.push_back(Vector4(tan2_center.x, tan2_center.y, tan2_center.z, tan2_vec.w));
+			cone_sequence.push_back(Vector4(tan1_center.x, tan1_center.y, tan1_center.z, tan1_vec.w));
 			cone_sequence.push_back(Vector4(cone2_center.x, cone2_center.y, cone2_center.z, cone2_vec.w));
 		}
 	}
