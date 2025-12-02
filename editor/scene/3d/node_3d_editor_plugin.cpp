@@ -6827,8 +6827,17 @@ void Node3DEditor::update_transform_gizmo() {
 			count++;
 		}
 	} else {
-		// Make a copy to avoid use-after-free if the list is modified during iteration
-		List<Node *> selection = editor_selection->get_top_selected_node_list();
+		// Get a stable snapshot using get_top_selected_nodes() which returns a safe copy
+		// to avoid use-after-free if the list is modified during iteration
+		TypedArray<Node> selection_array = editor_selection->get_top_selected_nodes();
+		Vector<Node *> selection;
+		selection.reserve(selection_array.size());
+		for (int i = 0; i < selection_array.size(); i++) {
+			Node *node = Object::cast_to<Node>(selection_array[i]);
+			if (node) {
+				selection.push_back(node);
+			}
+		}
 		for (Node *E : selection) {
 			Node3D *sp = Object::cast_to<Node3D>(E);
 			if (!sp) {
