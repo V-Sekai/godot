@@ -717,20 +717,8 @@ static void draw_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform
  * 
  * 5. Wireframe = draw the ForbiddenArea (filled wireframe showing what's forbidden)
  * 
- * Visualization Elements:
- * =======================
- * 1. Kusudama cone boundaries: Circles at each cone's radius on the sphere surface
- * 2. Cone center indicators: Small rings at each cone center
- * 3. Spherical quad path boundaries: 4 great circle arcs forming the allowed path region between cones
- *    - Arc 1: cone1 boundary → tangent boundary (cone1 side) - short way
- *    - Arc 2: tangent boundary (cone1 side) → tangent boundary (cone2 side) - along tangent circle
- *    - Arc 3: tangent boundary (cone2 side) → cone2 boundary - short way
- *    - Arc 4: cone2 boundary → cone1 boundary - long way (completing the quad loop)
- * 4. Forbidden tangent cone regions: Filled wireframe showing forbidden parts of tangent cones
- * 5. Fish bone structure: Dashed lines connecting cone centers in order (cone1 → cone2 → ... → cone_n)
- * 
- * The path regions form patch areas on the sphere surface that represent allowed movement directions
- * between adjacent cones through their tangent circles.
+ * 6. Fish bone structure: Dashed lines connecting cone centers in order (cone1 → cone2 → ... → cone_n)
+ *
  */
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
 	if (!is_orientationally_constrained() || cones.is_empty()) {
