@@ -729,6 +729,65 @@ static void draw_dashed_great_circle_arc(Ref<SurfaceTool> &p_surface_tool, const
 	}
 }
 
+// Helper function to draw a partial circle arc on the sphere (excluding the half towards a direction)
+static void draw_sphere_circle_arc(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Vector3 &p_exclude_dir, const Color &p_color, int p_segments = 32) {
+	Vector3 center = p_center_dir.normalized();
+	Vector3 exclude = p_exclude_dir.normalized();
+	
+	// Find two perpendicular vectors to the center
+	Vector3 perp1, perp2;
+	if (Math::abs(center.y) < 0.9f) {
+		perp1 = Vector3(0, 1, 0).cross(center).normalized();
+	} else {
+		perp1 = Vector3(1, 0, 0).cross(center).normalized();
+	}
+	perp2 = center.cross(perp1).normalized();
+	
+	real_t y_offset = p_sphere_r * Math::cos(p_angle);
+	real_t circle_r = p_sphere_r * Math::sin(p_angle);
+	
+	if (circle_r <= CMP_EPSILON) {
+		return;
+	}
+	
+	// Project exclude direction onto the circle plane
+	Vector3 exclude_proj = (exclude - center * center.dot(exclude)).normalized();
+	if (exclude_proj.length_squared() < CMP_EPSILON) {
+		exclude_proj = perp1;
+	}
+	
+	// Find the angle of the exclude direction on the circle
+	real_t exclude_angle = Math::atan2(exclude_proj.dot(perp2), exclude_proj.dot(perp1));
+	
+	// Draw only the half circle away from exclude direction (exclude half circle around exclude_angle)
+	static const real_t DP = Math::TAU / (real_t)p_segments;
+	Vector3 prev;
+	bool prev_valid = false;
+	
+	for (int i = 0; i <= p_segments; i++) {
+		real_t angle = (real_t)i * DP;
+		// Check if this angle is in the excluded half (around exclude_angle ± PI/2)
+		real_t angle_diff = Math::fmod(angle - exclude_angle + Math::PI, Math::TAU) - Math::PI;
+		if (Math::abs(angle_diff) < Math::PI * 0.5) {
+			// This is in the excluded half, skip it
+			prev_valid = false;
+			continue;
+		}
+		
+		Vector3 dir = (perp1 * Math::cos(angle) + perp2 * Math::sin(angle)).normalized();
+		Vector3 cur = center * y_offset + dir * circle_r;
+		
+		if (prev_valid) {
+			p_surface_tool->set_color(p_color);
+			p_surface_tool->add_vertex(p_transform.xform(prev));
+			p_surface_tool->set_color(p_color);
+			p_surface_tool->add_vertex(p_transform.xform(cur));
+		}
+		prev = cur;
+		prev_valid = true;
+	}
+}
+
 // Helper function to draw a circle on the sphere (not necessarily a great circle)
 static void draw_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
 	Vector3 center = p_center_dir.normalized();
@@ -805,16 +864,28 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, center_ring_radius, sphere_r, p_color, N);
 		}
 		
-		// Draw tangent boundary rings (solid lines, not dotted) and filled caps (forbidden areas)
-		if (tan1_center.length_squared() > CMP_EPSILON) {
+		// Draw tangent boundary rings - only the half away from the path (cut the half touching the path)
+		if (tan1_center.length_squared() > CMP_EPSILON && cone1_center.length_squared() > CMP_EPSILON && cone2_center.length_squared() > CMP_EPSILON) {
 			tan1_center = tan1_center.normalized();
-			// Draw tangent boundary ring (solid line, not dotted)
-			draw_sphere_circle(p_surface_tool, p_transform, tan1_center, tan_radius, sphere_r, p_color, N);
+			cone1_center = cone1_center.normalized();
+			cone2_center = cone2_center.normalized();
+			
+			// Direction towards the path (midpoint between cone1 and cone2)
+			Vector3 path_dir = (cone1_center + cone2_center).normalized();
+			
+			// Draw only the half of the tangent ring away from the path
+			draw_sphere_circle_arc(p_surface_tool, p_transform, tan1_center, tan_radius, sphere_r, path_dir, p_color, N);
 		}
-		if (tan2_center.length_squared() > CMP_EPSILON) {
+		if (tan2_center.length_squared() > CMP_EPSILON && cone1_center.length_squared() > CMP_EPSILON && cone2_center.length_squared() > CMP_EPSILON) {
 			tan2_center = tan2_center.normalized();
-			// Draw tangent boundary ring (solid line, not dotted)
-			draw_sphere_circle(p_surface_tool, p_transform, tan2_center, tan_radius, sphere_r, p_color, N);
+			cone1_center = cone1_center.normalized();
+			cone2_center = cone2_center.normalized();
+			
+			// Direction towards the path (midpoint between cone1 and cone2)
+			Vector3 path_dir = (cone1_center + cone2_center).normalized();
+			
+			// Draw only the half of the tangent ring away from the path
+			draw_sphere_circle_arc(p_surface_tool, p_transform, tan2_center, tan_radius, sphere_r, path_dir, p_color, N);
 		}
 	}
 	
