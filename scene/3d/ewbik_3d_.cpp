@@ -34,6 +34,7 @@
 
 void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
 	int joint_size = (int)p_setting->joints.size();
+	int chain_size = (int)p_setting->chain.size();
 
 	// Get the target transform for directional constraints
 	Transform3D target_transform;
@@ -42,9 +43,9 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 		target_transform = cached_space.affine_inverse() * target->get_global_transform_interpolated();
 	}
 
-	// Backwards iteration like CCDIK
+	// Backwards.
 	for (int ancestor = joint_size - 1; ancestor >= 0; ancestor--) {
-		// Forwards from ancestor
+		// Forwards.
 		for (int i = ancestor; i < joint_size; i++) {
 			IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
 			if (!solver_info || Math::is_zero_approx(solver_info->length)) {
@@ -54,6 +55,15 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 			int HEAD = i;
 			int TAIL = i + 1;
 
+			Vector3 current_head = p_setting->chain[HEAD];
+			Vector3 current_effector = p_setting->chain[chain_size - 1];
+			Vector3 head_to_effector = current_effector - current_head;
+			Vector3 head_to_destination = p_destination - current_head;
+
+			if (Math::is_zero_approx(head_to_destination.length_squared() * head_to_effector.length_squared())) {
+				continue;
+			}
+
 			// Create point correspondences for QCP solving
 			PackedVector3Array target_headings;
 			PackedVector3Array tip_headings;
@@ -61,25 +71,17 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 
 			_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights);
 
-			// Calculate optimal rotation using QCP
-			Quaternion optimal_rotation = _calculate_optimal_rotation(target_headings, tip_headings, weights);
-
-			// Apply the rotation to update chain coordinates (like CCDIK does)
-			Vector3 current_head = p_setting->chain[HEAD];
+			// Calculate optimal rotation using QCP (instead of simple quaternion like CCDIK)
+			Quaternion to_rot = _calculate_optimal_rotation(target_headings, tip_headings, weights);
 			Vector3 to_tail = p_setting->chain[TAIL] - current_head;
-			Vector3 rotated_tail = optimal_rotation.xform(to_tail);
 
-			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, current_head + rotated_tail);
+			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, current_head + to_rot.xform(to_tail));
 
-			// Apply rotation axis constraints
-			IterateIK3DJointSetting *joint_setting = p_setting->joint_settings[HEAD];
-			if (joint_setting && joint_setting->rotation_axis != ROTATION_AXIS_ALL) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + joint_setting->get_projected_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD]));
+			if (p_setting->joint_settings[HEAD]->rotation_axis != ROTATION_AXIS_ALL) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_projected_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD]));
 			}
-
-			// Apply joint limitations
-			if (joint_setting && joint_setting->limitation.is_valid()) {
-				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + joint_setting->get_limited_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD], solver_info->forward_vector));
+			if (p_setting->joint_settings[HEAD]->limitation.is_valid()) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + p_setting->joint_settings[HEAD]->get_limited_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD], solver_info->forward_vector));
 			}
 		}
 	}
@@ -160,28 +162,44 @@ Quaternion EWBIK3D::_calculate_optimal_rotation(const PackedVector3Array &p_targ
 }
 
 void EWBIK3D::_update_joints(int p_index) {
-	IterateIK3DSetting *setting = iterate_settings[p_index];
-	Skeleton3D *sk = get_skeleton();
+	_make_simulation_dirty(p_index);
 
-	if (!sk || setting->root_bone.bone < 0 || setting->end_bone.bone < 0) {
+#ifdef TOOLS_ENABLED
+	update_gizmos(); // To clear invalid setting.
+#endif // TOOLS_ENABLED
+
+	Skeleton3D *sk = get_skeleton();
+	int root_bone = chain_settings[p_index]->root_bone.bone;
+	int end_bone = chain_settings[p_index]->end_bone.bone;
+	if (!sk || root_bone < 0 || end_bone < 0) {
 		set_joint_count(p_index, 0);
 		return;
 	}
 
-	// Find path between root and end bones
+	// Find path between root and end bones (supports arbitrary paths, not just hierarchical)
 	Vector<int> bone_path;
-	if (!_find_bone_chain_path(sk, setting->root_bone.bone, setting->end_bone.bone, bone_path)) {
+	if (!_find_bone_chain_path(sk, root_bone, end_bone, bone_path)) {
 		set_joint_count(p_index, 0);
 		ERR_FAIL_EDMSG("Cannot find a valid bone chain between root and end bones.");
 		return;
 	}
 
 	// Build joints from the path
-	_build_chain_from_path(sk, bone_path, setting->joints);
-	set_joint_count(p_index, setting->joints.size());
+	LocalVector<BoneJoint> new_joints;
+	_build_chain_from_path(sk, bone_path, new_joints);
 
-	// Initialize solver info and other structures
-	_make_simulation_dirty(p_index);
+	set_joint_count(p_index, new_joints.size());
+	for (uint32_t i = 0; i < new_joints.size(); i++) {
+		set_joint_bone(p_index, i, new_joints[i].bone);
+	}
+
+	if (sk) {
+		_validate_axes(sk);
+	}
+
+#ifdef TOOLS_ENABLED
+	_make_gizmo_dirty();
+#endif // TOOLS_ENABLED
 }
 
 bool EWBIK3D::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const {
