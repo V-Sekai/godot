@@ -729,7 +729,7 @@ static void draw_dashed_great_circle_arc(Ref<SurfaceTool> &p_surface_tool, const
 	}
 }
 
-// Helper function to draw a dashed circle on the sphere (not necessarily a great circle)
+// Helper function to draw a dashed circle on the sphere
 static void draw_dashed_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
 	Vector3 center = p_center_dir.normalized();
 	
@@ -750,32 +750,24 @@ static void draw_dashed_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Tr
 	}
 	
 	// Draw dashed pattern: 60% dash, 40% gap
-	int num_dashes = p_segments / 4;
-	if (num_dashes < 2) {
-		num_dashes = 2;
-	}
-	real_t dash_ratio = 0.6;
+	static const real_t DASH_RATIO = 0.6;
+	static const int DASH_SEGMENTS = 4;
+	
+	int num_dashes = MAX(p_segments / 4, 2);
 	real_t total_angle_per_dash = Math::TAU / (real_t)num_dashes;
-	real_t dash_angle = total_angle_per_dash * dash_ratio;
+	real_t dash_angle = total_angle_per_dash * DASH_RATIO;
 	
 	real_t current_angle = 0.0;
-	int dash_segments = 4; // Segments per dash
 	
-	for (int dash = 0; dash < num_dashes; dash++) {
+	for (int dash = 0; dash < num_dashes && current_angle < Math::TAU; dash++) {
 		real_t dash_start_angle = current_angle;
-		real_t dash_end_angle = current_angle + dash_angle;
-		if (dash_end_angle > Math::TAU) {
-			dash_end_angle = Math::TAU;
-		}
+		real_t dash_end_angle = MIN(current_angle + dash_angle, Math::TAU);
 		
-		real_t d_angle = (dash_end_angle - dash_start_angle) / (real_t)dash_segments;
+		real_t d_angle = (dash_end_angle - dash_start_angle) / (real_t)DASH_SEGMENTS;
 		Vector3 prev = center * y_offset + (perp1 * Math::cos(dash_start_angle) + perp2 * Math::sin(dash_start_angle)) * circle_r;
 		
-		for (int i = 1; i <= dash_segments; i++) {
-			real_t cur_angle = dash_start_angle + d_angle * (real_t)i;
-			if (cur_angle > dash_end_angle) {
-				cur_angle = dash_end_angle;
-			}
+		for (int i = 1; i <= DASH_SEGMENTS; i++) {
+			real_t cur_angle = MIN(dash_start_angle + d_angle * (real_t)i, dash_end_angle);
 			Vector3 cur = center * y_offset + (perp1 * Math::cos(cur_angle) + perp2 * Math::sin(cur_angle)) * circle_r;
 			
 			p_surface_tool->set_color(p_color);
@@ -787,9 +779,6 @@ static void draw_dashed_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Tr
 		}
 		
 		current_angle += total_angle_per_dash;
-		if (current_angle >= Math::TAU) {
-			break;
-		}
 	}
 }
 
