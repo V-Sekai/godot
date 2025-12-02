@@ -748,42 +748,41 @@ static Vector3 get_cone_tangent_contact_point(const Vector3 &p_cone_center, real
 	axis.normalize();
 	
 	// The contact point is on the great circle from cone_center to tan_center
-	// Rotate cone center by cone_radius around the axis to get the contact point
-	Quaternion rot = get_quaternion_axis_angle(axis, p_cone_radius);
-	Vector3 contact_point = rot.xform(cone_center).normalized();
-	return contact_point;
-}
-
-// Helper function to find point on tangent circle boundary where it meets the cone
-// This should return the same point as get_cone_tangent_contact_point
-static Vector3 get_tangent_cone_contact_point(const Vector3 &p_tan_center, real_t p_tan_radius, const Vector3 &p_cone_center, real_t p_cone_radius) {
-	// Use the same computation as get_cone_tangent_contact_point to ensure consistency
-	return get_cone_tangent_contact_point(p_cone_center, p_cone_radius, p_tan_center, p_tan_radius);
+	// We need to find the point that is at distance cone_radius from cone_center
+	// and distance tan_radius from tan_center
+	// Try both rotation directions and pick the one that's closer to tan_center
+	Quaternion rot1 = get_quaternion_axis_angle(axis, p_cone_radius);
+	Quaternion rot2 = get_quaternion_axis_angle(axis, -p_cone_radius);
+	Vector3 contact1 = rot1.xform(cone_center).normalized();
+	Vector3 contact2 = rot2.xform(cone_center).normalized();
+	
+	// Check which contact point is at the correct distance from tan_center
+	real_t dist1 = Math::acos(CLAMP(contact1.dot(tan_center), -1.0f, 1.0f));
+	real_t dist2 = Math::acos(CLAMP(contact2.dot(tan_center), -1.0f, 1.0f));
+	
+	// Return the contact point that's closer to the expected tan_radius distance
+	if (Math::abs(dist1 - p_tan_radius) < Math::abs(dist2 - p_tan_radius)) {
+		return contact1;
+	} else {
+		return contact2;
+	}
 }
 
 // Helper function to draw PathRegion boundaries for a single tangent circle
 // This draws the spherical quadrilateral showing the allowed path from cone1 to cone2 through the tangent
+// The PathRegion is formed by: arc along tangent circle + arc along cone boundaries (long way)
 static void draw_path_region_for_tangent(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius, const Vector3 &p_tan_center, real_t p_tan_radius, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
-	// Find contact points where the tangent circle touches each cone
-	Vector3 tan_point_cone1 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone1_center, p_cone1_radius).normalized();
-	Vector3 tan_point_cone2 = get_tangent_cone_contact_point(p_tan_center, p_tan_radius, p_cone2_center, p_cone2_radius).normalized();
+	// Find contact points where THIS tangent circle touches each cone
+	// Make sure we're using p_tan_center (the specific tangent we're drawing for)
+	Vector3 contact_cone1 = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan_center, p_tan_radius).normalized();
+	Vector3 contact_cone2 = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan_center, p_tan_radius).normalized();
 	
-	// Find contact points on cone boundaries
-	Vector3 cone1_boundary = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan_center, p_tan_radius).normalized();
-	Vector3 cone2_boundary = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan_center, p_tan_radius).normalized();
+	// Draw the 2 arcs forming the path region:
+	// Arc 1: Path along the tangent circle from cone1 contact to cone2 contact
+	draw_great_circle_arc(p_surface_tool, p_transform, contact_cone1, contact_cone2, p_sphere_r, p_color, p_segments, false);
 	
-	// Draw the 4 arcs forming the spherical quadrilateral (using great circle arcs)
-	// Arc 1: cone1 boundary to tan contact with cone1
-	draw_great_circle_arc(p_surface_tool, p_transform, cone1_boundary, tan_point_cone1, p_sphere_r, p_color, p_segments, false);
-	
-	// Arc 2: tan contact with cone1 to tan contact with cone2 (along tangent circle)
-	draw_great_circle_arc(p_surface_tool, p_transform, tan_point_cone1, tan_point_cone2, p_sphere_r, p_color, p_segments, false);
-	
-	// Arc 3: tan contact with cone2 to cone2 boundary
-	draw_great_circle_arc(p_surface_tool, p_transform, tan_point_cone2, cone2_boundary, p_sphere_r, p_color, p_segments, false);
-	
-	// Arc 4: cone2 boundary back to cone1 boundary (completing the quadrilateral)
-	draw_great_circle_arc(p_surface_tool, p_transform, cone2_boundary, cone1_boundary, p_sphere_r, p_color, p_segments, true); // long way
+	// Arc 2: Return path along the long way (completing the closed loop)
+	draw_great_circle_arc(p_surface_tool, p_transform, contact_cone2, contact_cone1, p_sphere_r, p_color, p_segments, true); // long way
 }
 
 /*
