@@ -30,7 +30,7 @@
 
 #include "ewbik_3d_.h"
 
-#include "core/math/qcp.h"
+#include "modules/ewbik/src/math/qcp.h"
 
 void EWBIK3D_::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
 	int joint_size = (int)p_setting->joints.size();
