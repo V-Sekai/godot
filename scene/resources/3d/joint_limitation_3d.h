@@ -34,6 +34,7 @@
 
 #ifdef TOOLS_ENABLED
 #include "scene/resources/surface_tool.h"
+class EditorNode3DGizmo;
 #endif // TOOLS_ENABLED
 
 class JointLimitation3D : public Resource {
@@ -52,5 +53,6 @@ public:
 
 #ifdef TOOLS_ENABLED
 	virtual void draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const; // For drawing gizmo.
+	virtual void add_gizmo_mesh(EditorNode3DGizmo *p_gizmo, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const; // For adding gizmo mesh directly.
 #endif // TOOLS_ENABLED
 };

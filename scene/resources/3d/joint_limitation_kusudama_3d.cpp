@@ -33,6 +33,10 @@
 #include "core/math/math_funcs.h"
 
 #ifdef TOOLS_ENABLED
+#include "editor/scene/3d/node_3d_editor_gizmos.h"
+#endif // TOOLS_ENABLED
+
+#ifdef TOOLS_ENABLED
 #include "scene/resources/surface_tool.h"
 #include "scene/resources/shader.h"
 #include "scene/resources/material.h"
@@ -110,7 +114,7 @@ vec4 color_allowed(in vec3 normal_dir,  in int cone_counts, in float boundary_wi
 		}
 		current_condition = get_allowability_condition(current_condition, in_cone);
 	} else {
-		for(int i=0; i < (cone_counts-1)*3; i=i+3) {
+		for(int i=0; i < (cone_counts-1)*4; i=i+4) {
 			normal_dir = normalize(normal_dir);
 
 			vec4 cone_1 = cone_sequence[i+0];
@@ -860,9 +864,25 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	}
 	
 	// Set up SurfaceTool for shader-based rendering
+	// Clear any previous state and begin fresh
+	p_surface_tool->clear();
 	p_surface_tool->begin(Mesh::PRIMITIVE_TRIANGLES);
 	const int32_t MESH_CUSTOM_0 = 0;
 	p_surface_tool->set_custom_format(MESH_CUSTOM_0, SurfaceTool::CustomFormat::CUSTOM_RGBA_HALF);
+	
+	// Set default weights and bones for all vertices (full weight on bone 0)
+	Vector<int> bones;
+	bones.push_back(0);
+	bones.push_back(0);
+	bones.push_back(0);
+	bones.push_back(0);
+	Vector<float> weights;
+	weights.push_back(1.0);
+	weights.push_back(0.0);
+	weights.push_back(0.0);
+	weights.push_back(0.0);
+	p_surface_tool->set_bones(bones);
+	p_surface_tool->set_weights(weights);
 	
 	// Add vertices with normals stored in CUSTOM0
 	for (int32_t point_i = 0; point_i < points.size(); point_i++) {
@@ -872,6 +892,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		c.b = normals[point_i].z;
 		c.a = 0;
 		p_surface_tool->set_custom(MESH_CUSTOM_0, c);
+		p_surface_tool->set_color(p_color);
 		p_surface_tool->set_normal(normals[point_i]);
 		p_surface_tool->add_vertex(points[point_i]);
 	}
@@ -940,6 +961,18 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	
 	// Set material on SurfaceTool
 	p_surface_tool->set_material(kusudama_material);
+}
+
+void JointLimitationKusudama3D::add_gizmo_mesh(EditorNode3DGizmo *p_gizmo, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
+	Ref<SurfaceTool> surface_tool;
+	surface_tool.instantiate();
+	draw_shape(surface_tool, p_transform, p_bone_length, p_color);
+	
+	Ref<Material> material = surface_tool->get_material();
+	Ref<ArrayMesh> mesh = surface_tool->commit(Ref<ArrayMesh>(), RS::ARRAY_CUSTOM_RGBA_HALF << RS::ARRAY_FORMAT_CUSTOM0_SHIFT);
+	if (mesh.is_valid() && mesh->get_surface_count() > 0) {
+		p_gizmo->add_mesh(mesh, material);
+	}
 }
 
 #endif // TOOLS_ENABLED
