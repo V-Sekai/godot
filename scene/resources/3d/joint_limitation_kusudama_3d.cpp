@@ -307,15 +307,21 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 	
 	if (arc_normal_len < CMP_EPSILON) {
 		// Handle parallel/opposite cones
-		Vector3 perp1 = get_orthogonal(center1);
-		if (perp1.is_zero_approx()) {
-			perp1 = Vector3(0, 1, 0);
+		// For opposite cones, any perpendicular to center1 works
+		arc_normal = center1.get_any_perpendicular();
+		if (arc_normal.is_zero_approx()) {
+			arc_normal = Vector3(0, 1, 0);
 		}
-		perp1.normalize();
+		arc_normal.normalize();
+		
+		// For opposite cones, tangent circles are at 90 degrees from the cone centers
+		// Use a perpendicular vector in the plane perpendicular to center1
+		Vector3 perp1 = center1.get_any_perpendicular().normalized();
+		Vector3 perp2 = center1.cross(perp1).normalized();
 		
 		// Rotate around center1 by the tangent radius to get tangent centers
-		Quaternion rot1 = get_quaternion_axis_angle(center1, tan_radius);
-		Quaternion rot2 = get_quaternion_axis_angle(center1, -tan_radius);
+		Quaternion rot1 = Quaternion(center1, tan_radius);
+		Quaternion rot2 = Quaternion(center1, -tan_radius);
 		tan1 = rot1.xform(perp1).normalized();
 		tan2 = rot2.xform(perp1).normalized();
 	} else {
@@ -409,21 +415,21 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 			tan2 = (intersection_ray_start + ray_dir_normalized * t2).normalized();
 		} else {
 			// Fallback
-			Vector3 perp1 = get_orthogonal(center1);
+			Vector3 perp1 = center1.get_any_perpendicular();
 			if (perp1.is_zero_approx()) {
 				perp1 = Vector3(0, 1, 0);
 			}
 			perp1.normalize();
-			Quaternion rot1 = get_quaternion_axis_angle(center1, tan_radius);
-			Quaternion rot2 = get_quaternion_axis_angle(center1, -tan_radius);
+			Quaternion rot1 = Quaternion(center1, tan_radius);
+			Quaternion rot2 = Quaternion(center1, -tan_radius);
 			tan1 = rot1.xform(perp1).normalized();
 			tan2 = rot2.xform(perp1).normalized();
 		}
 	}
 	
-	// Handle degenerate tangent centers
+	// Handle degenerate tangent centers (NaN or zero)
 	if (!tan1.is_finite() || Math::is_zero_approx(tan1.length_squared())) {
-		tan1 = get_orthogonal(center1);
+		tan1 = center1.get_any_perpendicular();
 		if (Math::is_zero_approx(tan1.length_squared())) {
 			tan1 = Vector3(0, 1, 0);
 		}
@@ -431,7 +437,7 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 	}
 	if (!tan2.is_finite() || Math::is_zero_approx(tan2.length_squared())) {
 		Vector3 orthogonal_base = tan1.is_finite() ? tan1 : center1;
-		tan2 = get_orthogonal(orthogonal_base);
+		tan2 = orthogonal_base.get_any_perpendicular();
 		if (Math::is_zero_approx(tan2.length_squared())) {
 			tan2 = Vector3(1, 0, 0);
 		}
