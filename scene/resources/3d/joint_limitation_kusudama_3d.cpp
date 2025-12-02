@@ -604,7 +604,12 @@ void JointLimitationKusudama3D::set_cone_count(int p_count) {
 		Projection &quad = cones.write[i];
 		Vector4 default_cone = Vector4(0, 1, 0, Math::PI * 0.25); // Default: +Y axis, 45 degree cone
 		quad[0] = default_cone; // cone1
-		quad[3] = default_cone; // cone2 (same as next quad's cone1)
+		// For the last quad, initialize cone2 as empty Vector4() - it will be set when explicitly set or when increasing count
+		if (i == cones.size() - 1) {
+			quad[3] = Vector4(); // Last quad's cone2 starts empty
+		} else {
+			quad[3] = default_cone; // cone2 (same as next quad's cone1)
+		}
 	}
 	// Recompute tangents for all quads (in case existing quads were affected)
 	for (int i = 0; i < cones.size(); i++) {
@@ -623,20 +628,7 @@ int JointLimitationKusudama3D::get_cone_count() const {
 void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_center) {
 	int quad_count = cones.size();
 	ERR_FAIL_INDEX(p_index, quad_count + 1);
-	
-	// If there are no quads and we're setting index 0, we need to initialize
-	if (quad_count == 0) {
-		// Initialize with one quad for the first cone
-		// Only set cone1 (quad[0]), leave cone2 (quad[3]) uninitialized until explicitly set
-		cones.resize(1);
-		Projection &quad = cones.write[0];
-		Vector4 default_cone = Vector4(0, 1, 0, Math::PI * 0.25);
-		quad[0] = default_cone;
-		// Don't initialize quad[3] - it will be set when the user sets index 1 or increases cone_count
-		quad[3] = Vector4(0, 1, 0, Math::PI * 0.25); // Keep default for now, but this shouldn't be visible as a separate cone
-		quad_count = 1;
-	}
-	
+		
 	// Store raw value (non-normalized) to allow editor to accept values outside [-1, 1]
 	// Normalization happens lazily when values are used
 	if (p_index < quad_count) {
@@ -705,7 +697,8 @@ void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
 		Projection &quad = cones.write[0];
 		Vector4 default_cone = Vector4(0, 1, 0, Math::PI * 0.25);
 		quad[0] = default_cone;
-		quad[3] = default_cone;
+		// Initialize quad[3] as empty Vector4() - it will be set when the user sets index 1 or increases cone_count
+		quad[3] = Vector4();
 		quad_count = 1;
 	}
 	
