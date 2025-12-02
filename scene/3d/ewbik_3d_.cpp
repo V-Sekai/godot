@@ -32,7 +32,7 @@
 
 #include "core/math/qcp.h"
 
-void EWBIK3D_::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
+void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) {
 	int joint_size = (int)p_setting->joints.size();
 
 	// Get the target transform for directional constraints
@@ -61,7 +61,7 @@ void EWBIK3D_::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateI
 	}
 }
 
-void EWBIK3D_::_create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, const Vector3 &p_destination, const Transform3D &p_target_transform,
+void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, const Vector3 &p_destination, const Transform3D &p_target_transform,
 		PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights) {
 
 	int chain_size = (int)p_setting->chain.size();
@@ -120,7 +120,7 @@ void EWBIK3D_::_create_point_correspondences(Skeleton3D *p_skeleton, const Itera
 	}
 }
 
-void EWBIK3D_::_apply_qcp_rotation(Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, int p_bone_idx,
+void EWBIK3D::_apply_qcp_rotation(Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, int p_bone_idx,
 		const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights) {
 
 	if (p_bone_idx >= (int)p_setting->joints.size()) {
@@ -180,7 +180,7 @@ void EWBIK3D_::_apply_qcp_rotation(Skeleton3D *p_skeleton, IterateIK3DSetting *p
 	solver_info->current_lpose = new_rotation;
 }
 
-Quaternion EWBIK3D_::_calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights) {
+Quaternion EWBIK3D::_calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights) {
 	if (p_target_headings.size() != p_tip_headings.size() || p_target_headings.size() != p_weights.size()) {
 		return Quaternion(); // Invalid input
 	}
@@ -194,7 +194,7 @@ Quaternion EWBIK3D_::_calculate_optimal_rotation(const PackedVector3Array &p_tar
 	return result[0]; // First element is the rotation quaternion
 }
 
-void EWBIK3D_::_update_joints(int p_index) {
+void EWBIK3D::_update_joints(int p_index) {
 	IterateIK3DSetting *setting = iterate_settings[p_index];
 	Skeleton3D *sk = get_skeleton();
 
@@ -219,7 +219,7 @@ void EWBIK3D_::_update_joints(int p_index) {
 	_make_simulation_dirty(p_index);
 }
 
-bool EWBIK3D_::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const {
+bool EWBIK3D::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, int p_end_bone, Vector<int> &r_chain) const {
 	r_chain.clear();
 
 	// If root and end are the same, just return that bone
@@ -292,7 +292,7 @@ bool EWBIK3D_::_find_bone_chain_path(Skeleton3D *p_skeleton, int p_root_bone, in
 	return true;
 }
 
-void EWBIK3D_::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const {
+void EWBIK3D::_build_chain_from_path(Skeleton3D *p_skeleton, const Vector<int> &p_path, LocalVector<BoneJoint> &r_joints) const {
 	r_joints.clear();
 	r_joints.resize(p_path.size());
 

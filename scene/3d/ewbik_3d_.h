@@ -33,8 +33,8 @@
 
 #include "scene/3d/iterate_ik_3d.h"
 
-class EWBIK3D_ : public IterateIK3D {
-	GDCLASS(EWBIK3D_, IterateIK3D);
+class EWBIK3D : public IterateIK3D {
+	GDCLASS(EWBIK3D, IterateIK3D);
 
 protected:
 	virtual void _solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, const Vector3 &p_destination) override;
@@ -52,6 +52,18 @@ protected:
 	void _apply_qcp_rotation(Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, int p_bone_idx,
 			const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights);
 	Quaternion _calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights);
+
+public:
+	virtual void set_setting_count(int p_count) override {
+		_set_setting_count<IterateIK3DSetting>(p_count);
+		iterate_settings = _cast_settings<IterateIK3DSetting>();
+		chain_settings = _cast_settings<ChainIK3DSetting>();
+	}
+	virtual void clear_settings() override {
+		_set_setting_count<IterateIK3DSetting>(0);
+		iterate_settings.clear();
+		chain_settings.clear();
+	}
 };
 
 #endif // ITERATE_IK_3D_EWBIK_H
