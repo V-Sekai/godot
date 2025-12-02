@@ -729,6 +729,50 @@ static void draw_dashed_great_circle_arc(Ref<SurfaceTool> &p_surface_tool, const
 	}
 }
 
+// Helper function to draw a filled spherical cap (inside the circle)
+static void draw_sphere_cap(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
+	Vector3 center = p_center_dir.normalized();
+	
+	// Find two perpendicular vectors to the center
+	Vector3 perp1, perp2;
+	if (Math::abs(center.y) < 0.9f) {
+		perp1 = Vector3(0, 1, 0).cross(center).normalized();
+	} else {
+		perp1 = Vector3(1, 0, 0).cross(center).normalized();
+	}
+	perp2 = center.cross(perp1).normalized();
+	
+	real_t y_offset = p_sphere_r * Math::cos(p_angle);
+	real_t circle_r = p_sphere_r * Math::sin(p_angle);
+	
+	if (circle_r <= CMP_EPSILON) {
+		return;
+	}
+	
+	// Draw filled cap as triangles from center to circle boundary
+	Vector3 cap_center = center * p_sphere_r;
+	static const real_t DP = Math::TAU / (real_t)p_segments;
+	
+	for (int i = 0; i < p_segments; i++) {
+		real_t angle0 = (real_t)i * DP;
+		real_t angle1 = (real_t)(i + 1) * DP;
+		
+		Vector3 dir0 = (perp1 * Math::cos(angle0) + perp2 * Math::sin(angle0)).normalized();
+		Vector3 dir1 = (perp1 * Math::cos(angle1) + perp2 * Math::sin(angle1)).normalized();
+		
+		Vector3 p0 = center * y_offset + dir0 * circle_r;
+		Vector3 p1 = center * y_offset + dir1 * circle_r;
+		
+		// Triangle: center -> p0 -> p1
+		p_surface_tool->set_color(p_color);
+		p_surface_tool->add_vertex(p_transform.xform(cap_center));
+		p_surface_tool->set_color(p_color);
+		p_surface_tool->add_vertex(p_transform.xform(p0));
+		p_surface_tool->set_color(p_color);
+		p_surface_tool->add_vertex(p_transform.xform(p1));
+	}
+}
+
 // Helper function to draw a circle on the sphere (not necessarily a great circle)
 static void draw_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_center_dir, real_t p_angle, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
 	Vector3 center = p_center_dir.normalized();
@@ -785,23 +829,87 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	for (int i = 0; i < cones.size(); i++) {
 		const Projection &quad = cones[i];
 		
-		// Draw cone1, tan1, tan2 (skip cone2 since it's the same as next quad's cone1)
-		for (int quad_idx = 0; quad_idx < 3; quad_idx++) {
-			Vector4 elem_vec = quad[quad_idx];
-			Vector3 elem_center = Vector3(elem_vec.x, elem_vec.y, elem_vec.z);
-			real_t elem_radius = elem_vec.w;
-			bool is_tangent = (quad_idx == 1 || quad_idx == 2);
+		// Extract quad elements
+		Vector4 cone1_vec = quad[0];
+		Vector4 tan1_vec = quad[1];
+		Vector4 tan2_vec = quad[2];
+		Vector4 cone2_vec = quad[3];
+		
+		Vector3 cone1_center = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z);
+		Vector3 cone2_center = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z);
+		Vector3 tan1_center = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z);
+		Vector3 tan2_center = Vector3(tan2_vec.x, tan2_vec.y, tan2_vec.z);
+		real_t cone1_radius = cone1_vec.w;
+		real_t cone2_radius = cone2_vec.w;
+		real_t tan_radius = tan1_vec.w;
+		
+		// Draw cone1 boundary and center indicator
+		if (cone1_center.length_squared() > CMP_EPSILON) {
+			cone1_center = cone1_center.normalized();
+			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, cone1_radius, sphere_r, p_color, N);
+			draw_sphere_circle(p_surface_tool, p_transform, cone1_center, center_ring_radius, sphere_r, p_color, N);
+		}
+		
+		// Draw filled tangent boundaries (forbidden areas inside tangent circles)
+		if (tan1_center.length_squared() > CMP_EPSILON) {
+			tan1_center = tan1_center.normalized();
+			draw_sphere_cap(p_surface_tool, p_transform, tan1_center, tan_radius, sphere_r, p_color, N);
+		}
+		if (tan2_center.length_squared() > CMP_EPSILON) {
+			tan2_center = tan2_center.normalized();
+			draw_sphere_cap(p_surface_tool, p_transform, tan2_center, tan_radius, sphere_r, p_color, N);
+		}
+		
+		// Draw filled path region quad between cone1 and cone2 boundaries
+		if (cone1_center.length_squared() > CMP_EPSILON && cone2_center.length_squared() > CMP_EPSILON) {
+			cone1_center = cone1_center.normalized();
+			cone2_center = cone2_center.normalized();
 			
-			// Only draw if element is valid (non-zero)
-			if (elem_center.length_squared() > CMP_EPSILON) {
-				elem_center = elem_center.normalized();
+			// Create a quad patch on the sphere surface between the cone boundaries
+			// Sample points along the great circle arc from cone1 to cone2
+			int path_segments = 16;
+			Vector3 arc_normal = cone1_center.cross(cone2_center);
+			real_t arc_angle = Math::acos(CLAMP(cone1_center.dot(cone2_center), -1.0, 1.0));
+			
+			if (arc_normal.length_squared() > CMP_EPSILON && arc_angle > CMP_EPSILON) {
+				arc_normal = arc_normal.normalized();
 				
-				// Draw boundary ring
-				draw_sphere_circle(p_surface_tool, p_transform, elem_center, elem_radius, sphere_r, p_color, N);
-				
-				// Draw center indicator (small ring at center) - only for cones, not tangents
-				if (!is_tangent) {
-					draw_sphere_circle(p_surface_tool, p_transform, elem_center, center_ring_radius, sphere_r, p_color, N);
+				// Sample points along the arc
+				for (int seg = 0; seg < path_segments; seg++) {
+					real_t t0 = (real_t)seg / (real_t)path_segments;
+					real_t t1 = (real_t)(seg + 1) / (real_t)path_segments;
+					
+					// Interpolate along the arc
+					Quaternion rot0 = get_quaternion_axis_angle(arc_normal, arc_angle * t0);
+					Quaternion rot1 = get_quaternion_axis_angle(arc_normal, arc_angle * t1);
+					
+					Vector3 mid0 = rot0.xform(cone1_center).normalized();
+					Vector3 mid1 = rot1.xform(cone1_center).normalized();
+					
+					// Find perpendicular directions for the quad width
+					Vector3 perp0 = mid0.cross(arc_normal).normalized();
+					Vector3 perp1 = mid1.cross(arc_normal).normalized();
+					
+					// Create quad points at cone boundary distances
+					Vector3 p00 = get_quaternion_axis_angle(perp0, cone1_radius).xform(mid0).normalized();
+					Vector3 p01 = get_quaternion_axis_angle(perp0, -cone1_radius).xform(mid0).normalized();
+					Vector3 p10 = get_quaternion_axis_angle(perp1, cone2_radius).xform(mid1).normalized();
+					Vector3 p11 = get_quaternion_axis_angle(perp1, -cone2_radius).xform(mid1).normalized();
+					
+					// Draw two triangles forming the quad
+					p_surface_tool->set_color(p_color);
+					p_surface_tool->add_vertex(p_transform.xform(p00 * sphere_r));
+					p_surface_tool->set_color(p_color);
+					p_surface_tool->add_vertex(p_transform.xform(p10 * sphere_r));
+					p_surface_tool->set_color(p_color);
+					p_surface_tool->add_vertex(p_transform.xform(p01 * sphere_r));
+					
+					p_surface_tool->set_color(p_color);
+					p_surface_tool->add_vertex(p_transform.xform(p01 * sphere_r));
+					p_surface_tool->set_color(p_color);
+					p_surface_tool->add_vertex(p_transform.xform(p10 * sphere_r));
+					p_surface_tool->set_color(p_color);
+					p_surface_tool->add_vertex(p_transform.xform(p11 * sphere_r));
 				}
 			}
 		}
