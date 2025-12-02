@@ -42,88 +42,54 @@ void EWBIK3D::_solve_iteration(double p_delta, Skeleton3D *p_skeleton, IterateIK
 		target_transform = cached_space.affine_inverse() * target->get_global_transform_interpolated();
 	}
 
-	// For each bone in the chain, solve using QCP
-	for (int i = 0; i < joint_size; i++) {
-		IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
-		if (!solver_info || Math::is_zero_approx(solver_info->length)) {
-			continue;
+	// Backwards iteration like CCDIK
+	for (int ancestor = joint_size - 1; ancestor >= 0; ancestor--) {
+		// Forwards from ancestor
+		for (int i = ancestor; i < joint_size; i++) {
+			IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
+			if (!solver_info || Math::is_zero_approx(solver_info->length)) {
+				continue;
+			}
+
+			int HEAD = i;
+			int TAIL = i + 1;
+
+			// Create point correspondences for QCP solving
+			PackedVector3Array target_headings;
+			PackedVector3Array tip_headings;
+			Vector<double> weights;
+
+			_create_point_correspondences(p_skeleton, p_setting, i, p_destination, target_transform, target_headings, tip_headings, weights);
+
+			// Calculate optimal rotation using QCP
+			Quaternion optimal_rotation = _calculate_optimal_rotation(target_headings, tip_headings, weights);
+
+			// Apply the rotation to update chain coordinates (like CCDIK does)
+			Vector3 current_head = p_setting->chain[HEAD];
+			Vector3 to_tail = p_setting->chain[TAIL] - current_head;
+			Vector3 rotated_tail = optimal_rotation.xform(to_tail);
+
+			p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, current_head + rotated_tail);
+
+			// Apply rotation axis constraints
+			IterateIK3DJointSetting *joint_setting = p_setting->joint_settings[HEAD];
+			if (joint_setting && joint_setting->rotation_axis != ROTATION_AXIS_ALL) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + joint_setting->get_projected_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD]));
+			}
+
+			// Apply joint limitations
+			if (joint_setting && joint_setting->limitation.is_valid()) {
+				p_setting->update_chain_coordinate_fw(p_skeleton, TAIL, p_setting->chain[HEAD] + joint_setting->get_limited_rotation(solver_info->current_grest, p_setting->chain[TAIL] - p_setting->chain[HEAD], solver_info->forward_vector));
+			}
 		}
-
-		// Create point correspondences for QCP solving
-		PackedVector3Array target_headings;
-		PackedVector3Array tip_headings;
-		Vector<double> weights;
-
-		_create_point_correspondences(p_skeleton, p_setting, p_destination, target_transform, target_headings, tip_headings, weights);
-
-		// Apply QCP rotation to this bone
-		_apply_qcp_rotation(p_skeleton, p_setting, i, target_headings, tip_headings, weights);
 	}
 }
 
-void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, const Vector3 &p_destination, const Transform3D &p_target_transform,
+void EWBIK3D::_create_point_correspondences(Skeleton3D *p_skeleton, const IterateIK3DSetting *p_setting, int p_bone_idx, const Vector3 &p_destination, const Transform3D &p_target_transform,
 		PackedVector3Array &r_target_headings, PackedVector3Array &r_tip_headings, Vector<double> &r_weights) {
 
 	int chain_size = (int)p_setting->chain.size();
-	if (chain_size < 2) {
-		return;
-	}
-
-	// Get the current end effector position and target
-	Vector3 current_effector = p_setting->chain[chain_size - 1];
-	Vector3 target_direction = (p_destination - current_effector).normalized();
-
-	// For each bone, create point correspondences
-	for (int i = 0; i < (int)p_setting->joints.size(); i++) {
-		IKModifier3DSolverInfo *solver_info = p_setting->solver_info_list[i];
-		if (!solver_info || Math::is_zero_approx(solver_info->length)) {
-			continue;
-		}
-
-		Vector3 bone_origin = p_setting->chain[i];
-		// Get the current bone's global transform to access its orientation
-		Transform3D current_bone_transform = p_skeleton->get_bone_global_pose(p_setting->joints[i].bone);
-		Basis current_bone_basis = current_bone_transform.basis;
-
-		// Weight based on distance from this bone to end effector
-		float distance_to_effector = bone_origin.distance_to(current_effector);
-		float weight = 1.0f / (1.0f + distance_to_effector); // Closer bones have higher weight
-
-		// Target heading: direction from bone to target (relative to bone origin)
-		Vector3 target_heading = target_direction * solver_info->length;
-		r_target_headings.push_back(target_heading);
-		r_weights.push_back(weight);
-
-		// Tip heading: current direction from bone to end effector (relative to bone origin)
-		Vector3 tip_heading = (current_effector - bone_origin).normalized() * solver_info->length;
-		r_tip_headings.push_back(tip_heading);
-		r_weights.push_back(weight);
-
-		// Add directional constraints for X, Y, Z axes (6 points total: 2 per axis)
-		// QCP finds rotation that aligns current bone orientation with target orientation
-		for (int axis = 0; axis < 3; axis++) {
-			// Get the target's basis column for this axis (desired orientation)
-			Vector3 target_axis = p_target_transform.basis.get_column(axis);
-			// Get the current bone's basis column for this axis (current orientation)
-			Vector3 current_axis = current_bone_basis.get_column(axis);
-
-			// Positive direction constraint: align current bone axis with target axis
-			r_target_headings.push_back(target_axis * solver_info->length);
-			r_tip_headings.push_back(current_axis * solver_info->length);
-			r_weights.push_back(weight * 0.3f); // Medium weight for directional constraints
-
-			// Negative direction constraint: align opposite current bone axis with target axis
-			r_target_headings.push_back(target_axis * solver_info->length);
-			r_tip_headings.push_back(-current_axis * solver_info->length);
-			r_weights.push_back(weight * 0.3f); // Medium weight for directional constraints
-		}
-	}
-}
-
-void EWBIK3D::_apply_qcp_rotation(Skeleton3D *p_skeleton, IterateIK3DSetting *p_setting, int p_bone_idx,
-		const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights) {
-
-	if (p_bone_idx >= (int)p_setting->joints.size()) {
+	if (chain_size < 2 || p_bone_idx < 0 || p_bone_idx >= (int)p_setting->joints.size()) {
 		return;
 	}
 
@@ -132,52 +98,51 @@ void EWBIK3D::_apply_qcp_rotation(Skeleton3D *p_skeleton, IterateIK3DSetting *p_
 		return;
 	}
 
-	// Calculate optimal rotation using QCP
-	Quaternion optimal_rotation = _calculate_optimal_rotation(p_target_headings, p_tip_headings, p_weights);
+	// Get the current end effector position and target
+	Vector3 current_effector = p_setting->chain[chain_size - 1];
+	Vector3 bone_origin = p_setting->chain[p_bone_idx];
+	Vector3 head_to_effector = current_effector - bone_origin;
+	Vector3 head_to_destination = p_destination - bone_origin;
 
-	// Apply joint limitations if they exist
-	IterateIK3DJointSetting *joint_setting = p_setting->joint_settings[p_bone_idx];
-	if (joint_setting && joint_setting->limitation.is_valid()) {
-		// Get the desired direction after optimal rotation (where the bone's forward vector would point)
-		Vector3 desired_direction = optimal_rotation.xform(solver_info->forward_vector);
-		// Apply limitation to constrain this direction
-		Vector3 limited_direction = joint_setting->get_limited_rotation(solver_info->current_grest, desired_direction, solver_info->forward_vector);
-		// Calculate rotation from current forward to limited direction
-		if (!limited_direction.is_zero_approx()) {
-			optimal_rotation = Quaternion(solver_info->forward_vector, limited_direction.normalized());
-		}
+	if (Math::is_zero_approx(head_to_destination.length_squared() * head_to_effector.length_squared())) {
+		return;
 	}
 
-	// Apply rotation axis constraints
-	if (joint_setting && joint_setting->rotation_axis != ROTATION_AXIS_ALL) {
-		// Project rotation onto allowed axis
-		Vector3 rot_axis = joint_setting->get_rotation_axis_vector();
-		if (rot_axis.is_zero_approx()) {
-			return; // No valid rotation axis
-		}
+	// Get the current bone's global transform to access its orientation
+	Transform3D current_bone_transform = p_skeleton->get_bone_global_pose(p_setting->joints[p_bone_idx].bone);
+	Basis current_bone_basis = current_bone_transform.basis;
 
-		// Extract rotation around the allowed axis
-		float angle = optimal_rotation.get_angle();
-		Vector3 axis = optimal_rotation.get_axis();
-		float projection = axis.dot(rot_axis);
-		if (!Math::is_zero_approx(projection)) {
-			angle *= projection;
-			optimal_rotation = Quaternion(rot_axis, angle);
-		}
+	// Weight based on distance from this bone to end effector
+	float distance_to_effector = bone_origin.distance_to(current_effector);
+	float weight = 1.0f / (1.0f + distance_to_effector); // Closer bones have higher weight
+
+	// Target heading: direction from bone to target
+	Vector3 target_heading = head_to_destination.normalized() * solver_info->length;
+	r_target_headings.push_back(target_heading);
+
+	// Tip heading: current direction from bone to end effector
+	Vector3 tip_heading = head_to_effector.normalized() * solver_info->length;
+	r_tip_headings.push_back(tip_heading);
+	r_weights.push_back(weight);
+
+	// Add directional constraints for X, Y, Z axes (6 points total: 2 per axis)
+	// QCP finds rotation that aligns current bone orientation with target orientation
+	for (int axis = 0; axis < 3; axis++) {
+		// Get the target's basis column for this axis (desired orientation)
+		Vector3 target_axis = p_target_transform.basis.get_column(axis);
+		// Get the current bone's basis column for this axis (current orientation)
+		Vector3 current_axis = current_bone_basis.get_column(axis);
+
+		// Positive direction constraint: align current bone axis with target axis
+		r_target_headings.push_back(target_axis * solver_info->length);
+		r_tip_headings.push_back(current_axis * solver_info->length);
+		r_weights.push_back(weight * 0.3f); // Medium weight for directional constraints
+
+		// Negative direction constraint: align opposite current bone axis with target axis
+		r_target_headings.push_back(target_axis * solver_info->length);
+		r_tip_headings.push_back(-current_axis * solver_info->length);
+		r_weights.push_back(weight * 0.3f); // Medium weight for directional constraints
 	}
-
-	// Apply angular delta limiting to prevent oscillation
-	Quaternion prev_rotation = solver_info->current_lpose;
-	Quaternion new_rotation = solver_info->current_lrest * optimal_rotation;
-
-	double diff = prev_rotation.angle_to(new_rotation);
-	if (!Math::is_zero_approx(diff)) {
-		new_rotation = prev_rotation.slerp(new_rotation, MIN(1.0, angular_delta_limit / diff));
-	}
-
-	// Update the bone pose
-	p_skeleton->set_bone_pose_rotation(p_setting->joints[p_bone_idx].bone, new_rotation);
-	solver_info->current_lpose = new_rotation;
 }
 
 Quaternion EWBIK3D::_calculate_optimal_rotation(const PackedVector3Array &p_target_headings, const PackedVector3Array &p_tip_headings, const Vector<double> &p_weights) {
