@@ -628,25 +628,20 @@ int JointLimitationKusudama3D::get_cone_count() const {
 void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_center) {
 	int quad_count = cones.size();
 	ERR_FAIL_INDEX(p_index, quad_count + 1);
-		
+	
 	// Store raw value (non-normalized) to allow editor to accept values outside [-1, 1]
 	// Normalization happens lazily when values are used
 	if (p_index < quad_count) {
 		// Access column 0 of quad at p_index (cone1)
 		Vector4 &cone = cones.write[p_index][0];
-	cone.x = p_center.x;
-	cone.y = p_center.y;
-	cone.z = p_center.z;
+		cone.x = p_center.x;
+		cone.y = p_center.y;
+		cone.z = p_center.z;
 		// If this cone is shared with the previous quad (cone2 of prev = cone1 of current), update it too
 		if (p_index > 0) {
-			Vector4 &prev_cone2 = cones.write[p_index - 1][3];
-			prev_cone2.x = p_center.x;
-			prev_cone2.y = p_center.y;
-			prev_cone2.z = p_center.z;
-			// Update tangents for previous quad
+			cones.write[p_index - 1][3] = cone;
 			_update_quad_tangents(p_index - 1);
 		}
-		// Update tangents for this quad
 		_update_quad_tangents(p_index);
 	} else {
 		// Access column 3 of last quad (cone2)
@@ -654,7 +649,6 @@ void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_ce
 		cone.x = p_center.x;
 		cone.y = p_center.y;
 		cone.z = p_center.z;
-		// Update tangents for the last quad
 		_update_quad_tangents(quad_count - 1);
 	}
 	emit_changed();
