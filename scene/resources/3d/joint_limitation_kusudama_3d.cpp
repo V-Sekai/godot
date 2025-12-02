@@ -643,12 +643,17 @@ void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_ce
 	cone.x = p_center.x;
 	cone.y = p_center.y;
 	cone.z = p_center.z;
-		// Update tangents for this quad
-		_update_quad_tangents(p_index);
-		// Also update previous quad if it exists (since cone2 of prev = cone1 of current)
+		// If this cone is shared with the previous quad (cone2 of prev = cone1 of current), update it too
 		if (p_index > 0) {
+			Vector4 &prev_cone2 = cones.write[p_index - 1][3];
+			prev_cone2.x = p_center.x;
+			prev_cone2.y = p_center.y;
+			prev_cone2.z = p_center.z;
+			// Update tangents for previous quad
 			_update_quad_tangents(p_index - 1);
 		}
+		// Update tangents for this quad
+		_update_quad_tangents(p_index);
 	} else {
 		// Access column 3 of last quad (cone2)
 		Vector4 &cone = cones.write[quad_count - 1][3];
@@ -705,12 +710,14 @@ void JointLimitationKusudama3D::set_cone_radius(int p_index, real_t p_radius) {
 	if (p_index < quad_count) {
 		// Access column 0 of quad at p_index (cone1)
 		cones.write[p_index][0].w = p_radius;
-		// Update tangents for this quad
-		_update_quad_tangents(p_index);
-		// Also update previous quad if it exists (since cone2 of prev = cone1 of current)
+		// If this cone is shared with the previous quad (cone2 of prev = cone1 of current), update it too
 		if (p_index > 0) {
+			cones.write[p_index - 1][3].w = p_radius;
+			// Update tangents for previous quad
 			_update_quad_tangents(p_index - 1);
 		}
+		// Update tangents for this quad
+		_update_quad_tangents(p_index);
 	} else {
 		// Access column 3 of last quad (cone2)
 		cones.write[quad_count - 1][3].w = p_radius;
