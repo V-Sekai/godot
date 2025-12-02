@@ -528,7 +528,7 @@ bool JointLimitationKusudama3D::_set(const StringName &p_name, const Variant &p_
 				cone.x = center.x;
 				cone.y = center.y;
 				cone.z = center.z;
-				emit_changed();
+				set_cone_center(index, center);
 			} else {
 				set_cone_center(index, p_value);
 			}
@@ -731,88 +731,52 @@ static void draw_sphere_circle(Ref<SurfaceTool> &p_surface_tool, const Transform
 }
 
 // Helper function to find the contact point where a cone and tangent circle meet
-// This is the point on the great circle from cone_center to tan_center that is at
-// distance cone_radius from cone_center and distance tan_radius from tan_center
+// Uses the solver's closest_to_cone_boundary logic to find the point on the cone boundary
+// in the direction of the tangent center, then projects it onto the tangent circle
 static Vector3 get_cone_tangent_contact_point(const Vector3 &p_cone_center, real_t p_cone_radius, const Vector3 &p_tan_center, real_t p_tan_radius) {
 	Vector3 cone_center = p_cone_center.normalized();
 	Vector3 tan_center = p_tan_center.normalized();
 	
-	// Find axis perpendicular to both centers (consistent direction)
-	Vector3 axis = cone_center.cross(tan_center);
-	if (axis.length_squared() < CMP_EPSILON2) {
-		axis = get_orthogonal(cone_center);
+	// Use the solver's closest_to_cone_boundary to find a point on the cone boundary
+	// in the direction of the tangent center
+	Vector3 boundary_point = closest_to_cone_boundary(tan_center, cone_center, p_cone_radius);
+	
+	// If the point is inside the cone (shouldn't happen for tangent centers), 
+	// fall back to rotation method
+	if (Math::is_nan(boundary_point.x)) {
+		// Fallback: rotate cone center by radius around axis perpendicular to both
+		Vector3 axis = cone_center.cross(tan_center);
 		if (axis.length_squared() < CMP_EPSILON2) {
-			axis = Vector3(0, 1, 0);
+			axis = get_orthogonal(cone_center);
+			if (axis.length_squared() < CMP_EPSILON2) {
+				axis = Vector3(0, 1, 0);
+			}
 		}
+		axis.normalize();
+		Quaternion rot = get_quaternion_axis_angle(axis, p_cone_radius);
+		boundary_point = rot.xform(cone_center).normalized();
 	}
-	axis.normalize();
 	
-	// The contact point is on the great circle from cone_center to tan_center
-	// We need to find the point that is at distance cone_radius from cone_center
-	// and distance tan_radius from tan_center
-	// Try both rotation directions and pick the one that's closer to tan_center
-	Quaternion rot1 = get_quaternion_axis_angle(axis, p_cone_radius);
-	Quaternion rot2 = get_quaternion_axis_angle(axis, -p_cone_radius);
-	Vector3 contact1 = rot1.xform(cone_center).normalized();
-	Vector3 contact2 = rot2.xform(cone_center).normalized();
+	// Now project this boundary point onto the tangent circle using the solver's logic
+	// The contact point should be on the tangent circle at distance tan_radius from tan_center
+	real_t tan_radius_cos = Math::cos(p_tan_radius);
+	real_t to_tan_cos = boundary_point.dot(tan_center);
 	
-	// Check which contact point is at the correct distance from tan_center
-	real_t dist1 = Math::acos(CLAMP(contact1.dot(tan_center), -1.0f, 1.0f));
-	real_t dist2 = Math::acos(CLAMP(contact2.dot(tan_center), -1.0f, 1.0f));
-	
-	// Return the contact point that's closer to the expected tan_radius distance
-	if (Math::abs(dist1 - p_tan_radius) < Math::abs(dist2 - p_tan_radius)) {
-		return contact1;
+	if (to_tan_cos > tan_radius_cos) {
+		// Project onto tangent circle (same logic as get_on_great_tangent_triangle)
+		Vector3 plane_normal = tan_center.cross(boundary_point);
+		if (!plane_normal.is_finite() || Math::is_zero_approx(plane_normal.length_squared())) {
+			plane_normal = Vector3(0, 1, 0);
+		}
+		plane_normal.normalize();
+		Quaternion rotate_about_by = get_quaternion_axis_angle(plane_normal, p_tan_radius);
+		return rotate_about_by.xform(tan_center).normalized();
 	} else {
-		return contact2;
+		// Already on or inside tangent circle, return the boundary point
+		return boundary_point.normalized();
 	}
 }
 
-// Helper function to draw PathRegion boundaries for a single tangent circle
-// This draws the spherical quadrilateral showing the allowed path from cone1 to cone2 through the tangent
-// The PathRegion is formed by: arc along tangent circle + arc along cone boundaries (long way)
-static void draw_path_region_for_tangent(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, const Vector3 &p_cone1_center, real_t p_cone1_radius, const Vector3 &p_cone2_center, real_t p_cone2_radius, const Vector3 &p_tan_center, real_t p_tan_radius, real_t p_sphere_r, const Color &p_color, int p_segments = 32) {
-	// Find contact points where THIS tangent circle touches each cone
-	// Make sure we're using p_tan_center (the specific tangent we're drawing for)
-	Vector3 contact_cone1 = get_cone_tangent_contact_point(p_cone1_center, p_cone1_radius, p_tan_center, p_tan_radius).normalized();
-	Vector3 contact_cone2 = get_cone_tangent_contact_point(p_cone2_center, p_cone2_radius, p_tan_center, p_tan_radius).normalized();
-	
-	// Draw the 2 arcs forming the path region:
-	// Arc 1: Path along the tangent circle from cone1 contact to cone2 contact
-	draw_great_circle_arc(p_surface_tool, p_transform, contact_cone1, contact_cone2, p_sphere_r, p_color, p_segments, false);
-	
-	// Arc 2: Return path along the long way (completing the closed loop)
-	draw_great_circle_arc(p_surface_tool, p_transform, contact_cone2, contact_cone1, p_sphere_r, p_color, p_segments, true); // long way
-}
-
-/*
- * Visualization Algorithm for Kusudama Joint Limitation
- * 
- * This function visualizes the allowed and forbidden regions on a sphere using boolean set operations.
- * 
- * Boolean Set Logic:
- * ==================
- * The constraint regions are defined using boolean set operations:
- * 
- * 1. Start with ForbiddenSphere = FullSphere = entire sphere surface (everything is forbidden by default)
- *    - ForbiddenSphere = solid regions that forbid movement (everything is forbidden initially)
- *    - OpenSphere = open areas that do NOT forbid movement (allowed regions) = complement(ForbiddenSphere)
- * 
- * 2. For each pair of cones (cone_i, cone_{i+1}):
- *    - Cones = cone_i, cone_{i+1} (always open/allowed regions)
- *    - ForbiddenPathRegion_i = cone_{i+1} → tan1,tan2 → cone_i (the forbidden reverse path direction)
- *    - ForbiddenTangents = parts of tangent cones that are forbidden (NOT on allowed path)
- *    - PathRegion_i is the open area left when you add ForbiddenPathRegion_i + ForbiddenTangents_tan1 + ForbiddenTangents_tan2 + complement(Cones_i)
- *     
- * 3. OpenArea is the sum of the open areas of Cones ∪ PathRegion_1 ∪ PathRegion_2 ∪ ... (union of all cones and all path regions)
- * 
- * 4. ForbiddenArea = FullSphere - OpenArea
- * 
- * 5. Wireframe = draw the ForbiddenArea (filled wireframe showing what's forbidden)
- * 
- * 6. Fish bone structure: Dashed lines connecting cone centers in order (cone1 → cone2 → ... → cone_n)
- *
- */
 void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
 	if (!is_orientationally_constrained() || cones.is_empty()) {
 		return;
@@ -839,47 +803,6 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 		draw_sphere_circle(p_surface_tool, p_transform, center, center_ring_radius, sphere_r, p_color, N);
 	}
 
-	// 2. Draw PathRegion boundaries for each pair of cones (open/allowed path regions)
-	if (cones.size() > 1) {
-		for (int i = 0; i < cones.size() - 1; i++) {
-			const Vector4 &cone1_data = cones[i];
-			const Vector4 &cone2_data = cones[i + 1];
-			
-			Vector3 center1 = Vector3(cone1_data.x, cone1_data.y, cone1_data.z).normalized();
-			Vector3 center2 = Vector3(cone2_data.x, cone2_data.y, cone2_data.z).normalized();
-			real_t radius1 = cone1_data.w;
-			real_t radius2 = cone2_data.w;
-			
-			// Compute tangent circles
-			Vector3 tan1, tan2;
-			real_t tan_radius;
-			compute_tangent_circle(center1, radius1, center2, radius2, tan1, tan2, tan_radius);
-			
-			// Normalize and validate tangent circles before drawing
-			tan1 = tan1.normalized();
-			tan2 = tan2.normalized();
-			bool tan1_valid = tan1.is_finite() && tan1.length_squared() > CMP_EPSILON2 && tan_radius > CMP_EPSILON && tan_radius < Math::PI;
-			bool tan2_valid = tan2.is_finite() && tan2.length_squared() > CMP_EPSILON2 && tan_radius > CMP_EPSILON && tan_radius < Math::PI;
-			
-			// Draw tangent cone boundaries (circles on the sphere)
-			if (tan1_valid) {
-				draw_sphere_circle(p_surface_tool, p_transform, tan1, tan_radius, sphere_r, p_color, N);
-			}
-			if (tan2_valid) {
-				draw_sphere_circle(p_surface_tool, p_transform, tan2, tan_radius, sphere_r, p_color, N);
-			}
-			
-			// Draw PathRegion boundaries for tan1 (allowed path: cone1 → tan1 → cone2)
-			if (tan1_valid) {
-				draw_path_region_for_tangent(p_surface_tool, p_transform, center1, radius1, center2, radius2, tan1, tan_radius, sphere_r, p_color, N);
-			}
-			
-			// Draw PathRegion boundaries for tan2 (allowed path: cone1 → tan2 → cone2)
-			if (tan2_valid) {
-				draw_path_region_for_tangent(p_surface_tool, p_transform, center1, radius1, center2, radius2, tan2, tan_radius, sphere_r, p_color, N);
-			}
-		}
-	}
 
 	// 3. Draw fish bone structure (dashed lines connecting cone centers in order)
 	if (cones.size() > 1) {
