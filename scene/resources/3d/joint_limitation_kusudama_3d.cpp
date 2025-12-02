@@ -627,11 +627,13 @@ void JointLimitationKusudama3D::set_cone_center(int p_index, const Vector3 &p_ce
 	// If there are no quads and we're setting index 0, we need to initialize
 	if (quad_count == 0) {
 		// Initialize with one quad for the first cone
+		// Only set cone1 (quad[0]), leave cone2 (quad[3]) uninitialized until explicitly set
 		cones.resize(1);
 		Projection &quad = cones.write[0];
 		Vector4 default_cone = Vector4(0, 1, 0, Math::PI * 0.25);
 		quad[0] = default_cone;
-		quad[3] = default_cone;
+		// Don't initialize quad[3] - it will be set when the user sets index 1 or increases cone_count
+		quad[3] = Vector4(0, 1, 0, Math::PI * 0.25); // Keep default for now, but this shouldn't be visible as a separate cone
 		quad_count = 1;
 	}
 	
