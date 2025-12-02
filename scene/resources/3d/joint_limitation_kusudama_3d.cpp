@@ -790,6 +790,7 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 			Vector4 elem_vec = quad[quad_idx];
 			Vector3 elem_center = Vector3(elem_vec.x, elem_vec.y, elem_vec.z);
 			real_t elem_radius = elem_vec.w;
+			bool is_tangent = (quad_idx == 1 || quad_idx == 2);
 			
 			// Only draw if element is valid (non-zero)
 			if (elem_center.length_squared() > CMP_EPSILON) {
@@ -798,8 +799,10 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 				// Draw boundary ring
 				draw_sphere_circle(p_surface_tool, p_transform, elem_center, elem_radius, sphere_r, p_color, N);
 				
-				// Draw center indicator (small ring at center)
-				draw_sphere_circle(p_surface_tool, p_transform, elem_center, center_ring_radius, sphere_r, p_color, N);
+				// Draw center indicator (small ring at center) - only for cones, not tangents
+				if (!is_tangent) {
+					draw_sphere_circle(p_surface_tool, p_transform, elem_center, center_ring_radius, sphere_r, p_color, N);
+				}
 			}
 		}
 	}
