@@ -805,7 +805,7 @@ void JointLimitationKusudama3D::_get_property_list(List<PropertyInfo> *p_list) c
 
 
 #ifdef TOOLS_ENABLED
-void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
+void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, const Transform3D &p_transform, float p_bone_length, const Color &p_color, int p_bone_index) const {
 	if (cones.is_empty()) {
 		return;
 	}
@@ -870,12 +870,13 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	const int32_t MESH_CUSTOM_0 = 0;
 	p_surface_tool->set_custom_format(MESH_CUSTOM_0, SurfaceTool::CustomFormat::CUSTOM_RGBA_HALF);
 	
-	// Set default weights and bones for all vertices (full weight on bone 0)
+	// Set default weights and bones for all vertices (full weight on specified bone)
 	Vector<int> bones;
-	bones.push_back(0);
-	bones.push_back(0);
-	bones.push_back(0);
-	bones.push_back(0);
+	int bone_idx = (p_bone_index >= 0) ? p_bone_index : 0;
+	bones.push_back(bone_idx);
+	bones.push_back(bone_idx);
+	bones.push_back(bone_idx);
+	bones.push_back(bone_idx);
 	Vector<float> weights;
 	weights.push_back(1.0);
 	weights.push_back(0.0);
@@ -963,10 +964,10 @@ void JointLimitationKusudama3D::draw_shape(Ref<SurfaceTool> &p_surface_tool, con
 	p_surface_tool->set_material(kusudama_material);
 }
 
-void JointLimitationKusudama3D::add_gizmo_mesh(EditorNode3DGizmo *p_gizmo, const Transform3D &p_transform, float p_bone_length, const Color &p_color) const {
+void JointLimitationKusudama3D::add_gizmo_mesh(EditorNode3DGizmo *p_gizmo, const Transform3D &p_transform, float p_bone_length, const Color &p_color, int p_bone_index) const {
 	Ref<SurfaceTool> surface_tool;
 	surface_tool.instantiate();
-	draw_shape(surface_tool, p_transform, p_bone_length, p_color);
+	draw_shape(surface_tool, p_transform, p_bone_length, p_color, p_bone_index);
 	
 	Ref<Material> material = surface_tool->get_material();
 	Ref<ArrayMesh> mesh = surface_tool->commit(Ref<ArrayMesh>(), RS::ARRAY_CUSTOM_RGBA_HALF << RS::ARRAY_FORMAT_CUSTOM0_SHIFT);
