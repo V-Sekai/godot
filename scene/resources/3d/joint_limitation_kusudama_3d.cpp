@@ -444,8 +444,9 @@ void JointLimitationKusudama3D::_update_quad_tangents(int p_quad_index) {
 	}
 	
 	// Store tangents in the quad (columns 1 and 2)
-	quad[1] = Vector4(tan1.x, tan1.y, tan1.z, tan_radius);
-	quad[2] = Vector4(tan2.x, tan2.y, tan2.z, tan_radius);
+	// Swap tan1 and tan2 to match shader expectations
+	quad[1] = Vector4(tan2.x, tan2.y, tan2.z, tan_radius);
+	quad[2] = Vector4(tan1.x, tan1.y, tan1.z, tan_radius);
 }
 
 Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
@@ -515,18 +516,12 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 			
 			// Extract elements from quad
 			Vector4 cone1_vec = quad[0]; // Column 0 = cone1
-			Vector4 tan1_vec = quad[1];  // Column 1 = tan1 (stored)
-			Vector4 tan2_vec = quad[2];  // Column 2 = tan2 (stored)
+			Vector4 tan1_vec = quad[1];  // Column 1 = tan1
 			Vector4 cone2_vec = quad[3];  // Column 3 = cone2
 			
 			Vector3 center1 = Vector3(cone1_vec.x, cone1_vec.y, cone1_vec.z).normalized();
 			Vector3 center2 = Vector3(cone2_vec.x, cone2_vec.y, cone2_vec.z).normalized();
 			real_t tan_radius = tan1_vec.w; // tan1 and tan2 have same radius
-
-			// Swap tangents when reading to match shader expectations
-			// Shader expects: tan1 (for c1c2dir < 0) and tan2 (for c1c2dir >= 0) to be swapped
-			Vector3 tan1_actual = Vector3(tan2_vec.x, tan2_vec.y, tan2_vec.z).normalized(); // Use stored tan2 as tan1
-			Vector3 tan2_actual = Vector3(tan1_vec.x, tan1_vec.y, tan1_vec.z).normalized(); // Use stored tan1 as tan2
 
 			// Check all 4 regions of the quad: iterate through [cone1, tan1, tan2, cone2]
 			real_t tan_radius_cos = Math::cos(tan_radius);
@@ -542,16 +537,15 @@ Vector3 JointLimitationKusudama3D::_solve(const Vector3 &p_direction) const {
 					// Check cone region
 					collision_point = closest_to_cone_boundary(point, elem_center, elem_radius);
 				} else {
-					// Check tangent region - use swapped tangents
-					Vector3 actual_tangent = (quad_idx == 1) ? tan1_actual : tan2_actual;
+					// Check tangent region
 					// For tan1 (quad_idx == 1): check region between center1 and center2
 					// For tan2 (quad_idx == 2): check region between center1 and center2
-					Vector3 c1xt = center1.cross(actual_tangent);
-					Vector3 txc2 = actual_tangent.cross(center2);
+					Vector3 c1xt = center1.cross(elem_center);
+					Vector3 txc2 = elem_center.cross(center2);
 					if (quad_idx == 2) {
 						// tan2: reverse the cross products
-						c1xt = actual_tangent.cross(center1);
-						txc2 = center2.cross(actual_tangent);
+						c1xt = elem_center.cross(center1);
+						txc2 = center2.cross(elem_center);
 					}
 					
 					if (point.dot(c1xt) > 0 && point.dot(txc2) > 0) {
