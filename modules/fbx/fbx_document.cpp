@@ -2835,6 +2835,21 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		Quaternion rotation = transform.basis.get_rotation_quaternion();
 		Vector3 scale = transform.basis.get_scale();
 
+		// For non-rigged meshes, swap axes to fix backwards mesh orientation
+		// Swap Y and Z, negate Y to match coordinate system
+		if (!gltf_node->joint && gltf_node->mesh >= 0 && this->fbx_meshes_skins == 0) {
+			// Swap Y and Z axes: (x, y, z) -> (x, -z, y)
+			translation.z = -translation.z;
+			SWAP(translation.y, translation.z);
+			
+			// Apply axis swap to rotation quaternion: swap Y and Z, negate Y
+			Quaternion q = rotation;
+			rotation = Quaternion(-q.x, q.z, -q.y, q.w);
+			
+			// Swap scale Y and Z
+			SWAP(scale.y, scale.z);
+		}
+
 		ufbxw_vec3 fbx_translation = { (float)translation.x, (float)translation.y, (float)translation.z };
 		ufbxw_vec3 fbx_scale = { (float)scale.x, (float)scale.y, (float)scale.z };
 
@@ -2842,9 +2857,8 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		ufbxw_node_set_scaling(write_scene, fbx_node, fbx_scale);
 
 		// Convert quaternion to Euler angles (degrees) for FBX
-		// Use XYZ order when rigged mesh is enabled (link_transform requires XYZ for correct interpretation)
-		// Otherwise use YXZ (Godot's default)
-		EulerOrder euler_order = (this->fbx_meshes_skins != 0) ? EulerOrder::XYZ : EulerOrder::YXZ;
+		// Use opposite of import: ZYX when rigged (opposite of XYZ), ZXY when not rigged (opposite of YXZ)
+		EulerOrder euler_order = (this->fbx_meshes_skins != 0) ? EulerOrder::ZYX : EulerOrder::ZXY;
 		Vector3 euler = rotation.get_euler(euler_order);
 		ufbxw_vec3 fbx_rotation = { Math::rad_to_deg((float)euler.x), Math::rad_to_deg((float)euler.y), Math::rad_to_deg((float)euler.z) };
 		ufbxw_node_set_rotation(write_scene, fbx_node, fbx_rotation);
@@ -3859,8 +3873,8 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 			}
 
 			// Export rotation track (convert quaternions to Euler angles)
-			// Use XYZ order when rigged mesh is enabled, otherwise YXZ (Godot's default)
-			EulerOrder euler_order = (this->fbx_meshes_skins != 0) ? EulerOrder::XYZ : EulerOrder::YXZ;
+			// Use opposite of import: ZYX when rigged (opposite of XYZ), ZXY when not rigged (opposite of YXZ)
+			EulerOrder euler_order = (this->fbx_meshes_skins != 0) ? EulerOrder::ZYX : EulerOrder::ZXY;
 			if (track.rotation_track.times.size() > 0 && track.rotation_track.values.size() > 0) {
 				ufbxw_anim_prop anim_prop = ufbxw_node_animate_rotation(write_scene, fbx_node, fbx_anim_layer);
 				if (anim_prop.id != 0) {
