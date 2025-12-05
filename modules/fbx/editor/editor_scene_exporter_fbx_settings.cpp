@@ -89,5 +89,5 @@ void EditorSceneExporterFBXSettings::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("get_fbx_meshes_skins"), &EditorSceneExporterFBXSettings::get_fbx_meshes_skins);
 	ClassDB::bind_method(D_METHOD("set_fbx_meshes_skins", "fbx_meshes_skins"), &EditorSceneExporterFBXSettings::set_fbx_meshes_skins);
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "fbx/meshes/skins", PROPERTY_HINT_ENUM, "None,Export", PROPERTY_USAGE_DEFAULT), "set_fbx_meshes_skins", "get_fbx_meshes_skins");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "fbx/meshes/skins", PROPERTY_HINT_ENUM, "None,Clustered (Weights Only)", PROPERTY_USAGE_DEFAULT), "set_fbx_meshes_skins", "get_fbx_meshes_skins");
 }

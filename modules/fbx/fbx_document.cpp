@@ -2698,8 +2698,8 @@ extern "C" bool fbx_stream_write_fn(void *user, uint64_t offset, const void *dat
 	ctx->file->seek(offset);
 	
 	// Write the data
-	Error err = ctx->file->store_buffer(static_cast<const uint8_t *>(data), size);
-	return err == OK;
+	bool success = ctx->file->store_buffer(static_cast<const uint8_t *>(data), size);
+	return success;
 }
 
 // Close callback function for ufbxw_write_stream
@@ -3461,7 +3461,8 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 	// Only export if rigged mesh export is enabled (mirrors blender/meshes/skins)
 	HashMap<GLTFSkinIndex, ufbxw_skin_deformer> gltf_to_fbx_skins;
 
-	if (fbx_meshes_skins != 0) { // 0 = None, 1 = Export
+	// 0 = None, 1 = Clustered (weights only, no transform adjustments)
+	if (fbx_meshes_skins != 0) {
 		for (int skin_i = 0; skin_i < state->skins.size(); skin_i++) {
 		Ref<GLTFSkin> gltf_skin = state->skins[skin_i];
 		if (gltf_skin.is_null()) {
@@ -3560,9 +3561,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 			// Set skin deformer properties
 			ufbxw_skin_deformer_set_skinning_type(write_scene, fbx_skin_deformer, UFBXW_SKINNING_TYPE_LINEAR);
 
-			// Set mesh bind transform (mesh's transform at bind time)
-			ufbxw_matrix mesh_bind_matrix = _transform_to_ufbxw_matrix(mesh_bind_transform);
-			ufbxw_skin_deformer_set_mesh_bind_transform(write_scene, fbx_skin_deformer, mesh_bind_matrix);
+			// Clustered mode: skip setting mesh bind transform (weights only, no transform adjustments)
 
 			// Set skin name if available
 			String skin_name = gltf_skin->get_name();
@@ -3671,12 +3670,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 					inverse_bind = bone_world_transform.inverse() * mesh_bind_transform;
 				}
 
-				// Reader stores geometry_to_bone directly as inverse_bind, so we use it directly (not inverted)
-				Transform3D geometry_to_bone = inverse_bind;
-
-				// Convert Transform3D to ufbxw_matrix
-				ufbxw_matrix fbx_matrix = _transform_to_ufbxw_matrix(geometry_to_bone);
-				ufbxw_skin_cluster_set_transform(write_scene, fbx_cluster, fbx_matrix);
+				// Clustered mode: skip setting cluster transform (weights only, no transform adjustments)
 
 				// Extract and set vertex weights for this cluster
 				// Mesh bone indices refer to joints array, but cluster indices match joints_original order
