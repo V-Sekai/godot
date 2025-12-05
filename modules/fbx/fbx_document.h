@@ -35,12 +35,16 @@
 #include "modules/gltf/gltf_defines.h"
 #include "modules/gltf/gltf_document.h"
 
-#include <ufbx.h>
+// ufbx_write includes ufbx functionality, so we use ufbx_write.h
+// ufbx.h is in test/ufbx/ directory
+#include "test/ufbx/ufbx.h"
+#include "ufbx_write.h"
 
 class FBXDocument : public GLTFDocument {
 	GDCLASS(FBXDocument, GLTFDocument);
 
 	int _naming_version = 2;
+	int export_format = 0; // 0 = Binary, 1 = ASCII
 
 public:
 	enum {
@@ -52,6 +56,7 @@ public:
 	static String _as_string(const ufbx_string &p_string);
 	static Vector3 _as_vec3(const ufbx_vec3 &p_vector);
 	static String _gen_unique_name(HashSet<String> &unique_names, const String &p_name);
+	static ufbxw_matrix _transform_to_ufbxw_matrix(const Transform3D &p_transform);
 
 public:
 	Error append_from_file(const String &p_path, Ref<GLTFState> p_state, uint32_t p_flags = 0, const String &p_base_path = String()) override;
@@ -61,6 +66,8 @@ public:
 	Node *generate_scene(Ref<GLTFState> p_state, float p_bake_fps = 30.0f, bool p_trimming = false, bool p_remove_immutable_tracks = true) override;
 	PackedByteArray generate_buffer(Ref<GLTFState> p_state) override;
 	Error write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) override;
+	void set_export_format(int p_format) { export_format = p_format; }
+	int get_export_format() const { return export_format; }
 
 	void set_naming_version(int p_version);
 	int get_naming_version() const;
@@ -93,6 +100,10 @@ private:
 	void _assign_node_names(Ref<FBXState> p_state);
 	Error _parse_cameras(Ref<FBXState> p_state);
 	Error _parse_lights(Ref<FBXState> p_state);
+	void _apply_scale_to_gltf_state(Ref<GLTFState> p_state, const Vector3 &p_scale);
+	bool _get_mesh_bone_weights(Ref<GLTFState> state, GLTFMeshIndex mesh_idx, int surface_idx,
+			PackedInt32Array &r_bones, PackedFloat32Array &r_weights, int &r_weights_per_vertex);
+	Transform3D _compute_node_world_transform(Ref<GLTFState> state, GLTFNodeIndex node_idx);
 
 public:
 	Error _parse_fbx_state(Ref<FBXState> p_state, const String &p_search_path);
