@@ -2677,29 +2677,51 @@ void FBXDocument::_apply_scale_to_gltf_state(Ref<GLTFState> p_state, const Vecto
 	}
 }
 
-// Helper struct and functions for memory-based FBX writing
+// Helper struct and functions for FBX stream writing using StreamPeerBuffer
 // These must be at file scope (not inside write_to_filesystem) to avoid "function definition not allowed" errors
-//
-// NOTE: There is a known issue where ufbx_write library passes corrupted 'size' parameter
-// on the second write callback call when ASAN is enabled. The corrupted value appears to be
-// a pointer address (e.g., 0x1051e3dd0) instead of the actual size. This has been observed
-// on ARM64 macOS with AddressSanitizer enabled.
-//
-// Attempted fixes (none resolved the root cause):
-// 1. extern "C" linkage - ensures C calling convention
-// 2. __attribute__((no_sanitize("address"))) - prevents ASAN from intercepting callback
-// 3. C wrapper pattern - separates C/C++ boundary with explicit wrappers
-//
-// Current workaround: Sanity check rejects size > 256MB to prevent crashes.
-// The export fails gracefully instead of crashing, but the underlying issue remains.
-//
-// Possible root causes:
-// - ASAN instrumentation interfering with function pointer calls
-// - ARM64 calling convention mismatch in ufbx_write library
-// - Bug in ufbx_write when calling function pointers multiple times
-//
-// NOTE: We now use ufbxw_save_file() directly instead of stream callbacks
-// to avoid all callback parameter corruption issues.
+
+namespace {
+// Stream context for PackedByteArray-based writing
+struct FBXStreamContext {
+	PackedByteArray *buffer;
+};
+
+// Write callback function for ufbxw_write_stream
+// Must have C linkage to match ufbxw_write_fn typedef
+extern "C" bool fbx_stream_write_fn(void *user, uint64_t offset, const void *data, size_t size) {
+	FBXStreamContext *ctx = static_cast<FBXStreamContext *>(user);
+	if (!ctx || !ctx->buffer) {
+		return false;
+	}
+	
+	// Calculate required size: offset + size
+	// PackedByteArray supports int64_t sizes, so we can handle large buffers
+	uint64_t required_size = offset + size;
+	
+	// Resize buffer if needed to accommodate the write at this offset
+	int64_t current_size = ctx->buffer->size();
+	if (current_size < (int64_t)required_size) {
+		ctx->buffer->resize((int64_t)required_size);
+	}
+	
+	// Get writable pointer and write data at the specified offset
+	uint8_t *buffer_ptr = ctx->buffer->ptrw();
+	if (!buffer_ptr) {
+		return false;
+	}
+	
+	memcpy(buffer_ptr + offset, data, size);
+	return true;
+}
+
+// Close callback function for ufbxw_write_stream
+// Must have C linkage to match ufbxw_close_fn typedef
+extern "C" void fbx_stream_close_fn(void *user) {
+	// Nothing to do - StreamPeerBuffer doesn't need explicit closing
+	// The buffer will be written to file after the stream completes
+	(void)user; // Suppress unused parameter warning
+}
+} // anonymous namespace
 
 // Helper: Get bone/weight data from mesh surface
 bool FBXDocument::_get_mesh_bone_weights(Ref<GLTFState> state, GLTFMeshIndex mesh_idx, int surface_idx,
@@ -4197,16 +4219,30 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 	// storage or calling convention differences across thread boundaries
 	// Leave thread_pool empty (all function pointers NULL) to force single-threaded operation
 
-	// Use direct file API (ufbxw_save_file) instead of stream callbacks
-	// This avoids callback parameter corruption issues entirely by writing directly to file
-	// Convert path to UTF-8 C string for ufbx_write
-	CharString path_utf8 = abs_path.utf8();
-	const char *path_cstr = path_utf8.get_data();
+	// Use stream protocol with PackedByteArray to write FBX to memory first
+	// This allows us to collect all data in memory before writing to disk
+	// PackedByteArray supports int64_t sizes, allowing for large FBX files
+	PackedByteArray buffer;
 
-	// Write FBX directly to file using ufbx_write's file API
-	// This bypasses all callback mechanisms and avoids stack corruption
+	// Set up stream context
+	FBXStreamContext stream_ctx;
+	stream_ctx.buffer = &buffer;
+
+	// Set up write stream
+	ufbxw_write_stream stream = {};
+	stream.write_fn = fbx_stream_write_fn;
+	stream.close_fn = fbx_stream_close_fn;
+	stream.user = &stream_ctx;
+
+	// Write FBX using stream protocol to memory buffer
 	ufbxw_error error = {};
-	bool success = ufbxw_save_file(write_scene, path_cstr, &save_opts, &error);
+	bool success = ufbxw_save_stream(write_scene, &stream, &save_opts, &error);
+	
+	// Close the stream (no-op for StreamPeerBuffer, but call for consistency)
+	if (stream.close_fn) {
+		stream.close_fn(stream.user);
+	}
+	
 	ufbxw_free_scene(write_scene);
 
 	if (!success) {
@@ -4219,6 +4255,30 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		} else {
 			ERR_PRINT("FBX write failed with unknown error. Path: " + abs_path);
 		}
+		return ERR_FILE_CANT_WRITE;
+	}
+
+	// Write the buffer data to file
+	if (buffer.is_empty()) {
+		ERR_PRINT("FBX export: PackedByteArray buffer is empty after write");
+		return ERR_FILE_CANT_WRITE;
+	}
+
+	Error file_err;
+	Ref<FileAccess> file = FileAccess::open(abs_path, FileAccess::WRITE, &file_err);
+	if (file_err != OK || file.is_null()) {
+		ERR_PRINT("FBX export: Failed to open file for writing: " + abs_path + " (Error: " + itos(file_err) + ")");
+		return ERR_FILE_CANT_WRITE;
+	}
+
+	// Write the entire buffer to file
+	file->store_buffer(buffer.ptr(), buffer.size());
+	file->flush();
+	file->close();
+
+	Error write_err = file->get_error();
+	if (write_err != OK) {
+		ERR_PRINT("FBX export: Failed to write buffer to file: " + abs_path + " (Error: " + itos(write_err) + ")");
 		return ERR_FILE_CANT_WRITE;
 	}
 
