@@ -2823,7 +2823,14 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		ufbxw_set_name_len(write_scene, fbx_node.id, node_name_utf8.get_data(), node_name_utf8.length());
 
 		// Set transform (already scaled to centimeters in _apply_scale_to_gltf_state)
+		// For bone nodes (joints), use rest transform if available to match skeleton bone positions
 		Transform3D transform = gltf_node->transform;
+		if (gltf_node->joint) {
+			Variant rest_transform_var = gltf_node->get_additional_data("GODOT_rest_transform");
+			if (rest_transform_var.get_type() == Variant::TRANSFORM3D) {
+				transform = rest_transform_var;
+			}
+		}
 		Vector3 translation = transform.origin;
 		Quaternion rotation = transform.basis.get_rotation_quaternion();
 		Vector3 scale = transform.basis.get_scale();
@@ -2835,7 +2842,8 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		ufbxw_node_set_scaling(write_scene, fbx_node, fbx_scale);
 
 		// Convert quaternion to Euler angles (degrees) for FBX
-		Vector3 euler = rotation.get_euler();
+		// Use YXZ order (Godot's default) to match import behavior
+		Vector3 euler = rotation.get_euler(EulerOrder::YXZ);
 		ufbxw_vec3 fbx_rotation = { Math::rad_to_deg((float)euler.x), Math::rad_to_deg((float)euler.y), Math::rad_to_deg((float)euler.z) };
 		ufbxw_node_set_rotation(write_scene, fbx_node, fbx_rotation);
 
