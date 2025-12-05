@@ -3561,7 +3561,10 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 			// Set skin deformer properties
 			ufbxw_skin_deformer_set_skinning_type(write_scene, fbx_skin_deformer, UFBXW_SKINNING_TYPE_LINEAR);
 
-			// Clustered mode: skip setting mesh bind transform (weights only, no transform adjustments)
+			// Clustered mode: set mesh bind transform to mesh's rest transform
+			// This matches the skeleton bone positions (same computation as node export)
+			ufbxw_matrix mesh_bind_matrix = _transform_to_ufbxw_matrix(mesh_bind_transform);
+			ufbxw_skin_deformer_set_mesh_bind_transform(write_scene, fbx_skin_deformer, mesh_bind_matrix);
 
 			// Set skin name if available
 			String skin_name = gltf_skin->get_name();
@@ -3638,39 +3641,34 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 				// Explicitly set the bone node for this cluster (ensures proper linking)
 				ufbxw_skin_cluster_set_node(write_scene, fbx_cluster, fbx_bone_node);
 
-				// Get inverse bind matrix (reader stores geometry_to_bone directly as inverse_bind)
-				// In GLTF, inverse_bind is the transform from mesh space to bone space at bind time
-				// In FBX, geometry_to_bone is the same thing: transform from mesh vertex space to bone space
-				Transform3D inverse_bind = Transform3D();
-				if (cluster_idx >= 0 && cluster_idx < inverse_binds.size()) {
-					inverse_bind = inverse_binds[cluster_idx];
-				}
-				// Compute from world transform if not found
-				// Use stored value if available (it should be correct from import)
-				if (inverse_bind == Transform3D()) {
-					// Compute bone world transform using rest transforms
-					Transform3D bone_world_transform = Transform3D();
-					GLTFNodeIndex current = joint_node_idx;
-					while (current >= 0 && current < state->nodes.size()) {
-						Ref<GLTFNode> node = state->nodes[current];
-						if (node.is_null()) {
-							break;
-						}
-						// Use rest transform if available, otherwise use current transform
-						Transform3D node_transform = node->transform;
-						Variant rest_transform_var = node->get_additional_data("GODOT_rest_transform");
-						if (rest_transform_var.get_type() == Variant::TRANSFORM3D) {
-							node_transform = rest_transform_var;
-						}
-						bone_world_transform = node_transform * bone_world_transform;
-						current = node->get_parent();
+				// For clustered mode: set link_transform to bone's world transform at bind time
+				// This uses the same transform computation as when creating the FBX nodes,
+				// ensuring the skeleton bones are in the right place (matching import_as_skeleton_bones behavior)
+				// Compute bone world transform using rest transforms (same as node export)
+				Transform3D bone_world_transform = Transform3D();
+				GLTFNodeIndex current = joint_node_idx;
+				while (current >= 0 && current < state->nodes.size()) {
+					Ref<GLTFNode> node = state->nodes[current];
+					if (node.is_null()) {
+						break;
 					}
-					// geometry_to_bone = inverse(bone_world) * mesh_world
-					// This transforms from mesh world space to bone world space, then to bone local space
-					inverse_bind = bone_world_transform.inverse() * mesh_bind_transform;
+					// Use rest transform if available, otherwise use current transform
+					// This matches how we set the FBX node transforms during export
+					Transform3D node_transform = node->transform;
+					Variant rest_transform_var = node->get_additional_data("GODOT_rest_transform");
+					if (rest_transform_var.get_type() == Variant::TRANSFORM3D) {
+						node_transform = rest_transform_var;
+					}
+					bone_world_transform = node_transform * bone_world_transform;
+					current = node->get_parent();
 				}
-
-				// Clustered mode: skip setting cluster transform (weights only, no transform adjustments)
+				
+				// Set link_transform to the bone's world transform at bind time
+				// This tells FBX where the bone was when the mesh was bound, matching the skeleton bone positions
+				ufbxw_matrix link_matrix = _transform_to_ufbxw_matrix(bone_world_transform);
+				ufbxw_skin_cluster_set_link_transform(write_scene, fbx_cluster, link_matrix);
+				
+				// Skip setting geometry_to_bone transform (cluster transform) - keep weights in mesh space
 
 				// Extract and set vertex weights for this cluster
 				// Mesh bone indices refer to joints array, but cluster indices match joints_original order
