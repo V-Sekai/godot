@@ -2842,8 +2842,10 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		ufbxw_node_set_scaling(write_scene, fbx_node, fbx_scale);
 
 		// Convert quaternion to Euler angles (degrees) for FBX
-		// Use YXZ order (Godot's default) since we're exporting from Godot
-		Vector3 euler = rotation.get_euler(EulerOrder::YXZ);
+		// Use XYZ order when rigged mesh is enabled (link_transform requires XYZ for correct interpretation)
+		// Otherwise use YXZ (Godot's default)
+		EulerOrder euler_order = (this->fbx_meshes_skins != 0) ? EulerOrder::XYZ : EulerOrder::YXZ;
+		Vector3 euler = rotation.get_euler(euler_order);
 		ufbxw_vec3 fbx_rotation = { Math::rad_to_deg((float)euler.x), Math::rad_to_deg((float)euler.y), Math::rad_to_deg((float)euler.z) };
 		ufbxw_node_set_rotation(write_scene, fbx_node, fbx_rotation);
 
@@ -3882,7 +3884,8 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 			}
 
 			// Export rotation track (convert quaternions to Euler angles)
-			// Use YXZ order (Godot's default) to match node export
+			// Use XYZ order when rigged mesh is enabled, otherwise YXZ (Godot's default)
+			EulerOrder euler_order = (this->fbx_meshes_skins != 0) ? EulerOrder::XYZ : EulerOrder::YXZ;
 			if (track.rotation_track.times.size() > 0 && track.rotation_track.values.size() > 0) {
 				ufbxw_anim_prop anim_prop = ufbxw_node_animate_rotation(write_scene, fbx_node, fbx_anim_layer);
 				if (anim_prop.id != 0) {
@@ -3892,7 +3895,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 							continue;
 						}
 						Quaternion rot = track.rotation_track.values[value_idx];
-						Vector3 euler = rot.get_euler(EulerOrder::YXZ);
+						Vector3 euler = rot.get_euler(euler_order);
 						ufbxw_ktime fbx_time = (ufbxw_ktime)(track.rotation_track.times[key_i] * FBX_TIME_UNIT);
 						ufbxw_vec3 fbx_rot = { Math::rad_to_deg((ufbxw_real)euler.x), Math::rad_to_deg((ufbxw_real)euler.y), Math::rad_to_deg((ufbxw_real)euler.z) };
 						uint32_t interp_type = map_interpolation_type(track.rotation_track.interpolation);
