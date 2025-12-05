@@ -2845,6 +2845,8 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		// Use YXZ order (Godot's default) to match import behavior
 		Vector3 euler = rotation.get_euler(EulerOrder::YXZ);
 		ufbxw_vec3 fbx_rotation = { Math::rad_to_deg((float)euler.x), Math::rad_to_deg((float)euler.y), Math::rad_to_deg((float)euler.z) };
+		// Set rotation order to match the Euler order we're using
+		ufbxw_node_set_rotation_order(write_scene, fbx_node, UFBXW_ROTATION_ORDER_YXZ);
 		ufbxw_node_set_rotation(write_scene, fbx_node, fbx_rotation);
 
 		// Set visibility
@@ -3676,7 +3678,22 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 				ufbxw_matrix link_matrix = _transform_to_ufbxw_matrix(bone_world_transform);
 				ufbxw_skin_cluster_set_link_transform(write_scene, fbx_cluster, link_matrix);
 				
-				// Skip setting geometry_to_bone transform (cluster transform) - keep weights in mesh space
+				// For clustered mode: compute geometry_to_bone from inverse_bind to properly transform vertices
+				// This transforms vertices from mesh space to bone space at bind time
+				Transform3D inverse_bind = Transform3D();
+				if (cluster_idx >= 0 && cluster_idx < inverse_binds.size()) {
+					inverse_bind = inverse_binds[cluster_idx];
+				}
+				// If inverse_bind is not available, compute it from bone and mesh world transforms
+				if (inverse_bind == Transform3D()) {
+					// geometry_to_bone = inverse(bone_world) * mesh_world
+					// This transforms from mesh world space to bone world space, then to bone local space
+					inverse_bind = bone_world_transform.inverse() * mesh_bind_transform;
+				}
+				// Reader stores geometry_to_bone directly as inverse_bind, so we use it directly
+				Transform3D geometry_to_bone = inverse_bind;
+				ufbxw_matrix fbx_matrix = _transform_to_ufbxw_matrix(geometry_to_bone);
+				ufbxw_skin_cluster_set_transform(write_scene, fbx_cluster, fbx_matrix);
 
 				// Extract and set vertex weights for this cluster
 				// Mesh bone indices refer to joints array, but cluster indices match joints_original order
@@ -3851,6 +3868,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 			}
 
 			// Export rotation track (convert quaternions to Euler angles)
+			// Use YXZ order (Godot's default) to match node export and import behavior
 			if (track.rotation_track.times.size() > 0 && track.rotation_track.values.size() > 0) {
 				ufbxw_anim_prop anim_prop = ufbxw_node_animate_rotation(write_scene, fbx_node, fbx_anim_layer);
 				if (anim_prop.id != 0) {
@@ -3860,7 +3878,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 							continue;
 						}
 						Quaternion rot = track.rotation_track.values[value_idx];
-						Vector3 euler = rot.get_euler();
+						Vector3 euler = rot.get_euler(EulerOrder::YXZ);
 						ufbxw_ktime fbx_time = (ufbxw_ktime)(track.rotation_track.times[key_i] * FBX_TIME_UNIT);
 						ufbxw_vec3 fbx_rot = { Math::rad_to_deg((ufbxw_real)euler.x), Math::rad_to_deg((ufbxw_real)euler.y), Math::rad_to_deg((ufbxw_real)euler.z) };
 						uint32_t interp_type = map_interpolation_type(track.rotation_track.interpolation);
