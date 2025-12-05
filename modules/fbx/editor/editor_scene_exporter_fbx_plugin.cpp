@@ -122,6 +122,7 @@ void SceneExporterFBXPlugin::_export_scene_as_fbx() {
 	}
 	int export_format = _export_settings->get_export_format(); // 0 = Binary, 1 = ASCII
 	_fbx_document->set_export_format(export_format);
+	_fbx_document->set_fbx_meshes_skins(_export_settings->get_fbx_meshes_skins());
 	err = _fbx_document->write_to_filesystem(state, export_path);
 	if (err != OK) {
 		ERR_PRINT(vformat("FBX save scene error %s.", itos(err)));
