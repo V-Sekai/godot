@@ -2842,11 +2842,9 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		ufbxw_node_set_scaling(write_scene, fbx_node, fbx_scale);
 
 		// Convert quaternion to Euler angles (degrees) for FBX
-		// Use YXZ order (Godot's default) to match import behavior
+		// Use YXZ order (Godot's default) since we're exporting from Godot
 		Vector3 euler = rotation.get_euler(EulerOrder::YXZ);
 		ufbxw_vec3 fbx_rotation = { Math::rad_to_deg((float)euler.x), Math::rad_to_deg((float)euler.y), Math::rad_to_deg((float)euler.z) };
-		// Set rotation order to match the Euler order we're using
-		ufbxw_node_set_rotation_order(write_scene, fbx_node, UFBXW_ROTATION_ORDER_YXZ);
 		ufbxw_node_set_rotation(write_scene, fbx_node, fbx_rotation);
 
 		// Set visibility
@@ -3868,7 +3866,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 			}
 
 			// Export rotation track (convert quaternions to Euler angles)
-			// Use YXZ order (Godot's default) to match node export and import behavior
+			// Use YXZ order (Godot's default) to match node export
 			if (track.rotation_track.times.size() > 0 && track.rotation_track.values.size() > 0) {
 				ufbxw_anim_prop anim_prop = ufbxw_node_animate_rotation(write_scene, fbx_node, fbx_anim_layer);
 				if (anim_prop.id != 0) {
