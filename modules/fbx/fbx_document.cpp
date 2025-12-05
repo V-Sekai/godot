@@ -2857,10 +2857,12 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		ufbxw_node_set_scaling(write_scene, fbx_node, fbx_scale);
 
 		// Convert quaternion to Euler angles (degrees) for FBX
-		// Use opposite of import: ZYX when rigged (opposite of XYZ), ZXY when not rigged (opposite of YXZ)
+		// Import uses quaternions directly from FBX, so we need to match FBX's expected Euler order
+		// FBX typically uses XYZ order, but we use opposite to compensate for coordinate system differences
 		EulerOrder euler_order = (this->fbx_meshes_skins != 0) ? EulerOrder::ZYX : EulerOrder::ZXY;
 		Vector3 euler = rotation.get_euler(euler_order);
-		ufbxw_vec3 fbx_rotation = { Math::rad_to_deg((float)euler.x), Math::rad_to_deg((float)euler.y), Math::rad_to_deg((float)euler.z) };
+		// Negate Z rotation to fix coordinate system mismatch (affects all bones, more visible on end bones like feet)
+		ufbxw_vec3 fbx_rotation = { Math::rad_to_deg((float)euler.x), Math::rad_to_deg((float)euler.y), -Math::rad_to_deg((float)euler.z) };
 		ufbxw_node_set_rotation(write_scene, fbx_node, fbx_rotation);
 
 		// Set visibility
@@ -3886,7 +3888,8 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 						Quaternion rot = track.rotation_track.values[value_idx];
 						Vector3 euler = rot.get_euler(euler_order);
 						ufbxw_ktime fbx_time = (ufbxw_ktime)(track.rotation_track.times[key_i] * FBX_TIME_UNIT);
-						ufbxw_vec3 fbx_rot = { Math::rad_to_deg((ufbxw_real)euler.x), Math::rad_to_deg((ufbxw_real)euler.y), Math::rad_to_deg((ufbxw_real)euler.z) };
+						// Negate Z rotation to match node export (fixes coordinate system mismatch)
+						ufbxw_vec3 fbx_rot = { Math::rad_to_deg((ufbxw_real)euler.x), Math::rad_to_deg((ufbxw_real)euler.y), -Math::rad_to_deg((ufbxw_real)euler.z) };
 						uint32_t interp_type = map_interpolation_type(track.rotation_track.interpolation);
 						ufbxw_anim_add_keyframe_vec3(write_scene, anim_prop, fbx_time, fbx_rot, interp_type);
 					}
