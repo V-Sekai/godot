@@ -45,6 +45,7 @@ class FBXDocument : public GLTFDocument {
 
 	int _naming_version = 2;
 	int export_format = 0; // 0 = Binary, 1 = ASCII
+	int fbx_meshes_skins = 0; // 0 = None, 1 = Export (mirrors blender/meshes/skins)
 
 public:
 	enum {
@@ -68,6 +69,9 @@ public:
 	Error write_to_filesystem(Ref<GLTFState> p_state, const String &p_path) override;
 	void set_export_format(int p_format) { export_format = p_format; }
 	int get_export_format() const { return export_format; }
+
+	void set_fbx_meshes_skins(int p_fbx_meshes_skins) { fbx_meshes_skins = p_fbx_meshes_skins; }
+	int get_fbx_meshes_skins() const { return fbx_meshes_skins; }
 
 	void set_naming_version(int p_version);
 	int get_naming_version() const;

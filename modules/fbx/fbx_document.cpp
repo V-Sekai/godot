@@ -3468,9 +3468,11 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 
 	// Fourth pass: Export skins (inverse of import skin tool)
 	// This converts GLTFSkin objects back to FBX skin deformers and clusters
+	// Only export if rigged mesh export is enabled (mirrors blender/meshes/skins)
 	HashMap<GLTFSkinIndex, ufbxw_skin_deformer> gltf_to_fbx_skins;
 
-	for (int skin_i = 0; skin_i < state->skins.size(); skin_i++) {
+	if (fbx_meshes_skins != 0) { // 0 = None, 1 = Export
+		for (int skin_i = 0; skin_i < state->skins.size(); skin_i++) {
 		Ref<GLTFSkin> gltf_skin = state->skins[skin_i];
 		if (gltf_skin.is_null()) {
 			continue;
@@ -3723,6 +3725,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		if (primary_skin_deformer.id != 0) {
 			gltf_to_fbx_skins[skin_i] = primary_skin_deformer;
 		}
+	}
 	}
 
 	// Fifth pass: Export animations

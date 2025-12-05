@@ -62,6 +62,14 @@ void EditorSceneExporterFBXSettings::set_export_format(const int p_export_format
 	_export_format = p_export_format;
 }
 
+int EditorSceneExporterFBXSettings::get_fbx_meshes_skins() const {
+	return _fbx_meshes_skins;
+}
+
+void EditorSceneExporterFBXSettings::set_fbx_meshes_skins(const int p_fbx_meshes_skins) {
+	_fbx_meshes_skins = p_fbx_meshes_skins;
+}
+
 void EditorSceneExporterFBXSettings::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_copyright"), &EditorSceneExporterFBXSettings::get_copyright);
 	ClassDB::bind_method(D_METHOD("set_copyright", "copyright"), &EditorSceneExporterFBXSettings::set_copyright);
@@ -78,4 +86,8 @@ void EditorSceneExporterFBXSettings::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_export_format"), &EditorSceneExporterFBXSettings::get_export_format);
 	ClassDB::bind_method(D_METHOD("set_export_format", "export_format"), &EditorSceneExporterFBXSettings::set_export_format);
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "export_format", PROPERTY_HINT_ENUM, "Binary,ASCII"), "set_export_format", "get_export_format");
+
+	ClassDB::bind_method(D_METHOD("get_fbx_meshes_skins"), &EditorSceneExporterFBXSettings::get_fbx_meshes_skins);
+	ClassDB::bind_method(D_METHOD("set_fbx_meshes_skins", "fbx_meshes_skins"), &EditorSceneExporterFBXSettings::set_fbx_meshes_skins);
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "fbx/meshes/skins", PROPERTY_HINT_ENUM, "None,Export", PROPERTY_USAGE_DEFAULT), "set_fbx_meshes_skins", "get_fbx_meshes_skins");
 }

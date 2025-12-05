@@ -35,10 +35,16 @@
 class EditorSceneExporterFBXSettings : public RefCounted {
 	GDCLASS(EditorSceneExporterFBXSettings, RefCounted);
 
+	enum {
+		FBX_RIGGED_MESHES_NONE,
+		FBX_RIGGED_MESHES_EXPORT
+	};
+
 	String _copyright;
 	double _bake_fps = 30.0;
 	int _naming_version = 2;
 	int _export_format = 0; // 0 = Binary, 1 = ASCII
+	int _fbx_meshes_skins = FBX_RIGGED_MESHES_NONE; // Disabled by default, mirrors blender/meshes/skins
 
 protected:
 	static void _bind_methods();
@@ -55,4 +61,7 @@ public:
 
 	int get_export_format() const;
 	void set_export_format(const int p_export_format);
+
+	int get_fbx_meshes_skins() const;
+	void set_fbx_meshes_skins(const int p_fbx_meshes_skins);
 };
