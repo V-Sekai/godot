@@ -2681,45 +2681,35 @@ void FBXDocument::_apply_scale_to_gltf_state(Ref<GLTFState> p_state, const Vecto
 // These must be at file scope (not inside write_to_filesystem) to avoid "function definition not allowed" errors
 
 namespace {
-// Stream context for PackedByteArray-based writing
+// Stream context for FileAccess-based writing
 struct FBXStreamContext {
-	PackedByteArray *buffer;
+	Ref<FileAccess> file;
 };
 
 // Write callback function for ufbxw_write_stream
 // Must have C linkage to match ufbxw_write_fn typedef
 extern "C" bool fbx_stream_write_fn(void *user, uint64_t offset, const void *data, size_t size) {
 	FBXStreamContext *ctx = static_cast<FBXStreamContext *>(user);
-	if (!ctx || !ctx->buffer) {
+	if (!ctx || ctx->file.is_null()) {
 		return false;
 	}
 	
-	// Calculate required size: offset + size
-	// PackedByteArray supports int64_t sizes, so we can handle large buffers
-	uint64_t required_size = offset + size;
+	// Seek to the specified offset
+	ctx->file->seek(offset);
 	
-	// Resize buffer if needed to accommodate the write at this offset
-	int64_t current_size = ctx->buffer->size();
-	if (current_size < (int64_t)required_size) {
-		ctx->buffer->resize((int64_t)required_size);
-	}
-	
-	// Get writable pointer and write data at the specified offset
-	uint8_t *buffer_ptr = ctx->buffer->ptrw();
-	if (!buffer_ptr) {
-		return false;
-	}
-	
-	memcpy(buffer_ptr + offset, data, size);
-	return true;
+	// Write the data
+	Error err = ctx->file->store_buffer(static_cast<const uint8_t *>(data), size);
+	return err == OK;
 }
 
 // Close callback function for ufbxw_write_stream
 // Must have C linkage to match ufbxw_close_fn typedef
 extern "C" void fbx_stream_close_fn(void *user) {
-	// Nothing to do - StreamPeerBuffer doesn't need explicit closing
-	// The buffer will be written to file after the stream completes
-	(void)user; // Suppress unused parameter warning
+	FBXStreamContext *ctx = static_cast<FBXStreamContext *>(user);
+	if (ctx && !ctx->file.is_null()) {
+		ctx->file->flush();
+		ctx->file->close();
+	}
 }
 } // anonymous namespace
 
@@ -4222,14 +4212,18 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 	// storage or calling convention differences across thread boundaries
 	// Leave thread_pool empty (all function pointers NULL) to force single-threaded operation
 
-	// Use stream protocol with PackedByteArray to write FBX to memory first
-	// This allows us to collect all data in memory before writing to disk
-	// PackedByteArray supports int64_t sizes, allowing for large FBX files
-	PackedByteArray buffer;
+	// Open file for writing before setting up stream
+	Error file_err;
+	Ref<FileAccess> file = FileAccess::open(abs_path, FileAccess::WRITE, &file_err);
+	if (file_err != OK || file.is_null()) {
+		ERR_PRINT("FBX export: Failed to open file for writing: " + abs_path + " (Error: " + itos(file_err) + ")");
+		ufbxw_free_scene(write_scene);
+		return ERR_FILE_CANT_WRITE;
+	}
 
-	// Set up stream context
+	// Set up stream context with FileAccess
 	FBXStreamContext stream_ctx;
-	stream_ctx.buffer = &buffer;
+	stream_ctx.file = file;
 
 	// Set up write stream
 	ufbxw_write_stream stream = {};
@@ -4237,11 +4231,11 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 	stream.close_fn = fbx_stream_close_fn;
 	stream.user = &stream_ctx;
 
-	// Write FBX using stream protocol to memory buffer
+	// Write FBX using stream protocol directly to file
 	ufbxw_error error = {};
 	bool success = ufbxw_save_stream(write_scene, &stream, &save_opts, &error);
 	
-	// Close the stream (no-op for StreamPeerBuffer, but call for consistency)
+	// Close the stream (will flush and close the file)
 	if (stream.close_fn) {
 		stream.close_fn(stream.user);
 	}
@@ -4261,27 +4255,10 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 		return ERR_FILE_CANT_WRITE;
 	}
 
-	// Write the buffer data to file
-	if (buffer.is_empty()) {
-		ERR_PRINT("FBX export: PackedByteArray buffer is empty after write");
-		return ERR_FILE_CANT_WRITE;
-	}
-
-	Error file_err;
-	Ref<FileAccess> file = FileAccess::open(abs_path, FileAccess::WRITE, &file_err);
-	if (file_err != OK || file.is_null()) {
-		ERR_PRINT("FBX export: Failed to open file for writing: " + abs_path + " (Error: " + itos(file_err) + ")");
-		return ERR_FILE_CANT_WRITE;
-	}
-
-	// Write the entire buffer to file
-	file->store_buffer(buffer.ptr(), buffer.size());
-	file->flush();
-	file->close();
-
+	// Check for file write errors
 	Error write_err = file->get_error();
 	if (write_err != OK) {
-		ERR_PRINT("FBX export: Failed to write buffer to file: " + abs_path + " (Error: " + itos(write_err) + ")");
+		ERR_PRINT("FBX export: Failed to write to file: " + abs_path + " (Error: " + itos(write_err) + ")");
 		return ERR_FILE_CANT_WRITE;
 	}
 
