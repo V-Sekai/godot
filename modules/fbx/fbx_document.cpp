@@ -3649,9 +3649,7 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 				// Explicitly set the bone node for this cluster (ensures proper linking)
 				ufbxw_skin_cluster_set_node(write_scene, fbx_cluster, fbx_bone_node);
 
-				// For clustered mode: set link_transform to bone's world transform at bind time
-				// This uses the same transform computation as when creating the FBX nodes,
-				// ensuring the skeleton bones are in the right place (matching import_as_skeleton_bones behavior)
+				// For clustered mode: compute bone world transform for link_transform and geometry_to_bone
 				// Compute bone world transform using rest transforms (same as node export)
 				Transform3D bone_world_transform = Transform3D();
 				GLTFNodeIndex current = joint_node_idx;
@@ -3671,8 +3669,9 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 					current = node->get_parent();
 				}
 				
-				// Set link_transform to the bone's world transform at bind time
-				// This tells FBX where the bone was when the mesh was bound, matching the skeleton bone positions
+				// Set link_transform to the bone's world transform at bind time (including rotation)
+				// This is needed for proper bone visualization (volume instead of thin lines)
+				// The bone node's local transform should match this, so there shouldn't be conflicts
 				ufbxw_matrix link_matrix = _transform_to_ufbxw_matrix(bone_world_transform);
 				ufbxw_skin_cluster_set_link_transform(write_scene, fbx_cluster, link_matrix);
 				
@@ -3684,6 +3683,23 @@ Error FBXDocument::write_to_filesystem(Ref<GLTFState> p_state, const String &p_p
 				}
 				// If inverse_bind is not available, compute it from bone and mesh world transforms
 				if (inverse_bind == Transform3D()) {
+					// Compute bone world transform using rest transforms (same as node export)
+					Transform3D bone_world_transform = Transform3D();
+					GLTFNodeIndex current = joint_node_idx;
+					while (current >= 0 && current < state->nodes.size()) {
+						Ref<GLTFNode> node = state->nodes[current];
+						if (node.is_null()) {
+							break;
+						}
+						// Use rest transform if available, otherwise use current transform
+						Transform3D node_transform = node->transform;
+						Variant rest_transform_var = node->get_additional_data("GODOT_rest_transform");
+						if (rest_transform_var.get_type() == Variant::TRANSFORM3D) {
+							node_transform = rest_transform_var;
+						}
+						bone_world_transform = node_transform * bone_world_transform;
+						current = node->get_parent();
+					}
 					// geometry_to_bone = inverse(bone_world) * mesh_world
 					// This transforms from mesh world space to bone world space, then to bone local space
 					inverse_bind = bone_world_transform.inverse() * mesh_bind_transform;
