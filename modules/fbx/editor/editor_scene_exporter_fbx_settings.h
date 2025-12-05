@@ -44,7 +44,7 @@ class EditorSceneExporterFBXSettings : public RefCounted {
 	double _bake_fps = 30.0;
 	int _naming_version = 2;
 	int _export_format = 0; // 0 = Binary, 1 = ASCII
-	int _fbx_meshes_skins = FBX_RIGGED_MESHES_EXPORT_CLUSTERED; // Clustered weights enabled by default
+	int _fbx_meshes_skins = FBX_RIGGED_MESHES_NONE; // Disabled by default, mirrors blender/meshes/skins
 
 protected:
 	static void _bind_methods();
