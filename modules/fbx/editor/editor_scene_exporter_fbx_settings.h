@@ -37,7 +37,7 @@ class EditorSceneExporterFBXSettings : public RefCounted {
 
 	enum {
 		FBX_RIGGED_MESHES_NONE,
-		FBX_RIGGED_MESHES_EXPORT
+		FBX_RIGGED_MESHES_EXPORT_CLUSTERED // Clustered mesh with weights, no transform adjustments
 	};
 
 	String _copyright;
