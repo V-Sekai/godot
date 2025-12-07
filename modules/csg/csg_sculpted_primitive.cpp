@@ -54,16 +54,29 @@ static void generate_profile_points(CSGSculptedPrimitive3D::ProfileCurve p_curve
 				segments = segments / 2;
 			}
 
-			for (int i = 0; i <= segments; i++) {
+			// Generate points, ensuring the profile closes if it's a full circle
+			bool is_full_circle = (p_begin == 0.0 && p_end == 1.0) || angle_range >= Math::TAU - 0.001;
+			int point_count = is_full_circle ? segments : segments + 1;
+			
+			for (int i = 0; i < point_count; i++) {
 				real_t angle = begin_angle + (angle_range * i / segments);
 				r_profile.push_back(Vector2(Math::cos(angle), Math::sin(angle)));
+			}
+			
+			// Close the loop if it's a full circle
+			if (is_full_circle && r_profile.size() > 0) {
+				r_profile.push_back(r_profile[0]);
 			}
 
 			if (p_hollow > 0.0) {
 				real_t hollow_radius = 1.0 - p_hollow;
-				for (int i = 0; i <= segments; i++) {
+				for (int i = 0; i < point_count; i++) {
 					real_t angle = begin_angle + (angle_range * i / segments);
 					r_hollow_profile.push_back(Vector2(Math::cos(angle) * hollow_radius, Math::sin(angle) * hollow_radius));
+				}
+				// Close the hollow loop if it's a full circle
+				if (is_full_circle && r_hollow_profile.size() > 0) {
+					r_hollow_profile.push_back(r_hollow_profile[0]);
 				}
 			}
 		} break;
@@ -480,34 +493,98 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	int hollow_count = hollow_profile.size();
 	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
 
+	// Determine if profile is closed (last point equals first)
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+
+	// For circular paths, close the path loop as well
+	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
+
 	for (int p = 0; p < path_segments; p++) {
 		int base1 = p * total_profile;
-		int base2 = (p + 1) * total_profile;
+		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
-		// Outer faces
-		for (int i = 0; i < profile_count - 1; i++) {
+		// Outer faces - close the loop
+		for (int i = 0; i < effective_profile_count; i++) {
+			int next_i = (i + 1) % effective_profile_count;
 			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 			indices.push_back(base2 + i);
-			indices.push_back(base2 + i + 1);
+			indices.push_back(base2 + next_i);
 		}
 
 		// Hollow faces if applicable
 		if (hollow > 0.0 && hollow_count > 0) {
 			int hollow_base1 = base1 + profile_count;
 			int hollow_base2 = base2 + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
 
-			for (int i = 0; i < hollow_count - 1; i++) {
+			for (int i = 0; i < effective_hollow_count; i++) {
+				int next_i = (i + 1) % effective_hollow_count;
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base1 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
 				indices.push_back(hollow_base2 + i);
 
-				indices.push_back(hollow_base1 + i + 1);
-				indices.push_back(hollow_base2 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base2 + i);
+			}
+		}
+	}
+
+	// Add end caps for linear paths to ensure manifold geometry
+	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
+		// Bottom cap (at path_begin)
+		int bottom_base = 0;
+		if (effective_profile_count >= 3) {
+			// Triangulate the bottom face
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(bottom_base);
+				indices.push_back(bottom_base + i + 1);
+				indices.push_back(bottom_base + i);
+			}
+		}
+
+		// Top cap (at path_end)
+		int top_base = path_segments * total_profile;
+		if (effective_profile_count >= 3) {
+			// Triangulate the top face (reverse winding for opposite side)
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(top_base);
+				indices.push_back(top_base + i);
+				indices.push_back(top_base + i + 1);
+			}
+		}
+
+		// Hollow bottom cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_bottom_base = profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_bottom_base);
+					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
+				}
+			}
+		}
+
+		// Hollow top cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_top_base);
+					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
+				}
 			}
 		}
 	}
@@ -643,32 +720,97 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 	int hollow_count = hollow_profile.size();
 	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
 
+	// Determine if profile is closed (last point equals first)
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+
+	// For circular paths, close the path loop as well
+	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
+
 	for (int p = 0; p < path_segments; p++) {
 		int base1 = p * total_profile;
-		int base2 = (p + 1) * total_profile;
+		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
-		for (int i = 0; i < profile_count - 1; i++) {
+		// Outer faces - close the loop
+		for (int i = 0; i < effective_profile_count; i++) {
+			int next_i = (i + 1) % effective_profile_count;
 			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 			indices.push_back(base2 + i);
-			indices.push_back(base2 + i + 1);
+			indices.push_back(base2 + next_i);
 		}
 
 		if (hollow > 0.0 && hollow_count > 0) {
 			int hollow_base1 = base1 + profile_count;
 			int hollow_base2 = base2 + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
 
-			for (int i = 0; i < hollow_count - 1; i++) {
+			for (int i = 0; i < effective_hollow_count; i++) {
+				int next_i = (i + 1) % effective_hollow_count;
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base1 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
 				indices.push_back(hollow_base2 + i);
 
-				indices.push_back(hollow_base1 + i + 1);
-				indices.push_back(hollow_base2 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base2 + i);
+			}
+		}
+	}
+
+	// Add end caps for linear paths to ensure manifold geometry
+	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
+		// Bottom cap (at path_begin)
+		int bottom_base = 0;
+		if (effective_profile_count >= 3) {
+			// Triangulate the bottom face
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(bottom_base);
+				indices.push_back(bottom_base + i + 1);
+				indices.push_back(bottom_base + i);
+			}
+		}
+
+		// Top cap (at path_end)
+		int top_base = path_segments * total_profile;
+		if (effective_profile_count >= 3) {
+			// Triangulate the top face (reverse winding for opposite side)
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(top_base);
+				indices.push_back(top_base + i);
+				indices.push_back(top_base + i + 1);
+			}
+		}
+
+		// Hollow bottom cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_bottom_base = profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_bottom_base);
+					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
+				}
+			}
+		}
+
+		// Hollow top cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_top_base);
+					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
+				}
 			}
 		}
 	}
@@ -789,32 +931,97 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 	int hollow_count = hollow_profile.size();
 	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
 
+	// Determine if profile is closed (last point equals first)
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+
+	// For circular paths, close the path loop as well
+	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
+
 	for (int p = 0; p < path_segments; p++) {
 		int base1 = p * total_profile;
-		int base2 = (p + 1) * total_profile;
+		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
-		for (int i = 0; i < profile_count - 1; i++) {
+		// Outer faces - close the loop
+		for (int i = 0; i < effective_profile_count; i++) {
+			int next_i = (i + 1) % effective_profile_count;
 			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 			indices.push_back(base2 + i);
-			indices.push_back(base2 + i + 1);
+			indices.push_back(base2 + next_i);
 		}
 
 		if (hollow > 0.0 && hollow_count > 0) {
 			int hollow_base1 = base1 + profile_count;
 			int hollow_base2 = base2 + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
 
-			for (int i = 0; i < hollow_count - 1; i++) {
+			for (int i = 0; i < effective_hollow_count; i++) {
+				int next_i = (i + 1) % effective_hollow_count;
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base1 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
 				indices.push_back(hollow_base2 + i);
 
-				indices.push_back(hollow_base1 + i + 1);
-				indices.push_back(hollow_base2 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base2 + i);
+			}
+		}
+	}
+
+	// Add end caps for linear paths to ensure manifold geometry
+	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
+		// Bottom cap (at path_begin)
+		int bottom_base = 0;
+		if (effective_profile_count >= 3) {
+			// Triangulate the bottom face
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(bottom_base);
+				indices.push_back(bottom_base + i + 1);
+				indices.push_back(bottom_base + i);
+			}
+		}
+
+		// Top cap (at path_end)
+		int top_base = path_segments * total_profile;
+		if (effective_profile_count >= 3) {
+			// Triangulate the top face (reverse winding for opposite side)
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(top_base);
+				indices.push_back(top_base + i);
+				indices.push_back(top_base + i + 1);
+			}
+		}
+
+		// Hollow bottom cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_bottom_base = profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_bottom_base);
+					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
+				}
+			}
+		}
+
+		// Hollow top cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_top_base);
+					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
+				}
 			}
 		}
 	}
@@ -968,31 +1175,43 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 	int hollow_count = hollow_profile.size();
 	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
 
+	// Determine if profile is closed (last point equals first)
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+
+	// For circular paths, close the path loop as well
+	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
+
 	for (int p = 0; p < path_segments; p++) {
 		int base1 = p * total_profile;
-		int base2 = (p + 1) * total_profile;
+		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
-		for (int i = 0; i < profile_count - 1; i++) {
+		// Outer faces - close the loop
+		for (int i = 0; i < effective_profile_count; i++) {
+			int next_i = (i + 1) % effective_profile_count;
 			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 			indices.push_back(base2 + i);
-			indices.push_back(base2 + i + 1);
+			indices.push_back(base2 + next_i);
 		}
 
 		if (hollow > 0.0 && hollow_count > 0) {
 			int hollow_base1 = base1 + profile_count;
 			int hollow_base2 = base2 + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
 
-			for (int i = 0; i < hollow_count - 1; i++) {
+			for (int i = 0; i < effective_hollow_count; i++) {
+				int next_i = (i + 1) % effective_hollow_count;
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base1 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
 				indices.push_back(hollow_base2 + i);
 
-				indices.push_back(hollow_base1 + i + 1);
-				indices.push_back(hollow_base2 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base2 + i);
 			}
 		}
@@ -1122,32 +1341,97 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 	int hollow_count = hollow_profile.size();
 	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
 
+	// Determine if profile is closed (last point equals first)
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+
+	// For circular paths, close the path loop as well
+	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
+
 	for (int p = 0; p < path_segments; p++) {
 		int base1 = p * total_profile;
-		int base2 = (p + 1) * total_profile;
+		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
-		for (int i = 0; i < profile_count - 1; i++) {
+		// Outer faces - close the loop
+		for (int i = 0; i < effective_profile_count; i++) {
+			int next_i = (i + 1) % effective_profile_count;
 			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 			indices.push_back(base2 + i);
-			indices.push_back(base2 + i + 1);
+			indices.push_back(base2 + next_i);
 		}
 
 		if (hollow > 0.0 && hollow_count > 0) {
 			int hollow_base1 = base1 + profile_count;
 			int hollow_base2 = base2 + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
 
-			for (int i = 0; i < hollow_count - 1; i++) {
+			for (int i = 0; i < effective_hollow_count; i++) {
+				int next_i = (i + 1) % effective_hollow_count;
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base1 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
 				indices.push_back(hollow_base2 + i);
 
-				indices.push_back(hollow_base1 + i + 1);
-				indices.push_back(hollow_base2 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base2 + i);
+			}
+		}
+	}
+
+	// Add end caps for linear paths to ensure manifold geometry
+	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
+		// Bottom cap (at path_begin)
+		int bottom_base = 0;
+		if (effective_profile_count >= 3) {
+			// Triangulate the bottom face
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(bottom_base);
+				indices.push_back(bottom_base + i + 1);
+				indices.push_back(bottom_base + i);
+			}
+		}
+
+		// Top cap (at path_end)
+		int top_base = path_segments * total_profile;
+		if (effective_profile_count >= 3) {
+			// Triangulate the top face (reverse winding for opposite side)
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(top_base);
+				indices.push_back(top_base + i);
+				indices.push_back(top_base + i + 1);
+			}
+		}
+
+		// Hollow bottom cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_bottom_base = profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_bottom_base);
+					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
+				}
+			}
+		}
+
+		// Hollow top cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_top_base);
+					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
+				}
 			}
 		}
 	}
@@ -1299,32 +1583,97 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 	int hollow_count = hollow_profile.size();
 	int total_profile = profile_count + hollow_count;
 
+	// Determine if profile is closed (last point equals first)
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+
+	// For circular paths, close the path loop as well
+	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
+
 	for (int p = 0; p < path_segments; p++) {
 		int base1 = p * total_profile;
-		int base2 = (p + 1) * total_profile;
+		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
-		for (int i = 0; i < profile_count - 1; i++) {
+		// Outer faces - close the loop
+		for (int i = 0; i < effective_profile_count; i++) {
+			int next_i = (i + 1) % effective_profile_count;
 			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 			indices.push_back(base2 + i);
-			indices.push_back(base2 + i + 1);
+			indices.push_back(base2 + next_i);
 		}
 
 		if (hollow_count > 0) {
 			int hollow_base1 = base1 + profile_count;
 			int hollow_base2 = base2 + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
 
-			for (int i = 0; i < hollow_count - 1; i++) {
+			for (int i = 0; i < effective_hollow_count; i++) {
+				int next_i = (i + 1) % effective_hollow_count;
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base1 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
 				indices.push_back(hollow_base2 + i);
 
-				indices.push_back(hollow_base1 + i + 1);
-				indices.push_back(hollow_base2 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base2 + i);
+			}
+		}
+	}
+
+	// Add end caps for linear paths to ensure manifold geometry
+	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
+		// Bottom cap (at path_begin) - outer profile
+		int bottom_base = 0;
+		if (effective_profile_count >= 3) {
+			// Triangulate the bottom face
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(bottom_base);
+				indices.push_back(bottom_base + i + 1);
+				indices.push_back(bottom_base + i);
+			}
+		}
+
+		// Top cap (at path_end) - outer profile
+		int top_base = path_segments * total_profile;
+		if (effective_profile_count >= 3) {
+			// Triangulate the top face (reverse winding for opposite side)
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(top_base);
+				indices.push_back(top_base + i);
+				indices.push_back(top_base + i + 1);
+			}
+		}
+
+		// Bottom cap - inner profile (hollow)
+		if (hollow_count > 0) {
+			int hollow_bottom_base = profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_bottom_base);
+					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
+				}
+			}
+		}
+
+		// Top cap - inner profile (hollow)
+		if (hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_top_base);
+					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
+				}
 			}
 		}
 	}
@@ -1492,32 +1841,97 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 	int hollow_count = hollow_profile.size();
 	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
 
+	// Determine if profile is closed (last point equals first)
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+
+	// For circular paths, close the path loop as well
+	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
+
 	for (int p = 0; p < path_segments; p++) {
 		int base1 = p * total_profile;
-		int base2 = (p + 1) * total_profile;
+		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
-		for (int i = 0; i < profile_count - 1; i++) {
+		// Outer faces - close the loop
+		for (int i = 0; i < effective_profile_count; i++) {
+			int next_i = (i + 1) % effective_profile_count;
 			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 
-			indices.push_back(base1 + i + 1);
+			indices.push_back(base1 + next_i);
 			indices.push_back(base2 + i);
-			indices.push_back(base2 + i + 1);
+			indices.push_back(base2 + next_i);
 		}
 
 		if (hollow > 0.0 && hollow_count > 0) {
 			int hollow_base1 = base1 + profile_count;
 			int hollow_base2 = base2 + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
 
-			for (int i = 0; i < hollow_count - 1; i++) {
+			for (int i = 0; i < effective_hollow_count; i++) {
+				int next_i = (i + 1) % effective_hollow_count;
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base1 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
 				indices.push_back(hollow_base2 + i);
 
-				indices.push_back(hollow_base1 + i + 1);
-				indices.push_back(hollow_base2 + i + 1);
+				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base2 + i);
+			}
+		}
+	}
+
+	// Add end caps for linear paths to ensure manifold geometry
+	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
+		// Bottom cap (at path_begin)
+		int bottom_base = 0;
+		if (effective_profile_count >= 3) {
+			// Triangulate the bottom face
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(bottom_base);
+				indices.push_back(bottom_base + i + 1);
+				indices.push_back(bottom_base + i);
+			}
+		}
+
+		// Top cap (at path_end)
+		int top_base = path_segments * total_profile;
+		if (effective_profile_count >= 3) {
+			// Triangulate the top face (reverse winding for opposite side)
+			for (int i = 1; i < effective_profile_count - 1; i++) {
+				indices.push_back(top_base);
+				indices.push_back(top_base + i);
+				indices.push_back(top_base + i + 1);
+			}
+		}
+
+		// Hollow bottom cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_bottom_base = profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_bottom_base);
+					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
+				}
+			}
+		}
+
+		// Hollow top cap
+		if (hollow > 0.0 && hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + profile_count;
+			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+			if (effective_hollow_count >= 3) {
+				for (int i = 1; i < effective_hollow_count - 1; i++) {
+					indices.push_back(hollow_top_base);
+					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
+				}
 			}
 		}
 	}
