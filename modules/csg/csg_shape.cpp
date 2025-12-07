@@ -424,20 +424,7 @@ static void _pack_manifold(
 	mesh.runIndex.push_back(mesh.triVerts.size());
 	mesh.tolerance = 2 * FLT_EPSILON;
 	ERR_FAIL_COND_MSG(mesh.vertProperties.size() % mesh.numProp != 0, "Invalid vertex properties size.");
-	
-	// Debug output before merge
-	int verts_before_merge = (int)(mesh.vertProperties.size() / mesh.numProp);
-	int tris_before_merge = (int)(mesh.triVerts.size() / 3);
-	print_verbose(vformat("_pack_manifold() - before merge: %d triangles, %d vertices", tris_before_merge, verts_before_merge));
-	
 	mesh.Merge();
-	
-	// Debug output after merge
-	int verts_after_merge = (int)(mesh.vertProperties.size() / mesh.numProp);
-	int tris_after_merge = (int)(mesh.triVerts.size() / 3);
-	print_verbose(vformat("_pack_manifold() - after merge: %d triangles, %d vertices (merged %d vertices)",
-		tris_after_merge, verts_after_merge, verts_before_merge - verts_after_merge));
-	print_verbose(vformat("  mergeFromVert size: %d, mergeToVert size: %d", (int)mesh.mergeFromVert.size(), (int)mesh.mergeToVert.size()));
 	
 	// Debug output before creating Manifold
 	print_verbose(vformat("_pack_manifold() - before Manifold constructor: mesh has %d triangles, %d vertices, %d properties",
@@ -455,16 +442,7 @@ static void _pack_manifold(
 	print_verbose(vformat("_pack_manifold() - after Manifold constructor: mesh has %d triangles, %d vertices, status: %d",
 		(int)(debug_unpacked.triVerts.size() / 3), (int)(debug_unpacked.vertProperties.size() / debug_unpacked.numProp), (int)status));
 	if (status != manifold::Manifold::Error::NoError) {
-
 		print_verbose(vformat("_pack_manifold() - Manifold construction failed with error code: %d", (int)status));
-		if (status == manifold::Manifold::Error::NotManifold) {
-			print_verbose("_pack_manifold() - ERROR: Mesh is not manifold - edges not shared correctly or winding order wrong");
-			// Print edge information to help debug
-			print_verbose(vformat("  Before merge: %d unique vertices, %d triangles", 
-				(int)(mesh.vertProperties.size() / mesh.numProp), (int)(mesh.triVerts.size() / 3)));
-			print_verbose(vformat("  After merge: %d merged vertices (mergeFromVert size: %d)", 
-				(int)mesh.mergeFromVert.size(), (int)mesh.mergeFromVert.size()));
-		}
 	}
 }
 
