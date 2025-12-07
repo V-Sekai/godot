@@ -30,6 +30,7 @@
 
 #include "register_types.h"
 
+#include "csg_sculpted_primitive.h"
 #include "csg_shape.h"
 
 #ifdef TOOLS_ENABLED
@@ -47,6 +48,15 @@ void initialize_csg_module(ModuleInitializationLevel p_level) {
 		GDREGISTER_CLASS(CSGTorus3D);
 		GDREGISTER_CLASS(CSGPolygon3D);
 		GDREGISTER_CLASS(CSGCombiner3D);
+		GDREGISTER_ABSTRACT_CLASS(CSGSculptedPrimitive3D);
+		GDREGISTER_CLASS(CSGSculptedBox3D);
+		GDREGISTER_CLASS(CSGSculptedCylinder3D);
+		GDREGISTER_CLASS(CSGSculptedSphere3D);
+		GDREGISTER_CLASS(CSGSculptedTorus3D);
+		GDREGISTER_CLASS(CSGSculptedPrism3D);
+		GDREGISTER_CLASS(CSGSculptedTube3D);
+		GDREGISTER_CLASS(CSGSculptedRing3D);
+		GDREGISTER_CLASS(CSGSculptedTexture3D);
 #ifndef NAVIGATION_3D_DISABLED
 		CSGShape3D::navmesh_parse_init();
 #endif // NAVIGATION_3D_DISABLED

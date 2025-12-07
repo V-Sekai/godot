@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSGSculptedPrimitive3D" inherits="CSGPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		Base class for sculpted primitives with advanced sculpting parameters.
+	</brief_description>
+	<description>
+		CSGSculptedPrimitive3D is the base class for sculpted primitives that extend Godot's CSG system with advanced sculpting parameters. These primitives support profile cuts, path cuts, hollow, taper, twist, shear, and revolutions - allowing for complex parametric shape generation.
+		This class provides the common parameters shared by all sculpted primitives.
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="hollow" type="float" setter="set_hollow" getter="get_hollow" default="0.0">
+			The hollow amount (0.0 to 1.0). Creates a hollow interior.
+		</member>
+		<member name="hollow_shape" type="int" setter="set_hollow_shape" getter="get_hollow_shape" default="0">
+			The shape of the hollow interior. [constant HOLLOW_SAME] matches the profile shape, [constant HOLLOW_CIRCLE] uses a circle, [constant HOLLOW_SQUARE] uses a square, [constant HOLLOW_TRIANGLE] uses a triangle.
+		</member>
+		<member name="material" type="Material" setter="set_material" getter="get_material">
+			The material to use for the CSG shape.
+		</member>
+		<member name="path_begin" type="float" setter="set_path_begin" getter="get_path_begin" default="0.0">
+			Path begin cut (0.0 to 1.0). Cuts away the beginning of the path.
+		</member>
+		<member name="path_curve" type="int" setter="set_path_curve" getter="get_path_curve" default="0">
+			The path curve type. Determines how the profile is swept along the path: [constant PATH_CURVE_LINE] for straight paths, [constant PATH_CURVE_CIRCLE] for circular paths, etc.
+		</member>
+		<member name="path_end" type="float" setter="set_path_end" getter="get_path_end" default="1.0">
+			Path end cut (0.0 to 1.0). Cuts away the end of the path.
+		</member>
+		<member name="profile_begin" type="float" setter="set_profile_begin" getter="get_profile_begin" default="0.0">
+			Profile begin cut (0.0 to 1.0). Cuts away the beginning of the profile.
+		</member>
+		<member name="profile_curve" type="int" setter="set_profile_curve" getter="get_profile_curve" default="1">
+			The profile curve type. Determines the cross-sectional shape: [constant PROFILE_CURVE_CIRCLE] for circular, [constant PROFILE_CURVE_SQUARE] for square, [constant PROFILE_CURVE_ISOTRI] for isosceles triangle, etc.
+		</member>
+		<member name="profile_end" type="float" setter="set_profile_end" getter="get_profile_end" default="1.0">
+			Profile end cut (0.0 to 1.0). Cuts away the end of the profile.
+		</member>
+		<member name="profile_scale" type="Vector2" setter="set_profile_scale" getter="get_profile_scale" default="Vector2(1, 1)">
+			Scale vector (x, y) for the profile. Scales the profile shape along the X and Y axes before applying other transformations.
+		</member>
+		<member name="radius_offset" type="float" setter="set_radius_offset" getter="get_radius_offset" default="0.0">
+			Radius offset value. Adds or subtracts from the profile radius, allowing the shape to expand or contract.
+		</member>
+		<member name="revolutions" type="float" setter="set_revolutions" getter="get_revolutions" default="1.0">
+			Number of revolutions for circular paths (0.1 to 4.0).
+		</member>
+		<member name="shear" type="Vector2" setter="set_shear" getter="get_shear" default="Vector2(0, 0)">
+			Shear vector (x, y) which offsets the profile along the path. X offsets along the X axis, Y offsets along the Y axis as the path progresses.
+		</member>
+		<member name="skew" type="float" setter="set_skew" getter="get_skew" default="0.0">
+			Skew amount. Offsets the shape along the Z axis as it progresses along the path, creating a skewed effect.
+		</member>
+		<member name="taper" type="Vector2" setter="set_taper" getter="get_taper" default="Vector2(0, 0)">
+			Taper vector (x, y). X is taper at path begin, Y is taper at path end (-1.0 to 1.0). Positive values make the shape wider, negative values make it narrower. The taper interpolates smoothly from begin to end.
+		</member>
+		<member name="twist_begin" type="float" setter="set_twist_begin" getter="get_twist_begin" default="0.0">
+			Twist amount at the beginning of the path (-1.0 to 1.0).
+		</member>
+		<member name="twist_end" type="float" setter="set_twist_end" getter="get_twist_end" default="0.0">
+			Twist amount at the end of the path (-1.0 to 1.0). The twist interpolates between begin and end.
+		</member>
+	</members>
+	<constants>
+		<constant name="PROFILE_CURVE_CIRCLE" value="0" enum="ProfileCurve">
+			Circular profile.
+		</constant>
+		<constant name="PROFILE_CURVE_SQUARE" value="1" enum="ProfileCurve">
+			Square profile.
+		</constant>
+		<constant name="PROFILE_CURVE_ISOTRI" value="2" enum="ProfileCurve">
+			Isosceles triangle profile.
+		</constant>
+		<constant name="PROFILE_CURVE_EQUALTRI" value="3" enum="ProfileCurve">
+			Equal triangle profile.
+		</constant>
+		<constant name="PROFILE_CURVE_RIGHTTRI" value="4" enum="ProfileCurve">
+			Right triangle profile.
+		</constant>
+		<constant name="PROFILE_CURVE_CIRCLE_HALF" value="5" enum="ProfileCurve">
+			Half circle profile.
+		</constant>
+		<constant name="PATH_CURVE_LINE" value="0" enum="PathCurve">
+			Linear path.
+		</constant>
+		<constant name="PATH_CURVE_CIRCLE" value="1" enum="PathCurve">
+			Circular path.
+		</constant>
+		<constant name="PATH_CURVE_CIRCLE_33" value="2" enum="PathCurve">
+			Circular path variant.
+		</constant>
+		<constant name="PATH_CURVE_CIRCLE2" value="3" enum="PathCurve">
+			Circular path variant 2.
+		</constant>
+		<constant name="HOLLOW_SAME" value="0" enum="HollowShape">
+			Hollow shape matches the profile shape.
+		</constant>
+		<constant name="HOLLOW_CIRCLE" value="1" enum="HollowShape">
+			Circular hollow.
+		</constant>
+		<constant name="HOLLOW_SQUARE" value="2" enum="HollowShape">
+			Square hollow.
+		</constant>
+		<constant name="HOLLOW_TRIANGLE" value="3" enum="HollowShape">
+			Triangular hollow.
+		</constant>
+	</constants>
+</class>

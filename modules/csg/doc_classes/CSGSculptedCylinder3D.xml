@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSGSculptedCylinder3D" inherits="CSGSculptedPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		A sculpted cylinder primitive with advanced sculpting parameters.
+	</brief_description>
+	<description>
+		CSGSculptedCylinder3D is a sculpted cylinder primitive that extends CSGSculptedPrimitive3D with cylinder-specific parameters. It supports all the sculpting parameters from the base class, allowing you to create complex parametric cylinder shapes.
+		This node allows you to create a cylinder for use with the CSG system with advanced sculpting capabilities.
+		[b]Note:[/b] CSG nodes are intended to be used for level prototyping. Creating CSG nodes has a significant CPU cost compared to creating a [MeshInstance3D] with a [PrimitiveMesh].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="height" type="float" setter="set_height" getter="get_height" default="2.0">
+			The height of the cylinder.
+		</member>
+		<member name="profile_curve" type="int" setter="set_profile_curve" getter="get_profile_curve" overrides="CSGSculptedPrimitive3D" default="0" />
+		<member name="radius" type="float" setter="set_radius" getter="get_radius" default="0.5">
+			The radius of the cylinder.
+		</member>
+	</members>
+</class>

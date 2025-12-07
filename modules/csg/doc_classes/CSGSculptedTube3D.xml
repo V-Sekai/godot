@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSGSculptedTube3D" inherits="CSGSculptedPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		A sculpted tube primitive with advanced sculpting parameters.
+	</brief_description>
+	<description>
+		CSGSculptedTube3D is a sculpted tube primitive that extends CSGSculptedPrimitive3D with tube-specific parameters. A tube is another form of hollow cylinder with explicit inner and outer radius. It supports all the sculpting parameters from the base class, allowing you to create complex parametric tube shapes.
+		This node allows you to create a tube for use with the CSG system with advanced sculpting capabilities.
+		[b]Note:[/b] CSG nodes are intended to be used for level prototyping. Creating CSG nodes has a significant CPU cost compared to creating a [MeshInstance3D] with a [PrimitiveMesh].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="height" type="float" setter="set_height" getter="get_height" default="2.0">
+			The height of the tube.
+		</member>
+		<member name="inner_radius" type="float" setter="set_inner_radius" getter="get_inner_radius" default="0.25">
+			The inner radius of the tube.
+		</member>
+		<member name="outer_radius" type="float" setter="set_outer_radius" getter="get_outer_radius" default="0.5">
+			The outer radius of the tube.
+		</member>
+		<member name="profile_curve" type="int" setter="set_profile_curve" getter="get_profile_curve" overrides="CSGSculptedPrimitive3D" default="0" />
+	</members>
+</class>

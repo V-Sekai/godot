@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="CSGSculptedTexture3D" inherits="CSGSculptedPrimitive3D" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../doc/class.xsd">
+	<brief_description>
+		A texture-based sculpted primitive for highly variable organic shapes.
+	</brief_description>
+	<description>
+		CSGSculptedTexture3D is a texture-based sculpted primitive that extends CSGSculptedPrimitive3D. Unlike parametric primitives, this uses a texture where RGB values encode 3D coordinates:
+		- Red channel (R) = X coordinate
+		- Green channel (G) = Y coordinate
+		- Blue channel (B) = Z coordinate
+		Each pixel's RGB values (0-255) are mapped to coordinates (-1 to 1), allowing for highly variable organic shapes defined by texture data.
+		This node allows you to create complex sculpted shapes for use with the CSG system. The texture should typically be 64x64 or 128x128 pixels for best results.
+		[b]Note:[/b] CSG nodes are intended to be used for level prototyping. Creating CSG nodes has a significant CPU cost compared to creating a [MeshInstance3D] with a [PrimitiveMesh].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="invert" type="bool" setter="set_invert" getter="get_invert" default="false">
+			If [code]true[/code], inverts the Z coordinate, flipping the shape along the Z axis.
+		</member>
+		<member name="mirror" type="bool" setter="set_mirror" getter="get_mirror" default="false">
+			If [code]true[/code], mirrors the X coordinate, flipping the shape along the X axis.
+		</member>
+		<member name="profile_curve" type="int" setter="set_profile_curve" getter="get_profile_curve" overrides="CSGSculptedPrimitive3D" default="0" />
+		<member name="sculpt_texture" type="Texture2D" setter="set_sculpt_texture" getter="get_sculpt_texture">
+			The texture used for sculpting. RGB values encode XYZ coordinates:
+			- Red (R) = X coordinate
+			- Green (G) = Y coordinate
+			- Blue (B) = Z coordinate
+			Each channel value (0-255) maps to coordinates (-1 to 1). Typically 64x64 or 128x128 pixels for best results.
+		</member>
+	</members>
+</class>
