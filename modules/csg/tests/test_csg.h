@@ -108,7 +108,7 @@ TEST_CASE("[SceneTree][CSG] CSGPolygon3D") {
 		memdelete(path);
 	}
 
-	TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
+TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 		SUBCASE("[SceneTree][CSG] CSGSculptedBox3D: Basic shape generation") {
 			CSGSculptedBox3D *box = memnew(CSGSculptedBox3D);
 			SceneTree::get_singleton()->get_root()->add_child(box);

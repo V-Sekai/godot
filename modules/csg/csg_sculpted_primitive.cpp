@@ -465,38 +465,40 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	Vector<Vector2> uvs;
 	Vector<int> indices;
 
+	// Determine if profile is closed (last point equals first) - needed before generating vertices
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
+	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+	int effective_hollow_count = (hollow > 0.0 && hollow_profile.size() > 0) ? (hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size()) : 0;
+	int total_profile = effective_profile_count + effective_hollow_count;
+
 	// Generate vertices along the path
 	for (int p = 0; p <= path_segments; p++) {
 		real_t path_pos = path_begin + (path_range * p / path_segments);
 		real_t normalized_path = (path_pos - path_begin) / path_range;
 		real_t twist = Math::lerp(twist_begin, twist_end, normalized_path);
 
-		for (int i = 0; i < profile.size(); i++) {
+		// Only generate vertices for unique profile points (skip duplicate if closed)
+		for (int i = 0; i < effective_profile_count; i++) {
 			Vector3 vertex = apply_path_transform(profile[i] * scale, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 			vertex *= size;
 			vertices.push_back(vertex);
-			uvs.push_back(Vector2((real_t)i / profile.size(), path_pos));
+			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (hollow > 0.0 && hollow_profile.size() > 0) {
-			for (int i = 0; i < hollow_profile.size(); i++) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			// Only generate vertices for unique hollow profile points
+			for (int i = 0; i < effective_hollow_count; i++) {
 				Vector3 vertex = apply_path_transform(hollow_profile[i] * scale, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 				vertex *= size;
 				vertices.push_back(vertex);
-				uvs.push_back(Vector2((real_t)i / hollow_profile.size(), path_pos));
+				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
 		}
 	}
 
 	// Generate faces
-	int profile_count = profile.size();
-	int hollow_count = hollow_profile.size();
-	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
-
-	// Determine if profile is closed (last point equals first)
-	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
-	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
-
+	// Note: effective_profile_count, effective_hollow_count, and total_profile are already calculated above
 	// For circular paths, close the path loop as well
 	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
 
@@ -517,11 +519,9 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		}
 
 		// Hollow faces if applicable
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_base1 = base1 + profile_count;
-			int hollow_base2 = base2 + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_base1 = base1 + effective_profile_count;
+			int hollow_base2 = base2 + effective_profile_count;
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
@@ -561,10 +561,8 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		}
 
 		// Hollow bottom cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_bottom_base = profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_bottom_base);
@@ -575,10 +573,8 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		}
 
 		// Hollow top cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_top_base);
@@ -688,6 +684,13 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 		path_range = 1.0;
 	}
 
+	// Determine if profile is closed (last point equals first) - needed before generating vertices
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
+	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+	int effective_hollow_count = (hollow > 0.0 && hollow_profile.size() > 0) ? (hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size()) : 0;
+	int total_profile = effective_profile_count + effective_hollow_count;
+
 	Vector<Vector3> vertices;
 	Vector<Vector2> uvs;
 	Vector<int> indices;
@@ -698,31 +701,27 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 		real_t twist = Math::lerp(twist_begin, twist_end, normalized_path);
 		real_t z_pos = (path_pos - 0.5) * height;
 
-		for (int i = 0; i < profile.size(); i++) {
+		// Only generate vertices for unique profile points (skip duplicate if closed)
+		for (int i = 0; i < effective_profile_count; i++) {
 			Vector3 vertex = apply_path_transform(profile[i] * scale * radius, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 			vertex.z = z_pos;
 			vertices.push_back(vertex);
-			uvs.push_back(Vector2((real_t)i / profile.size(), path_pos));
+			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (hollow > 0.0 && hollow_profile.size() > 0) {
-			for (int i = 0; i < hollow_profile.size(); i++) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			// Only generate vertices for unique hollow profile points
+			for (int i = 0; i < effective_hollow_count; i++) {
 				Vector3 vertex = apply_path_transform(hollow_profile[i] * scale * radius, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 				vertex.z = z_pos;
 				vertices.push_back(vertex);
-				uvs.push_back(Vector2((real_t)i / hollow_profile.size(), path_pos));
+				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
 		}
 	}
 
 	// Generate faces (similar to box)
-	int profile_count = profile.size();
-	int hollow_count = hollow_profile.size();
-	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
-
-	// Determine if profile is closed (last point equals first)
-	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
-	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+	// Note: effective_profile_count, effective_hollow_count, and total_profile are already calculated above
 
 	// For circular paths, close the path loop as well
 	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
@@ -743,11 +742,9 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 			indices.push_back(base2 + next_i);
 		}
 
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_base1 = base1 + profile_count;
-			int hollow_base2 = base2 + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_base1 = base1 + effective_profile_count;
+			int hollow_base2 = base2 + effective_profile_count;
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
@@ -787,10 +784,8 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 		}
 
 		// Hollow bottom cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_bottom_base = profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_bottom_base);
@@ -801,10 +796,8 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 		}
 
 		// Hollow top cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_top_base);
@@ -902,6 +895,13 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 		path_range = 1.0;
 	}
 
+	// Determine if profile is closed (last point equals first) - needed before generating vertices
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
+	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+	int effective_hollow_count = (hollow > 0.0 && hollow_profile.size() > 0) ? (hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size()) : 0;
+	int total_profile = effective_profile_count + effective_hollow_count;
+
 	Vector<Vector3> vertices;
 	Vector<Vector2> uvs;
 	Vector<int> indices;
@@ -911,29 +911,25 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 		real_t normalized_path = (path_pos - path_begin) / path_range;
 		real_t twist = Math::lerp(twist_begin, twist_end, normalized_path);
 
-		for (int i = 0; i < profile.size(); i++) {
+		// Only generate vertices for unique profile points (skip duplicate if closed)
+		for (int i = 0; i < effective_profile_count; i++) {
 			Vector3 vertex = apply_path_transform(profile[i] * scale * radius, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 			vertices.push_back(vertex);
-			uvs.push_back(Vector2((real_t)i / profile.size(), path_pos));
+			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (hollow > 0.0 && hollow_profile.size() > 0) {
-			for (int i = 0; i < hollow_profile.size(); i++) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			// Only generate vertices for unique hollow profile points
+			for (int i = 0; i < effective_hollow_count; i++) {
 				Vector3 vertex = apply_path_transform(hollow_profile[i] * scale * radius, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 				vertices.push_back(vertex);
-				uvs.push_back(Vector2((real_t)i / hollow_profile.size(), path_pos));
+				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
 		}
 	}
 
 	// Generate faces
-	int profile_count = profile.size();
-	int hollow_count = hollow_profile.size();
-	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
-
-	// Determine if profile is closed (last point equals first)
-	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
-	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+	// Note: effective_profile_count, effective_hollow_count, and total_profile are already calculated above
 
 	// For circular paths, close the path loop as well
 	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
@@ -954,11 +950,9 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 			indices.push_back(base2 + next_i);
 		}
 
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_base1 = base1 + profile_count;
-			int hollow_base2 = base2 + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_base1 = base1 + effective_profile_count;
+			int hollow_base2 = base2 + effective_profile_count;
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
@@ -998,10 +992,8 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 		}
 
 		// Hollow bottom cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_bottom_base = profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_bottom_base);
@@ -1012,10 +1004,8 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 		}
 
 		// Hollow top cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_top_base);
@@ -1128,6 +1118,13 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 	real_t major_radius = (inner_radius + outer_radius) / 2.0;
 	real_t minor_radius = (outer_radius - inner_radius) / 2.0;
 
+	// Determine if profile is closed (last point equals first) - needed before generating vertices
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
+	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+	int effective_hollow_count = (hollow > 0.0 && hollow_profile.size() > 0) ? (hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size()) : 0;
+	int total_profile = effective_profile_count + effective_hollow_count;
+
 	Vector<Vector3> vertices;
 	Vector<Vector2> uvs;
 	Vector<int> indices;
@@ -1138,7 +1135,8 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 		real_t twist = Math::lerp(twist_begin, twist_end, normalized_path);
 		real_t path_angle = path_pos * revolutions * Math::TAU;
 
-		for (int i = 0; i < profile.size(); i++) {
+		// Only generate vertices for unique profile points (skip duplicate if closed)
+		for (int i = 0; i < effective_profile_count; i++) {
 			Vector2 prof = profile[i] * scale * minor_radius;
 			// Apply path transformations (twist, taper, shear, radius_offset, skew)
 			Vector3 transformed = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
@@ -1151,11 +1149,12 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 			// Apply skew offset in Z
 			torus_pos.z += transformed.z - (normalized_path - 0.5);
 			vertices.push_back(torus_pos);
-			uvs.push_back(Vector2((real_t)i / profile.size(), path_pos));
+			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (hollow > 0.0 && hollow_profile.size() > 0) {
-			for (int i = 0; i < hollow_profile.size(); i++) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			// Only generate vertices for unique hollow profile points
+			for (int i = 0; i < effective_hollow_count; i++) {
 				Vector2 prof = hollow_profile[i] * scale * minor_radius;
 				// Apply path transformations
 				Vector3 transformed = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
@@ -1165,19 +1164,13 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 						(major_radius + transformed.x) * Math::sin(path_angle));
 				torus_pos.z += transformed.z - (normalized_path - 0.5);
 				vertices.push_back(torus_pos);
-				uvs.push_back(Vector2((real_t)i / hollow_profile.size(), path_pos));
+				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
 		}
 	}
 
 	// Generate faces (similar to sphere)
-	int profile_count = profile.size();
-	int hollow_count = hollow_profile.size();
-	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
-
-	// Determine if profile is closed (last point equals first)
-	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
-	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+	// Note: effective_profile_count, effective_hollow_count, and total_profile are already calculated above
 
 	// For circular paths, close the path loop as well
 	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
@@ -1198,11 +1191,9 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 			indices.push_back(base2 + next_i);
 		}
 
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_base1 = base1 + profile_count;
-			int hollow_base2 = base2 + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_base1 = base1 + effective_profile_count;
+			int hollow_base2 = base2 + effective_profile_count;
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
@@ -1304,6 +1295,13 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		path_range = 1.0;
 	}
 
+	// Determine if profile is closed (last point equals first) - needed before generating vertices
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
+	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+	int effective_hollow_count = (hollow > 0.0 && hollow_profile.size() > 0) ? (hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size()) : 0;
+	int total_profile = effective_profile_count + effective_hollow_count;
+
 	Vector<Vector3> vertices;
 	Vector<Vector2> uvs;
 	Vector<int> indices;
@@ -1313,37 +1311,33 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		real_t normalized_path = (path_pos - path_begin) / path_range;
 		real_t twist = Math::lerp(twist_begin, twist_end, normalized_path);
 
-		for (int i = 0; i < profile.size(); i++) {
+		// Only generate vertices for unique profile points (skip duplicate if closed)
+		for (int i = 0; i < effective_profile_count; i++) {
 			Vector2 prof = profile[i] * scale;
 			prof.x *= size.x;
 			prof.y *= size.y;
 			Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 			vertex.z *= size.z;
 			vertices.push_back(vertex);
-			uvs.push_back(Vector2((real_t)i / profile.size(), path_pos));
+			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (hollow > 0.0 && hollow_profile.size() > 0) {
-			for (int i = 0; i < hollow_profile.size(); i++) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			// Only generate vertices for unique hollow profile points
+			for (int i = 0; i < effective_hollow_count; i++) {
 				Vector2 prof = hollow_profile[i] * scale;
 				prof.x *= size.x;
 				prof.y *= size.y;
 				Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 				vertex.z *= size.z;
 				vertices.push_back(vertex);
-				uvs.push_back(Vector2((real_t)i / hollow_profile.size(), path_pos));
+				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
 		}
 	}
 
 	// Generate faces
-	int profile_count = profile.size();
-	int hollow_count = hollow_profile.size();
-	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
-
-	// Determine if profile is closed (last point equals first)
-	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
-	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+	// Note: effective_profile_count, effective_hollow_count, and total_profile are already calculated above
 
 	// For circular paths, close the path loop as well
 	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
@@ -1364,11 +1358,9 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 			indices.push_back(base2 + next_i);
 		}
 
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_base1 = base1 + profile_count;
-			int hollow_base2 = base2 + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_base1 = base1 + effective_profile_count;
+			int hollow_base2 = base2 + effective_profile_count;
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
@@ -1408,10 +1400,8 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		}
 
 		// Hollow bottom cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_bottom_base = profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_bottom_base);
@@ -1422,10 +1412,8 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		}
 
 		// Hollow top cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_top_base);
@@ -1550,6 +1538,13 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		path_range = 1.0;
 	}
 
+	// Determine if profile is closed (last point equals first) - needed before generating vertices
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
+	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+	int effective_hollow_count = hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size();
+	int total_profile = effective_profile_count + effective_hollow_count;
+
 	Vector<Vector3> vertices;
 	Vector<Vector2> uvs;
 	Vector<int> indices;
@@ -1559,33 +1554,29 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		real_t normalized_path = (path_pos - path_begin) / path_range;
 		real_t twist = Math::lerp(twist_begin, twist_end, normalized_path);
 
-		for (int i = 0; i < profile.size(); i++) {
+		// Only generate vertices for unique profile points (skip duplicate if closed)
+		for (int i = 0; i < effective_profile_count; i++) {
 			Vector2 prof = profile[i] * scale * outer_radius;
 			Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 			vertex.y *= height;
 			vertices.push_back(vertex);
-			uvs.push_back(Vector2((real_t)i / profile.size(), path_pos));
+			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (hollow_profile.size() > 0) {
-			for (int i = 0; i < hollow_profile.size(); i++) {
+		if (effective_hollow_count > 0) {
+			// Only generate vertices for unique hollow profile points
+			for (int i = 0; i < effective_hollow_count; i++) {
 				Vector2 prof = hollow_profile[i] * scale * outer_radius;
 				Vector3 vertex = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
 				vertex.y *= height;
 				vertices.push_back(vertex);
-				uvs.push_back(Vector2((real_t)i / hollow_profile.size(), path_pos));
+				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
 		}
 	}
 
 	// Generate faces
-	int profile_count = profile.size();
-	int hollow_count = hollow_profile.size();
-	int total_profile = profile_count + hollow_count;
-
-	// Determine if profile is closed (last point equals first)
-	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
-	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+	// Note: effective_profile_count, effective_hollow_count, and total_profile are already calculated above
 
 	// For circular paths, close the path loop as well
 	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
@@ -1606,11 +1597,9 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 			indices.push_back(base2 + next_i);
 		}
 
-		if (hollow_count > 0) {
-			int hollow_base1 = base1 + profile_count;
-			int hollow_base2 = base2 + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (effective_hollow_count > 0) {
+			int hollow_base1 = base1 + effective_profile_count;
+			int hollow_base2 = base2 + effective_profile_count;
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
@@ -1650,10 +1639,8 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		}
 
 		// Bottom cap - inner profile (hollow)
-		if (hollow_count > 0) {
-			int hollow_bottom_base = profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (effective_hollow_count > 0) {
+			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_bottom_base);
@@ -1664,10 +1651,8 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		}
 
 		// Top cap - inner profile (hollow)
-		if (hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (effective_hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_top_base);
@@ -1793,6 +1778,13 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 	real_t major_radius = (inner_radius + outer_radius) / 2.0;
 	real_t minor_radius = height / 2.0; // Ring uses height as the minor radius
 
+	// Determine if profile is closed (last point equals first) - needed before generating vertices
+	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
+	int effective_profile_count = profile_closed ? profile.size() - 1 : profile.size();
+	bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
+	int effective_hollow_count = (hollow > 0.0 && hollow_profile.size() > 0) ? (hollow_closed ? hollow_profile.size() - 1 : hollow_profile.size()) : 0;
+	int total_profile = effective_profile_count + effective_hollow_count;
+
 	Vector<Vector3> vertices;
 	Vector<Vector2> uvs;
 	Vector<int> indices;
@@ -1803,7 +1795,8 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 		real_t twist = Math::lerp(twist_begin, twist_end, normalized_path);
 		real_t path_angle = path_pos * revolutions * Math::TAU;
 
-		for (int i = 0; i < profile.size(); i++) {
+		// Only generate vertices for unique profile points (skip duplicate if closed)
+		for (int i = 0; i < effective_profile_count; i++) {
 			Vector2 prof = profile[i] * scale * minor_radius;
 			// Apply path transformations (twist, taper, shear, radius_offset, skew)
 			Vector3 transformed = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
@@ -1816,11 +1809,12 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 			// Apply skew offset in Z
 			ring_pos.z += transformed.z - (normalized_path - 0.5);
 			vertices.push_back(ring_pos);
-			uvs.push_back(Vector2((real_t)i / profile.size(), path_pos));
+			uvs.push_back(Vector2((real_t)i / effective_profile_count, path_pos));
 		}
 
-		if (hollow > 0.0 && hollow_profile.size() > 0) {
-			for (int i = 0; i < hollow_profile.size(); i++) {
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			// Only generate vertices for unique hollow profile points
+			for (int i = 0; i < effective_hollow_count; i++) {
 				Vector2 prof = hollow_profile[i] * scale * minor_radius;
 				// Apply path transformations
 				Vector3 transformed = apply_path_transform(prof, path_pos, path_curve, twist, taper, shear, radius_offset, revolutions, skew);
@@ -1831,19 +1825,13 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 						radius_at_angle * Math::sin(path_angle));
 				ring_pos.z += transformed.z - (normalized_path - 0.5);
 				vertices.push_back(ring_pos);
-				uvs.push_back(Vector2((real_t)i / hollow_profile.size(), path_pos));
+				uvs.push_back(Vector2((real_t)i / effective_hollow_count, path_pos));
 			}
 		}
 	}
 
 	// Generate faces
-	int profile_count = profile.size();
-	int hollow_count = hollow_profile.size();
-	int total_profile = profile_count + (hollow > 0.0 ? hollow_count : 0);
-
-	// Determine if profile is closed (last point equals first)
-	bool profile_closed = profile.size() > 0 && profile[profile.size() - 1].is_equal_approx(profile[0]);
-	int effective_profile_count = profile_closed ? profile_count - 1 : profile_count;
+	// Note: effective_profile_count, effective_hollow_count, and total_profile are already calculated above
 
 	// For circular paths, close the path loop as well
 	bool path_closed = (path_curve == PATH_CURVE_CIRCLE || path_curve == PATH_CURVE_CIRCLE_33 || path_curve == PATH_CURVE_CIRCLE2) && path_begin == 0.0 && path_end == 1.0;
@@ -1864,11 +1852,9 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 			indices.push_back(base2 + next_i);
 		}
 
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_base1 = base1 + profile_count;
-			int hollow_base2 = base2 + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_base1 = base1 + effective_profile_count;
+			int hollow_base2 = base2 + effective_profile_count;
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
@@ -1908,10 +1894,8 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 		}
 
 		// Hollow bottom cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_bottom_base = profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_bottom_base);
@@ -1922,10 +1906,8 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 		}
 
 		// Hollow top cap
-		if (hollow > 0.0 && hollow_count > 0) {
-			int hollow_top_base = path_segments * total_profile + profile_count;
-			bool hollow_closed = hollow_profile.size() > 0 && hollow_profile[hollow_profile.size() - 1].is_equal_approx(hollow_profile[0]);
-			int effective_hollow_count = hollow_closed ? hollow_count - 1 : hollow_count;
+		if (hollow > 0.0 && effective_hollow_count > 0) {
+			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
 					indices.push_back(hollow_top_base);
