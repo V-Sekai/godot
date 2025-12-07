@@ -507,23 +507,21 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// The manifold library reorders vertices with {0, 2, 1} (swaps positions 1 and 2)
-		// To get counter-clockwise after reordering, we need to provide vertices in reverse order
-		// Match CSGCylinder3D pattern but account for reordering
+		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
+		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
+		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: Provide (base1+i, base2+next_i, base1+next_i) so after {0,2,1} reordering
-			// it becomes (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
+			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
 			indices.push_back(base1 + i);
-			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
+			indices.push_back(base2 + next_i);
 
-			// Triangle 2: Provide (base2+next_i, base1+i, base2+i) so after {0,2,1} reordering
-			// it becomes (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
+			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
 			// Shares edge (base1+i, base2+next_i) in opposite order
 			indices.push_back(base2 + next_i);
-			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		// Hollow faces if applicable
@@ -533,17 +531,17 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
-				// Hollow faces: Account for {0,2,1} reordering
-				// Triangle 1: Provide (hollow_bottom_i, hollow_top_next_i, hollow_bottom_next_i)
+				// Hollow faces: counter-clockwise from outside (same pattern as outer faces)
+				// Triangle 1: (hollow_bottom_i, hollow_bottom_next_i, hollow_top_next_i)
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 
-				// Triangle 2: Provide (hollow_top_next_i, hollow_bottom_i, hollow_top_i)
+				// Triangle 2: (hollow_top_next_i, hollow_top_i, hollow_bottom_i)
 				// Shares edge (hollow_bottom_i, hollow_top_next_i) in opposite order
 				indices.push_back(hollow_base2 + next_i);
-				indices.push_back(hollow_base1 + i);
 				indices.push_back(hollow_base2 + i);
+				indices.push_back(hollow_base1 + i);
 			}
 		}
 	}
@@ -551,55 +549,55 @@ CSGBrush *CSGSculptedBox3D::_build_brush() {
 	// Add end caps for linear paths to ensure manifold geometry
 	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
 		// Bottom cap (at path_begin)
-		// Account for {0,2,1} reordering: provide (center, i+1, i) to get (center, i, i+1) after reordering
+		// Counter-clockwise when viewed from outside (below)
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
 			// Triangulate the bottom face - counter-clockwise when viewed from outside (below)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1) - counter-clockwise
+				// Counter-clockwise: (center, i, i+1)
 				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + i + 1);
 				indices.push_back(bottom_base + i);
+				indices.push_back(bottom_base + i + 1);
 			}
 		}
 
 		// Top cap (at path_end)
-		// Account for {0,2,1} reordering: provide (center, i, i+1) to get (center, i+1, i) after reordering (reversed for top)
+		// Counter-clockwise when viewed from outside (above) - reversed order
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
 			// Triangulate the top face - counter-clockwise when viewed from outside (above)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i) - counter-clockwise from above
+				// Counter-clockwise from above: (center, i+1, i) - reversed
 				indices.push_back(top_base);
-				indices.push_back(top_base + i);
 				indices.push_back(top_base + i + 1);
+				indices.push_back(top_base + i);
 			}
 		}
 
 		// Hollow bottom cap
-		// Account for {0,2,1} reordering: same as outer bottom
+		// Counter-clockwise when viewed from outside (below) - same as outer bottom
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1)
+					// Counter-clockwise: (center, i, i+1)
 					indices.push_back(hollow_bottom_base);
-					indices.push_back(hollow_bottom_base + i + 1);
 					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
 				}
 			}
 		}
 
 		// Hollow top cap
-		// Account for {0,2,1} reordering: same as outer top
+		// Counter-clockwise when viewed from outside (above) - same as outer top
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i)
+					// Counter-clockwise from above: (center, i+1, i) - reversed
 					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + i);
 					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
 				}
 			}
 		}
@@ -751,23 +749,21 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// The manifold library reorders vertices with {0, 2, 1} (swaps positions 1 and 2)
-		// To get counter-clockwise after reordering, we need to provide vertices in reverse order
-		// Match CSGCylinder3D pattern but account for reordering
+		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
+		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
+		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: Provide (base1+i, base2+next_i, base1+next_i) so after {0,2,1} reordering
-			// it becomes (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
+			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
 			indices.push_back(base1 + i);
-			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
+			indices.push_back(base2 + next_i);
 
-			// Triangle 2: Provide (base2+next_i, base1+i, base2+i) so after {0,2,1} reordering
-			// it becomes (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
+			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
 			// Shares edge (base1+i, base2+next_i) in opposite order
 			indices.push_back(base2 + next_i);
-			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		if (hollow > 0.0 && effective_hollow_count > 0) {
@@ -776,17 +772,17 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
-				// Hollow faces: Account for {0,2,1} reordering
-				// Triangle 1: Provide (hollow_bottom_i, hollow_top_next_i, hollow_bottom_next_i)
+				// Hollow faces: counter-clockwise from outside (same pattern as outer faces)
+				// Triangle 1: (hollow_bottom_i, hollow_bottom_next_i, hollow_top_next_i)
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 
-				// Triangle 2: Provide (hollow_top_next_i, hollow_bottom_i, hollow_top_i)
+				// Triangle 2: (hollow_top_next_i, hollow_top_i, hollow_bottom_i)
 				// Shares edge (hollow_bottom_i, hollow_top_next_i) in opposite order
 				indices.push_back(hollow_base2 + next_i);
-				indices.push_back(hollow_base1 + i);
 				indices.push_back(hollow_base2 + i);
+				indices.push_back(hollow_base1 + i);
 			}
 		}
 	}
@@ -794,55 +790,55 @@ CSGBrush *CSGSculptedCylinder3D::_build_brush() {
 	// Add end caps for linear paths to ensure manifold geometry
 	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
 		// Bottom cap (at path_begin)
-		// Account for {0,2,1} reordering: provide (center, i+1, i) to get (center, i, i+1) after reordering
+		// Counter-clockwise when viewed from outside (below)
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
 			// Triangulate the bottom face - counter-clockwise when viewed from outside (below)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1) - counter-clockwise
+				// Counter-clockwise: (center, i, i+1)
 				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + i + 1);
 				indices.push_back(bottom_base + i);
+				indices.push_back(bottom_base + i + 1);
 			}
 		}
 
 		// Top cap (at path_end)
-		// Account for {0,2,1} reordering: provide (center, i, i+1) to get (center, i+1, i) after reordering (reversed for top)
+		// Counter-clockwise when viewed from outside (above) - reversed order
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
 			// Triangulate the top face - counter-clockwise when viewed from outside (above)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i) - counter-clockwise from above
+				// Counter-clockwise from above: (center, i+1, i) - reversed
 				indices.push_back(top_base);
-				indices.push_back(top_base + i);
 				indices.push_back(top_base + i + 1);
+				indices.push_back(top_base + i);
 			}
 		}
 
 		// Hollow bottom cap
-		// Account for {0,2,1} reordering: same as outer bottom
+		// Counter-clockwise when viewed from outside (below) - same as outer bottom
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1)
+					// Counter-clockwise: (center, i, i+1)
 					indices.push_back(hollow_bottom_base);
-					indices.push_back(hollow_bottom_base + i + 1);
 					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
 				}
 			}
 		}
 
 		// Hollow top cap
-		// Account for {0,2,1} reordering: same as outer top
+		// Counter-clockwise when viewed from outside (above) - same as outer top
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i)
+					// Counter-clockwise from above: (center, i+1, i) - reversed
 					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + i);
 					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
 				}
 			}
 		}
@@ -979,23 +975,21 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// The manifold library reorders vertices with {0, 2, 1} (swaps positions 1 and 2)
-		// To get counter-clockwise after reordering, we need to provide vertices in reverse order
-		// Match CSGCylinder3D pattern but account for reordering
+		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
+		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
+		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: Provide (base1+i, base2+next_i, base1+next_i) so after {0,2,1} reordering
-			// it becomes (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
+			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
 			indices.push_back(base1 + i);
-			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
+			indices.push_back(base2 + next_i);
 
-			// Triangle 2: Provide (base2+next_i, base1+i, base2+i) so after {0,2,1} reordering
-			// it becomes (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
+			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
 			// Shares edge (base1+i, base2+next_i) in opposite order
 			indices.push_back(base2 + next_i);
-			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		if (hollow > 0.0 && effective_hollow_count > 0) {
@@ -1004,17 +998,17 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
-				// Hollow faces: Account for {0,2,1} reordering
-				// Triangle 1: Provide (hollow_bottom_i, hollow_top_next_i, hollow_bottom_next_i)
+				// Hollow faces: counter-clockwise from outside (same pattern as outer faces)
+				// Triangle 1: (hollow_bottom_i, hollow_bottom_next_i, hollow_top_next_i)
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 
-				// Triangle 2: Provide (hollow_top_next_i, hollow_bottom_i, hollow_top_i)
+				// Triangle 2: (hollow_top_next_i, hollow_top_i, hollow_bottom_i)
 				// Shares edge (hollow_bottom_i, hollow_top_next_i) in opposite order
 				indices.push_back(hollow_base2 + next_i);
-				indices.push_back(hollow_base1 + i);
 				indices.push_back(hollow_base2 + i);
+				indices.push_back(hollow_base1 + i);
 			}
 		}
 	}
@@ -1022,55 +1016,55 @@ CSGBrush *CSGSculptedSphere3D::_build_brush() {
 	// Add end caps for linear paths to ensure manifold geometry
 	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
 		// Bottom cap (at path_begin)
-		// Account for {0,2,1} reordering: provide (center, i+1, i) to get (center, i, i+1) after reordering
+		// Counter-clockwise when viewed from outside (below)
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
 			// Triangulate the bottom face - counter-clockwise when viewed from outside (below)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1) - counter-clockwise
+				// Counter-clockwise: (center, i, i+1)
 				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + i + 1);
 				indices.push_back(bottom_base + i);
+				indices.push_back(bottom_base + i + 1);
 			}
 		}
 
 		// Top cap (at path_end)
-		// Account for {0,2,1} reordering: provide (center, i, i+1) to get (center, i+1, i) after reordering (reversed for top)
+		// Counter-clockwise when viewed from outside (above) - reversed order
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
 			// Triangulate the top face - counter-clockwise when viewed from outside (above)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i) - counter-clockwise from above
+				// Counter-clockwise from above: (center, i+1, i) - reversed
 				indices.push_back(top_base);
-				indices.push_back(top_base + i);
 				indices.push_back(top_base + i + 1);
+				indices.push_back(top_base + i);
 			}
 		}
 
 		// Hollow bottom cap
-		// Account for {0,2,1} reordering: same as outer bottom
+		// Counter-clockwise when viewed from outside (below) - same as outer bottom
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1)
+					// Counter-clockwise: (center, i, i+1)
 					indices.push_back(hollow_bottom_base);
-					indices.push_back(hollow_bottom_base + i + 1);
 					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
 				}
 			}
 		}
 
 		// Hollow top cap
-		// Account for {0,2,1} reordering: same as outer top
+		// Counter-clockwise when viewed from outside (above) - same as outer top
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i)
+					// Counter-clockwise from above: (center, i+1, i) - reversed
 					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + i);
 					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
 				}
 			}
 		}
@@ -1240,23 +1234,21 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// The manifold library reorders vertices with {0, 2, 1} (swaps positions 1 and 2)
-		// To get counter-clockwise after reordering, we need to provide vertices in reverse order
-		// Match CSGCylinder3D pattern but account for reordering
+		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
+		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
+		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: Provide (base1+i, base2+next_i, base1+next_i) so after {0,2,1} reordering
-			// it becomes (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
+			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
 			indices.push_back(base1 + i);
-			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
+			indices.push_back(base2 + next_i);
 
-			// Triangle 2: Provide (base2+next_i, base1+i, base2+i) so after {0,2,1} reordering
-			// it becomes (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
+			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
 			// Shares edge (base1+i, base2+next_i) in opposite order
 			indices.push_back(base2 + next_i);
-			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		if (hollow > 0.0 && effective_hollow_count > 0) {
@@ -1265,17 +1257,17 @@ CSGBrush *CSGSculptedTorus3D::_build_brush() {
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
-				// Hollow faces: Account for {0,2,1} reordering
-				// Triangle 1: Provide (hollow_bottom_i, hollow_top_next_i, hollow_bottom_next_i)
+				// Hollow faces: counter-clockwise from outside (same pattern as outer faces)
+				// Triangle 1: (hollow_bottom_i, hollow_bottom_next_i, hollow_top_next_i)
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 
-				// Triangle 2: Provide (hollow_top_next_i, hollow_bottom_i, hollow_top_i)
+				// Triangle 2: (hollow_top_next_i, hollow_top_i, hollow_bottom_i)
 				// Shares edge (hollow_bottom_i, hollow_top_next_i) in opposite order
 				indices.push_back(hollow_base2 + next_i);
-				indices.push_back(hollow_base1 + i);
 				indices.push_back(hollow_base2 + i);
+				indices.push_back(hollow_base1 + i);
 			}
 		}
 	}
@@ -1419,23 +1411,21 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// The manifold library reorders vertices with {0, 2, 1} (swaps positions 1 and 2)
-		// To get counter-clockwise after reordering, we need to provide vertices in reverse order
-		// Match CSGCylinder3D pattern but account for reordering
+		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
+		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
+		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: Provide (base1+i, base2+next_i, base1+next_i) so after {0,2,1} reordering
-			// it becomes (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
+			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
 			indices.push_back(base1 + i);
-			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
+			indices.push_back(base2 + next_i);
 
-			// Triangle 2: Provide (base2+next_i, base1+i, base2+i) so after {0,2,1} reordering
-			// it becomes (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
+			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
 			// Shares edge (base1+i, base2+next_i) in opposite order
 			indices.push_back(base2 + next_i);
-			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		if (hollow > 0.0 && effective_hollow_count > 0) {
@@ -1444,17 +1434,17 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
-				// Hollow faces: Account for {0,2,1} reordering
-				// Triangle 1: Provide (hollow_bottom_i, hollow_top_next_i, hollow_bottom_next_i)
+				// Hollow faces: counter-clockwise from outside (same pattern as outer faces)
+				// Triangle 1: (hollow_bottom_i, hollow_bottom_next_i, hollow_top_next_i)
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 
-				// Triangle 2: Provide (hollow_top_next_i, hollow_bottom_i, hollow_top_i)
+				// Triangle 2: (hollow_top_next_i, hollow_top_i, hollow_bottom_i)
 				// Shares edge (hollow_bottom_i, hollow_top_next_i) in opposite order
 				indices.push_back(hollow_base2 + next_i);
-				indices.push_back(hollow_base1 + i);
 				indices.push_back(hollow_base2 + i);
+				indices.push_back(hollow_base1 + i);
 			}
 		}
 	}
@@ -1462,55 +1452,55 @@ CSGBrush *CSGSculptedPrism3D::_build_brush() {
 	// Add end caps for linear paths to ensure manifold geometry
 	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
 		// Bottom cap (at path_begin)
-		// Account for {0,2,1} reordering: provide (center, i+1, i) to get (center, i, i+1) after reordering
+		// Counter-clockwise when viewed from outside (below)
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
 			// Triangulate the bottom face - counter-clockwise when viewed from outside (below)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1) - counter-clockwise
+				// Counter-clockwise: (center, i, i+1)
 				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + i + 1);
 				indices.push_back(bottom_base + i);
+				indices.push_back(bottom_base + i + 1);
 			}
 		}
 
 		// Top cap (at path_end)
-		// Account for {0,2,1} reordering: provide (center, i, i+1) to get (center, i+1, i) after reordering (reversed for top)
+		// Counter-clockwise when viewed from outside (above) - reversed order
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
 			// Triangulate the top face - counter-clockwise when viewed from outside (above)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i) - counter-clockwise from above
+				// Counter-clockwise from above: (center, i+1, i) - reversed
 				indices.push_back(top_base);
-				indices.push_back(top_base + i);
 				indices.push_back(top_base + i + 1);
+				indices.push_back(top_base + i);
 			}
 		}
 
 		// Hollow bottom cap
-		// Account for {0,2,1} reordering: same as outer bottom
+		// Counter-clockwise when viewed from outside (below) - same as outer bottom
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1)
+					// Counter-clockwise: (center, i, i+1)
 					indices.push_back(hollow_bottom_base);
-					indices.push_back(hollow_bottom_base + i + 1);
 					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
 				}
 			}
 		}
 
 		// Hollow top cap
-		// Account for {0,2,1} reordering: same as outer top
+		// Counter-clockwise when viewed from outside (above) - same as outer top
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i)
+					// Counter-clockwise from above: (center, i+1, i) - reversed
 					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + i);
 					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
 				}
 			}
 		}
@@ -1678,23 +1668,21 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// The manifold library reorders vertices with {0, 2, 1} (swaps positions 1 and 2)
-		// To get counter-clockwise after reordering, we need to provide vertices in reverse order
-		// Match CSGCylinder3D pattern but account for reordering
+		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
+		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
+		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: Provide (base1+i, base2+next_i, base1+next_i) so after {0,2,1} reordering
-			// it becomes (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
+			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
 			indices.push_back(base1 + i);
-			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
+			indices.push_back(base2 + next_i);
 
-			// Triangle 2: Provide (base2+next_i, base1+i, base2+i) so after {0,2,1} reordering
-			// it becomes (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
+			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
 			// Shares edge (base1+i, base2+next_i) in opposite order
 			indices.push_back(base2 + next_i);
-			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		if (effective_hollow_count > 0) {
@@ -1703,17 +1691,17 @@ CSGBrush *CSGSculptedTube3D::_build_brush() {
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
-				// Hollow faces: Account for {0,2,1} reordering
-				// Triangle 1: Provide (hollow_bottom_i, hollow_top_next_i, hollow_bottom_next_i)
+				// Hollow faces: counter-clockwise from outside (same pattern as outer faces)
+				// Triangle 1: (hollow_bottom_i, hollow_bottom_next_i, hollow_top_next_i)
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 
-				// Triangle 2: Provide (hollow_top_next_i, hollow_bottom_i, hollow_top_i)
+				// Triangle 2: (hollow_top_next_i, hollow_top_i, hollow_bottom_i)
 				// Shares edge (hollow_bottom_i, hollow_top_next_i) in opposite order
 				indices.push_back(hollow_base2 + next_i);
-				indices.push_back(hollow_base1 + i);
 				indices.push_back(hollow_base2 + i);
+				indices.push_back(hollow_base1 + i);
 			}
 		}
 	}
@@ -1945,23 +1933,21 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 		int base2 = path_closed ? ((p + 1) % (path_segments + 1)) * total_profile : (p + 1) * total_profile; // Wrap around for closed paths
 
 		// Outer faces - close the loop
-		// The manifold library reorders vertices with {0, 2, 1} (swaps positions 1 and 2)
-		// To get counter-clockwise after reordering, we need to provide vertices in reverse order
-		// Match CSGCylinder3D pattern but account for reordering
+		// Match CSGCylinder3D pattern exactly: (bottom_i, bottom_next_i, top_next_i) and (top_next_i, top_i, bottom_i)
+		// The manifold library reorders with {0,2,1} when packing and unpacking, so the net effect cancels
+		// Provide vertices in counter-clockwise order as they should appear in the final mesh
 		for (int i = 0; i < effective_profile_count; i++) {
 			int next_i = (i + 1) % effective_profile_count;
-			// Triangle 1: Provide (base1+i, base2+next_i, base1+next_i) so after {0,2,1} reordering
-			// it becomes (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
+			// Triangle 1: (base1+i, base1+next_i, base2+next_i) - counter-clockwise from outside
 			indices.push_back(base1 + i);
-			indices.push_back(base2 + next_i);
 			indices.push_back(base1 + next_i);
+			indices.push_back(base2 + next_i);
 
-			// Triangle 2: Provide (base2+next_i, base1+i, base2+i) so after {0,2,1} reordering
-			// it becomes (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
+			// Triangle 2: (base2+next_i, base2+i, base1+i) - counter-clockwise from outside
 			// Shares edge (base1+i, base2+next_i) in opposite order
 			indices.push_back(base2 + next_i);
-			indices.push_back(base1 + i);
 			indices.push_back(base2 + i);
+			indices.push_back(base1 + i);
 		}
 
 		if (hollow > 0.0 && effective_hollow_count > 0) {
@@ -1970,17 +1956,17 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 
 			for (int i = 0; i < effective_hollow_count; i++) {
 				int next_i = (i + 1) % effective_hollow_count;
-				// Hollow faces: Account for {0,2,1} reordering
-				// Triangle 1: Provide (hollow_bottom_i, hollow_top_next_i, hollow_bottom_next_i)
+				// Hollow faces: counter-clockwise from outside (same pattern as outer faces)
+				// Triangle 1: (hollow_bottom_i, hollow_bottom_next_i, hollow_top_next_i)
 				indices.push_back(hollow_base1 + i);
-				indices.push_back(hollow_base2 + next_i);
 				indices.push_back(hollow_base1 + next_i);
+				indices.push_back(hollow_base2 + next_i);
 
-				// Triangle 2: Provide (hollow_top_next_i, hollow_bottom_i, hollow_top_i)
+				// Triangle 2: (hollow_top_next_i, hollow_top_i, hollow_bottom_i)
 				// Shares edge (hollow_bottom_i, hollow_top_next_i) in opposite order
 				indices.push_back(hollow_base2 + next_i);
-				indices.push_back(hollow_base1 + i);
 				indices.push_back(hollow_base2 + i);
+				indices.push_back(hollow_base1 + i);
 			}
 		}
 	}
@@ -1988,55 +1974,55 @@ CSGBrush *CSGSculptedRing3D::_build_brush() {
 	// Add end caps for linear paths to ensure manifold geometry
 	if (path_curve == PATH_CURVE_LINE && path_begin == 0.0 && path_end == 1.0) {
 		// Bottom cap (at path_begin)
-		// Account for {0,2,1} reordering: provide (center, i+1, i) to get (center, i, i+1) after reordering
+		// Counter-clockwise when viewed from outside (below)
 		int bottom_base = 0;
 		if (effective_profile_count >= 3) {
 			// Triangulate the bottom face - counter-clockwise when viewed from outside (below)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1) - counter-clockwise
+				// Counter-clockwise: (center, i, i+1)
 				indices.push_back(bottom_base);
-				indices.push_back(bottom_base + i + 1);
 				indices.push_back(bottom_base + i);
+				indices.push_back(bottom_base + i + 1);
 			}
 		}
 
 		// Top cap (at path_end)
-		// Account for {0,2,1} reordering: provide (center, i, i+1) to get (center, i+1, i) after reordering (reversed for top)
+		// Counter-clockwise when viewed from outside (above) - reversed order
 		int top_base = path_segments * total_profile;
 		if (effective_profile_count >= 3) {
 			// Triangulate the top face - counter-clockwise when viewed from outside (above)
 			for (int i = 1; i < effective_profile_count - 1; i++) {
-				// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i) - counter-clockwise from above
+				// Counter-clockwise from above: (center, i+1, i) - reversed
 				indices.push_back(top_base);
-				indices.push_back(top_base + i);
 				indices.push_back(top_base + i + 1);
+				indices.push_back(top_base + i);
 			}
 		}
 
 		// Hollow bottom cap
-		// Account for {0,2,1} reordering: same as outer bottom
+		// Counter-clockwise when viewed from outside (below) - same as outer bottom
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_bottom_base = effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i+1, i) so after {0,2,1} reordering becomes (center, i, i+1)
+					// Counter-clockwise: (center, i, i+1)
 					indices.push_back(hollow_bottom_base);
-					indices.push_back(hollow_bottom_base + i + 1);
 					indices.push_back(hollow_bottom_base + i);
+					indices.push_back(hollow_bottom_base + i + 1);
 				}
 			}
 		}
 
 		// Hollow top cap
-		// Account for {0,2,1} reordering: same as outer top
+		// Counter-clockwise when viewed from outside (above) - same as outer top
 		if (hollow > 0.0 && effective_hollow_count > 0) {
 			int hollow_top_base = path_segments * total_profile + effective_profile_count;
 			if (effective_hollow_count >= 3) {
 				for (int i = 1; i < effective_hollow_count - 1; i++) {
-					// Provide (center, i, i+1) so after {0,2,1} reordering becomes (center, i+1, i)
+					// Counter-clockwise from above: (center, i+1, i) - reversed
 					indices.push_back(hollow_top_base);
-					indices.push_back(hollow_top_base + i);
 					indices.push_back(hollow_top_base + i + 1);
+					indices.push_back(hollow_top_base + i);
 				}
 			}
 		}
