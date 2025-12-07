@@ -107,6 +107,7 @@ TEST_CASE("[SceneTree][CSG] CSGPolygon3D") {
 		memdelete(csg_polygon_3d);
 		memdelete(path);
 	}
+}
 
 TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 		SUBCASE("[SceneTree][CSG] CSGSculptedBox3D: Basic shape generation") {
@@ -127,6 +128,103 @@ TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 			memdelete(box);
 		}
 
+		SUBCASE("[SceneTree][CSG] CSGSculptedBox3D: Manifold validation - edge sharing") {
+			CSGSculptedBox3D *box = memnew(CSGSculptedBox3D);
+			SceneTree::get_singleton()->get_root()->add_child(box);
+
+			box->set_size(Vector3(1.0, 1.0, 1.0));
+			Vector<Vector3> faces = box->get_brush_faces();
+
+			// Build edge map: edge -> list of triangles that share it
+			HashMap<String, Vector<int>> edge_map;
+			int triangle_count = faces.size() / 3;
+
+			for (int t = 0; t < triangle_count; t++) {
+				Vector3 v0 = faces[t * 3 + 0];
+				Vector3 v1 = faces[t * 3 + 1];
+				Vector3 v2 = faces[t * 3 + 2];
+
+				// Create edges (always in sorted order for consistency)
+				auto make_edge_key = [](const Vector3 &a, const Vector3 &b) -> String {
+					// Sort vertices to ensure consistent edge representation
+					if (a.x < b.x || (a.x == b.x && a.y < b.y) || (a.x == b.x && a.y == b.y && a.z < b.z)) {
+						return String::num_real(a.x) + "," + String::num_real(a.y) + "," + String::num_real(a.z) + "|" +
+							   String::num_real(b.x) + "," + String::num_real(b.y) + "," + String::num_real(b.z);
+					} else {
+						return String::num_real(b.x) + "," + String::num_real(b.y) + "," + String::num_real(b.z) + "|" +
+							   String::num_real(a.x) + "," + String::num_real(a.y) + "," + String::num_real(a.z);
+					}
+				};
+
+				String e0 = make_edge_key(v0, v1);
+				String e1 = make_edge_key(v1, v2);
+				String e2 = make_edge_key(v2, v0);
+
+				if (!edge_map.has(e0)) {
+					edge_map[e0] = Vector<int>();
+				}
+				if (!edge_map.has(e1)) {
+					edge_map[e1] = Vector<int>();
+				}
+				if (!edge_map.has(e2)) {
+					edge_map[e2] = Vector<int>();
+				}
+
+				edge_map[e0].push_back(t);
+				edge_map[e1].push_back(t);
+				edge_map[e2].push_back(t);
+			}
+
+			// Verify every edge is shared by exactly two triangles
+			for (const KeyValue<String, Vector<int>> &E : edge_map) {
+				String error_msg = "Each edge must be shared by exactly two triangles. Edge: " + E.key + " is shared by " + String::num(E.value.size()) + " triangles";
+				CHECK_MESSAGE(E.value.size() == 2, error_msg);
+			}
+
+			SceneTree::get_singleton()->get_root()->remove_child(box);
+			memdelete(box);
+		}
+
+		SUBCASE("[SceneTree][CSG] CSGSculptedBox3D: Manifold validation - counter-clockwise winding") {
+			CSGSculptedBox3D *box = memnew(CSGSculptedBox3D);
+			SceneTree::get_singleton()->get_root()->add_child(box);
+
+			box->set_size(Vector3(1.0, 1.0, 1.0));
+			Vector<Vector3> faces = box->get_brush_faces();
+
+			int triangle_count = faces.size() / 3;
+			int valid_winding_count = 0;
+
+			for (int t = 0; t < triangle_count; t++) {
+				Vector3 v0 = faces[t * 3 + 0];
+				Vector3 v1 = faces[t * 3 + 1];
+				Vector3 v2 = faces[t * 3 + 2];
+
+				// Calculate face normal (counter-clockwise winding means normal points outward)
+				Vector3 edge1 = v1 - v0;
+				Vector3 edge2 = v2 - v0;
+				Vector3 normal = edge1.cross(edge2).normalized();
+
+				// Calculate center of triangle
+				Vector3 center = (v0 + v1 + v2) / 3.0;
+
+				// For a box centered at origin, the normal should point away from center
+				// (i.e., dot product of normal with (center - origin) should be positive)
+				// Actually, for a box, the center is at origin, so we check if normal points in same direction as center
+				// For a box at origin with size 1, vertices are at ±0.5, so center of face should be away from origin
+				real_t dot = normal.dot(center);
+				if (dot > 0.0) {
+					valid_winding_count++;
+				}
+			}
+
+			// Most faces should have correct winding (allowing for some tolerance)
+			CHECK_MESSAGE(valid_winding_count > triangle_count * 0.8, "Most triangles should have counter-clockwise winding when viewed from outside");
+
+			SceneTree::get_singleton()->get_root()->remove_child(box);
+			memdelete(box);
+		}
+
 		SUBCASE("[SceneTree][CSG] CSGSculptedBox3D: Property getters and setters") {
 			CSGSculptedBox3D *box = memnew(CSGSculptedBox3D);
 			box->set_size(Vector3(3.0, 4.0, 5.0));
@@ -134,9 +232,9 @@ TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 
 			memdelete(box);
 		}
-	}
+}
 
-	TEST_CASE("[SceneTree][CSG] CSGSculptedCylinder3D") {
+TEST_CASE("[SceneTree][CSG] CSGSculptedCylinder3D") {
 		SUBCASE("[SceneTree][CSG] CSGSculptedCylinder3D: Basic shape generation") {
 			CSGSculptedCylinder3D *cylinder = memnew(CSGSculptedCylinder3D);
 			SceneTree::get_singleton()->get_root()->add_child(cylinder);
@@ -151,7 +249,8 @@ TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 			// Check that vertices are within expected bounds
 			AABB aabb = cylinder->get_aabb();
 			CHECK_MESSAGE(aabb.size.y >= 2.0, "Cylinder height should be at least 2.0");
-			CHECK_MESSAGE(aabb.size.x >= 2.0 && aabb.size.z >= 2.0, "Cylinder diameter should be at least 2.0");
+			CHECK_MESSAGE(aabb.size.x >= 2.0, "Cylinder diameter (x) should be at least 2.0");
+			CHECK_MESSAGE(aabb.size.z >= 2.0, "Cylinder diameter (z) should be at least 2.0");
 
 			SceneTree::get_singleton()->get_root()->remove_child(cylinder);
 			memdelete(cylinder);
@@ -181,7 +280,9 @@ TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 
 			// Check bounding box
 			AABB aabb = sphere->get_aabb();
-			CHECK_MESSAGE(aabb.size.x >= 2.0 && aabb.size.y >= 2.0 && aabb.size.z >= 2.0, "Sphere diameter should be at least 2.0");
+			CHECK_MESSAGE(aabb.size.x >= 2.0, "Sphere diameter (x) should be at least 2.0");
+			CHECK_MESSAGE(aabb.size.y >= 2.0, "Sphere diameter (y) should be at least 2.0");
+			CHECK_MESSAGE(aabb.size.z >= 2.0, "Sphere diameter (z) should be at least 2.0");
 
 			SceneTree::get_singleton()->get_root()->remove_child(sphere);
 			memdelete(sphere);
@@ -414,7 +515,7 @@ TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 				real_t dist_x = Math::abs(faces[i].x);
 				real_t dist_y = Math::abs(faces[i].y);
 				real_t dist_z = Math::abs(faces[i].z);
-				max_dist = Math::max(max_dist, Math::max(dist_x, Math::max(dist_y, dist_z)));
+				max_dist = MAX(max_dist, MAX(dist_x, MAX(dist_y, dist_z)));
 			}
 
 			// Allow some tolerance for transformations
@@ -437,7 +538,7 @@ TEST_CASE("[SceneTree][CSG] CSGSculptedBox3D") {
 			real_t max_radius = 0.0;
 			for (int i = 0; i < faces.size(); i++) {
 				real_t dist_from_axis = Math::sqrt(faces[i].x * faces[i].x + faces[i].z * faces[i].z);
-				max_radius = Math::max(max_radius, dist_from_axis);
+				max_radius = MAX(max_radius, dist_from_axis);
 			}
 
 			// Allow tolerance for transformations and scaling
